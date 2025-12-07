@@ -163,14 +163,14 @@ npm install -g markdownlint-cli2 markdown-link-check cspell prettier
 
 ## Compatibility Matrix
 
-| Environment    | Runtime | Package Manager | Status       | Notes                                |
-| -------------- | ------- | --------------- | ------------ | ------------------------------------ |
-| bun only       | bun     | bun             | ✅ Optimal   | Complete Node.js replacement         |
-| Node.js + bun  | node    | bun             | ✅ Preferred | Fast package management              |
-| Node.js + npm  | node    | npm             | ✅ Standard  | Traditional setup                    |
-| bun + npm      | bun     | npm             | ✅ Hybrid    | Runtime modern, packages traditional |
-| No runtime     | none    | any             | ❌ Error     | JavaScript runtime required          |
-| Legacy systems | node    | npm             | ✅ Supported | Always available                     |
+| Environment    | Runtime | Package Manager | Status    | Notes                                |
+| -------------- | ------- | --------------- | --------- | ------------------------------------ |
+| bun only       | bun     | bun             | Optimal   | Complete Node.js replacement         |
+| Node.js + bun  | node    | bun             | Preferred | Fast package management              |
+| Node.js + npm  | node    | npm             | Standard  | Traditional setup                    |
+| bun + npm      | bun     | npm             | Hybrid    | Runtime modern, packages traditional |
+| No runtime     | none    | any             | Error     | JavaScript runtime required          |
+| Legacy systems | node    | npm             | Supported | Always available                     |
 
 ## Implementation Details
 

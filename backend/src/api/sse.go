@@ -57,13 +57,13 @@ func (self *BrokerHandler) RegisterSse(api huma.API) {
 		BodyReadTimeout: 5 * time.Second,
 		Tags:            []string{"system"},
 	}, map[string]any{
-		dto.EventTypes.EVENTHELLO.String():     dto.Welcome{},
-		dto.EventTypes.EVENTUPDATING.String():  dto.UpdateProgress{},
-		dto.EventTypes.EVENTVOLUMES.String():   []dto.Disk{},
-		dto.EventTypes.EVENTHEARTBEAT.String(): dto.HealthPing{},
-		dto.EventTypes.EVENTSHARE.String():     []dto.SharedResource{},
+		dto.WebEventTypes.EVENTHELLO.String():     dto.Welcome{},
+		dto.WebEventTypes.EVENTUPDATING.String():  dto.UpdateProgress{},
+		dto.WebEventTypes.EVENTVOLUMES.String():   []dto.Disk{},
+		dto.WebEventTypes.EVENTHEARTBEAT.String(): dto.HealthPing{},
+		dto.WebEventTypes.EVENTSHARE.String():     []dto.SharedResource{},
 	}, func(ctx context.Context, input *struct{}, send sse.Sender) {
 		self.broadcaster.ProcessHttpChannel(send)
-		slog.Debug("SSE Channel closed")
+		slog.DebugContext(ctx, "SSE Channel closed")
 	})
 }

@@ -106,7 +106,14 @@ func (suite *SystemHandlerSuite) TestGetNICsHandler_ReturnsInterfaces() {
 	var result []net.InterfaceStat
 	err = json.Unmarshal(resp.Body.Bytes(), &result)
 	suite.Require().NoError(err)
-	suite.Len(result, len(expected))
+	// Filter expected to exclude veth* interfaces
+	filteredExpected := make([]net.InterfaceStat, 0, len(expected))
+	for _, nic := range expected {
+		if !strings.HasPrefix(nic.Name, "veth") {
+			filteredExpected = append(filteredExpected, nic)
+		}
+	}
+	suite.Len(result, len(filteredExpected))
 }
 
 func (suite *SystemHandlerSuite) TestGetNICsHandler_FiltersVethInterfaces() {

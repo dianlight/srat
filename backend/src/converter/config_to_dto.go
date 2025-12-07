@@ -8,10 +8,8 @@ import (
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal/osutil"
-	"github.com/dianlight/srat/tlog"
 	"github.com/shirou/gopsutil/v4/disk"
 	"github.com/u-root/u-root/pkg/mount"
-	"github.com/xorcare/pointer"
 )
 
 // goverter:converter
@@ -29,18 +27,29 @@ type ConfigToDtoConverter interface {
 	//ShareToSharedResourceNoMountPointData(source config.Share, target *dto.SharedResource, users []dto.User) error
 
 	// g.overter:update target
-	// g.overter:ignore  Flags CustomFlags IsInvalid InvalidError Warnings Shares IsToMountAtStartup
-	// g.overter:map Path IsMounted | github.com/dianlight/srat/internal/osutil:IsMounted
-	// g.overter:map Path DeviceId | PathToSource
-	// g.overter:map Path Type | pathToType
-	// g.overter:map Path PathHash | github.com/shomali11/util/xhashes:SHA1
-	// g.overter:map FS FSType
-	// g.overter:map Path IsWriteSupported | FSTypeIsWriteSupported
-	// g.overter:map FS TimeMachineSupport | TimeMachineSupportFromFS
-	// g.overter:map Path DiskLabel | DiskLabelFromPath
-	// g.overter:map Path DiskSerial | DiskSerialFromPath
-	// g.overter:map Path DiskSize | DiskSizeFromPath
-	//ShareToMountPointData(source config.Share, target *dto.MountPointData) error
+	// g.overter:ignore  Flags CustomFlags IsInvalid InvalidError Warnings Share IsToMountAtStartup
+	// goverter:ignore Flags CustomFlags InvalidError Warnings Share RefreshVersion
+	// goverter:ignore Partition
+	// goverter:map Path IsMounted | github.com/dianlight/srat/internal/osutil:IsMounted
+	// goverter:map IsInvalid | falseConst
+	// goverter:map IsToMountAtStartup | truePConst
+	// goverter:map Path DeviceId | mountPathToDeviceId
+	// goverter:map Path Type | pathToType
+	// goverter:map Path PathHash | github.com/shomali11/util/xhashes:SHA1
+	// goverter:map FS FSType
+	// goverter:map Path IsWriteSupported | isWriteSupported
+	// goverter:map FS TimeMachineSupport | TimeMachineSupportFromFS
+	// goverter:map Path DiskLabel | DiskLabelFromPath
+	// goverter:map Path DiskSerial | DiskSerialFromPath
+	// goverter:map Path DiskSize | DiskSizeFromPath
+	// goverter:map Path Root
+	ShareToMountPointData(source config.Share) (*dto.MountPointData, error)
+
+	// goverter:ignore _ Status
+	// goverter:map Users Users | StringsToDtoUsers
+	// goverter:map . MountPointData
+	// goverter:context users
+	ShareToSharedResource(source config.Share, users []dto.User) (dto.SharedResource, error)
 
 	// goverter:update target
 	// goverter:map MountPointData.Path Path
@@ -55,12 +64,12 @@ type ConfigToDtoConverter interface {
 	// goverter:update target
 	UserToOtherUser(source dto.User, target *config.User) error
 
-	// g.overter:update target
-	// g.overter:update:ignoreZeroValueField no
-	// g.overter:map UpdateChannel UpdateChannel | github.com/dianlight/srat/dto:ParseUpdateChannel
-	// g.overter:map TelemetryMode TelemetryMode | github.com/dianlight/srat/dto:ParseTelemetryMode
-	// g.overter:ignore ExportStatsToHA
-	//ConfigToSettings(source config.Config, target *dto.Settings) error
+	// goverter:update target
+	// goverter:update:ignoreZeroValueField no
+	// goverter:map UpdateChannel UpdateChannel | github.com/dianlight/srat/dto:ParseUpdateChannel
+	// goverter:map TelemetryMode TelemetryMode | github.com/dianlight/srat/dto:ParseTelemetryMode
+	// goverter:ignore ExportStatsToHA SMBoverQUIC HDIdleEnabled HDIdleDefaultIdleTime HDIdleDefaultCommandType HDIdleDefaultPowerCondition HDIdleIgnoreSpinDownDetection
+	ConfigToSettings(source config.Config, target *dto.Settings) error
 
 	// g.overter:update target
 	// g.overter:ignore CurrentFile
@@ -84,6 +93,19 @@ func StringToDtoUser(username string, users []dto.User) (dto.User, error) {
 		}
 	}
 	return dto.User{Username: username}, fmt.Errorf("User not found: %s", username)
+}
+
+// goverter:context users
+func StringsToDtoUsers(usernames []string, users []dto.User) ([]dto.User, error) {
+	var result []dto.User
+	for _, username := range usernames {
+		user, err := StringToDtoUser(username, users)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, user)
+	}
+	return result, nil
 }
 
 func DtoUserToString(user dto.User) string {
@@ -151,10 +173,4 @@ func TimeMachineSupportFromFS(fsType string) *dto.TimeMachineSupport {
 	default:
 		return &dto.TimeMachineSupports.UNKNOWN
 	}
-}
-
-func FSTypeIsWriteSupported(path string) *bool {
-	tlog.Trace("Checking if path is writable", "path", path, "isWritable", osutil.IsWritable(path))
-	return pointer.Bool(osutil.IsWritable(path))
-
 }

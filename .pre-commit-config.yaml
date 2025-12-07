@@ -140,4 +140,13 @@ repos:
             done
             echo "Basic markdown linting passed"
 
+      - id: verify-context-logging
+        name: Enforce context-aware slog/tlog usage
+        entry: ./scripts/verify_context_logging.sh
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+        files: '^backend/src/.*\\.go$'
+        exclude: ^backend/src/vendor/
+
   # tekwizely/pre-commit-golang is optional; local hooks cover our needs

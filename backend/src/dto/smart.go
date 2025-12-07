@@ -15,14 +15,20 @@ type SmartTempValue struct {
 	OvertempCounter int `json:"overtemp_counter,omitempty"`
 }
 
+// Static Info about S.M.A.R.T. capabilities of a disk
 type SmartInfo struct {
-	DiskType        string                     `json:"disk_type,omitempty" enum:"SATA,NVMe,SCSI,Unknown"`
-	RotationRate    int                        `json:"rotation_rate,omitempty"` // RPM, only populated if > 0 (HDDs)
+	DiskType     string                     `json:"disk_type,omitempty" enum:"SATA,NVMe,SCSI,Unknown"`
+	RotationRate int                        `json:"rotation_rate,omitempty"` // RPM, only populated if > 0 (HDDs)
+	Supported    bool                       `json:"supported"`
+	Additional   map[string]SmartRangeValue `json:"others,omitempty"`
+}
+
+// SmartStatus represents current S.M.A.R.T. status of a disk
+type SmartStatus struct {
 	Temperature     SmartTempValue             `json:"temperature"`
 	PowerOnHours    SmartRangeValue            `json:"power_on_hours"`
 	PowerCycleCount SmartRangeValue            `json:"power_cycle_count"`
 	Enabled         bool                       `json:"enabled"`
-	Supported       bool                       `json:"supported"`
 	Additional      map[string]SmartRangeValue `json:"others,omitempty"`
 }
 

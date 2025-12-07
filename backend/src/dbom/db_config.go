@@ -10,7 +10,7 @@ import (
 
 	_ "github.com/dianlight/srat/dbom/migrations"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/tlog"
+	"github.com/dianlight/tlog"
 	"github.com/glebarez/sqlite"
 	"github.com/pressly/goose/v3"
 	"gitlab.com/tozd/go/errors"
@@ -173,10 +173,14 @@ func NewDB(lc fx.Lifecycle, v struct {
 		slog.Error("Failed to migrate database", "error", errE, "path", v.ApiCtx.DatabasePath)
 		return replaceDatabase(lc, v)
 	}
+	if os.Getenv("SRAT_MOCK") == "true" {
+		return db
+	}
 
 	// GooseDBMigration
 	goose.SetBaseFS(migrations)
 	goose.WithSlog(slog.Default())
+	goose.WithVerbose(false)
 
 	if err := goose.SetDialect("sqlite3"); err != nil {
 		panic(err)
@@ -184,6 +188,8 @@ func NewDB(lc fx.Lifecycle, v struct {
 
 	if err := goose.Up(sqlDB, "migrations"); err != nil {
 		slog.Error("Failed to apply migrations", "error", err, "path", v.ApiCtx.DatabasePath)
+		// dumping the database schema for analysis
+		dumpDatabaseSchema(db)
 		panic(err)
 	}
 
@@ -269,4 +275,77 @@ func checkDBIntegrity(db *gorm.DB) errors.E {
 		}
 	}
 	return nil
+}
+
+// Dump the SQLite schema for analysis when migrations or integrity checks fail
+func dumpDatabaseSchema(db *gorm.DB) {
+	// Create temporary file for schema dump
+	tmpFile, tmpErr := os.CreateTemp("", "srat-schema-dump-*.sql")
+	if tmpErr != nil {
+		slog.Error("Schema dump: failed to create temp file", "error", tmpErr)
+		return
+	}
+	defer tmpFile.Close()
+
+	// Get database file path from GORM config using PRAGMA database_list
+	type dbListResult struct {
+		Seq  int
+		Name string
+		File string
+	}
+	var dbInfo dbListResult
+	db.Raw("PRAGMA database_list").Scan(&dbInfo)
+
+	// Write header with metadata
+	header := fmt.Sprintf("-- Database Schema Dump\n-- Database File: %s\n-- Database Name: %s\n-- Timestamp: %s\n\n",
+		dbInfo.File,
+		dbInfo.Name,
+		fmt.Sprintf("%v", db.NowFunc()))
+	if _, writeErr := tmpFile.WriteString(header); writeErr != nil {
+		slog.Error("Schema dump: failed to write header", "error", writeErr)
+	}
+
+	// Query schema objects using GORM
+	type schemaObject struct {
+		Name string
+		Type string
+		SQL  string
+	}
+	var objects []schemaObject
+	result := db.Raw(`
+		SELECT name, type, COALESCE(sql, '') as sql
+		FROM sqlite_schema
+		WHERE type IN ('table','index','view','trigger')
+		  AND name NOT LIKE 'sqlite_%'
+		ORDER BY type, name
+	`).Scan(&objects)
+
+	if result.Error != nil {
+		slog.Error("Schema dump: query failed", "error", result.Error)
+		return
+	}
+
+	// Write schema to file
+	rowCount := 0
+	for _, obj := range objects {
+		// Write to file
+		if _, writeErr := fmt.Fprintf(tmpFile, "-- Type: %s, Name: %s\n%s\n\n", obj.Type, obj.Name, obj.SQL); writeErr != nil {
+			slog.Error("Schema dump: write failed", "error", writeErr)
+		}
+		rowCount++
+	}
+
+	// Write footer with row count
+	footer := fmt.Sprintf("\n-- Total objects dumped: %d\n", rowCount)
+	if _, writeErr := tmpFile.WriteString(footer); writeErr != nil {
+		slog.Error("Schema dump: failed to write footer", "error", writeErr)
+	}
+
+	// Ensure data is flushed to disk
+	if syncErr := tmpFile.Sync(); syncErr != nil {
+		slog.Error("Schema dump: sync failed", "error", syncErr)
+	}
+
+	// Log the full path to the schema dump file
+	slog.Error("Database schema dumped to file", "path", tmpFile.Name(), "objects", rowCount)
 }

@@ -72,7 +72,6 @@ docs: gen
 
 gen: $(SRCS)
 	go generate -C $(SRC_DIRS)  ./... && \
-	go run -C $(SRC_DIRS) ./cmd/srat-gormgen -out ../src/repository/dao/ && \
 	go run -C $(SRC_DIRS) ./cmd/srat-openapi -out ../docs && \
 	bunx @redocly/cli@latest lint ./docs/openapi.yaml
 
@@ -106,13 +105,13 @@ dev_cli:
 	# version doesn't need -db, upgrade uses in-memory DB by default
 	go run -C $(SRC_DIRS) ./cmd/srat-cli -loglevel debug version && \
 	go run -C $(SRC_DIRS) ./cmd/srat-cli -loglevel debug upgrade -channel prerelease && \
-	go run -C $(SRC_DIRS) ./cmd/srat-cli -db /tmp/testdb.db -loglevel debug start -opt ../test/data/options.json -conf ../test/data/config.json -out ../tmp/samba.conf && \
+	go run -C $(SRC_DIRS) ./cmd/srat-cli -db /tmp/testdb.db -loglevel debug start -out ../tmp/samba.conf && \
 	go run -C $(SRC_DIRS) ./cmd/srat-cli -db /tmp/testdb.db -loglevel debug stop
 
 .PHONY: dev
 dev:
 	#make dev_cli
-	go tool -C $(SRC_DIRS) air -c .air.toml
+	SRAT_DEVMODE=true go tool -C $(SRC_DIRS) air -c .air.toml
 
 
 .PHONY: update
@@ -121,6 +120,9 @@ update:
 	go -C $(SRC_DIRS) mod vendor && \
 	make patch format
 
+.PHONY: show_update
+show_update:
+	go -C $(SRC_DIRS) list -mod=mod -m -u all 
 
 .PHONY: examples
 examples: example_tlog

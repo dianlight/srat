@@ -4,14 +4,14 @@ go 1.25.3
 
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
-	github.com/google/go-cmp v0.7.0
 	github.com/google/go-github/v76 v76.0.0
 	github.com/gorilla/mux v1.8.1
 	github.com/jpillora/overseer v1.1.6
-	github.com/mattn/go-isatty v0.0.20
+	github.com/maniartech/signals v1.3.1
+	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/oapi-codegen/runtime v1.1.2
 	github.com/pilebones/go-udev v0.9.1
-	github.com/shirou/gopsutil/v4 v4.25.10
+	github.com/shirou/gopsutil/v4 v4.25.11
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/sys v0.38.0
 )
@@ -20,27 +20,24 @@ require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/adelolmo/hd-idle v0.0.0-20250511190312-c87bc6e9ce96
 	github.com/danielgtaylor/huma/v2 v2.34.1
-	github.com/dianlight/smartmontools-go v0.0.5
+	github.com/dianlight/smartmontools-go v0.1.2
+	github.com/dianlight/tlog v0.0.5
 	github.com/fatih/color v1.18.0
 	github.com/gofri/go-github-ratelimit/v2 v2.0.2
 	github.com/gorilla/websocket v1.5.3
 	github.com/jarcoal/httpmock v1.4.1
-	github.com/k0kubun/pp/v3 v3.5.0
 	github.com/lonegunmanb/go-defaults v1.4.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pressly/goose/v3 v3.26.0
 	github.com/prometheus/procfs v0.19.2
 	github.com/rollbar/rollbar-go v1.4.8
-	github.com/samber/slog-formatter v1.2.0
 	github.com/samber/slog-http v1.9.0
-	github.com/samber/slog-multi v1.5.0
 	github.com/sergi/go-diff v1.4.0
 	github.com/shomali11/util v0.0.0-20220717175126-f0771b70947f
 	github.com/teivah/broadcast v0.1.0
+	gorm.io/cli/gorm v0.2.4
 	gorm.io/datatypes v1.2.7
 	gorm.io/driver/sqlite v1.6.0
-	gorm.io/gen v0.3.27
-	gorm.io/plugin/dbresolver v1.6.2
 )
 
 require (
@@ -56,7 +53,9 @@ require (
 	github.com/go-sql-driver/mysql v1.9.3 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gohugoio/hugo v0.149.1 // indirect
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jmattheis/goverter v1.9.2 // indirect
+	github.com/k0kubun/pp/v3 v3.5.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-sqlite3 v1.14.32 // indirect
 	github.com/mfridman/interpolate v0.0.2 // indirect
@@ -65,13 +64,17 @@ require (
 	github.com/ovechkin-dm/go-dyno v0.5.3 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
-	github.com/petermattis/goid v0.0.0-20250904145737-900bdf8bb490 // indirect
+	github.com/petermattis/goid v0.0.0-20251121121749-a11dd1a45f9a // indirect
 	github.com/rakyll/gotest v0.0.6 // indirect
 	github.com/samber/lo v1.52.0 // indirect
 	github.com/samber/slog-common v0.19.0 // indirect
+	github.com/samber/slog-formatter v1.2.0 // indirect
+	github.com/samber/slog-multi v1.6.0 // indirect
 	github.com/sethvargo/go-retry v0.3.0 // indirect
 	github.com/speakeasy-api/jsonpath v0.6.0 // indirect
 	github.com/spf13/afero v1.14.0 // indirect
+	github.com/spf13/cobra v1.9.1 // indirect
+	github.com/spf13/pflag v1.0.7 // indirect
 	github.com/tdewolff/parse/v2 v2.8.3 // indirect
 	github.com/woodsbury/decimal128 v1.3.0 // indirect
 	github.com/zarldev/goenums v0.4.4 // indirect
@@ -79,7 +82,6 @@ require (
 	go.opentelemetry.io/otel/trace v1.38.0 // indirect
 	google.golang.org/protobuf v1.36.8 // indirect
 	gorm.io/driver/mysql v1.6.0 // indirect
-	gorm.io/hints v1.1.2 // indirect
 )
 
 require (
@@ -102,7 +104,7 @@ require (
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/swag v0.23.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
-	github.com/google/uuid v1.6.0 // indirect
+	github.com/google/uuid v1.6.0
 	github.com/huandu/xstrings v1.5.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
@@ -124,31 +126,30 @@ require (
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/speakeasy-api/openapi-overlay v0.10.2 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
-	github.com/tklauser/go-sysconf v0.3.15 // indirect
-	github.com/tklauser/numcpus v0.10.0 // indirect
+	github.com/tklauser/go-sysconf v0.3.16 // indirect
+	github.com/tklauser/numcpus v0.11.0 // indirect
 	github.com/vmware-labs/yaml-jsonpath v0.3.2 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.uber.org/dig v1.19.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	go.uber.org/zap v1.27.0 // indirect
+	go.uber.org/zap v1.27.1 // indirect
 	golang.org/x/crypto v0.45.0 // indirect
-	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546
-	golang.org/x/mod v0.29.0 // indirect
+	golang.org/x/exp v0.0.0-20251125195548-87e1e737ad39
+	golang.org/x/mod v0.30.0 // indirect
 	golang.org/x/sync v0.18.0
 	golang.org/x/text v0.31.0 // indirect
-	golang.org/x/tools v0.38.0 // indirect
+	golang.org/x/tools v0.39.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	modernc.org/libc v1.66.10 // indirect
+	modernc.org/libc v1.67.1 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
-	modernc.org/sqlite v1.40.0 // indirect
+	modernc.org/sqlite v1.40.1 // indirect
 )
 
 require (
 	github.com/glebarez/sqlite v1.11.0
-	github.com/lmittmann/tint v1.1.2
-	github.com/moby/sys/mountinfo v0.7.2
+	github.com/lmittmann/tint v1.1.2 // indirect
 	github.com/ovechkin-dm/mockio/v2 v2.0.4
 	github.com/rs/cors v1.11.1
 	github.com/thoas/go-funk v0.9.3
@@ -169,4 +170,5 @@ tool (
 	github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen
 	github.com/rakyll/gotest
 	github.com/zarldev/goenums
+	gorm.io/cli/gorm
 )

@@ -8,21 +8,17 @@ import {
 import { type SmbConf, useGetApiSambaConfigQuery } from "../store/sratApi";
 
 export function SmbConf() {
-	const { mode, setMode } = useColorScheme();
-	/*
-	const { ref, inView, entry } = useInView({
-		/* Optional options * /
-	threshold: 0,
-	});
-	*/
+	const { mode } = useColorScheme();
 	const smbconfig = useGetApiSambaConfigQuery();
 
 	return (
 		<InView
 			as="div"
-			onChange={(inView) => {
-				inView && smbconfig.isSuccess;
+			onChange={(inView, entry) => {
+				console.log("Inview:", inView)
+				smbconfig.refetch();
 			}}
+
 		>
 			<SyntaxHighlighter
 				customStyle={{ fontSize: "0.7rem" }}
@@ -30,9 +26,12 @@ export function SmbConf() {
 				style={mode === "light" ? a11yLight : a11yDark}
 				wrapLines
 				wrapLongLines
+				showInlineLineNumbers
+				showLineNumbers
+				useInlineStyles
 			>
-				{(smbconfig.data as SmbConf)?.data || ""}
+				{smbconfig.isLoading ? "...Loading..." : (smbconfig.data as SmbConf)?.data || ""}
 			</SyntaxHighlighter>
-		</InView>
+		</InView >
 	);
 }

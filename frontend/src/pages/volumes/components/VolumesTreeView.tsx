@@ -77,16 +77,16 @@ export function VolumesTreeView({
         if (!disks) return [];
 
         return disks.filter((disk) => {
-            if (!disk.partitions || disk.partitions.length === 0) return false;
+            const partitions = Object.values(disk.partitions || {});
+            if (partitions.length === 0) return false;
 
-            const visiblePartitions = disk.partitions.filter(
+            const visiblePartitions = partitions.filter(
                 (partition) =>
                     !(
                         hideSystemPartitions &&
                         (partition.system &&
                             (partition.name?.startsWith("hassos-") ||
-                                (partition.host_mount_point_data &&
-                                    partition.host_mount_point_data.length > 0)))
+                                (Object.values(partition.host_mount_point_data || {}).length > 0)))
                     ),
             );
 
@@ -123,8 +123,7 @@ export function VolumesTreeView({
         if (
             partition.system ||
             partition.name?.startsWith("hassos-") ||
-            (partition.host_mount_point_data &&
-                partition.host_mount_point_data.length > 0)
+            (Object.values(partition.host_mount_point_data || {}).length > 0)
         ) {
             return <SettingsSuggestIcon fontSize="small" {...iconColorProp} />;
         }
@@ -139,32 +138,24 @@ export function VolumesTreeView({
             icon: React.ReactNode;
             onClick: (e: React.MouseEvent) => void;
         }> = [];
-        const isMounted =
-            partition.mount_point_data &&
-            partition.mount_point_data.length > 0 &&
-            partition.mount_point_data.some((mpd) => mpd.is_mounted);
-        const hasShares =
-            partition.mount_point_data &&
-            partition.mount_point_data.length > 0 &&
-            partition.mount_point_data.some((mpd) => {
-                return mpd.shares && mpd.shares.length > 0;
-            });
-        const firstMountPath = partition.mount_point_data?.[0]?.path;
+        const mpds = Object.values(partition.mount_point_data || {});
+        const isMounted = mpds.some((mpd) => mpd.is_mounted);
+        const hasShares = mpds.some((mpd) => mpd.share);
+        const firstMountPath = mpds[0]?.path;
         const showShareActions = isMounted && firstMountPath?.startsWith("/mnt/");
 
         // Skip actions for protected partitions
         if (
             protectedMode ||
             partition.name?.startsWith("hassos-") ||
-            (partition.host_mount_point_data &&
-                partition.host_mount_point_data.length > 0)
+            (Object.values(partition.host_mount_point_data || {}).length > 0)
         ) {
             return actions;
         }
 
         // Automount Toggle
-        if (!hasShares && partition.mount_point_data?.[0]?.path) {
-            if (partition.mount_point_data?.[0]?.is_to_mount_at_startup) {
+        if (!hasShares && firstMountPath) {
+            if (mpds[0]?.is_to_mount_at_startup) {
                 actions.push({
                     key: "disable-automount",
                     title: "Disable mount at startup",
@@ -255,10 +246,8 @@ export function VolumesTreeView({
         const partitionNameDecoded = decodeEscapeSequence(
             partition.name || partition.id || "Unnamed Partition",
         );
-        const isMounted =
-            partition.mount_point_data &&
-            partition.mount_point_data.length > 0 &&
-            partition.mount_point_data.some((mpd) => mpd.is_mounted);
+        const mpds = Object.values(partition.mount_point_data || {});
+        const isMounted = mpds.some((mpd) => mpd.is_mounted);
 
         const actions = getPartitionActions(partition);
 
@@ -299,9 +288,9 @@ export function VolumesTreeView({
                                         sx={{ fontSize: "0.7rem", height: 16 }}
                                     />
                                 )}
-                                {partition.mount_point_data?.[0]?.fstype && (
+                                {mpds[0]?.fstype && (
                                     <Chip
-                                        label={partition.mount_point_data[0].fstype}
+                                        label={mpds[0]?.fstype}
                                         size="small"
                                         variant="outlined"
                                         sx={{ fontSize: "0.7rem", height: 16 }}
@@ -309,10 +298,10 @@ export function VolumesTreeView({
                                 )}
                                 {isMounted && (
                                     <Chip
-                                        label={partition.mount_point_data?.every(mp => !mp.is_write_supported) ? "Mounted (Read-Only)" : "Mounted"}
+                                        label={mpds.length > 0 && mpds.every(mp => !mp.is_write_supported) ? "Mounted (Read-Only)" : "Mounted"}
                                         size="small"
                                         variant="outlined"
-                                        color={partition.mount_point_data?.every(mp => !mp.is_write_supported) ? "secondary" : "success"}
+                                        color={mpds.length > 0 && mpds.every(mp => !mp.is_write_supported) ? "secondary" : "success"}
                                         sx={{ fontSize: "0.7rem", height: 16 }}
                                     />
                                 )}
@@ -347,17 +336,16 @@ export function VolumesTreeView({
 
     const renderDiskItem = (disk: Disk, diskIdx: number) => {
         const diskIdentifier = disk.id || `disk-${diskIdx}`;
-        const filteredPartitions =
-            disk.partitions?.filter(
-                (partition) =>
-                    !(
-                        hideSystemPartitions &&
-                        (partition.system &&
-                            (partition.name?.startsWith("hassos-") ||
-                                (partition.host_mount_point_data &&
-                                    partition.host_mount_point_data.length > 0)))
-                    ),
-            ) || [];
+        const partitions = Object.values(disk.partitions || {});
+        const filteredPartitions = partitions.filter(
+            (partition) =>
+                !(
+                    hideSystemPartitions &&
+                    (partition.system &&
+                        (partition.name?.startsWith("hassos-") ||
+                            (Object.values(partition.host_mount_point_data || {}).length > 0)))
+                ),
+        ) || [];
 
         if (filteredPartitions.length === 0) return null;
 

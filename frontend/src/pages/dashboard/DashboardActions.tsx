@@ -34,24 +34,23 @@ export function DashboardActions() {
 		if (disks && !evdata?.hello?.read_only) {
 			for (const disk of disks) {
 				// disks type should be inferred from useVolume
-				for (const partition of disk.partitions || []) {
+				const diskPartitions = Object.values(disk.partitions || {});
+				for (const partition of diskPartitions) {
 					// Filter out system/host-mounted partitions
 					if (
 						partition.system ||
 						partition.name?.startsWith("hassos-") ||
 						(partition.host_mount_point_data &&
-							partition.host_mount_point_data.length > 0)
+							Object.values(partition.host_mount_point_data).length > 0)
 					) {
 						continue;
 					}
 
-					const isMounted = partition.mount_point_data?.some(
-						(mpd) => mpd.is_mounted,
-					);
-					const hasShares = partition.mount_point_data?.some((mpd) =>
-						mpd.shares?.some((share) => !share.disabled),
-					);
-					const firstMountPath = partition.mount_point_data?.[0]?.path;
+					const mpds = Object.values(partition.mount_point_data || {});
+					const isMounted = mpds.some((mpd) => mpd.is_mounted);
+					const hasShares = mpds.some((mpd) => mpd.share && mpd.share.disabled === false);
+
+					const firstMountPath = mpds[0]?.path;
 
 					if (!isMounted) {
 						partitions.push({ partition, action: "mount" });

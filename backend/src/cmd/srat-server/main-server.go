@@ -17,7 +17,8 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/dianlight/smartmontools-go"
 	"github.com/dianlight/srat/internal/appsetup"
-	"github.com/dianlight/srat/tlog"
+	"github.com/dianlight/srat/service"
+	"github.com/dianlight/tlog"
 	"github.com/gorilla/mux"
 	"gitlab.com/tozd/go/errors"
 
@@ -27,7 +28,6 @@ import (
 	"github.com/dianlight/srat/internal"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/server"
-	"github.com/dianlight/srat/service"
 
 	"github.com/jpillora/overseer"
 	"github.com/jpillora/overseer/fetcher"
@@ -122,7 +122,7 @@ func main() {
 	}
 
 	flag.Usage = func() {
-		internal.Banner("srat")
+		internal.Banner("srat-server", "")
 		flag.PrintDefaults()
 	}
 
@@ -159,7 +159,7 @@ func main() {
 
 func prog(state overseer.State) {
 
-	internal.Banner("srat-server")
+	internal.Banner("srat-server", "")
 
 	slog.Debug("Startup Options", "Flags", os.Args)
 	slog.Debug("Starting SRAT", "version", config.Version, "pid", state.ID, "address", state.Address, "listeners", fmt.Sprintf("%T", state.Listener))
@@ -213,7 +213,9 @@ func prog(state overseer.State) {
 		fx.Provide(
 			func() *overseer.State { return &state },
 			server.AsHumaRoute(api.NewSSEBroker),
-			smartmontools.NewClient,
+			func() (smartmontools.SmartClient, error) {
+				return smartmontools.NewClient(smartmontools.WithLogHandler(tlog.NewLoggerWithLevel(tlog.LevelInfo)))
+			},
 			api.NewWebSocketBroker,
 			server.AsHumaRoute(api.NewHealthHandler),
 			server.AsHumaRoute(api.NewShareHandler),
@@ -252,7 +254,7 @@ func prog(state overseer.State) {
 					if err != nil {
 						return errors.WithMessage(err)
 					}
-					slog.Debug("Route:", "template", template)
+					tlog.Trace("Route:", "template", template)
 					return nil
 				})
 			},
@@ -260,7 +262,7 @@ func prog(state overseer.State) {
 		fx.Invoke(func(
 			lc fx.Lifecycle,
 			props_repo repository.PropertyRepositoryInterface,
-			samba_service service.SambaServiceInterface,
+			_ service.SupervisorServiceInterface,
 			//			hdidle_service service.HDIdleServiceInterface,
 		) {
 			// Setting the actual LogLevel
@@ -272,13 +274,14 @@ func prog(state overseer.State) {
 			lc.Append(fx.Hook{
 				OnStart: func(ctx context.Context) error {
 					// Apply config to samba
-					slog.Info("******* Applying Samba config ********")
-					err = samba_service.WriteAndRestartSambaConfig()
-					if err != nil {
-						log.Fatalf("Cant apply samba config - %#+v", err)
-					}
-					slog.Info("******* Samba config applied! ********")
-
+					/*
+						slog.Info("******* Applying Samba config ********")
+						err = samba_service.WriteAndRestartSambaConfig()
+						if err != nil {
+							log.Fatalf("Cant apply samba config - %#+v", err)
+						}
+						slog.Info("******* Samba config applied! ********")
+					*/
 					return nil
 				},
 				OnStop: func(ctx context.Context) error {
@@ -299,4 +302,5 @@ func prog(state overseer.State) {
 	apiCtx.Value("wg").(*sync.WaitGroup).Wait() // Ensure background tasks complete
 	apiCancel()                                 // Explicitly cancel context
 	slog.Info("SRAT stopped", "pid", state.ID)
+	os.Exit(0)
 }

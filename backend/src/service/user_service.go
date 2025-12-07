@@ -1,12 +1,17 @@
 package service
 
 import (
+	"context"
 	"log/slog"
+	"os"
 
+	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/repository"
+	"github.com/dianlight/srat/unixsamba"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 	"gorm.io/gorm"
@@ -14,6 +19,7 @@ import (
 
 type UserServiceInterface interface {
 	ListUsers() ([]dto.User, error)
+	GetAdmin() (*dto.User, error)
 	CreateUser(user dto.User) (*dto.User, error)
 	UpdateUser(currentUsername string, userDto dto.User) (*dto.User, error)
 	UpdateAdminUser(userDto dto.User) (*dto.User, error)
@@ -21,24 +27,83 @@ type UserServiceInterface interface {
 }
 
 type UserService struct {
-	userRepo     repository.SambaUserRepositoryInterface
-	dirtyService DirtyDataServiceInterface
-	shareService ShareServiceInterface
+	userRepo       repository.SambaUserRepositoryInterface
+	eventBus       events.EventBusInterface
+	settingService SettingServiceInterface
 }
 
 type UserServiceParams struct {
 	fx.In
-	UserRepo     repository.SambaUserRepositoryInterface
-	DirtyService DirtyDataServiceInterface
-	ShareService ShareServiceInterface
+	UserRepo       repository.SambaUserRepositoryInterface
+	SettingService SettingServiceInterface
+	EventBus       events.EventBusInterface
+	DefaultConfig  *config.DefaultConfig
 }
 
-func NewUserService(params UserServiceParams) UserServiceInterface {
-	return &UserService{
-		userRepo:     params.UserRepo,
-		dirtyService: params.DirtyService,
-		shareService: params.ShareService,
+func NewUserService(lc fx.Lifecycle, params UserServiceParams) UserServiceInterface {
+	us := &UserService{
+		userRepo:       params.UserRepo,
+		eventBus:       params.EventBus,
+		settingService: params.SettingService,
 	}
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			if os.Getenv("SRAT_MOCK") == "true" {
+				return nil
+			}
+			slog.DebugContext(ctx, "******* Autocreating users ********")
+
+			_ha_mount_user_password_, err := us.settingService.GetValue("_ha_mount_user_password_")
+			if err != nil {
+				slog.ErrorContext(ctx, "Cant get _ha_mount_user_password_ setting", "err", err)
+				_ha_mount_user_password_ = "changeme!"
+			} else if _ha_mount_user_password_ == nil || _ha_mount_user_password_ == "" {
+				_ha_mount_user_password_ = "changeme!"
+			}
+			err = unixsamba.CreateSambaUser("_ha_mount_user_", _ha_mount_user_password_.(string), unixsamba.UserOptions{
+				CreateHome:    false,
+				SystemAccount: false,
+				Shell:         "/sbin/nologin",
+			})
+			if err != nil {
+				slog.ErrorContext(ctx, "Cant create samba user", "err", err)
+			}
+			users, err := us.userRepo.All()
+			if err != nil {
+				slog.ErrorContext(ctx, "Cant load users", "err", err)
+			}
+			if len(users) == 0 {
+				// Create adminUser
+				users = append(users, dbom.SambaUser{
+					Username: params.DefaultConfig.Username,
+					Password: params.DefaultConfig.Password,
+					IsAdmin:  true,
+				})
+				err := us.userRepo.Create(&users[0])
+				if err != nil {
+					slog.ErrorContext(ctx, "Error autocreating admin user", "name", params.DefaultConfig.Username, "err", err)
+				}
+			}
+			for _, user := range users {
+				slog.InfoContext(ctx, "Autocreating user", "name", user.Username)
+				err = unixsamba.CreateSambaUser(user.Username, user.Password, unixsamba.UserOptions{
+					CreateHome:    false,
+					SystemAccount: false,
+					Shell:         "/sbin/nologin",
+				})
+				if err != nil {
+					slog.ErrorContext(ctx, "Error autocreating user", "name", user.Username, "err", err)
+				}
+			}
+			slog.DebugContext(ctx, "******* Autocreating users done! ********")
+			return nil
+		},
+		OnStop: func(ctx context.Context) error {
+			// Add any cleanup logic here if needed
+			return nil
+		},
+	})
+	return us
 }
 
 func (s *UserService) ListUsers() ([]dto.User, error) {
@@ -59,6 +124,23 @@ func (s *UserService) ListUsers() ([]dto.User, error) {
 	return users, nil
 }
 
+func (s *UserService) GetAdmin() (*dto.User, error) {
+	dbuser, err := s.userRepo.GetAdmin()
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, dto.ErrorUserNotFound
+		}
+		return nil, errors.Wrap(err, "failed to get admin user from repository")
+	}
+	var user dto.User
+	var conv converter.DtoToDbomConverterImpl
+	errS := conv.SambaUserToUser(dbuser, &user)
+	if errS != nil {
+		return nil, errors.Wrap(errS, "failed to convert admin db user to dto")
+	}
+	return &user, nil
+}
+
 func (s *UserService) CreateUser(userDto dto.User) (*dto.User, error) {
 	var dbUser dbom.SambaUser
 	var conv converter.DtoToDbomConverterImpl
@@ -75,13 +157,18 @@ func (s *UserService) CreateUser(userDto dto.User) (*dto.User, error) {
 		return nil, errors.Wrap(err, "failed to create user in repository")
 	}
 
-	s.dirtyService.SetDirtyUsers()
-	go s.shareService.NotifyClient()
-
 	var createdUserDto dto.User
 	if err := conv.SambaUserToUser(dbUser, &createdUserDto); err != nil {
 		return nil, errors.Wrap(err, "failed to convert created DBOM user back to DTO")
 	}
+
+	s.eventBus.EmitUser(events.UserEvent{
+		Event: events.Event{
+			Type: events.EventTypes.ADD,
+		},
+		User: &createdUserDto,
+	})
+
 	return &createdUserDto, nil
 }
 
@@ -123,13 +210,18 @@ func (s *UserService) UpdateUser(currentUsername string, userDto dto.User) (*dto
 		return nil, errors.Wrapf(err, "failed to save updated user %s to repository", dbUser.Username)
 	}
 
-	s.dirtyService.SetDirtyUsers()
-	go s.shareService.NotifyClient()
-
 	var updatedUserDto dto.User
 	if err := conv.SambaUserToUser(*dbUser, &updatedUserDto); err != nil {
 		return nil, errors.Wrap(err, "failed to convert updated DBOM user back to DTO")
 	}
+
+	s.eventBus.EmitUser(events.UserEvent{
+		Event: events.Event{
+			Type: events.EventTypes.UPDATE,
+		},
+		User: &updatedUserDto,
+	})
+
 	return &updatedUserDto, nil
 }
 
@@ -164,13 +256,16 @@ func (s *UserService) UpdateAdminUser(userDto dto.User) (*dto.User, error) {
 		return nil, errors.Wrap(err, "failed to save updated admin user")
 	}
 
-	s.dirtyService.SetDirtyUsers()
-	go s.shareService.NotifyClient()
-
 	var updatedAdminDto dto.User
 	if err := conv.SambaUserToUser(dbUser, &updatedAdminDto); err != nil {
 		return nil, errors.Wrap(err, "failed to convert updated admin DBOM to DTO")
 	}
+	s.eventBus.EmitUser(events.UserEvent{
+		Event: events.Event{
+			Type: events.EventTypes.UPDATE,
+		},
+		User: &updatedAdminDto,
+	})
 	return &updatedAdminDto, nil
 }
 
@@ -181,7 +276,11 @@ func (s *UserService) DeleteUser(username string) error {
 		}
 		return errors.Wrapf(err, "failed to delete user %s from repository", username)
 	}
-	s.dirtyService.SetDirtyUsers()
-	go s.shareService.NotifyClient()
+	s.eventBus.EmitUser(events.UserEvent{
+		Event: events.Event{
+			Type: events.EventTypes.REMOVE,
+		},
+		User: &dto.User{Username: username},
+	})
 	return nil
 }

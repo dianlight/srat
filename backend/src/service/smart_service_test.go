@@ -24,81 +24,86 @@ type mockSmartClient struct {
 	disableSMARTFunc          func(devicePath string) error
 	isSMARTSupportedFunc      func(devicePath string) (*smartmontools.SMARTSupportInfo, error)
 	scanDevicesFunc           func() ([]smartmontools.Device, error)
-	getDeviceInfoFunc         func(devicePath string) (map[string]interface{}, error)
+	getDeviceInfoFunc         func(devicePath string) (map[string]any, error)
 	getAvailableSelfTestsFunc func(devicePath string) (*smartmontools.SelfTestInfo, error)
+	runSelfTestWithProgress   func(devicePath string, testType string, cb smartmontools.ProgressCallback) error
 }
 
-func (m *mockSmartClient) GetSMARTInfo(devicePath string) (*smartmontools.SMARTInfo, error) {
+// All interface methods accept a context. Tests ignore the context value.
+func (m *mockSmartClient) GetSMARTInfo(_ context.Context, devicePath string) (*smartmontools.SMARTInfo, error) {
 	if m.getSMARTInfoFunc != nil {
 		return m.getSMARTInfoFunc(devicePath)
 	}
 	return nil, errors.New("not implemented")
 }
 
-func (m *mockSmartClient) CheckHealth(devicePath string) (bool, error) {
+func (m *mockSmartClient) CheckHealth(_ context.Context, devicePath string) (bool, error) {
 	if m.checkHealthFunc != nil {
 		return m.checkHealthFunc(devicePath)
 	}
 	return false, errors.New("not implemented")
 }
 
-func (m *mockSmartClient) RunSelfTest(devicePath string, testType string) error {
+func (m *mockSmartClient) RunSelfTest(_ context.Context, devicePath string, testType string) error {
 	if m.runSelfTestFunc != nil {
 		return m.runSelfTestFunc(devicePath, testType)
 	}
 	return errors.New("not implemented")
 }
 
-func (m *mockSmartClient) AbortSelfTest(devicePath string) error {
+func (m *mockSmartClient) AbortSelfTest(_ context.Context, devicePath string) error {
 	if m.abortSelfTestFunc != nil {
 		return m.abortSelfTestFunc(devicePath)
 	}
 	return errors.New("not implemented")
 }
 
-func (m *mockSmartClient) EnableSMART(devicePath string) error {
+func (m *mockSmartClient) EnableSMART(_ context.Context, devicePath string) error {
 	if m.enableSMARTFunc != nil {
 		return m.enableSMARTFunc(devicePath)
 	}
 	return errors.New("not implemented")
 }
 
-func (m *mockSmartClient) DisableSMART(devicePath string) error {
+func (m *mockSmartClient) DisableSMART(_ context.Context, devicePath string) error {
 	if m.disableSMARTFunc != nil {
 		return m.disableSMARTFunc(devicePath)
 	}
 	return errors.New("not implemented")
 }
 
-func (m *mockSmartClient) IsSMARTSupported(devicePath string) (*smartmontools.SMARTSupportInfo, error) {
+func (m *mockSmartClient) IsSMARTSupported(_ context.Context, devicePath string) (*smartmontools.SMARTSupportInfo, error) {
 	if m.isSMARTSupportedFunc != nil {
 		return m.isSMARTSupportedFunc(devicePath)
 	}
 	return nil, errors.New("not implemented")
 }
 
-func (m *mockSmartClient) ScanDevices() ([]smartmontools.Device, error) {
+func (m *mockSmartClient) ScanDevices(_ context.Context) ([]smartmontools.Device, error) {
 	if m.scanDevicesFunc != nil {
 		return m.scanDevicesFunc()
 	}
 	return nil, errors.New("not implemented")
 }
 
-func (m *mockSmartClient) GetDeviceInfo(devicePath string) (map[string]interface{}, error) {
+func (m *mockSmartClient) GetDeviceInfo(_ context.Context, devicePath string) (map[string]any, error) {
 	if m.getDeviceInfoFunc != nil {
 		return m.getDeviceInfoFunc(devicePath)
 	}
 	return nil, errors.New("not implemented")
 }
 
-func (m *mockSmartClient) GetAvailableSelfTests(devicePath string) (*smartmontools.SelfTestInfo, error) {
+func (m *mockSmartClient) GetAvailableSelfTests(_ context.Context, devicePath string) (*smartmontools.SelfTestInfo, error) {
 	if m.getAvailableSelfTestsFunc != nil {
 		return m.getAvailableSelfTestsFunc(devicePath)
 	}
 	return nil, errors.New("not implemented")
 }
 
-func (m *mockSmartClient) RunSelfTestWithProgress(ctx context.Context, devicePath string, testType string, callback smartmontools.ProgressCallback) error {
+func (m *mockSmartClient) RunSelfTestWithProgress(_ context.Context, devicePath string, testType string, cb smartmontools.ProgressCallback) error {
+	if m.runSelfTestWithProgress != nil {
+		return m.runSelfTestWithProgress(devicePath, testType, cb)
+	}
 	return errors.New("not implemented")
 }
 
@@ -119,11 +124,11 @@ func (suite *SmartServiceSuite) TearDownTest() {
 func (suite *SmartServiceSuite) TestGetSmartInfoCacheHit() {
 	// Setup: Manually set cache
 	expectedInfo := &dto.SmartInfo{DiskType: "SATA"}
-	cacheKey := smartCacheKeyPrefix + "/dev/sda"
+	cacheKey := smartCacheKeyPrefix + "/dev/sda" + "_info"
 	suite.service.(*smartService).cache.Set(cacheKey, expectedInfo, gocache.DefaultExpiration)
 
 	// Execute
-	info, err := suite.service.GetSmartInfo("/dev/sda")
+	info, err := suite.service.GetSmartInfo(context.Background(), "/dev/sda")
 
 	// Assert
 	suite.NoError(err)
@@ -132,7 +137,7 @@ func (suite *SmartServiceSuite) TestGetSmartInfoCacheHit() {
 
 func (suite *SmartServiceSuite) TestGetSmartInfoDeviceNotExist() {
 	// Execute with invalid path
-	info, err := suite.service.GetSmartInfo("/dev/nonexistent")
+	info, err := suite.service.GetSmartInfo(context.Background(), "/dev/nonexistent")
 
 	// Assert
 	suite.Error(err)
@@ -210,16 +215,14 @@ func (suite *SmartServiceSuite) TestGetSmartInfoSuccess() {
 	}
 
 	// Execute
-	info, err := suite.service.GetSmartInfo(tempFile.Name())
+	info, err := suite.service.GetSmartInfo(context.Background(), tempFile.Name())
 
 	// Assert
 	suite.NoError(err)
 	suite.NotNil(info)
 	suite.Equal("SATA", info.DiskType)
-	suite.True(info.Enabled)
-	suite.Equal(35, info.Temperature.Value)
-	suite.Equal(1000, info.PowerOnHours.Value)
-	suite.Equal(50, info.PowerCycleCount.Value)
+	suite.True(info.Supported)
+	// Dynamic fields like Enabled, Temperature, PowerOnHours, PowerCycleCount are now in SmartStatus
 }
 
 func (suite *SmartServiceSuite) TestGetSmartInfoWithRotationRate() {
@@ -259,17 +262,14 @@ func (suite *SmartServiceSuite) TestGetSmartInfoWithRotationRate() {
 	}
 
 	// Execute
-	info, err := suite.service.GetSmartInfo(tempFile.Name())
+	info, err := suite.service.GetSmartInfo(context.Background(), tempFile.Name())
 
 	// Assert
 	suite.NoError(err)
 	suite.NotNil(info)
 	suite.Equal("SATA", info.DiskType)
 	suite.Equal(7200, info.RotationRate, "RPM should be populated when > 0")
-	suite.True(info.Enabled)
-	suite.Equal(40, info.Temperature.Value)
-	suite.Equal(5000, info.PowerOnHours.Value)
-	suite.Equal(100, info.PowerCycleCount.Value)
+	suite.True(info.Supported)
 }
 
 func (suite *SmartServiceSuite) TestGetSmartInfoWithZeroRotationRate() {
@@ -309,14 +309,14 @@ func (suite *SmartServiceSuite) TestGetSmartInfoWithZeroRotationRate() {
 	}
 
 	// Execute
-	info, err := suite.service.GetSmartInfo(tempFile.Name())
+	info, err := suite.service.GetSmartInfo(context.Background(), tempFile.Name())
 
 	// Assert
 	suite.NoError(err)
 	suite.NotNil(info)
 	suite.Equal("SATA", info.DiskType)
 	suite.Equal(0, info.RotationRate, "RPM should not be populated when = 0 (SSD)")
-	suite.True(info.Enabled)
+	suite.True(info.Supported)
 }
 
 func (suite *SmartServiceSuite) TestGetSmartInfoDeviceNotReadable() {
@@ -332,7 +332,7 @@ func (suite *SmartServiceSuite) TestGetSmartInfoDeviceNotReadable() {
 	defer os.Chmod(tempFile.Name(), 0644) // Restore for cleanup
 
 	// Execute
-	info, err := suite.service.GetSmartInfo(tempFile.Name())
+	info, err := suite.service.GetSmartInfo(context.Background(), tempFile.Name())
 
 	// Assert
 	suite.Error(err)
@@ -354,7 +354,7 @@ func TestSmartServiceSuite(t *testing.T) {
 
 func (suite *SmartServiceSuite) TestGetHealthStatusDeviceNotExist() {
 	// Execute with non-existent device
-	health, err := suite.service.GetHealthStatus("/dev/nonexistent")
+	health, err := suite.service.GetHealthStatus(context.Background(), "/dev/nonexistent")
 
 	// Expect error since device doesn't exist
 	suite.Error(err)
@@ -400,7 +400,7 @@ func (suite *SmartServiceSuite) TestGetHealthStatusSuccess() {
 	}
 
 	// Execute
-	health, err := suite.service.GetHealthStatus(tempFile.Name())
+	health, err := suite.service.GetHealthStatus(context.Background(), tempFile.Name())
 
 	// Assert
 	suite.NoError(err)
@@ -410,14 +410,14 @@ func (suite *SmartServiceSuite) TestGetHealthStatusSuccess() {
 }
 
 func (suite *SmartServiceSuite) TestStartSelfTestInvalidType() {
-	err := suite.service.StartSelfTest("/dev/sda", dto.SmartTestType("invalid"))
+	err := suite.service.StartSelfTest(context.Background(), "/dev/sda", dto.SmartTestType("invalid"))
 
 	suite.Error(err)
 	suite.True(goerrors.Is(err, dto.ErrorInvalidParameter))
 }
 
 func (suite *SmartServiceSuite) TestStartSelfTestDeviceNotExist() {
-	err := suite.service.StartSelfTest("/dev/nonexistent", dto.SmartTestTypeShort)
+	err := suite.service.StartSelfTest(context.Background(), "/dev/nonexistent", dto.SmartTestTypeShort)
 
 	suite.Error(err)
 }
@@ -435,7 +435,7 @@ func (suite *SmartServiceSuite) TestStartSelfTestSuccess() {
 	}
 
 	// Execute
-	err := suite.service.StartSelfTest(tempFile.Name(), dto.SmartTestTypeShort)
+	err := suite.service.StartSelfTest(context.Background(), tempFile.Name(), dto.SmartTestTypeShort)
 
 	// Assert
 	suite.NoError(err)
@@ -443,11 +443,11 @@ func (suite *SmartServiceSuite) TestStartSelfTestSuccess() {
 
 func (suite *SmartServiceSuite) TestEnableDisableSMARTDeviceNotExist() {
 	// Test EnableSMART
-	err := suite.service.EnableSMART("/dev/nonexistent")
+	err := suite.service.EnableSMART(context.Background(), "/dev/nonexistent")
 	suite.Error(err)
 
 	// Test DisableSMART
-	err = suite.service.DisableSMART("/dev/nonexistent")
+	err = suite.service.DisableSMART(context.Background(), "/dev/nonexistent")
 	suite.Error(err)
 }
 
@@ -474,7 +474,7 @@ func (suite *SmartServiceSuite) TestEnableSMARTSuccess() {
 	}
 
 	// Execute
-	err := suite.service.EnableSMART(tempFile.Name())
+	err := suite.service.EnableSMART(context.Background(), tempFile.Name())
 
 	// Assert
 	suite.NoError(err)
@@ -503,14 +503,14 @@ func (suite *SmartServiceSuite) TestDisableSMARTSuccess() {
 	}
 
 	// Execute
-	err := suite.service.DisableSMART(tempFile.Name())
+	err := suite.service.DisableSMART(context.Background(), tempFile.Name())
 
 	// Assert
 	suite.NoError(err)
 }
 
 func (suite *SmartServiceSuite) TestGetTestStatusDeviceNotExist() {
-	status, err := suite.service.GetTestStatus("/dev/nonexistent")
+	status, err := suite.service.GetTestStatus(context.Background(), "/dev/nonexistent")
 
 	suite.Error(err)
 	suite.Nil(status)
@@ -538,7 +538,7 @@ func (suite *SmartServiceSuite) TestGetTestStatusSuccess() {
 	}
 
 	// Execute
-	status, err := suite.service.GetTestStatus(tempFile.Name())
+	status, err := suite.service.GetTestStatus(context.Background(), tempFile.Name())
 
 	// Assert
 	suite.NoError(err)
@@ -548,7 +548,7 @@ func (suite *SmartServiceSuite) TestGetTestStatusSuccess() {
 }
 
 func (suite *SmartServiceSuite) TestAbortSelfTestDeviceNotExist() {
-	err := suite.service.AbortSelfTest("/dev/nonexistent")
+	err := suite.service.AbortSelfTest(context.Background(), "/dev/nonexistent")
 
 	suite.Error(err)
 }
@@ -566,7 +566,7 @@ func (suite *SmartServiceSuite) TestAbortSelfTestSuccess() {
 	}
 
 	// Execute
-	err := suite.service.AbortSelfTest(tempFile.Name())
+	err := suite.service.AbortSelfTest(context.Background(), tempFile.Name())
 
 	// Assert
 	suite.NoError(err)

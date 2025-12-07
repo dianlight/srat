@@ -100,6 +100,15 @@ const injectedRtkApi = api
         }),
         providesTags: ["disk"],
       }),
+      getApiDiskByDiskIdSmartStatus: build.query<
+        GetApiDiskByDiskIdSmartStatusApiResponse,
+        GetApiDiskByDiskIdSmartStatusApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/disk/${queryArg.diskId}/smart/status`,
+        }),
+        providesTags: ["disk"],
+      }),
       getApiDiskByDiskIdSmartTest: build.query<
         GetApiDiskByDiskIdSmartTestApiResponse,
         GetApiDiskByDiskIdSmartTestApiArg
@@ -401,16 +410,6 @@ const injectedRtkApi = api
         query: () => ({ url: `/api/users` }),
         providesTags: ["user"],
       }),
-      postApiVolumeDiskByDiskIdEject: build.mutation<
-        PostApiVolumeDiskByDiskIdEjectApiResponse,
-        PostApiVolumeDiskByDiskIdEjectApiArg
-      >({
-        query: (queryArg) => ({
-          url: `/api/volume/disk/${queryArg.diskId}/eject`,
-          method: "POST",
-        }),
-        invalidatesTags: ["volume"],
-      }),
       deleteApiVolumeByMountPathHashMount: build.mutation<
         DeleteApiVolumeByMountPathHashMountApiResponse,
         DeleteApiVolumeByMountPathHashMountApiArg
@@ -420,7 +419,6 @@ const injectedRtkApi = api
           method: "DELETE",
           params: {
             force: queryArg.force,
-            lazy: queryArg.lazy,
           },
         }),
         invalidatesTags: ["volume"],
@@ -443,17 +441,6 @@ const injectedRtkApi = api
         query: (queryArg) => ({
           url: `/api/volume/${queryArg.mountPathHash}/settings`,
           method: "PATCH",
-          body: queryArg.mountPointData,
-        }),
-        invalidatesTags: ["volume"],
-      }),
-      putApiVolumeByMountPathHashSettings: build.mutation<
-        PutApiVolumeByMountPathHashSettingsApiResponse,
-        PutApiVolumeByMountPathHashSettingsApiArg
-      >({
-        query: (queryArg) => ({
-          url: `/api/volume/${queryArg.mountPathHash}/settings`,
-          method: "PUT",
           body: queryArg.mountPointData,
         }),
         invalidatesTags: ["volume"],
@@ -527,6 +514,13 @@ export type GetApiDiskByDiskIdSmartInfoApiResponse = /** status 200 OK */
   | SmartInfo
   | /** status default Error */ ErrorModel;
 export type GetApiDiskByDiskIdSmartInfoApiArg = {
+  /** The disk ID or device path */
+  diskId: string;
+};
+export type GetApiDiskByDiskIdSmartStatusApiResponse = /** status 200 OK */
+  | SmartStatus
+  | /** status default Error */ ErrorModel;
+export type GetApiDiskByDiskIdSmartStatusApiArg = {
   /** The disk ID or device path */
   diskId: string;
 };
@@ -776,20 +770,12 @@ export type GetApiUsersApiResponse =
   | /** status 200 OK */ (User[] | null)
   | /** status default Error */ ErrorModel;
 export type GetApiUsersApiArg = void;
-export type PostApiVolumeDiskByDiskIdEjectApiResponse =
-  /** status default Error */ ErrorModel;
-export type PostApiVolumeDiskByDiskIdEjectApiArg = {
-  /** The ID of the disk to eject (e.g., sda, sdb) */
-  diskId: string;
-};
 export type DeleteApiVolumeByMountPathHashMountApiResponse =
   /** status default Error */ ErrorModel;
 export type DeleteApiVolumeByMountPathHashMountApiArg = {
   mountPathHash: string;
   /** Force umount operation */
   force?: boolean;
-  /** Lazy umount operation */
-  lazy?: boolean;
 };
 export type PostApiVolumeByMountPathHashMountApiResponse = /** status 200 OK */
   | MountPointData
@@ -801,12 +787,6 @@ export type PostApiVolumeByMountPathHashMountApiArg = {
 export type PatchApiVolumeByMountPathHashSettingsApiResponse =
   /** status 200 OK */ MountPointData | /** status default Error */ ErrorModel;
 export type PatchApiVolumeByMountPathHashSettingsApiArg = {
-  mountPathHash: string;
-  mountPointData: MountPointData;
-};
-export type PutApiVolumeByMountPathHashSettingsApiResponse =
-  /** status 200 OK */ MountPointData | /** status default Error */ ErrorModel;
-export type PutApiVolumeByMountPathHashSettingsApiArg = {
   mountPathHash: string;
   mountPointData: MountPointData;
 };
@@ -898,24 +878,31 @@ export type SmartRangeValue = {
   value: number;
   worst?: number;
 };
+export type SmartInfo = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  disk_type?: Disk_type;
+  others?: {
+    [key: string]: SmartRangeValue;
+  };
+  rotation_rate?: number;
+  supported: boolean;
+};
 export type SmartTempValue = {
   max?: number;
   min?: number;
   overtemp_counter?: number;
   value: number;
 };
-export type SmartInfo = {
+export type SmartStatus = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
-  disk_type?: Disk_type;
   enabled: boolean;
   others?: {
     [key: string]: SmartRangeValue;
   };
   power_cycle_count: SmartRangeValue;
   power_on_hours: SmartRangeValue;
-  rotation_rate?: number;
-  supported: boolean;
   temperature: SmartTempValue;
 };
 export type SmartTestStatus = {
@@ -960,7 +947,6 @@ export type DataDirtyTracker = {
   settings: boolean;
   shares: boolean;
   users: boolean;
-  volumes: boolean;
 };
 export type GlobalDiskStats = {
   total_iops: number;
@@ -972,7 +958,7 @@ export type DiskIoStats = {
   device_name: string;
   read_iops: number;
   read_latency_ms: number;
-  smart_data?: SmartInfo;
+  smart_data?: SmartStatus;
   write_iops: number;
   write_latency_ms: number;
 };
@@ -1033,7 +1019,6 @@ export type ProcessStatus = {
   status: string[] | null;
 };
 export type SambaProcessStatus = {
-  hdidle: ProcessStatus;
   nmbd: ProcessStatus;
   smbd: ProcessStatus;
   srat: ProcessStatus;
@@ -1177,18 +1162,6 @@ export type Settings = {
   update_channel?: Update_channel;
   workgroup?: string;
 };
-export type Partition = {
-  device_path?: string;
-  fs_type?: string;
-  host_mount_point_data?: MountPointData[];
-  id?: string;
-  legacy_device_name?: string;
-  legacy_device_path?: string;
-  mount_point_data?: MountPointData[];
-  name?: string;
-  size?: number;
-  system?: boolean;
-};
 export type MountPointData = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
@@ -1204,10 +1177,11 @@ export type MountPointData = {
   is_mounted?: boolean;
   is_to_mount_at_startup?: boolean;
   is_write_supported?: boolean;
-  partition?: Partition;
   path: string;
   path_hash?: string;
-  shares?: SharedResource[] | null;
+  refresh_version?: number;
+  root?: string;
+  share?: SharedResource;
   time_machine_support?: Time_machine_support;
   type: Type;
   warnings?: string;
@@ -1222,18 +1196,20 @@ export type User = {
   username: string;
   [key: string]: unknown;
 };
+export type SharedResourceStatus = {
+  is_ha_mounted?: boolean;
+  is_valid?: boolean;
+};
 export type SharedResource = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
   disabled?: boolean;
   guest_ok?: boolean;
-  ha_status?: string;
-  invalid?: boolean;
-  is_ha_mounted?: boolean;
   mount_point_data?: MountPointData;
   name?: string;
   recycle_bin_enabled?: boolean;
   ro_users?: User[] | null;
+  status?: SharedResourceStatus;
   timemachine?: boolean;
   timemachine_max_size?: string;
   usage?: Usage;
@@ -1261,6 +1237,25 @@ export type UpdateProgress = {
   progress?: number;
   update_process_state?: Update_process_state;
 };
+export type Partition = {
+  device_path?: string;
+  disk_id?: string;
+  fs_type?: string;
+  host_mount_point_data?: {
+    [key: string]: MountPointData;
+  };
+  id?: string;
+  legacy_device_name?: string;
+  legacy_device_path?: string;
+  mount_point_data?: {
+    [key: string]: MountPointData;
+  };
+  name?: string;
+  refresh_version?: number;
+  size?: number;
+  system?: boolean;
+  uuid?: string;
+};
 export type Disk = {
   connection_bus?: string;
   device_path?: string;
@@ -1270,7 +1265,10 @@ export type Disk = {
   legacy_device_name?: string;
   legacy_device_path?: string;
   model?: string;
-  partitions?: Partition[];
+  partitions?: {
+    [key: string]: Partition;
+  };
+  refresh_version?: number;
   removable?: boolean;
   revision?: string;
   seat?: string;
@@ -1371,6 +1369,7 @@ export const {
   usePostApiDiskByDiskIdSmartEnableMutation,
   useGetApiDiskByDiskIdSmartHealthQuery,
   useGetApiDiskByDiskIdSmartInfoQuery,
+  useGetApiDiskByDiskIdSmartStatusQuery,
   useGetApiDiskByDiskIdSmartTestQuery,
   usePostApiDiskByDiskIdSmartTestAbortMutation,
   usePostApiDiskByDiskIdSmartTestStartMutation,
@@ -1409,10 +1408,8 @@ export const {
   usePutApiUserByUsernameMutation,
   usePutApiUseradminMutation,
   useGetApiUsersQuery,
-  usePostApiVolumeDiskByDiskIdEjectMutation,
   useDeleteApiVolumeByMountPathHashMountMutation,
   usePostApiVolumeByMountPathHashMountMutation,
   usePatchApiVolumeByMountPathHashSettingsMutation,
-  usePutApiVolumeByMountPathHashSettingsMutation,
   useGetApiVolumesQuery,
 } = injectedRtkApi;

@@ -8,9 +8,8 @@ ROLLBAR_CLIENT_ACCESS_TOKEN ?= ""
 ROLLBAR_ENVIRONMENT ?= ""
 
 ALL:
-	$(MAKE) -C $(BACKEND_DIRS) AARGS="GOARCH=amd64" VERSION=$(VERSION) ARCH="x86_64" ROLLBAR_CLIENT_ACCESS_TOKEN="$(ROLLBAR_CLIENT_ACCESS_TOKEN)" ROLLBAR_ENVIRONMENT="$(ROLLBAR_ENVIRONMENT)"
-	$(MAKE) -C $(BACKEND_DIRS) build AARGS="GOARM=7 GOARCH=arm" VERSION=$(VERSION) ARCH="armv7" ROLLBAR_CLIENT_ACCESS_TOKEN="$(ROLLBAR_CLIENT_ACCESS_TOKEN)" ROLLBAR_ENVIRONMENT="$(ROLLBAR_ENVIRONMENT)"
-	$(MAKE) -C $(BACKEND_DIRS) build AARGS="GOARCH=arm64"  VERSION=$(VERSION) ARCH="aarch64" ROLLBAR_CLIENT_ACCESS_TOKEN="$(ROLLBAR_CLIENT_ACCESS_TOKEN)" ROLLBAR_ENVIRONMENT="$(ROLLBAR_ENVIRONMENT)"
+	$(MAKE) -C $(BACKEND_DIRS) build AARGS="GOARCH=amd64" VERSION=$(VERSION) ARCH="x86_64" ROLLBAR_CLIENT_ACCESS_TOKEN="$(ROLLBAR_CLIENT_ACCESS_TOKEN)" ROLLBAR_ENVIRONMENT="$(ROLLBAR_ENVIRONMENT)"
+	$(MAKE) -C $(BACKEND_DIRS) build AARGS="GOARCH=arm64" VERSION=$(VERSION) ARCH="aarch64" ROLLBAR_CLIENT_ACCESS_TOKEN="$(ROLLBAR_CLIENT_ACCESS_TOKEN)" ROLLBAR_ENVIRONMENT="$(ROLLBAR_ENVIRONMENT)"
 
 .PHONY: prepare
 prepare:
@@ -157,3 +156,24 @@ check: docs-check security
 .PHONY: security
 security:
 	$(MAKE) -C $(BACKEND_DIRS) gosec
+
+# -----------------------------------------------------------------------------
+# Git housekeeping helpers
+# -----------------------------------------------------------------------------
+.PHONY: clean-local-branches clean-local-branches-dry clean-local-tags clean-local-tags-dry
+
+# Remove local branches that do not exist on remote and have no commits in the last 2 weeks
+clean-local-branches:
+	bash scripts/cleanup-old-local-branches.sh
+
+# Dry-run: show which local branches would be removed
+clean-local-branches-dry:
+	bash scripts/cleanup-old-local-branches.sh --dry
+
+# Remove local tags that do not exist on remote and point to commits older than 2 weeks
+clean-local-tags:
+	bash scripts/cleanup-old-local-tags.sh
+
+# Dry-run: show which local tags would be removed
+clean-local-tags-dry:
+	bash scripts/cleanup-old-local-tags.sh --dry

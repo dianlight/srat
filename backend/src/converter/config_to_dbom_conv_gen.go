@@ -114,6 +114,9 @@ func (c *ConfigToDbomConverterImpl) ShareToExportedShareNoMountPointPath(source 
 	if source.Path != "" {
 		target.MountPointDataPath = source.Path
 	}
+	if source.Path != "" {
+		target.MountPointDataRoot = source.Path
+	}
 	return nil
 }
 func (c *ConfigToDbomConverterImpl) datatypesJSONSliceToStringList(source datatypes.JSONSlice[string]) []string {

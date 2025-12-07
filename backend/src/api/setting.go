@@ -2,21 +2,15 @@ package api
 
 import (
 	"context"
-	"log/slog"
 
 	"github.com/danielgtaylor/huma/v2"
-	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
-	"gitlab.com/tozd/go/errors"
 )
 
 type SettingsHanler struct {
-	apiContext       *dto.ContextState
-	dirtyService     service.DirtyDataServiceInterface
-	props_repo       repository.PropertyRepositoryInterface
-	telemetryService service.TelemetryServiceInterface
+	apiContext     *dto.ContextState
+	settingService service.SettingServiceInterface
 }
 
 // NewSettingsHanler creates a new instance of SettingsHanler with the provided
@@ -31,12 +25,14 @@ type SettingsHanler struct {
 //
 // Returns:
 //   - A pointer to the newly created SettingsHanler instance.
-func NewSettingsHanler(apiContext *dto.ContextState, dirtyService service.DirtyDataServiceInterface, props_repo repository.PropertyRepositoryInterface, telemetryService service.TelemetryServiceInterface) *SettingsHanler {
+func NewSettingsHanler(
+	apiContext *dto.ContextState,
+	settingService service.SettingServiceInterface,
+) *SettingsHanler {
 	p := new(SettingsHanler)
 	p.apiContext = apiContext
-	p.dirtyService = dirtyService
-	p.props_repo = props_repo
-	p.telemetryService = telemetryService
+	p.settingService = settingService
+
 	return p
 }
 
@@ -72,37 +68,11 @@ func (self *SettingsHanler) UpdateSettings(ctx context.Context, input *struct {
 }) (*struct{ Body dto.Settings }, error) {
 	config := input.Body
 
-	dbconfig, err := self.props_repo.All(true)
+	err := self.settingService.UpdateSettings(&config)
 	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	var conv converter.DtoToDbomConverterImpl
-
-	err = conv.SettingsToProperties(config, &dbconfig)
-	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, huma.Error500InternalServerError("Failed to update settings: %v", err)
 	}
 
-	err = self.props_repo.SaveAll(&dbconfig)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	err = conv.PropertiesToSettings(dbconfig, &config)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	// Configure telemetry service when settings are updated
-	if self.telemetryService != nil {
-		err = self.telemetryService.Configure(config.TelemetryMode)
-		if err != nil {
-			// Log error but don't fail the settings update
-			slog.Error("Failed to configure telemetry service", "error", err)
-		}
-	}
-
-	self.dirtyService.SetDirtySettings()
 	return &struct{ Body dto.Settings }{Body: config}, nil
 }
 
@@ -117,16 +87,11 @@ func (self *SettingsHanler) UpdateSettings(ctx context.Context, input *struct {
 //   - A struct containing the settings in the Body field.
 //   - An error if there is any issue loading or converting the settings.
 func (self *SettingsHanler) GetSettings(ctx context.Context, input *struct{}) (*struct{ Body dto.Settings }, error) {
-	var conv converter.DtoToDbomConverterImpl
-	dbconfig, err := self.props_repo.All(false)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	var settings dto.Settings
-	err = conv.PropertiesToSettings(dbconfig, &settings)
-	if err != nil {
-		return nil, errors.WithStack(err)
 
+	settings, err := self.settingService.Load()
+	if err != nil {
+		return nil, huma.Error500InternalServerError("Failed to load settings: %v", err)
 	}
-	return &struct{ Body dto.Settings }{Body: settings}, nil
+
+	return &struct{ Body dto.Settings }{Body: *settings}, nil
 }

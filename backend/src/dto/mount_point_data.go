@@ -6,12 +6,13 @@ type MountPointData struct {
 	DiskSize           *uint64             `json:"disk_size,omitempty" read-only:"true"` // Size of the disk in bytes.
 	Path               string              `json:"path" read-only:"true"`
 	PathHash           string              `json:"path_hash,omitempty" read-only:"true"`
+	Root               string              `json:"root,omitempty"`
 	Type               string              `json:"type" read-only:"true" enum:"HOST,ADDON"` // Type of the mountpoint.
 	FSType             *string             `json:"fstype,omitempty"`
 	Flags              *MountFlags         `json:"flags,omitempty"`
 	CustomFlags        *MountFlags         `json:"custom_flags,omitempty"`
 	DeviceId           string              `json:"device_id,omitempty" read-only:"true"` // Source Device source of the filesystem (e.g. /dev/sda1).
-	Partition          *Partition          `json:"partition,omitempty" read-only:"true"` // Partition object ephemeral
+	Partition          *Partition          `json:"-"`                                    // Partition object ephemeral - excluded from JSON to prevent circular references
 	IsMounted          bool                `json:"is_mounted,omitempty" read-only:"true"`
 	IsInvalid          bool                `json:"invalid,omitempty" read-only:"true"`
 	IsToMountAtStartup *bool               `json:"is_to_mount_at_startup,omitempty"`              // If true, mount point should be mounted at startup.
@@ -19,5 +20,6 @@ type MountPointData struct {
 	TimeMachineSupport *TimeMachineSupport `json:"time_machine_support,omitempty" read-only:"true" enum:"unsupported,supported,experimental,unknown"`
 	InvalidError       *string             `json:"invalid_error,omitempty" read-only:"true"`
 	Warnings           *string             `json:"warnings,omitempty" read-only:"true"`
-	Shares             []SharedResource    `json:"shares,omitempty" read-only:"true"` // Shares that are mounted on this mount point.
+	Share              *SharedResource     `json:"share,omitempty" read-only:"true"` // Shares that are mounted on this mount point.
+	RefreshVersion     uint32              `json:"refresh_version,omitempty" readonly:"true"`
 }

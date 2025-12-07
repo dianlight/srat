@@ -51,7 +51,7 @@ func Up00004(ctx context.Context, db *sql.DB) error {
 					}
 					//fmt.Printf("Resolved link: %s -> %s\n", linkPath, resolved)
 					if resolved == "/dev/"+device {
-						deviceID = "by-id-" + entry.Name()
+						deviceID = entry.Name()
 						break
 					}
 				}

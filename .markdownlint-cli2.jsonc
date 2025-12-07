@@ -1,0 +1,12 @@
+{
+    "extends": "markdownlint:recommended",
+    "MD024": false,
+    "MD025": false,
+    "MD033": false,
+    "MD040": {
+        "severity": "error"
+    },
+    "MD060": {
+        "severity": "warning"
+    }
+}

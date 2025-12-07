@@ -12,7 +12,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/server/ws"
 	"github.com/dianlight/srat/service"
-	"github.com/dianlight/srat/tlog"
+	"github.com/dianlight/tlog"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"gitlab.com/tozd/go/errors"
@@ -38,11 +38,11 @@ func NewWebSocketBroker(ctx context.Context, broadcaster service.BroadcasterServ
 		},
 	}
 	eventMap := map[string]any{
-		dto.EventTypes.EVENTHELLO.String():     dto.Welcome{},
-		dto.EventTypes.EVENTUPDATING.String():  dto.UpdateProgress{},
-		dto.EventTypes.EVENTVOLUMES.String():   []dto.Disk{},
-		dto.EventTypes.EVENTHEARTBEAT.String(): dto.HealthPing{},
-		dto.EventTypes.EVENTSHARE.String():     []dto.SharedResource{},
+		dto.WebEventTypes.EVENTHELLO.String():     dto.Welcome{},
+		dto.WebEventTypes.EVENTUPDATING.String():  dto.UpdateProgress{},
+		dto.WebEventTypes.EVENTVOLUMES.String():   []*dto.Disk{},
+		dto.WebEventTypes.EVENTHEARTBEAT.String(): dto.HealthPing{},
+		dto.WebEventTypes.EVENTSHARE.String():     []dto.SharedResource{},
 	}
 
 	reverseMap := reverseMap(eventMap)
@@ -69,7 +69,7 @@ func reverseMap(m map[string]any) map[string]string {
 func (self *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	conn, err := self.upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		slog.Error("Failed to upgrade connection to WebSocket", "error", err)
+		slog.ErrorContext(self.ctx, "Failed to upgrade connection to WebSocket", "error", err)
 		return
 	}
 	defer conn.Close()
@@ -81,7 +81,7 @@ func (self *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Req
 		return nil
 	})
 
-	slog.Debug("WebSocket client connected")
+	slog.DebugContext(self.ctx, "WebSocket client connected")
 
 	self.broadcaster.ProcessWebSocketChannel(func(msg ws.Message) errors.E {
 
@@ -91,7 +91,10 @@ func (self *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Req
 			return errors.WithDetails(err, "message", "Failed to marshal event data", "event", msg)
 		}
 
-		typeName := self.reverseMap[reflect.TypeOf(msg.Data).Name()]
+		typeName, ok := self.reverseMap[reflect.TypeOf(msg.Data).Name()]
+		if !ok {
+			return errors.Errorf("unknown event type for WebSocket: %T", msg.Data)
+		}
 
 		// Send the event data
 		err = conn.WriteMessage(websocket.TextMessage,
@@ -115,7 +118,7 @@ func (self *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Req
 			// Send ping to keep connection alive
 			err := conn.WriteMessage(websocket.PingMessage, nil)
 			if err != nil {
-				tlog.Trace("Error sending ping to WebSocket client", "err", err)
+				tlog.TraceContext(self.ctx, "Error sending ping to WebSocket client", "err", err)
 				return
 			}
 		}

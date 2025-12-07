@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"log/slog"
 	"os"
 	"slices"
 
+	"github.com/dianlight/tlog"
 	"gitlab.com/tozd/go/errors"
 )
 
@@ -29,6 +29,10 @@ type Share struct {
 type Shares map[string]Share
 
 const CURRENT_CONFIG_VERSION = 5
+
+type DefaultConfig struct {
+	Config
+}
 
 type Config struct {
 	CurrentFile       string
@@ -167,7 +171,7 @@ func (in *Config) MigrateConfig() error {
 
 	// From version 0 to version 1 - Default shares ain config
 	if in.ConfigSpecVersion == 0 {
-		slog.Debug("Migrating config from version 0 to version 1")
+		tlog.Trace("Migrating config from version 0 to version 1")
 		in.ConfigSpecVersion = 1
 		in.UpdateChannel = "none"
 		if in.Shares == nil {
@@ -186,7 +190,7 @@ func (in *Config) MigrateConfig() error {
 	}
 	// From version 1 to version 2 - ACL in Share object
 	if in.ConfigSpecVersion == 1 {
-		slog.Debug("Migrating config from version 1 to version 2")
+		tlog.Trace("Migrating config from version 1 to version 2")
 		in.ConfigSpecVersion = 2
 		for shareName, share := range in.Shares {
 			share.Name = shareName
@@ -222,7 +226,7 @@ func (in *Config) MigrateConfig() error {
 
 	// From version 2 to version 3 - Users in share
 	if in.ConfigSpecVersion == 2 {
-		slog.Debug("Migrating config from version 2 to version 3")
+		tlog.Trace("Migrating config from version 2 to version 3")
 		in.ConfigSpecVersion = 3
 		for shareName, share := range in.Shares {
 			if share.Usage == "" && in.Automount {
@@ -234,7 +238,7 @@ func (in *Config) MigrateConfig() error {
 
 	// From version 3 to version 4 - Add telemetry mode
 	if in.ConfigSpecVersion == 3 {
-		slog.Debug("Migrating config from version 3 to version 4")
+		tlog.Trace("Migrating config from version 3 to version 4")
 		in.ConfigSpecVersion = 4
 		// Set default telemetry mode to Ask
 		if in.TelemetryMode == "" {
@@ -244,7 +248,7 @@ func (in *Config) MigrateConfig() error {
 
 	// From version 4 to version 5 - Add local master
 	if in.ConfigSpecVersion == 4 {
-		slog.Debug("Migrating config from version 4 to version 5")
+		tlog.Trace("Migrating config from version 4 to version 5")
 		in.ConfigSpecVersion = 5
 		// Set default local master to false
 		if !in.LocalMaster {

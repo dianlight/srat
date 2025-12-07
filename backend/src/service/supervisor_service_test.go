@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/homeassistant/mount"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
@@ -44,8 +45,10 @@ func (suite *SupervisorServiceSuite) SetupTest() {
 				}
 			},
 			service.NewSupervisorService,
+			events.NewEventBus,
 			mock.Mock[mount.ClientWithResponsesInterface],
 			mock.Mock[repository.PropertyRepositoryInterface],
+			mock.Mock[service.ShareServiceInterface],
 		),
 		fx.Populate(&suite.supervisorService),
 		fx.Populate(&suite.mountClient),
@@ -73,15 +76,17 @@ func (suite *SupervisorServiceSuite) TestNetworkGetAllMounted_HACoreNotReady() {
 				}
 			},
 			service.NewSupervisorService,
+			events.NewEventBus,
 			mock.Mock[mount.ClientWithResponsesInterface],
 			mock.Mock[repository.PropertyRepositoryInterface],
+			mock.Mock[service.ShareServiceInterface],
 		),
 		fx.Populate(&suite.supervisorService),
 	)
 	suite.app.RequireStart()
 
 	// Execute
-	mounts, err := suite.supervisorService.NetworkGetAllMounted()
+	mounts, err := suite.supervisorService.NetworkGetAllMounted(context.Background())
 
 	// Assert
 	suite.Error(err)
@@ -126,7 +131,7 @@ func (suite *SupervisorServiceSuite) TestNetworkGetAllMounted_Success() {
 	mock.When(suite.mountClient.GetMountsWithResponse(mock.Any[context.Context]())).ThenReturn(mockResponse, nil)
 
 	// Execute
-	mounts, err := suite.supervisorService.NetworkGetAllMounted()
+	mounts, err := suite.supervisorService.NetworkGetAllMounted(context.Background())
 
 	// Assert
 	suite.NoError(err)
@@ -149,15 +154,17 @@ func (suite *SupervisorServiceSuite) TestNetworkUnmountShare_HACoreNotReady() {
 				}
 			},
 			service.NewSupervisorService,
+			events.NewEventBus,
 			mock.Mock[mount.ClientWithResponsesInterface],
 			mock.Mock[repository.PropertyRepositoryInterface],
+			mock.Mock[service.ShareServiceInterface],
 		),
 		fx.Populate(&suite.supervisorService),
 	)
 	suite.app.RequireStart()
 
 	// Execute
-	err := suite.supervisorService.NetworkUnmountShare("test-share")
+	err := suite.supervisorService.NetworkUnmountShare(context.Background(), "test-share")
 
 	// Assert
 	suite.Error(err)
@@ -174,7 +181,7 @@ func (suite *SupervisorServiceSuite) TestNetworkUnmountShare_Success() {
 	mock.When(suite.mountClient.RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())).ThenReturn(mockResponse, nil)
 
 	// Execute
-	err := suite.supervisorService.NetworkUnmountShare("test-share")
+	err := suite.supervisorService.NetworkUnmountShare(context.Background(), "test-share")
 
 	// Assert
 	suite.NoError(err)
@@ -191,7 +198,7 @@ func (suite *SupervisorServiceSuite) TestNetworkUnmountShare_ErrorResponse() {
 	mock.When(suite.mountClient.RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())).ThenReturn(mockResponse, nil)
 
 	// Execute
-	err := suite.supervisorService.NetworkUnmountShare("test-share")
+	err := suite.supervisorService.NetworkUnmountShare(context.Background(), "test-share")
 
 	// Assert
 	suite.Error(err)
@@ -208,7 +215,7 @@ func (suite *SupervisorServiceSuite) TestNetworkGetAllMounted_ErrorFromClient() 
 	mock.When(suite.mountClient.GetMountsWithResponse(mock.Any[context.Context]())).ThenReturn(mockResponse, nil)
 
 	// Execute
-	mounts, err := suite.supervisorService.NetworkGetAllMounted()
+	mounts, err := suite.supervisorService.NetworkGetAllMounted(context.Background())
 
 	// Assert
 	suite.Error(err)
@@ -250,7 +257,7 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_CreateSuccess() {
 		Name:  "test-share",
 		Usage: "media",
 	}
-	err := suite.supervisorService.NetworkMountShare(testShare)
+	err := suite.supervisorService.NetworkMountShare(context.Background(), testShare)
 
 	// Assert
 	suite.NoError(err)
@@ -306,7 +313,7 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_Create400WithRetrySuc
 		Name:  "test-share",
 		Usage: "media",
 	}
-	err := suite.supervisorService.NetworkMountShare(testShare)
+	err := suite.supervisorService.NetworkMountShare(context.Background(), testShare)
 
 	// Assert
 	suite.NoError(err)
@@ -355,7 +362,7 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_Create400WithRetryFai
 		Name:  "test-share",
 		Usage: "media",
 	}
-	err := suite.supervisorService.NetworkMountShare(testShare)
+	err := suite.supervisorService.NetworkMountShare(context.Background(), testShare)
 
 	// Assert
 	suite.Error(err)
@@ -405,7 +412,7 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_Create400WithRemoveFa
 		Name:  "test-share",
 		Usage: "media",
 	}
-	err := suite.supervisorService.NetworkMountShare(testShare)
+	err := suite.supervisorService.NetworkMountShare(context.Background(), testShare)
 
 	// Assert
 	suite.Error(err)
@@ -467,7 +474,7 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_Issue221_ExactScenari
 		Name:  "backup-share",
 		Usage: "backup",
 	}
-	err := suite.supervisorService.NetworkMountShare(testShare)
+	err := suite.supervisorService.NetworkMountShare(context.Background(), testShare)
 
 	// Assert - the fix should handle this gracefully
 	suite.NoError(err, "Issue #221 fix should handle stale systemd units")
@@ -531,7 +538,7 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_Update400_NoRetryLogi
 		Name:  "test-share",
 		Usage: "media",
 	}
-	err := suite.supervisorService.NetworkMountShare(testShare)
+	err := suite.supervisorService.NetworkMountShare(context.Background(), testShare)
 
 	// Assert - with retry logic, this should now succeed
 	suite.NoError(err, "Update path now has retry logic for 400 errors")
@@ -596,7 +603,7 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_Update400_WithRetryLo
 		Name:  "test-share",
 		Usage: "media",
 	}
-	err := suite.supervisorService.NetworkMountShare(testShare)
+	err := suite.supervisorService.NetworkMountShare(context.Background(), testShare)
 
 	// Assert - with the fix, it should: attempt update -> get 400 -> remove -> create -> succeed
 	suite.NoError(err)

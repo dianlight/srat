@@ -87,9 +87,21 @@ func TestSambaSession_AllFields(t *testing.T) {
 
 	assert.Equal(t, "session-123", session.SessionID)
 	assert.Equal(t, "testuser", session.Username)
+	assert.Equal(t, "testgroup", session.Groupname)
 	assert.Equal(t, uint64(1000), session.UserID)
+	assert.Equal(t, uint64(1000), session.GroupID)
 	assert.Equal(t, "AES-128-GCM", session.Encryption.Cipher)
 	assert.Equal(t, "full", session.Encryption.Degree)
+	assert.Equal(t, "AES-128-CMAC", session.Signing.Cipher)
+	assert.Equal(t, "partial", session.Signing.Degree)
+	assert.Equal(t, now, session.CreationTime.Time)
+	assert.Equal(t, now, session.AuthTime.Time)
+	assert.Equal(t, "192.168.1.100", session.RemoteMachine)
+	assert.Equal(t, "client-pc", session.Hostname)
+	assert.Equal(t, "SMB3_11", session.SessionDialect)
+	assert.Equal(t, "1234", session.ServerID.PID)
+	assert.Empty(t, session.Channels)
+
 }
 
 func TestSambaSession_Channels(t *testing.T) {
@@ -115,7 +127,13 @@ func TestSambaSession_Channels(t *testing.T) {
 
 	assert.Len(t, session.Channels, 1)
 	assert.Contains(t, session.Channels, "channel-1")
+	assert.Equal(t, "channel-1", session.Channels["channel-1"].ChannelID)
+	assert.Equal(t, now, session.Channels["channel-1"].CreationTime.Time)
 	assert.Equal(t, "192.168.1.1:445", session.Channels["channel-1"].LocalAddress)
+	assert.Equal(t, "192.168.1.100:51234", session.Channels["channel-1"].RemoteAddress)
+	assert.Equal(t, "session-123", session.SessionID)
+	assert.Len(t, session.Channels, 1)
+
 }
 
 // SambaTcon Tests
@@ -140,10 +158,17 @@ func TestSambaTcon_AllFields(t *testing.T) {
 	tcon.Signing.Degree = "partial"
 
 	assert.Equal(t, "tcon-456", tcon.TconID)
+	assert.Equal(t, "client-pc", tcon.Machine)
+	assert.Equal(t, now, tcon.ConnectedAt.Time)
+	assert.Equal(t, "samba-service", tcon.Service)
+	assert.Equal(t, "1234", tcon.ServerID.PID)
 	assert.Equal(t, "session-123", tcon.SessionID)
 	assert.Equal(t, "share1", tcon.Share)
 	assert.Equal(t, "A:", tcon.Device)
 	assert.Equal(t, "AES-256-GCM", tcon.Encryption.Cipher)
+	assert.Equal(t, "full", tcon.Encryption.Degree)
+	assert.Equal(t, "AES-256-CMAC", tcon.Signing.Cipher)
+	assert.Equal(t, "partial", tcon.Signing.Degree)
 }
 
 // SambaStatus Tests
@@ -171,6 +196,7 @@ func TestSambaStatus_AllFields(t *testing.T) {
 
 	assert.Equal(t, "4.18.0", status.Version)
 	assert.Equal(t, "/etc/samba/smb.conf", status.SmbConf)
+	assert.Equal(t, now, status.Timestamp.Time)
 	assert.Len(t, status.Sessions, 1)
 	assert.Len(t, status.Tcons, 1)
 	assert.Contains(t, status.Sessions, "session-1")
@@ -222,4 +248,5 @@ func TestSambaStatus_JSON(t *testing.T) {
 	assert.Len(t, status.Sessions, 1)
 	assert.Equal(t, "testuser", status.Sessions["session-1"].Username)
 	assert.Equal(t, "AES-128-GCM", status.Sessions["session-1"].Encryption.Cipher)
+	assert.Equal(t, "AES-128-CMAC", status.Sessions["session-1"].Signing.Cipher)
 }

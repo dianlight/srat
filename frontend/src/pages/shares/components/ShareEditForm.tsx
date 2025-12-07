@@ -134,15 +134,14 @@ export function ShareEditForm({
     useEffect(() => {
         if (volumes) {
             const newAvailablePartitions = volumes
-                ?.flatMap((disk) => disk.partitions)
+                ?.flatMap((disk) => Object.values(disk.partitions || {}))
                 ?.filter(Boolean)
-                .filter(
+                ?.filter(
                     (partition) =>
-                        !(partition?.system && partition?.host_mount_point_data && partition?.host_mount_point_data.length > 0)
+                        !(partition?.system && partition?.host_mount_point_data && Object.values(partition.host_mount_point_data).length > 0)
                 )
-                .filter((partition) => partition?.mount_point_data)
                 .flatMap(
-                    (partition) => partition?.mount_point_data,
+                    (partition) => Object.values(partition?.mount_point_data || {}),
                 )
                 .filter(
                     (mp) => mp?.path !== "",

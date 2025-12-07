@@ -46,10 +46,11 @@ func TestSharedResourceCreation(t *testing.T) {
 		{
 			name: "Resource with HA mount",
 			resource: SharedResource{
-				Name:        "ha-share",
-				IsHAMounted: boolPtr(true),
-				Usage:       "backup",
-				HaStatus:    stringPtr("mounted"),
+				Name:  "ha-share",
+				Usage: "backup",
+				Status: &SharedResourceStatus{
+					IsHAMounted: true,
+				},
 			},
 		},
 		{
@@ -69,8 +70,10 @@ func TestSharedResourceCreation(t *testing.T) {
 		{
 			name: "Invalid resource",
 			resource: SharedResource{
-				Name:    "invalid-share",
-				Invalid: boolPtr(true),
+				Name: "invalid-share",
+				Status: &SharedResourceStatus{
+					IsValid: false,
+				},
 			},
 		},
 	}
@@ -147,8 +150,6 @@ func TestSharedResourcePointerFields(t *testing.T) {
 	timeMachine := false
 	recycleBin := true
 	guestOk := false
-	isHAMounted := true
-	invalid := false
 
 	resource := SharedResource{
 		Name:        "pointer-test",
@@ -156,8 +157,10 @@ func TestSharedResourcePointerFields(t *testing.T) {
 		TimeMachine: &timeMachine,
 		RecycleBin:  &recycleBin,
 		GuestOk:     &guestOk,
-		IsHAMounted: &isHAMounted,
-		Invalid:     &invalid,
+		Status: &SharedResourceStatus{
+			IsHAMounted: true,
+			IsValid:     true,
+		},
 	}
 
 	assert.NotNil(t, resource.Disabled)
@@ -168,10 +171,9 @@ func TestSharedResourcePointerFields(t *testing.T) {
 	assert.True(t, *resource.RecycleBin)
 	assert.NotNil(t, resource.GuestOk)
 	assert.False(t, *resource.GuestOk)
-	assert.NotNil(t, resource.IsHAMounted)
-	assert.True(t, *resource.IsHAMounted)
-	assert.NotNil(t, resource.Invalid)
-	assert.False(t, *resource.Invalid)
+	assert.NotNil(t, resource.Status)
+	assert.True(t, resource.Status.IsHAMounted)
+	assert.True(t, resource.Status.IsValid)
 	assert.Equal(t, "pointer-test", resource.Name)
 }
 

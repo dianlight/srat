@@ -9,11 +9,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log/slog"
 	"os/exec"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/dianlight/tlog"
 )
 
 // SMART attribute IDs for SSD detection
@@ -23,9 +25,40 @@ const (
 	SmartAttrTotalLBAsWritten  = 234 // Total LBAs Written (SSD-specific)
 )
 
+// ClientOption is a function that configures a Client
+type ClientOption func(*Client)
+
+// WithSmartctlPath sets a custom path to the smartctl binary
+func WithSmartctlPath(path string) ClientOption {
+	return func(c *Client) {
+		c.smartctlPath = path
+	}
+}
+
+// WithLogHandler sets a custom log handler for the client
+func WithLogHandler(handler *tlog.Logger) ClientOption {
+	return func(c *Client) {
+		c.logHandler = handler
+	}
+}
+
+// WithCommander sets a custom commander for testing purposes
+func WithCommander(commander Commander) ClientOption {
+	return func(c *Client) {
+		c.commander = commander
+	}
+}
+
+// WithContext sets a default context to use when methods are called with nil context
+func WithContext(ctx context.Context) ClientOption {
+	return func(c *Client) {
+		c.defaultCtx = ctx
+	}
+}
+
 // Commander interface for executing commands
 type Commander interface {
-	Command(name string, arg ...string) Cmd
+	Command(ctx context.Context, logger *tlog.Logger, name string, arg ...string) Cmd
 }
 
 // Cmd interface for command execution
@@ -37,9 +70,9 @@ type Cmd interface {
 // execCommander implements Commander using os/exec
 type execCommander struct{}
 
-func (e execCommander) Command(name string, arg ...string) Cmd {
-	slog.Debug("Executing command", "name", name, "args", arg)
-	return exec.Command(name, arg...)
+func (e execCommander) Command(ctx context.Context, logger *tlog.Logger, name string, arg ...string) Cmd {
+	logger.DebugContext(ctx, "Executing command", "name", name, "args", arg)
+	return exec.CommandContext(ctx, name, arg...)
 }
 
 // Device represents a storage device
@@ -91,6 +124,7 @@ type SMARTInfo struct {
 	UserCapacity               *UserCapacity               `json:"user_capacity,omitempty"`
 	RotationRate               *int                        `json:"rotation_rate,omitempty"` // Rotation rate in RPM (0 for SSDs, >0 for HDDs, nil if not available or not applicable)
 	DiskType                   string                      `json:"-"`                       // Computed disk type: "SSD", "HDD", "NVMe", or "Unknown"
+	InStandby                  bool                        `json:"in_standby,omitempty"`    // True if device is in standby/sleep mode (ATA only)
 	SmartStatus                SmartStatus                 `json:"smart_status,omitempty"`
 	SmartSupport               *SmartSupport               `json:"smart_support,omitempty"`
 	AtaSmartData               *AtaSmartData               `json:"ata_smart_data,omitempty"`
@@ -259,63 +293,83 @@ type SmartctlInfo struct {
 
 // SmartClient interface defines the methods for interacting with smartmontools
 type SmartClient interface {
-	ScanDevices() ([]Device, error)
-	GetSMARTInfo(devicePath string) (*SMARTInfo, error)
-	CheckHealth(devicePath string) (bool, error)
-	GetDeviceInfo(devicePath string) (map[string]interface{}, error)
-	RunSelfTest(devicePath string, testType string) error
+	ScanDevices(ctx context.Context) ([]Device, error)
+	GetSMARTInfo(ctx context.Context, devicePath string) (*SMARTInfo, error)
+	CheckHealth(ctx context.Context, devicePath string) (bool, error)
+	GetDeviceInfo(ctx context.Context, devicePath string) (map[string]interface{}, error)
+	RunSelfTest(ctx context.Context, devicePath string, testType string) error
 	RunSelfTestWithProgress(ctx context.Context, devicePath string, testType string, callback ProgressCallback) error
-	GetAvailableSelfTests(devicePath string) (*SelfTestInfo, error)
-	IsSMARTSupported(devicePath string) (*SMARTSupportInfo, error)
-	EnableSMART(devicePath string) error
-	DisableSMART(devicePath string) error
-	AbortSelfTest(devicePath string) error
+	GetAvailableSelfTests(ctx context.Context, devicePath string) (*SelfTestInfo, error)
+	IsSMARTSupported(ctx context.Context, devicePath string) (*SMARTSupportInfo, error)
+	EnableSMART(ctx context.Context, devicePath string) error
+	DisableSMART(ctx context.Context, devicePath string) error
+	AbortSelfTest(ctx context.Context, devicePath string) error
 }
 
 // Client represents a smartmontools client
 type Client struct {
-	smartctlPath string
-	commander    Commander
+	smartctlPath       string
+	commander          Commander
+	deviceTypeCache    map[string]string // Maps device path to device type (e.g., "sat")
+	deviceTypeCacheMux sync.RWMutex      // Protects deviceTypeCache
+	logHandler         *tlog.Logger      // Logger for the client
+	defaultCtx         context.Context   // Default context to use when nil is passed
 }
 
-// NewClient creates a new smartmontools client
-func NewClient() (SmartClient, error) {
-	// Try to find smartctl in PATH
-	path, err := exec.LookPath("smartctl")
-	if err != nil {
-		return nil, fmt.Errorf("smartctl not found in PATH: %w", err)
+// NewClient creates a new smartmontools client with optional configuration.
+// If no smartctl path is provided, it will search for smartctl in PATH.
+// If no log handler is provided, it will use a tlog debug-level logger for diagnostic output.
+// If no context is provided, context.Background() will be used as the default.
+func NewClient(opts ...ClientOption) (SmartClient, error) {
+	// Create client with defaults
+	client := &Client{
+		commander:       execCommander{},
+		deviceTypeCache: loadDrivedbAddendum(),
+		// Use a debug-level logger by default so library emits diagnostic output.
+		// Use NewLoggerWithLevel to obtain a *tlog.Logger (tlog.WithLevel returns *slog.Logger).
+		logHandler: tlog.NewLoggerWithLevel(tlog.LevelDebug),
+		defaultCtx: context.Background(),
 	}
 
-	// Ensure smartctl is a compatible version (JSON output requires >= 7.0)
-	if err := ensureCompatibleSmartctl(path); err != nil {
-		return nil, err
+	// Track if commander was set via options (for testing)
+	defaultCommander := true
+
+	// Apply options
+	for _, opt := range opts {
+		// Check if commander is being set
+		beforeCommander := client.commander
+		opt(client)
+		if client.commander != beforeCommander {
+			defaultCommander = false
+		}
 	}
 
-	return &Client{
-		smartctlPath: path,
-		commander:    execCommander{},
-	}, nil
-}
-
-// NewClientWithPath creates a new smartmontools client with a specific smartctl path
-func NewClientWithPath(smartctlPath string) SmartClient {
-	return &Client{
-		smartctlPath: smartctlPath,
-		commander:    execCommander{},
+	// If no smartctl path was provided, try to find it in PATH
+	if client.smartctlPath == "" {
+		path, err := exec.LookPath("smartctl")
+		if err != nil {
+			return nil, fmt.Errorf("smartctl not found in PATH: %w", err)
+		}
+		client.smartctlPath = path
 	}
-}
 
-// NewClientWithCommander creates a new client with a custom commander (for testing)
-func NewClientWithCommander(smartctlPath string, commander Commander) SmartClient {
-	return &Client{
-		smartctlPath: smartctlPath,
-		commander:    commander,
+	// Only ensure smartctl is compatible if using the default commander
+	// (skip validation for mock/test commanders)
+	if defaultCommander {
+		if err := ensureCompatibleSmartctl(client.smartctlPath); err != nil {
+			return nil, err
+		}
 	}
+
+	return client, nil
 }
 
 // ScanDevices scans for available storage devices
-func (c *Client) ScanDevices() ([]Device, error) {
-	cmd := c.commander.Command(c.smartctlPath, "--scan-open", "--json")
+func (c *Client) ScanDevices(ctx context.Context) ([]Device, error) {
+	if ctx == nil {
+		ctx = c.defaultCtx
+	}
+	cmd := c.commander.Command(ctx, c.logHandler, c.smartctlPath, "--scan-open", "--json")
 	output, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("failed to scan devices: %w", err)
@@ -343,24 +397,134 @@ func (c *Client) ScanDevices() ([]Device, error) {
 	return devices, nil
 }
 
+// getCachedDeviceType retrieves a cached device type for the given device path
+func (c *Client) getCachedDeviceType(devicePath string) (string, bool) {
+	c.deviceTypeCacheMux.RLock()
+	defer c.deviceTypeCacheMux.RUnlock()
+	deviceType, ok := c.deviceTypeCache[devicePath]
+	return deviceType, ok
+}
+
+// setCachedDeviceType stores a device type in the cache for the given device path
+func (c *Client) setCachedDeviceType(devicePath, deviceType string) {
+	c.deviceTypeCacheMux.Lock()
+	defer c.deviceTypeCacheMux.Unlock()
+	c.deviceTypeCache[devicePath] = deviceType
+	c.logHandler.Debug("Cached device type", "devicePath", devicePath, "deviceType", deviceType)
+}
+
 // GetSMARTInfo retrieves SMART information for a device
-func (c *Client) GetSMARTInfo(devicePath string) (*SMARTInfo, error) {
-	cmd := c.commander.Command(c.smartctlPath, "-a", "-j", devicePath)
+func (c *Client) GetSMARTInfo(ctx context.Context, devicePath string) (*SMARTInfo, error) {
+	if ctx == nil {
+		ctx = c.defaultCtx
+	}
+	// Check if we have a cached device type for this device
+	var args []string
+	var isATA bool
+	if cachedType, ok := c.getCachedDeviceType(devicePath); ok {
+		isATA = isATADevice(cachedType)
+		if isATA {
+			args = []string{"-d", cachedType, "--nocheck=standby", "-a", "-j", devicePath}
+		} else {
+			args = []string{"-d", cachedType, "-a", "-j", devicePath}
+		}
+	} else {
+		// Assume ATA by default for --nocheck=standby
+		args = []string{"--nocheck=standby", "-a", "-j", devicePath}
+		isATA = true
+	}
+
+	cmd := c.commander.Command(ctx, c.logHandler, c.smartctlPath, args...)
 	output, err := cmd.Output()
 	if err != nil {
 		// smartctl returns non-zero exit codes for various conditions
+		// Bit 1 (exit code 2) indicates device is in standby mode
+		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 2 {
+			// Device is in standby mode
+			var smartInfo SMARTInfo
+			if len(output) > 0 && json.Unmarshal(output, &smartInfo) == nil {
+				smartInfo.InStandby = true
+				smartInfo.DiskType = determineDiskType(&smartInfo)
+				return &smartInfo, nil
+			}
+			// If no JSON output, return minimal info
+			return &SMARTInfo{
+				Device:    Device{Name: devicePath},
+				InStandby: true,
+			}, nil
+		}
+
 		// We still want to parse the output if available and it's valid JSON
 		if len(output) > 0 {
 			var smartInfo SMARTInfo
 			if json.Unmarshal(output, &smartInfo) == nil {
 				// Valid JSON, treat error as warning
-				//slog.Debug("smartctl returned error but provided valid JSON output", "error", err)
+				//c.logHandler.DebugContext(ctx, "smartctl returned error but provided valid JSON output", "error", err)
 				// Check for error messages in the output
 				if smartInfo.Smartctl != nil && len(smartInfo.Smartctl.Messages) > 0 {
 					for _, msg := range smartInfo.Smartctl.Messages {
-						slog.Warn("smartctl message", "severity", msg.Severity, "message", msg.String)
+						c.logHandler.WarnContext(ctx, "smartctl message", "severity", msg.Severity, "message", msg.String)
 					}
 				}
+
+				// Check if this is an unknown USB bridge error and we haven't cached a type yet
+				if isUnknownUSBBridge(&smartInfo) {
+					_, hasCached := c.getCachedDeviceType(devicePath)
+					if !hasCached {
+						// First, check if this USB bridge is in our standard drivedb
+						usbBridgeID := extractUSBBridgeID(&smartInfo)
+						var deviceType string
+						if usbBridgeID != "" {
+							if knownType, ok := c.getCachedDeviceType(usbBridgeID); ok {
+								deviceType = knownType
+								c.logHandler.InfoContext(ctx, "Found USB bridge in drivedb", "usbBridgeID", usbBridgeID, "deviceType", deviceType)
+							}
+						} // If not in drivedb, default to sat
+						if deviceType == "" {
+							deviceType = "sat"
+							c.logHandler.InfoContext(ctx, "Unknown USB bridge detected, retrying with -d sat", "devicePath", devicePath)
+						}
+
+						// Retry with the determined device type and --nocheck=standby
+						retryArgs := []string{"-d", deviceType, "--nocheck=standby", "-a", "-j", devicePath}
+						retryCmd := c.commander.Command(ctx, c.logHandler, c.smartctlPath, retryArgs...)
+						retryOutput, retryErr := retryCmd.Output()
+
+						// Check for standby mode on retry
+						if retryErr != nil {
+							if exitErr, ok := retryErr.(*exec.ExitError); ok && exitErr.ExitCode() == 2 {
+								var retrySmartInfo SMARTInfo
+								if len(retryOutput) > 0 && json.Unmarshal(retryOutput, &retrySmartInfo) == nil {
+									c.setCachedDeviceType(devicePath, deviceType)
+									retrySmartInfo.InStandby = true
+									retrySmartInfo.DiskType = determineDiskType(&retrySmartInfo)
+									return &retrySmartInfo, nil
+								}
+								return &SMARTInfo{
+									Device:    Device{Name: devicePath, Type: deviceType},
+									InStandby: true,
+								}, nil
+							}
+						}
+
+						if retryErr == nil || len(retryOutput) > 0 {
+							var retrySmartInfo SMARTInfo
+							if json.Unmarshal(retryOutput, &retrySmartInfo) == nil {
+								// Check if SMART is supported with the device type
+								if retrySmartInfo.Device.Name != "" {
+									// Success! Cache the device type for this device path
+									c.setCachedDeviceType(devicePath, deviceType)
+									c.logHandler.InfoContext(ctx, "Successfully accessed device", "devicePath", devicePath, "deviceType", deviceType)
+									retrySmartInfo.DiskType = determineDiskType(&retrySmartInfo)
+									return &retrySmartInfo, nil
+								}
+							}
+						}
+						// If retry didn't work, log the failure
+						c.logHandler.DebugContext(ctx, "Retry with device type failed", "devicePath", devicePath, "deviceType", deviceType, "error", retryErr)
+					}
+				}
+
 				smartInfo.DiskType = determineDiskType(&smartInfo)
 				// If we have valid device information, return it without error
 				// If device name is empty, SMART is likely not supported
@@ -381,7 +545,7 @@ func (c *Client) GetSMARTInfo(devicePath string) (*SMARTInfo, error) {
 	// Check for messages in the output even when command succeeded
 	if smartInfo.Smartctl != nil && len(smartInfo.Smartctl.Messages) > 0 {
 		for _, msg := range smartInfo.Smartctl.Messages {
-			slog.Warn("smartctl message", "severity", msg.Severity, "message", msg.String)
+			c.logHandler.WarnContext(ctx, "smartctl message", "severity", msg.Severity, "message", msg.String)
 		}
 	}
 
@@ -389,6 +553,15 @@ func (c *Client) GetSMARTInfo(devicePath string) (*SMARTInfo, error) {
 	smartInfo.DiskType = determineDiskType(&smartInfo)
 
 	return &smartInfo, nil
+}
+
+// isATADevice checks if a device type is ATA-based (ata, sat, sata, etc.)
+func isATADevice(deviceType string) bool {
+	if deviceType == "" {
+		return false
+	}
+	dt := strings.ToLower(deviceType)
+	return strings.Contains(dt, "ata") || strings.Contains(dt, "sat") || dt == "scsi"
 }
 
 // determineDiskType determines the type of disk based on available information
@@ -430,12 +603,32 @@ func determineDiskType(info *SMARTInfo) string {
 }
 
 // CheckHealth checks if a device is healthy according to SMART
-func (c *Client) CheckHealth(devicePath string) (bool, error) {
-	cmd := c.commander.Command(c.smartctlPath, "-H", devicePath)
+func (c *Client) CheckHealth(ctx context.Context, devicePath string) (bool, error) {
+	if ctx == nil {
+		ctx = c.defaultCtx
+	}
+	// Check if we have a cached device type and add --nocheck=standby for ATA devices
+	var args []string
+	if cachedType, ok := c.getCachedDeviceType(devicePath); ok {
+		if isATADevice(cachedType) {
+			args = []string{"-d", cachedType, "--nocheck=standby", "-H", devicePath}
+		} else {
+			args = []string{"-d", cachedType, "-H", devicePath}
+		}
+	} else {
+		// Assume ATA by default for --nocheck=standby
+		args = []string{"--nocheck=standby", "-H", devicePath}
+	}
+
+	cmd := c.commander.Command(ctx, c.logHandler, c.smartctlPath, args...)
 	output, err := cmd.Output()
 	if err != nil {
-		// Exit code 0: healthy, non-zero may indicate issues
+		// Exit code 2: device in standby
 		if exitErr, ok := err.(*exec.ExitError); ok {
+			if exitErr.ExitCode() == 2 {
+				// Device is in standby mode, cannot check health without waking it
+				return false, fmt.Errorf("device is in standby mode")
+			}
 			// Parse output to determine health
 			outputStr := string(exitErr.Stderr)
 			if len(outputStr) == 0 {
@@ -451,10 +644,30 @@ func (c *Client) CheckHealth(devicePath string) (bool, error) {
 }
 
 // GetDeviceInfo retrieves basic device information
-func (c *Client) GetDeviceInfo(devicePath string) (map[string]interface{}, error) {
-	cmd := c.commander.Command(c.smartctlPath, "-i", "-j", devicePath)
+func (c *Client) GetDeviceInfo(ctx context.Context, devicePath string) (map[string]interface{}, error) {
+	if ctx == nil {
+		ctx = c.defaultCtx
+	}
+	// Check if we have a cached device type and add --nocheck=standby for ATA devices
+	var args []string
+	if cachedType, ok := c.getCachedDeviceType(devicePath); ok {
+		if isATADevice(cachedType) {
+			args = []string{"-d", cachedType, "--nocheck=standby", "-i", "-j", devicePath}
+		} else {
+			args = []string{"-d", cachedType, "-i", "-j", devicePath}
+		}
+	} else {
+		// Assume ATA by default for --nocheck=standby
+		args = []string{"--nocheck=standby", "-i", "-j", devicePath}
+	}
+
+	cmd := c.commander.Command(ctx, c.logHandler, c.smartctlPath, args...)
 	output, err := cmd.Output()
 	if err != nil {
+		// Exit code 2: device in standby
+		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 2 {
+			return nil, fmt.Errorf("device is in standby mode")
+		}
 		return nil, fmt.Errorf("failed to get device info: %w", err)
 	}
 
@@ -467,7 +680,10 @@ func (c *Client) GetDeviceInfo(devicePath string) (map[string]interface{}, error
 }
 
 // RunSelfTest initiates a SMART self-test
-func (c *Client) RunSelfTest(devicePath string, testType string) error {
+func (c *Client) RunSelfTest(ctx context.Context, devicePath string, testType string) error {
+	if ctx == nil {
+		ctx = c.defaultCtx
+	}
 	// Valid test types: short, long, conveyance, offline
 	validTypes := map[string]bool{
 		"short":      true,
@@ -480,7 +696,7 @@ func (c *Client) RunSelfTest(devicePath string, testType string) error {
 		return fmt.Errorf("invalid test type: %s (must be one of: short, long, conveyance, offline)", testType)
 	}
 
-	cmd := c.commander.Command(c.smartctlPath, "-t", testType, devicePath)
+	cmd := c.commander.Command(ctx, c.logHandler, c.smartctlPath, "-t", testType, devicePath)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to run self-test: %w", err)
 	}
@@ -493,6 +709,9 @@ type ProgressCallback func(progress int, status string)
 
 // RunSelfTestWithProgress starts a SMART self-test and reports progress
 func (c *Client) RunSelfTestWithProgress(ctx context.Context, devicePath string, testType string, callback ProgressCallback) error {
+	if ctx == nil {
+		ctx = c.defaultCtx
+	}
 	// Valid test types: short, long, conveyance, offline
 	validTypes := map[string]bool{
 		"short":      true,
@@ -506,7 +725,7 @@ func (c *Client) RunSelfTestWithProgress(ctx context.Context, devicePath string,
 	}
 
 	// First check if self-tests are supported and get durations
-	selfTestInfo, err := c.GetAvailableSelfTests(devicePath)
+	selfTestInfo, err := c.GetAvailableSelfTests(ctx, devicePath)
 	if err != nil {
 		return fmt.Errorf("failed to get self-test info: %w", err)
 	}
@@ -528,7 +747,7 @@ func (c *Client) RunSelfTestWithProgress(ctx context.Context, devicePath string,
 	}
 
 	// Start the self-test
-	if err := c.RunSelfTest(devicePath, testType); err != nil {
+	if err := c.RunSelfTest(ctx, devicePath, testType); err != nil {
 		return fmt.Errorf("failed to start %s self-test: %w", testType, err)
 	}
 
@@ -562,9 +781,9 @@ func (c *Client) RunSelfTestWithProgress(ctx context.Context, devicePath string,
 			elapsed += 5
 
 			// Check current status
-			currentInfo, err := c.GetSMARTInfo(devicePath)
+			currentInfo, err := c.GetSMARTInfo(ctx, devicePath)
 			if err != nil {
-				slog.Warn("Failed to get SMART info during polling", "error", err)
+				c.logHandler.WarnContext(ctx, "Failed to get SMART info during polling", "error", err)
 				continue
 			}
 
@@ -640,10 +859,30 @@ func (c *Client) RunSelfTestWithProgress(ctx context.Context, devicePath string,
 }
 
 // GetAvailableSelfTests returns the list of available self-test types and their durations for a device
-func (c *Client) GetAvailableSelfTests(devicePath string) (*SelfTestInfo, error) {
-	cmd := c.commander.Command(c.smartctlPath, "-c", "-j", devicePath)
+func (c *Client) GetAvailableSelfTests(ctx context.Context, devicePath string) (*SelfTestInfo, error) {
+	if ctx == nil {
+		ctx = c.defaultCtx
+	}
+	// Check if we have a cached device type and add --nocheck=standby for ATA devices
+	var args []string
+	if cachedType, ok := c.getCachedDeviceType(devicePath); ok {
+		if isATADevice(cachedType) {
+			args = []string{"-d", cachedType, "--nocheck=standby", "-c", "-j", devicePath}
+		} else {
+			args = []string{"-d", cachedType, "-c", "-j", devicePath}
+		}
+	} else {
+		// Assume ATA by default for --nocheck=standby
+		args = []string{"--nocheck=standby", "-c", "-j", devicePath}
+	}
+
+	cmd := c.commander.Command(ctx, c.logHandler, c.smartctlPath, args...)
 	output, err := cmd.Output()
 	if err != nil {
+		// Exit code 2: device in standby
+		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 2 {
+			return nil, fmt.Errorf("device is in standby mode")
+		}
 		return nil, fmt.Errorf("failed to get capabilities: %w", err)
 	}
 
@@ -699,8 +938,11 @@ func (c *Client) GetAvailableSelfTests(devicePath string) (*SelfTestInfo, error)
 }
 
 // IsSMARTSupported checks if SMART is supported on a device and if it's enabled
-func (c *Client) IsSMARTSupported(devicePath string) (*SMARTSupportInfo, error) {
-	smartInfo, err := c.GetSMARTInfo(devicePath)
+func (c *Client) IsSMARTSupported(ctx context.Context, devicePath string) (*SMARTSupportInfo, error) {
+	if ctx == nil {
+		ctx = c.defaultCtx
+	}
+	smartInfo, err := c.GetSMARTInfo(ctx, devicePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get SMART info: %w", err)
 	}
@@ -737,8 +979,11 @@ func (c *Client) IsSMARTSupported(devicePath string) (*SMARTSupportInfo, error) 
 }
 
 // EnableSMART enables SMART monitoring on a device
-func (c *Client) EnableSMART(devicePath string) error {
-	cmd := c.commander.Command(c.smartctlPath, "-s", "on", devicePath)
+func (c *Client) EnableSMART(ctx context.Context, devicePath string) error {
+	if ctx == nil {
+		ctx = c.defaultCtx
+	}
+	cmd := c.commander.Command(ctx, c.logHandler, c.smartctlPath, "-s", "on", devicePath)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to enable SMART: %w", err)
 	}
@@ -746,8 +991,11 @@ func (c *Client) EnableSMART(devicePath string) error {
 }
 
 // DisableSMART disables SMART monitoring on a device
-func (c *Client) DisableSMART(devicePath string) error {
-	cmd := c.commander.Command(c.smartctlPath, "-s", "off", devicePath)
+func (c *Client) DisableSMART(ctx context.Context, devicePath string) error {
+	if ctx == nil {
+		ctx = c.defaultCtx
+	}
+	cmd := c.commander.Command(ctx, c.logHandler, c.smartctlPath, "-s", "off", devicePath)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to disable SMART: %w", err)
 	}
@@ -755,8 +1003,11 @@ func (c *Client) DisableSMART(devicePath string) error {
 }
 
 // AbortSelfTest aborts a running self-test on a device
-func (c *Client) AbortSelfTest(devicePath string) error {
-	cmd := c.commander.Command(c.smartctlPath, "-X", devicePath)
+func (c *Client) AbortSelfTest(ctx context.Context, devicePath string) error {
+	if ctx == nil {
+		ctx = c.defaultCtx
+	}
+	cmd := c.commander.Command(ctx, c.logHandler, c.smartctlPath, "-X", devicePath)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to abort self-test: %w", err)
 	}

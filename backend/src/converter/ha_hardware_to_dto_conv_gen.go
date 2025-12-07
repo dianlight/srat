@@ -21,14 +21,11 @@ func (c *HaHardwareToDtoImpl) DriveToDisk(source hardware.Drive, target *dto.Dis
 		target.Ejectable = source.Ejectable
 	}
 	if source.Filesystems != nil {
-		var dtoPartitionList []dto.Partition
-		if (*source.Filesystems) != nil {
-			dtoPartitionList = make([]dto.Partition, len((*source.Filesystems)))
-			for i := 0; i < len((*source.Filesystems)); i++ {
-				dtoPartitionList[i] = c.filesystemToPartition((*source.Filesystems)[i])
-			}
+		pMapStringDtoPartition, err := filesystemsToPartitionsMap(source.Filesystems)
+		if err != nil {
+			return err
 		}
-		target.Partitions = &dtoPartitionList
+		target.Partitions = pMapStringDtoPartition
 	}
 	if source.Id != nil {
 		target.Id = source.Id
@@ -65,12 +62,22 @@ func (c *HaHardwareToDtoImpl) FilesystemToPartition(source hardware.Filesystem, 
 		target.LegacyDeviceName = trimDevPrefix(source.Device)
 	}
 	if source.Id != nil {
-		xstring2 := *source.Id
-		target.Id = &xstring2
+		pString, err := filesystemUUIDToPartitionID(source.Id)
+		if err != nil {
+			return err
+		}
+		target.Id = pString
+	}
+	if source.Id != nil {
+		pString2, err := partitionIDToFilesystemUUID(source.Id)
+		if err != nil {
+			return err
+		}
+		target.Uuid = pString2
 	}
 	if source.Name != nil {
-		xstring3 := *source.Name
-		target.Name = &xstring3
+		xstring2 := *source.Name
+		target.Name = &xstring2
 	}
 	if source.Size != nil {
 		xint := *source.Size
@@ -85,20 +92,26 @@ func (c *HaHardwareToDtoImpl) FilesystemToPartition(source hardware.Filesystem, 
 	}
 	return nil
 }
-func (c *HaHardwareToDtoImpl) filesystemToPartition(source hardware.Filesystem) dto.Partition {
+func (c *HaHardwareToDtoImpl) filesystemToPartition(source hardware.Filesystem) (dto.Partition, error) {
 	var dtoPartition dto.Partition
 	if source.Device != nil {
 		xstring := *source.Device
 		dtoPartition.LegacyDevicePath = &xstring
 	}
 	dtoPartition.LegacyDeviceName = trimDevPrefix(source.Device)
-	if source.Id != nil {
-		xstring2 := *source.Id
-		dtoPartition.Id = &xstring2
+	pString, err := filesystemUUIDToPartitionID(source.Id)
+	if err != nil {
+		return dtoPartition, err
 	}
+	dtoPartition.Id = pString
+	pString2, err := partitionIDToFilesystemUUID(source.Id)
+	if err != nil {
+		return dtoPartition, err
+	}
+	dtoPartition.Uuid = pString2
 	if source.Name != nil {
-		xstring3 := *source.Name
-		dtoPartition.Name = &xstring3
+		xstring2 := *source.Name
+		dtoPartition.Name = &xstring2
 	}
 	if source.Size != nil {
 		xint := *source.Size
@@ -109,5 +122,5 @@ func (c *HaHardwareToDtoImpl) filesystemToPartition(source hardware.Filesystem) 
 		dtoPartition.System = &xbool
 	}
 	dtoPartition.HostMountPointData = mountPointsToMountPointDatas(source)
-	return dtoPartition
+	return dtoPartition, nil
 }

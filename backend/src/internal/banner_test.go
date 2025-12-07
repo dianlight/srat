@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/dianlight/srat/config"
-	"github.com/dianlight/srat/tlog"
+	"github.com/dianlight/tlog"
 	"github.com/fatih/color"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -43,7 +43,7 @@ func TestBannerOutputsMetadata(t *testing.T) {
 		_ = tlog.SetLevelFromString(previousLevel)
 	})
 
-	Banner("SRAT")
+	Banner("SRAT", "")
 	output := stripANSI(buf.String())
 
 	assert.Contains(t, output, "SambaNAS2 Rest Administration Interface")
@@ -55,7 +55,7 @@ func TestBannerOutputsMetadata(t *testing.T) {
 	config.BuildTimestamp = ""
 	require.NoError(t, tlog.SetLevelFromString("warn"))
 
-	Banner("SRAT")
+	Banner("SRAT", "test command")
 	output = stripANSI(buf.String())
 	assert.Contains(t, output, "Log level: WARN")
 }

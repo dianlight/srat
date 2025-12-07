@@ -71,7 +71,7 @@ func TestMountPointData_ZeroValues(t *testing.T) {
 	assert.Nil(t, mountData.TimeMachineSupport)
 	assert.Nil(t, mountData.InvalidError)
 	assert.Nil(t, mountData.Warnings)
-	assert.Nil(t, mountData.Shares)
+	assert.Nil(t, mountData.Share)
 }
 
 func TestMountPointData_WithPartition(t *testing.T) {
@@ -86,6 +86,7 @@ func TestMountPointData_WithPartition(t *testing.T) {
 	}
 
 	assert.NotNil(t, mountData.Partition)
+	assert.Equal(t, "/mnt/data", mountData.Path)
 	assert.Equal(t, partitionName, *mountData.Partition.LegacyDeviceName)
 }
 
@@ -94,16 +95,15 @@ func TestMountPointData_WithShares(t *testing.T) {
 	share := dto.SharedResource{
 		Name: shareName,
 	}
-	shares := []dto.SharedResource{share}
 
 	mountData := dto.MountPointData{
-		Path:   "/mnt/data",
-		Shares: shares,
+		Path:  "/mnt/data",
+		Share: &share,
 	}
 
-	assert.NotNil(t, mountData.Shares)
-	assert.Len(t, mountData.Shares, 1)
-	assert.Equal(t, shareName, mountData.Shares[0].Name)
+	assert.NotNil(t, mountData.Share)
+	assert.Equal(t, "/mnt/data", mountData.Path)
+	assert.Equal(t, shareName, mountData.Share.Name)
 }
 
 func TestMountPointData_Types(t *testing.T) {
@@ -137,6 +137,7 @@ func TestMountPointData_InvalidState(t *testing.T) {
 	}
 
 	assert.True(t, mountData.IsInvalid)
+	assert.Equal(t, "/mnt/data", mountData.Path)
 	assert.NotNil(t, mountData.InvalidError)
 	assert.Equal(t, errorMsg, *mountData.InvalidError)
 }

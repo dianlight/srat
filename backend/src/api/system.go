@@ -52,7 +52,7 @@ func (self *SystemHanler) RegisterSystemHanler(api huma.API) {
 // Returns:
 //   - An empty struct and an error, both of which are nil.
 func (handler *SystemHanler) RestartHandler(ctx context.Context, input *struct{}) (*struct{}, error) {
-	slog.Debug("Restarting server...")
+	slog.DebugContext(ctx, "Restarting server...")
 	overseer.Restart()
 	return nil, nil
 }

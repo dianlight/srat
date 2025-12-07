@@ -14,7 +14,7 @@ This file highlights the must-know, discoverable rules and workflows for product
 
 SRAT is a Samba administration tool with a Go REST API backend and React frontend, designed to run within Home Assistant. Key architectural patterns:
 
-- **Backend**: Clean architecture with API handlers → Services → Repositories → Database (GORM/SQLite)
+- **Backend**: Clean architecture with API handlers → Services → Generated GORM helpers → Database (GORM/SQLite). Persistence now happens through the generated DBOM helpers rather than a handwritten repository tier.
 - **Frontend**: React + TypeScript + Material-UI + RTK Query for API state management
 - **Communication**: REST API with Server-Sent Events (SSE) or WebSockets for real-time updates
 - **Database**: SQLite with GORM ORM, embedded in production binary
@@ -26,10 +26,72 @@ SRAT is a Samba administration tool with a Go REST API backend and React fronten
 
 - **API Handlers**: `backend/src/api/*` — Use constructor `NewXHandler` and `RegisterXHandler(api huma.API)`. Handlers use Huma framework for REST API.
 - **Services**: `backend/src/service/*` — Each service has an interface and implementation wired via FX (`fx.In` param structs). Services coordinate business logic.
-- **Repositories**: `backend/src/repository/*` and `backend/src/dbom/*` — GORM models in `dbom`, repositories handle data access with mutex protection.
+- **Persistence**: Services now work directly with generated GORM helpers under `backend/src/dbom/g` (see `backend/src/service/share_service.go` for a live example of `gorm.G[dbom.ExportedShare]`). The `repository` packages no longer need to mediate persistence; generated DBOM structs and their GORM helpers deliver all read/write behavior.
 - **DTOs**: `backend/src/dto` — Define domain objects, error codes (see `dto/error_code.go`), and request/response shapes.
 - **Converters**: `backend/src/converter/*` — Goverter-generated converters for DTO↔DBOM transformations. Run `go generate` after changes.
 - **Logging**: `backend/src/tlog` — Custom logging with sensitive data masking, structured logs, and terminal color support.
+
+#### Context-Aware Logging (MANDATORY RULE)
+
+When writing or modifying Go backend code, prefer the context variants of logging functions whenever a `context.Context` is ALREADY in scope:
+
+Use:
+`slog.InfoContext(ctx, ...)`, `slog.WarnContext(ctx, ...)`, `slog.ErrorContext(ctx, ...)`, `slog.DebugContext(ctx, ...)`
+`tlog.TraceContext(ctx, ...)`, `tlog.DebugContext(ctx, ...)`, `tlog.InfoContext(ctx, ...)`, `tlog.WarnContext(ctx, ...)`, `tlog.ErrorContext(ctx, ...)`
+
+Rules:
+
+1. Only add the context form if a context variable is naturally available (e.g. `ctx`, `self.ctx`, `s.ctx`, `handler.ctx`, `apiContext`, `r.Context()`, constructor-local `Ctx`).
+2. DO NOT create a new context just for logging (no `context.Background()`, `context.TODO()`, `context.WithTimeout(...)` solely to pass to log).
+3. Preserve original argument order; only insert the context as the first argument.
+4. Do not refactor method signatures to add context purely for logging.
+5. In goroutines: use an existing captured context if present; do not capture a new one solely for logging.
+6. Leave the original non-context call if no appropriate context exists (this is acceptable and preferred over manufacturing one).
+7. Avoid changing vendor or third-party code for this; skip files under `backend/src/vendor/` unless explicitly patching via the established patch workflow.
+8. Tests may keep simple non-context logging unless the test specifically exercises context logging behavior.
+9. Never pass a nil context or a fabricated stand‑in (e.g. a struct field that is not a `context.Context`).
+
+Acceptable context identifiers (examples, not exhaustive): `ctx`, `self.ctx`, `s.ctx`, `ms.ctx`, `ts.ctx`, `handler.ctx`, `apiContext`, `self.apiContext`, `r.Context()`, locally declared `Ctx` in constructors.
+
+Examples:
+
+Before:
+
+```go
+slog.Info("Reloading config", "component", comp)
+tlog.Trace("Starting scan", "disk", d)
+```
+
+After (if `ctx` available):
+
+```go
+slog.InfoContext(ctx, "Reloading config", "component", comp)
+tlog.TraceContext(ctx, "Starting scan", "disk", d)
+```
+
+Before (goroutine without captured context):
+
+```go
+go func() {
+  slog.Debug("Background task running", "id", id)
+}()
+```
+
+Leave as-is unless the goroutine already captures a legitimate context for other reasons.
+
+Incorrect (manufactures context only for logging):
+
+```go
+slog.WarnContext(context.Background(), "Will retry", "attempt", n) // NOT ALLOWED
+```
+
+Correct alternative:
+
+```go
+slog.Warn("Will retry", "attempt", n)
+```
+
+Rationale: Using context-aware logging lets structured handlers attach trace/span, cancellation, and request lineage automatically. Avoid polluting code with artificial contexts—only leverage what is organically available.
 
 ### Frontend Patterns
 
@@ -108,7 +170,7 @@ go mod vendor       # Vendor all dependencies (done automatically by make)
 ### Full Stack Development
 
 - **Prepare environment**: `make prepare` (installs pre-commit + dependencies)
-- **Build all**: `make ALL` (multi-arch: amd64, armv7, aarch64)
+- **Build all**: `make ALL` (multi-arch: amd64, aarch64)
 - **Clean**: `make clean`
 
 ## Testing Patterns
@@ -147,16 +209,12 @@ go mod vendor       # Vendor all dependencies (done automatically by make)
 ```go
 // Backend HTTP handler test
 func (suite *ShareHandlerSuite) TestCreateShareSuccess() {
-    mock.When(suite.mockShareService.CreateShare(mock.Any[dto.SharedResource]())).ThenReturn(expectedShare, nil)
+    mock.When(suite.mockShareService.CreateShare(mock.Any[dto.SharedResource])).ThenReturn(expectedShare, nil)
     _, api := humatest.New(suite.T())
     suite.handler.RegisterShareHandler(api)
     resp := api.Post("/share", input)
     suite.Equal(http.StatusCreated, resp.Code)
-        mock.Verify(suite.mockDirtyService, matchers.Times(1)).SetDirtyShares()
-}
-```
-
-```tsx
+    mock.Verify(suite.mockDirtyService, matchers.Times(1)).SetDirtyShares()
 }
 ```
 
@@ -175,10 +233,6 @@ describe("Component localStorage functionality", () => {
         expect(localStorage.getItem("component.data")).toBe(testData);
     });
 }
-```
-
-```tsx
-});
 ```
 
 ```tsx
