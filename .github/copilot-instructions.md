@@ -435,6 +435,45 @@ describe("Component rendering", () => {
 
 **NON-NEGOTIABLE:** All frontend tests must follow these exact patterns. No exceptions for import style, file structure, or testing utilities. `fireEvent` is strictly prohibited — use `userEvent` for all interactions.
 
+### Frontend Test Changes & Coverage (MANDATORY RULE)
+
+When making ANY changes to frontend tests or creating new pages/sections:
+
+1. **Every test modification requires validation**:
+   - After modifying any existing test, run: `cd frontend && bun test --rerun-each 10 [TestName]`
+   - Verify 100% pass rate across all 10 re-runs (zero failures)
+   - Document any flakiness issues and fix root causes before considering the change complete
+
+2. **New pages or major sections MUST include tests**:
+   - Create a `__tests__` directory alongside the new page/section (e.g., `src/pages/[pageName]/__tests__/`)
+   - Create at least a basic `.test.tsx` file that covers:
+     - Component renders without errors
+     - Key UI elements are present
+     - Major user interactions work as expected
+   - Minimum coverage: Test happy path flows for all major features in the page/section
+   - If a page/section is created without tests, it is considered **incomplete** and must not be merged
+
+3. **Test verification checklist**:
+   - [ ] All new/modified tests follow the established patterns above
+   - [ ] Tests pass locally: `cd frontend && bun test`
+   - [ ] No flakiness detected: `cd frontend && bun test --rerun-each 10 [TestName]`
+   - [ ] Tests verify actual user behavior, not implementation details
+   - [ ] localStorage/Redux state is properly cleaned between tests
+   - [ ] All async operations are properly awaited
+   - [ ] `userEvent` is used for all interactions (never `fireEvent`)
+   - [ ] Dynamic imports are used for React components in test files
+
+4. **When modifying components that already have tests**:
+   - Update tests to reflect new behavior
+   - Add tests for new features or changed UI
+   - Re-validate with `--rerun-each 10` after each modification
+
+5. **Common pitfalls to avoid**:
+   - Don't skip tests for UI refactoring — update tests alongside UI changes
+   - Don't create pages without test structure — add `__tests__/` directory from the start
+   - Don't rely on implementation details in tests — test user-facing behavior
+   - Don't leave commented-out tests or TODOs in test files
+
 ## Final Checklist Before Consider a Changes as Done
 
 Ensure all relevant pre-commit hooks pass locally before pushing changes. This includes formatting, linting, security scans, and documentation validation.
