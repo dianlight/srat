@@ -167,6 +167,9 @@ patch:
 	@if [ -f "$(ROOT_DIR)/patches/overseer.patch" ] && [ -d "$(ROOT_DIR)/src/vendor/github.com/jpillora/overseer" ]; then \
 		cd $(ROOT_DIR)/src/vendor/github.com/jpillora/overseer  && patch -p1 < $(ROOT_DIR)/patches/overseer.patch; \
 	fi
+	@if [ -f "$(ROOT_DIR)/patches/gorm-generics.patch" ] && [ -d "$(ROOT_DIR)/src/vendor/gorm.io/gorm" ]; then \
+		cd $(ROOT_DIR)/src/vendor/gorm.io/gorm && patch -p1 < $(ROOT_DIR)/patches/gorm-generics.patch; \
+	fi
 	@find $(ROOT_DIR)/src/vendor -name "*.rej" -delete 2>/dev/null || true
 	@echo "Patches applied successfully"
 
