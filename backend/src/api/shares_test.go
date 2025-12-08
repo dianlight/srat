@@ -1045,6 +1045,314 @@ func (suite *ShareHandlerSuite) TestCreateShareWithROVolumeHasOnlyROUsers() {
 	suite.Require().Len(result.RoUsers, 1)
 }
 
+// TestCreateShareWithExFATVolume tests creating a share with an exFAT-formatted volume
+func (suite *ShareHandlerSuite) TestCreateShareWithExFATVolume() {
+	isWriteSupported := true
+	isMounted := true
+	isToMountAtStartup := true
+	disabled := false
+	guestOk := true
+	recycleBin := false
+	timeMachineMaxSize := "2 TB"
+	diskLabel := "Carola"
+	timeMachineSupport := dto.TimeMachineSupports.UNSUPPORTED
+	input := SharedResourceFromFrontend{
+		OrgName: "CAROLA",
+		SharedResource: dto.SharedResource{
+			Name: "CAROLA",
+			Users: []dto.User{
+				{
+					Username: "homeassistant",
+					Password: "changeme!",
+					IsAdmin:  true,
+				},
+			},
+			RoUsers:            []dto.User{},
+			RecycleBin:         &recycleBin,
+			GuestOk:            &guestOk,
+			TimeMachineMaxSize: &timeMachineMaxSize,
+			Usage:              "media",
+			VetoFiles:          []string{"._*", ".DS_Store", "Thumbs.db", "icon?", ".Trashes"},
+			Disabled:           &disabled,
+			MountPointData: &dto.MountPointData{
+				DiskLabel:          &diskLabel,
+				DiskSize:           pointer.Uint64(2096874127360),
+				Path:               "/mnt/Carola",
+				PathHash:           "0551e312d059cae36f7d0007201d49f5d001f562",
+				Root:               "/mnt/Carola",
+				Type:               "ADDON",
+				FSType:             pointer.String("exfat"),
+				Flags:              &dto.MountFlags{{Name: "nodev"}},
+				CustomFlags:        nil,
+				DeviceId:           "usb-Flash_Disk_3.0_7966051146147389472-0:0-part2",
+				IsMounted:          isMounted,
+				IsToMountAtStartup: &isToMountAtStartup,
+				IsWriteSupported:   &isWriteSupported,
+				TimeMachineSupport: &timeMachineSupport,
+			},
+		},
+	}
+
+	expectedShare := &dto.SharedResource{
+		Name: "CAROLA",
+		Users: []dto.User{
+			{
+				Username: "homeassistant",
+				Password: "changeme!",
+				IsAdmin:  true,
+			},
+		},
+		RoUsers:            []dto.User{},
+		RecycleBin:         &recycleBin,
+		GuestOk:            &guestOk,
+		TimeMachineMaxSize: &timeMachineMaxSize,
+		Usage:              "media",
+		VetoFiles:          []string{"._*", ".DS_Store", "Thumbs.db", "icon?", ".Trashes"},
+		Disabled:           &disabled,
+		MountPointData: &dto.MountPointData{
+			DiskLabel:          &diskLabel,
+			DiskSize:           pointer.Uint64(2096874127360),
+			Path:               "/mnt/Carola",
+			PathHash:           "0551e312d059cae36f7d0007201d49f5d001f562",
+			Root:               "/mnt/Carola",
+			Type:               "ADDON",
+			FSType:             pointer.String("exfat"),
+			Flags:              &dto.MountFlags{{Name: "nodev"}},
+			CustomFlags:        nil,
+			DeviceId:           "usb-Flash_Disk_3.0_7966051146147389472-0:0-part2",
+			IsMounted:          isMounted,
+			IsToMountAtStartup: &isToMountAtStartup,
+			IsWriteSupported:   &isWriteSupported,
+			TimeMachineSupport: &timeMachineSupport,
+		},
+	}
+
+	// Configure mock expectations
+	mock.When(suite.mockShareService.CreateShare(mock.Any[dto.SharedResource]())).ThenReturn(expectedShare, nil)
+
+	// Setup humatest
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterShareHandler(api)
+
+	// Make HTTP request
+	resp := api.Post("/share", input)
+	suite.Require().Equal(http.StatusCreated, resp.Code)
+
+	// Parse response
+	var result dto.SharedResource
+	err := json.Unmarshal(resp.Body.Bytes(), &result)
+	suite.Require().NoError(err)
+
+	// Assert basic properties
+	suite.Equal(expectedShare.Name, result.Name)
+	suite.Equal(expectedShare.Usage, result.Usage)
+	suite.NotNil(result.GuestOk)
+	suite.True(*result.GuestOk)
+	suite.NotNil(result.TimeMachineMaxSize)
+	suite.Equal("2 TB", *result.TimeMachineMaxSize)
+	suite.NotNil(result.RecycleBin)
+	suite.False(*result.RecycleBin)
+	suite.Equal([]string{"._*", ".DS_Store", "Thumbs.db", "icon?", ".Trashes"}, result.VetoFiles)
+
+	// Assert mount point data
+	suite.NotNil(result.MountPointData)
+	suite.NotNil(result.MountPointData.DiskLabel)
+	suite.Equal("Carola", *result.MountPointData.DiskLabel)
+	suite.NotNil(result.MountPointData.DiskSize)
+	suite.Equal(uint64(2096874127360), *result.MountPointData.DiskSize)
+	suite.Equal("/mnt/Carola", result.MountPointData.Path)
+	suite.NotNil(result.MountPointData.FSType)
+	suite.Equal("exfat", *result.MountPointData.FSType)
+	suite.Equal("usb-Flash_Disk_3.0_7966051146147389472-0:0-part2", result.MountPointData.DeviceId)
+	suite.True(result.MountPointData.IsMounted)
+	suite.NotNil(result.MountPointData.IsWriteSupported)
+	suite.True(*result.MountPointData.IsWriteSupported)
+	suite.NotNil(result.MountPointData.IsToMountAtStartup)
+	suite.True(*result.MountPointData.IsToMountAtStartup)
+	suite.NotNil(result.MountPointData.TimeMachineSupport)
+	suite.Equal(dto.TimeMachineSupports.UNSUPPORTED, *result.MountPointData.TimeMachineSupport)
+	suite.NotNil(result.MountPointData.Flags)
+	suite.Require().Len(*result.MountPointData.Flags, 1)
+	suite.Equal("nodev", (*result.MountPointData.Flags)[0].Name)
+
+	// Assert user properties
+	suite.Require().Len(result.Users, 1)
+	suite.Equal("homeassistant", result.Users[0].Username)
+	suite.True(result.Users[0].IsAdmin)
+}
+
+// TestUpdateShareWithExFATVolume tests updating a share with complete exFAT volume data
+func (suite *ShareHandlerSuite) TestUpdateShareWithExFATVolume() {
+	// Setup test data with complete volume information
+	guestOk := true
+	recycleBin := false
+	timeMachineMaxSize := "2 TB"
+	diskLabel := "Carola"
+	fstype := "exfat"
+	deviceId := "usb-Flash_Disk_3.0_7966051146147389472-0:0-part2"
+	isToMountAtStartup := true
+	isWriteSupported := true
+	timeMachineSupport := dto.TimeMachineSupports.UNSUPPORTED
+
+	vetoFiles := []string{
+		"._*",
+		".DS_Store",
+		"Thumbs.db",
+		"icon?",
+		".Trashes",
+	}
+
+	mountFlags := dto.MountFlags{
+		{Name: "nodev"},
+	}
+
+	input := dto.SharedResource{
+		Name:               "CAROLA",
+		Disabled:           pointer.Bool(false),
+		GuestOk:            &guestOk,
+		RecycleBin:         &recycleBin,
+		TimeMachineMaxSize: &timeMachineMaxSize,
+		Usage:              dto.UsageAsMedia,
+		VetoFiles:          vetoFiles,
+		Users: []dto.User{
+			{
+				Username: "homeassistant",
+				Password: "changeme!",
+				IsAdmin:  true,
+			},
+		},
+		MountPointData: &dto.MountPointData{
+			DiskLabel:          &diskLabel,
+			DiskSize:           pointer.Uint64(2096874127360),
+			Path:               "/mnt/Carola",
+			PathHash:           "0551e312d059cae36f7d0007201d49f5d001f562",
+			Root:               "/mnt/Carola",
+			Type:               "ADDON",
+			FSType:             &fstype,
+			Flags:              &mountFlags,
+			DeviceId:           deviceId,
+			IsMounted:          true,
+			IsToMountAtStartup: &isToMountAtStartup,
+			IsWriteSupported:   &isWriteSupported,
+			TimeMachineSupport: &timeMachineSupport,
+		},
+	}
+
+	expectedShare := &dto.SharedResource{
+		Name:               "CAROLA",
+		Disabled:           pointer.Bool(false),
+		GuestOk:            &guestOk,
+		RecycleBin:         &recycleBin,
+		TimeMachineMaxSize: &timeMachineMaxSize,
+		Usage:              dto.UsageAsMedia,
+		VetoFiles:          vetoFiles,
+		Users: []dto.User{
+			{
+				Username: "homeassistant",
+				Password: "changeme!",
+				IsAdmin:  true,
+			},
+		},
+		MountPointData: &dto.MountPointData{
+			DiskLabel:          &diskLabel,
+			DiskSize:           pointer.Uint64(2096874127360),
+			Path:               "/mnt/Carola",
+			PathHash:           "0551e312d059cae36f7d0007201d49f5d001f562",
+			Root:               "/mnt/Carola",
+			Type:               "ADDON",
+			FSType:             &fstype,
+			Flags:              &mountFlags,
+			DeviceId:           deviceId,
+			IsMounted:          true,
+			IsToMountAtStartup: &isToMountAtStartup,
+			IsWriteSupported:   &isWriteSupported,
+			TimeMachineSupport: &timeMachineSupport,
+		},
+	}
+
+	// Setup mock expectations
+	mock.When(suite.mockShareService.UpdateShare(mock.Equal("CAROLA"), mock.Any[dto.SharedResource]())).
+		ThenReturn(expectedShare, nil)
+
+	// Create test API and register handler
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterShareHandler(api)
+
+	// Make the request
+	resp := api.Put("/share/CAROLA", input)
+
+	// Verify response
+	suite.Equal(http.StatusOK, resp.Code)
+
+	// Parse response body
+	var result dto.SharedResource
+	err := json.Unmarshal(resp.Body.Bytes(), &result)
+	suite.NoError(err)
+
+	// Verify basic fields
+	suite.Equal("CAROLA", result.Name)
+	suite.Equal(dto.UsageAsMedia, result.Usage)
+	suite.NotNil(result.GuestOk)
+	suite.True(*result.GuestOk)
+	suite.NotNil(result.TimeMachineMaxSize)
+	suite.Equal("2 TB", *result.TimeMachineMaxSize)
+	suite.NotNil(result.RecycleBin)
+	suite.False(*result.RecycleBin)
+
+	// Verify veto files
+	suite.Len(result.VetoFiles, 5)
+	suite.Contains(result.VetoFiles, "._*")
+	suite.Contains(result.VetoFiles, ".DS_Store")
+	suite.Contains(result.VetoFiles, "Thumbs.db")
+	suite.Contains(result.VetoFiles, "icon?")
+	suite.Contains(result.VetoFiles, ".Trashes")
+
+	// Verify mount point data with detailed checks
+	suite.NotNil(result.MountPointData)
+	mpd := result.MountPointData
+
+	suite.NotNil(mpd.DiskLabel)
+	suite.Equal("Carola", *mpd.DiskLabel)
+
+	suite.NotNil(mpd.DiskSize)
+	suite.Equal(uint64(2096874127360), *mpd.DiskSize)
+
+	suite.Equal("/mnt/Carola", mpd.Path)
+	suite.Equal("0551e312d059cae36f7d0007201d49f5d001f562", mpd.PathHash)
+
+	suite.Equal("/mnt/Carola", mpd.Root)
+
+	suite.Equal("ADDON", mpd.Type)
+
+	suite.NotNil(mpd.FSType)
+	suite.Equal("exfat", *mpd.FSType)
+
+	suite.NotNil(mpd.Flags)
+	suite.Len(*mpd.Flags, 1)
+	suite.Equal("nodev", (*mpd.Flags)[0].Name)
+
+	suite.Equal("usb-Flash_Disk_3.0_7966051146147389472-0:0-part2", mpd.DeviceId)
+
+	suite.True(mpd.IsMounted)
+
+	suite.NotNil(mpd.IsToMountAtStartup)
+	suite.True(*mpd.IsToMountAtStartup)
+
+	suite.NotNil(mpd.IsWriteSupported)
+	suite.True(*mpd.IsWriteSupported)
+
+	suite.NotNil(mpd.TimeMachineSupport)
+	suite.Equal(dto.TimeMachineSupports.UNSUPPORTED, *mpd.TimeMachineSupport)
+
+	// Verify user data
+	suite.Len(result.Users, 1)
+	suite.Equal("homeassistant", result.Users[0].Username)
+	suite.True(result.Users[0].IsAdmin)
+
+	// Verify that SetDirtyShares was called
+	//suite.True(suite.dirtyService.GetDirtyDataTracker().Shares)
+}
+
 func TestShareHandlerSuite(t *testing.T) {
 	suite.Run(t, new(ShareHandlerSuite))
 }
