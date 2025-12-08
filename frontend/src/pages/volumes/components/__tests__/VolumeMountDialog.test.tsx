@@ -285,7 +285,7 @@ describe("VolumeMountDialog Component", () => {
         expect(container).toBeTruthy();
     });
 
-    it("handles mount at startup checkbox", async () => {
+    it("handles automatic mount checkbox", async () => {
         const React = await import("react");
         const { render } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
@@ -307,7 +307,7 @@ describe("VolumeMountDialog Component", () => {
             )
         );
 
-        // Look for checkbox for mount at startup
+        // Look for checkbox for automatic mount
         const checkboxes = container.querySelectorAll('input[type="checkbox"]');
         expect(checkboxes.length).toBeGreaterThanOrEqual(0);
     });

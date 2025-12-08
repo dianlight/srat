@@ -474,10 +474,10 @@ export function VolumeDetailsPanel({
                                     </Grid>
                                 )}
 
-                                {/* Mount at Startup */}
+                                {/* Automatic Mount */}
                                 <Grid size={{ xs: 12, sm: 6 }}>
                                     <Typography variant="subtitle2" color="text.secondary">
-                                        Mount at Startup
+                                        Automatic Mount
                                     </Typography>
                                     <Chip
                                         label={mountData.is_to_mount_at_startup ? "Enabled" : "Disabled"}
@@ -704,4 +704,4 @@ export function VolumeDetailsPanel({
             />
         </Box>
     );
-}
+} 

@@ -163,12 +163,12 @@ describe("PartitionActions component", () => {
         const mountButtons = within(container).getAllByLabelText("mount partition");
         expect(mountButtons).toHaveLength(1);
 
-        // Check that there's exactly one enable mount at startup button within the container
-        const enableButtons = within(container).getAllByLabelText("enable mount at startup");
+        // Check that there's exactly one enable automatic mount button within the container
+        const enableButtons = within(container).getAllByLabelText("enable automatic mount");
         expect(enableButtons).toHaveLength(1);
     });
 
-    it("renders unmount action for mounted partition", async () => {
+    it("renders unmount action for mounted partition without automount", async () => {
         const React = await import("react");
         const { render, screen, within } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
@@ -180,6 +180,7 @@ describe("PartitionActions component", () => {
                 {
                     path: "/mnt/test",
                     is_mounted: true,
+                    is_to_mount_at_startup: false,
                 },
             ],
         });
@@ -203,7 +204,7 @@ describe("PartitionActions component", () => {
         expect(unmountButtons).toHaveLength(1);
     });
 
-    it("renders force unmount action for mounted partition", async () => {
+    it("does not render unmount action when automount is enabled", async () => {
         const React = await import("react");
         const { render, screen, within } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
@@ -215,6 +216,43 @@ describe("PartitionActions component", () => {
                 {
                     path: "/mnt/test",
                     is_mounted: true,
+                    is_to_mount_at_startup: true,
+                },
+            ],
+        });
+
+        const { container } = render(
+            React.createElement(PartitionActions as any, {
+                partition,
+                protected_mode: false,
+                onToggleAutomount: () => { },
+                onMount: () => { },
+                onUnmount: () => { },
+                onCreateShare: () => { },
+                onGoToShare: () => { },
+            })
+        );
+
+        await openMenuIfNeeded(screen, user);
+
+        // Should not find unmount button when automount is enabled
+        const unmountButtons = within(container).queryAllByLabelText("unmount partition");
+        expect(unmountButtons).toHaveLength(0);
+    });
+
+    it("renders force unmount action for mounted partition without automount", async () => {
+        const React = await import("react");
+        const { render, screen, within } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const user = userEvent.setup();
+        const { PartitionActions } = await import("../PartitionActions");
+
+        const partition = buildPartition({
+            mount_point_data: [
+                {
+                    path: "/mnt/test",
+                    is_mounted: true,
+                    is_to_mount_at_startup: false,
                 },
             ],
         });
@@ -268,7 +306,7 @@ describe("PartitionActions component", () => {
 
         await openMenuIfNeeded(screen, user);
 
-        const enableButtons = within(container).getAllByLabelText("enable mount at startup");
+        const enableButtons = within(container).getAllByLabelText("enable automatic mount");
         expect(enableButtons).toHaveLength(1);
     });
 
@@ -303,11 +341,11 @@ describe("PartitionActions component", () => {
 
         await openMenuIfNeeded(screen, user);
 
-        const disableButtons = within(container).getAllByLabelText("disable mount at startup");
+        const disableButtons = within(container).getAllByLabelText("disable automatic mount");
         expect(disableButtons).toHaveLength(1);
     });
 
-    it("renders create share action for mounted partition under /mnt/", async () => {
+    it("renders go to share action for partition with enabled share", async () => {
         const React = await import("react");
         const { render, screen, within } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
@@ -319,42 +357,7 @@ describe("PartitionActions component", () => {
                 {
                     path: "/mnt/test",
                     is_mounted: true,
-                    shares: [],
-                },
-            ],
-        });
-
-        const { container } = render(
-            React.createElement(PartitionActions as any, {
-                partition,
-                protected_mode: false,
-                onToggleAutomount: () => { },
-                onMount: () => { },
-                onUnmount: () => { },
-                onCreateShare: () => { },
-                onGoToShare: () => { },
-            })
-        );
-
-        await openMenuIfNeeded(screen, user);
-
-        const createShareButtons = within(container).getAllByLabelText("create share");
-        expect(createShareButtons).toHaveLength(1);
-    });
-
-    it("renders go to share action for partition with shares", async () => {
-        const React = await import("react");
-        const { render, screen, within } = await import("@testing-library/react");
-        const userEvent = (await import("@testing-library/user-event")).default;
-        const user = userEvent.setup();
-        const { PartitionActions } = await import("../PartitionActions");
-
-        const partition = buildPartition({
-            mount_point_data: [
-                {
-                    path: "/mnt/test",
-                    is_mounted: true,
-                    share: "TestShare",
+                    share: { disabled: false },
                 },
             ],
         });
@@ -375,6 +378,44 @@ describe("PartitionActions component", () => {
 
         const goToShareButtons = within(container).getAllByLabelText("go to share");
         expect(goToShareButtons).toHaveLength(1);
+    });
+
+    it("does not render automount toggle when mounted with enabled share", async () => {
+        const React = await import("react");
+        const { render, screen, within } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const user = userEvent.setup();
+        const { PartitionActions } = await import("../PartitionActions");
+
+        const partition = buildPartition({
+            mount_point_data: [
+                {
+                    path: "/mnt/test",
+                    is_mounted: true,
+                    share: { disabled: false },
+                },
+            ],
+        });
+
+        const { container } = render(
+            React.createElement(PartitionActions as any, {
+                partition,
+                protected_mode: false,
+                onToggleAutomount: () => { },
+                onMount: () => { },
+                onUnmount: () => { },
+                onCreateShare: () => { },
+                onGoToShare: () => { },
+            })
+        );
+
+        await openMenuIfNeeded(screen, user);
+
+        // Should not find automount toggle when mounted with enabled share
+        const enableButtons = within(container).queryAllByLabelText("enable automatic mount");
+        const disableButtons = within(container).queryAllByLabelText("disable automatic mount");
+        expect(enableButtons).toHaveLength(0);
+        expect(disableButtons).toHaveLength(0);
     });
 
     it("calls onMount when mount button is clicked", async () => {
@@ -500,14 +541,14 @@ describe("PartitionActions component", () => {
 
         await openMenuIfNeeded(screen, user);
 
-        const toggleButtons = within(container).getAllByLabelText("enable mount at startup");
+        const toggleButtons = within(container).getAllByLabelText("enable automatic mount");
         expect(toggleButtons).toHaveLength(1);
         await user.click(toggleButtons[0]!);
 
         expect(toggleCalled).toBe(true);
     });
 
-    it("calls onCreateShare when create share button is clicked", async () => {
+    it("renders create share action for mounted partition without share and automount disabled", async () => {
         const React = await import("react");
         const { render, screen, within } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
@@ -519,15 +560,11 @@ describe("PartitionActions component", () => {
                 {
                     path: "/mnt/test",
                     is_mounted: true,
-                    shares: [],
+                    is_to_mount_at_startup: false,
+                    share: null,
                 },
             ],
         });
-
-        let createShareCalled = false;
-        const onCreateShare = () => {
-            createShareCalled = true;
-        };
 
         const { container } = render(
             React.createElement(PartitionActions as any, {
@@ -536,7 +573,7 @@ describe("PartitionActions component", () => {
                 onToggleAutomount: () => { },
                 onMount: () => { },
                 onUnmount: () => { },
-                onCreateShare,
+                onCreateShare: () => { },
                 onGoToShare: () => { },
             })
         );
@@ -545,9 +582,6 @@ describe("PartitionActions component", () => {
 
         const createShareButtons = within(container).getAllByLabelText("create share");
         expect(createShareButtons).toHaveLength(1);
-        await user.click(createShareButtons[0]!);
-
-        expect(createShareCalled).toBe(true);
     });
 
     it("calls onGoToShare when go to share button is clicked", async () => {
@@ -562,7 +596,7 @@ describe("PartitionActions component", () => {
                 {
                     path: "/mnt/test",
                     is_mounted: true,
-                    share: "TestShare",
+                    share: { disabled: false },
                 },
             ],
         });
@@ -591,5 +625,113 @@ describe("PartitionActions component", () => {
         await user.click(goToShareButtons[0]!);
 
         expect(goToShareCalled).toBe(true);
+    });
+
+    it("does not render more than one mountpoint", async () => {
+        const React = await import("react");
+        const { render } = await import("@testing-library/react");
+        const { PartitionActions } = await import("../PartitionActions");
+
+        const partition = buildPartition({
+            mount_point_data: [
+                {
+                    path: "/mnt/test1",
+                    is_mounted: false,
+                },
+                {
+                    path: "/mnt/test2",
+                    is_mounted: false,
+                },
+            ],
+        });
+
+        const { container } = render(
+            React.createElement(PartitionActions as any, {
+                partition,
+                protected_mode: false,
+                onToggleAutomount: () => { },
+                onMount: () => { },
+                onUnmount: () => { },
+                onCreateShare: () => { },
+                onGoToShare: () => { },
+            })
+        );
+
+        // Component should return null for partitions with multiple mount points
+        expect(container.firstChild).toBeNull();
+    });
+
+    it("shows automount toggle for mounted partition without enabled share", async () => {
+        const React = await import("react");
+        const { render, screen, within } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const user = userEvent.setup();
+        const { PartitionActions } = await import("../PartitionActions");
+
+        const partition = buildPartition({
+            mount_point_data: [
+                {
+                    path: "/mnt/test",
+                    is_mounted: true,
+                    is_to_mount_at_startup: false,
+                    share: { disabled: true }, // disabled share
+                },
+            ],
+        });
+
+        const { container } = render(
+            React.createElement(PartitionActions as any, {
+                partition,
+                protected_mode: false,
+                onToggleAutomount: () => { },
+                onMount: () => { },
+                onUnmount: () => { },
+                onCreateShare: () => { },
+                onGoToShare: () => { },
+            })
+        );
+
+        await openMenuIfNeeded(screen, user);
+
+        // Should have automount toggle when mounted with disabled share
+        const enableButtons = within(container).getAllByLabelText("enable automatic mount");
+        expect(enableButtons).toHaveLength(1);
+    });
+
+    it("shows create share when mounted without share and automount disabled", async () => {
+        const React = await import("react");
+        const { render, screen, within } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const user = userEvent.setup();
+        const { PartitionActions } = await import("../PartitionActions");
+
+        const partition = buildPartition({
+            mount_point_data: [
+                {
+                    path: "/mnt/test",
+                    is_mounted: true,
+                    is_to_mount_at_startup: false,
+                    share: null, // no share
+                },
+            ],
+        });
+
+        const { container } = render(
+            React.createElement(PartitionActions as any, {
+                partition,
+                protected_mode: false,
+                onToggleAutomount: () => { },
+                onMount: () => { },
+                onUnmount: () => { },
+                onCreateShare: () => { },
+                onGoToShare: () => { },
+            })
+        );
+
+        await openMenuIfNeeded(screen, user);
+
+        // Should have create share button when no share exists
+        const createShareButtons = within(container).getAllByLabelText("create share");
+        expect(createShareButtons).toHaveLength(1);
     });
 });

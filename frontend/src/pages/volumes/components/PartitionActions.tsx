@@ -1,13 +1,15 @@
 import {
 	faPlug,
+	faPlugCircleBolt,
+	faPlugCircleExclamation,
 	faPlugCircleMinus,
 	faPlugCircleXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import AddIcon from "@mui/icons-material/Add";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
+import ScheduleOutlinedIcon from "@mui/icons-material/ScheduleOutlined";
+import ScheduleIcon from "@mui/icons-material/Schedule";
 import ShareIcon from "@mui/icons-material/Share";
-import UpdateIcon from "@mui/icons-material/Update";
-import UpdateDisabledIcon from "@mui/icons-material/UpdateDisabled";
 import {
 	IconButton,
 	ListItemIcon,
@@ -59,45 +61,23 @@ export function PartitionActions({
 		setAnchorEl(null);
 	};
 
-	const mpds = Object.values(partition.mount_point_data || {});
-	const isMounted = mpds.some((mpd) => mpd.is_mounted);
-	const hasShares = mpds.some((mpd) => mpd.share);
-	const firstMountPath = mpds[0]?.path;
-	const showShareActions = isMounted && firstMountPath?.startsWith("/mnt/");
-
+	// Check if partition is read-only or system partition
 	if (
 		protected_mode ||
-		//partition.system ||
 		partition.name?.startsWith("hassos-") ||
-		(Object.values(partition.host_mount_point_data || {}).length > 0)
+		Object.values(partition.host_mount_point_data || {}).length > 0
 	) {
-		console.log("Partition is read-only or system partition", protected_mode, partition);
 		return null;
 	}
 
+	const mpds = Object.values(partition.mount_point_data || {});
+	const mountPointCount = mpds.length;
+
+	// Determine action items based on mount point rules
 	const actionItems = [];
 
-	// Automount Toggle Button
-	if (!hasShares && firstMountPath) {
-		if (mpds[0]?.is_to_mount_at_startup) {
-			actionItems.push({
-				key: "disable-automount",
-				title: "Disable mount at startup",
-				icon: <UpdateDisabledIcon />,
-				onClick: () => onToggleAutomount(partition),
-			});
-		} else {
-			actionItems.push({
-				key: "enable-automount",
-				title: "Enable mount at startup",
-				icon: <UpdateIcon />,
-				onClick: () => onToggleAutomount(partition),
-			});
-		}
-	}
-
-	// Mount
-	if (!isMounted) {
+	// Rule 1: No mountpoint --> mount action
+	if (mountPointCount === 0) {
 		actionItems.push({
 			key: "mount",
 			title: "Mount Partition",
@@ -105,37 +85,81 @@ export function PartitionActions({
 			onClick: () => onMount(partition),
 		});
 	}
+	// Rule 2: More than one mountpoint --> no actions
+	else if (mountPointCount > 1) {
+		return null;
+	}
+	// Single mountpoint: apply conditional rules
+	else {
+		const mpd = mpds[0];
+		const isMounted = mpd?.is_mounted;
+		const hasEnabledShare = mpd?.share && mpd?.share.disabled === false;
+		const hasShare = mpd?.share !== null && mpd?.share !== undefined;
 
-	if (isMounted) {
-		if (!hasShares) {
-			actionItems.push({
-				key: "unmount",
-				title: "Unmount Partition",
-				icon: <FontAwesomeSvgIcon icon={faPlugCircleMinus} />,
-				onClick: () => onUnmount(partition, false),
-			});
-		}
-		actionItems.push({
-			key: "force-unmount",
-			title: "Force Unmount Partition",
-			icon: <FontAwesomeSvgIcon icon={faPlugCircleXmark} />,
-			onClick: () => onUnmount(partition, true),
-		});
-		if (showShareActions) {
-			if (!hasShares) {
+		// Add automount toggle if mountpoint exists (unless mounted with enabled share)
+		const canShowAutomount = !(isMounted && hasEnabledShare);
+		if (canShowAutomount) {
+			if (mpd?.is_to_mount_at_startup) {
 				actionItems.push({
-					key: "create-share",
-					title: "Create Share",
-					icon: <AddIcon fontSize="small" />,
-					onClick: () => onCreateShare(partition),
+					key: "disable-automount",
+					title: "Disable automatic mount",
+					icon: <FontAwesomeSvgIcon icon={faPlugCircleXmark} />,
+					onClick: () => onToggleAutomount(partition),
 				});
 			} else {
+				actionItems.push({
+					key: "enable-automount",
+					title: "Enable automatic mount",
+					icon: <FontAwesomeSvgIcon icon={faPlugCircleBolt} />,
+					onClick: () => onToggleAutomount(partition),
+				});
+			}
+		}
+
+		// Rule 3: Mountpoint but unmounted --> mount action
+		if (!isMounted) {
+			actionItems.push({
+				key: "mount",
+				title: "Mount Partition",
+				icon: <FontAwesomeSvgIcon icon={faPlug} />,
+				onClick: () => onMount(partition),
+			});
+		}
+		// Mounted cases
+		else {
+			// Rule 7: Mounted with enabled share --> only go to share
+			if (hasEnabledShare) {
 				actionItems.push({
 					key: "go-to-share",
 					title: "Go to Share",
 					icon: <ShareIcon fontSize="small" />,
 					onClick: () => onGoToShare(partition),
 				});
+			}
+			// Rule 6: Mounted with no share or disabled share --> unmount actions (if automount not enabled)
+			else if (!mpd?.is_to_mount_at_startup) {
+				actionItems.push({
+					key: "unmount",
+					title: "Unmount Partition",
+					icon: <FontAwesomeSvgIcon icon={faPlugCircleMinus} />,
+					onClick: () => onUnmount(partition, false),
+				});
+				actionItems.push({
+					key: "force-unmount",
+					title: "Force Unmount Partition",
+					icon: <FontAwesomeSvgIcon icon={faPlugCircleExclamation} />,
+					onClick: () => onUnmount(partition, true),
+				});
+
+				// Rule 5: Mountpoint hasn't a share --> add share
+				if (!hasShare && mpd.path?.startsWith("/mnt/")) {
+					actionItems.push({
+						key: "create-share",
+						title: "Create Share",
+						icon: <AddIcon fontSize="small" />,
+						onClick: () => onCreateShare(partition),
+					});
+				}
 			}
 		}
 	}

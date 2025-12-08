@@ -494,7 +494,7 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 											},
 										}}
 										name="is_to_mount_at_startup"
-										label="Mount at startup"
+										label="Automatic mount"
 										control={control}
 										disabled={props.readOnlyView}
 									/>

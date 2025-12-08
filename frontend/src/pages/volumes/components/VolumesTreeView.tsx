@@ -1,8 +1,3 @@
-import {
-    faPlug,
-    faPlugCircleMinus,
-    faPlugCircleXmark,
-} from "@fortawesome/free-solid-svg-icons";
 import ComputerIcon from "@mui/icons-material/Computer";
 import CreditScoreIcon from "@mui/icons-material/CreditScore";
 import EjectIcon from "@mui/icons-material/Eject";
@@ -10,25 +5,19 @@ import SdStorageIcon from "@mui/icons-material/SdStorage";
 import SettingsSuggestIcon from "@mui/icons-material/SettingsSuggest";
 import StorageIcon from "@mui/icons-material/Storage";
 import UsbIcon from "@mui/icons-material/Usb";
-import UpdateIcon from "@mui/icons-material/Update";
-import UpdateDisabledIcon from "@mui/icons-material/UpdateDisabled";
-import AddIcon from "@mui/icons-material/Add";
-import ShareIcon from "@mui/icons-material/Share";
 import {
     Box,
     Chip,
-    IconButton,
-    Tooltip,
     Typography,
     useTheme,
 } from "@mui/material";
 import { SimpleTreeView } from "@mui/x-tree-view/SimpleTreeView";
 import { TreeItem } from "@mui/x-tree-view/TreeItem";
 import { filesize } from "filesize";
-import { Fragment, useMemo } from "react";
-import { FontAwesomeSvgIcon } from "../../../components/FontAwesomeSvgIcon";
+import { useMemo } from "react";
 import { type Disk, type Partition } from "../../../store/sratApi";
 import { decodeEscapeSequence } from "../utils";
+import { PartitionActions } from "./PartitionActions";
 
 interface VolumesTreeViewProps {
     disks?: Disk[];
@@ -130,116 +119,6 @@ export function VolumesTreeView({
         return <StorageIcon fontSize="small" {...iconColorProp} />;
     };
 
-    // Helper function to get partition actions
-    const getPartitionActions = (partition: Partition) => {
-        const actions: Array<{
-            key: string;
-            title: string;
-            icon: React.ReactNode;
-            onClick: (e: React.MouseEvent) => void;
-        }> = [];
-        const mpds = Object.values(partition.mount_point_data || {});
-        const isMounted = mpds.some((mpd) => mpd.is_mounted);
-        const hasShares = mpds.some((mpd) => mpd.share);
-        const firstMountPath = mpds[0]?.path;
-        const showShareActions = isMounted && firstMountPath?.startsWith("/mnt/");
-
-        // Skip actions for protected partitions
-        if (
-            protectedMode ||
-            partition.name?.startsWith("hassos-") ||
-            (Object.values(partition.host_mount_point_data || {}).length > 0)
-        ) {
-            return actions;
-        }
-
-        // Automount Toggle
-        if (!hasShares && firstMountPath) {
-            if (mpds[0]?.is_to_mount_at_startup) {
-                actions.push({
-                    key: "disable-automount",
-                    title: "Disable mount at startup",
-                    icon: <UpdateDisabledIcon fontSize="small" />,
-                    onClick: (e: React.MouseEvent) => {
-                        e.stopPropagation();
-                        onToggleAutomount(partition);
-                    },
-                });
-            } else {
-                actions.push({
-                    key: "enable-automount",
-                    title: "Enable mount at startup",
-                    icon: <UpdateIcon fontSize="small" />,
-                    onClick: (e: React.MouseEvent) => {
-                        e.stopPropagation();
-                        onToggleAutomount(partition);
-                    },
-                });
-            }
-        }
-
-        // Mount/Unmount actions
-        if (!isMounted) {
-            actions.push({
-                key: "mount",
-                title: "Mount Partition",
-                icon: <FontAwesomeSvgIcon icon={faPlug} />,
-                onClick: (e: React.MouseEvent) => {
-                    e.stopPropagation();
-                    onMount(partition);
-                },
-            });
-        } else {
-            if (!hasShares) {
-                actions.push({
-                    key: "unmount",
-                    title: "Unmount Partition",
-                    icon: <FontAwesomeSvgIcon icon={faPlugCircleMinus} />,
-                    onClick: (e: React.MouseEvent) => {
-                        e.stopPropagation();
-                        onUnmount(partition, false);
-                    },
-                });
-            }
-            actions.push({
-                key: "force-unmount",
-                title: "Force Unmount Partition",
-                icon: <FontAwesomeSvgIcon icon={faPlugCircleXmark} />,
-                onClick: (e: React.MouseEvent) => {
-                    e.stopPropagation();
-                    onUnmount(partition, true);
-                },
-            });
-
-            // Share actions
-            if (showShareActions) {
-                if (!hasShares) {
-                    actions.push({
-                        key: "create-share",
-                        title: "Create Share",
-                        icon: <AddIcon fontSize="small" />,
-                        onClick: (e: React.MouseEvent) => {
-                            e.stopPropagation();
-                            onCreateShare(partition);
-                        },
-                    });
-                } else {
-                    actions.push({
-                        key: "go-to-share",
-                        title: "Go to Share",
-                        icon: <ShareIcon fontSize="small" />,
-                        onClick: (e: React.MouseEvent) => {
-                            e.stopPropagation();
-                            onGoToShare(partition);
-                        },
-                    });
-                }
-            }
-        }
-
-        return actions;
-    };
-
     const renderPartitionItem = (disk: Disk, partition: Partition, diskIdx: number, partIdx: number) => {
         const partitionIdentifier = partition.id || `${disk.id || `disk-${diskIdx}`}-part-${partIdx}`;
         const isSelected = normalizedSelectedId === partitionIdentifier;
@@ -248,8 +127,6 @@ export function VolumesTreeView({
         );
         const mpds = Object.values(partition.mount_point_data || {});
         const isMounted = mpds.some((mpd) => mpd.is_mounted);
-
-        const actions = getPartitionActions(partition);
 
         return (
             <TreeItem
@@ -309,24 +186,15 @@ export function VolumesTreeView({
                         </Box>
 
                         {!readOnly && (
-                            <Box sx={{ display: "flex", alignItems: "center" }}>
-                                {actions.map((action) => (
-                                    <Tooltip title={action.title} key={action.key}>
-                                        <IconButton
-                                            size="small"
-                                            onClick={action.onClick}
-                                            sx={{
-                                                p: 0.25,
-                                                "&:hover": {
-                                                    backgroundColor: theme.palette.action.hover,
-                                                },
-                                            }}
-                                        >
-                                            {action.icon}
-                                        </IconButton>
-                                    </Tooltip>
-                                ))}
-                            </Box>
+                            <PartitionActions
+                                partition={partition}
+                                protected_mode={protectedMode}
+                                onToggleAutomount={onToggleAutomount}
+                                onMount={onMount}
+                                onUnmount={onUnmount}
+                                onCreateShare={onCreateShare}
+                                onGoToShare={onGoToShare}
+                            />
                         )}
                     </Box>
                 }
@@ -433,4 +301,4 @@ export function VolumesTreeView({
             </SimpleTreeView>
         </Box>
     );
-}
+} 
