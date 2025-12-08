@@ -8,6 +8,7 @@ import UsbIcon from "@mui/icons-material/Usb";
 import {
     Box,
     Chip,
+    Tooltip,
     Typography,
     useTheme,
 } from "@mui/material";
@@ -152,10 +153,20 @@ export function VolumesTreeView({
                     >
                         {renderPartitionIcon(partition)}
 
-                        <Box sx={{ flexGrow: 1, ml: 1, mr: 1 }}>
-                            <Typography variant="body2" fontWeight={isSelected ? 600 : 400}>
-                                {partitionNameDecoded}
-                            </Typography>
+                        <Box sx={{ flexGrow: 1, ml: 1, mr: 1, minWidth: 0 }}>
+                            <Tooltip title={partitionNameDecoded} placement="top">
+                                <Typography
+                                    variant="body2"
+                                    fontWeight={isSelected ? 600 : 400}
+                                    sx={{
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                        whiteSpace: "nowrap",
+                                    }}
+                                >
+                                    {partitionNameDecoded}
+                                </Typography>
+                            </Tooltip>
                             <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 0.5 }}>
                                 {partition.size != null && (
                                     <Chip
@@ -186,15 +197,17 @@ export function VolumesTreeView({
                         </Box>
 
                         {!readOnly && (
-                            <PartitionActions
-                                partition={partition}
-                                protected_mode={protectedMode}
-                                onToggleAutomount={onToggleAutomount}
-                                onMount={onMount}
-                                onUnmount={onUnmount}
-                                onCreateShare={onCreateShare}
-                                onGoToShare={onGoToShare}
-                            />
+                            <Box sx={{ flexShrink: 0 }}>
+                                <PartitionActions
+                                    partition={partition}
+                                    protected_mode={protectedMode}
+                                    onToggleAutomount={onToggleAutomount}
+                                    onMount={onMount}
+                                    onUnmount={onUnmount}
+                                    onCreateShare={onCreateShare}
+                                    onGoToShare={onGoToShare}
+                                />
+                            </Box>
                         )}
                     </Box>
                 }
