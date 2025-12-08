@@ -150,17 +150,17 @@ export function PartitionActions({
 					icon: <FontAwesomeSvgIcon icon={faPlugCircleExclamation} />,
 					onClick: () => onUnmount(partition, true),
 				});
-
-				// Rule 5: Mountpoint hasn't a share --> add share
-				if (!hasShare && mpd.path?.startsWith("/mnt/")) {
-					actionItems.push({
-						key: "create-share",
-						title: "Create Share",
-						icon: <AddIcon fontSize="small" />,
-						onClick: () => onCreateShare(partition),
-					});
-				}
 			}
+			// Rule 5: Mountpoint hasn't a share --> add share
+			if (!hasShare && mpd.path?.startsWith("/mnt/")) {
+				actionItems.push({
+					key: "create-share",
+					title: "Create Share",
+					icon: <AddIcon fontSize="small" />,
+					onClick: () => onCreateShare(partition),
+				});
+			}
+
 		}
 	}
 
