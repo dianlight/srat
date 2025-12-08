@@ -532,6 +532,7 @@ func (self *VolumeService) loadMountPointFromDB(part *dto.Partition) (map[string
 	}
 
 	dmp, err := gorm.G[dbom.MountPointPath](self.db).
+		Preload("ExportedShare", nil).
 		Where(g.MountPointPath.DeviceId.Eq(*part.Id)).
 		Find(self.ctx)
 	if err != nil {

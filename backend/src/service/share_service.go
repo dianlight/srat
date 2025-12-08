@@ -137,7 +137,7 @@ func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterfa
 }
 
 func (s *ShareService) ListShares() ([]dto.SharedResource, errors.E) {
-	shares, err := gorm.G[dbom.ExportedShare](s.db.Debug()).
+	shares, err := gorm.G[dbom.ExportedShare](s.db).
 		Preload("MountPointData", nil).
 		Preload("Users", nil).
 		Preload("RoUsers", nil).
