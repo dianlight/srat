@@ -120,6 +120,96 @@ export function VolumesTreeView({
         return <StorageIcon fontSize="small" {...iconColorProp} />;
     };
 
+    // Helper function to render a single mountpoint leaf
+    const renderMountpointItem = (
+        disk: Disk,
+        partition: Partition,
+        mountpointKey: string,
+        mpd: any,
+        parentIdentifier: string,
+    ) => {
+        const mountpointIdentifier = `${parentIdentifier}-mp-${mountpointKey}`;
+        const isSelected = normalizedSelectedId === mountpointIdentifier;
+        const mountpointPath = mpd.mount_point || mountpointKey;
+
+        return (
+            <TreeItem
+                key={mountpointIdentifier}
+                itemId={mountpointIdentifier}
+                label={
+                    <Box
+                        sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            py: 0.5,
+                            px: 1,
+                            backgroundColor: isSelected ? theme.palette.action.selected : "transparent",
+                            borderRadius: 1,
+                            "&:hover": {
+                                backgroundColor: theme.palette.action.hover,
+                            },
+                        }}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onPartitionSelect(disk, partition);
+                        }}
+                    >
+                        {renderPartitionIcon(partition)}
+
+                        <Box sx={{ flexGrow: 1, ml: 1, mr: 1, minWidth: 0 }}>
+                            <Tooltip title={mountpointPath} placement="top">
+                                <Typography
+                                    variant="body2"
+                                    fontWeight={isSelected ? 600 : 400}
+                                    sx={{
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                        whiteSpace: "nowrap",
+                                    }}
+                                >
+                                    {mountpointPath}
+                                </Typography>
+                            </Tooltip>
+                            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 0.5 }}>
+                                {mpd.fstype && (
+                                    <Chip
+                                        label={mpd.fstype}
+                                        size="small"
+                                        variant="outlined"
+                                        sx={{ fontSize: "0.7rem", height: 16 }}
+                                    />
+                                )}
+                                {mpd.is_mounted && (
+                                    <Chip
+                                        label={!mpd.is_write_supported ? "Mounted (Read-Only)" : "Mounted"}
+                                        size="small"
+                                        variant="outlined"
+                                        color={!mpd.is_write_supported ? "secondary" : "success"}
+                                        sx={{ fontSize: "0.7rem", height: 16 }}
+                                    />
+                                )}
+                            </Box>
+                        </Box>
+
+                        {!readOnly && (
+                            <Box sx={{ flexShrink: 0 }}>
+                                <PartitionActions
+                                    partition={partition}
+                                    protected_mode={protectedMode}
+                                    onToggleAutomount={onToggleAutomount}
+                                    onMount={onMount}
+                                    onUnmount={onUnmount}
+                                    onCreateShare={onCreateShare}
+                                    onGoToShare={onGoToShare}
+                                />
+                            </Box>
+                        )}
+                    </Box>
+                }
+            />
+        );
+    };
+
     const renderPartitionItem = (disk: Disk, partition: Partition, diskIdx: number, partIdx: number) => {
         const partitionIdentifier = partition.id || `${disk.id || `disk-${diskIdx}`}-part-${partIdx}`;
         const isSelected = normalizedSelectedId === partitionIdentifier;
@@ -127,8 +217,85 @@ export function VolumesTreeView({
             partition.name || partition.id || "Unnamed Partition",
         );
         const mpds = Object.values(partition.mount_point_data || {});
+        const mpdEntries = Object.entries(partition.mount_point_data || {});
         const isMounted = mpds.some((mpd) => mpd.is_mounted);
 
+        // If partition has multiple mountpoints, create a parent node without actions
+        if (mpdEntries.length > 1) {
+            return (
+                <TreeItem
+                    key={partitionIdentifier}
+                    itemId={partitionIdentifier}
+                    label={
+                        <Box
+                            sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                py: 0.5,
+                                px: 1,
+                                backgroundColor: isSelected ? theme.palette.action.selected : "transparent",
+                                borderRadius: 1,
+                                "&:hover": {
+                                    backgroundColor: theme.palette.action.hover,
+                                },
+                            }}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onPartitionSelect(disk, partition);
+                            }}
+                        >
+                            {renderPartitionIcon(partition)}
+
+                            <Box sx={{ flexGrow: 1, ml: 1, mr: 1, minWidth: 0 }}>
+                                <Tooltip title={partitionNameDecoded} placement="top">
+                                    <Typography
+                                        variant="body2"
+                                        fontWeight={isSelected ? 600 : 400}
+                                        sx={{
+                                            overflow: "hidden",
+                                            textOverflow: "ellipsis",
+                                            whiteSpace: "nowrap",
+                                        }}
+                                    >
+                                        {partitionNameDecoded}
+                                    </Typography>
+                                </Tooltip>
+                                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 0.5 }}>
+                                    {partition.size != null && (
+                                        <Chip
+                                            label={filesize(partition.size, { round: 0 })}
+                                            size="small"
+                                            variant="outlined"
+                                            sx={{ fontSize: "0.7rem", height: 16 }}
+                                        />
+                                    )}
+                                    <Chip
+                                        label={`${mpdEntries.length} mountpoint(s)`}
+                                        size="small"
+                                        variant="outlined"
+                                        sx={{ fontSize: "0.7rem", height: 16 }}
+                                    />
+                                    {mpds[0]?.fstype && (
+                                        <Chip
+                                            label={mpds[0]?.fstype}
+                                            size="small"
+                                            variant="outlined"
+                                            sx={{ fontSize: "0.7rem", height: 16 }}
+                                        />
+                                    )}
+                                </Box>
+                            </Box>
+                        </Box>
+                    }
+                >
+                    {mpdEntries.map(([key, mpd]) =>
+                        renderMountpointItem(disk, partition, key, mpd, partitionIdentifier)
+                    )}
+                </TreeItem>
+            );
+        }
+
+        // Single mountpoint - render as before with actions on the partition level
         return (
             <TreeItem
                 key={partitionIdentifier}

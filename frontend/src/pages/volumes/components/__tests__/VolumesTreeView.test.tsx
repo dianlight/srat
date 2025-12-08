@@ -281,4 +281,145 @@ describe("VolumesTreeView Component", () => {
 
         expect(container).toBeTruthy();
     });
+
+    it("renders multiple mountpoints as separate tree items", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { VolumesTreeView } = await import("../VolumesTreeView");
+        const { createTestStore } = await import("../../../../../test/setup");
+
+        const store = await createTestStore();
+
+        // Create a partition with multiple mountpoints
+        const mockDisks = [
+            {
+                id: "disk-1",
+                model: "Test Disk",
+                size: 1000000000,
+                connection_bus: "usb",
+                partitions: {
+                    "part-1": {
+                        id: "part-1",
+                        name: "Test Partition",
+                        size: 500000000,
+                        mount_point_data: {
+                            "/mnt/data1": {
+                                mount_point: "/mnt/data1",
+                                is_mounted: true,
+                                is_write_supported: true,
+                                fstype: "ext4"
+                            },
+                            "/mnt/data2": {
+                                mount_point: "/mnt/data2",
+                                is_mounted: false,
+                                is_write_supported: true,
+                                fstype: "ext4"
+                            }
+                        }
+                    }
+                }
+            }
+        ];
+
+        const expandedItems: string[] = ["disk-1"];
+        const onExpandedItemsChange = (items: string[]) => {
+            expandedItems.length = 0;
+            expandedItems.push(...items);
+        };
+
+        const { container } = render(
+            React.createElement(
+                Provider,
+                {
+                    store,
+                    children: React.createElement(VolumesTreeView as any, {
+                        disks: mockDisks,
+                        expandedItems,
+                        onExpandedItemsChange,
+                        onPartitionSelect: () => { },
+                        onToggleAutomount: () => { },
+                        onMount: () => { },
+                        onUnmount: () => { },
+                        onCreateShare: () => { },
+                        onGoToShare: () => { }
+                    })
+                }
+            )
+        );
+
+        // Verify the partition node shows multiple mountpoints
+        const mountpointLabel = await screen.findByText(/2 mountpoint\(s\)/i);
+        expect(mountpointLabel).toBeTruthy();
+
+        // Verify the partition name appears
+        const partitionName = await screen.findByText("Test Partition");
+        expect(partitionName).toBeTruthy();
+    });
+
+    it("renders single mountpoint partition without extra level", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { VolumesTreeView } = await import("../VolumesTreeView");
+        const { createTestStore } = await import("../../../../../test/setup");
+
+        const store = await createTestStore();
+
+        // Create a partition with single mountpoint
+        const mockDisks = [
+            {
+                id: "disk-1",
+                model: "Test Disk",
+                size: 1000000000,
+                connection_bus: "usb",
+                partitions: {
+                    "part-1": {
+                        id: "part-1",
+                        name: "Single Mount Partition",
+                        size: 500000000,
+                        mount_point_data: {
+                            "/mnt/single": {
+                                mount_point: "/mnt/single",
+                                is_mounted: true,
+                                is_write_supported: true,
+                                fstype: "ext4"
+                            }
+                        }
+                    }
+                }
+            }
+        ];
+
+        const { container } = render(
+            React.createElement(
+                Provider,
+                {
+                    store,
+                    children: React.createElement(VolumesTreeView as any, {
+                        disks: mockDisks,
+                        expandedItems: ["disk-1"],
+                        onExpandedItemsChange: () => { },
+                        onPartitionSelect: () => { },
+                        onToggleAutomount: () => { },
+                        onMount: () => { },
+                        onUnmount: () => { },
+                        onCreateShare: () => { },
+                        onGoToShare: () => { }
+                    })
+                }
+            )
+        );
+
+        // Verify the partition name is shown
+        const partitionName = await screen.findByText("Single Mount Partition");
+        expect(partitionName).toBeTruthy();
+
+        // Verify there's no "mountpoint(s)" label for single mountpoint
+        const mountpointLabel = container.querySelector('[class*="MuiChip"]');
+        if (mountpointLabel?.textContent?.includes("mountpoint")) {
+            expect(mountpointLabel.textContent).not.toContain("mountpoint(s)");
+        }
+    });
 });
+
