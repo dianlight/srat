@@ -127,8 +127,8 @@ export function PartitionActions({
 		}
 		// Mounted cases
 		else {
-			// Rule 7: Mounted with enabled share --> only go to share
-			if (hasEnabledShare) {
+			// Rule 7: Mounted with share (enabled or disabled) --> show go to share
+			if (hasShare) {
 				actionItems.push({
 					key: "go-to-share",
 					title: "Go to Share",
@@ -136,8 +136,8 @@ export function PartitionActions({
 					onClick: () => onGoToShare(partition),
 				});
 			}
-			// Rule 6: Mounted with no share or disabled share --> unmount actions (if automount not enabled)
-			else if (!mpd?.is_to_mount_at_startup) {
+			// Rule 6: Mounted with no share --> unmount actions (if automount not enabled)
+			if (!hasShare && !mpd?.is_to_mount_at_startup) {
 				actionItems.push({
 					key: "unmount",
 					title: "Unmount Partition",
