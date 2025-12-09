@@ -19,12 +19,12 @@ import { useIgnoredIssues } from '../../../hooks/issueHooks';
 
 interface ActionablePartitionItem {
 	partition: Partition;
-	action: "mount" | "share";
+	action: "mount" | "share" | "enable-share";
 	id: string;
 }
 
 interface ActionableItemsListProps {
-	actionablePartitions: { partition: Partition; action: "mount" | "share" }[];
+	actionablePartitions: { partition: Partition; action: "mount" | "share" | "enable-share" }[];
 	isLoading: boolean;
 	error: Error | null | undefined | {};
 	showIgnored?: boolean;
@@ -54,8 +54,26 @@ export function ActionableItemsList({
 
 	const handleCreateShare = (partition: Partition) => {
 		if (disabled) return;
-		const firstMountPointData = partition.mount_point_data?.[0];
+		const firstMountPointData = Object.values(partition.mount_point_data || {})[0];
 		if (firstMountPointData) {
+			navigate("/", {
+				state: {
+					tabId: TabIDs.SHARES,
+					newShareData: firstMountPointData,
+				} as LocationState,
+			});
+		}
+	};
+
+	const handleEnableShare = (partition: Partition) => {
+		if (disabled) return;
+		const firstMountPointData = Object.values(partition.mount_point_data || {})[0];
+		const shareName = firstMountPointData?.share?.name;
+		if (shareName) {
+			navigate("/", {
+				state: { tabId: TabIDs.SHARES, shareName } as LocationState,
+			});
+		} else if (firstMountPointData) {
 			navigate("/", {
 				state: {
 					tabId: TabIDs.SHARES,
@@ -118,13 +136,17 @@ export function ActionableItemsList({
 										variant="outlined"
 										color="success"
 										disabled={disabled}
-										onClick={() =>
-											action === "mount"
-												? handleMount(partition)
-												: handleCreateShare(partition)
-										}
+										onClick={() => {
+											if (action === "mount") {
+												handleMount(partition);
+											} else if (action === "share") {
+												handleCreateShare(partition);
+											} else {
+												handleEnableShare(partition);
+											}
+										}}
 									>
-										{action === "mount" ? "Mount" : "Create Share"}
+										{action === "mount" ? "Mount" : action === "share" ? "Create Share" : "Enable Share"}
 									</Button>
 									<Button
 										variant="outlined"
@@ -144,7 +166,9 @@ export function ActionableItemsList({
 								secondary={
 									action === "mount"
 										? "This partition is not mounted."
-										: "This partition is mounted but not shared."
+										: action === "share"
+											? "This partition is mounted but not shared."
+											: "This partition has a disabled share."
 								}
 							/>
 						</ListItem>

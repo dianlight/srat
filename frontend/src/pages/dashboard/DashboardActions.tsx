@@ -29,7 +29,7 @@ export function DashboardActions() {
 	});
 
 	const actionablePartitions = useMemo(() => {
-		const partitions: { partition: Partition; action: "mount" | "share" }[] =
+		const partitions: { partition: Partition; action: "mount" | "share" | "enable-share" }[] =
 			[];
 		if (disks && !evdata?.hello?.read_only) {
 			for (const disk of disks) {
@@ -48,14 +48,19 @@ export function DashboardActions() {
 
 					const mpds = Object.values(partition.mount_point_data || {});
 					const isMounted = mpds.some((mpd) => mpd.is_mounted);
-					const hasShares = mpds.some((mpd) => mpd.share && mpd.share.disabled === false);
+					const hasEnabledShare = mpds.some((mpd) => mpd.share && mpd.share.disabled === false);
+					const hasDisabledShare = mpds.some((mpd) => mpd.share && mpd.share.disabled === true);
 
 					const firstMountPath = mpds[0]?.path;
 
 					if (!isMounted) {
 						partitions.push({ partition, action: "mount" });
-					} else if (!hasShares && firstMountPath?.startsWith("/mnt/")) {
-						partitions.push({ partition, action: "share" });
+					} else if (!hasEnabledShare && firstMountPath?.startsWith("/mnt/")) {
+						if (hasDisabledShare) {
+							partitions.push({ partition, action: "enable-share" });
+						} else {
+							partitions.push({ partition, action: "share" });
+						}
 					}
 				}
 			}
