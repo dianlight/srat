@@ -113,6 +113,7 @@ func (broker *BroadcasterService) setupEventListeners() []func() {
 	ret[1] = broker.eventBus.OnShare(func(ctx context.Context, event events.ShareEvent) errors.E {
 		slog.DebugContext(ctx, "BroadcasterService received Share event", "share", event.Share.Name)
 		broker.BroadcastMessage(*event.Share)
+		broker.BroadcastMessage(broker.volumeService.GetVolumesData())
 		return nil
 	})
 
