@@ -34,6 +34,14 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+/*
+VolumeServiceInterface defines the interface for managing volumes and mount points.
+
+Copilot file rules:
+- Always validate input parameters for mount and unmount operations.
+- Always update disks map puntually after an operation that changes state.
+*/
+
 type VolumeServiceInterface interface {
 	MountVolume(md *dto.MountPointData) errors.E
 	UnmountVolume(id string, force bool) errors.E
@@ -112,7 +120,7 @@ func NewVolumeService(
 		unmountFunc:     mount.Unmount,
 	}
 
-	var unsubscribe [3]func()
+	var unsubscribe [4]func()
 	unsubscribe[0] = p.eventBus.OnPartition(p.handlePartitionEvent)
 	unsubscribe[1] = p.eventBus.OnMountPoint(p.handleMountPointEvent)
 	unsubscribe[2] = p.eventBus.OnHomeAssistant(func(ctx context.Context, hae events.HomeAssistantEvent) errors.E {
@@ -125,7 +133,22 @@ func NewVolumeService(
 		}
 		return nil
 	})
-
+	unsubscribe[3] = p.eventBus.OnShare(func(ctx context.Context, se events.ShareEvent) errors.E {
+		tlog.DebugContext(ctx, "Share event received update cache volumes", "event_type", se.Type, "share", se.Share)
+		switch se.Type {
+		case events.EventTypes.REMOVE:
+			if !p.disks.RemoveMountPointShare(se.Share.Name) {
+				slog.WarnContext(ctx, "Failed to remove share from mount point in cache", "share", se.Share)
+			}
+		case events.EventTypes.ADD, events.EventTypes.UPDATE:
+			err := p.disks.AddMountPointShare(se.Share)
+			if err != nil {
+				slog.WarnContext(ctx, "Failed to add/update share in mount point in cache", "share", se.Share, "err", err)
+				return nil
+			}
+		}
+		return nil
+	})
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			err := p.getVolumesData()

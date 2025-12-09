@@ -18,6 +18,14 @@ import (
 	"gorm.io/gorm"
 )
 
+/*
+ShareServiceInterface defines the interface for managing shared resources.
+
+Copilot file rules:
+- Always preload related data when fetching shares.
+
+*/
+
 type ShareServiceInterface interface {
 	//	SaveAll(*[]dto.SharedResource) errors.E
 	ListShares() ([]dto.SharedResource, errors.E)
@@ -324,6 +332,9 @@ func (s *ShareService) DeleteShare(name string) errors.E {
 
 func (s *ShareService) GetShareFromPath(path string) (*dto.SharedResource, errors.E) {
 	share, err := gorm.G[dbom.ExportedShare](s.db).
+		Preload("MountPointData", nil).
+		Preload("Users", nil).
+		Preload("RoUsers", nil).
 		Where(g.ExportedShare.MountPointDataPath.Eq(path)).First(s.ctx)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -346,6 +357,9 @@ func (s *ShareService) GetShareFromPath(path string) (*dto.SharedResource, error
 
 func (s *ShareService) SetShareFromPathEnabled(path string, enabled bool) (*dto.SharedResource, errors.E) {
 	share, err := gorm.G[dbom.ExportedShare](s.db).
+		Preload("MountPointData", nil).
+		Preload("Users", nil).
+		Preload("RoUsers", nil).
 		Where(g.ExportedShare.MountPointDataPath.Eq(path)).First(s.ctx)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -393,7 +407,11 @@ func (s *ShareService) SetShareFromPathEnabled(path string, enabled bool) (*dto.
 }
 
 func (s *ShareService) setShareEnabled(name string, enabled bool) (*dto.SharedResource, errors.E) {
-	share, err := gorm.G[dbom.ExportedShare](s.db).Where(g.ExportedShare.Name.Eq(name)).First(s.ctx)
+	share, err := gorm.G[dbom.ExportedShare](s.db).
+		Preload("MountPointData", nil).
+		Preload("Users", nil).
+		Preload("RoUsers", nil).
+		Where(g.ExportedShare.Name.Eq(name)).First(s.ctx)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.WithStack(dto.ErrorShareNotFound)

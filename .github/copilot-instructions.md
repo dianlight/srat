@@ -9,6 +9,7 @@ This file highlights the must-know, discoverable rules and workflows for product
 - **Pre-commit**: Repository uses `pre-commit`. Do not edit `.git/hooks` manually. See `.pre-commit-config.yaml` and run `pre-commit install` locally.
 - **Tests**: Backend uses `testify/suite` with `mockio/v2`. Frontend uses `bun:test` with `@testing-library/react`. See below for patterns.
 - **Git Operations**: **NEVER** perform `git add`, `git commit`, `git push`, or any other git write operations without explicit user request. Always wait for the user to request git operations after changes are complete and verified.
+- **File-Specific Rules (MANDATORY)**: **ALWAYS** read the top comment/header section of any file you modify. Many files contain important rules, constraints, or patterns specific to that file. These rules take precedence and must be followed in addition to (or instead of) general patterns. Examples: licensing headers, code generation markers, restricted modification zones, special formatting rules, or dependencies on external tools. If a file's top comment specifies different behavior than general guidelines, follow the file-specific rules.
 
 ## Architecture Overview
 
