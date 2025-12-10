@@ -10,12 +10,20 @@ import {
     Alert,
     TextField,
     Stack,
+    InputAdornment,
+    IconButton,
+    Tooltip,
+    CircularProgress,
 } from "@mui/material";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
+import AutorenewIcon from "@mui/icons-material/Autorenew";
 import {
     usePutApiSettingsMutation,
     usePutApiUseradminMutation,
     useGetApiSettingsQuery,
     useGetApiUsersQuery,
+    useGetApiHostnameQuery,
     type Settings,
     type User,
 } from "../store/sratApi";
@@ -32,9 +40,16 @@ const BaseConfigModal: React.FC<BaseConfigModalProps> = ({ open, onClose }) => {
     const [workgroup, setWorkgroup] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [passwordError, setPasswordError] = useState("");
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     const { data: settings } = useGetApiSettingsQuery();
     const { data: users } = useGetApiUsersQuery();
+    const {
+        data: systemHostname,
+        isLoading: isHostnameFetching,
+        refetch: triggerGetSystemHostname,
+    } = useGetApiHostnameQuery();
     const [updateSettings] = usePutApiSettingsMutation();
     const [updateAdminUser] = usePutApiUseradminMutation();
 
@@ -54,6 +69,25 @@ const BaseConfigModal: React.FC<BaseConfigModalProps> = ({ open, onClose }) => {
             setWorkgroup(settings.workgroup || "");
         }
     }, [settings]);
+
+    const handleFetchHostname = async () => {
+        try {
+            const result = await triggerGetSystemHostname();
+            if (result.data && typeof result.data === "string") {
+                setHostname(result.data);
+            }
+        } catch (error) {
+            console.error("Failed to fetch hostname:", error);
+        }
+    };
+
+    const handleClickShowNewPassword = () => {
+        setShowNewPassword(!showNewPassword);
+    };
+
+    const handleClickShowConfirmPassword = () => {
+        setShowConfirmPassword(!showConfirmPassword);
+    };
 
     const handleSubmit = async () => {
         // Validate passwords match
@@ -154,7 +188,7 @@ const BaseConfigModal: React.FC<BaseConfigModalProps> = ({ open, onClose }) => {
                     </Box>
 
                     <TextField
-                        type="password"
+                        type={showNewPassword ? "text" : "password"}
                         label="New Administrator Password"
                         value={newPassword}
                         onChange={(e) => {
@@ -164,10 +198,41 @@ const BaseConfigModal: React.FC<BaseConfigModalProps> = ({ open, onClose }) => {
                         fullWidth
                         placeholder="Enter new password"
                         helperText="Must be at least 6 characters"
+                        slotProps={{
+                            input: {
+                                endAdornment: (
+                                    <InputAdornment position="end">
+                                        <Tooltip
+                                            title={
+                                                showNewPassword
+                                                    ? "Hide password"
+                                                    : "Show password"
+                                            }
+                                        >
+                                            <span>
+                                                <IconButton
+                                                    onClick={
+                                                        handleClickShowNewPassword
+                                                    }
+                                                    edge="end"
+                                                    size="small"
+                                                >
+                                                    {showNewPassword ? (
+                                                        <VisibilityOffIcon />
+                                                    ) : (
+                                                        <VisibilityIcon />
+                                                    )}
+                                                </IconButton>
+                                            </span>
+                                        </Tooltip>
+                                    </InputAdornment>
+                                ),
+                            },
+                        }}
                     />
 
                     <TextField
-                        type="password"
+                        type={showConfirmPassword ? "text" : "password"}
                         label="Confirm Password"
                         value={confirmPassword}
                         onChange={(e) => {
@@ -180,6 +245,37 @@ const BaseConfigModal: React.FC<BaseConfigModalProps> = ({ open, onClose }) => {
                             passwordError.length > 0 &&
                             newPassword !== confirmPassword
                         }
+                        slotProps={{
+                            input: {
+                                endAdornment: (
+                                    <InputAdornment position="end">
+                                        <Tooltip
+                                            title={
+                                                showConfirmPassword
+                                                    ? "Hide password"
+                                                    : "Show password"
+                                            }
+                                        >
+                                            <span>
+                                                <IconButton
+                                                    onClick={
+                                                        handleClickShowConfirmPassword
+                                                    }
+                                                    edge="end"
+                                                    size="small"
+                                                >
+                                                    {showConfirmPassword ? (
+                                                        <VisibilityOffIcon />
+                                                    ) : (
+                                                        <VisibilityIcon />
+                                                    )}
+                                                </IconButton>
+                                            </span>
+                                        </Tooltip>
+                                    </InputAdornment>
+                                ),
+                            },
+                        }}
                     />
 
                     {passwordError && (
@@ -211,6 +307,35 @@ const BaseConfigModal: React.FC<BaseConfigModalProps> = ({ open, onClose }) => {
                         fullWidth
                         placeholder="e.g., samba-nas"
                         helperText="The name of your Samba server on the network"
+                        slotProps={{
+                            input: {
+                                endAdornment: (
+                                    <InputAdornment position="end">
+                                        <Tooltip title="Fetch current system hostname">
+                                            <span>
+                                                <IconButton
+                                                    aria-label="fetch system hostname"
+                                                    onClick={
+                                                        handleFetchHostname
+                                                    }
+                                                    edge="end"
+                                                    disabled={
+                                                        isHostnameFetching
+                                                    }
+                                                    size="small"
+                                                >
+                                                    {isHostnameFetching ? (
+                                                        <CircularProgress size={20} />
+                                                    ) : (
+                                                        <AutorenewIcon />
+                                                    )}
+                                                </IconButton>
+                                            </span>
+                                        </Tooltip>
+                                    </InputAdornment>
+                                ),
+                            },
+                        }}
                     />
 
                     <TextField
