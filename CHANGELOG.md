@@ -4,12 +4,11 @@
 
 ## [ 🚧 Unreleased ]
 
-### 🧑‍🏫 Documentation
+### 🙏 Thanks
+We would like to thank all supporters for their contributions and donations! 
+With your donations, we are able to continue developing and improving this project. Your support is greatly appreciated!
 
-- **Frontend Testing Standards**: Updated documentation and Copilot instructions to mandate `@testing-library/user-event` for all user interactions in tests. The deprecated `fireEvent` API is now strictly prohibited in all new and modified tests. Updated files:
-  - `.github/copilot-instructions.md`: Added userEvent requirements to Testing Library Standards and Component Testing Pattern sections
-  - `docs/TEST_COVERAGE.md`: Added userEvent to Framework & Tools and Frontend Testing Best Practices
-  - `frontend/README.md`: Added Testing Standards section with userEvent requirement
+### 🧑‍🏫 Documentation
 
 ### 🐛 Bug Fixes
 
@@ -17,7 +16,13 @@
 
 ### 🔄 Breaking Changes
 
+- **SMB over QUIC Default Behavior Change**: The SMB over QUIC feature is now disabled by default. Users must explicitly enable it in the settings to use this functionality. This change aims to enhance security and stability by preventing unintended use of the experimental protocol.
+- **Telemetry Service Update**: The telemetry service has been updated to use Rollbar for error tracking and monitoring. This change may require users to review their privacy settings and consent to data collection, as Rollbar collects different types of data compared to the previous telemetry solution.
+- **Auto-Update Service Modification**: The auto-update service has been modified to support multiple update channels (stable, beta, dev) and local development builds. Users may need to reconfigure their update preferences to align with the new channel system.
+
 ### 🔧 Maintenance
+
+- Updated dependencies to latest versions to ensure security and compatibility.
 
 ### ✨ Features
 
