@@ -156,7 +156,7 @@ func TestBroadcasterService_EventToBroadcastMapping(t *testing.T) {
 			assert.Equal(t, *share, gotShare)
 		}
 		// GetVolumesData should still be called only twice (from previous two cases)
-		mock.Verify(volMock, matchers.Times(1)).GetVolumesData()
+		mock.Verify(volMock, matchers.Times(2)).GetVolumesData()
 	}
 
 	// 4) MountPoint -> volumes data
@@ -168,7 +168,7 @@ func TestBroadcasterService_EventToBroadcastMapping(t *testing.T) {
 		if ok {
 			assert.Equal(t, expectedDisks, disks)
 		}
-		mock.Verify(volMock, matchers.Times(2)).GetVolumesData()
+		mock.Verify(volMock, matchers.Times(3)).GetVolumesData()
 	}
 }
 

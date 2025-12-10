@@ -100,7 +100,7 @@ You can set the database path via the `--db` flag when running the server or CLI
 
 ## Enhanced Logging System
 
-SRAT includes a comprehensive logging system with the `tlog` package. For detailed information about logging capabilities, see [backend/src/tlog/README.md](./backend/src/tlog/README.md).
+SRAT includes a comprehensive logging system with the `tlog` package. For detailed information about logging capabilities, see [TLOG Repository](https://github.com/dianlight/tlog).
 
 ### Key Logging Features
 
