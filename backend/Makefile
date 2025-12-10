@@ -33,7 +33,7 @@ all: PREREQUISITE build
 
 PREREQUISITE: patch docs static
 
-build: $(BUILD_DIR)/$(TARGET_EXEC)
+build: static $(BUILD_DIR)/$(TARGET_EXEC)
 
 $(BUILD_DIR)/$(TARGET_EXEC): $(SRCS) $(STATIC_DIRS)
 	mkdir dist > /dev/null 2>&1 || :
