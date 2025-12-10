@@ -5,7 +5,8 @@
 ## [ 🚧 Unreleased ]
 
 ### 🙏 Thanks
-We would like to thank all supporters for their contributions and donations! 
+
+We would like to thank all supporters for their contributions and donations!
 With your donations, we are able to continue developing and improving this project. Your support is greatly appreciated!
 
 ### 🧑‍🏫 Documentation
