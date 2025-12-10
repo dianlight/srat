@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { Footer } from "./components/Footer";
 import { NavBar } from "./components/NavBar";
 import TelemetryModal from "./components/TelemetryModal";
+import BaseConfigModal from "./components/BaseConfigModal";
 import { useTelemetryModal } from "./hooks/useTelemetryModal";
+import { useBaseConfigModal } from "./hooks/useBaseConfigModal";
 import { useGetServerEventsQuery } from "./store/sseApi";
 import { Telemetry_mode, useGetApiSettingsQuery, type Settings } from "./store/sratApi";
 import { useRollbarTelemetry } from "./hooks/useRollbarTelemetry";
@@ -14,6 +16,7 @@ export function App() {
 	const mainArea = useRef<HTMLDivElement>(null);
 	const { data: evdata, isLoading, error: herror } = useGetServerEventsQuery();
 	const { shouldShow: showTelemetryModal, dismiss: dismissTelemetryModal } = useTelemetryModal();
+	const { shouldShow: showBaseConfigModal, dismiss: dismissBaseConfigModal } = useBaseConfigModal();
 	const { reportError, reportEvent, telemetryMode, isLoading: rollbarLoading } = useRollbarTelemetry();
 
 	// This useEffect handles the automatic reset of errors after a delay.
@@ -71,6 +74,10 @@ export function App() {
 			>
 				<CircularProgress color="inherit" />
 			</Backdrop>
+			<BaseConfigModal
+				open={showBaseConfigModal}
+				onClose={dismissBaseConfigModal}
+			/>
 			<TelemetryModal
 				open={showTelemetryModal}
 				onClose={dismissTelemetryModal}
