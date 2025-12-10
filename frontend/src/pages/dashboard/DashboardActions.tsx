@@ -48,7 +48,7 @@ export function DashboardActions() {
 
 					const mpds = Object.values(partition.mount_point_data || {});
 					const isMounted = mpds.some((mpd) => mpd.is_mounted);
-					const hasEnabledShare = mpds.some((mpd) => mpd.share && mpd.share.disabled === false);
+					const hasEnabledShare = mpds.some((mpd) => mpd.share && mpd.share.disabled !== true);
 					const hasDisabledShare = mpds.some((mpd) => mpd.share && mpd.share.disabled === true);
 
 					const firstMountPath = mpds[0]?.path;
@@ -59,6 +59,7 @@ export function DashboardActions() {
 						if (hasDisabledShare) {
 							partitions.push({ partition, action: "enable-share" });
 						} else {
+							//console.log("Adding share action for partition", partition.id, partition);
 							partitions.push({ partition, action: "share" });
 						}
 					}

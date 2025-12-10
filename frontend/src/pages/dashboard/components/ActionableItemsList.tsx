@@ -144,7 +144,7 @@ export function ActionableItemsList({
 											} else {
 												handleEnableShare(partition);
 											}
-										}}
+										}}	
 									>
 										{action === "mount" ? "Mount" : action === "share" ? "Create Share" : "Enable Share"}
 									</Button>
