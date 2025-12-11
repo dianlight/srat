@@ -82,6 +82,16 @@ func versionBetween(versionStr string, minMajor, minMinor, maxMajor, maxMinor in
 		(versionAtLeast(versionStr, maxMajor, 0) && !versionAtLeast(versionStr, maxMajor, maxMinor+1))
 }
 
+func cleanAscii(input string) string {
+	var output strings.Builder
+	for _, r := range input {
+		if r >= 32 && r <= 126 {
+			output.WriteRune(r)
+		}
+	}
+	return output.String()
+}
+
 // RenderTemplateBuffer renders a template from a byte slice with the provided configuration.
 //
 // Parameters:
@@ -98,6 +108,7 @@ func RenderTemplateBuffer(config *map[string]interface{}, templateData []byte) (
 	funcMap := sprig.TxtFuncMap()
 	funcMap["versionAtLeast"] = versionAtLeast
 	funcMap["versionBetween"] = versionBetween
+	funcMap["cleanAscii"] = cleanAscii
 
 	coreTemplate := template.New("tempIO").Funcs(funcMap)
 	coreTemplate, err := coreTemplate.Parse(string(templateData))

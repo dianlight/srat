@@ -422,7 +422,7 @@ func (s *ShareService) setShareEnabled(name string, enabled bool) (*dto.SharedRe
 	share.Disabled = &disabled
 	_, err = gorm.G[dbom.ExportedShare](s.db).Updates(s.ctx, share)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to save share")
+		return nil, errors.Errorf("failed to save share %w", err)
 	}
 	var conv converter.DtoToDbomConverterImpl
 	dtoShare, errS := conv.ExportedShareToSharedResource(share)

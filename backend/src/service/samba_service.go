@@ -280,8 +280,11 @@ func (self *SambaService) GetSambaProcess() (*dto.SambaProcessStatus, errors.E) 
 			conv.ProcessToProcessStatus(p, &spc.Smbd)
 		case "nmbd":
 			conv.ProcessToProcessStatus(p, &spc.Nmbd)
-		case "wsdd2":
-			conv.ProcessToProcessStatus(p, &spc.Wsdd2)
+		case "wsddn":
+			user, err := p.Username()
+			if err == nil && user == "wsddn" {
+				conv.ProcessToProcessStatus(p, &spc.Wsdd2)
+			}
 		case "srat-server":
 			conv.ProcessToProcessStatus(p, &spc.Srat)
 		}
@@ -373,25 +376,25 @@ func (self *SambaService) RestartSambaService(ctx context.Context) errors.E {
 		}
 
 		if process.Wsdd2.Pid != -1 {
-			// Restart wsdd2 service using s6
-			wsdd2ServicePath := "/run/s6-rc/servicedirs/wsdd2"
-			if _, statErr := os.Stat(wsdd2ServicePath); statErr == nil {
-				slog.InfoContext(ctx, "Restarting wsdd2 service...")
+			// Restart wsddn service using s6
+			wsddnServicePath := "/run/s6-rc/servicedirs/wsddn"
+			if _, statErr := os.Stat(wsddnServicePath); statErr == nil {
+				slog.InfoContext(ctx, "Restarting wsddn service...")
 				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 				defer cancel()
 
-				cmdWsdd2Restart := exec.CommandContext(ctx, "s6-svc", "-r", wsdd2ServicePath)
-				outWsdd2, cmdErr := cmdWsdd2Restart.CombinedOutput()
+				cmdWsddnRestart := exec.CommandContext(ctx, "s6-svc", "-r", wsddnServicePath)
+				outWsddn, cmdErr := cmdWsddnRestart.CombinedOutput()
 				if cmdErr != nil {
-					return errors.Errorf("Error restarting wsdd2 service: %w \n %#v", cmdErr, map[string]any{"error": cmdErr, "output": string(outWsdd2)})
+					return errors.Errorf("Error restarting wsddn service: %w \n %#v", cmdErr, map[string]any{"error": cmdErr, "output": string(outWsddn)})
 				}
 			} else if os.IsNotExist(statErr) {
-				tlog.WarnContext(ctx, "wsdd2 service path not found, skipping restart.", "path", wsdd2ServicePath)
+				tlog.WarnContext(ctx, "wsddn service path not found, skipping restart.", "path", wsddnServicePath)
 			} else {
-				tlog.ErrorContext(ctx, "Error checking wsdd2 service path, skipping restart.", "path", wsdd2ServicePath, "error", statErr)
+				tlog.ErrorContext(ctx, "Error checking wsddn service path, skipping restart.", "path", wsddnServicePath, "error", statErr)
 			}
 		} else {
-			slog.WarnContext(ctx, "Samba process (wsdd2) not found, skipping reload commands.")
+			slog.WarnContext(ctx, "Samba process (wsddn) not found, skipping reload commands.")
 		}
 	} else {
 		slog.WarnContext(ctx, "Samba process (smbd) not found, skipping reload commands.")

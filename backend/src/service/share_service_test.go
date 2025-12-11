@@ -844,8 +844,8 @@ func (suite *ShareServiceSuite) TestDisableAlreadyDisabledShare() {
 	result, err := suite.shareService.DisableShare("already-disabled-share")
 
 	// Assert: Should succeed without error
-	suite.NoError(err)
-	suite.NotNil(result)
+	suite.Require().NoError(err)
+	suite.Require().NotNil(result)
 	suite.True(*result.Disabled)
 }
 
