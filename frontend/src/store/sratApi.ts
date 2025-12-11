@@ -1012,17 +1012,12 @@ export type ProcessStatus = {
   cpu_percent: number;
   create_time: string;
   is_running: boolean;
+  managed: boolean;
   memory_percent: number;
   name: string;
   open_files: number;
   pid: number;
   status: string[] | null;
-};
-export type SambaProcessStatus = {
-  nmbd: ProcessStatus;
-  smbd: ProcessStatus;
-  srat: ProcessStatus;
-  wsdd2: ProcessStatus;
 };
 export type Value = {
   channel_id: string;
@@ -1106,7 +1101,9 @@ export type HealthPing = {
   last_error: string;
   last_release: ReleaseAsset;
   network_health: NetworkStats;
-  samba_process_status: SambaProcessStatus;
+  samba_process_status: {
+    [key: string]: ProcessStatus;
+  };
   samba_status: SambaStatus;
   uptime: number;
 };

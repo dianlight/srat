@@ -255,6 +255,19 @@ func (self *SupervisorService) NetworkUnmountShare(ctx context.Context, shareNam
 	if self.state.HACoreReady == false {
 		return errors.Errorf("HA Core is not ready")
 	}
+
+	mounts, errE := self.NetworkGetAllMounted(ctx)
+	if errE != nil {
+		return errE
+	}
+
+	_, ok := mounts[shareName]
+	if !ok {
+		slog.InfoContext(ctx, "Share not mounted in ha_supervisor, skipping unmount", "share", shareName)
+		// not mounted
+		return nil
+	}
+
 	resp, err := self.mount_client.RemoveMountWithResponse(ctx, shareName)
 	if err != nil {
 		return errors.Errorf("Error unmounting share %s from ha_supervisor: %w", shareName, err)

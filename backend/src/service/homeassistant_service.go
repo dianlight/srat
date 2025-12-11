@@ -148,41 +148,27 @@ func (s *HomeAssistantService) SendSambaProcessStatusEntity(status *dto.SambaPro
 		"icon":          "mdi:cog",
 		"friendly_name": "SRAT Samba Process Status",
 		"device_class":  "running",
-		"smbd_running":  status.Smbd.IsRunning,
-		"nmbd_running":  status.Nmbd.IsRunning,
-		"wsdd2_running": status.Wsdd2.IsRunning,
-		//"avahi_running": status.Avahi.IsRunning,
 	}
 
-	// Add detailed process information
-	if status.Smbd.IsRunning {
-		attributes["smbd_pid"] = status.Smbd.Pid
-		attributes["smbd_cpu_percent"] = status.Smbd.CPUPercent
-		attributes["smbd_memory_percent"] = status.Smbd.MemoryPercent
-	}
-	if status.Nmbd.IsRunning {
-		attributes["nmbd_pid"] = status.Nmbd.Pid
-		attributes["nmbd_cpu_percent"] = status.Nmbd.CPUPercent
-		attributes["nmbd_memory_percent"] = status.Nmbd.MemoryPercent
+	// Dynamically add process information
+	runningCount := 0
+	for processName, processStatus := range *status {
+		// Add running status for each process
+		attributes[processName+"_running"] = processStatus.IsRunning
+
+		// Add detailed process information if running
+		if processStatus.IsRunning {
+			attributes[processName+"_pid"] = processStatus.Pid
+			attributes[processName+"_cpu_percent"] = processStatus.CPUPercent
+			attributes[processName+"_memory_percent"] = processStatus.MemoryPercent
+			runningCount++
+		}
 	}
 
 	// Determine overall state
 	state := "stopped"
-	runningCount := 0
-	if status.Smbd.IsRunning {
-		runningCount++
-	}
-	if status.Nmbd.IsRunning {
-		runningCount++
-	}
-	if status.Wsdd2.IsRunning {
-		runningCount++
-	}
-	//if status.Avahi.IsRunning {
-	//	runningCount++
-	//}
 
-	if runningCount >= 2 {
+	if runningCount >= len(*status) {
 		state = "running"
 	} else if runningCount > 0 {
 		state = "partial"

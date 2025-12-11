@@ -17,6 +17,7 @@ import (
 // goverter:default:update
 type ProcessToDto interface {
 	// goverter:update target
+	// goverter:ignore Managed
 	// goverter:useZeroValueOnPointerInconsistency
 	// goverter:map OpenFiles OpenFiles | sliceToLen
 	// goverter:map Connections Connections | sliceToLen

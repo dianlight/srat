@@ -111,23 +111,23 @@ func (suite *HomeAssistantServiceTestSuite) TestSendSambaStatusEntityDisabled() 
 func (suite *HomeAssistantServiceTestSuite) TestSendSambaProcessStatusEntity() {
 	// Arrange
 	processStatus := &dto.SambaProcessStatus{
-		Smbd: dto.ProcessStatus{
+		"smbd": &dto.ProcessStatus{
 			Pid:           1234,
 			Name:          "smbd",
 			IsRunning:     true,
 			CPUPercent:    2.5,
 			MemoryPercent: 1.8,
 		},
-		Nmbd: dto.ProcessStatus{
+		"nmbd": &dto.ProcessStatus{
 			Pid:           1235,
 			Name:          "nmbd",
 			IsRunning:     true,
 			CPUPercent:    0.5,
 			MemoryPercent: 0.3,
 		},
-		Wsdd2: dto.ProcessStatus{IsRunning: false},
-		Srat:  dto.ProcessStatus{IsRunning: false},
-		//Hdidle: dto.ProcessStatus{IsRunning: false},
+		"wsddn":       &dto.ProcessStatus{IsRunning: false},
+		"srat-server": &dto.ProcessStatus{IsRunning: false},
+		//"hdidle":     &dto.ProcessStatus{IsRunning: false},
 	}
 
 	// Act - should not panic or return error when client is nil
@@ -144,23 +144,23 @@ func (suite *HomeAssistantServiceTestSuite) TestSendSambaProcessStatusEntity() {
 func (suite *HomeAssistantServiceTestSuite) TestSendSambaProcessStatusEntityDisabled() {
 	// Arrange
 	processStatus := &dto.SambaProcessStatus{
-		Smbd: dto.ProcessStatus{
+		"smbd": &dto.ProcessStatus{
 			Pid:           1234,
 			Name:          "smbd",
 			IsRunning:     true,
 			CPUPercent:    2.5,
 			MemoryPercent: 1.8,
 		},
-		Nmbd: dto.ProcessStatus{
+		"nmbd": &dto.ProcessStatus{
 			Pid:           1235,
 			Name:          "nmbd",
 			IsRunning:     true,
 			CPUPercent:    0.5,
 			MemoryPercent: 0.3,
 		},
-		Wsdd2: dto.ProcessStatus{IsRunning: false},
-		Srat:  dto.ProcessStatus{IsRunning: false},
-		//Hdidle: dto.ProcessStatus{IsRunning: false},
+		"wsddn":       &dto.ProcessStatus{IsRunning: false},
+		"srat-server": &dto.ProcessStatus{IsRunning: false},
+		//"hdidle":     &dto.ProcessStatus{IsRunning: false},
 	}
 
 	// Act - should not panic or return error when client is nil

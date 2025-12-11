@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/dianlight/srat/dto"
@@ -36,22 +37,17 @@ func (handler *SambaHanler) GetSambaStatus(ctx context.Context, input *struct{})
 
 // ApplySamba applies the Samba configuration by writing, testing, and restarting the Samba service.
 // It returns an error if any of the steps fail.
-//
-// Parameters:
-//   - ctx: The context for the operation.
-//   - input: A pointer to an empty struct.
-//
-// Returns:
-//   - A pointer to an empty struct.
-//   - An error if any of the steps fail.
-func (handler *SambaHanler) ApplySamba(ctx context.Context, input *struct{}) (*struct{}, error) {
+func (handler *SambaHanler) ApplySamba(ctx context.Context, input *struct{}) (*struct{ Status int }, error) {
+	if handler.apictx.ReadOnlyMode {
+		return nil, huma.Error403Forbidden("Cannot apply Samba configuration in read-only mode")
+	}
 
 	err := handler.sambaService.WriteAndRestartSambaConfig(ctx)
 	if err != nil {
 		return nil, huma.Error500InternalServerError("Restarting Samba configuration failed", err)
 	}
 
-	return nil, nil
+	return &struct{ Status int }{Status: http.StatusNoContent}, nil
 }
 
 // GetSambaConfig retrieves the Samba configuration.

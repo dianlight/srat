@@ -110,10 +110,8 @@ func (suite *SambaHandlerSuite) TestGetSambaStatusError() {
 }
 
 func (suite *SambaHandlerSuite) TestApplySambaSuccess() {
-	// Configure mock expectations - ApplySamba calls multiple service methods
-	mock.When(suite.mockSambaService.WriteSambaConfig(mock.AnyContext())).ThenReturn(nil)
-	mock.When(suite.mockSambaService.TestSambaConfig(mock.AnyContext())).ThenReturn(nil)
-	mock.When(suite.mockSambaService.RestartSambaService(mock.AnyContext())).ThenReturn(nil)
+	// Configure mock expectations - ApplySamba calls combined write/test/restart helper
+	mock.When(suite.mockSambaService.WriteAndRestartSambaConfig(mock.AnyContext())).ThenReturn(nil)
 
 	// Setup humatest
 	_, api := humatest.New(suite.T())

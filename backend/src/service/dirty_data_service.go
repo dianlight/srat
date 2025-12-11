@@ -29,7 +29,11 @@ type DirtyDataService struct {
 func NewDirtyDataService(lc fx.Lifecycle, ctx context.Context, eventBus events.EventBusInterface) DirtyDataServiceInterface {
 	p := new(DirtyDataService)
 	p.ctx = ctx
-	p.dataDirtyTracker = dto.DataDirtyTracker{}
+	p.dataDirtyTracker = dto.DataDirtyTracker{
+		Shares:   true,
+		Users:    true,
+		Settings: true,
+	}
 	p.eventBus = eventBus
 	p.timerMutex = sync.Mutex{}
 

@@ -23,13 +23,8 @@ type ProcessStatus struct {
 	Connections   int       `json:"connections"` // For subprocesses: number of monitored entities
 	Status        []string  `json:"status"`
 	IsRunning     bool      `json:"is_running"`
+	Managed       bool      `json:"managed"` // Whether the process is managed by the srat daemon or not
 }
 
 // SambaProcessStatus represents the status of all Samba-related processes and subprocesses.
-type SambaProcessStatus struct {
-	Smbd  ProcessStatus `json:"smbd"`  // Samba daemon (real process)
-	Nmbd  ProcessStatus `json:"nmbd"`  // NetBIOS name server (real process)
-	Wsdd2 ProcessStatus `json:"wsdd2"` // Web Services Discovery daemon (real process)
-	Srat  ProcessStatus `json:"srat"`  // SRAT main process (real process)
-	//Hdidle ProcessStatus `json:"hdidle"` // HDIdle power-save monitor (subprocess of SRAT)
-}
+type SambaProcessStatus map[string]*ProcessStatus

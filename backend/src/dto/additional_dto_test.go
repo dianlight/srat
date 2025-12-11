@@ -243,28 +243,28 @@ func TestProcessStatus_AllFields(t *testing.T) {
 
 func TestSambaProcessStatus_AllFields(t *testing.T) {
 	status := dto.SambaProcessStatus{
-		Smbd: dto.ProcessStatus{
+		"smbd": &dto.ProcessStatus{
 			Pid:       1234,
 			Name:      "smbd",
 			IsRunning: true,
 		},
-		Nmbd: dto.ProcessStatus{
+		"nmbd": &dto.ProcessStatus{
 			Pid:       1235,
 			Name:      "nmbd",
 			IsRunning: true,
 		},
-		Wsdd2: dto.ProcessStatus{
+		"wsddn": &dto.ProcessStatus{
 			Pid:       1236,
-			Name:      "wsdd2",
+			Name:      "wsddn",
 			IsRunning: false,
 		},
-		Srat: dto.ProcessStatus{
+		"srat-server": &dto.ProcessStatus{
 			Pid:       1237,
-			Name:      "srat",
+			Name:      "srat-server",
 			IsRunning: true,
 		},
 		/*
-			Hdidle: dto.ProcessStatus{
+			"hdidle": &dto.ProcessStatus{
 				Pid:         -1237, // Negative PID indicates subprocess of srat (PID 1237)
 				Name:        "hdidle-monitor",
 				IsRunning:   true,
@@ -273,18 +273,29 @@ func TestSambaProcessStatus_AllFields(t *testing.T) {
 		*/
 	}
 
-	assert.Equal(t, int32(1234), status.Smbd.Pid)
-	assert.Equal(t, "smbd", status.Smbd.Name)
-	assert.True(t, status.Smbd.IsRunning)
-	assert.Equal(t, int32(1235), status.Nmbd.Pid)
-	assert.Equal(t, "nmbd", status.Nmbd.Name)
-	assert.True(t, status.Nmbd.IsRunning)
-	assert.Equal(t, int32(1236), status.Wsdd2.Pid)
-	assert.Equal(t, "wsdd2", status.Wsdd2.Name)
-	assert.False(t, status.Wsdd2.IsRunning)
-	assert.Equal(t, int32(1237), status.Srat.Pid)
-	assert.Equal(t, "srat", status.Srat.Name)
-	assert.True(t, status.Srat.IsRunning)
+	smbd, ok := status["smbd"]
+	require.True(t, ok)
+	assert.Equal(t, int32(1234), smbd.Pid)
+	assert.Equal(t, "smbd", smbd.Name)
+	assert.True(t, smbd.IsRunning)
+
+	nmbd, ok := status["nmbd"]
+	require.True(t, ok)
+	assert.Equal(t, int32(1235), nmbd.Pid)
+	assert.Equal(t, "nmbd", nmbd.Name)
+	assert.True(t, nmbd.IsRunning)
+
+	wsddn, ok := status["wsddn"]
+	require.True(t, ok)
+	assert.Equal(t, int32(1236), wsddn.Pid)
+	assert.Equal(t, "wsddn", wsddn.Name)
+	assert.False(t, wsddn.IsRunning)
+
+	srat, ok := status["srat-server"]
+	require.True(t, ok)
+	assert.Equal(t, int32(1237), srat.Pid)
+	assert.Equal(t, "srat-server", srat.Name)
+	assert.True(t, srat.IsRunning)
 	//assert.Equal(t, int32(-1237), status.Hdidle.Pid)
 	//assert.Equal(t, "hdidle-monitor", status.Hdidle.Name)
 	//assert.True(t, status.Hdidle.IsRunning)
@@ -445,10 +456,10 @@ func TestHealthPing_AllFields(t *testing.T) {
 		Alive:     true,
 		AliveTime: time.Now().Unix(),
 		SambaProcessStatus: dto.SambaProcessStatus{
-			Smbd: dto.ProcessStatus{
-				Pid:       1234,
-				IsRunning: true,
-			},
+			"smbd":        &dto.ProcessStatus{Pid: 1234, IsRunning: true},
+			"nmbd":        &dto.ProcessStatus{},
+			"wsddn":       &dto.ProcessStatus{},
+			"srat-server": &dto.ProcessStatus{},
 		},
 		LastError: "",
 		Dirty: dto.DataDirtyTracker{
@@ -472,18 +483,29 @@ func TestHealthPing_AllFields(t *testing.T) {
 
 	assert.True(t, health.Alive)
 	assert.Positive(t, health.AliveTime)
-	assert.Equal(t, int32(1234), health.SambaProcessStatus.Smbd.Pid)
-	assert.Empty(t, health.SambaProcessStatus.Smbd.Name)
-	assert.True(t, health.SambaProcessStatus.Smbd.IsRunning)
-	assert.Equal(t, int32(0), health.SambaProcessStatus.Nmbd.Pid)
-	assert.Empty(t, health.SambaProcessStatus.Nmbd.Name)
-	assert.False(t, health.SambaProcessStatus.Nmbd.IsRunning)
-	assert.Equal(t, int32(0), health.SambaProcessStatus.Wsdd2.Pid)
-	assert.Empty(t, health.SambaProcessStatus.Wsdd2.Name)
-	assert.False(t, health.SambaProcessStatus.Wsdd2.IsRunning)
-	assert.Equal(t, int32(0), health.SambaProcessStatus.Srat.Pid)
-	assert.Empty(t, health.SambaProcessStatus.Srat.Name)
-	assert.False(t, health.SambaProcessStatus.Srat.IsRunning)
+	smbd, ok := health.SambaProcessStatus["smbd"]
+	require.True(t, ok)
+	assert.Equal(t, int32(1234), smbd.Pid)
+	assert.Empty(t, smbd.Name)
+	assert.True(t, smbd.IsRunning)
+
+	nmbd, ok := health.SambaProcessStatus["nmbd"]
+	require.True(t, ok)
+	assert.Equal(t, int32(0), nmbd.Pid)
+	assert.Empty(t, nmbd.Name)
+	assert.False(t, nmbd.IsRunning)
+
+	wsddn, ok := health.SambaProcessStatus["wsddn"]
+	require.True(t, ok)
+	assert.Equal(t, int32(0), wsddn.Pid)
+	assert.Empty(t, wsddn.Name)
+	assert.False(t, wsddn.IsRunning)
+
+	srat, ok := health.SambaProcessStatus["srat-server"]
+	require.True(t, ok)
+	assert.Equal(t, int32(0), srat.Pid)
+	assert.Empty(t, srat.Name)
+	assert.False(t, srat.IsRunning)
 	//assert.Equal(t, int32(0), health.SambaProcessStatus.Hdidle.Pid)
 	//assert.Empty(t, health.SambaProcessStatus.Hdidle.Name)
 	//assert.False(t, health.SambaProcessStatus.Hdidle.IsRunning)

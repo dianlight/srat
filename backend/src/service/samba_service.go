@@ -38,15 +38,12 @@ type SambaServiceInterface interface {
 }
 
 type SambaService struct {
-	//ctx             context.Context
-	//ctxCancel       context.CancelFunc
+	ctx             context.Context
+	ctxCancel       context.CancelFunc
 	DockerInterface string
 	DockerNet       string
 	state           *dto.ContextState
-	//	supervisor_service SupervisorServiceInterface
-	share_service ShareServiceInterface
-	//share_repo    repository.ExportedShareRepositoryInterface
-	//	ha_ws_service      HaWsServiceInterface
+	share_service   ShareServiceInterface
 	prop_repo       repository.PropertyRepositoryInterface
 	samba_user_repo repository.SambaUserRepositoryInterface
 	mount_client    mount.ClientWithResponsesInterface
@@ -54,54 +51,95 @@ type SambaService struct {
 	dbomConv        converter.DtoToDbomConverterImpl
 	hdidle_service  HDIdleServiceInterface
 	eventBus        events.EventBusInterface
+	status          dto.SambaProcessStatus
 }
 
 type SambaServiceParams struct {
 	fx.In
-	//Ctx                 context.Context
-	//CtxCancel           context.CancelFunc
-	State         *dto.ContextState
-	Share_service ShareServiceInterface
-	Prop_repo     repository.PropertyRepositoryInterface
-	//Exported_share_repo repository.ExportedShareRepositoryInterface
+	Ctx             context.Context
+	CtxCancel       context.CancelFunc
+	State           *dto.ContextState
+	Share_service   ShareServiceInterface
+	Prop_repo       repository.PropertyRepositoryInterface
 	Samba_user_repo repository.SambaUserRepositoryInterface
-	//	HA_ws_service       HaWsServiceInterface
-	Mount_client mount.ClientWithResponsesInterface `optional:"true"`
-	//	Su                  SupervisorServiceInterface
-	Hdidle_service HDIdleServiceInterface
-	EventBus       events.EventBusInterface
+	Mount_client    mount.ClientWithResponsesInterface `optional:"true"`
+	Hdidle_service  HDIdleServiceInterface
+	EventBus        events.EventBusInterface
 }
+
+type serviceConfig struct {
+	Name                 string
+	SoftResetServiceMask dto.DataDirtyTracker
+	HardResetServiceMask dto.DataDirtyTracker
+	SoftResetCommand     []string
+	HardResetCommand     []string
+	StopCommand          []string
+}
+
+var (
+	serviceConfigMap = map[string]serviceConfig{
+		"smbd": {
+			Name:                 "smbd",
+			SoftResetServiceMask: dto.DataDirtyTracker{Users: true, Settings: false, Shares: true},
+			HardResetServiceMask: dto.DataDirtyTracker{Users: false, Settings: true, Shares: false},
+			SoftResetCommand:     []string{"smbcontrol", "smbd", "reload-config"},
+			HardResetCommand:     []string{"s6-svc", "-r", "/run/s6-rc/servicedirs/smbd"},
+			StopCommand:          []string{"s6-svc", "-d", "/run/s6-rc/servicedirs/smbd"},
+		},
+		"nmbd": {
+			Name:                 "nmbd",
+			SoftResetServiceMask: dto.DataDirtyTracker{Users: true, Settings: false, Shares: true},
+			HardResetServiceMask: dto.DataDirtyTracker{Users: false, Settings: true, Shares: false},
+			SoftResetCommand:     []string{"smbcontrol", "nmbd", "reload-config"},
+			HardResetCommand:     []string{"s6-svc", "-r", "/run/s6-rc/servicedirs/nmbd"},
+			StopCommand:          []string{"s6-svc", "-d", "/run/s6-rc/servicedirs/nmbd"},
+		},
+		"wsddn": {
+			Name:                 "wsddn",
+			SoftResetServiceMask: dto.DataDirtyTracker{Users: false, Settings: false, Shares: false},
+			HardResetServiceMask: dto.DataDirtyTracker{Users: false, Settings: true, Shares: false},
+			SoftResetCommand:     []string{"s6-svc", "-r", "/run/s6-rc/servicedirs/wsddn"},
+			HardResetCommand:     []string{"s6-svc", "-r", "/run/s6-rc/servicedirs/wsddn"},
+			StopCommand:          []string{"s6-svc", "-d", "/run/s6-rc/servicedirs/wsddn"},
+		},
+		"srat-server": {
+			Name:                 "srat-server",
+			SoftResetServiceMask: dto.DataDirtyTracker{Users: false, Settings: false, Shares: false},
+			HardResetServiceMask: dto.DataDirtyTracker{Users: false, Settings: false, Shares: false},
+			SoftResetCommand:     []string{"s6-svc", "-r", "/run/s6-rc/servicedirs/srat-server"},
+			HardResetCommand:     []string{"s6-svc", "-r", "/run/s6-rc/servicedirs/srat-server"},
+			StopCommand:          []string{"true"},
+		},
+	}
+
+	defaultDirtyMask = dto.DataDirtyTracker{Shares: true, Users: true, Settings: true}
+)
 
 func NewSambaService(lc fx.Lifecycle, in SambaServiceParams) SambaServiceInterface {
 	p := &SambaService{}
-	//p.ctx = in.Ctx
-	//p.ctxCancel = in.CtxCancel
+	p.ctx = in.Ctx
+	p.ctxCancel = in.CtxCancel
 	p.state = in.State
 	p.share_service = in.Share_service
 	p.prop_repo = in.Prop_repo
-	//p.share_repo = in.Exported_share_repo
+
 	p.samba_user_repo = in.Samba_user_repo
 	p.mount_client = in.Mount_client
-	//	p.supervisor_service = in.Su
+
 	p.cache = cache.New(1*time.Minute, 10*time.Minute)
 	p.eventBus = in.EventBus
-	//in.Dirtyservice.AddRestartCallback(p.WriteAndRestartSambaConfig)
-	//	p.ha_ws_service = in.HA_ws_service
+
 	p.dbomConv = converter.DtoToDbomConverterImpl{}
 	p.hdidle_service = in.Hdidle_service
+
+	p.status = dto.SambaProcessStatus{}
 
 	var unsubscribe [1]func()
 	unsubscribe[0] = p.eventBus.OnDirtyData(func(ctx context.Context, event events.DirtyDataEvent) errors.E {
 		if event.Type == events.EventTypes.RESTART {
 			slog.InfoContext(ctx, "SambaService received RESTART event, writing and restarting Samba configuration...")
-			if err := p.WriteAndRestartSambaConfig(ctx); err != nil {
+			if err := p.writeAndRestartSambaConfig(ctx, event.DataDirtyTracker); err != nil {
 				slog.ErrorContext(ctx, "Error writing and restarting Samba configuration", "error", err)
-				/*
-					p.eventBus.EmitSamba(events.SambaEvent{
-						Event:            events.Event{Type: events.EventTypes.ERROR},
-						DataDirtyTracker: event.DataDirtyTracker,
-					})
-				*/
 				return err
 			}
 		}
@@ -115,6 +153,21 @@ func NewSambaService(lc fx.Lifecycle, in SambaServiceParams) SambaServiceInterfa
 			for _, unsub := range unsubscribe {
 				if unsub != nil {
 					unsub()
+				}
+			}
+			// stop all process with Managed=true
+			for processName, processConfig := range serviceConfigMap {
+				if p.status[processName] == nil {
+					continue
+				}
+				if !p.status[processName].Managed {
+					continue
+				}
+				slog.InfoContext(p.ctx, "Stopping service", "service", processName)
+				cmdStop := exec.CommandContext(p.ctx, processConfig.StopCommand[0], processConfig.StopCommand[1:]...)
+				outStop, err := cmdStop.CombinedOutput()
+				if err != nil {
+					slog.ErrorContext(p.ctx, "Error stopping service", "service", processName, "error", err, "output", string(outStop))
 				}
 			}
 			return nil
@@ -230,79 +283,57 @@ func (self *SambaService) jSONFromDatabase() (tconfig config.Config, err errors.
 	return tconfig, nil
 }
 
-// GetSambaProcess retrieves the status of all Samba-related processes and subprocesses.
-//
-// This function searches through all running processes to find:
-//   - smbd: Samba daemon (real OS process)
-//   - nmbd: NetBIOS name server (real OS process)
-//   - wsdd2: Web Services Discovery daemon (real OS process)
-//   - srat-server: SRAT main process (real OS process)
-//   - hdidle: HDIdle power-save monitoring (virtual subprocess)
-//
-// For virtual subprocesses (like HDIdle), the PID is set to the negative value
-// of the parent process PID. This convention allows distinguishing between real
-// OS processes and internal monitoring threads in the UI.
-//
-// Returns:
-//   - *dto.SambaProcessStatus: Status of all processes, with PIDs set to -1 if not found
-//   - errors.E: An error if one occurred during the process search
 func (self *SambaService) GetSambaProcess() (*dto.SambaProcessStatus, errors.E) {
-	spc := dto.SambaProcessStatus{
-		Smbd: dto.ProcessStatus{
-			Pid: -1,
-		},
-		Nmbd: dto.ProcessStatus{
-			Pid: -1,
-		},
-		Wsdd2: dto.ProcessStatus{
-			Pid: -1,
-		},
-		Srat: dto.ProcessStatus{
-			Pid: -1,
-		},
-		//Hdidle: dto.ProcessStatus{
-		//	Pid: -1,
-		//},
-	}
 	var conv converter.ProcessToDtoImpl
 	var allProcess, err = process.Processes()
 	if err != nil {
 		log.Fatal(err)
-		return &spc, errors.WithStack(err)
+		return &self.status, errors.WithStack(err)
 	}
 	for _, p := range allProcess {
 		var name, err = p.Name()
 		if err != nil {
 			continue
 		}
-		switch name {
-		case "smbd":
-			conv.ProcessToProcessStatus(p, &spc.Smbd)
-		case "nmbd":
-			conv.ProcessToProcessStatus(p, &spc.Nmbd)
-		case "wsddn":
-			user, err := p.Username()
-			if err == nil && user == "wsddn" {
-				conv.ProcessToProcessStatus(p, &spc.Wsdd2)
+
+		for processName := range serviceConfigMap {
+			if name == processName {
+				if _, ok := self.status[processName]; !ok {
+					self.status[processName] = &dto.ProcessStatus{}
+				}
+				conv.ProcessToProcessStatus(p, self.status[processName])
+				if self.status[processName].Pid <= 0 {
+					self.status[processName].Managed = true
+				}
 			}
-		case "srat-server":
-			conv.ProcessToProcessStatus(p, &spc.Srat)
 		}
 	}
 
-	// Get HDIdle monitoring status as a subprocess
-	// Convention: Subprocesses use negative parent PIDs to indicate they are
-	// virtual monitoring threads rather than real OS processes
-	//if self.hdidle_service != nil {
-	//	hdidleStatus := self.hdidle_service.GetProcessStatus(spc.Srat.Pid)
-	//	if hdidleStatus != nil {
-	//		spc.Hdidle = *hdidleStatus
-	//	}
-	//}
-	return &spc, nil
+	return &self.status, nil
 }
 
+// WriteSambaConfig writes the Samba configuration to disk using the default dirty mask.
+// Exported to satisfy SambaServiceInterface and enable API callers.
 func (self *SambaService) WriteSambaConfig(ctx context.Context) errors.E {
+	return self.writeSambaConfig(ctx)
+}
+
+// TestSambaConfig validates the Samba configuration using testparm.
+func (self *SambaService) TestSambaConfig(ctx context.Context) errors.E {
+	return self.testSambaConfig(ctx)
+}
+
+// RestartSambaService restarts/reloads Samba services using the default dirty mask (all dirty).
+func (self *SambaService) RestartSambaService(ctx context.Context) errors.E {
+	return self.restartSambaService(ctx, defaultDirtyMask)
+}
+
+// WriteAndRestartSambaConfig writes, tests, and restarts Samba using the default dirty mask.
+func (self *SambaService) WriteAndRestartSambaConfig(ctx context.Context) errors.E {
+	return self.writeAndRestartSambaConfig(ctx, defaultDirtyMask)
+}
+
+func (self *SambaService) writeSambaConfig(ctx context.Context) errors.E {
 	tlog.TraceContext(ctx, "Writing Samba configuration file", "file", self.state.SambaConfigFile)
 	stream, errE := self.CreateConfigStream()
 	if errE != nil {
@@ -317,7 +348,7 @@ func (self *SambaService) WriteSambaConfig(ctx context.Context) errors.E {
 	return nil
 }
 
-func (self *SambaService) TestSambaConfig(ctx context.Context) errors.E {
+func (self *SambaService) testSambaConfig(ctx context.Context) errors.E {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	tlog.TraceContext(ctx, "Testing Samba configuration file", "file", self.state.SambaConfigFile)
@@ -331,7 +362,7 @@ func (self *SambaService) TestSambaConfig(ctx context.Context) errors.E {
 	return nil
 }
 
-func (self *SambaService) RestartSambaService(ctx context.Context) errors.E {
+func (self *SambaService) restartSambaService(ctx context.Context, dirty dto.DataDirtyTracker) errors.E {
 	process, err := self.GetSambaProcess()
 	if err != nil {
 		return errors.WithStack(err)
@@ -340,79 +371,54 @@ func (self *SambaService) RestartSambaService(ctx context.Context) errors.E {
 	if process != nil {
 		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 		defer cancel()
-		tlog.TraceContext(ctx, "Restarting Samba service")
-		if process.Smbd.Pid != -1 {
-			slog.InfoContext(ctx, "Reloading smbd configuration...")
-			cmdSmbdReload := exec.CommandContext(ctx, "smbcontrol", "smbd", "reload-config")
-			outSmbd, err := cmdSmbdReload.CombinedOutput()
-			if err != nil {
-				if strings.Contains(string(outSmbd), "Can't find pid for destination") {
-					slog.WarnContext(ctx, "Samba process (smbd) not found, skipping reload command.")
+
+		for processName, processConfig := range serviceConfigMap {
+			tlog.TraceContext(ctx, "Restarting service", "service", processName)
+			if procStatus, ok := (*process)[processName]; ok {
+				if procStatus.Pid <= 0 || dirty.AndMask(processConfig.HardResetServiceMask) {
+					slog.InfoContext(ctx, "Performing hard restart of service...", "service", processName)
+					cmdHardRestart := exec.CommandContext(ctx, processConfig.HardResetCommand[0], processConfig.HardResetCommand[1:]...)
+					outHardRestart, err := cmdHardRestart.CombinedOutput()
+					if err != nil {
+						return errors.Errorf("Error performing hard restart of service %s: %w \n %#v", processName, err, map[string]any{"error": err, "output": string(outHardRestart)})
+					}
+				} else if dirty.AndMask(processConfig.SoftResetServiceMask) {
+					slog.InfoContext(ctx, "Performing soft restart of service...", "service", processName)
+					cmdSoftRestart := exec.CommandContext(ctx, processConfig.SoftResetCommand[0], processConfig.SoftResetCommand[1:]...)
+					outSoftRestart, err := cmdSoftRestart.CombinedOutput()
+					if err != nil {
+						return errors.Errorf("Error performing soft restart of service %s: %w \n %#v", processName, err, map[string]any{"error": err, "output": string(outSoftRestart)})
+					}
 				} else {
-					slog.ErrorContext(ctx, "Error reloading smbd config", "error", err, "output", string(outSmbd))
+					slog.InfoContext(ctx, "No restart needed for service.", "service", processName)
 				}
-			}
-			self.eventBus.EmitSamba(events.SambaEvent{
-				Event:            events.Event{Type: events.EventTypes.CLEAN},
-				DataDirtyTracker: dto.DataDirtyTracker{},
-			})
-		} else {
-			slog.WarnContext(ctx, "Samba process (smbd) not found, skipping reload commands.")
-		}
-
-		if process.Nmbd.Pid != -1 {
-			slog.InfoContext(ctx, "Reloading nmbd configuration...")
-			cmdNmbdReload := exec.CommandContext(ctx, "smbcontrol", "nmbd", "reload-config")
-			outNmbd, err := cmdNmbdReload.CombinedOutput()
-			if err != nil {
-				if strings.Contains(string(outNmbd), "Can't find pid for destination") {
-					slog.WarnContext(ctx, "Samba process (nmbd) not found, skipping reload command.")
-				} else {
-					slog.ErrorContext(ctx, "Error reloading nmbd config", "error", err, "output", string(outNmbd))
-				}
-			}
-		} else {
-			slog.WarnContext(ctx, "Samba process (nmbd) not found, skipping reload commands.")
-		}
-
-		if process.Wsdd2.Pid != -1 {
-			// Restart wsddn service using s6
-			wsddnServicePath := "/run/s6-rc/servicedirs/wsddn"
-			if _, statErr := os.Stat(wsddnServicePath); statErr == nil {
-				slog.InfoContext(ctx, "Restarting wsddn service...")
-				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-				defer cancel()
-
-				cmdWsddnRestart := exec.CommandContext(ctx, "s6-svc", "-r", wsddnServicePath)
-				outWsddn, cmdErr := cmdWsddnRestart.CombinedOutput()
-				if cmdErr != nil {
-					return errors.Errorf("Error restarting wsddn service: %w \n %#v", cmdErr, map[string]any{"error": cmdErr, "output": string(outWsddn)})
-				}
-			} else if os.IsNotExist(statErr) {
-				tlog.WarnContext(ctx, "wsddn service path not found, skipping restart.", "path", wsddnServicePath)
 			} else {
-				tlog.ErrorContext(ctx, "Error checking wsddn service path, skipping restart.", "path", wsddnServicePath, "error", statErr)
+				slog.WarnContext(ctx, "Samba process not found, skipping restart command.", "process", processName)
+				continue
 			}
-		} else {
-			slog.WarnContext(ctx, "Samba process (wsddn) not found, skipping reload commands.")
 		}
+
+		self.eventBus.EmitSamba(events.SambaEvent{
+			Event:            events.Event{Type: events.EventTypes.CLEAN},
+			DataDirtyTracker: dto.DataDirtyTracker{},
+		})
 	} else {
-		slog.WarnContext(ctx, "Samba process (smbd) not found, skipping reload commands.")
+		slog.WarnContext(ctx, "Samba processes not found, skipping reload commands.")
 	}
 	return nil
 }
 
 // WriteSambaConfig Test and Restart
-func (self *SambaService) WriteAndRestartSambaConfig(ctx context.Context) errors.E {
-	err := self.WriteSambaConfig(ctx)
+func (self *SambaService) writeAndRestartSambaConfig(ctx context.Context, dirty dto.DataDirtyTracker) errors.E {
+	err := self.writeSambaConfig(ctx)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	err = self.TestSambaConfig(ctx)
+	err = self.testSambaConfig(ctx)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	err = self.RestartSambaService(ctx)
+	err = self.restartSambaService(ctx, dirty)
 	if err != nil {
 		return errors.WithStack(err)
 	}

@@ -60,15 +60,14 @@ export function Footer() {
 							arrow
 						>
 							<Typography variant="caption">
-								smbd {evdata?.heartbeat?.samba_process_status?.smbd?.pid || "off"}{" "}
-								| nmbd{" "}
-								{evdata?.heartbeat?.samba_process_status?.nmbd?.pid || "off"} |
-								wsdd2{" "}
-								{evdata?.heartbeat?.samba_process_status?.wsdd2?.pid || "off"}
-								| srat{" "}
-								{evdata?.heartbeat?.samba_process_status?.srat?.pid || "off"}
-								{/* | avahi{" "}
-								{evdata?.heartbeat?.samba_process_status?.avahi?.pid || "off"} */}
+								{Object.entries(evdata?.heartbeat?.samba_process_status || {}).map(
+									([id, status], index) => (
+										<span key={id}>
+											{index > 0 && " | "}
+											{id} {status?.pid || "off"}
+										</span>
+									),
+								)}
 							</Typography>
 						</Tooltip>
 					)}
