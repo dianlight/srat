@@ -46,14 +46,26 @@ type UpgradeServiceTestSuite struct {
 	originalVersion  string
 }
 
+const githubReleasesURL = "https://api.github.com/repos/dianlight/srat/releases?page=1&per_page=5"
+
 func TestUpgradeServiceTestSuite(t *testing.T) {
-	t.Skipf("Activate only to test upgrade of github library for limit rate of github call")
+	//t.Skipf("Activate only to test upgrade of github library for limit rate of github call")
 	suite.Run(t, new(UpgradeServiceTestSuite))
 }
 
 func (suite *UpgradeServiceTestSuite) SetupTest() {
 	suite.wg = &sync.WaitGroup{}
 	suite.originalVersion = config.Version // Store original config.Version
+
+	// Ensure ALL outbound HTTP calls are intercepted by httpmock.
+	// Any request without an explicit responder will fail the test (prevents real GitHub calls).
+	httpmock.Activate()
+	httpmock.RegisterNoResponder(func(req *http.Request) (*http.Response, error) {
+		return nil, fmt.Errorf("unexpected http call (missing httpmock responder): %s %s", req.Method, req.URL.String())
+	})
+	// Default GitHub releases fixture used by the UpgradeService background loop and any tests
+	// that don't override the releases endpoint.
+	suite.registerGitHubReleasesFixture()
 
 	suite.app = fxtest.New(suite.T(),
 		fx.Provide(
@@ -66,11 +78,8 @@ func (suite *UpgradeServiceTestSuite) SetupTest() {
 			mock.Mock[service.BroadcasterServiceInterface],
 			mock.Mock[repository.PropertyRepositoryInterface],
 			func() *github.Client {
-				httpmock.Activate()
 				rateLimiter := github_ratelimit.New(nil)
-				return github.NewClient(&http.Client{
-					Transport: rateLimiter,
-				})
+				return github.NewClient(&http.Client{Transport: rateLimiter})
 			},
 		),
 		fx.Populate(&suite.ctx, &suite.cancel),
@@ -84,6 +93,20 @@ func (suite *UpgradeServiceTestSuite) SetupTest() {
 	//mock.When(suite.mockBroadcaster.BroadcastMessage(mock.Any[any]())).ThenReturn(nil, nil)
 
 	suite.app.RequireStart()
+}
+
+func (suite *UpgradeServiceTestSuite) registerGitHubReleasesFixture() {
+	suite.T().Helper()
+	fixturePath := filepath.Join("..", "..", "test", "data", "github_release.json")
+	b, err := os.ReadFile(fixturePath)
+	suite.Require().NoError(err, "failed to read fixture %s", fixturePath)
+
+	httpmock.RegisterResponder("GET", githubReleasesURL, func(req *http.Request) (*http.Response, error) {
+		resp := httpmock.NewBytesResponse(200, b)
+		resp.Header.Set("Content-Type", "application/json")
+		resp.ContentLength = int64(len(b))
+		return resp, nil
+	})
 }
 
 func (suite *UpgradeServiceTestSuite) TearDownTest() {
@@ -164,7 +187,7 @@ func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_ErrorParsingCur
 
 func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_GitHubAPIFailure() {
 	config.Version = "1.0.0"
-	httpmock.RegisterResponder("GET", "https://api.github.com/repos/dianlight/srat/releases?page=1&per_page=5",
+	httpmock.RegisterResponder("GET", githubReleasesURL,
 		httpmock.NewErrorResponder(fmt.Errorf("github api down")))
 
 	asset, err := suite.upgradeService.GetUpgradeReleaseAsset(nil)
@@ -176,7 +199,7 @@ func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_GitHubAPIFailur
 
 func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_NoReleasesFound() {
 	config.Version = "1.0.0"
-	httpmock.RegisterResponder("GET", "https://api.github.com/repos/dianlight/srat/releases?page=1&per_page=5",
+	httpmock.RegisterResponder("GET", githubReleasesURL,
 		httpmock.NewJsonResponderOrPanic(200, []*github.RepositoryRelease{}))
 
 	asset, err := suite.upgradeService.GetUpgradeReleaseAsset(nil)
@@ -202,7 +225,7 @@ func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_SkipPrerelease_
 			newGitHubReleaseAsset(assetName, "http://example.com/srat_v1.1.0-beta.zip", 1024),
 		}),
 	}
-	httpmock.RegisterResponder("GET", "https://api.github.com/repos/dianlight/srat/releases?page=1&per_page=5",
+	httpmock.RegisterResponder("GET", githubReleasesURL,
 		httpmock.NewJsonResponderOrPanic(200, releases))
 
 	// Default channel is RELEASE
@@ -222,22 +245,16 @@ func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_AcceptPrereleas
 		arch = "x86_64"
 	}
 	assetName := fmt.Sprintf("srat_%s.zip", arch)
-	expectedURL := "http://example.com/srat_v1.1.0-beta.zip"
-
-	releases := []*github.RepositoryRelease{
-		newGitHubRepositoryRelease("v1.1.0-beta", true, []*github.ReleaseAsset{
-			newGitHubReleaseAsset(assetName, expectedURL, 1024),
-		}),
-	}
-	httpmock.RegisterResponder("GET", "https://api.github.com/repos/dianlight/srat/releases?page=1&per_page=5",
-		httpmock.NewJsonResponderOrPanic(200, releases))
+	// Uses the default GitHub releases fixture registered in SetupTest.
+	expectedRelease := "2025.12.0-dev.3"
+	expectedURL := fmt.Sprintf("https://github.com/dianlight/srat/releases/download/%s/%s", expectedRelease, assetName)
 
 	mock.When(suite.mockPropertyRepo.Value("UpdateChannel", false)).ThenReturn(&dto.UpdateChannels.PRERELEASE, nil)
 
 	asset, err := suite.upgradeService.GetUpgradeReleaseAsset(&dto.UpdateChannels.PRERELEASE)
 	suite.Require().NoError(err)
 	suite.Require().NotNil(asset)
-	suite.Equal("v1.1.0-beta", asset.LastRelease)
+	suite.Equal(expectedRelease, asset.LastRelease)
 	suite.Equal(assetName, asset.ArchAsset.Name)
 	suite.Equal(expectedURL, asset.ArchAsset.BrowserDownloadURL)
 }
@@ -258,7 +275,7 @@ func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_CurrentVersionN
 			newGitHubReleaseAsset(assetName, "http://example.com/srat_v1.1.0.zip", 1024),
 		}),
 	}
-	httpmock.RegisterResponder("GET", "https://api.github.com/repos/dianlight/srat/releases?page=1&per_page=5",
+	httpmock.RegisterResponder("GET", githubReleasesURL,
 		httpmock.NewJsonResponderOrPanic(200, releases))
 
 	asset, err := suite.upgradeService.GetUpgradeReleaseAsset(nil)
@@ -292,7 +309,7 @@ func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_Success_PicksLa
 			newGitHubReleaseAsset(assetName, "http://example.com/srat_v1.3.0-beta.zip", 4096),
 		}),
 	}
-	httpmock.RegisterResponder("GET", "https://api.github.com/repos/dianlight/srat/releases?page=1&per_page=5",
+	httpmock.RegisterResponder("GET", githubReleasesURL,
 		httpmock.NewJsonResponderOrPanic(200, releases))
 
 	asset, err := suite.upgradeService.GetUpgradeReleaseAsset(nil)

@@ -362,7 +362,7 @@ func main() {
 							asset, err := upgrade_service.GetUpgradeReleaseAsset(&updch)
 							if err != nil {
 								if errors.Is(err, dto.ErrorNoUpdateAvailable) {
-									slog.Info("No update available for the requested channel.")
+									slog.Info("No update available for the requested channel.", "channel", updch)
 								} else {
 									slog.Error("Error checking for updates", "err", err)
 								}
