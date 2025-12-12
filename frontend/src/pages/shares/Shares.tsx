@@ -24,6 +24,7 @@ import {
 	Usage,
 	useDeleteApiShareByShareNameMutation,
 	usePostApiShareMutation,
+	usePutApiShareByShareNameDisableMutation,
 	usePutApiShareByShareNameMutation,
 } from "../../store/sratApi";
 import { useAppDispatch } from "../../store/store";
@@ -61,6 +62,7 @@ export function Shares() {
 	>(undefined);
 	const confirm = useConfirm();
 	const [updateShare, _updateShareResult] = usePutApiShareByShareNameMutation();
+	const [disableShare, _updateDisableShareResult] = usePutApiShareByShareNameDisableMutation();
 	const [deleteShare, _updateDeleteShareResult] = useDeleteApiShareByShareNameMutation();
 	const [createShare, _createShareResult] = usePostApiShareMutation();
 
@@ -246,6 +248,24 @@ export function Shares() {
 	function onSubmitEditShare(data: ShareEditProps) {
 		console.log("Edit Share", data, selectedShare);
 		if (!data) return;
+		if (data.disabled) {
+			disableShare({ shareName: data.org_name || data.name || "" })
+				.unwrap()
+				.then(() => {
+					toast.info(
+						`Share ${data.name} disabled successfully.`,
+					);
+					// Update local state with new data
+					if (selectedShareKey) {
+						setSelectedShare((prev) => prev ? { ...prev, disabled: true } : prev);
+					}
+				})
+				.catch((err) => {
+					dispatch(addMessage(JSON.stringify(err)));
+				});
+			return;
+		}
+			
 		if (!data.name || !data.mount_point_data?.path) {
 			dispatch(addMessage("Unable to save share!"));
 			return;
@@ -430,4 +450,4 @@ export function Shares() {
 			</Grid>
 		</>
 	);
-}
+} 

@@ -667,7 +667,6 @@ export function ShareEditForm({
                             variant="contained"
                             color="primary"
                             size="small"
-                            disabled={isDisabled}
                         >
                             {shareData?.org_name === undefined ? "Create" : "Apply"}
                         </Button>
@@ -775,4 +774,4 @@ export function ShareEditForm({
             </CardContent>
         </Card>
     );
-}
+} 
