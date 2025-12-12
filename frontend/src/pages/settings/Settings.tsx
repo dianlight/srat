@@ -1,10 +1,10 @@
 import AutorenewIcon from "@mui/icons-material/Autorenew"; // Icon for fetching hostname
 import PlaylistAddIcon from "@mui/icons-material/PlaylistAdd"; // Import an icon for the button
+import MenuIcon from "@mui/icons-material/Menu";
 import SearchIcon from "@mui/icons-material/Search";
-import { CircularProgress, IconButton, Stack, Typography, TextField, Box, Paper } from "@mui/material";
+import { CircularProgress, IconButton, Stack, Typography, TextField, Box, Paper, Drawer } from "@mui/material";
 import Button from "@mui/material/Button";
 import Divider from "@mui/material/Divider";
-import Grid from "@mui/material/Grid";
 import InputAdornment from "@mui/material/InputAdornment";
 import Tooltip from "@mui/material/Tooltip";
 import { MuiChipsInput } from "mui-chips-input";
@@ -154,6 +154,7 @@ export function Settings() {
 	const [selectedSetting, setSelectedSetting] = useState<string | null>("general");
 	const [searchQuery, setSearchQuery] = useState<string>('');
 	const [expandedNodes, setExpandedNodes] = useState<string[]>(['network', 'update', 'telemetry', 'hdidle']);
+	const [mobileTreeOpen, setMobileTreeOpen] = useState<boolean>(false);
 
 	const settingsTree = useMemo(() => buildSettingsTree(), []);
 
@@ -255,13 +256,19 @@ export function Settings() {
 		}
 	};
 
+	const handleSelectSetting = (settingName?: string) => {
+		if (!settingName) return;
+		setSelectedSetting(settingName);
+		setMobileTreeOpen(false);
+	};
+
 	// Render tree node recursively
 	const renderTree = (node: SettingTreeNode) => (
 		<TreeItem
 			key={node.id}
 			itemId={node.id}
 			label={node.label}
-			onClick={() => node.settingName && setSelectedSetting(node.settingName)}
+			onClick={() => handleSelectSetting(node.settingName)}
 		>
 			{node.children?.map(renderTree)}
 		</TreeItem>
@@ -879,32 +886,87 @@ export function Settings() {
 
 	return (
 		<InView>
-			<Box sx={{ height: 'max', display: 'flex', flexDirection: 'column' }}>
+			<Box sx={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
 				{/* Search Bar */}
-				<Paper sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
-					<TextField
-						fullWidth
-						size="small"
-						placeholder="Search settings..."
-						value={searchQuery}
-						onChange={(e) => setSearchQuery(e.target.value)}
-						slotProps={{
-							input: {
-								startAdornment: (
-									<InputAdornment position="start">
-										<SearchIcon />
-									</InputAdornment>
-								),
-							},
-						}}
-					/>
+				<Paper sx={{ p: { xs: 1.5, md: 2 }, borderBottom: 1, borderColor: 'divider' }}>
+					<Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+						<Box sx={{ display: { xs: 'flex', md: 'none' } }}>
+							<IconButton
+								aria-label="open settings navigation"
+								onClick={() => setMobileTreeOpen(true)}
+								size="small"
+							>
+								<MenuIcon />
+							</IconButton>
+						</Box>
+						<TextField
+							fullWidth
+							size="small"
+							placeholder="Search settings..."
+							value={searchQuery}
+							onChange={(e) => setSearchQuery(e.target.value)}
+							slotProps={{
+								input: {
+									startAdornment: (
+										<InputAdornment position="start">
+											<SearchIcon />
+										</InputAdornment>
+									),
+								},
+							}}
+						/>
+					</Stack>
 				</Paper>
 
+				{/* Mobile Drawer - Tree View */}
+				<Drawer
+					anchor="left"
+					open={mobileTreeOpen}
+					onClose={() => setMobileTreeOpen(false)}
+					ModalProps={{ keepMounted: true }}
+					sx={{ display: { xs: 'block', md: 'none' } }}
+				>
+					<Box
+						sx={{
+							width: 280,
+							height: '100%',
+							display: 'flex',
+							flexDirection: 'column',
+						}}
+						role="presentation"
+					>
+						<Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
+							<Typography variant="h6">Settings</Typography>
+							<Typography variant="body2" color="text.secondary">
+								Choose a category
+							</Typography>
+						</Box>
+						<Box sx={{ flex: 1, overflow: 'auto' }}>
+							<SimpleTreeView
+								expandedItems={expandedNodes}
+								onExpandedItemsChange={(event, nodeIds) => setExpandedNodes(nodeIds)}
+								sx={{ p: 1 }}
+							>
+								{filteredTree.map(renderTree)}
+							</SimpleTreeView>
+						</Box>
+					</Box>
+				</Drawer>
+
 				{/* Main Content */}
-				<Box sx={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+				<Box
+					sx={{
+						flex: 1,
+						minHeight: 0,
+						display: 'flex',
+						flexDirection: 'row',
+						overflow: { xs: 'auto', md: 'hidden' },
+					}}
+				>
 					{/* Left Panel - Tree View */}
 					<Paper
 						sx={{
+							display: { xs: 'none', md: 'block' },
 							width: 300,
 							borderRight: 1,
 							borderColor: 'divider',
@@ -922,7 +984,7 @@ export function Settings() {
 					</Paper>
 
 					{/* Right Panel - Settings */}
-					<Paper sx={{ flex: 1, p: 3, overflow: 'auto' }}>
+					<Paper sx={{ flex: 1, minHeight: 0, p: { xs: 2, md: 3 }, overflow: 'auto' }}>
 						<form
 							id="settingsform"
 							onSubmit={handleSubmit(handleCommit)}
@@ -937,7 +999,7 @@ export function Settings() {
 										).join(' ')}
 									</Typography>
 									<Divider sx={{ mb: 3 }} />
-									<Box sx={{ maxWidth: 600 }}>
+									<Box sx={{ maxWidth: { xs: '100%', md: 600 } }}>
 										{renderSettingField(selectedSetting)}
 									</Box>
 								</Box>
@@ -953,16 +1015,16 @@ export function Settings() {
 				</Box>
 
 				{/* Bottom Button Bar */}
-				<Paper sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
+				<Paper sx={{ p: { xs: 1.5, md: 2 }, borderTop: 1, borderColor: 'divider' }}>
 					<Stack
-						direction="row"
+						direction={{ xs: 'column', sm: 'row' }}
 						spacing={2}
 						sx={{
-							justifyContent: "flex-end",
-							alignItems: "center",
+							justifyContent: { xs: 'stretch', sm: 'flex-end' },
+							alignItems: { xs: 'stretch', sm: 'center' },
 						}}
 					>
-						<Button onClick={() => reset()} disabled={!formState.isDirty}>
+						<Button onClick={() => reset()} disabled={!formState.isDirty} fullWidth={true}>
 							Reset
 						</Button>
 						<Button
@@ -971,6 +1033,7 @@ export function Settings() {
 							disabled={!formState.isDirty}
 							variant="outlined"
 							color="success"
+							fullWidth={true}
 						>
 							Apply
 						</Button>
