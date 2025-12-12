@@ -185,5 +185,11 @@
         "copilot/claude-sonnet-4.5"
       ]
     }
-  }
+  },
+  "github.copilot.chat.agent.autoFix": true,
+  "github.copilot.chat.anthropic.tools.websearch.enabled": true,
+  "github.copilot.chat.githubMcpServer.enabled": true,
+  "github.copilot.chat.languageContext.typescript.includeDocumentation": true,
+  "github.copilot.chat.scopeSelection": true,
+  "github.copilot.chat.tools.memory.enabled": true
 }

@@ -45,7 +45,7 @@ export function ProcessMetrics({
 		subprocessMap.get(parentPid)!.push(subprocess);
 	}
 
-	const renderProcess = (process: ProcessStatus, isSubprocess = false) => {
+	const renderProcess = (process: ProcessStatus, isSubprocess = false, uniqueId?: string) => {
 		const pidDisplay = (isSubprocess && process.pid !== null && process.pid <= 0)
 			? "sub"
 			: process.pid !== null && process.pid >= 0
@@ -75,8 +75,9 @@ export function ProcessMetrics({
 		const showMemoryChart =
 			!isSubprocess && (memoryHistory[process.name]?.length || 0) > 1;
 
+		const tableRowKey = uniqueId || process.name;
 		return (
-			<TableRow key={process.name}>
+			<TableRow key={tableRowKey}>
 				<TableCell component="th" scope="row">
 					<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
 						{isSubprocess && (
@@ -231,20 +232,29 @@ export function ProcessMetrics({
 						</TableRow>
 					</TableHead>
 					<TableBody>
-						{mainProcesses.map((process) => (
-							<>
-								{renderProcess(process, false)}
-								{process.pid !== null &&
-									process.pid > 0 &&
-									subprocessMap.has(process.pid) &&
-									subprocessMap.get(process.pid)!.map((subprocess) =>
-										renderProcess(subprocess, true),
-									)}
-								{process.child_processes && process.child_processes.map((child) =>
-									renderProcess(child, true),
-								)}
-							</>
-						))}
+						{mainProcesses.flatMap((process, processIndex) => {
+							const rows = [
+								renderProcess(process, false, `process-${processIndex}`),
+							];
+							
+							if (
+								process.pid !== null &&
+								process.pid > 0 &&
+								subprocessMap.has(process.pid)
+							) {
+								subprocessMap.get(process.pid)!.forEach((subprocess, subIndex) => {
+									rows.push(renderProcess(subprocess, true, `process-${processIndex}-sub-${subIndex}`));
+								});
+							}
+							
+							if (process.child_processes) {
+								process.child_processes.forEach((child, childIndex) => {
+									rows.push(renderProcess(child, true, `process-${processIndex}-child-${childIndex}`));
+								});
+							}
+							
+							return rows;
+						})}
 					</TableBody>
 				</Table>
 			</TableContainer>

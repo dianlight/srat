@@ -2,7 +2,6 @@ import { Link, Stack, Tooltip, useMediaQuery, useTheme } from "@mui/material";
 import Container from "@mui/material/Container";
 import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
-import JsonTable from "ts-react-json-table";
 import pkg from "../../package.json";
 import { getGitCommitHash } from "../macro/GitCommitHash.ts" with {
 	type: "macro",
@@ -53,9 +52,13 @@ export function Footer() {
 					{isSmallScreen || (isLoading && <div>Loading...</div>) ? null : (
 						<Tooltip
 							title={
-								<JsonTable
-									rows={Object.values(evdata?.heartbeat?.samba_process_status || {})}
-								/>
+								Object.entries(evdata?.heartbeat?.samba_process_status || {}).map(
+									([id, status], index) => (
+										<div key={id}>
+											<strong>{id}</strong>: PID {status?.pid || "N/A"} - {status?.is_running ? "Running" : "Stopped"}
+										</div>
+									),
+								)
 							}
 							arrow
 						>

@@ -72,7 +72,6 @@
     "rollbar": "2.26.5",
     "semver": "^7.7.2",
     "toposort": "^2.0.2",
-    "ts-react-json-table": "^0.1.5",
     "uuid": "^13.0.0"
   },
   "scripts": {
