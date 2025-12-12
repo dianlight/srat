@@ -1008,11 +1008,11 @@ export type NetworkStats = {
   perNicIO: NicIoStats[] | null;
 };
 export type ProcessStatus = {
+  children: ProcessStatus[] | null;
   connections: number;
   cpu_percent: number;
   create_time: string;
   is_running: boolean;
-  managed: boolean;
   memory_percent: number;
   name: string;
   open_files: number;

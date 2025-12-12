@@ -15,6 +15,7 @@ import (
 
 type DirtyDataServiceInterface interface {
 	GetDirtyDataTracker() dto.DataDirtyTracker
+	ResetDirtyDataTracker()
 	IsTimerRunning() bool
 }
 
@@ -145,6 +146,10 @@ func (p *DirtyDataService) GetDirtyDataTracker() dto.DataDirtyTracker {
 func (p *DirtyDataService) resetDirtyStatus() {
 	p.dataDirtyTracker = dto.DataDirtyTracker{}
 	p.stopTimer()
+}
+
+func (p *DirtyDataService) ResetDirtyDataTracker() {
+	p.resetDirtyStatus()
 }
 
 // check if timer is running

@@ -16,12 +16,10 @@ import (
 // goverter:extend int64ToTime
 // goverter:default:update
 type ProcessToDto interface {
-	// goverter:update target
-	// goverter:ignore Managed
 	// goverter:useZeroValueOnPointerInconsistency
 	// goverter:map OpenFiles OpenFiles | sliceToLen
 	// goverter:map Connections Connections | sliceToLen
-	ProcessToProcessStatus(source *process.Process, target *dto.ProcessStatus) error
+	ProcessToProcessStatus(source *process.Process) (target *dto.ProcessStatus, err error)
 }
 
 func int64ToTime(source int64) (time.Time, error) {

@@ -71,6 +71,7 @@ type serviceConfig struct {
 	Name                 string
 	SoftResetServiceMask dto.DataDirtyTracker
 	HardResetServiceMask dto.DataDirtyTracker
+	Managed              bool
 	SoftResetCommand     []string
 	HardResetCommand     []string
 	StopCommand          []string
@@ -85,6 +86,7 @@ var (
 			SoftResetCommand:     []string{"smbcontrol", "smbd", "reload-config"},
 			HardResetCommand:     []string{"s6-svc", "-r", "/run/s6-rc/servicedirs/smbd"},
 			StopCommand:          []string{"s6-svc", "-d", "/run/s6-rc/servicedirs/smbd"},
+			Managed:              true,
 		},
 		"nmbd": {
 			Name:                 "nmbd",
@@ -93,6 +95,7 @@ var (
 			SoftResetCommand:     []string{"smbcontrol", "nmbd", "reload-config"},
 			HardResetCommand:     []string{"s6-svc", "-r", "/run/s6-rc/servicedirs/nmbd"},
 			StopCommand:          []string{"s6-svc", "-d", "/run/s6-rc/servicedirs/nmbd"},
+			Managed:              true,
 		},
 		"wsddn": {
 			Name:                 "wsddn",
@@ -101,6 +104,7 @@ var (
 			SoftResetCommand:     []string{"s6-svc", "-r", "/run/s6-rc/servicedirs/wsddn"},
 			HardResetCommand:     []string{"s6-svc", "-r", "/run/s6-rc/servicedirs/wsddn"},
 			StopCommand:          []string{"s6-svc", "-d", "/run/s6-rc/servicedirs/wsddn"},
+			Managed:              true,
 		},
 		"srat-server": {
 			Name:                 "srat-server",
@@ -109,6 +113,7 @@ var (
 			SoftResetCommand:     []string{"s6-svc", "-r", "/run/s6-rc/servicedirs/srat-server"},
 			HardResetCommand:     []string{"s6-svc", "-r", "/run/s6-rc/servicedirs/srat-server"},
 			StopCommand:          []string{"true"},
+			Managed:              false,
 		},
 	}
 
@@ -160,7 +165,7 @@ func NewSambaService(lc fx.Lifecycle, in SambaServiceParams) SambaServiceInterfa
 				if p.status[processName] == nil {
 					continue
 				}
-				if !p.status[processName].Managed {
+				if !processConfig.Managed {
 					continue
 				}
 				slog.InfoContext(p.ctx, "Stopping service", "service", processName)
@@ -285,26 +290,29 @@ func (self *SambaService) jSONFromDatabase() (tconfig config.Config, err errors.
 
 func (self *SambaService) GetSambaProcess() (*dto.SambaProcessStatus, errors.E) {
 	var conv converter.ProcessToDtoImpl
-	var allProcess, err = process.Processes()
+	var allProcess, err = process.ProcessesWithContext(self.ctx)
 	if err != nil {
 		log.Fatal(err)
 		return &self.status, errors.WithStack(err)
 	}
+
 	for _, p := range allProcess {
 		var name, err = p.Name()
 		if err != nil {
 			continue
 		}
-
 		for processName := range serviceConfigMap {
 			if name == processName {
 				if _, ok := self.status[processName]; !ok {
 					self.status[processName] = &dto.ProcessStatus{}
 				}
-				conv.ProcessToProcessStatus(p, self.status[processName])
-				if self.status[processName].Pid <= 0 {
-					self.status[processName].Managed = true
+
+				processStatus, err := conv.ProcessToProcessStatus(p)
+				if err != nil {
+					slog.Error("Error converting process to DTO", "process", processName, "error", err)
+					continue
 				}
+				self.status[processName] = processStatus
 			}
 		}
 	}

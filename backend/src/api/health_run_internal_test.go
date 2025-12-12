@@ -42,17 +42,19 @@ func (f *fakeSamba) TestSambaConfig(ctx context.Context) errors.E            { r
 func (f *fakeSamba) WriteAndRestartSambaConfig(ctx context.Context) errors.E { return nil }
 
 type fakeDirty struct {
-	callbacks []func() errors.E
+	// callbacks []func() errors.E
 }
 
-func (f *fakeDirty) SetDirtyShares()                           {}
-func (f *fakeDirty) SetDirtyVolumes()                          {}
-func (f *fakeDirty) SetDirtyUsers()                            {}
-func (f *fakeDirty) SetDirtySettings()                         {}
+// func (f *fakeDirty) SetDirtyShares()                           {}
+// func (f *fakeDirty) SetDirtyVolumes()                          {}
+// func (f *fakeDirty) SetDirtyUsers()                            {}
+// func (f *fakeDirty) SetDirtySettings()                         {}
 func (f *fakeDirty) GetDirtyDataTracker() dto.DataDirtyTracker { return dto.DataDirtyTracker{} }
-func (f *fakeDirty) AddRestartCallback(cb func() errors.E)     { f.callbacks = append(f.callbacks, cb) }
-func (f *fakeDirty) ResetDirtyStatus()                         {}
-func (f *fakeDirty) IsTimerRunning() bool                      { return false }
+
+// func (f *fakeDirty) AddRestartCallback(cb func() errors.E)     { f.callbacks = append(f.callbacks, cb) }
+// func (f *fakeDirty) ResetDirtyStatus()                         {}
+func (f *fakeDirty) IsTimerRunning() bool   { return false }
+func (f *fakeDirty) ResetDirtyDataTracker() {}
 
 type fakeAddons struct{}
 

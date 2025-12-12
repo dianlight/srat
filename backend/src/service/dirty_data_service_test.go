@@ -53,10 +53,15 @@ func (suite *DirtyDataServiceTestSuite) TearDownTest() {
 
 func (suite *DirtyDataServiceTestSuite) TestNewDirtyDataService() {
 	suite.NotNil(suite.dirtyDataService)
-	suite.Equal(dto.DataDirtyTracker{}, suite.dirtyDataService.GetDirtyDataTracker())
+	suite.Equal(dto.DataDirtyTracker{
+		Shares:   true,
+		Users:    true,
+		Settings: true,
+	}, suite.dirtyDataService.GetDirtyDataTracker())
 }
 
 func (suite *DirtyDataServiceTestSuite) TestSetDirtyShares() {
+	suite.dirtyDataService.ResetDirtyDataTracker()
 	suite.eventBus.EmitShare(events.ShareEvent{Share: &dto.SharedResource{Name: "testshare"}})
 	//time.Sleep(500 * time.Millisecond)
 	tracker := suite.dirtyDataService.GetDirtyDataTracker()
@@ -67,6 +72,7 @@ func (suite *DirtyDataServiceTestSuite) TestSetDirtyShares() {
 }
 
 func (suite *DirtyDataServiceTestSuite) TestSetDirtyUsers() {
+	suite.dirtyDataService.ResetDirtyDataTracker()
 	suite.eventBus.EmitUser(events.UserEvent{User: &dto.User{}})
 	tracker := suite.dirtyDataService.GetDirtyDataTracker()
 	suite.False(tracker.Shares)
@@ -77,6 +83,7 @@ func (suite *DirtyDataServiceTestSuite) TestSetDirtyUsers() {
 }
 
 func (suite *DirtyDataServiceTestSuite) TestSetDirtySettings() {
+	suite.dirtyDataService.ResetDirtyDataTracker()
 	suite.eventBus.EmitSetting(events.SettingEvent{Setting: &dto.Settings{}})
 	tracker := suite.dirtyDataService.GetDirtyDataTracker()
 	suite.False(tracker.Shares)

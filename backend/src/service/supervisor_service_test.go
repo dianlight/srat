@@ -178,7 +178,32 @@ func (suite *SupervisorServiceSuite) TestNetworkUnmountShare_Success() {
 		Body:         []byte(`{"result":"ok"}`),
 	}
 
+	mockGetResponse := &mount.GetMountsResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok","data":{"mounts":[]}}`),
+		JSON200: &struct {
+			Data *struct {
+				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+			} `json:"data,omitempty"`
+			Result *mount.GetMounts200Result `json:"result,omitempty"`
+		}{
+			Data: &struct {
+				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+			}{
+				Mounts: &[]mount.Mount{
+					{
+						Name:   pointer.String("test-share"),
+						Server: pointer.String("172.30.32.1"),
+					},
+				},
+			},
+		},
+	}
+
 	mock.When(suite.mountClient.RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())).ThenReturn(mockResponse, nil)
+	mock.When(suite.mountClient.GetMountsWithResponse(mock.Any[context.Context]())).ThenReturn(mockGetResponse, nil)
 
 	// Execute
 	err := suite.supervisorService.NetworkUnmountShare(context.Background(), "test-share")
@@ -195,7 +220,13 @@ func (suite *SupervisorServiceSuite) TestNetworkUnmountShare_ErrorResponse() {
 		Body:         []byte(`{"error":"internal server error"}`),
 	}
 
+	mockGetResponse := &mount.GetMountsResponse{
+		HTTPResponse: &http.Response{StatusCode: 500},
+		Body:         []byte(`{"error":"internal server error"}`),
+	}
+
 	mock.When(suite.mountClient.RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())).ThenReturn(mockResponse, nil)
+	mock.When(suite.mountClient.GetMountsWithResponse(mock.Any[context.Context]())).ThenReturn(mockGetResponse, nil)
 
 	// Execute
 	err := suite.supervisorService.NetworkUnmountShare(context.Background(), "test-share")

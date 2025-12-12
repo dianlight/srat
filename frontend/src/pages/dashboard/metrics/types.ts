@@ -5,6 +5,7 @@ export interface ProcessStatus {
 	cpu: number | null;
 	connections: number | null;
 	memory: number | null;
+	child_processes?: ProcessStatus[];
 }
 
 export interface AddonStatsData {

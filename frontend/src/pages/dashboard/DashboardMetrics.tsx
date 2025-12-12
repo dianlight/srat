@@ -30,6 +30,14 @@ export function DashboardMetrics() {
 					cpu: details?.cpu_percent ?? null,
 					connections: details?.connections ?? null,
 					memory: details?.memory_percent ?? null,
+					child_processes: details?.children?.map((child) => ({
+						name: child.name,
+						pid: child.pid,
+						status: child.pid ? "Running" : "Stopped",
+						cpu: child.cpu_percent ?? null,
+						connections: child.connections ?? null,
+						memory: child.memory_percent ?? null,
+					})) || [],
 				};
 			},
 		);

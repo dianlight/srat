@@ -10,82 +10,83 @@ import (
 
 type ProcessToDtoImpl struct{}
 
-func (c *ProcessToDtoImpl) ProcessToProcessStatus(source *process.Process, target *dto.ProcessStatus) error {
+func (c *ProcessToDtoImpl) ProcessToProcessStatus(source *process.Process) (*dto.ProcessStatus, error) {
+	var pDtoProcessStatus *dto.ProcessStatus
 	if source != nil {
-		if source.Pid != 0 {
-			target.Pid = source.Pid
-		}
-		xstring, err := source.Name()
+		var dtoProcessStatus dto.ProcessStatus
+		dtoProcessStatus.Pid = (*source).Pid
+		xstring, err := (*source).Name()
 		if err != nil {
-			return err
+			return nil, err
 		}
-		if xstring != "" {
-			target.Name = xstring
-		}
-		xint64, err := source.CreateTime()
+		dtoProcessStatus.Name = xstring
+		xint64, err := (*source).CreateTime()
 		if err != nil {
-			return err
+			return nil, err
 		}
-		if xint64 != 0 {
-			timeTime, err := int64ToTime(xint64)
-			if err != nil {
-				return err
-			}
-			target.CreateTime = timeTime
-		}
-		xfloat64, err := source.CPUPercent()
+		timeTime, err := int64ToTime(xint64)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		if xfloat64 != 0 {
-			target.CPUPercent = xfloat64
-		}
-		xfloat32, err := source.MemoryPercent()
+		dtoProcessStatus.CreateTime = timeTime
+		xfloat64, err := (*source).CPUPercent()
 		if err != nil {
-			return err
+			return nil, err
 		}
-		if xfloat32 != 0 {
-			target.MemoryPercent = xfloat32
-		}
-		processOpenFilesStatList, err := source.OpenFiles()
+		dtoProcessStatus.CPUPercent = xfloat64
+		xfloat32, err := (*source).MemoryPercent()
 		if err != nil {
-			return err
+			return nil, err
 		}
-		if processOpenFilesStatList != nil {
-			xint, err := sliceToLen(processOpenFilesStatList)
-			if err != nil {
-				return err
-			}
-			target.OpenFiles = xint
-		}
-		netConnectionStatList, err := source.Connections()
+		dtoProcessStatus.MemoryPercent = xfloat32
+		processOpenFilesStatList, err := (*source).OpenFiles()
 		if err != nil {
-			return err
+			return nil, err
 		}
-		if netConnectionStatList != nil {
-			xint2, err := sliceToLen(netConnectionStatList)
-			if err != nil {
-				return err
-			}
-			target.Connections = xint2
-		}
-		stringList, err := source.Status()
+		xint, err := sliceToLen(processOpenFilesStatList)
 		if err != nil {
-			return err
+			return nil, err
+		}
+		dtoProcessStatus.OpenFiles = xint
+		netConnectionStatList, err := (*source).Connections()
+		if err != nil {
+			return nil, err
+		}
+		xint2, err := sliceToLen(netConnectionStatList)
+		if err != nil {
+			return nil, err
+		}
+		dtoProcessStatus.Connections = xint2
+		stringList, err := (*source).Status()
+		if err != nil {
+			return nil, err
 		}
 		if stringList != nil {
-			target.Status = make([]string, len(stringList))
+			dtoProcessStatus.Status = make([]string, len(stringList))
 			for i := 0; i < len(stringList); i++ {
-				target.Status[i] = stringList[i]
+				dtoProcessStatus.Status[i] = stringList[i]
 			}
 		}
-		xbool, err := source.IsRunning()
+		xbool, err := (*source).IsRunning()
 		if err != nil {
-			return err
+			return nil, err
 		}
-		if xbool != false {
-			target.IsRunning = xbool
+		dtoProcessStatus.IsRunning = xbool
+		pProcessProcessList, err := (*source).Children()
+		if err != nil {
+			return nil, err
 		}
+		if pProcessProcessList != nil {
+			dtoProcessStatus.Children = make([]*dto.ProcessStatus, len(pProcessProcessList))
+			for j := 0; j < len(pProcessProcessList); j++ {
+				pDtoProcessStatus2, err := c.ProcessToProcessStatus(pProcessProcessList[j])
+				if err != nil {
+					return nil, err
+				}
+				dtoProcessStatus.Children[j] = pDtoProcessStatus2
+			}
+		}
+		pDtoProcessStatus = &dtoProcessStatus
 	}
-	return nil
+	return pDtoProcessStatus, nil
 }

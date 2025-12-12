@@ -46,7 +46,7 @@ export function ProcessMetrics({
 	}
 
 	const renderProcess = (process: ProcessStatus, isSubprocess = false) => {
-		const pidDisplay = isSubprocess
+		const pidDisplay = (isSubprocess && process.pid !== null && process.pid <= 0)
 			? "sub"
 			: process.pid !== null && process.pid >= 0
 				? process.pid
@@ -240,6 +240,9 @@ export function ProcessMetrics({
 									subprocessMap.get(process.pid)!.map((subprocess) =>
 										renderProcess(subprocess, true),
 									)}
+								{process.child_processes && process.child_processes.map((child) =>
+									renderProcess(child, true),
+								)}
 							</>
 						))}
 					</TableBody>
