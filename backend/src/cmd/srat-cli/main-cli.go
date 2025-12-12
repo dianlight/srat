@@ -33,17 +33,6 @@ var supervisorURL *string
 var supervisorToken *string
 var logLevelString *string
 
-func normalizeUpgradeChannel(channel string) (string, error) {
-	switch channel {
-	case "release", "prerelease", "develop":
-		return channel, nil
-	case "":
-		return "", fmt.Errorf("upgrade channel cannot be empty")
-	default:
-		return "", fmt.Errorf("invalid upgrade channel: %s", channel)
-	}
-}
-
 func formatVersionMessage(short bool) string {
 	if short {
 		return fmt.Sprintf("%s\n", config.Version)
@@ -173,6 +162,8 @@ func main() {
 	if !*silentMode {
 		internal.Banner("srat-cli", command)
 	}
+
+	updch := dto.UpdateChannels.RELEASE
 	switch command {
 	case "start":
 		os.Exit(0) // Deprecated
@@ -181,13 +172,13 @@ func main() {
 		stopCmd.Parse(flag.Args()[1:])
 	case "upgrade":
 		upgradeCmd.Parse(flag.Args()[1:])
-		normalizedUpgradeChannel, normalizeErr := normalizeUpgradeChannel(*upgradeChannel)
-		if normalizeErr != nil {
-			slog.Error("Invalid upgrade channel", "channel", *upgradeChannel)
+		var ett error
+		updch, ett = dto.ParseUpdateChannel(*upgradeChannel)
+		if ett != nil {
+			slog.Error("Invalid upgrade channel", "channel", *upgradeChannel, "err", ett)
 			upgradeCmd.PrintDefaults()
 			os.Exit(1)
 		}
-		*upgradeChannel = normalizedUpgradeChannel
 	case "version":
 		versionCmd.Parse(flag.Args()[1:])
 		fmt.Print(formatVersionMessage(*shortVersion))
@@ -339,13 +330,6 @@ func main() {
 						}
 						slog.Info("******* Unmounted all shares from Homeassistant ********")
 					case "upgrade":
-						slog.Info("Starting upgrade process", "channel", *upgradeChannel)
-						updch, ett := dto.ParseUpdateChannel(*upgradeChannel)
-						if ett != nil {
-							slog.Error("Error parsing upgrade channel", "err", ett)
-							return nil
-						}
-
 						if updch == dto.UpdateChannels.DEVELOP {
 							slog.Info("Attempting local update for DEVELOP channel.")
 							err := upgrade_service.InstallUpdateLocal(&updch)

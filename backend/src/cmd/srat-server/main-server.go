@@ -48,6 +48,7 @@ var supervisorToken *string
 var addonIpAddress *string
 var logLevelString *string
 var protectedMode *bool
+var upgrade_channel dto.UpdateChannel
 
 func validateSambaConfig(path string) error {
 	if strings.TrimSpace(path) == "" {
@@ -111,6 +112,8 @@ func main() {
 	supervisorURL = flag.String("ha-url", "http://supervisor/", "HomeAssistant Supervisor URL")
 	logLevelString = flag.String("loglevel", "info", "Log level string (debug, info, warn, error)")
 	singleInstance := flag.Bool("single-instance", false, "Single instance mode - only one instance of the addon can run ***ONLY FOR DEBUG***")
+	upgradeChannel := flag.String("update-channel", "release", "Upgrade channel (release, prerelease, develop)")
+
 	updateFilePath = flag.String("update-file-path", os.TempDir()+"/"+filepath.Base(os.Args[0]), "Update file path - used for addon updates")
 	addonIpAddress = flag.String("ip-address", "127.0.0.1", "Addon IP address // $(bashio::addon.ip_address)")
 
@@ -124,6 +127,18 @@ func main() {
 	flag.Usage = func() {
 		internal.Banner("srat-server", "")
 		flag.PrintDefaults()
+	}
+
+	if upgradeChannel != nil {
+		var ett error
+		upgrade_channel, ett = dto.ParseUpdateChannel(*upgradeChannel)
+		if ett != nil {
+			slog.Error("Invalid upgrade channel", "channel", *upgradeChannel)
+			flag.PrintDefaults()
+			os.Exit(1)
+		}
+	} else {
+		upgrade_channel = dto.UpdateChannels.NONE
 	}
 
 	if *singleInstance {
@@ -269,6 +284,12 @@ func prog(state overseer.State) {
 			err := props_repo.SetValue("LogLevel", *logLevelString)
 			if err != nil {
 				log.Fatalf("Cant set log level - %#+v", err)
+			}
+
+			// Setting the Upgrade Channel
+			err = props_repo.SetValue("UpgradeChannel", upgrade_channel)
+			if err != nil {
+				log.Fatalf("Cant set upgrade channel - %#+v", err)
 			}
 
 			lc.Append(fx.Hook{

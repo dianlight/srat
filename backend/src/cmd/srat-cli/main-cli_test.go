@@ -99,49 +99,6 @@ func TestCLIStartRequiresOutputFlag(t *testing.T) {
 }
 */
 
-func TestNormalizeUpgradeChannel(t *testing.T) {
-	testCases := []struct {
-		name     string
-		input    string
-		expected string
-	}{
-		{name: "release", input: "release", expected: "release"},
-		{name: "prerelease", input: "prerelease", expected: "prerelease"},
-		{name: "develop", input: "develop", expected: "develop"},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			got, err := normalizeUpgradeChannel(tc.input)
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if got != tc.expected {
-				t.Fatalf("unexpected channel: got %q want %q", got, tc.expected)
-			}
-		})
-	}
-}
-
-func TestNormalizeUpgradeChannelEmpty(t *testing.T) {
-	_, err := normalizeUpgradeChannel("")
-	if err == nil {
-		t.Fatalf("expected error for empty channel")
-	}
-	if !strings.Contains(err.Error(), "upgrade channel cannot be empty") {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-func TestNormalizeUpgradeChannelError(t *testing.T) {
-	_, err := normalizeUpgradeChannel("beta")
-	if err == nil {
-		t.Fatalf("expected error for invalid channel")
-	}
-	if !strings.Contains(err.Error(), "invalid upgrade channel") {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
 
 func TestFormatVersionMessage(t *testing.T) {
 	short := formatVersionMessage(true)
