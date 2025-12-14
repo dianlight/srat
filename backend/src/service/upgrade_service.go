@@ -136,7 +136,7 @@ func (self *UpgradeService) GetUpgradeReleaseAsset(updateChannel *dto.UpdateChan
 			return nil, errors.WithStack(err)
 		}
 
-		slog.DebugContext(self.ctx, "Checking for updates...", "channel", updateChannel.String())
+		slog.InfoContext(self.ctx, "Checking for updates...", "channel", updateChannel.String())
 		releases, _, err := self.gh.Repositories.ListReleases(context.Background(), "dianlight", "srat", &github.ListOptions{
 			Page:    1,
 			PerPage: 5,
@@ -175,6 +175,7 @@ func (self *UpgradeService) GetUpgradeReleaseAsset(updateChannel *dto.UpdateChan
 					case "amd64":
 						arch = "x86_64"
 					}
+					slog.InfoContext(self.ctx, "Checking asset", "asset_name", asset.GetName(), "expected_name", fmt.Sprintf("srat_%s.zip", arch))
 					if asset.GetName() == fmt.Sprintf("srat_%s.zip", arch) {
 						var archAsset dto.BinaryAsset
 						conv := converter.GitHubToDtoImpl{}
