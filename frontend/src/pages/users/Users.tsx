@@ -1,95 +1,161 @@
-import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
-import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
-import EditIcon from "@mui/icons-material/Edit";
-import PersonAddIcon from "@mui/icons-material/PersonAdd";
-import VisibilityIcon from "@mui/icons-material/Visibility";
+import AddIcon from "@mui/icons-material/Add";
 import {
-	Avatar,
 	Box,
-	Chip,
-	Divider,
-	Fab,
-	List,
-	ListItemAvatar,
-	ListItemButton,
-	ListItemText,
+	Grid,
+	IconButton,
+	Paper,
 	Stack,
 	Tooltip,
 	Typography,
-	useTheme,
 } from "@mui/material";
 import { useConfirm } from "material-ui-confirm";
-import { Fragment, useState } from "react";
+import { useEffect, useState } from "react";
 import { InView } from "react-intersection-observer";
 import { toast } from "react-toastify";
 import { TabIDs } from "../../store/locationState";
 import {
+	type User,
 	useDeleteApiUserByUsernameMutation,
 	useGetApiUsersQuery,
 	usePostApiUserMutation,
 	usePutApiUseradminMutation,
 	usePutApiUserByUsernameMutation,
 } from "../../store/sratApi";
-import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
-import { UserActions } from "./UserActions";
-import { UserEditDialog } from "./UserEditDialog";
-import type { UsersProps } from "./types";
 import { useGetServerEventsQuery } from "../../store/sseApi";
+import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
+import { UserEditDialog } from "./UserEditDialog";
+import { UsersTreeView, UserDetailsPanel, UserEditForm } from "./components";
+import type { UsersProps } from "./types";
 
 export function Users() {
 	const { data: evdata, isLoading: is_evLoading } = useGetServerEventsQuery();
-
 	const users = useGetApiUsersQuery();
-	const [_errorInfo, setErrorInfo] = useState<string>("");
-	const [selected, setSelected] = useState<UsersProps>({
+	const confirm = useConfirm();
+
+	// Selection state
+	const [selectedUserKey, setSelectedUserKey] = useState<string | undefined>(() =>
+		localStorage.getItem("users.selectedUserKey") || undefined
+	);
+	const [selectedUser, setSelectedUser] = useState<User | null>(null);
+	const [expandedGroups, setExpandedGroups] = useState<string[]>(() => {
+		try {
+			const savedExpanded = localStorage.getItem("users.expandedGroups");
+			if (savedExpanded) {
+				const parsed = JSON.parse(savedExpanded);
+				if (Array.isArray(parsed)) return parsed as string[];
+			}
+		} catch { }
+		return ["group-admin", "group-users"];
+	});
+
+	// Edit/Create state
+	const [showEdit, setShowEdit] = useState<boolean>(false);
+	const [showCreateDialog, setShowCreateDialog] = useState<boolean>(false);
+	const [createUserData, setCreateUserData] = useState<UsersProps>({
 		username: "",
 		password: "",
+		doCreate: true,
 	});
-	const confirm = useConfirm();
-	const [showEdit, setShowEdit] = useState<boolean>(false);
+
+	// API mutations
 	const [userCreate] = usePostApiUserMutation();
 	const [userAdminUpdate] = usePutApiUseradminMutation();
 	const [userUpdate] = usePutApiUserByUsernameMutation();
 	const [userDelete] = useDeleteApiUserByUsernameMutation();
 
+	// Persist selection and expanded groups to localStorage
+	useEffect(() => {
+		try {
+			if (selectedUserKey) {
+				localStorage.setItem("users.selectedUserKey", selectedUserKey);
+			} else {
+				localStorage.removeItem("users.selectedUserKey");
+			}
+		} catch (err) {
+			console.warn("Could not persist selectedUserKey", err);
+		}
+	}, [selectedUserKey]);
+
+	useEffect(() => {
+		try {
+			if (expandedGroups.length > 0) {
+				localStorage.setItem("users.expandedGroups", JSON.stringify(expandedGroups));
+			} else {
+				localStorage.removeItem("users.expandedGroups");
+			}
+		} catch (err) {
+			console.warn("Could not persist expandedGroups", err);
+		}
+	}, [expandedGroups]);
+
+	// When users data is available and there's a selectedUserKey, find and select it
+	useEffect(() => {
+		if (!users.data || !Array.isArray(users.data) || users.data.length === 0) return;
+		if (!selectedUserKey) return;
+
+		const foundUser = users.data.find((user) => user.username === selectedUserKey);
+
+		if (foundUser) {
+			setSelectedUser(foundUser);
+			// Ensure the containing group is expanded
+			const groupId = foundUser.is_admin ? "group-admin" : "group-users";
+			setExpandedGroups((prev) => {
+				if (prev.includes(groupId)) return prev;
+				return [...prev, groupId];
+			});
+		} else {
+			setSelectedUser(null);
+			setSelectedUserKey(undefined);
+		}
+	}, [users.data, selectedUserKey]);
+
+	const handleUserSelect = (userKey: string, user: User) => {
+		setSelectedUserKey(userKey);
+		setSelectedUser(user);
+		setShowEdit(false);
+
+		// Ensure the containing group is expanded
+		const groupId = user.is_admin ? "group-admin" : "group-users";
+		setExpandedGroups((prev) => {
+			if (prev.includes(groupId)) return prev;
+			return [...prev, groupId];
+		});
+	};
+
 	function onSubmitEditUser(data?: UsersProps) {
 		if (!data || !data.username || !data.password) {
 			console.log("Data is invalid", data);
-			setErrorInfo("Unable to update user!");
 			return;
 		}
 
 		data.username = data.username.trim();
 		data.password = data.password.trim();
 
-		// Save Data
-		console.log(data);
 		if (data.doCreate) {
 			userCreate({ user: data })
 				.unwrap()
 				.then((_res) => {
-					setErrorInfo("");
-					setSelected({ username: "", password: "" });
+					setShowCreateDialog(false);
+					setCreateUserData({ username: "", password: "", doCreate: true });
 					users.refetch();
+					toast.success(`User ${data.username} created successfully`);
 				})
 				.catch((err) => {
-					setErrorInfo(JSON.stringify(err));
 					console.error(err);
-					toast.error(`Error userCreate ${data.username}`, {
+					toast.error(`Error creating user ${data.username}`, {
 						data: { error: err.data },
 					});
 				});
-			return;
 		} else if (data.is_admin) {
 			userAdminUpdate({ user: data })
 				.unwrap()
 				.then((_res) => {
-					setErrorInfo("");
 					users.refetch();
+					setShowEdit(false);
+					toast.success(`Admin ${data.username} updated successfully`);
 				})
 				.catch((err) => {
-					setErrorInfo(JSON.stringify(err));
-					toast.error(`Error userAdminUpdate ${data.username}`, {
+					toast.error(`Error updating admin ${data.username}`, {
 						data: { error: err.data },
 					});
 					console.error(err);
@@ -98,13 +164,12 @@ export function Users() {
 			userUpdate({ username: data.username, user: data })
 				.unwrap()
 				.then((_res) => {
-					setErrorInfo("");
-					setSelected({ username: "", password: "" });
 					users.refetch();
+					setShowEdit(false);
+					toast.success(`User ${data.username} updated successfully`);
 				})
 				.catch((err) => {
-					setErrorInfo(JSON.stringify(err));
-					toast.error(`Error userUpdate ${data.username}`, {
+					toast.error(`Error updating user ${data.username}`, {
 						data: { error: err.data },
 					});
 					console.error(err);
@@ -112,245 +177,153 @@ export function Users() {
 		}
 	}
 
-	function onSubmitDeleteUser(data: UsersProps) {
-		console.log("Delete", data);
-		if (!data) return;
+	function onSubmitDeleteUser(user: User) {
+		if (!user) return;
 
 		confirm({
-			title: `Delete ${data.username}?`,
-			description: "Do you really would delete this user?",
+			title: `Delete ${user.username}?`,
+			description: "Do you really want to delete this user?",
 			acknowledgement:
-				"I understand that deleting the share will remove it permanently.",
+				"I understand that deleting the user will remove it permanently.",
 		}).then(({ confirmed, reason }) => {
 			if (confirmed) {
-				if (!data.username) {
-					setErrorInfo("Unable to delete user!");
+				if (!user.username) {
+					toast.error("Unable to delete user!");
 					return;
 				}
-				userDelete({ username: data.username })
+				userDelete({ username: user.username })
 					.unwrap()
 					.then((_res) => {
-						setErrorInfo("");
-						setSelected({ username: "", password: "" });
+						// Clear selection if deleted user was selected
+						if (selectedUserKey === user.username) {
+							setSelectedUserKey(undefined);
+							setSelectedUser(null);
+							setShowEdit(false);
+						}
 						users.refetch();
+						toast.success(`User ${user.username} deleted successfully`);
 					})
 					.catch((err) => {
-						setErrorInfo(JSON.stringify(err));
+						toast.error(`Error deleting user ${user.username}`, {
+							data: { error: err.data },
+						});
 					});
-			} else if (reason === "cancel") {
-				console.log("cancel");
 			}
 		});
 	}
 
+	// Tour event handler
 	TourEvents.on(TourEventTypes.USERS_STEP_3, () => {
-		setSelected({ username: "", password: "", doCreate: true });
-		setShowEdit(true);
+		setCreateUserData({ username: "", password: "", doCreate: true });
+		setShowCreateDialog(true);
 	});
+
+	const isReadOnly = evdata?.hello?.read_only || false;
 
 	return (
 		<InView>
+			{/* Create User Dialog */}
 			<UserEditDialog
-				objectToEdit={selected}
-				open={showEdit}
+				objectToEdit={createUserData}
+				open={showCreateDialog}
 				onClose={(data) => {
-					setSelected({ username: "", password: "", doCreate: false });
-					onSubmitEditUser(data);
-					setShowEdit(false);
+					if (data) {
+						onSubmitEditUser(data);
+					} else {
+						setShowCreateDialog(false);
+						setCreateUserData({ username: "", password: "", doCreate: true });
+					}
 				}}
 			/>
-			<br />
-			<Stack
-				direction="row"
-				justifyContent="flex-end"
-				sx={{ px: 2, mb: 1, alignItems: "center" }}
-				data-tutor={`reactour__tab${TabIDs.USERS}__step0`}
-			>
-				{evdata?.hello?.read_only || (
-					<Fab
-						color="primary"
-						aria-label="add"
-						// sx removed: float, top, margin - FAB is now in normal flow within Stack
-						size="small"
-						onClick={() => {
-							setSelected({ username: "", password: "", doCreate: true });
-							setShowEdit(true);
-						}}
-					>
-						<PersonAddIcon data-tutor={`reactour__tab${TabIDs.USERS}__step2`} />
-					</Fab>
-				)}
-			</Stack>
-			<List
-				dense={true}
-				component="span"
-				data-tutor={`reactour__tab${TabIDs.USERS}__step1`}
-			>
-				<Divider />
-				{users.isSuccess &&
-					Array.isArray(users.data) &&
-					users.data
-						.slice()
-						.sort((a, b) => {
-							// Sort admin users to the top, then alphabetically by username
-							if (a.is_admin && !b.is_admin) return -1;
-							if (!a.is_admin && b.is_admin) return 1;
-							return (a.username || "").localeCompare(b.username || "");
-						})
-						.map((user) => {
-							const userRwShares = user.rw_shares || [];
-							const userRoShares = user.ro_shares || [];
 
-							return (
-								<Fragment key={user.username || "admin"}>
-									<ListItemButton
-										sx={[
-											(theme) => ({
-												backgroundColor: theme.vars?.palette.background.default,
-											}),
-											(theme) =>
-												theme.applyStyles('dark', {
-													backgroundColor: theme.vars?.palette.grey[900],
-												}),
-										]//{
-											//											alignItems: "flex-start",
-											//											bgcolor: theme.vars?.palette.background.paper,
-											//										}
-										}
-
+			{/* Main Layout Grid */}
+			<Grid container spacing={2} sx={{ minHeight: "calc(100vh - 200px)", mt: 1 }} data-tutor={`reactour__tab${TabIDs.USERS}__step0`}>
+				{/* Left Panel - Tree View */}
+				<Grid size={{ xs: 12, md: 4, lg: 3 }}>
+					<Paper sx={{ height: "100%", p: 1 }} data-tutor={`reactour__tab${TabIDs.USERS}__step1`}>
+						<Stack
+							direction="row"
+							justifyContent="space-between"
+							alignItems="center"
+							sx={{ mb: 2, px: 2 }}
+						>
+							<Typography variant="h6">
+								Users
+							</Typography>
+							{!isReadOnly && (
+								<Tooltip title="Create new user" data-tutor={`reactour__tab${TabIDs.USERS}__step2`}>
+									<IconButton
+										id="create_new_user"
+										color="primary"
+										aria-label="Create new user"
+										size="small"
+										onClick={() => {
+											setCreateUserData({ username: "", password: "", doCreate: true });
+											setShowCreateDialog(true);
+										}}
 									>
-										<ListItemAvatar sx={{ pt: 1 }}>
-											<Avatar
-												data-tutor={`reactour__tab${TabIDs.USERS}__step5`}
-											>
-												{user.is_admin ? (
-													<AdminPanelSettingsIcon />
-												) : (
-													<AssignmentIndIcon />
-												)}
-											</Avatar>
-										</ListItemAvatar>
-										<ListItemText
-											sx={{ flexGrow: 1, overflowWrap: "break-word" }}
-											primary={user.username}
-											slotProps={{
-												secondary: {
-													component: "span",
-												},
-											}}
-											secondary={
-												<Stack
-													direction="row"
-													spacing={1}
-													flexWrap="wrap"
-													alignItems="center"
-													sx={{ mt: 0.5, display: { xs: "none", sm: "flex" } }}
-												>
-													{userRwShares.length > 0 && (
-														<Tooltip
-															title={`Shares with read-write access for ${user.username}`}
-														>
-															<Chip
-																icon={<EditIcon fontSize="small" />}
-																label={
-																	<Box
-																		component="span"
-																		sx={{
-																			display: "flex",
-																			alignItems: "center",
-																			flexWrap: "wrap",
-																			gap: 0.5,
-																		}}
-																	>
-																		Shares:
-																		{userRwShares.map((share, index) => (
-																			<Typography
-																				component="span"
-																				variant="caption"
-																				key={share}
-																			>
-																				{share}
-																				{index < userRwShares.length - 1
-																					? ","
-																					: ""}
-																			</Typography>
-																		))}
-																	</Box>
-																}
-																size="small"
-																variant="outlined"
-																onClick={(e) => {
-																	e.stopPropagation(); /* Optionally handle click, e.g., navigate to shares page */
-																}}
-															/>
-														</Tooltip>
-													)}
-													{userRoShares.length > 0 && (
-														<Tooltip
-															title={`Shares with read-only access for ${user.username}`}
-														>
-															<Chip
-																icon={<VisibilityIcon fontSize="small" />}
-																label={
-																	<Box
-																		component="span"
-																		sx={{
-																			display: "flex",
-																			alignItems: "center",
-																			flexWrap: "wrap",
-																			gap: 0.5,
-																		}}
-																	>
-																		Shares:
-																		{userRoShares.map((share, index) => (
-																			<Typography
-																				component="span"
-																				variant="caption"
-																				key={share}
-																			>
-																				{share}
-																				{index < userRoShares.length - 1
-																					? ","
-																					: ""}
-																			</Typography>
-																		))}
-																	</Box>
-																}
-																size="small"
-																variant="outlined"
-																onClick={(e) => {
-																	e.stopPropagation(); /* Optionally handle click */
-																}}
-															/>
-														</Tooltip>
-													)}
-													{userRwShares.length === 0 &&
-														userRoShares.length === 0 && (
-															<Typography
-																variant="caption"
-																sx={{ fontStyle: "italic" }}
-															>
-																No shares assigned
-															</Typography>
-														)}
-												</Stack>
-											}
-										/>
-										<UserActions
-											user={user}
-											read_only={evdata?.hello?.read_only || false}
-											onEdit={(user) => {
-												setSelected(user);
-												setShowEdit(true);
-											}}
-											onDelete={onSubmitDeleteUser}
-										/>
-									</ListItemButton>
-									<Divider component="li" />
-								</Fragment>
-							);
-						})}
-			</List>
+										<AddIcon />
+									</IconButton>
+								</Tooltip>
+							)}
+						</Stack>
+						<UsersTreeView
+							users={Array.isArray(users.data) ? users.data : undefined}
+							selectedUserKey={selectedUserKey}
+							onUserSelect={handleUserSelect}
+							readOnly={isReadOnly}
+							expandedItems={expandedGroups}
+							onExpandedItemsChange={setExpandedGroups}
+						/>
+					</Paper>
+				</Grid>
+
+				{/* Right Panel - Details and Edit Form */}
+				<Grid size={{ xs: 12, md: 8, lg: 9 }}>
+					<Paper sx={{ height: "100%", overflow: "hidden" }}>
+						{selectedUser && selectedUserKey ? (
+							<UserDetailsPanel
+								user={selectedUser}
+								userKey={selectedUserKey}
+								onEdit={onSubmitEditUser}
+								onDelete={onSubmitDeleteUser}
+								onEditClick={() => setShowEdit(true)}
+								onCancelEdit={() => setShowEdit(false)}
+								isEditing={showEdit}
+								readOnly={isReadOnly}
+							>
+								{/* Embedded Edit Form */}
+								<UserEditForm
+									userData={{
+										...selectedUser,
+										password: "",
+										doCreate: false,
+									}}
+									onSubmit={(data) => {
+										onSubmitEditUser(data);
+									}}
+									onCancel={() => setShowEdit(false)}
+									disabled={isReadOnly}
+								/>
+							</UserDetailsPanel>
+						) : (
+							<Box
+								sx={{
+									display: "flex",
+									alignItems: "center",
+									justifyContent: "center",
+									height: "100%",
+									color: "text.secondary",
+								}}
+							>
+								<Typography variant="h6">
+									Select a user from the list to view details
+								</Typography>
+							</Box>
+						)}
+					</Paper>
+				</Grid>
+			</Grid>
 		</InView>
 	);
-}
+} 
