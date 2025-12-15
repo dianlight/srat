@@ -438,14 +438,38 @@ describe("Component rendering", () => {
 
 ### Frontend Test Changes & Coverage (MANDATORY RULE)
 
-When making ANY changes to frontend tests or creating new pages/sections:
+**CRITICAL: Every frontend component change requires test updates and validation.**
 
-1. **Every test modification requires validation**:
+When making ANY changes to frontend components or tests:
+
+0. **BEFORE making component changes**: Check if tests exist. If not, create them immediately (see "Create tests if missing" below).
+
+1. **Component modification workflow**:
+   - Identify all affected component behavior (rendering, interactions, state changes)
+   - Make your component changes
+   - Update or create tests to cover the new/modified behavior
+   - Run the specific component test: `cd frontend && bun test [ComponentName].test.tsx`
+   - Run full test suite: `cd frontend && bun test`
+   - Validate no flakiness: `cd frontend && bun test --rerun-each 10 [ComponentName]` (must show 100% pass rate)
+
+2. **Every test modification requires validation**:
    - After modifying any existing test, run: `cd frontend && bun test --rerun-each 10 [TestName]`
    - Verify 100% pass rate across all 10 re-runs (zero failures)
    - Document any flakiness issues and fix root causes before considering the change complete
 
-2. **New pages or major sections MUST include tests**:
+3. **Create tests if missing**:
+   - If a component exists WITHOUT tests, it is **incomplete and requires tests before merge**
+   - Create a `__tests__` directory alongside the component (e.g., `src/components/[name]/__tests__/`)
+   - Create `[ComponentName].test.tsx` with coverage for:
+     - Component renders without errors
+     - All user interactions work (button clicks, form inputs, toggles, selections)
+     - Props are respected (readOnly, disabled, onChange, etc.)
+     - State changes trigger expected behavior
+     - Default values are applied correctly
+   - Minimum test count: 5-8 tests covering main functionality
+   - Coverage: All interactive elements and state-dependent UI must be tested
+
+4. **New pages or major sections MUST include tests**:
    - Create a `__tests__` directory alongside the new page/section (e.g., `src/pages/[pageName]/__tests__/`)
    - Create at least a basic `.test.tsx` file that covers:
      - Component renders without errors
@@ -454,26 +478,33 @@ When making ANY changes to frontend tests or creating new pages/sections:
    - Minimum coverage: Test happy path flows for all major features in the page/section
    - If a page/section is created without tests, it is considered **incomplete** and must not be merged
 
-3. **Test verification checklist**:
-   - [ ] All new/modified tests follow the established patterns above
+5. **Test verification checklist**:
+   - [ ] Component logic change → Tests updated to reflect new behavior
+   - [ ] New interactive element added → Test added for that interaction
+   - [ ] Props changed → Tests updated to validate new props
+   - [ ] All new/modified tests follow the established patterns
    - [ ] Tests pass locally: `cd frontend && bun test`
-   - [ ] No flakiness detected: `cd frontend && bun test --rerun-each 10 [TestName]`
+   - [ ] No flakiness detected: `cd frontend && bun test --rerun-each 10 [ComponentName]`
    - [ ] Tests verify actual user behavior, not implementation details
    - [ ] localStorage/Redux state is properly cleaned between tests
    - [ ] All async operations are properly awaited
    - [ ] `userEvent` is used for all interactions (never `fireEvent`)
    - [ ] Dynamic imports are used for React components in test files
 
-4. **When modifying components that already have tests**:
+6. **When modifying components that already have tests**:
    - Update tests to reflect new behavior
    - Add tests for new features or changed UI
+   - Add tests for new props or state-dependent rendering
    - Re-validate with `--rerun-each 10` after each modification
+   - If test count is <5, add more tests for uncovered behavior
 
-5. **Common pitfalls to avoid**:
+7. **Common pitfalls to avoid**:
    - Don't skip tests for UI refactoring — update tests alongside UI changes
    - Don't create pages without test structure — add `__tests__/` directory from the start
    - Don't rely on implementation details in tests — test user-facing behavior
    - Don't leave commented-out tests or TODOs in test files
+   - Don't merge components without tests — incomplete code is blocker
+   - Don't assume old tests still work — rerun with `--rerun-each 10` after changes
 
 ## Final Checklist Before Consider a Changes as Done
 

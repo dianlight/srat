@@ -33,6 +33,7 @@ interface HDIdleDiskSettingsProps {
 export function HDIdleDiskSettings({ disk, readOnly = false }: HDIdleDiskSettingsProps) {
 	const { control, reset } = useForm({
 		defaultValues: {
+			enabled: Enabled.Yes,
 			...disk?.hdidle_status,
 		},
 	});
@@ -53,9 +54,17 @@ export function HDIdleDiskSettings({ disk, readOnly = false }: HDIdleDiskSetting
 		}
 		// When disk prop changes, update form values
 		reset({
+			enabled: Enabled.Yes,
 			...disk?.hdidle_status,
 		});
 	}, [disk, reset, settings, isTestEnv]);
+
+	// Close accordion if enabled is not Custom
+	useEffect(() => {
+		if (enabled !== Enabled.Custom) {
+			setExpanded(false);
+		}
+	}, [enabled]);
 
 	// Read HDIdle config snapshot from disk dto when available
 	const hdidleStatus = useMemo(() => {
@@ -114,6 +123,7 @@ export function HDIdleDiskSettings({ disk, readOnly = false }: HDIdleDiskSetting
 
 						<IconButton
 							onClick={handleExpandChange}
+							disabled={enabled !== Enabled.Custom}
 							aria-expanded={expanded}
 							aria-label="show more"
 							sx={{

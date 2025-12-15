@@ -71,6 +71,10 @@ describe("HDIdleDiskSettings Component", () => {
             })
         );
 
+        // Click Custom to enable the expand button
+        const customBtn = await screen.findByRole("button", { name: /Custom/i });
+        await user.click(customBtn);
+
         const expandBtn = await screen.findByRole("button", { name: /show more/i });
         await user.click(expandBtn);
 
@@ -103,6 +107,10 @@ describe("HDIdleDiskSettings Component", () => {
                 children: React.createElement(HDIdleDiskSettings as any, { disk: mockDisk, readOnly: false }),
             })
         );
+
+        // Click Custom to enable the expand button
+        const customBtn = await screen.findByRole("button", { name: /Custom/i });
+        await user.click(customBtn);
 
         const expandBtn = await screen.findByRole("button", { name: /show more/i });
         await user.click(expandBtn);
@@ -137,6 +145,10 @@ describe("HDIdleDiskSettings Component", () => {
             })
         );
 
+        // Click Custom to enable the expand button
+        const customBtn = await screen.findByRole("button", { name: /Custom/i });
+        await user.click(customBtn);
+
         const expandBtn = await screen.findByRole("button", { name: /show more/i });
         await user.click(expandBtn);
 
@@ -169,6 +181,10 @@ describe("HDIdleDiskSettings Component", () => {
                 children: React.createElement(HDIdleDiskSettings as any, { disk: mockDisk, readOnly: true }),
             })
         );
+
+        // Click Custom to enable the expand button
+        const customBtn = await screen.findByRole("button", { name: /Custom/i });
+        await user.click(customBtn);
 
         const expandBtn = await screen.findByRole("button", { name: /show more/i });
         await user.click(expandBtn);
@@ -205,11 +221,100 @@ describe("HDIdleDiskSettings Component", () => {
             })
         );
 
+        // Click Custom to enable the expand button
+        const customBtn = await screen.findByRole("button", { name: /Custom/i });
+        await user.click(customBtn);
+
         const expandBtn = await screen.findByRole("button", { name: /show more/i });
         await user.click(expandBtn);
 
         // Should render model even without a name, falling back to id or model
         const model = await screen.findByText(/Mystery Disk|disk-unknown/i);
         expect(model).toBeTruthy();
+    });
+
+    it("expands accordion only when Enabled.Custom is selected", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { createTestStore } = await import("../../../../../test/setup");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
+
+        const mockDisk = {
+            id: "disk-1",
+            name: "sda",
+            model: "Test Disk",
+            size: 1000000000,
+            removable: false,
+        };
+
+        const store = await createTestStore();
+        const user = userEvent.setup();
+
+        render(
+            React.createElement(Provider, {
+                store,
+                children: React.createElement(HDIdleDiskSettings as any, { disk: mockDisk, readOnly: false }),
+            })
+        );
+
+        const expandBtn = await screen.findByRole("button", { name: /show more/i });
+        
+        // Initially, expand button should be disabled (default is Enabled.Yes)
+        expect((expandBtn as HTMLButtonElement).disabled).toBe(true);
+
+        // Click Custom to enable the expand button
+        const customBtn = await screen.findByRole("button", { name: /Custom/i });
+        await user.click(customBtn);
+
+        // Now the expand button should be enabled
+        expect((expandBtn as HTMLButtonElement).disabled).toBe(false);
+
+        // Click to expand
+        await user.click(expandBtn);
+
+        // Verify accordion content is visible
+        const idleField = await screen.findByLabelText(/Idle Time/i);
+        expect(idleField).toBeTruthy();
+
+        // Switch back to Enabled.Yes
+        const yesBtn = await screen.findByRole("button", { name: /Yes/i });
+        await user.click(yesBtn);
+
+        // Expand button should be disabled again
+        expect((expandBtn as HTMLButtonElement).disabled).toBe(true);
+
+        // Accordion should be collapsed
+        expect(() => screen.getByLabelText(/Idle Time/i)).toThrow();
+    });
+
+    it("defaults to Enabled.Yes", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { createTestStore } = await import("../../../../../test/setup");
+        const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
+
+        const mockDisk = {
+            id: "disk-1",
+            name: "sda",
+            model: "Test Disk",
+            size: 1000000000,
+            removable: false,
+        };
+
+        const store = await createTestStore();
+
+        render(
+            React.createElement(Provider, {
+                store,
+                children: React.createElement(HDIdleDiskSettings as any, { disk: mockDisk, readOnly: false }),
+            })
+        );
+
+        // The Yes button should be selected by default (success color)
+        const yesBtn = await screen.findByRole("button", { name: /Yes/i });
+        expect(yesBtn).toBeTruthy();
     });
 });
