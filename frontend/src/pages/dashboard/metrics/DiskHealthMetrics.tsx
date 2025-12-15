@@ -11,9 +11,11 @@ import {
 	TableContainer,
 	TableHead,
 	TableRow,
+	Tooltip,
 	Typography,
 	useTheme,
 } from "@mui/material";
+import { Warning as WarningIcon } from "@mui/icons-material";
 import { SafeSparkLineChart as SparkLineChart } from "../../../components/charts/SafeSparkLineChart";
 import { useEffect, useRef, useState } from "react";
 import type { DiskHealth, DiskIoStats, Partition, PerPartitionInfo } from "../../../store/sratApi";
@@ -128,161 +130,182 @@ export function DiskHealthMetrics({
 						</TableRow>
 					</TableHead>
 					<TableBody>
-						{sortedDiskIo.map((io) => (
-							<TableRow key={io.device_name}>
-								<TableCell component="th" scope="row" sx={{ cursor: "pointer" }} onClick={() => setSelectedIoStats(io)}>
-									{io.device_description}
-								</TableCell>
-								<TableCell component="th" scope="row">
-									{io.device_name}
-								</TableCell>
-								<TableCell align="right" sx={{ minWidth: 150 }}>
-									<Box
-										sx={{
-											display: "flex",
-											alignItems: "center",
-											justifyContent: "flex-end",
-										}}
-									>
-										<Typography
-											variant="body2"
-											sx={{ mr: 1, minWidth: "45px", textAlign: "right" }}
-										>
-											{io.read_iops?.toFixed(2)}
-										</Typography>
-										<Box sx={{ width: 50, height: 20 }}>
-											{(diskIoHistory[io.device_name]?.read_iops?.length || 0) > 1 ? (
-												<SparkLineChart
-													data={diskIoHistory[io.device_name]?.read_iops ?? []}
-													width={60}
-													height={20}
-													color={theme.palette.primary.main}
-													showTooltip
-												/>
-											) : null}
+						{sortedDiskIo.map((io) => {
+							// Look up SMART health from per_disk_info using device_description as key
+							const diskInfo = (diskHealth as any)?.per_disk_info?.[io.device_description];
+							const smartHealth = diskInfo?.smart_health;
+							const isSmartHealthOk = !smartHealth || smartHealth.passed;
+							const smartHealthTooltip = smartHealth && !smartHealth.passed
+								? `SMART Health: ${smartHealth.overall_status}${smartHealth.failing_attributes?.length ? `\nFailing attributes: ${smartHealth.failing_attributes.join(", ")}` : ""}`
+								: "";
+
+							return (
+								<TableRow key={io.device_name}>
+									<TableCell component="th" scope="row" sx={{ cursor: "pointer" }} onClick={() => setSelectedIoStats(io)}>
+										<Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+											{!isSmartHealthOk && (
+												<Tooltip title={smartHealthTooltip} arrow>
+													<WarningIcon
+														color="warning"
+														fontSize="small"
+														sx={{ verticalAlign: "middle" }}
+													/>
+												</Tooltip>
+											)}
+											{io.device_description}
 										</Box>
-									</Box>
-								</TableCell>
-								<TableCell align="right" sx={{ minWidth: 150 }}>
-									<Box
-										sx={{
-											display: "flex",
-											alignItems: "center",
-											justifyContent: "flex-end",
-										}}
-									>
-										<Typography
-											variant="body2"
-											sx={{ mr: 1, minWidth: "45px", textAlign: "right" }}
+									</TableCell>
+									<TableCell component="th" scope="row">
+										{io.device_name}
+									</TableCell>
+									<TableCell align="right" sx={{ minWidth: 150 }}>
+										<Box
+											sx={{
+												display: "flex",
+												alignItems: "center",
+												justifyContent: "flex-end",
+											}}
 										>
-											{io.write_iops?.toFixed(2)}
-										</Typography>
-										<Box sx={{ width: 50, height: 20 }}>
-											{(diskIoHistory[io.device_name]?.write_iops?.length || 0) > 1 ? (
-												<SparkLineChart
-													data={diskIoHistory[io.device_name]?.write_iops ?? []}
-													width={60}
-													height={20}
-													color={theme.palette.primary.main}
-													showTooltip
-												/>
-											) : null}
+											<Typography
+												variant="body2"
+												sx={{ mr: 1, minWidth: "45px", textAlign: "right" }}
+											>
+												{io.read_iops?.toFixed(2)}
+											</Typography>
+											<Box sx={{ width: 50, height: 20 }}>
+												{(diskIoHistory[io.device_name]?.read_iops?.length || 0) > 1 ? (
+													<SparkLineChart
+														data={diskIoHistory[io.device_name]?.read_iops ?? []}
+														width={60}
+														height={20}
+														color={theme.palette.primary.main}
+														showTooltip
+													/>
+												) : null}
+											</Box>
 										</Box>
-									</Box>
-								</TableCell>
-								<TableCell align="right" sx={{ minWidth: 150 }}>
-									<Box
-										sx={{
-											display: "flex",
-											alignItems: "center",
-											justifyContent: "flex-end",
-										}}
-									>
-										<Typography
-											variant="body2"
-											sx={{ mr: 1, minWidth: "45px", textAlign: "right" }}
+									</TableCell>
+									<TableCell align="right" sx={{ minWidth: 150 }}>
+										<Box
+											sx={{
+												display: "flex",
+												alignItems: "center",
+												justifyContent: "flex-end",
+											}}
 										>
-											{io.read_latency_ms?.toFixed(2)}
-										</Typography>
-										<Box sx={{ width: 50, height: 20 }}>
-											{(diskIoHistory[io.device_name]?.read_latency_ms?.length || 0) > 1 ? (
-												<SparkLineChart
-													data={diskIoHistory[io.device_name]?.read_latency_ms ?? []}
-													width={60}
-													height={20}
-													color={theme.palette.primary.main}
-													showTooltip
-												/>
-											) : null}
+											<Typography
+												variant="body2"
+												sx={{ mr: 1, minWidth: "45px", textAlign: "right" }}
+											>
+												{io.write_iops?.toFixed(2)}
+											</Typography>
+											<Box sx={{ width: 50, height: 20 }}>
+												{(diskIoHistory[io.device_name]?.write_iops?.length || 0) > 1 ? (
+													<SparkLineChart
+														data={diskIoHistory[io.device_name]?.write_iops ?? []}
+														width={60}
+														height={20}
+														color={theme.palette.primary.main}
+														showTooltip
+													/>
+												) : null}
+											</Box>
 										</Box>
-									</Box>
-								</TableCell>
-								<TableCell align="right" sx={{ minWidth: 150 }}>
-									<Box
-										sx={{
-											display: "flex",
-											alignItems: "center",
-											justifyContent: "flex-end",
-										}}
-									>
-										<Typography
-											variant="body2"
-											sx={{ mr: 1, minWidth: "45px", textAlign: "right" }}
+									</TableCell>
+									<TableCell align="right" sx={{ minWidth: 150 }}>
+										<Box
+											sx={{
+												display: "flex",
+												alignItems: "center",
+												justifyContent: "flex-end",
+											}}
 										>
-											{io.write_latency_ms?.toFixed(2)}
-										</Typography>
-										<Box sx={{ width: 50, height: 20 }}>
-											{(diskIoHistory[io.device_name]?.write_latency_ms?.length || 0) > 1 ? (
-												<SparkLineChart
-													data={diskIoHistory[io.device_name]?.write_latency_ms ?? []}
-													width={60}
-													height={20}
-													color={theme.palette.primary.main}
-													showTooltip
-												/>
-											) : null}
+											<Typography
+												variant="body2"
+												sx={{ mr: 1, minWidth: "45px", textAlign: "right" }}
+											>
+												{io.read_latency_ms?.toFixed(2)}
+											</Typography>
+											<Box sx={{ width: 50, height: 20 }}>
+												{(diskIoHistory[io.device_name]?.read_latency_ms?.length || 0) > 1 ? (
+													<SparkLineChart
+														data={diskIoHistory[io.device_name]?.read_latency_ms ?? []}
+														width={60}
+														height={20}
+														color={theme.palette.primary.main}
+														showTooltip
+													/>
+												) : null}
+											</Box>
 										</Box>
-									</Box>
-								</TableCell>
-								<TableCell align="right" sx={{ minWidth: 150 }}>
-									<Box
-										sx={{
-											display: "flex",
-											alignItems: "center",
-											justifyContent: "flex-end",
-										}}
-									>
-										<Typography
-											variant="body2"
-											sx={{ mr: 1, minWidth: "45px", textAlign: "right" }}
+									</TableCell>
+									<TableCell align="right" sx={{ minWidth: 150 }}>
+										<Box
+											sx={{
+												display: "flex",
+												alignItems: "center",
+												justifyContent: "flex-end",
+											}}
 										>
-											{io.smart_data?.temperature?.value ? `${io.smart_data.temperature.value}°C` : "N/A"} / {io.smart_data?.temperature?.max ? `${io.smart_data.temperature.max}°C` : "N/A"}
-										</Typography>
-										<Box sx={{ width: 50, height: 20 }}>
-											{(diskIoHistory[io.device_name]?.temperature?.length || 0) > 1 ? (
-												<SparkLineChart
-													data={diskIoHistory[io.device_name]?.temperature ?? []}
-													width={60}
-													height={20}
-													color={theme.palette.primary.main}
-													showTooltip
-												/>
-											) : null}
+											<Typography
+												variant="body2"
+												sx={{ mr: 1, minWidth: "45px", textAlign: "right" }}
+											>
+												{io.write_latency_ms?.toFixed(2)}
+											</Typography>
+											<Box sx={{ width: 50, height: 20 }}>
+												{(diskIoHistory[io.device_name]?.write_latency_ms?.length || 0) > 1 ? (
+													<SparkLineChart
+														data={diskIoHistory[io.device_name]?.write_latency_ms ?? []}
+														width={60}
+														height={20}
+														color={theme.palette.primary.main}
+														showTooltip
+													/>
+												) : null}
+											</Box>
 										</Box>
-									</Box>
-								</TableCell>
-								<TableCell align="right">
-									<Typography variant="body2">
-										{io.smart_data?.power_on_hours?.value?.toLocaleString() ?? "N/A"}
-									</Typography>
-								</TableCell>
-								<TableCell align="right">
-									<Typography variant="body2">
-										{io.smart_data?.power_cycle_count?.value?.toLocaleString() ?? "N/A"}
-									</Typography>
-								</TableCell>
-							</TableRow>
-						))}
+									</TableCell>
+									<TableCell align="right" sx={{ minWidth: 150 }}>
+										<Box
+											sx={{
+												display: "flex",
+												alignItems: "center",
+												justifyContent: "flex-end",
+											}}
+										>
+											<Typography
+												variant="body2"
+												sx={{ mr: 1, minWidth: "45px", textAlign: "right" }}
+											>
+												{io.smart_data?.temperature?.value ? `${io.smart_data.temperature.value}°C` : "N/A"} / {io.smart_data?.temperature?.max ? `${io.smart_data.temperature.max}°C` : "N/A"}
+											</Typography>
+											<Box sx={{ width: 50, height: 20 }}>
+												{(diskIoHistory[io.device_name]?.temperature?.length || 0) > 1 ? (
+													<SparkLineChart
+														data={diskIoHistory[io.device_name]?.temperature ?? []}
+														width={60}
+														height={20}
+														color={theme.palette.primary.main}
+														showTooltip
+													/>
+												) : null}
+											</Box>
+										</Box>
+									</TableCell>
+									<TableCell align="right">
+										<Typography variant="body2">
+											{io.smart_data?.power_on_hours?.value?.toLocaleString() ?? "N/A"}
+										</Typography>
+									</TableCell>
+									<TableCell align="right">
+										<Typography variant="body2">
+											{io.smart_data?.power_cycle_count?.value?.toLocaleString() ?? "N/A"}
+										</Typography>
+									</TableCell>
+								</TableRow>
+							);
+						})}
 					</TableBody>
 				</Table>
 			</TableContainer>

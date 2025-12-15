@@ -13,6 +13,7 @@ describe("DiskHealthMetrics", () => {
                 total_read_latency_ms: 0,
                 total_write_latency_ms: 0,
             },
+            hdidle_running: false,
             per_disk_io: [
                 {
                     device_description: "Second Disk",
@@ -40,6 +41,9 @@ describe("DiskHealthMetrics", () => {
         expect(tables.length).toBeGreaterThan(0);
 
         const table = tables[0];
+        if (!table) {
+            throw new Error("Table not found");
+        }
         const tbody = table.querySelector("tbody");
         expect(tbody).toBeTruthy();
 
