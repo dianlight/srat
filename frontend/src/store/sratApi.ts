@@ -3,6 +3,7 @@ export const addTagTypes = [
   "system",
   "disk",
   "smart",
+  "hdidle",
   "Issues",
   "samba",
   "share",
@@ -21,6 +22,16 @@ const injectedRtkApi = api
       >({
         query: () => ({ url: `/api/capabilities` }),
         providesTags: ["system"],
+      }),
+      deleteApiDiskByDiskIdHdidleConfig: build.mutation<
+        DeleteApiDiskByDiskIdHdidleConfigApiResponse,
+        DeleteApiDiskByDiskIdHdidleConfigApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/disk/${queryArg.diskId}/hdidle/config`,
+          method: "DELETE",
+        }),
+        invalidatesTags: ["disk"],
       }),
       getApiDiskByDiskIdHdidleConfig: build.query<
         GetApiDiskByDiskIdHdidleConfigApiResponse,
@@ -59,6 +70,15 @@ const injectedRtkApi = api
       >({
         query: (queryArg) => ({
           url: `/api/disk/${queryArg.diskId}/hdidle/info`,
+        }),
+        providesTags: ["disk"],
+      }),
+      getApiDiskByDiskIdHdidleSupport: build.query<
+        GetApiDiskByDiskIdHdidleSupportApiResponse,
+        GetApiDiskByDiskIdHdidleSupportApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/disk/${queryArg.diskId}/hdidle/support`,
         }),
         providesTags: ["disk"],
       }),
@@ -145,6 +165,34 @@ const injectedRtkApi = api
       >({
         query: () => ({ url: `/api/filesystems` }),
         providesTags: ["system"],
+      }),
+      getApiHdidleEffectiveConfig: build.query<
+        GetApiHdidleEffectiveConfigApiResponse,
+        GetApiHdidleEffectiveConfigApiArg
+      >({
+        query: () => ({ url: `/api/hdidle/effective-config` }),
+        providesTags: ["hdidle"],
+      }),
+      postApiHdidleStart: build.mutation<
+        PostApiHdidleStartApiResponse,
+        PostApiHdidleStartApiArg
+      >({
+        query: () => ({ url: `/api/hdidle/start`, method: "POST" }),
+        invalidatesTags: ["hdidle"],
+      }),
+      getApiHdidleStatus: build.query<
+        GetApiHdidleStatusApiResponse,
+        GetApiHdidleStatusApiArg
+      >({
+        query: () => ({ url: `/api/hdidle/status` }),
+        providesTags: ["hdidle"],
+      }),
+      postApiHdidleStop: build.mutation<
+        PostApiHdidleStopApiResponse,
+        PostApiHdidleStopApiArg
+      >({
+        query: () => ({ url: `/api/hdidle/stop`, method: "POST" }),
+        invalidatesTags: ["hdidle"],
       }),
       getApiHealth: build.query<GetApiHealthApiResponse, GetApiHealthApiArg>({
         query: () => ({ url: `/api/health` }),
@@ -459,6 +507,13 @@ export type GetApiCapabilitiesApiResponse = /** status 200 OK */
   | SystemCapabilities
   | /** status default Error */ ErrorModel;
 export type GetApiCapabilitiesApiArg = void;
+export type DeleteApiDiskByDiskIdHdidleConfigApiResponse = /** status 200 OK */
+  | DeleteHdIdleConfigOutputBody
+  | /** status default Error */ ErrorModel;
+export type DeleteApiDiskByDiskIdHdidleConfigApiArg = {
+  /** The disk ID or device path */
+  diskId: string;
+};
 export type GetApiDiskByDiskIdHdidleConfigApiResponse = /** status 200 OK */
   | HdIdleDeviceDto
   | /** status default Error */ ErrorModel;
@@ -486,6 +541,13 @@ export type GetApiDiskByDiskIdHdidleInfoApiResponse = /** status 200 OK */
   | HdIdleDiskStatus
   | /** status default Error */ ErrorModel;
 export type GetApiDiskByDiskIdHdidleInfoApiArg = {
+  /** The disk ID or device path */
+  diskId: string;
+};
+export type GetApiDiskByDiskIdHdidleSupportApiResponse = /** status 200 OK */
+  | HdIdleDeviceSupport
+  | /** status default Error */ ErrorModel;
+export type GetApiDiskByDiskIdHdidleSupportApiArg = {
   /** The disk ID or device path */
   diskId: string;
 };
@@ -550,6 +612,22 @@ export type GetApiFilesystemsApiResponse =
   | /** status 200 OK */ (FilesystemType[] | null)
   | /** status default Error */ ErrorModel;
 export type GetApiFilesystemsApiArg = void;
+export type GetApiHdidleEffectiveConfigApiResponse = /** status 200 OK */
+  | HdIdleEffectiveConfig
+  | /** status default Error */ ErrorModel;
+export type GetApiHdidleEffectiveConfigApiArg = void;
+export type PostApiHdidleStartApiResponse = /** status 200 OK */
+  | StartHdIdleServiceOutputBody
+  | /** status default Error */ ErrorModel;
+export type PostApiHdidleStartApiArg = void;
+export type GetApiHdidleStatusApiResponse = /** status 200 OK */
+  | HdIdleStatus
+  | /** status default Error */ ErrorModel;
+export type GetApiHdidleStatusApiArg = void;
+export type PostApiHdidleStopApiResponse = /** status 200 OK */
+  | StopHdIdleServiceOutputBody
+  | /** status default Error */ ErrorModel;
+export type PostApiHdidleStopApiArg = void;
 export type GetApiHealthApiResponse = /** status 200 OK */
   | HealthPing
   | /** status default Error */ ErrorModel;
@@ -832,6 +910,11 @@ export type ErrorModel = {
   /** A URI reference to human-readable documentation for the error. */
   type?: string;
 };
+export type DeleteHdIdleConfigOutputBody = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  message: string;
+};
 export type HdIdleDeviceDto = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
@@ -863,6 +946,16 @@ export type HdIdleDiskStatus = {
   SpinDownAt: string;
   SpinUpAt: string;
   SpunDown: boolean;
+};
+export type HdIdleDeviceSupport = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  DevicePath: string;
+  ErrorMessage: string;
+  RecommendedCommand: string | null;
+  Supported: boolean;
+  SupportsATA: boolean;
+  SupportsSCSI: boolean;
 };
 export type SmartHealthStatus = {
   /** A URL to the JSON Schema for this object. */
@@ -932,6 +1025,31 @@ export type FilesystemType = {
   mountFlags: MountFlag[] | null;
   name: string;
   type: string;
+};
+export type HdIdleEffectiveConfig = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  Devices: string[] | null;
+  Enabled: boolean;
+};
+export type StartHdIdleServiceOutputBody = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  message: string;
+  running: boolean;
+};
+export type HdIdleStatus = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  Disks: HdIdleDiskStatus[] | null;
+  MonitoredAt: string;
+  Running: boolean;
+};
+export type StopHdIdleServiceOutputBody = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  message: string;
+  running: boolean;
 };
 export type AddonStatsData = {
   blk_read?: number;
@@ -1358,10 +1476,12 @@ export enum Update_process_state {
 }
 export const {
   useGetApiCapabilitiesQuery,
+  useDeleteApiDiskByDiskIdHdidleConfigMutation,
   useGetApiDiskByDiskIdHdidleConfigQuery,
   usePatchApiDiskByDiskIdHdidleConfigMutation,
   usePutApiDiskByDiskIdHdidleConfigMutation,
   useGetApiDiskByDiskIdHdidleInfoQuery,
+  useGetApiDiskByDiskIdHdidleSupportQuery,
   usePostApiDiskByDiskIdSmartDisableMutation,
   usePostApiDiskByDiskIdSmartEnableMutation,
   useGetApiDiskByDiskIdSmartHealthQuery,
@@ -1371,6 +1491,10 @@ export const {
   usePostApiDiskByDiskIdSmartTestAbortMutation,
   usePostApiDiskByDiskIdSmartTestStartMutation,
   useGetApiFilesystemsQuery,
+  useGetApiHdidleEffectiveConfigQuery,
+  usePostApiHdidleStartMutation,
+  useGetApiHdidleStatusQuery,
+  usePostApiHdidleStopMutation,
   useGetApiHealthQuery,
   useGetApiHostnameQuery,
   useGetApiIssuesQuery,
