@@ -70,7 +70,7 @@ import { SettingsSteps } from "../pages/settings/SettingsTourStep";
 import { UsersSteps } from "../pages/users/UsersSteps";
 import { useGetServerEventsQuery } from "../store/sseApi";
 import { get } from "react-hook-form";
-import { getNodeEnv } from "../macro/Environment" with { type: 'macro' };
+import { getCurrentEnv } from "../macro/Environment" with { type: 'macro' };
 
 // Define tab configurations
 interface TabConfig {
@@ -227,7 +227,7 @@ export function NavBar(props: {
 			(tab) =>
 				!(
 					tab.isDevelopmentOnly &&
-					getNodeEnv() === "production" &&
+					getCurrentEnv() === "production" &&
 					!pkg.version.match(/dev/)
 				),
 		).map((tab, index) => ({
@@ -448,7 +448,7 @@ export function NavBar(props: {
 									</Tooltip>
 								)}
 								*/}
-							{getNodeEnv() !== "production" && (
+							{getCurrentEnv() !== "production" && (
 								<IconButton size="small">
 									<Tooltip title={
 										<List

@@ -25,7 +25,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import Collapse from "@mui/material/Collapse";
 import { useState } from "react";
 import { useGetApiDiskByDiskIdSmartInfoQuery, useGetApiDiskByDiskIdSmartStatusQuery, type SmartInfo, type SmartStatus } from "../../../store/sratApi";
-import { getNodeEnv } from "../../../macro/Environment";
+import { getCurrentEnv } from "../../../macro/Environment";
 
 // Local type definitions for SMART data that isn't in the OpenAPI spec yet
 interface SmartHealthStatus {
@@ -322,7 +322,7 @@ export function SmartStatusPanel({
                         )}
 
                         {/* Control Buttons */}
-                        {getNodeEnv() !== "production" && (
+                        {getCurrentEnv() !== "production" && (
                             <Box>
                                 <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
                                     Actions

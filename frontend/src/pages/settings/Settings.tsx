@@ -35,7 +35,7 @@ import {
 	Telemetry_mode,
 } from "../../store/sratApi";
 import { useGetServerEventsQuery } from "../../store/sseApi";
-import { getNodeEnv } from "../../macro/Environment" with { type: 'macro' };
+import { getCurrentEnv } from "../../macro/Environment" with { type: 'macro' };
 import { SimpleTreeView } from "@mui/x-tree-view/SimpleTreeView";
 import { TreeItem } from "@mui/x-tree-view/TreeItem";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -113,7 +113,7 @@ const buildSettingsTree = (): SettingTreeNode[] => {
 	const tree: SettingTreeNode[] = [];
 
 	let all_categories = { ...categories };
-	if (getNodeEnv() !== 'production') {
+	if (getCurrentEnv() !== 'production') {
 		all_categories = { ...all_categories, ...beta_categories };
 	}
 
@@ -282,7 +282,7 @@ export function Settings() {
 		};
 
 		let all_categories = { ...categories };
-		if (getNodeEnv() !== 'production') {
+		if (getCurrentEnv() !== 'production') {
 			all_categories = { ...all_categories, ...beta_categories };
 		}
 
@@ -332,7 +332,7 @@ export function Settings() {
 						loading={isChLoading}
 						autocompleteProps={{
 							size: "small",
-							disabled: evdata?.hello?.read_only || getNodeEnv() === "production",
+							disabled: evdata?.hello?.read_only || getCurrentEnv() === "production",
 							contentEditable: false,
 							disableClearable: true
 						}}

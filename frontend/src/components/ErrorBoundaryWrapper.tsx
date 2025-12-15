@@ -2,7 +2,7 @@ import React from 'react';
 import { ErrorBoundary } from '@rollbar/react';
 import { useRollbarTelemetry } from '../hooks/useRollbarTelemetry';
 import { get } from 'react-hook-form';
-import { getNodeEnv } from '../macro/Environment' with { type: 'macro' };
+import { getCurrentEnv } from '../macro/Environment' with { type: 'macro' };
 
 interface ErrorBoundaryWrapperProps {
     children: React.ReactNode;
@@ -14,7 +14,7 @@ const ErrorFallback: React.FC<{ error: Error | null; resetError: () => void }> =
         <h2>Something went wrong</h2>
         <p>An unexpected error occurred. The error has been reported.</p>
         <button onClick={resetError}>Try again</button>
-        {error && getNodeEnv() === 'development' && (
+        {error && getCurrentEnv() === 'development' && (
             <details style={{ marginTop: '10px', textAlign: 'left' }}>
                 <summary>Error details (development only)</summary>
                 <pre style={{ fontSize: '12px', color: '#666' }}>

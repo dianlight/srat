@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import type Rollbar from "rollbar";
 import packageJson from "../../package.json";
 import {
-	getNodeEnv,
+	getCurrentEnv,
 	getRollbarClientAccessToken,
 } from "../macro/Environment" with { type: "macro" };
 import {
@@ -33,7 +33,7 @@ export const useRollbarTelemetry = () => {
 	const { data: evdata, isLoading, error: herror } = useGetServerEventsQuery();
 	const [rollbarConfig, setRollbarConfig] = useState<RollbarConfigWithReplay>({
 		accessToken: getRollbarClientAccessToken() || "disabled",
-		environment: getNodeEnv() || "development",
+		environment: getCurrentEnv(),
 		codeVersion: packageJson.version,
 		captureUncaught: true,
 		captureUnhandledRejections: true,
@@ -81,7 +81,7 @@ export const useRollbarTelemetry = () => {
 				);
 			setRollbarConfig({
 				accessToken,
-				environment: getNodeEnv(),
+				environment: getCurrentEnv(),
 				codeVersion: packageJson.version,
 				captureUncaught: true,
 				captureUnhandledRejections: true,

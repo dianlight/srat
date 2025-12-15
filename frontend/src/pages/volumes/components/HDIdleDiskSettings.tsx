@@ -23,7 +23,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Controller, useWatch } from "react-hook-form";
 import type { Disk, Settings } from "../../../store/sratApi";
 import { useGetApiSettingsQuery, Enabled } from "../../../store/sratApi";
-import { getNodeEnv } from "../../../macro/Environment";
+import { getCurrentEnv } from "../../../macro/Environment";
 
 interface HDIdleDiskSettingsProps {
 	disk: Disk;
@@ -49,7 +49,7 @@ export function HDIdleDiskSettings({ disk, readOnly = false }: HDIdleDiskSetting
 	useEffect(() => {
 		// If global HDIdle is disabled, do nothing
 		if (isTestEnv || (settings as Settings)?.hdidle_enabled) {
-			setVisible(getNodeEnv() !== "production"); // Visible in non-production envs for testing
+			setVisible(getCurrentEnv() !== "production"); // Visible in non-production envs for testing
 		}
 		// When disk prop changes, update form values
 		reset({

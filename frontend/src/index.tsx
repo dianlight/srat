@@ -22,7 +22,7 @@ import { ConsoleErrorToRollbar } from "./components/ConsoleErrorToRollbar";
 import { store } from "./store/store.ts";
 import { TourProvider, } from '@reactour/tour'
 import { get } from "react-hook-form";
-import { getApiUrl, getNodeEnv } from "./macro/Environment.ts" with { type: 'macro' };
+import { getApiUrl, getCurrentEnv } from "./macro/Environment.ts" with { type: 'macro' };
 
 declare module '@mui/material/styles' {
 	interface TypographyVariants {
@@ -70,14 +70,14 @@ if (import.meta.hot) {
 	console.debug("✅ Hot Module Replacement (HMR) is enabled!");
 }
 
-if (getNodeEnv() === "development") {
+if (getCurrentEnv() === "development") {
 	console.debug("👷‍♂️ Running in development mode");
-} else if (getNodeEnv() === "remote") {
+} else if (getCurrentEnv() === "remote") {
 	console.debug(`🌐 Running in remote mode: ${getApiUrl()}`);
-} else if (getNodeEnv() === "production") {
+} else if (getCurrentEnv() === "production") {
 	console.debug("🚀 Running in production mode");
 } else {
-	console.debug(`ℹ️ Running in unknown mode: ${getNodeEnv()}`);
+	console.debug(`ℹ️ Running in unknown mode: ${getCurrentEnv()}`);
 }
 
 const disableBody = (target: any) => {
