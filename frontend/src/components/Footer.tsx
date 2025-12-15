@@ -6,6 +6,12 @@ import pkg from "../../package.json";
 import { getGitCommitHash } from "../macro/GitCommitHash.ts" with {
 	type: "macro",
 };
+import { getCompileYear } from "../macro/CompileYear.ts" with {
+	type: "macro",
+};
+import { getCurrentEnv } from "../macro/Environment.ts" with {
+	type: "macro",
+};
 import { useGetServerEventsQuery } from "../store/sseApi.ts";
 
 export function Footer() {
@@ -37,7 +43,7 @@ export function Footer() {
 						my: isSmallScreen ? 0.5 : 1,
 					}}
 				>
-					<Tooltip title={isLoading ? "Loading..." : evdata?.hello?.build_version} arrow placement="top">
+					<Tooltip title={isLoading ? "Loading..." : `${evdata?.hello?.build_version} (${getCurrentEnv()})`} arrow placement="top">
 						<Typography variant="caption">
 							<Link href={`${pkg.repository.url}/commit/${getGitCommitHash()}`}>
 								Version {pkg.version}
@@ -46,7 +52,7 @@ export function Footer() {
 					</Tooltip>
 
 					<Typography variant="caption">
-						© 2024-2025 Copyright {pkg.author.name}
+						© 2024-{getCompileYear()} Copyright {pkg.author.name}
 					</Typography>
 
 					{isSmallScreen || (isLoading && <div>Loading...</div>) ? null : (
