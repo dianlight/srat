@@ -312,15 +312,17 @@ func (self *SambaService) GetSambaProcess() (*dto.SambaProcessStatus, errors.E) 
 
 				processStatus, err := conv.ProcessToProcessStatus(p)
 				if err != nil {
-					slog.ErrorContext(self.ctx, "Error converting process to DTO", "process", processName, "error", err)
+					slog.WarnContext(self.ctx, "Error converting process to DTO", "process", processName, "pid", processStatus.Pid, "error", err)
 					continue
 				}
-				self.status[processName] = processStatus
 
 				// If this is the current process (srat-server), find all virtual subprocesses
 				if processStatus.Pid == currentPid {
 					processStatus.Children = self.findChildProcesses(currentPid)
 				}
+
+				self.status[processName] = processStatus
+
 			}
 		}
 	}
