@@ -1,3 +1,4 @@
+import '../../../../../test/setup';
 import { describe, expect, it } from "bun:test";
 import type { DiskHealth } from "../../../../store/sratApi";
 
