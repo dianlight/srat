@@ -92,6 +92,14 @@ export function DiskHealthMetrics({
 	const isDiskIoStats = (obj: any): obj is DiskIoStats =>
 		!!obj && typeof obj === "object" && "device_name" in obj && "device_description" in obj;
 
+	const sortedDiskIo = [...(diskHealth?.per_disk_io ?? [])].sort((a, b) =>
+		(a.device_name || "").localeCompare(b.device_name || ""),
+	);
+
+	const sortedPartitionEntries = Object.entries(diskHealth?.per_partition_info || {}).sort(
+		([a], [b]) => (a || "").localeCompare(b || ""),
+	);
+
 	return (
 		<>
 			<PreviewDialog
@@ -120,7 +128,7 @@ export function DiskHealthMetrics({
 						</TableRow>
 					</TableHead>
 					<TableBody>
-						{diskHealth?.per_disk_io?.map((io) => (
+						{sortedDiskIo.map((io) => (
 							<TableRow key={io.device_name}>
 								<TableCell component="th" scope="row" sx={{ cursor: "pointer" }} onClick={() => setSelectedIoStats(io)}>
 									{io.device_description}
@@ -283,7 +291,7 @@ export function DiskHealthMetrics({
 				Disk Partitions
 			</Typography>
 			<Grid container spacing={2}>
-				{Object.entries(diskHealth?.per_partition_info || {}).map(
+				{sortedPartitionEntries.map(
 					([diskName, partitions]) => (
 						<Grid size={{ xs: 12, sm: 6, md: 4 }} key={diskName}>
 							<Card>
