@@ -239,7 +239,8 @@ func (s *smartService) GetSmartStatus(ctx context.Context, devicePath string) (*
 
 	// Initialize the return structure with dynamic status
 	ret := &dto.SmartStatus{
-		Enabled: smartEnabled,
+		Supported: smartInfo.SmartSupport.Available,
+		Enabled:   smartEnabled,
 	}
 
 	// Extract temperature
@@ -475,6 +476,7 @@ func (s *smartService) StartSelfTest(ctx context.Context, devicePath string, tes
 	}
 
 	slog.DebugContext(ctx, "SMART self-test started", "device", devicePath, "type", testType)
+	s.cache.Delete(smartCacheKeyPrefix + devicePath + "_status")
 	return nil
 }
 
@@ -503,6 +505,7 @@ func (s *smartService) AbortSelfTest(ctx context.Context, devicePath string) err
 	}
 
 	slog.DebugContext(ctx, "SMART self-test aborted", "device", devicePath)
+	s.cache.Delete(smartCacheKeyPrefix + devicePath + "_status")
 	return nil
 }
 
@@ -588,6 +591,8 @@ func (s *smartService) EnableSMART(ctx context.Context, devicePath string) error
 	}
 
 	slog.DebugContext(ctx, "SMART enabled and verified", "device", devicePath)
+
+	s.cache.Delete(smartCacheKeyPrefix + devicePath + "_status")
 	return nil
 }
 
@@ -621,6 +626,7 @@ func (s *smartService) DisableSMART(ctx context.Context, devicePath string) erro
 	}
 
 	slog.DebugContext(ctx, "SMART disabled", "device", devicePath)
+	s.cache.Delete(smartCacheKeyPrefix + devicePath + "_status")
 	return nil
 }
 
