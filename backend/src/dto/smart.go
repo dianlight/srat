@@ -25,6 +25,7 @@ type SmartInfo struct {
 
 // SmartStatus represents current S.M.A.R.T. status of a disk
 type SmartStatus struct {
+	Supported       bool                       `json:"supported"`
 	Temperature     SmartTempValue             `json:"temperature"`
 	PowerOnHours    SmartRangeValue            `json:"power_on_hours"`
 	PowerCycleCount SmartRangeValue            `json:"power_cycle_count"`

@@ -230,6 +230,11 @@ func (s *smartService) GetSmartStatus(ctx context.Context, devicePath string) (*
 	smartEnabled := false
 	if smartInfo.SmartSupport != nil {
 		smartEnabled = smartInfo.SmartSupport.Enabled
+		if !smartInfo.SmartSupport.Available {
+			return &dto.SmartStatus{
+				Supported: false,
+			}, nil
+		}
 	}
 
 	// Initialize the return structure with dynamic status
@@ -347,6 +352,13 @@ func (s *smartService) GetHealthStatus(ctx context.Context, devicePath string) (
 	smartStatus, err := s.GetSmartStatus(ctx, devicePath)
 	if err != nil {
 		return nil, err
+	}
+
+	if !smartStatus.Supported {
+		return &dto.SmartHealthStatus{
+			Passed:        false,
+			OverallStatus: "unknown",
+		}, nil
 	}
 
 	// Check if SMART is enabled
