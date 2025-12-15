@@ -383,3 +383,82 @@ func (suite *HDIdleServiceSuite) TestTriState_GlobalDisabled_AllDefault_NoDevice
 	suite.False(ec.Enabled, "service should be effectively disabled with global OFF and no per-device YES")
 	suite.Empty(ec.Devices, "no devices should be included when global is OFF and all devices are DEFAULT")
 }
+
+// --- CheckDeviceSupport tests ---
+
+func (suite *HDIdleServiceSuite) TestCheckDeviceSupport_NonExistentDevice() {
+	// Test with a device path that doesn't exist
+	support, err := suite.service.CheckDeviceSupport("/dev/nonexistent_device_xyz")
+	suite.NoError(err)
+	suite.NotNil(support)
+	suite.False(support.Supported)
+	suite.False(support.SupportsSCSI)
+	suite.False(support.SupportsATA)
+	suite.NotEmpty(support.ErrorMessage)
+}
+
+func (suite *HDIdleServiceSuite) TestCheckDeviceSupport_InvalidPath() {
+	// Test with an invalid path (not a block device)
+	support, err := suite.service.CheckDeviceSupport("/tmp")
+	suite.NoError(err)
+	suite.NotNil(support)
+	suite.False(support.Supported)
+	suite.NotEmpty(support.ErrorMessage)
+}
+
+func (suite *HDIdleServiceSuite) TestCheckDeviceSupport_EmptyPath() {
+	// Test with empty path
+	support, err := suite.service.CheckDeviceSupport("")
+	suite.NoError(err)
+	suite.NotNil(support)
+	suite.False(support.Supported)
+	suite.NotEmpty(support.ErrorMessage)
+}
+
+func (suite *HDIdleServiceSuite) TestCheckDeviceSupport_RelativePath() {
+	// Test with a relative path that doesn't resolve
+	support, err := suite.service.CheckDeviceSupport("sda")
+	suite.NoError(err)
+	suite.NotNil(support)
+	// The device path should be returned even if not supported
+	suite.NotEmpty(support.DevicePath)
+}
+
+func (suite *HDIdleServiceSuite) TestCheckDeviceSupport_SymlinkPath() {
+	// Test with a symlink-style path (typical for /dev/disk/by-id/)
+	// This will fail to resolve but should not panic
+	support, err := suite.service.CheckDeviceSupport("/dev/disk/by-id/fake-device-id")
+	suite.NoError(err)
+	suite.NotNil(support)
+	suite.False(support.Supported)
+}
+
+func (suite *HDIdleServiceSuite) TestCheckDeviceSupport_NullDevice() {
+	// Test with /dev/null which exists but is not a block device
+	support, err := suite.service.CheckDeviceSupport("/dev/null")
+	suite.NoError(err)
+	suite.NotNil(support)
+	suite.False(support.Supported)
+	// /dev/null doesn't support SG interface
+	suite.False(support.SupportsSCSI)
+	suite.False(support.SupportsATA)
+}
+
+func (suite *HDIdleServiceSuite) TestCheckDeviceSupport_ReturnsDevicePath() {
+	// Verify the function always returns the device path in the result
+	testPath := "/dev/some_test_device"
+	support, err := suite.service.CheckDeviceSupport(testPath)
+	suite.NoError(err)
+	suite.NotNil(support)
+	// DevicePath should be set (either original or resolved)
+	suite.NotEmpty(support.DevicePath)
+}
+
+func (suite *HDIdleServiceSuite) TestCheckDeviceSupport_RecommendedCommandNilWhenNotSupported() {
+	// When device is not supported, RecommendedCommand should be nil
+	support, err := suite.service.CheckDeviceSupport("/dev/nonexistent")
+	suite.NoError(err)
+	suite.NotNil(support)
+	suite.False(support.Supported)
+	suite.Nil(support.RecommendedCommand)
+}
