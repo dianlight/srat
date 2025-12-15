@@ -120,7 +120,7 @@ export function DiskHealthMetrics({
 						<TableRow>
 							<TableCell>Description</TableCell>
 							<TableCell>Device</TableCell>
-							{diskHealth?.hdidle_running && (
+							{(diskHealth as any)?.hdidle_running && (
 								<TableCell align="center">Spin Status</TableCell>
 							)}
 							<TableCell align="right">Reads IOP/s</TableCell>
@@ -196,7 +196,7 @@ export function DiskHealthMetrics({
 											{io.device_name}
 										</Box>
 									</TableCell>
-									{diskHealth?.hdidle_running && (
+									{(diskHealth as any)?.hdidle_running && (
 										<TableCell align="center">
 											{diskInfo?.hdidle_status ? (
 												<Tooltip 
