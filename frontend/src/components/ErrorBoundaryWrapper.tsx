@@ -1,7 +1,6 @@
 import React from 'react';
 import { ErrorBoundary } from '@rollbar/react';
 import { useRollbarTelemetry } from '../hooks/useRollbarTelemetry';
-import { get } from 'react-hook-form';
 import { getCurrentEnv } from '../macro/Environment' with { type: 'macro' };
 
 interface ErrorBoundaryWrapperProps {

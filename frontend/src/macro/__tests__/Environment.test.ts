@@ -1,3 +1,4 @@
+import '../../../test/setup';
 /// <reference types="bun-types" />
 
 import { describe, it, expect, afterEach } from "bun:test";

@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { useConsoleErrorCallback } from "../hooks/useConsoleErrorCallback";
 import { useRollbarTelemetry } from "../hooks/useRollbarTelemetry";
 
@@ -65,7 +64,6 @@ export const ConsoleErrorToRollbar: React.FC = () => {
         }
     });
 
-    // Component renders nothing
-    useEffect(() => { }, []);
+    // Renders nothing; hook handles registration lifecycle
     return null;
 };

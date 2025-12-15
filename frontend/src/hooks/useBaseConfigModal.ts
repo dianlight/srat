@@ -49,7 +49,7 @@ export const useBaseConfigModal = () => {
 		if (
 			isValidSettings(settings) &&
 			adminUser &&
-			adminUser.password === "changeme!" 
+			adminUser.password === "changeme!"
 		) {
 			setShouldShow(true);
 		}
