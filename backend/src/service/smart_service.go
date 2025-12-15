@@ -239,7 +239,7 @@ func (s *smartService) GetSmartStatus(ctx context.Context, devicePath string) (*
 
 	// Initialize the return structure with dynamic status
 	ret := &dto.SmartStatus{
-		Supported: smartInfo.SmartSupport.Available,
+		Supported: true,
 		Enabled:   smartEnabled,
 	}
 

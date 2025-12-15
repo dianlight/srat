@@ -195,4 +195,5 @@ mount_remote:
 build_remote: /mnt/remote/config.db3
 	cd $(FRONTEND_DIRS);bun run build -o ../backend/$(STATIC_DIRS);cd - && \
 	$(MAKE) remote_build && \
-	find ./tmp/x86_64/ -name "srat*" -exec cp -v {} /mnt/remote/ \;
+	cp -v ./tmp/x86_64/srat-cli /mnt/remote/ && \
+	cp -v ./tmp/x86_64/srat-server /mnt/remote/

@@ -78,10 +78,10 @@ github.com/dave/jennifer/jen
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
-# github.com/dianlight/smartmontools-go v0.1.2
+# github.com/dianlight/smartmontools-go v0.1.4
 ## explicit; go 1.25.0
 github.com/dianlight/smartmontools-go
-# github.com/dianlight/tlog v0.0.5
+# github.com/dianlight/tlog v0.1.0
 ## explicit; go 1.25.0
 github.com/dianlight/tlog
 # github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936
@@ -542,7 +542,7 @@ golang.org/x/sync/singleflight
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
-# golang.org/x/text v0.31.0
+# golang.org/x/text v0.32.0
 ## explicit; go 1.24.0
 golang.org/x/text/cases
 golang.org/x/text/feature/plural

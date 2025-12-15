@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"runtime"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -71,6 +72,116 @@ var levelColorNumbers = map[string]uint8{
 	"WARN":   3,
 	"ERROR":  1,
 	"FATAL":  9,
+}
+
+// sensitiveKeys holds keys considered sensitive for masking
+var sensitiveKeys = map[string]struct{}{
+	"password": {}, "pwd": {}, "pass": {}, "passwd": {},
+	"token": {}, "jwt": {}, "auth_token": {}, "access_token": {}, "refresh_token": {},
+	"key": {}, "api_key": {}, "secret": {}, "client_secret": {}, "private_key": {},
+}
+
+// maskString shows first 4 chars then 7 asterisks, matching test expectations
+func maskString(s string) string {
+	prefix := s
+	if len(prefix) > 4 {
+		prefix = prefix[:4]
+	}
+	return prefix + strings.Repeat("*", 7)
+}
+
+// maskNestedValue walks nested structures and masks values whose immediate key is sensitive
+func maskNestedValue(v any, keyHint string) any {
+	if keyHint != "" {
+		if _, ok := sensitiveKeys[keyHint]; ok {
+			if sv, ok := v.(string); ok {
+				return maskString(sv)
+			}
+		}
+	}
+	switch val := v.(type) {
+	case map[string]any:
+		out := make(map[string]any, len(val))
+		for k, vv := range val {
+			out[k] = maskNestedValue(vv, k)
+		}
+		return out
+	case map[string]string:
+		out := make(map[string]string, len(val))
+		for k, vv := range val {
+			if _, ok := sensitiveKeys[k]; ok {
+				out[k] = maskString(vv)
+			} else {
+				out[k] = vv
+			}
+		}
+		return out
+	case []any:
+		out := make([]any, len(val))
+		for i, vv := range val {
+			out[i] = maskNestedValue(vv, "")
+		}
+		return out
+	case []map[string]any:
+		out := make([]map[string]any, len(val))
+		for i, m := range val {
+			out[i] = maskNestedValue(m, "").(map[string]any)
+		}
+		return out
+	case []slog.Attr:
+		out := make([]slog.Attr, 0, len(val))
+		for _, attr := range val {
+			masked := maskNestedValue(attr.Value.Any(), attr.Key)
+			out = append(out, slog.Any(attr.Key, masked))
+		}
+		return out
+	default:
+		if keyHint != "" {
+			if _, ok := sensitiveKeys[keyHint]; ok {
+				if sv, ok := val.(string); ok {
+					return maskString(sv)
+				}
+			}
+		}
+		return v
+	}
+}
+
+// maskingHandler wraps a slog.Handler and masks sensitive data inside records
+type maskingHandler struct{ next slog.Handler }
+
+func (mh *maskingHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	return mh.next.Enabled(ctx, level)
+}
+
+func (mh *maskingHandler) Handle(ctx context.Context, r slog.Record) error {
+	nr := slog.NewRecord(r.Time, r.Level, r.Message, r.PC)
+	r.Attrs(func(attr slog.Attr) bool {
+		// If the key itself is sensitive and value is string
+		if s, ok := attr.Value.Any().(string); ok {
+			if _, ok := sensitiveKeys[attr.Key]; ok {
+				nr.Add(attr.Key, maskString(s))
+				return true
+			}
+		}
+		// For complex values, apply masking recursively
+		switch vv := attr.Value.Any().(type) {
+		case map[string]any, map[string]string, []any, []map[string]any, []slog.Attr:
+			mv := maskNestedValue(vv, attr.Key)
+			nr.Add(slog.Any(attr.Key, mv))
+		default:
+			nr.Add(attr)
+		}
+		return true
+	})
+	return mh.next.Handle(ctx, nr)
+}
+
+func (mh *maskingHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return &maskingHandler{next: mh.next.WithAttrs(attrs)}
+}
+func (mh *maskingHandler) WithGroup(group string) slog.Handler {
+	return &maskingHandler{next: mh.next.WithGroup(group)}
 }
 
 // FormatterConfig holds configuration for log formatting
@@ -183,6 +294,22 @@ func createBaseHandler(level slog.Level) slog.Handler {
 			// First apply the level replacement
 			a = replaceLogLevel(groups, a)
 
+			// Optionally hide sensitive data even inside nested payloads (only when formatting enabled)
+			if config.EnableFormatting && config.HideSensitiveData {
+				// If the attr key itself is sensitive and value is string
+				if s, ok := a.Value.Any().(string); ok {
+					if _, ok := sensitiveKeys[a.Key]; ok {
+						return slog.Attr{Key: a.Key, Value: slog.StringValue(maskString(s))}
+					}
+				}
+				// For complex values, walk and mask inside
+				switch vv := a.Value.Any().(type) {
+				case map[string]any, map[string]string, []any, []map[string]any, []slog.Attr:
+					masked := maskNestedValue(vv, a.Key)
+					return slog.Any(a.Key, masked)
+				}
+			}
+
 			// Extract context values and add them as log attributes
 			if a.Key == "context" {
 				if ctx, ok := a.Value.Any().(context.Context); ok {
@@ -211,6 +338,12 @@ func createBaseHandler(level slog.Level) slog.Handler {
 
 	formattedTintHandler := slog.Handler(tintHandler)
 
+	// Ensure callbacks see masked values too (only when formatting enabled)
+	if config.EnableFormatting && config.HideSensitiveData {
+		formattedTintHandler = &maskingHandler{next: formattedTintHandler}
+		callbackHandler = &maskingHandler{next: callbackHandler}
+	}
+
 	// If formatting is enabled, wrap with slog-formatter
 	if config.EnableFormatting {
 		var formatters []slogformatter.Formatter
@@ -223,22 +356,18 @@ func createBaseHandler(level slog.Level) slog.Handler {
 
 		// Add sensitive data formatter if enabled
 		if config.HideSensitiveData {
+			// Build PII formatters dynamically from sensitiveKeys for determinism
+			piiKeys := make([]string, 0, len(sensitiveKeys))
+			for k := range sensitiveKeys {
+				piiKeys = append(piiKeys, k)
+			}
+			sort.Strings(piiKeys)
+			for _, k := range piiKeys {
+				formatters = append(formatters, slogformatter.PIIFormatter(k))
+			}
+
+			// Additional non-PII formatters
 			formatters = append(formatters,
-				// Password and credential fields
-				slogformatter.PIIFormatter("password"),
-				slogformatter.PIIFormatter("pwd"),
-				slogformatter.PIIFormatter("pass"),
-				slogformatter.PIIFormatter("passwd"),
-				slogformatter.PIIFormatter("token"),
-				slogformatter.PIIFormatter("jwt"),
-				slogformatter.PIIFormatter("auth_token"),
-				slogformatter.PIIFormatter("access_token"),
-				slogformatter.PIIFormatter("refresh_token"),
-				slogformatter.PIIFormatter("key"),
-				slogformatter.PIIFormatter("api_key"),
-				slogformatter.PIIFormatter("secret"),
-				slogformatter.PIIFormatter("client_secret"),
-				slogformatter.PIIFormatter("private_key"),
 				// Network addresses
 				slogformatter.IPAddressFormatter("ip"),
 				slogformatter.IPAddressFormatter("addr"),

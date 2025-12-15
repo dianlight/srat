@@ -22,7 +22,7 @@ type mockSmartClient struct {
 	abortSelfTestFunc         func(devicePath string) error
 	enableSMARTFunc           func(devicePath string) error
 	disableSMARTFunc          func(devicePath string) error
-	isSMARTSupportedFunc      func(devicePath string) (*smartmontools.SMARTSupportInfo, error)
+	isSMARTSupportedFunc      func(devicePath string) (*smartmontools.SmartSupport, error)
 	scanDevicesFunc           func() ([]smartmontools.Device, error)
 	getDeviceInfoFunc         func(devicePath string) (map[string]any, error)
 	getAvailableSelfTestsFunc func(devicePath string) (*smartmontools.SelfTestInfo, error)
@@ -72,7 +72,7 @@ func (m *mockSmartClient) DisableSMART(_ context.Context, devicePath string) err
 	return errors.New("not implemented")
 }
 
-func (m *mockSmartClient) IsSMARTSupported(_ context.Context, devicePath string) (*smartmontools.SMARTSupportInfo, error) {
+func (m *mockSmartClient) IsSMARTSupported(_ context.Context, devicePath string) (*smartmontools.SmartSupport, error) {
 	if m.isSMARTSupportedFunc != nil {
 		return m.isSMARTSupportedFunc(devicePath)
 	}
@@ -463,10 +463,10 @@ func (suite *SmartServiceSuite) TestEnableSMARTSuccess() {
 		return errors.New("unexpected device")
 	}
 
-	suite.mockClient.isSMARTSupportedFunc = func(devicePath string) (*smartmontools.SMARTSupportInfo, error) {
+	suite.mockClient.isSMARTSupportedFunc = func(devicePath string) (*smartmontools.SmartSupport, error) {
 		if devicePath == tempFile.Name() {
-			return &smartmontools.SMARTSupportInfo{
-				Supported: true,
+			return &smartmontools.SmartSupport{
+				Available: true,
 				Enabled:   true,
 			}, nil
 		}
@@ -492,10 +492,10 @@ func (suite *SmartServiceSuite) TestDisableSMARTSuccess() {
 		return errors.New("unexpected device")
 	}
 
-	suite.mockClient.isSMARTSupportedFunc = func(devicePath string) (*smartmontools.SMARTSupportInfo, error) {
+	suite.mockClient.isSMARTSupportedFunc = func(devicePath string) (*smartmontools.SmartSupport, error) {
 		if devicePath == tempFile.Name() {
-			return &smartmontools.SMARTSupportInfo{
-				Supported: true,
+			return &smartmontools.SmartSupport{
+				Available: true,
 				Enabled:   false,
 			}, nil
 		}

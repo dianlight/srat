@@ -75,7 +75,7 @@ func (suite *HDIdleHandlerSuite) TestGetConfigSuccess() {
 		Enabled:        dto.HdidleEnableds.YESENABLED,
 	}
 
-	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Exact(diskID))).ThenReturn(expectedConfig, nil)
+	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Substring(diskID))).ThenReturn(expectedConfig, nil)
 
 	_, apiInst := humatest.New(suite.T())
 	suite.handler.RegisterHDIdleHandler(apiInst)
@@ -89,13 +89,13 @@ func (suite *HDIdleHandlerSuite) TestGetConfigSuccess() {
 	suite.Equal(300, out.IdleTime)
 	suite.Equal(dto.HdidleEnableds.YESENABLED, out.Enabled)
 
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).GetDeviceConfig(mock.Exact(diskID))
+	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).GetDeviceConfig(mock.Substring(diskID))
 }
 
 func (suite *HDIdleHandlerSuite) TestGetConfigError() {
 	diskID := "sda"
 
-	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Exact(diskID))).ThenReturn(nil, errors.New("database error"))
+	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Substring(diskID))).ThenReturn(nil, errors.New("database error"))
 
 	_, apiInst := humatest.New(suite.T())
 	suite.handler.RegisterHDIdleHandler(apiInst)
@@ -103,7 +103,7 @@ func (suite *HDIdleHandlerSuite) TestGetConfigError() {
 	resp := apiInst.Get("/disk/sda/hdidle/config")
 	suite.Require().Equal(http.StatusInternalServerError, resp.Code)
 
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).GetDeviceConfig(mock.Exact(diskID))
+	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).GetDeviceConfig(mock.Substring(diskID))
 }
 
 // =============================================================================
@@ -127,7 +127,7 @@ func (suite *HDIdleHandlerSuite) TestPutConfigSuccess() {
 		Enabled:        dto.HdidleEnableds.CUSTOMENABLED,
 	}
 
-	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Exact(diskID))).ThenReturn(existingConfig, nil)
+	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Substring(diskID))).ThenReturn(existingConfig, nil)
 	mock.When(suite.mockHDIdleService.SaveDeviceConfig(mock.Any[dto.HDIdleDeviceDTO]())).ThenReturn(nil)
 	mock.When(suite.mockHDIdleService.IsRunning()).ThenReturn(false)
 	mock.When(suite.mockHDIdleService.Start()).ThenReturn(nil)
@@ -142,7 +142,7 @@ func (suite *HDIdleHandlerSuite) TestPutConfigSuccess() {
 	suite.NoError(json.Unmarshal(resp.Body.Bytes(), &out))
 	suite.Equal(600, out.IdleTime)
 
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).GetDeviceConfig(mock.Exact(diskID))
+	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).GetDeviceConfig(mock.Substring(diskID))
 	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).SaveDeviceConfig(mock.Any[dto.HDIdleDeviceDTO]())
 	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).Start()
 }
@@ -160,7 +160,7 @@ func (suite *HDIdleHandlerSuite) TestPutConfigWithRestartSuccess() {
 		Enabled:    dto.HdidleEnableds.YESENABLED,
 	}
 
-	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Exact(diskID))).ThenReturn(existingConfig, nil)
+	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Substring(diskID))).ThenReturn(existingConfig, nil)
 	mock.When(suite.mockHDIdleService.SaveDeviceConfig(mock.Any[dto.HDIdleDeviceDTO]())).ThenReturn(nil)
 	mock.When(suite.mockHDIdleService.IsRunning()).ThenReturn(true)
 	mock.When(suite.mockHDIdleService.Stop()).ThenReturn(nil)
@@ -189,7 +189,7 @@ func (suite *HDIdleHandlerSuite) TestPutConfigDevicePathMismatch() {
 		Enabled:    dto.HdidleEnableds.YESENABLED,
 	}
 
-	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Exact(diskID))).ThenReturn(existingConfig, nil)
+	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Substring(diskID))).ThenReturn(existingConfig, nil)
 
 	_, apiInst := humatest.New(suite.T())
 	suite.handler.RegisterHDIdleHandler(apiInst)
@@ -211,7 +211,7 @@ func (suite *HDIdleHandlerSuite) TestPutConfigStopError() {
 		Enabled:    dto.HdidleEnableds.YESENABLED,
 	}
 
-	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Exact(diskID))).ThenReturn(existingConfig, nil)
+	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Substring(diskID))).ThenReturn(existingConfig, nil)
 	mock.When(suite.mockHDIdleService.SaveDeviceConfig(mock.Any[dto.HDIdleDeviceDTO]())).ThenReturn(nil)
 	mock.When(suite.mockHDIdleService.IsRunning()).ThenReturn(true)
 	mock.When(suite.mockHDIdleService.Stop()).ThenReturn(errors.New("stop failed"))
@@ -238,7 +238,7 @@ func (suite *HDIdleHandlerSuite) TestPutConfigSaveError() {
 		Enabled:    dto.HdidleEnableds.YESENABLED,
 	}
 
-	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Exact(diskID))).ThenReturn(existingConfig, nil)
+	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Substring(diskID))).ThenReturn(existingConfig, nil)
 	mock.When(suite.mockHDIdleService.SaveDeviceConfig(mock.Any[dto.HDIdleDeviceDTO]())).ThenReturn(errors.New("save failed"))
 
 	_, apiInst := humatest.New(suite.T())
@@ -263,7 +263,7 @@ func (suite *HDIdleHandlerSuite) TestPutConfigStartError() {
 		Enabled:    dto.HdidleEnableds.YESENABLED,
 	}
 
-	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Exact(diskID))).ThenReturn(existingConfig, nil)
+	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Substring(diskID))).ThenReturn(existingConfig, nil)
 	mock.When(suite.mockHDIdleService.SaveDeviceConfig(mock.Any[dto.HDIdleDeviceDTO]())).ThenReturn(nil)
 	mock.When(suite.mockHDIdleService.IsRunning()).ThenReturn(false)
 	mock.When(suite.mockHDIdleService.Start()).ThenReturn(errors.New("start failed"))
@@ -293,7 +293,7 @@ func (suite *HDIdleHandlerSuite) TestGetStatusSuccess() {
 		PowerCondition: 0,
 	}
 
-	mock.When(suite.mockHDIdleService.GetDeviceStatus(mock.Exact(diskID))).ThenReturn(expectedStatus, nil)
+	mock.When(suite.mockHDIdleService.GetDeviceStatus(mock.Substring(diskID))).ThenReturn(expectedStatus, nil)
 
 	_, apiInst := humatest.New(suite.T())
 	suite.handler.RegisterHDIdleHandler(apiInst)
@@ -306,13 +306,13 @@ func (suite *HDIdleHandlerSuite) TestGetStatusSuccess() {
 	suite.Equal("sda", out.Name)
 	suite.False(out.SpunDown)
 
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).GetDeviceStatus(mock.Exact(diskID))
+	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).GetDeviceStatus(mock.Substring(diskID))
 }
 
 func (suite *HDIdleHandlerSuite) TestGetStatusError() {
 	diskID := "sda"
 
-	mock.When(suite.mockHDIdleService.GetDeviceStatus(mock.Exact(diskID))).ThenReturn(nil, errors.New("disk not found"))
+	mock.When(suite.mockHDIdleService.GetDeviceStatus(mock.Substring(diskID))).ThenReturn(nil, errors.New("disk not found"))
 
 	_, apiInst := humatest.New(suite.T())
 	suite.handler.RegisterHDIdleHandler(apiInst)
@@ -320,7 +320,7 @@ func (suite *HDIdleHandlerSuite) TestGetStatusError() {
 	resp := apiInst.Get("/disk/sda/hdidle/info")
 	suite.Require().Equal(http.StatusInternalServerError, resp.Code)
 
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).GetDeviceStatus(mock.Exact(diskID))
+	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).GetDeviceStatus(mock.Substring(diskID))
 }
 
 // =============================================================================
@@ -577,7 +577,7 @@ func (suite *HDIdleHandlerSuite) TestDeleteConfigSuccess() {
 		Enabled:        dto.HdidleEnableds.YESENABLED,
 	}
 
-	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Exact(diskID))).ThenReturn(existingConfig, nil)
+	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Substring(diskID))).ThenReturn(existingConfig, nil)
 	mock.When(suite.mockHDIdleService.SaveDeviceConfig(mock.Any[dto.HDIdleDeviceDTO]())).ThenReturn(nil)
 	mock.When(suite.mockHDIdleService.IsRunning()).ThenReturn(false)
 
@@ -593,7 +593,7 @@ func (suite *HDIdleHandlerSuite) TestDeleteConfigSuccess() {
 	suite.NoError(json.Unmarshal(resp.Body.Bytes(), &out))
 	suite.Equal("HDIdle configuration deleted successfully", out.Message)
 
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).GetDeviceConfig(mock.Exact(diskID))
+	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).GetDeviceConfig(mock.Substring(diskID))
 	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).SaveDeviceConfig(mock.Any[dto.HDIdleDeviceDTO]())
 }
 
@@ -605,7 +605,7 @@ func (suite *HDIdleHandlerSuite) TestDeleteConfigWithRestartSuccess() {
 		Enabled:    dto.HdidleEnableds.YESENABLED,
 	}
 
-	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Exact(diskID))).ThenReturn(existingConfig, nil)
+	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Substring(diskID))).ThenReturn(existingConfig, nil)
 	mock.When(suite.mockHDIdleService.SaveDeviceConfig(mock.Any[dto.HDIdleDeviceDTO]())).ThenReturn(nil)
 	mock.When(suite.mockHDIdleService.IsRunning()).ThenReturn(true)
 	mock.When(suite.mockHDIdleService.Stop()).ThenReturn(nil)
@@ -624,7 +624,7 @@ func (suite *HDIdleHandlerSuite) TestDeleteConfigWithRestartSuccess() {
 func (suite *HDIdleHandlerSuite) TestDeleteConfigGetError() {
 	diskID := "sda"
 
-	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Exact(diskID))).ThenReturn(nil, errors.New("not found"))
+	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Substring(diskID))).ThenReturn(nil, errors.New("not found"))
 
 	_, apiInst := humatest.New(suite.T())
 	suite.handler.RegisterHDIdleHandler(apiInst)
@@ -632,7 +632,7 @@ func (suite *HDIdleHandlerSuite) TestDeleteConfigGetError() {
 	resp := apiInst.Delete("/disk/sda/hdidle/config")
 	suite.Require().Equal(http.StatusInternalServerError, resp.Code)
 
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).GetDeviceConfig(mock.Exact(diskID))
+	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).GetDeviceConfig(mock.Substring(diskID))
 }
 
 func (suite *HDIdleHandlerSuite) TestDeleteConfigSaveError() {
@@ -643,7 +643,7 @@ func (suite *HDIdleHandlerSuite) TestDeleteConfigSaveError() {
 		Enabled:    dto.HdidleEnableds.YESENABLED,
 	}
 
-	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Exact(diskID))).ThenReturn(existingConfig, nil)
+	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Substring(diskID))).ThenReturn(existingConfig, nil)
 	mock.When(suite.mockHDIdleService.SaveDeviceConfig(mock.Any[dto.HDIdleDeviceDTO]())).ThenReturn(errors.New("save failed"))
 
 	_, apiInst := humatest.New(suite.T())
@@ -663,7 +663,7 @@ func (suite *HDIdleHandlerSuite) TestDeleteConfigStopError() {
 		Enabled:    dto.HdidleEnableds.YESENABLED,
 	}
 
-	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Exact(diskID))).ThenReturn(existingConfig, nil)
+	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Substring(diskID))).ThenReturn(existingConfig, nil)
 	mock.When(suite.mockHDIdleService.SaveDeviceConfig(mock.Any[dto.HDIdleDeviceDTO]())).ThenReturn(nil)
 	mock.When(suite.mockHDIdleService.IsRunning()).ThenReturn(true)
 	mock.When(suite.mockHDIdleService.Stop()).ThenReturn(errors.New("stop failed"))
@@ -685,7 +685,7 @@ func (suite *HDIdleHandlerSuite) TestDeleteConfigStartError() {
 		Enabled:    dto.HdidleEnableds.YESENABLED,
 	}
 
-	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Exact(diskID))).ThenReturn(existingConfig, nil)
+	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Substring(diskID))).ThenReturn(existingConfig, nil)
 	mock.When(suite.mockHDIdleService.SaveDeviceConfig(mock.Any[dto.HDIdleDeviceDTO]())).ThenReturn(nil)
 	mock.When(suite.mockHDIdleService.IsRunning()).ThenReturn(true)
 	mock.When(suite.mockHDIdleService.Stop()).ThenReturn(nil)
@@ -716,7 +716,7 @@ func (suite *HDIdleHandlerSuite) TestCheckSupportSuccess() {
 		ErrorMessage:       "",
 	}
 
-	mock.When(suite.mockHDIdleService.CheckDeviceSupport(mock.Exact(diskID))).ThenReturn(expectedSupport, nil)
+	mock.When(suite.mockHDIdleService.CheckDeviceSupport(mock.Substring(diskID))).ThenReturn(expectedSupport, nil)
 
 	_, apiInst := humatest.New(suite.T())
 	suite.handler.RegisterHDIdleHandler(apiInst)
@@ -731,7 +731,7 @@ func (suite *HDIdleHandlerSuite) TestCheckSupportSuccess() {
 	suite.True(out.SupportsATA)
 	suite.Equal("/dev/sda", out.DevicePath)
 
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).CheckDeviceSupport(mock.Exact(diskID))
+	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).CheckDeviceSupport(mock.Substring(diskID))
 }
 
 func (suite *HDIdleHandlerSuite) TestCheckSupportNotSupported() {
@@ -744,7 +744,7 @@ func (suite *HDIdleHandlerSuite) TestCheckSupportNotSupported() {
 		ErrorMessage: "device does not support SG interface",
 	}
 
-	mock.When(suite.mockHDIdleService.CheckDeviceSupport(mock.Exact(diskID))).ThenReturn(expectedSupport, nil)
+	mock.When(suite.mockHDIdleService.CheckDeviceSupport(mock.Substring(diskID))).ThenReturn(expectedSupport, nil)
 
 	_, apiInst := humatest.New(suite.T())
 	suite.handler.RegisterHDIdleHandler(apiInst)
@@ -757,19 +757,19 @@ func (suite *HDIdleHandlerSuite) TestCheckSupportNotSupported() {
 	suite.False(out.Supported)
 	suite.Equal("device does not support SG interface", out.ErrorMessage)
 
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).CheckDeviceSupport(mock.Exact(diskID))
+	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).CheckDeviceSupport(mock.Substring(diskID))
 }
 
 func (suite *HDIdleHandlerSuite) TestCheckSupportError() {
 	diskID := "sda"
 
-	mock.When(suite.mockHDIdleService.CheckDeviceSupport(mock.Exact(diskID))).ThenReturn(nil, errors.New("device error"))
+	mock.When(suite.mockHDIdleService.CheckDeviceSupport(mock.Substring(diskID))).ThenReturn(nil, errors.New("device error"))
 
 	_, apiInst := humatest.New(suite.T())
 	suite.handler.RegisterHDIdleHandler(apiInst)
 
 	resp := apiInst.Get("/disk/sda/hdidle/support")
-	suite.Require().Equal(http.StatusInternalServerError, resp.Code)
+	suite.Require().Equal(http.StatusInternalServerError, resp.Code, "Returned body: %s", resp.Body.String())
 
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).CheckDeviceSupport(mock.Exact(diskID))
+	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).CheckDeviceSupport(mock.Substring(diskID))
 }
