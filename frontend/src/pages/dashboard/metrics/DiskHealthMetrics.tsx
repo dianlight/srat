@@ -146,7 +146,7 @@ export function DiskHealthMetrics({
 								<TableRow key={io.device_name}>
 									<TableCell component="th" scope="row" sx={{ cursor: "pointer" }} onClick={() => setSelectedIoStats(io)}>
 										<Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-											{!isSmartHealthOk && (
+											{!isSmartHealthOk && diskInfo?.smart_info?.supported && (
 												<Tooltip title={smartHealthTooltip} arrow>
 													<WarningIcon
 														color="warning"
