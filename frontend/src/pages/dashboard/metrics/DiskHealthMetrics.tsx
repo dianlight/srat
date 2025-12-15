@@ -15,7 +15,7 @@ import {
 	Typography,
 	useTheme,
 } from "@mui/material";
-import { Warning as WarningIcon } from "@mui/icons-material";
+import { Warning as WarningIcon, Memory as SmartIcon } from "@mui/icons-material";
 import { SafeSparkLineChart as SparkLineChart } from "../../../components/charts/SafeSparkLineChart";
 import { useEffect, useRef, useState } from "react";
 import type { DiskHealth, DiskIoStats, Partition, PerPartitionInfo } from "../../../store/sratApi";
@@ -120,6 +120,9 @@ export function DiskHealthMetrics({
 						<TableRow>
 							<TableCell>Description</TableCell>
 							<TableCell>Device</TableCell>
+							{diskHealth?.hdidle_running && (
+								<TableCell align="center">Spin Status</TableCell>
+							)}
 							<TableCell align="right">Reads IOP/s</TableCell>
 							<TableCell align="right">Writes IOP/s</TableCell>
 							<TableCell align="right">Read Latency (ms)</TableCell>
@@ -156,8 +159,72 @@ export function DiskHealthMetrics({
 										</Box>
 									</TableCell>
 									<TableCell component="th" scope="row">
-										{io.device_name}
+										<Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+											{diskInfo?.smart_info?.supported && (
+												<Tooltip 
+													title={
+														<Box>
+															<Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+																SMART Enabled
+															</Typography>
+															{diskInfo.smart_info.disk_type && (
+																<Typography variant="caption" display="block">
+																	Type: {diskInfo.smart_info.disk_type}
+																</Typography>
+															)}
+															{diskInfo.smart_info.rotation_rate !== undefined && diskInfo.smart_info.rotation_rate > 0 && (
+																<Typography variant="caption" display="block">
+																	RPM: {diskInfo.smart_info.rotation_rate}
+																</Typography>
+															)}
+															{diskInfo.smart_info.rotation_rate === 0 && (
+																<Typography variant="caption" display="block">
+																	Type: SSD
+																</Typography>
+															)}
+														</Box>
+													}
+													arrow
+												>
+													<SmartIcon
+														color="info"
+														fontSize="small"
+														sx={{ verticalAlign: "middle" }}
+													/>
+												</Tooltip>
+											)}
+											{io.device_name}
+										</Box>
 									</TableCell>
+									{diskHealth?.hdidle_running && (
+										<TableCell align="center">
+											{diskInfo?.hdidle_status ? (
+												<Tooltip 
+													title={diskInfo.hdidle_status.spun_down 
+														? `Spun down${diskInfo.hdidle_status.spin_down_at ? ` at ${new Date(diskInfo.hdidle_status.spin_down_at).toLocaleTimeString()}` : ''}`
+														: `Active${diskInfo.hdidle_status.spin_up_at ? ` since ${new Date(diskInfo.hdidle_status.spin_up_at).toLocaleTimeString()}` : ''}`
+													}
+													arrow
+												>
+													<Typography 
+														variant="body2" 
+														sx={{ 
+															color: diskInfo.hdidle_status.spun_down 
+																? theme.palette.info.main 
+																: theme.palette.success.main,
+															fontWeight: 'medium'
+														}}
+													>
+														{diskInfo.hdidle_status.spun_down ? "⏸" : "▶"}
+													</Typography>
+												</Tooltip>
+											) : (
+												<Typography variant="body2" color="text.secondary">
+													N/A
+												</Typography>
+											)}
+										</TableCell>
+									)}
 									<TableCell align="right" sx={{ minWidth: 150 }}>
 										<Box
 											sx={{
