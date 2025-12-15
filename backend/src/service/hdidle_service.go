@@ -314,7 +314,18 @@ func (s *hDIdleService) GetDeviceConfig(path string) (*dto.HDIdleDeviceDTO, erro
 		First(s.ctx)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return &dto.HDIdleDeviceDTO{DevicePath: path}, nil
+			// Device not in database, return config based on device support check
+			support, checkErr := s.CheckDeviceSupport(path)
+			if checkErr != nil || !support.Supported {
+				return &dto.HDIdleDeviceDTO{DevicePath: path, Enabled: dto.HdidleEnableds.NOENABLED}, nil
+			}
+			result := &dto.HDIdleDeviceDTO{
+				DevicePath: support.DevicePath,
+			}
+			if support.RecommendedCommand != nil {
+				result.CommandType = *support.RecommendedCommand
+			}
+			return result, nil
 		}
 		return nil, errors.WithStack(err)
 	}
