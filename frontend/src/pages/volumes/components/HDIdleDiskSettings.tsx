@@ -46,7 +46,8 @@ export function HDIdleDiskSettings({ disk, readOnly = false }: HDIdleDiskSetting
 	});
 	const { data: settings, isLoading: isLoadingSettings } = useGetApiSettingsQuery();
 	const { data: effectiveConfig } = useGetApiHdidleEffectiveConfigQuery();
-	const diskId = (disk as any)?.device_path || (disk as any)?.id || (disk as any)?.name || "";
+	// disk_id must always be the stable disk ID (not a device path)
+	const diskId = (disk as any)?.id || (disk as any)?.name || "";
 	const { data: deviceConfig, isFetching: isFetchingDeviceConfig } = useGetApiDiskByDiskIdHdidleConfigQuery({ diskId }, { skip: !diskId });
 	const { data: supportInfo, isFetching: isFetchingSupport } = useGetApiDiskByDiskIdHdidleSupportQuery({ diskId }, { skip: !diskId });
 	const [saveConfig, { isLoading: isSaving }] = usePutApiDiskByDiskIdHdidleConfigMutation();
@@ -102,7 +103,8 @@ export function HDIdleDiskSettings({ disk, readOnly = false }: HDIdleDiskSetting
 		if (!diskId) return;
 		const values = getValues();
 		const payload: HdIdleDeviceDto = {
-			device_path: diskId,
+			// The backend expects the full by-id device path in the payload
+			device_path: `/dev/disk/by-id/${diskId}`,
 			enabled: values.enabled as Enabled,
 			idle_time: Number(values.idle_time ?? 0),
 			command_type: (values.command_type as any) || undefined,
@@ -172,27 +174,7 @@ export function HDIdleDiskSettings({ disk, readOnly = false }: HDIdleDiskSetting
 							</span>
 						</Tooltip>
 
-						{unsupported && (
-							<Tooltip
-								title={
-									<Box>
-										<Typography variant="body2">This device does not support hdidle commands.</Typography>
-										{(supportInfo as any)?.error_message && (
-											<Typography variant="caption">{(supportInfo as any).error_message}</Typography>
-										)}
-										{(supportInfo as any)?.recommended_command && (
-											<Typography variant="caption">Recommended: {(supportInfo as any).recommended_command}</Typography>
-										)}
-									</Box>
-								}
-							>
-								<span>
-									<ToggleButtonGroup value={Enabled.No} exclusive size="small" disabled aria-label="unsupported">
-										<ToggleButton value={Enabled.No}>{Enabled.No}</ToggleButton>
-									</ToggleButtonGroup>
-								</span>
-							</Tooltip>
-						)}
+
 
 						<IconButton
 							onClick={handleExpandChange}

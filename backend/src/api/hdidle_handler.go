@@ -61,9 +61,11 @@ type GetHDIdleConfigOutput struct {
 }
 
 func (h *HDIdleHandler) getConfig(ctx context.Context, input *struct {
-	DiskID string `path:"disk_id" required:"true" doc:"The disk ID or device path"`
+	DiskID string `path:"disk_id" required:"true" doc:"The disk ID (not the device path)"`
 }) (*GetHDIdleConfigOutput, error) {
-	config, err := h.hdidleService.GetDeviceConfig(input.DiskID)
+	// disk_id represents the stable disk identifier. Convert it to the device path.
+	devicePath := "/dev/disk/by-id/" + input.DiskID
+	config, err := h.hdidleService.GetDeviceConfig(devicePath)
 	if err != nil {
 		return nil, huma.Error500InternalServerError("Failed to retrieve HDIdle configuration", err)
 	}
@@ -81,7 +83,9 @@ type PutHDIdleConfigOutput struct {
 }
 
 func (h *HDIdleHandler) putConfig(ctx context.Context, input *PutHDIdleConfigInput) (*PutHDIdleConfigOutput, error) {
-	config, err := h.hdidleService.GetDeviceConfig(input.DiskID)
+	// disk_id represents the stable disk identifier. Convert it to the device path.
+	devicePath := "/dev/disk/by-id/" + input.DiskID
+	config, err := h.hdidleService.GetDeviceConfig(devicePath)
 	if err != nil {
 		return nil, huma.Error500InternalServerError("Failed to retrieve HDIdle configuration", err)
 	}
@@ -113,9 +117,11 @@ type GetHDIdleStatusOutput struct {
 }
 
 func (h *HDIdleHandler) getStatus(ctx context.Context, input *struct {
-	DiskID string `path:"disk_id" required:"true" doc:"The disk ID or device path"`
+	DiskID string `path:"disk_id" required:"true" doc:"The disk ID (not the device path)"`
 }) (*GetHDIdleStatusOutput, error) {
-	status, err := h.hdidleService.GetDeviceStatus(input.DiskID)
+	// disk_id represents the stable disk identifier. Convert it to the device path.
+	devicePath := "/dev/disk/by-id/" + input.DiskID
+	status, err := h.hdidleService.GetDeviceStatus(devicePath)
 	if err != nil {
 		return nil, huma.Error500InternalServerError("Failed to get HDIdle service status", err)
 	}
@@ -240,10 +246,12 @@ type DeleteHDIdleConfigOutput struct {
 // deleteConfig removes the HDIdle configuration for a specific device,
 // resetting it to use default settings.
 func (h *HDIdleHandler) deleteConfig(ctx context.Context, input *struct {
-	DiskID string `path:"disk_id" required:"true" doc:"The disk ID or device path"`
+	DiskID string `path:"disk_id" required:"true" doc:"The disk ID (not the device path)"`
 }) (*DeleteHDIdleConfigOutput, error) {
 	// Get current config to reset it
-	config, err := h.hdidleService.GetDeviceConfig(input.DiskID)
+	// disk_id represents the stable disk identifier. Convert it to the device path.
+	devicePath := "/dev/disk/by-id/" + input.DiskID
+	config, err := h.hdidleService.GetDeviceConfig(devicePath)
 	if err != nil {
 		return nil, huma.Error500InternalServerError("Failed to retrieve HDIdle configuration", err)
 	}
@@ -287,9 +295,11 @@ type GetHDIdleSupportOutput struct {
 // This verifies whether the device supports SCSI and/or ATA spindown commands
 // and returns a recommended command type.
 func (h *HDIdleHandler) checkSupport(ctx context.Context, input *struct {
-	DiskID string `path:"disk_id" required:"true" doc:"The disk ID or device path"`
+	DiskID string `path:"disk_id" required:"true" doc:"The disk ID (not the device path)"`
 }) (*GetHDIdleSupportOutput, error) {
-	support, err := h.hdidleService.CheckDeviceSupport(input.DiskID)
+	// disk_id represents the stable disk identifier. Convert it to the device path.
+	devicePath := "/dev/disk/by-id/" + input.DiskID
+	support, err := h.hdidleService.CheckDeviceSupport(devicePath)
 	if err != nil {
 		return nil, huma.Error500InternalServerError("Failed to check HDIdle device support", err)
 	}
