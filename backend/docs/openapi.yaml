@@ -145,6 +145,12 @@ components:
       properties:
         global:
           $ref: "#/components/schemas/GlobalDiskStats"
+        hdidle_running:
+          type: boolean
+        per_disk_info:
+          additionalProperties:
+            $ref: "#/components/schemas/PerDiskInfo"
+          type: object
         per_disk_io:
           items:
             $ref: "#/components/schemas/DiskIOStats"
@@ -163,6 +169,7 @@ components:
         - global
         - per_disk_io
         - per_partition_info
+        - hdidle_running
       type: object
     DiskIOStats:
       additionalProperties: false
@@ -341,6 +348,31 @@ components:
         - device_path
         - idle_time
         - power_condition
+      type: object
+    HDIdleDeviceStatus:
+      additionalProperties: false
+      properties:
+        command_type:
+          type: string
+        enabled:
+          type: boolean
+        idle_time_millis:
+          format: int64
+          type: integer
+        last_io_at:
+          type: string
+        spin_down_at:
+          type: string
+        spin_up_at:
+          type: string
+        spun_down:
+          type: boolean
+        supported:
+          type: boolean
+      required:
+        - spun_down
+        - supported
+        - enabled
       type: object
     HDIdleDeviceSupport:
       additionalProperties: false
@@ -791,6 +823,22 @@ components:
           type: boolean
         uuid:
           type: string
+      type: object
+    PerDiskInfo:
+      additionalProperties: false
+      properties:
+        device_id:
+          type: string
+        device_path:
+          type: string
+        hdidle_status:
+          $ref: "#/components/schemas/HDIdleDeviceStatus"
+        smart_health:
+          $ref: "#/components/schemas/SmartHealthStatus"
+        smart_info:
+          $ref: "#/components/schemas/SmartInfo"
+      required:
+        - device_id
       type: object
     PerPartitionInfo:
       additionalProperties: false
@@ -1754,8 +1802,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json-patch+json:
@@ -1877,8 +1925,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -2033,8 +2081,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2283,8 +2331,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2333,8 +2381,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -2522,8 +2570,8 @@ paths:
     post:
       operationId: post-api-hdidle-start
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -2783,8 +2831,8 @@ paths:
     post:
       operationId: create-issue
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -2884,8 +2932,8 @@ paths:
             format: int64
             minimum: 0
             type: integer
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
@@ -3187,8 +3235,8 @@ paths:
       description: Partial update operation supporting both JSON Merge Patch & JSON Patch updates.
       operationId: patch-api-settings
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json-patch+json:
@@ -3393,8 +3441,8 @@ paths:
     put:
       operationId: put-api-settings
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -3502,8 +3550,8 @@ paths:
               - world
             maxLength: 128
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "204":
           description: No Content
@@ -3907,8 +3955,8 @@ paths:
     get:
       operationId: list-api-shares
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -4142,8 +4190,8 @@ paths:
     get:
       operationId: get-api-telemetry-internet-connection
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -4232,8 +4280,8 @@ paths:
     get:
       operationId: get-api-update
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -4317,8 +4365,8 @@ paths:
     get:
       operationId: list-api-update-channels
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -4364,8 +4412,8 @@ paths:
     post:
       operationId: post-api-user
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
@@ -4778,8 +4826,8 @@ paths:
     get:
       operationId: list-api-volumes
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:

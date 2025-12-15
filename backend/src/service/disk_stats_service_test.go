@@ -21,6 +21,7 @@ type DiskStatsServiceSuite struct {
 	ctrl       *matchers.MockController
 	volumeMock VolumeServiceInterface
 	smartMock  SmartServiceInterface
+	hdidleMock HDIdleServiceInterface
 	ds         *diskStatsService
 	ctx        context.Context
 	cancel     context.CancelFunc
@@ -40,6 +41,7 @@ func (suite *DiskStatsServiceSuite) SetupTest() {
 	// create mocks
 	suite.volumeMock = mock.Mock[VolumeServiceInterface](suite.ctrl)
 	suite.smartMock = mock.Mock[SmartServiceInterface](suite.ctrl)
+	suite.hdidleMock = mock.Mock[HDIdleServiceInterface](suite.ctrl)
 
 	// instantiate diskStatsService under test with mocks
 	suite.ds = &diskStatsService{
@@ -50,6 +52,7 @@ func (suite *DiskStatsServiceSuite) SetupTest() {
 		updateMutex:    &sync.Mutex{},
 		lastStats:      make(map[string]*blockdevice.IOStats),
 		smartService:   suite.smartMock,
+		hdidleService:  suite.hdidleMock,
 		readFile:       os.ReadFile,
 		sysFsBasePath:  "/sys/fs",
 	}
@@ -74,6 +77,7 @@ func (suite *DiskStatsServiceSuite) TestGetDiskStatsNotInitialized() {
 func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_NoVolumes() {
 	// Arrange: VolumeService returns ErrorNotFound to simulate no volumes
 	mock.When(suite.volumeMock.GetVolumesData()).ThenReturn(nil)
+	mock.When(suite.hdidleMock.IsRunning()).ThenReturn(false)
 
 	// Act
 	err := suite.ds.updateDiskStats()
@@ -87,6 +91,7 @@ func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_NoVolumes() {
 	suite.Equal(float64(0), suite.ds.currentDiskHealth.Global.TotalWriteLatency)
 	suite.NotNil(suite.ds.currentDiskHealth.PerPartitionInfo)
 	suite.Empty(suite.ds.currentDiskHealth.PerPartitionInfo)
+	suite.False(suite.ds.currentDiskHealth.HDIdleRunning)
 
 	// Verify mock call
 	mock.Verify(suite.volumeMock, matchers.Times(1)).GetVolumesData()
@@ -115,6 +120,7 @@ func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_SkipsDiskWithNilDevice()
 	disks := []*dto.Disk{&d}
 
 	mock.When(suite.volumeMock.GetVolumesData()).ThenReturn(disks)
+	mock.When(suite.hdidleMock.IsRunning()).ThenReturn(false)
 
 	// Act
 	err := suite.ds.updateDiskStats()

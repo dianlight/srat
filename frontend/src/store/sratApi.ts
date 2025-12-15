@@ -1071,6 +1071,23 @@ export type GlobalDiskStats = {
   total_read_latency_ms: number;
   total_write_latency_ms: number;
 };
+export type HdIdleDeviceStatus = {
+  command_type?: string;
+  enabled: boolean;
+  idle_time_millis?: number;
+  last_io_at?: string;
+  spin_down_at?: string;
+  spin_up_at?: string;
+  spun_down: boolean;
+  supported: boolean;
+};
+export type PerDiskInfo = {
+  device_id: string;
+  device_path?: string;
+  hdidle_status?: HdIdleDeviceStatus;
+  smart_health?: SmartHealthStatus;
+  smart_info?: SmartInfo;
+};
 export type DiskIoStats = {
   device_description: string;
   device_name: string;
@@ -1092,6 +1109,10 @@ export type PerPartitionInfo = {
 };
 export type DiskHealth = {
   global: GlobalDiskStats;
+  hdidle_running: boolean;
+  per_disk_info?: {
+    [key: string]: PerDiskInfo;
+  };
   per_disk_io: DiskIoStats[] | null;
   per_partition_info: {
     [key: string]: PerPartitionInfo[] | null;

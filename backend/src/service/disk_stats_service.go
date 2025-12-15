@@ -33,12 +33,13 @@ type diskStatsService struct {
 	currentDiskHealth *dto.DiskHealth
 	updateMutex       *sync.Mutex
 	smartService      SmartServiceInterface
+	hdidleService     HDIdleServiceInterface
 	readFile          func(string) ([]byte, error)
 	sysFsBasePath     string
 }
 
 // NewDiskStatsService creates a new DiskStatsService.
-func NewDiskStatsService(lc fx.Lifecycle, VolumeService VolumeServiceInterface, Ctx context.Context, SmartService SmartServiceInterface) DiskStatsService {
+func NewDiskStatsService(lc fx.Lifecycle, VolumeService VolumeServiceInterface, Ctx context.Context, SmartService SmartServiceInterface, HDIdleService HDIdleServiceInterface) DiskStatsService {
 	var fs blockdevice.FS
 	var err error
 
@@ -58,6 +59,7 @@ func NewDiskStatsService(lc fx.Lifecycle, VolumeService VolumeServiceInterface, 
 		updateMutex:    &sync.Mutex{},
 		lastStats:      make(map[string]*blockdevice.IOStats),
 		smartService:   SmartService,
+		hdidleService:  HDIdleService,
 		readFile:       os.ReadFile,
 		sysFsBasePath:  "/sys/fs",
 	}
@@ -97,6 +99,12 @@ func (s *diskStatsService) updateDiskStats() errors.E {
 
 	disks := s.volumeService.GetVolumesData()
 
+	// Check HDIdle service status
+	hdidleRunning := false
+	if s.hdidleService != nil {
+		hdidleRunning = s.hdidleService.IsRunning()
+	}
+
 	s.currentDiskHealth = &dto.DiskHealth{
 		PerDiskIO: make([]dto.DiskIOStats, 0),
 		Global: dto.GlobalDiskStats{
@@ -105,6 +113,8 @@ func (s *diskStatsService) updateDiskStats() errors.E {
 			TotalWriteLatency: 0,
 		},
 		PerPartitionInfo: make(map[string][]dto.PerPartitionInfo, 0),
+		PerDiskInfo:      make(map[string]dto.PerDiskInfo),
+		HDIdleRunning:    hdidleRunning,
 	}
 
 	if len(disks) != 0 {
@@ -236,11 +246,122 @@ func (s *diskStatsService) updateDiskStats() errors.E {
 				}
 
 			}
+
+			// --- PerDiskInfo population (SMART info, health, HDIdle status) ---
+			s.populatePerDiskInfo(disk)
 		}
 	}
 
 	s.lastUpdateTime = time.Now()
 	return nil
+}
+
+// populatePerDiskInfo populates the PerDiskInfo map with SMART info, health status, and HDIdle status for a disk.
+func (s *diskStatsService) populatePerDiskInfo(disk *dto.Disk) {
+	if disk == nil || disk.Id == nil {
+		return
+	}
+
+	diskInfo := dto.PerDiskInfo{
+		DeviceId: *disk.Id,
+	}
+
+	if disk.DevicePath != nil {
+		diskInfo.DevicePath = *disk.DevicePath
+
+		// Get SMART info (static capabilities)
+		smartInfo, err := s.smartService.GetSmartInfo(s.ctx, *disk.DevicePath)
+		if err != nil && !errors.Is(err, dto.ErrorSMARTNotSupported) {
+			tlog.DebugContext(s.ctx, "Error getting SMART info", "disk", *disk.DevicePath, "err", err)
+		} else if smartInfo != nil {
+			diskInfo.SmartInfo = smartInfo
+		}
+
+		// Get SMART health status
+		smartHealth, err := s.smartService.GetHealthStatus(s.ctx, *disk.DevicePath)
+		if err != nil && !errors.Is(err, dto.ErrorSMARTNotSupported) {
+			tlog.DebugContext(s.ctx, "Error getting SMART health status", "disk", *disk.DevicePath, "err", err)
+		} else if smartHealth != nil {
+			diskInfo.SmartHealth = smartHealth
+		}
+
+		// Get HDIdle status
+		if s.hdidleService != nil {
+			hdidleStatus := s.getHDIdleDeviceStatus(*disk.DevicePath)
+			if hdidleStatus != nil {
+				diskInfo.HDIdleStatus = hdidleStatus
+			}
+		}
+	}
+
+	s.currentDiskHealth.PerDiskInfo[*disk.Id] = diskInfo
+}
+
+// getHDIdleDeviceStatus retrieves the HDIdle status for a specific device.
+func (s *diskStatsService) getHDIdleDeviceStatus(devicePath string) *dto.HDIdleDeviceStatus {
+	if s.hdidleService == nil {
+		return nil
+	}
+
+	status := &dto.HDIdleDeviceStatus{
+		Supported: false,
+		Enabled:   false,
+	}
+
+	// Check device support
+	support, err := s.hdidleService.CheckDeviceSupport(devicePath)
+	if err != nil {
+		tlog.DebugContext(s.ctx, "Error checking HDIdle device support", "device", devicePath, "err", err)
+		return status
+	}
+
+	if support != nil {
+		status.Supported = support.Supported
+		if support.RecommendedCommand != nil {
+			status.CommandType = support.RecommendedCommand.String()
+		}
+	}
+
+	// Check if monitoring is enabled for this device
+	effectiveConfig := s.hdidleService.GetEffectiveConfig()
+	status.Enabled = effectiveConfig.Enabled
+	if effectiveConfig.Enabled {
+		// Check if this specific device is in the monitored list
+		deviceInList := false
+		for _, dev := range effectiveConfig.Devices {
+			if dev == devicePath {
+				deviceInList = true
+				break
+			}
+		}
+		// If there are specific devices configured, this device must be in the list
+		if len(effectiveConfig.Devices) > 0 && !deviceInList {
+			status.Enabled = false
+		}
+	}
+
+	// Get device-specific status if HDIdle is running
+	if s.hdidleService.IsRunning() {
+		deviceStatus, err := s.hdidleService.GetDeviceStatus(devicePath)
+		if err != nil {
+			tlog.DebugContext(s.ctx, "Error getting HDIdle device status", "device", devicePath, "err", err)
+		} else if deviceStatus != nil {
+			status.SpunDown = deviceStatus.SpunDown
+			if !deviceStatus.LastIOAt.IsZero() {
+				status.LastIOAt = deviceStatus.LastIOAt.Format(time.RFC3339)
+			}
+			if !deviceStatus.SpinDownAt.IsZero() {
+				status.SpinDownAt = deviceStatus.SpinDownAt.Format(time.RFC3339)
+			}
+			if !deviceStatus.SpinUpAt.IsZero() {
+				status.SpinUpAt = deviceStatus.SpinUpAt.Format(time.RFC3339)
+			}
+			status.IdleTimeMillis = deviceStatus.IdleTime.Milliseconds()
+			status.CommandType = deviceStatus.CommandType.String()
+		}
+	}
+
+	return status
 }
 
 // GetDiskStats collects and returns disk I/O statistics.
