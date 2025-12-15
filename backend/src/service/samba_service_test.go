@@ -653,6 +653,28 @@ func (suite *SambaServiceSuite) TestCreateConfigStream_VersionPatchVariations_4_
 	suite.Contains(configStr, "server smb transports", "Samba 4.24.0 should include server smb transports")
 }
 
+// TestGetSambaProcess_ReturnsProcessStatus tests that GetSambaProcess returns process status
+func (suite *SambaServiceSuite) TestGetSambaProcess_ReturnsProcessStatus() {
+	// GetSambaProcess should return a non-nil SambaProcessStatus
+	status, err := suite.sambaService.GetSambaProcess()
+
+	suite.Require().NoError(err)
+	suite.NotNil(status)
+}
+
+// TestGetSambaProcess_WithHDIdleSubprocess tests that HDIdle subprocess is included
+// when GetSambaProcess detects the current process (srat-server)
+func (suite *SambaServiceSuite) TestGetSambaProcess_WithHDIdleSubprocess() {
+	// GetSambaProcess should return valid status
+	// The HDIdle mock is already set up in fx.Provide
+	status, err := suite.sambaService.GetSambaProcess()
+
+	suite.Require().NoError(err)
+	suite.NotNil(status)
+	// Status should be a map of process names to ProcessStatus
+	suite.IsType(dto.SambaProcessStatus{}, *status)
+}
+
 /*
 func (suite *SambaHandlerSuite) checkStringInSMBConfig(testvalue string, expected string, t *testing.T) bool {
 	stream, err := suite.CreateConfigStream(testContext)

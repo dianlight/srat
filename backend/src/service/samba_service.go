@@ -296,6 +296,9 @@ func (self *SambaService) GetSambaProcess() (*dto.SambaProcessStatus, errors.E) 
 		return &self.status, errors.WithStack(err)
 	}
 
+	// Get current process PID for subprocess detection
+	currentPid := int32(os.Getpid())
+
 	for _, p := range allProcess {
 		var name, err = p.Name()
 		if err != nil {
@@ -309,15 +312,39 @@ func (self *SambaService) GetSambaProcess() (*dto.SambaProcessStatus, errors.E) 
 
 				processStatus, err := conv.ProcessToProcessStatus(p)
 				if err != nil {
-					slog.Error("Error converting process to DTO", "process", processName, "error", err)
+					slog.ErrorContext(self.ctx, "Error converting process to DTO", "process", processName, "error", err)
 					continue
 				}
 				self.status[processName] = processStatus
+
+				// If this is the current process (srat-server), find all virtual subprocesses
+				if processStatus.Pid == currentPid {
+					processStatus.Children = self.findChildProcesses(currentPid)
+				}
 			}
 		}
 	}
 
 	return &self.status, nil
+}
+
+// findChildProcesses collects virtual subprocesses from internal services (like hdidle)
+// that run as goroutines within the current process. These are not OS-level processes
+// but internal monitoring threads represented with negative PIDs.
+func (self *SambaService) findChildProcesses(parentPid int32) []*dto.ProcessStatus {
+	var children []*dto.ProcessStatus
+
+	// Get virtual subprocess status from HDIdle service (powersave-monitor)
+	if self.hdidle_service != nil {
+		if hdidleStatus := self.hdidle_service.GetProcessStatus(parentPid); hdidleStatus != nil {
+			children = append(children, hdidleStatus)
+		}
+	}
+
+	// Add more virtual subprocess providers here as needed
+	// e.g., other internal monitoring goroutines
+
+	return children
 }
 
 // WriteSambaConfig writes the Samba configuration to disk using the default dirty mask.

@@ -462,3 +462,64 @@ func (suite *HDIdleServiceSuite) TestCheckDeviceSupport_RecommendedCommandNilWhe
 	suite.False(support.Supported)
 	suite.Nil(support.RecommendedCommand)
 }
+
+// Tests for GetProcessStatus
+func (suite *HDIdleServiceSuite) TestGetProcessStatus_WhenNotRunning() {
+	// When service is not running, should return idle status
+	parentPid := int32(12345)
+	status := suite.service.GetProcessStatus(parentPid)
+
+	suite.NotNil(status)
+	suite.Equal(-parentPid, status.Pid, "Subprocess should have negative PID")
+	suite.Equal("powersave-monitor", status.Name)
+	suite.False(status.IsRunning)
+	suite.Equal([]string{"idle"}, status.Status)
+	suite.Equal(0, status.Connections)
+}
+
+func (suite *HDIdleServiceSuite) TestGetProcessStatus_WhenRunning() {
+	// Mock settings
+	mock.When(suite.settingService.Load()).ThenReturn(&dto.Settings{
+		HDIdleEnabled:                 boolPtr(true),
+		HDIdleDefaultIdleTime:         600,
+		HDIdleDefaultCommandType:      dto.HdidleCommands.SCSICOMMAND,
+		HDIdleDefaultPowerCondition:   0,
+		HDIdleIgnoreSpinDownDetection: false,
+	}, nil)
+
+	// Start the service
+	err := suite.service.Start()
+	suite.NoError(err)
+	suite.True(suite.service.IsRunning())
+
+	parentPid := int32(54321)
+	status := suite.service.GetProcessStatus(parentPid)
+
+	suite.NotNil(status)
+	suite.Equal(-parentPid, status.Pid, "Subprocess should have negative PID")
+	suite.Equal("powersave-monitor", status.Name)
+	suite.True(status.IsRunning)
+	suite.Equal([]string{"running"}, status.Status)
+}
+
+func (suite *HDIdleServiceSuite) TestGetProcessStatus_NegativePidConvention() {
+	// Test various parent PIDs to verify the negative PID convention
+	testCases := []int32{1, 100, 12345, 99999}
+
+	for _, parentPid := range testCases {
+		status := suite.service.GetProcessStatus(parentPid)
+		suite.NotNil(status)
+		suite.Equal(-parentPid, status.Pid,
+			"For parent PID %d, subprocess should have PID %d", parentPid, -parentPid)
+	}
+}
+
+func (suite *HDIdleServiceSuite) TestGetProcessStatus_ReturnsConsistentName() {
+	// GetProcessStatus should always return "powersave-monitor" as name
+	status1 := suite.service.GetProcessStatus(1000)
+	status2 := suite.service.GetProcessStatus(2000)
+
+	suite.Equal("powersave-monitor", status1.Name)
+	suite.Equal("powersave-monitor", status2.Name)
+	suite.Equal(status1.Name, status2.Name)
+}
