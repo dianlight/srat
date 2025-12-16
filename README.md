@@ -8,9 +8,9 @@
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
 [![codecov](https://codecov.io/github/dianlight/srat/graph/badge.svg?token=6C61IZRDEJ)](https://codecov.io/github/dianlight/srat)
 
-[![Backend Unit Test Coverage](https://img.shields.io/badge/Backend_Unit_Tests-40.8%25-yellow?logo=go)](docs/TEST_COVERAGE.md "Backend Go unit test coverage")
-[![Frontend Unit Test Coverage](https://img.shields.io/badge/Frontend_Unit_Tests-71.48%25-green?logo=typescript)](docs/TEST_COVERAGE.md "Frontend TypeScript unit test coverage")
-[![Global Unit Test Coverage](https://img.shields.io/badge/Global_Unit_Tests-53.1%25-yellow)](docs/TEST_COVERAGE.md "Overall unit test coverage (weighted average)")
+[![Backend Unit Test Coverage](https://img.shields.io/badge/Backend_Unit_Tests-43.4%25-yellow?logo=go)](docs/TEST_COVERAGE.md "Backend Go unit test coverage")
+[![Frontend Unit Test Coverage](https://img.shields.io/badge/Frontend_Unit_Tests-69.51%25-green?logo=typescript)](docs/TEST_COVERAGE.md "Frontend TypeScript unit test coverage")
+[![Global Unit Test Coverage](https://img.shields.io/badge/Global_Unit_Tests-53.8%25-yellow)](docs/TEST_COVERAGE.md "Overall unit test coverage (weighted average)")
 
 SRAT (SambaNAS REST Administration Tool) is a new system designed to provide a simplified user interface for configuring SAMBA. It has been developed to work within Home Assistant, specifically for this addon, but can also be used in other contexts.
 
