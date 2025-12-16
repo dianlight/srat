@@ -98,19 +98,27 @@ dev_version:
 	# version command doesn't need -db flag
 	go run -C $(SRC_DIRS) ./cmd/srat-cli -loglevel debug version
 
-.PHONY: dev_cli
+.PHONY: dev_cli_version
 .ONESHELL:
-dev_cli:
+dev_cli_version:
 	mkdir ./tmp > /dev/null 2>&1 || :
-	# version doesn't need -db, upgrade uses in-memory DB by default
-	go run -C $(SRC_DIRS) ./cmd/srat-cli -loglevel debug version && \
-	go run -C $(SRC_DIRS) ./cmd/srat-cli -loglevel debug upgrade -channel prerelease && \
-	go run -C $(SRC_DIRS) ./cmd/srat-cli -db /tmp/testdb.db -loglevel debug start -out ../tmp/samba.conf && \
+	go run -C $(SRC_DIRS) ./cmd/srat-cli -loglevel debug version
+
+.PHONY: dev_cli_upgrade
+.ONESHELL:
+dev_cli_upgrade:
+	mkdir ./tmp > /dev/null 2>&1 || :
+	go run -C $(SRC_DIRS) ./cmd/srat-cli -loglevel debug upgrade -channel prerelease
+
+.PHONY: dev_cli_stop
+.ONESHELL:
+dev_cli_stop:
+	mkdir ./tmp > /dev/null 2>&1 || :
+	#go run -C $(SRC_DIRS) ./cmd/srat-cli -db /tmp/testdb.db -loglevel debug start -out ../tmp/samba.conf && \
 	go run -C $(SRC_DIRS) ./cmd/srat-cli -db /tmp/testdb.db -loglevel debug stop
 
 .PHONY: dev
 dev:
-	#make dev_cli
 	SRAT_DEVMODE=true go tool -C $(SRC_DIRS) air -c .air.toml
 
 

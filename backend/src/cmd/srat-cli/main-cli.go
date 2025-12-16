@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
@@ -21,6 +22,8 @@ import (
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/tlog"
+	"github.com/gofri/go-github-ratelimit/v2/github_ratelimit"
+	"github.com/google/go-github/v76/github"
 
 	"go.uber.org/fx"
 )
@@ -225,7 +228,7 @@ func main() {
 	// Determine if we need database access based on command
 	// Only version and hdidle commands don't need DB
 	// upgrade command needs DB but can use in-memory DB (default flag value)
-	needsDB := command != "version"
+	needsDB := (command != "version" && command != "upgrade")
 
 	// Build FX options based on command requirements
 	var fxOptions []fx.Option
@@ -244,14 +247,30 @@ func main() {
 		switch command {
 		case "start", "stop":
 			fxOptions = append(fxOptions, appsetup.ProvideHAClientDependencies(appParams))
-		case "upgrade":
-			fxOptions = append(fxOptions, appsetup.ProvideHAClientDependenciesWithoutWebSocket(appParams))
+			//		case "upgrade":
+			//			fxOptions = append(fxOptions, appsetup.ProvideHAClientDependenciesWithoutWebSocket(appParams))
 		}
 	} else {
-		// Commands that don't need database (version only)
-		fxOptions = append(fxOptions,
-			appsetup.ProvideCoreDependenciesWithoutDB(appParams),
-		)
+		switch command {
+		case "upgrade":
+			fxOptions = append(fxOptions,
+				appsetup.ProvideCoreDependenciesWithoutDB(appParams),
+				fx.Provide(
+					func() *github.Client {
+						rateLimiter := github_ratelimit.New(nil)
+						return github.NewClient(&http.Client{
+							Transport: rateLimiter,
+						})
+					},
+					service.NewUpgradeService,
+					fx.Annotate(func() (*dto.UpdateChannel, error) { return &updch, nil }, fx.ResultTags(`name:"upgrade_channel"`)),
+				),
+			)
+		case "version", "hdidle":
+			fxOptions = append(fxOptions,
+				appsetup.ProvideCoreDependenciesWithoutDB(appParams),
+			)
+		}
 	}
 
 	/*
@@ -329,6 +348,78 @@ func main() {
 							slog.Error("Error unmounting all shares from Homeassistant", "err", err)
 						}
 						slog.Info("******* Unmounted all shares from Homeassistant ********")
+						/*
+							case "upgrade":
+								if updch == dto.UpdateChannels.DEVELOP {
+									slog.Info("Attempting local update for DEVELOP channel.")
+									err := upgrade_service.InstallUpdateLocal(&updch)
+									if err != nil {
+										if errors.Is(err, dto.ErrorNoUpdateAvailable) {
+											slog.Info("No local update found or directory missing.")
+										} else {
+											slog.Error("Error during local update process", "err", err)
+										}
+									} else {
+										slog.Info("Local update installed successfully. Please restart the application.")
+									}
+								} else {
+									asset, err := upgrade_service.GetUpgradeReleaseAsset(&updch)
+									if err != nil {
+										if errors.Is(err, dto.ErrorNoUpdateAvailable) {
+											slog.Info("No update available for the requested channel.", "channel", updch)
+										} else {
+											slog.Error("Error checking for updates", "err", err)
+										}
+									} else if asset != nil {
+										slog.Info("Update available", "version", asset.LastRelease, "asset_name", asset.ArchAsset.Name)
+										updatePkg, errDownload := upgrade_service.DownloadAndExtractBinaryAsset(asset.ArchAsset)
+										if errDownload != nil {
+											slog.Error("Error downloading or extracting update", "err", errDownload)
+										} else {
+											slog.Info("Update downloaded and extracted successfully", "temp_dir", updatePkg.TempDirPath)
+											if updatePkg.CurrentExecutablePath != nil {
+												slog.Info("Matching executable found", "path", *updatePkg.CurrentExecutablePath)
+												errInstall := upgrade_service.InstallUpdatePackage(updatePkg)
+												if errInstall != nil {
+													slog.Error("Error installing update for overseer", "err", errInstall)
+												}
+											} else {
+												slog.Warn("Update downloaded, but no directly matching executable found by name. Check extracted files.", "paths", updatePkg.OtherFilesPaths)
+											}
+											slog.Debug("Cleaning up temporary update directory", "path", updatePkg.TempDirPath)
+											if err := os.RemoveAll(updatePkg.TempDirPath); err != nil {
+												slog.Warn("Failed to remove temporary update directory", "path", updatePkg.TempDirPath, "err", err)
+											}
+										}
+									} else {
+										slog.Info("No update available (asset was nil).")
+									}
+								}
+						*/
+					}
+					return nil
+				},
+			})
+
+		}))
+	} else {
+		fxOptions = append(fxOptions, fx.Invoke(func(
+			lc fx.Lifecycle,
+			//mount_repo repository.MountPointPathRepositoryInterface,
+			//props_repo repository.PropertyRepositoryInterface,
+			//share_service service.ShareServiceInterface,
+			//hardwareClient hardware.ClientWithResponsesInterface,
+			//samba_user_repo repository.SambaUserRepositoryInterface,
+			//volume_service service.VolumeServiceInterface,
+			//fs_service service.FilesystemServiceInterface,
+			//samba_service service.SambaServiceInterface,
+			//supervisor_service service.SupervisorServiceInterface,
+			upgrade_service service.UpgradeServiceInterface,
+			//apiContext *dto.ContextState,
+		) {
+			lc.Append(fx.Hook{
+				OnStart: func(ctx context.Context) error {
+					switch command {
 					case "upgrade":
 						if updch == dto.UpdateChannels.DEVELOP {
 							slog.Info("Attempting local update for DEVELOP channel.")
@@ -381,9 +472,6 @@ func main() {
 			})
 
 		}))
-	} else {
-		// Commands that don't need database (version and hdidle)
-		// Version command exits early, so this block handles hdidle
 	}
 
 	// Create FX app with all options

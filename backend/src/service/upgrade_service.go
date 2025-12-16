@@ -56,32 +56,41 @@ const (
 
 type UpgradeServiceProps struct {
 	fx.In
-	PropsRepo   repository.PropertyRepositoryInterface
-	Broadcaster BroadcasterServiceInterface
-	Ctx         context.Context
-	Gh          *github.Client
+	PropsRepo     repository.PropertyRepositoryInterface `optional:"true"`
+	UpdateChannel *dto.UpdateChannel                     `name:"upgrade_channel" optional:"true"`
+	Broadcaster   BroadcasterServiceInterface            `optional:"true"`
+	Ctx           context.Context
+	Gh            *github.Client
 }
 
-func NewUpgradeService(lc fx.Lifecycle, in UpgradeServiceProps) UpgradeServiceInterface {
+func NewUpgradeService(lc fx.Lifecycle, in UpgradeServiceProps) (UpgradeServiceInterface, error) {
 	p := new(UpgradeService)
 	p.updateLimiter = rate.Sometimes{Interval: 30 * time.Minute}
 	p.ctx = in.Ctx
 	p.broadcaster = in.Broadcaster
 	p.props_repo = in.PropsRepo
+	p.updateChannel = in.UpdateChannel
 	p.gh = in.Gh
+	if in.UpdateChannel == nil && in.PropsRepo == nil {
+		return nil, errors.New("either UpdateChannel or PropsRepo must be provided")
+	} else if in.PropsRepo != nil && in.UpdateChannel != nil {
+		return nil, errors.New("only one of UpdateChannel or PropsRepo should be provided")
+	} else if in.UpdateChannel == nil {
+		value, err := p.props_repo.Value("UpdateChannel", false)
+		if err != nil || value == nil {
+			p.updateChannel = &dto.UpdateChannels.NONE
+		} else {
+			p.updateChannel = &dto.UpdateChannel{}
+			errS := p.updateChannel.Scan(value)
+			if errS != nil {
+				slog.WarnContext(p.ctx, "Unable to convert config value", "value", value, "type", fmt.Sprintf("%T", value), "err", errS)
+				p.updateChannel = &dto.UpdateChannels.NONE
+			}
+		}
+	}
+
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			value, err := p.props_repo.Value("UpdateChannel", false)
-			if err != nil || value == nil {
-				p.updateChannel = &dto.UpdateChannels.NONE
-			} else {
-				p.updateChannel = &dto.UpdateChannel{}
-				errS := p.updateChannel.Scan(value)
-				if errS != nil {
-					slog.WarnContext(ctx, "Unable to convert config value", "value", value, "type", fmt.Sprintf("%T", value), "err", errS)
-					p.updateChannel = &dto.UpdateChannels.NONE
-				}
-			}
 			p.ctx.Value("wg").(*sync.WaitGroup).Add(1)
 			go func() {
 				defer p.ctx.Value("wg").(*sync.WaitGroup).Done()
@@ -91,7 +100,7 @@ func NewUpgradeService(lc fx.Lifecycle, in UpgradeServiceProps) UpgradeServiceIn
 		},
 	})
 
-	return p
+	return p, nil
 }
 
 func (self *UpgradeService) run() error {
@@ -151,7 +160,7 @@ func (self *UpgradeService) GetUpgradeReleaseAsset(updateChannel *dto.UpdateChan
 			for _, release := range releases {
 				slog.DebugContext(self.ctx, "Found Release", "tag_name", release.GetTagName(), "prerelease", release.GetPrerelease())
 				//log.Println(pretty.Sprintf("%v\n", release))
-				if release.GetPrerelease() && updateChannel != &dto.UpdateChannels.PRERELEASE {
+				if release.GetPrerelease() && updateChannel.String() != dto.UpdateChannels.PRERELEASE.String() {
 					slog.DebugContext(self.ctx, "Skip PreRelease", "tag_name", release.GetTagName())
 					//log.Printf("Skip Release %s", *release.TagName)
 					continue
@@ -162,7 +171,7 @@ func (self *UpgradeService) GetUpgradeReleaseAsset(updateChannel *dto.UpdateChan
 					slog.WarnContext(self.ctx, "Error parsing version", "version", *release.TagName, "err", err)
 					continue
 				}
-				slog.DebugContext(self.ctx, "Checking version", "current", config.Version, "release", *release.TagName, "compare", myversion.Compare(assertVersion))
+				slog.DebugContext(self.ctx, "Checking version", "current", myversion, "release", *release.TagName, "compare", myversion.Compare(assertVersion))
 
 				if myversion.GreaterThanEqual(assertVersion) {
 					continue
@@ -208,7 +217,9 @@ func (self *UpgradeService) GetUpgradeReleaseAsset(updateChannel *dto.UpdateChan
 }
 
 func (self *UpgradeService) notifyClient(data dto.UpdateProgress) {
-	self.broadcaster.BroadcastMessage(data)
+	if self.broadcaster != nil {
+		self.broadcaster.BroadcastMessage(data)
+	}
 }
 
 const progressReportThresholdPercentage = 5
