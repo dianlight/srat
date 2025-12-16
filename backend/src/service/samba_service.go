@@ -312,7 +312,7 @@ func (self *SambaService) GetSambaProcess() (*dto.SambaProcessStatus, errors.E) 
 
 				processStatus, err := conv.ProcessToProcessStatus(p)
 				if err != nil {
-					slog.WarnContext(self.ctx, "Error converting process to DTO", "process", processName, "pid", processStatus.Pid, "error", err)
+					slog.WarnContext(self.ctx, "Error converting process to DTO", "process", processName, "pid", p.Pid, "error", err)
 					continue
 				}
 
