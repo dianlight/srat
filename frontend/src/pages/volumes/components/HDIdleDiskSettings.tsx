@@ -30,7 +30,9 @@ import {
 	usePutApiDiskByDiskIdHdidleConfigMutation,
 	Enabled,
 } from "../../../store/sratApi";
-import { getCurrentEnv } from "../../../macro/Environment";
+import { getCurrentEnv } from "../../../macro/Environment" with {
+	type: "macro",
+};
 
 interface HDIdleDiskSettingsProps {
 	disk: Disk;
