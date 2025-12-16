@@ -70,6 +70,7 @@ type logAdapter interface {
 	DebugContext(ctx context.Context, msg string, args ...any)
 	InfoContext(ctx context.Context, msg string, args ...any)
 	WarnContext(ctx context.Context, msg string, args ...any)
+	ErrorContext(ctx context.Context, msg string, args ...any)
 }
 
 var (
@@ -574,7 +575,20 @@ func (c *Client) GetSMARTInfo(ctx context.Context, devicePath string) (*SMARTInf
 	// Check for messages in the output even when command succeeded
 	if smartInfo.Smartctl != nil && len(smartInfo.Smartctl.Messages) > 0 {
 		for _, msg := range smartInfo.Smartctl.Messages {
-			c.logHandler.WarnContext(ctx, "smartctl message", "severity", msg.Severity, "message", msg.String)
+			if msg.String == "Warning: This result is based on an Attribute check." {
+				// Skip this common non-actionable message
+				continue
+			}
+			switch msg.Severity {
+			case "information":
+				c.logHandler.InfoContext(ctx, "smartctl message", "message", msg.String)
+			case "warning":
+				c.logHandler.WarnContext(ctx, "smartctl message", "message", msg.String)
+			case "error":
+				c.logHandler.ErrorContext(ctx, "smartctl message", "message", msg.String)
+			default:
+				c.logHandler.WarnContext(ctx, "smartctl message", "severity", msg.Severity, "message", msg.String)
+			}
 		}
 	}
 

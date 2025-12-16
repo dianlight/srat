@@ -99,7 +99,6 @@ func TestCLIStartRequiresOutputFlag(t *testing.T) {
 }
 */
 
-
 func TestFormatVersionMessage(t *testing.T) {
 	short := formatVersionMessage(true)
 	if short != config.Version+"\n" {
