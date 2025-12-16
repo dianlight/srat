@@ -23,7 +23,7 @@ import (
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/tlog"
 	"github.com/gofri/go-github-ratelimit/v2/github_ratelimit"
-	"github.com/google/go-github/v76/github"
+	"github.com/google/go-github/v80/github"
 
 	"go.uber.org/fx"
 )
