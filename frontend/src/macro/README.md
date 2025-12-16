@@ -1,3 +1,17 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Macro Import Validator](#macro-import-validator)
+  - [What are Macros?](#what-are-macros)
+  - [Files](#files)
+  - [Macro Files](#macro-files)
+  - [Import Rules](#import-rules)
+  - [Validation](#validation)
+  - [Adding New Macros](#adding-new-macros)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## Macro Import Validator
 
 This directory contains files related to validating and working with macro imports in the SRAT frontend.
@@ -42,6 +56,7 @@ bun run validate-macros
 ```
 
 This script will:
+
 1. Scan all TypeScript files in the `src/` directory
 2. Find all imports from the macro directory
 3. Verify each import has the proper `with { type: "macro" }` assertion
@@ -52,7 +67,9 @@ This script will:
 1. Create a new `.ts` file in this directory
 2. Export one or more functions that will be executed at compile time
 3. Import it in your application with the proper assertion:
+
    ```typescript
    import { yourFunction } from "../macro/YourMacro" with { type: "macro" };
    ```
+
 4. Verify the import by running `bun run validate-macros`
