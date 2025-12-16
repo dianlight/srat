@@ -136,7 +136,7 @@ func (self *UpgradeService) GetUpgradeReleaseAsset(updateChannel *dto.UpdateChan
 			return nil, errors.WithStack(err)
 		}
 
-		slog.InfoContext(self.ctx, "Checking for updates...", "channel", updateChannel.String())
+		slog.InfoContext(self.ctx, "Checking for updates", "current", config.Version, "channel", updateChannel.String())
 		releases, _, err := self.gh.Repositories.ListReleases(context.Background(), "dianlight", "srat", &github.ListOptions{
 			Page:    1,
 			PerPage: 5,
