@@ -236,7 +236,7 @@ func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_SkipPrerelease_
 }
 
 func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_AcceptPrerelease_WhenChannelIsPrerelease() {
-	config.Version = "1.0.0"
+	config.Version = "2025.12.0-dev.2"
 	arch := runtime.GOARCH
 	switch arch {
 	case "arm64":

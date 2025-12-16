@@ -149,8 +149,10 @@ func (self *UpgradeService) GetUpgradeReleaseAsset(updateChannel *dto.UpdateChan
 			return nil, errors.WithMessage(dto.ErrorNoUpdateAvailable, "No releases found")
 		} else if len(releases) > 0 {
 			for _, release := range releases {
+				slog.DebugContext(self.ctx, "Found Release", "tag_name", release.GetTagName(), "prerelease", release.GetPrerelease())
 				//log.Println(pretty.Sprintf("%v\n", release))
-				if *release.Prerelease && updateChannel != &dto.UpdateChannels.PRERELEASE {
+				if release.GetPrerelease() && updateChannel != &dto.UpdateChannels.PRERELEASE {
+					slog.DebugContext(self.ctx, "Skip PreRelease", "tag_name", release.GetTagName())
 					//log.Printf("Skip Release %s", *release.TagName)
 					continue
 				}
@@ -160,7 +162,7 @@ func (self *UpgradeService) GetUpgradeReleaseAsset(updateChannel *dto.UpdateChan
 					slog.WarnContext(self.ctx, "Error parsing version", "version", *release.TagName, "err", err)
 					continue
 				}
-				slog.DebugContext(self.ctx, "Checking version", "current", config.Version, "release", *release.TagName)
+				slog.DebugContext(self.ctx, "Checking version", "current", config.Version, "release", *release.TagName, "compare", myversion.Compare(assertVersion))
 
 				if myversion.GreaterThanEqual(assertVersion) {
 					continue
