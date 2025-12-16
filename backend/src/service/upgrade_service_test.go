@@ -206,7 +206,7 @@ func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_NoReleasesFound
 	suite.Nil(asset)
 	suite.Require().Error(err)
 	suite.True(errors.Is(err, dto.ErrorNoUpdateAvailable))
-	suite.Contains(err.Error(), "No releases found")
+	suite.Contains(err.Error(), "No update available")
 }
 
 func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_SkipPrerelease_WhenChannelIsRelease() {
@@ -312,7 +312,7 @@ func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_Success_PicksLa
 	httpmock.RegisterResponder("GET", githubReleasesURL,
 		httpmock.NewJsonResponderOrPanic(200, releases))
 
-	asset, err := suite.upgradeService.GetUpgradeReleaseAsset(nil)
+	asset, err := suite.upgradeService.GetUpgradeReleaseAsset(&dto.UpdateChannels.RELEASE)
 	suite.Require().NoError(err)
 	suite.Require().NotNil(asset)
 	suite.Equal("2025.6.1", asset.LastRelease) // Should pick the latest non-prerelease version

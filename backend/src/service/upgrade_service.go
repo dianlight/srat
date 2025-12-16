@@ -138,7 +138,7 @@ func (self *UpgradeService) GetUpgradeReleaseAsset(updateChannel *dto.UpdateChan
 		updateChannel = self.updateChannel
 	}
 
-	if updateChannel != &dto.UpdateChannels.NONE && updateChannel != &dto.UpdateChannels.DEVELOP {
+	if updateChannel.String() != dto.UpdateChannels.NONE.String() && updateChannel.String() != dto.UpdateChannels.DEVELOP.String() {
 		myversion, err := semver.NewVersion(config.Version)
 		if err != nil {
 			slog.ErrorContext(self.ctx, "Error parsing version", "current", config.Version, "err", err)
@@ -212,7 +212,7 @@ func (self *UpgradeService) GetUpgradeReleaseAsset(updateChannel *dto.UpdateChan
 			return nil, errors.WithMessage(dto.ErrorNoUpdateAvailable, "No releases found")
 		}
 	} else {
-		return nil, errors.WithMessage(dto.ErrorNoUpdateAvailable, "No releases check")
+		return nil, errors.WithMessage(dto.ErrorNoUpdateAvailable, "No releases check", "channel", updateChannel.String())
 	}
 }
 
