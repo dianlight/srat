@@ -25,7 +25,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import Collapse from "@mui/material/Collapse";
 import { useState } from "react";
 import { useGetApiDiskByDiskIdSmartInfoQuery, useGetApiDiskByDiskIdSmartStatusQuery, type SmartInfo, type SmartStatus } from "../../../store/sratApi";
-import { getCurrentEnv } from "../../../macro/Environment";
+import { getCurrentEnv } from "../../../macro/Environment" with { type: "macro" };
 
 // Local type definitions for SMART data that isn't in the OpenAPI spec yet
 interface SmartHealthStatus {
