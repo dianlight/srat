@@ -55,6 +55,9 @@ test_build: $(SRC_DIRS) $(STATIC_DIRS)
 remote_build: $(SRC_DIRS) $(STATIC_DIRS)
 	mkdir -p tmp/x86_64 > /dev/null 2>&1 || :
 	CGO_ENABLED=1 \
+	CC='zig cc -target x86_64-linux-musl' \
+    CXX='zig cc -target x86_64-linux-musl' \
+	GOOS=linux \
 	CGO_CFLAGS="-DELF_METADATA=$(METADATA_C_JSON)" \
 	GOARCH=amd64 go build  -C $(SRC_DIRS) -tags=embedallowed,pprof -gcflags=all="-N -l" -ldflags="-s -w -X github.com/dianlight/srat/config.Version=$(VERSION_CLEAN) -X github.com/dianlight/srat/config.CommitHash=$(COMMIT_HASH_CLEAN) -X github.com/dianlight/srat/config.BuildTimestamp=$(BUILD_TIMESTAMP_CLEAN) -X github.com/dianlight/srat/config.RollbarToken=$(ROLLBAR_CLIENT_ACCESS_TOKEN) -X github.com/dianlight/srat/config.RollbarEnvironment=$(ROLLBAR_ENVIRONMENT) " -o ../tmp/x86_64/ ./...
 
@@ -215,5 +218,5 @@ mount_remote:
 build_remote: /mnt/remote/config.db3
 	cd $(FRONTEND_DIRS);bun run build -o ../backend/$(STATIC_DIRS);cd - && \
 	$(MAKE) remote_build && \
-	cp -v ./tmp/x86_64/srat-cli /mnt/remote/ && \
-	cp -v ./tmp/x86_64/srat-server /mnt/remote/
+	cp -v ./tmp/x86_64/srat-cli /mnt/remote/upgrade/ && \
+	cp -v ./tmp/x86_64/srat-server /mnt/remote/upgrade/

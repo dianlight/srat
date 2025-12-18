@@ -66,7 +66,6 @@ type ConfigToDtoConverter interface {
 
 	// goverter:update target
 	// goverter:update:ignoreZeroValueField no
-	// goverter:map UpdateChannel UpdateChannel | github.com/dianlight/srat/dto:ParseUpdateChannel
 	// goverter:map TelemetryMode TelemetryMode | github.com/dianlight/srat/dto:ParseTelemetryMode
 	// goverter:ignore ExportStatsToHA SMBoverQUIC HDIdleEnabled HDIdleDefaultIdleTime HDIdleDefaultCommandType HDIdleDefaultPowerCondition HDIdleIgnoreSpinDownDetection
 	ConfigToSettings(source config.Config, target *dto.Settings) error

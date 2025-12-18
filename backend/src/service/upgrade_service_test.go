@@ -15,7 +15,7 @@ import (
 	"time"
 
 	// Third-party libraries for testing
-	"github.com/Masterminds/semver/v3"
+
 	"github.com/gofri/go-github-ratelimit/v2/github_ratelimit"
 	"github.com/google/go-github/v80/github"
 	"github.com/jarcoal/httpmock"
@@ -39,6 +39,7 @@ type UpgradeServiceTestSuite struct {
 	upgradeService   service.UpgradeServiceInterface
 	mockBroadcaster  service.BroadcasterServiceInterface
 	mockPropertyRepo repository.PropertyRepositoryInterface
+	state            *dto.ContextState
 	app              *fxtest.App
 	ctx              context.Context
 	cancel           context.CancelFunc
@@ -67,12 +68,27 @@ func (suite *UpgradeServiceTestSuite) SetupTest() {
 	// that don't override the releases endpoint.
 	suite.registerGitHubReleasesFixture()
 
+	tmpDir, err := os.MkdirTemp(os.TempDir(), "srat_update_*")
+	if err != nil {
+		panic(err)
+	}
+
 	suite.app = fxtest.New(suite.T(),
 		fx.Provide(
 			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
 			func() (context.Context, context.CancelFunc) {
 				ctx := context.WithValue(context.Background(), "wg", suite.wg)
 				return context.WithCancel(ctx)
+			},
+			func() *dto.ContextState {
+				return &dto.ContextState{
+					HACoreReady:    true,
+					SupervisorURL:  "http://supervisor",
+					AddonIpAddress: "172.30.32.1",
+					UpdateDataDir:  tmpDir,
+					UpdateFilePath: tmpDir + "/" + filepath.Base(os.Args[0]),
+					UpdateChannel:  dto.UpdateChannels.NONE,
+				}
 			},
 			service.NewUpgradeService,
 			mock.Mock[service.BroadcasterServiceInterface],
@@ -86,6 +102,7 @@ func (suite *UpgradeServiceTestSuite) SetupTest() {
 		fx.Populate(&suite.mockBroadcaster),
 		fx.Populate(&suite.mockPropertyRepo),
 		fx.Populate(&suite.upgradeService),
+		fx.Populate(&suite.state),
 	)
 
 	// Default mocks
@@ -117,6 +134,7 @@ func (suite *UpgradeServiceTestSuite) TearDownTest() {
 	}
 	httpmock.DeactivateAndReset()
 	config.Version = suite.originalVersion // Restore original config.Version
+	os.RemoveAll(suite.state.UpdateDataDir)
 }
 
 // Helper to create a mock GitHub release asset
@@ -160,7 +178,8 @@ func newGitHubRepositoryRelease(tagName string, prerelease bool, assets []*githu
 // --- GetUpgradeReleaseAsset Tests ---
 
 func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_ChannelNone() {
-	asset, err := suite.upgradeService.GetUpgradeReleaseAsset(&dto.UpdateChannels.NONE)
+	suite.state.UpdateChannel = dto.UpdateChannels.NONE
+	asset, err := suite.upgradeService.GetUpgradeReleaseAsset()
 	suite.Nil(asset)
 	suite.Require().Error(err)
 	suite.True(errors.Is(err, dto.ErrorNoUpdateAvailable))
@@ -168,21 +187,33 @@ func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_ChannelNone() {
 }
 
 func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_ChannelDevelop() {
-	asset, err := suite.upgradeService.GetUpgradeReleaseAsset(&dto.UpdateChannels.DEVELOP)
+	suite.state.UpdateChannel = dto.UpdateChannels.DEVELOP
+	asset, err := suite.upgradeService.GetUpgradeReleaseAsset()
 	suite.Nil(asset)
 	suite.Require().Error(err)
 	suite.True(errors.Is(err, dto.ErrorNoUpdateAvailable))
 	suite.Contains(err.Error(), "No releases check")
 }
 
-func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_ErrorParsingCurrentVersion() {
-	config.Version = "invalid-version"
+func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_ChannelPreRelease() {
+	suite.state.UpdateChannel = dto.UpdateChannels.PRERELEASE
+	asset, err := suite.upgradeService.GetUpgradeReleaseAsset()
+	suite.NotNil(asset)
+	suite.Require().NoError(err)
+	suite.NotEmpty(asset)
+	suite.Equal("2025.12.0-dev.3", asset.LastRelease)
+	suite.Contains(asset.ArchAsset.Name, ".zip")
 
-	asset, err := suite.upgradeService.GetUpgradeReleaseAsset(&dto.UpdateChannels.RELEASE)
-	suite.Nil(asset)
-	suite.Require().Error(err)
-	suite.ErrorIs(err, semver.ErrInvalidSemVer)
-	suite.Contains(err.Error(), "invalid semantic version", "Error should be a semantic version parsing error")
+}
+
+func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_ChannelRelease() {
+	suite.state.UpdateChannel = dto.UpdateChannels.RELEASE
+	asset, err := suite.upgradeService.GetUpgradeReleaseAsset()
+	suite.NotNil(asset)
+	suite.Require().NoError(err)
+	suite.NotEmpty(asset)
+	suite.Equal("2025.6.9", asset.LastRelease)
+	suite.Contains(asset.ArchAsset.Name, ".zip")
 }
 
 func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_GitHubAPIFailure() {
@@ -190,7 +221,7 @@ func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_GitHubAPIFailur
 	httpmock.RegisterResponder("GET", githubReleasesURL,
 		httpmock.NewErrorResponder(fmt.Errorf("github api down")))
 
-	asset, err := suite.upgradeService.GetUpgradeReleaseAsset(nil)
+	asset, err := suite.upgradeService.GetUpgradeReleaseAsset()
 	suite.Nil(asset)
 	suite.Require().Error(err)
 	suite.True(errors.Is(err, dto.ErrorNoUpdateAvailable), "Error was: %v", err)
@@ -202,7 +233,7 @@ func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_NoReleasesFound
 	httpmock.RegisterResponder("GET", githubReleasesURL,
 		httpmock.NewJsonResponderOrPanic(200, []*github.RepositoryRelease{}))
 
-	asset, err := suite.upgradeService.GetUpgradeReleaseAsset(nil)
+	asset, err := suite.upgradeService.GetUpgradeReleaseAsset()
 	suite.Nil(asset)
 	suite.Require().Error(err)
 	suite.True(errors.Is(err, dto.ErrorNoUpdateAvailable))
@@ -229,7 +260,7 @@ func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_SkipPrerelease_
 		httpmock.NewJsonResponderOrPanic(200, releases))
 
 	// Default channel is RELEASE
-	asset, err := suite.upgradeService.GetUpgradeReleaseAsset(nil)
+	asset, err := suite.upgradeService.GetUpgradeReleaseAsset()
 	suite.Nil(asset)
 	suite.Require().Error(err)
 	suite.True(errors.Is(err, dto.ErrorNoUpdateAvailable))
@@ -251,7 +282,8 @@ func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_AcceptPrereleas
 
 	mock.When(suite.mockPropertyRepo.Value("UpdateChannel", false)).ThenReturn(&dto.UpdateChannels.PRERELEASE, nil)
 
-	asset, err := suite.upgradeService.GetUpgradeReleaseAsset(&dto.UpdateChannels.PRERELEASE)
+	suite.state.UpdateChannel = dto.UpdateChannels.PRERELEASE
+	asset, err := suite.upgradeService.GetUpgradeReleaseAsset()
 	suite.Require().NoError(err)
 	suite.Require().NotNil(asset)
 	suite.Equal(expectedRelease, asset.LastRelease)
@@ -278,7 +310,7 @@ func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_CurrentVersionN
 	httpmock.RegisterResponder("GET", githubReleasesURL,
 		httpmock.NewJsonResponderOrPanic(200, releases))
 
-	asset, err := suite.upgradeService.GetUpgradeReleaseAsset(nil)
+	asset, err := suite.upgradeService.GetUpgradeReleaseAsset()
 	suite.Nil(asset)
 	suite.Require().Error(err)
 	suite.True(errors.Is(err, dto.ErrorNoUpdateAvailable))
@@ -312,7 +344,8 @@ func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_Success_PicksLa
 	httpmock.RegisterResponder("GET", githubReleasesURL,
 		httpmock.NewJsonResponderOrPanic(200, releases))
 
-	asset, err := suite.upgradeService.GetUpgradeReleaseAsset(&dto.UpdateChannels.RELEASE)
+	suite.state.UpdateChannel = dto.UpdateChannels.RELEASE
+	asset, err := suite.upgradeService.GetUpgradeReleaseAsset()
 	suite.Require().NoError(err)
 	suite.Require().NotNil(asset)
 	suite.Equal("2025.6.1", asset.LastRelease) // Should pick the latest non-prerelease version
@@ -368,7 +401,6 @@ func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_Success(
 	updatePkg, err := suite.upgradeService.DownloadAndExtractBinaryAsset(asset)
 	suite.Require().NoError(err)
 	suite.Require().NotNil(updatePkg)
-	defer os.RemoveAll(updatePkg.TempDirPath)
 
 	suite.Require().NotNil(updatePkg.CurrentExecutablePath)
 	suite.Equal(currentExeName, filepath.Base(*updatePkg.CurrentExecutablePath))
@@ -405,7 +437,6 @@ func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_Success(
 	// Re-run to capture broadcasts
 	updatePkg, err = suite.upgradeService.DownloadAndExtractBinaryAsset(asset)
 	suite.Require().NoError(err)
-	defer os.RemoveAll(updatePkg.TempDirPath)
 
 	suite.ContainsProgress(progressEvents, dto.UpdateProcessStates.UPDATESTATUSDOWNLOADING, 0)
 	suite.ContainsProgress(progressEvents, dto.UpdateProcessStates.UPDATESTATUSDOWNLOADING, 100) // Or some intermediate if size is large
@@ -526,10 +557,9 @@ func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_SetsSafe
 	updatePkg, err := suite.upgradeService.DownloadAndExtractBinaryAsset(asset)
 	suite.Require().NoError(err)
 	suite.Require().NotNil(updatePkg)
-	defer os.RemoveAll(updatePkg.TempDirPath)
 
 	// Check that directory is 0750 despite zip header suggesting 0777
-	nestedDir := filepath.Join(updatePkg.TempDirPath, "nested")
+	nestedDir := filepath.Join(suite.state.UpdateDataDir, "nested")
 	info, err := os.Stat(nestedDir)
 	suite.Require().NoError(err)
 	suite.True(info.IsDir())
@@ -559,24 +589,10 @@ func (suite *UpgradeServiceTestSuite) TestInstallUpdatePackage_NilPackage() {
 }
 
 func (suite *UpgradeServiceTestSuite) TestInstallUpdatePackage_MissingExecutableInPackage() {
-	pkg := &service.UpdatePackage{TempDirPath: "test"} // CurrentExecutablePath is nil
+	pkg := &service.UpdatePackage{} // CurrentExecutablePath is nil
 	err := suite.upgradeService.InstallUpdatePackage(pkg)
 	suite.Require().Error(err)
 	suite.Contains(err.Error(), "invalid update package or missing executable path")
-}
-
-func (suite *UpgradeServiceTestSuite) TestInstallOverseerUpdate_NilPackage() {
-	err := suite.upgradeService.InstallOverseerUpdate(nil, "some/path")
-	suite.Require().Error(err)
-	suite.Contains(err.Error(), "invalid update package or missing executable path")
-}
-
-func (suite *UpgradeServiceTestSuite) TestInstallOverseerUpdate_EmptyOverseerPath() {
-	exePath := "test/exe"
-	pkg := &service.UpdatePackage{CurrentExecutablePath: &exePath, TempDirPath: "test"}
-	err := suite.upgradeService.InstallOverseerUpdate(pkg, "")
-	suite.Require().Error(err)
-	suite.Contains(err.Error(), "overseer update path cannot be empty")
 }
 
 // Note: Testing the actual `update.Apply` is an integration concern.

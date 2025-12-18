@@ -21,9 +21,9 @@ func (suite *UpgradeHandlerSuite) TestUpdateHandlerStartsBackgroundFlow() {
 	}
 
 	// Expect GetUpgradeReleaseAsset to return the asset
-	mock.When(suite.mockUpgradeService.GetUpgradeReleaseAsset(mock.Any[*dto.UpdateChannel]())).ThenReturn(asset, nil)
+	mock.When(suite.mockUpgradeService.GetUpgradeReleaseAsset()).ThenReturn(asset, nil)
 	// Expect DownloadAndExtractBinaryAsset to be called and return a fake path
-	mock.When(suite.mockUpgradeService.DownloadAndExtractBinaryAsset(mock.Any[dto.BinaryAsset]())).ThenReturn(&service.UpdatePackage{TempDirPath: "/tmp/pkg"}, nil)
+	mock.When(suite.mockUpgradeService.DownloadAndExtractBinaryAsset(mock.Any[dto.BinaryAsset]())).ThenReturn(&service.UpdatePackage{}, nil)
 	// Expect InstallUpdatePackage to be called with the UpdatePackage
 	mock.When(suite.mockUpgradeService.InstallUpdatePackage(mock.Any[*service.UpdatePackage]())).ThenReturn(nil)
 
@@ -46,7 +46,7 @@ func (suite *UpgradeHandlerSuite) TestUpdateHandlerStartsBackgroundFlow() {
 		suite.T().Fatal("timeout waiting for update background goroutine to finish")
 	}
 
-	mock.Verify(suite.mockUpgradeService, matchers.Times(1)).GetUpgradeReleaseAsset(mock.Any[*dto.UpdateChannel]())
+	mock.Verify(suite.mockUpgradeService, matchers.Times(1)).GetUpgradeReleaseAsset()
 	mock.Verify(suite.mockUpgradeService, matchers.Times(1)).DownloadAndExtractBinaryAsset(mock.Any[dto.BinaryAsset]())
 	mock.Verify(suite.mockUpgradeService, matchers.Times(1)).InstallUpdatePackage(mock.Any[*service.UpdatePackage]())
 }

@@ -63,7 +63,7 @@ func (self *UpgradeHanler) RegisterUpgradeHanler(api huma.API) {
 //	@Router			/update [get]
 func (handler *UpgradeHanler) GetUpdateInfoHandler(ctx context.Context, input *struct{}) (*struct{ Body dto.ReleaseAsset }, error) {
 	slog.DebugContext(ctx, "Handling GET /update request")
-	asset, err := handler.upgader.GetUpgradeReleaseAsset(nil)
+	asset, err := handler.upgader.GetUpgradeReleaseAsset()
 	if err != nil {
 		if errors.Is(err, dto.ErrorNoUpdateAvailable) {
 			slog.InfoContext(ctx, "No update available", "error", err)
@@ -83,7 +83,7 @@ func (handler *UpgradeHanler) GetUpdateInfoHandler(ctx context.Context, input *s
 }
 
 func (handler *UpgradeHanler) UpdateHandler(ctx context.Context, input *struct{}) (*struct{ Body dto.UpdateProgress }, error) {
-	assets, err := handler.upgader.GetUpgradeReleaseAsset(nil)
+	assets, err := handler.upgader.GetUpgradeReleaseAsset()
 	if err != nil {
 		return nil, huma.Error404NotFound(fmt.Sprintf("Unable to find update assets %#v", err.Error()))
 	}

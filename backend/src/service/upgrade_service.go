@@ -18,7 +18,6 @@ import (
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/repository"
 	"github.com/google/go-github/v80/github"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
@@ -28,15 +27,18 @@ import (
 type UpdatePackage struct {
 	CurrentExecutablePath *string
 	OtherFilesPaths       []string
-	TempDirPath           string
+	//TempDirPath           string
 }
 
 type UpgradeServiceInterface interface {
-	GetUpgradeReleaseAsset(updateChannel *dto.UpdateChannel) (ass *dto.ReleaseAsset, err errors.E)
+	// Check for Upgrade based on current version and update channel
+	GetUpgradeReleaseAsset() (ass *dto.ReleaseAsset, err errors.E)
+	// Download upgrade assets (.zip) and extract in Data directory
 	DownloadAndExtractBinaryAsset(asset dto.BinaryAsset) (*UpdatePackage, errors.E)
+	// Copy all assets from Data directory to real places only if are really new ( .note.metadata check )
 	InstallUpdatePackage(updatePkg *UpdatePackage) errors.E
-	InstallOverseerUpdate(updatePkg *UpdatePackage, overseerUpdatePath string) errors.E
-	InstallUpdateLocal(updateChannel *dto.UpdateChannel) errors.E
+	//InstallOverseerUpdate(updatePkg *UpdatePackage, overseerUpdatePath string) errors.E
+	//InstallUpdateLocal() errors.E
 	//InstallOverseerLocal(overseerUpdatePath string) errors.E
 }
 
@@ -45,22 +47,15 @@ type UpgradeService struct {
 	gh            *github.Client
 	broadcaster   BroadcasterServiceInterface
 	updateLimiter rate.Sometimes
-	props_repo    repository.PropertyRepositoryInterface
-	updateChannel *dto.UpdateChannel
+	state         *dto.ContextState
 }
-
-const (
-	localUpdateDir     = "/config"
-	localUpdatePattern = "srat-"
-)
 
 type UpgradeServiceProps struct {
 	fx.In
-	PropsRepo     repository.PropertyRepositoryInterface `optional:"true"`
-	UpdateChannel *dto.UpdateChannel                     `name:"upgrade_channel" optional:"true"`
-	Broadcaster   BroadcasterServiceInterface            `optional:"true"`
-	Ctx           context.Context
-	Gh            *github.Client
+	State       *dto.ContextState
+	Broadcaster BroadcasterServiceInterface `optional:"true"`
+	Ctx         context.Context
+	Gh          *github.Client
 }
 
 func NewUpgradeService(lc fx.Lifecycle, in UpgradeServiceProps) (UpgradeServiceInterface, error) {
@@ -68,26 +63,8 @@ func NewUpgradeService(lc fx.Lifecycle, in UpgradeServiceProps) (UpgradeServiceI
 	p.updateLimiter = rate.Sometimes{Interval: 30 * time.Minute}
 	p.ctx = in.Ctx
 	p.broadcaster = in.Broadcaster
-	p.props_repo = in.PropsRepo
-	p.updateChannel = in.UpdateChannel
+	p.state = in.State
 	p.gh = in.Gh
-	if in.UpdateChannel == nil && in.PropsRepo == nil {
-		return nil, errors.New("either UpdateChannel or PropsRepo must be provided")
-	} else if in.PropsRepo != nil && in.UpdateChannel != nil {
-		return nil, errors.New("only one of UpdateChannel or PropsRepo should be provided")
-	} else if in.UpdateChannel == nil {
-		value, err := p.props_repo.Value("UpdateChannel", false)
-		if err != nil || value == nil {
-			p.updateChannel = &dto.UpdateChannels.NONE
-		} else {
-			p.updateChannel = &dto.UpdateChannel{}
-			errS := p.updateChannel.Scan(value)
-			if errS != nil {
-				slog.WarnContext(p.ctx, "Unable to convert config value", "value", value, "type", fmt.Sprintf("%T", value), "err", errS)
-				p.updateChannel = &dto.UpdateChannels.NONE
-			}
-		}
-	}
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
@@ -114,7 +91,7 @@ func (self *UpgradeService) run() error {
 			self.notifyClient(dto.UpdateProgress{
 				ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSCHECKING,
 			})
-			ass, err := self.GetUpgradeReleaseAsset(nil)
+			ass, err := self.GetUpgradeReleaseAsset()
 			if err != nil && !errors.Is(err, dto.ErrorNoUpdateAvailable) {
 				slog.ErrorContext(self.ctx, "Error checking for updates", "err", err)
 			}
@@ -133,19 +110,19 @@ func (self *UpgradeService) run() error {
 	}
 }
 
-func (self *UpgradeService) GetUpgradeReleaseAsset(updateChannel *dto.UpdateChannel) (ass *dto.ReleaseAsset, err errors.E) {
-	if updateChannel == nil {
-		updateChannel = self.updateChannel
-	}
+func (self *UpgradeService) GetUpgradeReleaseAsset() (ass *dto.ReleaseAsset, err errors.E) {
 
-	if updateChannel.String() != dto.UpdateChannels.NONE.String() && updateChannel.String() != dto.UpdateChannels.DEVELOP.String() {
-		myversion, err := semver.NewVersion(config.Version)
-		if err != nil {
-			slog.ErrorContext(self.ctx, "Error parsing version", "current", config.Version, "err", err)
-			return nil, errors.WithStack(err)
-		}
+	if self.state.UpdateChannel.String() == dto.UpdateChannels.NONE.String() {
+		// if channel NONE return error not update dto.ErrorNoUpdateAvailable
+		return nil, errors.WithMessage(dto.ErrorNoUpdateAvailable, "No releases check", "channel", self.state.UpdateChannel.String())
+	} else if self.state.UpdateChannel.String() == dto.UpdateChannels.DEVELOP.String() {
+		// if channel DEVELOP first search in /config directory but don't do update check
+		return nil, errors.WithMessage(dto.ErrorNoUpdateAvailable, "No releases check", "channel", self.state.UpdateChannel.String())
+	} else {
+		// if channel PRERELEASE or RELEASE search online on github
+		myversion := config.GetCurrentBinaryVersion()
 
-		slog.InfoContext(self.ctx, "Checking for updates", "current", config.Version, "channel", updateChannel.String())
+		slog.InfoContext(self.ctx, "Checking for updates", "current", config.Version, "channel", self.state.UpdateChannel.String())
 		releases, _, err := self.gh.Repositories.ListReleases(context.Background(), "dianlight", "srat", &github.ListOptions{
 			Page:    1,
 			PerPage: 5,
@@ -159,10 +136,8 @@ func (self *UpgradeService) GetUpgradeReleaseAsset(updateChannel *dto.UpdateChan
 		} else if len(releases) > 0 {
 			for _, release := range releases {
 				slog.DebugContext(self.ctx, "Found Release", "tag_name", release.GetTagName(), "prerelease", release.GetPrerelease())
-				//log.Println(pretty.Sprintf("%v\n", release))
-				if release.GetPrerelease() && updateChannel.String() != dto.UpdateChannels.PRERELEASE.String() {
+				if release.GetPrerelease() && self.state.UpdateChannel.String() != dto.UpdateChannels.PRERELEASE.String() {
 					slog.DebugContext(self.ctx, "Skip PreRelease", "tag_name", release.GetTagName())
-					//log.Printf("Skip Release %s", *release.TagName)
 					continue
 				}
 
@@ -198,7 +173,7 @@ func (self *UpgradeService) GetUpgradeReleaseAsset(updateChannel *dto.UpdateChan
 							LastRelease: *release.TagName,
 							ArchAsset:   archAsset,
 						}
-						myversion = assertVersion
+						myversion = *assertVersion
 					}
 				}
 			}
@@ -211,8 +186,6 @@ func (self *UpgradeService) GetUpgradeReleaseAsset(updateChannel *dto.UpdateChan
 			slog.DebugContext(self.ctx, "No Releases found")
 			return nil, errors.WithMessage(dto.ErrorNoUpdateAvailable, "No releases found")
 		}
-	} else {
-		return nil, errors.WithMessage(dto.ErrorNoUpdateAvailable, "No releases check", "channel", updateChannel.String())
 	}
 }
 
@@ -256,7 +229,6 @@ func (self *UpgradeService) DownloadAndExtractBinaryAsset(asset dto.BinaryAsset)
 	}
 	currentExecutableName := filepath.Base(currentExe)
 
-	var success bool = false
 	tmpDir, err := os.MkdirTemp("", "srat_update_*")
 	if err != nil {
 		errWrapped := errors.Wrap(err, "failed to create temporary directory")
@@ -264,9 +236,7 @@ func (self *UpgradeService) DownloadAndExtractBinaryAsset(asset dto.BinaryAsset)
 		return nil, errWrapped
 	}
 	defer func() {
-		if !success {
-			os.RemoveAll(tmpDir)
-		}
+		os.RemoveAll(tmpDir)
 	}()
 
 	slog.InfoContext(self.ctx, "Starting download and extraction", "asset_name", asset.Name, "download_url", asset.BrowserDownloadURL, "temp_dir", tmpDir)
@@ -344,11 +314,13 @@ func (self *UpgradeService) DownloadAndExtractBinaryAsset(asset dto.BinaryAsset)
 	var foundPaths []string
 
 	slog.DebugContext(self.ctx, "Extracting asset", "source_zip", downloadedFilePath, "total_files", totalFiles)
+	extractPercentage := 0
+
 	for _, f := range zipReader.File {
-		targetPath := filepath.Join(tmpDir, f.Name)
+		targetPath := filepath.Join(self.state.UpdateDataDir, f.Name)
 
 		// Path traversal mitigation: Ensure the path is within the temp directory
-		if !strings.HasPrefix(targetPath, filepath.Clean(tmpDir)+string(os.PathSeparator)) {
+		if !strings.HasPrefix(targetPath, filepath.Clean(self.state.UpdateDataDir)+string(os.PathSeparator)) {
 			errWrapped := errors.Errorf("invalid file path in zip: '%s' attempts to escape temporary directory", f.Name)
 			self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
 			return nil, errWrapped
@@ -402,7 +374,6 @@ func (self *UpgradeService) DownloadAndExtractBinaryAsset(asset dto.BinaryAsset)
 			}
 		}
 		extractedFilesCount++
-		extractPercentage := 0
 		if totalFiles > 0 {
 			extractPercentage = (extractedFilesCount * 100) / totalFiles
 		}
@@ -412,11 +383,9 @@ func (self *UpgradeService) DownloadAndExtractBinaryAsset(asset dto.BinaryAsset)
 	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSEXTRACTCOMPLETE, Progress: 100})
 	slog.InfoContext(self.ctx, "Asset extracted successfully", "temp_dir", tmpDir)
 
-	success = true // Mark as successful so defer doesn't clean up tmpDir
 	return &UpdatePackage{
 		CurrentExecutablePath: executablePath,
 		OtherFilesPaths:       foundPaths,
-		TempDirPath:           tmpDir,
 	}, nil
 }
 
@@ -528,7 +497,17 @@ func (self *UpgradeService) InstallUpdatePackage(updatePkg *UpdatePackage) error
 			return err
 		}
 	}
-	return self.installBinaryTo(*updatePkg.CurrentExecutablePath, *basePath+"/"+filepath.Base(*updatePkg.CurrentExecutablePath))
+	err = self.installBinaryTo(*updatePkg.CurrentExecutablePath, *basePath+"/"+filepath.Base(*updatePkg.CurrentExecutablePath))
+	if err != nil {
+		return err
+	}
+	if self.state.UpdateFilePath != "" {
+		err = self.installBinaryTo(*updatePkg.CurrentExecutablePath, self.state.UpdateFilePath)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (self *UpgradeService) getCurrentExecutablePath() (*string, errors.E) {
@@ -541,6 +520,8 @@ func (self *UpgradeService) getCurrentExecutablePath() (*string, errors.E) {
 	destinationFile := filepath.Dir(currentExe)
 	return &destinationFile, nil
 }
+
+/*
 
 func (self *UpgradeService) InstallOverseerUpdate(updatePkg *UpdatePackage, overseerUpdatePath string) errors.E {
 	if updatePkg == nil || updatePkg.CurrentExecutablePath == nil || *updatePkg.CurrentExecutablePath == "" {
@@ -566,7 +547,9 @@ func (self *UpgradeService) InstallOverseerUpdate(updatePkg *UpdatePackage, over
 	}
 	return self.installBinaryTo(*updatePkg.CurrentExecutablePath, overseerUpdatePath)
 }
+*/
 
+/*
 // findLatestLocalBinaries searches for the newest binary matching the pattern in the search directory
 // that is newer than the current executable.
 func (self *UpgradeService) findLatestLocalBinaries(searchDir string, basePattern string) (filePath []string, modTime time.Time, errRet errors.E) {
@@ -626,10 +609,12 @@ func (self *UpgradeService) findLatestLocalBinaries(searchDir string, basePatter
 	slog.InfoContext(self.ctx, "Latest local update binary selected", "path", latestFilePaths, "modTime", latestModTime)
 	return latestFilePaths, latestModTime, nil
 }
+*/
+/*
 
 func (self *UpgradeService) InstallUpdateLocal(updateChannel *dto.UpdateChannel) errors.E {
 	if updateChannel == nil {
-		updateChannel = self.updateChannel
+		updateChannel = self.state.UpdateChannel
 	}
 
 	if updateChannel == nil || *updateChannel != dto.UpdateChannels.DEVELOP {
@@ -669,6 +654,7 @@ func (self *UpgradeService) InstallUpdateLocal(updateChannel *dto.UpdateChannel)
 	}
 	return aerr
 }
+*/
 
 /*
 func (self *UpgradeService) InstallOverseerLocal(overseerUpdatePath string) errors.E {

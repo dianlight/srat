@@ -1253,7 +1253,6 @@ export type Settings = {
   multi_channel?: boolean;
   smb_over_quic?: boolean;
   telemetry_mode?: Telemetry_mode;
-  update_channel?: Update_channel;
   workgroup?: string;
 };
 export type MountPointData = {
@@ -1410,12 +1409,6 @@ export enum Telemetry_mode {
   Errors = "Errors",
   Disabled = "Disabled",
 }
-export enum Update_channel {
-  None = "None",
-  Develop = "Develop",
-  Release = "Release",
-  Prerelease = "Prerelease",
-}
 export enum Time_machine_support {
   Unsupported = "unsupported",
   Supported = "supported",
@@ -1439,6 +1432,12 @@ export enum Supported_events {
   Volumes = "volumes",
   Heartbeat = "heartbeat",
   Share = "share",
+}
+export enum Update_channel {
+  None = "None",
+  Develop = "Develop",
+  Release = "Release",
+  Prerelease = "Prerelease",
 }
 export enum Update_process_state {
   Idle = "Idle",

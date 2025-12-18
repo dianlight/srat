@@ -22,7 +22,6 @@ func TestSettings_AllFields(t *testing.T) {
 		BindAllInterfaces: false,
 		LogLevel:          "info",
 		MultiChannel:      true,
-		UpdateChannel:     dto.UpdateChannels.RELEASE,
 		TelemetryMode:     dto.TelemetryModes.TELEMETRYMODEERRORS,
 		LocalMaster:       &localMaster,
 		ExportStatsToHA:   &exportStats,
@@ -41,7 +40,6 @@ func TestSettings_AllFields(t *testing.T) {
 	assert.False(t, settings.BindAllInterfaces)
 	assert.Equal(t, "info", settings.LogLevel)
 	assert.True(t, settings.MultiChannel)
-	assert.Equal(t, dto.UpdateChannels.RELEASE, settings.UpdateChannel)
 	assert.Equal(t, dto.TelemetryModes.TELEMETRYMODEERRORS, settings.TelemetryMode)
 	assert.NotNil(t, settings.LocalMaster)
 	assert.True(t, *settings.LocalMaster)
@@ -66,27 +64,6 @@ func TestSettings_ZeroValues(t *testing.T) {
 	assert.Nil(t, settings.LocalMaster)
 	assert.Nil(t, settings.ExportStatsToHA)
 	assert.Nil(t, settings.SMBoverQUIC)
-}
-
-func TestSettings_UpdateChannels(t *testing.T) {
-	tests := []struct {
-		name    string
-		channel dto.UpdateChannel
-	}{
-		{"None", dto.UpdateChannels.NONE},
-		{"Develop", dto.UpdateChannels.DEVELOP},
-		{"Release", dto.UpdateChannels.RELEASE},
-		{"Prerelease", dto.UpdateChannels.PRERELEASE},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			settings := dto.Settings{
-				UpdateChannel: tt.channel,
-			}
-			assert.Equal(t, tt.channel, settings.UpdateChannel)
-		})
-	}
 }
 
 func TestSettings_TelemetryModes(t *testing.T) {

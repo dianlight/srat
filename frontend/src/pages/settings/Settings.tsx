@@ -99,7 +99,7 @@ const categories: { [key: string]: { [key: string]: string[] } | string[] } = {
 		'Devices': ['bind_all_interfaces', 'interfaces', 'multi_channel', 'smb_over_quic'],
 		'Access Control': ['allow_hosts'],
 	},
-	'Update': ['update_channel'],
+	//'Update': ['update_channel'],
 	'Telemetry': ['telemetry_mode'],
 	'HomeAssistant': ['export_stats_to_ha'],
 };
@@ -323,7 +323,7 @@ export function Settings() {
 
 		// Individual field rendering (existing logic)
 		switch (settingName) {
-
+/*
 			case 'update_channel':
 				return (
 					<AutocompleteElement
@@ -340,7 +340,7 @@ export function Settings() {
 						{...commonProps}
 					/>
 				);
-
+*/
 			case 'telemetry_mode':
 				return (
 					<>

@@ -65,20 +65,20 @@ func (suite *UpgradeHandlerSuite) TearDownTest() {
 
 func (suite *UpgradeHandlerSuite) TestGetUpdateInfoSuccess() {
 	asset := &dto.ReleaseAsset{LastRelease: "v1.2.3"}
-	mock.When(suite.mockUpgradeService.GetUpgradeReleaseAsset(mock.Any[*dto.UpdateChannel]())).ThenReturn(asset, nil)
+	mock.When(suite.mockUpgradeService.GetUpgradeReleaseAsset()).ThenReturn(asset, nil)
 	_, apiInst := humatest.New(suite.T())
 	suite.handler.RegisterUpgradeHanler(apiInst)
 	resp := apiInst.Get("/update")
 	suite.Require().Equal(http.StatusOK, resp.Code)
 	suite.Contains(resp.Body.String(), "v1.2.3")
-	mock.Verify(suite.mockUpgradeService, matchers.Times(1)).GetUpgradeReleaseAsset(mock.Any[*dto.UpdateChannel]())
+	mock.Verify(suite.mockUpgradeService, matchers.Times(1)).GetUpgradeReleaseAsset()
 }
 
 func (suite *UpgradeHandlerSuite) TestGetUpdateInfoNoUpdate() {
-	mock.When(suite.mockUpgradeService.GetUpgradeReleaseAsset(mock.Any[*dto.UpdateChannel]())).ThenReturn(nil, errors.WithStack(dto.ErrorNoUpdateAvailable))
+	mock.When(suite.mockUpgradeService.GetUpgradeReleaseAsset()).ThenReturn(nil, errors.WithStack(dto.ErrorNoUpdateAvailable))
 	_, apiInst := humatest.New(suite.T())
 	suite.handler.RegisterUpgradeHanler(apiInst)
 	resp := apiInst.Get("/update")
 	suite.Require().Equal(http.StatusNotFound, resp.Code)
-	mock.Verify(suite.mockUpgradeService, matchers.Times(1)).GetUpgradeReleaseAsset(mock.Any[*dto.UpdateChannel]())
+	mock.Verify(suite.mockUpgradeService, matchers.Times(1)).GetUpgradeReleaseAsset()
 }

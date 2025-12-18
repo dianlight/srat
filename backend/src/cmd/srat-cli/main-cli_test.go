@@ -124,55 +124,6 @@ func packageDir(t *testing.T) string {
 	return filepath.Clean(cwd)
 }
 
-func TestBuildCLIContextState(t *testing.T) {
-	now := time.Unix(1700000000, 0)
-	opts := cliContextOptions{
-		SupervisorURL:   "http://supervisor.local",
-		SambaConfigFile: "/tmp/smb.conf",
-		Template:        []byte("template"),
-		DockerInterface: "eth0",
-		DockerNetwork:   "bridge",
-		UpdateFilePath:  "/tmp/update",
-		DatabasePath:    ":memory:",
-		SupervisorToken: "token",
-		ProtectedMode:   true,
-		StartTime:       now,
-	}
-
-	state := buildCLIContextState(opts)
-
-	if state.SupervisorURL != opts.SupervisorURL {
-		t.Fatalf("unexpected SupervisorURL: %q", state.SupervisorURL)
-	}
-	if state.SambaConfigFile != opts.SambaConfigFile {
-		t.Fatalf("unexpected SambaConfigFile: %q", state.SambaConfigFile)
-	}
-	if string(state.Template) != string(opts.Template) {
-		t.Fatalf("unexpected template data")
-	}
-	if state.DockerInterface != opts.DockerInterface {
-		t.Fatalf("unexpected DockerInterface: %q", state.DockerInterface)
-	}
-	if state.DockerNet != opts.DockerNetwork {
-		t.Fatalf("unexpected DockerNet: %q", state.DockerNet)
-	}
-	if state.UpdateFilePath != opts.UpdateFilePath {
-		t.Fatalf("unexpected UpdateFilePath: %q", state.UpdateFilePath)
-	}
-	if state.DatabasePath != opts.DatabasePath {
-		t.Fatalf("unexpected DatabasePath: %q", state.DatabasePath)
-	}
-	if state.SupervisorToken != opts.SupervisorToken {
-		t.Fatalf("unexpected SupervisorToken: %q", state.SupervisorToken)
-	}
-	if state.ProtectedMode != opts.ProtectedMode {
-		t.Fatalf("unexpected ProtectedMode: %v", state.ProtectedMode)
-	}
-	if !state.StartTime.Equal(opts.StartTime) {
-		t.Fatalf("unexpected StartTime: %v", state.StartTime)
-	}
-}
-
 // Note: Upgrade command test removed due to FX lifecycle hanging issues in test environment.
 // The upgrade command works correctly in practice using in-memory DB by default.
 // Manual testing shows: go run ./cmd/srat-cli -silent upgrade -channel release

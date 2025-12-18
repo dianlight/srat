@@ -47,6 +47,8 @@ jobs:
           bun install
           cd ..
 
+          
+
       - name: Update coverage badges
         run: |
           bash scripts/update-coverage-badges.sh
