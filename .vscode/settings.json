@@ -191,5 +191,8 @@
   "github.copilot.chat.githubMcpServer.enabled": true,
   "github.copilot.chat.languageContext.typescript.includeDocumentation": true,
   "github.copilot.chat.scopeSelection": true,
-  "github.copilot.chat.tools.memory.enabled": true
+  "github.copilot.chat.tools.memory.enabled": true,
+  "github.copilot.nextEditSuggestions.allowWhitespaceOnlyChanges": false,
+  "editor.inlineSuggest.edits.allowCodeShifting": "horizontal",
+  "editor.inlineSuggest.edits.showCollapsed": true
 }

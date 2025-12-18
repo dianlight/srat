@@ -83,7 +83,7 @@
     "clean": "rm -rf out",
     "dev": "bun tsgo --noEmit && NODE_ENV=development bun --hot run bun.build.ts -w -s ./out",
     "dev:remote": "bun tsgo --noEmit && NODE_ENV=remote API_URL=http://192.168.0.68:3000/ bun --hot run bun.build.ts -w -s ./out",
-    "gen": "bunx @rtk-query/codegen-openapi api.config.js",
+    "gen": "bunx @rtk-query/codegen-openapi api.config.js && bun tsgo --noEmit",
     "test": "bun tsgo --noEmit && BUN_TEST_NO_COVERAGE_THRESHOLD=1 bun test --timeout 10000 --max-concurrency=1",
     "test:coverage": "bun test --coverage",
     "test:prepare": "bun ./scripts/add-test-setup.js",
