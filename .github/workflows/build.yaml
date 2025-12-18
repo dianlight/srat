@@ -445,6 +445,8 @@ jobs:
               sha: context.sha
             })
 
+      - uses: mlugg/setup-zig@v2
+            
       - name: BuildAll
         id: built_all
         if: github.event_name != 'pull_request'
