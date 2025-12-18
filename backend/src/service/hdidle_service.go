@@ -271,7 +271,9 @@ func (s *hDIdleService) Stop() errors.E {
 	}
 
 	tlog.DebugContext(s.ctx, "Stopping HDIdle service")
-	close(s.stopChan)
+	if s.stopChan != nil {
+		close(s.stopChan)
+	}
 	//s.stopChan = nil
 
 	return nil
