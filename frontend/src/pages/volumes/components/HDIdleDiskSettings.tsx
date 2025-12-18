@@ -21,10 +21,10 @@ import {
 } from "react-hook-form-mui";
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useWatch } from "react-hook-form";
-import type { Disk, Settings, HdIdleDeviceDto } from "../../../store/sratApi";
+import type { Disk, Settings, HdIdleDevice } from "../../../store/sratApi";
 import {
 	useGetApiSettingsQuery,
-	useGetApiHdidleEffectiveConfigQuery,
+	useGetApiDiskByDiskIdHdidleInfoQuery,
 	useGetApiDiskByDiskIdHdidleConfigQuery,
 	useGetApiDiskByDiskIdHdidleSupportQuery,
 	usePutApiDiskByDiskIdHdidleConfigMutation,
@@ -47,7 +47,7 @@ export function HDIdleDiskSettings({ disk, readOnly = false }: HDIdleDiskSetting
 		},
 	});
 	const { data: settings, isLoading: isLoadingSettings } = useGetApiSettingsQuery();
-	const { data: effectiveConfig } = useGetApiHdidleEffectiveConfigQuery();
+	const { data: effectiveConfig } = useGetApiDiskByDiskIdHdidleConfigQuery({diskId: (disk as any)?.id || (disk as any)?.name || ""}, { skip: !(disk as any)?.id && !(disk as any)?.name });
 	// disk_id must always be the stable disk ID (not a device path)
 	const diskId = (disk as any)?.id || (disk as any)?.name || "";
 	const { data: deviceConfig, isFetching: isFetchingDeviceConfig } = useGetApiDiskByDiskIdHdidleConfigQuery({ diskId }, { skip: !diskId });
@@ -73,7 +73,7 @@ export function HDIdleDiskSettings({ disk, readOnly = false }: HDIdleDiskSetting
 		}
 
 		// When disk prop or API config changes, update form values
-		const apiValues = (deviceConfig as HdIdleDeviceDto | undefined) ?? undefined;
+		const apiValues = (deviceConfig as HdIdleDevice | undefined) ?? undefined;
 		reset({
 			enabled: (apiValues?.enabled as Enabled | undefined) ?? Enabled.Yes,
 			idle_time: apiValues?.idle_time ?? (disk as any)?.hdidle_status?.idle_time ?? 0,
@@ -104,7 +104,7 @@ export function HDIdleDiskSettings({ disk, readOnly = false }: HDIdleDiskSetting
 	const handleApply = async () => {
 		if (!diskId) return;
 		const values = getValues();
-		const payload: HdIdleDeviceDto = {
+		const payload: HdIdleDevice = {
 			// The backend expects the full by-id device path in the payload
 			device_path: `/dev/disk/by-id/${diskId}`,
 			enabled: values.enabled as Enabled,
@@ -113,7 +113,7 @@ export function HDIdleDiskSettings({ disk, readOnly = false }: HDIdleDiskSetting
 			power_condition: Number(values.power_condition ?? 0),
 		};
 		try {
-			await saveConfig({ diskId, hdIdleDeviceDto: payload }).unwrap();
+			await saveConfig({ diskId, hdIdleDevice: payload }).unwrap();
 		} catch (e) {
 			// No-op; errors should be surfaced by global error UI
 		}
@@ -121,7 +121,7 @@ export function HDIdleDiskSettings({ disk, readOnly = false }: HDIdleDiskSetting
 
 	const handleCancel = () => {
 		// Restore last loaded API values
-		const apiValues = (deviceConfig as HdIdleDeviceDto | undefined) ?? undefined;
+		const apiValues = (deviceConfig as HdIdleDevice | undefined) ?? undefined;
 		reset({
 			enabled: (apiValues?.enabled as Enabled | undefined) ?? Enabled.Yes,
 			idle_time: apiValues?.idle_time ?? (disk as any)?.hdidle_status?.idle_time ?? 0,

@@ -60,7 +60,7 @@ const injectedRtkApi = api
         query: (queryArg) => ({
           url: `/api/disk/${queryArg.diskId}/hdidle/config`,
           method: "PUT",
-          body: queryArg.hdIdleDeviceDto,
+          body: queryArg.hdIdleDevice,
         }),
         invalidatesTags: ["disk"],
       }),
@@ -166,26 +166,12 @@ const injectedRtkApi = api
         query: () => ({ url: `/api/filesystems` }),
         providesTags: ["system"],
       }),
-      getApiHdidleEffectiveConfig: build.query<
-        GetApiHdidleEffectiveConfigApiResponse,
-        GetApiHdidleEffectiveConfigApiArg
-      >({
-        query: () => ({ url: `/api/hdidle/effective-config` }),
-        providesTags: ["hdidle"],
-      }),
       postApiHdidleStart: build.mutation<
         PostApiHdidleStartApiResponse,
         PostApiHdidleStartApiArg
       >({
         query: () => ({ url: `/api/hdidle/start`, method: "POST" }),
         invalidatesTags: ["hdidle"],
-      }),
-      getApiHdidleStatus: build.query<
-        GetApiHdidleStatusApiResponse,
-        GetApiHdidleStatusApiArg
-      >({
-        query: () => ({ url: `/api/hdidle/status` }),
-        providesTags: ["hdidle"],
       }),
       postApiHdidleStop: build.mutation<
         PostApiHdidleStopApiResponse,
@@ -511,18 +497,18 @@ export type DeleteApiDiskByDiskIdHdidleConfigApiResponse = /** status 200 OK */
   | DeleteHdIdleConfigOutputBody
   | /** status default Error */ ErrorModel;
 export type DeleteApiDiskByDiskIdHdidleConfigApiArg = {
-  /** The disk ID or device path */
+  /** The disk ID (not the device path) */
   diskId: string;
 };
 export type GetApiDiskByDiskIdHdidleConfigApiResponse = /** status 200 OK */
-  | HdIdleDeviceDto
+  | HdIdleDevice
   | /** status default Error */ ErrorModel;
 export type GetApiDiskByDiskIdHdidleConfigApiArg = {
-  /** The disk ID or device path */
+  /** The disk ID (not the device path) */
   diskId: string;
 };
 export type PatchApiDiskByDiskIdHdidleConfigApiResponse = /** status 200 OK */
-  | HdIdleDeviceDto
+  | HdIdleDevice
   | /** status default Error */ ErrorModel;
 export type PatchApiDiskByDiskIdHdidleConfigApiArg = {
   /** The disk ID or device path */
@@ -530,25 +516,25 @@ export type PatchApiDiskByDiskIdHdidleConfigApiArg = {
   body: JsonPatchOp[] | null;
 };
 export type PutApiDiskByDiskIdHdidleConfigApiResponse = /** status 200 OK */
-  | HdIdleDeviceDto
+  | HdIdleDevice
   | /** status default Error */ ErrorModel;
 export type PutApiDiskByDiskIdHdidleConfigApiArg = {
   /** The disk ID or device path */
   diskId: string;
-  hdIdleDeviceDto: HdIdleDeviceDto;
+  hdIdleDevice: HdIdleDevice;
 };
 export type GetApiDiskByDiskIdHdidleInfoApiResponse = /** status 200 OK */
-  | HdIdleDiskStatus
+  | HdIdleDeviceStatus
   | /** status default Error */ ErrorModel;
 export type GetApiDiskByDiskIdHdidleInfoApiArg = {
-  /** The disk ID or device path */
+  /** The disk ID (not the device path) */
   diskId: string;
 };
 export type GetApiDiskByDiskIdHdidleSupportApiResponse = /** status 200 OK */
   | HdIdleDeviceSupport
   | /** status default Error */ ErrorModel;
 export type GetApiDiskByDiskIdHdidleSupportApiArg = {
-  /** The disk ID or device path */
+  /** The disk ID (not the device path) */
   diskId: string;
 };
 export type PostApiDiskByDiskIdSmartDisableApiResponse = /** status 200 OK */
@@ -612,18 +598,10 @@ export type GetApiFilesystemsApiResponse =
   | /** status 200 OK */ (FilesystemType[] | null)
   | /** status default Error */ ErrorModel;
 export type GetApiFilesystemsApiArg = void;
-export type GetApiHdidleEffectiveConfigApiResponse = /** status 200 OK */
-  | HdIdleEffectiveConfig
-  | /** status default Error */ ErrorModel;
-export type GetApiHdidleEffectiveConfigApiArg = void;
 export type PostApiHdidleStartApiResponse = /** status 200 OK */
   | StartHdIdleServiceOutputBody
   | /** status default Error */ ErrorModel;
 export type PostApiHdidleStartApiArg = void;
-export type GetApiHdidleStatusApiResponse = /** status 200 OK */
-  | HdIdleStatus
-  | /** status default Error */ ErrorModel;
-export type GetApiHdidleStatusApiArg = void;
 export type PostApiHdidleStopApiResponse = /** status 200 OK */
   | StopHdIdleServiceOutputBody
   | /** status default Error */ ErrorModel;
@@ -915,7 +893,7 @@ export type DeleteHdIdleConfigOutputBody = {
   $schema?: string;
   message: string;
 };
-export type HdIdleDeviceDto = {
+export type HdIdleDevice = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
   command_type?: Command_type;
@@ -934,18 +912,19 @@ export type JsonPatchOp = {
   /** The value to set */
   value?: unknown;
 };
-export type HdIdleDiskStatus = {
+export type HdIdleDeviceStatus = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
-  CommandType: string;
-  GivenName: string;
-  IdleTime: number;
-  LastIOAt: string;
-  Name: string;
-  PowerCondition: number;
-  SpinDownAt: string;
-  SpinUpAt: string;
-  SpunDown: boolean;
+  command_type?: string;
+  enabled: boolean;
+  given_name?: string;
+  idle_time_millis?: number;
+  last_io_at?: string;
+  name?: string;
+  spin_down_at?: string;
+  spin_up_at?: string;
+  spun_down: boolean;
+  supported: boolean;
 };
 export type HdIdleDeviceSupport = {
   /** A URL to the JSON Schema for this object. */
@@ -964,22 +943,23 @@ export type SmartHealthStatus = {
   overall_status: string;
   passed: boolean;
 };
+export type SmartInfo = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  disk_type?: Disk_type;
+  firmware_version?: string;
+  model_family?: string;
+  model_name?: string;
+  rotation_rate?: number;
+  serial_number?: string;
+  supported: boolean;
+};
 export type SmartRangeValue = {
   code?: number;
   min?: number;
   thresholds?: number;
   value: number;
   worst?: number;
-};
-export type SmartInfo = {
-  /** A URL to the JSON Schema for this object. */
-  $schema?: string;
-  disk_type?: Disk_type;
-  others?: {
-    [key: string]: SmartRangeValue;
-  };
-  rotation_rate?: number;
-  supported: boolean;
 };
 export type SmartTempValue = {
   max?: number;
@@ -991,6 +971,7 @@ export type SmartStatus = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
   enabled: boolean;
+  in_standby?: boolean;
   others?: {
     [key: string]: SmartRangeValue;
   };
@@ -1026,24 +1007,11 @@ export type FilesystemType = {
   name: string;
   type: string;
 };
-export type HdIdleEffectiveConfig = {
-  /** A URL to the JSON Schema for this object. */
-  $schema?: string;
-  Devices: string[] | null;
-  Enabled: boolean;
-};
 export type StartHdIdleServiceOutputBody = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
   message: string;
   running: boolean;
-};
-export type HdIdleStatus = {
-  /** A URL to the JSON Schema for this object. */
-  $schema?: string;
-  Disks: HdIdleDiskStatus[] | null;
-  MonitoredAt: string;
-  Running: boolean;
 };
 export type StopHdIdleServiceOutputBody = {
   /** A URL to the JSON Schema for this object. */
@@ -1070,16 +1038,6 @@ export type GlobalDiskStats = {
   total_iops: number;
   total_read_latency_ms: number;
   total_write_latency_ms: number;
-};
-export type HdIdleDeviceStatus = {
-  command_type?: string;
-  enabled: boolean;
-  idle_time_millis?: number;
-  last_io_at?: string;
-  spin_down_at?: string;
-  spin_up_at?: string;
-  spun_down: boolean;
-  supported: boolean;
 };
 export type PerDiskInfo = {
   device_id: string;
@@ -1396,7 +1354,7 @@ export type Disk = {
   connection_bus?: string;
   device_path?: string;
   ejectable?: boolean;
-  hdidle_status?: HdIdleDeviceDto;
+  hdidle_status?: HdIdleDevice;
   id?: string;
   legacy_device_name?: string;
   legacy_device_path?: string;
@@ -1512,9 +1470,7 @@ export const {
   usePostApiDiskByDiskIdSmartTestAbortMutation,
   usePostApiDiskByDiskIdSmartTestStartMutation,
   useGetApiFilesystemsQuery,
-  useGetApiHdidleEffectiveConfigQuery,
   usePostApiHdidleStartMutation,
-  useGetApiHdidleStatusQuery,
   usePostApiHdidleStopMutation,
   useGetApiHealthQuery,
   useGetApiHostnameQuery,

@@ -52,7 +52,7 @@ type Disk struct {
 	SmartInfo *SmartInfo `json:"smart_info,omitempty" readonly:"true"`
 
 	// HDIdleStatus contains current HDIdle configuration snapshot for this disk, if available.
-	HDIdleStatus *HDIdleDeviceDTO `json:"hdidle_status,omitempty" readonly:"true"`
+	HDIdleStatus *HDIdleDevice `json:"hdidle_status,omitempty" readonly:"true"`
 
 	// Refresh version counter to indicate when the disk info was last refreshed.
 	RefreshVersion uint32 `json:"refresh_version,omitempty" readonly:"true"`

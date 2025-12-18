@@ -67,7 +67,7 @@ func (suite *HDIdleHandlerSuite) TearDownTest() {
 
 func (suite *HDIdleHandlerSuite) TestGetConfigSuccess() {
 	diskID := "sda"
-	expectedConfig := &dto.HDIdleDeviceDTO{
+	expectedConfig := &dto.HDIdleDevice{
 		DevicePath:     diskID,
 		IdleTime:       300,
 		CommandType:    dto.HdidleCommands.SCSICOMMAND,
@@ -83,10 +83,10 @@ func (suite *HDIdleHandlerSuite) TestGetConfigSuccess() {
 	resp := apiInst.Get("/disk/sda/hdidle/config")
 	suite.Require().Equal(http.StatusOK, resp.Code)
 
-	var out dto.HDIdleDeviceDTO
+	var out dto.HDIdleDevice
 	suite.NoError(json.Unmarshal(resp.Body.Bytes(), &out))
 	suite.Equal(diskID, out.DevicePath)
-	suite.Equal(300, out.IdleTime)
+	suite.Equal(time.Duration(300), out.IdleTime)
 	suite.Equal(dto.HdidleEnableds.YESENABLED, out.Enabled)
 
 	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).GetDeviceConfig(mock.Substring(diskID))
@@ -112,14 +112,14 @@ func (suite *HDIdleHandlerSuite) TestGetConfigError() {
 
 func (suite *HDIdleHandlerSuite) TestPutConfigSuccess() {
 	diskID := "sda"
-	existingConfig := &dto.HDIdleDeviceDTO{
+	existingConfig := &dto.HDIdleDevice{
 		DevicePath:     diskID,
 		IdleTime:       300,
 		CommandType:    dto.HdidleCommands.SCSICOMMAND,
 		PowerCondition: 0,
 		Enabled:        dto.HdidleEnableds.YESENABLED,
 	}
-	inputConfig := dto.HDIdleDeviceDTO{
+	inputConfig := dto.HDIdleDevice{
 		DevicePath:     diskID,
 		IdleTime:       600,
 		CommandType:    dto.HdidleCommands.ATACOMMAND,
@@ -128,7 +128,7 @@ func (suite *HDIdleHandlerSuite) TestPutConfigSuccess() {
 	}
 
 	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Substring(diskID))).ThenReturn(existingConfig, nil)
-	mock.When(suite.mockHDIdleService.SaveDeviceConfig(mock.Any[dto.HDIdleDeviceDTO]())).ThenReturn(nil)
+	mock.When(suite.mockHDIdleService.SaveDeviceConfig(mock.Any[dto.HDIdleDevice]())).ThenReturn(nil)
 	mock.When(suite.mockHDIdleService.IsRunning()).ThenReturn(false)
 	mock.When(suite.mockHDIdleService.Start()).ThenReturn(nil)
 
@@ -138,30 +138,30 @@ func (suite *HDIdleHandlerSuite) TestPutConfigSuccess() {
 	resp := apiInst.Put("/disk/sda/hdidle/config", inputConfig)
 	suite.Require().Equal(http.StatusOK, resp.Code)
 
-	var out dto.HDIdleDeviceDTO
+	var out dto.HDIdleDevice
 	suite.NoError(json.Unmarshal(resp.Body.Bytes(), &out))
-	suite.Equal(600, out.IdleTime)
+	suite.Equal(time.Duration(600), out.IdleTime)
 
 	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).GetDeviceConfig(mock.Substring(diskID))
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).SaveDeviceConfig(mock.Any[dto.HDIdleDeviceDTO]())
+	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).SaveDeviceConfig(mock.Any[dto.HDIdleDevice]())
 	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).Start()
 }
 
 func (suite *HDIdleHandlerSuite) TestPutConfigWithRestartSuccess() {
 	diskID := "sda"
-	existingConfig := &dto.HDIdleDeviceDTO{
+	existingConfig := &dto.HDIdleDevice{
 		DevicePath: diskID,
 		IdleTime:   300,
 		Enabled:    dto.HdidleEnableds.YESENABLED,
 	}
-	inputConfig := dto.HDIdleDeviceDTO{
+	inputConfig := dto.HDIdleDevice{
 		DevicePath: diskID,
 		IdleTime:   600,
 		Enabled:    dto.HdidleEnableds.YESENABLED,
 	}
 
 	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Substring(diskID))).ThenReturn(existingConfig, nil)
-	mock.When(suite.mockHDIdleService.SaveDeviceConfig(mock.Any[dto.HDIdleDeviceDTO]())).ThenReturn(nil)
+	mock.When(suite.mockHDIdleService.SaveDeviceConfig(mock.Any[dto.HDIdleDevice]())).ThenReturn(nil)
 	mock.When(suite.mockHDIdleService.IsRunning()).ThenReturn(true)
 	mock.When(suite.mockHDIdleService.Stop()).ThenReturn(nil)
 	mock.When(suite.mockHDIdleService.Start()).ThenReturn(nil)
@@ -178,12 +178,12 @@ func (suite *HDIdleHandlerSuite) TestPutConfigWithRestartSuccess() {
 
 func (suite *HDIdleHandlerSuite) TestPutConfigDevicePathMismatch() {
 	diskID := "sda"
-	existingConfig := &dto.HDIdleDeviceDTO{
+	existingConfig := &dto.HDIdleDevice{
 		DevicePath: diskID,
 		IdleTime:   300,
 		Enabled:    dto.HdidleEnableds.YESENABLED,
 	}
-	inputConfig := dto.HDIdleDeviceDTO{
+	inputConfig := dto.HDIdleDevice{
 		DevicePath: "sdb", // Mismatched path
 		IdleTime:   600,
 		Enabled:    dto.HdidleEnableds.YESENABLED,
@@ -200,19 +200,19 @@ func (suite *HDIdleHandlerSuite) TestPutConfigDevicePathMismatch() {
 
 func (suite *HDIdleHandlerSuite) TestPutConfigStopError() {
 	diskID := "sda"
-	existingConfig := &dto.HDIdleDeviceDTO{
+	existingConfig := &dto.HDIdleDevice{
 		DevicePath: diskID,
 		IdleTime:   300,
 		Enabled:    dto.HdidleEnableds.YESENABLED,
 	}
-	inputConfig := dto.HDIdleDeviceDTO{
+	inputConfig := dto.HDIdleDevice{
 		DevicePath: diskID,
 		IdleTime:   600,
 		Enabled:    dto.HdidleEnableds.YESENABLED,
 	}
 
 	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Substring(diskID))).ThenReturn(existingConfig, nil)
-	mock.When(suite.mockHDIdleService.SaveDeviceConfig(mock.Any[dto.HDIdleDeviceDTO]())).ThenReturn(nil)
+	mock.When(suite.mockHDIdleService.SaveDeviceConfig(mock.Any[dto.HDIdleDevice]())).ThenReturn(nil)
 	mock.When(suite.mockHDIdleService.IsRunning()).ThenReturn(true)
 	mock.When(suite.mockHDIdleService.Stop()).ThenReturn(errors.New("stop failed"))
 
@@ -227,19 +227,19 @@ func (suite *HDIdleHandlerSuite) TestPutConfigStopError() {
 
 func (suite *HDIdleHandlerSuite) TestPutConfigSaveError() {
 	diskID := "sda"
-	existingConfig := &dto.HDIdleDeviceDTO{
+	existingConfig := &dto.HDIdleDevice{
 		DevicePath: diskID,
 		IdleTime:   300,
 		Enabled:    dto.HdidleEnableds.YESENABLED,
 	}
-	inputConfig := dto.HDIdleDeviceDTO{
+	inputConfig := dto.HDIdleDevice{
 		DevicePath: diskID,
 		IdleTime:   600,
 		Enabled:    dto.HdidleEnableds.YESENABLED,
 	}
 
 	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Substring(diskID))).ThenReturn(existingConfig, nil)
-	mock.When(suite.mockHDIdleService.SaveDeviceConfig(mock.Any[dto.HDIdleDeviceDTO]())).ThenReturn(errors.New("save failed"))
+	mock.When(suite.mockHDIdleService.SaveDeviceConfig(mock.Any[dto.HDIdleDevice]())).ThenReturn(errors.New("save failed"))
 
 	_, apiInst := humatest.New(suite.T())
 	suite.handler.RegisterHDIdleHandler(apiInst)
@@ -247,24 +247,24 @@ func (suite *HDIdleHandlerSuite) TestPutConfigSaveError() {
 	resp := apiInst.Put("/disk/sda/hdidle/config", inputConfig)
 	suite.Require().Equal(http.StatusInternalServerError, resp.Code)
 
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).SaveDeviceConfig(mock.Any[dto.HDIdleDeviceDTO]())
+	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).SaveDeviceConfig(mock.Any[dto.HDIdleDevice]())
 }
 
 func (suite *HDIdleHandlerSuite) TestPutConfigStartError() {
 	diskID := "sda"
-	existingConfig := &dto.HDIdleDeviceDTO{
+	existingConfig := &dto.HDIdleDevice{
 		DevicePath: diskID,
 		IdleTime:   300,
 		Enabled:    dto.HdidleEnableds.YESENABLED,
 	}
-	inputConfig := dto.HDIdleDeviceDTO{
+	inputConfig := dto.HDIdleDevice{
 		DevicePath: diskID,
 		IdleTime:   600,
 		Enabled:    dto.HdidleEnableds.YESENABLED,
 	}
 
 	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Substring(diskID))).ThenReturn(existingConfig, nil)
-	mock.When(suite.mockHDIdleService.SaveDeviceConfig(mock.Any[dto.HDIdleDeviceDTO]())).ThenReturn(nil)
+	mock.When(suite.mockHDIdleService.SaveDeviceConfig(mock.Any[dto.HDIdleDevice]())).ThenReturn(nil)
 	mock.When(suite.mockHDIdleService.IsRunning()).ThenReturn(false)
 	mock.When(suite.mockHDIdleService.Start()).ThenReturn(errors.New("start failed"))
 
@@ -283,14 +283,13 @@ func (suite *HDIdleHandlerSuite) TestPutConfigStartError() {
 
 func (suite *HDIdleHandlerSuite) TestGetStatusSuccess() {
 	diskID := "sda"
-	expectedStatus := &service.HDIdleDiskStatus{
+	expectedStatus := &dto.HDIdleDeviceStatus{
 		Name:           "sda",
 		GivenName:      diskID,
 		SpunDown:       false,
 		LastIOAt:       time.Now(),
-		IdleTime:       5 * time.Minute,
-		CommandType:    dto.HdidleCommands.SCSICOMMAND,
-		PowerCondition: 0,
+		IdleTimeMillis: int64(5 * time.Minute),
+		CommandType:    dto.HdidleCommands.SCSICOMMAND.String(),
 	}
 
 	mock.When(suite.mockHDIdleService.GetDeviceStatus(mock.Substring(diskID))).ThenReturn(expectedStatus, nil)
@@ -301,7 +300,7 @@ func (suite *HDIdleHandlerSuite) TestGetStatusSuccess() {
 	resp := apiInst.Get("/disk/sda/hdidle/info")
 	suite.Require().Equal(http.StatusOK, resp.Code)
 
-	var out service.HDIdleDiskStatus
+	var out dto.HDIdleDeviceStatus
 	suite.NoError(json.Unmarshal(resp.Body.Bytes(), &out))
 	suite.Equal("sda", out.Name)
 	suite.False(out.SpunDown)
@@ -324,124 +323,17 @@ func (suite *HDIdleHandlerSuite) TestGetStatusError() {
 }
 
 // =============================================================================
-// GET /hdidle/status Tests
+// GET /hdidle/status & GET /hdidle/effective-config Tests
 // =============================================================================
 
-func (suite *HDIdleHandlerSuite) TestGetServiceStatusSuccess() {
-	expectedStatus := &service.HDIdleStatus{
-		Running:     true,
-		MonitoredAt: time.Now(),
-		Disks: []service.HDIdleDiskStatus{
-			{
-				Name:      "sda",
-				GivenName: "sda",
-				SpunDown:  false,
-			},
-			{
-				Name:      "sdb",
-				GivenName: "sdb",
-				SpunDown:  true,
-			},
-		},
-	}
+/* Disabled: service status/effective-config methods are commented out in HDIdleServiceInterface.
+func (suite *HDIdleHandlerSuite) TestGetServiceStatusSuccess() { ... }
+func (suite *HDIdleHandlerSuite) TestGetServiceStatusNotRunning() { ... }
+func (suite *HDIdleHandlerSuite) TestGetServiceStatusError() { ... }
 
-	mock.When(suite.mockHDIdleService.GetStatus()).ThenReturn(expectedStatus, nil)
-
-	_, apiInst := humatest.New(suite.T())
-	suite.handler.RegisterHDIdleHandler(apiInst)
-
-	resp := apiInst.Get("/hdidle/status")
-	suite.Require().Equal(http.StatusOK, resp.Code)
-
-	var out service.HDIdleStatus
-	suite.NoError(json.Unmarshal(resp.Body.Bytes(), &out))
-	suite.True(out.Running)
-	suite.Len(out.Disks, 2)
-
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).GetStatus()
-}
-
-func (suite *HDIdleHandlerSuite) TestGetServiceStatusNotRunning() {
-	expectedStatus := &service.HDIdleStatus{
-		Running: false,
-	}
-
-	mock.When(suite.mockHDIdleService.GetStatus()).ThenReturn(expectedStatus, nil)
-
-	_, apiInst := humatest.New(suite.T())
-	suite.handler.RegisterHDIdleHandler(apiInst)
-
-	resp := apiInst.Get("/hdidle/status")
-	suite.Require().Equal(http.StatusOK, resp.Code)
-
-	var out service.HDIdleStatus
-	suite.NoError(json.Unmarshal(resp.Body.Bytes(), &out))
-	suite.False(out.Running)
-
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).GetStatus()
-}
-
-func (suite *HDIdleHandlerSuite) TestGetServiceStatusError() {
-	mock.When(suite.mockHDIdleService.GetStatus()).ThenReturn(nil, errors.New("service error"))
-
-	_, apiInst := humatest.New(suite.T())
-	suite.handler.RegisterHDIdleHandler(apiInst)
-
-	resp := apiInst.Get("/hdidle/status")
-	suite.Require().Equal(http.StatusInternalServerError, resp.Code)
-
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).GetStatus()
-}
-
-// =============================================================================
-// GET /hdidle/effective-config Tests
-// =============================================================================
-
-func (suite *HDIdleHandlerSuite) TestGetEffectiveConfigEnabled() {
-	expectedConfig := service.HDIdleEffectiveConfig{
-		Enabled: true,
-		Devices: []string{"sda", "sdb"},
-	}
-
-	mock.When(suite.mockHDIdleService.GetEffectiveConfig()).ThenReturn(expectedConfig)
-
-	_, apiInst := humatest.New(suite.T())
-	suite.handler.RegisterHDIdleHandler(apiInst)
-
-	resp := apiInst.Get("/hdidle/effective-config")
-	suite.Require().Equal(http.StatusOK, resp.Code)
-
-	var out service.HDIdleEffectiveConfig
-	suite.NoError(json.Unmarshal(resp.Body.Bytes(), &out))
-	suite.True(out.Enabled)
-	suite.Len(out.Devices, 2)
-	suite.Contains(out.Devices, "sda")
-	suite.Contains(out.Devices, "sdb")
-
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).GetEffectiveConfig()
-}
-
-func (suite *HDIdleHandlerSuite) TestGetEffectiveConfigDisabled() {
-	expectedConfig := service.HDIdleEffectiveConfig{
-		Enabled: false,
-		Devices: []string{},
-	}
-
-	mock.When(suite.mockHDIdleService.GetEffectiveConfig()).ThenReturn(expectedConfig)
-
-	_, apiInst := humatest.New(suite.T())
-	suite.handler.RegisterHDIdleHandler(apiInst)
-
-	resp := apiInst.Get("/hdidle/effective-config")
-	suite.Require().Equal(http.StatusOK, resp.Code)
-
-	var out service.HDIdleEffectiveConfig
-	suite.NoError(json.Unmarshal(resp.Body.Bytes(), &out))
-	suite.False(out.Enabled)
-	suite.Empty(out.Devices)
-
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).GetEffectiveConfig()
-}
+func (suite *HDIdleHandlerSuite) TestGetEffectiveConfigEnabled() { ... }
+func (suite *HDIdleHandlerSuite) TestGetEffectiveConfigDisabled() { ... }
+*/
 
 // =============================================================================
 // POST /hdidle/start Tests
@@ -569,7 +461,7 @@ func (suite *HDIdleHandlerSuite) TestStopServiceError() {
 
 func (suite *HDIdleHandlerSuite) TestDeleteConfigSuccess() {
 	diskID := "sda"
-	existingConfig := &dto.HDIdleDeviceDTO{
+	existingConfig := &dto.HDIdleDevice{
 		DevicePath:     diskID,
 		IdleTime:       300,
 		CommandType:    dto.HdidleCommands.SCSICOMMAND,
@@ -578,7 +470,7 @@ func (suite *HDIdleHandlerSuite) TestDeleteConfigSuccess() {
 	}
 
 	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Substring(diskID))).ThenReturn(existingConfig, nil)
-	mock.When(suite.mockHDIdleService.SaveDeviceConfig(mock.Any[dto.HDIdleDeviceDTO]())).ThenReturn(nil)
+	mock.When(suite.mockHDIdleService.SaveDeviceConfig(mock.Any[dto.HDIdleDevice]())).ThenReturn(nil)
 	mock.When(suite.mockHDIdleService.IsRunning()).ThenReturn(false)
 
 	_, apiInst := humatest.New(suite.T())
@@ -594,19 +486,19 @@ func (suite *HDIdleHandlerSuite) TestDeleteConfigSuccess() {
 	suite.Equal("HDIdle configuration deleted successfully", out.Message)
 
 	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).GetDeviceConfig(mock.Substring(diskID))
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).SaveDeviceConfig(mock.Any[dto.HDIdleDeviceDTO]())
+	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).SaveDeviceConfig(mock.Any[dto.HDIdleDevice]())
 }
 
 func (suite *HDIdleHandlerSuite) TestDeleteConfigWithRestartSuccess() {
 	diskID := "sda"
-	existingConfig := &dto.HDIdleDeviceDTO{
+	existingConfig := &dto.HDIdleDevice{
 		DevicePath: diskID,
 		IdleTime:   300,
 		Enabled:    dto.HdidleEnableds.YESENABLED,
 	}
 
 	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Substring(diskID))).ThenReturn(existingConfig, nil)
-	mock.When(suite.mockHDIdleService.SaveDeviceConfig(mock.Any[dto.HDIdleDeviceDTO]())).ThenReturn(nil)
+	mock.When(suite.mockHDIdleService.SaveDeviceConfig(mock.Any[dto.HDIdleDevice]())).ThenReturn(nil)
 	mock.When(suite.mockHDIdleService.IsRunning()).ThenReturn(true)
 	mock.When(suite.mockHDIdleService.Stop()).ThenReturn(nil)
 	mock.When(suite.mockHDIdleService.Start()).ThenReturn(nil)
@@ -637,14 +529,14 @@ func (suite *HDIdleHandlerSuite) TestDeleteConfigGetError() {
 
 func (suite *HDIdleHandlerSuite) TestDeleteConfigSaveError() {
 	diskID := "sda"
-	existingConfig := &dto.HDIdleDeviceDTO{
+	existingConfig := &dto.HDIdleDevice{
 		DevicePath: diskID,
 		IdleTime:   300,
 		Enabled:    dto.HdidleEnableds.YESENABLED,
 	}
 
 	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Substring(diskID))).ThenReturn(existingConfig, nil)
-	mock.When(suite.mockHDIdleService.SaveDeviceConfig(mock.Any[dto.HDIdleDeviceDTO]())).ThenReturn(errors.New("save failed"))
+	mock.When(suite.mockHDIdleService.SaveDeviceConfig(mock.Any[dto.HDIdleDevice]())).ThenReturn(errors.New("save failed"))
 
 	_, apiInst := humatest.New(suite.T())
 	suite.handler.RegisterHDIdleHandler(apiInst)
@@ -652,19 +544,19 @@ func (suite *HDIdleHandlerSuite) TestDeleteConfigSaveError() {
 	resp := apiInst.Delete("/disk/sda/hdidle/config")
 	suite.Require().Equal(http.StatusInternalServerError, resp.Code)
 
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).SaveDeviceConfig(mock.Any[dto.HDIdleDeviceDTO]())
+	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).SaveDeviceConfig(mock.Any[dto.HDIdleDevice]())
 }
 
 func (suite *HDIdleHandlerSuite) TestDeleteConfigStopError() {
 	diskID := "sda"
-	existingConfig := &dto.HDIdleDeviceDTO{
+	existingConfig := &dto.HDIdleDevice{
 		DevicePath: diskID,
 		IdleTime:   300,
 		Enabled:    dto.HdidleEnableds.YESENABLED,
 	}
 
 	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Substring(diskID))).ThenReturn(existingConfig, nil)
-	mock.When(suite.mockHDIdleService.SaveDeviceConfig(mock.Any[dto.HDIdleDeviceDTO]())).ThenReturn(nil)
+	mock.When(suite.mockHDIdleService.SaveDeviceConfig(mock.Any[dto.HDIdleDevice]())).ThenReturn(nil)
 	mock.When(suite.mockHDIdleService.IsRunning()).ThenReturn(true)
 	mock.When(suite.mockHDIdleService.Stop()).ThenReturn(errors.New("stop failed"))
 
@@ -679,14 +571,14 @@ func (suite *HDIdleHandlerSuite) TestDeleteConfigStopError() {
 
 func (suite *HDIdleHandlerSuite) TestDeleteConfigStartError() {
 	diskID := "sda"
-	existingConfig := &dto.HDIdleDeviceDTO{
+	existingConfig := &dto.HDIdleDevice{
 		DevicePath: diskID,
 		IdleTime:   300,
 		Enabled:    dto.HdidleEnableds.YESENABLED,
 	}
 
 	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Substring(diskID))).ThenReturn(existingConfig, nil)
-	mock.When(suite.mockHDIdleService.SaveDeviceConfig(mock.Any[dto.HDIdleDeviceDTO]())).ThenReturn(nil)
+	mock.When(suite.mockHDIdleService.SaveDeviceConfig(mock.Any[dto.HDIdleDevice]())).ThenReturn(nil)
 	mock.When(suite.mockHDIdleService.IsRunning()).ThenReturn(true)
 	mock.When(suite.mockHDIdleService.Stop()).ThenReturn(nil)
 	mock.When(suite.mockHDIdleService.Start()).ThenReturn(errors.New("start failed"))
@@ -707,7 +599,7 @@ func (suite *HDIdleHandlerSuite) TestDeleteConfigStartError() {
 func (suite *HDIdleHandlerSuite) TestCheckSupportSuccess() {
 	diskID := "sda"
 	recommendedCmd := dto.HdidleCommands.ATACOMMAND
-	expectedSupport := &service.HDIdleDeviceSupport{
+	expectedSupport := &dto.HDIdleDeviceSupport{
 		Supported:          true,
 		SupportsSCSI:       true,
 		SupportsATA:        true,
@@ -724,7 +616,7 @@ func (suite *HDIdleHandlerSuite) TestCheckSupportSuccess() {
 	resp := apiInst.Get("/disk/sda/hdidle/support")
 	suite.Require().Equal(http.StatusOK, resp.Code)
 
-	var out service.HDIdleDeviceSupport
+	var out dto.HDIdleDeviceSupport
 	suite.NoError(json.Unmarshal(resp.Body.Bytes(), &out))
 	suite.True(out.Supported)
 	suite.True(out.SupportsSCSI)
@@ -736,7 +628,7 @@ func (suite *HDIdleHandlerSuite) TestCheckSupportSuccess() {
 
 func (suite *HDIdleHandlerSuite) TestCheckSupportNotSupported() {
 	diskID := "sda"
-	expectedSupport := &service.HDIdleDeviceSupport{
+	expectedSupport := &dto.HDIdleDeviceSupport{
 		Supported:    false,
 		SupportsSCSI: false,
 		SupportsATA:  false,
@@ -752,7 +644,7 @@ func (suite *HDIdleHandlerSuite) TestCheckSupportNotSupported() {
 	resp := apiInst.Get("/disk/sda/hdidle/support")
 	suite.Require().Equal(http.StatusOK, resp.Code)
 
-	var out service.HDIdleDeviceSupport
+	var out dto.HDIdleDeviceSupport
 	suite.NoError(json.Unmarshal(resp.Body.Bytes(), &out))
 	suite.False(out.Supported)
 	suite.Equal("device does not support SG interface", out.ErrorMessage)

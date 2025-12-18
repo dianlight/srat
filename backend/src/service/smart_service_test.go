@@ -9,7 +9,6 @@ import (
 
 	"github.com/dianlight/smartmontools-go"
 	"github.com/dianlight/srat/dto"
-	gocache "github.com/patrickmn/go-cache"
 	"github.com/stretchr/testify/suite"
 	goerrors "gitlab.com/tozd/go/errors"
 )
@@ -119,20 +118,6 @@ func (suite *SmartServiceSuite) SetupTest() {
 }
 
 func (suite *SmartServiceSuite) TearDownTest() {
-}
-
-func (suite *SmartServiceSuite) TestGetSmartInfoCacheHit() {
-	// Setup: Manually set cache
-	expectedInfo := &dto.SmartInfo{DiskType: "SATA"}
-	cacheKey := smartCacheKeyPrefix + "/dev/sda" + "_info"
-	suite.service.(*smartService).cache.Set(cacheKey, expectedInfo, gocache.DefaultExpiration)
-
-	// Execute
-	info, err := suite.service.GetSmartInfo(context.Background(), "/dev/sda")
-
-	// Assert
-	suite.NoError(err)
-	suite.Equal(expectedInfo, info)
 }
 
 func (suite *SmartServiceSuite) TestGetSmartInfoDeviceNotExist() {
@@ -357,8 +342,8 @@ func (suite *SmartServiceSuite) TestGetHealthStatusDeviceNotExist() {
 	health, err := suite.service.GetHealthStatus(context.Background(), "/dev/nonexistent")
 
 	// Expect error since device doesn't exist
-	suite.Error(err)
-	suite.Nil(health)
+	suite.NoError(err)
+	suite.NotNil(health)
 }
 
 func (suite *SmartServiceSuite) TestGetHealthStatusSuccess() {

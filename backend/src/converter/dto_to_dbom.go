@@ -1,6 +1,8 @@
 package converter
 
 import (
+	"time"
+
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 )
@@ -14,14 +16,16 @@ import (
 // goverter:skipCopySameType
 // goverter:extend exportedShareToString
 // goverter:extend stringToExportedShare
+// goverter:extend durationToSeconds
+// goverter:extend secondsToDuration
 // goverter:ignoreUnexported
 // goverter:enum:unknown @error
 type DtoToDbomConverter interface {
 
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
-	HDIdleDeviceDTOToHDIdleDevice(source dto.HDIdleDeviceDTO) (dbom.HDIdleDevice, error)
+	HDIdleDeviceDTOToHDIdleDevice(source dto.HDIdleDevice) (dbom.HDIdleDevice, error)
 
-	HDIdleDeviceToHDIdleDeviceDTO(source dbom.HDIdleDevice) (dto.HDIdleDeviceDTO, error)
+	HDIdleDeviceToHDIdleDeviceDTO(source dbom.HDIdleDevice) (dto.HDIdleDevice, error)
 
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
 	// goverter:map MountPointData.Path MountPointDataPath
@@ -132,6 +136,16 @@ func stringToExportedShare(source string) dbom.ExportedShare {
 	return dbom.ExportedShare{
 		Name: source,
 	}
+}
+
+// durationToSeconds converts time.Duration (nanoseconds) to int seconds
+func durationToSeconds(d time.Duration) int {
+	return int(d / time.Second)
+}
+
+// secondsToDuration converts int seconds to time.Duration
+func secondsToDuration(seconds int) time.Duration {
+	return time.Duration(seconds) * time.Second
 }
 
 // goverter:context disks

@@ -37,34 +37,40 @@ type SambaServiceInterface interface {
 	WriteAndRestartSambaConfig(ctx context.Context) errors.E
 }
 
+type SambaServiceProcessStatus interface {
+	GetProcessStatus(parentPid int32) *dto.ProcessStatus
+}
+
 type SambaService struct {
-	ctx             context.Context
-	ctxCancel       context.CancelFunc
-	DockerInterface string
-	DockerNet       string
-	state           *dto.ContextState
-	share_service   ShareServiceInterface
-	prop_repo       repository.PropertyRepositoryInterface
-	samba_user_repo repository.SambaUserRepositoryInterface
-	mount_client    mount.ClientWithResponsesInterface
-	cache           *cache.Cache
-	dbomConv        converter.DtoToDbomConverterImpl
-	hdidle_service  HDIdleServiceInterface
-	eventBus        events.EventBusInterface
-	status          dto.SambaProcessStatus
+	ctx              context.Context
+	ctxCancel        context.CancelFunc
+	DockerInterface  string
+	DockerNet        string
+	state            *dto.ContextState
+	share_service    ShareServiceInterface
+	prop_repo        repository.PropertyRepositoryInterface
+	samba_user_repo  repository.SambaUserRepositoryInterface
+	mount_client     mount.ClientWithResponsesInterface
+	cache            *cache.Cache
+	dbomConv         converter.DtoToDbomConverterImpl
+	hdidle_service   HDIdleServiceInterface
+	eventBus         events.EventBusInterface
+	status           dto.SambaProcessStatus
+	internalServices []SambaServiceProcessStatus
 }
 
 type SambaServiceParams struct {
 	fx.In
-	Ctx             context.Context
-	CtxCancel       context.CancelFunc
-	State           *dto.ContextState
-	Share_service   ShareServiceInterface
-	Prop_repo       repository.PropertyRepositoryInterface
-	Samba_user_repo repository.SambaUserRepositoryInterface
-	Mount_client    mount.ClientWithResponsesInterface `optional:"true"`
-	Hdidle_service  HDIdleServiceInterface
-	EventBus        events.EventBusInterface
+	Ctx               context.Context
+	CtxCancel         context.CancelFunc
+	State             *dto.ContextState
+	Share_service     ShareServiceInterface
+	Prop_repo         repository.PropertyRepositoryInterface
+	Samba_user_repo   repository.SambaUserRepositoryInterface
+	Mount_client      mount.ClientWithResponsesInterface `optional:"true"`
+	Hdidle_service    HDIdleServiceInterface
+	EventBus          events.EventBusInterface
+	InternalProcesses []SambaServiceProcessStatus `group:"internal_services"`
 }
 
 type serviceConfig struct {
@@ -138,6 +144,7 @@ func NewSambaService(lc fx.Lifecycle, in SambaServiceParams) SambaServiceInterfa
 	p.hdidle_service = in.Hdidle_service
 
 	p.status = dto.SambaProcessStatus{}
+	p.internalServices = in.InternalProcesses
 
 	var unsubscribe [1]func()
 	unsubscribe[0] = p.eventBus.OnDirtyData(func(ctx context.Context, event events.DirtyDataEvent) errors.E {
@@ -310,6 +317,12 @@ func (self *SambaService) GetSambaProcess() (*dto.SambaProcessStatus, errors.E) 
 					self.status[processName] = &dto.ProcessStatus{}
 				}
 
+				if pp, err := p.Parent(); err == nil {
+					if ppName, err := pp.Name(); err == nil && ppName == processName {
+						continue
+					}
+				}
+
 				processStatus, err := conv.ProcessToProcessStatus(p)
 				if err != nil {
 					slog.WarnContext(self.ctx, "Error converting process to DTO", "process", processName, "pid", p.Pid, "error", err)
@@ -336,15 +349,11 @@ func (self *SambaService) GetSambaProcess() (*dto.SambaProcessStatus, errors.E) 
 func (self *SambaService) findChildProcesses(parentPid int32) []*dto.ProcessStatus {
 	var children []*dto.ProcessStatus
 
-	// Get virtual subprocess status from HDIdle service (powersave-monitor)
-	if self.hdidle_service != nil {
-		if hdidleStatus := self.hdidle_service.GetProcessStatus(parentPid); hdidleStatus != nil {
-			children = append(children, hdidleStatus)
+	for _, service := range self.internalServices {
+		if procStatus := service.GetProcessStatus(parentPid); procStatus != nil && procStatus.IsRunning {
+			children = append(children, procStatus)
 		}
 	}
-
-	// Add more virtual subprocess providers here as needed
-	// e.g., other internal monitoring goroutines
 
 	return children
 }

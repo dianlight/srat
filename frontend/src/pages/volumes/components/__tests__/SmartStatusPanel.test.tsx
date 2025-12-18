@@ -734,4 +734,58 @@ describe("SmartStatusPanel Component", () => {
         const deviceInfoSection = await within(container).findAllByText("Device Information");
         expect(deviceInfoSection.length).toBeGreaterThan(0);
     });
+
+    it("should display model, family, firmware, and serial when available", async () => {
+        const React = await import("react");
+        const { render, screen, act, within } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { SmartStatusPanel } = await import("../SmartStatusPanel");
+        const { createTestStore } = await import("../../../../../test/setup");
+
+        const store = await createTestStore();
+        const mockSmartInfo = {
+            disk_type: "NVMe",
+            model_name: "Samsung SSD 980",
+            model_family: "Samsung NVMe SSD",
+            firmware_version: "3B2QGXA7",
+            serial_number: "S64BNF0T123456X",
+            rotation_rate: 0,
+            supported: true,
+        } as any;
+
+        const { container } = render(
+            React.createElement(Provider, {
+                store,
+                children: React.createElement(SmartStatusPanel, {
+                    smartInfo: mockSmartInfo,
+                    isSmartSupported: true,
+                    isReadOnlyMode: false,
+                }),
+            }),
+        );
+
+        // Expand the panel to see content
+        const expandButtons = await screen.findAllByRole("button");
+        const expandBtn = expandButtons.find((btn) => btn.getAttribute("aria-expanded") === "false");
+        if (expandBtn) {
+            const user = userEvent.setup();
+            await act(async () => {
+                await user.click(expandBtn as any);
+            });
+        }
+
+        // Verify chips are rendered
+        const modelChip = await within(container).findAllByText("Samsung SSD 980");
+        expect(modelChip.length).toBeGreaterThan(0);
+
+        const familyChip = await within(container).findAllByText("Samsung NVMe SSD");
+        expect(familyChip.length).toBeGreaterThan(0);
+
+        const firmwareChip = await within(container).findAllByText(/FW 3B2QGXA7/);
+        expect(firmwareChip.length).toBeGreaterThan(0);
+
+        const serialChip = await within(container).findAllByText(/SN S64BNF0T123456X/);
+        expect(serialChip.length).toBeGreaterThan(0);
+    });
 });

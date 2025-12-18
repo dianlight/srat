@@ -322,23 +322,25 @@ func (s *diskStatsService) getHDIdleDeviceStatus(devicePath string) *dto.HDIdleD
 		}
 	}
 
-	// Check if monitoring is enabled for this device
-	effectiveConfig := s.hdidleService.GetEffectiveConfig()
-	status.Enabled = effectiveConfig.Enabled
-	if effectiveConfig.Enabled {
-		// Check if this specific device is in the monitored list
-		deviceInList := false
-		for _, dev := range effectiveConfig.Devices {
-			if dev == devicePath {
-				deviceInList = true
-				break
+	/*
+		// Check if monitoring is enabled for this device
+		effectiveConfig := s.hdidleService.GetEffectiveConfig()
+		status.Enabled = effectiveConfig.Enabled
+		if effectiveConfig.Enabled {
+			// Check if this specific device is in the monitored list
+			deviceInList := false
+			for _, dev := range effectiveConfig.Devices {
+				if dev == devicePath {
+					deviceInList = true
+					break
+				}
+			}
+			// If there are specific devices configured, this device must be in the list
+			if len(effectiveConfig.Devices) > 0 && !deviceInList {
+				status.Enabled = false
 			}
 		}
-		// If there are specific devices configured, this device must be in the list
-		if len(effectiveConfig.Devices) > 0 && !deviceInList {
-			status.Enabled = false
-		}
-	}
+	*/
 
 	// Get device-specific status if HDIdle is running
 	if s.hdidleService.IsRunning() {
@@ -348,16 +350,16 @@ func (s *diskStatsService) getHDIdleDeviceStatus(devicePath string) *dto.HDIdleD
 		} else if deviceStatus != nil {
 			status.SpunDown = deviceStatus.SpunDown
 			if !deviceStatus.LastIOAt.IsZero() {
-				status.LastIOAt = deviceStatus.LastIOAt.Format(time.RFC3339)
+				status.LastIOAt = deviceStatus.LastIOAt
 			}
 			if !deviceStatus.SpinDownAt.IsZero() {
-				status.SpinDownAt = deviceStatus.SpinDownAt.Format(time.RFC3339)
+				status.SpinDownAt = deviceStatus.SpinDownAt
 			}
 			if !deviceStatus.SpinUpAt.IsZero() {
-				status.SpinUpAt = deviceStatus.SpinUpAt.Format(time.RFC3339)
+				status.SpinUpAt = deviceStatus.SpinUpAt
 			}
-			status.IdleTimeMillis = deviceStatus.IdleTime.Milliseconds()
-			status.CommandType = deviceStatus.CommandType.String()
+			status.IdleTimeMillis = deviceStatus.IdleTimeMillis
+			status.CommandType = deviceStatus.CommandType
 		}
 	}
 

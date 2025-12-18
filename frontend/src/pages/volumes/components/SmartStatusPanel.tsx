@@ -164,31 +164,61 @@ export function SmartStatusPanel({
                 <CardContent>
                     <Stack spacing={3}>
                         {/* Disk Type & RPM Section */}
-                        {(smartInfo.disk_type || (smartInfo.rotation_rate && smartInfo.rotation_rate > 0)) && (
-                            <Box>
-                                <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
-                                    Device Information
-                                </Typography>
-                                <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" sx={{ gap: 1 }}>
-                                    {smartInfo.disk_type && (
-                                        <Chip
-                                            label={smartInfo.disk_type}
-                                            color="primary"
-                                            size="small"
-                                            variant="outlined"
-                                        />
-                                    )}
-                                    {smartInfo.rotation_rate && smartInfo.rotation_rate > 0 && (
-                                        <Chip
-                                            label={`${smartInfo.rotation_rate} RPM`}
-                                            color="info"
-                                            size="small"
-                                            variant="outlined"
-                                        />
-                                    )}
-                                </Stack>
-                            </Box>
-                        )}
+                        <Box>
+                            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+                                Device Information
+                            </Typography>
+                            <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" sx={{ gap: 1 }}>
+                                {smartInfo.disk_type && (
+                                    <Chip
+                                        label={smartInfo.disk_type}
+                                        color="primary"
+                                        size="small"
+                                        variant="outlined"
+                                    />
+                                )}
+                                {smartInfo.model_name && (
+                                    <Chip
+                                        label={smartInfo.model_name}
+                                        color="secondary"
+                                        size="small"
+                                        variant="outlined"
+                                    />
+                                )}
+                                {smartInfo.model_family && (
+                                    <Chip
+                                        label={smartInfo.model_family}
+                                        color="default"
+                                        size="small"
+                                        variant="outlined"
+                                    />
+                                )}
+                                {smartInfo.firmware_version && (
+                                    <Chip
+                                        label={`FW ${smartInfo.firmware_version}`}
+                                        color="default"
+                                        size="small"
+                                        variant="outlined"
+                                    />
+                                )}
+                                {smartInfo.serial_number && (
+                                    <Chip
+                                        label={`SN ${smartInfo.serial_number}`}
+                                        color="default"
+                                        size="small"
+                                        variant="outlined"
+                                    />
+                                )}
+                                {smartInfo.rotation_rate && smartInfo.rotation_rate > 0 && (
+                                    <Chip
+                                        label={`${smartInfo.rotation_rate} RPM`}
+                                        color="info"
+                                        size="small"
+                                        variant="outlined"
+                                    />
+                                )}
+                            </Stack>
+                        </Box>
 
                         {/* Temperature Section */}
                         {!smartStatusIsLoading && smartStatus && (smartStatus as SmartStatus)?.temperature && (

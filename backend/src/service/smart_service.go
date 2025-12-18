@@ -6,20 +6,13 @@ import (
 	"os"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/dianlight/smartmontools-go"
+	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/tlog"
-	gocache "github.com/patrickmn/go-cache"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
-)
-
-const (
-	smartCacheKeyPrefix = "smart_"
-	smartCacheExpiry    = 5 * time.Minute
-	smartCacheCleanup   = 10 * time.Minute
 )
 
 type SmartServiceInterface interface {
@@ -34,9 +27,9 @@ type SmartServiceInterface interface {
 }
 
 type smartService struct {
-	cache  *gocache.Cache
 	mutex  sync.Mutex
 	client smartmontools.SmartClient
+	conv   converter.SmartMonToolsToDtoImpl
 }
 
 type SmartServiceParams struct {
@@ -46,16 +39,16 @@ type SmartServiceParams struct {
 
 func NewSmartService(in SmartServiceParams) SmartServiceInterface {
 	return &smartService{
-		cache:  gocache.New(smartCacheExpiry, smartCacheCleanup),
 		client: in.Client,
+		conv:   converter.SmartMonToolsToDtoImpl{},
 	}
 }
 
 // NewSmartServiceWithClient creates a new SmartService with a provided client (for testing)
 func NewSmartServiceWithClient(client smartmontools.SmartClient) SmartServiceInterface {
 	return &smartService{
-		cache:  gocache.New(smartCacheExpiry, smartCacheCleanup),
 		client: client,
+		conv:   converter.SmartMonToolsToDtoImpl{},
 	}
 }
 
@@ -76,24 +69,9 @@ func checkDeviceExists(devicePath string) errors.E {
 }
 
 func (s *smartService) GetSmartInfo(ctx context.Context, devicePath string) (*dto.SmartInfo, errors.E) {
-	cacheKey := smartCacheKeyPrefix + devicePath + "_info"
-	// Try to get from cache first
-	if cachedInfo, found := s.cache.Get(cacheKey); found {
-		if info, ok := cachedInfo.(*dto.SmartInfo); ok {
-			return info, nil
-		}
-	}
-
 	// If not in cache, acquire lock to fetch
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-
-	// Re-check cache after acquiring lock (another goroutine might have populated it)
-	if cachedInfo, found := s.cache.Get(cacheKey); found {
-		if info, ok := cachedInfo.(*dto.SmartInfo); ok {
-			return info, nil
-		}
-	}
 
 	// Check if the device exists before attempting to query it
 	if err := checkDeviceExists(devicePath); err != nil {
@@ -114,99 +92,94 @@ func (s *smartService) GetSmartInfo(ctx context.Context, devicePath string) (*dt
 		return nil, errors.Wrapf(err, "failed to get SMART info for device %s", devicePath)
 	}
 
-	// Check if SMART is supported
-	smartSupported := smartInfo.SmartSupport != nil && smartInfo.SmartSupport.Available
-
-	// Initialize the return structure with static info only
-	ret := &dto.SmartInfo{
-		Supported: smartSupported,
+	ret, err := s.conv.SmartMonToolsSmartInfoToSmartInfo(smartInfo)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to convert SMART info for device %s", devicePath)
 	}
 
-	// Extract rotation rate (RPM) if available and > 0
-	if smartInfo.RotationRate != nil && *smartInfo.RotationRate > 0 {
-		ret.RotationRate = *smartInfo.RotationRate
+	if ret.DiskType == "" {
+		if smartInfo.AtaSmartData != nil {
+			// ATA/SATA device
+			ret.DiskType = "SATA"
+		} else if smartInfo.NvmeSmartHealth != nil || smartInfo.NvmeControllerCapabilities != nil {
+			// NVMe device
+			ret.DiskType = "NVMe"
+		}
 	}
 
-	// Process based on device type
-	if smartInfo.AtaSmartData != nil {
-		// ATA/SATA device
-		ret.DiskType = "SATA"
+	/*
+		// Check if SMART is supported
+		smartSupported := smartInfo.SmartSupport != nil && smartInfo.SmartSupport.Available
 
-		// Process SMART attributes for static/capability info
-		if smartInfo.AtaSmartData.Table != nil {
-			others := make(map[string]dto.SmartRangeValue)
+		// Initialize the return structure with static info only
+		ret := &dto.SmartInfo{
+			Supported: smartSupported,
+		}
 
-			for _, attr := range smartInfo.AtaSmartData.Table {
-				// Only store non-standard attributes in Additional
-				switch attr.ID {
-				case dto.SmartAttributeCodes.SMARTATTRTEMPERATURECELSIUS.Code:
-					// Skip temperature - it's dynamic
-					continue
-				case dto.SmartAttributeCodes.SMARTATTRPOWERCYCLECOUNT.Code:
-					// Skip power cycle count - it's dynamic
-					continue
-				case dto.SmartAttributeCodes.SMARTATTRPOWERONHOURS.Code:
-					// Skip power on hours - it's dynamic
-					continue
-				default:
-					// Other attributes
-					if attr.Name != "" {
-						others[attr.Name] = dto.SmartRangeValue{
-							Code:       attr.ID,
-							Value:      attr.Value,
-							Worst:      attr.Worst,
-							Thresholds: attr.Thresh,
+		// Extract rotation rate (RPM) if available and > 0
+		if smartInfo.RotationRate != nil && *smartInfo.RotationRate > 0 {
+			ret.RotationRate = *smartInfo.RotationRate
+		}
+
+		// Process based on device type
+		if smartInfo.AtaSmartData != nil {
+			// ATA/SATA device
+			ret.DiskType = "SATA"
+
+			// Process SMART attributes for static/capability info
+			if smartInfo.AtaSmartData.Table != nil {
+				others := make(map[string]dto.SmartRangeValue)
+
+				for _, attr := range smartInfo.AtaSmartData.Table {
+					// Only store non-standard attributes in Additional
+					switch attr.ID {
+					case dto.SmartAttributeCodes.SMARTATTRTEMPERATURECELSIUS.Code:
+						// Skip temperature - it's dynamic
+						continue
+					case dto.SmartAttributeCodes.SMARTATTRPOWERCYCLECOUNT.Code:
+						// Skip power cycle count - it's dynamic
+						continue
+					case dto.SmartAttributeCodes.SMARTATTRPOWERONHOURS.Code:
+						// Skip power on hours - it's dynamic
+						continue
+					default:
+						// Other attributes
+						if attr.Name != "" {
+							others[attr.Name] = dto.SmartRangeValue{
+								Code:       attr.ID,
+								Value:      attr.Value,
+								Worst:      attr.Worst,
+								Thresholds: attr.Thresh,
+							}
 						}
 					}
 				}
+
+				if len(others) > 0 {
+					ret.Additional = others
+				}
 			}
+		} else if smartInfo.NvmeSmartHealth != nil {
+			// NVMe device
+			ret.DiskType = "NVMe"
 
-			if len(others) > 0 {
-				ret.Additional = others
+			// Add NVMe-specific static attributes
+			others := make(map[string]dto.SmartRangeValue)
+			others["AvailableSpare"] = dto.SmartRangeValue{
+				Thresholds: smartInfo.NvmeSmartHealth.AvailableSpareThresh,
 			}
+			ret.Additional = others
+		} else {
+			// SCSI or unknown device type
+			ret.DiskType = "SCSI"
 		}
-	} else if smartInfo.NvmeSmartHealth != nil {
-		// NVMe device
-		ret.DiskType = "NVMe"
-
-		// Add NVMe-specific static attributes
-		others := make(map[string]dto.SmartRangeValue)
-		others["AvailableSpare"] = dto.SmartRangeValue{
-			Thresholds: smartInfo.NvmeSmartHealth.AvailableSpareThresh,
-		}
-		ret.Additional = others
-	} else {
-		// SCSI or unknown device type
-		ret.DiskType = "SCSI"
-	}
-
-	// Cache the result
-	s.cache.Set(cacheKey, ret, gocache.DefaultExpiration)
+	*/
 
 	return ret, nil
 }
 
 // GetSmartStatus returns dynamic SMART status data for a device
 func (s *smartService) GetSmartStatus(ctx context.Context, devicePath string) (*dto.SmartStatus, errors.E) {
-	cacheKey := smartCacheKeyPrefix + devicePath + "_status"
-	// Try to get from cache first
-	if cachedStatus, found := s.cache.Get(cacheKey); found {
-		if status, ok := cachedStatus.(*dto.SmartStatus); ok {
-			return status, nil
-		}
-	}
-
-	// If not in cache, acquire lock to fetch
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	// Re-check cache after acquiring lock (another goroutine might have populated it)
-	if cachedStatus, found := s.cache.Get(cacheKey); found {
-		if status, ok := cachedStatus.(*dto.SmartStatus); ok {
-			return status, nil
-		}
-	}
-
 	// Check if the device exists before attempting to query it
 	if err := checkDeviceExists(devicePath); err != nil {
 		return nil, err
@@ -226,35 +199,48 @@ func (s *smartService) GetSmartStatus(ctx context.Context, devicePath string) (*
 		return nil, errors.Wrapf(err, "failed to get SMART status for device %s", devicePath)
 	}
 
-	// Check if SMART is enabled
-	smartEnabled := false
-	if smartInfo.SmartSupport != nil {
-		smartEnabled = smartInfo.SmartSupport.Enabled
-		if !smartInfo.SmartSupport.Available {
-			return &dto.SmartStatus{
-				Supported: false,
-			}, nil
+	if smartInfo.SmartSupport != nil && !smartInfo.SmartSupport.Available {
+		return nil, errors.WithDetails(dto.ErrorSMARTNotSupported, "device", devicePath)
+	}
+
+	ret, err := s.conv.SmartMonToolsSmartInfoToSmartStatus(smartInfo)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to convert SMART status for device %s", devicePath)
+	}
+
+	/*
+
+		// Check if SMART is enabled
+		smartEnabled := false
+		if smartInfo.SmartSupport != nil {
+			smartEnabled = smartInfo.SmartSupport.Enabled
+			if !smartInfo.SmartSupport.Available {
+				return &dto.SmartStatus{
+					Supported: false,
+				}, nil
+			}
 		}
-	}
 
-	// Initialize the return structure with dynamic status
-	ret := &dto.SmartStatus{
-		Supported: true,
-		Enabled:   smartEnabled,
-	}
+		// Initialize the return structure with dynamic status
+		ret := &dto.SmartStatus{
+			Supported: true,
+			Enabled:   smartEnabled,
+		}
 
-	// Extract temperature
-	if smartInfo.Temperature != nil {
-		ret.Temperature.Value = smartInfo.Temperature.Current
-	}
+		// Extract temperature
+		if smartInfo.Temperature != nil {
+			ret.Temperature.Value = smartInfo.Temperature.Current
+		}
 
-	// Extract power on hours
-	if smartInfo.PowerOnTime != nil {
-		ret.PowerOnHours.Value = smartInfo.PowerOnTime.Hours
-	}
+		// Extract power on hours
+		if smartInfo.PowerOnTime != nil {
+			ret.PowerOnHours.Value = smartInfo.PowerOnTime.Hours
+		}
 
-	// Extract power cycle count
-	ret.PowerCycleCount.Value = smartInfo.PowerCycleCount
+		// Extract power cycle count
+		ret.PowerCycleCount.Value = smartInfo.PowerCycleCount
+
+	*/
 
 	// Process based on device type
 	if smartInfo.AtaSmartData != nil {
@@ -304,6 +290,7 @@ func (s *smartService) GetSmartStatus(ctx context.Context, devicePath string) (*
 			if len(others) > 0 {
 				ret.Additional = others
 			}
+
 		}
 	} else if smartInfo.NvmeSmartHealth != nil {
 		// NVMe device
@@ -334,10 +321,11 @@ func (s *smartService) GetSmartStatus(ctx context.Context, devicePath string) (*
 			Value: smartInfo.NvmeSmartHealth.CriticalWarning,
 		}
 		ret.Additional = others
+
 	}
 
 	// Cache the result
-	s.cache.Set(cacheKey, ret, gocache.DefaultExpiration)
+	//s.cache.Set(cacheKey, ret, gocache.DefaultExpiration)
 
 	return ret, nil
 }
@@ -352,19 +340,18 @@ func (s *smartService) GetHealthStatus(ctx context.Context, devicePath string) (
 	// Get SMART status first (may return cached data)
 	smartStatus, err := s.GetSmartStatus(ctx, devicePath)
 	if err != nil {
+		if errors.Is(err, dto.ErrorSMARTNotSupported) {
+			return &dto.SmartHealthStatus{
+				Passed:        false,
+				OverallStatus: "unknown",
+			}, nil
+		}
 		return nil, err
-	}
-
-	if !smartStatus.Supported {
-		return &dto.SmartHealthStatus{
-			Passed:        false,
-			OverallStatus: "unknown",
-		}, nil
 	}
 
 	// Check if SMART is enabled
 	if !smartStatus.Enabled {
-		tlog.Warn("SMART is not enabled on device", "device", devicePath)
+		tlog.WarnContext(ctx, "SMART is not enabled on device", "device", devicePath, "status", smartStatus)
 		return &dto.SmartHealthStatus{
 			Passed:            false,
 			OverallStatus:     "warning",
@@ -476,7 +463,6 @@ func (s *smartService) StartSelfTest(ctx context.Context, devicePath string, tes
 	}
 
 	slog.DebugContext(ctx, "SMART self-test started", "device", devicePath, "type", testType)
-	s.cache.Delete(smartCacheKeyPrefix + devicePath + "_status")
 	return nil
 }
 
@@ -505,7 +491,6 @@ func (s *smartService) AbortSelfTest(ctx context.Context, devicePath string) err
 	}
 
 	slog.DebugContext(ctx, "SMART self-test aborted", "device", devicePath)
-	s.cache.Delete(smartCacheKeyPrefix + devicePath + "_status")
 	return nil
 }
 
@@ -592,7 +577,6 @@ func (s *smartService) EnableSMART(ctx context.Context, devicePath string) error
 
 	slog.DebugContext(ctx, "SMART enabled and verified", "device", devicePath)
 
-	s.cache.Delete(smartCacheKeyPrefix + devicePath + "_status")
 	return nil
 }
 
@@ -626,7 +610,6 @@ func (s *smartService) DisableSMART(ctx context.Context, devicePath string) erro
 	}
 
 	slog.DebugContext(ctx, "SMART disabled", "device", devicePath)
-	s.cache.Delete(smartCacheKeyPrefix + devicePath + "_status")
 	return nil
 }
 

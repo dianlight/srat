@@ -43,8 +43,9 @@ func NewHDIdleHandler(params HDIdleHandlerParams) *HDIdleHandler {
 // - api: The huma.API instance to register the handlers with.
 func (h *HDIdleHandler) RegisterHDIdleHandler(api huma.API) {
 	// Global HDIdle service endpoints
-	huma.Get(api, "/hdidle/status", h.getServiceStatus, huma.OperationTags("hdidle"))
-	huma.Get(api, "/hdidle/effective-config", h.getEffectiveConfig, huma.OperationTags("hdidle"))
+	// Disabled: service.GetStatus/GetEffectiveConfig are commented out in HDIdleServiceInterface
+	//huma.Get(api, "/hdidle/status", h.getServiceStatus, huma.OperationTags("hdidle"))
+	//huma.Get(api, "/hdidle/effective-config", h.getEffectiveConfig, huma.OperationTags("hdidle"))
 	huma.Post(api, "/hdidle/start", h.startService, huma.OperationTags("hdidle"))
 	huma.Post(api, "/hdidle/stop", h.stopService, huma.OperationTags("hdidle"))
 
@@ -57,7 +58,7 @@ func (h *HDIdleHandler) RegisterHDIdleHandler(api huma.API) {
 }
 
 type GetHDIdleConfigOutput struct {
-	Body dto.HDIdleDeviceDTO
+	Body dto.HDIdleDevice
 }
 
 func (h *HDIdleHandler) getConfig(ctx context.Context, input *struct {
@@ -75,11 +76,11 @@ func (h *HDIdleHandler) getConfig(ctx context.Context, input *struct {
 
 type PutHDIdleConfigInput struct {
 	DiskID string `path:"disk_id" required:"true" doc:"The disk ID or device path"`
-	Body   dto.HDIdleDeviceDTO
+	Body   dto.HDIdleDevice
 }
 
 type PutHDIdleConfigOutput struct {
-	Body dto.HDIdleDeviceDTO
+	Body dto.HDIdleDevice
 }
 
 func (h *HDIdleHandler) putConfig(ctx context.Context, input *PutHDIdleConfigInput) (*PutHDIdleConfigOutput, error) {
@@ -113,7 +114,7 @@ func (h *HDIdleHandler) putConfig(ctx context.Context, input *PutHDIdleConfigInp
 }
 
 type GetHDIdleStatusOutput struct {
-	Body *service.HDIdleDiskStatus `json:"disks,omitempty"`
+	Body *dto.HDIdleDeviceStatus `json:"disks,omitempty"`
 }
 
 func (h *HDIdleHandler) getStatus(ctx context.Context, input *struct {
@@ -132,7 +133,9 @@ func (h *HDIdleHandler) getStatus(ctx context.Context, input *struct {
 	return output, nil
 }
 
+/*
 // GetHDIdleServiceStatusOutput represents the response for the overall HDIdle service status.
+// Disabled because HDIdleServiceInterface no longer exposes GetStatus.
 type GetHDIdleServiceStatusOutput struct {
 	Body *service.HDIdleStatus
 }
@@ -149,6 +152,7 @@ func (h *HDIdleHandler) getServiceStatus(ctx context.Context, input *struct{}) (
 }
 
 // GetHDIdleEffectiveConfigOutput represents the response for the effective HDIdle configuration.
+// Disabled because HDIdleServiceInterface no longer exposes GetEffectiveConfig.
 type GetHDIdleEffectiveConfigOutput struct {
 	Body service.HDIdleEffectiveConfig
 }
@@ -159,6 +163,7 @@ func (h *HDIdleHandler) getEffectiveConfig(ctx context.Context, input *struct{})
 	config := h.hdidleService.GetEffectiveConfig()
 	return &GetHDIdleEffectiveConfigOutput{Body: config}, nil
 }
+*/
 
 // StartHDIdleServiceOutput represents the response for starting the HDIdle service.
 type StartHDIdleServiceOutput struct {
@@ -288,7 +293,7 @@ func (h *HDIdleHandler) deleteConfig(ctx context.Context, input *struct {
 
 // GetHDIdleSupportOutput represents the response for checking HDIdle device support.
 type GetHDIdleSupportOutput struct {
-	Body *service.HDIdleDeviceSupport
+	Body *dto.HDIdleDeviceSupport
 }
 
 // checkSupport checks if a specific disk supports HDIdle spindown commands.

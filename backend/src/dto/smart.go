@@ -17,19 +17,23 @@ type SmartTempValue struct {
 
 // Static Info about S.M.A.R.T. capabilities of a disk
 type SmartInfo struct {
-	DiskType     string                     `json:"disk_type,omitempty" enum:"SATA,NVMe,SCSI,Unknown"`
-	RotationRate int                        `json:"rotation_rate,omitempty"` // RPM, only populated if > 0 (HDDs)
-	Supported    bool                       `json:"supported"`
-	Additional   map[string]SmartRangeValue `json:"others,omitempty"`
+	Supported    bool   `json:"supported"`
+	DiskType     string `json:"disk_type,omitempty" enum:"SATA,NVMe,SCSI,Unknown"`
+	ModelFamily  string `json:"model_family,omitempty"`
+	ModelName    string `json:"model_name,omitempty"`
+	SerialNumber string `json:"serial_number,omitempty"`
+	Firmware     string `json:"firmware_version,omitempty"`
+	RotationRate int    `json:"rotation_rate,omitempty"` // RPM, only populated if > 0 (HDDs)
+	//Additional   map[string]SmartRangeValue `json:"others,omitempty"`
 }
 
 // SmartStatus represents current S.M.A.R.T. status of a disk
 type SmartStatus struct {
-	Supported       bool                       `json:"supported"`
+	Enabled         bool                       `json:"enabled"`
+	InStandby       bool                       `json:"in_standby,omitempty"` // True if device is in standby/sleep mode (ATA only)
 	Temperature     SmartTempValue             `json:"temperature"`
 	PowerOnHours    SmartRangeValue            `json:"power_on_hours"`
 	PowerCycleCount SmartRangeValue            `json:"power_cycle_count"`
-	Enabled         bool                       `json:"enabled"`
 	Additional      map[string]SmartRangeValue `json:"others,omitempty"`
 }
 

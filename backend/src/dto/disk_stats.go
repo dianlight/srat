@@ -30,17 +30,7 @@ type PerPartitionInfo struct {
 	FsckSupported bool   `json:"fsck_supported"`
 }
 
-// HDIdleDeviceStatus represents the HD idle status for a single disk.
-type HDIdleDeviceStatus struct {
-	SpunDown       bool   `json:"spun_down"`
-	LastIOAt       string `json:"last_io_at,omitempty"`       // ISO8601 timestamp
-	SpinDownAt     string `json:"spin_down_at,omitempty"`     // ISO8601 timestamp
-	SpinUpAt       string `json:"spin_up_at,omitempty"`       // ISO8601 timestamp
-	IdleTimeMillis int64  `json:"idle_time_millis,omitempty"` // Configured idle time in milliseconds
-	CommandType    string `json:"command_type,omitempty"`     // "scsi" or "ata"
-	Supported      bool   `json:"supported"`                  // Whether HD idle is supported for this device
-	Enabled        bool   `json:"enabled"`                    // Whether HD idle monitoring is enabled for this device
-}
+
 
 // PerDiskInfo contains per-disk health and status information.
 type PerDiskInfo struct {
