@@ -185,6 +185,9 @@ func main() {
 	case "version":
 		versionCmd.Parse(flag.Args()[1:])
 		fmt.Print(formatVersionMessage(*shortVersion))
+		if !*shortVersion {
+			fmt.Print("Build Metadata: ", config.GetCurrentBinaryVersion().String(), "\n")
+		}
 		os.Exit(0)
 	default:
 		slog.Error("unknown command", "command", command)
