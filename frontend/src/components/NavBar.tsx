@@ -227,8 +227,7 @@ export function NavBar(props: {
 			(tab) =>
 				!(
 					tab.isDevelopmentOnly &&
-					getCurrentEnv() === "production" &&
-					!pkg.version.match(/dev/)
+					getCurrentEnv() === "production"
 				),
 		).map((tab, index) => ({
 			...tab,
