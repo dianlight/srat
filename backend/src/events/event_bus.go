@@ -284,7 +284,7 @@ func onEvent[T any](signal signals.SyncSignal[T], eventName string, handler func
 				tlog.ErrorContext(ctx, "Event handler panic", append([]any{"event", eventName, "panic", r, "stack", string(debug.Stack())}, caller...)...)
 			}
 		}()
-		tlog.DebugContext(ctx, "<-- Receiving events ", append([]any{"type", fmt.Sprintf("%T", event), "event", formatWithoutPointerAddresses(event)}, caller...)...)
+		tlog.TraceContext(ctx, "<-- Receiving events ", append([]any{"type", fmt.Sprintf("%T", event), "event", formatWithoutPointerAddresses(event)}, caller...)...)
 		return handler(ctx, event)
 	}, key)
 	tlog.Trace("Event handler registered", append([]any{"event", eventName, "listener_count", count}, caller...)...)
@@ -298,7 +298,7 @@ func emitEvent[T any](signal signals.SyncSignal[T], ctx context.Context, event T
 	// Add UUID to context if not already present
 	ctx = ContextWithEventUUID(ctx)
 
-	tlog.DebugContext(ctx, "--> Emitting event", append([]any{"type", fmt.Sprintf("%T", event), "event", formatWithoutPointerAddresses(event)}, tlog.WithCaller(1)...)...)
+	tlog.TraceContext(ctx, "--> Emitting event", append([]any{"type", fmt.Sprintf("%T", event), "event", formatWithoutPointerAddresses(event)}, tlog.WithCaller(1)...)...)
 	// Emit synchronously; recover panic inside signal dispatch and log emission errors
 	defer func() {
 		if r := recover(); r != nil {
