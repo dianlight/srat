@@ -23,6 +23,7 @@ type SupervisorServiceSuite struct {
 	supervisorService service.SupervisorServiceInterface
 	mountClient       mount.ClientWithResponsesInterface
 	propertyRepo      repository.PropertyRepositoryInterface
+	shareService      service.ShareServiceInterface
 	app               *fxtest.App
 }
 
@@ -53,6 +54,7 @@ func (suite *SupervisorServiceSuite) SetupTest() {
 		fx.Populate(&suite.supervisorService),
 		fx.Populate(&suite.mountClient),
 		fx.Populate(&suite.propertyRepo),
+		fx.Populate(&suite.shareService),
 	)
 	suite.app.RequireStart()
 }
@@ -641,4 +643,260 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_Update400_WithRetryLo
 	mock.Verify(suite.mountClient, matchers.Times(1)).UpdateMountWithResponse(mock.Any[context.Context](), mock.Any[string](), mock.Any[mount.Mount]())
 	mock.Verify(suite.mountClient, matchers.Times(1)).RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())
 	mock.Verify(suite.mountClient, matchers.Times(1)).CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())
+}
+
+// NetworkUnmountAllShares should unmount all eligible shares (media/share/backup) that are currently mounted
+func (suite *SupervisorServiceSuite) TestNetworkUnmountAllShares_Success() {
+	// Shares configured in the system
+	shares := []dto.SharedResource{
+		{Name: "media1", Usage: "media", Status: &dto.SharedResourceStatus{IsValid: true}},
+		{Name: "share2", Usage: "share", Status: &dto.SharedResourceStatus{IsValid: true}},
+		{Name: "backup3", Usage: "backup", Status: &dto.SharedResourceStatus{IsValid: true}},
+	}
+
+	// All three are mounted in HA on our addon IP
+	mountedResp := &mount.GetMountsResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok","data":{"mounts":[]}}`),
+		JSON200: &struct {
+			Data *struct {
+				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+			} `json:"data,omitempty"`
+			Result *mount.GetMounts200Result `json:"result,omitempty"`
+		}{
+			Data: &struct {
+				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+			}{
+				Mounts: &[]mount.Mount{
+					{Name: pointer.String("media1"), Server: pointer.String("172.30.32.1")},
+					{Name: pointer.String("share2"), Server: pointer.String("172.30.32.1")},
+					{Name: pointer.String("backup3"), Server: pointer.String("172.30.32.1")},
+				},
+			},
+		},
+	}
+
+	mock.When(suite.shareService.ListShares()).
+		ThenReturn(shares, nil).
+		ThenReturn([]dto.SharedResource{}, nil) // prevent OnStop double-unmount
+	// GetMounts will be called once per NetworkUnmountShare invocation; returning same response is fine
+	mock.When(suite.mountClient.GetMountsWithResponse(mock.Any[context.Context]())).ThenReturn(mountedResp, nil)
+	mock.When(suite.mountClient.RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())).ThenReturn(&mount.RemoveMountResponse{HTTPResponse: &http.Response{StatusCode: 200}, Body: []byte(`{"result":"ok"}`)}, nil)
+
+	// Execute
+	err := suite.supervisorService.NetworkUnmountAllShares(context.Background())
+
+	// Assert
+	suite.NoError(err)
+	mock.Verify(suite.mountClient, matchers.Times(3)).RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())
+}
+
+// NetworkUnmountAllShares should skip disabled and invalid shares
+func (suite *SupervisorServiceSuite) TestNetworkUnmountAllShares_SkipsDisabledAndInvalid() {
+	disabled := pointer.Bool(true)
+	shares := []dto.SharedResource{
+		{Name: "disabled-media", Usage: "media", Disabled: disabled, Status: &dto.SharedResourceStatus{IsValid: true}},
+		{Name: "invalid-share", Usage: "share", Status: &dto.SharedResourceStatus{IsValid: false}},
+		{Name: "ok-backup", Usage: "backup", Status: &dto.SharedResourceStatus{IsValid: true}},
+		{Name: "none-usage", Usage: "none", Status: &dto.SharedResourceStatus{IsValid: true}},
+	}
+
+	mountedResp := &mount.GetMountsResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok","data":{"mounts":[]}}`),
+		JSON200: &struct {
+			Data *struct {
+				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+			} `json:"data,omitempty"`
+			Result *mount.GetMounts200Result `json:"result,omitempty"`
+		}{
+			Data: &struct {
+				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+			}{
+				Mounts: &[]mount.Mount{
+					{Name: pointer.String("ok-backup"), Server: pointer.String("172.30.32.1")},
+					{Name: pointer.String("disabled-media"), Server: pointer.String("172.30.32.1")},
+					{Name: pointer.String("invalid-share"), Server: pointer.String("172.30.32.1")},
+				},
+			},
+		},
+	}
+
+	mock.When(suite.shareService.ListShares()).
+		ThenReturn(shares, nil).
+		ThenReturn([]dto.SharedResource{}, nil) // prevent OnStop double-unmount
+	mock.When(suite.mountClient.GetMountsWithResponse(mock.Any[context.Context]())).ThenReturn(mountedResp, nil)
+	mock.When(suite.mountClient.RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())).ThenReturn(&mount.RemoveMountResponse{HTTPResponse: &http.Response{StatusCode: 200}, Body: []byte(`{"result":"ok"}`)}, nil)
+
+	// Execute
+	err := suite.supervisorService.NetworkUnmountAllShares(context.Background())
+
+	// Assert: ok-backup and invalid-share (usage=share) should be unmounted
+	suite.NoError(err)
+	mock.Verify(suite.mountClient, matchers.Times(2)).RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())
+}
+
+// NetworkMountAllShares should do nothing when HA Core is not ready
+func (suite *SupervisorServiceSuite) TestNetworkMountAllShares_HACoreNotReady() {
+	// Recreate app with HACoreReady=false
+	suite.app.RequireStop()
+	suite.app = fxtest.New(suite.T(),
+		fx.Provide(
+			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
+			func() (context.Context, context.CancelFunc) { return context.WithCancel(context.Background()) },
+			func() *dto.ContextState {
+				return &dto.ContextState{HACoreReady: false, SupervisorURL: "http://supervisor", AddonIpAddress: "172.30.32.1"}
+			},
+			service.NewSupervisorService,
+			events.NewEventBus,
+			mock.Mock[mount.ClientWithResponsesInterface],
+			mock.Mock[repository.PropertyRepositoryInterface],
+			mock.Mock[service.ShareServiceInterface],
+		),
+		fx.Populate(&suite.supervisorService),
+		fx.Populate(&suite.mountClient),
+		fx.Populate(&suite.propertyRepo),
+		fx.Populate(&suite.shareService),
+	)
+	suite.app.RequireStart()
+
+	// Execute
+	err := suite.supervisorService.NetworkMountAllShares(context.Background())
+
+	// Assert: no mount attempts
+	suite.NoError(err)
+	mock.Verify(suite.mountClient, matchers.Times(0)).CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())
+	mock.Verify(suite.mountClient, matchers.Times(0)).UpdateMountWithResponse(mock.Any[context.Context](), mock.Any[string](), mock.Any[mount.Mount]())
+}
+
+// NetworkMountAllShares should skip when AddonIpAddress is empty
+func (suite *SupervisorServiceSuite) TestNetworkMountAllShares_AddonIpEmpty() {
+	// Recreate app with empty AddonIpAddress
+	suite.app.RequireStop()
+	suite.app = fxtest.New(suite.T(),
+		fx.Provide(
+			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
+			func() (context.Context, context.CancelFunc) { return context.WithCancel(context.Background()) },
+			func() *dto.ContextState {
+				return &dto.ContextState{HACoreReady: true, SupervisorURL: "http://supervisor", AddonIpAddress: ""}
+			},
+			service.NewSupervisorService,
+			events.NewEventBus,
+			mock.Mock[mount.ClientWithResponsesInterface],
+			mock.Mock[repository.PropertyRepositoryInterface],
+			mock.Mock[service.ShareServiceInterface],
+		),
+		fx.Populate(&suite.supervisorService),
+		fx.Populate(&suite.mountClient),
+		fx.Populate(&suite.propertyRepo),
+		fx.Populate(&suite.shareService),
+	)
+	suite.app.RequireStart()
+
+	// Prepare shares (should be ignored due to empty AddonIp)
+	mock.When(suite.shareService.ListShares()).ThenReturn([]dto.SharedResource{
+		{Name: "media1", Usage: "media", Status: &dto.SharedResourceStatus{IsValid: true}},
+	}, nil)
+	// Ensure teardown does not panic when OnStop triggers unmount all: return empty mounts
+	emptyResp := &mount.GetMountsResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok","data":{"mounts":[]}}`),
+		JSON200: &struct {
+			Data *struct {
+				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+			} `json:"data,omitempty"`
+			Result *mount.GetMounts200Result `json:"result,omitempty"`
+		}{Data: &struct {
+			DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+			Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+		}{Mounts: &[]mount.Mount{}}},
+	}
+	mock.When(suite.mountClient.GetMountsWithResponse(mock.Any[context.Context]())).ThenReturn(emptyResp, nil)
+
+	// Execute
+	err := suite.supervisorService.NetworkMountAllShares(context.Background())
+
+	// Assert
+	suite.NoError(err)
+	mock.Verify(suite.mountClient, matchers.Times(0)).CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())
+}
+
+// NetworkMountAllShares mounts eligible shares and unmounts lost mounts
+func (suite *SupervisorServiceSuite) TestNetworkMountAllShares_MountsEligibleAndUnmountsLost() {
+	shares := []dto.SharedResource{
+		{Name: "media1", Usage: "media", Status: &dto.SharedResourceStatus{IsValid: true}},
+		{Name: "share2", Usage: "share", Status: &dto.SharedResourceStatus{IsValid: true}},
+		{Name: "backup3", Usage: "backup", Status: &dto.SharedResourceStatus{IsValid: true}},
+		{Name: "internalX", Usage: "internal", Status: &dto.SharedResourceStatus{IsValid: true}}, // ignored
+	}
+
+	// Sequence of GetMounts responses:
+	// - First 3 calls (one per share) return empty list
+	// - 4th call (networkUnmountLostShares) returns a list including an orphan share
+	// - 5th call (NetworkUnmountShare) returns same list to confirm presence
+	emptyResp := &mount.GetMountsResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok","data":{"mounts":[]}}`),
+		JSON200: &struct {
+			Data *struct {
+				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+			} `json:"data,omitempty"`
+			Result *mount.GetMounts200Result `json:"result,omitempty"`
+		}{Data: &struct {
+			DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+			Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+		}{Mounts: &[]mount.Mount{}}},
+	}
+
+	lostResp := &mount.GetMountsResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok","data":{"mounts":[{"name":"orphan-share","server":"172.30.32.1"},{"name":"external","server":"192.168.1.1"}]}}`),
+		JSON200: &struct {
+			Data *struct {
+				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+			} `json:"data,omitempty"`
+			Result *mount.GetMounts200Result `json:"result,omitempty"`
+		}{
+			Data: &struct {
+				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+			}{
+				Mounts: &[]mount.Mount{
+					{Name: pointer.String("orphan-share"), Server: pointer.String("172.30.32.1")},
+					{Name: pointer.String("external"), Server: pointer.String("192.168.1.1")},
+				},
+			},
+		},
+	}
+
+	mock.When(suite.shareService.ListShares()).
+		ThenReturn(shares, nil).
+		ThenReturn([]dto.SharedResource{}, nil) // prevent OnStop extra actions
+	mock.When(suite.propertyRepo.Value(mock.Any[string](), mock.Any[bool]())).ThenReturn("test-password", nil)
+	mock.When(suite.mountClient.GetMountsWithResponse(mock.Any[context.Context]())).
+		ThenReturn(emptyResp, nil).
+		ThenReturn(emptyResp, nil).
+		ThenReturn(emptyResp, nil).
+		ThenReturn(lostResp, nil).
+		ThenReturn(lostResp, nil)
+
+	mock.When(suite.mountClient.CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())).ThenReturn(&mount.CreateMountResponse{HTTPResponse: &http.Response{StatusCode: 200}, Body: []byte(`{"result":"ok"}`)}, nil)
+	mock.When(suite.mountClient.RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())).ThenReturn(&mount.RemoveMountResponse{HTTPResponse: &http.Response{StatusCode: 200}, Body: []byte(`{"result":"ok"}`)}, nil)
+
+	// Execute
+	err := suite.supervisorService.NetworkMountAllShares(context.Background())
+
+	// Assert
+	suite.NoError(err)
+	// 3 eligible shares should trigger create
+	mock.Verify(suite.mountClient, matchers.Times(3)).CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())
+	// One orphan share should be unmounted
+	mock.Verify(suite.mountClient, matchers.Times(1)).RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())
 }
