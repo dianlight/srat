@@ -9,6 +9,7 @@ import (
 )
 
 var HDIdleDevice = struct {
+	DiskId         field.String
 	DevicePath     field.String
 	IdleTime       field.Number[int]
 	CommandType    field.Field[dto.HdidleCommand]
@@ -18,6 +19,7 @@ var HDIdleDevice = struct {
 	UpdatedAt      field.Time
 	DeletedAt      field.Field[gorm.DeletedAt]
 }{
+	DiskId:         field.String{}.WithColumn("disk_id"),
 	DevicePath:     field.String{}.WithColumn("device_path"),
 	IdleTime:       field.Number[int]{}.WithColumn("idle_time"),
 	CommandType:    field.Field[dto.HdidleCommand]{}.WithColumn("command_type"),

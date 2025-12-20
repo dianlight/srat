@@ -90,3 +90,13 @@ type DirtyDataEvent struct {
 type HomeAssistantEvent struct {
 	Event
 }
+
+type SmartEvent struct {
+	Event
+	SmartInfo dto.SmartInfo
+}
+
+type PowerEvent struct {
+	Event
+	PowerInfo dto.HDIdleDevice
+}

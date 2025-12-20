@@ -37,13 +37,13 @@ import { useForm } from "react-hook-form-mui";
 interface VolumeDetailsPanelProps {
     disk?: Disk;
     partition?: Partition;
-    share?: SharedResource;
+    // share?: SharedResource;
 }
 
 export function VolumeDetailsPanel({
     disk,
     partition,
-    share,
+    //  share,
 }: VolumeDetailsPanelProps) {
     const navigate = useNavigate();
     const [diskInfoExpanded, setDiskInfoExpanded] = useState(false);

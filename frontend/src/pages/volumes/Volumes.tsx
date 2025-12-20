@@ -523,7 +523,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 						<VolumeDetailsPanel
 							disk={selectedDisk}
 							partition={selectedPartition}
-							share={selectedShare}
+							//share={selectedShare}
 						/>
 					</Paper>
 				</Grid>

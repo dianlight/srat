@@ -30,12 +30,13 @@ type HardwareServiceInterface interface {
 }
 
 type hardwareService struct {
-	ctx          context.Context
-	haClient     hardware.ClientWithResponsesInterface
-	state        *dto.ContextState
-	conv         converter.HaHardwareToDtoImpl
-	smartService SmartServiceInterface
-	cache        *cache.Cache
+	ctx           context.Context
+	haClient      hardware.ClientWithResponsesInterface
+	state         *dto.ContextState
+	conv          converter.HaHardwareToDtoImpl
+	smartService  SmartServiceInterface
+	hdidleService HDIdleServiceInterface
+	cache         *cache.Cache
 }
 
 func NewHardwareService(
@@ -44,15 +45,17 @@ func NewHardwareService(
 	state *dto.ContextState,
 	haClient hardware.ClientWithResponsesInterface,
 	smartServiceInstance SmartServiceInterface,
+	hdidleServiceInstance HDIdleServiceInterface,
 	eventBus events.EventBusInterface,
 ) HardwareServiceInterface {
 	hs := &hardwareService{
-		ctx:          ctx,
-		haClient:     haClient,
-		conv:         converter.HaHardwareToDtoImpl{},
-		smartService: smartServiceInstance,
-		state:        state,
-		cache:        cache.New(30*time.Minute, 10*time.Minute),
+		ctx:           ctx,
+		haClient:      haClient,
+		conv:          converter.HaHardwareToDtoImpl{},
+		smartService:  smartServiceInstance,
+		hdidleService: hdidleServiceInstance,
+		state:         state,
+		cache:         cache.New(30*time.Minute, 10*time.Minute),
 	}
 	unsubscribe := eventBus.OnHomeAssistant(func(ctx context.Context, hae events.HomeAssistantEvent) errors.E {
 		if hae.Type == events.EventTypes.START {
@@ -151,6 +154,20 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 					} else if smartInfo != nil {
 						diskDto.SmartInfo = smartInfo
 					}
+					hdidleDevice, errHDidle := h.hdidleService.GetDeviceConfig(*diskDto.DevicePath)
+					if errHDidle != nil {
+						if errors.Is(errHDidle, dto.ErrorHDIdleNotSupported) {
+							tlog.TraceContext(h.ctx, "HDIdle not supported for device", "device", *diskDto.DevicePath, "drive_index", i, "drive_id", drive.Id)
+							diskDto.HDIdleDevice = &dto.HDIdleDevice{
+								Supported: false,
+							}
+						} else {
+							tlog.WarnContext(h.ctx, "Error retrieving HDIdle config for device", "device", *diskDto.DevicePath, "drive_index", i, "drive_id", drive.Id, "err", errHDidle)
+						}
+					} else if hdidleDevice != nil {
+						diskDto.HDIdleDevice = hdidleDevice
+					}
+
 					continue
 				}
 				// Match Partitions

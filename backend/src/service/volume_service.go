@@ -120,7 +120,7 @@ func NewVolumeService(
 		unmountFunc:     mount.Unmount,
 	}
 
-	var unsubscribe [4]func()
+	var unsubscribe [6]func()
 	unsubscribe[0] = p.eventBus.OnPartition(p.handlePartitionEvent)
 	unsubscribe[1] = p.eventBus.OnMountPoint(p.handleMountPointEvent)
 	unsubscribe[2] = p.eventBus.OnHomeAssistant(func(ctx context.Context, hae events.HomeAssistantEvent) errors.E {
@@ -147,6 +147,15 @@ func NewVolumeService(
 				return nil
 			}
 		}
+		return nil
+	})
+	unsubscribe[4] = p.eventBus.OnSmart(func(ctx context.Context, se events.SmartEvent) errors.E {
+		p.disks.AddSmartInfo(&se.SmartInfo)
+		return nil
+	})
+	unsubscribe[5] = p.eventBus.OnPower(func(ctx context.Context, pe events.PowerEvent) errors.E {
+		// Handle PowerEvent
+		p.disks.AddHDIdleDevice(&pe.PowerInfo)
 		return nil
 	})
 	lc.Append(fx.Hook{

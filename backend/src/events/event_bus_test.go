@@ -2,6 +2,7 @@ package events
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -488,5 +489,52 @@ func TestEventBusMultipleListenersGetSameUUID(t *testing.T) {
 		mu.Unlock()
 	case <-time.After(5 * time.Second):
 		t.Fatal("timeout waiting for events")
+	}
+}
+
+// TestEventBusConcurrentEmits tests concurrent emits and listener handling
+func TestEventBusConcurrentEmits(t *testing.T) {
+	ctx := context.Background()
+	bus := NewEventBus(ctx)
+
+	var counter atomic.Int32
+	var wg sync.WaitGroup
+	numListeners := 5
+	numEmits := 10
+	wg.Add(numListeners * numEmits)
+
+	// Register multiple listeners
+	for i := 0; i < numListeners; i++ {
+		unsubscribe := bus.OnDisk(func(ctx context.Context, event DiskEvent) errors.E {
+			counter.Add(1)
+			wg.Done()
+			return nil
+		})
+		defer unsubscribe()
+	}
+
+	// Emit events concurrently
+	for i := 0; i < numEmits; i++ {
+		go func(i int) {
+			disk := &dto.Disk{
+				Id: pointer.String("sda" + fmt.Sprint(i)),
+			}
+			bus.EmitDisk(DiskEvent{Disk: disk})
+		}(i)
+	}
+
+	// Wait for all listeners to process all emits
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		expectedCount := int32(numListeners * numEmits)
+		assert.Equal(t, expectedCount, counter.Load(), "All listeners should have processed all emits")
+	case <-time.After(10 * time.Second):
+		t.Fatal("timeout waiting for all events to be processed")
 	}
 }

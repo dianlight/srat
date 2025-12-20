@@ -23,16 +23,6 @@ const injectedRtkApi = api
         query: () => ({ url: `/api/capabilities` }),
         providesTags: ["system"],
       }),
-      deleteApiDiskByDiskIdHdidleConfig: build.mutation<
-        DeleteApiDiskByDiskIdHdidleConfigApiResponse,
-        DeleteApiDiskByDiskIdHdidleConfigApiArg
-      >({
-        query: (queryArg) => ({
-          url: `/api/disk/${queryArg.diskId}/hdidle/config`,
-          method: "DELETE",
-        }),
-        invalidatesTags: ["disk"],
-      }),
       getApiDiskByDiskIdHdidleConfig: build.query<
         GetApiDiskByDiskIdHdidleConfigApiResponse,
         GetApiDiskByDiskIdHdidleConfigApiArg
@@ -493,13 +483,6 @@ export type GetApiCapabilitiesApiResponse = /** status 200 OK */
   | SystemCapabilities
   | /** status default Error */ ErrorModel;
 export type GetApiCapabilitiesApiArg = void;
-export type DeleteApiDiskByDiskIdHdidleConfigApiResponse = /** status 200 OK */
-  | DeleteHdIdleConfigOutputBody
-  | /** status default Error */ ErrorModel;
-export type DeleteApiDiskByDiskIdHdidleConfigApiArg = {
-  /** The disk ID (not the device path) */
-  diskId: string;
-};
 export type GetApiDiskByDiskIdHdidleConfigApiResponse = /** status 200 OK */
   | HdIdleDevice
   | /** status default Error */ ErrorModel;
@@ -888,19 +871,16 @@ export type ErrorModel = {
   /** A URI reference to human-readable documentation for the error. */
   type?: string;
 };
-export type DeleteHdIdleConfigOutputBody = {
-  /** A URL to the JSON Schema for this object. */
-  $schema?: string;
-  message: string;
-};
 export type HdIdleDevice = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
   command_type?: Command_type;
   device_path: string;
+  disk_id?: string;
   enabled?: Enabled;
   idle_time: number;
   power_condition: number;
+  supported: boolean;
 };
 export type JsonPatchOp = {
   /** JSON Pointer for the source of a move or copy */
@@ -917,7 +897,6 @@ export type HdIdleDeviceStatus = {
   $schema?: string;
   command_type?: string;
   enabled: boolean;
-  given_name?: string;
   idle_time_millis?: number;
   last_io_at?: string;
   name?: string;
@@ -946,6 +925,7 @@ export type SmartHealthStatus = {
 export type SmartInfo = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
+  disk_id?: string;
   disk_type?: Disk_type;
   firmware_version?: string;
   model_family?: string;
@@ -1353,7 +1333,7 @@ export type Disk = {
   connection_bus?: string;
   device_path?: string;
   ejectable?: boolean;
-  hdidle_status?: HdIdleDevice;
+  hdidle_device?: HdIdleDevice;
   id?: string;
   legacy_device_name?: string;
   legacy_device_path?: string;
@@ -1454,7 +1434,6 @@ export enum Update_process_state {
 }
 export const {
   useGetApiCapabilitiesQuery,
-  useDeleteApiDiskByDiskIdHdidleConfigMutation,
   useGetApiDiskByDiskIdHdidleConfigQuery,
   usePatchApiDiskByDiskIdHdidleConfigMutation,
   usePutApiDiskByDiskIdHdidleConfigMutation,

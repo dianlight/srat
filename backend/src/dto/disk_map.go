@@ -345,3 +345,43 @@ func (m *DiskMap) RemoveMountPointShare(path string) bool {
 	}
 	return false
 }
+
+// AddHDIdleDevice sets the HDIdleDevice for the specified disk.
+// Returns an error if the disk map is nil, diskID is empty, or the disk is not found.
+func (m *DiskMap) AddHDIdleDevice(hdIdleDevice *HDIdleDevice) error {
+	if m == nil || *m == nil {
+		return errors.WithDetails(ErrorNotFound, "Message", "disk map is nil or empty")
+	}
+	if hdIdleDevice.DiskId == "" {
+		return errors.WithDetails(ErrorInvalidParameter, "Message", "disk id is empty")
+	}
+
+	d, ok := (*m)[hdIdleDevice.DiskId]
+	if !ok {
+		return errors.WithDetails(ErrorNotFound, "Message", "disk not found", "DiskId", hdIdleDevice.DiskId)
+	}
+
+	d.HDIdleDevice = hdIdleDevice
+	(*m)[hdIdleDevice.DiskId] = d
+	return nil
+}
+
+// AddSmartInfo sets the SmartInfo for the specified disk.
+// Returns an error if the disk map is nil, diskID is empty, or the disk is not found.
+func (m *DiskMap) AddSmartInfo(smartInfo *SmartInfo) error {
+	if m == nil || *m == nil {
+		return errors.WithDetails(ErrorNotFound, "Message", "disk map is nil or empty")
+	}
+	if smartInfo.DiskId == "" {
+		return errors.WithDetails(ErrorInvalidParameter, "Message", "disk id is empty")
+	}
+
+	d, ok := (*m)[smartInfo.DiskId]
+	if !ok {
+		return errors.WithDetails(ErrorNotFound, "Message", "disk not found", "DiskId", smartInfo.DiskId)
+	}
+
+	d.SmartInfo = smartInfo
+	(*m)[smartInfo.DiskId] = d
+	return nil
+}

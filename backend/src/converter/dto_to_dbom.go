@@ -25,6 +25,7 @@ type DtoToDbomConverter interface {
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
 	HDIdleDeviceDTOToHDIdleDevice(source dto.HDIdleDevice) (dbom.HDIdleDevice, error)
 
+	// goverter:map Supported | trueConst
 	HDIdleDeviceToHDIdleDeviceDTO(source dbom.HDIdleDevice) (dto.HDIdleDevice, error)
 
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt

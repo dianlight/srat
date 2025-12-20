@@ -82,21 +82,6 @@ components:
         - users
         - settings
       type: object
-    DeleteHDIdleConfigOutputBody:
-      additionalProperties: false
-      properties:
-        $schema:
-          description: A URL to the JSON Schema for this object.
-          examples:
-            - https://example.com/schemas/DeleteHDIdleConfigOutputBody.json
-          format: uri
-          readOnly: true
-          type: string
-        message:
-          type: string
-      required:
-        - message
-      type: object
     Disk:
       additionalProperties: false
       properties:
@@ -106,7 +91,7 @@ components:
           type: string
         ejectable:
           type: boolean
-        hdidle_status:
+        hdidle_device:
           $ref: "#/components/schemas/HDIdleDevice"
         id:
           type: string
@@ -331,6 +316,8 @@ components:
           type: string
         device_path:
           type: string
+        disk_id:
+          type: string
         enabled:
           enum:
             - "yes"
@@ -344,7 +331,10 @@ components:
           format: int32
           minimum: 0
           type: integer
+        supported:
+          type: boolean
       required:
+        - supported
         - device_path
         - idle_time
         - power_condition
@@ -363,8 +353,6 @@ components:
           type: string
         enabled:
           type: boolean
-        given_name:
-          type: string
         idle_time_millis:
           format: int64
           type: integer
@@ -1219,6 +1207,8 @@ components:
           format: uri
           readOnly: true
           type: string
+        disk_id:
+          type: string
         disk_type:
           enum:
             - SATA
@@ -1613,55 +1603,6 @@ paths:
       tags:
         - system
   /api/disk/{disk_id}/hdidle/config:
-    delete:
-      operationId: delete-api-disk-by-disk-id-hdidle-config
-      parameters:
-        - description: The disk ID (not the device path)
-          in: path
-          name: disk_id
-          required: true
-          schema:
-            description: The disk ID (not the device path)
-            type: string
-        - $ref: "#/components/parameters/X-Span-Id"
-        - $ref: "#/components/parameters/X-Trace-Id"
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/DeleteHDIdleConfigOutputBody"
-          description: OK
-          headers:
-            X-Span-Id:
-              $ref: "#/components/headers/X-Span-Id"
-            X-Trace-Id:
-              $ref: "#/components/headers/X-Trace-Id"
-        4xx:
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ErrorModel"
-          description: Error
-          headers:
-            X-Span-Id:
-              $ref: "#/components/headers/X-Span-Id"
-            X-Trace-Id:
-              $ref: "#/components/headers/X-Trace-Id"
-        default:
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ErrorModel"
-          description: Error
-          headers:
-            X-Span-Id:
-              $ref: "#/components/headers/X-Span-Id"
-            X-Trace-Id:
-              $ref: "#/components/headers/X-Trace-Id"
-      summary: Delete API disk by disk ID hdidle config
-      tags:
-        - disk
     get:
       operationId: get-api-disk-by-disk-id-hdidle-config
       parameters:
@@ -1751,6 +1692,8 @@ paths:
                   type: string
                 device_path:
                   type: string
+                disk_id:
+                  type: string
                 enabled:
                   enum:
                     - "yes"
@@ -1764,6 +1707,8 @@ paths:
                   format: int32
                   minimum: 0
                   type: integer
+                supported:
+                  type: boolean
               type: object
           application/merge-patch+shorthand:
             schema:
@@ -1783,6 +1728,8 @@ paths:
                   type: string
                 device_path:
                   type: string
+                disk_id:
+                  type: string
                 enabled:
                   enum:
                     - "yes"
@@ -1796,6 +1743,8 @@ paths:
                   format: int32
                   minimum: 0
                   type: integer
+                supported:
+                  type: boolean
               type: object
         required: true
       responses:
@@ -1951,8 +1900,8 @@ paths:
           schema:
             description: The disk ID (not the device path)
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2001,8 +1950,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -2051,8 +2000,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2665,8 +2614,8 @@ paths:
     post:
       operationId: create-issue
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -2815,8 +2764,8 @@ paths:
     get:
       operationId: list-api-nics
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3681,8 +3630,8 @@ paths:
             description: Name of the share to disable
             maxLength: 128
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -3967,8 +3916,8 @@ paths:
     get:
       operationId: get-api-status
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -4293,8 +4242,8 @@ paths:
             maxLength: 30
             minimum: 1
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "204":
           description: No Content
@@ -4342,8 +4291,8 @@ paths:
               - world
             maxLength: 30
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
@@ -4543,8 +4492,8 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:

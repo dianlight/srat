@@ -402,3 +402,173 @@ func TestDiskMap_RemoveMountPointShare_Errors(t *testing.T) {
 	_ = (&m).Add(&dto.Disk{Id: &diskID3, Partitions: &parts3})
 	assert.False(t, (&m).RemoveMountPointShare("/mnt/missing"))
 }
+
+func TestDiskMap_AddHDIdleDevice(t *testing.T) {
+	diskID := "hdidle-disk-1"
+	m := dto.DiskMap{}
+	_ = (&m).Add(&dto.Disk{Id: &diskID})
+
+	// Create an HDIdleDevice
+	devicePath := "sda"
+	hdIdle := &dto.HDIdleDevice{DiskId: diskID, DevicePath: devicePath, Enabled: dto.HdidleEnableds.YESENABLED}
+
+	// Add HDIdleDevice
+	err := (&m).AddHDIdleDevice(hdIdle)
+	assert.NoError(t, err)
+
+	// Verify it was set
+	d, ok := (&m).Get(diskID)
+	assert.True(t, ok)
+	assert.NotNil(t, d.HDIdleDevice)
+	assert.Equal(t, devicePath, d.HDIdleDevice.DevicePath)
+	assert.Equal(t, dto.HdidleEnableds.YESENABLED, d.HDIdleDevice.Enabled)
+}
+
+func TestDiskMap_AddHDIdleDevice_Update(t *testing.T) {
+	diskID := "hdidle-disk-2"
+	m := dto.DiskMap{}
+	_ = (&m).Add(&dto.Disk{Id: &diskID})
+
+	// Add initial HDIdleDevice
+	devicePath := "sda"
+	hdIdle1 := &dto.HDIdleDevice{DiskId: diskID, DevicePath: devicePath, Enabled: dto.HdidleEnableds.YESENABLED}
+	err := (&m).AddHDIdleDevice(hdIdle1)
+	assert.NoError(t, err)
+
+	// Update with new HDIdleDevice
+	newDevicePath := "sdb"
+	hdIdle2 := &dto.HDIdleDevice{DiskId: diskID, DevicePath: newDevicePath, Enabled: dto.HdidleEnableds.NOENABLED}
+	err = (&m).AddHDIdleDevice(hdIdle2)
+	assert.NoError(t, err)
+
+	// Verify it was updated
+	d, ok := (&m).Get(diskID)
+	assert.True(t, ok)
+	assert.NotNil(t, d.HDIdleDevice)
+	assert.Equal(t, newDevicePath, d.HDIdleDevice.DevicePath)
+	assert.Equal(t, dto.HdidleEnableds.NOENABLED, d.HDIdleDevice.Enabled)
+}
+
+func TestDiskMap_AddHDIdleDevice_Errors(t *testing.T) {
+	m := dto.DiskMap{}
+
+	// Nil disk map (empty but not nil)
+	diskID := "hdidle-test"
+
+	// Empty diskID
+	_ = (&m).Add(&dto.Disk{Id: &diskID})
+	err := (&m).AddHDIdleDevice(&dto.HDIdleDevice{DiskId: ""})
+	assert.Error(t, err)
+
+	// Disk not found
+	err = (&m).AddHDIdleDevice(&dto.HDIdleDevice{DiskId: "nonexistent"})
+	assert.Error(t, err)
+}
+
+func TestDiskMap_AddSmartInfo(t *testing.T) {
+	diskID := "smart-disk-1"
+	m := dto.DiskMap{}
+	_ = (&m).Add(&dto.Disk{Id: &diskID})
+
+	// Create a SmartInfo
+	smartInfo := &dto.SmartInfo{
+		DiskId:       diskID,
+		Supported:    true,
+		DiskType:     "SATA",
+		ModelName:    "Samsung SSD 860 EVO",
+		SerialNumber: "S3Z9NB0K123456",
+		Firmware:     "RVT01B6Q",
+		RotationRate: 0,
+	}
+
+	// Add SmartInfo
+	err := (&m).AddSmartInfo(smartInfo)
+	assert.NoError(t, err)
+
+	// Verify it was set
+	d, ok := (&m).Get(diskID)
+	assert.True(t, ok)
+	assert.NotNil(t, d.SmartInfo)
+	assert.True(t, d.SmartInfo.Supported)
+	assert.Equal(t, "SATA", d.SmartInfo.DiskType)
+	assert.Equal(t, "Samsung SSD 860 EVO", d.SmartInfo.ModelName)
+	assert.Equal(t, "S3Z9NB0K123456", d.SmartInfo.SerialNumber)
+}
+
+func TestDiskMap_AddSmartInfo_Update(t *testing.T) {
+	diskID := "smart-disk-2"
+	m := dto.DiskMap{}
+	_ = (&m).Add(&dto.Disk{Id: &diskID})
+
+	// Add initial SmartInfo
+	smartInfo1 := &dto.SmartInfo{
+		DiskId:       diskID,
+		Supported:    true,
+		DiskType:     "SATA",
+		ModelName:    "Old Model",
+		SerialNumber: "OLD123",
+	}
+	err := (&m).AddSmartInfo(smartInfo1)
+	assert.NoError(t, err)
+
+	// Update with new SmartInfo
+	smartInfo2 := &dto.SmartInfo{
+		DiskId:       diskID,
+		Supported:    true,
+		DiskType:     "NVMe",
+		ModelName:    "New Model",
+		SerialNumber: "NEW456",
+		RotationRate: 7200,
+	}
+	err = (&m).AddSmartInfo(smartInfo2)
+	assert.NoError(t, err)
+
+	// Verify it was updated
+	d, ok := (&m).Get(diskID)
+	assert.True(t, ok)
+	assert.NotNil(t, d.SmartInfo)
+	assert.Equal(t, "NVMe", d.SmartInfo.DiskType)
+	assert.Equal(t, "New Model", d.SmartInfo.ModelName)
+	assert.Equal(t, "NEW456", d.SmartInfo.SerialNumber)
+	assert.Equal(t, 7200, d.SmartInfo.RotationRate)
+}
+
+func TestDiskMap_AddSmartInfo_UnsupportedDevice(t *testing.T) {
+	diskID := "smart-disk-4"
+	m := dto.DiskMap{}
+	_ = (&m).Add(&dto.Disk{Id: &diskID})
+
+	// Create SmartInfo for unsupported device
+	smartInfo := &dto.SmartInfo{
+		DiskId:    diskID,
+		Supported: false,
+		DiskType:  "Unknown",
+	}
+
+	// Add SmartInfo
+	err := (&m).AddSmartInfo(smartInfo)
+	assert.NoError(t, err)
+
+	// Verify it was set
+	d, ok := (&m).Get(diskID)
+	assert.True(t, ok)
+	assert.NotNil(t, d.SmartInfo)
+	assert.False(t, d.SmartInfo.Supported)
+	assert.Equal(t, "Unknown", d.SmartInfo.DiskType)
+}
+
+func TestDiskMap_AddSmartInfo_Errors(t *testing.T) {
+	m := dto.DiskMap{}
+
+	// Test data
+	diskID := "smart-test"
+
+	// Empty diskID
+	_ = (&m).Add(&dto.Disk{Id: &diskID})
+	err := (&m).AddSmartInfo(&dto.SmartInfo{DiskId: ""})
+	assert.Error(t, err)
+
+	// Disk not found
+	err = (&m).AddSmartInfo(&dto.SmartInfo{DiskId: "nonexistent"})
+	assert.Error(t, err)
+}

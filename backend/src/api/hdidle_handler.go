@@ -53,7 +53,7 @@ func (h *HDIdleHandler) RegisterHDIdleHandler(api huma.API) {
 	huma.Get(api, "/disk/{disk_id}/hdidle/info", h.getStatus, huma.OperationTags("disk"))
 	huma.Get(api, "/disk/{disk_id}/hdidle/config", h.getConfig, huma.OperationTags("disk"))
 	huma.Put(api, "/disk/{disk_id}/hdidle/config", h.putConfig, huma.OperationTags("disk"))
-	huma.Delete(api, "/disk/{disk_id}/hdidle/config", h.deleteConfig, huma.OperationTags("disk"))
+	//huma.Delete(api, "/disk/{disk_id}/hdidle/config", h.deleteConfig, huma.OperationTags("disk"))
 	huma.Get(api, "/disk/{disk_id}/hdidle/support", h.checkSupport, huma.OperationTags("disk"))
 }
 
@@ -248,6 +248,7 @@ type DeleteHDIdleConfigOutput struct {
 	}
 }
 
+/*
 // deleteConfig removes the HDIdle configuration for a specific device,
 // resetting it to use default settings.
 func (h *HDIdleHandler) deleteConfig(ctx context.Context, input *struct {
@@ -290,6 +291,7 @@ func (h *HDIdleHandler) deleteConfig(ctx context.Context, input *struct {
 		},
 	}, nil
 }
+*/
 
 // GetHDIdleSupportOutput represents the response for checking HDIdle device support.
 type GetHDIdleSupportOutput struct {

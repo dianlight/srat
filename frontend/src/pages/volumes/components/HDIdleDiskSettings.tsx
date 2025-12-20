@@ -42,16 +42,14 @@ interface HDIdleDiskSettingsProps {
 export function HDIdleDiskSettings({ disk, readOnly = false }: HDIdleDiskSettingsProps) {
 	const { control, reset, formState, getValues } = useForm({
 		defaultValues: {
-			enabled: Enabled.Yes,
-			...disk?.hdidle_status,
+			...disk?.hdidle_device,
 		},
 	});
 	const { data: settings, isLoading: isLoadingSettings } = useGetApiSettingsQuery();
-	const { data: effectiveConfig } = useGetApiDiskByDiskIdHdidleConfigQuery({diskId: (disk as any)?.id || (disk as any)?.name || ""}, { skip: !(disk as any)?.id && !(disk as any)?.name });
-	// disk_id must always be the stable disk ID (not a device path)
 	const diskId = (disk as any)?.id || (disk as any)?.name || "";
-	const { data: deviceConfig, isFetching: isFetchingDeviceConfig } = useGetApiDiskByDiskIdHdidleConfigQuery({ diskId }, { skip: !diskId });
+	//const { data: deviceConfig, isFetching: isFetchingDeviceConfig } = useGetApiDiskByDiskIdHdidleConfigQuery({ diskId }, { skip: !diskId });
 	const { data: supportInfo, isFetching: isFetchingSupport } = useGetApiDiskByDiskIdHdidleSupportQuery({ diskId }, { skip: !diskId });
+	//const { data: deviceStatus, isFetching: isFetchingDeviceStatus } = useGetApiDiskByDiskIdHdidleInfoQuery({ diskId }, { skip: !diskId });
 	const [saveConfig, { isLoading: isSaving }] = usePutApiDiskByDiskIdHdidleConfigMutation();
 	const isTestEnv = (globalThis as any).__TEST__ === true;
 	const [expanded, setExpanded] = useState(false);
@@ -61,26 +59,32 @@ export function HDIdleDiskSettings({ disk, readOnly = false }: HDIdleDiskSetting
 	// Watch the local enabled toggle to disable/enable the rest of the form
 	const enabled = useWatch({ control, name: "enabled" }) as Enabled | undefined;
 	const fieldsDisabled = enabled === Enabled.No || readOnly;
-	const unsupported = (supportInfo as any)?.Supported === false;
+
+	if (!disk.hdidle_device?.supported) {
+		return "";
+	}
+
 
 	useEffect(() => {
+		if (isFetchingSupport || isLoadingSettings) return;
 		// Visibility rules: show when hdidle globally enabled or in tests/non-prod
-		const globallyEnabled = (settings as Settings)?.hdidle_enabled || ((effectiveConfig as any)?.enabled ?? false);
-		if (isTestEnv || globallyEnabled) {
-			setVisible(true);
+		const globallyEnabled = (settings as Settings)?.hdidle_enabled || ((disk as any)?.hdidle_device?.enabled ?? false);
+		const unsupported = (supportInfo as any)?.Supported === false;
+		if (globallyEnabled && !unsupported) {
+			setVisible(isTestEnv && getCurrentEnv() !== "production");
 		} else {
-			setVisible(getCurrentEnv() !== "production");
+			setVisible(false);
 		}
 
 		// When disk prop or API config changes, update form values
-		const apiValues = (deviceConfig as HdIdleDevice | undefined) ?? undefined;
+		const apiValues = (disk as any)?.hdidle_device as HdIdleDevice | undefined;
 		reset({
 			enabled: (apiValues?.enabled as Enabled | undefined) ?? Enabled.Yes,
 			idle_time: apiValues?.idle_time ?? (disk as any)?.hdidle_status?.idle_time ?? 0,
 			command_type: apiValues?.command_type ?? (disk as any)?.hdidle_status?.command_type ?? "",
 			power_condition: apiValues?.power_condition ?? (disk as any)?.hdidle_status?.power_condition ?? 0,
 		});
-	}, [disk, reset, settings, effectiveConfig, isTestEnv, deviceConfig]);
+	}, [disk, reset, settings, isTestEnv, isFetchingSupport, isLoadingSettings]);
 
 	// Close accordion if enabled is not Custom
 	useEffect(() => {
@@ -106,6 +110,8 @@ export function HDIdleDiskSettings({ disk, readOnly = false }: HDIdleDiskSetting
 		const values = getValues();
 		const payload: HdIdleDevice = {
 			// The backend expects the full by-id device path in the payload
+			supported: true,
+			disk_id: diskId,
 			device_path: `/dev/disk/by-id/${diskId}`,
 			enabled: values.enabled as Enabled,
 			idle_time: Number(values.idle_time ?? 0),
@@ -121,12 +127,12 @@ export function HDIdleDiskSettings({ disk, readOnly = false }: HDIdleDiskSetting
 
 	const handleCancel = () => {
 		// Restore last loaded API values
-		const apiValues = (deviceConfig as HdIdleDevice | undefined) ?? undefined;
+		const apiValues = (disk as any)?.hdidle_device as HdIdleDevice | undefined;
 		reset({
 			enabled: (apiValues?.enabled as Enabled | undefined) ?? Enabled.Yes,
-			idle_time: apiValues?.idle_time ?? (disk as any)?.hdidle_status?.idle_time ?? 0,
-			command_type: apiValues?.command_type ?? (disk as any)?.hdidle_status?.command_type ?? "",
-			power_condition: apiValues?.power_condition ?? (disk as any)?.hdidle_status?.power_condition ?? 0,
+			idle_time: apiValues?.idle_time ?? (disk as any)?.hdidle_device?.idle_time ?? 0,
+			command_type: apiValues?.command_type ?? (disk as any)?.hdidle_device?.command_type ?? "",
+			power_condition: apiValues?.power_condition ?? (disk as any)?.hdidle_device?.power_condition ?? 0,
 		});
 	};
 
@@ -144,9 +150,7 @@ export function HDIdleDiskSettings({ disk, readOnly = false }: HDIdleDiskSetting
 						<Tooltip
 							title={
 								<Typography variant="body2">
-									{unsupported
-										? "Device not supported by hdidle. Override is disabled."
-										: "Enable disk-specific override. When Off, fields are read-only."}
+									Enable disk-specific override. When Off, fields are read-only.
 								</Typography>
 							}
 						>
@@ -162,7 +166,6 @@ export function HDIdleDiskSettings({ disk, readOnly = false }: HDIdleDiskSetting
 											color={value === Enabled.Yes ? "success" : "standard"}
 											onChange={(_, newValue) => {
 												if (newValue === null) return;
-												if (unsupported) return; // prevent toggle when unsupported
 												onChange(newValue as Enabled);
 											}}
 											aria-label="toggle disk override"
@@ -180,7 +183,7 @@ export function HDIdleDiskSettings({ disk, readOnly = false }: HDIdleDiskSetting
 
 						<IconButton
 							onClick={handleExpandChange}
-							disabled={enabled !== Enabled.Custom || unsupported}
+							disabled={enabled !== Enabled.Custom}
 							aria-expanded={expanded}
 							aria-label="show more"
 							sx={{
@@ -231,8 +234,8 @@ export function HDIdleDiskSettings({ disk, readOnly = false }: HDIdleDiskSetting
 										label="Idle Time (seconds)"
 										type="number"
 										control={control}
-										disabled={fieldsDisabled || unsupported}
-										inputProps={{ min: 0 }}
+										disabled={fieldsDisabled}
+										slotProps={{ htmlInput: { min: 0 } }}
 										size="small"
 										helperText="0 = use default"
 									/>
@@ -264,7 +267,7 @@ export function HDIdleDiskSettings({ disk, readOnly = false }: HDIdleDiskSetting
 										options={["", "scsi", "ata"]}
 										autocompleteProps={{
 											size: "small",
-											disabled: fieldsDisabled || unsupported,
+											disabled: fieldsDisabled,
 										}}
 										textFieldProps={{
 											helperText: "Empty = use default",
@@ -288,7 +291,7 @@ export function HDIdleDiskSettings({ disk, readOnly = false }: HDIdleDiskSetting
 										label="Power Condition"
 										type="number"
 										control={control}
-										disabled={fieldsDisabled || unsupported}
+										disabled={fieldsDisabled}
 										inputProps={{ min: 0, max: 15 }}
 										size="small"
 										helperText="0 = default"
@@ -315,11 +318,11 @@ export function HDIdleDiskSettings({ disk, readOnly = false }: HDIdleDiskSetting
 
 						<Grid size={12}>
 							<Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end", mt: 2 }}>
-								<Tooltip title={unsupported ? "Device unsupported" : formState.isDirty ? "Apply changes" : "No changes to apply"}>
+								<Tooltip title={formState.isDirty ? "Apply changes" : "No changes to apply"}>
 									<span>
 										<ToggleButton
 											value="apply"
-											disabled={unsupported || fieldsDisabled || !formState.isDirty || isSaving || isFetchingDeviceConfig || isFetchingSupport}
+											disabled={fieldsDisabled || !formState.isDirty || isSaving || isFetchingSupport}
 											onClick={handleApply}
 											color={"success" as any}
 											size="small"
@@ -332,7 +335,7 @@ export function HDIdleDiskSettings({ disk, readOnly = false }: HDIdleDiskSetting
 									<span>
 										<ToggleButton
 											value="cancel"
-											disabled={isFetchingDeviceConfig || isSaving}
+											disabled={isSaving}
 											onClick={handleCancel}
 											size="small"
 										>

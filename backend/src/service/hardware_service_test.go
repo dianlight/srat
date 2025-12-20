@@ -42,6 +42,7 @@ func (suite *HardwareServiceSuite) SetupTest() {
 			func(ctx context.Context) events.EventBusInterface { return events.NewEventBus(ctx) },
 			service.NewHardwareService,
 			mock.Mock[hardware.ClientWithResponsesInterface],
+			mock.Mock[service.HDIdleServiceInterface],
 			mock.Mock[service.SmartServiceInterface],
 		),
 		fx.Populate(&suite.hardwareService),

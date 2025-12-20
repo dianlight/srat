@@ -231,6 +231,14 @@ type EventBusInterface interface {
 	// Home Assistant events
 	EmitHomeAssistant(event HomeAssistantEvent)
 	OnHomeAssistant(handler func(context.Context, HomeAssistantEvent) errors.E) func()
+
+	// Smart events
+	EmitSmart(event SmartEvent)
+	OnSmart(handler func(context.Context, SmartEvent) errors.E) func()
+
+	// Power events
+	EmitPower(event PowerEvent)
+	OnPower(handler func(context.Context, PowerEvent) errors.E) func()
 }
 
 // EventBus implements EventBusInterface using maniartech/signals SyncSignal
@@ -248,6 +256,8 @@ type EventBus struct {
 	volume        signals.SyncSignal[VolumeEvent]
 	dirtyData     signals.SyncSignal[DirtyDataEvent]
 	homeAssistant signals.SyncSignal[HomeAssistantEvent]
+	smart         signals.SyncSignal[SmartEvent]
+	power         signals.SyncSignal[PowerEvent]
 }
 
 // NewEventBus creates a new EventBus instance
@@ -264,6 +274,8 @@ func NewEventBus(ctx context.Context) EventBusInterface {
 		volume:        *signals.NewSync[VolumeEvent](),
 		dirtyData:     *signals.NewSync[DirtyDataEvent](),
 		homeAssistant: *signals.NewSync[HomeAssistantEvent](),
+		smart:         *signals.NewSync[SmartEvent](),
+		power:         *signals.NewSync[PowerEvent](),
 	}
 }
 
@@ -423,4 +435,22 @@ func (eb *EventBus) EmitHomeAssistant(event HomeAssistantEvent) {
 
 func (eb *EventBus) OnHomeAssistant(handler func(context.Context, HomeAssistantEvent) errors.E) func() {
 	return onEvent(eb.homeAssistant, "HomeAssistant", handler)
+}
+
+// Smart event methods
+func (eb *EventBus) EmitSmart(event SmartEvent) {
+	emitEvent(eb.smart, eb.ctx, event)
+}
+
+func (eb *EventBus) OnSmart(handler func(context.Context, SmartEvent) errors.E) func() {
+	return onEvent(eb.smart, "Smart", handler)
+}
+
+// Power event methods
+func (eb *EventBus) EmitPower(event PowerEvent) {
+	emitEvent(eb.power, eb.ctx, event)
+}
+
+func (eb *EventBus) OnPower(handler func(context.Context, PowerEvent) errors.E) func() {
+	return onEvent(eb.power, "Power", handler)
 }

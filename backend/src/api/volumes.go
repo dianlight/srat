@@ -12,11 +12,6 @@ import (
 	"github.com/shomali11/util/xhashes"
 )
 
-//var invalidCharactere = regexp.MustCompile(`[^a-zA-Z0-9-]`)
-
-//var extractDeviceName = regexp.MustCompile(`/dev/(\w+)\d+`)
-//var extractBlockName = regexp.MustCompile(`/dev/(\w+\d+)`)
-
 type VolumeHandler struct {
 	apiContext   *dto.ContextState
 	vservice     service.VolumeServiceInterface

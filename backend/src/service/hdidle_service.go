@@ -131,8 +131,8 @@ type internalConfig struct {
 }
 
 type deviceConfig struct {
-	Name           string
-	GivenName      string
+	Name string
+	//	GivenName      string
 	Idle           time.Duration
 	CommandType    dto.HdidleCommand
 	PowerCondition uint8
@@ -324,12 +324,18 @@ func (s *hDIdleService) GetDeviceStatus(path string) (*dto.HDIdleDeviceStatus, e
 	defer s.mu.RUnlock()
 
 	if !s.IsRunning() {
-		return &dto.HDIdleDeviceStatus{}, nil
+		return &dto.HDIdleDeviceStatus{
+			Supported: false,
+			Enabled:   false,
+		}, nil
 	}
+
+	name := s.resolveDeviceNameFromPath(path)
 
 	// Find disk state by given name or resolved name
 	for _, ds := range s.diskStats {
-		if ds.GivenName == path || ds.Name == path {
+		//slog.DebugContext(s.ctx, "Checking disk", "name", ds.Name, "searchPath", path)
+		if ds.Name == name {
 			status := ds.HDIdleDeviceStatus
 			return &status, nil
 		}
@@ -338,7 +344,19 @@ func (s *hDIdleService) GetDeviceStatus(path string) (*dto.HDIdleDeviceStatus, e
 	return nil, errors.Errorf("disk %s not found", path)
 }
 
+// resolveDeviceNameFromPath resolves symlinks to get the real device name (filename only)
+func (s *hDIdleService) resolveDeviceNameFromPath(path string) string {
+	realPath, err := io.RealPath(path)
+	if err != nil {
+		// If resolution fails, extract filename from original path
+		return strings.TrimPrefix(path, "/dev/")
+	}
+	// Return only the filename without the /dev/ prefix
+	return strings.TrimPrefix(realPath, "/dev/")
+}
+
 func (s *hDIdleService) GetDeviceConfig(path string) (*dto.HDIdleDevice, errors.E) {
+
 	//device, err := g.HDIdleDeviceQuery[dbom.HDIdleDevice](s.db).LoadByPath(s.ctx, path)
 	device, err := gorm.G[dbom.HDIdleDevice](s.db).
 		//	Where("device_path = ?", path).
@@ -348,11 +366,16 @@ func (s *hDIdleService) GetDeviceConfig(path string) (*dto.HDIdleDevice, errors.
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// Device not in database, return config based on device support check with default
 			support, checkErr := s.CheckDeviceSupport(path)
-			if checkErr != nil || !support.Supported {
-				return &dto.HDIdleDevice{DevicePath: path, Enabled: dto.HdidleEnableds.NOENABLED}, nil
+			if checkErr != nil {
+				return nil, errors.Wrap(checkErr, "error checking HDIdle support for device")
+			}
+			if !support.Supported {
+				return nil, errors.Wrap(dto.ErrorHDIdleNotSupported, "HDIdle not supported for this device")
 			}
 			result := &dto.HDIdleDevice{
+				Supported:  true,
 				DevicePath: support.DevicePath,
+				Enabled:    dto.HdidleEnableds.YESENABLED,
 			}
 			if support.RecommendedCommand != nil {
 				result.CommandType = *support.RecommendedCommand
@@ -361,7 +384,13 @@ func (s *hDIdleService) GetDeviceConfig(path string) (*dto.HDIdleDevice, errors.
 			}
 
 			result.IdleTime = s.config.DefaultIdle
-
+			result.PowerCondition = s.config.DefaultPowerCondition
+			/*
+				errE := s.createDeviceConfig(*result)
+				if errE != nil {
+					return nil, errors.Wrap(errE, "error saving default HDIdle config for device")
+				}
+			*/
 			return result, nil
 		}
 		return nil, errors.WithStack(err)
@@ -380,10 +409,18 @@ func (s *hDIdleService) SaveDeviceConfig(device dto.HDIdleDevice) errors.E {
 		return errors.WithStack(err)
 	}
 
-	_, err = query.HDIdleDeviceQuery[dbom.HDIdleDevice](s.db).Updates(s.ctx, dbDevice)
+	err = s.db.Debug().Save(&dbDevice).Error
 	if err != nil {
 		return errors.WithStack(err)
 	}
+
+	s.eventBus.EmitPower(events.PowerEvent{
+		Event: events.Event{
+			Type: events.EventTypes.UPDATE,
+		},
+		PowerInfo: device,
+	})
+
 	return nil
 }
 
@@ -416,22 +453,10 @@ func (s *hDIdleService) CheckDeviceSupport(blockPath string) (*dto.HDIdleDeviceS
 		return support, nil
 	}
 
-	// Resolve symlinks to get the real device path
-	realPath, err := io.RealPath(blockPath)
-	if err != nil {
-		support.ErrorMessage = fmt.Sprintf("failed to resolve device path: %v", err)
-		return support, nil
-	}
-	support.DevicePath = realPath
-
-	// Construct the full device path if not already absolute
-	devicePath := realPath
-	if !strings.HasPrefix(devicePath, "/dev/") {
-		devicePath = fmt.Sprintf("/dev/%s", realPath)
-	}
+	name := s.resolveDeviceNameFromPath(blockPath)
 
 	// Try to open the device as an SG device to check basic support
-	if !s.checkSGSupport(devicePath) {
+	if !s.checkSGSupport("/dev/" + name) {
 		support.ErrorMessage = "device does not support SG (SCSI Generic) interface"
 		return support, nil
 	}
@@ -442,7 +467,7 @@ func (s *hDIdleService) CheckDeviceSupport(blockPath string) (*dto.HDIdleDeviceS
 
 	// Check if the device also supports ATA commands via ATA PASS-THROUGH
 	// Most SATA drives connected via AHCI support both
-	support.SupportsATA = s.checkATASupport(devicePath)
+	support.SupportsATA = s.checkATASupport(name)
 
 	// Set overall support flag
 	support.Supported = support.SupportsSCSI || support.SupportsATA
@@ -488,9 +513,9 @@ func (s *hDIdleService) checkSGSupport(devicePath string) bool {
 
 // checkATASupport checks if a device supports ATA commands via ATA PASS-THROUGH
 // by checking device identification in sysfs
-func (s *hDIdleService) checkATASupport(devicePath string) bool {
+func (s *hDIdleService) checkATASupport(device string) bool {
 	// Extract device name from path (e.g., "sda" from "/dev/sda")
-	deviceName := strings.TrimPrefix(devicePath, "/dev/")
+	deviceName := strings.TrimPrefix(device, "/dev/")
 
 	// Check if the device has ATA characteristics in sysfs
 	sysPath := fmt.Sprintf("/sys/block/%s/device/vendor", deviceName)
@@ -652,8 +677,8 @@ func (s *hDIdleService) convertConfig() (*internalConfig, errors.E) {
 
 		if includeDevice {
 			devConfig := deviceConfig{
-				Name:           deviceRealPath,
-				GivenName:      dev.DevicePath,
+				Name: deviceRealPath,
+				//				GivenName:      dev.DevicePath,
 				Idle:           idle,
 				CommandType:    *cmdType,
 				PowerCondition: dev.PowerCondition,
@@ -739,7 +764,7 @@ func (s *hDIdleService) observeDiskActivity() {
 	now := time.Now()
 
 	// Resolve symlinks if needed
-	s.resolveSymlinks()
+	//s.resolveSymlinks()
 
 	// Process each disk in the snapshot
 	for _, stats := range snapshot {
@@ -749,6 +774,7 @@ func (s *hDIdleService) observeDiskActivity() {
 	s.lastNow = now
 }
 
+/*
 // resolveSymlinks resolves device symlinks based on policy
 func (s *hDIdleService) resolveSymlinks() {
 
@@ -762,6 +788,7 @@ func (s *hDIdleService) resolveSymlinks() {
 		}
 	}
 }
+*/
 
 // updateDiskState updates the state of a disk based on current activity
 func (s *hDIdleService) updateDiskState(name string, reads, writes uint64, now time.Time) {
@@ -793,16 +820,16 @@ func (s *hDIdleService) updateDiskState(name string, reads, writes uint64, now t
 
 			if ds.IdleTimeMillis != 0 && idleDuration.Milliseconds() > ds.IdleTimeMillis && timeSinceLastSpunDown.Milliseconds() > ds.IdleTimeMillis {
 				// Time to spin down
-				givenName := s.resolveDeviceGivenName(ds.Name)
+				//givenName := s.resolveDeviceGivenName(ds.Name)
 				if ds.SpunDown && s.config.IgnoreSpinDown {
-					tlog.InfoContext(s.ctx, "Spindown (ignoring prior spin down state)", "disk", givenName)
+					tlog.InfoContext(s.ctx, "Spindown (ignoring prior spin down state)", "disk", ds.Name)
 				} else {
-					tlog.InfoContext(s.ctx, "Spindown", "disk", givenName)
+					tlog.InfoContext(s.ctx, "Spindown", "disk", ds.Name)
 				}
 
 				device := fmt.Sprintf("/dev/%s", ds.Name)
 				if err := s.spindownDisk(device, ds.InternalCmdType, ds.PowerCondition); err != nil {
-					tlog.ErrorContext(s.ctx, "Failed to spindown disk", "disk", givenName, "error", err)
+					tlog.ErrorContext(s.ctx, "Failed to spindown disk", "disk", ds.Name, "error", err)
 				}
 
 				//		ds.LastSpunDownAt = now
@@ -814,8 +841,8 @@ func (s *hDIdleService) updateDiskState(name string, reads, writes uint64, now t
 		// Disk had activity
 		if ds.SpunDown {
 			// Disk just spun up
-			givenName := s.resolveDeviceGivenName(ds.Name)
-			tlog.InfoContext(s.ctx, "Spinup", "disk", givenName)
+			//givenName := s.resolveDeviceGivenName(ds.Name)
+			tlog.InfoContext(s.ctx, "Spinup", "disk", ds.Name)
 			ds.SpinUpAt = now
 		}
 
@@ -854,8 +881,8 @@ func (s *hDIdleService) initDiskState(name string, reads, writes uint64, now tim
 
 	return &internalDiskState{
 		HDIdleDeviceStatus: dto.HDIdleDeviceStatus{
-			Name:           name,
-			GivenName:      s.resolveDeviceGivenName(name),
+			Name: name,
+			//GivenName:      s.resolveDeviceGivenName(name),
 			LastIOAt:       now,
 			SpinUpAt:       now,
 			SpunDown:       false,
@@ -872,6 +899,7 @@ func (s *hDIdleService) initDiskState(name string, reads, writes uint64, now tim
 	}
 }
 
+/*
 // resolveDeviceGivenName resolves the given name for a device
 func (s *hDIdleService) resolveDeviceGivenName(name string) string {
 	if givenName, ok := s.config.NameMap[name]; ok {
@@ -879,6 +907,7 @@ func (s *hDIdleService) resolveDeviceGivenName(name string) string {
 	}
 	return name
 }
+*/
 
 // spindownDisk spins down a disk using the appropriate command
 func (s *hDIdleService) spindownDisk(device string, command dto.HdidleCommand, powerCondition uint8) errors.E {

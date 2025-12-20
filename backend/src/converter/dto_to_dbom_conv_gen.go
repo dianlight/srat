@@ -64,6 +64,7 @@ func (c *DtoToDbomConverterImpl) ExportedSharesToSharedResources(source *[]dbom.
 }
 func (c *DtoToDbomConverterImpl) HDIdleDeviceDTOToHDIdleDevice(source dto.HDIdleDevice) (dbom.HDIdleDevice, error) {
 	var dbomHDIdleDevice dbom.HDIdleDevice
+	dbomHDIdleDevice.DiskId = source.DiskId
 	dbomHDIdleDevice.DevicePath = source.DevicePath
 	dbomHDIdleDevice.IdleTime = durationToSeconds(source.IdleTime)
 	dbomHDIdleDevice.CommandType = c.dtoHdidleCommandToPDtoHdidleCommand(source.CommandType)
@@ -73,6 +74,8 @@ func (c *DtoToDbomConverterImpl) HDIdleDeviceDTOToHDIdleDevice(source dto.HDIdle
 }
 func (c *DtoToDbomConverterImpl) HDIdleDeviceToHDIdleDeviceDTO(source dbom.HDIdleDevice) (dto.HDIdleDevice, error) {
 	var dtoHDIdleDevice dto.HDIdleDevice
+	dtoHDIdleDevice.DiskId = source.DiskId
+	dtoHDIdleDevice.Supported = trueConst()
 	dtoHDIdleDevice.DevicePath = source.DevicePath
 	dtoHDIdleDevice.IdleTime = secondsToDuration(source.IdleTime)
 	dtoHDIdleDevice.CommandType = c.pDtoHdidleCommandToDtoHdidleCommand(source.CommandType)

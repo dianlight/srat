@@ -107,11 +107,9 @@ func truePConst() *bool {
 	return pointer.Bool(true)
 }
 
-/*
 func trueConst() bool {
 	return true
 }
-*/
 
 func isWriteSupported(path string) *bool {
 	//tlog.Debug("Checking if path is writable", "path", path, "isWritable", osutil.IsWritable(path))

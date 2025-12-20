@@ -292,20 +292,20 @@ func (suite *HDIdleServiceSuite) TestGetDeviceConfig() {
 	suite.Equal(300*time.Second, config.IdleTime)
 }
 
-func (suite *HDIdleServiceSuite) TestGetDeviceConfigNotFound() {
+func (suite *HDIdleServiceSuite) TestGetDeviceUnsupported() {
 
 	//mock.When(suite.hdidleRepo.LoadByPath("nonexistent")).ThenReturn(nil, errors.Wrap(gorm.ErrRecordNotFound, "record not found"))
 
 	config, err := suite.service.GetDeviceConfig("nonexistent")
-	suite.NoError(err)
-	suite.NotNil(config)
-	suite.Equal("nonexistent", config.DevicePath)
-	suite.Equal(time.Duration(0), config.IdleTime)
+	suite.Require().Error(err)
+	suite.ErrorIs(err, dto.ErrorHDIdleNotSupported)
+	suite.Nil(config)
 }
 
 func (suite *HDIdleServiceSuite) TestSaveDeviceConfig() {
 	device := dto.HDIdleDevice{
-		DevicePath:     "sda",
+		DiskId:         "ssssa",
+		DevicePath:     "sdaa",
 		IdleTime:       300,
 		CommandType:    dto.HdidleCommands.SCSICOMMAND,
 		PowerCondition: 1,
