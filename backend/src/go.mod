@@ -47,6 +47,7 @@ require (
 	github.com/benmcclelland/sgio v0.0.0-20250710154739-45e823ff1f46 // indirect
 	github.com/bep/godartsass/v2 v2.5.0 // indirect
 	github.com/bep/golibsass v1.2.0 // indirect
+	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dave/jennifer v1.6.0 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-sql-driver/mysql v1.9.3 // indirect
@@ -67,7 +68,7 @@ require (
 	github.com/rakyll/gotest v0.0.6 // indirect
 	github.com/samber/lo v1.52.0 // indirect
 	github.com/samber/slog-common v0.19.0 // indirect
-	github.com/samber/slog-formatter v1.2.0 // indirect
+	github.com/samber/slog-formatter v1.2.2 // indirect
 	github.com/samber/slog-multi v1.6.0 // indirect
 	github.com/sethvargo/go-retry v0.3.0 // indirect
 	github.com/speakeasy-api/jsonpath v0.6.0 // indirect
@@ -77,8 +78,8 @@ require (
 	github.com/tdewolff/parse/v2 v2.8.3 // indirect
 	github.com/woodsbury/decimal128 v1.3.0 // indirect
 	github.com/zarldev/goenums v0.4.4 // indirect
-	go.opentelemetry.io/otel v1.38.0 // indirect
-	go.opentelemetry.io/otel/trace v1.38.0 // indirect
+	go.opentelemetry.io/otel v1.39.0 // indirect
+	go.opentelemetry.io/otel/trace v1.39.0 // indirect
 	google.golang.org/protobuf v1.36.8 // indirect
 	gorm.io/driver/mysql v1.6.0 // indirect
 )
@@ -133,8 +134,8 @@ require (
 	go.uber.org/dig v1.19.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.1 // indirect
-	golang.org/x/crypto v0.45.0 // indirect
-	golang.org/x/exp v0.0.0-20251209150349-8475f28825e9
+	golang.org/x/crypto v0.46.0 // indirect
+	golang.org/x/exp v0.0.0-20251219203646-944ab1f22d93
 	golang.org/x/mod v0.31.0 // indirect
 	golang.org/x/sync v0.19.0
 	golang.org/x/text v0.32.0 // indirect
@@ -143,7 +144,7 @@ require (
 	modernc.org/libc v1.67.1 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
-	modernc.org/sqlite v1.40.1 // indirect
+	modernc.org/sqlite v1.41.0 // indirect
 )
 
 require (

@@ -52,6 +52,9 @@ github.com/bep/godartsass/v2/internal/godartsasstesting
 # github.com/bep/golibsass v1.2.0
 ## explicit; go 1.13
 github.com/bep/golibsass/libsass/libsasserrors
+# github.com/cespare/xxhash/v2 v2.3.0
+## explicit; go 1.11
+github.com/cespare/xxhash/v2
 # github.com/danielgtaylor/huma/v2 v2.34.1
 ## explicit; go 1.23.0
 github.com/danielgtaylor/huma/v2
@@ -366,7 +369,7 @@ github.com/samber/lo/mutable
 # github.com/samber/slog-common v0.19.0
 ## explicit; go 1.21
 github.com/samber/slog-common
-# github.com/samber/slog-formatter v1.2.0
+# github.com/samber/slog-formatter v1.2.2
 ## explicit; go 1.21
 github.com/samber/slog-formatter
 # github.com/samber/slog-http v1.9.0
@@ -475,14 +478,15 @@ github.com/zarldev/goenums/strings
 # gitlab.com/tozd/go/errors v0.10.0
 ## explicit; go 1.17
 gitlab.com/tozd/go/errors
-# go.opentelemetry.io/otel v1.38.0
-## explicit; go 1.23.0
+# go.opentelemetry.io/otel v1.39.0
+## explicit; go 1.24.0
 go.opentelemetry.io/otel/attribute
 go.opentelemetry.io/otel/attribute/internal
+go.opentelemetry.io/otel/attribute/internal/xxhash
 go.opentelemetry.io/otel/codes
 go.opentelemetry.io/otel/semconv/v1.37.0
-# go.opentelemetry.io/otel/trace v1.38.0
-## explicit; go 1.23.0
+# go.opentelemetry.io/otel/trace v1.39.0
+## explicit; go 1.24.0
 go.opentelemetry.io/otel/trace
 go.opentelemetry.io/otel/trace/embedded
 go.opentelemetry.io/otel/trace/internal/telemetry
@@ -518,13 +522,13 @@ go.uber.org/zap/internal/exit
 go.uber.org/zap/internal/pool
 go.uber.org/zap/internal/stacktrace
 go.uber.org/zap/zapcore
-# golang.org/x/crypto v0.45.0
+# golang.org/x/crypto v0.46.0
 ## explicit; go 1.24.0
 golang.org/x/crypto/bcrypt
 golang.org/x/crypto/blowfish
 golang.org/x/crypto/pbkdf2
 golang.org/x/crypto/scrypt
-# golang.org/x/exp v0.0.0-20251209150349-8475f28825e9
+# golang.org/x/exp v0.0.0-20251219203646-944ab1f22d93
 ## explicit; go 1.24.0
 golang.org/x/exp/constraints
 # golang.org/x/mod v0.31.0
@@ -698,7 +702,7 @@ modernc.org/mathutil
 # modernc.org/memory v1.11.0
 ## explicit; go 1.23.0
 modernc.org/memory
-# modernc.org/sqlite v1.40.1
+# modernc.org/sqlite v1.41.0
 ## explicit; go 1.24.0
 modernc.org/sqlite/lib
 # moul.io/banner v1.0.1

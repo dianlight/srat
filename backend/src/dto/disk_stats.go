@@ -30,8 +30,6 @@ type PerPartitionInfo struct {
 	FsckSupported bool   `json:"fsck_supported"`
 }
 
-
-
 // PerDiskInfo contains per-disk health and status information.
 type PerDiskInfo struct {
 	DeviceId     string              `json:"device_id"`
