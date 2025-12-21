@@ -27,7 +27,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { PreviewDialog } from "../../../components/PreviewDialog";
 import { SmartStatusPanel } from "./SmartStatusPanel";
-import { useSmartOperations } from "../../../hooks/useSmartOperations";
 import { HDIdleDiskSettings } from "./HDIdleDiskSettings";
 import { type LocationState, TabIDs } from "../../../store/locationState";
 import { type Disk, type Partition, type SharedResource, Usage, Time_machine_support } from "../../../store/sratApi";
@@ -51,9 +50,6 @@ export function VolumeDetailsPanel({
     const [previewOpen, setPreviewOpen] = useState(false);
     const [previewObject, setPreviewObject] = useState<any | null>(null);
     const [previewTitle, setPreviewTitle] = useState<string>("Preview");
-
-    // Smart operations hook
-    const { startSelfTest, abortSelfTest, enableSmart, disableSmart, isLoading: smartOperationLoading } = useSmartOperations(disk?.id);
 
     const openPreviewFor = (obj: any, title?: string) => {
         setPreviewObject(obj);
@@ -249,11 +245,6 @@ export function VolumeDetailsPanel({
                         isReadOnlyMode={false}
                         isExpanded={smartExpanded}
                         onSetExpanded={setSmartExpanded}
-                        onEnableSmart={enableSmart}
-                        onDisableSmart={disableSmart}
-                        onStartTest={startSelfTest}
-                        onAbortTest={abortSelfTest}
-                        isLoading={smartOperationLoading}
                     />
                 )}
                 {/* Partition Information Card (shown only when a partition is selected) */}

@@ -25,6 +25,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import Collapse from "@mui/material/Collapse";
 import { useState } from "react";
 import { useGetApiDiskByDiskIdSmartInfoQuery, useGetApiDiskByDiskIdSmartStatusQuery, type SmartInfo, type SmartStatus } from "../../../store/sratApi";
+import { useSmartOperations } from "../../../hooks/useSmartOperations";
 import { getCurrentEnv } from "../../../macro/Environment" with { type: "macro" };
 
 // Local type definitions for SMART data that isn't in the OpenAPI spec yet
@@ -52,11 +53,6 @@ interface SmartStatusPanelProps {
     isReadOnlyMode?: boolean;
     isExpanded?: boolean;
     onSetExpanded?: (expanded: boolean) => void;
-    onEnableSmart?: () => void;
-    onDisableSmart?: () => void;
-    onStartTest?: (testType: SmartTestType) => void;
-    onAbortTest?: () => void;
-    isLoading?: boolean;
 }
 
 export function SmartStatusPanel({
@@ -68,15 +64,11 @@ export function SmartStatusPanel({
     isReadOnlyMode = false,
     isExpanded: initialExpanded = true,
     onSetExpanded,
-    onEnableSmart,
-    onDisableSmart,
-    onStartTest,
-    onAbortTest,
-    isLoading = false,
 }: SmartStatusPanelProps) {
     const [smartExpanded, setSmartExpanded] = useState(initialExpanded);
     const [showStartTestDialog, setShowStartTestDialog] = useState(false);
     const [selectedTestType, setSelectedTestType] = useState<SmartTestType>("short");
+    const { startSelfTest, abortSelfTest, enableSmart, disableSmart, isLoading: smartOperationLoading } = useSmartOperations(diskId);
     const { data: smartStatus, isLoading: smartStatusIsLoading } = useGetApiDiskByDiskIdSmartStatusQuery({
         diskId: diskId || ""
     }, {
@@ -95,10 +87,8 @@ export function SmartStatusPanel({
     }
 
     const handleStartTest = () => {
-        if (onStartTest) {
-            onStartTest(selectedTestType);
-            setShowStartTestDialog(false);
-        }
+        startSelfTest(selectedTestType);
+        setShowStartTestDialog(false);
     };
 
     const getHealthIcon = () => {
@@ -370,7 +360,7 @@ export function SmartStatusPanel({
                                         size="small"
                                         variant="outlined"
                                         onClick={() => setShowStartTestDialog(true)}
-                                        disabled={(testStatus?.status === "running") || isLoading || isReadOnlyMode}
+                                        disabled={(testStatus?.status === "running") || smartOperationLoading || isReadOnlyMode}
                                         title={
                                             (testStatus?.status === "running")
                                                 ? "Test already running"
@@ -383,8 +373,8 @@ export function SmartStatusPanel({
                                         size="small"
                                         variant="outlined"
                                         color="warning"
-                                        onClick={onAbortTest}
-                                        disabled={!(testStatus?.status === "running") || isLoading || isReadOnlyMode}
+                                        onClick={abortSelfTest}
+                                        disabled={!(testStatus?.status === "running") || smartOperationLoading || isReadOnlyMode}
                                         title={
                                             !(testStatus?.status === "running")
                                                 ? "No test running"
@@ -396,8 +386,8 @@ export function SmartStatusPanel({
                                     <Button
                                         size="small"
                                         variant="outlined"
-                                        onClick={onEnableSmart}
-                                        disabled={isLoading || smartStatusIsLoading || ((smartStatus as SmartStatus)?.enabled ?? false) || isReadOnlyMode}
+                                        onClick={enableSmart}
+                                        disabled={smartOperationLoading || smartStatusIsLoading || ((smartStatus as SmartStatus)?.enabled ?? false) || isReadOnlyMode}
                                         title={
                                             (smartStatus as SmartStatus)?.enabled ?? false
                                                 ? "SMART already enabled"
@@ -410,8 +400,8 @@ export function SmartStatusPanel({
                                         size="small"
                                         variant="outlined"
                                         color="error"
-                                        onClick={onDisableSmart}
-                                        disabled={isLoading || smartStatusIsLoading || !((smartStatus as SmartStatus)?.enabled ?? false) || isReadOnlyMode}
+                                        onClick={disableSmart}
+                                        disabled={smartOperationLoading || smartStatusIsLoading || !((smartStatus as SmartStatus)?.enabled ?? false) || isReadOnlyMode}
                                         title={
                                             !((smartStatus as SmartStatus)?.enabled ?? false)
                                                 ? "SMART already disabled"
@@ -453,7 +443,7 @@ export function SmartStatusPanel({
                     <Button
                         onClick={handleStartTest}
                         variant="contained"
-                        disabled={isLoading}
+                        disabled={smartOperationLoading}
                     >
                         Start
                     </Button>
