@@ -238,25 +238,24 @@ export function VolumeDetailsPanel({
                 )}
 
                 {/* Disk-only panels: visible only when a disk is selected without a partition */}
-                {disk && !partition && (
-                    <>
-                        <HDIdleDiskSettings disk={disk} readOnly={false} />
-                        <SmartStatusPanel
-                            smartInfo={disk.smart_info}
-                            diskId={disk.id}
-                            isSmartSupported={disk.smart_info?.supported ?? false}
-                            isReadOnlyMode={false}
-                            isExpanded={smartExpanded}
-                            onSetExpanded={setSmartExpanded}
-                            onEnableSmart={enableSmart}
-                            onDisableSmart={disableSmart}
-                            onStartTest={startSelfTest}
-                            onAbortTest={abortSelfTest}
-                            isLoading={smartOperationLoading}
-                        />
-                    </>
+                {disk && !partition && disk.hdidle_device?.supported && (
+                    <HDIdleDiskSettings disk={disk} readOnly={false} />
                 )}
-
+                {disk && !partition && disk.smart_info?.supported && (
+                    <SmartStatusPanel
+                        smartInfo={disk.smart_info}
+                        diskId={disk.id}
+                        isSmartSupported={disk.smart_info?.supported ?? false}
+                        isReadOnlyMode={false}
+                        isExpanded={smartExpanded}
+                        onSetExpanded={setSmartExpanded}
+                        onEnableSmart={enableSmart}
+                        onDisableSmart={disableSmart}
+                        onStartTest={startSelfTest}
+                        onAbortTest={abortSelfTest}
+                        isLoading={smartOperationLoading}
+                    />
+                )}
                 {/* Partition Information Card (shown only when a partition is selected) */}
                 {partition && (
                     <Card>
