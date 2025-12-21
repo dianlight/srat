@@ -46,7 +46,8 @@ export function VolumeDetailsPanel({
     //  share,
 }: VolumeDetailsPanelProps) {
     const navigate = useNavigate();
-    const [diskInfoExpanded, setDiskInfoExpanded] = useState(false);
+    const [diskInfoExpanded, setDiskInfoExpanded] = useState(!partition);
+    const [smartExpanded, setSmartExpanded] = useState(true);
     const [previewOpen, setPreviewOpen] = useState(false);
     const [previewObject, setPreviewObject] = useState<any | null>(null);
     const [previewTitle, setPreviewTitle] = useState<string>("Preview");
@@ -245,6 +246,8 @@ export function VolumeDetailsPanel({
                             diskId={disk.id}
                             isSmartSupported={disk.smart_info?.supported ?? false}
                             isReadOnlyMode={false}
+                            isExpanded={smartExpanded}
+                            onSetExpanded={setSmartExpanded}
                             onEnableSmart={enableSmart}
                             onDisableSmart={disableSmart}
                             onStartTest={startSelfTest}

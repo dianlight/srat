@@ -50,6 +50,8 @@ interface SmartStatusPanelProps {
     testStatus?: SmartTestStatus;
     isSmartSupported?: boolean;
     isReadOnlyMode?: boolean;
+    isExpanded?: boolean;
+    onSetExpanded?: (expanded: boolean) => void;
     onEnableSmart?: () => void;
     onDisableSmart?: () => void;
     onStartTest?: (testType: SmartTestType) => void;
@@ -64,13 +66,15 @@ export function SmartStatusPanel({
     testStatus,
     isSmartSupported = false,
     isReadOnlyMode = false,
+    isExpanded: initialExpanded = true,
+    onSetExpanded,
     onEnableSmart,
     onDisableSmart,
     onStartTest,
     onAbortTest,
     isLoading = false,
 }: SmartStatusPanelProps) {
-    const [smartExpanded, setSmartExpanded] = useState(false);
+    const [smartExpanded, setSmartExpanded] = useState(initialExpanded);
     const [showStartTestDialog, setShowStartTestDialog] = useState(false);
     const [selectedTestType, setSelectedTestType] = useState<SmartTestType>("short");
     const { data: smartStatus, isLoading: smartStatusIsLoading } = useGetApiDiskByDiskIdSmartStatusQuery({
@@ -147,7 +151,11 @@ export function SmartStatusPanel({
                             />
                         )}
                         <IconButton
-                            onClick={() => setSmartExpanded(!smartExpanded)}
+                            onClick={() => {
+                                const newExpanded = !smartExpanded;
+                                setSmartExpanded(newExpanded);
+                                onSetExpanded?.(newExpanded);
+                            }}
                             aria-expanded={smartExpanded}
                             aria-label="show more"
                             sx={{
