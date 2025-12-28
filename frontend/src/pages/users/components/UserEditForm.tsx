@@ -47,11 +47,11 @@ export function UserEditForm({
         values: userData,
         mode: "onChange",
     });
-
-    useEffect(() => {
-        reset(userData);
-    }, [userData, reset]);
-
+    /*
+        useEffect(() => {
+            reset(userData);
+        }, [userData, reset]);
+    */
     const handleFormSubmit = (data: UsersProps) => {
         // Trim whitespace from username and password
         const trimmedData: UsersProps = {
