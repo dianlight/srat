@@ -30,7 +30,7 @@
     "@types/react-dom": "19.2.3",
     "@types/react-syntax-highlighter": "15.5.13",
     "@types/semver": "7.7.1",
-    "@typescript/native-preview": "7.0.0-dev.20251220.1"
+    "@typescript/native-preview": "7.0.0-dev.20251228.1"
   },
   "peerDependencies": {
     "typescript": "^5.9.3"
@@ -45,15 +45,14 @@
     "@fortawesome/react-fontawesome": "^3.1.1",
     "@mui/icons-material": "^7.3.6",
     "@mui/material": "^7.3.6",
-    "@mui/x-charts": "^8.22.1",
-    "@mui/x-tree-view": "^8.22.0",
+    "@mui/x-charts": "^8.23.0",
+    "@mui/x-tree-view": "^8.23.0",
     "@reactour/tour": "^3.8.0",
     "@reduxjs/toolkit": "^2.11.2",
     "@rollbar/react": "^1.0.0",
     "emittery": "^1.2.0",
     "filesize": "^11.0.13",
     "humanize-duration": "^3.33.2",
-    "js-sha1": "^0.7.0",
     "material-ui-confirm": "^4.0.0",
     "mui-chips-input": "^7.0.1",
     "normalize-url": "^8.1.0",
