@@ -197,6 +197,7 @@ func (suite *BroadcasterServiceEventMappingTestSuite) setupEventListeners() {
 	}))
 }
 
+/*
 func (suite *BroadcasterServiceEventMappingTestSuite) recv() (any, bool) {
 	listener := suite.relay.Listener(10)
 	defer listener.Close()
@@ -208,6 +209,7 @@ func (suite *BroadcasterServiceEventMappingTestSuite) recv() (any, bool) {
 		return nil, false
 	}
 }
+*/
 
 func (suite *BroadcasterServiceEventMappingTestSuite) TestDiskEvent_BroadcastsVolumesData() {
 	expectedDisks := []*dto.Disk{{Id: pointer.String("expected-disk")}}

@@ -102,7 +102,7 @@ func (self *UpgradeService) run() error {
 				})
 			} else {
 				self.notifyClient(dto.UpdateProgress{
-					ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSNOUPGRDE,
+					ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSNOUPGRADE,
 				})
 			}
 

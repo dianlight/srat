@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"reflect"
+	"strings"
 	"sync/atomic"
 
 	"github.com/dianlight/srat/config"
@@ -292,7 +293,9 @@ func (broker *BroadcasterService) ProcessWebSocketChannel(send ws.Sender) {
 				Data: event.Message,
 			})
 			if err != nil {
-				tlog.DebugContext(broker.ctx, "Error sending event to client", "event", event, "err", err, "active clients", broker.ConnectedClients.Load())
+				if !strings.Contains(err.Error(), "write: broken pipe") {
+					tlog.DebugContext(broker.ctx, "Error sending event to client", "event", event, "err", err, "active clients", broker.ConnectedClients.Load())
+				}
 				return
 			}
 		}

@@ -640,7 +640,7 @@ func (suite *UpgradeServiceTestSuite) TestRun_GoroutineLifecycle() {
 		suite.T().Logf("Initial broadcast from run loop: Status=%s, Progress=%d", initialBroadcast.ProgressStatus, initialBroadcast.Progress)
 		// We expect it to be checking or similar initial state
 		suite.True(initialBroadcast.ProgressStatus == dto.UpdateProcessStates.UPDATESTATUSCHECKING ||
-			initialBroadcast.ProgressStatus == dto.UpdateProcessStates.UPDATESTATUSNOUPGRDE ||
+			initialBroadcast.ProgressStatus == dto.UpdateProcessStates.UPDATESTATUSNOUPGRADE ||
 			initialBroadcast.ProgressStatus == dto.UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE,
 			"Unexpected initial broadcast status: %s", initialBroadcast.ProgressStatus)
 	} else {

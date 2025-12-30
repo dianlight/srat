@@ -30,7 +30,7 @@ type UpdateProcessState struct {
 type updateProcessStatesContainer struct {
 	UPDATESTATUSIDLE             UpdateProcessState
 	UPDATESTATUSCHECKING         UpdateProcessState
-	UPDATESTATUSNOUPGRDE         UpdateProcessState
+	UPDATESTATUSNOUPGRADE        UpdateProcessState
 	UPDATESTATUSUPGRADEAVAILABLE UpdateProcessState
 	UPDATESTATUSDOWNLOADING      UpdateProcessState
 	UPDATESTATUSDOWNLOADCOMPLETE UpdateProcessState
@@ -53,8 +53,8 @@ var UpdateProcessStates = updateProcessStatesContainer{
 		updateProcessState: UpdateStatusChecking,
 		Name:               "Checking",
 	},
-	UPDATESTATUSNOUPGRDE: UpdateProcessState{
-		updateProcessState: UpdateStatusNoUpgrde,
+	UPDATESTATUSNOUPGRADE: UpdateProcessState{
+		updateProcessState: UpdateStatusNoUpgrade,
 		Name:               "NoUpgrade",
 	},
 	UPDATESTATUSUPGRADEAVAILABLE: UpdateProcessState{
@@ -102,7 +102,7 @@ func (u updateProcessStatesContainer) allSlice() []UpdateProcessState {
 	return []UpdateProcessState{
 		UpdateProcessStates.UPDATESTATUSIDLE,
 		UpdateProcessStates.UPDATESTATUSCHECKING,
-		UpdateProcessStates.UPDATESTATUSNOUPGRDE,
+		UpdateProcessStates.UPDATESTATUSNOUPGRADE,
 		UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE,
 		UpdateProcessStates.UPDATESTATUSDOWNLOADING,
 		UpdateProcessStates.UPDATESTATUSDOWNLOADCOMPLETE,
@@ -205,7 +205,7 @@ func ParseUpdateProcessState(input any) (UpdateProcessState, error) {
 var updateProcessStatesNameMap = map[string]UpdateProcessState{
 	"UpdateStatusIdle":             UpdateProcessStates.UPDATESTATUSIDLE,
 	"UpdateStatusChecking":         UpdateProcessStates.UPDATESTATUSCHECKING,
-	"UpdateStatusNoUpgrde":         UpdateProcessStates.UPDATESTATUSNOUPGRDE,
+	"UpdateStatusNoUpgrade":        UpdateProcessStates.UPDATESTATUSNOUPGRADE,
 	"UpdateStatusUpgradeAvailable": UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE,
 	"UpdateStatusDownloading":      UpdateProcessStates.UPDATESTATUSDOWNLOADING,
 	"UpdateStatusDownloadComplete": UpdateProcessStates.UPDATESTATUSDOWNLOADCOMPLETE,
@@ -257,7 +257,7 @@ func ExhaustiveUpdateProcessStates(f func(UpdateProcessState)) {
 var validUpdateProcessStates = map[UpdateProcessState]bool{
 	UpdateProcessStates.UPDATESTATUSIDLE:             true,
 	UpdateProcessStates.UPDATESTATUSCHECKING:         true,
-	UpdateProcessStates.UPDATESTATUSNOUPGRDE:         true,
+	UpdateProcessStates.UPDATESTATUSNOUPGRADE:        true,
 	UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE: true,
 	UpdateProcessStates.UPDATESTATUSDOWNLOADING:      true,
 	UpdateProcessStates.UPDATESTATUSDOWNLOADCOMPLETE: true,
@@ -366,22 +366,22 @@ func (u *UpdateProcessState) UnmarshalYAML(by []byte) error {
 }
 
 // updateprocessstateNames is a constant string slice containing all enum values cononical absolute names
-const updateprocessstateNames = "UpdateStatusIdleUpdateStatusCheckingUpdateStatusNoUpgrdeUpdateStatusUpgradeAvailableUpdateStatusDownloadingUpdateStatusDownloadCompleteUpdateStatusExtractingUpdateStatusExtractCompleteUpdateStatusInstallingNeedRestartUpdateStatusError"
+const updateprocessstateNames = "UpdateStatusIdleUpdateStatusCheckingUpdateStatusNoUpgradeUpdateStatusUpgradeAvailableUpdateStatusDownloadingUpdateStatusDownloadCompleteUpdateStatusExtractingUpdateStatusExtractCompleteUpdateStatusInstallingNeedRestartUpdateStatusError"
 
 // updateprocessstateNamesMap is a map of enum values to their canonical absolute
 // name positions within the updateprocessstateNames string slice
 var updateprocessstateNamesMap = map[UpdateProcessState]string{
 	UpdateProcessStates.UPDATESTATUSIDLE:             updateprocessstateNames[0:16],
 	UpdateProcessStates.UPDATESTATUSCHECKING:         updateprocessstateNames[16:36],
-	UpdateProcessStates.UPDATESTATUSNOUPGRDE:         updateprocessstateNames[36:56],
-	UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE: updateprocessstateNames[56:84],
-	UpdateProcessStates.UPDATESTATUSDOWNLOADING:      updateprocessstateNames[84:107],
-	UpdateProcessStates.UPDATESTATUSDOWNLOADCOMPLETE: updateprocessstateNames[107:135],
-	UpdateProcessStates.UPDATESTATUSEXTRACTING:       updateprocessstateNames[135:157],
-	UpdateProcessStates.UPDATESTATUSEXTRACTCOMPLETE:  updateprocessstateNames[157:184],
-	UpdateProcessStates.UPDATESTATUSINSTALLING:       updateprocessstateNames[184:206],
-	UpdateProcessStates.UPDATESTATUSINSTALLCOMPLETE:  updateprocessstateNames[206:217],
-	UpdateProcessStates.UPDATESTATUSERROR:            updateprocessstateNames[217:234],
+	UpdateProcessStates.UPDATESTATUSNOUPGRADE:        updateprocessstateNames[36:57],
+	UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE: updateprocessstateNames[57:85],
+	UpdateProcessStates.UPDATESTATUSDOWNLOADING:      updateprocessstateNames[85:108],
+	UpdateProcessStates.UPDATESTATUSDOWNLOADCOMPLETE: updateprocessstateNames[108:136],
+	UpdateProcessStates.UPDATESTATUSEXTRACTING:       updateprocessstateNames[136:158],
+	UpdateProcessStates.UPDATESTATUSEXTRACTCOMPLETE:  updateprocessstateNames[158:185],
+	UpdateProcessStates.UPDATESTATUSINSTALLING:       updateprocessstateNames[185:207],
+	UpdateProcessStates.UPDATESTATUSINSTALLCOMPLETE:  updateprocessstateNames[207:218],
+	UpdateProcessStates.UPDATESTATUSERROR:            updateprocessstateNames[218:235],
 }
 
 // String implements the Stringer interface.
@@ -403,7 +403,7 @@ func _() {
 	var x [11]struct{}
 	_ = x[UpdateStatusIdle]
 	_ = x[UpdateStatusChecking-1]
-	_ = x[UpdateStatusNoUpgrde-2]
+	_ = x[UpdateStatusNoUpgrade-2]
 	_ = x[UpdateStatusUpgradeAvailable-3]
 	_ = x[UpdateStatusDownloading-4]
 	_ = x[UpdateStatusDownloadComplete-5]

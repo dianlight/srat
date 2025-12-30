@@ -18,6 +18,23 @@ if (!(globalThis as any).localStorage) {
     };
 }
 
+// Helper to create a mock disk with required hdidle properties
+const createMockDisk = (overrides: any = {}) => ({
+    id: "disk-1",
+    name: "sda",
+    model: "Test Disk Model",
+    size: 1000000000,
+    removable: false,
+    hdidle_device: {
+        supported: true,
+        enabled: "Yes",
+        idle_time: 0,
+        command_type: "",
+        power_condition: 0,
+    },
+    ...overrides,
+});
+
 describe("HDIdleDiskSettings Apply/Cancel & Unsupported", () => {
     beforeEach(() => {
         localStorage.clear();
@@ -34,7 +51,7 @@ describe("HDIdleDiskSettings Apply/Cancel & Unsupported", () => {
 
         const store = await createTestStore();
         const user = userEvent.setup();
-        const mockDisk = { id: "sda", name: "sda", model: "Mock Disk" } as any;
+        const mockDisk = createMockDisk();
 
         render(
             React.createElement(Provider as any, {

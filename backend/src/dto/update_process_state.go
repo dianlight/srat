@@ -6,7 +6,7 @@ type updateProcessState int8 // Name[string]
 const (
 	UpdateStatusIdle             updateProcessState = iota // "Idle"
 	UpdateStatusChecking                                   // "Checking"
-	UpdateStatusNoUpgrde                                   // "NoUpgrade"
+	UpdateStatusNoUpgrade                                  // "NoUpgrade"
 	UpdateStatusUpgradeAvailable                           // "Available"
 	UpdateStatusDownloading                                // "Downloading"
 	UpdateStatusDownloadComplete                           // "Downloaded"

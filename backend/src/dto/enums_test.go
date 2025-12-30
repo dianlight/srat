@@ -392,7 +392,7 @@ func TestUpdateProcessState_String(t *testing.T) {
 	}{
 		{"Idle", dto.UpdateProcessStates.UPDATESTATUSIDLE, "UpdateStatusIdle"},
 		{"Checking", dto.UpdateProcessStates.UPDATESTATUSCHECKING, "UpdateStatusChecking"},
-		{"NoUpgrade", dto.UpdateProcessStates.UPDATESTATUSNOUPGRDE, "UpdateStatusNoUpgrde"},
+		{"NoUpgrade", dto.UpdateProcessStates.UPDATESTATUSNOUPGRADE, "UpdateStatusNoUpgrade"},
 		{"Available", dto.UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE, "UpdateStatusUpgradeAvailable"},
 		{"Downloading", dto.UpdateProcessStates.UPDATESTATUSDOWNLOADING, "UpdateStatusDownloading"},
 		{"Downloaded", dto.UpdateProcessStates.UPDATESTATUSDOWNLOADCOMPLETE, "UpdateStatusDownloadComplete"},
@@ -418,7 +418,7 @@ func TestUpdateProcessState_Name(t *testing.T) {
 	}{
 		{"Idle", dto.UpdateProcessStates.UPDATESTATUSIDLE, "Idle"},
 		{"Checking", dto.UpdateProcessStates.UPDATESTATUSCHECKING, "Checking"},
-		{"NoUpgrade", dto.UpdateProcessStates.UPDATESTATUSNOUPGRDE, "NoUpgrade"},
+		{"NoUpgrade", dto.UpdateProcessStates.UPDATESTATUSNOUPGRADE, "NoUpgrade"},
 		{"Available", dto.UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE, "Available"},
 		{"Downloading", dto.UpdateProcessStates.UPDATESTATUSDOWNLOADING, "Downloading"},
 		{"Downloaded", dto.UpdateProcessStates.UPDATESTATUSDOWNLOADCOMPLETE, "Downloaded"},
@@ -439,7 +439,7 @@ func TestUpdateProcessState_Name(t *testing.T) {
 func TestUpdateProcessState_IsValid(t *testing.T) {
 	assert.True(t, dto.UpdateProcessStates.UPDATESTATUSIDLE.IsValid())
 	assert.True(t, dto.UpdateProcessStates.UPDATESTATUSCHECKING.IsValid())
-	assert.True(t, dto.UpdateProcessStates.UPDATESTATUSNOUPGRDE.IsValid())
+	assert.True(t, dto.UpdateProcessStates.UPDATESTATUSNOUPGRADE.IsValid())
 	assert.True(t, dto.UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE.IsValid())
 	assert.True(t, dto.UpdateProcessStates.UPDATESTATUSDOWNLOADING.IsValid())
 	assert.True(t, dto.UpdateProcessStates.UPDATESTATUSDOWNLOADCOMPLETE.IsValid())
@@ -505,10 +505,10 @@ func TestUpdateProcessState_UnmarshalText(t *testing.T) {
 }
 
 func TestUpdateProcessState_MarshalBinary(t *testing.T) {
-	state := dto.UpdateProcessStates.UPDATESTATUSNOUPGRDE
+	state := dto.UpdateProcessStates.UPDATESTATUSNOUPGRADE
 	data, err := state.MarshalBinary()
 	assert.NoError(t, err)
-	assert.Equal(t, `"UpdateStatusNoUpgrde"`, string(data))
+	assert.Equal(t, `"UpdateStatusNoUpgrade"`, string(data))
 }
 
 func TestUpdateProcessState_UnmarshalBinary(t *testing.T) {

@@ -4,11 +4,11 @@ import { getServerEventBackend } from "../macro/Environment" with {
 };
 import { apiUrl } from "./emptyApi";
 import type {
+	DataDirtyTracker,
 	Disk,
 	HealthPing,
 	SharedResource,
 	UpdateProgress,
-	DataDirtyTracker,
 	Welcome,
 } from "./sratApi";
 import { Supported_events } from "./sratApi";

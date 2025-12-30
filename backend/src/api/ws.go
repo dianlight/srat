@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"reflect"
+	"sync"
 	"time"
 
 	"github.com/dianlight/srat/dto"
@@ -23,7 +24,7 @@ type WebSocketHandler struct {
 	broadcaster service.BroadcasterServiceInterface
 	upgrader    websocket.Upgrader
 	eventMap    map[string]any
-	reverseMap  map[string]string
+	ObjectMap   map[string]string
 }
 
 func NewWebSocketBroker(ctx context.Context, broadcaster service.BroadcasterServiceInterface) *WebSocketHandler {
@@ -53,16 +54,48 @@ func NewWebSocketBroker(ctx context.Context, broadcaster service.BroadcasterServ
 		broadcaster: broadcaster,
 		upgrader:    upgrader,
 		eventMap:    eventMap,
-		reverseMap:  reverseMap,
+		ObjectMap:   reverseMap,
 	}
 }
 
 func reverseMap(m map[string]any) map[string]string {
 	n := make(map[string]string, len(m))
 	for k, v := range m {
-		n[reflect.TypeOf(v).Name()] = k
+		n[reflect.TypeOf(v).String()] = k
 	}
 	return n
+}
+
+type WsMessageSender struct {
+	Connection *websocket.Conn
+	ObjectMap  map[string]string
+	Mutex      sync.Mutex
+}
+
+func (self *WsMessageSender) SendFunc(msg ws.Message) errors.E {
+	self.Mutex.Lock()
+	defer self.Mutex.Unlock()
+
+	eventData, err := json.Marshal(msg.Data)
+	if err != nil {
+		return errors.WithDetails(err, "message", "Failed to marshal event data", "event", msg)
+	}
+
+	typeName, ok := self.ObjectMap[reflect.TypeOf(msg.Data).String()]
+	if !ok {
+		return errors.Errorf("unknown event type for WebSocket: %T", msg.Data)
+	}
+
+	if self.Connection == nil {
+		return errors.New("WebSocket connection is nil")
+	}
+	err = self.Connection.WriteMessage(websocket.TextMessage,
+		fmt.Appendf(nil, "id: %d\nevent: %s\ndata: %s\n\n", msg.ID, typeName, eventData),
+	)
+	if err != nil {
+		return errors.WithDetails(err, "message", "Failed to write message to WebSocket", "event", msg)
+	}
+	return nil
 }
 
 // HandleWebSocket handles the WebSocket upgrade and connection
@@ -84,29 +117,13 @@ func (self *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Req
 
 	slog.DebugContext(self.ctx, "WebSocket client connected")
 
-	self.broadcaster.ProcessWebSocketChannel(func(msg ws.Message) errors.E {
+	wsMessageSender := &WsMessageSender{
+		Connection: conn,
+		ObjectMap:  self.ObjectMap,
+		Mutex:      sync.Mutex{},
+	}
 
-		// Marshal the event data to JSON
-		eventData, err := json.Marshal(msg.Data)
-		if err != nil {
-			return errors.WithDetails(err, "message", "Failed to marshal event data", "event", msg)
-		}
-
-		typeName, ok := self.reverseMap[reflect.TypeOf(msg.Data).Name()]
-		if !ok {
-			//slog.ErrorContext(self.ctx, "Unknown event type for WebSocket", "type", reflect.TypeOf(msg.Data).Name())
-			return errors.Errorf("unknown event type for WebSocket: %T", msg.Data)
-		}
-
-		// Send the event data
-		err = conn.WriteMessage(websocket.TextMessage,
-			[]byte(fmt.Sprintf("id: %d\nevent: %s\ndata: %s\n\n", msg.ID, typeName, eventData)),
-		)
-		if err != nil {
-			return errors.WithDetails(err, "message", "Failed to write message to WebSocket", "event", msg)
-		}
-		return nil
-	})
+	self.broadcaster.ProcessWebSocketChannel(wsMessageSender.SendFunc)
 
 	// Start ping ticker
 	pingTicker := time.NewTicker(30 * time.Second)
