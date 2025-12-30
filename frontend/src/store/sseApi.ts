@@ -8,6 +8,7 @@ import type {
 	HealthPing,
 	SharedResource,
 	UpdateProgress,
+	DataDirtyTracker,
 	Welcome,
 } from "./sratApi";
 import { Supported_events } from "./sratApi";
@@ -15,9 +16,10 @@ import { Supported_events } from "./sratApi";
 export type EventData = {
 	[Supported_events.Heartbeat]: HealthPing;
 	[Supported_events.Volumes]: Disk[];
-	[Supported_events.Share]: SharedResource[];
+	[Supported_events.Shares]: SharedResource[];
 	[Supported_events.Hello]: Welcome;
 	[Supported_events.Updating]: UpdateProgress;
+	[Supported_events.DirtyDataTracker]: DataDirtyTracker;
 };
 
 /**

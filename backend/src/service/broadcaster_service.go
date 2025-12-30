@@ -35,6 +35,7 @@ type BroadcasterService struct {
 	haRootService    HaRootServiceInterface
 	eventBus         events.EventBusInterface
 	volumeService    VolumeServiceInterface
+	shareService     ShareServiceInterface
 }
 
 type broadcastEvent struct {
@@ -50,6 +51,7 @@ func NewBroadcasterService(
 	state *dto.ContextState,
 	eventBus events.EventBusInterface,
 	volumeService VolumeServiceInterface,
+	shareService ShareServiceInterface,
 ) (broker BroadcasterServiceInterface) {
 	// Instantiate a broker
 	b := &BroadcasterService{
@@ -61,6 +63,7 @@ func NewBroadcasterService(
 		haRootService: haRootService,
 		eventBus:      eventBus,
 		volumeService: volumeService,
+		shareService:  shareService,
 	}
 
 	unsubscribe := b.setupEventListeners()
@@ -112,7 +115,12 @@ func (broker *BroadcasterService) setupEventListeners() []func() {
 	// Listen for share events
 	ret[1] = broker.eventBus.OnShare(func(ctx context.Context, event events.ShareEvent) errors.E {
 		slog.DebugContext(ctx, "BroadcasterService received Share event", "share", event.Share.Name)
-		broker.BroadcastMessage(*event.Share)
+		shares, err := broker.shareService.ListShares()
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to list shares for broadcasting", "error", err)
+			return nil
+		}
+		broker.BroadcastMessage(shares)
 		return nil
 	})
 
@@ -124,7 +132,7 @@ func (broker *BroadcasterService) setupEventListeners() []func() {
 	})
 	ret[3] = broker.eventBus.OnDirtyData(func(ctx context.Context, dde events.DirtyDataEvent) errors.E {
 		slog.DebugContext(ctx, "BroadcasterService received DirtyData event", "tracker", dde.DataDirtyTracker)
-		broker.BroadcastMessage(dde) // TODO: implement push of dirty data status only
+		broker.BroadcastMessage(dde.DataDirtyTracker) // TODO: implement push of dirty data status only
 		return nil
 	})
 

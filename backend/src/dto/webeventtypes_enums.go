@@ -30,8 +30,8 @@ type webEventTypesContainer struct {
 	EVENTUPDATING     WebEventType
 	EVENTVOLUMES      WebEventType
 	EVENTHEARTBEAT    WebEventType
-	EVENTSHARE        WebEventType
-	EVENTHDIDLECONFIG WebEventType
+	EVENTSHARES       WebEventType
+	EVENTDIRTYTRACKER WebEventType
 }
 
 // WebEventTypes is a main entry point using the WebEventType type.
@@ -50,11 +50,11 @@ var WebEventTypes = webEventTypesContainer{
 	EVENTHEARTBEAT: WebEventType{
 		webEventType: eventHeartbeat,
 	},
-	EVENTSHARE: WebEventType{
-		webEventType: eventShare,
+	EVENTSHARES: WebEventType{
+		webEventType: eventShares,
 	},
-	EVENTHDIDLECONFIG: WebEventType{
-		webEventType: eventHDIdleConfig,
+	EVENTDIRTYTRACKER: WebEventType{
+		webEventType: eventDirtyTracker,
 	},
 }
 
@@ -71,8 +71,8 @@ func (w webEventTypesContainer) allSlice() []WebEventType {
 		WebEventTypes.EVENTUPDATING,
 		WebEventTypes.EVENTVOLUMES,
 		WebEventTypes.EVENTHEARTBEAT,
-		WebEventTypes.EVENTSHARE,
-		WebEventTypes.EVENTHDIDLECONFIG,
+		WebEventTypes.EVENTSHARES,
+		WebEventTypes.EVENTDIRTYTRACKER,
 	}
 }
 
@@ -159,12 +159,12 @@ func ParseWebEventType(input any) (WebEventType, error) {
 // webEventTypesNameMap is a map of enum values to their WebEventType representation
 // It is used to convert string representations of enum values into their WebEventType representation.
 var webEventTypesNameMap = map[string]WebEventType{
-	"hello":         WebEventTypes.EVENTHELLO,
-	"updating":      WebEventTypes.EVENTUPDATING,
-	"volumes":       WebEventTypes.EVENTVOLUMES,
-	"heartbeat":     WebEventTypes.EVENTHEARTBEAT,
-	"share":         WebEventTypes.EVENTSHARE,
-	"hdidle_config": WebEventTypes.EVENTHDIDLECONFIG,
+	"hello":              WebEventTypes.EVENTHELLO,
+	"updating":           WebEventTypes.EVENTUPDATING,
+	"volumes":            WebEventTypes.EVENTVOLUMES,
+	"heartbeat":          WebEventTypes.EVENTHEARTBEAT,
+	"shares":             WebEventTypes.EVENTSHARES,
+	"dirty_data_tracker": WebEventTypes.EVENTDIRTYTRACKER,
 }
 
 // stringToWebEventType converts a string representation of an enum value into its WebEventType representation
@@ -210,8 +210,8 @@ var validWebEventTypes = map[WebEventType]bool{
 	WebEventTypes.EVENTUPDATING:     true,
 	WebEventTypes.EVENTVOLUMES:      true,
 	WebEventTypes.EVENTHEARTBEAT:    true,
-	WebEventTypes.EVENTSHARE:        true,
-	WebEventTypes.EVENTHDIDLECONFIG: true,
+	WebEventTypes.EVENTSHARES:       true,
+	WebEventTypes.EVENTDIRTYTRACKER: true,
 }
 
 // IsValid checks whether the WebEventTypes value is valid.
@@ -312,7 +312,7 @@ func (w *WebEventType) UnmarshalYAML(by []byte) error {
 }
 
 // webeventtypeNames is a constant string slice containing all enum values cononical absolute names
-const webeventtypeNames = "helloupdatingvolumesheartbeatsharehdidle_config"
+const webeventtypeNames = "helloupdatingvolumesheartbeatsharesdirty_data_tracker"
 
 // webeventtypeNamesMap is a map of enum values to their canonical absolute
 // name positions within the webeventtypeNames string slice
@@ -321,8 +321,8 @@ var webeventtypeNamesMap = map[WebEventType]string{
 	WebEventTypes.EVENTUPDATING:     webeventtypeNames[5:13],
 	WebEventTypes.EVENTVOLUMES:      webeventtypeNames[13:20],
 	WebEventTypes.EVENTHEARTBEAT:    webeventtypeNames[20:29],
-	WebEventTypes.EVENTSHARE:        webeventtypeNames[29:34],
-	WebEventTypes.EVENTHDIDLECONFIG: webeventtypeNames[34:47],
+	WebEventTypes.EVENTSHARES:       webeventtypeNames[29:35],
+	WebEventTypes.EVENTDIRTYTRACKER: webeventtypeNames[35:53],
 }
 
 // String implements the Stringer interface.
@@ -346,6 +346,6 @@ func _() {
 	_ = x[eventUpdating-1]
 	_ = x[eventVolumes-2]
 	_ = x[eventHeartbeat-3]
-	_ = x[eventShare-4]
-	_ = x[eventHDIdleConfig-5]
+	_ = x[eventShares-4]
+	_ = x[eventDirtyTracker-5]
 }

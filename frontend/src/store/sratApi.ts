@@ -709,6 +709,15 @@ export type GetApiSharesApiArg = void;
 export type SseApiResponse = /** status 200 OK */
   | (
       | {
+          data: DataDirtyTracker;
+          /** The event name. */
+          event: "dirty_data_tracker";
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
           data: HealthPing;
           /** The event name. */
           event: "heartbeat";
@@ -729,7 +738,7 @@ export type SseApiResponse = /** status 200 OK */
       | {
           data: SharedResource[] | null;
           /** The event name. */
-          event: "share";
+          event: "shares";
           /** The event ID. */
           id?: number;
           /** The retry time in milliseconds. */
@@ -1369,6 +1378,7 @@ export type PatchMountPointData = {
   time_machine_support?: Time_machine_support;
   type: Type;
   warnings?: string;
+  [key: string]: unknown;
 };
 export enum Command_type {
   Scsi = "scsi",
@@ -1431,7 +1441,8 @@ export enum Supported_events {
   Updating = "updating",
   Volumes = "volumes",
   Heartbeat = "heartbeat",
-  Share = "share",
+  Shares = "shares",
+  DirtyDataTracker = "dirty_data_tracker",
 }
 export enum Update_channel {
   None = "None",

@@ -48,6 +48,7 @@ func (suite *WsHandlerSuite) SetupTest() {
 			mock.Mock[service.HomeAssistantServiceInterface],
 			mock.Mock[service.HaRootServiceInterface],
 			mock.Mock[service.VolumeServiceInterface],
+			mock.Mock[service.ShareServiceInterface],
 			///mock.Mock[service.BroadcasterServiceInterface],
 		),
 		fx.Populate(&suite.ctx, &suite.cancel),

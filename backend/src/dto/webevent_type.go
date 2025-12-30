@@ -8,6 +8,6 @@ const (
 	eventUpdating                         // "updating"
 	eventVolumes                          // "volumes"
 	eventHeartbeat                        // "heartbeat"
-	eventShare                            // "share"
-	eventHDIdleConfig                     // "hdidle_config"
+	eventShares                           // "shares"
+	eventDirtyTracker                     // "dirty_data_tracker"
 )
