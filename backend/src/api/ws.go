@@ -93,6 +93,7 @@ func (self *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Req
 
 		typeName, ok := self.reverseMap[reflect.TypeOf(msg.Data).Name()]
 		if !ok {
+			//slog.ErrorContext(self.ctx, "Unknown event type for WebSocket", "type", reflect.TypeOf(msg.Data).Name())
 			return errors.Errorf("unknown event type for WebSocket: %T", msg.Data)
 		}
 

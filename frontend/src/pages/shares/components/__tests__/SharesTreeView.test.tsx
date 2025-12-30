@@ -90,11 +90,17 @@ describe("SharesTreeView component", () => {
         await user.click(documentsNode);
         expect(onSelect).toHaveBeenCalledWith("doc", expect.objectContaining({ name: "Documents" }));
 
-        const firstToggle = await screen.findByTestId("share-toggle-doc");
-        await user.click(firstToggle);
+        // Find disable button for Documents share (which is enabled)
+        const disableButtons = await screen.findAllByRole("button", { name: /disable share/i });
+        if (disableButtons.length > 0) {
+            await user.click(disableButtons[0]!);
+        }
 
-        const archiveToggle = await screen.findByTestId("share-toggle-arc");
-        await user.click(archiveToggle);
+        // Find enable button for Archive share (which is disabled)
+        const enableButtons = await screen.findAllByRole("button", { name: /enable share/i });
+        if (enableButtons.length > 0) {
+            await user.click(enableButtons[0]!);
+        }
 
         await waitFor(() => expect(tracking.disableCalls.length).toBeGreaterThanOrEqual(1));
         await waitFor(() => expect(tracking.enableCalls.length).toBeGreaterThanOrEqual(1));
@@ -181,9 +187,9 @@ describe("SharesTreeView component", () => {
         );
 
         const user = userEvent.setup();
-        const toggles = await within(container).findAllByTestId("share-toggle-doc");
-        expect(toggles).toHaveLength(1);
-        await user.click(toggles[0]!);
+        const disableButtons = await within(container).findAllByRole("button", { name: /disable share/i });
+        expect(disableButtons.length).toBeGreaterThan(0);
+        await user.click(disableButtons[0]!);
 
         expect(tracking.disableCalls.length).toBe(0);
     });
@@ -225,6 +231,8 @@ describe("SharesTreeView component", () => {
         const documents = await within(container).findAllByText(/Documents/);
         expect(documents).toHaveLength(1);
         expect(documents[0]).toBeTruthy();
-        expect(within(container).queryByTestId("share-toggle-doc")).toBeNull();
+        // In readOnly mode, ShareActions component should not be rendered
+        expect(within(container).queryByRole("button", { name: /disable share/i })).toBeNull();
+        expect(within(container).queryByRole("button", { name: /enable share/i })).toBeNull();
     });
 });

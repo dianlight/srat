@@ -188,7 +188,7 @@ func (suite *HomeAssistantServiceTestSuite) TestSendDiskEntities() {
 	isMounted := true
 	mountPath := "/mnt/test"
 
-	disks := &[]dto.Disk{
+	disks := &[]*dto.Disk{
 		{
 			Id:         &diskId,
 			DevicePath: &devicePath,
@@ -238,7 +238,7 @@ func (suite *HomeAssistantServiceTestSuite) TestSendDiskEntitiesDisabled() {
 	isMounted := true
 	mountPath := "/mnt/test"
 
-	disks := &[]dto.Disk{
+	disks := &[]*dto.Disk{
 		{
 			Id:         &diskId,
 			DevicePath: &devicePath,
@@ -298,7 +298,7 @@ func (suite *HomeAssistantServiceTestSuite) TestSanitizeEntityId() {
 	devicePath := "/dev/sda"
 	diskId := "usb-SanDisk_USB_3.2Gen1-0:0"
 
-	disks := &[]dto.Disk{
+	disks := &[]*dto.Disk{
 		{
 			Id:         &diskId,
 			DevicePath: &devicePath,

@@ -7,7 +7,6 @@ import (
 	dbom "github.com/dianlight/srat/dbom"
 	dto "github.com/dianlight/srat/dto"
 	osutil "github.com/dianlight/srat/internal/osutil"
-	xhashes "github.com/shomali11/util/xhashes"
 	datatypes "gorm.io/datatypes"
 )
 
@@ -133,9 +132,6 @@ func (c *DtoToDbomConverterImpl) MountPointPathToMountPointData(source dbom.Moun
 	}
 	if source.Path != "" {
 		target.Path = source.Path
-	}
-	if source.Path != "" {
-		target.PathHash = xhashes.SHA1(source.Path)
 	}
 	if source.Root != "" {
 		target.Root = source.Root
@@ -422,7 +418,6 @@ func (c *DtoToDbomConverterImpl) mountPointPathToMountPointData(source dbom.Moun
 	dtoMountPointData.DiskSerial = DiskSerialFromPath(source.Path)
 	dtoMountPointData.DiskSize = DiskSizeFromPath(source.Path)
 	dtoMountPointData.Path = source.Path
-	dtoMountPointData.PathHash = xhashes.SHA1(source.Path)
 	dtoMountPointData.Root = source.Root
 	dtoMountPointData.Type = source.Type
 	pString := source.FSType

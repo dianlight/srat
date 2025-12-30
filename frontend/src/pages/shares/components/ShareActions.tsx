@@ -1,9 +1,7 @@
 import { DriveFileMove } from "@mui/icons-material";
 import BlockIcon from "@mui/icons-material/Block";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import DeleteIcon from "@mui/icons-material/Delete";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
-import SettingsIcon from "@mui/icons-material/Settings";
 import {
     IconButton,
     ListItemIcon,
@@ -23,11 +21,8 @@ import { Usage } from "../../../store/sratApi";
 interface ShareActionsProps {
     shareKey: string;
     shareProps: SharedResource;
-    read_only: boolean;
     protected_mode: boolean;
-    onEdit: (shareKey: string, shareProps: SharedResource) => void;
     onViewVolumeSettings: (shareProps: SharedResource) => void;
-    onDelete: (shareKey: string, shareProps: SharedResource) => void;
     onEnable: (shareKey: string, shareProps: SharedResource) => void;
     onDisable: (shareKey: string, shareProps: SharedResource) => void;
 }
@@ -35,15 +30,12 @@ interface ShareActionsProps {
 export function ShareActions({
     shareKey,
     shareProps,
-    read_only,
-    onEdit,
     onViewVolumeSettings,
-    onDelete,
     onEnable,
     onDisable,
 }: ShareActionsProps) {
     const theme = useTheme();
-    const isSmallScreen = useMediaQuery(theme.breakpoints.down("sm"));
+    const isSmallScreen = useMediaQuery(theme.breakpoints.between("sm", "md"));
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
     const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -61,35 +53,16 @@ export function ShareActions({
 
     const actionItems = [];
 
-
-    if (!read_only && shareProps.usage !== Usage.Internal) {
-        actionItems.push({
-            key: "edit",
-            title: "Settings",
-            icon: <SettingsIcon />,
-            onClick: () => onEdit(shareKey, shareProps),
-        });
-    }
-
     if (
         !shareProps.mount_point_data?.invalid &&
         shareProps.usage !== Usage.Internal &&
-        shareProps.mount_point_data?.path_hash
+        shareProps.mount_point_data?.path
     ) {
         actionItems.push({
             key: "view-volume",
             title: "View Volume Mount Settings",
             icon: <DriveFileMove />,
             onClick: () => onViewVolumeSettings(shareProps),
-        });
-    }
-
-    if (shareProps.usage !== Usage.Internal) {
-        actionItems.push({
-            key: "delete",
-            title: "Delete share",
-            icon: <DeleteIcon color="error" />,
-            onClick: () => onDelete(shareKey, shareProps),
         });
     }
 
@@ -171,4 +144,4 @@ export function ShareActions({
             ))}
         </Stack>
     );
-}
+} 

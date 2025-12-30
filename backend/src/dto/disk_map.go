@@ -4,9 +4,9 @@ import "gitlab.com/tozd/go/errors"
 
 type DiskMap map[string]*Disk
 
-// Add inserts or updates a Disk in the map using its Id as the key.
+// AddOrUpdate inserts or updates a Disk in the map using its Id as the key.
 // It initializes the map if it is nil. Returns an error if the disk Id is nil or empty.
-func (m *DiskMap) Add(d *Disk) error {
+func (m *DiskMap) AddOrUpdate(d *Disk) error {
 	if d.Id == nil || *d.Id == "" {
 		return errors.WithDetails(ErrorInvalidParameter, "Message", "disk id is nil or empty")
 	}
@@ -39,9 +39,9 @@ func (m *DiskMap) Get(id string) (*Disk, bool) {
 	return d, ok
 }
 
-// AddMountPoint inserts or updates a MountPointData in the specified partition of the specified disk.
+// AddOrUpdateMountPoint inserts or updates a MountPointData in the specified partition of the specified disk.
 // The mount point is keyed by its Path field. Returns an error if inputs are invalid or the target disk/partition is missing.
-func (m *DiskMap) AddMountPoint(diskID, partitionID string, mpd MountPointData) error {
+func (m *DiskMap) AddOrUpdateMountPoint(diskID, partitionID string, mpd MountPointData) error {
 	if m == nil || *m == nil {
 		return errors.WithDetails(ErrorNotFound, "Message", "disk map is nil or empty")
 	}
@@ -239,18 +239,18 @@ func (m *DiskMap) GetAllMountPoints() []*MountPointData {
 // Extracts diskID, partitionID, and path from the share's MountPointData.
 // If partition info is nil in the share, searches existing mount points for the partition.
 // Returns an error if the share, mount point data, or disk/partition is not found.
-func (m *DiskMap) AddMountPointShare(share *SharedResource) error {
+func (m *DiskMap) AddMountPointShare(share *SharedResource) (*Disk, error) {
 	if m == nil || *m == nil {
-		return errors.WithDetails(ErrorNotFound, "Message", "disk map is nil or empty")
+		return nil, errors.WithDetails(ErrorNotFound, "Message", "disk map is nil or empty")
 	}
 	if share == nil {
-		return errors.WithDetails(ErrorInvalidParameter, "Message", "share is nil")
+		return nil, errors.WithDetails(ErrorInvalidParameter, "Message", "share is nil")
 	}
 	if share.MountPointData == nil {
-		return errors.WithDetails(ErrorInvalidParameter, "Message", "share mount point data is nil")
+		return nil, errors.WithDetails(ErrorInvalidParameter, "Message", "share mount point data is nil")
 	}
 	if share.MountPointData.Path == "" {
-		return errors.WithDetails(ErrorInvalidParameter, "Message", "mount point path is empty")
+		return nil, errors.WithDetails(ErrorInvalidParameter, "Message", "mount point path is empty")
 	}
 
 	path := share.MountPointData.Path
@@ -259,10 +259,10 @@ func (m *DiskMap) AddMountPointShare(share *SharedResource) error {
 	// If partition info is provided in share, use it
 	if share.MountPointData.Partition != nil {
 		if share.MountPointData.Partition.DiskId == nil || *share.MountPointData.Partition.DiskId == "" {
-			return errors.WithDetails(ErrorInvalidParameter, "Message", "partition disk id is nil or empty")
+			return nil, errors.WithDetails(ErrorInvalidParameter, "Message", "partition disk id is nil or empty")
 		}
 		if share.MountPointData.Partition.Id == nil || *share.MountPointData.Partition.Id == "" {
-			return errors.WithDetails(ErrorInvalidParameter, "Message", "partition id is nil or empty")
+			return nil, errors.WithDetails(ErrorInvalidParameter, "Message", "partition id is nil or empty")
 		}
 		diskID = *share.MountPointData.Partition.DiskId
 		partitionID = *share.MountPointData.Partition.Id
@@ -289,42 +289,42 @@ func (m *DiskMap) AddMountPointShare(share *SharedResource) error {
 			}
 		}
 		if !found {
-			return errors.WithDetails(ErrorNotFound, "Message", "mount point not found", "Path", path)
+			return nil, errors.WithDetails(ErrorNotFound, "Message", "mount point not found", "Path", path)
 		}
 	}
 
 	d, ok := (*m)[diskID]
 	if !ok {
-		return errors.WithDetails(ErrorNotFound, "Message", "disk not found", "DiskId", diskID)
+		return nil, errors.WithDetails(ErrorNotFound, "Message", "disk not found", "DiskId", diskID)
 	}
 	if d.Partitions == nil {
-		return errors.WithDetails(ErrorNotFound, "Message", "disk has no partitions", "DiskId", diskID)
+		return nil, errors.WithDetails(ErrorNotFound, "Message", "disk has no partitions", "DiskId", diskID)
 	}
 	part, ok := (*d.Partitions)[partitionID]
 	if !ok {
-		return errors.WithDetails(ErrorNotFound, "Message", "partition not found", "DiskId", diskID, "PartitionId", partitionID)
+		return nil, errors.WithDetails(ErrorNotFound, "Message", "partition not found", "DiskId", diskID, "PartitionId", partitionID)
 	}
 	if part.MountPointData == nil {
-		return errors.WithDetails(ErrorNotFound, "Message", "partition has no mount points", "DiskId", diskID, "PartitionId", partitionID)
+		return nil, errors.WithDetails(ErrorNotFound, "Message", "partition has no mount points", "DiskId", diskID, "PartitionId", partitionID)
 	}
 	mp, ok := (*part.MountPointData)[path]
 	if !ok {
-		return errors.WithDetails(ErrorNotFound, "Message", "mount point not found", "DiskId", diskID, "PartitionId", partitionID, "Path", path)
+		return nil, errors.WithDetails(ErrorNotFound, "Message", "mount point not found", "DiskId", diskID, "PartitionId", partitionID, "Path", path)
 	}
 
 	mp.Share = share
 	(*part.MountPointData)[path] = mp
 	(*d.Partitions)[partitionID] = part
 	(*m)[diskID] = d
-	return nil
+	return d, nil
 }
 
 // RemoveMountPointShare removes the Share field from the mount point matching the given path (sets it to nil).
 // Searches all disks and partitions for the mount point.
 // Returns true if the mount point existed and the share was removed, false otherwise.
-func (m *DiskMap) RemoveMountPointShare(path string) bool {
+func (m *DiskMap) RemoveMountPointShare(path string) (bool, *Disk) {
 	if m == nil || *m == nil || path == "" {
-		return false
+		return false, nil
 	}
 	for diskID, d := range *m {
 		if d.Partitions == nil {
@@ -339,11 +339,11 @@ func (m *DiskMap) RemoveMountPointShare(path string) bool {
 				(*part.MountPointData)[path] = mp
 				(*d.Partitions)[partitionID] = part
 				(*m)[diskID] = d
-				return true
+				return true, d
 			}
 		}
 	}
-	return false
+	return false, nil
 }
 
 // AddHDIdleDevice sets the HDIdleDevice for the specified disk.

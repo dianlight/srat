@@ -13,7 +13,6 @@ import (
 	"github.com/dianlight/srat/service"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
-	"github.com/shomali11/util/xhashes"
 	"github.com/stretchr/testify/suite"
 	"github.com/xorcare/pointer"
 	"go.uber.org/fx"
@@ -73,8 +72,8 @@ func (suite *VolumeHandlerSuite) TestListVolumes_ReturnsDiskPartitionMountPointD
 	devicePath := "/dev/sda1"
 	mountPath := "/mnt/data"
 	mountPoint := dto.MountPointData{
-		Path:             mountPath,
-		PathHash:         xhashes.SHA1(mountPath),
+		Path: mountPath,
+		//	PathHash:         xhashes.SHA1(mountPath),
 		DeviceId:         partID,
 		IsMounted:        true,
 		IsWriteSupported: pointer.Bool(true),
@@ -118,7 +117,7 @@ func (suite *VolumeHandlerSuite) TestListVolumes_ReturnsDiskPartitionMountPointD
 	gotMP, ok := (*gotPart.MountPointData)[mountPath]
 	suite.Require().True(ok, "Mount point path missing in map")
 	suite.Equal(mountPath, gotMP.Path)
-	suite.Equal(gotMP.PathHash, xhashes.SHA1(mountPath))
+	//suite.Equal(gotMP.PathHash, xhashes.SHA1(mountPath))
 	suite.Equal(partID, gotMP.DeviceId)
 	suite.True(gotMP.IsMounted, "Mount point should be marked mounted")
 	suite.True(*gotMP.IsWriteSupported, "Mount point should support write")
@@ -134,12 +133,14 @@ func (suite *VolumeHandlerSuite) TestPatchMountPointSettings_UpdatesIsToMountAtS
 	partID := "part1"
 	devicePath := "/dev/sda1"
 	mountPath := "/mnt/data"
-	mountPathHash := xhashes.SHA1(mountPath)
+	root := "/"
+	//	mountPathHash := xhashes.SHA1(mountPath)
 
 	// Initial state: mount point with IsToMountAtStartup = false
 	mountPointInitial := dto.MountPointData{
-		Path:               mountPath,
-		PathHash:           mountPathHash,
+		Path: mountPath,
+		Root: root,
+		//PathHash:           mountPathHash,
 		DeviceId:           partID,
 		IsMounted:          false,
 		IsToMountAtStartup: pointer.Bool(false),
@@ -167,8 +168,8 @@ func (suite *VolumeHandlerSuite) TestPatchMountPointSettings_UpdatesIsToMountAtS
 
 	// Mock GetVolumesData to return initial state, then updated state
 	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(disksInitial).ThenReturn(disksUpdated)
-	mock.When(suite.mockVolumeSvc.PathHashToPath(mountPathHash)).ThenReturn(mountPath, nil)
-	mock.When(suite.mockVolumeSvc.PatchMountPointSettings(mock.Any[string](), mock.Any[dto.MountPointData]())).
+	//mock.When(suite.mockVolumeSvc.PathHashToPath(mountPathHash)).ThenReturn(mountPath, nil)
+	mock.When(suite.mockVolumeSvc.PatchMountPointSettings(mock.Any[string](), mock.Any[string](), mock.Any[dto.MountPointData]())).
 		ThenReturn(&mountPointUpdated, nil)
 
 	_, apiInst := humatest.New(suite.T())
@@ -187,10 +188,11 @@ func (suite *VolumeHandlerSuite) TestPatchMountPointSettings_UpdatesIsToMountAtS
 	// Step 2: Patch IsToMountAtStartup to true
 	patchBody := dto.MountPointData{
 		Path:               mountPath,
+		Root:               root,
 		Type:               "ADDON",
 		IsToMountAtStartup: pointer.Bool(true),
 	}
-	resp2 := apiInst.Patch("/volume/"+mountPathHash+"/settings", patchBody)
+	resp2 := apiInst.Patch("/volume/settings", patchBody)
 	suite.Require().Equal(http.StatusOK, resp2.Code)
 
 	var patchedMP dto.MountPointData
@@ -208,6 +210,6 @@ func (suite *VolumeHandlerSuite) TestPatchMountPointSettings_UpdatesIsToMountAtS
 	suite.True(*mp2.IsToMountAtStartup, "GetVolumesData should reflect patched IsToMountAtStartup=true")
 
 	mock.Verify(suite.mockVolumeSvc, matchers.Times(2)).GetVolumesData()
-	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).PathHashToPath(mountPathHash)
-	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).PatchMountPointSettings(mock.Any[string](), mock.Any[dto.MountPointData]())
+	//mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).PathHashToPath(mountPathHash)
+	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).PatchMountPointSettings(mock.Any[string](), mock.Any[string](), mock.Any[dto.MountPointData]())
 }

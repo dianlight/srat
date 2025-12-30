@@ -30,7 +30,7 @@ import {
 	Type,
 	useGetApiFilesystemsQuery,
 } from "../../../store/sratApi";
-import { decodeEscapeSequence, generateSHA1Hash } from "../utils";
+import { decodeEscapeSequence } from "../utils";
 
 interface xMountPointData extends MountPointData {
 	custom_flags_values: MountFlag[]; // Array of custom flags (enum) for the TextField
@@ -180,7 +180,7 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 
 		const submitData: MountPointData = {
 			path: formData.path,
-			path_hash: await generateSHA1Hash(formData.path),
+			root: "/",
 			fstype: formData.fstype || undefined,
 			flags: formData.flags,
 			custom_flags: custom_flags,

@@ -46,10 +46,10 @@ type VolumeServiceInterface interface {
 	MountVolume(md *dto.MountPointData) errors.E
 	UnmountVolume(id string, force bool) errors.E
 	GetVolumesData() []*dto.Disk
-	PathHashToPath(pathhash string) (string, errors.E)
+	//PathHashToPath(pathhash string) (string, errors.E)
 	GetDevicePathByDeviceID(deviceID string) (string, errors.E)
 	//EjectDisk(diskID string) error
-	PatchMountPointSettings(path string, settingsPatch dto.MountPointData) (*dto.MountPointData, errors.E)
+	PatchMountPointSettings(root string, path string, settingsPatch dto.MountPointData) (*dto.MountPointData, errors.E)
 	// Test only
 	MockSetProcfsGetMounts(f func() ([]*procfs.MountInfo, error))
 	CreateBlockDevice(device string) error
@@ -137,15 +137,29 @@ func NewVolumeService(
 		tlog.DebugContext(ctx, "Share event received update cache volumes", "event_type", se.Type, "share", se.Share)
 		switch se.Type {
 		case events.EventTypes.REMOVE:
-			if !p.disks.RemoveMountPointShare(se.Share.Name) {
+			ok, disk := p.disks.RemoveMountPointShare(se.Share.Name)
+			if !ok {
 				slog.WarnContext(ctx, "Failed to remove share from mount point in cache", "share", se.Share)
+			} else {
+				p.eventBus.EmitDisk(events.DiskEvent{
+					Event: events.Event{
+						Type: events.EventTypes.UPDATE,
+					},
+					Disk: disk,
+				})
 			}
 		case events.EventTypes.ADD, events.EventTypes.UPDATE:
-			err := p.disks.AddMountPointShare(se.Share)
+			disk, err := p.disks.AddMountPointShare(se.Share)
 			if err != nil {
 				slog.WarnContext(ctx, "Failed to add/update share in mount point in cache", "share", se.Share, "err", err)
 				return nil
 			}
+			p.eventBus.EmitDisk(events.DiskEvent{
+				Event: events.Event{
+					Type: events.EventTypes.UPDATE,
+				},
+				Disk: disk,
+			})
 		}
 		return nil
 	})
@@ -220,6 +234,14 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 			"DeviceId", md.DeviceId,
 			"Path", md.Path,
 			"Message", "Mount point path is empty",
+		)
+	}
+
+	if md.Root == "" {
+		return errors.WithDetails(dto.ErrorInvalidParameter,
+			"DeviceId", md.DeviceId,
+			"Root", md.Root,
+			"Message", "Mount point root is empty",
 		)
 	}
 
@@ -339,6 +361,7 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 		)
 	}
 
+	// FIXME: Manage mount with different roots if needed
 	if md.FSType == nil || *md.FSType == "" {
 		// Use TryMount if FSType is not specified
 		mp, errS = ms.tryMountFunc(*md.Partition.DevicePath, md.Path, data, flags, mountFunc)
@@ -397,7 +420,7 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 				"Error", errS.Error(),
 			)
 		}
-		errS = ms.disks.AddMountPoint(*md.Partition.DiskId, *md.Partition.Id, *md)
+		errS = ms.disks.AddOrUpdateMountPoint(*md.Partition.DiskId, *md.Partition.Id, *md)
 		if errS != nil {
 			slog.ErrorContext(ms.ctx, "Failed to add mount point to in-memory cache after successful mount", "device", md.DeviceId, "path", md.Path, "err", errS)
 			return errors.WithDetails(dto.ErrorMountFail,
@@ -420,6 +443,7 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 	return nil
 }
 
+/*
 func (ms *VolumeService) PathHashToPath(pathhash string) (string, errors.E) {
 	dbom_mount_data, err := gorm.G[dbom.MountPointPath](ms.db).Find(ms.ctx)
 	if err != nil {
@@ -432,6 +456,7 @@ func (ms *VolumeService) PathHashToPath(pathhash string) (string, errors.E) {
 	}
 	return "", errors.New("PathHash not found")
 }
+*/
 
 func (ms *VolumeService) UnmountVolume(path string, force bool) errors.E {
 	// Look up mount point data from in-memory cache first
@@ -473,7 +498,7 @@ func (ms *VolumeService) unmountVolume(md *dto.MountPointData, force bool) error
 			Event:      events.Event{Type: events.EventTypes.UPDATE},
 			MountPoint: md,
 		})
-		ms.disks.AddMountPoint(*md.Partition.DiskId, *md.Partition.Id, *md)
+		ms.disks.AddOrUpdateMountPoint(*md.Partition.DiskId, *md.Partition.Id, *md)
 	}
 
 	return nil
@@ -507,10 +532,13 @@ func (self *VolumeService) udevEventHandler() {
 				action := uevent.Action
 				devName, _ := uevent.Env["DEVNAME"]
 				devType, _ := uevent.Env["DEVTYPE"]
-				slog.DebugContext(self.ctx, "Received Udev block event", "action", action, "devname", devName, "devtype", devType)
+				slog.DebugContext(self.ctx, "Received Udev block event", "action", action, "devname", devName, "devtype", devType, "env", uevent.Env)
 
+				// FIXME: Process Right events here sending events to refresh volumes data
 				// Process block device events
-				if action == "add" || action == "remove" || action == "change" {
+				if action == "remove" {
+					self.disks.Remove(devName)
+				} else if action == "add" || action == "change" {
 					slog.InfoContext(self.ctx, "Processing block device event", "action", action, "devname", devName)
 
 					// Get current volumes data
@@ -795,8 +823,6 @@ func (self *VolumeService) getVolumesData() errors.E {
 
 		tlog.TraceContext(self.ctx, "Executing GetVolumesData core logic (singleflight)...")
 
-		ret := self.disks
-
 		// Use mock data in demo mode or when SRAT_MOCK is true
 		/*
 			if self.state.SupervisorURL == "demo" || os.Getenv("SRAT_MOCK") == "true" {
@@ -826,7 +852,7 @@ func (self *VolumeService) getVolumesData() errors.E {
 		// Skip hardware client if it's not initialized
 		if self.hardwareClient == nil {
 			slog.DebugContext(self.ctx, "Hardware client not initialized, continuing with empty disk list")
-			return &ret, nil
+			return self.disks, nil
 		}
 
 		// Get Host Hardware
@@ -836,7 +862,7 @@ func (self *VolumeService) getVolumesData() errors.E {
 		}
 		if hwDisks == nil {
 			slog.DebugContext(self.ctx, "Hardware client returned nil disks, continuing with empty disk list")
-			return &ret, nil
+			return self.disks, nil
 		}
 
 		tlog.DebugContext(self.ctx, "Retrieved hardware disks from hardware client", "disk_count", len(hwDisks))
@@ -850,7 +876,7 @@ func (self *VolumeService) getVolumesData() errors.E {
 
 			currentDisk, updateDisk := self.disks.Get(*disk.Id)
 
-			err := self.disks.Add(&disk)
+			err := self.disks.AddOrUpdate(&disk)
 			if err != nil {
 				slog.WarnContext(self.ctx, "Failed to update existing disk in cache", "disk_id", *disk.Id, "err", err)
 			}
@@ -905,13 +931,13 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 	}
 	// Add missing mount points from DB to in-memory cache
 	for _, md := range mountData {
-		if _, ok := self.disks.GetMountPoint(*e.Partition.DiskId, *e.Partition.Id, md.Path); !ok {
-			err := self.disks.AddMountPoint(*e.Partition.DiskId, *e.Partition.Id, *md)
-			if err != nil {
-				slog.WarnContext(self.ctx, "Failed to add mount point to disk map during partition event handling", "disk_id", *e.Partition.DiskId, "partition_id", *e.Partition.Id, "mount_path", md.Path, "err", err)
-				continue
-			}
+		//		if _, ok := self.disks.GetMountPoint(*e.Partition.DiskId, *e.Partition.Id, md.Path); !ok {
+		err := self.disks.AddOrUpdateMountPoint(*e.Partition.DiskId, *e.Partition.Id, *md)
+		if err != nil {
+			slog.WarnContext(self.ctx, "Failed to add mount point to disk map during partition event handling", "disk_id", *e.Partition.DiskId, "partition_id", *e.Partition.Id, "mount_path", md.Path, "err", err)
+			continue
 		}
+		//		}
 	}
 
 	// Get current mount information from procfs
@@ -936,7 +962,7 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 			mountPoint.CustomFlags.Scan(prtstate.SuperOptions)
 			mountPoint.FSType = pointer.String(prtstate.FSType)
 			mountPoint.Type = "ADDON"
-			err := self.disks.AddMountPoint(*e.Partition.DiskId, *e.Partition.Id, *mountPoint)
+			err := self.disks.AddOrUpdateMountPoint(*e.Partition.DiskId, *e.Partition.Id, *mountPoint)
 			if err != nil {
 				slog.WarnContext(self.ctx, "Failed to add mount point to disk map", "disk_id", *e.Partition.DiskId, "partition_id", *e.Partition.Id, "mount_path", mountPoint.Path, "err", err)
 				continue
@@ -952,10 +978,10 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 			// Found matching mount info for partition
 
 			mountPoint := dto.MountPointData{
-				Path:             prtstate.MountPoint,
-				Root:             prtstate.Root,
-				DeviceId:         *e.Partition.Id,
-				PathHash:         xhashes.SHA1(prtstate.MountPoint),
+				Path:     prtstate.MountPoint,
+				Root:     prtstate.Root,
+				DeviceId: *e.Partition.Id,
+				//PathHash:         xhashes.SHA1(prtstate.MountPoint),
 				IsWriteSupported: pointer.Bool(iw),
 				IsMounted:        true,
 				Flags:            &dto.MountFlags{},
@@ -967,7 +993,7 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 			}
 			mountPoint.Flags.Scan(prtstate.Options)
 			mountPoint.CustomFlags.Scan(prtstate.SuperOptions)
-			err := self.disks.AddMountPoint(*e.Partition.DiskId, *e.Partition.Id, mountPoint)
+			err := self.disks.AddOrUpdateMountPoint(*e.Partition.DiskId, *e.Partition.Id, mountPoint)
 			if err != nil {
 				slog.WarnContext(self.ctx, "Failed to add mount point to disk map", "disk_id", *e.Partition.DiskId, "partition_id", *e.Partition.Id, "mount_path", mountPoint.Path, "err", err)
 				continue
@@ -986,7 +1012,7 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 			slog.DebugContext(ctx, "Marking mount point as unmounted since not found in procfs mounts", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id, "mount_path", mountPoint.Path)
 			mountPoint.IsMounted = false
 			mountPoint.RefreshVersion = self.refreshVersion
-			err := self.disks.AddMountPoint(*e.Partition.DiskId, *e.Partition.Id, *mountPoint)
+			err := self.disks.AddOrUpdateMountPoint(*e.Partition.DiskId, *e.Partition.Id, *mountPoint)
 			if err != nil {
 				slog.WarnContext(self.ctx, "Failed to add mount point to disk map", "disk_id", *e.Partition.DiskId, "partition_id", *e.Partition.Id, "mount_path", mountPoint.Path, "err", err)
 				continue
@@ -1013,6 +1039,10 @@ func (self *VolumeService) handleMountPointEvent(ctx context.Context, e events.M
 		slog.InfoContext(ctx, "New mount point added and not mounted, attempting to mount", "mount_point", e.MountPoint.Path, "device_id", e.MountPoint.DeviceId)
 		err = self.MountVolume(e.MountPoint)
 		if err != nil {
+			if errors.Is(err, dto.ErrorAlreadyMounted) {
+				slog.InfoContext(ctx, "Mount point already mounted during automount attempt", "mount_point", e.MountPoint.Path, "device_id", e.MountPoint.DeviceId)
+				return nil
+			}
 			slog.ErrorContext(ctx, "Failed to mount volume on event", "mount_point", e.MountPoint, "err", err)
 			self.createAutomountFailureNotification(e.MountPoint.Path, e.MountPoint.DeviceId, err)
 		}
@@ -1061,12 +1091,12 @@ func (self *VolumeService) extractMajorMinor(device string) (int, int, error) {
 	return major, minor, nil
 }
 
-func (ms *VolumeService) PatchMountPointSettings(path string, patchData dto.MountPointData) (*dto.MountPointData, errors.E) {
+func (ms *VolumeService) PatchMountPointSettings(root string, path string, patchData dto.MountPointData) (*dto.MountPointData, errors.E) {
 
 	dbMountData, err := gorm.G[dbom.MountPointPath](ms.db).
-		Where(g.MountPointPath.Path.Eq(path)).First(ms.ctx)
+		Where(g.MountPointPath.Root.Eq(root), g.MountPointPath.Path.Eq(path)).First(ms.ctx)
 	if err != nil {
-		return nil, errors.Wrapf(dto.ErrorNotFound, "mount configuration with path %s not found", path)
+		return nil, errors.Wrapf(dto.ErrorNotFound, "mount configuration with root %s and path %s not found", root, path)
 	}
 
 	err = ms.convDto.MountPointDataToMountPointPath(patchData, &dbMountData)
@@ -1093,7 +1123,7 @@ func (ms *VolumeService) PatchMountPointSettings(path string, patchData dto.Moun
 	}
 	// Update cached mount point data
 	if currentDto.Partition != nil && currentDto.Partition.DiskId != nil && currentDto.Partition.Id != nil {
-		err := ms.disks.AddMountPoint(*currentDto.Partition.DiskId, *currentDto.Partition.Id, currentDto)
+		err := ms.disks.AddOrUpdateMountPoint(*currentDto.Partition.DiskId, *currentDto.Partition.Id, currentDto)
 		if err != nil {
 			slog.WarnContext(ms.ctx, "Failed to update mount point in cache", "err", err)
 		}
@@ -1103,7 +1133,7 @@ func (ms *VolumeService) PatchMountPointSettings(path string, patchData dto.Moun
 		if existing, ok := ms.disks.GetMountPointByPath(path); ok {
 			if existing.Partition != nil && existing.Partition.DiskId != nil && existing.Partition.Id != nil {
 				existing.IsToMountAtStartup = currentDto.IsToMountAtStartup
-				err := ms.disks.AddMountPoint(*existing.Partition.DiskId, *existing.Partition.Id, *existing)
+				err := ms.disks.AddOrUpdateMountPoint(*existing.Partition.DiskId, *existing.Partition.Id, *existing)
 				if err != nil {
 					slog.WarnContext(ms.ctx, "Failed to update mount point in fallback cache update", "err", err)
 				}
@@ -1121,7 +1151,7 @@ func (ms *VolumeService) PatchMountPointSettings(path string, patchData dto.Moun
 					}
 					if existing, ok := (*part.MountPointData)[path]; ok {
 						existing.IsToMountAtStartup = currentDto.IsToMountAtStartup
-						err := ms.disks.AddMountPoint(dk, pid, existing)
+						err := ms.disks.AddOrUpdateMountPoint(dk, pid, existing)
 						if err != nil {
 							slog.WarnContext(ms.ctx, "Failed to update mount point in fallback cache update", "err", err)
 						}

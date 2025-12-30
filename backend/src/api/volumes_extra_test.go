@@ -11,7 +11,6 @@ import (
 	"github.com/dianlight/srat/service"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
-	"github.com/shomali11/util/xhashes"
 	"gitlab.com/tozd/go/errors"
 )
 
@@ -19,15 +18,16 @@ import (
 
 func (suite *VolumeHandlerSuite) TestMountVolumeSuccess() {
 	path := "/mnt/testvol"
-	mount := dto.MountPointData{Path: path, Type: "HOST"}
-	mount.PathHash = xhashes.SHA1(mount.Path)
+	root := "/"
+	mount := dto.MountPointData{Path: path, Root: root, Type: "HOST"}
+	//mount.PathHash = xhashes.SHA1(mount.Path)
 
 	mock.When(suite.mockVolumeSvc.MountVolume(mock.Any[*dto.MountPointData]())).ThenReturn(nil)
 
 	_, apiInst := humatest.New(suite.T())
 	suite.handler.RegisterVolumeHandlers(apiInst)
 
-	resp := apiInst.Post(fmt.Sprintf("/volume/%s/mount", mount.PathHash), mount)
+	resp := apiInst.Post("/volume/mount", mount)
 	suite.Require().Equal(http.StatusOK, resp.Code)
 
 	var out dto.MountPointData
@@ -38,32 +38,20 @@ func (suite *VolumeHandlerSuite) TestMountVolumeSuccess() {
 
 }
 
-func (suite *VolumeHandlerSuite) TestMountVolumeInvalidHash() {
-	path := "/mnt/testvol"
-	mount := dto.MountPointData{Path: path, PathHash: "badhash", Type: "HOST"}
-
-	_, apiInst := humatest.New(suite.T())
-	suite.handler.RegisterVolumeHandlers(apiInst)
-
-	resp := apiInst.Post("/volume/badhash/mount", mount)
-	suite.Require().Equal(http.StatusConflict, resp.Code)
-}
-
 func (suite *VolumeHandlerSuite) TestUmountVolumeSuccess() {
 	mountPath := "/mnt/testvol"
-	hash := xhashes.SHA1(mountPath)
 
-	mock.When(suite.mockVolumeSvc.PathHashToPath(mock.Any[string]())).ThenReturn(mountPath, nil)
+	//mock.When(suite.mockVolumeSvc.PathHashToPath(mock.Any[string]())).ThenReturn(mountPath, nil)
 	mock.When(suite.mockShareSvc.SetShareFromPathEnabled(mock.Any[string](), mock.Any[bool]())).ThenReturn(nil, nil)
 	mock.When(suite.mockVolumeSvc.UnmountVolume(mock.Any[string](), mock.Any[bool]())).ThenReturn(nil)
 
 	_, apiInst := humatest.New(suite.T())
 	suite.handler.RegisterVolumeHandlers(apiInst)
 
-	resp := apiInst.Delete(fmt.Sprintf("/volume/%s/mount", hash))
+	resp := apiInst.Delete(fmt.Sprintf("/volume?mount_path=%s", mountPath))
 	suite.Require().Equal(http.StatusNoContent, resp.Code)
 
-	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).PathHashToPath(mock.Any[string]())
+	//mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).PathHashToPath(mock.Any[string]())
 	//mock.Verify(suite.mockShareSvc, matchers.Times(1)).SetShareFromPathEnabled(mock.Any[string](), mock.Any[bool]())
 	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).UnmountVolume(mock.Any[string](), mock.Any[bool]())
 }
@@ -83,31 +71,32 @@ func (suite *VolumeHandlerSuite) TestEjectDiskSuccess() {
 
 func (suite *VolumeHandlerSuite) TestPatchVolumeSettingsSuccess() {
 	mountPath := "/mnt/testvol"
-	hash := xhashes.SHA1(mountPath)
-	inputDto := dto.MountPointData{Path: mountPath, Type: "HOST"}
+	root := "/"
+	inputDto := dto.MountPointData{Path: mountPath, Root: root, Type: "HOST"}
 
 	updated := inputDto
-	mock.When(suite.mockVolumeSvc.PathHashToPath(mock.Any[string]())).ThenReturn(mountPath, nil)
-	mock.When(suite.mockVolumeSvc.PatchMountPointSettings(mock.Any[string](), mock.Any[dto.MountPointData]())).ThenReturn(&updated, nil)
+	//mock.When(suite.mockVolumeSvc.PathHashToPath(mock.Any[string]())).ThenReturn(mountPath, nil)
+	mock.When(suite.mockVolumeSvc.PatchMountPointSettings(mock.Any[string](), mock.Any[string](), mock.Any[dto.MountPointData]())).ThenReturn(&updated, nil)
 
 	_, apiInst := humatest.New(suite.T())
 	suite.handler.RegisterVolumeHandlers(apiInst)
 
-	resp := apiInst.Patch(fmt.Sprintf("/volume/%s/settings", hash), inputDto)
+	resp := apiInst.Patch("/volume/settings", inputDto)
 	suite.Require().Equal(http.StatusOK, resp.Code)
 
 	var out dto.MountPointData
 	suite.NoError(json.Unmarshal(resp.Body.Bytes(), &out))
 	suite.Equal(mountPath, out.Path)
 
-	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).PathHashToPath(mock.Any[string]())
-	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).PatchMountPointSettings(mock.Any[string](), mock.Any[dto.MountPointData]())
+	//mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).PathHashToPath(mock.Any[string]())
+	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).PatchMountPointSettings(mock.Any[string](), mock.Any[string](), mock.Any[dto.MountPointData]())
 }
 
 func (suite *VolumeHandlerSuite) TestMountVolumeErrorBranches() {
 	path := "/mnt/testvol"
-	mount := dto.MountPointData{Path: path, Type: "HOST"}
-	mount.PathHash = xhashes.SHA1(mount.Path)
+	root := "/"
+	mount := dto.MountPointData{Root: root, Path: path, Type: "HOST"}
+	//mount.PathHash = xhashes.SHA1(mount.Path)
 	ctrl := mock.NewMockController(suite.T())
 
 	// Mount fail with details -> 422
@@ -117,7 +106,7 @@ func (suite *VolumeHandlerSuite) TestMountVolumeErrorBranches() {
 	h1 := api.NewVolumeHandler(vmock1, suite.mockShareSvc, &dto.ContextState{})
 	_, apiInst1 := humatest.New(suite.T())
 	h1.RegisterVolumeHandlers(apiInst1)
-	resp := apiInst1.Post(fmt.Sprintf("/volume/%s/mount", mount.PathHash), mount)
+	resp := apiInst1.Post("/volume/mount", mount)
 	suite.Require().Equal(http.StatusUnprocessableEntity, resp.Code)
 
 	// Device not found -> 404
@@ -126,7 +115,7 @@ func (suite *VolumeHandlerSuite) TestMountVolumeErrorBranches() {
 	h2 := api.NewVolumeHandler(vmock2, suite.mockShareSvc, &dto.ContextState{})
 	_, apiInst2 := humatest.New(suite.T())
 	h2.RegisterVolumeHandlers(apiInst2)
-	resp2 := apiInst2.Post(fmt.Sprintf("/volume/%s/mount", mount.PathHash), mount)
+	resp2 := apiInst2.Post("/volume/mount", mount)
 	suite.Require().Equal(http.StatusNotFound, resp2.Code)
 
 	// Invalid parameter -> 406
@@ -135,7 +124,7 @@ func (suite *VolumeHandlerSuite) TestMountVolumeErrorBranches() {
 	h3 := api.NewVolumeHandler(vmock3, suite.mockShareSvc, &dto.ContextState{})
 	_, apiInst3 := humatest.New(suite.T())
 	h3.RegisterVolumeHandlers(apiInst3)
-	resp3 := apiInst3.Post(fmt.Sprintf("/volume/%s/mount", mount.PathHash), mount)
+	resp3 := apiInst3.Post("/volume/mount", mount)
 	suite.Require().Equal(http.StatusNotAcceptable, resp3.Code)
 
 	// Unknown error -> 500
@@ -144,6 +133,6 @@ func (suite *VolumeHandlerSuite) TestMountVolumeErrorBranches() {
 	h4 := api.NewVolumeHandler(vmock4, suite.mockShareSvc, &dto.ContextState{})
 	_, apiInst4 := humatest.New(suite.T())
 	h4.RegisterVolumeHandlers(apiInst4)
-	resp4 := apiInst4.Post(fmt.Sprintf("/volume/%s/mount", mount.PathHash), mount)
+	resp4 := apiInst4.Post("/volume/mount", mount)
 	suite.Require().Equal(http.StatusInternalServerError, resp4.Code)
 }

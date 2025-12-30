@@ -629,8 +629,6 @@ components:
           type: boolean
         path:
           type: string
-        path_hash:
-          type: string
         refresh_version:
           format: int32
           minimum: 0
@@ -732,6 +730,72 @@ components:
           type: boolean
         uuid:
           type: string
+      type: object
+    PatchMountPointData:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/PatchMountPointData.json
+          format: uri
+          readOnly: true
+          type: string
+        custom_flags:
+          items:
+            $ref: "#/components/schemas/MountFlag"
+          type: array
+        device_id:
+          type: string
+        disk_label:
+          type: string
+        disk_serial:
+          type: string
+        disk_size:
+          format: int64
+          minimum: 0
+          type: integer
+        flags:
+          items:
+            $ref: "#/components/schemas/MountFlag"
+          type: array
+        fstype:
+          type: string
+        invalid:
+          type: boolean
+        invalid_error:
+          type: string
+        is_mounted:
+          type: boolean
+        is_to_mount_at_startup:
+          type: boolean
+        is_write_supported:
+          type: boolean
+        path:
+          type: string
+        refresh_version:
+          format: int32
+          minimum: 0
+          type: integer
+        root:
+          type: string
+        time_machine_support:
+          enum:
+            - unsupported
+            - supported
+            - experimental
+            - unknown
+          type: string
+        type:
+          enum:
+            - HOST
+            - ADDON
+          type: string
+        warnings:
+          type: string
+      required:
+        - path
+        - type
       type: object
     PerDiskInfo:
       additionalProperties: false
@@ -1563,8 +1627,8 @@ paths:
     get:
       operationId: get-api-capabilities
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -1950,8 +2014,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2050,8 +2114,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -2300,8 +2364,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
@@ -2525,8 +2589,8 @@ paths:
     get:
       operationId: get-api-hostname
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -2614,8 +2678,8 @@ paths:
     post:
       operationId: create-issue
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
@@ -2715,8 +2779,8 @@ paths:
             format: int64
             minimum: 0
             type: integer
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -2764,8 +2828,8 @@ paths:
     get:
       operationId: list-api-nics
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2850,8 +2914,8 @@ paths:
     put:
       operationId: put-api-samba-apply
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "204":
           description: No Content
@@ -3724,8 +3788,8 @@ paths:
     get:
       operationId: list-api-shares
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3916,8 +3980,8 @@ paths:
     get:
       operationId: get-api-status
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -4002,8 +4066,8 @@ paths:
     get:
       operationId: list-api-telemetry-modes
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -4134,8 +4198,8 @@ paths:
     get:
       operationId: list-api-update-channels
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -4181,8 +4245,8 @@ paths:
     post:
       operationId: post-api-user
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
@@ -4432,13 +4496,13 @@ paths:
       summary: List API users
       tags:
         - user
-  /api/volume/{mount_path_hash}/mount:
+  /api/volume:
     delete:
-      operationId: delete-api-volume-by-mount-path-hash-mount
+      operationId: delete-api-volume
       parameters:
-        - in: path
-          name: mount_path_hash
-          required: true
+        - explode: false
+          in: query
+          name: mount_path
           schema:
             type: string
         - description: Force umount operation
@@ -4481,19 +4545,15 @@ paths:
               $ref: "#/components/headers/X-Span-Id"
             X-Trace-Id:
               $ref: "#/components/headers/X-Trace-Id"
-      summary: Delete API volume by mount path hash mount
+      summary: Delete API volume
       tags:
         - volume
+  /api/volume/mount:
     post:
-      operationId: post-api-volume-by-mount-path-hash-mount
+      operationId: post-api-volume-mount
       parameters:
-        - in: path
-          name: mount_path_hash
-          required: true
-          schema:
-            type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
@@ -4534,25 +4594,20 @@ paths:
               $ref: "#/components/headers/X-Span-Id"
             X-Trace-Id:
               $ref: "#/components/headers/X-Trace-Id"
-      summary: Post API volume by mount path hash mount
+      summary: Post API volume mount
       tags:
         - volume
-  /api/volume/{mount_path_hash}/settings:
+  /api/volume/settings:
     patch:
-      operationId: patch-api-volume-by-mount-path-hash-settings
+      operationId: patch-api-volume-settings
       parameters:
-        - in: path
-          name: mount_path_hash
-          required: true
-          schema:
-            type: string
         - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/MountPointData"
+              $ref: "#/components/schemas/PatchMountPointData"
         required: true
       responses:
         "200":
@@ -4588,7 +4643,7 @@ paths:
               $ref: "#/components/headers/X-Span-Id"
             X-Trace-Id:
               $ref: "#/components/headers/X-Trace-Id"
-      summary: Patch API volume by mount path hash settings
+      summary: Patch API volume settings
       tags:
         - volume
   /api/volumes:

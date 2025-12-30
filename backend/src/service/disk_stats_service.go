@@ -120,7 +120,7 @@ func (s *diskStatsService) updateDiskStats() errors.E {
 	if len(disks) != 0 {
 		for _, disk := range disks {
 			if disk.DevicePath == nil {
-				slog.DebugContext(s.ctx, "Skipping disk with nil device", "diskID", disk.Id)
+				slog.DebugContext(s.ctx, "Skipping disk with nil device", "diskID", *disk.Id)
 				continue
 			}
 			stats, _, err := s.blockdevice.SysBlockDeviceStat(*disk.LegacyDeviceName)

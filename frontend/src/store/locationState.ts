@@ -14,5 +14,5 @@ export interface LocationState {
 	tabId?: TabIDs;
 	shareName?: string;
 	newShareData?: MountPointData;
-	mountPathHashToView?: string;
+	mountPathToView?: string;
 }

@@ -9,7 +9,6 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/tlog"
-	"github.com/shomali11/util/xhashes"
 )
 
 type VolumeHandler struct {
@@ -42,9 +41,9 @@ func NewVolumeHandler(
 // - api: The huma.API instance to register the handlers with.
 func (self *VolumeHandler) RegisterVolumeHandlers(api huma.API) {
 	huma.Get(api, "/volumes", self.ListVolumes, huma.OperationTags("volume"))
-	huma.Post(api, "/volume/{mount_path_hash}/mount", self.MountVolume, huma.OperationTags("volume"))
-	huma.Delete(api, "/volume/{mount_path_hash}/mount", self.UmountVolume, huma.OperationTags("volume"))
-	huma.Patch(api, "/volume/{mount_path_hash}/settings", self.PatchMountPointSettings, huma.OperationTags("volume"))
+	huma.Post(api, "/volume/mount", self.MountVolume, huma.OperationTags("volume"))
+	huma.Delete(api, "/volume", self.UmountVolume, huma.OperationTags("volume"))
+	huma.Patch(api, "/volume/settings", self.PatchMountPointSettings, huma.OperationTags("volume"))
 	// huma.Post(api, "/volume/disk/{disk_id}/eject", self.EjectDiskHandler, huma.OperationTags("volume"))
 }
 
@@ -54,13 +53,12 @@ func (self *VolumeHandler) ListVolumes(ctx context.Context, input *struct{}) (*s
 }
 
 func (self *VolumeHandler) MountVolume(ctx context.Context, input *struct {
-	MountPathHash string             `path:"mount_path_hash"`
-	Body          dto.MountPointData `required:"true"`
+	Body dto.MountPointData `required:"true"`
 }) (*struct{ Body dto.MountPointData }, error) {
 
 	mount_data := input.Body
 
-	if mount_data.Path == "" || mount_data.PathHash != xhashes.SHA1(mount_data.Path) {
+	if mount_data.Path == "" || mount_data.Root == "" {
 		return nil, huma.Error409Conflict("Inconsistent MountPath provided in the request")
 	}
 
@@ -90,15 +88,17 @@ func (self *VolumeHandler) MountVolume(ctx context.Context, input *struct {
 }
 
 func (self *VolumeHandler) UmountVolume(ctx context.Context, input *struct {
-	MountPathHash string `path:"mount_path_hash"`
-	Force         bool   `query:"force" default:"false" doc:"Force umount operation"`
+	MountPath string `query:"mount_path"`
+	Force     bool   `query:"force" default:"false" doc:"Force umount operation"`
 	// Lazy          bool   `query:"lazy" default:"false" doc:"Lazy umount operation"`
 }) (*struct{}, error) {
 
-	mountPath, err := self.vservice.PathHashToPath(input.MountPathHash)
-	if err != nil {
-		return nil, huma.Error404NotFound("No mount point found for the provided mount pathhash", nil)
-	}
+	/*
+		mountPath, err := self.vservice.PathHashToPath(input.MountPathHash)
+		if err != nil {
+			return nil, huma.Error404NotFound("No mount point found for the provided mount pathhash", nil)
+		}
+	*/
 
 	/*
 		// Disable all share services for this mount point
@@ -107,7 +107,7 @@ func (self *VolumeHandler) UmountVolume(ctx context.Context, input *struct {
 			return nil, huma.Error500InternalServerError("Failed to disable share for mount point", errE)
 		}
 	*/
-	err = self.vservice.UnmountVolume(mountPath, input.Force)
+	err := self.vservice.UnmountVolume(input.MountPath, input.Force)
 	if err != nil {
 		return nil, huma.Error406NotAcceptable(fmt.Sprintf("%#v", err.Details()["Detail"]), err)
 	}
@@ -141,21 +141,28 @@ func (self *VolumeHandler) EjectDiskHandler(ctx context.Context, input *struct {
 }
 */
 
+type PatchMountPointData struct {
+	_ struct{} `json:"-" additionalProperties:"true"`
+	dto.MountPointData
+	Share *dto.SharedResource `json:"-" read-only:"true"` // Shares that are mounted on this mount point.
+}
+
 // PatchMountPointSettings handles PATCH requests to partially update the configuration of an existing mount point.
 func (self *VolumeHandler) PatchMountPointSettings(ctx context.Context, input *struct {
-	MountPathHash string             `path:"mount_path_hash"`
-	Body          dto.MountPointData `required:"true"`
+	Body PatchMountPointData `required:"true"`
 }) (*struct{ Body dto.MountPointData }, error) {
 	if self.apiContext.ReadOnlyMode {
 		return nil, huma.Error403Forbidden("Cannot update volume settings in read-only mode")
 	}
 
-	mountPath, errE := self.vservice.PathHashToPath(input.MountPathHash)
-	if errE != nil {
-		return nil, huma.Error404NotFound("No mount point found for the provided mount pathhash", nil)
-	}
+	/*
+		mountPath, errE := self.vservice.PathHashToPath(input.MountPathHash)
+		if errE != nil {
+			return nil, huma.Error404NotFound("No mount point found for the provided mount pathhash", nil)
+		}
+	*/
 
-	updatedDto, serviceErr := self.vservice.PatchMountPointSettings(mountPath, input.Body)
+	updatedDto, serviceErr := self.vservice.PatchMountPointSettings(input.Body.Root, input.Body.Path, input.Body.MountPointData)
 	if serviceErr != nil {
 		if errors.Is(serviceErr, dto.ErrorNotFound) {
 			return nil, huma.Error404NotFound(serviceErr.Error())

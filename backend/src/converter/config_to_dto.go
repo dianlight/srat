@@ -35,7 +35,6 @@ type ConfigToDtoConverter interface {
 	// goverter:map IsToMountAtStartup | truePConst
 	// goverter:map Path DeviceId | mountPathToDeviceId
 	// goverter:map Path Type | pathToType
-	// goverter:map Path PathHash | github.com/shomali11/util/xhashes:SHA1
 	// goverter:map FS FSType
 	// goverter:map Path IsWriteSupported | isWriteSupported
 	// goverter:map FS TimeMachineSupport | TimeMachineSupportFromFS

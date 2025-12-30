@@ -434,38 +434,39 @@ const injectedRtkApi = api
         query: () => ({ url: `/api/users` }),
         providesTags: ["user"],
       }),
-      deleteApiVolumeByMountPathHashMount: build.mutation<
-        DeleteApiVolumeByMountPathHashMountApiResponse,
-        DeleteApiVolumeByMountPathHashMountApiArg
+      deleteApiVolume: build.mutation<
+        DeleteApiVolumeApiResponse,
+        DeleteApiVolumeApiArg
       >({
         query: (queryArg) => ({
-          url: `/api/volume/${queryArg.mountPathHash}/mount`,
+          url: `/api/volume`,
           method: "DELETE",
           params: {
+            mount_path: queryArg.mountPath,
             force: queryArg.force,
           },
         }),
         invalidatesTags: ["volume"],
       }),
-      postApiVolumeByMountPathHashMount: build.mutation<
-        PostApiVolumeByMountPathHashMountApiResponse,
-        PostApiVolumeByMountPathHashMountApiArg
+      postApiVolumeMount: build.mutation<
+        PostApiVolumeMountApiResponse,
+        PostApiVolumeMountApiArg
       >({
         query: (queryArg) => ({
-          url: `/api/volume/${queryArg.mountPathHash}/mount`,
+          url: `/api/volume/mount`,
           method: "POST",
           body: queryArg.mountPointData,
         }),
         invalidatesTags: ["volume"],
       }),
-      patchApiVolumeByMountPathHashSettings: build.mutation<
-        PatchApiVolumeByMountPathHashSettingsApiResponse,
-        PatchApiVolumeByMountPathHashSettingsApiArg
+      patchApiVolumeSettings: build.mutation<
+        PatchApiVolumeSettingsApiResponse,
+        PatchApiVolumeSettingsApiArg
       >({
         query: (queryArg) => ({
-          url: `/api/volume/${queryArg.mountPathHash}/settings`,
+          url: `/api/volume/settings`,
           method: "PATCH",
-          body: queryArg.mountPointData,
+          body: queryArg.patchMountPointData,
         }),
         invalidatesTags: ["volume"],
       }),
@@ -809,25 +810,23 @@ export type GetApiUsersApiResponse =
   | /** status 200 OK */ (User[] | null)
   | /** status default Error */ ErrorModel;
 export type GetApiUsersApiArg = void;
-export type DeleteApiVolumeByMountPathHashMountApiResponse =
-  /** status default Error */ ErrorModel;
-export type DeleteApiVolumeByMountPathHashMountApiArg = {
-  mountPathHash: string;
+export type DeleteApiVolumeApiResponse = /** status default Error */ ErrorModel;
+export type DeleteApiVolumeApiArg = {
+  mountPath?: string;
   /** Force umount operation */
   force?: boolean;
 };
-export type PostApiVolumeByMountPathHashMountApiResponse = /** status 200 OK */
+export type PostApiVolumeMountApiResponse = /** status 200 OK */
   | MountPointData
   | /** status default Error */ ErrorModel;
-export type PostApiVolumeByMountPathHashMountApiArg = {
-  mountPathHash: string;
+export type PostApiVolumeMountApiArg = {
   mountPointData: MountPointData;
 };
-export type PatchApiVolumeByMountPathHashSettingsApiResponse =
-  /** status 200 OK */ MountPointData | /** status default Error */ ErrorModel;
-export type PatchApiVolumeByMountPathHashSettingsApiArg = {
-  mountPathHash: string;
-  mountPointData: MountPointData;
+export type PatchApiVolumeSettingsApiResponse = /** status 200 OK */
+  | MountPointData
+  | /** status default Error */ ErrorModel;
+export type PatchApiVolumeSettingsApiArg = {
+  patchMountPointData: PatchMountPointData;
 };
 export type GetApiVolumesApiResponse =
   | /** status 200 OK */ (Disk[] | null)
@@ -1251,7 +1250,6 @@ export type MountPointData = {
   is_to_mount_at_startup?: boolean;
   is_write_supported?: boolean;
   path: string;
-  path_hash?: string;
   refresh_version?: number;
   root?: string;
   share?: SharedResource;
@@ -1349,6 +1347,28 @@ export type Disk = {
   size?: number;
   smart_info?: SmartInfo;
   vendor?: string;
+};
+export type PatchMountPointData = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  custom_flags?: MountFlag[];
+  device_id?: string;
+  disk_label?: string;
+  disk_serial?: string;
+  disk_size?: number;
+  flags?: MountFlag[];
+  fstype?: string;
+  invalid?: boolean;
+  invalid_error?: string;
+  is_mounted?: boolean;
+  is_to_mount_at_startup?: boolean;
+  is_write_supported?: boolean;
+  path: string;
+  refresh_version?: number;
+  root?: string;
+  time_machine_support?: Time_machine_support;
+  type: Type;
+  warnings?: string;
 };
 export enum Command_type {
   Scsi = "scsi",
@@ -1484,8 +1504,8 @@ export const {
   usePutApiUserByUsernameMutation,
   usePutApiUseradminMutation,
   useGetApiUsersQuery,
-  useDeleteApiVolumeByMountPathHashMountMutation,
-  usePostApiVolumeByMountPathHashMountMutation,
-  usePatchApiVolumeByMountPathHashSettingsMutation,
+  useDeleteApiVolumeMutation,
+  usePostApiVolumeMountMutation,
+  usePatchApiVolumeSettingsMutation,
   useGetApiVolumesQuery,
 } = injectedRtkApi;

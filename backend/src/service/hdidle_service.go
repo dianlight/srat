@@ -332,16 +332,23 @@ func (s *hDIdleService) GetDeviceStatus(path string) (*dto.HDIdleDeviceStatus, e
 
 	name := s.resolveDeviceNameFromPath(path)
 
+	if len(s.diskStats) == 0 {
+		return &dto.HDIdleDeviceStatus{
+			Supported: false,
+			Enabled:   false,
+		}, nil
+	}
+
 	// Find disk state by given name or resolved name
 	for _, ds := range s.diskStats {
-		//slog.DebugContext(s.ctx, "Checking disk", "name", ds.Name, "searchPath", path)
+		tlog.TraceContext(s.ctx, "Checking disk", "name", ds.Name, "searchPath", path, "resolvedName", name)
 		if ds.Name == name {
 			status := ds.HDIdleDeviceStatus
 			return &status, nil
 		}
 	}
 
-	return nil, errors.Errorf("disk %s not found", path)
+	return nil, errors.Errorf("disk %s (%s) not found from %#v", name, path, s.diskStats)
 }
 
 // resolveDeviceNameFromPath resolves symlinks to get the real device name (filename only)

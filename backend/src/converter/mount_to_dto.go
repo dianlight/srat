@@ -26,7 +26,6 @@ type MountToDto interface {
 	// goverter:map Path Root | rootFromPath
 	// goverter:map Path IsInvalid | isPathDirNotExists
 	// goverter:map Path IsMounted | github.com/dianlight/srat/internal/osutil:IsMounted
-	// goverter:map Path PathHash | github.com/shomali11/util/xhashes:SHA1
 	// goverter:map Path IsWriteSupported | isWriteSupported
 	// goverter:map Device Partition | partitionFromDevice
 	// goverter:map FSType TimeMachineSupport | TimeMachineSupportFromFS

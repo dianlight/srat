@@ -72,14 +72,6 @@ export function Shares() {
 			return false; // Disable if data is loading or not available
 		}
 
-		const usedPathHashes = new Set(
-			Object.values(shares)
-				.map((share) => share.mount_point_data?.path_hash)
-				.filter(
-					(hash): hash is string => typeof hash === "string" && hash !== "",
-				),
-		);
-
 		for (const disk of volumes) {
 			const partitions = Object.values(disk.partitions || {});
 			if (partitions.length > 0) {
@@ -89,8 +81,7 @@ export function Shares() {
 						if (
 							mpd?.is_mounted &&
 							mpd.path &&
-							mpd.path_hash &&
-							!usedPathHashes.has(mpd.path_hash)
+							mpd.root
 						) {
 							return true; // Found an available, unshared, mounted mount point
 						}
@@ -213,6 +204,17 @@ export function Shares() {
 			if (prev.includes(groupId)) return prev;
 			return [...prev, groupId];
 		});
+	};
+
+	const handleViewVolumeSettings = (share: SharedResource) => {
+		if (share.mount_point_data?.path) {
+			navigate("/", {
+				state: {
+					tabId: TabIDs.VOLUMES,
+					mountPathToView: share.mount_point_data.path,
+				} as LocationState,
+			});
+		}
 	};
 
 	function onSubmitDeleteShare(shareName: string, shareData: SharedResource) {
@@ -342,7 +344,7 @@ export function Shares() {
 			{/* Main Layout Grid */}
 			<Grid container spacing={2} sx={{ minHeight: "calc(100vh - 200px)" }} data-tutor={`reactour__tab${TabIDs.SHARES}__step0`}>
 				{/* Left Panel - Tree View */}
-				<Grid size={{ xs: 12, md: 4, lg: 3 }}>
+				<Grid size={{ xs: 12, sm: 5, md: 4, lg: 3 }}>
 					<Paper sx={{ height: "100%", p: 1 }} data-tutor={`reactour__tab${TabIDs.SHARES}__step3`}>
 						<Stack
 							direction="row"
@@ -393,7 +395,8 @@ export function Shares() {
 						<SharesTreeView
 							shares={shares}
 							selectedShareKey={selectedShareKey}
-							onShareSelect={handleShareSelect}
+							onShareSelect={handleShareSelect} 
+							onViewVolumeSettings={handleViewVolumeSettings} 
 							protectedMode={evdata?.hello?.protected_mode === true}
 							readOnly={evdata?.hello?.read_only === true}
 							expandedItems={expandedGroups}
@@ -403,7 +406,7 @@ export function Shares() {
 				</Grid>
 
 				{/* Right Panel - Details and Edit Form */}
-				<Grid size={{ xs: 12, md: 8, lg: 9 }}>
+				<Grid size={{ xs: 12, sm: 7, md: 8, lg: 9 }}>
 					<Paper sx={{ height: "100%", overflow: "hidden" }}>
 						{selectedShare && selectedShareKey ? (
 							<ShareDetailsPanel

@@ -3,16 +3,14 @@ import FolderSpecialIcon from "@mui/icons-material/FolderSpecial";
 import StorageIcon from "@mui/icons-material/Storage";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import EditIcon from "@mui/icons-material/Edit";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import BlockIcon from "@mui/icons-material/Block";
 import {
     Box,
     Chip,
-    IconButton,
     Tooltip,
     Typography,
     useTheme,
 } from "@mui/material";
+import { ShareActions } from "./ShareActions";
 import { SimpleTreeView } from "@mui/x-tree-view/SimpleTreeView";
 import { TreeItem } from "@mui/x-tree-view/TreeItem";
 import { useConfirm } from "material-ui-confirm";
@@ -39,6 +37,7 @@ interface SharesTreeViewProps {
     shares?: Record<string, SharedResource> | SharedResource[];
     selectedShareKey?: string;
     onShareSelect: (shareKey: string, share: SharedResource) => void;
+    onViewVolumeSettings?: (share: SharedResource) => void;
     protectedMode?: boolean;
     readOnly?: boolean;
     // Controlled expanded items and change callback (required)
@@ -51,6 +50,7 @@ export function SharesTreeView({
     shares,
     selectedShareKey,
     onShareSelect,
+    onViewVolumeSettings,
     protectedMode = false,
     readOnly = false,
     expandedItems,
@@ -104,6 +104,41 @@ export function SharesTreeView({
         return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
     }, [shares, protectedMode]);
 
+    const handleEnable = async (
+        shareKey: string,
+        shareProps: SharedResource,
+    ) => {
+        const shareName = shareProps.name || "";
+        try {
+            await enableShare({ shareName });
+        } catch (error) {
+            dispatch(addMessage(JSON.stringify(error)));
+        }
+    };
+
+    const handleDisable = async (
+        shareKey: string,
+        shareProps: SharedResource,
+    ) => {
+        const shareName = shareProps.name || "";
+        try {
+            await confirm({
+                title: `Disable ${shareName}?`,
+                description:
+                    "If you disable this share, all of its configurations will be retained.",
+                acknowledgement:
+                    "I understand that disabling the share will retain its configurations but prevent access to it.",
+            });
+
+            await disableShare({ shareName });
+        } catch (error: any) {
+            if (error.confirmed === false) {
+                return; // User cancelled
+            }
+            dispatch(addMessage(JSON.stringify(error)));
+        }
+    };
+/*
     const handleToggleShare = async (
         event: React.MouseEvent<HTMLButtonElement>,
         shareKey: string,
@@ -111,36 +146,14 @@ export function SharesTreeView({
     ) => {
         event.stopPropagation();
         const isEnabled = !shareProps.disabled;
-        const shareName = shareProps.name || "";
 
         if (isEnabled) {
-            // Currently enabled, disable it
-            try {
-                await confirm({
-                    title: `Disable ${shareName}?`,
-                    description:
-                        "If you disable this share, all of its configurations will be retained.",
-                    acknowledgement:
-                        "I understand that disabling the share will retain its configurations but prevent access to it.",
-                });
-
-                await disableShare({ shareName });
-            } catch (error: any) {
-                if (error.confirmed === false) {
-                    return; // User cancelled
-                }
-                dispatch(addMessage(JSON.stringify(error)));
-            }
+            await handleDisable(shareKey, shareProps);
         } else {
-            // Currently disabled, enable it
-            try {
-                await enableShare({ shareName });
-            } catch (error) {
-                dispatch(addMessage(JSON.stringify(error)));
-            }
+            await handleEnable(shareKey, shareProps);
         }
     };
-
+*/
     const renderShareItem = (shareKey: string, shareProps: SharedResource) => {
         const isSelected = selectedShareKey === shareKey;
         const isDisabled = shareProps.disabled;
@@ -231,24 +244,15 @@ export function SharesTreeView({
                             </Box>
                         </Box>
 
-                        {!readOnly && shareProps.mount_point_data && (
-                            <Tooltip title={isDisabled ? "Enable share" : "Disable share"}>
-                                <IconButton
-                                    aria-label={isDisabled ? "enable share" : "disable share"}
-                                    data-testid={`share-toggle-${shareKey}`}
-                                    size="small"
-                                    onClick={(e) => handleToggleShare(e, shareKey, shareProps)}
-                                    sx={{
-                                        color: isDisabled ? "action.disabled" : "success.main",
-                                        "&:hover": {
-                                            backgroundColor: isDisabled ? "success.light" : "error.light",
-                                            color: isDisabled ? "success.main" : "error.main",
-                                        },
-                                    }}
-                                >
-                                    {isDisabled ? <BlockIcon /> : <CheckCircleIcon />}
-                                </IconButton>
-                            </Tooltip>
+                        {!readOnly && (
+                            <ShareActions
+                                shareKey={shareKey}
+                                shareProps={shareProps}
+                                protected_mode={protectedMode}
+                                onViewVolumeSettings={(share) => onViewVolumeSettings?.(share)}
+                                onEnable={handleEnable}
+                                onDisable={handleDisable}
+                            />
                         )}
                     </Box>
                 }
@@ -297,4 +301,4 @@ export function SharesTreeView({
             </SimpleTreeView>
         </Box>
     );
-}
+} 

@@ -102,11 +102,13 @@ func NewSupervisorService(lc fx.Lifecycle, in SupervisorServiceParams) Superviso
 				return err
 			}
 		}
-		err := p.NetworkMountAllShares(ctx)
-		if err != nil {
-			slog.ErrorContext(ctx, "Error mounting HA storage shares", "err", err)
-			return err
-		}
+		/*
+			err := p.NetworkMountAllShares(ctx)
+			if err != nil {
+				slog.ErrorContext(ctx, "Error mounting HA storage shares", "err", err)
+				return err
+			}
+		*/
 		return nil
 	})
 

@@ -53,6 +53,7 @@ interface SmartStatusPanelProps {
     isReadOnlyMode?: boolean;
     isExpanded?: boolean;
     onSetExpanded?: (expanded: boolean) => void;
+    onStartTest?: (testType: SmartTestType) => void;
 }
 
 export function SmartStatusPanel({
@@ -64,6 +65,7 @@ export function SmartStatusPanel({
     isReadOnlyMode = false,
     isExpanded: initialExpanded = true,
     onSetExpanded,
+    onStartTest
 }: SmartStatusPanelProps) {
     const [smartExpanded, setSmartExpanded] = useState(initialExpanded);
     const [showStartTestDialog, setShowStartTestDialog] = useState(false);
