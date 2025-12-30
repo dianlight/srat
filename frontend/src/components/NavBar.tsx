@@ -1,3 +1,5 @@
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import DataObjectIcon from "@mui/icons-material/DataObject";
 import { Download } from "@mui/icons-material";
 import AutoModeIcon from "@mui/icons-material/AutoMode";
 import BugReportIcon from "@mui/icons-material/BugReport"; // Import the BugReportIcon
@@ -16,12 +18,17 @@ import UndoIcon from "@mui/icons-material/Undo";
 import {
 	CircularProgress,
 	type CircularProgressProps,
+	Dialog,
+	DialogTitle,
+	DialogContent,
 	List,
 	ListItem,
 	ListItemText,
+	ListItemSecondaryAction,
 	ListSubheader,
 	Menu,
 	MenuItem,
+	Switch,
 	Tab,
 	Tabs,
 	useMediaQuery,
@@ -37,7 +44,7 @@ import Toolbar from "@mui/material/Toolbar";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useConfirm } from "material-ui-confirm";
-import { useEffect, useMemo, useState } from "react"; // Added useMemo
+import { useEffect, useMemo, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useLocation } from "react-router";
 import { toast } from "react-toastify";
@@ -249,6 +256,67 @@ export function NavBar(props: {
 	const [isLogoHovered, setIsLogoHovered] = useState(false);
 	const matches = useMediaQuery(theme.breakpoints.up("sm"));
 	const [anchorElNav, setAnchorElNav] = useState<null | HTMLElement>(null);
+
+	// Track last 3 SSE messages for debug display
+	interface SSEMessage {
+		timestamp: number;
+		eventType: string;
+		data: unknown;
+	}
+	const [lastMessages, setLastMessages] = useState<SSEMessage[]>([]);
+	const prevEvdataRef = useRef<typeof evdata>(undefined);
+	const [jsonDialogOpen, setJsonDialogOpen] = useState(false);
+	const [selectedMessageJson, setSelectedMessageJson] = useState<string>("");
+	const [ignoreHeartbeat, setIgnoreHeartbeat] = useState(true);
+
+	// Filtered messages based on ignoreHeartbeat setting
+	const filteredMessages = useMemo(() => {
+		const filtered = ignoreHeartbeat
+			? lastMessages.filter((msg) => msg.eventType !== "heartbeat")
+			: lastMessages;
+		return filtered.slice(0, 3);
+	}, [lastMessages, ignoreHeartbeat]);
+
+	// Track incoming SSE messages
+	useEffect(() => {
+		if (evdata && evdata !== prevEvdataRef.current) {
+			const changes: SSEMessage[] = [];
+			const prevData = prevEvdataRef.current;
+			
+			// Compare each event type to find what changed
+			for (const key of Object.keys(evdata) as Array<keyof typeof evdata>) {
+				if (!prevData || JSON.stringify(evdata[key]) !== JSON.stringify(prevData[key])) {
+					if (evdata[key] !== undefined) {
+						changes.push({
+							timestamp: Date.now(),
+							eventType: key,
+							data: evdata[key],
+						});
+					}
+				}
+			}
+			
+			if (changes.length > 0) {
+				// Store more messages to allow filtering while still showing 3
+				setLastMessages((prev) => [...changes, ...prev].slice(0, 30));
+			}
+			prevEvdataRef.current = evdata;
+		}
+	}, [evdata]);
+
+	const handleShowJson = (message: SSEMessage) => {
+		setSelectedMessageJson(JSON.stringify(message, null, 2));
+		setJsonDialogOpen(true);
+	};
+
+	const handleCopyToClipboard = async (message: SSEMessage) => {
+		try {
+			await navigator.clipboard.writeText(JSON.stringify(message, null, 2));
+			toast.success("Copied to clipboard!");
+		} catch (err) {
+			toast.error("Failed to copy to clipboard");
+		}
+	};
 
 	if (!mode) {
 		return null;
@@ -463,7 +531,59 @@ export function NavBar(props: {
 													primary="Protected Mode"
 													secondary={evdata?.hello?.protected_mode === true ? "Enabled" : "Disabled"}
 												/>
+
 											</ListItem>
+											<ListSubheader sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+												<span>SSE Messages {ignoreHeartbeat ? "(!heartbeat)" : ""}</span>
+												<Tooltip title="Heartbeat messages are sent frequently (~1/sec). Enable to filter them out and see other event types." arrow>
+													<Switch
+														size="small"
+														checked={ignoreHeartbeat}
+														onChange={(e) => {
+															e.stopPropagation();
+															setIgnoreHeartbeat(e.target.checked);
+														}}
+													/>
+												</Tooltip>
+											</ListSubheader>
+											{filteredMessages.length === 0 ? (
+												<ListItem>
+													<ListItemText primary="No messages yet" secondary="Waiting for SSE events..." />
+												</ListItem>
+											) : (
+												filteredMessages.map((msg, idx) => (
+													<ListItem key={`${msg.timestamp}-${idx}`} sx={{ pr: 8 }}>
+														<ListItemText
+															primary={msg.eventType}
+															secondary={new Date(msg.timestamp).toLocaleTimeString()}
+														/>
+														<ListItemSecondaryAction>
+															<IconButton
+																edge="end"
+																size="small"
+																onClick={(e) => {
+																	e.stopPropagation();
+																	handleShowJson(msg);
+																}}
+																sx={{ color: "primary.main" }}
+															>
+																<DataObjectIcon fontSize="small" />
+															</IconButton>
+															<IconButton
+																edge="end"
+																size="small"
+																onClick={(e) => {
+																	e.stopPropagation();
+																	handleCopyToClipboard(msg);
+																}}
+																sx={{ color: "primary.main", ml: 0.5 }}
+															>
+																<ContentCopyIcon fontSize="small" />
+															</IconButton>
+														</ListItemSecondaryAction>
+													</ListItem>
+												))
+											)}
 										</List>
 									} arrow>
 										<BugReportIcon sx={{ color: "orange" }} />
@@ -580,6 +700,43 @@ export function NavBar(props: {
 					</Toolbar>
 				</Container>
 			</AppBar>
+			{/* JSON Dialog for SSE message display */}
+			<Dialog
+				open={jsonDialogOpen}
+				onClose={() => setJsonDialogOpen(false)}
+				maxWidth="md"
+				fullWidth
+			>
+				<DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+					SSE Message JSON
+					<IconButton
+						size="small"
+						onClick={() => {
+							navigator.clipboard.writeText(selectedMessageJson);
+							toast.success("Copied to clipboard!");
+						}}
+					>
+						<ContentCopyIcon />
+					</IconButton>
+				</DialogTitle>
+				<DialogContent>
+					<Box
+						component="pre"
+						sx={{
+							backgroundColor: "grey.900",
+							color: "grey.100",
+							p: 2,
+							borderRadius: 1,
+							overflow: "auto",
+							fontSize: "0.875rem",
+							fontFamily: "monospace",
+							maxHeight: "60vh",
+						}}
+					>
+						{selectedMessageJson}
+					</Box>
+				</DialogContent>
+			</Dialog>
 			{props.bodyRef.current &&
 				createPortal(
 					visibleTabs.map((tab) => (
