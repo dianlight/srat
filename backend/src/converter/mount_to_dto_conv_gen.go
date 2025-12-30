@@ -6,7 +6,6 @@ package converter
 import (
 	dto "github.com/dianlight/srat/dto"
 	osutil "github.com/dianlight/srat/internal/osutil"
-	xhashes "github.com/shomali11/util/xhashes"
 	mount "github.com/u-root/u-root/pkg/mount"
 )
 
@@ -25,9 +24,6 @@ func (c *MountToDtoImpl) MountToMountPointData(source *mount.MountPoint, target 
 		}
 		if source.Path != "" {
 			target.Path = source.Path
-		}
-		if source.Path != "" {
-			target.PathHash = xhashes.SHA1(source.Path)
 		}
 		if source.Path != "" {
 			target.Root = rootFromPath(source.Path, context)

@@ -7,7 +7,6 @@ import (
 	config "github.com/dianlight/srat/config"
 	dto "github.com/dianlight/srat/dto"
 	osutil "github.com/dianlight/srat/internal/osutil"
-	xhashes "github.com/shomali11/util/xhashes"
 )
 
 type ConfigToDtoConverterImpl struct{}
@@ -52,7 +51,6 @@ func (c *ConfigToDtoConverterImpl) ShareToMountPointData(source config.Share) (*
 	dtoMountPointData.DiskSerial = DiskSerialFromPath(source.Path)
 	dtoMountPointData.DiskSize = DiskSizeFromPath(source.Path)
 	dtoMountPointData.Path = source.Path
-	dtoMountPointData.PathHash = xhashes.SHA1(source.Path)
 	dtoMountPointData.Root = source.Path
 	dtoMountPointData.Type = pathToType(source.Path)
 	pString := source.FS

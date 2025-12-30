@@ -16,10 +16,10 @@ import (
 )
 
 type HomeAssistantServiceInterface interface {
-	SendDiskEntities(disks *[]dto.Disk) error
+	SendDiskEntities(disks *[]*dto.Disk) error
 	SendSambaStatusEntity(status *dto.SambaStatus) error
 	SendSambaProcessStatusEntity(status *dto.SambaProcessStatus) error
-	SendVolumeStatusEntity(data *[]dto.Disk) error
+	SendVolumeStatusEntity(data *[]*dto.Disk) error
 	SendDiskHealthEntities(diskHealth *dto.DiskHealth) error
 	CreatePersistentNotification(notificationID, title, message string) error
 	DismissPersistentNotification(notificationID string) error
@@ -52,7 +52,7 @@ func NewHomeAssistantService(params HomeAssistantServiceParams) HomeAssistantSer
 	}
 }
 
-func (s *HomeAssistantService) SendDiskEntities(disks *[]dto.Disk) error {
+func (s *HomeAssistantService) SendDiskEntities(disks *[]*dto.Disk) error {
 	use, _ := s.propRepo.Value("ExportStatsToHA", false)
 	if use == nil || !use.(bool) {
 		return nil
@@ -64,13 +64,13 @@ func (s *HomeAssistantService) SendDiskEntities(disks *[]dto.Disk) error {
 	}
 
 	for _, disk := range *disks {
-		if err := s.sendDiskEntity(disk); err != nil {
+		if err := s.sendDiskEntity(*disk); err != nil {
 			slog.WarnContext(s.ctx, "Failed to send disk entity to Home Assistant", "disk", disk.Id, "error", err)
 		}
 
 		if disk.Partitions != nil {
 			for _, partition := range *disk.Partitions {
-				if err := s.sendPartitionEntity(partition, disk); err != nil {
+				if err := s.sendPartitionEntity(partition, *disk); err != nil {
 					slog.WarnContext(s.ctx, "Failed to send partition entity to Home Assistant", "partition", partition.Id, "error", err)
 				}
 			}
@@ -193,7 +193,7 @@ func (s *HomeAssistantService) SendSambaProcessStatusEntity(status *dto.SambaPro
 	return nil
 }
 
-func (s *HomeAssistantService) SendVolumeStatusEntity(data *[]dto.Disk) error {
+func (s *HomeAssistantService) SendVolumeStatusEntity(data *[]*dto.Disk) error {
 	use, _ := s.propRepo.Value("ExportStatsToHA", false)
 	if use == nil || !use.(bool) {
 		return nil

@@ -18,9 +18,9 @@ import {
 	type Disk,
 	type MountPointData,
 	type Partition,
-	useDeleteApiVolumeByMountPathHashMountMutation,
-	usePatchApiVolumeByMountPathHashSettingsMutation,
-	usePostApiVolumeByMountPathHashMountMutation,
+	useDeleteApiVolumeMutation,
+	usePatchApiVolumeSettingsMutation,
+	usePostApiVolumeMountMutation,
 } from "../../store/sratApi";
 import { VolumesTreeView, VolumeDetailsPanel, VolumeMountDialog } from "./components";
 import { decodeEscapeSequence } from "./utils";
@@ -55,9 +55,9 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 		return [];
 	});
 	const confirm = useConfirm();
-	const [mountVolume, _mountVolumeResult] = usePostApiVolumeByMountPathHashMountMutation();
-	const [umountVolume, _umountVolumeResult] = useDeleteApiVolumeByMountPathHashMountMutation();
-	const [patchMountSettings] = usePatchApiVolumeByMountPathHashSettingsMutation();
+	const [mountVolume, _mountVolumeResult] = usePostApiVolumeMountMutation();
+	const [umountVolume, _umountVolumeResult] = useDeleteApiVolumeMutation();
+	const [patchMountSettings] = usePatchApiVolumeSettingsMutation();
 
 	// Handle disk selection (top-level)
 	const handleDiskSelect = (disk: Disk) => {
@@ -123,10 +123,10 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 	// Effect to handle navigation state for opening mount settings for a specific volume
 	useEffect(() => {
 		const state = location.state as LocationState | undefined;
-		const mountPathHashFromState = state?.mountPathHashToView;
+		const mountPathFromState = state?.mountPathToView;
 
 		if (
-			mountPathHashFromState &&
+			mountPathFromState &&
 			Array.isArray(disks) &&
 			disks.length > 0
 		) {
@@ -140,7 +140,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 						const mpds = Object.values(partition.mount_point_data || {});
 						if (
 							mpds.some(
-								(mpd) => mpd.path_hash === mountPathHashFromState,
+								(mpd) => mpd.path === mountPathFromState,
 							)
 						) {
 							foundPartition = partition;
@@ -157,7 +157,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 				navigate(location.pathname, { replace: true, state: {} });
 			} else {
 				console.warn(
-					`Volume with mountPathHash ${mountPathHashFromState} not found.`,
+					`Volume with mountPathHash ${mountPathFromState} not found.`,
 				);
 				navigate(location.pathname, { replace: true, state: {} });
 			}
@@ -207,7 +207,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 	function onSubmitMountVolume(data?: MountPointData) {
 		console.trace("Mount Request Data:", data);
 
-		if (!selectedPartition || !data || !data.path) {
+		if (!selectedPartition || !data || !data.path || !data.root) {
 			toast.error("Cannot mount: Invalid selection or missing data.");
 			console.error("Mount validation failed:", {
 				selectedPartition,
@@ -222,8 +222,10 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 			device_id: selectedPartition.id,
 		};
 
+		// Normalize root path to avoid double slashes when root is "/"
+		const normalizedRoot = data.root === "/" ? "" : data.root;
+
 		mountVolume({
-			mountPathHash: data.path_hash || "",
 			mountPointData: submitData,
 		})
 			.unwrap()
@@ -311,7 +313,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 					mountData.path,
 				);
 				umountVolume({
-					mountPathHash: mountData.path_hash || "", // Use the extracted path
+					mountPath: mountData.path,
 					force: force,
 				})
 					.unwrap()
@@ -341,8 +343,8 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 		if (evdata?.hello?.read_only) return;
 
 		for (const [path, mountData] of Object.entries(partition.mount_point_data || {})) {
-			if (!mountData.path_hash) {
-				toast.error(`Cannot toggle automount: ${path} Missing hash point data.`);
+			if (!mountData.path) {
+				toast.error(`Cannot toggle automount: ${path} Missing point data.`);
 				console.error("Missing mount data for mount point:", mountData);
 				continue;
 			}
@@ -351,11 +353,10 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 			const actionText = newAutomountState ? "enable" : "disable";
 			const partitionName = decodeEscapeSequence(partition.name || "this volume");
 
-			console.log(partition);
+			console.log(partition, mountData, "Toggling automount to", newAutomountState);
 
 			patchMountSettings({
-				mountPathHash: mountData.path_hash,
-				mountPointData: {
+				patchMountPointData: {
 					...mountData,
 					is_to_mount_at_startup: newAutomountState,
 				},
@@ -458,7 +459,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 			{/* Main Layout Grid */}
 			<Grid container spacing={2} sx={{ minHeight: "calc(100vh - 200px)" }}>
 				{/* Left Panel - Tree View */}
-				<Grid size={{ xs: 12, md: 4, lg: 3 }}>
+				<Grid size={{ xs: 12, sm: 5, md: 4, lg: 3 }}>
 					<Paper sx={{ height: "100%", p: 1 }} data-tutor={`reactour__tab${TabIDs.VOLUMES}__step3`}>
 						<Stack
 							direction="row"
@@ -518,12 +519,12 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 				</Grid>
 
 				{/* Right Panel - Details */}
-				<Grid size={{ xs: 12, md: 8, lg: 9 }}>
+				<Grid size={{ xs: 12, sm: 7, md: 8, lg: 9 }}>
 					<Paper sx={{ height: "100%", overflow: "hidden" }}>
 						<VolumeDetailsPanel
 							disk={selectedDisk}
 							partition={selectedPartition}
-							//share={selectedShare}
+						//share={selectedShare}
 						/>
 					</Paper>
 				</Grid>

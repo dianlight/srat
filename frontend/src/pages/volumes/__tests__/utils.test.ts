@@ -46,62 +46,13 @@ describe("volumes utils", () => {
 		expect(result).toBe("testA");
 	});
 
-	it("generateSHA1Hash generates hash from string", async () => {
-		const { generateSHA1Hash } = await import("../utils");
 
-		const hash = await generateSHA1Hash("test-string");
-		expect(hash).toBeTruthy();
-		expect(typeof hash).toBe("string");
-		expect(hash.length).toBeGreaterThan(0);
-	});
 
-	it("generateSHA1Hash generates consistent hashes", async () => {
-		const { generateSHA1Hash } = await import("../utils");
 
-		const hash1 = await generateSHA1Hash("test");
-		const hash2 = await generateSHA1Hash("test");
-		expect(hash1).toBe(hash2);
-	});
 
-	it("generateSHA1Hash generates different hashes for different inputs", async () => {
-		const { generateSHA1Hash } = await import("../utils");
 
-		const hash1 = await generateSHA1Hash("test1");
-		const hash2 = await generateSHA1Hash("test2");
-		expect(hash1).not.toBe(hash2);
-	});
 
-	it("generateSHA1Hash handles empty string", async () => {
-		const { generateSHA1Hash } = await import("../utils");
 
-		const hash = await generateSHA1Hash("");
-		expect(hash).toBeTruthy();
-		expect(typeof hash).toBe("string");
-	});
 
-	it("generateSHA1Hash handles special characters", async () => {
-		const { generateSHA1Hash } = await import("../utils");
 
-		const hash = await generateSHA1Hash("test@#$%^&*()");
-		expect(hash).toBeTruthy();
-		expect(typeof hash).toBe("string");
-	});
-
-	it("generateSHA1Hash handles unicode characters", async () => {
-		const { generateSHA1Hash } = await import("../utils");
-
-		const hash = await generateSHA1Hash("test-ñ-unicode-测试");
-		expect(hash).toBeTruthy();
-		expect(typeof hash).toBe("string");
-	});
-
-	it("generateSHA1Hash produces valid SHA1 format", async () => {
-		const { generateSHA1Hash } = await import("../utils");
-
-		const hash = await generateSHA1Hash("test");
-		// SHA1 hash should be 40 characters long (160 bits in hex)
-		expect(hash.length).toBe(40);
-		// Should only contain hex characters
-		expect(/^[a-f0-9]+$/.test(hash)).toBe(true);
-	});
 });

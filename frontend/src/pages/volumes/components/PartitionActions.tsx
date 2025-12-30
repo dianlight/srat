@@ -23,7 +23,8 @@ import {
 } from "@mui/material";
 import { useState } from "react";
 import { FontAwesomeSvgIcon } from "../../../components/FontAwesomeSvgIcon";
-import { type Partition } from "../../../store/sratApi";
+import { type MountPointData,
+	type Partition } from "../../../store/sratApi";
 
 interface PartitionActionsProps {
 	partition: Partition;
@@ -45,7 +46,7 @@ export function PartitionActions({
 	onGoToShare,
 }: PartitionActionsProps) {
 	const theme = useTheme();
-	const isSmallScreen = useMediaQuery(theme.breakpoints.down("sm"));
+	const isSmallScreen = useMediaQuery(theme.breakpoints.between("sm", "md"));
 	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
 	const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -65,19 +66,22 @@ export function PartitionActions({
 	if (
 		protected_mode ||
 		partition.name?.startsWith("hassos-") ||
-		Object.values(partition.host_mount_point_data || {}).length > 0
+		Object.keys(partition.host_mount_point_data || {}).length > 0
 	) {
 		return null;
 	}
 
-	const mpds = Object.values(partition.mount_point_data || {});
-	const mountPointCount = mpds.length;
+	//const mpds = Object.values(partition.mount_point_data || {});
+	//const mountPointCount = mpds.length;
 
 	// Determine action items based on mount point rules
 	const actionItems = [];
+	const keys = Object.keys(partition.mount_point_data || {});
+
+	//console.log("PartitionActions partition:", partition, "mount_point_data keys:", keys);
 
 	// Rule 1: No mountpoint --> mount action
-	if (mountPointCount === 0) {
+	if (!partition.mount_point_data || keys.length === 0) {
 		actionItems.push({
 			key: "mount",
 			title: "Mount Partition",
@@ -85,16 +89,13 @@ export function PartitionActions({
 			onClick: () => onMount(partition),
 		});
 	}
-	// Rule 2: More than one mountpoint --> no actions
-	else if (mountPointCount > 1) {
-		return null;
-	}
 	// Single mountpoint: apply conditional rules
-	else {
-		const mpd = mpds[0];
+	else if (keys.length === 1 && keys[0] && partition.mount_point_data[keys[0]]) {
+		const mpd = partition.mount_point_data[keys[0]] as MountPointData;
 		const isMounted = mpd?.is_mounted;
 		const hasEnabledShare = mpd?.share && mpd?.share.disabled === false;
 		const hasShare = mpd?.share !== null && mpd?.share !== undefined;
+		const hadNoShareOrIsDisabled = !hasShare || (mpd?.share && mpd?.share.disabled === true);
 
 		// Add automount toggle if mountpoint exists (unless mounted with enabled share)
 		const canShowAutomount = !(isMounted && hasEnabledShare);
@@ -137,7 +138,7 @@ export function PartitionActions({
 				});
 			}
 			// Rule 6: Mounted with no share --> unmount actions (if automount not enabled)
-			if (!hasShare && !mpd?.is_to_mount_at_startup) {
+			if (hadNoShareOrIsDisabled && !mpd?.is_to_mount_at_startup) {
 				actionItems.push({
 					key: "unmount",
 					title: "Unmount Partition",
@@ -162,6 +163,9 @@ export function PartitionActions({
 			}
 
 		}
+	} else {
+		console.warn("Partition has no mount_point_data:", partition);
+		return null;
 	}
 
 	if (isSmallScreen) {

@@ -4,7 +4,7 @@ import { watch } from "node:fs";
 import { parseArgs } from "node:util";
 import type { BuildConfig, BuildOutput } from "bun";
 import { Glob, $ } from "bun";
-import path from "node:path";
+//import path from "node:path";
 import App from "./src/index.html";
 
 const { values, positionals } = parseArgs({
@@ -92,7 +92,6 @@ async function build(): Promise<BuildOutput | undefined> {
 				console: true,
 				hmr: true,
 			},
-
 		});
 		console.log("Serving http://localhost:3080/index.html");
 	} else if (values.watch) {

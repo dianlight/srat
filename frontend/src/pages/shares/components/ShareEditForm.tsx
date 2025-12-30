@@ -241,7 +241,7 @@ export function ShareEditForm({
                                         getOptionLabel: (option) =>
                                             (option as MountPointData)?.disk_label || "",
                                         getOptionKey: (option) =>
-                                            (option as MountPointData)?.path_hash || "",
+                                            (option as MountPointData)?.path || "",
                                         renderOption: (props, option) => (
                                             <li {...props}>
                                                 <Typography variant="body2">
@@ -251,10 +251,10 @@ export function ShareEditForm({
                                         ),
                                         isOptionEqualToValue(option, value) {
                                             if (!value || !option) return false;
-                                            return option.path_hash === value?.path_hash;
+                                            return option.path === value?.path;
                                         },
                                         getOptionDisabled: (option) => {
-                                            if (!shares || !option.path_hash) {
+                                            if (!shares || !option.path) {
                                                 return false;
                                             }
 
@@ -262,8 +262,8 @@ export function ShareEditForm({
 
                                             for (const existingShare of Object.values(shares)) {
                                                 if (
-                                                    existingShare.mount_point_data?.path_hash ===
-                                                    option.path_hash
+                                                    existingShare.mount_point_data?.path ===
+                                                    option.path
                                                 ) {
                                                     if (
                                                         currentEditingShareName &&

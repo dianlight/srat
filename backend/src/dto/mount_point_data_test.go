@@ -19,11 +19,11 @@ func TestMountPointData_Fields(t *testing.T) {
 	tmSupport := dto.TimeMachineSupports.SUPPORTED
 
 	mountData := dto.MountPointData{
-		DiskLabel:          &diskLabel,
-		DiskSerial:         &diskSerial,
-		DiskSize:           &diskSize,
-		Path:               "/mnt/data",
-		PathHash:           "hash123",
+		DiskLabel:  &diskLabel,
+		DiskSerial: &diskSerial,
+		DiskSize:   &diskSize,
+		Path:       "/mnt/data",
+		//PathHash:           "hash123",
 		Type:               "HOST",
 		FSType:             &fstype,
 		DeviceId:           "/dev/sda1",
@@ -40,7 +40,7 @@ func TestMountPointData_Fields(t *testing.T) {
 	assert.Equal(t, diskSerial, *mountData.DiskSerial)
 	assert.Equal(t, diskSize, *mountData.DiskSize)
 	assert.Equal(t, "/mnt/data", mountData.Path)
-	assert.Equal(t, "hash123", mountData.PathHash)
+	//assert.Equal(t, "hash123", mountData.PathHash)
 	assert.Equal(t, "HOST", mountData.Type)
 	assert.Equal(t, fstype, *mountData.FSType)
 	assert.Equal(t, "/dev/sda1", mountData.DeviceId)
@@ -60,7 +60,7 @@ func TestMountPointData_ZeroValues(t *testing.T) {
 	assert.Nil(t, mountData.DiskSerial)
 	assert.Nil(t, mountData.DiskSize)
 	assert.Empty(t, mountData.Path)
-	assert.Empty(t, mountData.PathHash)
+	//assert.Empty(t, mountData.PathHash)
 	assert.Empty(t, mountData.Type)
 	assert.Nil(t, mountData.FSType)
 	assert.Empty(t, mountData.DeviceId)

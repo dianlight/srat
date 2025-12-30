@@ -113,7 +113,6 @@ func (broker *BroadcasterService) setupEventListeners() []func() {
 	ret[1] = broker.eventBus.OnShare(func(ctx context.Context, event events.ShareEvent) errors.E {
 		slog.DebugContext(ctx, "BroadcasterService received Share event", "share", event.Share.Name)
 		broker.BroadcastMessage(*event.Share)
-		broker.BroadcastMessage(broker.volumeService.GetVolumesData())
 		return nil
 	})
 
@@ -160,14 +159,14 @@ func (broker *BroadcasterService) sendToHomeAssistant(msg any) {
 
 	// Handle different message types
 	switch v := msg.(type) {
-	case *[]dto.Disk:
+	case *[]*dto.Disk:
 		if err := broker.haService.SendDiskEntities(v); err != nil {
 			slog.WarnContext(broker.ctx, "Failed to send disk entities to Home Assistant", "error", err)
 		}
 		if err := broker.haService.SendVolumeStatusEntity(v); err != nil {
 			slog.WarnContext(broker.ctx, "Failed to send volume status entity to Home Assistant", "error", err)
 		}
-	case []dto.Disk:
+	case []*dto.Disk:
 		if err := broker.haService.SendDiskEntities(&v); err != nil {
 			slog.WarnContext(broker.ctx, "Failed to send disk entities to Home Assistant", "error", err)
 		}
@@ -285,7 +284,7 @@ func (broker *BroadcasterService) ProcessWebSocketChannel(send ws.Sender) {
 				Data: event.Message,
 			})
 			if err != nil {
-				tlog.TraceContext(broker.ctx, "Error sending event to client", "event", event, "err", err, "active clients", broker.ConnectedClients.Load())
+				tlog.DebugContext(broker.ctx, "Error sending event to client", "event", event, "err", err, "active clients", broker.ConnectedClients.Load())
 				return
 			}
 		}

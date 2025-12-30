@@ -134,9 +134,11 @@ func (suite *VolumeServiceTestSuite) TestMountUnmountVolume_Success() {
 	err = loop.SetFile(device, "../../test/data/image.dmg")
 	suite.Require().NoError(err, "Error setting loop device file")
 	mountPath := "/mnt/test1"
+	root := "/"
 	fsType := "ext4"
 	mountData := dto.MountPointData{
 		Path:     mountPath,
+		Root:     root,
 		DeviceId: device,
 		FSType:   &fsType,
 		Flags: &dto.MountFlags{
@@ -145,6 +147,7 @@ func (suite *VolumeServiceTestSuite) TestMountUnmountVolume_Success() {
 	}
 	dbomMountData := &dbom.MountPointPath{
 		Path:     mountPath,
+		Root:     root,
 		DeviceId: device,
 		FSType:   fsType,
 		Flags:    &dbom.MounDataFlags{dbom.MounDataFlag{Name: "noatime", NeedsValue: false}},
@@ -237,12 +240,13 @@ func (suite *VolumeServiceTestSuite) TestMountVolume_DeviceEmpty() {
 	suite.ErrorIs(err, dto.ErrorInvalidParameter)
 	details := err.Details()
 	suite.Contains(details, "Message")
-	suite.Equal("Source device name is empty in request", details["Message"])
+	suite.Equal("Mount point root is empty", details["Message"])
 }
 
 func (suite *VolumeServiceTestSuite) TestMountVolume_DeviceInvalid() {
 	mountPath := "/mnt/test1"
-	mountData := dto.MountPointData{Path: mountPath, DeviceId: "/dev/pippo"} // Invalid device
+	root := "/"
+	mountData := dto.MountPointData{Root: root, Path: mountPath, DeviceId: "/dev/pippo"} // Invalid device
 	//dbomMountData := &dbom.MountPointPath{Path: mountPath, DeviceId: ""}
 
 	//mock.When(suite.mockMountRepo.FindByPath(mountPath)).ThenReturn(dbomMountData, nil).Verify(matchers.Times(1))
@@ -691,11 +695,13 @@ func (suite *VolumeServiceTestSuite) TestUnmountVolume_UpdatesMountPointDataStat
 // --- PatchMountPointSettings Tests ---
 func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_Success_OnlyStartup() {
 	path := "/mnt/testpatch"
+	root := "/"
 	originalStartup := pointer.Bool(true)
 	patchedStartup := pointer.Bool(false)
 
 	dbData := &dbom.MountPointPath{
 		Path:               path,
+		Root:               root,
 		DeviceId:           "/dev/sdc1",
 		FSType:             "ext4",
 		Type:               "ADDON",
@@ -717,20 +723,23 @@ func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_Success_OnlySta
 			return []any{nil}
 		})).Verify(matchers.Times(2))
 	*/
-	resultDto, errE := suite.volumeService.PatchMountPointSettings(path, patch)
+	resultDto, errE := suite.volumeService.PatchMountPointSettings(root, path, patch)
 	suite.Require().Nil(errE)
 	suite.Require().NotNil(resultDto)
 	suite.Equal(path, resultDto.Path)
+	suite.Equal(root, resultDto.Root)
 	suite.Equal("ext4", *resultDto.FSType)
 	suite.Equal(patchedStartup, resultDto.IsToMountAtStartup)
 }
 
 func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_NoChanges() {
+	root := "/"
 	path := "/mnt/testpatch_nochange"
 	originalStartup := pointer.Bool(true)
 
 	dbData := &dbom.MountPointPath{
 		Path:               path,
+		Root:               root,
 		DeviceId:           "/dev/sdd1",
 		FSType:             "btrfs",
 		Type:               "ADDON",
@@ -746,10 +755,11 @@ func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_NoChanges() {
 	// Save should NOT be called if no changes
 	//mock.When(suite.mockMountRepo.Save(mock.Any[*dbom.MountPointPath]())).ThenReturn(nil).Verify(matchers.Times(1))
 
-	resultDto, errE := suite.volumeService.PatchMountPointSettings(path, patch)
+	resultDto, errE := suite.volumeService.PatchMountPointSettings(root, path, patch)
 	suite.Require().Nil(errE)
 	suite.Require().NotNil(resultDto)
 	suite.Equal(path, resultDto.Path)
+	suite.Equal(root, resultDto.Root)
 	suite.Equal("btrfs", *resultDto.FSType)
 	suite.Equal(originalStartup, resultDto.IsToMountAtStartup)
 }
@@ -757,6 +767,7 @@ func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_NoChanges() {
 // Ensures that after patching IsToMountAtStartup the subsequent GetVolumesData reflects the updated value.
 func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_UpdatesStartupFlagInGetVolumesData() {
 	mountPath := "/mnt/startup-test"
+	root := "/"
 	devicePath := "/dev/disk/by-id/startdisk1-part1"
 	partID := pointer.String("startup-part-1")
 	diskID := pointer.String("startup-disk-1")
@@ -765,6 +776,7 @@ func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_UpdatesStartupF
 	originalStartup := pointer.Bool(false)
 	dbData := &dbom.MountPointPath{
 		Path:               mountPath,
+		Root:               root,
 		DeviceId:           *partID, // repository is keyed by device path
 		FSType:             "ext4",
 		IsToMountAtStartup: originalStartup,
@@ -817,7 +829,7 @@ func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_UpdatesStartupF
 	// Patch: set IsToMountAtStartup = true
 	patchedStartup := pointer.Bool(true)
 	patch := dto.MountPointData{IsToMountAtStartup: patchedStartup}
-	resultDto, errE := suite.volumeService.PatchMountPointSettings(mountPath, patch)
+	resultDto, errE := suite.volumeService.PatchMountPointSettings(root, mountPath, patch)
 	suite.Require().Nil(errE)
 	suite.Require().NotNil(resultDto)
 	suite.Require().NotNil(resultDto.IsToMountAtStartup)

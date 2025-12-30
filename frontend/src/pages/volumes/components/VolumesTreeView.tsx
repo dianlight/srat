@@ -217,7 +217,9 @@ export function VolumesTreeView({
             partition.name || partition.id || "Unnamed Partition",
         );
         const mpds = Object.values(partition.mount_point_data || {});
-        const mpdEntries = Object.entries(partition.mount_point_data || {});
+        const mpdEntries = Object.entries(partition.mount_point_data || {}).sort((a, b) =>
+            a[0].localeCompare(b[0]),
+        );
         const isMounted = mpds.some((mpd) => mpd.is_mounted);
 
         // If partition has multiple mountpoints, create a parent node without actions
@@ -384,7 +386,11 @@ export function VolumesTreeView({
 
     const renderDiskItem = (disk: Disk, diskIdx: number) => {
         const diskIdentifier = disk.id || `disk-${diskIdx}`;
-        const partitions = Object.values(disk.partitions || {});
+        const partitions = Object.values(disk.partitions || {}).sort((a, b) => {
+            const nameA = a.name || a.id || "";
+            const nameB = b.name || b.id || "";
+            return nameA.localeCompare(nameB);
+        });
         const filteredPartitions = partitions.filter(
             (partition) =>
                 !(
@@ -455,7 +461,7 @@ export function VolumesTreeView({
                     </Box>
                 }
             >
-                {filteredPartitions.map((partition, partIdx) =>
+                {filteredPartitions.sort((a, b) => a.id?.localeCompare(b.id || "") || 0).map((partition, partIdx) =>
                     renderPartitionItem(disk, partition, diskIdx, partIdx),
                 )}
             </TreeItem>
@@ -477,7 +483,7 @@ export function VolumesTreeView({
                     }
                 }}
             >
-                {filteredDisks.map((disk, diskIdx) => renderDiskItem(disk, diskIdx))}
+                {filteredDisks.sort((a, b) => a.id?.localeCompare(b.id || "") || 0).map((disk, diskIdx) => renderDiskItem(disk, diskIdx))}
             </SimpleTreeView>
         </Box>
     );

@@ -42,9 +42,7 @@ describe("ShareActions component", () => {
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { ShareActions } = await import("../components/ShareActions");
 
-        let editCalls = 0;
         let viewCalls = 0;
-        let deleteCalls = 0;
         let disableCalls = 0;
 
         const theme = createTheme();
@@ -56,32 +54,24 @@ describe("ShareActions component", () => {
                 { theme },
                 React.createElement(ShareActions as any, {
                     shareKey: "shareKey",
-                    shareProps: share,
+                    shareProps: { ...share, mount_point_data: { ...share.mount_point_data, path: "/mnt/test" } },
                     read_only: false,
                     protected_mode: false,
-                    onEdit: () => { editCalls += 1; },
                     onViewVolumeSettings: () => { viewCalls += 1; },
-                    onDelete: () => { deleteCalls += 1; },
                     onEnable: () => { /* not used */ },
                     onDisable: () => { disableCalls += 1; },
                 })
             )
         );
 
-        const settingsButton = (await screen.findAllByRole("button", { name: /settings/i }))[0];
         const viewVolumeButton = (await screen.findAllByRole("button", { name: /view volume mount settings/i }))[0];
-        const deleteButton = (await screen.findAllByRole("button", { name: /delete share/i }))[0];
         const disableButton = (await screen.findAllByRole("button", { name: /disable share/i }))[0];
 
         const user = userEvent.setup();
-        if (settingsButton) await user.click(settingsButton as any);
         if (viewVolumeButton) await user.click(viewVolumeButton as any);
-        if (deleteButton) await user.click(deleteButton as any);
         if (disableButton) await user.click(disableButton as any);
 
-        expect(editCalls).toBe(1);
         expect(viewCalls).toBe(1);
-        expect(deleteCalls).toBe(1);
         expect(disableCalls).toBe(1);
     });
 
@@ -94,7 +84,7 @@ describe("ShareActions component", () => {
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { ShareActions } = await import("../components/ShareActions");
 
-        let menuDeleteCalls = 0;
+        let enableCalls = 0;
 
         const theme = createTheme();
         const share = buildShare();
@@ -108,10 +98,8 @@ describe("ShareActions component", () => {
                     shareProps: { ...share, disabled: true },
                     read_only: false,
                     protected_mode: false,
-                    onEdit: () => { },
                     onViewVolumeSettings: () => { },
-                    onDelete: () => { menuDeleteCalls += 1; },
-                    onEnable: () => { },
+                    onEnable: () => { enableCalls += 1; },
                     onDisable: () => { },
                 })
             )
@@ -121,9 +109,9 @@ describe("ShareActions component", () => {
         const user = userEvent.setup();
         await user.click(menuButton as any);
 
-        const deleteOption = await screen.findByText(/delete share/i);
-        await user.click(deleteOption as any);
+        const enableOption = await screen.findByText(/enable share/i);
+        await user.click(enableOption as any);
 
-        expect(menuDeleteCalls).toBe(1);
+        expect(enableCalls).toBe(1);
     });
 });

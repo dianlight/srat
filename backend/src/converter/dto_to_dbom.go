@@ -36,7 +36,6 @@ type DtoToDbomConverter interface {
 	// goverter:ignore Status
 	ExportedShareToSharedResource(source dbom.ExportedShare) (dto.SharedResource, error)
 
-	// goverter:map Path PathHash | github.com/shomali11/util/xhashes:SHA1
 	// goverter:map Path IsMounted | github.com/dianlight/srat/internal/osutil:IsMounted
 	// goverter:map Path IsInvalid | isPathDirNotExists
 	// goverter:ignore Partition
@@ -105,7 +104,6 @@ type DtoToDbomConverter interface {
 	// goverter:map Data CustomFlags
 	// goverter:map Path IsInvalid | isPathDirNotExists
 	// goverter:map Path IsMounted | github.com/dianlight/srat/internal/osutil:IsMounted
-	// goverter:map Path PathHash | github.com/shomali11/util/xhashes:SHA1
 	// goverter:map Path IsWriteSupported | isWriteSupported
 	// goverter:map FSType TimeMachineSupport | TimeMachineSupportFromFS
 	// goverter:map Path DiskLabel | DiskLabelFromPath
