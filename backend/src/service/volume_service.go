@@ -524,7 +524,9 @@ func (self *VolumeService) udevEventHandler() {
 		select {
 		case <-self.ctx.Done():
 			slog.InfoContext(self.ctx, "Udev event handler stopping due to context cancellation.", "err", self.ctx.Err())
-			close(quit)
+			if quit != nil {
+				close(quit)
+			}
 			return
 		case uevent := <-queue:
 			// Filter events - only interested in block devices for now

@@ -17,6 +17,7 @@ type DirtyDataServiceInterface interface {
 	GetDirtyDataTracker() dto.DataDirtyTracker
 	ResetDirtyDataTracker()
 	IsTimerRunning() bool
+	IsClean() bool
 }
 
 type DirtyDataService struct {
@@ -155,4 +156,8 @@ func (p *DirtyDataService) ResetDirtyDataTracker() {
 // check if timer is running
 func (p *DirtyDataService) IsTimerRunning() bool {
 	return p.timer != nil
+}
+
+func (p *DirtyDataService) IsClean() bool {
+	return !p.dataDirtyTracker.Shares && !p.dataDirtyTracker.Users && !p.dataDirtyTracker.Settings && p.timer == nil
 }

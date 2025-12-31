@@ -272,7 +272,14 @@ func (s *hDIdleService) Stop() errors.E {
 
 	tlog.DebugContext(s.ctx, "Stopping HDIdle service")
 	if s.stopChan != nil {
-		close(s.stopChan)
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					tlog.WarnContext(s.ctx, "Panic while closing stop channel", "panic", r)
+				}
+			}()
+			close(s.stopChan)
+		}()
 	}
 	//s.stopChan = nil
 

@@ -30,11 +30,12 @@ type SupervisorServiceInterface interface {
 type SupervisorService struct {
 	prop_repo repository.PropertyRepositoryInterface
 	//apiContext       context.Context
-	apiContextCancel context.CancelFunc
-	mount_client     mount.ClientWithResponsesInterface
-	state            *dto.ContextState
-	share_service    ShareServiceInterface
-	eventBus         events.EventBusInterface
+	apiContextCancel   context.CancelFunc
+	mount_client       mount.ClientWithResponsesInterface
+	state              *dto.ContextState
+	share_service      ShareServiceInterface
+	dirty_data_service DirtyDataServiceInterface
+	eventBus           events.EventBusInterface
 }
 
 type SupervisorServiceParams struct {
@@ -45,12 +46,14 @@ type SupervisorServiceParams struct {
 	PropertyRepo     repository.PropertyRepositoryInterface
 	State            *dto.ContextState
 	ShareService     ShareServiceInterface
+	DirtyDataService DirtyDataServiceInterface
 	EventBus         events.EventBusInterface
 }
 
 func NewSupervisorService(lc fx.Lifecycle, in SupervisorServiceParams) SupervisorServiceInterface {
 	p := &SupervisorService{}
 	//p.apiContext = in.ApiContext
+	p.dirty_data_service = in.DirtyDataService
 	p.apiContextCancel = in.ApiContextCancel
 	p.mount_client = in.MountClient
 	p.prop_repo = in.PropertyRepo
@@ -70,7 +73,7 @@ func NewSupervisorService(lc fx.Lifecycle, in SupervisorServiceParams) Superviso
 		return nil
 	})
 	unsubscribe[1] = p.eventBus.OnHomeAssistant(func(ctx context.Context, event events.HomeAssistantEvent) errors.E {
-		if event.Type == events.EventTypes.START {
+		if event.Type == events.EventTypes.START && p.dirty_data_service.IsClean() {
 			err := p.NetworkMountAllShares(ctx)
 			if err != nil {
 				slog.ErrorContext(ctx, "Error mounting HA storage shares", "err", err)

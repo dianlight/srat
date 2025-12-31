@@ -55,6 +55,7 @@ func (f *fakeDirty) GetDirtyDataTracker() dto.DataDirtyTracker { return dto.Data
 // func (f *fakeDirty) ResetDirtyStatus()                         {}
 func (f *fakeDirty) IsTimerRunning() bool   { return false }
 func (f *fakeDirty) ResetDirtyDataTracker() {}
+func (f *fakeDirty) IsClean() bool          { return true }
 
 type fakeAddons struct{}
 

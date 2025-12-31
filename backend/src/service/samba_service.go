@@ -90,8 +90,8 @@ var (
 			SoftResetServiceMask: dto.DataDirtyTracker{Users: true, Settings: false, Shares: true},
 			HardResetServiceMask: dto.DataDirtyTracker{Users: false, Settings: true, Shares: false},
 			SoftResetCommand:     []string{"smbcontrol", "smbd", "reload-config"},
-			HardResetCommand:     []string{"s6-svc", "-r", "/run/s6-rc/servicedirs/smbd"},
-			StopCommand:          []string{"s6-svc", "-d", "/run/s6-rc/servicedirs/smbd"},
+			HardResetCommand:     []string{"s6-svc", "-wR", "-s", "SIGKILL", "/run/s6-rc/servicedirs/smbd"},
+			StopCommand:          []string{"s6-svc", "-wd", "-s", "SIGKILL", "/run/s6-rc/servicedirs/smbd"},
 			Managed:              true,
 		},
 		"nmbd": {
@@ -99,8 +99,8 @@ var (
 			SoftResetServiceMask: dto.DataDirtyTracker{Users: true, Settings: false, Shares: true},
 			HardResetServiceMask: dto.DataDirtyTracker{Users: false, Settings: true, Shares: false},
 			SoftResetCommand:     []string{"smbcontrol", "nmbd", "reload-config"},
-			HardResetCommand:     []string{"s6-svc", "-r", "/run/s6-rc/servicedirs/nmbd"},
-			StopCommand:          []string{"s6-svc", "-d", "/run/s6-rc/servicedirs/nmbd"},
+			HardResetCommand:     []string{"s6-svc", "-wR", "-s", "SIGKILL", "/run/s6-rc/servicedirs/nmbd"},
+			StopCommand:          []string{"s6-svc", "-wd", "-s", "SIGKILL", "/run/s6-rc/servicedirs/nmbd"},
 			Managed:              true,
 		},
 		"wsddn": {

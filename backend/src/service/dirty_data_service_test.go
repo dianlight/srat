@@ -27,6 +27,45 @@ func TestDirtyDataServiceTestSuite(t *testing.T) {
 	suite.Run(t, new(DirtyDataServiceTestSuite))
 }
 
+func (suite *DirtyDataServiceTestSuite) TestIsCleanInitialState() {
+	// After reset, all flags are false and timer is nil, so IsClean should be true
+	suite.dirtyDataService.ResetDirtyDataTracker()
+	suite.True(suite.dirtyDataService.IsClean())
+}
+
+func (suite *DirtyDataServiceTestSuite) TestIsCleanWithDirtyShares() {
+	suite.dirtyDataService.ResetDirtyDataTracker()
+	suite.eventBus.EmitShare(events.ShareEvent{Share: &dto.SharedResource{Name: "testshare"}})
+	suite.False(suite.dirtyDataService.IsClean())
+}
+
+func (suite *DirtyDataServiceTestSuite) TestIsCleanWithDirtyUsers() {
+	suite.dirtyDataService.ResetDirtyDataTracker()
+	suite.eventBus.EmitUser(events.UserEvent{User: &dto.User{}})
+	suite.False(suite.dirtyDataService.IsClean())
+}
+
+func (suite *DirtyDataServiceTestSuite) TestIsCleanWithDirtySettings() {
+	suite.dirtyDataService.ResetDirtyDataTracker()
+	suite.eventBus.EmitSetting(events.SettingEvent{Setting: &dto.Settings{}})
+	suite.False(suite.dirtyDataService.IsClean())
+}
+
+func (suite *DirtyDataServiceTestSuite) TestIsCleanWithMultipleDirtyFlags() {
+	suite.dirtyDataService.ResetDirtyDataTracker()
+	suite.eventBus.EmitShare(events.ShareEvent{Share: &dto.SharedResource{Name: "testshare"}})
+	suite.eventBus.EmitUser(events.UserEvent{User: &dto.User{}})
+	suite.False(suite.dirtyDataService.IsClean())
+}
+
+func (suite *DirtyDataServiceTestSuite) TestIsCleanAfterReset() {
+	suite.dirtyDataService.ResetDirtyDataTracker()
+	suite.eventBus.EmitShare(events.ShareEvent{Share: &dto.SharedResource{Name: "testshare"}})
+	suite.False(suite.dirtyDataService.IsClean())
+	suite.dirtyDataService.ResetDirtyDataTracker()
+	suite.True(suite.dirtyDataService.IsClean())
+}
+
 func (suite *DirtyDataServiceTestSuite) SetupTest() {
 	suite.app = fxtest.New(suite.T(),
 		fx.Provide(
