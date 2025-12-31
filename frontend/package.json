@@ -30,7 +30,7 @@
     "@types/react-dom": "19.2.3",
     "@types/react-syntax-highlighter": "15.5.13",
     "@types/semver": "7.7.1",
-    "@typescript/native-preview": "7.0.0-dev.20251228.1"
+    "@typescript/native-preview": "7.0.0-dev.20251230.1"
   },
   "peerDependencies": {
     "typescript": "^5.9.3"
