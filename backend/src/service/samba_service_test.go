@@ -49,6 +49,74 @@ func TestSambaServiceSuite(t *testing.T) {
 	suite.Run(t, new(SambaServiceSuite))
 }
 
+// TestCommandExists_EmptySlice tests that commandExists returns false for empty command slice
+func (suite *SambaServiceSuite) TestCommandExists_EmptySlice() {
+	result := suite.sambaService.(*service.SambaService).CommandExists([]string{})
+	suite.False(result, "commandExists should return false for empty slice")
+}
+
+// TestCommandExists_S6Command_ServicePathExists tests s6-* command with existing service directory
+func (suite *SambaServiceSuite) TestCommandExists_S6Command_ServicePathExists() {
+	result := suite.sambaService.(*service.SambaService).CommandExists([]string{"s6-svc", "-u", "/bin"})
+	suite.True(result, "commandExists should return true for s6-* command with existing service path")
+}
+
+// TestCommandExists_S6Command_ServicePathNotExists tests s6-* command with non-existent service directory
+func (suite *SambaServiceSuite) TestCommandExists_S6Command_ServicePathNotExists() {
+	result := suite.sambaService.(*service.SambaService).CommandExists([]string{"s6-svc", "-u", "/nonexistent/path"})
+	suite.False(result, "commandExists should return false for s6-* command with non-existent service path")
+}
+
+// TestCommandExists_S6Command_NoServicePath tests s6-* command with only command name (no path argument)
+func (suite *SambaServiceSuite) TestCommandExists_S6Command_NoServicePath() {
+	result := suite.sambaService.(*service.SambaService).CommandExists([]string{"s6-svc"})
+	suite.False(result, "commandExists should return false for s6-* command without path argument")
+}
+
+// TestCommandExists_S6Command_ServicePathIsFile tests s6-* command where the path is a file, not directory
+func (suite *SambaServiceSuite) TestCommandExists_S6Command_ServicePathIsFile() {
+	result := suite.sambaService.(*service.SambaService).CommandExists([]string{"s6-svc", "-u", "hello.txt"})
+	suite.False(result, "commandExists should return false when s6-* service path is a file, not directory")
+}
+
+// TestCommandExists_RegularCommand_InPATH tests regular command that exists in PATH
+func (suite *SambaServiceSuite) TestCommandExists_RegularCommand_InPATH() {
+	// "ls" is a standard command that should exist in PATH
+	result := suite.sambaService.(*service.SambaService).CommandExists([]string{"ls"})
+	suite.True(result, "commandExists should return true for valid command in PATH")
+}
+
+// TestCommandExists_RegularCommand_NotInPATH tests regular command that does not exist in PATH
+func (suite *SambaServiceSuite) TestCommandExists_RegularCommand_NotInPATH() {
+	result := suite.sambaService.(*service.SambaService).CommandExists([]string{"nonexistent-command-xyz-12345"})
+	suite.False(result, "commandExists should return false for command not in PATH")
+}
+
+// TestCommandExists_RegularCommand_WithArguments tests regular command with arguments (only first element matters)
+func (suite *SambaServiceSuite) TestCommandExists_RegularCommand_WithArguments() {
+	// "echo" is a standard command, arguments should be ignored for PATH lookup
+	result := suite.sambaService.(*service.SambaService).CommandExists([]string{"echo", "hello", "world"})
+	suite.True(result, "commandExists should return true for valid command with arguments")
+}
+
+// TestCommandExists_S6Command_MultipleArguments tests s6-* command with multiple arguments (last element is path)
+func (suite *SambaServiceSuite) TestCommandExists_S6Command_MultipleArguments() {
+	result := suite.sambaService.(*service.SambaService).CommandExists([]string{"s6-svc", "-wU", "-s", "SIGKILL", "/bin"})
+	suite.True(result, "commandExists should use last element as service path for s6-* commands")
+}
+
+// TestCommandExists_S6Command_MultipleArguments_NonExistentPath tests s6-* with multiple arguments and non-existent final path
+func (suite *SambaServiceSuite) TestCommandExists_S6Command_MultipleArguments_NonExistentPath() {
+	result := suite.sambaService.(*service.SambaService).CommandExists([]string{"s6-svc", "-wU", "-s", "SIGKILL", "/nonexistent/service/path"})
+	suite.False(result, "commandExists should return false when s6-* final path element does not exist")
+}
+
+// TestCommandExists_CommandNameOnly tests command with only name (single element slice)
+func (suite *SambaServiceSuite) TestCommandExists_CommandNameOnly() {
+	result := suite.sambaService.(*service.SambaService).CommandExists([]string{"cat"})
+	suite.True(result, "commandExists should handle single-element command slices")
+}
+
 func (suite *SambaServiceSuite) SetupTest() {
 	data, err := os.ReadFile("../../test/data/mount_info.txt")
 	if err != nil {

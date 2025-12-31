@@ -78,6 +78,7 @@ type serviceConfig struct {
 	SoftResetServiceMask dto.DataDirtyTracker
 	HardResetServiceMask dto.DataDirtyTracker
 	Managed              bool
+	StartCommand         []string
 	SoftResetCommand     []string
 	HardResetCommand     []string
 	StopCommand          []string
@@ -89,6 +90,7 @@ var (
 			Name:                 "smbd",
 			SoftResetServiceMask: dto.DataDirtyTracker{Users: true, Settings: false, Shares: true},
 			HardResetServiceMask: dto.DataDirtyTracker{Users: false, Settings: true, Shares: false},
+			StartCommand:         []string{"s6-svc", "-wU", "/run/s6-rc/servicedirs/smbd"},
 			SoftResetCommand:     []string{"smbcontrol", "smbd", "reload-config"},
 			HardResetCommand:     []string{"s6-svc", "-wR", "-s", "SIGKILL", "/run/s6-rc/servicedirs/smbd"},
 			StopCommand:          []string{"s6-svc", "-wd", "-s", "SIGKILL", "/run/s6-rc/servicedirs/smbd"},
@@ -98,6 +100,7 @@ var (
 			Name:                 "nmbd",
 			SoftResetServiceMask: dto.DataDirtyTracker{Users: true, Settings: false, Shares: true},
 			HardResetServiceMask: dto.DataDirtyTracker{Users: false, Settings: true, Shares: false},
+			StartCommand:         []string{"s6-svc", "-wU", "/run/s6-rc/servicedirs/nmbd"},
 			SoftResetCommand:     []string{"smbcontrol", "nmbd", "reload-config"},
 			HardResetCommand:     []string{"s6-svc", "-wR", "-s", "SIGKILL", "/run/s6-rc/servicedirs/nmbd"},
 			StopCommand:          []string{"s6-svc", "-wd", "-s", "SIGKILL", "/run/s6-rc/servicedirs/nmbd"},
@@ -107,6 +110,7 @@ var (
 			Name:                 "wsddn",
 			SoftResetServiceMask: dto.DataDirtyTracker{Users: false, Settings: false, Shares: false},
 			HardResetServiceMask: dto.DataDirtyTracker{Users: false, Settings: true, Shares: false},
+			StartCommand:         []string{"s6-svc", "-u", "/run/s6-rc/servicedirs/wsddn"},
 			SoftResetCommand:     []string{"s6-svc", "-r", "/run/s6-rc/servicedirs/wsddn"},
 			HardResetCommand:     []string{"s6-svc", "-r", "/run/s6-rc/servicedirs/wsddn"},
 			StopCommand:          []string{"s6-svc", "-d", "/run/s6-rc/servicedirs/wsddn"},
@@ -116,6 +120,7 @@ var (
 			Name:                 "srat-server",
 			SoftResetServiceMask: dto.DataDirtyTracker{Users: false, Settings: false, Shares: false},
 			HardResetServiceMask: dto.DataDirtyTracker{Users: false, Settings: false, Shares: false},
+			StartCommand:         []string{"s6-svc", "-u", "/run/s6-rc/servicedirs/srat-server"},
 			SoftResetCommand:     []string{"s6-svc", "-r", "/run/s6-rc/servicedirs/srat-server"},
 			HardResetCommand:     []string{"s6-svc", "-r", "/run/s6-rc/servicedirs/srat-server"},
 			StopCommand:          []string{"true"},
@@ -438,7 +443,17 @@ func (self *SambaService) restartSambaService(ctx context.Context, dirty dto.Dat
 					slog.InfoContext(ctx, "No restart needed for service.", "service", processName)
 				}
 			} else {
-				slog.WarnContext(ctx, "Samba process not found, skipping restart command.", "process", processName)
+				slog.WarnContext(ctx, "Samba process not found, perform start command if exists.", "process", processName)
+				if len(processConfig.StartCommand) > 0 && self.CommandExists(processConfig.StartCommand) {
+					slog.InfoContext(ctx, "Starting service...", "service", processName)
+					cmdStart := exec.CommandContext(ctx, processConfig.StartCommand[0], processConfig.StartCommand[1:]...)
+					outStart, err := cmdStart.CombinedOutput()
+					if err != nil {
+						return errors.Errorf("Error starting service %s: %w \n %#v", processName, err, map[string]any{"error": err, "output": string(outStart)})
+					}
+				} else {
+					slog.InfoContext(ctx, "No start command defined for service or command does not exist, skipping.", "service", processName)
+				}
 				continue
 			}
 		}
@@ -451,6 +466,31 @@ func (self *SambaService) restartSambaService(ctx context.Context, dirty dto.Dat
 		slog.WarnContext(ctx, "Samba processes not found, skipping reload commands.")
 	}
 	return nil
+}
+
+// CommandExists checks if a command is available and executable.
+// For s6-* commands, it validates that the service directory path exists.
+// For other commands, it checks if the command is in PATH and is executable.
+func (self *SambaService) CommandExists(cmd []string) bool {
+	if len(cmd) == 0 {
+		return false
+	}
+
+	cmdName := cmd[0]
+
+	// For s6-* commands, check if the last element (service directory path) exists
+	if strings.HasPrefix(cmdName, "s6-") {
+		if len(cmd) < 2 {
+			return false
+		}
+		servicePath := cmd[len(cmd)-1]
+		info, err := os.Stat(servicePath)
+		return err == nil && info.IsDir()
+	}
+
+	// For other commands, check if executable exists in PATH
+	_, err := exec.LookPath(cmdName)
+	return err == nil
 }
 
 // WriteSambaConfig Test and Restart

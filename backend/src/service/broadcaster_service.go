@@ -162,6 +162,12 @@ func (broker *BroadcasterService) BroadcastMessage(msg any) any {
 }
 
 func (broker *BroadcasterService) sendToHomeAssistant(msg any) {
+	defer func() {
+		if r := recover(); r != nil {
+			slog.ErrorContext(broker.ctx, "Panic in sendToHomeAssistant", "panic", r)
+		}
+	}()
+
 	if broker.haService == nil || !broker.state.HACoreReady {
 		return
 	}

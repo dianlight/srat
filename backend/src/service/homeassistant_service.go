@@ -223,7 +223,7 @@ func (s *HomeAssistantService) SendVolumeStatusEntity(data *[]*dto.Disk) error {
 						if mp.IsMounted {
 							mountedPartitions++
 						}
-						if mp.Share.Disabled != nil && !*mp.Share.Disabled {
+						if mp.Share != nil && mp.Share.Disabled != nil && !*mp.Share.Disabled {
 							sharedPartitions++
 						}
 					}
