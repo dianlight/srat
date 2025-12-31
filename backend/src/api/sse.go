@@ -61,7 +61,8 @@ func (self *BrokerHandler) RegisterSse(api huma.API) {
 		dto.WebEventTypes.EVENTUPDATING.String():  dto.UpdateProgress{},
 		dto.WebEventTypes.EVENTVOLUMES.String():   []dto.Disk{},
 		dto.WebEventTypes.EVENTHEARTBEAT.String(): dto.HealthPing{},
-		dto.WebEventTypes.EVENTSHARE.String():     []dto.SharedResource{},
+		dto.WebEventTypes.EVENTSHARES.String():     []dto.SharedResource{},
+		dto.WebEventTypes.EVENTDIRTYTRACKER.String(): dto.DataDirtyTracker{},
 	}, func(ctx context.Context, input *struct{}, send sse.Sender) {
 		self.broadcaster.ProcessHttpChannel(send)
 		slog.DebugContext(ctx, "SSE Channel closed")

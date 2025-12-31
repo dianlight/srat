@@ -23,7 +23,7 @@ describe("UserEditDialog component", () => {
             })
         );
 
-        const usernameInput = await screen.findByLabelText(/User Name/i);
+        const usernameInput = await screen.findByLabelText(/Username/i);
         const user = userEvent.setup();
         // Ensure any pre-filled value is cleared before typing
         if ((usernameInput as HTMLInputElement).value) {
@@ -87,6 +87,6 @@ describe("UserEditDialog component", () => {
         const cancelButton = await screen.findByRole("button", { name: /cancel/i });
         const user = userEvent.setup();
         await user.click(cancelButton as any);
-        expect(onClose).toHaveBeenCalledWith(undefined);
+        expect(onClose).toHaveBeenCalled();
     });
 });

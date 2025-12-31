@@ -260,7 +260,8 @@ func TestEventType_String(t *testing.T) {
 		{"Updating", dto.WebEventTypes.EVENTUPDATING, "updating"},
 		{"Volumes", dto.WebEventTypes.EVENTVOLUMES, "volumes"},
 		{"Heartbeat", dto.WebEventTypes.EVENTHEARTBEAT, "heartbeat"},
-		{"Share", dto.WebEventTypes.EVENTSHARE, "share"},
+		{"Share", dto.WebEventTypes.EVENTSHARES, "shares"},
+		{"DirtyTracker", dto.WebEventTypes.EVENTDIRTYTRACKER, "dirty_data_tracker"},
 	}
 
 	for _, tt := range tests {
@@ -275,7 +276,7 @@ func TestEventType_IsValid(t *testing.T) {
 	assert.True(t, dto.WebEventTypes.EVENTUPDATING.IsValid())
 	assert.True(t, dto.WebEventTypes.EVENTVOLUMES.IsValid())
 	assert.True(t, dto.WebEventTypes.EVENTHEARTBEAT.IsValid())
-	assert.True(t, dto.WebEventTypes.EVENTSHARE.IsValid())
+	assert.True(t, dto.WebEventTypes.EVENTSHARES.IsValid())
 }
 
 func TestEventType_MarshalJSON(t *testing.T) {
@@ -302,7 +303,7 @@ func TestEventType_ParseEventType(t *testing.T) {
 		{"String hello", "hello", dto.WebEventTypes.EVENTHELLO, false},
 		{"String updating", "updating", dto.WebEventTypes.EVENTUPDATING, false},
 		{"Bytes", []byte("volumes"), dto.WebEventTypes.EVENTVOLUMES, false},
-		{"EventType type", dto.WebEventTypes.EVENTSHARE, dto.WebEventTypes.EVENTSHARE, false},
+		{"EventType type", dto.WebEventTypes.EVENTSHARES, dto.WebEventTypes.EVENTSHARES, false},
 	}
 
 	for _, tt := range tests {
@@ -333,10 +334,10 @@ func TestEventType_UnmarshalText(t *testing.T) {
 }
 
 func TestEventType_MarshalBinary(t *testing.T) {
-	event := dto.WebEventTypes.EVENTSHARE
+	event := dto.WebEventTypes.EVENTSHARES
 	data, err := event.MarshalBinary()
 	assert.NoError(t, err)
-	assert.Equal(t, `"share"`, string(data))
+	assert.Equal(t, `"shares"`, string(data))
 }
 
 func TestEventType_UnmarshalBinary(t *testing.T) {
@@ -370,9 +371,9 @@ func TestEventType_MarshalYAML(t *testing.T) {
 
 func TestEventType_UnmarshalYAML(t *testing.T) {
 	var event dto.WebEventType
-	err := event.UnmarshalYAML([]byte("share"))
+	err := event.UnmarshalYAML([]byte("shares"))
 	assert.NoError(t, err)
-	assert.Equal(t, dto.WebEventTypes.EVENTSHARE, event)
+	assert.Equal(t, dto.WebEventTypes.EVENTSHARES, event)
 }
 
 func TestEventType_Scan(t *testing.T) {
@@ -391,7 +392,7 @@ func TestUpdateProcessState_String(t *testing.T) {
 	}{
 		{"Idle", dto.UpdateProcessStates.UPDATESTATUSIDLE, "UpdateStatusIdle"},
 		{"Checking", dto.UpdateProcessStates.UPDATESTATUSCHECKING, "UpdateStatusChecking"},
-		{"NoUpgrade", dto.UpdateProcessStates.UPDATESTATUSNOUPGRDE, "UpdateStatusNoUpgrde"},
+		{"NoUpgrade", dto.UpdateProcessStates.UPDATESTATUSNOUPGRADE, "UpdateStatusNoUpgrade"},
 		{"Available", dto.UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE, "UpdateStatusUpgradeAvailable"},
 		{"Downloading", dto.UpdateProcessStates.UPDATESTATUSDOWNLOADING, "UpdateStatusDownloading"},
 		{"Downloaded", dto.UpdateProcessStates.UPDATESTATUSDOWNLOADCOMPLETE, "UpdateStatusDownloadComplete"},
@@ -417,7 +418,7 @@ func TestUpdateProcessState_Name(t *testing.T) {
 	}{
 		{"Idle", dto.UpdateProcessStates.UPDATESTATUSIDLE, "Idle"},
 		{"Checking", dto.UpdateProcessStates.UPDATESTATUSCHECKING, "Checking"},
-		{"NoUpgrade", dto.UpdateProcessStates.UPDATESTATUSNOUPGRDE, "NoUpgrade"},
+		{"NoUpgrade", dto.UpdateProcessStates.UPDATESTATUSNOUPGRADE, "NoUpgrade"},
 		{"Available", dto.UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE, "Available"},
 		{"Downloading", dto.UpdateProcessStates.UPDATESTATUSDOWNLOADING, "Downloading"},
 		{"Downloaded", dto.UpdateProcessStates.UPDATESTATUSDOWNLOADCOMPLETE, "Downloaded"},
@@ -438,7 +439,7 @@ func TestUpdateProcessState_Name(t *testing.T) {
 func TestUpdateProcessState_IsValid(t *testing.T) {
 	assert.True(t, dto.UpdateProcessStates.UPDATESTATUSIDLE.IsValid())
 	assert.True(t, dto.UpdateProcessStates.UPDATESTATUSCHECKING.IsValid())
-	assert.True(t, dto.UpdateProcessStates.UPDATESTATUSNOUPGRDE.IsValid())
+	assert.True(t, dto.UpdateProcessStates.UPDATESTATUSNOUPGRADE.IsValid())
 	assert.True(t, dto.UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE.IsValid())
 	assert.True(t, dto.UpdateProcessStates.UPDATESTATUSDOWNLOADING.IsValid())
 	assert.True(t, dto.UpdateProcessStates.UPDATESTATUSDOWNLOADCOMPLETE.IsValid())
@@ -504,10 +505,10 @@ func TestUpdateProcessState_UnmarshalText(t *testing.T) {
 }
 
 func TestUpdateProcessState_MarshalBinary(t *testing.T) {
-	state := dto.UpdateProcessStates.UPDATESTATUSNOUPGRDE
+	state := dto.UpdateProcessStates.UPDATESTATUSNOUPGRADE
 	data, err := state.MarshalBinary()
 	assert.NoError(t, err)
-	assert.Equal(t, `"UpdateStatusNoUpgrde"`, string(data))
+	assert.Equal(t, `"UpdateStatusNoUpgrade"`, string(data))
 }
 
 func TestUpdateProcessState_UnmarshalBinary(t *testing.T) {

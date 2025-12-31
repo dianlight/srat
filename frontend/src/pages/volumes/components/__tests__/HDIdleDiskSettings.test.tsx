@@ -12,6 +12,23 @@ if (!(globalThis as any).localStorage) {
     };
 }
 
+// Helper to create a mock disk with required hdidle properties
+const createMockDisk = (overrides: any = {}) => ({
+    id: "disk-1",
+    name: "sda",
+    model: "Test Disk Model",
+    size: 1000000000,
+    removable: false,
+    hdidle_device: {
+        supported: true,
+        enabled: "Yes",
+        idle_time: 0,
+        command_type: "",
+        power_condition: 0,
+    },
+    ...overrides,
+});
+
 describe("HDIdleDiskSettings Component", () => {
     beforeEach(() => {
         localStorage.clear();
@@ -25,13 +42,7 @@ describe("HDIdleDiskSettings Component", () => {
         const { createTestStore } = await import("../../../../../test/setup");
         const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
 
-        const mockDisk = {
-            id: "disk-1",
-            name: "sda",
-            model: "Test Disk Model",
-            size: 1000000000,
-            removable: false,
-        };
+        const mockDisk = createMockDisk();
 
         const store = await createTestStore();
         render(
@@ -53,13 +64,9 @@ describe("HDIdleDiskSettings Component", () => {
         const userEvent = (await import("@testing-library/user-event")).default;
         const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
 
-        const mockDisk = {
-            id: "disk-1",
-            name: "sda",
+        const mockDisk = createMockDisk({
             model: "Samsung SSD 870",
-            size: 1000000000,
-            removable: false,
-        };
+        });
 
         const store = await createTestStore();
         const user = userEvent.setup();
@@ -90,13 +97,10 @@ describe("HDIdleDiskSettings Component", () => {
         const userEvent = (await import("@testing-library/user-event")).default;
         const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
 
-        const mockDisk = {
-            id: "disk-1",
+        const mockDisk = createMockDisk({
             name: "sdb",
-            model: "Test Disk",
             size: 2000000000,
-            removable: false,
-        };
+        });
 
         const store = await createTestStore();
         const user = userEvent.setup();
@@ -127,13 +131,12 @@ describe("HDIdleDiskSettings Component", () => {
         const userEvent = (await import("@testing-library/user-event")).default;
         const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
 
-        const mockDisk = {
-            id: "disk-1",
+        const mockDisk = createMockDisk({
             name: "sdc",
             model: "Another Disk",
             size: 500000000,
             removable: true,
-        };
+        });
 
         const store = await createTestStore();
         const user = userEvent.setup();
@@ -164,13 +167,7 @@ describe("HDIdleDiskSettings Component", () => {
         const userEvent = (await import("@testing-library/user-event")).default;
         const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
 
-        const mockDisk = {
-            id: "disk-1",
-            name: "sda",
-            model: "Test Disk",
-            size: 1000000000,
-            removable: false,
-        };
+        const mockDisk = createMockDisk();
 
         const store = await createTestStore();
         const user = userEvent.setup();
@@ -204,12 +201,11 @@ describe("HDIdleDiskSettings Component", () => {
         const userEvent = (await import("@testing-library/user-event")).default;
         const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
 
-        const mockDisk = {
+        const mockDisk = createMockDisk({
             id: "disk-unknown",
+            name: undefined,
             model: "Mystery Disk",
-            size: 1000000000,
-            removable: false,
-        };
+        });
 
         const store = await createTestStore();
         const user = userEvent.setup();
@@ -241,13 +237,7 @@ describe("HDIdleDiskSettings Component", () => {
         const userEvent = (await import("@testing-library/user-event")).default;
         const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
 
-        const mockDisk = {
-            id: "disk-1",
-            name: "sda",
-            model: "Test Disk",
-            size: 1000000000,
-            removable: false,
-        };
+        const mockDisk = createMockDisk();
 
         const store = await createTestStore();
         const user = userEvent.setup();
@@ -296,13 +286,7 @@ describe("HDIdleDiskSettings Component", () => {
         const { createTestStore } = await import("../../../../../test/setup");
         const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
 
-        const mockDisk = {
-            id: "disk-1",
-            name: "sda",
-            model: "Test Disk",
-            size: 1000000000,
-            removable: false,
-        };
+        const mockDisk = createMockDisk();
 
         const store = await createTestStore();
 

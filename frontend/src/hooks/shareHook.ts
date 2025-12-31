@@ -20,9 +20,9 @@ export function useShare() {
 	}, [data, isLoading]);
 
 	useEffect(() => {
-		if (!evloading && evdata?.share) {
+		if (!evloading && evdata?.shares) {
 			//console.log("Update Shares Data from SSE", evdata.share);
-			setShares(evdata.share);
+			setShares(evdata.shares);
 		}
 	}, [evdata, evloading]);
 
