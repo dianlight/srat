@@ -126,7 +126,7 @@ func main() {
 				Path:     *updateFilePath,
 				Interval: 1 * time.Second,
 			},
-			TerminateTimeout: 60,
+			TerminateTimeout: 30,
 			Debug:            false,
 		})
 		slog.Debug("Stopping main process", "pid", os.Getpid())
