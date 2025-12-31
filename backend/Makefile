@@ -12,7 +12,7 @@ ALL_SRCS := $(wildcard $(SRC_DIRS)/**/*.go)
 TEST_SRCS := $(filter %_test.go, $(ALL_SRCS))
 SRCS := $(filter-out %_test.go, $(ALL_SRCS))
 
-VERSION?="$(shell git describe --tags --always --abbrev=0 --match='[0-9]*.[0-9]*.[0-9]*' 2> /dev/null)"
+VERSION?="$(shell git describe --tags --always --abbrev=0 --match='[0-9]*.[0-9]*.[0-9]*' 2> /dev/null | python3 -c 'import sys,re; v=sys.stdin.read().strip(); m=re.match(r"^(\d+\.\d+\.\d+)(?:-([a-z]+)\.(\d+))?$$",v); print(f"{m[1]}-{m[2]}.{int(m[3])+1}" if m and m[2] else f"{m[1]}-dev.0" if m else v)')"
 COMMIT_HASH="$(shell git rev-parse --short HEAD)"
 BUILD_TIMESTAMP="$(shell date '+%Y-%m-%dT%H:%M:%S')"
 ARCH ?= $(shell arch)
