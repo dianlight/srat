@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/core_api"
 	"github.com/dianlight/srat/repository"
@@ -127,7 +129,7 @@ func (s *HomeAssistantService) SendSambaStatusEntity(status *dto.SambaStatus) er
 	} else {
 	}
 
-	slog.DebugContext(s.ctx, "Sent Samba status entity to Home Assistant", "entity_id", entityId, "state", state, "response", string(resp.Body))
+	tlog.TraceContext(s.ctx, "Sent Samba status entity to Home Assistant", "entity_id", entityId, "state", state, "response", string(resp.Body))
 	return nil
 }
 
@@ -190,7 +192,7 @@ func (s *HomeAssistantService) SendSambaProcessStatusEntity(status *dto.SambaPro
 		return errors.Errorf("failed to send Samba process status entity to Home Assistant: %s", string(resp.Body))
 	}
 
-	slog.DebugContext(s.ctx, "Sent Samba process status entity to Home Assistant", "entity_id", entityId, "state", state)
+	tlog.TraceContext(s.ctx, "Sent Samba process status entity to Home Assistant", "entity_id", entityId, "state", state)
 	return nil
 }
 
@@ -462,10 +464,10 @@ func (s *HomeAssistantService) sendGlobalDiskHealthEntity(diskHealth *dto.DiskHe
 	}
 
 	if resp.StatusCode() < 200 || resp.StatusCode() >= 300 {
-		return errors.Errorf("failed to send global disk health entity: HTTP %d", resp.StatusCode())
+		return errors.Errorf("failed to send global disk health entity: HTTP %d payload %#v response %s", resp.StatusCode(), entity, string(resp.Body))
 	}
 
-	slog.DebugContext(s.ctx, "Sent global disk health entity to Home Assistant", "entity_id", entityId, "iops", diskHealth.Global.TotalIOPS)
+	tlog.TraceContext(s.ctx, "Sent global disk health entity to Home Assistant", "entity_id", entityId, "iops", diskHealth.Global.TotalIOPS)
 	return nil
 }
 
@@ -511,10 +513,10 @@ func (s *HomeAssistantService) sendDiskIOEntity(diskIO dto.DiskIOStats) error {
 	}
 
 	if resp.StatusCode() < 200 || resp.StatusCode() >= 300 {
-		return errors.Errorf("failed to send disk I/O entity: HTTP %d", resp.StatusCode())
+		return errors.Errorf("failed to send disk I/O entity: HTTP %d payload %#v response %s", resp.StatusCode(), entity, string(resp.Body))
 	}
 
-	slog.DebugContext(s.ctx, "Sent disk I/O entity to Home Assistant", "entity_id", entityId, "device", diskIO.DeviceName, "iops", totalIOPS)
+	tlog.TraceContext(s.ctx, "Sent disk I/O entity to Home Assistant", "entity_id", entityId, "device", diskIO.DeviceName, "iops", totalIOPS)
 	return nil
 }
 
@@ -560,10 +562,10 @@ func (s *HomeAssistantService) sendPartitionHealthEntity(diskName string, partit
 	}
 
 	if resp.StatusCode() < 200 || resp.StatusCode() >= 300 {
-		return errors.Errorf("failed to send partition health entity: HTTP %d", resp.StatusCode())
+		return errors.Errorf("failed to send partition health entity: HTTP %d payload %+v response %s", resp.StatusCode(), spew.Sdump(entity), string(resp.Body))
 	}
 
-	slog.DebugContext(s.ctx, "Sent partition health entity to Home Assistant", "entity_id", entityId, "device", partition.Device, "free_space", partition.FreeSpace)
+	tlog.TraceContext(s.ctx, "Sent partition health entity to Home Assistant", "entity_id", entityId, "device", partition.Device, "free_space", partition.FreeSpace)
 	return nil
 }
 
@@ -639,12 +641,11 @@ func (s *HomeAssistantService) DismissPersistentNotification(notificationID stri
 
 // Helper functions
 
+var nonAlphaNumericRegex = regexp.MustCompile(`[^a-zA-Z0-9]+`)
+
 func sanitizeEntityId(id string) string {
-	// Replace special characters with underscores for valid entity IDs
-	sanitized := strings.ReplaceAll(id, "-", "_")
-	sanitized = strings.ReplaceAll(sanitized, ".", "_")
-	sanitized = strings.ReplaceAll(sanitized, "/", "_")
-	sanitized = strings.ReplaceAll(sanitized, " ", "_")
+	// Replace all non-alphanumeric characters with underscores for valid entity IDs
+	sanitized := nonAlphaNumericRegex.ReplaceAllString(id, "_")
 	sanitized = strings.ToLower(sanitized)
 	return sanitized
 }
