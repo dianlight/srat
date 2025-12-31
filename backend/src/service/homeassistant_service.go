@@ -11,6 +11,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/core_api"
 	"github.com/dianlight/srat/repository"
+	"github.com/dianlight/tlog"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 )
@@ -361,7 +362,7 @@ func (s *HomeAssistantService) sendPartitionEntity(partition dto.Partition, disk
 				mountedCount++
 				attributes["mount_path"] = mp.Path
 			}
-			if mp.Share.Disabled != nil && !*mp.Share.Disabled {
+			if mp.Share != nil && mp.Share.Disabled != nil && !*mp.Share.Disabled {
 				shareCount++
 			}
 		}
@@ -393,7 +394,7 @@ func (s *HomeAssistantService) sendPartitionEntity(partition dto.Partition, disk
 		return errors.Errorf("failed to send partition entity to Home Assistant: %s", string(resp.Body))
 	}
 
-	slog.DebugContext(s.ctx, "Sent partition entity to Home Assistant", "entity_id", entityId, "partition_id", *partition.Id, "state", state)
+	tlog.TraceContext(s.ctx, "Sent partition entity to Home Assistant", "entity_id", entityId, "partition_id", *partition.Id, "state", state)
 	return nil
 }
 
