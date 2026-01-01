@@ -63,7 +63,7 @@ func (suite *WsMessageSenderSuite) TestSendFunc_SuccessWithWelcomeMessage() {
 
 	expectedEventName := "hello"
 	suite.Contains(suite.hanlder.ObjectMap, "dto.Welcome")
-	suite.Equal(expectedEventName, suite.hanlder.ObjectMap["dto.Welcome"], fmt.Sprintf("Expected event name for Welcome to be %s %#v", expectedEventName, suite.hanlder.ObjectMap))
+	suite.Equal(expectedEventName, suite.hanlder.ObjectMap["dto.Welcome"], "Expected event name for Welcome to be %s %#v", expectedEventName, suite.hanlder.ObjectMap)
 
 	// Verify the reverse map contains the correct event type
 	suite.Equal("hello", suite.hanlder.ObjectMap["dto.Welcome"])
@@ -274,7 +274,7 @@ func (suite *WsMessageSenderSuite) TestSendFunc_ConcurrentWritesSameEventType() 
 	wg.Wait()
 
 	// Verify all messages were processed
-	suite.Equal(numGoroutines, len(messageIDs))
+	suite.Len(messageIDs, numGoroutines)
 }
 
 // TestSendFunc_RapidFireMessages tests sending many messages in quick succession

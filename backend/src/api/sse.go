@@ -57,11 +57,11 @@ func (self *BrokerHandler) RegisterSse(api huma.API) {
 		BodyReadTimeout: 5 * time.Second,
 		Tags:            []string{"system"},
 	}, map[string]any{
-		dto.WebEventTypes.EVENTHELLO.String():     dto.Welcome{},
-		dto.WebEventTypes.EVENTUPDATING.String():  dto.UpdateProgress{},
-		dto.WebEventTypes.EVENTVOLUMES.String():   []dto.Disk{},
-		dto.WebEventTypes.EVENTHEARTBEAT.String(): dto.HealthPing{},
-		dto.WebEventTypes.EVENTSHARES.String():     []dto.SharedResource{},
+		dto.WebEventTypes.EVENTHELLO.String():        dto.Welcome{},
+		dto.WebEventTypes.EVENTUPDATING.String():     dto.UpdateProgress{},
+		dto.WebEventTypes.EVENTVOLUMES.String():      []dto.Disk{},
+		dto.WebEventTypes.EVENTHEARTBEAT.String():    dto.HealthPing{},
+		dto.WebEventTypes.EVENTSHARES.String():       []dto.SharedResource{},
 		dto.WebEventTypes.EVENTDIRTYTRACKER.String(): dto.DataDirtyTracker{},
 	}, func(ctx context.Context, input *struct{}, send sse.Sender) {
 		self.broadcaster.ProcessHttpChannel(send)
