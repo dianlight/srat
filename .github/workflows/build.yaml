@@ -470,13 +470,9 @@ jobs:
             exit 0
           fi
           
-          # Install minisign
+          # Install minisign using Alpine package manager
           echo "Installing minisign..."
-          wget -q https://github.com/jedisct1/minisign/releases/download/0.11/minisign-linux.tar.gz
-          tar -xzf minisign-linux.tar.gz
-          sudo mv minisign-linux/x86_64/minisign /usr/local/bin/
-          sudo chmod +x /usr/local/bin/minisign
-          rm -rf minisign-linux minisign-linux.tar.gz
+          sudo apk add --no-cache minisign
           
           # Save private key to a temporary file
           PRIVATE_KEY_FILE=$(mktemp)
