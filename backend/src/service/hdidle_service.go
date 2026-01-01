@@ -183,7 +183,18 @@ func NewHDIdleService(lc fx.Lifecycle, in HDIdleServiceParams) HDIdleServiceOut 
 		settingService:   in.SettingService,
 		eventBus:         in.EventBus,
 		converter:        converter.DtoToDbomConverterImpl{},
+		config: &internalConfig{
+			Enabled:               false,
+			Devices:               []deviceConfig{},
+			DefaultIdle:           time.Duration(0),
+			DefaultCommandType:    dto.HdidleCommands.SCSICOMMAND,
+			DefaultPowerCondition: uint8(0),
+			IgnoreSpinDown:        true,
+			SkewTime:              time.Duration(0),
+			NameMap:               map[string]string{},
+		},
 	}
+	hdidle_service.config, _ = hdidle_service.convertConfig()
 	unsubscribe := make([]func(), 1)
 	unsubscribe[0] = in.EventBus.OnSetting(func(ctx context.Context, se events.SettingEvent) errors.E {
 		if se.Setting.HDIdleEnabled != nil && *se.Setting.HDIdleEnabled {
@@ -638,6 +649,10 @@ func (s *hDIdleService) convertConfig() (*internalConfig, errors.E) {
 	settings, err := s.settingService.Load()
 	if err != nil {
 		return nil, err
+	}
+	if settings == nil {
+		slog.WarnContext(s.ctx, "Settings are nil while converting HDIdle config, using existing config if any")
+		return s.config, nil
 	}
 
 	// Global enabled flag from settings (defaults to false when nil)
