@@ -1212,6 +1212,7 @@ export type SmbConf = {
 export type Settings = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
+  allow_guest?: boolean;
   allow_hosts?: string[];
   bind_all_interfaces?: boolean;
   compatibility_mode?: boolean;

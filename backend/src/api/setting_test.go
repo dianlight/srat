@@ -205,6 +205,37 @@ func (suite *SettingsHandlerSuite) TestUpdateSettingsHandler() {
 	}
 }
 
+func (suite *SettingsHandlerSuite) TestUpdateSettingsHandlerWithAllowGuest() {
+	_, api := humatest.New(suite.T())
+	suite.api.RegisterSettings(api)
+	autopatch.AutoPatch(api)
+
+	// Test with AllowGuest enabled
+	allowGuestEnabled := true
+	glc := dto.Settings{
+		Workgroup:  "testworkgroup",
+		AllowGuest: &allowGuestEnabled,
+	}
+
+	rr := api.Patch("/settings", glc)
+	suite.Require().Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
+
+	var res dto.Settings
+	err := json.Unmarshal(rr.Body.Bytes(), &res)
+	suite.Require().NoError(err, "Body %#v", rr.Body.String())
+
+	suite.Equal(glc.Workgroup, res.Workgroup)
+	suite.NotNil(res.AllowGuest)
+	suite.Equal(allowGuestEnabled, *res.AllowGuest)
+	suite.True(suite.dirtyService.GetDirtyDataTracker().Settings)
+
+	// Restore original state
+	_, err = suite.mockPropertyRepository.All(false)
+	if err != nil {
+		suite.T().Fatalf("Failed to load properties: %v", err)
+	}
+}
+
 func (suite *SettingsHandlerSuite) TestUpdateSettingsHandlerWithSMBoverQUIC() {
 	_, api := humatest.New(suite.T())
 	suite.api.RegisterSettings(api)

@@ -78,6 +78,7 @@ type Config struct {
 	LogLevel          string       `json:"log_level"`
 	MOF               int          `json:"meaning_of_life"`
 	MultiChannel      bool         `json:"multi_channel"`
+	AllowGuest        bool         `json:"allow_guest" default:"false"`
 	// End Options
 	Shares          Shares `json:"shares"`
 	DockerInterface string `json:"docker_interface"`

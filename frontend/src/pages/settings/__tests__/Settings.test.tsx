@@ -370,4 +370,41 @@ describe("Settings", () => {
         // Component should remain rendered after click
         expect(generalItems[0]).toBeTruthy();
     });
+
+    it("renders AllowGuest toggle in General settings", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
+        const { Settings } = await import("../Settings");
+        const { createTestStore } = await import("../../../../test/setup");
+
+        const store = await createTestStore();
+        const theme = createTheme();
+
+        render(
+            React.createElement(
+                Provider,
+                {
+                    store, children:
+                        React.createElement(
+                            ThemeProvider,
+                            { theme },
+                            React.createElement(Settings as any)
+                        )
+                }
+            )
+        );
+
+        // Wait for the search field to appear
+        const searchField = await screen.findByPlaceholderText("Search settings...");
+        expect(searchField).toBeTruthy();
+
+        // Look for AllowGuest setting in the tree
+        const allowGuestElements = await screen.findAllByText(/allow.*guest/i);
+        expect(allowGuestElements.length).toBeGreaterThan(0);
+
+        // Verify that the component renders successfully
+        expect(allowGuestElements[0]).toBeTruthy();
+    });
 });

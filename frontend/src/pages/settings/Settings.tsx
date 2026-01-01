@@ -94,7 +94,7 @@ interface SettingTreeNode {
 
 // Define categories structure for dynamic tree building
 const categories: { [key: string]: { [key: string]: string[] } | string[] } = {
-	'General': ['hostname', 'workgroup', 'local_master', 'compatibility_mode'],
+	'General': ['hostname', 'workgroup', 'local_master', 'compatibility_mode', 'allow_guest'],
 	'Network': {
 		'Devices': ['bind_all_interfaces', 'interfaces', 'multi_channel', 'smb_over_quic'],
 		'Access Control': ['allow_hosts'],
@@ -323,24 +323,24 @@ export function Settings() {
 
 		// Individual field rendering (existing logic)
 		switch (settingName) {
-/*
-			case 'update_channel':
-				return (
-					<AutocompleteElement
-						label="Update Channel"
-						name="update_channel"
-						loading={isChLoading}
-						autocompleteProps={{
-							size: "small",
-							disabled: evdata?.hello?.read_only || getCurrentEnv() === "production",
-							contentEditable: false,
-							disableClearable: true
-						}}
-						options={(updateChannels as string[]) || []}
-						{...commonProps}
-					/>
-				);
-*/
+			/*
+						case 'update_channel':
+							return (
+								<AutocompleteElement
+									label="Update Channel"
+									name="update_channel"
+									loading={isChLoading}
+									autocompleteProps={{
+										size: "small",
+										disabled: evdata?.hello?.read_only || getCurrentEnv() === "production",
+										contentEditable: false,
+										disableClearable: true
+									}}
+									options={(updateChannels as string[]) || []}
+									{...commonProps}
+								/>
+							);
+			*/
 			case 'telemetry_mode':
 				return (
 					<>
@@ -502,6 +502,21 @@ export function Settings() {
 						label="Compatibility Mode"
 						labelPlacement="start"
 						name="compatibility_mode"
+						{...commonProps}
+					/>
+				);
+
+			case 'allow_guest':
+				return (
+					<SwitchElement
+						switchProps={{
+							'aria-label': 'Allow Guest',
+							size: "small",
+						}}
+						id="allow_guest"
+						label="Allow Guest"
+						labelPlacement="start"
+						name="allow_guest"
 						{...commonProps}
 					/>
 				);

@@ -36,13 +36,15 @@ func (c *ConfigToDtoConverterImpl) ConfigToSettings(source config.Config, target
 	target.BindAllInterfaces = source.BindAllInterfaces
 	target.LogLevel = source.LogLevel
 	target.MultiChannel = source.MultiChannel
+	pBool := source.AllowGuest
+	target.AllowGuest = &pBool
 	dtoTelemetryMode, err := dto.ParseTelemetryMode(source.TelemetryMode)
 	if err != nil {
 		return err
 	}
 	target.TelemetryMode = dtoTelemetryMode
-	pBool := source.LocalMaster
-	target.LocalMaster = &pBool
+	pBool2 := source.LocalMaster
+	target.LocalMaster = &pBool2
 	return nil
 }
 func (c *ConfigToDtoConverterImpl) ShareToMountPointData(source config.Share) (*dto.MountPointData, error) {
