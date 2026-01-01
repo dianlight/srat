@@ -90,6 +90,7 @@ func (suite *UpgradeServiceTestSuite) SetupTest() {
 					UpdateChannel:  dto.UpdateChannels.NONE,
 				}
 			},
+			func() bool { return false }, // AutoUpdate flag
 			service.NewUpgradeService,
 			mock.Mock[service.BroadcasterServiceInterface],
 			mock.Mock[repository.PropertyRepositoryInterface],

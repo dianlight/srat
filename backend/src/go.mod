@@ -27,6 +27,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/jarcoal/httpmock v1.4.1
 	github.com/lonegunmanb/go-defaults v1.4.0
+	github.com/minio/selfupdate v0.6.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pressly/goose/v3 v3.26.0
 	github.com/prometheus/procfs v0.19.2
@@ -60,7 +61,6 @@ require (
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-sqlite3 v1.14.32 // indirect
 	github.com/mfridman/interpolate v0.0.2 // indirect
-	github.com/minio/selfupdate v0.6.0 // indirect
 	github.com/oasdiff/yaml v0.0.0-20250309154309-f31be36b4037 // indirect
 	github.com/oasdiff/yaml3 v0.0.0-20250309153720-d2182401db90 // indirect
 	github.com/ovechkin-dm/go-dyno v0.5.3 // indirect
