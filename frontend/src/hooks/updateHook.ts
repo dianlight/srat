@@ -33,24 +33,24 @@ export function useUpdate() {
 
 	useEffect(() => {
 		if (!evloading && evdata?.updating) {
-			setUpdate({
-				...update,
+			setUpdate((prev) => ({
+				...prev,
 				Progress: evdata.updating,
-			});
+			}));
 		} else if (
 			!evloading &&
 			evdata?.heartbeat &&
 			evdata.heartbeat.update_available !== undefined
 		) {
-			setUpdate({
+			setUpdate((prev) => ({
 				Available: evdata.heartbeat.update_available,
-				Progress: update.Progress,
-			});
+				Progress: prev.Progress,
+			}));
 			if (evdata.heartbeat.update_available) {
 				refetch();
 			}
 		}
-	}, [evdata, evloading, update, update.Progress, refetch]);
+	}, [evdata, evloading, refetch]);
 
 	return {
 		update: update,
