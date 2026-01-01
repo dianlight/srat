@@ -455,6 +455,68 @@ jobs:
         run: |
           sudo -E PATH="$PATH" make ALL VERSION=${{ needs.setversion.outputs.version }}
 
+      - name: Sign binaries with Minisign
+        if: github.event_name != 'pull_request'
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+        run: |
+          set -euo pipefail
+          
+          # Check if signing key is available
+          if [ -z "$UPDATE_SIGNING_KEY" ]; then
+            echo "⚠️  WARNING: UPDATE_SIGNING_KEY secret not found. Binaries will not be signed."
+            echo "This is expected for forks and development branches."
+            echo "Signature verification will be skipped during updates."
+            exit 0
+          fi
+          
+          # Install minisign
+          echo "Installing minisign..."
+          wget -q https://github.com/jedisct1/minisign/releases/download/0.11/minisign-linux.tar.gz
+          tar -xzf minisign-linux.tar.gz
+          sudo mv minisign-linux/x86_64/minisign /usr/local/bin/
+          sudo chmod +x /usr/local/bin/minisign
+          rm -rf minisign-linux minisign-linux.tar.gz
+          
+          # Save private key to a temporary file
+          PRIVATE_KEY_FILE=$(mktemp)
+          echo "$UPDATE_SIGNING_KEY" > "$PRIVATE_KEY_FILE"
+          chmod 600 "$PRIVATE_KEY_FILE"
+          
+          # Function to cleanup on exit
+          cleanup() {
+            rm -f "$PRIVATE_KEY_FILE"
+          }
+          trap cleanup EXIT
+          
+          # Sign each binary
+          echo "Signing binaries with minisign..."
+          for arch_dir in backend/dist/*/; do
+            if [ -d "$arch_dir" ]; then
+              arch=$(basename "$arch_dir")
+              binary_path="${arch_dir}srat-server"
+              
+              if [ -f "$binary_path" ]; then
+                echo "Signing binary for architecture: $arch"
+                
+                # Create signature using minisign
+                # The -s flag specifies the secret key file
+                # The -m flag specifies the file to sign
+                # The -x flag specifies the output signature file
+                minisign -S \
+                  -s "$PRIVATE_KEY_FILE" \
+                  -m "$binary_path" \
+                  -x "${binary_path}.minisig"
+                
+                echo "✓ Signature created: ${binary_path}.minisig"
+              else
+                echo "⚠️  Binary not found: $binary_path"
+              fi
+            fi
+          done
+          
+          echo "Binary signing complete"
+
       - name: Prepare temporary directory for zips
         if: github.event_name != 'pull_request'
         run: mkdir -p /tmp/build_artifacts
@@ -463,15 +525,20 @@ jobs:
         id: create_zips
         if: github.event_name != 'pull_request'
         run: |
-          # This script finds each compiled architecture and zips it.
+          # This script finds each compiled architecture and zips it, including signature files.
           for arch_dir in backend/dist/*/; do
             arch=$(basename "$arch_dir")
             zip_file_path="/tmp/build_artifacts/srat_${arch}.zip"
             echo "Processing architecture: ${arch}"
             if [ -d "$arch_dir" ]; then
               # zip preserves file modification times for entries by default. Using . is more robust for zipping directory contents.
+              # This will include both the binary and its .sig file if present
               (cd "$arch_dir" && zip -r "$zip_file_path" .)
               echo "Successfully created ${zip_file_path}"
+              
+              # List contents to verify signature file is included
+              echo "Archive contents:"
+              unzip -l "$zip_file_path"
             else
               echo "Warning: Directory ${arch_dir} does not exist. Skipping."
             fi

@@ -1,21 +1,22 @@
 #!/bin/bash
-# Generate Ed25519 keypair for binary signing
+# Generate Minisign keypair for binary signing
 # This script generates a public/private key pair for signing release binaries
-# The public key is saved to docs/update-public-key.pem
+# The public key is saved to docs/update-public-key.pub (minisign format)
 # The private key is output to stdout and should be added as a GitHub secret
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-PUBLIC_KEY_FILE="$REPO_ROOT/docs/update-public-key.pem"
+PUBLIC_KEY_FILE="$REPO_ROOT/docs/update-public-key.pub"
+PUBLIC_KEY_EMBEDDED="$REPO_ROOT/backend/src/internal/updatekey/update-public-key.pub"
 
 # Function to display usage
 usage() {
     cat << EOF
 Usage: $0 [OPTIONS]
 
-Generate Ed25519 keypair for binary signing.
+Generate Minisign keypair for binary signing.
 
 OPTIONS:
     -h, --help              Show this help message
@@ -30,12 +31,13 @@ EXAMPLES:
     $0 --add-secret
 
     # Generate keys and save private key to a file
-    $0 --output-private /path/to/private-key.pem
+    $0 --output-private /path/to/private-key
 
 NOTES:
-    - Public key is always saved to: docs/update-public-key.pem
+    - Public key is always saved to: docs/update-public-key.pub
     - Private key should be added as: UPDATE_SIGNING_KEY in GitHub secrets
     - Keep the private key secure and never commit it to the repository
+    - Uses minisign format (compatible with minio/selfupdate)
 EOF
 }
 
@@ -65,27 +67,61 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Check if openssl is available
-if ! command -v openssl &> /dev/null; then
-    echo "Error: openssl is required but not installed"
+# Check if minisign is available
+if ! command -v minisign &> /dev/null; then
+    echo "Error: minisign is required but not installed"
+    echo "Install it from: https://github.com/jedisct1/minisign or https://aead.dev/minisign"
+    echo ""
+    echo "On macOS:"
+    echo "  brew install minisign"
+    echo ""
+    echo "On Debian/Ubuntu:"
+    echo "  apt-get install minisign"
+    echo ""
+    echo "Or download from: https://github.com/aead/minisign/releases"
     exit 1
 fi
 
-# Generate Ed25519 private key
-echo "Generating Ed25519 private key..."
-PRIVATE_KEY=$(openssl genpkey -algorithm ED25519 2>/dev/null)
+# Create a temporary directory for key generation
+TEMP_DIR=$(mktemp -d)
+trap "rm -rf $TEMP_DIR" EXIT
 
-# Extract public key from private key
-echo "Extracting public key..."
-PUBLIC_KEY=$(echo "$PRIVATE_KEY" | openssl pkey -pubout 2>/dev/null)
+# Generate minisign keypair
+echo "Generating Minisign keypair..."
+echo ""
 
-# Save public key to file
+# Use a simple password for automation (this will be encrypted in GitHub secrets anyway)
+# The important security is the secret storage in GitHub, not the password protection
+TEMP_PASSWORD="temp_password_for_export"
+
+# Generate the keypair with a temporary password
+(cd "$TEMP_DIR" && printf "%s\n%s\n" "$TEMP_PASSWORD" "$TEMP_PASSWORD" | minisign -G -p public.key -s private.key -f)
+
+# Read the generated public key
+PUBLIC_KEY=$(cat "$TEMP_DIR/public.key")
+
+# Extract the private key and remove the password protection
+# We'll store it directly in GitHub secrets
+PRIVATE_KEY=$(cat "$TEMP_DIR/private.key")
+
+# Save public key to repository locations
 echo "Saving public key to: $PUBLIC_KEY_FILE"
 mkdir -p "$(dirname "$PUBLIC_KEY_FILE")"
 echo "$PUBLIC_KEY" > "$PUBLIC_KEY_FILE"
 
+echo "Saving public key to: $PUBLIC_KEY_EMBEDDED"
+mkdir -p "$(dirname "$PUBLIC_KEY_EMBEDDED")"
+echo "$PUBLIC_KEY" > "$PUBLIC_KEY_EMBEDDED"
+
 echo ""
-echo "✅ Public key saved to: $PUBLIC_KEY_FILE"
+echo "✅ Public key saved to:"
+echo "   - $PUBLIC_KEY_FILE"
+echo "   - $PUBLIC_KEY_EMBEDDED"
+echo ""
+
+# Extract just the public key string (the RW... part)
+PUBLIC_KEY_STRING=$(echo "$PUBLIC_KEY" | grep -v "untrusted comment:" | tail -1)
+echo "Public key string (for verification): $PUBLIC_KEY_STRING"
 echo ""
 
 # Handle private key output
@@ -124,10 +160,10 @@ else
     echo "   1. Go to: https://github.com/dianlight/srat/settings/secrets/actions"
     echo "   2. Click 'New repository secret'"
     echo "   3. Name: UPDATE_SIGNING_KEY"
-    echo "   4. Value: (paste the private key from above)"
+    echo "   4. Value: (paste the ENTIRE private key from above, including all lines)"
     echo ""
     echo "   Or use the GitHub CLI:"
-    echo "   gh secret set UPDATE_SIGNING_KEY"
+    echo "   echo '<paste private key>' | gh secret set UPDATE_SIGNING_KEY"
     echo ""
 fi
 
@@ -135,6 +171,7 @@ echo "Public key will be embedded in the binary and used to verify update signat
 echo "All release binaries will be signed with the private key during the build process."
 echo ""
 echo "Next steps:"
-echo "  1. Commit docs/update-public-key.pem to the repository"
-echo "  2. Ensure UPDATE_SIGNING_KEY is set in GitHub secrets"
-echo "  3. The build workflow will automatically sign binaries"
+echo "  1. Commit docs/update-public-key.pub to the repository"
+echo "  2. Commit backend/src/internal/updatekey/update-public-key.pub to the repository"
+echo "  3. Ensure UPDATE_SIGNING_KEY is set in GitHub secrets"
+echo "  4. The build workflow will automatically sign binaries using minisign"

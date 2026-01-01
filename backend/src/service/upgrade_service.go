@@ -4,8 +4,6 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
-	"crypto/ed25519"
-	"encoding/pem"
 	"fmt"
 	"io"
 	"log/slog"
@@ -144,7 +142,7 @@ func (self *UpgradeService) GetUpgradeReleaseAsset() (ass *dto.ReleaseAsset, err
 		return nil, errors.WithMessage(dto.ErrorNoUpdateAvailable, "No releases check", "channel", self.state.UpdateChannel.String())
 	} else {
 		// if channel PRERELEASE or RELEASE search online on github
-		myversion := config.GetCurrentBinaryVersion()
+		myversion, _ := semver.NewVersion(config.Version)
 
 		slog.InfoContext(self.ctx, "Checking for updates", "current", config.Version, "channel", self.state.UpdateChannel.String())
 		releases, _, err := self.gh.Repositories.ListReleases(context.Background(), "dianlight", "srat", &github.ListOptions{
@@ -197,7 +195,7 @@ func (self *UpgradeService) GetUpgradeReleaseAsset() (ass *dto.ReleaseAsset, err
 							LastRelease: *release.TagName,
 							ArchAsset:   archAsset,
 						}
-						myversion = *assertVersion
+						myversion = assertVersion
 						slog.InfoContext(self.ctx, "Found upgrade release asset", "release", *release.TagName, "asset_name", asset.GetName())
 						break
 					}
@@ -548,14 +546,6 @@ func (self *UpgradeService) ApplyUpdateAndRestart(updatePkg *UpdatePackage) erro
 	slog.InfoContext(self.ctx, "Applying update with signature verification", "new_executable", *updatePkg.CurrentExecutablePath)
 	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSINSTALLING, Progress: 0})
 
-	// Parse the embedded public key
-	publicKey, err := self.parsePublicKey()
-	if err != nil {
-		errWrapped := errors.Wrap(err, "failed to parse public key")
-		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
-		return errWrapped
-	}
-
 	// Open the new binary file
 	newBinary, err := os.Open(*updatePkg.CurrentExecutablePath)
 	if err != nil {
@@ -566,12 +556,21 @@ func (self *UpgradeService) ApplyUpdateAndRestart(updatePkg *UpdatePackage) erro
 	defer newBinary.Close()
 
 	// Check if signature file exists (for signed updates)
-	signatureFile := *updatePkg.CurrentExecutablePath + ".sig"
+	signatureFile := *updatePkg.CurrentExecutablePath + ".minisig"
 	var opts selfupdate.Options
 	if _, statErr := os.Stat(signatureFile); statErr == nil {
 		slog.InfoContext(self.ctx, "Signature file found, will verify update", "signature_file", signatureFile)
+
+		// Create verifier with embedded public key
+		verifier := selfupdate.NewVerifier()
+		if err := verifier.LoadFromFile(signatureFile, updatekey.UpdatePublicKey); err != nil {
+			errWrapped := errors.Wrapf(err, "failed to load signature from %s", signatureFile)
+			self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+			return errWrapped
+		}
+
 		opts = selfupdate.Options{
-			PublicKey: publicKey,
+			Verifier: verifier,
 		}
 	} else {
 		slog.WarnContext(self.ctx, "Signature file not found, update will not be verified", "expected_signature_file", signatureFile)
@@ -616,26 +615,6 @@ func (self *UpgradeService) ApplyUpdateAndRestart(updatePkg *UpdatePackage) erro
 	}
 
 	return nil
-}
-
-// parsePublicKey parses the embedded Ed25519 public key from PEM format
-func (self *UpgradeService) parsePublicKey() (ed25519.PublicKey, error) {
-	block, _ := pem.Decode([]byte(updatekey.UpdatePublicKey))
-	if block == nil {
-		return nil, fmt.Errorf("failed to decode PEM block containing public key")
-	}
-
-	// The public key is in PKIX format, we need to extract the raw Ed25519 key
-	// For Ed25519, the public key is 32 bytes
-	// The PKIX format has a header, so we need to skip it
-	// Typical Ed25519 public key in PKIX format is 44 bytes total
-	if len(block.Bytes) < 32 {
-		return nil, fmt.Errorf("public key too short: %d bytes", len(block.Bytes))
-	}
-
-	// Extract the raw public key (last 32 bytes)
-	publicKeyBytes := block.Bytes[len(block.Bytes)-32:]
-	return ed25519.PublicKey(publicKeyBytes), nil
 }
 
 // isRunningUnderS6 checks if the current process is running under s6 supervision
