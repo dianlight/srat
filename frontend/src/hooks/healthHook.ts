@@ -5,7 +5,6 @@ import {
 	type HealthPing,
 	type NetworkStats,
 	type ProcessStatus,
-	type ReleaseAsset,
 	type SambaStatus,
 	useGetApiHealthQuery,
 } from "../store/sratApi";
@@ -17,7 +16,7 @@ export function useHealth() {
 		aliveTime: 0,
 		dirty_tracking: {} as DataDirtyTracker,
 		last_error: "",
-		last_release: {} as ReleaseAsset,
+		update_available: false,
 		samba_process_status: {} as { [key: string]: ProcessStatus },
 		addon_stats: {},
 		disk_health: {} as DiskHealth,

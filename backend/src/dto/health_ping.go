@@ -8,7 +8,7 @@ type HealthPing struct {
 	SambaProcessStatus SambaProcessStatus     `json:"samba_process_status"`
 	LastError          string                 `json:"last_error"`
 	Dirty              DataDirtyTracker       `json:"dirty_tracking"`
-	LastRelease        ReleaseAsset           `json:"last_release"`
+	UpdateAvailable    bool                   `json:"update_available"`
 	AddonStats         *addons.AddonStatsData `json:"addon_stats"`
 	DiskHealth         *DiskHealth            `json:"disk_health"`
 	NetworkHealth      *NetworkStats          `json:"network_health"`

@@ -150,6 +150,8 @@ func (self *HealthHanler) run() error {
 			// Get Addon Stats
 			self.HealthPing.Uptime = time.Since(self.state.StartTime).Milliseconds()
 
+			self.HealthPing.UpdateAvailable = self.state.UpdateAvailable
+
 			stats, err := self.addonsService.GetStats()
 			if err != nil {
 				slog.WarnContext(self.ctx, "Error getting addon stats for health ping", "err", err)

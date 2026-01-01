@@ -12,6 +12,7 @@ import (
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service"
+	"github.com/dianlight/tlog"
 	"gitlab.com/tozd/go/errors"
 )
 
@@ -66,7 +67,7 @@ func (handler *UpgradeHanler) GetUpdateInfoHandler(ctx context.Context, input *s
 	asset, err := handler.upgader.GetUpgradeReleaseAsset()
 	if err != nil {
 		if errors.Is(err, dto.ErrorNoUpdateAvailable) {
-			slog.InfoContext(ctx, "No update available", "error", err)
+			tlog.DebugContext(ctx, "No update available")
 			return nil, huma.Error404NotFound(err.Error())
 		}
 		slog.ErrorContext(ctx, "Error getting upgrade release asset", "error", err)

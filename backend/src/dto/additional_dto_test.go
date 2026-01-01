@@ -465,9 +465,7 @@ func TestHealthPing_AllFields(t *testing.T) {
 		Dirty: dto.DataDirtyTracker{
 			Shares: true,
 		},
-		LastRelease: dto.ReleaseAsset{
-			LastRelease: "v1.0.0",
-		},
+		UpdateAvailable: false,
 		DiskHealth: &dto.DiskHealth{
 			Global: dto.GlobalDiskStats{
 				TotalIOPS: 100.0,
@@ -514,10 +512,7 @@ func TestHealthPing_AllFields(t *testing.T) {
 	assert.True(t, health.Dirty.Shares)
 	assert.False(t, health.Dirty.Users)
 	assert.False(t, health.Dirty.Settings)
-	assert.Equal(t, "v1.0.0", health.LastRelease.LastRelease)
-	assert.Empty(t, health.LastRelease.ArchAsset.Name)
-	assert.Equal(t, 0, health.LastRelease.ArchAsset.Size)
-	assert.Equal(t, int64(0), health.LastRelease.ArchAsset.ID)
+	assert.False(t, health.UpdateAvailable)
 	assert.NotNil(t, health.DiskHealth)
 	assert.Equal(t, 100.0, health.DiskHealth.Global.TotalIOPS)
 	assert.Equal(t, 0.0, health.DiskHealth.Global.TotalReadLatency)

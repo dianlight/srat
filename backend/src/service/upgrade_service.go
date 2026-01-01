@@ -96,11 +96,13 @@ func (self *UpgradeService) run() error {
 				slog.ErrorContext(self.ctx, "Error checking for updates", "err", err)
 			}
 			if ass != nil {
+				self.state.UpdateAvailable = true
 				self.notifyClient(dto.UpdateProgress{
 					ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE,
 					LastRelease:    ass.LastRelease,
 				})
 			} else {
+				self.state.UpdateAvailable = false
 				self.notifyClient(dto.UpdateProgress{
 					ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSNOUPGRADE,
 				})
@@ -174,6 +176,8 @@ func (self *UpgradeService) GetUpgradeReleaseAsset() (ass *dto.ReleaseAsset, err
 							ArchAsset:   archAsset,
 						}
 						myversion = *assertVersion
+						slog.InfoContext(self.ctx, "Found upgrade release asset", "release", *release.TagName, "asset_name", asset.GetName())
+						break
 					}
 				}
 			}

@@ -11,6 +11,7 @@ type ContextState struct {
 	UpdateDataDir   string        // Directory where update files are stored
 	UpdateFilePath  string        // Full path to the update file for current update operation. Useful for onplace_update.
 	UpdateChannel   UpdateChannel // Current Update Channel
+	UpdateAvailable bool          // Whether an update is available
 	SambaConfigFile string        // Path to the Samba configuration file
 	Template        []byte        // Template data for generating configuration files
 	DockerInterface string        // Name of the Docker network interface

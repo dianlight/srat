@@ -1064,18 +1064,6 @@ export type DiskHealth = {
     [key: string]: PerPartitionInfo[] | null;
   };
 };
-export type BinaryAsset = {
-  browser_download_url?: string;
-  id: number;
-  name: string;
-  size: number;
-};
-export type ReleaseAsset = {
-  /** A URL to the JSON Schema for this object. */
-  $schema?: string;
-  arch_asset?: BinaryAsset;
-  last_release?: string;
-};
 export type GlobalNicStats = {
   totalInboundTraffic: number;
   totalOutboundTraffic: number;
@@ -1184,12 +1172,12 @@ export type HealthPing = {
   dirty_tracking: DataDirtyTracker;
   disk_health: DiskHealth;
   last_error: string;
-  last_release: ReleaseAsset;
   network_health: NetworkStats;
   samba_process_status: {
     [key: string]: ProcessStatus;
   };
   samba_status: SambaStatus;
+  update_available: boolean;
   uptime: number;
 };
 export type Issue = {
@@ -1356,6 +1344,18 @@ export type Disk = {
   size?: number;
   smart_info?: SmartInfo;
   vendor?: string;
+};
+export type BinaryAsset = {
+  browser_download_url?: string;
+  id: number;
+  name: string;
+  size: number;
+};
+export type ReleaseAsset = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  arch_asset?: BinaryAsset;
+  last_release?: string;
 };
 export type PatchMountPointData = {
   /** A URL to the JSON Schema for this object. */

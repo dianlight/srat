@@ -78,6 +78,7 @@ import { UsersSteps } from "../pages/users/UsersSteps";
 import { useGetServerEventsQuery } from "../store/sseApi";
 import { get } from "react-hook-form";
 import { getCurrentEnv } from "../macro/Environment" with { type: 'macro' };
+import { useUpdate } from "../hooks/updateHook";
 
 // Define tab configurations
 interface TabConfig {
@@ -227,6 +228,7 @@ export function NavBar(props: {
 }) {
 	const location = useLocation();
 	const { setIsOpen: setTourOpen, isOpen: isTourOpen } = useTour();
+	const { update, isLoading: isUpdateLoading, error: updateError } = useUpdate();
 	//const _navigate = useNavigate();
 
 	const visibleTabs = useMemo(() => {
@@ -388,7 +390,7 @@ export function NavBar(props: {
 	function handleDoUpdate() {
 		console.log("Doing update");
 		confirm({
-			title: `Update to ${evdata?.updating?.last_release}?`,
+			title: `Update to ${update?.Progress.last_release}?`,
 			description:
 				"If you proceed the new version is downloaded and installed.",
 		}).then(({ confirmed, reason }) => {
@@ -616,10 +618,10 @@ export function NavBar(props: {
 									</Tooltip>
 								</IconButton>
 							)}
-							{evdata?.updating?.last_release !== undefined && (
+							{!isUpdateLoading && update.Available && (
 								<IconButton onClick={handleDoUpdate} size="small">
 									<Tooltip
-										title={`Update ${evdata.updating.last_release} available`}
+										title={`Update ${update.Progress.last_release} available`}
 										arrow
 									>
 										{((update_status) => {
@@ -634,13 +636,13 @@ export function NavBar(props: {
 													);
 												case Update_process_state.Error:
 													toast.error("Error during update", {
-														data: { error: evdata.updating.error_message },
+														data: { error: update.Progress.error_message },
 													});
 													return <BugReportIcon sx={{ color: "red" }} />;
 												default:
 													return <Download sx={{ color: "white" }} />;
 											}
-										})(evdata.updating)}
+										})(update.Progress)}
 									</Tooltip>
 								</IconButton>
 							)}

@@ -431,8 +431,6 @@ components:
           $ref: "#/components/schemas/DiskHealth"
         last_error:
           type: string
-        last_release:
-          $ref: "#/components/schemas/ReleaseAsset"
         network_health:
           $ref: "#/components/schemas/NetworkStats"
         samba_process_status:
@@ -441,6 +439,8 @@ components:
           type: object
         samba_status:
           $ref: "#/components/schemas/SambaStatus"
+        update_available:
+          type: boolean
         uptime:
           format: int64
           type: integer
@@ -450,7 +450,7 @@ components:
         - samba_process_status
         - last_error
         - dirty_tracking
-        - last_release
+        - update_available
         - addon_stats
         - disk_health
         - network_health
@@ -2065,8 +2065,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2215,8 +2215,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2954,8 +2954,8 @@ paths:
     get:
       operationId: get-api-samba-config
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3040,8 +3040,8 @@ paths:
     get:
       operationId: get-api-settings
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3384,8 +3384,8 @@ paths:
               - world
             maxLength: 128
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "204":
           description: No Content
@@ -3487,8 +3487,8 @@ paths:
               - world
             maxLength: 128
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json-patch+json:
@@ -3638,8 +3638,8 @@ paths:
               - world
             maxLength: 128
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -4217,8 +4217,8 @@ paths:
     get:
       operationId: list-api-update-channels
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -4423,8 +4423,8 @@ paths:
     put:
       operationId: put-api-useradmin
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
