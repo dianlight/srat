@@ -29,6 +29,7 @@ describe("Footer Component", () => {
 
         const theme = createTheme();
         const store = await createTestStore();
+        const currentYear = new Date().getFullYear();
 
         // REQUIRED: Use React.createElement, not JSX
         render(
@@ -48,7 +49,7 @@ describe("Footer Component", () => {
         const versionElement = await screen.findByText(/Version/);
         expect(versionElement).toBeTruthy();
 
-        const copyrightElement = await screen.findByText(/© 2024-2025 Copyright/);
+        const copyrightElement = await screen.findByText(new RegExp(`© 2024-${currentYear} Copyright`));
         expect(copyrightElement).toBeTruthy();
     });
 
@@ -92,6 +93,7 @@ describe("Footer Component", () => {
 
         const theme = createTheme();
         const store = await createTestStore();
+        const currentYear = new Date().getFullYear();
 
         const { container } = render(
             React.createElement(
@@ -107,7 +109,7 @@ describe("Footer Component", () => {
         );
 
         expect(container.textContent?.includes("Copyright")).toBeTruthy();
-        expect(container.textContent?.includes("2024-2025")).toBeTruthy();
+        expect(container.textContent?.includes(`2024-${currentYear}`)).toBeTruthy();
     });
 
     it("renders as a footer element with proper styling", async () => {
