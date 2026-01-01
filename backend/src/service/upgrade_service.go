@@ -51,6 +51,7 @@ type UpgradeService struct {
 	updateLimiter rate.Sometimes
 	state         *dto.ContextState
 	autoUpdate    bool
+	shutdowner    fx.Shutdowner
 }
 
 type UpgradeServiceProps struct {
@@ -60,6 +61,7 @@ type UpgradeServiceProps struct {
 	Ctx         context.Context
 	Gh          *github.Client
 	AutoUpdate  bool
+	Shutdowner  fx.Shutdowner
 }
 
 func NewUpgradeService(lc fx.Lifecycle, in UpgradeServiceProps) (UpgradeServiceInterface, error) {
@@ -70,6 +72,7 @@ func NewUpgradeService(lc fx.Lifecycle, in UpgradeServiceProps) (UpgradeServiceI
 	p.state = in.State
 	p.gh = in.Gh
 	p.autoUpdate = in.AutoUpdate
+	p.shutdowner = in.Shutdowner
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
@@ -142,7 +145,7 @@ func (self *UpgradeService) GetUpgradeReleaseAsset() (ass *dto.ReleaseAsset, err
 		return nil, errors.WithMessage(dto.ErrorNoUpdateAvailable, "No releases check", "channel", self.state.UpdateChannel.String())
 	} else {
 		// if channel PRERELEASE or RELEASE search online on github
-		myversion, _ := semver.NewVersion(config.Version)
+		myversion := config.GetCurrentBinaryVersion()
 
 		slog.InfoContext(self.ctx, "Checking for updates", "current", config.Version, "channel", self.state.UpdateChannel.String())
 		releases, _, err := self.gh.Repositories.ListReleases(context.Background(), "dianlight", "srat", &github.ListOptions{
@@ -195,7 +198,7 @@ func (self *UpgradeService) GetUpgradeReleaseAsset() (ass *dto.ReleaseAsset, err
 							LastRelease: *release.TagName,
 							ArchAsset:   archAsset,
 						}
-						myversion = assertVersion
+						myversion = *assertVersion
 						slog.InfoContext(self.ctx, "Found upgrade release asset", "release", *release.TagName, "asset_name", asset.GetName())
 						break
 					}
@@ -573,9 +576,20 @@ func (self *UpgradeService) ApplyUpdateAndRestart(updatePkg *UpdatePackage) erro
 			Verifier: verifier,
 		}
 	} else {
-		slog.WarnContext(self.ctx, "Signature file not found, update will not be verified", "expected_signature_file", signatureFile)
-		// For development or unsigned builds, proceed without verification
-		opts = selfupdate.Options{}
+		// Signature file not found
+		if self.state.UpdateChannel == dto.UpdateChannels.DEVELOP {
+			slog.WarnContext(self.ctx, "Signature file not found, proceeding without verification (develop channel)", "expected_signature_file", signatureFile)
+			opts = selfupdate.Options{}
+		} else {
+			// For non-develop channels, reject unsigned updates
+			errWrapped := errors.Errorf("signature file not found for non-develop channel: %s", signatureFile)
+			self.notifyClient(dto.UpdateProgress{
+				ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR,
+				ErrorMessage:   "Update is not signed. Signature verification is required for this update channel.",
+			})
+			slog.ErrorContext(self.ctx, "Update rejected: signature file missing for non-develop channel", "channel", self.state.UpdateChannel.String(), "expected_file", signatureFile)
+			return errWrapped
+		}
 	}
 
 	// Apply the update
@@ -596,7 +610,7 @@ func (self *UpgradeService) ApplyUpdateAndRestart(updatePkg *UpdatePackage) erro
 
 	// Check if we're running under s6 and restart if so
 	if self.isRunningUnderS6() {
-		slog.InfoContext(self.ctx, "Running under s6, initiating restart via exit(0)")
+		slog.InfoContext(self.ctx, "Running under s6, initiating graceful shutdown for restart")
 		self.notifyClient(dto.UpdateProgress{
 			ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSINSTALLCOMPLETE,
 			Progress:       100,
@@ -604,7 +618,12 @@ func (self *UpgradeService) ApplyUpdateAndRestart(updatePkg *UpdatePackage) erro
 		})
 		// Give time for the message to be sent
 		time.Sleep(500 * time.Millisecond)
-		os.Exit(0)
+		// Trigger graceful shutdown via fx.Shutdowner
+		if err := self.shutdowner.Shutdown(); err != nil {
+			slog.ErrorContext(self.ctx, "Failed to trigger graceful shutdown", "err", err)
+			// Fallback to os.Exit if shutdowner fails
+			os.Exit(0)
+		}
 	} else {
 		slog.InfoContext(self.ctx, "Not running under s6, manual restart required")
 		self.notifyClient(dto.UpdateProgress{

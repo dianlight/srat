@@ -235,9 +235,9 @@ If you need to rotate the signing keys:
 - `backend/src/service/upgrade_service.go` - Update service implementation
 - `backend/src/api/upgrade.go` - Update API handlers
 - `backend/src/internal/updatekey/public_key.go` - Embedded public key
+- `backend/src/internal/updatekey/update-public-key.pub` - Public key file
 - `scripts/generate-update-keys.sh` - Key generation script
 - `.github/workflows/build.yaml` - Build and signing workflow
-- `docs/update-public-key.pub` - Public key for releases
 
 ## References
 

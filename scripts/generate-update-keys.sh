@@ -8,7 +8,6 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-PUBLIC_KEY_FILE="$REPO_ROOT/docs/update-public-key.pub"
 PUBLIC_KEY_EMBEDDED="$REPO_ROOT/backend/src/internal/updatekey/update-public-key.pub"
 
 # Function to display usage
@@ -34,7 +33,7 @@ EXAMPLES:
     $0 --output-private /path/to/private-key
 
 NOTES:
-    - Public key is always saved to: docs/update-public-key.pub
+    - Public key is always saved to: backend/src/internal/updatekey/update-public-key.pub
     - Private key should be added as: UPDATE_SIGNING_KEY in GitHub secrets
     - Keep the private key secure and never commit it to the repository
     - Uses minisign format (compatible with minio/selfupdate)
@@ -104,19 +103,13 @@ PUBLIC_KEY=$(cat "$TEMP_DIR/public.key")
 # We'll store it directly in GitHub secrets
 PRIVATE_KEY=$(cat "$TEMP_DIR/private.key")
 
-# Save public key to repository locations
-echo "Saving public key to: $PUBLIC_KEY_FILE"
-mkdir -p "$(dirname "$PUBLIC_KEY_FILE")"
-echo "$PUBLIC_KEY" > "$PUBLIC_KEY_FILE"
-
+# Save public key to repository location
 echo "Saving public key to: $PUBLIC_KEY_EMBEDDED"
 mkdir -p "$(dirname "$PUBLIC_KEY_EMBEDDED")"
 echo "$PUBLIC_KEY" > "$PUBLIC_KEY_EMBEDDED"
 
 echo ""
-echo "✅ Public key saved to:"
-echo "   - $PUBLIC_KEY_FILE"
-echo "   - $PUBLIC_KEY_EMBEDDED"
+echo "✅ Public key saved to: $PUBLIC_KEY_EMBEDDED"
 echo ""
 
 # Extract just the public key string (the RW... part)
@@ -171,7 +164,6 @@ echo "Public key will be embedded in the binary and used to verify update signat
 echo "All release binaries will be signed with the private key during the build process."
 echo ""
 echo "Next steps:"
-echo "  1. Commit docs/update-public-key.pub to the repository"
-echo "  2. Commit backend/src/internal/updatekey/update-public-key.pub to the repository"
-echo "  3. Ensure UPDATE_SIGNING_KEY is set in GitHub secrets"
-echo "  4. The build workflow will automatically sign binaries using minisign"
+echo "  1. Commit backend/src/internal/updatekey/update-public-key.pub to the repository"
+echo "  2. Ensure UPDATE_SIGNING_KEY is set in GitHub secrets"
+echo "  3. The build workflow will automatically sign binaries using minisign"
