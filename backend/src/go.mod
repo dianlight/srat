@@ -19,7 +19,7 @@ require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/adelolmo/hd-idle v0.0.0-20250511190312-c87bc6e9ce96
 	github.com/danielgtaylor/huma/v2 v2.34.1
-	github.com/dianlight/smartmontools-go v0.2.0
+	github.com/dianlight/smartmontools-go v0.2.1
 	github.com/dianlight/tlog v0.1.0
 	github.com/fatih/color v1.18.0
 	github.com/gofri/go-github-ratelimit/v2 v2.0.2
@@ -92,7 +92,7 @@ require (
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/danielgtaylor/mexpr v1.9.1 // indirect
 	github.com/danielgtaylor/shorthand/v2 v2.2.0 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/davecgh/go-spew v1.1.1
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/ebitengine/purego v0.9.1 // indirect

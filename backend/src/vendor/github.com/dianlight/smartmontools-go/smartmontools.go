@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
 	"log/slog"
 	"os/exec"
 	"regexp"
@@ -24,6 +25,14 @@ const (
 	SmartAttrSSDLifeLeft       = 231 // SSD Life Left attribute
 	SmartAttrSandForceInternal = 233 // SandForce Internal (SSD-specific)
 	SmartAttrTotalLBAsWritten  = 234 // Total LBAs Written (SSD-specific)
+)
+
+// Message cache TTL durations by severity
+const (
+	msgCacheTTLInformation = 1 * time.Hour
+	msgCacheTTLWarning     = 30 * time.Minute
+	msgCacheTTLError       = 5 * time.Minute
+	msgCacheTTLDefault     = 2 * time.Hour
 )
 
 // ClientOption is a function that configures a Client
@@ -77,6 +86,56 @@ var (
 	_ logAdapter = (*tlog.Logger)(nil)
 	_ logAdapter = (*slog.Logger)(nil)
 )
+
+// messageCacheEntry holds a cached message with its expiration time
+type messageCacheEntry struct {
+	expiresAt time.Time
+}
+
+// messageCache provides a simple TTL-based cache for deduplicating messages
+type messageCache struct {
+	entries sync.Map
+}
+
+// globalMessageCache is the package-level cache for smartctl messages
+var globalMessageCache = &messageCache{}
+
+// hashString computes a hash key for a message string
+func hashString(s string) uint64 {
+	h := fnv.New64a()
+	h.Write([]byte(s))
+	return h.Sum64()
+}
+
+// shouldLog checks if a message should be logged (not in cache or expired)
+// and caches it with the appropriate TTL if so
+func (mc *messageCache) shouldLog(msg string, severity string) bool {
+	key := hashString(msg)
+
+	// Check if entry exists and is not expired
+	if entry, ok := mc.entries.Load(key); ok {
+		if e, ok := entry.(messageCacheEntry); ok && time.Now().Before(e.expiresAt) {
+			return false
+		}
+	}
+
+	// Determine TTL based on severity
+	var ttl time.Duration
+	switch severity {
+	case "information":
+		ttl = msgCacheTTLInformation
+	case "warning":
+		ttl = msgCacheTTLWarning
+	case "error":
+		ttl = msgCacheTTLError
+	default:
+		ttl = msgCacheTTLDefault
+	}
+
+	// Store new entry
+	mc.entries.Store(key, messageCacheEntry{expiresAt: time.Now().Add(ttl)})
+	return true
+}
 
 // Commander interface for executing commands
 type Commander interface {
@@ -572,23 +631,17 @@ func (c *Client) GetSMARTInfo(ctx context.Context, devicePath string) (*SMARTInf
 		return nil, fmt.Errorf("failed to parse SMART info: %w", err)
 	}
 
-	// Check for messages in the output even when command succeeded
+	// Cache messages from the output to avoid duplicate logging
+	// Messages are cached with TTL based on severity:
+	// - information: 1h, warning: 30min, error: 5min, default: 2h
 	if smartInfo.Smartctl != nil && len(smartInfo.Smartctl.Messages) > 0 {
 		for _, msg := range smartInfo.Smartctl.Messages {
 			if msg.String == "Warning: This result is based on an Attribute check." {
 				// Skip this common non-actionable message
 				continue
 			}
-			switch msg.Severity {
-			case "information":
-				c.logHandler.InfoContext(ctx, "smartctl message", "message", msg.String)
-			case "warning":
-				c.logHandler.WarnContext(ctx, "smartctl message", "message", msg.String)
-			case "error":
-				c.logHandler.ErrorContext(ctx, "smartctl message", "message", msg.String)
-			default:
-				c.logHandler.WarnContext(ctx, "smartctl message", "severity", msg.Severity, "message", msg.String)
-			}
+			// Cache the message; skip if already cached and not expired
+			_ = globalMessageCache.shouldLog(msg.String, msg.Severity)
 		}
 	}
 
