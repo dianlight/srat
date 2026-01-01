@@ -170,7 +170,7 @@ $(FRONTEND_DIRS)/node_modules:
 	cd $(FRONTEND_DIRS); bun install
 
 static: $(FRONTEND_DIRS)/node_modules
-	rm -rf $(SRC_DIRS)/static
+	rm -rf $(SRC_DIRS)/web/static
 	#cd $(FRONTEND_DIRS);bun run gen
 	cd $(FRONTEND_DIRS);bun run version -o $(VERSION)
 	cd $(FRONTEND_DIRS);bun run build -o ../backend/$(STATIC_DIRS)
@@ -216,6 +216,7 @@ mount_remote:
 
 .PHONY: build_remote
 build_remote: /mnt/remote/config.db3
+	rm -rf ../backend/$(STATIC_DIRS)/*.js ../backend/$(STATIC_DIRS)/*.map && \
 	cd $(FRONTEND_DIRS);bun run build -o ../backend/$(STATIC_DIRS);cd - && \
 	$(MAKE) remote_build && \
 	cp -v ./tmp/x86_64/srat-cli /mnt/remote/upgrade/ && \
