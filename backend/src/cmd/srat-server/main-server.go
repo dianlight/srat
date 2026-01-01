@@ -29,8 +29,6 @@ import (
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/server"
 
-	"github.com/jpillora/overseer"
-	"github.com/jpillora/overseer/fetcher"
 	"go.uber.org/fx"
 )
 
@@ -49,6 +47,7 @@ var supervisorToken *string
 var addonIpAddress *string
 var logLevelString *string
 var protectedMode *bool
+var autoUpdate *bool
 var upgrade_channel dto.UpdateChannel
 
 func validateSambaConfig(path string) error {
@@ -68,6 +67,7 @@ func main() {
 	dockerInterface = flag.String("docker-interface", "", "Docker interface")
 	dockerNetwork = flag.String("docker-network", "", "Docker network")
 	protectedMode = flag.Bool("protected-mode", false, "Addon protected mode")
+	autoUpdate = flag.Bool("auto-update", false, "Automatically download and apply updates without user acceptance")
 
 	if !internal.Is_embed {
 		internal.Frontend = flag.String("frontend", "", "Frontend path - if missing the internal is used")
@@ -76,7 +76,6 @@ func main() {
 	supervisorToken = flag.String("ha-token", os.Getenv("SUPERVISOR_TOKEN"), "HomeAssistant Supervisor Token")
 	supervisorURL = flag.String("ha-url", "http://supervisor/", "HomeAssistant Supervisor URL")
 	logLevelString = flag.String("loglevel", "info", "Log level string (debug, info, warn, error)")
-	singleInstance := flag.Bool("single-instance", false, "Single instance mode - only one instance of the addon can run ***ONLY FOR DEBUG***")
 	upgradeChannel := flag.String("update-channel", "release", "Upgrade channel (release, prerelease, develop)")
 	upgradeDataDir = flag.String("upgrade-data-dir", "/data/upgrade", "Persistent upgrades data directory")
 	updateFilePath = flag.String("update-file-path", os.TempDir()+"/"+filepath.Base(os.Args[0]), "Update file path - used for addon updates")
@@ -106,43 +105,24 @@ func main() {
 		upgrade_channel = dto.UpdateChannels.NONE
 	}
 
-	if *singleInstance {
-		slog.Debug("Single instance mode")
-		// Run the program directly
-		listener, err := net.Listen("tcp", fmt.Sprintf(":%d", *http_port))
-		if err != nil {
-			log.Fatalf("Failed to listen on port %d: %s", *http_port, err)
-		}
-		prog(overseer.State{
-			Address:  fmt.Sprintf(":%d", *http_port),
-			Listener: listener,
-		})
-		os.Exit(0)
-	} else {
-		overseer.Run(overseer.Config{
-			Program: prog,
-			Address: fmt.Sprintf(":%d", *http_port),
-			Fetcher: &fetcher.File{
-				Path:     *updateFilePath,
-				Interval: 1 * time.Second,
-			},
-			TerminateTimeout: 30,
-			Debug:            false,
-		})
-		slog.Debug("Stopping main process", "pid", os.Getpid())
+	// Run the program directly
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", *http_port))
+	if err != nil {
+		log.Fatalf("Failed to listen on port %d: %s", *http_port, err)
 	}
+	prog(server.ServerState{
+		Address:  fmt.Sprintf(":%d", *http_port),
+		Listener: listener,
+	})
+	os.Exit(0)
 }
 
-//type writeDeadliner interface {
-//	SetWriteDeadline(time.Time) error
-//}
-
-func prog(state overseer.State) {
+func prog(state server.ServerState) {
 
 	internal.Banner("srat-server", "")
 
 	slog.Debug("Startup Options", "Flags", os.Args)
-	slog.Debug("Starting SRAT", "version", config.Version, "pid", state.ID, "address", state.Address, "listeners", fmt.Sprintf("%T", state.Listener))
+	slog.Debug("Starting SRAT", "version", config.Version, "pid", os.Getpid(), "address", state.Address, "listeners", fmt.Sprintf("%T", state.Listener))
 
 	if err := validateSambaConfig(*smbConfigFile); err != nil {
 		log.Fatalf("Missing samba config! %s", *smbConfigFile)
@@ -193,7 +173,8 @@ func prog(state overseer.State) {
 		appsetup.ProvideFrontendOption(),
 		appsetup.ProvideCyclicDependencyWorkaroundOption(),
 		fx.Provide(
-			func() *overseer.State { return &state },
+			func() *server.ServerState { return &state },
+			func() bool { return *autoUpdate },
 			server.AsHumaRoute(api.NewSSEBroker),
 			func() (smartmontools.SmartClient, error) {
 				return smartmontools.NewClient(smartmontools.WithTLogHandler(tlog.NewLoggerWithLevel(tlog.LevelInfo)))
@@ -286,9 +267,9 @@ func prog(state overseer.State) {
 
 	app.Run() // This blocks until the application stops
 
-	slog.Info("Stopping SRAT", "pid", state.ID)
+	slog.Info("Stopping SRAT", "pid", os.Getpid())
 	apiCtx.Value("wg").(*sync.WaitGroup).Wait() // Ensure background tasks complete
-	apiCancel()                                 // Explicitly cancel context
-	slog.Info("SRAT stopped", "pid", state.ID)
+	apiCancel()                                  // Explicitly cancel context
+	slog.Info("SRAT stopped", "pid", os.Getpid())
 	os.Exit(0)
 }

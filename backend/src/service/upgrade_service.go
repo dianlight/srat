@@ -2,7 +2,10 @@ package service
 
 import (
 	"archive/zip"
+	"bytes"
 	"context"
+	"crypto/ed25519"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"log/slog"
@@ -18,7 +21,9 @@ import (
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/internal/updatekey"
 	"github.com/google/go-github/v80/github"
+	"github.com/minio/selfupdate"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 	"golang.org/x/time/rate"
@@ -35,11 +40,10 @@ type UpgradeServiceInterface interface {
 	GetUpgradeReleaseAsset() (ass *dto.ReleaseAsset, err errors.E)
 	// Download upgrade assets (.zip) and extract in Data directory
 	DownloadAndExtractBinaryAsset(asset dto.BinaryAsset) (*UpdatePackage, errors.E)
-	// Copy all assets from Data directory to real places only if are really new ( .note.metadata check )
+	// Install update using selfupdate library with signature verification
 	InstallUpdatePackage(updatePkg *UpdatePackage) errors.E
-	//InstallOverseerUpdate(updatePkg *UpdatePackage, overseerUpdatePath string) errors.E
-	//InstallUpdateLocal() errors.E
-	//InstallOverseerLocal(overseerUpdatePath string) errors.E
+	// Apply update to the current binary and restart if running under s6
+	ApplyUpdateAndRestart(updatePkg *UpdatePackage) errors.E
 }
 
 type UpgradeService struct {
@@ -48,6 +52,7 @@ type UpgradeService struct {
 	broadcaster   BroadcasterServiceInterface
 	updateLimiter rate.Sometimes
 	state         *dto.ContextState
+	autoUpdate    bool
 }
 
 type UpgradeServiceProps struct {
@@ -56,6 +61,7 @@ type UpgradeServiceProps struct {
 	Broadcaster BroadcasterServiceInterface `optional:"true"`
 	Ctx         context.Context
 	Gh          *github.Client
+	AutoUpdate  bool
 }
 
 func NewUpgradeService(lc fx.Lifecycle, in UpgradeServiceProps) (UpgradeServiceInterface, error) {
@@ -65,6 +71,7 @@ func NewUpgradeService(lc fx.Lifecycle, in UpgradeServiceProps) (UpgradeServiceI
 	p.broadcaster = in.Broadcaster
 	p.state = in.State
 	p.gh = in.Gh
+	p.autoUpdate = in.AutoUpdate
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
@@ -101,6 +108,21 @@ func (self *UpgradeService) run() error {
 					ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE,
 					LastRelease:    ass.LastRelease,
 				})
+
+				// Auto-update if enabled
+				if self.autoUpdate {
+					slog.InfoContext(self.ctx, "Auto-update enabled, downloading and installing update", "release", ass.LastRelease)
+					updatePkg, err := self.DownloadAndExtractBinaryAsset(ass.ArchAsset)
+					if err != nil {
+						slog.ErrorContext(self.ctx, "Error downloading update during auto-update", "err", err)
+						continue
+					}
+					err = self.ApplyUpdateAndRestart(updatePkg)
+					if err != nil {
+						slog.ErrorContext(self.ctx, "Error applying update during auto-update", "err", err)
+					}
+					// If we successfully apply and restart, this code won't be reached
+				}
 			} else {
 				self.state.UpdateAvailable = false
 				self.notifyClient(dto.UpdateProgress{
@@ -485,7 +507,7 @@ func (self *UpgradeService) installBinaryTo(newExecutablePath string, destinatio
 
 func (self *UpgradeService) InstallUpdatePackage(updatePkg *UpdatePackage) errors.E {
 	if updatePkg == nil || updatePkg.CurrentExecutablePath == nil || *updatePkg.CurrentExecutablePath == "" {
-		err := errors.New("invalid update package or missing executable path for overseer update")
+		err := errors.New("invalid update package or missing executable path")
 		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: err.Error()})
 		return err
 	}
@@ -512,6 +534,136 @@ func (self *UpgradeService) InstallUpdatePackage(updatePkg *UpdatePackage) error
 		}
 	}
 	return nil
+}
+
+// ApplyUpdateAndRestart applies the update using selfupdate with signature verification
+// and restarts the process if running under s6
+func (self *UpgradeService) ApplyUpdateAndRestart(updatePkg *UpdatePackage) errors.E {
+	if updatePkg == nil || updatePkg.CurrentExecutablePath == nil || *updatePkg.CurrentExecutablePath == "" {
+		err := errors.New("invalid update package or missing executable path")
+		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: err.Error()})
+		return err
+	}
+
+	slog.InfoContext(self.ctx, "Applying update with signature verification", "new_executable", *updatePkg.CurrentExecutablePath)
+	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSINSTALLING, Progress: 0})
+
+	// Parse the embedded public key
+	publicKey, err := self.parsePublicKey()
+	if err != nil {
+		errWrapped := errors.Wrap(err, "failed to parse public key")
+		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+		return errWrapped
+	}
+
+	// Open the new binary file
+	newBinary, err := os.Open(*updatePkg.CurrentExecutablePath)
+	if err != nil {
+		errWrapped := errors.Wrapf(err, "failed to open new binary: %s", *updatePkg.CurrentExecutablePath)
+		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+		return errWrapped
+	}
+	defer newBinary.Close()
+
+	// Check if signature file exists (for signed updates)
+	signatureFile := *updatePkg.CurrentExecutablePath + ".sig"
+	var opts selfupdate.Options
+	if _, statErr := os.Stat(signatureFile); statErr == nil {
+		slog.InfoContext(self.ctx, "Signature file found, will verify update", "signature_file", signatureFile)
+		opts = selfupdate.Options{
+			PublicKey: publicKey,
+		}
+	} else {
+		slog.WarnContext(self.ctx, "Signature file not found, update will not be verified", "expected_signature_file", signatureFile)
+		// For development or unsigned builds, proceed without verification
+		opts = selfupdate.Options{}
+	}
+
+	// Apply the update
+	err = selfupdate.Apply(newBinary, opts)
+	if err != nil {
+		if rerr := selfupdate.RollbackError(err); rerr != nil {
+			errWrapped := errors.Wrapf(err, "failed to apply update and rollback failed: %v", rerr)
+			self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+			return errWrapped
+		}
+		errWrapped := errors.Wrap(err, "failed to apply update (rolled back successfully)")
+		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+		return errWrapped
+	}
+
+	slog.InfoContext(self.ctx, "Update applied successfully")
+	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSINSTALLCOMPLETE, Progress: 100})
+
+	// Check if we're running under s6 and restart if so
+	if self.isRunningUnderS6() {
+		slog.InfoContext(self.ctx, "Running under s6, initiating restart via exit(0)")
+		self.notifyClient(dto.UpdateProgress{
+			ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSINSTALLCOMPLETE,
+			Progress:       100,
+			ErrorMessage:   "Update complete, restarting service...",
+		})
+		// Give time for the message to be sent
+		time.Sleep(500 * time.Millisecond)
+		os.Exit(0)
+	} else {
+		slog.InfoContext(self.ctx, "Not running under s6, manual restart required")
+		self.notifyClient(dto.UpdateProgress{
+			ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSINSTALLCOMPLETE,
+			Progress:       100,
+			ErrorMessage:   "Update complete, please restart the service manually",
+		})
+	}
+
+	return nil
+}
+
+// parsePublicKey parses the embedded Ed25519 public key from PEM format
+func (self *UpgradeService) parsePublicKey() (ed25519.PublicKey, error) {
+	block, _ := pem.Decode([]byte(updatekey.UpdatePublicKey))
+	if block == nil {
+		return nil, fmt.Errorf("failed to decode PEM block containing public key")
+	}
+
+	// The public key is in PKIX format, we need to extract the raw Ed25519 key
+	// For Ed25519, the public key is 32 bytes
+	// The PKIX format has a header, so we need to skip it
+	// Typical Ed25519 public key in PKIX format is 44 bytes total
+	if len(block.Bytes) < 32 {
+		return nil, fmt.Errorf("public key too short: %d bytes", len(block.Bytes))
+	}
+
+	// Extract the raw public key (last 32 bytes)
+	publicKeyBytes := block.Bytes[len(block.Bytes)-32:]
+	return ed25519.PublicKey(publicKeyBytes), nil
+}
+
+// isRunningUnderS6 checks if the current process is running under s6 supervision
+func (self *UpgradeService) isRunningUnderS6() bool {
+	// Check for s6 environment variables
+	if os.Getenv("S6_VERSION") != "" {
+		return true
+	}
+
+	// Check if parent process is s6-supervise
+	ppid := os.Getppid()
+	if ppid <= 1 {
+		return false
+	}
+
+	// Read the parent process name
+	cmdlinePath := fmt.Sprintf("/proc/%d/cmdline", ppid)
+	cmdline, err := os.ReadFile(cmdlinePath)
+	if err != nil {
+		// If we can't read the parent process, assume not under s6
+		return false
+	}
+
+	// Convert null-terminated strings to regular string
+	cmdlineStr := string(bytes.ReplaceAll(cmdline, []byte{0}, []byte(" ")))
+
+	// Check if parent process contains "s6-supervise"
+	return strings.Contains(cmdlineStr, "s6-supervise")
 }
 
 func (self *UpgradeService) getCurrentExecutablePath() (*string, errors.E) {

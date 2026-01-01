@@ -5,6 +5,7 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/tlog"
 	"github.com/gorilla/mux"
-	"github.com/jpillora/overseer"
 	"github.com/rs/cors"
 	sloghttp "github.com/samber/slog-http"
 	"go.uber.org/fx"
@@ -21,7 +21,7 @@ import (
 func NewHTTPServer(
 	lc fx.Lifecycle,
 	mux *mux.Router,
-	state *overseer.State,
+	state *ServerState,
 	apiContext context.Context,
 	cxtClose context.CancelFunc,
 ) *http.Server {
@@ -62,7 +62,7 @@ func NewHTTPServer(
 			apiContext.Value("wg").(*sync.WaitGroup).Add(1)
 			go func() {
 				defer apiContext.Value("wg").(*sync.WaitGroup).Done()
-				slog.Debug("Starting HTTP server at", "listener", state.Address, "pid", state.ID)
+				slog.Debug("Starting HTTP server at", "listener", state.Address, "pid", os.Getpid())
 				if err := srv.Serve(state.Listener); err != nil {
 					if err == http.ErrServerClosed {
 						slog.Info("HTTP server stopped gracefully")
