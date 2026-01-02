@@ -88,9 +88,9 @@ func (suite *UpgradeServiceTestSuite) SetupTest() {
 					UpdateDataDir:  tmpDir,
 					UpdateFilePath: tmpDir + "/" + filepath.Base(os.Args[0]),
 					UpdateChannel:  dto.UpdateChannels.NONE,
+					AutoUpdate:     false,
 				}
 			},
-			func() bool { return false }, // AutoUpdate flag
 			service.NewUpgradeService,
 			mock.Mock[service.BroadcasterServiceInterface],
 			mock.Mock[repository.PropertyRepositoryInterface],

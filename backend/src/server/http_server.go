@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"sync"
@@ -21,7 +22,7 @@ import (
 func NewHTTPServer(
 	lc fx.Lifecycle,
 	mux *mux.Router,
-	state *ServerState,
+	listener net.Listener,
 	apiContext context.Context,
 	cxtClose context.CancelFunc,
 ) *http.Server {
@@ -62,8 +63,8 @@ func NewHTTPServer(
 			apiContext.Value("wg").(*sync.WaitGroup).Add(1)
 			go func() {
 				defer apiContext.Value("wg").(*sync.WaitGroup).Done()
-				slog.Debug("Starting HTTP server at", "listener", state.Address, "pid", os.Getpid())
-				if err := srv.Serve(state.Listener); err != nil {
+				slog.Debug("Starting HTTP server at", "listener", listener.Addr(), "pid", os.Getpid())
+				if err := srv.Serve(listener); err != nil {
 					if err == http.ErrServerClosed {
 						slog.Info("HTTP server stopped gracefully")
 					} else {

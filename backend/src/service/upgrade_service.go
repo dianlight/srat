@@ -50,7 +50,6 @@ type UpgradeService struct {
 	broadcaster   BroadcasterServiceInterface
 	updateLimiter rate.Sometimes
 	state         *dto.ContextState
-	autoUpdate    bool
 	shutdowner    fx.Shutdowner
 }
 
@@ -60,7 +59,6 @@ type UpgradeServiceProps struct {
 	Broadcaster BroadcasterServiceInterface `optional:"true"`
 	Ctx         context.Context
 	Gh          *github.Client
-	AutoUpdate  bool
 	Shutdowner  fx.Shutdowner
 }
 
@@ -71,7 +69,6 @@ func NewUpgradeService(lc fx.Lifecycle, in UpgradeServiceProps) (UpgradeServiceI
 	p.broadcaster = in.Broadcaster
 	p.state = in.State
 	p.gh = in.Gh
-	p.autoUpdate = in.AutoUpdate
 	p.shutdowner = in.Shutdowner
 
 	lc.Append(fx.Hook{
@@ -111,7 +108,7 @@ func (self *UpgradeService) run() error {
 				})
 
 				// Auto-update if enabled
-				if self.autoUpdate {
+				if self.state.AutoUpdate {
 					slog.InfoContext(self.ctx, "Auto-update enabled, downloading and installing update", "release", ass.LastRelease)
 					updatePkg, err := self.DownloadAndExtractBinaryAsset(ass.ArchAsset)
 					if err != nil {

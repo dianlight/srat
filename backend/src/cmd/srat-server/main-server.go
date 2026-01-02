@@ -110,19 +110,16 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to listen on port %d: %s", *http_port, err)
 	}
-	prog(server.ServerState{
-		Address:  fmt.Sprintf(":%d", *http_port),
-		Listener: listener,
-	})
+	prog(listener)
 	os.Exit(0)
 }
 
-func prog(state server.ServerState) {
+func prog(listener net.Listener) {
 
 	internal.Banner("srat-server", "")
 
 	slog.Debug("Startup Options", "Flags", os.Args)
-	slog.Debug("Starting SRAT", "version", config.Version, "pid", os.Getpid(), "address", state.Address, "listeners", fmt.Sprintf("%T", state.Listener))
+	slog.Debug("Starting SRAT", "version", config.Version, "pid", os.Getpid(), "address", listener.Addr(), "listeners", fmt.Sprintf("%T", listener))
 
 	if err := validateSambaConfig(*smbConfigFile); err != nil {
 		log.Fatalf("Missing samba config! %s", *smbConfigFile)
@@ -147,6 +144,7 @@ func prog(state server.ServerState) {
 		UpdateFilePath:  *updateFilePath,
 		UpdateChannel:   upgrade_channel,
 		UpdateDataDir:   *upgradeDataDir,
+		AutoUpdate:      *autoUpdate,
 		SambaConfigFile: *smbConfigFile,
 		Template:        internal.GetTemplateData(),
 		DockerInterface: *dockerInterface,
@@ -173,8 +171,7 @@ func prog(state server.ServerState) {
 		appsetup.ProvideFrontendOption(),
 		appsetup.ProvideCyclicDependencyWorkaroundOption(),
 		fx.Provide(
-			func() *server.ServerState { return &state },
-			func() bool { return *autoUpdate },
+			func() net.Listener { return listener },
 			server.AsHumaRoute(api.NewSSEBroker),
 			func() (smartmontools.SmartClient, error) {
 				return smartmontools.NewClient(smartmontools.WithTLogHandler(tlog.NewLoggerWithLevel(tlog.LevelInfo)))
