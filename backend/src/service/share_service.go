@@ -200,21 +200,16 @@ func (s *ShareService) GetShare(name string) (*dto.SharedResource, errors.E) {
 }
 
 func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResource, errors.E) {
-	_, err := gorm.G[dbom.ExportedShare](s.db).
-		Preload("MountPointData", nil).
-		Preload("Users", nil).
-		Preload("RoUsers", nil).
-		Where(g.ExportedShare.Name.Eq(share.Name)).First(s.ctx)
-	if err != nil && (!errors.Is(err, gorm.ErrRecordNotFound)) {
-		slog.Error("Failed to check for existing share", "share_name", share.Name, "error", err)
-		return nil, errors.Wrap(err, "failed to check for existing share")
-	}
-	if err == nil {
-		return nil, errors.WithStack(dto.ErrorShareAlreadyExists)
+	var existing dbom.ExportedShare
+	check := s.db.WithContext(s.ctx).Unscoped().Where("name = ?", share.Name).First(&existing)
+	if check.Error != nil && !errors.Is(check.Error, gorm.ErrRecordNotFound) {
+		slog.Error("Failed to check for existing share", "share_name", share.Name, "error", check.Error)
+		return nil, errors.Wrap(check.Error, "failed to check for existing share")
 	}
 
 	var conv converter.DtoToDbomConverterImpl
 	var dbShare dbom.ExportedShare
+	var err error
 	err = conv.SharedResourceToExportedShare(share, &dbShare)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to convert share")
@@ -233,9 +228,20 @@ func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResourc
 		dbShare.Users = []dbom.SambaUser{dbomAdmin}
 	}
 
-	err = gorm.G[dbom.ExportedShare](s.db).Create(s.ctx, &dbShare)
-	if err != nil {
-		return nil, errors.Errorf("failed to save share '%s' to repository: %w", share.Name, err)
+	if check.Error == nil {
+		// Existing soft-deleted record: resurrect with new data
+		dbShare.DeletedAt = gorm.DeletedAt{}
+		saveErr := s.db.WithContext(s.ctx).
+			Session(&gorm.Session{FullSaveAssociations: true}).
+			Unscoped().Save(&dbShare).Error
+		if saveErr != nil {
+			return nil, errors.Errorf("failed to restore share '%s' in repository: %w", share.Name, saveErr)
+		}
+	} else {
+		err = gorm.G[dbom.ExportedShare](s.db).Create(s.ctx, &dbShare)
+		if err != nil {
+			return nil, errors.Errorf("failed to save share '%s' to repository: %w", share.Name, err)
+		}
 	}
 
 	var convOut converter.DtoToDbomConverterImpl

@@ -935,6 +935,43 @@ func (suite *ShareServiceSuite) TestDeleteShareSuccess() {
 	suite.True(errors.Is(err, dto.ErrorShareNotFound))
 }
 
+func (suite *ShareServiceSuite) TestCreateDeleteAndRecreateShare() {
+	// Setup: allow auto-adding admin user on empty user list
+	mock.When(suite.userService.GetAdmin()).ThenReturn(&dto.User{
+		Username: "homeassistant",
+	}, nil)
+
+	share := dto.SharedResource{
+		Name:     "recreate-share",
+		Disabled: boolPtr(false),
+		MountPointData: &dto.MountPointData{
+			Path:     "/mnt/recreate",
+			DeviceId: "recreatedev",
+			Type:     "ADDON",
+		},
+		Users: []dto.User{}, // Trigger auto-add admin
+	}
+
+	created, err := suite.shareService.CreateShare(share)
+	suite.Require().NoError(err)
+	suite.Require().NotNil(created)
+	suite.Len(created.Users, 1)
+	suite.Equal("homeassistant", created.Users[0].Username)
+
+	// Delete the share
+	err = suite.shareService.DeleteShare("recreate-share")
+	suite.Require().NoError(err)
+
+	// Recreate the same share name should succeed after deletion
+	recreated, err := suite.shareService.CreateShare(share)
+	suite.Require().NoError(err)
+	suite.Require().NotNil(recreated)
+	suite.Equal("recreate-share", recreated.Name)
+	suite.False(*recreated.Disabled)
+	suite.Len(recreated.Users, 1)
+	suite.Equal("homeassistant", recreated.Users[0].Username)
+}
+
 func (suite *ShareServiceSuite) TestDeleteShareNotFound() {
 	// Execute
 	err := suite.shareService.DeleteShare("nonexistent-delete-share")
