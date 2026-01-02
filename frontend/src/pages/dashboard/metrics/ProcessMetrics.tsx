@@ -191,7 +191,7 @@ export function ProcessMetrics({
 							{process.connections ?? "N/A"}
 						</Typography>
 						<Box sx={{ width: 50, height: 20 }}>
-							{(connectionsHistory[process.name]?.length || 0) > 1 ? (
+							{(connectionsHistory[process.name]?.length || 0) > 0 ? (
 								<SparkLineChart
 									data={connectionsHistory[process.name] ?? []}
 									width={60}
