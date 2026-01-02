@@ -1,3 +1,46 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+**Table of Contents** *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [SRAT Auto-Update System](#srat-auto-update-system)
+  - [Overview](#overview)
+  - [Features](#features)
+  - [How It Works](#how-it-works)
+    - [Update Check Process](#update-check-process)
+    - [Update Application Process](#update-application-process)
+    - [Signature Verification](#signature-verification)
+  - [Configuration](#configuration)
+    - [Command Line Flags](#command-line-flags)
+    - [Update Channels](#update-channels)
+  - [Security](#security)
+    - [Key Management](#key-management)
+    - [Signature Verification Process](#signature-verification-process)
+    - [Threat Model](#threat-model)
+  - [API Endpoints](#api-endpoints)
+    - [Check for Updates](#check-for-updates)
+    - [Apply Update](#apply-update)
+    - [Get Update Channels](#get-update-channels)
+  - [Build Process Integration](#build-process-integration)
+    - [Build Workflow Steps](#build-workflow-steps)
+  - [S6 Integration](#s6-integration)
+  - [Troubleshooting](#troubleshooting)
+    - [Update fails with signature verification error](#update-fails-with-signature-verification-error)
+    - [Update downloads but doesn't apply](#update-downloads-but-doesnt-apply)
+    - [Service doesn't restart after update](#service-doesnt-restart-after-update)
+    - [Development/Testing](#developmenttesting)
+  - [Maintenance](#maintenance)
+    - [Rotating Keys](#rotating-keys)
+    - [Monitoring Updates](#monitoring-updates)
+  - [Architecture Decisions](#architecture-decisions)
+    - [Why minio/selfupdate?](#why-minioselfupdate)
+    - [Why minisign over other signature schemes?](#why-minisign-over-other-signature-schemes)
+    - [Why embed the public key?](#why-embed-the-public-key)
+  - [Related Files](#related-files)
+  - [References](#references)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # SRAT Auto-Update System
 
 ## Overview
@@ -91,6 +134,7 @@ GET /update
 Returns information about available updates.
 
 **Response**:
+
 ```json
 {
   "LastRelease": "2025.1.0",
@@ -111,6 +155,7 @@ PUT /update
 Triggers the update process. Returns immediately and updates in the background.
 
 **Response**:
+
 ```json
 {
   "ProgressStatus": "DOWNLOADING",
