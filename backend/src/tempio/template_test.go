@@ -211,3 +211,31 @@ func TestRenderTemplateBufferWithExecuteError(t *testing.T) {
 	_, err := RenderTemplateBuffer(&data, template)
 	require.Error(t, err)
 }
+func TestRenderTemplateBufferWithAllowGuestEnabled(t *testing.T) {
+	data := map[string]interface{}{
+		"allow_guest": true,
+	}
+	template := []byte(`{{if .allow_guest -}}
+guest account = nobody
+map to guest = Bad User
+{{- end }}`)
+
+	rendered, err := RenderTemplateBuffer(&data, []byte(template))
+	require.NoError(t, err)
+	assert.Contains(t, string(rendered), "guest account = nobody")
+	assert.Contains(t, string(rendered), "map to guest = Bad User")
+}
+
+func TestRenderTemplateBufferWithAllowGuestDisabled(t *testing.T) {
+	data := map[string]interface{}{
+		"allow_guest": false,
+	}
+	template := []byte(`{{if .allow_guest -}}
+guest account = nobody
+map to guest = Bad User
+{{- end }}`)
+
+	rendered, err := RenderTemplateBuffer(&data, []byte(template))
+	require.NoError(t, err)
+	assert.NotContains(t, string(rendered), "guest account")
+}

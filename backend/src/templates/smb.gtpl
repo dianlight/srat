@@ -73,6 +73,10 @@
 
    security = user
    ntlm auth = yes
+   {{if .allow_guest -}}
+   guest account = nobody
+   map to guest = Bad User
+   {{- end }}
    idmap config * : backend = tdb
    idmap config * : range = 1000000-2000000
 

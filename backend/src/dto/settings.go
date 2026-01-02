@@ -10,6 +10,7 @@ type Settings struct {
 	BindAllInterfaces bool     `json:"bind_all_interfaces,omitempty"`
 	LogLevel          string   `json:"log_level,omitempty"`
 	MultiChannel      bool     `json:"multi_channel,omitempty"`
+	AllowGuest        *bool    `json:"allow_guest,omitempty" default:"false"`
 	//UpdateChannel                 UpdateChannel `json:"update_channel,omitempty" enum:"None,Develop,Release,Prerelease"`
 	TelemetryMode                 TelemetryMode `json:"telemetry_mode,omitempty" enum:"Ask,All,Errors,Disabled"`
 	LocalMaster                   *bool         `json:"local_master,omitempty" default:"true"`
