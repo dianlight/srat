@@ -55,25 +55,19 @@ export function ProcessMetrics({
 		const cpuDisplay =
 			process.cpu !== null && process.cpu > 0
 				? `${process.cpu.toFixed(1)}%`
-				: isSubprocess
-					? "N/A"
-					: process.cpu !== null
-						? `${process.cpu.toFixed(1)}%`
-						: "N/A";
+				: process.cpu !== null
+					? `${process.cpu.toFixed(1)}%`
+					: "N/A";
 
 		const memoryDisplay =
 			process.memory !== null && process.memory > 0
 				? `${process.memory.toFixed(1)}%`
-				: isSubprocess
-					? "N/A"
-					: process.memory !== null
-						? `${process.memory.toFixed(1)}%`
-						: "N/A";
+				: process.memory !== null
+					? `${process.memory.toFixed(1)}%`
+					: "N/A";
 
-		const showCpuChart =
-			!isSubprocess && (cpuHistory[process.name]?.length || 0) > 1;
-		const showMemoryChart =
-			!isSubprocess && (memoryHistory[process.name]?.length || 0) > 1;
+		const showCpuChart = (cpuHistory[process.name]?.length || 0) > 1;
+		const showMemoryChart = (memoryHistory[process.name]?.length || 0) > 1;
 
 		const tableRowKey = uniqueId || process.name;
 		return (
