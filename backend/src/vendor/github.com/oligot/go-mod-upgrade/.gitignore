@@ -1,0 +1,8 @@
+*.swp
+go-mod-upgrade
+
+bin/
+dist/
+.idea/
+.direnv/
+vendor

@@ -139,13 +139,10 @@ dev:
 
 .PHONY: update
 update:
-	go get -C $(SRC_DIRS) -u -t ./... && \
+	go -C $(SRC_DIRS) tool github.com/oligot/go-mod-upgrade && \
 	go -C $(SRC_DIRS) mod vendor && \
 	make patch format
 
-.PHONY: show_update
-show_update:
-	go -C $(SRC_DIRS) list -mod=mod -m -u all 
 
 .PHONY: examples
 examples: example_tlog
