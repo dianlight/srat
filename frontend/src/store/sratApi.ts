@@ -283,7 +283,7 @@ const injectedRtkApi = api
           query: (queryArg) => ({
             url: `/api/share`,
             method: "POST",
-            body: queryArg.sharedResource,
+            body: queryArg.sharedResourcePostData,
           }),
           invalidatesTags: ["share"],
         },
@@ -323,7 +323,7 @@ const injectedRtkApi = api
         query: (queryArg) => ({
           url: `/api/share/${queryArg.shareName}`,
           method: "PUT",
-          body: queryArg.sharedResource,
+          body: queryArg.sharedResourcePostData,
         }),
         invalidatesTags: ["share"],
       }),
@@ -657,7 +657,7 @@ export type PostApiShareApiResponse = /** status 200 OK */
   | SharedResource
   | /** status default Error */ ErrorModel;
 export type PostApiShareApiArg = {
-  sharedResource: SharedResource;
+  sharedResourcePostData: SharedResourcePostData;
 };
 export type DeleteApiShareByShareNameApiResponse =
   /** status default Error */ ErrorModel;
@@ -686,7 +686,7 @@ export type PutApiShareByShareNameApiResponse = /** status 200 OK */
 export type PutApiShareByShareNameApiArg = {
   /** Name of the share */
   shareName: string;
-  sharedResource: SharedResource;
+  sharedResourcePostData: SharedResourcePostData;
 };
 export type PutApiShareByShareNameDisableApiResponse = /** status 200 OK */
   | SharedResource
@@ -883,12 +883,16 @@ export type HdIdleDevice = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
   command_type?: Command_type;
-  device_path: string;
+  device_path?: string;
   disk_id?: string;
   enabled?: Enabled;
+  error_message?: string;
   idle_time: number;
   power_condition: number;
-  supported: boolean;
+  recommended_command?: string;
+  supported?: boolean;
+  supports_ata?: boolean;
+  supports_scsi?: boolean;
 };
 export type JsonPatchOp = {
   /** JSON Pointer for the source of a move or copy */
@@ -903,25 +907,21 @@ export type JsonPatchOp = {
 export type HdIdleDeviceStatus = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
-  command_type?: string;
-  enabled: boolean;
-  idle_time_millis?: number;
   last_io_at?: string;
   name?: string;
   spin_down_at?: string;
   spin_up_at?: string;
   spun_down: boolean;
-  supported: boolean;
 };
 export type HdIdleDeviceSupport = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
-  DevicePath: string;
-  ErrorMessage: string;
-  RecommendedCommand: string | null;
-  Supported: boolean;
-  SupportsATA: boolean;
-  SupportsSCSI: boolean;
+  device_path?: string;
+  error_message?: string;
+  recommended_command?: string;
+  supported?: boolean;
+  supports_ata?: boolean;
+  supports_scsi?: boolean;
 };
 export type SmartHealthStatus = {
   /** A URL to the JSON Schema for this object. */
@@ -1275,6 +1275,22 @@ export type SharedResource = {
   disabled?: boolean;
   guest_ok?: boolean;
   mount_point_data?: MountPointData;
+  name?: string;
+  recycle_bin_enabled?: boolean;
+  ro_users?: User[] | null;
+  status?: SharedResourceStatus;
+  timemachine?: boolean;
+  timemachine_max_size?: string;
+  usage?: Usage;
+  users?: User[] | null;
+  veto_files?: string[];
+  [key: string]: unknown;
+};
+export type SharedResourcePostData = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  disabled?: boolean;
+  guest_ok?: boolean;
   name?: string;
   recycle_bin_enabled?: boolean;
   ro_users?: User[] | null;

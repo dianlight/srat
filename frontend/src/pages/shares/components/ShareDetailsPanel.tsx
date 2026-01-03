@@ -74,16 +74,16 @@ export function ShareDetailsPanel({
                 height: "100%",
                 overflow: "auto",
                 p: 2,
-                opacity: share.disabled ? 0.6 : 1,
-                pointerEvents: share.disabled ? "none" : "auto",
-                filter: share.disabled ? "grayscale(50%)" : "none",
+                opacity: share.mount_point_data?.invalid ? 0.6 : 1,
+                pointerEvents: share.mount_point_data?.invalid ? "none" : "auto",
+                filter: share.mount_point_data?.invalid ? "grayscale(50%)" : "none",
                 transition: "opacity 0.3s, filter 0.3s"
             }}
         >
             <Stack spacing={3}>
                 {/* Mount Point Information Card */}
                 <Card sx={{ position: "relative" }}>
-                    {share.disabled && (
+                    {share.mount_point_data?.invalid && (
                         <Box
                             sx={{
                                 position: "absolute",
@@ -449,4 +449,4 @@ export function ShareDetailsPanel({
             />
         </Box>
     );
-}
+} 

@@ -79,6 +79,6 @@ func (suite *UpgradeHandlerSuite) TestGetUpdateInfoNoUpdate() {
 	_, apiInst := humatest.New(suite.T())
 	suite.handler.RegisterUpgradeHanler(apiInst)
 	resp := apiInst.Get("/update")
-	suite.Require().Equal(http.StatusNotFound, resp.Code)
+	suite.Require().Equal(http.StatusNoContent, resp.Code, "body", resp.Body.String())
 	mock.Verify(suite.mockUpgradeService, matchers.Times(1)).GetUpgradeReleaseAsset()
 }

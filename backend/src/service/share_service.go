@@ -200,16 +200,16 @@ func (s *ShareService) GetShare(name string) (*dto.SharedResource, errors.E) {
 }
 
 func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResource, errors.E) {
-	var existing dbom.ExportedShare
-	check := s.db.WithContext(s.ctx).Unscoped().Where("name = ?", share.Name).First(&existing)
-	if check.Error != nil && !errors.Is(check.Error, gorm.ErrRecordNotFound) {
-		slog.Error("Failed to check for existing share", "share_name", share.Name, "error", check.Error)
-		return nil, errors.Wrap(check.Error, "failed to check for existing share")
+	check, err := gorm.G[dbom.ExportedShare](s.db.Debug()).Scopes(dbom.IncludeSoftDeleted).Where("name = ? and deleted_at IS NOT NULL", share.Name).Update(s.ctx, "deleted_at", nil)
+	if err != nil {
+		slog.Error("Failed to check for existing share", "share_name", share.Name, "error", err)
+		return nil, errors.Wrapf(err, "failed to check for existing share: %s", err.Error())
+	} else if check > 0 {
+		return s.UpdateShare(share.Name, share)
 	}
 
 	var conv converter.DtoToDbomConverterImpl
 	var dbShare dbom.ExportedShare
-	var err error
 	err = conv.SharedResourceToExportedShare(share, &dbShare)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to convert share")
@@ -228,20 +228,9 @@ func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResourc
 		dbShare.Users = []dbom.SambaUser{dbomAdmin}
 	}
 
-	if check.Error == nil {
-		// Existing soft-deleted record: resurrect with new data
-		dbShare.DeletedAt = gorm.DeletedAt{}
-		saveErr := s.db.WithContext(s.ctx).
-			Session(&gorm.Session{FullSaveAssociations: true}).
-			Unscoped().Save(&dbShare).Error
-		if saveErr != nil {
-			return nil, errors.Errorf("failed to restore share '%s' in repository: %w", share.Name, saveErr)
-		}
-	} else {
-		err = gorm.G[dbom.ExportedShare](s.db).Create(s.ctx, &dbShare)
-		if err != nil {
-			return nil, errors.Errorf("failed to save share '%s' to repository: %w", share.Name, err)
-		}
+	err = gorm.G[dbom.ExportedShare](s.db).Create(s.ctx, &dbShare)
+	if err != nil {
+		return nil, errors.Errorf("failed to save share '%s' to repository: %w", share.Name, err)
 	}
 
 	var convOut converter.DtoToDbomConverterImpl
@@ -328,6 +317,25 @@ func (s *ShareService) DeleteShare(name string) errors.E {
 		Event: events.Event{Type: events.EventTypes.REMOVE},
 		Share: ashare,
 	})
+
+	// Retrieve the share with associations to clear them before soft delete
+	var dbShare dbom.ExportedShare
+	if err := s.db.WithContext(s.ctx).
+		Preload("Users").
+		Preload("RoUsers").
+		Where("name = ?", name).First(&dbShare).Error; err != nil {
+		return errors.Wrap(err, "failed to retrieve share for deletion")
+	}
+
+	// Clear associations to avoid foreign key issues on recreation
+	if err := s.db.WithContext(s.ctx).Model(&dbShare).Association("Users").Clear(); err != nil {
+		return errors.Wrap(err, "failed to clear Users associations")
+	}
+	if err := s.db.WithContext(s.ctx).Model(&dbShare).Association("RoUsers").Clear(); err != nil {
+		return errors.Wrap(err, "failed to clear RoUsers associations")
+	}
+
+	// Now perform the soft delete
 	_, errS := gorm.G[dbom.ExportedShare](s.db).
 		Where(g.ExportedShare.Name.Eq(name)).Delete(s.ctx)
 	if errS != nil {

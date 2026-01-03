@@ -27,6 +27,7 @@ export function useUpdate() {
 
 	useEffect(() => {
 		if (!isLoading && isSuccess && data) {
+			console.log("Update data:", data);
 			setUpdate({ Available: true, Progress: data as UpdateProgress });
 		}
 	}, [data, isLoading, isSuccess]);

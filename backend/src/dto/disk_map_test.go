@@ -353,7 +353,8 @@ func TestDiskMap_RemoveMountPointShare(t *testing.T) {
 	diskID := "disk-remove-share"
 	partID := "part-remove-share"
 	path := "/mnt/remove-share"
-	share := &dto.SharedResource{Name: "todelete"}
+	shareName := "todelete"
+	share := &dto.SharedResource{Name: shareName}
 	mount := dto.MountPointData{Path: path, Share: share}
 	parts := map[string]dto.Partition{partID: {Id: ptr(partID), MountPointData: &map[string]dto.MountPointData{path: mount}}}
 	m := dto.DiskMap{}
@@ -363,10 +364,12 @@ func TestDiskMap_RemoveMountPointShare(t *testing.T) {
 	mp, ok := (&m).GetMountPoint(diskID, partID, path)
 	assert.True(t, ok)
 	assert.NotNil(t, mp.Share)
+	assert.Equal(t, shareName, mp.Share.Name)
 
-	// Remove share by path only
-	removed, disk := (&m).RemoveMountPointShare(path)
+	// Remove share by share name
+	removed, disk := (&m).RemoveMountPointShare(shareName)
 	assert.True(t, removed)
+	assert.NotNil(t, disk)
 	assert.Equal(t, diskID, *disk.Id)
 
 	// Verify share is nil
@@ -374,42 +377,175 @@ func TestDiskMap_RemoveMountPointShare(t *testing.T) {
 	assert.True(t, ok)
 	assert.Nil(t, mp.Share)
 
-	// Removing again should still return true (mount point exists)
-	removed, _ = (&m).RemoveMountPointShare(path)
+	// Removing again should return false (no share with that name exists anymore)
+	removed, disk = (&m).RemoveMountPointShare(shareName)
+	assert.False(t, removed)
+	assert.Nil(t, disk)
+}
+
+func TestDiskMap_RemoveMountPointShare_MultipleDisks(t *testing.T) {
+	// Setup multiple disks with multiple partitions
+	diskID1 := "disk-1"
+	diskID2 := "disk-2"
+	partID1 := "part-1"
+	partID2 := "part-2"
+	partID3 := "part-3"
+	path1 := "/mnt/share1"
+	path2 := "/mnt/share2"
+	path3 := "/mnt/share3"
+
+	shareName1 := "share1"
+	shareName2 := "share2"
+	shareName3 := "share3"
+
+	share1 := &dto.SharedResource{Name: shareName1}
+	share2 := &dto.SharedResource{Name: shareName2}
+	share3 := &dto.SharedResource{Name: shareName3}
+
+	mount1 := dto.MountPointData{Path: path1, Share: share1}
+	mount2 := dto.MountPointData{Path: path2, Share: share2}
+	mount3 := dto.MountPointData{Path: path3, Share: share3}
+
+	parts1 := map[string]dto.Partition{
+		partID1: {Id: ptr(partID1), MountPointData: &map[string]dto.MountPointData{path1: mount1}},
+		partID2: {Id: ptr(partID2), MountPointData: &map[string]dto.MountPointData{path2: mount2}},
+	}
+	parts2 := map[string]dto.Partition{
+		partID3: {Id: ptr(partID3), MountPointData: &map[string]dto.MountPointData{path3: mount3}},
+	}
+
+	m := dto.DiskMap{}
+	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID1, Partitions: &parts1})
+	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID2, Partitions: &parts2})
+
+	// Remove share from disk 2
+	removed, disk := (&m).RemoveMountPointShare(shareName3)
 	assert.True(t, removed)
+	assert.NotNil(t, disk)
+	assert.Equal(t, diskID2, *disk.Id)
+
+	// Verify share3 is removed
+	mp, ok := (&m).GetMountPoint(diskID2, partID3, path3)
+	assert.True(t, ok)
+	assert.Nil(t, mp.Share)
+
+	// Verify share1 and share2 are still present
+	mp1, ok1 := (&m).GetMountPoint(diskID1, partID1, path1)
+	assert.True(t, ok1)
+	assert.NotNil(t, mp1.Share)
+	assert.Equal(t, shareName1, mp1.Share.Name)
+
+	mp2, ok2 := (&m).GetMountPoint(diskID1, partID2, path2)
+	assert.True(t, ok2)
+	assert.NotNil(t, mp2.Share)
+	assert.Equal(t, shareName2, mp2.Share.Name)
+}
+
+func TestDiskMap_RemoveMountPointShare_MountPointWithoutShare(t *testing.T) {
+	diskID := "disk-no-share"
+	partID := "part-no-share"
+	path := "/mnt/no-share"
+	mount := dto.MountPointData{Path: path, Share: nil} // No share attached
+	parts := map[string]dto.Partition{partID: {Id: ptr(partID), MountPointData: &map[string]dto.MountPointData{path: mount}}}
+	m := dto.DiskMap{}
+	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID, Partitions: &parts})
+
+	// Try to remove non-existent share
+	removed, disk := (&m).RemoveMountPointShare("nonexistent")
+	assert.False(t, removed)
+	assert.Nil(t, disk)
+}
+
+func TestDiskMap_RemoveMountPointShare_MultipleMountPointsSameDisk(t *testing.T) {
+	diskID := "disk-multi-mp"
+	partID := "part-multi-mp"
+	path1 := "/mnt/mp1"
+	path2 := "/mnt/mp2"
+	shareName := "target-share"
+	share1 := &dto.SharedResource{Name: "other-share"}
+	share2 := &dto.SharedResource{Name: shareName}
+
+	mount1 := dto.MountPointData{Path: path1, Share: share1}
+	mount2 := dto.MountPointData{Path: path2, Share: share2}
+
+	parts := map[string]dto.Partition{
+		partID: {Id: ptr(partID), MountPointData: &map[string]dto.MountPointData{
+			path1: mount1,
+			path2: mount2,
+		}},
+	}
+	m := dto.DiskMap{}
+	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID, Partitions: &parts})
+
+	// Remove target-share
+	removed, disk := (&m).RemoveMountPointShare(shareName)
+	assert.True(t, removed)
+	assert.NotNil(t, disk)
+
+	// Verify only share2 is removed
+	mp1, ok1 := (&m).GetMountPoint(diskID, partID, path1)
+	assert.True(t, ok1)
+	assert.NotNil(t, mp1.Share)
+	assert.Equal(t, "other-share", mp1.Share.Name)
+
+	mp2, ok2 := (&m).GetMountPoint(diskID, partID, path2)
+	assert.True(t, ok2)
+	assert.Nil(t, mp2.Share)
 }
 
 func TestDiskMap_RemoveMountPointShare_Errors(t *testing.T) {
 	m := dto.DiskMap{}
 
-	// Empty path
-	removed, _ := (&m).RemoveMountPointShare("")
+	// Empty share name
+	removed, disk := (&m).RemoveMountPointShare("")
 	assert.False(t, removed)
+	assert.Nil(t, disk)
 
-	// Mount point not found (empty map)
-	removed, _ = (&m).RemoveMountPointShare("/mnt/x")
+	// Share not found (empty map)
+	removed, disk = (&m).RemoveMountPointShare("nonexistent")
 	assert.False(t, removed)
+	assert.Nil(t, disk)
 
 	// Disk present but no partitions
 	diskID := "disk-no-parts"
 	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID})
-	removed, _ = (&m).RemoveMountPointShare("/mnt/x")
+	removed, disk = (&m).RemoveMountPointShare("someshare")
 	assert.False(t, removed)
+	assert.Nil(t, disk)
 
 	// Partition has no mount points
 	diskID2 := "disk-with-parts"
 	parts := map[string]dto.Partition{"p1": {Id: ptr("p1")}}
 	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID2, Partitions: &parts})
-	removed, _ = (&m).RemoveMountPointShare("/mnt/x")
+	removed, disk = (&m).RemoveMountPointShare("someshare")
 	assert.False(t, removed)
+	assert.Nil(t, disk)
 
-	// Mount point not found
+	// Mount point exists but has no share
 	diskID3 := "disk-with-mp"
-	mount := dto.MountPointData{Path: "/mnt/real"}
+	mount := dto.MountPointData{Path: "/mnt/real", Share: nil}
 	parts3 := map[string]dto.Partition{"p1": {Id: ptr("p1"), MountPointData: &map[string]dto.MountPointData{"/mnt/real": mount}}}
 	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID3, Partitions: &parts3})
-	removed, _ = (&m).RemoveMountPointShare("/mnt/missing")
+	removed, disk = (&m).RemoveMountPointShare("someshare")
 	assert.False(t, removed)
+	assert.Nil(t, disk)
+
+	// Mount point with different share name
+	diskID4 := "disk-with-different-share"
+	shareOther := &dto.SharedResource{Name: "different-share"}
+	mountWithShare := dto.MountPointData{Path: "/mnt/shared", Share: shareOther}
+	parts4 := map[string]dto.Partition{"p1": {Id: ptr("p1"), MountPointData: &map[string]dto.MountPointData{"/mnt/shared": mountWithShare}}}
+	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID4, Partitions: &parts4})
+	removed, disk = (&m).RemoveMountPointShare("nonexistent-share")
+	assert.False(t, removed)
+	assert.Nil(t, disk)
+}
+
+func TestDiskMap_RemoveMountPointShare_NilMap(t *testing.T) {
+	var m *dto.DiskMap = nil
+	removed, disk := m.RemoveMountPointShare("anyshare")
+	assert.False(t, removed)
+	assert.Nil(t, disk)
 }
 
 func TestDiskMap_AddHDIdleDevice(t *testing.T) {
@@ -418,8 +554,7 @@ func TestDiskMap_AddHDIdleDevice(t *testing.T) {
 	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID})
 
 	// Create an HDIdleDevice
-	devicePath := "sda"
-	hdIdle := &dto.HDIdleDevice{DiskId: diskID, DevicePath: devicePath, Enabled: dto.HdidleEnableds.YESENABLED}
+	hdIdle := &dto.HDIdleDevice{DiskId: diskID, Enabled: dto.HdidleEnableds.YESENABLED}
 
 	// Add HDIdleDevice
 	err := (&m).AddHDIdleDevice(hdIdle)
@@ -429,7 +564,8 @@ func TestDiskMap_AddHDIdleDevice(t *testing.T) {
 	d, ok := (&m).Get(diskID)
 	assert.True(t, ok)
 	assert.NotNil(t, d.HDIdleDevice)
-	assert.Equal(t, devicePath, d.HDIdleDevice.DevicePath)
+	// Device field is not present on HDIdleDevice; verify DiskId and Enabled instead
+	assert.Equal(t, diskID, d.HDIdleDevice.DiskId)
 	assert.Equal(t, dto.HdidleEnableds.YESENABLED, d.HDIdleDevice.Enabled)
 }
 
@@ -439,14 +575,12 @@ func TestDiskMap_AddHDIdleDevice_Update(t *testing.T) {
 	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID})
 
 	// Add initial HDIdleDevice
-	devicePath := "sda"
-	hdIdle1 := &dto.HDIdleDevice{DiskId: diskID, DevicePath: devicePath, Enabled: dto.HdidleEnableds.YESENABLED}
+	hdIdle1 := &dto.HDIdleDevice{DiskId: diskID, Enabled: dto.HdidleEnableds.YESENABLED}
 	err := (&m).AddHDIdleDevice(hdIdle1)
 	assert.NoError(t, err)
 
 	// Update with new HDIdleDevice
-	newDevicePath := "sdb"
-	hdIdle2 := &dto.HDIdleDevice{DiskId: diskID, DevicePath: newDevicePath, Enabled: dto.HdidleEnableds.NOENABLED}
+	hdIdle2 := &dto.HDIdleDevice{DiskId: diskID, Enabled: dto.HdidleEnableds.NOENABLED}
 	err = (&m).AddHDIdleDevice(hdIdle2)
 	assert.NoError(t, err)
 
@@ -454,7 +588,7 @@ func TestDiskMap_AddHDIdleDevice_Update(t *testing.T) {
 	d, ok := (&m).Get(diskID)
 	assert.True(t, ok)
 	assert.NotNil(t, d.HDIdleDevice)
-	assert.Equal(t, newDevicePath, d.HDIdleDevice.DevicePath)
+	assert.Equal(t, diskID, d.HDIdleDevice.DiskId)
 	assert.Equal(t, dto.HdidleEnableds.NOENABLED, d.HDIdleDevice.Enabled)
 }
 

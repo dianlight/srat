@@ -277,7 +277,7 @@ export function Shares() {
 		console.log(data);
 		if (data.org_name !== "" && data.org_name !== undefined) {
 			// Existing share being updated
-			updateShare({ shareName: data.org_name, sharedResource: data })
+			updateShare({ shareName: data.org_name, sharedResourcePostData: data })
 				.unwrap()
 				.then((res) => {
 					toast.info(
@@ -293,7 +293,7 @@ export function Shares() {
 				});
 		} else {
 			// New share being created
-			createShare({ sharedResource: data })
+			createShare({ sharedResourcePostData: data })
 				.unwrap()
 				.then((res) => {
 					toast.info(
