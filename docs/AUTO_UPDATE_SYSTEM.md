@@ -97,6 +97,11 @@ srat-server --update-channel=develop      # Development builds (not recommended 
 - **release**: Stable releases only (recommended for production)
 - **prerelease**: Includes beta/RC releases for early access to features
 - **develop**: Development builds (for testing, may be unstable)
+  - **File Watcher**: In develop mode, SRAT monitors the `UpdateDataDir` for new binaries
+  - **Polling**: Checks every 1 second for new or modified executable files
+  - **Auto-Install**: When a new binary is detected, it's automatically installed
+  - **Auto-Restart**: If running under s6 supervision, triggers graceful restart
+  - **No Signature Required**: Develop channel accepts unsigned builds with a warning
 - **none**: Disables update checking
 
 ## Security
@@ -195,12 +200,46 @@ The GitHub Actions workflow automatically:
 
 ## S6 Integration
 
-When SRAT detects it's running under s6 supervision:
+SRAT detects if it's running under s6 supervision and uses fx graceful shutdown for restarts:
 
+**Detection Logic**:
 1. Checks for `S6_VERSION` environment variable
 2. Checks if parent process is `s6-supervise` (via `/proc/[ppid]/cmdline`)
-3. If detected, exits with code 0 after successful update
-4. S6 automatically restarts the service with the new binary
+
+**Update Behavior**:
+- **Under s6**: Triggers `fx.Shutdowner.Shutdown()` for graceful shutdown, then s6 automatically restarts
+- **Not under s6**: Update is installed but manual restart required; user is notified
+
+## Develop Channel File Watcher
+
+In develop mode, SRAT implements a file watcher for local binary updates:
+
+### How It Works
+
+1. **Initialization**: When `UpdateChannel` is set to `DEVELOP`, a file watcher goroutine starts
+2. **Monitoring**: Watches `UpdateDataDir/srat-server` (or appropriate executable name)
+3. **Polling Interval**: Checks every 1 second for file modifications
+4. **Detection**: Tracks file modification times to detect new/updated binaries
+5. **Installation**: Automatically calls `InstallUpdatePackage` when a new binary is detected
+6. **Restart**: Triggers graceful shutdown if running under s6 (or notifies for manual restart)
+
+### Usage
+
+```bash
+# Start SRAT in develop mode
+srat-server --update-channel=develop --update-data-dir=/config/updates
+
+# Copy a new binary to the watched directory
+cp srat-server-new /config/updates/srat-server
+
+# SRAT automatically detects, installs, and restarts (if under s6)
+```
+
+### File Watcher Lifecycle
+
+- **Start**: Goroutine starts during fx `OnStart` hook
+- **Stop**: Context cancellation during fx `OnStop` hook
+- **Graceful**: Properly integrated into fx lifecycle management
 
 ## Troubleshooting
 

@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -632,6 +633,69 @@ func (self *UpgradeService) InstallUpdatePackage(updatePkg *UpdatePackage) error
 		return err
 	}
 
+	// Step 1: Verify the new binary version is different from current
+	newBinaryPath := *updatePkg.CurrentExecutablePath
+	newVersion, err := self.getBinaryVersion(newBinaryPath)
+	if err != nil {
+		slog.WarnContext(self.ctx, "Could not extract version from new binary, proceeding anyway", "err", err)
+	} else {
+		currentVersion := config.GetCurrentBinaryVersion()
+		if newVersion.Equal(&currentVersion) {
+			slog.InfoContext(self.ctx, "New binary has same version as current, skipping installation", "version", newVersion.String())
+			self.notifyClient(dto.UpdateProgress{
+				ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSNOUPGRADE,
+				ErrorMessage:   fmt.Sprintf("Binary version %s is already installed", newVersion.String()),
+			})
+			return errors.New("binary version is same as current version")
+		}
+		slog.InfoContext(self.ctx, "Installing new version", "current", currentVersion.String(), "new", newVersion.String())
+	}
+
+	// Step 2: Verify signature if available
+	signatureFile := newBinaryPath + ".minisig"
+	if _, statErr := os.Stat(signatureFile); statErr == nil {
+		slog.InfoContext(self.ctx, "Signature file found, verifying before installation", "signature_file", signatureFile)
+
+		// Read the binary content for verification
+		binaryContent, err := os.ReadFile(newBinaryPath)
+		if err != nil {
+			errWrapped := errors.Wrapf(err, "failed to read new binary for signature verification: %s", newBinaryPath)
+			self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+			return errWrapped
+		}
+
+		verifier := selfupdate.NewVerifier()
+		if err := verifier.LoadFromFile(signatureFile, updatekey.UpdatePublicKey); err != nil {
+			errWrapped := errors.Wrapf(err, "failed to load signature from %s", signatureFile)
+			self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+			return errWrapped
+		}
+
+		// Verify the signature
+		if err := verifier.Verify(binaryContent); err != nil {
+			errWrapped := errors.Wrapf(err, "signature verification failed for %s", newBinaryPath)
+			self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+			return errWrapped
+		}
+
+		slog.InfoContext(self.ctx, "Signature verification successful", "binary", newBinaryPath)
+	} else {
+		// Signature file not found
+		if self.state.UpdateChannel == dto.UpdateChannels.DEVELOP {
+			slog.WarnContext(self.ctx, "Signature file not found, proceeding without verification (develop channel)", "expected_signature_file", signatureFile)
+		} else {
+			// For non-develop channels, reject unsigned updates
+			errWrapped := errors.Errorf("signature file not found for non-develop channel: %s", signatureFile)
+			self.notifyClient(dto.UpdateProgress{
+				ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR,
+				ErrorMessage:   "Update is not signed. Signature verification is required for this update channel.",
+			})
+			slog.ErrorContext(self.ctx, "Update rejected: signature file missing for non-develop channel", "channel", self.state.UpdateChannel.String(), "expected_file", signatureFile)
+			return errWrapped
+		}
+	}
+
+	// Step 3: Install the binaries
 	basePath, err := self.getCurrentExecutablePath()
 	if err != nil {
 		return err
@@ -792,6 +856,44 @@ func (self *UpgradeService) getCurrentExecutablePath() (*string, errors.E) {
 	}
 	destinationFile := filepath.Dir(currentExe)
 	return &destinationFile, nil
+}
+
+// getBinaryVersion extracts the version from a binary using the same method as config.GetCurrentBinaryVersion
+func (self *UpgradeService) getBinaryVersion(binaryPath string) (*semver.Version, errors.E) {
+	// Use the -version flag to get version from the binary
+	cmd := exec.Command(binaryPath, "-version")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		// Try to extract version from binary metadata using strings
+		// This is a fallback if the binary doesn't support -version flag
+		cmd = exec.Command("strings", binaryPath)
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to extract version from binary %s", binaryPath)
+		}
+	}
+
+	// Look for version string in output
+	lines := strings.Split(string(output), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		// Look for lines that might contain version info
+		if strings.Contains(line, "version") || strings.Contains(line, "Version") {
+			// Try to parse as semver
+			parts := strings.Fields(line)
+			for _, part := range parts {
+				if ver, err := semver.NewVersion(part); err == nil {
+					return ver, nil
+				}
+			}
+		}
+		// Also try parsing each line as semver directly
+		if ver, err := semver.NewVersion(line); err == nil {
+			return ver, nil
+		}
+	}
+
+	return nil, errors.New("could not find version in binary output")
 }
 
 /*
