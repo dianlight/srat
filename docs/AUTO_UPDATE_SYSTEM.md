@@ -22,6 +22,10 @@
   - [Build Process Integration](#build-process-integration)
     - [Build Workflow Steps](#build-workflow-steps)
   - [S6 Integration](#s6-integration)
+  - [Develop Channel File Watcher](#develop-channel-file-watcher)
+    - [How It Works](#how-it-works-1)
+    - [Usage](#usage)
+    - [File Watcher Lifecycle](#file-watcher-lifecycle)
   - [Troubleshooting](#troubleshooting)
     - [Update fails with signature verification error](#update-fails-with-signature-verification-error)
     - [Update downloads but doesn't apply](#update-downloads-but-doesnt-apply)
@@ -203,10 +207,12 @@ The GitHub Actions workflow automatically:
 SRAT detects if it's running under s6 supervision and uses fx graceful shutdown for restarts:
 
 **Detection Logic**:
+
 1. Checks for `S6_VERSION` environment variable
 2. Checks if parent process is `s6-supervise` (via `/proc/[ppid]/cmdline`)
 
 **Update Behavior**:
+
 - **Under s6**: Triggers `fx.Shutdowner.Shutdown()` for graceful shutdown, then s6 automatically restarts
 - **Not under s6**: Update is installed but manual restart required; user is notified
 
