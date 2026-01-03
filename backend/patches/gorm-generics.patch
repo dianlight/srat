@@ -1,6 +1,14 @@
+diff --git a/generics.go b/generics.go
+index 166d1520..4b47a752 100644
 --- a/generics.go
 +++ b/generics.go
-@@ -569,7 +569,7 @@ func (c chainG[T]) Update(ctx context.Context, name string, value any) (rowsAffe
+@@ -565,12 +565,12 @@ func (c chainG[T]) Delete(ctx context.Context) (rowsAffected int, err error) {
+ 
+ func (c chainG[T]) Update(ctx context.Context, name string, value any) (rowsAffected int, err error) {
+ 	var r T
+-	res := c.g.apply(ctx).Model(r).Update(name, value)
++	res := c.g.apply(ctx).Model(&r).Update(name, value)
+ 	return int(res.RowsAffected), res.Error
  }
  
  func (c chainG[T]) Updates(ctx context.Context, t T) (rowsAffected int, err error) {

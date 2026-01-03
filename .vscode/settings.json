@@ -184,6 +184,11 @@
       "allowedModels": [
         "copilot/claude-sonnet-4.5"
       ]
+    },
+    "srat/.vscode/mcp.json: sqlite": {
+      "allowedModels": [
+        "copilot/auto"
+      ]
     }
   },
   "github.copilot.chat.agent.autoFix": true,

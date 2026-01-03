@@ -27,6 +27,14 @@
       "args": [
         "chrome-devtools-mcp@latest"
       ]
-    }
+    },
+    "sqlite": {
+      "command": "bunx",
+      "args": [
+        "-y",
+        "@executeautomation/database-server",
+        "/mnt/remote/config.db3"
+      ]
+    },
   }
 }
