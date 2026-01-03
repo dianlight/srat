@@ -45,12 +45,14 @@ type UpgradeServiceInterface interface {
 }
 
 type UpgradeService struct {
-	ctx           context.Context
-	gh            *github.Client
-	broadcaster   BroadcasterServiceInterface
-	updateLimiter rate.Sometimes
-	state         *dto.ContextState
-	shutdowner    fx.Shutdowner
+	ctx            context.Context
+	gh             *github.Client
+	broadcaster    BroadcasterServiceInterface
+	updateLimiter  rate.Sometimes
+	state          *dto.ContextState
+	shutdowner     fx.Shutdowner
+	fileWatcherCtx context.Context
+	fileWatcherCancel context.CancelFunc
 }
 
 type UpgradeServiceProps struct {
@@ -70,6 +72,7 @@ func NewUpgradeService(lc fx.Lifecycle, in UpgradeServiceProps) (UpgradeServiceI
 	p.state = in.State
 	p.gh = in.Gh
 	p.shutdowner = in.Shutdowner
+	p.fileWatcherCtx, p.fileWatcherCancel = context.WithCancel(in.Ctx)
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
@@ -78,6 +81,22 @@ func NewUpgradeService(lc fx.Lifecycle, in UpgradeServiceProps) (UpgradeServiceI
 				defer p.ctx.Value("wg").(*sync.WaitGroup).Done()
 				p.run()
 			}()
+
+			// Start file watcher for develop channel
+			if p.state.UpdateChannel == dto.UpdateChannels.DEVELOP {
+				p.ctx.Value("wg").(*sync.WaitGroup).Add(1)
+				go func() {
+					defer p.ctx.Value("wg").(*sync.WaitGroup).Done()
+					p.watchForDevelopUpdates()
+				}()
+			}
+
+			return nil
+		},
+		OnStop: func(ctx context.Context) error {
+			if p.fileWatcherCancel != nil {
+				p.fileWatcherCancel()
+			}
 			return nil
 		},
 	})
@@ -128,6 +147,109 @@ func (self *UpgradeService) run() error {
 				})
 			}
 
+		}
+	}
+}
+
+// watchForDevelopUpdates watches the UpdateDataDir for new binary files in develop channel
+// When a new binary is detected, it applies the update and restarts if running under s6
+func (self *UpgradeService) watchForDevelopUpdates() {
+	if self.state.UpdateDataDir == "" {
+		slog.WarnContext(self.ctx, "UpdateDataDir not set, file watcher for develop updates disabled")
+		return
+	}
+
+	slog.InfoContext(self.ctx, "Starting file watcher for develop channel updates", "watch_dir", self.state.UpdateDataDir)
+
+	// Get the current executable name to watch for
+	exePath, err := os.Executable()
+	if err != nil {
+		slog.ErrorContext(self.ctx, "Failed to get current executable path", "err", err)
+		return
+	}
+	exeName := filepath.Base(exePath)
+	watchPath := filepath.Join(self.state.UpdateDataDir, exeName)
+
+	// Track the last modification time to detect changes
+	var lastModTime time.Time
+	if info, err := os.Stat(watchPath); err == nil {
+		lastModTime = info.ModTime()
+	}
+
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-self.fileWatcherCtx.Done():
+			slog.InfoContext(self.ctx, "File watcher stopped")
+			return
+		case <-ticker.C:
+			// Check if the file exists and has been modified
+			info, err := os.Stat(watchPath)
+			if err != nil {
+				// File doesn't exist yet or can't be accessed
+				continue
+			}
+
+			// Check if file has been modified since last check
+			if info.ModTime().After(lastModTime) && info.Size() > 0 {
+				lastModTime = info.ModTime()
+				slog.InfoContext(self.ctx, "Detected new update file in develop channel", "file", watchPath, "size", info.Size())
+
+				// Small delay to ensure file write is complete
+				time.Sleep(100 * time.Millisecond)
+
+				// Create update package
+				updatePkg := &UpdatePackage{
+					CurrentExecutablePath: &watchPath,
+					OtherFilesPaths:       []string{},
+				}
+
+				// Notify that update is available
+				self.notifyClient(dto.UpdateProgress{
+					ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE,
+					LastRelease:    "develop-" + info.ModTime().Format("20060102-150405"),
+				})
+
+				// Apply the update (this will copy to the running location)
+				slog.InfoContext(self.ctx, "Installing develop channel update", "source", watchPath)
+				err := self.InstallUpdatePackage(updatePkg)
+				if err != nil {
+					slog.ErrorContext(self.ctx, "Failed to install develop update", "err", err)
+					continue
+				}
+
+				// If AutoUpdate is enabled or we're in develop mode, restart
+				if self.state.AutoUpdate || self.state.UpdateChannel == dto.UpdateChannels.DEVELOP {
+					slog.InfoContext(self.ctx, "Triggering restart after develop update install")
+					self.notifyClient(dto.UpdateProgress{
+						ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSINSTALLCOMPLETE,
+						Progress:       100,
+						ErrorMessage:   "Update installed, restarting...",
+					})
+
+					// Give time for the message to be sent
+					time.Sleep(500 * time.Millisecond)
+
+					// Check if running under s6 and restart
+					if self.isRunningUnderS6() {
+						slog.InfoContext(self.ctx, "Running under s6, initiating graceful shutdown for restart")
+						if err := self.shutdowner.Shutdown(); err != nil {
+							slog.ErrorContext(self.ctx, "Failed to trigger graceful shutdown", "err", err)
+							// Fallback to os.Exit if shutdowner fails
+							os.Exit(0)
+						}
+					} else {
+						slog.InfoContext(self.ctx, "Not running under s6, manual restart required")
+						self.notifyClient(dto.UpdateProgress{
+							ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSINSTALLCOMPLETE,
+							Progress:       100,
+							ErrorMessage:   "Update installed, please restart the service manually",
+						})
+					}
+				}
+			}
 		}
 	}
 }
