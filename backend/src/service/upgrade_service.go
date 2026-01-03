@@ -9,7 +9,6 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -21,6 +20,7 @@ import (
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal/updatekey"
+	"github.com/fsnotify/fsnotify"
 	"github.com/google/go-github/v80/github"
 	"github.com/minio/selfupdate"
 	"gitlab.com/tozd/go/errors"
@@ -152,7 +152,7 @@ func (self *UpgradeService) run() error {
 	}
 }
 
-// watchForDevelopUpdates watches the UpdateDataDir for new binary files in develop channel
+// watchForDevelopUpdates watches the UpdateDataDir for new binary files in develop channel using fsnotify
 // When a new binary is detected, it applies the update and restarts if running under s6
 func (self *UpgradeService) watchForDevelopUpdates() {
 	if self.state.UpdateDataDir == "" {
@@ -160,7 +160,7 @@ func (self *UpgradeService) watchForDevelopUpdates() {
 		return
 	}
 
-	slog.InfoContext(self.ctx, "Starting file watcher for develop channel updates", "watch_dir", self.state.UpdateDataDir)
+	slog.InfoContext(self.ctx, "Starting file watcher for develop channel updates using fsnotify", "watch_dir", self.state.UpdateDataDir)
 
 	// Get the current executable name to watch for
 	exePath, err := os.Executable()
@@ -171,86 +171,140 @@ func (self *UpgradeService) watchForDevelopUpdates() {
 	exeName := filepath.Base(exePath)
 	watchPath := filepath.Join(self.state.UpdateDataDir, exeName)
 
-	// Track the last modification time to detect changes
+	// Create fsnotify watcher
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		slog.ErrorContext(self.ctx, "Failed to create file watcher", "err", err)
+		return
+	}
+	defer watcher.Close()
+
+	// Add the directory to watch
+	err = watcher.Add(self.state.UpdateDataDir)
+	if err != nil {
+		slog.ErrorContext(self.ctx, "Failed to add directory to watcher", "dir", self.state.UpdateDataDir, "err", err)
+		return
+	}
+
+	// Track the last modification time to avoid processing the same event multiple times
 	var lastModTime time.Time
 	if info, err := os.Stat(watchPath); err == nil {
 		lastModTime = info.ModTime()
 	}
 
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
+	// Debounce timer to handle multiple events for the same file write
+	var debounceTimer *time.Timer
+	const debounceDelay = 500 * time.Millisecond
 
 	for {
 		select {
 		case <-self.fileWatcherCtx.Done():
 			slog.InfoContext(self.ctx, "File watcher stopped")
 			return
-		case <-ticker.C:
-			// Check if the file exists and has been modified
-			info, err := os.Stat(watchPath)
-			if err != nil {
-				// File doesn't exist yet or can't be accessed
+
+		case event, ok := <-watcher.Events:
+			if !ok {
+				slog.WarnContext(self.ctx, "File watcher events channel closed")
+				return
+			}
+
+			// Only process events for our target binary
+			if filepath.Base(event.Name) != exeName {
 				continue
 			}
 
-			// Check if file has been modified since last check
-			if info.ModTime().After(lastModTime) && info.Size() > 0 {
-				lastModTime = info.ModTime()
-				slog.InfoContext(self.ctx, "Detected new update file in develop channel", "file", watchPath, "size", info.Size())
-
-				// Small delay to ensure file write is complete
-				time.Sleep(100 * time.Millisecond)
-
-				// Create update package
-				updatePkg := &UpdatePackage{
-					CurrentExecutablePath: &watchPath,
-					OtherFilesPaths:       []string{},
-				}
-
-				// Notify that update is available
-				self.notifyClient(dto.UpdateProgress{
-					ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE,
-					LastRelease:    "develop-" + info.ModTime().Format("20060102-150405"),
-				})
-
-				// Apply the update (this will copy to the running location)
-				slog.InfoContext(self.ctx, "Installing develop channel update", "source", watchPath)
-				err := self.InstallUpdatePackage(updatePkg)
+			// We're interested in Write and Create events
+			if event.Op&fsnotify.Write == fsnotify.Write || event.Op&fsnotify.Create == fsnotify.Create {
+				// Check if file has been modified since last check
+				info, err := os.Stat(watchPath)
 				if err != nil {
-					slog.ErrorContext(self.ctx, "Failed to install develop update", "err", err)
+					// File might have been deleted or moved
 					continue
 				}
 
-				// If AutoUpdate is enabled or we're in develop mode, restart
-				if self.state.AutoUpdate || self.state.UpdateChannel == dto.UpdateChannels.DEVELOP {
-					slog.InfoContext(self.ctx, "Triggering restart after develop update install")
-					self.notifyClient(dto.UpdateProgress{
-						ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSINSTALLCOMPLETE,
-						Progress:       100,
-						ErrorMessage:   "Update installed, restarting...",
-					})
+				if info.ModTime().After(lastModTime) && info.Size() > 0 {
+					slog.InfoContext(self.ctx, "File modification detected", "file", event.Name, "op", event.Op.String())
 
-					// Give time for the message to be sent
-					time.Sleep(500 * time.Millisecond)
-
-					// Check if running under s6 and restart
-					if self.isRunningUnderS6() {
-						slog.InfoContext(self.ctx, "Running under s6, initiating graceful shutdown for restart")
-						if err := self.shutdowner.Shutdown(); err != nil {
-							slog.ErrorContext(self.ctx, "Failed to trigger graceful shutdown", "err", err)
-							// Fallback to os.Exit if shutdowner fails
-							os.Exit(0)
-						}
-					} else {
-						slog.InfoContext(self.ctx, "Not running under s6, manual restart required")
-						self.notifyClient(dto.UpdateProgress{
-							ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSINSTALLCOMPLETE,
-							Progress:       100,
-							ErrorMessage:   "Update installed, please restart the service manually",
-						})
+					// Cancel any existing debounce timer
+					if debounceTimer != nil {
+						debounceTimer.Stop()
 					}
+
+					// Create a new debounce timer
+					debounceTimer = time.AfterFunc(debounceDelay, func() {
+						// Re-check modification time after debounce
+						currentInfo, err := os.Stat(watchPath)
+						if err != nil {
+							slog.ErrorContext(self.ctx, "Failed to stat file after debounce", "err", err)
+							return
+						}
+
+						if currentInfo.ModTime().Equal(lastModTime) {
+							// File hasn't changed since we first saw the event
+							return
+						}
+
+						lastModTime = currentInfo.ModTime()
+						slog.InfoContext(self.ctx, "Detected new update file in develop channel", "file", watchPath, "size", currentInfo.Size())
+
+						// Create update package
+						updatePkg := &UpdatePackage{
+							CurrentExecutablePath: &watchPath,
+							OtherFilesPaths:       []string{},
+						}
+
+						// Notify that update is available
+						self.notifyClient(dto.UpdateProgress{
+							ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE,
+							LastRelease:    "develop-" + currentInfo.ModTime().Format("20060102-150405"),
+						})
+
+						// Apply the update (this will copy to the running location)
+						slog.InfoContext(self.ctx, "Installing develop channel update", "source", watchPath)
+						if err = self.InstallUpdatePackage(updatePkg); err != nil {
+							slog.ErrorContext(self.ctx, "Failed to install develop update", "err", err)
+							return
+						}
+
+						// If AutoUpdate is enabled or we're in develop mode, restart
+						if self.state.AutoUpdate || self.state.UpdateChannel == dto.UpdateChannels.DEVELOP {
+							slog.InfoContext(self.ctx, "Triggering restart after develop update install")
+							self.notifyClient(dto.UpdateProgress{
+								ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSINSTALLCOMPLETE,
+								Progress:       100,
+								ErrorMessage:   "Update installed, restarting...",
+							})
+
+							// Give time for the message to be sent
+							time.Sleep(500 * time.Millisecond)
+
+							// Check if running under s6 and restart
+							if self.isRunningUnderS6() {
+								slog.InfoContext(self.ctx, "Running under s6, initiating graceful shutdown for restart")
+								if err := self.shutdowner.Shutdown(); err != nil {
+									slog.ErrorContext(self.ctx, "Failed to trigger graceful shutdown", "err", err)
+									// Fallback to os.Exit if shutdowner fails
+									os.Exit(0)
+								}
+							} else {
+								slog.InfoContext(self.ctx, "Not running under s6, manual restart required")
+								self.notifyClient(dto.UpdateProgress{
+									ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSINSTALLCOMPLETE,
+									Progress:       100,
+									ErrorMessage:   "Update installed, please restart the service manually",
+								})
+							}
+						}
+					})
 				}
 			}
+
+		case err, ok := <-watcher.Errors:
+			if !ok {
+				slog.WarnContext(self.ctx, "File watcher errors channel closed")
+				return
+			}
+			slog.ErrorContext(self.ctx, "File watcher error", "err", err)
 		}
 	}
 }
@@ -635,11 +689,12 @@ func (self *UpgradeService) InstallUpdatePackage(updatePkg *UpdatePackage) error
 
 	// Step 1: Verify the new binary version is different from current
 	newBinaryPath := *updatePkg.CurrentExecutablePath
-	newVersion, err := self.getBinaryVersion(newBinaryPath)
-	if err != nil {
-		slog.WarnContext(self.ctx, "Could not extract version from new binary, proceeding anyway", "err", err)
-	} else {
-		currentVersion := config.GetCurrentBinaryVersion()
+	newVersion := config.GetBinaryVersion(newBinaryPath)
+	currentVersion := config.GetCurrentBinaryVersion()
+	
+	// Check if we got a valid version (not unknown)
+	unknownVersion, _ := semver.NewVersion("0.0.0-unknown")
+	if unknownVersion == nil || !newVersion.Equal(unknownVersion) {
 		if newVersion.Equal(&currentVersion) {
 			slog.InfoContext(self.ctx, "New binary has same version as current, skipping installation", "version", newVersion.String())
 			self.notifyClient(dto.UpdateProgress{
@@ -649,6 +704,8 @@ func (self *UpgradeService) InstallUpdatePackage(updatePkg *UpdatePackage) error
 			return errors.New("binary version is same as current version")
 		}
 		slog.InfoContext(self.ctx, "Installing new version", "current", currentVersion.String(), "new", newVersion.String())
+	} else {
+		slog.WarnContext(self.ctx, "Could not extract version from new binary, proceeding anyway", "path", newBinaryPath)
 	}
 
 	// Step 2: Verify signature if available
@@ -859,43 +916,6 @@ func (self *UpgradeService) getCurrentExecutablePath() (*string, errors.E) {
 }
 
 // getBinaryVersion extracts the version from a binary using the same method as config.GetCurrentBinaryVersion
-func (self *UpgradeService) getBinaryVersion(binaryPath string) (*semver.Version, errors.E) {
-	// Use the -version flag to get version from the binary
-	cmd := exec.Command(binaryPath, "-version")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		// Try to extract version from binary metadata using strings
-		// This is a fallback if the binary doesn't support -version flag
-		cmd = exec.Command("strings", binaryPath)
-		output, err = cmd.CombinedOutput()
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to extract version from binary %s", binaryPath)
-		}
-	}
-
-	// Look for version string in output
-	lines := strings.Split(string(output), "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		// Look for lines that might contain version info
-		if strings.Contains(line, "version") || strings.Contains(line, "Version") {
-			// Try to parse as semver
-			parts := strings.Fields(line)
-			for _, part := range parts {
-				if ver, err := semver.NewVersion(part); err == nil {
-					return ver, nil
-				}
-			}
-		}
-		// Also try parsing each line as semver directly
-		if ver, err := semver.NewVersion(line); err == nil {
-			return ver, nil
-		}
-	}
-
-	return nil, errors.New("could not find version in binary output")
-}
-
 /*
 
 func (self *UpgradeService) InstallOverseerUpdate(updatePkg *UpdatePackage, overseerUpdatePath string) errors.E {
