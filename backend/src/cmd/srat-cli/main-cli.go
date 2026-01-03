@@ -143,6 +143,7 @@ func main() {
 		os.Exit(0) // Deprecated
 		startCmd.Parse(flag.Args()[1:])
 	case "stop":
+		os.Exit(0) // Deprecated
 		stopCmd.Parse(flag.Args()[1:])
 	case "upgrade":
 		upgradeCmd.Parse(flag.Args()[1:])
