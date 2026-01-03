@@ -27,6 +27,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/jarcoal/httpmock v1.4.1
 	github.com/lonegunmanb/go-defaults v1.4.0
+	github.com/minio/selfupdate v0.6.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pressly/goose/v3 v3.26.0
 	github.com/prometheus/procfs v0.19.2
@@ -41,6 +42,7 @@ require (
 )
 
 require (
+	aead.dev/minisign v0.2.0 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/Antonboom/testifylint v1.6.4 // indirect
 	github.com/air-verse/air v1.63.4 // indirect

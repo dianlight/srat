@@ -100,9 +100,9 @@ func (handler *UpgradeHanler) UpdateHandler(ctx context.Context, input *struct{}
 			slog.ErrorContext(handler.ctx, "Error downloading and extracting binary asset", "err", err)
 			return
 		}
-		err = handler.upgader.InstallUpdatePackage(updatePkg)
+		err = handler.upgader.ApplyUpdateAndRestart(updatePkg)
 		if err != nil {
-			slog.ErrorContext(handler.ctx, "Error installing update package", "err", err)
+			slog.ErrorContext(handler.ctx, "Error applying update", "err", err)
 			return
 		}
 		// If a test has set the testDone channel, signal completion.

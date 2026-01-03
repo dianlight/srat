@@ -2,6 +2,7 @@ package service
 
 import (
 	"archive/zip"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -18,7 +19,10 @@ import (
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/internal/updatekey"
+	"github.com/fsnotify/fsnotify"
 	"github.com/google/go-github/v80/github"
+	"github.com/minio/selfupdate"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 	"golang.org/x/time/rate"
@@ -35,19 +39,21 @@ type UpgradeServiceInterface interface {
 	GetUpgradeReleaseAsset() (ass *dto.ReleaseAsset, err errors.E)
 	// Download upgrade assets (.zip) and extract in Data directory
 	DownloadAndExtractBinaryAsset(asset dto.BinaryAsset) (*UpdatePackage, errors.E)
-	// Copy all assets from Data directory to real places only if are really new ( .note.metadata check )
+	// Install update using selfupdate library with signature verification
 	InstallUpdatePackage(updatePkg *UpdatePackage) errors.E
-	//InstallOverseerUpdate(updatePkg *UpdatePackage, overseerUpdatePath string) errors.E
-	//InstallUpdateLocal() errors.E
-	//InstallOverseerLocal(overseerUpdatePath string) errors.E
+	// Apply update to the current binary and restart if running under s6
+	ApplyUpdateAndRestart(updatePkg *UpdatePackage) errors.E
 }
 
 type UpgradeService struct {
-	ctx           context.Context
-	gh            *github.Client
-	broadcaster   BroadcasterServiceInterface
-	updateLimiter rate.Sometimes
-	state         *dto.ContextState
+	ctx            context.Context
+	gh             *github.Client
+	broadcaster    BroadcasterServiceInterface
+	updateLimiter  rate.Sometimes
+	state          *dto.ContextState
+	shutdowner     fx.Shutdowner
+	fileWatcherCtx context.Context
+	fileWatcherCancel context.CancelFunc
 }
 
 type UpgradeServiceProps struct {
@@ -56,6 +62,7 @@ type UpgradeServiceProps struct {
 	Broadcaster BroadcasterServiceInterface `optional:"true"`
 	Ctx         context.Context
 	Gh          *github.Client
+	Shutdowner  fx.Shutdowner
 }
 
 func NewUpgradeService(lc fx.Lifecycle, in UpgradeServiceProps) (UpgradeServiceInterface, error) {
@@ -65,6 +72,8 @@ func NewUpgradeService(lc fx.Lifecycle, in UpgradeServiceProps) (UpgradeServiceI
 	p.broadcaster = in.Broadcaster
 	p.state = in.State
 	p.gh = in.Gh
+	p.shutdowner = in.Shutdowner
+	p.fileWatcherCtx, p.fileWatcherCancel = context.WithCancel(in.Ctx)
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
@@ -73,6 +82,22 @@ func NewUpgradeService(lc fx.Lifecycle, in UpgradeServiceProps) (UpgradeServiceI
 				defer p.ctx.Value("wg").(*sync.WaitGroup).Done()
 				p.run()
 			}()
+
+			// Start file watcher for develop channel
+			if p.state.UpdateChannel == dto.UpdateChannels.DEVELOP {
+				p.ctx.Value("wg").(*sync.WaitGroup).Add(1)
+				go func() {
+					defer p.ctx.Value("wg").(*sync.WaitGroup).Done()
+					p.watchForDevelopUpdates()
+				}()
+			}
+
+			return nil
+		},
+		OnStop: func(ctx context.Context) error {
+			if p.fileWatcherCancel != nil {
+				p.fileWatcherCancel()
+			}
 			return nil
 		},
 	})
@@ -101,6 +126,21 @@ func (self *UpgradeService) run() error {
 					ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE,
 					LastRelease:    ass.LastRelease,
 				})
+
+				// Auto-update if enabled
+				if self.state.AutoUpdate {
+					slog.InfoContext(self.ctx, "Auto-update enabled, downloading and installing update", "release", ass.LastRelease)
+					updatePkg, err := self.DownloadAndExtractBinaryAsset(ass.ArchAsset)
+					if err != nil {
+						slog.ErrorContext(self.ctx, "Error downloading update during auto-update", "err", err)
+						continue
+					}
+					err = self.ApplyUpdateAndRestart(updatePkg)
+					if err != nil {
+						slog.ErrorContext(self.ctx, "Error applying update during auto-update", "err", err)
+					}
+					// If we successfully apply and restart, this code won't be reached
+				}
 			} else {
 				self.state.UpdateAvailable = false
 				self.notifyClient(dto.UpdateProgress{
@@ -108,6 +148,163 @@ func (self *UpgradeService) run() error {
 				})
 			}
 
+		}
+	}
+}
+
+// watchForDevelopUpdates watches the UpdateDataDir for new binary files in develop channel using fsnotify
+// When a new binary is detected, it applies the update and restarts if running under s6
+func (self *UpgradeService) watchForDevelopUpdates() {
+	if self.state.UpdateDataDir == "" {
+		slog.WarnContext(self.ctx, "UpdateDataDir not set, file watcher for develop updates disabled")
+		return
+	}
+
+	slog.InfoContext(self.ctx, "Starting file watcher for develop channel updates using fsnotify", "watch_dir", self.state.UpdateDataDir)
+
+	// Get the current executable name to watch for
+	exePath, err := os.Executable()
+	if err != nil {
+		slog.ErrorContext(self.ctx, "Failed to get current executable path", "err", err)
+		return
+	}
+	exeName := filepath.Base(exePath)
+	watchPath := filepath.Join(self.state.UpdateDataDir, exeName)
+
+	// Create fsnotify watcher
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		slog.ErrorContext(self.ctx, "Failed to create file watcher", "err", err)
+		return
+	}
+	defer watcher.Close()
+
+	// Add the directory to watch
+	err = watcher.Add(self.state.UpdateDataDir)
+	if err != nil {
+		slog.ErrorContext(self.ctx, "Failed to add directory to watcher", "dir", self.state.UpdateDataDir, "err", err)
+		return
+	}
+
+	// Track the last modification time to avoid processing the same event multiple times
+	var lastModTime time.Time
+	if info, err := os.Stat(watchPath); err == nil {
+		lastModTime = info.ModTime()
+	}
+
+	// Debounce timer to handle multiple events for the same file write
+	var debounceTimer *time.Timer
+	const debounceDelay = 500 * time.Millisecond
+
+	for {
+		select {
+		case <-self.fileWatcherCtx.Done():
+			slog.InfoContext(self.ctx, "File watcher stopped")
+			return
+
+		case event, ok := <-watcher.Events:
+			if !ok {
+				slog.WarnContext(self.ctx, "File watcher events channel closed")
+				return
+			}
+
+			// Only process events for our target binary
+			if filepath.Base(event.Name) != exeName {
+				continue
+			}
+
+			// We're interested in Write and Create events
+			if event.Op&fsnotify.Write == fsnotify.Write || event.Op&fsnotify.Create == fsnotify.Create {
+				// Check if file has been modified since last check
+				info, err := os.Stat(watchPath)
+				if err != nil {
+					// File might have been deleted or moved
+					continue
+				}
+
+				if info.ModTime().After(lastModTime) && info.Size() > 0 {
+					slog.InfoContext(self.ctx, "File modification detected", "file", event.Name, "op", event.Op.String())
+
+					// Cancel any existing debounce timer
+					if debounceTimer != nil {
+						debounceTimer.Stop()
+					}
+
+					// Create a new debounce timer
+					debounceTimer = time.AfterFunc(debounceDelay, func() {
+						// Re-check modification time after debounce
+						currentInfo, err := os.Stat(watchPath)
+						if err != nil {
+							slog.ErrorContext(self.ctx, "Failed to stat file after debounce", "err", err)
+							return
+						}
+
+						if currentInfo.ModTime().Equal(lastModTime) {
+							// File hasn't changed since we first saw the event
+							return
+						}
+
+						lastModTime = currentInfo.ModTime()
+						slog.InfoContext(self.ctx, "Detected new update file in develop channel", "file", watchPath, "size", currentInfo.Size())
+
+						// Create update package
+						updatePkg := &UpdatePackage{
+							CurrentExecutablePath: &watchPath,
+							OtherFilesPaths:       []string{},
+						}
+
+						// Notify that update is available
+						self.notifyClient(dto.UpdateProgress{
+							ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE,
+							LastRelease:    "develop-" + currentInfo.ModTime().Format("20060102-150405"),
+						})
+
+						// Apply the update (this will copy to the running location)
+						slog.InfoContext(self.ctx, "Installing develop channel update", "source", watchPath)
+						if err = self.InstallUpdatePackage(updatePkg); err != nil {
+							slog.ErrorContext(self.ctx, "Failed to install develop update", "err", err)
+							return
+						}
+
+						// If AutoUpdate is enabled or we're in develop mode, restart
+						if self.state.AutoUpdate || self.state.UpdateChannel == dto.UpdateChannels.DEVELOP {
+							slog.InfoContext(self.ctx, "Triggering restart after develop update install")
+							self.notifyClient(dto.UpdateProgress{
+								ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSINSTALLCOMPLETE,
+								Progress:       100,
+								ErrorMessage:   "Update installed, restarting...",
+							})
+
+							// Give time for the message to be sent
+							time.Sleep(500 * time.Millisecond)
+
+							// Check if running under s6 and restart
+							if self.isRunningUnderS6() {
+								slog.InfoContext(self.ctx, "Running under s6, initiating graceful shutdown for restart")
+								if err := self.shutdowner.Shutdown(); err != nil {
+									slog.ErrorContext(self.ctx, "Failed to trigger graceful shutdown", "err", err)
+									// Fallback to os.Exit if shutdowner fails
+									os.Exit(0)
+								}
+							} else {
+								slog.InfoContext(self.ctx, "Not running under s6, manual restart required")
+								self.notifyClient(dto.UpdateProgress{
+									ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSINSTALLCOMPLETE,
+									Progress:       100,
+									ErrorMessage:   "Update installed, please restart the service manually",
+								})
+							}
+						}
+					})
+				}
+			}
+
+		case err, ok := <-watcher.Errors:
+			if !ok {
+				slog.WarnContext(self.ctx, "File watcher errors channel closed")
+				return
+			}
+			slog.ErrorContext(self.ctx, "File watcher error", "err", err)
 		}
 	}
 }
@@ -485,11 +682,77 @@ func (self *UpgradeService) installBinaryTo(newExecutablePath string, destinatio
 
 func (self *UpgradeService) InstallUpdatePackage(updatePkg *UpdatePackage) errors.E {
 	if updatePkg == nil || updatePkg.CurrentExecutablePath == nil || *updatePkg.CurrentExecutablePath == "" {
-		err := errors.New("invalid update package or missing executable path for overseer update")
+		err := errors.New("invalid update package or missing executable path")
 		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: err.Error()})
 		return err
 	}
 
+	// Step 1: Verify the new binary version is different from current
+	newBinaryPath := *updatePkg.CurrentExecutablePath
+	newVersion := config.GetBinaryVersion(newBinaryPath)
+	currentVersion := config.GetCurrentBinaryVersion()
+	
+	// Check if we got a valid version (not unknown)
+	unknownVersion, _ := semver.NewVersion("0.0.0-unknown")
+	if unknownVersion == nil || !newVersion.Equal(unknownVersion) {
+		if newVersion.Equal(&currentVersion) {
+			slog.InfoContext(self.ctx, "New binary has same version as current, skipping installation", "version", newVersion.String())
+			self.notifyClient(dto.UpdateProgress{
+				ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSNOUPGRADE,
+				ErrorMessage:   fmt.Sprintf("Binary version %s is already installed", newVersion.String()),
+			})
+			return errors.New("binary version is same as current version")
+		}
+		slog.InfoContext(self.ctx, "Installing new version", "current", currentVersion.String(), "new", newVersion.String())
+	} else {
+		slog.WarnContext(self.ctx, "Could not extract version from new binary, proceeding anyway", "path", newBinaryPath)
+	}
+
+	// Step 2: Verify signature if available
+	signatureFile := newBinaryPath + ".minisig"
+	if _, statErr := os.Stat(signatureFile); statErr == nil {
+		slog.InfoContext(self.ctx, "Signature file found, verifying before installation", "signature_file", signatureFile)
+
+		// Read the binary content for verification
+		binaryContent, err := os.ReadFile(newBinaryPath)
+		if err != nil {
+			errWrapped := errors.Wrapf(err, "failed to read new binary for signature verification: %s", newBinaryPath)
+			self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+			return errWrapped
+		}
+
+		verifier := selfupdate.NewVerifier()
+		if err := verifier.LoadFromFile(signatureFile, updatekey.UpdatePublicKey); err != nil {
+			errWrapped := errors.Wrapf(err, "failed to load signature from %s", signatureFile)
+			self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+			return errWrapped
+		}
+
+		// Verify the signature
+		if err := verifier.Verify(binaryContent); err != nil {
+			errWrapped := errors.Wrapf(err, "signature verification failed for %s", newBinaryPath)
+			self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+			return errWrapped
+		}
+
+		slog.InfoContext(self.ctx, "Signature verification successful", "binary", newBinaryPath)
+	} else {
+		// Signature file not found
+		if self.state.UpdateChannel == dto.UpdateChannels.DEVELOP {
+			slog.WarnContext(self.ctx, "Signature file not found, proceeding without verification (develop channel)", "expected_signature_file", signatureFile)
+		} else {
+			// For non-develop channels, reject unsigned updates
+			errWrapped := errors.Errorf("signature file not found for non-develop channel: %s", signatureFile)
+			self.notifyClient(dto.UpdateProgress{
+				ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR,
+				ErrorMessage:   "Update is not signed. Signature verification is required for this update channel.",
+			})
+			slog.ErrorContext(self.ctx, "Update rejected: signature file missing for non-develop channel", "channel", self.state.UpdateChannel.String(), "expected_file", signatureFile)
+			return errWrapped
+		}
+	}
+
+	// Step 3: Install the binaries
 	basePath, err := self.getCurrentExecutablePath()
 	if err != nil {
 		return err
@@ -514,6 +777,133 @@ func (self *UpgradeService) InstallUpdatePackage(updatePkg *UpdatePackage) error
 	return nil
 }
 
+// ApplyUpdateAndRestart applies the update using selfupdate with signature verification
+// and restarts the process if running under s6
+func (self *UpgradeService) ApplyUpdateAndRestart(updatePkg *UpdatePackage) errors.E {
+	if updatePkg == nil || updatePkg.CurrentExecutablePath == nil || *updatePkg.CurrentExecutablePath == "" {
+		err := errors.New("invalid update package or missing executable path")
+		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: err.Error()})
+		return err
+	}
+
+	slog.InfoContext(self.ctx, "Applying update with signature verification", "new_executable", *updatePkg.CurrentExecutablePath)
+	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSINSTALLING, Progress: 0})
+
+	// Open the new binary file
+	newBinary, err := os.Open(*updatePkg.CurrentExecutablePath)
+	if err != nil {
+		errWrapped := errors.Wrapf(err, "failed to open new binary: %s", *updatePkg.CurrentExecutablePath)
+		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+		return errWrapped
+	}
+	defer newBinary.Close()
+
+	// Check if signature file exists (for signed updates)
+	signatureFile := *updatePkg.CurrentExecutablePath + ".minisig"
+	var opts selfupdate.Options
+	if _, statErr := os.Stat(signatureFile); statErr == nil {
+		slog.InfoContext(self.ctx, "Signature file found, will verify update", "signature_file", signatureFile)
+
+		// Create verifier with embedded public key
+		verifier := selfupdate.NewVerifier()
+		if err := verifier.LoadFromFile(signatureFile, updatekey.UpdatePublicKey); err != nil {
+			errWrapped := errors.Wrapf(err, "failed to load signature from %s", signatureFile)
+			self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+			return errWrapped
+		}
+
+		opts = selfupdate.Options{
+			Verifier: verifier,
+		}
+	} else {
+		// Signature file not found
+		if self.state.UpdateChannel == dto.UpdateChannels.DEVELOP {
+			slog.WarnContext(self.ctx, "Signature file not found, proceeding without verification (develop channel)", "expected_signature_file", signatureFile)
+			opts = selfupdate.Options{}
+		} else {
+			// For non-develop channels, reject unsigned updates
+			errWrapped := errors.Errorf("signature file not found for non-develop channel: %s", signatureFile)
+			self.notifyClient(dto.UpdateProgress{
+				ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR,
+				ErrorMessage:   "Update is not signed. Signature verification is required for this update channel.",
+			})
+			slog.ErrorContext(self.ctx, "Update rejected: signature file missing for non-develop channel", "channel", self.state.UpdateChannel.String(), "expected_file", signatureFile)
+			return errWrapped
+		}
+	}
+
+	// Apply the update
+	err = selfupdate.Apply(newBinary, opts)
+	if err != nil {
+		if rerr := selfupdate.RollbackError(err); rerr != nil {
+			errWrapped := errors.Wrapf(err, "failed to apply update and rollback failed: %v", rerr)
+			self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+			return errWrapped
+		}
+		errWrapped := errors.Wrap(err, "failed to apply update (rolled back successfully)")
+		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+		return errWrapped
+	}
+
+	slog.InfoContext(self.ctx, "Update applied successfully")
+	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSINSTALLCOMPLETE, Progress: 100})
+
+	// Check if we're running under s6 and restart if so
+	if self.isRunningUnderS6() {
+		slog.InfoContext(self.ctx, "Running under s6, initiating graceful shutdown for restart")
+		self.notifyClient(dto.UpdateProgress{
+			ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSINSTALLCOMPLETE,
+			Progress:       100,
+			ErrorMessage:   "Update complete, restarting service...",
+		})
+		// Give time for the message to be sent
+		time.Sleep(500 * time.Millisecond)
+		// Trigger graceful shutdown via fx.Shutdowner
+		if err := self.shutdowner.Shutdown(); err != nil {
+			slog.ErrorContext(self.ctx, "Failed to trigger graceful shutdown", "err", err)
+			// Fallback to os.Exit if shutdowner fails
+			os.Exit(0)
+		}
+	} else {
+		slog.InfoContext(self.ctx, "Not running under s6, manual restart required")
+		self.notifyClient(dto.UpdateProgress{
+			ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSINSTALLCOMPLETE,
+			Progress:       100,
+			ErrorMessage:   "Update complete, please restart the service manually",
+		})
+	}
+
+	return nil
+}
+
+// isRunningUnderS6 checks if the current process is running under s6 supervision
+func (self *UpgradeService) isRunningUnderS6() bool {
+	// Check for s6 environment variables
+	if os.Getenv("S6_VERSION") != "" {
+		return true
+	}
+
+	// Check if parent process is s6-supervise
+	ppid := os.Getppid()
+	if ppid <= 1 {
+		return false
+	}
+
+	// Read the parent process name
+	cmdlinePath := fmt.Sprintf("/proc/%d/cmdline", ppid)
+	cmdline, err := os.ReadFile(cmdlinePath)
+	if err != nil {
+		// If we can't read the parent process, assume not under s6
+		return false
+	}
+
+	// Convert null-terminated strings to regular string
+	cmdlineStr := string(bytes.ReplaceAll(cmdline, []byte{0}, []byte(" ")))
+
+	// Check if parent process contains "s6-supervise"
+	return strings.Contains(cmdlineStr, "s6-supervise")
+}
+
 func (self *UpgradeService) getCurrentExecutablePath() (*string, errors.E) {
 	currentExe, err := os.Executable()
 	if err != nil {
@@ -525,6 +915,7 @@ func (self *UpgradeService) getCurrentExecutablePath() (*string, errors.E) {
 	return &destinationFile, nil
 }
 
+// getBinaryVersion extracts the version from a binary using the same method as config.GetCurrentBinaryVersion
 /*
 
 func (self *UpgradeService) InstallOverseerUpdate(updatePkg *UpdatePackage, overseerUpdatePath string) errors.E {
