@@ -349,3 +349,7 @@ func dumpDatabaseSchema(db *gorm.DB) {
 	// Log the full path to the schema dump file
 	slog.Error("Database schema dumped to file", "path", tmpFile.Name(), "objects", rowCount)
 }
+
+func IncludeSoftDeleted(stmt *gorm.Statement) {
+	stmt.Unscoped = true
+}

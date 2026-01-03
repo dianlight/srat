@@ -177,24 +177,28 @@ static: $(FRONTEND_DIRS)/node_modules
 
 .PHONY: patch
 patch:
-	@echo "Applying patches to vendored dependencies..."
-	@if ! command -v patch >/dev/null 2>&1; then \
+	@set -e; \
+	echo "Applying patches to vendored dependencies..."; \
+	if ! command -v patch >/dev/null 2>&1; then \
 		echo "ERROR: 'patch' command not found. Please install patch utility."; \
 		exit 1; \
-	fi
-	go -C $(SRC_DIRS) mod vendor
-	@find $(ROOT_DIR)/src/vendor -name "*.rej" -delete 2>/dev/null || true
-	@if [ -f "$(ROOT_DIR)/patches/goenums.patch" ] && [ -d "$(ROOT_DIR)/src/vendor/github.com/zarldev/goenums" ]; then \
-		cd $(ROOT_DIR)/src/vendor/github.com/zarldev/goenums && patch -p1 < $(ROOT_DIR)/patches/goenums.patch; \
-	fi
-	@if [ -f "$(ROOT_DIR)/patches/overseer.patch" ] && [ -d "$(ROOT_DIR)/src/vendor/github.com/jpillora/overseer" ]; then \
-		cd $(ROOT_DIR)/src/vendor/github.com/jpillora/overseer  && patch -p1 < $(ROOT_DIR)/patches/overseer.patch; \
-	fi
-	@if [ -f "$(ROOT_DIR)/patches/gorm-generics.patch" ] && [ -d "$(ROOT_DIR)/src/vendor/gorm.io/gorm" ]; then \
-		cd $(ROOT_DIR)/src/vendor/gorm.io/gorm && patch -p1 < $(ROOT_DIR)/patches/gorm-generics.patch; \
-	fi
-	@find $(ROOT_DIR)/src/vendor -name "*.rej" -delete 2>/dev/null || true
-	@echo "Patches applied successfully"
+	fi; \
+	go -C $(SRC_DIRS) mod vendor; \
+	find $(ROOT_DIR)/src/vendor -name "*.rej" -delete 2>/dev/null || true; \
+	if [ -f "$(ROOT_DIR)/patches/goenums.patch" ] && [ -d "$(ROOT_DIR)/src/vendor/github.com/zarldev/goenums" ]; then \
+		echo "Applying goenums.patch..."; \
+		cd $(ROOT_DIR)/src/vendor/github.com/zarldev/goenums && patch -p1 < $(ROOT_DIR)/patches/goenums.patch || (echo "ERROR: Failed to apply goenums.patch"; exit 1); \
+	fi; \
+	if [ -f "$(ROOT_DIR)/patches/overseer.patch" ] && [ -d "$(ROOT_DIR)/src/vendor/github.com/jpillora/overseer" ]; then \
+		echo "Applying overseer.patch..."; \
+		cd $(ROOT_DIR)/src/vendor/github.com/jpillora/overseer && patch -p1 < $(ROOT_DIR)/patches/overseer.patch || (echo "ERROR: Failed to apply overseer.patch"; exit 1); \
+	fi; \
+	if [ -f "$(ROOT_DIR)/patches/gorm-generics.patch" ] && [ -d "$(ROOT_DIR)/src/vendor/gorm.io/gorm" ]; then \
+		echo "Applying gorm-generics.patch..."; \
+		cd $(ROOT_DIR)/src/vendor/gorm.io/gorm && patch -p1 < $(ROOT_DIR)/patches/gorm-generics.patch || (echo "ERROR: Failed to apply gorm-generics.patch"; exit 1); \
+	fi; \
+	find $(ROOT_DIR)/src/vendor -name "*.rej" -delete 2>/dev/null || true; \
+	echo "Patches applied successfully"
 
 .PHONY: gen_patch
 gen_patch:

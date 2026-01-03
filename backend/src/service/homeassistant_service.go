@@ -258,7 +258,7 @@ func (s *HomeAssistantService) SendVolumeStatusEntity(data *[]*dto.Disk) error {
 		return errors.Errorf("failed to send volume status entity to Home Assistant: %s", string(resp.Body))
 	}
 
-	slog.DebugContext(s.ctx, "Sent Volume status entity to Home Assistant", "entity_id", entityId, "total_disks", totalDisks)
+	tlog.TraceContext(s.ctx, "Sent Volume status entity to Home Assistant", "entity_id", entityId, "total_disks", totalDisks)
 	return nil
 }
 
@@ -320,7 +320,7 @@ func (s *HomeAssistantService) sendDiskEntity(disk dto.Disk) error {
 		return errors.Errorf("failed to send disk entity to Home Assistant: %s", string(resp.Body))
 	}
 
-	slog.DebugContext(s.ctx, "Sent disk entity to Home Assistant", "entity_id", entityId, "disk_id", *disk.Id)
+	tlog.TraceContext(s.ctx, "Sent disk entity to Home Assistant", "entity_id", entityId, "disk_id", *disk.Id)
 	return nil
 }
 
