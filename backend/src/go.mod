@@ -10,7 +10,7 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/oapi-codegen/runtime v1.1.2
 	github.com/pilebones/go-udev v0.9.1
-	github.com/shirou/gopsutil/v4 v4.25.11
+	github.com/shirou/gopsutil/v4 v4.25.12
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/sys v0.39.0
 )
@@ -20,7 +20,7 @@ require (
 	github.com/adelolmo/hd-idle v0.0.0-20250511190312-c87bc6e9ce96
 	github.com/danielgtaylor/huma/v2 v2.34.1
 	github.com/dianlight/smartmontools-go v0.2.1
-	github.com/dianlight/tlog v0.1.0
+	github.com/dianlight/tlog v0.1.2
 	github.com/fatih/color v1.18.0
 	github.com/gofri/go-github-ratelimit/v2 v2.0.2
 	github.com/google/go-github/v80 v80.0.0
