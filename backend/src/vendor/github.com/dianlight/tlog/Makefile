@@ -113,7 +113,9 @@ release:
 	esac; \
 	NEW_TAG=v$$NEW_MAJOR.$$NEW_MINOR.$$NEW_PATCH; \
 	echo "Creating release tag $$NEW_TAG"; \
-	git tag $$NEW_TAG && git push origin $$NEW_TAG
+	git tag $$NEW_TAG && git push origin $$NEW_TAG \
+	GOPROXY=proxy.golang.org go list -m github.com/dianlight/tlog@$$NEW_TAG
+	
 
 prerelease:
 	@VERSION_TYPE=$(or $(VERSION_TYPE), patch); \
@@ -138,7 +140,8 @@ prerelease:
 		NEW_TAG=v$$NEW_MAJOR.$$NEW_MINOR.$$NEW_PATCH-beta.0; \
 	fi; \
 	echo "Creating prerelease tag $$NEW_TAG"; \
-	git tag $$NEW_TAG && git push origin $$NEW_TAG
+	git tag $$NEW_TAG && git push origin $$NEW_TAG \
+	GOPROXY=proxy.golang.org go list -m github.com/dianlight/tlog@$$NEW_TAG
 
 clean:
 	@echo "Cleaning..."
