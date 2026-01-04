@@ -47,9 +47,6 @@ export function HDIdleDiskSettings({ disk, readOnly = false }: HDIdleDiskSetting
 	});
 	const { data: settings, isLoading: isLoadingSettings } = useGetApiSettingsQuery();
 	const diskId = (disk as any)?.id || (disk as any)?.name || "";
-	//const { data: deviceConfig, isFetching: isFetchingDeviceConfig } = useGetApiDiskByDiskIdHdidleConfigQuery({ diskId }, { skip: !diskId });
-	const { data: supportInfo, isFetching: isFetchingSupport } = useGetApiDiskByDiskIdHdidleSupportQuery({ diskId }, { skip: !diskId });
-	//const { data: deviceStatus, isFetching: isFetchingDeviceStatus } = useGetApiDiskByDiskIdHdidleInfoQuery({ diskId }, { skip: !diskId });
 	const [saveConfig, { isLoading: isSaving }] = usePutApiDiskByDiskIdHdidleConfigMutation();
 	const isTestEnv = (globalThis as any).__TEST__ === true;
 	const [expanded, setExpanded] = useState(false);
@@ -61,17 +58,18 @@ export function HDIdleDiskSettings({ disk, readOnly = false }: HDIdleDiskSetting
 	const fieldsDisabled = enabled === Enabled.No || readOnly;
 
 	if (!disk.hdidle_device?.supported) {
+		console.warn("HDIdle not supported on this disk");
 		return "";
 	}
 
 
 	useEffect(() => {
-		if (isFetchingSupport || isLoadingSettings) return;
+		if (isLoadingSettings) return;
 		// Visibility rules: show when hdidle globally enabled or in tests/non-prod
-		const globallyEnabled = (settings as Settings)?.hdidle_enabled || ((disk as any)?.hdidle_device?.enabled ?? false);
-		const unsupported = (supportInfo as any)?.Supported === false;
-		if (globallyEnabled && !unsupported) {
-			setVisible(isTestEnv && getCurrentEnv() !== "production");
+		const globallyEnabled = (settings as Settings)?.hdidle_enabled ?? false;
+		
+		if (globallyEnabled) {
+			setVisible(isTestEnv || getCurrentEnv() !== "production");
 		} else {
 			setVisible(false);
 		}
@@ -84,7 +82,7 @@ export function HDIdleDiskSettings({ disk, readOnly = false }: HDIdleDiskSetting
 			command_type: apiValues?.command_type ?? (disk as any)?.hdidle_status?.command_type ?? "",
 			power_condition: apiValues?.power_condition ?? (disk as any)?.hdidle_status?.power_condition ?? 0,
 		});
-	}, [disk, reset, settings, isTestEnv, isFetchingSupport, isLoadingSettings]);
+	}, [disk, reset, settings, isTestEnv, isLoadingSettings]);
 
 	// Close accordion if enabled is not Custom
 	useEffect(() => {
@@ -110,7 +108,6 @@ export function HDIdleDiskSettings({ disk, readOnly = false }: HDIdleDiskSetting
 		const values = getValues();
 		const payload: HdIdleDevice = {
 			// The backend expects the full by-id device path in the payload
-			supported: true,
 			disk_id: diskId,
 			device_path: `/dev/disk/by-id/${diskId}`,
 			enabled: values.enabled as Enabled,
@@ -322,7 +319,7 @@ export function HDIdleDiskSettings({ disk, readOnly = false }: HDIdleDiskSetting
 									<span>
 										<ToggleButton
 											value="apply"
-											disabled={fieldsDisabled || !formState.isDirty || isSaving || isFetchingSupport}
+											disabled={fieldsDisabled || !formState.isDirty || isSaving}
 											onClick={handleApply}
 											color={"success" as any}
 											size="small"

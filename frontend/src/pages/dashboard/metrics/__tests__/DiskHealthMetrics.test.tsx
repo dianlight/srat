@@ -73,9 +73,7 @@ describe("DiskHealthMetrics", () => {
                 "Test Disk": {
                     device_id: "test-id",
                     hdidle_status: {
-                        enabled: true,
                         spun_down: true,
-                        supported: true,
                         spin_down_at: "2025-12-15T10:00:00Z",
                     },
                 },
@@ -169,9 +167,7 @@ describe("DiskHealthMetrics", () => {
                 "Active Disk": {
                     device_id: "test-id",
                     hdidle_status: {
-                        enabled: true,
                         spun_down: false,
-                        supported: true,
                         spin_up_at: "2025-12-15T10:30:00Z",
                     },
                 },

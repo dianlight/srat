@@ -127,6 +127,10 @@ func (h *HDIdleHandler) getStatus(ctx context.Context, input *struct {
 		return nil, huma.Error500InternalServerError("Failed to get HDIdle service status", err)
 	}
 
+	if status == nil {
+		return nil, huma.Error404NotFound("HDIdle status not found for the specified disk", nil)
+	}
+
 	output := &GetHDIdleStatusOutput{
 		Body: status,
 	}

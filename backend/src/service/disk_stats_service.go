@@ -303,67 +303,17 @@ func (s *diskStatsService) getHDIdleDeviceStatus(devicePath string) *dto.HDIdleD
 		return nil
 	}
 
-	status := &dto.HDIdleDeviceStatus{
-		Supported: false,
-		Enabled:   false,
-	}
-
-	// Check device support
-	support, err := s.hdidleService.CheckDeviceSupport(devicePath)
-	if err != nil {
-		tlog.DebugContext(s.ctx, "Error checking HDIdle device support", "device", devicePath, "err", err)
-		return status
-	}
-
-	if support != nil {
-		status.Supported = support.Supported
-		if support.RecommendedCommand != nil {
-			status.CommandType = support.RecommendedCommand.String()
-		}
-	}
-
-	/*
-		// Check if monitoring is enabled for this device
-		effectiveConfig := s.hdidleService.GetEffectiveConfig()
-		status.Enabled = effectiveConfig.Enabled
-		if effectiveConfig.Enabled {
-			// Check if this specific device is in the monitored list
-			deviceInList := false
-			for _, dev := range effectiveConfig.Devices {
-				if dev == devicePath {
-					deviceInList = true
-					break
-				}
-			}
-			// If there are specific devices configured, this device must be in the list
-			if len(effectiveConfig.Devices) > 0 && !deviceInList {
-				status.Enabled = false
-			}
-		}
-	*/
-
 	// Get device-specific status if HDIdle is running
 	if s.hdidleService.IsRunning() {
 		deviceStatus, err := s.hdidleService.GetDeviceStatus(devicePath)
 		if err != nil {
 			tlog.DebugContext(s.ctx, "Error getting HDIdle device status", "device", devicePath, "err", err)
 		} else if deviceStatus != nil {
-			status.SpunDown = deviceStatus.SpunDown
-			if !deviceStatus.LastIOAt.IsZero() {
-				status.LastIOAt = deviceStatus.LastIOAt
-			}
-			if !deviceStatus.SpinDownAt.IsZero() {
-				status.SpinDownAt = deviceStatus.SpinDownAt
-			}
-			if !deviceStatus.SpinUpAt.IsZero() {
-				status.SpinUpAt = deviceStatus.SpinUpAt
-			}
-			status.IdleTimeMillis = deviceStatus.IdleTimeMillis
-			status.CommandType = deviceStatus.CommandType
+			return deviceStatus
 		}
 	}
 
-	return status
+	return nil
 }
 
 // GetDiskStats collects and returns disk I/O statistics.

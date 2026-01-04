@@ -158,9 +158,7 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 					if errHDidle != nil {
 						if errors.Is(errHDidle, dto.ErrorHDIdleNotSupported) {
 							tlog.TraceContext(h.ctx, "HDIdle not supported for device", "device", *diskDto.DevicePath, "drive_index", i, "drive_id", drive.Id)
-							diskDto.HDIdleDevice = &dto.HDIdleDevice{
-								Supported: false,
-							}
+							diskDto.HDIdleDevice = hdidleDevice
 						} else {
 							tlog.WarnContext(h.ctx, "Error retrieving HDIdle config for device", "device", *diskDto.DevicePath, "drive_index", i, "drive_id", drive.Id, "err", errHDidle)
 						}
