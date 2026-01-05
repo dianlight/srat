@@ -4,6 +4,7 @@
   "language": "en",
   "allowCompoundWords": true,
   "words": [
+    "CIFS",
     "QUIC",
     "DBOM",
     "dbom",
@@ -12,6 +13,7 @@
     "PPROF",
     "SRAT",
     "SambaNAS",
+    "gotmpl",
     "Hass",
     "addon",
     "addons",
