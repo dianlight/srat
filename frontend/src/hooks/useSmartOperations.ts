@@ -12,16 +12,17 @@ import {
 export type SmartTestType = "short" | "long" | "conveyance";
 
 export function useSmartOperations(diskId?: string) {
-	const [startTest, { isLoading: isStarting }] =
+	const [startTest, { isLoading: isStarting, isSuccess: isStartSuccess }] =
 		usePostApiDiskByDiskIdSmartTestStartMutation();
-	const [abortTest, { isLoading: isAborting }] =
+	const [abortTest, { isLoading: isAborting, isSuccess: isAbortSuccess }] =
 		usePostApiDiskByDiskIdSmartTestAbortMutation();
-	const [enableSMARTApi, { isLoading: isEnabling }] =
+	const [enableSMARTApi, { isLoading: isEnabling, isSuccess: isEnableSuccess }] =
 		usePostApiDiskByDiskIdSmartEnableMutation();
-	const [disableSMARTApi, { isLoading: isDisabling }] =
+	const [disableSMARTApi, { isLoading: isDisabling, isSuccess: isDisableSuccess }] =
 		usePostApiDiskByDiskIdSmartDisableMutation();
 
 	const isLoading = isStarting || isAborting || isEnabling || isDisabling;
+	const isSuccess = isStartSuccess || isAbortSuccess || isEnableSuccess || isDisableSuccess;
 
 	const startSelfTest = useCallback(
 		async (testType: SmartTestType) => {
@@ -111,5 +112,6 @@ export function useSmartOperations(diskId?: string) {
 		enableSmart,
 		disableSmart,
 		isLoading,
+		isSuccess
 	};
 }

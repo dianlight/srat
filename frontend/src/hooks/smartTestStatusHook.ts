@@ -6,7 +6,7 @@ import {
 import { useGetServerEventsQuery } from "../store/sseApi";
 
 export function useSmartTestStatus(diskId: string) {
-	const { data, error, isLoading, isSuccess } =
+	const { data, error, isLoading, isSuccess, refetch } =
 		useGetApiDiskByDiskIdSmartTestQuery({ diskId: diskId });
 	const {
 		data: evdata,
@@ -24,7 +24,7 @@ export function useSmartTestStatus(diskId: string) {
 
 	useEffect(() => {
 		if (!isLoading && isSuccess && data) {
-			console.log("Update data:", data);
+			//console.log("Update data:", data);
 			setSmartTestStatus(data as SmartTestStatus);
 		}
 	}, [data, isLoading, isSuccess]);
@@ -41,6 +41,11 @@ export function useSmartTestStatus(diskId: string) {
 			evdata.smart_test_status.disk_id === diskId
 		) {
 			setSmartTestStatus(evdata.smart_test_status);
+			if (evdata.smart_test_status.percent_complete === 100) {
+				setTimeout(() => {
+					refetch();
+				}, 5000);
+			}
 		} else if (!evloading && everror) {
 			console.error("Error receiving smart test status via SSE:", everror);
 		} else if (!evloading && evdata?.smart_test_status) {
@@ -49,7 +54,7 @@ export function useSmartTestStatus(diskId: string) {
 				evdata.smart_test_status,
 			);
 		}
-	}, [evdata, evloading, diskId, everror]);
+	}, [evdata, evloading, diskId, everror, refetch]);
 
 	return {
 		smartTestStatus: smartTestStatus,

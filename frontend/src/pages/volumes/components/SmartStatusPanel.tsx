@@ -24,11 +24,12 @@ import HealthAndSafetyIcon from "@mui/icons-material/HealthAndSafety";
 import ErrorIcon from "@mui/icons-material/Error";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import Collapse from "@mui/material/Collapse";
-import { useState } from "react";
+import { use,
+    useEffect,
+    useState } from "react";
 import { useGetApiDiskByDiskIdSmartInfoQuery, useGetApiDiskByDiskIdSmartStatusQuery, type SmartInfo, type SmartStatus } from "../../../store/sratApi";
 import { useSmartOperations } from "../../../hooks/useSmartOperations";
 import { PreviewDialog } from "../../../components/PreviewDialog";
-import { getCurrentEnv } from "../../../macro/Environment" with { type: "macro" };
 import { useSmartTestStatus } from "../../../hooks/smartTestStatusHook";
 
 // Local type definitions for SMART data that isn't in the OpenAPI spec yet
@@ -69,8 +70,8 @@ export function SmartStatusPanel({
     const [showStartTestDialog, setShowStartTestDialog] = useState(false);
     const [showPreviewDialog, setShowPreviewDialog] = useState(false);
     const [selectedTestType, setSelectedTestType] = useState<SmartTestType>("short");
-    const { startSelfTest, abortSelfTest, enableSmart, disableSmart, isLoading: smartOperationLoading } = useSmartOperations(diskId);
-    const { data: smartStatus, isLoading: smartStatusIsLoading } = useGetApiDiskByDiskIdSmartStatusQuery({
+    const { startSelfTest, abortSelfTest, enableSmart, disableSmart, isLoading: smartOperationLoading, isSuccess: smartOperationSuccess } = useSmartOperations(diskId);
+    const { data: smartStatus, isLoading: smartStatusIsLoading, refetch: refetchSmartStatus } = useGetApiDiskByDiskIdSmartStatusQuery({
         diskId: diskId || ""
     }, {
         skip: !diskId,
@@ -101,13 +102,20 @@ export function SmartStatusPanel({
         }
         return <ErrorIcon sx={{ color: "error.main" }} />;
     };
+    /*
+        const getHealthColor = () => {
+            if (smartStatusIsLoading || !smartStatus) return "default";
+            if ((smartStatus as SmartStatus)?.is_test_passed) return "success";
+            if (!(smartStatus as SmartStatus)?.is_test_passed || (smartStatus as SmartStatus)?.is_in_warning) return "warning";
+            return "error";
+        };
+        */
 
-    const getHealthColor = () => {
-        if (smartStatusIsLoading || !smartStatus) return "default";
-        if ((smartStatus as SmartStatus)?.is_test_passed) return "success";
-        if (!(smartStatus as SmartStatus)?.is_test_passed || (smartStatus as SmartStatus)?.is_in_warning) return "warning";
-        return "error";
-    };
+    useEffect(() => {
+        if (smartOperationSuccess && !smartOperationLoading) {
+            refetchSmartStatus();
+        }
+    }, [smartOperationSuccess]);
 
     const getTestStatusColor = () => {
         if (smartTestStatusLoading || !smartTestStatus) return "default";
@@ -120,7 +128,7 @@ export function SmartStatusPanel({
     return (
         <Card>
             <CardHeader
-                title="S.M.A.R.T. Status ( 🚧 Work In Progress )"
+                title="S.M.A.R.T. Status"
                 avatar={
                     <IconButton
                         size="small"
@@ -356,69 +364,69 @@ export function SmartStatusPanel({
                         )}
 
                         {/* Control Buttons */}
-                        {getCurrentEnv() !== "production" && (
-                            <Box>
-                                <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
-                                    Actions
-                                </Typography>
-                                <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ flexWrap: "wrap" }}>
-                                    <Button
-                                        size="small"
-                                        variant="outlined"
-                                        onClick={() => setShowStartTestDialog(true)}
-                                        disabled={(smartTestStatus?.running) || smartOperationLoading || isReadOnlyMode}
-                                        title={
-                                            (smartTestStatus?.running)
-                                                ? "Test already running"
-                                                : "Start SMART self-test"
-                                        }
-                                    >
-                                        Start Test
-                                    </Button>
-                                    <Button
-                                        size="small"
-                                        variant="outlined"
-                                        color="warning"
-                                        onClick={abortSelfTest}
-                                        disabled={!(smartTestStatus?.running) || smartOperationLoading || isReadOnlyMode}
-                                        title={
-                                            !(smartTestStatus?.running)
-                                                ? "No test running"
-                                                : "Abort running self-test"
-                                        }
-                                    >
-                                        Abort Test
-                                    </Button>
-                                    <Button
-                                        size="small"
-                                        variant="outlined"
-                                        onClick={enableSmart}
-                                        disabled={smartOperationLoading || smartStatusIsLoading || ((smartStatus as SmartStatus)?.enabled ?? false) || isReadOnlyMode}
-                                        title={
-                                            (smartStatus as SmartStatus)?.enabled ?? false
-                                                ? "SMART already enabled"
-                                                : "Enable SMART monitoring"
-                                        }
-                                    >
-                                        Enable SMART
-                                    </Button>
-                                    <Button
-                                        size="small"
-                                        variant="outlined"
-                                        color="error"
-                                        onClick={disableSmart}
-                                        disabled={smartOperationLoading || smartStatusIsLoading || !((smartStatus as SmartStatus)?.enabled ?? false) || isReadOnlyMode}
-                                        title={
-                                            !((smartStatus as SmartStatus)?.enabled ?? false)
-                                                ? "SMART already disabled"
-                                                : "Disable SMART monitoring"
-                                        }
-                                    >
-                                        Disable SMART
-                                    </Button>
-                                </Stack>
-                            </Box>
-                        )}
+                        
+                        <Box>
+                            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+                                Actions
+                            </Typography>
+                            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ flexWrap: "wrap" }}>
+                                <Button
+                                    size="small"
+                                    variant="outlined"
+                                    onClick={() => setShowStartTestDialog(true)}
+                                    disabled={(smartTestStatus?.running) || smartOperationLoading || isReadOnlyMode}
+                                    title={
+                                        (smartTestStatus?.running)
+                                            ? "Test already running"
+                                            : "Start SMART self-test"
+                                    }
+                                >
+                                    Start Test
+                                </Button>
+                                <Button
+                                    size="small"
+                                    variant="outlined"
+                                    color="warning"
+                                    onClick={abortSelfTest}
+                                    disabled={!(smartTestStatus?.running) || smartOperationLoading || isReadOnlyMode}
+                                    title={
+                                        !(smartTestStatus?.running)
+                                            ? "No test running"
+                                            : "Abort running self-test"
+                                    }
+                                >
+                                    Abort Test
+                                </Button>
+                                <Button
+                                    size="small"
+                                    variant="outlined"
+                                    onClick={enableSmart}
+                                    disabled={smartOperationLoading || smartStatusIsLoading || ((smartStatus as SmartStatus)?.enabled ?? false) || isReadOnlyMode}
+                                    title={
+                                        (smartStatus as SmartStatus)?.enabled ?? false
+                                            ? "SMART already enabled"
+                                            : "Enable SMART monitoring"
+                                    }
+                                >
+                                    Enable SMART
+                                </Button>
+                                <Button
+                                    size="small"
+                                    variant="outlined"
+                                    color="error"
+                                    onClick={disableSmart}
+                                    disabled={smartOperationLoading || smartStatusIsLoading || !((smartStatus as SmartStatus)?.enabled ?? false) || isReadOnlyMode}
+                                    title={
+                                        !((smartStatus as SmartStatus)?.enabled ?? false)
+                                            ? "SMART already disabled"
+                                            : "Disable SMART monitoring"
+                                    }
+                                >
+                                    Disable SMART
+                                </Button>
+                            </Stack>
+                        </Box>
+                    
                         { /*End Control Buttons  */}
                     </Stack>
                 </CardContent>
