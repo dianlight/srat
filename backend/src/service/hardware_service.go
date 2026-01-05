@@ -140,16 +140,18 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 				if diskDto.LegacyDeviceName != nil && *diskDto.LegacyDeviceName != "" && *device.Name == *diskDto.LegacyDeviceName {
 					diskDto.LegacyDevicePath = device.DevPath
 					diskDto.DevicePath = device.ById
-					smartInfo, errSmart := h.smartService.GetSmartInfo(h.ctx, *diskDto.DevicePath)
+					Id := strings.TrimPrefix(*device.ById, "/dev/disk/by-id/")
+					diskDto.Id = &Id
+					smartInfo, errSmart := h.smartService.GetSmartInfo(h.ctx, *diskDto.Id)
 					if errSmart != nil {
 						if errors.Is(errSmart, dto.ErrorSMARTNotSupported) {
-							tlog.TraceContext(h.ctx, "SMART not supported for device", "device", *diskDto.DevicePath, "drive_index", i, "drive_id", drive.Id)
+							tlog.TraceContext(h.ctx, "SMART not supported for device", "device", *diskDto.Id, "drive_index", i, "drive_id", drive.Id)
 							// Set SmartInfo with Supported=false
 							diskDto.SmartInfo = &dto.SmartInfo{
 								Supported: false,
 							}
 						} else {
-							tlog.WarnContext(h.ctx, "Error retrieving SMART info for device", "device", *diskDto.DevicePath, "drive_index", i, "drive_id", drive.Id, "err", errSmart)
+							tlog.WarnContext(h.ctx, "Error retrieving SMART info for device", "device", *diskDto.Id, "drive_index", i, "drive_id", drive.Id, "err", errSmart)
 						}
 					} else if smartInfo != nil {
 						diskDto.SmartInfo = smartInfo

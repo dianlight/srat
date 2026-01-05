@@ -165,11 +165,3 @@ func partitionFromDeviceId(source string, disks []*dto.Disk) *dto.Partition {
 	}
 	return nil
 }
-
-/*func (c *DtoToDbomConverterImpl) ExportedShareToSharedResourceNoMountPointData(source dbom.ExportedShare, target *dto.SharedResource) error {
-	err := c.ExportedShareToSharedResourceNoMountPointData(source, target)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	return nil
-}*/

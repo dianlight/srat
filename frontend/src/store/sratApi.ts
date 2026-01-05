@@ -745,6 +745,15 @@ export type SseApiResponse = /** status 200 OK */
           retry?: number;
         }
       | {
+          data: SmartTestStatus;
+          /** The event name. */
+          event: "smart_test_status";
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
           data: UpdateProgress;
           /** The event name. */
           event: "updating";
@@ -959,7 +968,11 @@ export type SmartStatus = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
   enabled: boolean;
-  in_standby?: boolean;
+  in_standby: boolean;
+  is_in_danger: boolean;
+  is_in_warning: boolean;
+  is_test_passed: boolean;
+  is_test_running: boolean;
   others?: {
     [key: string]: SmartRangeValue;
   };
@@ -970,8 +983,10 @@ export type SmartStatus = {
 export type SmartTestStatus = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
+  disk_id: string;
   lba_of_first_error?: string;
   percent_complete?: number;
+  running: boolean;
   status: string;
   test_type: string;
 };
@@ -1460,6 +1475,7 @@ export enum Supported_events {
   Heartbeat = "heartbeat",
   Shares = "shares",
   DirtyDataTracker = "dirty_data_tracker",
+  SmartTestStatus = "smart_test_status",
 }
 export enum Update_channel {
   None = "None",

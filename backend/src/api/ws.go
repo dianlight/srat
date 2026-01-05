@@ -38,22 +38,14 @@ func NewWebSocketBroker(ctx context.Context, broadcaster service.BroadcasterServ
 			return true
 		},
 	}
-	eventMap := map[string]any{
-		dto.WebEventTypes.EVENTHELLO.String():        dto.Welcome{},
-		dto.WebEventTypes.EVENTUPDATING.String():     dto.UpdateProgress{},
-		dto.WebEventTypes.EVENTVOLUMES.String():      []*dto.Disk{},
-		dto.WebEventTypes.EVENTHEARTBEAT.String():    dto.HealthPing{},
-		dto.WebEventTypes.EVENTSHARES.String():       []dto.SharedResource{},
-		dto.WebEventTypes.EVENTDIRTYTRACKER.String(): dto.DataDirtyTracker{},
-	}
 
-	reverseMap := reverseMap(eventMap)
+	reverseMap := reverseMap(dto.WebEventMap)
 
 	return &WebSocketHandler{
 		ctx:         ctx,
 		broadcaster: broadcaster,
 		upgrader:    upgrader,
-		eventMap:    eventMap,
+		eventMap:    dto.WebEventMap,
 		ObjectMap:   reverseMap,
 	}
 }

@@ -195,9 +195,9 @@ func TestSmartStatus_EmptyAdditional(t *testing.T) {
 }
 
 func TestSmartTestType_Values(t *testing.T) {
-	assert.Equal(t, dto.SmartTestTypeShort, dto.SmartTestType("short"))
-	assert.Equal(t, dto.SmartTestTypeLong, dto.SmartTestType("long"))
-	assert.Equal(t, dto.SmartTestTypeConveyance, dto.SmartTestType("conveyance"))
+	assert.Equal(t, "short", dto.SmartTestTypes.SMARTTESTTYPESHORT.String())
+	assert.Equal(t, "long", dto.SmartTestTypes.SMARTTESTTYPELONG.String())
+	assert.Equal(t, "conveyance", dto.SmartTestTypes.SMARTTESTTYPECONVEYANCE.String())
 }
 
 func TestSmartTestStatus_Fields(t *testing.T) {

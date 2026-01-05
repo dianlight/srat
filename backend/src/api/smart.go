@@ -12,25 +12,22 @@ import (
 )
 
 type SmartHandler struct {
-	apiContext    *dto.ContextState
-	smartService  service.SmartServiceInterface
-	volumeService service.VolumeServiceInterface
-	//dirtyService    service.DirtyDataServiceInterface
+	ctx             context.Context
+	status          *dto.ContextState
+	smartService    service.SmartServiceInterface
 	broadcasterServ service.BroadcasterServiceInterface
 }
 
 func NewSmartHandler(
+	ctx context.Context,
 	smartService service.SmartServiceInterface,
-	volumeService service.VolumeServiceInterface,
-	apiContext *dto.ContextState,
-	//dirtyService service.DirtyDataServiceInterface,
+	status *dto.ContextState,
 	broadcasterServ service.BroadcasterServiceInterface,
 ) *SmartHandler {
 	return &SmartHandler{
-		apiContext:    apiContext,
-		smartService:  smartService,
-		volumeService: volumeService,
-		//dirtyService:    dirtyService,
+		ctx:             ctx,
+		status:          status,
+		smartService:    smartService,
 		broadcasterServ: broadcasterServ,
 	}
 }
@@ -62,17 +59,19 @@ func (h *SmartHandler) RegisterSmartHandlers(api huma.API) {
 func (h *SmartHandler) GetSmartInfo(ctx context.Context, input *struct {
 	DiskID string `path:"disk_id" required:"true" doc:"The disk ID or device path"`
 }) (*struct{ Body *dto.SmartInfo }, error) {
-	devicePath, errE := h.volumeService.GetDevicePathByDeviceID(input.DiskID)
-	if errE != nil {
-		return nil, huma.Error404NotFound("Disk not found", errors.New("disk not found"))
-	}
+	//devicePath, errE := h.volumeService.GetDevicePathByDeviceID(input.DiskID)
+	//if errE != nil {
+	//	return nil, huma.Error404NotFound("Disk not found", errors.New("disk not found"))
+	//}
 
-	smartInfo, errE := h.smartService.GetSmartInfo(ctx, devicePath)
+	smartInfo, errE := h.smartService.GetSmartInfo(ctx, input.DiskID)
 	if errE != nil {
 		if errors.Is(errE, dto.ErrorSMARTNotSupported) {
 			return nil, huma.Error406NotAcceptable("SMART not supported on this device", errE)
+		} else if errors.Is(errE, dto.ErrorNotFound) {
+			return nil, huma.Error404NotFound("Disk not found", errE)
 		}
-		tlog.ErrorContext(ctx, "Failed to get SMART info", "device", devicePath, "error", errE)
+		tlog.ErrorContext(ctx, "Failed to get SMART info", "device", input.DiskID, "error", errE)
 		return nil, huma.Error500InternalServerError("Failed to get SMART info", errE)
 	}
 
@@ -83,17 +82,13 @@ func (h *SmartHandler) GetSmartInfo(ctx context.Context, input *struct {
 func (h *SmartHandler) GetSmartStatus(ctx context.Context, input *struct {
 	DiskID string `path:"disk_id" required:"true" doc:"The disk ID or device path"`
 }) (*struct{ Body *dto.SmartStatus }, error) {
-	devicePath, errE := h.volumeService.GetDevicePathByDeviceID(input.DiskID)
-	if errE != nil {
-		return nil, huma.Error404NotFound("Disk not found", errors.New("disk not found"))
-	}
 
-	smartStatus, errE := h.smartService.GetSmartStatus(ctx, devicePath)
+	smartStatus, errE := h.smartService.GetSmartStatus(ctx, input.DiskID)
 	if errE != nil {
 		if errors.Is(errE, dto.ErrorSMARTNotSupported) {
 			return nil, huma.Error406NotAcceptable("SMART not supported on this device", errE)
 		}
-		tlog.ErrorContext(ctx, "Failed to get SMART status", "device", devicePath, "error", errE)
+		tlog.ErrorContext(ctx, "Failed to get SMART status", "device", input.DiskID, "error", errE)
 		return nil, huma.Error500InternalServerError("Failed to get SMART status", errE)
 	}
 
@@ -106,17 +101,12 @@ func (h *SmartHandler) GetSmartHealth(ctx context.Context, input *struct {
 }) (*struct{ Body *dto.SmartHealthStatus }, error) {
 	// Get disk info to find device path
 
-	devicePath, errE := h.volumeService.GetDevicePathByDeviceID(input.DiskID)
-	if errE != nil {
-		return nil, huma.Error404NotFound("Disk not found", errors.New("disk not found"))
-	}
-
-	healthStatus, errE := h.smartService.GetHealthStatus(ctx, devicePath)
+	healthStatus, errE := h.smartService.GetHealthStatus(ctx, input.DiskID)
 	if errE != nil {
 		if errors.Is(errE, dto.ErrorSMARTNotSupported) {
 			return nil, huma.Error406NotAcceptable("SMART not supported on this device", errE)
 		}
-		tlog.ErrorContext(ctx, "Failed to get SMART health status", "device", devicePath, "error", errE)
+		tlog.ErrorContext(ctx, "Failed to get SMART health status", "device", input.DiskID, "error", errE)
 		return nil, huma.Error500InternalServerError("Failed to get SMART health status", errE)
 	}
 
@@ -128,20 +118,16 @@ func (h *SmartHandler) GetSmartTestStatus(ctx context.Context, input *struct {
 	DiskID string `path:"disk_id" required:"true" doc:"The disk ID or device path"`
 }) (*struct{ Body *dto.SmartTestStatus }, error) {
 
-	devicePath, errE := h.volumeService.GetDevicePathByDeviceID(input.DiskID)
-	if errE != nil {
-		return nil, huma.Error404NotFound("Disk not found", errors.New("disk not found"))
-	}
-
-	testStatus, errE := h.smartService.GetTestStatus(ctx, devicePath)
+	testStatus, errE := h.smartService.GetTestStatus(ctx, input.DiskID)
 	if errE != nil {
 		if errors.Is(errE, dto.ErrorSMARTNotSupported) {
 			return nil, huma.Error406NotAcceptable("SMART not supported on this device", errE)
 		}
-		tlog.ErrorContext(ctx, "Failed to get SMART test status", "device", devicePath, "error", errE)
+		tlog.ErrorContext(ctx, "Failed to get SMART test status", "device", input.DiskID, "error", errE)
 		return nil, huma.Error500InternalServerError("Failed to get SMART test status", errE)
 	}
 
+	testStatus.DiskId = input.DiskID
 	return &struct{ Body *dto.SmartTestStatus }{Body: testStatus}, nil
 }
 
@@ -153,17 +139,12 @@ func (h *SmartHandler) StartSmartTest(ctx context.Context, input *struct {
 	}
 }) (*struct{ Body string }, error) {
 	// Check read-only mode
-	if h.apiContext.ReadOnlyMode {
+	if h.status.ReadOnlyMode {
 		return nil, huma.Error403Forbidden("Read-only mode enabled", errors.New("read-only mode"))
 	}
 
-	devicePath, errE := h.volumeService.GetDevicePathByDeviceID(input.DiskID)
-	if errE != nil {
-		return nil, huma.Error404NotFound("Disk not found", errors.New("disk not found"))
-	}
-
 	// Start the test (progress callback support pending upstream library capability)
-	errE = h.smartService.StartSelfTest(ctx, devicePath, input.Body.TestType)
+	errE := h.smartService.StartSelfTest(h.ctx, input.DiskID, input.Body.TestType)
 	if errE != nil {
 		if errors.Is(errE, dto.ErrorSMARTNotSupported) {
 			return nil, huma.Error406NotAcceptable("SMART not supported on this device", errE)
@@ -171,7 +152,7 @@ func (h *SmartHandler) StartSmartTest(ctx context.Context, input *struct {
 		if errors.Is(errE, dto.ErrorSMARTTestInProgress) {
 			return nil, huma.Error422UnprocessableEntity("SMART test already in progress", errE)
 		}
-		tlog.ErrorContext(ctx, "Failed to start SMART test", "device", devicePath, "test_type", input.Body.TestType, "error", errE)
+		tlog.ErrorContext(ctx, "Failed to start SMART test", "device", input.DiskID, "test_type", input.Body.TestType, "error", errE)
 		return nil, huma.Error500InternalServerError("Failed to start SMART test", errE)
 	}
 
@@ -183,22 +164,17 @@ func (h *SmartHandler) AbortSmartTest(ctx context.Context, input *struct {
 	DiskID string `path:"disk_id" required:"true" doc:"The disk ID or device path"`
 }) (*struct{ Body string }, error) {
 	// Check read-only mode
-	if h.apiContext.ReadOnlyMode {
+	if h.status.ReadOnlyMode {
 		return nil, huma.Error403Forbidden("Read-only mode enabled", errors.New("read-only mode"))
 	}
 
-	devicePath, errE := h.volumeService.GetDevicePathByDeviceID(input.DiskID)
-	if errE != nil {
-		return nil, huma.Error404NotFound("Disk not found", errors.New("disk not found"))
-	}
-
 	// Abort the test
-	errE = h.smartService.AbortSelfTest(ctx, devicePath)
+	errE := h.smartService.AbortSelfTest(ctx, input.DiskID)
 	if errE != nil {
 		if errors.Is(errE, dto.ErrorSMARTNotSupported) {
 			return nil, huma.Error406NotAcceptable("SMART not supported on this device", errE)
 		}
-		tlog.ErrorContext(ctx, "Failed to abort SMART test", "device", devicePath, "error", errE)
+		tlog.ErrorContext(ctx, "Failed to abort SMART test", "device", input.DiskID, "error", errE)
 		return nil, huma.Error500InternalServerError("Failed to abort SMART test", errE)
 	}
 
@@ -210,24 +186,17 @@ func (h *SmartHandler) EnableSmart(ctx context.Context, input *struct {
 	DiskID string `path:"disk_id" required:"true" doc:"The disk ID or device path"`
 }) (*struct{ Body string }, error) {
 	// Check read-only mode
-	if h.apiContext.ReadOnlyMode {
+	if h.status.ReadOnlyMode {
 		return nil, huma.Error403Forbidden("Read-only mode enabled", errors.New("read-only mode"))
 	}
 
-	// Get disk info to find device path
-
-	devicePath, errE := h.volumeService.GetDevicePathByDeviceID(input.DiskID)
-	if errE != nil {
-		return nil, huma.Error404NotFound("Disk not found", errors.New("disk not found"))
-	}
-
 	// Enable SMART
-	errE = h.smartService.EnableSMART(ctx, devicePath)
+	errE := h.smartService.EnableSMART(ctx, input.DiskID)
 	if errE != nil {
 		if errors.Is(errE, dto.ErrorSMARTNotSupported) {
 			return nil, huma.Error406NotAcceptable("SMART not supported on this device", errE)
 		}
-		tlog.ErrorContext(ctx, "Failed to enable SMART", "device", devicePath, "error", errE)
+		tlog.ErrorContext(ctx, "Failed to enable SMART", "device", input.DiskID, "error", errE)
 		return nil, huma.Error500InternalServerError("Failed to enable SMART", errE)
 	}
 
@@ -239,22 +208,17 @@ func (h *SmartHandler) DisableSmart(ctx context.Context, input *struct {
 	DiskID string `path:"disk_id" required:"true" doc:"The disk ID or device path"`
 }) (*struct{ Body string }, error) {
 	// Check read-only mode
-	if h.apiContext.ReadOnlyMode {
+	if h.status.ReadOnlyMode {
 		return nil, huma.Error403Forbidden("Read-only mode enabled", errors.New("read-only mode"))
 	}
 
-	devicePath, errE := h.volumeService.GetDevicePathByDeviceID(input.DiskID)
-	if errE != nil {
-		return nil, huma.Error404NotFound("Disk not found", errors.New("disk not found"))
-	}
-
 	// Disable SMART
-	errE = h.smartService.DisableSMART(ctx, devicePath)
+	errE := h.smartService.DisableSMART(ctx, input.DiskID)
 	if errE != nil {
 		if errors.Is(errE, dto.ErrorSMARTNotSupported) {
 			return nil, huma.Error406NotAcceptable("SMART not supported on this device", errE)
 		}
-		tlog.ErrorContext(ctx, "Failed to disable SMART", "device", devicePath, "error", errE)
+		tlog.ErrorContext(ctx, "Failed to disable SMART", "device", input.DiskID, "error", errE)
 		return nil, huma.Error500InternalServerError("Failed to disable SMART", errE)
 	}
 

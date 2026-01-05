@@ -72,6 +72,18 @@ func deviceToDeviceId(source string) (string, error) {
 	return deviceID, nil
 }
 
+func DeviceIdToDevice(source string) (string, error) {
+	linkPath := fmt.Sprintf("/dev/disk/by-id/%s", source)
+	if _, err := osStat(linkPath); err != nil {
+		return linkPath, err
+	}
+	resolved, err := evalSymlink(linkPath)
+	if err != nil {
+		return linkPath, err
+	}
+	return resolved, nil
+}
+
 func mountPathToDeviceId(mountPath string) (string, error) {
 	//	slog.Debug("Resolving device ID for mount path", "mountPath", mountPath)
 	info, err := osutil.LoadMountInfo()

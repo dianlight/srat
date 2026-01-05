@@ -271,6 +271,7 @@ describe("SmartStatusPanel Component", () => {
         } as any;
 
         const mockTestStatus = {
+            disk_id: "disk-1",
             status: "running",
             test_type: "short",
             percent_complete: 50,
@@ -326,6 +327,7 @@ describe("SmartStatusPanel Component", () => {
         } as any;
 
         const mockTestStatus = {
+            disk_id: "disk-1",
             status: "running",
             test_type: "short",
             percent_complete: 50,
@@ -470,10 +472,6 @@ describe("SmartStatusPanel Component", () => {
                 children: React.createElement(SmartStatusPanel, {
                     smartInfo: mockSmartInfo,
                     isSmartSupported: true,
-                    isReadOnlyMode: false,
-                    onStartTest: () => {
-                        startTestCalled = true;
-                    },
                 }),
             }),
         );

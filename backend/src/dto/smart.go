@@ -31,24 +31,21 @@ type SmartInfo struct {
 // SmartStatus represents current S.M.A.R.T. status of a disk
 type SmartStatus struct {
 	Enabled         bool                       `json:"enabled"`
-	InStandby       bool                       `json:"in_standby,omitempty"` // True if device is in standby/sleep mode (ATA only)
+	InStandby       bool                       `json:"in_standby"` // True if device is in standby/sleep mode (ATA only)
 	Temperature     SmartTempValue             `json:"temperature"`
 	PowerOnHours    SmartRangeValue            `json:"power_on_hours"`
 	PowerCycleCount SmartRangeValue            `json:"power_cycle_count"`
 	Additional      map[string]SmartRangeValue `json:"others,omitempty"`
+	IsTestRunning   bool                       `json:"is_test_running"`
+	IsTestPassed    bool                       `json:"is_test_passed"`
+	IsInWarning     bool                       `json:"is_in_warning"`
+	IsInDanger      bool                       `json:"is_in_danger"`
 }
-
-// SmartTestType represents the type of SMART test to execute
-type SmartTestType string
-
-const (
-	SmartTestTypeShort      SmartTestType = "short"
-	SmartTestTypeLong       SmartTestType = "long"
-	SmartTestTypeConveyance SmartTestType = "conveyance"
-)
 
 // SmartTestStatus represents the status of a SMART test
 type SmartTestStatus struct {
+	DiskId          string `json:"disk_id"`
+	Running         bool   `json:"running"`
 	Status          string `json:"status"`                     // "idle", "running", "completed", "failed"
 	TestType        string `json:"test_type"`                  // Type of test
 	PercentComplete int    `json:"percent_complete,omitempty"` // Percentage complete (0-100)

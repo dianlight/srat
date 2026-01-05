@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"testing"
 
@@ -36,6 +37,7 @@ func (suite *SmartServiceSuite) SetupTest() {
 			service.NewSmartService,
 			// Provide a mock SmartClient so SmartService receives it via optional param
 			mock.Mock[smartmontools.SmartClient],
+			mock.Mock[service.BroadcasterServiceInterface],
 		),
 		fx.Populate(&suite.service),
 		fx.Populate(&suite.smartClient),
@@ -48,17 +50,23 @@ func (suite *SmartServiceSuite) TearDownTest() {
 }
 
 func (suite *SmartServiceSuite) TestGetSmartInfoDeviceNotExist() {
+
+	mock.When(suite.smartClient.GetSMARTInfo(mock.Any[context.Context](), mock.Exact("/dev/nonexistent"))).ThenReturn(nil, fmt.Errorf("SMART Not Supported"))
+
 	// Execute with invalid path
-	info, err := suite.service.GetSmartInfo(context.Background(), "/dev/nonexistent")
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return "/dev/nonexistent", nil
+	})
+	info, err := suite.service.GetSmartInfo(context.Background(), "nonexistent")
 
 	// Assert
-	suite.Error(err)
+	suite.Require().Error(err)
 	suite.Nil(info)
-	suite.True(goerrors.Is(err, dto.ErrorSMARTNotSupported))
+	suite.True(goerrors.Is(err, dto.ErrorSMARTNotSupported), " expected SMART not supported error %w", err)
 	// Verify details
 	details := goerrors.Details(err)
 	suite.Equal("/dev/nonexistent", details["device"])
-	suite.Equal("does not exist", details["reason"])
+	suite.Equal("SMART Not Supported", details["reason"])
 }
 
 func (suite *SmartServiceSuite) TestGetSmartInfoSuccess() {
@@ -121,6 +129,10 @@ func (suite *SmartServiceSuite) TestGetSmartInfoSuccess() {
 
 	mock.When(suite.smartClient.GetSMARTInfo(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).ThenReturn(mockSMARTInfo, nil)
 
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return tempFile.Name(), nil
+	})
+
 	// Execute
 	info, err := suite.service.GetSmartInfo(context.Background(), tempFile.Name())
 
@@ -161,7 +173,15 @@ func (suite *SmartServiceSuite) TestGetSmartInfoWithRotationRate() {
 		},
 	}
 
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return tempFile.Name(), nil
+	})
+
 	mock.When(suite.smartClient.GetSMARTInfo(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).ThenReturn(mockSMARTInfo, nil)
+
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return tempFile.Name(), nil
+	})
 
 	// Execute
 	info, err := suite.service.GetSmartInfo(context.Background(), tempFile.Name())
@@ -205,6 +225,10 @@ func (suite *SmartServiceSuite) TestGetSmartInfoWithZeroRotationRate() {
 
 	mock.When(suite.smartClient.GetSMARTInfo(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).ThenReturn(mockSMARTInfo, nil)
 
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return tempFile.Name(), nil
+	})
+
 	// Execute
 	info, err := suite.service.GetSmartInfo(context.Background(), tempFile.Name())
 
@@ -228,8 +252,12 @@ func (suite *SmartServiceSuite) TestGetSmartInfoDeviceNotReadable() {
 	os.Chmod(tempFile.Name(), 0000)
 	defer os.Chmod(tempFile.Name(), 0644) // Restore for cleanup
 
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return tempFile.Name(), nil
+	})
+
 	// Execute
-	info, err := suite.service.GetSmartInfo(context.Background(), tempFile.Name())
+	info, err := suite.service.GetSmartInfo(context.Background(), "tempFile.Name()")
 
 	// Assert
 	suite.Error(err)
@@ -250,12 +278,17 @@ func TestSmartServiceSuite(t *testing.T) {
 }
 
 func (suite *SmartServiceSuite) TestGetHealthStatusDeviceNotExist() {
+
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return "", fmt.Errorf("device not exists")
+	})
+
 	// Execute with non-existent device
-	health, err := suite.service.GetHealthStatus(context.Background(), "/dev/nonexistent")
+	health, err := suite.service.GetHealthStatus(context.Background(), "nonexistent")
 
 	// Expect error since device doesn't exist
-	suite.NoError(err)
-	suite.NotNil(health)
+	suite.Error(err)
+	suite.Nil(health)
 }
 
 func (suite *SmartServiceSuite) TestGetHealthStatusSuccess() {
@@ -285,6 +318,10 @@ func (suite *SmartServiceSuite) TestGetHealthStatusSuccess() {
 	mock.When(suite.smartClient.GetSMARTInfo(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).ThenReturn(mockSMARTInfo, nil)
 	mock.When(suite.smartClient.CheckHealth(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).ThenReturn(true, nil)
 
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return tempFile.Name(), nil
+	})
+
 	// Execute
 	health, err := suite.service.GetHealthStatus(context.Background(), tempFile.Name())
 
@@ -296,14 +333,18 @@ func (suite *SmartServiceSuite) TestGetHealthStatusSuccess() {
 }
 
 func (suite *SmartServiceSuite) TestStartSelfTestInvalidType() {
-	err := suite.service.StartSelfTest(context.Background(), "/dev/sda", dto.SmartTestType("invalid"))
+	stype, err := dto.ParseSmartTestType("invalid type")
+	suite.Require().NoError(err, " expected no error for invalid test type:%v err:%w", stype, err)
+	suite.Require().NotNil(stype)
+	suite.Require().False(stype.IsValid(), " expected unknown test type for invalid input")
+	err = suite.service.StartSelfTest(context.Background(), "/dev/sda", stype)
 
 	suite.Error(err)
-	suite.True(goerrors.Is(err, dto.ErrorInvalidParameter))
+	suite.True(goerrors.Is(err, dto.ErrorInvalidParameter), " expected invalid parameter error %w", err)
 }
 
 func (suite *SmartServiceSuite) TestStartSelfTestDeviceNotExist() {
-	err := suite.service.StartSelfTest(context.Background(), "/dev/nonexistent", dto.SmartTestTypeShort)
+	err := suite.service.StartSelfTest(context.Background(), "/dev/nonexistent", dto.SmartTestTypes.SMARTTESTTYPESHORT)
 
 	suite.Error(err)
 }
@@ -315,14 +356,21 @@ func (suite *SmartServiceSuite) TestStartSelfTestSuccess() {
 
 	mock.When(suite.smartClient.RunSelfTest(mock.Any[context.Context](), mock.Exact(tempFile.Name()), mock.Exact("short"))).ThenReturn(nil)
 
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return tempFile.Name(), nil
+	})
 	// Execute
-	err := suite.service.StartSelfTest(context.Background(), tempFile.Name(), dto.SmartTestTypeShort)
+	err := suite.service.StartSelfTest(context.Background(), tempFile.Name(), dto.SmartTestTypes.SMARTTESTTYPESHORT)
 
 	// Assert
 	suite.NoError(err)
 }
 
 func (suite *SmartServiceSuite) TestEnableDisableSMARTDeviceNotExist() {
+
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return "", fmt.Errorf("not found")
+	})
 	// Test EnableSMART
 	err := suite.service.EnableSMART(context.Background(), "/dev/nonexistent")
 	suite.Error(err)
@@ -342,6 +390,9 @@ func (suite *SmartServiceSuite) TestEnableSMARTSuccess() {
 	mock.When(suite.smartClient.GetSMARTInfo(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).
 		ThenReturn(&smartmontools.SMARTInfo{SmartSupport: &smartmontools.SmartSupport{Available: true, Enabled: true}}, nil)
 
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return tempFile.Name(), nil
+	})
 	// Execute
 	err := suite.service.EnableSMART(context.Background(), tempFile.Name())
 
@@ -358,6 +409,9 @@ func (suite *SmartServiceSuite) TestDisableSMARTSuccess() {
 	mock.When(suite.smartClient.IsSMARTSupported(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).ThenReturn(&smartmontools.SmartSupport{Available: true, Enabled: false}, nil)
 	mock.When(suite.smartClient.GetSMARTInfo(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).ThenReturn(&smartmontools.SMARTInfo{SmartSupport: &smartmontools.SmartSupport{Available: true, Enabled: false}}, nil)
 
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return tempFile.Name(), nil
+	})
 	// Execute
 	err := suite.service.DisableSMART(suite.T().Context(), tempFile.Name())
 
@@ -366,6 +420,7 @@ func (suite *SmartServiceSuite) TestDisableSMARTSuccess() {
 }
 
 func (suite *SmartServiceSuite) TestGetTestStatusDeviceNotExist() {
+
 	status, err := suite.service.GetTestStatus(context.Background(), "/dev/nonexistent")
 
 	suite.Error(err)
@@ -385,6 +440,10 @@ func (suite *SmartServiceSuite) TestGetTestStatusSuccess() {
 			},
 		},
 	}
+
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return tempFile.Name(), nil
+	})
 
 	mock.When(suite.smartClient.GetSMARTInfo(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).ThenReturn(mockSMARTInfo, nil)
 
@@ -408,6 +467,10 @@ func (suite *SmartServiceSuite) TestAbortSelfTestSuccess() {
 	// Create a temporary file
 	tempFile, _ := os.CreateTemp("", "testdevice")
 	defer os.Remove(tempFile.Name())
+
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return tempFile.Name(), nil
+	})
 
 	mock.When(suite.smartClient.AbortSelfTest(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).ThenReturn(nil)
 

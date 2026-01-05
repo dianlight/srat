@@ -1369,6 +1369,14 @@ components:
           type: boolean
         in_standby:
           type: boolean
+        is_in_danger:
+          type: boolean
+        is_in_warning:
+          type: boolean
+        is_test_passed:
+          type: boolean
+        is_test_running:
+          type: boolean
         others:
           additionalProperties:
             $ref: "#/components/schemas/SmartRangeValue"
@@ -1381,9 +1389,14 @@ components:
           $ref: "#/components/schemas/SmartTempValue"
       required:
         - enabled
+        - in_standby
         - temperature
         - power_on_hours
         - power_cycle_count
+        - is_test_running
+        - is_test_passed
+        - is_in_warning
+        - is_in_danger
       type: object
     SmartTempValue:
       additionalProperties: false
@@ -1413,16 +1426,22 @@ components:
           format: uri
           readOnly: true
           type: string
+        disk_id:
+          type: string
         lba_of_first_error:
           type: string
         percent_complete:
           format: int64
           type: integer
+        running:
+          type: boolean
         status:
           type: string
         test_type:
           type: string
       required:
+        - disk_id
+        - running
         - status
         - test_type
       type: object
@@ -1621,6 +1640,7 @@ components:
               - heartbeat
               - shares
               - dirty_data_tracker
+              - smart_test_status
             type: string
           type:
             - array
@@ -1716,8 +1736,8 @@ paths:
           schema:
             description: The disk ID (not the device path)
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2169,8 +2189,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -2219,8 +2239,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2515,8 +2535,8 @@ paths:
     post:
       operationId: post-api-hdidle-start
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -2969,8 +2989,8 @@ paths:
     put:
       operationId: put-api-samba-apply
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "204":
           description: No Content
@@ -3094,8 +3114,8 @@ paths:
     get:
       operationId: get-api-settings
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3547,8 +3567,8 @@ paths:
               - world
             maxLength: 128
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json-patch+json:
@@ -3696,8 +3716,8 @@ paths:
               - world
             maxLength: 128
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
@@ -3982,6 +4002,24 @@ paths:
                       type: object
                     - properties:
                         data:
+                          $ref: "#/components/schemas/SmartTestStatus"
+                        event:
+                          const: smart_test_status
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event smart_test_status
+                      type: object
+                    - properties:
+                        data:
                           $ref: "#/components/schemas/UpdateProgress"
                         event:
                           const: updating
@@ -4100,8 +4138,8 @@ paths:
     get:
       operationId: get-api-telemetry-internet-connection
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -4322,8 +4360,8 @@ paths:
     post:
       operationId: post-api-user
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
@@ -4432,8 +4470,8 @@ paths:
               - world
             maxLength: 30
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
@@ -4481,8 +4519,8 @@ paths:
     put:
       operationId: put-api-useradmin
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:

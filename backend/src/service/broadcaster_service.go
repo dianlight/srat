@@ -88,7 +88,7 @@ func NewBroadcasterService(
 }
 
 func (broker *BroadcasterService) setupEventListeners() []func() {
-	ret := make([]func(), 4)
+	ret := make([]func(), 5)
 	// Listen for disk events
 	ret[0] = broker.eventBus.OnDisk(func(ctx context.Context, event events.DiskEvent) errors.E {
 		diskID := "unknown"
@@ -134,6 +134,13 @@ func (broker *BroadcasterService) setupEventListeners() []func() {
 	ret[3] = broker.eventBus.OnDirtyData(func(ctx context.Context, dde events.DirtyDataEvent) errors.E {
 		slog.DebugContext(ctx, "BroadcasterService received DirtyData event", "tracker", dde.DataDirtyTracker)
 		broker.BroadcastMessage(dde.DataDirtyTracker) // TODO: implement push of dirty data status only
+		return nil
+	})
+	ret[4] = broker.eventBus.OnSmart(func(ctx context.Context, event events.SmartEvent) errors.E {
+		slog.DebugContext(ctx, "BroadcasterService received SmartTestStatus event", "status", event.SmartTestStatus)
+		if event.SmartTestStatus.DiskId != "" {
+			broker.BroadcastMessage(event.SmartTestStatus)
+		}
 		return nil
 	})
 

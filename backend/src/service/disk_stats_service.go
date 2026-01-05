@@ -167,9 +167,9 @@ func (s *diskStatsService) updateDiskStats() errors.E {
 
 				// --- Smart data population ---
 				if disk.DevicePath != nil {
-					smartStatus, err := s.smartService.GetSmartStatus(s.ctx, *disk.DevicePath)
+					smartStatus, err := s.smartService.GetSmartStatus(s.ctx, *disk.Id)
 					if err != nil && !errors.Is(err, dto.ErrorSMARTNotSupported) {
-						slog.WarnContext(s.ctx, "Error getting SMART status", "disk", *disk.DevicePath, "err", err)
+						slog.WarnContext(s.ctx, "Error getting SMART status", "disk", *disk.Id, "err", err)
 					} else if smartStatus != nil {
 						s.currentDiskHealth.PerDiskIO[len(s.currentDiskHealth.PerDiskIO)-1].SmartData = smartStatus
 					}
@@ -270,19 +270,21 @@ func (s *diskStatsService) populatePerDiskInfo(disk *dto.Disk) {
 		diskInfo.DevicePath = *disk.DevicePath
 
 		// Get SMART info (static capabilities)
-		smartInfo, err := s.smartService.GetSmartInfo(s.ctx, *disk.DevicePath)
+		smartInfo, err := s.smartService.GetSmartInfo(s.ctx, *disk.Id)
 		if err != nil && !errors.Is(err, dto.ErrorSMARTNotSupported) {
-			tlog.DebugContext(s.ctx, "Error getting SMART info", "disk", *disk.DevicePath, "err", err)
+			tlog.WarnContext(s.ctx, "Error getting SMART info", "disk", *disk.Id, "err", err)
 		} else if smartInfo != nil {
 			diskInfo.SmartInfo = smartInfo
 		}
 
-		// Get SMART health status
-		smartHealth, err := s.smartService.GetHealthStatus(s.ctx, *disk.DevicePath)
-		if err != nil && !errors.Is(err, dto.ErrorSMARTNotSupported) {
-			tlog.DebugContext(s.ctx, "Error getting SMART health status", "disk", *disk.DevicePath, "err", err)
-		} else if smartHealth != nil {
-			diskInfo.SmartHealth = smartHealth
+		if diskInfo.SmartInfo != nil && diskInfo.SmartInfo.Supported {
+			// Get SMART health status
+			smartHealth, err := s.smartService.GetHealthStatus(s.ctx, *disk.Id)
+			if err != nil && !errors.Is(err, dto.ErrorSMARTNotSupported) {
+				tlog.WarnContext(s.ctx, "Error getting SMART health status", "disk", *disk.Id, "err", err)
+			} else if smartHealth != nil {
+				diskInfo.SmartHealth = smartHealth
+			}
 		}
 
 		// Get HDIdle status

@@ -241,7 +241,6 @@ export function VolumeDetailsPanel({
                     <SmartStatusPanel
                         smartInfo={disk.smart_info}
                         diskId={disk.id}
-                        isSmartSupported={disk.smart_info?.supported ?? false}
                         isReadOnlyMode={false}
                         isExpanded={smartExpanded}
                         onSetExpanded={setSmartExpanded}

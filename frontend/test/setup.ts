@@ -105,7 +105,7 @@ try {
     const originalRemoveChild = (globalThis as any).Node?.prototype?.removeChild;
     if (originalRemoveChild && !('__patched_removeChild' in (globalThis as any).Node.prototype)) {
         Object.defineProperty((globalThis as any).Node.prototype, '__patched_removeChild', { value: true });
-        (globalThis as any).Node.prototype.removeChild = function (child: any) {
+        (globalThis as any).Node.prototype.removeChild = function(child: any) {
             try { return originalRemoveChild.call(this, child); }
             catch { return child; }
         };
@@ -153,24 +153,45 @@ if (typeof process !== "undefined") {
 export async function createTestStore() {
     const { emptySplitApi: api } = await import("../src/store/emptyApi");
     const { sseApi, wsApi } = await import("../src/store/sseApi");
+    const { sratApi } = await import("../src/store/sratApi");
     const { errorSlice } = await import("../src/store/errorSlice");
     const { mdcSlice } = await import("../src/store/mdcSlice");
     const mdcMiddleware = (await import("../src/store/mdcMiddleware")).default;
+    const { setupListeners } = await import("@reduxjs/toolkit/query");
 
+    // CRITICAL: Create a fresh store with RTK Query middleware
+    // Each test must have its own completely isolated store to prevent
+    // subscription state from leaking between tests
     const store = configureStore({
         reducer: {
             errors: errorSlice.reducer,
             mdc: mdcSlice.reducer,
-            [api.reducerPath]: api.reducer,
+            [sratApi.reducerPath]: sratApi.reducer,
             [sseApi.reducerPath]: sseApi.reducer,
             [wsApi.reducerPath]: wsApi.reducer,
         },
         middleware: (getDefaultMiddleware) =>
             getDefaultMiddleware()
                 .concat(mdcMiddleware)
-                .concat(api.middleware)
+                .concat(sratApi.middleware)
                 .concat(sseApi.middleware)
                 .concat(wsApi.middleware),
     });
+
+    // Setup listeners - CRITICAL for RTK Query to work properly!
+    // This initializes connection tracking for RTK Query subscription handling
+    setupListeners(store.dispatch);
+
+    // Clear RTK Query caches and subscription state after store is created
+    // This needs to happen after the store is created and listeners are set up
+    try {
+        // Reset all API state to ensure clean slate for cache
+        store.dispatch(sratApi.util.resetApiState());
+        store.dispatch(sseApi.util.resetApiState());
+        store.dispatch(wsApi.util.resetApiState());
+    } catch {
+        // Silently ignore errors in case dispatch is not fully ready
+    }
+
     return store;
 }

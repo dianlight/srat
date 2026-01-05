@@ -19,6 +19,10 @@ type SmartMonToolsToDto interface {
 
 	// goverter:ignore Additional
 	// goverter:map SmartSupport.Enabled Enabled
+	// goverter:map SmartStatus.Running IsTestRunning
+	// goverter:map SmartStatus.Passed IsTestPassed
+	// goverter:map SmartStatus.Damaged IsInWarning
+	// goverter:map SmartStatus.Critical IsInDanger
 	// goverter:map PowerOnTime PowerOnHours
 	SmartMonToolsSmartInfoToSmartStatus(source *smartmontools.SMARTInfo) (target *dto.SmartStatus, err error)
 

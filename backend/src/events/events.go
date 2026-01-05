@@ -93,7 +93,8 @@ type HomeAssistantEvent struct {
 
 type SmartEvent struct {
 	Event
-	SmartInfo dto.SmartInfo
+	SmartInfo       dto.SmartInfo
+	SmartTestStatus dto.SmartTestStatus
 }
 
 type PowerEvent struct {

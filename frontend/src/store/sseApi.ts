@@ -8,6 +8,7 @@ import type {
 	Disk,
 	HealthPing,
 	SharedResource,
+	SmartTestStatus,
 	UpdateProgress,
 	Welcome,
 } from "./sratApi";
@@ -20,6 +21,7 @@ export type EventData = {
 	[Supported_events.Hello]: Welcome;
 	[Supported_events.Updating]: UpdateProgress;
 	[Supported_events.DirtyDataTracker]: DataDirtyTracker;
+	[Supported_events.SmartTestStatus]: SmartTestStatus;
 };
 
 /**
