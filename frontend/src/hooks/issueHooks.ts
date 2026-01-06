@@ -1,4 +1,3 @@
-import "../../test/setup";
 import { useEffect, useState } from "react";
 
 const IGNORED_ISSUES_KEY = "srat_ignored_issues";

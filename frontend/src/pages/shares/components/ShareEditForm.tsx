@@ -517,8 +517,8 @@ export function ShareEditForm({
                                             (option as User).username || "",
                                         getOptionLabel: (option) =>
                                             (option as User).username || "",
-                                        renderOption: (props, option) => (
-                                            <li {...props} key={props.key}>
+                                        renderOption: ({ key, ...props }, option) => (
+                                            <li key={key} {...props}>
                                                 <Typography
                                                     variant="body2"
                                                     color={option.is_admin ? "warning" : "default"}
@@ -590,8 +590,8 @@ export function ShareEditForm({
                                             (option as User).username || "",
                                         getOptionLabel: (option) =>
                                             (option as User).username || "",
-                                        renderOption: (props, option) => (
-                                            <li {...props} key={props.key + "@ro"}>
+                                        renderOption: ({ key, ...props }, option) => (
+                                            <li key={key + "@ro"} {...props}>
                                                 <Typography
                                                     variant="body2"
                                                     color={option.is_admin ? "warning" : "default"}
