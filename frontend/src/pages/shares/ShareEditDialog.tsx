@@ -26,7 +26,7 @@ export function ShareEditDialog(props: ShareEditDialogProps) {
 			props.onClose();
 			return;
 		}
-		console.log(data);
+		//console.log(data);
 		props.onClose(data);
 	}
 

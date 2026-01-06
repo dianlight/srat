@@ -231,7 +231,7 @@ export function Settings() {
 
 
 	function handleCommit(data: Settings) {
-		console.log(data);
+		console.debug("Settings commit:", data);
 		update({ settings: data })
 			.unwrap()
 			.then((res) => {
@@ -239,7 +239,7 @@ export function Settings() {
 				reset(res as Settings);
 			})
 			.catch((err) => {
-				console.error(err);
+				console.error("Settings update error:", err);
 				reset();
 			});
 	}

@@ -274,7 +274,7 @@ export function Shares() {
 		}
 
 		// Save Data
-		console.log(data);
+		//console.log(data);
 		if (data.org_name !== "" && data.org_name !== undefined) {
 			// Existing share being updated
 			updateShare({ shareName: data.org_name, sharedResourcePostData: data })
