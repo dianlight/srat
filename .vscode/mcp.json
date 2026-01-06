@@ -46,5 +46,14 @@
         "DISABLE_NOTIFICATIONS": "true"
       }
     },
+    "act-testing": {
+      "command": "bunx",
+      "args": [
+        "act-testing-mcp"
+      ],
+      "env": {
+        "PROJECT_ROOT": "/workspaces/srat",
+      }
+    }
   }
 }
