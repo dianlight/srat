@@ -30,7 +30,7 @@
     "@types/react-dom": "19.2.3",
     "@types/react-syntax-highlighter": "15.5.13",
     "@types/semver": "7.7.1",
-    "@typescript/native-preview": "7.0.0-dev.20260103.1"
+    "@typescript/native-preview": "7.0.0-dev.20260105.1"
   },
   "peerDependencies": {
     "typescript": "^5.9.3"
@@ -60,7 +60,7 @@
     "prismjs": "^1.30.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
-    "react-hook-form": "^7.69.0",
+    "react-hook-form": "^7.70.0",
     "react-hook-form-mui": "^8.2.0",
     "react-intersection-observer": "^10.0.0",
     "react-redux": "^9.2.0",
