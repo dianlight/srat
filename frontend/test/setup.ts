@@ -135,6 +135,24 @@ if (!document.body) {
     return mockResponse;
 };
 
+// LocalStorage mock for the tests
+if (!(globalThis as any).localStorage) {
+    const _store: Record<string, string> = {};
+    (globalThis as any).localStorage = {
+        getItem: (k: string) =>
+            _store.hasOwnProperty(k) ? _store[k] : null,
+        setItem: (k: string, v: string) => {
+            _store[k] = String(v);
+        },
+        removeItem: (k: string) => {
+            delete _store[k];
+        },
+        clear: () => {
+            for (const k of Object.keys(_store)) delete _store[k];
+        },
+    };
+}
+
 // Ensure APIURL is set so modules that compute API url at import time behave
 if (typeof process !== "undefined") {
     process.env = process.env || {};

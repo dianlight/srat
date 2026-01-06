@@ -1,3 +1,4 @@
+import "../../../test/setup";
 import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
 
 // Mock react-syntax-highlighter to avoid refractor/lib/core dependency issues

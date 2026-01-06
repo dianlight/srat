@@ -1,3 +1,4 @@
+import "../../../../../test/setup";
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 
 // Required localStorage shim for testing environment

@@ -1,3 +1,4 @@
+import "../../../../test/setup";
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 
 // Helper function to render DashboardActions with required wrappers
