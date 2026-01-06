@@ -3,7 +3,7 @@ set -x
 
 apk add --no-cache git make lsblk eudev gcc musl-dev linux-headers samba ethtool e2fsprogs e2fsprogs-extra \
  fuse3 exfatprogs ntfs-3g-progs apfs-fuse openssh-client sshfs pre-commit shadow go \
- git-bash-completion git-prompt graphviz nix patch smartmontools zig minisign
+ git-bash-completion git-prompt graphviz nix patch smartmontools zig minisign act 
 apk add --no-cache --update-cache --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community go "go~=1.25"
 #bun
 curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.5"
@@ -32,7 +32,7 @@ ln -s ../../vdb1 /dev/disk/by-id/1234-5678
 echo "experimental-features = nix-command flakes" >> /etc/nix/nix.conf ||:
 
 #Use of act
-gh extension install https://github.com/nektos/gh-act ||:
+#gh extension install https://github.com/nektos/gh-act ||:
 
 #directory structure 
 losetup -f /workspaces/srat/backend/test/data/image.dmg

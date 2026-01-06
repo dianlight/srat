@@ -104,7 +104,8 @@ const categories: { [key: string]: { [key: string]: string[] } | string[] } = {
 	'HomeAssistant': ['export_stats_to_ha'],
 };
 const beta_categories: { [key: string]: { [key: string]: string[] } | string[] } = {
-	'Power ( 🚧 WIP )': ['hdidle_enabled', 'hdidle_default_idle_time', 'hdidle_default_command_type', 'hdidle_ignore_spin_down_detection'],
+	// TODO: Enable when HDIdle feature is ready
+	// 'Power ( 🚧 WIP )': ['hdidle_enabled', 'hdidle_default_idle_time', 'hdidle_default_command_type', 'hdidle_ignore_spin_down_detection'],
 };
 
 
@@ -230,7 +231,7 @@ export function Settings() {
 
 
 	function handleCommit(data: Settings) {
-		console.log(data);
+		console.debug("Settings commit:", data);
 		update({ settings: data })
 			.unwrap()
 			.then((res) => {
@@ -238,7 +239,7 @@ export function Settings() {
 				reset(res as Settings);
 			})
 			.catch((err) => {
-				console.error(err);
+				console.error("Settings update error:", err);
 				reset();
 			});
 	}

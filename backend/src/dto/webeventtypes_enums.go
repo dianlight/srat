@@ -26,12 +26,13 @@ type WebEventType struct {
 // webEventTypesContainer is the container for all enum values.
 // It is private and should not be used directly use the public methods on the WebEventType type.
 type webEventTypesContainer struct {
-	EVENTHELLO        WebEventType
-	EVENTUPDATING     WebEventType
-	EVENTVOLUMES      WebEventType
-	EVENTHEARTBEAT    WebEventType
-	EVENTSHARES       WebEventType
-	EVENTDIRTYTRACKER WebEventType
+	EVENTHELLO           WebEventType
+	EVENTUPDATING        WebEventType
+	EVENTVOLUMES         WebEventType
+	EVENTHEARTBEAT       WebEventType
+	EVENTSHARES          WebEventType
+	EVENTDIRTYTRACKER    WebEventType
+	EVENTSMARTTESTSTATUS WebEventType
 }
 
 // WebEventTypes is a main entry point using the WebEventType type.
@@ -56,6 +57,9 @@ var WebEventTypes = webEventTypesContainer{
 	EVENTDIRTYTRACKER: WebEventType{
 		webEventType: eventDirtyTracker,
 	},
+	EVENTSMARTTESTSTATUS: WebEventType{
+		webEventType: eventSmartTestStatus,
+	},
 }
 
 // invalidWebEventType is an invalid sentinel value for WebEventType
@@ -73,6 +77,7 @@ func (w webEventTypesContainer) allSlice() []WebEventType {
 		WebEventTypes.EVENTHEARTBEAT,
 		WebEventTypes.EVENTSHARES,
 		WebEventTypes.EVENTDIRTYTRACKER,
+		WebEventTypes.EVENTSMARTTESTSTATUS,
 	}
 }
 
@@ -165,6 +170,7 @@ var webEventTypesNameMap = map[string]WebEventType{
 	"heartbeat":          WebEventTypes.EVENTHEARTBEAT,
 	"shares":             WebEventTypes.EVENTSHARES,
 	"dirty_data_tracker": WebEventTypes.EVENTDIRTYTRACKER,
+	"smart_test_status":  WebEventTypes.EVENTSMARTTESTSTATUS,
 }
 
 // stringToWebEventType converts a string representation of an enum value into its WebEventType representation
@@ -206,12 +212,13 @@ func ExhaustiveWebEventTypes(f func(WebEventType)) {
 
 // validWebEventTypes is a map of enum values to their validity
 var validWebEventTypes = map[WebEventType]bool{
-	WebEventTypes.EVENTHELLO:        true,
-	WebEventTypes.EVENTUPDATING:     true,
-	WebEventTypes.EVENTVOLUMES:      true,
-	WebEventTypes.EVENTHEARTBEAT:    true,
-	WebEventTypes.EVENTSHARES:       true,
-	WebEventTypes.EVENTDIRTYTRACKER: true,
+	WebEventTypes.EVENTHELLO:           true,
+	WebEventTypes.EVENTUPDATING:        true,
+	WebEventTypes.EVENTVOLUMES:         true,
+	WebEventTypes.EVENTHEARTBEAT:       true,
+	WebEventTypes.EVENTSHARES:          true,
+	WebEventTypes.EVENTDIRTYTRACKER:    true,
+	WebEventTypes.EVENTSMARTTESTSTATUS: true,
 }
 
 // IsValid checks whether the WebEventTypes value is valid.
@@ -312,17 +319,18 @@ func (w *WebEventType) UnmarshalYAML(by []byte) error {
 }
 
 // webeventtypeNames is a constant string slice containing all enum values cononical absolute names
-const webeventtypeNames = "helloupdatingvolumesheartbeatsharesdirty_data_tracker"
+const webeventtypeNames = "helloupdatingvolumesheartbeatsharesdirty_data_trackersmart_test_status"
 
 // webeventtypeNamesMap is a map of enum values to their canonical absolute
 // name positions within the webeventtypeNames string slice
 var webeventtypeNamesMap = map[WebEventType]string{
-	WebEventTypes.EVENTHELLO:        webeventtypeNames[0:5],
-	WebEventTypes.EVENTUPDATING:     webeventtypeNames[5:13],
-	WebEventTypes.EVENTVOLUMES:      webeventtypeNames[13:20],
-	WebEventTypes.EVENTHEARTBEAT:    webeventtypeNames[20:29],
-	WebEventTypes.EVENTSHARES:       webeventtypeNames[29:35],
-	WebEventTypes.EVENTDIRTYTRACKER: webeventtypeNames[35:53],
+	WebEventTypes.EVENTHELLO:           webeventtypeNames[0:5],
+	WebEventTypes.EVENTUPDATING:        webeventtypeNames[5:13],
+	WebEventTypes.EVENTVOLUMES:         webeventtypeNames[13:20],
+	WebEventTypes.EVENTHEARTBEAT:       webeventtypeNames[20:29],
+	WebEventTypes.EVENTSHARES:          webeventtypeNames[29:35],
+	WebEventTypes.EVENTDIRTYTRACKER:    webeventtypeNames[35:53],
+	WebEventTypes.EVENTSMARTTESTSTATUS: webeventtypeNames[53:70],
 }
 
 // String implements the Stringer interface.
@@ -341,11 +349,12 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the goenums command to generate them again.
 	// Does not identify newly added constant values unless order changes
-	var x [6]struct{}
+	var x [7]struct{}
 	_ = x[eventHello]
 	_ = x[eventUpdating-1]
 	_ = x[eventVolumes-2]
 	_ = x[eventHeartbeat-3]
 	_ = x[eventShares-4]
 	_ = x[eventDirtyTracker-5]
+	_ = x[eventSmartTestStatus-6]
 }

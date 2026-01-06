@@ -8,6 +8,11 @@ dario.cat/mergo
 ## explicit; go 1.20
 filippo.io/edwards25519
 filippo.io/edwards25519/field
+# github.com/AlecAivazis/survey/v2 v2.3.7
+## explicit; go 1.13
+github.com/AlecAivazis/survey/v2
+github.com/AlecAivazis/survey/v2/core
+github.com/AlecAivazis/survey/v2/terminal
 # github.com/Antonboom/testifylint v1.6.4
 ## explicit; go 1.23.0
 github.com/Antonboom/testifylint
@@ -44,6 +49,10 @@ github.com/air-verse/air/runner
 # github.com/apapsch/go-jsonmerge/v2 v2.0.0
 ## explicit; go 1.12
 github.com/apapsch/go-jsonmerge/v2
+# github.com/apex/log v1.9.0
+## explicit; go 1.12
+github.com/apex/log
+github.com/apex/log/handlers/cli
 # github.com/benmcclelland/sgio v0.0.0-20250710154739-45e823ff1f46
 ## explicit
 github.com/benmcclelland/sgio
@@ -55,9 +64,15 @@ github.com/bep/godartsass/v2/internal/godartsasstesting
 # github.com/bep/golibsass v1.2.0
 ## explicit; go 1.13
 github.com/bep/golibsass/libsass/libsasserrors
+# github.com/briandowns/spinner v1.23.2
+## explicit; go 1.17
+github.com/briandowns/spinner
 # github.com/cespare/xxhash/v2 v2.3.0
 ## explicit; go 1.11
 github.com/cespare/xxhash/v2
+# github.com/cpuguy83/go-md2man/v2 v2.0.7
+## explicit; go 1.12
+github.com/cpuguy83/go-md2man/v2/md2man
 # github.com/danielgtaylor/huma/v2 v2.34.1
 ## explicit; go 1.23.0
 github.com/danielgtaylor/huma/v2
@@ -84,10 +99,10 @@ github.com/dave/jennifer/jen
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
-# github.com/dianlight/smartmontools-go v0.2.1
+# github.com/dianlight/smartmontools-go v0.2.4
 ## explicit; go 1.25.0
 github.com/dianlight/smartmontools-go
-# github.com/dianlight/tlog v0.1.0
+# github.com/dianlight/tlog v0.1.2
 ## explicit; go 1.25.0
 github.com/dianlight/tlog
 # github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936
@@ -225,6 +240,9 @@ github.com/jpillora/s3
 # github.com/k0kubun/pp/v3 v3.5.0
 ## explicit; go 1.23.0
 github.com/k0kubun/pp/v3
+# github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
+## explicit
+github.com/kballard/go-shellquote
 # github.com/lmittmann/tint v1.1.2
 ## explicit; go 1.21
 github.com/lmittmann/tint
@@ -259,6 +277,9 @@ github.com/mfridman/interpolate
 github.com/minio/selfupdate
 github.com/minio/selfupdate/internal/binarydist
 github.com/minio/selfupdate/internal/osext
+# github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b
+## explicit
+github.com/mgutz/ansi
 # github.com/mitchellh/copystructure v1.2.0
 ## explicit; go 1.15
 github.com/mitchellh/copystructure
@@ -287,6 +308,11 @@ github.com/oasdiff/yaml
 # github.com/oasdiff/yaml3 v0.0.0-20250309153720-d2182401db90
 ## explicit; go 1.22.5
 github.com/oasdiff/yaml3
+# github.com/oligot/go-mod-upgrade v0.12.0
+## explicit; go 1.25.1
+github.com/oligot/go-mod-upgrade
+github.com/oligot/go-mod-upgrade/internal/app
+github.com/oligot/go-mod-upgrade/internal/module
 # github.com/ovechkin-dm/go-dyno v0.5.3
 ## explicit; go 1.21
 github.com/ovechkin-dm/go-dyno/pkg/dyno
@@ -367,6 +393,9 @@ github.com/rollbar/rollbar-go
 ## explicit; go 1.13
 github.com/rs/cors
 github.com/rs/cors/internal
+# github.com/russross/blackfriday/v2 v2.1.0
+## explicit
+github.com/russross/blackfriday/v2
 # github.com/samber/lo v1.52.0
 ## explicit; go 1.18
 github.com/samber/lo
@@ -392,7 +421,7 @@ github.com/sergi/go-diff/diffmatchpatch
 # github.com/sethvargo/go-retry v0.3.0
 ## explicit; go 1.21
 github.com/sethvargo/go-retry
-# github.com/shirou/gopsutil/v4 v4.25.11
+# github.com/shirou/gopsutil/v4 v4.25.12
 ## explicit; go 1.24.0
 github.com/shirou/gopsutil/v4/common
 github.com/shirou/gopsutil/v4/cpu
@@ -456,6 +485,9 @@ github.com/tklauser/numcpus
 ## explicit; go 1.24.0
 github.com/u-root/u-root/pkg/mount
 github.com/u-root/u-root/pkg/mount/loop
+# github.com/urfave/cli/v2 v2.27.7
+## explicit; go 1.18
+github.com/urfave/cli/v2
 # github.com/vmware-labs/yaml-jsonpath v0.3.2
 ## explicit; go 1.13
 github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath
@@ -468,6 +500,9 @@ github.com/x448/float16
 # github.com/xorcare/pointer v1.2.2
 ## explicit; go 1.18
 github.com/xorcare/pointer
+# github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1
+## explicit; go 1.15
+github.com/xrash/smetrics
 # github.com/yusufpapurcu/wmi v1.2.4
 ## explicit; go 1.16
 github.com/yusufpapurcu/wmi
@@ -553,9 +588,13 @@ golang.org/x/sync/singleflight
 # golang.org/x/sys v0.39.0
 ## explicit; go 1.24.0
 golang.org/x/sys/cpu
+golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
+# golang.org/x/term v0.38.0
+## explicit; go 1.24.0
+golang.org/x/term
 # golang.org/x/text v0.32.0
 ## explicit; go 1.24.0
 golang.org/x/text/cases
@@ -574,6 +613,7 @@ golang.org/x/text/message/catalog
 golang.org/x/text/runes
 golang.org/x/text/transform
 golang.org/x/text/unicode/norm
+golang.org/x/text/width
 # golang.org/x/time v0.14.0
 ## explicit; go 1.24.0
 golang.org/x/time/rate

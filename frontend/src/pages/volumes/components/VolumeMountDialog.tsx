@@ -289,8 +289,8 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 												limitTags: 7,
 												getOptionLabel: (option) =>
 													(option as MountFlag).name, // Ensure label is just the name
-												renderOption: (props, option) => (
-													<li  {...props} key={props.key} >
+												renderOption: ({ key, ...restProps }, option) => (
+													<li key={key} {...restProps}  >
 														<Tooltip
 															title={(option as MountFlag).description || ""}
 														>
@@ -355,8 +355,8 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 												limitTags: 7,
 												getOptionLabel: (option) =>
 													(option as MountFlag).name, // Ensure label is just the name
-												renderOption: (props, option) => (
-													<li {...props} key={(option as MountFlag).name}>
+												renderOption: ({ key, ...props }, option) => (
+													<li key={(option as MountFlag).name}{...props} >
 														<Tooltip
 															title={(option as MountFlag).description || ""}
 														>

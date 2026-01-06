@@ -167,9 +167,9 @@ func (s *diskStatsService) updateDiskStats() errors.E {
 
 				// --- Smart data population ---
 				if disk.DevicePath != nil {
-					smartStatus, err := s.smartService.GetSmartStatus(s.ctx, *disk.DevicePath)
+					smartStatus, err := s.smartService.GetSmartStatus(s.ctx, *disk.Id)
 					if err != nil && !errors.Is(err, dto.ErrorSMARTNotSupported) {
-						slog.WarnContext(s.ctx, "Error getting SMART status", "disk", *disk.DevicePath, "err", err)
+						slog.WarnContext(s.ctx, "Error getting SMART status", "disk", *disk.Id, "err", err)
 					} else if smartStatus != nil {
 						s.currentDiskHealth.PerDiskIO[len(s.currentDiskHealth.PerDiskIO)-1].SmartData = smartStatus
 					}
@@ -270,19 +270,21 @@ func (s *diskStatsService) populatePerDiskInfo(disk *dto.Disk) {
 		diskInfo.DevicePath = *disk.DevicePath
 
 		// Get SMART info (static capabilities)
-		smartInfo, err := s.smartService.GetSmartInfo(s.ctx, *disk.DevicePath)
+		smartInfo, err := s.smartService.GetSmartInfo(s.ctx, *disk.Id)
 		if err != nil && !errors.Is(err, dto.ErrorSMARTNotSupported) {
-			tlog.DebugContext(s.ctx, "Error getting SMART info", "disk", *disk.DevicePath, "err", err)
+			tlog.WarnContext(s.ctx, "Error getting SMART info", "disk", *disk.Id, "err", err)
 		} else if smartInfo != nil {
 			diskInfo.SmartInfo = smartInfo
 		}
 
-		// Get SMART health status
-		smartHealth, err := s.smartService.GetHealthStatus(s.ctx, *disk.DevicePath)
-		if err != nil && !errors.Is(err, dto.ErrorSMARTNotSupported) {
-			tlog.DebugContext(s.ctx, "Error getting SMART health status", "disk", *disk.DevicePath, "err", err)
-		} else if smartHealth != nil {
-			diskInfo.SmartHealth = smartHealth
+		if diskInfo.SmartInfo != nil && diskInfo.SmartInfo.Supported {
+			// Get SMART health status
+			smartHealth, err := s.smartService.GetHealthStatus(s.ctx, *disk.Id)
+			if err != nil && !errors.Is(err, dto.ErrorSMARTNotSupported) {
+				tlog.WarnContext(s.ctx, "Error getting SMART health status", "disk", *disk.Id, "err", err)
+			} else if smartHealth != nil {
+				diskInfo.SmartHealth = smartHealth
+			}
 		}
 
 		// Get HDIdle status
@@ -303,67 +305,17 @@ func (s *diskStatsService) getHDIdleDeviceStatus(devicePath string) *dto.HDIdleD
 		return nil
 	}
 
-	status := &dto.HDIdleDeviceStatus{
-		Supported: false,
-		Enabled:   false,
-	}
-
-	// Check device support
-	support, err := s.hdidleService.CheckDeviceSupport(devicePath)
-	if err != nil {
-		tlog.DebugContext(s.ctx, "Error checking HDIdle device support", "device", devicePath, "err", err)
-		return status
-	}
-
-	if support != nil {
-		status.Supported = support.Supported
-		if support.RecommendedCommand != nil {
-			status.CommandType = support.RecommendedCommand.String()
-		}
-	}
-
-	/*
-		// Check if monitoring is enabled for this device
-		effectiveConfig := s.hdidleService.GetEffectiveConfig()
-		status.Enabled = effectiveConfig.Enabled
-		if effectiveConfig.Enabled {
-			// Check if this specific device is in the monitored list
-			deviceInList := false
-			for _, dev := range effectiveConfig.Devices {
-				if dev == devicePath {
-					deviceInList = true
-					break
-				}
-			}
-			// If there are specific devices configured, this device must be in the list
-			if len(effectiveConfig.Devices) > 0 && !deviceInList {
-				status.Enabled = false
-			}
-		}
-	*/
-
 	// Get device-specific status if HDIdle is running
 	if s.hdidleService.IsRunning() {
 		deviceStatus, err := s.hdidleService.GetDeviceStatus(devicePath)
 		if err != nil {
 			tlog.DebugContext(s.ctx, "Error getting HDIdle device status", "device", devicePath, "err", err)
 		} else if deviceStatus != nil {
-			status.SpunDown = deviceStatus.SpunDown
-			if !deviceStatus.LastIOAt.IsZero() {
-				status.LastIOAt = deviceStatus.LastIOAt
-			}
-			if !deviceStatus.SpinDownAt.IsZero() {
-				status.SpinDownAt = deviceStatus.SpinDownAt
-			}
-			if !deviceStatus.SpinUpAt.IsZero() {
-				status.SpinUpAt = deviceStatus.SpinUpAt
-			}
-			status.IdleTimeMillis = deviceStatus.IdleTimeMillis
-			status.CommandType = deviceStatus.CommandType
+			return deviceStatus
 		}
 	}
 
-	return status
+	return nil
 }
 
 // GetDiskStats collects and returns disk I/O statistics.

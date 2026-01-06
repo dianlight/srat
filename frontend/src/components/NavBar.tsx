@@ -402,17 +402,12 @@ export function NavBar(props: {
 						//users.mutate();
 					})
 					.catch((err) => {
-						console.error(err);
+						console.error("DoUpdate error:", err);
 					});
 			} else if (reason === "cancel") {
-				console.log("cancel");
+				console.debug("Update cancelled");
 			}
 		});
-	}
-
-	function handleRestartNow() {
-		console.log("Doing restart");
-		restartSamba();
 	}
 
 	return (

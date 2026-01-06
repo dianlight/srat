@@ -565,7 +565,7 @@ func (c chainG[T]) Delete(ctx context.Context) (rowsAffected int, err error) {
 
 func (c chainG[T]) Update(ctx context.Context, name string, value any) (rowsAffected int, err error) {
 	var r T
-	res := c.g.apply(ctx).Model(r).Update(name, value)
+	res := c.g.apply(ctx).Model(&r).Update(name, value)
 	return int(res.RowsAffected), res.Error
 }
 

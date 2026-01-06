@@ -90,17 +90,37 @@ describe("SharesTreeView component", () => {
         await user.click(documentsNode);
         expect(onSelect).toHaveBeenCalledWith("doc", expect.objectContaining({ name: "Documents" }));
 
-        // Find disable button for Documents share (which is enabled)
-        const disableButtons = await screen.findAllByRole("button", { name: /disable share/i });
-        if (disableButtons.length > 0) {
-            await user.click(disableButtons[0]!);
-        }
+        // Helper function to click an action (handles both desktop buttons and mobile menu)
+        const clickShareAction = async (actionName: RegExp, shareText: string) => {
+            // Find the share node first to ensure we're targeting the right share
+            const shareNode = await screen.findByText(shareText);
+            const shareContainer = shareNode.closest('[role="treeitem"]');
+            if (!shareContainer) return;
 
-        // Find enable button for Archive share (which is disabled)
-        const enableButtons = await screen.findAllByRole("button", { name: /enable share/i });
-        if (enableButtons.length > 0) {
-            await user.click(enableButtons[0]!);
-        }
+            const { within } = await import("@testing-library/react");
+            const shareScope = within(shareContainer as HTMLElement);
+
+            // First try to find direct action buttons (desktop view) within this share
+            const directButtons = shareScope.queryAllByRole("button", { name: actionName });
+            if (directButtons.length > 0) {
+                await user.click(directButtons[0]!);
+                return;
+            }
+            // If no direct buttons, try to find the menu button within this share
+            const menuButtons = shareScope.queryAllByRole("button", { name: /more actions/i });
+            if (menuButtons.length > 0) {
+                await user.click(menuButtons[0]!);
+                // Wait for menu to open - search in document.body since Menu uses Portal
+                const menuItem = await screen.findByRole("menuitem", { name: actionName });
+                await user.click(menuItem);
+            }
+        };
+
+        // Disable the Documents share (which is enabled)
+        await clickShareAction(/disable share/i, "Documents");
+
+        // Enable the Archive share (which is disabled)
+        await clickShareAction(/enable share/i, "Archive");
 
         await waitFor(() => expect(tracking.disableCalls.length).toBeGreaterThanOrEqual(1));
         await waitFor(() => expect(tracking.enableCalls.length).toBeGreaterThanOrEqual(1));
@@ -187,9 +207,26 @@ describe("SharesTreeView component", () => {
         );
 
         const user = userEvent.setup();
-        const disableButtons = await within(container).findAllByRole("button", { name: /disable share/i });
-        expect(disableButtons.length).toBeGreaterThan(0);
-        await user.click(disableButtons[0]!);
+
+        // Helper function to click an action (handles both desktop buttons and mobile menu)
+        const clickShareAction = async (actionName: RegExp) => {
+            // First try to find direct action buttons (desktop view)
+            const directButtons = within(container).queryAllByRole("button", { name: actionName });
+            if (directButtons.length > 0) {
+                await user.click(directButtons[0]!);
+                return;
+            }
+            // If no direct buttons, try to find the menu button and click the menu item
+            const menuButtons = within(container).queryAllByRole("button", { name: /more actions/i });
+            if (menuButtons.length > 0) {
+                await user.click(menuButtons[0]!);
+                // Wait for menu to open - search in document.body since Menu uses Portal
+                const menuItem = await screen.findByRole("menuitem", { name: actionName });
+                await user.click(menuItem);
+            }
+        };
+
+        await clickShareAction(/disable share/i);
 
         expect(tracking.disableCalls.length).toBe(0);
     });

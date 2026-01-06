@@ -3,8 +3,8 @@ package api
 import (
 	"context"
 	"fmt"
-	"log"
 	"log/slog"
+	"net/http"
 	"sync"
 
 	"github.com/Masterminds/semver/v3"
@@ -54,21 +54,31 @@ func (self *UpgradeHanler) RegisterUpgradeHanler(api huma.API) {
 
 // GetUpdateInfoHandler checks for available updates and returns information about the release asset.
 //
-//	@Summary		Check for available updates
-//	@Description	Retrieves information about the latest available release asset based on the current update channel.
-//	@Tags			system
-//	@Produce		json
-//	@Success		200	{object}	struct{Body dto.ReleaseAsset}	"Information about the available update."
-//	@Failure		404	{object}	huma.ErrorModel					"No update available or error finding assets."
-//	@Failure		500	{object}	huma.ErrorModel					"Internal server error."
-//	@Router			/update [get]
-func (handler *UpgradeHanler) GetUpdateInfoHandler(ctx context.Context, input *struct{}) (*struct{ Body dto.ReleaseAsset }, error) {
-	slog.DebugContext(ctx, "Handling GET /update request")
+//		@Summary		Check for available updates
+//		@Description	Retrieves information about the latest available release asset based on the current update channel.
+//		@Tags			system
+//		@Produce		json
+//		@Success		200	{object}	struct{Body dto.ReleaseAsset}	"Information about the available update."
+//	    @Success        204   Nil                                       "No update available."
+//		@Failure		404	{object}	huma.ErrorModel					"No update available or error finding assets."
+//		@Failure		500	{object}	huma.ErrorModel					"Internal server error."
+//		@Router			/update [get]
+func (handler *UpgradeHanler) GetUpdateInfoHandler(ctx context.Context, input *struct{}) (*struct {
+	Status int
+	Body   dto.ReleaseAsset
+}, error) {
+	tlog.TraceContext(ctx, "Handling GET /update request")
 	asset, err := handler.upgader.GetUpgradeReleaseAsset()
 	if err != nil {
 		if errors.Is(err, dto.ErrorNoUpdateAvailable) {
 			tlog.DebugContext(ctx, "No update available")
-			return nil, huma.Error404NotFound(err.Error())
+			return &struct {
+				Status int
+				Body   dto.ReleaseAsset
+			}{
+				Status: http.StatusNoContent,
+				Body:   dto.ReleaseAsset{},
+			}, nil
 		}
 		slog.ErrorContext(ctx, "Error getting upgrade release asset", "error", err)
 		return nil, errors.Wrap(err, "failed to get upgrade release asset")
@@ -80,7 +90,12 @@ func (handler *UpgradeHanler) GetUpdateInfoHandler(ctx context.Context, input *s
 	}
 
 	slog.DebugContext(ctx, "Update asset found", "release", asset.LastRelease, "asset_name", asset.ArchAsset.Name)
-	return &struct{ Body dto.ReleaseAsset }{Body: *asset}, nil
+	return &struct {
+		Status int
+		Body   dto.ReleaseAsset
+	}{
+		Status: http.StatusOK,
+		Body:   *asset}, nil
 }
 
 func (handler *UpgradeHanler) UpdateHandler(ctx context.Context, input *struct{}) (*struct{ Body dto.UpdateProgress }, error) {
@@ -89,7 +104,7 @@ func (handler *UpgradeHanler) UpdateHandler(ctx context.Context, input *struct{}
 		return nil, huma.Error404NotFound(fmt.Sprintf("Unable to find update assets %#v", err.Error()))
 	}
 
-	log.Printf("Updating to version %s", assets.LastRelease)
+	slog.InfoContext(ctx, "Updating to version", "version", assets.LastRelease)
 
 	handler.ctx.Value("wg").(*sync.WaitGroup).Add(1)
 	go func() {
@@ -129,10 +144,10 @@ func (handler *UpgradeHanler) UpdateHandler(ctx context.Context, input *struct{}
 //	@Failure		500	{object}	huma.ErrorModel						"Internal server error."
 //	@Router			/update_channels [get]
 func (handler *UpgradeHanler) GetUpdateChannelsHandler(ctx context.Context, input *struct{}) (*struct{ Body []dto.UpdateChannel }, error) {
-	slog.DebugContext(ctx, "Handling GET /update_channels request")
+	tlog.TraceContext(ctx, "Handling GET /update_channels request")
 
 	currentVersionStr := config.Version
-	slog.DebugContext(ctx, "Current application version", "version", currentVersionStr)
+	tlog.TraceContext(ctx, "Current application version", "version", currentVersionStr)
 
 	shouldFilterDevelop := false
 	version, err := semver.NewVersion(currentVersionStr)

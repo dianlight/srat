@@ -61,17 +61,24 @@ defineAdoptedStyleSheets((globalThis as any).Document?.prototype);
 defineAdoptedStyleSheets((globalThis as any).ShadowRoot?.prototype);
 
 // Polyfills/stubs for browser-only APIs referenced in tests/components
+// Create a matchMedia mock that always reports large screen (matches: false for small-screen queries)
+const createMatchMediaMock = (query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: () => { /* deprecated */ },
+    removeListener: () => { /* deprecated */ },
+    addEventListener: () => { },
+    removeEventListener: () => { },
+    dispatchEvent: () => true,
+});
+// Apply matchMedia to both globalThis and window to ensure MUI's useMediaQuery finds it
 if (!(globalThis as any).matchMedia) {
-    (globalThis as any).matchMedia = (query: string) => ({
-        matches: false,
-        media: query,
-        onchange: null,
-        addListener: () => { /* deprecated */ },
-        removeListener: () => { /* deprecated */ },
-        addEventListener: () => { },
-        removeEventListener: () => { },
-        dispatchEvent: () => true,
-    });
+    (globalThis as any).matchMedia = createMatchMediaMock;
+}
+// Also set on window object since MUI's useMediaQuery may look there directly
+if (!(win as any).matchMedia) {
+    (win as any).matchMedia = createMatchMediaMock;
 }
 
 if (!(globalThis as any).ResizeObserver) {
@@ -105,7 +112,7 @@ try {
     const originalRemoveChild = (globalThis as any).Node?.prototype?.removeChild;
     if (originalRemoveChild && !('__patched_removeChild' in (globalThis as any).Node.prototype)) {
         Object.defineProperty((globalThis as any).Node.prototype, '__patched_removeChild', { value: true });
-        (globalThis as any).Node.prototype.removeChild = function (child: any) {
+        (globalThis as any).Node.prototype.removeChild = function(child: any) {
             try { return originalRemoveChild.call(this, child); }
             catch { return child; }
         };
@@ -135,6 +142,24 @@ if (!document.body) {
     return mockResponse;
 };
 
+// LocalStorage mock for the tests
+if (!(globalThis as any).localStorage) {
+    const _store: Record<string, string> = {};
+    (globalThis as any).localStorage = {
+        getItem: (k: string) =>
+            _store.hasOwnProperty(k) ? _store[k] : null,
+        setItem: (k: string, v: string) => {
+            _store[k] = String(v);
+        },
+        removeItem: (k: string) => {
+            delete _store[k];
+        },
+        clear: () => {
+            for (const k of Object.keys(_store)) delete _store[k];
+        },
+    };
+}
+
 // Ensure APIURL is set so modules that compute API url at import time behave
 if (typeof process !== "undefined") {
     process.env = process.env || {};
@@ -147,30 +172,88 @@ if (typeof process !== "undefined") {
 
 // Do not override test runner lifecycle hooks; tests rely on them.
 
+// Cache API module instances to ensure consistency across all test imports
+// This prevents the module loader from creating multiple instances of the same API
+let cachedApiModules: {
+    sratApi: any;
+    sseApi: any;
+    wsApi: any;
+    errorSlice: any;
+    mdcSlice: any;
+    mdcMiddleware: any;
+} | null = null;
+
 // Create the store after the above globals are set. Do dynamic imports to
 // avoid loading modules (that inspect window/process.env at module import)
 // before we've set up the test environment.
 export async function createTestStore() {
-    const { emptySplitApi: api } = await import("../src/store/emptyApi");
-    const { sseApi, wsApi } = await import("../src/store/sseApi");
-    const { errorSlice } = await import("../src/store/errorSlice");
-    const { mdcSlice } = await import("../src/store/mdcSlice");
-    const mdcMiddleware = (await import("../src/store/mdcMiddleware")).default;
+    // CRITICAL: Cache API modules on first import to ensure all components
+    // use the same instances as the store middleware.
+    // Without this, in CI environments with different module loading behavior,
+    // components may import different instances of the APIs than what's in the store,
+    // causing "middleware not added" errors from RTK Query.
+    if (!cachedApiModules) {
+        const [
+            { sseApi, wsApi },
+            { sratApi },
+            { errorSlice },
+            { mdcSlice },
+            mdcMiddlewareModule,
+        ] = await Promise.all([
+            import("../src/store/sseApi"),
+            import("../src/store/sratApi"),
+            import("../src/store/errorSlice"),
+            import("../src/store/mdcSlice"),
+            import("../src/store/mdcMiddleware"),
+        ]);
+        
+        cachedApiModules = {
+            sratApi,
+            sseApi,
+            wsApi,
+            errorSlice,
+            mdcSlice,
+            mdcMiddleware: mdcMiddlewareModule.default,
+        };
+    }
 
+    const { sratApi, sseApi, wsApi, errorSlice, mdcSlice, mdcMiddleware } = cachedApiModules;
+    const { setupListeners } = await import("@reduxjs/toolkit/query");
+
+    // CRITICAL: Create a fresh store with RTK Query middleware
+    // Each test must have its own completely isolated store to prevent
+    // subscription state from leaking between tests
     const store = configureStore({
         reducer: {
             errors: errorSlice.reducer,
             mdc: mdcSlice.reducer,
-            [api.reducerPath]: api.reducer,
+            //  [api.reducerPath]: api.reducer,
+            [sratApi.reducerPath]: sratApi.reducer,
             [sseApi.reducerPath]: sseApi.reducer,
             [wsApi.reducerPath]: wsApi.reducer,
         },
         middleware: (getDefaultMiddleware) =>
             getDefaultMiddleware()
                 .concat(mdcMiddleware)
-                .concat(api.middleware)
+                .concat(sratApi.middleware)
                 .concat(sseApi.middleware)
                 .concat(wsApi.middleware),
     });
+
+    // Setup listeners - CRITICAL for RTK Query to work properly!
+    // This initializes connection tracking for RTK Query subscription handling
+    setupListeners(store.dispatch);
+
+    // Clear RTK Query caches and subscription state after store is created
+    // This needs to happen after the store is created and listeners are set up
+    try {
+        // Reset all API state to ensure clean slate for cache
+        store.dispatch(sratApi.util.resetApiState());
+        store.dispatch(sseApi.util.resetApiState());
+        store.dispatch(wsApi.util.resetApiState());
+    } catch {
+        // Silently ignore errors in case dispatch is not fully ready
+    }
+
     return store;
 }

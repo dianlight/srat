@@ -60,6 +60,10 @@ func (c *SmartMonToolsToDtoImpl) SmartMonToolsSmartInfoToSmartStatus(source *sma
 			return nil, err
 		}
 		dtoSmartStatus.PowerCycleCount = dtoSmartRangeValue2
+		dtoSmartStatus.IsTestRunning = (*source).SmartStatus.Running
+		dtoSmartStatus.IsTestPassed = (*source).SmartStatus.Passed
+		dtoSmartStatus.IsInWarning = (*source).SmartStatus.Damaged
+		dtoSmartStatus.IsInDanger = (*source).SmartStatus.Critical
 		pDtoSmartStatus = &dtoSmartStatus
 	}
 	return pDtoSmartStatus, nil

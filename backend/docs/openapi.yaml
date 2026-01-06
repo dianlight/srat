@@ -324,6 +324,8 @@ components:
             - custom
             - "no"
           type: string
+        error_message:
+          type: string
         idle_time:
           format: int64
           type: integer
@@ -331,11 +333,15 @@ components:
           format: int32
           minimum: 0
           type: integer
+        recommended_command:
+          type: string
         supported:
           type: boolean
+        supports_ata:
+          type: boolean
+        supports_scsi:
+          type: boolean
       required:
-        - supported
-        - device_path
         - idle_time
         - power_condition
       type: object
@@ -349,13 +355,6 @@ components:
           format: uri
           readOnly: true
           type: string
-        command_type:
-          type: string
-        enabled:
-          type: boolean
-        idle_time_millis:
-          format: int64
-          type: integer
         last_io_at:
           format: date-time
           type: string
@@ -369,12 +368,8 @@ components:
           type: string
         spun_down:
           type: boolean
-        supported:
-          type: boolean
       required:
         - spun_down
-        - supported
-        - enabled
       type: object
     HDIdleDeviceSupport:
       additionalProperties: false
@@ -386,27 +381,18 @@ components:
           format: uri
           readOnly: true
           type: string
-        DevicePath:
+        device_path:
           type: string
-        ErrorMessage:
+        error_message:
           type: string
-        RecommendedCommand:
-          type:
-            - string
-            - "null"
-        Supported:
+        recommended_command:
+          type: string
+        supported:
           type: boolean
-        SupportsATA:
+        supports_ata:
           type: boolean
-        SupportsSCSI:
+        supports_scsi:
           type: boolean
-      required:
-        - Supported
-        - SupportsSCSI
-        - SupportsATA
-        - RecommendedCommand
-        - DevicePath
-        - ErrorMessage
       type: object
     HealthPing:
       additionalProperties: false
@@ -1230,6 +1216,55 @@ components:
             type: string
           type: array
       type: object
+    SharedResourcePostData:
+      additionalProperties: true
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/SharedResourcePostData.json
+          format: uri
+          readOnly: true
+          type: string
+        disabled:
+          type: boolean
+        guest_ok:
+          type: boolean
+        name:
+          type: string
+        recycle_bin_enabled:
+          type: boolean
+        ro_users:
+          items:
+            $ref: "#/components/schemas/User"
+          type:
+            - array
+            - "null"
+        status:
+          $ref: "#/components/schemas/SharedResourceStatus"
+        timemachine:
+          type: boolean
+        timemachine_max_size:
+          type: string
+        usage:
+          enum:
+            - none
+            - backup
+            - media
+            - share
+            - internal
+          type: string
+        users:
+          items:
+            $ref: "#/components/schemas/User"
+          type:
+            - array
+            - "null"
+        veto_files:
+          items:
+            type: string
+          type: array
+      type: object
     SharedResourceStatus:
       additionalProperties: false
       properties:
@@ -1334,6 +1369,14 @@ components:
           type: boolean
         in_standby:
           type: boolean
+        is_in_danger:
+          type: boolean
+        is_in_warning:
+          type: boolean
+        is_test_passed:
+          type: boolean
+        is_test_running:
+          type: boolean
         others:
           additionalProperties:
             $ref: "#/components/schemas/SmartRangeValue"
@@ -1346,9 +1389,14 @@ components:
           $ref: "#/components/schemas/SmartTempValue"
       required:
         - enabled
+        - in_standby
         - temperature
         - power_on_hours
         - power_cycle_count
+        - is_test_running
+        - is_test_passed
+        - is_in_warning
+        - is_in_danger
       type: object
     SmartTempValue:
       additionalProperties: false
@@ -1378,16 +1426,22 @@ components:
           format: uri
           readOnly: true
           type: string
+        disk_id:
+          type: string
         lba_of_first_error:
           type: string
         percent_complete:
           format: int64
           type: integer
+        running:
+          type: boolean
         status:
           type: string
         test_type:
           type: string
       required:
+        - disk_id
+        - running
         - status
         - test_type
       type: object
@@ -1586,6 +1640,7 @@ components:
               - heartbeat
               - shares
               - dirty_data_tracker
+              - smart_test_status
             type: string
           type:
             - array
@@ -1768,6 +1823,8 @@ paths:
                     - custom
                     - "no"
                   type: string
+                error_message:
+                  type: string
                 idle_time:
                   format: int64
                   type: integer
@@ -1775,7 +1832,13 @@ paths:
                   format: int32
                   minimum: 0
                   type: integer
+                recommended_command:
+                  type: string
                 supported:
+                  type: boolean
+                supports_ata:
+                  type: boolean
+                supports_scsi:
                   type: boolean
               type: object
           application/merge-patch+shorthand:
@@ -1804,6 +1867,8 @@ paths:
                     - custom
                     - "no"
                   type: string
+                error_message:
+                  type: string
                 idle_time:
                   format: int64
                   type: integer
@@ -1811,7 +1876,13 @@ paths:
                   format: int32
                   minimum: 0
                   type: integer
+                recommended_command:
+                  type: string
                 supported:
+                  type: boolean
+                supports_ata:
+                  type: boolean
+                supports_scsi:
                   type: boolean
               type: object
         required: true
@@ -2018,8 +2089,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2118,8 +2189,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -2507,8 +2578,8 @@ paths:
     post:
       operationId: post-api-hdidle-stop
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2918,8 +2989,8 @@ paths:
     put:
       operationId: put-api-samba-apply
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "204":
           description: No Content
@@ -2957,8 +3028,8 @@ paths:
     get:
       operationId: get-api-samba-config
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3000,8 +3071,8 @@ paths:
     get:
       operationId: get-api-samba-status
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -3043,8 +3114,8 @@ paths:
     get:
       operationId: get-api-settings
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3339,7 +3410,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SharedResource"
+              $ref: "#/components/schemas/SharedResourcePostData"
         required: true
       responses:
         "200":
@@ -3514,7 +3585,7 @@ paths:
                 $schema:
                   description: A URL to the JSON Schema for this object.
                   examples:
-                    - https://example.com/schemas/SharedResource.json
+                    - https://example.com/schemas/SharedResourcePostData.json
                   format: uri
                   readOnly: true
                   type: string
@@ -3522,7 +3593,6 @@ paths:
                   type: boolean
                 guest_ok:
                   type: boolean
-                mount_point_data: {}
                 name:
                   type: string
                 recycle_bin_enabled:
@@ -3558,7 +3628,7 @@ paths:
                 $schema:
                   description: A URL to the JSON Schema for this object.
                   examples:
-                    - https://example.com/schemas/SharedResource.json
+                    - https://example.com/schemas/SharedResourcePostData.json
                   format: uri
                   readOnly: true
                   type: string
@@ -3566,7 +3636,6 @@ paths:
                   type: boolean
                 guest_ok:
                   type: boolean
-                mount_point_data: {}
                 name:
                   type: string
                 recycle_bin_enabled:
@@ -3653,7 +3722,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SharedResource"
+              $ref: "#/components/schemas/SharedResourcePostData"
         required: true
       responses:
         "200":
@@ -3933,6 +4002,24 @@ paths:
                       type: object
                     - properties:
                         data:
+                          $ref: "#/components/schemas/SmartTestStatus"
+                        event:
+                          const: smart_test_status
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event smart_test_status
+                      type: object
+                    - properties:
+                        data:
                           $ref: "#/components/schemas/UpdateProgress"
                         event:
                           const: updating
@@ -4051,8 +4138,8 @@ paths:
     get:
       operationId: get-api-telemetry-internet-connection
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -4141,8 +4228,8 @@ paths:
     get:
       operationId: get-api-update
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -4273,8 +4360,8 @@ paths:
     post:
       operationId: post-api-user
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
@@ -4432,8 +4519,8 @@ paths:
     put:
       operationId: put-api-useradmin
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -4481,8 +4568,8 @@ paths:
     get:
       operationId: list-api-users
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -4541,8 +4628,8 @@ paths:
             default: false
             description: Force umount operation
             type: boolean
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "204":
           description: No Content

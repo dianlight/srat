@@ -319,11 +319,11 @@ func (m *DiskMap) AddMountPointShare(share *SharedResource) (*Disk, error) {
 	return d, nil
 }
 
-// RemoveMountPointShare removes the Share field from the mount point matching the given path (sets it to nil).
-// Searches all disks and partitions for the mount point.
-// Returns true if the mount point existed and the share was removed, false otherwise.
-func (m *DiskMap) RemoveMountPointShare(path string) (bool, *Disk) {
-	if m == nil || *m == nil || path == "" {
+// RemoveMountPointShare removes the Share field from the mount point that has a share with the given name (sets it to nil).
+// Searches all disks and partitions for a mount point with a matching share name.
+// Returns true if the mount point with the matching share was found and removed, false otherwise.
+func (m *DiskMap) RemoveMountPointShare(shareName string) (bool, *Disk) {
+	if m == nil || *m == nil || shareName == "" {
 		return false, nil
 	}
 	for diskID, d := range *m {
@@ -334,12 +334,14 @@ func (m *DiskMap) RemoveMountPointShare(path string) (bool, *Disk) {
 			if part.MountPointData == nil {
 				continue
 			}
-			if mp, ok := (*part.MountPointData)[path]; ok {
-				mp.Share = nil
-				(*part.MountPointData)[path] = mp
-				(*d.Partitions)[partitionID] = part
-				(*m)[diskID] = d
-				return true, d
+			for mpPath, mp := range *part.MountPointData {
+				if mp.Share != nil && mp.Share.Name == shareName {
+					mp.Share = nil
+					(*part.MountPointData)[mpPath] = mp
+					(*d.Partitions)[partitionID] = part
+					(*m)[diskID] = d
+					return true, d
+				}
 			}
 		}
 	}

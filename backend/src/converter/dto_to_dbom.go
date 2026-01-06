@@ -23,10 +23,15 @@ import (
 type DtoToDbomConverter interface {
 
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
+	// goverter:map HDIdleDeviceSupport.DevicePath DevicePath
 	HDIdleDeviceDTOToHDIdleDevice(source dto.HDIdleDevice) (dbom.HDIdleDevice, error)
 
-	// goverter:map Supported | trueConst
+	// goverter:map .  HDIdleDeviceSupport
 	HDIdleDeviceToHDIdleDeviceDTO(source dbom.HDIdleDevice) (dto.HDIdleDevice, error)
+
+	// goverter:ignore SupportsSCSI SupportsATA RecommendedCommand ErrorMessage
+	// goverter:map Supported | trueConst
+	HDIdleDeviceToHDIdleDeviceSupportDTO(source dbom.HDIdleDevice) (dto.HDIdleDeviceSupport, error)
 
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
 	// goverter:map MountPointData.Path MountPointDataPath
@@ -160,11 +165,3 @@ func partitionFromDeviceId(source string, disks []*dto.Disk) *dto.Partition {
 	}
 	return nil
 }
-
-/*func (c *DtoToDbomConverterImpl) ExportedShareToSharedResourceNoMountPointData(source dbom.ExportedShare, target *dto.SharedResource) error {
-	err := c.ExportedShareToSharedResourceNoMountPointData(source, target)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	return nil
-}*/

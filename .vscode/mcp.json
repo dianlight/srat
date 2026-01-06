@@ -27,6 +27,33 @@
       "args": [
         "chrome-devtools-mcp@latest"
       ]
+    },
+    "sqlite": {
+      "command": "bunx",
+      "args": [
+        "-y",
+        "@executeautomation/database-server",
+        "/mnt/remote/config.db3"
+      ]
+    },
+    "bun": {
+      "command": "bunx",
+      "args": [
+        "-y",
+        "mcp-bun@latest"
+      ],
+      "env": {
+        "DISABLE_NOTIFICATIONS": "true"
+      }
+    },
+    "act-testing": {
+      "command": "bunx",
+      "args": [
+        "act-testing-mcp"
+      ],
+      "env": {
+        "PROJECT_ROOT": "/workspaces/srat",
+      }
     }
   }
 }

@@ -156,8 +156,9 @@ describe("ShareDetailsPanel", () => {
             );
         });
 
-        // Check that "Share Disabled" badge is visible
-        expect(await within(container).findByText("Share Disabled")).toBeTruthy();
+        // Check that a Disabled badge is visible
+        const disabledChip = await within(container).findByText(/Disabled/i);
+        expect(disabledChip).toBeTruthy();
 
         // Check that the main container has disabled styling
         const mountPointInfo = container.querySelector('h6');

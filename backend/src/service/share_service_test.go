@@ -941,6 +941,18 @@ func (suite *ShareServiceSuite) TestCreateDeleteAndRecreateShare() {
 		Username: "homeassistant",
 	}, nil)
 
+	// First, create actual users in the database to test foreign key constraints
+	suite.Require().NoError(suite.db.Create(&dbom.SambaUser{
+		Username: "homeassistant",
+		Password: "test123",
+		IsAdmin:  true,
+	}).Error)
+	suite.Require().NoError(suite.db.Create(&dbom.SambaUser{
+		Username: "testuser",
+		Password: "test456",
+		IsAdmin:  false,
+	}).Error)
+
 	share := dto.SharedResource{
 		Name:     "recreate-share",
 		Disabled: boolPtr(false),
@@ -949,27 +961,67 @@ func (suite *ShareServiceSuite) TestCreateDeleteAndRecreateShare() {
 			DeviceId: "recreatedev",
 			Type:     "ADDON",
 		},
-		Users: []dto.User{}, // Trigger auto-add admin
+		Users: []dto.User{
+			{Username: "homeassistant"},
+			{Username: "testuser"},
+		},
+		RoUsers: []dto.User{
+			{Username: "testuser"},
+		},
 	}
 
 	created, err := suite.shareService.CreateShare(share)
 	suite.Require().NoError(err)
 	suite.Require().NotNil(created)
-	suite.Len(created.Users, 1)
+	suite.Len(created.Users, 2)
 	suite.Equal("homeassistant", created.Users[0].Username)
 
-	// Delete the share
+	// Delete the share - this should clear all associations
 	err = suite.shareService.DeleteShare("recreate-share")
 	suite.Require().NoError(err)
 
-	// Recreate the same share name should succeed after deletion
-	recreated, err := suite.shareService.CreateShare(share)
+	// Verify the share is soft-deleted
+	var deletedShare dbom.ExportedShare
+	dbErr := suite.db.Unscoped().Where("name = ?", "recreate-share").First(&deletedShare).Error
+	suite.NoError(dbErr)
+	suite.True(deletedShare.DeletedAt.Valid, "Share should be soft-deleted")
+
+	// Verify associations were cleared from join tables
+	var rwCount int64
+	suite.db.Table("user_rw_share").Where("exported_share_name = ?", "recreate-share").Count(&rwCount)
+	suite.Equal(int64(0), rwCount, "RW associations should be cleared")
+
+	var roCount int64
+	suite.db.Table("user_ro_share").Where("exported_share_name = ?", "recreate-share").Count(&roCount)
+	suite.Equal(int64(0), roCount, "RO associations should be cleared")
+
+	// Recreate the same share name should succeed after deletion without FK violations
+	recreateShare := dto.SharedResource{
+		Name:     "recreate-share",
+		Disabled: boolPtr(false),
+		MountPointData: &dto.MountPointData{
+			Path:     "/mnt/recreate",
+			DeviceId: "recreatedev",
+			Type:     "ADDON",
+		},
+		Users: []dto.User{
+			{Username: "homeassistant"},
+		},
+	}
+
+	recreated, err := suite.shareService.CreateShare(recreateShare)
 	suite.Require().NoError(err)
 	suite.Require().NotNil(recreated)
 	suite.Equal("recreate-share", recreated.Name)
 	suite.False(*recreated.Disabled)
 	suite.Len(recreated.Users, 1)
 	suite.Equal("homeassistant", recreated.Users[0].Username)
+
+	// Verify the share is no longer soft-deleted
+	var restoredShare dbom.ExportedShare
+	dbErr = suite.db.Where("name = ?", "recreate-share").First(&restoredShare).Error
+	suite.NoError(dbErr)
+	suite.False(restoredShare.DeletedAt.Valid, "Share should be restored (not soft-deleted)")
 }
 
 func (suite *ShareServiceSuite) TestDeleteShareNotFound() {

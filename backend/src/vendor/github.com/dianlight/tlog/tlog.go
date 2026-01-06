@@ -6,6 +6,7 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"reflect"
 	"runtime"
 	"sort"
 	"strings"
@@ -92,6 +93,19 @@ func maskString(s string) string {
 
 // maskNestedValue walks nested structures and masks values whose immediate key is sensitive
 func maskNestedValue(v any, keyHint string) any {
+	if v == nil {
+		return nil
+	}
+
+	rv := reflect.ValueOf(v)
+	for rv.Kind() == reflect.Pointer {
+		if rv.IsNil() {
+			return v
+		}
+		rv = rv.Elem()
+		v = rv.Interface()
+	}
+
 	if keyHint != "" {
 		if _, ok := sensitiveKeys[keyHint]; ok {
 			if sv, ok := v.(string); ok {
@@ -99,6 +113,7 @@ func maskNestedValue(v any, keyHint string) any {
 			}
 		}
 	}
+
 	switch val := v.(type) {
 	case map[string]any:
 		out := make(map[string]any, len(val))
@@ -136,13 +151,38 @@ func maskNestedValue(v any, keyHint string) any {
 		}
 		return out
 	default:
-		if keyHint != "" {
-			if _, ok := sensitiveKeys[keyHint]; ok {
-				if sv, ok := val.(string); ok {
-					return maskString(sv)
-				}
-			}
+		rv = reflect.ValueOf(v)
+		if !rv.IsValid() {
+			return v
 		}
+		switch rv.Kind() {
+		case reflect.Slice, reflect.Array:
+			out := make([]any, rv.Len())
+			for i := 0; i < rv.Len(); i++ {
+				out[i] = maskNestedValue(rv.Index(i).Interface(), "")
+			}
+			return out
+		case reflect.Struct:
+			typeOf := rv.Type()
+			out := make(map[string]any, rv.NumField())
+			for i := 0; i < rv.NumField(); i++ {
+				field := typeOf.Field(i)
+				if field.PkgPath != "" { // unexported
+					continue
+				}
+				key := field.Name
+				if tag := field.Tag.Get("json"); tag != "" && tag != "-" {
+					if idx := strings.Index(tag, ","); idx >= 0 {
+						key = tag[:idx]
+					} else {
+						key = tag
+					}
+				}
+				out[key] = maskNestedValue(rv.Field(i).Interface(), key)
+			}
+			return out
+		}
+
 		return v
 	}
 }
@@ -157,21 +197,8 @@ func (mh *maskingHandler) Enabled(ctx context.Context, level slog.Level) bool {
 func (mh *maskingHandler) Handle(ctx context.Context, r slog.Record) error {
 	nr := slog.NewRecord(r.Time, r.Level, r.Message, r.PC)
 	r.Attrs(func(attr slog.Attr) bool {
-		// If the key itself is sensitive and value is string
-		if s, ok := attr.Value.Any().(string); ok {
-			if _, ok := sensitiveKeys[attr.Key]; ok {
-				nr.Add(attr.Key, maskString(s))
-				return true
-			}
-		}
-		// For complex values, apply masking recursively
-		switch vv := attr.Value.Any().(type) {
-		case map[string]any, map[string]string, []any, []map[string]any, []slog.Attr:
-			mv := maskNestedValue(vv, attr.Key)
-			nr.Add(slog.Any(attr.Key, mv))
-		default:
-			nr.Add(attr)
-		}
+		mv := maskNestedValue(attr.Value.Any(), attr.Key)
+		nr.Add(slog.Any(attr.Key, mv))
 		return true
 	})
 	return mh.next.Handle(ctx, nr)
@@ -295,19 +322,9 @@ func createBaseHandler(level slog.Level) slog.Handler {
 			a = replaceLogLevel(groups, a)
 
 			// Optionally hide sensitive data even inside nested payloads (only when formatting enabled)
-			if config.EnableFormatting && config.HideSensitiveData {
-				// If the attr key itself is sensitive and value is string
-				if s, ok := a.Value.Any().(string); ok {
-					if _, ok := sensitiveKeys[a.Key]; ok {
-						return slog.Attr{Key: a.Key, Value: slog.StringValue(maskString(s))}
-					}
-				}
-				// For complex values, walk and mask inside
-				switch vv := a.Value.Any().(type) {
-				case map[string]any, map[string]string, []any, []map[string]any, []slog.Attr:
-					masked := maskNestedValue(vv, a.Key)
-					return slog.Any(a.Key, masked)
-				}
+			if config.EnableFormatting && config.HideSensitiveData && a.Key != slog.LevelKey {
+				masked := maskNestedValue(a.Value.Any(), a.Key)
+				a = slog.Any(a.Key, masked)
 			}
 
 			// Extract context values and add them as log attributes

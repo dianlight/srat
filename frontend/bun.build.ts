@@ -55,6 +55,7 @@ const buildConfig: BuildConfig = {
 		//copy("src/index.html", "out/index.html")
 		//  html({})
 	],
+	tsconfig: values.watch || values.serve ? "tsconfig.json" : "tsconfig.prod.json",
 	/*
 	define: {
 		"process.env.APIURL": APIURL,

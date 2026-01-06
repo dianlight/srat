@@ -56,10 +56,10 @@ type VolumeServiceInterface interface {
 }
 
 type VolumeService struct {
-	ctx             context.Context
-	db              *gorm.DB
-	refreshing      atomic.Bool
-	broascasting    BroadcasterServiceInterface
+	ctx        context.Context
+	db         *gorm.DB
+	refreshing atomic.Bool
+	//broascasting    BroadcasterServiceInterface
 	hardwareClient  HardwareServiceInterface
 	fs_service      FilesystemServiceInterface
 	shareService    ShareServiceInterface
@@ -139,7 +139,7 @@ func NewVolumeService(
 		case events.EventTypes.REMOVE:
 			ok, disk := p.disks.RemoveMountPointShare(se.Share.Name)
 			if !ok {
-				slog.WarnContext(ctx, "Failed to remove share from mount point in cache", "share", se.Share)
+				slog.WarnContext(ctx, "Failed to remove share from mount point in cache", "share", se.Share.Name)
 			} else {
 				p.eventBus.EmitDisk(events.DiskEvent{
 					Event: events.Event{
@@ -534,13 +534,23 @@ func (self *VolumeService) udevEventHandler() {
 				action := uevent.Action
 				devName, _ := uevent.Env["DEVNAME"]
 				devType, _ := uevent.Env["DEVTYPE"]
+
 				slog.DebugContext(self.ctx, "Received Udev block event", "action", action, "devname", devName, "devtype", devType, "env", uevent.Env)
 
+				if devType != "disk" && devType != "partition" {
+					slog.DebugContext(self.ctx, "Ignoring Udev event for non-disk/partition block device", "devname", devName, "devtype", devType)
+					continue
+				}
 				// FIXME: Process Right events here sending events to refresh volumes data
 				// Process block device events
-				if action == "remove" {
-					self.disks.Remove(devName)
-				} else if action == "add" || action == "change" {
+				if action == "remove" && devType == "disk" {
+					bus, _ := uevent.Env["ID_BUS"]
+					suffix, _ := uevent.Env[".PART_SUFFIX"]
+					serial, _ := uevent.Env["ID_SERIAL"]
+
+					slog.InfoContext(self.ctx, "Processing block device removal event", "devname", devName, "bus", bus, "serial", serial, "suffix", suffix)
+					self.disks.Remove(bus + "-" + serial + suffix)
+				} else if devType == "disk" && action == "add" {
 					slog.InfoContext(self.ctx, "Processing block device event", "action", action, "devname", devName)
 
 					// Get current volumes data
@@ -550,6 +560,15 @@ func (self *VolumeService) udevEventHandler() {
 						slog.ErrorContext(self.ctx, "Failed to get volumes data after udev event", "err", err)
 						continue
 					}
+				} else if devType == "disk" && action == "change" {
+					slog.InfoContext(self.ctx, "Ignore: Processing block device change event", "action", action, "devname", devName)
+					continue
+				} else if devType == "partition" && action == "add" {
+					slog.InfoContext(self.ctx, "Processing partition addition event", "action", action, "devname", devName)
+					// TODO:Check if cache contain the partition. If yes retry mount process else InvalidateHarduer and getvolumeData
+				} else if devType == "partition" && action == "remove" {
+					slog.InfoContext(self.ctx, "Processing partition removal event", "action", action, "devname", devName)
+					// TODO:Check if cache contain the partition. if yes umount and remove from cache
 				}
 			}
 		case err := <-errorChan:
@@ -602,11 +621,11 @@ func (self *VolumeService) loadMountPointFromDB(part *dto.Partition) (map[string
 	}
 
 	if len(dmp) == 0 {
-		slog.DebugContext(self.ctx, "No mount point records found in DB for device", "device", *part.Id, "name", part.Name)
+		tlog.TraceContext(self.ctx, "No mount point records found in DB for device", "device", *part.Id, "name", part.Name)
 		return make(map[string]*dto.MountPointData), nil
 	}
 
-	tlog.DebugContext(self.ctx, "Found mount point records in DB for device", "device", *part.Id, "name", part.Name, "count", len(dmp))
+	tlog.TraceContext(self.ctx, "Found mount point records in DB for device", "device", *part.Id, "name", part.Name, "count", len(dmp))
 	mountData, convErr := self.convDto.MountPointPathsToMountPointDataMap(dmp)
 	if convErr != nil {
 		slog.ErrorContext(self.ctx, "Failed to convert mount point data", "device", *part.Id, "err", convErr)
@@ -916,7 +935,7 @@ func (self *VolumeService) getVolumesData() errors.E {
 
 func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.PartitionEvent) errors.E {
 
-	tlog.DebugContext(ctx, "Processing partition event for mount data sync", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id, "event_type", e.Type)
+	tlog.TraceContext(ctx, "Processing partition event for mount data sync", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id, "event_type", e.Type)
 
 	if e.Partition.DevicePath == nil || *e.Partition.DevicePath == "" {
 		slog.DebugContext(ctx, "Skipping partition with nil or empty device path", "disk_id", *e.Disk.Id)
@@ -950,11 +969,11 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 	}
 
 	// Update existing mount points with current mount info
-	tlog.DebugContext(ctx, "Synchronizing mount points for partition", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id, "mount_data_count", len(mountData), "procfs_mounts_count", len(mountInfos))
+	tlog.TraceContext(ctx, "Synchronizing mount points for partition", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id, "mount_data_count", len(mountData), "procfs_mounts_count", len(mountInfos))
 	for _, prtstate := range mountInfos {
 		iw := osutil.IsWritable(prtstate.MountPoint)
 		if mountPoint, ok := self.disks.GetMountPoint(*e.Partition.DiskId, *e.Partition.Id, prtstate.MountPoint); ok {
-			slog.DebugContext(ctx, "Found existing mount point in cache for partition, updating state", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id, "mount_path", mountPoint.Path, "is_mounted", mountPoint.IsMounted)
+			tlog.TraceContext(ctx, "Found existing mount point in cache for partition, updating state", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id, "mount_path", mountPoint.Path, "is_mounted", mountPoint.IsMounted)
 			oldstate := mountPoint.IsMounted
 			mountPoint.IsMounted = true
 			mountPoint.Root = prtstate.Root
@@ -1008,10 +1027,10 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 		}
 	}
 
-	tlog.DebugContext(ctx, "Marking stale mount points as unmounted for partition", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id)
+	tlog.TraceContext(ctx, "Marking stale mount points as unmounted for partition", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id)
 	for _, mountPoint := range self.disks.GetAllMountPoints() {
 		if mountPoint.RefreshVersion != self.refreshVersion && (mountPoint.IsMounted || (mountPoint.IsToMountAtStartup != nil && *mountPoint.IsToMountAtStartup)) {
-			slog.DebugContext(ctx, "Marking mount point as unmounted since not found in procfs mounts", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id, "mount_path", mountPoint.Path)
+			tlog.TraceContext(ctx, "Marking mount point as unmounted since not found in procfs mounts", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id, "mount_path", mountPoint.Path)
 			mountPoint.IsMounted = false
 			mountPoint.RefreshVersion = self.refreshVersion
 			err := self.disks.AddOrUpdateMountPoint(*e.Partition.DiskId, *e.Partition.Id, *mountPoint)
@@ -1025,13 +1044,13 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 			})
 		}
 	}
-	tlog.DebugContext(ctx, "Done synchronizing mount points for partition", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id)
+	tlog.TraceContext(ctx, "Done synchronizing mount points for partition", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id)
 
 	return nil
 }
 
 func (self *VolumeService) handleMountPointEvent(ctx context.Context, e events.MountPointEvent) errors.E {
-	tlog.DebugContext(ctx, "Processing mount point event for persistence", "mount_point", e.MountPoint.Path, "device_id", e.MountPoint.DeviceId, "event_type", e.Type)
+	tlog.TraceContext(ctx, "Processing mount point event for persistence", "mount_point", e.MountPoint.Path, "device_id", e.MountPoint.DeviceId, "event_type", e.Type)
 	err := self.persistMountPoint(e.MountPoint)
 	if err != nil {
 		slog.ErrorContext(ctx, "Failed to persist mount point on event", "mount_point", e.MountPoint, "err", err)

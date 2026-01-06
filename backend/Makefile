@@ -139,31 +139,9 @@ dev:
 
 .PHONY: update
 update:
-	go get -C $(SRC_DIRS) -u -t ./... && \
+	go -C $(SRC_DIRS) tool github.com/oligot/go-mod-upgrade && \
 	go -C $(SRC_DIRS) mod vendor && \
 	make patch format
-
-.PHONY: show_update
-show_update:
-	go -C $(SRC_DIRS) list -mod=mod -m -u all 
-
-.PHONY: examples
-examples: example_tlog
-
-.PHONY: example_tlog
-example_tlog:
-	@echo "Building and running tlog example..."
-	cd $(SRC_DIRS)/tlog/example && go build -o tlog-example . && ./tlog-example
-
-.PHONY: test_examples
-test_examples:
-	@echo "Running example tests..."
-	cd $(SRC_DIRS)/tlog/example && go test -run Example -v
-
-.PHONY: clean_examples
-clean_examples:
-	@echo "Cleaning example binaries..."
-	rm -f $(SRC_DIRS)/tlog/example/tlog-example
 
 
 $(FRONTEND_DIRS)/node_modules:
@@ -177,24 +155,28 @@ static: $(FRONTEND_DIRS)/node_modules
 
 .PHONY: patch
 patch:
-	@echo "Applying patches to vendored dependencies..."
-	@if ! command -v patch >/dev/null 2>&1; then \
+	@set -e; \
+	echo "Applying patches to vendored dependencies..."; \
+	if ! command -v patch >/dev/null 2>&1; then \
 		echo "ERROR: 'patch' command not found. Please install patch utility."; \
 		exit 1; \
-	fi
-	go -C $(SRC_DIRS) mod vendor
-	@find $(ROOT_DIR)/src/vendor -name "*.rej" -delete 2>/dev/null || true
-	@if [ -f "$(ROOT_DIR)/patches/goenums.patch" ] && [ -d "$(ROOT_DIR)/src/vendor/github.com/zarldev/goenums" ]; then \
-		cd $(ROOT_DIR)/src/vendor/github.com/zarldev/goenums && patch -p1 < $(ROOT_DIR)/patches/goenums.patch; \
-	fi
-	@if [ -f "$(ROOT_DIR)/patches/overseer.patch" ] && [ -d "$(ROOT_DIR)/src/vendor/github.com/jpillora/overseer" ]; then \
-		cd $(ROOT_DIR)/src/vendor/github.com/jpillora/overseer  && patch -p1 < $(ROOT_DIR)/patches/overseer.patch; \
-	fi
-	@if [ -f "$(ROOT_DIR)/patches/gorm-generics.patch" ] && [ -d "$(ROOT_DIR)/src/vendor/gorm.io/gorm" ]; then \
-		cd $(ROOT_DIR)/src/vendor/gorm.io/gorm && patch -p1 < $(ROOT_DIR)/patches/gorm-generics.patch; \
-	fi
-	@find $(ROOT_DIR)/src/vendor -name "*.rej" -delete 2>/dev/null || true
-	@echo "Patches applied successfully"
+	fi; \
+	go -C $(SRC_DIRS) mod vendor; \
+	find $(ROOT_DIR)/src/vendor -name "*.rej" -delete 2>/dev/null || true; \
+	if [ -f "$(ROOT_DIR)/patches/goenums.patch" ] && [ -d "$(ROOT_DIR)/src/vendor/github.com/zarldev/goenums" ]; then \
+		echo "Applying goenums.patch..."; \
+		cd $(ROOT_DIR)/src/vendor/github.com/zarldev/goenums && patch -p1 < $(ROOT_DIR)/patches/goenums.patch || (echo "ERROR: Failed to apply goenums.patch"; exit 1); \
+	fi; \
+	if [ -f "$(ROOT_DIR)/patches/overseer.patch" ] && [ -d "$(ROOT_DIR)/src/vendor/github.com/jpillora/overseer" ]; then \
+		echo "Applying overseer.patch..."; \
+		cd $(ROOT_DIR)/src/vendor/github.com/jpillora/overseer && patch -p1 < $(ROOT_DIR)/patches/overseer.patch || (echo "ERROR: Failed to apply overseer.patch"; exit 1); \
+	fi; \
+	if [ -f "$(ROOT_DIR)/patches/gorm-generics.patch" ] && [ -d "$(ROOT_DIR)/src/vendor/gorm.io/gorm" ]; then \
+		echo "Applying gorm-generics.patch..."; \
+		cd $(ROOT_DIR)/src/vendor/gorm.io/gorm && patch -p1 < $(ROOT_DIR)/patches/gorm-generics.patch || (echo "ERROR: Failed to apply gorm-generics.patch"; exit 1); \
+	fi; \
+	find $(ROOT_DIR)/src/vendor -name "*.rej" -delete 2>/dev/null || true; \
+	echo "Patches applied successfully"
 
 .PHONY: gen_patch
 gen_patch:

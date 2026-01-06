@@ -68,8 +68,10 @@ func (suite *HDIdleHandlerSuite) TearDownTest() {
 func (suite *HDIdleHandlerSuite) TestGetConfigSuccess() {
 	diskID := "sda"
 	expectedConfig := &dto.HDIdleDevice{
-		DevicePath:     diskID,
-		IdleTime:       300,
+		HDIdleDeviceSupport: dto.HDIdleDeviceSupport{
+			DevicePath: diskID,
+		},
+		IdleTime:       time.Duration(300),
 		CommandType:    dto.HdidleCommands.SCSICOMMAND,
 		PowerCondition: 0,
 		Enabled:        dto.HdidleEnableds.YESENABLED,
@@ -113,15 +115,19 @@ func (suite *HDIdleHandlerSuite) TestGetConfigError() {
 func (suite *HDIdleHandlerSuite) TestPutConfigSuccess() {
 	diskID := "sda"
 	existingConfig := &dto.HDIdleDevice{
-		DevicePath:     diskID,
-		IdleTime:       300,
+		HDIdleDeviceSupport: dto.HDIdleDeviceSupport{
+			DevicePath: diskID,
+		},
+		IdleTime:       time.Duration(300),
 		CommandType:    dto.HdidleCommands.SCSICOMMAND,
 		PowerCondition: 0,
 		Enabled:        dto.HdidleEnableds.YESENABLED,
 	}
 	inputConfig := dto.HDIdleDevice{
-		DevicePath:     diskID,
-		IdleTime:       600,
+		HDIdleDeviceSupport: dto.HDIdleDeviceSupport{
+			DevicePath: diskID,
+		},
+		IdleTime:       time.Duration(600),
 		CommandType:    dto.HdidleCommands.ATACOMMAND,
 		PowerCondition: 1,
 		Enabled:        dto.HdidleEnableds.CUSTOMENABLED,
@@ -150,14 +156,18 @@ func (suite *HDIdleHandlerSuite) TestPutConfigSuccess() {
 func (suite *HDIdleHandlerSuite) TestPutConfigWithRestartSuccess() {
 	diskID := "sda"
 	existingConfig := &dto.HDIdleDevice{
-		DevicePath: diskID,
-		IdleTime:   300,
-		Enabled:    dto.HdidleEnableds.YESENABLED,
+		HDIdleDeviceSupport: dto.HDIdleDeviceSupport{
+			DevicePath: diskID,
+		},
+		IdleTime: time.Duration(300),
+		Enabled:  dto.HdidleEnableds.YESENABLED,
 	}
 	inputConfig := dto.HDIdleDevice{
-		DevicePath: diskID,
-		IdleTime:   600,
-		Enabled:    dto.HdidleEnableds.YESENABLED,
+		HDIdleDeviceSupport: dto.HDIdleDeviceSupport{
+			DevicePath: diskID,
+		},
+		IdleTime: time.Duration(600),
+		Enabled:  dto.HdidleEnableds.YESENABLED,
 	}
 
 	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Substring(diskID))).ThenReturn(existingConfig, nil)
@@ -179,14 +189,18 @@ func (suite *HDIdleHandlerSuite) TestPutConfigWithRestartSuccess() {
 func (suite *HDIdleHandlerSuite) TestPutConfigDevicePathMismatch() {
 	diskID := "sda"
 	existingConfig := &dto.HDIdleDevice{
-		DevicePath: diskID,
-		IdleTime:   300,
-		Enabled:    dto.HdidleEnableds.YESENABLED,
+		HDIdleDeviceSupport: dto.HDIdleDeviceSupport{
+			DevicePath: diskID,
+		},
+		IdleTime: 300,
+		Enabled:  dto.HdidleEnableds.YESENABLED,
 	}
 	inputConfig := dto.HDIdleDevice{
-		DevicePath: "sdb", // Mismatched path
-		IdleTime:   600,
-		Enabled:    dto.HdidleEnableds.YESENABLED,
+		HDIdleDeviceSupport: dto.HDIdleDeviceSupport{
+			DevicePath: "sdb", // Mismatched path
+		},
+		IdleTime: 600,
+		Enabled:  dto.HdidleEnableds.YESENABLED,
 	}
 
 	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Substring(diskID))).ThenReturn(existingConfig, nil)
@@ -201,14 +215,18 @@ func (suite *HDIdleHandlerSuite) TestPutConfigDevicePathMismatch() {
 func (suite *HDIdleHandlerSuite) TestPutConfigStopError() {
 	diskID := "sda"
 	existingConfig := &dto.HDIdleDevice{
-		DevicePath: diskID,
-		IdleTime:   300,
-		Enabled:    dto.HdidleEnableds.YESENABLED,
+		HDIdleDeviceSupport: dto.HDIdleDeviceSupport{
+			DevicePath: diskID,
+		},
+		IdleTime: 300,
+		Enabled:  dto.HdidleEnableds.YESENABLED,
 	}
 	inputConfig := dto.HDIdleDevice{
-		DevicePath: diskID,
-		IdleTime:   600,
-		Enabled:    dto.HdidleEnableds.YESENABLED,
+		HDIdleDeviceSupport: dto.HDIdleDeviceSupport{
+			DevicePath: diskID,
+		},
+		IdleTime: 600,
+		Enabled:  dto.HdidleEnableds.YESENABLED,
 	}
 
 	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Substring(diskID))).ThenReturn(existingConfig, nil)
@@ -228,14 +246,18 @@ func (suite *HDIdleHandlerSuite) TestPutConfigStopError() {
 func (suite *HDIdleHandlerSuite) TestPutConfigSaveError() {
 	diskID := "sda"
 	existingConfig := &dto.HDIdleDevice{
-		DevicePath: diskID,
-		IdleTime:   300,
-		Enabled:    dto.HdidleEnableds.YESENABLED,
+		HDIdleDeviceSupport: dto.HDIdleDeviceSupport{
+			DevicePath: diskID,
+		},
+		IdleTime: 300,
+		Enabled:  dto.HdidleEnableds.YESENABLED,
 	}
 	inputConfig := dto.HDIdleDevice{
-		DevicePath: diskID,
-		IdleTime:   600,
-		Enabled:    dto.HdidleEnableds.YESENABLED,
+		HDIdleDeviceSupport: dto.HDIdleDeviceSupport{
+			DevicePath: diskID,
+		},
+		IdleTime: 600,
+		Enabled:  dto.HdidleEnableds.YESENABLED,
 	}
 
 	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Substring(diskID))).ThenReturn(existingConfig, nil)
@@ -253,14 +275,18 @@ func (suite *HDIdleHandlerSuite) TestPutConfigSaveError() {
 func (suite *HDIdleHandlerSuite) TestPutConfigStartError() {
 	diskID := "sda"
 	existingConfig := &dto.HDIdleDevice{
-		DevicePath: diskID,
-		IdleTime:   300,
-		Enabled:    dto.HdidleEnableds.YESENABLED,
+		HDIdleDeviceSupport: dto.HDIdleDeviceSupport{
+			DevicePath: diskID,
+		},
+		IdleTime: 300,
+		Enabled:  dto.HdidleEnableds.YESENABLED,
 	}
 	inputConfig := dto.HDIdleDevice{
-		DevicePath: diskID,
-		IdleTime:   600,
-		Enabled:    dto.HdidleEnableds.YESENABLED,
+		HDIdleDeviceSupport: dto.HDIdleDeviceSupport{
+			DevicePath: diskID,
+		},
+		IdleTime: 600,
+		Enabled:  dto.HdidleEnableds.YESENABLED,
 	}
 
 	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Substring(diskID))).ThenReturn(existingConfig, nil)
@@ -284,11 +310,9 @@ func (suite *HDIdleHandlerSuite) TestPutConfigStartError() {
 func (suite *HDIdleHandlerSuite) TestGetStatusSuccess() {
 	diskID := "sda"
 	expectedStatus := &dto.HDIdleDeviceStatus{
-		Name:           "sda",
-		SpunDown:       false,
-		LastIOAt:       time.Now(),
-		IdleTimeMillis: int64(5 * time.Minute),
-		CommandType:    dto.HdidleCommands.SCSICOMMAND.String(),
+		Name:     "sda",
+		SpunDown: false,
+		LastIOAt: time.Now(),
 	}
 
 	mock.When(suite.mockHDIdleService.GetDeviceStatus(mock.Substring(diskID))).ThenReturn(expectedStatus, nil)
