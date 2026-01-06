@@ -4,13 +4,15 @@ import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 // Helper function to render DashboardActions with required wrappers
 async function renderDashboardActions() {
     const React = await import("react");
-    const { render, within, fireEvent } = await import("@testing-library/react");
+    const { render, screen } = await import("@testing-library/react");
+    const userEvent = (await import("@testing-library/user-event")).default;
     const { Provider } = await import("react-redux");
     const { BrowserRouter } = await import("react-router-dom");
     const { DashboardActions } = await import("../DashboardActions");
     const { createTestStore } = await import("../../../../test/setup");
 
     const store = await createTestStore();
+    const user = userEvent.setup();
 
     const result = render(
         React.createElement(
@@ -23,7 +25,7 @@ async function renderDashboardActions() {
         )
     );
 
-    return { ...result, within, fireEvent, React };
+    return { ...result, screen, user, React };
 }
 
 describe("DashboardActions component", () => {
@@ -43,36 +45,33 @@ describe("DashboardActions component", () => {
     });
 
     it("renders accordion with correct title", async () => {
-        const { container, within } = await renderDashboardActions();
-        const title = await within(container).findByText("Actionable Items");
+        const { screen } = await renderDashboardActions();
+        const title = await screen.findByText("Actionable Items");
         expect(title).toBeTruthy();
     });
 
     it("renders show ignored switch", async () => {
-        const { container, within } = await renderDashboardActions();
-        const label = await within(container).findByText("Show Ignored");
+        const { screen } = await renderDashboardActions();
+        const label = await screen.findByText("Show Ignored");
         expect(label).toBeTruthy();
     });
 
     it("handles show ignored toggle", async () => {
-        const { container, fireEvent } = await renderDashboardActions();
-        const switches = container.querySelectorAll('input[type="checkbox"]');
-        const firstSwitch = switches[0];
-        if (switches.length > 0 && firstSwitch) {
-            const initialChecked = (firstSwitch as HTMLInputElement).checked;
-            fireEvent.click(firstSwitch);
-            const newChecked = (firstSwitch as HTMLInputElement).checked;
-            expect(newChecked).not.toBe(initialChecked);
-        }
+        const { screen, user } = await renderDashboardActions();
+        // Find the "Show Ignored" switch by its label
+        const switchElement = screen.getByRole("switch", { name: /show ignored/i });
+        const initialChecked = (switchElement as HTMLInputElement).checked;
+        await user.click(switchElement);
+        const newChecked = (switchElement as HTMLInputElement).checked;
+        expect(newChecked).not.toBe(initialChecked);
     });
 
     it("handles accordion expansion", async () => {
-        const { container, fireEvent } = await renderDashboardActions();
-        const accordionSummary = container.querySelector('[id="actions-header"]');
-        if (accordionSummary) {
-            fireEvent.click(accordionSummary);
-        }
-        expect(container).toBeTruthy();
+        const { screen, user } = await renderDashboardActions();
+        // Find accordion button by role and accessible name
+        const accordionButton = screen.getByRole("button", { name: /actionable items/i });
+        await user.click(accordionButton);
+        expect(accordionButton).toBeTruthy();
     });
 
     it("renders ActionableItemsList component", async () => {
@@ -107,8 +106,8 @@ describe("DashboardActions component", () => {
 
     it("auto-expands when actionable items exist", async () => {
         const { container } = await renderDashboardActions();
-        const accordion = container.querySelector('[data-tutor*="dashboard"]');
-        expect(accordion || container).toBeTruthy();
+        // Just verify the component renders - auto-expansion behavior is implementation detail
+        expect(container).toBeTruthy();
     });
 
     it("handles tour events correctly", async () => {
@@ -117,19 +116,18 @@ describe("DashboardActions component", () => {
     });
 
     it("renders expand icon", async () => {
-        const { container } = await renderDashboardActions();
-        const expandIcons = container.querySelectorAll('[data-testid="ExpandMoreIcon"]');
-        expect(expandIcons.length).toBeGreaterThanOrEqual(0);
+        const { screen } = await renderDashboardActions();
+        // Find the accordion button which contains the expand icon
+        const accordionButton = screen.getByRole("button", { name: /actionable items/i });
+        expect(accordionButton).toBeTruthy();
     });
 
     it("handles switch click without propagating to accordion", async () => {
-        const { container, fireEvent } = await renderDashboardActions();
-        const switches = container.querySelectorAll('input[type="checkbox"]');
-        const firstSwitch = switches[0];
-        if (switches.length > 0 && firstSwitch) {
-            fireEvent.click(firstSwitch);
-        }
-        expect(container).toBeTruthy();
+        const { screen, user } = await renderDashboardActions();
+        // Find the "Show Ignored" switch by its label
+        const switchElement = screen.getByRole("switch", { name: /show ignored/i });
+        await user.click(switchElement);
+        expect(switchElement).toBeTruthy();
     });
 
     it("renders loading state correctly", async () => {
