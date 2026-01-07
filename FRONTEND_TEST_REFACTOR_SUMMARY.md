@@ -191,8 +191,8 @@ expect(newChecked).not.toBe(initialChecked);
 8. ~~`src/pages/__tests__/Swagger.test.tsx`~~ ✅ **COMPLETED**
 9. ~~`src/pages/dashboard/__tests__/Dashboard.test.tsx`~~ ✅ **COMPLETED**
 10. ~~`src/pages/dashboard/metrics/__tests__/DiskHealthMetrics.test.tsx`~~ ✅ **COMPLETED**
-11. `src/pages/settings/__tests__/Settings.test.tsx`
-12. `src/pages/users/__tests__/UserActions.test.tsx`
+11. ~~`src/pages/settings/__tests__/Settings.test.tsx`~~ ✅ **COMPLETED**
+12. ~~`src/pages/users/__tests__/UserActions.test.tsx`~~ ✅ **COMPLETED**
 13. `src/pages/users/__tests__/Users.test.tsx`
 14. `src/pages/users/components/__tests__/UserEditForm.test.tsx`
 15. `src/pages/users/components/__tests__/UsersTreeView.test.tsx`
