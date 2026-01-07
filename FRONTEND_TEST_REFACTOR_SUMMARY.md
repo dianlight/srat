@@ -1,9 +1,44 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+**Table of Contents** *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Frontend Test Refactoring Summary](#frontend-test-refactoring-summary)
+  - [Overview](#overview)
+  - [Objectives](#objectives)
+  - [Changes Made](#changes-made)
+    - [Files Refactored (7 files, 71 tests)](#files-refactored-7-files-71-tests)
+      - [1. `src/pages/dashboard/__tests__/DashboardActions.test.tsx`](#1-srcpagesdashboard__tests__dashboardactionstesttsx)
+      - [2. `src/pages/dashboard/__tests__/DashboardMetrics.test.tsx`](#2-srcpagesdashboard__tests__dashboardmetricstesttsx)
+      - [3. `src/pages/dashboard/__tests__/ActionableItems.test.tsx`](#3-srcpagesdashboard__tests__actionableitemstesttsx)
+      - [4. `src/pages/volumes/components/__tests__/VolumeMountDialog.test.tsx`](#4-srcpagesvolumescomponents__tests__volumemountdialogtesttsx)
+      - [5. `src/pages/volumes/components/__tests__/VolumesTreeView.test.tsx`](#5-srcpagesvolumescomponents__tests__volumestreeviewtesttsx)
+      - [6. `src/pages/shares/__tests__/ShareDetailsPanel.test.tsx`](#6-srcpagesshares__tests__sharedetailspaneltesttsx)
+      - [7. `src/components/__tests__/ErrorBoundary.test.tsx`](#7-srccomponents__tests__errorboundarytesttsx)
+  - [Results](#results)
+    - [Test Execution](#test-execution)
+    - [Code Quality Improvements](#code-quality-improvements)
+      - [Before Refactoring](#before-refactoring)
+      - [After Refactoring](#after-refactoring)
+    - [Benefits](#benefits)
+  - [Remaining Work](#remaining-work)
+    - [Files Still to Refactor (15 files)](#files-still-to-refactor-15-files)
+    - [Common Patterns to Fix](#common-patterns-to-fix)
+  - [Guidelines Reference](#guidelines-reference)
+    - [Query Priority](#query-priority)
+    - [Prohibited Patterns](#prohibited-patterns)
+  - [Conclusion](#conclusion)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Frontend Test Refactoring Summary
 
 ## Overview
+
 This document summarizes the refactoring of frontend tests to follow proper testing guidelines as outlined in `.github/instructions/fontend_test.instructions.md`.
 
 ## Objectives
+
 - Follow Testing Library best practices
 - Use semantic queries instead of implementation details
 - Replace `fireEvent` with `userEvent`
@@ -15,6 +50,7 @@ This document summarizes the refactoring of frontend tests to follow proper test
 ### Files Refactored (7 files, 71 tests)
 
 #### 1. `src/pages/dashboard/__tests__/DashboardActions.test.tsx`
+
 - **Tests:** 22
 - **Changes:**
   - Replaced `fireEvent` with `userEvent`
@@ -25,6 +61,7 @@ This document summarizes the refactoring of frontend tests to follow proper test
   - All interactions now properly awaited
 
 #### 2. `src/pages/dashboard/__tests__/DashboardMetrics.test.tsx`
+
 - **Tests:** 10
 - **Changes:**
   - Replaced `container.querySelectorAll('[class*="MuiCard"]')` with component rendering verification
@@ -34,12 +71,14 @@ This document summarizes the refactoring of frontend tests to follow proper test
   - Replaced `fireEvent` with `userEvent`
 
 #### 3. `src/pages/dashboard/__tests__/ActionableItems.test.tsx`
+
 - **Tests:** 6
 - **Changes:**
   - Changed `container.querySelector('[role="progressbar"]')` to `screen.getByRole("progressbar")`
   - All queries now use semantic roles
 
 #### 4. `src/pages/volumes/components/__tests__/VolumeMountDialog.test.tsx`
+
 - **Tests:** 10
 - **Changes:**
   - Changed `container.querySelectorAll('[role="dialog"]')` to `screen.queryAllByRole("dialog")`
@@ -49,6 +88,7 @@ This document summarizes the refactoring of frontend tests to follow proper test
   - Changed `container.querySelectorAll('input[type="checkbox"]')` to `screen.queryAllByRole("checkbox")`
 
 #### 5. `src/pages/volumes/components/__tests__/VolumesTreeView.test.tsx`
+
 - **Tests:** 12
 - **Changes:**
   - Changed `container.querySelectorAll('[role="treeitem"]')` to `screen.queryAllByRole("treeitem")`
@@ -60,6 +100,7 @@ This document summarizes the refactoring of frontend tests to follow proper test
   - Added proper `userEvent.setup()` initialization
 
 #### 6. `src/pages/shares/__tests__/ShareDetailsPanel.test.tsx`
+
 - **Tests:** 4
 - **Changes:**
   - Changed `container.querySelector('button[aria-label="View mount point details"]')` to `screen.getByRole('button', { name: /view mount point details/i })`
@@ -67,6 +108,7 @@ This document summarizes the refactoring of frontend tests to follow proper test
   - Replaced all `within(container)` with direct `screen` queries
 
 #### 7. `src/components/__tests__/ErrorBoundary.test.tsx`
+
 - **Tests:** 7
 - **Changes:**
   - Changed `container.querySelector('[role="alert"]')` to `screen.getByRole("alert")`
@@ -79,6 +121,7 @@ This document summarizes the refactoring of frontend tests to follow proper test
 ## Results
 
 ### Test Execution
+
 - **All fixed files:** 71 tests (7 files), 100% pass rate
 - **Flakiness test:** 290 runs total (22×10 + 7×10), 0 failures
 - **No regressions** in any of the refactored tests
@@ -86,20 +129,22 @@ This document summarizes the refactoring of frontend tests to follow proper test
 ### Code Quality Improvements
 
 #### Before Refactoring
+
 ```typescript
 // ❌ BAD: Uses querySelector and fireEvent
 const { container, fireEvent } = await renderDashboardActions();
 const switches = container.querySelectorAll('input[type="checkbox"]');
 const firstSwitch = switches[0];
 if (switches.length > 0 && firstSwitch) {
-    const initialChecked = (firstSwitch as HTMLInputElement).checked;
-    fireEvent.click(firstSwitch);
-    const newChecked = (firstSwitch as HTMLInputElement).checked;
-    expect(newChecked).not.toBe(initialChecked);
+  const initialChecked = (firstSwitch as HTMLInputElement).checked;
+  fireEvent.click(firstSwitch);
+  const newChecked = (firstSwitch as HTMLInputElement).checked;
+  expect(newChecked).not.toBe(initialChecked);
 }
 ```
 
 #### After Refactoring
+
 ```typescript
 // ✅ GOOD: Uses semantic queries and userEvent
 const { screen, user } = await renderDashboardActions();
@@ -135,6 +180,7 @@ expect(newChecked).not.toBe(initialChecked);
 ## Remaining Work
 
 ### Files Still to Refactor (15 files)
+
 1. ~~`src/components/__tests__/ErrorBoundary.test.tsx`~~ ✅ **COMPLETED**
 2. ~~`src/components/__tests__/FontAwesomeSvgIcon.test.tsx`~~ ✅ **COMPLETED**
 3. ~~`src/components/__tests__/Footer.test.tsx`~~ ✅ **COMPLETED**
@@ -175,6 +221,7 @@ expect(newChecked).not.toBe(initialChecked);
 See `.github/instructions/fontend_test.instructions.md` for complete testing guidelines.
 
 ### Query Priority
+
 1. `getByRole` (with `name` option)
 2. `getByLabelText`
 3. `getByPlaceholderText`
@@ -182,6 +229,7 @@ See `.github/instructions/fontend_test.instructions.md` for complete testing gui
 5. `getByTestId` (last resort only)
 
 ### Prohibited Patterns
+
 - ❌ `container.querySelector()`
 - ❌ CSS class selectors (`.className`)
 - ❌ ID selectors (`#id`)
