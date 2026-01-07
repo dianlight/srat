@@ -179,7 +179,7 @@ expect(newChecked).not.toBe(initialChecked);
 
 ## Remaining Work
 
-### Files Still to Refactor (12 files)
+### Files Still to Refactor (10 files)
 
 1. ~~`src/components/__tests__/ErrorBoundary.test.tsx`~~ ✅ **COMPLETED**
 2. ~~`src/components/__tests__/FontAwesomeSvgIcon.test.tsx`~~ ✅ **COMPLETED**
@@ -189,8 +189,8 @@ expect(newChecked).not.toBe(initialChecked);
 6. `src/components/__tests__/NotificationCenter.test.tsx`
 7. ~~`src/pages/__tests__/SmbConf.test.tsx`~~ ✅ **COMPLETED**
 8. ~~`src/pages/__tests__/Swagger.test.tsx`~~ ✅ **COMPLETED**
-9. `src/pages/dashboard/__tests__/Dashboard.test.tsx`
-10. `src/pages/dashboard/metrics/__tests__/DiskHealthMetrics.test.tsx`
+9. ~~`src/pages/dashboard/__tests__/Dashboard.test.tsx`~~ ✅ **COMPLETED**
+10. ~~`src/pages/dashboard/metrics/__tests__/DiskHealthMetrics.test.tsx`~~ ✅ **COMPLETED**
 11. `src/pages/settings/__tests__/Settings.test.tsx`
 12. `src/pages/users/__tests__/UserActions.test.tsx`
 13. `src/pages/users/__tests__/Users.test.tsx`
