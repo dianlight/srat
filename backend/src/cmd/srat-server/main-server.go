@@ -266,7 +266,7 @@ func prog(listener net.Listener) {
 
 	slog.Info("Stopping SRAT", "pid", os.Getpid())
 	apiCtx.Value("wg").(*sync.WaitGroup).Wait() // Ensure background tasks complete
-	apiCancel()                                  // Explicitly cancel context
+	apiCancel()                                 // Explicitly cancel context
 	slog.Info("SRAT stopped", "pid", os.Getpid())
 	os.Exit(0)
 }

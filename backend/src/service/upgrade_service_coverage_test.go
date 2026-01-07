@@ -41,22 +41,22 @@ func (suite *UpgradeServiceTestSuite) TestInstallUpdatePackage_EmptyExecutablePa
 func (suite *UpgradeServiceTestSuite) TestInstallUpdatePackage_SameVersion() {
 	// Create a temp binary with current version
 	tmpBinary := filepath.Join(suite.state.UpdateDataDir, "srat-server-test")
-	
+
 	// Copy current executable to temp location
 	currentExe, err := os.Executable()
 	suite.Require().NoError(err)
-	
+
 	content, err := os.ReadFile(currentExe)
 	suite.Require().NoError(err)
-	
+
 	err = os.WriteFile(tmpBinary, content, 0755)
 	suite.Require().NoError(err)
 	defer os.Remove(tmpBinary)
-	
+
 	updatePkg := &service.UpdatePackage{
 		CurrentExecutablePath: &tmpBinary,
 	}
-	
+
 	err = suite.upgradeService.InstallUpdatePackage(updatePkg)
 	// Should fail because version is same
 	if err != nil {
@@ -70,14 +70,14 @@ func (suite *UpgradeServiceTestSuite) TestInstallUpdatePackage_UnsignedOnDevelop
 	err := os.WriteFile(tmpBinary, []byte("#!/bin/sh\necho test"), 0755)
 	suite.Require().NoError(err)
 	defer os.Remove(tmpBinary)
-	
+
 	// Set channel to DEVELOP to allow unsigned binaries
 	suite.state.UpdateChannel = dto.UpdateChannels.DEVELOP
-	
+
 	updatePkg := &service.UpdatePackage{
 		CurrentExecutablePath: &tmpBinary,
 	}
-	
+
 	// Should succeed even without signature on develop channel
 	err = suite.upgradeService.InstallUpdatePackage(updatePkg)
 	// May fail due to version check or other reasons, but not signature
@@ -92,14 +92,14 @@ func (suite *UpgradeServiceTestSuite) TestInstallUpdatePackage_UnsignedOnRelease
 	err := os.WriteFile(tmpBinary, []byte("#!/bin/sh\necho test"), 0755)
 	suite.Require().NoError(err)
 	defer os.Remove(tmpBinary)
-	
+
 	// Set channel to RELEASE - should reject unsigned
 	suite.state.UpdateChannel = dto.UpdateChannels.RELEASE
-	
+
 	updatePkg := &service.UpdatePackage{
 		CurrentExecutablePath: &tmpBinary,
 	}
-	
+
 	err = suite.upgradeService.InstallUpdatePackage(updatePkg)
 	suite.Require().Error(err)
 	suite.Contains(err.Error(), "signature")
@@ -137,7 +137,7 @@ func (suite *UpgradeServiceTestSuite) TestApplyUpdateAndRestart_FileNotFound() {
 func (suite *UpgradeServiceTestSuite) TestIsRunningUnderS6_WithEnvVariable() {
 	// Test via reflection since isRunningUnderS6 is not exported
 	// We'll set S6_VERSION and verify behavior indirectly
-	
+
 	// Save original env
 	originalS6 := os.Getenv("S6_VERSION")
 	defer func() {
@@ -147,10 +147,10 @@ func (suite *UpgradeServiceTestSuite) TestIsRunningUnderS6_WithEnvVariable() {
 			os.Setenv("S6_VERSION", originalS6)
 		}
 	}()
-	
+
 	// Set S6_VERSION env var
 	os.Setenv("S6_VERSION", "2.11.1.0")
-	
+
 	// The function should detect we're running under s6
 	// We can't test it directly but we know it's covered when
 	// ApplyUpdateAndRestart or watchForDevelopUpdates call it
@@ -166,10 +166,10 @@ func (suite *UpgradeServiceTestSuite) TestIsRunningUnderS6_WithoutEnvVariable() 
 			os.Setenv("S6_VERSION", originalS6)
 		}
 	}()
-	
+
 	// Unset S6_VERSION
 	os.Unsetenv("S6_VERSION")
-	
+
 	// Function will check parent process cmdline
 	// We can't easily mock this in tests
 }
@@ -179,20 +179,20 @@ func (suite *UpgradeServiceTestSuite) TestIsRunningUnderS6_WithoutEnvVariable() 
 func (suite *UpgradeServiceTestSuite) TestGetCurrentExecutablePath() {
 	// This tests the internal getCurrentExecutablePath method indirectly
 	// by creating a scenario where InstallUpdatePackage needs to call it
-	
+
 	// Create a test binary
 	tmpBinary := filepath.Join(suite.state.UpdateDataDir, "test-exe")
 	err := os.WriteFile(tmpBinary, []byte("#!/bin/sh\necho test"), 0755)
 	suite.Require().NoError(err)
 	defer os.Remove(tmpBinary)
-	
+
 	suite.state.UpdateChannel = dto.UpdateChannels.DEVELOP
-	
+
 	updatePkg := &service.UpdatePackage{
 		CurrentExecutablePath: &tmpBinary,
 		OtherFilesPaths:       []string{}, // Empty to test the main path logic
 	}
-	
+
 	// Call InstallUpdatePackage which will invoke getCurrentExecutablePath internally
 	_ = suite.upgradeService.InstallUpdatePackage(updatePkg)
 }
@@ -205,23 +205,23 @@ func (suite *UpgradeServiceTestSuite) TestInstallBinaryTo_Success() {
 	err := os.WriteFile(sourcePath, []byte("test binary content"), 0644)
 	suite.Require().NoError(err)
 	defer os.Remove(sourcePath)
-	
+
 	// Create destination directory
 	destDir := filepath.Join(suite.state.UpdateDataDir, "dest")
 	err = os.MkdirAll(destDir, 0755)
 	suite.Require().NoError(err)
 	defer os.RemoveAll(destDir)
-	
+
 	destPath := filepath.Join(destDir, "dest-binary")
-	
+
 	// Test installation via InstallUpdatePackage which calls installBinaryTo
 	suite.state.UpdateChannel = dto.UpdateChannels.DEVELOP
 	suite.state.UpdateFilePath = destPath
-	
+
 	updatePkg := &service.UpdatePackage{
 		CurrentExecutablePath: &sourcePath,
 	}
-	
+
 	_ = suite.upgradeService.InstallUpdatePackage(updatePkg)
 }
 
@@ -233,7 +233,7 @@ func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_InvalidU
 		BrowserDownloadURL: "http://invalid-domain-12345.com/test.zip",
 		Size:               100,
 	}
-	
+
 	_, err := suite.upgradeService.DownloadAndExtractBinaryAsset(asset)
 	suite.Require().Error(err)
 }
@@ -244,11 +244,11 @@ func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_NotAZipF
 		BrowserDownloadURL: "http://example.com/not-a-zip-alt.zip",
 		Size:               100,
 	}
-	
+
 	// Register a responder that returns non-zip content
 	httpmock.RegisterResponder("GET", asset.BrowserDownloadURL,
 		httpmock.NewStringResponder(200, "this is not a zip file"))
-	
+
 	_, err := suite.upgradeService.DownloadAndExtractBinaryAsset(asset)
 	suite.Require().Error(err)
 	suite.Contains(err.Error(), "zip")
@@ -259,15 +259,15 @@ func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_NotAZipF
 func (suite *UpgradeServiceTestSuite) TestAutoUpdateFlow() {
 	// This tests the run() method's auto-update logic
 	config.Version = "1.0.0"
-	
+
 	// Enable auto-update
 	suite.state.AutoUpdate = true
 	suite.state.UpdateChannel = dto.UpdateChannels.RELEASE
-	
+
 	// The background run() goroutine will check for updates
 	// and attempt to auto-update when it finds one
 	// We've already registered the GitHub releases fixture in SetupTest
-	
+
 	// Wait a bit for the run loop to execute at least once
 	// (the updateLimiter interval is 30 minutes but the first check happens immediately)
 	// Note: In production code, the run() loop is already running from SetupTest
@@ -278,12 +278,12 @@ func (suite *UpgradeServiceTestSuite) TestAutoUpdateFlow() {
 func (suite *UpgradeServiceTestSuite) TestNotifyClient() {
 	// notifyClient is already 100% covered but let's ensure it stays that way
 	// It's called internally by many methods
-	
+
 	// Create a scenario that triggers notifyClient
 	updatePkg := &service.UpdatePackage{
 		CurrentExecutablePath: nil,
 	}
-	
+
 	// This will call notifyClient with an error status
 	_ = suite.upgradeService.InstallUpdatePackage(updatePkg)
 }
@@ -295,11 +295,11 @@ func (suite *UpgradeServiceTestSuite) TestNotifyClient() {
 
 func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_NoArchitectureMatch() {
 	config.Version = "1.0.0"
-	
+
 	// Create a release with an asset for a different architecture
 	wrongArch := "mips64"
 	assetName := fmt.Sprintf("srat_%s.zip", wrongArch)
-	
+
 	releases := []*github.RepositoryRelease{
 		newGitHubRepositoryRelease("v1.1.0", false, []*github.ReleaseAsset{
 			newGitHubReleaseAsset(assetName, "http://example.com/srat_mips64.zip", 1024),
@@ -307,7 +307,7 @@ func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_NoArchitectureM
 	}
 	httpmock.RegisterResponder("GET", githubReleasesURL,
 		httpmock.NewJsonResponderOrPanic(200, releases))
-	
+
 	suite.state.UpdateChannel = dto.UpdateChannels.RELEASE
 	asset, err := suite.upgradeService.GetUpgradeReleaseAsset()
 	suite.Nil(asset)
@@ -320,7 +320,7 @@ func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_NoArchitectureM
 func (suite *UpgradeServiceTestSuite) TestArchitectureMapping() {
 	// Test that architecture mapping works correctly
 	config.Version = "1.0.0"
-	
+
 	currentArch := runtime.GOARCH
 	var expectedArch string
 	switch currentArch {
@@ -331,7 +331,7 @@ func (suite *UpgradeServiceTestSuite) TestArchitectureMapping() {
 	default:
 		expectedArch = currentArch
 	}
-	
+
 	assetName := fmt.Sprintf("srat_%s.zip", expectedArch)
 	releases := []*github.RepositoryRelease{
 		newGitHubRepositoryRelease("v1.1.0", false, []*github.ReleaseAsset{
@@ -340,7 +340,7 @@ func (suite *UpgradeServiceTestSuite) TestArchitectureMapping() {
 	}
 	httpmock.RegisterResponder("GET", githubReleasesURL,
 		httpmock.NewJsonResponderOrPanic(200, releases))
-	
+
 	suite.state.UpdateChannel = dto.UpdateChannels.RELEASE
 	asset, err := suite.upgradeService.GetUpgradeReleaseAsset()
 	suite.Require().NoError(err)
@@ -355,13 +355,13 @@ func (suite *UpgradeServiceTestSuite) TestInstallUpdatePackage_WithRealBinary() 
 	if runtime.GOOS == "windows" {
 		suite.T().Skip("Skipping real binary test on Windows")
 	}
-	
+
 	// Create a minimal Go program
 	tmpDir := filepath.Join(suite.state.UpdateDataDir, "build")
 	err := os.MkdirAll(tmpDir, 0755)
 	suite.Require().NoError(err)
 	defer os.RemoveAll(tmpDir)
-	
+
 	goSource := filepath.Join(tmpDir, "main.go")
 	goCode := `package main
 import "fmt"
@@ -371,7 +371,7 @@ func main() {
 `
 	err = os.WriteFile(goSource, []byte(goCode), 0644)
 	suite.Require().NoError(err)
-	
+
 	// Build the binary
 	binaryPath := filepath.Join(tmpDir, "testbinary")
 	cmd := exec.Command("go", "build", "-o", binaryPath, goSource)
@@ -382,19 +382,19 @@ func main() {
 		suite.T().Logf("Build stderr: %s", stderr.String())
 		suite.T().Skip("Cannot build test binary: " + err.Error())
 	}
-	
+
 	// Verify binary was created and is executable
 	info, err := os.Stat(binaryPath)
 	suite.Require().NoError(err)
-	suite.True(info.Mode()&0111 != 0, "Binary should be executable")
-	
+	suite.NotEqual(info.Mode()&0111, 0, "Binary should be executable")
+
 	// Set to develop channel to allow unsigned
 	suite.state.UpdateChannel = dto.UpdateChannels.DEVELOP
-	
+
 	updatePkg := &service.UpdatePackage{
 		CurrentExecutablePath: &binaryPath,
 	}
-	
+
 	// Should process the binary
 	_ = suite.upgradeService.InstallUpdatePackage(updatePkg)
 }
@@ -407,7 +407,7 @@ func (suite *UpgradeServiceTestSuite) TestInstallUpdatePackage_WithValidSignatur
 	err := os.WriteFile(tmpBinary, []byte("test binary content"), 0755)
 	suite.Require().NoError(err)
 	defer os.Remove(tmpBinary)
-	
+
 	// Create a dummy signature file (won't actually verify, but tests the code path)
 	sigFile := tmpBinary + ".minisig"
 	// This is a minimal minisign signature format (will fail verification, but tests file presence)
@@ -418,21 +418,21 @@ SomeMoreBase64Data==`
 	err = os.WriteFile(sigFile, []byte(sigContent), 0644)
 	suite.Require().NoError(err)
 	defer os.Remove(sigFile)
-	
+
 	suite.state.UpdateChannel = dto.UpdateChannels.RELEASE
-	
+
 	updatePkg := &service.UpdatePackage{
 		CurrentExecutablePath: &tmpBinary,
 	}
-	
+
 	err = suite.upgradeService.InstallUpdatePackage(updatePkg)
 	// Will fail verification with invalid signature, but tests the signature checking code path
 	if err != nil {
 		// Should contain signature-related error
 		suite.True(
 			strings.Contains(err.Error(), "signature") ||
-			strings.Contains(err.Error(), "verify") ||
-			strings.Contains(err.Error(), "load"),
+				strings.Contains(err.Error(), "verify") ||
+				strings.Contains(err.Error(), "load"),
 			"Error should be related to signature: "+err.Error())
 	}
 }

@@ -46,13 +46,13 @@ type UpgradeServiceInterface interface {
 }
 
 type UpgradeService struct {
-	ctx            context.Context
-	gh             *github.Client
-	broadcaster    BroadcasterServiceInterface
-	updateLimiter  rate.Sometimes
-	state          *dto.ContextState
-	shutdowner     fx.Shutdowner
-	fileWatcherCtx context.Context
+	ctx               context.Context
+	gh                *github.Client
+	broadcaster       BroadcasterServiceInterface
+	updateLimiter     rate.Sometimes
+	state             *dto.ContextState
+	shutdowner        fx.Shutdowner
+	fileWatcherCtx    context.Context
 	fileWatcherCancel context.CancelFunc
 }
 
@@ -584,6 +584,13 @@ func (self *UpgradeService) DownloadAndExtractBinaryAsset(asset dto.BinaryAsset)
 	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSEXTRACTCOMPLETE, Progress: 100})
 	slog.InfoContext(self.ctx, "Asset extracted successfully", "temp_dir", tmpDir)
 
+	// Verify that the current executable was found in the archive
+	if executablePath == nil {
+		errWrapped := errors.Errorf("Current executable not found in archive (expected: %s)", currentExecutableName)
+		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+		return nil, errWrapped
+	}
+
 	return &UpdatePackage{
 		CurrentExecutablePath: executablePath,
 		OtherFilesPaths:       foundPaths,
@@ -691,7 +698,7 @@ func (self *UpgradeService) InstallUpdatePackage(updatePkg *UpdatePackage) error
 	newBinaryPath := *updatePkg.CurrentExecutablePath
 	newVersion := config.GetBinaryVersion(newBinaryPath)
 	currentVersion := config.GetCurrentBinaryVersion()
-	
+
 	// Check if we got a valid version (not unknown)
 	unknownVersion, _ := semver.NewVersion("0.0.0-unknown")
 	if unknownVersion == nil || !newVersion.Equal(unknownVersion) {
