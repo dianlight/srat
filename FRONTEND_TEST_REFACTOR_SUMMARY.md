@@ -134,11 +134,11 @@ expect(newChecked).not.toBe(initialChecked);
 
 ## Remaining Work
 
-### Files Still to Refactor (17 files)
+### Files Still to Refactor (15 files)
 1. ~~`src/components/__tests__/ErrorBoundary.test.tsx`~~ ✅ **COMPLETED**
-2. `src/components/__tests__/FontAwesomeSvgIcon.test.tsx`
-3. `src/components/__tests__/Footer.test.tsx`
-4. `src/components/__tests__/IssueCard.test.tsx`
+2. ~~`src/components/__tests__/FontAwesomeSvgIcon.test.tsx`~~ ✅ **COMPLETED**
+3. ~~`src/components/__tests__/Footer.test.tsx`~~ ✅ **COMPLETED**
+4. `src/components/__tests__/IssueCard.test.tsx` - In Progress
 5. `src/components/__tests__/NavBar.test.tsx`
 6. `src/components/__tests__/NotificationCenter.test.tsx`
 7. `src/pages/__tests__/SmbConf.test.tsx`

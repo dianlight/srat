@@ -23,7 +23,7 @@ describe("IssueCard Component", () => {
             ignored: false
         };
 
-        const { container } = render(
+        render(
             React.createElement(
                 ThemeProvider,
                 { theme },
@@ -31,14 +31,14 @@ describe("IssueCard Component", () => {
             )
         );
 
-        expect(container.textContent?.includes("Test Issue Title")).toBeTruthy();
-        expect(container.textContent?.includes("This is a test issue description")).toBeTruthy();
-        expect(container.textContent?.includes("Error")).toBeTruthy();
+        expect(screen.getByText("Test Issue Title")).toBeTruthy();
+        expect(screen.getByText("This is a test issue description")).toBeTruthy();
+        expect(screen.getByText("Error")).toBeTruthy();
     });
 
     it("renders different severity levels correctly", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { default: IssueCard } = await import("../IssueCard");
 
@@ -52,7 +52,7 @@ describe("IssueCard Component", () => {
             ignored: false
         };
 
-        const { container } = render(
+        render(
             React.createElement(
                 ThemeProvider,
                 { theme },
@@ -60,12 +60,12 @@ describe("IssueCard Component", () => {
             )
         );
 
-        expect(container.textContent?.includes("Warning")).toBeTruthy();
+        expect(screen.getByText("Warning")).toBeTruthy();
     });
 
     it("displays resolve button when onResolve prop is provided", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { default: IssueCard } = await import("../IssueCard");
 
@@ -80,7 +80,7 @@ describe("IssueCard Component", () => {
             ignored: false
         };
 
-        const { container } = render(
+        render(
             React.createElement(
                 ThemeProvider,
                 { theme },
@@ -91,7 +91,7 @@ describe("IssueCard Component", () => {
             )
         );
 
-        expect(container.textContent?.includes("Resolve")).toBeTruthy();
+        expect(screen.getByText("Resolve")).toBeTruthy();
     });
 
     it("displays ignore status correctly for ignored issues", async () => {
