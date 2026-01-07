@@ -42,7 +42,7 @@ github.com/StackExchange/wmi
 github.com/adelolmo/hd-idle/diskstats
 github.com/adelolmo/hd-idle/io
 github.com/adelolmo/hd-idle/sgio
-# github.com/air-verse/air v1.63.4
+# github.com/air-verse/air v1.63.6
 ## explicit; go 1.25
 github.com/air-verse/air
 github.com/air-verse/air/runner
@@ -212,7 +212,7 @@ github.com/jinzhu/inflection
 # github.com/jinzhu/now v1.1.5
 ## explicit; go 1.12
 github.com/jinzhu/now
-# github.com/jmattheis/goverter v1.9.2
+# github.com/jmattheis/goverter v1.9.3
 ## explicit; go 1.23.0
 github.com/jmattheis/goverter
 github.com/jmattheis/goverter/builder
@@ -409,7 +409,7 @@ github.com/samber/slog-common
 # github.com/samber/slog-formatter v1.2.2
 ## explicit; go 1.21
 github.com/samber/slog-formatter
-# github.com/samber/slog-http v1.9.0
+# github.com/samber/slog-http v1.10.0
 ## explicit; go 1.21
 github.com/samber/slog-http
 # github.com/samber/slog-multi v1.6.0
