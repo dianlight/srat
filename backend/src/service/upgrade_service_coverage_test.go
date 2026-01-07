@@ -53,15 +53,16 @@ func (suite *UpgradeServiceTestSuite) TestInstallUpdatePackage_SameVersion() {
 	suite.Require().NoError(err)
 	defer os.Remove(tmpBinary)
 
+	// Set to DEVELOP channel to skip signature requirement
+	suite.state.UpdateChannel = dto.UpdateChannels.DEVELOP
+
 	updatePkg := &service.UpdatePackage{
 		CurrentExecutablePath: &tmpBinary,
 	}
 
 	err = suite.upgradeService.InstallUpdatePackage(updatePkg)
-	// Should fail because version is same
-	if err != nil {
-		suite.Contains(err.Error(), "same version")
-	}
+	// Should return nil (not an error) when version is same
+	suite.NoError(err, "Should not return error when installing same version")
 }
 
 func (suite *UpgradeServiceTestSuite) TestInstallUpdatePackage_UnsignedOnDevelopChannel() {
