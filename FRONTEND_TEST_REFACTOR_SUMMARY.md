@@ -1,8 +1,6 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-**Table of Contents** *generated with [DocToc](https://github.com/thlorenz/doctoc)*
-
 - [Frontend Test Refactoring Summary](#frontend-test-refactoring-summary)
   - [Overview](#overview)
   - [Objectives](#objectives)
@@ -22,7 +20,7 @@
       - [After Refactoring](#after-refactoring)
     - [Benefits](#benefits)
   - [Remaining Work](#remaining-work)
-    - [Files Still to Refactor (15 files)](#files-still-to-refactor-15-files)
+    - [Files Still to Refactor (10 files)](#files-still-to-refactor-10-files)
     - [Common Patterns to Fix](#common-patterns-to-fix)
   - [Guidelines Reference](#guidelines-reference)
     - [Query Priority](#query-priority)
