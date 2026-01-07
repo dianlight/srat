@@ -12,7 +12,7 @@ This document summarizes the refactoring of frontend tests to follow proper test
 
 ## Changes Made
 
-### Files Refactored (6 files, 64 tests)
+### Files Refactored (7 files, 71 tests)
 
 #### 1. `src/pages/dashboard/__tests__/DashboardActions.test.tsx`
 - **Tests:** 22
@@ -66,11 +66,21 @@ This document summarizes the refactoring of frontend tests to follow proper test
   - Changed `container.querySelector('h6')` to `screen.getByText("Mount Point Information")`
   - Replaced all `within(container)` with direct `screen` queries
 
+#### 7. `src/components/__tests__/ErrorBoundary.test.tsx`
+- **Tests:** 7
+- **Changes:**
+  - Changed `container.querySelector('[role="alert"]')` to `screen.getByRole("alert")`
+  - Changed `container.querySelector('[data-testid="BugReportIcon"]')` to content verification with `screen.getByText()`
+  - Replaced all `container.textContent?.includes()` checks with `screen.getByText()`
+  - Changed `within(container).getAllByText("Reload Page")` to `screen.getByRole("button", { name: /reload page/i })`
+  - Added proper `userEvent.setup()` initialization
+  - All interactions now properly awaited
+
 ## Results
 
 ### Test Execution
-- **All fixed files:** 64 tests, 100% pass rate
-- **Flakiness test:** 220 runs (22 tests × 10), 0 failures
+- **All fixed files:** 71 tests (7 files), 100% pass rate
+- **Flakiness test:** 290 runs total (22×10 + 7×10), 0 failures
 - **No regressions** in any of the refactored tests
 
 ### Code Quality Improvements
@@ -124,8 +134,8 @@ expect(newChecked).not.toBe(initialChecked);
 
 ## Remaining Work
 
-### Files Still to Refactor (18 files)
-1. `src/components/__tests__/ErrorBoundary.test.tsx`
+### Files Still to Refactor (17 files)
+1. ~~`src/components/__tests__/ErrorBoundary.test.tsx`~~ ✅ **COMPLETED**
 2. `src/components/__tests__/FontAwesomeSvgIcon.test.tsx`
 3. `src/components/__tests__/Footer.test.tsx`
 4. `src/components/__tests__/IssueCard.test.tsx`
