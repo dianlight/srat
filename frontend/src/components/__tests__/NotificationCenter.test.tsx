@@ -45,7 +45,7 @@ describe("NotificationCenter Component", () => {
 
     it("opens popover when notification button is clicked", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { NotificationCenter } = await import("../NotificationCenter");
