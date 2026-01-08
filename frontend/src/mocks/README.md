@@ -6,14 +6,16 @@ This directory contains the MSW setup for mocking API requests in tests and deve
 
 We use a **hybrid mocking solution** combining:
 - **msw-auto-mock**: Auto-generated handlers for REST endpoints from OpenAPI 3.1 spec
-- **Manual handlers**: Custom streaming handlers for SSE (Server-Sent Events) and WebSocket
+- **Manual handlers**: WebSocket handlers using MSW's experimental `ws` API
+
+**Note**: SSE (Server-Sent Events) is deprecated for this project. Use WebSocket for real-time streaming.
 
 ## Directory Structure
 
 ```
 src/mocks/
 ├── generatedHandlers.ts   # Auto-generated REST API handlers (placeholder)
-├── streamingHandlers.ts   # Manual SSE and WebSocket handlers
+├── streamingHandlers.ts   # WebSocket handlers (SSE deprecated)
 ├── node.ts                # MSW server setup for Bun/Node environment
 └── browser.ts             # MSW worker setup for browser environment
 
@@ -61,38 +63,13 @@ ENABLE_MSW=true bun run dev
 
 ## Features
 
-### Server-Sent Events (SSE)
+### WebSocket (Using MSW's Experimental ws API)
 
-The SSE handler mocks `/api/sse` endpoint and emits events every 500ms:
-
-- `hello` - Welcome message with server info
-- `heartbeat` - Server health status
-- `volumes` - Disk volumes list
-- `shares` - Shares list
-- `updating` - Update progress
-- `dirty_data_tracker` - Data change tracking
-- `smart_test_status` - SMART test status
-
-Example usage:
-```typescript
-import { useGetServerEventsQuery } from '../store/sseApi';
-
-function MyComponent() {
-  const { data } = useGetServerEventsQuery();
-  
-  // data.hello - Welcome message
-  // data.heartbeat - Latest heartbeat
-  // data.volumes - Volumes list
-  // etc.
-}
-```
-
-### WebSocket
-
-The WebSocket handler mocks `/ws` endpoint and:
+The WebSocket handler uses MSW's native `ws` API to mock `/ws` endpoint:
 - Sends initial `hello` message on connection
 - Sends `heartbeat` messages every 500ms
 - Responds to `SUBSCRIBE` messages with requested event data
+- Supports all event types: hello, heartbeat, volumes, shares, updating, dirty_data_tracker, smart_test_status
 
 Example usage:
 ```typescript
@@ -106,6 +83,8 @@ ws.onmessage = (event) => {
 // Subscribe to specific events
 ws.send(JSON.stringify({ type: 'SUBSCRIBE', event: 'volumes' }));
 ```
+
+**Note**: SSE (Server-Sent Events) is deprecated for this project. All real-time streaming should use WebSocket.
 
 ### REST API Endpoints
 
@@ -138,7 +117,7 @@ describe("Custom test", () => {
 });
 ```
 
-### Modifying SSE Events
+### Modifying WebSocket Events
 
 Edit `src/mocks/streamingHandlers.ts` and update the `mockEventData` object:
 
@@ -152,6 +131,8 @@ const mockEventData = {
   }),
 };
 ```
+
+**Note**: SSE handlers have been removed as SSE is deprecated for this project.
 
 ### Generating Handlers from OpenAPI
 
@@ -209,15 +190,18 @@ The test examples demonstrate React 19 features:
 2. Verify fetch is not mocked globally in `test/setup.ts`
 3. Ensure handlers are registered in `src/mocks/node.ts`
 
-### SSE/WebSocket not working
+### WebSocket not working
 
-1. Verify `streamingHandlers` are included in `node.ts` handlers array
+1. Verify `streamingHandlers` are included in `node.ts` handlers array (currently empty as WebSocket handler is exported separately)
 2. Check console for MSW warnings about unhandled requests
 3. Ensure proper event names match `Supported_events` enum
+4. The WebSocket handler uses MSW's experimental `ws` API - ensure you're using a compatible MSW version
+
+**Note**: SSE is deprecated and not supported. Use WebSocket for real-time streaming.
 
 ### Tests hanging
 
-1. SSE/WebSocket streams may keep connections open
+1. WebSocket streams may keep connections open
 2. Use `waitFor` with appropriate timeouts
 3. Ensure cleanup in `afterEach` hooks
 

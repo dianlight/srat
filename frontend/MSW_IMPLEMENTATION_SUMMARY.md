@@ -128,23 +128,37 @@ Fully compatible with Bun's test runner:
 
 ## Known Limitations & Workarounds
 
-### 1. SSE (Server-Sent Events) Testing
-**Limitation**: EventSource connections aren't fully intercepted by MSW in test environments.
+### 1. SSE (Server-Sent Events) - DEPRECATED
+**Status**: SSE is deprecated for this project and not implemented in the MSW mocking infrastructure.
 
-**Why**: RTK Query's `sseApi` creates real EventSource connections, which MSW's http handlers don't intercept in Node/Bun.
+**Reason**: The project has moved to WebSocket for real-time streaming. SSE support is not provided.
 
-**Workaround Options**:
-1. Mock EventSource globally in test/setup.ts
-2. Use REST polling endpoints instead of SSE in tests
-3. Create a test-only API that uses fetch instead of EventSource
-4. Mock the entire sseApi implementation for tests
+**Alternative**: Use WebSocket (`/ws` endpoint) for all real-time streaming needs.
 
-**Current Status**: SSE handler is implemented and documented, but won't work until EventSource is mocked.
+### 2. WebSocket Testing - Using MSW's Experimental ws API
+**Implementation**: This project uses MSW's experimental `ws` API for WebSocket mocking.
 
-### 2. WebSocket Testing
-**Limitation**: MSW's `ws` API is experimental and may not work in all scenarios.
+**Features**:
+- Native WebSocket connection mocking
+- SUBSCRIBE message handling
+- Automatic hello and periodic heartbeat messages
+- Proper cleanup on disconnect
 
-**Workaround**: Mock WebSocket at application level or use alternative testing strategy.
+**Usage Example**:
+```typescript
+// WebSocket connection is automatically mocked
+const ws = new WebSocket('ws://localhost:8080/ws');
+
+ws.onmessage = (event) => {
+  const [id, eventType, data] = event.data.split('\n');
+  // Handle mocked WebSocket data
+};
+
+// Subscribe to specific events
+ws.send(JSON.stringify({ type: 'SUBSCRIBE', event: 'volumes' }));
+```
+
+**Note**: The `ws` API is experimental in MSW but is the recommended approach for WebSocket testing in this project.
 
 ### 3. Auto-generation from OpenAPI
 **Limitation**: msw-auto-mock integration not fully configured.

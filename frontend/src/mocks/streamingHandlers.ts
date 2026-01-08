@@ -1,9 +1,11 @@
 /**
- * Manual MSW handlers for Server-Sent Events (SSE) and WebSocket connections.
+ * Manual MSW handlers for WebSocket connections.
  * These handlers provide mock streaming data for testing real-time features.
+ * 
+ * Note: SSE (Server-Sent Events) is deprecated for this project and not implemented.
+ * Use WebSocket for real-time streaming instead.
  */
 
-import { http, HttpResponse, type RequestHandler } from "msw";
 import { ws } from "msw";
 import type {
 	DataDirtyTracker,
@@ -17,7 +19,7 @@ import type {
 import { Supported_events, Update_channel, Update_process_state } from "../store/sratApi";
 
 /**
- * Mock data generators for SSE events
+ * Mock data generators for WebSocket events
  */
 const mockEventData = {
 	hello: (): Welcome => ({
@@ -108,52 +110,16 @@ const mockEventData = {
 };
 
 /**
- * SSE Handler for /api/sse endpoint
- * Emits JSON events every 500ms using ReadableStream
- */
-export const sseHandler: RequestHandler = http.get(
-	"/api/sse",
-	async ({ request }) => {
-		// Create a ReadableStream that emits events periodically
-		const stream = new ReadableStream({
-			async start(controller) {
-				// Send initial hello event
-				const helloEvent = `event: ${Supported_events.Hello}\ndata: ${JSON.stringify(mockEventData.hello())}\n\n`;
-				controller.enqueue(new TextEncoder().encode(helloEvent));
-
-				// Set up interval to send heartbeat events
-				const intervalId = setInterval(() => {
-					try {
-						const heartbeatEvent = `event: ${Supported_events.Heartbeat}\ndata: ${JSON.stringify(mockEventData.heartbeat())}\n\n`;
-						controller.enqueue(new TextEncoder().encode(heartbeatEvent));
-					} catch (error) {
-						// Stream was closed
-						clearInterval(intervalId);
-					}
-				}, 500);
-
-				// Clean up on stream cancel
-				request.signal.addEventListener("abort", () => {
-					clearInterval(intervalId);
-					controller.close();
-				});
-			},
-		});
-
-		return new HttpResponse(stream, {
-			status: 200,
-			headers: {
-				"Content-Type": "text/event-stream",
-				"Cache-Control": "no-cache",
-				Connection: "keep-alive",
-			},
-		});
-	},
-);
-
-/**
- * WebSocket link for /ws endpoint
- * Handles SUBSCRIBE messages and responds with mocked data
+ * WebSocket handler for /ws endpoint using MSW's experimental ws API
+ * 
+ * This implementation uses MSW's native WebSocket support to mock WebSocket connections.
+ * The handler listens for SUBSCRIBE messages and responds with mocked event data.
+ * 
+ * Features:
+ * - Automatic hello message on connection
+ * - Periodic heartbeat messages (500ms intervals)
+ * - SUBSCRIBE message handling for on-demand event data
+ * - Proper cleanup on disconnect
  */
 const wsUrl = "ws://localhost:8080/ws";
 
@@ -198,5 +164,7 @@ export const wsHandler = wsLink.addEventListener("connection", ({ client }) => {
 
 /**
  * Export all streaming handlers
+ * 
+ * Note: Only WebSocket handlers are exported. SSE is deprecated for this project.
  */
-export const streamingHandlers = [sseHandler];
+export const streamingHandlers: never[] = [];
