@@ -42,7 +42,7 @@ describe("My Component", () => {
 
 1. Initialize MSW in your public directory:
 ```bash
-npx msw init public/ --save
+bunx msw init public/ --save
 ```
 
 2. Conditionally start MSW in development (e.g., `src/index.tsx`):

@@ -5,7 +5,7 @@
  * mock handlers for all REST endpoints defined in the API.
  * 
  * To regenerate this file, run:
- *   npx msw-auto-mock <path-to-openapi-spec> -o src/mocks/generatedHandlers.ts
+ *   bunx msw-auto-mock <path-to-openapi-spec> -o src/mocks/generatedHandlers.ts
  * 
  * @see https://www.npmjs.com/package/msw-auto-mock
  */

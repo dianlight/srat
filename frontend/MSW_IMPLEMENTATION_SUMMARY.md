@@ -151,7 +151,7 @@ Fully compatible with Bun's test runner:
 
 **How to Complete**:
 ```bash
-npx msw-auto-mock ../../backend/docs/openapi.json -o src/mocks/generatedHandlers.ts
+bunx msw-auto-mock ../../backend/docs/openapi.json -o src/mocks/generatedHandlers.ts
 ```
 
 ## Migration Path for Existing Tests

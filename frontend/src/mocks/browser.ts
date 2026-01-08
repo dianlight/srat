@@ -5,7 +5,7 @@
  * in the browser environment for manual testing and development.
  * 
  * To use this in your app:
- * 1. Run: npx msw init public/ --save
+ * 1. Run: bunx msw init public/ --save
  * 2. Import this file in your main app entry point (conditionally for dev only)
  * 3. Call startMockWorker() to start intercepting requests
  */
