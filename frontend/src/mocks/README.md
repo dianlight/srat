@@ -207,12 +207,16 @@ The test examples demonstrate React 19 features:
 
 ## Migration from Existing Mocks
 
+**See [MSW_TEST_MIGRATION.md](MSW_TEST_MIGRATION.md) for detailed test migration tracking and status.**
+
 To migrate from existing mock implementations:
 
 1. Remove global fetch mocks in favor of MSW handlers
 2. Convert HAR files to MSW handlers (if needed)
 3. Replace manual mocks with MSW handlers
 4. Update tests to use MSW's runtime handler overrides
+
+Most tests will work automatically since they already import `test/setup.ts` which now includes MSW setup.
 
 See the main `COPILOT.md` for testing patterns and guidelines.
 
