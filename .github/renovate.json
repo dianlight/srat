@@ -28,7 +28,10 @@
     },
     "postUpdateOptions": [
         "gomodTidy",
-        "gomodUpdateImportPaths"
+        "gomodUpdateImportPaths",
+        "gomodMassage",
+        "gomodVendor",
+        "goGenerate"
     ],
     "abandonmentThreshold": "5 years",
     "dependencyDashboardAutoclose": true,
