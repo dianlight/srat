@@ -88,6 +88,7 @@ func (suite *UpgradeServiceTestSuite) SetupTest() {
 					UpdateDataDir:  tmpDir,
 					UpdateFilePath: tmpDir + "/" + filepath.Base(os.Args[0]),
 					UpdateChannel:  dto.UpdateChannels.NONE,
+					AutoUpdate:     false,
 				}
 			},
 			service.NewUpgradeService,

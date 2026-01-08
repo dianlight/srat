@@ -24,8 +24,8 @@ func (suite *UpgradeHandlerSuite) TestUpdateHandlerStartsBackgroundFlow() {
 	mock.When(suite.mockUpgradeService.GetUpgradeReleaseAsset()).ThenReturn(asset, nil)
 	// Expect DownloadAndExtractBinaryAsset to be called and return a fake path
 	mock.When(suite.mockUpgradeService.DownloadAndExtractBinaryAsset(mock.Any[dto.BinaryAsset]())).ThenReturn(&service.UpdatePackage{}, nil)
-	// Expect InstallUpdatePackage to be called with the UpdatePackage
-	mock.When(suite.mockUpgradeService.InstallUpdatePackage(mock.Any[*service.UpdatePackage]())).ThenReturn(nil)
+	// Expect ApplyUpdateAndRestart to be called with the UpdatePackage (replaces InstallUpdatePackage in new selfupdate flow)
+	mock.When(suite.mockUpgradeService.ApplyUpdateAndRestart(mock.Any[*service.UpdatePackage]())).ThenReturn(nil)
 
 	_, apiInst := humatest.New(suite.T())
 	suite.handler.RegisterUpgradeHanler(apiInst)
@@ -48,7 +48,7 @@ func (suite *UpgradeHandlerSuite) TestUpdateHandlerStartsBackgroundFlow() {
 
 	mock.Verify(suite.mockUpgradeService, matchers.Times(1)).GetUpgradeReleaseAsset()
 	mock.Verify(suite.mockUpgradeService, matchers.Times(1)).DownloadAndExtractBinaryAsset(mock.Any[dto.BinaryAsset]())
-	mock.Verify(suite.mockUpgradeService, matchers.Times(1)).InstallUpdatePackage(mock.Any[*service.UpdatePackage]())
+	mock.Verify(suite.mockUpgradeService, matchers.Times(1)).ApplyUpdateAndRestart(mock.Any[*service.UpdatePackage]())
 }
 
 func (suite *UpgradeHandlerSuite) TestGetUpdateChannelsFiltersDevelopCorrectly() {
