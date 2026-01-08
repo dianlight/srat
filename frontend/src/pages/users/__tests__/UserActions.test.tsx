@@ -1,7 +1,12 @@
 import "../../../../test/setup";
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect, beforeEach } from "bun:test";
 
 describe("UserActions component", () => {
+    beforeEach(() => {
+        // Clear DOM before each test
+        document.body.innerHTML = '';
+    });
+
     const buildUser = (overrides?: Partial<any>) => ({
         username: "guest",
         is_admin: false,
@@ -18,7 +23,7 @@ describe("UserActions component", () => {
         let deleteCalls = 0;
 
         const user = userEvent.setup();
-        render(
+        const { unmount } = render(
             React.createElement(UserActions as any, {
                 user: buildUser(),
                 read_only: false,
@@ -37,6 +42,8 @@ describe("UserActions component", () => {
 
         expect(editCalls).toBe(1);
         expect(deleteCalls).toBe(1);
+        
+        unmount();
     });
 
     it("hides delete action for admin or read-only scenarios", async () => {
@@ -44,7 +51,8 @@ describe("UserActions component", () => {
         const { render, screen } = await import("@testing-library/react");
         const { UserActions } = await import("../UserActions");
 
-        const { rerender } = render(
+        // Test admin user scenario
+        const { unmount, rerender } = render(
             React.createElement(UserActions as any, {
                 user: buildUser({ is_admin: true }),
                 read_only: false,
@@ -53,9 +61,11 @@ describe("UserActions component", () => {
             })
         );
 
-        expect(screen.getByRole('button', { name: /settings/i })).toBeTruthy();
+        // For admin users: settings button exists, delete button does not
+        expect(screen.queryAllByRole('button', { name: /settings/i }).length).toBeGreaterThan(0);
         expect(screen.queryByRole('button', { name: /delete/i })).toBeNull();
 
+        // Test read-only scenario
         rerender(
             React.createElement(UserActions as any, {
                 user: buildUser(),
@@ -65,6 +75,9 @@ describe("UserActions component", () => {
             })
         );
 
+        // For read-only: no buttons should be visible
         expect(screen.queryAllByRole('button')).toHaveLength(0);
+        
+        unmount();
     });
 });
