@@ -10,9 +10,7 @@
  * @see https://www.npmjs.com/package/msw-auto-mock
  */
 
-import { createMiddleware } from "msw-auto-mock";
 import { http, type RequestHandler } from "msw";
-import type { paths } from "../store/sratApi";
 
 /**
  * OpenAPI specification path

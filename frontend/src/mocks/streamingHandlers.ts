@@ -14,7 +14,7 @@ import type {
 	UpdateProgress,
 	Welcome,
 } from "../store/sratApi";
-import { Supported_events } from "../store/sratApi";
+import { Supported_events, Update_channel, Update_process_state } from "../store/sratApi";
 
 /**
  * Mock data generators for SSE events
@@ -24,7 +24,7 @@ const mockEventData = {
 		message: "Welcome to SRAT (Mocked)",
 		active_clients: 1,
 		supported_events: Object.values(Supported_events),
-		update_channel: "Develop",
+		update_channel: Update_channel.Develop,
 		build_version: "2026.1.0-dev-mock",
 		secure_mode: true,
 		protected_mode: false,
@@ -85,7 +85,7 @@ const mockEventData = {
 	shares: (): SharedResource[] => [],
 
 	updating: (): UpdateProgress => ({
-		update_process_state: "Idle",
+		update_process_state: Update_process_state.Idle,
 		progress: 0,
 		last_release: "",
 		error_message: "",
