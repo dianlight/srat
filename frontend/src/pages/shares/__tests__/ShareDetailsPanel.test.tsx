@@ -100,14 +100,14 @@ describe("ShareDetailsPanel", () => {
 
     it("opens PreviewDialog when StorageIcon is clicked", async () => {
         const React = await import("react");
-        const { render, within } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         // @ts-expect-error - Query param ensures fresh module instance for mocks
         const { ShareDetailsPanel } = await import("../components/ShareDetailsPanel?share-details-preview-test");
 
         const share = await buildShare();
 
-        const { container } = await act(async () => {
+        await act(async () => {
             return render(
                 React.createElement(ShareDetailsPanel as any, {
                     share,
@@ -116,8 +116,8 @@ describe("ShareDetailsPanel", () => {
             );
         });
 
-        // Find the StorageIcon button with the aria-label (from Tooltip title)
-        const storageIconButton = container.querySelector('button[aria-label="View mount point details"]') as HTMLButtonElement;
+        // Find the StorageIcon button using getByRole with aria-label
+        const storageIconButton = screen.getByRole('button', { name: /view mount point details/i });
         expect(storageIconButton).toBeTruthy();
 
         // Click on the StorageIcon to open PreviewDialog
@@ -127,11 +127,11 @@ describe("ShareDetailsPanel", () => {
         });
 
         // PreviewDialog is rendered in a portal, so we need to search document
-        const { screen } = await import("@testing-library/react");
-        expect(await screen.findByText(/Mount Point: \/mnt\/data/)).toBeTruthy();
+        const { screen: globalScreen } = await import("@testing-library/react");
+        expect(await globalScreen.findByText(/Mount Point: \/mnt\/data/)).toBeTruthy();
 
         // Find and click the Close button in the dialog
-        const closeButton = screen.getByRole("button", { name: /close/i });
+        const closeButton = globalScreen.getByRole("button", { name: /close/i });
         await act(async () => {
             const user = userEvent.setup();
             await user.click(closeButton as any);
@@ -140,14 +140,14 @@ describe("ShareDetailsPanel", () => {
 
     it("shows disabled visual effect when share is disabled", async () => {
         const React = await import("react");
-        const { render, within } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         // @ts-expect-error - Query param ensures fresh module instance for mocks
         const { ShareDetailsPanel } = await import("../components/ShareDetailsPanel?share-details-disabled-test");
 
         const share = await buildShare();
         share.disabled = true;
 
-        const { container } = await act(async () => {
+        await act(async () => {
             return render(
                 React.createElement(ShareDetailsPanel as any, {
                     share,
@@ -157,11 +157,11 @@ describe("ShareDetailsPanel", () => {
         });
 
         // Check that a Disabled badge is visible
-        const disabledChip = await within(container).findByText(/Disabled/i);
+        const disabledChip = await screen.findByText(/Disabled/i);
         expect(disabledChip).toBeTruthy();
 
-        // Check that the main container has disabled styling
-        const mountPointInfo = container.querySelector('h6');
-        expect(mountPointInfo?.textContent).toBe("Mount Point Information");
+        // Check that Mount Point Information is visible using semantic query
+        const mountPointInfo = screen.getByText("Mount Point Information");
+        expect(mountPointInfo).toBeTruthy();
     });
 });

@@ -117,9 +117,14 @@ describe("UserEditForm component", () => {
         expect(inputs.length).toBeGreaterThanOrEqual(1);
 
         // Check the form contains password inputs (type=password doesn't have textbox role)
-        const container = document.body;
-        const passwordInputs = container.querySelectorAll('input[type="password"]');
-        expect(passwordInputs.length).toBe(2);
+        const passwordInputs = document.body.getElementsByTagName('input');
+        let passwordCount = 0;
+        for (let i = 0; i < passwordInputs.length; i++) {
+            if (passwordInputs[i].type === 'password') {
+                passwordCount++;
+            }
+        }
+        expect(passwordCount).toBe(2);
     });
 
     it("renders cancel button when onCancel provided", async () => {

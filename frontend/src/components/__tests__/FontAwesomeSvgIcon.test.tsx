@@ -21,17 +21,18 @@ describe("FontAwesomeSvgIcon Component", () => {
             React.createElement(FontAwesomeSvgIcon, { icon: singlePathIcon })
         );
 
-        // Check that an SVG element is rendered
-        const svgElement = container.querySelector('svg');
+        // Check that an SVG element is rendered (SVG has no semantic role, must use container)
+        const svgElement = container.firstChild as SVGSVGElement;
         expect(svgElement).toBeTruthy();
+        expect(svgElement?.tagName).toBe('svg');
 
         // Check that the viewBox is set correctly
         expect(svgElement?.getAttribute('viewBox')).toBe('0 0 16 16');
 
         // Check that a single path element is rendered
-        const pathElement = svgElement?.querySelector('path');
-        expect(pathElement).toBeTruthy();
-        expect(pathElement?.getAttribute('d')).toBe('M8 0C3.58 0 0 3.58 0 8s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8z');
+        const pathElements = svgElement?.getElementsByTagName('path');
+        expect(pathElements?.length).toBe(1);
+        expect(pathElements?.[0]?.getAttribute('d')).toBe('M8 0C3.58 0 0 3.58 0 8s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8z');
     });
 
     it("renders with multi-path icon data (duotone)", async () => {
@@ -56,14 +57,15 @@ describe("FontAwesomeSvgIcon Component", () => {
             React.createElement(FontAwesomeSvgIcon, { icon: multiPathIcon })
         );
 
-        const svgElement = container.querySelector('svg');
+        const svgElement = container.firstChild as SVGSVGElement;
         expect(svgElement).toBeTruthy();
+        expect(svgElement?.tagName).toBe('svg');
 
         // Check that the viewBox is set correctly for 24x24 icon
         expect(svgElement?.getAttribute('viewBox')).toBe('0 0 24 24');
 
         // Check that both path elements are rendered
-        const pathElements = svgElement?.querySelectorAll('path');
+        const pathElements = svgElement?.getElementsByTagName('path');
         expect(pathElements?.length).toBe(2);
 
         // Check that the first path has 40% opacity (secondary/faded element)
@@ -88,8 +90,9 @@ describe("FontAwesomeSvgIcon Component", () => {
             React.createElement(FontAwesomeSvgIcon, { icon: customSizeIcon })
         );
 
-        const svgElement = container.querySelector('svg');
+        const svgElement = container.firstChild as SVGSVGElement;
         expect(svgElement).toBeTruthy();
+        expect(svgElement?.tagName).toBe('svg');
 
         // Check that the viewBox respects custom dimensions
         expect(svgElement?.getAttribute('viewBox')).toBe('0 0 32 20');
@@ -128,11 +131,12 @@ describe("FontAwesomeSvgIcon Component", () => {
             React.createElement(FontAwesomeSvgIcon, { icon: emptyMultiPathIcon })
         );
 
-        const svgElement = container.querySelector('svg');
+        const svgElement = container.firstChild as SVGSVGElement;
         expect(svgElement).toBeTruthy();
+        expect(svgElement?.tagName).toBe('svg');
 
         // Should have no path elements when array is empty
-        const pathElements = svgElement?.querySelectorAll('path');
+        const pathElements = svgElement?.getElementsByTagName('path');
         expect(pathElements?.length).toBe(0);
     });
 
@@ -159,8 +163,8 @@ describe("FontAwesomeSvgIcon Component", () => {
             React.createElement(FontAwesomeSvgIcon, { icon: complexMultiPathIcon })
         );
 
-        const svgElement = container.querySelector('svg');
-        const pathElements = svgElement?.querySelectorAll('path');
+        const svgElement = container.firstChild as SVGSVGElement;
+        const pathElements = svgElement?.getElementsByTagName('path');
         expect(pathElements?.length).toBe(3);
 
         // First path should have 40% opacity

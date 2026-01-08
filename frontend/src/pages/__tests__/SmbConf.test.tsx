@@ -60,12 +60,8 @@ describe("SmbConf Component", () => {
             )
         );
 
-        // Check that syntax highlighter container is rendered
-        const highlighterElements = container.querySelectorAll('[class*="hljs"]');
-        expect(highlighterElements.length).toBeGreaterThanOrEqual(0);
-
         // Check that the component rendered without errors
-        expect(container).toBeTruthy();
+        expect(container.firstChild).toBeTruthy();
     });
 
     it("displays InView component with proper structure", async () => {
@@ -91,8 +87,8 @@ describe("SmbConf Component", () => {
             )
         );
 
-        // Check that InView creates a div container
-        expect(container.querySelector('div')).toBeTruthy();
+        // Check that InView creates a container
+        expect(container.firstChild).toBeTruthy();
     });
 
     it("renders syntax highlighter with correct language setting", async () => {
@@ -118,8 +114,8 @@ describe("SmbConf Component", () => {
             )
         );
 
-        // Check for syntax highlighter elements
-        const codeElements = container.querySelectorAll('code');
+        // Check for syntax highlighter elements using getElementsByTagName
+        const codeElements = container.getElementsByTagName('code');
         expect(codeElements.length).toBeGreaterThanOrEqual(0);
     });
 
@@ -236,8 +232,8 @@ describe("SmbConf Component", () => {
         );
 
         // Check that pre or code elements exist (syntax highlighter structure)
-        const preElements = container.querySelectorAll('pre');
-        const codeElements = container.querySelectorAll('code');
+        const preElements = container.getElementsByTagName('pre');
+        const codeElements = container.getElementsByTagName('code');
 
         expect(preElements.length + codeElements.length).toBeGreaterThanOrEqual(0);
     });
@@ -267,8 +263,8 @@ describe("SmbConf Component", () => {
             )
         );
 
-        // The InView component should have rendered a div
-        const inViewDiv = container.querySelector('div');
+        // The InView component should have rendered
+        const inViewDiv = container.firstChild as HTMLElement;
         expect(inViewDiv).toBeTruthy();
 
         // Fire a scroll event to potentially trigger InView
@@ -372,7 +368,9 @@ describe("SmbConf Component", () => {
             )
         );
 
-        // SyntaxHighlighter should be in the DOM
-        expect(container.querySelector('pre, code')).toBeTruthy();
+        // SyntaxHighlighter should be in the DOM - check using getElementsByTagName
+        const hasPreOrCode = container.getElementsByTagName('pre').length > 0 || 
+                             container.getElementsByTagName('code').length > 0;
+        expect(hasPreOrCode).toBeTruthy();
     });
 });

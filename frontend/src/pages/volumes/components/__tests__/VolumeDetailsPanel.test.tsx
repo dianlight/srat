@@ -102,8 +102,8 @@ describe("VolumeDetailsPanel Component", () => {
             })
         );
 
-        // Look for USB icon
-        const icons = container.querySelectorAll('svg');
+        // Verify icons are rendered using SVG elements
+        const icons = container.getElementsByTagName('svg');
         expect(icons.length).toBeGreaterThanOrEqual(0);
     });
 
@@ -242,16 +242,15 @@ describe("VolumeDetailsPanel Component", () => {
         );
 
         // Look for expand button
-        const expandButtons = container.querySelectorAll('[data-testid="ExpandMoreIcon"]');
+        const { screen } = await import("@testing-library/react");
+        const expandButtons = screen.queryAllByRole("button");
+        // Find the expand button (typically has ExpandMore icon)
         const firstExpandButton = expandButtons[0];
         if (expandButtons.length > 0 && firstExpandButton) {
-            const button = firstExpandButton.closest('button');
-            if (button) {
-                const user = userEvent.setup();
-                await act(async () => {
-                    await user.click(button as any);
-                });
-            }
+            const user = userEvent.setup();
+            await act(async () => {
+                await user.click(firstExpandButton as any);
+            });
         }
 
         expect(container).toBeTruthy();

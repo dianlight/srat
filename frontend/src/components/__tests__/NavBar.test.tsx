@@ -41,50 +41,7 @@ describe("NavBar Component", () => {
 
     it("renders NavBar with AppBar and basic elements", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { BrowserRouter } = await import("react-router-dom");
-        const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("../../../test/setup");
-        const { Provider } = await import("react-redux");
-
-        const theme = createTheme();
-        const store = await createTestStore();
-        const mockBodyRef = { current: document.createElement('div') };
-
-        const { container } = render(
-            React.createElement(
-                BrowserRouter,
-                null,
-                React.createElement(
-                    Provider,
-                    {
-                        store, children:
-                            React.createElement(
-                                ThemeProvider,
-                                { theme },
-                                React.createElement(NavBar as any, {
-                                    error: "",
-                                    bodyRef: mockBodyRef
-                                })
-                            )
-                    }
-                )
-            )
-        );
-
-        // Check that the component renders without errors (the AppBar might not have banner role in all contexts)
-        expect(container).toBeTruthy();
-
-        // Look for any element that indicates the navbar rendered
-        const navElements = container.querySelectorAll('[class*="AppBar"], [class*="Toolbar"], nav, header');
-        expect(navElements.length).toBeGreaterThanOrEqual(0);
-    });
-
-    it("renders logo with hover functionality", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { userEvent } = await import("@testing-library/user-event");
+        const { render, screen } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
         const { NavBar } = await import("../NavBar");
@@ -119,21 +76,64 @@ describe("NavBar Component", () => {
         // Check that the component renders without errors
         expect(container).toBeTruthy();
 
-        // Look for any elements that might contain a logo (id, class, or img elements)
-        const logoElements = container.querySelectorAll('#logo-container, [class*="logo"], img');
+        // NavBar component renders successfully (even if it doesn't render visible elements in test environment)
+        // The component is rendered within the container
+    });
+
+    it("renders logo with hover functionality", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
+        const { BrowserRouter } = await import("react-router-dom");
+        const { NavBar } = await import("../NavBar");
+        const { createTestStore } = await import("../../../test/setup");
+        const { Provider } = await import("react-redux");
+
+        const theme = createTheme();
+        const store = await createTestStore();
+        const mockBodyRef = { current: document.createElement('div') };
+        const user = userEvent.setup();
+
+        const { container } = render(
+            React.createElement(
+                BrowserRouter,
+                null,
+                React.createElement(
+                    Provider,
+                    {
+                        store, children:
+                            React.createElement(
+                                ThemeProvider,
+                                { theme },
+                                React.createElement(NavBar as any, {
+                                    error: "",
+                                    bodyRef: mockBodyRef
+                                })
+                            )
+                    }
+                )
+            )
+        );
+
+        // Check that the component renders without errors
+        expect(container).toBeTruthy();
+
+        // Look for logo image element
+        const logoElements = container.getElementsByTagName('img');
         expect(logoElements.length).toBeGreaterThanOrEqual(0);
 
         // Test hover functionality if logo elements are found
         if (logoElements.length > 0) {
             const logo = logoElements[0] as HTMLElement;
-            userEvent.hover(logo);
-            userEvent.unhover(logo);
+            await user.hover(logo);
+            await user.unhover(logo);
         }
     });
 
     it("handles tab switching and localStorage persistence", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { userEvent } = await import("@testing-library/user-event");
 
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
@@ -168,7 +168,7 @@ describe("NavBar Component", () => {
         );
 
         // Find tabs
-        const tabs = container.querySelectorAll('[role="tab"]');
+        const tabs = screen.queryAllByRole("tab");
         const secondTab = tabs[1];
         if (tabs.length > 1 && secondTab) {
             userEvent.click(secondTab);
@@ -181,7 +181,7 @@ describe("NavBar Component", () => {
 
     it("renders mobile menu when screen is small", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
         const { NavBar } = await import("../NavBar");
@@ -214,13 +214,13 @@ describe("NavBar Component", () => {
         );
 
         // Look for menu icon button
-        const menuButtons = container.querySelectorAll('[aria-label="navigation menu"]');
+        const menuButtons = screen.queryAllByRole("button", { name: /navigation menu/i });
         expect(menuButtons.length).toBeGreaterThanOrEqual(0);
     });
 
     it("renders theme switch button and handles mode switching", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { userEvent } = await import("@testing-library/user-event");
 
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
@@ -255,7 +255,7 @@ describe("NavBar Component", () => {
         );
 
         // Find theme switch button (look for mode icons)
-        const themeButtons = container.querySelectorAll('button') as NodeListOf<HTMLButtonElement>;
+        const themeButtons = screen.queryAllByRole("button");
         const themeButton = Array.from(themeButtons).find(button =>
             button.querySelector('[data-testid="LightModeIcon"], [data-testid="DarkModeIcon"], [data-testid="AutoModeIcon"]')
         );
@@ -269,7 +269,7 @@ describe("NavBar Component", () => {
 
     it("renders help/tour button", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
         const { NavBar } = await import("../NavBar");
@@ -301,14 +301,13 @@ describe("NavBar Component", () => {
             )
         );
 
-        // Look for help icons
-        const helpIcons = container.querySelectorAll('[data-testid="HelpIcon"], [data-testid="HelpOutlineIcon"]');
-        expect(helpIcons.length).toBeGreaterThanOrEqual(0);
+        // Look for help icons - check component renders without errors
+        expect(container).toBeTruthy();
     });
 
     it("renders GitHub support button", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { userEvent } = await import("@testing-library/user-event");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
@@ -349,7 +348,7 @@ describe("NavBar Component", () => {
         );
 
         // Find github icon/button (look for img elements with github in src)
-        const githubButtons = container.querySelectorAll('img') as NodeListOf<HTMLImageElement>;
+        const githubButtons = container.getElementsByTagName('img');
         const githubButton = Array.from(githubButtons).find(img =>
             img.src && img.src.includes('github')
         );
@@ -361,7 +360,7 @@ describe("NavBar Component", () => {
 
     it("handles localStorage tab restoration", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
         const { NavBar } = await import("../NavBar");
@@ -405,7 +404,7 @@ describe("NavBar Component", () => {
 
     it("handles error prop correctly", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
         const { NavBar } = await import("../NavBar");
@@ -442,7 +441,7 @@ describe("NavBar Component", () => {
 
     it("renders tab panels with ErrorBoundary wrapping", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
         const { NavBar } = await import("../NavBar");
@@ -480,7 +479,7 @@ describe("NavBar Component", () => {
 
     it("handles development environment indicators", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
         const { NavBar } = await import("../NavBar");
@@ -512,14 +511,13 @@ describe("NavBar Component", () => {
             )
         );
 
-        // Look for bug report icons that indicate development environment
-        const bugIcons = container.querySelectorAll('[data-testid="BugReportIcon"]');
-        expect(bugIcons.length).toBeGreaterThanOrEqual(0);
+        // Look for bug report icons that indicate development environment - check component renders without errors
+        expect(container).toBeTruthy();
     });
 
     it("handles NotificationCenter rendering", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
         const { NavBar } = await import("../NavBar");
@@ -557,7 +555,7 @@ describe("NavBar Component", () => {
 
     it("handles mobile menu open and close", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { userEvent } = await import("@testing-library/user-event");
 
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
@@ -592,16 +590,16 @@ describe("NavBar Component", () => {
         );
 
         // Find menu button
-        const menuButton = container.querySelector('[aria-label="navigation menu"]');
+        const menuButton = screen.queryByRole("button", { name: /navigation menu/i });
         if (menuButton) {
             userEvent.click(menuButton);
 
             // Menu should be open, look for menu items
-            const menu = document.querySelector('#menu-appbar');
+            const menu = document.getElementById('menu-appbar');
             expect(menu).toBeTruthy();
 
             // Click outside to close (or find a menu item to click)
-            const menuItems = document.querySelectorAll('[role="menuitem"]');
+            const menuItems = screen.queryAllByRole("menuitem");
             const firstMenuItem = menuItems[0];
             if (menuItems.length > 0 && firstMenuItem) {
                 userEvent.click(firstMenuItem);
@@ -613,7 +611,7 @@ describe("NavBar Component", () => {
 
     it("handles menu item click and updates tab", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { userEvent } = await import("@testing-library/user-event");
 
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
@@ -648,12 +646,12 @@ describe("NavBar Component", () => {
         );
 
         // Find menu button and open menu
-        const menuButton = container.querySelector('[aria-label="navigation menu"]');
+        const menuButton = screen.queryByRole("button", { name: /navigation menu/i });
         if (menuButton) {
             userEvent.click(menuButton);
 
             // Find menu items and click one
-            const menuItems = document.querySelectorAll('[role="menuitem"]');
+            const menuItems = screen.queryAllByRole("menuitem");
             const secondMenuItem = menuItems[1];
             if (menuItems.length > 1 && secondMenuItem) {
                 userEvent.click(secondMenuItem);
@@ -669,7 +667,7 @@ describe("NavBar Component", () => {
 
     it("renders secure mode icons correctly", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
         const { NavBar } = await import("../NavBar");
@@ -701,14 +699,13 @@ describe("NavBar Component", () => {
             )
         );
 
-        // Look for lock icons
-        const lockIcons = container.querySelectorAll('[data-testid="LockIcon"], [data-testid="LockOpenIcon"]');
-        expect(lockIcons.length).toBeGreaterThanOrEqual(0);
+        // Look for lock icons - check component renders without errors
+        expect(container).toBeTruthy();
     });
 
     it("renders read-only mode icon when applicable", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
         const { NavBar } = await import("../NavBar");
@@ -740,14 +737,13 @@ describe("NavBar Component", () => {
             )
         );
 
-        // Look for preview icon (read-only indicator)
-        const previewIcons = container.querySelectorAll('[data-testid="PreviewIcon"]');
-        expect(previewIcons.length).toBeGreaterThanOrEqual(0);
+        // Look for preview icon (read-only indicator) - check component renders without errors
+        expect(container).toBeTruthy();
     });
 
     it("toggles tour open/close state", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { userEvent } = await import("@testing-library/user-event");
 
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
@@ -782,7 +778,7 @@ describe("NavBar Component", () => {
         );
 
         // Find help button and click it
-        const buttons = container.querySelectorAll('button') as NodeListOf<HTMLButtonElement>;
+        const buttons = screen.queryAllByRole("button");
         const helpButton = Array.from(buttons).find(button =>
             button.querySelector('[data-testid="HelpIcon"], [data-testid="HelpOutlineIcon"]')
         );
@@ -795,7 +791,7 @@ describe("NavBar Component", () => {
 
     it("cycles through theme modes: light -> dark -> system -> light", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { userEvent } = await import("@testing-library/user-event");
 
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
@@ -830,7 +826,7 @@ describe("NavBar Component", () => {
         );
 
         // Find theme switch button
-        const buttons = container.querySelectorAll('button') as NodeListOf<HTMLButtonElement>;
+        const buttons = screen.queryAllByRole("button");
         const themeButton = Array.from(buttons).find(button =>
             button.querySelector('[data-testid="LightModeIcon"], [data-testid="DarkModeIcon"], [data-testid="AutoModeIcon"]')
         );
@@ -847,7 +843,7 @@ describe("NavBar Component", () => {
 
     it("handles location state with tabId", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { MemoryRouter } = await import("react-router-dom");
         const { NavBar } = await import("../NavBar");
@@ -885,7 +881,7 @@ describe("NavBar Component", () => {
 
     it("handles invalid stored tab index", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
         const { NavBar } = await import("../NavBar");
@@ -928,7 +924,7 @@ describe("NavBar Component", () => {
 
     it("renders circular progress with label correctly", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
         const { NavBar } = await import("../NavBar");
@@ -961,13 +957,13 @@ describe("NavBar Component", () => {
         );
 
         // Check for circular progress elements
-        const progressElements = container.querySelectorAll('[role="progressbar"]');
+        const progressElements = screen.queryAllByRole("progressbar");
         expect(progressElements.length).toBeGreaterThanOrEqual(0);
     });
 
     it("filters development-only tabs in production", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
         const { NavBar } = await import("../NavBar");
@@ -1003,13 +999,13 @@ describe("NavBar Component", () => {
         expect(container).toBeTruthy();
 
         // Tabs may or may not be visible depending on media queries and environment
-        const tabs = container.querySelectorAll('[role="tab"]');
+        const tabs = screen.queryAllByRole("tab");
         expect(tabs.length).toBeGreaterThanOrEqual(0);
     });
 
     it("renders tab icons for dirty state", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
         const { NavBar } = await import("../NavBar");
@@ -1041,8 +1037,7 @@ describe("NavBar Component", () => {
             )
         );
 
-        // Look for report problem icons (dirty state indicator)
-        const reportIcons = container.querySelectorAll('[data-testid="ReportProblemIcon"]');
-        expect(reportIcons.length).toBeGreaterThanOrEqual(0);
+        // Look for report problem icons (dirty state indicator) - check component renders without errors
+        expect(container).toBeTruthy();
     });
 });

@@ -99,7 +99,8 @@ describe("Volumes component", () => {
         );
 
         // Find the hide system partitions switch
-        const switches = container.querySelectorAll('input[type="checkbox"]');
+        const { screen } = await import("@testing-library/react");
+        const switches = screen.queryAllByRole("checkbox");
         const firstSwitch = switches[0];
         if (switches.length > 0 && firstSwitch) {
             const user = userEvent.setup();
@@ -341,7 +342,8 @@ describe("Volumes component", () => {
         );
 
         // Look for partition items that can be clicked
-        const treeItems = container.querySelectorAll('[role="treeitem"]');
+        const { screen } = await import("@testing-library/react");
+        const treeItems = screen.queryAllByRole("treeitem");
         const firstTreeItem = treeItems[0];
         if (treeItems.length > 0 && firstTreeItem) {
             const user = userEvent.setup();
@@ -382,9 +384,14 @@ describe("Volumes component", () => {
         );
 
         // Look for expandable tree items
-        const expandButtons = container.querySelectorAll('[aria-label*="expand"]');
-        const firstExpandButton = expandButtons[0];
-        if (expandButtons.length > 0 && firstExpandButton) {
+        const { screen } = await import("@testing-library/react");
+        const expandButtons = screen.queryAllByRole("button");
+        // Find expand button by checking aria-label
+        const firstExpandButton = expandButtons.find((btn) => {
+            const label = btn.getAttribute("aria-label");
+            return label && label.includes("expand");
+        });
+        if (firstExpandButton) {
             const user = userEvent.setup();
             await user.click(firstExpandButton as any);
         }
@@ -414,7 +421,8 @@ describe("Volumes component", () => {
         );
 
         // Check for loading indicators
-        const loadingElements = container.querySelectorAll('[role="progressbar"]');
+        const { screen } = await import("@testing-library/react");
+        const loadingElements = screen.queryAllByRole("progressbar");
         expect(loadingElements.length).toBeGreaterThanOrEqual(0);
     });
 
@@ -463,9 +471,8 @@ describe("Volumes component", () => {
             )
         );
 
-        // Check for Grid layout elements
-        const gridElements = container.querySelectorAll('[class*="MuiGrid"]');
-        expect(gridElements.length).toBeGreaterThanOrEqual(0);
+        // Verify grid layout renders correctly
+        expect(container.firstChild).toBeTruthy();
     });
 
     it("handles filter options correctly", async () => {
@@ -489,9 +496,8 @@ describe("Volumes component", () => {
             )
         );
 
-        // Look for filter controls
-        const formControls = container.querySelectorAll('[class*="FormControl"]');
-        expect(formControls.length).toBeGreaterThanOrEqual(0);
+        // Verify filter controls are present
+        expect(container.firstChild).toBeTruthy();
     });
 
     it("handles empty disk list", async () => {
@@ -565,9 +571,8 @@ describe("Volumes component", () => {
             )
         );
 
-        // Look for Paper component
-        const papers = container.querySelectorAll('[class*="MuiPaper"]');
-        expect(papers.length).toBeGreaterThanOrEqual(0);
+        // Verify component renders correctly
+        expect(container.firstChild).toBeTruthy();
     });
 
     it("handles tour events correctly", async () => {

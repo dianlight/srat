@@ -179,7 +179,7 @@ describe("Settings", () => {
 
     it("renders form fields for workgroup and NetBIOS name", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Settings } = await import("../Settings");
@@ -188,7 +188,7 @@ describe("Settings", () => {
         const store = await createTestStore();
         const theme = createTheme();
 
-        const { container } = render(
+        render(
             React.createElement(
                 Provider,
                 {
@@ -202,14 +202,14 @@ describe("Settings", () => {
             )
         );
 
-        // Look for form inputs
-        const inputs = container.querySelectorAll('input');
+        // Look for form inputs using accessible queries
+        const inputs = screen.queryAllByRole('textbox');
         expect(inputs.length).toBeGreaterThanOrEqual(0);
     });
 
     it("renders accordion sections", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Settings } = await import("../Settings");
@@ -218,7 +218,7 @@ describe("Settings", () => {
         const store = await createTestStore();
         const theme = createTheme();
 
-        const { container } = render(
+        render(
             React.createElement(
                 Provider,
                 {
@@ -232,14 +232,14 @@ describe("Settings", () => {
             )
         );
 
-        // Look for accordion elements
-        const accordions = container.querySelectorAll('[class*="MuiAccordion"]');
-        expect(accordions.length).toBeGreaterThanOrEqual(0);
+        // Look for region elements (accordions have role="region" when expanded)
+        const regions = screen.queryAllByRole('region');
+        expect(regions.length).toBeGreaterThanOrEqual(0);
     });
 
     it("handles telemetry consent toggle", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Settings } = await import("../Settings");
@@ -248,7 +248,7 @@ describe("Settings", () => {
         const store = await createTestStore();
         const theme = createTheme();
 
-        const { container } = render(
+        render(
             React.createElement(
                 Provider,
                 {
@@ -262,14 +262,15 @@ describe("Settings", () => {
             )
         );
 
-        // Look for switches or checkboxes
-        const switches = container.querySelectorAll('input[type="checkbox"], [role="switch"]');
-        expect(switches.length).toBeGreaterThanOrEqual(0);
+        // Look for switches or checkboxes using semantic queries
+        const switches = screen.queryAllByRole('switch');
+        const checkboxes = screen.queryAllByRole('checkbox');
+        expect(switches.length + checkboxes.length).toBeGreaterThanOrEqual(0);
     });
 
     it("renders loading indicators correctly", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Settings } = await import("../Settings");
@@ -278,7 +279,7 @@ describe("Settings", () => {
         const store = await createTestStore();
         const theme = createTheme();
 
-        const { container } = render(
+        render(
             React.createElement(
                 Provider,
                 {
@@ -292,14 +293,14 @@ describe("Settings", () => {
             )
         );
 
-        // Check for progress indicators
-        const loadingElements = container.querySelectorAll('[role="progressbar"]');
+        // Check for progress indicators using semantic query
+        const loadingElements = screen.queryAllByRole('progressbar');
         expect(loadingElements.length).toBeGreaterThanOrEqual(0);
     });
 
     it("renders action buttons", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Settings } = await import("../Settings");
@@ -308,7 +309,7 @@ describe("Settings", () => {
         const store = await createTestStore();
         const theme = createTheme();
 
-        const { container } = render(
+        render(
             React.createElement(
                 Provider,
                 {
@@ -322,8 +323,8 @@ describe("Settings", () => {
             )
         );
 
-        // Look for buttons
-        const buttons = container.querySelectorAll('button');
+        // Look for buttons using semantic query
+        const buttons = screen.queryAllByRole('button');
         expect(buttons.length).toBeGreaterThanOrEqual(0);
     });
 

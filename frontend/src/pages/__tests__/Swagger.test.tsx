@@ -30,7 +30,7 @@ describe("Swagger page", () => {
 
     it("renders overview content and links", async () => {
         const React = await import("react");
-        const rtl = (await import("@testing-library/react")) as any;
+        const { render, screen, within } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Swagger } = await import("../Swagger");
@@ -39,7 +39,7 @@ describe("Swagger page", () => {
         const theme = createTheme();
         const store = await createTestStore();
 
-        const { container } = rtl.render(
+        render(
             React.createElement(
                 Provider as any,
                 { store },
@@ -51,18 +51,18 @@ describe("Swagger page", () => {
             ),
         );
 
-        const heading = await rtl.within(container).findByText("API Documentation");
+        const heading = await screen.findByText("API Documentation");
         expect(heading).toBeTruthy();
 
-        const jsonLink = await rtl.within(container).findByText("JSON");
-        const yamlLink = await rtl.within(container).findByText("YAML");
+        const jsonLink = await screen.findByText("JSON");
+        const yamlLink = await screen.findByText("YAML");
         expect(jsonLink).toBeTruthy();
         expect(yamlLink).toBeTruthy();
     });
 
     it("includes openapi-explorer with normalized spec-url", async () => {
         const React = await import("react");
-        const rtl = (await import("@testing-library/react")) as any;
+        const { render } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Swagger } = await import("../Swagger");
@@ -71,7 +71,7 @@ describe("Swagger page", () => {
         const theme = createTheme();
         const store = await createTestStore();
 
-        rtl.render(
+        const { container } = render(
             React.createElement(
                 Provider as any,
                 { store },
@@ -83,7 +83,8 @@ describe("Swagger page", () => {
             ),
         );
 
-        const explorer = document.querySelector("openapi-explorer");
+        // Custom element without semantic role - use getElementsByTagName
+        const explorer = container.getElementsByTagName("openapi-explorer")[0];
         expect(explorer).toBeTruthy();
         const specUrl = explorer?.getAttribute("spec-url") || "";
         expect(specUrl).toContain("openapi.yaml");
