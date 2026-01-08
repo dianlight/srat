@@ -191,11 +191,11 @@ expect(newChecked).not.toBe(initialChecked);
 10. ~~`src/pages/dashboard/metrics/__tests__/DiskHealthMetrics.test.tsx`~~ ✅ **COMPLETED**
 11. ~~`src/pages/settings/__tests__/Settings.test.tsx`~~ ✅ **COMPLETED**
 12. ~~`src/pages/users/__tests__/UserActions.test.tsx`~~ ✅ **COMPLETED**
-13. `src/pages/users/__tests__/Users.test.tsx`
-14. `src/pages/users/components/__tests__/UserEditForm.test.tsx`
-15. `src/pages/users/components/__tests__/UsersTreeView.test.tsx`
-16. `src/pages/volumes/__tests__/Volumes.test.tsx`
-17. `src/pages/volumes/components/__tests__/VolumeDetailsPanel.test.tsx`
+13. ~~`src/pages/users/__tests__/Users.test.tsx`~~ ✅ **COMPLETED**
+14. ~~`src/pages/users/components/__tests__/UserEditForm.test.tsx`~~ ✅ **COMPLETED**
+15. ~~`src/pages/users/components/__tests__/UsersTreeView.test.tsx`~~ ✅ **COMPLETED**
+16. ~~`src/pages/volumes/__tests__/Volumes.test.tsx`~~ ✅ **COMPLETED**
+17. ~~`src/pages/volumes/components/__tests__/VolumeDetailsPanel.test.tsx`~~ ✅ **COMPLETED**
 
 ### Common Patterns to Fix
 
