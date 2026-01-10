@@ -31,8 +31,8 @@
     "@types/react-syntax-highlighter": "15.5.13",
     "@types/semver": "7.7.1",
     "@typescript/native-preview": "7.0.0-dev.20260108.1",
-    "msw": "^2.7.1",
-    "msw-auto-mock": "^0.26.0"
+    "msw": "2.7.1",
+    "msw-auto-mock": "0.26.0"
   },
   "peerDependencies": {
     "typescript": "^5.9.3"
