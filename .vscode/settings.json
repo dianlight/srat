@@ -199,5 +199,8 @@
   "github.copilot.nextEditSuggestions.allowWhitespaceOnlyChanges": false,
   "editor.inlineSuggest.edits.allowCodeShifting": "horizontal",
   "editor.inlineSuggest.edits.showCollapsed": true,
-  "git.blame.ignoreWhitespace": true
+  "git.blame.ignoreWhitespace": true,
+  "bun.test.customScript": "bun run test",
+  "npm.packageManager": "bun",
+  "npm.scriptRunner": "bun"
 }
