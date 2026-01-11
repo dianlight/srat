@@ -1329,12 +1329,25 @@ export type Welcome = {
   supported_events: Supported_events[] | null;
   update_channel: Update_channel;
 };
+export type BinaryAsset = {
+  browser_download_url?: string;
+  digest?: string;
+  id: number;
+  name: string;
+  size: number;
+};
+export type ReleaseAsset = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  arch_asset?: BinaryAsset;
+  last_release?: string;
+};
 export type UpdateProgress = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
   error_message?: string;
-  last_release?: string;
   progress?: number;
+  release_asset?: ReleaseAsset;
   update_process_state?: Update_process_state;
 };
 export type Partition = {
@@ -1376,18 +1389,6 @@ export type Disk = {
   size?: number;
   smart_info?: SmartInfo;
   vendor?: string;
-};
-export type BinaryAsset = {
-  browser_download_url?: string;
-  id: number;
-  name: string;
-  size: number;
-};
-export type ReleaseAsset = {
-  /** A URL to the JSON Schema for this object. */
-  $schema?: string;
-  arch_asset?: BinaryAsset;
-  last_release?: string;
 };
 export type PatchMountPointData = {
   /** A URL to the JSON Schema for this object. */
