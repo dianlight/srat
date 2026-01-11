@@ -306,7 +306,7 @@ func (broker *BroadcasterService) ProcessWebSocketChannel(send ws.Sender) {
 				Data: event.Message,
 			})
 			if err != nil {
-				if !strings.Contains(err.Error(), "write: broken pipe") {
+				if !strings.Contains(err.Error(), ": broken pipe") {
 					tlog.DebugContext(broker.ctx, "Error sending event to client", "event", event, "err", err, "active clients", broker.ConnectedClients.Load())
 				}
 				return

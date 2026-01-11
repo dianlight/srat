@@ -269,7 +269,7 @@ func (self *UpgradeService) watchForDevelopUpdates() {
 						// Create update package
 						updatePkg := &UpdatePackage{
 							FilesPaths: []UpdateFile{{
-								Path:      currentInfo.Name(),
+								Path:      watchPath,
 								Size:      currentInfo.Size(),
 								Signature: nil,
 							}},

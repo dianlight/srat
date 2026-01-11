@@ -882,7 +882,7 @@ func (self *VolumeService) getVolumesData() errors.E {
 			return nil, errHw
 		}
 		if hwDisks == nil {
-			slog.DebugContext(self.ctx, "Hardware client returned nil disks, continuing with empty disk list")
+			tlog.TraceContext(self.ctx, "Hardware client returned nil disks, continuing with empty disk list")
 			return self.disks, nil
 		}
 
@@ -892,7 +892,7 @@ func (self *VolumeService) getVolumesData() errors.E {
 			if disk.Partitions == nil {
 				continue
 			}
-			tlog.DebugContext(self.ctx, "Processing disk from hardware client", "disk_id", *disk.Id, "partition_count", len(*disk.Partitions))
+			tlog.TraceContext(self.ctx, "Processing disk from hardware client", "disk_id", *disk.Id, "partition_count", len(*disk.Partitions))
 			disk.RefreshVersion = self.refreshVersion
 
 			currentDisk, updateDisk := self.disks.Get(*disk.Id)

@@ -214,7 +214,7 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 			tlog.WarnContext(h.ctx, "Skipping disk with missing ID after conversion", "drive_index", i)
 			continue
 		}
-		tlog.DebugContext(h.ctx, "Adding disk DTO to result map", "disk_id", *diskDto.Id)
+		tlog.TraceContext(h.ctx, "Adding disk DTO to result map", "disk_id", *diskDto.Id)
 		ret[*diskDto.Id] = diskDto
 	}
 
