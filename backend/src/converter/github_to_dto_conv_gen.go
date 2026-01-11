@@ -5,7 +5,7 @@ package converter
 
 import (
 	dto "github.com/dianlight/srat/dto"
-	github "github.com/google/go-github/v80/github"
+	github "github.com/google/go-github/v81/github"
 )
 
 type GitHubToDtoImpl struct{}
@@ -23,6 +23,9 @@ func (c *GitHubToDtoImpl) ReleaseAssetToBinaryAsset(source *github.ReleaseAsset,
 		}
 		if source.BrowserDownloadURL != nil {
 			target.BrowserDownloadURL = *source.BrowserDownloadURL
+		}
+		if source.Digest != nil {
+			target.Digest = *source.Digest
 		}
 	}
 	return nil

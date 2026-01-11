@@ -22,7 +22,7 @@ import (
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/tlog"
 	"github.com/gofri/go-github-ratelimit/v2/github_ratelimit"
-	"github.com/google/go-github/v80/github"
+	"github.com/google/go-github/v81/github"
 
 	"go.uber.org/fx"
 )
@@ -188,7 +188,7 @@ func main() {
 		DockerInterface: *dockerInterface,
 		DockerNet:       *dockerNetwork,
 		UpdateDataDir:   *upgradeDataDir,
-		UpdateFilePath:  "",
+		//UpdateFilePath:  "",
 		UpdateChannel:   updch,
 		DatabasePath:    *dbfile,
 		SupervisorToken: *supervisorToken,
@@ -411,14 +411,14 @@ func main() {
 								slog.Error("Error downloading or extracting update", "err", errDownload)
 							} else {
 								slog.Info("Update downloaded and extracted successfully")
-								if updatePkg.CurrentExecutablePath != nil {
-									slog.Info("Matching executable found", "path", *updatePkg.CurrentExecutablePath)
+								if updatePkg.FilesPaths != nil {
+									slog.Info("Matching executable found", "paths", updatePkg.FilesPaths)
 									errInstall := upgrade_service.InstallUpdatePackage(updatePkg)
 									if errInstall != nil {
 										slog.Error("Error installing update for overseer", "err", errInstall)
 									}
 								} else {
-									slog.Warn("Update downloaded, but no directly matching executable found by name. Check extracted files.", "paths", updatePkg.OtherFilesPaths)
+									slog.Warn("Update downloaded, but no directly matching executable found by name. Check extracted files.", "paths", updatePkg.FilesPaths)
 								}
 							}
 						} else {

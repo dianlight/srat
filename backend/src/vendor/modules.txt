@@ -1,5 +1,5 @@
-# aead.dev/minisign v0.2.0
-## explicit; go 1.16
+# aead.dev/minisign v0.3.0
+## explicit; go 1.21
 aead.dev/minisign
 # dario.cat/mergo v1.0.2
 ## explicit; go 1.13
@@ -181,9 +181,9 @@ github.com/gohugoio/hugo/hugofs/glob
 github.com/gohugoio/hugo/identity
 github.com/gohugoio/hugo/resources/kinds
 github.com/gohugoio/hugo/watcher/filenotify
-# github.com/google/go-github/v80 v80.0.0
+# github.com/google/go-github/v81 v81.0.0
 ## explicit; go 1.24.0
-github.com/google/go-github/v80/github
+github.com/google/go-github/v81/github
 # github.com/google/go-querystring v1.1.0
 ## explicit; go 1.10
 github.com/google/go-querystring/query
@@ -275,11 +275,6 @@ github.com/mfridman/interpolate
 # github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b
 ## explicit
 github.com/mgutz/ansi
-# github.com/minio/selfupdate v0.6.0
-## explicit; go 1.14
-github.com/minio/selfupdate
-github.com/minio/selfupdate/internal/binarydist
-github.com/minio/selfupdate/internal/osext
 # github.com/mitchellh/copystructure v1.2.0
 ## explicit; go 1.15
 github.com/mitchellh/copystructure
@@ -491,6 +486,11 @@ github.com/urfave/cli/v2
 # github.com/vmware-labs/yaml-jsonpath v0.3.2
 ## explicit; go 1.13
 github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath
+# github.com/vvair/selfupdate v0.0.0-20251221113910-176caa7ce89e
+## explicit; go 1.24.0
+github.com/vvair/selfupdate
+github.com/vvair/selfupdate/internal/binarydist
+github.com/vvair/selfupdate/internal/osext
 # github.com/woodsbury/decimal128 v1.3.0
 ## explicit; go 1.21
 github.com/woodsbury/decimal128
@@ -585,7 +585,7 @@ golang.org/x/mod/semver
 ## explicit; go 1.24.0
 golang.org/x/sync/errgroup
 golang.org/x/sync/singleflight
-# golang.org/x/sys v0.39.0
+# golang.org/x/sys v0.40.0
 ## explicit; go 1.24.0
 golang.org/x/sys/cpu
 golang.org/x/sys/plan9

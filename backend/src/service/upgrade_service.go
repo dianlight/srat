@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"log/slog"
@@ -21,16 +22,23 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal/updatekey"
 	"github.com/fsnotify/fsnotify"
-	"github.com/google/go-github/v80/github"
-	"github.com/minio/selfupdate"
+	"github.com/google/go-github/v81/github"
+	"github.com/vvair/selfupdate"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 	"golang.org/x/time/rate"
 )
 
+type UpdateFile struct {
+	Path      string
+	Signature []byte
+	Size      int64
+}
+
 type UpdatePackage struct {
-	CurrentExecutablePath *string
-	OtherFilesPaths       []string
+	//CurrentExecutablePath *string
+	//ReleaseAsset *dto.BinaryAsset
+	FilesPaths []UpdateFile
 	//TempDirPath           string
 }
 
@@ -43,6 +51,7 @@ type UpgradeServiceInterface interface {
 	InstallUpdatePackage(updatePkg *UpdatePackage) errors.E
 	// Apply update to the current binary and restart if running under s6
 	ApplyUpdateAndRestart(updatePkg *UpdatePackage) errors.E
+	GetProcessStatus(parentPid int32) *dto.ProcessStatus
 }
 
 type UpgradeService struct {
@@ -54,6 +63,7 @@ type UpgradeService struct {
 	shutdowner        fx.Shutdowner
 	fileWatcherCtx    context.Context
 	fileWatcherCancel context.CancelFunc
+	verifier          *selfupdate.Verifier
 }
 
 type UpgradeServiceProps struct {
@@ -75,21 +85,28 @@ func NewUpgradeService(lc fx.Lifecycle, in UpgradeServiceProps) (UpgradeServiceI
 	p.shutdowner = in.Shutdowner
 	p.fileWatcherCtx, p.fileWatcherCancel = context.WithCancel(in.Ctx)
 
+	p.verifier = selfupdate.NewVerifier()
+
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			p.ctx.Value("wg").(*sync.WaitGroup).Add(1)
-			go func() {
-				defer p.ctx.Value("wg").(*sync.WaitGroup).Done()
-				p.run()
-			}()
-
-			// Start file watcher for develop channel
-			if p.state.UpdateChannel == dto.UpdateChannels.DEVELOP {
+			if p.state.UpdateChannel != dto.UpdateChannels.NONE {
 				p.ctx.Value("wg").(*sync.WaitGroup).Add(1)
 				go func() {
 					defer p.ctx.Value("wg").(*sync.WaitGroup).Done()
-					p.watchForDevelopUpdates()
+					err := p.updater()
+					if err != nil {
+						slog.ErrorContext(p.ctx, "Error in run loop", "err", err)
+					}
 				}()
+
+				// Start file watcher for develop channel
+				if p.state.UpdateChannel == dto.UpdateChannels.DEVELOP {
+					p.ctx.Value("wg").(*sync.WaitGroup).Add(1)
+					go func() {
+						defer p.ctx.Value("wg").(*sync.WaitGroup).Done()
+						p.watchForDevelopUpdates()
+					}()
+				}
 			}
 
 			return nil
@@ -105,14 +122,14 @@ func NewUpgradeService(lc fx.Lifecycle, in UpgradeServiceProps) (UpgradeServiceI
 	return p, nil
 }
 
-func (self *UpgradeService) run() error {
+func (self *UpgradeService) updater() error {
 	for {
 		select {
 		case <-self.ctx.Done():
 			slog.InfoContext(self.ctx, "Run process closed", "err", self.ctx.Err())
 			return errors.WithStack(self.ctx.Err())
 		case <-time.After(self.updateLimiter.Interval):
-			slog.DebugContext(self.ctx, "Version Checking...")
+			slog.DebugContext(self.ctx, "Version Checking...", "channel", self.state.UpdateChannel.String())
 			self.notifyClient(dto.UpdateProgress{
 				ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSCHECKING,
 			})
@@ -124,7 +141,7 @@ func (self *UpgradeService) run() error {
 				self.state.UpdateAvailable = true
 				self.notifyClient(dto.UpdateProgress{
 					ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE,
-					LastRelease:    ass.LastRelease,
+					ReleaseAsset:   ass,
 				})
 
 				// Auto-update if enabled
@@ -219,11 +236,12 @@ func (self *UpgradeService) watchForDevelopUpdates() {
 				info, err := os.Stat(watchPath)
 				if err != nil {
 					// File might have been deleted or moved
+					slog.ErrorContext(self.ctx, "Failed to stat watched file", "file", watchPath, "err", err)
 					continue
 				}
 
 				if info.ModTime().After(lastModTime) && info.Size() > 0 {
-					slog.InfoContext(self.ctx, "File modification detected", "file", event.Name, "op", event.Op.String())
+					//slog.DebugContext(self.ctx, "File modification detected", "file", event.Name, "op", event.Op.String())
 
 					// Cancel any existing debounce timer
 					if debounceTimer != nil {
@@ -240,6 +258,7 @@ func (self *UpgradeService) watchForDevelopUpdates() {
 						}
 
 						if currentInfo.ModTime().Equal(lastModTime) {
+							slog.DebugContext(self.ctx, "No change in modification time after debounce, skipping update", "file", watchPath)
 							// File hasn't changed since we first saw the event
 							return
 						}
@@ -249,14 +268,23 @@ func (self *UpgradeService) watchForDevelopUpdates() {
 
 						// Create update package
 						updatePkg := &UpdatePackage{
-							CurrentExecutablePath: &watchPath,
-							OtherFilesPaths:       []string{},
+							FilesPaths: []UpdateFile{{
+								Path:      currentInfo.Name(),
+								Size:      currentInfo.Size(),
+								Signature: nil,
+							}},
 						}
 
 						// Notify that update is available
 						self.notifyClient(dto.UpdateProgress{
 							ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE,
-							LastRelease:    "develop-" + currentInfo.ModTime().Format("20060102-150405"),
+							Progress:       0,
+							ReleaseAsset: &dto.ReleaseAsset{
+								ArchAsset: dto.BinaryAsset{
+									Name: filepath.Base(watchPath),
+									Size: int(currentInfo.Size()),
+								},
+							},
 						})
 
 						// Apply the update (this will copy to the running location)
@@ -266,35 +294,35 @@ func (self *UpgradeService) watchForDevelopUpdates() {
 							return
 						}
 
-						// If AutoUpdate is enabled or we're in develop mode, restart
-						if self.state.AutoUpdate || self.state.UpdateChannel == dto.UpdateChannels.DEVELOP {
-							slog.InfoContext(self.ctx, "Triggering restart after develop update install")
+						// We're in develop mode, restart
+
+						slog.InfoContext(self.ctx, "Triggering restart after develop update install")
+						self.notifyClient(dto.UpdateProgress{
+							ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSINSTALLCOMPLETE,
+							Progress:       100,
+							ErrorMessage:   "Update installed, restarting...",
+						})
+
+						// Give time for the message to be sent
+						time.Sleep(500 * time.Millisecond)
+
+						// Check if running under s6 and restart
+						if self.isRunningUnderS6() {
+							slog.InfoContext(self.ctx, "Running under s6, initiating graceful shutdown for restart")
+							if err := self.shutdowner.Shutdown(); err != nil {
+								slog.ErrorContext(self.ctx, "Failed to trigger graceful shutdown", "err", err)
+								// Fallback to os.Exit if shutdowner fails
+								os.Exit(0)
+							}
+						} else {
+							slog.InfoContext(self.ctx, "Not running under s6, manual restart required")
 							self.notifyClient(dto.UpdateProgress{
 								ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSINSTALLCOMPLETE,
 								Progress:       100,
-								ErrorMessage:   "Update installed, restarting...",
+								ErrorMessage:   "Update installed, please restart the service manually",
 							})
-
-							// Give time for the message to be sent
-							time.Sleep(500 * time.Millisecond)
-
-							// Check if running under s6 and restart
-							if self.isRunningUnderS6() {
-								slog.InfoContext(self.ctx, "Running under s6, initiating graceful shutdown for restart")
-								if err := self.shutdowner.Shutdown(); err != nil {
-									slog.ErrorContext(self.ctx, "Failed to trigger graceful shutdown", "err", err)
-									// Fallback to os.Exit if shutdowner fails
-									os.Exit(0)
-								}
-							} else {
-								slog.InfoContext(self.ctx, "Not running under s6, manual restart required")
-								self.notifyClient(dto.UpdateProgress{
-									ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSINSTALLCOMPLETE,
-									Progress:       100,
-									ErrorMessage:   "Update installed, please restart the service manually",
-								})
-							}
 						}
+
 					})
 				}
 			}
@@ -320,6 +348,10 @@ func (self *UpgradeService) GetUpgradeReleaseAsset() (ass *dto.ReleaseAsset, err
 	} else {
 		// if channel PRERELEASE or RELEASE search online on github
 		myversion := config.GetCurrentBinaryVersion()
+
+		if myversion == nil {
+			return nil, errors.Errorf("Current binary version is not set")
+		}
 
 		slog.InfoContext(self.ctx, "Checking for updates", "current", config.Version, "channel", self.state.UpdateChannel.String())
 		releases, _, err := self.gh.Repositories.ListReleases(context.Background(), "dianlight", "srat", &github.ListOptions{
@@ -372,7 +404,7 @@ func (self *UpgradeService) GetUpgradeReleaseAsset() (ass *dto.ReleaseAsset, err
 							LastRelease: *release.TagName,
 							ArchAsset:   archAsset,
 						}
-						myversion = *assertVersion
+						myversion = assertVersion
 						slog.InfoContext(self.ctx, "Found upgrade release asset", "release", *release.TagName, "asset_name", asset.GetName())
 						break
 					}
@@ -396,51 +428,106 @@ func (self *UpgradeService) notifyClient(data dto.UpdateProgress) {
 	}
 }
 
-const progressReportThresholdPercentage = 5
-
-type progressReader struct {
-	reader                 io.Reader
-	totalSize              int64
-	readSoFar              int64
-	onProgress             func(percentage int)
-	lastReportedPercentage int
+// ProgressTracker implements io.Writer to track bytes processed
+type progressTracker struct {
+	Total      uint64
+	readed     uint64
+	Target     string
+	OnProgress func(target string, readed uint64, total uint64)
 }
 
-func (pr *progressReader) Read(p []byte) (n int, err error) {
-	n, err = pr.reader.Read(p)
-	pr.readSoFar += int64(n)
-	if pr.totalSize > 0 {
-		percentage := int((float64(pr.readSoFar) / float64(pr.totalSize)) * 100)
-		if percentage >= pr.lastReportedPercentage+progressReportThresholdPercentage || (percentage == 100 && pr.lastReportedPercentage != 100) {
-			if pr.onProgress != nil {
-				pr.onProgress(percentage)
+func (pt *progressTracker) Write(p []byte) (int, error) {
+	n := len(p)
+	pt.readed += uint64(n)
+	if pt.OnProgress != nil {
+		pt.OnProgress(pt.Target, pt.readed, pt.Total)
+	}
+	return n, nil
+}
+
+func (self *UpgradeService) extractFile(f *zip.File, dest string) (*UpdateFile, errors.E) {
+
+	// Verify file validity
+	if f == nil {
+		return nil, errors.Errorf("file entry is nil")
+	}
+	if f.FileInfo().IsDir() {
+		return nil, errors.Errorf("directories are not supported in update package: %s", f.Name)
+	}
+	if f.FileHeader.Comment == "" {
+		return nil, errors.Errorf("file has no signature in comment: %s", f.Name)
+	}
+
+	// Build the local path
+	path := filepath.Join(dest, f.Name)
+
+	// Check for ZipSlip vulnerability
+	if !strings.HasPrefix(path, filepath.Clean(dest)+string(os.PathSeparator)) && dest != "." {
+		return nil, errors.Errorf("illegal file path: %s", path)
+	}
+
+	// Ensure parent directory exists
+	if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	// Open file in zip
+	rc, err := f.Open()
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	defer rc.Close()
+
+	// Create local file
+	out, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	defer out.Close()
+
+	size := f.FileHeader.CompressedSize64
+	tracker := &progressTracker{
+		Total:  size,
+		Target: path,
+		OnProgress: func(target string, downloaded, total uint64) {
+			if total > 0 {
+				percent := float64(downloaded) / float64(total) * 100
+				self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSDOWNLOADING, Progress: percent})
+				slog.DebugContext(self.ctx, "Extracting", "target", target, "percent", percent, "downloaded", downloaded, "total", total)
+			} else {
+				slog.DebugContext(self.ctx, "Extracting", "target", target, "downloaded_bytes", downloaded, "total_bytes", "unknown")
 			}
-			pr.lastReportedPercentage = percentage
-		}
+		},
 	}
-	return
+
+	// Copy content
+	//
+	//_, err = io.Copy(out, io.TeeReader(rc, tracker))
+	err = self.verifier.Load([]byte(f.FileHeader.Comment), []byte(updatekey.UpdatePublicKey))
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	err = selfupdate.Apply(io.TeeReader(rc, tracker), selfupdate.Options{
+		TargetPath: path,
+		Verifier:   self.verifier,
+	})
+	if err != nil {
+		if rerr := selfupdate.RollbackError(err); rerr != nil {
+			slog.ErrorContext(self.ctx, "Failed to rollback from bad update", "error", rerr)
+		}
+		return nil, errors.WithStack(err)
+	}
+
+	return &UpdateFile{
+		Path:      path,
+		Signature: []byte(f.FileHeader.Comment),
+		Size:      f.FileInfo().Size(),
+	}, errors.WithStack(err)
 }
 
+// DownloadAndExtractBinaryAsset downloads the binary asset from the given URL, extracts it to a UpdateDataDir, and returns the UpdatePackage to the extracted executable.
 func (self *UpgradeService) DownloadAndExtractBinaryAsset(asset dto.BinaryAsset) (*UpdatePackage, errors.E) {
-	currentExe, err := os.Executable()
-	if err != nil {
-		errWrapped := errors.Wrap(err, "failed to get current executable path")
-		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
-		return nil, errWrapped
-	}
-	currentExecutableName := filepath.Base(currentExe)
-
-	tmpDir, err := os.MkdirTemp("", "srat_update_*")
-	if err != nil {
-		errWrapped := errors.Wrap(err, "failed to create temporary directory")
-		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
-		return nil, errWrapped
-	}
-	defer func() {
-		os.RemoveAll(tmpDir)
-	}()
-
-	slog.InfoContext(self.ctx, "Starting download and extraction", "asset_name", asset.Name, "download_url", asset.BrowserDownloadURL, "temp_dir", tmpDir)
+	slog.InfoContext(self.ctx, "Starting download and extraction", "asset_name", asset.Name, "download_url", asset.BrowserDownloadURL)
 
 	// --- Download Phase ---
 	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSDOWNLOADING, Progress: 0})
@@ -466,137 +553,131 @@ func (self *UpgradeService) DownloadAndExtractBinaryAsset(asset dto.BinaryAsset)
 		return nil, errWrapped
 	}
 
-	downloadedFilePath := filepath.Join(tmpDir, asset.Name)
-	downloadedFile, err := os.Create(downloadedFilePath)
-	if err != nil {
-		errWrapped := errors.Wrapf(err, "failed to create file for downloaded asset %s", downloadedFilePath)
-		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
-		return nil, errWrapped
-	}
-	defer downloadedFile.Close()
-
-	pr := &progressReader{
-		reader:    resp.Body,
-		totalSize: resp.ContentLength,
-		onProgress: func(percentage int) {
-			self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSDOWNLOADING, Progress: percentage})
+	size := uint64(resp.ContentLength)
+	tracker := &progressTracker{
+		Total:  size,
+		Target: asset.Name,
+		OnProgress: func(target string, downloaded, total uint64) {
+			if total > 0 {
+				percent := float64(downloaded) / float64(total) * 100
+				self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSDOWNLOADING, Progress: percent})
+				slog.DebugContext(self.ctx, "Downloading", "target", target, "percent", percent, "downloaded", downloaded, "total", total)
+			} else {
+				slog.DebugContext(self.ctx, "Downloading", "target", target, "downloaded_bytes", downloaded, "total_bytes", "unknown")
+			}
 		},
-		lastReportedPercentage: 0,
 	}
 
-	slog.DebugContext(self.ctx, "Downloading asset", "url", asset.BrowserDownloadURL, "destination", downloadedFilePath, "size", resp.ContentLength)
-	_, err = io.Copy(downloadedFile, pr)
+	downloadedFilePath, err := os.CreateTemp("", "download-*.zip")
 	if err != nil {
-		errWrapped := errors.Wrapf(err, "failed to write downloaded asset to file %s", downloadedFilePath)
-		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
-		return nil, errWrapped
+		return nil, errors.Wrapf(err, "failed to create temporary file for download")
 	}
-	// Ensure 100% is reported
-	if pr.lastReportedPercentage != 100 && resp.ContentLength > 0 { // only if total size was known
-		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSDOWNLOADING, Progress: 100})
+	defer os.Remove(downloadedFilePath.Name())
+	defer downloadedFilePath.Close()
+
+	// Wrap the response body with our progress tracker
+	_, err = io.Copy(downloadedFilePath, io.TeeReader(resp.Body, tracker))
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to save temp file")
 	}
+
 	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSDOWNLOADCOMPLETE, Progress: 100})
-	slog.InfoContext(self.ctx, "Asset downloaded successfully", "path", downloadedFilePath)
+	slog.InfoContext(self.ctx, "Asset downloaded successfully", "path", downloadedFilePath.Name())
+
+	// --- Verify Checksum ---
+	if asset.Digest != "" {
+		slog.InfoContext(self.ctx, "Verifying downloaded asset checksum", "expected_digest", asset.Digest)
+		downloadedFilePath.Seek(0, io.SeekStart) // Reset file pointer
+
+		if strings.HasPrefix(asset.Digest, "sha256:") {
+			h := sha256.New()
+			if _, err := io.Copy(h, downloadedFilePath); err != nil {
+				errWrapped := errors.Wrapf(err, "failed to compute checksum for downloaded asset %v", downloadedFilePath.Name())
+				self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+				return nil, errWrapped
+			}
+
+			computedDigest := fmt.Sprintf("sha256:%x", h.Sum(nil))
+			slog.InfoContext(self.ctx, "Computed checksum", "computed_digest", computedDigest)
+
+			if computedDigest != asset.Digest {
+				errWrapped := errors.Errorf("checksum mismatch for downloaded asset %#v: expected %s, got %s", downloadedFilePath.Name(), asset.Digest, computedDigest)
+				self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+				return nil, errWrapped
+			}
+			slog.InfoContext(self.ctx, "Checksum verification passed for downloaded asset")
+			downloadedFilePath.Seek(0, io.SeekStart)
+		} else {
+			errWrapped := errors.Errorf("unsupported digest format for asset %v: %s", downloadedFilePath.Name(), asset.Digest)
+			self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+			return nil, errWrapped
+		}
+	} else {
+		slog.ErrorContext(self.ctx, "No expected digest provided, for checksum verification", "asset_name", asset.Name, "digest", asset.Digest)
+		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: "No expected digest provided, for checksum verification"})
+		return nil, errors.New("no expected digest provided, for checksum verification")
+	}
 
 	// --- Extraction Phase ---
 	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSEXTRACTING, Progress: 0})
 
-	zipReader, err := zip.OpenReader(downloadedFilePath)
+	zipReader, err := zip.OpenReader(downloadedFilePath.Name())
 	if err != nil {
-		errWrapped := errors.Wrapf(err, "failed to open downloaded zip asset %s", downloadedFilePath)
+		errWrapped := errors.Wrapf(err, "failed to open downloaded zip asset %v", downloadedFilePath)
 		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
 		return nil, errWrapped
 	}
 	defer zipReader.Close()
 
 	totalFiles := len(zipReader.File)
+
+	if totalFiles == 0 {
+		errWrapped := errors.Errorf("downloaded zip asset %v is empty", *downloadedFilePath)
+		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+		return nil, errWrapped
+	}
+
 	var extractedFilesCount int
-	var executablePath *string
-	var foundPaths []string
+	var foundPaths []UpdateFile
 
 	slog.DebugContext(self.ctx, "Extracting asset", "source_zip", downloadedFilePath, "total_files", totalFiles)
-	extractPercentage := 0
+	extractPercentage := 0.0
 
 	for _, f := range zipReader.File {
-		targetPath := filepath.Join(self.state.UpdateDataDir, f.Name)
-
-		// Path traversal mitigation: Ensure the path is within the temp directory
-		if !strings.HasPrefix(targetPath, filepath.Clean(self.state.UpdateDataDir)+string(os.PathSeparator)) {
-			errWrapped := errors.Errorf("invalid file path in zip: '%s' attempts to escape temporary directory", f.Name)
+		path, err := self.extractFile(f, self.state.UpdateDataDir)
+		if err != nil {
+			errWrapped := errors.Wrapf(err, "failed to extract file %s from zip:%s", f.Name, err.Error())
 			self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
 			return nil, errWrapped
 		}
+		/*
+			if path == nil {
+				// Directory created, skip
+				continue
+			}
+		*/
 
-		if f.FileInfo().IsDir() {
-			// Use a safe default when creating directories; adjust later if needed
-			if err := os.MkdirAll(targetPath, 0o750); err != nil {
-				errWrapped := errors.Wrapf(err, "failed to create directory %s during extraction", targetPath)
-				self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
-				return nil, errWrapped
-			}
-		} else {
-			// Ensure parent directory exists with safe permissions
-			if err := os.MkdirAll(filepath.Dir(targetPath), 0o750); err != nil {
-				errWrapped := errors.Wrapf(err, "failed to create parent directory for %s during extraction", targetPath)
-				self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
-				return nil, errWrapped
-			}
+		foundPaths = append(foundPaths, *path)
 
-			srcFile, errOpen := f.Open()
-			if errOpen != nil {
-				errWrapped := errors.Wrapf(errOpen, "failed to open file %s from zip archive", f.Name)
-				self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
-				return nil, errWrapped
-			}
-
-			destFile, errCreate := os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
-			if errCreate != nil {
-				srcFile.Close()
-				errWrapped := errors.Wrapf(errCreate, "failed to create destination file %s during extraction", targetPath)
-				self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
-				return nil, errWrapped
-			}
-
-			if _, errCopy := io.Copy(destFile, srcFile); errCopy != nil {
-				srcFile.Close()
-				destFile.Close()
-				errWrapped := errors.Wrapf(errCopy, "failed to copy content to %s during extraction", targetPath)
-				self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
-				return nil, errWrapped
-			}
-			srcFile.Close()
-			destFile.Close()
-
-			if filepath.Base(targetPath) == currentExecutableName {
-				slog.InfoContext(self.ctx, "Found matching executable in archive", "path", targetPath, "current_exe_name", currentExecutableName)
-				executablePath = &targetPath
-			} else {
-				foundPaths = append(foundPaths, targetPath)
-			}
-		}
 		extractedFilesCount++
 		if totalFiles > 0 {
-			extractPercentage = (extractedFilesCount * 100) / totalFiles
+			extractPercentage = float64((extractedFilesCount * 100) / totalFiles)
 		}
 		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSEXTRACTING, Progress: extractPercentage})
 	}
 
 	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSEXTRACTCOMPLETE, Progress: 100})
-	slog.InfoContext(self.ctx, "Asset extracted successfully", "temp_dir", tmpDir)
+	slog.InfoContext(self.ctx, "Asset extracted successfully", "temp_dir", self.state.UpdateDataDir, "extracted_to", self.state.UpdateDataDir)
 
 	// Verify that the current executable was found in the archive
-	if executablePath == nil {
-		errWrapped := errors.Errorf("Current executable not found in archive (expected: %s)", currentExecutableName)
-		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
-		return nil, errWrapped
-	}
 
 	return &UpdatePackage{
-		CurrentExecutablePath: executablePath,
-		OtherFilesPaths:       foundPaths,
+		FilesPaths: foundPaths,
 	}, nil
 }
 
+/*
+// installBinaryTo performs the in-place installation of the new binary to the destination path
 func (self *UpgradeService) installBinaryTo(newExecutablePath string, destinationFile string) errors.E {
 	if newExecutablePath == "" {
 		return errors.New("invalid new executable path")
@@ -686,100 +767,112 @@ func (self *UpgradeService) installBinaryTo(newExecutablePath string, destinatio
 	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSINSTALLCOMPLETE, Progress: 100})
 	return nil
 }
+*/
 
 func (self *UpgradeService) InstallUpdatePackage(updatePkg *UpdatePackage) errors.E {
-	if updatePkg == nil || updatePkg.CurrentExecutablePath == nil || *updatePkg.CurrentExecutablePath == "" {
-		err := errors.New("invalid update package or missing executable path")
-		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: err.Error()})
+
+	if updatePkg == nil || len(updatePkg.FilesPaths) == 0 {
+		return errors.New("invalid update package")
+	}
+
+	// chrach all FilesPaths for existence
+	for _, path := range updatePkg.FilesPaths {
+		if _, err := os.Stat(path.Path); os.IsNotExist(err) {
+			return errors.Errorf("update package file does not exist: %s", path.Path)
+		}
+	}
+
+	currentFile, targetDir, err := self.getCurrentExecutablePath()
+	if err != nil {
 		return err
 	}
-
-	// Step 1: Verify the new binary version is different from current
-	newBinaryPath := *updatePkg.CurrentExecutablePath
-	newVersion := config.GetBinaryVersion(newBinaryPath)
-	currentVersion := config.GetCurrentBinaryVersion()
-
-	// Check if we got a valid version (not unknown)
-	unknownVersion, _ := semver.NewVersion("0.0.0-unknown")
-	if unknownVersion == nil || !newVersion.Equal(unknownVersion) {
-		if newVersion.Equal(&currentVersion) {
-			slog.InfoContext(self.ctx, "New binary has same version as current, skipping installation", "version", newVersion.String())
-			self.notifyClient(dto.UpdateProgress{
-				ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSNOUPGRADE,
-				ErrorMessage:   fmt.Sprintf("Binary version %s is already installed", newVersion.String()),
-			})
-			return errors.New("binary version is same as current version")
+	slog.InfoContext(self.ctx, "Installing update package", "target_directory", *targetDir)
+	for _, path := range updatePkg.FilesPaths {
+		targetPath := filepath.Join(*targetDir, filepath.Base(path.Path))
+		tracker := &progressTracker{
+			Total:  uint64(path.Size),
+			Target: targetPath,
+			OnProgress: func(target string, progress, total uint64) {
+				if total > 0 {
+					percent := float64(progress) / float64(total) * 100
+					self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSDOWNLOADING, Progress: percent})
+					slog.DebugContext(self.ctx, "Installing", "target", target, "percent", percent, "progress", progress, "total", total)
+				} else {
+					slog.DebugContext(self.ctx, "Installing", "target", target, "progress", progress, "total_bytes", "unknown")
+				}
+			},
 		}
-		slog.InfoContext(self.ctx, "Installing new version", "current", currentVersion.String(), "new", newVersion.String())
-	} else {
-		slog.WarnContext(self.ctx, "Could not extract version from new binary, proceeding anyway", "path", newBinaryPath)
-	}
-
-	// Step 2: Verify signature if available
-	signatureFile := newBinaryPath + ".minisig"
-	if _, statErr := os.Stat(signatureFile); statErr == nil {
-		slog.InfoContext(self.ctx, "Signature file found, verifying before installation", "signature_file", signatureFile)
-
-		// Read the binary content for verification
-		binaryContent, err := os.ReadFile(newBinaryPath)
-		if err != nil {
-			errWrapped := errors.Wrapf(err, "failed to read new binary for signature verification: %s", newBinaryPath)
-			self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
-			return errWrapped
-		}
-
-		verifier := selfupdate.NewVerifier()
-		if err := verifier.LoadFromFile(signatureFile, updatekey.UpdatePublicKey); err != nil {
-			errWrapped := errors.Wrapf(err, "failed to load signature from %s", signatureFile)
-			self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
-			return errWrapped
-		}
-
-		// Verify the signature
-		if err := verifier.Verify(binaryContent); err != nil {
-			errWrapped := errors.Wrapf(err, "signature verification failed for %s", newBinaryPath)
-			self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
-			return errWrapped
-		}
-
-		slog.InfoContext(self.ctx, "Signature verification successful", "binary", newBinaryPath)
-	} else {
-		// Signature file not found
-		if self.state.UpdateChannel == dto.UpdateChannels.DEVELOP {
-			slog.WarnContext(self.ctx, "Signature file not found, proceeding without verification (develop channel)", "expected_signature_file", signatureFile)
+		var currentVersion *semver.Version
+		newVersion := config.GetBinaryVersion(targetPath)
+		if targetPath == *currentFile {
+			currentVersion = config.GetCurrentBinaryVersion()
 		} else {
-			// For non-develop channels, reject unsigned updates
-			errWrapped := errors.Errorf("signature file not found for non-develop channel: %s", signatureFile)
-			self.notifyClient(dto.UpdateProgress{
-				ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR,
-				ErrorMessage:   "Update is not signed. Signature verification is required for this update channel.",
+			currentVersion = config.GetBinaryVersion(targetPath)
+		}
+
+		if currentVersion == nil && newVersion == nil {
+			slog.DebugContext(self.ctx, "No version info found, proceeding with installation assuming not exe file", "target_path", targetPath)
+		} else {
+			if currentVersion == nil || newVersion == nil {
+				err := errors.New("invalid version detected during installation")
+				self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: err.Error()})
+				return err
+			}
+
+			if newVersion.LessThan(currentVersion) ||
+				(newVersion.Equal(currentVersion) && self.state.UpdateChannel != dto.UpdateChannels.DEVELOP) {
+				slog.InfoContext(self.ctx, "New binary has same version or older as current, skipping installation", "Current", currentVersion.String(), "NewVersion", newVersion.String())
+				self.notifyClient(dto.UpdateProgress{
+					ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSNOUPGRADE,
+					ErrorMessage:   fmt.Sprintf("Binary version %s is already installed", newVersion.String()),
+				})
+				return errors.New("binary version is same as current version")
+			}
+			slog.InfoContext(self.ctx, "Installing new version", "current", currentVersion.String(), "new", newVersion.String())
+		}
+
+		rc, err := os.Open(path.Path)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		defer rc.Close()
+
+		// Copy content
+		if path.Signature != nil {
+
+			errS := self.verifier.Load(path.Signature, []byte(updatekey.UpdatePublicKey))
+			if errS != nil {
+				return errors.WithStack(errS)
+			}
+			errS = selfupdate.Apply(io.TeeReader(rc, tracker), selfupdate.Options{
+				TargetPath: targetPath,
+				Verifier:   self.verifier,
 			})
-			slog.ErrorContext(self.ctx, "Update rejected: signature file missing for non-develop channel", "channel", self.state.UpdateChannel.String(), "expected_file", signatureFile)
+			if errS != nil {
+				if rerr := selfupdate.RollbackError(errS); rerr != nil {
+					slog.ErrorContext(self.ctx, "Failed to rollback from bad update", "error", rerr)
+				}
+				return errors.WithStack(errS)
+			}
+		} else if self.state.UpdateChannel == dto.UpdateChannels.DEVELOP {
+			// In develop channel, allow unsigned updates (for testing)
+			slog.WarnContext(self.ctx, "Installing unsigned update in develop channel", "target_path", targetPath)
+			errS := selfupdate.Apply(io.TeeReader(rc, tracker), selfupdate.Options{
+				TargetPath: targetPath,
+			})
+			if errS != nil {
+				if rerr := selfupdate.RollbackError(errS); rerr != nil {
+					slog.ErrorContext(self.ctx, "Failed to rollback from bad update", "error", rerr)
+				}
+				return errors.WithStack(errS)
+			}
+		} else {
+			errWrapped := errors.Errorf("missing signature for update file: %s", path.Path)
+			self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
 			return errWrapped
 		}
-	}
+		slog.InfoContext(self.ctx, "Update package installed successfully")
 
-	// Step 3: Install the binaries
-	basePath, err := self.getCurrentExecutablePath()
-	if err != nil {
-		return err
-	}
-
-	for i := range updatePkg.OtherFilesPaths {
-		err := self.installBinaryTo(updatePkg.OtherFilesPaths[i], *basePath+"/"+filepath.Base(updatePkg.OtherFilesPaths[i]))
-		if err != nil {
-			return err
-		}
-	}
-	err = self.installBinaryTo(*updatePkg.CurrentExecutablePath, *basePath+"/"+filepath.Base(*updatePkg.CurrentExecutablePath))
-	if err != nil {
-		return err
-	}
-	if self.state.UpdateFilePath != "" {
-		err = self.installBinaryTo(*updatePkg.CurrentExecutablePath, self.state.UpdateFilePath)
-		if err != nil {
-			return err
-		}
 	}
 	return nil
 }
@@ -787,69 +880,10 @@ func (self *UpgradeService) InstallUpdatePackage(updatePkg *UpdatePackage) error
 // ApplyUpdateAndRestart applies the update using selfupdate with signature verification
 // and restarts the process if running under s6
 func (self *UpgradeService) ApplyUpdateAndRestart(updatePkg *UpdatePackage) errors.E {
-	if updatePkg == nil || updatePkg.CurrentExecutablePath == nil || *updatePkg.CurrentExecutablePath == "" {
-		err := errors.New("invalid update package or missing executable path")
-		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: err.Error()})
+
+	err := self.InstallUpdatePackage(updatePkg)
+	if err != nil {
 		return err
-	}
-
-	slog.InfoContext(self.ctx, "Applying update with signature verification", "new_executable", *updatePkg.CurrentExecutablePath)
-	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSINSTALLING, Progress: 0})
-
-	// Open the new binary file
-	newBinary, err := os.Open(*updatePkg.CurrentExecutablePath)
-	if err != nil {
-		errWrapped := errors.Wrapf(err, "failed to open new binary: %s", *updatePkg.CurrentExecutablePath)
-		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
-		return errWrapped
-	}
-	defer newBinary.Close()
-
-	// Check if signature file exists (for signed updates)
-	signatureFile := *updatePkg.CurrentExecutablePath + ".minisig"
-	var opts selfupdate.Options
-	if _, statErr := os.Stat(signatureFile); statErr == nil {
-		slog.InfoContext(self.ctx, "Signature file found, will verify update", "signature_file", signatureFile)
-
-		// Create verifier with embedded public key
-		verifier := selfupdate.NewVerifier()
-		if err := verifier.LoadFromFile(signatureFile, updatekey.UpdatePublicKey); err != nil {
-			errWrapped := errors.Wrapf(err, "failed to load signature from %s", signatureFile)
-			self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
-			return errWrapped
-		}
-
-		opts = selfupdate.Options{
-			Verifier: verifier,
-		}
-	} else {
-		// Signature file not found
-		if self.state.UpdateChannel == dto.UpdateChannels.DEVELOP {
-			slog.WarnContext(self.ctx, "Signature file not found, proceeding without verification (develop channel)", "expected_signature_file", signatureFile)
-			opts = selfupdate.Options{}
-		} else {
-			// For non-develop channels, reject unsigned updates
-			errWrapped := errors.Errorf("signature file not found for non-develop channel: %s", signatureFile)
-			self.notifyClient(dto.UpdateProgress{
-				ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR,
-				ErrorMessage:   "Update is not signed. Signature verification is required for this update channel.",
-			})
-			slog.ErrorContext(self.ctx, "Update rejected: signature file missing for non-develop channel", "channel", self.state.UpdateChannel.String(), "expected_file", signatureFile)
-			return errWrapped
-		}
-	}
-
-	// Apply the update
-	err = selfupdate.Apply(newBinary, opts)
-	if err != nil {
-		if rerr := selfupdate.RollbackError(err); rerr != nil {
-			errWrapped := errors.Wrapf(err, "failed to apply update and rollback failed: %v", rerr)
-			self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
-			return errWrapped
-		}
-		errWrapped := errors.Wrap(err, "failed to apply update (rolled back successfully)")
-		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
-		return errWrapped
 	}
 
 	slog.InfoContext(self.ctx, "Update applied successfully")
@@ -911,182 +945,34 @@ func (self *UpgradeService) isRunningUnderS6() bool {
 	return strings.Contains(cmdlineStr, "s6-supervise")
 }
 
-func (self *UpgradeService) getCurrentExecutablePath() (*string, errors.E) {
-	currentExe, err := os.Executable()
-	if err != nil {
-		errWrapped := errors.Wrap(err, "failed to get current executable path for in-place update")
+func (self *UpgradeService) getCurrentExecutablePath() (currentExe *string, currentDir *string, err errors.E) {
+	currentExe_, errS := os.Executable()
+	if errS != nil {
+		errWrapped := errors.Wrap(errS, "failed to get current executable path for in-place update")
 		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
-		return nil, errWrapped
+		return nil, nil, errWrapped
 	}
-	destinationFile := filepath.Dir(currentExe)
-	return &destinationFile, nil
+	destinationFile := filepath.Dir(currentExe_)
+	return &currentExe_, &destinationFile, nil
 }
 
-// getBinaryVersion extracts the version from a binary using the same method as config.GetCurrentBinaryVersion
-/*
+func (self *UpgradeService) GetProcessStatus(parentPid int32) *dto.ProcessStatus {
 
-func (self *UpgradeService) InstallOverseerUpdate(updatePkg *UpdatePackage, overseerUpdatePath string) errors.E {
-	if updatePkg == nil || updatePkg.CurrentExecutablePath == nil || *updatePkg.CurrentExecutablePath == "" {
-		err := errors.New("invalid update package or missing executable path for overseer update")
-		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: err.Error()})
-		return err
-	}
-	if overseerUpdatePath == "" {
-		err := errors.New("overseer update path cannot be empty")
-		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: err.Error()})
-		return err
-	}
-	basePath, err := self.getCurrentExecutablePath()
-	if err != nil {
-		return err
+	if self.state.UpdateChannel != dto.UpdateChannels.NONE {
+		return nil
 	}
 
-	for i := range updatePkg.OtherFilesPaths {
-		err := self.installBinaryTo(updatePkg.OtherFilesPaths[i], *basePath+"/"+filepath.Base(updatePkg.OtherFilesPaths[i]))
-		if err != nil {
-			return err
-		}
+	status := &dto.ProcessStatus{
+		Pid:           -parentPid, // Negative PID indicates this is a subprocess
+		Name:          "updater_" + (self.state.UpdateChannel.String()),
+		CreateTime:    time.Time{},
+		CPUPercent:    0.0,
+		MemoryPercent: 0.0,
+		OpenFiles:     0,
+		Connections:   0,
+		Status:        []string{"idle"},
+		IsRunning:     true,
 	}
-	return self.installBinaryTo(*updatePkg.CurrentExecutablePath, overseerUpdatePath)
+
+	return status
 }
-*/
-
-/*
-// findLatestLocalBinaries searches for the newest binary matching the pattern in the search directory
-// that is newer than the current executable.
-func (self *UpgradeService) findLatestLocalBinaries(searchDir string, basePattern string) (filePath []string, modTime time.Time, errRet errors.E) {
-	currentExePath, err := os.Executable()
-	if err != nil {
-		return []string{}, time.Time{}, errors.Wrap(err, "failed to get current executable path")
-	}
-	currentExeStat, err := os.Stat(currentExePath)
-	if err != nil {
-		return []string{}, time.Time{}, errors.Wrap(err, "failed to stat current executable")
-	}
-	currentExeModTime := currentExeStat.ModTime()
-
-	slog.DebugContext(self.ctx, "Searching for local update binary", "searchDir", searchDir, "pattern", basePattern+"*", "currentExeModTime", currentExeModTime)
-
-	var latestFilePaths []string
-	var latestModTime time.Time
-
-	entries, err := os.ReadDir(searchDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			slog.WarnContext(self.ctx, "Local update directory does not exist", "dir", searchDir)
-			return []string{}, time.Time{}, errors.WithMessagef(dto.ErrorNoUpdateAvailable, "local update directory %s not found", searchDir)
-		}
-		return []string{}, time.Time{}, errors.Wrapf(err, "failed to read local update directory %s", searchDir)
-	}
-
-	foundCandidate := false
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasPrefix(entry.Name(), basePattern) {
-			slog.DebugContext(self.ctx, "Skipping candidate local update binary", "path", entry.Name())
-			continue
-		}
-
-		fullPath := filepath.Join(searchDir, entry.Name())
-		info, errStat := entry.Info()
-		if errStat != nil {
-			slog.WarnContext(self.ctx, "Failed to stat candidate local update file", "path", fullPath, "error", errStat)
-			continue
-		}
-		if info.Mode().IsRegular() && info.ModTime().After(currentExeModTime) {
-			slog.DebugContext(self.ctx, "Found potential local update binary", "path", fullPath, "modTime", info.ModTime())
-			latestFilePaths = append(latestFilePaths, fullPath)
-			latestModTime = info.ModTime()
-			foundCandidate = true
-			slog.DebugContext(self.ctx, "New latest local update binary candidate", "path", latestFilePaths, "modTime", latestModTime)
-		} else {
-			slog.DebugContext(self.ctx, "Ignore file", "path", fullPath, "info", info)
-		}
-	}
-
-	if !foundCandidate {
-		slog.InfoContext(self.ctx, "No new local update binary found", "searchDir", searchDir, "pattern", basePattern+"*")
-		return []string{}, time.Time{}, errors.WithMessage(dto.ErrorNoUpdateAvailable, "no new local update binary found")
-	}
-
-	slog.InfoContext(self.ctx, "Latest local update binary selected", "path", latestFilePaths, "modTime", latestModTime)
-	return latestFilePaths, latestModTime, nil
-}
-*/
-/*
-
-func (self *UpgradeService) InstallUpdateLocal(updateChannel *dto.UpdateChannel) errors.E {
-	if updateChannel == nil {
-		updateChannel = self.state.UpdateChannel
-	}
-
-	if updateChannel == nil || *updateChannel != dto.UpdateChannels.DEVELOP {
-		err := errors.Errorf("local updates are only allowed on the DEVELOP update channel not %s", updateChannel.String())
-		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: err.Error()})
-		return err
-	}
-
-	slog.InfoContext(self.ctx, "Starting local update process.")
-	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSCHECKING})
-
-	foundFilePaths, _, errFind := self.findLatestLocalBinaries(localUpdateDir, localUpdatePattern)
-	if errFind != nil {
-		errMsg := fmt.Sprintf("Local update: %s", errFind.Error())
-		if errors.Is(errFind, dto.ErrorNoUpdateAvailable) {
-			slog.InfoContext(self.ctx, "No local update found or directory missing.")
-			self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSNOUPGRDE, ErrorMessage: errMsg})
-		} else {
-			slog.ErrorContext(self.ctx, "Error finding local update binary.", "error", errFind)
-			self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errMsg})
-		}
-		return errFind
-	}
-
-	var aerr errors.E = nil
-
-	for _, foundFilePath := range foundFilePaths {
-		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE, LastRelease: filepath.Base(foundFilePath)})
-		updatePkg := &UpdatePackage{CurrentExecutablePath: &foundFilePath, OtherFilesPaths: []string{}, TempDirPath: filepath.Dir(foundFilePath)}
-		slog.InfoContext(self.ctx, "Prepared local update package", "executable", *updatePkg.CurrentExecutablePath)
-		err := self.InstallUpdatePackage(updatePkg)
-		if err != nil {
-			slog.ErrorContext(self.ctx, "Error installing local update package", "error", err)
-			self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: err.Error()})
-			aerr = errors.WithStack(err)
-		}
-	}
-	return aerr
-}
-*/
-
-/*
-func (self *UpgradeService) InstallOverseerLocal(overseerUpdatePath string) errors.E {
-	if self.updateChannel == nil || *self.updateChannel != dto.UpdateChannels.DEVELOP {
-		err := errors.New("local overseer updates are only allowed on the DEVELOP update channel")
-		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: err.Error()})
-		return err
-	}
-	if overseerUpdatePath == "" {
-		err := errors.New("overseer update path cannot be empty for local overseer update")
-		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: err.Error()})
-		return err
-	}
-	slog.InfoContext(self.ctx, "Starting local overseer update process.", "overseerPath", overseerUpdatePath)
-	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSCHECKING})
-
-	foundFilePath, _, errFind := self.findLatestLocalBinary(localUpdateDir, localUpdatePattern)
-	if errFind != nil { // Error handling similar to InstallUpdateLocal
-		errMsg := fmt.Sprintf("Local overseer update: %s", errFind.Error())
-		status := dto.UpdateProcessStates.UPDATESTATUSERROR
-		if errors.Is(errFind, dto.ErrorNoUpdateAvailable) {
-			status = dto.UpdateProcessStates.UPDATESTATUSNOUPGRDE
-		}
-		self.notifyClient(dto.UpdateProgress{ProgressStatus: status, ErrorMessage: errMsg})
-		return errFind
-	}
-
-	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE, LastRelease: filepath.Base(foundFilePath)})
-	updatePkg := &UpdatePackage{CurrentExecutablePath: &foundFilePath, OtherFilesPaths: []string{}, TempDirPath: filepath.Dir(foundFilePath)}
-	slog.InfoContext(self.ctx, "Prepared local overseer update package", "executable", *updatePkg.CurrentExecutablePath)
-	return self.InstallOverseerUpdate(updatePkg, overseerUpdatePath)
-}
-*/

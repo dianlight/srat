@@ -12,7 +12,7 @@ import (
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service"
-	"github.com/google/go-github/v80/github"
+	"github.com/google/go-github/v81/github"
 	"github.com/jarcoal/httpmock"
 	"gitlab.com/tozd/go/errors"
 )
@@ -21,7 +21,7 @@ import (
 
 func (suite *UpgradeServiceTestSuite) TestInstallUpdatePackage_MissingExecutablePath() {
 	updatePkg := &service.UpdatePackage{
-		CurrentExecutablePath: nil,
+		FilesPaths: nil,
 	}
 	err := suite.upgradeService.InstallUpdatePackage(updatePkg)
 	suite.Require().Error(err)
@@ -29,9 +29,8 @@ func (suite *UpgradeServiceTestSuite) TestInstallUpdatePackage_MissingExecutable
 }
 
 func (suite *UpgradeServiceTestSuite) TestInstallUpdatePackage_EmptyExecutablePath() {
-	emptyPath := ""
 	updatePkg := &service.UpdatePackage{
-		CurrentExecutablePath: &emptyPath,
+		FilesPaths: []service.UpdateFile{},
 	}
 	err := suite.upgradeService.InstallUpdatePackage(updatePkg)
 	suite.Require().Error(err)
@@ -41,7 +40,7 @@ func (suite *UpgradeServiceTestSuite) TestInstallUpdatePackage_EmptyExecutablePa
 func (suite *UpgradeServiceTestSuite) TestInstallUpdatePackage_SameVersion() {
 	// Create a simple test binary (not the running executable)
 	tmpBinary := filepath.Join(suite.state.UpdateDataDir, "srat-server-test")
-	
+
 	// Write a simple test binary content
 	testContent := []byte("#!/bin/sh\necho 'test binary'\n")
 	err := os.WriteFile(tmpBinary, testContent, 0755)
@@ -53,7 +52,9 @@ func (suite *UpgradeServiceTestSuite) TestInstallUpdatePackage_SameVersion() {
 	suite.state.UpdateChannel = dto.UpdateChannels.DEVELOP
 
 	updatePkg := &service.UpdatePackage{
-		CurrentExecutablePath: &tmpBinary,
+		FilesPaths: []service.UpdateFile{
+			{Path: tmpBinary},
+		},
 	}
 
 	err = suite.upgradeService.InstallUpdatePackage(updatePkg)
@@ -73,7 +74,9 @@ func (suite *UpgradeServiceTestSuite) TestInstallUpdatePackage_UnsignedOnDevelop
 	suite.state.UpdateChannel = dto.UpdateChannels.DEVELOP
 
 	updatePkg := &service.UpdatePackage{
-		CurrentExecutablePath: &tmpBinary,
+		FilesPaths: []service.UpdateFile{
+			{Path: tmpBinary},
+		},
 	}
 
 	// Should succeed even without signature on develop channel
@@ -95,7 +98,9 @@ func (suite *UpgradeServiceTestSuite) TestInstallUpdatePackage_UnsignedOnRelease
 	suite.state.UpdateChannel = dto.UpdateChannels.RELEASE
 
 	updatePkg := &service.UpdatePackage{
-		CurrentExecutablePath: &tmpBinary,
+		FilesPaths: []service.UpdateFile{
+			{Path: tmpBinary},
+		},
 	}
 
 	err = suite.upgradeService.InstallUpdatePackage(updatePkg)
@@ -113,7 +118,7 @@ func (suite *UpgradeServiceTestSuite) TestApplyUpdateAndRestart_NilPackage() {
 
 func (suite *UpgradeServiceTestSuite) TestApplyUpdateAndRestart_MissingExecutablePath() {
 	updatePkg := &service.UpdatePackage{
-		CurrentExecutablePath: nil,
+		FilesPaths: nil,
 	}
 	err := suite.upgradeService.ApplyUpdateAndRestart(updatePkg)
 	suite.Require().Error(err)
@@ -123,11 +128,13 @@ func (suite *UpgradeServiceTestSuite) TestApplyUpdateAndRestart_MissingExecutabl
 func (suite *UpgradeServiceTestSuite) TestApplyUpdateAndRestart_FileNotFound() {
 	nonExistentPath := "/tmp/nonexistent-binary-12345"
 	updatePkg := &service.UpdatePackage{
-		CurrentExecutablePath: &nonExistentPath,
+		FilesPaths: []service.UpdateFile{
+			{Path: nonExistentPath},
+		},
 	}
 	err := suite.upgradeService.ApplyUpdateAndRestart(updatePkg)
 	suite.Require().Error(err)
-	suite.Contains(err.Error(), "failed to open new binary")
+	suite.Contains(err.Error(), "update package file does not exist")
 }
 
 // --- isRunningUnderS6 Tests ---
@@ -187,8 +194,9 @@ func (suite *UpgradeServiceTestSuite) TestGetCurrentExecutablePath() {
 	suite.state.UpdateChannel = dto.UpdateChannels.DEVELOP
 
 	updatePkg := &service.UpdatePackage{
-		CurrentExecutablePath: &tmpBinary,
-		OtherFilesPaths:       []string{}, // Empty to test the main path logic
+		FilesPaths: []service.UpdateFile{
+			{Path: tmpBinary},
+		},
 	}
 
 	// Call InstallUpdatePackage which will invoke getCurrentExecutablePath internally
@@ -210,14 +218,16 @@ func (suite *UpgradeServiceTestSuite) TestInstallBinaryTo_Success() {
 	suite.Require().NoError(err)
 	defer os.RemoveAll(destDir)
 
-	destPath := filepath.Join(destDir, "dest-binary")
+	//destPath := filepath.Join(destDir, "dest-binary")
 
 	// Test installation via InstallUpdatePackage which calls installBinaryTo
 	suite.state.UpdateChannel = dto.UpdateChannels.DEVELOP
-	suite.state.UpdateFilePath = destPath
+	//suite.state.UpdateFilePath = destPath
 
 	updatePkg := &service.UpdatePackage{
-		CurrentExecutablePath: &sourcePath,
+		FilesPaths: []service.UpdateFile{
+			{Path: sourcePath},
+		},
 	}
 
 	_ = suite.upgradeService.InstallUpdatePackage(updatePkg)
@@ -241,6 +251,7 @@ func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_NotAZipF
 		Name:               "test2.zip",
 		BrowserDownloadURL: "http://example.com/not-a-zip-alt.zip",
 		Size:               100,
+		Digest:             "sha256:bb81a2fd7185fcabb3e46254cfac3a6cbd703e7ac0e407e1efe1ca927f9c0a16",
 	}
 
 	// Register a responder that returns non-zip content
@@ -279,7 +290,7 @@ func (suite *UpgradeServiceTestSuite) TestNotifyClient() {
 
 	// Create a scenario that triggers notifyClient
 	updatePkg := &service.UpdatePackage{
-		CurrentExecutablePath: nil,
+		FilesPaths: nil,
 	}
 
 	// This will call notifyClient with an error status
@@ -384,13 +395,15 @@ func main() {
 	// Verify binary was created and is executable
 	info, err := os.Stat(binaryPath)
 	suite.Require().NoError(err)
-	suite.NotEqual(info.Mode()&0111, 0, "Binary should be executable")
+	suite.NotEqual(0, info.Mode()&0111, "Binary should be executable")
 
 	// Set to develop channel to allow unsigned
 	suite.state.UpdateChannel = dto.UpdateChannels.DEVELOP
 
 	updatePkg := &service.UpdatePackage{
-		CurrentExecutablePath: &binaryPath,
+		FilesPaths: []service.UpdateFile{
+			{Path: binaryPath},
+		},
 	}
 
 	// Should process the binary
@@ -420,7 +433,9 @@ SomeMoreBase64Data==`
 	suite.state.UpdateChannel = dto.UpdateChannels.RELEASE
 
 	updatePkg := &service.UpdatePackage{
-		CurrentExecutablePath: &tmpBinary,
+		FilesPaths: []service.UpdateFile{
+			{Path: tmpBinary},
+		},
 	}
 
 	err = suite.upgradeService.InstallUpdatePackage(updatePkg)

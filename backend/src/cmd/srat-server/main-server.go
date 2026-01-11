@@ -39,7 +39,8 @@ var secureMode *bool
 var dockerInterface *string
 var dockerNetwork *string
 var roMode *bool
-var updateFilePath *string
+
+// var updateFilePath *string
 var upgradeDataDir *string
 var dbfile *string
 var supervisorURL *string
@@ -78,7 +79,7 @@ func main() {
 	logLevelString = flag.String("loglevel", "info", "Log level string (debug, info, warn, error)")
 	upgradeChannel := flag.String("update-channel", "release", "Upgrade channel (release, prerelease, develop)")
 	upgradeDataDir = flag.String("upgrade-data-dir", "/data/upgrade", "Persistent upgrades data directory")
-	updateFilePath = flag.String("update-file-path", os.TempDir()+"/"+filepath.Base(os.Args[0]), "Update file path - used for addon updates")
+	_ = flag.String("update-file-path", os.TempDir()+"/"+filepath.Base(os.Args[0]), "Update file path - used for addon updates *deprecated*")
 	addonIpAddress = flag.String("ip-address", "127.0.0.1", "Addon IP address // $(bashio::addon.ip_address)")
 
 	flag.Parse()
@@ -137,11 +138,11 @@ func prog(listener net.Listener) {
 	// apiCancel is called at the end of Run() by FX lifecycle or explicitly if Run errors
 
 	staticConfig := dto.ContextState{
-		AddonIpAddress:  *addonIpAddress,
-		ReadOnlyMode:    *roMode,
-		ProtectedMode:   *protectedMode,
-		SecureMode:      *secureMode,
-		UpdateFilePath:  *updateFilePath,
+		AddonIpAddress: *addonIpAddress,
+		ReadOnlyMode:   *roMode,
+		ProtectedMode:  *protectedMode,
+		SecureMode:     *secureMode,
+		//UpdateFilePath:  *updateFilePath,
 		UpdateChannel:   upgrade_channel,
 		UpdateDataDir:   *upgradeDataDir,
 		AutoUpdate:      *autoUpdate,

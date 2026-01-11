@@ -130,12 +130,12 @@ func TestContextState_AllFields(t *testing.T) {
 	template := []byte("template data")
 
 	ctx := dto.ContextState{
-		AddonIpAddress:  "192.168.1.100",
-		ReadOnlyMode:    false,
-		ProtectedMode:   true,
-		SecureMode:      true,
-		HACoreReady:     true,
-		UpdateFilePath:  "/tmp/update.tar",
+		AddonIpAddress: "192.168.1.100",
+		ReadOnlyMode:   false,
+		ProtectedMode:  true,
+		SecureMode:     true,
+		HACoreReady:    true,
+		//UpdateFilePath:  "/tmp/update.tar",
 		UpdateChannel:   dto.UpdateChannels.RELEASE,
 		SambaConfigFile: "/etc/samba/smb.conf",
 		Template:        template,
@@ -153,7 +153,7 @@ func TestContextState_AllFields(t *testing.T) {
 	assert.True(t, ctx.ProtectedMode)
 	assert.True(t, ctx.SecureMode)
 	assert.True(t, ctx.HACoreReady)
-	assert.Equal(t, "/tmp/update.tar", ctx.UpdateFilePath)
+	//assert.Equal(t, "/tmp/update.tar", ctx.UpdateFilePath)
 	assert.Equal(t, dto.UpdateChannels.RELEASE, ctx.UpdateChannel)
 	assert.Equal(t, "/etc/samba/smb.conf", ctx.SambaConfigFile)
 	assert.NotNil(t, ctx.Template)
@@ -174,7 +174,7 @@ func TestContextState_ZeroValues(t *testing.T) {
 	assert.False(t, ctx.ProtectedMode)
 	assert.False(t, ctx.SecureMode)
 	assert.False(t, ctx.HACoreReady)
-	assert.Empty(t, ctx.UpdateFilePath)
+	//assert.Empty(t, ctx.UpdateFilePath)
 	assert.Nil(t, ctx.Template)
 	assert.Zero(t, ctx.Heartbeat)
 	assert.Zero(t, ctx.StartTime)

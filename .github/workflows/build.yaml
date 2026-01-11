@@ -521,23 +521,75 @@ jobs:
         id: create_zips
         if: github.event_name != 'pull_request'
         run: |
-          # This script finds each compiled architecture and zips it, including signature files.
+          set -euo pipefail
+          # This script zips only binary files and attaches the corresponding minisig content as the file comment.
           for arch_dir in backend/dist/*/; do
             arch=$(basename "$arch_dir")
             zip_file_path="/tmp/build_artifacts/srat_${arch}.zip"
             echo "Processing architecture: ${arch}"
-            if [ -d "$arch_dir" ]; then
-              # zip preserves file modification times for entries by default. Using . is more robust for zipping directory contents.
-              # This will include both the binary and its .sig file if present
-              (cd "$arch_dir" && zip -r "$zip_file_path" .)
-              echo "Successfully created ${zip_file_path}"
-              
-              # List contents to verify signature file is included
-              echo "Archive contents:"
-              unzip -l "$zip_file_path"
-            else
+
+            if [ ! -d "$arch_dir" ]; then
               echo "Warning: Directory ${arch_dir} does not exist. Skipping."
+              continue
             fi
+
+            files_to_zip=()
+            tmp_note_file=$(mktemp)
+
+            # Collect binaries that have a matching minisig and prepare comments
+            for bin_path in "$arch_dir"*; do
+              [ -e "$bin_path" ] || continue
+
+              # Skip directories
+              if [ -d "$bin_path" ]; then
+                continue
+              fi
+
+              base_name=$(basename "$bin_path")
+
+              # Skip minisig files on this pass
+              if [[ "$base_name" == *.minisig ]]; then
+                continue
+              fi
+
+              minisig_path="${bin_path}.minisig"
+              if [ -f "$minisig_path" ]; then
+                files_to_zip+=("$base_name")
+                {
+                  echo "@ $base_name"
+                  cat "$minisig_path"
+                  echo "@"
+                } >> "$tmp_note_file"
+              else
+                echo "Warning: Skipping ${base_name} because minisig file is missing."
+              fi
+            done
+
+            # Warn about stray minisig files without matching binaries
+            for minisig_path in "$arch_dir"*.minisig; do
+              [ -e "$minisig_path" ] || continue
+              bin_candidate="${minisig_path%.minisig}"
+              if [ ! -f "$bin_candidate" ]; then
+                echo "Warning: Skipping $(basename "$minisig_path") because matching binary is missing."
+              fi
+            done
+
+            if [ ${#files_to_zip[@]} -eq 0 ]; then
+              echo "Warning: No binaries with minisig found in ${arch_dir}. Skipping zip creation."
+              rm -f "$tmp_note_file"
+              continue
+            fi
+
+            (cd "$arch_dir" && zip -q "$zip_file_path" "${files_to_zip[@]}")
+
+            if [ -s "$tmp_note_file" ]; then
+              zipnote -w "$zip_file_path" < "$tmp_note_file" >/dev/null
+            fi
+            rm -f "$tmp_note_file"
+
+            echo "Successfully created ${zip_file_path}"
+            echo "Archive contents:"
+            unzip -l "$zip_file_path"
           done
 
       - name: Upload binaries as artifact

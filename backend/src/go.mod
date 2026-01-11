@@ -12,10 +12,11 @@ require (
 	github.com/pilebones/go-udev v0.9.1
 	github.com/shirou/gopsutil/v4 v4.25.12
 	github.com/stretchr/testify v1.11.1
-	golang.org/x/sys v0.39.0
+	golang.org/x/sys v0.40.0
 )
 
 require (
+	aead.dev/minisign v0.3.0
 	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/adelolmo/hd-idle v0.0.0-20250511190312-c87bc6e9ce96
 	github.com/benmcclelland/sgio v0.0.0-20250710154739-45e823ff1f46
@@ -25,11 +26,10 @@ require (
 	github.com/fatih/color v1.18.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/gofri/go-github-ratelimit/v2 v2.0.2
-	github.com/google/go-github/v80 v80.0.0
+	github.com/google/go-github/v81 v81.0.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/jarcoal/httpmock v1.4.1
 	github.com/lonegunmanb/go-defaults v1.4.0
-	github.com/minio/selfupdate v0.6.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pressly/goose/v3 v3.26.0
 	github.com/prometheus/procfs v0.19.2
@@ -38,13 +38,13 @@ require (
 	github.com/sergi/go-diff v1.4.0
 	github.com/shomali11/util v0.0.0-20220717175126-f0771b70947f
 	github.com/teivah/broadcast v0.1.0
+	github.com/vvair/selfupdate v0.0.0-20251221113910-176caa7ce89e
 	gorm.io/cli/gorm v0.2.4
 	gorm.io/datatypes v1.2.7
 	gorm.io/driver/sqlite v1.6.0
 )
 
 require (
-	aead.dev/minisign v0.2.0 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/AlecAivazis/survey/v2 v2.3.7 // indirect
 	github.com/Antonboom/testifylint v1.6.4 // indirect

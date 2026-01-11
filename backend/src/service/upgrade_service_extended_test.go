@@ -1,6 +1,7 @@
 package service_test
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"net/http"
 	"os"
@@ -34,7 +35,9 @@ AnotherInvalidPart==`
 	suite.state.UpdateChannel = dto.UpdateChannels.RELEASE
 
 	updatePkg := &service.UpdatePackage{
-		CurrentExecutablePath: &tmpBinary,
+		FilesPaths: []service.UpdateFile{
+			{Path: tmpBinary},
+		},
 	}
 
 	// Should fail due to invalid signature
@@ -52,7 +55,9 @@ func (suite *UpgradeServiceTestSuite) TestApplyUpdateAndRestart_WithoutSignature
 	suite.state.UpdateChannel = dto.UpdateChannels.DEVELOP
 
 	updatePkg := &service.UpdatePackage{
-		CurrentExecutablePath: &tmpBinary,
+		FilesPaths: []service.UpdateFile{
+			{Path: tmpBinary},
+		},
 	}
 
 	// Should proceed on develop channel without signature
@@ -70,10 +75,11 @@ func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_EmptyZip
 		Name:               "empty.zip",
 		BrowserDownloadURL: "http://example.com/empty.zip",
 		Size:               22, // Minimal zip file size
+		Digest:             "sha256:8739c76e681f900923b900c9df0ef75cf421d39cabb54650c4b9ad19b6a76d85",
 	}
 
 	// Create an empty zip file
-	emptyZip, err := createDummyZip(map[string]string{})
+	emptyZip, err := createDummyZip(map[string]string{}, 0, nil)
 	suite.Require().NoError(err)
 
 	httpmock.RegisterResponder("GET", asset.BrowserDownloadURL,
@@ -86,7 +92,7 @@ func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_EmptyZip
 
 	_, err = suite.upgradeService.DownloadAndExtractBinaryAsset(asset)
 	suite.Require().Error(err)
-	suite.Contains(err.Error(), "Current executable not found")
+	suite.Contains(err.Error(), "is empty")
 }
 
 func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_LargeFile() {
@@ -97,6 +103,7 @@ func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_LargeFil
 		Name:               "large.zip",
 		BrowserDownloadURL: "http://example.com/large.zip",
 		Size:               1024 * 1024, // 1MB
+		//Digest:             "sha256:f23c9b8f7752acd2b8e9ab3f9934fb6d09894f3eeb22111b91f7b0d9c3b0a678",
 	}
 
 	// Create zip with large file
@@ -108,8 +115,13 @@ func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_LargeFil
 	zipContents := map[string]string{
 		currentExeName: string(largeContent),
 	}
-	zipBuffer, err := createDummyZip(zipContents)
+	zipBuffer, err := createDummyZip(zipContents, asset.Size, &suite.privateKey)
 	suite.Require().NoError(err)
+
+	asset.Size = zipBuffer.Len()
+	ssha256 := sha256.New()
+	ssha256.Write(zipBuffer.Bytes())
+	asset.Digest = "sha256:" + fmt.Sprintf("%x", ssha256.Sum(nil))
 
 	httpmock.RegisterResponder("GET", asset.BrowserDownloadURL,
 		func(req *http.Request) (*http.Response, error) {
@@ -122,7 +134,7 @@ func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_LargeFil
 	pkg, err := suite.upgradeService.DownloadAndExtractBinaryAsset(asset)
 	suite.Require().NoError(err)
 	suite.NotNil(pkg)
-	suite.NotNil(pkg.CurrentExecutablePath)
+	suite.NotNil(pkg.FilesPaths)
 }
 
 // --- Test installBinaryTo edge cases ---
@@ -147,15 +159,21 @@ func (suite *UpgradeServiceTestSuite) TestInstallBinaryTo_BackupAndRestore() {
 
 	// Setup state for installation
 	suite.state.UpdateChannel = dto.UpdateChannels.DEVELOP
-	suite.state.UpdateFilePath = destFile
+	//suite.state.UpdateFilePath = destFile
 
 	updatePkg := &service.UpdatePackage{
-		CurrentExecutablePath: &sourceFile,
-		OtherFilesPaths:       []string{},
+		FilesPaths: []service.UpdateFile{
+			{
+				Path:      sourceFile,
+				Size:      int64(len("new version")),
+				Signature: nil,
+			},
+		},
 	}
 
 	// Should backup old version
 	err = suite.upgradeService.InstallUpdatePackage(updatePkg)
+	suite.Require().NoError(err)
 
 	// Check if backup was created
 	backupFile := destFile + ".old"
@@ -180,7 +198,9 @@ func (suite *UpgradeServiceTestSuite) TestGetCurrentExecutablePath_Success() {
 	suite.state.UpdateChannel = dto.UpdateChannels.DEVELOP
 
 	updatePkg := &service.UpdatePackage{
-		CurrentExecutablePath: &tmpBinary,
+		FilesPaths: []service.UpdateFile{
+			{Path: tmpBinary},
+		},
 	}
 
 	// This will call getCurrentExecutablePath internally
@@ -210,8 +230,11 @@ func (suite *UpgradeServiceTestSuite) TestInstallUpdatePackage_WithOtherFiles() 
 	suite.state.UpdateChannel = dto.UpdateChannels.DEVELOP
 
 	updatePkg := &service.UpdatePackage{
-		CurrentExecutablePath: &mainBinary,
-		OtherFilesPaths:       []string{otherFile1, otherFile2},
+		FilesPaths: []service.UpdateFile{
+			{Path: mainBinary},
+			{Path: otherFile1},
+			{Path: otherFile2},
+		},
 	}
 
 	// Should install all files
@@ -259,14 +282,19 @@ func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_ArchSpec
 		Name:               fmt.Sprintf("srat_%s.zip", runtime.GOARCH),
 		BrowserDownloadURL: fmt.Sprintf("http://example.com/srat_%s.zip", runtime.GOARCH),
 		Size:               2048,
+		Digest:             "sha256:a64c3f2e35d7a2a0a5996d3d32f4c978dce1241fd7a2c2c9e033bcbdd8d2ef09",
 	}
 
 	zipContents := map[string]string{
 		currentExeName: "architecture-specific binary content",
 		"README.md":    "Installation instructions",
 	}
-	zipBuffer, err := createDummyZip(zipContents)
+	zipBuffer, err := createDummyZip(zipContents, 0, &suite.privateKey)
 	suite.Require().NoError(err)
+	asset.Size = zipBuffer.Len()
+	ssha256 := sha256.New()
+	ssha256.Write(zipBuffer.Bytes())
+	asset.Digest = "sha256:" + fmt.Sprintf("%x", ssha256.Sum(nil))
 
 	httpmock.RegisterResponder("GET", asset.BrowserDownloadURL,
 		func(req *http.Request) (*http.Response, error) {
@@ -281,10 +309,22 @@ func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_ArchSpec
 	suite.NotNil(pkg)
 
 	// Verify the executable was extracted
-	suite.NotNil(pkg.CurrentExecutablePath)
-	content, err := os.ReadFile(*pkg.CurrentExecutablePath)
-	suite.Require().NoError(err)
-	suite.Contains(string(content), "architecture-specific")
+	suite.NotNil(pkg.FilesPaths)
+	suite.Len(pkg.FilesPaths, 2)
+
+	for _, file := range pkg.FilesPaths {
+		suite.FileExists(file.Path)
+		content, err := os.ReadFile(file.Path)
+		suite.Require().NoError(err)
+		if filepath.Base(file.Path) == currentExeName {
+			suite.Contains(string(content), "architecture-specific binary content")
+		} else if filepath.Base(file.Path) == "README.md" {
+			suite.Contains(string(content), "Installation instructions")
+		} else {
+			suite.Failf("Unexpected file extracted", "Got file: %s", file.Path)
+		}
+	}
+
 }
 
 // --- Test version comparison logic ---
@@ -300,7 +340,9 @@ func (suite *UpgradeServiceTestSuite) TestInstallUpdatePackage_NewerVersion() {
 	suite.state.UpdateChannel = dto.UpdateChannels.DEVELOP
 
 	updatePkg := &service.UpdatePackage{
-		CurrentExecutablePath: &tmpBinary,
+		FilesPaths: []service.UpdateFile{
+			{Path: tmpBinary},
+		},
 	}
 
 	// Should proceed with installation (version is likely different or unknown)

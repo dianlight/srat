@@ -129,8 +129,8 @@ func (handler *UpgradeHanler) UpdateHandler(ctx context.Context, input *struct{}
 	return &struct{ Body dto.UpdateProgress }{Body: dto.UpdateProgress{
 		ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSDOWNLOADING,
 		Progress:       0,
+		ReleaseAsset:   assets,
 		ErrorMessage:   "",
-		LastRelease:    assets.LastRelease,
 	}}, nil
 }
 
