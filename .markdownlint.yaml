@@ -27,9 +27,6 @@ MD033:
     - p
     - kbd
 
-# Don't require H1 to be first heading
-MD041: false
-
 # Allow inline HTML (GFM supports HTML)
 MD010: false
 
@@ -45,11 +42,26 @@ MD036: false
 # Allow missing space in headers (for HTML comments)
 MD021: false
 
+# MD022: Headers should be surrounded by blank lines (flexible for GFM)
+MD022: false
+
+# Allow multiple headers with same content
+MD024: false
+
 # Allow trailing punctuation in headers
 MD026: false
 
+# MD028: Allow blank lines inside blockquotes
+MD028: false
+
 # Configuration for code blocks (require language specification)
 MD040: true
+
+# Allow first line in file to be anything (for metadata, comments, etc.)
+MD041: false
+
+# MD046: Code block style - allow both indented and fenced (GFM)
+MD046: false
 
 # Configuration for emphasis style (use asterisks for consistency with GFM)
 MD049:
@@ -59,18 +71,3 @@ MD049:
 MD050:
   style: asterisk
 
-# Allow multiple headers with same content
-MD024: false
-
-# Allow first line in file to be anything (for metadata, comments, etc.)
-MD041: false
-
-# GitHub Flavored Markdown specific allowances
-# MD046: Code block style - allow both indented and fenced
-MD046: false
-
-# MD028: Allow blank lines inside blockquotes
-MD028: false
-
-# MD022: Headers should be surrounded by blank lines (flexible for GFM)
-MD022: false
