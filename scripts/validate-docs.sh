@@ -217,7 +217,7 @@ case "${1:-}" in
         fi
         
         # Fix markdown formatting
-        $RUNNER prettier --write "**/*.md" --ignore-path ".gitignore"
+        $RUNNER prettier --write "**/*.md" --ignore-path ".gitignore" --ignore-path "frontend/node_modules/**" --ignore-path "backend/src/vendor/**"
         
         # Fix markdownlint issues
         $RUNNER markdownlint-cli2 "**/*.md" "#frontend/node_modules" "#backend/src/vendor" --fix
