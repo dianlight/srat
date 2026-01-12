@@ -12,7 +12,7 @@ We use a **hybrid mocking solution** combining:
 
 ## Directory Structure
 
-```
+```plaintext
 src/mocks/
 ├── generatedHandlers.ts   # Auto-generated REST API handlers (placeholder)
 ├── streamingHandlers.ts   # WebSocket handlers (SSE deprecated)
