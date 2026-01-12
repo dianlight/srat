@@ -154,10 +154,10 @@ func (suite *HDIdleServiceSuite) TestNewHDIdleService() {
 }
 
 func (suite *HDIdleServiceSuite) TestStopWhenNotRunning() {
+	// Stopping an already-stopped service should be a no-op and not return an error
 	_ = suite.service.Stop()
 	err := suite.service.Stop()
-	suite.Require().Error(err)
-	suite.Contains(err.Error(), "not running")
+	suite.NoError(err, "Stop() should not return error when service is not running")
 }
 
 func (suite *HDIdleServiceSuite) TestGetDeviceConfig() {
