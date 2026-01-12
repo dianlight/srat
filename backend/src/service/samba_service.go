@@ -163,7 +163,12 @@ func NewSambaService(lc fx.Lifecycle, in SambaServiceParams) SambaServiceInterfa
 		return nil
 	})
 	lc.Append(fx.Hook{
-		OnStart: func(context.Context) error {
+		OnStart: func(ctx context.Context) error {
+			serviceStart := time.Now()
+			slog.InfoContext(ctx, "=== SERVICE INIT: SambaService Starting ===")
+			defer func() {
+				slog.InfoContext(ctx, "=== SERVICE INIT: SambaService Complete ===", "duration", time.Since(serviceStart))
+			}()
 			return nil
 		},
 		OnStop: func(context.Context) error {

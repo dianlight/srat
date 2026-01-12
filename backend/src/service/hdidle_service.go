@@ -215,7 +215,9 @@ func (s *HDIdleService) Stop() errors.E {
 	defer s.mu.Unlock()
 
 	if !s.IsRunning() {
-		return errors.New("HDIdle service is not running")
+		// Stopping an already-stopped service is a no-op and not an error
+		tlog.DebugContext(s.ctx, "HDIdle service is not running, no action needed")
+		return nil
 	}
 
 	tlog.DebugContext(s.ctx, "Stopping HDIdle service")

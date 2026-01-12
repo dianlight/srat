@@ -138,6 +138,8 @@ func main() {
 //}
 
 func prog(state overseer.State) {
+	startupStart := time.Now()
+	slog.Info("=== STARTUP PHASE: Entry ===", "time", startupStart)
 
 	internal.Banner("srat-server", "")
 
@@ -183,6 +185,8 @@ func prog(state overseer.State) {
 		CancelFn:     apiCancel,
 		StaticConfig: &staticConfig,
 	}
+
+	slog.Info("=== STARTUP PHASE: Starting FX ===", "elapsed", time.Since(startupStart))
 
 	// New FX
 	app := fx.New(
@@ -284,8 +288,11 @@ func prog(state overseer.State) {
 		log.Fatalf("Error during FX setup: %v", err)
 	}
 
+	slog.Info("=== STARTUP PHASE: FX Initialized ===", "elapsed", time.Since(startupStart))
+
 	app.Run() // This blocks until the application stops
 
+	slog.Info("=== STARTUP PHASE: FX Complete ===", "elapsed", time.Since(startupStart))
 	slog.Info("Stopping SRAT", "pid", state.ID)
 	apiCtx.Value("wg").(*sync.WaitGroup).Wait() // Ensure background tasks complete
 	apiCancel()                                 // Explicitly cancel context
