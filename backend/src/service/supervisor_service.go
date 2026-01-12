@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"sync"
+	"time"
 
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
@@ -117,6 +118,11 @@ func NewSupervisorService(lc fx.Lifecycle, in SupervisorServiceParams) Superviso
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
+			serviceStart := time.Now()
+			slog.InfoContext(ctx, "=== SERVICE INIT: SupervisorService Starting ===")
+			defer func() {
+				slog.InfoContext(ctx, "=== SERVICE INIT: SupervisorService Complete ===", "duration", time.Since(serviceStart))
+			}()
 			slog.DebugContext(ctx, "Starting Supervisor Service")
 			return nil
 		},

@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+	"time"
 
 	_ "github.com/dianlight/srat/dbom/migrations"
 	"github.com/dianlight/srat/dto"
@@ -98,6 +99,8 @@ func NewDB(lc fx.Lifecycle, v struct {
 	fx.In
 	ApiCtx *dto.ContextState
 }) *gorm.DB {
+	dbInitStart := time.Now()
+	slog.Info("=== DB INIT: Starting ===", "path", v.ApiCtx.DatabasePath)
 
 	// Check filesystem permissions before attempting to open database
 	errE := checkFileSystemPermissions(v.ApiCtx.DatabasePath)
@@ -168,6 +171,7 @@ func NewDB(lc fx.Lifecycle, v struct {
 	}
 
 	// Migrate the schema
+	slog.Info("=== DB INIT: Starting AutoMigrate ===", "elapsed", time.Since(dbInitStart))
 	err = db.AutoMigrate(&MountPointPath{}, &ExportedShare{}, &SambaUser{}, &Property{}, &Issue{}, &HDIdleDevice{})
 	if errE = errors.WithStack(err); errE != nil {
 		slog.Error("Failed to migrate database", "error", errE, "path", v.ApiCtx.DatabasePath)
@@ -178,6 +182,7 @@ func NewDB(lc fx.Lifecycle, v struct {
 	}
 
 	// GooseDBMigration
+	slog.Info("=== DB INIT: Starting Goose Migrations ===", "elapsed", time.Since(dbInitStart))
 	goose.SetBaseFS(migrations)
 	goose.WithSlog(slog.Default())
 	goose.WithVerbose(false)
@@ -192,6 +197,7 @@ func NewDB(lc fx.Lifecycle, v struct {
 		dumpDatabaseSchema(db)
 		panic(err)
 	}
+	slog.Info("=== DB INIT: Migrations Complete ===", "elapsed", time.Since(dbInitStart))
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
@@ -208,6 +214,7 @@ func NewDB(lc fx.Lifecycle, v struct {
 		},
 	})
 
+	slog.Info("=== DB INIT: Complete ===", "elapsed", time.Since(dbInitStart))
 	return db
 }
 
