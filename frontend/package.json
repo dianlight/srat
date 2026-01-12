@@ -26,11 +26,11 @@
     "@types/bun": "1.3.5",
     "@types/humanize-duration": "3.27.4",
     "@types/js-sha1": "0.6.3",
-    "@types/react": "19.2.7",
+    "@types/react": "19.2.8",
     "@types/react-dom": "19.2.3",
     "@types/react-syntax-highlighter": "15.5.13",
     "@types/semver": "7.7.1",
-    "@typescript/native-preview": "7.0.0-dev.20260109.1",
+    "@typescript/native-preview": "7.0.0-dev.20260112.1",
     "msw": "2.12.7",
     "msw-auto-mock": "0.31.0"
   },
