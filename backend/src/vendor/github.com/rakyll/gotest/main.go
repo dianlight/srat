@@ -58,6 +58,7 @@ func gotest(args []string) int {
 
 	if err := cmd.Start(); err != nil {
 		log.Print(err)
+		wg.Done()
 		return 1
 	}
 
@@ -94,15 +95,18 @@ func consume(wg *sync.WaitGroup, r io.Reader) {
 	defer wg.Done()
 	reader := bufio.NewReader(r)
 	for {
-		l, _, err := reader.ReadLine()
+		l, err := reader.ReadString('\n')
 		if err == io.EOF {
+			if len(l) > 0 {
+				parse(l)
+			}
 			return
 		}
 		if err != nil {
 			log.Print(err)
 			return
 		}
-		parse(string(l))
+		parse(l)
 	}
 }
 
@@ -136,7 +140,7 @@ func parse(line string) {
 	}
 
 	color.Set(c)
-	fmt.Printf("%s\n", line)
+	fmt.Printf("%s", line)
 }
 
 func enableOnCI() {
