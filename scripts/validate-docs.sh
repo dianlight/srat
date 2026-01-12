@@ -170,7 +170,7 @@ main() {
         echo "   - Run 'vale sync' to update Vale styles"
         echo "   - Check .lychee.toml for link checker configuration"
         echo "   - Check .vale.ini for prose linting configuration"
-        echo "   - Check .markdownlint.yaml for markdown linting rules"
+        echo "   - Check .markdownlint-cli2.jsonc for markdown linting rules"
     fi
 
     exit $exit_code

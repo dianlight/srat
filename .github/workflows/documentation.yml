@@ -10,7 +10,6 @@ on:
       - "Makefile"
       - ".lychee.toml"
       - ".vale.ini"
-      - ".markdownlint.yaml"
       - ".markdownlint-cli2.jsonc"
       - ".cspell.json"
   pull_request:
@@ -22,7 +21,6 @@ on:
       - "Makefile"
       - ".lychee.toml"
       - ".vale.ini"
-      - ".markdownlint.yaml"
       - ".markdownlint-cli2.jsonc"
       - ".cspell.json"
   schedule:

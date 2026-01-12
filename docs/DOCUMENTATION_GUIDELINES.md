@@ -84,7 +84,7 @@ SRAT documentation fully supports GitHub Flavored Markdown (GFM) features:
 The project uses several tools to validate documentation with full **GitHub Flavored Markdown** support:
 
 - **markdownlint-cli2** - Checks Markdown formatting and style (GFM-compatible)
-  - Configuration: `.markdownlint.yaml`, `.markdownlint-cli2.jsonc`
+  - Configuration: `.markdownlint-cli2.jsonc`
   - Supports GFM tables, task lists, HTML elements
   
 - **Lychee** - Advanced link and image validation
@@ -296,8 +296,7 @@ When making breaking changes:
 
 ### Validation Tool Configuration
 
-- **`.markdownlint.yaml`** - Markdownlint rules and exceptions (GFM-compatible)
-- **`.markdownlint-cli2.jsonc`** - Enhanced markdownlint configuration
+- **`.markdownlint-cli2.jsonc`** - Markdownlint rules and configuration (GFM-compatible)
 - **`.lychee.toml`** - Lychee link and image checker configuration
 - **`.vale.ini`** - Vale prose linting configuration
 - **`.vale/styles/Vocab/SRAT/`** - Project-specific vocabulary (accept.txt, reject.txt)

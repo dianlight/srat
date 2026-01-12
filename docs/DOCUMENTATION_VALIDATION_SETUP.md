@@ -82,12 +82,10 @@ This document summarizes the comprehensive documentation validation system imple
 
 **GitHub Flavored Markdown Configurations:**
 
-- **`.markdownlint.yaml`**: Markdownlint rules configured for GFM compatibility
+- **`.markdownlint-cli2.jsonc`**: Markdownlint configuration for GFM compatibility
   - Supports GFM tables, task lists, strikethrough
   - Allows HTML elements commonly used in GFM
   - Flexible heading and list formatting
-  
-- **`.markdownlint-cli2.jsonc`**: Enhanced markdownlint configuration
   - Extends prettier style for consistency
   - GFM-specific rule adjustments
   - Ignores vendor and node_modules directories
@@ -275,7 +273,7 @@ This document summarizes the comprehensive documentation validation system imple
 
 ### Configuring Tools
 
-- **Markdownlint**: Edit `.markdownlint.yaml` or `.markdownlint-cli2.jsonc`
+- **Markdownlint**: Edit `.markdownlint-cli2.jsonc`
   - Adjust GFM-specific rules
   - Add/remove allowed HTML elements
   
