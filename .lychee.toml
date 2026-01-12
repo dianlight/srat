@@ -97,6 +97,3 @@ max_redirects = 10
 
 # Exclude all private IPs
 exclude_all_private = true
-
-# Include verbatim HTML links
-include_verbatim = false
