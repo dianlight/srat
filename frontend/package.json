@@ -30,7 +30,9 @@
     "@types/react-dom": "19.2.3",
     "@types/react-syntax-highlighter": "15.5.13",
     "@types/semver": "7.7.1",
-    "@typescript/native-preview": "7.0.0-dev.20260107.1"
+    "@typescript/native-preview": "7.0.0-dev.20260108.1",
+    "msw": "2.12.7",
+    "msw-auto-mock": "0.31.0"
   },
   "peerDependencies": {
     "typescript": "^5.9.3"

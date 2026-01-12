@@ -1,7 +1,12 @@
 import "../../../../test/setup";
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect, beforeEach } from "bun:test";
 
 describe("UserActions component", () => {
+    beforeEach(() => {
+        // Clear DOM before each test
+        document.body.innerHTML = '';
+    });
+
     const buildUser = (overrides?: Partial<any>) => ({
         username: "guest",
         is_admin: false,
@@ -17,7 +22,8 @@ describe("UserActions component", () => {
         let editCalls = 0;
         let deleteCalls = 0;
 
-        const { container } = render(
+        const user = userEvent.setup();
+        const { unmount } = render(
             React.createElement(UserActions as any, {
                 user: buildUser(),
                 read_only: false,
@@ -26,25 +32,27 @@ describe("UserActions component", () => {
             })
         );
 
-        const editButton = container.querySelector('button[aria-label="settings"]') as HTMLButtonElement;
+        const editButton = screen.getByRole('button', { name: /settings/i });
         expect(editButton).toBeTruthy();
-        const user = userEvent.setup();
-        await user.click(editButton as any);
+        await user.click(editButton);
 
-        const deleteButton = container.querySelector('button[aria-label="delete"]') as HTMLButtonElement;
+        const deleteButton = screen.getByRole('button', { name: /delete/i });
         expect(deleteButton).toBeTruthy();
-        await user.click(deleteButton as any);
+        await user.click(deleteButton);
 
         expect(editCalls).toBe(1);
         expect(deleteCalls).toBe(1);
+        
+        unmount();
     });
 
     it("hides delete action for admin or read-only scenarios", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { UserActions } = await import("../UserActions");
 
-        const { container, rerender } = render(
+        // Test admin user scenario
+        const { unmount, rerender } = render(
             React.createElement(UserActions as any, {
                 user: buildUser({ is_admin: true }),
                 read_only: false,
@@ -53,9 +61,11 @@ describe("UserActions component", () => {
             })
         );
 
-        expect(container.querySelector('button[aria-label="settings"]')).toBeTruthy();
-        expect(container.querySelector('button[aria-label="delete"]')).toBeNull();
+        // For admin users: settings button exists, delete button does not
+        expect(screen.queryAllByRole('button', { name: /settings/i }).length).toBeGreaterThan(0);
+        expect(screen.queryByRole('button', { name: /delete/i })).toBeNull();
 
+        // Test read-only scenario
         rerender(
             React.createElement(UserActions as any, {
                 user: buildUser(),
@@ -65,6 +75,9 @@ describe("UserActions component", () => {
             })
         );
 
-        expect(container.querySelectorAll('button')).toHaveLength(0);
+        // For read-only: no buttons should be visible
+        expect(screen.queryAllByRole('button')).toHaveLength(0);
+        
+        unmount();
     });
 });

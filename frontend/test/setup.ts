@@ -124,23 +124,26 @@ if (!document.body) {
     document.body = document.createElement('body');
 }
 
-// Mock fetch globally to prevent network calls during tests
-(globalThis as any).fetch = async (url: string, options?: any) => {
-    // Create a proper Response-like object that RTK Query can work with
-    const mockResponse = {
-        ok: true,
-        status: 200,
-        statusText: 'OK',
-        headers: new Map([['content-type', 'application/json']]),
-        json: async () => ({}),
-        text: async () => '',
-        clone: () => ({ ...mockResponse }), // RTK Query needs this
-        arrayBuffer: async () => new ArrayBuffer(0),
-        blob: async () => new Blob(),
-        formData: async () => new FormData(),
-    };
-    return mockResponse;
-};
+// Mock fetch is now handled by MSW (Mock Service Worker)
+// See test/bun-setup.ts for MSW configuration
+// The fetch mock below is commented out to allow MSW to intercept requests
+// Uncomment only if you need to run tests without MSW
+
+// (globalThis as any).fetch = async (url: string, options?: any) => {
+//     const mockResponse = {
+//         ok: true,
+//         status: 200,
+//         statusText: 'OK',
+//         headers: new Map([['content-type', 'application/json']]),
+//         json: async () => ({}),
+//         text: async () => '',
+//         clone: () => ({ ...mockResponse }),
+//         arrayBuffer: async () => new ArrayBuffer(0),
+//         blob: async () => new Blob(),
+//         formData: async () => new FormData(),
+//     };
+//     return mockResponse;
+// };
 
 // LocalStorage mock for the tests
 if (!(globalThis as any).localStorage) {
@@ -257,3 +260,7 @@ export async function createTestStore() {
 
     return store;
 }
+
+// Initialize MSW for API mocking
+// This must be imported after all globals are set up
+import "./bun-setup";

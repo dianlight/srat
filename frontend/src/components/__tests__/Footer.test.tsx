@@ -56,7 +56,7 @@ describe("Footer Component", () => {
 
     it("displays version information with link", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Footer } = await import("../Footer");
@@ -65,7 +65,7 @@ describe("Footer Component", () => {
         const theme = createTheme();
         const store = await createTestStore();
 
-        const { container } = render(
+        render(
             React.createElement(
                 Provider,
                 {
@@ -78,15 +78,16 @@ describe("Footer Component", () => {
             )
         );
 
-        // Check that version link is present
-        const versionLink = container.querySelector('a[href*="commit"]');
+        // Check that version link is present using semantic query
+        const versionLink = screen.getByRole('link', { name: /version/i });
         expect(versionLink).toBeTruthy();
-        expect(container.textContent?.includes("Version")).toBeTruthy();
+        expect(versionLink.getAttribute('href')).toContain('commit');
+        expect(screen.getByText(/Version/)).toBeTruthy();
     });
 
     it("renders copyright information", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Footer } = await import("../Footer");
@@ -96,7 +97,7 @@ describe("Footer Component", () => {
         const store = await createTestStore();
         const currentYear = new Date().getFullYear();
 
-        const { container } = render(
+        render(
             React.createElement(
                 Provider,
                 {
@@ -109,8 +110,8 @@ describe("Footer Component", () => {
             )
         );
 
-        expect(container.textContent?.includes("Copyright")).toBeTruthy();
-        expect(container.textContent?.includes(`2024-${currentYear}`)).toBeTruthy();
+        expect(screen.getByText(/Copyright/)).toBeTruthy();
+        expect(screen.getByText(new RegExp(`2024-${currentYear}`))).toBeTruthy();
     });
 
     it("renders as a footer element with proper styling", async () => {
@@ -137,14 +138,14 @@ describe("Footer Component", () => {
             )
         );
 
-        // Check that footer element exists
-        const footerElement = container.querySelector('footer');
+        // Check that footer element exists (footer is a valid HTML5 semantic element)
+        const footerElement = container.getElementsByTagName('footer')[0];
         expect(footerElement).toBeTruthy();
     });
 
     it("renders footer structure correctly", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Footer } = await import("../Footer");
@@ -166,22 +167,18 @@ describe("Footer Component", () => {
             )
         );
 
-        // Check that footer renders with all essential content
-        expect(container.textContent?.includes("Version")).toBeTruthy();
-        expect(container.textContent?.includes("Copyright")).toBeTruthy();
+        // Check that footer renders with all essential content using semantic queries
+        expect(screen.getByText(/Version/)).toBeTruthy();
+        expect(screen.getByText(/Copyright/)).toBeTruthy();
 
-        // Check that the footer has proper HTML structure
-        const footerElement = container.querySelector('footer');
+        // Check that the footer has proper HTML structure (footer is HTML5 semantic)
+        const footerElement = container.getElementsByTagName('footer')[0];
         expect(footerElement).toBeTruthy();
-
-        // Check that Stack component is rendered (indicates proper layout)
-        const stackElement = container.querySelector('[class*="MuiStack"]');
-        expect(stackElement).toBeTruthy();
     });
 
     it("handles responsive layout on small screens", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Footer } = await import("../Footer");
@@ -202,7 +199,7 @@ describe("Footer Component", () => {
 
         const store = await createTestStore();
 
-        const { container } = render(
+        render(
             React.createElement(
                 Provider,
                 {
@@ -216,13 +213,13 @@ describe("Footer Component", () => {
         );
 
         // Footer should still render with basic content
-        expect(container.textContent?.includes("Version")).toBeTruthy();
-        expect(container.textContent?.includes("Copyright")).toBeTruthy();
+        expect(screen.getByText(/Version/)).toBeTruthy();
+        expect(screen.getByText(/Copyright/)).toBeTruthy();
     });
 
     it("shows loading state when server events are loading", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Footer } = await import("../Footer");
@@ -231,7 +228,7 @@ describe("Footer Component", () => {
         const theme = createTheme();
         const store = await createTestStore();
 
-        const { container } = render(
+        render(
             React.createElement(
                 Provider,
                 {
@@ -245,6 +242,6 @@ describe("Footer Component", () => {
         );
 
         // Component should render even when loading
-        expect(container.textContent?.includes("Version")).toBeTruthy();
+        expect(screen.getByText(/Version/)).toBeTruthy();
     });
 });

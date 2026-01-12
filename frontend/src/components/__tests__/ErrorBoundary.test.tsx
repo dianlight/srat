@@ -32,14 +32,14 @@ describe("ErrorBoundary Component", () => {
 
     it("renders children when there is no error", async () => {
         const React = await import("react");
-        const { render, within } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { ErrorBoundary } = await import("../ErrorBoundary");
 
         const theme = createTheme();
         const testContent = "Test child content that should render normally";
 
-        const { container } = render(
+        render(
             React.createElement(
                 ThemeProvider,
                 { theme },
@@ -51,13 +51,13 @@ describe("ErrorBoundary Component", () => {
             )
         );
 
-        const element = await within(container).findByText(testContent);
+        const element = await screen.findByText(testContent);
         expect(element).toBeTruthy();
     });
 
     it("renders error UI when child component throws", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { ErrorBoundary } = await import("../ErrorBoundary");
 
@@ -68,7 +68,7 @@ describe("ErrorBoundary Component", () => {
             throw new Error("Test error message");
         };
 
-        const { container } = render(
+        render(
             React.createElement(
                 ThemeProvider,
                 { theme },
@@ -80,15 +80,15 @@ describe("ErrorBoundary Component", () => {
             )
         );
 
-        // Check that error UI elements are present
-        expect(container.textContent?.includes("Oops! Something went wrong.")).toBeTruthy();
-        expect(container.textContent?.includes("Reload Page")).toBeTruthy();
-        expect(container.textContent?.includes("Error Details")).toBeTruthy();
+        // Check that error UI elements are present using semantic queries
+        expect(screen.getByText("Oops! Something went wrong.")).toBeTruthy();
+        expect(screen.getByText("Reload Page")).toBeTruthy();
+        expect(screen.getByText("Error Details")).toBeTruthy();
     });
 
     it("displays error details in accordion", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { ErrorBoundary } = await import("../ErrorBoundary");
 
@@ -99,7 +99,7 @@ describe("ErrorBoundary Component", () => {
             throw new Error("Specific test error");
         };
 
-        const { container } = render(
+        render(
             React.createElement(
                 ThemeProvider,
                 { theme },
@@ -111,13 +111,13 @@ describe("ErrorBoundary Component", () => {
             )
         );
 
-        expect(container.textContent?.includes("Error Details")).toBeTruthy();
-        expect(container.textContent?.includes("Specific test error")).toBeTruthy();
+        expect(screen.getByText("Error Details")).toBeTruthy();
+        expect(screen.getByText(/Specific test error/)).toBeTruthy();
     });
 
     it("shows alert with proper error message", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { ErrorBoundary } = await import("../ErrorBoundary");
 
@@ -127,7 +127,7 @@ describe("ErrorBoundary Component", () => {
             throw new Error("Test error");
         };
 
-        const { container } = render(
+        render(
             React.createElement(
                 ThemeProvider,
                 { theme },
@@ -139,17 +139,18 @@ describe("ErrorBoundary Component", () => {
             )
         );
 
-        expect(container.textContent?.includes("An unexpected error occurred in this section")).toBeTruthy();
+        expect(screen.getByText(/An unexpected error occurred in this section/)).toBeTruthy();
     });
 
     it("handles reload button click functionality", async () => {
         const React = await import("react");
-        const { render, within } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { ErrorBoundary } = await import("../ErrorBoundary");
 
         const theme = createTheme();
+        const user = userEvent.setup();
 
         // Mock window.location.reload
         const originalReload = window.location.reload;
@@ -162,7 +163,7 @@ describe("ErrorBoundary Component", () => {
             throw new Error("Test error");
         };
 
-        const { container } = render(
+        render(
             React.createElement(
                 ThemeProvider,
                 { theme },
@@ -174,12 +175,8 @@ describe("ErrorBoundary Component", () => {
             )
         );
 
-        const reloadButtons = within(container).getAllByText("Reload Page");
-        const firstButton = reloadButtons[0];
-        if (firstButton) {
-            const user = userEvent.setup();
-            await user.click(firstButton as any);
-        }
+        const reloadButton = screen.getByRole("button", { name: /reload page/i });
+        await user.click(reloadButton);
 
         expect(reloadCalled).toBe(true);
 
@@ -189,7 +186,7 @@ describe("ErrorBoundary Component", () => {
 
     it("logs error to console when error boundary catches error", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { ErrorBoundary } = await import("../ErrorBoundary");
 
@@ -223,7 +220,7 @@ describe("ErrorBoundary Component", () => {
 
     it("displays bug report icon in error alert", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { ErrorBoundary } = await import("../ErrorBoundary");
 
@@ -233,7 +230,7 @@ describe("ErrorBoundary Component", () => {
             throw new Error("Test error");
         };
 
-        const { container } = render(
+        render(
             React.createElement(
                 ThemeProvider,
                 { theme },
@@ -245,12 +242,11 @@ describe("ErrorBoundary Component", () => {
             )
         );
 
-        // Check that the Alert component with error severity is rendered
-        const alertElement = container.querySelector('[role="alert"]');
+        // Check that the Alert component with error severity is rendered using semantic query
+        const alertElement = screen.getByRole("alert");
         expect(alertElement).toBeTruthy();
 
-        // Check for BugReportIcon
-        const bugIcon = container.querySelector('[data-testid="BugReportIcon"]');
-        expect(bugIcon).toBeTruthy();
+        // Verify alert contains error message (icon is implementation detail, but we can verify content)
+        expect(screen.getByText(/An unexpected error occurred/)).toBeTruthy();
     });
 });

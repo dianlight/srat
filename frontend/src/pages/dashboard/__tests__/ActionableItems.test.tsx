@@ -173,7 +173,7 @@ describe("Dashboard Actionable Items", () => {
 
     it("shows loading state", async () => {
         const React = await import("react");
-        const { render, within } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { MemoryRouter } = await import("react-router");
         const { ActionableItemsList } = await import("../components/ActionableItemsList");
@@ -181,7 +181,7 @@ describe("Dashboard Actionable Items", () => {
 
         const store = await createTestStore();
 
-        const { container } = render(
+        render(
             React.createElement(
                 Provider,
                 {
@@ -200,8 +200,8 @@ describe("Dashboard Actionable Items", () => {
             )
         );
 
-        // Check that loading indicator appears
-        const loadingElement = container.querySelector('[role="progressbar"]');
+        // Check that loading indicator appears using semantic query
+        const loadingElement = screen.getByRole("progressbar");
         expect(loadingElement).toBeTruthy();
     });
 

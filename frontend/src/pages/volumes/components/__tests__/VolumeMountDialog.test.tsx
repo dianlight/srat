@@ -65,7 +65,7 @@ describe("VolumeMountDialog Component", () => {
 
     it("renders dialog when open prop is true", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { VolumeMountDialog } = await import("../VolumeMountDialog");
         const { createTestStore } = await import("../../../../../test/setup");
@@ -73,7 +73,7 @@ describe("VolumeMountDialog Component", () => {
         const store = await createTestStore();
         const mockClose = () => { };
 
-        const { container } = render(
+        render(
             React.createElement(
                 Provider,
                 {
@@ -85,8 +85,8 @@ describe("VolumeMountDialog Component", () => {
             )
         );
 
-        // Check that dialog content is rendered
-        const dialogs = container.querySelectorAll('[role="dialog"]');
+        // Check that dialog content is rendered using semantic query
+        const dialogs = screen.queryAllByRole("dialog");
         expect(dialogs.length).toBeGreaterThanOrEqual(0);
     });
 
@@ -117,7 +117,7 @@ describe("VolumeMountDialog Component", () => {
 
     it("renders form fields when dialog is open", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { VolumeMountDialog } = await import("../VolumeMountDialog");
         const { createTestStore } = await import("../../../../../test/setup");
@@ -125,7 +125,7 @@ describe("VolumeMountDialog Component", () => {
         const store = await createTestStore();
         const mockClose = () => { };
 
-        const { container } = render(
+        render(
             React.createElement(
                 Provider,
                 {
@@ -137,8 +137,8 @@ describe("VolumeMountDialog Component", () => {
             )
         );
 
-        // Look for form elements
-        const textFields = container.querySelectorAll('input, textarea');
+        // Look for form elements using semantic queries
+        const textFields = screen.queryAllByRole("textbox");
         expect(textFields.length).toBeGreaterThanOrEqual(0);
     });
 
@@ -207,7 +207,7 @@ describe("VolumeMountDialog Component", () => {
 
     it("renders action buttons", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { VolumeMountDialog } = await import("../VolumeMountDialog");
         const { createTestStore } = await import("../../../../../test/setup");
@@ -215,7 +215,7 @@ describe("VolumeMountDialog Component", () => {
         const store = await createTestStore();
         const mockClose = () => { };
 
-        const { container } = render(
+        render(
             React.createElement(
                 Provider,
                 {
@@ -227,14 +227,14 @@ describe("VolumeMountDialog Component", () => {
             )
         );
 
-        // Look for buttons (Cancel, Save, etc.)
-        const buttons = container.querySelectorAll('button');
+        // Look for buttons (Cancel, Save, etc.) using semantic query
+        const buttons = screen.queryAllByRole("button");
         expect(buttons.length).toBeGreaterThanOrEqual(0);
     });
 
     it("handles filesystem type selection", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { VolumeMountDialog } = await import("../VolumeMountDialog");
         const { createTestStore } = await import("../../../../../test/setup");
@@ -242,7 +242,7 @@ describe("VolumeMountDialog Component", () => {
         const store = await createTestStore();
         const mockClose = () => { };
 
-        const { container } = render(
+        render(
             React.createElement(
                 Provider,
                 {
@@ -254,8 +254,8 @@ describe("VolumeMountDialog Component", () => {
             )
         );
 
-        // Check for autocomplete or select fields for filesystem type
-        const selects = container.querySelectorAll('[role="combobox"]');
+        // Check for autocomplete or select fields for filesystem type using semantic query
+        const selects = screen.queryAllByRole("combobox");
         expect(selects.length).toBeGreaterThanOrEqual(0);
     });
 
@@ -287,7 +287,7 @@ describe("VolumeMountDialog Component", () => {
 
     it("handles automatic mount checkbox", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { VolumeMountDialog } = await import("../VolumeMountDialog");
         const { createTestStore } = await import("../../../../../test/setup");
@@ -295,7 +295,7 @@ describe("VolumeMountDialog Component", () => {
         const store = await createTestStore();
         const mockClose = () => { };
 
-        const { container } = render(
+        render(
             React.createElement(
                 Provider,
                 {
@@ -307,8 +307,8 @@ describe("VolumeMountDialog Component", () => {
             )
         );
 
-        // Look for checkbox for automatic mount
-        const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+        // Look for checkbox for automatic mount using semantic query
+        const checkboxes = screen.queryAllByRole("checkbox");
         expect(checkboxes.length).toBeGreaterThanOrEqual(0);
     });
 
