@@ -1,12 +1,46 @@
 {
-    "extends": "markdownlint:recommended",
-    "MD024": false,
-    "MD025": false,
-    "MD033": false,
-    "MD040": {
-        "severity": "error"
+    "config": {
+        "extends": "markdownlint/style/prettier",
+        "default": true,
+        "MD013": false,
+        "MD024": false,
+        "MD025": false,
+        "MD033": {
+            "allowed_elements": [
+                "img",
+                "a",
+                "br",
+                "details",
+                "summary",
+                "div",
+                "span",
+                "table",
+                "tr",
+                "td",
+                "th",
+                "thead",
+                "tbody",
+                "p",
+                "kbd"
+            ]
+        },
+        "MD034": false,
+        "MD040": {
+            "severity": "error"
+        },
+        "MD041": false,
+        "MD046": false,
+        "MD028": false,
+        "MD022": false
     },
-    "MD060": {
-        "severity": "warning"
-    }
+    "customRules": [],
+    "globs": [
+        "**/*.md"
+    ],
+    "ignores": [
+        "frontend/node_modules/**",
+        "backend/src/vendor/**",
+        ".git/**"
+    ],
+    "gitignore": true
 }
