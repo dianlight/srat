@@ -296,16 +296,19 @@ When making breaking changes:
 
 ### Validation Tool Configuration
 
-- **`.markdownlint.yaml`** - Markdownlint rules and exceptions
-- **`.markdown-link-check.json`** - Link validation settings
+- **`.markdownlint.yaml`** - Markdownlint rules and exceptions (GFM-compatible)
+- **`.markdownlint-cli2.jsonc`** - Enhanced markdownlint configuration
+- **`.lychee.toml`** - Lychee link and image checker configuration
+- **`.vale.ini`** - Vale prose linting configuration
+- **`.vale/styles/Vocab/SRAT/`** - Project-specific vocabulary (accept.txt, reject.txt)
 - **`.cspell.json`** - Spell check dictionary and rules
-- **`.prettierrc`** - Code formatting configuration
+- **`.prettierrc`** - Code formatting configuration (if present)
 - **`.pre-commit-config.yaml`** - Pre-commit hook configuration
 
 ### GitHub Configuration
 
-- **`.github/workflows/documentation.yml`** - CI validation workflow
-- **`.github/copilot-rules.md`** - Automated update rules
+- **`.github/workflows/documentation.yml`** - CI validation workflow with Lychee and Vale
+- **`.github/copilot-instructions.md`** - Instructions for GitHub Copilot
 - **`.github/ISSUE_TEMPLATE/documentation.md`** - Documentation issue template
 - **`.github/pull_request_template.md`** - PR template with documentation checklist
 

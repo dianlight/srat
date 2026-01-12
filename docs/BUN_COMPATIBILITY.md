@@ -151,14 +151,18 @@ make docs-help
 ./scripts/validate-docs.sh --fix
 ```
 
+**Note**: Lychee and Vale are optional tools that need to be installed separately. See their respective installation guides:
+- Lychee: [https://lychee.cli.rs/#/installation](https://lychee.cli.rs/#/installation)
+- Vale: [https://vale.sh/docs/vale-cli/installation/](https://vale.sh/docs/vale-cli/installation/)
+
 ### Manual Package Manager Selection
 
 ```bash
-# Force bun usage (if available)
-bun add -g markdownlint-cli2 markdown-link-check cspell prettier
+# Force bun usage (if available) - JS-based tools only
+bun add -g markdownlint-cli2 cspell prettier doctoc
 
-# Force npm usage
-npm install -g markdownlint-cli2 markdown-link-check cspell prettier
+# Force npm usage - JS-based tools only
+npm install -g markdownlint-cli2 cspell prettier doctoc
 ```
 
 ## Compatibility Matrix
