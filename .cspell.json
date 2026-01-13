@@ -112,6 +112,7 @@
     "unsubscription",
     "nolint",
     "jpillora",
+    "pprof",
   ],
   "flagWords": [],
   "ignorePaths": [
