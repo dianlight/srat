@@ -101,7 +101,7 @@ jobs:
       - uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6
       - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
         with:
-          extra_args: --files $(find . -name "*.md" | grep -v "node_modules")
+          extra_args: --files $(find . -name "*.md" | grep -v "node_modules" | grep -v "vendor")
 
       - name: Run markdownlint (GFM)
         run: bunx markdownlint-cli2 "**/*.md" "#frontend/node_modules" "#backend/src/vendor"
