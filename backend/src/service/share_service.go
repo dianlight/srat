@@ -200,13 +200,32 @@ func (s *ShareService) GetShare(name string) (*dto.SharedResource, errors.E) {
 }
 
 func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResource, errors.E) {
-	check, err := gorm.G[dbom.ExportedShare](s.db.Debug()).Scopes(dbom.IncludeSoftDeleted).Where("name = ? and deleted_at IS NOT NULL", share.Name).Update(s.ctx, "deleted_at", nil)
-	if err != nil {
-		slog.Error("Failed to check for existing share", "share_name", share.Name, "error", err)
-		return nil, errors.Wrapf(err, "failed to check for existing share: %s", err.Error())
-	} else if check > 0 {
+	// Check if a soft-deleted share with this name exists
+	var existingShare dbom.ExportedShare
+	err := s.db.WithContext(s.ctx).Unscoped().Where("name = ? AND deleted_at IS NOT NULL", share.Name).First(&existingShare).Error
+	
+	if err == nil {
+		// Found a soft-deleted share - restore it by clearing deleted_at
+		slog.InfoContext(s.ctx, "Found soft-deleted share, restoring it", "share_name", share.Name)
+		
+		// Use UpdateColumn to bypass hooks and directly set deleted_at to NULL
+		if err := s.db.WithContext(s.ctx).Model(&dbom.ExportedShare{}).Unscoped().
+			Where("name = ?", share.Name).
+			UpdateColumn("deleted_at", gorm.Expr("NULL")).Error; err != nil {
+			slog.ErrorContext(s.ctx, "Failed to restore soft-deleted share", "share_name", share.Name, "error", err)
+			return nil, errors.Wrapf(err, "failed to restore soft-deleted share '%s'", share.Name)
+		}
+		
+		// Now update the share with the new data
 		return s.UpdateShare(share.Name, share)
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		// An unexpected error occurred while checking for soft-deleted share
+		slog.ErrorContext(s.ctx, "Error checking for existing soft-deleted share", "share_name", share.Name, "error", err)
+		return nil, errors.Wrapf(err, "failed to check for existing share '%s'", share.Name)
 	}
+	
+	// No soft-deleted share found, proceed with creation
+	slog.InfoContext(s.ctx, "No soft-deleted share found, creating new share", "share_name", share.Name)
 
 	var conv converter.DtoToDbomConverterImpl
 	var dbShare dbom.ExportedShare
