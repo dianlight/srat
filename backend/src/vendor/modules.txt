@@ -42,7 +42,7 @@ github.com/StackExchange/wmi
 github.com/adelolmo/hd-idle/diskstats
 github.com/adelolmo/hd-idle/io
 github.com/adelolmo/hd-idle/sgio
-# github.com/air-verse/air v1.63.8
+# github.com/air-verse/air v1.64.0
 ## explicit; go 1.25
 github.com/air-verse/air
 github.com/air-verse/air/runner
@@ -572,10 +572,10 @@ golang.org/x/crypto/blake2b
 golang.org/x/crypto/blowfish
 golang.org/x/crypto/pbkdf2
 golang.org/x/crypto/scrypt
-# golang.org/x/exp v0.0.0-20251219203646-944ab1f22d93
+# golang.org/x/exp v0.0.0-20260112195511-716be5621a96
 ## explicit; go 1.24.0
 golang.org/x/exp/constraints
-# golang.org/x/mod v0.31.0
+# golang.org/x/mod v0.32.0
 ## explicit; go 1.24.0
 golang.org/x/mod/internal/lazyregexp
 golang.org/x/mod/modfile
@@ -617,7 +617,7 @@ golang.org/x/text/width
 # golang.org/x/time v0.14.0
 ## explicit; go 1.24.0
 golang.org/x/time/rate
-# golang.org/x/tools v0.40.0
+# golang.org/x/tools v0.41.0
 ## explicit; go 1.24.0
 golang.org/x/tools/go/analysis
 golang.org/x/tools/go/analysis/checker
