@@ -44,7 +44,7 @@ export function censorPlainText(text: string): string {
 			const [, indent, key, separator, value] = keyValueMatch;
 			
 			// Check if the key is sensitive
-			if (isSensitiveField(key)) {
+			if (key && value && isSensitiveField(key)) {
 				// Preserve the structure but censor the value
 				const censoredValue = value.trim() ? censorValue(value) : value;
 				return `${indent}${key}${separator} ${censoredValue}`;
