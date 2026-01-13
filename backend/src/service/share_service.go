@@ -271,6 +271,8 @@ func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResourc
 }
 
 func (s *ShareService) UpdateShare(name string, share dto.SharedResource) (*dto.SharedResource, errors.E) {
+	slog.InfoContext(s.ctx, "Updating share", "share_name", name)
+	
 	dbShare, err := gorm.G[dbom.ExportedShare](s.db).
 		Preload("MountPointData", nil).
 		Preload("Users", nil).
@@ -278,18 +280,25 @@ func (s *ShareService) UpdateShare(name string, share dto.SharedResource) (*dto.
 		Where(g.ExportedShare.Name.Eq(name)).First(s.ctx)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
+			slog.WarnContext(s.ctx, "Share not found for update", "share_name", name)
 			return nil, errors.WithStack(dto.ErrorShareNotFound)
 		}
+		slog.ErrorContext(s.ctx, "Error retrieving share for update", "share_name", name, "error", err)
 		return nil, errors.Wrap(err, "failed to get share")
 	}
+	
+	slog.DebugContext(s.ctx, "Retrieved share for update", "share_name", name, 
+		"users_count", len(dbShare.Users), "ro_users_count", len(dbShare.RoUsers))
 
 	var conv converter.DtoToDbomConverterImpl
 	err = conv.SharedResourceToExportedShare(share, &dbShare)
 	if err != nil {
+		slog.ErrorContext(s.ctx, "Failed to convert share during update", "share_name", name, "error", err)
 		return nil, errors.Wrap(err, "failed to convert share")
 	}
 
 	if len(dbShare.Users) == 0 {
+		slog.DebugContext(s.ctx, "No users provided, adding admin user", "share_name", name)
 		adminUser, adminErr := s.user_service.GetAdmin()
 		if adminErr != nil {
 			return nil, errors.Wrap(adminErr, "failed to get admin user for new share")
@@ -305,8 +314,11 @@ func (s *ShareService) UpdateShare(name string, share dto.SharedResource) (*dto.
 	if _, err := gorm.G[dbom.ExportedShare](s.db).Updates(s.ctx, dbShare); err != nil {
 		// Note: gorm.ErrDuplicatedKey might not be standard across all GORM dialects/drivers.
 		// Checking for a more generic "constraint violation" or relying on the FindByName check might be more robust.
+		slog.ErrorContext(s.ctx, "Failed to update share in database", "share_name", name, "error", err)
 		return nil, errors.Wrapf(err, "failed to update share '%s' to repository", share.Name)
 	}
+	
+	slog.DebugContext(s.ctx, "Share database record updated successfully", "share_name", name)
 
 	createdDtoShare, errS := conv.ExportedShareToSharedResource(dbShare)
 	if errS != nil {
@@ -327,6 +339,8 @@ func (s *ShareService) UpdateShare(name string, share dto.SharedResource) (*dto.
 
 // DeleteShare deletes a shared resource by its name.
 func (s *ShareService) DeleteShare(name string) errors.E {
+	slog.InfoContext(s.ctx, "Deleting share", "share_name", name)
+	
 	var ashare *dto.SharedResource
 	ashare, err := s.GetShare(name)
 	if err != nil { // Leverage GetShare for not-found check
@@ -343,23 +357,36 @@ func (s *ShareService) DeleteShare(name string) errors.E {
 		Preload("Users").
 		Preload("RoUsers").
 		Where("name = ?", name).First(&dbShare).Error; err != nil {
+		slog.ErrorContext(s.ctx, "Failed to retrieve share for deletion", "share_name", name, "error", err)
 		return errors.Wrap(err, "failed to retrieve share for deletion")
 	}
 
 	// Clear associations to avoid foreign key issues on recreation
+	userCount := len(dbShare.Users)
+	roUserCount := len(dbShare.RoUsers)
+	slog.DebugContext(s.ctx, "Clearing share associations before deletion", 
+		"share_name", name, "users_count", userCount, "ro_users_count", roUserCount)
+	
 	if err := s.db.WithContext(s.ctx).Model(&dbShare).Association("Users").Clear(); err != nil {
+		slog.ErrorContext(s.ctx, "Failed to clear Users associations", "share_name", name, "error", err)
 		return errors.Wrap(err, "failed to clear Users associations")
 	}
 	if err := s.db.WithContext(s.ctx).Model(&dbShare).Association("RoUsers").Clear(); err != nil {
+		slog.ErrorContext(s.ctx, "Failed to clear RoUsers associations", "share_name", name, "error", err)
 		return errors.Wrap(err, "failed to clear RoUsers associations")
 	}
+
+	slog.DebugContext(s.ctx, "Associations cleared, performing soft delete", "share_name", name)
 
 	// Now perform the soft delete
 	_, errS := gorm.G[dbom.ExportedShare](s.db).
 		Where(g.ExportedShare.Name.Eq(name)).Delete(s.ctx)
 	if errS != nil {
+		slog.ErrorContext(s.ctx, "Failed to soft delete share", "share_name", name, "error", errS)
 		return errors.Wrap(errS, "failed to delete share")
 	}
+	
+	slog.InfoContext(s.ctx, "Share successfully deleted (soft delete)", "share_name", name)
 	return nil
 }
 
