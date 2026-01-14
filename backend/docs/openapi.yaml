@@ -532,6 +532,79 @@ components:
         - repeating
         - ignored
       type: object
+    IssueReportRequest:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/IssueReportRequest.json
+          format: uri
+          readOnly: true
+          type: string
+        browser_info:
+          type: string
+        console_errors:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        current_url:
+          type: string
+        description:
+          type: string
+        include_addon_logs:
+          type: boolean
+        include_context_data:
+          type: boolean
+        include_srat_config:
+          type: boolean
+        navigation_history:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        problem_type:
+          enum:
+            - frontend_ui
+            - ha_integration
+            - addon
+            - samba
+          type: string
+      required:
+        - problem_type
+        - description
+        - include_context_data
+        - include_addon_logs
+        - include_srat_config
+      type: object
+    IssueReportResponse:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/IssueReportResponse.json
+          format: uri
+          readOnly: true
+          type: string
+        addon_logs:
+          type: string
+        github_url:
+          type: string
+        issue_body:
+          type: string
+        issue_title:
+          type: string
+        sanitized_config:
+          type: string
+      required:
+        - github_url
+        - issue_title
+        - issue_body
+      type: object
     JsonPatchOp:
       additionalProperties: false
       properties:
@@ -1992,8 +2065,8 @@ paths:
           schema:
             description: The disk ID (not the device path)
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -2392,8 +2465,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -2799,6 +2872,55 @@ paths:
             X-Trace-Id:
               $ref: "#/components/headers/X-Trace-Id"
       summary: Create a new issue
+      tags:
+        - Issues
+  /api/issues/report:
+    post:
+      operationId: generate-issue-report
+      parameters:
+        - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IssueReportRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IssueReportResponse"
+          description: OK
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: Generate diagnostic data for GitHub issue reporting
       tags:
         - Issues
   /api/issues/{id}:
@@ -3467,8 +3589,8 @@ paths:
               - world
             maxLength: 128
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "204":
           description: No Content
@@ -3570,8 +3692,8 @@ paths:
               - world
             maxLength: 128
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json-patch+json:
@@ -3719,8 +3841,8 @@ paths:
               - world
             maxLength: 128
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -4141,8 +4263,8 @@ paths:
     get:
       operationId: get-api-telemetry-internet-connection
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -4231,8 +4353,8 @@ paths:
     get:
       operationId: get-api-update
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -4316,8 +4438,8 @@ paths:
     get:
       operationId: list-api-update-channels
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:

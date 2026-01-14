@@ -15,6 +15,7 @@ import ReportProblemIcon from "@mui/icons-material/ReportProblem";
 import SaveIcon from "@mui/icons-material/Save";
 import SystemSecurityUpdateIcon from "@mui/icons-material/SystemSecurityUpdate";
 import UndoIcon from "@mui/icons-material/Undo";
+import GitHubIcon from "@mui/icons-material/GitHub";
 import {
 	CircularProgress,
 	type CircularProgressProps,
@@ -70,6 +71,7 @@ import {
 import { ErrorBoundary } from "./ErrorBoundary";
 import { NotificationCenter } from "./NotificationCenter";
 import { DonationButton } from "./DonationButton";
+import { ReportIssueDialog } from "./ReportIssueDialog";
 import { useTour, type StepType } from '@reactour/tour'
 import { DashboardSteps } from "../pages/dashboard/DashboardTourStep";
 import { SharesSteps } from "../pages/shares/SharesTourStep";
@@ -259,6 +261,7 @@ export function NavBar(props: {
 	const [isLogoHovered, setIsLogoHovered] = useState(false);
 	const matches = useMediaQuery(theme.breakpoints.up("sm"));
 	const [anchorElNav, setAnchorElNav] = useState<null | HTMLElement>(null);
+	const [reportIssueOpen, setReportIssueOpen] = useState(false);
 
 	// Track last 3 SSE messages for debug display
 	interface SSEMessage {
@@ -683,6 +686,14 @@ export function NavBar(props: {
 								</Tooltip>
 							</IconButton>
 							<IconButton
+								size="small"
+								onClick={() => setReportIssueOpen(true)}
+							>
+								<Tooltip title="Report Issue on GitHub" arrow>
+									<GitHubIcon sx={{ color: "white" }} />
+								</Tooltip>
+							</IconButton>
+							<IconButton
 								sx={{ display: { xs: "none", sm: "inline-flex" } }}
 								size="small"
 								onClick={() => {
@@ -736,6 +747,10 @@ export function NavBar(props: {
 					</Box>
 				</DialogContent>
 			</Dialog>
+			<ReportIssueDialog
+				open={reportIssueOpen}
+				onClose={() => setReportIssueOpen(false)}
+			/>
 			{props.bodyRef.current &&
 				createPortal(
 					visibleTabs.map((tab) => (
