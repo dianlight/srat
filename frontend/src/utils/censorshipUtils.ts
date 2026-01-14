@@ -74,14 +74,14 @@ export function censorPlainText(text: string): string {
 				keyQuoteSuffix = `\\${escapedQuote}`;
 			} else if (regularKey) {
 				key = regularKey;
-				keyQuotePrefix = regularQuote;
-				keyQuoteSuffix = regularQuote;
+				keyQuotePrefix = regularQuote || '';
+				keyQuoteSuffix = regularQuote || '';
 			} else if (angleKey) {
 				key = angleKey;
 				keyQuotePrefix = '<';
 				keyQuoteSuffix = '>';
 			} else {
-				key = unquotedKey;
+				key = unquotedKey || '';
 			}
 			
 			// Check if the key is sensitive
@@ -95,21 +95,21 @@ export function censorPlainText(text: string): string {
 				const escapedValueMatch = value.match(/^\\(['"`])(.*)\\(\1)$/);
 				if (escapedValueMatch) {
 					valueQuoteOpen = `\\${escapedValueMatch[1]}`;
-					actualValue = escapedValueMatch[2];
+					actualValue = escapedValueMatch[2] || '';
 					valueQuoteClose = `\\${escapedValueMatch[3]}`;
 				} else {
 					// Check for regular quotes (including backticks)
 					const valueQuoteMatch = value.match(/^(['"`]|&quot;|&apos;|%22|%27)(.*)(\1)$/);
 					if (valueQuoteMatch) {
-						valueQuoteOpen = valueQuoteMatch[1];
-						actualValue = valueQuoteMatch[2];
-						valueQuoteClose = valueQuoteMatch[3];
+						valueQuoteOpen = valueQuoteMatch[1] || '';
+						actualValue = valueQuoteMatch[2] || '';
+						valueQuoteClose = valueQuoteMatch[3] || '';
 					} else {
 						// Check for angle bracket wrapping
 						const angleBracketMatch = value.match(/^<(.*)>$/);
 						if (angleBracketMatch) {
 							valueQuoteOpen = '<';
-							actualValue = angleBracketMatch[1];
+							actualValue = angleBracketMatch[1] || '';
 							valueQuoteClose = '>';
 						}
 					}
