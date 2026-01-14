@@ -36,52 +36,82 @@ export function censorValue(value: any): string {
 /**
  * Censor sensitive data in plain text (e.g., INI, config files)
  * Searches for patterns like "key = value" and censors the value if key is sensitive
- * Supports various separators (=, :, ;, >, ->), quoted keys/values, and encoded strings
+ * Supports various separators (=, :, ;, >, ->), quoted keys/values, escaped quotes, backticks, and encoded strings
  */
 export function censorPlainText(text: string): string {
 	const lines = text.split('\n');
 	const censoredLines = lines.map(line => {
 		// Enhanced regex to match various key-value patterns:
-		// - Supports separators: = : ; > ->
-		// - Handles quoted keys/values: "key", 'key', <key>
+		// - Supports separators: = : ; > -> => ::
+		// - Handles quoted keys/values: "key", 'key', `key`, <key>
+		// - Handles escaped quotes: \"key\", \'key\'
 		// - Handles HTML/URL encoded strings
 		// - Preserves indentation and spacing
 		// Pattern breakdown:
 		// ^(\s*) - capture leading whitespace
-		// (['"]?)([^=:;>\s'"]+)\2 - optional quote, key (unquoted or quoted), matching close quote
+		// (?:\\(['"`])|(['"`])) - optional escaped quote or regular quote
+		// ([^=:;>\s'"`\\]+) - key characters (non-separator, non-space, non-quote)
+		// (?:\\\1|\2) - matching close quote (escaped or regular)
 		// OR <([^>]+)> - key wrapped in angle brackets
+		// OR ([^=:;>\s'"`\\]+) - unquoted key
 		// \s* - optional space before separator
 		// (=|:|;|>|->|=>|::) - various separators
 		// \s* - optional space after separator
 		// (.*) - value (everything remaining on the line)
-		const keyValueMatch = line.match(/^(\s*)(?:(['"])([^=:;>\s'"]+)\2|<([^>]+)>|([^=:;>\s'"]+))\s*(=|:|;|>|->|=>|::)\s*(.*)$/);
+		const keyValueMatch = line.match(/^(\s*)(?:(?:\\(['"`])([^=:;>\s'"`\\]+)\\\2)|(?:(['"`])([^=:;>\s'"`\\]+)\4)|<([^>]+)>|([^=:;>\s'"`\\]+))\s*(=|:|;|>|->|=>|::)\s*(.*)$/);
 		
 		if (keyValueMatch) {
-			const [, indent, openQuote, quotedKey, angleKey, unquotedKey, separator, value] = keyValueMatch;
+			const [, indent, escapedQuote, escapedKey, regularQuote, regularKey, angleKey, unquotedKey, separator, value] = keyValueMatch;
 			
-			// Extract the actual key (could be quoted, in angle brackets, or unquoted)
-			const key = quotedKey || angleKey || unquotedKey;
+			// Extract the actual key and quote style
+			let key: string;
+			let keyQuotePrefix = '';
+			let keyQuoteSuffix = '';
+			
+			if (escapedKey) {
+				key = escapedKey;
+				keyQuotePrefix = `\\${escapedQuote}`;
+				keyQuoteSuffix = `\\${escapedQuote}`;
+			} else if (regularKey) {
+				key = regularKey;
+				keyQuotePrefix = regularQuote;
+				keyQuoteSuffix = regularQuote;
+			} else if (angleKey) {
+				key = angleKey;
+				keyQuotePrefix = '<';
+				keyQuoteSuffix = '>';
+			} else {
+				key = unquotedKey;
+			}
 			
 			// Check if the key is sensitive
 			if (key && value !== undefined && isSensitiveField(key)) {
-				// Extract value (may be quoted)
+				// Extract value (may be quoted with various quote styles)
 				let actualValue = value;
 				let valueQuoteOpen = '';
 				let valueQuoteClose = '';
 				
-				// Check if value is quoted
-				const valueQuoteMatch = value.match(/^(['"]|&quot;|&apos;|%22|%27)(.*)(\1)$/);
-				if (valueQuoteMatch) {
-					valueQuoteOpen = valueQuoteMatch[1];
-					actualValue = valueQuoteMatch[2];
-					valueQuoteClose = valueQuoteMatch[3];
+				// Check for escaped quotes in value
+				const escapedValueMatch = value.match(/^\\(['"`])(.*)\\(\1)$/);
+				if (escapedValueMatch) {
+					valueQuoteOpen = `\\${escapedValueMatch[1]}`;
+					actualValue = escapedValueMatch[2];
+					valueQuoteClose = `\\${escapedValueMatch[3]}`;
 				} else {
-					// Check for angle bracket wrapping
-					const angleBracketMatch = value.match(/^<(.*)>$/);
-					if (angleBracketMatch) {
-						valueQuoteOpen = '<';
-						actualValue = angleBracketMatch[1];
-						valueQuoteClose = '>';
+					// Check for regular quotes (including backticks)
+					const valueQuoteMatch = value.match(/^(['"`]|&quot;|&apos;|%22|%27)(.*)(\1)$/);
+					if (valueQuoteMatch) {
+						valueQuoteOpen = valueQuoteMatch[1];
+						actualValue = valueQuoteMatch[2];
+						valueQuoteClose = valueQuoteMatch[3];
+					} else {
+						// Check for angle bracket wrapping
+						const angleBracketMatch = value.match(/^<(.*)>$/);
+						if (angleBracketMatch) {
+							valueQuoteOpen = '<';
+							actualValue = angleBracketMatch[1];
+							valueQuoteClose = '>';
+						}
 					}
 				}
 				
@@ -89,11 +119,7 @@ export function censorPlainText(text: string): string {
 				const censoredValue = actualValue.trim() ? censorValue(actualValue) : actualValue;
 				
 				// Reconstruct the line with original formatting
-				const keyPart = openQuote 
-					? `${openQuote}${key}${openQuote}` 
-					: angleKey 
-						? `<${key}>` 
-						: key;
+				const keyPart = keyQuotePrefix + key + keyQuoteSuffix;
 				
 				return `${indent}${keyPart} ${separator} ${valueQuoteOpen}${censoredValue}${valueQuoteClose}`;
 			}

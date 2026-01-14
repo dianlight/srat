@@ -136,6 +136,31 @@ api_key : %22url_encoded%22`;
 			expect(result).toContain("🔒");
 			expect(result).not.toContain("secret123");
 		});
+
+		it("handles escaped quotes in keys and values", () => {
+			const input = `\\"password\\" = \\"secret123\\"
+\\'api_key\\' : \\'mykey456\\'`;
+			const result = censorPlainText(input);
+			
+			expect(result).toContain("🔒");
+			expect(result).not.toContain("secret123");
+			expect(result).not.toContain("mykey456");
+			// Should preserve escaped quotes
+			expect(result).toContain('\\"');
+			expect(result).toContain("\\'");
+		});
+
+		it("handles backticks in keys and values", () => {
+			const input = `\`password\` = \`secret123\`
+\`api_key\` : \`mykey456\``;
+			const result = censorPlainText(input);
+			
+			expect(result).toContain("🔒");
+			expect(result).not.toContain("secret123");
+			expect(result).not.toContain("mykey456");
+			// Should preserve backticks
+			expect(result).toContain("`");
+		});
 	});
 
 	describe("objectToPlainText", () => {
