@@ -43,7 +43,7 @@ const buildConfig: BuildConfig = {
 	},
 	target: "browser",
 	// Use inline sourcemaps during watch/serve for better DX, external in production to avoid bloating bundles
-	sourcemap: values.watch || values.serve ? "inline" : "external",
+	sourcemap: "inline", // values.watch || values.serve ? "inline" : "external",
 	minify: values.watch || values.serve ? false : true,
 	// Avoid bundling optional prism-based highlighters that reference unsupported subpath exports
 	external: [
