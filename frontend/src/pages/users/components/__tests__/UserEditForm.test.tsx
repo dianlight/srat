@@ -120,7 +120,7 @@ describe("UserEditForm component", () => {
         const passwordInputs = document.body.getElementsByTagName('input');
         let passwordCount = 0;
         for (let i = 0; i < passwordInputs.length; i++) {
-            if (passwordInputs[i].type === 'password') {
+            if (passwordInputs[i]?.type === 'password') {
                 passwordCount++;
             }
         }
