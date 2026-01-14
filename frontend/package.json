@@ -55,6 +55,7 @@
     "emittery": "^1.2.0",
     "filesize": "^11.0.13",
     "humanize-duration": "^3.33.2",
+    "maskify-ts": "^3.4.0",
     "material-ui-confirm": "^4.0.0",
     "mui-chips-input": "^7.0.1",
     "normalize-url": "^8.1.1",

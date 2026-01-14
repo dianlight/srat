@@ -1,8 +1,11 @@
 /**
  * Utility functions for censoring sensitive data in various formats
+ * Uses maskify-ts for advanced data masking and auto-detection
  */
 
-// Keywords that indicate sensitive data
+import { Maskify, type AutoMaskOptions } from 'maskify-ts';
+
+// Keywords that indicate sensitive data (used by maskify-ts sensitiveKeys)
 export const SENSITIVE_KEYWORDS = [
 	'password', 'pass', 'pwd', 'secret', 'token', 'key', 'auth', 'credential',
 	'private', 'confidential', 'secure', 'api_key', 'apikey', 'access_token',
@@ -20,14 +23,14 @@ export function isSensitiveField(label: string): boolean {
 }
 
 /**
- * Censor a value with lock emoji
+ * Censor a value with lock emoji using maskify-ts transform function
  */
 export function censorValue(value: any): string {
-	// Use lock emoji to censor sensitive data
-	if (typeof value === 'string') {
-		return '🔒'.repeat(Math.min(value.length, 8));
-	}
-	return '🔒'.repeat(8);
+	const strValue = String(value);
+	// Use maskify-ts with custom transform to replace with lock emoji
+	return Maskify.mask(strValue, {
+		transform: (val: string) => '🔒'.repeat(Math.min(val.length, 8))
+	});
 }
 
 /**

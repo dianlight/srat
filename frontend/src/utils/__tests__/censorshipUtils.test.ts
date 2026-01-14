@@ -40,14 +40,16 @@ describe("Censorship Utils", () => {
 		it("censors string values with lock emoji", () => {
 			const result = censorValue("mysecret");
 			expect(result).toContain("🔒");
-			// Should return multiple lock emojis
+			// Should return multiple lock emojis (8 max based on string length)
 			expect(result.length).toBeGreaterThan(0);
+			expect(result).toBe("🔒".repeat(8)); // "mysecret" is 8 chars
 		});
 
 		it("censors non-string values", () => {
 			const result = censorValue(12345);
 			expect(result).toContain("🔒");
-			expect(result).toBe("🔒".repeat(8));
+			// Numbers are converted to string, so 12345 = 5 chars = 5 emojis
+			expect(result).toBe("🔒".repeat(5));
 		});
 	});
 
