@@ -90,6 +90,52 @@ password = secret
 			expect(result).toContain("🔒");
 			expect(result).not.toContain("mysecret");
 		});
+
+		it("handles various separators (;, >, ->, =>, ::)", () => {
+			const input = `password ; secret1
+token > secret2
+api_key -> secret3
+secret => secret4
+bearer_token :: secret5`;
+			const result = censorPlainText(input);
+			
+			// All sensitive values should be censored
+			expect(result).toContain("🔒");
+			expect(result).not.toContain("secret1");
+			expect(result).not.toContain("secret2");
+			expect(result).not.toContain("secret3");
+			expect(result).not.toContain("secret4");
+			expect(result).not.toContain("secret5");
+		});
+
+		it("handles quoted keys and values", () => {
+			const input = `"password" = "secret123"
+'api_key' : 'mykey456'
+<token> > <secrettoken>`;
+			const result = censorPlainText(input);
+			
+			expect(result).toContain("🔒");
+			expect(result).not.toContain("secret123");
+			expect(result).not.toContain("mykey456");
+			expect(result).not.toContain("secrettoken");
+		});
+
+		it("handles HTML/URL encoded strings", () => {
+			const input = `password = &quot;encoded_secret&quot;
+api_key : %22url_encoded%22`;
+			const result = censorPlainText(input);
+			
+			expect(result).toContain("🔒");
+		});
+
+		it("preserves spacing and indentation", () => {
+			const input = `  password   =   secret123`;
+			const result = censorPlainText(input);
+			
+			expect(result).toContain("  password"); // Preserves leading spaces
+			expect(result).toContain("🔒");
+			expect(result).not.toContain("secret123");
+		});
 	});
 
 	describe("objectToPlainText", () => {

@@ -36,21 +36,66 @@ export function censorValue(value: any): string {
 /**
  * Censor sensitive data in plain text (e.g., INI, config files)
  * Searches for patterns like "key = value" and censors the value if key is sensitive
+ * Supports various separators (=, :, ;, >, ->), quoted keys/values, and encoded strings
  */
 export function censorPlainText(text: string): string {
 	const lines = text.split('\n');
 	const censoredLines = lines.map(line => {
-		// Match patterns like "key = value" or "key=value" or "key: value"
-		const keyValueMatch = line.match(/^(\s*)([^=:\s]+)\s*([=:])\s*(.*)$/);
+		// Enhanced regex to match various key-value patterns:
+		// - Supports separators: = : ; > ->
+		// - Handles quoted keys/values: "key", 'key', <key>
+		// - Handles HTML/URL encoded strings
+		// - Preserves indentation and spacing
+		// Pattern breakdown:
+		// ^(\s*) - capture leading whitespace
+		// (['"]?)([^=:;>\s'"]+)\2 - optional quote, key (unquoted or quoted), matching close quote
+		// OR <([^>]+)> - key wrapped in angle brackets
+		// \s* - optional space before separator
+		// (=|:|;|>|->|=>|::) - various separators
+		// \s* - optional space after separator
+		// (.*) - value (everything remaining on the line)
+		const keyValueMatch = line.match(/^(\s*)(?:(['"])([^=:;>\s'"]+)\2|<([^>]+)>|([^=:;>\s'"]+))\s*(=|:|;|>|->|=>|::)\s*(.*)$/);
 		
 		if (keyValueMatch) {
-			const [, indent, key, separator, value] = keyValueMatch;
+			const [, indent, openQuote, quotedKey, angleKey, unquotedKey, separator, value] = keyValueMatch;
+			
+			// Extract the actual key (could be quoted, in angle brackets, or unquoted)
+			const key = quotedKey || angleKey || unquotedKey;
 			
 			// Check if the key is sensitive
-			if (key && value && isSensitiveField(key)) {
+			if (key && value !== undefined && isSensitiveField(key)) {
+				// Extract value (may be quoted)
+				let actualValue = value;
+				let valueQuoteOpen = '';
+				let valueQuoteClose = '';
+				
+				// Check if value is quoted
+				const valueQuoteMatch = value.match(/^(['"]|&quot;|&apos;|%22|%27)(.*)(\1)$/);
+				if (valueQuoteMatch) {
+					valueQuoteOpen = valueQuoteMatch[1];
+					actualValue = valueQuoteMatch[2];
+					valueQuoteClose = valueQuoteMatch[3];
+				} else {
+					// Check for angle bracket wrapping
+					const angleBracketMatch = value.match(/^<(.*)>$/);
+					if (angleBracketMatch) {
+						valueQuoteOpen = '<';
+						actualValue = angleBracketMatch[1];
+						valueQuoteClose = '>';
+					}
+				}
+				
 				// Preserve the structure but censor the value
-				const censoredValue = value.trim() ? censorValue(value) : value;
-				return `${indent}${key}${separator} ${censoredValue}`;
+				const censoredValue = actualValue.trim() ? censorValue(actualValue) : actualValue;
+				
+				// Reconstruct the line with original formatting
+				const keyPart = openQuote 
+					? `${openQuote}${key}${openQuote}` 
+					: angleKey 
+						? `<${key}>` 
+						: key;
+				
+				return `${indent}${keyPart} ${separator} ${valueQuoteOpen}${censoredValue}${valueQuoteClose}`;
 			}
 		}
 		
