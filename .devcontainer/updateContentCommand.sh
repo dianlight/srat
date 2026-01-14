@@ -11,7 +11,8 @@ apk add --no-cache --repository=https://dl-cdn.alpinelinux.org/alpine/edge/commu
 apk add --no-cache --repository=https://dl-cdn.alpinelinux.org/alpine/edge/testing lychee
 
 #bun
-curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.5"
+BUN_VERSION=$(jq -r '.packageManager' /workspaces/srat/frontend/package.json | sed 's/bun@/bun-v/')
+curl -fsSL https://bun.sh/install | bash -s "$BUN_VERSION"
 
 make -C .. prepare || :
 
