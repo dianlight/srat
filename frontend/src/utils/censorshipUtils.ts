@@ -34,31 +34,57 @@ export function censorValue(value: any): string {
 }
 
 /**
- * Censor sensitive data in plain text (e.g., INI, config files)
+ * Censor sensitive data in plain text (e.g., INI, config files, JSON)
  * Searches for patterns like "key = value" and censors the value if key is sensitive
  * Supports various separators (=, :, ;, >, ->), quoted keys/values, escaped quotes, backticks, and encoded strings
+ * Also handles JSON key-value pairs like "password":"value"
  */
 export function censorPlainText(text: string): string {
 	const lines = text.split('\n');
 	const censoredLines = lines.map(line => {
-		// Enhanced regex to match various key-value patterns:
-		// - Supports separators: = : ; > -> => ::
-		// - Handles quoted keys/values: "key", 'key', `key`, <key>
-		// - Handles escaped quotes: \"key\", \'key\'
-		// - Handles HTML/URL encoded strings
-		// - Preserves indentation and spacing
-		// Pattern breakdown:
-		// ^(\s*) - capture leading whitespace
-		// (?:\\(['"`])|(['"`])) - optional escaped quote or regular quote
-		// ([^=:;>\s'"`\\]+) - key characters (non-separator, non-space, non-quote)
-		// (?:\\\1|\2) - matching close quote (escaped or regular)
-		// OR <([^>]+)> - key wrapped in angle brackets
-		// OR ([^=:;>\s'"`\\]+) - unquoted key
-		// \s* - optional space before separator
-		// (=|:|;|>|->|=>|::) - various separators
-		// \s* - optional space after separator
-		// (.*) - value (everything remaining on the line)
-		const keyValueMatch = line.match(/^(\s*)(?:(?:\\(['"`])([^=:;>\s'"`\\]+)\\\2)|(?:(['"`])([^=:;>\s'"`\\]+)\4)|<([^>]+)>|([^=:;>\s'"`\\]+))\s*(=|:|;|>|->|=>|::)\s*(.*)$/);
+		let result = line;
+		
+		// Handle JSON-style key-value pairs:
+		// Match quoted keys followed by colon, then handle values in any quote style or unquoted
+		// Three patterns:
+		// 1. "key":"value" or 'key':'value' - both quoted
+		// 2. "key":value - key quoted, value unquoted (can be string, number, bool, null, object, array)
+		//
+		// We use lookahead to find the proper value boundary without consuming it
+		result = result.replace(
+			/"([^"]+)"\s*:\s*"([^"]*)"|"([^"]+)"\s*:\s*'([^']*)'|'([^']+)'\s*:\s*"([^"]*)"|'([^']+)'\s*:\s*'([^']*)'|"([^"]+)"\s*:\s*([^,}\]"\s][^,}\]]*?(?:[^,}\]"\s]|(?=\s*[,}\]]))|[^,}\]":\s])/g,
+			(match, key1, val1, key2, val2, key3, val3, key4, val4, key5, val5) => {
+				const key = key1 || key2 || key3 || key4 || key5;
+				let value = val1 || val2 || val3 || val4 || val5;
+				
+				if (key && isSensitiveField(key) && value !== undefined && value.trim()) {
+					const censoredVal = censorValue(value.trim());
+					
+					// Reconstruct with appropriate quoting
+					if (val1 !== undefined) {
+						// Case: "key":"value"
+						return `"${key}":"${censoredVal}"`;
+					} else if (val2 !== undefined) {
+						// Case: "key":'value'
+						return `"${key}":"${censoredVal}"`;
+					} else if (val3 !== undefined) {
+						// Case: 'key':"value"
+						return `"${key}":"${censoredVal}"`;
+					} else if (val4 !== undefined) {
+						// Case: 'key':'value'
+						return `"${key}":"${censoredVal}"`;
+					} else {
+						// Case: "key":unquotedvalue
+						return `"${key}":"${censoredVal}"`;
+					}
+				}
+				return match;
+			}
+		);
+		
+		// Then, handle INI-style key-value patterns
+		// Pattern: key = value or key: value at the beginning of line (after optional whitespace)
+		const keyValueMatch = result.match(/^(\s*)(?:(?:\\(['"`])([^=:;>\s'"`\\]+)\\\2)|(?:(['"`])([^=:;>\s'"`\\]+)\4)|<([^>]+)>|([^=:;>\s'"`\\]+))\s*(=|:|;|>|->|=>|::)\s*(.*)$/);
 		
 		if (keyValueMatch) {
 			const [, indent, escapedQuote, escapedKey, regularQuote, regularKey, angleKey, unquotedKey, separator, value] = keyValueMatch;
@@ -125,7 +151,7 @@ export function censorPlainText(text: string): string {
 			}
 		}
 		
-		return line;
+		return result;
 	});
 	
 	return censoredLines.join('\n');
