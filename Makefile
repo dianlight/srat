@@ -93,25 +93,44 @@ docs-check:
 	else \
 		echo "⚠️  pre-commit not found (optional for git hooks)"; \
 	fi; \
+	if command -v lychee >/dev/null 2>&1; then \
+		echo "✅ Lychee found (link checker)"; \
+	else \
+		echo "⚠️  Lychee not found (optional but recommended)"; \
+		echo "    Install: https://lychee.cli.rs/#/installation"; \
+	fi; \
+	if command -v vale >/dev/null 2>&1; then \
+		echo "✅ Vale found (prose linter)"; \
+	else \
+		echo "⚠️  Vale not found (optional but recommended)"; \
+		echo "    Install: https://vale.sh/docs/vale-cli/installation/"; \
+	fi; \
 	echo "✅ Documentation validation dependencies check complete"; \
 	echo "JavaScript runtime: $$NODE_RUNTIME, Package manager: $$PACKAGE_MANAGER"
 
 .PHONY: docs-help
 docs-help:
-	@echo "📚 SRAT Documentation Commands"
-	@echo "=============================="
+	@echo "📚 SRAT Documentation Commands (GitHub Flavored Markdown)"
+	@echo "=========================================================="
 	@echo ""
 	@echo "Available make targets:"
 	@echo "  docs-check     - Check if all dependencies are installed"
 	@echo "  docs-install   - Install documentation validation tools"
 	@echo "  docs-validate  - Run all documentation validation checks"
 	@echo "  docs-fix       - Auto-fix common documentation formatting issues"
+	@echo "  docs-toc       - Generate table of contents for markdown files"
 	@echo "  docs-help      - Show this help message"
 	@echo ""
 	@echo "Direct script usage:"
 	@echo "  ./scripts/validate-docs.sh        - Run full validation"
 	@echo "  ./scripts/validate-docs.sh --fix  - Auto-fix formatting"
 	@echo "  ./scripts/validate-docs.sh --help - Show script help"
+	@echo ""
+	@echo "Validation tools:"
+	@echo "  - markdownlint-cli2: Markdown syntax and formatting (GFM)"
+	@echo "  - Lychee: Link and image validation"
+	@echo "  - cspell: Spell checking"
+	@echo "  - Vale: Prose linting and style checking (GFM)"
 	@echo ""
 	@echo "Package manager support:"
 	@if command -v bun >/dev/null 2>&1; then \
@@ -129,16 +148,21 @@ docs-help:
 .PHONY: docs-install
 docs-install:
 	@echo "Installing documentation validation tools..."
+	@echo "Note: Lychee and Vale should be installed separately (see docs-check)"
 	@if command -v bun >/dev/null 2>&1; then \
-		echo "Using bun to install documentation tools..."; \
-		bun add -g markdownlint-cli2 markdown-link-check cspell prettier; \
+		echo "Using bun to install JS-based documentation tools..."; \
+		bun add -g markdownlint-cli2 cspell prettier doctoc; \
 	elif command -v npm >/dev/null 2>&1; then \
-		echo "Using npm to install documentation tools..."; \
-		npm install -g markdownlint-cli2 markdown-link-check cspell prettier; \
+		echo "Using npm to install JS-based documentation tools..."; \
+		npm install -g markdownlint-cli2 cspell prettier doctoc; \
 	else \
 		echo "Error: Neither bun nor npm found. Please install one of them first."; \
 		exit 1; \
 	fi
+	@echo ""
+	@echo "To install optional tools:"
+	@echo "  Lychee: https://lychee.cli.rs/#/installation"
+	@echo "  Vale: https://vale.sh/docs/vale-cli/installation/"
 
 .PHONY: clean
 clean:
