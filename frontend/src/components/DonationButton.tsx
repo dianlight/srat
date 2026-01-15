@@ -12,7 +12,7 @@ import {
 	Tooltip,
 } from "@mui/material";
 import { useState } from "react";
-import { FUNDING_PLATFORMS, type FundingPlatform } from "../config/fundingConfig";
+import { FUNDING_PLATFORMS, type FundingPlatform } from "../constants/fundingConfig";
 
 /**
  * Maps platform names to their corresponding icons
