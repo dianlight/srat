@@ -22,25 +22,23 @@ user_agent = "Mozilla/5.0 (compatible; LycheeBot/1.0; +https://github.com/dianli
 
 # Excludes
 exclude = [
-  # Home Assistant specific URLs that may not be accessible
-  "https://my.home-assistant.io/*", # Local URLs
-  "http://localhost*",
+  "https://my.home-assistant.io/*", # Home Assistant specific URLs that may not be accessible
+  "http://localhost*", # Local URLs
   "http://127.0.0.1*",
-  "http://0.0.0.0*", # Mailto links
-  "mailto:*", # Buy me a coffee (can be rate-limited)
-  "https://www.buymeacoffee.com/*", # GitHub edit links (require authentication)
-  "https://github.com/*/edit/*", # Relative anchor links (checked by markdownlint)
-  "#*",
+  "http://0.0.0.0*",
+  "https://www.buymeacoffee.com/*", # Buy me a coffee (can be rate-limited) 
+  "https://github.com/*/edit/*", # GitHub edit links (require authentication)
+  "https://wiki.samba.org/*",
 ]
 
 # URLs to check (supports regex). Has preference over all excludes.
-include = ['gist\.github\.com.*']
+#include = ['gist\.github\.com.*']
 
-# Exclude files matching these patterns
+# Exclude paths from getting checked. The values are treated as regular expressions
 exclude_path = [
-  "frontend/node_modules/**",
-  "backend/src/vendor/**",
-  ".git/**",
+  "frontend/node_modules/",
+  "backend/src/vendor/",
+  ".git/",
 ]
 
 # Check the specified file extensions
@@ -53,7 +51,7 @@ include_verbatim = false
 require_https = false
 
 # Check email addresses
-check_email = false
+check_email = true
 
 # GitHub Flavored Markdown support
 # Lychee natively supports GFM syntax including:
@@ -69,6 +67,9 @@ check_email = false
 
 # Cache responses to avoid hitting rate limits
 cache = true
+
+# A list of status codes that will be ignored from the cache
+cache_exclude_status = ["500", "502", "503", "504", "520", "521", "522", "403"]
 
 # Maximum cache age in days
 max_cache_age = "1d"
@@ -86,7 +87,7 @@ verbose = "info"
 method = "get"
 
 # Follow redirects
-follow_redirects = true
+follow_redirects = false
 
 # Maximum number of redirects to follow
 max_redirects = 10
