@@ -12,7 +12,7 @@ import {
 	Tooltip,
 } from "@mui/material";
 import { useState } from "react";
-import { FUNDING_PLATFORMS, type FundingPlatform } from "../constants/fundingConfig";
+import { useGetFundingConfigQuery, type FundingPlatform } from "../store/githubApi";
 
 /**
  * Maps platform names to their corresponding icons
@@ -31,11 +31,14 @@ function getPlatformIcon(platform: string): React.ReactNode {
 
 /**
  * DonationButton component displays a donation icon with a dropdown menu
- * showing available funding platforms from .github/funding.yaml
+ * showing available funding platforms fetched from .github/funding.yaml
  */
 export function DonationButton() {
 	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 	const open = Boolean(anchorEl);
+
+	// Fetch funding configuration from GitHub with RTK Query caching
+	const { data: fundingPlatforms = [], isLoading, isError } = useGetFundingConfigQuery();
 
 	const handleClick = (event: React.MouseEvent<HTMLElement>) => {
 		setAnchorEl(event.currentTarget);
@@ -50,8 +53,8 @@ export function DonationButton() {
 		handleClose();
 	};
 
-	// Don't render if no funding platforms are configured
-	if (FUNDING_PLATFORMS.length === 0) {
+	// Don't render if no funding platforms are configured or if there's an error
+	if (isLoading || isError || fundingPlatforms.length === 0) {
 		return null;
 	}
 
@@ -77,7 +80,7 @@ export function DonationButton() {
 					"aria-labelledby": "donation-button",
 				}}
 			>
-				{FUNDING_PLATFORMS.map((platform) => (
+				{fundingPlatforms.map((platform) => (
 					<MenuItem
 						key={platform.platform}
 						onClick={() => handleDonationClick(platform)}

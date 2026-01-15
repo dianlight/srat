@@ -1,6 +1,33 @@
 import "../../../test/setup";
 import { describe, it, expect, beforeEach, mock } from "bun:test";
 
+// Mock the GitHub API to avoid actual network requests
+mock.module("../../store/githubApi", () => ({
+	useGetFundingConfigQuery: () => ({
+		data: [
+			{
+				platform: "github",
+				identifier: "dianlight",
+				url: "https://github.com/sponsors/dianlight",
+				label: "GitHub Sponsors",
+			},
+			{
+				platform: "buy_me_a_coffee",
+				identifier: "ypKZ2I0",
+				url: "https://www.buymeacoffee.com/ypKZ2I0",
+				label: "Buy Me a Coffee",
+			},
+		],
+		isLoading: false,
+		isError: false,
+	}),
+	githubApi: {
+		reducerPath: "githubApi",
+		reducer: () => ({}),
+		middleware: () => (next: any) => (action: any) => next(action),
+	},
+}));
+
 // Required localStorage shim for testing environment
 if (!(globalThis as any).localStorage) {
 	const _store: Record<string, string> = {};
