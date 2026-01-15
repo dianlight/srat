@@ -1,0 +1,99 @@
+# Lychee configuration for SRAT project
+# Link and image validation for GitHub Flavored Markdown
+# See https://lychee.cli.rs for configuration options
+
+# Maximum number of concurrent requests
+max_concurrency = 10
+
+# Maximum number of retries per request
+max_retries = 3
+
+# Timeout per request in seconds
+timeout = 20
+
+# Accept invalid certificates
+accept = ["200", "206", "301", "302", "307", "308", "429"]
+
+# User agent
+user_agent = "Mozilla/5.0 (compatible; LycheeBot/1.0; +https://github.com/dianlight/srat)"
+
+# Excludes
+exclude = [
+    # Home Assistant specific URLs that may not be accessible
+    "https://my.home-assistant.io/*",
+    
+    # Local URLs
+    "http://localhost*",
+    "http://127.0.0.1*",
+    "http://0.0.0.0*",
+    
+    # Mailto links
+    "mailto:*",
+    
+    # Buy me a coffee (can be rate-limited)
+    "https://www.buymeacoffee.com/*",
+    
+    # GitHub edit links (require authentication)
+    "https://github.com/*/edit/*",
+    
+    # Relative anchor links (checked by markdownlint)
+    "#*",
+]
+
+# Include files matching these patterns
+include = ["**/*.md"]
+
+# Exclude files matching these patterns
+exclude_path = [
+    "frontend/node_modules/**",
+    "backend/src/vendor/**",
+    ".git/**",
+]
+
+# Check local files
+include_verbatim = false
+
+# Require HTTPS
+require_https = false
+
+# Check email addresses
+check_email = false
+
+# GitHub Flavored Markdown support
+# Lychee natively supports GFM syntax including:
+# - Tables
+# - Task lists
+# - Strikethrough
+# - Autolinks
+# - Fenced code blocks
+# - Emoji
+
+# Remap URLs (useful for local testing)
+# remap = ["https://example.com http://localhost:8080"]
+
+# Cache responses to avoid hitting rate limits
+cache = true
+
+# Maximum cache age in days
+max_cache_age = "1d"
+
+# Verbose output
+verbose = false
+
+# Base URL for relative links (if needed)
+# base = "https://github.com/dianlight/srat"
+
+# Headers for authentication (if needed)
+# headers = ["Authorization=Bearer token"]
+
+# Method to use for checking links
+method = "get"
+
+# Follow redirects
+follow_redirects = true
+
+# Maximum number of redirects to follow
+max_redirects = 10
+
+# Exclude all private IPs
+exclude_all_private = true

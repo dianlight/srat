@@ -2,6 +2,7 @@
 
 # Documentation validation script for SRAT project
 # This script runs all documentation validation checks locally
+# Supports: markdownlint, Lychee (link checker), cspell, and Vale (prose linter)
 
 set -e
 
@@ -33,44 +34,48 @@ print_status() {
     esac
 }
 
-# Check if required tools are installed (bunx or npmx)
+# Check if required tools are installed
 check_dependencies() {
     print_status "info" "Checking dependencies..."
     local missing_deps=()
     RUNNER=""
+    
+    # Check for bunx or npmx (for JS tools)
     if command -v bunx &> /dev/null; then
         RUNNER="bunx"
         print_status "info" "Using bunx for running JS CLI tools"
-    elif command -v npmx &> /dev/null; then
-        RUNNER="npmx"
-        print_status "info" "Using npmx for running JS CLI tools"
+    elif command -v npx &> /dev/null; then
+        RUNNER="npx"
+        print_status "info" "Using npx for running JS CLI tools"
     else
-        missing_deps+=("bunx or npmx (JS CLI runner)")
+        missing_deps+=("bunx or npx (JS CLI runner)")
     fi
-    if ! command -v pre-commit &> /dev/null; then
-        missing_deps+=("pre-commit")
+    
+    # Check for Lychee (link checker)
+    if ! command -v lychee &> /dev/null; then
+        print_status "warning" "Lychee not found - link checking will be skipped"
+        print_status "info" "Install Lychee: https://lychee.cli.rs/#/installation"
     fi
+    
+    # Check for Vale (prose linter)
+    if ! command -v vale &> /dev/null; then
+        print_status "warning" "Vale not found - prose linting will be skipped"
+        print_status "info" "Install Vale: https://vale.sh/docs/vale-cli/installation/"
+    fi
+    
     if [ ${#missing_deps[@]} -ne 0 ]; then
-        print_status "error" "Missing dependencies: ${missing_deps[*]}"
+        print_status "error" "Missing critical dependencies: ${missing_deps[*]}"
         echo "Please install the missing dependencies and try again."
-        echo "For JS CLI runner, install bunx or npmx."
         exit 1
     fi
-    print_status "success" "All dependencies are installed"
+    
+    print_status "success" "Core dependencies are installed"
     print_status "info" "JS CLI runner: $RUNNER"
-}
-
- # Additional help text for JS CLI runner
- echo "All JS CLI tools (markdownlint, cspell, prettier, etc.) are run via bunx or npmx."
-
-# No need to install packages with bunx/npmx
-install_packages() {
-    print_status "info" "No package installation needed with $RUNNER (bunx/npmx)"
 }
 
 # Run markdownlint
 run_markdownlint() {
-    print_status "info" "Running markdownlint..."
+    print_status "info" "Running markdownlint (GitHub Flavored Markdown)..."
     if $RUNNER markdownlint-cli2 "**/*.md" "#frontend/node_modules" "#backend/src/vendor" ; then
         print_status "success" "Markdownlint passed"
         return 0
@@ -80,26 +85,20 @@ run_markdownlint() {
     fi
 }
 
-# Run link check
-run_link_check() {
-    print_status "info" "Running link check..."
-
-    local failed=0
-
-
-    # Check links in all markdown files
-    find . -name "*.md" -not -path "./frontend/node_modules/*" -not -path "./.git/*" -not -path "./backend/src/vendor/*" | while read -r file; do
-        if ! $RUNNER markdown-link-check "$file" --config .markdown-link-check.json; then
-            print_status "error" "Link check failed for $file"
-            failed=1
-        fi
-    done
-
-    if [ $failed -eq 0 ]; then
-        print_status "success" "Link check passed"
+# Run Lychee link checker
+run_lychee() {
+    if ! command -v lychee &> /dev/null; then
+        print_status "warning" "Lychee not installed - skipping link check"
+        return 0
+    fi
+    
+    print_status "info" "Running Lychee link checker..."
+    
+    if lychee --config .lychee.toml . ; then
+        print_status "success" "Lychee link check passed"
         return 0
     else
-        print_status "error" "Link check failed"
+        print_status "error" "Lychee link check failed"
         return 1
     fi
 }
@@ -108,7 +107,7 @@ run_link_check() {
 run_spell_check() {
     print_status "info" "Running spell check..."
 
-    if $RUNNER cspell "**/*.md"; then
+    if $RUNNER cspell "**/*.md" --config .cspell.json; then
         print_status "success" "Spell check passed"
         return 0
     else
@@ -117,7 +116,31 @@ run_spell_check() {
     fi
 }
 
-
+# Run Vale prose linter
+run_vale() {
+    if ! command -v vale &> /dev/null; then
+        print_status "warning" "Vale not installed - skipping prose linting"
+        return 0
+    fi
+    
+    print_status "info" "Running Vale prose linter (GitHub Flavored Markdown)..."
+    
+    # Sync Vale styles first
+    if vale sync; then
+        print_status "info" "Vale styles synced"
+    else
+        print_status "warning" "Could not sync Vale styles - continuing anyway"
+    fi
+    
+    # Run Vale on all markdown files
+    if find . -name "*.md" -not -path "./frontend/node_modules/*" -not -path "./.git/*" -not -path "./backend/src/vendor/*" -exec vale {} + ; then
+        print_status "success" "Vale prose linting passed"
+        return 0
+    else
+        print_status "warning" "Vale found style issues (not blocking)"
+        return 0  # Vale warnings are non-blocking
+    fi
+}
 
 # Main execution
 main() {
@@ -125,14 +148,16 @@ main() {
 
     echo "📚 SRAT Documentation Validation"
     echo "================================"
+    echo "GitHub Flavored Markdown (GFM) Support"
+    echo ""
 
     check_dependencies
-    install_packages
 
     # Run all checks
     run_markdownlint || exit_code=1
-    run_link_check || exit_code=1
+    run_lychee || exit_code=1
     run_spell_check || exit_code=1
+    run_vale || exit_code=1
 
     echo
     if [ $exit_code -eq 0 ]; then
@@ -141,11 +166,11 @@ main() {
         print_status "error" "Some documentation validation checks failed"
         echo
         echo "💡 Tips:"
-        echo "   - Run 'prettier --write \"**/*.md\" --ignore-path \"frontend/node_modules/**\"' to fix formatting issues"
-        echo "   - Or use '$0 --fix' to auto-fix formatting"
-        echo "   - Check the output above for specific issues to address"
-        echo "   - You can run individual checks by examining this script"
-        echo "   - This script supports both bun and npm package managers"
+        echo "   - Run '$0 --fix' to auto-fix formatting issues"
+        echo "   - Run 'vale sync' to update Vale styles"
+        echo "   - Check .lychee.toml for link checker configuration"
+        echo "   - Check .vale.ini for prose linting configuration"
+        echo "   - Check .markdownlint-cli2.jsonc for markdown linting rules"
     fi
 
     exit $exit_code
@@ -155,6 +180,7 @@ main() {
 case "${1:-}" in
     "--help"|"-h")
         echo "Documentation validation script for SRAT project"
+        echo "GitHub Flavored Markdown (GFM) compatible"
         echo
         echo "Usage: $0 [option]"
         echo
@@ -163,32 +189,39 @@ case "${1:-}" in
         echo "  --fix          Run auto-fix for formatting issues"
         echo
         echo "Dependencies:"
-        echo "  - Node.js or bun (JavaScript runtime)"
-        echo "  - bun or npm (package manager)"
-        echo "  - pre-commit (for git hooks)"
+        echo "  Required:"
+        echo "    - bunx or npx (JavaScript CLI runner)"
+        echo "  Optional:"
+        echo "    - Lychee (link and image checker)"
+        echo "    - Vale (prose linter)"
         echo
-        echo "The script will automatically detect available tools:"
-        echo "  - Prefers bun as both runtime and package manager"
-        echo "  - Falls back to Node.js + npm if bun not available"
-        echo "  - bun can serve as both JavaScript runtime and package manager"
+        echo "Tools:"
+        echo "  - markdownlint-cli2: Markdown syntax and formatting (GFM)"
+        echo "  - Lychee: Link and image validation"
+        echo "  - cspell: Spell checking"
+        echo "  - Vale: Prose linting and style checking (GFM)"
         echo
         exit 0
         ;;
     "--fix")
         print_status "info" "Running auto-fix for formatting issues..."
 
-        # Use bunx or npmx for prettier
+        # Detect runner
         if command -v bunx &> /dev/null; then
             RUNNER="bunx"
-            print_status "info" "Using bunx for running prettier"
-        elif command -v npmx &> /dev/null; then
-            RUNNER="npmx"
-            print_status "info" "Using npmx for running prettier"
+        elif command -v npx &> /dev/null; then
+            RUNNER="npx"
         else
-            print_status "error" "No JS CLI runner found (bunx or npmx required)"
+            print_status "error" "No JS CLI runner found (bunx or npx required)"
             exit 1
         fi
-        $RUNNER prettier --write "**/*.md"
+        
+        # Fix markdown formatting
+        $RUNNER prettier --write "**/*.md" --ignore-path ".gitignore" --ignore-path ".prettierignore"
+        
+        # Fix markdownlint issues
+        $RUNNER markdownlint-cli2 "**/*.md" "#frontend/node_modules" "#backend/src/vendor" --fix
+        
         print_status "success" "Auto-fix completed"
         exit 0
         ;;

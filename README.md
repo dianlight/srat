@@ -131,10 +131,10 @@ tlog.EnableColors(true)              // Color output (auto-disabled if not termi
 
 ## Documentation Validation
 
-SRAT includes comprehensive documentation validation tools:
+SRAT includes comprehensive documentation validation tools with **GitHub Flavored Markdown (GFM)** support:
 
 ```shell
-# Check all documentation
+# Check all documentation (GFM-aware)
 make docs-validate
 
 # Auto-fix formatting issues
@@ -146,11 +146,13 @@ make docs-help
 
 The validation includes:
 
-- Markdown linting and formatting
-- Link checking
-- Spell checking
-- Content structure validation
-- Security scanning
+- **Markdown linting and formatting** (markdownlint with GFM support)
+- **Link and image checking** (Lychee - fast and reliable)
+- **Spell checking** (cspell with project vocabulary)
+- **Prose linting** (Vale for style and consistency)
+- **Content structure validation**
+
+For more details, see [Documentation Validation Setup](docs/DOCUMENTATION_VALIDATION_SETUP.md) and [Documentation Guidelines](docs/DOCUMENTATION_GUIDELINES.md).
 
 ## Security scanning
 

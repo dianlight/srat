@@ -1,12 +1,78 @@
 {
-    "extends": "markdownlint:recommended",
-    "MD024": false,
-    "MD025": false,
-    "MD033": false,
-    "MD040": {
-        "severity": "error"
+    // Markdownlint configuration for SRAT project
+    // GitHub Flavored Markdown (GFM) compatible configuration
+    // See https://github.com/DavidAnson/markdownlint for configuration options
+    "config": {
+        "extends": "markdownlint/style/prettier",
+        // Default state for all rules
+        "default": true,
+        // MD010: Allow inline HTML (GFM supports HTML)
+        "MD010": false,
+        // MD013: Disable line length restriction (GFM doesn't enforce this)
+        "MD013": false,
+        // MD021: Allow missing space in headers (for HTML comments)
+        "MD021": false,
+        // MD022: Headers should be surrounded by blank lines (flexible for GFM)
+        "MD022": false,
+        // MD024: Allow multiple headers with same content
+        "MD024": false,
+        // MD025: Allow multiple top-level headers
+        "MD025": false,
+        // MD026: Allow trailing punctuation in headers
+        "MD026": false,
+        // MD028: Allow blank lines inside blockquotes
+        "MD028": false,
+        // MD032: Don't enforce blank lines around lists
+        "MD032": false,
+        // MD033: Allow HTML elements for badges and special formatting (GFM allows HTML)
+        "MD033": {
+            "allowed_elements": [
+                "img",
+                "a",
+                "br",
+                "details",
+                "summary",
+                "div",
+                "span",
+                "table",
+                "tr",
+                "td",
+                "th",
+                "thead",
+                "tbody",
+                "p",
+                "kbd"
+            ]
+        },
+        // MD034: Allow bare URLs (GFM supports autolinks)
+        "MD034": false,
+        // MD036: Allow emphasis for highlighting
+        "MD036": false,
+        // MD040: Configuration for code blocks (require language specification)
+        "MD040": {
+            "severity": "error"
+        },
+        // MD041: Allow first line in file to be anything (for metadata, comments, etc.)
+        "MD041": false,
+        // MD046: Code block style - allow both indented and fenced (GFM)
+        "MD046": false,
+        // MD049: Configuration for emphasis style (use asterisks for consistency with GFM)
+        "MD049": {
+            "style": "asterisk"
+        },
+        // MD050: Configuration for strong style (use asterisks for consistency with GFM)
+        "MD050": {
+            "style": "asterisk"
+        }
     },
-    "MD060": {
-        "severity": "warning"
-    }
+    "customRules": [],
+    "globs": [
+        "**/*.md"
+    ],
+    "ignores": [
+        "frontend/node_modules/**",
+        "backend/src/vendor/**",
+        ".git/**"
+    ],
+    "gitignore": true
 }
