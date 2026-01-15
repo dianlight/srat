@@ -91,7 +91,7 @@
         {
             "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
             "automerge": true,
-            "automergeType": "pr" 
+            "automergeType": "pr", 
             "minimumReleaseAge": "3 days"            
         }
     ]

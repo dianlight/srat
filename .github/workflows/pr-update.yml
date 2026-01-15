@@ -1,0 +1,21 @@
+name: Pull request update
+
+on:
+    push:
+        branches:
+            - main
+
+jobs:
+    autoupdate:
+        runs-on: ubuntu-latest
+        permissions:
+            pull-requests: write
+            contents: write
+        steps:
+          - name: Update pull requests
+            uses: docker://chinthakagodawita/autoupdate-action:v1
+            env:
+              GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              # Optional: Filter by labels or skip if PR has conflicts
+              PR_FILTER: "all" 
+              MERGE_METHOD: "merge"
