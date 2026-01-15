@@ -14,6 +14,7 @@
 - [Validation Tools](#validation-tools)
   - [Automated Checks](#automated-checks)
   - [Running Validation Locally](#running-validation-locally)
+- [Pre-commit Hooks](#pre-commit-hooks)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -41,7 +42,7 @@ SRAT documentation fully supports GitHub Flavored Markdown (GFM) features:
 
 - **README.md** - Main project documentation with installation and usage
 - **CHANGELOG.md** - Version history and change tracking (follows Keep a Changelog format)
-- **IMPLEMENTATION_\*.md** - Technical implementation details
+- **IMPLEMENTATION\_\*.md** - Technical implementation details
 - **docs/HOME_ASSISTANT_INTEGRATION.md** - Home Assistant specific documentation
 - **.github/copilot-instructions.md** - Instructions for GitHub Copilot
 - **docs/DOCUMENTATION_VALIDATION_SETUP.md** - Documentation validation system details
@@ -86,25 +87,21 @@ The project uses several tools to validate documentation with full **GitHub Flav
 - **markdownlint-cli2** - Checks Markdown formatting and style (GFM-compatible)
   - Configuration: `.markdownlint-cli2.jsonc`
   - Supports GFM tables, task lists, HTML elements
-  
 - **Lychee** - Advanced link and image validation
   - Configuration: `.lychee.toml`
   - Fast, concurrent link checking
   - Smart caching and retry logic
   - Native GFM support
-  
 - **cspell** - Spell checking with project vocabulary
   - Configuration: `.cspell.json`
   - Custom word list for technical terms
   - Ignores code blocks and URLs
-  
 - **Vale** - Prose linting and style checking (GFM-aware)
   - Configuration: `.vale.ini`
   - Vocabulary: `.vale/styles/Vocab/SRAT/`
   - Microsoft Writing Style Guide
   - write-good rules for clear writing
   - Non-blocking warnings
-  
 - **prettier** - Consistent formatting
 - **doctoc** - Automatic table of contents generation
 - **Custom validators** - Project-specific checks
@@ -152,7 +149,7 @@ vale sync
 
 Documentation validation runs automatically via pre-commit hooks:
 
-```bash
+````bash
 # Install pre-commit hooks
 make prepare
 
