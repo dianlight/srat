@@ -84,7 +84,7 @@ jobs:
           bun-version: latest
 
       - name: Install Lychee (link checker)
-        uses: lycheeverse/lychee-action@7cd0af4c74a61395d455af97419279d86aafaede # v2.2.0
+        uses: lycheeverse/lychee-action@f796c8b7d468feb9b8c0a46da3fac0af6874d374 # v2.2.0
         with:
           args: --version
           
@@ -107,7 +107,7 @@ jobs:
         run: bunx markdownlint-cli2 "**/*.md" "#frontend/node_modules" "#backend/src/vendor"
 
       - name: Run Lychee link checker
-        uses: lycheeverse/lychee-action@7cd0af4c74a61395d455af97419279d86aafaede # v2.2.0
+        uses: lycheeverse/lychee-action@f796c8b7d468feb9b8c0a46da3fac0af6874d374 # v2.2.0
         with:
           args: --config .lychee.toml --verbose --no-progress '**/*.md'
           fail: true
@@ -126,7 +126,7 @@ jobs:
 
       - name: Generate Lychee report
         if: always()
-        uses: lycheeverse/lychee-action@7cd0af4c74a61395d455af97419279d86aafaede # v2.2.0
+        uses: lycheeverse/lychee-action@f796c8b7d468feb9b8c0a46da3fac0af6874d374 # v2.2.0
         with:
           args: --config .lychee.toml --format markdown --output lychee-report.md '**/*.md'
           fail: false
