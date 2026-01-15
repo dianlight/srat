@@ -19,3 +19,5 @@ docs/TEST_COVERAGE.md.bak
 
 # Vale cache
 .vale-cache/
+.lycheecache
+frontend/package-lock.json
