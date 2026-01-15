@@ -73,7 +73,7 @@ jobs:
   docs-validate:
     runs-on: ubuntu-latest
     name: Documentation Validation (GFM)
-    needs: [docs-maintenance]
+    if: always() && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && !startsWith(github.head_ref, 'renovate/')))
     steps:
       - name: Checkout repository
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
