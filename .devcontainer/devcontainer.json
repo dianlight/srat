@@ -97,7 +97,8 @@
 				"oven.bun-vscode",
 				"SanjulaGanepola.github-local-actions",
 				"bierner.markdown-mermaid",
-				"TypeScriptTeam.native-preview"
+				"TypeScriptTeam.native-preview",
+				"nguyenngoclong.terminal-keeper"
 			],
 			"mcp": {
 				"servers": {
