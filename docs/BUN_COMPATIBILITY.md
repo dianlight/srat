@@ -152,6 +152,7 @@ make docs-help
 ```
 
 **Note**: Lychee and Vale are optional tools that need to be installed separately. See their respective installation guides:
+
 - Lychee: [https://lychee.cli.rs/#/installation](https://lychee.cli.rs/#/installation)
 - Vale: [https://vale.sh/docs/vale-cli/installation/](https://vale.sh/docs/vale-cli/installation/)
 

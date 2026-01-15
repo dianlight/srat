@@ -33,6 +33,7 @@
   - [Future Enhancements](#future-enhancements)
   - [Monitoring and Maintenance](#monitoring-and-maintenance)
 - [📚 Resources and References](#-resources-and-references)
+  - [Tool Documentation](#tool-documentation)
 - [🤝 Contributing](#-contributing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -105,7 +106,6 @@ This document summarizes the comprehensive documentation validation system imple
 - **`.vale/styles/Vocab/SRAT/`**: Project-specific vocabulary
   - `accept.txt`: Accepted technical terms
   - `reject.txt`: Terms to avoid
-  
 - **`.cspell.json`**: Spell check configuration with project vocabulary
 
 ### 5. Validation Script (`scripts/validate-docs.sh`)
@@ -276,21 +276,17 @@ This document summarizes the comprehensive documentation validation system imple
 - **Markdownlint**: Edit `.markdownlint-cli2.jsonc`
   - Adjust GFM-specific rules
   - Add/remove allowed HTML elements
-  
 - **Lychee**: Edit `.lychee.toml`
   - Modify exclusion patterns
   - Adjust timeout and retry settings
   - Configure caching behavior
-  
 - **Vale**: Edit `.vale.ini`
   - Add/remove style packages
   - Configure alert levels
   - Adjust ignore patterns
-  
 - **Vale Vocabulary**: Edit `.vale/styles/Vocab/SRAT/`
   - `accept.txt`: Add accepted technical terms
   - `reject.txt`: Add terms to avoid
-  
 - **Spell checker**: Update word list in `.cspell.json`
 
 ### Project-Specific Rules

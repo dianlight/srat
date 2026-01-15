@@ -1,3 +1,32 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+**Table of Contents** *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [MSW (Mock Service Worker) Integration](#msw-mock-service-worker-integration)
+  - [Overview](#overview)
+  - [Directory Structure](#directory-structure)
+  - [Quick Start](#quick-start)
+    - [For Testing (Bun)](#for-testing-bun)
+    - [For Browser/Development](#for-browserdevelopment)
+  - [Features](#features)
+    - [WebSocket (Using MSW's Experimental ws API)](#websocket-using-msws-experimental-ws-api)
+    - [REST API Endpoints](#rest-api-endpoints)
+  - [Customizing Handlers](#customizing-handlers)
+    - [Adding Custom Handlers for Specific Tests](#adding-custom-handlers-for-specific-tests)
+    - [Modifying WebSocket Events](#modifying-websocket-events)
+    - [Generating Handlers from OpenAPI](#generating-handlers-from-openapi)
+  - [Integration with RTK Query](#integration-with-rtk-query)
+  - [React 19 Features](#react-19-features)
+  - [Troubleshooting](#troubleshooting)
+    - [MSW not intercepting requests](#msw-not-intercepting-requests)
+    - [WebSocket not working](#websocket-not-working)
+    - [Tests hanging](#tests-hanging)
+  - [Migration from Existing Mocks](#migration-from-existing-mocks)
+  - [Resources](#resources)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # MSW (Mock Service Worker) Integration
 
 This directory contains the MSW setup for mocking API requests in tests and development.
@@ -5,6 +34,7 @@ This directory contains the MSW setup for mocking API requests in tests and deve
 ## Overview
 
 We use a **hybrid mocking solution** combining:
+
 - **msw-auto-mock**: Auto-generated handlers for REST endpoints from OpenAPI 3.1 spec
 - **Manual handlers**: WebSocket handlers using MSW's experimental `ws` API
 
@@ -43,20 +73,26 @@ describe("My Component", () => {
 ### For Browser/Development
 
 1. Initialize MSW in your public directory:
+
 ```bash
 bunx msw init public/ --save
 ```
 
 2. Conditionally start MSW in development (e.g., `src/index.tsx`):
+
 ```typescript
-if (process.env.NODE_ENV === 'development' && process.env.ENABLE_MSW === 'true') {
-  import('./mocks/browser').then(({ startMockWorker }) => {
+if (
+  process.env.NODE_ENV === "development" &&
+  process.env.ENABLE_MSW === "true"
+) {
+  import("./mocks/browser").then(({ startMockWorker }) => {
     startMockWorker();
   });
 }
 ```
 
 3. Run your app with MSW enabled:
+
 ```bash
 ENABLE_MSW=true bun run dev
 ```
@@ -66,22 +102,24 @@ ENABLE_MSW=true bun run dev
 ### WebSocket (Using MSW's Experimental ws API)
 
 The WebSocket handler uses MSW's native `ws` API to mock `/ws` endpoint:
+
 - Sends initial `hello` message on connection
 - Sends `heartbeat` messages every 500ms
 - Responds to `SUBSCRIBE` messages with requested event data
 - Supports all event types: hello, heartbeat, volumes, shares, updating, dirty_data_tracker, smart_test_status
 
 Example usage:
+
 ```typescript
-const ws = new WebSocket('ws://localhost:8080/ws');
+const ws = new WebSocket("ws://localhost:8080/ws");
 
 ws.onmessage = (event) => {
-  const [id, eventType, data] = event.data.split('\n');
+  const [id, eventType, data] = event.data.split("\n");
   // Handle streamed data
 };
 
 // Subscribe to specific events
-ws.send(JSON.stringify({ type: 'SUBSCRIBE', event: 'volumes' }));
+ws.send(JSON.stringify({ type: "SUBSCRIBE", event: "volumes" }));
 ```
 
 **Note**: SSE (Server-Sent Events) is deprecated for this project. All real-time streaming should use WebSocket.
@@ -91,6 +129,7 @@ ws.send(JSON.stringify({ type: 'SUBSCRIBE', event: 'volumes' }));
 All REST endpoints defined in the OpenAPI spec are mocked with realistic data.
 
 Currently available (examples in `generatedHandlers.ts`):
+
 - `GET /api/health` - Health check
 - `GET /api/shares` - List shares
 - `GET /api/volumes` - List volumes
@@ -101,17 +140,17 @@ Currently available (examples in `generatedHandlers.ts`):
 ### Adding Custom Handlers for Specific Tests
 
 ```typescript
-import { mswServer } from '../../test/bun-setup';
-import { http, HttpResponse } from 'msw';
+import { mswServer } from "../../test/bun-setup";
+import { http, HttpResponse } from "msw";
 
 describe("Custom test", () => {
   it("uses custom handler", () => {
     mswServer.use(
-      http.get('/api/custom', () => {
-        return HttpResponse.json({ custom: 'data' });
-      })
+      http.get("/api/custom", () => {
+        return HttpResponse.json({ custom: "data" });
+      }),
     );
-    
+
     // Your test here
   });
 });
@@ -139,6 +178,7 @@ const mockEventData = {
 To auto-generate handlers from the OpenAPI spec:
 
 1. Add script to `package.json`:
+
 ```json
 {
   "scripts": {
@@ -148,6 +188,7 @@ To auto-generate handlers from the OpenAPI spec:
 ```
 
 2. Run generation:
+
 ```bash
 bun run gen:mocks
 ```
@@ -160,10 +201,10 @@ MSW works seamlessly with RTK Query's `onCacheEntryAdded` for streaming:
 export const api = createApi({
   endpoints: (build) => ({
     getServerEvents: build.query({
-      query: () => '/api/sse',
+      query: () => "/api/sse",
       async onCacheEntryAdded(
         arg,
-        { updateCachedData, cacheDataLoaded, cacheEntryRemoved }
+        { updateCachedData, cacheDataLoaded, cacheEntryRemoved },
       ) {
         // MSW will provide mocked SSE stream
         // Your streaming logic here
@@ -178,6 +219,7 @@ See `test/__tests__/msw-integration.test.tsx` for complete examples.
 ## React 19 Features
 
 The test examples demonstrate React 19 features:
+
 - `use` hook for async data
 - Transitions for non-blocking updates
 - Modern component patterns
