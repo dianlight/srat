@@ -85,9 +85,9 @@ func (s *IssueReportService) buildIssueTitle(problemType dto.ProblemType) string
 	case dto.ProblemTypeHAIntegration:
 		prefix = "[HA Integration]"
 	case dto.ProblemTypeAddon:
-		prefix = "[Addon]"
+		prefix = "[SambaNas2]"
 	case dto.ProblemTypeSamba:
-		prefix = "[Samba]"
+		prefix = "[SambaNas2]"
 	}
 	return fmt.Sprintf("%s Issue reported on %s", prefix, time.Now().Format("2006-01-02"))
 }
@@ -172,7 +172,7 @@ func (s *IssueReportService) getRepositoryURL(problemType dto.ProblemType) strin
 	case dto.ProblemTypeFrontendUI, dto.ProblemTypeHAIntegration:
 		return "https://github.com/dianlight/srat"
 	case dto.ProblemTypeAddon, dto.ProblemTypeSamba:
-		return "https://github.com/dianlight/hassos-addon"
+		return "https://github.com/dianlight/hassio-addons"
 	default:
 		return "https://github.com/dianlight/srat"
 	}
