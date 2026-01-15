@@ -73,7 +73,7 @@ jobs:
   docs-validate:
     runs-on: ubuntu-latest
     name: Documentation Validation (GFM)
-    if: always() && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && !startsWith(github.head_ref, 'renovate/')))
+    if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository)
     steps:
       - name: Checkout repository
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -128,8 +128,12 @@ jobs:
         if: always()
         uses: lycheeverse/lychee-action@a8c4c7cb88f0c7386610c35eb25108e448569cb0 # v2.7.0
         with:
-          args: --config .lychee.toml --format markdown --output lychee-report.md '**/*.md'
+          args: --config .lychee.toml '**/*.md'
           fail: false
+          checkbox: true
+          jobSummary: true
+          format: markdown
+          output: lychee-report.md
 
       - name: Upload Lychee report
         if: always()
