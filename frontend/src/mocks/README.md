@@ -1,6 +1,8 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+**Table of Contents** *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
 - [MSW (Mock Service Worker) Integration](#msw-mock-service-worker-integration)
   - [Overview](#overview)
   - [Directory Structure](#directory-structure)
@@ -76,7 +78,7 @@ describe("My Component", () => {
 bunx msw init public/ --save
 ```
 
-1. Conditionally start MSW in development (e.g., `src/index.tsx`):
+2. Conditionally start MSW in development (e.g., `src/index.tsx`):
 
 ```typescript
 if (
@@ -89,7 +91,7 @@ if (
 }
 ```
 
-1. Run your app with MSW enabled:
+3. Run your app with MSW enabled:
 
 ```bash
 ENABLE_MSW=true bun run dev
@@ -185,7 +187,7 @@ To auto-generate handlers from the OpenAPI spec:
 }
 ```
 
-1. Run generation:
+2. Run generation:
 
 ```bash
 bun run gen:mocks
