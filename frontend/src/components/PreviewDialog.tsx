@@ -8,6 +8,13 @@ import { SimpleTreeView } from '@mui/x-tree-view/SimpleTreeView';
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import Box from "@mui/material/Box";
+import { CopyButtonBar } from "./CopyButtonBar";
+import { 
+	isSensitiveField, 
+	censorValue, 
+	objectToPlainText, 
+	objectToMarkdown 
+} from "../utils/censorshipUtils";
 
 export interface PreviewDialogProps {
 	open: boolean;
@@ -23,6 +30,9 @@ export function PreviewDialog(props: PreviewDialogProps) {
 		onClose();
 	};
 
+	const plainText = objectToPlainText(props.objectToDisplay);
+	const markdown = objectToMarkdown(props.objectToDisplay);
+
 	return (
 		<Dialog
 			sx={{
@@ -36,11 +46,33 @@ export function PreviewDialog(props: PreviewDialogProps) {
 			aria-labelledby="alert-dialog-title"
 			aria-describedby="alert-dialog-description"
 		>
-			<DialogTitle id="alert-dialog-title">{props.title ?? "Preview"}</DialogTitle>
+			<DialogTitle id="alert-dialog-title">
+				<Box display="flex" alignItems="center" justifyContent="space-between">
+					<span>{props.title ?? "Preview"}</span>
+					<CopyButtonBar
+						compact
+						plainTextContent={plainText}
+						markdownContent={markdown}
+						markdownTitle={props.title}
+					/>
+				</Box>
+			</DialogTitle>
 			<DialogContent>
 				<ObjectTree object={props.objectToDisplay} />
 			</DialogContent>
-			<DialogActions>
+			<DialogActions sx={{
+				position: 'sticky',
+				bottom: 0,
+				backgroundColor: 'background.paper',
+				borderTop: 1,
+				borderColor: 'divider',
+				zIndex: 1
+			}}>
+				<CopyButtonBar
+					plainTextContent={plainText}
+					markdownContent={markdown}
+					markdownTitle={props.title}
+				/>
 				<Button onClick={handleClose} autoFocus variant="outlined" color="secondary">
 					Close
 				</Button>
@@ -49,26 +81,7 @@ export function PreviewDialog(props: PreviewDialogProps) {
 	);
 }
 
-// Utility functions for privacy and security
-const SENSITIVE_KEYWORDS = [
-	'password', 'pass', 'pwd', 'secret', 'token', 'key', 'auth', 'credential',
-	'private', 'confidential', 'secure', 'api_key', 'apikey', 'access_token',
-	'refresh_token', 'jwt', 'bearer', 'authorization', 'salt', 'hash'
-];
-
-function isSensitiveField(label: string): boolean {
-	const lowerLabel = label.toLowerCase();
-	return SENSITIVE_KEYWORDS.some(keyword =>
-		lowerLabel.includes(keyword)
-	);
-}
-
-function censorValue(value: any): string {
-	if (typeof value === 'string') {
-		return '*'.repeat(Math.min(value.length, 8));
-	}
-	return '*'.repeat(8);
-}
+// Utility functions for privacy and security are now in utils/censorshipUtils.ts
 
 function ObjectTreeNode(props: { value: any; nodeId: string; label: string }) {
 	const { value, nodeId, label } = props;
