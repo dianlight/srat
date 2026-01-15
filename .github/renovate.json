@@ -89,11 +89,10 @@
             ]
         },
         {
-            "matchUpdateTypes": [
-                "minor",
-                "patch"
-            ],
-            "automerge": true
+            "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+            "automerge": true,
+            "automergeType": "pr", 
+            "minimumReleaseAge": "3 days"            
         }
     ]
 }
