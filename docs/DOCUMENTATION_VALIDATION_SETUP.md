@@ -37,7 +37,7 @@
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-This document summarizes the comprehensive documentation validation system implemented for the SRAT project.
+This document summarizes the comprehensive documentation validation system implemented for the SRAT project with full **GitHub Flavored Markdown (GFM)** support.
 
 ## 🎯 What Was Created
 
@@ -52,18 +52,18 @@ This document summarizes the comprehensive documentation validation system imple
 
 ### 2. Documentation Validation Workflow (`.github/workflows/documentation.yml`)
 
-- **Purpose**: Automated validation of all documentation changes
+- **Purpose**: Automated validation of all documentation changes with GFM support
 - **Triggers**:
   - Push to main branch (for documentation files)
   - Pull requests (for documentation files)
   - Weekly schedule (for link checking)
 - **Validation Steps**:
-  - Markdown linting (markdownlint)
-  - Link validation (markdown-link-check)
-  - Spell checking (cspell)
+  - **Markdownlint**: Markdown syntax and formatting (GFM-compatible)
+  - **Lychee**: Advanced link and image validation
+  - **cspell**: Spell checking with project vocabulary
+  - **Vale**: Prose linting and style checking (GFM-aware)
   - Format checking (prettier)
   - Content validation (custom checks)
-  - Security scanning (sensitive information detection)
   - Auto-fix capabilities
 
 ### 3. Pre-commit Hooks Configuration (Updated `.pre-commit-config.yaml`)
@@ -72,7 +72,7 @@ This document summarizes the comprehensive documentation validation system imple
 - **Added Hooks**:
   - Trailing whitespace removal for Markdown
   - End-of-file fixing for Markdown
-  - Markdownlint validation
+  - Markdownlint validation (GFM)
   - Prettier formatting
   - Custom documentation structure checks
   - Link format validation
@@ -80,30 +80,55 @@ This document summarizes the comprehensive documentation validation system imple
 
 ### 4. Configuration Files
 
-- **`.markdownlint.yaml`**: Markdownlint rules and exceptions
-- **`.markdown-link-check.json`**: Link validation settings (created by workflow)
-- **`.cspell.json`**: Spell check configuration (created by workflow)
-- **`.prettierrc`**: Markdown formatting rules (created by workflow)
+**GitHub Flavored Markdown Configurations:**
+
+- **`.markdownlint-cli2.jsonc`**: Markdownlint configuration for GFM compatibility
+  - Supports GFM tables, task lists, strikethrough
+  - Allows HTML elements commonly used in GFM
+  - Flexible heading and list formatting
+  - Extends prettier style for consistency
+  - GFM-specific rule adjustments
+  - Ignores vendor and node_modules directories
+
+- **`.lychee.toml`**: Link and image checker configuration
+  - Native GFM support (tables, task lists, emoji, autolinks)
+  - Configurable timeout and retry logic
+  - Smart exclusion patterns
+  - Caching for better performance
+
+- **`.vale.ini`**: Prose linting configuration
+  - Microsoft and write-good styles
+  - GFM-aware parsing
+  - YAML front matter support
+  - Code block and inline code ignoring
+
+- **`.vale/styles/Vocab/SRAT/`**: Project-specific vocabulary
+  - `accept.txt`: Accepted technical terms
+  - `reject.txt`: Terms to avoid
+  
+- **`.cspell.json`**: Spell check configuration with project vocabulary
 
 ### 5. Validation Script (`scripts/validate-docs.sh`)
 
-- **Purpose**: Run all documentation checks locally
+- **Purpose**: Run all documentation checks locally with GFM support
 - **Features**:
-  - Dependency checking (Node.js/bun runtime, bun/npm package manager, pre-commit)
-  - Automatic tool installation with bun or npm
-  - Comprehensive validation suite
+  - Dependency checking (bunx/npx, Lychee, Vale)
+  - Markdownlint with GFM configuration
+  - Lychee link and image validation
+  - cspell spell checking
+  - Vale prose linting (non-blocking warnings)
   - Auto-fix capabilities
   - Colored output and error reporting
-  - Runtime detection (prefers bun as Node.js alternative, falls back to Node.js)
-  - Package manager detection (prefers bun, falls back to npm)
+  - Graceful handling of optional tools
 
 ### 6. Makefile Targets (Updated `Makefile`)
 
-- **`make docs-check`**: Check if all dependencies are installed (supports bun as Node.js alternative)
-- **`make docs-validate`**: Run documentation validation with bun/npm detection
-- **`make docs-fix`**: Auto-fix documentation formatting with bun/npm support
-- **`make docs-install`**: Install documentation tools (supports bun and npm)
-- **`make docs-help`**: Show all available documentation commands with runtime status
+- **`make docs-check`**: Check if all dependencies are installed (includes Lychee and Vale checks)
+- **`make docs-validate`**: Run documentation validation with all tools (GFM-aware)
+- **`make docs-fix`**: Auto-fix documentation formatting
+- **`make docs-install`**: Install JS-based documentation tools (markdownlint, cspell, prettier)
+- **`make docs-toc`**: Generate table of contents for markdown files
+- **`make docs-help`**: Show all available documentation commands with tool status
 
 ### 7. GitHub Templates
 
@@ -127,39 +152,52 @@ This document summarizes the comprehensive documentation validation system imple
 1. **Initial Setup**:
 
    ```bash
-   make docs-check   # Check dependencies
+   make docs-check   # Check dependencies (including Lychee and Vale)
    make prepare      # Install pre-commit hooks
-   make docs-install # Install documentation tools
+   make docs-install # Install JS-based documentation tools
    ```
+
+   **Optional but recommended:**
+   - Install Lychee: [https://lychee.cli.rs/#/installation](https://lychee.cli.rs/#/installation)
+   - Install Vale: [https://vale.sh/docs/vale-cli/installation/](https://vale.sh/docs/vale-cli/installation/)
 
 2. **Before Committing**:
 
    ```bash
-   make docs-validate # Check documentation
+   make docs-validate # Check documentation (all tools, GFM-aware)
    make docs-fix      # Auto-fix formatting issues
    ```
 
-3. **Get Help**:
+3. **Sync Vale styles** (if Vale is installed):
 
    ```bash
-   make docs-help     # Show all documentation commands
+   vale sync          # Download and update Vale styles
    ```
 
-4. **Pre-commit hooks will automatically**:
-   - Check Markdown formatting
+4. **Get Help**:
+
+   ```bash
+   make docs-help     # Show all documentation commands and tool status
+   ```
+
+5. **Pre-commit hooks will automatically**:
+   - Check Markdown formatting (GFM-compatible)
    - Validate documentation structure
    - Fix trailing whitespace and line endings
 
 ### For Maintainers
 
 1. **GitHub Actions automatically**:
-   - Validate all documentation on PRs
-   - Check links weekly
+   - Validate all documentation on PRs (GFM-aware)
+   - Run Lychee link checking weekly
+   - Generate link validation reports
    - Auto-fix issues when possible
+   - Run Vale prose linting (warnings are non-blocking)
 
 2. **Review Process**:
    - Documentation checklist in PR template
    - Automated validation results
+   - Lychee reports available as artifacts
    - Manual review for content accuracy
 
 ### For GitHub Copilot
@@ -204,15 +242,17 @@ This document summarizes the comprehensive documentation validation system imple
 
 ### Automated Checks
 
-- ✅ Markdown syntax and formatting
-- ✅ Link accessibility and validity
-- ✅ Spelling and grammar
-- ✅ Code block language specification
-- ✅ Heading hierarchy
-- ✅ Table of contents for long documents
-- ✅ Version consistency
-- ✅ Required sections in key files
-- ✅ Security scanning for sensitive data
+- ✅ **Markdown syntax and formatting** (markdownlint, GFM-compatible)
+- ✅ **Link accessibility and validity** (Lychee with GFM support)
+- ✅ **Image validation** (Lychee)
+- ✅ **Spelling and grammar** (cspell with project vocabulary)
+- ✅ **Prose style and consistency** (Vale with Microsoft and write-good styles)
+- ✅ **Code block language specification** (markdownlint)
+- ✅ **Heading hierarchy** (markdownlint)
+- ✅ **Table of contents** for long documents (doctoc)
+- ✅ **Version consistency** (custom checks)
+- ✅ **Required sections** in key files (custom checks)
+- ✅ **GFM features**: Tables, task lists, strikethrough, autolinks, emoji
 
 ### Manual Review Points
 
@@ -226,24 +266,39 @@ This document summarizes the comprehensive documentation validation system imple
 
 ### Adding New Validation Rules
 
-1. **Update Copilot rules** in `.github/copilot-rules.md`
+1. **Update Copilot rules** in `.github/copilot-instructions.md`
 2. **Add workflow steps** in `.github/workflows/documentation.yml`
 3. **Update validation script** in `scripts/validate-docs.sh`
 4. **Add pre-commit hooks** in `.pre-commit-config.yaml`
 
 ### Configuring Tools
 
-- **Markdownlint**: Edit `.markdownlint.yaml`
-- **Spell checker**: Update word list in workflow
-- **Link checker**: Modify ignore patterns in workflow
-- **Prettier**: Adjust formatting rules in workflow
+- **Markdownlint**: Edit `.markdownlint-cli2.jsonc`
+  - Adjust GFM-specific rules
+  - Add/remove allowed HTML elements
+  
+- **Lychee**: Edit `.lychee.toml`
+  - Modify exclusion patterns
+  - Adjust timeout and retry settings
+  - Configure caching behavior
+  
+- **Vale**: Edit `.vale.ini`
+  - Add/remove style packages
+  - Configure alert levels
+  - Adjust ignore patterns
+  
+- **Vale Vocabulary**: Edit `.vale/styles/Vocab/SRAT/`
+  - `accept.txt`: Add accepted technical terms
+  - `reject.txt`: Add terms to avoid
+  
+- **Spell checker**: Update word list in `.cspell.json`
 
 ### Project-Specific Rules
 
 - **File patterns**: Update workflow triggers
 - **Required sections**: Modify validation scripts
-- **Terminology**: Add to spell check dictionaries
-- **Link patterns**: Update ignore lists
+- **Terminology**: Add to spell check dictionaries and Vale vocabulary
+- **Link patterns**: Update ignore lists in `.lychee.toml`
 
 ## 🎯 Next Steps
 
@@ -275,6 +330,14 @@ This document summarizes the comprehensive documentation validation system imple
 - [Validation Workflow](../.github/workflows/documentation.yml)
 - [Validation Script](../scripts/validate-docs.sh)
 
+### Tool Documentation
+
+- **Markdownlint**: [https://github.com/DavidAnson/markdownlint](https://github.com/DavidAnson/markdownlint)
+- **Lychee**: [https://lychee.cli.rs](https://lychee.cli.rs)
+- **Vale**: [https://vale.sh](https://vale.sh)
+- **cspell**: [https://cspell.org](https://cspell.org)
+- **GitHub Flavored Markdown**: [https://github.github.com/gfm/](https://github.github.com/gfm/)
+
 ## 🤝 Contributing
 
 To contribute to the documentation validation system:
@@ -286,6 +349,7 @@ To contribute to the documentation validation system:
 
 ---
 
-**Created**: August 5, 2025
-**Purpose**: Comprehensive documentation validation for SRAT project
+**Created**: August 5, 2025  
+**Updated**: January 12, 2026 - Enhanced with Lychee and Vale, GFM support  
+**Purpose**: Comprehensive documentation validation for SRAT project  
 **Maintainer**: SRAT Development Team

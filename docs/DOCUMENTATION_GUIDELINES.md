@@ -4,6 +4,7 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Overview](#overview)
+- [GitHub Flavored Markdown Support](#github-flavored-markdown-support)
 - [Documentation Structure](#documentation-structure)
   - [Core Documentation Files](#core-documentation-files)
   - [Documentation Standards](#documentation-standards)
@@ -16,32 +17,48 @@
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-This document provides guidelines for contributing to and maintaining documentation in the SRAT project.
+This document provides guidelines for contributing to and maintaining documentation in the SRAT project with **GitHub Flavored Markdown (GFM)** support.
 
 ## Overview
 
-The SRAT project uses automated validation to ensure documentation quality and consistency. All documentation changes are validated through GitHub Actions workflows and pre-commit hooks.
+The SRAT project uses automated validation to ensure documentation quality and consistency. All documentation changes are validated through GitHub Actions workflows and pre-commit hooks. The validation system is fully compatible with **GitHub Flavored Markdown (GFM)**, supporting tables, task lists, strikethrough, autolinks, and emoji.
+
+## GitHub Flavored Markdown Support
+
+SRAT documentation fully supports GitHub Flavored Markdown (GFM) features:
+
+- ✅ **Tables**: Use GFM table syntax with alignment
+- ✅ **Task Lists**: Use `- [ ]` and `- [x]` for checkboxes
+- ✅ **Strikethrough**: Use `~~text~~` for strikethrough
+- ✅ **Autolinks**: URLs are automatically linked
+- ✅ **Emoji**: Use `:emoji_name:` syntax
+- ✅ **Fenced Code Blocks**: Use triple backticks with language specification
+- ✅ **HTML Elements**: Allowed elements include `<img>`, `<a>`, `<table>`, `<kbd>`, etc.
 
 ## Documentation Structure
 
 ### Core Documentation Files
 
 - **README.md** - Main project documentation with installation and usage
-- **CHANGELOG.md** - Version history and change tracking
-- **IMPLEMENTATION\_\*.md** - Technical implementation details
+- **CHANGELOG.md** - Version history and change tracking (follows Keep a Changelog format)
+- **IMPLEMENTATION_\*.md** - Technical implementation details
 - **docs/HOME_ASSISTANT_INTEGRATION.md** - Home Assistant specific documentation
 - **.github/copilot-instructions.md** - Instructions for GitHub Copilot
-- **.github/copilot-rules.md** - Rules for automated documentation updates
+- **docs/DOCUMENTATION_VALIDATION_SETUP.md** - Documentation validation system details
+- **docs/DOCUMENTATION_GUIDELINES.md** - This file
 
 ### Documentation Standards
 
 #### Formatting Requirements
 
-- Use proper heading hierarchy (# > ## > ### > ####)
-- Include language specification for all code blocks
-- Use consistent bullet points (- instead of \* or +)
-- End files with a single newline character
-- Format links as `[description](url)` instead of raw URLs
+- **Use proper heading hierarchy** (# > ## > ### > ####)
+- **Include language specification** for all code blocks (e.g., \`\`\`bash, \`\`\`python)
+- **Use consistent bullet points** (- instead of \* or +) for better GFM compatibility
+- **End files with a single newline character**
+- **Format links as** `[description](url)` instead of raw URLs
+- **GFM tables**: Use pipe syntax with proper alignment
+- **Task lists**: Use `- [ ]` for unchecked, `- [x]` for checked items
+- **Emoji**: Use `:emoji_name:` syntax when appropriate
 
 #### Content Requirements
 
@@ -53,37 +70,66 @@ The SRAT project uses automated validation to ensure documentation quality and c
 
 #### Style Guidelines
 
-- Use clear, concise language
-- Include concrete examples rather than vague descriptions
-- Document error codes and their meanings
-- Follow semantic versioning in CHANGELOG.md
+- **Use clear, concise language** - Avoid vague terms like "simply", "obviously", "just"
+- **Include concrete examples** rather than vague descriptions
+- **Document error codes** and their meanings
+- **Follow semantic versioning** in CHANGELOG.md
+- **Consistent terminology** - Use project vocabulary (see `.vale/styles/Vocab/SRAT/accept.txt`)
+- **Proper prose style** - Vale checks for Microsoft Writing Style Guide and write-good rules
 
 ## Validation Tools
 
 ### Automated Checks
 
-The project uses several tools to validate documentation:
+The project uses several tools to validate documentation with full **GitHub Flavored Markdown** support:
 
-- **markdownlint** - Checks Markdown formatting and style
-- **markdown-link-check** - Validates all links are accessible
-- **cspell** - Spell checking for content
+- **markdownlint-cli2** - Checks Markdown formatting and style (GFM-compatible)
+  - Configuration: `.markdownlint-cli2.jsonc`
+  - Supports GFM tables, task lists, HTML elements
+  
+- **Lychee** - Advanced link and image validation
+  - Configuration: `.lychee.toml`
+  - Fast, concurrent link checking
+  - Smart caching and retry logic
+  - Native GFM support
+  
+- **cspell** - Spell checking with project vocabulary
+  - Configuration: `.cspell.json`
+  - Custom word list for technical terms
+  - Ignores code blocks and URLs
+  
+- **Vale** - Prose linting and style checking (GFM-aware)
+  - Configuration: `.vale.ini`
+  - Vocabulary: `.vale/styles/Vocab/SRAT/`
+  - Microsoft Writing Style Guide
+  - write-good rules for clear writing
+  - Non-blocking warnings
+  
 - **prettier** - Consistent formatting
+- **doctoc** - Automatic table of contents generation
 - **Custom validators** - Project-specific checks
 
 ### Running Validation Locally
 
-````bash
-# Check dependencies first
+```bash
+# Check dependencies (including Lychee and Vale)
 make docs-check
 
-# Install documentation tools (supports both bun and npm)
+# Install JS-based documentation tools
 make docs-install
 
-# Run all documentation validation checks
+# Note: Lychee and Vale need separate installation
+# Lychee: https://lychee.cli.rs/#/installation
+# Vale: https://vale.sh/docs/vale-cli/installation/
+
+# Run all documentation validation checks (GFM-aware)
 make docs-validate
 
 # Auto-fix formatting issues
 make docs-fix
+
+# Generate table of contents
+make docs-toc
 
 # Show all available documentation commands
 make docs-help
@@ -93,9 +139,14 @@ make docs-help
 
 # Auto-fix with validation script
 ./scripts/validate-docs.sh --fix
-```shell
 
-**Package Manager Support**: The validation tools support both `bun` and `npm`. The scripts will automatically detect and use `bun` if available, otherwise fall back to `npm`. Additionally, `bun` can serve as both the JavaScript runtime (Node.js alternative) and package manager, making it a complete solution.
+# Sync Vale styles (if Vale is installed)
+vale sync
+```
+
+**Package Manager Support**: The validation tools support both `bun` and `npm`. The scripts will automatically detect and use `bun` if available, otherwise fall back to `npm` + `npx`.
+
+**Optional Tools**: Lychee and Vale are optional but highly recommended. The validation script will gracefully skip them if not installed while still running other checks.
 
 ## Pre-commit Hooks
 
@@ -245,16 +296,18 @@ When making breaking changes:
 
 ### Validation Tool Configuration
 
-- **`.markdownlint.yaml`** - Markdownlint rules and exceptions
-- **`.markdown-link-check.json`** - Link validation settings
+- **`.markdownlint-cli2.jsonc`** - Markdownlint rules and configuration (GFM-compatible)
+- **`.lychee.toml`** - Lychee link and image checker configuration
+- **`.vale.ini`** - Vale prose linting configuration
+- **`.vale/styles/Vocab/SRAT/`** - Project-specific vocabulary (accept.txt, reject.txt)
 - **`.cspell.json`** - Spell check dictionary and rules
-- **`.prettierrc`** - Code formatting configuration
+- **`.prettierrc`** - Code formatting configuration (if present)
 - **`.pre-commit-config.yaml`** - Pre-commit hook configuration
 
 ### GitHub Configuration
 
-- **`.github/workflows/documentation.yml`** - CI validation workflow
-- **`.github/copilot-rules.md`** - Automated update rules
+- **`.github/workflows/documentation.yml`** - CI validation workflow with Lychee and Vale
+- **`.github/copilot-instructions.md`** - Instructions for GitHub Copilot
 - **`.github/ISSUE_TEMPLATE/documentation.md`** - Documentation issue template
 - **`.github/pull_request_template.md`** - PR template with documentation checklist
 
