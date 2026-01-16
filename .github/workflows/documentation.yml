@@ -137,7 +137,7 @@ jobs:
           version: 3.13.0
           #files: $(find . -name "*.md" -not -path "./frontend/node_modules/*" -not -path "./.git/*" -not -path "./backend/src/vendor/*" | tr '\n' ',')
           reporter: github-pr-check
-          vale_flags: "-glob=!{frontend/node_modules/**/*.md,backend/src/vendor/**/*.md,.git/**/*.md}"
+          vale_flags: "--glob=!{frontend/node_modules/**/*.md,backend/src/vendor/**/*.md,.git/**/*.md}"
           fail_on_error: true
 
       - name: Generate Lychee report
