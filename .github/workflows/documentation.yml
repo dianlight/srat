@@ -127,7 +127,7 @@ jobs:
             **/*.md
             !frontend/node_modules/**/*.md
             !backend/src/vendor/**/*.md
-          use_cspell_files: true
+          use_cspell_files: false
           config: .cspell.json
 
       - name: Run Vale prose linter (GFM)
