@@ -72,7 +72,8 @@
     "ignores": [
         "frontend/node_modules/**",
         "backend/src/vendor/**",
-        ".git/**"
+        ".git/**",
+        ".vale/**"
     ],
     "gitignore": true
 }

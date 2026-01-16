@@ -1,26 +1,4 @@
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-
-- [Repository Information Overview](#repository-information-overview)
-  - [Repository Summary](#repository-summary)
-  - [Repository Structure](#repository-structure)
-    - [Main Repository Components](#main-repository-components)
-  - [Projects](#projects)
-    - [Backend (Go API Server)](#backend-go-api-server)
-      - [Language & Runtime](#language--runtime)
-      - [Dependencies](#dependencies)
-      - [Build & Installation](#build--installation)
-      - [Testing](#testing)
-    - [Frontend (React Web UI)](#frontend-react-web-ui)
-      - [Language & Runtime](#language--runtime-1)
-      - [Dependencies](#dependencies-1)
-      - [Build & Installation](#build--installation-1)
-  - [Database](#database)
-  - [Development Environment](#development-environment)
-  - [Testing & Validation](#testing--validation)
-  - [Project Guidelines](#project-guidelines)
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DOCTOC SKIP -->
 
 ---
 
