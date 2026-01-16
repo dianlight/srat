@@ -84,10 +84,10 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-#      - name: Setup bun
-#        uses: oven-sh/setup-bun@b7a1c7ccf290d58743029c4f6903da283811b979 # v2
-#        with:
-#          bun-version: latest
+      - name: Setup bun
+        uses: oven-sh/setup-bun@b7a1c7ccf290d58743029c4f6903da283811b979 # v2
+        with:
+          bun-version: latest
 
 #      - uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6
 #      - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
