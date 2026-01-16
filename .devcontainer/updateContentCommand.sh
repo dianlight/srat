@@ -37,8 +37,8 @@ ln -s ../../vdb1 /dev/disk/by-id/1234-5678
 #enable nix
 echo "experimental-features = nix-command flakes" >> /etc/nix/nix.conf ||:
 
-#Use of act
-#gh extension install https://github.com/nektos/gh-act ||:
+#Use of act Workarount to have ver >=0.2.84
+#gh extension install https://github.com/nektos/gh-act ||: 
 
 #directory structure 
 losetup -f /workspaces/srat/backend/test/data/image.dmg
