@@ -30,6 +30,9 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  packages: read
+  # To report GitHub Actions status checks
+  statuses: write
 
 jobs:
   docs-maintenance:
@@ -77,9 +80,12 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
-#      - name: Setup bun
-#        uses: oven-sh/setup-bun@b7a1c7ccf290d58743029c4f6903da283811b979 # v2
+      - name: Setup bun
+        uses: oven-sh/setup-bun@b7a1c7ccf290d58743029c4f6903da283811b979 # v2
 #        with:
 #          bun-version: latest
 
@@ -88,18 +94,24 @@ jobs:
 #        with:
 #          extra_args: --files $(find . -name "*.md" | grep -v "node_modules" | grep -v "vendor")
 
-      - name: Run markdownlint (GFM)
-        uses: DavidAnson/markdownlint-cli2-action@v22
-        with:
-            config: .markdownlint-cli2.jsonc
-            fix: false
-            globs: |
-              *.md
-              !frontend/node_modules/**/*.md
-              !backend/src/vendor/**/*.md
+#      - name: Super-linter
+#        uses: super-linter/super-linter/slim@v8.3.2 # x-release-please-version
+#        env:
+#          # To report GitHub Actions status checks
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 #      - name: Run markdownlint (GFM)
-#        run: bunx markdownlint-cli2 "**/*.md" "#frontend/node_modules" "#backend/src/vendor"
+#        uses: DavidAnson/markdownlint-cli2-action@v22
+#        with:
+#            config: .markdownlint-cli2.jsonc
+#            fix: false
+#            globs: |
+#              **/*.md
+#              !frontend/node_modules/**/*.md
+#              !backend/src/vendor/**/*.md
+
+      - name: Run markdownlint (GFM)
+        run: bunx markdownlint-cli2 "**/*.md" "#frontend/node_modules" "#backend/src/vendor"
 
       - name: Run Lychee link checker
         uses: lycheeverse/lychee-action@a8c4c7cb88f0c7386610c35eb25108e448569cb0 # v2.7.0
