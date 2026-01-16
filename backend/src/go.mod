@@ -20,7 +20,7 @@ require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/adelolmo/hd-idle v0.0.0-20250511190312-c87bc6e9ce96
 	github.com/benmcclelland/sgio v0.0.0-20250710154739-45e823ff1f46
-	github.com/danielgtaylor/huma/v2 v2.34.1
+	github.com/danielgtaylor/huma/v2 v2.34.2
 	github.com/dianlight/smartmontools-go v0.2.4
 	github.com/dianlight/tlog v0.1.2
 	github.com/fatih/color v1.18.0
