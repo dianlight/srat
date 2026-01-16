@@ -129,6 +129,7 @@ jobs:
             !backend/src/vendor/**/*.md
           use_cspell_files: false
           config: .cspell.json
+          incremental_files_only: false
 
       - name: Run Vale prose linter (GFM)
         uses: errata-ai/vale-action@v2.1.1
