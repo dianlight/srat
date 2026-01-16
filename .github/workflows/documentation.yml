@@ -89,7 +89,7 @@ jobs:
 #          extra_args: --files $(find . -name "*.md" | grep -v "node_modules" | grep -v "vendor")
 
       - name: markdownlint-cli2-action
-        uses: DavidAnson/markdownlint-cli2-action@V22
+        uses: DavidAnson/markdownlint-cli2-action@v22
         with:
             config_file: .markdownlint-cli2.jsonc
             fix: false
