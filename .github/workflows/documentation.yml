@@ -123,9 +123,12 @@ jobs:
 #        run: bunx cspell "**/*.md" --config .cspell.json
         uses: streetsidesoftware/cspell-action@v8
         with:
-          args: '**/*.md'
+          files: |
+            **/*.md
+            !frontend/node_modules/**/*.md
+            !backend/src/vendor/**/*.md
+          use_cspell_files: true
           config: .cspell.json
-          fail_on_error: true
 
       - name: Run Vale prose linter (GFM)
         uses: errata-ai/vale-action@v2.1.1
