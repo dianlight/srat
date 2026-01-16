@@ -113,6 +113,7 @@
     "nolint",
     "jpillora",
     "pprof",
+    "bunx",
   ],
   "flagWords": [],
   "ignorePaths": [

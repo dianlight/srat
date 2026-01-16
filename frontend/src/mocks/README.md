@@ -20,7 +20,6 @@
     - [MSW not intercepting requests](#msw-not-intercepting-requests)
     - [WebSocket not working](#websocket-not-working)
     - [Tests hanging](#tests-hanging)
-  - [Migration from Existing Mocks](#migration-from-existing-mocks)
   - [Resources](#resources)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -245,24 +244,9 @@ The test examples demonstrate React 19 features:
 2. Use `waitFor` with appropriate timeouts
 3. Ensure cleanup in `afterEach` hooks
 
-## Migration from Existing Mocks
-
-**See [MSW_TEST_MIGRATION.md](MSW_TEST_MIGRATION.md) for detailed test migration tracking and status.**
-
-To migrate from existing mock implementations:
-
-1. Remove global fetch mocks in favor of MSW handlers
-2. Convert HAR files to MSW handlers (if needed)
-3. Replace manual mocks with MSW handlers
-4. Update tests to use MSW's runtime handler overrides
-
-Most tests will work automatically since they already import `test/setup.ts` which now includes MSW setup.
-
-See the main `COPILOT.md` for testing patterns and guidelines.
-
 ## Resources
 
 - [MSW Documentation](https://mswjs.io/)
 - [MSW with Bun](https://bun.sh/guides/test/mock-http-api)
-- [msw-auto-mock](https://www.npmjs.com/package/msw-auto-mock)
+- [msw-auto-mock](https://github.com/zoubingwu/msw-auto-mock)
 - [RTK Query Streaming](https://redux-toolkit.js.org/rtk-query/usage/streaming-updates)

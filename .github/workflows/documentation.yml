@@ -83,20 +83,10 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Install Lychee (link checker)
-        uses: lycheeverse/lychee-action@a8c4c7cb88f0c7386610c35eb25108e448569cb0 # v2.7.0
-        with:
-          args: --version
-          
-      - name: Install Vale (prose linter)
-        run: |
-          wget https://github.com/errata-ai/vale/releases/download/v3.10.0/vale_3.10.0_Linux_64-bit.tar.gz
-          tar -xzf vale_3.10.0_Linux_64-bit.tar.gz
-          sudo mv vale /usr/local/bin/
-          vale --version
-
-      - name: Sync Vale styles
-        run: vale sync
+#      - name: Install Lychee (link checker)
+#        uses: lycheeverse/lychee-action@a8c4c7cb88f0c7386610c35eb25108e448569cb0 # v2.7.0
+#        with:
+#          args: --version
 
       - uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6
       - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
@@ -116,13 +106,12 @@ jobs:
         run: bunx cspell "**/*.md" --config .cspell.json
 
       - name: Run Vale prose linter (GFM)
-        run: |
-          find . -name "*.md" \
-            -not -path "./frontend/node_modules/*" \
-            -not -path "./.git/*" \
-            -not -path "./backend/src/vendor/*" \
-            -exec vale {} +
-        continue-on-error: true  # Vale warnings are non-blocking
+        uses: errata-ai/vale-action@v2.1.1
+        with:
+          version: 3.13.0
+          files: $(find . -name "*.md" -not -path "./frontend/node_modules/*" -not -path "./.git/*" -not -path "./backend/src/vendor/*" | tr '\n' ',')
+          reporter: github-pr-check
+          fail_on_error: true
 
       - name: Generate Lychee report
         if: always()
