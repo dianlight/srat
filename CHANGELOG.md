@@ -6,8 +6,8 @@
 
 ### 🙏 Thanks
 
-We would like to thank all supporters for their contributions and donations!
-With your donations, we are able to continue developing and improving this project. Your support is greatly appreciated!
+We would like to thank all supporters for their contributions and donations.
+With your donations, we are able to continue developing and improving this project. Your support is greatly appreciated.
 
 ### 🧑‍🏫 Documentation
 
@@ -49,4 +49,4 @@ With your donations, we are able to continue developing and improving this proje
 
 ### ✨ Features
 
-- First Fully functional version ready for first merge!
+- First Fully functional version ready for first merge.

@@ -4,7 +4,7 @@
 
 ## Description
 
-<!-- Provide a brief description of the changes in this PR -->
+<!-- Provide a brief description of the changes in this PR.-->
 
 ## Type of Change
 

@@ -71,7 +71,7 @@ make test          # Applies patches before testing
 **Important Notes:**
 
 - Patches are applied using the `patch` utility (installed via `apk` in Alpine)
-- Multiple patches can target the same file (e.g., smart.go has two patches)
+- Multiple patches can target the same file (for example, smart.go has two patches)
 - Patches are applied in alphabetical order by filename
 - The vendor directory is committed to preserve patches
 - When updating a library, re-run `go mod vendor && make patch`

@@ -25,7 +25,7 @@ applyTo: **/frontend/**/\*.test.{js,jsx,ts,tsx}
 
 Always use screen from @testing-library/react. Use queries in this order:
 
-1. getByRole: Primary choice. Always prefer the name option (e.g., screen.getByRole('button', { name: /submit/i })).
+1. getByRole: Primary choice. Always prefer the name option (for example, screen.getByRole('button', { name: /submit/i })).
 2. getByLabelText: For form inputs.
 3. getByPlaceholderText: Only if no label exists.
 4. getByText: For non-interactive elements.
@@ -45,7 +45,7 @@ Always use screen from @testing-library/react. Use queries in this order:
 ## **5\. TypeScript Requirements**
 
 - Define interfaces for mocked props.
-- Use as casting only when absolutely necessary (e.g., for mocked functions: const mockFn \= myFunc as Mock;).
+- Use as casting only when absolutely necessary (for example, for mocked functions: const mockFn \= myFunc as Mock;).
 - Ensure all screen queries are properly typed (RTL does this automatically, but avoid any).
 
 ## **6\. Code Standard (Bun \+ TS)**

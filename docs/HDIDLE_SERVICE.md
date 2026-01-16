@@ -32,7 +32,7 @@ The service monitors disk activity and automatically spins down idle disks after
 - **Automatic disk monitoring**: Continuously monitors all detected disks for I/O activity
 - **Configurable idle timeouts**: Set different idle times per disk or use global defaults
 - **Multiple command types**: Supports both SCSI and ATA spin-down commands
-- **Symlink resolution**: Handles device symlinks (e.g., `/dev/disk/by-id/...`)
+- **Symlink resolution**: Handles device symlinks (for example, `/dev/disk/by-id/...`)
 - **Debug logging**: Detailed logging for troubleshooting
 - **Power condition control**: Fine-grained control of SCSI power conditions
 - **Suspend detection**: Detects system sleep/wake events and resets disk states
@@ -133,7 +133,7 @@ type HDIdleConfig struct {
 }
 
 type HDIdleDeviceConfig struct {
-    // Device name (e.g., "sda" or "/dev/disk/by-id/...")
+    // Device name (for example, "sda" or "/dev/disk/by-id/...")
     Name string
 
     // Idle time in seconds (0 = use default)

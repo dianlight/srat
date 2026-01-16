@@ -81,7 +81,7 @@ SRAT can be used to manage Samba shares, users, and configurations via a modern 
 SRAT uses SQLite for persistence via the GORM ORM. The backend initializes the database with resilience-focused defaults:
 
 - journal_mode=WAL for safe readers during writes
-- busy_timeout=5000ms to reduce transient SQLITE_BUSY
+- busy_timeout=5000 ms to reduce transient SQLITE_BUSY
 - synchronous=NORMAL tuned for WAL
 - foreign_keys=ON
 - cache=shared

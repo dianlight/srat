@@ -1,6 +1,6 @@
 <!-- DOCTOC SKIP -->
 
-## COPILOT: SRAT repository — quick orientation for coding agents
+## COPILOT: SRAT repository–quick orientation for coding agents
 
 This file highlights the must-know, discoverable rules and workflows for productive changes in this repo. Keep it short and actionable.
 
@@ -25,12 +25,12 @@ SRAT is a Samba administration tool with a Go REST API backend and React fronten
 
 ### Backend Patterns
 
-- **API Handlers**: `backend/src/api/*` — Use constructor `NewXHandler` and `RegisterXHandler(api huma.API)`. Handlers use Huma framework for REST API.
-- **Services**: `backend/src/service/*` — Each service has an interface and implementation wired via FX (`fx.In` param structs). Services coordinate business logic.
+- **API Handlers**: `backend/src/api/*`–Use constructor `NewXHandler` and `RegisterXHandler(api huma.API)`. Handlers use Huma framework for REST API.
+- **Services**: `backend/src/service/*`–Each service has an interface and implementation wired via FX (`fx.In` param structs). Services coordinate business logic.
 - **Persistence**: Services now work directly with generated GORM helpers under `backend/src/dbom/g` (see `backend/src/service/share_service.go` for a live example of `gorm.G[dbom.ExportedShare]`). The `repository` packages no longer need to mediate persistence; generated DBOM structs and their GORM helpers deliver all read/write behavior.
-- **DTOs**: `backend/src/dto` — Define domain objects, error codes (see `dto/error_code.go`), and request/response shapes.
-- **Converters**: `backend/src/converter/*` — Goverter-generated converters for DTO↔DBOM transformations. Run `go generate` after changes.
-- **Logging**: `backend/src/tlog` — Custom logging with sensitive data masking, structured logs, and terminal color support.
+- **DTOs**: `backend/src/dto`–Define domain objects, error codes (see `dto/error_code.go`), and request/response shapes.
+- **Converters**: `backend/src/converter/*`–Goverter-generated converters for DTO↔DBOM transformations. Run `go generate` after changes.
+- **Logging**: `backend/src/tlog`–Custom logging with sensitive data masking, structured logs, and terminal color support.
 
 #### Context-Aware Logging (MANDATORY RULE)
 
@@ -42,7 +42,7 @@ Use:
 
 Rules:
 
-1. Only add the context form if a context variable is naturally available (e.g. `ctx`, `self.ctx`, `s.ctx`, `handler.ctx`, `apiContext`, `r.Context()`, constructor-local `Ctx`).
+1. Only add the context form if a context variable is naturally available (for example `ctx`, `self.ctx`, `s.ctx`, `handler.ctx`, `apiContext`, `r.Context()`, constructor-local `Ctx`).
 2. DO NOT create a new context just for logging (no `context.Background()`, `context.TODO()`, `context.WithTimeout(...)` solely to pass to log).
 3. Preserve original argument order; only insert the context as the first argument.
 4. Do not refactor method signatures to add context purely for logging.
@@ -50,7 +50,7 @@ Rules:
 6. Leave the original non-context call if no appropriate context exists (this is acceptable and preferred over manufacturing one).
 7. Avoid changing vendor or third-party code for this; skip files under `backend/src/vendor/` unless explicitly patching via the established patch workflow.
 8. Tests may keep simple non-context logging unless the test specifically exercises context logging behavior.
-9. Never pass a nil context or a fabricated stand‑in (e.g. a struct field that is not a `context.Context`).
+9. Never pass a nil context or a fabricated stand‑in (for example a struct field that is not a `context.Context`).
 
 Acceptable context identifiers (examples, not exhaustive): `ctx`, `self.ctx`, `s.ctx`, `ms.ctx`, `ts.ctx`, `handler.ctx`, `apiContext`, `self.apiContext`, `r.Context()`, locally declared `Ctx` in constructors.
 
@@ -96,12 +96,12 @@ Rationale: Using context-aware logging lets structured handlers attach trace/spa
 
 ### Frontend Patterns
 
-- **Components**: `frontend/src/components/` — Reusable React components with Material-UI
-- **Pages**: `frontend/src/pages/` — Route-based page components
-- **Store**: `frontend/src/store/` — RTK Query for API calls, Redux slices for local state
-- **Hooks**: `frontend/src/hooks/` — Custom React hooks for shared logic
+- **Components**: `frontend/src/components/`–Reusable React components with Material-UI
+- **Pages**: `frontend/src/pages/`–Route-based page components
+- **Store**: `frontend/src/store/`–RTK Query for API calls, Redux slices for local state
+- **Hooks**: `frontend/src/hooks/`–Custom React hooks for shared logic
 - **API Integration**: Auto-generated RTK Query hooks from OpenAPI spec (see `frontend/src/store/sratApi.ts`). Never make change on `frontend/src/store/sratApi.ts` or on `backend/docs/openapi.*` directly; update Go code and run `cd frontend && bun run gen`.
-- **MUI Grid**: Use modern Grid syntax with `size` prop (e.g., `<Grid size={{ xs: 12, sm: 6 }}>`) — Grid2 is now promoted as the default Grid in MUI v7.3.2+
+- **MUI Grid**: Use modern Grid syntax with `size` prop (for example, `<Grid size={{ xs: 12, sm: 6 }}>`)–Grid2 is now promoted as the default Grid in MUI v7.3.2+
 
 ## Development Workflows
 
@@ -120,8 +120,8 @@ SRAT uses **patched versions** of certain external Go libraries to enable additi
 
 **Patched Libraries:**
 
-- `github.com/zarldev/goenums` — Custom enum generation improvements
-- `github.com/jpillora/overseer` — Process management enhancements
+- `github.com/zarldev/goenums`–Custom enum generation improvements
+- `github.com/jpillora/overseer`–Process management enhancements
 
 **Patch Workflow:**
 
@@ -145,14 +145,14 @@ go mod vendor       # Vendor all dependencies (done automatically by make)
 1. Edit the library code directly in `backend/src/vendor/github.com/{library}/`
 2. Test your changes with `make build` or `make test`
 3. Generate a patch file using: `diff -Naur original_version patched_version > backend/patches/{name}.patch`
-4. For smart.go, use naming pattern `smart.go-<priority>.patch` (e.g., `smart.go-#010.patch`, `smart.go-srat#999.patch`)
+4. For smart.go, use naming pattern `smart.go-<priority>.patch` (for example, `smart.go-#010.patch`, `smart.go-srat#999.patch`)
 5. Commit both the patch file and any changes to vendor to the repository
 6. Future developers can regenerate vendor with: `cd backend/src && go mod vendor && cd .. && make patch`
 
 **Important notes:**
 
 - Patches are **required** for SMART service operations (enable/disable, test execution)
-- Multiple patches can be applied to the same library (e.g., smart.go has multiple patches)
+- Multiple patches can be applied to the same library (for example, smart.go has multiple patches)
 - Patches are applied in alphabetical order by filename
 - The vendor directory contains the complete dependency tree with patches pre-applied
 - Run `make patch` after `go mod vendor` to ensure patches are applied
@@ -319,9 +319,9 @@ describe("Component rendering", () => {
 
 - **FX Wiring**: When changing service interfaces, update all `fx.Provide()` calls and test `fx.Populate()`
 - **Converters**: After DTO/DBOM changes, run `go generate` to regenerate goverter code
-- **Patches**: External dependencies are patched via `gohack` — see `backend/Makefile` patch targets. Run `make patch` after clean checkout or when patches are updated
+- **Patches**: External dependencies are patched via `gohack`–see `backend/Makefile` patch targets. Run `make patch` after clean checkout or when patches are updated
 - **Patched Libraries**: Changes to `github.com/anatol/smart.go`, `github.com/zarldev/goenums`, or `github.com/jpillora/overseer` require updating patch files via `make gen_patch`
-- **Replace Directives**: **NEVER** commit `replace` directives in `go.mod` — pre-commit hooks remove them automatically. Patches are applied via `make patch` instead
+- **Replace Directives**: **NEVER** commit `replace` directives in `go.mod`–pre-commit hooks remove them automatically. Patches are applied via `make patch` instead
 - **Multi-arch**: Always test builds on target architectures, especially ARM variants
 - **Embedded Assets**: Frontend builds to `backend/src/web/static` for embedding in binary
 - **Database Paths**: Use `--db` flag; app validates filesystem permissions
@@ -349,7 +349,7 @@ describe("Component rendering", () => {
 - Use `@testing-library/jest-dom` assertions: `expect(element).toBeTruthy();`
 - For async rendering: Use `await screen.findByText()` not `getByText()`
 - Always use `React.createElement()` syntax, not JSX, in test files
-- **CRITICAL**: Use `@testing-library/user-event` for ALL user interactions — NEVER use `fireEvent`
+- **CRITICAL**: Use `@testing-library/user-event` for ALL user interactions–NEVER use `fireEvent`
   - Import: `const userEvent = (await import("@testing-library/user-event")).default;`
   - Setup: `const user = userEvent.setup();`
   - All interactions MUST be awaited: `await user.click(element)`, `await user.type(input, "text")`, `await user.clear(input)`
@@ -434,7 +434,7 @@ describe("Component rendering", () => {
 - **ALWAYS** await userEvent interactions: `await user.click()`, `await user.type()`, `await user.clear()`
 - Use `act()` wrapper when userEvent triggers state updates that cause re-renders in happy-dom
 
-**NON-NEGOTIABLE:** All frontend tests must follow these exact patterns. No exceptions for import style, file structure, or testing utilities. `fireEvent` is strictly prohibited — use `userEvent` for all interactions.
+**NON-NEGOTIABLE:** All frontend tests must follow these exact patterns. No exceptions for import style, file structure, or testing utilities. `fireEvent` is strictly prohibited–use `userEvent` for all interactions.
 
 ### Frontend Test Changes & Coverage (MANDATORY RULE)
 
@@ -459,7 +459,7 @@ When making ANY changes to frontend components or tests:
 
 3. **Create tests if missing**:
    - If a component exists WITHOUT tests, it is **incomplete and requires tests before merge**
-   - Create a `__tests__` directory alongside the component (e.g., `src/components/[name]/__tests__/`)
+   - Create a `__tests__` directory alongside the component (for example, `src/components/[name]/__tests__/`)
    - Create `[ComponentName].test.tsx` with coverage for:
      - Component renders without errors
      - All user interactions work (button clicks, form inputs, toggles, selections)
@@ -470,7 +470,7 @@ When making ANY changes to frontend components or tests:
    - Coverage: All interactive elements and state-dependent UI must be tested
 
 4. **New pages or major sections MUST include tests**:
-   - Create a `__tests__` directory alongside the new page/section (e.g., `src/pages/[pageName]/__tests__/`)
+   - Create a `__tests__` directory alongside the new page/section (for example, `src/pages/[pageName]/__tests__/`)
    - Create at least a basic `.test.tsx` file that covers:
      - Component renders without errors
      - Key UI elements are present
@@ -499,12 +499,12 @@ When making ANY changes to frontend components or tests:
    - If test count is <5, add more tests for uncovered behavior
 
 7. **Common pitfalls to avoid**:
-   - Don't skip tests for UI refactoring — update tests alongside UI changes
-   - Don't create pages without test structure — add `__tests__/` directory from the start
-   - Don't rely on implementation details in tests — test user-facing behavior
+   - Don't skip tests for UI refactoring–update tests alongside UI changes
+   - Don't create pages without test structure–add `__tests__/` directory from the start
+   - Don't rely on implementation details in tests–test user-facing behavior
    - Don't leave commented-out tests or TODOs in test files
-   - Don't merge components without tests — incomplete code is blocker
-   - Don't assume old tests still work — rerun with `--rerun-each 10` after changes
+   - Don't merge components without tests–incomplete code is blocker
+   - Don't assume old tests still work–rerun with `--rerun-each 10` after changes
 
 ## Final Checklist Before Consider a Changes as Done
 

@@ -250,7 +250,7 @@ Create tests for:
 
 ### Adding More Granular Version Checks
 
-If needed for patch releases (e.g., 4.23.1):
+If needed for patch releases (for example, 4.23.1):
 
 ```go
 // In osutil.go - add if necessary
