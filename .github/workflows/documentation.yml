@@ -91,7 +91,7 @@ jobs:
       - name: Run markdownlint (GFM)
         uses: DavidAnson/markdownlint-cli2-action@v22
         with:
-            config_file: ../.markdownlint-cli2.jsonc
+            config: .markdownlint-cli2.jsonc
             fix: false
             globs: |
               *.md
