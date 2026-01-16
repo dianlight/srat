@@ -61,12 +61,12 @@ func NewHaWsService(lc fx.Lifecycle, params HaWsServiceParams) (HaWsServiceInter
 			defer func() {
 				slog.InfoContext(ctx, "=== SERVICE INIT: HaWsService Complete ===", "duration", time.Since(serviceStart))
 			}()
-			
+
 			// subscribe to connection lifecycle events
 			if s.client != nil {
 				slog.InfoContext(ctx, "=== WS: Connecting to HA ===")
 				wsConnStart := time.Now()
-				
+
 				unsubC, err := s.client.SubscribeConnectionEvents(func(ev websocket.ConnectionEvent) {
 					switch ev.Type {
 					case websocket.ConnEventConnected:
@@ -87,7 +87,7 @@ func NewHaWsService(lc fx.Lifecycle, params HaWsServiceParams) (HaWsServiceInter
 					slog.WarnContext(ctx, "ha_ws_service: websocket connection failed", "error", err)
 					return err
 				}
-				
+
 				slog.InfoContext(ctx, "=== WS: Connected to HA ===", "duration", time.Since(wsConnStart))
 			}
 
