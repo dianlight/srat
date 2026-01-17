@@ -260,7 +260,7 @@ func (suite *EventPropagationTestSuite) TestUserServiceToDirtyDataService() {
 	// Action: Create a user (which should emit UserEvent)
 	user := dto.User{
 		Username: "testuser",
-		Password: "testpass",
+		Password: dto.NewSecret("testpass"),
 	}
 	_, err := suite.userService.CreateUser(user)
 	suite.Require().NoError(err)

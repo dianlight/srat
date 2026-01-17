@@ -108,7 +108,7 @@ func (suite *ShareHandlerSuite) TestCreateShareSuccessFull() {
 			Users: []dto.User{
 				{
 					Username: "homeassistant",
-					Password: "changeme!",
+					Password: dto.NewSecret("changeme!"),
 					IsAdmin:  true,
 					RwShares: []string{"addon_configs", "config", "addons", "ssl", "share", "backup", "media", "EFI"},
 				},
@@ -134,7 +134,7 @@ func (suite *ShareHandlerSuite) TestCreateShareSuccessFull() {
 	expectedShare := &dto.SharedResource{Name: "UPDATER", Users: []dto.User{
 		{
 			Username: "homeassistant",
-			Password: "changeme!",
+			Password: dto.NewSecret("changeme!"),
 			IsAdmin:  true,
 			RwShares: []string{"addon_configs", "config", "addons", "ssl", "share", "backup", "media", "EFI"},
 		},
@@ -270,7 +270,7 @@ func (suite *ShareHandlerSuite) TestListSharesWithDisabledShareWithoutMountPoint
 			Users: []dto.User{
 				{
 					Username: "testuser",
-					Password: "testpass",
+					Password: dto.NewSecret("testpass"),
 					IsAdmin:  true,
 				},
 			},
@@ -290,7 +290,7 @@ func (suite *ShareHandlerSuite) TestListSharesWithDisabledShareWithoutMountPoint
 			Users: []dto.User{
 				{
 					Username: "testuser2",
-					Password: "testpass2",
+					Password: dto.NewSecret("testpass2"),
 					IsAdmin:  false,
 				},
 			},
@@ -338,7 +338,7 @@ func (suite *ShareHandlerSuite) TestListSharesWithEmptyPathInMountPoint() {
 			Users: []dto.User{
 				{
 					Username: "testuser",
-					Password: "testpass",
+					Password: dto.NewSecret("testpass"),
 					IsAdmin:  true,
 				},
 			},
@@ -358,7 +358,7 @@ func (suite *ShareHandlerSuite) TestListSharesWithEmptyPathInMountPoint() {
 			Users: []dto.User{
 				{
 					Username: "homeassistant",
-					Password: "changeme!",
+					Password: dto.NewSecret("changeme!"),
 					IsAdmin:  true,
 					RwShares: []string{"addon_configs", "config", "addons", "ssl", "share", "backup", "media", "EFI"},
 				},
@@ -615,7 +615,7 @@ func (suite *ShareHandlerSuite) TestListSharesWithVolumeMountedRW() {
 			Users: []dto.User{
 				{
 					Username: "testuser",
-					Password: "testpass",
+					Password: dto.NewSecret("testpass"),
 					RwShares: []string{"share-mounted-rw-active"},
 				},
 			},
@@ -635,7 +635,7 @@ func (suite *ShareHandlerSuite) TestListSharesWithVolumeMountedRW() {
 			Users: []dto.User{
 				{
 					Username: "testuser2",
-					Password: "testpass2",
+					Password: dto.NewSecret("testpass2"),
 					RwShares: []string{"share-mounted-rw-inactive"},
 				},
 			},
@@ -691,14 +691,14 @@ func (suite *ShareHandlerSuite) TestListSharesWithVolumeMountedRO() {
 			Users: []dto.User{
 				{
 					Username: "testuser",
-					Password: "testpass",
+					Password: dto.NewSecret("testpass"),
 					RwShares: []string{}, // Should be empty for RO mount
 				},
 			},
 			RoUsers: []dto.User{
 				{
 					Username: "testuser",
-					Password: "testpass",
+					Password: dto.NewSecret("testpass"),
 				},
 			},
 			Disabled: pointer.Bool(false),
@@ -717,14 +717,14 @@ func (suite *ShareHandlerSuite) TestListSharesWithVolumeMountedRO() {
 			Users: []dto.User{
 				{
 					Username: "testuser2",
-					Password: "testpass2",
+					Password: dto.NewSecret("testpass2"),
 					RwShares: []string{}, // Should be empty for RO mount
 				},
 			},
 			RoUsers: []dto.User{
 				{
 					Username: "testuser2",
-					Password: "testpass2",
+					Password: dto.NewSecret("testpass2"),
 				},
 			},
 			Disabled: pointer.Bool(true),
@@ -779,7 +779,7 @@ func (suite *ShareHandlerSuite) TestListSharesWithVolumeNotMounted() {
 			Users: []dto.User{
 				{
 					Username: "testuser",
-					Password: "testpass",
+					Password: dto.NewSecret("testpass"),
 					RwShares: []string{"share-not-mounted-was-active"},
 				},
 			},
@@ -830,7 +830,7 @@ func (suite *ShareHandlerSuite) TestListSharesWithVolumeNotExists() {
 			Users: []dto.User{
 				{
 					Username: "testuser",
-					Password: "testpass",
+					Password: dto.NewSecret("testpass"),
 					RwShares: []string{"share-no-volume"},
 				},
 			},
@@ -881,7 +881,7 @@ func (suite *ShareHandlerSuite) TestGetShareWithVolumeNotMounted() {
 		Users: []dto.User{
 			{
 				Username: "testuser",
-				Password: "testpass",
+				Password: dto.NewSecret("testpass"),
 				RwShares: []string{shareName},
 			},
 		},
@@ -928,7 +928,7 @@ func (suite *ShareHandlerSuite) TestCreateShareWithMountedRWVolume() {
 		Users: []dto.User{
 			{
 				Username: "testuser",
-				Password: "testpass",
+				Password: dto.NewSecret("testpass"),
 				RwShares: []string{"new-share"},
 			},
 		},
@@ -948,7 +948,7 @@ func (suite *ShareHandlerSuite) TestCreateShareWithMountedRWVolume() {
 		Users: []dto.User{
 			{
 				Username: "testuser",
-				Password: "testpass",
+				Password: dto.NewSecret("testpass"),
 				RwShares: []string{"new-share"},
 			},
 		},
@@ -991,7 +991,7 @@ func (suite *ShareHandlerSuite) TestCreateShareWithROVolumeHasOnlyROUsers() {
 		RoUsers: []dto.User{
 			{
 				Username: "testuser",
-				Password: "testpass",
+				Password: dto.NewSecret("testpass"),
 			},
 		},
 		MountPointData: &dto.MountPointData{
@@ -1010,7 +1010,7 @@ func (suite *ShareHandlerSuite) TestCreateShareWithROVolumeHasOnlyROUsers() {
 		RoUsers: []dto.User{
 			{
 				Username: "testuser",
-				Password: "testpass",
+				Password: dto.NewSecret("testpass"),
 			},
 		},
 		Users: []dto.User{}, // No RW users for RO volume
@@ -1063,7 +1063,7 @@ func (suite *ShareHandlerSuite) TestCreateShareWithExFATVolume() {
 			Users: []dto.User{
 				{
 					Username: "homeassistant",
-					Password: "changeme!",
+					Password: dto.NewSecret("changeme!"),
 					IsAdmin:  true,
 				},
 			},
@@ -1098,7 +1098,7 @@ func (suite *ShareHandlerSuite) TestCreateShareWithExFATVolume() {
 		Users: []dto.User{
 			{
 				Username: "homeassistant",
-				Password: "changeme!",
+				Password: dto.NewSecret("changeme!"),
 				IsAdmin:  true,
 			},
 		},
@@ -1217,7 +1217,7 @@ func (suite *ShareHandlerSuite) TestUpdateShareWithExFATVolume() {
 		Users: []dto.User{
 			{
 				Username: "homeassistant",
-				Password: "changeme!",
+				Password: dto.NewSecret("changeme!"),
 				IsAdmin:  true,
 			},
 		},
@@ -1249,7 +1249,7 @@ func (suite *ShareHandlerSuite) TestUpdateShareWithExFATVolume() {
 		Users: []dto.User{
 			{
 				Username: "homeassistant",
-				Password: "changeme!",
+				Password: dto.NewSecret("changeme!"),
 				IsAdmin:  true,
 			},
 		},

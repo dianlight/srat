@@ -214,7 +214,7 @@ func (c *DtoToDbomConverterImpl) MountPointPathsToMountPointDatas(source []dbom.
 }
 func (c *DtoToDbomConverterImpl) SambaUserToUser(source dbom.SambaUser, target *dto.User) error {
 	target.Username = source.Username
-	target.Password = source.Password
+	target.Password = stringToSecret(source.Password)
 	target.IsAdmin = source.IsAdmin
 	if source.RwShares != nil {
 		target.RwShares = make([]string, len(source.RwShares))
@@ -301,8 +301,8 @@ func (c *DtoToDbomConverterImpl) UserToSambaUser(source dto.User, target *dbom.S
 	if source.Username != "" {
 		target.Username = source.Username
 	}
-	if source.Password != "" {
-		target.Password = source.Password
+	if source.Password != (dto.Secret[string]{}) {
+		target.Password = secretToString(source.Password)
 	}
 	if source.IsAdmin != false {
 		target.IsAdmin = source.IsAdmin
@@ -355,7 +355,7 @@ func (c *DtoToDbomConverterImpl) dbomMountPointPathToPDtoMountPointData(source d
 func (c *DtoToDbomConverterImpl) dbomSambaUserToDtoUser(source dbom.SambaUser) dto.User {
 	var dtoUser dto.User
 	dtoUser.Username = source.Username
-	dtoUser.Password = source.Password
+	dtoUser.Password = stringToSecret(source.Password)
 	dtoUser.IsAdmin = source.IsAdmin
 	if source.RwShares != nil {
 		dtoUser.RwShares = make([]string, len(source.RwShares))
@@ -593,7 +593,7 @@ func (c *DtoToDbomConverterImpl) stringListToDatatypesJSONSlice(source []string)
 func (c *DtoToDbomConverterImpl) userToSambaUser(source dto.User) (dbom.SambaUser, error) {
 	var dbomSambaUser dbom.SambaUser
 	dbomSambaUser.Username = source.Username
-	dbomSambaUser.Password = source.Password
+	dbomSambaUser.Password = secretToString(source.Password)
 	dbomSambaUser.IsAdmin = source.IsAdmin
 	if source.RwShares != nil {
 		dbomSambaUser.RwShares = make([]dbom.ExportedShare, len(source.RwShares))

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	dto "github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/u-root/u-root/pkg/mount"
 	"github.com/xorcare/pointer"
@@ -127,4 +128,11 @@ func isWriteSupported(path string) *bool {
 	//tlog.Debug("Checking if path is writable", "path", path, "isWritable", osutil.IsWritable(path))
 	return pointer.Bool(osutil.IsWritable(path))
 
+}
+
+func secretToString(secret dto.Secret[string]) string {
+	return secret.Expose()
+}
+func stringToSecret(str string) dto.Secret[string] {
+	return dto.NewSecret(str)
 }

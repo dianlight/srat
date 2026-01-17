@@ -18,6 +18,8 @@ import (
 // goverter:extend stringToExportedShare
 // goverter:extend durationToSeconds
 // goverter:extend secondsToDuration
+// goverter:extend secretToString
+// goverter:extend stringToSecret
 // goverter:ignoreUnexported
 // goverter:enum:unknown @error
 type DtoToDbomConverter interface {

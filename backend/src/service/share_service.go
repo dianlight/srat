@@ -286,7 +286,7 @@ func (s *ShareService) UpdateShare(name string, share dto.SharedResource) (*dto.
 	if _, err := gorm.G[dbom.ExportedShare](s.db).Updates(s.ctx, dbShare); err != nil {
 		// Note: gorm.ErrDuplicatedKey might not be standard across all GORM dialects/drivers.
 		// Checking for a more generic "constraint violation" or relying on the FindByName check might be more robust.
-		return nil, errors.Wrapf(err, "failed to update share '%s' to repository", share.Name)
+		return nil, errors.Wrapf(err, "failed to update share '%s' err %v", share.Name, err)
 	}
 
 	createdDtoShare, errS := conv.ExportedShareToSharedResource(dbShare)

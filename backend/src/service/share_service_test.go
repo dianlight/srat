@@ -2,6 +2,7 @@ package service_test
 
 import (
 	"context"
+	"crypto/rand"
 	"log"
 	"os"
 	"sync"
@@ -40,7 +41,6 @@ func TestShareServiceSuite(t *testing.T) {
 func (suite *ShareServiceSuite) SetupTest() {
 	// Set mock mode to skip OnStart initialization that tries to access real paths
 	os.Setenv("SRAT_MOCK", "true")
-	defer os.Unsetenv("SRAT_MOCK")
 
 	suite.app = fxtest.New(suite.T(),
 		fx.Provide(
@@ -371,8 +371,8 @@ func (suite *ShareServiceSuite) TestCreateShareSuccess() {
 	created, err := suite.shareService.CreateShare(newShare)
 
 	// Assert
-	suite.NoError(err)
-	suite.NotNil(created)
+	suite.Require().NoError(err)
+	suite.Require().NotNil(created)
 	suite.Equal("new-share", created.Name)
 	suite.False(*created.Disabled)
 	suite.True(*created.GuestOk)
@@ -936,19 +936,22 @@ func (suite *ShareServiceSuite) TestDeleteShareSuccess() {
 }
 
 func (suite *ShareServiceSuite) TestCreateDeleteAndRecreateShare() {
+	adminUserName := "homeassistant%" + rand.Text()[:5]
+	username := "testuser%" + rand.Text()[:5]
+
 	// Setup: allow auto-adding admin user on empty user list
 	mock.When(suite.userService.GetAdmin()).ThenReturn(&dto.User{
-		Username: "homeassistant",
+		Username: adminUserName,
 	}, nil)
 
 	// First, create actual users in the database to test foreign key constraints
 	suite.Require().NoError(suite.db.Create(&dbom.SambaUser{
-		Username: "homeassistant",
+		Username: adminUserName,
 		Password: "test123",
 		IsAdmin:  true,
 	}).Error)
 	suite.Require().NoError(suite.db.Create(&dbom.SambaUser{
-		Username: "testuser",
+		Username: username,
 		Password: "test456",
 		IsAdmin:  false,
 	}).Error)
@@ -962,11 +965,11 @@ func (suite *ShareServiceSuite) TestCreateDeleteAndRecreateShare() {
 			Type:     "ADDON",
 		},
 		Users: []dto.User{
-			{Username: "homeassistant"},
-			{Username: "testuser"},
+			{Username: adminUserName},
+			{Username: username},
 		},
 		RoUsers: []dto.User{
-			{Username: "testuser"},
+			{Username: username},
 		},
 	}
 
@@ -974,7 +977,7 @@ func (suite *ShareServiceSuite) TestCreateDeleteAndRecreateShare() {
 	suite.Require().NoError(err)
 	suite.Require().NotNil(created)
 	suite.Len(created.Users, 2)
-	suite.Equal("homeassistant", created.Users[0].Username)
+	suite.Equal(adminUserName, created.Users[0].Username)
 
 	// Delete the share - this should clear all associations
 	err = suite.shareService.DeleteShare("recreate-share")
@@ -1005,7 +1008,7 @@ func (suite *ShareServiceSuite) TestCreateDeleteAndRecreateShare() {
 			Type:     "ADDON",
 		},
 		Users: []dto.User{
-			{Username: "homeassistant"},
+			{Username: adminUserName},
 		},
 	}
 
@@ -1015,7 +1018,7 @@ func (suite *ShareServiceSuite) TestCreateDeleteAndRecreateShare() {
 	suite.Equal("recreate-share", recreated.Name)
 	suite.False(*recreated.Disabled)
 	suite.Len(recreated.Users, 1)
-	suite.Equal("homeassistant", recreated.Users[0].Username)
+	suite.Equal(adminUserName, recreated.Users[0].Username)
 
 	// Verify the share is no longer soft-deleted
 	var restoredShare dbom.ExportedShare
