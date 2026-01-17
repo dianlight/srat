@@ -100,7 +100,8 @@
 				"bierner.markdown-mermaid",
 				"TypeScriptTeam.native-preview",
 				"nguyenngoclong.terminal-keeper",
-				"DavidAnson.vscode-markdownlint"
+				"DavidAnson.vscode-markdownlint",
+				"neonxp.gotools"
 			],
 			"mcp": {
 				"servers": {

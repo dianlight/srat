@@ -2,6 +2,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import { setupListeners } from "@reduxjs/toolkit/query";
 import { useDispatch, useSelector } from "react-redux";
 import { errorSlice } from "./errorSlice";
+import { githubApi } from "./githubApi";
 import mdcMiddleware from "./mdcMiddleware";
 import { mdcSlice } from "./mdcSlice";
 import { sratApi } from "./sratApi";
@@ -15,6 +16,7 @@ export const store = configureStore({
 		[sratApi.reducerPath]: sratApi.reducer,
 		[sseApi.reducerPath]: sseApi.reducer,
 		[wsApi.reducerPath]: wsApi.reducer,
+		[githubApi.reducerPath]: githubApi.reducer,
 	},
 	middleware: (getDefaultMiddleware) => {
 		// By default, put our MDC middleware before RTK Query so it can read outgoing args;
@@ -23,7 +25,8 @@ export const store = configureStore({
 			.concat(mdcMiddleware)
 			.concat(sratApi.middleware)
 			.concat(sseApi.middleware)
-			.concat(wsApi.middleware);
+			.concat(wsApi.middleware)
+			.concat(githubApi.middleware);
 	},
 	// Redux DevTools integration is built into configureStore by default
 	// No need for @redux-devtools/extension package - RTK handles it automatically
