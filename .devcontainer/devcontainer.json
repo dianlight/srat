@@ -98,7 +98,9 @@
 				"SanjulaGanepola.github-local-actions",
 				"bierner.markdown-mermaid",
 				"TypeScriptTeam.native-preview",
-				"nguyenngoclong.terminal-keeper"
+				"nguyenngoclong.terminal-keeper",
+				"DavidAnson.vscode-markdownlint",
+				"neonxp.gotools"
 			],
 			"mcp": {
 				"servers": {
