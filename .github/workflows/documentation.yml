@@ -121,7 +121,7 @@ jobs:
           
       - name: Run spell check
 #        run: bunx cspell "**/*.md" --config .cspell.json
-        uses: streetsidesoftware/cspell-action@v8
+        uses: streetsidesoftware/cspell-action@24fa8d3096a314ce263f39578744e9d9f8d80acf # v8
         with:
           files: |
             **/*.md
@@ -140,7 +140,7 @@ jobs:
         run: sudo apt-get install -y docutils
 
       - name: Run Vale prose linter (GFM)
-        uses: errata-ai/vale-action@v2.1.1
+        uses: errata-ai/vale-action@d89dee975228ae261d22c15adcd03578634d429c # v2.1.1
         with:
           version: 3.13.0
           #files: $(find . -name "*.md" -not -path "./frontend/node_modules/*" -not -path "./.git/*" -not -path "./backend/src/vendor/*" | tr '\n' ',')
@@ -161,7 +161,7 @@ jobs:
 
       - name: Upload Lychee report
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: lychee-report
           path: lychee-report.md
