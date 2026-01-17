@@ -41,7 +41,7 @@ export function DonationButton() {
 	const { data: fundingPlatforms = [], isLoading, isError, error } = useGetFundingConfigQuery();
 
 	const handleClick = (event: React.MouseEvent<HTMLElement>) => {
-		setAnchorEl(event.currentTarget);
+		setAnchorEl(anchorEl == null ? event.currentTarget:null);
 	};
 
 	const handleClose = () => {
@@ -69,6 +69,7 @@ export function DonationButton() {
 				aria-controls={open ? "donation-menu" : undefined}
 				aria-haspopup="true"
 				aria-expanded={open ? "true" : undefined}
+				data-testid="donation-button"
 			>
 				<Tooltip title="Support this project" arrow>
 					<VolunteerActivismIcon sx={{ color: "white" }} />
@@ -79,8 +80,10 @@ export function DonationButton() {
 				anchorEl={anchorEl}
 				open={open}
 				onClose={handleClose}
-				MenuListProps={{
-					"aria-labelledby": "donation-button",
+				slotProps={{
+					list: {
+						"aria-labelledby": "donation-button",
+					},
 				}}
 			>
 				{fundingPlatforms.map((platform) => (

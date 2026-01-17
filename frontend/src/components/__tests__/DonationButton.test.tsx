@@ -1,5 +1,5 @@
 import "../../../test/setup";
-import { describe, it, expect, beforeEach, mock } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
 
 // Mock the GitHub API to avoid actual network requests
 mock.module("../../store/githubApi", () => ({
@@ -46,11 +46,22 @@ if (!(globalThis as any).localStorage) {
 }
 
 describe("DonationButton Component", () => {
+	let cleanup: (() => void) | undefined;
+
 	beforeEach(() => {
 		localStorage.clear();
-		mock.restore();
 		// Reset window.open mock
 		(window as any).open = () => null;
+	});
+
+	afterEach(() => {
+		// Clean up rendered components after each test
+		if (cleanup) {
+			cleanup();
+			cleanup = undefined;
+		}
+		// Clear the document body to prevent DOM pollution
+		document.body.innerHTML = "";
 	});
 
 	it("renders DonationButton with icon", async () => {
@@ -61,19 +72,20 @@ describe("DonationButton Component", () => {
 
 		const theme = createTheme();
 
-		const { container } = render(
+		const result = render(
 			React.createElement(
 				ThemeProvider,
 				{ theme },
 				React.createElement(DonationButton as any, {})
 			)
 		);
+		cleanup = result.unmount;
 
-		// Component should render successfully
-		expect(container).toBeTruthy();
+		// Component should render successfully - use getByTestId for icon buttons
+		expect(result.container).toBeTruthy();
 
-		// Find button by role
-		const button = screen.queryByRole("button");
+		// Find button by data-testid (acceptable for icon buttons without text)
+		const button = screen.getByTestId("donation-button");
 		expect(button).toBeTruthy();
 	});
 
@@ -87,21 +99,21 @@ describe("DonationButton Component", () => {
 		const theme = createTheme();
 		const user = userEvent.setup();
 
-		render(
+		const result = render(
 			React.createElement(
 				ThemeProvider,
 				{ theme },
 				React.createElement(DonationButton as any, {})
 			)
 		);
+		cleanup = result.unmount;
 
 		// Find and click the donation button
-		const button = screen.getByRole("button");
+		const button = screen.getByTestId("donation-button");
 		await user.click(button);
 
-		// Menu should be open - look for menu items
-		const menu = document.getElementById("donation-menu");
-		expect(menu).toBeTruthy();
+		// Menu should be open - verify aria-expanded attribute
+		expect(button.getAttribute("aria-expanded")).toBe("true");
 	});
 
 	it("displays funding platforms in menu", async () => {
@@ -114,16 +126,17 @@ describe("DonationButton Component", () => {
 		const theme = createTheme();
 		const user = userEvent.setup();
 
-		render(
+		const result = render(
 			React.createElement(
 				ThemeProvider,
 				{ theme },
 				React.createElement(DonationButton as any, {})
 			)
 		);
+		cleanup = result.unmount;
 
 		// Click to open menu
-		const button = screen.getByRole("button");
+		const button = screen.getByTestId("donation-button");
 		await user.click(button);
 
 		// Look for menu items - should have GitHub Sponsors and Buy Me a Coffee
@@ -154,16 +167,17 @@ describe("DonationButton Component", () => {
 			return null;
 		};
 
-		render(
+		const result = render(
 			React.createElement(
 				ThemeProvider,
 				{ theme },
 				React.createElement(DonationButton as any, {})
 			)
 		);
+		cleanup = result.unmount;
 
 		// Click to open menu
-		const button = screen.getByRole("button");
+		const button = screen.getByTestId("donation-button");
 		await user.click(button);
 
 		// Click on GitHub Sponsors
@@ -187,16 +201,18 @@ describe("DonationButton Component", () => {
 		// Mock window.open
 		(window as any).open = () => null;
 
-		render(
+		const result = render(
 			React.createElement(
 				ThemeProvider,
 				{ theme },
 				React.createElement(DonationButton as any, {})
 			)
 		);
+		cleanup = result.unmount;
 
 		// Open menu
-		const button = screen.getByRole("button");
+		const button = screen.getByTestId("donation-button");
+		expect(button).toBeTruthy();
 		await user.click(button);
 
 		// Click on a menu item
@@ -204,7 +220,7 @@ describe("DonationButton Component", () => {
 		await user.click(githubItem);
 
 		// Menu should close - check aria-expanded
-		expect(button.getAttribute("aria-expanded")).toBe("false");
+		expect(button.getAttribute("aria-expanded")).not.toBe("true");
 	});
 
 	it("renders platform icons correctly", async () => {
@@ -217,16 +233,17 @@ describe("DonationButton Component", () => {
 		const theme = createTheme();
 		const user = userEvent.setup();
 
-		render(
+		const result = render(
 			React.createElement(
 				ThemeProvider,
 				{ theme },
 				React.createElement(DonationButton as any, {})
 			)
 		);
+		cleanup = result.unmount;
 
 		// Open menu
-		const button = screen.getByRole("button");
+		const button = screen.getByTestId("donation-button");
 		await user.click(button);
 
 		// Menu items should have icons (ListItemIcon)
@@ -247,16 +264,17 @@ describe("DonationButton Component", () => {
 
 		const theme = createTheme();
 
-		render(
+		const result = render(
 			React.createElement(
 				ThemeProvider,
 				{ theme },
 				React.createElement(DonationButton as any, {})
 			)
 		);
+		cleanup = result.unmount;
 
 		// Component renders with button
-		const button = screen.getByRole("button");
+		const button = screen.getByTestId("donation-button");
 		expect(button).toBeTruthy();
 
 		// Tooltip text is set (may not be visible until hover)
@@ -273,16 +291,17 @@ describe("DonationButton Component", () => {
 		const theme = createTheme();
 		const user = userEvent.setup();
 
-		render(
+		const result = render(
 			React.createElement(
 				ThemeProvider,
 				{ theme },
 				React.createElement(DonationButton as any, {})
 			)
 		);
+		cleanup = result.unmount;
 
 		// Open menu
-		const button = screen.getByRole("button");
+		const button = screen.getByTestId("donation-button");
 		await user.click(button);
 
 		// Verify menu is open
@@ -292,6 +311,6 @@ describe("DonationButton Component", () => {
 		await user.click(button);
 
 		// Menu should be closed
-		expect(button.getAttribute("aria-expanded")).toBe("false");
+		expect(button.getAttribute("aria-expanded")).not.toBe("true");
 	});
 });
