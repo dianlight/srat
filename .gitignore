@@ -7,7 +7,6 @@ backend/src/web/static/*
 backend/tmp/
 .devcontainer/.env
 .env
-config/
 !backend/src/config/
 .env.example
 backend/src/coverage*.out
@@ -19,3 +18,5 @@ docs/TEST_COVERAGE.md.bak
 
 # Vale cache
 .vale-cache/
+.lycheecache
+frontend/package-lock.json

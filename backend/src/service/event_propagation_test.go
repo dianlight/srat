@@ -31,17 +31,15 @@ import (
 // EventPropagationTestSuite tests event propagation between services
 type EventPropagationTestSuite struct {
 	suite.Suite
-	app              *fxtest.App
-	db               *gorm.DB
-	ctx              context.Context
-	cancel           context.CancelFunc
-	eventBus         events.EventBusInterface
-	shareService     ShareServiceInterface
-	userService      UserServiceInterface
-	dirtyDataService DirtyDataServiceInterface
-	volumeService    VolumeServiceInterface
-	//mockShareRepo      repository.ExportedShareRepositoryInterface
-	mockUserRepo       repository.SambaUserRepositoryInterface
+	app                *fxtest.App
+	db                 *gorm.DB
+	ctx                context.Context
+	cancel             context.CancelFunc
+	eventBus           events.EventBusInterface
+	shareService       ShareServiceInterface
+	userService        UserServiceInterface
+	dirtyDataService   DirtyDataServiceInterface
+	volumeService      VolumeServiceInterface
 	mockHardwareClient HardwareServiceInterface
 }
 
@@ -93,8 +91,6 @@ func (suite *EventPropagationTestSuite) SetupTest() {
 			NewSettingService,
 			mock.Mock[IssueServiceInterface],
 			mock.Mock[HardwareServiceInterface],
-			//mock.Mock[repository.ExportedShareRepositoryInterface],
-			mock.Mock[repository.SambaUserRepositoryInterface],
 			mock.Mock[repository.PropertyRepositoryInterface],
 			mock.Mock[TelemetryServiceInterface],
 		),
@@ -104,17 +100,17 @@ func (suite *EventPropagationTestSuite) SetupTest() {
 		fx.Populate(&suite.dirtyDataService),
 		fx.Populate(&suite.ctx),
 		fx.Populate(&suite.cancel),
-		//fx.Populate(&suite.mockShareRepo),
-		fx.Populate(&suite.mockUserRepo),
 		fx.Populate(&suite.mockHardwareClient),
 		fx.Populate(&suite.volumeService),
 		fx.Populate(&suite.db),
 		fx.Populate(&ctrl),
 	)
-	mock.When(suite.mockUserRepo.All()).ThenReturn(dbom.SambaUsers{dbom.SambaUser{
-		Username: "homeassistant",
-		Password: "changeme!",
-	}}, nil)
+	/*
+		mock.When(suite.mockUserRepo.All()).ThenReturn(dbom.SambaUsers{dbom.SambaUser{
+			Username: "homeassistant",
+			Password: "changeme!",
+		}}, nil)
+	*/
 
 	//suite.app.RequireStart()
 
@@ -204,10 +200,12 @@ func (suite *EventPropagationTestSuite) TestShareServiceToDirtyDataService() {
 
 	//mock.When(suite.mockShareRepo.FindByName("test-share")).ThenReturn(nil, errors.WithStack(gorm.ErrRecordNotFound))
 	//mock.When(suite.mockShareRepo.Save(mock.Any[*dbom.ExportedShare]())).ThenReturn(nil)
-	mock.When(suite.mockUserRepo.GetAdmin()).ThenReturn(dbom.SambaUser{
-		Username: "admin",
-		Password: "admin",
-	}, nil)
+	/*
+		mock.When(suite.mockUserRepo.GetAdmin()).ThenReturn(dbom.SambaUser{
+			Username: "admin",
+			Password: "admin",
+		}, nil)
+	*/
 
 	// Action: Create a share (which should emit ShareEvent)
 	share := dto.SharedResource{
@@ -255,12 +253,12 @@ func (suite *EventPropagationTestSuite) TestUserServiceToDirtyDataService() {
 	defer unsubscribe()
 
 	// Mock repository
-	mock.When(suite.mockUserRepo.Create(mock.Any[*dbom.SambaUser]())).ThenReturn(nil)
+	//mock.When(suite.mockUserRepo.Create(mock.Any[*dbom.SambaUser]())).ThenReturn(nil)
 
 	// Action: Create a user (which should emit UserEvent)
 	user := dto.User{
 		Username: "testuser",
-		Password: "testpass",
+		Password: dto.NewSecret("testpass"),
 	}
 	_, err := suite.userService.CreateUser(user)
 	suite.Require().NoError(err)

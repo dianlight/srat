@@ -18,6 +18,8 @@ import (
 // goverter:extend stringToExportedShare
 // goverter:extend durationToSeconds
 // goverter:extend secondsToDuration
+// goverter:extend secretToString
+// goverter:extend stringToSecret
 // goverter:ignoreUnexported
 // goverter:enum:unknown @error
 type DtoToDbomConverter interface {
@@ -130,6 +132,8 @@ type DtoToDbomConverter interface {
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
 	// goverter:ignoreMissing
 	UserToSambaUser(source dto.User, target *dbom.SambaUser) error
+
+	UsersToSambaUsers(source []dto.User) (target []dbom.SambaUser, err error)
 }
 
 func exportedShareToString(source dbom.ExportedShare) string {

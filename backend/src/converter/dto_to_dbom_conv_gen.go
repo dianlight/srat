@@ -214,7 +214,7 @@ func (c *DtoToDbomConverterImpl) MountPointPathsToMountPointDatas(source []dbom.
 }
 func (c *DtoToDbomConverterImpl) SambaUserToUser(source dbom.SambaUser, target *dto.User) error {
 	target.Username = source.Username
-	target.Password = source.Password
+	target.Password = stringToSecret(source.Password)
 	target.IsAdmin = source.IsAdmin
 	if source.RwShares != nil {
 		target.RwShares = make([]string, len(source.RwShares))
@@ -301,8 +301,8 @@ func (c *DtoToDbomConverterImpl) UserToSambaUser(source dto.User, target *dbom.S
 	if source.Username != "" {
 		target.Username = source.Username
 	}
-	if source.Password != "" {
-		target.Password = source.Password
+	if source.Password != (dto.Secret[string]{}) {
+		target.Password = secretToString(source.Password)
 	}
 	if source.IsAdmin != false {
 		target.IsAdmin = source.IsAdmin
@@ -320,6 +320,20 @@ func (c *DtoToDbomConverterImpl) UserToSambaUser(source dto.User, target *dbom.S
 		}
 	}
 	return nil
+}
+func (c *DtoToDbomConverterImpl) UsersToSambaUsers(source []dto.User) ([]dbom.SambaUser, error) {
+	var dbomSambaUserList []dbom.SambaUser
+	if source != nil {
+		dbomSambaUserList = make([]dbom.SambaUser, len(source))
+		for i := 0; i < len(source); i++ {
+			dbomSambaUser, err := c.userToSambaUser(source[i])
+			if err != nil {
+				return nil, err
+			}
+			dbomSambaUserList[i] = dbomSambaUser
+		}
+	}
+	return dbomSambaUserList, nil
 }
 func (c *DtoToDbomConverterImpl) datatypesJSONSliceToStringList(source datatypes.JSONSlice[string]) []string {
 	var stringList []string
@@ -355,7 +369,7 @@ func (c *DtoToDbomConverterImpl) dbomMountPointPathToPDtoMountPointData(source d
 func (c *DtoToDbomConverterImpl) dbomSambaUserToDtoUser(source dbom.SambaUser) dto.User {
 	var dtoUser dto.User
 	dtoUser.Username = source.Username
-	dtoUser.Password = source.Password
+	dtoUser.Password = stringToSecret(source.Password)
 	dtoUser.IsAdmin = source.IsAdmin
 	if source.RwShares != nil {
 		dtoUser.RwShares = make([]string, len(source.RwShares))
@@ -525,26 +539,16 @@ func (c *DtoToDbomConverterImpl) sharedResourceToExportedShare(source dto.Shared
 	var dbomExportedShare dbom.ExportedShare
 	dbomExportedShare.Name = source.Name
 	dbomExportedShare.Disabled = source.Disabled
-	if source.Users != nil {
-		dbomExportedShare.Users = make([]dbom.SambaUser, len(source.Users))
-		for i := 0; i < len(source.Users); i++ {
-			dbomSambaUser, err := c.userToSambaUser(source.Users[i])
-			if err != nil {
-				return dbomExportedShare, err
-			}
-			dbomExportedShare.Users[i] = dbomSambaUser
-		}
+	dbomSambaUserList, err := c.UsersToSambaUsers(source.Users)
+	if err != nil {
+		return dbomExportedShare, err
 	}
-	if source.RoUsers != nil {
-		dbomExportedShare.RoUsers = make([]dbom.SambaUser, len(source.RoUsers))
-		for j := 0; j < len(source.RoUsers); j++ {
-			dbomSambaUser2, err := c.userToSambaUser(source.RoUsers[j])
-			if err != nil {
-				return dbomExportedShare, err
-			}
-			dbomExportedShare.RoUsers[j] = dbomSambaUser2
-		}
+	dbomExportedShare.Users = dbomSambaUserList
+	dbomSambaUserList2, err := c.UsersToSambaUsers(source.RoUsers)
+	if err != nil {
+		return dbomExportedShare, err
 	}
+	dbomExportedShare.RoUsers = dbomSambaUserList2
 	dbomExportedShare.VetoFiles = c.stringListToDatatypesJSONSlice(source.VetoFiles)
 	if source.TimeMachine != nil {
 		dbomExportedShare.TimeMachine = *source.TimeMachine
@@ -593,7 +597,7 @@ func (c *DtoToDbomConverterImpl) stringListToDatatypesJSONSlice(source []string)
 func (c *DtoToDbomConverterImpl) userToSambaUser(source dto.User) (dbom.SambaUser, error) {
 	var dbomSambaUser dbom.SambaUser
 	dbomSambaUser.Username = source.Username
-	dbomSambaUser.Password = source.Password
+	dbomSambaUser.Password = secretToString(source.Password)
 	dbomSambaUser.IsAdmin = source.IsAdmin
 	if source.RwShares != nil {
 		dbomSambaUser.RwShares = make([]dbom.ExportedShare, len(source.RwShares))

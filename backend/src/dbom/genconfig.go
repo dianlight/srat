@@ -24,5 +24,5 @@ var _ = genconfig.Config{
 	   IncludeStructs:    []any{"User", "Account*", models.User{}},
 	*/
 	IncludeInterfaces: []any{"*Query"},
-	IncludeStructs:    []any{HDIdleDevice{}, MountPointPath{}, ExportedShare{}},
+	IncludeStructs:    []any{HDIdleDevice{}, MountPointPath{}, ExportedShare{}, SambaUser{}},
 }

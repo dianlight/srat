@@ -17,6 +17,8 @@ import (
 // goverter:output:package github.com/dianlight/srat/converter
 // goverter:extend StringToDtoUser
 // goverter:extend DtoUserToString
+// goverter:extend secretToString
+// goverter:extend stringToSecret
 // goverter:useZeroValueOnPointerInconsistency
 // goverter:update:ignoreZeroValueField
 // goverter:default:update

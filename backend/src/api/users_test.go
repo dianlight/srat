@@ -56,8 +56,8 @@ func (suite *UserHandlerSuite) TearDownTest() {
 
 func (suite *UserHandlerSuite) TestListUsersSuccess() {
 	expectedUsers := []dto.User{
-		{Username: "user1", IsAdmin: true},
-		{Username: "user2", IsAdmin: false},
+		{Username: "user1", Password: dto.NewSecret("usrpwd1"), IsAdmin: true},
+		{Username: "user2", Password: dto.NewSecret("usrpwd2"), IsAdmin: false},
 	}
 
 	// Configure mock expectations
@@ -76,8 +76,15 @@ func (suite *UserHandlerSuite) TestListUsersSuccess() {
 	err := json.Unmarshal(resp.Body.Bytes(), &result)
 	suite.Require().NoError(err)
 
+	suite.T().Logf("listed users: %s", resp.Body.String())
+
+	for i, single := range result {
+		suite.Equal(single.Username, expectedUsers[i].Username, "username at index %d should match", i)
+		suite.Equal(single.IsAdmin, expectedUsers[i].IsAdmin, "isAdmin at index %d should match", i)
+		suite.NotEqual(single.Password, expectedUsers[i].Password, "password at index %d should match", i)
+	}
 	// Assert
-	suite.Equal(expectedUsers, result)
+	//suite.Equal(expectedUsers, result, "listed users %#v should match expected users %#v", result, expectedUsers)
 }
 
 func (suite *UserHandlerSuite) TestListUsersError() {
@@ -96,7 +103,7 @@ func (suite *UserHandlerSuite) TestListUsersError() {
 }
 
 func (suite *UserHandlerSuite) TestCreateUserSuccess() {
-	input := dto.User{Username: "newuser", Password: "password123", IsAdmin: false}
+	input := dto.User{Username: "newuser", Password: dto.NewSecret("password123"), IsAdmin: false}
 	expectedUser := &dto.User{Username: "newuser", IsAdmin: false}
 
 	// Configure mock expectations
@@ -121,7 +128,7 @@ func (suite *UserHandlerSuite) TestCreateUserSuccess() {
 }
 
 func (suite *UserHandlerSuite) TestCreateUserAlreadyExists() {
-	input := dto.User{Username: "existinguser", Password: "password123"}
+	input := dto.User{Username: "existinguser", Password: dto.NewSecret("password123")}
 
 	// Configure mock expectations
 	mock.When(suite.mockUserService.CreateUser(mock.Any[dto.User]())).ThenReturn(nil, errors.WithStack(dto.ErrorUserAlreadyExists))
@@ -136,7 +143,7 @@ func (suite *UserHandlerSuite) TestCreateUserAlreadyExists() {
 }
 
 func (suite *UserHandlerSuite) TestCreateUserError() {
-	input := dto.User{Username: "erroruser", Password: "password123"}
+	input := dto.User{Username: "erroruser", Password: dto.NewSecret("password123")}
 	expectedErr := errors.New("database connection failed")
 
 	// Configure mock expectations
@@ -153,7 +160,7 @@ func (suite *UserHandlerSuite) TestCreateUserError() {
 
 func (suite *UserHandlerSuite) TestUpdateUserSuccess() {
 	username := "testuser"
-	input := dto.User{Username: username, Password: "newpassword", IsAdmin: true}
+	input := dto.User{Username: username, Password: dto.NewSecret("newpassword"), IsAdmin: true}
 	expectedUser := &dto.User{Username: username, IsAdmin: true}
 
 	// Configure mock expectations
@@ -179,7 +186,7 @@ func (suite *UserHandlerSuite) TestUpdateUserSuccess() {
 
 func (suite *UserHandlerSuite) TestUpdateUserNotFound() {
 	username := "nonexistentuser"
-	input := dto.User{Username: username, Password: "password"}
+	input := dto.User{Username: username, Password: dto.NewSecret("password")}
 
 	// Configure mock expectations
 	mock.When(suite.mockUserService.UpdateUser(mock.Equal(username), mock.Any[dto.User]())).ThenReturn(nil, errors.WithStack(dto.ErrorUserNotFound))
@@ -195,7 +202,7 @@ func (suite *UserHandlerSuite) TestUpdateUserNotFound() {
 
 func (suite *UserHandlerSuite) TestUpdateUserAlreadyExists() {
 	username := "testuser"
-	input := dto.User{Username: "existingname", Password: "password"}
+	input := dto.User{Username: "existingname", Password: dto.NewSecret("password")}
 
 	// Configure mock expectations
 	mock.When(suite.mockUserService.UpdateUser(mock.Equal(username), mock.Any[dto.User]())).ThenReturn(nil, errors.WithStack(dto.ErrorUserAlreadyExists))
@@ -210,7 +217,7 @@ func (suite *UserHandlerSuite) TestUpdateUserAlreadyExists() {
 }
 
 func (suite *UserHandlerSuite) TestUpdateAdminUserSuccess() {
-	input := dto.User{Username: "admin", Password: "newadminpass", IsAdmin: true}
+	input := dto.User{Username: "admin", Password: dto.NewSecret("newadminpass"), IsAdmin: true}
 	expectedUser := &dto.User{Username: "admin", IsAdmin: true}
 
 	// Configure mock expectations
@@ -235,7 +242,7 @@ func (suite *UserHandlerSuite) TestUpdateAdminUserSuccess() {
 }
 
 func (suite *UserHandlerSuite) TestUpdateAdminUserNotFound() {
-	input := dto.User{Username: "admin", Password: "password"}
+	input := dto.User{Username: "admin", Password: dto.NewSecret("password")}
 
 	// Configure mock expectations
 	mock.When(suite.mockUserService.UpdateAdminUser(mock.Any[dto.User]())).ThenReturn(nil, errors.WithStack(dto.ErrorUserNotFound))

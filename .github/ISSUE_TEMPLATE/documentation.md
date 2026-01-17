@@ -4,8 +4,8 @@
 
 name: Documentation Update
 about: Request or report documentation changes needed
-title: "docs: "
-labels: ["documentation", "needs-review"]
+title: "docs:"
+labels: [documentation, needs-review]
 assignees: ""
 
 ---

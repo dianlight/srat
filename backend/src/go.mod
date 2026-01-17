@@ -19,7 +19,7 @@ require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/adelolmo/hd-idle v0.0.0-20250511190312-c87bc6e9ce96
 	github.com/benmcclelland/sgio v0.0.0-20250710154739-45e823ff1f46
-	github.com/danielgtaylor/huma/v2 v2.34.1
+	github.com/danielgtaylor/huma/v2 v2.34.2
 	github.com/dianlight/smartmontools-go v0.2.4
 	github.com/dianlight/tlog v0.1.2
 	github.com/fatih/color v1.18.0
@@ -46,6 +46,7 @@ require (
 	github.com/AlecAivazis/survey/v2 v2.3.7 // indirect
 	github.com/Antonboom/testifylint v1.6.4 // indirect
 	github.com/air-verse/air v1.64.0 // indirect
+	github.com/angusgmorrison/logfusc v0.1.0 // indirect
 	github.com/apex/log v1.9.0 // indirect
 	github.com/bep/godartsass/v2 v2.5.0 // indirect
 	github.com/bep/golibsass v1.2.0 // indirect

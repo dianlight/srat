@@ -62,9 +62,6 @@ func (c *ConfigToDbomConverterImpl) SambaUserToUser(source dbom.SambaUser, targe
 	if source.Username != "" {
 		target.Username = source.Username
 	}
-	if source.Password != "" {
-		target.Password = source.Password
-	}
 	return nil
 }
 func (c *ConfigToDbomConverterImpl) ShareToExportedShareNoMountPointPath(source config.Share, target *dbom.ExportedShare, context *dbom.SambaUsers) error {

@@ -28,7 +28,7 @@
 
 # SMART Service Enhancement
 
-This document describes the enhanced SMART service functionality for monitoring and controlling disk S.M.A.R.T. attributes.
+This document describes the enhanced SMART service functionality for monitoring and controlling disk SMART attributes.
 
 ## Overview
 
@@ -51,7 +51,7 @@ Evaluates the current health status of a disk by analyzing SMART attributes and 
 
 - `Passed`: Boolean indicating if all attributes are within acceptable limits
 - `FailingAttributes`: List of attribute names below their thresholds
-- `OverallStatus`: "healthy", "warning", or "failing"
+- `OverallStatus`: "healthy," "warning," or "failing"
 
 **Example:**
 

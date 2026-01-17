@@ -384,14 +384,14 @@ func TestSystemCapabilities_NotSupported(t *testing.T) {
 func TestUser_AllFields(t *testing.T) {
 	user := dto.User{
 		Username: "testuser",
-		Password: "secret123",
+		Password: dto.NewSecret("secret123"),
 		IsAdmin:  true,
 		RwShares: []string{"share1", "share2"},
 		RoShares: []string{"share3"},
 	}
 
 	assert.Equal(t, "testuser", user.Username)
-	assert.Equal(t, "secret123", user.Password)
+	assert.Equal(t, "secret123", user.Password.Expose())
 	assert.True(t, user.IsAdmin)
 	assert.Equal(t, []string{"share1", "share2"}, user.RwShares)
 	assert.Equal(t, []string{"share3"}, user.RoShares)

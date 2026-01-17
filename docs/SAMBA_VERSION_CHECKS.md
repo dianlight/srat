@@ -52,7 +52,7 @@ This document describes the Samba version checking infrastructure implemented in
 
 The `osutil` package provides functions to detect and compare Samba versions:
 
-- **`GetSambaVersion()`**: Executes `smbd --version` and parses the version string (e.g., "4.23.0")
+- **`GetSambaVersion()`**: Executes `smbd --version` and parses the version string (for example, "4.23.0")
 - **`IsSambaVersionSufficient()`**: Returns true if version >= 4.23.0 (minimum QUIC support)
 - **`IsSambaVersionAtLeast(majorRequired, minorRequired)`**: Generic version comparison function
 

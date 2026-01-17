@@ -299,7 +299,6 @@ func main() {
 			props_repo repository.PropertyRepositoryInterface,
 			share_service service.ShareServiceInterface,
 			hardwareClient hardware.ClientWithResponsesInterface,
-			samba_user_repo repository.SambaUserRepositoryInterface,
 			volume_service service.VolumeServiceInterface,
 			fs_service service.FilesystemServiceInterface,
 			samba_service service.SambaServiceInterface,
