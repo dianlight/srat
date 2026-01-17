@@ -1,4 +1,4 @@
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { createApi } from "@reduxjs/toolkit/query/react";
 import * as yaml from "js-yaml";
 
 /**
@@ -104,14 +104,32 @@ function parseFundingYaml(yamlContent: string): FundingPlatform[] {
 }
 
 /**
+ * Custom base query that returns raw text without JSON parsing
+ */
+const textBaseQuery = async (
+	args: string,
+	_api: any,
+	_extraOptions: any
+): Promise<{ data: string } | { error: any }> => {
+	try {
+		const response = await fetch(`https://raw.githubusercontent.com${args}`);
+		if (!response.ok) {
+			return { error: { status: response.status, statusText: response.statusText } };
+		}
+		const text = await response.text();
+		return { data: text };
+	} catch (error) {
+		return { error };
+	}
+};
+
+/**
  * GitHub API for fetching repository metadata
  * Uses caching to minimize API calls
  */
 export const githubApi = createApi({
 	reducerPath: "githubApi",
-	baseQuery: fetchBaseQuery({
-		baseUrl: "https://raw.githubusercontent.com",
-	}),
+	baseQuery: textBaseQuery,
 	// Cache for 24 hours (86400 seconds)
 	keepUnusedDataFor: 86400,
 	endpoints: (builder) => ({

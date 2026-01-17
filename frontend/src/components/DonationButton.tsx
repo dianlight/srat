@@ -38,7 +38,7 @@ export function DonationButton() {
 	const open = Boolean(anchorEl);
 
 	// Fetch funding configuration from GitHub with RTK Query caching
-	const { data: fundingPlatforms = [], isLoading, isError } = useGetFundingConfigQuery();
+	const { data: fundingPlatforms = [], isLoading, isError, error } = useGetFundingConfigQuery();
 
 	const handleClick = (event: React.MouseEvent<HTMLElement>) => {
 		setAnchorEl(event.currentTarget);
@@ -55,12 +55,15 @@ export function DonationButton() {
 
 	// Don't render if no funding platforms are configured or if there's an error
 	if (isLoading || isError || fundingPlatforms.length === 0) {
+		if (isError) console.error(error)
+		console.log("No funding platforms configured or error fetching data.", isLoading, isError, fundingPlatforms);
 		return null;
 	}
 
 	return (
 		<>
 			<IconButton
+				sx={{ display: { xs: "inline-flex", sm: "inline-flex" } }}
 				size="small"
 				onClick={handleClick}
 				aria-controls={open ? "donation-menu" : undefined}

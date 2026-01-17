@@ -693,9 +693,7 @@ export function NavBar(props: {
 									<img src={github} style={{ height: "20px" }} />
 								</Tooltip>
 							</IconButton>
-							<Box sx={{ display: { xs: "none", sm: "inline-flex" } }}>
-								<DonationButton />
-							</Box>
+							<DonationButton />
 							<NotificationCenter />
 						</Box>
 					</Toolbar>
