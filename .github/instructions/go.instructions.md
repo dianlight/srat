@@ -23,7 +23,7 @@ Follow idiomatic Go practices and community standards when writing Go code. Thes
 - Write self-documenting code with clear, descriptive names
 - Document exported types, functions, methods, and packages
 - Use Go modules for dependency management
-- Leverage the Go standard library instead of reinventing the wheel (e.g., use `strings.Builder` for string concatenation, `filepath.Join` for path construction)
+- Leverage the Go standard library instead of reinventing the wheel (for example, use `strings.Builder` for string concatenation, `filepath.Join` for path construction)
 - Prefer standard library solutions over custom implementations when functionality exists
 - Write comments in English by default; translate only upon user request
 - Avoid using emoji in code and comments
@@ -61,12 +61,12 @@ Follow idiomatic Go practices and community standards when writing Go code. Thes
 - Use single-letter variables only for very short scopes (like loop indices)
 - Exported names start with a capital letter
 - Unexported names start with a lowercase letter
-- Avoid stuttering (e.g., avoid `http.HTTPServer`, prefer `http.Server`)
+- Avoid stuttering (for example, avoid `http.HTTPServer`, prefer `http.Server`)
 
 ### Interfaces
 
-- Name interfaces with -er suffix when possible (e.g., `Reader`, `Writer`, `Formatter`)
-- Single-method interfaces should be named after the method (e.g., `Read` → `Reader`)
+- Name interfaces with -er suffix when possible (for example, `Reader`, `Writer`, `Formatter`)
+- Single-method interfaces should be named after the method (for example, `Read` → `Reader`)
 - Keep interfaces small and focused
 
 ### Constants
@@ -231,7 +231,7 @@ Follow idiomatic Go practices and community standards when writing Go code. Thes
 
 ### HTTP Clients
 
-- Keep the client struct focused on configuration and dependencies only (e.g., base URL, `*http.Client`, auth, default headers). It must not store per-request state
+- Keep the client struct focused on configuration and dependencies only (for example, base URL, `*http.Client`, auth, default headers). It must not store per-request state
 - Do not store or cache `*http.Request` inside the client struct, and do not persist request-specific state across calls; instead, construct a fresh request per method invocation
 - Methods should accept `context.Context` and input parameters, assemble the `*http.Request` locally (or via a short-lived builder/helper created per call), then call `c.httpClient.Do(req)`
 - If request-building logic is reused, factor it into unexported helper functions or a per-call builder type; never keep `http.Request` (URL params, body, headers) as fields on the long-lived client
@@ -375,6 +375,6 @@ Follow idiomatic Go practices and community standards when writing Go code. Thes
 - Not understanding nil interfaces vs nil pointers
 - Forgetting to close resources (files, connections)
 - Using global variables unnecessarily
-- Over-using unconstrained types (e.g., `any`); prefer specific types or generic type parameters with constraints. If an unconstrained type is required, use `any` rather than `interface{}`
+- Over-using unconstrained types (for example, `any`); prefer specific types or generic type parameters with constraints. If an unconstrained type is required, use `any` rather than `interface{}`
 - Not considering the zero value of types
 - **Creating duplicate `package` declarations** - this is a compile error; always check existing files before adding package declarations

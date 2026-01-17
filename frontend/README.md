@@ -80,7 +80,7 @@ import { useConsoleErrorCallback } from "./src/hooks/useConsoleErrorCallback";
 export function ErrorTelemetryBinder() {
   useConsoleErrorCallback((...args) => {
     // Runs asynchronously after the original console.error
-    // e.g., send to monitoring service
+    // for example, send to monitoring service
   });
   return null;
 }

@@ -47,7 +47,7 @@ jobs:
           ref: ${{ github.head_ref }}
 
       - name: Setup bun
-        uses: oven-sh/setup-bun@b7a1c7ccf290d58743029c4f6903da283811b979 # v2
+        uses: oven-sh/setup-bun@3d267786b128fe76c2f16a390aa2448b815359f3 # v2
         with:
           bun-version: latest
 
@@ -85,7 +85,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup bun
-        uses: oven-sh/setup-bun@b7a1c7ccf290d58743029c4f6903da283811b979 # v2
+        uses: oven-sh/setup-bun@3d267786b128fe76c2f16a390aa2448b815359f3 # v2
         with:
           bun-version: latest
 
@@ -121,7 +121,7 @@ jobs:
           
       - name: Run spell check
 #        run: bunx cspell "**/*.md" --config .cspell.json
-        uses: streetsidesoftware/cspell-action@v8
+        uses: streetsidesoftware/cspell-action@24fa8d3096a314ce263f39578744e9d9f8d80acf # v8
         with:
           files: |
             **/*.md
@@ -131,13 +131,21 @@ jobs:
           config: .cspell.json
           incremental_files_only: false
 
+      # For AsciiDoc users:
+      - name: Install Asciidoctor
+        run: sudo apt-get install -y asciidoctor
+
+      # For reStructuredText users:
+      - name: Install docutils
+        run: sudo apt-get install -y docutils
+
       - name: Run Vale prose linter (GFM)
-        uses: errata-ai/vale-action@v2.1.1
+        uses: errata-ai/vale-action@d89dee975228ae261d22c15adcd03578634d429c # v2.1.1
         with:
           version: 3.13.0
           #files: $(find . -name "*.md" -not -path "./frontend/node_modules/*" -not -path "./.git/*" -not -path "./backend/src/vendor/*" | tr '\n' ',')
           reporter: github-pr-check
-          vale_flags: "--glob=!{frontend/node_modules/**/*.md,backend/src/vendor/**/*.md,.git/**/*.md}"
+          vale_flags: "--glob='!{frontend/node_modules/**/*.md,backend/src/vendor/**/*.md,.git/**}'"
           fail_on_error: true
 
       - name: Generate Lychee report
@@ -153,7 +161,7 @@ jobs:
 
       - name: Upload Lychee report
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: lychee-report
           path: lychee-report.md

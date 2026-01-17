@@ -36,13 +36,12 @@ type SambaServiceSuite struct {
 	sambaService service.SambaServiceInterface
 	//shareRepo    repository.ExportedShareRepositoryInterface
 	//apictx              dto.ContextState
-	share_service   service.ShareServiceInterface
-	property_repo   repository.PropertyRepositoryInterface
-	samba_user_repo repository.SambaUserRepositoryInterface
-	ctrl            *matchers.MockController
-	ctx             context.Context
-	cancel          context.CancelFunc
-	app             *fxtest.App
+	share_service service.ShareServiceInterface
+	property_repo repository.PropertyRepositoryInterface
+	ctrl          *matchers.MockController
+	ctx           context.Context
+	cancel        context.CancelFunc
+	app           *fxtest.App
 }
 
 func TestSambaServiceSuite(t *testing.T) {
@@ -199,7 +198,7 @@ func (suite *SambaServiceSuite) SetupTest() {
 			//mock.Mock[service.SupervisorServiceInterface],
 			//mock.Mock[repository.ExportedShareRepositoryInterface],
 			mock.Mock[repository.PropertyRepositoryInterface],
-			mock.Mock[repository.SambaUserRepositoryInterface],
+			//mock.Mock[repository.SambaUserRepositoryInterface],
 			//mock.Mock[repository.MountPointPathRepositoryInterface],
 			mock.Mock[mount.ClientWithResponsesInterface],
 			mock.Mock[service.HaWsServiceInterface],
@@ -210,11 +209,12 @@ func (suite *SambaServiceSuite) SetupTest() {
 		fx.Populate(&suite.sambaService),
 		fx.Populate(&suite.property_repo),
 		fx.Populate(&suite.share_service),
-		fx.Populate(&suite.samba_user_repo),
+		//fx.Populate(&suite.samba_user_repo),
 		//fx.Populate(&suite.shareRepo),
 		fx.Populate(&suite.ctx),
 		fx.Populate(&suite.cancel),
 	)
+	/*
 	mock.When(suite.samba_user_repo.All()).ThenReturn(dbom.SambaUsers{
 		{
 			Username: "dianlight",
@@ -229,6 +229,7 @@ func (suite *SambaServiceSuite) SetupTest() {
 			IsAdmin:  false,
 		},
 	}, nil)
+	*/
 	suite.app.RequireStart()
 }
 

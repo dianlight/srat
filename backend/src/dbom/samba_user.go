@@ -1,6 +1,7 @@
 package dbom
 
 import (
+	"os"
 	"time"
 
 	"github.com/dianlight/srat/unixsamba"
@@ -22,6 +23,9 @@ type SambaUser struct {
 }
 
 func (u *SambaUser) BeforeCreate(tx *gorm.DB) error {
+	if os.Getenv("SRAT_MOCK") == "true" {
+		return nil
+	}
 	err := unixsamba.CreateSambaUser(u.Username, u.Password, unixsamba.UserOptions{
 		CreateHome:    false,
 		SystemAccount: false,
@@ -34,6 +38,9 @@ func (u *SambaUser) BeforeCreate(tx *gorm.DB) error {
 }
 
 func (u *SambaUser) AfterUpdate(tx *gorm.DB) error {
+	if os.Getenv("SRAT_MOCK") == "true" {
+		return nil
+	}
 	if u.Password != "" && tx.RowsAffected > 0 {
 		err := unixsamba.ChangePassword(u.Username, u.Password, false)
 		if err != nil {
@@ -45,6 +52,13 @@ func (u *SambaUser) AfterUpdate(tx *gorm.DB) error {
 
 func (u *SambaUser) AfterDelete(tx *gorm.DB) (err error) {
 	// Cancellazione Utende da Samba
+	if u.Username == "" {
+		return nil
+	}
+	if os.Getenv("SRAT_MOCK") == "true" {
+		return nil
+	}
+
 	err = unixsamba.DeleteSambaUser(u.Username, true, true)
 	if err != nil {
 		return errors.WithStack(err)

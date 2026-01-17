@@ -182,7 +182,7 @@ Execution:     ~0.23s
 
 ### Adding a New Samba Version Test
 
-1. Determine version number (e.g., "4.25.0")
+1. Determine version number (for example, "4.25.0")
 2. Determine which options should be included/excluded
 3. Add test function:
 

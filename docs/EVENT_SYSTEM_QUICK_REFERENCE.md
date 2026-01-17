@@ -302,4 +302,4 @@ Look for:
 
 6. Update this reference guide
 
-That's it! The rest is automatic through FX dependency injection.
+That's it. The rest is automatic through FX dependency injection.

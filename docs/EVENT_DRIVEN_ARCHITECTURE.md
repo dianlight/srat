@@ -390,7 +390,7 @@ type MountPointEvent struct {
 
 ## Example: Adding a New Event Type
 
-To add a new event type (e.g., `UserEvent`):
+To add a new event type (for example, `UserEvent`):
 
 1. **Define event in `events.go`:**
 

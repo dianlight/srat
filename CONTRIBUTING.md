@@ -26,7 +26,7 @@
 
 # Contributing to SRAT
 
-Welcome! This guide documents the project conventions you MUST follow when contributing code.
+Welcome. This guide documents the project conventions you MUST follow when contributing code.
 
 ## 1. Code of Conduct
 
@@ -70,7 +70,7 @@ tlog.Warn("...", "key", val)
 
 ### Allowed When No Context Exists
 
-If no legitimate context variable (e.g. `ctx`, `self.ctx`, `r.Context()`, constructor-local `Ctx`) is naturally available, keep the non-context variant. DO NOT create artificial contexts (no `context.Background()` just to satisfy the rule).
+If no legitimate context variable (for example `ctx`, `self.ctx`, `r.Context()`, constructor-local `Ctx`) is naturally available, keep the non-context variant. DO NOT create artificial contexts (no `context.Background()` just to satisfy the rule).
 
 ### NEVER Do
 
@@ -138,4 +138,4 @@ Profile hotspots using provided `PPROF.md` guidance for significant performance-
 - [ ] Documentation updated
 - [ ] No secrets or raw tokens in logs
 
-Thank you for contributing! 🚀
+Thank you for contributing. 🚀

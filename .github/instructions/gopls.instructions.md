@@ -10,7 +10,7 @@ At the start of every session, you MUST use the `go_workspace` tool to learn abo
 
 ## Go programming workflows
 
-These guidelines MUST be followed whenever working in a Go workspace. There are two workflows described below: the 'Read Workflow' must be followed when the user asks a question about a Go workspace. The 'Edit Workflow' must be followed when the user edits a Go workspace.
+These guidelines MUST be followed whenever working in a Go workspace. Two workflows are described below: the 'Read Workflow' must be followed when the user asks a question about a Go workspace. The 'Edit Workflow' must be followed when the user edits a Go workspace.
 
 You may re-do parts of each workflow as necessary to recover from errors. However, you must not skip any steps.
 
@@ -26,7 +26,7 @@ The goal of the read workflow is to understand the codebase.
 3. **Understand a file and its intra-package dependencies**: When you have a file path and want to understand its contents and how it connects to other files *in the same package*, use `go_file_context`. This tool will show you a summary of the declarations from other files in the same package that are used by the current file. `go_file_context` MUST be used immediately after reading any Go file for the first time, and MAY be re-used if dependencies have changed.
    EXAMPLE: to understand `server.go`'s dependencies on other files in its package: `go_file_context({"file":"/path/to/server.go"})`
 
-4. **Understand a package's public API**: When you need to understand what a package provides to external code (i.e., its public API), use `go_package_api`. This is especially useful for understanding third-party dependencies or other packages in the same monorepo.
+4. **Understand a package's public API**: When you need to understand what a package provides to external code (that is, its public API), use `go_package_api`. This is especially useful for understanding third-party dependencies or other packages in the same monorepo.
    EXAMPLE: to see the API of the `storage` package: `go_package_api({"packagePaths":["example.com/internal/storage"]})`
 
 ### Editing workflow

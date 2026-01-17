@@ -75,7 +75,7 @@ describe("My Component", () => {
 bunx msw init public/ --save
 ```
 
-2. Conditionally start MSW in development (e.g., `src/index.tsx`):
+2. Conditionally start MSW in development (for example, `src/index.tsx`):
 
 ```typescript
 if (

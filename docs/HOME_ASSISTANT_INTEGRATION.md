@@ -40,7 +40,7 @@ For each detected disk, an entity is created:
 - **Entity ID**: `sensor.srat_disk_{disk_id}`
 - **State**: "connected"
 - **Attributes**:
-  - `device`: Device path (e.g., `/dev/sda`)
+  - `device`: Device path (for example, `/dev/sda`)
   - `model`: Disk model
   - `vendor`: Disk vendor
   - `serial`: Disk serial number
@@ -56,9 +56,9 @@ For each detected disk, an entity is created:
 For each partition on each disk, an entity is created:
 
 - **Entity ID**: `sensor.srat_partition_{partition_id}`
-- **State**: "unmounted", "mounted", or "shared"
+- **State**: "unmounted," "mounted," or "shared"
 - **Attributes**:
-  - `device`: Partition device path (e.g., `/dev/sda1`)
+  - `device`: Partition device path (for example, `/dev/sda1`)
   - `name`: Partition name/label
   - `size_bytes`: Partition size in bytes
   - `size_gb`: Partition size in gigabytes
@@ -71,7 +71,7 @@ For each partition on each disk, an entity is created:
 ### Samba Status Entity
 
 - **Entity ID**: `sensor.srat_samba_status`
-- **State**: "connected", "idle", or "unknown"
+- **State**: "connected," "idle," or "unknown"
 - **Attributes**:
   - `version`: Samba version
   - `smb_conf`: Configuration file path
@@ -82,7 +82,7 @@ For each partition on each disk, an entity is created:
 ### Samba Process Status Entity
 
 - **Entity ID**: `sensor.srat_samba_process_status`
-- **State**: "running", "partial", or "stopped"
+- **State**: "running," "partial," or "stopped"
 - **Attributes**:
   - `smbd_running`: Whether smbd process is running
   - `nmbd_running`: Whether nmbd process is running

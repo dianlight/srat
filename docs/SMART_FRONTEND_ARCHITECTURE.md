@@ -118,7 +118,7 @@ User Action (Click Button)
         │
         ▼
 Component Handler Calls Hook Callback
-(e.g., onStartTest("short"))
+(for example, onStartTest("short"))
         │
         ▼
 useSmartOperations Hook

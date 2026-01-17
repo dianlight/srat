@@ -168,8 +168,8 @@ ok      github.com/dianlight/srat/service       0.23s
 
 - ✅ Version 4.21 to 4.22 transition
 - ✅ Version 4.22 to 4.23 transition
-- ✅ Exact version matching (e.g., 4.23.0)
-- ✅ High patch levels (e.g., 4.21.17)
+- ✅ Exact version matching (for example, 4.23.0)
+- ✅ High patch levels (for example, 4.21.17)
 
 ### Compatibility
 
@@ -307,7 +307,7 @@ suite.compareConfigSections(stream, "TestName", expected)
 
 ### Add a New Samba Version Test
 
-1. Determine version (e.g., "4.25.0")
+1. Determine version (for example, "4.25.0")
 2. Determine which options should appear/disappear
 3. Add test function to `samba_service_test.go`
 4. Run tests to verify

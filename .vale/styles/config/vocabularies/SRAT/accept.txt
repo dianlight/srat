@@ -28,6 +28,8 @@ microtask
 Automount
 automount
 goenums
+Mergo
+Tidelift
 homeassistant
 gopsutil
 badrpc

@@ -335,14 +335,14 @@ PASS: 12/12 tests in 0.51 seconds
 
 ## Support for Adding Custom Events
 
-To add a new event type (e.g., UserEvent):
+To add a new event type (for example, UserEvent):
 
 1. Define type in `backend/src/events/events.go`
 2. Add methods to `EventBusInterface`
 3. Implement in `EventBus`
 4. Add listener in `BroadcasterService`
 5. Add tests
-6. Done! FX handles injection automatically
+6. Done. FX handles injection automatically
 
 ## Questions & Troubleshooting
 
@@ -353,13 +353,13 @@ A: Yes, but only at key change points in services. The infrastructure is ready.
 A: No. Events are processed asynchronously, and overhead is minimal (~microseconds).
 
 **Q: Can I add new event types?**
-A: Yes! Follow the pattern in the documentation. It's a simple 5-step process.
+A: Yes. Follow the pattern in the documentation. It's a simple 5-step process.
 
 **Q: Is this thread-safe?**
 A: Yes. All operations use sync.RWMutex and are fully thread-safe.
 
 **Q: What about memory leaks?**
-A: No risk. Listeners are cleaned up automatically. Context cancellation handles cleanup.
+A: No risk. Listeners are cleaned up automatically. `Context` cancellation handles cleanup.
 
 ## Next Development Steps
 

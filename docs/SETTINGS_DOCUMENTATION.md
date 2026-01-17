@@ -93,7 +93,7 @@ This document provides detailed information about all SRAT settings available in
 
 - **Type**: String Array
 - **Default**: Empty (requires binding all interfaces or explicit selection)
-- **Description**: List of network interfaces to bind to (e.g., `eth0`, `wlan0`)
+- **Description**: List of network interfaces to bind to (for example, `eth0`, `wlan0`)
 - **Example**: `["eth0", "docker0"]`
 
 #### Multi Channel

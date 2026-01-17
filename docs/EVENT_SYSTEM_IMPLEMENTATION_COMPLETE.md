@@ -46,7 +46,7 @@
 - ✅ Implemented `EventBusInterface` with all required methods
 - ✅ Implemented `EventBus` struct with `simpleSignal[T]` generic signal type
 - ✅ No external dependencies (removed dependency on unstable `github.com/maniartech/signals`)
-- ✅ Thread-safe implementation using sync.RWMutex
+- ✅ Thread-safe implementation using `sync.RWMutex`
 
 ### 2. **Event Types Defined**
 
@@ -76,7 +76,7 @@ Created the following event types in `backend/src/events/events.go`:
   - Individual event types (Disk, Partition, Share, MountPoint)
   - Multiple listeners
   - Unsubscribe functionality
-- ✅ All tests passing (0.510s)
+- ✅ All tests passing (0.51 s)
 
 ### 6. **Documentation**
 

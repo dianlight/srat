@@ -53,7 +53,7 @@ SRAT documentation fully supports GitHub Flavored Markdown (GFM) features:
 #### Formatting Requirements
 
 - **Use proper heading hierarchy** (# > ## > ### > ####)
-- **Include language specification** for all code blocks (e.g., \`\`\`bash, \`\`\`python)
+- **Include language specification** for all code blocks (for example, \`\`\`bash, \`\`\`python)
 - **Use consistent bullet points** (- instead of \* or +) for better GFM compatibility
 - **End files with a single newline character**
 - **Format links as** `[description](url)` instead of raw URLs
@@ -71,7 +71,7 @@ SRAT documentation fully supports GitHub Flavored Markdown (GFM) features:
 
 #### Style Guidelines
 
-- **Use clear, concise language** - Avoid vague terms like "simply", "obviously", "just"
+- **Use clear, concise language**—avoid vague terms like "simply," "obviously," "just."
 - **Include concrete examples** rather than vague descriptions
 - **Document error codes** and their meanings
 - **Follow semantic versioning** in CHANGELOG.md
