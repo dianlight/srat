@@ -48,8 +48,8 @@ type SambaService struct {
 	DockerNet        string
 	state            *dto.ContextState
 	share_service    ShareServiceInterface
+	user_service     UserServiceInterface
 	prop_repo        repository.PropertyRepositoryInterface
-	samba_user_repo  repository.SambaUserRepositoryInterface
 	mount_client     mount.ClientWithResponsesInterface
 	cache            *cache.Cache
 	dbomConv         converter.DtoToDbomConverterImpl
@@ -61,12 +61,13 @@ type SambaService struct {
 
 type SambaServiceParams struct {
 	fx.In
-	Ctx               context.Context
-	CtxCancel         context.CancelFunc
-	State             *dto.ContextState
-	Share_service     ShareServiceInterface
-	Prop_repo         repository.PropertyRepositoryInterface
-	Samba_user_repo   repository.SambaUserRepositoryInterface
+	Ctx           context.Context
+	CtxCancel     context.CancelFunc
+	State         *dto.ContextState
+	Share_service ShareServiceInterface
+	User_service  UserServiceInterface
+	Prop_repo     repository.PropertyRepositoryInterface
+	//Samba_user_repo   repository.SambaUserRepositoryInterface
 	Mount_client      mount.ClientWithResponsesInterface `optional:"true"`
 	Hdidle_service    HDIdleServiceInterface
 	EventBus          events.EventBusInterface
@@ -138,8 +139,9 @@ func NewSambaService(lc fx.Lifecycle, in SambaServiceParams) SambaServiceInterfa
 	p.state = in.State
 	p.share_service = in.Share_service
 	p.prop_repo = in.Prop_repo
+	p.user_service = in.User_service
 
-	p.samba_user_repo = in.Samba_user_repo
+	//p.samba_user_repo = in.Samba_user_repo
 	p.mount_client = in.Mount_client
 
 	p.cache = cache.New(1*time.Minute, 10*time.Minute)
@@ -259,10 +261,15 @@ func (self *SambaService) jSONFromDatabase() (tconfig config.Config, err errors.
 	if err != nil {
 		return tconfig, errors.WithStack(err)
 	}
-	users, err := self.samba_user_repo.All()
-	if err != nil {
-		return tconfig, errors.WithStack(err)
+	users, errS := self.user_service.ListUsers()
+	if errS != nil {
+		return tconfig, errors.WithStack(errS)
 	}
+	smbus, errS := self.dbomConv.UsersToSambaUsers(users)
+	if errS != nil {
+		return tconfig, errors.WithStack(errS)
+	}
+
 	sr, err := self.share_service.ListShares()
 	if err != nil {
 		return tconfig, errors.WithStack(err)
@@ -291,7 +298,7 @@ func (self *SambaService) jSONFromDatabase() (tconfig config.Config, err errors.
 	// set default values
 	defaults.SetDefaults(&tconfig)
 	// end
-	err = conv.DbomObjectsToConfig(properties, users, nshare, &tconfig)
+	err = conv.DbomObjectsToConfig(properties, smbus, nshare, &tconfig)
 	if err != nil {
 		return tconfig, errors.WithStack(err)
 	}

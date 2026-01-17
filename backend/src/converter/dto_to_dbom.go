@@ -132,6 +132,8 @@ type DtoToDbomConverter interface {
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
 	// goverter:ignoreMissing
 	UserToSambaUser(source dto.User, target *dbom.SambaUser) error
+
+	UsersToSambaUsers(source []dto.User) (target []dbom.SambaUser, err error)
 }
 
 func exportedShareToString(source dbom.ExportedShare) string {

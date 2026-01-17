@@ -321,6 +321,20 @@ func (c *DtoToDbomConverterImpl) UserToSambaUser(source dto.User, target *dbom.S
 	}
 	return nil
 }
+func (c *DtoToDbomConverterImpl) UsersToSambaUsers(source []dto.User) ([]dbom.SambaUser, error) {
+	var dbomSambaUserList []dbom.SambaUser
+	if source != nil {
+		dbomSambaUserList = make([]dbom.SambaUser, len(source))
+		for i := 0; i < len(source); i++ {
+			dbomSambaUser, err := c.userToSambaUser(source[i])
+			if err != nil {
+				return nil, err
+			}
+			dbomSambaUserList[i] = dbomSambaUser
+		}
+	}
+	return dbomSambaUserList, nil
+}
 func (c *DtoToDbomConverterImpl) datatypesJSONSliceToStringList(source datatypes.JSONSlice[string]) []string {
 	var stringList []string
 	if source != nil {
@@ -525,26 +539,16 @@ func (c *DtoToDbomConverterImpl) sharedResourceToExportedShare(source dto.Shared
 	var dbomExportedShare dbom.ExportedShare
 	dbomExportedShare.Name = source.Name
 	dbomExportedShare.Disabled = source.Disabled
-	if source.Users != nil {
-		dbomExportedShare.Users = make([]dbom.SambaUser, len(source.Users))
-		for i := 0; i < len(source.Users); i++ {
-			dbomSambaUser, err := c.userToSambaUser(source.Users[i])
-			if err != nil {
-				return dbomExportedShare, err
-			}
-			dbomExportedShare.Users[i] = dbomSambaUser
-		}
+	dbomSambaUserList, err := c.UsersToSambaUsers(source.Users)
+	if err != nil {
+		return dbomExportedShare, err
 	}
-	if source.RoUsers != nil {
-		dbomExportedShare.RoUsers = make([]dbom.SambaUser, len(source.RoUsers))
-		for j := 0; j < len(source.RoUsers); j++ {
-			dbomSambaUser2, err := c.userToSambaUser(source.RoUsers[j])
-			if err != nil {
-				return dbomExportedShare, err
-			}
-			dbomExportedShare.RoUsers[j] = dbomSambaUser2
-		}
+	dbomExportedShare.Users = dbomSambaUserList
+	dbomSambaUserList2, err := c.UsersToSambaUsers(source.RoUsers)
+	if err != nil {
+		return dbomExportedShare, err
 	}
+	dbomExportedShare.RoUsers = dbomSambaUserList2
 	dbomExportedShare.VetoFiles = c.stringListToDatatypesJSONSlice(source.VetoFiles)
 	if source.TimeMachine != nil {
 		dbomExportedShare.TimeMachine = *source.TimeMachine

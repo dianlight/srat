@@ -13,7 +13,6 @@ import (
 	"github.com/dianlight/srat/dbom/g"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
-	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/srat/templates"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
@@ -76,9 +75,6 @@ func (suite *ShareServiceSuite) SetupTest() {
 			service.NewShareService,
 			mock.Mock[service.BroadcasterServiceInterface],
 			mock.Mock[service.UserServiceInterface],
-			//mock.Mock[repository.ExportedShareRepositoryInterface],
-			//	mock.Mock[repository.MountPointPathRepositoryInterface],
-			mock.Mock[repository.SambaUserRepositoryInterface],
 			mock.Mock[events.EventBusInterface],
 		),
 		fx.Populate(&suite.shareService),
