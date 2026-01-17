@@ -131,6 +131,14 @@ jobs:
           config: .cspell.json
           incremental_files_only: false
 
+      # For AsciiDoc users:
+      - name: Install Asciidoctor
+        run: sudo apt-get install -y asciidoctor
+
+      # For reStructuredText users:
+      - name: Install docutils
+        run: sudo apt-get install -y docutils
+
       - name: Run Vale prose linter (GFM)
         uses: errata-ai/vale-action@v2.1.1
         with:
