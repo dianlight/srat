@@ -69,6 +69,7 @@ import {
 } from "../store/sratApi";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { NotificationCenter } from "./NotificationCenter";
+import { DonationButton } from "./DonationButton";
 import { useTour, type StepType } from '@reactour/tour'
 import { DashboardSteps } from "../pages/dashboard/DashboardTourStep";
 import { SharesSteps } from "../pages/shares/SharesTourStep";
@@ -688,10 +689,11 @@ export function NavBar(props: {
 									window.open(pkg.repository.url);
 								}}
 							>
-								<Tooltip title="Support project!" arrow>
+								<Tooltip title="View on GitHub" arrow>
 									<img src={github} style={{ height: "20px" }} />
 								</Tooltip>
 							</IconButton>
+							<DonationButton />
 							<NotificationCenter />
 						</Box>
 					</Toolbar>
