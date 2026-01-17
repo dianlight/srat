@@ -32,6 +32,7 @@ const CURRENT_CONFIG_VERSION = 5
 
 type DefaultConfig struct {
 	Config
+	Password string `json:"password"`
 }
 
 type Config struct {
@@ -39,10 +40,10 @@ type Config struct {
 	ConfigSpecVersion int    `json:"version,omitempty"`
 	Hostname          string `json:"hostname,omitempty"`
 	// Options
-	Workgroup        string   `json:"workgroup"`
-	LocalMaster      bool     `json:"local_master" default:"true"`
-	Username         string   `json:"username"`
-	Password         string   `json:"password"`
+	Workgroup   string `json:"workgroup"`
+	LocalMaster bool   `json:"local_master" default:"true"`
+	Username    string `json:"username"`
+	//Password         string   `json:"password"`
 	Automount        bool     `json:"automount"`
 	Moredisks        []string `json:"moredisks"`
 	Mountoptions     []string `json:"mountoptions"`
@@ -55,17 +56,17 @@ type Config struct {
 	VetoFiles         []string `json:"veto_files"`
 	CompatibilityMode bool     `json:"compatibility_mode"`
 	//EnableRecycleBin  bool     `json:"recyle_bin_enabled"`
-	WSDD          bool   `json:"wsdd"`
-	WSDD2         bool   `json:"wsdd2"`
-	HDDIdle       int    `json:"hdd_idle_seconds"`
-	Smart         bool   `json:"enable_smart"`
-	MQTTNextGen   bool   `json:"mqtt_nexgen_entities"`
-	MQTTEnable    bool   `json:"mqtt_enable"`
-	MQTTHost      string `json:"mqtt_host"`
-	MQTTUsername  string `json:"mqtt_username"`
-	MQTTPassword  string `json:"mqtt_password"`
-	MQTTPort      string `json:"mqtt_port"`
-	MQTTTopic     string `json:"mqtt_topic"`
+	//WSDD          bool   `json:"wsdd"`
+	//WSDD2         bool   `json:"wsdd2"`
+	HDDIdle int  `json:"hdd_idle_seconds"`
+	Smart   bool `json:"enable_smart"`
+	//MQTTNextGen   bool   `json:"mqtt_nexgen_entities"`
+	//MQTTEnable    bool   `json:"mqtt_enable"`
+	//MQTTHost      string `json:"mqtt_host"`
+	//MQTTUsername  string `json:"mqtt_username"`
+	//MQTTPassword  string `json:"mqtt_password"`
+	//MQTTPort      string `json:"mqtt_port"`
+	//MQTTTopic     string `json:"mqtt_topic"`
 	Autodiscovery struct {
 		DisableDiscovery  bool `json:"disable_discovery"`
 		DisablePersistent bool `json:"disable_persistent"`

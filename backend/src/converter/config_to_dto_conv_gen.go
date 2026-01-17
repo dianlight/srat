@@ -184,8 +184,5 @@ func (c *ConfigToDtoConverterImpl) UserToOtherUser(source dto.User, target *conf
 	if source.Username != "" {
 		target.Username = source.Username
 	}
-	if source.Password != (dto.Secret[string]{}) {
-		target.Password = secretToString(source.Password)
-	}
 	return nil
 }

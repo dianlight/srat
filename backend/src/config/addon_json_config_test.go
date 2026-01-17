@@ -116,8 +116,8 @@ func TestMigrateConfigWithAllDefaultShares(t *testing.T) {
 			"addon_configs": config.Share{Path: "/addon_configs", FS: "native"},
 		},
 		OtherUsers: []config.User{
-			{Username: "utente1", Password: "Test Password"},
-			{Username: "utente2", Password: "Test Password"},
+			{Username: "utente1"},
+			{Username: "utente2"},
 		},
 		ACL: []config.OptionsAcl{
 			{
