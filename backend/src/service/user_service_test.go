@@ -281,7 +281,7 @@ func (suite *UserServiceSuite) TestUpdateUser_Success() {
 	suite.Require().NoError(err)
 	suite.NotNil(updatedUser)
 	suite.Equal(currentUsername, updatedUser.Username)
-	suite.Equal(false, updatedUser.IsAdmin)
+	suite.False(updatedUser.IsAdmin)
 	suite.Equal("newpassword", updatedUser.Password.Expose())
 	//mock.Verify(suite.userRepoMock, matchers.Times(1)).GetUserByName(currentUsername)
 	//mock.Verify(suite.userRepoMock, matchers.Times(1)).Save(mock.Any[*dbom.SambaUser]())

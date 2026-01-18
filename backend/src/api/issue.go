@@ -13,12 +13,16 @@ import (
 
 // IssueAPI handles API requests for issues.
 type IssueAPI struct {
-	service service.IssueServiceInterface
+	service       service.IssueServiceInterface
+	reportService service.IssueReportServiceInterface
 }
 
 // NewIssueAPI creates a new issue API.
-func NewIssueAPI(service service.IssueServiceInterface) *IssueAPI {
-	return &IssueAPI{service: service}
+func NewIssueAPI(service service.IssueServiceInterface, reportService service.IssueReportServiceInterface) *IssueAPI {
+	return &IssueAPI{
+		service:       service,
+		reportService: reportService,
+	}
 }
 
 // GetIssuesInput defines the input for getting issues.
@@ -121,6 +125,21 @@ func (a *IssueAPI) RegisterIssueHandler(api huma.API) {
 			return nil, huma.Error500InternalServerError("failed to update issue", err)
 		}
 		return &UpdateIssueOutput{Body: updatedIssue}, nil
+	})
+
+	huma.Register(api, huma.Operation{
+		OperationID: "generate-issue-report",
+		Summary:     "Generate diagnostic data for GitHub issue reporting",
+		Method:      http.MethodPost,
+		Path:        "/issues/report",
+		Tags:        []string{"Issues"},
+	}, func(ctx context.Context, input *struct{ Body dto.IssueReportRequest }) (*struct{ Body dto.IssueReportResponse }, error) {
+		report, err := a.reportService.GenerateIssueReport(ctx, &input.Body)
+		if err != nil {
+			tlog.ErrorContext(ctx, "failed to generate issue report", err)
+			return nil, huma.Error500InternalServerError("failed to generate issue report", err)
+		}
+		return &struct{ Body dto.IssueReportResponse }{Body: *report}, nil
 	})
 }
 

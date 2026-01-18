@@ -215,20 +215,20 @@ func (suite *SambaServiceSuite) SetupTest() {
 		fx.Populate(&suite.cancel),
 	)
 	/*
-	mock.When(suite.samba_user_repo.All()).ThenReturn(dbom.SambaUsers{
-		{
-			Username: "dianlight",
-			IsAdmin:  true,
-		},
-		{
-			Username: "testuser",
-			IsAdmin:  false,
-		},
-		{
-			Username: "homeassistant",
-			IsAdmin:  false,
-		},
-	}, nil)
+		mock.When(suite.samba_user_repo.All()).ThenReturn(dbom.SambaUsers{
+			{
+				Username: "dianlight",
+				IsAdmin:  true,
+			},
+			{
+				Username: "testuser",
+				IsAdmin:  false,
+			},
+			{
+				Username: "homeassistant",
+				IsAdmin:  false,
+			},
+		}, nil)
 	*/
 	suite.app.RequireStart()
 }
