@@ -71,20 +71,20 @@ export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
 					toast.info(
 						`Issue ${data.issue_title} created successfully.`,
 					);
-
-					// Download attachments if requested
-					if (formData.include_srat_config && data.sanitized_config) {
-						downloadFile(
-							data.sanitized_config,
-							"srat-config.json",
-							"application/json",
-						);
-					}
-
-					if (formData.include_addon_logs && data.addon_logs) {
-						downloadFile(data.addon_logs, "addon-logs.txt", "text/plain");
-					}
-
+					/*
+										// Download attachments if requested
+										if (formData.include_srat_config && data.sanitized_config) {
+											downloadFile(
+												data.sanitized_config,
+												"srat-config.json",
+												"application/json",
+											);
+										}
+					
+										if (formData.include_addon_logs && data.addon_logs) {
+											downloadFile(data.addon_logs, "addon-logs.txt", "text/plain");
+										}
+					*/
 					// Open GitHub issue creation page
 					window.open(data.github_url, "_blank");
 
