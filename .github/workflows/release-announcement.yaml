@@ -24,11 +24,8 @@ jobs:
           RELEASE_BODY: ${{ github.event.release.body }}
           RELEASE_URL: ${{ github.event.release.html_url }}
         run: |
-          # Construct a nice title for the discussion
+          # Construct discussion content
           TITLE="🎉 New Release: ${RELEASE_NAME}"
-
-          # Construct the body of the discussion, linking back to the release page
-          # and including the original release notes.
           BODY="## ${RELEASE_NAME} has been released!
 
           You can find the full release notes and download the assets here:
@@ -38,9 +35,47 @@ jobs:
 
           ${RELEASE_BODY}"
 
-          # Create the discussion.
-          # NOTE: Please ensure you have a discussion category named "Announcements" in your repository.
-          gh discussion create --repo "${GH_REPO}" \
-            --title "${TITLE}" \
-            --body "${BODY}" \
-            --category "Announcements"
+          # Check if version is dev or RC and adjust title/body
+          if [[ "$RELEASE_NAME" =~ -dev\. ]]; then
+            TITLE="🚀 Development Release: ${RELEASE_NAME}"
+            BODY="## ${RELEASE_NAME} Development Release
+
+          ⚠️ **This is a development release** – it may contain experimental features and is not recommended for production use.
+
+          You can find the full release notes and download the assets here:
+          >${RELEASE_URL}
+
+          ---
+
+          ${RELEASE_BODY}"
+            elif [[ "$RELEASE_NAME" =~ -rc\. ]]; then
+            TITLE="🧪 Release Candidate: ${RELEASE_NAME}"
+            BODY="## ${RELEASE_NAME} Release Candidate
+
+          ⚠️ **This is a release candidate** – please test and report any issues before the stable release.
+
+          You can find the full release notes and download the assets here:
+          >${RELEASE_URL}
+
+          ---
+
+          ${RELEASE_BODY}"
+          fi
+
+          # Get the repository ID
+          REPO_ID=$(gh api repos/$GH_REPO --jq '.id')
+          
+          # Get the Announcements category ID (adjust if your category has a different name)
+          CATEGORY_ID=$(gh api repos/$GH_REPO/discussion-categories --jq '.[] | select(.name=="Announcements") | .id')
+
+          # Create discussion via GraphQL API
+          gh api graphql -f owner="${GH_REPO%/*}" -f repo="${GH_REPO#*/}" -f title="$TITLE" -f body="$BODY" -f categoryId="$CATEGORY_ID" << 'EOF'
+          mutation($owner: String!, $repo: String!, $title: String!, $body: String!, $categoryId: String!) {
+            createDiscussion(input: {repositoryId: "R_$repo", title: $title, body: $body, categoryId: $categoryId}) {
+              discussion {
+                id
+                url
+              }
+            }
+          }
+          EOF

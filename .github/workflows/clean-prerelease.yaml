@@ -18,11 +18,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
 
-      - name: Setup Node.js (for jq if not pre-installed and for general scripting)
-        # gh CLI uses node under the hood, this ensures its dependencies are met.
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
-        with:
-          node-version: '24'
+   #   - name: Setup Node.js (for jq if not pre-installed and for general scripting)
+    #    # gh CLI uses node under the hood, this ensures its dependencies are met.
+    #    uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
+    #    with:
+     #     node-version: '24'
 
       - name: Find and Delete Old Pre-releases
         env:
@@ -46,29 +46,28 @@ jobs:
 
           echo "Successfully fetched releases."
 
-          # Find the creation timestamp of the latest non-prerelease (stable) release.
-          # If no stable release exists, all pre-releases will be considered.
-          latest_stable_release_date=$(echo "$releases_json" | jq -r '
-            map(select(.isPrerelease == false)) |
-            sort_by(.createdAt) |
-            reverse |
-            .[0].createdAt // "1970-01-01T00:00:00Z" # Default to epoch if no stable release
-          ')
-
-          echo "Latest stable release created at: $latest_stable_release_date"
+          which jq >/dev/null 2>&1 || {
+            echo "Error: 'jq' is not installed. Please ensure it is available in the runner environment."
+            exit 1
+          }
 
           # Filter pre-releases that were created *after* the latest stable release.
           # Sort them by creation date in descending order.
-          prereleases_to_consider=$(echo "$releases_json" | jq -r --arg latest_stable_date "$latest_stable_release_date" '
-            map(select(.isPrerelease == true and (.createdAt > $latest_stable_date))) |
+          prereleases_to_consider=$(echo "$releases_json" | jq -r '
+            map(select(.isPrerelease == true)) |
             sort_by(.createdAt) |
             reverse |
             .[] |
             .tagName
           ')
 
+          echo "Pre-releases identified for consideration:"
+          echo "$prereleases_to_consider"
+
           # Convert to an array for easier counting and slicing
-          IFS=$'\n' read -r -d '' -a prerelease_tags <<< "$prereleases_to_consider"
+          mapfile -t prerelease_tags <<< "$prereleases_to_consider"
+
+          echo "Total pre-releases found: ${#prerelease_tags[@]}"
 
           num_prereleases=$((${#prerelease_tags[@]}))
           echo "Found $num_prereleases pre-releases to consider after the latest stable release."
