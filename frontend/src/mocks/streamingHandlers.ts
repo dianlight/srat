@@ -89,7 +89,9 @@ const mockEventData = {
 	updating: (): UpdateProgress => ({
 		update_process_state: Update_process_state.Idle,
 		progress: 0,
-		last_release: "",
+		release_asset: {
+			last_release: "",
+		},
 		error_message: "",
 	}),
 

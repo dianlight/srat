@@ -196,6 +196,17 @@ const injectedRtkApi = api
         }),
         invalidatesTags: ["Issues"],
       }),
+      postApiIssuesReport: build.mutation<
+        PostApiIssuesReportApiResponse,
+        PostApiIssuesReportApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/issues/report`,
+          method: "POST",
+          body: queryArg.issueReportRequest,
+        }),
+        invalidatesTags: ["Issues"],
+      }),
       deleteApiIssuesById: build.mutation<
         DeleteApiIssuesByIdApiResponse,
         DeleteApiIssuesByIdApiArg
@@ -607,6 +618,12 @@ export type PostApiIssuesApiResponse = /** status 200 OK */
   | /** status default Error */ ErrorModel;
 export type PostApiIssuesApiArg = {
   issue: Issue;
+};
+export type PostApiIssuesReportApiResponse = /** status 200 OK */
+  | IssueReportResponse
+  | /** status default Error */ ErrorModel;
+export type PostApiIssuesReportApiArg = {
+  issueReportRequest: IssueReportRequest;
 };
 export type DeleteApiIssuesByIdApiResponse =
   /** status default Error */ ErrorModel;
@@ -1208,6 +1225,28 @@ export type Issue = {
   severity?: Severity;
   title: string;
 };
+export type IssueReportResponse = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  addon_logs?: string;
+  github_url: string;
+  issue_body: string;
+  issue_title: string;
+  sanitized_config?: string;
+};
+export type IssueReportRequest = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  browser_info?: string;
+  console_errors?: string[] | null;
+  current_url?: string;
+  description: string;
+  include_addon_logs: boolean;
+  include_context_data: boolean;
+  include_srat_config: boolean;
+  navigation_history?: string[] | null;
+  problem_type: Problem_type;
+};
 export type InterfaceAddr = {
   addr: string;
 };
@@ -1442,6 +1481,12 @@ export enum Severity {
   Info = "info",
   Success = "success",
 }
+export enum Problem_type {
+  FrontendUi = "frontend_ui",
+  HaIntegration = "ha_integration",
+  Addon = "addon",
+  Samba = "samba",
+}
 export enum Hdidle_default_command_type {
   Scsi = "scsi",
   Ata = "ata",
@@ -1519,6 +1564,7 @@ export const {
   useGetApiHostnameQuery,
   useGetApiIssuesQuery,
   usePostApiIssuesMutation,
+  usePostApiIssuesReportMutation,
   useDeleteApiIssuesByIdMutation,
   usePutApiIssuesByIdMutation,
   useGetApiNicsQuery,

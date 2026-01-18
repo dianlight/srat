@@ -1,4 +1,4 @@
-import "../../setupTests";
+import "../../../test/setup";
 import { describe, it, expect, beforeEach } from "bun:test";
 
 describe("ReportIssueDialog", () => {
