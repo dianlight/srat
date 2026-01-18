@@ -1,0 +1,103 @@
+---
+name: "🐛 Bug Report"
+description: Create a new ticket for a bug.
+title: "🐛 <title>"
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: problem_type
+    attributes:
+      label: "Problem Type"
+      description: What is the problem type?
+      multiple: true
+      options:
+        - Frontend UI
+        - Addon Crash
+        - Addon Update
+        - Addon Startup
+        - Addon Functionality
+        - Installation
+        - Performance
+        - Security
+        - Integration
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: Version
+    attributes:
+      label: "Version"
+      description: What is the current version of the addon ?
+      placeholder: "e.g. 1.2.3"
+    validations:
+      required: true
+  - type: dropdown
+    id: browsers
+    attributes:
+      label: "Architecture"
+      description: What architecture are you on ?
+      multiple: false
+      options:
+        - aarch64
+        - amd64
+        - armv7
+        - i386
+        - other
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: "OS"
+      description: What is the impacted environment ?
+      multiple: true
+      options:
+        - HaOS
+        - Virtual Machine
+        - Docker
+        - Other
+    validations:
+      required: true      
+  - type: markdown
+    id: description
+    attributes:
+      value: |
+        Please fill in the following template to help us understand and resolve the issue.
+    validations:
+      required: true
+  - type: markdown
+    id: reprod
+    attributes:
+      value: |
+        **Steps to reproduce the behavior:**
+        1. Go to '...'
+        2. Click on '....'
+        3. Scroll down to '....'
+        4. See error
+    validations:
+      required: true 
+  - type: textarea
+    id: srat_config
+    attributes:
+      label: "SRAT Config"
+      description: Please paste the full (remove only password and ssh keys) SRAT config. This will be automatically formatted into code, so no need for backticks.
+      render: json
+    validations:
+      required: false      
+  - type: textarea
+    id: addon_config
+    attributes:
+      label: "Addon Config"
+      description: Please paste the full (remove only password and ssh keys) addon config. This will be automatically formatted into code, so no need for backticks.
+      render: json
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: "Addon Logs"
+      description: Please paste the full log that appears when starting the addon (including banner). This will be automatically formatted into code, so no need for backticks.
+      render: text
+    validations:
+      required: false
