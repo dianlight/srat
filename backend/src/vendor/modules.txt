@@ -76,7 +76,7 @@ github.com/cespare/xxhash/v2
 # github.com/cpuguy83/go-md2man/v2 v2.0.7
 ## explicit; go 1.12
 github.com/cpuguy83/go-md2man/v2/md2man
-# github.com/danielgtaylor/huma/v2 v2.34.2
+# github.com/danielgtaylor/huma/v2 v2.34.3
 ## explicit; go 1.23.0
 github.com/danielgtaylor/huma/v2
 github.com/danielgtaylor/huma/v2/adapters/humaflow
@@ -568,7 +568,7 @@ go.uber.org/zap/internal/exit
 go.uber.org/zap/internal/pool
 go.uber.org/zap/internal/stacktrace
 go.uber.org/zap/zapcore
-# golang.org/x/crypto v0.46.0
+# golang.org/x/crypto v0.47.0
 ## explicit; go 1.24.0
 golang.org/x/crypto/bcrypt
 golang.org/x/crypto/blake2b
@@ -584,6 +584,9 @@ golang.org/x/mod/internal/lazyregexp
 golang.org/x/mod/modfile
 golang.org/x/mod/module
 golang.org/x/mod/semver
+# golang.org/x/net v0.49.0
+## explicit; go 1.24.0
+golang.org/x/net/idna
 # golang.org/x/sync v0.19.0
 ## explicit; go 1.24.0
 golang.org/x/sync/errgroup
@@ -595,10 +598,10 @@ golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
-# golang.org/x/term v0.38.0
+# golang.org/x/term v0.39.0
 ## explicit; go 1.24.0
 golang.org/x/term
-# golang.org/x/text v0.32.0
+# golang.org/x/text v0.33.0
 ## explicit; go 1.24.0
 golang.org/x/text/cases
 golang.org/x/text/feature/plural
@@ -614,7 +617,9 @@ golang.org/x/text/language
 golang.org/x/text/message
 golang.org/x/text/message/catalog
 golang.org/x/text/runes
+golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
+golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
 golang.org/x/text/width
 # golang.org/x/time v0.14.0

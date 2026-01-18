@@ -19,8 +19,9 @@ require (
 	aead.dev/minisign v0.3.0
 	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/adelolmo/hd-idle v0.0.0-20250511190312-c87bc6e9ce96
+	github.com/angusgmorrison/logfusc v0.1.0
 	github.com/benmcclelland/sgio v0.0.0-20250710154739-45e823ff1f46
-	github.com/danielgtaylor/huma/v2 v2.34.2
+	github.com/danielgtaylor/huma/v2 v2.34.3
 	github.com/dianlight/smartmontools-go v0.2.4
 	github.com/dianlight/tlog v0.1.2
 	github.com/fatih/color v1.18.0
@@ -49,7 +50,6 @@ require (
 	github.com/AlecAivazis/survey/v2 v2.3.7 // indirect
 	github.com/Antonboom/testifylint v1.6.4 // indirect
 	github.com/air-verse/air v1.64.0 // indirect
-	github.com/angusgmorrison/logfusc v0.1.0 // indirect
 	github.com/apex/log v1.9.0 // indirect
 	github.com/bep/godartsass/v2 v2.5.0 // indirect
 	github.com/bep/golibsass v1.2.0 // indirect
@@ -93,7 +93,8 @@ require (
 	github.com/zarldev/goenums v0.4.4 // indirect
 	go.opentelemetry.io/otel v1.39.0 // indirect
 	go.opentelemetry.io/otel/trace v1.39.0 // indirect
-	golang.org/x/term v0.38.0 // indirect
+	golang.org/x/net v0.49.0 // indirect
+	golang.org/x/term v0.39.0 // indirect
 	google.golang.org/protobuf v1.36.8 // indirect
 	gorm.io/driver/mysql v1.6.0 // indirect
 )
@@ -148,11 +149,11 @@ require (
 	go.uber.org/dig v1.19.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.1 // indirect
-	golang.org/x/crypto v0.46.0 // indirect
+	golang.org/x/crypto v0.47.0 // indirect
 	golang.org/x/exp v0.0.0-20260112195511-716be5621a96
 	golang.org/x/mod v0.32.0 // indirect
 	golang.org/x/sync v0.19.0
-	golang.org/x/text v0.32.0 // indirect
+	golang.org/x/text v0.33.0 // indirect
 	golang.org/x/tools v0.41.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	modernc.org/libc v1.67.1 // indirect
