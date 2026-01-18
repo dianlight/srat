@@ -1,3 +1,4 @@
+import "../../setupTests";
 import { describe, it, expect, beforeEach } from "bun:test";
 
 describe("ReportIssueDialog", () => {
@@ -13,7 +14,7 @@ describe("ReportIssueDialog", () => {
 		const { render, screen } = await import("@testing-library/react");
 		const { ReportIssueDialog } = await import("../ReportIssueDialog");
 
-		const mockOnClose = () => {};
+		const mockOnClose = () => { };
 
 		render(
 			React.createElement(ReportIssueDialog, {
@@ -31,7 +32,7 @@ describe("ReportIssueDialog", () => {
 		const { render, screen } = await import("@testing-library/react");
 		const { ReportIssueDialog } = await import("../ReportIssueDialog");
 
-		const mockOnClose = () => {};
+		const mockOnClose = () => { };
 
 		render(
 			React.createElement(ReportIssueDialog, {
@@ -50,7 +51,7 @@ describe("ReportIssueDialog", () => {
 		const userEvent = (await import("@testing-library/user-event")).default;
 		const { ReportIssueDialog } = await import("../ReportIssueDialog");
 
-		const mockOnClose = () => {};
+		const mockOnClose = () => { };
 		const user = userEvent.setup();
 
 		render(
@@ -70,7 +71,7 @@ describe("ReportIssueDialog", () => {
 		const { render, screen } = await import("@testing-library/react");
 		const { ReportIssueDialog } = await import("../ReportIssueDialog");
 
-		const mockOnClose = () => {};
+		const mockOnClose = () => { };
 
 		render(
 			React.createElement(ReportIssueDialog, {
@@ -93,7 +94,7 @@ describe("ReportIssueDialog", () => {
 		const { render, screen } = await import("@testing-library/react");
 		const { ReportIssueDialog } = await import("../ReportIssueDialog");
 
-		const mockOnClose = () => {};
+		const mockOnClose = () => { };
 
 		render(
 			React.createElement(ReportIssueDialog, {
@@ -120,7 +121,7 @@ describe("ReportIssueDialog", () => {
 		const { render, screen } = await import("@testing-library/react");
 		const { ReportIssueDialog } = await import("../ReportIssueDialog");
 
-		const mockOnClose = () => {};
+		const mockOnClose = () => { };
 
 		render(
 			React.createElement(ReportIssueDialog, {
@@ -143,7 +144,7 @@ describe("ReportIssueDialog", () => {
 		const { render, screen } = await import("@testing-library/react");
 		const { ReportIssueDialog } = await import("../ReportIssueDialog");
 
-		const mockOnClose = () => {};
+		const mockOnClose = () => { };
 
 		render(
 			React.createElement(ReportIssueDialog, {
@@ -184,3 +185,4 @@ describe("ReportIssueDialog", () => {
 		expect(closeCalled).toBe(true);
 	});
 }
+);
