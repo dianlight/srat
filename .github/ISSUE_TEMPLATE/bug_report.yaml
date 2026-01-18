@@ -59,22 +59,20 @@ body:
         - Other
     validations:
       required: true      
-  - type: markdown
+  - type: textarea
     id: description
     attributes:
-      value: |
-        Please fill in the following template to help us understand and resolve the issue.
+      label: "Description"
+      description: "Describe the bug you are experiencing."
+      placeholder: "A clear and concise description of what the bug is."
     validations:
       required: true
-  - type: markdown
+  - type: textarea
     id: reprod
     attributes:
-      value: |
-        **Steps to reproduce the behavior:**
-        1. Go to '...'
-        2. Click on '....'
-        3. Scroll down to '....'
-        4. See error
+      label: "Steps to Reproduce"
+      description: "Describe the steps to reproduce the behavior:"
+      placeholder: "1. Go to '...'\n2. Click on '....'\n3. Scroll down to '....'\n4. See error"
     validations:
       required: true 
   - type: textarea
