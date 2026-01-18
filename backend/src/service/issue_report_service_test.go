@@ -9,8 +9,8 @@ import (
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
-	"go.uber.org/fx/fxtest"
 	"go.uber.org/fx"
+	"go.uber.org/fx/fxtest"
 )
 
 type IssueReportServiceSuite struct {
@@ -28,7 +28,7 @@ func TestIssueReportServiceSuite(t *testing.T) {
 
 func (suite *IssueReportServiceSuite) SetupTest() {
 	suite.ctx, suite.cancel = context.WithCancel(context.Background())
-	
+
 	suite.app = fxtest.New(suite.T(),
 		fx.Provide(
 			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
@@ -57,7 +57,7 @@ func (suite *IssueReportServiceSuite) TestGenerateIssueReport_FrontendUI() {
 	// Arrange
 	settings := &dto.Settings{}
 	mock.When(suite.mockSettingService.Load()).ThenReturn(settings, nil)
-	
+
 	request := &dto.IssueReportRequest{
 		ProblemType:        dto.ProblemTypeFrontendUI,
 		Description:        "Button not working",
@@ -83,7 +83,7 @@ func (suite *IssueReportServiceSuite) TestGenerateIssueReport_AddonProblem() {
 	// Arrange
 	settings := &dto.Settings{}
 	mock.When(suite.mockSettingService.Load()).ThenReturn(settings, nil)
-	
+
 	request := &dto.IssueReportRequest{
 		ProblemType:        dto.ProblemTypeAddon,
 		Description:        "Addon won't start",
@@ -107,7 +107,7 @@ func (suite *IssueReportServiceSuite) TestGenerateIssueReport_WithConfig() {
 	// Arrange
 	settings := &dto.Settings{}
 	mock.When(suite.mockSettingService.Load()).ThenReturn(settings, nil)
-	
+
 	request := &dto.IssueReportRequest{
 		ProblemType:       dto.ProblemTypeHAIntegration,
 		Description:       "Integration not connecting",
@@ -128,7 +128,7 @@ func (suite *IssueReportServiceSuite) TestGenerateIssueReport_SambaProblem() {
 	// Arrange
 	settings := &dto.Settings{}
 	mock.When(suite.mockSettingService.Load()).ThenReturn(settings, nil)
-	
+
 	request := &dto.IssueReportRequest{
 		ProblemType: dto.ProblemTypeSamba,
 		Description: "Samba service crash",

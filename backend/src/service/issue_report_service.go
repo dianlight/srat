@@ -110,7 +110,7 @@ func (s *IssueReportService) buildIssueBody(ctx context.Context, request *dto.Is
 	if request.IncludeContextData && request.CurrentURL != "" {
 		body.WriteString("## Context Information\n\n")
 		body.WriteString(fmt.Sprintf("- **Current URL**: %s\n", request.CurrentURL))
-		
+
 		if len(request.NavigationHistory) > 0 {
 			body.WriteString("- **Navigation History**:\n")
 			for i, url := range request.NavigationHistory {
@@ -120,11 +120,11 @@ func (s *IssueReportService) buildIssueBody(ctx context.Context, request *dto.Is
 				body.WriteString(fmt.Sprintf("  - %s\n", url))
 			}
 		}
-		
+
 		if request.BrowserInfo != "" {
 			body.WriteString(fmt.Sprintf("- **Browser**: %s\n", request.BrowserInfo))
 		}
-		
+
 		if len(request.ConsoleErrors) > 0 {
 			body.WriteString("- **Console Errors**:\n```\n")
 			for i, err := range request.ConsoleErrors {
@@ -141,13 +141,13 @@ func (s *IssueReportService) buildIssueBody(ctx context.Context, request *dto.Is
 	// System information
 	body.WriteString("## System Information\n\n")
 	body.WriteString(fmt.Sprintf("- **Report Generated**: %s\n", time.Now().Format(time.RFC3339)))
-	
+
 	// Add version info if available
 	settings, err := s.settingService.Load()
 	if err == nil && settings != nil {
 		body.WriteString(fmt.Sprintf("- **SRAT Version**: %s\n", "unknown")) // TODO: Add version tracking
 	}
-	
+
 	body.WriteString("\n")
 
 	// Instructions for attachments
@@ -195,11 +195,11 @@ func (s *IssueReportService) exportSanitizedConfig(ctx context.Context) (string,
 
 	// Create a sanitized copy
 	sanitized := *settings
-	
+
 	// Remove sensitive fields
 	// Note: The actual Settings struct fields should be checked and sanitized
 	// This is a placeholder implementation
-	
+
 	jsonData, jsonErr := json.MarshalIndent(sanitized, "", "  ")
 	if jsonErr != nil {
 		return "", errors.Wrap(jsonErr, "failed to marshal sanitized config")
