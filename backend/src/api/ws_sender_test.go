@@ -74,8 +74,7 @@ func (suite *WsMessageSenderSuite) TestSendFunc_SuccessWithUpdateProgress() {
 	msg := ws.Message{
 		ID: 2,
 		Data: dto.UpdateProgress{
-			Progress:    75,
-			LastRelease: "v1.2.3",
+			Progress: 75,
 		},
 	}
 
@@ -304,8 +303,10 @@ func (suite *WsMessageSenderSuite) TestSendFunc_MessageFormatting() {
 	msg := ws.Message{
 		ID: 42,
 		Data: dto.UpdateProgress{
-			Progress:    50,
-			LastRelease: "v2.0.0",
+			Progress: 50,
+			ReleaseAsset: &dto.ReleaseAsset{
+				LastRelease: "v2.0.0",
+			},
 		},
 	}
 
@@ -378,8 +379,10 @@ func (suite *WsMessageSenderSuite) TestSendFunc_ConcurrentDifferentEventTypes() 
 					}
 				case "dto.UpdateProgress":
 					msg.Data = dto.UpdateProgress{
-						Progress:    iteration % 100,
-						LastRelease: fmt.Sprintf("v%d.0.0", iteration),
+						Progress: float64(iteration % 100),
+						ReleaseAsset: &dto.ReleaseAsset{
+							LastRelease: fmt.Sprintf("v%d.0.0", iteration),
+						},
 					}
 				case "dto.HealthPing":
 					msg.Data = dto.HealthPing{

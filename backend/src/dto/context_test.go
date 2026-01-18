@@ -11,12 +11,12 @@ import (
 func TestContextState(t *testing.T) {
 	now := time.Now()
 	state := dto.ContextState{
-		AddonIpAddress:  "172.30.32.1",
-		ReadOnlyMode:    false,
-		ProtectedMode:   true,
-		SecureMode:      true,
-		HACoreReady:     true,
-		UpdateFilePath:  "/tmp/update.tar",
+		AddonIpAddress: "172.30.32.1",
+		ReadOnlyMode:   false,
+		ProtectedMode:  true,
+		SecureMode:     true,
+		HACoreReady:    true,
+		//UpdateFilePath:  "/tmp/update.tar",
 		SambaConfigFile: "/etc/samba/smb.conf",
 		Template:        []byte("template content"),
 		DockerInterface: "hassio",
@@ -33,7 +33,7 @@ func TestContextState(t *testing.T) {
 	assert.True(t, state.ProtectedMode)
 	assert.True(t, state.SecureMode)
 	assert.True(t, state.HACoreReady)
-	assert.Equal(t, "/tmp/update.tar", state.UpdateFilePath)
+	//assert.Equal(t, "/tmp/update.tar", state.UpdateFilePath)
 	assert.Equal(t, "/etc/samba/smb.conf", state.SambaConfigFile)
 	assert.NotEmpty(t, state.Template)
 	assert.Equal(t, "hassio", state.DockerInterface)

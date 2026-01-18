@@ -26,7 +26,7 @@ import (
 	"github.com/dianlight/srat/templates"
 	"github.com/dianlight/tlog"
 	"github.com/gofri/go-github-ratelimit/v2/github_ratelimit"
-	"github.com/google/go-github/v80/github"
+	"github.com/google/go-github/v81/github"
 	"github.com/oapi-codegen/oapi-codegen/v2/pkg/securityprovider"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxevent"

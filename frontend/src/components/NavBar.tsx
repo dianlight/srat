@@ -391,7 +391,7 @@ export function NavBar(props: {
 	function handleDoUpdate() {
 		console.log("Doing update");
 		confirm({
-			title: `Update to ${update?.Progress.last_release}?`,
+			title: `Update to ${update?.Progress.release_asset?.last_release}?`,
 			description:
 				"If you proceed the new version is downloaded and installed.",
 		}).then(({ confirmed, reason }) => {
@@ -617,7 +617,7 @@ export function NavBar(props: {
 							{!isUpdateLoading && update.Available && (
 								<IconButton onClick={handleDoUpdate} size="small">
 									<Tooltip
-										title={`Update ${update.Progress.last_release} available`}
+										title={`Update ${update.Progress.release_asset?.last_release} available`}
 										arrow
 									>
 										{((update_status) => {

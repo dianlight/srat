@@ -55,6 +55,8 @@ components:
       properties:
         browser_download_url:
           type: string
+        digest:
+          type: string
         id:
           format: int64
           type: integer
@@ -1539,11 +1541,11 @@ components:
           type: string
         error_message:
           type: string
-        last_release:
-          type: string
         progress:
-          format: int64
-          type: integer
+          format: double
+          type: number
+        release_asset:
+          $ref: "#/components/schemas/ReleaseAsset"
         update_process_state:
           enum:
             - Idle
@@ -2489,8 +2491,8 @@ paths:
     get:
       operationId: list-api-filesystems
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -2579,8 +2581,8 @@ paths:
     post:
       operationId: post-api-hdidle-stop
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3514,8 +3516,8 @@ paths:
               - world
             maxLength: 30
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3825,8 +3827,8 @@ paths:
             description: Name of the share to enable
             maxLength: 128
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:

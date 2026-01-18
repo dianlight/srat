@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"debug/elf"
 	"encoding/json"
+	"log/slog"
 	"os"
 
 	"github.com/Masterminds/semver/v3"
@@ -21,16 +22,14 @@ const char metadata[] = ELF_METADATA;
 */
 import "C"
 
-var unknownBinaryVersion = semver.MustParse("0.0.0-unknown")
-
 // GetCurrentBinaryVersion extracts the version from the C metadata constant and
 // returns it as a semantic version. If metadata is missing or invalid, a
 // sentinel unknown version is returned.
-func GetCurrentBinaryVersion() semver.Version {
+func GetCurrentBinaryVersion() *semver.Version {
 	// Convert C array to Go slice and then to string
 	// C.metadata is a fixed array in cgo
 	if len(C.metadata) == 0 {
-		return *unknownBinaryVersion
+		return nil
 	}
 
 	// Create a nil-terminated Go string from the C array
@@ -43,13 +42,19 @@ func GetCurrentBinaryVersion() semver.Version {
 	}
 
 	if len(metadataBytes) == 0 {
-		return *unknownBinaryVersion
+		slog.Warn("Binary Metadata not found. Rollback on config values")
+		parsed, err := semver.NewVersion(Version)
+		if err != nil {
+			slog.Error("Failed to parse build version as semantic version", "version", Version, "error", err)
+			return nil
+		}
+		return parsed
 	}
 
 	if version := parseMetadataVersion(metadataBytes); version != nil {
-		return *version
+		return version
 	}
-	return *unknownBinaryVersion
+	return nil
 }
 
 // parseMetadataVersion extracts the "version" field from a JSON blob that may
@@ -72,8 +77,13 @@ func parseMetadataVersion(data []byte) *semver.Version {
 	if !ok {
 		return nil
 	}
+	if versionValue == "no-metadata" {
+		slog.Warn("Binary Metadata indicates no metadata present. Rollback on config values")
+		versionValue = Version
+	}
 	parsed, err := semver.NewVersion(versionValue)
 	if err != nil {
+		slog.Error("Failed to parse metadata version as semantic version", "version", versionValue, "error", err)
 		return nil
 	}
 	return parsed
@@ -83,17 +93,17 @@ func parseMetadataVersion(data []byte) *semver.Version {
 // the JSON metadata stored in the .note.metadata section. It returns the value of
 // the "version" field in that JSON as a semantic version. If the section is
 // missing or cannot be parsed, a sentinel unknown version is returned.
-func GetBinaryVersion(path string) semver.Version {
+func GetBinaryVersion(path string) *semver.Version {
 	if path == "" {
-		return *unknownBinaryVersion
+		return nil
 	}
 	// Ensure file exists before opening with debug/elf for clearer early failures
 	if _, err := os.Stat(path); err != nil {
-		return *unknownBinaryVersion
+		return nil
 	}
 	f, err := elf.Open(path)
 	if err != nil {
-		return *unknownBinaryVersion
+		return nil
 	}
 	defer f.Close()
 
@@ -114,14 +124,14 @@ func GetBinaryVersion(path string) semver.Version {
 	}
 
 	if sec == nil {
-		return *unknownBinaryVersion
+		return nil
 	}
 	contents, err := sec.Data()
 	if err != nil || len(contents) == 0 {
-		return *unknownBinaryVersion
+		return nil
 	}
 	if version := parseMetadataVersion(contents); version != nil {
-		return *version
+		return version
 	}
-	return *unknownBinaryVersion
+	return nil
 }
