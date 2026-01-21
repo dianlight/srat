@@ -25,7 +25,7 @@ body:
     validations:
       required: true
   - type: input
-    id: Version
+    id: version
     attributes:
       label: "Version"
       description: What is the current version of the addon ?
@@ -33,7 +33,7 @@ body:
     validations:
       required: true
   - type: dropdown
-    id: browsers
+    id: arch
     attributes:
       label: "Architecture"
       description: What architecture are you on ?
