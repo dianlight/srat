@@ -13,15 +13,21 @@ import (
 
 // IssueAPI handles API requests for issues.
 type IssueAPI struct {
-	service       service.IssueServiceInterface
-	reportService service.IssueReportServiceInterface
+	service         service.IssueServiceInterface
+	reportService   service.IssueReportServiceInterface
+	templateService service.IssueTemplateServiceInterface
 }
 
 // NewIssueAPI creates a new issue API.
-func NewIssueAPI(service service.IssueServiceInterface, reportService service.IssueReportServiceInterface) *IssueAPI {
+func NewIssueAPI(
+	service service.IssueServiceInterface,
+	reportService service.IssueReportServiceInterface,
+	templateService service.IssueTemplateServiceInterface,
+) *IssueAPI {
 	return &IssueAPI{
-		service:       service,
-		reportService: reportService,
+		service:         service,
+		reportService:   reportService,
+		templateService: templateService,
 	}
 }
 
@@ -140,6 +146,32 @@ func (a *IssueAPI) RegisterIssueHandler(api huma.API) {
 			return nil, huma.Error500InternalServerError("failed to generate issue report", err)
 		}
 		return &struct{ Body dto.IssueReportResponse }{Body: *report}, nil
+	})
+
+	huma.Register(api, huma.Operation{
+		OperationID: "get-issue-template",
+		Summary:     "Get GitHub issue template",
+		Method:      http.MethodGet,
+		Path:        "/issues/template",
+		Tags:        []string{"Issues"},
+	}, func(ctx context.Context, input *struct{}) (*struct{ Body dto.IssueTemplateResponse }, error) {
+		template, err := a.templateService.GetTemplate()
+		if err != nil {
+			tlog.WarnContext(ctx, "failed to fetch issue template", "error", err)
+			errMsg := err.Error()
+			return &struct{ Body dto.IssueTemplateResponse }{
+				Body: dto.IssueTemplateResponse{
+					Template: nil,
+					Error:    &errMsg,
+				},
+			}, nil
+		}
+		return &struct{ Body dto.IssueTemplateResponse }{
+			Body: dto.IssueTemplateResponse{
+				Template: template,
+				Error:    nil,
+			},
+		}, nil
 	})
 }
 

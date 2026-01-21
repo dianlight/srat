@@ -96,6 +96,7 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 		service.NewSmartService,
 		service.NewIssueService,
 		service.NewIssueReportService,
+		service.NewIssueTemplateService,
 		service.NewTelemetryService,
 		service.NewHaWsService,
 		service.NewHardwareService,

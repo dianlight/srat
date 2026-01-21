@@ -1,5 +1,6 @@
 import "../../../test/setup";
-import { describe, it, expect, beforeEach } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { createTestStore } from "../../../test/setup";
 
 describe("ReportIssueDialog", () => {
 	beforeEach(() => {
@@ -9,18 +10,31 @@ describe("ReportIssueDialog", () => {
 		}
 	});
 
+	afterEach(() => {
+		// Clean up DOM state after each test
+		if (typeof document !== "undefined") {
+			document.body.innerHTML = "";
+		}
+	});
+
 	it("renders dialog when open is true", async () => {
 		const React = await import("react");
 		const { render, screen } = await import("@testing-library/react");
+		const { Provider } = await import("react-redux");
 		const { ReportIssueDialog } = await import("../ReportIssueDialog");
+		const store = await createTestStore();
 
 		const mockOnClose = () => { };
 
 		render(
-			React.createElement(ReportIssueDialog, {
-				open: true,
-				onClose: mockOnClose,
-			}),
+			React.createElement(
+				Provider as any,
+				{ store },
+				React.createElement(ReportIssueDialog as any, {
+					open: true,
+					onClose: mockOnClose,
+				}),
+			),
 		);
 
 		const titleElement = await screen.findByText(/Report Issue on GitHub/i);
@@ -30,59 +44,73 @@ describe("ReportIssueDialog", () => {
 	it("does not render dialog when open is false", async () => {
 		const React = await import("react");
 		const { render, screen } = await import("@testing-library/react");
+		const { Provider } = await import("react-redux");
 		const { ReportIssueDialog } = await import("../ReportIssueDialog");
+		const store = await createTestStore();
 
 		const mockOnClose = () => { };
 
 		render(
-			React.createElement(ReportIssueDialog, {
-				open: false,
-				onClose: mockOnClose,
-			}),
+			React.createElement(
+				Provider as any,
+				{ store },
+				React.createElement(ReportIssueDialog as any, {
+					open: false,
+					onClose: mockOnClose,
+				}),
+			),
 		);
 
-		const titleElement = screen.queryByText(/Report Issue on GitHub/i);
+		const titleElement = screen.queryByText(/Bug Report/i);
 		expect(titleElement).toBeFalsy();
 	});
 
 	it("has problem type selector with correct options", async () => {
 		const React = await import("react");
 		const { render, screen } = await import("@testing-library/react");
-		const userEvent = (await import("@testing-library/user-event")).default;
+		const { Provider } = await import("react-redux");
 		const { ReportIssueDialog } = await import("../ReportIssueDialog");
+		const store = await createTestStore();
 
 		const mockOnClose = () => { };
-		const user = userEvent.setup();
 
 		render(
-			React.createElement(ReportIssueDialog, {
-				open: true,
-				onClose: mockOnClose,
-			}),
+			React.createElement(
+				Provider as any,
+				{ store },
+				React.createElement(ReportIssueDialog as any, {
+					open: true,
+					onClose: mockOnClose,
+				}),
+			),
 		);
 
-		// Check that Problem Type label exists
-		const problemTypeLabel = await screen.findByText(/Problem Type/i);
-		expect(problemTypeLabel).toBeTruthy();
+		// Check that Problem Type label exists using a more specific query
+		const problemTypeSelect = await screen.findByRole("combobox", { name: /Problem Type/i });
+		expect(problemTypeSelect).toBeTruthy();
 	});
 
 	it("has description textarea", async () => {
 		const React = await import("react");
 		const { render, screen } = await import("@testing-library/react");
+		const { Provider } = await import("react-redux");
 		const { ReportIssueDialog } = await import("../ReportIssueDialog");
+		const store = await createTestStore();
 
 		const mockOnClose = () => { };
 
 		render(
-			React.createElement(ReportIssueDialog, {
-				open: true,
-				onClose: mockOnClose,
-			}),
+			React.createElement(
+				Provider as any,
+				{ store },
+				React.createElement(ReportIssueDialog as any, {
+					open: true,
+					onClose: mockOnClose,
+				}),
+			),
 		);
 
-		const descriptionLabel = await screen.findByText(/Description/i);
-		expect(descriptionLabel).toBeTruthy();
-
+		// Use placeholder to find the textarea more specifically
 		const textarea = await screen.findByPlaceholderText(
 			/Describe the issue in detail/i,
 		);
@@ -92,21 +120,25 @@ describe("ReportIssueDialog", () => {
 	it("has toggle switches for data inclusion options", async () => {
 		const React = await import("react");
 		const { render, screen } = await import("@testing-library/react");
+		const { Provider } = await import("react-redux");
 		const { ReportIssueDialog } = await import("../ReportIssueDialog");
+		const store = await createTestStore();
 
 		const mockOnClose = () => { };
 
 		render(
-			React.createElement(ReportIssueDialog, {
-				open: true,
-				onClose: mockOnClose,
-			}),
+			React.createElement(
+				Provider as any,
+				{ store },
+				React.createElement(ReportIssueDialog as any, {
+					open: true,
+					onClose: mockOnClose,
+				}),
+			),
 		);
 
 		// Check for the three toggle switches
-		const contextDataSwitch = await screen.findByText(
-			/Contextual data/i,
-		);
+		const contextDataSwitch = await screen.findByText(/Contextual data/i);
 		expect(contextDataSwitch).toBeTruthy();
 
 		const addonLogsSwitch = await screen.findByText(/Addon config and logs/i);
@@ -119,15 +151,21 @@ describe("ReportIssueDialog", () => {
 	it("has Cancel and Create Issue buttons", async () => {
 		const React = await import("react");
 		const { render, screen } = await import("@testing-library/react");
+		const { Provider } = await import("react-redux");
 		const { ReportIssueDialog } = await import("../ReportIssueDialog");
+		const store = await createTestStore();
 
 		const mockOnClose = () => { };
 
 		render(
-			React.createElement(ReportIssueDialog, {
-				open: true,
-				onClose: mockOnClose,
-			}),
+			React.createElement(
+				Provider as any,
+				{ store },
+				React.createElement(ReportIssueDialog as any, {
+					open: true,
+					onClose: mockOnClose,
+				}),
+			),
 		);
 
 		const cancelButton = await screen.findByRole("button", { name: /Cancel/i });
@@ -142,15 +180,21 @@ describe("ReportIssueDialog", () => {
 	it("disables Create Issue button when description is empty", async () => {
 		const React = await import("react");
 		const { render, screen } = await import("@testing-library/react");
+		const { Provider } = await import("react-redux");
 		const { ReportIssueDialog } = await import("../ReportIssueDialog");
+		const store = await createTestStore();
 
 		const mockOnClose = () => { };
 
 		render(
-			React.createElement(ReportIssueDialog, {
-				open: true,
-				onClose: mockOnClose,
-			}),
+			React.createElement(
+				Provider as any,
+				{ store },
+				React.createElement(ReportIssueDialog as any, {
+					open: true,
+					onClose: mockOnClose,
+				}),
+			),
 		);
 
 		const createButton = await screen.findByRole("button", {
@@ -164,7 +208,9 @@ describe("ReportIssueDialog", () => {
 		const React = await import("react");
 		const { render, screen } = await import("@testing-library/react");
 		const userEvent = (await import("@testing-library/user-event")).default;
+		const { Provider } = await import("react-redux");
 		const { ReportIssueDialog } = await import("../ReportIssueDialog");
+		const store = await createTestStore();
 
 		let closeCalled = false;
 		const mockOnClose = () => {
@@ -173,10 +219,14 @@ describe("ReportIssueDialog", () => {
 		const user = userEvent.setup();
 
 		render(
-			React.createElement(ReportIssueDialog, {
-				open: true,
-				onClose: mockOnClose,
-			}),
+			React.createElement(
+				Provider as any,
+				{ store },
+				React.createElement(ReportIssueDialog as any, {
+					open: true,
+					onClose: mockOnClose,
+				}),
+			),
 		);
 
 		const cancelButton = await screen.findByRole("button", { name: /Cancel/i });
@@ -184,5 +234,4 @@ describe("ReportIssueDialog", () => {
 
 		expect(closeCalled).toBe(true);
 	});
-}
-);
+});

@@ -194,27 +194,36 @@ components:
 
     AddonOptionsRequest:
       type: object
-      additionalProperties: true
-      description: "Add-on configuration options to set. Structure depends on the add-on's schema."
-      example: {"option1": "new_value", "another_option": 42}
-
-    AddonOptionsResponseData:
-      type: object
-      additionalProperties: true
-      description: "Current configuration options for the add-on."
-      example: {"option1": "current_value", "another_option": 42}
-
-    AddonOptionsResponse:
-      type: object
       properties:
-        result:
+        boot:
           type: string
-          enum: [ok]
-        data:
-          $ref: '#/components/schemas/AddonOptionsResponseData'
-      required:
-        - result
-        - data
+          enum: [auto, manual]
+          description: "Optional boot mode to set for the add-on."
+        auto_update:
+          type: boolean
+          description: "Optional auto-update setting to set for the add-on."
+        network:
+          type: object
+          additionalProperties: true
+          description: "Optional network configuration to set for the add-on."
+        options:
+          type: object
+          additionalProperties: true
+          description: "Add-on configuration options to set. Structure depends on the add-on's schema."
+        audio_output:
+          type: number
+          format: float
+          description: "Optional audio output setting to set for the add-on."
+        audio_input:
+          type: number
+          format: float
+          description: "Optional audio input setting to set for the add-on."
+        ingress_panel:
+          type: boolean
+          description: "Optional ingress panel setting to set for the add-on."
+        watchdog:
+          type: boolean
+          description: "Optional watchdog setting to set for the add-on."
 
     AddonStdinRequest:
       type: object
@@ -314,25 +323,6 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
   /addons/self/options:
-    get:
-      summary: Get Self Add-on Options
-      description: Retrieves the current configuration options for the add-on.
-      operationId: getSelfAddonOptions
-      tags:
-        - AddonSelf
-      responses:
-        '200':
-          description: Add-on options retrieved successfully.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AddonOptionsResponse'
-        '401':
-          description: Unauthorized.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
     post:
       summary: Set Self Add-on Options
       description: Updates the configuration options for the add-on. The add-on might restart.
@@ -394,6 +384,36 @@ paths:
       operationId: getSelfAddonLogs
       tags:
         - AddonSelf
+      responses:
+        '200':
+          description: Add-on logs retrieved successfully.
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: Unauthorized.
+          content:
+            application/json: # Supervisor might return JSON error even for text/plain success
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /addons/self/logs/latest:
+    get:
+      summary: Get Self Add-on Logs latest
+      description: Return all logs of the latest startup of the add-on (self) container.
+      operationId: getSelfAddonLogsLatest
+      tags:
+        - AddonSelf
+      parameters:
+        - in: query
+          name: lines
+          schema:
+            type: integer
+            minimum: 1
+            default: 100
+          required: false
+          description: Number of log lines to retrieve from the end of the latest startup logs.
       responses:
         '200':
           description: Add-on logs retrieved successfully.

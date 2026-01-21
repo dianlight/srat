@@ -554,9 +554,13 @@ components:
           type: string
         description:
           type: string
+        include_addon_config:
+          type: boolean
         include_addon_logs:
           type: boolean
         include_context_data:
+          type: boolean
+        include_database_dump:
           type: boolean
         include_srat_config:
           type: boolean
@@ -573,12 +577,20 @@ components:
             - addon
             - samba
           type: string
+        reproducing_steps:
+          type: string
+        title:
+          type: string
       required:
         - problem_type
+        - title
         - description
+        - reproducing_steps
         - include_context_data
         - include_addon_logs
         - include_srat_config
+        - include_addon_config
+        - include_database_dump
       type: object
     IssueReportResponse:
       additionalProperties: false
@@ -592,18 +604,110 @@ components:
           type: string
         addon_logs:
           type: string
-        github_url:
+        database_dump:
           type: string
-        issue_body:
+        github_url:
           type: string
         issue_title:
           type: string
-        sanitized_config:
+        sanitized_addon_config:
+          type: string
+        sanitized_srat_config:
           type: string
       required:
         - github_url
         - issue_title
-        - issue_body
+      type: object
+    IssueTemplate:
+      additionalProperties: false
+      properties:
+        body:
+          items:
+            $ref: "#/components/schemas/IssueTemplateField"
+          type:
+            - array
+            - "null"
+        description:
+          type: string
+        labels:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        name:
+          type: string
+        title:
+          type: string
+      required:
+        - name
+        - description
+        - title
+        - labels
+        - body
+      type: object
+    IssueTemplateField:
+      additionalProperties: false
+      properties:
+        attributes:
+          $ref: "#/components/schemas/IssueTemplateFieldAttr"
+        id:
+          type: string
+        type:
+          type: string
+        validations:
+          $ref: "#/components/schemas/IssueTemplateValidity"
+      required:
+        - type
+        - id
+        - attributes
+      type: object
+    IssueTemplateFieldAttr:
+      additionalProperties: false
+      properties:
+        description:
+          type: string
+        label:
+          type: string
+        multiple:
+          type: boolean
+        options:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        placeholder:
+          type: string
+        render:
+          type: string
+      required:
+        - label
+      type: object
+    IssueTemplateResponse:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/IssueTemplateResponse.json
+          format: uri
+          readOnly: true
+          type: string
+        error:
+          type: string
+        template:
+          $ref: "#/components/schemas/IssueTemplate"
+      required:
+        - template
+      type: object
+    IssueTemplateValidity:
+      additionalProperties: false
+      properties:
+        required:
+          type: boolean
+      required:
+        - required
       type: object
     JsonPatchOp:
       additionalProperties: false
@@ -2923,6 +3027,49 @@ paths:
       summary: Generate diagnostic data for GitHub issue reporting
       tags:
         - Issues
+  /api/issues/template:
+    get:
+      operationId: get-issue-template
+      parameters:
+        - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IssueTemplateResponse"
+          description: OK
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: Get GitHub issue template
+      tags:
+        - Issues
   /api/issues/{id}:
     delete:
       operationId: resolve-issue
@@ -3075,8 +3222,8 @@ paths:
     put:
       operationId: put-api-restart
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "204":
           description: No Content
@@ -3196,8 +3343,8 @@ paths:
     get:
       operationId: get-api-samba-status
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -3638,8 +3785,8 @@ paths:
               - world
             maxLength: 30
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3692,8 +3839,8 @@ paths:
               - world
             maxLength: 128
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json-patch+json:
@@ -3841,8 +3988,8 @@ paths:
               - world
             maxLength: 128
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -4306,8 +4453,8 @@ paths:
     get:
       operationId: list-api-telemetry-modes
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -4595,8 +4742,8 @@ paths:
               - world
             maxLength: 30
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -4753,8 +4900,8 @@ paths:
             default: false
             description: Force umount operation
             type: boolean
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "204":
           description: No Content
@@ -4792,8 +4939,8 @@ paths:
     post:
       operationId: post-api-volume-mount
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -4841,8 +4988,8 @@ paths:
     patch:
       operationId: patch-api-volume-settings
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -4890,8 +5037,8 @@ paths:
     get:
       operationId: list-api-volumes
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:

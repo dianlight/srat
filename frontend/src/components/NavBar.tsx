@@ -82,6 +82,7 @@ import { useGetServerEventsQuery } from "../store/sseApi";
 import { get } from "react-hook-form";
 import { getCurrentEnv } from "../macro/Environment" with { type: 'macro' };
 import { useUpdate } from "../hooks/updateHook";
+import { useIssueTemplate } from "../hooks/useIssueTemplate";
 
 // Define tab configurations
 interface TabConfig {
@@ -262,6 +263,10 @@ export function NavBar(props: {
 	const matches = useMediaQuery(theme.breakpoints.up("sm"));
 	const [anchorElNav, setAnchorElNav] = useState<null | HTMLElement>(null);
 	const [reportIssueOpen, setReportIssueOpen] = useState(false);
+	const [githubMenuAnchor, setGithubMenuAnchor] = useState<null | HTMLElement>(null);
+	
+	// Fetch issue template at startup
+	const { isAvailable: issueTemplateAvailable } = useIssueTemplate();
 
 	// Track last 3 SSE messages for debug display
 	interface SSEMessage {
@@ -686,24 +691,46 @@ export function NavBar(props: {
 								</Tooltip>
 							</IconButton>
 							<IconButton
+								sx={{ display: { xs: "none", sm: "inline-flex" } }}
 								size="small"
-								onClick={() => setReportIssueOpen(true)}
+								onClick={(e) => {
+									if (issueTemplateAvailable) {
+										// If both actions are available, open menu
+										setGithubMenuAnchor(e.currentTarget);
+									} else {
+										// If only "View on GitHub" is available, execute directly
+										window.open(pkg.repository.url);
+									}
+								}}
 							>
-								<Tooltip title="Report Issue on GitHub" arrow>
+								<Tooltip title={issueTemplateAvailable ? "GitHub Menu" : "View on GitHub"} arrow>
 									<GitHubIcon sx={{ color: "white" }} />
 								</Tooltip>
 							</IconButton>
-							<IconButton
-								sx={{ display: { xs: "none", sm: "inline-flex" } }}
-								size="small"
-								onClick={() => {
-									window.open(pkg.repository.url);
-								}}
+							<Menu
+								anchorEl={githubMenuAnchor}
+								open={Boolean(githubMenuAnchor)}
+								onClose={() => setGithubMenuAnchor(null)}
 							>
-								<Tooltip title="View on GitHub" arrow>
-									<img src={github} style={{ height: "20px" }} />
-								</Tooltip>
-							</IconButton>
+								{issueTemplateAvailable && (
+									<MenuItem
+										onClick={() => {
+											setReportIssueOpen(true);
+											setGithubMenuAnchor(null);
+										}}
+									>
+										Report Issue
+									</MenuItem>
+								)}
+								<MenuItem
+									onClick={() => {
+										window.open(pkg.repository.url);
+										setGithubMenuAnchor(null);
+									}}
+								>
+									View on GitHub
+								</MenuItem>
+							</Menu>
 							<DonationButton />
 							<NotificationCenter />
 						</Box>

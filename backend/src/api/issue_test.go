@@ -42,6 +42,7 @@ func (suite *IssueHandlerSuite) SetupTest() {
 			api.NewIssueAPI,
 			mock.Mock[service.IssueServiceInterface],
 			mock.Mock[service.IssueReportServiceInterface],
+			mock.Mock[service.IssueTemplateServiceInterface],
 		),
 		fx.Populate(&suite.handler),
 		fx.Populate(&suite.mockIssueSvc),

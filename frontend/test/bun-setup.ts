@@ -24,10 +24,11 @@ let server: ReturnType<typeof setupServer> | null = null;
  */
 beforeAll(async () => {
 	// Dynamic import to avoid loading store modules before globals are set up
-	const { generatedHandlers } = await import("../src/mocks/generatedHandlers");
+	const { handlers: generatedHandlers } = await import("../src/mocks/handlers");
+	const { customHandlers } = await import("../src/mocks/customHandlers");
 	const { streamingHandlers } = await import("../src/mocks/streamingHandlers");
 	
-	const handlers = [...generatedHandlers, ...streamingHandlers];
+	const handlers = [...generatedHandlers, ...streamingHandlers, ...customHandlers];
 	server = setupServer(...handlers);
 	
 	server.listen({
