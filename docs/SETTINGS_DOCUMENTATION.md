@@ -20,6 +20,7 @@
     - [Telemetry Mode](#telemetry-mode)
   - [Home Assistant Settings](#home-assistant-settings)
     - [Export Stats to Home Assistant](#export-stats-to-home-assistant)
+    - [Use NFS for Home Assistant Integration (Experimental)](#use-nfs-for-home-assistant-integration-experimental)
   - [Implementation Details](#implementation-details)
     - [Template Generation](#template-generation)
     - [Backend Storage](#backend-storage)
@@ -142,6 +143,26 @@ This document provides detailed information about all SRAT settings available in
 - **Type**: Boolean
 - **Default**: `true`
 - **Description**: When enabled, exports share statistics and Samba server statistics to Home Assistant as entities
+
+### Use NFS for Home Assistant Integration (Experimental)
+
+- **Type**: Boolean
+- **Default**: `false`
+- **Status**: ⚠️ **Experimental Feature**
+- **Description**: When enabled, Home Assistant will mount shares using NFS protocol instead of SMB/CIFS. This can provide better performance and efficiency for Home Assistant integrations.
+- **Requirements**: 
+  - NFS server must be properly configured on the system
+  - Network File System support must be available in Home Assistant
+- **Benefits**:
+  - Potentially better performance compared to SMB/CIFS
+  - Lower overhead for Home Assistant operations
+  - Native Linux protocol for file sharing
+- **Considerations**:
+  - This is an experimental feature and may have compatibility issues
+  - Ensure your Home Assistant setup supports NFS mounts
+  - Test thoroughly before using in production environments
+- **UI Location**: Settings → HomeAssistant → Use NFS for HA
+- **API Field**: `ha_use_nfs` (boolean)
 
 ## Implementation Details
 
