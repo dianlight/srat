@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/dianlight/srat/config"
+	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/repository"
@@ -331,4 +332,27 @@ func (suite *SettingServiceSuite) TestSetValue_WorksWithPointerTypes() {
 
 	suite.NoError(err)
 	mock.Verify(suite.propertyRepo, matchers.Times(1)).SetValue("local_master", &falseVal)
+}
+
+// TestUpdateSettings_HAUseNFS_DisablesWhenNFSNotAvailable tests that HAUseNFS is forced to false
+// when the exportfs command is not available on the system
+func (suite *SettingServiceSuite) TestUpdateSettings_HAUseNFS_DisablesWhenNFSNotAvailable() {
+// Setup: Create a settings object with HAUseNFS set to true
+trueVal := true
+testSettings := dto.Settings{
+HAUseNFS: &trueVal,
+}
+
+// Mock the repository to return empty properties
+emptyProps := make(dbom.Properties)
+mock.When(suite.propertyRepo.All(true)).ThenReturn(emptyProps, nil)
+mock.When(suite.propertyRepo.SaveAll(mock.Any[*dbom.Properties]())).ThenReturn(nil)
+
+// Execute UpdateSettings - this should check for exportfs and force HAUseNFS to false
+err := suite.settingService.UpdateSettings(&testSettings)
+
+suite.NoError(err)
+// Verify that HAUseNFS was set to false because exportfs is not available
+suite.NotNil(testSettings.HAUseNFS)
+suite.False(*testSettings.HAUseNFS, "HAUseNFS should be forced to false when exportfs command is not available")
 }

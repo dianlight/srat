@@ -2,6 +2,7 @@ package service
 
 import (
 	"log/slog"
+	"os/exec"
 	"reflect"
 	"strings"
 
@@ -78,6 +79,16 @@ func (s *settingService) Load() (setting *dto.Settings, err errors.E) {
 }
 
 func (self *settingService) UpdateSettings(setting *dto.Settings) errors.E {
+	// Validate HAUseNFS setting - NFS must be available if enabled
+	if setting.HAUseNFS != nil && *setting.HAUseNFS {
+		if _, err := exec.LookPath("exportfs"); err != nil {
+			// NFS is not available, force the setting to false
+			slog.Warn("NFS is not available on this system (exportfs command not found). Setting ha_use_nfs to false.")
+			falseVal := false
+			setting.HAUseNFS = &falseVal
+		}
+	}
+
 	dbconfig, err := self.repo.All(true)
 	if err != nil {
 		return errors.WithStack(err)
