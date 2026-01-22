@@ -41,10 +41,14 @@ export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
 	const formContext = useForm<IssueReportRequest>({
 		defaultValues: {
 			problem_type: Problem_type.FrontendUi,
+			title: "",
 			description: "",
+			reproducing_steps: "",
 			include_context_data: true,
 			include_addon_logs: false,
+			include_addon_config: false,
 			include_srat_config: false,
+			include_database_dump: false,
 		},
 	});
 	const dispatch = useAppDispatch();
