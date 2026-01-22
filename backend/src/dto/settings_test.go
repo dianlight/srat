@@ -10,6 +10,7 @@ import (
 func TestSettings_AllFields(t *testing.T) {
 	localMaster := true
 	exportStats := true
+	haUseNFS := false
 	smbOverQUIC := false
 
 	settings := dto.Settings{
@@ -25,6 +26,7 @@ func TestSettings_AllFields(t *testing.T) {
 		TelemetryMode:     dto.TelemetryModes.TELEMETRYMODEERRORS,
 		LocalMaster:       &localMaster,
 		ExportStatsToHA:   &exportStats,
+		HAUseNFS:          &haUseNFS,
 		SMBoverQUIC:       &smbOverQUIC,
 	}
 
@@ -45,6 +47,8 @@ func TestSettings_AllFields(t *testing.T) {
 	assert.True(t, *settings.LocalMaster)
 	assert.NotNil(t, settings.ExportStatsToHA)
 	assert.True(t, *settings.ExportStatsToHA)
+	assert.NotNil(t, settings.HAUseNFS)
+	assert.False(t, *settings.HAUseNFS)
 	assert.NotNil(t, settings.SMBoverQUIC)
 	assert.False(t, *settings.SMBoverQUIC)
 }
@@ -63,6 +67,7 @@ func TestSettings_ZeroValues(t *testing.T) {
 	assert.False(t, settings.MultiChannel)
 	assert.Nil(t, settings.LocalMaster)
 	assert.Nil(t, settings.ExportStatsToHA)
+	assert.Nil(t, settings.HAUseNFS)
 	assert.Nil(t, settings.SMBoverQUIC)
 }
 
@@ -109,10 +114,12 @@ func TestSettings_BooleanPointers(t *testing.T) {
 	settings := dto.Settings{
 		LocalMaster:     &trueVal,
 		ExportStatsToHA: &falseVal,
+		HAUseNFS:        &trueVal,
 		SMBoverQUIC:     &trueVal,
 	}
 
 	assert.True(t, *settings.LocalMaster)
 	assert.False(t, *settings.ExportStatsToHA)
+	assert.True(t, *settings.HAUseNFS)
 	assert.True(t, *settings.SMBoverQUIC)
 }

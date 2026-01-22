@@ -101,7 +101,7 @@ const categories: { [key: string]: { [key: string]: string[] } | string[] } = {
 	},
 	//'Update': ['update_channel'],
 	'Telemetry': ['telemetry_mode'],
-	'HomeAssistant': ['export_stats_to_ha'],
+	'HomeAssistant': ['export_stats_to_ha', 'ha_use_nfs'],
 };
 const beta_categories: { [key: string]: { [key: string]: string[] } | string[] } = {
 	// TODO: Enable when HDIdle feature is ready
@@ -396,6 +396,43 @@ export function Settings() {
 								sx={{ display: "flex" }}
 								name="export_stats_to_ha"
 								label="Export Stats to HA"
+								labelPlacement="start"
+								{...commonProps}
+							/>
+						</span>
+					</Tooltip>
+				);
+
+			case 'ha_use_nfs':
+				return (
+					<Tooltip
+						title={
+							<>
+								<Typography variant="h6" component="div">
+									Use NFS for Home Assistant Integration (Experimental)
+								</Typography>
+								<Typography variant="body2">
+									If enabled, Home Assistant will mount shares using NFS instead of SMB/CIFS. This can be more efficient but is currently experimental.
+								</Typography>
+							</>
+						}
+					>
+						<span style={{ display: "inline-block", width: "100%" }}>
+							<SwitchElement
+								switchProps={{
+									"aria-label": "Use NFS for HA",
+									size: "small",
+								}}
+								sx={{ display: "flex" }}
+								name="ha_use_nfs"
+								label={
+									<>
+										Use NFS for HA{" "}
+										<Typography component="span" variant="caption" sx={{ color: 'warning.main', ml: 1 }}>
+											(Experimental)
+										</Typography>
+									</>
+								}
 								labelPlacement="start"
 								{...commonProps}
 							/>

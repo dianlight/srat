@@ -15,6 +15,7 @@ type Settings struct {
 	TelemetryMode                 TelemetryMode `json:"telemetry_mode,omitempty" enum:"Ask,All,Errors,Disabled"`
 	LocalMaster                   *bool         `json:"local_master,omitempty" default:"true"`
 	ExportStatsToHA               *bool         `json:"export_stats_to_ha,omitempty" default:"true"`
+	HAUseNFS                      *bool         `json:"ha_use_nfs,omitempty" default:"false"`
 	SMBoverQUIC                   *bool         `json:"smb_over_quic,omitempty" default:"true"`
 	HDIdleEnabled                 *bool         `json:"hdidle_enabled,omitempty" default:"false"`
 	HDIdleDefaultIdleTime         int           `json:"hdidle_default_idle_time,omitempty"` // seconds

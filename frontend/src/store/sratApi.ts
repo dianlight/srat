@@ -1232,6 +1232,7 @@ export type Settings = {
   bind_all_interfaces?: boolean;
   compatibility_mode?: boolean;
   export_stats_to_ha?: boolean;
+  ha_use_nfs?: boolean;
   hdidle_default_command_type?: Hdidle_default_command_type;
   hdidle_default_idle_time?: number;
   hdidle_default_power_condition?: number;
