@@ -35,6 +35,7 @@ type SambaServiceInterface interface {
 	RestartSambaService(ctx context.Context) errors.E
 	TestSambaConfig(ctx context.Context) errors.E
 	WriteAndRestartSambaConfig(ctx context.Context) errors.E
+	WriteAndRestartNFSConfig(ctx context.Context) errors.E
 }
 
 type SambaServiceProcessStatus interface {
@@ -115,6 +116,16 @@ var (
 			SoftResetCommand:     []string{"s6-svc", "-r", "/run/s6-rc/servicedirs/wsddn"},
 			HardResetCommand:     []string{"s6-svc", "-r", "/run/s6-rc/servicedirs/wsddn"},
 			StopCommand:          []string{"s6-svc", "-d", "/run/s6-rc/servicedirs/wsddn"},
+			Managed:              true,
+		},
+		"nfsd": {
+			Name:                 "nfsd",
+			SoftResetServiceMask: dto.DataDirtyTracker{Users: false, Settings: false, Shares: true},
+			HardResetServiceMask: dto.DataDirtyTracker{Users: false, Settings: true, Shares: false},
+			StartCommand:         []string{"s6-svc", "-uwU", "/etc/s6-overlay/s6-rc.d/nfsd"},
+			SoftResetCommand:     []string{"exportfs", "-ra"},
+			HardResetCommand:     []string{"s6-svc", "-rwR", "/etc/s6-overlay/s6-rc.d/nfsd"},
+			StopCommand:          []string{"s6-svc", "-dwd", "/etc/s6-overlay/s6-rc.d/nfsd"},
 			Managed:              true,
 		},
 		"srat-server": {
@@ -395,6 +406,11 @@ func (self *SambaService) WriteAndRestartSambaConfig(ctx context.Context) errors
 	return self.writeAndRestartSambaConfig(ctx, defaultDirtyMask)
 }
 
+// WriteAndRestartNFSConfig writes NFS exports configuration and restarts NFS service using the default dirty mask.
+func (self *SambaService) WriteAndRestartNFSConfig(ctx context.Context) errors.E {
+	return self.writeAndRestartNFSConfig(ctx, defaultDirtyMask)
+}
+
 func (self *SambaService) writeSambaConfig(ctx context.Context) errors.E {
 	tlog.TraceContext(ctx, "Writing Samba configuration file", "file", self.state.SambaConfigFile)
 	stream, errE := self.CreateConfigStream()
@@ -521,3 +537,71 @@ func (self *SambaService) writeAndRestartSambaConfig(ctx context.Context, dirty 
 	}
 	return nil
 }
+
+// writeAndRestartNFSConfig writes NFS exports configuration and restarts NFS service
+func (self *SambaService) writeAndRestartNFSConfig(ctx context.Context, dirty dto.DataDirtyTracker) errors.E {
+	err := self.writeNFSConfig(ctx)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	err = self.restartNFSService(ctx, dirty)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+// writeNFSConfig writes the NFS exports configuration to /etc/exports
+func (self *SambaService) writeNFSConfig(ctx context.Context) errors.E {
+	nfsExportsFile := "/etc/exports"
+	tlog.TraceContext(ctx, "Writing NFS exports configuration file", "file", nfsExportsFile)
+	
+	// TODO: Generate NFS exports configuration based on shares
+	// For now, create an empty exports file or maintain existing content
+	// This will be expanded when NFS share configuration is implemented
+	
+	// Create or touch the exports file to ensure it exists
+	file, err := os.OpenFile(nfsExportsFile, os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	defer file.Close()
+	
+	return nil
+}
+
+// restartNFSService restarts/reloads NFS services based on the dirty mask
+func (self *SambaService) restartNFSService(ctx context.Context, dirty dto.DataDirtyTracker) errors.E {
+	tlog.TraceContext(ctx, "Restarting NFS service", "dirty", dirty)
+	
+	processConfig, exists := serviceConfigMap["nfsd"]
+	if !exists {
+		return errors.New("NFS service configuration not found in serviceConfigMap")
+	}
+	
+	// Determine if we need soft or hard reset based on dirty mask
+	needsHardReset := (dirty.Settings && processConfig.HardResetServiceMask.Settings) ||
+		(dirty.Users && processConfig.HardResetServiceMask.Users) ||
+		(dirty.Shares && processConfig.HardResetServiceMask.Shares)
+	
+	needsSoftReset := (dirty.Settings && processConfig.SoftResetServiceMask.Settings) ||
+		(dirty.Users && processConfig.SoftResetServiceMask.Users) ||
+		(dirty.Shares && processConfig.SoftResetServiceMask.Shares)
+	
+	if needsHardReset && len(processConfig.HardResetCommand) > 0 {
+		tlog.InfoContext(ctx, "Performing hard reset of NFS service", "process", "nfsd")
+		cmdHardRestart := exec.CommandContext(ctx, processConfig.HardResetCommand[0], processConfig.HardResetCommand[1:]...)
+		if err := cmdHardRestart.Run(); err != nil {
+			return errors.Wrapf(err, "failed to hard reset NFS service")
+		}
+	} else if needsSoftReset && len(processConfig.SoftResetCommand) > 0 {
+		tlog.InfoContext(ctx, "Performing soft reset of NFS service", "process", "nfsd")
+		cmdSoftRestart := exec.CommandContext(ctx, processConfig.SoftResetCommand[0], processConfig.SoftResetCommand[1:]...)
+		if err := cmdSoftRestart.Run(); err != nil {
+			return errors.Wrapf(err, "failed to soft reset NFS service")
+		}
+	}
+	
+	return nil
+}
+
