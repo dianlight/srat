@@ -78,7 +78,9 @@ func (s *settingService) Load() (setting *dto.Settings, err errors.E) {
 	return set, nil
 }
 
-func (self *settingService) UpdateSettings(setting *dto.Settings) errors.E {
+// ValidateSettings validates and potentially modifies settings based on system capabilities and constraints.
+// This is the central point for all settings validation logic.
+func (self *settingService) ValidateSettings(setting *dto.Settings) {
 	// Validate HAUseNFS setting - NFS must be available if enabled
 	if setting.HAUseNFS != nil && *setting.HAUseNFS {
 		if _, err := exec.LookPath("exportfs"); err != nil {
@@ -88,6 +90,11 @@ func (self *settingService) UpdateSettings(setting *dto.Settings) errors.E {
 			setting.HAUseNFS = &falseVal
 		}
 	}
+}
+
+func (self *settingService) UpdateSettings(setting *dto.Settings) errors.E {
+	// Validate settings before saving
+	self.ValidateSettings(setting)
 
 	dbconfig, err := self.repo.All(true)
 	if err != nil {
