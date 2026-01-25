@@ -162,6 +162,7 @@ require (
 )
 
 require (
+	github.com/creasty/defaults v1.8.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/lmittmann/tint v1.1.2 // indirect
 	github.com/ovechkin-dm/mockio/v2 v2.0.4
