@@ -198,7 +198,7 @@
   "github.copilot.chat.tools.memory.enabled": true,
   "github.copilot.nextEditSuggestions.allowWhitespaceOnlyChanges": false,
   "editor.inlineSuggest.edits.allowCodeShifting": "horizontal",
-  "editor.inlineSuggest.edits.showCollapsed": true,
+  "editor.inlineSuggest.edits.showCollapsed": false,
   "git.blame.ignoreWhitespace": true,
   "bun.test.customScript": "bun run test",
   "npm.packageManager": "bun",

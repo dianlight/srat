@@ -3,8 +3,10 @@ package dto_test
 import (
 	"testing"
 
+	"github.com/creasty/defaults"
 	"github.com/dianlight/srat/dto"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSettings_AllFields(t *testing.T) {
@@ -14,33 +16,33 @@ func TestSettings_AllFields(t *testing.T) {
 	smbOverQUIC := false
 
 	settings := dto.Settings{
-		Hostname:          "test-host",
-		Workgroup:         "WORKGROUP",
-		Mountoptions:      []string{"rw", "sync"},
+		Hostname:  "test-host",
+		Workgroup: "WORKGROUP",
+		//	Mountoptions:      []string{"rw", "sync"},
 		AllowHost:         []string{"192.168.1.0/24", "10.0.0.0/8"},
 		CompatibilityMode: true,
 		Interfaces:        []string{"eth0", "wlan0"},
 		BindAllInterfaces: false,
-		LogLevel:          "info",
-		MultiChannel:      true,
-		TelemetryMode:     dto.TelemetryModes.TELEMETRYMODEERRORS,
-		LocalMaster:       &localMaster,
-		ExportStatsToHA:   &exportStats,
-		HAUseNFS:          &haUseNFS,
-		SMBoverQUIC:       &smbOverQUIC,
+		//	LogLevel:          "info",
+		MultiChannel:    true,
+		TelemetryMode:   dto.TelemetryModes.TELEMETRYMODEERRORS,
+		LocalMaster:     &localMaster,
+		ExportStatsToHA: &exportStats,
+		HAUseNFS:        &haUseNFS,
+		SMBoverQUIC:     &smbOverQUIC,
 	}
 
 	assert.Equal(t, "test-host", settings.Hostname)
 	assert.Equal(t, "WORKGROUP", settings.Workgroup)
-	assert.Len(t, settings.Mountoptions, 2)
-	assert.Contains(t, settings.Mountoptions, "rw")
-	assert.Contains(t, settings.Mountoptions, "sync")
+	//	assert.Len(t, settings.Mountoptions, 2)
+	//	assert.Contains(t, settings.Mountoptions, "rw")
+	//	assert.Contains(t, settings.Mountoptions, "sync")
 	assert.Len(t, settings.AllowHost, 2)
 	assert.Contains(t, settings.AllowHost, "192.168.1.0/24")
 	assert.True(t, settings.CompatibilityMode)
 	assert.Len(t, settings.Interfaces, 2)
 	assert.False(t, settings.BindAllInterfaces)
-	assert.Equal(t, "info", settings.LogLevel)
+	//	assert.Equal(t, "info", settings.LogLevel)
 	assert.True(t, settings.MultiChannel)
 	assert.Equal(t, dto.TelemetryModes.TELEMETRYMODEERRORS, settings.TelemetryMode)
 	assert.NotNil(t, settings.LocalMaster)
@@ -58,12 +60,12 @@ func TestSettings_ZeroValues(t *testing.T) {
 
 	assert.Empty(t, settings.Hostname)
 	assert.Empty(t, settings.Workgroup)
-	assert.Nil(t, settings.Mountoptions)
+	//	assert.Nil(t, settings.Mountoptions)
 	assert.Nil(t, settings.AllowHost)
 	assert.False(t, settings.CompatibilityMode)
 	assert.Nil(t, settings.Interfaces)
 	assert.False(t, settings.BindAllInterfaces)
-	assert.Empty(t, settings.LogLevel)
+	//assert.Empty(t, settings.LogLevel)
 	assert.False(t, settings.MultiChannel)
 	assert.Nil(t, settings.LocalMaster)
 	assert.Nil(t, settings.ExportStatsToHA)
@@ -94,13 +96,13 @@ func TestSettings_TelemetryModes(t *testing.T) {
 
 func TestSettings_EmptySlices(t *testing.T) {
 	settings := dto.Settings{
-		Mountoptions: []string{},
-		AllowHost:    []string{},
-		Interfaces:   []string{},
+		//	Mountoptions: []string{},
+		AllowHost:  []string{},
+		Interfaces: []string{},
 	}
 
-	assert.NotNil(t, settings.Mountoptions)
-	assert.Empty(t, settings.Mountoptions)
+	//assert.NotNil(t, settings.Mountoptions)
+	//assert.Empty(t, settings.Mountoptions)
 	assert.NotNil(t, settings.AllowHost)
 	assert.Empty(t, settings.AllowHost)
 	assert.NotNil(t, settings.Interfaces)
@@ -122,4 +124,32 @@ func TestSettings_BooleanPointers(t *testing.T) {
 	assert.False(t, *settings.ExportStatsToHA)
 	assert.True(t, *settings.HAUseNFS)
 	assert.True(t, *settings.SMBoverQUIC)
+}
+
+func TestSettings_DefaultValues(t *testing.T) {
+	settings := dto.Settings{}
+
+	err := defaults.Set(&settings)
+	require.NoError(t, err)
+
+	assert.Equal(t, "homeassistant", settings.Hostname)
+	assert.Equal(t, "WORKGROUP", settings.Workgroup)
+	//	assert.Nil(t, settings.Mountoptions) // No default
+	assert.NotNil(t, settings.AllowHost)
+	assert.Equal(t, []string{"10.0.0.0/8", "100.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "169.254.0.0/16", "fe80::/10", "fc00::/7"}, settings.AllowHost)
+	assert.False(t, settings.CompatibilityMode)
+	assert.NotNil(t, settings.Interfaces)
+	assert.Empty(t, settings.Interfaces)
+	assert.True(t, settings.BindAllInterfaces)
+	//	assert.Empty(t, settings.LogLevel) // No default
+	assert.True(t, settings.MultiChannel)
+	assert.Equal(t, dto.TelemetryModes.TELEMETRYMODEASK, settings.TelemetryMode)
+	assert.NotNil(t, settings.LocalMaster)
+	assert.True(t, *settings.LocalMaster)
+	assert.NotNil(t, settings.ExportStatsToHA)
+	assert.False(t, *settings.ExportStatsToHA)
+	assert.NotNil(t, settings.HAUseNFS)
+	assert.False(t, *settings.HAUseNFS)
+	assert.NotNil(t, settings.SMBoverQUIC)
+	assert.False(t, *settings.SMBoverQUIC)
 }

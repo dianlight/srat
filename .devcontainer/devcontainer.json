@@ -101,7 +101,8 @@
 				"TypeScriptTeam.native-preview",
 				"nguyenngoclong.terminal-keeper",
 				"DavidAnson.vscode-markdownlint",
-				"neonxp.gotools"
+				"neonxp.gotools",
+				"svvashishtha.go-interface-navigator"
 			],
 			"mcp": {
 				"servers": {

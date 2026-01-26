@@ -3,7 +3,6 @@ package api_test
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"net/http"
 	"os"
 	"sync"
@@ -12,13 +11,10 @@ import (
 	"github.com/danielgtaylor/huma/v2/autopatch"
 	"github.com/danielgtaylor/huma/v2/humatest"
 	"github.com/dianlight/srat/api"
-	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
-	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
-	"github.com/dianlight/srat/templates"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
@@ -28,11 +24,12 @@ import (
 
 type SettingsHandlerSuite struct {
 	suite.Suite
-	dirtyService           service.DirtyDataServiceInterface
-	mockPropertyRepository repository.PropertyRepositoryInterface
-	api                    *api.SettingsHanler
-	config                 config.Config
+	dirtyService service.DirtyDataServiceInterface
+	//db           *gorm.DB
+	api *api.SettingsHanler
+	//config                 config.Config
 	//
+
 	ctx    context.Context
 	cancel context.CancelFunc
 	app    *fxtest.App
@@ -47,27 +44,31 @@ func (suite *SettingsHandlerSuite) SetupTest() {
 			func() (context.Context, context.CancelFunc) {
 				return context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
 			},
-			func() *config.DefaultConfig {
-				var nconfig config.Config
-				buffer, err := templates.Default_Config_content.ReadFile("default_config.json")
-				if err != nil {
-					log.Fatalf("Cant read default config file %#+v", err)
-				}
-				err = nconfig.LoadConfigBuffer(buffer) // Assign to existing err
-				if err != nil {
-					log.Fatalf("Cant load default config from buffer %#+v", err)
-				}
-				return &config.DefaultConfig{Config: nconfig}
-			},
+			/*
+				func() *config.DefaultConfig {
+					var nconfig config.Config
+					buffer, err := templates.Default_Config_content.ReadFile("default_config.json")
+					if err != nil {
+						log.Fatalf("Cant read default config file %#+v", err)
+					}
+					err = nconfig.LoadConfigBuffer(buffer) // Assign to existing err
+					if err != nil {
+						log.Fatalf("Cant load default config from buffer %#+v", err)
+					}
+					return &config.DefaultConfig{Config: nconfig}
+				},
+			*/
+			dbom.NewDB,
 			api.NewSettingsHanler,
 			service.NewDirtyDataService,
 			service.NewSettingService,
 			events.NewEventBus,
+			//repository.NewPropertyRepositoryRepository,
 			mock.Mock[service.TelemetryServiceInterface],
 			//			mock.Mock[service.BroadcasterServiceInterface],
 			//			mock.Mock[service.SambaServiceInterface],
 			//mock.Mock[service.DirtyDataServiceInterface],
-			mock.Mock[repository.PropertyRepositoryInterface],
+			//mock.Mock[repository.PropertyRepositoryInterface],
 
 			func() *dto.ContextState {
 				sharedResources := dto.ContextState{}
@@ -80,76 +81,81 @@ func (suite *SettingsHandlerSuite) SetupTest() {
 				if err != nil {
 					suite.T().Errorf("Cant read template file %s", err)
 				}
+				sharedResources.DatabasePath = "file::memory:?cache=shared&_pragma=foreign_keys(1)"
 
 				return &sharedResources
 			},
-			func() config.Config {
-				err := suite.config.LoadConfig("../../test/data/config.json")
-				if err != nil {
-					suite.T().Errorf("Cant read config file %s", err)
-				}
-				return suite.config
-			},
+			/*
+				func() config.Config {
+					err := suite.config.LoadConfig("../../test/data/config.json")
+					if err != nil {
+						suite.T().Errorf("Cant read config file %s", err)
+					}
+					return suite.config
+				},
+			*/
 		),
-		fx.Populate(&suite.mockPropertyRepository),
+		//fx.Populate(&suite.propertyRepository),
 		fx.Populate(&suite.dirtyService),
-		fx.Populate(&suite.config),
+		//fx.Populate(&suite.config),
 		fx.Populate(&suite.ctx),
 		fx.Populate(&suite.cancel),
 		fx.Populate(&suite.api),
 	)
 	suite.app.RequireStart()
-
-	mock.When(suite.mockPropertyRepository.All(mock.Any[bool]())).ThenReturn(dbom.Properties{
-		"Hostname": dbom.Property{
-			Key:   "Hostname",
-			Value: suite.config.Hostname,
-		},
-		"Workgroup": dbom.Property{
-			Key:   "Workgroup",
-			Value: suite.config.Workgroup,
-		},
-		"Mountoptions": dbom.Property{
-			Key:   "Mountoptions",
-			Value: suite.config.Mountoptions,
-		},
-		"AllowHost": dbom.Property{
-			Key:   "AllowHost",
-			Value: suite.config.AllowHost,
-		},
-		"VetoFiles": dbom.Property{
-			Key:   "VetoFiles",
-			Value: suite.config.VetoFiles,
-		},
-		"Interfaces": dbom.Property{
-			Key:   "Interfaces",
-			Value: suite.config.Interfaces,
-		},
-		"BindAllInterfaces": dbom.Property{
-			Key:   "BindAllInterfaces",
-			Value: suite.config.BindAllInterfaces,
-		},
-		"UpdateChannel": dbom.Property{
-			Key:   "UpdateChannel",
-			Value: suite.config.UpdateChannel,
-		},
-		"WSDD": dbom.Property{
-			Key:   "WSDD",
-			Value: "none",
-		},
-		"LocalMaster": dbom.Property{
-			Key:   "LocalMaster",
-			Value: suite.config.LocalMaster,
-		},
-	}, nil)
-
+	/*
+		mock.When(suite.mockPropertyRepository.All()).ThenReturn(dbom.Properties{
+			"Hostname": dbom.Property{
+				Key:   "Hostname",
+				Value: suite.config.Hostname,
+			},
+			"Workgroup": dbom.Property{
+				Key:   "Workgroup",
+				Value: suite.config.Workgroup,
+			},
+			"Mountoptions": dbom.Property{
+				Key:   "Mountoptions",
+				Value: suite.config.Mountoptions,
+			},
+			"AllowHost": dbom.Property{
+				Key:   "AllowHost",
+				Value: suite.config.AllowHost,
+			},
+			"VetoFiles": dbom.Property{
+				Key:   "VetoFiles",
+				Value: suite.config.VetoFiles,
+			},
+			"Interfaces": dbom.Property{
+				Key:   "Interfaces",
+				Value: suite.config.Interfaces,
+			},
+			"BindAllInterfaces": dbom.Property{
+				Key:   "BindAllInterfaces",
+				Value: suite.config.BindAllInterfaces,
+			},
+			"UpdateChannel": dbom.Property{
+				Key:   "UpdateChannel",
+				Value: suite.config.UpdateChannel,
+			},
+			"WSDD": dbom.Property{
+				Key:   "WSDD",
+				Value: "none",
+			},
+			"LocalMaster": dbom.Property{
+				Key:   "LocalMaster",
+				Value: suite.config.LocalMaster,
+			},
+		}, nil)
+	*/
 }
 
 // TearDownSuite runs once after all tests in the suite have finished
 func (suite *SettingsHandlerSuite) TearDownTest() {
 	suite.cancel()
 	suite.ctx.Value("wg").(*sync.WaitGroup).Wait()
-	suite.app.RequireStop()
+	if suite.app != nil {
+		suite.app.RequireStop()
+	}
 }
 
 func TestSettingsHandlerSuite(t *testing.T) {
@@ -199,10 +205,12 @@ func (suite *SettingsHandlerSuite) TestUpdateSettingsHandler() {
 	suite.True(suite.dirtyService.GetDirtyDataTracker().Settings)
 
 	// Restore original state
-	_, err = suite.mockPropertyRepository.All(false)
-	if err != nil {
-		suite.T().Fatalf("Failed to load properties: %v", err)
-	}
+	/*
+		_, err = suite.mockPropertyRepository.All()
+		if err != nil {
+			suite.T().Fatalf("Failed to load properties: %v", err)
+		}
+	*/
 }
 
 func (suite *SettingsHandlerSuite) TestUpdateSettingsHandlerWithAllowGuest() {
@@ -230,10 +238,12 @@ func (suite *SettingsHandlerSuite) TestUpdateSettingsHandlerWithAllowGuest() {
 	suite.True(suite.dirtyService.GetDirtyDataTracker().Settings)
 
 	// Restore original state
-	_, err = suite.mockPropertyRepository.All(false)
-	if err != nil {
-		suite.T().Fatalf("Failed to load properties: %v", err)
-	}
+	/*
+		_, err = suite.mockPropertyRepository.All()
+		if err != nil {
+			suite.T().Fatalf("Failed to load properties: %v", err)
+		}
+	*/
 }
 
 func (suite *SettingsHandlerSuite) TestUpdateSettingsHandlerWithSMBoverQUIC() {
@@ -261,8 +271,10 @@ func (suite *SettingsHandlerSuite) TestUpdateSettingsHandlerWithSMBoverQUIC() {
 	suite.True(suite.dirtyService.GetDirtyDataTracker().Settings)
 
 	// Restore original state
-	_, err = suite.mockPropertyRepository.All(false)
-	if err != nil {
-		suite.T().Fatalf("Failed to load properties: %v", err)
-	}
+	/*
+		_, err = suite.mockPropertyRepository.All()
+		if err != nil {
+			suite.T().Fatalf("Failed to load properties: %v", err)
+		}
+	*/
 }

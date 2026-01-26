@@ -211,11 +211,11 @@ func (broker *BroadcasterService) sendToHomeAssistant(msg any) {
 		if err := broker.haService.SendSambaStatusEntity(&v); err != nil {
 			slog.WarnContext(broker.ctx, "Failed to send samba status entity to Home Assistant", "error", err)
 		}
-	case *dto.SambaProcessStatus:
+	case *dto.ServerProcessStatus:
 		if err := broker.haService.SendSambaProcessStatusEntity(v); err != nil {
 			slog.WarnContext(broker.ctx, "Failed to send samba process status entity to Home Assistant", "error", err)
 		}
-	case dto.SambaProcessStatus:
+	case dto.ServerProcessStatus:
 		if err := broker.haService.SendSambaProcessStatusEntity(&v); err != nil {
 			slog.WarnContext(broker.ctx, "Failed to send samba process status entity to Home Assistant", "error", err)
 		}
@@ -347,7 +347,7 @@ func (broker *BroadcasterService) shouldSkipClientSend(event any) bool {
 	switch event.(type) {
 	case dto.SambaStatus, *dto.SambaStatus:
 		return true
-	case dto.SambaProcessStatus, *dto.SambaProcessStatus:
+	case dto.ServerProcessStatus, *dto.ServerProcessStatus:
 		return true
 	case dto.DiskHealth, *dto.DiskHealth:
 		return true

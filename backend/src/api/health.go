@@ -26,7 +26,7 @@ type HealthHanler struct {
 	OutputEventsInterleave time.Duration
 	dto.HealthPing
 	broadcaster         service.BroadcasterServiceInterface
-	sambaService        service.SambaServiceInterface
+	sambaService        service.ServerServiceInterface
 	dirtyService        service.DirtyDataServiceInterface
 	addonsService       service.AddonsServiceInterface
 	diskStatsService    service.DiskStatsService
@@ -39,7 +39,7 @@ type HealthHandlerParams struct {
 	Ctx                context.Context
 	State              *dto.ContextState
 	Broadcaster        service.BroadcasterServiceInterface
-	SambaService       service.SambaServiceInterface
+	SambaService       service.ServerServiceInterface
 	DirtyService       service.DirtyDataServiceInterface
 	AddonsService      service.AddonsServiceInterface
 	NetworkStatService service.NetworkStatsService
@@ -119,7 +119,7 @@ func (self *HealthHanler) HealthStatusHandler(ctx context.Context, input *struct
 // If the Samba process is not running or an error occurs, it sets the
 // HealthPing.SambaProcessStatus.Pid to -1.
 func (self *HealthHanler) checkSamba() {
-	sambaProcess, err := self.sambaService.GetSambaProcess()
+	sambaProcess, err := self.sambaService.GetServerProcesses()
 	if err != nil {
 		tlog.ErrorContext(self.ctx, "Error reading processes", "err", err)
 	}

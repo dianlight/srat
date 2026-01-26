@@ -218,8 +218,8 @@ type EventBusInterface interface {
 	EmitSetting(event SettingEvent)
 	OnSetting(handler func(context.Context, SettingEvent) errors.E) func()
 	// Samba events
-	EmitSamba(event SambaEvent)
-	OnSamba(handler func(context.Context, SambaEvent) errors.E) func()
+	EmitServerProcess(event ServerProcessEvent)
+	OnServerProccess(handler func(context.Context, ServerProcessEvent) errors.E) func()
 
 	// Volume events
 	EmitVolume(event VolumeEvent)
@@ -252,7 +252,7 @@ type EventBus struct {
 	mountPoint    signals.SyncSignal[MountPointEvent]
 	user          signals.SyncSignal[UserEvent]
 	setting       signals.SyncSignal[SettingEvent]
-	samba         signals.SyncSignal[SambaEvent]
+	samba         signals.SyncSignal[ServerProcessEvent]
 	volume        signals.SyncSignal[VolumeEvent]
 	dirtyData     signals.SyncSignal[DirtyDataEvent]
 	homeAssistant signals.SyncSignal[HomeAssistantEvent]
@@ -270,7 +270,7 @@ func NewEventBus(ctx context.Context) EventBusInterface {
 		mountPoint:    *signals.NewSync[MountPointEvent](),
 		user:          *signals.NewSync[UserEvent](),
 		setting:       *signals.NewSync[SettingEvent](),
-		samba:         *signals.NewSync[SambaEvent](),
+		samba:         *signals.NewSync[ServerProcessEvent](),
 		volume:        *signals.NewSync[VolumeEvent](),
 		dirtyData:     *signals.NewSync[DirtyDataEvent](),
 		homeAssistant: *signals.NewSync[HomeAssistantEvent](),
@@ -402,11 +402,11 @@ func (eb *EventBus) OnSetting(handler func(context.Context, SettingEvent) errors
 }
 
 // Samba event methods
-func (eb *EventBus) EmitSamba(event SambaEvent) {
+func (eb *EventBus) EmitServerProcess(event ServerProcessEvent) {
 	emitEvent(eb.samba, eb.ctx, event)
 }
 
-func (eb *EventBus) OnSamba(handler func(context.Context, SambaEvent) errors.E) func() {
+func (eb *EventBus) OnServerProccess(handler func(context.Context, ServerProcessEvent) errors.E) func() {
 	return onEvent(eb.samba, "Samba", handler)
 }
 

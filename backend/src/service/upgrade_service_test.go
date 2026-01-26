@@ -33,22 +33,21 @@ import (
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal/updatekey"
-	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
 )
 
 type UpgradeServiceTestSuite struct {
 	suite.Suite
-	upgradeService   service.UpgradeServiceInterface
-	mockBroadcaster  service.BroadcasterServiceInterface
-	mockPropertyRepo repository.PropertyRepositoryInterface
-	state            *dto.ContextState
-	app              *fxtest.App
-	ctx              context.Context
-	cancel           context.CancelFunc
-	wg               *sync.WaitGroup
-	originalVersion  string
-	privateKey       minisign.PrivateKey
+	upgradeService  service.UpgradeServiceInterface
+	mockBroadcaster service.BroadcasterServiceInterface
+	//mockPropertyRepo repository.PropertyRepositoryInterface
+	state           *dto.ContextState
+	app             *fxtest.App
+	ctx             context.Context
+	cancel          context.CancelFunc
+	wg              *sync.WaitGroup
+	originalVersion string
+	privateKey      minisign.PrivateKey
 }
 
 const githubReleasesURL = "https://api.github.com/repos/dianlight/srat/releases?page=1&per_page=5"
@@ -107,7 +106,7 @@ func (suite *UpgradeServiceTestSuite) SetupTest() {
 			},
 			service.NewUpgradeService,
 			mock.Mock[service.BroadcasterServiceInterface],
-			mock.Mock[repository.PropertyRepositoryInterface],
+			//mock.Mock[repository.PropertyRepositoryInterface],
 			func() *github.Client {
 				rateLimiter := github_ratelimit.New(nil)
 				return github.NewClient(&http.Client{Transport: rateLimiter})
@@ -115,13 +114,13 @@ func (suite *UpgradeServiceTestSuite) SetupTest() {
 		),
 		fx.Populate(&suite.ctx, &suite.cancel),
 		fx.Populate(&suite.mockBroadcaster),
-		fx.Populate(&suite.mockPropertyRepo),
+		//fx.Populate(&suite.mockPropertyRepo),
 		fx.Populate(&suite.upgradeService),
 		fx.Populate(&suite.state),
 	)
 
 	// Default mocks
-	mock.When(suite.mockPropertyRepo.Value("UpdateChannel", false)).ThenReturn(&dto.UpdateChannels.RELEASE, nil)
+	//mock.When(suite.mockPropertyRepo.Value("UpdateChannel")).ThenReturn(&dto.UpdateChannels.RELEASE, nil)
 	//mock.When(suite.mockBroadcaster.BroadcastMessage(mock.Any[any]())).ThenReturn(nil, nil)
 
 	suite.app.RequireStart()
@@ -295,7 +294,7 @@ func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_AcceptPrereleas
 	expectedRelease := "2025.12.0-dev.3"
 	expectedURL := fmt.Sprintf("https://github.com/dianlight/srat/releases/download/%s/%s", expectedRelease, assetName)
 
-	mock.When(suite.mockPropertyRepo.Value("UpdateChannel", false)).ThenReturn(&dto.UpdateChannels.PRERELEASE, nil)
+	//mock.When(suite.mockPropertyRepo.Value("UpdateChannel")).ThenReturn(&dto.UpdateChannels.PRERELEASE, nil)
 
 	suite.state.UpdateChannel = dto.UpdateChannels.PRERELEASE
 	asset, err := suite.upgradeService.GetUpgradeReleaseAsset()

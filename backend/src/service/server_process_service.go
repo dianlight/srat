@@ -17,7 +17,6 @@ import (
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/homeassistant/mount"
 	"github.com/dianlight/srat/internal/osutil"
-	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/tempio"
 	"github.com/dianlight/tlog"
 	"github.com/lonegunmanb/go-defaults"
@@ -27,52 +26,51 @@ import (
 	"go.uber.org/fx"
 )
 
-type SambaServiceInterface interface {
-	CreateConfigStream() (data *[]byte, err errors.E)
-	GetSambaProcess() (*dto.SambaProcessStatus, errors.E)
+type ServerServiceInterface interface {
+	CreateSambaConfigStream() (data *[]byte, err errors.E)
+	GetServerProcesses() (*dto.ServerProcessStatus, errors.E)
 	GetSambaStatus() (*dto.SambaStatus, errors.E)
-	WriteSambaConfig(ctx context.Context) errors.E
-	RestartSambaService(ctx context.Context) errors.E
-	TestSambaConfig(ctx context.Context) errors.E
-	WriteAndRestartSambaConfig(ctx context.Context) errors.E
-	WriteAndRestartNFSConfig(ctx context.Context) errors.E
+	WriteConfigsAndRestartProcesses(ctx context.Context) errors.E
 }
 
-type SambaServiceProcessStatus interface {
+type ServerProcessStatus interface {
 	GetProcessStatus(parentPid int32) *dto.ProcessStatus
 }
 
-type SambaService struct {
-	ctx              context.Context
-	ctxCancel        context.CancelFunc
-	DockerInterface  string
-	DockerNet        string
-	state            *dto.ContextState
-	share_service    ShareServiceInterface
-	user_service     UserServiceInterface
-	prop_repo        repository.PropertyRepositoryInterface
+type ServerService struct {
+	ctx             context.Context
+	ctxCancel       context.CancelFunc
+	DockerInterface string
+	DockerNet       string
+	state           *dto.ContextState
+	share_service   ShareServiceInterface
+	user_service    UserServiceInterface
+	host_service    HostServiceInterface
+	setting_service SettingServiceInterface
+	//prop_repo        repository.PropertyRepositoryInterface
 	mount_client     mount.ClientWithResponsesInterface
 	cache            *cache.Cache
 	dbomConv         converter.DtoToDbomConverterImpl
 	hdidle_service   HDIdleServiceInterface
 	eventBus         events.EventBusInterface
-	status           dto.SambaProcessStatus
-	internalServices []SambaServiceProcessStatus
+	status           dto.ServerProcessStatus
+	internalServices []ServerProcessStatus
 }
 
-type SambaServiceParams struct {
+type ServerServiceParams struct {
 	fx.In
-	Ctx           context.Context
-	CtxCancel     context.CancelFunc
-	State         *dto.ContextState
-	Share_service ShareServiceInterface
-	User_service  UserServiceInterface
-	Prop_repo     repository.PropertyRepositoryInterface
+	Ctx             context.Context
+	CtxCancel       context.CancelFunc
+	State           *dto.ContextState
+	Share_service   ShareServiceInterface
+	User_service    UserServiceInterface
+	Host_service    HostServiceInterface
+	Setting_service SettingServiceInterface
 	//Samba_user_repo   repository.SambaUserRepositoryInterface
 	Mount_client      mount.ClientWithResponsesInterface `optional:"true"`
 	Hdidle_service    HDIdleServiceInterface
 	EventBus          events.EventBusInterface
-	InternalProcesses []SambaServiceProcessStatus `group:"internal_services"`
+	InternalProcesses []ServerProcessStatus `group:"internal_services"`
 }
 
 type serviceConfig struct {
@@ -126,7 +124,7 @@ var (
 			SoftResetCommand:     []string{"exportfs", "-ra"},
 			HardResetCommand:     []string{"s6-svc", "-rwR", "/etc/s6-overlay/s6-rc.d/nfsd"},
 			StopCommand:          []string{"s6-svc", "-dwd", "/etc/s6-overlay/s6-rc.d/nfsd"},
-			Managed:              true,
+			Managed:              false,
 		},
 		"srat-server": {
 			Name:                 "srat-server",
@@ -143,14 +141,15 @@ var (
 	defaultDirtyMask = dto.DataDirtyTracker{Shares: true, Users: true, Settings: true}
 )
 
-func NewSambaService(lc fx.Lifecycle, in SambaServiceParams) SambaServiceInterface {
-	p := &SambaService{}
+func NewServerProcessesService(lc fx.Lifecycle, in ServerServiceParams) ServerServiceInterface {
+	p := &ServerService{}
 	p.ctx = in.Ctx
 	p.ctxCancel = in.CtxCancel
 	p.state = in.State
 	p.share_service = in.Share_service
-	p.prop_repo = in.Prop_repo
+	//p.prop_repo = in.Prop_repo
 	p.user_service = in.User_service
+	p.setting_service = in.Setting_service
 
 	//p.samba_user_repo = in.Samba_user_repo
 	p.mount_client = in.Mount_client
@@ -161,14 +160,29 @@ func NewSambaService(lc fx.Lifecycle, in SambaServiceParams) SambaServiceInterfa
 	p.dbomConv = converter.DtoToDbomConverterImpl{}
 	p.hdidle_service = in.Hdidle_service
 
-	p.status = dto.SambaProcessStatus{}
+	p.status = dto.ServerProcessStatus{}
 	p.internalServices = in.InternalProcesses
 
 	var unsubscribe [1]func()
 	unsubscribe[0] = p.eventBus.OnDirtyData(func(ctx context.Context, event events.DirtyDataEvent) errors.E {
 		if event.Type == events.EventTypes.RESTART {
-			slog.InfoContext(ctx, "SambaService received RESTART event, writing and restarting Samba configuration...")
-			if err := p.writeAndRestartSambaConfig(ctx, event.DataDirtyTracker); err != nil {
+			slog.InfoContext(ctx, "ServerProcesses received RESTART event, writing and restarting Samba configuration...")
+			if event.DataDirtyTracker.Settings == true {
+				if setting, err2 := p.setting_service.Load(); err2 != nil {
+					slog.ErrorContext(ctx, "Error getting HAUseNFS setting", "error", err2)
+					return err2
+
+				} else {
+					nfsdConfig, ok := serviceConfigMap["nfsd"]
+					if !ok {
+						slog.ErrorContext(ctx, "nfsd service config not found", "service_config_map", serviceConfigMap)
+						return errors.New("nfsd service config not found")
+					}
+					nfsdConfig.Managed = *setting.HAUseNFS
+					serviceConfigMap["nfsd"] = nfsdConfig
+				}
+			}
+			if err := p.writeConfigsAndRestartServers(ctx, event.DataDirtyTracker); err != nil {
 				slog.ErrorContext(ctx, "Error writing and restarting Samba configuration", "error", err)
 				return err
 			}
@@ -178,9 +192,9 @@ func NewSambaService(lc fx.Lifecycle, in SambaServiceParams) SambaServiceInterfa
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			serviceStart := time.Now()
-			slog.InfoContext(ctx, "=== SERVICE INIT: SambaService Starting ===")
+			tlog.TraceContext(ctx, "=== SERVICE INIT: ServerProcesses Starting ===")
 			defer func() {
-				slog.InfoContext(ctx, "=== SERVICE INIT: SambaService Complete ===", "duration", time.Since(serviceStart))
+				tlog.TraceContext(ctx, "=== SERVICE INIT: ServerProcesses Complete ===", "duration", time.Since(serviceStart))
 			}()
 			return nil
 		},
@@ -212,7 +226,7 @@ func NewSambaService(lc fx.Lifecycle, in SambaServiceParams) SambaServiceInterfa
 	return p
 }
 
-func (self *SambaService) GetSambaStatus() (*dto.SambaStatus, errors.E) {
+func (self *ServerService) GetSambaStatus() (*dto.SambaStatus, errors.E) {
 	if x, found := self.cache.Get("samba_status"); found {
 		return x.(*dto.SambaStatus), nil
 	}
@@ -244,7 +258,7 @@ func (self *SambaService) GetSambaStatus() (*dto.SambaStatus, errors.E) {
 	return &status, nil
 }
 
-func (self *SambaService) CreateConfigStream() (data *[]byte, err errors.E) {
+func (self *ServerService) CreateSambaConfigStream() (data *[]byte, err errors.E) {
 	config, err := self.jSONFromDatabase()
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -265,13 +279,20 @@ func (self *SambaService) CreateConfigStream() (data *[]byte, err errors.E) {
 	return &datar, errors.WithStack(err)
 }
 
-func (self *SambaService) jSONFromDatabase() (tconfig config.Config, err errors.E) {
+func (self *ServerService) jSONFromDatabase() (tconfig config.Config, err errors.E) {
 	var conv converter.ConfigToDbomConverterImpl
 
-	properties, err := self.prop_repo.All(true)
+	settings, err := self.setting_service.Load()
 	if err != nil {
 		return tconfig, errors.WithStack(err)
 	}
+
+	properties := dbom.Properties{}
+	err = self.dbomConv.SettingsToProperties(*settings, &properties)
+	if err != nil {
+		return tconfig, errors.WithStack(err)
+	}
+
 	users, errS := self.user_service.ListUsers()
 	if errS != nil {
 		return tconfig, errors.WithStack(errS)
@@ -323,7 +344,7 @@ func (self *SambaService) jSONFromDatabase() (tconfig config.Config, err errors.
 	return tconfig, nil
 }
 
-func (self *SambaService) GetSambaProcess() (*dto.SambaProcessStatus, errors.E) {
+func (self *ServerService) GetServerProcesses() (*dto.ServerProcessStatus, errors.E) {
 	var conv converter.ProcessToDtoImpl
 	var allProcess, err = process.ProcessesWithContext(self.ctx)
 	if err != nil {
@@ -373,7 +394,7 @@ func (self *SambaService) GetSambaProcess() (*dto.SambaProcessStatus, errors.E) 
 // findChildProcesses collects virtual subprocesses from internal services (like hdidle)
 // that run as goroutines within the current process. These are not OS-level processes
 // but internal monitoring threads represented with negative PIDs.
-func (self *SambaService) findChildProcesses(parentPid int32) []*dto.ProcessStatus {
+func (self *ServerService) findChildProcesses(parentPid int32) []*dto.ProcessStatus {
 	var children []*dto.ProcessStatus
 
 	for _, service := range self.internalServices {
@@ -385,35 +406,14 @@ func (self *SambaService) findChildProcesses(parentPid int32) []*dto.ProcessStat
 	return children
 }
 
-// WriteSambaConfig writes the Samba configuration to disk using the default dirty mask.
-// Exported to satisfy SambaServiceInterface and enable API callers.
-func (self *SambaService) WriteSambaConfig(ctx context.Context) errors.E {
-	return self.writeSambaConfig(ctx)
+// WriteConfigsAndRestartProcesses writes, tests, and restarts Samba using the default dirty mask.
+func (self *ServerService) WriteConfigsAndRestartProcesses(ctx context.Context) errors.E {
+	return self.writeConfigsAndRestartServers(ctx, defaultDirtyMask)
 }
 
-// TestSambaConfig validates the Samba configuration using testparm.
-func (self *SambaService) TestSambaConfig(ctx context.Context) errors.E {
-	return self.testSambaConfig(ctx)
-}
-
-// RestartSambaService restarts/reloads Samba services using the default dirty mask (all dirty).
-func (self *SambaService) RestartSambaService(ctx context.Context) errors.E {
-	return self.restartSambaService(ctx, defaultDirtyMask)
-}
-
-// WriteAndRestartSambaConfig writes, tests, and restarts Samba using the default dirty mask.
-func (self *SambaService) WriteAndRestartSambaConfig(ctx context.Context) errors.E {
-	return self.writeAndRestartSambaConfig(ctx, defaultDirtyMask)
-}
-
-// WriteAndRestartNFSConfig writes NFS exports configuration and restarts NFS service using the default dirty mask.
-func (self *SambaService) WriteAndRestartNFSConfig(ctx context.Context) errors.E {
-	return self.writeAndRestartNFSConfig(ctx, defaultDirtyMask)
-}
-
-func (self *SambaService) writeSambaConfig(ctx context.Context) errors.E {
+func (self *ServerService) writeSambaConfig(ctx context.Context) errors.E {
 	tlog.TraceContext(ctx, "Writing Samba configuration file", "file", self.state.SambaConfigFile)
-	stream, errE := self.CreateConfigStream()
+	stream, errE := self.CreateSambaConfigStream()
 	if errE != nil {
 		return errors.WithStack(errE)
 	}
@@ -426,7 +426,7 @@ func (self *SambaService) writeSambaConfig(ctx context.Context) errors.E {
 	return nil
 }
 
-func (self *SambaService) testSambaConfig(ctx context.Context) errors.E {
+func (self *ServerService) testSambaConfig(ctx context.Context) errors.E {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	tlog.TraceContext(ctx, "Testing Samba configuration file", "file", self.state.SambaConfigFile)
@@ -440,8 +440,8 @@ func (self *SambaService) testSambaConfig(ctx context.Context) errors.E {
 	return nil
 }
 
-func (self *SambaService) restartSambaService(ctx context.Context, dirty dto.DataDirtyTracker) errors.E {
-	process, err := self.GetSambaProcess()
+func (self *ServerService) restartServerServices(ctx context.Context, dirty dto.DataDirtyTracker) errors.E {
+	process, err := self.GetServerProcesses()
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -451,6 +451,10 @@ func (self *SambaService) restartSambaService(ctx context.Context, dirty dto.Dat
 		defer cancel()
 
 		for processName, processConfig := range serviceConfigMap {
+			if !processConfig.Managed {
+				slog.InfoContext(ctx, "Skipping unmanaged service", "service", processName)
+				continue
+			}
 			tlog.TraceContext(ctx, "Restarting service", "service", processName)
 			if procStatus, ok := (*process)[processName]; ok {
 				if procStatus.Pid <= 0 || dirty.AndMask(processConfig.HardResetServiceMask) {
@@ -472,7 +476,7 @@ func (self *SambaService) restartSambaService(ctx context.Context, dirty dto.Dat
 				}
 			} else {
 				slog.WarnContext(ctx, "Samba process not found, perform start command if exists.", "process", processName)
-				if len(processConfig.StartCommand) > 0 && self.CommandExists(processConfig.StartCommand) {
+				if len(processConfig.StartCommand) > 0 && osutil.CommandExists(processConfig.StartCommand) {
 					slog.InfoContext(ctx, "Starting service...", "service", processName)
 					cmdStart := exec.CommandContext(ctx, processConfig.StartCommand[0], processConfig.StartCommand[1:]...)
 					outStart, err := cmdStart.CombinedOutput()
@@ -486,7 +490,7 @@ func (self *SambaService) restartSambaService(ctx context.Context, dirty dto.Dat
 			}
 		}
 
-		self.eventBus.EmitSamba(events.SambaEvent{
+		self.eventBus.EmitServerProcess(events.ServerProcessEvent{
 			Event:            events.Event{Type: events.EventTypes.CLEAN},
 			DataDirtyTracker: dto.DataDirtyTracker{},
 		})
@@ -496,33 +500,8 @@ func (self *SambaService) restartSambaService(ctx context.Context, dirty dto.Dat
 	return nil
 }
 
-// CommandExists checks if a command is available and executable.
-// For s6-* commands, it validates that the service directory path exists.
-// For other commands, it checks if the command is in PATH and is executable.
-func (self *SambaService) CommandExists(cmd []string) bool {
-	if len(cmd) == 0 {
-		return false
-	}
-
-	cmdName := cmd[0]
-
-	// For s6-* commands, check if the last element (service directory path) exists
-	if strings.HasPrefix(cmdName, "s6-") {
-		if len(cmd) < 2 {
-			return false
-		}
-		servicePath := cmd[len(cmd)-1]
-		info, err := os.Stat(servicePath)
-		return err == nil && info.IsDir()
-	}
-
-	// For other commands, check if executable exists in PATH
-	_, err := exec.LookPath(cmdName)
-	return err == nil
-}
-
 // WriteSambaConfig Test and Restart
-func (self *SambaService) writeAndRestartSambaConfig(ctx context.Context, dirty dto.DataDirtyTracker) errors.E {
+func (self *ServerService) writeConfigsAndRestartServers(ctx context.Context, dirty dto.DataDirtyTracker) errors.E {
 	err := self.writeSambaConfig(ctx)
 	if err != nil {
 		return errors.WithStack(err)
@@ -531,20 +510,14 @@ func (self *SambaService) writeAndRestartSambaConfig(ctx context.Context, dirty 
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	err = self.restartSambaService(ctx, dirty)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	return nil
-}
 
-// writeAndRestartNFSConfig writes NFS exports configuration and restarts NFS service
-func (self *SambaService) writeAndRestartNFSConfig(ctx context.Context, dirty dto.DataDirtyTracker) errors.E {
-	err := self.writeNFSConfig(ctx)
-	if err != nil {
-		return errors.WithStack(err)
+	if setting, err2 := self.setting_service.Load(); err2 == nil && setting.HAUseNFS != nil && *setting.HAUseNFS == true {
+		err = self.writeNFSConfig(ctx)
+		if err != nil {
+			return errors.WithStack(err)
+		}
 	}
-	err = self.restartNFSService(ctx, dirty)
+	err = self.restartServerServices(ctx, dirty)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -552,56 +525,82 @@ func (self *SambaService) writeAndRestartNFSConfig(ctx context.Context, dirty dt
 }
 
 // writeNFSConfig writes the NFS exports configuration to /etc/exports
-func (self *SambaService) writeNFSConfig(ctx context.Context) errors.E {
+func (self *ServerService) writeNFSConfig(ctx context.Context) errors.E {
 	nfsExportsFile := "/etc/exports"
 	tlog.TraceContext(ctx, "Writing NFS exports configuration file", "file", nfsExportsFile)
-	
-	// TODO: Generate NFS exports configuration based on shares
-	// For now, create an empty exports file or maintain existing content
-	// This will be expanded when NFS share configuration is implemented
-	
-	// Create or touch the exports file to ensure it exists
-	file, err := os.OpenFile(nfsExportsFile, os.O_CREATE|os.O_WRONLY, 0o644)
+
+	hostname, err := self.host_service.GetHostName()
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	defer file.Close()
-	
+
+	// Get all shares from the database
+	shares, err := self.share_service.ListShares()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	// Build NFS exports content
+	var exportsContent strings.Builder
+	exportsContent.WriteString("# NFS exports generated by SRAT\n")
+	exportsContent.WriteString("# Do not edit this file manually - changes will be overwritten\n\n")
+
+	exportCount := 0
+	for _, share := range shares {
+		// Skip disabled shares
+		if share.Disabled != nil && *share.Disabled {
+			continue
+		}
+
+		// Skip shares with invalid status
+		if share.Status != nil && !share.Status.IsValid {
+			continue
+		}
+
+		// Skip shares with invalid mount point
+		if share.MountPointData != nil && share.MountPointData.IsInvalid {
+			continue
+		}
+
+		// Skip shares without mount point data
+		if share.MountPointData == nil {
+			continue
+		}
+
+		// Only export shares with usage type: media, share, or backup
+		usage := string(share.Usage)
+		if usage != "media" && usage != "share" && usage != "backup" {
+			continue
+		}
+
+		// Get the share path from mount point data
+		path := share.MountPointData.Path
+		if path == "" {
+			tlog.WarnContext(ctx, "Skipping share with empty path", "name", share.Name)
+			continue
+		}
+
+		// Generate NFS export entry
+		// Format: /path/to/share *(rw,sync,no_subtree_check,no_root_squash,fsid=X)
+		// Using fsid based on share index to ensure unique identification
+		exportsContent.WriteString(path)
+		exportsContent.WriteString(" ")
+		exportsContent.WriteString(hostname)
+		exportsContent.WriteString("(rw,sync,mp,no_subtree_check,no_root_squash,fsid=")
+		exportsContent.WriteString(strings.ReplaceAll(share.Name, "-", ""))
+		exportsContent.WriteString(")\n")
+
+		exportCount++
+		tlog.DebugContext(ctx, "Added NFS export", "name", share.Name, "path", path, "usage", usage)
+	}
+
+	slog.InfoContext(ctx, "Generated NFS exports configuration", "exportCount", exportCount)
+
+	// Write the exports file
+	err2 := os.WriteFile(nfsExportsFile, []byte(exportsContent.String()), 0o644)
+	if err2 != nil {
+		return errors.WithStack(err2)
+	}
+
 	return nil
 }
-
-// restartNFSService restarts/reloads NFS services based on the dirty mask
-func (self *SambaService) restartNFSService(ctx context.Context, dirty dto.DataDirtyTracker) errors.E {
-	tlog.TraceContext(ctx, "Restarting NFS service", "dirty", dirty)
-	
-	processConfig, exists := serviceConfigMap["nfsd"]
-	if !exists {
-		return errors.New("NFS service configuration not found in serviceConfigMap")
-	}
-	
-	// Determine if we need soft or hard reset based on dirty mask
-	needsHardReset := (dirty.Settings && processConfig.HardResetServiceMask.Settings) ||
-		(dirty.Users && processConfig.HardResetServiceMask.Users) ||
-		(dirty.Shares && processConfig.HardResetServiceMask.Shares)
-	
-	needsSoftReset := (dirty.Settings && processConfig.SoftResetServiceMask.Settings) ||
-		(dirty.Users && processConfig.SoftResetServiceMask.Users) ||
-		(dirty.Shares && processConfig.SoftResetServiceMask.Shares)
-	
-	if needsHardReset && len(processConfig.HardResetCommand) > 0 {
-		tlog.InfoContext(ctx, "Performing hard reset of NFS service", "process", "nfsd")
-		cmdHardRestart := exec.CommandContext(ctx, processConfig.HardResetCommand[0], processConfig.HardResetCommand[1:]...)
-		if err := cmdHardRestart.Run(); err != nil {
-			return errors.Wrapf(err, "failed to hard reset NFS service")
-		}
-	} else if needsSoftReset && len(processConfig.SoftResetCommand) > 0 {
-		tlog.InfoContext(ctx, "Performing soft reset of NFS service", "process", "nfsd")
-		cmdSoftRestart := exec.CommandContext(ctx, processConfig.SoftResetCommand[0], processConfig.SoftResetCommand[1:]...)
-		if err := cmdSoftRestart.Run(); err != nil {
-			return errors.Wrapf(err, "failed to soft reset NFS service")
-		}
-	}
-	
-	return nil
-}
-

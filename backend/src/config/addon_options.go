@@ -1,11 +1,5 @@
 package config
 
-import (
-	"encoding/json"
-	"log"
-	"os"
-)
-
 type OptionsAcl struct {
 	Share       string   `json:"share,omitempty"`
 	Disabled    bool     `json:"disabled,omitempty"`
@@ -20,6 +14,7 @@ type User struct {
 	//Password string `json:"password"`
 }
 
+/*
 type Options struct {
 	Workgroup string `json:"workgroup"`
 	Username  string `json:"username"`
@@ -46,7 +41,7 @@ type Options struct {
 	MQTTUsername      string   `json:"mqtt_username"`
 	MQTTPassword      string   `json:"mqtt_password"`
 	MQTTPort          string   `json:"mqtt_port"`
-	MQTTTopic   */string `json:"mqtt_topic"`
+	MQTTTopic   * /string `json:"mqtt_topic"`
 	Autodiscovery        struct {
 		DisableDiscovery  bool `json:"disable_discovery"`
 		DisablePersistent bool `json:"disable_persistent"`
@@ -82,3 +77,4 @@ func readOptionsBuffer(buffer []byte) *Options {
 
 	return &options
 }
+*/

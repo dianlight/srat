@@ -2,12 +2,10 @@ package config
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"os"
-	"slices"
 
-	"github.com/dianlight/tlog"
+	"github.com/creasty/defaults"
 	"gitlab.com/tozd/go/errors"
 )
 
@@ -29,11 +27,6 @@ type Share struct {
 type Shares map[string]Share
 
 const CURRENT_CONFIG_VERSION = 5
-
-type DefaultConfig struct {
-	Config
-	Password string `json:"password"`
-}
 
 type Config struct {
 	CurrentFile       string
@@ -86,6 +79,15 @@ type Config struct {
 	DockerNet       string `json:"docker_net"`
 	UpdateChannel   string `json:"update_channel"`
 	TelemetryMode   string `json:"telemetry_mode"`
+	// Only For Default management
+	HAUseNFS                      *bool  `json:"ha_use_nfs,omitempty" default:"false"`
+	ExportStatsToHA               bool   `json:"export_stats_to_ha,omitempty" default:"false"`
+	SMBoverQUIC                   bool   `json:"smb_over_quic,omitempty" default:"false"`
+	HDIdleEnabled                 bool   `json:"hdd_idle_enabled,omitempty" default:"false"`
+	HDIdleDefaultIdleTime         int    `json:"hdd_idle_default_idle_time,omitempty" default:"10"`
+	HDIdleDefaultCommandType      string `json:"hdd_idle_default_command_type,omitempty" default:"spindown"`
+	HDIdleDefaultPowerCondition   uint8  `json:"hdd_idle_default_power_condition,omitempty" default:"15"`
+	HDIdleIgnoreSpinDownDetection bool   `json:"hdd_idle_ignore_spin_down_detection,omitempty" default:"false"`
 }
 
 // ReadConfigBuffer reads and parses a configuration file.
@@ -121,7 +123,17 @@ func (self *Config) ReadFromFile(file string) error {
 //   - *Config: A pointer to the parsed Config struct.
 //     If parsing fails, the function will log a fatal error and terminate the program.
 func (self *Config) ReadConfigBuffer(buffer []byte) error {
-	return json.Unmarshal(buffer, &self)
+	err := json.Unmarshal(buffer, &self)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	// cycle on all self properties and set default values base on struct tags
+	err = defaults.Set(self)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
 }
 
 // ConfigToMap converts a Config struct to a map[string]interface{}.
@@ -166,6 +178,7 @@ func (in *Config) ConfigToMap() *map[string]interface{} {
 // Returns:
 //   - *Config: A pointer to the migrated Config struct. If the input config
 //     is already at the latest version, it returns the input unchanged.
+/*
 func (in *Config) MigrateConfig() error {
 	if in.ConfigSpecVersion == CURRENT_CONFIG_VERSION {
 		return nil
@@ -263,7 +276,7 @@ func (in *Config) MigrateConfig() error {
 
 	return nil
 }
-
+*/
 // LoadConfig reads a configuration file, parses it, and migrates it to the latest version.
 //
 // This function takes a file path, reads the configuration from that file,
@@ -276,6 +289,7 @@ func (in *Config) MigrateConfig() error {
 // Returns:
 //   - *Config: A pointer to the loaded and migrated Config struct.
 //   - error: An error if the file couldn't be read or parsed. If successful, this will be nil.
+/*
 func (self *Config) LoadConfig(file string) errors.E {
 	err := self.ReadFromFile(file)
 	if err != nil {
@@ -284,7 +298,9 @@ func (self *Config) LoadConfig(file string) errors.E {
 	self.MigrateConfig()
 	return nil
 }
+*/
 
+/*
 func (self *Config) LoadConfigBuffer(buffer []byte) errors.E {
 	err := self.ReadConfigBuffer(buffer)
 	if err != nil {
@@ -293,3 +309,4 @@ func (self *Config) LoadConfigBuffer(buffer []byte) errors.E {
 	self.MigrateConfig()
 	return nil
 }
+*/

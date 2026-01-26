@@ -14,7 +14,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/homeassistant/mount"
-	"github.com/dianlight/srat/repository"
+	"github.com/dianlight/tlog"
 	"github.com/xorcare/pointer"
 )
 
@@ -29,13 +29,14 @@ type SupervisorServiceInterface interface {
 }
 
 type SupervisorService struct {
-	prop_repo repository.PropertyRepositoryInterface
+	//prop_repo repository.PropertyRepositoryInterface
 	//apiContext       context.Context
 	apiContextCancel   context.CancelFunc
 	mount_client       mount.ClientWithResponsesInterface
 	state              *dto.ContextState
 	share_service      ShareServiceInterface
 	dirty_data_service DirtyDataServiceInterface
+	settingService     SettingServiceInterface
 	eventBus           events.EventBusInterface
 }
 
@@ -44,10 +45,11 @@ type SupervisorServiceParams struct {
 	ApiContext       context.Context
 	ApiContextCancel context.CancelFunc
 	MountClient      mount.ClientWithResponsesInterface `optional:"true"`
-	PropertyRepo     repository.PropertyRepositoryInterface
+	//PropertyRepo     repository.PropertyRepositoryInterface
 	State            *dto.ContextState
 	ShareService     ShareServiceInterface
 	DirtyDataService DirtyDataServiceInterface
+	SettingService   SettingServiceInterface
 	EventBus         events.EventBusInterface
 }
 
@@ -57,13 +59,14 @@ func NewSupervisorService(lc fx.Lifecycle, in SupervisorServiceParams) Superviso
 	p.dirty_data_service = in.DirtyDataService
 	p.apiContextCancel = in.ApiContextCancel
 	p.mount_client = in.MountClient
-	p.prop_repo = in.PropertyRepo
+	//p.prop_repo = in.PropertyRepo
 	p.state = in.State
 	p.share_service = in.ShareService
+	p.settingService = in.SettingService
 	p.eventBus = in.EventBus
 	unsubscribe := make([]func(), 3)
-	unsubscribe[0] = p.eventBus.OnSamba(func(ctx context.Context, event events.SambaEvent) errors.E {
-		slog.DebugContext(ctx, "SupervisorService received Samba event", "tracker", event.DataDirtyTracker)
+	unsubscribe[0] = p.eventBus.OnServerProccess(func(ctx context.Context, event events.ServerProcessEvent) errors.E {
+		slog.DebugContext(ctx, "SupervisorService received ServerProcess event", "tracker", event.DataDirtyTracker)
 		if event.Type == events.EventTypes.CLEAN {
 			err := p.NetworkMountAllShares(ctx)
 			if err != nil {
@@ -119,15 +122,15 @@ func NewSupervisorService(lc fx.Lifecycle, in SupervisorServiceParams) Superviso
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			serviceStart := time.Now()
-			slog.InfoContext(ctx, "=== SERVICE INIT: SupervisorService Starting ===")
+			tlog.TraceContext(ctx, "=== SERVICE INIT: SupervisorService Starting ===")
 			defer func() {
-				slog.InfoContext(ctx, "=== SERVICE INIT: SupervisorService Complete ===", "duration", time.Since(serviceStart))
+				tlog.TraceContext(ctx, "=== SERVICE INIT: SupervisorService Complete ===", "duration", time.Since(serviceStart))
 			}()
-			slog.DebugContext(ctx, "Starting Supervisor Service")
+			tlog.DebugContext(ctx, "Starting Supervisor Service")
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
-			slog.DebugContext(ctx, "Stopping Supervisor Service")
+			tlog.DebugContext(ctx, "Stopping Supervisor Service")
 			for _, unsub := range unsubscribe {
 				unsub()
 			}
@@ -150,6 +153,9 @@ func (self *SupervisorService) NetworkGetAllMounted(ctx context.Context) (mounts
 		if err != nil {
 			return nil, errors.Errorf("Error getting mounts from ha_supervisor: %w", err)
 		}
+		if resp == nil {
+			return nil, errors.Errorf("Error getting mounts from ha_supervisor: response is nil")
+		}
 		if resp.StatusCode() != 200 {
 			return nil, errors.Errorf("Error getting mounts from ha_supervisor: %d %#v", resp.StatusCode(), string(resp.Body))
 		}
@@ -164,6 +170,15 @@ func (self *SupervisorService) NetworkGetAllMounted(ctx context.Context) (mounts
 }
 
 func (self *SupervisorService) NetworkMountShare(ctx context.Context, share dto.SharedResource) errors.E {
+	return self.networkMountShareWithRetry(ctx, share, 3)
+}
+
+func (self *SupervisorService) networkMountShareWithRetry(ctx context.Context, share dto.SharedResource, retries int) errors.E {
+
+	if retries <= 0 {
+		return errors.Errorf("Exceeded maximum retries to mount share %s", share.Name)
+	}
+
 	if self.state.HACoreReady == false {
 		return errors.Errorf("HA Core is not ready")
 	}
@@ -175,21 +190,31 @@ func (self *SupervisorService) NetworkMountShare(ctx context.Context, share dto.
 	conv := converter.HaSupervisorToDtoImpl{}
 
 	mountUsername := pointer.String("_ha_mount_user_")
-	pwd, err := self.prop_repo.Value("_ha_mount_user_password_", true)
+	setting, err := self.settingService.Load()
 	if err != nil {
 		return errors.Errorf("Error getting password for mount %s from ha_supervisor: %w", share.Name, err)
 	}
-	mountPassword := pointer.String(pwd.(string))
+	mountPassword := setting.HASmbPassword.Expose()
+	useNfs := setting.HAUseNFS
+	if useNfs == nil {
+		return errors.Errorf("Error getting HAUseNFS setting from ha_supervisor: value is nil")
+	}
 
 	rmount, ok := mounts[share.Name]
 	if !ok {
 		// new mount
 		rmount = mount.Mount{}
 		conv.SharedResourceToMount(share, &rmount)
-		rmount.Username = mountUsername
-		rmount.Password = mountPassword
 		rmount.Server = &self.state.AddonIpAddress
-		rmount.Type = pointer.Any(mount.MountType("cifs")).(*mount.MountType)
+
+		if *useNfs {
+			rmount.Type = pointer.Any(mount.MountType("nfs")).(*mount.MountType)
+			rmount.Path = pointer.String(share.MountPointData.Path)
+		} else {
+			rmount.Type = pointer.Any(mount.MountType("cifs")).(*mount.MountType)
+			rmount.Username = mountUsername
+			rmount.Password = &mountPassword
+		}
 
 		resp, err := self.mount_client.CreateMountWithResponse(ctx, rmount)
 		if err != nil {
@@ -221,10 +246,20 @@ func (self *SupervisorService) NetworkMountShare(ctx context.Context, share dto.
 			//slog.Error("Error creating mount from ha_supervisor", "share", share, "req", string(rjson), "resp", string(resp.Body))
 			return errors.Errorf("Error creating mount %s from ha_supervisor: %d \nReq:%#v\nResp:%#v", *rmount.Name, resp.StatusCode(), string(rjson), string(resp.Body))
 		}
-	} else if string(share.Usage) != string(*rmount.Usage) || *rmount.State != "active" {
+		return nil
+	} else if string(share.Usage) != string(*rmount.Usage) ||
+		*rmount.State != "active" ||
+		(*useNfs && *rmount.Type == "cifs") ||
+		(!*useNfs && *rmount.Type == "nfs") {
 		conv.SharedResourceToMount(share, &rmount)
-		rmount.Username = mountUsername
-		rmount.Password = mountPassword
+		if *useNfs {
+			rmount.Type = pointer.Any(mount.MountType("nfs")).(*mount.MountType)
+			rmount.Path = pointer.String(share.MountPointData.Path)
+		} else {
+			rmount.Type = pointer.Any(mount.MountType("cifs")).(*mount.MountType)
+			rmount.Username = mountUsername
+			rmount.Password = &mountPassword
+		}
 		resp, err := self.mount_client.UpdateMountWithResponse(ctx, *rmount.Name, rmount)
 		if err != nil {
 			return errors.Errorf("Error updating mount %s from ha_supervisor: %w", *rmount.Name, err)
@@ -236,25 +271,7 @@ func (self *SupervisorService) NetworkMountShare(ctx context.Context, share dto.
 				// Attempt to remove the potentially stale mount
 				removeResp, removeErr := self.mount_client.RemoveMountWithResponse(ctx, share.Name)
 				if removeErr == nil && removeResp.StatusCode() == 200 {
-					// Successfully removed, retry by creating a new mount
-					newMount := mount.Mount{}
-					conv.SharedResourceToMount(share, &newMount)
-					newMount.Username = mountUsername
-					newMount.Password = mountPassword
-					newMount.Server = &self.state.AddonIpAddress
-					newMount.Type = pointer.Any(mount.MountType("cifs")).(*mount.MountType)
-
-					retryResp, retryErr := self.mount_client.CreateMountWithResponse(ctx, newMount)
-					if retryErr != nil {
-						return errors.Errorf("Error recreating mount %s from ha_supervisor after update failure: %w", share.Name, retryErr)
-					}
-					if retryResp.StatusCode() == 200 {
-						// Success on retry
-						return nil
-					}
-					// Retry also failed
-					rjson, _ := json.Marshal(newMount)
-					return errors.Errorf("Error recreating mount %s from ha_supervisor after removing stale mount: %d \nReq:%#v\nResp:%#v", share.Name, retryResp.StatusCode(), string(rjson), string(retryResp.Body))
+					return self.networkMountShareWithRetry(ctx, share, retries-1)
 				}
 			}
 			// Original error or retry strategy didn't work

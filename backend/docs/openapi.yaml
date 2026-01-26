@@ -1107,15 +1107,25 @@ components:
           default: false
           type: boolean
         allow_hosts:
+          default:
+            - 10.0.0.0/8
+            - 100.0.0.0/8
+            - 172.16.0.0/12
+            - 192.168.0.0/16
+            - 169.254.0.0/16
+            - fe80::/10
+            - fc00::/7
           items:
             type: string
           type: array
         bind_all_interfaces:
+          default: true
           type: boolean
         compatibility_mode:
+          default: false
           type: boolean
         export_stats_to_ha:
-          default: true
+          default: false
           type: boolean
         ha_use_nfs:
           default: false
@@ -1139,26 +1149,21 @@ components:
           default: false
           type: boolean
         hostname:
+          default: homeassistant
           type: string
         interfaces:
+          default: []
           items:
             type: string
           type: array
         local_master:
           default: true
           type: boolean
-        log_level:
-          type: string
-        mountoptions:
-          items:
-            type: string
-          type:
-            - array
-            - "null"
         multi_channel:
+          default: true
           type: boolean
         smb_over_quic:
-          default: true
+          default: false
           type: boolean
         telemetry_mode:
           enum:
@@ -1168,6 +1173,7 @@ components:
             - Disabled
           type: string
         workgroup:
+          default: WORKGROUP
           type: string
       type: object
     SharedResource:
@@ -1520,6 +1526,9 @@ components:
         samba_version_sufficient:
           description: Whether Samba version >= 4.23.0
           type: boolean
+        support_nfs:
+          description: Whether NFS is supported
+          type: boolean
         supports_quic:
           description: Whether SMB over QUIC is supported
           type: boolean
@@ -1531,6 +1540,7 @@ components:
         - has_kernel_module
         - samba_version
         - samba_version_sufficient
+        - support_nfs
       type: object
     UpdateProgress:
       additionalProperties: false
@@ -2045,8 +2055,8 @@ paths:
           schema:
             description: The disk ID (not the device path)
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -2295,8 +2305,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -2541,8 +2551,8 @@ paths:
     post:
       operationId: post-api-hdidle-start
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -2584,8 +2594,8 @@ paths:
     post:
       operationId: post-api-hdidle-stop
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -2627,8 +2637,8 @@ paths:
     get:
       operationId: get-api-health
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2670,8 +2680,8 @@ paths:
     get:
       operationId: get-api-hostname
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -2713,8 +2723,8 @@ paths:
     get:
       operationId: get-issues
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3077,8 +3087,8 @@ paths:
     get:
       operationId: get-api-samba-status
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3120,8 +3130,8 @@ paths:
     get:
       operationId: get-api-settings
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3189,15 +3199,25 @@ paths:
                   default: false
                   type: boolean
                 allow_hosts:
+                  default:
+                    - 10.0.0.0/8
+                    - 100.0.0.0/8
+                    - 172.16.0.0/12
+                    - 192.168.0.0/16
+                    - 169.254.0.0/16
+                    - fe80::/10
+                    - fc00::/7
                   items:
                     type: string
                   type: array
                 bind_all_interfaces:
+                  default: true
                   type: boolean
                 compatibility_mode:
+                  default: false
                   type: boolean
                 export_stats_to_ha:
-                  default: true
+                  default: false
                   type: boolean
                 ha_use_nfs:
                   default: false
@@ -3221,24 +3241,21 @@ paths:
                   default: false
                   type: boolean
                 hostname:
+                  default: homeassistant
                   type: string
                 interfaces:
+                  default: []
                   items:
                     type: string
                   type: array
                 local_master:
                   default: true
                   type: boolean
-                log_level:
-                  type: string
-                mountoptions:
-                  items:
-                    type: string
-                  type: array
                 multi_channel:
+                  default: true
                   type: boolean
                 smb_over_quic:
-                  default: true
+                  default: false
                   type: boolean
                 telemetry_mode:
                   enum:
@@ -3248,6 +3265,7 @@ paths:
                     - Disabled
                   type: string
                 workgroup:
+                  default: WORKGROUP
                   type: string
               type: object
           application/merge-patch+shorthand:
@@ -3265,15 +3283,25 @@ paths:
                   default: false
                   type: boolean
                 allow_hosts:
+                  default:
+                    - 10.0.0.0/8
+                    - 100.0.0.0/8
+                    - 172.16.0.0/12
+                    - 192.168.0.0/16
+                    - 169.254.0.0/16
+                    - fe80::/10
+                    - fc00::/7
                   items:
                     type: string
                   type: array
                 bind_all_interfaces:
+                  default: true
                   type: boolean
                 compatibility_mode:
+                  default: false
                   type: boolean
                 export_stats_to_ha:
-                  default: true
+                  default: false
                   type: boolean
                 ha_use_nfs:
                   default: false
@@ -3297,24 +3325,21 @@ paths:
                   default: false
                   type: boolean
                 hostname:
+                  default: homeassistant
                   type: string
                 interfaces:
+                  default: []
                   items:
                     type: string
                   type: array
                 local_master:
                   default: true
                   type: boolean
-                log_level:
-                  type: string
-                mountoptions:
-                  items:
-                    type: string
-                  type: array
                 multi_channel:
+                  default: true
                   type: boolean
                 smb_over_quic:
-                  default: true
+                  default: false
                   type: boolean
                 telemetry_mode:
                   enum:
@@ -3324,6 +3349,7 @@ paths:
                     - Disabled
                   type: string
                 workgroup:
+                  default: WORKGROUP
                   type: string
               type: object
         required: true
@@ -3416,8 +3442,8 @@ paths:
     post:
       operationId: post-api-share
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -3476,8 +3502,8 @@ paths:
               - world
             maxLength: 128
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "204":
           description: No Content
@@ -3785,8 +3811,8 @@ paths:
             description: Name of the share to disable
             maxLength: 128
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3879,8 +3905,8 @@ paths:
     get:
       operationId: list-api-shares
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -4482,8 +4508,8 @@ paths:
               - world
             maxLength: 30
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:

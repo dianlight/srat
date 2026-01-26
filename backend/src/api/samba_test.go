@@ -23,7 +23,7 @@ type SambaHandlerSuite struct {
 	suite.Suite
 	app              *fxtest.App
 	handler          *api.SambaHanler
-	mockSambaService service.SambaServiceInterface
+	mockSambaService service.ServerServiceInterface
 	mockApiContext   *dto.ContextState
 	ctx              context.Context
 	cancel           context.CancelFunc
@@ -45,7 +45,7 @@ func (suite *SambaHandlerSuite) SetupTest() {
 				}
 			},
 			api.NewSambaHanler,
-			mock.Mock[service.SambaServiceInterface],
+			mock.Mock[service.ServerServiceInterface],
 		),
 		fx.Populate(&suite.handler),
 		fx.Populate(&suite.mockSambaService),
@@ -111,7 +111,7 @@ func (suite *SambaHandlerSuite) TestGetSambaStatusError() {
 
 func (suite *SambaHandlerSuite) TestApplySambaSuccess() {
 	// Configure mock expectations - ApplySamba calls combined write/test/restart helper
-	mock.When(suite.mockSambaService.WriteAndRestartSambaConfig(mock.AnyContext())).ThenReturn(nil)
+	mock.When(suite.mockSambaService.WriteConfigsAndRestartProcesses(mock.AnyContext())).ThenReturn(nil)
 
 	// Setup humatest
 	_, api := humatest.New(suite.T())
@@ -126,7 +126,7 @@ func (suite *SambaHandlerSuite) TestApplySambaError() {
 	expectedErr := errors.New("failed to write samba configuration")
 
 	// Configure mock expectations - fails on first step
-	mock.When(suite.mockSambaService.WriteAndRestartSambaConfig(mock.AnyContext())).ThenReturn(expectedErr)
+	mock.When(suite.mockSambaService.WriteConfigsAndRestartProcesses(mock.AnyContext())).ThenReturn(expectedErr)
 
 	// Setup humatest
 	_, api := humatest.New(suite.T())
@@ -141,7 +141,7 @@ func (suite *SambaHandlerSuite) TestGetSambaConfigSuccess() {
 	configData := []byte("[global]\nworkgroup = WORKGROUP\nsecurity = user\n")
 
 	// Configure mock expectations
-	mock.When(suite.mockSambaService.CreateConfigStream()).ThenReturn(&configData, nil)
+	mock.When(suite.mockSambaService.CreateSambaConfigStream()).ThenReturn(&configData, nil)
 
 	// Setup humatest
 	_, api := humatest.New(suite.T())
@@ -166,7 +166,7 @@ func (suite *SambaHandlerSuite) TestGetSambaConfigError() {
 	expectedErr := errors.New("failed to read samba config")
 
 	// Configure mock expectations
-	mock.When(suite.mockSambaService.CreateConfigStream()).ThenReturn(nil, expectedErr)
+	mock.When(suite.mockSambaService.CreateSambaConfigStream()).ThenReturn(nil, expectedErr)
 
 	// Setup humatest
 	_, api := humatest.New(suite.T())

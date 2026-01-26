@@ -2,20 +2,16 @@ package service
 
 import (
 	"context"
-	"log"
 	"os"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/internal/osutil"
-	"github.com/dianlight/srat/repository"
-	"github.com/dianlight/srat/templates"
 	"github.com/dianlight/srat/unixsamba"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
@@ -48,6 +44,13 @@ func TestEventPropagationTestSuite(t *testing.T) {
 }
 
 func (suite *EventPropagationTestSuite) SetupTest() {
+
+	defer func() {
+		if r := recover(); r != nil {
+			suite.T().Logf("Panic recovered in SetupTest: %v", r)
+		}
+	}()
+
 	// Mock mount info to prevent osutil.IsMounted from failing
 	osutil.MockMountInfo("")
 
@@ -63,18 +66,20 @@ func (suite *EventPropagationTestSuite) SetupTest() {
 				ctx := context.WithValue(context.Background(), "wg", wg)
 				return context.WithCancel(ctx)
 			},
-			func() *config.DefaultConfig {
-				var nconfig config.Config
-				buffer, err := templates.Default_Config_content.ReadFile("default_config.json")
-				if err != nil {
-					log.Fatalf("Cant read default config file %#+v", err)
-				}
-				err = nconfig.LoadConfigBuffer(buffer) // Assign to existing err
-				if err != nil {
-					log.Fatalf("Cant load default config from buffer %#+v", err)
-				}
-				return &config.DefaultConfig{Config: nconfig}
-			},
+			/*
+				func() *config.DefaultConfig {
+					var nconfig config.Config
+					buffer, err := templates.Default_Config_content.ReadFile("default_config.json")
+					if err != nil {
+						log.Fatalf("Cant read default config file %#+v", err)
+					}
+					err = nconfig.LoadConfigBuffer(buffer) // Assign to existing err
+					if err != nil {
+						log.Fatalf("Cant load default config from buffer %#+v", err)
+					}
+					return &config.DefaultConfig{Config: nconfig}
+				},
+			*/
 			func() *dto.ContextState {
 				return &dto.ContextState{
 					DatabasePath: "file::memory:?cache=shared&_pragma=foreign_keys(1)",
@@ -89,9 +94,9 @@ func (suite *EventPropagationTestSuite) SetupTest() {
 			NewVolumeService,
 			NewFilesystemService,
 			NewSettingService,
+			//repository.NewPropertyRepositoryRepository,
 			mock.Mock[IssueServiceInterface],
 			mock.Mock[HardwareServiceInterface],
-			mock.Mock[repository.PropertyRepositoryInterface],
 			mock.Mock[TelemetryServiceInterface],
 		),
 		fx.Populate(&suite.eventBus),

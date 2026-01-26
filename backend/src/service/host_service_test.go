@@ -8,7 +8,6 @@ import (
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/host"
-	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
 	"github.com/xorcare/pointer"
 
@@ -58,7 +57,7 @@ func (suite *HostServiceTestSuite) SetupTest() {
 				return suite.staticConfig
 			},
 			mock.Mock[host.ClientWithResponsesInterface],
-			mock.Mock[repository.PropertyRepositoryInterface], // Provided for fx dependency resolution
+			//	mock.Mock[repository.PropertyRepositoryInterface], // Provided for fx dependency resolution
 			service.NewHostService,
 		),
 		fx.Populate(&suite.hostService),

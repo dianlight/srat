@@ -33,6 +33,7 @@ import {
 	useGetApiCapabilitiesQuery,
 	usePutApiSettingsMutation,
 	Telemetry_mode,
+	type SystemCapabilities,
 } from "../../store/sratApi";
 import { useGetServerEventsQuery } from "../../store/sseApi";
 import { getCurrentEnv } from "../../macro/Environment" with { type: 'macro' };
@@ -414,11 +415,17 @@ export function Settings() {
 								<Typography variant="body2">
 									If enabled, Home Assistant will mount shares using NFS instead of SMB/CIFS. This can be more efficient but is currently experimental.
 								</Typography>
+								(!(capabilities as SystemCapabilities)?.support_nfs ?? false) && (
+								<Typography variant="body2" sx={{ mt: 1, color: 'warning.light' }}>
+									<strong>Not available:</strong> NFS support is not detected on this system.
+								</Typography>
+								)
 							</>
 						}
 					>
 						<span style={{ display: "inline-block", width: "100%" }}>
 							<SwitchElement
+								disabled={!(capabilities as SystemCapabilities)?.support_nfs}
 								switchProps={{
 									"aria-label": "Use NFS for HA",
 									size: "small",
@@ -434,7 +441,7 @@ export function Settings() {
 									</>
 								}
 								labelPlacement="start"
-								{...commonProps}
+								control={control}
 							/>
 						</span>
 					</Tooltip>

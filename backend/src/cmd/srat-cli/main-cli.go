@@ -18,7 +18,6 @@ import (
 	"github.com/dianlight/srat/homeassistant/hardware"
 	"github.com/dianlight/srat/internal"
 	"github.com/dianlight/srat/internal/appsetup"
-	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/tlog"
 	"github.com/gofri/go-github-ratelimit/v2/github_ratelimit"
@@ -296,12 +295,12 @@ func main() {
 		fxOptions = append(fxOptions, fx.Invoke(func(
 			lc fx.Lifecycle,
 			//mount_repo repository.MountPointPathRepositoryInterface,
-			props_repo repository.PropertyRepositoryInterface,
+			//props_repo repository.PropertyRepositoryInterface,
 			share_service service.ShareServiceInterface,
 			hardwareClient hardware.ClientWithResponsesInterface,
 			volume_service service.VolumeServiceInterface,
 			fs_service service.FilesystemServiceInterface,
-			samba_service service.SambaServiceInterface,
+			samba_service service.ServerServiceInterface,
 			supervisor_service service.SupervisorServiceInterface,
 			upgrade_service service.UpgradeServiceInterface,
 			apiContext *dto.ContextState,
@@ -309,10 +308,12 @@ func main() {
 			lc.Append(fx.Hook{
 				OnStart: func(ctx context.Context) error {
 					// Setting the actual LogLevel
-					err := props_repo.SetValue("LogLevel", *logLevelString) // Use existing err
-					if err != nil {
-						log.Fatalf("Cant set log level - %#+v", err)
-					}
+					/*
+						err := props_repo.SetValue("LogLevel", *logLevelString) // Use existing err
+						if err != nil {
+							log.Fatalf("Cant set log level - %#+v", err)
+						}
+					*/
 
 					switch command {
 					case "start":

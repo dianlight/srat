@@ -6,25 +6,30 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/homeassistant/core_api"
-	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
+	"github.com/xorcare/pointer"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
+	"gorm.io/gorm"
 )
 
 type HomeAssistantServiceTestSuite struct {
 	suite.Suite
-	ctx       context.Context
-	config    *dto.ContextState
-	haService service.HomeAssistantServiceInterface
-	client    core_api.ClientWithResponsesInterface
-	propRepo  repository.PropertyRepositoryInterface
-	app       *fxtest.App
+	ctx            context.Context
+	config         *dto.ContextState
+	haService      service.HomeAssistantServiceInterface
+	client         core_api.ClientWithResponsesInterface
+	settingService service.SettingServiceInterface
+	db             *gorm.DB
+	//propRepo  repository.PropertyRepositoryInterface
+	app *fxtest.App
 }
 
 func TestHomeAssistantServiceSuite(t *testing.T) {
@@ -37,6 +42,7 @@ func (suite *HomeAssistantServiceTestSuite) SetupTest() {
 		SupervisorURL:   "http://supervisor/",
 		SupervisorToken: "test-token",
 		HACoreReady:     true,
+		DatabasePath:    "file::memory:?cache=shared&_pragma=foreign_keys(1)",
 	}
 
 	suite.app = fxtest.New(suite.T(),
@@ -46,11 +52,19 @@ func (suite *HomeAssistantServiceTestSuite) SetupTest() {
 			func() (context.Context, context.CancelFunc) {
 				return context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
 			},
+			dbom.NewDB,
+			events.NewEventBus,
 			service.NewHomeAssistantService,
-			mock.Mock[repository.PropertyRepositoryInterface],
+			service.NewSettingService,
+			//mock.Mock[repository.PropertyRepositoryInterface],
 			mock.Mock[core_api.ClientWithResponsesInterface],
 		),
-		fx.Populate(&suite.haService, &suite.propRepo, &suite.ctx, &suite.client),
+		fx.Populate(&suite.haService,
+			//&suite.propRepo,
+			&suite.settingService,
+			&suite.db,
+			&suite.ctx,
+			&suite.client),
 	)
 	mock.When(suite.client.PostEntityStateWithResponse(mock.AnyContext(), mock.Any[string](), mock.Any[core_api.EntityState]())).ThenReturn(
 		&core_api.PostEntityStateResponse{
@@ -77,12 +91,15 @@ func (suite *HomeAssistantServiceTestSuite) TestSendSambaStatusEntity() {
 		Tcons:    map[string]dto.SambaTcon{},
 	}
 
-	// Act - should not panic or return error when client is nil
-	mock.When(suite.propRepo.Value("ExportStatsToHA", false)).ThenReturn(true, nil)
+	errS := suite.settingService.UpdateSettings(&dto.Settings{
+		ExportStatsToHA: pointer.Bool(true),
+	})
+	suite.Require().NoError(errS)
+	//mock.When(suite.propRepo.Value("ExportStatsToHA")).ThenReturn(true, nil)
 	err := suite.haService.SendSambaStatusEntity(sambaStatus)
 
 	// Assert
-	mock.Verify(suite.propRepo, mock.AtLeastOnce()).Value(mock.Any[string](), mock.Any[bool]())
+	//mock.Verify(suite.propRepo, mock.AtLeastOnce()).Value(mock.Any[string]())
 	mock.Verify(suite.client, mock.AtLeastOnce()).PostEntityStateWithResponse(mock.AnyContext(), mock.Any[string](), mock.Any[core_api.EntityState]())
 
 	suite.NoError(err)
@@ -98,11 +115,16 @@ func (suite *HomeAssistantServiceTestSuite) TestSendSambaStatusEntityDisabled() 
 	}
 
 	// Act - should not panic or return error when client is nil
-	mock.When(suite.propRepo.Value("ExportStatsToHA", false)).ThenReturn(false, nil)
+	errS := suite.settingService.UpdateSettings(&dto.Settings{
+		ExportStatsToHA: pointer.Bool(false),
+	})
+	suite.Require().NoError(errS)
+
+	//mock.When(suite.propRepo.Value("ExportStatsToHA")).ThenReturn(false, nil)
 	err := suite.haService.SendSambaStatusEntity(sambaStatus)
 
 	// Assert
-	mock.Verify(suite.propRepo, mock.AtLeastOnce()).Value(mock.Any[string](), mock.Any[bool]())
+	//mock.Verify(suite.propRepo, mock.AtLeastOnce()).Value(mock.Any[string]())
 	mock.Verify(suite.client, mock.Never()).PostEntityStateWithResponse(mock.AnyContext(), mock.Any[string](), mock.Any[core_api.EntityState]())
 
 	suite.NoError(err)
@@ -110,7 +132,7 @@ func (suite *HomeAssistantServiceTestSuite) TestSendSambaStatusEntityDisabled() 
 
 func (suite *HomeAssistantServiceTestSuite) TestSendSambaProcessStatusEntity() {
 	// Arrange
-	processStatus := &dto.SambaProcessStatus{
+	processStatus := &dto.ServerProcessStatus{
 		"smbd": &dto.ProcessStatus{
 			Pid:           1234,
 			Name:          "smbd",
@@ -131,19 +153,24 @@ func (suite *HomeAssistantServiceTestSuite) TestSendSambaProcessStatusEntity() {
 	}
 
 	// Act - should not panic or return error when client is nil
-	mock.When(suite.propRepo.Value("ExportStatsToHA", false)).ThenReturn(true, nil)
+	errS := suite.settingService.UpdateSettings(&dto.Settings{
+		ExportStatsToHA: pointer.Bool(true),
+	})
+	suite.Require().NoError(errS)
+
+	//mock.When(suite.propRepo.Value("ExportStatsToHA")).ThenReturn(true, nil)
 	err := suite.haService.SendSambaProcessStatusEntity(processStatus)
 
 	// Assert
 	// Assert
-	mock.Verify(suite.propRepo, mock.AtLeastOnce()).Value(mock.Any[string](), mock.Any[bool]())
+	//mock.Verify(suite.propRepo, mock.AtLeastOnce()).Value(mock.Any[string]())
 	mock.Verify(suite.client, mock.AtLeastOnce()).PostEntityStateWithResponse(mock.AnyContext(), mock.Any[string](), mock.Any[core_api.EntityState]())
 	suite.NoError(err)
 }
 
 func (suite *HomeAssistantServiceTestSuite) TestSendSambaProcessStatusEntityDisabled() {
 	// Arrange
-	processStatus := &dto.SambaProcessStatus{
+	processStatus := &dto.ServerProcessStatus{
 		"smbd": &dto.ProcessStatus{
 			Pid:           1234,
 			Name:          "smbd",
@@ -164,11 +191,16 @@ func (suite *HomeAssistantServiceTestSuite) TestSendSambaProcessStatusEntityDisa
 	}
 
 	// Act - should not panic or return error when client is nil
-	mock.When(suite.propRepo.Value("ExportStatsToHA", false)).ThenReturn(false, nil)
+	errS := suite.settingService.UpdateSettings(&dto.Settings{
+		ExportStatsToHA: pointer.Bool(false),
+	})
+	suite.Require().NoError(errS)
+
+	//mock.When(suite.propRepo.Value("ExportStatsToHA")).ThenReturn(false, nil)
 	err := suite.haService.SendSambaProcessStatusEntity(processStatus)
 
 	// Assert
-	mock.Verify(suite.propRepo, mock.AtLeastOnce()).Value(mock.Any[string](), mock.Any[bool]())
+	//mock.Verify(suite.propRepo, mock.AtLeastOnce()).Value(mock.Any[string]())
 	mock.Verify(suite.client, mock.Never()).PostEntityStateWithResponse(mock.AnyContext(), mock.Any[string](), mock.Any[core_api.EntityState]())
 	suite.NoError(err)
 }
@@ -214,11 +246,16 @@ func (suite *HomeAssistantServiceTestSuite) TestSendDiskEntities() {
 	}
 
 	// Act - should not panic or return error when client is nil
-	mock.When(suite.propRepo.Value("ExportStatsToHA", false)).ThenReturn(true, nil)
+	errS := suite.settingService.UpdateSettings(&dto.Settings{
+		ExportStatsToHA: pointer.Bool(true),
+	})
+	suite.Require().NoError(errS)
+
+	//mock.When(suite.propRepo.Value("ExportStatsToHA")).ThenReturn(true, nil)
 	err := suite.haService.SendDiskEntities(disks)
 
 	// Assert
-	mock.Verify(suite.propRepo, mock.AtLeastOnce()).Value(mock.Any[string](), mock.Any[bool]())
+	//mock.Verify(suite.propRepo, mock.AtLeastOnce()).Value(mock.Any[string]())
 	mock.Verify(suite.client, mock.AtLeastOnce()).PostEntityStateWithResponse(mock.AnyContext(), mock.Any[string](), mock.Any[core_api.EntityState]())
 	suite.NoError(err)
 }
@@ -264,11 +301,16 @@ func (suite *HomeAssistantServiceTestSuite) TestSendDiskEntitiesDisabled() {
 	}
 
 	// Act - should not panic or return error when client is nil
-	mock.When(suite.propRepo.Value("ExportStatsToHA", false)).ThenReturn(false, nil)
+	errS := suite.settingService.UpdateSettings(&dto.Settings{
+		ExportStatsToHA: pointer.Bool(false),
+	})
+	suite.Require().NoError(errS)
+
+	//mock.When(suite.propRepo.Value("ExportStatsToHA")).ThenReturn(false, nil)
 	err := suite.haService.SendDiskEntities(disks)
 
 	// Assert
-	mock.Verify(suite.propRepo, mock.AtLeastOnce()).Value(mock.Any[string](), mock.Any[bool]())
+	//mock.Verify(suite.propRepo, mock.AtLeastOnce()).Value(mock.Any[string]())
 	mock.Verify(suite.client, mock.Never()).PostEntityStateWithResponse(mock.AnyContext(), mock.Any[string](), mock.Any[core_api.EntityState]())
 	suite.NoError(err)
 }
@@ -276,17 +318,23 @@ func (suite *HomeAssistantServiceTestSuite) TestSendDiskEntitiesDisabled() {
 func (suite *HomeAssistantServiceTestSuite) TestNoClientConfigured_DoesNotSendEntities() {
 	// Arrange - No core client configured
 	params := service.HomeAssistantServiceParams{
-		Ctx:        suite.ctx,
-		State:      suite.config,
-		CoreClient: nil,
-		PropRepo:   suite.propRepo,
+		Ctx:            suite.ctx,
+		State:          suite.config,
+		CoreClient:     nil,
+		SettingService: suite.settingService,
+		//PropRepo:   suite.propRepo,
 	}
 	haService := service.NewHomeAssistantService(params)
 
 	sambaStatus := &dto.SambaStatus{}
 
 	// Act
-	mock.When(suite.propRepo.Value("ExportStatsToHA", false)).ThenReturn(true, nil)
+	errS := suite.settingService.UpdateSettings(&dto.Settings{
+		ExportStatsToHA: pointer.Bool(true),
+	})
+	suite.Require().NoError(errS)
+
+	//mock.When(suite.propRepo.Value("ExportStatsToHA")).ThenReturn(true, nil)
 	err := haService.SendSambaStatusEntity(sambaStatus)
 
 	// Assert
@@ -306,7 +354,12 @@ func (suite *HomeAssistantServiceTestSuite) TestSanitizeEntityId() {
 	}
 
 	// Act - should not panic with special characters in disk ID
-	mock.When(suite.propRepo.Value("ExportStatsToHA", false)).ThenReturn(true, nil)
+	errS := suite.settingService.UpdateSettings(&dto.Settings{
+		ExportStatsToHA: pointer.Bool(true),
+	})
+	suite.Require().NoError(errS)
+
+	//mock.When(suite.propRepo.Value("ExportStatsToHA")).ThenReturn(true, nil)
 	err := suite.haService.SendDiskEntities(disks)
 
 	// Assert
@@ -347,11 +400,16 @@ func (suite *HomeAssistantServiceTestSuite) TestSendDiskHealthEntities() {
 	}
 
 	// Act - should not panic or return error when client is nil
-	mock.When(suite.propRepo.Value("ExportStatsToHA", false)).ThenReturn(true, nil)
+	errS := suite.settingService.UpdateSettings(&dto.Settings{
+		ExportStatsToHA: pointer.Bool(true),
+	})
+	suite.Require().NoError(errS)
+
+	//mock.When(suite.propRepo.Value("ExportStatsToHA")).ThenReturn(true, nil)
 	err := suite.haService.SendDiskHealthEntities(diskHealth)
 
 	// Assert
-	mock.Verify(suite.propRepo, mock.AtLeastOnce()).Value(mock.Any[string](), mock.Any[bool]())
+	//mock.Verify(suite.propRepo, mock.AtLeastOnce()).Value(mock.Any[string]())
 	mock.Verify(suite.client, mock.AtLeastOnce()).PostEntityStateWithResponse(mock.AnyContext(), mock.Any[string](), mock.Any[core_api.EntityState]())
 	suite.NoError(err)
 }
@@ -390,11 +448,16 @@ func (suite *HomeAssistantServiceTestSuite) TestSendDiskHealthEntitiesDisabled()
 	}
 
 	// Act - should not panic or return error when client is nil
-	mock.When(suite.propRepo.Value("ExportStatsToHA", false)).ThenReturn(false, nil)
+	errS := suite.settingService.UpdateSettings(&dto.Settings{
+		ExportStatsToHA: pointer.Bool(false),
+	})
+	suite.Require().NoError(errS)
+
+	//mock.When(suite.propRepo.Value("ExportStatsToHA")).ThenReturn(false, nil)
 	err := suite.haService.SendDiskHealthEntities(diskHealth)
 
 	// Assert
-	mock.Verify(suite.propRepo, mock.AtLeastOnce()).Value(mock.Any[string](), mock.Any[bool]())
+	//mock.Verify(suite.propRepo, mock.AtLeastOnce()).Value(mock.Any[string]())
 	mock.Verify(suite.client, mock.Never()).PostEntityStateWithResponse(mock.AnyContext(), mock.Any[string](), mock.Any[core_api.EntityState]())
 	suite.NoError(err)
 }
@@ -472,13 +535,6 @@ func (suite *HomeAssistantServiceTestSuite) TestCreatePersistentNotification_Alr
 	)
 }
 
-func (suite *HomeAssistantServiceTestSuite) TestCreatePersistentNotification_DifferentDay() {
-	// Arrange - This test is not applicable with in-memory tracking
-	// as we can't simulate different days without mocking time
-	// The TestDismissPersistentNotification_ClearsTracking covers the dismiss and recreate scenario
-	suite.T().Skip("Test not applicable with in-memory tracking - covered by dismiss test")
-}
-
 func (suite *HomeAssistantServiceTestSuite) TestDismissPersistentNotification_ClearsTracking() {
 	// Arrange
 	notificationID := "test_notification"
@@ -528,10 +584,11 @@ func (suite *HomeAssistantServiceTestSuite) TestDismissPersistentNotification_Cl
 func (suite *HomeAssistantServiceTestSuite) TestCreatePersistentNotification_NoClient() {
 	// Arrange - No core client configured
 	params := service.HomeAssistantServiceParams{
-		Ctx:        suite.ctx,
-		State:      suite.config,
-		CoreClient: nil,
-		PropRepo:   suite.propRepo,
+		Ctx:            suite.ctx,
+		State:          suite.config,
+		CoreClient:     nil,
+		SettingService: suite.settingService,
+		//PropRepo:   suite.propRepo,
 	}
 	haService := service.NewHomeAssistantService(params)
 

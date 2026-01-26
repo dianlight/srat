@@ -31,15 +31,15 @@ func (f *fakeBroadcaster) ProcessWebSocketChannel(send ws.Sender) {}
 // minimal fakes for other services
 type fakeSamba struct{}
 
-func (f *fakeSamba) CreateConfigStream() (data *[]byte, err errors.E) { return nil, nil }
-func (f *fakeSamba) GetSambaProcess() (*dto.SambaProcessStatus, errors.E) {
-	return &dto.SambaProcessStatus{}, nil
+func (f *fakeSamba) CreateSambaConfigStream() (data *[]byte, err errors.E) { return nil, nil }
+func (f *fakeSamba) GetServerProcesses() (*dto.ServerProcessStatus, errors.E) {
+	return &dto.ServerProcessStatus{}, nil
 }
-func (f *fakeSamba) GetSambaStatus() (*dto.SambaStatus, errors.E)            { return &dto.SambaStatus{}, nil }
-func (f *fakeSamba) WriteSambaConfig(ctx context.Context) errors.E           { return nil }
-func (f *fakeSamba) RestartSambaService(ctx context.Context) errors.E        { return nil }
-func (f *fakeSamba) TestSambaConfig(ctx context.Context) errors.E            { return nil }
-func (f *fakeSamba) WriteAndRestartSambaConfig(ctx context.Context) errors.E { return nil }
+func (f *fakeSamba) GetSambaStatus() (*dto.SambaStatus, errors.E)                 { return &dto.SambaStatus{}, nil }
+func (f *fakeSamba) WriteSambaConfig(ctx context.Context) errors.E                { return nil }
+func (f *fakeSamba) RestartSambaService(ctx context.Context) errors.E             { return nil }
+func (f *fakeSamba) TestSambaConfig(ctx context.Context) errors.E                 { return nil }
+func (f *fakeSamba) WriteConfigsAndRestartProcesses(ctx context.Context) errors.E { return nil }
 
 type fakeDirty struct {
 	// callbacks []func() errors.E

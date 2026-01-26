@@ -13,37 +13,14 @@ func TestPropertyCreation(t *testing.T) {
 	prop := Property{
 		Key:       "test-key",
 		Value:     "test-value",
-		Internal:  false,
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
 
 	assert.Equal(t, "test-key", prop.Key)
 	assert.Equal(t, "test-value", prop.Value)
-	assert.False(t, prop.Internal)
 	assert.False(t, prop.CreatedAt.IsZero())
 	assert.False(t, prop.UpdatedAt.IsZero())
-}
-
-func TestPropertyInternalFlag(t *testing.T) {
-	internalProp := Property{
-		Key:      "internal-key",
-		Value:    "internal-value",
-		Internal: true,
-	}
-
-	externalProp := Property{
-		Key:      "external-key",
-		Value:    "external-value",
-		Internal: false,
-	}
-
-	assert.True(t, internalProp.Internal)
-	assert.False(t, externalProp.Internal)
-	assert.Equal(t, "internal-key", internalProp.Key)
-	assert.Equal(t, "external-key", externalProp.Key)
-	assert.Equal(t, "internal-value", internalProp.Value)
-	assert.Equal(t, "external-value", externalProp.Value)
 }
 
 func TestPropertyValueTypes(t *testing.T) {
@@ -122,34 +99,6 @@ func TestPropertiesGetValueNotFound(t *testing.T) {
 	assert.Equal(t, gorm.ErrRecordNotFound, err)
 }
 
-func TestPropertiesAddInternalValue(t *testing.T) {
-	props := Properties{}
-
-	err := props.AddInternalValue("new-key", "new-value")
-	assert.NoError(t, err)
-
-	prop, err := props.Get("new-key")
-	assert.NoError(t, err)
-	assert.NotNil(t, prop)
-	assert.Equal(t, "new-key", prop.Key)
-	assert.Equal(t, "new-value", prop.Value)
-	assert.True(t, prop.Internal)
-}
-
-func TestPropertiesAddInternalValueUpdate(t *testing.T) {
-	props := Properties{
-		"existing": {Key: "existing", Value: "old-value", Internal: false},
-	}
-
-	err := props.AddInternalValue("existing", "new-value")
-	assert.NoError(t, err)
-
-	prop, err := props.Get("existing")
-	assert.NoError(t, err)
-	assert.Equal(t, "new-value", prop.Value)
-	assert.True(t, prop.Internal)
-}
-
 func TestPropertiesMultipleValues(t *testing.T) {
 	props := Properties{
 		"key1": {Key: "key1", Value: "value1"},
@@ -178,16 +127,4 @@ func TestPropertiesEmptyMap(t *testing.T) {
 	_, err := props.Get("any-key")
 	assert.Error(t, err)
 	assert.Equal(t, gorm.ErrRecordNotFound, err)
-}
-
-func TestPropertyDefaultInternal(t *testing.T) {
-	prop := Property{
-		Key:   "default-test",
-		Value: "value",
-	}
-
-	// Internal should be false by default in Go (zero value for bool)
-	assert.False(t, prop.Internal)
-	assert.Equal(t, "default-test", prop.Key)
-	assert.Equal(t, "value", prop.Value)
 }

@@ -17,15 +17,15 @@ func init() {
 
 func Up00008(ctx context.Context, db *sql.DB) error {
 
-	_ha_mount_user_password_, errc := osutil.GenerateSecurePassword()
+	HASmbPassword, errc := osutil.GenerateSecurePassword()
 	if errc != nil {
 		slog.ErrorContext(ctx, "Cant generate password", "errc", errc)
-		_ha_mount_user_password_ = "changeme"
+		HASmbPassword = "changeme"
 	}
 
-	// Update the _ha_mount_user_password_ setting in the settings table
-	queryUpdate := "INSERT OR IGNORE INTO properties (key,value,internal) VALUES (?, ?, ?)"
-	if _, err := db.ExecContext(ctx, queryUpdate, "_ha_mount_user_password_", "\""+_ha_mount_user_password_+"\"", 1); err != nil {
+	// Update the HASmbPassword setting in the settings table
+	queryUpdate := "INSERT OR IGNORE INTO properties (key,value) VALUES (?, ?)"
+	if _, err := db.ExecContext(ctx, queryUpdate, "HASmbPassword", "\""+HASmbPassword+"\""); err != nil {
 		return err
 	}
 	return nil

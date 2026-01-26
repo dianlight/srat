@@ -26,7 +26,6 @@ import (
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal"
-	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/server"
 
 	"go.uber.org/fx"
@@ -117,7 +116,7 @@ func main() {
 
 func prog(listener net.Listener) {
 	startupStart := time.Now()
-	slog.Info("=== STARTUP PHASE: Entry ===", "time", startupStart)
+	tlog.Trace("=== STARTUP PHASE: Entry ===", "time", startupStart)
 
 	internal.Banner("srat-server", "")
 
@@ -165,7 +164,7 @@ func prog(listener net.Listener) {
 		StaticConfig: &staticConfig,
 	}
 
-	slog.Info("=== STARTUP PHASE: Starting FX ===", "elapsed", time.Since(startupStart))
+	tlog.Trace("=== STARTUP PHASE: Starting FX ===", "elapsed", time.Since(startupStart))
 
 	// New FX
 	app := fx.New(
@@ -226,21 +225,24 @@ func prog(listener net.Listener) {
 		),
 		fx.Invoke(func(
 			lc fx.Lifecycle,
-			props_repo repository.PropertyRepositoryInterface,
+			//props_repo repository.PropertyRepositoryInterface,
 			_ service.SupervisorServiceInterface,
 			//			hdidle_service service.HDIdleServiceInterface,
 		) {
 			// Setting the actual LogLevel
-			err := props_repo.SetValue("LogLevel", *logLevelString)
-			if err != nil {
-				log.Fatalf("Cant set log level - %#+v", err)
-			}
-
-			// Setting the Upgrade Channel
-			err = props_repo.SetValue("UpgradeChannel", upgrade_channel)
-			if err != nil {
-				log.Fatalf("Cant set upgrade channel - %#+v", err)
-			}
+			/*
+				err := props_repo.SetValue("LogLevel", *logLevelString)
+				if err != nil {
+					log.Fatalf("Cant set log level - %#+v", err)
+				}
+			*/
+			/*
+				// Setting the Upgrade Channel
+				err = props_repo.SetValue("UpdateChannel", upgrade_channel)
+				if err != nil {
+					log.Fatalf("Cant set upgrade channel - %#+v", err)
+				}
+			*/
 
 			lc.Append(fx.Hook{
 				OnStart: func(ctx context.Context) error {
@@ -267,11 +269,11 @@ func prog(listener net.Listener) {
 		log.Fatalf("Error during FX setup: %v", err)
 	}
 
-	slog.Info("=== STARTUP PHASE: FX Initialized ===", "elapsed", time.Since(startupStart))
+	tlog.Trace("=== STARTUP PHASE: FX Initialized ===", "elapsed", time.Since(startupStart))
 
 	app.Run() // This blocks until the application stops
 
-	slog.Info("=== STARTUP PHASE: FX Complete ===", "elapsed", time.Since(startupStart))
+	tlog.Trace("=== STARTUP PHASE: FX Complete ===", "elapsed", time.Since(startupStart))
 	slog.Info("Stopping SRAT", "pid", os.Getpid())
 	apiCtx.Value("wg").(*sync.WaitGroup).Wait() // Ensure background tasks complete
 	apiCancel()                                 // Explicitly cancel context

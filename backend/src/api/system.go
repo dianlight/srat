@@ -277,5 +277,9 @@ func (handler *SystemHanler) GetCapabilitiesHandler(ctx context.Context, input *
 		capabilities.UnsupportedReason = strings.Join(reasons, "; ")
 	}
 
+	// Check NFS support
+	supportNFS := osutil.CommandExists([]string{"exportfs"})
+	capabilities.SupportNFS = supportNFS
+
 	return &struct{ Body dto.SystemCapabilities }{Body: capabilities}, nil
 }

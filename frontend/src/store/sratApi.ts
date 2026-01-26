@@ -859,6 +859,8 @@ export type SystemCapabilities = {
   samba_version: string;
   /** Whether Samba version >= 4.23.0 */
   samba_version_sufficient: boolean;
+  /** Whether NFS is supported */
+  support_nfs: boolean;
   /** Whether SMB over QUIC is supported */
   supports_quic: boolean;
   /** Reason why QUIC is not supported */
@@ -1241,8 +1243,6 @@ export type Settings = {
   hostname?: string;
   interfaces?: string[];
   local_master?: boolean;
-  log_level?: string;
-  mountoptions?: string[] | null;
   multi_channel?: boolean;
   smb_over_quic?: boolean;
   telemetry_mode?: Telemetry_mode;
