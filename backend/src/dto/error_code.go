@@ -1,6 +1,11 @@
 package dto
 
-import "gitlab.com/tozd/go/errors"
+import (
+	"github.com/danielgtaylor/huma/v2"
+	"gitlab.com/tozd/go/errors"
+)
+
+type ErrorDataModel huma.ErrorModel
 
 var ErrorNotFound = errors.Base("Not Found")
 var ErrorMountFail = errors.Base("Mount Fail")
