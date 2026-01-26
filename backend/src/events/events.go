@@ -89,6 +89,7 @@ type DirtyDataEvent struct {
 // HomeAssistantEvent represents a Home Assistant-related event
 type HomeAssistantEvent struct {
 	Event
+	Error *dto.ErrorDataModel
 }
 
 type SmartEvent struct {

@@ -71,6 +71,15 @@ func NewSupervisorService(lc fx.Lifecycle, in SupervisorServiceParams) Superviso
 			err := p.NetworkMountAllShares(ctx)
 			if err != nil {
 				slog.ErrorContext(ctx, "Error mounting HA storage shares", "err", err)
+				p.eventBus.EmitHomeAssistant(events.HomeAssistantEvent{
+					Event: events.Event{
+						Type: events.EventTypes.ERROR,
+					},
+					Error: &dto.ErrorDataModel{
+						Title:  "Error mounting HA storage shares",
+						Detail: err.Error(),
+					},
+				})
 				return err
 			}
 		}
@@ -81,6 +90,15 @@ func NewSupervisorService(lc fx.Lifecycle, in SupervisorServiceParams) Superviso
 			err := p.NetworkMountAllShares(ctx)
 			if err != nil {
 				slog.ErrorContext(ctx, "Error mounting HA storage shares", "err", err)
+				p.eventBus.EmitHomeAssistant(events.HomeAssistantEvent{
+					Event: events.Event{
+						Type: events.EventTypes.ERROR,
+					},
+					Error: &dto.ErrorDataModel{
+						Title:  "Error mounting HA storage shares",
+						Detail: err.Error(),
+					},
+				})
 				return err
 			}
 		}
@@ -91,6 +109,15 @@ func NewSupervisorService(lc fx.Lifecycle, in SupervisorServiceParams) Superviso
 			err := p.NetworkUnmountShare(ctx, event.Share.Name)
 			if err != nil {
 				slog.ErrorContext(ctx, "Error unmounting share from ha_supervisor", "share", event.Share.Name, "err", err)
+				p.eventBus.EmitHomeAssistant(events.HomeAssistantEvent{
+					Event: events.Event{
+						Type: events.EventTypes.ERROR,
+					},
+					Error: &dto.ErrorDataModel{
+						Title:  "Error unmounting share from ha_supervisor",
+						Detail: err.Error(),
+					},
+				})
 				return err
 			}
 		} else if event.Type == events.EventTypes.UPDATE &&
@@ -98,6 +125,15 @@ func NewSupervisorService(lc fx.Lifecycle, in SupervisorServiceParams) Superviso
 			err := p.NetworkUnmountShare(ctx, event.Share.Name)
 			if err != nil {
 				slog.ErrorContext(ctx, "Error unmounting share from ha_supervisor", "share", event.Share.Name, "err", err)
+				p.eventBus.EmitHomeAssistant(events.HomeAssistantEvent{
+					Event: events.Event{
+						Type: events.EventTypes.ERROR,
+					},
+					Error: &dto.ErrorDataModel{
+						Title:  "Error unmounting share from ha_supervisor",
+						Detail: err.Error(),
+					},
+				})
 				return err
 			}
 		} else if event.Type == events.EventTypes.UPDATE &&
@@ -106,6 +142,15 @@ func NewSupervisorService(lc fx.Lifecycle, in SupervisorServiceParams) Superviso
 			err := p.NetworkUnmountShare(ctx, event.Share.Name)
 			if err != nil {
 				slog.ErrorContext(ctx, "Error unmounting share from ha_supervisor", "share", event.Share.Name, "err", err)
+				p.eventBus.EmitHomeAssistant(events.HomeAssistantEvent{
+					Event: events.Event{
+						Type: events.EventTypes.ERROR,
+					},
+					Error: &dto.ErrorDataModel{
+						Title:  "Error unmounting share from ha_supervisor",
+						Detail: err.Error(),
+					},
+				})
 				return err
 			}
 		}

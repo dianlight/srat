@@ -88,7 +88,7 @@ func NewBroadcasterService(
 }
 
 func (broker *BroadcasterService) setupEventListeners() []func() {
-	ret := make([]func(), 5)
+	ret := make([]func(), 6)
 	// Listen for disk events
 	ret[0] = broker.eventBus.OnDisk(func(ctx context.Context, event events.DiskEvent) errors.E {
 		diskID := "unknown"
@@ -99,20 +99,6 @@ func (broker *BroadcasterService) setupEventListeners() []func() {
 		broker.BroadcastMessage(broker.volumeService.GetVolumesData())
 		return nil
 	})
-
-	// Listen for partition events
-	/*
-		ret[1] = broker.eventBus.OnPartition(func(ctx context.Context, event events.PartitionEvent) errors.E {
-			partName := "unknown"
-			if event.Partition.Name != nil {
-				partName = *event.Partition.Name
-			}
-			slog.DebugContext(ctx, "BroadcasterService received Partition event", "partition", partName)
-			broker.BroadcastMessage(*broker.volumeService.GetVolumesData())
-			return nil
-		})
-	*/
-
 	// Listen for share events
 	ret[1] = broker.eventBus.OnShare(func(ctx context.Context, event events.ShareEvent) errors.E {
 		slog.DebugContext(ctx, "BroadcasterService received Share event", "share", event.Share.Name)
@@ -141,6 +127,14 @@ func (broker *BroadcasterService) setupEventListeners() []func() {
 		if event.SmartTestStatus.DiskId != "" {
 			broker.BroadcastMessage(event.SmartTestStatus)
 		}
+		return nil
+	})
+	ret[5] = broker.eventBus.OnHomeAssistant(func(ctx context.Context, event events.HomeAssistantEvent) errors.E {
+		if event.Type != events.EventTypes.ERROR {
+			return nil
+		}
+		slog.DebugContext(ctx, "BroadcasterService received Error event", "error", event.Error)
+		broker.BroadcastMessage(event.Error)
 		return nil
 	})
 

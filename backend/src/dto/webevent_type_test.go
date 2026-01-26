@@ -42,7 +42,7 @@ func TestWebEventType_IsValidEvent_ValidTypes(t *testing.T) {
 		{"Valid SharedResource slice", []dto.SharedResource{}},
 		{"Valid DataDirtyTracker", dto.DataDirtyTracker{}},
 		{"Valid SmartTestStatus", dto.SmartTestStatus{}},
-		{"Valid ErrorModel", dto.ErrorDataModel{}},
+		{"Valid ErrorModel", &dto.ErrorDataModel{}},
 	}
 
 	for _, tt := range tests {
@@ -121,7 +121,7 @@ func TestWebEventType_IsValidEvent_WithConcreteTypes(t *testing.T) {
 		{
 			name:     "ErrorModel with error key",
 			eventKey: dto.WebEventTypes.EVENTERROR.String(),
-			event:    dto.ErrorDataModel{},
+			event:    &dto.ErrorDataModel{},
 			expected: true,
 		},
 	}
@@ -144,5 +144,5 @@ func TestWebEventType_EmptyValues(t *testing.T) {
 	// Test with empty struct instances
 	assert.True(t, dto.WebEventMap.IsValidEvent(dto.Welcome{}), "empty Welcome should be valid")
 	assert.True(t, dto.WebEventMap.IsValidEvent(dto.HealthPing{}), "empty HealthPing should be valid")
-	assert.True(t, dto.WebEventMap.IsValidEvent(dto.ErrorDataModel{}), "empty ErrorModel should be valid")
+	assert.True(t, dto.WebEventMap.IsValidEvent(&dto.ErrorDataModel{}), "empty ErrorModel should be valid")
 }

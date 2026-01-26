@@ -150,6 +150,7 @@ func NewServerProcessesService(lc fx.Lifecycle, in ServerServiceParams) ServerSe
 	//p.prop_repo = in.Prop_repo
 	p.user_service = in.User_service
 	p.setting_service = in.Setting_service
+	p.host_service = in.Host_service
 
 	//p.samba_user_repo = in.Samba_user_repo
 	p.mount_client = in.Mount_client
