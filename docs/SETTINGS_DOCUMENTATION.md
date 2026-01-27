@@ -150,11 +150,11 @@ This document provides detailed information about all SRAT settings available in
 - **Default**: `false`
 - **Status**: ⚠️ **Experimental Feature**
 - **Description**: When enabled, Home Assistant will mount shares using NFS protocol instead of SMB/CIFS. This can provide better performance and efficiency for Home Assistant integrations.
-- **Requirements**: 
+- **Requirements**:
   - NFS server must be properly configured on the system
   - The `exportfs` command must be available on the system
   - Network File System support must be available in Home Assistant
-- **Availability**: 
+- **Availability**:
   - If the `exportfs` command is not found on the system, this setting will automatically be disabled (set to `false`) and cannot be enabled
   - The system checks for NFS availability when the setting is updated
 - **Benefits**:
