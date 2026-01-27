@@ -292,18 +292,16 @@ func (broker *BroadcasterService) ProcessWebSocketChannel(send ws.Sender) {
 		case event := <-listener.Ch():
 			// Filter out Home Assistant-specific events that shouldn't go to WebSocket clients
 			if dto.WebEventMap.IsValidEvent(event.Message) {
-				continue
-			}
-
-			err := send(ws.Message{
-				ID:   int(event.ID),
-				Data: event.Message,
-			})
-			if err != nil {
-				if !strings.Contains(err.Error(), ": broken pipe") {
-					tlog.DebugContext(broker.ctx, "Error sending event to client", "event", event, "err", err, "active clients", broker.ConnectedClients.Load())
+				err := send(ws.Message{
+					ID:   int(event.ID),
+					Data: event.Message,
+				})
+				if err != nil {
+					if !strings.Contains(err.Error(), ": broken pipe") {
+						tlog.DebugContext(broker.ctx, "Error sending event to client", "event", event, "err", err, "active clients", broker.ConnectedClients.Load())
+					}
+					return
 				}
-				return
 			}
 		}
 	}
