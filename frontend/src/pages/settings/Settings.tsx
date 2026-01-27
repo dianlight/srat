@@ -415,11 +415,11 @@ export function Settings() {
 								<Typography variant="body2">
 									If enabled, Home Assistant will mount shares using NFS instead of SMB/CIFS. This can be more efficient but is currently experimental.
 								</Typography>
-								(!(capabilities as SystemCapabilities)?.support_nfs ?? false) && (
-								<Typography variant="body2" sx={{ mt: 1, color: 'warning.light' }}>
-									<strong>Not available:</strong> NFS support is not detected on this system.
-								</Typography>
-								)
+								{!((capabilities as SystemCapabilities)?.support_nfs ?? false) && (
+									<Typography variant="body2" sx={{ mt: 1, color: 'warning.light' }}>
+										<strong>Not available:</strong> NFS support is not detected on this system.
+									</Typography>
+								)}
 							</>
 						}
 					>
