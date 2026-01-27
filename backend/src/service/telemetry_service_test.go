@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"log"
 	"net/http"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -20,24 +20,21 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 
-	"github.com/dianlight/srat/config"
-	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
-	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
-	"github.com/dianlight/srat/templates"
 	"github.com/dianlight/tlog"
 )
 
 type TelemetryServiceSuite struct {
 	suite.Suite
-	app       *fxtest.App
-	ctx       context.Context
-	cancel    context.CancelFunc
-	wg        *sync.WaitGroup
-	propRepo  repository.PropertyRepositoryInterface
-	telemetry service.TelemetryServiceInterface
+	app    *fxtest.App
+	ctx    context.Context
+	cancel context.CancelFunc
+	wg     *sync.WaitGroup
+
+	settingService service.SettingServiceInterface
+	telemetry      service.TelemetryServiceInterface
 
 	lastRollbarBody string
 }
@@ -66,31 +63,34 @@ func (suite *TelemetryServiceSuite) SetupTest() {
 				ctx := context.WithValue(context.Background(), "wg", suite.wg)
 				return context.WithCancel(ctx)
 			},
-			func() *config.DefaultConfig {
-				var nconfig config.Config
-				buffer, err := templates.Default_Config_content.ReadFile("default_config.json")
+			func() *dto.ContextState {
+				sharedResources := dto.ContextState{}
+				sharedResources.DockerInterface = "hassio"
+				sharedResources.DockerNet = "172.30.32.0/23"
+				var err error
+				sharedResources.Template, err = os.ReadFile("../templates/smb.gtpl")
 				if err != nil {
-					log.Fatalf("Cant read default config file %#+v", err)
+					suite.T().Errorf("Cant read template file %s", err)
 				}
-				err = nconfig.LoadConfigBuffer(buffer) // Assign to existing err
-				if err != nil {
-					log.Fatalf("Cant load default config from buffer %#+v", err)
-				}
-				return &config.DefaultConfig{Config: nconfig}
+				sharedResources.DatabasePath = "file::memory:?cache=shared&_pragma=foreign_keys(1)"
+				return &sharedResources
 			},
 			service.NewTelemetryService,
 			events.NewEventBus,
-			mock.Mock[repository.PropertyRepositoryInterface],
+			//mock.Mock[repository.PropertyRepositoryInterface],
 			mock.Mock[service.SettingServiceInterface],
 			mock.Mock[service.HaRootServiceInterface], // Use mock for HaRootServiceInterface
 		),
 		fx.Populate(&suite.ctx, &suite.cancel),
-		fx.Populate(&suite.propRepo),
+		fx.Populate(&suite.settingService),
 		fx.Populate(&suite.telemetry),
 	)
 
 	// Default repository behavior: return empty properties
-	mock.When(suite.propRepo.All(mock.Any[bool]())).ThenReturn(dbom.Properties{}, nil)
+	mock.When(suite.settingService.Load()).ThenReturn(&dto.Settings{
+		TelemetryMode: dto.TelemetryModes.TELEMETRYMODEASK,
+	}, nil)
+	//mock.When(suite.propRepo.All()).ThenReturn(dbom.Properties{}, nil)
 
 	suite.app.RequireStart()
 }

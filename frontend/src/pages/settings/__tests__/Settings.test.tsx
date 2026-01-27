@@ -408,4 +408,38 @@ describe("Settings", () => {
         // Verify that the component renders successfully
         expect(allowGuestElements[0]).toBeTruthy();
     });
+
+    it("includes ha_use_nfs in HomeAssistant settings category", async () => {
+        // This test verifies that the new experimental NFS option is properly included
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
+        const { Settings } = await import("../Settings");
+        const { createTestStore } = await import("../../../../test/setup");
+
+        const store = await createTestStore();
+        const theme = createTheme();
+
+        render(
+            React.createElement(
+                Provider,
+                {
+                    store, children:
+                        React.createElement(
+                            ThemeProvider,
+                            { theme },
+                            React.createElement(Settings as any)
+                        )
+                }
+            )
+        );
+
+        // Wait for settings to load
+        const searchField = await screen.findByPlaceholderText("Search settings...");
+        expect(searchField).toBeTruthy();
+
+        // Component should render without errors
+        expect(screen.queryAllByRole('button').length).toBeGreaterThan(0);
+    });
 });

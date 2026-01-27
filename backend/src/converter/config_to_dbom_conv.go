@@ -69,11 +69,15 @@ import (
 func (c *ConfigToDbomConverterImpl) PropertiesToConfig(source dbom.Properties, target *config.Config) errors.E {
 	for _, prop := range source {
 		newvalue := reflect.ValueOf(target).Elem().FieldByName(prop.Key)
-		if newvalue.IsValid() {
-			if prop.Value == nil {
+		if newvalue.IsValid() && newvalue.CanSet() {
+			if prop.Value == nil || (reflect.TypeOf(prop.Value).Kind() == reflect.Ptr && reflect.ValueOf(prop.Value).IsNil()) {
 				newvalue.Set(reflect.Zero(newvalue.Type()))
 			} else if reflect.ValueOf(prop.Value).CanConvert(newvalue.Type()) {
 				newvalue.Set(reflect.ValueOf(prop.Value).Convert(newvalue.Type()))
+			} else if newvalue.Kind() == reflect.Ptr && newvalue.Type().Elem().Kind() == reflect.TypeOf(prop.Value).Kind() {
+				newvalue.Set(reflect.ValueOf(prop.Value).Addr())
+			} else if reflect.TypeOf(prop.Value).Kind() == reflect.Ptr && reflect.TypeOf(prop.Value).Elem().Kind() == newvalue.Kind() {
+				newvalue.Set(reflect.ValueOf(prop.Value).Elem())
 			} else {
 				if newvalue.Kind() == reflect.Slice {
 					newElem := reflect.New(newvalue.Type().Elem()).Elem()
@@ -96,6 +100,8 @@ func (c *ConfigToDbomConverterImpl) PropertiesToConfig(source dbom.Properties, t
 					return errors.Errorf("P->C Type mismatch for field: %s %T->%T", prop.Key, prop.Value, newvalue.Interface())
 				}
 			}
+			//} else {
+			//	return errors.Errorf("P->C Invalid field: %s", prop.Key)
 		}
 	}
 	return nil

@@ -26,5 +26,5 @@ type ProcessStatus struct {
 	Children      []*ProcessStatus `json:"children"`
 }
 
-// SambaProcessStatus represents the status of all Samba-related processes and subprocesses.
-type SambaProcessStatus map[string]*ProcessStatus
+// ServerProcessStatus represents the status of all Samba-related processes and subprocesses.
+type ServerProcessStatus map[string]*ProcessStatus

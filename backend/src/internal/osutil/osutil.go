@@ -444,3 +444,28 @@ func GenerateSecurePassword() (string, error) {
 	password := base64.RawURLEncoding.EncodeToString(randomBytes)
 	return password, nil
 }
+
+// CommandExists checks if a command is available and executable.
+// For s6-* commands, it validates that the service directory path exists.
+// For other commands, it checks if the command is in PATH and is executable.
+func CommandExists(cmd []string) bool {
+	if len(cmd) == 0 {
+		return false
+	}
+
+	cmdName := cmd[0]
+
+	// For s6-* commands, check if the last element (service directory path) exists
+	if strings.HasPrefix(cmdName, "s6-") {
+		if len(cmd) < 2 {
+			return false
+		}
+		servicePath := cmd[len(cmd)-1]
+		info, err := os.Stat(servicePath)
+		return err == nil && info.IsDir()
+	}
+
+	// For other commands, check if executable exists in PATH
+	_, err := exec.LookPath(cmdName)
+	return err == nil
+}

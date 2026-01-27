@@ -12,16 +12,13 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/homeassistant/mount"
 	"github.com/dianlight/srat/internal/osutil"
-	"github.com/dianlight/srat/repository"
 	service "github.com/dianlight/srat/service"
-	"github.com/dianlight/srat/templates"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/sergi/go-diff/diffmatchpatch"
@@ -31,92 +28,22 @@ import (
 	"go.uber.org/fx/fxtest"
 )
 
-type SambaServiceSuite struct {
+type ServerProcessServiceSuite struct {
 	suite.Suite
-	sambaService service.SambaServiceInterface
-	//shareRepo    repository.ExportedShareRepositoryInterface
-	//apictx              dto.ContextState
-	share_service service.ShareServiceInterface
-	property_repo repository.PropertyRepositoryInterface
-	ctrl          *matchers.MockController
-	ctx           context.Context
-	cancel        context.CancelFunc
-	app           *fxtest.App
+	serverService   service.ServerServiceInterface
+	share_service   service.ShareServiceInterface
+	setting_service service.SettingServiceInterface
+	ctrl            *matchers.MockController
+	ctx             context.Context
+	cancel          context.CancelFunc
+	app             *fxtest.App
 }
 
 func TestSambaServiceSuite(t *testing.T) {
-	suite.Run(t, new(SambaServiceSuite))
+	suite.Run(t, new(ServerProcessServiceSuite))
 }
 
-// TestCommandExists_EmptySlice tests that commandExists returns false for empty command slice
-func (suite *SambaServiceSuite) TestCommandExists_EmptySlice() {
-	result := suite.sambaService.(*service.SambaService).CommandExists([]string{})
-	suite.False(result, "commandExists should return false for empty slice")
-}
-
-// TestCommandExists_S6Command_ServicePathExists tests s6-* command with existing service directory
-func (suite *SambaServiceSuite) TestCommandExists_S6Command_ServicePathExists() {
-	result := suite.sambaService.(*service.SambaService).CommandExists([]string{"s6-svc", "-u", "/bin"})
-	suite.True(result, "commandExists should return true for s6-* command with existing service path")
-}
-
-// TestCommandExists_S6Command_ServicePathNotExists tests s6-* command with non-existent service directory
-func (suite *SambaServiceSuite) TestCommandExists_S6Command_ServicePathNotExists() {
-	result := suite.sambaService.(*service.SambaService).CommandExists([]string{"s6-svc", "-u", "/nonexistent/path"})
-	suite.False(result, "commandExists should return false for s6-* command with non-existent service path")
-}
-
-// TestCommandExists_S6Command_NoServicePath tests s6-* command with only command name (no path argument)
-func (suite *SambaServiceSuite) TestCommandExists_S6Command_NoServicePath() {
-	result := suite.sambaService.(*service.SambaService).CommandExists([]string{"s6-svc"})
-	suite.False(result, "commandExists should return false for s6-* command without path argument")
-}
-
-// TestCommandExists_S6Command_ServicePathIsFile tests s6-* command where the path is a file, not directory
-func (suite *SambaServiceSuite) TestCommandExists_S6Command_ServicePathIsFile() {
-	result := suite.sambaService.(*service.SambaService).CommandExists([]string{"s6-svc", "-u", "hello.txt"})
-	suite.False(result, "commandExists should return false when s6-* service path is a file, not directory")
-}
-
-// TestCommandExists_RegularCommand_InPATH tests regular command that exists in PATH
-func (suite *SambaServiceSuite) TestCommandExists_RegularCommand_InPATH() {
-	// "ls" is a standard command that should exist in PATH
-	result := suite.sambaService.(*service.SambaService).CommandExists([]string{"ls"})
-	suite.True(result, "commandExists should return true for valid command in PATH")
-}
-
-// TestCommandExists_RegularCommand_NotInPATH tests regular command that does not exist in PATH
-func (suite *SambaServiceSuite) TestCommandExists_RegularCommand_NotInPATH() {
-	result := suite.sambaService.(*service.SambaService).CommandExists([]string{"nonexistent-command-xyz-12345"})
-	suite.False(result, "commandExists should return false for command not in PATH")
-}
-
-// TestCommandExists_RegularCommand_WithArguments tests regular command with arguments (only first element matters)
-func (suite *SambaServiceSuite) TestCommandExists_RegularCommand_WithArguments() {
-	// "echo" is a standard command, arguments should be ignored for PATH lookup
-	result := suite.sambaService.(*service.SambaService).CommandExists([]string{"echo", "hello", "world"})
-	suite.True(result, "commandExists should return true for valid command with arguments")
-}
-
-// TestCommandExists_S6Command_MultipleArguments tests s6-* command with multiple arguments (last element is path)
-func (suite *SambaServiceSuite) TestCommandExists_S6Command_MultipleArguments() {
-	result := suite.sambaService.(*service.SambaService).CommandExists([]string{"s6-svc", "-wU", "-s", "SIGKILL", "/bin"})
-	suite.True(result, "commandExists should use last element as service path for s6-* commands")
-}
-
-// TestCommandExists_S6Command_MultipleArguments_NonExistentPath tests s6-* with multiple arguments and non-existent final path
-func (suite *SambaServiceSuite) TestCommandExists_S6Command_MultipleArguments_NonExistentPath() {
-	result := suite.sambaService.(*service.SambaService).CommandExists([]string{"s6-svc", "-wU", "-s", "SIGKILL", "/nonexistent/service/path"})
-	suite.False(result, "commandExists should return false when s6-* final path element does not exist")
-}
-
-// TestCommandExists_CommandNameOnly tests command with only name (single element slice)
-func (suite *SambaServiceSuite) TestCommandExists_CommandNameOnly() {
-	result := suite.sambaService.(*service.SambaService).CommandExists([]string{"cat"})
-	suite.True(result, "commandExists should handle single-element command slices")
-}
-
-func (suite *SambaServiceSuite) SetupTest() {
+func (suite *ServerProcessServiceSuite) SetupTest() {
 	data, err := os.ReadFile("../../test/data/mount_info.txt")
 	if err != nil {
 		log.Fatal(err)
@@ -177,27 +104,29 @@ func (suite *SambaServiceSuite) SetupTest() {
 				sharedResources.DatabasePath = "file::memory:?cache=shared&_pragma=foreign_keys(1)"
 				return &sharedResources
 			},
-			func() *config.DefaultConfig {
-				var nconfig config.Config
-				buffer, err := templates.Default_Config_content.ReadFile("default_config.json")
-				if err != nil {
-					log.Fatalf("Cant read default config file %#+v", err)
-				}
-				err = nconfig.LoadConfigBuffer(buffer) // Assign to existing err
-				if err != nil {
-					log.Fatalf("Cant load default config from buffer %#+v", err)
-				}
-				return &config.DefaultConfig{Config: nconfig}
-			},
+			/*
+				func() *config.DefaultConfig {
+					var nconfig config.Config
+					buffer, err := templates.Default_Config_content.ReadFile("default_config.json")
+					if err != nil {
+						log.Fatalf("Cant read default config file %#+v", err)
+					}
+					err = nconfig.LoadConfigBuffer(buffer) // Assign to existing err
+					if err != nil {
+						log.Fatalf("Cant load default config from buffer %#+v", err)
+					}
+					return &config.DefaultConfig{Config: nconfig}
+				},
+			*/
 			dbom.NewDB,
-			service.NewSambaService,
+			service.NewServerProcessesService,
 			mock.Mock[service.ShareServiceInterface],
 			service.NewUserService,
 			mock.Mock[service.BroadcasterServiceInterface],
 			mock.Mock[service.DirtyDataServiceInterface],
 			//mock.Mock[service.SupervisorServiceInterface],
 			//mock.Mock[repository.ExportedShareRepositoryInterface],
-			mock.Mock[repository.PropertyRepositoryInterface],
+			//mock.Mock[repository.PropertyRepositoryInterface],
 			//mock.Mock[repository.SambaUserRepositoryInterface],
 			//mock.Mock[repository.MountPointPathRepositoryInterface],
 			mock.Mock[mount.ClientWithResponsesInterface],
@@ -205,9 +134,10 @@ func (suite *SambaServiceSuite) SetupTest() {
 			mock.Mock[service.HDIdleServiceInterface],
 			mock.Mock[service.SettingServiceInterface],
 			mock.Mock[events.EventBusInterface],
+			mock.Mock[service.HostServiceInterface],
 		),
-		fx.Populate(&suite.sambaService),
-		fx.Populate(&suite.property_repo),
+		fx.Populate(&suite.serverService),
+		fx.Populate(&suite.setting_service),
 		fx.Populate(&suite.share_service),
 		//fx.Populate(&suite.samba_user_repo),
 		//fx.Populate(&suite.shareRepo),
@@ -233,44 +163,25 @@ func (suite *SambaServiceSuite) SetupTest() {
 	suite.app.RequireStart()
 }
 
-func (suite *SambaServiceSuite) TearDownTest() {
+func (suite *ServerProcessServiceSuite) TearDownTest() {
 	suite.cancel()
 	suite.ctx.Value("wg").(*sync.WaitGroup).Wait()
 	suite.app.RequireStop()
 }
 
 // Helper function to setup common test data
-func (suite *SambaServiceSuite) setupCommonMocks() {
+func (suite *ServerProcessServiceSuite) setupCommonMocks() {
 
-	mock.When(suite.property_repo.All(mock.Any[bool]())).ThenReturn(dbom.Properties{
-		"Hostname": {
-			Key:   "Hostname",
-			Value: "test-host",
-		},
-		"Workgroup": {
-			Key:   "Workgroup",
-			Value: "WORKGROUP",
-		},
-		"AllowHost": {
-			Key:   "AllowHost",
-			Value: []string{"10.0.0.0/8", "100.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "169.254.0.0/16", "fe80::/10", "fc00::/7"},
-		},
-		"Interfaces": {
-			Key:   "Interfaces",
-			Value: []string{"wlan0", "end0"},
-		},
-		"BindAllInterfaces": {
-			Key:   "BindAllInterfaces",
-			Value: false,
-		},
-		"CompatibilityMode": {
-			Key:   "CompatibilityMode",
-			Value: false,
-		},
-		"EnableRecycleBin": {
-			Key:   "EnableRecycleBin",
-			Value: false,
-		},
+	mock.When(suite.setting_service.Load()).ThenReturn(&dto.Settings{
+		Hostname:          "test-host",
+		Workgroup:         "WORKGROUP",
+		AllowHost:         []string{"10.0.0.0/8", "100.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "169.254.0.0/16", "fe80::/10", "fc00::/7"},
+		Interfaces:        []string{"wlan0", "end0"},
+		BindAllInterfaces: false,
+		CompatibilityMode: false,
+		LocalMaster:       pointer.Bool(true),
+		HAUseNFS:          pointer.Bool(true),
+		AllowGuest:        pointer.Bool(false),
 	}, nil)
 
 	mock.When(suite.share_service.ListShares()).ThenReturn([]dto.SharedResource{
@@ -410,7 +321,7 @@ func (suite *SambaServiceSuite) setupCommonMocks() {
 }
 
 // Helper function to compare generated config against expected template
-func (suite *SambaServiceSuite) compareConfigSections(generatedConfig *[]byte, testName string, expectedSections map[string]string) {
+func (suite *ServerProcessServiceSuite) compareConfigSections(generatedConfig *[]byte, testName string, expectedSections map[string]string) {
 	dmp := diffmatchpatch.New()
 	var re = regexp.MustCompile(`(?m)^\[([^[]+)\]\n(?:^[^[].*\n+)+`)
 
@@ -483,11 +394,11 @@ func (suite *SambaServiceSuite) compareConfigSections(generatedConfig *[]byte, t
 }
 
 // Base test with Samba 4.23 (latest modern version)
-func (suite *SambaServiceSuite) TestCreateConfigStream() {
+func (suite *ServerProcessServiceSuite) TestCreateConfigStream() {
 	defer osutil.MockSambaVersion("4.23.0")()
 	suite.setupCommonMocks()
 
-	stream, errE := suite.sambaService.CreateConfigStream()
+	stream, errE := suite.serverService.CreateSambaConfigStream()
 	suite.Require().NoError(errE)
 	suite.NotNil(stream)
 
@@ -505,11 +416,11 @@ func (suite *SambaServiceSuite) TestCreateConfigStream() {
 }
 
 // Test with Samba 4.21.0 - earliest supported version
-func (suite *SambaServiceSuite) TestCreateConfigStream_Samba421() {
+func (suite *ServerProcessServiceSuite) TestCreateConfigStream_Samba421() {
 	defer osutil.MockSambaVersion("4.21.0")()
 	suite.setupCommonMocks()
 
-	stream, errE := suite.sambaService.CreateConfigStream()
+	stream, errE := suite.serverService.CreateSambaConfigStream()
 	suite.Require().NoError(errE)
 	suite.NotNil(stream)
 
@@ -522,11 +433,11 @@ func (suite *SambaServiceSuite) TestCreateConfigStream_Samba421() {
 }
 
 // Test with Samba 4.22.0 - middle supported version
-func (suite *SambaServiceSuite) TestCreateConfigStream_Samba422() {
+func (suite *ServerProcessServiceSuite) TestCreateConfigStream_Samba422() {
 	defer osutil.MockSambaVersion("4.22.0")()
 	suite.setupCommonMocks()
 
-	stream, errE := suite.sambaService.CreateConfigStream()
+	stream, errE := suite.serverService.CreateSambaConfigStream()
 	suite.Require().NoError(errE)
 	suite.NotNil(stream)
 
@@ -539,11 +450,11 @@ func (suite *SambaServiceSuite) TestCreateConfigStream_Samba422() {
 }
 
 // Test with Samba 4.23.0 - latest modern version with full features
-func (suite *SambaServiceSuite) TestCreateConfigStream_Samba423() {
+func (suite *ServerProcessServiceSuite) TestCreateConfigStream_Samba423() {
 	defer osutil.MockSambaVersion("4.23.0")()
 	suite.setupCommonMocks()
 
-	stream, errE := suite.sambaService.CreateConfigStream()
+	stream, errE := suite.serverService.CreateSambaConfigStream()
 	suite.Require().NoError(errE)
 	suite.NotNil(stream)
 
@@ -556,11 +467,11 @@ func (suite *SambaServiceSuite) TestCreateConfigStream_Samba423() {
 }
 
 // Test with Samba 4.24.0 - future version
-func (suite *SambaServiceSuite) TestCreateConfigStream_Samba424() {
+func (suite *ServerProcessServiceSuite) TestCreateConfigStream_Samba424() {
 	defer osutil.MockSambaVersion("4.24.0")()
 	suite.setupCommonMocks()
 
-	stream, errE := suite.sambaService.CreateConfigStream()
+	stream, errE := suite.serverService.CreateSambaConfigStream()
 	suite.Require().NoError(errE)
 	suite.NotNil(stream)
 
@@ -573,11 +484,11 @@ func (suite *SambaServiceSuite) TestCreateConfigStream_Samba424() {
 }
 
 // Test with Samba 5.0.0 - major version bump (hypothetical future)
-func (suite *SambaServiceSuite) TestCreateConfigStream_Samba500() {
+func (suite *ServerProcessServiceSuite) TestCreateConfigStream_Samba500() {
 	defer osutil.MockSambaVersion("5.0.0")()
 	suite.setupCommonMocks()
 
-	stream, errE := suite.sambaService.CreateConfigStream()
+	stream, errE := suite.serverService.CreateSambaConfigStream()
 	suite.Require().NoError(errE)
 	suite.NotNil(stream)
 
@@ -588,11 +499,11 @@ func (suite *SambaServiceSuite) TestCreateConfigStream_Samba500() {
 }
 
 // Test with unparseable version string (should fallback gracefully)
-func (suite *SambaServiceSuite) TestCreateConfigStream_InvalidVersion() {
+func (suite *ServerProcessServiceSuite) TestCreateConfigStream_InvalidVersion() {
 	defer osutil.MockSambaVersion("invalid-version-string")()
 	suite.setupCommonMocks()
 
-	stream, errE := suite.sambaService.CreateConfigStream()
+	stream, errE := suite.serverService.CreateSambaConfigStream()
 	// Should still succeed but with safe defaults
 	suite.Require().NoError(errE)
 	suite.NotNil(stream)
@@ -604,11 +515,11 @@ func (suite *SambaServiceSuite) TestCreateConfigStream_InvalidVersion() {
 }
 
 // Test with empty version string (edge case)
-func (suite *SambaServiceSuite) TestCreateConfigStream_EmptyVersion() {
+func (suite *ServerProcessServiceSuite) TestCreateConfigStream_EmptyVersion() {
 	defer osutil.MockSambaVersion("")()
 	suite.setupCommonMocks()
 
-	stream, errE := suite.sambaService.CreateConfigStream()
+	stream, errE := suite.serverService.CreateSambaConfigStream()
 	suite.Require().NoError(errE)
 	suite.NotNil(stream)
 
@@ -617,12 +528,12 @@ func (suite *SambaServiceSuite) TestCreateConfigStream_EmptyVersion() {
 }
 
 // Test version comparison logic for boundary conditions
-func (suite *SambaServiceSuite) TestCreateConfigStream_VersionBoundary_4_21_9() {
+func (suite *ServerProcessServiceSuite) TestCreateConfigStream_VersionBoundary_4_21_9() {
 	// Test version 4.21.9 (should still be 4.21 behavior)
 	defer osutil.MockSambaVersion("4.21.9")()
 	suite.setupCommonMocks()
 
-	stream, errE := suite.sambaService.CreateConfigStream()
+	stream, errE := suite.serverService.CreateSambaConfigStream()
 	suite.Require().NoError(errE)
 
 	configStr := string(*stream)
@@ -630,12 +541,12 @@ func (suite *SambaServiceSuite) TestCreateConfigStream_VersionBoundary_4_21_9() 
 }
 
 // Test version comparison logic for boundary conditions
-func (suite *SambaServiceSuite) TestCreateConfigStream_VersionBoundary_4_22_1() {
+func (suite *ServerProcessServiceSuite) TestCreateConfigStream_VersionBoundary_4_22_1() {
 	// Test version 4.22.1 (should be 4.22 behavior)
 	defer osutil.MockSambaVersion("4.22.1")()
 	suite.setupCommonMocks()
 
-	stream, errE := suite.sambaService.CreateConfigStream()
+	stream, errE := suite.serverService.CreateSambaConfigStream()
 	suite.Require().NoError(errE)
 
 	configStr := string(*stream)
@@ -643,12 +554,12 @@ func (suite *SambaServiceSuite) TestCreateConfigStream_VersionBoundary_4_22_1() 
 }
 
 // Test version comparison logic for boundary conditions
-func (suite *SambaServiceSuite) TestCreateConfigStream_VersionBoundary_4_23_0() {
+func (suite *ServerProcessServiceSuite) TestCreateConfigStream_VersionBoundary_4_23_0() {
 	// Test version 4.23.0 (exact match)
 	defer osutil.MockSambaVersion("4.23.0")()
 	suite.setupCommonMocks()
 
-	stream, errE := suite.sambaService.CreateConfigStream()
+	stream, errE := suite.serverService.CreateSambaConfigStream()
 	suite.Require().NoError(errE)
 
 	configStr := string(*stream)
@@ -657,11 +568,11 @@ func (suite *SambaServiceSuite) TestCreateConfigStream_VersionBoundary_4_23_0() 
 
 // Test version with patch level variations
 // These tests verify that version boundaries are correctly detected
-func (suite *SambaServiceSuite) TestCreateConfigStream_VersionPatchVariations_4_20() {
+func (suite *ServerProcessServiceSuite) TestCreateConfigStream_VersionPatchVariations_4_20() {
 	defer osutil.MockSambaVersion("4.20.0")()
 	suite.setupCommonMocks()
 
-	stream, errE := suite.sambaService.CreateConfigStream()
+	stream, errE := suite.serverService.CreateSambaConfigStream()
 	suite.Require().NoError(errE)
 	configStr := string(*stream)
 
@@ -670,11 +581,11 @@ func (suite *SambaServiceSuite) TestCreateConfigStream_VersionPatchVariations_4_
 	suite.NotContains(configStr, "server smb transports =", "Samba 4.20 should NOT include server smb transports")
 }
 
-func (suite *SambaServiceSuite) TestCreateConfigStream_VersionPatchVariations_4_21_17() {
+func (suite *ServerProcessServiceSuite) TestCreateConfigStream_VersionPatchVariations_4_21_17() {
 	defer osutil.MockSambaVersion("4.21.17")()
 	suite.setupCommonMocks()
 
-	stream, errE := suite.sambaService.CreateConfigStream()
+	stream, errE := suite.serverService.CreateSambaConfigStream()
 	suite.Require().NoError(errE)
 	configStr := string(*stream)
 
@@ -683,11 +594,11 @@ func (suite *SambaServiceSuite) TestCreateConfigStream_VersionPatchVariations_4_
 	suite.NotContains(configStr, "server smb transports =", "Samba 4.21.17 should NOT include server smb transports")
 }
 
-func (suite *SambaServiceSuite) TestCreateConfigStream_VersionPatchVariations_4_22_10() {
+func (suite *ServerProcessServiceSuite) TestCreateConfigStream_VersionPatchVariations_4_22_10() {
 	defer osutil.MockSambaVersion("4.22.10")()
 	suite.setupCommonMocks()
 
-	stream, errE := suite.sambaService.CreateConfigStream()
+	stream, errE := suite.serverService.CreateSambaConfigStream()
 	suite.Require().NoError(errE)
 	configStr := string(*stream)
 
@@ -696,11 +607,11 @@ func (suite *SambaServiceSuite) TestCreateConfigStream_VersionPatchVariations_4_
 	suite.NotContains(configStr, "server smb transports =", "Samba 4.22.10 should NOT include server smb transports")
 }
 
-func (suite *SambaServiceSuite) TestCreateConfigStream_VersionPatchVariations_4_23_5() {
+func (suite *ServerProcessServiceSuite) TestCreateConfigStream_VersionPatchVariations_4_23_5() {
 	defer osutil.MockSambaVersion("4.23.5")()
 	suite.setupCommonMocks()
 
-	stream, errE := suite.sambaService.CreateConfigStream()
+	stream, errE := suite.serverService.CreateSambaConfigStream()
 	suite.Require().NoError(errE)
 	configStr := string(*stream)
 
@@ -709,11 +620,11 @@ func (suite *SambaServiceSuite) TestCreateConfigStream_VersionPatchVariations_4_
 	suite.Contains(configStr, "server smb transports", "Samba 4.23.5 should include server smb transports")
 }
 
-func (suite *SambaServiceSuite) TestCreateConfigStream_VersionPatchVariations_4_24_0() {
+func (suite *ServerProcessServiceSuite) TestCreateConfigStream_VersionPatchVariations_4_24_0() {
 	defer osutil.MockSambaVersion("4.24.0")()
 	suite.setupCommonMocks()
 
-	stream, errE := suite.sambaService.CreateConfigStream()
+	stream, errE := suite.serverService.CreateSambaConfigStream()
 	suite.Require().NoError(errE)
 	configStr := string(*stream)
 
@@ -723,9 +634,9 @@ func (suite *SambaServiceSuite) TestCreateConfigStream_VersionPatchVariations_4_
 }
 
 // TestGetSambaProcess_ReturnsProcessStatus tests that GetSambaProcess returns process status
-func (suite *SambaServiceSuite) TestGetSambaProcess_ReturnsProcessStatus() {
+func (suite *ServerProcessServiceSuite) TestGetSambaProcess_ReturnsProcessStatus() {
 	// GetSambaProcess should return a non-nil SambaProcessStatus
-	status, err := suite.sambaService.GetSambaProcess()
+	status, err := suite.serverService.GetServerProcesses()
 
 	suite.Require().NoError(err)
 	suite.NotNil(status)
@@ -733,15 +644,15 @@ func (suite *SambaServiceSuite) TestGetSambaProcess_ReturnsProcessStatus() {
 
 // TestGetSambaProcess_WithHDIdleSubprocess tests that HDIdle subprocess is included
 // when GetSambaProcess detects the current process (srat-server)
-func (suite *SambaServiceSuite) TestGetSambaProcess_WithHDIdleSubprocess() {
+func (suite *ServerProcessServiceSuite) TestGetSambaProcess_WithHDIdleSubprocess() {
 	// GetSambaProcess should return valid status
 	// The HDIdle mock is already set up in fx.Provide
-	status, err := suite.sambaService.GetSambaProcess()
+	status, err := suite.serverService.GetServerProcesses()
 
 	suite.Require().NoError(err)
 	suite.NotNil(status)
 	// Status should be a map of process names to ProcessStatus
-	suite.IsType(dto.SambaProcessStatus{}, *status)
+	suite.IsType(dto.ServerProcessStatus{}, *status)
 }
 
 /*

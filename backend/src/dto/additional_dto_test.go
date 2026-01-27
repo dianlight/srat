@@ -242,7 +242,7 @@ func TestProcessStatus_AllFields(t *testing.T) {
 }
 
 func TestSambaProcessStatus_AllFields(t *testing.T) {
-	status := dto.SambaProcessStatus{
+	status := dto.ServerProcessStatus{
 		"smbd": &dto.ProcessStatus{
 			Pid:       1234,
 			Name:      "smbd",
@@ -469,7 +469,7 @@ func TestHealthPing_AllFields(t *testing.T) {
 	health := dto.HealthPing{
 		Alive:     true,
 		AliveTime: time.Now().Unix(),
-		SambaProcessStatus: dto.SambaProcessStatus{
+		SambaProcessStatus: dto.ServerProcessStatus{
 			"smbd":        &dto.ProcessStatus{Pid: 1234, IsRunning: true},
 			"nmbd":        &dto.ProcessStatus{},
 			"wsddn":       &dto.ProcessStatus{},

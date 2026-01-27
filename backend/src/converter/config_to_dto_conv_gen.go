@@ -14,27 +14,20 @@ type ConfigToDtoConverterImpl struct{}
 func (c *ConfigToDtoConverterImpl) ConfigToSettings(source config.Config, target *dto.Settings) error {
 	target.Hostname = source.Hostname
 	target.Workgroup = source.Workgroup
-	if source.Mountoptions != nil {
-		target.Mountoptions = make([]string, len(source.Mountoptions))
-		for i := 0; i < len(source.Mountoptions); i++ {
-			target.Mountoptions[i] = source.Mountoptions[i]
-		}
-	}
 	if source.AllowHost != nil {
 		target.AllowHost = make([]string, len(source.AllowHost))
-		for j := 0; j < len(source.AllowHost); j++ {
-			target.AllowHost[j] = source.AllowHost[j]
+		for i := 0; i < len(source.AllowHost); i++ {
+			target.AllowHost[i] = source.AllowHost[i]
 		}
 	}
 	target.CompatibilityMode = source.CompatibilityMode
 	if source.Interfaces != nil {
 		target.Interfaces = make([]string, len(source.Interfaces))
-		for k := 0; k < len(source.Interfaces); k++ {
-			target.Interfaces[k] = source.Interfaces[k]
+		for j := 0; j < len(source.Interfaces); j++ {
+			target.Interfaces[j] = source.Interfaces[j]
 		}
 	}
 	target.BindAllInterfaces = source.BindAllInterfaces
-	target.LogLevel = source.LogLevel
 	target.MultiChannel = source.MultiChannel
 	pBool := source.AllowGuest
 	target.AllowGuest = &pBool
@@ -45,6 +38,24 @@ func (c *ConfigToDtoConverterImpl) ConfigToSettings(source config.Config, target
 	target.TelemetryMode = dtoTelemetryMode
 	pBool2 := source.LocalMaster
 	target.LocalMaster = &pBool2
+	pBool3 := source.ExportStatsToHA
+	target.ExportStatsToHA = &pBool3
+	if source.HAUseNFS != nil {
+		xbool := *source.HAUseNFS
+		target.HAUseNFS = &xbool
+	}
+	pBool4 := source.SMBoverQUIC
+	target.SMBoverQUIC = &pBool4
+	pBool5 := source.HDIdleEnabled
+	target.HDIdleEnabled = &pBool5
+	target.HDIdleDefaultIdleTime = source.HDIdleDefaultIdleTime
+	dtoHdidleCommand, err := dto.ParseHdidleCommand(source.HDIdleDefaultCommandType)
+	if err != nil {
+		return err
+	}
+	target.HDIdleDefaultCommandType = dtoHdidleCommand
+	target.HDIdleDefaultPowerCondition = source.HDIdleDefaultPowerCondition
+	target.HDIdleIgnoreSpinDownDetection = source.HDIdleIgnoreSpinDownDetection
 	return nil
 }
 func (c *ConfigToDtoConverterImpl) ShareToMountPointData(source config.Share) (*dto.MountPointData, error) {

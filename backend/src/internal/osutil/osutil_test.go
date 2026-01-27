@@ -5,12 +5,22 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
 
 const sampleMountInfo = `36 35 98:0 / /mnt/root rw,nosuid - ext4 /dev/root rw,relatime
 37 36 98:1 /subdir /mnt/data rw,noatime shared:402 - xfs /dev/sdb1 rw`
 
-func TestLoadMountInfoWithMock(t *testing.T) {
+type OsutilSuite struct {
+	suite.Suite
+}
+
+func TestOsutilSuite(t *testing.T) {
+	suite.Run(t, new(OsutilSuite))
+}
+
+func (suite *OsutilSuite) TestLoadMountInfoWithMock() {
+	t := suite.T()
 	restore := MockMountInfo(sampleMountInfo)
 	t.Cleanup(restore)
 
@@ -52,7 +62,8 @@ func TestIsMounted(t *testing.T) {
 	assert.False(t, missing)
 }
 
-func TestParseHelpers(t *testing.T) {
+func (suite *OsutilSuite) TestParseHelpers() {
+	t := suite.T()
 	opts := parseOptions("rw,noatime,uid=1000")
 	assert.Empty(t, opts["rw"])
 	assert.Empty(t, opts["noatime"])
@@ -64,7 +75,8 @@ func TestParseHelpers(t *testing.T) {
 	assert.Equal(t, "master:1", optional[1])
 }
 
-func TestMountInfoEntry(t *testing.T) {
+func (suite *OsutilSuite) TestMountInfoEntry() {
+	t := suite.T()
 	entry := &MountInfoEntry{
 		MountID:      1,
 		ParentID:     0,
@@ -88,19 +100,22 @@ func TestMountInfoEntry(t *testing.T) {
 	assert.Equal(t, "/dev/sda1", entry.MountSource)
 }
 
-func TestParseOptionsEmpty(t *testing.T) {
+func (suite *OsutilSuite) TestParseOptionsEmpty() {
+	t := suite.T()
 	opts := parseOptions("")
 	assert.NotNil(t, opts)
 	assert.Empty(t, opts)
 }
 
-func TestParseOptionsSingleValue(t *testing.T) {
+func (suite *OsutilSuite) TestParseOptionsSingleValue() {
+	t := suite.T()
 	opts := parseOptions("rw")
 	assert.Len(t, opts, 1)
 	assert.Empty(t, opts["rw"])
 }
 
-func TestParseOptionsMultipleValues(t *testing.T) {
+func (suite *OsutilSuite) TestParseOptionsMultipleValues() {
+	t := suite.T()
 	opts := parseOptions("rw,nosuid,nodev,uid=1000,gid=100")
 	assert.Len(t, opts, 5)
 	assert.Empty(t, opts["rw"])
@@ -110,23 +125,27 @@ func TestParseOptionsMultipleValues(t *testing.T) {
 	assert.Equal(t, "100", opts["gid"])
 }
 
-func TestParseOptionalEmpty(t *testing.T) {
+func (suite *OsutilSuite) TestParseOptionalEmpty() {
+	t := suite.T()
 	optional := parseOptional("")
 	assert.Nil(t, optional)
 }
 
-func TestParseOptionalWhitespace(t *testing.T) {
+func (suite *OsutilSuite) TestParseOptionalWhitespace() {
+	t := suite.T()
 	optional := parseOptional("   ")
 	assert.Nil(t, optional)
 }
 
-func TestParseOptionalSingleField(t *testing.T) {
+func (suite *OsutilSuite) TestParseOptionalSingleField() {
+	t := suite.T()
 	optional := parseOptional("shared:402")
 	require.Len(t, optional, 1)
 	assert.Equal(t, "shared:402", optional[0])
 }
 
-func TestParseOptionalMultipleFields(t *testing.T) {
+func (suite *OsutilSuite) TestParseOptionalMultipleFields() {
+	t := suite.T()
 	optional := parseOptional("shared:5 master:1 propagate_from:2")
 	require.Len(t, optional, 3)
 	assert.Equal(t, "shared:5", optional[0])
@@ -134,13 +153,15 @@ func TestParseOptionalMultipleFields(t *testing.T) {
 	assert.Equal(t, "propagate_from:2", optional[2])
 }
 
-func TestConvertInfosEmpty(t *testing.T) {
+func (suite *OsutilSuite) TestConvertInfosEmpty() {
+	t := suite.T()
 	entries := convertInfos(nil)
 	assert.NotNil(t, entries)
 	assert.Empty(t, entries)
 }
 
-func TestMockMountInfoRestore(t *testing.T) {
+func (suite *OsutilSuite) TestMockMountInfoRestore() {
+	t := suite.T()
 	// Set initial mock
 	restore1 := MockMountInfo("first")
 
@@ -156,7 +177,8 @@ func TestMockMountInfoRestore(t *testing.T) {
 	assert.True(t, true) // Test completes without panic
 }
 
-func TestIsMountedMultipleMounts(t *testing.T) {
+func (suite *OsutilSuite) TestIsMountedMultipleMounts() {
+	t := suite.T()
 	mountInfo := `36 35 98:0 / /mnt/a rw - ext4 /dev/sda1 rw
 37 35 98:1 / /mnt/b rw - ext4 /dev/sda2 rw
 38 35 98:2 / /mnt/c rw - xfs /dev/sdb1 rw`
@@ -181,7 +203,8 @@ func TestIsMountedMultipleMounts(t *testing.T) {
 	assert.False(t, notMounted)
 }
 
-func TestMountInfoSuperOptions(t *testing.T) {
+func (suite *OsutilSuite) TestMountInfoSuperOptions() {
+	t := suite.T()
 	restore := MockMountInfo(sampleMountInfo)
 	t.Cleanup(restore)
 
@@ -194,7 +217,8 @@ func TestMountInfoSuperOptions(t *testing.T) {
 	assert.NotNil(t, entries[1].SuperOptions)
 }
 
-func TestMountInfoDeviceNumbers(t *testing.T) {
+func (suite *OsutilSuite) TestMountInfoDeviceNumbers() {
+	t := suite.T()
 	restore := MockMountInfo(sampleMountInfo)
 	t.Cleanup(restore)
 
@@ -208,7 +232,8 @@ func TestMountInfoDeviceNumbers(t *testing.T) {
 	assert.Equal(t, 1, entries[1].DevMinor)
 }
 
-func TestIsKernelModuleLoaded(t *testing.T) {
+func (suite *OsutilSuite) TestIsKernelModuleLoaded() {
+	t := suite.T()
 	// Note: This test will check actual kernel modules on the system.
 	// We test with a module that is very likely to be loaded (like 'loop')
 	// and one that is unlikely to exist.
@@ -224,7 +249,8 @@ func TestIsKernelModuleLoaded(t *testing.T) {
 	assert.False(t, loaded)
 }
 
-func TestGetSambaVersion(t *testing.T) {
+func (suite *OsutilSuite) TestGetSambaVersion() {
+	t := suite.T()
 	// This test will attempt to get Samba version if installed
 	version, err := GetSambaVersion()
 
@@ -236,7 +262,8 @@ func TestGetSambaVersion(t *testing.T) {
 	// If error, it's OK - Samba might not be installed in test environment
 }
 
-func TestIsSambaVersionSufficient(t *testing.T) {
+func (suite *OsutilSuite) TestIsSambaVersionSufficient() {
+	t := suite.T()
 	// This test will check if Samba version meets minimum requirement
 	sufficient, err := IsSambaVersionSufficient()
 
@@ -249,7 +276,8 @@ func TestIsSambaVersionSufficient(t *testing.T) {
 	// If error, it's OK - Samba might not be installed in test environment
 }
 
-func TestGenerateSecurePassword(t *testing.T) {
+func (suite *OsutilSuite) TestGenerateSecurePassword() {
+	t := suite.T()
 	// Test basic generation
 	password, err := GenerateSecurePassword()
 	require.NoError(t, err)
@@ -269,7 +297,8 @@ func TestGenerateSecurePassword(t *testing.T) {
 	assert.Len(t, passwords, 100, "All 100 generated passwords should be unique")
 }
 
-func TestGenerateSecurePasswordCharacterSet(t *testing.T) {
+func (suite *OsutilSuite) TestGenerateSecurePasswordCharacterSet() {
+	t := suite.T()
 	// Generate a password and verify it only contains valid base64 URL-safe characters
 	// Valid characters: A-Z, a-z, 0-9, -, _
 	password, err := GenerateSecurePassword()
@@ -285,7 +314,8 @@ func TestGenerateSecurePasswordCharacterSet(t *testing.T) {
 	}
 }
 
-func TestGenerateSecurePasswordNoSpecialChars(t *testing.T) {
+func (suite *OsutilSuite) TestGenerateSecurePasswordNoSpecialChars() {
+	t := suite.T()
 	// Verify no padding or special characters that might cause issues
 	password, err := GenerateSecurePassword()
 	require.NoError(t, err)
@@ -294,4 +324,72 @@ func TestGenerateSecurePasswordNoSpecialChars(t *testing.T) {
 	assert.NotContains(t, password, "=", "Password should not contain padding")
 	assert.NotContains(t, password, "+", "Password should not contain +")
 	assert.NotContains(t, password, "/", "Password should not contain /")
+}
+
+// TestCommandExists_EmptySlice tests that commandExists returns false for empty command slice
+func (suite *OsutilSuite) TestCommandExists_EmptySlice() {
+	result := CommandExists([]string{})
+	suite.False(result, "commandExists should return false for empty slice")
+}
+
+// TestCommandExists_S6Command_ServicePathExists tests s6-* command with existing service directory
+func (suite *OsutilSuite) TestCommandExists_S6Command_ServicePathExists() {
+	result := CommandExists([]string{"s6-svc", "-u", "/bin"})
+	suite.True(result, "commandExists should return true for s6-* command with existing service path")
+}
+
+// TestCommandExists_S6Command_ServicePathNotExists tests s6-* command with non-existent service directory
+func (suite *OsutilSuite) TestCommandExists_S6Command_ServicePathNotExists() {
+	result := CommandExists([]string{"s6-svc", "-u", "/nonexistent/path"})
+	suite.False(result, "commandExists should return false for s6-* command with non-existent service path")
+}
+
+// TestCommandExists_S6Command_NoServicePath tests s6-* command with only command name (no path argument)
+func (suite *OsutilSuite) TestCommandExists_S6Command_NoServicePath() {
+	result := CommandExists([]string{"s6-svc"})
+	suite.False(result, "commandExists should return false for s6-* command without path argument")
+}
+
+// TestCommandExists_S6Command_ServicePathIsFile tests s6-* command where the path is a file, not directory
+func (suite *OsutilSuite) TestCommandExists_S6Command_ServicePathIsFile() {
+	result := CommandExists([]string{"s6-svc", "-u", "hello.txt"})
+	suite.False(result, "commandExists should return false when s6-* service path is a file, not directory")
+}
+
+// TestCommandExists_RegularCommand_InPATH tests regular command that exists in PATH
+func (suite *OsutilSuite) TestCommandExists_RegularCommand_InPATH() {
+	// "ls" is a standard command that should exist in PATH
+	result := CommandExists([]string{"ls"})
+	suite.True(result, "commandExists should return true for valid command in PATH")
+}
+
+// TestCommandExists_RegularCommand_NotInPATH tests regular command that does not exist in PATH
+func (suite *OsutilSuite) TestCommandExists_RegularCommand_NotInPATH() {
+	result := CommandExists([]string{"nonexistent-command-xyz-12345"})
+	suite.False(result, "commandExists should return false for command not in PATH")
+}
+
+// TestCommandExists_RegularCommand_WithArguments tests regular command with arguments (only first element matters)
+func (suite *OsutilSuite) TestCommandExists_RegularCommand_WithArguments() {
+	// "echo" is a standard command, arguments should be ignored for PATH lookup
+	result := CommandExists([]string{"echo", "hello", "world"})
+	suite.True(result, "commandExists should return true for valid command with arguments")
+}
+
+// TestCommandExists_S6Command_MultipleArguments tests s6-* command with multiple arguments (last element is path)
+func (suite *OsutilSuite) TestCommandExists_S6Command_MultipleArguments() {
+	result := CommandExists([]string{"s6-svc", "-wU", "-s", "SIGKILL", "/bin"})
+	suite.True(result, "commandExists should use last element as service path for s6-* commands")
+}
+
+// TestCommandExists_S6Command_MultipleArguments_NonExistentPath tests s6-* with multiple arguments and non-existent final path
+func (suite *OsutilSuite) TestCommandExists_S6Command_MultipleArguments_NonExistentPath() {
+	result := CommandExists([]string{"s6-svc", "-wU", "-s", "SIGKILL", "/nonexistent/service/path"})
+	suite.False(result, "commandExists should return false when s6-* final path element does not exist")
+}
+
+// TestCommandExists_CommandNameOnly tests command with only name (single element slice)
+func (suite *OsutilSuite) TestCommandExists_CommandNameOnly() {
+	result := CommandExists([]string{"cat"})
+	suite.True(result, "commandExists should handle single-element command slices")
 }

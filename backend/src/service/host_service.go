@@ -12,7 +12,6 @@ import (
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/host"
-	"github.com/dianlight/srat/repository"
 )
 
 const (
@@ -38,8 +37,8 @@ type HostServiceParams struct {
 	ApiContext       context.Context
 	ApiContextCancel context.CancelFunc
 	HostClient       host.ClientWithResponsesInterface `optional:"true"`
-	PropertyRepo     repository.PropertyRepositoryInterface
-	State            *dto.ContextState
+	//PropertyRepo     repository.PropertyRepositoryInterface
+	State *dto.ContextState
 }
 
 func NewHostService(in HostServiceParams) HostServiceInterface {

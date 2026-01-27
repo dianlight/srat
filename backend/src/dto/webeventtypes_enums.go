@@ -33,6 +33,7 @@ type webEventTypesContainer struct {
 	EVENTSHARES          WebEventType
 	EVENTDIRTYTRACKER    WebEventType
 	EVENTSMARTTESTSTATUS WebEventType
+	EVENTERROR           WebEventType
 }
 
 // WebEventTypes is a main entry point using the WebEventType type.
@@ -60,6 +61,9 @@ var WebEventTypes = webEventTypesContainer{
 	EVENTSMARTTESTSTATUS: WebEventType{
 		webEventType: eventSmartTestStatus,
 	},
+	EVENTERROR: WebEventType{
+		webEventType: eventError,
+	},
 }
 
 // invalidWebEventType is an invalid sentinel value for WebEventType
@@ -78,6 +82,7 @@ func (w webEventTypesContainer) allSlice() []WebEventType {
 		WebEventTypes.EVENTSHARES,
 		WebEventTypes.EVENTDIRTYTRACKER,
 		WebEventTypes.EVENTSMARTTESTSTATUS,
+		WebEventTypes.EVENTERROR,
 	}
 }
 
@@ -171,6 +176,7 @@ var webEventTypesNameMap = map[string]WebEventType{
 	"shares":             WebEventTypes.EVENTSHARES,
 	"dirty_data_tracker": WebEventTypes.EVENTDIRTYTRACKER,
 	"smart_test_status":  WebEventTypes.EVENTSMARTTESTSTATUS,
+	"error":              WebEventTypes.EVENTERROR,
 }
 
 // stringToWebEventType converts a string representation of an enum value into its WebEventType representation
@@ -219,6 +225,7 @@ var validWebEventTypes = map[WebEventType]bool{
 	WebEventTypes.EVENTSHARES:          true,
 	WebEventTypes.EVENTDIRTYTRACKER:    true,
 	WebEventTypes.EVENTSMARTTESTSTATUS: true,
+	WebEventTypes.EVENTERROR:           true,
 }
 
 // IsValid checks whether the WebEventTypes value is valid.
@@ -319,7 +326,7 @@ func (w *WebEventType) UnmarshalYAML(by []byte) error {
 }
 
 // webeventtypeNames is a constant string slice containing all enum values cononical absolute names
-const webeventtypeNames = "helloupdatingvolumesheartbeatsharesdirty_data_trackersmart_test_status"
+const webeventtypeNames = "helloupdatingvolumesheartbeatsharesdirty_data_trackersmart_test_statuserror"
 
 // webeventtypeNamesMap is a map of enum values to their canonical absolute
 // name positions within the webeventtypeNames string slice
@@ -331,6 +338,7 @@ var webeventtypeNamesMap = map[WebEventType]string{
 	WebEventTypes.EVENTSHARES:          webeventtypeNames[29:35],
 	WebEventTypes.EVENTDIRTYTRACKER:    webeventtypeNames[35:53],
 	WebEventTypes.EVENTSMARTTESTSTATUS: webeventtypeNames[53:70],
+	WebEventTypes.EVENTERROR:           webeventtypeNames[70:75],
 }
 
 // String implements the Stringer interface.
@@ -349,7 +357,7 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the goenums command to generate them again.
 	// Does not identify newly added constant values unless order changes
-	var x [7]struct{}
+	var x [8]struct{}
 	_ = x[eventHello]
 	_ = x[eventUpdating-1]
 	_ = x[eventVolumes-2]
@@ -357,4 +365,5 @@ func _() {
 	_ = x[eventShares-4]
 	_ = x[eventDirtyTracker-5]
 	_ = x[eventSmartTestStatus-6]
+	_ = x[eventError-7]
 }

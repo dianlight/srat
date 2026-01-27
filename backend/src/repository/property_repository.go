@@ -1,26 +1,17 @@
 package repository
 
-import (
-	"sync"
-
-	"github.com/dianlight/srat/dbom"
-	"github.com/dianlight/srat/dto"
-	"gitlab.com/tozd/go/errors"
-	"gorm.io/gorm"
-)
-
+/*
 type PropertyRepository struct {
 	db    *gorm.DB
 	mutex sync.RWMutex
 }
 
 type PropertyRepositoryInterface interface {
-	All(include_internal bool) (dbom.Properties, errors.E)
+	All() (dbom.Properties, errors.E)
 	SaveAll(props *dbom.Properties) errors.E
-	//DeleteAll() (dbom.Properties, error)
-	Value(key string, include_internal bool) (interface{}, errors.E)
+	Value(key string) (interface{}, errors.E)
 	SetValue(key string, value interface{}) errors.E
-	SetInternalValue(key string, value interface{}) errors.E
+	DumpTable() (string, errors.E)
 }
 
 func NewPropertyRepositoryRepository(db *gorm.DB) PropertyRepositoryInterface {
@@ -30,16 +21,10 @@ func NewPropertyRepositoryRepository(db *gorm.DB) PropertyRepositoryInterface {
 	}
 }
 
-func (self *PropertyRepository) All(include_internal bool) (dbom.Properties, errors.E) {
+func (self *PropertyRepository) All() (dbom.Properties, errors.E) {
 	var props []dbom.Property
 	var err error
-	if include_internal {
-		// If include_internal is true, fetch all properties
-		err = self.db.Model(&dbom.Property{}).Find(&props).Error
-	} else {
-		// If include_internal is false, fetch only non-internal properties
-		err = self.db.Model(&dbom.Property{}).Find(&props, "internal = ?", false).Error
-	}
+	err = self.db.Model(&dbom.Property{}).Find(&props).Error
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -65,27 +50,15 @@ func (self *PropertyRepository) SaveAll(props *dbom.Properties) errors.E {
 // The property is marked as not internal.
 func (self *PropertyRepository) SetValue(key string, value interface{}) errors.E {
 	prop := dbom.Property{
-		Key:      key,
-		Value:    value,
-		Internal: false,
+		Key:   key,
+		Value: value,
 	}
 	return errors.WithStack(self.db.Save(&prop).Error)
 }
 
-// SetInternalValue saves a property with the given key and value.
-// The property is marked as internal.
-func (self *PropertyRepository) SetInternalValue(key string, value interface{}) errors.E {
-	prop := dbom.Property{
-		Key:      key,
-		Value:    value,
-		Internal: true,
-	}
-	return errors.WithStack(self.db.Save(&prop).Error)
-}
-
-func (self *PropertyRepository) Value(key string, include_internal bool) (interface{}, errors.E) {
+func (self *PropertyRepository) Value(key string) (interface{}, errors.E) {
 	var prop dbom.Property
-	res := self.db.Model(&dbom.Property{}).First(&prop, "key = ? and (internal = ? or internal = false)", key, include_internal)
+	res := self.db.Model(&dbom.Property{}).First(&prop, "key = ?", key)
 	if res.Error != nil {
 		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 			return nil, errors.WithStack(dto.ErrorNotFound)
@@ -95,3 +68,18 @@ func (self *PropertyRepository) Value(key string, include_internal bool) (interf
 	}
 	return prop.Value, nil
 }
+
+func (self *PropertyRepository) DumpTable() (string, errors.E) {
+	ret := strings.Builder{}
+	ret.WriteString("Properties Table Dump:\n")
+	var props []dbom.Property
+	err := self.db.Model(&dbom.Property{}).Find(&props).Error
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	for _, prop := range props {
+		ret.WriteString(fmt.Sprintf("Key: %s, Value: %v\n", prop.Key, prop.Value))
+	}
+	return ret.String(), nil
+}
+*/

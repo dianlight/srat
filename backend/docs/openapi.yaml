@@ -187,6 +187,46 @@ components:
         - read_latency_ms
         - write_latency_ms
       type: object
+    ErrorDataModel:
+      additionalProperties: false
+      properties:
+        detail:
+          description: A human-readable explanation specific to this occurrence of the problem.
+          examples:
+            - Property foo is required but is missing.
+          type: string
+        errors:
+          description: Optional list of individual error details
+          items:
+            $ref: "#/components/schemas/ErrorDetail"
+          type:
+            - array
+            - "null"
+        instance:
+          description: A URI reference that identifies the specific occurrence of the problem.
+          examples:
+            - https://example.com/error-log/abc123
+          format: uri
+          type: string
+        status:
+          description: HTTP status code
+          examples:
+            - 400
+          format: int64
+          type: integer
+        title:
+          description: A short, human-readable summary of the problem type. This value should not change between occurrences of the error.
+          examples:
+            - Bad Request
+          type: string
+        type:
+          default: about:blank
+          description: A URI reference to human-readable documentation for the error.
+          examples:
+            - https://example.com/errors/example
+          format: uri
+          type: string
+      type: object
     ErrorDetail:
       additionalProperties: false
       properties:
@@ -1107,15 +1147,28 @@ components:
           default: false
           type: boolean
         allow_hosts:
+          default:
+            - 10.0.0.0/8
+            - 100.0.0.0/8
+            - 172.16.0.0/12
+            - 192.168.0.0/16
+            - 169.254.0.0/16
+            - fe80::/10
+            - fc00::/7
           items:
             type: string
           type: array
         bind_all_interfaces:
+          default: true
           type: boolean
         compatibility_mode:
+          default: false
           type: boolean
         export_stats_to_ha:
-          default: true
+          default: false
+          type: boolean
+        ha_use_nfs:
+          default: false
           type: boolean
         hdidle_default_command_type:
           enum:
@@ -1136,26 +1189,21 @@ components:
           default: false
           type: boolean
         hostname:
+          default: homeassistant
           type: string
         interfaces:
+          default: []
           items:
             type: string
           type: array
         local_master:
           default: true
           type: boolean
-        log_level:
-          type: string
-        mountoptions:
-          items:
-            type: string
-          type:
-            - array
-            - "null"
         multi_channel:
+          default: true
           type: boolean
         smb_over_quic:
-          default: true
+          default: false
           type: boolean
         telemetry_mode:
           enum:
@@ -1165,6 +1213,7 @@ components:
             - Disabled
           type: string
         workgroup:
+          default: WORKGROUP
           type: string
       type: object
     SharedResource:
@@ -1517,6 +1566,9 @@ components:
         samba_version_sufficient:
           description: Whether Samba version >= 4.23.0
           type: boolean
+        support_nfs:
+          description: Whether NFS is supported
+          type: boolean
         supports_quic:
           description: Whether SMB over QUIC is supported
           type: boolean
@@ -1528,6 +1580,7 @@ components:
         - has_kernel_module
         - samba_version
         - samba_version_sufficient
+        - support_nfs
       type: object
     UpdateProgress:
       additionalProperties: false
@@ -1992,8 +2045,8 @@ paths:
           schema:
             description: The disk ID (not the device path)
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -2042,8 +2095,8 @@ paths:
           schema:
             description: The disk ID (not the device path)
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2142,8 +2195,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2491,8 +2544,8 @@ paths:
     get:
       operationId: list-api-filesystems
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2581,8 +2634,8 @@ paths:
     post:
       operationId: post-api-hdidle-stop
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2624,8 +2677,8 @@ paths:
     get:
       operationId: get-api-health
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -2710,8 +2763,8 @@ paths:
     get:
       operationId: get-issues
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2857,8 +2910,8 @@ paths:
             format: int64
             minimum: 0
             type: integer
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
@@ -2906,8 +2959,8 @@ paths:
     get:
       operationId: list-api-nics
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2953,8 +3006,8 @@ paths:
     put:
       operationId: put-api-restart
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "204":
           description: No Content
@@ -3074,8 +3127,8 @@ paths:
     get:
       operationId: get-api-samba-status
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3186,15 +3239,28 @@ paths:
                   default: false
                   type: boolean
                 allow_hosts:
+                  default:
+                    - 10.0.0.0/8
+                    - 100.0.0.0/8
+                    - 172.16.0.0/12
+                    - 192.168.0.0/16
+                    - 169.254.0.0/16
+                    - fe80::/10
+                    - fc00::/7
                   items:
                     type: string
                   type: array
                 bind_all_interfaces:
+                  default: true
                   type: boolean
                 compatibility_mode:
+                  default: false
                   type: boolean
                 export_stats_to_ha:
-                  default: true
+                  default: false
+                  type: boolean
+                ha_use_nfs:
+                  default: false
                   type: boolean
                 hdidle_default_command_type:
                   enum:
@@ -3215,24 +3281,21 @@ paths:
                   default: false
                   type: boolean
                 hostname:
+                  default: homeassistant
                   type: string
                 interfaces:
+                  default: []
                   items:
                     type: string
                   type: array
                 local_master:
                   default: true
                   type: boolean
-                log_level:
-                  type: string
-                mountoptions:
-                  items:
-                    type: string
-                  type: array
                 multi_channel:
+                  default: true
                   type: boolean
                 smb_over_quic:
-                  default: true
+                  default: false
                   type: boolean
                 telemetry_mode:
                   enum:
@@ -3242,6 +3305,7 @@ paths:
                     - Disabled
                   type: string
                 workgroup:
+                  default: WORKGROUP
                   type: string
               type: object
           application/merge-patch+shorthand:
@@ -3259,15 +3323,28 @@ paths:
                   default: false
                   type: boolean
                 allow_hosts:
+                  default:
+                    - 10.0.0.0/8
+                    - 100.0.0.0/8
+                    - 172.16.0.0/12
+                    - 192.168.0.0/16
+                    - 169.254.0.0/16
+                    - fe80::/10
+                    - fc00::/7
                   items:
                     type: string
                   type: array
                 bind_all_interfaces:
+                  default: true
                   type: boolean
                 compatibility_mode:
+                  default: false
                   type: boolean
                 export_stats_to_ha:
-                  default: true
+                  default: false
+                  type: boolean
+                ha_use_nfs:
+                  default: false
                   type: boolean
                 hdidle_default_command_type:
                   enum:
@@ -3288,24 +3365,21 @@ paths:
                   default: false
                   type: boolean
                 hostname:
+                  default: homeassistant
                   type: string
                 interfaces:
+                  default: []
                   items:
                     type: string
                   type: array
                 local_master:
                   default: true
                   type: boolean
-                log_level:
-                  type: string
-                mountoptions:
-                  items:
-                    type: string
-                  type: array
                 multi_channel:
+                  default: true
                   type: boolean
                 smb_over_quic:
-                  default: true
+                  default: false
                   type: boolean
                 telemetry_mode:
                   enum:
@@ -3315,6 +3389,7 @@ paths:
                     - Disabled
                   type: string
                 workgroup:
+                  default: WORKGROUP
                   type: string
               type: object
         required: true
@@ -3516,8 +3591,8 @@ paths:
               - world
             maxLength: 30
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -3827,8 +3902,8 @@ paths:
             description: Name of the share to enable
             maxLength: 128
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -3944,6 +4019,24 @@ paths:
                         - data
                         - event
                       title: Event dirty_data_tracker
+                      type: object
+                    - properties:
+                        data:
+                          $ref: "#/components/schemas/ErrorDataModel"
+                        event:
+                          const: error
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event error
                       type: object
                     - properties:
                         data:
@@ -4141,8 +4234,8 @@ paths:
     get:
       operationId: get-api-telemetry-internet-connection
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -4670,8 +4763,8 @@ paths:
     post:
       operationId: post-api-volume-mount
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -4719,8 +4812,8 @@ paths:
     patch:
       operationId: patch-api-volume-settings
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:

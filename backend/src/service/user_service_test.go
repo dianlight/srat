@@ -4,18 +4,14 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"log"
 	"os"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
-	"github.com/dianlight/srat/repository"
-	"github.com/dianlight/srat/templates"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
@@ -56,18 +52,20 @@ func (suite *UserServiceSuite) SetupTest() {
 				ctx := context.WithValue(context.Background(), "wg", suite.wg)
 				return context.WithCancel(ctx)
 			},
-			func() *config.DefaultConfig {
-				var nconfig config.Config
-				buffer, err := templates.Default_Config_content.ReadFile("default_config.json")
-				if err != nil {
-					log.Fatalf("Cant read default config file %#+v", err)
-				}
-				err = nconfig.LoadConfigBuffer(buffer) // Assign to existing err
-				if err != nil {
-					log.Fatalf("Cant load default config from buffer %#+v", err)
-				}
-				return &config.DefaultConfig{Config: nconfig}
-			},
+			/*
+				func() *config.DefaultConfig {
+					var nconfig config.Config
+					buffer, err := templates.Default_Config_content.ReadFile("default_config.json")
+					if err != nil {
+						log.Fatalf("Cant read default config file %#+v", err)
+					}
+					err = nconfig.LoadConfigBuffer(buffer) // Assign to existing err
+					if err != nil {
+						log.Fatalf("Cant load default config from buffer %#+v", err)
+					}
+					return &config.DefaultConfig{Config: nconfig}
+				},
+			*/
 			func() *dto.ContextState {
 				return &dto.ContextState{
 					DatabasePath: "file::memory:?cache=shared&_pragma=foreign_keys(1)",
@@ -79,7 +77,7 @@ func (suite *UserServiceSuite) SetupTest() {
 			NewSettingService,
 			events.NewEventBus,
 			//mock.Mock[repository.SambaUserRepositoryInterface],
-			mock.Mock[repository.PropertyRepositoryInterface],
+			//mock.Mock[repository.PropertyRepositoryInterface],
 			mock.Mock[TelemetryServiceInterface],
 			mock.Mock[ShareServiceInterface],
 		),
@@ -193,8 +191,8 @@ func (suite *UserServiceSuite) TestCreateUser_DeletedSuccess() {
 		IsAdmin:  false,
 	}
 
-	suite.Require().NoError(suite.db.Debug().Create(&dbom.SambaUser{Username: username, Password: "oldpassword", IsAdmin: false}).Error)
-	suite.Require().NoError(suite.db.Debug().Delete(&dbom.SambaUser{}, "username = ?", username).Error)
+	suite.Require().NoError(suite.db.Create(&dbom.SambaUser{Username: username, Password: "oldpassword", IsAdmin: false}).Error)
+	suite.Require().NoError(suite.db.Delete(&dbom.SambaUser{}, "username = ?", username).Error)
 
 	//mock.When(suite.userRepoMock.Create(mock.Any[*dbom.SambaUser]())).ThenReturn(nil)
 

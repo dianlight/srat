@@ -100,7 +100,7 @@ func NewDB(lc fx.Lifecycle, v struct {
 	ApiCtx *dto.ContextState
 }) *gorm.DB {
 	dbInitStart := time.Now()
-	slog.Info("=== DB INIT: Starting ===", "path", v.ApiCtx.DatabasePath)
+	tlog.Trace("=== DB INIT: Starting ===", "path", v.ApiCtx.DatabasePath)
 
 	// Check filesystem permissions before attempting to open database
 	errE := checkFileSystemPermissions(v.ApiCtx.DatabasePath)
@@ -143,11 +143,11 @@ func NewDB(lc fx.Lifecycle, v struct {
 	})
 
 	if errE = errors.WithStack(err); errE != nil {
-		slog.Error("Failed to connect to database", "error", errE, "path", v.ApiCtx.DatabasePath)
+		tlog.Error("Failed to connect to database", "error", errE, "path", v.ApiCtx.DatabasePath)
 
 		// Check if it's a readonly issue and try to resolve
 		if strings.Contains(strings.ToLower(err.Error()), "readonly") {
-			slog.Error("Database connection failed due to readonly issue, attempting to create fresh database")
+			tlog.Error("Database connection failed due to readonly issue, attempting to create fresh database")
 			// Remove the existing database file and try again
 			return replaceDatabase(lc, v)
 		}
@@ -171,10 +171,10 @@ func NewDB(lc fx.Lifecycle, v struct {
 	}
 
 	// Migrate the schema
-	slog.Info("=== DB INIT: Starting AutoMigrate ===", "elapsed", time.Since(dbInitStart))
+	tlog.Trace("=== DB INIT: Starting AutoMigrate ===", "elapsed", time.Since(dbInitStart))
 	err = db.AutoMigrate(&MountPointPath{}, &ExportedShare{}, &SambaUser{}, &Property{}, &Issue{}, &HDIdleDevice{})
 	if errE = errors.WithStack(err); errE != nil {
-		slog.Error("Failed to migrate database", "error", errE, "path", v.ApiCtx.DatabasePath)
+		tlog.Error("Failed to migrate database", "error", errE, "path", v.ApiCtx.DatabasePath)
 		return replaceDatabase(lc, v)
 	}
 	if os.Getenv("SRAT_MOCK") == "true" {
@@ -182,7 +182,7 @@ func NewDB(lc fx.Lifecycle, v struct {
 	}
 
 	// GooseDBMigration
-	slog.Info("=== DB INIT: Starting Goose Migrations ===", "elapsed", time.Since(dbInitStart))
+	tlog.Trace("=== DB INIT: Starting Goose Migrations ===", "elapsed", time.Since(dbInitStart))
 	goose.SetBaseFS(migrations)
 	goose.WithSlog(slog.Default())
 	goose.WithVerbose(false)
@@ -197,7 +197,7 @@ func NewDB(lc fx.Lifecycle, v struct {
 		dumpDatabaseSchema(db)
 		panic(err)
 	}
-	slog.Info("=== DB INIT: Migrations Complete ===", "elapsed", time.Since(dbInitStart))
+	tlog.Trace("=== DB INIT: Migrations Complete ===", "elapsed", time.Since(dbInitStart))
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
@@ -206,7 +206,7 @@ func NewDB(lc fx.Lifecycle, v struct {
 		OnStop: func(ctx context.Context) error {
 			sqlDB, err := db.DB()
 			if errE = errors.WithStack(err); errE != nil {
-				slog.Error("Failed to get SQL DB on shutdown", "error", errE, "path", v.ApiCtx.DatabasePath)
+				tlog.ErrorContext(ctx, "Failed to get SQL DB on shutdown", "error", errE, "path", v.ApiCtx.DatabasePath)
 			} else {
 				sqlDB.Close()
 			}
@@ -214,7 +214,7 @@ func NewDB(lc fx.Lifecycle, v struct {
 		},
 	})
 
-	slog.Info("=== DB INIT: Complete ===", "elapsed", time.Since(dbInitStart))
+	tlog.Trace("=== DB INIT: Complete ===", "elapsed", time.Since(dbInitStart))
 	return db
 }
 
