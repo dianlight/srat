@@ -90,7 +90,7 @@ func TestWebEventMap_ContainsAllEventTypes(t *testing.T) {
 }
 
 func TestWebEventMap_Size(t *testing.T) {
-	assert.Equal(t, 8, len(dto.WebEventMap), "WebEventMap should contain exactly 8 event types")
+	assert.Len(t, dto.WebEventMap, 8, "WebEventMap should contain exactly 8 event types")
 }
 
 func TestWebEventType_IsValidEvent_WithConcreteTypes(t *testing.T) {

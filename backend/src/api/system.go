@@ -12,7 +12,6 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/srat/service"
-	"github.com/jpillora/overseer"
 	"github.com/shirou/gopsutil/v4/net"
 )
 
@@ -35,26 +34,10 @@ func (self *SystemHanler) SetFilesystemsPath(path string) {
 }
 
 func (self *SystemHanler) RegisterSystemHanler(api huma.API) {
-	huma.Put(api, "/restart", self.RestartHandler, huma.OperationTags("system"))
 	huma.Get(api, "/nics", self.GetNICsHandler, huma.OperationTags("system"))
 	huma.Get(api, "/hostname", self.GetHostnameHandler, huma.OperationTags("system"))
 	huma.Get(api, "/filesystems", self.GetFSHandler, huma.OperationTags("system"))
 	huma.Get(api, "/capabilities", self.GetCapabilitiesHandler, huma.OperationTags("system"))
-}
-
-// RestartHandler handles the request to restart the server.
-// It logs the restart action and calls the overseer to perform the restart.
-//
-// Parameters:
-//   - ctx: The context for the request.
-//   - input: An empty struct as input.
-//
-// Returns:
-//   - An empty struct and an error, both of which are nil.
-func (handler *SystemHanler) RestartHandler(ctx context.Context, input *struct{}) (*struct{}, error) {
-	slog.DebugContext(ctx, "Restarting server...")
-	overseer.Restart()
-	return nil, nil
 }
 
 // GetNICsHandler handles the request to retrieve network interface card (NIC) information.
