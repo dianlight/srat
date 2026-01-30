@@ -7,6 +7,10 @@
 root = "."
 tmp_dir = "tmp"
 
+# Remove to not load any files whatsoever
+# Non-existing files are safely ignored
+env_files = [".env"]
+
 [build]
 # Array of commands to run before each build
 pre_cmd = ["echo 'hello air' > pre_cmd.txt"]
@@ -36,6 +40,8 @@ exclude_file = []
 exclude_regex = ["_test\\.go"]
 # Exclude unchanged files.
 exclude_unchanged = true
+# Ignore dangerous root directory that could cause excessive file watching
+ignore_dangerous_root_dir = false
 # Follow symlink for directories
 follow_symlink = true
 # This log file is placed in your tmp_dir.
@@ -48,7 +54,7 @@ poll_interval = 500 # ms
 delay = 0 # ms
 # Stop running old binary when build errors occur.
 stop_on_error = true
-# Send Interrupt signal before killing process (windows does not support this feature)
+# Send Interrupt signal before killing process (ignored on Windows; uses TASKKILL)
 send_interrupt = false
 # Delay after sending Interrupt signal
 kill_delay = 500 # nanosecond
