@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/homeassistant/mount"
-	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
@@ -22,9 +22,9 @@ type SupervisorServiceSuite struct {
 	suite.Suite
 	supervisorService service.SupervisorServiceInterface
 	mountClient       mount.ClientWithResponsesInterface
-	propertyRepo      repository.PropertyRepositoryInterface
-	shareService      service.ShareServiceInterface
-	app               *fxtest.App
+	//propertyRepo      repository.PropertyRepositoryInterface
+	shareService service.ShareServiceInterface
+	app          *fxtest.App
 }
 
 func TestSupervisorServiceSuite(t *testing.T) {
@@ -38,23 +38,40 @@ func (suite *SupervisorServiceSuite) SetupTest() {
 			func() (context.Context, context.CancelFunc) {
 				return context.WithCancel(context.Background())
 			},
+			/*
+				func() *config.DefaultConfig {
+					var nconfig config.Config
+					buffer, err := templates.Default_Config_content.ReadFile("default_config.json")
+					if err != nil {
+						log.Fatalf("Cant read default config file %#+v", err)
+					}
+					err = nconfig.LoadConfigBuffer(buffer) // Assign to existing err
+					if err != nil {
+						log.Fatalf("Cant load default config from buffer %#+v", err)
+					}
+					return &config.DefaultConfig{Config: nconfig}
+				},
+			*/
 			func() *dto.ContextState {
 				return &dto.ContextState{
 					HACoreReady:    true,
 					SupervisorURL:  "http://supervisor",
 					AddonIpAddress: "172.30.32.1",
+					DatabasePath:   "file::memory:?cache=shared&_pragma=foreign_keys(1)",
 				}
 			},
+			dbom.NewDB,
 			service.NewSupervisorService,
+			service.NewSettingService,
 			events.NewEventBus,
+			//	repository.NewPropertyRepositoryRepository,
 			mock.Mock[mount.ClientWithResponsesInterface],
-			mock.Mock[repository.PropertyRepositoryInterface],
 			mock.Mock[service.ShareServiceInterface],
 			mock.Mock[service.DirtyDataServiceInterface],
 		),
 		fx.Populate(&suite.supervisorService),
 		fx.Populate(&suite.mountClient),
-		fx.Populate(&suite.propertyRepo),
+		//fx.Populate(&suite.propertyRepo),
 		fx.Populate(&suite.shareService),
 	)
 	suite.app.RequireStart()
@@ -80,10 +97,12 @@ func (suite *SupervisorServiceSuite) TestNetworkGetAllMounted_HACoreNotReady() {
 			},
 			service.NewSupervisorService,
 			events.NewEventBus,
+			//repository.NewPropertyRepositoryRepository,
 			mock.Mock[mount.ClientWithResponsesInterface],
-			mock.Mock[repository.PropertyRepositoryInterface],
+			//mock.Mock[repository.PropertyRepositoryInterface],
 			mock.Mock[service.ShareServiceInterface],
 			mock.Mock[service.DirtyDataServiceInterface],
+			mock.Mock[service.SettingServiceInterface],
 		),
 		fx.Populate(&suite.supervisorService),
 	)
@@ -160,9 +179,10 @@ func (suite *SupervisorServiceSuite) TestNetworkUnmountShare_HACoreNotReady() {
 			service.NewSupervisorService,
 			events.NewEventBus,
 			mock.Mock[mount.ClientWithResponsesInterface],
-			mock.Mock[repository.PropertyRepositoryInterface],
+			//mock.Mock[repository.PropertyRepositoryInterface],
 			mock.Mock[service.ShareServiceInterface],
 			mock.Mock[service.DirtyDataServiceInterface],
+			mock.Mock[service.SettingServiceInterface],
 		),
 		fx.Populate(&suite.supervisorService),
 	)
@@ -286,7 +306,7 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_CreateSuccess() {
 
 	mock.When(suite.mountClient.GetMountsWithResponse(mock.Any[context.Context]())).ThenReturn(getMountsResponse, nil)
 	mock.When(suite.mountClient.CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())).ThenReturn(createMountResponse, nil)
-	mock.When(suite.propertyRepo.Value(mock.Any[string](), mock.Any[bool]())).ThenReturn("test-password", nil)
+	//mock.When(suite.propertyRepo.Value(mock.Any[string]())).ThenReturn("test-password", nil)
 
 	// Execute
 	testShare := dto.SharedResource{
@@ -296,7 +316,7 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_CreateSuccess() {
 	err := suite.supervisorService.NetworkMountShare(context.Background(), testShare)
 
 	// Assert
-	suite.NoError(err)
+	suite.Require().NoError(err)
 	mock.Verify(suite.mountClient, matchers.Times(1)).CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())
 }
 
@@ -342,7 +362,7 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_Create400WithRetrySuc
 		ThenReturn(createMountResponse400, nil).
 		ThenReturn(createMountResponse200, nil) // Second call succeeds
 	mock.When(suite.mountClient.RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())).ThenReturn(removeMountResponse, nil)
-	mock.When(suite.propertyRepo.Value(mock.Any[string](), mock.Any[bool]())).ThenReturn("test-password", nil)
+	//mock.When(suite.propertyRepo.Value(mock.Any[string]())).ThenReturn("test-password", nil)
 
 	// Execute
 	testShare := dto.SharedResource{
@@ -391,7 +411,7 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_Create400WithRetryFai
 	mock.When(suite.mountClient.GetMountsWithResponse(mock.Any[context.Context]())).ThenReturn(getMountsResponse, nil)
 	mock.When(suite.mountClient.CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())).ThenReturn(createMountResponse400, nil)
 	mock.When(suite.mountClient.RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())).ThenReturn(removeMountResponse, nil)
-	mock.When(suite.propertyRepo.Value(mock.Any[string](), mock.Any[bool]())).ThenReturn("test-password", nil)
+	//mock.When(suite.propertyRepo.Value(mock.Any[string]())).ThenReturn("test-password", nil)
 
 	// Execute
 	testShare := dto.SharedResource{
@@ -441,7 +461,7 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_Create400WithRemoveFa
 	mock.When(suite.mountClient.GetMountsWithResponse(mock.Any[context.Context]())).ThenReturn(getMountsResponse, nil)
 	mock.When(suite.mountClient.CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())).ThenReturn(createMountResponse400, nil)
 	mock.When(suite.mountClient.RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())).ThenReturn(removeMountResponse500, nil)
-	mock.When(suite.propertyRepo.Value(mock.Any[string](), mock.Any[bool]())).ThenReturn("test-password", nil)
+	//mock.When(suite.propertyRepo.Value(mock.Any[string]())).ThenReturn("test-password", nil)
 
 	// Execute
 	testShare := dto.SharedResource{
@@ -503,7 +523,7 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_Issue221_ExactScenari
 		ThenReturn(createMountResponse400, nil).
 		ThenReturn(createMountResponse200, nil) // Second call succeeds
 	mock.When(suite.mountClient.RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())).ThenReturn(removeMountResponse, nil)
-	mock.When(suite.propertyRepo.Value(mock.Any[string](), mock.Any[bool]())).ThenReturn("test-password", nil)
+	//mock.When(suite.propertyRepo.Value(mock.Any[string]())).ThenReturn("test-password", nil)
 
 	// Execute with a backup share (as in the issue)
 	testShare := dto.SharedResource{
@@ -548,6 +568,25 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_Update400_NoRetryLogi
 		},
 	}
 
+	getMountsResponse2 := &mount.GetMountsResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok","data":{"mounts":[]}}`),
+		JSON200: &struct {
+			Data *struct {
+				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+			} `json:"data,omitempty"`
+			Result *mount.GetMounts200Result `json:"result,omitempty"`
+		}{
+			Data: &struct {
+				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+			}{
+				Mounts: &[]mount.Mount{},
+			},
+		},
+	}
+
 	updateMountResponse400 := &mount.UpdateMountResponse{
 		HTTPResponse: &http.Response{StatusCode: 400},
 		Body:         []byte(`{"result":"error","message":"Could not update mount due to: Unit was already loaded or has a fragment file."}`),
@@ -563,11 +602,13 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_Update400_NoRetryLogi
 		Body:         []byte(`{"result":"ok"}`),
 	}
 
-	mock.When(suite.mountClient.GetMountsWithResponse(mock.Any[context.Context]())).ThenReturn(getMountsResponse, nil)
+	mock.When(suite.mountClient.GetMountsWithResponse(mock.Any[context.Context]())).
+		ThenReturn(getMountsResponse, nil).
+		ThenReturn(getMountsResponse2, nil) // Second call after remove shows no mounts
 	mock.When(suite.mountClient.UpdateMountWithResponse(mock.Any[context.Context](), mock.Any[string](), mock.Any[mount.Mount]())).ThenReturn(updateMountResponse400, nil)
 	mock.When(suite.mountClient.RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())).ThenReturn(removeMountResponse, nil)
 	mock.When(suite.mountClient.CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())).ThenReturn(createMountResponse200, nil)
-	mock.When(suite.propertyRepo.Value(mock.Any[string](), mock.Any[bool]())).ThenReturn("test-password", nil)
+	//mock.When(suite.propertyRepo.Value(mock.Any[string]())).ThenReturn("test-password", nil)
 
 	// Execute
 	testShare := dto.SharedResource{
@@ -613,6 +654,25 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_Update400_WithRetryLo
 		},
 	}
 
+	getMountsResponse2 := &mount.GetMountsResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok","data":{"mounts":[]}}`),
+		JSON200: &struct {
+			Data *struct {
+				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+			} `json:"data,omitempty"`
+			Result *mount.GetMounts200Result `json:"result,omitempty"`
+		}{
+			Data: &struct {
+				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+			}{
+				Mounts: &[]mount.Mount{},
+			},
+		},
+	}
+
 	updateMountResponse400 := &mount.UpdateMountResponse{
 		HTTPResponse: &http.Response{StatusCode: 400},
 		Body:         []byte(`{"result":"error","message":"Could not update mount due to: Unit was already loaded or has a fragment file."}`),
@@ -628,11 +688,13 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_Update400_WithRetryLo
 		Body:         []byte(`{"result":"ok"}`),
 	}
 
-	mock.When(suite.mountClient.GetMountsWithResponse(mock.Any[context.Context]())).ThenReturn(getMountsResponse, nil)
+	mock.When(suite.mountClient.GetMountsWithResponse(mock.Any[context.Context]())).
+		ThenReturn(getMountsResponse, nil).
+		ThenReturn(getMountsResponse2, nil)
 	mock.When(suite.mountClient.UpdateMountWithResponse(mock.Any[context.Context](), mock.Any[string](), mock.Any[mount.Mount]())).ThenReturn(updateMountResponse400, nil)
 	mock.When(suite.mountClient.RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())).ThenReturn(removeMountResponse, nil)
 	mock.When(suite.mountClient.CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())).ThenReturn(createMountResponse200, nil)
-	mock.When(suite.propertyRepo.Value(mock.Any[string](), mock.Any[bool]())).ThenReturn("test-password", nil)
+	//mock.When(suite.propertyRepo.Value(mock.Any[string]())).ThenReturn("test-password", nil)
 
 	// Execute
 	testShare := dto.SharedResource{
@@ -757,13 +819,14 @@ func (suite *SupervisorServiceSuite) TestNetworkMountAllShares_HACoreNotReady() 
 			service.NewSupervisorService,
 			events.NewEventBus,
 			mock.Mock[mount.ClientWithResponsesInterface],
-			mock.Mock[repository.PropertyRepositoryInterface],
+			//mock.Mock[repository.PropertyRepositoryInterface],
 			mock.Mock[service.ShareServiceInterface],
 			mock.Mock[service.DirtyDataServiceInterface],
+			mock.Mock[service.SettingServiceInterface],
 		),
 		fx.Populate(&suite.supervisorService),
 		fx.Populate(&suite.mountClient),
-		fx.Populate(&suite.propertyRepo),
+		//fx.Populate(&suite.propertyRepo),
 		fx.Populate(&suite.shareService),
 	)
 	suite.app.RequireStart()
@@ -791,13 +854,14 @@ func (suite *SupervisorServiceSuite) TestNetworkMountAllShares_AddonIpEmpty() {
 			service.NewSupervisorService,
 			events.NewEventBus,
 			mock.Mock[mount.ClientWithResponsesInterface],
-			mock.Mock[repository.PropertyRepositoryInterface],
+			//mock.Mock[repository.PropertyRepositoryInterface],
 			mock.Mock[service.ShareServiceInterface],
 			mock.Mock[service.DirtyDataServiceInterface],
+			mock.Mock[service.SettingServiceInterface],
 		),
 		fx.Populate(&suite.supervisorService),
 		fx.Populate(&suite.mountClient),
-		fx.Populate(&suite.propertyRepo),
+		//fx.Populate(&suite.propertyRepo),
 		fx.Populate(&suite.shareService),
 	)
 	suite.app.RequireStart()
@@ -884,7 +948,7 @@ func (suite *SupervisorServiceSuite) TestNetworkMountAllShares_MountsEligibleAnd
 	mock.When(suite.shareService.ListShares()).
 		ThenReturn(shares, nil).
 		ThenReturn([]dto.SharedResource{}, nil) // prevent OnStop extra actions
-	mock.When(suite.propertyRepo.Value(mock.Any[string](), mock.Any[bool]())).ThenReturn("test-password", nil)
+	//mock.When(suite.propertyRepo.Value(mock.Any[string]())).ThenReturn("test-password", nil)
 	mock.When(suite.mountClient.GetMountsWithResponse(mock.Any[context.Context]())).
 		ThenReturn(emptyResp, nil).
 		ThenReturn(emptyResp, nil).
@@ -899,7 +963,7 @@ func (suite *SupervisorServiceSuite) TestNetworkMountAllShares_MountsEligibleAnd
 	err := suite.supervisorService.NetworkMountAllShares(context.Background())
 
 	// Assert
-	suite.NoError(err)
+	suite.Require().NoError(err)
 	// 3 eligible shares should trigger create
 	mock.Verify(suite.mountClient, matchers.Times(3)).CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())
 	// One orphan share should be unmounted

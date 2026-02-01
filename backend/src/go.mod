@@ -5,17 +5,17 @@ go 1.25.5
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/gorilla/mux v1.8.1
-	github.com/jpillora/overseer v1.1.6
 	github.com/maniartech/signals v1.3.1
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/oapi-codegen/runtime v1.1.2
 	github.com/pilebones/go-udev v0.9.1
-	github.com/shirou/gopsutil/v4 v4.25.12
+	github.com/shirou/gopsutil/v4 v4.26.1
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/sys v0.40.0
 )
 
 require (
+	aead.dev/minisign v0.3.0
 	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/adelolmo/hd-idle v0.0.0-20260125082707-310727a56de0
 	github.com/angusgmorrison/logfusc v0.1.0
@@ -24,8 +24,9 @@ require (
 	github.com/dianlight/smartmontools-go v0.2.4
 	github.com/dianlight/tlog v0.1.2
 	github.com/fatih/color v1.18.0
+	github.com/fsnotify/fsnotify v1.9.0
 	github.com/gofri/go-github-ratelimit/v2 v2.0.2
-	github.com/google/go-github/v80 v80.0.0
+	github.com/google/go-github/v81 v81.0.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/jarcoal/httpmock v1.4.1
 	github.com/lonegunmanb/go-defaults v1.4.0
@@ -37,6 +38,7 @@ require (
 	github.com/sergi/go-diff v1.4.0
 	github.com/shomali11/util v0.0.0-20220717175126-f0771b70947f
 	github.com/teivah/broadcast v0.1.0
+	github.com/vvair/selfupdate v0.0.0-20251221113910-176caa7ce89e
 	gorm.io/cli/gorm v0.2.4
 	gorm.io/datatypes v1.2.7
 	gorm.io/driver/sqlite v1.6.0
@@ -55,7 +57,6 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
 	github.com/dave/jennifer v1.6.0 // indirect
-	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-sql-driver/mysql v1.9.3 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gohugoio/hugo v0.149.1 // indirect
@@ -103,7 +104,6 @@ require (
 	dario.cat/mergo v1.0.2 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver/v3 v3.4.0
-	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/danielgtaylor/mexpr v1.9.1 // indirect
 	github.com/danielgtaylor/shorthand/v2 v2.2.0 // indirect
@@ -124,7 +124,6 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
-	github.com/jpillora/s3 v1.1.4 // indirect
 	github.com/lufia/plan9stats v0.0.0-20251013123823-9fd1530e3ec3 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
@@ -163,6 +162,7 @@ require (
 )
 
 require (
+	github.com/creasty/defaults v1.8.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/lmittmann/tint v1.1.2 // indirect
 	github.com/ovechkin-dm/mockio/v2 v2.0.4

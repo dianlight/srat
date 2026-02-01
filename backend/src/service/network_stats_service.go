@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"net"
 	"strings"
@@ -10,7 +9,6 @@ import (
 	"time"
 
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/repository"
 	"github.com/prometheus/procfs"
 	"github.com/prometheus/procfs/sysfs"
 	"gitlab.com/tozd/go/errors"
@@ -23,7 +21,7 @@ type NetworkStatsService interface {
 }
 
 type networkStatsService struct {
-	prop_repo        repository.PropertyRepositoryInterface
+	//prop_repo        repository.PropertyRepositoryInterface
 	procfs           *procfs.FS
 	sysfs            *sysfs.FS // sysfs is used to access system files for network interfaces.
 	ctx              context.Context
@@ -31,10 +29,15 @@ type networkStatsService struct {
 	lastStats        map[string]procfs.NetDevLine // lastStats stores the last collected network I/O statistics.
 	currentNetHealth *dto.NetworkStats
 	updateMutex      *sync.Mutex
+	settingService   SettingServiceInterface
 }
 
 // NewNetworkStatsService creates a new NetworkStatsService.
-func NewNetworkStatsService(lc fx.Lifecycle, Ctx context.Context, prop_repo repository.PropertyRepositoryInterface) NetworkStatsService {
+func NewNetworkStatsService(lc fx.Lifecycle,
+	Ctx context.Context,
+	settingService SettingServiceInterface,
+	// prop_repo repository.PropertyRepositoryInterface,
+) NetworkStatsService {
 	fs, err := procfs.NewFS("/proc")
 	if err != nil {
 		slog.ErrorContext(Ctx, "Failed to create procfs filesystem", "error", err)
@@ -46,10 +49,11 @@ func NewNetworkStatsService(lc fx.Lifecycle, Ctx context.Context, prop_repo repo
 	}
 
 	ns := &networkStatsService{
-		prop_repo:      prop_repo,
+		//prop_repo:      prop_repo,
 		procfs:         &fs,
 		sysfs:          &sfs,
 		ctx:            Ctx,
+		settingService: settingService,
 		lastUpdateTime: time.Now(),
 		updateMutex:    &sync.Mutex{},
 		lastStats:      make(map[string]procfs.NetDevLine),
@@ -100,19 +104,15 @@ func (s *networkStatsService) updateNetworkStats() error {
 	if err != nil {
 		return err
 	}
-	var nicSlice []interface{}
+	var nicSlice []string
 
-	BindAllInterfaces, err := s.prop_repo.Value("BindAllInterfaces", false)
-	if err != nil {
-		return err
-	}
-	bindAll, ok := BindAllInterfaces.(bool)
-	if !ok {
-		slog.WarnContext(s.ctx, "BindAllInterfaces property from DB is not of expected type bool", "type", fmt.Sprintf("%T", BindAllInterfaces))
+	setting, err := s.settingService.Load()
+	if setting == nil || err != nil {
+		slog.WarnContext(s.ctx, "Errore getting setting", "error", err, "setting_nil", setting == nil)
 		s.lastUpdateTime = time.Now()
 		return nil
 	}
-	if bindAll {
+	if setting.BindAllInterfaces {
 		for nicName := range stats {
 			if nicName == "lo" {
 				continue
@@ -124,21 +124,7 @@ func (s *networkStatsService) updateNetworkStats() error {
 			nicSlice = append(nicSlice, nicName)
 		}
 	} else {
-		nics, err := s.prop_repo.Value("Interfaces", false)
-		if err != nil {
-			return err
-		}
-		var ok bool
-		nicSlice, ok = nics.([]interface{})
-		if !ok {
-			if nics != nil {
-				slog.WarnContext(s.ctx, "Interfaces property from DB is not of expected type []interface{}", "type", fmt.Sprintf("%T", nics))
-			} else {
-				slog.DebugContext(s.ctx, "Interfaces property from DB is nil")
-			}
-			s.lastUpdateTime = time.Now()
-			return nil
-		}
+		nicSlice = setting.Interfaces
 	}
 
 	s.currentNetHealth = &dto.NetworkStats{
@@ -149,12 +135,7 @@ func (s *networkStatsService) updateNetworkStats() error {
 		},
 	}
 
-	for _, nic := range nicSlice {
-		nicName, ok := nic.(string)
-		if !ok {
-			slog.WarnContext(s.ctx, "Skipping non-string value in interfaces list", "value", nic)
-			continue
-		}
+	for _, nicName := range nicSlice {
 
 		// Skip virtual ethernet (veth) interfaces used by containers
 		if strings.HasPrefix(nicName, "veth") {

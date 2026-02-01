@@ -56,7 +56,7 @@ func NewDirtyDataService(lc fx.Lifecycle, ctx context.Context, eventBus events.E
 			p.setDirtySettings()
 			return nil
 		})
-		unsubscribe[3] = eventBus.OnSamba(func(ctx context.Context, event events.SambaEvent) errors.E {
+		unsubscribe[3] = eventBus.OnServerProccess(func(ctx context.Context, event events.ServerProcessEvent) errors.E {
 			slog.DebugContext(ctx, "DirtyDataService received Samba event", "tracker", event.DataDirtyTracker)
 			if event.Type == events.EventTypes.CLEAN {
 				p.resetDirtyStatus()

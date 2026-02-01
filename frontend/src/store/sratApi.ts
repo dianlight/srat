@@ -718,6 +718,15 @@ export type SseApiResponse = /** status 200 OK */
           retry?: number;
         }
       | {
+          data: ErrorDataModel;
+          /** The event name. */
+          event: "error";
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
           data: HealthPing;
           /** The event name. */
           event: "heartbeat";
@@ -859,6 +868,8 @@ export type SystemCapabilities = {
   samba_version: string;
   /** Whether Samba version >= 4.23.0 */
   samba_version_sufficient: boolean;
+  /** Whether NFS is supported */
+  support_nfs: boolean;
   /** Whether SMB over QUIC is supported */
   supports_quic: boolean;
   /** Reason why QUIC is not supported */
@@ -1232,6 +1243,7 @@ export type Settings = {
   bind_all_interfaces?: boolean;
   compatibility_mode?: boolean;
   export_stats_to_ha?: boolean;
+  ha_use_nfs?: boolean;
   hdidle_default_command_type?: Hdidle_default_command_type;
   hdidle_default_idle_time?: number;
   hdidle_default_power_condition?: number;
@@ -1240,8 +1252,6 @@ export type Settings = {
   hostname?: string;
   interfaces?: string[];
   local_master?: boolean;
-  log_level?: string;
-  mountoptions?: string[] | null;
   multi_channel?: boolean;
   smb_over_quic?: boolean;
   telemetry_mode?: Telemetry_mode;
@@ -1317,6 +1327,20 @@ export type SharedResourcePostData = {
   veto_files?: string[];
   [key: string]: unknown;
 };
+export type ErrorDataModel = {
+  /** A human-readable explanation specific to this occurrence of the problem. */
+  detail?: string;
+  /** Optional list of individual error details */
+  errors?: ErrorDetail[] | null;
+  /** A URI reference that identifies the specific occurrence of the problem. */
+  instance?: string;
+  /** HTTP status code */
+  status?: number;
+  /** A short, human-readable summary of the problem type. This value should not change between occurrences of the error. */
+  title?: string;
+  /** A URI reference to human-readable documentation for the error. */
+  type?: string;
+};
 export type Welcome = {
   active_clients: number;
   build_version: string;
@@ -1329,12 +1353,25 @@ export type Welcome = {
   supported_events: Supported_events[] | null;
   update_channel: Update_channel;
 };
+export type BinaryAsset = {
+  browser_download_url?: string;
+  digest?: string;
+  id: number;
+  name: string;
+  size: number;
+};
+export type ReleaseAsset = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  arch_asset?: BinaryAsset;
+  last_release?: string;
+};
 export type UpdateProgress = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
   error_message?: string;
-  last_release?: string;
   progress?: number;
+  release_asset?: ReleaseAsset;
   update_process_state?: Update_process_state;
 };
 export type Partition = {
@@ -1376,18 +1413,6 @@ export type Disk = {
   size?: number;
   smart_info?: SmartInfo;
   vendor?: string;
-};
-export type BinaryAsset = {
-  browser_download_url?: string;
-  id: number;
-  name: string;
-  size: number;
-};
-export type ReleaseAsset = {
-  /** A URL to the JSON Schema for this object. */
-  $schema?: string;
-  arch_asset?: BinaryAsset;
-  last_release?: string;
 };
 export type PatchMountPointData = {
   /** A URL to the JSON Schema for this object. */

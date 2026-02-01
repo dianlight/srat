@@ -149,9 +149,12 @@ func NewVolumeService(
 				})
 			}
 		case events.EventTypes.ADD, events.EventTypes.UPDATE:
+
 			disk, err := p.disks.AddMountPointShare(se.Share)
 			if err != nil {
-				slog.WarnContext(ctx, "Failed to add/update share in mount point in cache", "share", se.Share, "err", err)
+				if se.Share.Usage != "internal" {
+					slog.WarnContext(ctx, "Failed to add/update share in mount point in cache", "share", se.Share, "err", err)
+				}
 				return nil
 			}
 			p.eventBus.EmitDisk(events.DiskEvent{
@@ -882,7 +885,7 @@ func (self *VolumeService) getVolumesData() errors.E {
 			return nil, errHw
 		}
 		if hwDisks == nil {
-			slog.DebugContext(self.ctx, "Hardware client returned nil disks, continuing with empty disk list")
+			tlog.TraceContext(self.ctx, "Hardware client returned nil disks, continuing with empty disk list")
 			return self.disks, nil
 		}
 
@@ -892,7 +895,7 @@ func (self *VolumeService) getVolumesData() errors.E {
 			if disk.Partitions == nil {
 				continue
 			}
-			tlog.DebugContext(self.ctx, "Processing disk from hardware client", "disk_id", *disk.Id, "partition_count", len(*disk.Partitions))
+			tlog.TraceContext(self.ctx, "Processing disk from hardware client", "disk_id", *disk.Id, "partition_count", len(*disk.Partitions))
 			disk.RefreshVersion = self.refreshVersion
 
 			currentDisk, updateDisk := self.disks.Get(*disk.Id)

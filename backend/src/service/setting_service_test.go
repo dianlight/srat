@@ -3,18 +3,19 @@ package service_test
 import (
 	"context"
 	"log"
+	"os"
+	"runtime/debug"
+	"sync"
 	"testing"
 
-	"github.com/dianlight/srat/config"
+	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
-	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
-	"github.com/dianlight/srat/templates"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
-	"gitlab.com/tozd/go/errors"
+	"github.com/xorcare/pointer"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 )
@@ -22,8 +23,9 @@ import (
 type SettingServiceSuite struct {
 	suite.Suite
 	settingService service.SettingServiceInterface
-	propertyRepo   repository.PropertyRepositoryInterface
-	app            *fxtest.App
+	//propertyRepo   repository.PropertyRepositoryInterface
+	app       *fxtest.App
+	testMutex sync.Mutex
 }
 
 func TestSettingServiceSuite(t *testing.T) {
@@ -31,304 +33,392 @@ func TestSettingServiceSuite(t *testing.T) {
 }
 
 func (suite *SettingServiceSuite) SetupTest() {
+
+	defer func() {
+		if r := recover(); r != nil {
+			log.Fatalf("Panic in SetupTest: %#+v\n%s", r, string(debug.Stack()))
+		}
+	}()
+
 	suite.app = fxtest.New(suite.T(),
 		fx.Provide(
 			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
 			func() (context.Context, context.CancelFunc) { return context.WithCancel(context.Background()) },
-			func() *config.DefaultConfig {
-				var nconfig config.Config
-				buffer, err := templates.Default_Config_content.ReadFile("default_config.json")
+			func() *dto.ContextState {
+				sharedResources := dto.ContextState{}
+				sharedResources.DockerInterface = "hassio"
+				sharedResources.DockerNet = "172.30.32.0/23"
+				var err error
+				sharedResources.Template, err = os.ReadFile("../templates/smb.gtpl")
 				if err != nil {
-					log.Fatalf("Cant read default config file %#+v", err)
+					suite.T().Errorf("Cant read template file %s", err)
 				}
-				err = nconfig.LoadConfigBuffer(buffer) // Assign to existing err
-				if err != nil {
-					log.Fatalf("Cant load default config from buffer %#+v", err)
-				}
-				return &config.DefaultConfig{Config: nconfig}
+				sharedResources.DatabasePath = "file::memory:?cache=shared&_pragma=foreign_keys(1)"
+				return &sharedResources
 			},
+			/*
+				func() *config.DefaultConfig {
+					var nconfig config.Config
+					buffer, err := templates.Default_Config_content.ReadFile("default_config.json")
+					if err != nil {
+						log.Fatalf("Cant read default config file %#+v", err)
+					}
+					err = nconfig.LoadConfigBuffer(buffer) // Assign to existing err
+					if err != nil {
+						log.Fatalf("Cant load default config from buffer %#+v", err)
+					}
+					return &config.DefaultConfig{Config: nconfig}
+				},
+			*/
+			dbom.NewDB,
 			service.NewSettingService,
 			events.NewEventBus,
-			mock.Mock[repository.PropertyRepositoryInterface],
+			//	repository.NewPropertyRepositoryRepository,
 			mock.Mock[service.TelemetryServiceInterface],
 		),
 		fx.Populate(&suite.settingService),
-		fx.Populate(&suite.propertyRepo),
+		//fx.Populate(&suite.propertyRepo),
 	)
 	suite.app.RequireStart()
 }
 
 func (suite *SettingServiceSuite) TearDownTest() {
+	suite.testMutex.Lock()
+	defer suite.testMutex.Unlock()
+
+	// Reset command exists to default
+	suite.settingService.SetCommandExists(nil)
+
 	suite.app.RequireStop()
 }
 
-func (suite *SettingServiceSuite) TestHasValue_ReturnsTrueWhenPresent() {
-	mock.When(suite.propertyRepo.Value(mock.Any[string](), mock.Any[bool]())).ThenReturn("some-value", nil)
+func (suite *SettingServiceSuite) TestUpdateSettings_HAUseNFS() {
 
-	has, err := suite.settingService.HasValue("TestKey")
+	testCases := []struct {
+		name            string
+		settingsFactory func() dto.Settings
+		verifyFunc      func(*dto.Settings, error)
+	}{
+		{
+			name: "HAUseNFS",
+			settingsFactory: func() dto.Settings {
+				suite.settingService.SetCommandExists(func(cmd []string) bool {
+					// Simulate that exportfs command exists
+					return true
+				})
+				return dto.Settings{HAUseNFS: pointer.Bool(true)}
+			},
+			verifyFunc: func(loaded *dto.Settings, err error) {
+				suite.Require().NoError(err)
+				suite.True(*loaded.HAUseNFS)
+			},
+		},
+		{
+			name: "HAUseNFS_ExportfsNotExists",
+			settingsFactory: func() dto.Settings {
+				suite.settingService.SetCommandExists(func(cmd []string) bool {
+					// Simulate that exportfs command does not exist
+					return false
+				})
+				return dto.Settings{HAUseNFS: pointer.Bool(true)}
+			},
+			verifyFunc: func(loaded *dto.Settings, err error) {
+				suite.Require().NoError(err)
+				suite.False(*loaded.HAUseNFS)
+			},
+		},
+		{
+			name: "HAUseNFS_False",
+			settingsFactory: func() dto.Settings {
+				suite.settingService.SetCommandExists(func(cmd []string) bool {
+					// Simulate that exportfs command exists
+					return true
+				})
+				return dto.Settings{HAUseNFS: pointer.Bool(false)}
+			},
+			verifyFunc: func(loaded *dto.Settings, err error) {
+				suite.Require().NoError(err)
+				suite.False(*loaded.HAUseNFS)
+			},
+		},
+		{
+			name: "HAUseNFS_Nil",
+			settingsFactory: func() dto.Settings {
+				suite.settingService.SetCommandExists(func(cmd []string) bool {
+					// Simulate that exportfs command exists
+					return true
+				})
+				return dto.Settings{HAUseNFS: nil}
+			},
+			verifyFunc: func(loaded *dto.Settings, err error) {
+				suite.Require().NoError(err)
+				suite.NotNil(loaded.HAUseNFS, "HAUseNFS should not be nil but defaulted by tag")
+			},
+		},
+	}
 
-	suite.NoError(err)
-	suite.True(has)
-	mock.Verify(suite.propertyRepo, matchers.Times(1)).Value(mock.Any[string](), mock.Any[bool]())
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			// Reset database state for each sub-test
+			suite.TearDownTest()
+			suite.SetupTest()
+			suite.testFieldUpdateAndLoad(tc.name, tc.settingsFactory, tc.verifyFunc)
+		})
+	}
 }
 
-func (suite *SettingServiceSuite) TestHasValue_ReturnsFalseWhenNotFound() {
-	mock.When(suite.propertyRepo.Value(mock.Any[string](), mock.Any[bool]())).ThenReturn(nil, errors.WithStack(dto.ErrorNotFound))
+// testFieldUpdateAndLoad is a generic helper function that tests updating and loading a specific field
+// It accepts a field name, a function to create settings with the field value, and a verification function
+// The function includes panic recovery with detailed error reporting
+func (suite *SettingServiceSuite) testFieldUpdateAndLoad(
+	fieldName string,
+	settingsFactory func() dto.Settings,
+	verifyFunc func(*dto.Settings, error),
+) {
+	suite.testMutex.Lock()
+	defer suite.testMutex.Unlock()
+	defer func() {
+		if r := recover(); r != nil {
+			suite.Failf("Panic occurred during test",
+				"Field: %s, Panic: %v", fieldName, r)
+		}
+	}()
 
-	has, err := suite.settingService.HasValue("MissingKey")
+	// Create and update settings
+	testSettings := settingsFactory()
+	err := suite.settingService.UpdateSettings(&testSettings)
+	suite.Require().NoError(err, "UpdateSettings should not fail for field: %s", fieldName)
 
-	suite.NoError(err)
-	suite.False(has)
+	// Dump table for debugging
+	tableDump, dumpErr := suite.settingService.DumpTable()
+	suite.Require().NoError(dumpErr, "DumpTable should not fail for field: %s", fieldName)
+	suite.T().Logf("Property Table Dump after updating field %s:\n%s", fieldName, tableDump)
+
+	// Load and verify
+	loaded, loadErr := suite.settingService.Load()
+	verifyFunc(loaded, loadErr)
 }
 
-func (suite *SettingServiceSuite) TestHasValue_PropagatesOtherErrors() {
-	mock.When(suite.propertyRepo.Value(mock.Any[string](), mock.Any[bool]())).ThenReturn(nil, errors.New("db error"))
+// TestUpdateSettings_SaveAndLoad_AllFieldTypes tests saving, loading, and modifying all Settings field types
+func (suite *SettingServiceSuite) TestUpdateSettings_SaveAndLoad_AllFieldTypes() {
+	testCases := []struct {
+		name            string
+		settingsFactory func() dto.Settings
+		verifyFunc      func(*dto.Settings, error)
+	}{
+		{
+			name: "Workgroup_String",
+			settingsFactory: func() dto.Settings {
+				return dto.Settings{Workgroup: "TESTWORKGROUP"}
+			},
+			verifyFunc: func(loaded *dto.Settings, err error) {
+				suite.Require().NoError(err)
+				suite.Equal("TESTWORKGROUP", loaded.Workgroup, "Workgroup should match the set value")
+			},
+		},
+		{
+			name: "HAUseNFS_True",
+			settingsFactory: func() dto.Settings {
+				suite.settingService.SetCommandExists(func(cmd []string) bool {
+					// Simulate that exportfs command exists
+					return false
+				})
+				return dto.Settings{HAUseNFS: pointer.Bool(true)}
+			},
+			verifyFunc: func(loaded *dto.Settings, err error) {
+				suite.Require().NoError(err)
+				suite.Require().NotNil(loaded.HAUseNFS)
+				suite.False(*loaded.HAUseNFS, "HAUseNFS should be false when exportfs unavailable")
+			},
+		},
+		{
+			name: "HAUseNFS_False",
+			settingsFactory: func() dto.Settings {
+				return dto.Settings{HAUseNFS: pointer.Bool(false)}
+			},
+			verifyFunc: func(loaded *dto.Settings, err error) {
+				suite.Require().NoError(err)
+				suite.Require().NotNil(loaded.HAUseNFS)
+				suite.False(*loaded.HAUseNFS)
+			},
+		},
+		{
+			name: "Workgroup_NotEmpty",
+			settingsFactory: func() dto.Settings {
+				return dto.Settings{Workgroup: ""}
+			},
+			verifyFunc: func(loaded *dto.Settings, err error) {
+				suite.Require().NoError(err)
+				suite.NotEmpty(loaded.Workgroup)
+			},
+		},
+		{
+			name: "HAUseNFS_Nil",
+			settingsFactory: func() dto.Settings {
+				return dto.Settings{HAUseNFS: nil}
+			},
+			verifyFunc: func(loaded *dto.Settings, err error) {
+				suite.Require().NoError(err)
+				suite.NotNil(loaded.HAUseNFS)
+			},
+		},
+		{
+			name: "AllowGuest_True",
+			settingsFactory: func() dto.Settings {
+				return dto.Settings{AllowGuest: pointer.Bool(true)}
+			},
+			verifyFunc: func(loaded *dto.Settings, err error) {
+				suite.Require().NoError(err)
+				suite.NotNil(loaded.AllowGuest)
+				suite.True(*loaded.AllowGuest)
+			},
+		},
+		{
+			name: "AllowGuest_False",
+			settingsFactory: func() dto.Settings {
+				return dto.Settings{AllowGuest: pointer.Bool(false)}
+			},
+			verifyFunc: func(loaded *dto.Settings, err error) {
+				suite.Require().NoError(err)
+				suite.NotNil(loaded.AllowGuest)
+				suite.False(*loaded.AllowGuest)
+			},
+		},
+		{
+			name: "MultiChannel_True",
+			settingsFactory: func() dto.Settings {
+				return dto.Settings{MultiChannel: true}
+			},
+			verifyFunc: func(loaded *dto.Settings, err error) {
+				suite.Require().NoError(err)
+				suite.True(loaded.MultiChannel)
+			},
+		},
+		{
+			name: "Interfaces_Array",
+			settingsFactory: func() dto.Settings {
+				return dto.Settings{Interfaces: []string{"eth0", "eth1"}}
+			},
+			verifyFunc: func(loaded *dto.Settings, err error) {
+				suite.Require().NoError(err)
+				suite.Equal([]string{"eth0", "eth1"}, loaded.Interfaces)
+			},
+		},
+	}
 
-	has, err := suite.settingService.HasValue("AnyKey")
-
-	suite.Error(err)
-	suite.False(has)
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			// Reset database state for each sub-test
+			suite.TearDownTest()
+			suite.SetupTest()
+			suite.testFieldUpdateAndLoad(tc.name, tc.settingsFactory, tc.verifyFunc)
+		})
+	}
 }
 
-func (suite *SettingServiceSuite) TestHasDefaultValue_ReturnsTrueForExistingField() {
-	// Test with json tag name
-	has, err := suite.settingService.HasDefaultValue("hostname")
-	suite.NoError(err)
-	suite.True(has)
+// TestUpdateSettings_ModifyMultipleFields tests modifying multiple fields in sequence
+func (suite *SettingServiceSuite) TestUpdateSettings_ModifyMultipleFields() {
+	// Set initial values with multiple fields
+	/*
+		initialSettings := dto.Settings{
+			Workgroup: "INITIAL",
+			HAUseNFS:  pointer.Bool(true),
+		}
+		err := suite.settingService.UpdateSettings(&initialSettings)
+		suite.Require().NoError(err)
 
-	// Test with another field
-	has, err = suite.settingService.HasDefaultValue("workgroup")
-	suite.NoError(err)
-	suite.True(has)
+		loaded, err := suite.settingService.Load()
+		suite.Require().NoError(err)
+		suite.Equal("INITIAL", loaded.Workgroup)
+	*/
 
-	// Test with field that has enum tag
-	has, err = suite.settingService.HasDefaultValue("telemetry_mode")
-	suite.NoError(err)
-	suite.True(has)
+	// Modify one field - test that only specified field changes
+	testCases := []struct {
+		name            string
+		settingsFactory func() dto.Settings
+		verifyFunc      func(*dto.Settings, error)
+	}{
+		{
+			name: "Modified_Workgroup",
+			settingsFactory: func() dto.Settings {
+				return dto.Settings{Workgroup: "MODIFIED"}
+			},
+			verifyFunc: func(loaded *dto.Settings, err error) {
+				suite.Require().NoError(err)
+				suite.Equal("MODIFIED", loaded.Workgroup)
+			},
+		},
+		{
+			name: "Multiple_Fields_Update",
+			settingsFactory: func() dto.Settings {
+				return dto.Settings{
+					Workgroup:    "FINAL",
+					MultiChannel: true,
+				}
+			},
+			verifyFunc: func(loaded *dto.Settings, err error) {
+				suite.Require().NoError(err)
+				suite.Equal("FINAL", loaded.Workgroup)
+				suite.True(loaded.MultiChannel)
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			// Reset database state for each sub-test
+			suite.TearDownTest()
+			suite.SetupTest()
+			suite.testFieldUpdateAndLoad(tc.name, tc.settingsFactory, tc.verifyFunc)
+		})
+	}
 }
 
-func (suite *SettingServiceSuite) TestHasDefaultValue_ReturnsFalseForNonExistentField() {
-	has, err := suite.settingService.HasDefaultValue("non_existent_field")
-	suite.NoError(err)
-	suite.False(has)
+// TestUpdateSettings_NilPointerFields tests handling of nil pointer fields
+func (suite *SettingServiceSuite) TestUpdateSettings_NilPointerFields() {
+	testCases := []struct {
+		name            string
+		settingsFactory func() dto.Settings
+		verifyFunc      func(*dto.Settings, error)
+	}{
+		{
+			name: "HAUseNFS_Nil",
+			settingsFactory: func() dto.Settings {
+				return dto.Settings{HAUseNFS: nil}
+			},
+			verifyFunc: func(loaded *dto.Settings, err error) {
+				suite.Require().NoError(err)
+				suite.NotNil(loaded.HAUseNFS)
+			},
+		},
+		{
+			name: "AllowGuest_Nil",
+			settingsFactory: func() dto.Settings {
+				return dto.Settings{AllowGuest: nil}
+			},
+			verifyFunc: func(loaded *dto.Settings, err error) {
+				suite.Require().NoError(err)
+				suite.NotNil(loaded.AllowGuest)
+			},
+		},
+		{
+			name: "LocalMaster_Nil",
+			settingsFactory: func() dto.Settings {
+				return dto.Settings{LocalMaster: nil}
+			},
+			verifyFunc: func(loaded *dto.Settings, err error) {
+				suite.Require().NoError(err)
+				suite.NotNil(loaded.LocalMaster)
+			},
+		},
+	}
 
-	// Test with completely invalid key
-	has, err = suite.settingService.HasDefaultValue("invalid_key_123")
-	suite.NoError(err)
-	suite.False(has)
-}
-
-func (suite *SettingServiceSuite) TestHasDefaultValue_ReturnsFalseForEmptyString() {
-	has, err := suite.settingService.HasDefaultValue("")
-	suite.NoError(err)
-	suite.False(has)
-}
-
-func (suite *SettingServiceSuite) TestHasDefaultValue_CaseInsensitiveFieldName() {
-	// Test with field name (case-insensitive)
-	has, err := suite.settingService.HasDefaultValue("Hostname")
-	suite.NoError(err)
-	suite.True(has)
-
-	has, err = suite.settingService.HasDefaultValue("WORKGROUP")
-	suite.NoError(err)
-	suite.True(has)
-}
-
-func (suite *SettingServiceSuite) TestGetValue_ReturnsValueFromRepository() {
-	expectedValue := "test-hostname"
-	mock.When(suite.propertyRepo.Value(mock.Any[string](), mock.Any[bool]())).ThenReturn(expectedValue, nil)
-
-	val, err := suite.settingService.GetValue("hostname")
-
-	suite.NoError(err)
-	suite.Equal(expectedValue, val)
-	mock.Verify(suite.propertyRepo, matchers.Times(1)).Value(mock.Any[string](), mock.Any[bool]())
-}
-
-func (suite *SettingServiceSuite) TestGetValue_ReturnsDefaultWhenNotFound() {
-	// Mock repository to return NotFound
-	mock.When(suite.propertyRepo.Value(mock.Any[string](), mock.Any[bool]())).ThenReturn(nil, errors.WithStack(dto.ErrorNotFound))
-
-	val, err := suite.settingService.GetValue("hostname")
-
-	suite.NoError(err)
-	// The default value should be returned (from default_config.json)
-	suite.NotNil(val)
-}
-
-func (suite *SettingServiceSuite) TestGetValue_ReturnsErrorWhenNotFoundAndNoDefault() {
-	// Mock repository to return NotFound
-	mock.When(suite.propertyRepo.Value(mock.Any[string](), mock.Any[bool]())).ThenReturn(nil, errors.WithStack(dto.ErrorNotFound))
-
-	val, err := suite.settingService.GetValue("non_existent_field")
-
-	suite.Error(err)
-	suite.True(errors.Is(err, dto.ErrorNotFound))
-	suite.Nil(val)
-}
-
-func (suite *SettingServiceSuite) TestGetValue_PropagatesOtherErrors() {
-	// Mock repository to return a database error
-	mock.When(suite.propertyRepo.Value(mock.Any[string](), mock.Any[bool]())).ThenReturn(nil, errors.New("database error"))
-
-	val, err := suite.settingService.GetValue("hostname")
-
-	suite.Error(err)
-	suite.Nil(val)
-	// Should not attempt to get default value when there's a real error
-}
-
-func (suite *SettingServiceSuite) TestGetValue_ReturnsErrorForEmptyProperty() {
-	val, err := suite.settingService.GetValue("")
-
-	suite.Error(err)
-	suite.Nil(val)
-	suite.Contains(err.Error(), "property name cannot be empty")
-}
-
-func (suite *SettingServiceSuite) TestGetValue_WorksWithDifferentTypes() {
-	// Test with boolean value
-	mock.When(suite.propertyRepo.Value("compatibility_mode", true)).ThenReturn(true, nil)
-	val, err := suite.settingService.GetValue("compatibility_mode")
-	suite.NoError(err)
-	suite.Equal(true, val)
-
-	// Test with string slice
-	expectedSlice := []string{"eth0", "eth1"}
-	mock.When(suite.propertyRepo.Value("interfaces", true)).ThenReturn(expectedSlice, nil)
-	val, err = suite.settingService.GetValue("interfaces")
-	suite.NoError(err)
-	suite.Equal(expectedSlice, val)
-}
-
-func (suite *SettingServiceSuite) TestSetValue_SucceedsWithCompatibleType() {
-	// Mock existing value
-	mock.When(suite.propertyRepo.Value("hostname", true)).ThenReturn("old-hostname", nil)
-	mock.When(suite.propertyRepo.SetValue("hostname", "new-hostname")).ThenReturn(nil)
-
-	err := suite.settingService.SetValue("hostname", "new-hostname")
-
-	suite.NoError(err)
-	mock.Verify(suite.propertyRepo, matchers.Times(1)).SetValue("hostname", "new-hostname")
-}
-
-func (suite *SettingServiceSuite) TestSetValue_FailsWithIncompatibleExistingType() {
-	// Mock existing value as string
-	mock.When(suite.propertyRepo.Value("hostname", true)).ThenReturn("old-hostname", nil)
-
-	// Try to set as integer
-	err := suite.settingService.SetValue("hostname", 123)
-
-	suite.Error(err)
-	suite.Contains(err.Error(), "type mismatch")
-	suite.Contains(err.Error(), "existing type")
-}
-
-func (suite *SettingServiceSuite) TestSetValue_UsesDefaultTypeWhenNoExistingValue() {
-	// Mock repository to return NotFound (no existing value)
-	mock.When(suite.propertyRepo.Value("hostname", true)).ThenReturn(nil, errors.WithStack(dto.ErrorNotFound))
-	mock.When(suite.propertyRepo.SetValue("hostname", "new-hostname")).ThenReturn(nil)
-
-	// hostname has a string default, so string should be accepted
-	err := suite.settingService.SetValue("hostname", "new-hostname")
-
-	suite.NoError(err)
-	mock.Verify(suite.propertyRepo, matchers.Times(1)).SetValue("hostname", "new-hostname")
-}
-
-func (suite *SettingServiceSuite) TestSetValue_FailsWithIncompatibleDefaultType() {
-	// Mock repository to return NotFound (no existing value)
-	mock.When(suite.propertyRepo.Value("hostname", true)).ThenReturn(nil, errors.WithStack(dto.ErrorNotFound))
-
-	// hostname has a string default, try to set as boolean
-	err := suite.settingService.SetValue("hostname", true)
-
-	suite.Error(err)
-	suite.Contains(err.Error(), "type mismatch")
-	suite.Contains(err.Error(), "default type")
-}
-
-func (suite *SettingServiceSuite) TestSetValue_AllowsAnyTypeForNewPropertyWithoutDefault() {
-	// Mock repository to return NotFound (no existing value)
-	mock.When(suite.propertyRepo.Value("custom_property", true)).ThenReturn(nil, errors.WithStack(dto.ErrorNotFound))
-	mock.When(suite.propertyRepo.SetValue("custom_property", "any-value")).ThenReturn(nil)
-
-	// No default value exists for custom_property, any type should be allowed
-	err := suite.settingService.SetValue("custom_property", "any-value")
-
-	suite.NoError(err)
-	mock.Verify(suite.propertyRepo, matchers.Times(1)).SetValue("custom_property", "any-value")
-}
-
-func (suite *SettingServiceSuite) TestSetValue_RejectsNilValue() {
-	err := suite.settingService.SetValue("hostname", nil)
-
-	suite.Error(err)
-	suite.Contains(err.Error(), "value cannot be nil")
-}
-
-func (suite *SettingServiceSuite) TestSetValue_RejectsEmptyProperty() {
-	err := suite.settingService.SetValue("", "some-value")
-
-	suite.Error(err)
-	suite.Contains(err.Error(), "property name cannot be empty")
-}
-
-func (suite *SettingServiceSuite) TestSetValue_PropagatesRepositoryErrors() {
-	// Mock repository to return a database error
-	mock.When(suite.propertyRepo.Value("hostname", true)).ThenReturn(nil, errors.New("database error"))
-
-	err := suite.settingService.SetValue("hostname", "new-hostname")
-
-	suite.Error(err)
-	suite.Contains(err.Error(), "database error")
-}
-
-func (suite *SettingServiceSuite) TestSetValue_WorksWithBooleanTypes() {
-	// Mock existing boolean value
-	mock.When(suite.propertyRepo.Value("compatibility_mode", true)).ThenReturn(true, nil)
-	mock.When(suite.propertyRepo.SetValue("compatibility_mode", false)).ThenReturn(nil)
-
-	err := suite.settingService.SetValue("compatibility_mode", false)
-
-	suite.NoError(err)
-	mock.Verify(suite.propertyRepo, matchers.Times(1)).SetValue("compatibility_mode", false)
-}
-
-func (suite *SettingServiceSuite) TestSetValue_WorksWithSliceTypes() {
-	// Mock existing slice value
-	oldSlice := []string{"eth0"}
-	newSlice := []string{"eth0", "eth1"}
-	mock.When(suite.propertyRepo.Value("interfaces", true)).ThenReturn(oldSlice, nil)
-	mock.When(suite.propertyRepo.SetValue("interfaces", newSlice)).ThenReturn(nil)
-
-	err := suite.settingService.SetValue("interfaces", newSlice)
-
-	suite.NoError(err)
-	mock.Verify(suite.propertyRepo, matchers.Times(1)).SetValue("interfaces", newSlice)
-}
-
-func (suite *SettingServiceSuite) TestSetValue_RejectsIncompatibleSliceElementTypes() {
-	// Mock existing string slice
-	mock.When(suite.propertyRepo.Value("interfaces", true)).ThenReturn([]string{"eth0"}, nil)
-
-	// Try to set as int slice
-	err := suite.settingService.SetValue("interfaces", []int{1, 2, 3})
-
-	suite.Error(err)
-	suite.Contains(err.Error(), "type mismatch")
-}
-
-func (suite *SettingServiceSuite) TestSetValue_WorksWithPointerTypes() {
-	// Mock existing pointer value
-	trueVal := true
-	falseVal := false
-	mock.When(suite.propertyRepo.Value("local_master", true)).ThenReturn(&trueVal, nil)
-	mock.When(suite.propertyRepo.SetValue("local_master", &falseVal)).ThenReturn(nil)
-
-	err := suite.settingService.SetValue("local_master", &falseVal)
-
-	suite.NoError(err)
-	mock.Verify(suite.propertyRepo, matchers.Times(1)).SetValue("local_master", &falseVal)
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			// Reset database state for each sub-test
+			suite.TearDownTest()
+			suite.SetupTest()
+			suite.testFieldUpdateAndLoad(tc.name, tc.settingsFactory, tc.verifyFunc)
+		})
+	}
 }

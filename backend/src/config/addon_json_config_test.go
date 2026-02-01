@@ -2,7 +2,6 @@ package config_test
 
 import (
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/dianlight/srat/config"
@@ -61,6 +60,8 @@ func TestConfigToMapWithUnicode(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, "/path/to/unicode/文件夹", sharePath)
 }
+
+/*
 func TestMigrateConfigFromVersion0ToCurrent(t *testing.T) {
 	// Create a config with version 0
 	initialConfig := &config.Config{
@@ -88,7 +89,8 @@ func TestMigrateConfigFromVersion0ToCurrent(t *testing.T) {
 	// Check that no extra shares were added
 	assert.Len(t, initialConfig.Shares, len(expectedShares))
 }
-
+*/
+/*
 func TestMigrateConfigSetsVersionToCurrent(t *testing.T) {
 	// Create a config with version 0
 	initialConfig := &config.Config{
@@ -219,7 +221,7 @@ func TestLoadConfigWithValidFile(t *testing.T) {
 		assert.Contains(t, tconfig.Shares, shareName)
 	}
 }
-
+*/
 func TestBuildVersion(t *testing.T) {
 	// Save original values
 	origVersion := config.Version

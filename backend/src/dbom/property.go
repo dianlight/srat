@@ -9,7 +9,6 @@ import (
 type Property struct {
 	Key       string      `gorm:"primaryKey"`
 	Value     interface{} `gorm:"serializer:json"`
-	Internal  bool        `gorm:"default:false"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt gorm.DeletedAt `gorm:"index"`
@@ -33,6 +32,13 @@ func (self *Properties) GetValue(key string) (interface{}, error) {
 	return prop.Value, nil
 }
 
+func (self *Properties) Populate(props []Property) {
+	for _, prop := range props {
+		(*self)[prop.Key] = prop
+	}
+}
+
+/*
 func (self *Properties) AddInternalValue(key string, value any) error {
 	prop, err := self.Get(key)
 	if err != nil {
@@ -44,3 +50,4 @@ func (self *Properties) AddInternalValue(key string, value any) error {
 	(*self)[key] = *prop
 	return nil
 }
+*/

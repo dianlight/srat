@@ -67,8 +67,8 @@ type SettingEvent struct {
 	Setting *dto.Settings
 }
 
-// SambaEvent represents a Samba-related event
-type SambaEvent struct {
+// ServerProcessEvent represents a Samba-related event
+type ServerProcessEvent struct {
 	Event
 	DataDirtyTracker dto.DataDirtyTracker
 }
@@ -89,6 +89,7 @@ type DirtyDataEvent struct {
 // HomeAssistantEvent represents a Home Assistant-related event
 type HomeAssistantEvent struct {
 	Event
+	Error *dto.ErrorDataModel
 }
 
 type SmartEvent struct {

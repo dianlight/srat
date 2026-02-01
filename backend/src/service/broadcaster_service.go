@@ -88,7 +88,7 @@ func NewBroadcasterService(
 }
 
 func (broker *BroadcasterService) setupEventListeners() []func() {
-	ret := make([]func(), 5)
+	ret := make([]func(), 6)
 	// Listen for disk events
 	ret[0] = broker.eventBus.OnDisk(func(ctx context.Context, event events.DiskEvent) errors.E {
 		diskID := "unknown"
@@ -99,20 +99,6 @@ func (broker *BroadcasterService) setupEventListeners() []func() {
 		broker.BroadcastMessage(broker.volumeService.GetVolumesData())
 		return nil
 	})
-
-	// Listen for partition events
-	/*
-		ret[1] = broker.eventBus.OnPartition(func(ctx context.Context, event events.PartitionEvent) errors.E {
-			partName := "unknown"
-			if event.Partition.Name != nil {
-				partName = *event.Partition.Name
-			}
-			slog.DebugContext(ctx, "BroadcasterService received Partition event", "partition", partName)
-			broker.BroadcastMessage(*broker.volumeService.GetVolumesData())
-			return nil
-		})
-	*/
-
 	// Listen for share events
 	ret[1] = broker.eventBus.OnShare(func(ctx context.Context, event events.ShareEvent) errors.E {
 		slog.DebugContext(ctx, "BroadcasterService received Share event", "share", event.Share.Name)
@@ -141,6 +127,14 @@ func (broker *BroadcasterService) setupEventListeners() []func() {
 		if event.SmartTestStatus.DiskId != "" {
 			broker.BroadcastMessage(event.SmartTestStatus)
 		}
+		return nil
+	})
+	ret[5] = broker.eventBus.OnHomeAssistant(func(ctx context.Context, event events.HomeAssistantEvent) errors.E {
+		if event.Type != events.EventTypes.ERROR {
+			return nil
+		}
+		slog.DebugContext(ctx, "BroadcasterService received Error event", "error", event.Error)
+		broker.BroadcastMessage(event.Error)
 		return nil
 	})
 
@@ -211,11 +205,11 @@ func (broker *BroadcasterService) sendToHomeAssistant(msg any) {
 		if err := broker.haService.SendSambaStatusEntity(&v); err != nil {
 			slog.WarnContext(broker.ctx, "Failed to send samba status entity to Home Assistant", "error", err)
 		}
-	case *dto.SambaProcessStatus:
+	case *dto.ServerProcessStatus:
 		if err := broker.haService.SendSambaProcessStatusEntity(v); err != nil {
 			slog.WarnContext(broker.ctx, "Failed to send samba process status entity to Home Assistant", "error", err)
 		}
-	case dto.SambaProcessStatus:
+	case dto.ServerProcessStatus:
 		if err := broker.haService.SendSambaProcessStatusEntity(&v); err != nil {
 			slog.WarnContext(broker.ctx, "Failed to send samba process status entity to Home Assistant", "error", err)
 		}
@@ -252,7 +246,7 @@ func (broker *BroadcasterService) ProcessHttpChannel(send sse.Sender) {
 			return
 		case event := <-listener.Ch():
 			// Filter out Home Assistant-specific events that shouldn't go to SSE clients
-			if broker.shouldSkipClientSend(event.Message) {
+			if dto.WebEventMap.IsValidEvent(event.Message) {
 				continue
 			}
 
@@ -297,19 +291,17 @@ func (broker *BroadcasterService) ProcessWebSocketChannel(send ws.Sender) {
 			return
 		case event := <-listener.Ch():
 			// Filter out Home Assistant-specific events that shouldn't go to WebSocket clients
-			if broker.shouldSkipClientSend(event.Message) {
-				continue
-			}
-
-			err := send(ws.Message{
-				ID:   int(event.ID),
-				Data: event.Message,
-			})
-			if err != nil {
-				if !strings.Contains(err.Error(), "write: broken pipe") {
-					tlog.DebugContext(broker.ctx, "Error sending event to client", "event", event, "err", err, "active clients", broker.ConnectedClients.Load())
+			if dto.WebEventMap.IsValidEvent(event.Message) {
+				err := send(ws.Message{
+					ID:   int(event.ID),
+					Data: event.Message,
+				})
+				if err != nil {
+					if !strings.Contains(err.Error(), ": broken pipe") {
+						tlog.DebugContext(broker.ctx, "Error sending event to client", "event", event, "err", err, "active clients", broker.ConnectedClients.Load())
+					}
+					return
 				}
-				return
 			}
 		}
 	}
@@ -339,19 +331,4 @@ func (broker *BroadcasterService) createWelcomeMessage() dto.Welcome {
 		}
 	}
 	return welcomeMsg
-}
-
-// shouldSkipClientSend determines if an event should be skipped for web clients (SSE/WebSocket)
-// These events are meant for Home Assistant integration only
-func (broker *BroadcasterService) shouldSkipClientSend(event any) bool {
-	switch event.(type) {
-	case dto.SambaStatus, *dto.SambaStatus:
-		return true
-	case dto.SambaProcessStatus, *dto.SambaProcessStatus:
-		return true
-	case dto.DiskHealth, *dto.DiskHealth:
-		return true
-	default:
-		return false
-	}
 }

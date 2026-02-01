@@ -1,124 +1,181 @@
 package service
 
 import (
+	"context"
+	"fmt"
 	"log/slog"
-	"reflect"
 	"strings"
 
-	"github.com/dianlight/srat/config"
+	"github.com/creasty/defaults"
 	"github.com/dianlight/srat/converter"
+	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
-	"github.com/dianlight/srat/repository"
+	"github.com/dianlight/srat/internal/osutil"
 	"gitlab.com/tozd/go/errors"
+	"go.uber.org/fx"
 	"gorm.io/gorm"
 )
 
 // settingService handles business logic for settings.
 type settingService struct {
-	repo repository.PropertyRepositoryInterface
+	db  *gorm.DB
+	ctx context.Context
 	//telemetryService TelemetryServiceInterface
-	eventBus        events.EventBusInterface
-	converter       converter.DtoToDbomConverterImpl
-	defaultSettings dto.Settings
+	eventBus  events.EventBusInterface
+	converter converter.DtoToDbomConverterImpl
+	//defaultSettings dto.Settings
+
+	commandExists func(cmd []string) bool
 }
 
 // SettingServiceInterface defines the interface for setting services.
 type SettingServiceInterface interface {
 	Load() (setting *dto.Settings, err errors.E)
 	UpdateSettings(setting *dto.Settings) errors.E
-	// HasValue checks if a specific property exists (has a stored value)
-	// Accepts only the property key to check.
-	HasValue(prop string) (bool, errors.E)
-	// HasDefaultValue checks if a specific property exists in the default settings
-	// Accepts only the property key to check.
-	HasDefaultValue(prop string) (bool, errors.E)
-	// GetValue retrieves a property value from the repository.
-	// If the value is not found and a default exists, returns the default value.
-	// The return type depends on the type of the property.
-	GetValue(prop string) (interface{}, errors.E)
-	// SetValue sets a property value in the repository.
-	// Validates that the value type is compatible with the existing value type (if set)
-	// and with the default value type (if exists).
-	SetValue(prop string, value interface{}) errors.E
+	// For mocking purposes
+	SetCommandExists(func(cmd []string) bool)
+	DumpTable() (string, errors.E)
 }
 
 // NewSettingService creates a new issue service.
 func NewSettingService(
-	repo repository.PropertyRepositoryInterface,
+	lc fx.Lifecycle,
+	db *gorm.DB,
+	ctx context.Context,
 	//telemetryService TelemetryServiceInterface,
 	eventBus events.EventBusInterface,
-	defaultConfig *config.DefaultConfig,
+	//defaultConfig *config.DefaultConfig,
 ) SettingServiceInterface {
 	s := &settingService{
-		repo: repo,
+		db:  db,
+		ctx: ctx,
 		//telemetryService: telemetryService,
-		eventBus:        eventBus,
-		converter:       converter.DtoToDbomConverterImpl{},
-		defaultSettings: dto.Settings{},
+		eventBus:  eventBus,
+		converter: converter.DtoToDbomConverterImpl{},
+		//defaultSettings: dto.Settings{},
+		commandExists: osutil.CommandExists,
 	}
-	conv := converter.ConfigToDtoConverterImpl{}
-	err := conv.ConfigToSettings(defaultConfig.Config, &s.defaultSettings)
+
+	lc.Append(fx.Hook{
+		OnStart: func(_ context.Context) error {
+			// Initialization logic if needed
+			return nil
+		},
+		OnStop: func(_ context.Context) error {
+			// Cleanup logic if needed
+			return nil
+		},
+	})
+
+	// Initialize defaultSetting if nexessary
+	defConfig, err := s.Load()
 	if err != nil {
-		slog.Error("Cant convert default config to settings", "error", err)
+		slog.Error("Cant load default settings", "error", err)
+	} else {
+		s.UpdateSettings(defConfig)
 	}
+
 	return s
 }
 
 // Create creates a new issue.
 func (s *settingService) Load() (setting *dto.Settings, err errors.E) {
-	props, err := s.repo.All(true)
-	if err != nil {
-		return nil, err
-	}
-	set := &dto.Settings{}
+	setting = &dto.Settings{}
+	errS := s.db.Transaction(func(tx *gorm.DB) error {
+		propsA, err := gorm.G[dbom.Property](tx).Find(s.ctx)
+		if err != nil {
+			tx.Rollback()
+			return errors.WithStack(err)
+		}
 
-	s.converter.PropertiesToSettings(props, set)
-	return set, nil
+		props := dbom.Properties{}
+		props.Populate(propsA)
+
+		err = s.converter.PropertiesToSettings(props, setting)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		errS := defaults.Set(setting)
+		if errS != nil {
+			tx.Rollback()
+			return errors.WithStack(errS)
+		}
+
+		return nil
+	})
+	return setting, errors.WithStack(errS)
+}
+
+// ValidateSettings validates and potentially modifies settings based on system capabilities and constraints.
+// This is the central point for all settings validation logic.
+func (self *settingService) ValidateSettings(setting *dto.Settings) {
+	// Validate HAUseNFS setting - NFS must be available if enabled
+	if setting.HAUseNFS != nil && *setting.HAUseNFS {
+		if self.commandExists([]string{"exportfs"}) == false {
+			// NFS is not available, force the setting to false
+			slog.Warn("NFS is not available on this system (exportfs command not found). Setting ha_use_nfs to false.")
+			falseVal := false
+			setting.HAUseNFS = &falseVal
+		}
+	}
 }
 
 func (self *settingService) UpdateSettings(setting *dto.Settings) errors.E {
-	dbconfig, err := self.repo.All(true)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	var conv converter.DtoToDbomConverterImpl
+	errS := self.db.Transaction(func(tx *gorm.DB) error {
+		// Validate settings before saving
+		self.ValidateSettings(setting)
 
-	err = conv.SettingsToProperties(*setting, &dbconfig)
-	if err != nil {
-		return errors.WithStack(err)
-	}
+		props := dbom.Properties{}
+		err := self.converter.SettingsToProperties(*setting, &props)
+		if err != nil {
+			tx.Rollback()
+			return errors.WithStack(err)
+		}
 
-	err = self.repo.SaveAll(&dbconfig)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	err = conv.PropertiesToSettings(dbconfig, setting)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	/*
-		// Configure telemetry service when settings are updated
-		if self.telemetryService != nil {
-			err = self.telemetryService.Configure(setting.TelemetryMode)
+		for _, prop := range props {
+			existingProp, err := gorm.G[dbom.Property](tx).Updates(self.ctx, prop)
 			if err != nil {
-				// Log error but don't fail the settings update
-				slog.Error("Failed to configure telemetry service", "error", err)
+				tx.Rollback()
+				return errors.WithStack(err)
+			}
+			if existingProp == 0 {
+				err = gorm.G[dbom.Property](tx).Create(self.ctx, &prop)
+				if err != nil {
+					tx.Rollback()
+					return errors.WithStack(err)
+				}
 			}
 		}
-	*/
-
+		return nil
+	})
+	if errS != nil {
+		return errors.WithStack(errS)
+	}
 	self.eventBus.EmitSetting(events.SettingEvent{Setting: setting})
 	return nil
+}
+
+func (self *settingService) DumpTable() (string, errors.E) {
+	ret := strings.Builder{}
+	ret.WriteString("Properties Table Dump:\n")
+	var props []dbom.Property
+	err := self.db.Model(&dbom.Property{}).Find(&props).Error
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	for _, prop := range props {
+		ret.WriteString(fmt.Sprintf("Key: %s, Value: %v\n", prop.Key, prop.Value))
+	}
+	return ret.String(), nil
 }
 
 // HasValue checks if a property exists in the repository.
 // It accepts only the property key and returns true if present, false if not found.
 // Any error different from NotFound is propagated.
+/*
 func (s *settingService) HasValue(prop string) (bool, errors.E) {
-	val, err := s.repo.Value(prop, true)
+	val, err := s.repo.Value(prop)
 	if err != nil {
 		if errors.Is(err, dto.ErrorNotFound) || errors.Is(err, gorm.ErrRecordNotFound) {
 			return false, nil
@@ -130,7 +187,8 @@ func (s *settingService) HasValue(prop string) (bool, errors.E) {
 	_ = val // value not used beyond existence check
 	return true, nil
 }
-
+*/
+/*
 // HasDefaultValue checks if a property exists in the default settings.
 // It accepts only the property key and uses reflection to check if the corresponding
 // field exists in the defaultSettings struct.
@@ -165,7 +223,8 @@ func (s *settingService) HasDefaultValue(prop string) (bool, errors.E) {
 
 	return false, nil
 }
-
+*/
+/*
 // GetValue retrieves a property value from the repository.
 // If the value is not found and a default exists in defaultSettings, returns the default value.
 // The return type is interface{} and depends on the type of the property.
@@ -174,8 +233,12 @@ func (s *settingService) GetValue(prop string) (interface{}, errors.E) {
 		return nil, errors.New("property name cannot be empty")
 	}
 
+	if !checkFieldName(prop) {
+		return nil, errors.WithMessagef(dto.ErrorNotFound, "property %s does not exist in settings", prop)
+	}
+
 	// Try to get the value from the repository first
-	val, err := s.repo.Value(prop, true)
+	val, err := s.repo.Value(prop)
 	if err != nil {
 		// If not found, try to get the default value
 		if errors.Is(err, dto.ErrorNotFound) || errors.Is(err, gorm.ErrRecordNotFound) {
@@ -192,12 +255,17 @@ func (s *settingService) GetValue(prop string) (interface{}, errors.E) {
 
 	return val, nil
 }
-
+*/
+/*
 // getDefaultValue retrieves the default value for a property from defaultSettings.
 // Uses reflection to find and return the field value.
 func (s *settingService) getDefaultValue(prop string) (interface{}, errors.E) {
 	if prop == "" {
 		return nil, errors.New("property name cannot be empty")
+	}
+
+	if !checkFieldName(prop) {
+		return nil, errors.Errorf("property %s does not exist in settings", prop)
 	}
 
 	// Use reflection to find the field in defaultSettings
@@ -228,7 +296,8 @@ func (s *settingService) getDefaultValue(prop string) (interface{}, errors.E) {
 
 	return nil, errors.WithStack(dto.ErrorNotFound)
 }
-
+*/
+/*
 // SetValue sets a property value in the repository.
 // Validates that the value type is compatible with the existing value type (if set)
 // and with the default value type (if exists).
@@ -241,11 +310,15 @@ func (s *settingService) SetValue(prop string, value interface{}) errors.E {
 		return errors.New("value cannot be nil")
 	}
 
+	if !checkFieldName(prop) {
+		return errors.Errorf("property %s does not exist in settings", prop)
+	}
+
 	// Get the type of the new value
 	newType := reflect.TypeOf(value)
 
 	// Check if there's an existing value and validate type compatibility
-	existingVal, err := s.repo.Value(prop, true)
+	existingVal, err := s.repo.Value(prop)
 	if err == nil {
 		// Existing value found, check type compatibility
 		if existingVal != nil {
@@ -277,7 +350,8 @@ func (s *settingService) SetValue(prop string, value interface{}) errors.E {
 	// Type validation passed, save the value
 	return s.repo.SetValue(prop, value)
 }
-
+*/
+/*
 // areTypesCompatible checks if two types are compatible for assignment.
 // Handles special cases like pointer types, slices, and basic type compatibility.
 func (s *settingService) areTypesCompatible(existing, new reflect.Type) bool {
@@ -322,7 +396,8 @@ func (s *settingService) areTypesCompatible(existing, new reflect.Type) bool {
 
 	return false
 }
-
+*/
+/*
 // GetValueAs returns the property value as the requested generic type T.
 // It wraps GetValue and performs a runtime type check/convert to T.
 func GetValueAs[T any](svc SettingServiceInterface, prop string) (T, errors.E) {
@@ -331,9 +406,25 @@ func GetValueAs[T any](svc SettingServiceInterface, prop string) (T, errors.E) {
 	if err != nil {
 		return zero, err
 	}
-	if v == nil {
+	if reflect.TypeOf(v) == nil && reflect.TypeOf(zero).Kind() != reflect.Ptr {
 		// Cannot convert nil to concrete type
 		return zero, errors.Errorf("value for %s is nil and cannot be converted", prop)
+	} else if reflect.TypeOf(v) == nil && reflect.TypeOf(zero).Kind() == reflect.Ptr {
+		// Nil can be assigned to pointer types
+		return zero, nil
+	} else if reflect.TypeOf(v).Kind() == reflect.Ptr && reflect.TypeOf(zero).Kind() != reflect.Ptr {
+		if reflect.ValueOf(v).IsNil() {
+			return zero, errors.Errorf("value for %s is nil and cannot be converted", prop)
+		}
+		v = reflect.ValueOf(v).Elem().Interface()
+	} else if reflect.TypeOf(v).Kind() != reflect.Ptr && reflect.TypeOf(zero).Kind() == reflect.Ptr {
+		newPtr := reflect.New(reflect.TypeOf(v))
+		newPtr.Elem().Set(reflect.ValueOf(v))
+		v = newPtr.Interface()
+	} else if reflect.TypeOf(v).Kind() == reflect.Ptr && reflect.TypeOf(zero).Kind() == reflect.Ptr {
+		if reflect.ValueOf(v).IsNil() {
+			return zero, nil
+		}
 	}
 	vt := reflect.TypeOf(v)
 	tt := reflect.TypeOf((*T)(nil)).Elem()
@@ -348,9 +439,28 @@ func GetValueAs[T any](svc SettingServiceInterface, prop string) (T, errors.E) {
 	}
 	return zero, errors.Errorf("type mismatch: cannot convert %s to %s for %s", vt.String(), tt.String(), prop)
 }
-
+*/
+/*
 // SetValueAs sets the property value using a typed generic value T.
 // It wraps SetValue which performs runtime compatibility checks with existing/default types.
 func SetValueAs[T any](svc SettingServiceInterface, prop string, value T) errors.E {
 	return svc.SetValue(prop, any(value))
+}
+*/
+/*
+// checkFieldName checks if the given string is the name of a field in dto.Setting.
+// It performs a case-sensitive comparison against all exported fields in the struct.
+func checkFieldName(fieldName string) bool {
+	settingsType := reflect.TypeOf((*dto.Settings)(nil)).Elem()
+	for i := 0; i < settingsType.NumField(); i++ {
+		if settingsType.Field(i).Name == fieldName {
+			return true
+		}
+	}
+	return false
+}
+*/
+
+func (s *settingService) SetCommandExists(f func(cmd []string) bool) {
+	s.commandExists = f
 }

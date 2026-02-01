@@ -3,18 +3,15 @@ package service_test
 import (
 	"context"
 	"crypto/rand"
-	"log"
 	"os"
 	"sync"
 	"testing"
 
-	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dbom/g"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/service"
-	"github.com/dianlight/srat/templates"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
@@ -59,18 +56,20 @@ func (suite *ShareServiceSuite) SetupTest() {
 				sharedResources.DatabasePath = "file::memory:?cache=shared&_pragma=foreign_keys(1)"
 				return &sharedResources
 			},
-			func() *config.DefaultConfig {
-				var nconfig config.Config
-				buffer, err := templates.Default_Config_content.ReadFile("default_config.json")
-				if err != nil {
-					log.Fatalf("Cant read default config file %#+v", err)
-				}
-				err = nconfig.LoadConfigBuffer(buffer) // Assign to existing err
-				if err != nil {
-					log.Fatalf("Cant load default config from buffer %#+v", err)
-				}
-				return &config.DefaultConfig{Config: nconfig}
-			},
+			/*
+				func() *config.DefaultConfig {
+					var nconfig config.Config
+					buffer, err := templates.Default_Config_content.ReadFile("default_config.json")
+					if err != nil {
+						log.Fatalf("Cant read default config file %#+v", err)
+					}
+					err = nconfig.LoadConfigBuffer(buffer) // Assign to existing err
+					if err != nil {
+						log.Fatalf("Cant load default config from buffer %#+v", err)
+					}
+					return &config.DefaultConfig{Config: nconfig}
+				},
+			*/
 			dbom.NewDB,
 			service.NewShareService,
 			mock.Mock[service.BroadcasterServiceInterface],

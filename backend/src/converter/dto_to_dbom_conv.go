@@ -8,6 +8,7 @@ import (
 	"log/slog"            // Added for logging
 	"reflect"
 
+	"github.com/angusgmorrison/logfusc"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/thoas/go-funk"
@@ -64,6 +65,8 @@ func (c *DtoToDbomConverterImpl) SettingsToProperties(source dto.Settings, targe
 				return errors.Wrapf(errValue, "failed to get value from driver.Valuer for key %s", key)
 			}
 			valToSet = dv // Use the value from Value() method
+		} else if fusc, ok := iface.(logfusc.Secret[string]); ok {
+			valToSet = fusc.Expose()
 		}
 
 		prop := (*target)[key]
@@ -82,7 +85,7 @@ func (c *DtoToDbomConverterImpl) PropertiesToSettings(source dbom.Properties, ta
 
 	for _, prop := range source {
 		newvalue := reflect.ValueOf(target).Elem().FieldByName(prop.Key)
-		if newvalue.IsValid() {
+		if newvalue.IsValid() && newvalue.CanSet() {
 			if prop.Value == nil {
 				newvalue.Set(reflect.Zero(newvalue.Type()))
 			} else if reflect.ValueOf(prop.Value).CanConvert(newvalue.Type()) {
@@ -102,20 +105,21 @@ func (c *DtoToDbomConverterImpl) PropertiesToSettings(source dbom.Properties, ta
 				if err != nil {
 					return errors.Errorf("error scanning field %s: %w", prop.Key, err)
 				}
-			} else {
-				if newvalue.Kind() == reflect.Slice {
-					newElem := reflect.New(newvalue.Type().Elem()).Elem()
-					for _, value := range prop.Value.([]interface{}) {
-						newElem.Set(reflect.ValueOf(value).Convert(newElem.Type()))
-						newvalue.Set(reflect.Append(newvalue, newElem))
-					}
-				} else {
-					return errors.Errorf("Type mismatch for field: %s(%s) %T->%T", prop.Key, prop.Value, prop.Value, newvalue.Interface())
+			} else if newvalue.Kind() == reflect.Slice {
+				newElem := reflect.New(newvalue.Type().Elem()).Elem()
+				for _, value := range prop.Value.([]interface{}) {
+					newElem.Set(reflect.ValueOf(value).Convert(newElem.Type()))
+					newvalue.Set(reflect.Append(newvalue, newElem))
 				}
+			} else if newvalue.Type().String() == "logfusc.Secret[string]" {
+				// Handle logfusc.Secret types
+				secret := logfusc.NewSecret(prop.Value.(string))
+				newvalue.Set(reflect.ValueOf(secret))
+			} else {
+				return errors.Errorf("Type mismatch for field: %s(%s) %T->%T", prop.Key, prop.Value, prop.Value, newvalue.Interface())
 			}
-		} /*else {
-			return fmt.Errorf("Field not found: %s", prop.Key)
-		}*/
+
+		}
 	}
 	return nil
 }

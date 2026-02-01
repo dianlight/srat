@@ -18,11 +18,10 @@ import (
 	"github.com/dianlight/srat/homeassistant/hardware"
 	"github.com/dianlight/srat/internal"
 	"github.com/dianlight/srat/internal/appsetup"
-	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/tlog"
 	"github.com/gofri/go-github-ratelimit/v2/github_ratelimit"
-	"github.com/google/go-github/v80/github"
+	"github.com/google/go-github/v81/github"
 
 	"go.uber.org/fx"
 )
@@ -188,7 +187,7 @@ func main() {
 		DockerInterface: *dockerInterface,
 		DockerNet:       *dockerNetwork,
 		UpdateDataDir:   *upgradeDataDir,
-		UpdateFilePath:  "",
+		//UpdateFilePath:  "",
 		UpdateChannel:   updch,
 		DatabasePath:    *dbfile,
 		SupervisorToken: *supervisorToken,
@@ -296,12 +295,12 @@ func main() {
 		fxOptions = append(fxOptions, fx.Invoke(func(
 			lc fx.Lifecycle,
 			//mount_repo repository.MountPointPathRepositoryInterface,
-			props_repo repository.PropertyRepositoryInterface,
+			//props_repo repository.PropertyRepositoryInterface,
 			share_service service.ShareServiceInterface,
 			hardwareClient hardware.ClientWithResponsesInterface,
 			volume_service service.VolumeServiceInterface,
 			fs_service service.FilesystemServiceInterface,
-			samba_service service.SambaServiceInterface,
+			samba_service service.ServerServiceInterface,
 			supervisor_service service.SupervisorServiceInterface,
 			upgrade_service service.UpgradeServiceInterface,
 			apiContext *dto.ContextState,
@@ -309,10 +308,12 @@ func main() {
 			lc.Append(fx.Hook{
 				OnStart: func(ctx context.Context) error {
 					// Setting the actual LogLevel
-					err := props_repo.SetValue("LogLevel", *logLevelString) // Use existing err
-					if err != nil {
-						log.Fatalf("Cant set log level - %#+v", err)
-					}
+					/*
+						err := props_repo.SetValue("LogLevel", *logLevelString) // Use existing err
+						if err != nil {
+							log.Fatalf("Cant set log level - %#+v", err)
+						}
+					*/
 
 					switch command {
 					case "start":
@@ -410,14 +411,14 @@ func main() {
 								slog.Error("Error downloading or extracting update", "err", errDownload)
 							} else {
 								slog.Info("Update downloaded and extracted successfully")
-								if updatePkg.CurrentExecutablePath != nil {
-									slog.Info("Matching executable found", "path", *updatePkg.CurrentExecutablePath)
+								if updatePkg.FilesPaths != nil {
+									slog.Info("Matching executable found", "paths", updatePkg.FilesPaths)
 									errInstall := upgrade_service.InstallUpdatePackage(updatePkg)
 									if errInstall != nil {
 										slog.Error("Error installing update for overseer", "err", errInstall)
 									}
 								} else {
-									slog.Warn("Update downloaded, but no directly matching executable found by name. Check extracted files.", "paths", updatePkg.OtherFilesPaths)
+									slog.Warn("Update downloaded, but no directly matching executable found by name. Check extracted files.", "paths", updatePkg.FilesPaths)
 								}
 							}
 						} else {

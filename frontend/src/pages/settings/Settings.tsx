@@ -33,6 +33,7 @@ import {
 	useGetApiCapabilitiesQuery,
 	usePutApiSettingsMutation,
 	Telemetry_mode,
+	type SystemCapabilities,
 } from "../../store/sratApi";
 import { useGetServerEventsQuery } from "../../store/sseApi";
 import { getCurrentEnv } from "../../macro/Environment" with { type: 'macro' };
@@ -101,7 +102,7 @@ const categories: { [key: string]: { [key: string]: string[] } | string[] } = {
 	},
 	//'Update': ['update_channel'],
 	'Telemetry': ['telemetry_mode'],
-	'HomeAssistant': ['export_stats_to_ha'],
+	'HomeAssistant': ['export_stats_to_ha', 'ha_use_nfs'],
 };
 const beta_categories: { [key: string]: { [key: string]: string[] } | string[] } = {
 	// TODO: Enable when HDIdle feature is ready
@@ -398,6 +399,49 @@ export function Settings() {
 								label="Export Stats to HA"
 								labelPlacement="start"
 								{...commonProps}
+							/>
+						</span>
+					</Tooltip>
+				);
+
+			case 'ha_use_nfs':
+				return (
+					<Tooltip
+						title={
+							<>
+								<Typography variant="h6" component="div">
+									Use NFS for Home Assistant Integration (Experimental)
+								</Typography>
+								<Typography variant="body2">
+									If enabled, Home Assistant will mount shares using NFS instead of SMB/CIFS. This can be more efficient but is currently experimental.
+								</Typography>
+								{!((capabilities as SystemCapabilities)?.support_nfs ?? false) && (
+									<Typography variant="body2" sx={{ mt: 1, color: 'warning.light' }}>
+										<strong>Not available:</strong> NFS support is not detected on this system.
+									</Typography>
+								)}
+							</>
+						}
+					>
+						<span style={{ display: "inline-block", width: "100%" }}>
+							<SwitchElement
+								disabled={!(capabilities as SystemCapabilities)?.support_nfs}
+								switchProps={{
+									"aria-label": "Use NFS for HA",
+									size: "small",
+								}}
+								sx={{ display: "flex" }}
+								name="ha_use_nfs"
+								label={
+									<>
+										Use NFS for HA{" "}
+										<Typography component="span" variant="caption" sx={{ color: 'warning.main', ml: 1 }}>
+											(Experimental)
+										</Typography>
+									</>
+								}
+								labelPlacement="start"
+								control={control}
 							/>
 						</span>
 					</Tooltip>

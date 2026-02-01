@@ -242,7 +242,7 @@ func TestProcessStatus_AllFields(t *testing.T) {
 }
 
 func TestSambaProcessStatus_AllFields(t *testing.T) {
-	status := dto.SambaProcessStatus{
+	status := dto.ServerProcessStatus{
 		"smbd": &dto.ProcessStatus{
 			Pid:       1234,
 			Name:      "smbd",
@@ -337,13 +337,27 @@ func TestUpdateProgress_AllFields(t *testing.T) {
 	progress := dto.UpdateProgress{
 		ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE,
 		Progress:       50,
-		LastRelease:    "v1.3.0",
-		ErrorMessage:   "",
+		ReleaseAsset: &dto.ReleaseAsset{
+			LastRelease: "v1.3.0",
+			ArchAsset: dto.BinaryAsset{
+				Name: "srat-amd64",
+				Size: 1024000,
+				ID:   12345,
+			},
+		},
+		ErrorMessage: "",
 	}
 
 	assert.Equal(t, dto.UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE, progress.ProgressStatus)
-	assert.Equal(t, 50, progress.Progress)
-	assert.Equal(t, "v1.3.0", progress.LastRelease)
+	assert.Equal(t, float64(50), progress.Progress)
+	assert.Equal(t, &dto.ReleaseAsset{
+		LastRelease: "v1.3.0",
+		ArchAsset: dto.BinaryAsset{
+			Name: "srat-amd64",
+			Size: 1024000,
+			ID:   12345,
+		},
+	}, progress.ReleaseAsset)
 	assert.Empty(t, progress.ErrorMessage)
 }
 
@@ -455,7 +469,7 @@ func TestHealthPing_AllFields(t *testing.T) {
 	health := dto.HealthPing{
 		Alive:     true,
 		AliveTime: time.Now().Unix(),
-		SambaProcessStatus: dto.SambaProcessStatus{
+		SambaProcessStatus: dto.ServerProcessStatus{
 			"smbd":        &dto.ProcessStatus{Pid: 1234, IsRunning: true},
 			"nmbd":        &dto.ProcessStatus{},
 			"wsddn":       &dto.ProcessStatus{},

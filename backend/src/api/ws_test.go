@@ -110,7 +110,16 @@ func (suite *WsHandlerSuite) TestWebSocketReceivesMessagesFromBroadcaster() {
 	suite.Require().NoError(err)
 	suite.Contains(string(msg1), "event: hello")
 	// Now broadcast an UpdateProgress message and ensure the client receives it
-	suite.mockBroadcaster.BroadcastMessage(dto.UpdateProgress{Progress: 42, LastRelease: "v1.2.3"})
+	suite.mockBroadcaster.BroadcastMessage(dto.UpdateProgress{Progress: 42, ReleaseAsset: &dto.ReleaseAsset{
+		LastRelease: "v1.2.3",
+		ArchAsset: dto.BinaryAsset{
+			Name:               "srat-linux-amd64.zip",
+			Size:               123456,
+			ID:                 987654321,
+			BrowserDownloadURL: "https://example.com/srat-linux-amd64.zip",
+			Digest:             "sha256:abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+		},
+	}, ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSCHECKING})
 
 	_, msg2, err := conn.ReadMessage()
 	suite.Require().NoError(err)

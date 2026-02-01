@@ -20,7 +20,7 @@ func TestServerRequiresSambaConfigFlag(t *testing.T) {
 
 	cwd := packageDir(t)
 
-	cmd := exec.CommandContext(ctx, "go", "run", ".", "-single-instance", "-port=0")
+	cmd := exec.CommandContext(ctx, "go", "run", ".", "-port=0")
 	cmd.Dir = cwd
 	cmd.Env = append(os.Environ(), "SRAT_MOCK=true")
 

@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dbom/g"
@@ -17,6 +16,9 @@ import (
 	"go.uber.org/fx"
 	"gorm.io/gorm"
 )
+
+const defaultAdminUsername = "admin"
+const defaultAdminPassword = "changeme!"
 
 type UserServiceInterface interface {
 	ListUsers() ([]dto.User, error)
@@ -42,7 +44,7 @@ type UserServiceParams struct {
 	//UserRepo       repository.SambaUserRepositoryInterface
 	SettingService SettingServiceInterface
 	EventBus       events.EventBusInterface
-	DefaultConfig  *config.DefaultConfig
+	//DefaultConfig  *config.DefaultConfig
 }
 
 func NewUserService(lc fx.Lifecycle, params UserServiceParams) UserServiceInterface {
@@ -60,14 +62,16 @@ func NewUserService(lc fx.Lifecycle, params UserServiceParams) UserServiceInterf
 			}
 			slog.DebugContext(ctx, "******* Autocreating users ********")
 
-			_ha_mount_user_password_, err := us.settingService.GetValue("_ha_mount_user_password_")
+			setting, err := us.settingService.Load()
 			if err != nil {
-				slog.ErrorContext(ctx, "Cant get _ha_mount_user_password_ setting", "err", err)
-				_ha_mount_user_password_ = "changeme!"
-			} else if _ha_mount_user_password_ == nil || _ha_mount_user_password_ == "" {
-				_ha_mount_user_password_ = "changeme!"
+				slog.ErrorContext(ctx, "Cant load settings", "err", err)
 			}
-			err = unixsamba.CreateSambaUser("_ha_mount_user_", _ha_mount_user_password_.(string), unixsamba.UserOptions{
+			HASmbPassword := setting.HASmbPassword.Expose()
+			if HASmbPassword == "" {
+				slog.ErrorContext(ctx, "Cant get HASmbPassword setting", "err", err)
+				HASmbPassword = "changeme!"
+			}
+			err = unixsamba.CreateSambaUser("_ha_mount_user_", HASmbPassword, unixsamba.UserOptions{
 				CreateHome:    false,
 				SystemAccount: false,
 				Shell:         "/sbin/nologin",
@@ -82,13 +86,13 @@ func NewUserService(lc fx.Lifecycle, params UserServiceParams) UserServiceInterf
 			if len(users) == 0 {
 				// Create adminUser
 				users = append(users, dbom.SambaUser{
-					Username: params.DefaultConfig.Username,
-					Password: params.DefaultConfig.Password,
+					Username: defaultAdminUsername,
+					Password: defaultAdminPassword,
 					IsAdmin:  true,
 				})
 				err := gorm.G[dbom.SambaUser](us.db).Create(us.ctx, &users[0])
 				if err != nil {
-					slog.ErrorContext(ctx, "Error autocreating admin user", "name", params.DefaultConfig.Username, "err", err)
+					slog.ErrorContext(ctx, "Error autocreating admin user", "name", defaultAdminUsername, "err", err)
 				}
 			}
 			for _, user := range users {
@@ -155,7 +159,7 @@ func (s *UserService) CreateUser(userDto dto.User) (*dto.User, error) {
 		return nil, errors.Wrap(err, "failed to convert user DTO to DBOM")
 	}
 
-	upd, err := gorm.G[dbom.SambaUser](s.db.Debug()).
+	upd, err := gorm.G[dbom.SambaUser](s.db).
 		Scopes(dbom.IncludeSoftDeleted).
 		Where(g.SambaUser.Username.Eq(dbUser.Username)).
 		Where(g.SambaUser.DeletedAt.IsNotNull()).
@@ -249,7 +253,7 @@ func (s *UserService) UpdateAdminUser(userDto dto.User) (*dto.User, error) {
 	// This method is more complex due to potential admin username change.
 	// The existing logic in api.UserHandler for UpdateAdminUser can be moved here.
 	// For brevity, I'll sketch it out; the full detail is in your existing UserHandler.
-	dbUser, err := query.SambaUserQuery[dbom.SambaUser](s.db.Debug()).GetAdmin(s.ctx)
+	dbUser, err := query.SambaUserQuery[dbom.SambaUser](s.db).GetAdmin(s.ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get admin user")
 	}

@@ -11,10 +11,10 @@ import (
 
 type SambaHanler struct {
 	apictx       *dto.ContextState
-	sambaService service.SambaServiceInterface
+	sambaService service.ServerServiceInterface
 }
 
-func NewSambaHanler(apictx *dto.ContextState, sambaService service.SambaServiceInterface) *SambaHanler {
+func NewSambaHanler(apictx *dto.ContextState, sambaService service.ServerServiceInterface) *SambaHanler {
 	p := new(SambaHanler)
 	p.apictx = apictx
 	p.sambaService = sambaService
@@ -42,7 +42,7 @@ func (handler *SambaHanler) ApplySamba(ctx context.Context, input *struct{}) (*s
 		return nil, huma.Error403Forbidden("Cannot apply Samba configuration in read-only mode")
 	}
 
-	err := handler.sambaService.WriteAndRestartSambaConfig(ctx)
+	err := handler.sambaService.WriteConfigsAndRestartProcesses(ctx)
 	if err != nil {
 		return nil, huma.Error500InternalServerError("Restarting Samba configuration failed", err)
 	}
@@ -64,7 +64,7 @@ func (handler *SambaHanler) ApplySamba(ctx context.Context, input *struct{}) (*s
 func (handler *SambaHanler) GetSambaConfig(ctx context.Context, input *struct{}) (*struct{ Body dto.SmbConf }, error) {
 	var smbConf dto.SmbConf
 
-	stream, err := handler.sambaService.CreateConfigStream()
+	stream, err := handler.sambaService.CreateSambaConfigStream()
 	if err != nil {
 		return nil, err
 	}

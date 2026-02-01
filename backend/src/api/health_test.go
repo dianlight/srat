@@ -25,7 +25,7 @@ type HealthHandlerSuite struct {
 	suite.Suite
 	api              *api.HealthHanler
 	mockBroadcaster  service.BroadcasterServiceInterface
-	mockSambaService service.SambaServiceInterface
+	mockSambaService service.ServerServiceInterface
 	mockDirtyService service.DirtyDataServiceInterface
 	ctrl             *matchers.MockController
 	testAPIContext   *dto.ContextState
@@ -45,7 +45,7 @@ func (suite *HealthHandlerSuite) SetupTest() {
 			},
 			api.NewHealthHandler,
 			mock.Mock[service.BroadcasterServiceInterface],
-			mock.Mock[service.SambaServiceInterface],
+			mock.Mock[service.ServerServiceInterface],
 			mock.Mock[service.DirtyDataServiceInterface],
 			mock.Mock[service.AddonsServiceInterface],
 			mock.Mock[service.DiskStatsService],
@@ -91,7 +91,7 @@ func TestHealthHandlerSuite(t *testing.T) {
 
 func (suite *HealthHandlerSuite) TestHealthCheckHandler() {
 	// Mock dependencies for the run goroutine (needed for New)
-	mock.When(suite.mockSambaService.GetSambaProcess()).ThenReturn(nil, errors.New("initial mock"))
+	mock.When(suite.mockSambaService.GetServerProcesses()).ThenReturn(nil, errors.New("initial mock"))
 	mock.When(suite.mockDirtyService.GetDirtyDataTracker()).ThenReturn(dto.DataDirtyTracker{})
 	mock.When(suite.mockBroadcaster.BroadcastMessage(mock.Any[dto.HealthPing]())).ThenReturn(nil, nil)
 

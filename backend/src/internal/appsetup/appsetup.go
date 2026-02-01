@@ -2,12 +2,10 @@ package appsetup
 
 import (
 	"context"
-	"log"
 	"log/slog"
 	"net/http"
 	"strings"
 
-	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
@@ -23,10 +21,9 @@ import (
 	"github.com/dianlight/srat/internal"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
-	"github.com/dianlight/srat/templates"
 	"github.com/dianlight/tlog"
 	"github.com/gofri/go-github-ratelimit/v2/github_ratelimit"
-	"github.com/google/go-github/v80/github"
+	"github.com/google/go-github/v81/github"
 	"github.com/oapi-codegen/oapi-codegen/v2/pkg/securityprovider"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxevent"
@@ -66,23 +63,25 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 				Transport: rateLimiter,
 			})
 		},
-		func() *config.DefaultConfig {
-			var nconfig config.Config
-			buffer, err := templates.Default_Config_content.ReadFile("default_config.json")
-			if err != nil {
-				log.Fatalf("Cant read default config file %#+v", err)
-			}
-			err = nconfig.LoadConfigBuffer(buffer) // Assign to existing err
-			if err != nil {
-				log.Fatalf("Cant load default config from buffer %#+v", err)
-			}
-			return &config.DefaultConfig{Config: nconfig}
-		},
+		/*
+			func() *config.DefaultConfig {
+				var nconfig config.Config
+				buffer, err := templates.Default_Config_content.ReadFile("default_config.json")
+				if err != nil {
+					log.Fatalf("Cant read default config file %#+v", err)
+				}
+				err = nconfig.LoadConfigBuffer(buffer) // Assign to existing err
+				if err != nil {
+					log.Fatalf("Cant load default config from buffer %#+v", err)
+				}
+				return &config.DefaultConfig{Config: nconfig}
+			},
+		*/
 		service.NewAddonsService,
 		service.NewHomeAssistantService,
 		service.NewBroadcasterService,
 		service.NewVolumeService,
-		service.NewSambaService,
+		service.NewServerProcessesService,
 		service.NewUpgradeService,
 		service.NewDirtyDataService,
 		service.NewSupervisorService,
@@ -100,7 +99,7 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 		service.NewHardwareService,
 		service.NewHDIdleService,
 		service.NewSettingService,
-		repository.NewPropertyRepositoryRepository,
+		//repository.NewPropertyRepositoryRepository,
 		repository.NewIssueRepository,
 	)
 }
