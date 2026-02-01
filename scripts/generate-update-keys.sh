@@ -89,12 +89,8 @@ trap "rm -rf $TEMP_DIR" EXIT
 echo "Generating Minisign keypair..."
 echo ""
 
-# Use a simple password for automation (this will be encrypted in GitHub secrets anyway)
-# The important security is the secret storage in GitHub, not the password protection
-TEMP_PASSWORD="temp_password_for_export"
-
-# Generate the keypair with a temporary password
-(cd "$TEMP_DIR" && printf "%s\n%s\n" "$TEMP_PASSWORD" "$TEMP_PASSWORD" | minisign -G -p public.key -s private.key -f)
+# Generate the keypair without a password
+minisign -GW -p "$TEMP_DIR/public.key" -s "$TEMP_DIR/private.key" -f
 
 # Read the generated public key
 PUBLIC_KEY=$(cat "$TEMP_DIR/public.key")
@@ -124,7 +120,8 @@ if [[ -n "$PRIVATE_KEY_OUTPUT" ]]; then
     chmod 600 "$PRIVATE_KEY_OUTPUT"
     echo "⚠️  WARNING: Private key saved to file. Keep it secure!"
     echo ""
-elif [[ "$ADD_SECRET" == true ]]; then
+fi
+if [[ "$ADD_SECRET" == true ]]; then
     # Check if gh CLI is available
     if ! command -v gh &> /dev/null; then
         echo "Error: GitHub CLI (gh) is required for --add-secret option"
