@@ -89,7 +89,7 @@ $(SRC_DIRS)/config/metadata_constants.go:
 	@echo "//go:build !cgo" >> $(SRC_DIRS)/config/metadata_constants.go
 	@echo "" >> $(SRC_DIRS)/config/metadata_constants.go
 	@echo "package config" >> $(SRC_DIRS)/config/metadata_constants.go
-	@echo "const MetadataJSON = \"SRAT_METADATA:{\\\"version\\\": \\\"$(VERSION_CLEAN)\\\"}\"" >> $(SRC_DIRS)/config/metadata_constants.go
+	@echo "const MetadataJSON = \"SRAT_METADATA:{\\\"version\\\": \\\"v$(VERSION_CLEAN)\\\"}\"" >> $(SRC_DIRS)/config/metadata_constants.go
 
 .PHONY: test_metadata
 test_metadata: $(SRC_DIRS)/config/metadata_constants.go
@@ -116,7 +116,7 @@ test_metadata: $(SRC_DIRS)/config/metadata_constants.go
 			echo "Section contents:"; \
 			readelf -p .note.metadata $(TMPDIR)/metadata_test/srat-openapi-cgo 2>/dev/null | grep -v "String dump" || true; \
 			echo ""; \
-			EMBEDDED_VERSION=$$(readelf -p .note.metadata $(TMPDIR)/metadata_test/srat-openapi-cgo 2>/dev/null | grep -oP '(?<="version":")v?[^"]+' | head -1); \
+			EMBEDDED_VERSION=$$(readelf -p .note.metadata $(TMPDIR)/metadata_test/srat-openapi-cgo 2>/dev/null | grep -oE '\{[^}]+\}' | jq -r '.version' | head -1); \
 			echo "Expected version: v$(VERSION_CLEAN)"; \
 			echo "Embedded version: $$EMBEDDED_VERSION"; \
 			if [ "$$EMBEDDED_VERSION" = "v$(VERSION_CLEAN)" ]; then \
@@ -151,15 +151,17 @@ test_metadata: $(SRC_DIRS)/config/metadata_constants.go
 			apk add --no-cache binutils 2>/dev/null || (echo "✗ Failed to install binutils"; exit 1); \
 		fi; \
 		META_LINE=$$(strings -a $(TMPDIR)/metadata_test/srat-openapi-nocgo | grep -oE 'SRAT_METADATA:\{[^}]*\}' | head -1); \
-		EXPECTED_JSON="SRAT_METADATA:{\"version\": \"$(VERSION_CLEAN)\"}"; \
 		if [ -n "$$META_LINE" ]; then \
 			echo "✓ Found metadata marker"; \
 			echo "Extracted: $$META_LINE"; \
-			echo "Expected: $$EXPECTED_JSON"; \
-			if [ "$$META_LINE" = "$$EXPECTED_JSON" ]; then \
-				echo "✓ Metadata JSON matches expected value"; \
+			EXTRACTED_JSON=$$(echo "$$META_LINE" | grep -oE '\{[^}]+\}'); \
+			EXTRACTED_VERSION=$$(echo "$$EXTRACTED_JSON" | jq -r '.version'); \
+			echo "Expected version: v$(VERSION_CLEAN)"; \
+			echo "Extracted version: $$EXTRACTED_VERSION"; \
+			if [ "$$EXTRACTED_VERSION" = "v$(VERSION_CLEAN)" ]; then \
+				echo "✓ Version matches!"; \
 			else \
-				echo "⚠ Metadata mismatch"; \
+				echo "⚠ Metadata version mismatch"; \
 			fi; \
 		else \
 			echo "✗ Metadata marker not found"; \
