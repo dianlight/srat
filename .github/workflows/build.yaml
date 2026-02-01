@@ -472,7 +472,7 @@ jobs:
           
           # Install minisign using Alpine package manager
           echo "Installing minisign..."
-          sudo apk add --no-cache minisign
+          sudo apt-get update && sudo apt-get install -y minisign
           
           # Save private key to a temporary file
           PRIVATE_KEY_FILE=$(mktemp)
