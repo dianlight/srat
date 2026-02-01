@@ -1,14 +1,19 @@
-TARGET_EXEC=srat
-BUILD_DIR := ./dist
+# Configuration variables
+TARGET_EXEC=srat-server
 SRC_DIRS := ./src
 FRONTEND_DIRS := ../frontend
 STATIC_DIRS := ./src/web/static
 ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 TMPDIR?=/tmp
 
+# CGO and build tools configuration
+CGO_ENABLED?=0
+USE_ZIG?=0
+PPROF?=0
+
 
 #ALL_SRCS := $(shell find $(SRC_DIRS) -name '*.go')
-ALL_SRCS := $(wildcard $(SRC_DIRS)/**/*.go)
+ALL_SRCS := $(wildcard $(SRC_DIRS)/**/*.go) $(SRC_DIRS)/config/metadata_constants.go
 TEST_SRCS := $(filter %_test.go, $(ALL_SRCS))
 SRCS := $(filter-out %_test.go, $(ALL_SRCS))
 
@@ -16,11 +21,11 @@ VERSION?="$(shell git describe --tags --always --abbrev=0 --match='[0-9]*.[0-9]*
 COMMIT_HASH="$(shell git rev-parse --short HEAD)"
 BUILD_TIMESTAMP="$(shell date '+%Y-%m-%dT%H:%M:%S')"
 ARCH ?= $(shell arch)
+BUILD_DIR := ./dist/$(ARCH)
 VERSION_CLEAN=$(subst ",,$(VERSION))
 COMMIT_HASH_CLEAN=$(subst ",,$(COMMIT_HASH))
 BUILD_TIMESTAMP_CLEAN=$(subst ",,$(BUILD_TIMESTAMP))
 METADATA_C_STRING=\"version=$(VERSION_CLEAN);commit=$(COMMIT_HASH_CLEAN);build_at=$(BUILD_TIMESTAMP_CLEAN);format=elf-json\"
-#METADATA_C_JSON='{\x22version\x22: \x22"$(VERSION_CLEAN)"\x22, \x22commit\x22: \x22$(COMMIT_HASH_CLEAN)\x22, \x22build_at\x22: \x22$(BUILD_TIMESTAMP_CLEAN)\x22}'
 METADATA_C_JSON=\"{\x22"version"\x22:\x22"v$(VERSION_CLEAN)"\x22}\"
 
 # Telemetry configuration from environment variables
@@ -43,23 +48,35 @@ build: static $(BUILD_DIR)/$(TARGET_EXEC)
 
 $(BUILD_DIR)/$(TARGET_EXEC): $(SRCS) $(STATIC_DIRS)
 	mkdir dist > /dev/null 2>&1 || :
-	CGO_ENABLED=1 \
+	CGO_ENABLED=$(CGO_ENABLED) \
+	$(if $(filter 1,$(USE_ZIG)),CC='zig cc -target $(ARCH)-linux-musl' \,)
 	CGO_CFLAGS="-DELF_METADATA=$(METADATA_C_JSON)" \
-	$(AARGS) go build -C $(SRC_DIRS) -tags=embedallowed -ldflags="-s -w -X github.com/dianlight/srat/config.Version=$(VERSION_CLEAN) -X github.com/dianlight/srat/config.CommitHash=$(COMMIT_HASH_CLEAN) -X github.com/dianlight/srat/config.BuildTimestamp=$(BUILD_TIMESTAMP_CLEAN) -X github.com/dianlight/srat/config.RollbarToken=$(ROLLBAR_CLIENT_ACCESS_TOKEN) -X github.com/dianlight/srat/config.RollbarEnvironment=$(ROLLBAR_ENVIRONMENT) " -o ../dist/$(ARCH)/ ./...
+	$(AARGS) go build -C $(SRC_DIRS) -tags=embedallowed $(if $(filter 1,$(PPROF)),-tags=pprof) -ldflags="-s -w -X github.com/dianlight/srat/config.Version=$(VERSION_CLEAN) -X github.com/dianlight/srat/config.CommitHash=$(COMMIT_HASH_CLEAN) -X github.com/dianlight/srat/config.BuildTimestamp=$(BUILD_TIMESTAMP_CLEAN) -X github.com/dianlight/srat/config.RollbarToken=$(ROLLBAR_CLIENT_ACCESS_TOKEN) -X github.com/dianlight/srat/config.RollbarEnvironment=$(ROLLBAR_ENVIRONMENT) " -o ../dist/$(ARCH)/ ./...
+	@echo "Verifying embedded version in $(TARGET_EXEC)..."
+	@EMBEDDED_VERSION=$$(../scripts/extract-binary-version.sh $(BUILD_DIR)/$(TARGET_EXEC) 2>&1); \
+	if [ $$? -eq 0 ]; then \
+		if [ "$$EMBEDDED_VERSION" = "v$(VERSION_CLEAN)" ]; then \
+			echo "✓ Version verified: $$EMBEDDED_VERSION"; \
+		else \
+			echo "✗ Version mismatch! Expected: v$(VERSION_CLEAN), Got: $$EMBEDDED_VERSION"; \
+			exit 1; \
+		fi; \
+	else \
+		echo "⚠ Warning: Could not extract version from binary: $$EMBEDDED_VERSION"; \
+	fi
 
-test_build: $(SRC_DIRS) $(STATIC_DIRS)
-	CGO_ENABLED=1 \
-	CC='zig cc -target aarch64-linux-musl' \
-	CGO_CFLAGS="-DELF_METADATA=$(METADATA_C_JSON)" \
-	go build -C $(SRC_DIRS) -tags=pprof -gcflags=all="-N -l" -ldflags="-X github.com/dianlight/srat/config.Version=$(VERSION_CLEAN) -X github.com/dianlight/srat/config.CommitHash=$(COMMIT_HASH_CLEAN) -X github.com/dianlight/srat/config.BuildTimestamp=$(BUILD_TIMESTAMP_CLEAN) -X github.com/dianlight/srat/config.RollbarToken=$(ROLLBAR_CLIENT_ACCESS_TOKEN) -X github.com/dianlight/srat/config.RollbarEnvironment=$(ROLLBAR_ENVIRONMENT) " -o ../tmp/$(ARCH)/ ./...
-
-remote_build: $(SRC_DIRS) $(STATIC_DIRS)
-	mkdir -p tmp/x86_64 > /dev/null 2>&1 || :
-	CGO_ENABLED=1 \
-	CC='zig cc -target x86_64-linux-musl' \
-	GOOS=linux \
-	CGO_CFLAGS="-DELF_METADATA=$(METADATA_C_JSON)" \
-	GOARCH=amd64 go build  -C $(SRC_DIRS) -tags=embedallowed,pprof -gcflags=all="-N -l" -ldflags="-s -w -X github.com/dianlight/srat/config.Version=$(VERSION_CLEAN) -X github.com/dianlight/srat/config.CommitHash=$(COMMIT_HASH_CLEAN) -X github.com/dianlight/srat/config.BuildTimestamp=$(BUILD_TIMESTAMP_CLEAN) -X github.com/dianlight/srat/config.RollbarToken=$(ROLLBAR_CLIENT_ACCESS_TOKEN) -X github.com/dianlight/srat/config.RollbarEnvironment=$(ROLLBAR_ENVIRONMENT) " -o ../tmp/x86_64/ ./...
+#test_build: $(SRC_DIRS) $(STATIC_DIRS)
+#	CGO_ENABLED=$(CGO_ENABLED) \
+#	$(if $(filter 1,$(USE_ZIG)),CC='zig cc -target $(ARCH)-linux-musl' \,)
+#	CGO_CFLAGS="-DELF_METADATA=$(METADATA_C_JSON)" \
+#	go build -C $(SRC_DIRS) -tags=pprof -gcflags=all="-N -l" -ldflags="-X github.com/dianlight/srat/config.Version=$(VERSION_CLEAN) -X github.com/dianlight/srat/config.CommitHash=$(COMMIT_HASH_CLEAN) -X github.com/dianlight/srat/config.BuildTimestamp=$(BUILD_TIMESTAMP_CLEAN) -X github.com/dianlight/srat/config.RollbarToken=$(ROLLBAR_CLIENT_ACCESS_TOKEN) -X github.com/dianlight/srat/config.RollbarEnvironment=$(ROLLBAR_ENVIRONMENT) " -o ../tmp/$(ARCH)/ ./...
+#remote_build: $(SRC_DIRS) $(STATIC_DIRS)
+#	mkdir -p tmp/x86_64 > /dev/null 2>&1 || :
+#	CGO_ENABLED=$(CGO_ENABLED) \
+#	$(if $(filter 1,$(USE_ZIG)),CC='zig cc -target x86_64-linux-musl' \,)
+#	GOOS=linux \
+#	CGO_CFLAGS="-DELF_METADATA=$(METADATA_C_JSON)" \
+#	GOARCH=amd64 go build  -C $(SRC_DIRS) -tags=embedallowed,pprof -gcflags=all="-N -l" -ldflags="-s -w -X github.com/dianlight/srat/config.Version=$(VERSION_CLEAN) -X github.com/dianlight/srat/config.CommitHash=$(COMMIT_HASH_CLEAN) -X github.com/dianlight/srat/config.BuildTimestamp=$(BUILD_TIMESTAMP_CLEAN) -X github.com/dianlight/srat/config.RollbarToken=$(ROLLBAR_CLIENT_ACCESS_TOKEN) -X github.com/dianlight/srat/config.RollbarEnvironment=$(ROLLBAR_ENVIRONMENT) " -o ../tmp/x86_64/ ./...
 
 .PHONY: format
 format:
@@ -108,34 +125,21 @@ test_metadata: $(SRC_DIRS)/config/metadata_constants.go
 	@echo "✓ CGO-enabled build completed"
 	@echo ""
 	@echo "=== Verifying Embedded Metadata ==="
-	@if command -v readelf >/dev/null 2>&1; then \
-		echo "Checking .note.metadata section in CGO-enabled binary..."; \
-		if readelf -p .note.metadata $(TMPDIR)/metadata_test/srat-openapi-cgo 2>/dev/null | grep -q "version"; then \
-			echo "✓ Found .note.metadata section"; \
-			echo ""; \
-			echo "Section contents:"; \
-			readelf -p .note.metadata $(TMPDIR)/metadata_test/srat-openapi-cgo 2>/dev/null | grep -v "String dump" || true; \
-			echo ""; \
-			EMBEDDED_VERSION=$$(readelf -p .note.metadata $(TMPDIR)/metadata_test/srat-openapi-cgo 2>/dev/null | grep -oE '\{[^}]+\}' | jq -r '.version' | head -1); \
-			echo "Expected version: v$(VERSION_CLEAN)"; \
-			echo "Embedded version: $$EMBEDDED_VERSION"; \
-			if [ "$$EMBEDDED_VERSION" = "v$(VERSION_CLEAN)" ]; then \
-				echo "✓ Version matches!"; \
-			else \
-				echo "✗ Version mismatch!"; \
-				rm -rf $(TMPDIR)/metadata_test; \
-				exit 1; \
-			fi; \
+	@EMBEDDED_VERSION=$$(../scripts/extract-binary-version.sh $(TMPDIR)/metadata_test/srat-openapi-cgo 2>&1); \
+	if [ $$? -eq 0 ]; then \
+		echo "✓ Extracted version: $$EMBEDDED_VERSION"; \
+		echo "Expected version: v$(VERSION_CLEAN)"; \
+		if [ "$$EMBEDDED_VERSION" = "v$(VERSION_CLEAN)" ]; then \
+			echo "✓ Version matches!"; \
 		else \
-			echo "✗ .note.metadata section not found or empty"; \
-			readelf -S $(TMPDIR)/metadata_test/srat-openapi-cgo 2>/dev/null | grep -i note || echo "No .note sections found"; \
+			echo "✗ Version mismatch!"; \
 			rm -rf $(TMPDIR)/metadata_test; \
 			exit 1; \
 		fi; \
 	else \
-		echo "⚠ readelf not available, installing binutils..."; \
-		apk add --no-cache binutils 2>/dev/null || (echo "✗ Failed to install readelf"; exit 1); \
-		$(MAKE) test_metadata; \
+		echo "✗ Failed to extract version: $$EMBEDDED_VERSION"; \
+		rm -rf $(TMPDIR)/metadata_test; \
+		exit 1; \
 	fi
 	@echo ""
 	@echo "=== Testing No-CGO Build ==="
@@ -145,26 +149,20 @@ test_metadata: $(SRC_DIRS)/config/metadata_constants.go
 		-o $(TMPDIR)/metadata_test/srat-openapi-nocgo ./cmd/srat-openapi 2>&1; then \
 		echo "✓ No-CGO build succeeded"; \
 		echo ""; \
-		echo "Extracting SRAT metadata using binutils strings..."; \
-		if ! command -v strings >/dev/null 2>&1; then \
-			echo "⚠ strings not available, installing binutils..."; \
-			apk add --no-cache binutils 2>/dev/null || (echo "✗ Failed to install binutils"; exit 1); \
-		fi; \
-		META_LINE=$$(strings -a $(TMPDIR)/metadata_test/srat-openapi-nocgo | grep -oE 'SRAT_METADATA:\{[^}]*\}' | head -1); \
-		if [ -n "$$META_LINE" ]; then \
-			echo "✓ Found metadata marker"; \
-			echo "Extracted: $$META_LINE"; \
-			EXTRACTED_JSON=$$(echo "$$META_LINE" | grep -oE '\{[^}]+\}'); \
-			EXTRACTED_VERSION=$$(echo "$$EXTRACTED_JSON" | jq -r '.version'); \
+		echo "Extracting SRAT metadata..."; \
+		EXTRACTED_VERSION=$$(../scripts/extract-binary-version.sh $(TMPDIR)/metadata_test/srat-openapi-nocgo 2>&1); \
+		if [ $$? -eq 0 ]; then \
+			echo "✓ Extracted version: $$EXTRACTED_VERSION"; \
 			echo "Expected version: v$(VERSION_CLEAN)"; \
-			echo "Extracted version: $$EXTRACTED_VERSION"; \
 			if [ "$$EXTRACTED_VERSION" = "v$(VERSION_CLEAN)" ]; then \
 				echo "✓ Version matches!"; \
 			else \
-				echo "⚠ Metadata version mismatch"; \
+				echo "✗ Metadata version mismatch"; \
+				rm -rf $(TMPDIR)/metadata_test; \
+				exit 1; \
 			fi; \
 		else \
-			echo "✗ Metadata marker not found"; \
+			echo "✗ Failed to extract version: $$EXTRACTED_VERSION"; \
 			rm -rf $(TMPDIR)/metadata_test; \
 			exit 1; \
 		fi; \
@@ -300,6 +298,6 @@ mount_remote:
 build_remote: /mnt/remote/config.db3
 	rm -rf ../backend/$(STATIC_DIRS)/*.js ../backend/$(STATIC_DIRS)/*.map && \
 	cd $(FRONTEND_DIRS);bun run build -o ../backend/$(STATIC_DIRS);cd - && \
-	$(MAKE) remote_build && \
+	$(MAKE) build AARGS="GOARCH=amd64" VERSION=$(VERSION) ARCH="x86_64" PPROF=1 && \
 	cp -v ./tmp/x86_64/srat-cli /mnt/remote/upgrade/ && \
 	cp -v ./tmp/x86_64/srat-server /mnt/remote/upgrade/
