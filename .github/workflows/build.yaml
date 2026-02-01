@@ -499,7 +499,7 @@ jobs:
                 # The -s flag specifies the secret key file
                 # The -m flag specifies the file to sign
                 # The -x flag specifies the output signature file
-                minisign -S \
+                minisign -S -W \
                   -s "$PRIVATE_KEY_FILE" \
                   -m "$binary_path" \
                   -x "${binary_path}.minisig"

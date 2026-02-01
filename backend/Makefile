@@ -47,7 +47,7 @@ PREREQUISITE: patch docs static
 build: static $(BUILD_DIR)/$(TARGET_EXEC)
 
 $(BUILD_DIR)/$(TARGET_EXEC): $(SRCS) $(STATIC_DIRS)
-	mkdir dist > /dev/null 2>&1 || :
+	@mkdir dist > /dev/null 2>&1 || :
 	CGO_ENABLED=$(CGO_ENABLED) \
 	$(if $(filter 1,$(USE_ZIG)),CC='zig cc -target $(ARCH)-linux-musl' \,)
 	CGO_CFLAGS="-DELF_METADATA=$(METADATA_C_JSON)" \
@@ -80,19 +80,19 @@ $(BUILD_DIR)/$(TARGET_EXEC): $(SRCS) $(STATIC_DIRS)
 
 .PHONY: format
 format:
-	go mod -C $(SRC_DIRS) tidy && \
+	@go mod -C $(SRC_DIRS) tidy && \
 	go -C $(SRC_DIRS) vet ./... && \
 	go tool -C $(SRC_DIRS)  testifylint --fix ./...  && \
 	go -C $(SRC_DIRS) fmt ./...
 
 .PHONY: clean
 clean: clean_examples
-	go clean
-	rm -rf dist
+	@go clean
+	@rm -rf dist
 
 .PHONY: test
 test: $(ALL_SRCS)
-	go -C $(SRC_DIRS) tool gotest -p 1 -failfast  -timeout 120s -tags embedallowed_no  -coverprofile=coverage.out -cover ./... && \
+	@go -C $(SRC_DIRS) tool gotest -p 1 -failfast  -timeout 120s -tags embedallowed_no  -coverprofile=coverage.out -cover ./... && \
 	go -C $(SRC_DIRS) tool cover -func=coverage.out | grep total: | awk '{print "Total coverage: " $$3}'
 
 .PHONY: test_ci
@@ -184,7 +184,7 @@ test_metadata: $(SRC_DIRS)/config/metadata_constants.go
 docs: gen
 
 gen: $(SRCS)
-	go generate -C $(SRC_DIRS)  ./... && \
+	@go generate -C $(SRC_DIRS)  ./... && \
 	go run -C $(SRC_DIRS) ./cmd/srat-openapi -out ../docs && \
 	bunx @redocly/cli@latest lint ./docs/openapi.yaml
 
@@ -207,49 +207,48 @@ security: gosec
 .PHONY: dev_version
 .ONESHELL:
 dev_version:
-	mkdir ./tmp > /dev/null 2>&1 || :
+	@mkdir ./tmp > /dev/null 2>&1 || :
 	# version command doesn't need -db flag
 	go run -C $(SRC_DIRS) ./cmd/srat-cli -loglevel debug version
 
 .PHONY: dev_cli_version
 .ONESHELL:
 dev_cli_version:
-	mkdir ./tmp > /dev/null 2>&1 || :
+	@mkdir ./tmp > /dev/null 2>&1 || :
 	go run -C $(SRC_DIRS) ./cmd/srat-cli -loglevel debug version
 
 .PHONY: dev_cli_upgrade
 .ONESHELL:
 dev_cli_upgrade:
-	mkdir ./tmp > /dev/null 2>&1 || :
+	@mkdir ./tmp > /dev/null 2>&1 || :
 	go run -C $(SRC_DIRS) ./cmd/srat-cli -loglevel debug upgrade -channel prerelease
 
 .PHONY: dev_cli_stop
 .ONESHELL:
 dev_cli_stop:
-	mkdir ./tmp > /dev/null 2>&1 || :
+	@mkdir ./tmp > /dev/null 2>&1 || :
 	#go run -C $(SRC_DIRS) ./cmd/srat-cli -db /tmp/testdb.db -loglevel debug start -out ../tmp/samba.conf && \
 	go run -C $(SRC_DIRS) ./cmd/srat-cli -db /tmp/testdb.db -loglevel debug stop
 
 .PHONY: dev
 dev:
-	SRAT_DEVMODE=true go tool -C $(SRC_DIRS) air -c .air.toml
+	@SRAT_DEVMODE=true go tool -C $(SRC_DIRS) air -c .air.toml
 
 
 .PHONY: update
 update:
-	go -C $(SRC_DIRS) tool github.com/oligot/go-mod-upgrade && \
+	@go -C $(SRC_DIRS) tool github.com/oligot/go-mod-upgrade && \
 	go -C $(SRC_DIRS) mod vendor && \
 	make patch format
 
 
 $(FRONTEND_DIRS)/node_modules:
-	cd $(FRONTEND_DIRS); bun install
+	@cd $(FRONTEND_DIRS); bun install
 
 static: $(FRONTEND_DIRS)/node_modules
-	rm -rf $(SRC_DIRS)/web/static
-	#cd $(FRONTEND_DIRS);bun run gen
-	cd $(FRONTEND_DIRS);bun run version -o $(VERSION)
-	cd $(FRONTEND_DIRS);bun run build -o ../backend/$(STATIC_DIRS)
+	@rm -rf $(SRC_DIRS)/web/static
+	@cd $(FRONTEND_DIRS);bun run version -o $(VERSION)
+	@cd $(FRONTEND_DIRS);bun run build -o ../backend/$(STATIC_DIRS)
 
 .PHONY: patch
 patch:
@@ -286,17 +285,17 @@ gen_patch:
 	@echo "  3. Or initialize git repos in vendor directories for git diff"
 
 /mnt/remote/config.db3: mount_remote
-	[ -f /mnt/remote/config.db3 ] || echo "No remote mount found use make mount_remote"
+	@[ -f /mnt/remote/config.db3 ] || echo "No remote mount found use make mount_remote"
 
 .PHONY: mount_remote
 mount_remote:
-	umount -l /mnt/remote > /dev/null 2>&1 || :
-	mkdir -p /mnt/remote > /dev/null 2>&1 || :
-	sshfs -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3 ${HOMEASSISTANT_IP}:/addon_configs/local_sambanas2 /mnt/remote
+	@umount -l /mnt/remote > /dev/null 2>&1 || :
+	@mkdir -p /mnt/remote > /dev/null 2>&1 || :
+	@sshfs -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3 ${HOMEASSISTANT_IP}:/addon_configs/local_sambanas2 /mnt/remote
 
 .PHONY: build_remote
 build_remote: /mnt/remote/config.db3
-	rm -rf ../backend/$(STATIC_DIRS)/*.js ../backend/$(STATIC_DIRS)/*.map && \
+	@rm -rf ../backend/$(STATIC_DIRS)/*.js ../backend/$(STATIC_DIRS)/*.map && \
 	cd $(FRONTEND_DIRS);bun run build -o ../backend/$(STATIC_DIRS);cd - && \
 	$(MAKE) build AARGS="GOARCH=amd64" VERSION=$(VERSION) ARCH="x86_64" PPROF=1 && \
 	cp -v ./tmp/x86_64/srat-cli /mnt/remote/upgrade/ && \
