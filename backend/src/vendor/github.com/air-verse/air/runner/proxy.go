@@ -2,6 +2,7 @@ package runner
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	_ "embed"
 	"fmt"
@@ -11,10 +12,17 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/andybalholm/brotli"
 )
 
-//go:embed proxy.js
-var ProxyScript string
+var (
+	//go:embed proxy.js
+	ProxyScript string
+
+	//go:embed worker.js
+	WorkerScript string
+)
 
 type Streamer interface {
 	AddSubscriber() *Subscriber
@@ -23,6 +31,15 @@ type Streamer interface {
 	BuildFailed(msg BuildFailedMsg)
 	Stop()
 }
+
+// contentEncoding represents the type of content encoding used in HTTP responses.
+type contentEncoding int
+
+const (
+	encodingNone contentEncoding = iota
+	encodingGzip
+	encodingBrotli
+)
 
 type Proxy struct {
 	server *http.Server
@@ -50,6 +67,7 @@ func NewProxy(cfg *cfgProxy) *Proxy {
 func (p *Proxy) Run() {
 	http.HandleFunc("/", p.proxyHandler)
 	http.HandleFunc("/__air_internal/sse", p.reloadHandler)
+	http.HandleFunc("GET /__air_internal/worker.js", p.workerScriptHandler)
 	if err := p.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatal(p.Stop())
 	}
@@ -63,21 +81,38 @@ func (p *Proxy) BuildFailed(msg BuildFailedMsg) {
 	p.stream.BuildFailed(msg)
 }
 
-func (p *Proxy) injectLiveReload(resp *http.Response) (string, error) {
+func (p *Proxy) injectLiveReload(resp *http.Response) (string, bool, error) {
+	var reader io.Reader = resp.Body
+	decoded := false
+
+	switch detectContentEncoding(resp.Header) {
+	case encodingGzip:
+		gzipReader, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return "", false, fmt.Errorf("proxy inject: failed to init gzip reader: %w", err)
+		}
+		defer gzipReader.Close()
+		reader = gzipReader
+		decoded = true
+	case encodingBrotli:
+		reader = brotli.NewReader(resp.Body)
+		decoded = true
+	}
+
 	buf := new(bytes.Buffer)
-	if _, err := buf.ReadFrom(resp.Body); err != nil {
-		return "", fmt.Errorf("proxy inject: failed to read body from http response")
+	if _, err := buf.ReadFrom(reader); err != nil {
+		return "", decoded, fmt.Errorf("proxy inject: failed to read body from http response: %w", err)
 	}
 	page := buf.String()
 
 	// the script will be injected before the end of the body tag. In case the tag is missing, the injection will be skipped with no error.
 	body := strings.LastIndex(page, "</body>")
 	if body == -1 {
-		return page, nil
+		return page, decoded, nil
 	}
 
 	script := "<script>" + ProxyScript + "</script>"
-	return page[:body] + script + page[body:], nil
+	return page[:body] + script + page[body:], decoded, nil
 }
 
 func (p *Proxy) proxyHandler(w http.ResponseWriter, r *http.Request) {
@@ -188,10 +223,13 @@ func (p *Proxy) proxyHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// HTML: inject live reload script
-		page, err := p.injectLiveReload(resp)
+		page, decoded, err := p.injectLiveReload(resp)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
+		}
+		if decoded {
+			w.Header().Del("Content-Encoding")
 		}
 		w.Header().Set("Content-Length", strconv.Itoa((len([]byte(page)))))
 		w.WriteHeader(resp.StatusCode)
@@ -199,6 +237,27 @@ func (p *Proxy) proxyHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "proxy handler: unable to inject live reload script", http.StatusInternalServerError)
 			return
 		}
+	}
+}
+
+// detectContentEncoding determines the content encoding type from HTTP headers.
+// Returns encodingNone for unsupported or multiple encodings (e.g., "gzip, br").
+func detectContentEncoding(header http.Header) contentEncoding {
+	encoding := header.Get("Content-Encoding")
+	if encoding == "" {
+		return encodingNone
+	}
+
+	// Only support single encoding; multiple encodings (e.g., "gzip, br") are rare
+	// and complex to handle, so we skip injection in those cases.
+	trimmed := strings.TrimSpace(strings.ToLower(encoding))
+	switch trimmed {
+	case "gzip", "x-gzip":
+		return encodingGzip
+	case "br":
+		return encodingBrotli
+	default:
+		return encodingNone
 	}
 }
 
@@ -227,6 +286,12 @@ func (p *Proxy) reloadHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, msg.AsSSE())
 		flusher.Flush()
 	}
+}
+
+func (p *Proxy) workerScriptHandler(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/javascript")
+	w.WriteHeader(http.StatusOK)
+	_, _ = io.WriteString(w, WorkerScript)
 }
 
 func (p *Proxy) Stop() error {
