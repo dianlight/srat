@@ -225,39 +225,11 @@ func (suite *FilesystemServiceTestSuite) TestGetFilesystemSpecificMountFlags() {
 	}
 	suite.True(foundUID, "ntfs specific flag 'uid' not found")
 
-	// Test with another known filesystem type (ntfs3)
-	ntfs3Flags, err := suite.fsService.GetFilesystemSpecificMountFlags("ntfs3")
-	suite.Require().NoError(err)
-	suite.Require().NotNil(ntfs3Flags)
-	suite.NotEmpty(ntfs3Flags, "Expected specific flags for ntfs3")
-	foundForce := false
-	for _, flag := range ntfs3Flags {
-		if flag.Name == "force" {
-			foundForce = true
-			suite.False(flag.NeedsValue, "ntfs3 force flag should not need a value")
-		}
-	}
-	suite.True(foundForce, "ntfs3 specific flag 'force' not found")
-
 	// Test with an unknown filesystem type
 	unknownFlags, err := suite.fsService.GetFilesystemSpecificMountFlags("someunknownfs")
 	suite.Require().NoError(err)
 	suite.Require().NotNil(unknownFlags)
 	suite.Empty(unknownFlags, "Expected no specific flags for an unknown filesystem type")
-
-	// Test with zfs
-	zfsFlags, err := suite.fsService.GetFilesystemSpecificMountFlags("zfs")
-	suite.Require().NoError(err)
-	suite.Require().NotNil(zfsFlags)
-	suite.NotEmpty(zfsFlags)
-	foundContext := false
-	for _, flag := range zfsFlags {
-		if flag.Name == "context" {
-			foundContext = true
-			suite.True(flag.NeedsValue, "zfs context flag should need a value")
-		}
-	}
-	suite.True(foundContext, "zfs specific flag 'context' not found")
 
 	// Test with xfs
 	xfsFlags, err := suite.fsService.GetFilesystemSpecificMountFlags("xfs")

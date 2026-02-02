@@ -85,3 +85,14 @@ func (b *baseAdapter) GetName() string {
 func (b *baseAdapter) GetDescription() string {
 	return b.description
 }
+
+// IsDeviceSupported checks if a device can be mounted with this filesystem
+// by examining magic numbers. This is a default implementation that uses
+// the magic signature detection system.
+func (b *baseAdapter) IsDeviceSupported(ctx context.Context, devicePath string) (bool, errors.E) {
+	// Get signatures for this filesystem type
+	signatures := getSignaturesForFilesystem(b.name)
+	
+	// Check if device matches any of the signatures
+	return checkDeviceMatchesSignatures(devicePath, signatures)
+}

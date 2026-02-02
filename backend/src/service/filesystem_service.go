@@ -1,12 +1,9 @@
 package service
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"log/slog"
-	"os"
 	"regexp"
 	"strings"
 	"syscall"
@@ -88,103 +85,6 @@ var (
 		{Name: "relatime", Description: "Update inode access times relative to modify or change time."},
 	}
 
-	// defaultFsSpecificMountFlags maps filesystem types to their specific mount flags.
-	defaultFsSpecificMountFlags = map[string][]dto.MountFlag{
-		"ntfs": {
-			{Name: "uid", Description: "Set owner of all files to user ID", NeedsValue: true, ValueDescription: "User ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
-			{Name: "gid", Description: "Set group of all files to group ID", NeedsValue: true, ValueDescription: "Group ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
-			{Name: "fmask", Description: "Set file permissions mask (octal)", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
-			{Name: "dmask", Description: "Set directory permissions mask (octal)", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
-			{Name: "permissions", Description: "Respect NTFS permissions"},
-			{Name: "acl", Description: "Enable POSIX Access Control Lists support"},
-			{Name: "exec", Description: "Allow executing files (use with caution)"},
-		},
-		"xfs": {
-			{Name: "inode64", Description: "Enable 64-bit inode allocation for large filesystems"},
-			{Name: "noquota", Description: "Disable quota enforcement"},
-			{Name: "usrquota", Description: "Enable user quota enforcement"},
-			{Name: "grpquota", Description: "Enable group quota enforcement"},
-			{Name: "prjquota", Description: "Enable project quota enforcement"},
-			{Name: "discard", Description: "Enable discard/TRIM support"},
-			{Name: "nouuid", Description: "Ignore filesystem UUID to allow mounting duplicates"},
-			{Name: "allocsize", Description: "Set preferred allocation size", NeedsValue: true, ValueDescription: "Size in bytes optionally with K, M, or G suffix (e.g., 1G)", ValueValidationRegex: `^[0-9]+([kKmMgG])?$`},
-			{Name: "sunit", Description: "Set stripe unit size (in 512-byte blocks)", NeedsValue: true, ValueDescription: "Stripe unit in 512-byte blocks", ValueValidationRegex: `^[0-9]+$`},
-			{Name: "swidth", Description: "Set stripe width size (in 512-byte blocks)", NeedsValue: true, ValueDescription: "Stripe width in 512-byte blocks", ValueValidationRegex: `^[0-9]+$`},
-			{Name: "logbufs", Description: "Number of log buffers", NeedsValue: true, ValueDescription: "Integer between 2 and 8", ValueValidationRegex: `^[2-8]$`},
-			{Name: "logbsize", Description: "Log buffer size in bytes", NeedsValue: true, ValueDescription: "One of: 16384, 32768, 65536, 131072, 262144", ValueValidationRegex: `^(16384|32768|65536|131072|262144)$`},
-		},
-		"ntfs3": {
-			{Name: "uid", Description: "Set owner of all files to user ID", NeedsValue: true, ValueDescription: "User ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
-			{Name: "gid", Description: "Set group of all files to group ID", NeedsValue: true, ValueDescription: "Group ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
-			{Name: "fmask", Description: "Set file permissions mask (octal)", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
-			{Name: "dmask", Description: "Set directory permissions mask (octal)", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
-			{Name: "permissions", Description: "Respect NTFS permissions"},
-			{Name: "acl", Description: "Enable POSIX Access Control Lists support"},
-			{Name: "force", Description: "Force mount even if the volume is marked dirty"},
-			{Name: "norecover", Description: "Do not try to recover a dirty volume (default for ntfs3)"},
-			{Name: "iocharset", Description: "I/O character set (e.g., utf8)", NeedsValue: true, ValueDescription: "Character set name (e.g., utf8)", ValueValidationRegex: `^[a-zA-Z0-9_-]+$`},
-		},
-		"zfs": {
-			{Name: "zfsutil", Description: "Indicates that the mount is managed by ZFS utilities"},
-			{Name: "noauto", Description: "Can be used to prevent automatic mounting by zfs-mount-generator"},
-			{Name: "context", Description: "Set SELinux context for all files/directories", NeedsValue: true, ValueDescription: "SELinux context string", ValueValidationRegex: `^[\w:.-]+$`},
-			{Name: "fscontext", Description: "Set SELinux context for the filesystem superblock", NeedsValue: true, ValueDescription: "SELinux context string", ValueValidationRegex: `^[\w:.-]+$`},
-		},
-		"ext2": {
-			{Name: "acl", Description: "Enable POSIX Access Control Lists support"},
-			{Name: "user_xattr", Description: "Enable user extended attributes"},
-			{Name: "errors", Description: "Behavior on error (remount-ro, continue, panic)", NeedsValue: true, ValueDescription: "One of: continue, remount-ro, panic", ValueValidationRegex: `^(continue|remount-ro|panic)$`},
-			{Name: "discard", Description: "Enable discard/TRIM support"},
-		},
-		"ext3": {
-			{Name: "data", Description: "Data journaling mode (ordered, writeback, journal)", NeedsValue: true, ValueDescription: "One of: journal, ordered, writeback", ValueValidationRegex: `^(journal|ordered|writeback)$`},
-			{Name: "journal_checksum", Description: "Enable journal checksumming"},
-			{Name: "journal_async_commit", Description: "Commit data blocks asynchronously"},
-			{Name: "acl", Description: "Enable POSIX Access Control Lists support"},
-			{Name: "user_xattr", Description: "Enable user extended attributes"},
-			{Name: "errors", Description: "Behavior on error (remount-ro, continue, panic)", NeedsValue: true, ValueDescription: "One of: continue, remount-ro, panic", ValueValidationRegex: `^(continue|remount-ro|panic)$`},
-			{Name: "discard", Description: "Enable discard/TRIM support"},
-			{Name: "barrier", Description: "Enable/disable write barriers (0, 1)", NeedsValue: true, ValueDescription: "0 or 1", ValueValidationRegex: `^[01]$`},
-		},
-		"vfat": {
-			{Name: "uid", Description: "Set owner of all files to user ID", NeedsValue: true, ValueDescription: "User ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
-			{Name: "gid", Description: "Set group of all files to group ID", NeedsValue: true, ValueDescription: "Group ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
-			{Name: "fmask", Description: "Set file permissions mask (octal)", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
-			{Name: "dmask", Description: "Set directory permissions mask (octal)", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
-			{Name: "umask", Description: "Set umask (octal) - overrides fmask/dmask", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
-			{Name: "iocharset", Description: "I/O character set (e.g., utf8)", NeedsValue: true, ValueDescription: "Character set name (e.g., utf8)", ValueValidationRegex: `^[a-zA-Z0-9_-]+$`},
-			{Name: "codepage", Description: "Codepage for short filenames (e.g., 437)", NeedsValue: true, ValueDescription: "Codepage number (e.g., 437)", ValueValidationRegex: `^[0-9]+$`},
-			{Name: "shortname", Description: "Shortname case (lower, win95, winnt, mixed)", NeedsValue: true, ValueDescription: "One of: lower, win95, winnt, mixed", ValueValidationRegex: `^(lower|win95|winnt|mixed)$`},
-			{Name: "errors", Description: "Behavior on error (remount-ro, continue, panic)", NeedsValue: true, ValueDescription: "One of: continue, remount-ro, panic", ValueValidationRegex: `^(continue|remount-ro|panic)$`},
-		},
-		"exfat": {
-			{Name: "uid", Description: "Set owner of all files to user ID", NeedsValue: true, ValueDescription: "User ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
-			{Name: "gid", Description: "Set group of all files to group ID", NeedsValue: true, ValueDescription: "Group ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
-			{Name: "umask", Description: "Set umask (octal) for files and directories", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
-			{Name: "fmask", Description: "Set file permissions mask (octal, overrides umask for files)", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
-			{Name: "dmask", Description: "Set directory permissions mask (octal, overrides umask for dirs)", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
-			{Name: "allow_utime", Description: "Allow non-root users to change file timestamps (requires umask/fmask/dmask to allow)", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
-			{Name: "iocharset", Description: "I/O character set (e.g., utf8)", NeedsValue: true, ValueDescription: "Character set name (e.g., utf8)", ValueValidationRegex: `^[a-zA-Z0-9_-]+$`},
-			{Name: "utf8", Description: "Use UTF-8 for filename encoding (often an alias for iocharset=utf8)"},
-			{Name: "codepage", Description: "Codepage for filename encoding (e.g., 437)", NeedsValue: true, ValueDescription: "Codepage number (e.g., 437)", ValueValidationRegex: `^[0-9]+$`},
-			{Name: "namecase", Description: "Filename case handling (default: asis, or: lower, upper)", NeedsValue: true, ValueDescription: "One of: asis, lower, upper", ValueValidationRegex: `^(asis|lower|upper)$`},
-			{Name: "errors", Description: "Behavior on error (remount-ro, continue, panic)", NeedsValue: true, ValueDescription: "One of: continue, remount-ro, panic", ValueValidationRegex: `^(continue|remount-ro|panic)$`},
-			{Name: "discard", Description: "Enable discard/TRIM support"},
-			{Name: "keep_last_dots", Description: "Keep trailing dots in filenames"},
-			{Name: "sys_tz", Description: "Use system timezone for timestamps instead of UTC"},
-			{Name: "time_offset", Description: "Time offset in minutes from UTC for timestamps", NeedsValue: true, ValueDescription: "Offset in minutes (e.g., -60 or 120)", ValueValidationRegex: `^[-+]?[0-9]+$`},
-		},
-		"ext4": {
-			{Name: "data", Description: "Data journaling mode (ordered, writeback, journal)", NeedsValue: true, ValueDescription: "One of: journal, ordered, writeback", ValueValidationRegex: `^(journal|ordered|writeback)$`},
-			{Name: "errors", Description: "Behavior on error (remount-ro, continue, panic)", NeedsValue: true, ValueDescription: "One of: continue, remount-ro, panic", ValueValidationRegex: `^(continue|remount-ro|panic)$`},
-			{Name: "discard", Description: "Enable discard/TRIM support"},
-			{Name: "barrier", Description: "Enable/disable write barriers (0, 1)", NeedsValue: true, ValueDescription: "0 or 1", ValueValidationRegex: `^[01]$`},
-			{Name: "noauto_da_alloc", Description: "Disable delayed allocation"},
-			{Name: "journal_checksum", Description: "Enable journal checksumming"},
-			{Name: "journal_async_commit", Description: "Commit data blocks asynchronously"},
-		},
-	}
-
 	// syscallFlagMap maps mount flag names (lowercase) to their corresponding syscall constants.
 	// This map includes flags that SET a bit. Flags like "rw" or "async"
 	// represent the ABSENCE of a restrictive bit and are handled by not setting MS_RDONLY or MS_SYNCHRONOUS.
@@ -233,13 +133,6 @@ var (
 	}
 )
 
-// Custom error types for FsTypeFromDevice
-var (
-	ErrorDeviceNotFound    = errors.New("device not found")
-	ErrorDeviceAccess      = errors.New("failed to access device")
-	ErrorUnknownFilesystem = errors.New("unknown filesystem type")
-)
-
 // NewFilesystemService creates and initializes a new FilesystemService.
 func NewFilesystemService(ctx context.Context) FilesystemServiceInterface {
 	// Initialize precomputed maps for efficient lookups
@@ -248,11 +141,22 @@ func NewFilesystemService(ctx context.Context) FilesystemServiceInterface {
 		stdFlagsByName[strings.ToLower(f.Name)] = f
 	}
 
-	allKnownFlagsByName := make(map[string]dto.MountFlag, len(defaultStandardMountFlags)+len(defaultFsSpecificMountFlags)) // Estimate size
+	// Create filesystem adapter registry
+	registry := filesystem.NewRegistry()
+
+	// Build fsSpecificMountFlags from adapters
+	fsSpecificMountFlags := make(map[string][]dto.MountFlag)
+	for _, adapter := range registry.GetAll() {
+		fsType := adapter.GetName()
+		fsSpecificMountFlags[fsType] = adapter.GetMountFlags()
+	}
+
+	// Build allKnownFlagsByName from standard flags and adapter flags
+	allKnownFlagsByName := make(map[string]dto.MountFlag, len(defaultStandardMountFlags))
 	for k, v := range stdFlagsByName {
 		allKnownFlagsByName[k] = v
 	}
-	for _, fsFlags := range defaultFsSpecificMountFlags {
+	for _, fsFlags := range fsSpecificMountFlags {
 		for _, f := range fsFlags {
 			lowerName := strings.ToLower(f.Name)
 			// Standard flags take precedence for descriptions if names collide.
@@ -262,26 +166,9 @@ func NewFilesystemService(ctx context.Context) FilesystemServiceInterface {
 		}
 	}
 
-	// Create filesystem adapter registry
-	registry := filesystem.NewRegistry()
-
-	// Update fsSpecificMountFlags with adapter mount flags
-	updatedFsSpecificMountFlags := make(map[string][]dto.MountFlag)
-	for k, v := range defaultFsSpecificMountFlags {
-		updatedFsSpecificMountFlags[k] = v
-	}
-
-	// Add mount flags from adapters (if not already present)
-	for _, adapter := range registry.GetAll() {
-		fsType := adapter.GetName()
-		if _, exists := updatedFsSpecificMountFlags[fsType]; !exists {
-			updatedFsSpecificMountFlags[fsType] = adapter.GetMountFlags()
-		}
-	}
-
 	p := &FilesystemService{
 		standardMountFlags:   defaultStandardMountFlags,
-		fsSpecificMountFlags: updatedFsSpecificMountFlags,
+		fsSpecificMountFlags: fsSpecificMountFlags,
 
 		standardMountFlagsByName: stdFlagsByName,
 		allKnownMountFlagsByName: allKnownFlagsByName,
@@ -449,83 +336,23 @@ func (s *FilesystemService) SyscallDataToMountFlag(data string) ([]dto.MountFlag
 	return result, nil
 }
 
-// fsMagicSignature defines a structure to hold filesystem signature information.
-type fsMagicSignature struct {
-	fsType string
-	offset int64
-	magic  []byte
-}
-
-// fsSignatures is a list of known filesystem signatures.
-// The order can matter if signatures are subsets of others, though distinct offsets help.
-var knownFsSignatures = []fsMagicSignature{
-	// Filesystems with magic at/near offset 0
-	{fsType: "xfs", offset: 0, magic: []byte{'X', 'F', 'S', 'B'}},
-	{fsType: "squashfs", offset: 0, magic: []byte{0x68, 0x73, 0x71, 0x73}},              // "hsqs" little-endian
-	{fsType: "ntfs", offset: 3, magic: []byte{'N', 'T', 'F', 'S', ' ', ' ', ' ', ' '}},  // "NTFS    "
-	{fsType: "exfat", offset: 3, magic: []byte{'E', 'X', 'F', 'A', 'T', ' ', ' ', ' '}}, // "EXFAT   "
-
-	// FAT types
-	{fsType: "vfat", offset: 82, magic: []byte{'F', 'A', 'T', '3', '2', ' ', ' ', ' '}}, // FAT32 specific
-	{fsType: "vfat", offset: 54, magic: []byte{'F', 'A', 'T', '1', '6', ' ', ' ', ' '}}, // FAT16 specific
-	{fsType: "vfat", offset: 54, magic: []byte{'F', 'A', 'T', '1', '2', ' ', ' ', ' '}}, // FAT12 specific
-
-	// Filesystems with magic at larger offsets
-	{fsType: "f2fs", offset: 1024, magic: []byte{0x10, 0x20, 0xF5, 0xF2}}, // Little-endian 0xF2F52010
-	{fsType: "ext4", offset: 1080, magic: []byte{0x53, 0xEF}},             // ext2/3/4, little-endian 0xEF53
-
-	// ISO9660 - Primary Volume Descriptor
-	{fsType: "iso9660", offset: 0x8001, magic: []byte{'C', 'D', '0', '0', '1'}}, // 32769
-
-	// BTRFS
-	{fsType: "btrfs", offset: 0x10040, magic: []byte{'_', 'B', 'H', 'R', 'f', 'S', '_', 'M'}}, // 65600
-}
-
-const maxDeviceReadLength = 65608 // Max offset (btrfs: 65600) + max magic length (8)
-
 // FsTypeFromDevice attempts to determine the filesystem type of a block device by reading its magic numbers.
 func (s *FilesystemService) FsTypeFromDevice(devicePath string) (string, errors.E) {
-	file, err := os.Open(devicePath)
+	fsType, err := filesystem.DetectFilesystemType(devicePath)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return "", errors.WithDetails(dto.ErrorDeviceNotFound, "Path", devicePath, "Error", err)
+		// Map the error to the appropriate DTO error type for backward compatibility
+		if errors.Is(err, filesystem.ErrorDeviceNotFound) {
+			return "", errors.WithDetails(dto.ErrorDeviceNotFound, "Path", devicePath)
 		}
-		return "", errors.WithDetails(ErrorDeviceAccess, "Path", devicePath, "Operation", "Open", "Error", err)
+		return "", err
 	}
-	defer file.Close()
-
-	buffer := make([]byte, maxDeviceReadLength)
-	n, err := file.ReadAt(buffer, 0)
-	if err != nil && err != io.EOF {
-		// For ReadAt, io.EOF is reported only if no bytes were read.
-		// If n > 0 and err == io.EOF, it means a partial read, which is fine.
-		// If n == 0 and err == io.EOF, the file is empty or smaller than our read attempt from offset 0.
-		return "", errors.WithDetails(ErrorDeviceAccess, "Path", devicePath, "Operation", "ReadAt", "Error", err)
+	
+	if fsType == "" {
+		return "", errors.WithDetails(filesystem.ErrorUnknownFilesystem, "Path", devicePath)
 	}
-
-	if n == 0 {
-		return "", errors.WithDetails(ErrorUnknownFilesystem, "Path", devicePath, "Reason", "Device is empty or too small")
-	}
-
-	// Use the actual number of bytes read for checks
-	validBuffer := buffer[:n]
-
-	for _, sig := range knownFsSignatures {
-		// Ensure the signature's offset and length are within the bounds of what was read
-		sigEndOffset := sig.offset + int64(len(sig.magic))
-		if sig.offset < 0 || sigEndOffset > int64(len(validBuffer)) {
-			continue // Signature is out of bounds for the data read
-		}
-
-		// Compare the magic bytes
-		if bytes.Equal(validBuffer[sig.offset:sigEndOffset], sig.magic) {
-			slog.Debug("FsTypeFromDevice: Matched signature", "device", devicePath, "fstype", sig.fsType, "offset", sig.offset)
-			return sig.fsType, nil
-		}
-	}
-
-	slog.Debug("FsTypeFromDevice: No known filesystem signature matched", "device", devicePath)
-	return "", errors.WithDetails(ErrorUnknownFilesystem, "Path", devicePath)
+	
+	slog.Debug("FsTypeFromDevice: Matched signature", "device", devicePath, "fstype", fsType)
+	return fsType, nil
 }
 
 // GetAdapter returns the filesystem adapter for a given filesystem type

@@ -38,6 +38,10 @@ type FilesystemAdapter interface {
 
 	// GetState returns the current state of the filesystem if supported
 	GetState(ctx context.Context, device string) (FilesystemState, errors.E)
+
+	// IsDeviceSupported checks if a device can be mounted with this filesystem
+	// by examining magic numbers or using filesystem-specific detection
+	IsDeviceSupported(ctx context.Context, devicePath string) (bool, errors.E)
 }
 
 // FilesystemSupport contains information about filesystem support on the system
