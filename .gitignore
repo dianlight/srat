@@ -22,3 +22,4 @@ docs/TEST_COVERAGE.md.bak
 frontend/package-lock.json
 backend/src/config/metadata_constants.go
 backend/src/internal/updatekey/update-public-key.key
+backend/src/service/filesystem/example/example
