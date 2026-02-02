@@ -343,39 +343,6 @@ jobs:
           name: frontend-coverage
           fail_ci_if_error: false          
 
-      - name: Update coverage badges
-        run: |
-          bash scripts/update-coverage-badges.sh \
-            --backend "${{ needs.test-backend.outputs.coverage }}" \
-            --frontend "${{ needs.test-frontend.outputs.coverage }}"
-
-      - name: Check for changes
-        id: check_changes
-        run: |
-          if git diff --quiet README.md docs/TEST_COVERAGE.md; then
-            echo "changed=false" >> $GITHUB_OUTPUT
-            echo "No changes to coverage files"
-          else
-            echo "changed=true" >> $GITHUB_OUTPUT
-            echo "Coverage files have been updated"
-          fi
-
-      - name: Commit and push if changed
-        if: |
-          steps.check_changes.outputs.changed == 'true' &&
-          github.event_name != 'pull_request'
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          
-          # Pull latest changes first
-          git pull --rebase origin main || true
-          
-          git add README.md docs/TEST_COVERAGE.md
-          git commit -m "🎯 test: update coverage badges [skip ci]"
-          
-          git push
-
   build:
     name: Build
     runs-on: ubuntu-latest
