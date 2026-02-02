@@ -473,6 +473,57 @@ func (suite *FilesystemServiceTestSuite) TestMountFlagsToSyscallFlagAndData() {
 	}
 }
 
+func (suite *FilesystemServiceTestSuite) TestGetAdapter() {
+	// Test getting a known adapter
+	adapter, err := suite.fsService.GetAdapter("ext4")
+	suite.Require().NoError(err)
+	suite.Require().NotNil(adapter)
+	suite.Equal("ext4", adapter.GetName())
+
+	// Test getting another known adapter
+	adapter, err = suite.fsService.GetAdapter("xfs")
+	suite.Require().NoError(err)
+	suite.Require().NotNil(adapter)
+	suite.Equal("xfs", adapter.GetName())
+
+	// Test getting an unknown adapter
+	adapter, err = suite.fsService.GetAdapter("unknown-fs")
+	suite.Require().Error(err)
+	suite.Nil(adapter)
+}
+
+func (suite *FilesystemServiceTestSuite) TestListSupportedTypes() {
+	types := suite.fsService.ListSupportedTypes()
+	suite.NotEmpty(types)
+	suite.GreaterOrEqual(len(types), 5, "Should have at least 5 filesystem types")
+
+	// Check for expected types
+	expectedTypes := []string{"ext4", "vfat", "ntfs", "btrfs", "xfs"}
+	for _, expected := range expectedTypes {
+		suite.Contains(types, expected)
+	}
+}
+
+func (suite *FilesystemServiceTestSuite) TestGetSupportedFilesystems() {
+	support, err := suite.fsService.GetSupportedFilesystems(suite.ctx)
+	suite.Require().NoError(err)
+	suite.NotEmpty(support)
+
+	// Check that each filesystem has support information
+	for fsType, fsSupport := range support {
+		suite.NotEmpty(fsType)
+		suite.NotEmpty(fsSupport.AlpinePackage, "Alpine package should be specified for %s", fsType)
+		// Note: Actual tool availability depends on system configuration
+	}
+
+	// Verify expected filesystems are present
+	expectedFS := []string{"ext4", "vfat", "ntfs", "btrfs", "xfs"}
+	for _, expected := range expectedFS {
+		_, exists := support[expected]
+		suite.True(exists, "Should have support info for %s", expected)
+	}
+}
+
 func (suite *FilesystemServiceTestSuite) SetupTest() {
 	suite.ctx = context.Background()
 	suite.fsService = service.NewFilesystemService(suite.ctx)

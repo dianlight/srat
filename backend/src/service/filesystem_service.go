@@ -12,6 +12,7 @@ import (
 	"syscall"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/service/filesystem"
 	"gitlab.com/tozd/go/errors"
 )
 
@@ -34,6 +35,15 @@ type FilesystemServiceInterface interface {
 
 	// FsTypeFromDevice attempts to determine the filesystem type of a block device by reading its magic numbers.
 	FsTypeFromDevice(devicePath string) (string, errors.E)
+
+	// GetAdapter returns the filesystem adapter for a given filesystem type.
+	GetAdapter(fsType string) (filesystem.FilesystemAdapter, errors.E)
+
+	// GetSupportedFilesystems returns information about all supported filesystems.
+	GetSupportedFilesystems(ctx context.Context) (map[string]filesystem.FilesystemSupport, errors.E)
+
+	// ListSupportedTypes returns a list of all supported filesystem type names.
+	ListSupportedTypes() []string
 }
 
 // FilesystemService implements the FilesystemServiceInterface.
@@ -49,6 +59,9 @@ type FilesystemService struct {
 	// allKnownMountFlagsByName maps all lowercase known flag names (standard and specific)
 	// to their MountFlag struct, used for description lookups. Standard flags take precedence on conflict.
 	allKnownMountFlagsByName map[string]dto.MountFlag
+
+	// registry holds the filesystem adapter registry
+	registry *filesystem.Registry
 }
 
 // Package-level variables for default configurations.
@@ -249,12 +262,31 @@ func NewFilesystemService(ctx context.Context) FilesystemServiceInterface {
 		}
 	}
 
+	// Create filesystem adapter registry
+	registry := filesystem.NewRegistry()
+
+	// Update fsSpecificMountFlags with adapter mount flags
+	updatedFsSpecificMountFlags := make(map[string][]dto.MountFlag)
+	for k, v := range defaultFsSpecificMountFlags {
+		updatedFsSpecificMountFlags[k] = v
+	}
+
+	// Add mount flags from adapters (if not already present)
+	for _, adapter := range registry.GetAll() {
+		fsType := adapter.GetName()
+		if _, exists := updatedFsSpecificMountFlags[fsType]; !exists {
+			updatedFsSpecificMountFlags[fsType] = adapter.GetMountFlags()
+		}
+	}
+
 	p := &FilesystemService{
 		standardMountFlags:   defaultStandardMountFlags,
-		fsSpecificMountFlags: defaultFsSpecificMountFlags,
+		fsSpecificMountFlags: updatedFsSpecificMountFlags,
 
 		standardMountFlagsByName: stdFlagsByName,
 		allKnownMountFlagsByName: allKnownFlagsByName,
+
+		registry: registry,
 	}
 	return p
 }
@@ -495,3 +527,19 @@ func (s *FilesystemService) FsTypeFromDevice(devicePath string) (string, errors.
 	slog.Debug("FsTypeFromDevice: No known filesystem signature matched", "device", devicePath)
 	return "", errors.WithDetails(ErrorUnknownFilesystem, "Path", devicePath)
 }
+
+// GetAdapter returns the filesystem adapter for a given filesystem type
+func (s *FilesystemService) GetAdapter(fsType string) (filesystem.FilesystemAdapter, errors.E) {
+	return s.registry.Get(fsType)
+}
+
+// GetSupportedFilesystems returns information about all supported filesystems
+func (s *FilesystemService) GetSupportedFilesystems(ctx context.Context) (map[string]filesystem.FilesystemSupport, errors.E) {
+	return s.registry.GetSupportedFilesystems(ctx)
+}
+
+// ListSupportedTypes returns a list of all supported filesystem type names
+func (s *FilesystemService) ListSupportedTypes() []string {
+	return s.registry.ListSupportedTypes()
+}
+
