@@ -587,8 +587,10 @@ func (self *ServerService) writeNFSConfig(ctx context.Context) errors.E {
 		exportsContent.WriteString(path)
 		exportsContent.WriteString(" ")
 		exportsContent.WriteString(hostname)
-		exportsContent.WriteString("(rw,sync,mp,no_subtree_check,no_root_squash,fsid=")
-		exportsContent.WriteString(strings.ReplaceAll(share.Name, "-", ""))
+		exportsContent.WriteString("(rw,sync,mp,no_subtree_check,no_root_squash")
+		// fsid need to be a UUID valid format
+		//exportsContent.WriteString(",fsid=")
+		//exportsContent.WriteString(strings.ReplaceAll(share.MountPointData.DeviceId, "-", ""))
 		exportsContent.WriteString(")\n")
 
 		exportCount++
