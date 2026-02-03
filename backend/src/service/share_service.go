@@ -303,6 +303,14 @@ func (s *ShareService) UpdateShare(name string, share dto.SharedResource) (*dto.
 		return nil, errors.Wrap(err, "failed to get share")
 	}
 
+	// Clear associations before updating to avoid foreign key constraint violations
+	if err := s.db.WithContext(s.ctx).Model(&dbShare).Association("Users").Clear(); err != nil {
+		return nil, errors.Wrap(err, "failed to clear Users associations during update")
+	}
+	if err := s.db.WithContext(s.ctx).Model(&dbShare).Association("RoUsers").Clear(); err != nil {
+		return nil, errors.Wrap(err, "failed to clear RoUsers associations during update")
+	}
+
 	var conv converter.DtoToDbomConverterImpl
 	err = conv.SharedResourceToExportedShare(share, &dbShare)
 	if err != nil {
