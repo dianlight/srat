@@ -1,3 +1,33 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+**Table of Contents** *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Filesystem Adapter Pattern](#filesystem-adapter-pattern)
+  - [Overview](#overview)
+  - [Architecture](#architecture)
+    - [Core Components](#core-components)
+    - [Supported Filesystems](#supported-filesystems)
+  - [Usage](#usage)
+    - [Getting a Filesystem Adapter](#getting-a-filesystem-adapter)
+    - [Checking Filesystem Support](#checking-filesystem-support)
+    - [Formatting a Device](#formatting-a-device)
+    - [Checking a Filesystem](#checking-a-filesystem)
+    - [Managing Labels](#managing-labels)
+    - [Getting Filesystem State](#getting-filesystem-state)
+    - [Listing All Supported Filesystems](#listing-all-supported-filesystems)
+  - [Command Mapping](#command-mapping)
+    - [ext4 (e2fsprogs)](#ext4-e2fsprogs)
+    - [vfat (dosfstools)](#vfat-dosfstools)
+    - [ntfs (ntfs-3g-progs)](#ntfs-ntfs-3g-progs)
+    - [btrfs (btrfs-progs)](#btrfs-btrfs-progs)
+    - [xfs (xfsprogs)](#xfs-xfsprogs)
+  - [Adding New Filesystem Adapters](#adding-new-filesystem-adapters)
+  - [Testing](#testing)
+  - [Backward Compatibility](#backward-compatibility)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Filesystem Adapter Pattern
 
 ## Overview
@@ -15,13 +45,13 @@ The SRAT backend now implements a filesystem adapter pattern that provides a cle
 
 ### Supported Filesystems
 
-| Filesystem | Alpine Package | Description |
-|-----------|---------------|-------------|
-| ext4 | e2fsprogs | Fourth Extended Filesystem |
-| vfat | dosfstools | FAT32 Filesystem |
-| ntfs | ntfs-3g-progs | NTFS Filesystem |
-| btrfs | btrfs-progs | B-tree Filesystem |
-| xfs | xfsprogs | XFS Filesystem |
+| Filesystem | Alpine Package | Description                |
+| ---------- | -------------- | -------------------------- |
+| ext4       | e2fsprogs      | Fourth Extended Filesystem |
+| vfat       | dosfstools     | FAT32 Filesystem           |
+| ntfs       | ntfs-3g-progs  | NTFS Filesystem            |
+| btrfs      | btrfs-progs    | B-tree Filesystem          |
+| xfs        | xfsprogs       | XFS Filesystem             |
 
 ## Usage
 
@@ -144,7 +174,7 @@ if err != nil {
 }
 
 for fsType, info := range support {
-    fmt.Printf("%s: Can format=%v, Alpine package=%s\n", 
+    fmt.Printf("%s: Can format=%v, Alpine package=%s\n",
         fsType, info.CanFormat, info.AlpinePackage)
 }
 ```
@@ -154,30 +184,35 @@ for fsType, info := range support {
 Each filesystem adapter uses specific commands from its Alpine package:
 
 ### ext4 (e2fsprogs)
+
 - **Format**: `mkfs.ext4 [-F] [-L label] device`
 - **Check**: `fsck.ext4 [-y|-n] [-f] [-v] device`
 - **Get Label**: `tune2fs -l device` (parses output)
 - **Set Label**: `tune2fs -L label device`
 
 ### vfat (dosfstools)
+
 - **Format**: `mkfs.vfat -F 32 [-n label] device`
 - **Check**: `fsck.vfat [-a|-n] [-v] device`
 - **Get Label**: `fatlabel device`
 - **Set Label**: `fatlabel device label`
 
 ### ntfs (ntfs-3g-progs)
+
 - **Format**: `mkfs.ntfs -Q [-F] [-L label] device`
 - **Check**: `ntfsfix [-n] device`
 - **Get Label**: `ntfslabel device`
 - **Set Label**: `ntfslabel device label`
 
 ### btrfs (btrfs-progs)
+
 - **Format**: `mkfs.btrfs [-f] [-L label] device`
 - **Check**: `btrfs check [--repair|--readonly] [--force] device`
 - **Get Label**: `btrfs filesystem show device` (parses output)
 - **Set Label**: `btrfs filesystem label device label`
 
 ### xfs (xfsprogs)
+
 - **Format**: `mkfs.xfs [-f] [-L label] device`
 - **Check**: `xfs_repair [-n] [-v] device`
 - **Get Label**: `xfs_admin -l device` (parses output)
