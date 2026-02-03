@@ -17,6 +17,8 @@ describe("shares utils", () => {
 
 		expect(sanitizeAndUppercaseShareName("My Share")).toBe("MY_SHARE");
 		expect(sanitizeAndUppercaseShareName("home/media")).toBe("HOME_MEDIA");
+		expect(sanitizeAndUppercaseShareName("500G")).toBe("500G");
+		expect(sanitizeAndUppercaseShareName("1TB_Backup")).toBe("1TB_BACKUP");
 		expect(sanitizeAndUppercaseShareName("")).toBe("");
 	});
 

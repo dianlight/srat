@@ -120,9 +120,9 @@ var (
 			Name:                 "nfsd",
 			SoftResetServiceMask: dto.DataDirtyTracker{Users: false, Settings: false, Shares: true},
 			HardResetServiceMask: dto.DataDirtyTracker{Users: false, Settings: true, Shares: false},
-			StartCommand:         []string{"s6-svc", "-uwU", "/etc/s6-overlay/s6-rc.d/nfsd"},
+			StartCommand:         []string{"s6-svc", "-uwu", "/etc/s6-overlay/s6-rc.d/nfsd"},
 			SoftResetCommand:     []string{"exportfs", "-ra"},
-			HardResetCommand:     []string{"s6-svc", "-rwR", "/etc/s6-overlay/s6-rc.d/nfsd"},
+			HardResetCommand:     []string{"s6-svc", "-rwr", "/etc/s6-overlay/s6-rc.d/nfsd"},
 			StopCommand:          []string{"s6-svc", "-dwd", "/etc/s6-overlay/s6-rc.d/nfsd"},
 			Managed:              false,
 		},
@@ -587,8 +587,10 @@ func (self *ServerService) writeNFSConfig(ctx context.Context) errors.E {
 		exportsContent.WriteString(path)
 		exportsContent.WriteString(" ")
 		exportsContent.WriteString(hostname)
-		exportsContent.WriteString("(rw,sync,mp,no_subtree_check,no_root_squash,fsid=")
-		exportsContent.WriteString(strings.ReplaceAll(share.Name, "-", ""))
+		exportsContent.WriteString("(rw,sync,mp,no_subtree_check,no_root_squash")
+		// fsid need to be a UUID valid format
+		//exportsContent.WriteString(",fsid=")
+		//exportsContent.WriteString(strings.ReplaceAll(share.MountPointData.DeviceId, "-", ""))
 		exportsContent.WriteString(")\n")
 
 		exportCount++

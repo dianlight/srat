@@ -19,8 +19,8 @@ export function getPathBaseName(path: string): string {
 // Helper function to sanitize a string for use as a Windows share name and convert to uppercase
 export function sanitizeAndUppercaseShareName(name: string): string {
 	if (!name) return "";
-	// Replace invalid characters (/:*?"<>|) and whitespace with an underscore, then convert to uppercase
-	return name.replace(/[/:*?"-<>|\s]+/g, "_").toUpperCase();
+	// Replace invalid characters (/:*?"<>|-) and whitespace with an underscore, then convert to uppercase
+	return name.replace(/[/:*?"<>|\s-]+/g, "_").toUpperCase();
 }
 
 // --- Veto File Entry Validation Helper ---
