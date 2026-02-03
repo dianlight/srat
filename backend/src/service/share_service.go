@@ -6,7 +6,6 @@ import (
 	"os"
 	"sync"
 
-	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dbom/g"
@@ -17,6 +16,39 @@ import (
 	"go.uber.org/fx"
 	"gorm.io/gorm"
 )
+
+var internalShares = []dto.SharedResource{
+	{
+		Name: "config",
+		//MountPointData: &dto.MountPointData{},
+		Usage: dto.UsageAsInternal,
+	},
+	{
+		Name: "addons",
+		//MountPointData: &dto.MountPointData{},
+		Usage: dto.UsageAsInternal,
+	},
+	{
+		Name:  "ssl",
+		Usage: dto.UsageAsInternal,
+	},
+	{
+		Name:  "share",
+		Usage: dto.UsageAsInternal,
+	},
+	{
+		Name:  "backup",
+		Usage: dto.UsageAsInternal,
+	},
+	{
+		Name:  "media",
+		Usage: dto.UsageAsInternal,
+	},
+	{
+		Name:  "addon_configs",
+		Usage: dto.UsageAsInternal,
+	},
+}
 
 /*
 ShareServiceInterface defines the interface for managing shared resources.
@@ -52,7 +84,7 @@ type ShareService struct {
 	eventBus         events.EventBusInterface
 	sharesQueueMutex *sync.RWMutex
 	dbomConv         converter.DtoToDbomConverterImpl
-	defaultConfig    *config.DefaultConfig
+	//defaultConfig    *config.DefaultConfig
 }
 
 type ShareServiceParams struct {
@@ -63,8 +95,8 @@ type ShareServiceParams struct {
 	//ExportedShareRepo repository.ExportedShareRepositoryInterface
 	UserService UserServiceInterface
 	//MountRepo         repository.MountPointPathRepositoryInterface
-	EventBus      events.EventBusInterface
-	DefaultConfig *config.DefaultConfig
+	EventBus events.EventBusInterface
+	//DefaultConfig *config.DefaultConfig
 }
 
 func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterface {
@@ -73,10 +105,10 @@ func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterfa
 		user_service: in.UserService,
 		//mount_repo:          in.MountRepo,
 		//		supervisor_service: in.SupervisorService,
-		ctx:              in.Ctx,
-		db:               in.Db,
-		eventBus:         in.EventBus,
-		defaultConfig:    in.DefaultConfig,
+		ctx:      in.Ctx,
+		db:       in.Db,
+		eventBus: in.EventBus,
+		//defaultConfig:    in.DefaultConfig,
 		sharesQueueMutex: &sync.RWMutex{},
 		dbomConv:         converter.DtoToDbomConverterImpl{},
 	}
@@ -106,25 +138,32 @@ func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterfa
 			if os.Getenv("SRAT_MOCK") == "true" {
 				return nil
 			}
-			allusers, err := s.user_service.ListUsers()
+			admin, err := s.user_service.GetAdmin()
 			if err != nil {
 				return errors.WithStack(err)
 			}
 			// Create all default Shares if don't exists
-			cconv := converter.ConfigToDtoConverterImpl{}
-			for _, defCShare := range s.defaultConfig.Shares {
+			//cconv := converter.ConfigToDtoConverterImpl{}
+			for _, defCShare := range internalShares {
 				_, err := s.GetShare(defCShare.Name)
 				if err != nil {
 					if errors.Is(err, dto.ErrorShareNotFound) {
-						defShare, errConv := cconv.ShareToSharedResource(defCShare, allusers)
-						if errConv != nil {
-							slog.Error("Error converting default share", "name", defCShare.Name, "err", errConv)
-							return errors.WithStack(errConv)
-						}
-						slog.Info("Creating default share", "name", defShare.Name, "path", defShare.MountPointData.Path, "device_id", defShare.MountPointData.DeviceId)
-						_, createErr := s.CreateShare(defShare)
+						/*
+							defShare, errConv := cconv.ShareToSharedResource(defCShare, allusers)
+							if errConv != nil {
+								slog.Error("Error converting default share", "name", defCShare.Name, "err", errConv)
+								return errors.WithStack(errConv)
+							}
+						*/
+						// FIXME: load mountpoint data for share is missing!
+
+						// load and associate admin user.
+						defCShare.Users = []dto.User{*admin}
+
+						slog.Info("Creating default share", "name", defCShare.Name, "path", defCShare.MountPointData.Path, "device_id", defCShare.MountPointData.DeviceId)
+						_, createErr := s.CreateShare(defCShare)
 						if createErr != nil {
-							slog.Error("Error creating default share", "name", defShare.Name, "err", createErr)
+							slog.Error("Error creating default share", "name", defCShare.Name, "err", createErr)
 							return createErr
 						}
 					} else {
@@ -200,7 +239,7 @@ func (s *ShareService) GetShare(name string) (*dto.SharedResource, errors.E) {
 }
 
 func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResource, errors.E) {
-	check, err := gorm.G[dbom.ExportedShare](s.db.Debug()).Scopes(dbom.IncludeSoftDeleted).Where("name = ? and deleted_at IS NOT NULL", share.Name).Update(s.ctx, "deleted_at", nil)
+	check, err := gorm.G[dbom.ExportedShare](s.db).Scopes(dbom.IncludeSoftDeleted).Where("name = ? and deleted_at IS NOT NULL", share.Name).Update(s.ctx, "deleted_at", nil)
 	if err != nil {
 		slog.Error("Failed to check for existing share", "share_name", share.Name, "error", err)
 		return nil, errors.Wrapf(err, "failed to check for existing share: %s", err.Error())
@@ -262,6 +301,14 @@ func (s *ShareService) UpdateShare(name string, share dto.SharedResource) (*dto.
 			return nil, errors.WithStack(dto.ErrorShareNotFound)
 		}
 		return nil, errors.Wrap(err, "failed to get share")
+	}
+
+	// Clear associations before updating to avoid foreign key constraint violations
+	if err := s.db.WithContext(s.ctx).Model(&dbShare).Association("Users").Clear(); err != nil {
+		return nil, errors.Wrap(err, "failed to clear Users associations during update")
+	}
+	if err := s.db.WithContext(s.ctx).Model(&dbShare).Association("RoUsers").Clear(); err != nil {
+		return nil, errors.Wrap(err, "failed to clear RoUsers associations during update")
 	}
 
 	var conv converter.DtoToDbomConverterImpl

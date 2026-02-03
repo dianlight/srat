@@ -12,7 +12,7 @@ import (
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service"
-	"github.com/google/go-github/v81/github"
+	"github.com/google/go-github/v82/github"
 	"github.com/jarcoal/httpmock"
 	"gitlab.com/tozd/go/errors"
 )

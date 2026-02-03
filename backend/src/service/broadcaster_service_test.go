@@ -94,8 +94,8 @@ func (suite *BroadcasterServiceSkipEventTestSuite) TestShouldSkipSSEEvent_SambaS
 
 func (suite *BroadcasterServiceSkipEventTestSuite) TestShouldSkipSSEEvent_SambaProcessStatus() {
 	broadcaster := &broadcasterServiceForTesting{}
-	suite.True(broadcaster.shouldSkipClientSend(dto.SambaProcessStatus{}), "SambaProcessStatus should be skipped")
-	suite.True(broadcaster.shouldSkipClientSend(&dto.SambaProcessStatus{}), "SambaProcessStatus pointer should be skipped")
+	suite.True(broadcaster.shouldSkipClientSend(dto.ServerProcessStatus{}), "SambaProcessStatus should be skipped")
+	suite.True(broadcaster.shouldSkipClientSend(&dto.ServerProcessStatus{}), "SambaProcessStatus pointer should be skipped")
 }
 
 func (suite *BroadcasterServiceSkipEventTestSuite) TestShouldSkipSSEEvent_DiskHealth() {
@@ -126,7 +126,7 @@ type broadcasterServiceForTesting struct{}
 func (b *broadcasterServiceForTesting) shouldSkipClientSend(msg any) bool {
 	switch msg.(type) {
 	case dto.SambaStatus, *dto.SambaStatus,
-		dto.SambaProcessStatus, *dto.SambaProcessStatus,
+		dto.ServerProcessStatus, *dto.ServerProcessStatus,
 		dto.DiskHealth, *dto.DiskHealth:
 		return true
 	default:

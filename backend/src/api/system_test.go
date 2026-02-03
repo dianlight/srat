@@ -200,12 +200,3 @@ func (suite *SystemHandlerSuite) TestGetCapabilitiesHandler_Success() {
 		suite.NotEmpty(result.UnsupportedReason)
 	}
 }
-
-func (suite *SystemHandlerSuite) TestRestartHandler_Success() {
-	// RestartHandler triggers overseer.Restart() which is a global function
-	// In a test, we can't actually restart, but we can verify the handler responds correctly
-	resp := suite.testAPI.Put("/restart", struct{}{})
-
-	// The handler returns nil, nil which Huma treats as 204 No Content
-	suite.Equal(http.StatusNoContent, resp.Code)
-}

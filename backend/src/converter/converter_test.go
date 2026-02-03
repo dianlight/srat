@@ -6,9 +6,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/angusgmorrison/logfusc"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
-	"github.com/google/go-github/v81/github"
+	"github.com/google/go-github/v82/github"
 	"github.com/shirou/gopsutil/v4/net"
 	"github.com/shirou/gopsutil/v4/process"
 	"github.com/stretchr/testify/assert"
@@ -321,9 +322,12 @@ func TestDtoToDbomConverter_SettingsToProperties(t *testing.T) {
 
 	hostname := "TESTSERVER"
 	workgroup := "WORKGROUP"
+	secret := "supersecret"
 	source := dto.Settings{
-		Hostname:  hostname,
-		Workgroup: workgroup,
+		Hostname:      hostname,
+		Workgroup:     workgroup,
+		HASmbPassword: logfusc.NewSecret(secret),
+		TelemetryMode: dto.TelemetryModes.TELEMETRYMODEASK,
 	}
 
 	target := make(dbom.Properties)
@@ -332,16 +336,22 @@ func TestDtoToDbomConverter_SettingsToProperties(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, target, "Hostname")
 	assert.Contains(t, target, "Workgroup")
+	assert.Contains(t, target, "HASmbPassword")
+	assert.Contains(t, target, "TelemetryMode")
 	assert.Equal(t, "TESTSERVER", target["Hostname"].Value)
 	assert.Equal(t, "WORKGROUP", target["Workgroup"].Value)
+	assert.Equal(t, secret, target["HASmbPassword"].Value)
+	assert.Equal(t, "Ask", target["TelemetryMode"].Value)
 }
 
 func TestDtoToDbomConverter_PropertiesToSettings(t *testing.T) {
 	conv := DtoToDbomConverterImpl{}
 
 	source := dbom.Properties{
-		"Hostname":  {Key: "Hostname", Value: "TESTSERVER"},
-		"Workgroup": {Key: "Workgroup", Value: "WORKGROUP"},
+		"Hostname":      {Key: "Hostname", Value: "TESTSERVER"},
+		"Workgroup":     {Key: "Workgroup", Value: "WORKGROUP"},
+		"HASmbPassword": {Key: "HASmbPassword", Value: "supersecret"},
+		"TelemetryMode": {Key: "TelemetryMode", Value: "Ask"},
 	}
 
 	var target dto.Settings
@@ -350,6 +360,90 @@ func TestDtoToDbomConverter_PropertiesToSettings(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "TESTSERVER", target.Hostname)
 	assert.Equal(t, "WORKGROUP", target.Workgroup)
+	assert.Equal(t, "supersecret", target.HASmbPassword.Expose())
+	assert.Equal(t, "Ask", target.TelemetryMode.String())
+}
+
+func TestDtoToDbomConverter_PropertiesToSettings_WithNilValue(t *testing.T) {
+	conv := DtoToDbomConverterImpl{}
+
+	source := dbom.Properties{
+		"Hostname": {Key: "Hostname", Value: nil},
+	}
+
+	var target dto.Settings
+	err := conv.PropertiesToSettings(source, &target)
+
+	require.NoError(t, err)
+	assert.Empty(t, target.Hostname)
+}
+
+func TestDtoToDbomConverter_SettingsToProperties_WithNilPointerValuer(t *testing.T) {
+	conv := DtoToDbomConverterImpl{}
+
+	source := dto.Settings{
+		Hostname:  "TESTSERVER",
+		Workgroup: "WORKGROUP",
+	}
+
+	target := make(dbom.Properties)
+	err := conv.SettingsToProperties(source, &target)
+
+	require.NoError(t, err)
+	assert.Contains(t, target, "Hostname")
+	assert.Contains(t, target, "Workgroup")
+	assert.NotNil(t, target["Hostname"].Value)
+	assert.NotNil(t, target["Workgroup"].Value)
+}
+
+func TestDtoToDbomConverter_SharedResourceToExportedShare_WithoutUsers(t *testing.T) {
+	conv := DtoToDbomConverterImpl{}
+
+	source := dto.SharedResource{
+		Name:    "no-users-share",
+		Users:   []dto.User{},
+		RoUsers: []dto.User{},
+	}
+
+	var target dbom.ExportedShare
+	err := conv.SharedResourceToExportedShare(source, &target)
+
+	require.NoError(t, err)
+	assert.Equal(t, "no-users-share", target.Name)
+	assert.Empty(t, target.Users)
+	assert.Empty(t, target.RoUsers)
+}
+
+func TestDtoToDbomConverter_SharedResourceToExportedShare_WithMultipleUsers(t *testing.T) {
+	conv := DtoToDbomConverterImpl{}
+	disabled := false
+
+	source := dto.SharedResource{
+		Name:     "multi-user-share",
+		Disabled: &disabled,
+		Users: []dto.User{
+			{Username: "user1"},
+			{Username: "user2"},
+			{Username: "user3"},
+		},
+		RoUsers: []dto.User{
+			{Username: "rouser1"},
+			{Username: "rouser2"},
+		},
+	}
+
+	var target dbom.ExportedShare
+	err := conv.SharedResourceToExportedShare(source, &target)
+
+	require.NoError(t, err)
+	assert.Equal(t, "multi-user-share", target.Name)
+	assert.Len(t, target.Users, 3)
+	assert.Len(t, target.RoUsers, 2)
+	assert.Equal(t, "user1", target.Users[0].Username)
+	assert.Equal(t, "user2", target.Users[1].Username)
+	assert.Equal(t, "user3", target.Users[2].Username)
+	assert.Equal(t, "rouser1", target.RoUsers[0].Username)
+	assert.Equal(t, "rouser2", target.RoUsers[1].Username)
 }
 
 func TestConfigToDto_PathToSource(t *testing.T) {
@@ -612,4 +706,80 @@ func TestTrimDevPrefix_Nil(t *testing.T) {
 	result := trimDevPrefix(nil)
 
 	assert.Nil(t, result)
+}
+
+func TestDtoToDbomConverter_MountPointPathsToMountPointDataMap(t *testing.T) {
+	conv := DtoToDbomConverterImpl{}
+
+	source := []dbom.MountPointPath{
+		{
+			Path:     "/mnt/path1",
+			DeviceId: "sda1",
+		},
+		{
+			Path:     "/mnt/path2",
+			DeviceId: "sdb1",
+		},
+	}
+
+	result, err := conv.MountPointPathsToMountPointDataMap(source)
+
+	require.NoError(t, err)
+	assert.Len(t, result, 2)
+	assert.Contains(t, result, "/mnt/path1")
+	assert.Contains(t, result, "/mnt/path2")
+	assert.Equal(t, "/mnt/path1", result["/mnt/path1"].Path)
+	assert.Equal(t, "/mnt/path2", result["/mnt/path2"].Path)
+	assert.Equal(t, "sda1", result["/mnt/path1"].DeviceId)
+	assert.Equal(t, "sdb1", result["/mnt/path2"].DeviceId)
+}
+
+func TestDtoToDbomConverter_MountPointPathsToMountPointDataMap_Empty(t *testing.T) {
+	conv := DtoToDbomConverterImpl{}
+
+	source := []dbom.MountPointPath{}
+
+	result, err := conv.MountPointPathsToMountPointDataMap(source)
+
+	require.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Empty(t, result)
+}
+
+func TestDtoToDbomConverter_MountPointPathsToMountPointDataMap_SingleItem(t *testing.T) {
+	conv := DtoToDbomConverterImpl{}
+
+	source := []dbom.MountPointPath{
+		{
+			Path:     "/mnt/single",
+			DeviceId: "nvme0n1p1",
+		},
+	}
+
+	result, err := conv.MountPointPathsToMountPointDataMap(source)
+
+	require.NoError(t, err)
+	assert.Len(t, result, 1)
+	assert.Contains(t, result, "/mnt/single")
+	assert.Equal(t, "/mnt/single", result["/mnt/single"].Path)
+	assert.Equal(t, "nvme0n1p1", result["/mnt/single"].DeviceId)
+}
+
+func TestDtoToDbomConverter_MountPointPathsToMountPointDataMap_WithNilValues(t *testing.T) {
+	conv := DtoToDbomConverterImpl{}
+
+	source := []dbom.MountPointPath{
+		{
+			Path:     "/mnt/path1",
+			DeviceId: "sda1",
+		},
+	}
+
+	result, err := conv.MountPointPathsToMountPointDataMap(source)
+
+	require.NoError(t, err)
+	assert.Len(t, result, 1)
+	mpData := result["/mnt/path1"]
+	assert.NotNil(t, mpData)
+	assert.Equal(t, "/mnt/path1", mpData.Path)
 }

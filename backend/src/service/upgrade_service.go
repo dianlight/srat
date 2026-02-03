@@ -22,7 +22,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal/updatekey"
 	"github.com/fsnotify/fsnotify"
-	"github.com/google/go-github/v81/github"
+	"github.com/google/go-github/v82/github"
 	"github.com/vvair/selfupdate"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"

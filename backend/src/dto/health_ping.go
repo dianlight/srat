@@ -5,7 +5,7 @@ import "github.com/dianlight/srat/homeassistant/addons"
 type HealthPing struct {
 	Alive              bool                   `json:"alive"`
 	AliveTime          int64                  `json:"aliveTime"`
-	SambaProcessStatus SambaProcessStatus     `json:"samba_process_status"`
+	SambaProcessStatus ServerProcessStatus    `json:"samba_process_status"`
 	LastError          string                 `json:"last_error"`
 	Dirty              DataDirtyTracker       `json:"dirty_tracking"`
 	UpdateAvailable    bool                   `json:"update_available"`

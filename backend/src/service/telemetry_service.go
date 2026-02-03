@@ -92,15 +92,21 @@ func NewTelemetryService(lc fx.Lifecycle, Ctx context.Context,
 		}
 	}
 
-	telemetryMode, _ := settingService.GetValue("TelemetryMode")
-	if mode, ok := telemetryMode.(dto.TelemetryMode); !ok || !mode.IsValid() {
-		telemetryMode = dto.TelemetryModes.TELEMETRYMODEASK
+	setting, err := settingService.Load()
+	if err != nil {
+		slog.ErrorContext(Ctx, "Error loading settings for telemetry service", "error", err)
+	}
+	if setting == nil {
+		setting = &dto.Settings{}
+	}
+	if !setting.TelemetryMode.IsValid() {
+		setting.TelemetryMode = dto.TelemetryModes.TELEMETRYMODEASK
 	}
 
 	tm := &TelemetryService{
 		ctx:                 Ctx,
 		settingService:      settingService,
-		mode:                telemetryMode.(dto.TelemetryMode),
+		mode:                setting.TelemetryMode,
 		accessToken:         accessToken,
 		environment:         environment,
 		version:             config.Version,

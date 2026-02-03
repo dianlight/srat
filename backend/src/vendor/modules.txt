@@ -34,18 +34,19 @@ github.com/Masterminds/semver/v3
 # github.com/Masterminds/sprig/v3 v3.3.0
 ## explicit; go 1.21
 github.com/Masterminds/sprig/v3
-# github.com/StackExchange/wmi v1.2.1
-## explicit; go 1.13
-github.com/StackExchange/wmi
-# github.com/adelolmo/hd-idle v0.0.0-20250511190312-c87bc6e9ce96
+# github.com/adelolmo/hd-idle v0.0.0-20260125082707-310727a56de0
 ## explicit; go 1.16
 github.com/adelolmo/hd-idle/diskstats
 github.com/adelolmo/hd-idle/io
 github.com/adelolmo/hd-idle/sgio
-# github.com/air-verse/air v1.64.0
+# github.com/air-verse/air v1.64.4
 ## explicit; go 1.25
 github.com/air-verse/air
 github.com/air-verse/air/runner
+# github.com/andybalholm/brotli v1.2.0
+## explicit; go 1.22
+github.com/andybalholm/brotli
+github.com/andybalholm/brotli/matchfinder
 # github.com/angusgmorrison/logfusc v0.1.0
 ## explicit; go 1.20
 github.com/angusgmorrison/logfusc
@@ -76,7 +77,7 @@ github.com/cespare/xxhash/v2
 # github.com/cpuguy83/go-md2man/v2 v2.0.7
 ## explicit; go 1.12
 github.com/cpuguy83/go-md2man/v2/md2man
-# github.com/danielgtaylor/huma/v2 v2.34.3
+# github.com/danielgtaylor/huma/v2 v2.34.2
 ## explicit; go 1.23.0
 github.com/danielgtaylor/huma/v2
 github.com/danielgtaylor/huma/v2/adapters/humaflow
@@ -184,11 +185,11 @@ github.com/gohugoio/hugo/hugofs/glob
 github.com/gohugoio/hugo/identity
 github.com/gohugoio/hugo/resources/kinds
 github.com/gohugoio/hugo/watcher/filenotify
-# github.com/google/go-github/v81 v81.0.0
+# github.com/google/go-github/v82 v82.0.0
 ## explicit; go 1.24.0
-github.com/google/go-github/v81/github
-# github.com/google/go-querystring v1.1.0
-## explicit; go 1.10
+github.com/google/go-github/v82/github
+# github.com/google/go-querystring v1.2.0
+## explicit; go 1.13
 github.com/google/go-querystring/query
 # github.com/google/uuid v1.6.0
 ## explicit
@@ -230,16 +231,12 @@ github.com/jmattheis/goverter/method
 github.com/jmattheis/goverter/namer
 github.com/jmattheis/goverter/pkgload
 github.com/jmattheis/goverter/xtype
+# github.com/joho/godotenv v1.5.1
+## explicit; go 1.12
+github.com/joho/godotenv
 # github.com/josharian/intern v1.0.0
 ## explicit; go 1.5
 github.com/josharian/intern
-# github.com/jpillora/overseer v1.1.6
-## explicit; go 1.13
-github.com/jpillora/overseer
-github.com/jpillora/overseer/fetcher
-# github.com/jpillora/s3 v1.1.4
-## explicit; go 1.13
-github.com/jpillora/s3
 # github.com/k0kubun/pp/v3 v3.5.0
 ## explicit; go 1.23.0
 github.com/k0kubun/pp/v3
@@ -419,7 +416,7 @@ github.com/sergi/go-diff/diffmatchpatch
 # github.com/sethvargo/go-retry v0.3.0
 ## explicit; go 1.21
 github.com/sethvargo/go-retry
-# github.com/shirou/gopsutil/v4 v4.25.12
+# github.com/shirou/gopsutil/v4 v4.26.1
 ## explicit; go 1.24.0
 github.com/shirou/gopsutil/v4/common
 github.com/shirou/gopsutil/v4/cpu

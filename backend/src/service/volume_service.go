@@ -149,9 +149,12 @@ func NewVolumeService(
 				})
 			}
 		case events.EventTypes.ADD, events.EventTypes.UPDATE:
+
 			disk, err := p.disks.AddMountPointShare(se.Share)
 			if err != nil {
-				slog.WarnContext(ctx, "Failed to add/update share in mount point in cache", "share", se.Share, "err", err)
+				if se.Share.Usage != "internal" {
+					slog.WarnContext(ctx, "Failed to add/update share in mount point in cache", "share", se.Share, "err", err)
+				}
 				return nil
 			}
 			p.eventBus.EmitDisk(events.DiskEvent{

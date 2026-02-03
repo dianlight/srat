@@ -12,7 +12,6 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/core_api"
-	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/tlog"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
@@ -21,7 +20,7 @@ import (
 type HomeAssistantServiceInterface interface {
 	SendDiskEntities(disks *[]*dto.Disk) error
 	SendSambaStatusEntity(status *dto.SambaStatus) error
-	SendSambaProcessStatusEntity(status *dto.SambaProcessStatus) error
+	SendSambaProcessStatusEntity(status *dto.ServerProcessStatus) error
 	SendVolumeStatusEntity(data *[]*dto.Disk) error
 	SendDiskHealthEntities(diskHealth *dto.DiskHealth) error
 	CreatePersistentNotification(notificationID, title, message string) error
@@ -29,10 +28,11 @@ type HomeAssistantServiceInterface interface {
 }
 
 type HomeAssistantService struct {
-	ctx                     context.Context
-	state                   *dto.ContextState
-	coreClient              core_api.ClientWithResponsesInterface
-	propRepo                repository.PropertyRepositoryInterface
+	ctx            context.Context
+	state          *dto.ContextState
+	coreClient     core_api.ClientWithResponsesInterface
+	settingService SettingServiceInterface
+	//propRepo                repository.PropertyRepositoryInterface
 	notificationTracker     map[string]string // Maps notificationID to last sent date
 	notificationTrackerLock sync.RWMutex
 }
@@ -42,22 +42,24 @@ type HomeAssistantServiceParams struct {
 	Ctx        context.Context
 	State      *dto.ContextState
 	CoreClient core_api.ClientWithResponsesInterface `optional:"true"`
-	PropRepo   repository.PropertyRepositoryInterface
+	//PropRepo   repository.PropertyRepositoryInterface
+	SettingService SettingServiceInterface
 }
 
 func NewHomeAssistantService(params HomeAssistantServiceParams) HomeAssistantServiceInterface {
 	return &HomeAssistantService{
-		ctx:                 params.Ctx,
-		state:               params.State,
-		coreClient:          params.CoreClient,
-		propRepo:            params.PropRepo,
+		ctx:            params.Ctx,
+		state:          params.State,
+		coreClient:     params.CoreClient,
+		settingService: params.SettingService,
+		//propRepo:            params.PropRepo,
 		notificationTracker: make(map[string]string),
 	}
 }
 
 func (s *HomeAssistantService) SendDiskEntities(disks *[]*dto.Disk) error {
-	use, _ := s.propRepo.Value("ExportStatsToHA", false)
-	if use == nil || !use.(bool) {
+	setting, _ := s.settingService.Load()
+	if setting == nil || setting.ExportStatsToHA == nil || !*setting.ExportStatsToHA {
 		return nil
 	}
 
@@ -84,8 +86,8 @@ func (s *HomeAssistantService) SendDiskEntities(disks *[]*dto.Disk) error {
 }
 
 func (s *HomeAssistantService) SendSambaStatusEntity(status *dto.SambaStatus) error {
-	use, _ := s.propRepo.Value("ExportStatsToHA", false)
-	if use == nil || !use.(bool) {
+	setting, _ := s.settingService.Load()
+	if setting == nil || setting.ExportStatsToHA == nil || !*setting.ExportStatsToHA {
 		return nil
 	}
 
@@ -133,9 +135,9 @@ func (s *HomeAssistantService) SendSambaStatusEntity(status *dto.SambaStatus) er
 	return nil
 }
 
-func (s *HomeAssistantService) SendSambaProcessStatusEntity(status *dto.SambaProcessStatus) error {
-	use, _ := s.propRepo.Value("ExportStatsToHA", false)
-	if use == nil || !use.(bool) {
+func (s *HomeAssistantService) SendSambaProcessStatusEntity(status *dto.ServerProcessStatus) error {
+	setting, _ := s.settingService.Load()
+	if setting == nil || setting.ExportStatsToHA == nil || !*setting.ExportStatsToHA {
 		return nil
 	}
 
@@ -197,8 +199,8 @@ func (s *HomeAssistantService) SendSambaProcessStatusEntity(status *dto.SambaPro
 }
 
 func (s *HomeAssistantService) SendVolumeStatusEntity(data *[]*dto.Disk) error {
-	use, _ := s.propRepo.Value("ExportStatsToHA", false)
-	if use == nil || !use.(bool) {
+	setting, _ := s.settingService.Load()
+	if setting == nil || setting.ExportStatsToHA == nil || !*setting.ExportStatsToHA {
 		return nil
 	}
 
@@ -401,8 +403,8 @@ func (s *HomeAssistantService) sendPartitionEntity(partition dto.Partition, disk
 }
 
 func (s *HomeAssistantService) SendDiskHealthEntities(diskHealth *dto.DiskHealth) error {
-	use, _ := s.propRepo.Value("ExportStatsToHA", false)
-	if use == nil || !use.(bool) {
+	setting, _ := s.settingService.Load()
+	if setting == nil || setting.ExportStatsToHA == nil || !*setting.ExportStatsToHA {
 		return nil
 	}
 

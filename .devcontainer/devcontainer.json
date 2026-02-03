@@ -1,6 +1,6 @@
 {
 	"name": "SRAT",
-	"image": "ghcr.io/hassio-addons/base:19.0.0",
+	"image": "ghcr.io/hassio-addons/base:20.0.1",
 	//"image": "ghcr.io/hassio-addons/base:edge",
 	"runArgs": [
 		"--cap-add=SYS_PTRACE",
@@ -101,7 +101,8 @@
 				"TypeScriptTeam.native-preview",
 				"nguyenngoclong.terminal-keeper",
 				"DavidAnson.vscode-markdownlint",
-				"neonxp.gotools"
+				"neonxp.gotools",
+				"svvashishtha.go-interface-navigator"
 			],
 			"mcp": {
 				"servers": {

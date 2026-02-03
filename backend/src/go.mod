@@ -5,12 +5,11 @@ go 1.25.5
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/gorilla/mux v1.8.1
-	github.com/jpillora/overseer v1.1.6
 	github.com/maniartech/signals v1.3.1
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/oapi-codegen/runtime v1.1.2
 	github.com/pilebones/go-udev v0.9.1
-	github.com/shirou/gopsutil/v4 v4.25.12
+	github.com/shirou/gopsutil/v4 v4.26.1
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/sys v0.40.0
 )
@@ -18,16 +17,16 @@ require (
 require (
 	aead.dev/minisign v0.3.0
 	github.com/DATA-DOG/go-sqlmock v1.5.2
-	github.com/adelolmo/hd-idle v0.0.0-20250511190312-c87bc6e9ce96
+	github.com/adelolmo/hd-idle v0.0.0-20260125082707-310727a56de0
 	github.com/angusgmorrison/logfusc v0.1.0
 	github.com/benmcclelland/sgio v0.0.0-20250710154739-45e823ff1f46
-	github.com/danielgtaylor/huma/v2 v2.34.3
+	github.com/danielgtaylor/huma/v2 v2.35.0
 	github.com/dianlight/smartmontools-go v0.2.4
 	github.com/dianlight/tlog v0.1.2
 	github.com/fatih/color v1.18.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/gofri/go-github-ratelimit/v2 v2.0.2
-	github.com/google/go-github/v81 v81.0.0
+	github.com/google/go-github/v82 v82.0.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/jarcoal/httpmock v1.4.1
 	github.com/lonegunmanb/go-defaults v1.4.0
@@ -49,7 +48,8 @@ require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/AlecAivazis/survey/v2 v2.3.7 // indirect
 	github.com/Antonboom/testifylint v1.6.4 // indirect
-	github.com/air-verse/air v1.64.0 // indirect
+	github.com/air-verse/air v1.64.4 // indirect
+	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/apex/log v1.9.0 // indirect
 	github.com/bep/godartsass/v2 v2.5.0 // indirect
 	github.com/bep/golibsass v1.2.0 // indirect
@@ -62,6 +62,7 @@ require (
 	github.com/gohugoio/hugo v0.149.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jmattheis/goverter v1.9.3 // indirect
+	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/k0kubun/pp/v3 v3.5.0 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
@@ -103,7 +104,6 @@ require (
 	dario.cat/mergo v1.0.2 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver/v3 v3.4.0
-	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/danielgtaylor/mexpr v1.9.1 // indirect
 	github.com/danielgtaylor/shorthand/v2 v2.2.0 // indirect
@@ -118,13 +118,12 @@ require (
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/swag v0.23.0 // indirect
-	github.com/google/go-querystring v1.1.0 // indirect
+	github.com/google/go-querystring v1.2.0 // indirect
 	github.com/google/uuid v1.6.0
 	github.com/huandu/xstrings v1.5.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
-	github.com/jpillora/s3 v1.1.4 // indirect
 	github.com/lufia/plan9stats v0.0.0-20251013123823-9fd1530e3ec3 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
@@ -163,6 +162,7 @@ require (
 )
 
 require (
+	github.com/creasty/defaults v1.8.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/lmittmann/tint v1.1.2 // indirect
 	github.com/ovechkin-dm/mockio/v2 v2.0.4

@@ -3,18 +3,15 @@ package service_test
 import (
 	"context"
 	"crypto/rand"
-	"log"
 	"os"
 	"sync"
 	"testing"
 
-	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dbom/g"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/service"
-	"github.com/dianlight/srat/templates"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
@@ -59,18 +56,20 @@ func (suite *ShareServiceSuite) SetupTest() {
 				sharedResources.DatabasePath = "file::memory:?cache=shared&_pragma=foreign_keys(1)"
 				return &sharedResources
 			},
-			func() *config.DefaultConfig {
-				var nconfig config.Config
-				buffer, err := templates.Default_Config_content.ReadFile("default_config.json")
-				if err != nil {
-					log.Fatalf("Cant read default config file %#+v", err)
-				}
-				err = nconfig.LoadConfigBuffer(buffer) // Assign to existing err
-				if err != nil {
-					log.Fatalf("Cant load default config from buffer %#+v", err)
-				}
-				return &config.DefaultConfig{Config: nconfig}
-			},
+			/*
+				func() *config.DefaultConfig {
+					var nconfig config.Config
+					buffer, err := templates.Default_Config_content.ReadFile("default_config.json")
+					if err != nil {
+						log.Fatalf("Cant read default config file %#+v", err)
+					}
+					err = nconfig.LoadConfigBuffer(buffer) // Assign to existing err
+					if err != nil {
+						log.Fatalf("Cant load default config from buffer %#+v", err)
+					}
+					return &config.DefaultConfig{Config: nconfig}
+				},
+			*/
 			dbom.NewDB,
 			service.NewShareService,
 			mock.Mock[service.BroadcasterServiceInterface],
@@ -1030,6 +1029,142 @@ func (suite *ShareServiceSuite) TestDeleteShareNotFound() {
 	// Assert
 	suite.Error(err)
 	suite.True(errors.Is(err, dto.ErrorShareNotFound))
+}
+
+// TestCreateAndUpdateShareWithNumericPrefix tests issue #416:
+// Create and update a share with a name starting with numbers (e.g., "500G")
+// This test verifies:
+// 1. Share names with numeric prefixes are properly preserved during creation
+// 2. Share updates don't cause foreign key constraint violations
+// 3. User associations are properly managed during updates
+func (suite *ShareServiceSuite) TestCreateAndUpdateShareWithNumericPrefix() {
+	// Setup
+	mock.When(suite.userService.GetAdmin()).ThenReturn(&dto.User{
+		Username: "homeassistant",
+		IsAdmin:  true,
+	}, nil)
+
+	// Create a share with numeric prefix (issue #416 scenario)
+	initialShare := dto.SharedResource{
+		Name:        "500G",
+		Disabled:    boolPtr(false),
+		GuestOk:     boolPtr(false),
+		TimeMachine: boolPtr(false),
+		RecycleBin:  boolPtr(false),
+		Usage:       "share",
+		MountPointData: &dto.MountPointData{
+			Path:             "/mnt/500G",
+			DeviceId:         "usb-500g-dev",
+			Type:             "ADDON",
+			IsWriteSupported: boolPtr(true),
+			IsMounted:        true,
+			IsInvalid:        false,
+		},
+		Users: []dto.User{
+			{Username: "homeassistant"},
+			{Username: "testuser"},
+		},
+		RoUsers: []dto.User{
+			{Username: "rouser"},
+		},
+	}
+
+	// Execute: Create the share
+	created, err := suite.shareService.CreateShare(initialShare)
+
+	// Assert: Share is created with correct name
+	suite.Require().NoError(err, "Should create share with numeric prefix")
+	suite.Require().NotNil(created)
+	suite.Equal("500G", created.Name, "Share name should be preserved as '500G'")
+	suite.Equal(dto.UsageAsShare, created.Usage)
+	suite.Len(created.Users, 2, "Should have 2 users")
+
+	// Verify in database that the share was created with correct name
+	var dbShare dbom.ExportedShare
+	dbErr := suite.db.Where("name = ?", "500G").First(&dbShare).Error
+	suite.NoError(dbErr, "Share should exist in database with name '500G'")
+	suite.Equal("500G", dbShare.Name)
+
+	// Execute: Update the share with different users (tests association clearing)
+	updatedShare := dto.SharedResource{
+		Name:        "500G",
+		Disabled:    boolPtr(false),
+		GuestOk:     boolPtr(true),
+		TimeMachine: boolPtr(false),
+		RecycleBin:  boolPtr(true),
+		Usage:       "backup",
+		MountPointData: &dto.MountPointData{
+			Path:             "/mnt/500G",
+			DeviceId:         "usb-500g-dev",
+			Type:             "ADDON",
+			IsWriteSupported: boolPtr(true),
+			IsMounted:        true,
+			IsInvalid:        false,
+		},
+		Users: []dto.User{
+			{Username: "homeassistant"},
+			{Username: "newuser"},
+		},
+		RoUsers: []dto.User{},
+	}
+
+	// Execute: Update the share
+	result, err := suite.shareService.UpdateShare("500G", updatedShare)
+
+	// Assert: Update succeeds without foreign key constraint violation
+	suite.Require().NoError(err, "Should update share without foreign key constraint error")
+	suite.NotNil(result)
+	suite.Equal("500G", result.Name, "Share name should remain '500G' after update")
+	suite.True(*result.GuestOk, "GuestOk should be updated to true")
+	suite.True(*result.RecycleBin, "RecycleBin should be updated to true")
+	suite.Equal(dto.HAMountUsage("backup"), result.Usage)
+	suite.Len(result.Users, 2, "Should have 2 users after update")
+
+	// Verify in database that associations were properly updated
+	var updatedDbShare dbom.ExportedShare
+	dbErr = suite.db.
+		Preload("Users").
+		Preload("RoUsers").
+		Where("name = ?", "500G").
+		First(&updatedDbShare).Error
+	suite.NoError(dbErr, "Updated share should exist in database")
+	suite.Equal("500G", updatedDbShare.Name)
+	suite.Len(updatedDbShare.Users, 2, "Users associations should be updated")
+	suite.Len(updatedDbShare.RoUsers, 0, "RoUsers associations should be cleared")
+
+	// Execute: Update again with different users to ensure multiple updates work
+	secondUpdate := dto.SharedResource{
+		Name:        "500G",
+		Disabled:    boolPtr(true),
+		GuestOk:     boolPtr(false),
+		TimeMachine: boolPtr(false),
+		RecycleBin:  boolPtr(false),
+		Usage:       "internal",
+		MountPointData: &dto.MountPointData{
+			Path:             "/mnt/500G",
+			DeviceId:         "usb-500g-dev",
+			Type:             "ADDON",
+			IsWriteSupported: boolPtr(true),
+			IsMounted:        true,
+			IsInvalid:        false,
+		},
+		Users: []dto.User{
+			{Username: "homeassistant"},
+		},
+		RoUsers: []dto.User{
+			{Username: "viewer"},
+		},
+	}
+
+	// Execute: Second update
+	result2, err := suite.shareService.UpdateShare("500G", secondUpdate)
+
+	// Assert: Second update also succeeds
+	suite.Require().NoError(err, "Second update should also succeed without constraint violation")
+	suite.NotNil(result2)
+	suite.Equal("500G", result2.Name)
+	suite.True(*result2.Disabled)
+	suite.Equal(1, len(result2.Users), "Should have 1 user after second update")
 }
 
 // Helper functions

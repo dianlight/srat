@@ -271,6 +271,43 @@ describe("Component rendering", () => {
 });
 ```
 
+### Test-Driven Debugging (MANDATORY RULE FOR BUG FIXES)
+
+When addressing any issue or bug, **ALWAYS follow this workflow**:
+
+1. **Understand the issue**: Read the issue description, error messages, or reproduction steps carefully
+2. **Create a failing test FIRST**: Before writing any fix, create a test that reproduces the issue
+   - For backend bugs: Add a test case to the relevant handler or service test suite that fails with the current code
+   - For frontend bugs: Add a test case to the relevant component test that demonstrates the broken behavior
+   - The test should fail with the current code and pass after the fix is applied
+3. **Verify the test fails**: Run the test suite to confirm your test fails before any code changes
+   - Backend: `cd backend && make test` (run specific test if possible)
+   - Frontend: `cd frontend && bun test [ComponentName]` (run specific test)
+4. **Implement the fix**: Make minimal changes to fix the failing test
+5. **Verify the test passes**: Run the test again to confirm it now passes
+6. **Verify no regressions**: Run the full test suite for the affected module
+   - Backend: `cd backend && make test`
+   - Frontend: `cd frontend && bun test` with `--rerun-each 10` to detect flakiness
+
+**Benefits of this approach:**
+
+- Ensures the bug is actually fixed (not masked by incomplete changes)
+- Prevents regressions when the same issue reappears later
+- Creates documentation of the expected behavior for future developers
+- Speeds up debugging by having automated verification of the fix
+
+**Example: Bug fix workflow**
+
+```plaintext
+1. Issue: Share name validation not working in create dialog
+2. Test: Add frontend component test that verifies validation message appears when empty name submitted
+3. Run: bun test ShareDialog --rerun-each 10 → Test FAILS ✗
+4. Fix: Update ShareDialog validation logic
+5. Run: bun test ShareDialog --rerun-each 10 → Test PASSES ✓
+6. Run: bun test → Verify no other tests broken
+7. Result: Bug fixed with test coverage preventing future regression
+```
+
 ## Quality Gates & Validation
 
 ### Pre-commit Hooks

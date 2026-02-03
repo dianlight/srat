@@ -106,7 +106,7 @@ type HDIdleServiceParams struct {
 type HDIdleServiceOut struct {
 	fx.Out
 	HDIdleService HDIdleServiceInterface
-	ProcessStatus SambaServiceProcessStatus `group:"internal_services"`
+	ProcessStatus ServerProcessStatus `group:"internal_services"`
 }
 
 // NewHDIdleService creates a new HDIdleService instance
@@ -342,7 +342,7 @@ func (s *HDIdleService) SaveDeviceConfig(device dto.HDIdleDevice) errors.E {
 		return errors.WithStack(err)
 	}
 
-	err = s.db.Debug().Save(&dbDevice).Error
+	err = s.db.Save(&dbDevice).Error
 	if err != nil {
 		return errors.WithStack(err)
 	}
