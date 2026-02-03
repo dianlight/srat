@@ -37,7 +37,7 @@ type FilesystemServiceInterface interface {
 	GetAdapter(fsType string) (filesystem.FilesystemAdapter, errors.E)
 
 	// GetSupportedFilesystems returns information about all supported filesystems.
-	GetSupportedFilesystems(ctx context.Context) (map[string]filesystem.FilesystemSupport, errors.E)
+	GetSupportedFilesystems(ctx context.Context) (map[string]dto.FilesystemSupport, errors.E)
 
 	// ListSupportedTypes returns a list of all supported filesystem type names.
 	ListSupportedTypes() []string
@@ -338,7 +338,10 @@ func (s *FilesystemService) SyscallDataToMountFlag(data string) ([]dto.MountFlag
 
 // FsTypeFromDevice attempts to determine the filesystem type of a block device by reading its magic numbers.
 func (s *FilesystemService) FsTypeFromDevice(devicePath string) (string, errors.E) {
-	fsType, err := filesystem.DetectFilesystemType(devicePath)
+	// Get all adapters for detection
+	adapters := s.registry.GetAll()
+	
+	fsType, err := filesystem.DetectFilesystemType(devicePath, adapters)
 	if err != nil {
 		// Map the error to the appropriate DTO error type for backward compatibility
 		if errors.Is(err, filesystem.ErrorDeviceNotFound) {
@@ -361,7 +364,7 @@ func (s *FilesystemService) GetAdapter(fsType string) (filesystem.FilesystemAdap
 }
 
 // GetSupportedFilesystems returns information about all supported filesystems
-func (s *FilesystemService) GetSupportedFilesystems(ctx context.Context) (map[string]filesystem.FilesystemSupport, errors.E) {
+func (s *FilesystemService) GetSupportedFilesystems(ctx context.Context) (map[string]dto.FilesystemSupport, errors.E) {
 	return s.registry.GetSupportedFilesystems(ctx)
 }
 

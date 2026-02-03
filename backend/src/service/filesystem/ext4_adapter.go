@@ -23,6 +23,9 @@ func NewExt4Adapter() FilesystemAdapter {
 			mkfsCommand:   "mkfs.ext4",
 			fsckCommand:   "fsck.ext4",
 			labelCommand:  "tune2fs",
+			signatures: []dto.FsMagicSignature{
+				{Offset: 1080, Magic: []byte{0x53, 0xEF}}, // ext2/3/4, little-endian 0xEF53
+			},
 		},
 	}
 }
@@ -41,13 +44,13 @@ func (a *Ext4Adapter) GetMountFlags() []dto.MountFlag {
 }
 
 // IsSupported checks if ext4 is supported on the system
-func (a *Ext4Adapter) IsSupported(ctx context.Context) (FilesystemSupport, errors.E) {
+func (a *Ext4Adapter) IsSupported(ctx context.Context) (dto.FilesystemSupport, errors.E) {
 	support := a.checkCommandAvailability()
 	return support, nil
 }
 
 // Format formats a device with ext4 filesystem
-func (a *Ext4Adapter) Format(ctx context.Context, device string, options FormatOptions) errors.E {
+func (a *Ext4Adapter) Format(ctx context.Context, device string, options dto.FormatOptions) errors.E {
 	args := []string{}
 
 	if options.Force {
@@ -74,7 +77,7 @@ func (a *Ext4Adapter) Format(ctx context.Context, device string, options FormatO
 }
 
 // Check runs filesystem check on an ext4 device
-func (a *Ext4Adapter) Check(ctx context.Context, device string, options CheckOptions) (CheckResult, errors.E) {
+func (a *Ext4Adapter) Check(ctx context.Context, device string, options dto.CheckOptions) (dto.CheckResult, errors.E) {
 	args := []string{}
 
 	if options.AutoFix {
@@ -95,7 +98,7 @@ func (a *Ext4Adapter) Check(ctx context.Context, device string, options CheckOpt
 
 	output, exitCode, err := runCommand(ctx, a.fsckCommand, args...)
 	
-	result := CheckResult{
+	result := dto.CheckResult{
 		ExitCode: exitCode,
 		Message:  output,
 	}
@@ -181,8 +184,8 @@ func (a *Ext4Adapter) SetLabel(ctx context.Context, device string, label string)
 }
 
 // GetState returns the state of an ext4 filesystem
-func (a *Ext4Adapter) GetState(ctx context.Context, device string) (FilesystemState, errors.E) {
-	state := FilesystemState{
+func (a *Ext4Adapter) GetState(ctx context.Context, device string) (dto.FilesystemState, errors.E) {
+	state := dto.FilesystemState{
 		AdditionalInfo: make(map[string]interface{}),
 	}
 

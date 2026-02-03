@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/dianlight/srat/dto"
 	"gitlab.com/tozd/go/errors"
 )
 
@@ -63,11 +64,11 @@ func (r *Registry) GetAll() []FilesystemAdapter {
 }
 
 // GetSupportedFilesystems returns information about all supported filesystems
-func (r *Registry) GetSupportedFilesystems(ctx context.Context) (map[string]FilesystemSupport, errors.E) {
+func (r *Registry) GetSupportedFilesystems(ctx context.Context) (map[string]dto.FilesystemSupport, errors.E) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	
-	result := make(map[string]FilesystemSupport)
+	result := make(map[string]dto.FilesystemSupport)
 	
 	for name, adapter := range r.adapters {
 		support, err := adapter.IsSupported(ctx)

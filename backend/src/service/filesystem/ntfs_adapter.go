@@ -23,6 +23,9 @@ func NewNtfsAdapter() FilesystemAdapter {
 			mkfsCommand:   "mkfs.ntfs",
 			fsckCommand:   "ntfsfix",
 			labelCommand:  "ntfslabel",
+			signatures: []dto.FsMagicSignature{
+				{Offset: 3, Magic: []byte{'N', 'T', 'F', 'S', ' ', ' ', ' ', ' '}}, // "NTFS    "
+			},
 		},
 	}
 }
@@ -41,13 +44,13 @@ func (a *NtfsAdapter) GetMountFlags() []dto.MountFlag {
 }
 
 // IsSupported checks if ntfs is supported on the system
-func (a *NtfsAdapter) IsSupported(ctx context.Context) (FilesystemSupport, errors.E) {
+func (a *NtfsAdapter) IsSupported(ctx context.Context) (dto.FilesystemSupport, errors.E) {
 	support := a.checkCommandAvailability()
 	return support, nil
 }
 
 // Format formats a device with ntfs filesystem
-func (a *NtfsAdapter) Format(ctx context.Context, device string, options FormatOptions) errors.E {
+func (a *NtfsAdapter) Format(ctx context.Context, device string, options dto.FormatOptions) errors.E {
 	args := []string{}
 
 	// Quick format
@@ -77,7 +80,7 @@ func (a *NtfsAdapter) Format(ctx context.Context, device string, options FormatO
 }
 
 // Check runs filesystem check on an ntfs device
-func (a *NtfsAdapter) Check(ctx context.Context, device string, options CheckOptions) (CheckResult, errors.E) {
+func (a *NtfsAdapter) Check(ctx context.Context, device string, options dto.CheckOptions) (dto.CheckResult, errors.E) {
 	args := []string{}
 
 	// ntfsfix doesn't have the same options as fsck
@@ -91,7 +94,7 @@ func (a *NtfsAdapter) Check(ctx context.Context, device string, options CheckOpt
 
 	output, exitCode, err := runCommand(ctx, a.fsckCommand, args...)
 	
-	result := CheckResult{
+	result := dto.CheckResult{
 		ExitCode: exitCode,
 		Message:  output,
 	}
@@ -157,8 +160,8 @@ func (a *NtfsAdapter) SetLabel(ctx context.Context, device string, label string)
 }
 
 // GetState returns the state of an ntfs filesystem
-func (a *NtfsAdapter) GetState(ctx context.Context, device string) (FilesystemState, errors.E) {
-	state := FilesystemState{
+func (a *NtfsAdapter) GetState(ctx context.Context, device string) (dto.FilesystemState, errors.E) {
+	state := dto.FilesystemState{
 		AdditionalInfo: make(map[string]interface{}),
 	}
 

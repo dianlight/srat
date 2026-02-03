@@ -5,40 +5,9 @@ import (
 	"io"
 	"os"
 
+	"github.com/dianlight/srat/dto"
 	"gitlab.com/tozd/go/errors"
 )
-
-// fsMagicSignature defines a structure to hold filesystem signature information.
-type fsMagicSignature struct {
-	fsType string
-	offset int64
-	magic  []byte
-}
-
-// knownFsSignatures is a list of known filesystem signatures.
-// The order can matter if signatures are subsets of others, though distinct offsets help.
-var knownFsSignatures = []fsMagicSignature{
-	// Filesystems with magic at/near offset 0
-	{fsType: "xfs", offset: 0, magic: []byte{'X', 'F', 'S', 'B'}},
-	{fsType: "squashfs", offset: 0, magic: []byte{0x68, 0x73, 0x71, 0x73}},              // "hsqs" little-endian
-	{fsType: "ntfs", offset: 3, magic: []byte{'N', 'T', 'F', 'S', ' ', ' ', ' ', ' '}},  // "NTFS    "
-	{fsType: "exfat", offset: 3, magic: []byte{'E', 'X', 'F', 'A', 'T', ' ', ' ', ' '}}, // "EXFAT   "
-
-	// FAT types
-	{fsType: "vfat", offset: 82, magic: []byte{'F', 'A', 'T', '3', '2', ' ', ' ', ' '}}, // FAT32 specific
-	{fsType: "vfat", offset: 54, magic: []byte{'F', 'A', 'T', '1', '6', ' ', ' ', ' '}}, // FAT16 specific
-	{fsType: "vfat", offset: 54, magic: []byte{'F', 'A', 'T', '1', '2', ' ', ' ', ' '}}, // FAT12 specific
-
-	// Filesystems with magic at larger offsets
-	{fsType: "f2fs", offset: 1024, magic: []byte{0x10, 0x20, 0xF5, 0xF2}}, // Little-endian 0xF2F52010
-	{fsType: "ext4", offset: 1080, magic: []byte{0x53, 0xEF}},             // ext2/3/4, little-endian 0xEF53
-
-	// ISO9660 - Primary Volume Descriptor
-	{fsType: "iso9660", offset: 0x8001, magic: []byte{'C', 'D', '0', '0', '1'}}, // 32769
-
-	// BTRFS
-	{fsType: "btrfs", offset: 0x10040, magic: []byte{'_', 'B', 'H', 'R', 'f', 'S', '_', 'M'}}, // 65600
-}
 
 const maxDeviceReadLength = 65608 // Max offset (btrfs: 65600) + max magic length (8)
 
@@ -51,7 +20,7 @@ var (
 
 // DetectFilesystemType attempts to determine the filesystem type of a block device by reading its magic numbers.
 // Returns the filesystem type string if detected, empty string otherwise.
-func DetectFilesystemType(devicePath string) (string, errors.E) {
+func DetectFilesystemType(devicePath string, adapters []FilesystemAdapter) (string, errors.E) {
 	file, err := os.Open(devicePath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -64,9 +33,6 @@ func DetectFilesystemType(devicePath string) (string, errors.E) {
 	buffer := make([]byte, maxDeviceReadLength)
 	n, err := file.ReadAt(buffer, 0)
 	if err != nil && err != io.EOF {
-		// For ReadAt, io.EOF is reported only if no bytes were read.
-		// If n > 0 and err == io.EOF, it means a partial read, which is fine.
-		// If n == 0 and err == io.EOF, the file is empty or smaller than our read attempt from offset 0.
 		return "", errors.WithDetails(ErrorDeviceAccess, "Path", devicePath, "Operation", "ReadAt", "Error", err)
 	}
 
@@ -74,38 +40,28 @@ func DetectFilesystemType(devicePath string) (string, errors.E) {
 		return "", errors.WithDetails(ErrorUnknownFilesystem, "Path", devicePath, "Reason", "Device is empty or too small")
 	}
 
-	// Use the actual number of bytes read for checks
 	validBuffer := buffer[:n]
 
-	for _, sig := range knownFsSignatures {
-		// Ensure the signature's offset and length are within the bounds of what was read
-		sigEndOffset := sig.offset + int64(len(sig.magic))
-		if sig.offset < 0 || sigEndOffset > int64(len(validBuffer)) {
-			continue // Signature is out of bounds for the data read
-		}
+	// Check against signatures from all adapters
+	for _, adapter := range adapters {
+		signatures := adapter.GetFsSignatureMagic()
+		for _, sig := range signatures {
+			sigEndOffset := sig.Offset + int64(len(sig.Magic))
+			if sig.Offset < 0 || sigEndOffset > int64(len(validBuffer)) {
+				continue
+			}
 
-		// Compare the magic bytes
-		if bytes.Equal(validBuffer[sig.offset:sigEndOffset], sig.magic) {
-			return sig.fsType, nil
+			if bytes.Equal(validBuffer[sig.Offset:sigEndOffset], sig.Magic) {
+				return adapter.GetName(), nil
+			}
 		}
 	}
 
 	return "", errors.WithDetails(ErrorUnknownFilesystem, "Path", devicePath)
 }
 
-// getSignaturesForFilesystem returns all known magic signatures for a specific filesystem type
-func getSignaturesForFilesystem(fsType string) []fsMagicSignature {
-	var signatures []fsMagicSignature
-	for _, sig := range knownFsSignatures {
-		if sig.fsType == fsType {
-			signatures = append(signatures, sig)
-		}
-	}
-	return signatures
-}
-
 // checkDeviceMatchesSignatures checks if a device matches any of the provided signatures
-func checkDeviceMatchesSignatures(devicePath string, signatures []fsMagicSignature) (bool, errors.E) {
+func checkDeviceMatchesSignatures(devicePath string, signatures []dto.FsMagicSignature) (bool, errors.E) {
 	if len(signatures) == 0 {
 		// No signatures to check, return false
 		return false, nil
@@ -133,12 +89,12 @@ func checkDeviceMatchesSignatures(devicePath string, signatures []fsMagicSignatu
 	validBuffer := buffer[:n]
 
 	for _, sig := range signatures {
-		sigEndOffset := sig.offset + int64(len(sig.magic))
-		if sig.offset < 0 || sigEndOffset > int64(len(validBuffer)) {
+		sigEndOffset := sig.Offset + int64(len(sig.Magic))
+		if sig.Offset < 0 || sigEndOffset > int64(len(validBuffer)) {
 			continue
 		}
 
-		if bytes.Equal(validBuffer[sig.offset:sigEndOffset], sig.magic) {
+		if bytes.Equal(validBuffer[sig.Offset:sigEndOffset], sig.Magic) {
 			return true, nil
 		}
 	}

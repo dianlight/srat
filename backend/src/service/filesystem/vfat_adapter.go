@@ -23,6 +23,11 @@ func NewVfatAdapter() FilesystemAdapter {
 			mkfsCommand:   "mkfs.vfat",
 			fsckCommand:   "fsck.vfat",
 			labelCommand:  "fatlabel",
+			signatures: []dto.FsMagicSignature{
+				{Offset: 82, Magic: []byte{'F', 'A', 'T', '3', '2', ' ', ' ', ' '}}, // FAT32 specific
+				{Offset: 54, Magic: []byte{'F', 'A', 'T', '1', '6', ' ', ' ', ' '}}, // FAT16 specific
+				{Offset: 54, Magic: []byte{'F', 'A', 'T', '1', '2', ' ', ' ', ' '}}, // FAT12 specific
+			},
 		},
 	}
 }
@@ -43,13 +48,13 @@ func (a *VfatAdapter) GetMountFlags() []dto.MountFlag {
 }
 
 // IsSupported checks if vfat is supported on the system
-func (a *VfatAdapter) IsSupported(ctx context.Context) (FilesystemSupport, errors.E) {
+func (a *VfatAdapter) IsSupported(ctx context.Context) (dto.FilesystemSupport, errors.E) {
 	support := a.checkCommandAvailability()
 	return support, nil
 }
 
 // Format formats a device with vfat filesystem
-func (a *VfatAdapter) Format(ctx context.Context, device string, options FormatOptions) errors.E {
+func (a *VfatAdapter) Format(ctx context.Context, device string, options dto.FormatOptions) errors.E {
 	args := []string{}
 
 	// FAT32 specific - use -F 32 for FAT32
@@ -75,7 +80,7 @@ func (a *VfatAdapter) Format(ctx context.Context, device string, options FormatO
 }
 
 // Check runs filesystem check on a vfat device
-func (a *VfatAdapter) Check(ctx context.Context, device string, options CheckOptions) (CheckResult, errors.E) {
+func (a *VfatAdapter) Check(ctx context.Context, device string, options dto.CheckOptions) (dto.CheckResult, errors.E) {
 	args := []string{}
 
 	if options.AutoFix {
@@ -92,7 +97,7 @@ func (a *VfatAdapter) Check(ctx context.Context, device string, options CheckOpt
 
 	output, exitCode, err := runCommand(ctx, a.fsckCommand, args...)
 	
-	result := CheckResult{
+	result := dto.CheckResult{
 		ExitCode: exitCode,
 		Message:  output,
 	}
@@ -163,8 +168,8 @@ func (a *VfatAdapter) SetLabel(ctx context.Context, device string, label string)
 }
 
 // GetState returns the state of a vfat filesystem
-func (a *VfatAdapter) GetState(ctx context.Context, device string) (FilesystemState, errors.E) {
-	state := FilesystemState{
+func (a *VfatAdapter) GetState(ctx context.Context, device string) (dto.FilesystemState, errors.E) {
+	state := dto.FilesystemState{
 		AdditionalInfo: make(map[string]interface{}),
 	}
 

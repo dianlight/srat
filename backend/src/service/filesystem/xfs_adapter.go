@@ -23,6 +23,9 @@ func NewXfsAdapter() FilesystemAdapter {
 			mkfsCommand:   "mkfs.xfs",
 			fsckCommand:   "xfs_repair",
 			labelCommand:  "xfs_admin",
+			signatures: []dto.FsMagicSignature{
+				{Offset: 0, Magic: []byte{'X', 'F', 'S', 'B'}},
+			},
 		},
 	}
 }
@@ -46,13 +49,13 @@ func (a *XfsAdapter) GetMountFlags() []dto.MountFlag {
 }
 
 // IsSupported checks if xfs is supported on the system
-func (a *XfsAdapter) IsSupported(ctx context.Context) (FilesystemSupport, errors.E) {
+func (a *XfsAdapter) IsSupported(ctx context.Context) (dto.FilesystemSupport, errors.E) {
 	support := a.checkCommandAvailability()
 	return support, nil
 }
 
 // Format formats a device with xfs filesystem
-func (a *XfsAdapter) Format(ctx context.Context, device string, options FormatOptions) errors.E {
+func (a *XfsAdapter) Format(ctx context.Context, device string, options dto.FormatOptions) errors.E {
 	args := []string{}
 
 	if options.Force {
@@ -79,7 +82,7 @@ func (a *XfsAdapter) Format(ctx context.Context, device string, options FormatOp
 }
 
 // Check runs filesystem check on an xfs device
-func (a *XfsAdapter) Check(ctx context.Context, device string, options CheckOptions) (CheckResult, errors.E) {
+func (a *XfsAdapter) Check(ctx context.Context, device string, options dto.CheckOptions) (dto.CheckResult, errors.E) {
 	args := []string{}
 
 	// xfs_repair doesn't support readonly mode directly
@@ -97,7 +100,7 @@ func (a *XfsAdapter) Check(ctx context.Context, device string, options CheckOpti
 
 	output, exitCode, err := runCommand(ctx, a.fsckCommand, args...)
 	
-	result := CheckResult{
+	result := dto.CheckResult{
 		ExitCode: exitCode,
 		Message:  output,
 	}
@@ -178,8 +181,8 @@ func (a *XfsAdapter) SetLabel(ctx context.Context, device string, label string) 
 }
 
 // GetState returns the state of an xfs filesystem
-func (a *XfsAdapter) GetState(ctx context.Context, device string) (FilesystemState, errors.E) {
-	state := FilesystemState{
+func (a *XfsAdapter) GetState(ctx context.Context, device string) (dto.FilesystemState, errors.E) {
+	state := dto.FilesystemState{
 		AdditionalInfo: make(map[string]interface{}),
 	}
 

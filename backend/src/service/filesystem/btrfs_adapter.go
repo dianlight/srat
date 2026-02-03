@@ -23,6 +23,9 @@ func NewBtrfsAdapter() FilesystemAdapter {
 			mkfsCommand:   "mkfs.btrfs",
 			fsckCommand:   "btrfs",
 			labelCommand:  "btrfs",
+			signatures: []dto.FsMagicSignature{
+				{Offset: 0x10040, Magic: []byte{'_', 'B', 'H', 'R', 'f', 'S', '_', 'M'}}, // 65600
+			},
 		},
 	}
 }
@@ -43,7 +46,7 @@ func (a *BtrfsAdapter) GetMountFlags() []dto.MountFlag {
 }
 
 // IsSupported checks if btrfs is supported on the system
-func (a *BtrfsAdapter) IsSupported(ctx context.Context) (FilesystemSupport, errors.E) {
+func (a *BtrfsAdapter) IsSupported(ctx context.Context) (dto.FilesystemSupport, errors.E) {
 	support := a.checkCommandAvailability()
 	
 	// Override the check command availability since btrfs uses a single multi-purpose tool
@@ -55,7 +58,7 @@ func (a *BtrfsAdapter) IsSupported(ctx context.Context) (FilesystemSupport, erro
 }
 
 // Format formats a device with btrfs filesystem
-func (a *BtrfsAdapter) Format(ctx context.Context, device string, options FormatOptions) errors.E {
+func (a *BtrfsAdapter) Format(ctx context.Context, device string, options dto.FormatOptions) errors.E {
 	args := []string{}
 
 	if options.Force {
@@ -82,7 +85,7 @@ func (a *BtrfsAdapter) Format(ctx context.Context, device string, options Format
 }
 
 // Check runs filesystem check on a btrfs device
-func (a *BtrfsAdapter) Check(ctx context.Context, device string, options CheckOptions) (CheckResult, errors.E) {
+func (a *BtrfsAdapter) Check(ctx context.Context, device string, options dto.CheckOptions) (dto.CheckResult, errors.E) {
 	args := []string{"check"}
 
 	if options.AutoFix {
@@ -99,7 +102,7 @@ func (a *BtrfsAdapter) Check(ctx context.Context, device string, options CheckOp
 
 	output, exitCode, err := runCommand(ctx, "btrfs", args...)
 	
-	result := CheckResult{
+	result := dto.CheckResult{
 		ExitCode: exitCode,
 		Message:  output,
 	}
@@ -185,8 +188,8 @@ func (a *BtrfsAdapter) SetLabel(ctx context.Context, device string, label string
 }
 
 // GetState returns the state of a btrfs filesystem
-func (a *BtrfsAdapter) GetState(ctx context.Context, device string) (FilesystemState, errors.E) {
-	state := FilesystemState{
+func (a *BtrfsAdapter) GetState(ctx context.Context, device string) (dto.FilesystemState, errors.E) {
+	state := dto.FilesystemState{
 		AdditionalInfo: make(map[string]interface{}),
 	}
 

@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/dianlight/srat/dto"
 	"gitlab.com/tozd/go/errors"
 )
 
@@ -16,6 +17,7 @@ type baseAdapter struct {
 	mkfsCommand   string
 	fsckCommand   string
 	labelCommand  string
+	signatures    []dto.FsMagicSignature
 }
 
 // commandExists checks if a command is available in the system PATH
@@ -42,8 +44,8 @@ func runCommand(ctx context.Context, name string, args ...string) (string, int, 
 }
 
 // checkCommandAvailability checks if required commands are available
-func (b *baseAdapter) checkCommandAvailability() FilesystemSupport {
-	support := FilesystemSupport{
+func (b *baseAdapter) checkCommandAvailability() dto.FilesystemSupport {
+	support := dto.FilesystemSupport{
 		CanMount:      true, // Most filesystems can be mounted if kernel supports them
 		AlpinePackage: b.alpinePackage,
 		MissingTools:  []string{},
@@ -86,13 +88,15 @@ func (b *baseAdapter) GetDescription() string {
 	return b.description
 }
 
+// GetFsSignatureMagic returns the magic number signatures for this filesystem
+func (b *baseAdapter) GetFsSignatureMagic() []dto.FsMagicSignature {
+	return b.signatures
+}
+
 // IsDeviceSupported checks if a device can be mounted with this filesystem
 // by examining magic numbers. This is a default implementation that uses
 // the magic signature detection system.
 func (b *baseAdapter) IsDeviceSupported(ctx context.Context, devicePath string) (bool, errors.E) {
-	// Get signatures for this filesystem type
-	signatures := getSignaturesForFilesystem(b.name)
-	
-	// Check if device matches any of the signatures
-	return checkDeviceMatchesSignatures(devicePath, signatures)
+	// Check if device matches any of the adapter's signatures
+	return checkDeviceMatchesSignatures(devicePath, b.signatures)
 }

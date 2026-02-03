@@ -49,20 +49,36 @@ func (suite *DetectionTestSuite) TestIsDeviceSupported_EmptyDevice() {
 }
 
 func (suite *DetectionTestSuite) TestDetectFilesystemType_NonExistent() {
-	fsType, err := filesystem.DetectFilesystemType("/dev/nonexistent")
+	adapters := []filesystem.FilesystemAdapter{
+		filesystem.NewExt4Adapter(),
+		filesystem.NewVfatAdapter(),
+		filesystem.NewNtfsAdapter(),
+		filesystem.NewBtrfsAdapter(),
+		filesystem.NewXfsAdapter(),
+	}
+	
+	fsType, err := filesystem.DetectFilesystemType("/dev/nonexistent", adapters)
 	suite.Error(err)
 	suite.Empty(fsType)
 	suite.True(errors.Is(err, filesystem.ErrorDeviceNotFound))
 }
 
 func (suite *DetectionTestSuite) TestDetectFilesystemType_EmptyFile() {
+	adapters := []filesystem.FilesystemAdapter{
+		filesystem.NewExt4Adapter(),
+		filesystem.NewVfatAdapter(),
+		filesystem.NewNtfsAdapter(),
+		filesystem.NewBtrfsAdapter(),
+		filesystem.NewXfsAdapter(),
+	}
+	
 	// Create a temporary empty file
 	tmpFile, err := os.CreateTemp("", "empty-fs-*")
 	suite.Require().NoError(err)
 	defer os.Remove(tmpFile.Name())
 	tmpFile.Close()
 	
-	fsType, err := filesystem.DetectFilesystemType(tmpFile.Name())
+	fsType, err := filesystem.DetectFilesystemType(tmpFile.Name(), adapters)
 	suite.Error(err)
 	suite.Empty(fsType)
 }
