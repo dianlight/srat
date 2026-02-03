@@ -239,13 +239,6 @@ const injectedRtkApi = api
         query: () => ({ url: `/api/nics` }),
         providesTags: ["system"],
       }),
-      putApiRestart: build.mutation<
-        PutApiRestartApiResponse,
-        PutApiRestartApiArg
-      >({
-        query: () => ({ url: `/api/restart`, method: "PUT" }),
-        invalidatesTags: ["system"],
-      }),
       putApiSambaApply: build.mutation<
         PutApiSambaApplyApiResponse,
         PutApiSambaApplyApiArg
@@ -652,8 +645,6 @@ export type GetApiNicsApiResponse =
   | /** status 200 OK */ (InterfaceStat[] | null)
   | /** status default Error */ ErrorModel;
 export type GetApiNicsApiArg = void;
-export type PutApiRestartApiResponse = /** status default Error */ ErrorModel;
-export type PutApiRestartApiArg = void;
 export type PutApiSambaApplyApiResponse =
   /** status default Error */ ErrorModel;
 export type PutApiSambaApplyApiArg = void;
@@ -1639,7 +1630,6 @@ export const {
   useDeleteApiIssuesByIdMutation,
   usePutApiIssuesByIdMutation,
   useGetApiNicsQuery,
-  usePutApiRestartMutation,
   usePutApiSambaApplyMutation,
   useGetApiSambaConfigQuery,
   useGetApiSambaStatusQuery,

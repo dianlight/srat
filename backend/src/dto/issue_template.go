@@ -25,11 +25,11 @@ type IssueTemplateValidity struct {
 
 // IssueTemplate represents the parsed GitHub issue template
 type IssueTemplate struct {
-	Name        string                `json:"name" yaml:"name"`
-	Description string                `json:"description" yaml:"description"`
-	Title       string                `json:"title" yaml:"title"`
-	Labels      []string              `json:"labels" yaml:"labels"`
-	Body        []IssueTemplateField  `json:"body" yaml:"body"`
+	Name        string               `json:"name" yaml:"name"`
+	Description string               `json:"description" yaml:"description"`
+	Title       string               `json:"title" yaml:"title"`
+	Labels      []string             `json:"labels" yaml:"labels"`
+	Body        []IssueTemplateField `json:"body" yaml:"body"`
 }
 
 // IssueTemplateResponse is the API response containing the parsed template
