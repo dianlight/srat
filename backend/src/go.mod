@@ -34,7 +34,7 @@ require (
 	github.com/pressly/goose/v3 v3.26.0
 	github.com/prometheus/procfs v0.19.2
 	github.com/rollbar/rollbar-go v1.4.8
-	github.com/samber/slog-http v1.10.0
+	github.com/samber/slog-http v1.11.0
 	github.com/sergi/go-diff v1.4.0
 	github.com/shomali11/util v0.0.0-20220717175126-f0771b70947f
 	github.com/teivah/broadcast v0.1.0
@@ -48,7 +48,7 @@ require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/AlecAivazis/survey/v2 v2.3.7 // indirect
 	github.com/Antonboom/testifylint v1.6.4 // indirect
-	github.com/air-verse/air v1.64.4 // indirect
+	github.com/air-verse/air v1.64.5 // indirect
 	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/apex/log v1.9.0 // indirect
 	github.com/bep/godartsass/v2 v2.5.0 // indirect

@@ -25,8 +25,8 @@ github.com/Netflix/go-expect v0.0.0-20220104043353-73e0943537d2/go.mod h1:HBCaDe
 github.com/RaveNoX/go-jsoncommentstrip v1.0.0/go.mod h1:78ihd09MekBnJnxpICcwzCMzGrKSKYe4AqU6PDYYpjk=
 github.com/adelolmo/hd-idle v0.0.0-20260125082707-310727a56de0 h1:OGj9tGtfVd3FpRaJhEsi3hsHc0wjyeI7hfHm/MauSHc=
 github.com/adelolmo/hd-idle v0.0.0-20260125082707-310727a56de0/go.mod h1:ED4T0cLEFBGStNjG/lyQN3ZapvnppBXxq0iIa9ZJY7Q=
-github.com/air-verse/air v1.64.4 h1:P0alz5Jia5NucZew1HYZy69lzPWZHFjLTCKo0VhxME8=
-github.com/air-verse/air v1.64.4/go.mod h1:OaJZSfZqf7wyjS2oP/CcEVyIt0JmZuPh5x1gdtklmmY=
+github.com/air-verse/air v1.64.5 h1:+gs/NgTzYYe+gGPyfHy3XxpJReQWC1pIsiKIg0LgNt4=
+github.com/air-verse/air v1.64.5/go.mod h1:OaJZSfZqf7wyjS2oP/CcEVyIt0JmZuPh5x1gdtklmmY=
 github.com/alecthomas/chroma/v2 v2.20.0 h1:sfIHpxPyR07/Oylvmcai3X/exDlE8+FA820NTz+9sGw=
 github.com/alecthomas/chroma/v2 v2.20.0/go.mod h1:e7tViK0xh/Nf4BYHl00ycY6rV7b8iXBksI9E359yNmA=
 github.com/andybalholm/brotli v1.2.0 h1:ukwgCxwYrmACq68yiUqwIWnGY0cTPox/M94sVwToPjQ=
@@ -420,8 +420,8 @@ github.com/samber/slog-common v0.19.0 h1:fNcZb8B2uOLooeYwFpAlKjkQTUafdjfqKcwcC89
 github.com/samber/slog-common v0.19.0/go.mod h1:dTz+YOU76aH007YUU0DffsXNsGFQRQllPQh9XyNoA3M=
 github.com/samber/slog-formatter v1.2.2 h1:/JSzXcF0TUA1GRt/4g1AJc7h0ofyn7wx21oUjzpPh54=
 github.com/samber/slog-formatter v1.2.2/go.mod h1:zBYmoFkeV2LT3tyiaAehpJ1pOI+CtQz/xjXvbedx26Q=
-github.com/samber/slog-http v1.10.0 h1:/zimEtRqXJeDYzM+0MVzStG3O32gfgNxWfpmFO+iEIE=
-github.com/samber/slog-http v1.10.0/go.mod h1:PAcQQrYFo5KM7Qbk50gNNwKEAMGCyfsw6GN5dI0iv9g=
+github.com/samber/slog-http v1.11.0 h1:lgGkDEf4SrQ7FbFNrpbyBsTsDYRCWsMH+0tZn/iW4dA=
+github.com/samber/slog-http v1.11.0/go.mod h1:PAcQQrYFo5KM7Qbk50gNNwKEAMGCyfsw6GN5dI0iv9g=
 github.com/samber/slog-multi v1.6.0 h1:i1uBY+aaln6ljwdf7Nrt4Sys8Kk6htuYuXDHWJsHtZg=
 github.com/samber/slog-multi v1.6.0/go.mod h1:qTqzmKdPpT0h4PFsTN5rYRgLwom1v+fNGuIrl1Xnnts=
 github.com/sergi/go-diff v1.0.0/go.mod h1:0CfEIISq7TuYL3j771MWULgwwjU+GofnZX9QAmXWZgo=
