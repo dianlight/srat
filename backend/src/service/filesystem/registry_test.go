@@ -63,10 +63,10 @@ func (suite *RegistryTestSuite) TestGetAll() {
 func (suite *RegistryTestSuite) TestListSupportedTypes() {
 	types := suite.registry.ListSupportedTypes()
 	suite.NotEmpty(types)
-	suite.GreaterOrEqual(len(types), 5, "Should have at least 5 filesystem types")
+	suite.GreaterOrEqual(len(types), 11, "Should have at least 11 filesystem types")
 	
 	// Check for expected types
-	expectedTypes := []string{"ext4", "vfat", "ntfs", "btrfs", "xfs"}
+	expectedTypes := []string{"ext4", "vfat", "ntfs", "btrfs", "xfs", "exfat", "f2fs", "gfs2", "hfsplus", "reiserfs", "apfs"}
 	for _, expected := range expectedTypes {
 		suite.Contains(types, expected)
 	}
@@ -80,7 +80,10 @@ func (suite *RegistryTestSuite) TestGetSupportedFilesystems() {
 	// Check that each filesystem has support information
 	for fsType, fsSupport := range support {
 		suite.NotEmpty(fsType)
-		suite.NotEmpty(fsSupport.AlpinePackage, "Alpine package should be specified for %s", fsType)
+		// APFS doesn't have an Alpine package (read-only filesystem on Linux)
+		if fsType != "apfs" {
+			suite.NotEmpty(fsSupport.AlpinePackage, "Alpine package should be specified for %s", fsType)
+		}
 		// Note: Actual tool availability depends on system configuration
 	}
 }

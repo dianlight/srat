@@ -26,6 +26,12 @@ func NewRegistry() *Registry {
 	registry.Register(NewNtfsAdapter())
 	registry.Register(NewBtrfsAdapter())
 	registry.Register(NewXfsAdapter())
+	registry.Register(NewExfatAdapter())
+	registry.Register(NewF2fsAdapter())
+	registry.Register(NewGfs2Adapter())
+	registry.Register(NewHfsplusAdapter())
+	registry.Register(NewReiserfsAdapter())
+	registry.Register(NewApfsAdapter())
 
 	return registry
 }

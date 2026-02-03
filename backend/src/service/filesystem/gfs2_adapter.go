@@ -1,0 +1,172 @@
+package filesystem
+
+import (
+	"context"
+	"strings"
+
+	"github.com/dianlight/srat/dto"
+	"gitlab.com/tozd/go/errors"
+)
+
+// Gfs2Adapter implements FilesystemAdapter for GFS2 filesystems
+type Gfs2Adapter struct {
+	baseAdapter
+}
+
+// NewGfs2Adapter creates a new Gfs2Adapter instance
+func NewGfs2Adapter() FilesystemAdapter {
+	return &Gfs2Adapter{
+		baseAdapter: baseAdapter{
+			name:          "gfs2",
+			description:   "Global File System 2",
+			alpinePackage: "gfs2-utils",
+			mkfsCommand:   "mkfs.gfs2",
+			fsckCommand:   "fsck.gfs2",
+			labelCommand:  "", // No label command
+			signatures: []dto.FsMagicSignature{
+				{Offset: 0x10, Magic: []byte{0x01, 0x16, 0x19, 0x70}},
+			},
+		},
+	}
+}
+
+// GetMountFlags returns GFS2-specific mount flags
+func (a *Gfs2Adapter) GetMountFlags() []dto.MountFlag {
+	return []dto.MountFlag{
+		{Name: "lockproto", Description: "Lock protocol name", NeedsValue: true, ValueDescription: "Protocol name (e.g., lock_dlm, lock_nolock)", ValueValidationRegex: `^lock_[a-z]+$`},
+		{Name: "locktable", Description: "Lock table name", NeedsValue: true, ValueDescription: "Table name", ValueValidationRegex: `^[a-zA-Z0-9_:.-]+$`},
+		{Name: "hostdata", Description: "Host-specific data", NeedsValue: true, ValueDescription: "Host data string"},
+		{Name: "spectator", Description: "Mount as a spectator (read-only)"},
+		{Name: "norecovery", Description: "Don't recover the journal"},
+		{Name: "quota", Description: "Quota enforcement mode", NeedsValue: true, ValueDescription: "One of: off, account, on", ValueValidationRegex: `^(off|account|on)$`},
+		{Name: "data", Description: "Data journaling mode", NeedsValue: true, ValueDescription: "One of: writeback, ordered", ValueValidationRegex: `^(writeback|ordered)$`},
+	}
+}
+
+// IsSupported checks if GFS2 is supported on the system
+func (a *Gfs2Adapter) IsSupported(ctx context.Context) (dto.FilesystemSupport, errors.E) {
+	support := a.checkCommandAvailability()
+	return support, nil
+}
+
+// Format formats a device with GFS2 filesystem
+func (a *Gfs2Adapter) Format(ctx context.Context, device string, options dto.FormatOptions) errors.E {
+	args := []string{"-p", "lock_nolock"}
+
+	if options.Force {
+		args = append(args, "-O")
+	}
+
+	// GFS2 requires a table name
+	args = append(args, "-t", "local:gfs2")
+
+	// Add device as the last argument
+	args = append(args, device)
+
+	output, exitCode, err := runCommand(ctx, a.mkfsCommand, args...)
+	if err != nil {
+		return errors.WithDetails(err, "Device", device, "Output", output)
+	}
+
+	if exitCode != 0 {
+		return errors.Errorf("mkfs.gfs2 failed with exit code %d: %s", exitCode, output)
+	}
+
+	return nil
+}
+
+// Check runs filesystem check on a GFS2 device
+func (a *Gfs2Adapter) Check(ctx context.Context, device string, options dto.CheckOptions) (dto.CheckResult, errors.E) {
+	args := []string{}
+
+	if options.AutoFix {
+		args = append(args, "-y") // Automatically fix errors
+	} else {
+		args = append(args, "-n") // No changes, just check
+	}
+
+	args = append(args, device)
+
+	output, exitCode, err := runCommand(ctx, a.fsckCommand, args...)
+	
+	result := dto.CheckResult{
+		ExitCode: exitCode,
+		Message:  output,
+	}
+
+	// fsck.gfs2 exit codes:
+	// 0 - No errors
+	// 1 - File system errors corrected
+	// 2 - File system errors corrected, system should be rebooted
+	// 4 - File system errors left uncorrected
+
+	switch exitCode {
+	case 0:
+		result.Success = true
+		result.ErrorsFound = false
+		result.ErrorsFixed = false
+	case 1, 2:
+		result.Success = true
+		result.ErrorsFound = true
+		result.ErrorsFixed = true
+	case 4:
+		result.Success = false
+		result.ErrorsFound = true
+		result.ErrorsFixed = false
+	default:
+		result.Success = false
+		result.ErrorsFound = true
+		result.ErrorsFixed = false
+		if err != nil {
+			return result, errors.WithDetails(err, "Device", device, "ExitCode", exitCode)
+		}
+	}
+
+	return result, nil
+}
+
+// GetLabel retrieves the GFS2 filesystem label
+func (a *Gfs2Adapter) GetLabel(ctx context.Context, device string) (string, errors.E) {
+	// GFS2 does not support labels
+	return "", errors.Errorf("GFS2 does not support filesystem labels")
+}
+
+// SetLabel sets the GFS2 filesystem label
+func (a *Gfs2Adapter) SetLabel(ctx context.Context, device string, label string) errors.E {
+	// GFS2 does not support labels
+	return errors.Errorf("GFS2 does not support filesystem labels")
+}
+
+// GetState returns the state of a GFS2 filesystem
+func (a *Gfs2Adapter) GetState(ctx context.Context, device string) (dto.FilesystemState, errors.E) {
+	state := dto.FilesystemState{
+		AdditionalInfo: make(map[string]interface{}),
+	}
+
+	// Run a read-only check to get filesystem state
+	output, exitCode, _ := runCommand(ctx, a.fsckCommand, "-n", device)
+	
+	// Parse the output to determine filesystem state
+	if exitCode == 0 {
+		state.IsClean = true
+		state.HasErrors = false
+		state.StateDescription = "Clean"
+	} else if exitCode == 1 || exitCode == 2 || exitCode == 4 {
+		state.IsClean = false
+		state.HasErrors = true
+		state.StateDescription = "Has errors"
+	} else {
+		state.StateDescription = "Unknown"
+	}
+
+	// Check if filesystem is mounted
+	outputMount, _, _ := runCommand(ctx, "mount")
+	state.IsMounted = strings.Contains(outputMount, device)
+
+	// Store check output in additional info
+	if output != "" {
+		state.AdditionalInfo["checkOutput"] = output
+	}
+
+	return state, nil
+}
