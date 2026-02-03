@@ -16,11 +16,13 @@ body:
         - Addon Update
         - Addon Startup
         - Addon Functionality
+        - HA Integration
         - Installation
         - Performance
         - Security
         - Integration
         - Documentation
+        - Samba
         - Other
     validations:
       required: true
@@ -29,34 +31,23 @@ body:
     attributes:
       label: "Version"
       description: What is the current version of the addon ?
-      placeholder: "e.g. 1.2.3"
+      placeholder: "e.g. 2026.02.1"
     validations:
       required: true
-  - type: dropdown
+  - type: input
     id: arch
     attributes:
       label: "Architecture"
       description: What architecture are you on ?
-      multiple: false
-      options:
-        - aarch64
-        - amd64
-        - armv7
-        - i386
-        - other
+      placeholder: "aarch64 amd64 ..."
     validations:
       required: true
-  - type: dropdown
+  - type: input
     id: os
     attributes:
       label: "OS"
       description: What is the impacted environment ?
-      multiple: true
-      options:
-        - HaOS
-        - Virtual Machine
-        - Docker
-        - Other
+      placeholder: "HasOS VM ..."
     validations:
       required: true      
   - type: textarea
