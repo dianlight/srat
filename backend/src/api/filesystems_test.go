@@ -25,7 +25,6 @@ type FilesystemHandlerSuite struct {
 	handler            *api.FilesystemHandler
 	mockFsService      service.FilesystemServiceInterface
 	mockVolumeService  service.VolumeServiceInterface
-	mockAdapter        *mockFilesystemAdapter
 	testAPI            humatest.TestAPI
 	ctx                context.Context
 	cancel             context.CancelFunc
@@ -55,8 +54,6 @@ func (suite *FilesystemHandlerSuite) SetupTest() {
 	)
 	suite.app.RequireStart()
 
-	suite.mockAdapter = &mockFilesystemAdapter{}
-
 	_, testAPI := humatest.New(suite.T())
 	suite.handler.RegisterFilesystemHandler(testAPI)
 	suite.testAPI = testAPI
@@ -72,23 +69,23 @@ func (suite *FilesystemHandlerSuite) TestListFilesystems_Success() {
 	mock.When(suite.mockFsService.ListSupportedTypes()).ThenReturn(fsTypes)
 
 	for _, fsType := range fsTypes {
-		adapter := suite.createMockAdapter(fsType)
-		mock.When(suite.mockFsService.GetAdapter(fsType)).ThenReturn(adapter, nil)
-		support := dto.FilesystemSupport{
-			CanMount:      true,
-			CanFormat:     true,
-			CanCheck:      true,
-			CanSetLabel:   true,
-			AlpinePackage: fsType + "-progs",
+		info := &service.FilesystemInfo{
+			Name:        fsType,
+			Type:        fsType,
+			Description: fsType + " filesystem",
+			MountFlags:  []dto.MountFlag{{Name: "rw"}},
+			CustomMountFlags: []dto.MountFlag{{Name: "discard"}},
+			Support: &dto.FilesystemSupport{
+				CanMount:      true,
+				CanFormat:     true,
+				CanCheck:      true,
+				CanSetLabel:   true,
+				AlpinePackage: fsType + "-progs",
+			},
 		}
-		mock.When(adapter.IsSupported(matchers.Any[context.Context]())).ThenReturn(support, nil)
+		mock.When(suite.mockFsService.GetSupportAndInfo(suite.ctx, fsType)).
+			ThenReturn(info, nil)
 	}
-
-	standardFlags := []dto.MountFlag{{Name: "rw"}}
-	customFlags := []dto.MountFlag{{Name: "discard"}}
-	mock.When(suite.mockFsService.GetStandardMountFlags()).ThenReturn(standardFlags, nil).MaybeRepeat()
-	mock.When(suite.mockFsService.GetFilesystemSpecificMountFlags(matchers.Any[string]())).
-		ThenReturn(customFlags, nil).MaybeRepeat()
 
 	resp := suite.testAPI.Get("/filesystems")
 	suite.Equal(http.StatusOK, resp.Code)
@@ -118,28 +115,24 @@ func (suite *FilesystemHandlerSuite) TestFormatPartition_Success() {
 		FsType:           &fsType,
 	}
 
-	disk := &dto.Disk{
-		Partitions: &map[string]dto.Partition{
-			partitionID: partition,
-		},
+	// Mock volume service to find partition
+	mock.When(suite.mockVolumeService.FindPartitionByID(partitionID)).
+		ThenReturn(&partition, nil)
+	mock.When(suite.mockVolumeService.GetPartitionDevicePath(mock.Any())).
+		ThenReturn(devicePath)
+
+	// Mock filesystem service to format
+	formatResult := &dto.CheckResult{
+		Success:  true,
+		Message:  fmt.Sprintf("Successfully formatted %s as %s", devicePath, fsType),
+		ExitCode: 0,
 	}
-
-	volumes := []*dto.Disk{disk}
-	mock.When(suite.mockVolumeService.GetVolumesData()).ThenReturn(volumes)
-
-	adapter := suite.createMockAdapter(fsType)
-	mock.When(suite.mockFsService.GetAdapter(fsType)).ThenReturn(adapter, nil)
-
-	support := dto.FilesystemSupport{
-		CanFormat:     true,
-		AlpinePackage: "e2fsprogs",
-	}
-	mock.When(adapter.IsSupported(matchers.Any[context.Context]())).ThenReturn(support, nil)
-	mock.When(adapter.Format(
-		matchers.Any[context.Context](),
-		matchers.Eq(devicePath),
-		matchers.Any[dto.FormatOptions](),
-	)).ThenReturn(nil)
+	mock.When(suite.mockFsService.FormatPartition(
+		suite.ctx,
+		devicePath,
+		fsType,
+		mock.Any(),
+	)).ThenReturn(formatResult, nil)
 
 	resp := suite.testAPI.Post("/filesystem/format", map[string]interface{}{
 		"partitionId":    partitionID,
@@ -157,7 +150,8 @@ func (suite *FilesystemHandlerSuite) TestFormatPartition_Success() {
 }
 
 func (suite *FilesystemHandlerSuite) TestFormatPartition_PartitionNotFound() {
-	mock.When(suite.mockVolumeService.GetVolumesData()).ThenReturn([]*dto.Disk{})
+	mock.When(suite.mockVolumeService.FindPartitionByID(mock.Any())).
+		ThenReturn(nil, errors.New("partition not found"))
 
 	resp := suite.testAPI.Post("/filesystem/format", map[string]interface{}{
 		"partitionId":    "non-existent",
@@ -178,24 +172,24 @@ func (suite *FilesystemHandlerSuite) TestFormatPartition_UnsupportedFilesystem()
 		FsType:           &fsType,
 	}
 
-	disk := &dto.Disk{
-		Partitions: &map[string]dto.Partition{
-			partitionID: partition,
-		},
-	}
+	mock.When(suite.mockVolumeService.FindPartitionByID(partitionID)).
+		ThenReturn(&partition, nil)
+	mock.When(suite.mockVolumeService.GetPartitionDevicePath(mock.Any())).
+		ThenReturn(devicePath)
 
-	volumes := []*dto.Disk{disk}
-	mock.When(suite.mockVolumeService.GetVolumesData()).ThenReturn(volumes)
-
-	mock.When(suite.mockFsService.GetAdapter("unknown-fs")).
-		ThenReturn(nil, errors.New("unsupported filesystem"))
+	mock.When(suite.mockFsService.FormatPartition(
+		suite.ctx,
+		mock.Any(),
+		"unknown-fs",
+		mock.Any(),
+	)).ThenReturn(nil, errors.New("unsupported filesystem"))
 
 	resp := suite.testAPI.Post("/filesystem/format", map[string]interface{}{
 		"partitionId":    partitionID,
 		"filesystemType": "unknown-fs",
 	})
 
-	suite.Equal(http.StatusBadRequest, resp.Code)
+	suite.Equal(http.StatusInternalServerError, resp.Code)
 }
 
 func (suite *FilesystemHandlerSuite) TestCheckPartition_Success() {
@@ -209,35 +203,23 @@ func (suite *FilesystemHandlerSuite) TestCheckPartition_Success() {
 		FsType:           &fsType,
 	}
 
-	disk := &dto.Disk{
-		Partitions: &map[string]dto.Partition{
-			partitionID: partition,
-		},
-	}
+	mock.When(suite.mockVolumeService.FindPartitionByID(partitionID)).
+		ThenReturn(&partition, nil)
+	mock.When(suite.mockVolumeService.GetPartitionDevicePath(mock.Any())).
+		ThenReturn(devicePath)
 
-	volumes := []*dto.Disk{disk}
-	mock.When(suite.mockVolumeService.GetVolumesData()).ThenReturn(volumes)
-
-	adapter := suite.createMockAdapter(fsType)
-	mock.When(suite.mockFsService.GetAdapter(fsType)).ThenReturn(adapter, nil)
-
-	support := dto.FilesystemSupport{
-		CanCheck:      true,
-		AlpinePackage: "e2fsprogs",
-	}
-	mock.When(adapter.IsSupported(matchers.Any[context.Context]())).ThenReturn(support, nil)
-
-	checkResult := dto.CheckResult{
+	checkResult := &dto.CheckResult{
 		Success:      true,
 		ErrorsFound:  false,
 		ErrorsFixed:  false,
 		Message:      "Filesystem is clean",
 		ExitCode:     0,
 	}
-	mock.When(adapter.Check(
-		matchers.Any[context.Context](),
-		matchers.Eq(devicePath),
-		matchers.Any[dto.CheckOptions](),
+	mock.When(suite.mockFsService.CheckPartition(
+		suite.ctx,
+		devicePath,
+		fsType,
+		mock.Any(),
 	)).ThenReturn(checkResult, nil)
 
 	resp := suite.testAPI.Post("/filesystem/check", map[string]interface{}{
@@ -265,33 +247,21 @@ func (suite *FilesystemHandlerSuite) TestGetPartitionState_Success() {
 		FsType:           &fsType,
 	}
 
-	disk := &dto.Disk{
-		Partitions: &map[string]dto.Partition{
-			partitionID: partition,
-		},
-	}
+	mock.When(suite.mockVolumeService.FindPartitionByID(partitionID)).
+		ThenReturn(&partition, nil)
+	mock.When(suite.mockVolumeService.GetPartitionDevicePath(mock.Any())).
+		ThenReturn(devicePath)
 
-	volumes := []*dto.Disk{disk}
-	mock.When(suite.mockVolumeService.GetVolumesData()).ThenReturn(volumes)
-
-	adapter := suite.createMockAdapter(fsType)
-	mock.When(suite.mockFsService.GetAdapter(fsType)).ThenReturn(adapter, nil)
-
-	support := dto.FilesystemSupport{
-		CanGetState:   true,
-		AlpinePackage: "e2fsprogs",
-	}
-	mock.When(adapter.IsSupported(matchers.Any[context.Context]())).ThenReturn(support, nil)
-
-	state := dto.FilesystemState{
+	state := &dto.FilesystemState{
 		IsClean:          true,
 		IsMounted:        false,
 		HasErrors:        false,
 		StateDescription: "clean",
 	}
-	mock.When(adapter.GetState(
-		matchers.Any[context.Context](),
-		matchers.Eq(devicePath),
+	mock.When(suite.mockFsService.GetPartitionState(
+		suite.ctx,
+		devicePath,
+		fsType,
 	)).ThenReturn(state, nil)
 
 	resp := suite.testAPI.Get(fmt.Sprintf("/filesystem/state?partition_id=%s", partitionID))
@@ -317,20 +287,15 @@ func (suite *FilesystemHandlerSuite) TestGetPartitionLabel_Success() {
 		FsType:           &fsType,
 	}
 
-	disk := &dto.Disk{
-		Partitions: &map[string]dto.Partition{
-			partitionID: partition,
-		},
-	}
+	mock.When(suite.mockVolumeService.FindPartitionByID(partitionID)).
+		ThenReturn(&partition, nil)
+	mock.When(suite.mockVolumeService.GetPartitionDevicePath(mock.Any())).
+		ThenReturn(devicePath)
 
-	volumes := []*dto.Disk{disk}
-	mock.When(suite.mockVolumeService.GetVolumesData()).ThenReturn(volumes)
-
-	adapter := suite.createMockAdapter(fsType)
-	mock.When(suite.mockFsService.GetAdapter(fsType)).ThenReturn(adapter, nil)
-	mock.When(adapter.GetLabel(
-		matchers.Any[context.Context](),
-		matchers.Eq(devicePath),
+	mock.When(suite.mockFsService.GetPartitionLabel(
+		suite.ctx,
+		devicePath,
+		fsType,
 	)).ThenReturn(expectedLabel, nil)
 
 	resp := suite.testAPI.Get(fmt.Sprintf("/filesystem/label?partition_id=%s", partitionID))
@@ -357,27 +322,16 @@ func (suite *FilesystemHandlerSuite) TestSetPartitionLabel_Success() {
 		FsType:           &fsType,
 	}
 
-	disk := &dto.Disk{
-		Partitions: &map[string]dto.Partition{
-			partitionID: partition,
-		},
-	}
+	mock.When(suite.mockVolumeService.FindPartitionByID(partitionID)).
+		ThenReturn(&partition, nil)
+	mock.When(suite.mockVolumeService.GetPartitionDevicePath(mock.Any())).
+		ThenReturn(devicePath)
 
-	volumes := []*dto.Disk{disk}
-	mock.When(suite.mockVolumeService.GetVolumesData()).ThenReturn(volumes)
-
-	adapter := suite.createMockAdapter(fsType)
-	mock.When(suite.mockFsService.GetAdapter(fsType)).ThenReturn(adapter, nil)
-
-	support := dto.FilesystemSupport{
-		CanSetLabel:   true,
-		AlpinePackage: "e2fsprogs",
-	}
-	mock.When(adapter.IsSupported(matchers.Any[context.Context]())).ThenReturn(support, nil)
-	mock.When(adapter.SetLabel(
-		matchers.Any[context.Context](),
-		matchers.Eq(devicePath),
-		matchers.Eq(newLabel),
+	mock.When(suite.mockFsService.SetPartitionLabel(
+		suite.ctx,
+		devicePath,
+		fsType,
+		newLabel,
 	)).ThenReturn(nil)
 
 	resp := suite.testAPI.Put("/filesystem/label", map[string]interface{}{
@@ -393,63 +347,4 @@ func (suite *FilesystemHandlerSuite) TestSetPartitionLabel_Success() {
 	err := json.Unmarshal(resp.Body.Bytes(), &result)
 	suite.Require().NoError(err)
 	suite.True(result.Success)
-}
-
-// Helper method to create a mock adapter
-func (suite *FilesystemHandlerSuite) createMockAdapter(fsType string) *mockFilesystemAdapter {
-	adapter := &mockFilesystemAdapter{
-		name:        fsType,
-		description: fmt.Sprintf("%s filesystem", fsType),
-	}
-	return adapter
-}
-
-// Mock filesystem adapter for testing
-type mockFilesystemAdapter struct {
-	name        string
-	description string
-}
-
-func (m *mockFilesystemAdapter) GetName() string {
-	return m.name
-}
-
-func (m *mockFilesystemAdapter) GetDescription() string {
-	return m.description
-}
-
-func (m *mockFilesystemAdapter) GetMountFlags() []dto.MountFlag {
-	return []dto.MountFlag{}
-}
-
-func (m *mockFilesystemAdapter) IsSupported(ctx context.Context) (dto.FilesystemSupport, errors.E) {
-	return dto.FilesystemSupport{}, nil
-}
-
-func (m *mockFilesystemAdapter) Format(ctx context.Context, device string, options dto.FormatOptions) errors.E {
-	return nil
-}
-
-func (m *mockFilesystemAdapter) Check(ctx context.Context, device string, options dto.CheckOptions) (dto.CheckResult, errors.E) {
-	return dto.CheckResult{}, nil
-}
-
-func (m *mockFilesystemAdapter) GetLabel(ctx context.Context, device string) (string, errors.E) {
-	return "", nil
-}
-
-func (m *mockFilesystemAdapter) SetLabel(ctx context.Context, device string, label string) errors.E {
-	return nil
-}
-
-func (m *mockFilesystemAdapter) GetState(ctx context.Context, device string) (dto.FilesystemState, errors.E) {
-	return dto.FilesystemState{}, nil
-}
-
-func (m *mockFilesystemAdapter) IsDeviceSupported(ctx context.Context, devicePath string) (bool, errors.E) {
-	return true, nil
-}
-
-func (m *mockFilesystemAdapter) GetFsSignatureMagic() []dto.FsMagicSignature {
-	return []dto.FsMagicSignature{}
 }

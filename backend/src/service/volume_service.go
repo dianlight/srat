@@ -53,6 +53,10 @@ type VolumeServiceInterface interface {
 	// Test only
 	MockSetProcfsGetMounts(f func() ([]*procfs.MountInfo, error))
 	CreateBlockDevice(device string) error
+	// FindPartitionByID finds a partition by its unique ID across all disks
+	FindPartitionByID(partitionID string) (*dto.Partition, errors.E)
+	// GetPartitionDevicePath gets the best available device path for a partition
+	GetPartitionDevicePath(partition *dto.Partition) string
 }
 
 type VolumeService struct {
@@ -1266,4 +1270,30 @@ func (ms *VolumeService) GetDevicePathByDeviceID(deviceID string) (string, error
 		return "", errors.WithDetails(dto.ErrorNotFound, "Message", "mount point not found", "DeviceId", deviceID)
 	}
 	return *md.DevicePath, nil
+}
+
+// FindPartitionByID finds a partition by its unique ID across all disks
+func (vs *VolumeService) FindPartitionByID(partitionID string) (*dto.Partition, errors.E) {
+	volumes := vs.GetVolumesData()
+	for _, disk := range volumes {
+		if disk.Partitions != nil {
+			if partition, found := (*disk.Partitions)[partitionID]; found {
+				return &partition, nil
+			}
+		}
+	}
+	return nil, errors.WithDetails(dto.ErrorNotFound, "Message", "partition not found", "PartitionId", partitionID)
+}
+
+// GetPartitionDevicePath gets the best available device path for a partition
+func (vs *VolumeService) GetPartitionDevicePath(partition *dto.Partition) string {
+	// Prefer persistent device path
+	if partition.DevicePath != nil && *partition.DevicePath != "" {
+		return *partition.DevicePath
+	}
+	// Fallback to legacy device path
+	if partition.LegacyDevicePath != nil && *partition.LegacyDevicePath != "" {
+		return *partition.LegacyDevicePath
+	}
+	return ""
 }

@@ -2,12 +2,10 @@ package api
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service"
-	"github.com/dianlight/srat/service/filesystem"
 	"github.com/dianlight/tlog"
 )
 
@@ -70,32 +68,21 @@ func (h *FilesystemHandler) ListFilesystems(
 	fsTypes := h.fsService.ListSupportedTypes()
 	result := make([]FilesystemInfo, 0, len(fsTypes))
 
-	// Get capabilities for each filesystem
+	// Get capabilities for each filesystem using the new GetSupportAndInfo method
 	for _, fsType := range fsTypes {
-		adapter, err := h.fsService.GetAdapter(fsType)
+		info, err := h.fsService.GetSupportAndInfo(ctx, fsType)
 		if err != nil {
-			tlog.WarnContext(ctx, "Failed to get adapter", "filesystem", fsType, "error", err)
+			tlog.WarnContext(ctx, "Failed to get filesystem info", "filesystem", fsType, "error", err)
 			continue
 		}
-
-		// Get support information
-		support, err := adapter.IsSupported(ctx)
-		if err != nil {
-			tlog.WarnContext(ctx, "Failed to check support", "filesystem", fsType, "error", err)
-			continue
-		}
-
-		// Get standard and custom mount flags
-		standardFlags, _ := h.fsService.GetStandardMountFlags()
-		customFlags, _ := h.fsService.GetFilesystemSpecificMountFlags(fsType)
 
 		result = append(result, FilesystemInfo{
-			Name:             adapter.GetName(),
-			Type:             fsType,
-			Description:      adapter.GetDescription(),
-			MountFlags:       standardFlags,
-			CustomMountFlags: customFlags,
-			Support:          &support,
+			Name:             info.Name,
+			Type:             info.Type,
+			Description:      info.Description,
+			MountFlags:       info.MountFlags,
+			CustomMountFlags: info.CustomMountFlags,
+			Support:          info.Support,
 		})
 	}
 
@@ -135,43 +122,20 @@ func (h *FilesystemHandler) FormatPartition(
 		"force", req.Force)
 
 	// Find the partition
-	partition, err := h.findPartitionByID(req.PartitionID)
+	partition, err := h.volumeService.FindPartitionByID(req.PartitionID)
 	if err != nil {
 		tlog.ErrorContext(ctx, "Partition not found", "partition_id", req.PartitionID, "error", err)
 		return nil, huma.Error404NotFound("Partition not found", err)
 	}
 
 	// Get device path
-	devicePath := h.getPartitionDevicePath(partition)
+	devicePath := h.volumeService.GetPartitionDevicePath(partition)
 	if devicePath == "" {
 		return nil, huma.Error400BadRequest("Partition has no valid device path")
 	}
 
-	// Get filesystem adapter
-	adapter, err := h.fsService.GetAdapter(req.FilesystemType)
-	if err != nil {
-		tlog.ErrorContext(ctx, "Unsupported filesystem type",
-			"filesystem", req.FilesystemType, "error", err)
-		return nil, huma.Error400BadRequest(fmt.Sprintf("Unsupported filesystem type: %s", req.FilesystemType))
-	}
-
-	// Check if formatting is supported
-	support, err := adapter.IsSupported(ctx)
-	if err != nil {
-		return nil, huma.Error500InternalServerError("Failed to check filesystem support", err)
-	}
-
-	if !support.CanFormat {
-		msg := fmt.Sprintf("Filesystem %s cannot be formatted on this system", req.FilesystemType)
-		if len(support.MissingTools) > 0 {
-			msg += fmt.Sprintf(". Missing tools: %v. Install package: %s",
-				support.MissingTools, support.AlpinePackage)
-		}
-		return nil, huma.Error422UnprocessableEntity(msg)
-	}
-
-	// Format the partition
-	formatErr := adapter.Format(ctx, devicePath, dto.FormatOptions{
+	// Use filesystem service to format the partition
+	result, formatErr := h.fsService.FormatPartition(ctx, devicePath, req.FilesystemType, dto.FormatOptions{
 		Label:             req.Label,
 		Force:             req.Force,
 		AdditionalOptions: req.AdditionalOptions,
@@ -190,13 +154,7 @@ func (h *FilesystemHandler) FormatPartition(
 		"filesystem", req.FilesystemType,
 		"device", devicePath)
 
-	return &struct{ Body dto.CheckResult }{
-		Body: dto.CheckResult{
-			Success:  true,
-			Message:  fmt.Sprintf("Successfully formatted %s as %s", devicePath, req.FilesystemType),
-			ExitCode: 0,
-		},
-	}, nil
+	return &struct{ Body dto.CheckResult }{Body: *result}, nil
 }
 
 // CheckPartitionInput contains the input for checking a partition
@@ -228,13 +186,13 @@ func (h *FilesystemHandler) CheckPartition(
 		"force", req.Force)
 
 	// Find the partition
-	partition, err := h.findPartitionByID(req.PartitionID)
+	partition, err := h.volumeService.FindPartitionByID(req.PartitionID)
 	if err != nil {
 		return nil, huma.Error404NotFound("Partition not found", err)
 	}
 
 	// Get device path and filesystem type
-	devicePath := h.getPartitionDevicePath(partition)
+	devicePath := h.volumeService.GetPartitionDevicePath(partition)
 	if devicePath == "" {
 		return nil, huma.Error400BadRequest("Partition has no valid device path")
 	}
@@ -247,29 +205,8 @@ func (h *FilesystemHandler) CheckPartition(
 		return nil, huma.Error400BadRequest("Partition has no filesystem type")
 	}
 
-	// Get filesystem adapter
-	adapter, err := h.fsService.GetAdapter(fsType)
-	if err != nil {
-		return nil, huma.Error400BadRequest(fmt.Sprintf("Unsupported filesystem type: %s", fsType))
-	}
-
-	// Check if checking is supported
-	support, err := adapter.IsSupported(ctx)
-	if err != nil {
-		return nil, huma.Error500InternalServerError("Failed to check filesystem support", err)
-	}
-
-	if !support.CanCheck {
-		msg := fmt.Sprintf("Filesystem %s cannot be checked on this system", fsType)
-		if len(support.MissingTools) > 0 {
-			msg += fmt.Sprintf(". Missing tools: %v. Install package: %s",
-				support.MissingTools, support.AlpinePackage)
-		}
-		return nil, huma.Error422UnprocessableEntity(msg)
-	}
-
-	// Check the filesystem
-	result, checkErr := adapter.Check(ctx, devicePath, dto.CheckOptions{
+	// Use filesystem service to check the partition
+	result, checkErr := h.fsService.CheckPartition(ctx, devicePath, fsType, dto.CheckOptions{
 		AutoFix: req.AutoFix,
 		Force:   req.Force,
 		Verbose: req.Verbose,
@@ -289,7 +226,7 @@ func (h *FilesystemHandler) CheckPartition(
 		"errors_found", result.ErrorsFound,
 		"errors_fixed", result.ErrorsFixed)
 
-	return &struct{ Body dto.CheckResult }{Body: result}, nil
+	return &struct{ Body dto.CheckResult }{Body: *result}, nil
 }
 
 // PartitionStateInput contains the input for getting partition state
@@ -306,13 +243,13 @@ func (h *FilesystemHandler) GetPartitionState(
 	tlog.DebugContext(ctx, "Getting partition state", "partition", input.PartitionID)
 
 	// Find the partition
-	partition, err := h.findPartitionByID(input.PartitionID)
+	partition, err := h.volumeService.FindPartitionByID(input.PartitionID)
 	if err != nil {
 		return nil, huma.Error404NotFound("Partition not found", err)
 	}
 
 	// Get device path and filesystem type
-	devicePath := h.getPartitionDevicePath(partition)
+	devicePath := h.volumeService.GetPartitionDevicePath(partition)
 	if devicePath == "" {
 		return nil, huma.Error400BadRequest("Partition has no valid device path")
 	}
@@ -325,25 +262,8 @@ func (h *FilesystemHandler) GetPartitionState(
 		return nil, huma.Error400BadRequest("Partition has no filesystem type")
 	}
 
-	// Get filesystem adapter
-	adapter, err := h.fsService.GetAdapter(fsType)
-	if err != nil {
-		return nil, huma.Error400BadRequest(fmt.Sprintf("Unsupported filesystem type: %s", fsType))
-	}
-
-	// Check if state retrieval is supported
-	support, err := adapter.IsSupported(ctx)
-	if err != nil {
-		return nil, huma.Error500InternalServerError("Failed to check filesystem support", err)
-	}
-
-	if !support.CanGetState {
-		return nil, huma.Error422UnprocessableEntity(
-			fmt.Sprintf("Filesystem %s does not support state retrieval", fsType))
-	}
-
-	// Get the state
-	state, stateErr := adapter.GetState(ctx, devicePath)
+	// Use filesystem service to get partition state
+	state, stateErr := h.fsService.GetPartitionState(ctx, devicePath, fsType)
 	if stateErr != nil {
 		tlog.ErrorContext(ctx, "Failed to get partition state",
 			"partition", input.PartitionID,
@@ -352,7 +272,7 @@ func (h *FilesystemHandler) GetPartitionState(
 		return nil, huma.Error500InternalServerError("Failed to get partition state", stateErr)
 	}
 
-	return &struct{ Body dto.FilesystemState }{Body: state}, nil
+	return &struct{ Body dto.FilesystemState }{Body: *state}, nil
 }
 
 // PartitionLabelInput contains the input for getting/setting partition label
@@ -378,13 +298,13 @@ func (h *FilesystemHandler) GetPartitionLabel(
 	tlog.DebugContext(ctx, "Getting partition label", "partition", input.PartitionID)
 
 	// Find the partition
-	partition, err := h.findPartitionByID(input.PartitionID)
+	partition, err := h.volumeService.FindPartitionByID(input.PartitionID)
 	if err != nil {
 		return nil, huma.Error404NotFound("Partition not found", err)
 	}
 
 	// Get device path and filesystem type
-	devicePath := h.getPartitionDevicePath(partition)
+	devicePath := h.volumeService.GetPartitionDevicePath(partition)
 	if devicePath == "" {
 		return nil, huma.Error400BadRequest("Partition has no valid device path")
 	}
@@ -397,14 +317,8 @@ func (h *FilesystemHandler) GetPartitionLabel(
 		return nil, huma.Error400BadRequest("Partition has no filesystem type")
 	}
 
-	// Get filesystem adapter
-	adapter, err := h.fsService.GetAdapter(fsType)
-	if err != nil {
-		return nil, huma.Error400BadRequest(fmt.Sprintf("Unsupported filesystem type: %s", fsType))
-	}
-
-	// Get the label
-	label, labelErr := adapter.GetLabel(ctx, devicePath)
+	// Use filesystem service to get the label
+	label, labelErr := h.fsService.GetPartitionLabel(ctx, devicePath, fsType)
 	if labelErr != nil {
 		tlog.ErrorContext(ctx, "Failed to get partition label",
 			"partition", input.PartitionID,
@@ -431,13 +345,13 @@ func (h *FilesystemHandler) SetPartitionLabel(
 		"label", req.Label)
 
 	// Find the partition
-	partition, err := h.findPartitionByID(req.PartitionID)
+	partition, err := h.volumeService.FindPartitionByID(req.PartitionID)
 	if err != nil {
 		return nil, huma.Error404NotFound("Partition not found", err)
 	}
 
 	// Get device path and filesystem type
-	devicePath := h.getPartitionDevicePath(partition)
+	devicePath := h.volumeService.GetPartitionDevicePath(partition)
 	if devicePath == "" {
 		return nil, huma.Error400BadRequest("Partition has no valid device path")
 	}
@@ -450,29 +364,8 @@ func (h *FilesystemHandler) SetPartitionLabel(
 		return nil, huma.Error400BadRequest("Partition has no filesystem type")
 	}
 
-	// Get filesystem adapter
-	adapter, err := h.fsService.GetAdapter(fsType)
-	if err != nil {
-		return nil, huma.Error400BadRequest(fmt.Sprintf("Unsupported filesystem type: %s", fsType))
-	}
-
-	// Check if label setting is supported
-	support, err := adapter.IsSupported(ctx)
-	if err != nil {
-		return nil, huma.Error500InternalServerError("Failed to check filesystem support", err)
-	}
-
-	if !support.CanSetLabel {
-		msg := fmt.Sprintf("Filesystem %s does not support label changes", fsType)
-		if len(support.MissingTools) > 0 {
-			msg += fmt.Sprintf(". Missing tools: %v. Install package: %s",
-				support.MissingTools, support.AlpinePackage)
-		}
-		return nil, huma.Error422UnprocessableEntity(msg)
-	}
-
-	// Set the label
-	labelErr := adapter.SetLabel(ctx, devicePath, req.Label)
+	// Use filesystem service to set the label
+	labelErr := h.fsService.SetPartitionLabel(ctx, devicePath, fsType, req.Label)
 	if labelErr != nil {
 		tlog.ErrorContext(ctx, "Failed to set partition label",
 			"partition", req.PartitionID,
@@ -489,32 +382,4 @@ func (h *FilesystemHandler) SetPartitionLabel(
 	return &struct{ Body struct{ Success bool `json:"success"` } }{
 		Body: struct{ Success bool `json:"success"` }{Success: true},
 	}, nil
-}
-
-// Helper functions
-
-// findPartitionByID finds a partition by its unique ID across all disks
-func (h *FilesystemHandler) findPartitionByID(partitionID string) (*dto.Partition, error) {
-	volumes := h.volumeService.GetVolumesData()
-	for _, disk := range volumes {
-		if disk.Partitions != nil {
-			if partition, found := (*disk.Partitions)[partitionID]; found {
-				return &partition, nil
-			}
-		}
-	}
-	return nil, fmt.Errorf("partition not found: %s", partitionID)
-}
-
-// getPartitionDevicePath gets the best available device path for a partition
-func (h *FilesystemHandler) getPartitionDevicePath(partition *dto.Partition) string {
-	// Prefer persistent device path
-	if partition.DevicePath != nil && *partition.DevicePath != "" {
-		return *partition.DevicePath
-	}
-	// Fallback to legacy device path
-	if partition.LegacyDevicePath != nil && *partition.LegacyDevicePath != "" {
-		return *partition.LegacyDevicePath
-	}
-	return ""
 }

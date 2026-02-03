@@ -34,6 +34,8 @@ type FilesystemServiceInterface interface {
 	FsTypeFromDevice(devicePath string) (string, errors.E)
 
 	// GetAdapter returns the filesystem adapter for a given filesystem type.
+	// This method should only be used internally by the filesystem service.
+	// API handlers should use higher-level methods instead.
 	GetAdapter(fsType string) (filesystem.FilesystemAdapter, errors.E)
 
 	// GetSupportedFilesystems returns information about all supported filesystems.
@@ -41,6 +43,48 @@ type FilesystemServiceInterface interface {
 
 	// ListSupportedTypes returns a list of all supported filesystem type names.
 	ListSupportedTypes() []string
+
+	// GetSupportAndInfo returns filesystem support information along with name and description.
+	// This is the preferred method for API handlers to get filesystem information.
+	GetSupportAndInfo(ctx context.Context, fsType string) (*FilesystemInfo, errors.E)
+
+	// FormatPartition formats a device with the specified filesystem type.
+	// Returns an error if formatting cannot start, is already in progress, or fails.
+	FormatPartition(ctx context.Context, devicePath, fsType string, options dto.FormatOptions) (*dto.CheckResult, errors.E)
+
+	// CheckPartition checks a device's filesystem for errors.
+	// Returns an error if check cannot start, is already in progress, or fails.
+	CheckPartition(ctx context.Context, devicePath, fsType string, options dto.CheckOptions) (*dto.CheckResult, errors.E)
+
+	// GetPartitionState returns the state of a partition's filesystem.
+	GetPartitionState(ctx context.Context, devicePath, fsType string) (*dto.FilesystemState, errors.E)
+
+	// GetPartitionLabel returns the label of a partition's filesystem.
+	GetPartitionLabel(ctx context.Context, devicePath, fsType string) (string, errors.E)
+
+	// SetPartitionLabel sets the label of a partition's filesystem.
+	SetPartitionLabel(ctx context.Context, devicePath, fsType, label string) errors.E
+}
+
+// FilesystemInfo combines filesystem type information with capability details
+type FilesystemInfo struct {
+	// Name is the filesystem type name
+	Name string
+
+	// Type is the filesystem type (same as name for consistency)
+	Type string
+
+	// Description provides a human-readable description of the filesystem
+	Description string
+
+	// MountFlags contains standard mount flags
+	MountFlags []dto.MountFlag
+
+	// CustomMountFlags contains filesystem-specific mount flags
+	CustomMountFlags []dto.MountFlag
+
+	// Support contains filesystem capability information
+	Support *dto.FilesystemSupport
 }
 
 // FilesystemService implements the FilesystemServiceInterface.
@@ -358,7 +402,9 @@ func (s *FilesystemService) FsTypeFromDevice(devicePath string) (string, errors.
 	return fsType, nil
 }
 
-// GetAdapter returns the filesystem adapter for a given filesystem type
+// GetAdapter returns the filesystem adapter for a given filesystem type.
+// This method should only be used internally by the filesystem service.
+// API handlers should use higher-level methods instead.
 func (s *FilesystemService) GetAdapter(fsType string) (filesystem.FilesystemAdapter, errors.E) {
 	return s.registry.Get(fsType)
 }
@@ -371,5 +417,156 @@ func (s *FilesystemService) GetSupportedFilesystems(ctx context.Context) (map[st
 // ListSupportedTypes returns a list of all supported filesystem type names
 func (s *FilesystemService) ListSupportedTypes() []string {
 	return s.registry.ListSupportedTypes()
+}
+
+// GetSupportAndInfo returns filesystem support information along with name and description
+func (s *FilesystemService) GetSupportAndInfo(ctx context.Context, fsType string) (*FilesystemInfo, errors.E) {
+	adapter, err := s.registry.Get(fsType)
+	if err != nil {
+		return nil, err
+	}
+
+	support, err := adapter.IsSupported(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to check filesystem support")
+	}
+
+	standardFlags, _ := s.GetStandardMountFlags()
+	customFlags, _ := s.GetFilesystemSpecificMountFlags(fsType)
+
+	return &FilesystemInfo{
+		Name:             adapter.GetName(),
+		Type:             fsType,
+		Description:      adapter.GetDescription(),
+		MountFlags:       standardFlags,
+		CustomMountFlags: customFlags,
+		Support:          &support,
+	}, nil
+}
+
+// FormatPartition formats a device with the specified filesystem type
+func (s *FilesystemService) FormatPartition(ctx context.Context, devicePath, fsType string, options dto.FormatOptions) (*dto.CheckResult, errors.E) {
+	adapter, err := s.registry.Get(fsType)
+	if err != nil {
+		return nil, errors.Wrap(err, "unsupported filesystem type")
+	}
+
+	// Check if formatting is supported
+	support, err := adapter.IsSupported(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to check filesystem support")
+	}
+
+	if !support.CanFormat {
+		msg := fmt.Sprintf("Filesystem %s cannot be formatted on this system", fsType)
+		if len(support.MissingTools) > 0 {
+			msg += fmt.Sprintf(". Missing tools: %v. Install package: %s",
+				support.MissingTools, support.AlpinePackage)
+		}
+		return nil, errors.New(msg)
+	}
+
+	// Format the partition
+	formatErr := adapter.Format(ctx, devicePath, options)
+	if formatErr != nil {
+		return nil, errors.Wrap(formatErr, "failed to format partition")
+	}
+
+	return &dto.CheckResult{
+		Success:  true,
+		Message:  fmt.Sprintf("Successfully formatted %s as %s", devicePath, fsType),
+		ExitCode: 0,
+	}, nil
+}
+
+// CheckPartition checks a device's filesystem for errors
+func (s *FilesystemService) CheckPartition(ctx context.Context, devicePath, fsType string, options dto.CheckOptions) (*dto.CheckResult, errors.E) {
+	adapter, err := s.registry.Get(fsType)
+	if err != nil {
+		return nil, errors.Wrap(err, "unsupported filesystem type")
+	}
+
+	// Check if checking is supported
+	support, err := adapter.IsSupported(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to check filesystem support")
+	}
+
+	if !support.CanCheck {
+		msg := fmt.Sprintf("Filesystem %s cannot be checked on this system", fsType)
+		if len(support.MissingTools) > 0 {
+			msg += fmt.Sprintf(". Missing tools: %v. Install package: %s",
+				support.MissingTools, support.AlpinePackage)
+		}
+		return nil, errors.New(msg)
+	}
+
+	// Check the filesystem
+	result, checkErr := adapter.Check(ctx, devicePath, options)
+	if checkErr != nil {
+		return nil, errors.Wrap(checkErr, "failed to check partition")
+	}
+
+	return &result, nil
+}
+
+// GetPartitionState returns the state of a partition's filesystem
+func (s *FilesystemService) GetPartitionState(ctx context.Context, devicePath, fsType string) (*dto.FilesystemState, errors.E) {
+	adapter, err := s.registry.Get(fsType)
+	if err != nil {
+		return nil, errors.Wrap(err, "unsupported filesystem type")
+	}
+
+	state, stateErr := adapter.GetState(ctx, devicePath)
+	if stateErr != nil {
+		return nil, errors.Wrap(stateErr, "failed to get partition state")
+	}
+
+	return &state, nil
+}
+
+// GetPartitionLabel returns the label of a partition's filesystem
+func (s *FilesystemService) GetPartitionLabel(ctx context.Context, devicePath, fsType string) (string, errors.E) {
+	adapter, err := s.registry.Get(fsType)
+	if err != nil {
+		return "", errors.Wrap(err, "unsupported filesystem type")
+	}
+
+	label, labelErr := adapter.GetLabel(ctx, devicePath)
+	if labelErr != nil {
+		return "", errors.Wrap(labelErr, "failed to get partition label")
+	}
+
+	return label, nil
+}
+
+// SetPartitionLabel sets the label of a partition's filesystem
+func (s *FilesystemService) SetPartitionLabel(ctx context.Context, devicePath, fsType, label string) errors.E {
+	adapter, err := s.registry.Get(fsType)
+	if err != nil {
+		return errors.Wrap(err, "unsupported filesystem type")
+	}
+
+	// Check if setting label is supported
+	support, err := adapter.IsSupported(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to check filesystem support")
+	}
+
+	if !support.CanSetLabel {
+		msg := fmt.Sprintf("Filesystem %s cannot set labels on this system", fsType)
+		if len(support.MissingTools) > 0 {
+			msg += fmt.Sprintf(". Missing tools: %v. Install package: %s",
+				support.MissingTools, support.AlpinePackage)
+		}
+		return errors.New(msg)
+	}
+
+	setErr := adapter.SetLabel(ctx, devicePath, label)
+	if setErr != nil {
+		return errors.Wrap(setErr, "failed to set partition label")
+	}
+
+	return nil
 }
 
