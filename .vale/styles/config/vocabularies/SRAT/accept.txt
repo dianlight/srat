@@ -23,6 +23,7 @@ wsdd
 WSDD2
 avahi
 nmbd
+minisign
 goverter
 microtask
 Automount

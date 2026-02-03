@@ -29,6 +29,7 @@ exclude = [
   "https://www.buymeacoffee.com/*", # Buy me a coffee (can be rate-limited) 
   "https://github.com/*/edit/*", # GitHub edit links (require authentication)
   "https://wiki.samba.org/*",
+  "https://codecov.io/github/dianlight/*",
 ]
 
 # URLs to check (supports regex). Has preference over all excludes.
