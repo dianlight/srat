@@ -45,13 +45,19 @@ The SRAT backend now implements a filesystem adapter pattern that provides a cle
 
 ### Supported Filesystems
 
-| Filesystem | Alpine Package | Description                |
-| ---------- | -------------- | -------------------------- |
-| ext4       | e2fsprogs      | Fourth Extended Filesystem |
-| vfat       | dosfstools     | FAT32 Filesystem           |
-| ntfs       | ntfs-3g-progs  | NTFS Filesystem            |
-| btrfs      | btrfs-progs    | B-tree Filesystem          |
-| xfs        | xfsprogs       | XFS Filesystem             |
+| Filesystem | Alpine Package | Description                             |
+| ---------- | -------------- | --------------------------------------- |
+| ext4       | e2fsprogs      | Fourth Extended Filesystem              |
+| vfat       | dosfstools     | FAT32 Filesystem                        |
+| ntfs       | ntfs-3g-progs  | NTFS Filesystem                         |
+| btrfs      | btrfs-progs    | B-tree Filesystem                       |
+| xfs        | xfsprogs       | XFS Filesystem                          |
+| exfat      | exfatprogs     | Extended File Allocation Table          |
+| f2fs       | f2fs-tools     | Flash-Friendly File System              |
+| gfs2       | gfs2-utils     | Global File System 2 (Cluster FS)       |
+| hfsplus    | hfsprogs       | HFS Plus (Mac OS Extended)              |
+| reiserfs   | reiserfsprogs  | ReiserFS Filesystem                     |
+| apfs       | N/A            | Apple File System (read-only on Linux)  |
 
 ## Usage
 
@@ -312,6 +318,154 @@ The new adapter pattern is fully backward compatible with the existing `Filesyst
 - `FsTypeFromDevice(devicePath)`
 
 New methods have been added without breaking any existing functionality:
+
+- `GetAdapter(fsType)` - Get a filesystem-specific adapter
+- `GetSupportedFilesystems(ctx)` - Get support information for all filesystems
+- `ListSupportedTypes()` - Get a list of all supported filesystem types
+
+## HTTP API Endpoints
+
+The SRAT backend provides HTTP API endpoints for filesystem operations through the `FilesystemHandler`:
+
+### List Filesystems
+
+Get all supported filesystems with their capabilities:
+
+```
+GET /filesystems
+```
+
+Response includes filesystem type information, mount flags, and capability details:
+
+```json
+[
+  {
+    "name": "ext4",
+    "type": "ext4",
+    "description": "Fourth Extended Filesystem",
+    "mountFlags": [...],
+    "customMountFlags": [...],
+    "support": {
+      "canMount": true,
+      "canFormat": true,
+      "canCheck": true,
+      "canSetLabel": true,
+      "canGetState": true,
+      "alpinePackage": "e2fsprogs",
+      "missingTools": []
+    }
+  },
+  ...
+]
+```
+
+### Format Partition
+
+Format a partition with a specific filesystem:
+
+```
+POST /filesystem/format
+Content-Type: application/json
+
+{
+  "partitionId": "partition-uuid",
+  "filesystemType": "ext4",
+  "label": "MyDisk",
+  "force": true,
+  "additionalOptions": {
+    "option": "value"
+  }
+}
+```
+
+### Check Partition
+
+Check a partition's filesystem for errors:
+
+```
+POST /filesystem/check
+Content-Type: application/json
+
+{
+  "partitionId": "partition-uuid",
+  "autoFix": true,
+  "force": false,
+  "verbose": false
+}
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "errorsFound": false,
+  "errorsFixed": false,
+  "message": "Filesystem is clean",
+  "exitCode": 0
+}
+```
+
+### Get Partition State
+
+Get the current state of a partition's filesystem:
+
+```
+GET /filesystem/state?partition_id=partition-uuid
+```
+
+Response:
+
+```json
+{
+  "isClean": true,
+  "isMounted": false,
+  "hasErrors": false,
+  "stateDescription": "clean",
+  "additionalInfo": {}
+}
+```
+
+### Get Partition Label
+
+Get the label of a partition's filesystem:
+
+```
+GET /filesystem/label?partition_id=partition-uuid
+```
+
+Response:
+
+```json
+{
+  "label": "MyDisk"
+}
+```
+
+### Set Partition Label
+
+Set the label of a partition's filesystem:
+
+```
+PUT /filesystem/label
+Content-Type: application/json
+
+{
+  "partitionId": "partition-uuid",
+  "label": "NewLabel"
+}
+```
+
+Response:
+
+```json
+{
+  "success": true
+}
+```
+
+All endpoints use the partition's unique ID to identify the target partition and automatically determine the appropriate filesystem adapter based on the partition's filesystem type.
+
 
 - `GetAdapter(fsType)`
 - `GetSupportedFilesystems(ctx)`

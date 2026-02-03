@@ -25,7 +25,6 @@ import (
 type SystemHandlerSuite struct {
 	suite.Suite
 	systemHandler   *api.SystemHanler
-	mockFsService   service.FilesystemServiceInterface
 	mockHostService service.HostServiceInterface
 	testAPI         humatest.TestAPI
 	ctx             context.Context
@@ -45,11 +44,9 @@ func (suite *SystemHandlerSuite) SetupTest() {
 				return context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
 			},
 			api.NewSystemHanler,
-			mock.Mock[service.FilesystemServiceInterface],
 			mock.Mock[service.HostServiceInterface],
 		),
 		fx.Populate(&suite.systemHandler),
-		fx.Populate(&suite.mockFsService),
 		fx.Populate(&suite.mockHostService),
 		fx.Populate(&suite.ctx),
 		fx.Populate(&suite.cancel),
@@ -129,52 +126,6 @@ func (suite *SystemHandlerSuite) TestGetNICsHandler_FiltersVethInterfaces() {
 	for _, nic := range result {
 		suite.NotContains(nic.Name, "veth", "veth interfaces should be filtered out")
 	}
-}
-
-func (suite *SystemHandlerSuite) TestGetFSHandler_IncludesFuse3() {
-	tempFile, err := os.CreateTemp(suite.T().TempDir(), "filesystems-*")
-	suite.Require().NoError(err)
-	defer tempFile.Close()
-
-	contents := strings.Join([]string{
-		"nodev\tsysfs",
-		"nodev\tfuse",
-		"\text4",
-		"\txfs",
-		"nodev\tzfs",
-		"nodev\tfuse3",
-	}, "\n")
-	suite.Require().NoError(os.WriteFile(tempFile.Name(), []byte(contents), 0o644))
-
-	suite.systemHandler.SetFilesystemsPath(tempFile.Name())
-
-	standardFlags := []dto.MountFlag{{Name: "rw"}}
-	mock.When(suite.mockFsService.GetStandardMountFlags()).ThenReturn(standardFlags, nil)
-
-	for _, fsType := range []string{"ext4", "xfs", "zfs", "fuse", "fuse3"} {
-		mock.When(suite.mockFsService.GetFilesystemSpecificMountFlags(fsType)).ThenReturn([]dto.MountFlag{}, nil)
-	}
-
-	resp := suite.testAPI.Get("/filesystems")
-	suite.Equal(http.StatusOK, resp.Code)
-
-	var result []dto.FilesystemType
-	err = json.Unmarshal(resp.Body.Bytes(), &result)
-	suite.Require().NoError(err)
-	suite.Len(result, 5)
-
-	names := make([]string, len(result))
-	for i, fsType := range result {
-		names[i] = fsType.Name
-		suite.Len(fsType.MountFlags, len(standardFlags))
-		for idx, flag := range fsType.MountFlags {
-			suite.Equal(standardFlags[idx], flag)
-		}
-	}
-
-	suite.Contains(names, "fuse3")
-	suite.Contains(names, "fuse")
-	suite.NotContains(names, "sysfs")
 }
 
 func (suite *SystemHandlerSuite) TestGetCapabilitiesHandler_Success() {
