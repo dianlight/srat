@@ -573,7 +573,7 @@ components:
         - ignored
       type: object
     IssueReportRequest:
-      additionalProperties: false
+      additionalProperties: true
       properties:
         $schema:
           description: A URL to the JSON Schema for this object.
@@ -611,11 +611,6 @@ components:
             - array
             - "null"
         problem_type:
-          enum:
-            - frontend_ui
-            - ha_integration
-            - addon
-            - samba
           type: string
         reproducing_steps:
           type: string
@@ -623,7 +618,6 @@ components:
           type: string
       required:
         - problem_type
-        - title
         - description
         - reproducing_steps
         - include_context_data
@@ -1919,8 +1913,8 @@ paths:
     get:
       operationId: get-api-capabilities
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -2019,8 +2013,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json-patch+json:
@@ -2166,8 +2160,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -2322,8 +2316,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -2372,8 +2366,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2472,8 +2466,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2721,8 +2715,8 @@ paths:
     get:
       operationId: list-api-filesystems
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -2986,8 +2980,8 @@ paths:
     post:
       operationId: create-issue
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -3134,8 +3128,8 @@ paths:
             format: int64
             minimum: 0
             type: integer
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "204":
           description: No Content
@@ -3275,8 +3269,8 @@ paths:
     put:
       operationId: put-api-samba-apply
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "204":
           description: No Content
@@ -3772,8 +3766,8 @@ paths:
               - world
             maxLength: 128
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "204":
           description: No Content
@@ -4132,8 +4126,8 @@ paths:
             description: Name of the share to enable
             maxLength: 128
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:

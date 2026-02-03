@@ -85,7 +85,7 @@ func (suite *IssueReportServiceSuite) TestGenerateIssueReport_AddonProblem() {
 	mock.When(suite.mockSettingService.Load()).ThenReturn(settings, nil)
 
 	request := &dto.IssueReportRequest{
-		ProblemType:        dto.ProblemTypes.PROBLEMTYPEADDON,
+		ProblemType:        dto.ProblemTypes.PROBLEMTYPEADDONCRASH,
 		Description:        "Addon won't start",
 		IncludeContextData: false,
 		IncludeSRATConfig:  false,

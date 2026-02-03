@@ -110,11 +110,19 @@ describe("ReportIssueDialog", () => {
 			),
 		);
 
+		const titleInput = await screen.findByLabelText(/Title/i);
+		expect(titleInput).toBeTruthy();
+
 		// Use placeholder to find the textarea more specifically
 		const textarea = await screen.findByPlaceholderText(
 			/Describe the issue in detail/i,
 		);
 		expect(textarea).toBeTruthy();
+
+		const reproSteps = await screen.findByPlaceholderText(
+			/List the steps needed to reproduce the issue/i,
+		);
+		expect(reproSteps).toBeTruthy();
 	});
 
 	it("has toggle switches for data inclusion options", async () => {
@@ -141,11 +149,17 @@ describe("ReportIssueDialog", () => {
 		const contextDataSwitch = await screen.findByText(/Contextual data/i);
 		expect(contextDataSwitch).toBeTruthy();
 
-		const addonLogsSwitch = await screen.findByText(/Addon config and logs/i);
+		const addonLogsSwitch = await screen.findByText(/Addon logs/i);
 		expect(addonLogsSwitch).toBeTruthy();
+
+		const addonConfigSwitch = await screen.findByText(/Addon configuration/i);
+		expect(addonConfigSwitch).toBeTruthy();
 
 		const sratConfigSwitch = await screen.findByText(/SRAT configuration/i);
 		expect(sratConfigSwitch).toBeTruthy();
+
+		const databaseDumpSwitch = await screen.findByText(/Database dump/i);
+		expect(databaseDumpSwitch).toBeTruthy();
 	});
 
 	it("has Cancel and Create Issue buttons", async () => {

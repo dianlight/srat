@@ -31,10 +31,19 @@ type ProblemType struct {
 // problemTypesContainer is the container for all enum values.
 // It is private and should not be used directly use the public methods on the ProblemType type.
 type problemTypesContainer struct {
-	PROBLEMTYPEFRONTENDUI    ProblemType
-	PROBLEMTYPEHAINTEGRATION ProblemType
-	PROBLEMTYPEADDON         ProblemType
-	PROBLEMTYPESAMBA         ProblemType
+	PROBLEMTYPEFRONTENDUI         ProblemType
+	PROBLEMTYPEHAINTEGRATION      ProblemType
+	PROBLEMTYPEADDONCRASH         ProblemType
+	PROBLEMTYPEADDONUPDATE        ProblemType
+	PROBLEMTYPEADDONSTARTUP       ProblemType
+	PROBLEMTYPEADDONFUNCTIONALITY ProblemType
+	PROBLEMTYPEINSTALLATION       ProblemType
+	PROBLEMTYPEPERFORMANCE        ProblemType
+	PROBLEMTYPESECURITY           ProblemType
+	PROBLEMTYPEINTEGRATION        ProblemType
+	PROBLEMTYPEDOCUMENTATION      ProblemType
+	PROBLEMTYPESAMBA              ProblemType
+	PROBLEMTYPEOTHER              ProblemType
 }
 
 // ProblemTypes is a main entry point using the ProblemType type.
@@ -55,17 +64,80 @@ var ProblemTypes = problemTypesContainer{
 		RepositoryUrl: "https://github.com/dianlight/srat",
 		Template:      "bug_report.yaml",
 	},
-	PROBLEMTYPEADDON: ProblemType{
-		problemType:   problemTypeAddon,
-		Description:   "Addon",
+	PROBLEMTYPEADDONCRASH: ProblemType{
+		problemType:   problemTypeAddonCrash,
+		Description:   "Addon Crash",
 		IssueTitle:    "[SambaNas2]",
 		RepositoryUrl: "https://github.com/dianlight/hassio-addons",
 		Template:      "BUG-REPORT.yml",
+	},
+	PROBLEMTYPEADDONUPDATE: ProblemType{
+		problemType:   problemTypeAddonUpdate,
+		Description:   "Addon Update",
+		IssueTitle:    "[SambaNas2]",
+		RepositoryUrl: "https://github.com/dianlight/hassio-addons",
+		Template:      "BUG-REPORT.yml",
+	},
+	PROBLEMTYPEADDONSTARTUP: ProblemType{
+		problemType:   problemTypeAddonStartup,
+		Description:   "Addon Startup",
+		IssueTitle:    "[SambaNas2]",
+		RepositoryUrl: "https://github.com/dianlight/hassio-addons",
+		Template:      "BUG-REPORT.yml",
+	},
+	PROBLEMTYPEADDONFUNCTIONALITY: ProblemType{
+		problemType:   problemTypeAddonFunctionality,
+		Description:   "Addon Functionality",
+		IssueTitle:    "[SambaNas2]",
+		RepositoryUrl: "https://github.com/dianlight/hassio-addons",
+		Template:      "BUG-REPORT.yml",
+	},
+	PROBLEMTYPEINSTALLATION: ProblemType{
+		problemType:   problemTypeInstallation,
+		Description:   "Installation",
+		IssueTitle:    "[Installation]",
+		RepositoryUrl: "https://github.com/dianlight/srat",
+		Template:      "bug_report.yaml",
+	},
+	PROBLEMTYPEPERFORMANCE: ProblemType{
+		problemType:   problemTypePerformance,
+		Description:   "Performance",
+		IssueTitle:    "[Performance]",
+		RepositoryUrl: "https://github.com/dianlight/srat",
+		Template:      "bug_report.yaml",
+	},
+	PROBLEMTYPESECURITY: ProblemType{
+		problemType:   problemTypeSecurity,
+		Description:   "Security",
+		IssueTitle:    "[Security]",
+		RepositoryUrl: "https://github.com/dianlight/srat",
+		Template:      "bug_report.yaml",
+	},
+	PROBLEMTYPEINTEGRATION: ProblemType{
+		problemType:   problemTypeIntegration,
+		Description:   "Integration",
+		IssueTitle:    "[Integration]",
+		RepositoryUrl: "https://github.com/dianlight/srat",
+		Template:      "bug_report.yaml",
+	},
+	PROBLEMTYPEDOCUMENTATION: ProblemType{
+		problemType:   problemTypeDocumentation,
+		Description:   "Documentation",
+		IssueTitle:    "[Documentation]",
+		RepositoryUrl: "https://github.com/dianlight/srat",
+		Template:      "bug_report.yaml",
 	},
 	PROBLEMTYPESAMBA: ProblemType{
 		problemType:   problemTypeSamba,
 		Description:   "Samba",
 		IssueTitle:    "[Samba]",
+		RepositoryUrl: "https://github.com/dianlight/srat",
+		Template:      "bug_report.yaml",
+	},
+	PROBLEMTYPEOTHER: ProblemType{
+		problemType:   problemTypeOther,
+		Description:   "Other",
+		IssueTitle:    "[Other]",
 		RepositoryUrl: "https://github.com/dianlight/srat",
 		Template:      "bug_report.yaml",
 	},
@@ -82,8 +154,17 @@ func (p problemTypesContainer) allSlice() []ProblemType {
 	return []ProblemType{
 		ProblemTypes.PROBLEMTYPEFRONTENDUI,
 		ProblemTypes.PROBLEMTYPEHAINTEGRATION,
-		ProblemTypes.PROBLEMTYPEADDON,
+		ProblemTypes.PROBLEMTYPEADDONCRASH,
+		ProblemTypes.PROBLEMTYPEADDONUPDATE,
+		ProblemTypes.PROBLEMTYPEADDONSTARTUP,
+		ProblemTypes.PROBLEMTYPEADDONFUNCTIONALITY,
+		ProblemTypes.PROBLEMTYPEINSTALLATION,
+		ProblemTypes.PROBLEMTYPEPERFORMANCE,
+		ProblemTypes.PROBLEMTYPESECURITY,
+		ProblemTypes.PROBLEMTYPEINTEGRATION,
+		ProblemTypes.PROBLEMTYPEDOCUMENTATION,
 		ProblemTypes.PROBLEMTYPESAMBA,
+		ProblemTypes.PROBLEMTYPEOTHER,
 	}
 }
 
@@ -176,10 +257,19 @@ func ParseProblemType(input any) (ProblemType, error) {
 // problemTypesNameMap is a map of enum values to their ProblemType representation
 // It is used to convert string representations of enum values into their ProblemType representation.
 var problemTypesNameMap = map[string]ProblemType{
-	"frontend_ui":    ProblemTypes.PROBLEMTYPEFRONTENDUI,
-	"ha_integration": ProblemTypes.PROBLEMTYPEHAINTEGRATION,
-	"addon":          ProblemTypes.PROBLEMTYPEADDON,
-	"samba":          ProblemTypes.PROBLEMTYPESAMBA,
+	"frontend_ui":         ProblemTypes.PROBLEMTYPEFRONTENDUI,
+	"ha_integration":      ProblemTypes.PROBLEMTYPEHAINTEGRATION,
+	"addon_crash":         ProblemTypes.PROBLEMTYPEADDONCRASH,
+	"addon_update":        ProblemTypes.PROBLEMTYPEADDONUPDATE,
+	"addon_startup":       ProblemTypes.PROBLEMTYPEADDONSTARTUP,
+	"addon_functionality": ProblemTypes.PROBLEMTYPEADDONFUNCTIONALITY,
+	"installation":        ProblemTypes.PROBLEMTYPEINSTALLATION,
+	"performance":         ProblemTypes.PROBLEMTYPEPERFORMANCE,
+	"security":            ProblemTypes.PROBLEMTYPESECURITY,
+	"integration":         ProblemTypes.PROBLEMTYPEINTEGRATION,
+	"documentation":       ProblemTypes.PROBLEMTYPEDOCUMENTATION,
+	"samba":               ProblemTypes.PROBLEMTYPESAMBA,
+	"other":               ProblemTypes.PROBLEMTYPEOTHER,
 }
 
 // stringToProblemType converts a string representation of an enum value into its ProblemType representation
@@ -221,10 +311,19 @@ func ExhaustiveProblemTypes(f func(ProblemType)) {
 
 // validProblemTypes is a map of enum values to their validity
 var validProblemTypes = map[ProblemType]bool{
-	ProblemTypes.PROBLEMTYPEFRONTENDUI:    true,
-	ProblemTypes.PROBLEMTYPEHAINTEGRATION: true,
-	ProblemTypes.PROBLEMTYPEADDON:         true,
-	ProblemTypes.PROBLEMTYPESAMBA:         true,
+	ProblemTypes.PROBLEMTYPEFRONTENDUI:         true,
+	ProblemTypes.PROBLEMTYPEHAINTEGRATION:      true,
+	ProblemTypes.PROBLEMTYPEADDONCRASH:         true,
+	ProblemTypes.PROBLEMTYPEADDONUPDATE:        true,
+	ProblemTypes.PROBLEMTYPEADDONSTARTUP:       true,
+	ProblemTypes.PROBLEMTYPEADDONFUNCTIONALITY: true,
+	ProblemTypes.PROBLEMTYPEINSTALLATION:       true,
+	ProblemTypes.PROBLEMTYPEPERFORMANCE:        true,
+	ProblemTypes.PROBLEMTYPESECURITY:           true,
+	ProblemTypes.PROBLEMTYPEINTEGRATION:        true,
+	ProblemTypes.PROBLEMTYPEDOCUMENTATION:      true,
+	ProblemTypes.PROBLEMTYPESAMBA:              true,
+	ProblemTypes.PROBLEMTYPEOTHER:              true,
 }
 
 // IsValid checks whether the ProblemTypes value is valid.
@@ -325,15 +424,24 @@ func (p *ProblemType) UnmarshalYAML(by []byte) error {
 }
 
 // problemtypeNames is a constant string slice containing all enum values cononical absolute names
-const problemtypeNames = "frontend_uiha_integrationaddonsamba"
+const problemtypeNames = "frontend_uiha_integrationaddon_crashaddon_updateaddon_startupaddon_functionalityinstallationperformancesecurityintegrationdocumentationsambaother"
 
 // problemtypeNamesMap is a map of enum values to their canonical absolute
 // name positions within the problemtypeNames string slice
 var problemtypeNamesMap = map[ProblemType]string{
-	ProblemTypes.PROBLEMTYPEFRONTENDUI:    problemtypeNames[0:11],
-	ProblemTypes.PROBLEMTYPEHAINTEGRATION: problemtypeNames[11:25],
-	ProblemTypes.PROBLEMTYPEADDON:         problemtypeNames[25:30],
-	ProblemTypes.PROBLEMTYPESAMBA:         problemtypeNames[30:35],
+	ProblemTypes.PROBLEMTYPEFRONTENDUI:         problemtypeNames[0:11],
+	ProblemTypes.PROBLEMTYPEHAINTEGRATION:      problemtypeNames[11:25],
+	ProblemTypes.PROBLEMTYPEADDONCRASH:         problemtypeNames[25:36],
+	ProblemTypes.PROBLEMTYPEADDONUPDATE:        problemtypeNames[36:48],
+	ProblemTypes.PROBLEMTYPEADDONSTARTUP:       problemtypeNames[48:61],
+	ProblemTypes.PROBLEMTYPEADDONFUNCTIONALITY: problemtypeNames[61:80],
+	ProblemTypes.PROBLEMTYPEINSTALLATION:       problemtypeNames[80:92],
+	ProblemTypes.PROBLEMTYPEPERFORMANCE:        problemtypeNames[92:103],
+	ProblemTypes.PROBLEMTYPESECURITY:           problemtypeNames[103:111],
+	ProblemTypes.PROBLEMTYPEINTEGRATION:        problemtypeNames[111:122],
+	ProblemTypes.PROBLEMTYPEDOCUMENTATION:      problemtypeNames[122:135],
+	ProblemTypes.PROBLEMTYPESAMBA:              problemtypeNames[135:140],
+	ProblemTypes.PROBLEMTYPEOTHER:              problemtypeNames[140:145],
 }
 
 // String implements the Stringer interface.
@@ -352,9 +460,18 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the goenums command to generate them again.
 	// Does not identify newly added constant values unless order changes
-	var x [4]struct{}
+	var x [13]struct{}
 	_ = x[problemTypeFrontendUI]
 	_ = x[problemTypeHAIntegration-1]
-	_ = x[problemTypeAddon-2]
-	_ = x[problemTypeSamba-3]
+	_ = x[problemTypeAddonCrash-2]
+	_ = x[problemTypeAddonUpdate-3]
+	_ = x[problemTypeAddonStartup-4]
+	_ = x[problemTypeAddonFunctionality-5]
+	_ = x[problemTypeInstallation-6]
+	_ = x[problemTypePerformance-7]
+	_ = x[problemTypeSecurity-8]
+	_ = x[problemTypeIntegration-9]
+	_ = x[problemTypeDocumentation-10]
+	_ = x[problemTypeSamba-11]
+	_ = x[problemTypeOther-12]
 }

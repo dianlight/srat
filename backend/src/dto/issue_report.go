@@ -2,8 +2,9 @@ package dto
 
 // IssueReportRequest represents a request to export diagnostic data for issue reporting
 type IssueReportRequest struct {
-	ProblemType      ProblemType `json:"problem_type" enum:"frontend_ui,ha_integration,addon,samba"`
-	Title            string      `json:"title"`
+	_                struct{}    `json:"-" additionalProperties:"true"`
+	ProblemType      ProblemType `json:"problem_type"`
+	Title            string      `json:"title,omitempty"`
 	Description      string      `json:"description"`
 	ReproducingSteps string      `json:"reproducing_steps"`
 

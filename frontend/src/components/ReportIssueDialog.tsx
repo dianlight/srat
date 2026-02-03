@@ -17,6 +17,7 @@ import { useAppDispatch } from "../store/store";
 import { FormContainer,
 	SelectElement,
 	SwitchElement,
+	TextFieldElement,
 	TextareaAutosizeElement,
 	useForm } from "react-hook-form-mui";
 import { useIssueTemplate } from "../hooks/useIssueTemplate";
@@ -29,7 +30,7 @@ interface ReportIssueDialogProps {
 
 export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
 	const { template, isLoading: templateLoading } = useIssueTemplate();
-	
+
 	// Define problemTypeLabels first, before using it in useMemo
 	const problemTypeLabels: Record<Problem_type, string> = {
 		frontend_ui: "Frontend UI Problem",
@@ -59,7 +60,7 @@ export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
 		if (!template || !template.body) {
 			return Object.entries(problemTypeLabels).map(([value, label]) => ({ id: value, label }));
 		}
-		
+
 		const problemTypeField = template.body.find((field: any) => field?.id === "problem_type");
 		if (problemTypeField?.attributes?.options) {
 			return problemTypeField.attributes.options.map((option: string) => ({
@@ -67,7 +68,7 @@ export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
 				label: option,
 			}));
 		}
-		
+
 		return Object.entries(problemTypeLabels).map(([value, label]) => ({ id: value, label }));
 	}, [template, problemTypeLabels]);
 
@@ -86,16 +87,13 @@ export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
 			...formData,
 			...(formData.include_context_data ? contextData : {}),
 		} as IssueReportRequest;
-		
+
 		try {
 			postApiIssuesReport({ issueReportRequest: requestPayload }).unwrap()
 				.then((res) => {
 
-					const data = res as IssueReportResponse 
+					const data = res as IssueReportResponse
 
-					toast.info(
-						`Issue ${data.issue_title} created successfully.`,
-					);
 					/*
 										// Download attachments if requested
 										if (formData.include_srat_config && data.sanitized_config) {
@@ -111,7 +109,31 @@ export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
 										}
 					*/
 					// Open GitHub issue creation page
-					window.open(data.github_url, "_blank");
+					try {
+						let url = new URL(data.github_url);
+						console.log("GitHub URL for issue creation:", url, data.github_url.length);
+						let result = window.open(url, "_blank");
+						if (result === null) {
+							// Open a popup blocked dialog with link to the URL
+							alert(
+								`Popup blocked! Please click the link to create the issue: ${url}`,
+							);
+						}
+						toast.info(
+							`Issue ${data.issue_title} created successfully.`,
+						);
+					} catch (error) {
+						console.error(error);
+						dispatch(addMessage(JSON.stringify(error)));
+						toast.error(
+							`Unable to create issue: ${error?.toString() || "Unknown error"}`,
+							{
+								autoClose: false,
+								type: "error",
+								data: error,
+							}
+						);
+					}
 
 					// Close dialog
 					onClose();
@@ -120,6 +142,14 @@ export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
 				})
 				.catch((err) => {
 					dispatch(addMessage(JSON.stringify(err)));
+					toast.error(
+						`Unable to create issue: ${err?.toString() || "Unknown error"}`,
+						{
+							autoClose: false,
+							type: "error",
+							data: err,
+						}
+					);
 				});
 
 
@@ -186,6 +216,13 @@ export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
 						}}
 					>
 						<Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
+							<TextFieldElement
+								label="Title"
+								name="title"
+								fullWidth
+								required
+							/>
+
 							{/* Problem Type Selector */}
 							<SelectElement
 								label="Problem Type"
@@ -207,6 +244,16 @@ export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
 								required
 							/>
 
+							<TextareaAutosizeElement
+								label="Reproducing Steps"
+								name="reproducing_steps"
+								resizeStyle="both"
+								rows={3}
+								fullWidth
+								minRows={4}
+								placeholder="List the steps needed to reproduce the issue."
+							/>
+
 							{/* Include Options */}
 							<Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
 
@@ -219,13 +266,23 @@ export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
 
 								<SwitchElement
 									name="include_addon_logs"
-									label="Addon config and logs (from last boot)"
+									label="Addon logs (from last boot)"
+								/>
+
+								<SwitchElement
+									name="include_addon_config"
+									label="Addon configuration (sanitized - passwords removed)"
 								/>
 
 
 								<SwitchElement
 									name="include_srat_config"
 									label="SRAT configuration (sanitized - passwords removed)"
+								/>
+
+								<SwitchElement
+									name="include_database_dump"
+									label="Database dump (sanitized - passwords removed)"
 								/>
 
 							</Box>
