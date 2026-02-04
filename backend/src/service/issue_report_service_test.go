@@ -36,6 +36,7 @@ func (suite *IssueReportServiceSuite) SetupTest() {
 				return suite.ctx, suite.cancel
 			},
 			service.NewIssueReportService,
+			mock.Mock[service.AddonsServiceInterface],
 			mock.Mock[service.SettingServiceInterface],
 		),
 		fx.Populate(&suite.issueReportService),
