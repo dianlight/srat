@@ -93,8 +93,8 @@ type FsMagicSignature struct {
 	Magic []byte `json:"magic"`
 }
 
-// FilesystemTaskEvent represents an event for filesystem operations (format, check)
-type FilesystemTaskEvent struct {
+// FilesystemTask represents data for filesystem operations (format, check)
+type FilesystemTask struct {
 	// Device is the device path being operated on
 	Device string `json:"device"`
 

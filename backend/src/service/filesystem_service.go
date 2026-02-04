@@ -475,7 +475,7 @@ func (s *FilesystemService) GetSupportAndInfo(ctx context.Context, fsType string
 
 // FormatPartition formats a device with the specified filesystem type
 // This operation executes asynchronously. It returns immediately after starting the operation
-// and emits FilesystemTaskEvent events for start, success, and failure states.
+// and emits events.FilesystemTaskEvent for start, success, and failure states.
 // Returns an error if the operation cannot be started or if another operation is already
 // running on the same device.
 func (s *FilesystemService) FormatPartition(ctx context.Context, devicePath, fsType string, options dto.FormatOptions) (*dto.CheckResult, errors.E) {
@@ -543,7 +543,7 @@ func (s *FilesystemService) FormatPartition(ctx context.Context, devicePath, fsT
 
 // CheckPartition checks a device's filesystem for errors
 // This operation executes asynchronously. It returns immediately after starting the operation
-// and emits FilesystemTaskEvent events for start, success, and failure states.
+// and emits events.FilesystemTaskEvent for start, success, and failure states.
 // Returns an error if the operation cannot be started or if another operation is already
 // running on the same device.
 func (s *FilesystemService) CheckPartition(ctx context.Context, devicePath, fsType string, options dto.CheckOptions) (*dto.CheckResult, errors.E) {
