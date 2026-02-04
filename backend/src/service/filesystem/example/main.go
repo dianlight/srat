@@ -10,10 +10,11 @@ import (
 
 // Example demonstrating how to use the filesystem adapter pattern
 func main() {
-ctx := context.Background()
+ctx, cancel := context.WithCancel(context.Background())
+defer cancel()
 
 // Create filesystem service
-fsService := service.NewFilesystemService(ctx)
+fsService := service.NewFilesystemService(ctx, cancel)
 
 // List all supported filesystem types
 fmt.Println("=== Supported Filesystems ===")

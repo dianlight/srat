@@ -239,6 +239,10 @@ type EventBusInterface interface {
 	// Power events
 	EmitPower(event PowerEvent)
 	OnPower(handler func(context.Context, PowerEvent) errors.E) func()
+
+	// Filesystem task events
+	EmitFilesystemTask(event FilesystemTaskEvent)
+	OnFilesystemTask(handler func(context.Context, FilesystemTaskEvent) errors.E) func()
 }
 
 // EventBus implements EventBusInterface using maniartech/signals SyncSignal
@@ -258,6 +262,7 @@ type EventBus struct {
 	homeAssistant signals.SyncSignal[HomeAssistantEvent]
 	smart         signals.SyncSignal[SmartEvent]
 	power         signals.SyncSignal[PowerEvent]
+	filesystemTask signals.SyncSignal[FilesystemTaskEvent]
 }
 
 // NewEventBus creates a new EventBus instance
@@ -276,6 +281,7 @@ func NewEventBus(ctx context.Context) EventBusInterface {
 		homeAssistant: *signals.NewSync[HomeAssistantEvent](),
 		smart:         *signals.NewSync[SmartEvent](),
 		power:         *signals.NewSync[PowerEvent](),
+		filesystemTask: *signals.NewSync[FilesystemTaskEvent](),
 	}
 }
 
@@ -453,4 +459,13 @@ func (eb *EventBus) EmitPower(event PowerEvent) {
 
 func (eb *EventBus) OnPower(handler func(context.Context, PowerEvent) errors.E) func() {
 	return onEvent(eb.power, "Power", handler)
+}
+
+// Filesystem task event methods
+func (eb *EventBus) EmitFilesystemTask(event FilesystemTaskEvent) {
+	emitEvent(eb.filesystemTask, eb.ctx, event)
+}
+
+func (eb *EventBus) OnFilesystemTask(handler func(context.Context, FilesystemTaskEvent) errors.E) func() {
+	return onEvent(eb.filesystemTask, "FilesystemTask", handler)
 }
