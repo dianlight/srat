@@ -13,8 +13,8 @@ func main() {
 ctx, cancel := context.WithCancel(context.Background())
 defer cancel()
 
-// Create filesystem service
-fsService := service.NewFilesystemService(ctx, cancel)
+// Create filesystem service (passing nil for eventBus in this example)
+fsService := service.NewFilesystemService(ctx, cancel, nil)
 
 // List all supported filesystem types
 fmt.Println("=== Supported Filesystems ===")

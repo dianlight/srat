@@ -25,10 +25,14 @@ type FilesystemAdapter interface {
 	IsSupported(ctx context.Context) (dto.FilesystemSupport, errors.E)
 
 	// Format formats a device with this filesystem
-	Format(ctx context.Context, device string, options dto.FormatOptions) errors.E
+	// progress callback receives status updates (start/running/success/failure),
+	// percentual (0-100, or 999 for unsupported), and notes
+	Format(ctx context.Context, device string, options dto.FormatOptions, progress dto.ProgressCallback) errors.E
 
 	// Check runs filesystem check (fsck)
-	Check(ctx context.Context, device string, options dto.CheckOptions) (dto.CheckResult, errors.E)
+	// progress callback receives status updates (start/running/success/failure),
+	// percentual (0-100, or 999 for unsupported), and notes
+	Check(ctx context.Context, device string, options dto.CheckOptions, progress dto.ProgressCallback) (dto.CheckResult, errors.E)
 
 	// GetLabel retrieves the filesystem label
 	GetLabel(ctx context.Context, device string) (string, errors.E)

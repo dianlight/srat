@@ -55,7 +55,11 @@ func (a *XfsAdapter) IsSupported(ctx context.Context) (dto.FilesystemSupport, er
 }
 
 // Format formats a device with xfs filesystem
-func (a *XfsAdapter) Format(ctx context.Context, device string, options dto.FormatOptions) errors.E {
+func (a *XfsAdapter) Format(ctx context.Context, device string, options dto.FormatOptions, progress dto.ProgressCallback) errors.E {
+	if progress != nil {
+		progress("start", 0, []string{"Starting xfs format"})
+	}
+
 	args := []string{}
 
 	if options.Force {
@@ -69,20 +73,37 @@ func (a *XfsAdapter) Format(ctx context.Context, device string, options dto.Form
 	// Add device as the last argument
 	args = append(args, device)
 
+	if progress != nil {
+		progress("running", 999, []string{"Progress Status Not Supported"})
+	}
+
 	output, exitCode, err := runCommand(ctx, a.mkfsCommand, args...)
 	if err != nil {
+		if progress != nil {
+			progress("failure", 0, []string{"Format failed: " + err.Error()})
+		}
 		return errors.WithDetails(err, "Device", device, "Output", output)
 	}
 
 	if exitCode != 0 {
+		if progress != nil {
+			progress("failure", 0, []string{"Format failed: mkfs.xfs failed with exit code"})
+		}
 		return errors.Errorf("mkfs.xfs failed with exit code %d: %s", exitCode, output)
 	}
 
+	if progress != nil {
+		progress("success", 100, []string{"Format completed successfully"})
+	}
 	return nil
 }
 
 // Check runs filesystem check on an xfs device
-func (a *XfsAdapter) Check(ctx context.Context, device string, options dto.CheckOptions) (dto.CheckResult, errors.E) {
+func (a *XfsAdapter) Check(ctx context.Context, device string, options dto.CheckOptions, progress dto.ProgressCallback) (dto.CheckResult, errors.E) {
+	if progress != nil {
+		progress("start", 0, []string{"Starting xfs check"})
+	}
+
 	args := []string{}
 
 	// xfs_repair doesn't support readonly mode directly
@@ -97,6 +118,10 @@ func (a *XfsAdapter) Check(ctx context.Context, device string, options dto.Check
 	}
 
 	args = append(args, device)
+
+	if progress != nil {
+		progress("running", 999, []string{"Progress Status Not Supported"})
+	}
 
 	output, exitCode, err := runCommand(ctx, a.fsckCommand, args...)
 	
@@ -128,7 +153,20 @@ func (a *XfsAdapter) Check(ctx context.Context, device string, options dto.Check
 		result.ErrorsFound = true
 		result.ErrorsFixed = false
 		if err != nil {
+			if progress != nil {
+				progress("failure", 0, []string{"Check failed: " + err.Error()})
+			}
 			return result, errors.WithDetails(err, "Device", device, "ExitCode", exitCode)
+		}
+	}
+
+	if result.Success {
+		if progress != nil {
+			progress("success", 100, []string{"Check completed successfully"})
+		}
+	} else {
+		if progress != nil {
+			progress("failure", 0, []string{"Check failed with errors"})
 		}
 	}
 

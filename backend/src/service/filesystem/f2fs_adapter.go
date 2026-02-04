@@ -52,7 +52,11 @@ func (a *F2fsAdapter) IsSupported(ctx context.Context) (dto.FilesystemSupport, e
 }
 
 // Format formats a device with F2FS filesystem
-func (a *F2fsAdapter) Format(ctx context.Context, device string, options dto.FormatOptions) errors.E {
+func (a *F2fsAdapter) Format(ctx context.Context, device string, options dto.FormatOptions, progress dto.ProgressCallback) errors.E {
+	if progress != nil {
+		progress("start", 0, []string{"Starting f2fs format"})
+	}
+
 	args := []string{}
 
 	if options.Force {
@@ -66,20 +70,37 @@ func (a *F2fsAdapter) Format(ctx context.Context, device string, options dto.For
 	// Add device as the last argument
 	args = append(args, device)
 
+	if progress != nil {
+		progress("running", 999, []string{"Progress Status Not Supported"})
+	}
+
 	output, exitCode, err := runCommand(ctx, a.mkfsCommand, args...)
 	if err != nil {
+		if progress != nil {
+			progress("failure", 0, []string{"Format failed: " + err.Error()})
+		}
 		return errors.WithDetails(err, "Device", device, "Output", output)
 	}
 
 	if exitCode != 0 {
+		if progress != nil {
+			progress("failure", 0, []string{"Format failed: mkfs.f2fs failed with exit code"})
+		}
 		return errors.Errorf("mkfs.f2fs failed with exit code %d: %s", exitCode, output)
 	}
 
+	if progress != nil {
+		progress("success", 100, []string{"Format completed successfully"})
+	}
 	return nil
 }
 
 // Check runs filesystem check on an F2FS device
-func (a *F2fsAdapter) Check(ctx context.Context, device string, options dto.CheckOptions) (dto.CheckResult, errors.E) {
+func (a *F2fsAdapter) Check(ctx context.Context, device string, options dto.CheckOptions, progress dto.ProgressCallback) (dto.CheckResult, errors.E) {
+	if progress != nil {
+		progress("start", 0, []string{"Starting f2fs check"})
+	}
+
 	args := []string{}
 
 	if options.AutoFix {
@@ -91,6 +112,10 @@ func (a *F2fsAdapter) Check(ctx context.Context, device string, options dto.Chec
 	}
 
 	args = append(args, device)
+
+	if progress != nil {
+		progress("running", 999, []string{"Progress Status Not Supported"})
+	}
 
 	output, exitCode, err := runCommand(ctx, a.fsckCommand, args...)
 	
@@ -117,7 +142,20 @@ func (a *F2fsAdapter) Check(ctx context.Context, device string, options dto.Chec
 		result.ErrorsFound = true
 		result.ErrorsFixed = false
 		if err != nil {
+			if progress != nil {
+				progress("failure", 0, []string{"Check failed: " + err.Error()})
+			}
 			return result, errors.WithDetails(err, "Device", device, "ExitCode", exitCode)
+		}
+	}
+
+	if result.Success {
+		if progress != nil {
+			progress("success", 100, []string{"Check completed successfully"})
+		}
+	} else {
+		if progress != nil {
+			progress("failure", 0, []string{"Check failed with errors"})
 		}
 	}
 

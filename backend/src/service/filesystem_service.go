@@ -548,8 +548,43 @@ func (s *FilesystemService) FormatPartition(ctx context.Context, devicePath, fsT
 		// Log start of operation
 		slog.InfoContext(s.ctx, "Starting format operation", "device", devicePath, "fsType", fsType)
 
-		// Perform the format operation
-		formatErr := adapter.Format(s.ctx, devicePath, options)
+		// Create progress callback that emits events
+		progressCallback := func(status string, percentual int, notes []string) {
+			if s.eventBus != nil {
+				message := fmt.Sprintf("Format %s: %s", devicePath, status)
+				if len(notes) > 0 {
+					message += " - " + strings.Join(notes, ", ")
+				}
+				
+				var eventType events.EventType
+				switch status {
+				case "start":
+					eventType = events.EventTypes.START
+				case "success":
+					eventType = events.EventTypes.STOP
+				case "failure":
+					eventType = events.EventTypes.ERROR
+				default:
+					eventType = events.EventTypes.START // running state
+				}
+
+				s.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
+					Event: events.Event{Type: eventType},
+					Task: &dto.FilesystemTask{
+						Device:         devicePath,
+						Operation:      "format",
+						FilesystemType: fsType,
+						Status:         status,
+						Message:        message,
+						Progress:       percentual,
+						Notes:          notes,
+					},
+				})
+			}
+		}
+
+		// Perform the format operation with progress callback
+		formatErr := adapter.Format(s.ctx, devicePath, options, progressCallback)
 		
 		if formatErr != nil {
 			// Emit failure event
@@ -657,8 +692,43 @@ func (s *FilesystemService) CheckPartition(ctx context.Context, devicePath, fsTy
 		// Log start of operation
 		slog.InfoContext(s.ctx, "Starting check operation", "device", devicePath, "fsType", fsType)
 
-		// Perform the check operation
-		result, checkErr := adapter.Check(s.ctx, devicePath, options)
+		// Create progress callback that emits events
+		progressCallback := func(status string, percentual int, notes []string) {
+			if s.eventBus != nil {
+				message := fmt.Sprintf("Check %s: %s", devicePath, status)
+				if len(notes) > 0 {
+					message += " - " + strings.Join(notes, ", ")
+				}
+				
+				var eventType events.EventType
+				switch status {
+				case "start":
+					eventType = events.EventTypes.START
+				case "success":
+					eventType = events.EventTypes.STOP
+				case "failure":
+					eventType = events.EventTypes.ERROR
+				default:
+					eventType = events.EventTypes.START // running state
+				}
+
+				s.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
+					Event: events.Event{Type: eventType},
+					Task: &dto.FilesystemTask{
+						Device:         devicePath,
+						Operation:      "check",
+						FilesystemType: fsType,
+						Status:         status,
+						Message:        message,
+						Progress:       percentual,
+						Notes:          notes,
+					},
+				})
+			}
+		}
+
+		// Perform the check operation with progress callback
+		result, checkErr := adapter.Check(s.ctx, devicePath, options, progressCallback)
 		
 		if checkErr != nil {
 			// Emit failure event

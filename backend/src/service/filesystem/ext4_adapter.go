@@ -50,7 +50,12 @@ func (a *Ext4Adapter) IsSupported(ctx context.Context) (dto.FilesystemSupport, e
 }
 
 // Format formats a device with ext4 filesystem
-func (a *Ext4Adapter) Format(ctx context.Context, device string, options dto.FormatOptions) errors.E {
+func (a *Ext4Adapter) Format(ctx context.Context, device string, options dto.FormatOptions, progress dto.ProgressCallback) errors.E {
+	// Report start
+	if progress != nil {
+		progress("start", 0, []string{"Starting ext4 format"})
+	}
+
 	args := []string{}
 
 	if options.Force {
@@ -64,20 +69,41 @@ func (a *Ext4Adapter) Format(ctx context.Context, device string, options dto.For
 	// Add device as the last argument
 	args = append(args, device)
 
+	// Report running (progress not supported for mkfs.ext4)
+	if progress != nil {
+		progress("running", 999, []string{"Progress Status Not Supported"})
+	}
+
 	output, exitCode, err := runCommand(ctx, a.mkfsCommand, args...)
 	if err != nil {
+		if progress != nil {
+			progress("failure", 0, []string{"Format failed: " + err.Error()})
+		}
 		return errors.WithDetails(err, "Device", device, "Output", output)
 	}
 
 	if exitCode != 0 {
+		if progress != nil {
+			progress("failure", 0, []string{"mkfs.ext4 failed with exit code"})
+		}
 		return errors.Errorf("mkfs.ext4 failed with exit code %d: %s", exitCode, output)
+	}
+
+	// Report success
+	if progress != nil {
+		progress("success", 100, []string{"Format completed successfully"})
 	}
 
 	return nil
 }
 
 // Check runs filesystem check on an ext4 device
-func (a *Ext4Adapter) Check(ctx context.Context, device string, options dto.CheckOptions) (dto.CheckResult, errors.E) {
+func (a *Ext4Adapter) Check(ctx context.Context, device string, options dto.CheckOptions, progress dto.ProgressCallback) (dto.CheckResult, errors.E) {
+	// Report start
+	if progress != nil {
+		progress("start", 0, []string{"Starting ext4 filesystem check"})
+	}
+
 	args := []string{}
 
 	if options.AutoFix {
@@ -95,6 +121,11 @@ func (a *Ext4Adapter) Check(ctx context.Context, device string, options dto.Chec
 	}
 
 	args = append(args, device)
+
+	// Report running (progress not supported for fsck.ext4)
+	if progress != nil {
+		progress("running", 999, []string{"Progress Status Not Supported"})
+	}
 
 	output, exitCode, err := runCommand(ctx, a.fsckCommand, args...)
 	
@@ -118,18 +149,30 @@ func (a *Ext4Adapter) Check(ctx context.Context, device string, options dto.Chec
 		result.Success = true
 		result.ErrorsFound = false
 		result.ErrorsFixed = false
+		if progress != nil {
+			progress("success", 100, []string{"Check completed: no errors found"})
+		}
 	case 1, 2:
 		result.Success = true
 		result.ErrorsFound = true
 		result.ErrorsFixed = true
+		if progress != nil {
+			progress("success", 100, []string{"Check completed: errors corrected"})
+		}
 	case 4:
 		result.Success = false
 		result.ErrorsFound = true
 		result.ErrorsFixed = false
+		if progress != nil {
+			progress("failure", 0, []string{"Check failed: errors left uncorrected"})
+		}
 	default:
 		result.Success = false
 		result.ErrorsFound = true
 		result.ErrorsFixed = false
+		if progress != nil {
+			progress("failure", 0, []string{"Check failed with exit code"})
+		}
 		if err != nil {
 			return result, errors.WithDetails(err, "Device", device, "ExitCode", exitCode)
 		}

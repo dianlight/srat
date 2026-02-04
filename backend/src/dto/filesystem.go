@@ -1,5 +1,12 @@
 package dto
 
+// ProgressCallback is a function type for reporting progress during filesystem operations
+// Parameters:
+//   - status: "start", "running", "success", "failure"
+//   - percentual: 0 (start), 1-99 (progress), 100 (end), 999 (running when not supported)
+//   - notes: array of progress messages (e.g., "Progress Status Not Supported")
+type ProgressCallback func(status string, percentual int, notes []string)
+
 // FilesystemSupport contains information about filesystem support on the system
 type FilesystemSupport struct {
 	// CanMount indicates if the filesystem can be mounted
@@ -112,6 +119,12 @@ type FilesystemTask struct {
 
 	// Error contains error details if status is "failure"
 	Error string `json:"error,omitempty"`
+
+	// Progress is the operation progress percentage (0-100, or 999 for unsupported)
+	Progress int `json:"progress,omitempty"`
+
+	// Notes contains progress messages
+	Notes []string `json:"notes,omitempty"`
 
 	// Result contains operation result details (for success status)
 	Result interface{} `json:"result,omitempty"`

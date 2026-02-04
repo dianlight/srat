@@ -55,12 +55,18 @@ func (a *ApfsAdapter) IsSupported(ctx context.Context) (dto.FilesystemSupport, e
 }
 
 // Format formats a device with APFS filesystem
-func (a *ApfsAdapter) Format(ctx context.Context, device string, options dto.FormatOptions) errors.E {
+func (a *ApfsAdapter) Format(ctx context.Context, device string, options dto.FormatOptions, progress dto.ProgressCallback) errors.E {
+	if progress != nil {
+		progress("failure", 0, []string{"APFS formatting is not supported on Linux"})
+	}
 	return errors.Errorf("APFS formatting is not supported on Linux. APFS is read-only on this system")
 }
 
 // Check runs filesystem check on an APFS device
-func (a *ApfsAdapter) Check(ctx context.Context, device string, options dto.CheckOptions) (dto.CheckResult, errors.E) {
+func (a *ApfsAdapter) Check(ctx context.Context, device string, options dto.CheckOptions, progress dto.ProgressCallback) (dto.CheckResult, errors.E) {
+	if progress != nil {
+		progress("failure", 0, []string{"APFS filesystem checking is not supported on Linux"})
+	}
 	result := dto.CheckResult{
 		Success:      false,
 		ErrorsFound:  false,
