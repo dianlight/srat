@@ -133,15 +133,15 @@ func (h *FilesystemHandler) FormatPartition(
 		"label", req.Label,
 		"force", req.Force)
 
-	// Find the partition
-	partition, _, err := h.volumeService.GetPartitionByID(req.PartitionID)
-	if err != nil {
-		tlog.ErrorContext(ctx, "Partition not found", "partition_id", req.PartitionID, "error", err)
-		return nil, huma.Error404NotFound("Partition not found", err)
+	// Find the partition using DiskMap directly
+	diskMap := h.getDiskMap()
+	partition, _, found := diskMap.GetPartitionByID(req.PartitionID)
+	if !found {
+		tlog.ErrorContext(ctx, "Partition not found", "partition_id", req.PartitionID)
+		return nil, huma.Error404NotFound("Partition not found")
 	}
 
 	// Get device path using DiskMap method
-	diskMap := h.getDiskMap()
 	devicePath := diskMap.GetPartitionDevicePath(partition)
 	if devicePath == "" {
 		return nil, huma.Error400BadRequest("Partition has no valid device path")
@@ -198,14 +198,14 @@ func (h *FilesystemHandler) CheckPartition(
 		"auto_fix", req.AutoFix,
 		"force", req.Force)
 
-	// Find the partition
-	partition, _, err := h.volumeService.GetPartitionByID(req.PartitionID)
-	if err != nil {
-		return nil, huma.Error404NotFound("Partition not found", err)
+	// Find the partition using DiskMap directly
+	diskMap := h.getDiskMap()
+	partition, _, found := diskMap.GetPartitionByID(req.PartitionID)
+	if !found {
+		return nil, huma.Error404NotFound("Partition not found")
 	}
 
 	// Get device path and filesystem type
-	diskMap := h.getDiskMap()
 	devicePath := diskMap.GetPartitionDevicePath(partition)
 	if devicePath == "" {
 		return nil, huma.Error400BadRequest("Partition has no valid device path")
@@ -256,14 +256,14 @@ func (h *FilesystemHandler) GetPartitionState(
 ) (*struct{ Body dto.FilesystemState }, error) {
 	tlog.DebugContext(ctx, "Getting partition state", "partition", input.PartitionID)
 
-	// Find the partition
-	partition, _, err := h.volumeService.GetPartitionByID(input.PartitionID)
-	if err != nil {
-		return nil, huma.Error404NotFound("Partition not found", err)
+	// Find the partition using DiskMap directly
+	diskMap := h.getDiskMap()
+	partition, _, found := diskMap.GetPartitionByID(input.PartitionID)
+	if !found {
+		return nil, huma.Error404NotFound("Partition not found")
 	}
 
 	// Get device path and filesystem type
-	diskMap := h.getDiskMap()
 	devicePath := diskMap.GetPartitionDevicePath(partition)
 	if devicePath == "" {
 		return nil, huma.Error400BadRequest("Partition has no valid device path")
@@ -312,14 +312,14 @@ func (h *FilesystemHandler) GetPartitionLabel(
 ) (*struct{ Body struct{ Label string `json:"label"` } }, error) {
 	tlog.DebugContext(ctx, "Getting partition label", "partition", input.PartitionID)
 
-	// Find the partition
-	partition, _, err := h.volumeService.GetPartitionByID(input.PartitionID)
-	if err != nil {
-		return nil, huma.Error404NotFound("Partition not found", err)
+	// Find the partition using DiskMap directly
+	diskMap := h.getDiskMap()
+	partition, _, found := diskMap.GetPartitionByID(input.PartitionID)
+	if !found {
+		return nil, huma.Error404NotFound("Partition not found")
 	}
 
 	// Get device path and filesystem type
-	diskMap := h.getDiskMap()
 	devicePath := diskMap.GetPartitionDevicePath(partition)
 	if devicePath == "" {
 		return nil, huma.Error400BadRequest("Partition has no valid device path")
@@ -360,14 +360,14 @@ func (h *FilesystemHandler) SetPartitionLabel(
 		"partition", req.PartitionID,
 		"label", req.Label)
 
-	// Find the partition
-	partition, _, err := h.volumeService.GetPartitionByID(req.PartitionID)
-	if err != nil {
-		return nil, huma.Error404NotFound("Partition not found", err)
+	// Find the partition using DiskMap directly
+	diskMap := h.getDiskMap()
+	partition, _, found := diskMap.GetPartitionByID(req.PartitionID)
+	if !found {
+		return nil, huma.Error404NotFound("Partition not found")
 	}
 
 	// Get device path and filesystem type
-	diskMap := h.getDiskMap()
 	devicePath := diskMap.GetPartitionDevicePath(partition)
 	if devicePath == "" {
 		return nil, huma.Error400BadRequest("Partition has no valid device path")

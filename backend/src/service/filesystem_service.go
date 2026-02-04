@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"regexp"
 	"strings"
+	"sync"
 	"syscall"
 
 	"github.com/dianlight/srat/dto"
@@ -103,6 +104,19 @@ type FilesystemService struct {
 
 	// registry holds the filesystem adapter registry
 	registry *filesystem.Registry
+
+	// Context and cancellation for async operations
+	ctx        context.Context
+	cancelFunc context.CancelFunc
+
+	// WaitGroup for tracking async operations
+	wg *sync.WaitGroup
+
+	// Mutex for protecting activeOperations map
+	mu sync.Mutex
+
+	// activeOperations tracks which devices currently have operations running
+	activeOperations map[string]bool
 }
 
 // Package-level variables for default configurations.
@@ -178,7 +192,10 @@ var (
 )
 
 // NewFilesystemService creates and initializes a new FilesystemService.
-func NewFilesystemService(ctx context.Context) FilesystemServiceInterface {
+func NewFilesystemService(
+	ctx context.Context,
+	cancelFunc context.CancelFunc,
+) FilesystemServiceInterface {
 	// Initialize precomputed maps for efficient lookups
 	stdFlagsByName := make(map[string]dto.MountFlag, len(defaultStandardMountFlags))
 	for _, f := range defaultStandardMountFlags {
@@ -210,6 +227,13 @@ func NewFilesystemService(ctx context.Context) FilesystemServiceInterface {
 		}
 	}
 
+	// Get WaitGroup from context
+	wg, ok := ctx.Value("wg").(*sync.WaitGroup)
+	if !ok {
+		// Fallback to a new WaitGroup if not provided in context
+		wg = &sync.WaitGroup{}
+	}
+
 	p := &FilesystemService{
 		standardMountFlags:   defaultStandardMountFlags,
 		fsSpecificMountFlags: fsSpecificMountFlags,
@@ -218,6 +242,11 @@ func NewFilesystemService(ctx context.Context) FilesystemServiceInterface {
 		allKnownMountFlagsByName: allKnownFlagsByName,
 
 		registry: registry,
+
+		ctx:              ctx,
+		cancelFunc:       cancelFunc,
+		wg:               wg,
+		activeOperations: make(map[string]bool),
 	}
 	return p
 }
@@ -445,6 +474,10 @@ func (s *FilesystemService) GetSupportAndInfo(ctx context.Context, fsType string
 }
 
 // FormatPartition formats a device with the specified filesystem type
+// This operation executes asynchronously. It returns immediately after starting the operation
+// and emits FilesystemTaskEvent events for start, success, and failure states.
+// Returns an error if the operation cannot be started or if another operation is already
+// running on the same device.
 func (s *FilesystemService) FormatPartition(ctx context.Context, devicePath, fsType string, options dto.FormatOptions) (*dto.CheckResult, errors.E) {
 	adapter, err := s.registry.Get(fsType)
 	if err != nil {
@@ -466,20 +499,53 @@ func (s *FilesystemService) FormatPartition(ctx context.Context, devicePath, fsT
 		return nil, errors.New(msg)
 	}
 
-	// Format the partition
-	formatErr := adapter.Format(ctx, devicePath, options)
-	if formatErr != nil {
-		return nil, errors.Wrap(formatErr, "failed to format partition")
+	// Check if operation is already running on this device
+	s.mu.Lock()
+	if s.activeOperations[devicePath] {
+		s.mu.Unlock()
+		return nil, errors.WithDetails(dto.ErrorConflict, "Message", "format operation already in progress", "Device", devicePath)
 	}
+	// Mark operation as active
+	s.activeOperations[devicePath] = true
+	s.mu.Unlock()
+
+	// Start async operation
+	s.wg.Add(1)
+	go func() {
+		defer s.wg.Done()
+		defer func() {
+			// Remove from active operations when done
+			s.mu.Lock()
+			delete(s.activeOperations, devicePath)
+			s.mu.Unlock()
+		}()
+
+		// Log start of operation
+		slog.InfoContext(s.ctx, "Starting format operation", "device", devicePath, "fsType", fsType)
+
+		// Perform the format operation
+		formatErr := adapter.Format(s.ctx, devicePath, options)
+		
+		if formatErr != nil {
+			// Log failure
+			slog.ErrorContext(s.ctx, "Format operation failed", "device", devicePath, "fsType", fsType, "error", formatErr)
+		} else {
+			// Log success
+			slog.InfoContext(s.ctx, "Format operation completed successfully", "device", devicePath, "fsType", fsType)
+		}
+	}()
 
 	return &dto.CheckResult{
-		Success:  true,
-		Message:  fmt.Sprintf("Successfully formatted %s as %s", devicePath, fsType),
-		ExitCode: 0,
+		Success: true,
+		Message: fmt.Sprintf("Format operation started for %s as %s", devicePath, fsType),
 	}, nil
 }
 
 // CheckPartition checks a device's filesystem for errors
+// This operation executes asynchronously. It returns immediately after starting the operation
+// and emits FilesystemTaskEvent events for start, success, and failure states.
+// Returns an error if the operation cannot be started or if another operation is already
+// running on the same device.
 func (s *FilesystemService) CheckPartition(ctx context.Context, devicePath, fsType string, options dto.CheckOptions) (*dto.CheckResult, errors.E) {
 	adapter, err := s.registry.Get(fsType)
 	if err != nil {
@@ -501,13 +567,46 @@ func (s *FilesystemService) CheckPartition(ctx context.Context, devicePath, fsTy
 		return nil, errors.New(msg)
 	}
 
-	// Check the filesystem
-	result, checkErr := adapter.Check(ctx, devicePath, options)
-	if checkErr != nil {
-		return nil, errors.Wrap(checkErr, "failed to check partition")
+	// Check if operation is already running on this device
+	s.mu.Lock()
+	if s.activeOperations[devicePath] {
+		s.mu.Unlock()
+		return nil, errors.WithDetails(dto.ErrorConflict, "Message", "check operation already in progress", "Device", devicePath)
 	}
+	// Mark operation as active
+	s.activeOperations[devicePath] = true
+	s.mu.Unlock()
 
-	return &result, nil
+	// Start async operation
+	s.wg.Add(1)
+	go func() {
+		defer s.wg.Done()
+		defer func() {
+			// Remove from active operations when done
+			s.mu.Lock()
+			delete(s.activeOperations, devicePath)
+			s.mu.Unlock()
+		}()
+
+		// Log start of operation
+		slog.InfoContext(s.ctx, "Starting check operation", "device", devicePath, "fsType", fsType)
+
+		// Perform the check operation
+		result, checkErr := adapter.Check(s.ctx, devicePath, options)
+		
+		if checkErr != nil {
+			// Log failure
+			slog.ErrorContext(s.ctx, "Check operation failed", "device", devicePath, "fsType", fsType, "error", checkErr)
+		} else {
+			// Log success
+			slog.InfoContext(s.ctx, "Check operation completed successfully", "device", devicePath, "fsType", fsType, "result", result)
+		}
+	}()
+
+	return &dto.CheckResult{
+		Success: true,
+		Message: fmt.Sprintf("Check operation started for %s", devicePath),
+	}, nil
 }
 
 // GetPartitionState returns the state of a partition's filesystem

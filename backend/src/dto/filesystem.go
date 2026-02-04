@@ -92,3 +92,27 @@ type FsMagicSignature struct {
 	// Magic is the byte sequence that identifies the filesystem
 	Magic []byte `json:"magic"`
 }
+
+// FilesystemTaskEvent represents an event for filesystem operations (format, check)
+type FilesystemTaskEvent struct {
+	// Device is the device path being operated on
+	Device string `json:"device"`
+
+	// Operation is the type of operation ("format" or "check")
+	Operation string `json:"operation"`
+
+	// FilesystemType is the filesystem type being used
+	FilesystemType string `json:"filesystemType,omitempty"`
+
+	// Status is the current status ("start", "success", "failure")
+	Status string `json:"status"`
+
+	// Message provides additional context about the operation
+	Message string `json:"message,omitempty"`
+
+	// Error contains error details if status is "failure"
+	Error string `json:"error,omitempty"`
+
+	// Result contains operation result details (for success status)
+	Result interface{} `json:"result,omitempty"`
+}

@@ -53,9 +53,6 @@ type VolumeServiceInterface interface {
 	// Test only
 	MockSetProcfsGetMounts(f func() ([]*procfs.MountInfo, error))
 	CreateBlockDevice(device string) error
-	// GetPartitionByID finds a partition by its unique ID across all disks
-	// Returns the partition, the disk ID it belongs to, and an error if not found
-	GetPartitionByID(partitionID string) (*dto.Partition, string, errors.E)
 }
 
 type VolumeService struct {
@@ -1269,14 +1266,4 @@ func (ms *VolumeService) GetDevicePathByDeviceID(deviceID string) (string, error
 		return "", errors.WithDetails(dto.ErrorNotFound, "Message", "mount point not found", "DeviceId", deviceID)
 	}
 	return *md.DevicePath, nil
-}
-
-// GetPartitionByID finds a partition by its unique ID across all disks using DiskMap
-// Returns the partition, the disk ID it belongs to, and an error if not found
-func (vs *VolumeService) GetPartitionByID(partitionID string) (*dto.Partition, string, errors.E) {
-	partition, diskID, found := vs.disks.GetPartitionByID(partitionID)
-	if !found {
-		return nil, "", errors.WithDetails(dto.ErrorNotFound, "Message", "partition not found", "PartitionId", partitionID)
-	}
-	return partition, diskID, nil
 }
