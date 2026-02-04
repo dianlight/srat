@@ -278,14 +278,47 @@ export function VolumeDetailsPanel({
                                     </Grid>
                                 )}
                                 {(mountData?.fstype || partition.fs_type) && (
-                                    <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                                        <Typography variant="subtitle2" color="text.secondary">
-                                            File System
-                                        </Typography>
-                                        <Typography variant="body2">
-                                            {mountData?.fstype ?? partition.fs_type}
-                                        </Typography>
-                                    </Grid>
+                                    <>
+                                        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                                            <Typography variant="subtitle2" color="text.secondary">
+                                                File System
+                                            </Typography>
+                                            <Typography variant="body2">
+                                                {mountData?.fstype ?? partition.fs_type}
+                                            </Typography>
+                                        </Grid>
+                                        
+                                        {/* Filesystem Status Information */}
+                                        <Grid size={{ xs: 12 }}>
+                                            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+                                                Filesystem Status
+                                            </Typography>
+                                            <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1 }}>
+                                                {isMounted && (
+                                                    <Chip
+                                                        label="Mounted & Accessible"
+                                                        color="success"
+                                                        size="small"
+                                                        icon={<StorageIcon />}
+                                                    />
+                                                )}
+                                                {!isMounted && (
+                                                    <Chip
+                                                        label="Not Mounted"
+                                                        color="default"
+                                                        size="small"
+                                                    />
+                                                )}
+                                                {mountData?.fstype && (
+                                                    <Chip
+                                                        label={`${mountData.fstype.toUpperCase()} Filesystem`}
+                                                        variant="outlined"
+                                                        size="small"
+                                                    />
+                                                )}
+                                            </Stack>
+                                        </Grid>
+                                    </>
                                 )}
                                 {partition.legacy_device_name && (
                                     <Grid size={{ xs: 12, sm: 6, md: 4 }}>
