@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/service/filesystem"
 	"gitlab.com/tozd/go/errors"
 )
@@ -67,6 +68,11 @@ type FilesystemServiceInterface interface {
 	SetPartitionLabel(ctx context.Context, devicePath, fsType, label string) errors.E
 }
 
+// EventBusInterface defines the methods we need from the event bus
+type EventBusInterface interface {
+	EmitFilesystemTask(event events.FilesystemTaskEvent)
+}
+
 // FilesystemInfo combines filesystem type information with capability details
 type FilesystemInfo struct {
 	// Name is the filesystem type name
@@ -117,6 +123,9 @@ type FilesystemService struct {
 
 	// activeOperations tracks which devices currently have operations running
 	activeOperations map[string]bool
+
+	// eventBus for emitting filesystem operation events
+	eventBus EventBusInterface
 }
 
 // Package-level variables for default configurations.
@@ -195,6 +204,7 @@ var (
 func NewFilesystemService(
 	ctx context.Context,
 	cancelFunc context.CancelFunc,
+	eventBus EventBusInterface,
 ) FilesystemServiceInterface {
 	// Initialize precomputed maps for efficient lookups
 	stdFlagsByName := make(map[string]dto.MountFlag, len(defaultStandardMountFlags))
@@ -247,6 +257,7 @@ func NewFilesystemService(
 		cancelFunc:       cancelFunc,
 		wg:               wg,
 		activeOperations: make(map[string]bool),
+		eventBus:         eventBus,
 	}
 	return p
 }
@@ -520,6 +531,20 @@ func (s *FilesystemService) FormatPartition(ctx context.Context, devicePath, fsT
 			s.mu.Unlock()
 		}()
 
+		// Emit start event
+		if s.eventBus != nil {
+			s.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
+				Event: events.Event{Type: events.EventTypes.START},
+				Task: &dto.FilesystemTask{
+					Device:         devicePath,
+					Operation:      "format",
+					FilesystemType: fsType,
+					Status:         "start",
+					Message:        fmt.Sprintf("Starting format operation for %s as %s", devicePath, fsType),
+				},
+			})
+		}
+
 		// Log start of operation
 		slog.InfoContext(s.ctx, "Starting format operation", "device", devicePath, "fsType", fsType)
 
@@ -527,9 +552,36 @@ func (s *FilesystemService) FormatPartition(ctx context.Context, devicePath, fsT
 		formatErr := adapter.Format(s.ctx, devicePath, options)
 		
 		if formatErr != nil {
+			// Emit failure event
+			if s.eventBus != nil {
+				s.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
+					Event: events.Event{Type: events.EventTypes.ERROR},
+					Task: &dto.FilesystemTask{
+						Device:         devicePath,
+						Operation:      "format",
+						FilesystemType: fsType,
+						Status:         "failure",
+						Message:        fmt.Sprintf("Format operation failed for %s", devicePath),
+						Error:          formatErr.Error(),
+					},
+				})
+			}
 			// Log failure
 			slog.ErrorContext(s.ctx, "Format operation failed", "device", devicePath, "fsType", fsType, "error", formatErr)
 		} else {
+			// Emit success event
+			if s.eventBus != nil {
+				s.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
+					Event: events.Event{Type: events.EventTypes.STOP},
+					Task: &dto.FilesystemTask{
+						Device:         devicePath,
+						Operation:      "format",
+						FilesystemType: fsType,
+						Status:         "success",
+						Message:        fmt.Sprintf("Format operation completed successfully for %s", devicePath),
+					},
+				})
+			}
 			// Log success
 			slog.InfoContext(s.ctx, "Format operation completed successfully", "device", devicePath, "fsType", fsType)
 		}
@@ -588,6 +640,20 @@ func (s *FilesystemService) CheckPartition(ctx context.Context, devicePath, fsTy
 			s.mu.Unlock()
 		}()
 
+		// Emit start event
+		if s.eventBus != nil {
+			s.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
+				Event: events.Event{Type: events.EventTypes.START},
+				Task: &dto.FilesystemTask{
+					Device:         devicePath,
+					Operation:      "check",
+					FilesystemType: fsType,
+					Status:         "start",
+					Message:        fmt.Sprintf("Starting check operation for %s", devicePath),
+				},
+			})
+		}
+
 		// Log start of operation
 		slog.InfoContext(s.ctx, "Starting check operation", "device", devicePath, "fsType", fsType)
 
@@ -595,9 +661,36 @@ func (s *FilesystemService) CheckPartition(ctx context.Context, devicePath, fsTy
 		result, checkErr := adapter.Check(s.ctx, devicePath, options)
 		
 		if checkErr != nil {
+			// Emit failure event
+			if s.eventBus != nil {
+				s.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
+					Event: events.Event{Type: events.EventTypes.ERROR},
+					Task: &dto.FilesystemTask{
+						Device:         devicePath,
+						Operation:      "check",
+						FilesystemType: fsType,
+						Status:         "failure",
+						Message:        fmt.Sprintf("Check operation failed for %s", devicePath),
+						Error:          checkErr.Error(),
+					},
+				})
+			}
 			// Log failure
 			slog.ErrorContext(s.ctx, "Check operation failed", "device", devicePath, "fsType", fsType, "error", checkErr)
 		} else {
+			// Emit success event
+			if s.eventBus != nil {
+				s.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
+					Event: events.Event{Type: events.EventTypes.STOP},
+					Task: &dto.FilesystemTask{
+						Device:         devicePath,
+						Operation:      "check",
+						FilesystemType: fsType,
+						Status:         "success",
+						Message:        fmt.Sprintf("Check operation completed successfully for %s", devicePath),
+					},
+				})
+			}
 			// Log success
 			slog.InfoContext(s.ctx, "Check operation completed successfully", "device", devicePath, "fsType", fsType, "result", result)
 		}
