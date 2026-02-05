@@ -112,12 +112,12 @@ SRAT uses SQLite for persistence via the GORM ORM. The backend initializes the d
 
 - Bun (JavaScript runtime and package manager)
 - Go (for backend development)
-- pre-commit (for git hooks)
+- prek (for git hooks)
 
 **Setup Commands**:
 
 ```bash
-# Install pre-commit hooks and dependencies
+# Install prek hooks and dependencies
 make prepare
 
 # Install documentation validation tools

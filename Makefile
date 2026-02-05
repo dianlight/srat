@@ -13,9 +13,9 @@ ALL:
 
 .PHONY: prepare
 prepare:
-	pre-commit install
-	pre-commit install --hook-type post-commit
-	pre-commit install --hook-type pre-push
+	prek install
+	prek install --hook-type post-commit
+	prek install --hook-type pre-push
 	$(MAKE) -C $(BACKEND_DIRS) PREREQUISITE
 	cd $(FRONTEND_DIRS); bun install
 
@@ -88,10 +88,10 @@ docs-check:
 		echo "❌ No package manager found (bun or npm required)"; \
 		exit 1; \
 	fi; \
-	if command -v pre-commit >/dev/null 2>&1; then \
-		echo "✅ pre-commit found"; \
+	if command -v prek >/dev/null 2>&1; then \
+		echo "✅ prek found"; \
 	else \
-		echo "⚠️  pre-commit not found (optional for git hooks)"; \
+		echo "⚠️  prek not found (optional for git hooks)"; \
 	fi; \
 	if command -v lychee >/dev/null 2>&1; then \
 		echo "✅ Lychee found (link checker)"; \
@@ -175,7 +175,7 @@ gemini:
 
 .PHONY: check
 check: docs-check security
-	pre-commit run --files $(find . -name "*.md" | grep -v "node_modules")
+	prek run --files $(find . -name "*.md" | grep -v "node_modules")
 
 .PHONY: security
 security:

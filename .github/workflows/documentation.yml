@@ -52,7 +52,7 @@ jobs:
           bun-version: latest
 
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
-      - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
+      - uses: j178/prek-action@v1
 
       - name: Generate TOC for Markdown files
         run: make docs-toc
@@ -89,26 +89,6 @@ jobs:
         with:
           bun-version: latest
 
-#      - uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6
-#      - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
-#        with:
-#          extra_args: --files $(find . -name "*.md" | grep -v "node_modules" | grep -v "vendor")
-
-#      - name: Super-linter
-#        uses: super-linter/super-linter/slim@v8.3.2 # x-release-please-version
-#        env:
-#          # To report GitHub Actions status checks
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-#      - name: Run markdownlint (GFM)
-#        uses: DavidAnson/markdownlint-cli2-action@v22
-#        with:
-#            config: .markdownlint-cli2.jsonc
-#            fix: false
-#            globs: |
-#              **/*.md
-#              !frontend/node_modules/**/*.md
-#              !backend/src/vendor/**/*.md
 
       - name: Run markdownlint (GFM)
         run: bunx markdownlint-cli2 "**/*.md" "#frontend/node_modules" "#backend/src/vendor"
