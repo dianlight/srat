@@ -4,9 +4,13 @@ import {
 	DialogActions,
 	DialogContent,
 	DialogTitle,
+	FormHelperText,
+	FormLabel,
 	Typography,
 	Box,
+useColorScheme,
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import BugReportIcon from "@mui/icons-material/BugReport";
 import { useMemo } from "react";
 import {
@@ -14,13 +18,16 @@ import {
 import { toast } from "react-toastify";
 import { addMessage } from "../store/errorSlice";
 import { useAppDispatch } from "../store/store";
-import { FormContainer,
+import { Controller,
+	FormContainer,
 	SelectElement,
 	SwitchElement,
 	TextFieldElement,
 	TextareaAutosizeElement,
 	useForm } from "react-hook-form-mui";
 import { useIssueTemplate } from "../hooks/useIssueTemplate";
+import MDEditor from "@uiw/react-md-editor/nohighlight";
+import FormControl from "@mui/material/FormControl";
 
 interface ReportIssueDialogProps {
 	open: boolean;
@@ -29,6 +36,7 @@ interface ReportIssueDialogProps {
 
 
 export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
+	const { mode } = useColorScheme();
 	const { template, isLoading: templateLoading } = useIssueTemplate();
 
 	// Define problemTypeLabels first, before using it in useMemo
@@ -232,7 +240,7 @@ export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
 								required
 							/>
 
-							{/* Description */}
+							{/* Description
 							<TextareaAutosizeElement
 								label="Description"
 								name="description"
@@ -242,7 +250,99 @@ export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
 								minRows={6}
 								placeholder="Describe the issue in detail. You can use Markdown formatting."
 								required
+								slots={{
+									//input: (props) => <textarea {...props} style={{ width: "100%", minHeight: "150px", padding: "8px", fontSize: "14px", fontFamily: "inherit" }} />,
+									input: (props) => <MDEditor {...props} />
+
+								}}
 							/>
+							 */}
+							<Controller
+								name="description"
+								control={formContext.control}
+								rules={{ required: true }}
+								render={({ field, fieldState }) => {
+									const hasError = Boolean(fieldState.error);
+									return (
+										<FormControl
+											variant="outlined"
+											component="div"
+											margin="dense"
+											required
+											fullWidth
+											error={hasError}
+										>
+											<FormLabel id="report-issue-description-label">Description</FormLabel>
+											<Box
+												role="group"
+												aria-labelledby="report-issue-description-label"
+												data-color-mode={mode}
+												sx={(theme) => ({
+													mt: 1,
+													border: 1,
+													borderColor: hasError ? theme.palette.error.main : theme.palette.divider,
+													borderRadius: 1,
+													backgroundColor: theme.palette.background.paper,
+													color: theme.palette.text.primary,
+													"--color-fg-default": theme.palette.text.primary,
+													"--color-fg-muted": theme.palette.text.secondary,
+													"--color-canvas-default": theme.palette.background.paper,
+													"--color-canvas-subtle": theme.palette.background.default,
+													"--color-border-default": theme.palette.divider,
+													transition: theme.transitions.create(["border-color", "box-shadow"], {
+														duration: theme.transitions.duration.shortest,
+													}),
+													"&:hover": {
+														borderColor: hasError ? theme.palette.error.main : theme.palette.text.primary,
+													},
+													"&:focus-within": {
+														borderColor: hasError ? theme.palette.error.main : theme.palette.primary.main,
+														boxShadow: `0 0 0 1px ${hasError ? theme.palette.error.main : theme.palette.primary.main}`,
+													},
+													".w-md-editor": {
+														boxShadow: "none",
+														backgroundColor: "transparent",
+														color: theme.palette.text.primary,
+													},
+													".w-md-editor-toolbar": {
+														backgroundColor: theme.palette.background.default,
+														borderBottom: `1px solid ${theme.palette.divider}`,
+													},
+													".w-md-editor-content": {
+														backgroundColor: "transparent",
+													},
+													".w-md-editor-text": {
+														fontFamily: "inherit",
+														minHeight: 140,
+														color: theme.palette.text.primary,
+													},
+													".w-md-editor-preview": {
+														color: theme.palette.text.primary,
+														backgroundColor: "transparent",
+													},
+												})}
+											>
+												<div className="wmde-markdown-var"> </div>
+												<MDEditor
+													data-color-mode={mode === "light" ? "light" : "dark"}
+													value={field.value}
+													onChange={(value) => field.onChange(value ?? "")}
+													onBlur={field.onBlur}
+													textareaProps={{
+														"aria-labelledby": "report-issue-description-label",
+														placeholder: "Describe the issue in detail. You can use Markdown formatting.",
+													}}
+												/>
+											</Box>
+											<FormHelperText id="my-helper-text">
+												Describe the issue in detail. You can use Markdown formatting.
+											</FormHelperText>
+										</FormControl>
+									);
+								}}
+							/>
+
+
 
 							<TextareaAutosizeElement
 								label="Reproducing Steps"

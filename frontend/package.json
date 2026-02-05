@@ -53,6 +53,7 @@
     "@reduxjs/toolkit": "^2.11.2",
     "@rollbar/react": "^1.0.0",
     "@types/js-yaml": "^4.0.9",
+    "@uiw/react-md-editor": "^4.0.11",
     "emittery": "^1.2.0",
     "filesize": "^11.0.13",
     "humanize-duration": "^3.33.2",

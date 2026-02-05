@@ -110,14 +110,14 @@ describe("ReportIssueDialog", () => {
 			),
 		);
 
-		const titleInput = await screen.findByLabelText(/Title/i);
+		const titleInput = await screen.findByRole("textbox", { name: /^Title$/i });
 		expect(titleInput).toBeTruthy();
 
-		// Use placeholder to find the textarea more specifically
-		const textarea = await screen.findByPlaceholderText(
-			/Describe the issue in detail/i,
-		);
-		expect(textarea).toBeTruthy();
+		const descriptionEditor = await screen.findByRole("textbox", { name: /Description/i });
+		expect(descriptionEditor).toBeTruthy();
+
+		const descriptionGroup = await screen.findByRole("group", { name: /Description/i });
+		expect(descriptionGroup.getAttribute("data-color-mode")).toBe("light");
 
 		const reproSteps = await screen.findByPlaceholderText(
 			/List the steps needed to reproduce the issue/i,
