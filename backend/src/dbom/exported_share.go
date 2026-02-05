@@ -22,7 +22,7 @@ type ExportedShare struct {
 	GuestOk            bool `gorm:"default:false"`
 	TimeMachineMaxSize string
 	Usage              dto.HAMountUsage
-	MountPointDataPath string
-	MountPointDataRoot string
+	MountPointDataPath *string
+	MountPointDataRoot *string
 	MountPointData     MountPointPath `gorm:"foreignKey:MountPointDataPath,MountPointDataRoot;references:Path,Root"`
 }

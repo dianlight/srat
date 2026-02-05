@@ -6,6 +6,7 @@ import (
 
 	"github.com/dianlight/srat/dto"
 	"github.com/stretchr/testify/assert"
+	"github.com/xorcare/pointer"
 	"gorm.io/datatypes"
 )
 
@@ -102,11 +103,11 @@ func TestExportedShareUsageTypes(t *testing.T) {
 func TestExportedShareMountPointData(t *testing.T) {
 	share := ExportedShare{
 		Name:               "mounted-share",
-		MountPointDataPath: "/mnt/data",
+		MountPointDataPath: pointer.String("/mnt/data"),
 	}
 
 	assert.Equal(t, "mounted-share", share.Name)
-	assert.Equal(t, "/mnt/data", share.MountPointDataPath)
+	assert.Equal(t, "/mnt/data", *share.MountPointDataPath)
 }
 
 func TestExportedShareEmptyVetoFiles(t *testing.T) {

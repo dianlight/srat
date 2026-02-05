@@ -106,6 +106,7 @@ func NewUpgradeService(lc fx.Lifecycle, in UpgradeServiceProps) (UpgradeServiceI
 						defer p.ctx.Value("wg").(*sync.WaitGroup).Done()
 						p.watchForDevelopUpdates()
 					}()
+					slog.DebugContext(p.ctx, "File watcher for develop updates started")
 				}
 			}
 
