@@ -148,19 +148,11 @@ func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterfa
 				_, err := s.GetShare(defCShare.Name)
 				if err != nil {
 					if errors.Is(err, dto.ErrorShareNotFound) {
-						/*
-							defShare, errConv := cconv.ShareToSharedResource(defCShare, allusers)
-							if errConv != nil {
-								slog.Error("Error converting default share", "name", defCShare.Name, "err", errConv)
-								return errors.WithStack(errConv)
-							}
-						*/
-						// FIXME: load mountpoint data for share is missing!
-
 						// load and associate admin user.
 						defCShare.Users = []dto.User{*admin}
 
-						slog.Info("Creating default share", "name", defCShare.Name, "path", defCShare.MountPointData.Path, "device_id", defCShare.MountPointData.DeviceId)
+						slog.Debug("Creating default share", "name", defCShare.Name)
+
 						_, createErr := s.CreateShare(defCShare)
 						if createErr != nil {
 							slog.Error("Error creating default share", "name", defCShare.Name, "err", createErr)
