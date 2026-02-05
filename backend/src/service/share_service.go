@@ -17,34 +17,32 @@ import (
 	"gorm.io/gorm"
 )
 
-var internalShares = []dto.SharedResource{
-	{
-		Name: "config",
-		//MountPointData: &dto.MountPointData{},
+var internalShares = map[string]dto.SharedResource{
+	"/config": {
+		Name:  "config",
 		Usage: dto.UsageAsInternal,
 	},
-	{
-		Name: "addons",
-		//MountPointData: &dto.MountPointData{},
+	"/addons": {
+		Name:  "addons",
 		Usage: dto.UsageAsInternal,
 	},
-	{
+	"/ssl": {
 		Name:  "ssl",
 		Usage: dto.UsageAsInternal,
 	},
-	{
+	"/share": {
 		Name:  "share",
 		Usage: dto.UsageAsInternal,
 	},
-	{
+	"/backup": {
 		Name:  "backup",
 		Usage: dto.UsageAsInternal,
 	},
-	{
+	"/media": {
 		Name:  "media",
 		Usage: dto.UsageAsInternal,
 	},
-	{
+	"/addon_configs": {
 		Name:  "addon_configs",
 		Usage: dto.UsageAsInternal,
 	},
@@ -117,6 +115,21 @@ func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterfa
 		share, err := s.GetShareFromPath(event.MountPoint.Path)
 		if err != nil {
 			if errors.Is(err, dto.ErrorShareNotFound) {
+				if share, ok := internalShares[event.MountPoint.Path]; ok {
+					slog.Debug("Creating default share", "name", share.Name)
+					share.MountPointData = event.MountPoint
+					admin, err := s.user_service.GetAdmin()
+					if err != nil {
+						slog.Error("Error getting admin user for default share creation", "name", share.Name, "err", err)
+						return errors.WithStack(err)
+					}
+					share.Users = []dto.User{*admin}
+					_, createErr := s.CreateShare(share)
+					if createErr != nil {
+						slog.Error("Error creating default share", "name", share.Name, "err", createErr)
+						return createErr
+					}
+				}
 				tlog.TraceContext(ctx, "No share found for mount point", "path", event.MountPoint.Path)
 				return nil
 			}
@@ -137,31 +150,6 @@ func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterfa
 		OnStart: func(_ context.Context) error {
 			if os.Getenv("SRAT_MOCK") == "true" {
 				return nil
-			}
-			admin, err := s.user_service.GetAdmin()
-			if err != nil {
-				return errors.WithStack(err)
-			}
-			// Create all default Shares if don't exists
-			//cconv := converter.ConfigToDtoConverterImpl{}
-			for _, defCShare := range internalShares {
-				_, err := s.GetShare(defCShare.Name)
-				if err != nil {
-					if errors.Is(err, dto.ErrorShareNotFound) {
-						// load and associate admin user.
-						defCShare.Users = []dto.User{*admin}
-
-						slog.Debug("Creating default share", "name", defCShare.Name)
-
-						_, createErr := s.CreateShare(defCShare)
-						if createErr != nil {
-							slog.Error("Error creating default share", "name", defCShare.Name, "err", createErr)
-							return createErr
-						}
-					} else {
-						slog.Error("Error checking for default share", "name", defCShare.Name, "err", err)
-					}
-				}
 			}
 			return nil
 		},
