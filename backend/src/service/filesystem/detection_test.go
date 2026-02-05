@@ -26,7 +26,7 @@ func (suite *DetectionTestSuite) SetupTest() {
 func (suite *DetectionTestSuite) TestIsDeviceSupported_NonExistentDevice() {
 	// Test with ext4 adapter
 	ext4Adapter := filesystem.NewExt4Adapter()
-	
+
 	supported, err := ext4Adapter.IsDeviceSupported(suite.ctx, "/dev/nonexistent")
 	suite.Error(err)
 	suite.False(supported)
@@ -38,10 +38,10 @@ func (suite *DetectionTestSuite) TestIsDeviceSupported_EmptyDevice() {
 	suite.Require().NoError(err)
 	defer os.Remove(tmpFile.Name())
 	tmpFile.Close()
-	
+
 	// Test with ext4 adapter
 	ext4Adapter := filesystem.NewExt4Adapter()
-	
+
 	supported, err := ext4Adapter.IsDeviceSupported(suite.ctx, tmpFile.Name())
 	// Empty file should return false (no error, but not supported)
 	suite.NoError(err)
@@ -56,7 +56,7 @@ func (suite *DetectionTestSuite) TestDetectFilesystemType_NonExistent() {
 		filesystem.NewBtrfsAdapter(),
 		filesystem.NewXfsAdapter(),
 	}
-	
+
 	fsType, err := filesystem.DetectFilesystemType("/dev/nonexistent", adapters)
 	suite.Error(err)
 	suite.Empty(fsType)
@@ -71,13 +71,13 @@ func (suite *DetectionTestSuite) TestDetectFilesystemType_EmptyFile() {
 		filesystem.NewBtrfsAdapter(),
 		filesystem.NewXfsAdapter(),
 	}
-	
+
 	// Create a temporary empty file
 	tmpFile, err := os.CreateTemp("", "empty-fs-*")
 	suite.Require().NoError(err)
 	defer os.Remove(tmpFile.Name())
 	tmpFile.Close()
-	
+
 	fsType, err := filesystem.DetectFilesystemType(tmpFile.Name(), adapters)
 	suite.Error(err)
 	suite.Empty(fsType)
@@ -92,17 +92,17 @@ func (suite *DetectionTestSuite) TestAllAdaptersHaveIsDeviceSupported() {
 		filesystem.NewBtrfsAdapter(),
 		filesystem.NewXfsAdapter(),
 	}
-	
+
 	// Create a temp file that won't match any signatures
 	tmpFile, err := os.CreateTemp("", "test-device-*")
 	suite.Require().NoError(err)
 	defer os.Remove(tmpFile.Name())
-	
+
 	// Write some random data
 	_, err = tmpFile.Write([]byte("This is not a valid filesystem"))
 	suite.Require().NoError(err)
 	tmpFile.Close()
-	
+
 	for _, adapter := range adapters {
 		// Each adapter should be able to check the device
 		supported, err := adapter.IsDeviceSupported(suite.ctx, tmpFile.Name())

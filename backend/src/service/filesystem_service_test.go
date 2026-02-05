@@ -12,12 +12,15 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"gitlab.com/tozd/go/errors"
+	"go.uber.org/fx"
+	"go.uber.org/fx/fxtest"
 )
 
 type FilesystemServiceTestSuite struct {
 	suite.Suite
 	fsService service.FilesystemServiceInterface
 	ctx       context.Context
+	app       *fxtest.App
 }
 
 func TestFilesystemServiceTestSuite(t *testing.T) {
@@ -498,6 +501,24 @@ func (suite *FilesystemServiceTestSuite) TestGetSupportedFilesystems() {
 
 func (suite *FilesystemServiceTestSuite) SetupTest() {
 	suite.ctx = context.Background()
-	suite.fsService = service.NewFilesystemService(suite.ctx)
+
+	// Use FX to build the service with proper dependency injection
+	suite.app = fxtest.New(
+		suite.T(),
+		fx.Provide(
+			func() context.Context {
+				return suite.ctx
+			},
+			service.NewFilesystemService,
+		),
+		fx.Populate(&suite.fsService),
+	)
+
 	suite.Require().NotNil(suite.fsService, "FilesystemService should be initialized")
+}
+
+func (suite *FilesystemServiceTestSuite) TearDownTest() {
+	if suite.app != nil {
+		suite.app.RequireStart().RequireStop()
+	}
 }

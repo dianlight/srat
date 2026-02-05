@@ -47,12 +47,12 @@ func (r *Registry) Register(adapter FilesystemAdapter) {
 func (r *Registry) Get(fsType string) (FilesystemAdapter, errors.E) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	
+
 	adapter, ok := r.adapters[fsType]
 	if !ok {
 		return nil, errors.Errorf("unsupported filesystem type: %s", fsType)
 	}
-	
+
 	return adapter, nil
 }
 
@@ -60,12 +60,12 @@ func (r *Registry) Get(fsType string) (FilesystemAdapter, errors.E) {
 func (r *Registry) GetAll() []FilesystemAdapter {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	
+
 	adapters := make([]FilesystemAdapter, 0, len(r.adapters))
 	for _, adapter := range r.adapters {
 		adapters = append(adapters, adapter)
 	}
-	
+
 	return adapters
 }
 
@@ -73,9 +73,9 @@ func (r *Registry) GetAll() []FilesystemAdapter {
 func (r *Registry) GetSupportedFilesystems(ctx context.Context) (map[string]dto.FilesystemSupport, errors.E) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	
+
 	result := make(map[string]dto.FilesystemSupport)
-	
+
 	for name, adapter := range r.adapters {
 		support, err := adapter.IsSupported(ctx)
 		if err != nil {
@@ -83,7 +83,7 @@ func (r *Registry) GetSupportedFilesystems(ctx context.Context) (map[string]dto.
 		}
 		result[name] = support
 	}
-	
+
 	return result, nil
 }
 
@@ -91,11 +91,11 @@ func (r *Registry) GetSupportedFilesystems(ctx context.Context) (map[string]dto.
 func (r *Registry) ListSupportedTypes() []string {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	
+
 	types := make([]string, 0, len(r.adapters))
 	for name := range r.adapters {
 		types = append(types, name)
 	}
-	
+
 	return types
 }

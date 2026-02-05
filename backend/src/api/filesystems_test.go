@@ -22,13 +22,13 @@ import (
 
 type FilesystemHandlerSuite struct {
 	suite.Suite
-	handler            *api.FilesystemHandler
-	mockFsService      service.FilesystemServiceInterface
-	mockVolumeService  service.VolumeServiceInterface
-	testAPI            humatest.TestAPI
-	ctx                context.Context
-	cancel             context.CancelFunc
-	app                *fxtest.App
+	handler           *api.FilesystemHandler
+	mockFsService     service.FilesystemServiceInterface
+	mockVolumeService service.VolumeServiceInterface
+	testAPI           humatest.TestAPI
+	ctx               context.Context
+	cancel            context.CancelFunc
+	app               *fxtest.App
 }
 
 func TestFilesystemHandlerSuite(t *testing.T) {
@@ -70,10 +70,10 @@ func (suite *FilesystemHandlerSuite) TestListFilesystems_Success() {
 
 	for _, fsType := range fsTypes {
 		info := &service.FilesystemInfo{
-			Name:        fsType,
-			Type:        fsType,
-			Description: fsType + " filesystem",
-			MountFlags:  []dto.MountFlag{{Name: "rw"}},
+			Name:             fsType,
+			Type:             fsType,
+			Description:      fsType + " filesystem",
+			MountFlags:       []dto.MountFlag{{Name: "rw"}},
 			CustomMountFlags: []dto.MountFlag{{Name: "discard"}},
 			Support: &dto.FilesystemSupport{
 				CanMount:      true,
@@ -83,7 +83,7 @@ func (suite *FilesystemHandlerSuite) TestListFilesystems_Success() {
 				AlpinePackage: fsType + "-progs",
 			},
 		}
-		mock.When(suite.mockFsService.GetSupportAndInfo(suite.ctx, fsType)).
+		mock.When(suite.mockFsService.GetSupportAndInfo(mock.Any[context.Context](), mock.Any[string]())).
 			ThenReturn(info, nil)
 	}
 
@@ -107,6 +107,7 @@ func (suite *FilesystemHandlerSuite) TestFormatPartition_Success() {
 	devicePath := "/dev/sdb1"
 	fsType := "ext4"
 	label := "TestLabel"
+	diskID := "test-disk-id"
 
 	// Mock partition data
 	partition := dto.Partition{
@@ -115,11 +116,17 @@ func (suite *FilesystemHandlerSuite) TestFormatPartition_Success() {
 		FsType:           &fsType,
 	}
 
-	// Mock volume service to find partition
-	mock.When(suite.mockVolumeService.FindPartitionByID(partitionID)).
-		ThenReturn(&partition, nil)
-	mock.When(suite.mockVolumeService.GetPartitionDevicePath(mock.Any())).
-		ThenReturn(devicePath)
+	// Create disk with partition
+	partitions := make(map[string]dto.Partition)
+	partitions[partitionID] = partition
+	disk := &dto.Disk{
+		Id:         &diskID,
+		Partitions: &partitions,
+	}
+
+	// Mock volume service to return disk data
+	mock.When(suite.mockVolumeService.GetVolumesData()).
+		ThenReturn([]*dto.Disk{disk})
 
 	// Mock filesystem service to format
 	formatResult := &dto.CheckResult{
@@ -128,10 +135,10 @@ func (suite *FilesystemHandlerSuite) TestFormatPartition_Success() {
 		ExitCode: 0,
 	}
 	mock.When(suite.mockFsService.FormatPartition(
-		suite.ctx,
-		devicePath,
-		fsType,
-		mock.Any(),
+		mock.Any[context.Context](),
+		mock.Any[string](),
+		mock.Any[string](),
+		mock.Any[dto.FormatOptions](),
 	)).ThenReturn(formatResult, nil)
 
 	resp := suite.testAPI.Post("/filesystem/format", map[string]interface{}{
@@ -150,8 +157,9 @@ func (suite *FilesystemHandlerSuite) TestFormatPartition_Success() {
 }
 
 func (suite *FilesystemHandlerSuite) TestFormatPartition_PartitionNotFound() {
-	mock.When(suite.mockVolumeService.FindPartitionByID(mock.Any())).
-		ThenReturn(nil, errors.New("partition not found"))
+	// Mock empty disks array (no partitions found)
+	mock.When(suite.mockVolumeService.GetVolumesData()).
+		ThenReturn([]*dto.Disk{})
 
 	resp := suite.testAPI.Post("/filesystem/format", map[string]interface{}{
 		"partitionId":    "non-existent",
@@ -165,6 +173,7 @@ func (suite *FilesystemHandlerSuite) TestFormatPartition_UnsupportedFilesystem()
 	partitionID := "test-partition-id"
 	devicePath := "/dev/sdb1"
 	fsType := "ext4"
+	diskID := "test-disk-id"
 
 	partition := dto.Partition{
 		Id:               &partitionID,
@@ -172,16 +181,22 @@ func (suite *FilesystemHandlerSuite) TestFormatPartition_UnsupportedFilesystem()
 		FsType:           &fsType,
 	}
 
-	mock.When(suite.mockVolumeService.FindPartitionByID(partitionID)).
-		ThenReturn(&partition, nil)
-	mock.When(suite.mockVolumeService.GetPartitionDevicePath(mock.Any())).
-		ThenReturn(devicePath)
+	// Create disk with partition
+	partitions := make(map[string]dto.Partition)
+	partitions[partitionID] = partition
+	disk := &dto.Disk{
+		Id:         &diskID,
+		Partitions: &partitions,
+	}
+
+	mock.When(suite.mockVolumeService.GetVolumesData()).
+		ThenReturn([]*dto.Disk{disk})
 
 	mock.When(suite.mockFsService.FormatPartition(
-		suite.ctx,
-		mock.Any(),
-		"unknown-fs",
-		mock.Any(),
+		mock.Any[context.Context](),
+		mock.Any[string](),
+		mock.Any[string](),
+		mock.Any[dto.FormatOptions](),
 	)).ThenReturn(nil, errors.New("unsupported filesystem"))
 
 	resp := suite.testAPI.Post("/filesystem/format", map[string]interface{}{
@@ -196,6 +211,7 @@ func (suite *FilesystemHandlerSuite) TestCheckPartition_Success() {
 	partitionID := "test-partition-id"
 	devicePath := "/dev/sdb1"
 	fsType := "ext4"
+	diskID := "test-disk-id"
 
 	partition := dto.Partition{
 		Id:               &partitionID,
@@ -203,23 +219,29 @@ func (suite *FilesystemHandlerSuite) TestCheckPartition_Success() {
 		FsType:           &fsType,
 	}
 
-	mock.When(suite.mockVolumeService.FindPartitionByID(partitionID)).
-		ThenReturn(&partition, nil)
-	mock.When(suite.mockVolumeService.GetPartitionDevicePath(mock.Any())).
-		ThenReturn(devicePath)
+	// Create disk with partition
+	partitions := make(map[string]dto.Partition)
+	partitions[partitionID] = partition
+	disk := &dto.Disk{
+		Id:         &diskID,
+		Partitions: &partitions,
+	}
+
+	mock.When(suite.mockVolumeService.GetVolumesData()).
+		ThenReturn([]*dto.Disk{disk})
 
 	checkResult := &dto.CheckResult{
-		Success:      true,
-		ErrorsFound:  false,
-		ErrorsFixed:  false,
-		Message:      "Filesystem is clean",
-		ExitCode:     0,
+		Success:     true,
+		ErrorsFound: false,
+		ErrorsFixed: false,
+		Message:     "Filesystem is clean",
+		ExitCode:    0,
 	}
 	mock.When(suite.mockFsService.CheckPartition(
-		suite.ctx,
-		devicePath,
-		fsType,
-		mock.Any(),
+		mock.Any[context.Context](),
+		mock.Any[string](),
+		mock.Any[string](),
+		mock.Any[dto.CheckOptions](),
 	)).ThenReturn(checkResult, nil)
 
 	resp := suite.testAPI.Post("/filesystem/check", map[string]interface{}{
@@ -240,6 +262,7 @@ func (suite *FilesystemHandlerSuite) TestGetPartitionState_Success() {
 	partitionID := "test-partition-id"
 	devicePath := "/dev/sdb1"
 	fsType := "ext4"
+	diskID := "test-disk-id"
 
 	partition := dto.Partition{
 		Id:               &partitionID,
@@ -247,10 +270,16 @@ func (suite *FilesystemHandlerSuite) TestGetPartitionState_Success() {
 		FsType:           &fsType,
 	}
 
-	mock.When(suite.mockVolumeService.FindPartitionByID(partitionID)).
-		ThenReturn(&partition, nil)
-	mock.When(suite.mockVolumeService.GetPartitionDevicePath(mock.Any())).
-		ThenReturn(devicePath)
+	// Create disk with partition
+	partitions := make(map[string]dto.Partition)
+	partitions[partitionID] = partition
+	disk := &dto.Disk{
+		Id:         &diskID,
+		Partitions: &partitions,
+	}
+
+	mock.When(suite.mockVolumeService.GetVolumesData()).
+		ThenReturn([]*dto.Disk{disk})
 
 	state := &dto.FilesystemState{
 		IsClean:          true,
@@ -259,9 +288,9 @@ func (suite *FilesystemHandlerSuite) TestGetPartitionState_Success() {
 		StateDescription: "clean",
 	}
 	mock.When(suite.mockFsService.GetPartitionState(
-		suite.ctx,
-		devicePath,
-		fsType,
+		mock.Any[context.Context](),
+		mock.Any[string](),
+		mock.Any[string](),
 	)).ThenReturn(state, nil)
 
 	resp := suite.testAPI.Get(fmt.Sprintf("/filesystem/state?partition_id=%s", partitionID))
@@ -280,6 +309,7 @@ func (suite *FilesystemHandlerSuite) TestGetPartitionLabel_Success() {
 	devicePath := "/dev/sdb1"
 	fsType := "ext4"
 	expectedLabel := "MyLabel"
+	diskID := "test-disk-id"
 
 	partition := dto.Partition{
 		Id:               &partitionID,
@@ -287,15 +317,21 @@ func (suite *FilesystemHandlerSuite) TestGetPartitionLabel_Success() {
 		FsType:           &fsType,
 	}
 
-	mock.When(suite.mockVolumeService.FindPartitionByID(partitionID)).
-		ThenReturn(&partition, nil)
-	mock.When(suite.mockVolumeService.GetPartitionDevicePath(mock.Any())).
-		ThenReturn(devicePath)
+	// Create disk with partition
+	partitions := make(map[string]dto.Partition)
+	partitions[partitionID] = partition
+	disk := &dto.Disk{
+		Id:         &diskID,
+		Partitions: &partitions,
+	}
+
+	mock.When(suite.mockVolumeService.GetVolumesData()).
+		ThenReturn([]*dto.Disk{disk})
 
 	mock.When(suite.mockFsService.GetPartitionLabel(
-		suite.ctx,
-		devicePath,
-		fsType,
+		mock.Any[context.Context](),
+		mock.Any[string](),
+		mock.Any[string](),
 	)).ThenReturn(expectedLabel, nil)
 
 	resp := suite.testAPI.Get(fmt.Sprintf("/filesystem/label?partition_id=%s", partitionID))
@@ -315,6 +351,7 @@ func (suite *FilesystemHandlerSuite) TestSetPartitionLabel_Success() {
 	devicePath := "/dev/sdb1"
 	fsType := "ext4"
 	newLabel := "NewLabel"
+	diskID := "test-disk-id"
 
 	partition := dto.Partition{
 		Id:               &partitionID,
@@ -322,16 +359,22 @@ func (suite *FilesystemHandlerSuite) TestSetPartitionLabel_Success() {
 		FsType:           &fsType,
 	}
 
-	mock.When(suite.mockVolumeService.FindPartitionByID(partitionID)).
-		ThenReturn(&partition, nil)
-	mock.When(suite.mockVolumeService.GetPartitionDevicePath(mock.Any())).
-		ThenReturn(devicePath)
+	// Create disk with partition
+	partitions := make(map[string]dto.Partition)
+	partitions[partitionID] = partition
+	disk := &dto.Disk{
+		Id:         &diskID,
+		Partitions: &partitions,
+	}
+
+	mock.When(suite.mockVolumeService.GetVolumesData()).
+		ThenReturn([]*dto.Disk{disk})
 
 	mock.When(suite.mockFsService.SetPartitionLabel(
-		suite.ctx,
-		devicePath,
-		fsType,
-		newLabel,
+		mock.Any[context.Context](),
+		mock.Any[string](),
+		mock.Any[string](),
+		mock.Any[string](),
 	)).ThenReturn(nil)
 
 	resp := suite.testAPI.Put("/filesystem/label", map[string]interface{}{

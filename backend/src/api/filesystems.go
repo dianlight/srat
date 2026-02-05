@@ -309,7 +309,11 @@ type SetPartitionLabelInput struct {
 func (h *FilesystemHandler) GetPartitionLabel(
 	ctx context.Context,
 	input *PartitionLabelInput,
-) (*struct{ Body struct{ Label string `json:"label"` } }, error) {
+) (*struct {
+	Body struct {
+		Label string `json:"label"`
+	}
+}, error) {
 	tlog.DebugContext(ctx, "Getting partition label", "partition", input.PartitionID)
 
 	// Find the partition using DiskMap directly
@@ -343,8 +347,14 @@ func (h *FilesystemHandler) GetPartitionLabel(
 		return nil, huma.Error500InternalServerError("Failed to get partition label", labelErr)
 	}
 
-	return &struct{ Body struct{ Label string `json:"label"` } }{
-		Body: struct{ Label string `json:"label"` }{Label: label},
+	return &struct {
+		Body struct {
+			Label string `json:"label"`
+		}
+	}{
+		Body: struct {
+			Label string `json:"label"`
+		}{Label: label},
 	}, nil
 }
 
@@ -354,7 +364,11 @@ func (h *FilesystemHandler) SetPartitionLabel(
 	input *struct {
 		Body SetPartitionLabelInput
 	},
-) (*struct{ Body struct{ Success bool `json:"success"` } }, error) {
+) (*struct {
+	Body struct {
+		Success bool `json:"success"`
+	}
+}, error) {
 	req := input.Body
 	tlog.InfoContext(ctx, "Setting partition label",
 		"partition", req.PartitionID,
@@ -396,7 +410,13 @@ func (h *FilesystemHandler) SetPartitionLabel(
 		"partition", req.PartitionID,
 		"label", req.Label)
 
-	return &struct{ Body struct{ Success bool `json:"success"` } }{
-		Body: struct{ Success bool `json:"success"` }{Success: true},
+	return &struct {
+		Body struct {
+			Success bool `json:"success"`
+		}
+	}{
+		Body: struct {
+			Success bool `json:"success"`
+		}{Success: true},
 	}, nil
 }

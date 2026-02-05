@@ -251,15 +251,16 @@ func (a *Gfs2Adapter) GetState(ctx context.Context, device string) (dto.Filesyst
 	output, exitCode, _ := runCommand(ctx, a.fsckCommand, "-n", device)
 
 	// Parse the output to determine filesystem state
-	if exitCode == 0 {
+	switch exitCode {
+	case 0:
 		state.IsClean = true
 		state.HasErrors = false
 		state.StateDescription = "Clean"
-	} else if exitCode == 1 || exitCode == 2 || exitCode == 4 {
+	case 1, 2, 4:
 		state.IsClean = false
 		state.HasErrors = true
 		state.StateDescription = "Has errors"
-	} else {
+	default:
 		state.StateDescription = "Unknown"
 	}
 

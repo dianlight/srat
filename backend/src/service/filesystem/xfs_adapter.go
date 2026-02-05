@@ -300,11 +300,12 @@ func (a *XfsAdapter) GetState(ctx context.Context, device string) (dto.Filesyste
 	state.IsClean = exitCode == 0
 	state.HasErrors = exitCode != 0
 
-	if exitCode == 0 {
+	switch exitCode {
+	case 0:
 		state.StateDescription = "Clean"
-	} else if exitCode == 1 {
+	case 1:
 		state.StateDescription = "Has correctable errors"
-	} else {
+	default:
 		state.StateDescription = "Has errors"
 	}
 

@@ -1130,7 +1130,7 @@ func (suite *ShareServiceSuite) TestCreateAndUpdateShareWithNumericPrefix() {
 	suite.NoError(dbErr, "Updated share should exist in database")
 	suite.Equal("500G", updatedDbShare.Name)
 	suite.Len(updatedDbShare.Users, 2, "Users associations should be updated")
-	suite.Len(updatedDbShare.RoUsers, 0, "RoUsers associations should be cleared")
+	suite.Empty(updatedDbShare.RoUsers, "RoUsers associations should be cleared")
 
 	// Execute: Update again with different users to ensure multiple updates work
 	secondUpdate := dto.SharedResource{
@@ -1164,7 +1164,7 @@ func (suite *ShareServiceSuite) TestCreateAndUpdateShareWithNumericPrefix() {
 	suite.NotNil(result2)
 	suite.Equal("500G", result2.Name)
 	suite.True(*result2.Disabled)
-	suite.Equal(1, len(result2.Users), "Should have 1 user after second update")
+	suite.Len(result2.Users, 1, "Should have 1 user after second update")
 }
 
 // Helper functions

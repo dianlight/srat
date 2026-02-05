@@ -424,7 +424,7 @@ func (s *FilesystemService) SyscallDataToMountFlag(data string) ([]dto.MountFlag
 func (s *FilesystemService) FsTypeFromDevice(devicePath string) (string, errors.E) {
 	// Get all adapters for detection
 	adapters := s.registry.GetAll()
-	
+
 	fsType, err := filesystem.DetectFilesystemType(devicePath, adapters)
 	if err != nil {
 		// Map the error to the appropriate DTO error type for backward compatibility
@@ -433,11 +433,11 @@ func (s *FilesystemService) FsTypeFromDevice(devicePath string) (string, errors.
 		}
 		return "", err
 	}
-	
+
 	if fsType == "" {
 		return "", errors.WithDetails(filesystem.ErrorUnknownFilesystem, "Path", devicePath)
 	}
-	
+
 	slog.Debug("FsTypeFromDevice: Matched signature", "device", devicePath, "fstype", fsType)
 	return fsType, nil
 }
@@ -555,7 +555,7 @@ func (s *FilesystemService) FormatPartition(ctx context.Context, devicePath, fsT
 				if len(notes) > 0 {
 					message += " - " + strings.Join(notes, ", ")
 				}
-				
+
 				var eventType events.EventType
 				switch status {
 				case "start":
@@ -585,7 +585,7 @@ func (s *FilesystemService) FormatPartition(ctx context.Context, devicePath, fsT
 
 		// Perform the format operation with progress callback
 		formatErr := adapter.Format(s.ctx, devicePath, options, progressCallback)
-		
+
 		if formatErr != nil {
 			// Emit failure event
 			if s.eventBus != nil {
@@ -699,7 +699,7 @@ func (s *FilesystemService) CheckPartition(ctx context.Context, devicePath, fsTy
 				if len(notes) > 0 {
 					message += " - " + strings.Join(notes, ", ")
 				}
-				
+
 				var eventType events.EventType
 				switch status {
 				case "start":
@@ -729,7 +729,7 @@ func (s *FilesystemService) CheckPartition(ctx context.Context, devicePath, fsTy
 
 		// Perform the check operation with progress callback
 		result, checkErr := adapter.Check(s.ctx, devicePath, options, progressCallback)
-		
+
 		if checkErr != nil {
 			// Emit failure event
 			if s.eventBus != nil {
@@ -831,4 +831,3 @@ func (s *FilesystemService) SetPartitionLabel(ctx context.Context, devicePath, f
 
 	return nil
 }
-
