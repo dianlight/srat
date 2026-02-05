@@ -294,6 +294,7 @@ mount_remote:
 
 .PHONY: build_remote
 build_remote: /mnt/remote/config.db3
+    @rm -rf ./dist/x86_64 || :
 	@$(MAKE) build AARGS="GOARCH=amd64" VERSION=$(VERSION) ARCH="x86_64" PPROF=1 && \
     cp -v ./dist/x86_64/srat-cli /mnt/remote/upgrade/ && \
     cp -v ./dist/x86_64/srat-server /mnt/remote/upgrade/ && \
