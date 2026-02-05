@@ -9,7 +9,7 @@ import {
 } from "@mui/material";
 import BugReportIcon from "@mui/icons-material/BugReport";
 import { useMemo } from "react";
-import { Problem_type,
+import {
 	usePostApiIssuesReportMutation, type IssueReportRequest, type IssueReportResponse } from "../store/sratApi";
 import { toast } from "react-toastify";
 import { addMessage } from "../store/errorSlice";
@@ -32,7 +32,7 @@ export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
 	const { template, isLoading: templateLoading } = useIssueTemplate();
 
 	// Define problemTypeLabels first, before using it in useMemo
-	const problemTypeLabels: Record<Problem_type, string> = {
+	const problemTypeLabels: Record<string, string> = {
 		frontend_ui: "Frontend UI Problem",
 		ha_integration: "Home Assistant Integration Problem",
 		addon: "Addon Problem",
@@ -41,7 +41,7 @@ export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
 
 	const formContext = useForm<IssueReportRequest>({
 		defaultValues: {
-			problem_type: Problem_type.FrontendUi,
+			problem_type: "frontend_ui",
 			title: "",
 			description: "",
 			reproducing_steps: "",

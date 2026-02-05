@@ -1261,9 +1261,10 @@ export type IssueReportRequest = {
   include_database_dump: boolean;
   include_srat_config: boolean;
   navigation_history?: string[] | null;
-  problem_type: Problem_type;
+  problem_type: string;
   reproducing_steps: string;
-  title: string;
+  title?: string;
+  [key: string]: unknown;
 };
 export type IssueTemplateFieldAttr = {
   description?: string;
@@ -1541,12 +1542,6 @@ export enum Severity {
   Warning = "warning",
   Info = "info",
   Success = "success",
-}
-export enum Problem_type {
-  FrontendUi = "frontend_ui",
-  HaIntegration = "ha_integration",
-  Addon = "addon",
-  Samba = "samba",
 }
 export enum Hdidle_default_command_type {
   Scsi = "scsi",

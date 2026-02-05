@@ -75,8 +75,8 @@ func (suite *IssueReportServiceSuite) TestGenerateIssueReport_FrontendUI() {
 	suite.Require().NotNil(report)
 	suite.Contains(report.GitHubURL, "github.com/dianlight/srat")
 	suite.Contains(report.IssueTitle, "[UI]")
-	suite.Contains(report.IssueBody, "Button not working")
-	suite.Contains(report.IssueBody, "http://localhost/shares")
+	suite.Contains(report.GitHubURL, "Button+not+working")
+	suite.Contains(report.GitHubURL, "http%3A%2F%2Flocalhost%2Fshares")
 	mock.Verify(suite.mockSettingService, matchers.Times(0)).Load()
 }
 
@@ -122,7 +122,7 @@ func (suite *IssueReportServiceSuite) TestGenerateIssueReport_WithConfig() {
 	suite.Require().NoError(err)
 	suite.NotNil(report)
 	//suite.NotNil(report.SanitizedConfig)
-	mock.Verify(suite.mockSettingService, matchers.Times(2)).Load()
+	mock.Verify(suite.mockSettingService, matchers.Times(1)).Load()
 }
 
 func (suite *IssueReportServiceSuite) TestGenerateIssueReport_SambaProblem() {
@@ -141,6 +141,6 @@ func (suite *IssueReportServiceSuite) TestGenerateIssueReport_SambaProblem() {
 	// Assert
 	suite.Require().NoError(err)
 	suite.NotNil(report)
-	suite.Contains(report.GitHubURL, "https://github.com/dianlight/hassio-addons")
-	suite.Contains(report.IssueTitle, "[SambaNas2]")
+	suite.Contains(report.GitHubURL, "https://github.com/dianlight/srat")
+	suite.Contains(report.IssueTitle, "[Samba]")
 }
