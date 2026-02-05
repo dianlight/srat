@@ -3,6 +3,7 @@ package filesystem
 import (
 	"context"
 	"strings"
+	"sync"
 
 	"github.com/dianlight/srat/dto"
 	"gitlab.com/tozd/go/errors"
@@ -75,19 +76,52 @@ func (a *VfatAdapter) Format(ctx context.Context, device string, options dto.For
 		progress("running", 999, []string{"Progress Status Not Supported"})
 	}
 
-	output, exitCode, err := runCommand(ctx, a.mkfsCommand, args...)
-	if err != nil {
-		if progress != nil {
-			progress("failure", 0, []string{"Format failed: " + err.Error()})
+	stdoutChan, stderrChan, resultChan := a.executeCommandWithProgress(ctx, a.mkfsCommand, args)
+
+	// Consume output channels
+	var outputLines []string
+	var errorLines []string
+	var wg sync.WaitGroup
+
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		for line := range stdoutChan {
+			outputLines = append(outputLines, line)
+			if progress != nil {
+				progress("running", 999, []string{line})
+			}
 		}
-		return errors.WithDetails(err, "Device", device, "Output", output)
+	}()
+
+	go func() {
+		defer wg.Done()
+		for line := range stderrChan {
+			errorLines = append(errorLines, line)
+			if progress != nil {
+				progress("running", 999, []string{"ERROR: " + line})
+			}
+		}
+	}()
+
+	wg.Wait()
+
+	// Wait for command result
+	result := <-resultChan
+	if result.Error != nil {
+		if progress != nil {
+			progress("failure", 0, []string{"Format failed: " + result.Error.Error()})
+		}
+		output := strings.Join(outputLines, "\n")
+		return errors.WithDetails(result.Error, "Device", device, "Output", output)
 	}
 
-	if exitCode != 0 {
+	if result.ExitCode != 0 {
 		if progress != nil {
 			progress("failure", 0, []string{"Format failed: mkfs.vfat failed with exit code"})
 		}
-		return errors.Errorf("mkfs.vfat failed with exit code %d: %s", exitCode, output)
+		output := strings.Join(outputLines, "\n")
+		return errors.Errorf("mkfs.vfat failed with exit code %d: %s", result.ExitCode, output)
 	}
 
 	if progress != nil {
@@ -120,10 +154,42 @@ func (a *VfatAdapter) Check(ctx context.Context, device string, options dto.Chec
 		progress("running", 999, []string{"Progress Status Not Supported"})
 	}
 
-	output, exitCode, err := runCommand(ctx, a.fsckCommand, args...)
-	
+	stdoutChan, stderrChan, resultChan := a.executeCommandWithProgress(ctx, a.fsckCommand, args)
+
+	// Consume output channels
+	var outputLines []string
+	var errorLines []string
+	var wg sync.WaitGroup
+
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		for line := range stdoutChan {
+			outputLines = append(outputLines, line)
+			if progress != nil {
+				progress("running", 999, []string{line})
+			}
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		for line := range stderrChan {
+			errorLines = append(errorLines, line)
+			if progress != nil {
+				progress("running", 999, []string{"ERROR: " + line})
+			}
+		}
+	}()
+
+	wg.Wait()
+
+	// Wait for command result
+	cmdResult := <-resultChan
+	output := strings.Join(outputLines, "\n")
+
 	result := dto.CheckResult{
-		ExitCode: exitCode,
+		ExitCode: cmdResult.ExitCode,
 		Message:  output,
 	}
 
@@ -135,7 +201,7 @@ func (a *VfatAdapter) Check(ctx context.Context, device string, options dto.Chec
 	// 8 - Operational error
 	// 16 - Usage error
 
-	switch exitCode {
+	switch cmdResult.ExitCode {
 	case 0:
 		result.Success = true
 		result.ErrorsFound = false
@@ -152,11 +218,11 @@ func (a *VfatAdapter) Check(ctx context.Context, device string, options dto.Chec
 		result.Success = false
 		result.ErrorsFound = true
 		result.ErrorsFixed = false
-		if err != nil {
+		if cmdResult.Error != nil {
 			if progress != nil {
-				progress("failure", 0, []string{"Check failed: " + err.Error()})
+				progress("failure", 0, []string{"Check failed: " + cmdResult.Error.Error()})
 			}
-			return result, errors.WithDetails(err, "Device", device, "ExitCode", exitCode)
+			return result, errors.WithDetails(cmdResult.Error, "Device", device, "ExitCode", cmdResult.ExitCode)
 		}
 	}
 

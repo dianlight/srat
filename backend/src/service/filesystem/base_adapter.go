@@ -3,7 +3,6 @@ package filesystem
 import (
 	"bufio"
 	"context"
-	"io"
 	"os/exec"
 	"strings"
 	"sync"
@@ -11,6 +10,12 @@ import (
 	"github.com/dianlight/srat/dto"
 	"gitlab.com/tozd/go/errors"
 )
+
+// CommandResult holds the exit code and error from a command execution
+type CommandResult struct {
+	ExitCode int
+	Error    errors.E
+}
 
 // baseAdapter provides common functionality for all filesystem adapters
 type baseAdapter struct {
@@ -105,47 +110,67 @@ func (b *baseAdapter) IsDeviceSupported(ctx context.Context, devicePath string) 
 }
 
 // executeCommandWithProgress executes a long-running command with real-time progress monitoring.
-// It scans stdout and stderr line-by-line and calls the progress callback with command output.
+// It returns channels for stdout and stderr output that can be consumed by the caller.
 // Supports context cancellation to gracefully interrupt the running process.
 //
 // Parameters:
 //   - ctx: Context for cancellation support
 //   - command: Command name to execute
 //   - args: Command arguments
-//   - progress: Optional callback for progress updates (receives status, percentual, notes)
 //
 // Returns:
-//   - Combined stdout output as string
-//   - Error if command fails or context is cancelled
+//   - Channel for stdout lines (closed when command completes)
+//   - Channel for stderr lines (closed when command completes)
+//   - Channel for command result (receives one CommandResult when command completes, then closes)
 func (b *baseAdapter) executeCommandWithProgress(
 	ctx context.Context,
 	command string,
 	args []string,
-	progress dto.ProgressCallback,
-) (string, errors.E) {
+) (<-chan string, <-chan string, <-chan CommandResult) {
+	// Create channels for output and result
+	stdoutChan := make(chan string, 100)
+	stderrChan := make(chan string, 100)
+	resultChan := make(chan CommandResult, 1)
+
 	// Create command with context for cancellation support
 	cmd := exec.CommandContext(ctx, command, args...)
 
 	// Setup pipes for stdout and stderr
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return "", errors.WithDetails(err, "command", command, "error", "failed to create stdout pipe")
+		close(stdoutChan)
+		close(stderrChan)
+		resultChan <- CommandResult{
+			ExitCode: -1,
+			Error:    errors.WithDetails(err, "command", command, "error", "failed to create stdout pipe"),
+		}
+		close(resultChan)
+		return stdoutChan, stderrChan, resultChan
 	}
 
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		return "", errors.WithDetails(err, "command", command, "error", "failed to create stderr pipe")
+		close(stdoutChan)
+		close(stderrChan)
+		resultChan <- CommandResult{
+			ExitCode: -1,
+			Error:    errors.WithDetails(err, "command", command, "error", "failed to create stderr pipe"),
+		}
+		close(resultChan)
+		return stdoutChan, stderrChan, resultChan
 	}
 
 	// Start the command
 	if err := cmd.Start(); err != nil {
-		return "", errors.WithDetails(err, "command", command, "args", strings.Join(args, " "))
+		close(stdoutChan)
+		close(stderrChan)
+		resultChan <- CommandResult{
+			ExitCode: -1,
+			Error:    errors.WithDetails(err, "command", command, "args", strings.Join(args, " ")),
+		}
+		close(resultChan)
+		return stdoutChan, stderrChan, resultChan
 	}
-
-	// Channel to collect output lines
-	var outputLines []string
-	var errorLines []string
-	var mu sync.Mutex
 
 	// WaitGroup to wait for goroutines to finish
 	var wg sync.WaitGroup
@@ -156,14 +181,10 @@ func (b *baseAdapter) executeCommandWithProgress(
 		defer wg.Done()
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
-			line := scanner.Text()
-			mu.Lock()
-			outputLines = append(outputLines, line)
-			mu.Unlock()
-
-			// Call progress callback with the output line
-			if progress != nil {
-				progress("running", 999, []string{line})
+			select {
+			case <-ctx.Done():
+				return
+			case stdoutChan <- scanner.Text():
 			}
 		}
 	}()
@@ -174,75 +195,48 @@ func (b *baseAdapter) executeCommandWithProgress(
 		defer wg.Done()
 		scanner := bufio.NewScanner(stderr)
 		for scanner.Scan() {
-			line := scanner.Text()
-			mu.Lock()
-			errorLines = append(errorLines, line)
-			mu.Unlock()
-
-			// Call progress callback with the error line
-			if progress != nil {
-				progress("running", 999, []string{"ERROR: " + line})
+			select {
+			case <-ctx.Done():
+				return
+			case stderrChan <- scanner.Text():
 			}
 		}
 	}()
 
-	// Wait for the command to complete in a separate goroutine
-	errChan := make(chan error, 1)
+	// Wait for command to complete and send result
 	go func() {
-		wg.Wait() // Wait for scanners to finish
-		errChan <- cmd.Wait()
+		wg.Wait()
+		close(stdoutChan)
+		close(stderrChan)
+
+		result := CommandResult{ExitCode: 0}
+		cmdErr := cmd.Wait()
+
+		select {
+		case <-ctx.Done():
+			// Context was cancelled
+			result.ExitCode = -1
+			result.Error = errors.WithDetails(ctx.Err(), "command", command, "error", "context cancelled")
+		default:
+			if cmdErr != nil {
+				if exitErr, ok := cmdErr.(*exec.ExitError); ok {
+					result.ExitCode = exitErr.ExitCode()
+					result.Error = errors.WithDetails(
+						cmdErr,
+						"command", command,
+						"args", strings.Join(args, " "),
+						"exitCode", exitErr.ExitCode(),
+					)
+				} else {
+					result.ExitCode = -1
+					result.Error = errors.WithDetails(cmdErr, "command", command)
+				}
+			}
+		}
+
+		resultChan <- result
+		close(resultChan)
 	}()
 
-	// Wait for either command completion or context cancellation
-	select {
-	case <-ctx.Done():
-		// Context was cancelled - kill the process
-		if cmd.Process != nil {
-			_ = cmd.Process.Kill()
-		}
-		return "", errors.WithDetails(ctx.Err(), "command", command, "error", "context cancelled")
-
-	case cmdErr := <-errChan:
-		// Command completed (successfully or with error)
-		mu.Lock()
-		output := strings.Join(outputLines, "\n")
-		errOutput := strings.Join(errorLines, "\n")
-		mu.Unlock()
-
-		if cmdErr != nil {
-			// Command failed
-			if exitErr, ok := cmdErr.(*exec.ExitError); ok {
-				details := errors.WithDetails(
-					cmdErr,
-					"command", command,
-					"args", strings.Join(args, " "),
-					"exitCode", exitErr.ExitCode(),
-					"stderr", errOutput,
-				)
-				return output, details
-			}
-			return output, errors.WithDetails(cmdErr, "command", command, "stderr", errOutput)
-		}
-
-		// Command succeeded
-		return output, nil
-	}
-}
-
-// scanOutput is a helper to scan output from a reader and call progress callback
-func (b *baseAdapter) scanOutput(reader io.Reader, progress dto.ProgressCallback, prefix string) []string {
-	var lines []string
-	scanner := bufio.NewScanner(reader)
-	for scanner.Scan() {
-		line := scanner.Text()
-		lines = append(lines, line)
-		if progress != nil {
-			if prefix != "" {
-				progress("running", 999, []string{prefix + line})
-			} else {
-				progress("running", 999, []string{line})
-			}
-		}
-	}
-	return lines
+	return stdoutChan, stderrChan, resultChan
 }

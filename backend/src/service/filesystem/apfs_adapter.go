@@ -19,7 +19,7 @@ func NewApfsAdapter() FilesystemAdapter {
 		baseAdapter: baseAdapter{
 			name:          "apfs",
 			description:   "Apple File System (read-only)",
-			alpinePackage: "", // No Alpine package available
+			alpinePackage: "apfs-fuse",
 			mkfsCommand:   "",
 			fsckCommand:   "",
 			labelCommand:  "",
@@ -41,16 +41,18 @@ func (a *ApfsAdapter) GetMountFlags() []dto.MountFlag {
 
 // IsSupported checks if APFS is supported on the system
 func (a *ApfsAdapter) IsSupported(ctx context.Context) (dto.FilesystemSupport, errors.E) {
-	// APFS has no Linux tools for format/check, only read-only support via kernel module
-	support := dto.FilesystemSupport{
-		CanMount:      true,  // Can mount read-only via kernel module
-		CanFormat:     false,
-		CanCheck:      false,
-		CanSetLabel:   false,
-		CanGetState:   false,
-		AlpinePackage: "",
-		MissingTools:  []string{"No Linux tools available for APFS (read-only filesystem)"},
+	// APFS is read-only on Linux via apfs-fuse package
+	// apfsutil provides information/metadata access but not format/check/modify operations
+	support := a.checkCommandAvailability()
+	support.CanFormat = false                       // APFS formatting not supported on Linux
+	support.CanCheck = false                        // apfsutil provides read-only access, cannot check filesystem
+	support.CanSetLabel = false                     // APFS label modification not supported on Linux
+	support.CanGetState = commandExists("apfsutil") // apfsutil can provide filesystem state/info
+
+	if !support.CanGetState {
+		support.MissingTools = append(support.MissingTools, "apfsutil")
 	}
+
 	return support, nil
 }
 
@@ -68,11 +70,11 @@ func (a *ApfsAdapter) Check(ctx context.Context, device string, options dto.Chec
 		progress("failure", 0, []string{"APFS filesystem checking is not supported on Linux"})
 	}
 	result := dto.CheckResult{
-		Success:      false,
-		ErrorsFound:  false,
-		ErrorsFixed:  false,
-		Message:      "APFS filesystem checking is not supported on Linux",
-		ExitCode:     1,
+		Success:     false,
+		ErrorsFound: false,
+		ErrorsFixed: false,
+		Message:     "APFS filesystem checking is not supported on Linux",
+		ExitCode:    1,
 	}
 	return result, errors.Errorf("APFS filesystem checking is not supported on Linux. APFS is read-only on this system")
 }
@@ -90,9 +92,9 @@ func (a *ApfsAdapter) SetLabel(ctx context.Context, device string, label string)
 // GetState returns the state of an APFS filesystem
 func (a *ApfsAdapter) GetState(ctx context.Context, device string) (dto.FilesystemState, errors.E) {
 	state := dto.FilesystemState{
-		AdditionalInfo: make(map[string]interface{}),
-		IsClean:        true,  // Assume clean since we can't check
-		HasErrors:      false, // Assume no errors since we can't check
+		AdditionalInfo:   make(map[string]interface{}),
+		IsClean:          true,  // Assume clean since we can't check
+		HasErrors:        false, // Assume no errors since we can't check
 		StateDescription: "Read-only (no Linux tools)",
 	}
 

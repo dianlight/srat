@@ -3,6 +3,7 @@ package filesystem
 import (
 	"context"
 	"strings"
+	"sync"
 
 	"github.com/dianlight/srat/dto"
 	"gitlab.com/tozd/go/errors"
@@ -48,12 +49,12 @@ func (a *BtrfsAdapter) GetMountFlags() []dto.MountFlag {
 // IsSupported checks if btrfs is supported on the system
 func (a *BtrfsAdapter) IsSupported(ctx context.Context) (dto.FilesystemSupport, errors.E) {
 	support := a.checkCommandAvailability()
-	
+
 	// Override the check command availability since btrfs uses a single multi-purpose tool
 	support.CanCheck = commandExists("btrfs")
 	support.CanSetLabel = commandExists("btrfs")
 	support.CanGetState = commandExists("btrfs")
-	
+
 	return support, nil
 }
 
@@ -80,19 +81,52 @@ func (a *BtrfsAdapter) Format(ctx context.Context, device string, options dto.Fo
 		progress("running", 999, []string{"Progress Status Not Supported"})
 	}
 
-	output, exitCode, err := runCommand(ctx, a.mkfsCommand, args...)
-	if err != nil {
-		if progress != nil {
-			progress("failure", 0, []string{"Format failed: " + err.Error()})
+	stdoutChan, stderrChan, resultChan := a.executeCommandWithProgress(ctx, a.mkfsCommand, args)
+
+	// Consume output channels
+	var outputLines []string
+	var errorLines []string
+	var wg sync.WaitGroup
+
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		for line := range stdoutChan {
+			outputLines = append(outputLines, line)
+			if progress != nil {
+				progress("running", 999, []string{line})
+			}
 		}
-		return errors.WithDetails(err, "Device", device, "Output", output)
+	}()
+
+	go func() {
+		defer wg.Done()
+		for line := range stderrChan {
+			errorLines = append(errorLines, line)
+			if progress != nil {
+				progress("running", 999, []string{"ERROR: " + line})
+			}
+		}
+	}()
+
+	wg.Wait()
+
+	// Wait for command result
+	result := <-resultChan
+	if result.Error != nil {
+		if progress != nil {
+			progress("failure", 0, []string{"Format failed: " + result.Error.Error()})
+		}
+		output := strings.Join(outputLines, "\n")
+		return errors.WithDetails(result.Error, "Device", device, "Output", output)
 	}
 
-	if exitCode != 0 {
+	if result.ExitCode != 0 {
 		if progress != nil {
 			progress("failure", 0, []string{"Format failed: mkfs.btrfs failed with exit code"})
 		}
-		return errors.Errorf("mkfs.btrfs failed with exit code %d: %s", exitCode, output)
+		output := strings.Join(outputLines, "\n")
+		return errors.Errorf("mkfs.btrfs failed with exit code %d: %s", result.ExitCode, output)
 	}
 
 	if progress != nil {
@@ -125,10 +159,42 @@ func (a *BtrfsAdapter) Check(ctx context.Context, device string, options dto.Che
 		progress("running", 999, []string{"Progress Status Not Supported"})
 	}
 
-	output, exitCode, err := runCommand(ctx, "btrfs", args...)
-	
+	stdoutChan, stderrChan, resultChan := a.executeCommandWithProgress(ctx, "btrfs", args)
+
+	// Consume output channels
+	var outputLines []string
+	var errorLines []string
+	var wg sync.WaitGroup
+
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		for line := range stdoutChan {
+			outputLines = append(outputLines, line)
+			if progress != nil {
+				progress("running", 999, []string{line})
+			}
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		for line := range stderrChan {
+			errorLines = append(errorLines, line)
+			if progress != nil {
+				progress("running", 999, []string{"ERROR: " + line})
+			}
+		}
+	}()
+
+	wg.Wait()
+
+	// Wait for command result
+	cmdResult := <-resultChan
+	output := strings.Join(outputLines, "\n")
+
 	result := dto.CheckResult{
-		ExitCode: exitCode,
+		ExitCode: cmdResult.ExitCode,
 		Message:  output,
 	}
 
@@ -136,7 +202,7 @@ func (a *BtrfsAdapter) Check(ctx context.Context, device string, options dto.Che
 	// 0 - No errors
 	// non-zero - Errors found or operational issues
 
-	switch exitCode {
+	switch cmdResult.ExitCode {
 	case 0:
 		result.Success = true
 		// Check output to determine if errors were found
@@ -151,11 +217,11 @@ func (a *BtrfsAdapter) Check(ctx context.Context, device string, options dto.Che
 		result.Success = false
 		result.ErrorsFound = true
 		result.ErrorsFixed = false
-		if err != nil {
+		if cmdResult.Error != nil {
 			if progress != nil {
-				progress("failure", 0, []string{"Check failed: " + err.Error()})
+				progress("failure", 0, []string{"Check failed: " + cmdResult.Error.Error()})
 			}
-			return result, errors.WithDetails(err, "Device", device, "ExitCode", exitCode)
+			return result, errors.WithDetails(cmdResult.Error, "Device", device, "ExitCode", cmdResult.ExitCode)
 		}
 	}
 
@@ -193,7 +259,7 @@ func (a *BtrfsAdapter) GetLabel(ctx context.Context, device string) (string, err
 			if idx := strings.Index(line, "Label:"); idx != -1 {
 				labelPart := line[idx+6:] // Skip "Label:"
 				labelPart = strings.TrimSpace(labelPart)
-				
+
 				// Label is in single quotes or is 'none'
 				if strings.HasPrefix(labelPart, "'") {
 					endIdx := strings.Index(labelPart[1:], "'")
@@ -235,7 +301,7 @@ func (a *BtrfsAdapter) GetState(ctx context.Context, device string) (dto.Filesys
 	output, exitCode, err := runCommand(ctx, "btrfs", "device", "stats", device)
 	if err == nil && exitCode == 0 {
 		state.AdditionalInfo["deviceStats"] = output
-		
+
 		// Check for errors in stats
 		if strings.Contains(strings.ToLower(output), "error") {
 			state.HasErrors = true
