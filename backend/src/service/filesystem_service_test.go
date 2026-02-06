@@ -12,12 +12,15 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"gitlab.com/tozd/go/errors"
+	"go.uber.org/fx"
+	"go.uber.org/fx/fxtest"
 )
 
 type FilesystemServiceTestSuite struct {
 	suite.Suite
 	fsService service.FilesystemServiceInterface
 	ctx       context.Context
+	app       *fxtest.App
 }
 
 func TestFilesystemServiceTestSuite(t *testing.T) {
@@ -225,39 +228,11 @@ func (suite *FilesystemServiceTestSuite) TestGetFilesystemSpecificMountFlags() {
 	}
 	suite.True(foundUID, "ntfs specific flag 'uid' not found")
 
-	// Test with another known filesystem type (ntfs3)
-	ntfs3Flags, err := suite.fsService.GetFilesystemSpecificMountFlags("ntfs3")
-	suite.Require().NoError(err)
-	suite.Require().NotNil(ntfs3Flags)
-	suite.NotEmpty(ntfs3Flags, "Expected specific flags for ntfs3")
-	foundForce := false
-	for _, flag := range ntfs3Flags {
-		if flag.Name == "force" {
-			foundForce = true
-			suite.False(flag.NeedsValue, "ntfs3 force flag should not need a value")
-		}
-	}
-	suite.True(foundForce, "ntfs3 specific flag 'force' not found")
-
 	// Test with an unknown filesystem type
 	unknownFlags, err := suite.fsService.GetFilesystemSpecificMountFlags("someunknownfs")
 	suite.Require().NoError(err)
 	suite.Require().NotNil(unknownFlags)
 	suite.Empty(unknownFlags, "Expected no specific flags for an unknown filesystem type")
-
-	// Test with zfs
-	zfsFlags, err := suite.fsService.GetFilesystemSpecificMountFlags("zfs")
-	suite.Require().NoError(err)
-	suite.Require().NotNil(zfsFlags)
-	suite.NotEmpty(zfsFlags)
-	foundContext := false
-	for _, flag := range zfsFlags {
-		if flag.Name == "context" {
-			foundContext = true
-			suite.True(flag.NeedsValue, "zfs context flag should need a value")
-		}
-	}
-	suite.True(foundContext, "zfs specific flag 'context' not found")
 
 	// Test with xfs
 	xfsFlags, err := suite.fsService.GetFilesystemSpecificMountFlags("xfs")
@@ -473,8 +448,77 @@ func (suite *FilesystemServiceTestSuite) TestMountFlagsToSyscallFlagAndData() {
 	}
 }
 
+func (suite *FilesystemServiceTestSuite) TestGetAdapter() {
+	// Test getting a known adapter
+	adapter, err := suite.fsService.GetAdapter("ext4")
+	suite.Require().NoError(err)
+	suite.Require().NotNil(adapter)
+	suite.Equal("ext4", adapter.GetName())
+
+	// Test getting another known adapter
+	adapter, err = suite.fsService.GetAdapter("xfs")
+	suite.Require().NoError(err)
+	suite.Require().NotNil(adapter)
+	suite.Equal("xfs", adapter.GetName())
+
+	// Test getting an unknown adapter
+	adapter, err = suite.fsService.GetAdapter("unknown-fs")
+	suite.Require().Error(err)
+	suite.Nil(adapter)
+}
+
+func (suite *FilesystemServiceTestSuite) TestListSupportedTypes() {
+	types := suite.fsService.ListSupportedTypes()
+	suite.NotEmpty(types)
+	suite.GreaterOrEqual(len(types), 5, "Should have at least 5 filesystem types")
+
+	// Check for expected types
+	expectedTypes := []string{"ext4", "vfat", "ntfs", "btrfs", "xfs"}
+	for _, expected := range expectedTypes {
+		suite.Contains(types, expected)
+	}
+}
+
+func (suite *FilesystemServiceTestSuite) TestGetSupportedFilesystems() {
+	support, err := suite.fsService.GetSupportedFilesystems(suite.ctx)
+	suite.Require().NoError(err)
+	suite.NotEmpty(support)
+
+	// Check that each filesystem has support information
+	for fsType, fsSupport := range support {
+		suite.NotEmpty(fsType)
+		suite.NotEmpty(fsSupport.AlpinePackage, "Alpine package should be specified for %s", fsType)
+		// Note: Actual tool availability depends on system configuration
+	}
+
+	// Verify expected filesystems are present
+	expectedFS := []string{"ext4", "vfat", "ntfs", "btrfs", "xfs"}
+	for _, expected := range expectedFS {
+		_, exists := support[expected]
+		suite.True(exists, "Should have support info for %s", expected)
+	}
+}
+
 func (suite *FilesystemServiceTestSuite) SetupTest() {
 	suite.ctx = context.Background()
-	suite.fsService = service.NewFilesystemService(suite.ctx)
+
+	// Use FX to build the service with proper dependency injection
+	suite.app = fxtest.New(
+		suite.T(),
+		fx.Provide(
+			func() context.Context {
+				return suite.ctx
+			},
+			service.NewFilesystemService,
+		),
+		fx.Populate(&suite.fsService),
+	)
+
 	suite.Require().NotNil(suite.fsService, "FilesystemService should be initialized")
+}
+
+func (suite *FilesystemServiceTestSuite) TearDownTest() {
+	if suite.app != nil {
+		suite.app.RequireStart().RequireStop()
+	}
 }

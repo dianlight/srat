@@ -11,5 +11,6 @@ const (
 	eventShares                              // "shares"
 	eventDirtyTracker                        // "dirty_data_tracker"
 	eventSmartTestStatus                     // "smart_test_status"
+	eventFilesystemTask                      // "filesystem_task"
 	eventError                               // "error"
 )

@@ -6,7 +6,7 @@ This file highlights the must-know, discoverable rules and workflows for product
 
 - **Languages**: Go backend (Go 1.25), TypeScript React frontend (Bun runtime). See `backend/go.mod` and `frontend/package.json`/`bun.lockb`.
 - **Builds**: Root `Makefile` proxies to `backend/Makefile`. Frontend uses Bun: `cd frontend && bun install && bun run build`.
-- **Pre-commit**: Repository uses `pre-commit`. Do not edit `.git/hooks` manually. See `.pre-commit-config.yaml` and run `pre-commit install` locally.
+- **Pre-commit**: Repository uses `prek`. Do not edit `.git/hooks` manually. See `.pre-commit-config.yaml` and run `prek install` locally.
 - **Tests**: Backend uses `testify/suite` with `mockio/v2`. Frontend uses `bun:test` with `@testing-library/react`. See below for patterns.
 - **Git Operations**: **NEVER** perform `git add`, `git commit`, `git push`, or any other git write operations without explicit user request. Always wait for the user to request git operations after changes are complete and verified.
 - **File-Specific Rules (MANDATORY)**: **ALWAYS** read the top comment/header section of any file you modify. Many files contain important rules, constraints, or patterns specific to that file. These rules take precedence and must be followed in addition to (or instead of) general patterns. Examples: licensing headers, code generation markers, restricted modification zones, special formatting rules, or dependencies on external tools. If a file's top comment specifies different behavior than general guidelines, follow the file-specific rules.
@@ -170,7 +170,7 @@ go mod vendor       # Vendor all dependencies (done automatically by make)
 
 ### Full Stack Development
 
-- **Prepare environment**: `make prepare` (installs pre-commit + dependencies)
+- **Prepare environment**: `make prepare` (installs prek + dependencies)
 - **Build all**: `make ALL` (multi-arch: amd64, aarch64)
 - **Clean**: `make clean`
 
@@ -315,7 +315,7 @@ When addressing any issue or bug, **ALWAYS follow this workflow**:
 - **Security**: `gosec` scans Go code (high severity/confidence only)
 - **Dependencies**: Remove/restore `go.mod` replace directives
 - **Documentation**: Link format validation, CHANGELOG format checks
-- **Install**: `pre-commit install && pre-commit install --hook-type pre-push`
+- **Install**: `prek install && prek install --hook-type pre-push`
 
 ### Documentation
 
@@ -547,7 +547,7 @@ When making ANY changes to frontend components or tests:
 
 Ensure all relevant pre-commit hooks pass locally before pushing changes. This includes formatting, linting, security scans, and documentation validation.
 
-If uncertain, run: `pre-commit run --all-files`, `make docs-validate`, `make security`
+If uncertain, run: `prek run --all-files`, `make docs-validate`, `make security`
 
 If this file misses anything important, tell me which area (build, tests, DI, logging, frontend) and I will expand with concrete examples.
 

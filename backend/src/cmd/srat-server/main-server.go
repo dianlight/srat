@@ -190,6 +190,7 @@ func prog(listener net.Listener) {
 			server.AsHumaRoute(api.NewSambaHanler),
 			server.AsHumaRoute(api.NewUpgradeHanler),
 			server.AsHumaRoute(api.NewSystemHanler),
+			server.AsHumaRoute(api.NewFilesystemHandler),
 			server.AsHumaRoute(api.NewIssueAPI),
 			server.AsHumaRoute(api.NewTelemetryHandler),
 			server.AsHumaRoute(api.NewHDIdleHandler),
