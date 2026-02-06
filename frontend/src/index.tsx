@@ -43,7 +43,7 @@ declare module '@mui/material/Typography' {
 
 const theme = createTheme({
 	cssVariables: {
-		colorSchemeSelector: "class",
+		colorSchemeSelector: "data-color-mode",
 	},
 	colorSchemes: {
 		light: true,

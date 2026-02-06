@@ -276,55 +276,9 @@ export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
 											<Box
 												role="group"
 												aria-labelledby="report-issue-description-label"
-												data-color-mode={mode}
-												sx={(theme) => ({
-													mt: 1,
-													border: 1,
-													borderColor: hasError ? theme.palette.error.main : theme.palette.divider,
-													borderRadius: 1,
-													backgroundColor: theme.palette.background.paper,
-													color: theme.palette.text.primary,
-													"--color-fg-default": theme.palette.text.primary,
-													"--color-fg-muted": theme.palette.text.secondary,
-													"--color-canvas-default": theme.palette.background.paper,
-													"--color-canvas-subtle": theme.palette.background.default,
-													"--color-border-default": theme.palette.divider,
-													transition: theme.transitions.create(["border-color", "box-shadow"], {
-														duration: theme.transitions.duration.shortest,
-													}),
-													"&:hover": {
-														borderColor: hasError ? theme.palette.error.main : theme.palette.text.primary,
-													},
-													"&:focus-within": {
-														borderColor: hasError ? theme.palette.error.main : theme.palette.primary.main,
-														boxShadow: `0 0 0 1px ${hasError ? theme.palette.error.main : theme.palette.primary.main}`,
-													},
-													".w-md-editor": {
-														boxShadow: "none",
-														backgroundColor: "transparent",
-														color: theme.palette.text.primary,
-													},
-													".w-md-editor-toolbar": {
-														backgroundColor: theme.palette.background.default,
-														borderBottom: `1px solid ${theme.palette.divider}`,
-													},
-													".w-md-editor-content": {
-														backgroundColor: "transparent",
-													},
-													".w-md-editor-text": {
-														fontFamily: "inherit",
-														minHeight: 140,
-														color: theme.palette.text.primary,
-													},
-													".w-md-editor-preview": {
-														color: theme.palette.text.primary,
-														backgroundColor: "transparent",
-													},
-												})}
+												//data-color-mode={document.documentElement.getAttribute("data-color-mode") || mode}
 											>
-												<div className="wmde-markdown-var"> </div>
 												<MDEditor
-													data-color-mode={mode === "light" ? "light" : "dark"}
 													value={field.value}
 													onChange={(value) => field.onChange(value ?? "")}
 													onBlur={field.onBlur}
