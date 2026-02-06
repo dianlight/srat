@@ -90,3 +90,11 @@ body:
       render: text
     validations:
       required: false
+  - type: textarea
+    id: console
+    attributes:
+      label: "Console Logs"
+      description: Please paste relevant log from your browser console if are availables
+      render: text
+    validations:
+      required: false
