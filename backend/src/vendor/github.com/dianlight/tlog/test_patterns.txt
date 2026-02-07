@@ -1,0 +1,40 @@
+# Test patterns for sensitive data in string representations
+# Format: pattern_description|test_string|expected_masked_parts (comma-separated if multiple)
+# Lines starting with # are comments
+
+# JSON-like patterns
+JSON password field|{"user":"john","password":"mySecret123","email":"test@example.com"}|mySecret123
+JSON token field|{"session":{"token":"abc123xyz","userId":42}}|abc123xyz
+JSON nested password|{"auth":{"credentials":{"password":"SuperSecret!"}}}|SuperSecret!
+JSON api_key field|{"config":{"api_key":"sk-1234567890abcdef"}}|sk-1234567890abcdef
+JSON encoded|{\"config\":{\"api_key\":\"sk-1234567890abcdef\"}}|sk-1234567890abcdef
+Query string with encoded api_key|/search?params=q%3Dtest&api_key%3Dkey_12345|key_12345
+
+# URL-like patterns
+URL with password|https://user:myPassword@example.com/api|myPassword
+Query string with token|/api/data?token=xyz789&user=test|xyz789
+Query string with api_key|/search?q=test&api_key=key_12345|key_12345
+
+# Key-value patterns
+Simple key-value password|password=secretValue123|secretValue123
+Key-value with quotes|"password":"hiddenSecret"|hiddenSecret
+Multiple fields|user=john password=myPass123 email=test@test.com|myPass123
+
+# Nested object string representations
+Struct with password|User{Name:john Password:myPass123 Email:test@test.com}|myPass123
+Map representation|map[password:secret123 token:tok456 user:john]|secret123,tok456
+
+# XML-like patterns
+XML password tag|<user><password>xmlSecret123</password><name>john</name></user>|xmlSecret123
+XML token attribute|<session token="sessionToken456" user="john"/>|sessionToken456
+
+# YAML-like patterns
+YAML password|user: john\npassword: yamlSecret\nemail: test@test.com|yamlSecret
+YAML nested|auth:\n  password: nested123\n  token: tok789|nested123,tok789
+
+# Edge cases
+Password at start|password:firstSecret user:john|firstSecret
+Password at end|user:john email:test password:lastSecret|lastSecret
+Multiple passwords|password1:first123 password2:second456|first123,second456
+Empty password value|password: token:emptyTest123|emptyTest123
+Password with special chars|password:p@ssw0rd! user:john|p@ssw0rd!

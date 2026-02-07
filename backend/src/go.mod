@@ -22,7 +22,7 @@ require (
 	github.com/benmcclelland/sgio v0.0.0-20250710154739-45e823ff1f46
 	github.com/danielgtaylor/huma/v2 v2.35.0
 	github.com/dianlight/smartmontools-go v0.2.4
-	github.com/dianlight/tlog v0.1.2
+	github.com/dianlight/tlog v0.2.0
 	github.com/fatih/color v1.18.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/gofri/go-github-ratelimit/v2 v2.0.2
