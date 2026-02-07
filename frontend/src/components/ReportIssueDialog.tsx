@@ -28,6 +28,7 @@ import { Controller,
 import { useIssueTemplate } from "../hooks/useIssueTemplate";
 import MDEditor from "@uiw/react-md-editor/nohighlight";
 import FormControl from "@mui/material/FormControl";
+import { useSystemLogs } from "./GlobalEventTracker";
 
 interface ReportIssueDialogProps {
 	open: boolean;
@@ -36,7 +37,6 @@ interface ReportIssueDialogProps {
 
 
 export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
-	const { mode } = useColorScheme();
 	const { template, isLoading: templateLoading } = useIssueTemplate();
 
 	// Define problemTypeLabels first, before using it in useMemo
@@ -46,6 +46,8 @@ export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
 		addon: "Addon Problem",
 		samba: "Samba Problem",
 	};
+
+	const { logs } = useSystemLogs();
 
 	const formContext = useForm<IssueReportRequest>({
 		defaultValues: {
@@ -85,7 +87,7 @@ export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
 		// Prepare request payload
 		const requestPayload = {
 			...formData,
-			console_errors: formData.include_console_errors ? getConsoleErrors() : [],
+			console_errors: formData.include_console_errors ? logs.map((log) => log.String()) : [],
 		} as IssueReportRequest;
 
 		try {
@@ -142,38 +144,6 @@ export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
 			console.error("Error generating issue report:", error);
 			alert("Failed to generate issue report. Please try again.");
 		}
-	};
-
-	const getNavigationHistory = (): string[] => {
-		// Get last 5 entries from browser history (if available)
-		// Note: Full history access is restricted, so we can only get current URL
-		const history: string[] = [];
-		if (window.history.length > 0) {
-			history.push(window.location.href);
-		}
-		return history;
-	};
-
-	const getConsoleErrors = (): string[] => {
-		// Return captured console errors if available
-		// This would need to be implemented with a console error interceptor
-		return [];
-	};
-
-	const downloadFile = (
-		content: string,
-		filename: string,
-		mimeType: string,
-	) => {
-		const blob = new Blob([content], { type: mimeType });
-		const url = URL.createObjectURL(blob);
-		const link = document.createElement("a");
-		link.href = url;
-		link.download = filename;
-		document.body.appendChild(link);
-		link.click();
-		document.body.removeChild(link);
-		URL.revokeObjectURL(url);
 	};
 
 	return (

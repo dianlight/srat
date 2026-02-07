@@ -103,7 +103,9 @@
 				"nguyenngoclong.terminal-keeper",
 				"DavidAnson.vscode-markdownlint",
 				"neonxp.gotools",
-				"svvashishtha.go-interface-navigator"
+				"svvashishtha.go-interface-navigator",
+				"YoavBls.pretty-ts-errors",
+				"DSKWRK.vscode-generate-getter-setter"
 			],
 			"mcp": {
 				"servers": {

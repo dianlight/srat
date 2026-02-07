@@ -202,5 +202,6 @@
   "git.blame.ignoreWhitespace": true,
   "bun.test.customScript": "bun test",
   "npm.packageManager": "bun",
-  "npm.scriptRunner": "bun"
+  "npm.scriptRunner": "bun",
+  "typescript.preferences.preferTypeOnlyAutoImports": true
 }
