@@ -9,6 +9,7 @@ var (
 	Repository         = "dianlight/srat"
 	RollbarToken       = ""
 	RollbarEnvironment = ""
+	GistToken          = ""
 )
 
 func BuildVersion() string {

@@ -63,6 +63,17 @@ func (f *fakeAddons) GetStats() (*addons.AddonStatsData, errors.E) {
 	return &addons.AddonStatsData{}, nil
 }
 
+func (f *fakeAddons) GetLatestLogs(ctx context.Context) (string, errors.E) {
+	return "fake addon logs", nil
+}
+
+func (f *fakeAddons) GetInfo(ctx context.Context) (*addons.AddonInfoData, errors.E) {
+	return &addons.AddonInfoData{}, nil
+}
+func (f *fakeAddons) SetOptions(ctx context.Context, options *addons.AddonOptionsRequest) errors.E {
+	return nil
+}
+
 type fakeDiskStats struct{}
 
 func (f *fakeDiskStats) GetDiskStats() (*dto.DiskHealth, errors.E) { return &dto.DiskHealth{}, nil }

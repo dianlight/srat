@@ -121,7 +121,7 @@ const mockEventData = {
  * - SUBSCRIBE message handling for on-demand event data
  * - Proper cleanup on disconnect
  */
-const wsUrl = "ws://localhost:8080/ws";
+const wsUrl = "ws://localhost:3000/ws";
 
 export const wsLink = ws.link(wsUrl);
 
@@ -167,4 +167,4 @@ export const wsHandler = wsLink.addEventListener("connection", ({ client }) => {
  * 
  * Note: Only WebSocket handlers are exported. SSE is deprecated for this project.
  */
-export const streamingHandlers: never[] = [];
+export const streamingHandlers = [wsHandler];

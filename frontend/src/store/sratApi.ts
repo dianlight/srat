@@ -196,6 +196,24 @@ const injectedRtkApi = api
         }),
         invalidatesTags: ["Issues"],
       }),
+      postApiIssuesReport: build.mutation<
+        PostApiIssuesReportApiResponse,
+        PostApiIssuesReportApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/issues/report`,
+          method: "POST",
+          body: queryArg.issueReportRequest,
+        }),
+        invalidatesTags: ["Issues"],
+      }),
+      getApiIssuesTemplate: build.query<
+        GetApiIssuesTemplateApiResponse,
+        GetApiIssuesTemplateApiArg
+      >({
+        query: () => ({ url: `/api/issues/template` }),
+        providesTags: ["Issues"],
+      }),
       deleteApiIssuesById: build.mutation<
         DeleteApiIssuesByIdApiResponse,
         DeleteApiIssuesByIdApiArg
@@ -220,13 +238,6 @@ const injectedRtkApi = api
       getApiNics: build.query<GetApiNicsApiResponse, GetApiNicsApiArg>({
         query: () => ({ url: `/api/nics` }),
         providesTags: ["system"],
-      }),
-      putApiRestart: build.mutation<
-        PutApiRestartApiResponse,
-        PutApiRestartApiArg
-      >({
-        query: () => ({ url: `/api/restart`, method: "PUT" }),
-        invalidatesTags: ["system"],
       }),
       putApiSambaApply: build.mutation<
         PutApiSambaApplyApiResponse,
@@ -608,6 +619,16 @@ export type PostApiIssuesApiResponse = /** status 200 OK */
 export type PostApiIssuesApiArg = {
   issue: Issue;
 };
+export type PostApiIssuesReportApiResponse = /** status 200 OK */
+  | IssueReportResponse
+  | /** status default Error */ ErrorModel;
+export type PostApiIssuesReportApiArg = {
+  issueReportRequest: IssueReportRequest;
+};
+export type GetApiIssuesTemplateApiResponse = /** status 200 OK */
+  | IssueTemplateResponse
+  | /** status default Error */ ErrorModel;
+export type GetApiIssuesTemplateApiArg = void;
 export type DeleteApiIssuesByIdApiResponse =
   /** status default Error */ ErrorModel;
 export type DeleteApiIssuesByIdApiArg = {
@@ -624,8 +645,6 @@ export type GetApiNicsApiResponse =
   | /** status 200 OK */ (InterfaceStat[] | null)
   | /** status default Error */ ErrorModel;
 export type GetApiNicsApiArg = void;
-export type PutApiRestartApiResponse = /** status default Error */ ErrorModel;
-export type PutApiRestartApiArg = void;
 export type PutApiSambaApplyApiResponse =
   /** status default Error */ ErrorModel;
 export type PutApiSambaApplyApiArg = void;
@@ -1219,6 +1238,58 @@ export type Issue = {
   severity?: Severity;
   title: string;
 };
+export type IssueReportResponse = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  github_url: string;
+  issue_title: string;
+  sanitized_addon_config?: string;
+  sanitized_srat_config?: string;
+};
+export type IssueReportRequest = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  console_errors?: string[] | null;
+  description: string;
+  include_addon_config: boolean;
+  include_addon_logs: boolean;
+  include_console_errors: boolean;
+  include_srat_config: boolean;
+  problem_type: string;
+  reproducing_steps: string;
+  title?: string;
+  [key: string]: unknown;
+};
+export type IssueTemplateFieldAttr = {
+  description?: string;
+  label: string;
+  multiple?: boolean;
+  options?: string[] | null;
+  placeholder?: string;
+  render?: string;
+};
+export type IssueTemplateValidity = {
+  required: boolean;
+};
+export type IssueTemplateField = {
+  attributes: IssueTemplateFieldAttr;
+  id: string;
+  type: string;
+  validations?: IssueTemplateValidity;
+};
+export type IssueTemplate = {
+  body: IssueTemplateField[] | null;
+  description: string;
+  labels: string[] | null;
+  name: string;
+  title: string;
+};
+export type IssueTemplateResponse = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  error?: string;
+  template: IssueTemplate;
+};
 export type InterfaceAddr = {
   addr: string;
 };
@@ -1543,10 +1614,11 @@ export const {
   useGetApiHostnameQuery,
   useGetApiIssuesQuery,
   usePostApiIssuesMutation,
+  usePostApiIssuesReportMutation,
+  useGetApiIssuesTemplateQuery,
   useDeleteApiIssuesByIdMutation,
   usePutApiIssuesByIdMutation,
   useGetApiNicsQuery,
-  usePutApiRestartMutation,
   usePutApiSambaApplyMutation,
   useGetApiSambaConfigQuery,
   useGetApiSambaStatusQuery,

@@ -6,26 +6,24 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/jarcoal/httpmock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-type mockHTTPClient struct {
-	called  bool
-	lastReq *http.Request
-}
-
-func (m *mockHTTPClient) Do(req *http.Request) (*http.Response, error) {
-	m.called = true
-	m.lastReq = req
-	return nil, errors.New("network error")
-}
-
 func TestNewClientAppliesOptions(t *testing.T) {
-	mock := &mockHTTPClient{}
+	mockTransport := httpmock.NewMockTransport()
+	called := false
+	var lastReq *http.Request
+	mockTransport.RegisterResponder(http.MethodGet, "http://example.com/addons/self/info", func(req *http.Request) (*http.Response, error) {
+		called = true
+		lastReq = req
+		return nil, errors.New("network error")
+	})
+	clientHTTP := &http.Client{Transport: mockTransport}
 	editorCalled := false
 
-	client, err := NewClient("http://example.com", WithHTTPClient(mock), WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
+	client, err := NewClient("http://example.com", WithHTTPClient(clientHTTP), WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
 		editorCalled = true
 		req.Header.Set("X-Test", "true")
 		return nil
@@ -35,9 +33,9 @@ func TestNewClientAppliesOptions(t *testing.T) {
 
 	_, err = client.GetSelfAddonInfo(context.Background())
 	require.Error(t, err)
-	assert.True(t, mock.called)
-	require.NotNil(t, mock.lastReq)
-	assert.Equal(t, "true", mock.lastReq.Header.Get("X-Test"))
+	assert.True(t, called)
+	require.NotNil(t, lastReq)
+	assert.Equal(t, "true", lastReq.Header.Get("X-Test"))
 	assert.True(t, editorCalled)
 
 	additionalCalled := false

@@ -349,6 +349,7 @@ jobs:
     needs: [setversion, test-backend, test-frontend]
     env:
       ROLLBAR_CLIENT_ACCESS_TOKEN: ${{ secrets.ROLLBAR_CLIENT_ACCESS_TOKEN || 'disabled' }}
+      GIST_TOKEN: ${{ secrets.GIST_TOKEN || 'disabled' }}
       ROLLBAR_ENVIRONMENT: "production"
     steps:
       - name: Checkout the repository

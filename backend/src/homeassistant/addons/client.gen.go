@@ -12,6 +12,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/oapi-codegen/runtime"
 )
 
 const (
@@ -25,8 +27,8 @@ const (
 
 // Defines values for AddonInfoDataBoot.
 const (
-	Auto   AddonInfoDataBoot = "auto"
-	Manual AddonInfoDataBoot = "manual"
+	AddonInfoDataBootAuto   AddonInfoDataBoot = "auto"
+	AddonInfoDataBootManual AddonInfoDataBoot = "manual"
 )
 
 // Defines values for AddonInfoDataStage.
@@ -58,14 +60,27 @@ const (
 	AddonInfoResponseResultOk AddonInfoResponseResult = "ok"
 )
 
-// Defines values for AddonOptionsResponseResult.
+// Defines values for AddonOptionsRequestBoot.
 const (
-	AddonOptionsResponseResultOk AddonOptionsResponseResult = "ok"
+	AddonOptionsRequestBootAuto   AddonOptionsRequestBoot = "auto"
+	AddonOptionsRequestBootManual AddonOptionsRequestBoot = "manual"
 )
 
 // Defines values for AddonStatsResponseResult.
 const (
-	AddonStatsResponseResultOk AddonStatsResponseResult = "ok"
+	Ok AddonStatsResponseResult = "ok"
+)
+
+// Defines values for GetSelfAddonLogsParamsAccept.
+const (
+	GetSelfAddonLogsParamsAcceptTextplain GetSelfAddonLogsParamsAccept = "text/plain"
+	GetSelfAddonLogsParamsAcceptTextxLog  GetSelfAddonLogsParamsAccept = "text/x-log"
+)
+
+// Defines values for GetSelfAddonLogsLatestParamsAccept.
+const (
+	GetSelfAddonLogsLatestParamsAcceptTextplain GetSelfAddonLogsLatestParamsAccept = "text/plain"
+	GetSelfAddonLogsLatestParamsAcceptTextxLog  GetSelfAddonLogsLatestParamsAccept = "text/x-log"
 )
 
 // ActionResult defines model for ActionResult.
@@ -141,21 +156,35 @@ type AddonInfoResponse struct {
 // AddonInfoResponseResult defines model for AddonInfoResponse.Result.
 type AddonInfoResponseResult string
 
-// AddonOptionsRequest Add-on configuration options to set. Structure depends on the add-on's schema.
-type AddonOptionsRequest map[string]interface{}
+// AddonOptionsRequest defines model for AddonOptionsRequest.
+type AddonOptionsRequest struct {
+	// AudioInput Optional audio input setting to set for the add-on.
+	AudioInput *float32 `json:"audio_input,omitempty"`
 
-// AddonOptionsResponse defines model for AddonOptionsResponse.
-type AddonOptionsResponse struct {
-	// Data Current configuration options for the add-on.
-	Data   AddonOptionsResponseData   `json:"data"`
-	Result AddonOptionsResponseResult `json:"result"`
+	// AudioOutput Optional audio output setting to set for the add-on.
+	AudioOutput *float32 `json:"audio_output,omitempty"`
+
+	// AutoUpdate Optional auto-update setting to set for the add-on.
+	AutoUpdate *bool `json:"auto_update,omitempty"`
+
+	// Boot Optional boot mode to set for the add-on.
+	Boot *AddonOptionsRequestBoot `json:"boot,omitempty"`
+
+	// IngressPanel Optional ingress panel setting to set for the add-on.
+	IngressPanel *bool `json:"ingress_panel,omitempty"`
+
+	// Network Optional network configuration to set for the add-on.
+	Network *map[string]interface{} `json:"network,omitempty"`
+
+	// Options Add-on configuration options to set. Structure depends on the add-on's schema.
+	Options *map[string]interface{} `json:"options,omitempty"`
+
+	// Watchdog Optional watchdog setting to set for the add-on.
+	Watchdog *bool `json:"watchdog,omitempty"`
 }
 
-// AddonOptionsResponseResult defines model for AddonOptionsResponse.Result.
-type AddonOptionsResponseResult string
-
-// AddonOptionsResponseData Current configuration options for the add-on.
-type AddonOptionsResponseData map[string]interface{}
+// AddonOptionsRequestBoot Optional boot mode to set for the add-on.
+type AddonOptionsRequestBoot string
 
 // AddonStatsData defines model for AddonStatsData.
 type AddonStatsData struct {
@@ -206,6 +235,27 @@ type UpdateSelfAddonRequest struct {
 	// Version Optional specific version to update/downgrade to. If omitted, updates to the latest available version.
 	Version *string `json:"version,omitempty"`
 }
+
+// GetSelfAddonLogsParams defines parameters for GetSelfAddonLogs.
+type GetSelfAddonLogsParams struct {
+	// Accept Supervisor request text/x-log.
+	Accept GetSelfAddonLogsParamsAccept `json:"Accept"`
+}
+
+// GetSelfAddonLogsParamsAccept defines parameters for GetSelfAddonLogs.
+type GetSelfAddonLogsParamsAccept string
+
+// GetSelfAddonLogsLatestParams defines parameters for GetSelfAddonLogsLatest.
+type GetSelfAddonLogsLatestParams struct {
+	// Lines Number of log lines to retrieve from the end of the latest startup logs.
+	Lines *int `form:"lines,omitempty" json:"lines,omitempty"`
+
+	// Accept Supervisor request text/x-log.
+	Accept GetSelfAddonLogsLatestParamsAccept `json:"Accept"`
+}
+
+// GetSelfAddonLogsLatestParamsAccept defines parameters for GetSelfAddonLogsLatest.
+type GetSelfAddonLogsLatestParamsAccept string
 
 // SetSelfAddonOptionsJSONRequestBody defines body for SetSelfAddonOptions for application/json ContentType.
 type SetSelfAddonOptionsJSONRequestBody = AddonOptionsRequest
@@ -293,10 +343,10 @@ type ClientInterface interface {
 	GetSelfAddonInfo(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetSelfAddonLogs request
-	GetSelfAddonLogs(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetSelfAddonLogs(ctx context.Context, params *GetSelfAddonLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetSelfAddonOptions request
-	GetSelfAddonOptions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GetSelfAddonLogsLatest request
+	GetSelfAddonLogsLatest(ctx context.Context, params *GetSelfAddonLogsLatestParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SetSelfAddonOptionsWithBody request with any body
 	SetSelfAddonOptionsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -332,8 +382,8 @@ func (c *Client) GetSelfAddonInfo(ctx context.Context, reqEditors ...RequestEdit
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetSelfAddonLogs(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetSelfAddonLogsRequest(c.Server)
+func (c *Client) GetSelfAddonLogs(ctx context.Context, params *GetSelfAddonLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetSelfAddonLogsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -344,8 +394,8 @@ func (c *Client) GetSelfAddonLogs(ctx context.Context, reqEditors ...RequestEdit
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetSelfAddonOptions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetSelfAddonOptionsRequest(c.Server)
+func (c *Client) GetSelfAddonLogsLatest(ctx context.Context, params *GetSelfAddonLogsLatestParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetSelfAddonLogsLatestRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -480,7 +530,7 @@ func NewGetSelfAddonInfoRequest(server string) (*http.Request, error) {
 }
 
 // NewGetSelfAddonLogsRequest generates requests for GetSelfAddonLogs
-func NewGetSelfAddonLogsRequest(server string) (*http.Request, error) {
+func NewGetSelfAddonLogsRequest(server string, params *GetSelfAddonLogsParams) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -503,11 +553,24 @@ func NewGetSelfAddonLogsRequest(server string) (*http.Request, error) {
 		return nil, err
 	}
 
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "Accept", runtime.ParamLocationHeader, params.Accept)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Accept", headerParam0)
+
+	}
+
 	return req, nil
 }
 
-// NewGetSelfAddonOptionsRequest generates requests for GetSelfAddonOptions
-func NewGetSelfAddonOptionsRequest(server string) (*http.Request, error) {
+// NewGetSelfAddonLogsLatestRequest generates requests for GetSelfAddonLogsLatest
+func NewGetSelfAddonLogsLatestRequest(server string, params *GetSelfAddonLogsLatestParams) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -515,7 +578,7 @@ func NewGetSelfAddonOptionsRequest(server string) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/addons/self/options")
+	operationPath := fmt.Sprintf("/addons/self/logs/latest")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -525,9 +588,44 @@ func NewGetSelfAddonOptionsRequest(server string) (*http.Request, error) {
 		return nil, err
 	}
 
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Lines != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "lines", runtime.ParamLocationQuery, *params.Lines); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithLocation("simple", false, "Accept", runtime.ParamLocationHeader, params.Accept)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Accept", headerParam0)
+
 	}
 
 	return req, nil
@@ -754,10 +852,10 @@ type ClientWithResponsesInterface interface {
 	GetSelfAddonInfoWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetSelfAddonInfoResponse, error)
 
 	// GetSelfAddonLogsWithResponse request
-	GetSelfAddonLogsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetSelfAddonLogsResponse, error)
+	GetSelfAddonLogsWithResponse(ctx context.Context, params *GetSelfAddonLogsParams, reqEditors ...RequestEditorFn) (*GetSelfAddonLogsResponse, error)
 
-	// GetSelfAddonOptionsWithResponse request
-	GetSelfAddonOptionsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetSelfAddonOptionsResponse, error)
+	// GetSelfAddonLogsLatestWithResponse request
+	GetSelfAddonLogsLatestWithResponse(ctx context.Context, params *GetSelfAddonLogsLatestParams, reqEditors ...RequestEditorFn) (*GetSelfAddonLogsLatestResponse, error)
 
 	// SetSelfAddonOptionsWithBodyWithResponse request with any body
 	SetSelfAddonOptionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetSelfAddonOptionsResponse, error)
@@ -826,15 +924,14 @@ func (r GetSelfAddonLogsResponse) StatusCode() int {
 	return 0
 }
 
-type GetSelfAddonOptionsResponse struct {
+type GetSelfAddonLogsLatestResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *AddonOptionsResponse
 	JSON401      *ErrorResponse
 }
 
 // Status returns HTTPResponse.Status
-func (r GetSelfAddonOptionsResponse) Status() string {
+func (r GetSelfAddonLogsLatestResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -842,7 +939,7 @@ func (r GetSelfAddonOptionsResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r GetSelfAddonOptionsResponse) StatusCode() int {
+func (r GetSelfAddonLogsLatestResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -977,21 +1074,21 @@ func (c *ClientWithResponses) GetSelfAddonInfoWithResponse(ctx context.Context, 
 }
 
 // GetSelfAddonLogsWithResponse request returning *GetSelfAddonLogsResponse
-func (c *ClientWithResponses) GetSelfAddonLogsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetSelfAddonLogsResponse, error) {
-	rsp, err := c.GetSelfAddonLogs(ctx, reqEditors...)
+func (c *ClientWithResponses) GetSelfAddonLogsWithResponse(ctx context.Context, params *GetSelfAddonLogsParams, reqEditors ...RequestEditorFn) (*GetSelfAddonLogsResponse, error) {
+	rsp, err := c.GetSelfAddonLogs(ctx, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseGetSelfAddonLogsResponse(rsp)
 }
 
-// GetSelfAddonOptionsWithResponse request returning *GetSelfAddonOptionsResponse
-func (c *ClientWithResponses) GetSelfAddonOptionsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetSelfAddonOptionsResponse, error) {
-	rsp, err := c.GetSelfAddonOptions(ctx, reqEditors...)
+// GetSelfAddonLogsLatestWithResponse request returning *GetSelfAddonLogsLatestResponse
+func (c *ClientWithResponses) GetSelfAddonLogsLatestWithResponse(ctx context.Context, params *GetSelfAddonLogsLatestParams, reqEditors ...RequestEditorFn) (*GetSelfAddonLogsLatestResponse, error) {
+	rsp, err := c.GetSelfAddonLogsLatest(ctx, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseGetSelfAddonOptionsResponse(rsp)
+	return ParseGetSelfAddonLogsLatestResponse(rsp)
 }
 
 // SetSelfAddonOptionsWithBodyWithResponse request with arbitrary body returning *SetSelfAddonOptionsResponse
@@ -1122,27 +1219,20 @@ func ParseGetSelfAddonLogsResponse(rsp *http.Response) (*GetSelfAddonLogsRespons
 	return response, nil
 }
 
-// ParseGetSelfAddonOptionsResponse parses an HTTP response from a GetSelfAddonOptionsWithResponse call
-func ParseGetSelfAddonOptionsResponse(rsp *http.Response) (*GetSelfAddonOptionsResponse, error) {
+// ParseGetSelfAddonLogsLatestResponse parses an HTTP response from a GetSelfAddonLogsLatestWithResponse call
+func ParseGetSelfAddonLogsLatestResponse(rsp *http.Response) (*GetSelfAddonLogsLatestResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &GetSelfAddonOptionsResponse{
+	response := &GetSelfAddonLogsLatestResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest AddonOptionsResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {

@@ -8,8 +8,9 @@ import BaseConfigModal from "./components/BaseConfigModal";
 import { useTelemetryModal } from "./hooks/useTelemetryModal";
 import { useBaseConfigModal } from "./hooks/useBaseConfigModal";
 import { useGetServerEventsQuery } from "./store/sseApi";
-import { Telemetry_mode, useGetApiSettingsQuery, type Settings } from "./store/sratApi";
 import { useRollbarTelemetry } from "./hooks/useRollbarTelemetry";
+import GlobalEventMonitor from "./components/GlobalEventTracker";
+
 
 export function App() {
 	const [errorInfo, _setErrorInfo] = useState<string>("");
@@ -17,7 +18,7 @@ export function App() {
 	const { data: evdata, isLoading, error: herror } = useGetServerEventsQuery();
 	const { shouldShow: showTelemetryModal, dismiss: dismissTelemetryModal } = useTelemetryModal();
 	const { shouldShow: showBaseConfigModal, dismiss: dismissBaseConfigModal } = useBaseConfigModal();
-	const { reportError, reportEvent, telemetryMode, isLoading: rollbarLoading } = useRollbarTelemetry();
+	//const { reportError, reportEvent, telemetryMode, isLoading: rollbarLoading } = useRollbarTelemetry();
 
 	// This useEffect handles the automatic reset of errors after a delay.
 	// It ensures that a timer is set only when an error occurs, and cleared if the error resolves
@@ -53,7 +54,7 @@ export function App() {
 
 	return (
 		<>
-			{/* Update Rollbar person information when machine_id becomes available */}
+			<GlobalEventMonitor />
 			<Container
 				maxWidth={false}
 				disableGutters={true}
@@ -69,8 +70,8 @@ export function App() {
 			</Container>
 			<Backdrop
 				sx={(theme) => ({ color: "#fff", zIndex: theme.zIndex.drawer + 1 })}
-				open={evdata?.heartbeat?.alive === false || (isLoading || rollbarLoading) || herror !== undefined}
-				content={(isLoading || rollbarLoading) ? "Loading..." : "Server is not reachable"}
+				open={evdata?.heartbeat?.alive === false || (isLoading) || herror !== undefined}
+				content={(isLoading) ? "Loading..." : "Server is not reachable"}
 			>
 				<CircularProgress color="inherit" />
 			</Backdrop>

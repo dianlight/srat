@@ -1,11 +1,8 @@
 /**
- * Auto-generated REST API handlers using msw-auto-mock.
+ * Custom MSW request handlers
  * 
- * This file is generated from the OpenAPI 3.1 specification and provides
- * mock handlers for all REST endpoints defined in the API.
- * 
- * To regenerate this file, run:
- *   bunx msw-auto-mock <path-to-openapi-spec> -o src/mocks/generatedHandlers.ts
+ * These handlers are manually defined to mock specific API endpoints
+ * with custom logic or data that may not be covered by auto-generated handlers.
  * 
  * @see https://www.npmjs.com/package/msw-auto-mock
  */
@@ -13,13 +10,7 @@
 import { http, type RequestHandler } from "msw";
 
 /**
- * OpenAPI specification path
- * This should point to your OpenAPI 3.1 JSON or YAML file
- */
-const OPENAPI_SPEC_PATH = "../../backend/docs/openapi.json";
 
-/**
- * Auto-generated handlers from OpenAPI specification
  * 
  * These handlers will automatically mock all REST endpoints defined in the OpenAPI spec
  * with realistic data that matches the schema definitions.
@@ -27,7 +18,7 @@ const OPENAPI_SPEC_PATH = "../../backend/docs/openapi.json";
 
 // Placeholder for generated handlers
 // To generate, run: npm run gen:mocks
-export const generatedHandlers: RequestHandler[] = [
+export const customHandlers: RequestHandler[] = [
 	// Example: Health endpoint mock
 	http.get("/api/health", () => {
 		return new Response(
@@ -161,13 +152,3 @@ export const generatedHandlers: RequestHandler[] = [
 	}),
 ];
 
-/**
- * Export generated handlers
- * 
- * Note: This is a placeholder. For full auto-generation from OpenAPI spec,
- * install and configure msw-auto-mock:
- * 
- * 1. Add script to package.json: "gen:mocks": "msw-auto-mock ../../backend/docs/openapi.json -o src/mocks/generatedHandlers.ts"
- * 2. Run: npm run gen:mocks
- * 3. The file will be regenerated with all endpoints from the OpenAPI spec
- */

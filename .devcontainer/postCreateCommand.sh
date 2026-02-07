@@ -88,4 +88,7 @@ prompt_for_var SUPERVISOR_TOKEN "Enter your Home Assistant Supervisor Token" "" 
 # Prompt for ROLLBAR_CLIENT_ACCESS_TOKEN (no default, timeout: 30s)
 prompt_for_var ROLLBAR_CLIENT_ACCESS_TOKEN "Enter your Rollbar Client Access Token" "" 60
 
+# Prompt for GIST_TOKEN (no default, timeout: 30s)
+prompt_for_var GIST_TOKEN "Enter your GitHub Gist Token (with 'gist' scope)" "" 60
+
 echo "Environment variables processed. Check ${ENV_FILE}"

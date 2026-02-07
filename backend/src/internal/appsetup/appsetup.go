@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
@@ -59,9 +60,13 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 		func(ctx context.Context) events.EventBusInterface { return events.NewEventBus(ctx) },
 		func() *github.Client {
 			rateLimiter := github_ratelimit.New(nil)
-			return github.NewClient(&http.Client{
+			client := github.NewClient(&http.Client{
 				Transport: rateLimiter,
 			})
+			if config.GistToken != "" {
+				client = client.WithAuthToken(config.GistToken)
+			}
+			return client
 		},
 		/*
 			func() *config.DefaultConfig {
@@ -94,6 +99,8 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 		service.NewNetworkStatsService,
 		service.NewSmartService,
 		service.NewIssueService,
+		service.NewIssueReportService,
+		service.NewIssueTemplateService,
 		service.NewTelemetryService,
 		service.NewHaWsService,
 		service.NewHardwareService,
