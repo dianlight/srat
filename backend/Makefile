@@ -195,7 +195,8 @@ gen: $(SRCS)
 # Run Go security checks with gosec
 gosec:
 	@echo "Running gosec security scan..."
-	@GOSEC_BIN=$$(command -v gosec 2>/dev/null || echo $$(go env GOPATH)/bin/gosec); \
+	@go run -C $(SRC_DIRS) golang.org/x/vuln/cmd/govulncheck@latest ./... && \
+	GOSEC_BIN=$$(command -v gosec 2>/dev/null || echo $$(go env GOPATH)/bin/gosec); \
 	if [ ! -x "$$GOSEC_BIN" ]; then \
 		echo "Installing gosec..."; \
 		GOBIN=$$(go env GOPATH)/bin GO111MODULE=on go install github.com/securego/gosec/v2/cmd/gosec@latest; \
