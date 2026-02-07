@@ -14,6 +14,7 @@ With your donations, we are able to continue developing and improving this proje
 ### 🐛 Bug Fixes
 
 - **Udev Event Parsing Error Handling**: Improved handling of malformed udev events to prevent spurious error reports to Rollbar. Malformed events with invalid environment data are now logged at debug level instead of error level, reducing noise in error tracking while maintaining visibility for legitimate errors.
+- **Issue Report Gist Offloading**: Fixed oversized issue report URLs by replacing large addon log and console error parameters with Gist links, preventing runaway URL growth when diagnostics are large.
 
 ### 🔄 Breaking Changes
 

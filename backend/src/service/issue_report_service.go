@@ -12,6 +12,7 @@ import (
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/tlog"
+	"github.com/google/go-github/v82/github"
 	"github.com/xorcare/pointer"
 	"gitlab.com/tozd/go/errors"
 )
@@ -23,18 +24,24 @@ type IssueReportServiceInterface interface {
 
 // IssueReportService handles generating diagnostic data for issue reporting
 type IssueReportService struct {
+	ctx            context.Context
 	settingService SettingServiceInterface
 	addonService   AddonsServiceInterface
+	gh             *github.Client
 }
 
 // NewIssueReportService creates a new issue report service
 func NewIssueReportService(
+	ctx context.Context,
 	settingService SettingServiceInterface,
 	addonService AddonsServiceInterface,
+	gh *github.Client,
 ) IssueReportServiceInterface {
 	return &IssueReportService{
+		ctx:            ctx,
 		settingService: settingService,
 		addonService:   addonService,
+		gh:             gh,
 	}
 }
 
@@ -44,7 +51,6 @@ func (s *IssueReportService) GenerateIssueReport(ctx context.Context, request *d
 
 	response := &dto.IssueReportResponse{
 		IssueTitle: request.ProblemType.IssueTitle,
-		//IssueBody:  issueBody,
 	}
 	// Create GitHub issue URL
 	params := url.Values{}
@@ -53,7 +59,8 @@ func (s *IssueReportService) GenerateIssueReport(ctx context.Context, request *d
 	var sanitizedConfigPtr *string
 	var addonLogsPtr *string
 	var addonConfigPtr *string
-	contextDataStr := ""
+	var consoleErrorsPtr *string
+	//var databaseDumpPtr *string
 
 	// Include sanitized config if requested
 	if request.IncludeSRATConfig {
@@ -85,36 +92,21 @@ func (s *IssueReportService) GenerateIssueReport(ctx context.Context, request *d
 		}
 	}
 
-	if request.IncludeContextData {
-		var contextData strings.Builder
-		contextData.WriteString("### Context Information\n\n")
-		if request.CurrentURL != "" {
-			contextData.WriteString(fmt.Sprintf("- **Current URL**: %s\n", request.CurrentURL))
-		}
-		if len(request.NavigationHistory) > 0 {
-			contextData.WriteString("- **Navigation History**:\n")
-			for i, url := range request.NavigationHistory {
-				if i >= 5 { // Limit to last 5 entries
-					break
-				}
-				contextData.WriteString(fmt.Sprintf("  - %s\n", url))
-			}
-		}
-		if request.BrowserInfo != "" {
-			contextData.WriteString(fmt.Sprintf("- **Browser**: %s\n", request.BrowserInfo))
-		}
+	var contextData strings.Builder
+	if request.IncludeConsoleErrors {
 		if len(request.ConsoleErrors) > 0 {
-			contextData.WriteString("- **Console Errors**:\n```\n")
-			for i, err := range request.ConsoleErrors {
-				if i >= 10 { // Limit to last 10 errors
-					break
-				}
+			contextData.WriteString("- **Console Errors**:\n```javascript\n")
+			for _, err := range request.ConsoleErrors {
 				contextData.WriteString(fmt.Sprintf("%s\n", err))
 			}
 			contextData.WriteString("```\n")
 		}
-		contextDataStr = contextData.String()
+		consoleErrorsPtr = pointer.String(contextData.String())
 	}
+
+	/* if request.IncludeDatabaseDump {
+		//databaseDumpPtr = pointer.String("\n\n(Database dump is not included in the issue report due to size constraints. Please attach a database dump manually if relevant.)")
+	} */
 
 	switch request.ProblemType.Template {
 	case "bug_report.yaml":
@@ -124,7 +116,7 @@ func (s *IssueReportService) GenerateIssueReport(ctx context.Context, request *d
 		params.Add("version", config.Version)
 		params.Add("arch", runtime.GOARCH)
 		params.Add("os", runtime.GOOS)
-		params.Add("description", request.Description+"\n\n"+contextDataStr)
+		params.Add("description", request.Description)
 		params.Add("reprod", request.ReproducingSteps)
 		if sanitizedConfigPtr != nil {
 			params.Add("srat_config", *sanitizedConfigPtr)
@@ -135,11 +127,17 @@ func (s *IssueReportService) GenerateIssueReport(ctx context.Context, request *d
 		if addonLogsPtr != nil {
 			params.Add("logs", *addonLogsPtr)
 		}
+		if consoleErrorsPtr != nil {
+			params.Add("console", *consoleErrorsPtr)
+		}
+		/* if databaseDumpPtr != nil {
+			params.Add("database", *databaseDumpPtr)
+		} */
 	case "BUG-REPORT.yml":
 		params.Add("template", "BUG-REPORT.yml")
 
 		params.Add("addon", "SambaNas2")
-		params.Add("description", request.Description+"\n\n"+contextDataStr)
+		params.Add("description", request.Description)
 		params.Add("reprod", request.ReproducingSteps)
 		if addonLogsPtr != nil {
 			params.Add("logs", *addonLogsPtr)
@@ -154,7 +152,6 @@ func (s *IssueReportService) GenerateIssueReport(ctx context.Context, request *d
 		// Build issue body from the GitHub issue template structure
 		body := s.buildIssueBody(ctx,
 			request,
-			&contextDataStr,
 			sanitizedConfigPtr,
 			addonConfigPtr,
 			addonLogsPtr)
@@ -166,30 +163,67 @@ func (s *IssueReportService) GenerateIssueReport(ctx context.Context, request *d
 
 	for len(response.GitHubURL) > 8000 {
 		tlog.WarnContext(ctx, "Generated GitHub issue URL is too long", "length", len(response.GitHubURL))
-		if addonLogsPtr != nil && response.AddonLogs == nil {
-			params.Del("logs")
-			response.AddonLogs = addonLogsPtr
-			addonLogsPtr = pointer.String("Please attach logs to your issue. The file is generated and in your download directory")
-			tlog.InfoContext(ctx, "Omitted addon logs from issue report to reduce URL length")
+		/* if databaseDumpPtr != nil {
+			gist, _, err := s.gh.Gists.Create(s.ctx, &github.Gist{
+				Description: pointer.String("Database dump for issue report"),
+				Public:      pointer.Bool(true),
+				Files: map[github.GistFilename]github.GistFile{
+					"database_dump.txt": {
+						Content: databaseDumpPtr,
+					},
+				},
+			})
+			if err != nil {
+				tlog.WarnContext(ctx, "Failed to create GitHub Gist for database dump", "error", err)
+				params.Add("database", "(Database dump omitted due to URL length constraints. Please attach database dump to your issue manually.)")
+			} else {
+				params.Add("database", *gist.Files["database_dump.txt"].RawURL)
+			}
+			response.GitHubURL = fmt.Sprintf("%s/issues/new?%s", request.ProblemType.RepositoryUrl, params.Encode())
+			continue
+		} */
+		if addonLogsPtr != nil {
+			gist, _, err := s.gh.Gists.Create(s.ctx, &github.Gist{
+				Description: pointer.String("Addon logs for issue report"),
+				Public:      pointer.Bool(true),
+				Files: map[github.GistFilename]github.GistFile{
+					"addon_logs.txt": {
+						Content: addonLogsPtr,
+					},
+				},
+			})
+			if err != nil {
+				tlog.WarnContext(ctx, "Failed to create GitHub Gist for addon logs", "error", err)
+				params.Set("logs", "(Addon logs omitted due to URL length constraints. Please attach addon logs to your issue manually.)")
+			} else {
+				params.Set("logs", *gist.Files["addon_logs.txt"].RawURL)
+			}
+			response.GitHubURL = fmt.Sprintf("%s/issues/new?%s", request.ProblemType.RepositoryUrl, params.Encode())
+			addonLogsPtr = nil
+			continue
 		}
-		if sanitizedConfigPtr != nil && response.SanitizedSRATConfig == nil {
-			params.Del("srat_config")
-			response.SanitizedSRATConfig = sanitizedConfigPtr
-			sanitizedConfigPtr = pointer.String("Please attach sanitized config to your issue. The file is generated and in your download directory")
-			tlog.InfoContext(ctx, "Omitted sanitized config from issue report to reduce URL length")
+		if consoleErrorsPtr != nil {
+			gist, _, err := s.gh.Gists.Create(s.ctx, &github.Gist{
+				Description: pointer.String("Console errors for issue report"),
+				Public:      pointer.Bool(true),
+				Files: map[github.GistFilename]github.GistFile{
+					"console_errors.txt": {
+						Content: consoleErrorsPtr,
+					},
+				},
+			})
+			if err != nil {
+				tlog.WarnContext(ctx, "Failed to create GitHub Gist for console errors", "error", err)
+				params.Set("console", "(Console errors omitted due to URL length constraints. Please attach console errors to your issue manually.)")
+			} else {
+				params.Set("console", *gist.Files["console_errors.txt"].RawURL)
+			}
+			response.GitHubURL = fmt.Sprintf("%s/issues/new?%s", request.ProblemType.RepositoryUrl, params.Encode())
+			consoleErrorsPtr = nil
+			continue
 		}
-		if addonConfigPtr != nil && response.SanitizedAddonConfig == nil {
-			params.Del("addon_config")
-			params.Del("config")
-			response.SanitizedAddonConfig = addonConfigPtr
-			addonConfigPtr = pointer.String("Please attach addon config to your issue. The file is generated and in your download directory")
-			tlog.InfoContext(ctx, "Omitted addon config from issue report to reduce URL length")
-		}
-		response.GitHubURL = fmt.Sprintf("%s/issues/new?%s", request.ProblemType.RepositoryUrl, params.Encode())
-		if response.AddonLogs != nil && response.SanitizedSRATConfig != nil && response.SanitizedAddonConfig != nil && len(response.GitHubURL) > 8000 {
-			tlog.ErrorContext(ctx, "Unable to reduce GitHub issue URL length below limit")
-			return nil, errors.New("generated GitHub issue URL is too long even after omitting optional data")
-		}
+		// If we can't reduce length by offloading data to Gists, break to avoid infinite loop
+		break
 	}
 
 	return response, nil
@@ -199,7 +233,6 @@ func (s *IssueReportService) GenerateIssueReport(ctx context.Context, request *d
 func (s *IssueReportService) buildIssueBody(
 	_ context.Context,
 	request *dto.IssueReportRequest,
-	contextDataStr *string,
 	sanitizedConfig *string,
 	addonConfigPtr *string,
 	addonLogs *string,
@@ -214,12 +247,6 @@ func (s *IssueReportService) buildIssueBody(
 	body.WriteString(fmt.Sprintf("- **Version**: %s\n\n", config.Version))
 	body.WriteString(fmt.Sprintf("- **Architecture**: %s\n\n", runtime.GOARCH))
 	body.WriteString(fmt.Sprintf("- **OS**: %s\n\n", runtime.GOOS))
-
-	// Context data
-	if request.IncludeContextData && request.CurrentURL != "" {
-		body.WriteString(*contextDataStr)
-		body.WriteString("\n\n")
-	}
 
 	// Description (user-provided)
 	body.WriteString("### Description\n\n")

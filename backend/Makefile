@@ -28,6 +28,7 @@ BUILD_TIMESTAMP_CLEAN=$(subst ",,$(BUILD_TIMESTAMP))
 METADATA_C_STRING=\"version=$(VERSION_CLEAN);commit=$(COMMIT_HASH_CLEAN);build_at=$(BUILD_TIMESTAMP_CLEAN);format=elf-json\"
 METADATA_C_JSON=\"{\x22"version"\x22:\x22"v$(VERSION_CLEAN)"\x22}\"
 
+GIST_TOKEN?=""	
 # Telemetry configuration from environment variables
 ROLLBAR_CLIENT_ACCESS_TOKEN?=""
 # Auto-determine ROLLBAR_ENVIRONMENT based on VERSION
@@ -52,7 +53,7 @@ $(BUILD_DIR)/$(TARGET_EXEC): $(SRCS) $(STATIC_DIRS)
 	CGO_ENABLED=$(CGO_ENABLED) \
 	$(if $(filter 1,$(USE_ZIG)),CC='zig cc -target $(ARCH)-linux-musl' \,)
 	CGO_CFLAGS="-DELF_METADATA=$(METADATA_C_JSON)" \
-	$(AARGS) go build -C $(SRC_DIRS) -tags=$(if $(filter 1,$(PPROF)),pprof),embedallowed -ldflags="-s -w -X github.com/dianlight/srat/config.Version=$(VERSION_CLEAN) -X github.com/dianlight/srat/config.CommitHash=$(COMMIT_HASH_CLEAN) -X github.com/dianlight/srat/config.BuildTimestamp=$(BUILD_TIMESTAMP_CLEAN) -X github.com/dianlight/srat/config.RollbarToken=$(ROLLBAR_CLIENT_ACCESS_TOKEN) -X github.com/dianlight/srat/config.RollbarEnvironment=$(ROLLBAR_ENVIRONMENT) " -o ../dist/$(ARCH)/ ./...
+	$(AARGS) go build -C $(SRC_DIRS) -tags=$(if $(filter 1,$(PPROF)),pprof),embedallowed -ldflags="-s -w -X github.com/dianlight/srat/config.Version=$(VERSION_CLEAN) -X github.com/dianlight/srat/config.CommitHash=$(COMMIT_HASH_CLEAN) -X github.com/dianlight/srat/config.BuildTimestamp=$(BUILD_TIMESTAMP_CLEAN) -X github.com/dianlight/srat/config.RollbarToken=$(ROLLBAR_CLIENT_ACCESS_TOKEN) -X github.com/dianlight/srat/config.RollbarEnvironment=$(ROLLBAR_ENVIRONMENT) -X github.com/dianlight/srat/config.GistToken=$(GIST_TOKEN) " -o ../dist/$(ARCH)/ ./...
 	@echo "Verifying embedded version in $(TARGET_EXEC)..."
 	@EMBEDDED_VERSION=$$(../scripts/extract-binary-version.sh $(BUILD_DIR)/$(TARGET_EXEC) 2>&1); \
 	if [ $$? -eq 0 ]; then \
@@ -294,7 +295,7 @@ mount_remote:
 
 .PHONY: build_remote
 build_remote: /mnt/remote/config.db3
-    @rm -rf ./dist/x86_64 || :
+	@rm -rf ./dist/x86_64 || :
 	@$(MAKE) build AARGS="GOARCH=amd64" VERSION=$(VERSION) ARCH="x86_64" PPROF=1 && \
     cp -v ./dist/x86_64/srat-cli /mnt/remote/upgrade/ && \
     cp -v ./dist/x86_64/srat-server /mnt/remote/upgrade/ && \

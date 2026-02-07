@@ -382,6 +382,17 @@ paths:
       summary: Get Self Add-on Logs
       description: Retrieves logs for the current (self) add-on.
       operationId: getSelfAddonLogs
+      parameters:
+        - name: Accept
+          in: header
+          description: Supervisor request text/x-log.
+          required: true
+          schema:
+            type: string
+            enum:
+              - "text/x-log"
+              - "text/plain"
+            default: "text/x-log"
       tags:
         - AddonSelf
       responses:
@@ -389,6 +400,9 @@ paths:
           description: Add-on logs retrieved successfully.
           content:
             text/plain:
+              schema:
+                type: string
+            text/x-log:
               schema:
                 type: string
         '401':
@@ -414,11 +428,24 @@ paths:
             default: 100
           required: false
           description: Number of log lines to retrieve from the end of the latest startup logs.
+        - name: Accept
+          in: header
+          description: Supervisor request text/x-log.
+          required: true
+          schema:
+            type: string
+            enum:
+              - "text/x-log"
+              - "text/plain"
+            default: "text/x-log"
       responses:
         '200':
           description: Add-on logs retrieved successfully.
           content:
             text/plain:
+              schema:
+                type: string
+            text/x-log:
               schema:
                 type: string
         '401':

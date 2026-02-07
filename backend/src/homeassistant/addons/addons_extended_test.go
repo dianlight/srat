@@ -2,11 +2,10 @@ package addons
 
 import (
 	"context"
-	"io"
 	"net/http"
-	"strings"
 	"testing"
 
+	"github.com/jarcoal/httpmock"
 	"github.com/stretchr/testify/assert"
 	"github.com/xorcare/pointer"
 )
@@ -134,29 +133,14 @@ func TestAddonInfoData_Fields(t *testing.T) {
 	assert.True(t, *data.Icon)
 }
 
-type mockResponseHTTPClient struct {
-	statusCode int
-	body       string
-}
-
-func (m *mockResponseHTTPClient) Do(req *http.Request) (*http.Response, error) {
-	resp := &http.Response{
-		StatusCode: m.statusCode,
-		Body:       io.NopCloser(strings.NewReader(m.body)),
-		Header:     make(http.Header),
-	}
-	// Default to plain text for log endpoints
-	resp.Header.Set("Content-Type", "text/plain")
-	return resp, nil
-}
-
 func TestClient_GetSelfAddonInfoSuccess(t *testing.T) {
-	mockClient := &mockResponseHTTPClient{
-		statusCode: http.StatusOK,
-		body:       `{"result":"ok","data":{"description":"Test addon"}}`,
-	}
+	mockTransport := httpmock.NewMockTransport()
+	infoResponse := httpmock.NewStringResponse(http.StatusOK, `{"result":"ok","data":{"description":"Test addon"}}`)
+	infoResponse.Header.Set("Content-Type", "application/json")
+	mockTransport.RegisterResponder(http.MethodGet, "http://example.com/addons/self/info", httpmock.ResponderFromResponse(infoResponse))
+	clientHTTP := &http.Client{Transport: mockTransport}
 
-	client, err := NewClient("http://example.com", WithHTTPClient(mockClient))
+	client, err := NewClient("http://example.com", WithHTTPClient(clientHTTP))
 	assert.NoError(t, err)
 
 	resp, err := client.GetSelfAddonInfo(context.Background())
@@ -199,37 +183,86 @@ func TestNewGetSelfAddonStatsRequest(t *testing.T) {
 }
 
 func TestClient_GetSelfAddonLogsWithResponse_Success(t *testing.T) {
-	mockClient := &mockResponseHTTPClient{
-		statusCode: http.StatusOK,
-		body:       "log line 1\nlog line 2",
+	tests := []struct {
+		name   string
+		accept GetSelfAddonLogsParamsAccept
+	}{
+		{
+			name:   "AcceptTextPlain",
+			accept: GetSelfAddonLogsParamsAcceptTextplain,
+		},
+		{
+			name:   "AcceptTextXLog",
+			accept: GetSelfAddonLogsParamsAcceptTextxLog,
+		},
 	}
 
-	client, err := NewClientWithResponses("http://example.com", WithHTTPClient(mockClient))
-	assert.NoError(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockTransport := httpmock.NewMockTransport()
+			logResponse := httpmock.NewStringResponse(http.StatusOK, "log line 1\nlog line 2")
+			logResponse.Header.Set("Content-Type", "text/plain")
+			mockTransport.RegisterMatcherResponder(
+				http.MethodGet,
+				"http://example.com/addons/self/logs",
+				httpmock.HeaderIs("Accept", string(tt.accept)),
+				httpmock.ResponderFromResponse(logResponse),
+			)
+			clientHTTP := &http.Client{Transport: mockTransport}
 
-	resp, err := client.GetSelfAddonLogsWithResponse(context.Background())
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
-	assert.Equal(t, http.StatusOK, resp.StatusCode())
-	assert.Equal(t, "log line 1\nlog line 2", string(resp.Body))
-	assert.Nil(t, resp.JSON401)
+			client, err := NewClientWithResponses("http://example.com", WithHTTPClient(clientHTTP))
+			assert.NoError(t, err)
+
+			resp, err := client.GetSelfAddonLogsWithResponse(context.Background(), &GetSelfAddonLogsParams{Accept: tt.accept})
+			assert.NoError(t, err)
+			assert.NotNil(t, resp)
+			assert.Equal(t, http.StatusOK, resp.StatusCode())
+			assert.Equal(t, "log line 1\nlog line 2", string(resp.Body))
+			assert.Nil(t, resp.JSON401)
+		})
+	}
 }
 
 func TestClient_GetSelfAddonLogsLeatestWithResponse_Success(t *testing.T) {
-	mockClient := &mockResponseHTTPClient{
-		statusCode: http.StatusOK,
-		body:       "log line 1\nlog line 2",
+	tests := []struct {
+		name   string
+		accept GetSelfAddonLogsLatestParamsAccept
+	}{
+		{
+			name:   "AcceptTextPlain",
+			accept: GetSelfAddonLogsLatestParamsAcceptTextplain,
+		},
+		{
+			name:   "AcceptTextXLog",
+			accept: GetSelfAddonLogsLatestParamsAcceptTextxLog,
+		},
 	}
 
-	client, err := NewClientWithResponses("http://example.com", WithHTTPClient(mockClient))
-	assert.NoError(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockTransport := httpmock.NewMockTransport()
+			logResponse := httpmock.NewStringResponse(http.StatusOK, "log line 1\nlog line 2")
+			logResponse.Header.Set("Content-Type", "text/plain")
+			mockTransport.RegisterMatcherResponder(
+				http.MethodGet,
+				"http://example.com/addons/self/logs/latest?lines=1000",
+				httpmock.HeaderIs("Accept", string(tt.accept)),
+				httpmock.ResponderFromResponse(logResponse),
+			)
+			clientHTTP := &http.Client{Transport: mockTransport}
 
-	resp, err := client.GetSelfAddonLogsLatestWithResponse(context.Background(), &GetSelfAddonLogsLatestParams{
-		Lines: pointer.Int(1000),
-	})
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
-	assert.Equal(t, http.StatusOK, resp.StatusCode())
-	assert.Equal(t, "log line 1\nlog line 2", string(resp.Body))
-	assert.Nil(t, resp.JSON401)
+			client, err := NewClientWithResponses("http://example.com", WithHTTPClient(clientHTTP))
+			assert.NoError(t, err)
+
+			resp, err := client.GetSelfAddonLogsLatestWithResponse(context.Background(), &GetSelfAddonLogsLatestParams{
+				Lines:  pointer.Int(1000),
+				Accept: tt.accept,
+			})
+			assert.NoError(t, err)
+			assert.NotNil(t, resp)
+			assert.Equal(t, http.StatusOK, resp.StatusCode())
+			assert.Equal(t, "log line 1\nlog line 2", string(resp.Body))
+			assert.Nil(t, resp.JSON401)
+		})
+	}
 }

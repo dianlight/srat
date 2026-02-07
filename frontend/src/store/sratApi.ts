@@ -1241,8 +1241,6 @@ export type Issue = {
 export type IssueReportResponse = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
-  addon_logs?: string;
-  database_dump?: string;
   github_url: string;
   issue_title: string;
   sanitized_addon_config?: string;
@@ -1251,16 +1249,12 @@ export type IssueReportResponse = {
 export type IssueReportRequest = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
-  browser_info?: string;
   console_errors?: string[] | null;
-  current_url?: string;
   description: string;
   include_addon_config: boolean;
   include_addon_logs: boolean;
-  include_context_data: boolean;
-  include_database_dump: boolean;
+  include_console_errors: boolean;
   include_srat_config: boolean;
-  navigation_history?: string[] | null;
   problem_type: string;
   reproducing_steps: string;
   title?: string;

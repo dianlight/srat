@@ -53,12 +53,12 @@ export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
 			title: "",
 			description: "",
 			reproducing_steps: "",
-			include_context_data: true,
+			include_console_errors: true,
 			include_addon_logs: false,
 			include_addon_config: false,
 			include_srat_config: false,
-			include_database_dump: false,
-		},
+			//include_database_dump: false,
+		} as IssueReportRequest,
 	});
 	const dispatch = useAppDispatch();
 	const [postApiIssuesReport] = usePostApiIssuesReportMutation();
@@ -82,18 +82,10 @@ export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
 
 
 	const handleSubmit = async (formData: IssueReportRequest) => {
-		// Collect browser context data
-		const contextData = {
-			current_url: window.location.href,
-			navigation_history: getNavigationHistory(),
-			browser_info: navigator.userAgent,
-			console_errors: getConsoleErrors()
-		};
-
 		// Prepare request payload
 		const requestPayload = {
 			...formData,
-			...(formData.include_context_data ? contextData : {}),
+			console_errors: formData.include_console_errors ? getConsoleErrors() : [],
 		} as IssueReportRequest;
 
 		try {
@@ -101,21 +93,6 @@ export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
 				.then((res) => {
 
 					const data = res as IssueReportResponse
-
-					/*
-										// Download attachments if requested
-										if (formData.include_srat_config && data.sanitized_config) {
-											downloadFile(
-												data.sanitized_config,
-												"srat-config.json",
-												"application/json",
-											);
-										}
-					
-										if (formData.include_addon_logs && data.addon_logs) {
-											downloadFile(data.addon_logs, "addon-logs.txt", "text/plain");
-										}
-					*/
 					// Open GitHub issue creation page
 					try {
 						let url = new URL(data.github_url);
@@ -239,24 +216,6 @@ export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
 								options={problemTypeOptions}
 								required
 							/>
-
-							{/* Description
-							<TextareaAutosizeElement
-								label="Description"
-								name="description"
-								resizeStyle="both"
-								rows={3}
-								fullWidth
-								minRows={6}
-								placeholder="Describe the issue in detail. You can use Markdown formatting."
-								required
-								slots={{
-									//input: (props) => <textarea {...props} style={{ width: "100%", minHeight: "150px", padding: "8px", fontSize: "14px", fontFamily: "inherit" }} />,
-									input: (props) => <MDEditor {...props} />
-
-								}}
-							/>
-							 */}
 							<Controller
 								name="description"
 								control={formContext.control}
@@ -276,7 +235,7 @@ export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
 											<Box
 												role="group"
 												aria-labelledby="report-issue-description-label"
-												//data-color-mode={document.documentElement.getAttribute("data-color-mode") || mode}
+											//data-color-mode={document.documentElement.getAttribute("data-color-mode") || mode}
 											>
 												<MDEditor
 													value={field.value}
@@ -314,8 +273,8 @@ export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
 								<Typography variant="subtitle2">Include in Report:</Typography>
 
 								<SwitchElement
-									name="include_context_data"
-									label="Contextual data (URL, navigation, browser info, console errors)"
+									name="include_console_errors"
+									label="Console errors (from browser developer tools)"
 								/>
 
 								<SwitchElement
@@ -334,21 +293,21 @@ export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
 									label="SRAT configuration (sanitized - passwords removed)"
 								/>
 
-								<SwitchElement
+								{/* 								<SwitchElement
 									name="include_database_dump"
 									label="Database dump (sanitized - passwords removed)"
-								/>
+								/> */}
 
 							</Box>
 
 							<Typography variant="caption" color="text.secondary">
-								Note: When you click "Create Issue", diagnostic files will be
-								downloaded if requested, and a new GitHub issue page will open with
-								pre-filled information. You'll need to manually attach the
-								downloaded files to the issue.
+								Note: When you click "Create Issue", diagnostic requested files will be
+								uploaded to gist, and a new GitHub issue page will open with
+								pre-filled information.
 							</Typography>
 						</Box>
-					</FormContainer>)}			</DialogContent>
+					</FormContainer>)}
+			</DialogContent>
 			<DialogActions>
 				<Button onClick={onClose}>Cancel</Button>
 				<Button

@@ -117,7 +117,8 @@ func (s *AddonsService) GetLatestLogs(ctx context.Context) (string, errors.E) {
 	}
 
 	resp, err := s.addonsClient.GetSelfAddonLogsLatestWithResponse(ctx, &addons.GetSelfAddonLogsLatestParams{
-		Lines: pointer.Int(1000),
+		Lines:  pointer.Int(1000),
+		Accept: addons.GetSelfAddonLogsLatestParamsAcceptTextxLog,
 	})
 	if err != nil {
 		return "", errors.Wrap(err, "failed to get addon logs")

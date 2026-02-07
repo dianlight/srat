@@ -8,17 +8,13 @@ type IssueReportRequest struct {
 	Description      string      `json:"description"`
 	ReproducingSteps string      `json:"reproducing_steps"`
 
-	IncludeContextData  bool `json:"include_context_data"`
-	IncludeAddonLogs    bool `json:"include_addon_logs"`
-	IncludeSRATConfig   bool `json:"include_srat_config"`
-	IncludeAddonConfig  bool `json:"include_addon_config"`
-	IncludeDatabaseDump bool `json:"include_database_dump"`
+	IncludeSRATConfig    bool `json:"include_srat_config"`
+	IncludeAddonConfig   bool `json:"include_addon_config"`
+	IncludeAddonLogs     bool `json:"include_addon_logs"`
+	IncludeConsoleErrors bool `json:"include_console_errors"`
+	//IncludeDatabaseDump  bool `json:"include_database_dump"`
 
-	// Context data from frontend
-	CurrentURL        string   `json:"current_url,omitempty"`
-	NavigationHistory []string `json:"navigation_history,omitempty"`
-	BrowserInfo       string   `json:"browser_info,omitempty"`
-	ConsoleErrors     []string `json:"console_errors,omitempty"`
+	ConsoleErrors []string `json:"console_errors,omitempty"`
 }
 
 // IssueReportResponse represents the response with diagnostic data
@@ -28,6 +24,4 @@ type IssueReportResponse struct {
 
 	SanitizedSRATConfig  *string `json:"sanitized_srat_config,omitempty"`
 	SanitizedAddonConfig *string `json:"sanitized_addon_config,omitempty"`
-	AddonLogs            *string `json:"addon_logs,omitempty"`
-	DatabaseDump         *string `json:"database_dump,omitempty"`
 }

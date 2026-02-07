@@ -582,34 +582,22 @@ components:
           format: uri
           readOnly: true
           type: string
-        browser_info:
-          type: string
         console_errors:
           items:
             type: string
           type:
             - array
             - "null"
-        current_url:
-          type: string
         description:
           type: string
         include_addon_config:
           type: boolean
         include_addon_logs:
           type: boolean
-        include_context_data:
-          type: boolean
-        include_database_dump:
+        include_console_errors:
           type: boolean
         include_srat_config:
           type: boolean
-        navigation_history:
-          items:
-            type: string
-          type:
-            - array
-            - "null"
         problem_type:
           type: string
         reproducing_steps:
@@ -620,11 +608,10 @@ components:
         - problem_type
         - description
         - reproducing_steps
-        - include_context_data
-        - include_addon_logs
         - include_srat_config
         - include_addon_config
-        - include_database_dump
+        - include_addon_logs
+        - include_console_errors
       type: object
     IssueReportResponse:
       additionalProperties: false
@@ -635,10 +622,6 @@ components:
             - https://example.com/schemas/IssueReportResponse.json
           format: uri
           readOnly: true
-          type: string
-        addon_logs:
-          type: string
-        database_dump:
           type: string
         github_url:
           type: string
@@ -1913,8 +1896,8 @@ paths:
     get:
       operationId: get-api-capabilities
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -2216,8 +2199,8 @@ paths:
           schema:
             description: The disk ID (not the device path)
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2416,8 +2399,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -3128,8 +3111,8 @@ paths:
             format: int64
             minimum: 0
             type: integer
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "204":
           description: No Content
@@ -3308,8 +3291,8 @@ paths:
     get:
       operationId: get-api-samba-config
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -3815,8 +3798,8 @@ paths:
               - world
             maxLength: 30
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3869,8 +3852,8 @@ paths:
               - world
             maxLength: 128
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json-patch+json:
@@ -4018,8 +4001,8 @@ paths:
               - world
             maxLength: 128
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
@@ -4216,8 +4199,8 @@ paths:
     get:
       operationId: sse
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -5036,8 +5019,8 @@ paths:
     patch:
       operationId: patch-api-volume-settings
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
