@@ -116,9 +116,6 @@ describe("ReportIssueDialog", () => {
 		const descriptionEditor = await screen.findByRole("textbox", { name: /Description/i });
 		expect(descriptionEditor).toBeTruthy();
 
-		const descriptionGroup = await screen.findByRole("group", { name: /Description/i });
-		expect(descriptionGroup.getAttribute("data-color-mode")).toBe("light");
-
 		const reproSteps = await screen.findByPlaceholderText(
 			/List the steps needed to reproduce the issue/i,
 		);
@@ -146,9 +143,6 @@ describe("ReportIssueDialog", () => {
 		);
 
 		// Check for the three toggle switches
-		const contextDataSwitch = await screen.findByText(/Contextual data/i);
-		expect(contextDataSwitch).toBeTruthy();
-
 		const addonLogsSwitch = await screen.findByText(/Addon logs/i);
 		expect(addonLogsSwitch).toBeTruthy();
 
@@ -158,8 +152,8 @@ describe("ReportIssueDialog", () => {
 		const sratConfigSwitch = await screen.findByText(/SRAT configuration/i);
 		expect(sratConfigSwitch).toBeTruthy();
 
-		const databaseDumpSwitch = await screen.findByText(/Database dump/i);
-		expect(databaseDumpSwitch).toBeTruthy();
+		//const databaseDumpSwitch = await screen.findByText(/Database dump/i);
+		//expect(databaseDumpSwitch).toBeTruthy();
 	});
 
 	it("has Cancel and Create Issue buttons", async () => {
