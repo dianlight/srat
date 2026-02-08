@@ -14,6 +14,7 @@ import (
 	"github.com/shirou/gopsutil/v4/process"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/u-root/u-root/pkg/mount"
 )
 
 type fakeFileInfo struct {
@@ -185,6 +186,16 @@ func TestDtoToDbomConverter_MountPointDataToMountPointPath(t *testing.T) {
 	}
 	assert.NotNil(t, target.ExportedShare)
 	assert.Equal(t, shareName, target.ExportedShare.Name)
+}
+
+func TestMountToDto_MountPointDataDerivesType(t *testing.T) {
+	conv := MountToDtoImpl{}
+	mp := &mount.MountPoint{Path: "/mnt/test", Device: "/dev/sda1", FSType: "ext4"}
+	var target dto.MountPointData
+	disks := dto.DiskMap{}
+
+	require.NoError(t, conv.MountToMountPointData(mp, &target, &disks))
+	assert.Equal(t, "ADDON", target.Type)
 }
 
 func TestDtoToDbomConverter_MountFlagsToMountDataFlags(t *testing.T) {

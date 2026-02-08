@@ -28,6 +28,9 @@ func (c *MountToDtoImpl) MountToMountPointData(source *mount.MountPoint, target 
 		if source.Path != "" {
 			target.Root = rootFromPath(source.Path, context)
 		}
+		if source.Path != "" {
+			target.Type = pathToType(source.Path)
+		}
 		if source.FSType != "" {
 			pString := source.FSType
 			target.FSType = &pString
