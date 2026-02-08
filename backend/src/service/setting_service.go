@@ -122,6 +122,12 @@ func (self *settingService) ValidateSettings(setting *dto.Settings) {
 }
 
 func (self *settingService) UpdateSettings(setting *dto.Settings) errors.E {
+	if setting != nil && setting.HASmbPassword.Expose() == "" {
+		existing, err := self.Load()
+		if err == nil && existing.HASmbPassword.Expose() != "" {
+			setting.HASmbPassword = existing.HASmbPassword
+		}
+	}
 	errS := self.db.Transaction(func(tx *gorm.DB) error {
 		// Validate settings before saving
 		self.ValidateSettings(setting)
