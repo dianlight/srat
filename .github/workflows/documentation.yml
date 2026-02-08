@@ -14,15 +14,6 @@ on:
       - ".cspell.json"
   pull_request:
     branches: [ "main" ]
-    paths:
-      - "**/*.md"
-      - ".github/workflows/documentation.yml"
-      - "scripts/validate-docs.sh"
-      - "Makefile"
-      - ".lychee.toml"
-      - ".vale.ini"
-      - ".markdownlint-cli2.jsonc"
-      - ".cspell.json"
   schedule:
     # Run weekly on Mondays at 8:00 AM UTC to check for broken links
     - cron: '0 8 * * 1'
@@ -35,10 +26,50 @@ permissions:
   statuses: write
 
 jobs:
+  docs-changes:
+    runs-on: ubuntu-latest
+    name: Documentation Change Detection
+    outputs:
+      docs: ${{ steps.docs.outputs.docs }}
+    steps:
+      - name: Checkout repository
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Filter documentation changes
+        id: filter
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3
+        with:
+          filters: |
+            docs:
+              - "**/*.md"
+              - ".github/workflows/documentation.yml"
+              - "scripts/validate-docs.sh"
+              - "Makefile"
+              - ".lychee.toml"
+              - ".vale.ini"
+              - ".markdownlint-cli2.jsonc"
+              - ".cspell.json"
+
+      - name: Set docs output
+        id: docs
+        run: |
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            echo "docs=true" >> $GITHUB_OUTPUT
+          elif [[ "${{ steps.filter.outputs.docs }}" == "true" ]]; then
+            echo "docs=true" >> $GITHUB_OUTPUT
+          else
+            echo "docs=false" >> $GITHUB_OUTPUT
+          fi
+
   docs-maintenance:
     runs-on: ubuntu-latest
     name: Documentation Maintenance
-    if: (!startsWith(github.head_ref, 'renovate/')) && ( github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository ))
+    needs: [docs-changes]
+    if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && needs.docs-changes.outputs.docs == 'true')
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -76,7 +107,8 @@ jobs:
   docs-validate:
     runs-on: ubuntu-latest
     name: Documentation Validation (GFM)
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    needs: [docs-changes]
+    if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && needs.docs-changes.outputs.docs == 'true')
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2

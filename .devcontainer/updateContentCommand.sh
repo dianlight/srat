@@ -21,6 +21,9 @@ make -C .. prepare || :
 #bun pm -g trust --all ||:
 #sed -i '1s/node/bun/' "$(realpath $HOME/.bun/bin/gemini)" ||:
 
+# prek
+bun install -g @j178/prek ||:
+
 #biome
 bun add -g biome ||:
 bun pm -g trust --all ||:

@@ -109,10 +109,12 @@ func (c *ConfigToDbomConverterImpl) ShareToExportedShareNoMountPointPath(source 
 		target.Usage = dto.HAMountUsage(source.Usage)
 	}
 	if source.Path != "" {
-		target.MountPointDataPath = source.Path
+		pString := source.Path
+		target.MountPointDataPath = &pString
 	}
 	if source.Path != "" {
-		target.MountPointDataRoot = source.Path
+		pString2 := source.Path
+		target.MountPointDataRoot = &pString2
 	}
 	return nil
 }

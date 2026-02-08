@@ -1,4 +1,5 @@
 [test]
+bail = 1 
 coverage = true # Enable coverage collection
 coverageSkipTestFiles = true # Skip coverage for test files
 preload = "./test/setup.ts"

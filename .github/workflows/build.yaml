@@ -349,6 +349,7 @@ jobs:
     needs: [setversion, test-backend, test-frontend]
     env:
       ROLLBAR_CLIENT_ACCESS_TOKEN: ${{ secrets.ROLLBAR_CLIENT_ACCESS_TOKEN || 'disabled' }}
+      GIST_TOKEN: ${{ secrets.GIST_TOKEN || 'disabled' }}
       ROLLBAR_ENVIRONMENT: "production"
     steps:
       - name: Checkout the repository
@@ -419,6 +420,8 @@ jobs:
       - name: BuildAll
         id: built_all
         if: github.event_name != 'pull_request'
+        env:
+          CGO_ENABLED: 0  # Explicitly disable CGO for static builds
         run: |
           sudo -E PATH="$PATH" make ALL VERSION=${{ needs.setversion.outputs.version }}
 

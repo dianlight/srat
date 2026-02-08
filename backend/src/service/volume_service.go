@@ -1053,6 +1053,10 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 }
 
 func (self *VolumeService) handleMountPointEvent(ctx context.Context, e events.MountPointEvent) errors.E {
+	if e.MountPoint.Type == "" {
+		e.MountPoint.Type = inferMountPointType(e.MountPoint)
+		slog.WarnContext(ctx, "Mount point type missing, defaulting", "mount_point", e.MountPoint.Path, "type", e.MountPoint.Type)
+	}
 	tlog.TraceContext(ctx, "Processing mount point event for persistence", "mount_point", e.MountPoint.Path, "device_id", e.MountPoint.DeviceId, "event_type", e.Type)
 	err := self.persistMountPoint(e.MountPoint)
 	if err != nil {
@@ -1072,6 +1076,23 @@ func (self *VolumeService) handleMountPointEvent(ctx context.Context, e events.M
 		}
 	}
 	return nil
+}
+
+func inferMountPointType(mountPoint *dto.MountPointData) string {
+	if mountPoint == nil {
+		return "ADDON"
+	}
+	path := mountPoint.Root
+	if path == "" {
+		path = mountPoint.Path
+	}
+	if path == "" {
+		return "ADDON"
+	}
+	if path == "/mnt" || strings.HasPrefix(path, "/mnt/") {
+		return "ADDON"
+	}
+	return "HOST"
 }
 
 func (self *VolumeService) CreateBlockDevice(device string) error {

@@ -6,7 +6,10 @@
 import { Window } from "happy-dom";
 import { configureStore } from "@reduxjs/toolkit";
 import '@testing-library/jest-dom'
-
+// Initialize MSW for API mocking
+// This must be imported after all globals are set up
+import "./bun-setup";
+    
 // Install DOM globals immediately when this module is imported
 const win = new Window({
     settings: {
@@ -261,6 +264,4 @@ export async function createTestStore() {
     return store;
 }
 
-// Initialize MSW for API mocking
-// This must be imported after all globals are set up
-import "./bun-setup";
+

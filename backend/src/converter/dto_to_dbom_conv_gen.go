@@ -268,14 +268,14 @@ func (c *DtoToDbomConverterImpl) SharedResourceToExportedShareNoUsersNoMountPoin
 		pString = &source.MountPointData.Path
 	}
 	if pString != nil {
-		target.MountPointDataPath = *pString
+		target.MountPointDataPath = pString
 	}
 	var pString2 *string
 	if source.MountPointData != nil {
 		pString2 = &source.MountPointData.Root
 	}
 	if pString2 != nil {
-		target.MountPointDataRoot = *pString2
+		target.MountPointDataRoot = pString2
 	}
 	return nil
 }
@@ -567,16 +567,12 @@ func (c *DtoToDbomConverterImpl) sharedResourceToExportedShare(source dto.Shared
 	if source.MountPointData != nil {
 		pString = &source.MountPointData.Path
 	}
-	if pString != nil {
-		dbomExportedShare.MountPointDataPath = *pString
-	}
+	dbomExportedShare.MountPointDataPath = pString
 	var pString2 *string
 	if source.MountPointData != nil {
 		pString2 = &source.MountPointData.Root
 	}
-	if pString2 != nil {
-		dbomExportedShare.MountPointDataRoot = *pString2
-	}
+	dbomExportedShare.MountPointDataRoot = pString2
 	dbomMountPointPath, err := c.pDtoMountPointDataToDbomMountPointPath(source.MountPointData)
 	if err != nil {
 		return dbomExportedShare, err

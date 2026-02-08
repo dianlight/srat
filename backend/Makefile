@@ -28,6 +28,7 @@ BUILD_TIMESTAMP_CLEAN=$(subst ",,$(BUILD_TIMESTAMP))
 METADATA_C_STRING=\"version=$(VERSION_CLEAN);commit=$(COMMIT_HASH_CLEAN);build_at=$(BUILD_TIMESTAMP_CLEAN);format=elf-json\"
 METADATA_C_JSON=\"{\x22"version"\x22:\x22"v$(VERSION_CLEAN)"\x22}\"
 
+GIST_TOKEN?=""	
 # Telemetry configuration from environment variables
 ROLLBAR_CLIENT_ACCESS_TOKEN?=""
 # Auto-determine ROLLBAR_ENVIRONMENT based on VERSION
@@ -48,10 +49,11 @@ build: static $(BUILD_DIR)/$(TARGET_EXEC)
 
 $(BUILD_DIR)/$(TARGET_EXEC): $(SRCS) $(STATIC_DIRS)
 	@mkdir dist > /dev/null 2>&1 || :
+	@echo "Building $(TARGET_EXEC) for architecture $(ARCH) [tags=p$(if $(filter 1,$(PPROF)),prof),embedallowed]..."
 	CGO_ENABLED=$(CGO_ENABLED) \
 	$(if $(filter 1,$(USE_ZIG)),CC='zig cc -target $(ARCH)-linux-musl' \,)
 	CGO_CFLAGS="-DELF_METADATA=$(METADATA_C_JSON)" \
-	$(AARGS) go build -C $(SRC_DIRS) -tags=embedallowed $(if $(filter 1,$(PPROF)),-tags=pprof) -ldflags="-s -w -X github.com/dianlight/srat/config.Version=$(VERSION_CLEAN) -X github.com/dianlight/srat/config.CommitHash=$(COMMIT_HASH_CLEAN) -X github.com/dianlight/srat/config.BuildTimestamp=$(BUILD_TIMESTAMP_CLEAN) -X github.com/dianlight/srat/config.RollbarToken=$(ROLLBAR_CLIENT_ACCESS_TOKEN) -X github.com/dianlight/srat/config.RollbarEnvironment=$(ROLLBAR_ENVIRONMENT) " -o ../dist/$(ARCH)/ ./...
+	$(AARGS) go build -C $(SRC_DIRS) -tags=$(if $(filter 1,$(PPROF)),pprof),embedallowed -ldflags="-s -w -X github.com/dianlight/srat/config.Version=$(VERSION_CLEAN) -X github.com/dianlight/srat/config.CommitHash=$(COMMIT_HASH_CLEAN) -X github.com/dianlight/srat/config.BuildTimestamp=$(BUILD_TIMESTAMP_CLEAN) -X github.com/dianlight/srat/config.RollbarToken=$(ROLLBAR_CLIENT_ACCESS_TOKEN) -X github.com/dianlight/srat/config.RollbarEnvironment=$(ROLLBAR_ENVIRONMENT) -X github.com/dianlight/srat/config.GistToken=$(GIST_TOKEN) " -o ../dist/$(ARCH)/ ./...
 	@echo "Verifying embedded version in $(TARGET_EXEC)..."
 	@EMBEDDED_VERSION=$$(../scripts/extract-binary-version.sh $(BUILD_DIR)/$(TARGET_EXEC) 2>&1); \
 	if [ $$? -eq 0 ]; then \
@@ -193,7 +195,8 @@ gen: $(SRCS)
 # Run Go security checks with gosec
 gosec:
 	@echo "Running gosec security scan..."
-	@GOSEC_BIN=$$(command -v gosec 2>/dev/null || echo $$(go env GOPATH)/bin/gosec); \
+	@go run -C $(SRC_DIRS) golang.org/x/vuln/cmd/govulncheck@latest ./... && \
+	GOSEC_BIN=$$(command -v gosec 2>/dev/null || echo $$(go env GOPATH)/bin/gosec); \
 	if [ ! -x "$$GOSEC_BIN" ]; then \
 		echo "Installing gosec..."; \
 		GOBIN=$$(go env GOPATH)/bin GO111MODULE=on go install github.com/securego/gosec/v2/cmd/gosec@latest; \
@@ -246,9 +249,11 @@ $(FRONTEND_DIRS)/node_modules:
 	@cd $(FRONTEND_DIRS); bun install
 
 static: $(FRONTEND_DIRS)/node_modules
-	@rm -rf $(SRC_DIRS)/web/static
-	@cd $(FRONTEND_DIRS);bun run version -o $(VERSION)
-	@cd $(FRONTEND_DIRS);bun run build -o ../backend/$(STATIC_DIRS)
+	@rm -rf ../backend/$(STATIC_DIRS)/* && \
+	[ -f ../backend/$(STATIC_DIRS)/.keep ] || touch ../backend/$(STATIC_DIRS)/.keep && \
+	cd $(FRONTEND_DIRS) && \
+	bun run version -o $(VERSION) && \
+	bun run build -o ../backend/$(STATIC_DIRS)
 
 .PHONY: patch
 patch:
@@ -263,10 +268,6 @@ patch:
 	if [ -f "$(ROOT_DIR)/patches/goenums.patch" ] && [ -d "$(ROOT_DIR)/src/vendor/github.com/zarldev/goenums" ]; then \
 		echo "Applying goenums.patch..."; \
 		cd $(ROOT_DIR)/src/vendor/github.com/zarldev/goenums && patch -p1 < $(ROOT_DIR)/patches/goenums.patch || (echo "ERROR: Failed to apply goenums.patch"; exit 1); \
-	fi; \
-	if [ -f "$(ROOT_DIR)/patches/overseer.patch" ] && [ -d "$(ROOT_DIR)/src/vendor/github.com/jpillora/overseer" ]; then \
-		echo "Applying overseer.patch..."; \
-		cd $(ROOT_DIR)/src/vendor/github.com/jpillora/overseer && patch -p1 < $(ROOT_DIR)/patches/overseer.patch || (echo "ERROR: Failed to apply overseer.patch"; exit 1); \
 	fi; \
 	if [ -f "$(ROOT_DIR)/patches/gorm-generics.patch" ] && [ -d "$(ROOT_DIR)/src/vendor/gorm.io/gorm" ]; then \
 		echo "Applying gorm-generics.patch..."; \
@@ -295,8 +296,8 @@ mount_remote:
 
 .PHONY: build_remote
 build_remote: /mnt/remote/config.db3
-	@rm -rf ../backend/$(STATIC_DIRS)/*.js ../backend/$(STATIC_DIRS)/*.map && \
-	cd $(FRONTEND_DIRS);bun run build -o ../backend/$(STATIC_DIRS);cd - && \
-	$(MAKE) build AARGS="GOARCH=amd64" VERSION=$(VERSION) ARCH="x86_64" PPROF=1 && \
-	cp -v ./tmp/x86_64/srat-cli /mnt/remote/upgrade/ && \
-	cp -v ./tmp/x86_64/srat-server /mnt/remote/upgrade/
+	@rm -rf ./dist/x86_64 || :
+	@$(MAKE) build AARGS="GOARCH=amd64" VERSION=$(VERSION) ARCH="x86_64" PPROF=1 && \
+    cp -v ./dist/x86_64/srat-cli /mnt/remote/upgrade/ && \
+    cp -v ./dist/x86_64/srat-server /mnt/remote/upgrade/ && \
+    echo "Remote build and deployment completed."

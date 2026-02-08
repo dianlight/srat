@@ -43,7 +43,7 @@ declare module '@mui/material/Typography' {
 
 const theme = createTheme({
 	cssVariables: {
-		colorSchemeSelector: "class",
+		colorSchemeSelector: "data-color-mode",
 	},
 	colorSchemes: {
 		light: true,
@@ -95,6 +95,7 @@ const enableBody = (target: any) => {
 const root = import.meta.hot.data.root ??= ReactDOM.createRoot(document.getElementById("root")!);
 root.render(
 	<RollbarProvider config={{}} >
+		<CssBaseline />
 		<ErrorBoundaryWrapper>
 			<ThemeProvider theme={theme} noSsr>
 				<CssBaseline />

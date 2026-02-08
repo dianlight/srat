@@ -134,8 +134,11 @@ func PathToSource(path string) string {
 	return ""
 }
 
-func pathToType(_ string) string {
-	return "ADDON"
+func pathToType(path string) string {
+	if path == "/mnt" || strings.HasPrefix(path, "/mnt/") {
+		return "ADDON"
+	}
+	return "HOST"
 }
 
 func DiskLabelFromPath(path string) *string {
