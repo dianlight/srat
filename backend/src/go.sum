@@ -108,8 +108,8 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dianlight/smartmontools-go v0.2.4 h1:5F2p5J/KTs/AGOqDepN/KGzi7uyEp5DGg8R7Sx/8ZZE=
 github.com/dianlight/smartmontools-go v0.2.4/go.mod h1:A0lllj5XQeMHnvkSYRxkxCo9Y3k17d9LDqTJd8mCO50=
-github.com/dianlight/tlog v0.2.1 h1:9UXO6ugFBF+hvwzhlo/J+fn/0TxCOZCjTVVndVzB5RE=
-github.com/dianlight/tlog v0.2.1/go.mod h1:oX7P84OwzOWRKQGVtMCFq3NP8OVYRZosmt5WmDT9SyE=
+github.com/dianlight/tlog v0.2.2 h1:SBXWqsIr2MLcTTMJtZvh5j5xYksYn5ZRjRudvtcCiPk=
+github.com/dianlight/tlog v0.2.2/go.mod h1:oX7P84OwzOWRKQGVtMCFq3NP8OVYRZosmt5WmDT9SyE=
 github.com/disintegration/gift v1.2.1 h1:Y005a1X4Z7Uc+0gLpSAsKhWi4qLtsdEcMIbbdvdZ6pc=
 github.com/disintegration/gift v1.2.1/go.mod h1:Jh2i7f7Q2BM7Ezno3PhfezbR1xpUg9dUg3/RlKGr4HI=
 github.com/dlclark/regexp2 v1.11.5 h1:Q/sSnsKerHeCkc/jSTNq1oCm7KiVgUMZRDUoRu0JQZQ=

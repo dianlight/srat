@@ -45,6 +45,7 @@ var xmlTagPattern = regexp.MustCompile(`(?i)<\s*([A-Za-z0-9_.:-]+)\s*>([^<]*)<\s
 var xmlCDataPattern = regexp.MustCompile(`(?is)<\s*([A-Za-z0-9_.:-]+)\s*>\s*<!\[CDATA\[(.*?)\]\]>\s*<\s*/\s*([A-Za-z0-9_.:-]+)\s*>`)
 var xmlAttrPattern = regexp.MustCompile(`(?i)(\s+)([A-Za-z0-9_.:-]+)\s*=\s*("([^"]*)"|'([^']*)')`)
 var keyValuePattern = regexp.MustCompile(`(?i)(^|[\s,;{\[])"?([A-Za-z0-9_.:-]+)"?\s*[:=]\s*("([^"]*)"|'([^']*)'|([^\s,\]};]+))`)
+var logKeyValuePattern = regexp.MustCompile(`(?i)(^|[\s,;])((?:api[_ -]?key|password|pwd|pass(?:wd)?|token|jwt|auth[_ -]?token|access[_ -]?token|refresh[_ -]?token|client[_ -]?secret|private[_ -]?key|secret|auth|credential|bearer|authorization|salt|hash))(?:\s+(?:used|is|was|with|set|as))?(?:\s+|\s*[:=]\s*)([^\s,;]+)`)
 
 func isSensitiveKeyLike(key string) bool {
 	if key == "" {
@@ -752,6 +753,95 @@ func maskKeyValuePairs(val string) (string, bool) {
 	return b.String(), true
 }
 
+func maskLogValueToken(token string) (string, bool) {
+	if token == "" {
+		return token, false
+	}
+
+	prefix := ""
+	suffix := ""
+	core := token
+
+	for len(core) > 0 {
+		last := core[len(core)-1]
+		switch last {
+		case ',', ';', ')', ']', '}':
+			suffix = string(last) + suffix
+			core = core[:len(core)-1]
+		default:
+			goto trailingDone
+		}
+	}
+
+trailingDone:
+	if len(core) >= 2 {
+		if (core[0] == '"' && core[len(core)-1] == '"') || (core[0] == '\'' && core[len(core)-1] == '\'') {
+			prefix = core[:1]
+			suffix = core[len(core)-1:] + suffix
+			core = core[1 : len(core)-1]
+		}
+	}
+
+	if core == "" {
+		return token, false
+	}
+	if isFullyMasked(core) {
+		return token, false
+	}
+
+	return prefix + MaskString(core) + suffix, true
+}
+
+func tryMaskLog(val string) (string, bool) {
+	trimmed := strings.TrimSpace(val)
+	if trimmed == "" {
+		return "", false
+	}
+
+	matches := logKeyValuePattern.FindAllStringSubmatchIndex(val, -1)
+	if len(matches) == 0 {
+		return "", false
+	}
+
+	var b strings.Builder
+	last := 0
+	changed := false
+
+	for _, match := range matches {
+		if len(match) < 8 {
+			continue
+		}
+		keyStart, keyEnd := match[4], match[5]
+		valueStart, valueEnd := match[6], match[7]
+		if keyStart < 0 || valueStart < 0 {
+			continue
+		}
+
+		key := val[keyStart:keyEnd]
+		if !isSensitiveKeyLike(key) {
+			continue
+		}
+
+		rawValue := val[valueStart:valueEnd]
+		maskedValue, ok := maskLogValueToken(rawValue)
+		if !ok || maskedValue == rawValue {
+			continue
+		}
+
+		b.WriteString(val[last:valueStart])
+		b.WriteString(maskedValue)
+		last = valueEnd
+		changed = true
+	}
+
+	if !changed {
+		return "", false
+	}
+
+	b.WriteString(val[last:])
+	return b.String(), true
+}
+
 func maskStringValue(val string) string {
 	if masked, ok := tryMaskJSON(val); ok {
 		return masked
@@ -775,7 +865,14 @@ func maskStringValue(val string) string {
 	if masked, ok := maskXMLTags(normalized); ok {
 		return masked
 	}
-	if masked, ok := maskKeyValuePairs(normalized); ok {
+	masked := normalized
+	if kvMasked, ok := maskKeyValuePairs(masked); ok {
+		masked = kvMasked
+	}
+	if logMasked, ok := tryMaskLog(masked); ok {
+		return logMasked
+	}
+	if masked != normalized {
 		return masked
 	}
 	return val

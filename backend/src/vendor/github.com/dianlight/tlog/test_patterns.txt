@@ -76,6 +76,27 @@ YAML numeric-like secret|password: "000123"|000123
 YAML anchor token|defaults: &defaults\n  token: anchorTok\nuser1:\n  <<: *defaults|anchorTok
 YAML folded chomp|password: >-\n  foldChompSecret\n  continues|foldChompSecret continues
 
+# Log file patterns
+Log line with password|2024-01-01 12:00:00 INFO User john logged in with password myLogSecret|myLogSecret
+Log line with token|2024-01-01 12:01:00 INFO Session started with token logTok123|logTok123
+Log line with api_key|2024-01-01 12:02:00 INFO API key used: logApiKey456|logApiKey456
+Log line with multiple secrets|2024-01-01 12:03:00 INFO User john password logPass123 token logTok789|logPass123,logTok789
+Log line with special chars|2024-01-01 12:04:00 INFO User john logged in with password p@ssw0rd!|p@ssw0rd!
+Log line with encoded secret|2024-01-01 12:05:00 INFO API key used: YWJjMTIzIT8=|YWJjMTIzIT8=
+Log line with JSON|2024-01-01 12:06:00 INFO Received data: {"user":"john","password":"jsonLogSecret"}|jsonLogSecret
+Log line with URL|2024-01-01 12:07:00 INFO User john accessed https://user:pass@host.com/path?query=param#fragment|pass
+Log line with XML|2024-01-01 12:08:00 INFO Received XML: <user><password>xmlLogSecret</password></user>|xmlLogSecret
+Log line with YAML|2024-01-01 12:09:00 INFO Received YAML:\nuser: john\npassword: yamlLogSecret|yamlLogSecret
+Log line with multiple formats|2024-01-01 12:10:00 INFO User john logged in with password logPass123 and token logTok456|logPass123,logTok456   
+Log line with no secrets|2024-01-01 12:11:00 INFO User john logged out|
+Log line with empty password|2024-01-01 12:12:00 INFO User john logged in with password 
+Log line with password at end|2024-01-01 12:13:00 INFO User john logged in with password lastSecret|lastSecret
+Log line with password at start|2024-01-01 12:14:00 INFO password firstSecret user john logged in|firstSecret
+Log line with multiple passwords|2024-01-01 12:15:00 INFO User john logged in with password first123 and password second456|first123,second456
+Log line with password with special chars|2024-01-01 12:16:00 INFO User john logged in with password p@ssw0rd!|p@ssw0rd!
+Log line with empty password equals|2024-01-01 12:17:00 INFO User john logged in with password= and token=tokTail|tokTail
+Log line form srat test|startup failed: password=Secret123 email=user@example.com token=tok_123|Secret123,tok_123
+
 # Edge cases
 Password at start|password:firstSecret user:john|firstSecret
 Password at end|user:john email:test password:lastSecret|lastSecret
