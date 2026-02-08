@@ -34,6 +34,7 @@ type VolumeServiceTestSuite struct {
 	mockHardwareClient service.HardwareServiceInterface
 	volumeService      service.VolumeServiceInterface
 	hardwareService    service.HardwareServiceInterface
+	eventBus           events.EventBusInterface
 	ctrl               *matchers.MockController
 	ctx                context.Context
 	cancel             context.CancelFunc
@@ -93,6 +94,7 @@ func (suite *VolumeServiceTestSuite) SetupTest() {
 		//fx.Populate(&suite.mockMountRepo),
 		fx.Populate(&suite.mockHardwareClient),
 		fx.Populate(&suite.hardwareService),
+		fx.Populate(&suite.eventBus),
 		fx.Populate(&suite.ctx),
 		fx.Populate(&suite.cancel),
 		fx.Populate(&suite.db),
@@ -118,6 +120,30 @@ func (suite *VolumeServiceTestSuite) TearDownTest() {
 	if suite.app != nil {
 		suite.app.RequireStop()
 	}
+}
+
+func (suite *VolumeServiceTestSuite) TestEmitMountPointWithoutTypeDefaultsToAddon() {
+	mountPath := "/mnt/test-type"
+	root := "/mnt/test-type"
+	deviceID := "dev-test-1"
+	mountPoint := dto.MountPointData{
+		Path:        mountPath,
+		Root:        root,
+		DeviceId:    deviceID,
+		Flags:       &dto.MountFlags{},
+		CustomFlags: &dto.MountFlags{},
+		IsMounted:   true,
+	}
+
+	err := suite.eventBus.EmitMountPoint(events.MountPointEvent{
+		Event:      events.Event{Type: events.EventTypes.UPDATE},
+		MountPoint: &mountPoint,
+	})
+	suite.Require().NoError(err)
+
+	var dbMount dbom.MountPointPath
+	suite.Require().NoError(suite.db.Where("path = ? AND root = ?", mountPath, root).First(&dbMount).Error)
+	suite.Equal("ADDON", dbMount.Type)
 }
 
 // --- MountVolume Tests ---
