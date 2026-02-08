@@ -200,7 +200,8 @@
   "editor.inlineSuggest.edits.allowCodeShifting": "horizontal",
   "editor.inlineSuggest.edits.showCollapsed": false,
   "git.blame.ignoreWhitespace": true,
-  "bun.test.customScript": "bun run test",
+  "bun.test.customScript": "bun test",
   "npm.packageManager": "bun",
-  "npm.scriptRunner": "bun"
+  "npm.scriptRunner": "bun",
+  "typescript.preferences.preferTypeOnlyAutoImports": true
 }

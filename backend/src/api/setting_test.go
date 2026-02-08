@@ -8,6 +8,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/angusgmorrison/logfusc"
 	"github.com/danielgtaylor/huma/v2/autopatch"
 	"github.com/danielgtaylor/huma/v2/humatest"
 	"github.com/dianlight/srat/api"
@@ -24,7 +25,8 @@ import (
 
 type SettingsHandlerSuite struct {
 	suite.Suite
-	dirtyService service.DirtyDataServiceInterface
+	dirtyService   service.DirtyDataServiceInterface
+	settingService service.SettingServiceInterface
 	//db           *gorm.DB
 	api *api.SettingsHanler
 	//config                 config.Config
@@ -97,6 +99,7 @@ func (suite *SettingsHandlerSuite) SetupTest() {
 		),
 		//fx.Populate(&suite.propertyRepository),
 		fx.Populate(&suite.dirtyService),
+		fx.Populate(&suite.settingService),
 		//fx.Populate(&suite.config),
 		fx.Populate(&suite.ctx),
 		fx.Populate(&suite.cancel),
@@ -277,4 +280,49 @@ func (suite *SettingsHandlerSuite) TestUpdateSettingsHandlerWithSMBoverQUIC() {
 			suite.T().Fatalf("Failed to load properties: %v", err)
 		}
 	*/
+}
+
+func (suite *SettingsHandlerSuite) TestUpdateSettingsHandler_PreservesHASmbPassword() {
+	_, api := humatest.New(suite.T())
+	suite.api.RegisterSettings(api)
+	autopatch.AutoPatch(api)
+
+	initial := dto.Settings{
+		Workgroup:     "initial-workgroup",
+		HASmbPassword: logfusc.NewSecret("super-secret"),
+	}
+	err := suite.settingService.UpdateSettings(&initial)
+	suite.Require().NoError(err)
+
+	update := dto.Settings{
+		Workgroup: "updated-workgroup",
+	}
+
+	rr := api.Patch("/settings", update)
+	suite.Require().Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
+
+	loaded, loadErr := suite.settingService.Load()
+	suite.Require().NoError(loadErr)
+	suite.Equal("updated-workgroup", loaded.Workgroup)
+	suite.Equal("super-secret", loaded.HASmbPassword.Expose())
+}
+
+func (suite *SettingsHandlerSuite) TestGetSettingsHandler_DoesNotLeakSecrets() {
+	_, api := humatest.New(suite.T())
+	suite.api.RegisterSettings(api)
+	autopatch.AutoPatch(api)
+
+	initial := dto.Settings{
+		Workgroup:     "secret-workgroup",
+		HASmbPassword: logfusc.NewSecret("top-secret"),
+	}
+	err := suite.settingService.UpdateSettings(&initial)
+	suite.Require().NoError(err)
+
+	resp := api.Get("/settings")
+	suite.Require().Equal(http.StatusOK, resp.Code)
+	body := resp.Body.String()
+
+	suite.NotContains(body, "HASmbPassword", "Response should not include HASmbPassword field")
+	suite.NotContains(body, "top-secret", "Response should not include secret value")
 }

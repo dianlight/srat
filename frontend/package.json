@@ -1,6 +1,6 @@
 {
   "name": "srat-frontend",
-  "version": "2026.2.0-dev.1",
+  "version": "2026.2.0-dev.4",
   "description": "Samba Rest Adminitration Tool",
   "module": "index.ts",
   "type": "module",
@@ -15,8 +15,8 @@
     "url": "https://github.com/dianlight/srat"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.3.13",
-    "@happy-dom/global-registrator": "20.4.0",
+    "@biomejs/biome": "2.3.14",
+    "@happy-dom/global-registrator": "20.5.0",
     "@hookform/devtools": "4.4.0",
     "@rtk-query/codegen-openapi": "2.2.0",
     "@testing-library/dom": "10.4.1",
@@ -26,12 +26,12 @@
     "@types/bun": "1.3.8",
     "@types/humanize-duration": "3.27.4",
     "@types/js-sha1": "0.6.3",
-    "@types/react": "19.2.10",
+    "@types/react": "19.2.13",
     "@types/react-dom": "19.2.3",
     "@types/react-syntax-highlighter": "15.5.13",
     "@types/semver": "7.7.1",
-    "@typescript/native-preview": "7.0.0-dev.20260131.1",
-    "msw": "2.12.7",
+    "@typescript/native-preview": "7.0.0-dev.20260208.1",
+    "msw": "2.12.9",
     "msw-auto-mock": "0.32.0"
   },
   "peerDependencies": {
@@ -44,15 +44,16 @@
     "@fortawesome/free-brands-svg-icons": "^7.1.0",
     "@fortawesome/free-regular-svg-icons": "^7.1.0",
     "@fortawesome/free-solid-svg-icons": "^7.1.0",
-    "@fortawesome/react-fontawesome": "^3.1.1",
+    "@fortawesome/react-fontawesome": "^3.2.0",
     "@mui/icons-material": "^7.3.7",
     "@mui/material": "^7.3.7",
-    "@mui/x-charts": "^8.26.0",
-    "@mui/x-tree-view": "^8.26.0",
+    "@mui/x-charts": "^8.27.0",
+    "@mui/x-tree-view": "^8.27.0",
     "@reactour/tour": "^3.8.0",
     "@reduxjs/toolkit": "^2.11.2",
     "@rollbar/react": "^1.0.0",
     "@types/js-yaml": "^4.0.9",
+    "@uiw/react-md-editor": "^4.0.11",
     "emittery": "^1.2.0",
     "filesize": "^11.0.13",
     "humanize-duration": "^3.33.2",
@@ -74,7 +75,7 @@
     "react-toastify": "^11.0.5",
     "refractor": "^5.0.0",
     "rollbar": "3.0.0-rc.1",
-    "semver": "^7.7.2",
+    "semver": "^7.7.4",
     "toposort": "^2.0.2",
     "uuid": "^13.0.0"
   },
@@ -88,8 +89,8 @@
     "dev": "bun tsgo --noEmit && NODE_ENV=development bun --hot run bun.build.ts -w -s ./out",
     "dev:remote": "bun tsgo --noEmit && NODE_ENV=remote API_URL=http://192.168.0.68:3000/ bun --hot run bun.build.ts -w -s ./out",
     "gen": "bunx @rtk-query/codegen-openapi api.config.js && bun tsgo --noEmit",
+    "gen:mocks": "bunx msw-auto-mock ../backend/docs/openapi.json --typescript -o src/mocks",
     "test": "bun tsgo --noEmit && AGENT=1 BUN_TEST_NO_COVERAGE_THRESHOLD=1 bun test --preload ./test/setup.ts --bail --timeout 10000 --max-concurrency=1",
-    "test:coverage": "bun test --coverage",
     "test:prepare": "bun ./scripts/add-test-setup.js",
     "test:fix": "bun ./scripts/add-test-setup.js --apply",
     "test:ci": "bun run test:prepare && bun test  --only-failures --timeout 30000 --bail --max-concurrency=1",
@@ -107,9 +108,9 @@
     "tree-sitter",
     "tree-sitter-json"
   ],
-  "packageManager": "bun@1.3.8",
+  "packageManager": "bun@1.3.9",
   "engines": {
-    "bun": ">=1.3.5"
+    "bun": ">=1.3.9"
   },
   "bugs": {
     "url": "https://github.com/dianlight/srat/issues"

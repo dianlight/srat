@@ -1,6 +1,6 @@
 module github.com/dianlight/srat
 
-go 1.25.5
+go 1.25.7
 
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
@@ -11,7 +11,7 @@ require (
 	github.com/pilebones/go-udev v0.9.1
 	github.com/shirou/gopsutil/v4 v4.26.1
 	github.com/stretchr/testify v1.11.1
-	golang.org/x/sys v0.40.0
+	golang.org/x/sys v0.41.0
 )
 
 require (
@@ -22,7 +22,7 @@ require (
 	github.com/benmcclelland/sgio v0.0.0-20250710154739-45e823ff1f46
 	github.com/danielgtaylor/huma/v2 v2.35.0
 	github.com/dianlight/smartmontools-go v0.2.4
-	github.com/dianlight/tlog v0.1.2
+	github.com/dianlight/tlog v0.2.2
 	github.com/fatih/color v1.18.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/gofri/go-github-ratelimit/v2 v2.0.2
@@ -34,7 +34,7 @@ require (
 	github.com/pressly/goose/v3 v3.26.0
 	github.com/prometheus/procfs v0.19.2
 	github.com/rollbar/rollbar-go v1.4.8
-	github.com/samber/slog-http v1.11.0
+	github.com/samber/slog-http v1.11.1
 	github.com/sergi/go-diff v1.4.0
 	github.com/shomali11/util v0.0.0-20220717175126-f0771b70947f
 	github.com/teivah/broadcast v0.1.0
@@ -63,10 +63,10 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jmattheis/goverter v1.9.3 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
-	github.com/k0kubun/pp/v3 v3.5.0 // indirect
+	github.com/k0kubun/pp/v3 v3.5.1 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
-	github.com/mattn/go-sqlite3 v1.14.32 // indirect
+	github.com/mattn/go-sqlite3 v1.14.33 // indirect
 	github.com/mfridman/interpolate v0.0.2 // indirect
 	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
 	github.com/oasdiff/yaml v0.0.0-20250309154309-f31be36b4037 // indirect
@@ -75,13 +75,13 @@ require (
 	github.com/ovechkin-dm/go-dyno v0.5.3 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
-	github.com/petermattis/goid v0.0.0-20251121121749-a11dd1a45f9a // indirect
+	github.com/petermattis/goid v0.0.0-20260113132338-7c7de50cc741 // indirect
 	github.com/rakyll/gotest v0.0.7 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/samber/lo v1.52.0 // indirect
-	github.com/samber/slog-common v0.19.0 // indirect
+	github.com/samber/slog-common v0.20.0 // indirect
 	github.com/samber/slog-formatter v1.2.2 // indirect
-	github.com/samber/slog-multi v1.6.0 // indirect
+	github.com/samber/slog-multi v1.7.1 // indirect
 	github.com/sethvargo/go-retry v0.3.0 // indirect
 	github.com/speakeasy-api/jsonpath v0.6.0 // indirect
 	github.com/spf13/afero v1.14.0 // indirect
@@ -92,8 +92,8 @@ require (
 	github.com/woodsbury/decimal128 v1.3.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
 	github.com/zarldev/goenums v0.4.4 // indirect
-	go.opentelemetry.io/otel v1.39.0 // indirect
-	go.opentelemetry.io/otel/trace v1.39.0 // indirect
+	go.opentelemetry.io/otel v1.40.0 // indirect
+	go.opentelemetry.io/otel/trace v1.40.0 // indirect
 	golang.org/x/net v0.49.0 // indirect
 	golang.org/x/term v0.39.0 // indirect
 	google.golang.org/protobuf v1.36.8 // indirect
@@ -155,16 +155,16 @@ require (
 	golang.org/x/text v0.33.0 // indirect
 	golang.org/x/tools v0.41.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	modernc.org/libc v1.67.1 // indirect
+	modernc.org/libc v1.67.7 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
-	modernc.org/sqlite v1.41.0 // indirect
+	modernc.org/sqlite v1.44.3 // indirect
 )
 
 require (
 	github.com/creasty/defaults v1.8.0
 	github.com/glebarez/sqlite v1.11.0
-	github.com/lmittmann/tint v1.1.2 // indirect
+	github.com/lmittmann/tint v1.1.3 // indirect
 	github.com/ovechkin-dm/mockio/v2 v2.0.4
 	github.com/rs/cors v1.11.1
 	github.com/thoas/go-funk v0.9.3
@@ -173,7 +173,7 @@ require (
 	gitlab.com/tozd/go/errors v0.10.0
 	go.uber.org/fx v1.24.0
 	golang.org/x/time v0.14.0
-	gopkg.in/yaml.v3 v3.0.1 // indirect
+	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/gorm v1.31.1
 	moul.io/banner v1.0.1
 )

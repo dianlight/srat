@@ -14,6 +14,7 @@ With your donations, we are able to continue developing and improving this proje
 ### 🐛 Bug Fixes
 
 - **Udev Event Parsing Error Handling**: Improved handling of malformed udev events to prevent spurious error reports to Rollbar. Malformed events with invalid environment data are now logged at debug level instead of error level, reducing noise in error tracking while maintaining visibility for legitimate errors.
+- **Issue Report Gist Offloading**: Fixed oversized issue report URLs by replacing large addon log and console error parameters with Gist links, preventing runaway URL growth when diagnostics are large.
 
 ### 🔄 Breaking Changes
 
@@ -28,6 +29,14 @@ With your donations, we are able to continue developing and improving this proje
 
 ### ✨ Features
 
+- **Report Issue on GitHub**: Added new "Report Issue" functionality allowing users to easily create GitHub issues with automated diagnostic data collection:
+  - Button in top navigation bar to open issue reporting dialog
+  - Problem type selector (Frontend UI, HA Integration, Addon, or Samba problems)
+  - Markdown-compatible description field
+  - Optional data collection: contextual data (URL, navigation history, browser info, console errors), addon logs, and sanitized SRAT configuration
+  - Automatic routing to appropriate repository (dianlight/srat or dianlight/hassos-addon) based on problem type
+  - Pre-populated GitHub issue URL with diagnostic information
+  - Downloads diagnostic files for attachment to the issue
 - **Auto-Update with Signature Verification (#358)**: Implemented a new auto-update mechanism using minio/selfupdate with cryptographic signature verification
   - Added `--auto-update` flag to automatically download and apply updates without user acceptance
   - Updates are signed with minisign (Ed25519) signatures for security

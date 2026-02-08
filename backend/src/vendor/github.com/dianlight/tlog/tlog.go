@@ -6,13 +6,13 @@ import (
 	"log"
 	"log/slog"
 	"os"
-	"reflect"
 	"runtime"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/dianlight/tlog/sanitizer"
 	"github.com/fatih/color"
 
 	"github.com/k0kubun/pp/v3"
@@ -73,142 +73,6 @@ var levelColorNumbers = map[string]uint8{
 	"WARN":   3,
 	"ERROR":  1,
 	"FATAL":  9,
-}
-
-// sensitiveKeys holds keys considered sensitive for masking
-var sensitiveKeys = map[string]struct{}{
-	"password": {}, "pwd": {}, "pass": {}, "passwd": {},
-	"token": {}, "jwt": {}, "auth_token": {}, "access_token": {}, "refresh_token": {},
-	"key": {}, "api_key": {}, "secret": {}, "client_secret": {}, "private_key": {},
-}
-
-// maskString shows first 4 chars then 7 asterisks, matching test expectations
-func maskString(s string) string {
-	prefix := s
-	if len(prefix) > 4 {
-		prefix = prefix[:4]
-	}
-	return prefix + strings.Repeat("*", 7)
-}
-
-// maskNestedValue walks nested structures and masks values whose immediate key is sensitive
-func maskNestedValue(v any, keyHint string) any {
-	if v == nil {
-		return nil
-	}
-
-	rv := reflect.ValueOf(v)
-	for rv.Kind() == reflect.Pointer {
-		if rv.IsNil() {
-			return v
-		}
-		rv = rv.Elem()
-		v = rv.Interface()
-	}
-
-	if keyHint != "" {
-		if _, ok := sensitiveKeys[keyHint]; ok {
-			if sv, ok := v.(string); ok {
-				return maskString(sv)
-			}
-		}
-	}
-
-	switch val := v.(type) {
-	case map[string]any:
-		out := make(map[string]any, len(val))
-		for k, vv := range val {
-			out[k] = maskNestedValue(vv, k)
-		}
-		return out
-	case map[string]string:
-		out := make(map[string]string, len(val))
-		for k, vv := range val {
-			if _, ok := sensitiveKeys[k]; ok {
-				out[k] = maskString(vv)
-			} else {
-				out[k] = vv
-			}
-		}
-		return out
-	case []any:
-		out := make([]any, len(val))
-		for i, vv := range val {
-			out[i] = maskNestedValue(vv, "")
-		}
-		return out
-	case []map[string]any:
-		out := make([]map[string]any, len(val))
-		for i, m := range val {
-			out[i] = maskNestedValue(m, "").(map[string]any)
-		}
-		return out
-	case []slog.Attr:
-		out := make([]slog.Attr, 0, len(val))
-		for _, attr := range val {
-			masked := maskNestedValue(attr.Value.Any(), attr.Key)
-			out = append(out, slog.Any(attr.Key, masked))
-		}
-		return out
-	default:
-		rv = reflect.ValueOf(v)
-		if !rv.IsValid() {
-			return v
-		}
-		switch rv.Kind() {
-		case reflect.Slice, reflect.Array:
-			out := make([]any, rv.Len())
-			for i := 0; i < rv.Len(); i++ {
-				out[i] = maskNestedValue(rv.Index(i).Interface(), "")
-			}
-			return out
-		case reflect.Struct:
-			typeOf := rv.Type()
-			out := make(map[string]any, rv.NumField())
-			for i := 0; i < rv.NumField(); i++ {
-				field := typeOf.Field(i)
-				if field.PkgPath != "" { // unexported
-					continue
-				}
-				key := field.Name
-				if tag := field.Tag.Get("json"); tag != "" && tag != "-" {
-					if idx := strings.Index(tag, ","); idx >= 0 {
-						key = tag[:idx]
-					} else {
-						key = tag
-					}
-				}
-				out[key] = maskNestedValue(rv.Field(i).Interface(), key)
-			}
-			return out
-		}
-
-		return v
-	}
-}
-
-// maskingHandler wraps a slog.Handler and masks sensitive data inside records
-type maskingHandler struct{ next slog.Handler }
-
-func (mh *maskingHandler) Enabled(ctx context.Context, level slog.Level) bool {
-	return mh.next.Enabled(ctx, level)
-}
-
-func (mh *maskingHandler) Handle(ctx context.Context, r slog.Record) error {
-	nr := slog.NewRecord(r.Time, r.Level, r.Message, r.PC)
-	r.Attrs(func(attr slog.Attr) bool {
-		mv := maskNestedValue(attr.Value.Any(), attr.Key)
-		nr.Add(slog.Any(attr.Key, mv))
-		return true
-	})
-	return mh.next.Handle(ctx, nr)
-}
-
-func (mh *maskingHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	return &maskingHandler{next: mh.next.WithAttrs(attrs)}
-}
-func (mh *maskingHandler) WithGroup(group string) slog.Handler {
-	return &maskingHandler{next: mh.next.WithGroup(group)}
 }
 
 // FormatterConfig holds configuration for log formatting
@@ -323,7 +187,7 @@ func createBaseHandler(level slog.Level) slog.Handler {
 
 			// Optionally hide sensitive data even inside nested payloads (only when formatting enabled)
 			if config.EnableFormatting && config.HideSensitiveData && a.Key != slog.LevelKey {
-				masked := maskNestedValue(a.Value.Any(), a.Key)
+				masked := sanitizer.MaskNestedValue(a.Value.Any(), a.Key)
 				a = slog.Any(a.Key, masked)
 			}
 
@@ -357,8 +221,8 @@ func createBaseHandler(level slog.Level) slog.Handler {
 
 	// Ensure callbacks see masked values too (only when formatting enabled)
 	if config.EnableFormatting && config.HideSensitiveData {
-		formattedTintHandler = &maskingHandler{next: formattedTintHandler}
-		callbackHandler = &maskingHandler{next: callbackHandler}
+		formattedTintHandler = &sanitizer.MaskingHandler{Next: formattedTintHandler}
+		callbackHandler = &sanitizer.MaskingHandler{Next: callbackHandler}
 	}
 
 	// If formatting is enabled, wrap with slog-formatter
@@ -373,9 +237,9 @@ func createBaseHandler(level slog.Level) slog.Handler {
 
 		// Add sensitive data formatter if enabled
 		if config.HideSensitiveData {
-			// Build PII formatters dynamically from sensitiveKeys for determinism
-			piiKeys := make([]string, 0, len(sensitiveKeys))
-			for k := range sensitiveKeys {
+			// Build PII formatters dynamically from sanitizer.SensitiveKeys for determinism
+			piiKeys := make([]string, 0, len(sanitizer.SensitiveKeys))
+			for k := range sanitizer.SensitiveKeys {
 				piiKeys = append(piiKeys, k)
 			}
 			sort.Strings(piiKeys)

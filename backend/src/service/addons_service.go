@@ -11,6 +11,7 @@ import (
 	"github.com/dianlight/srat/homeassistant/addons"
 	"github.com/dianlight/tlog"
 	gocache "github.com/patrickmn/go-cache"
+	"github.com/xorcare/pointer"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 )
@@ -20,6 +21,8 @@ type AddonsServiceInterface interface {
 	// GetStats retrieves the resource usage statistics for the current addon.
 	// It returns an AddonStatsData object on success.
 	GetStats() (*addons.AddonStatsData, errors.E)
+	GetLatestLogs(ctx context.Context) (string, errors.E)
+	GetInfo(ctx context.Context) (*addons.AddonInfoData, errors.E)
 }
 
 // AddonsService provides methods to interact with Home Assistant addons.
@@ -106,4 +109,49 @@ func (s *AddonsService) GetStats() (*addons.AddonStatsData, errors.E) {
 	s.statsCache.Set(statsCacheKey, stats, gocache.DefaultExpiration)
 
 	return stats, nil
+}
+
+func (s *AddonsService) GetLatestLogs(ctx context.Context) (string, errors.E) {
+	if s.addonsClient == nil {
+		return "", errors.New("addons client is not initialized")
+	}
+
+	resp, err := s.addonsClient.GetSelfAddonLogsLatestWithResponse(ctx, &addons.GetSelfAddonLogsLatestParams{
+		Lines:  pointer.Int(1000),
+		Accept: addons.GetSelfAddonLogsLatestParamsAcceptTextxLog,
+	})
+	if err != nil {
+		return "", errors.Wrap(err, "failed to get addon logs")
+	}
+
+	if resp.StatusCode() != http.StatusOK {
+		return "", errors.Errorf("failed to get addon logs: status %d, body: %s", resp.StatusCode(), string(resp.Body))
+	}
+
+	if resp.Body == nil {
+		return "", errors.New("addon logs not available or data incomplete")
+	}
+
+	return string(resp.Body), nil
+}
+
+func (s *AddonsService) GetInfo(ctx context.Context) (*addons.AddonInfoData, errors.E) {
+	if s.addonsClient == nil {
+		return nil, errors.New("addons client is not initialized")
+	}
+
+	resp, err := s.addonsClient.GetSelfAddonInfoWithResponse(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get addon info")
+	}
+
+	if resp.StatusCode() != http.StatusOK {
+		return nil, errors.Errorf("failed to get addon info: status %d, body: %s", resp.StatusCode(), string(resp.Body))
+	}
+
+	if resp.JSON200 == nil {
+		return nil, errors.New("addon info not available or data incomplete")
+	}
+
+	return &resp.JSON200.Data, nil
 }

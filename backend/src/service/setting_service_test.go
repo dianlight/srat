@@ -8,6 +8,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/angusgmorrison/logfusc"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
@@ -372,6 +373,29 @@ func (suite *SettingServiceSuite) TestUpdateSettings_ModifyMultipleFields() {
 			suite.testFieldUpdateAndLoad(tc.name, tc.settingsFactory, tc.verifyFunc)
 		})
 	}
+}
+
+func (suite *SettingServiceSuite) TestUpdateSettings_PreservesHASmbPasswordWhenEmpty() {
+	suite.testMutex.Lock()
+	defer suite.testMutex.Unlock()
+
+	initial := dto.Settings{
+		Workgroup:     "INITIAL",
+		HASmbPassword: logfusc.NewSecret("super-secret"),
+	}
+	err := suite.settingService.UpdateSettings(&initial)
+	suite.Require().NoError(err)
+
+	update := dto.Settings{
+		Workgroup: "UPDATED",
+	}
+	err = suite.settingService.UpdateSettings(&update)
+	suite.Require().NoError(err)
+
+	loaded, loadErr := suite.settingService.Load()
+	suite.Require().NoError(loadErr)
+	suite.Equal("UPDATED", loaded.Workgroup)
+	suite.Equal("super-secret", loaded.HASmbPassword.Expose())
 }
 
 // TestUpdateSettings_NilPointerFields tests handling of nil pointer fields
