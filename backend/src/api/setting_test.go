@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
-	"strings"
 	"sync"
 	"testing"
 
@@ -324,6 +323,6 @@ func (suite *SettingsHandlerSuite) TestGetSettingsHandler_DoesNotLeakSecrets() {
 	suite.Require().Equal(http.StatusOK, resp.Code)
 	body := resp.Body.String()
 
-	suite.False(strings.Contains(body, "HASmbPassword"), "Response should not include HASmbPassword field")
-	suite.False(strings.Contains(body, "top-secret"), "Response should not include secret value")
+	suite.NotContains(body, "HASmbPassword", "Response should not include HASmbPassword field")
+	suite.NotContains(body, "top-secret", "Response should not include secret value")
 }
