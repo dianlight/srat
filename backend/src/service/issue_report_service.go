@@ -12,6 +12,7 @@ import (
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/tlog"
+	"github.com/dianlight/tlog/sanitizer"
 	"github.com/google/go-github/v82/github"
 	"github.com/xorcare/pointer"
 	"gitlab.com/tozd/go/errors"
@@ -64,7 +65,8 @@ func (s *IssueReportService) GenerateIssueReport(ctx context.Context, request *d
 		if err != nil {
 			tlog.WarnContext(ctx, "Failed to export sanitized config", "error", err)
 		} else {
-			attachs["srat_config"] = &sanitizedConfig
+			maskedSRATConfig := sanitizer.MaskNestedValue(sanitizedConfig, "").(string) // Assuming sanitizedConfig is a JSON string; adjust as needed
+			attachs["srat_config"] = &maskedSRATConfig
 		}
 	}
 
@@ -74,7 +76,8 @@ func (s *IssueReportService) GenerateIssueReport(ctx context.Context, request *d
 		if err != nil {
 			tlog.WarnContext(ctx, "Failed to export addon config", "error", err)
 		} else {
-			attachs["addon_config"] = &addonConfig
+			maskedAddonConfig := sanitizer.MaskNestedValue(addonConfig, "").(string) // Assuming addonConfig is a JSON string; adjust as needed
+			attachs["addon_config"] = &maskedAddonConfig
 		}
 	}
 
@@ -84,20 +87,21 @@ func (s *IssueReportService) GenerateIssueReport(ctx context.Context, request *d
 		if err != nil {
 			tlog.WarnContext(ctx, "Failed to export addon logs", "error", err)
 		} else {
-			attachs["logs"] = &addonLogs
+			maskedAddonLogs := sanitizer.MaskNestedValue(addonLogs, "").(string) // Assuming addonLogs is a string; adjust as needed
+			attachs["logs"] = &maskedAddonLogs
 		}
 	}
 
-	var contextData strings.Builder
+	var consoleErrors strings.Builder
 	if request.IncludeConsoleErrors {
 		if len(request.ConsoleErrors) > 0 {
-			contextData.WriteString("- **Console Errors**:\n```javascript\n")
+			consoleErrors.WriteString("- **Console Errors**:\n```javascript\n")
 			for _, err := range request.ConsoleErrors {
-				fmt.Fprintf(&contextData, "%s\n", err)
+				fmt.Fprintf(&consoleErrors, "%s\n", sanitizer.MaskNestedValue(err, ""))
 			}
-			contextData.WriteString("```\n")
+			consoleErrors.WriteString("```\n")
 		}
-		attachs["console"] = pointer.String(contextData.String())
+		attachs["console"] = pointer.String(consoleErrors.String())
 	}
 
 	/* if request.IncludeDatabaseDump {
@@ -212,7 +216,7 @@ func (s *IssueReportService) exportSanitizedConfig(_ context.Context) (string, e
 	}
 
 	// Create a sanitized copy
-	sanitized := *settings
+	sanitized := sanitizer.MaskNestedValue(*settings, "")
 
 	// Remove sensitive fields
 	// Note: The actual Settings struct fields should be checked and sanitized
