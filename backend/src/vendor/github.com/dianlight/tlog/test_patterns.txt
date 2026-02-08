@@ -8,29 +8,73 @@ JSON token field|{"session":{"token":"abc123xyz","userId":42}}|abc123xyz
 JSON nested password|{"auth":{"credentials":{"password":"SuperSecret!"}}}|SuperSecret!
 JSON api_key field|{"config":{"api_key":"sk-1234567890abcdef"}}|sk-1234567890abcdef
 JSON encoded|{\"config\":{\"api_key\":\"sk-1234567890abcdef\"}}|sk-1234567890abcdef
-Query string with encoded api_key|/search?params=q%3Dtest&api_key%3Dkey_12345|key_12345
+JSON with special chars|{"user":"john","password":"p@ssw0rd!","email":""}
+JSON array of objects|[{"user":"john","password":"arraySecret1"},{"user":"jane","token":"tokArray2"}]|arraySecret1,tokArray2
+JSON mixed case keys|{"User":"john","Password":"CaseSecret","API_KEY":"CaseKey123"}|CaseSecret,CaseKey123
+JSON key with dash|{"auth":{"api-key":"dashKey-999"}}|dashKey-999
+JSON nested arrays|{"sessions":[{"token":"tokA"},{"token":"tokB"}],"password":"rootSecret"}|tokA,tokB,rootSecret
+JSON escaped unicode|{"password":"pa\u0073s\u0077\u006frd"}|password
+JSON null and empty|{"password":"", "token":null, "api_key":"nonEmptyKey"}|nonEmptyKey
+JSON ebcoded 2|"{\n  \"HASmbPassword\": {},\n  \"allow_guest\": null,\n  \"allow_hosts\": [\n    \"token=tok_123\"\n  ],\n  \"bind_all_interfaces\": false,\n  \"compatibility_mode\": false,\n  \"export_stats_to_ha\": null,\n  \"ha_use_nfs\": null,\n  \"hdidle_default_command_type\": {},\n  \"hdidle_default_idle_time\": 0,\n  \"hdidle_default_power_condition\": 0,\n  \"hdidle_enabled\": null,\n  \"hdidle_ignore_spin_down_detection\": false,\n  \"hostname\": \"user@example.com\",\n  \"interfaces\": [],\n  \"local_master\": null,\n  \"multi_channel\": false,\n  \"smb_over_quic\": null,\n  \"telemetry_mode\": {},\n  \"workgroup\": \"password=Secret123\"\n}"|tok_123,Secret123
+JSON invalid|{"user":"john","password":"p@ssw0rd!","email":"}
 
 # URL-like patterns
 URL with password|https://user:myPassword@example.com/api|myPassword
+Query string with encoded api_key|/search?params=q%3Dtest&api_key%3Dkey_12345|key_12345
 Query string with token|/api/data?token=xyz789&user=test|xyz789
 Query string with api_key|/search?q=test&api_key=key_12345|key_12345
+URL userinfo with port|https://user:portSecret@api.example.com:8443/v1|portSecret
+URL query with repeated token|/api/data?token=tok1&token=tok2&user=test|tok1,tok2
+URL query password with encoding|/login?password=pa%24%24w0rd&user=joe|pa$$w0rd
+URL path params api_key|/v1/resource;api_key=pathKey123;user=john|pathKey123
+URL fragment token|https://example.com/callback#token=fragTok123&state=ok|fragTok123
 
 # Key-value patterns
 Simple key-value password|password=secretValue123|secretValue123
 Key-value with quotes|"password":"hiddenSecret"|hiddenSecret
 Multiple fields|user=john password=myPass123 email=test@test.com|myPass123
+Key-value uppercase key|PASSWORD=UPPERsecret|UPPERsecret
+Key-value colon separator|token:colonTok123 user:john|colonTok123
+Key-value mixed separators|user=john; api_key=semiKey456; password:semiPass|semiKey456,semiPass
+Key-value quoted with spaces|password = "spacey Secret"|spacey Secret
+Key-value base64 secret|api_key=YWJjMTIzIT8=|YWJjMTIzIT8=
 
 # Nested object string representations
 Struct with password|User{Name:john Password:myPass123 Email:test@test.com}|myPass123
 Map representation|map[password:secret123 token:tok456 user:john]|secret123,tok456
+Pointer struct|&User{Name:john Password:ptrPass Email:test@test.com}|ptrPass
+Nested struct token|User{Name:john Auth:Auth{Token:nestedTok}}|nestedTok
+Slice of maps|[]map[password:mapPass1 token:mapTok2]|mapPass1,mapTok2
+Map mixed case keys|map[Password:CasePass API_KEY:CaseKey]|CasePass,CaseKey
 
 # XML-like patterns
 XML password tag|<user><password>xmlSecret123</password><name>john</name></user>|xmlSecret123
 XML token attribute|<session token="sessionToken456" user="john"/>|sessionToken456
+XML CDATA password|<user><password><![CDATA[cdataSecret]]></password></user>|cdataSecret
+XML namespaced password|<ns:user xmlns:ns="urn:test"><ns:password>nsSecret</ns:password></ns:user>|nsSecret
+XML api_key attribute|<config api_key="xmlKey999"/>|xmlKey999
+XML single-quoted attribute|<session token='singleTok123'/>|singleTok123
 
 # YAML-like patterns
 YAML password|user: john\npassword: yamlSecret\nemail: test@test.com|yamlSecret
 YAML nested|auth:\n  password: nested123\n  token: tok789|nested123,tok789
+YAML inline map|auth: {password: inlineSecret, token: tokInline}|inlineSecret,tokInline
+YAML list of objects|users:\n  - name: john\n    password: listPass1\n  - name: jane\n    token: listTok2|listPass1,listTok2
+YAML quoted values|password: "quotedSecret"\napi_key: 'keyQuoted123'|quotedSecret,keyQuoted123
+YAML with tabs|user:\tjohn\npassword:\tsecretTab|secretTab
+YAML anchors|defaults: &defaults\n  password: anchorSecret\nuser1:\n  <<: *defaults|anchorSecret
+YAML multi-line literal|password: |\n  lineOneSecret\n  lineTwo|lineOneSecret\n  lineTwo
+YAML multi-line folded|password: >\n  foldedSecret\n  continues|foldedSecret continues
+YAML nested map|auth:\n  credentials:\n    password: deepSecret|deepSecret
+YAML token in list|tokens:\n  - tokA\n  - tokB\n  - tokC|tokA,tokB,tokC
+YAML key with underscore|api_key: key_underscore_123|key_underscore_123
+YAML mixed spacing|password :mixedSpaceSecret|mixedSpaceSecret
+YAML flow sequence|auth: [{password: flowPass1}, {token: flowTok2}]|flowPass1,flowTok2
+YAML quoted key|"password": quotedKeySecret|quotedKeySecret
+YAML boolean-like secret|token: "true"\npassword: "false"|true,false
+YAML numeric-like secret|password: "000123"|000123
+YAML anchor token|defaults: &defaults\n  token: anchorTok\nuser1:\n  <<: *defaults|anchorTok
+YAML folded chomp|password: >-\n  foldChompSecret\n  continues|foldChompSecret continues
 
 # Edge cases
 Password at start|password:firstSecret user:john|firstSecret
@@ -38,3 +82,7 @@ Password at end|user:john email:test password:lastSecret|lastSecret
 Multiple passwords|password1:first123 password2:second456|first123,second456
 Empty password value|password: token:emptyTest123|emptyTest123
 Password with special chars|password:p@ssw0rd! user:john|p@ssw0rd!
+Empty password equals|password= user:john token=tokTail|tokTail
+Password with punctuation|password:punctSecret; user:john|punctSecret
+Newline separated kv|user:john\npassword:newlineSecret\ntoken:tokNew|newlineSecret,tokNew
+Bracketed kv|[password:bracketPass token:bracketTok]|bracketPass,bracketTok
