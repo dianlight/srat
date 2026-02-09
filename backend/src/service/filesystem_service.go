@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"syscall"
@@ -100,7 +101,8 @@ type FilesystemService struct {
 	// standardMountFlagsByName maps lowercase standard flag names to their MountFlag struct.
 	standardMountFlagsByName map[string]dto.MountFlag
 	// allKnownMountFlagsByName maps all lowercase known flag names (standard and specific)
-	// to their MountFlag struct, used for description lookups. Standard flags take precedence on conflict.
+	// to their MountFlag struct, used for description lookups. Standard flags take precedence on conflict,
+	// then preferred filesystem types (see preferredMountFlagSources) fill in remaining metadata.
 	allKnownMountFlagsByName map[string]dto.MountFlag
 
 	// registry holds the filesystem adapter registry
@@ -146,6 +148,10 @@ var (
 		{Name: "defaults", Description: "Use default options: rw, suid, dev, exec, auto, nouser, async."},
 		{Name: "relatime", Description: "Update inode access times relative to modify or change time."},
 	}
+
+	// preferredMountFlagSources defines the filesystem types whose mount-flag metadata should
+	// be preferred when multiple adapters define the same option (e.g., uid, gid).
+	preferredMountFlagSources = []string{"ntfs", "vfat"}
 
 	// syscallFlagMap maps mount flag names (lowercase) to their corresponding syscall constants.
 	// This map includes flags that SET a bit. Flags like "rw" or "async"
@@ -195,6 +201,34 @@ var (
 	}
 )
 
+func orderedFilesystemTypesForMountFlags(registry *filesystem.Registry) []string {
+	types := registry.ListSupportedTypes()
+	if len(types) == 0 {
+		return types
+	}
+	sort.Strings(types)
+
+	ordered := make([]string, 0, len(types))
+	seen := make(map[string]bool, len(types))
+	available := make(map[string]bool, len(types))
+	for _, fsType := range types {
+		available[fsType] = true
+	}
+	for _, preferred := range preferredMountFlagSources {
+		if available[preferred] {
+			ordered = append(ordered, preferred)
+			seen[preferred] = true
+		}
+	}
+	for _, fsType := range types {
+		if !seen[fsType] {
+			ordered = append(ordered, fsType)
+		}
+	}
+
+	return ordered
+}
+
 // NewFilesystemService creates and initializes a new FilesystemService.
 func NewFilesystemService(
 	ctx context.Context,
@@ -210,10 +244,14 @@ func NewFilesystemService(
 	// Create filesystem adapter registry
 	registry := filesystem.NewRegistry()
 
-	// Build fsSpecificMountFlags from adapters
-	fsSpecificMountFlags := make(map[string][]dto.MountFlag)
-	for _, adapter := range registry.GetAll() {
-		fsType := adapter.GetName()
+	// Build fsSpecificMountFlags from adapters using a deterministic order
+	orderedTypes := orderedFilesystemTypesForMountFlags(registry)
+	fsSpecificMountFlags := make(map[string][]dto.MountFlag, len(orderedTypes))
+	for _, fsType := range orderedTypes {
+		adapter, err := registry.Get(fsType)
+		if err != nil {
+			continue
+		}
 		fsSpecificMountFlags[fsType] = adapter.GetMountFlags()
 	}
 
@@ -222,7 +260,8 @@ func NewFilesystemService(
 	for k, v := range stdFlagsByName {
 		allKnownFlagsByName[k] = v
 	}
-	for _, fsFlags := range fsSpecificMountFlags {
+	for _, fsType := range orderedTypes {
+		fsFlags := fsSpecificMountFlags[fsType]
 		for _, f := range fsFlags {
 			lowerName := strings.ToLower(f.Name)
 			// Standard flags take precedence for descriptions if names collide.
