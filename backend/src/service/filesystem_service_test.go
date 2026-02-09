@@ -3,10 +3,12 @@ package service_test
 import (
 	"context"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,7 +22,9 @@ type FilesystemServiceTestSuite struct {
 	suite.Suite
 	fsService service.FilesystemServiceInterface
 	ctx       context.Context
+	cancel    context.CancelFunc
 	app       *fxtest.App
+	wg        *sync.WaitGroup
 }
 
 func TestFilesystemServiceTestSuite(t *testing.T) {
@@ -500,25 +504,35 @@ func (suite *FilesystemServiceTestSuite) TestGetSupportedFilesystems() {
 }
 
 func (suite *FilesystemServiceTestSuite) SetupTest() {
-	suite.ctx = context.Background()
-
 	// Use FX to build the service with proper dependency injection
-	suite.app = fxtest.New(
-		suite.T(),
+	suite.app = fxtest.New(suite.T(),
 		fx.Provide(
-			func() context.Context {
-				return suite.ctx
+			//	func() *matchers.MockController { return mock.NewMockController(suite.T()) },
+			func() (context.Context, context.CancelFunc) {
+				ctx := context.WithValue(context.Background(), "wg", suite.wg)
+				return context.WithCancel(ctx)
 			},
+			func() *dto.ContextState {
+				return &dto.ContextState{
+					HACoreReady: true,
+				}
+			},
+			events.NewEventBus,
 			service.NewFilesystemService,
+		//	mock.Mock[addons.ClientWithResponsesInterface],
+		//	mock.Mock[service.HaWsServiceInterface],
 		),
+		fx.Populate(&suite.ctx, &suite.cancel),
 		fx.Populate(&suite.fsService),
+		//		fx.Populate(&suite.mockAddonsClient),
+		//		fx.Populate(&suite.addonsService),
 	)
-
 	suite.Require().NotNil(suite.fsService, "FilesystemService should be initialized")
+	suite.app.RequireStart()
 }
 
 func (suite *FilesystemServiceTestSuite) TearDownTest() {
 	if suite.app != nil {
-		suite.app.RequireStart().RequireStop()
+		suite.app.RequireStop()
 	}
 }

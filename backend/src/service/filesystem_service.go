@@ -68,11 +68,6 @@ type FilesystemServiceInterface interface {
 	SetPartitionLabel(ctx context.Context, devicePath, fsType, label string) errors.E
 }
 
-// EventBusInterface defines the methods we need from the event bus
-type EventBusInterface interface {
-	EmitFilesystemTask(event events.FilesystemTaskEvent)
-}
-
 // FilesystemInfo combines filesystem type information with capability details
 type FilesystemInfo struct {
 	// Name is the filesystem type name
@@ -125,7 +120,7 @@ type FilesystemService struct {
 	activeOperations map[string]bool
 
 	// eventBus for emitting filesystem operation events
-	eventBus EventBusInterface
+	eventBus events.EventBusInterface
 }
 
 // Package-level variables for default configurations.
@@ -204,7 +199,7 @@ var (
 func NewFilesystemService(
 	ctx context.Context,
 	cancelFunc context.CancelFunc,
-	eventBus EventBusInterface,
+	eventBus events.EventBusInterface,
 ) FilesystemServiceInterface {
 	// Initialize precomputed maps for efficient lookups
 	stdFlagsByName := make(map[string]dto.MountFlag, len(defaultStandardMountFlags))
