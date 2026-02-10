@@ -810,7 +810,7 @@ func (s *FilesystemService) CheckPartition(ctx context.Context, devicePath, fsTy
 func (s *FilesystemService) GetPartitionState(ctx context.Context, devicePath, fsType string) (*dto.FilesystemState, errors.E) {
 	adapter, err := s.registry.Get(fsType)
 	if err != nil {
-		return nil, errors.Wrap(err, "unsupported filesystem type")
+		return nil, errors.Wrap(dto.ErrorUnsupportedFilesystem, "unsupported filesystem type")
 	}
 
 	state, stateErr := adapter.GetState(ctx, devicePath)
@@ -825,7 +825,7 @@ func (s *FilesystemService) GetPartitionState(ctx context.Context, devicePath, f
 func (s *FilesystemService) GetPartitionLabel(ctx context.Context, devicePath, fsType string) (string, errors.E) {
 	adapter, err := s.registry.Get(fsType)
 	if err != nil {
-		return "", errors.Wrap(err, "unsupported filesystem type")
+		return "", errors.Wrap(dto.ErrorUnsupportedFilesystem, "unsupported filesystem type")
 	}
 
 	label, labelErr := adapter.GetLabel(ctx, devicePath)
@@ -840,7 +840,7 @@ func (s *FilesystemService) GetPartitionLabel(ctx context.Context, devicePath, f
 func (s *FilesystemService) SetPartitionLabel(ctx context.Context, devicePath, fsType, label string) errors.E {
 	adapter, err := s.registry.Get(fsType)
 	if err != nil {
-		return errors.Wrap(err, "unsupported filesystem type")
+		return errors.Wrap(dto.ErrorUnsupportedFilesystem, "unsupported filesystem type")
 	}
 
 	// Check if setting label is supported

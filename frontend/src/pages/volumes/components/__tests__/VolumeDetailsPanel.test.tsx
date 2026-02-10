@@ -31,8 +31,7 @@ async function renderWithProviders(
     const wrapWithProviders = (child: any) =>
         React.createElement(
             Provider,
-            { store },
-            React.createElement(BrowserRouter, null, child),
+            { store, children: React.createElement(BrowserRouter, null, child) },
         );
 
     const renderResult = render(wrapWithProviders(element));

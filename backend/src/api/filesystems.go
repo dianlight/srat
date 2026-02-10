@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/dianlight/srat/dto"
@@ -280,6 +281,13 @@ func (h *FilesystemHandler) GetPartitionState(
 	// Use filesystem service to get partition state
 	state, stateErr := h.fsService.GetPartitionState(ctx, devicePath, fsType)
 	if stateErr != nil {
+		if errors.Is(stateErr, dto.ErrorUnsupportedFilesystem) {
+			tlog.WarnContext(ctx, "Unsupported filesystem type for partition state",
+				"partition", input.PartitionID,
+				"device", devicePath,
+				"filesystem_type", fsType)
+			return nil, huma.Error400BadRequest("Unsupported filesystem type for this partition")
+		}
 		tlog.ErrorContext(ctx, "Failed to get partition state",
 			"partition", input.PartitionID,
 			"device", devicePath,

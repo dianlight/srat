@@ -156,7 +156,12 @@ export function VolumeDetailsPanel({
                 </Typography>
                 {additionalInfoEntries.map(([key, value]) => (
                     <Typography key={key} variant="body2">
-                        {key}: {typeof value === "string" ? value : JSON.stringify(value)}
+                        {key}: {(typeof value === "string" ? value : JSON.stringify(value)).split("\n").map((line, index) => (
+                            <span key={index}>
+                                {line}
+                                <br />
+                            </span>
+                        ))}
                     </Typography>
                 ))}
             </Box>
