@@ -17,7 +17,12 @@ import { TreeItem } from "@mui/x-tree-view/TreeItem";
 import { filesize } from "filesize";
 import { useMemo } from "react";
 import { type Disk, type Partition } from "../../../store/sratApi";
-import { decodeEscapeSequence } from "../utils";
+import {
+    decodeEscapeSequence,
+    getDiskIdentifier,
+    getMountpointIdentifier,
+    getPartitionIdentifier,
+} from "../utils";
 import { PartitionActions } from "./PartitionActions";
 
 interface VolumesTreeViewProps {
@@ -126,9 +131,9 @@ export function VolumesTreeView({
         partition: Partition,
         mountpointKey: string,
         mpd: any,
-        parentIdentifier: string,
+        partitionIdentifier: string,
     ) => {
-        const mountpointIdentifier = `${parentIdentifier}-mp-${mountpointKey}`;
+        const mountpointIdentifier = getMountpointIdentifier(partitionIdentifier, mountpointKey);
         const isSelected = normalizedSelectedId === mountpointIdentifier;
         const mountpointPath = mpd.mount_point || mountpointKey;
 
@@ -210,8 +215,19 @@ export function VolumesTreeView({
         );
     };
 
-    const renderPartitionItem = (disk: Disk, partition: Partition, diskIdx: number, partIdx: number) => {
-        const partitionIdentifier = partition.id || `${disk.id || `disk-${diskIdx}`}-part-${partIdx}`;
+    const renderPartitionItem = (
+        disk: Disk,
+        partition: Partition,
+        diskIdentifier: string,
+        partitionKey: string | undefined,
+        partIdx: number,
+    ) => {
+        const partitionIdentifier = getPartitionIdentifier(
+            diskIdentifier,
+            partition,
+            partitionKey,
+            partIdx,
+        );
         const isSelected = normalizedSelectedId === partitionIdentifier;
         const partitionNameDecoded = decodeEscapeSequence(
             partition.name || partition.id || "Unnamed Partition",
@@ -385,20 +401,19 @@ export function VolumesTreeView({
     };
 
     const renderDiskItem = (disk: Disk, diskIdx: number) => {
-        const diskIdentifier = disk.id || `disk-${diskIdx}`;
-        const partitions = Object.values(disk.partitions || {}).sort((a, b) => {
+        const diskIdentifier = getDiskIdentifier(disk, diskIdx);
+        const partitionEntries = Object.entries(disk.partitions || {}).sort(([, a], [, b]) => {
             const nameA = a.name || a.id || "";
             const nameB = b.name || b.id || "";
             return nameA.localeCompare(nameB);
         });
-        const filteredPartitions = partitions.filter(
-            (partition) =>
-                !(
-                    hideSystemPartitions &&
-                    (partition.system &&
-                        (partition.name?.startsWith("hassos-") ||
-                            (Object.values(partition.host_mount_point_data || {}).length > 0)))
-                ),
+        const filteredPartitions = partitionEntries.filter(([, partition]) =>
+            !(
+                hideSystemPartitions &&
+                (partition.system &&
+                    (partition.name?.startsWith("hassos-") ||
+                        (Object.values(partition.host_mount_point_data || {}).length > 0)))
+            ),
         ) || [];
 
         if (filteredPartitions.length === 0) return null;
@@ -461,8 +476,8 @@ export function VolumesTreeView({
                     </Box>
                 }
             >
-                {filteredPartitions.sort((a, b) => a.id?.localeCompare(b.id || "") || 0).map((partition, partIdx) =>
-                    renderPartitionItem(disk, partition, diskIdx, partIdx),
+                {filteredPartitions.map(([partitionKey, partition], partIdx) =>
+                    renderPartitionItem(disk, partition, diskIdentifier, partitionKey, partIdx),
                 )}
             </TreeItem>
         );

@@ -70,6 +70,61 @@ components:
         - size
         - id
       type: object
+    CheckPartitionInput:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/CheckPartitionInput.json
+          format: uri
+          readOnly: true
+          type: string
+        autoFix:
+          default: false
+          description: Automatically fix errors if possible
+          type: boolean
+        force:
+          default: false
+          description: Force check even if filesystem appears clean
+          type: boolean
+        partitionId:
+          description: Unique partition identifier
+          type: string
+        verbose:
+          default: false
+          description: Enable verbose output
+          type: boolean
+      required:
+        - partitionId
+      type: object
+    CheckResult:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/CheckResult.json
+          format: uri
+          readOnly: true
+          type: string
+        errorsFixed:
+          type: boolean
+        errorsFound:
+          type: boolean
+        exitCode:
+          format: int64
+          type: integer
+        message:
+          type: string
+        success:
+          type: boolean
+      required:
+        - success
+        - errorsFound
+        - errorsFixed
+        - exitCode
+      type: object
     DataDirtyTracker:
       additionalProperties: false
       properties:
@@ -286,7 +341,7 @@ components:
           format: uri
           type: string
       type: object
-    FilesystemType:
+    FilesystemInfo:
       additionalProperties: false
       properties:
         customMountFlags:
@@ -295,6 +350,8 @@ components:
           type:
             - array
             - "null"
+        description:
+          type: string
         mountFlags:
           items:
             $ref: "#/components/schemas/MountFlag"
@@ -303,6 +360,8 @@ components:
             - "null"
         name:
           type: string
+        support:
+          $ref: "#/components/schemas/FilesystemSupport"
         type:
           type: string
       required:
@@ -310,6 +369,107 @@ components:
         - type
         - mountFlags
         - customMountFlags
+      type: object
+    FilesystemState:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/FilesystemState.json
+          format: uri
+          readOnly: true
+          type: string
+        additionalInfo:
+          additionalProperties: {}
+          type: object
+        hasErrors:
+          type: boolean
+        isClean:
+          type: boolean
+        isMounted:
+          type: boolean
+        stateDescription:
+          type: string
+      required:
+        - isClean
+        - isMounted
+        - hasErrors
+      type: object
+    FilesystemSupport:
+      additionalProperties: false
+      properties:
+        alpinePackage:
+          type: string
+        canCheck:
+          type: boolean
+        canFormat:
+          type: boolean
+        canGetState:
+          type: boolean
+        canMount:
+          type: boolean
+        canSetLabel:
+          type: boolean
+        missingTools:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+      required:
+        - canMount
+        - canFormat
+        - canCheck
+        - canSetLabel
+        - canGetState
+      type: object
+    FormatPartitionInput:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/FormatPartitionInput.json
+          format: uri
+          readOnly: true
+          type: string
+        additionalOptions:
+          additionalProperties:
+            type: string
+          description: Filesystem-specific formatting options
+          type: object
+        filesystemType:
+          description: Filesystem type to format (ext4, vfat, ntfs, btrfs, xfs, etc.)
+          type: string
+        force:
+          default: false
+          description: Force formatting even if device appears in use
+          type: boolean
+        label:
+          description: Optional filesystem label
+          type: string
+        partitionId:
+          description: Unique partition identifier
+          type: string
+      required:
+        - partitionId
+        - filesystemType
+      type: object
+    Get-filesystem-labelResponse:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/Get-filesystem-labelResponse.json
+          format: uri
+          readOnly: true
+          type: string
+        label:
+          type: string
+      required:
+        - label
       type: object
     GlobalDiskStats:
       additionalProperties: false
@@ -1092,6 +1252,21 @@ components:
         - is_running
         - children
       type: object
+    Put-filesystem-labelResponse:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/Put-filesystem-labelResponse.json
+          format: uri
+          readOnly: true
+          type: string
+        success:
+          type: boolean
+      required:
+        - success
+      type: object
     ReleaseAsset:
       additionalProperties: false
       properties:
@@ -1286,6 +1461,26 @@ components:
       required:
         - cipher
         - degree
+      type: object
+    SetPartitionLabelInput:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/SetPartitionLabelInput.json
+          format: uri
+          readOnly: true
+          type: string
+        label:
+          description: New filesystem label
+          type: string
+        partitionId:
+          description: Unique partition identifier
+          type: string
+      required:
+        - partitionId
+        - label
       type: object
     Settings:
       additionalProperties: false
@@ -2694,19 +2889,354 @@ paths:
       summary: Post API disk by disk ID smart test start
       tags:
         - disk
+  /api/filesystem/check:
+    post:
+      operationId: post-api-filesystem-check
+      parameters:
+        - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckPartitionInput"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckResult"
+          description: OK
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: Post API filesystem check
+      tags:
+        - filesystems
+  /api/filesystem/format:
+    post:
+      operationId: post-api-filesystem-format
+      parameters:
+        - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FormatPartitionInput"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckResult"
+          description: OK
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: Post API filesystem format
+      tags:
+        - filesystems
+  /api/filesystem/label:
+    get:
+      operationId: get-api-filesystem-label
+      parameters:
+        - description: Unique partition identifier
+          explode: false
+          in: query
+          name: partition_id
+          schema:
+            description: Unique partition identifier
+            type: string
+        - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Get-filesystem-labelResponse"
+          description: OK
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: Get API filesystem label
+      tags:
+        - filesystems
+    patch:
+      description: Partial update operation supporting both JSON Merge Patch & JSON Patch updates.
+      operationId: patch-api-filesystem-label
+      parameters:
+        - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
+      requestBody:
+        content:
+          application/json-patch+json:
+            schema:
+              items:
+                $ref: "#/components/schemas/JsonPatchOp"
+              type:
+                - array
+                - "null"
+          application/merge-patch+json:
+            schema:
+              additionalProperties: false
+              properties:
+                $schema:
+                  description: A URL to the JSON Schema for this object.
+                  examples:
+                    - https://example.com/schemas/SetPartitionLabelInput.json
+                  format: uri
+                  readOnly: true
+                  type: string
+                label:
+                  description: New filesystem label
+                  type: string
+                partitionId:
+                  description: Unique partition identifier
+                  type: string
+              type: object
+          application/merge-patch+shorthand:
+            schema:
+              additionalProperties: false
+              properties:
+                $schema:
+                  description: A URL to the JSON Schema for this object.
+                  examples:
+                    - https://example.com/schemas/SetPartitionLabelInput.json
+                  format: uri
+                  readOnly: true
+                  type: string
+                label:
+                  description: New filesystem label
+                  type: string
+                partitionId:
+                  description: Unique partition identifier
+                  type: string
+              type: object
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Put-filesystem-labelResponse"
+          description: OK
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: Patch api-filesystem-label
+      tags:
+        - filesystems
+    put:
+      operationId: put-api-filesystem-label
+      parameters:
+        - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetPartitionLabelInput"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Put-filesystem-labelResponse"
+          description: OK
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: Put API filesystem label
+      tags:
+        - filesystems
+  /api/filesystem/state:
+    get:
+      operationId: get-api-filesystem-state
+      parameters:
+        - description: Unique partition identifier
+          explode: false
+          in: query
+          name: partition_id
+          schema:
+            description: Unique partition identifier
+            type: string
+        - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FilesystemState"
+          description: OK
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: Get API filesystem state
+      tags:
+        - filesystems
   /api/filesystems:
     get:
       operationId: list-api-filesystems
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
             application/json:
               schema:
                 items:
-                  $ref: "#/components/schemas/FilesystemType"
+                  $ref: "#/components/schemas/FilesystemInfo"
                 type:
                   - array
                   - "null"
@@ -2740,7 +3270,7 @@ paths:
               $ref: "#/components/headers/X-Trace-Id"
       summary: List API filesystems
       tags:
-        - system
+        - filesystems
   /api/hdidle/start:
     post:
       operationId: post-api-hdidle-start
@@ -2788,8 +3318,8 @@ paths:
     post:
       operationId: post-api-hdidle-stop
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -3012,8 +3542,8 @@ paths:
     post:
       operationId: generate-issue-report
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
@@ -3334,8 +3864,8 @@ paths:
     get:
       operationId: get-api-samba-status
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -4109,8 +4639,8 @@ paths:
             description: Name of the share to enable
             maxLength: 128
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -4152,8 +4682,8 @@ paths:
     get:
       operationId: list-api-shares
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -4724,8 +5254,8 @@ paths:
             maxLength: 30
             minimum: 1
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "204":
           description: No Content
@@ -4970,8 +5500,8 @@ paths:
     post:
       operationId: post-api-volume-mount
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:

@@ -23,7 +23,11 @@ import {
 	usePostApiVolumeMountMutation,
 } from "../../store/sratApi";
 import { VolumesTreeView, VolumeDetailsPanel, VolumeMountDialog } from "./components";
-import { decodeEscapeSequence } from "./utils";
+import {
+	decodeEscapeSequence,
+	getDiskIdentifier,
+	getPartitionIdentifier,
+} from "./utils";
 import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
 import { useGetServerEventsQuery } from "../../store/sseApi";
 import path from "node:path";
@@ -63,8 +67,8 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 	const handleDiskSelect = (disk: Disk) => {
 		setSelectedDisk(disk);
 		setSelectedPartition(undefined);
-		const diskIdx = disks?.indexOf(disk) || 0;
-		const diskIdentifier = disk.id || `disk-${diskIdx}`;
+		const diskIdx = Math.max(disks?.indexOf(disk) ?? -1, 0);
+		const diskIdentifier = getDiskIdentifier(disk, diskIdx);
 		setSelectedPartitionId(diskIdentifier);
 		// Ensure the disk is expanded and persisted
 		setExpandedDisks((prev) => (prev.includes(diskIdentifier) ? prev : [...prev, diskIdentifier]));
@@ -74,13 +78,15 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 	const handlePartitionSelect = (disk: Disk, partition: Partition) => {
 		setSelectedDisk(disk);
 		setSelectedPartition(partition);
-		const diskIdx = disks?.indexOf(disk) || 0;
-		const partitions = Object.values(disk.partitions || {});
-		const partIdx = partitions.indexOf(partition);
-		const partitionId = partition.id || `${disk.id || `disk-${diskIdx}`}-part-${partIdx}`;
+		const diskIdx = Math.max(disks?.indexOf(disk) ?? -1, 0);
+		const diskIdentifier = getDiskIdentifier(disk, diskIdx);
+		const partitionEntries = Object.entries(disk.partitions || {});
+		const partitionEntry = partitionEntries.find(([, value]) => value === partition);
+		const partitionKey = partitionEntry?.[0];
+		const partIdx = Math.max(partitionEntry ? partitionEntries.indexOf(partitionEntry) : -1, 0);
+		const partitionId = getPartitionIdentifier(diskIdentifier, partition, partitionKey, partIdx);
 		setSelectedPartitionId(partitionId);
 		// Ensure the containing disk is expanded and persisted
-		const diskIdentifier = disk.id || `disk-${diskIdx}`;
 		setExpandedDisks((prev) => {
 			if (prev.includes(diskIdentifier)) return prev;
 			return [...prev, diskIdentifier];
@@ -176,8 +182,8 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 
 		// Try to locate the partition or disk corresponding to selectedPartitionId
 		for (const disk of disks) {
-			const diskIdx = disks.indexOf(disk);
-			const diskIdentifier = disk.id || `disk-${diskIdx}`;
+			const diskIdx = Math.max(disks.indexOf(disk), 0);
+			const diskIdentifier = getDiskIdentifier(disk, diskIdx);
 			if (diskIdentifier === selectedPartitionId) {
 				setSelectedDisk(disk);
 				setSelectedPartition(undefined);
@@ -185,11 +191,16 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 				setExpandedDisks((prev) => (prev.includes(diskIdentifier) ? prev : [...prev, diskIdentifier]));
 				return;
 			}
-			const partitions = Object.values(disk.partitions || {});
-			if (partitions.length === 0) continue;
-			for (const partition of partitions) {
-				const partIdx = partitions.indexOf(partition);
-				const partitionIdentifier = partition.id || `${disk.id || `disk-${diskIdx}`}-part-${partIdx}`;
+		const partitionEntries = Object.entries(disk.partitions || {});
+		if (!partitionEntries || partitionEntries.length === 0) continue;
+		for (let partIdx = 0; partIdx < partitionEntries.length; partIdx++) {
+			const [partitionKey, partition] = partitionEntries[partIdx] as [string, Partition];
+				const partitionIdentifier = getPartitionIdentifier(
+					diskIdentifier,
+					partition,
+					partitionKey,
+					partIdx,
+				);
 				if (partitionIdentifier === selectedPartitionId) {
 					setSelectedDisk(disk);
 					setSelectedPartition(partition);

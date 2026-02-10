@@ -13,7 +13,10 @@ if (!(globalThis as any).localStorage) {
 }
 
 // Helper function to render with Redux Provider and Router
-async function renderWithProviders(element: any) {
+async function renderWithProviders(
+    element: any,
+    options?: { seedStore?: (store: any) => void },
+) {
     const React = await import("react");
     const { render } = await import("@testing-library/react");
     const { BrowserRouter } = await import("react-router-dom");
@@ -21,10 +24,22 @@ async function renderWithProviders(element: any) {
     const { createTestStore } = await import("../../../../../test/setup");
     const store = await createTestStore();
 
-    const providerChildren = React.createElement(BrowserRouter, null, element);
-    return render(
-        React.createElement(Provider, { store, children: providerChildren })
-    );
+    if (options?.seedStore) {
+        options.seedStore(store);
+    }
+
+    const wrapWithProviders = (child: any) =>
+        React.createElement(
+            Provider,
+            { store },
+            React.createElement(BrowserRouter, null, child),
+        );
+
+    const renderResult = render(wrapWithProviders(element));
+    const rerenderWithProviders = (child: any) =>
+        renderResult.rerender(wrapWithProviders(child));
+
+    return { ...renderResult, store, rerenderWithProviders };
 }
 
 describe("VolumeDetailsPanel Component", () => {
@@ -47,6 +62,43 @@ describe("VolumeDetailsPanel Component", () => {
         // Should display a placeholder message
         const placeholder = await screen.findByText(/Select a partition/i);
         expect(placeholder).toBeTruthy();
+    });
+
+    it("keeps hook order when selection appears", async () => {
+        const React = await import("react");
+        const { screen } = await import("@testing-library/react");
+        const { VolumeDetailsPanel } = await import("../VolumeDetailsPanel");
+
+        const { rerenderWithProviders } = await renderWithProviders(
+            React.createElement(VolumeDetailsPanel as any, {}),
+        );
+
+        const mockDisk = {
+            id: "disk-1",
+            name: "sda",
+        };
+
+        const mockPartition = {
+            id: "part-1",
+            name: "sda1",
+            mount_point_data: {
+                "/mnt/data": {
+                    path: "/mnt/data",
+                    fstype: "ext4",
+                    is_mounted: true,
+                },
+            },
+        };
+
+        rerenderWithProviders(
+            React.createElement(VolumeDetailsPanel as any, {
+                disk: mockDisk,
+                partition: mockPartition,
+            }),
+        );
+
+        const header = await screen.findByText("Partition Information");
+        expect(header).toBeTruthy();
     });
 
     it("renders disk and partition details", async () => {
@@ -76,6 +128,165 @@ describe("VolumeDetailsPanel Component", () => {
         );
 
         expect(container).toBeTruthy();
+    });
+
+    it("shows clean filesystem status tooltip with details", async () => {
+        const React = await import("react");
+        const { screen } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { VolumeDetailsPanel } = await import("../VolumeDetailsPanel");
+        const { sratApi, Type } = await import("../../../../store/sratApi");
+
+        const mockDisk = {
+            id: "disk-1",
+            name: "sda",
+        };
+
+        const mockPartition = {
+            id: "part-1",
+            name: "sda1",
+            mount_point_data: {
+                "/mnt/data": {
+                    path: "/mnt/data",
+                    fstype: "ext4",
+                    is_mounted: true,
+                    type: Type.Addon,
+                },
+            },
+        };
+
+        await renderWithProviders(
+            React.createElement(VolumeDetailsPanel as any, {
+                disk: mockDisk,
+                partition: mockPartition,
+            }),
+            {
+                seedStore: (store) => {
+                    store.dispatch(
+                        sratApi.util.upsertQueryData(
+                            "getApiFilesystemState",
+                            { partitionId: "part-1" },
+                            {
+                                isClean: true,
+                                hasErrors: false,
+                                isMounted: true,
+                                stateDescription: "Filesystem is clean",
+                                additionalInfo: {
+                                    "Last check": "2026-02-10",
+                                },
+                            },
+                        ),
+                    );
+                },
+            },
+        );
+
+        const user = userEvent.setup();
+        const fsChip = await screen.findByText(/EXT4 Filesystem/i);
+        await user.hover(fsChip);
+
+        const description = await screen.findByText(/Filesystem is clean/i);
+        expect(description).toBeTruthy();
+
+        const additionalInfo = await screen.findByText(/Last check: 2026-02-10/i);
+        expect(additionalInfo).toBeTruthy();
+    });
+
+    it("shows error filesystem status tooltip", async () => {
+        const React = await import("react");
+        const { screen } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { VolumeDetailsPanel } = await import("../VolumeDetailsPanel");
+        const { sratApi, Type } = await import("../../../../store/sratApi");
+
+        const mockDisk = {
+            id: "disk-1",
+            name: "sda",
+        };
+
+        const mockPartition = {
+            id: "part-1",
+            name: "sda1",
+            mount_point_data: {
+                "/mnt/data": {
+                    path: "/mnt/data",
+                    fstype: "xfs",
+                    is_mounted: false,
+                    type: Type.Addon,
+                },
+            },
+        };
+
+        await renderWithProviders(
+            React.createElement(VolumeDetailsPanel as any, {
+                disk: mockDisk,
+                partition: mockPartition,
+            }),
+            {
+                seedStore: (store) => {
+                    store.dispatch(
+                        sratApi.util.upsertQueryData(
+                            "getApiFilesystemState",
+                            { partitionId: "part-1" },
+                            {
+                                isClean: false,
+                                hasErrors: true,
+                                isMounted: false,
+                                stateDescription: "Filesystem has errors",
+                                additionalInfo: {},
+                            },
+                        ),
+                    );
+                },
+            },
+        );
+
+        const user = userEvent.setup();
+        const fsChip = await screen.findByText(/XFS Filesystem/i);
+        await user.hover(fsChip);
+
+        const description = await screen.findByText(/Filesystem has errors/i);
+        expect(description).toBeTruthy();
+    });
+
+    it("shows no status available tooltip when state missing", async () => {
+        const React = await import("react");
+        const { screen } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { VolumeDetailsPanel } = await import("../VolumeDetailsPanel");
+        const { Type } = await import("../../../../store/sratApi");
+
+        const mockDisk = {
+            id: "disk-1",
+            name: "sda",
+        };
+
+        const mockPartition = {
+            id: "part-1",
+            name: "sda1",
+            mount_point_data: {
+                "/mnt/data": {
+                    path: "/mnt/data",
+                    fstype: "btrfs",
+                    is_mounted: true,
+                    type: Type.Addon,
+                },
+            },
+        };
+
+        await renderWithProviders(
+            React.createElement(VolumeDetailsPanel as any, {
+                disk: mockDisk,
+                partition: mockPartition,
+            }),
+        );
+
+        const user = userEvent.setup();
+        const fsChip = await screen.findByText(/BTRFS Filesystem/i);
+        await user.hover(fsChip);
+
+        const description = await screen.findByText(/No filesystem status available/i);
+        expect(description).toBeTruthy();
     });
 
     it("renders disk icon based on connection bus", async () => {

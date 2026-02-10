@@ -23,7 +23,7 @@ import {
 	useForm,
 } from "react-hook-form-mui";
 import {
-	type FilesystemType,
+	type FilesystemInfo,
 	type MountFlag,
 	type MountPointData,
 	type Partition,
@@ -72,7 +72,9 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 		error: fsError,
 	} = useGetApiFilesystemsQuery(undefined, { skip: !props.open });
 	// Ensure we always have an array to avoid runtime errors when the query is skipped
-	const fsList = (filesystems || []) as FilesystemType[];
+	const fsList = Array.isArray(filesystems)
+		? (filesystems as FilesystemInfo[])
+		: [];
 	const [mounting, setMounting] = useState(false);
 
 	const [unsupported_flags, setUnsupportedFlags] = useState<MountFlag[]>([]); // Array of unsupported flags (string) for display only
@@ -99,13 +101,13 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 					// Check existing flags against supported flags for this FS
 					existingMountData?.flags?.forEach((flag) => {
 						console.log("Checking flag:", flag, fsCurrent.mountFlags);
-						if (!fsCurrent.mountFlags?.find((f) => f.name === flag.name)) {
+						if (!fsCurrent.mountFlags?.find((flagItem) => flagItem.name === flag.name)) {
 							setUnsupportedFlags((prev) => [...prev, flag]);
 						}
 					});
 					existingMountData?.custom_flags?.forEach((flag) => {
 						console.log("Checking custom flag:", flag, fsCurrent.customMountFlags);
-						if (!fsCurrent.customMountFlags?.find((f) => f.name === flag.name)) {
+						if (!fsCurrent.customMountFlags?.find((flagItem) => flagItem.name === flag.name)) {
 							setUnsupportedCustomFlags((prev) => [...prev, flag]);
 						}
 					});
@@ -277,7 +279,7 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 								</Grid>
 								<Grid size={{ xs: 12, sm: 6 }}>
 									{!fsLoading && (fsList.find((fs) => fs.name === watch("fstype"))?.mountFlags || []).length > 0 && (
-										<AutocompleteElement
+										<AutocompleteElement<MountFlag, true, false, false, "div", xMountPointData, "flags">
 											multiple
 											name="flags"
 											label="Mount Flags"
@@ -310,9 +312,7 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 														</Tooltip>
 													</li>
 												),
-												isOptionEqualToValue(option, value) {
-													return option.name === value.name;
-												},
+												isOptionEqualToValue: (option, value) => option.name === value.name,
 												renderTags: (values, getTagProps) =>
 													values.filter((option) => option != null).map((option, index) => {
 														const { key, ...tagProps } = getTagProps({
@@ -343,7 +343,7 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 								</Grid>
 								<Grid size={{ xs: 12, sm: 6 }}>
 									{!fsLoading && ((fsList.find((fs) => fs.name === watch("fstype"))?.customMountFlags || [])).length > 0 && (
-										<AutocompleteElement
+										<AutocompleteElement<MountFlag, true, false, false, "div", xMountPointData, "custom_flags">
 											multiple
 											name="custom_flags"
 											label="FileSystem specific Mount Flags"
@@ -376,9 +376,7 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 														</Tooltip>
 													</li>
 												),
-												isOptionEqualToValue(option, value) {
-													return option.name === value.name;
-												},
+												isOptionEqualToValue: (option, value) => option.name === value.name,
 												renderTags: (values, getTagProps) =>
 													values.filter((option) => option != null).map((option, index) => {
 														const { key, ...tagProps } = getTagProps({

@@ -9,6 +9,9 @@ import SdStorageIcon from "@mui/icons-material/SdStorage";
 import EjectIcon from "@mui/icons-material/Eject";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import SettingsIcon from "@mui/icons-material/Settings";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import {
     Box,
     Card,
@@ -21,17 +24,17 @@ import {
     Paper,
     Stack,
     Typography,
+    Tooltip,
 } from "@mui/material";
 import { filesize } from "filesize";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { PreviewDialog } from "../../../components/PreviewDialog";
 import { SmartStatusPanel } from "./SmartStatusPanel";
 import { HDIdleDiskSettings } from "./HDIdleDiskSettings";
 import { type LocationState, TabIDs } from "../../../store/locationState";
-import { type Disk, type Partition, type SharedResource, Usage, Time_machine_support } from "../../../store/sratApi";
+import { type Disk, type FilesystemState, type Partition, type SharedResource, Usage, Time_machine_support, useGetApiFilesystemStateQuery } from "../../../store/sratApi";
 import { decodeEscapeSequence } from "../utils";
-import { useForm } from "react-hook-form-mui";
 
 interface VolumeDetailsPanelProps {
     disk?: Disk;
@@ -70,25 +73,6 @@ export function VolumeDetailsPanel({
         }
     };
 
-    // When nothing is selected, show placeholder
-    if (!disk && !partition) {
-        return (
-            <Box
-                sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    height: "100%",
-                    color: "text.secondary",
-                }}
-            >
-                <Typography variant="h6">
-                    Select a partition from the tree to view details
-                </Typography>
-            </Box>
-        );
-    }
-
     // Helper function to render disk icon
     const renderDiskIcon = (disk: Disk) => {
         switch (disk.connection_bus?.toLowerCase()) {
@@ -108,6 +92,95 @@ export function VolumeDetailsPanel({
     const mountData = mpds[0];
     //const allShares = mpds.flatMap((mpd) => mpd.shares).filter(Boolean) || [];
     const isMounted = mpds.some((mpd) => mpd.is_mounted);
+    const partitionId = partition?.id;
+    const {
+        data: filesystemStateResponse,
+        isLoading: filesystemStateLoading,
+        isError: filesystemStateError,
+    } = useGetApiFilesystemStateQuery(
+        { partitionId },
+        { skip: !partitionId },
+    );
+
+    const filesystemState = useMemo<FilesystemState | null>(() => {
+        if (!filesystemStateResponse || filesystemStateError) {
+            return null;
+        }
+        if ("hasErrors" in filesystemStateResponse) {
+            return filesystemStateResponse;
+        }
+        return null;
+    }, [filesystemStateError, filesystemStateResponse]);
+
+    const filesystemStatus = useMemo(() => {
+        if (!filesystemState) {
+            return "no_status" as const;
+        }
+        if (filesystemState.hasErrors) {
+            return "has_error" as const;
+        }
+        if (filesystemState.isClean) {
+            return "clean" as const;
+        }
+        return "no_status" as const;
+    }, [filesystemState]);
+
+    const filesystemStatusIcon = useMemo(() => {
+        if (filesystemStatus === "clean") {
+            return <CheckCircleOutlineIcon color="success" fontSize="small" />;
+        }
+        if (filesystemStatus === "has_error") {
+            return <ErrorOutlineIcon color="error" fontSize="small" />;
+        }
+        return <HelpOutlineIcon color="disabled" fontSize="small" />;
+    }, [filesystemStatus]);
+
+    const filesystemStatusTooltip = useMemo(() => {
+        if (filesystemStateLoading) {
+            return "Loading filesystem status...";
+        }
+        if (!filesystemState) {
+            return "No filesystem status available";
+        }
+        const description = filesystemState.stateDescription || "Filesystem status";
+        const additionalInfoEntries = Object.entries(
+            filesystemState.additionalInfo || {},
+        );
+        if (additionalInfoEntries.length === 0) {
+            return description;
+        }
+        return (
+            <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                    {description}
+                </Typography>
+                {additionalInfoEntries.map(([key, value]) => (
+                    <Typography key={key} variant="body2">
+                        {key}: {typeof value === "string" ? value : JSON.stringify(value)}
+                    </Typography>
+                ))}
+            </Box>
+        );
+    }, [filesystemState, filesystemStateLoading]);
+
+    // When nothing is selected, show placeholder
+    if (!disk && !partition) {
+        return (
+            <Box
+                sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    height: "100%",
+                    color: "text.secondary",
+                }}
+            >
+                <Typography variant="h6">
+                    Select a partition from the tree to view details
+                </Typography>
+            </Box>
+        );
+    }
 
     return (
         <Box sx={{ height: "100%", overflow: "auto", p: 2 }}>
@@ -287,7 +360,7 @@ export function VolumeDetailsPanel({
                                                 {mountData?.fstype ?? partition.fs_type}
                                             </Typography>
                                         </Grid>
-                                        
+
                                         {/* Filesystem Status Information */}
                                         <Grid size={{ xs: 12 }}>
                                             <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
@@ -309,13 +382,17 @@ export function VolumeDetailsPanel({
                                                         size="small"
                                                     />
                                                 )}
-                                                {mountData?.fstype && (
-                                                    <Chip
-                                                        label={`${mountData.fstype.toUpperCase()} Filesystem`}
-                                                        variant="outlined"
-                                                        size="small"
-                                                    />
+                                                {(mountData?.fstype || partition.fs_type) && (
+                                                    <Tooltip title={filesystemStatusTooltip} arrow>
+                                                        <Chip
+                                                            label={`${(mountData?.fstype ?? partition.fs_type)?.toUpperCase()} Filesystem`}
+                                                            variant="outlined"
+                                                            size="small"
+                                                            icon={filesystemStatusIcon}
+                                                        />
+                                                    </Tooltip>
                                                 )}
+
                                             </Stack>
                                         </Grid>
                                     </>
