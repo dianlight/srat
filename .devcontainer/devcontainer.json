@@ -104,8 +104,7 @@
 				"DavidAnson.vscode-markdownlint",
 				"neonxp.gotools",
 				"svvashishtha.go-interface-navigator",
-				"YoavBls.pretty-ts-errors",
-				"DSKWRK.vscode-generate-getter-setter"
+				"YoavBls.pretty-ts-errors"
 			],
 			"mcp": {
 				"servers": {
