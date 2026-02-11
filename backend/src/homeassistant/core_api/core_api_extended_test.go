@@ -14,8 +14,8 @@ import (
 )
 
 func TestEntityState_AllFields(t *testing.T) {
-	attrs := map[string]interface{}{"friendly_name": "Test Entity", "unit": "°C"}
-	ctx := map[string]interface{}{"id": "123", "user_id": "456"}
+	attrs := map[string]any{"friendly_name": "Test Entity", "unit": "°C"}
+	ctx := map[string]any{"id": "123", "user_id": "456"}
 	domain := "sensor"
 	entityID := "sensor.temperature"
 	name := "Temperature"
@@ -196,10 +196,10 @@ func TestServiceData_MarshalJSON(t *testing.T) {
 }
 
 func TestServiceResult_Fields(t *testing.T) {
-	ctx := map[string]interface{}{"id": "abc"}
+	ctx := map[string]any{"id": "abc"}
 	domain := "notify"
 	service := "persistent_notification"
-	serviceData := map[string]interface{}{"message": "test"}
+	serviceData := map[string]any{"message": "test"}
 
 	result := ServiceResult{
 		Context:     &ctx,

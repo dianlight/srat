@@ -13,7 +13,7 @@ import (
 )
 
 func TestActionResult_Fields(t *testing.T) {
-	data := map[string]interface{}{"reboot": "scheduled"}
+	data := map[string]any{"reboot": "scheduled"}
 
 	action := ActionResult{
 		Data:   &data,

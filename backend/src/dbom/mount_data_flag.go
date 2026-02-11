@@ -14,7 +14,7 @@ type MounDataFlag struct {
 
 type MounDataFlags []MounDataFlag
 
-func (self *MounDataFlags) Scan(value interface{}) error {
+func (self *MounDataFlags) Scan(value any) error {
 	if value == nil {
 		return nil
 	}

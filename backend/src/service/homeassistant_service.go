@@ -99,7 +99,7 @@ func (s *HomeAssistantService) SendSambaStatusEntity(status *dto.SambaStatus) er
 	entityId := "sensor.srat_samba_status"
 
 	// Prepare attributes
-	attributes := map[string]interface{}{
+	attributes := map[string]any{
 		"icon":          "mdi:folder-network",
 		"friendly_name": "SRAT Samba Status",
 		"device_class":  "connectivity",
@@ -149,7 +149,7 @@ func (s *HomeAssistantService) SendSambaProcessStatusEntity(status *dto.ServerPr
 	entityId := "sensor.srat_samba_process_status"
 
 	// Prepare attributes
-	attributes := map[string]interface{}{
+	attributes := map[string]any{
 		"icon":          "mdi:cog",
 		"friendly_name": "SRAT Samba Process Status",
 		"device_class":  "running",
@@ -234,7 +234,7 @@ func (s *HomeAssistantService) SendVolumeStatusEntity(data *[]*dto.Disk) error {
 		}
 	}
 
-	attributes := map[string]interface{}{
+	attributes := map[string]any{
 		"icon":               "mdi:harddisk",
 		"friendly_name":      "SRAT Volume Status",
 		"total_disks":        totalDisks,
@@ -271,7 +271,7 @@ func (s *HomeAssistantService) sendDiskEntity(disk dto.Disk) error {
 
 	entityId := fmt.Sprintf("sensor.srat_disk_%s", sanitizeEntityId(*disk.Id))
 
-	attributes := map[string]interface{}{
+	attributes := map[string]any{
 		"icon":          "mdi:harddisk",
 		"friendly_name": fmt.Sprintf("SRAT Disk %s", getStringOrDefault(disk.Id, "unknown")),
 	}
@@ -336,7 +336,7 @@ func (s *HomeAssistantService) sendPartitionEntity(partition dto.Partition, disk
 	diskName := getStringOrDefault(disk.Id, "unknown")
 	partitionName := getStringOrDefault(partition.Name, getStringOrDefault(partition.Id, "unknown"))
 
-	attributes := map[string]interface{}{
+	attributes := map[string]any{
 		"icon":          "mdi:folder",
 		"friendly_name": fmt.Sprintf("SRAT Partition %s", partitionName),
 		"disk_id":       diskName,
@@ -441,7 +441,7 @@ func (s *HomeAssistantService) SendDiskHealthEntities(diskHealth *dto.DiskHealth
 func (s *HomeAssistantService) sendGlobalDiskHealthEntity(diskHealth *dto.DiskHealth) error {
 	entityId := "sensor.srat_global_disk_health"
 
-	attributes := map[string]interface{}{
+	attributes := map[string]any{
 		"icon":                "mdi:harddisk-plus",
 		"friendly_name":       "SRAT Global Disk Health",
 		"device_class":        "frequency",
@@ -476,7 +476,7 @@ func (s *HomeAssistantService) sendGlobalDiskHealthEntity(diskHealth *dto.DiskHe
 func (s *HomeAssistantService) sendDiskIOEntity(diskIO dto.DiskIOStats) error {
 	entityId := fmt.Sprintf("sensor.srat_disk_io_%s", sanitizeEntityId(diskIO.DeviceName))
 
-	attributes := map[string]interface{}{
+	attributes := map[string]any{
 		"icon":                "mdi:chart-line",
 		"friendly_name":       fmt.Sprintf("SRAT Disk I/O %s", diskIO.DeviceName),
 		"device_class":        "frequency",
@@ -527,7 +527,7 @@ func (s *HomeAssistantService) sendPartitionHealthEntity(diskName string, partit
 	deviceSanitized := sanitizeEntityId(partition.Device)
 	entityId := fmt.Sprintf("sensor.srat_partition_health_%s", deviceSanitized)
 
-	attributes := map[string]interface{}{
+	attributes := map[string]any{
 		"icon":                "mdi:folder-information",
 		"friendly_name":       fmt.Sprintf("SRAT Partition Health %s", partition.Device),
 		"device_class":        "data_size",

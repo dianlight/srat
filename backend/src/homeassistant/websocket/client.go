@@ -18,10 +18,10 @@ import (
 type ClientInterface interface {
 	Connect(ctx context.Context) error
 	Send(messageType int, data []byte) error
-	CallService(ctx context.Context, domain, service string, serviceData map[string]interface{}) error
-	GetStates(ctx context.Context) ([]map[string]interface{}, error)
+	CallService(ctx context.Context, domain, service string, serviceData map[string]any) error
+	GetStates(ctx context.Context) ([]map[string]any, error)
 	SubscribeEvents(ctx context.Context, eventType string, handler func(json.RawMessage)) (func() error, error)
-	GetConfig(ctx context.Context) (map[string]interface{}, error)
+	GetConfig(ctx context.Context) (map[string]any, error)
 	Receive() <-chan []byte
 	Close() error
 	SubscribeConnectionEvents(handler func(ConnectionEvent)) (func(), error)
@@ -223,7 +223,7 @@ func (c *Client) connectLoop(ctx context.Context, connectedCh chan<- struct{}) {
 
 			if needAuth {
 				// send auth payload. If supervisorToken available, use it as access_token
-				authPayload := map[string]interface{}{"type": "auth"}
+				authPayload := map[string]any{"type": "auth"}
 				if c.supervisorToken != "" {
 					authPayload["access_token"] = c.supervisorToken
 				}
@@ -343,7 +343,7 @@ func (c *Client) Send(messageType int, data []byte) error {
 }
 
 // writeJSON writes v as JSON to the websocket connection.
-func (c *Client) writeJSON(v interface{}) error {
+func (c *Client) writeJSON(v any) error {
 	c.connMu.RLock()
 	defer c.connMu.RUnlock()
 	if c.conn == nil {
@@ -354,7 +354,7 @@ func (c *Client) writeJSON(v interface{}) error {
 }
 
 // doRequest sends a request and waits for the response (by id) or context done.
-func (c *Client) doRequest(ctx context.Context, payload map[string]interface{}) (json.RawMessage, error) {
+func (c *Client) doRequest(ctx context.Context, payload map[string]any) (json.RawMessage, error) {
 	// allocate id
 	c.idMu.Lock()
 	c.nextID++
@@ -390,8 +390,8 @@ func (c *Client) doRequest(ctx context.Context, payload map[string]interface{}) 
 }
 
 // CallService calls a service on Home Assistant. It waits for a result and returns an error when the call failed.
-func (c *Client) CallService(ctx context.Context, domain, service string, serviceData map[string]interface{}) error {
-	payload := map[string]interface{}{
+func (c *Client) CallService(ctx context.Context, domain, service string, serviceData map[string]any) error {
+	payload := map[string]any{
 		"type":         "call_service",
 		"domain":       domain,
 		"service":      service,
@@ -417,15 +417,15 @@ func (c *Client) CallService(ctx context.Context, domain, service string, servic
 }
 
 // GetStates requests all entity states and returns raw JSON-decoded slice.
-func (c *Client) GetStates(ctx context.Context) ([]map[string]interface{}, error) {
-	payload := map[string]interface{}{"type": "get_states"}
+func (c *Client) GetStates(ctx context.Context) ([]map[string]any, error) {
+	payload := map[string]any{"type": "get_states"}
 	resp, err := c.doRequest(ctx, payload)
 	if err != nil {
 		return nil, err
 	}
 	var r struct {
 		Success bool                     `json:"success"`
-		Result  []map[string]interface{} `json:"result"`
+		Result  []map[string]any `json:"result"`
 	}
 	if err := json.Unmarshal(resp, &r); err != nil {
 		return nil, err
@@ -437,15 +437,15 @@ func (c *Client) GetStates(ctx context.Context) ([]map[string]interface{}, error
 }
 
 // GetConfig requests Home Assistant config.
-func (c *Client) GetConfig(ctx context.Context) (map[string]interface{}, error) {
-	payload := map[string]interface{}{"type": "get_config"}
+func (c *Client) GetConfig(ctx context.Context) (map[string]any, error) {
+	payload := map[string]any{"type": "get_config"}
 	resp, err := c.doRequest(ctx, payload)
 	if err != nil {
 		return nil, err
 	}
 	var r struct {
 		Success bool                   `json:"success"`
-		Result  map[string]interface{} `json:"result"`
+		Result  map[string]any `json:"result"`
 	}
 	if err := json.Unmarshal(resp, &r); err != nil {
 		return nil, err
@@ -459,7 +459,7 @@ func (c *Client) GetConfig(ctx context.Context) (map[string]interface{}, error) 
 // SubscribeEvents subscribes to events of the given type (e.g. "state_changed").
 // The handler will be invoked for each event. The returned function unsubscribes.
 func (c *Client) SubscribeEvents(ctx context.Context, eventType string, handler func(json.RawMessage)) (func() error, error) {
-	payload := map[string]interface{}{"type": "subscribe_events", "event_type": eventType}
+	payload := map[string]any{"type": "subscribe_events", "event_type": eventType}
 
 	// allocate id and store handler after successful subscribe
 	c.idMu.Lock()
@@ -506,7 +506,7 @@ func (c *Client) SubscribeEvents(ctx context.Context, eventType string, handler 
 			delete(c.subs, id)
 			c.subsMu.Unlock()
 			// send unsubscribe request
-			payload := map[string]interface{}{"type": "unsubscribe_events", "id": id}
+			payload := map[string]any{"type": "unsubscribe_events", "id": id}
 			// best-effort
 			_ = c.writeJSON(payload)
 			return nil

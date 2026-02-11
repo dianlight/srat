@@ -8,7 +8,7 @@ import (
 
 type Property struct {
 	Key       string      `gorm:"primaryKey"`
-	Value     interface{} `gorm:"serializer:json"`
+	Value     any `gorm:"serializer:json"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt gorm.DeletedAt `gorm:"index"`
@@ -24,7 +24,7 @@ func (self *Properties) Get(key string) (*Property, error) {
 	return &prop, nil
 }
 
-func (self *Properties) GetValue(key string) (interface{}, error) {
+func (self *Properties) GetValue(key string) (any, error) {
 	prop, err := self.Get(key)
 	if err != nil {
 		return nil, err

@@ -838,7 +838,7 @@ func (self *VolumeService) processMountInfos(mountInfos []*procfs.MountInfo) {
 func (self *VolumeService) getVolumesData() errors.E {
 	tlog.TraceContext(self.ctx, "Requesting GetVolumesData via singleflight...")
 
-	_, err, _ := self.sfGroup.Do("GetVolumesData", func() (interface{}, error) {
+	_, err, _ := self.sfGroup.Do("GetVolumesData", func() (any, error) {
 		// Mark that a refresh cycle is in progress to avoid recursive event-triggered refreshes
 		//	self.refreshing.Store(true)
 		//	defer self.refreshing.Store(false)

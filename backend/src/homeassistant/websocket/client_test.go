@@ -32,7 +32,7 @@ func startTestServer(t *testing.T) *httptest.Server {
 			}
 			t.Log("<--" + string(msg))
 			// parse incoming JSON
-			var m map[string]interface{}
+			var m map[string]any
 			if err := json.Unmarshal(msg, &m); err != nil {
 				// not JSON, echo back
 				_ = c.WriteMessage(gorilla.TextMessage, msg)
@@ -49,33 +49,33 @@ func startTestServer(t *testing.T) *httptest.Server {
 
 			switch typ {
 			case "get_states":
-				resp := map[string]interface{}{"id": id, "type": "result", "success": true, "result": []map[string]interface{}{{"entity_id": "light.test", "state": "on"}}}
+				resp := map[string]any{"id": id, "type": "result", "success": true, "result": []map[string]any{{"entity_id": "light.test", "state": "on"}}}
 				t.Logf("<-- %s", string(msg))
 				_ = c.WriteJSON(resp)
 			case "get_config":
-				resp := map[string]interface{}{"id": id, "type": "result", "success": true, "result": map[string]interface{}{"version": "test"}}
+				resp := map[string]any{"id": id, "type": "result", "success": true, "result": map[string]any{"version": "test"}}
 				t.Logf("<-- %s", string(msg))
 				_ = c.WriteJSON(resp)
 			case "call_service":
-				resp := map[string]interface{}{"id": id, "type": "result", "success": true, "result": nil}
+				resp := map[string]any{"id": id, "type": "result", "success": true, "result": nil}
 				t.Logf("<-- %s", string(msg))
 				_ = c.WriteJSON(resp)
 			case "subscribe_events":
 				// send subscribe success
-				resp := map[string]interface{}{"id": id, "type": "result", "success": true, "result": nil}
+				resp := map[string]any{"id": id, "type": "result", "success": true, "result": nil}
 				t.Logf("<-- %s", string(msg))
 				_ = c.WriteJSON(resp)
 				// then periodically send an event
 				go func() {
 					time.Sleep(50 * time.Millisecond)
-					ev := map[string]interface{}{"type": "event", "event": map[string]interface{}{"event_type": m["event_type"], "data": map[string]interface{}{"hello": "world"}}}
+					ev := map[string]any{"type": "event", "event": map[string]any{"event_type": m["event_type"], "data": map[string]any{"hello": "world"}}}
 					t.Logf("<-- %s", string(msg))
 					_ = c.WriteJSON(ev)
 				}()
 			default:
 				// unknown - send generic result if id present
 				if idf != nil {
-					resp := map[string]interface{}{"id": id, "type": "result", "success": true, "result": nil}
+					resp := map[string]any{"id": id, "type": "result", "success": true, "result": nil}
 					t.Logf("<-- %s", string(msg))
 					_ = c.WriteJSON(resp)
 				}
@@ -160,7 +160,7 @@ func TestHelpers_CallGetAndSubscribe(t *testing.T) {
 	require.Equal(t, "test", cfg["version"])
 
 	// CallService
-	err = c.CallService(ctx, "light", "turn_on", map[string]interface{}{"entity_id": "light.test"})
+	err = c.CallService(ctx, "light", "turn_on", map[string]any{"entity_id": "light.test"})
 	require.NoError(t, err)
 
 	// SubscribeEvents
@@ -174,7 +174,7 @@ func TestHelpers_CallGetAndSubscribe(t *testing.T) {
 	select {
 	case ev := <-got:
 		// ensure event contains data
-		var m map[string]interface{}
+		var m map[string]any
 		require.NoError(t, json.Unmarshal(ev, &m))
 		require.Equal(t, "state_changed", m["event_type"])
 	case <-time.After(1 * time.Second):

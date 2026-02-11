@@ -21,7 +21,7 @@ import (
 // Returns:
 //   - []byte: The rendered template as a byte slice.
 //   - error: An error if the file cannot be read or if there's an issue during rendering.
-func RenderTemplateFile(config *map[string]interface{}, file string) ([]byte, error) {
+func RenderTemplateFile(config *map[string]any, file string) ([]byte, error) {
 	// read Template
 	templateFile, err := os.ReadFile(file)
 	if err != nil {
@@ -101,7 +101,7 @@ func cleanAscii(input string) string {
 // Returns:
 //   - []byte: The rendered template as a byte slice.
 //   - error: An error if there's an issue during template parsing or rendering.
-func RenderTemplateBuffer(config *map[string]interface{}, templateData []byte) ([]byte, errors.E) {
+func RenderTemplateBuffer(config *map[string]any, templateData []byte) ([]byte, errors.E) {
 	buf := &bytes.Buffer{}
 
 	// generate template with custom functions

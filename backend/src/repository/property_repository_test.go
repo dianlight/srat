@@ -98,7 +98,7 @@ func TestPropertyRepository_DifferentValueTypes(t *testing.T) {
 	tests := []struct {
 		name  string
 		key   string
-		value interface{}
+		value any
 	}{
 		{"string", "key_string", "string_value"},
 		{"int", "key_int", 42},
