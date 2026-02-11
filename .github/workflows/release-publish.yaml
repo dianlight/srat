@@ -1,0 +1,196 @@
+name: Release Publish
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  process-release:
+    runs-on: ubuntu-latest
+    # Don't run this on pre-releases, only on full releases
+    if: github.event.release.prerelease == false
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Get release information
+        id: release_info
+        run: |
+          echo "tag_name=${{ github.event.release.tag_name }}" >> "$GITHUB_OUTPUT"
+          echo "release_id=${{ github.event.release.id }}" >> "$GITHUB_OUTPUT"
+          echo "is_prerelease=${{ github.event.release.prerelease }}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify release assets exist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          echo "Checking release assets for ${{ steps.release_info.outputs.tag_name }}..."
+
+          # Get list of assets from the release
+          ASSETS=$(gh api repos/${{ github.repository }}/releases/${{ steps.release_info.outputs.release_id }}/assets --jq '.[].name')
+
+          if [ -z "$ASSETS" ]; then
+            echo "ERROR: No assets found in release"
+            exit 1
+          fi
+
+          echo "Found assets:"
+          echo "$ASSETS"
+
+          # Check for expected zip files (at least two architectures: amd64 and arm64)
+          ASSET_COUNT=$(echo "$ASSETS" | wc -l)
+          if [ "$ASSET_COUNT" -lt 2 ]; then
+            echo "ERROR: Expected at least 2 assets, found $ASSET_COUNT"
+            exit 1
+          fi
+
+          echo "✓ Release has $ASSET_COUNT assets"
+
+      - name: Update CHANGELOG.md with release version
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.release_info.outputs.tag_name }}"
+
+          # Check if CHANGELOG.md exists
+          if [[ ! -f "CHANGELOG.md" ]]; then
+            echo "CHANGELOG.md not found, skipping update"
+            exit 0
+          fi
+
+          # Create a temporary file
+          TEMP_FILE=$(mktemp)
+
+          # Read the CHANGELOG and replace the Unreleased section with version
+          awk -v version="$VERSION" '
+          BEGIN { found = 0 }
+          {
+            # If we find the Unreleased header and havent processed it yet
+            if (!found && /^## \[ 🚧 Unreleased \]/) {
+              found = 1
+              # Replace with the version header
+              print "## " version
+              next
+            }
+            print $0
+          }
+          ' CHANGELOG.md > "$TEMP_FILE"
+
+          # Replace the original file
+          mv "$TEMP_FILE" CHANGELOG.md
+
+          echo "CHANGELOG.md updated with version $VERSION"
+
+      - name: Commit CHANGELOG update
+        id: commit_changelog
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          if git diff --staged --quiet; then
+            echo "No changes to CHANGELOG.md"
+            echo "changelog_updated=false" >> "$GITHUB_OUTPUT"
+          else
+            git commit -m "chore: update CHANGELOG.md for release ${{ steps.release_info.outputs.tag_name }}"
+            git push origin main
+            echo "changelog_updated=true" >> "$GITHUB_OUTPUT"
+            # Get the commit SHA
+            COMMIT_SHA=$(git rev-parse HEAD)
+            echo "commit_sha=$COMMIT_SHA" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Move release tag to CHANGELOG commit
+        if: steps.commit_changelog.outputs.changelog_updated == 'true'
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const tagName = '${{ steps.release_info.outputs.tag_name }}';
+            const commitSha = '${{ steps.commit_changelog.outputs.commit_sha }}';
+
+            console.log(`Moving tag ${tagName} to commit ${commitSha}`);
+
+            try {
+              await github.rest.git.updateRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `tags/${tagName}`,
+                sha: commitSha,
+                force: true
+              });
+              console.log(`✓ Tag ${tagName} moved to ${commitSha}`);
+            } catch (error) {
+              console.error(`Failed to move tag: ${error.message}`);
+              throw error;
+            }
+
+      - name: Checkout updated main branch
+        if: steps.commit_changelog.outputs.changelog_updated == 'true'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Prepend new Unreleased section to CHANGELOG.md
+        if: steps.commit_changelog.outputs.changelog_updated == 'true'
+        run: |
+          set -euo pipefail
+
+          # Check if CHANGELOG.md exists
+          if [[ ! -f "CHANGELOG.md" ]]; then
+            echo "CHANGELOG.md not found, skipping update"
+            exit 0
+          fi
+
+          # Create a temporary file
+          TEMP_FILE=$(mktemp)
+
+          # Read the CHANGELOG and prepend new Unreleased section at the top
+          awk '
+          BEGIN { header_found = 0 }
+          {
+            # Print the DOCTOC SKIP comment and title as-is
+            if (NR <= 4 && /^(<!--.*-->|# Changelog|)$/) {
+              print $0
+              next
+            }
+            # After the header, insert the new Unreleased section
+            if (!header_found && NR > 4) {
+              header_found = 1
+              print ""
+              print "## [ 🚧 Unreleased ]"
+              print ""
+              print "### ✨ Features"
+              print ""
+              print "### 🐛 Bug Fixes"
+              print ""
+              print "### 🏗 Chore"
+              print ""
+            }
+            print $0
+          }
+          ' CHANGELOG.md > "$TEMP_FILE"
+
+          # Replace the original file
+          mv "$TEMP_FILE" CHANGELOG.md
+
+          echo "New Unreleased section prepended to CHANGELOG.md"
+
+      - name: Commit and push new Unreleased section
+        if: steps.commit_changelog.outputs.changelog_updated == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          if git diff --staged --quiet; then
+            echo "No changes to CHANGELOG.md"
+          else
+            git commit -m "chore: add new Unreleased section to CHANGELOG.md"
+            git push origin main
+          fi
