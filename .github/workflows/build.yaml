@@ -144,60 +144,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Update CHANGELOG.md for release
-        if: |
-          github.event_name == 'release' &&
-          github.event.action == 'published' &&
-          !contains(steps.calculate_version.outputs.version, '-dev')
-        run: |
-          set -euo pipefail
-          VERSION="${{ steps.calculate_version.outputs.version }}"
-          
-          # Check if CHANGELOG.md exists
-          if [[ ! -f "CHANGELOG.md" ]]; then
-            echo "CHANGELOG.md not found, skipping update"
-            exit 0
-          fi
-          
-          # Create a temporary file
-          TEMP_FILE=$(mktemp)
-          
-          # Read the CHANGELOG and replace the Unreleased section with the version
-          awk -v version="$VERSION" '
-          BEGIN { found = 0 }
-          {
-            # If we find the Unreleased header and havent processed it yet
-            if (!found && /^## \[ 🚧 Unreleased \]/) {
-              found = 1
-              # Replace with the version header
-              print "## " version
-              next
-            }
-            print $0
-          }
-          ' CHANGELOG.md > "$TEMP_FILE"
-          
-          # Replace the original file
-          mv "$TEMP_FILE" CHANGELOG.md
-          
-          echo "CHANGELOG.md updated with version $VERSION"
-
-      - name: Commit and push CHANGELOG.md
-        if: |
-          github.event_name == 'release' &&
-          github.event.action == 'published' &&
-          !contains(steps.calculate_version.outputs.version, '-dev')
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add CHANGELOG.md
-          if git diff --staged --quiet; then
-            echo "No changes to CHANGELOG.md"
-          else
-            git commit -m "chore: update CHANGELOG.md for release ${{ steps.calculate_version.outputs.version }}"
-            git push origin HEAD:main
-          fi
-
   test-backend:
     name: Test Backend
     runs-on: ubuntu-latest
@@ -576,6 +522,45 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Checkout repository for CHANGELOG extraction
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Extract Unreleased section from CHANGELOG
+        id: extract_changelog
+        run: |
+          set -euo pipefail
+
+          # Check if CHANGELOG.md exists
+          if [[ ! -f "CHANGELOG.md" ]]; then
+            echo "CHANGELOG.md not found, skipping extraction"
+            echo "changelog_content=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Extract content between "## [ 🚧 Unreleased ]" and next "##"
+          # Using awk to extract the section
+          CHANGELOG_CONTENT=$(awk '
+            BEGIN { in_unreleased = 0; content = "" }
+            /^## \[ 🚧 Unreleased \]/ { in_unreleased = 1; next }
+            /^## / && in_unreleased { exit }
+            in_unreleased {
+              if (content != "") content = content "\n"
+              content = content $0
+            }
+            END { print content }
+          ' CHANGELOG.md)
+
+          # Save to output using multiline string
+          {
+            echo "changelog_content<<EOF"
+            echo "## What's Changed"
+            echo ""
+            echo "$CHANGELOG_CONTENT"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         id: download_art
         with:
@@ -590,79 +575,6 @@ jobs:
           # Create a draft and pre-release for pushes to main, but a full release for 'release' events.
           draft: ${{ github.event_name != 'release' }}
           prerelease: ${{ github.event_name != 'release' || github.event.release.prerelease }}
+          body: ${{ steps.extract_changelog.outputs.changelog_content }}
           generate_release_notes: true
           files: ${{ steps.download_art.outputs.download-path }}/*
-
-      - name: Checkout repository for CHANGELOG update
-        if: |
-          github.event_name == 'release' &&
-          github.event.action == 'published' &&
-          !contains(needs.setversion.outputs.version, '-dev')
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          ref: main
-          fetch-depth: 1
-
-      - name: Prepend new Unreleased section to CHANGELOG.md
-        if: |
-          github.event_name == 'release' &&
-          github.event.action == 'published' &&
-          !contains(needs.setversion.outputs.version, '-dev')
-        run: |
-          set -euo pipefail
-          
-          # Check if CHANGELOG.md exists
-          if [[ ! -f "CHANGELOG.md" ]]; then
-            echo "CHANGELOG.md not found, skipping update"
-            exit 0
-          fi
-          
-          # Create a temporary file
-          TEMP_FILE=$(mktemp)
-          
-          # Read the CHANGELOG and prepend new Unreleased section at the top
-          awk '
-          BEGIN { header_found = 0 }
-          {
-            # Print the DOCTOC SKIP comment and title as-is
-            if (NR <= 4 && /^(<!--.*-->|# Changelog|)$/) {
-              print $0
-              next
-            }
-            # After the header, insert the new Unreleased section
-            if (!header_found && NR > 4) {
-              header_found = 1
-              print ""
-              print "## [ 🚧 Unreleased ]"
-              print ""
-              print "### ✨ Features"
-              print ""
-              print "### 🐛 Bug Fixes"
-              print ""
-              print "### 🏗 Chore"
-              print ""
-            }
-            print $0
-          }
-          ' CHANGELOG.md > "$TEMP_FILE"
-          
-          # Replace the original file
-          mv "$TEMP_FILE" CHANGELOG.md
-          
-          echo "New Unreleased section prepended to CHANGELOG.md"
-
-      - name: Commit and push new Unreleased section
-        if: |
-          github.event_name == 'release' &&
-          github.event.action == 'published' &&
-          !contains(needs.setversion.outputs.version, '-dev')
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add CHANGELOG.md
-          if git diff --staged --quiet; then
-            echo "No changes to CHANGELOG.md"
-          else
-            git commit -m "chore: add new Unreleased section to CHANGELOG.md"
-            git push origin main
-          fi
