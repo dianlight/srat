@@ -1,6 +1,7 @@
 package dbom
 
 import (
+	"log/slog"
 	"time"
 
 	"gorm.io/gorm"
@@ -38,16 +39,10 @@ func (self *Properties) Populate(props []Property) {
 	}
 }
 
-/*
-func (self *Properties) AddInternalValue(key string, value any) error {
-	prop, err := self.Get(key)
-	if err != nil {
-		prop = &Property{Key: key}
+func (self *Property) BeforeSave(tx *gorm.DB) (err error) {
+	if self.Key == "HASmbPassword" && self.Value == "\"\"" {
+		slog.Error("Try to save HASmbPassword with empty value, skipping to prevent potential issues with SMB authentication. This may indicate a problem with the SMB password retrieval process.")
+		return gorm.ErrInvalidData
 	}
-
-	prop.Value = value
-	prop.Internal = true
-	(*self)[key] = *prop
 	return nil
 }
-*/
