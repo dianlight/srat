@@ -180,11 +180,9 @@ func NewVolumeService(
 			if err != nil {
 				return err
 			}
-			p.ctx.Value("wg").(*sync.WaitGroup).Add(1)
-			go func() {
-				defer p.ctx.Value("wg").(*sync.WaitGroup).Done()
+			p.ctx.Value("wg").(*sync.WaitGroup).Go(func() {
 				p.udevEventHandler()
-			}()
+			})
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {

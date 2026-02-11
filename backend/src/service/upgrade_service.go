@@ -90,22 +90,18 @@ func NewUpgradeService(lc fx.Lifecycle, in UpgradeServiceProps) (UpgradeServiceI
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			if p.state.UpdateChannel != dto.UpdateChannels.NONE {
-				p.ctx.Value("wg").(*sync.WaitGroup).Add(1)
-				go func() {
-					defer p.ctx.Value("wg").(*sync.WaitGroup).Done()
+				p.ctx.Value("wg").(*sync.WaitGroup).Go(func() {
 					err := p.updater()
 					if err != nil {
 						slog.ErrorContext(p.ctx, "Error in run loop", "err", err)
 					}
-				}()
+				})
 
 				// Start file watcher for develop channel
 				if p.state.UpdateChannel == dto.UpdateChannels.DEVELOP {
-					p.ctx.Value("wg").(*sync.WaitGroup).Add(1)
-					go func() {
-						defer p.ctx.Value("wg").(*sync.WaitGroup).Done()
+					p.ctx.Value("wg").(*sync.WaitGroup).Go(func() {
 						p.watchForDevelopUpdates()
-					}()
+					})
 					slog.DebugContext(p.ctx, "File watcher for develop updates started")
 				}
 			}

@@ -27,6 +27,9 @@ With your donations, we are able to continue developing and improving this proje
 
 ### 🔧 Maintenance
 
+- **Go 1.26 Migration**: Upgraded Go version from 1.25.7 to 1.26.0, adopting new language features:
+  - Replaced all `pointer.Bool/String/Int/Uint64/Of/Any()` calls with Go 1.26's built-in `new(expr)` syntax (~268 occurrences) and removed the `xorcare/pointer` dependency
+  - Replaced all `interface{}` with `any` alias (147 occurrences) following Go modernizer patterns
 - Updated dependencies to latest versions to ensure security and compatibility.
 
 ### ✨ Features
