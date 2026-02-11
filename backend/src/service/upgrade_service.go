@@ -21,6 +21,7 @@ import (
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal/updatekey"
+	"github.com/dianlight/srat/internal/urlutil"
 	"github.com/fsnotify/fsnotify"
 	"github.com/google/go-github/v82/github"
 	"github.com/vvair/selfupdate"
@@ -529,6 +530,13 @@ func (self *UpgradeService) DownloadAndExtractBinaryAsset(asset dto.BinaryAsset)
 	// --- Download Phase ---
 	self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSDOWNLOADING, Progress: 0})
 
+	// Validate download URL to prevent SSRF (G704)
+	if err := urlutil.ValidateURL(asset.BrowserDownloadURL, []string{"github.com", "objects.githubusercontent.com"}); err != nil {
+		errWrapped := errors.Errorf("untrusted download URL: %s", asset.BrowserDownloadURL)
+		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+		return nil, errWrapped
+	}
+
 	req, err := http.NewRequestWithContext(self.ctx, http.MethodGet, asset.BrowserDownloadURL, nil)
 	if err != nil {
 		errWrapped := errors.Wrapf(err, "failed to create request for %s", asset.BrowserDownloadURL)
@@ -536,7 +544,7 @@ func (self *UpgradeService) DownloadAndExtractBinaryAsset(asset dto.BinaryAsset)
 		return nil, errWrapped
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := http.DefaultClient.Do(req) // #nosec G704
 	if err != nil {
 		errWrapped := errors.Wrapf(err, "failed to download asset from %s", asset.BrowserDownloadURL)
 		self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})

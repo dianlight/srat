@@ -19,6 +19,7 @@ import (
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
+	"github.com/dianlight/srat/internal/urlutil"
 	"github.com/dianlight/tlog"
 	"github.com/rollbar/rollbar-go"
 )
@@ -337,14 +338,20 @@ func (ts *TelemetryService) IsConnectedToInternet() bool {
 	}
 
 	// Create request to test connectivity
-	req, err := http.NewRequestWithContext(ctx, "HEAD", "https://api.rollbar.com", nil)
+	const rollbarURL = "https://api.rollbar.com"
+	if err := urlutil.ValidateURL(rollbarURL, []string{"api.rollbar.com"}); err != nil {
+		slog.DebugContext(ctx, "Untrusted connectivity URL", "url", rollbarURL, "error", err)
+		return false
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "HEAD", rollbarURL, nil)
 	if err != nil {
 		slog.DebugContext(ctx, "Failed to create internet connectivity request", "error", err)
 		return false
 	}
 
 	// Execute request
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) // #nosec G704
 	if err != nil {
 		slog.DebugContext(ctx, "Internet connectivity check failed", "error", err)
 		return false

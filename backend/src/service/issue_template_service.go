@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/internal/urlutil"
 	"github.com/dianlight/tlog"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
@@ -64,12 +65,16 @@ func (s *IssueTemplateService) GetTemplate() (*dto.IssueTemplate, error) {
 func (s *IssueTemplateService) fetchIssueTemplate(ctx context.Context) (*dto.IssueTemplate, error) {
 	tlog.InfoContext(ctx, "Fetching issue template from GitHub")
 
+	if err := urlutil.ValidateURL(issueTemplateURL, []string{"raw.githubusercontent.com"}); err != nil {
+		return nil, errors.Wrap(err, "untrusted issue template URL")
+	}
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, issueTemplateURL, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create request")
 	}
 
-	resp, err := s.httpClient.Do(req)
+	resp, err := s.httpClient.Do(req) // #nosec G704
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch issue template")
 	}
