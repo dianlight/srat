@@ -23,7 +23,7 @@ export function SmbConf() {
 		<InView
 			as="div"
 			onChange={(inView, entry) => {
-				console.log("Inview:", inView)
+				//console.log("Inview:", inView)
 				smbconfig.refetch();
 			}}
 		>
@@ -49,7 +49,7 @@ export function SmbConf() {
 						markdownTitle="Samba Configuration"
 					/>
 				</Box>
-				
+
 				<SyntaxHighlighter
 					customStyle={{ fontSize: "0.7rem" }}
 					language="ini"
