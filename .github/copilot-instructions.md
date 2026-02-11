@@ -173,6 +173,7 @@ Note: This project uses `gitlab.com/tozd/go/errors` which wraps standard `errors
 **5. Run `go fix` for automated modernization (Go 1.26)**
 
 Go 1.26's revamped `go fix` command applies dozens of modernizers automatically:
+
 - `interface{}` → `any`
 - Manual min/max logic → `min()`/`max()` built-ins
 - Loop patterns → `slices.Contains`, `slices.Sort`, etc.
