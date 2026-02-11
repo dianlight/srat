@@ -140,6 +140,9 @@ func (p *DirtyDataService) setDirtySettings() {
 
 // GetDirtyDataTracker returns the dirty data tracker
 func (p *DirtyDataService) GetDirtyDataTracker() dto.DataDirtyTracker {
+	if !p.IsClean() && !p.IsTimerRunning() {
+		p.startTimer()
+	}
 	return p.dataDirtyTracker
 }
 
