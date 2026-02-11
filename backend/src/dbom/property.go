@@ -8,8 +8,8 @@ import (
 )
 
 type Property struct {
-	Key       string      `gorm:"primaryKey"`
-	Value     any `gorm:"serializer:json"`
+	Key       string `gorm:"primaryKey"`
+	Value     any    `gorm:"serializer:json"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt gorm.DeletedAt `gorm:"index"`

@@ -424,7 +424,7 @@ func (c *Client) GetStates(ctx context.Context) ([]map[string]any, error) {
 		return nil, err
 	}
 	var r struct {
-		Success bool                     `json:"success"`
+		Success bool             `json:"success"`
 		Result  []map[string]any `json:"result"`
 	}
 	if err := json.Unmarshal(resp, &r); err != nil {
@@ -444,7 +444,7 @@ func (c *Client) GetConfig(ctx context.Context) (map[string]any, error) {
 		return nil, err
 	}
 	var r struct {
-		Success bool                   `json:"success"`
+		Success bool           `json:"success"`
 		Result  map[string]any `json:"result"`
 	}
 	if err := json.Unmarshal(resp, &r); err != nil {
