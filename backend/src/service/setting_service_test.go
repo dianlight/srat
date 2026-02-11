@@ -16,7 +16,6 @@ import (
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
-	"github.com/xorcare/pointer"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 )
@@ -107,7 +106,7 @@ func (suite *SettingServiceSuite) TestUpdateSettings_HAUseNFS() {
 					// Simulate that exportfs command exists
 					return true
 				})
-				return dto.Settings{HAUseNFS: pointer.Bool(true)}
+				return dto.Settings{HAUseNFS: new(true)}
 			},
 			verifyFunc: func(loaded *dto.Settings, err error) {
 				suite.Require().NoError(err)
@@ -121,7 +120,7 @@ func (suite *SettingServiceSuite) TestUpdateSettings_HAUseNFS() {
 					// Simulate that exportfs command does not exist
 					return false
 				})
-				return dto.Settings{HAUseNFS: pointer.Bool(true)}
+				return dto.Settings{HAUseNFS: new(true)}
 			},
 			verifyFunc: func(loaded *dto.Settings, err error) {
 				suite.Require().NoError(err)
@@ -135,7 +134,7 @@ func (suite *SettingServiceSuite) TestUpdateSettings_HAUseNFS() {
 					// Simulate that exportfs command exists
 					return true
 				})
-				return dto.Settings{HAUseNFS: pointer.Bool(false)}
+				return dto.Settings{HAUseNFS: new(false)}
 			},
 			verifyFunc: func(loaded *dto.Settings, err error) {
 				suite.Require().NoError(err)
@@ -224,7 +223,7 @@ func (suite *SettingServiceSuite) TestUpdateSettings_SaveAndLoad_AllFieldTypes()
 					// Simulate that exportfs command exists
 					return false
 				})
-				return dto.Settings{HAUseNFS: pointer.Bool(true)}
+				return dto.Settings{HAUseNFS: new(true)}
 			},
 			verifyFunc: func(loaded *dto.Settings, err error) {
 				suite.Require().NoError(err)
@@ -235,7 +234,7 @@ func (suite *SettingServiceSuite) TestUpdateSettings_SaveAndLoad_AllFieldTypes()
 		{
 			name: "HAUseNFS_False",
 			settingsFactory: func() dto.Settings {
-				return dto.Settings{HAUseNFS: pointer.Bool(false)}
+				return dto.Settings{HAUseNFS: new(false)}
 			},
 			verifyFunc: func(loaded *dto.Settings, err error) {
 				suite.Require().NoError(err)
@@ -266,7 +265,7 @@ func (suite *SettingServiceSuite) TestUpdateSettings_SaveAndLoad_AllFieldTypes()
 		{
 			name: "AllowGuest_True",
 			settingsFactory: func() dto.Settings {
-				return dto.Settings{AllowGuest: pointer.Bool(true)}
+				return dto.Settings{AllowGuest: new(true)}
 			},
 			verifyFunc: func(loaded *dto.Settings, err error) {
 				suite.Require().NoError(err)
@@ -277,7 +276,7 @@ func (suite *SettingServiceSuite) TestUpdateSettings_SaveAndLoad_AllFieldTypes()
 		{
 			name: "AllowGuest_False",
 			settingsFactory: func() dto.Settings {
-				return dto.Settings{AllowGuest: pointer.Bool(false)}
+				return dto.Settings{AllowGuest: new(false)}
 			},
 			verifyFunc: func(loaded *dto.Settings, err error) {
 				suite.Require().NoError(err)
@@ -323,7 +322,7 @@ func (suite *SettingServiceSuite) TestUpdateSettings_ModifyMultipleFields() {
 	/*
 		initialSettings := dto.Settings{
 			Workgroup: "INITIAL",
-			HAUseNFS:  pointer.Bool(true),
+			HAUseNFS:  new(true),
 		}
 		err := suite.settingService.UpdateSettings(&initialSettings)
 		suite.Require().NoError(err)

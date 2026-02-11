@@ -26,7 +26,6 @@ import (
 	"github.com/prometheus/procfs"
 	"github.com/shomali11/util/xhashes"
 	"github.com/u-root/u-root/pkg/mount"
-	"github.com/xorcare/pointer"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 	"golang.org/x/sync/singleflight"
@@ -793,11 +792,11 @@ func (self *VolumeService) processMountInfos(mountInfos []*procfs.MountInfo) {
 						Path:             prtstate.MountPoint,
 						DeviceId:         *part.Id,
 						PathHash:         xhashes.SHA1(prtstate.MountPoint),
-						IsWriteSupported: pointer.Bool(iw),
+						IsWriteSupported: new(iw),
 						IsMounted:        true,
 						Flags:            &dto.MountFlags{},
 						CustomFlags:      &dto.MountFlags{},
-						FSType:           pointer.String(prtstate.FSType),
+						FSType:           new(prtstate.FSType),
 						Type:             "ADDON",
 						Partition:        &part,
 						RefreshVersion:   self.refreshVersion,
@@ -852,13 +851,13 @@ func (self *VolumeService) getVolumesData() errors.E {
 			if self.state.SupervisorURL == "demo" || os.Getenv("SRAT_MOCK") == "true" {
 				demoParts := map[string]dto.Partition{
 					"DemoPartition": {
-						Id:         pointer.String("DemoPartition"),
-						DevicePath: pointer.String("/dev/bogus"),
-						System:     pointer.Bool(false),
+						Id:         new("DemoPartition"),
+						DevicePath: new("/dev/bogus"),
+						System:     new(false),
 						MountPointData: &map[string]dto.MountPointData{
 							"/mnt/bogus": {
 								Path:      "/mnt/bogus",
-								FSType:    pointer.String("ext4"),
+								FSType:    new("ext4"),
 								IsMounted: false,
 							},
 						},
@@ -866,7 +865,7 @@ func (self *VolumeService) getVolumesData() errors.E {
 				}
 
 				(*ret)["DemoDisk"] = dto.Disk{
-					Id:         pointer.String("DemoDisk"),
+					Id:         new("DemoDisk"),
 					Partitions: &demoParts,
 				}
 				return &ret, nil
@@ -981,10 +980,10 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 			mountPoint.IsMounted = true
 			mountPoint.Root = prtstate.Root
 			mountPoint.RefreshVersion = self.refreshVersion
-			mountPoint.IsWriteSupported = pointer.Bool(iw)
+			mountPoint.IsWriteSupported = new(iw)
 			mountPoint.Flags.Scan(prtstate.Options)
 			mountPoint.CustomFlags.Scan(prtstate.SuperOptions)
-			mountPoint.FSType = pointer.String(prtstate.FSType)
+			mountPoint.FSType = new(prtstate.FSType)
 			mountPoint.Type = "ADDON"
 			err := self.disks.AddOrUpdateMountPoint(*e.Partition.DiskId, *e.Partition.Id, *mountPoint)
 			if err != nil {
@@ -1006,11 +1005,11 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 				Root:     prtstate.Root,
 				DeviceId: *e.Partition.Id,
 				//PathHash:         xhashes.SHA1(prtstate.MountPoint),
-				IsWriteSupported: pointer.Bool(iw),
+				IsWriteSupported: new(iw),
 				IsMounted:        true,
 				Flags:            &dto.MountFlags{},
 				CustomFlags:      &dto.MountFlags{},
-				FSType:           pointer.String(prtstate.FSType),
+				FSType:           new(prtstate.FSType),
 				Type:             "ADDON",
 				Partition:        e.Partition,
 				RefreshVersion:   self.refreshVersion,

@@ -14,7 +14,6 @@ import (
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
-	"github.com/xorcare/pointer"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 	"gorm.io/gorm"
@@ -92,7 +91,7 @@ func (suite *HomeAssistantServiceTestSuite) TestSendSambaStatusEntity() {
 	}
 
 	errS := suite.settingService.UpdateSettings(&dto.Settings{
-		ExportStatsToHA: pointer.Bool(true),
+		ExportStatsToHA: new(true),
 	})
 	suite.Require().NoError(errS)
 	//mock.When(suite.propRepo.Value("ExportStatsToHA")).ThenReturn(true, nil)
@@ -116,7 +115,7 @@ func (suite *HomeAssistantServiceTestSuite) TestSendSambaStatusEntityDisabled() 
 
 	// Act - should not panic or return error when client is nil
 	errS := suite.settingService.UpdateSettings(&dto.Settings{
-		ExportStatsToHA: pointer.Bool(false),
+		ExportStatsToHA: new(false),
 	})
 	suite.Require().NoError(errS)
 
@@ -154,7 +153,7 @@ func (suite *HomeAssistantServiceTestSuite) TestSendSambaProcessStatusEntity() {
 
 	// Act - should not panic or return error when client is nil
 	errS := suite.settingService.UpdateSettings(&dto.Settings{
-		ExportStatsToHA: pointer.Bool(true),
+		ExportStatsToHA: new(true),
 	})
 	suite.Require().NoError(errS)
 
@@ -192,7 +191,7 @@ func (suite *HomeAssistantServiceTestSuite) TestSendSambaProcessStatusEntityDisa
 
 	// Act - should not panic or return error when client is nil
 	errS := suite.settingService.UpdateSettings(&dto.Settings{
-		ExportStatsToHA: pointer.Bool(false),
+		ExportStatsToHA: new(false),
 	})
 	suite.Require().NoError(errS)
 
@@ -247,7 +246,7 @@ func (suite *HomeAssistantServiceTestSuite) TestSendDiskEntities() {
 
 	// Act - should not panic or return error when client is nil
 	errS := suite.settingService.UpdateSettings(&dto.Settings{
-		ExportStatsToHA: pointer.Bool(true),
+		ExportStatsToHA: new(true),
 	})
 	suite.Require().NoError(errS)
 
@@ -302,7 +301,7 @@ func (suite *HomeAssistantServiceTestSuite) TestSendDiskEntitiesDisabled() {
 
 	// Act - should not panic or return error when client is nil
 	errS := suite.settingService.UpdateSettings(&dto.Settings{
-		ExportStatsToHA: pointer.Bool(false),
+		ExportStatsToHA: new(false),
 	})
 	suite.Require().NoError(errS)
 
@@ -330,7 +329,7 @@ func (suite *HomeAssistantServiceTestSuite) TestNoClientConfigured_DoesNotSendEn
 
 	// Act
 	errS := suite.settingService.UpdateSettings(&dto.Settings{
-		ExportStatsToHA: pointer.Bool(true),
+		ExportStatsToHA: new(true),
 	})
 	suite.Require().NoError(errS)
 
@@ -355,7 +354,7 @@ func (suite *HomeAssistantServiceTestSuite) TestSanitizeEntityId() {
 
 	// Act - should not panic with special characters in disk ID
 	errS := suite.settingService.UpdateSettings(&dto.Settings{
-		ExportStatsToHA: pointer.Bool(true),
+		ExportStatsToHA: new(true),
 	})
 	suite.Require().NoError(errS)
 
@@ -401,7 +400,7 @@ func (suite *HomeAssistantServiceTestSuite) TestSendDiskHealthEntities() {
 
 	// Act - should not panic or return error when client is nil
 	errS := suite.settingService.UpdateSettings(&dto.Settings{
-		ExportStatsToHA: pointer.Bool(true),
+		ExportStatsToHA: new(true),
 	})
 	suite.Require().NoError(errS)
 
@@ -449,7 +448,7 @@ func (suite *HomeAssistantServiceTestSuite) TestSendDiskHealthEntitiesDisabled()
 
 	// Act - should not panic or return error when client is nil
 	errS := suite.settingService.UpdateSettings(&dto.Settings{
-		ExportStatsToHA: pointer.Bool(false),
+		ExportStatsToHA: new(false),
 	})
 	suite.Require().NoError(errS)
 

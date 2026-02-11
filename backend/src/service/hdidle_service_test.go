@@ -15,7 +15,6 @@ import (
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
-	"github.com/xorcare/pointer"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 	"gorm.io/gorm"
@@ -42,7 +41,7 @@ func (suite *HDIdleServiceSuite) TestCheckDeviceSupport_EmptyPath() {
 
 func (suite *HDIdleServiceSuite) TestCheckDeviceSupport_InvalidPath() {
 	mock.When(suite.settingService.Load()).ThenReturn(&dto.Settings{
-		HDIdleEnabled: pointer.Bool(true),
+		HDIdleEnabled: new(true),
 	}, nil)
 
 	support, err := suite.service.CheckDeviceSupport("/invalid/path")

@@ -24,7 +24,6 @@ import (
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
-	"github.com/xorcare/pointer"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
@@ -156,15 +155,15 @@ func newGitHubReleaseAsset(name, downloadURL string, size int64) *github.Release
 	return &github.ReleaseAsset{
 		Name:               &name,
 		BrowserDownloadURL: &downloadURL,
-		Size:               pointer.Int(int(size)),
-		ContentType:        pointer.String("application/zip"),
-		ID:                 pointer.Int64(time.Now().UnixNano()), // Unique ID
-		NodeID:             pointer.String(fmt.Sprintf("AssetNodeID%d", time.Now().UnixNano())),
-		Label:              pointer.String(""),
-		State:              pointer.String("uploaded"),
+		Size:               new(int(size)),
+		ContentType:        new("application/zip"),
+		ID:                 new(time.Now().UnixNano()), // Unique ID
+		NodeID:             new(fmt.Sprintf("AssetNodeID%d", time.Now().UnixNano())),
+		Label:              new(""),
+		State:              new("uploaded"),
 		CreatedAt:          &github.Timestamp{Time: time.Now()},
 		UpdatedAt:          &github.Timestamp{Time: time.Now()},
-		Uploader:           &github.User{Login: pointer.String("testuser")},
+		Uploader:           &github.User{Login: new("testuser")},
 	}
 }
 
@@ -172,20 +171,20 @@ func newGitHubReleaseAsset(name, downloadURL string, size int64) *github.Release
 func newGitHubRepositoryRelease(tagName string, prerelease bool, assets []*github.ReleaseAsset) *github.RepositoryRelease {
 	return &github.RepositoryRelease{
 		TagName:         &tagName,
-		Prerelease:      pointer.Bool(prerelease),
+		Prerelease:      new(prerelease),
 		Assets:          assets,
-		TargetCommitish: pointer.String("main"),
-		Name:            pointer.String(fmt.Sprintf("Release %s", tagName)),
-		Body:            pointer.String(fmt.Sprintf("Release notes for %s", tagName)),
-		Draft:           pointer.Bool(false),
-		HTMLURL:         pointer.String(fmt.Sprintf("http://example.com/releases/%s", tagName)),
-		AssetsURL:       pointer.String(fmt.Sprintf("http://example.com/releases/%s/assets", tagName)),
-		UploadURL:       pointer.String(fmt.Sprintf("http://example.com/releases/%s/upload", tagName)),
-		ZipballURL:      pointer.String(fmt.Sprintf("http://example.com/archive/%s.zip", tagName)),
-		TarballURL:      pointer.String(fmt.Sprintf("http://example.com/archive/%s.tar.gz", tagName)),
+		TargetCommitish: new("main"),
+		Name:            new(fmt.Sprintf("Release %s", tagName)),
+		Body:            new(fmt.Sprintf("Release notes for %s", tagName)),
+		Draft:           new(false),
+		HTMLURL:         new(fmt.Sprintf("http://example.com/releases/%s", tagName)),
+		AssetsURL:       new(fmt.Sprintf("http://example.com/releases/%s/assets", tagName)),
+		UploadURL:       new(fmt.Sprintf("http://example.com/releases/%s/upload", tagName)),
+		ZipballURL:      new(fmt.Sprintf("http://example.com/archive/%s.zip", tagName)),
+		TarballURL:      new(fmt.Sprintf("http://example.com/archive/%s.tar.gz", tagName)),
 		PublishedAt:     &github.Timestamp{Time: time.Now()},
 		CreatedAt:       &github.Timestamp{Time: time.Now()},
-		Author:          &github.User{Login: pointer.String("testuser")},
+		Author:          &github.User{Login: new("testuser")},
 	}
 }
 

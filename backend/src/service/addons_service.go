@@ -11,7 +11,6 @@ import (
 	"github.com/dianlight/srat/homeassistant/addons"
 	"github.com/dianlight/tlog"
 	gocache "github.com/patrickmn/go-cache"
-	"github.com/xorcare/pointer"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 )
@@ -117,7 +116,7 @@ func (s *AddonsService) GetLatestLogs(ctx context.Context) (string, errors.E) {
 	}
 
 	resp, err := s.addonsClient.GetSelfAddonLogsLatestWithResponse(ctx, &addons.GetSelfAddonLogsLatestParams{
-		Lines:  pointer.Int(1000),
+		Lines:  new(1000),
 		Accept: addons.GetSelfAddonLogsLatestParamsAcceptTextxLog,
 	})
 	if err != nil {

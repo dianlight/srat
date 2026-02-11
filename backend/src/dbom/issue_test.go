@@ -6,7 +6,6 @@ import (
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/stretchr/testify/assert"
-	"github.com/xorcare/pointer"
 )
 
 func TestIssueFields(t *testing.T) {
@@ -61,7 +60,7 @@ func TestIssueSeverityLevels(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			issue := dbom.Issue{
 				Title:    "Test " + tt.name,
-				Severity: pointer.Any(tt.severity).(*dto.IssueSeverity),
+				Severity: new(tt.severity),
 			}
 			assert.NotNil(t, issue.Severity)
 			assert.Equal(t, tt.severity, *issue.Severity)

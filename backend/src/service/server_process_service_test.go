@@ -23,7 +23,6 @@ import (
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"github.com/stretchr/testify/suite"
-	"github.com/xorcare/pointer"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 )
@@ -179,9 +178,9 @@ func (suite *ServerProcessServiceSuite) setupCommonMocks() {
 		Interfaces:        []string{"wlan0", "end0"},
 		BindAllInterfaces: false,
 		CompatibilityMode: false,
-		LocalMaster:       pointer.Bool(true),
-		HAUseNFS:          pointer.Bool(true),
-		AllowGuest:        pointer.Bool(false),
+		LocalMaster:       new(true),
+		HAUseNFS:          new(true),
+		AllowGuest:        new(false),
 	}, nil)
 
 	mock.When(suite.share_service.ListShares()).ThenReturn([]dto.SharedResource{
@@ -299,7 +298,7 @@ func (suite *ServerProcessServiceSuite) setupCommonMocks() {
 					IsAdmin:  true,
 				},
 			},
-			TimeMachine: pointer.Bool(true),
+			TimeMachine: new(true),
 			VetoFiles:   []string{"._*", ".DS_Store", "Thumbs.db", "icon?", ".Trashes"},
 		},
 		{
@@ -314,7 +313,7 @@ func (suite *ServerProcessServiceSuite) setupCommonMocks() {
 					IsAdmin:  true,
 				},
 			},
-			RecycleBin: pointer.Bool(true),
+			RecycleBin: new(true),
 			VetoFiles:  []string{"._*", ".DS_Store", "Thumbs.db", "icon?", ".Trashes"},
 		},
 	}, nil)
