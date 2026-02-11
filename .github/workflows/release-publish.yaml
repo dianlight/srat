@@ -45,10 +45,10 @@ jobs:
           echo "Found assets:"
           echo "$ASSETS"
 
-          # Check for expected zip files (at least one architecture)
+          # Check for expected zip files (at least two architectures: amd64 and arm64)
           ASSET_COUNT=$(echo "$ASSETS" | wc -l)
-          if [ "$ASSET_COUNT" -lt 1 ]; then
-            echo "ERROR: Expected at least 1 asset, found $ASSET_COUNT"
+          if [ "$ASSET_COUNT" -lt 2 ]; then
+            echo "ERROR: Expected at least 2 assets, found $ASSET_COUNT"
             exit 1
           fi
 
