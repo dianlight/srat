@@ -5,12 +5,14 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/angusgmorrison/logfusc"
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dbom/g"
 	"github.com/dianlight/srat/dbom/g/query"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
+	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/srat/unixsamba"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
@@ -68,8 +70,16 @@ func NewUserService(lc fx.Lifecycle, params UserServiceParams) UserServiceInterf
 			}
 			HASmbPassword := setting.HASmbPassword.Expose()
 			if HASmbPassword == "" {
-				slog.ErrorContext(ctx, "Cant get HASmbPassword setting", "err", err)
-				HASmbPassword = "changeme!"
+				slog.ErrorContext(ctx, "Cant get HASmbPassword setting (regenerated password will be used)")
+				newPwd, errc := osutil.GenerateSecurePassword()
+				if errc != nil {
+					slog.ErrorContext(ctx, "Cant generate secure password", "err", errc)
+					HASmbPassword = "changeme!"
+				} else {
+					HASmbPassword = newPwd
+				}
+				setting.HASmbPassword = logfusc.NewSecret(HASmbPassword)
+				us.settingService.UpdateSettings(setting)
 			}
 			err = unixsamba.CreateSambaUser("_ha_mount_user_", HASmbPassword, unixsamba.UserOptions{
 				CreateHome:    false,
