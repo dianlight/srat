@@ -38,7 +38,7 @@ SRAT (SambaNAS REST Administration Tool) is a system designed to provide a simpl
 #### Language & Runtime
 
 **Language**: Go
-**Version**: 1.25.0
+**Version**: 1.26.0
 **Build System**: Make
 **Package Manager**: Go Modules
 
