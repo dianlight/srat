@@ -9,12 +9,12 @@ apk add --no-cache git make lsblk eudev gcc musl-dev linux-headers samba ethtool
 GO_VERSION=$(grep '^go ' /workspaces/srat/backend/src/go.mod | awk '{print $2}')
 GO_ARCH=$(uname -m | sed 's/x86_64/amd64/' | sed 's/aarch64/arm64/')
 echo "Installing Go ${GO_VERSION} for linux/${GO_ARCH}"
-wget -q "https://go.dev/dl/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz" -O /tmp/go.tar.gz
-rm -rf /usr/local/go
-tar -C /usr/local -xzf /tmp/go.tar.gz
-rm /tmp/go.tar.gz
-ln -sf /usr/local/go/bin/go /usr/local/bin/go
-ln -sf /usr/local/go/bin/gofmt /usr/local/bin/gofmt
+wget -nv "https://go.dev/dl/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz" -O /tmp/go.tar.gz \
+  && rm -rf /usr/local/go \
+  && tar -C /usr/local -xzf /tmp/go.tar.gz \
+  && rm /tmp/go.tar.gz \
+  && ln -sf /usr/local/go/bin/go /usr/local/bin/go \
+  && ln -sf /usr/local/go/bin/gofmt /usr/local/bin/gofmt
 
 # Documentation validation tools
 apk add --no-cache --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community vale
