@@ -195,7 +195,7 @@ func (suite *TelemetryServiceSuite) TestReportEvent_OnlyInAllMode() {
 	// Errors mode: should not send events
 	suite.resetHTTPCalls()
 	_ = suite.telemetry.Configure(dto.TelemetryModes.TELEMETRYMODEERRORS)
-	_ = suite.telemetry.ReportEvent("custom_test", map[string]interface{}{"x": 1})
+	_ = suite.telemetry.ReportEvent("custom_test", map[string]any{"x": 1})
 	suite.Empty(suite.lastRollbarBody)
 
 	// All mode: should send
@@ -206,7 +206,7 @@ func (suite *TelemetryServiceSuite) TestReportEvent_OnlyInAllMode() {
 	suite.resetHTTPCalls()
 	suite.stubRollbarItemPost(true)
 
-	_ = suite.telemetry.ReportEvent("custom_test", map[string]interface{}{"x": 1})
+	_ = suite.telemetry.ReportEvent("custom_test", map[string]any{"x": 1})
 	// We don't assert body here due to rollbar-go async behavior; just ensure no panic/error
 }
 
@@ -242,7 +242,7 @@ func (suite *TelemetryServiceSuite) TestReportError_StandardError_JSONContainsCu
 
 	// Act: report a standard error with custom data
 	errStd := oerrors.Errorf("boom %d", 42)
-	custom := map[string]interface{}{"k": "v", "n": 123}
+	custom := map[string]any{"k": "v", "n": 123}
 	suite.Require().NoError(suite.telemetry.ReportError(errStd, custom))
 
 	// Flush async rollbar sender
@@ -250,43 +250,43 @@ func (suite *TelemetryServiceSuite) TestReportError_StandardError_JSONContainsCu
 
 	// Assert: captured JSON has expected shape
 	suite.NotEmpty(suite.lastRollbarBody)
-	var payload map[string]interface{}
+	var payload map[string]any
 	suite.Require().NoError(json.Unmarshal([]byte(suite.lastRollbarBody), &payload))
 
-	data, _ := payload["data"].(map[string]interface{})
+	data, _ := payload["data"].(map[string]any)
 	suite.Require().NotNil(data)
 	suite.Equal("error", data["level"])
 
 	// custom data
-	customObj, _ := data["custom"].(map[string]interface{})
+	customObj, _ := data["custom"].(map[string]any)
 	suite.Require().NotNil(customObj)
 	suite.Equal("v", customObj["k"])
 	// numbers decode as float64
 	suite.Equal(float64(123), customObj["n"])
 
 	// trace or trace_chain with frames
-	body, _ := data["body"].(map[string]interface{})
+	body, _ := data["body"].(map[string]any)
 	suite.Require().NotNil(body)
-	if trace, ok := body["trace"].(map[string]interface{}); ok {
-		if exception, ok := trace["exception"].(map[string]interface{}); ok {
+	if trace, ok := body["trace"].(map[string]any); ok {
+		if exception, ok := trace["exception"].(map[string]any); ok {
 			if msg, ok := exception["message"].(string); ok {
 				suite.Contains(msg, "boom")
 			}
 		}
-		if frames, ok := trace["frames"].([]interface{}); ok {
+		if frames, ok := trace["frames"].([]any); ok {
 			suite.NotEmpty(frames)
-			suite.Equal("github.com/dianlight/srat/service/telemetry_service_test.go", frames[0].(map[string]interface{})["filename"])
+			suite.Equal("github.com/dianlight/srat/service/telemetry_service_test.go", frames[0].(map[string]any)["filename"])
 		}
-	} else if traceChain, ok := body["trace_chain"].([]interface{}); ok && len(traceChain) > 0 {
-		if first, ok := traceChain[0].(map[string]interface{}); ok {
-			if exception, ok := first["exception"].(map[string]interface{}); ok {
+	} else if traceChain, ok := body["trace_chain"].([]any); ok && len(traceChain) > 0 {
+		if first, ok := traceChain[0].(map[string]any); ok {
+			if exception, ok := first["exception"].(map[string]any); ok {
 				if msg, ok := exception["message"].(string); ok {
 					suite.NotEmpty(msg)
 				}
 			}
-			if frames, ok := first["frames"].([]interface{}); ok {
+			if frames, ok := first["frames"].([]any); ok {
 				suite.NotEmpty(frames)
-				suite.Contains(frames[0].(map[string]interface{})["filename"], "/service/telemetry_service_test.go")
+				suite.Contains(frames[0].(map[string]any)["filename"], "/service/telemetry_service_test.go")
 			}
 		}
 	}
@@ -301,7 +301,7 @@ func (suite *TelemetryServiceSuite) TestReportError_ErrorsE_JSONContainsCustomAn
 
 	// Act: report an errors.E with custom data
 	e := errors.Errorf("oops %s", "E")
-	custom := map[string]interface{}{"a": 1, "b": "c"}
+	custom := map[string]any{"a": 1, "b": "c"}
 	suite.Require().NoError(suite.telemetry.ReportError(e, custom))
 
 	// Flush async rollbar sender
@@ -309,42 +309,42 @@ func (suite *TelemetryServiceSuite) TestReportError_ErrorsE_JSONContainsCustomAn
 
 	// Assert: captured JSON has expected shape
 	suite.NotEmpty(suite.lastRollbarBody)
-	var payload map[string]interface{}
+	var payload map[string]any
 	suite.Require().NoError(json.Unmarshal([]byte(suite.lastRollbarBody), &payload))
 
-	data, _ := payload["data"].(map[string]interface{})
+	data, _ := payload["data"].(map[string]any)
 	suite.Require().NotNil(data)
 	suite.Equal("error", data["level"])
 
 	// custom data
-	customObj, _ := data["custom"].(map[string]interface{})
+	customObj, _ := data["custom"].(map[string]any)
 	suite.Require().NotNil(customObj)
 	suite.Equal(float64(1), customObj["a"]) // numbers as float64
 	suite.Equal("c", customObj["b"])
 
 	// trace or trace_chain with frames
-	body, _ := data["body"].(map[string]interface{})
+	body, _ := data["body"].(map[string]any)
 	suite.Require().NotNil(body)
-	if trace, ok := body["trace"].(map[string]interface{}); ok {
-		if exception, ok := trace["exception"].(map[string]interface{}); ok {
+	if trace, ok := body["trace"].(map[string]any); ok {
+		if exception, ok := trace["exception"].(map[string]any); ok {
 			if msg, ok := exception["message"].(string); ok {
 				suite.NotEmpty(msg)
 			}
 		}
-		if frames, ok := trace["frames"].([]interface{}); ok {
+		if frames, ok := trace["frames"].([]any); ok {
 			suite.NotEmpty(frames)
-			suite.Contains(frames[0].(map[string]interface{})["filename"], "/service/telemetry_service_test.go")
+			suite.Contains(frames[0].(map[string]any)["filename"], "/service/telemetry_service_test.go")
 		}
-	} else if traceChain, ok := body["trace_chain"].([]interface{}); ok && len(traceChain) > 0 {
-		if first, ok := traceChain[0].(map[string]interface{}); ok {
-			if exception, ok := first["exception"].(map[string]interface{}); ok {
+	} else if traceChain, ok := body["trace_chain"].([]any); ok && len(traceChain) > 0 {
+		if first, ok := traceChain[0].(map[string]any); ok {
+			if exception, ok := first["exception"].(map[string]any); ok {
 				if msg, ok := exception["message"].(string); ok {
 					suite.NotEmpty(msg)
 				}
 			}
-			if frames, ok := first["frames"].([]interface{}); ok {
+			if frames, ok := first["frames"].([]any); ok {
 				suite.NotEmpty(frames)
-				suite.Contains(frames[0].(map[string]interface{})["filename"], "/service/telemetry_service_test.go")
+				suite.Contains(frames[0].(map[string]any)["filename"], "/service/telemetry_service_test.go")
 			}
 		}
 	}
@@ -371,11 +371,11 @@ func (suite *TelemetryServiceSuite) TestTlogErrorCallbackIncludesOriginalStack()
 			return false
 		}
 		// Parse and check if this is the error-level event we're expecting
-		var payload map[string]interface{}
+		var payload map[string]any
 		if err := json.Unmarshal([]byte(suite.lastRollbarBody), &payload); err != nil {
 			return false
 		}
-		data, ok := payload["data"].(map[string]interface{})
+		data, ok := payload["data"].(map[string]any)
 		if !ok {
 			return false
 		}
@@ -386,21 +386,21 @@ func (suite *TelemetryServiceSuite) TestTlogErrorCallbackIncludesOriginalStack()
 
 	// Validate payload contains stack information pointing to this test file
 	suite.NotEmpty(suite.lastRollbarBody)
-	var payload map[string]interface{}
+	var payload map[string]any
 	suite.Require().NoError(json.Unmarshal([]byte(suite.lastRollbarBody), &payload))
 
-	data, _ := payload["data"].(map[string]interface{})
+	data, _ := payload["data"].(map[string]any)
 	suite.Require().NotNil(data)
 	// Ensure error-level rollbar events are sent for tlog.Error
 	suite.Equal("error", data["level"], "log level 'error' expected for telemetry events, got %#v", data)
 
-	if trace, ok := data["trace"].(map[string]interface{}); ok {
-		if frames, ok := trace["frames"].([]interface{}); ok {
+	if trace, ok := data["trace"].(map[string]any); ok {
+		if frames, ok := trace["frames"].([]any); ok {
 			suite.assertFrames(frames)
 		}
-	} else if traceChain, ok := data["trace_chain"].([]interface{}); ok && len(traceChain) > 0 {
-		if first, ok := traceChain[0].(map[string]interface{}); ok {
-			if frames, ok := first["frames"].([]interface{}); ok {
+	} else if traceChain, ok := data["trace_chain"].([]any); ok && len(traceChain) > 0 {
+		if first, ok := traceChain[0].(map[string]any); ok {
+			if frames, ok := first["frames"].([]any); ok {
 				suite.assertFrames(frames)
 			}
 		}
@@ -408,9 +408,9 @@ func (suite *TelemetryServiceSuite) TestTlogErrorCallbackIncludesOriginalStack()
 }
 
 // Helper to assert stack frames include this test file
-func (suite *TelemetryServiceSuite) assertFrames(frames []interface{}) {
+func (suite *TelemetryServiceSuite) assertFrames(frames []any) {
 	suite.Require().NotEmpty(frames)
-	first, ok := frames[0].(map[string]interface{})
+	first, ok := frames[0].(map[string]any)
 	suite.Require().True(ok)
 	filename, ok := first["filename"].(string)
 	suite.Require().True(ok)

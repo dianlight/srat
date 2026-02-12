@@ -2,9 +2,19 @@
 set -x
 
 apk add --no-cache git make lsblk eudev gcc musl-dev linux-headers samba ethtool e2fsprogs e2fsprogs-extra \
- fuse3 exfatprogs ntfs-3g-progs apfs-fuse openssh-client sshfs shadow go \
+ fuse3 exfatprogs ntfs-3g-progs apfs-fuse openssh-client sshfs shadow \
  git-bash-completion git-prompt graphviz nix patch smartmontools zig minisign act 
-apk add --no-cache --update-cache --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community go "go~=1.25"
+
+# Install Go from go.dev/dl/ – version extracted from backend/src/go.mod
+GO_VERSION=$(grep '^go ' /workspaces/srat/backend/src/go.mod | awk '{print $2}')
+GO_ARCH=$(uname -m | sed 's/x86_64/amd64/' | sed 's/aarch64/arm64/')
+echo "Installing Go ${GO_VERSION} for linux/${GO_ARCH}"
+wget -nv "https://go.dev/dl/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz" -O /tmp/go.tar.gz \
+  && rm -rf /usr/local/go \
+  && tar -C /usr/local -xzf /tmp/go.tar.gz \
+  && rm /tmp/go.tar.gz \
+  && ln -sf /usr/local/go/bin/go /usr/local/bin/go \
+  && ln -sf /usr/local/go/bin/gofmt /usr/local/bin/gofmt
 
 # Documentation validation tools
 apk add --no-cache --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community vale

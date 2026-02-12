@@ -189,7 +189,7 @@ func TestDiskAddedEvent(t *testing.T) {
     })
     defer unsubscribe()
 
-    disk := &dto.Disk{Id: pointer.String("test")}
+    disk := &dto.Disk{Id: new("test")}
     bus.EmitDiskAdded(events.DiskEvent{Disk: disk})
 
     // Give goroutine time to execute

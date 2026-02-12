@@ -63,7 +63,7 @@ func TestIssueSeverity_IsValid(t *testing.T) {
 func TestIssueSeverity_ParseIssueSeverity(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    interface{}
+		input    any
 		expected dto.IssueSeverity
 		hasError bool
 	}{
@@ -296,7 +296,7 @@ func TestEventType_UnmarshalJSON(t *testing.T) {
 func TestEventType_ParseEventType(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    interface{}
+		input    any
 		expected dto.WebEventType
 		hasError bool
 	}{
@@ -467,7 +467,7 @@ func TestUpdateProcessState_UnmarshalJSON(t *testing.T) {
 func TestUpdateProcessState_ParseUpdateProcessState(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    interface{}
+		input    any
 		expected dto.UpdateProcessState
 		hasError bool
 	}{
@@ -619,7 +619,7 @@ func TestSmartAttributeCode_UnmarshalJSON(t *testing.T) {
 func TestSmartAttributeCode_ParseSmartAttributeCode(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    interface{}
+		input    any
 		expected dto.SmartAttributeCode
 		hasError bool
 	}{

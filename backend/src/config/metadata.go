@@ -51,7 +51,7 @@ func parseMetadataVersion(data []byte) *semver.Version {
 	if len(cleaned) == 0 {
 		return nil
 	}
-	var metadata map[string]interface{}
+	var metadata map[string]any
 	if err := json.Unmarshal(cleaned, &metadata); err != nil {
 		return nil
 	}

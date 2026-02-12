@@ -136,7 +136,7 @@ func (self *Config) ReadConfigBuffer(buffer []byte) error {
 	return nil
 }
 
-// ConfigToMap converts a Config struct to a map[string]interface{}.
+// ConfigToMap converts a Config struct to a map[string]any.
 // This function is useful for converting a strongly-typed Config object
 // into a more flexible map representation.
 //
@@ -144,10 +144,10 @@ func (self *Config) ReadConfigBuffer(buffer []byte) error {
 //   - in: A pointer to the Config struct to be converted.
 //
 // Returns:
-//   - *map[string]interface{}: A pointer to the resulting map.
+//   - *map[string]any: A pointer to the resulting map.
 //     If the conversion process fails at any step, the function returns nil.
-func (in *Config) ConfigToMap() *map[string]interface{} {
-	var nconfig map[string]interface{}
+func (in *Config) ConfigToMap() *map[string]any {
+	var nconfig map[string]any
 
 	//log.Println(pretty.Sprint("New Config:", in))
 

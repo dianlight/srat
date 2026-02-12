@@ -9,8 +9,8 @@ type PropertyRepository struct {
 type PropertyRepositoryInterface interface {
 	All() (dbom.Properties, errors.E)
 	SaveAll(props *dbom.Properties) errors.E
-	Value(key string) (interface{}, errors.E)
-	SetValue(key string, value interface{}) errors.E
+	Value(key string) (any, errors.E)
+	SetValue(key string, value any) errors.E
 	DumpTable() (string, errors.E)
 }
 
@@ -48,7 +48,7 @@ func (self *PropertyRepository) SaveAll(props *dbom.Properties) errors.E {
 
 // SetValue saves a property with the given key and value.
 // The property is marked as not internal.
-func (self *PropertyRepository) SetValue(key string, value interface{}) errors.E {
+func (self *PropertyRepository) SetValue(key string, value any) errors.E {
 	prop := dbom.Property{
 		Key:   key,
 		Value: value,
@@ -56,7 +56,7 @@ func (self *PropertyRepository) SetValue(key string, value interface{}) errors.E
 	return errors.WithStack(self.db.Save(&prop).Error)
 }
 
-func (self *PropertyRepository) Value(key string) (interface{}, errors.E) {
+func (self *PropertyRepository) Value(key string) (any, errors.E) {
 	var prop dbom.Property
 	res := self.db.Model(&dbom.Property{}).First(&prop, "key = ?", key)
 	if res.Error != nil {

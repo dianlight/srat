@@ -12,7 +12,6 @@ import (
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
-	"github.com/xorcare/pointer"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 )
@@ -68,11 +67,11 @@ func (suite *HardwareServiceSuite) TestGetHardwareInfo_Success() {
 			Data: &hardware.HardwareInfo{
 				Drives: &[]hardware.Drive{
 					{
-						Id: pointer.String("drive1"),
+						Id: new("drive1"),
 						Filesystems: &[]hardware.Filesystem{
 							{
-								Device: pointer.String("/dev/sda1"),
-								Name:   pointer.String("filesystem1"),
+								Device: new("/dev/sda1"),
+								Name:   new("filesystem1"),
 							},
 						},
 					},
@@ -194,11 +193,11 @@ func (suite *HardwareServiceSuite) TestGetHardwareInfo_SkipsDrivesWithoutFilesys
 			Data: &hardware.HardwareInfo{
 				Drives: &[]hardware.Drive{
 					{
-						Id:          pointer.String("drive1"),
+						Id:          new("drive1"),
 						Filesystems: nil, // No filesystems
 					},
 					{
-						Id:          pointer.String("drive2"),
+						Id:          new("drive2"),
 						Filesystems: &[]hardware.Filesystem{}, // Empty filesystems
 					},
 				},

@@ -106,10 +106,7 @@ func (handler *UpgradeHanler) UpdateHandler(ctx context.Context, input *struct{}
 
 	slog.InfoContext(ctx, "Updating to version", "version", assets.LastRelease)
 
-	handler.ctx.Value("wg").(*sync.WaitGroup).Add(1)
-	go func() {
-		defer handler.ctx.Value("wg").(*sync.WaitGroup).Done()
-
+	handler.ctx.Value("wg").(*sync.WaitGroup).Go(func() {
 		updatePkg, err := handler.upgader.DownloadAndExtractBinaryAsset(assets.ArchAsset)
 		if err != nil {
 			slog.ErrorContext(handler.ctx, "Error downloading and extracting binary asset", "err", err)
@@ -124,7 +121,7 @@ func (handler *UpgradeHanler) UpdateHandler(ctx context.Context, input *struct{}
 		if handler.testDone != nil {
 			close(handler.testDone)
 		}
-	}()
+	})
 
 	return &struct{ Body dto.UpdateProgress }{Body: dto.UpdateProgress{
 		ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSDOWNLOADING,

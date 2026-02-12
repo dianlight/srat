@@ -13,7 +13,6 @@ import (
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
-	"github.com/xorcare/pointer"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 )
@@ -135,16 +134,16 @@ func (suite *SupervisorServiceSuite) TestNetworkGetAllMounted_Success() {
 			}{
 				Mounts: &[]mount.Mount{
 					{
-						Name:   pointer.String("share1"),
-						Server: pointer.String("172.30.32.1"),
+						Name:   new("share1"),
+						Server: new("172.30.32.1"),
 					},
 					{
-						Name:   pointer.String("share2"),
-						Server: pointer.String("172.30.32.1"),
+						Name:   new("share2"),
+						Server: new("172.30.32.1"),
 					},
 					{
-						Name:   pointer.String("other-share"),
-						Server: pointer.String("192.168.1.100"), // Different server
+						Name:   new("other-share"),
+						Server: new("192.168.1.100"), // Different server
 					},
 				},
 			},
@@ -219,8 +218,8 @@ func (suite *SupervisorServiceSuite) TestNetworkUnmountShare_Success() {
 			}{
 				Mounts: &[]mount.Mount{
 					{
-						Name:   pointer.String("test-share"),
-						Server: pointer.String("172.30.32.1"),
+						Name:   new("test-share"),
+						Server: new("172.30.32.1"),
 					},
 				},
 			},
@@ -558,10 +557,10 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_Update400_NoRetryLogi
 			}{
 				Mounts: &[]mount.Mount{
 					{
-						Name:   pointer.String("test-share"),
-						Server: pointer.String("172.30.32.1"),
-						Usage:  pointer.Any(mount.MountUsage("media")).(*mount.MountUsage),
-						State:  pointer.String("inactive"), // Inactive state triggers update
+						Name:   new("test-share"),
+						Server: new("172.30.32.1"),
+						Usage:  new(mount.MountUsage("media")),
+						State:  new("inactive"), // Inactive state triggers update
 					},
 				},
 			},
@@ -644,10 +643,10 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_Update400_WithRetryLo
 			}{
 				Mounts: &[]mount.Mount{
 					{
-						Name:   pointer.String("test-share"),
-						Server: pointer.String("172.30.32.1"),
-						Usage:  pointer.Any(mount.MountUsage("share")).(*mount.MountUsage),
-						State:  pointer.String("inactive"), // Inactive state triggers update
+						Name:   new("test-share"),
+						Server: new("172.30.32.1"),
+						Usage:  new(mount.MountUsage("share")),
+						State:  new("inactive"), // Inactive state triggers update
 					},
 				},
 			},
@@ -735,9 +734,9 @@ func (suite *SupervisorServiceSuite) TestNetworkUnmountAllShares_Success() {
 				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
 			}{
 				Mounts: &[]mount.Mount{
-					{Name: pointer.String("media1"), Server: pointer.String("172.30.32.1")},
-					{Name: pointer.String("share2"), Server: pointer.String("172.30.32.1")},
-					{Name: pointer.String("backup3"), Server: pointer.String("172.30.32.1")},
+					{Name: new("media1"), Server: new("172.30.32.1")},
+					{Name: new("share2"), Server: new("172.30.32.1")},
+					{Name: new("backup3"), Server: new("172.30.32.1")},
 				},
 			},
 		},
@@ -760,7 +759,7 @@ func (suite *SupervisorServiceSuite) TestNetworkUnmountAllShares_Success() {
 
 // NetworkUnmountAllShares should skip disabled and invalid shares
 func (suite *SupervisorServiceSuite) TestNetworkUnmountAllShares_SkipsDisabledAndInvalid() {
-	disabled := pointer.Bool(true)
+	disabled := new(true)
 	shares := []dto.SharedResource{
 		{Name: "disabled-media", Usage: "media", Disabled: disabled, Status: &dto.SharedResourceStatus{IsValid: true}},
 		{Name: "invalid-share", Usage: "share", Status: &dto.SharedResourceStatus{IsValid: false}},
@@ -783,9 +782,9 @@ func (suite *SupervisorServiceSuite) TestNetworkUnmountAllShares_SkipsDisabledAn
 				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
 			}{
 				Mounts: &[]mount.Mount{
-					{Name: pointer.String("ok-backup"), Server: pointer.String("172.30.32.1")},
-					{Name: pointer.String("disabled-media"), Server: pointer.String("172.30.32.1")},
-					{Name: pointer.String("invalid-share"), Server: pointer.String("172.30.32.1")},
+					{Name: new("ok-backup"), Server: new("172.30.32.1")},
+					{Name: new("disabled-media"), Server: new("172.30.32.1")},
+					{Name: new("invalid-share"), Server: new("172.30.32.1")},
 				},
 			},
 		},
@@ -938,8 +937,8 @@ func (suite *SupervisorServiceSuite) TestNetworkMountAllShares_MountsEligibleAnd
 				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
 			}{
 				Mounts: &[]mount.Mount{
-					{Name: pointer.String("orphan-share"), Server: pointer.String("172.30.32.1")},
-					{Name: pointer.String("external"), Server: pointer.String("192.168.1.1")},
+					{Name: new("orphan-share"), Server: new("172.30.32.1")},
+					{Name: new("external"), Server: new("192.168.1.1")},
 				},
 			},
 		},

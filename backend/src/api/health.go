@@ -76,11 +76,9 @@ func NewHealthHandler(lc fx.Lifecycle, param HealthHandlerParams) *HealthHanler 
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			p.ctx.Value("wg").(*sync.WaitGroup).Add(1)
-			go func() {
-				defer p.ctx.Value("wg").(*sync.WaitGroup).Done()
+			p.ctx.Value("wg").(*sync.WaitGroup).Go(func() {
 				p.run()
-			}()
+			})
 			return nil
 		},
 	})

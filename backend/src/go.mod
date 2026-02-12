@@ -1,6 +1,6 @@
 module github.com/dianlight/srat
 
-go 1.25.7
+go 1.26.0
 
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
@@ -149,7 +149,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.1 // indirect
 	golang.org/x/crypto v0.48.0 // indirect
-	golang.org/x/exp v0.0.0-20260209203927-2842357ff358
+	golang.org/x/exp v0.0.0-20260211191109-2735e65f0518
 	golang.org/x/mod v0.33.0 // indirect
 	golang.org/x/sync v0.19.0
 	golang.org/x/text v0.34.0 // indirect
@@ -169,7 +169,6 @@ require (
 	github.com/rs/cors v1.11.1
 	github.com/thoas/go-funk v0.9.3
 	github.com/u-root/u-root v0.15.0
-	github.com/xorcare/pointer v1.2.2
 	gitlab.com/tozd/go/errors v0.10.0
 	go.uber.org/fx v1.24.0
 	golang.org/x/time v0.14.0

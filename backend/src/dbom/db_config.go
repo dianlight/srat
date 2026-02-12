@@ -271,7 +271,7 @@ func checkDBIntegrity(db *gorm.DB) errors.E {
 		for rows.Next() {
 			index++
 			var table string
-			var rowid, parent, fkid interface{}
+			var rowid, parent, fkid any
 			if scanErr := rows.Scan(&table, &rowid, &parent, &fkid); scanErr == nil {
 				slog.Info("PRAGMA foreign_key_check result", "table", table, "rowid", rowid, "parent", parent, "fkid", fkid)
 				problems = append(problems, fmt.Sprintf("Table: %s, RowID: %v, Parent: %v, FkID: %v", table, rowid, parent, fkid))

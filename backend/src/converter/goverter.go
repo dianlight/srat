@@ -9,7 +9,6 @@ import (
 	dto "github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/u-root/u-root/pkg/mount"
-	"github.com/xorcare/pointer"
 )
 
 //go:generate go tool goverter gen ./...
@@ -109,7 +108,7 @@ func mountPathToDeviceId(mountPath string) (string, error) {
 }
 
 func falsePConst() *bool {
-	return pointer.Bool(false)
+	return new(false)
 }
 
 func falseConst() bool {
@@ -117,7 +116,7 @@ func falseConst() bool {
 }
 
 func truePConst() *bool {
-	return pointer.Bool(true)
+	return new(true)
 }
 
 func trueConst() bool {
@@ -126,7 +125,7 @@ func trueConst() bool {
 
 func isWriteSupported(path string) *bool {
 	//tlog.Debug("Checking if path is writable", "path", path, "isWritable", osutil.IsWritable(path))
-	return pointer.Bool(osutil.IsWritable(path))
+	return new(osutil.IsWritable(path))
 
 }
 

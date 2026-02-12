@@ -12,7 +12,6 @@ import (
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
-	"github.com/xorcare/pointer"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
@@ -90,7 +89,7 @@ func (suite *AddonsServiceTestSuite) TestGetStats_Success() {
 			HTTPResponse: &http.Response{StatusCode: http.StatusOK},
 			JSON200: &addons.AddonInfoResponse{
 				Data: addons.AddonInfoData{
-					Protected: pointer.Bool(false),
+					Protected: new(false),
 				},
 			},
 		}, nil)

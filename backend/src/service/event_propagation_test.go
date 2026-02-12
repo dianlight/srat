@@ -17,7 +17,6 @@ import (
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
 	"github.com/u-root/u-root/pkg/mount"
-	"github.com/xorcare/pointer"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
@@ -147,18 +146,18 @@ func (suite *EventPropagationTestSuite) SetupTest() {
 			// Populate disks with fake partitions so VolumeService can find them
 			// This avoids "Source device does not exist on the system" errors
 			fakeDisk := dto.Disk{
-				Id:    pointer.String("sdk"),
-				Model: pointer.String("Fake Test Disk"),
+				Id:    new("sdk"),
+				Model: new("Fake Test Disk"),
 				Partitions: &map[string]dto.Partition{
-					"sda1": {Id: pointer.String("sda1"), DevicePath: pointer.String("/dev/fake-sda1"), DiskId: pointer.String("sdk")},
-					"sdb1": {Id: pointer.String("sdb1"), DevicePath: pointer.String("/dev/fake-sdb1"), DiskId: pointer.String("sdk")},
-					"sdc1": {Id: pointer.String("sdc1"), DevicePath: pointer.String("/dev/fake-sdc1"), DiskId: pointer.String("sdk")},
-					"sdd1": {Id: pointer.String("sdd1"), DevicePath: pointer.String("/dev/fake-sdd1"), DiskId: pointer.String("sdk")},
-					"sde1": {Id: pointer.String("sde1"), DevicePath: pointer.String("/dev/fake-sde1"), DiskId: pointer.String("sdk")},
-					"sdf1": {Id: pointer.String("sdf1"), DevicePath: pointer.String("/dev/fake-sdf1"), DiskId: pointer.String("sdk")},
-					"sdg1": {Id: pointer.String("sdg1"), DevicePath: pointer.String("/dev/fake-sdg1"), DiskId: pointer.String("sdk")},
-					"sdh1": {Id: pointer.String("sdh1"), DevicePath: pointer.String("/dev/fake-sdh1"), DiskId: pointer.String("sdk")},
-					"sdi1": {Id: pointer.String("sdi1"), DevicePath: pointer.String("/dev/fake-sdi1"), DiskId: pointer.String("sdk")},
+					"sda1": {Id: new("sda1"), DevicePath: new("/dev/fake-sda1"), DiskId: new("sdk")},
+					"sdb1": {Id: new("sdb1"), DevicePath: new("/dev/fake-sdb1"), DiskId: new("sdk")},
+					"sdc1": {Id: new("sdc1"), DevicePath: new("/dev/fake-sdc1"), DiskId: new("sdk")},
+					"sdd1": {Id: new("sdd1"), DevicePath: new("/dev/fake-sdd1"), DiskId: new("sdk")},
+					"sde1": {Id: new("sde1"), DevicePath: new("/dev/fake-sde1"), DiskId: new("sdk")},
+					"sdf1": {Id: new("sdf1"), DevicePath: new("/dev/fake-sdf1"), DiskId: new("sdk")},
+					"sdg1": {Id: new("sdg1"), DevicePath: new("/dev/fake-sdg1"), DiskId: new("sdk")},
+					"sdh1": {Id: new("sdh1"), DevicePath: new("/dev/fake-sdh1"), DiskId: new("sdk")},
+					"sdi1": {Id: new("sdi1"), DevicePath: new("/dev/fake-sdi1"), DiskId: new("sdk")},
 				},
 			}
 			if vs.disks == nil {
@@ -347,8 +346,8 @@ func (suite *EventPropagationTestSuite) TestDiskEventPropagation() {
 
 	// Action: Emit a Disk event
 	disk := &dto.Disk{
-		Id:    pointer.String("sda"),
-		Model: pointer.String("Test Disk"),
+		Id:    new("sda"),
+		Model: new("Test Disk"),
 	}
 	suite.eventBus.EmitDisk(events.DiskEvent{
 		Event: events.Event{
@@ -536,7 +535,7 @@ func (suite *EventPropagationTestSuite) TestConcurrentEventPropagation() {
 		}(i)
 		go func(idx int) {
 			suite.eventBus.EmitDisk(events.DiskEvent{
-				Disk: &dto.Disk{Id: pointer.String("disk-" + string(rune(idx)))},
+				Disk: &dto.Disk{Id: new("disk-" + string(rune(idx)))},
 			})
 		}(i)
 	}
@@ -622,13 +621,13 @@ func (suite *EventPropagationTestSuite) TestDiskEventEmits() {
 	// Action: Emit disk with partitions
 	partitions := map[string]dto.Partition{
 		"sda1": {
-			Name:       pointer.String("sda1"),
-			DevicePath: pointer.String("/dev/sda1"),
+			Name:       new("sda1"),
+			DevicePath: new("/dev/sda1"),
 		},
 	}
 	disk := &dto.Disk{
-		Id:         pointer.String("sda"),
-		Model:      pointer.String("Test Disk"),
+		Id:         new("sda"),
+		Model:      new("Test Disk"),
 		Partitions: &partitions,
 	}
 	suite.eventBus.EmitDisk(events.DiskEvent{
@@ -703,15 +702,15 @@ func (suite *EventPropagationTestSuite) TestSettingEventPropagation() {
 		// Hardware
 		mockHW := map[string]dto.Disk{
 			"disk-4": {
-				Id:     pointer.String("disk-4"),
-				Vendor: pointer.String("VEND"),
-				Model:  pointer.String("MODEL"),
+				Id:     new("disk-4"),
+				Vendor: new("VEND"),
+				Model:  new("MODEL"),
 				Partitions: &map[string]dto.Partition{
 					partID: {
-						Id:             pointer.String(partID),
-						DevicePath:     pointer.String(devicePath),
+						Id:             new(partID),
+						DevicePath:     new(devicePath),
 						MountPointData: &map[string]dto.MountPointData{},
-						DiskId:         pointer.String("disk-4"),
+						DiskId:         new("disk-4"),
 					},
 				},
 			},
@@ -776,15 +775,15 @@ func (suite *EventPropagationTestSuite) TestVolumeMountEventPropagation() {
 	/*
 		mockHW := map[string]dto.Disk{
 			"disk-4": {
-				Id:     pointer.String("disk-4"),
-				Vendor: pointer.String("VEND"),
-				Model:  pointer.String("MODEL"),
+				Id:     new("disk-4"),
+				Vendor: new("VEND"),
+				Model:  new("MODEL"),
 				Partitions: &map[string]dto.Partition{
 					partID: {
-						Id:             pointer.String(partID),
-						DevicePath:     pointer.String(devicePath),
+						Id:             new(partID),
+						DevicePath:     new(devicePath),
 						MountPointData: &map[string]dto.MountPointData{},
-						DiskId:         pointer.String("disk-4"),
+						DiskId:         new("disk-4"),
 					},
 				},
 			},
@@ -795,7 +794,7 @@ func (suite *EventPropagationTestSuite) TestVolumeMountEventPropagation() {
 		Path:      mountPath,
 		IsMounted: true,
 		DeviceId:  devicePath,
-		Partition: &dto.Partition{Id: pointer.String(partID), DevicePath: pointer.String(devicePath)},
+		Partition: &dto.Partition{Id: new(partID), DevicePath: new(devicePath)},
 	}
 	//mock.When(suite.mockHardwareClient.GetHardwareInfo()).ThenReturn(mockHW, nil).Verify(matchers.AtLeastOnce())
 
@@ -878,7 +877,7 @@ func (suite *EventPropagationTestSuite) TestMultipleVolumeOperationsSequence() {
 	mountPoint := &dto.MountPointData{
 		Path:      "/mnt/test-seq",
 		DeviceId:  "sdc1",
-		Partition: &dto.Partition{Id: pointer.String("sdc1"), DevicePath: pointer.String("/dev/fake-sdc1")},
+		Partition: &dto.Partition{Id: new("sdc1"), DevicePath: new("/dev/fake-sdc1")},
 	}
 
 	// Mount (emits MountPointEvent)
@@ -956,14 +955,14 @@ func (suite *EventPropagationTestSuite) TestVolumeDiskPartitionEventChain() {
 	// Action: Emit a complete volume lifecycle event chain
 	partitions := map[string]dto.Partition{
 		"sdd1": {
-			Name:       pointer.String("sdd1"),
-			DevicePath: pointer.String("/dev/sdd1"),
-			Id:         pointer.String("sdd1"),
+			Name:       new("sdd1"),
+			DevicePath: new("/dev/sdd1"),
+			Id:         new("sdd1"),
 		},
 	}
 	disk := &dto.Disk{
-		Id:         pointer.String("sdd"),
-		Model:      pointer.String("Test Disk"),
+		Id:         new("sdd"),
+		Model:      new("Test Disk"),
 		Partitions: &partitions,
 	}
 
@@ -978,7 +977,7 @@ func (suite *EventPropagationTestSuite) TestVolumeDiskPartitionEventChain() {
 		Path:      "/mnt/sdd1",
 		IsMounted: true,
 		DeviceId:  "sdd1",
-		Partition: &dto.Partition{Id: pointer.String("sdd1"), DevicePath: pointer.String("/dev/fake-sdd1")},
+		Partition: &dto.Partition{Id: new("sdd1"), DevicePath: new("/dev/fake-sdd1")},
 	}
 	suite.eventBus.EmitMountPoint(events.MountPointEvent{
 		Event:      events.Event{Type: events.EventTypes.UPDATE},
@@ -1038,7 +1037,7 @@ func (suite *EventPropagationTestSuite) TestConcurrentVolumeOperations() {
 				Path:      fmt.Sprintf("/mnt/vol-%d", idx),
 				IsMounted: true,
 				DeviceId:  dev,
-				Partition: &dto.Partition{Id: pointer.String(dev), DevicePath: pointer.String("/dev/fake-" + dev)},
+				Partition: &dto.Partition{Id: new(dev), DevicePath: new("/dev/fake-" + dev)},
 			})
 			suite.Require().NoError(err)
 		}()
