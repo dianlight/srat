@@ -7,6 +7,7 @@ import logging
 from typing import Any
 
 import aiohttp
+from homeassistant.components.hassio import HassioServiceInfo
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import voluptuous as vol
@@ -69,18 +70,18 @@ class SRATConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore[call-arg]
         )
 
     async def async_step_hassio(
-        self, discovery_info: dict[str, Any]
+        self, discovery_info: HassioServiceInfo
     ) -> ConfigFlowResult:
         """Handle Supervisor add-on discovery."""
         _LOGGER.debug("SRAT hassio discovery: %s", discovery_info)
 
-        slug = discovery_info.get("addon")
-        if slug and slug not in ADDON_SLUG_WHITELIST:
+        slug = discovery_info.slug
+        if not slug or slug not in ADDON_SLUG_WHITELIST:
             return self.async_abort(reason="not_srat_addon")
 
-        config = discovery_info.get("config", {})
-        host = config.get("host", discovery_info.get("host", DEFAULT_HOST))
-        port = config.get("port", discovery_info.get("port", DEFAULT_PORT))
+        config = discovery_info.config or {}
+        host = config.get("host", DEFAULT_HOST)
+        port = config.get("port", DEFAULT_PORT)
 
         await self.async_set_unique_id(f"srat_{slug or host}")
         self._abort_if_unique_id_configured(updates={CONF_HOST: host, CONF_PORT: port})

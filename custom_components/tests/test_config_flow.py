@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp
+from homeassistant.components.hassio import HassioServiceInfo
 from homeassistant.config_entries import SOURCE_HASSIO, SOURCE_USER
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
@@ -116,12 +116,12 @@ async def test_hassio_discovery(
     mock_setup_entry: AsyncMock,
 ) -> None:
     """Test Supervisor add-on auto-discovery."""
-    discovery_info: dict[str, Any] = {
-        "addon": "local_sambanas2",
-        "host": "core-local-sambanas2",
-        "port": 8099,
-        "config": {"host": "core-local-sambanas2", "port": 8099},
-    }
+    discovery_info = HassioServiceInfo(
+        config={"host": "core-local-sambanas2", "port": 8099},
+        name="SambaNas2",
+        slug="local_sambanas2",
+        uuid="test-uuid-1234",
+    )
 
     result = await hass.config_entries.flow.async_init(
         DOMAIN,
@@ -147,12 +147,12 @@ async def test_hassio_discovery_rejects_unknown_slug(
     hass: HomeAssistant,
 ) -> None:
     """Test that unknown addon slugs are rejected."""
-    discovery_info: dict[str, Any] = {
-        "addon": "unknown_addon",
-        "host": "core-unknown",
-        "port": 8099,
-        "config": {},
-    }
+    discovery_info = HassioServiceInfo(
+        config={},
+        name="Unknown Addon",
+        slug="unknown_addon",
+        uuid="test-uuid-5678",
+    )
 
     result = await hass.config_entries.flow.async_init(
         DOMAIN,
