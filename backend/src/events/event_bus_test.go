@@ -11,7 +11,6 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/xorcare/pointer"
 	"gitlab.com/tozd/go/errors"
 )
 
@@ -33,8 +32,8 @@ func TestEventBusDisk(t *testing.T) {
 
 	// Emit event
 	disk := &dto.Disk{
-		Id:    pointer.String("sda"),
-		Model: pointer.String("Test Disk"),
+		Id:    new("sda"),
+		Model: new("Test Disk"),
 	}
 	bus.EmitDisk(DiskEvent{Disk: disk})
 
@@ -73,11 +72,11 @@ func TestEventBusPartition(t *testing.T) {
 
 	// Emit event
 	partition := &dto.Partition{
-		Name:       pointer.String("sda1"),
-		DevicePath: pointer.String("/dev/sda1"),
+		Name:       new("sda1"),
+		DevicePath: new("/dev/sda1"),
 	}
 	disk := &dto.Disk{
-		Id: pointer.String("sda"),
+		Id: new("sda"),
 	}
 	bus.EmitPartition(PartitionEvent{Partition: partition, Disk: disk})
 
@@ -205,7 +204,7 @@ func TestEventBusMultipleListeners(t *testing.T) {
 
 	// Emit event
 	disk := &dto.Disk{
-		Id: pointer.String("sda"),
+		Id: new("sda"),
 	}
 	bus.EmitDisk(DiskEvent{Disk: disk})
 
@@ -244,7 +243,7 @@ func TestEventBusUnsubscribe(t *testing.T) {
 
 	// Emit event
 	disk := &dto.Disk{
-		Id: pointer.String("sda"),
+		Id: new("sda"),
 	}
 	bus.EmitDisk(DiskEvent{Disk: disk})
 
@@ -310,8 +309,8 @@ func TestEventBusOneEmitMultipleListeners(t *testing.T) {
 
 	// Emit one event
 	disk := &dto.Disk{
-		Id:    pointer.String("sda"),
-		Model: pointer.String("Test Disk"),
+		Id:    new("sda"),
+		Model: new("Test Disk"),
 	}
 	bus.EmitDisk(DiskEvent{Disk: disk})
 
@@ -517,7 +516,7 @@ func TestEventBusConcurrentEmits(t *testing.T) {
 	for i := 0; i < numEmits; i++ {
 		go func(i int) {
 			disk := &dto.Disk{
-				Id: pointer.String("sda" + fmt.Sprint(i)),
+				Id: new("sda" + fmt.Sprint(i)),
 			}
 			bus.EmitDisk(DiskEvent{Disk: disk})
 		}(i)

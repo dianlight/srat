@@ -9,7 +9,6 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/host"
 	"github.com/dianlight/srat/service"
-	"github.com/xorcare/pointer"
 
 	// gocache "github.com/patrickmn/go-cache" // Not strictly needed for these tests
 	"github.com/ovechkin-dm/mockio/v2/matchers"
@@ -105,7 +104,7 @@ func (suite *HostServiceTestSuite) TestGetHostName_APISuccess_CacheMissThenHit()
 		HTTPResponse: &http.Response{StatusCode: http.StatusOK},
 		JSON200: &host.HostInfoResponse{
 			Data: host.HostInfoData{
-				Hostname: pointer.String(testHostname),
+				Hostname: new(testHostname),
 			},
 		},
 	}

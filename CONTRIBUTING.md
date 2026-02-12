@@ -14,13 +14,14 @@
     - [Suppression / Exceptions](#suppression--exceptions)
     - [Enforcement](#enforcement)
   - [6. Error Handling](#6-error-handling)
-  - [7. Database & Migrations](#7-database--migrations)
-  - [8. Patches to Dependencies](#8-patches-to-dependencies)
-  - [9. Frontend Patterns](#9-frontend-patterns)
-  - [10. Documentation](#10-documentation)
-  - [11. Security](#11-security)
-  - [12. Performance](#12-performance)
-  - [13. Pull Request Checklist](#13-pull-request-checklist)
+  - [7. Go 1.26 Modern Patterns](#7-go-126-modern-patterns)
+  - [8. Database & Migrations](#8-database--migrations)
+  - [9. Patches to Dependencies](#9-patches-to-dependencies)
+  - [10. Frontend Patterns](#10-frontend-patterns)
+  - [11. Documentation](#11-documentation)
+  - [12. Security](#12-security)
+  - [13. Performance](#13-performance)
+  - [14. Pull Request Checklist](#14-pull-request-checklist)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -34,7 +35,7 @@ Be respectful. Provide clear rationale in PR descriptions. Security or stability
 
 ## 2. Development Environment
 
-- Backend: Go 1.25
+- Backend: Go 1.26
 - Frontend: Bun + React + TypeScript
 - Run `make prepare` once to install pre-commit hooks.
 
@@ -102,34 +103,45 @@ A pre-commit hook (`verify-context-logging`) scans for non-context `slog`/`tlog`
 
 ## 6. Error Handling
 
-Wrap errors with context using the local `errors` helpers. Prefer sentinel errors in `dto` for domain cases.
+Wrap errors with context using the local `errors` helpers. Prefer sentinel errors in `dto` for domain cases. When using the standard library `errors` package, prefer `errors.AsType[T]()` (Go 1.26) over `errors.As()` for type-safe error checking.
 
-## 7. Database & Migrations
+## 7. Go 1.26 Modern Patterns
+
+All new or modified Go code MUST follow these conventions:
+
+- **Pointer creation**: Use `new(expr)` (e.g., `new(false)`, `new("ext4")`). Never use `pointer.Bool()` or similar helper libraries.
+- **Type alias**: Use `any` instead of `interface{}`. Generated files are exempt.
+- **WaitGroup**: Use `wg.Go(func() { ... })` instead of `wg.Add(1)` + `go func() { defer wg.Done(); ... }()`.
+- **Modernizers**: Run `go fix ./...` periodically to apply automated Go modernizations.
+
+See `/.github/copilot-instructions.md` for detailed examples.
+
+## 8. Database & Migrations
 
 - Use Goose migration files under `backend/src/dbom/migrations/`.
 - New migrations must be idempotent and defensive.
 
-## 8. Patches to Dependencies
+## 9. Patches to Dependencies
 
 Follow patch workflow (`make patch`, `backend/patches/*`). Never add direct `replace` directives in `go.mod`.
 
-## 9. Frontend Patterns
+## 10. Frontend Patterns
 
 Strictly follow testing & import patterns from `/.github/copilot-instructions.md`. All user interactions must use `@testing-library/user-event`.
 
-## 10. Documentation
+## 11. Documentation
 
 Update `CHANGELOG.md` for user-visible changes. Provide rationale for breaking changes.
 
-## 11. Security
+## 12. Security
 
 Run `make security` locally before opening a PR touching sensitive areas (auth, execution, filesystem). Avoid logging credentials or secrets; masking is handled by `tlog` but still use discretion.
 
-## 12. Performance
+## 13. Performance
 
 Profile hotspots using provided `PPROF.md` guidance for significant performance-related changes.
 
-## 13. Pull Request Checklist
+## 14. Pull Request Checklist
 
 - [ ] Tests added / updated
 - [ ] Lint & format pass (`pre-commit run --all-files`)

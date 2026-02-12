@@ -15,7 +15,6 @@ import (
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
-	"github.com/xorcare/pointer"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
@@ -114,20 +113,20 @@ func (suite *ShareHandlerSuite) TestCreateShareSuccessFull() {
 				},
 			},
 			RoUsers:     []dto.User{},
-			TimeMachine: pointer.Bool(false),
+			TimeMachine: new(false),
 			Usage:       "none",
 			VetoFiles:   []string{},
-			Disabled:    pointer.Bool(false),
+			Disabled:    new(false),
 			MountPointData: &dto.MountPointData{
 				Path: "/mnt/Updater",
 				//PathHash:           "5e9b1c4e4951a06eb81659f8b0835cee0d7e0334",
 				Type:               "ADDON",
-				FSType:             pointer.String("exfat"),
+				FSType:             new("exfat"),
 				Flags:              nil,
 				CustomFlags:        nil,
 				DeviceId:           "sdb2",
 				IsMounted:          true,
-				IsToMountAtStartup: pointer.Bool(true),
+				IsToMountAtStartup: new(true),
 			},
 		},
 	}
@@ -138,16 +137,16 @@ func (suite *ShareHandlerSuite) TestCreateShareSuccessFull() {
 			IsAdmin:  true,
 			RwShares: []string{"addon_configs", "config", "addons", "ssl", "share", "backup", "media", "EFI"},
 		},
-	}, RoUsers: []dto.User{}, TimeMachine: pointer.Bool(false), Usage: "none", VetoFiles: []string{}, Disabled: pointer.Bool(false), MountPointData: &dto.MountPointData{
+	}, RoUsers: []dto.User{}, TimeMachine: new(false), Usage: "none", VetoFiles: []string{}, Disabled: new(false), MountPointData: &dto.MountPointData{
 		Path: "/mnt/Updater",
 		//PathHash:           "5e9b1c4e4951a06eb81659f8b0835cee0d7e0334",
 		Type:               "ADDON",
-		FSType:             pointer.String("exfat"),
+		FSType:             new("exfat"),
 		Flags:              nil,
 		CustomFlags:        nil,
 		DeviceId:           "sdb2",
 		IsMounted:          true,
-		IsToMountAtStartup: pointer.Bool(true),
+		IsToMountAtStartup: new(true),
 	},
 	}
 
@@ -274,15 +273,15 @@ func (suite *ShareHandlerSuite) TestListSharesWithDisabledShareWithoutMountPoint
 					IsAdmin:  true,
 				},
 			},
-			Disabled: pointer.Bool(false),
+			Disabled: new(false),
 			MountPointData: &dto.MountPointData{
 				Path: "/mnt/valid-share",
 				//PathHash:           "validhash123",
 				Type:               "ADDON",
-				FSType:             pointer.String("ext4"),
+				FSType:             new("ext4"),
 				DeviceId:           "sda1",
 				IsMounted:          true,
-				IsToMountAtStartup: pointer.Bool(true),
+				IsToMountAtStartup: new(true),
 			},
 		},
 		{
@@ -342,15 +341,15 @@ func (suite *ShareHandlerSuite) TestListSharesWithEmptyPathInMountPoint() {
 					IsAdmin:  true,
 				},
 			},
-			Disabled: pointer.Bool(false),
+			Disabled: new(false),
 			MountPointData: &dto.MountPointData{
 				Path: "/mnt/valid-share",
 				//PathHash:           "validhash123",
 				Type:               "ADDON",
-				FSType:             pointer.String("ext4"),
+				FSType:             new("ext4"),
 				DeviceId:           "sda1",
 				IsMounted:          true,
-				IsToMountAtStartup: pointer.Bool(true),
+				IsToMountAtStartup: new(true),
 			},
 		},
 		{
@@ -364,7 +363,7 @@ func (suite *ShareHandlerSuite) TestListSharesWithEmptyPathInMountPoint() {
 				},
 			},
 			RoUsers:        []dto.User{},
-			TimeMachine:    pointer.Bool(false),
+			TimeMachine:    new(false),
 			Usage:          "none",
 			VetoFiles:      []string{},
 			Disabled:       &disabled,
@@ -523,7 +522,7 @@ func (suite *ShareHandlerSuite) TestUpdateShareNotFound() {
 
 func (suite *ShareHandlerSuite) TestDisableShareSuccess() {
 	shareName := "test-share"
-	disabledShare := &dto.SharedResource{Name: shareName, Disabled: pointer.Bool(true)}
+	disabledShare := &dto.SharedResource{Name: shareName, Disabled: new(true)}
 
 	// Configure mock expectations
 	mock.When(suite.mockShareService.DisableShare(shareName)).ThenReturn(disabledShare, nil)
@@ -565,7 +564,7 @@ func (suite *ShareHandlerSuite) TestDisableShareNotFound() {
 
 func (suite *ShareHandlerSuite) TestEnableShareSuccess() {
 	shareName := "test-share"
-	enabledShare := &dto.SharedResource{Name: shareName, Disabled: pointer.Bool(false)}
+	enabledShare := &dto.SharedResource{Name: shareName, Disabled: new(false)}
 
 	// Configure mock expectations
 	mock.When(suite.mockShareService.EnableShare(shareName)).ThenReturn(enabledShare, nil)
@@ -619,12 +618,12 @@ func (suite *ShareHandlerSuite) TestListSharesWithVolumeMountedRW() {
 					RwShares: []string{"share-mounted-rw-active"},
 				},
 			},
-			Disabled: pointer.Bool(false),
+			Disabled: new(false),
 			MountPointData: &dto.MountPointData{
 				Path: "/mnt/share-mounted-rw-active",
 				//PathHash:         "hash1",
 				Type:             "ADDON",
-				FSType:           pointer.String("ext4"),
+				FSType:           new("ext4"),
 				DeviceId:         "sda1",
 				IsMounted:        true,
 				IsWriteSupported: &isWriteSupported,
@@ -639,12 +638,12 @@ func (suite *ShareHandlerSuite) TestListSharesWithVolumeMountedRW() {
 					RwShares: []string{"share-mounted-rw-inactive"},
 				},
 			},
-			Disabled: pointer.Bool(true),
+			Disabled: new(true),
 			MountPointData: &dto.MountPointData{
 				Path: "/mnt/share-mounted-rw-inactive",
 				//PathHash:         "hash2",
 				Type:             "ADDON",
-				FSType:           pointer.String("ext4"),
+				FSType:           new("ext4"),
 				DeviceId:         "sda2",
 				IsMounted:        isMounted,
 				IsWriteSupported: &isWriteSupported,
@@ -701,12 +700,12 @@ func (suite *ShareHandlerSuite) TestListSharesWithVolumeMountedRO() {
 					Password: dto.NewSecret("testpass"),
 				},
 			},
-			Disabled: pointer.Bool(false),
+			Disabled: new(false),
 			MountPointData: &dto.MountPointData{
 				Path: "/mnt/share-mounted-ro-active",
 				//PathHash:         "hash3",
 				Type:             "ADDON",
-				FSType:           pointer.String("ext4"),
+				FSType:           new("ext4"),
 				DeviceId:         "sda3",
 				IsMounted:        isMounted,
 				IsWriteSupported: &isWriteSupported,
@@ -727,12 +726,12 @@ func (suite *ShareHandlerSuite) TestListSharesWithVolumeMountedRO() {
 					Password: dto.NewSecret("testpass2"),
 				},
 			},
-			Disabled: pointer.Bool(true),
+			Disabled: new(true),
 			MountPointData: &dto.MountPointData{
 				Path: "/mnt/share-mounted-ro-inactive",
 				//PathHash:         "hash4",
 				Type:             "ADDON",
-				FSType:           pointer.String("ext4"),
+				FSType:           new("ext4"),
 				DeviceId:         "sda4",
 				IsMounted:        isMounted,
 				IsWriteSupported: &isWriteSupported,
@@ -783,7 +782,7 @@ func (suite *ShareHandlerSuite) TestListSharesWithVolumeNotMounted() {
 					RwShares: []string{"share-not-mounted-was-active"},
 				},
 			},
-			Disabled: pointer.Bool(true), // Should be disabled if not mounted
+			Disabled: new(true), // Should be disabled if not mounted
 			Status: &dto.SharedResourceStatus{
 				IsValid: false, // Should be marked as invalid
 			},
@@ -791,7 +790,7 @@ func (suite *ShareHandlerSuite) TestListSharesWithVolumeNotMounted() {
 				Path: "/mnt/share-not-mounted",
 				//PathHash:         "hash5",
 				Type:             "ADDON",
-				FSType:           pointer.String("ext4"),
+				FSType:           new("ext4"),
 				DeviceId:         "sda5",
 				IsMounted:        false, // Not mounted
 				IsWriteSupported: &isWriteSupported,
@@ -834,7 +833,7 @@ func (suite *ShareHandlerSuite) TestListSharesWithVolumeNotExists() {
 					RwShares: []string{"share-no-volume"},
 				},
 			},
-			Disabled: pointer.Bool(true), // Should be disabled
+			Disabled: new(true), // Should be disabled
 			Status: &dto.SharedResourceStatus{
 				IsValid: false, // Should be marked as invalid
 			},
@@ -885,7 +884,7 @@ func (suite *ShareHandlerSuite) TestGetShareWithVolumeNotMounted() {
 				RwShares: []string{shareName},
 			},
 		},
-		Disabled: pointer.Bool(true),
+		Disabled: new(true),
 		Status: &dto.SharedResourceStatus{
 			IsValid: false,
 		},
@@ -893,7 +892,7 @@ func (suite *ShareHandlerSuite) TestGetShareWithVolumeNotMounted() {
 			Path: "/mnt/share-not-mounted",
 			//PathHash:         "hash7",
 			Type:             "ADDON",
-			FSType:           pointer.String("ext4"),
+			FSType:           new("ext4"),
 			DeviceId:         "sda7",
 			IsMounted:        false,
 			IsWriteSupported: &isWriteSupported,
@@ -936,7 +935,7 @@ func (suite *ShareHandlerSuite) TestCreateShareWithMountedRWVolume() {
 			Path: "/mnt/new-share",
 			//PathHash:         "hash8",
 			Type:             "ADDON",
-			FSType:           pointer.String("ext4"),
+			FSType:           new("ext4"),
 			DeviceId:         "sda8",
 			IsMounted:        true,
 			IsWriteSupported: &isWriteSupported,
@@ -944,7 +943,7 @@ func (suite *ShareHandlerSuite) TestCreateShareWithMountedRWVolume() {
 	}
 	expectedShare := &dto.SharedResource{
 		Name:     "new-share",
-		Disabled: pointer.Bool(false),
+		Disabled: new(false),
 		Users: []dto.User{
 			{
 				Username: "testuser",
@@ -956,7 +955,7 @@ func (suite *ShareHandlerSuite) TestCreateShareWithMountedRWVolume() {
 			Path: "/mnt/new-share",
 			//PathHash:         "hash8",
 			Type:             "ADDON",
-			FSType:           pointer.String("ext4"),
+			FSType:           new("ext4"),
 			DeviceId:         "sda8",
 			IsMounted:        true,
 			IsWriteSupported: &isWriteSupported,
@@ -998,7 +997,7 @@ func (suite *ShareHandlerSuite) TestCreateShareWithROVolumeHasOnlyROUsers() {
 			Path: "/mnt/ro-share",
 			//PathHash:         "hash9",
 			Type:             "ADDON",
-			FSType:           pointer.String("ext4"),
+			FSType:           new("ext4"),
 			DeviceId:         "sda9",
 			IsMounted:        true,
 			IsWriteSupported: &isWriteSupported,
@@ -1006,7 +1005,7 @@ func (suite *ShareHandlerSuite) TestCreateShareWithROVolumeHasOnlyROUsers() {
 	}
 	expectedShare := &dto.SharedResource{
 		Name:     "ro-share",
-		Disabled: pointer.Bool(false),
+		Disabled: new(false),
 		RoUsers: []dto.User{
 			{
 				Username: "testuser",
@@ -1018,7 +1017,7 @@ func (suite *ShareHandlerSuite) TestCreateShareWithROVolumeHasOnlyROUsers() {
 			Path: "/mnt/ro-share",
 			//PathHash:         "hash9",
 			Type:             "ADDON",
-			FSType:           pointer.String("ext4"),
+			FSType:           new("ext4"),
 			DeviceId:         "sda9",
 			IsMounted:        true,
 			IsWriteSupported: &isWriteSupported,
@@ -1076,12 +1075,12 @@ func (suite *ShareHandlerSuite) TestCreateShareWithExFATVolume() {
 			Disabled:           &disabled,
 			MountPointData: &dto.MountPointData{
 				DiskLabel: &diskLabel,
-				DiskSize:  pointer.Uint64(2096874127360),
+				DiskSize:  new(uint64(2096874127360)),
 				Path:      "/mnt/Carola",
 				//PathHash:           "0551e312d059cae36f7d0007201d49f5d001f562",
 				Root:               "/mnt/Carola",
 				Type:               "ADDON",
-				FSType:             pointer.String("exfat"),
+				FSType:             new("exfat"),
 				Flags:              &dto.MountFlags{{Name: "nodev"}},
 				CustomFlags:        nil,
 				DeviceId:           "usb-Flash_Disk_3.0_7966051146147389472-0:0-part2",
@@ -1111,12 +1110,12 @@ func (suite *ShareHandlerSuite) TestCreateShareWithExFATVolume() {
 		Disabled:           &disabled,
 		MountPointData: &dto.MountPointData{
 			DiskLabel: &diskLabel,
-			DiskSize:  pointer.Uint64(2096874127360),
+			DiskSize:  new(uint64(2096874127360)),
 			Path:      "/mnt/Carola",
 			//PathHash:           "0551e312d059cae36f7d0007201d49f5d001f562",
 			Root:               "/mnt/Carola",
 			Type:               "ADDON",
-			FSType:             pointer.String("exfat"),
+			FSType:             new("exfat"),
 			Flags:              &dto.MountFlags{{Name: "nodev"}},
 			CustomFlags:        nil,
 			DeviceId:           "usb-Flash_Disk_3.0_7966051146147389472-0:0-part2",
@@ -1208,7 +1207,7 @@ func (suite *ShareHandlerSuite) TestUpdateShareWithExFATVolume() {
 
 	input := dto.SharedResource{
 		Name:               "CAROLA",
-		Disabled:           pointer.Bool(false),
+		Disabled:           new(false),
 		GuestOk:            &guestOk,
 		RecycleBin:         &recycleBin,
 		TimeMachineMaxSize: &timeMachineMaxSize,
@@ -1223,7 +1222,7 @@ func (suite *ShareHandlerSuite) TestUpdateShareWithExFATVolume() {
 		},
 		MountPointData: &dto.MountPointData{
 			DiskLabel: &diskLabel,
-			DiskSize:  pointer.Uint64(2096874127360),
+			DiskSize:  new(uint64(2096874127360)),
 			Path:      "/mnt/Carola",
 			//PathHash:           "0551e312d059cae36f7d0007201d49f5d001f562",
 			Root:               "/mnt/Carola",
@@ -1240,7 +1239,7 @@ func (suite *ShareHandlerSuite) TestUpdateShareWithExFATVolume() {
 
 	expectedShare := &dto.SharedResource{
 		Name:               "CAROLA",
-		Disabled:           pointer.Bool(false),
+		Disabled:           new(false),
 		GuestOk:            &guestOk,
 		RecycleBin:         &recycleBin,
 		TimeMachineMaxSize: &timeMachineMaxSize,
@@ -1255,7 +1254,7 @@ func (suite *ShareHandlerSuite) TestUpdateShareWithExFATVolume() {
 		},
 		MountPointData: &dto.MountPointData{
 			DiskLabel: &diskLabel,
-			DiskSize:  pointer.Uint64(2096874127360),
+			DiskSize:  new(uint64(2096874127360)),
 			Path:      "/mnt/Carola",
 			//PathHash:           "0551e312d059cae36f7d0007201d49f5d001f562",
 			Root:               "/mnt/Carola",

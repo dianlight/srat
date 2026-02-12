@@ -27,7 +27,7 @@ func TestPropertyValueTypes(t *testing.T) {
 	tests := []struct {
 		name  string
 		key   string
-		value interface{}
+		value any
 	}{
 		{"string value", "str-key", "string value"},
 		{"int value", "int-key", 42},

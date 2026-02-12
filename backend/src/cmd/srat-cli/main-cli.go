@@ -471,7 +471,7 @@ func firstTimeJSONImporter(config config.Config,
 		return errors.WithStack(err)
 	}
 	for i, share := range *shares {
-		share.MountPointData.IsToMountAtStartup = pointer.Bool(false)
+		share.MountPointData.IsToMountAtStartup = new(false)
 		err = mount_repository.Save(&share.MountPointData)
 		if err != nil {
 			return errors.WithStack(err)

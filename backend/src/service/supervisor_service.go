@@ -15,7 +15,6 @@ import (
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/homeassistant/mount"
 	"github.com/dianlight/tlog"
-	"github.com/xorcare/pointer"
 )
 
 var _supervisor_api_mutex sync.Mutex
@@ -234,7 +233,7 @@ func (self *SupervisorService) networkMountShareWithRetry(ctx context.Context, s
 	}
 	conv := converter.HaSupervisorToDtoImpl{}
 
-	mountUsername := pointer.String("_ha_mount_user_")
+	mountUsername := new("_ha_mount_user_")
 	setting, err := self.settingService.Load()
 	if err != nil {
 		return errors.Errorf("Error getting password for mount %s from ha_supervisor: %w", share.Name, err)
@@ -253,10 +252,10 @@ func (self *SupervisorService) networkMountShareWithRetry(ctx context.Context, s
 		rmount.Server = &self.state.AddonIpAddress
 
 		if *useNfs {
-			rmount.Type = pointer.Any(mount.MountType("nfs")).(*mount.MountType)
-			rmount.Path = pointer.String(share.MountPointData.Path)
+			rmount.Type = new(mount.MountType("nfs"))
+			rmount.Path = new(share.MountPointData.Path)
 		} else {
-			rmount.Type = pointer.Any(mount.MountType("cifs")).(*mount.MountType)
+			rmount.Type = new(mount.MountType("cifs"))
 			rmount.Username = mountUsername
 			rmount.Password = &mountPassword
 		}
@@ -298,10 +297,10 @@ func (self *SupervisorService) networkMountShareWithRetry(ctx context.Context, s
 		(!*useNfs && *rmount.Type == "nfs") {
 		conv.SharedResourceToMount(share, &rmount)
 		if *useNfs {
-			rmount.Type = pointer.Any(mount.MountType("nfs")).(*mount.MountType)
-			rmount.Path = pointer.String(share.MountPointData.Path)
+			rmount.Type = new(mount.MountType("nfs"))
+			rmount.Path = new(share.MountPointData.Path)
 		} else {
-			rmount.Type = pointer.Any(mount.MountType("cifs")).(*mount.MountType)
+			rmount.Type = new(mount.MountType("cifs"))
 			rmount.Username = mountUsername
 			rmount.Password = &mountPassword
 		}

@@ -13,7 +13,6 @@ import (
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
 	"github.com/teivah/broadcast"
-	"github.com/xorcare/pointer"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
@@ -212,7 +211,7 @@ func (suite *BroadcasterServiceEventMappingTestSuite) recv() (any, bool) {
 */
 
 func (suite *BroadcasterServiceEventMappingTestSuite) TestDiskEvent_BroadcastsVolumesData() {
-	expectedDisks := []*dto.Disk{{Id: pointer.String("expected-disk")}}
+	expectedDisks := []*dto.Disk{{Id: new("expected-disk")}}
 	mock.When(suite.mockVolumeService.GetVolumesData()).ThenReturn(expectedDisks)
 
 	suite.setupEventListeners()
@@ -222,7 +221,7 @@ func (suite *BroadcasterServiceEventMappingTestSuite) TestDiskEvent_BroadcastsVo
 	// Emit disk event
 	suite.eventBus.EmitDisk(events.DiskEvent{
 		Event: events.Event{Type: events.EventTypes.ADD},
-		Disk:  &dto.Disk{Id: pointer.String("d1")},
+		Disk:  &dto.Disk{Id: new("d1")},
 	})
 
 	select {
@@ -237,7 +236,7 @@ func (suite *BroadcasterServiceEventMappingTestSuite) TestDiskEvent_BroadcastsVo
 }
 
 func (suite *BroadcasterServiceEventMappingTestSuite) TestShareEvent_BroadcastsShareItself() {
-	expectedDisks := []*dto.Disk{{Id: pointer.String("expected-disk")}}
+	expectedDisks := []*dto.Disk{{Id: new("expected-disk")}}
 	mock.When(suite.mockVolumeService.GetVolumesData()).ThenReturn(expectedDisks)
 
 	suite.setupEventListeners()
@@ -264,7 +263,7 @@ func (suite *BroadcasterServiceEventMappingTestSuite) TestShareEvent_BroadcastsS
 }
 
 func (suite *BroadcasterServiceEventMappingTestSuite) TestMountPointEvent_BroadcastsVolumesData() {
-	expectedDisks := []*dto.Disk{{Id: pointer.String("expected-disk")}}
+	expectedDisks := []*dto.Disk{{Id: new("expected-disk")}}
 	mock.When(suite.mockVolumeService.GetVolumesData()).ThenReturn(expectedDisks)
 
 	suite.setupEventListeners()

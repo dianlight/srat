@@ -14,7 +14,7 @@ import (
 )
 
 func TestActionResult_Fields(t *testing.T) {
-	data := map[string]interface{}{"key": "value"}
+	data := map[string]any{"key": "value"}
 	result := Ok
 
 	action := ActionResult{
@@ -47,7 +47,7 @@ func TestCheck_Fields(t *testing.T) {
 }
 
 func TestErrorResponse_Fields(t *testing.T) {
-	data := map[string]interface{}{"error_code": 500}
+	data := map[string]any{"error_code": 500}
 	message := "Internal error"
 
 	err := ErrorResponse{

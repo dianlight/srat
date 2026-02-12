@@ -107,7 +107,7 @@ func (c *DtoToDbomConverterImpl) PropertiesToSettings(source dbom.Properties, ta
 				}
 			} else if newvalue.Kind() == reflect.Slice {
 				newElem := reflect.New(newvalue.Type().Elem()).Elem()
-				for _, value := range prop.Value.([]interface{}) {
+				for _, value := range prop.Value.([]any) {
 					newElem.Set(reflect.ValueOf(value).Convert(newElem.Type()))
 					newvalue.Set(reflect.Append(newvalue, newElem))
 				}

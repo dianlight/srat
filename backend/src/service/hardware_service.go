@@ -13,7 +13,6 @@ import (
 	"github.com/dianlight/srat/homeassistant/hardware"
 	"github.com/dianlight/tlog"
 	"github.com/patrickmn/go-cache"
-	"github.com/xorcare/pointer"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 )
@@ -196,7 +195,7 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 							if partition.Name != nil {
 								name = *partition.Name
 							}
-							partition.System = pointer.Bool(strings.HasPrefix(name, "hassos-"))
+							partition.System = new(strings.HasPrefix(name, "hassos-"))
 							// write back into the map
 							(*diskDto.Partitions)[pid] = partition
 						}

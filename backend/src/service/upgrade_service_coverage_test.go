@@ -249,7 +249,7 @@ func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_InvalidU
 func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_NotAZipFile_Alternative() {
 	asset := dto.BinaryAsset{
 		Name:               "test2.zip",
-		BrowserDownloadURL: "http://example.com/not-a-zip-alt.zip",
+		BrowserDownloadURL: "https://github.com/not-a-zip-alt.zip",
 		Size:               100,
 		Digest:             "sha256:bb81a2fd7185fcabb3e46254cfac3a6cbd703e7ac0e407e1efe1ca927f9c0a16",
 	}
@@ -311,7 +311,7 @@ func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_NoArchitectureM
 
 	releases := []*github.RepositoryRelease{
 		newGitHubRepositoryRelease("v1.1.0", false, []*github.ReleaseAsset{
-			newGitHubReleaseAsset(assetName, "http://example.com/srat_mips64.zip", 1024),
+			newGitHubReleaseAsset(assetName, "https://github.com/srat_mips64.zip", 1024),
 		}),
 	}
 	httpmock.RegisterResponder("GET", githubReleasesURL,
@@ -344,7 +344,7 @@ func (suite *UpgradeServiceTestSuite) TestArchitectureMapping() {
 	assetName := fmt.Sprintf("srat_%s.zip", expectedArch)
 	releases := []*github.RepositoryRelease{
 		newGitHubRepositoryRelease("v1.1.0", false, []*github.ReleaseAsset{
-			newGitHubReleaseAsset(assetName, fmt.Sprintf("http://example.com/%s", assetName), 1024),
+			newGitHubReleaseAsset(assetName, fmt.Sprintf("https://github.com/%s", assetName), 1024),
 		}),
 	}
 	httpmock.RegisterResponder("GET", githubReleasesURL,

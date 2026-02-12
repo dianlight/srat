@@ -73,7 +73,7 @@ func (suite *UpgradeServiceTestSuite) TestApplyUpdateAndRestart_WithoutSignature
 func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_EmptyZip() {
 	asset := dto.BinaryAsset{
 		Name:               "empty.zip",
-		BrowserDownloadURL: "http://example.com/empty.zip",
+		BrowserDownloadURL: "https://github.com/empty.zip",
 		Size:               22, // Minimal zip file size
 		Digest:             "sha256:8739c76e681f900923b900c9df0ef75cf421d39cabb54650c4b9ad19b6a76d85",
 	}
@@ -101,7 +101,7 @@ func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_LargeFil
 
 	asset := dto.BinaryAsset{
 		Name:               "large.zip",
-		BrowserDownloadURL: "http://example.com/large.zip",
+		BrowserDownloadURL: "https://github.com/large.zip",
 		Size:               1024 * 1024, // 1MB
 		//Digest:             "sha256:f23c9b8f7752acd2b8e9ab3f9934fb6d09894f3eeb22111b91f7b0d9c3b0a678",
 	}
@@ -246,7 +246,7 @@ func (suite *UpgradeServiceTestSuite) TestInstallUpdatePackage_WithOtherFiles() 
 func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_HTTP404() {
 	asset := dto.BinaryAsset{
 		Name:               "notfound.zip",
-		BrowserDownloadURL: "http://example.com/notfound.zip",
+		BrowserDownloadURL: "https://github.com/notfound.zip",
 		Size:               100,
 	}
 
@@ -260,7 +260,7 @@ func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_HTTP404(
 func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_HTTP500() {
 	asset := dto.BinaryAsset{
 		Name:               "error.zip",
-		BrowserDownloadURL: "http://example.com/error.zip",
+		BrowserDownloadURL: "https://github.com/error.zip",
 		Size:               100,
 	}
 
@@ -280,7 +280,7 @@ func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_ArchSpec
 	// This simulates downloading an architecture-specific binary
 	asset := dto.BinaryAsset{
 		Name:               fmt.Sprintf("srat_%s.zip", runtime.GOARCH),
-		BrowserDownloadURL: fmt.Sprintf("http://example.com/srat_%s.zip", runtime.GOARCH),
+		BrowserDownloadURL: fmt.Sprintf("https://github.com/srat_%s.zip", runtime.GOARCH),
 		Size:               2048,
 		Digest:             "sha256:a64c3f2e35d7a2a0a5996d3d32f4c978dce1241fd7a2c2c9e033bcbdd8d2ef09",
 	}

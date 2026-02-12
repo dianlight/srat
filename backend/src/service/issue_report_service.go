@@ -14,7 +14,6 @@ import (
 	"github.com/dianlight/tlog"
 	"github.com/dianlight/tlog/sanitizer"
 	"github.com/google/go-github/v82/github"
-	"github.com/xorcare/pointer"
 	"gitlab.com/tozd/go/errors"
 )
 
@@ -101,11 +100,11 @@ func (s *IssueReportService) GenerateIssueReport(ctx context.Context, request *d
 			}
 			consoleErrors.WriteString("```\n")
 		}
-		attachs["console"] = pointer.String(consoleErrors.String())
+		attachs["console"] = new(consoleErrors.String())
 	}
 
 	/* if request.IncludeDatabaseDump {
-		attachs["database"] = pointer.String("\n\n(Database dump is not included in the issue report due to size constraints. Please attach a database dump manually if relevant.)")
+		attachs["database"] = new("\n\n(Database dump is not included in the issue report due to size constraints. Please attach a database dump manually if relevant.)")
 	} */
 
 	switch request.ProblemType.Template {
@@ -185,8 +184,8 @@ func (s *IssueReportService) GenerateIssueReport(ctx context.Context, request *d
 
 	if len(files) > 0 {
 		gist, _, err := s.gh.Gists.Create(s.ctx, &github.Gist{
-			Description: pointer.String("Issue report attachments for URL length constraints"),
-			Public:      pointer.Bool(true),
+			Description: new("Issue report attachments for URL length constraints"),
+			Public:      new(true),
 			Files:       files,
 		})
 

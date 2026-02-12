@@ -11,7 +11,6 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/root"
 	"github.com/stretchr/testify/suite"
-	"github.com/xorcare/pointer"
 )
 
 type HaRootServiceSuite struct {
@@ -153,7 +152,7 @@ func (r *concreteSimpleResp) StatusCode() int { return r.status }
 
 // Test: if cache contains value, GetSystemInfo returns it without using client
 func (s *HaRootServiceSuite) TestGetSystemInfo_CacheReturnedWhenPresent() {
-	sys := &root.SystemInfo{Hostname: pointer.String("cached-host")}
+	sys := &root.SystemInfo{Hostname: new("cached-host")}
 	setCachedSystemInfo(sys)
 
 	// Use nil client to ensure method does NOT require client when cache present
@@ -221,7 +220,7 @@ func (s *HaRootServiceSuite) TestGetSystemInfo_Non200OrMissingJSON() {
 // Test: successful fetch sets cache and subsequent reads come from cache
 func (s *HaRootServiceSuite) TestGetSystemInfo_SuccessAndCacheSet() {
 	haRootSystemInfoCache.Flush()
-	expected := &root.SystemInfo{Hostname: pointer.String("real-host")}
+	expected := &root.SystemInfo{Hostname: new("real-host")}
 	// compose a fake response with JSON200.Data set
 	fc := &fakeClient{
 		getSystemResp: &fakeGetSystemResp{
@@ -229,7 +228,7 @@ func (s *HaRootServiceSuite) TestGetSystemInfo_SuccessAndCacheSet() {
 			JSON200: &struct {
 				Data   *root.SystemInfo `json:"data,omitempty"`
 				Result *string          `json:"result,omitempty"`
-			}{Data: expected, Result: pointer.String("success")},
+			}{Data: expected, Result: new("success")},
 		},
 	}
 	s.svc.client = fc
@@ -273,7 +272,7 @@ func (s *HaRootServiceSuite) TestGetAvailableUpdates_VariousCases() {
 	s.Contains(err3.Error(), "Error getting available updates from ha_root")
 
 	// success
-	updates := []root.UpdateItem{{Name: pointer.String("u1")}}
+	updates := []root.UpdateItem{{Name: new("u1")}}
 	fcSuccess := &fakeClient{
 		getAvailableResp: &fakeAvailableUpdatesResp{
 			HTTPResponse: &http.Response{StatusCode: 200},
@@ -288,7 +287,7 @@ func (s *HaRootServiceSuite) TestGetAvailableUpdates_VariousCases() {
 				}{
 					AvailableUpdates: &updates,
 				},
-				Result: pointer.String("success"),
+				Result: new("success"),
 			},
 		},
 	}

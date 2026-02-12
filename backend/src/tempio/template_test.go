@@ -10,7 +10,7 @@ import (
 )
 
 func TestRenderTemplateBuffer(t *testing.T) {
-	data := map[string]interface{}{"Name": "SRAT"}
+	data := map[string]any{"Name": "SRAT"}
 	templateContent := []byte("Hello {{ .Name }}")
 
 	rendered, err := RenderTemplateBuffer(&data, templateContent)
@@ -20,7 +20,7 @@ func TestRenderTemplateBuffer(t *testing.T) {
 }
 
 func TestRenderTemplateBufferWithTemplateError(t *testing.T) {
-	data := map[string]interface{}{}
+	data := map[string]any{}
 	templateContent := []byte("Hello {{ .Missing }")
 
 	_, err := RenderTemplateBuffer(&data, templateContent)
@@ -34,7 +34,7 @@ func TestRenderTemplateFile(t *testing.T) {
 
 	require.NoError(t, os.WriteFile(filePath, []byte("Value: {{ .Value }}"), 0o600))
 
-	data := map[string]interface{}{"Value": "42"}
+	data := map[string]any{"Value": "42"}
 
 	rendered, err := RenderTemplateFile(&data, filePath)
 
@@ -45,31 +45,31 @@ func TestRenderTemplateFile(t *testing.T) {
 func TestRenderTemplateBufferWithSprigFunctions(t *testing.T) {
 	tests := []struct {
 		name     string
-		data     map[string]interface{}
+		data     map[string]any
 		template string
 		expected string
 	}{
 		{
 			name:     "upper function",
-			data:     map[string]interface{}{"text": "hello"},
+			data:     map[string]any{"text": "hello"},
 			template: "{{ .text | upper }}",
 			expected: "HELLO",
 		},
 		{
 			name:     "lower function",
-			data:     map[string]interface{}{"text": "WORLD"},
+			data:     map[string]any{"text": "WORLD"},
 			template: "{{ .text | lower }}",
 			expected: "world",
 		},
 		{
 			name:     "trim function",
-			data:     map[string]interface{}{"text": "  spaces  "},
+			data:     map[string]any{"text": "  spaces  "},
 			template: "{{ .text | trim }}",
 			expected: "spaces",
 		},
 		{
 			name:     "default function",
-			data:     map[string]interface{}{},
+			data:     map[string]any{},
 			template: "{{ .missing | default \"default-value\" }}",
 			expected: "default-value",
 		},
@@ -85,7 +85,7 @@ func TestRenderTemplateBufferWithSprigFunctions(t *testing.T) {
 }
 
 func TestRenderTemplateBufferWithComplexData(t *testing.T) {
-	data := map[string]interface{}{
+	data := map[string]any{
 		"users": []map[string]string{
 			{"name": "Alice", "role": "admin"},
 			{"name": "Bob", "role": "user"},
@@ -102,9 +102,9 @@ func TestRenderTemplateBufferWithComplexData(t *testing.T) {
 }
 
 func TestRenderTemplateBufferWithNestedMaps(t *testing.T) {
-	data := map[string]interface{}{
-		"config": map[string]interface{}{
-			"server": map[string]interface{}{
+	data := map[string]any{
+		"config": map[string]any{
+			"server": map[string]any{
 				"host": "localhost",
 				"port": 8080,
 			},
@@ -118,7 +118,7 @@ func TestRenderTemplateBufferWithNestedMaps(t *testing.T) {
 }
 
 func TestRenderTemplateBufferWithConditionals(t *testing.T) {
-	data := map[string]interface{}{
+	data := map[string]any{
 		"enabled": true,
 		"debug":   false,
 	}
@@ -138,7 +138,7 @@ Debug: no
 }
 
 func TestRenderTemplateBufferWithNumbers(t *testing.T) {
-	data := map[string]interface{}{
+	data := map[string]any{
 		"count":  42,
 		"price":  19.99,
 		"active": true,
@@ -151,7 +151,7 @@ func TestRenderTemplateBufferWithNumbers(t *testing.T) {
 }
 
 func TestRenderTemplateBufferEmpty(t *testing.T) {
-	data := map[string]interface{}{}
+	data := map[string]any{}
 	template := []byte("Static content only")
 
 	rendered, err := RenderTemplateBuffer(&data, template)
@@ -171,7 +171,7 @@ func TestRenderTemplateFileWithSprigFunctions(t *testing.T) {
 
 	require.NoError(t, os.WriteFile(filePath, []byte("{{ .name | upper }}"), 0o600))
 
-	data := map[string]interface{}{"name": "test"}
+	data := map[string]any{"name": "test"}
 
 	rendered, err := RenderTemplateFile(&data, filePath)
 	require.NoError(t, err)
@@ -179,7 +179,7 @@ func TestRenderTemplateFileWithSprigFunctions(t *testing.T) {
 }
 
 func TestRenderTemplateBufferWithArrays(t *testing.T) {
-	data := map[string]interface{}{
+	data := map[string]any{
 		"items": []string{"apple", "banana", "cherry"},
 	}
 	template := `{{- range .items }}
@@ -194,7 +194,7 @@ func TestRenderTemplateBufferWithArrays(t *testing.T) {
 }
 
 func TestRenderTemplateBufferWithInvalidTemplate(t *testing.T) {
-	data := map[string]interface{}{}
+	data := map[string]any{}
 	template := []byte("{{ unclosed template")
 
 	_, err := RenderTemplateBuffer(&data, template)
@@ -202,7 +202,7 @@ func TestRenderTemplateBufferWithInvalidTemplate(t *testing.T) {
 }
 
 func TestRenderTemplateBufferWithExecuteError(t *testing.T) {
-	data := map[string]interface{}{
+	data := map[string]any{
 		"value": "test",
 	}
 	// Template tries to call a method that doesn't exist
@@ -212,7 +212,7 @@ func TestRenderTemplateBufferWithExecuteError(t *testing.T) {
 	require.Error(t, err)
 }
 func TestRenderTemplateBufferWithAllowGuestEnabled(t *testing.T) {
-	data := map[string]interface{}{
+	data := map[string]any{
 		"allow_guest": true,
 	}
 	template := []byte(`{{if .allow_guest -}}
@@ -227,7 +227,7 @@ map to guest = Bad User
 }
 
 func TestRenderTemplateBufferWithAllowGuestDisabled(t *testing.T) {
-	data := map[string]interface{}{
+	data := map[string]any{
 		"allow_guest": false,
 	}
 	template := []byte(`{{if .allow_guest -}}

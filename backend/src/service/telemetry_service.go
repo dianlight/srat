@@ -19,6 +19,7 @@ import (
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
+	"github.com/dianlight/srat/internal/urlutil"
 	"github.com/dianlight/tlog"
 	"github.com/rollbar/rollbar-go"
 )
@@ -35,9 +36,9 @@ type TelemetryServiceInterface interface {
 	// Configure configures the telemetry service with the given mode
 	Configure(mode dto.TelemetryMode) errors.E
 	// ReportError reports an error to the telemetry service
-	ReportError(interfaces ...interface{}) errors.E
+	ReportError(interfaces ...any) errors.E
 	// ReportEvent reports a telemetry event to the service
-	ReportEvent(event string, data map[string]interface{}) errors.E
+	ReportEvent(event string, data map[string]any) errors.E
 	// IsConnectedToInternet checks if internet connection is available
 	IsConnectedToInternet() bool
 	// Shutdown shuts down the telemetry service
@@ -182,7 +183,7 @@ func (ts *TelemetryService) Configure(mode dto.TelemetryMode) errors.E {
 		rollbar.SetCodeVersion(ts.version)
 		rollbar.SetPlatform("client")
 		rollbar.SetServerRoot("github.com/" + config.Repository)
-		rollbar.SetCustom(map[string]interface{}{
+		rollbar.SetCustom(map[string]any{
 			"version":     ts.version,
 			"environment": ts.environment,
 			"arch":        runtime.GOARCH,
@@ -253,7 +254,7 @@ func (ts *TelemetryService) Configure(mode dto.TelemetryMode) errors.E {
 
 		// Send a test event if mode is All
 		if mode == dto.TelemetryModes.TELEMETRYMODEALL {
-			ts.ReportEvent("telemetry_enabled", map[string]interface{}{
+			ts.ReportEvent("telemetry_enabled", map[string]any{
 				"version":     ts.version,
 				"environment": ts.environment,
 			})
@@ -275,11 +276,11 @@ ReportError reports an error to the telemetry service.
 *http.Request
 error
 string
-map[string]interface{}
+map[string]any
 int
 The string and error types are mutually exclusive. If an error is present then a stack trace is captured. If an int is also present then we skip that number of stack frames. If the map is present it is used as extra custom data in the item. If a string is present without an error, then we log a message without a stack trace. If a request is present we extract as much relevant information from it as we can.
 */
-func (ts *TelemetryService) ReportError(interfaces ...interface{}) errors.E {
+func (ts *TelemetryService) ReportError(interfaces ...any) errors.E {
 	if !ts.rollbarConfigured {
 		return nil // Silently ignore if not configured
 	}
@@ -302,7 +303,7 @@ func (ts *TelemetryService) ReportError(interfaces ...interface{}) errors.E {
 }
 
 // ReportEvent reports a telemetry event to the service
-func (ts *TelemetryService) ReportEvent(event string, data map[string]interface{}) errors.E {
+func (ts *TelemetryService) ReportEvent(event string, data map[string]any) errors.E {
 	if !ts.rollbarConfigured {
 		return nil // Silently ignore if not configured
 	}
@@ -314,7 +315,7 @@ func (ts *TelemetryService) ReportEvent(event string, data map[string]interface{
 
 	// Add event type and timestamp to data
 	if data == nil {
-		data = make(map[string]interface{})
+		data = make(map[string]any)
 	}
 	data["event_type"] = event
 	data["timestamp"] = time.Now().UTC().Format(time.RFC3339)
@@ -337,14 +338,20 @@ func (ts *TelemetryService) IsConnectedToInternet() bool {
 	}
 
 	// Create request to test connectivity
-	req, err := http.NewRequestWithContext(ctx, "HEAD", "https://api.rollbar.com", nil)
+	const rollbarURL = "https://api.rollbar.com"
+	if err := urlutil.ValidateURL(rollbarURL, []string{"api.rollbar.com"}); err != nil {
+		slog.DebugContext(ctx, "Untrusted connectivity URL", "url", rollbarURL, "error", err)
+		return false
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "HEAD", rollbarURL, nil)
 	if err != nil {
 		slog.DebugContext(ctx, "Failed to create internet connectivity request", "error", err)
 		return false
 	}
 
 	// Execute request
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) // #nosec G704
 	if err != nil {
 		slog.DebugContext(ctx, "Internet connectivity check failed", "error", err)
 		return false
@@ -425,20 +432,20 @@ func (ts *TelemetryService) registerTlogCallbacks() {
 		// Try to extract an error and request from log event attributes
 		var extractedErr error
 		var request *http.Request
-		extraData := make(map[string]interface{})
+		extraData := make(map[string]any)
 
 		// ANSI escape code remover
 		ansiRegexp := regexp.MustCompile(`\x1b\[[0-9;?]*[ -/]*[@-~]`)
 		stripANSI := func(s string) string { return ansiRegexp.ReplaceAllString(s, "") }
 
 		// Recursively process attributes into a map, extracting error/request and cleaning strings
-		var processAttr func(a slog.Attr, dst map[string]interface{})
-		processAttr = func(a slog.Attr, dst map[string]interface{}) {
+		var processAttr func(a slog.Attr, dst map[string]any)
+		processAttr = func(a slog.Attr, dst map[string]any) {
 			key := strings.ToLower(a.Key)
 
 			// Handle groups first
 			if a.Value.Kind() == slog.KindGroup {
-				groupMap := map[string]interface{}{}
+				groupMap := map[string]any{}
 				for _, ga := range a.Value.Group() {
 					processAttr(ga, groupMap)
 				}
@@ -480,7 +487,7 @@ func (ts *TelemetryService) registerTlogCallbacks() {
 				return
 			case []slog.Attr:
 				// Some formatters may expose groups via Any()
-				nested := map[string]interface{}{}
+				nested := map[string]any{}
 				for _, ga := range vv {
 					processAttr(ga, nested)
 				}

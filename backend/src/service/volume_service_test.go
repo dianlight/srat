@@ -22,7 +22,6 @@ import (
 	"github.com/stretchr/testify/suite"
 	"github.com/u-root/u-root/pkg/mount"
 	"github.com/u-root/u-root/pkg/mount/loop"
-	"github.com/xorcare/pointer"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 	"gorm.io/gorm"
@@ -204,20 +203,20 @@ func (suite *VolumeServiceTestSuite) TestMountUnmountVolume_Success() {
 	*/
 	mock.When(suite.mockHardwareClient.GetHardwareInfo()).ThenReturn(
 		map[string]dto.Disk{
-			"SSD": {LegacyDeviceName: pointer.String("sda1"), Size: pointer.Int(100), Id: pointer.String("SSD"),
+			"SSD": {LegacyDeviceName: new("sda1"), Size: new(100), Id: new("SSD"),
 				Partitions: &map[string]dto.Partition{
 					"SSD": {
 						DevicePath:       &device,
-						LegacyDeviceName: pointer.String("sda1"), Size: pointer.Int(100), Id: pointer.String("SSD"),
-						DiskId: pointer.String("SSD"),
+						LegacyDeviceName: new("sda1"), Size: new(100), Id: new("SSD"),
+						DiskId: new("SSD"),
 					},
 				},
 			},
-			"HDD": {LegacyDeviceName: pointer.String("sda2"), Size: pointer.Int(200), Id: pointer.String("HDD"),
+			"HDD": {LegacyDeviceName: new("sda2"), Size: new(200), Id: new("HDD"),
 				Partitions: &map[string]dto.Partition{
 					device: {
-						LegacyDeviceName: pointer.String("sda2"), Size: pointer.Int(200), Id: &device, DevicePath: &device,
-						DiskId: pointer.String("HDD"),
+						LegacyDeviceName: new("sda2"), Size: new(200), Id: &device, DevicePath: &device,
+						DiskId: new("HDD"),
 					},
 				},
 			},
@@ -328,26 +327,26 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 	mountPath1 := "/mnt/test1"
 	mountPath2 := "/mnt/test2"
 
-	device1 := pointer.String("/dev/disk/by-id/virtio-disk1-part1")
-	device2 := pointer.String("/dev/disk/by-id/virtio-disk2-part1")
-	device2Legacy := pointer.String("/dev/sdb1")
-	device2LegacyName := pointer.String("sdb1")
+	device1 := new("/dev/disk/by-id/virtio-disk1-part1")
+	device2 := new("/dev/disk/by-id/virtio-disk2-part1")
+	device2Legacy := new("/dev/sdb1")
+	device2LegacyName := new("sdb1")
 	mockHWResponse := map[string]dto.Disk{
 		"disk-1": {
-			Id:               pointer.String("disk-1"),
-			LegacyDevicePath: pointer.String("/dev/sda"),
-			Size:             pointer.Int(100),
-			Vendor:           pointer.String("ATA"),
-			Model:            pointer.String("Model-1"),
+			Id:               new("disk-1"),
+			LegacyDevicePath: new("/dev/sda"),
+			Size:             new(100),
+			Vendor:           new("ATA"),
+			Model:            new("Model-1"),
 			Partitions: &map[string]dto.Partition{
 				"part-1": {
-					Id:               pointer.String("part-1"),
-					Name:             pointer.String("RootFS"),
-					LegacyDevicePath: pointer.String("/dev/sda1"),
-					LegacyDeviceName: pointer.String("sda1"),
+					Id:               new("part-1"),
+					Name:             new("RootFS"),
+					LegacyDevicePath: new("/dev/sda1"),
+					LegacyDeviceName: new("sda1"),
 					DevicePath:       device1,
-					Size:             pointer.Int(50),
-					DiskId:           pointer.String("disk-1"),
+					Size:             new(50),
+					DiskId:           new("disk-1"),
 					HostMountPointData: &map[string]dto.MountPointData{
 						mountPath1: {
 							DeviceId: *device1,
@@ -358,20 +357,20 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 			},
 		},
 		"disk-2": {
-			Id:               pointer.String("disk-2"),
-			LegacyDevicePath: pointer.String("/dev/sdb"),
-			Vendor:           pointer.String("SATA"),
-			Model:            pointer.String("Model-2"),
-			Size:             pointer.Int(100),
+			Id:               new("disk-2"),
+			LegacyDevicePath: new("/dev/sdb"),
+			Vendor:           new("SATA"),
+			Model:            new("Model-2"),
+			Size:             new(100),
 			Partitions: &map[string]dto.Partition{
 				"part-2": {
-					Id:               pointer.String("part-2"),
-					Name:             pointer.String("DataFs"),
+					Id:               new("part-2"),
+					Name:             new("DataFs"),
 					LegacyDevicePath: device2Legacy,
 					LegacyDeviceName: device2LegacyName,
 					DevicePath:       device2,
-					Size:             pointer.Int(50),
-					DiskId:           pointer.String("disk-2"),
+					Size:             new(50),
+					DiskId:           new("disk-2"),
 					HostMountPointData: &map[string]dto.MountPointData{
 						mountPath2: {
 							DeviceId: *device2,
@@ -456,8 +455,8 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 // in addition to any HostMountPointData provided by the hardware client.
 func (suite *VolumeServiceTestSuite) TestGetVolumesData_ReturnsMountPointData() {
 	mountPathAddon := "/mnt/addon-mp"
-	device := pointer.String("/dev/disk/by-id/testdisk1-part1")
-	partID := pointer.String("test-part-1")
+	device := new("/dev/disk/by-id/testdisk1-part1")
+	partID := new("test-part-1")
 
 	// Mock hardware: one disk, one partition with only HostMountPointData set
 	hostMount := dto.MountPointData{Path: "/host/mount", DeviceId: *partID, Type: "HOST"}
@@ -465,17 +464,17 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_ReturnsMountPointData() 
 
 	mockHW := map[string]dto.Disk{
 		"disk-1": {
-			Id:     pointer.String("disk-1"),
-			Vendor: pointer.String("VEND"),
-			Model:  pointer.String("MODEL"),
+			Id:     new("disk-1"),
+			Vendor: new("VEND"),
+			Model:  new("MODEL"),
 			Partitions: &map[string]dto.Partition{
 				*partID: {
 					Id:                 partID,
 					DevicePath:         device,
-					LegacyDevicePath:   pointer.String("/dev/sda1"),
+					LegacyDevicePath:   new("/dev/sda1"),
 					HostMountPointData: &hostMap,
 					MountPointData:     &map[string]dto.MountPointData{},
-					DiskId:             pointer.String("disk-1"),
+					DiskId:             new("disk-1"),
 				},
 			},
 		},
@@ -518,22 +517,22 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_ReturnsMountPointData() 
 func (suite *VolumeServiceTestSuite) TestGetVolumesData_NoMixHostAndAddon() {
 	hostPath := "/host/point"
 	addonPath := "/addon/point"
-	device := pointer.String("/dev/disk/by-id/testdisk2-part1")
-	partID := pointer.String("test-part-2")
+	device := new("/dev/disk/by-id/testdisk2-part1")
+	partID := new("test-part-2")
 
 	hostMount := dto.MountPointData{Path: hostPath, DeviceId: *partID, Type: "HOST"}
 	hostMap := map[string]dto.MountPointData{hostPath: hostMount}
 
 	mockHW := map[string]dto.Disk{
 		"disk-2": {
-			Id:     pointer.String("disk-2"),
-			Vendor: pointer.String("VEND"),
-			Model:  pointer.String("MODEL"),
+			Id:     new("disk-2"),
+			Vendor: new("VEND"),
+			Model:  new("MODEL"),
 			Partitions: &map[string]dto.Partition{
 				*partID: {
 					Id:                 partID,
 					DevicePath:         device,
-					DiskId:             pointer.String("disk-2"),
+					DiskId:             new("disk-2"),
 					HostMountPointData: &hostMap,
 					MountPointData:     &map[string]dto.MountPointData{},
 				},
@@ -579,13 +578,13 @@ func (suite *VolumeServiceTestSuite) TestMountVolume_UpdatesMountPointDataState(
 	// Hardware with 1 partition, no addon mounts initially
 	mockHW := map[string]dto.Disk{
 		"disk-3": {
-			Id:     pointer.String("disk-3"),
-			Vendor: pointer.String("VEND"),
-			Model:  pointer.String("MODEL"),
+			Id:     new("disk-3"),
+			Vendor: new("VEND"),
+			Model:  new("MODEL"),
 			Partitions: &map[string]dto.Partition{
 				partID: {
-					Id:             pointer.String(partID),
-					DevicePath:     pointer.String(devicePath),
+					Id:             new(partID),
+					DevicePath:     new(devicePath),
 					MountPointData: &map[string]dto.MountPointData{},
 				},
 			},
@@ -658,15 +657,15 @@ func (suite *VolumeServiceTestSuite) TestUnmountVolume_UpdatesMountPointDataStat
 	// Hardware
 	mockHW := map[string]dto.Disk{
 		"disk-4": {
-			Id:     pointer.String("disk-4"),
-			Vendor: pointer.String("VEND"),
-			Model:  pointer.String("MODEL"),
+			Id:     new("disk-4"),
+			Vendor: new("VEND"),
+			Model:  new("MODEL"),
 			Partitions: &map[string]dto.Partition{
 				partID: {
-					Id:             pointer.String(partID),
-					DevicePath:     pointer.String(devicePath),
+					Id:             new(partID),
+					DevicePath:     new(devicePath),
 					MountPointData: &map[string]dto.MountPointData{},
-					DiskId:         pointer.String("disk-4"),
+					DiskId:         new("disk-4"),
 				},
 			},
 		},
@@ -722,8 +721,8 @@ func (suite *VolumeServiceTestSuite) TestUnmountVolume_UpdatesMountPointDataStat
 func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_Success_OnlyStartup() {
 	path := "/mnt/testpatch"
 	root := "/"
-	originalStartup := pointer.Bool(true)
-	patchedStartup := pointer.Bool(false)
+	originalStartup := new(true)
+	patchedStartup := new(false)
 
 	dbData := &dbom.MountPointPath{
 		Path:               path,
@@ -761,7 +760,7 @@ func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_Success_OnlySta
 func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_NoChanges() {
 	root := "/"
 	path := "/mnt/testpatch_nochange"
-	originalStartup := pointer.Bool(true)
+	originalStartup := new(true)
 
 	dbData := &dbom.MountPointPath{
 		Path:               path,
@@ -795,11 +794,11 @@ func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_UpdatesStartupF
 	mountPath := "/mnt/startup-test"
 	root := "/"
 	devicePath := "/dev/disk/by-id/startdisk1-part1"
-	partID := pointer.String("startup-part-1")
-	diskID := pointer.String("startup-disk-1")
+	partID := new("startup-part-1")
+	diskID := new("startup-disk-1")
 
 	// Initial DB state: IsToMountAtStartup = false
-	originalStartup := pointer.Bool(false)
+	originalStartup := new(false)
 	dbData := &dbom.MountPointPath{
 		Path:               mountPath,
 		Root:               root,
@@ -813,13 +812,13 @@ func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_UpdatesStartupF
 	mockHW := map[string]dto.Disk{
 		*diskID: {
 			Id:     diskID,
-			Vendor: pointer.String("VEND"),
-			Model:  pointer.String("MODEL"),
+			Vendor: new("VEND"),
+			Model:  new("MODEL"),
 			Partitions: &map[string]dto.Partition{
 				*partID: {
 					Id:             partID,
 					DiskId:         diskID,
-					DevicePath:     pointer.String(devicePath),
+					DevicePath:     new(devicePath),
 					MountPointData: &map[string]dto.MountPointData{},
 				},
 			},
@@ -853,7 +852,7 @@ func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_UpdatesStartupF
 	suite.False(mpd.IsMounted, "expected mount point to be unmounted")
 
 	// Patch: set IsToMountAtStartup = true
-	patchedStartup := pointer.Bool(true)
+	patchedStartup := new(true)
 	patch := dto.MountPointData{IsToMountAtStartup: patchedStartup}
 	resultDto, errE := suite.volumeService.PatchMountPointSettings(root, mountPath, patch)
 	suite.Require().Nil(errE)

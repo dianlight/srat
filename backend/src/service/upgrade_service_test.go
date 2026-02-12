@@ -24,7 +24,6 @@ import (
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
-	"github.com/xorcare/pointer"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
@@ -156,15 +155,15 @@ func newGitHubReleaseAsset(name, downloadURL string, size int64) *github.Release
 	return &github.ReleaseAsset{
 		Name:               &name,
 		BrowserDownloadURL: &downloadURL,
-		Size:               pointer.Int(int(size)),
-		ContentType:        pointer.String("application/zip"),
-		ID:                 pointer.Int64(time.Now().UnixNano()), // Unique ID
-		NodeID:             pointer.String(fmt.Sprintf("AssetNodeID%d", time.Now().UnixNano())),
-		Label:              pointer.String(""),
-		State:              pointer.String("uploaded"),
+		Size:               new(int(size)),
+		ContentType:        new("application/zip"),
+		ID:                 new(time.Now().UnixNano()), // Unique ID
+		NodeID:             new(fmt.Sprintf("AssetNodeID%d", time.Now().UnixNano())),
+		Label:              new(""),
+		State:              new("uploaded"),
 		CreatedAt:          &github.Timestamp{Time: time.Now()},
 		UpdatedAt:          &github.Timestamp{Time: time.Now()},
-		Uploader:           &github.User{Login: pointer.String("testuser")},
+		Uploader:           &github.User{Login: new("testuser")},
 	}
 }
 
@@ -172,20 +171,20 @@ func newGitHubReleaseAsset(name, downloadURL string, size int64) *github.Release
 func newGitHubRepositoryRelease(tagName string, prerelease bool, assets []*github.ReleaseAsset) *github.RepositoryRelease {
 	return &github.RepositoryRelease{
 		TagName:         &tagName,
-		Prerelease:      pointer.Bool(prerelease),
+		Prerelease:      new(prerelease),
 		Assets:          assets,
-		TargetCommitish: pointer.String("main"),
-		Name:            pointer.String(fmt.Sprintf("Release %s", tagName)),
-		Body:            pointer.String(fmt.Sprintf("Release notes for %s", tagName)),
-		Draft:           pointer.Bool(false),
-		HTMLURL:         pointer.String(fmt.Sprintf("http://example.com/releases/%s", tagName)),
-		AssetsURL:       pointer.String(fmt.Sprintf("http://example.com/releases/%s/assets", tagName)),
-		UploadURL:       pointer.String(fmt.Sprintf("http://example.com/releases/%s/upload", tagName)),
-		ZipballURL:      pointer.String(fmt.Sprintf("http://example.com/archive/%s.zip", tagName)),
-		TarballURL:      pointer.String(fmt.Sprintf("http://example.com/archive/%s.tar.gz", tagName)),
+		TargetCommitish: new("main"),
+		Name:            new(fmt.Sprintf("Release %s", tagName)),
+		Body:            new(fmt.Sprintf("Release notes for %s", tagName)),
+		Draft:           new(false),
+		HTMLURL:         new(fmt.Sprintf("https://github.com/releases/%s", tagName)),
+		AssetsURL:       new(fmt.Sprintf("https://github.com/releases/%s/assets", tagName)),
+		UploadURL:       new(fmt.Sprintf("https://github.com/releases/%s/upload", tagName)),
+		ZipballURL:      new(fmt.Sprintf("https://github.com/archive/%s.zip", tagName)),
+		TarballURL:      new(fmt.Sprintf("https://github.com/archive/%s.tar.gz", tagName)),
 		PublishedAt:     &github.Timestamp{Time: time.Now()},
 		CreatedAt:       &github.Timestamp{Time: time.Now()},
-		Author:          &github.User{Login: pointer.String("testuser")},
+		Author:          &github.User{Login: new("testuser")},
 	}
 }
 
@@ -267,7 +266,7 @@ func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_SkipPrerelease_
 
 	releases := []*github.RepositoryRelease{
 		newGitHubRepositoryRelease("v1.1.0-beta", true, []*github.ReleaseAsset{
-			newGitHubReleaseAsset(assetName, "http://example.com/srat_v1.1.0-beta.zip", 1024),
+			newGitHubReleaseAsset(assetName, "https://github.com/srat_v1.1.0-beta.zip", 1024),
 		}),
 	}
 	httpmock.RegisterResponder("GET", githubReleasesURL,
@@ -318,7 +317,7 @@ func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_CurrentVersionN
 
 	releases := []*github.RepositoryRelease{
 		newGitHubRepositoryRelease("v1.1.0", false, []*github.ReleaseAsset{
-			newGitHubReleaseAsset(assetName, "http://example.com/srat_v1.1.0.zip", 1024),
+			newGitHubReleaseAsset(assetName, "https://github.com/srat_v1.1.0.zip", 1024),
 		}),
 	}
 	httpmock.RegisterResponder("GET", githubReleasesURL,
@@ -343,16 +342,16 @@ func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_Success_PicksLa
 
 	releases := []*github.RepositoryRelease{
 		newGitHubRepositoryRelease("2024.1.0", false, []*github.ReleaseAsset{ // Older, valid
-			newGitHubReleaseAsset(assetName, "http://example.com/srat_v1.1.0.zip", 1024),
+			newGitHubReleaseAsset(assetName, "https://github.com/srat_v1.1.0.zip", 1024),
 		}),
 		newGitHubRepositoryRelease("2025.6.1", false, []*github.ReleaseAsset{ // Newer, valid
-			newGitHubReleaseAsset(assetName, "http://example.com/srat_v1.2.0.zip", 2048),
+			newGitHubReleaseAsset(assetName, "https://github.com/srat_v1.2.0.zip", 2048),
 		}),
 		newGitHubRepositoryRelease("2025.6.0", false, []*github.ReleaseAsset{ // Older, valid
-			newGitHubReleaseAsset(assetName, "http://example.com/srat_v1.0.5.zip", 512),
+			newGitHubReleaseAsset(assetName, "https://github.com/srat_v1.0.5.zip", 512),
 		}),
 		newGitHubRepositoryRelease("2025.6.2-dev076", true, []*github.ReleaseAsset{ // Prerelease, skipped by default
-			newGitHubReleaseAsset(assetName, "http://example.com/srat_v1.3.0-beta.zip", 4096),
+			newGitHubReleaseAsset(assetName, "https://github.com/srat_v1.3.0-beta.zip", 4096),
 		}),
 	}
 	httpmock.RegisterResponder("GET", githubReleasesURL,
@@ -364,7 +363,7 @@ func (suite *UpgradeServiceTestSuite) TestGetUpgradeReleaseAsset_Success_PicksLa
 	suite.Require().NotNil(asset)
 	suite.Equal("2025.6.1", asset.LastRelease) // Should pick the latest non-prerelease version
 	suite.Equal(assetName, asset.ArchAsset.Name)
-	suite.Equal("http://example.com/srat_v1.2.0.zip", asset.ArchAsset.BrowserDownloadURL)
+	suite.Equal("https://github.com/srat_v1.2.0.zip", asset.ArchAsset.BrowserDownloadURL)
 }
 
 // --- DownloadAndExtractBinaryAsset Tests ---
@@ -419,7 +418,7 @@ func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_NoSignat
 
 	asset := dto.BinaryAsset{
 		Name:               "test_asset.zip",
-		BrowserDownloadURL: "http://example.com/test_asset.zip",
+		BrowserDownloadURL: "https://github.com/test_asset.zip",
 		Digest:             correctDigest,
 		Size:               zipBuffer.Len(),
 	}
@@ -442,7 +441,7 @@ func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_ContainD
 
 	asset := dto.BinaryAsset{
 		Name:               "test_asset.zip",
-		BrowserDownloadURL: "http://example.com/test_asset.zip",
+		BrowserDownloadURL: "https://github.com/test_asset.zip",
 		Digest:             "sha256:f6e9d067648b3b21359dd9988650ffa8ab340f0d8579ba0c4c4e6c2ae2048556",
 	}
 
@@ -473,7 +472,7 @@ func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_Success(
 
 	asset := dto.BinaryAsset{
 		Name:               "test_asset.zip",
-		BrowserDownloadURL: "http://example.com/test_asset.zip",
+		BrowserDownloadURL: "https://github.com/test_asset.zip",
 		//		Size:               100, // This size is used for progress reporting
 		//Digest: "sha256:14bd9fb509e174888a0b64ba436cf2ba4d3788cc7e40f9db77723113cc61865b",
 	}
@@ -570,7 +569,7 @@ func (suite *UpgradeServiceTestSuite) ContainsProgress(events []dto.UpdateProgre
 }
 
 func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_DownloadHttpError() {
-	asset := dto.BinaryAsset{Name: "test.zip", BrowserDownloadURL: "https://getsamplefiles.com/download/zip/sample-1.zip"}
+	asset := dto.BinaryAsset{Name: "test.zip", BrowserDownloadURL: "https://github.com/download/zip/sample-1.zip"}
 	httpmock.RegisterResponder("GET", asset.BrowserDownloadURL, httpmock.NewStringResponder(500, "Server Error"))
 
 	updatePkg, err := suite.upgradeService.DownloadAndExtractBinaryAsset(asset)
@@ -582,7 +581,7 @@ func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_Download
 func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_NotAZipFile() {
 	asset := dto.BinaryAsset{
 		Name:               "notazip.txt",
-		BrowserDownloadURL: "https://getsamplefiles.com/download/txt/sample-1.txt",
+		BrowserDownloadURL: "https://github.com/download/txt/sample-1.txt",
 		Digest:             "sha256:5b144727ab9efa85381eddb567447c2c33b48750a362b86f6d39780b9fc630f5",
 	}
 	httpmock.RegisterResponder("GET", asset.BrowserDownloadURL, httpmock.NewStringResponder(200, "this is not zip content"))
@@ -598,7 +597,7 @@ func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_BlocksZi
 	// Create a zip containing a file that attempts path traversal
 	asset := dto.BinaryAsset{
 		Name:               "evil.zip",
-		BrowserDownloadURL: "http://example.com/evil.zip",
+		BrowserDownloadURL: "https://github.com/evil.zip",
 		Digest:             "sha256:c6916950785c7fb08682a9cf26d4d28d5cc091666fbc82da16957522dde2e577",
 	}
 	buf := new(bytes.Buffer)
@@ -631,7 +630,7 @@ func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_SetsSafe
 
 	asset := dto.BinaryAsset{
 		Name:               "perm_test.zip",
-		BrowserDownloadURL: "http://example.com/perm_test.zip",
+		BrowserDownloadURL: "https://github.com/perm_test.zip",
 		Digest:             "sha256:2eb9048baa6dc5a2baf303a00cf6cf81ce7b1cf468af5dbb0b43f9d57a67e85b",
 	}
 
@@ -693,6 +692,18 @@ func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_SetsSafe
 	suite.Require().NoError(err)
 	suite.True(cinfo.Mode().IsRegular())
 	suite.Equal(os.FileMode(0o644), cinfo.Mode()&os.ModePerm)
+}
+
+func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_UntrustedURL() {
+	asset := dto.BinaryAsset{
+		Name:               "untrusted.zip",
+		BrowserDownloadURL: "https://evil.com/untrusted.zip",
+	}
+
+	updatePkg, err := suite.upgradeService.DownloadAndExtractBinaryAsset(asset)
+	suite.Require().Error(err)
+	suite.Contains(err.Error(), "untrusted download URL")
+	suite.Nil(updatePkg)
 }
 
 // --- InstallUpdatePackage & InstallOverseerUpdate Tests ---

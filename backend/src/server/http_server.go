@@ -60,9 +60,7 @@ func NewHTTPServer(
 	}
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			apiContext.Value("wg").(*sync.WaitGroup).Add(1)
-			go func() {
-				defer apiContext.Value("wg").(*sync.WaitGroup).Done()
+			apiContext.Value("wg").(*sync.WaitGroup).Go(func() {
 				slog.Debug("Starting HTTP server at", "listener", listener.Addr(), "pid", os.Getpid())
 				if err := srv.Serve(listener); err != nil {
 					if err == http.ErrServerClosed {
@@ -71,7 +69,7 @@ func NewHTTPServer(
 						log.Fatalf("%#+v", err)
 					}
 				}
-			}()
+			})
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {

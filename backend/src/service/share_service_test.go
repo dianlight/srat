@@ -15,7 +15,6 @@ import (
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
-	"github.com/xorcare/pointer"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
@@ -97,7 +96,7 @@ func (suite *ShareServiceSuite) TearDownTest() {
 func (suite *ShareServiceSuite) TestListShares() {
 	suite.Require().NoError(suite.db.Create(&dbom.ExportedShare{
 		Name:               "test_xx",
-		MountPointDataPath: pointer.String("/test_xx"),
+		MountPointDataPath: new("/test_xx"),
 		MountPointData: dbom.MountPointPath{
 			Path:     "/test_xx",
 			Type:     "ADDON",
