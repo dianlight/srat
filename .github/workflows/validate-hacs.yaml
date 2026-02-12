@@ -11,6 +11,9 @@ on:
       - "hacs.json"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   validate-hacs:
     runs-on: ubuntu-latest

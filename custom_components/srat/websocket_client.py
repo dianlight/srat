@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from collections.abc import Callable
 from typing import Any
@@ -144,8 +145,6 @@ class SRATWebSocketClient:
 
     def _dispatch_event(self, event_type: str, data: str) -> None:
         """Dispatch an SSE event to registered listeners."""
-        import json
-
         try:
             parsed = json.loads(data) if data else {}
         except json.JSONDecodeError:
