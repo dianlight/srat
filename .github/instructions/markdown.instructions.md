@@ -1,6 +1,19 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+**Table of Contents** *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Markdown Content Rules](#markdown-content-rules)
+- [Formatting and Structure](#formatting-and-structure)
+- [Validation Requirements](#validation-requirements)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ---
+
 description: 'Documentation and content creation standards'
-applyTo: '**/*.md'
+applyTo: '\**/*.md'
+
 ---
 
 ## Markdown Content Rules
@@ -23,7 +36,7 @@ Follow these guidelines for formatting and structuring your markdown content:
 
 - **Headings**: Use `##` for H2 and `###` for H3. Ensure that headings are used in a hierarchical manner. Recommend restructuring if content includes H4, and more strongly recommend for H5.
 - **Lists**: Use `-` for bullet points and `1.` for numbered lists. Indent nested lists with two spaces.
-- **Code Blocks**: Use triple backticks (`) to create fenced code blocks. Specify the language after the opening backticks for syntax highlighting (e.g., `csharp).
+- **Code Blocks**: Use triple backticks (`) to create fenced code blocks. Specify the language after the opening backticks for syntax highlighting (e.g.,`csharp).
 - **Links**: Use `[link text](URL)` for links. Ensure that the link text is descriptive and the URL is valid.
 - **Images**: Use `![alt text](image URL)` for images. Include a brief description of the image in the alt text.
 - **Tables**: Use `|` to create tables. Ensure that columns are properly aligned and headers are included.
@@ -35,7 +48,6 @@ Follow these guidelines for formatting and structuring your markdown content:
 Ensure compliance with the following validation requirements:
 
 - **Front Matter**: Include the following fields in the YAML front matter:
-
   - `post_title`: The title of the post.
   - `author1`: The primary author of the post.
   - `post_slug`: The URL slug for the post.
