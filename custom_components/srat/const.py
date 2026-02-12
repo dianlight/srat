@@ -21,9 +21,6 @@ ADDON_SLUG_WHITELIST = [
 WS_RECONNECT_INTERVAL = 5  # seconds
 WS_MAX_RECONNECT_ATTEMPTS = 0  # 0 = unlimited
 
-# Sensor update interval
-SENSOR_UPDATE_INTERVAL = 30  # seconds
-
 ATTR_FRIENDLY_NAME = "friendly_name"
 ATTR_ICON = "icon"
 ATTR_DEVICE_CLASS = "device_class"

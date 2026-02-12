@@ -1,24 +1,37 @@
-"""Data coordinator for the SRAT integration."""
+"""Data coordinator for the SRAT integration.
+
+All sensor data is received exclusively via the WebSocket connection.
+No REST API polling is used.  The ``heartbeat`` event carries
+``HealthPing`` which embeds ``samba_status``, ``samba_process_status``,
+and ``disk_health``.  The ``volumes`` event carries the disk list.
+"""
 
 from __future__ import annotations
 
-import asyncio
-from datetime import timedelta
 import logging
 from typing import Any
 
-import aiohttp
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from .const import DOMAIN, SENSOR_UPDATE_INTERVAL
+from .const import DOMAIN
 from .websocket_client import SRATWebSocketClient
 
 _LOGGER = logging.getLogger(__name__)
 
 
 class SRATDataCoordinator(DataUpdateCoordinator[dict[str, Any]]):
-    """Coordinator to fetch data from SRAT API and receive real-time updates."""
+    """Coordinator that receives all data from the SRAT WebSocket.
+
+    No REST polling is performed.  Data arrives via two WebSocket events:
+
+    * ``volumes`` → ``[]*Disk{}`` — disk & partition information
+    * ``heartbeat`` → ``HealthPing`` — samba status, process status,
+      disk health, network health, addon stats, etc.
+
+    Until the first event of each type arrives the corresponding data
+    key is ``None`` and sensors report as *unavailable*.
+    """
 
     def __init__(
         self,
@@ -26,74 +39,55 @@ class SRATDataCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         host: str,
         port: int,
         ws_client: SRATWebSocketClient,
-        session: aiohttp.ClientSession,
     ) -> None:
         """Initialize the coordinator."""
         super().__init__(
             hass,
             _LOGGER,
             name=DOMAIN,
-            update_interval=timedelta(seconds=SENSOR_UPDATE_INTERVAL),
+            # No periodic polling — data comes from WebSocket only
+            update_interval=None,
         )
         self._host = host
         self._port = port
         self._ws_client = ws_client
-        self._session = session
-        self._base_url = f"http://{host}:{port}"
 
-        # Register WebSocket listeners for real-time updates
-        # Event types match backend/src/dto/webevent_type.go string values
-        ws_client.register_listener("volumes", self._on_disk_update)
-        ws_client.register_listener("heartbeat", self._on_heartbeat_update)
-
-    async def _async_update_data(self) -> dict[str, Any]:
-        """Fetch data from the SRAT REST API."""
-        data: dict[str, Any] = {
-            "disks": [],
+        # Seed with empty/unavailable data
+        self.data: dict[str, Any] = {
+            "disks": None,
             "samba_status": None,
             "process_status": None,
             "disk_health": None,
         }
 
-        try:
-            async with asyncio.timeout(10):
-                # Fetch disk data
-                async with self._session.get(f"{self._base_url}/disks") as resp:
-                    if resp.status == 200:
-                        data["disks"] = await resp.json()
+        # Register WebSocket listeners for real-time updates
+        # Event types match backend/src/dto/webevent_type.go string values
+        ws_client.register_listener("volumes", self._on_volumes)
+        ws_client.register_listener("heartbeat", self._on_heartbeat)
 
-                # Fetch samba status
-                async with self._session.get(f"{self._base_url}/samba/status") as resp:
-                    if resp.status == 200:
-                        data["samba_status"] = await resp.json()
+    async def _async_update_data(self) -> dict[str, Any]:
+        """Return current data (no REST polling)."""
+        return self.data
 
-                # Fetch process status
-                async with self._session.get(f"{self._base_url}/samba/process") as resp:
-                    if resp.status == 200:
-                        data["process_status"] = await resp.json()
+    @callback
+    def _on_volumes(self, data: Any) -> None:
+        """Handle ``volumes`` event (list of disks)."""
+        self.data["disks"] = data if isinstance(data, list) else None
+        self.async_set_updated_data(self.data)
 
-                # Fetch disk health
-                async with self._session.get(f"{self._base_url}/health/disks") as resp:
-                    if resp.status == 200:
-                        data["disk_health"] = await resp.json()
+    @callback
+    def _on_heartbeat(self, data: Any) -> None:
+        """Handle ``heartbeat`` event (``HealthPing``).
 
-        except (aiohttp.ClientError, TimeoutError) as err:
-            raise UpdateFailed(f"Error communicating with SRAT API: {err}") from err
+        ``HealthPing`` carries embedded fields::
 
-        return data
-
-    def _on_disk_update(self, data: Any) -> None:
-        """Handle volumes event from WebSocket (list of disks)."""
-        if self.data is not None:
-            # The "volumes" event sends []*Disk{} directly
-            if isinstance(data, list):
-                self.data["disks"] = data
-            else:
-                self.data["disks"] = data.get("disks", self.data.get("disks", []))
-            self.async_set_updated_data(self.data)
-
-    def _on_heartbeat_update(self, data: Any) -> None:
-        """Handle heartbeat event from WebSocket (HealthPing)."""
-        if self.data is not None:
-            self.data["disk_health"] = data
-            self.async_set_updated_data(self.data)
+            samba_status         → SambaStatus
+            samba_process_status → ServerProcessStatus
+            disk_health          → DiskHealth
+        """
+        if not isinstance(data, dict):
+            return
+        self.data["samba_status"] = data.get("samba_status")
+        self.data["process_status"] = data.get("samba_process_status")
+        self.data["disk_health"] = data.get("disk_health")
+        self.async_set_updated_data(self.data)

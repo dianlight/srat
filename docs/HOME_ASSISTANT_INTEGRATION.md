@@ -45,9 +45,16 @@ For standalone SRAT installations, provide the host IP and port during setup. Th
 
 ### Communication
 
-The custom component connects to the SRAT backend via WebSocket (`/ws` endpoint) for real-time updates. The connection uses the `X-Remote-User-Id` authentication header and supports automatic reconnection with configurable retry intervals.
+The custom component communicates with the SRAT backend **exclusively via WebSocket** (`/ws` endpoint). No REST API polling is used. The connection uses the `X-Remote-User-Id` authentication header and supports automatic reconnection with configurable retry intervals.
 
-REST API polling (`/disks`, `/samba/status`, `/samba/process`, `/health/disks`) runs every 30 seconds in parallel with the WebSocket connection to guarantee data consistency even when individual WebSocket events are missed.
+Two WebSocket events carry all sensor data:
+
+- **`volumes`** — disk and partition information (`[]*Disk`)
+- **`heartbeat`** — periodic health snapshot containing samba status, process status, disk health, network health, and addon stats (`HealthPing`)
+
+Until the first event of each type arrives, the corresponding sensors report as *unavailable*.
+
+For details on data not yet exposed as entities, see [MISSING_HA_INTEGRATION_DATA.md](MISSING_HA_INTEGRATION_DATA.md).
 
 ### Entities
 

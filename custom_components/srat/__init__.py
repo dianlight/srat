@@ -52,7 +52,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: SRATConfigEntry) -> bool
     except (aiohttp.ClientError, TimeoutError) as err:
         raise ConfigEntryNotReady(f"Cannot connect to SRAT at {host}:{port}") from err
 
-    # Create WebSocket client for real-time updates
+    # Create WebSocket client for real-time updates (sole data channel)
     ws_client = SRATWebSocketClient(
         hass=hass,
         host=host,
@@ -60,19 +60,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: SRATConfigEntry) -> bool
         reconnect_interval=WS_RECONNECT_INTERVAL,
     )
 
-    # Create data coordinator
+    # Create data coordinator (no REST polling, WebSocket only)
     coordinator = SRATDataCoordinator(
         hass=hass,
         host=host,
         port=port,
         ws_client=ws_client,
-        session=session,
     )
 
-    # Fetch initial data
-    await coordinator.async_config_entry_first_refresh()
-
-    # Start WebSocket connection
+    # Start WebSocket connection — data arrives via events
     await ws_client.async_connect()
 
     entry.runtime_data = SRATData(
