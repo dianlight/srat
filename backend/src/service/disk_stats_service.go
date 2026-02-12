@@ -190,7 +190,7 @@ func (s *diskStatsService) updateDiskStats() errors.E {
 					} else {
 						name = "unknown"
 					}
-					fsckSupported, fsckNeeded := s.getFsckInfo(&part, fstype)
+					filesystemState := s.getFilesystemState(&part, fstype)
 					// Use partition size if available
 					// Get free space using syscall.Statfs
 					var totalSpace, freeSpace uint64
@@ -225,14 +225,13 @@ func (s *diskStatsService) updateDiskStats() errors.E {
 						}
 					}
 					info := dto.PerPartitionInfo{
-						Name:          name,
-						MountPoint:    mountPoint,
-						Device:        *part.Id,
-						FSType:        fstype,
-						FreeSpace:     freeSpace,
-						TotalSpace:    totalSpace,
-						FsckNeeded:    fsckNeeded,
-						FsckSupported: fsckSupported,
+						Name:            name,
+						MountPoint:      mountPoint,
+						Device:          *part.Id,
+						FSType:          fstype,
+						FreeSpace:       freeSpace,
+						TotalSpace:      totalSpace,
+						FilesystemState: filesystemState,
 					}
 					if s.currentDiskHealth.PerPartitionInfo[*disk.Id] == nil {
 						s.currentDiskHealth.PerPartitionInfo[*disk.Id] = make([]dto.PerPartitionInfo, 0)
@@ -323,31 +322,27 @@ func (s *diskStatsService) GetDiskStats() (*dto.DiskHealth, errors.E) {
 	return s.currentDiskHealth, nil
 }
 
-func (s *diskStatsService) getFsckInfo(part *dto.Partition, fsType string) (bool, bool) {
+func (s *diskStatsService) getFilesystemState(part *dto.Partition, fsType string) *dto.FilesystemState {
 	if part == nil || s.filesystemService == nil || fsType == "" {
-		return false, false
+		return nil
 	}
 
 	info, err := s.filesystemService.GetSupportAndInfo(s.ctx, fsType)
 	if err != nil || info == nil || info.Support == nil || !info.Support.CanCheck {
-		return false, false
+		return nil
 	}
 
 	devicePath := resolvePartitionDevicePath(part)
 	if devicePath == "" || !info.Support.CanGetState {
-		return true, false
+		return nil
 	}
 
 	state, err := s.filesystemService.GetPartitionState(s.ctx, devicePath, fsType)
 	if err != nil || state == nil {
-		return true, false
+		return nil
 	}
 
-	if state.HasErrors || !state.IsClean {
-		return true, true
-	}
-
-	return true, false
+	return state
 }
 
 func resolvePartitionDevicePath(part *dto.Partition) string {

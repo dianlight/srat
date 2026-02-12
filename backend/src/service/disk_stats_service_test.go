@@ -190,6 +190,7 @@ func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_FsckStateFromFilesystemS
 
 	info := suite.ds.currentDiskHealth.PerPartitionInfo[diskID]
 	suite.Len(info, 1)
-	suite.True(info[0].FsckSupported)
-	suite.True(info[0].FsckNeeded)
+	suite.NotNil(info[0].FilesystemState)
+	suite.True(info[0].FilesystemState.HasErrors)
+	suite.False(info[0].FilesystemState.IsClean)
 }

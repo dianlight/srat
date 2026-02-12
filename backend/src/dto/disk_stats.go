@@ -20,14 +20,13 @@ type GlobalDiskStats struct {
 
 // PerPartitionInfo contains per-partition health information such as freespace and fsck support.
 type PerPartitionInfo struct {
-	Name          string `json:"name,omitempty"`
-	MountPoint    string `json:"mount_point"`
-	Device        string `json:"device"`
-	FSType        string `json:"fstype"`
-	FreeSpace     uint64 `json:"free_space_bytes"`
-	TotalSpace    uint64 `json:"total_space_bytes"`
-	FsckNeeded    bool   `json:"fsck_needed"`
-	FsckSupported bool   `json:"fsck_supported"`
+	Name            string           `json:"name,omitempty"`
+	MountPoint      string           `json:"mount_point"`
+	Device          string           `json:"device"`
+	FSType          string           `json:"fstype"`
+	FreeSpace       uint64           `json:"free_space_bytes"`
+	TotalSpace      uint64           `json:"total_space_bytes"`
+	FilesystemState *FilesystemState `json:"filesystem_state,omitempty"`
 }
 
 // PerDiskInfo contains per-disk health and status information.

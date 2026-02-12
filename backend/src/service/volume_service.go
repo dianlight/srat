@@ -844,6 +844,7 @@ func (self *VolumeService) getVolumesData() errors.E {
 		//	self.refreshing.Store(true)
 		//	defer self.refreshing.Store(false)
 		self.refreshVersion++
+		filesystemSupportCache := make(map[string]*dto.FilesystemSupport)
 
 		tlog.TraceContext(self.ctx, "Executing GetVolumesData core logic (singleflight)...")
 
@@ -905,7 +906,23 @@ func (self *VolumeService) getVolumesData() errors.E {
 				slog.WarnContext(self.ctx, "Failed to update existing disk in cache", "disk_id", *disk.Id, "err", err)
 			}
 
-			for _, part := range *disk.Partitions {
+			for pid, part := range *disk.Partitions {
+				fsSupport := &dto.FilesystemSupport{}
+				if part.FsType != nil && *part.FsType != "" {
+					if cached, ok := filesystemSupportCache[*part.FsType]; ok {
+						fsSupport = cached
+					} else {
+						info, err := self.fs_service.GetSupportAndInfo(self.ctx, *part.FsType)
+						if err != nil || info == nil || info.Support == nil {
+							fsSupport = &dto.FilesystemSupport{}
+						} else {
+							fsSupport = info.Support
+						}
+						filesystemSupportCache[*part.FsType] = fsSupport
+					}
+				}
+				part.FilesystemSupport = fsSupport
+				(*disk.Partitions)[pid] = part
 				//			if err := self.processPartitionMountData(&disk, pid, part, true); err != nil {
 				//				slog.WarnContext(self.ctx, "Failed to process partition mount data for new disk", "disk_id", *disk.Id, "partition_id", pid, "err", err)
 				//				continue

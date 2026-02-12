@@ -92,14 +92,16 @@ func TestGlobalDiskStats_AllFields(t *testing.T) {
 
 func TestPerPartitionInfo_AllFields(t *testing.T) {
 	info := dto.PerPartitionInfo{
-		Name:          "sda1",
-		MountPoint:    "/mnt/data",
-		Device:        "/dev/sda1",
-		FSType:        "ext4",
-		FreeSpace:     1000000000,
-		TotalSpace:    2000000000,
-		FsckNeeded:    false,
-		FsckSupported: true,
+		Name:       "sda1",
+		MountPoint: "/mnt/data",
+		Device:     "/dev/sda1",
+		FSType:     "ext4",
+		FreeSpace:  1000000000,
+		TotalSpace: 2000000000,
+		FilesystemState: &dto.FilesystemState{
+			IsClean:   true,
+			HasErrors: false,
+		},
 	}
 
 	assert.Equal(t, "sda1", info.Name)
@@ -108,8 +110,10 @@ func TestPerPartitionInfo_AllFields(t *testing.T) {
 	assert.Equal(t, "ext4", info.FSType)
 	assert.Equal(t, uint64(1000000000), info.FreeSpace)
 	assert.Equal(t, uint64(2000000000), info.TotalSpace)
-	assert.False(t, info.FsckNeeded)
-	assert.True(t, info.FsckSupported)
+	if assert.NotNil(t, info.FilesystemState) {
+		assert.True(t, info.FilesystemState.IsClean)
+		assert.False(t, info.FilesystemState.HasErrors)
+	}
 }
 
 func TestDiskHealth_AllFields(t *testing.T) {
@@ -156,8 +160,6 @@ func TestDiskHealth_AllFields(t *testing.T) {
 	assert.Equal(t, "ext4", health.PerPartitionInfo["/dev/sda"][0].FSType)
 	assert.Equal(t, uint64(0), health.PerPartitionInfo["/dev/sda"][0].FreeSpace)
 	assert.Equal(t, uint64(0), health.PerPartitionInfo["/dev/sda"][0].TotalSpace)
-	assert.False(t, health.PerPartitionInfo["/dev/sda"][0].FsckNeeded)
-	assert.False(t, health.PerPartitionInfo["/dev/sda"][0].FsckSupported)
 }
 
 // NetworkStats Tests

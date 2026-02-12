@@ -1,8 +1,6 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-**Table of Contents** *generated with [DocToc](https://github.com/thlorenz/doctoc)*
-
 - [Filesystem Adapter Pattern](#filesystem-adapter-pattern)
   - [Overview](#overview)
   - [Architecture](#architecture)
@@ -25,6 +23,13 @@
   - [Adding New Filesystem Adapters](#adding-new-filesystem-adapters)
   - [Testing](#testing)
   - [Backward Compatibility](#backward-compatibility)
+  - [HTTP API Endpoints](#http-api-endpoints)
+    - [List Filesystems](#list-filesystems)
+    - [Format Partition](#format-partition)
+    - [Check Partition](#check-partition)
+    - [Get Partition State](#get-partition-state)
+    - [Get Partition Label](#get-partition-label)
+    - [Set Partition Label](#set-partition-label)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -45,19 +50,19 @@ The SRAT backend now implements a filesystem adapter pattern that provides a cle
 
 ### Supported Filesystems
 
-| Filesystem | Alpine Package | Description                             |
-| ---------- | -------------- | --------------------------------------- |
-| ext4       | e2fsprogs      | Fourth Extended Filesystem              |
-| vfat       | dosfstools     | FAT32 Filesystem                        |
-| ntfs       | ntfs-3g-progs  | NTFS Filesystem                         |
-| btrfs      | btrfs-progs    | B-tree Filesystem                       |
-| xfs        | xfsprogs       | XFS Filesystem                          |
-| exfat      | exfatprogs     | Extended File Allocation Table          |
-| f2fs       | f2fs-tools     | Flash-Friendly File System              |
-| gfs2       | gfs2-utils     | Global File System 2 (Cluster FS)       |
-| hfsplus    | hfsprogs       | HFS Plus (Mac OS Extended)              |
-| reiserfs   | reiserfsprogs  | ReiserFS Filesystem                     |
-| apfs       | N/A            | Apple File System (read-only on Linux)  |
+| Filesystem | Alpine Package | Description                            |
+| ---------- | -------------- | -------------------------------------- |
+| ext4       | e2fsprogs      | Fourth Extended Filesystem             |
+| vfat       | dosfstools     | FAT32 Filesystem                       |
+| ntfs       | ntfs-3g-progs  | NTFS Filesystem                        |
+| btrfs      | btrfs-progs    | B-tree Filesystem                      |
+| xfs        | xfsprogs       | XFS Filesystem                         |
+| exfat      | exfatprogs     | Extended File Allocation Table         |
+| f2fs       | f2fs-tools     | Flash-Friendly File System             |
+| gfs2       | gfs2-utils     | Global File System 2 (Cluster FS)      |
+| hfsplus    | hfsprogs       | HFS Plus (Mac OS Extended)             |
+| reiserfs   | reiserfsprogs  | ReiserFS Filesystem                    |
+| apfs       | N/A            | Apple File System (read-only on Linux) |
 
 ## Usage
 
@@ -331,7 +336,7 @@ The SRAT backend provides HTTP API endpoints for filesystem operations through t
 
 Get all supported filesystems with their capabilities:
 
-```
+```plaintext
 GET /filesystems
 ```
 
@@ -363,7 +368,7 @@ Response includes filesystem type information, mount flags, and capability detai
 
 Format a partition with a specific filesystem:
 
-```
+```plaintext
 POST /filesystem/format
 Content-Type: application/json
 
@@ -382,7 +387,7 @@ Content-Type: application/json
 
 Check a partition's filesystem for errors:
 
-```
+```plaintext
 POST /filesystem/check
 Content-Type: application/json
 
@@ -410,7 +415,7 @@ Response:
 
 Get the current state of a partition's filesystem:
 
-```
+```plaintext
 GET /filesystem/state?partition_id=partition-uuid
 ```
 
@@ -430,7 +435,7 @@ Response:
 
 Get the label of a partition's filesystem:
 
-```
+```plaintext
 GET /filesystem/label?partition_id=partition-uuid
 ```
 
@@ -446,7 +451,7 @@ Response:
 
 Set the label of a partition's filesystem:
 
-```
+```plaintext
 PUT /filesystem/label
 Content-Type: application/json
 
@@ -465,7 +470,6 @@ Response:
 ```
 
 All endpoints use the partition's unique ID to identify the target partition and automatically determine the appropriate filesystem adapter based on the partition's filesystem type.
-
 
 - `GetAdapter(fsType)`
 - `GetSupportedFilesystems(ctx)`
