@@ -37,7 +37,8 @@ bun install -g @j178/prek ||:
 #biome
 bun add -g biome ||:
 bun pm -g trust --all ||:
-sed -i '1s/node/bun/' "$(realpath $HOME/.bun/bin/biome)" ||:
+#sed -i '1s/node/bun/' "$(realpath $HOME/.bun/bin/biome)" ||:
+#export BIOME_BINARY=$(realpath $HOME/.bun/bin/biome)
 
 #test device
 mkdir -p /dev/disk/by-id

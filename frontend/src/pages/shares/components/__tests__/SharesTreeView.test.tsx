@@ -1,5 +1,5 @@
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import "../../../../../test/setup";
-import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
 
 describe("SharesTreeView component", () => {
     beforeEach(() => {
@@ -47,7 +47,7 @@ describe("SharesTreeView component", () => {
         const { overrides, tracking } = setupOverrides();
 
         const React = await import("react");
-        const { render, screen, waitFor } = await import("@testing-library/react");
+        const { render, waitFor, within } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const { Provider } = await import("react-redux");
         const { createTestStore } = await import("../../../../../test/setup");
@@ -57,7 +57,7 @@ describe("SharesTreeView component", () => {
         const onSelect = mock(() => { });
         const store = await createTestStore();
 
-        render(
+        const { getByText } = render(
             React.createElement(
                 Provider as any,
                 { store },
@@ -86,18 +86,23 @@ describe("SharesTreeView component", () => {
         );
 
         const user = userEvent.setup();
-        const documentsNode = await screen.findByText("Documents");
+        await waitFor(() => {
+            expect(getByText("Documents")).toBeTruthy();
+        });
+        const documentsNode = getByText("Documents");
         await user.click(documentsNode);
         expect(onSelect).toHaveBeenCalledWith("doc", expect.objectContaining({ name: "Documents" }));
 
         // Helper function to click an action (handles both desktop buttons and mobile menu)
         const clickShareAction = async (actionName: RegExp, shareText: string) => {
             // Find the share node first to ensure we're targeting the right share
-            const shareNode = await screen.findByText(shareText);
+            await waitFor(() => {
+                expect(getByText(shareText)).toBeTruthy();
+            });
+            const shareNode = getByText(shareText);
             const shareContainer = shareNode.closest('[role="treeitem"]');
             if (!shareContainer) return;
 
-            const { within } = await import("@testing-library/react");
             const shareScope = within(shareContainer as HTMLElement);
 
             // First try to find direct action buttons (desktop view) within this share
@@ -111,7 +116,15 @@ describe("SharesTreeView component", () => {
             if (menuButtons.length > 0) {
                 await user.click(menuButtons[0]!);
                 // Wait for menu to open - search in document.body since Menu uses Portal
-                const menuItem = await screen.findByRole("menuitem", { name: actionName });
+                const portalQueries = within(document.body);
+                await waitFor(() => {
+                    expect(
+                        portalQueries.getByRole("menuitem", { name: actionName }),
+                    ).toBeTruthy();
+                });
+                const menuItem = portalQueries.getByRole("menuitem", {
+                    name: actionName,
+                });
                 await user.click(menuItem);
             }
         };
@@ -130,7 +143,7 @@ describe("SharesTreeView component", () => {
         const { overrides } = setupOverrides();
 
         const React = await import("react");
-        const { render, screen, within } = await import("@testing-library/react");
+        const { render, within } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { createTestStore } = await import("../../../../../test/setup");
         // @ts-expect-error - Query param loads isolated module instance
@@ -176,7 +189,9 @@ describe("SharesTreeView component", () => {
         const { overrides, tracking } = setupOverrides({ confirmResult: { confirmed: false } });
 
         const React = await import("react");
-        const { render, screen, within } = await import("@testing-library/react");
+        const { render, waitFor, within } = await import(
+            "@testing-library/react",
+        );
         const userEvent = (await import("@testing-library/user-event")).default;
         const { Provider } = await import("react-redux");
         const { createTestStore } = await import("../../../../../test/setup");
@@ -221,7 +236,15 @@ describe("SharesTreeView component", () => {
             if (menuButtons.length > 0) {
                 await user.click(menuButtons[0]!);
                 // Wait for menu to open - search in document.body since Menu uses Portal
-                const menuItem = await screen.findByRole("menuitem", { name: actionName });
+                const portalQueries = within(document.body);
+                await waitFor(() => {
+                    expect(
+                        portalQueries.getByRole("menuitem", { name: actionName }),
+                    ).toBeTruthy();
+                });
+                const menuItem = portalQueries.getByRole("menuitem", {
+                    name: actionName,
+                });
                 await user.click(menuItem);
             }
         };
@@ -235,7 +258,7 @@ describe("SharesTreeView component", () => {
         const { overrides } = setupOverrides();
 
         const React = await import("react");
-        const { render, screen, within } = await import("@testing-library/react");
+        const { render, within } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { createTestStore } = await import("../../../../../test/setup");
         // @ts-expect-error - Query param loads isolated module instance

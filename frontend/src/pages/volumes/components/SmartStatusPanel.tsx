@@ -1,36 +1,36 @@
+import ErrorIcon from "@mui/icons-material/Error";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import HealthAndSafetyIcon from "@mui/icons-material/HealthAndSafety";
+import ThermostatIcon from "@mui/icons-material/Thermostat";
 import {
     Box,
+    Button,
     Card,
     CardContent,
     CardHeader,
     Chip,
     CircularProgress,
-    IconButton,
-    LinearProgress,
-    Stack,
-    Typography,
-    Button,
     Dialog,
-    DialogTitle,
-    DialogContent,
     DialogActions,
+    DialogContent,
+    DialogTitle,
     FormControl,
+    IconButton,
     InputLabel,
-    Select,
     MenuItem,
+    Select,
+    Stack,
+    Typography
 } from "@mui/material";
-import ThermostatIcon from "@mui/icons-material/Thermostat";
-import HealthAndSafetyIcon from "@mui/icons-material/HealthAndSafety";
-import ErrorIcon from "@mui/icons-material/Error";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import Collapse from "@mui/material/Collapse";
-import { use,
+import {
     useEffect,
-    useState } from "react";
-import { useGetApiDiskByDiskIdSmartInfoQuery, useGetApiDiskByDiskIdSmartStatusQuery, type SmartInfo, type SmartStatus } from "../../../store/sratApi";
-import { useSmartOperations } from "../../../hooks/useSmartOperations";
+    useState
+} from "react";
 import { PreviewDialog } from "../../../components/PreviewDialog";
 import { useSmartTestStatus } from "../../../hooks/smartTestStatusHook";
+import { useSmartOperations } from "../../../hooks/useSmartOperations";
+import { useGetApiDiskByDiskIdSmartStatusQuery, type SmartInfo, type SmartStatus } from "../../../store/sratApi";
 
 // Local type definitions for SMART data that isn't in the OpenAPI spec yet
 interface SmartHealthStatus {
@@ -77,7 +77,7 @@ export function SmartStatusPanel({
         skip: !diskId,
         refetchOnMountOrArgChange: true,
     });
-    const { smartTestStatus, isLoading: smartTestStatusLoading, error: smartTestStatusError } = useSmartTestStatus(diskId || "");
+    const { smartTestStatus, isLoading: smartTestStatusLoading } = useSmartTestStatus(diskId || "");
 
     // Don't render if SMART is not supported based on backend data
     if (!smartInfo?.supported) {
@@ -364,7 +364,7 @@ export function SmartStatusPanel({
                         )}
 
                         {/* Control Buttons */}
-                        
+
                         <Box>
                             <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
                                 Actions
@@ -426,7 +426,7 @@ export function SmartStatusPanel({
                                 </Button>
                             </Stack>
                         </Box>
-                    
+
                         { /*End Control Buttons  */}
                     </Stack>
                 </CardContent>

@@ -1,28 +1,25 @@
-import CssBaseline from "@mui/material/CssBaseline";
-import * as ReactDOM from "react-dom/client";
-import { App } from "./App.tsx";
-import "./css/style.css";
-import "./img/favicon.ico";
 import "@fontsource/roboto/300.css";
 import "@fontsource/roboto/400.css";
 import "@fontsource/roboto/500.css";
 import "@fontsource/roboto/700.css";
-import "./img/favicon.ico";
-import normalizeUrl from 'normalize-url';
 import "@mui/icons-material";
+import CssBaseline from "@mui/material/CssBaseline";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { ConfirmProvider } from "material-ui-confirm";
 import { StrictMode } from "react";
+import * as ReactDOM from "react-dom/client";
+import { App } from "./App.tsx";
+import "./css/style.css";
+import "./img/favicon.ico";
 //import { type Listener, type Source, SSEProvider } from "react-hooks-sse";
+import { TourProvider, } from '@reactour/tour';
+import { Provider as RollbarProvider } from "@rollbar/react";
 import { Provider } from "react-redux";
 import { BrowserRouter } from "react-router";
-import { Provider as RollbarProvider } from "@rollbar/react";
-import { ErrorBoundaryWrapper } from "./components/ErrorBoundaryWrapper";
 import { ConsoleErrorToRollbar } from "./components/ConsoleErrorToRollbar";
-import { store } from "./store/store.ts";
-import { TourProvider, } from '@reactour/tour'
-import { get } from "react-hook-form";
+import { ErrorBoundaryWrapper } from "./components/ErrorBoundaryWrapper";
 import { getApiUrl, getCurrentEnv } from "./macro/Environment.ts" with { type: 'macro' };
+import { store } from "./store/store.ts";
 
 declare module '@mui/material/styles' {
 	interface TypographyVariants {

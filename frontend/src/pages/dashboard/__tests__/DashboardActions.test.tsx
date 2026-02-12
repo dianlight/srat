@@ -1,5 +1,5 @@
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import "../../../../test/setup";
-import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 
 // Helper function to render DashboardActions with required wrappers
 async function renderDashboardActions() {
@@ -85,7 +85,7 @@ describe("DashboardActions component", () => {
     });
 
     it("displays protected mode warning when in protected mode", async () => {
-        const { container } = await renderDashboardActions();
+        await renderDashboardActions();
         expect(document.body.innerHTML).toBeTruthy();
     });
 

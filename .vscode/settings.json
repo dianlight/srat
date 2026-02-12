@@ -30,6 +30,7 @@
     },
   ],
   "editor.codeActionsOnSave": {
+    "source.sortImports": "explicit",
     "source.action.useSortedKeys.biome": "explicit",
     "source.fixAll.biome": "explicit",
   },
@@ -203,5 +204,8 @@
   "bun.test.customScript": "bun test",
   "npm.packageManager": "bun",
   "npm.scriptRunner": "bun",
-  "typescript.preferences.preferTypeOnlyAutoImports": true
+  "typescript.preferences.preferTypeOnlyAutoImports": true,
+  "biome.requireConfiguration": true,
+  "editor.formatOnSave": true,
+  "biome.lsp.bin": "/root/.bun/bin/biome"
 }

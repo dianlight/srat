@@ -1,24 +1,24 @@
-import React from 'react';
 import {
-  Card,
-  CardContent,
-  CardActions,
-  Typography,
-  Button,
-  Box,
-  Chip,
-  IconButton,
-  useTheme,
-} from '@mui/material';
-import {
-  Error as ErrorIcon,
-  Warning as WarningIcon,
-  Info as InfoIcon,
-  CheckCircle as SuccessIcon,
-  Close as CloseIcon,
+    Close as CloseIcon,
+    Error as ErrorIcon,
+    Info as InfoIcon,
+    CheckCircle as SuccessIcon,
+    Warning as WarningIcon,
 } from '@mui/icons-material';
-import { type Issue } from '../store/sratApi';
+import {
+    Box,
+    Button,
+    Card,
+    CardActions,
+    CardContent,
+    Chip,
+    IconButton,
+    Typography,
+    useTheme,
+} from '@mui/material';
+import React from 'react';
 import { useIgnoredIssues } from '../hooks/issueHooks';
+import { type Issue } from '../store/sratApi';
 
 interface IssueCardProps {
   issue: Issue;
@@ -78,7 +78,7 @@ const getSeverityConfig = (severity: string, theme: any) => {
 
 const IssueCard: React.FC<IssueCardProps> = ({ issue, onResolve, showIgnored }) => {
   const theme = useTheme();
-  const { isIssueIgnored, ignoreIssue, unignoreIssue } = useIgnoredIssues();
+  const { isIssueIgnored } = useIgnoredIssues();
   const isIgnored = isIssueIgnored(issue.id);
   const severityConfig = getSeverityConfig(issue.severity || 'info', theme);
 

@@ -94,7 +94,7 @@
     "test:prepare": "bun ./scripts/add-test-setup.js",
     "test:fix": "bun ./scripts/add-test-setup.js --apply",
     "test:ci": "bun run test:prepare && bun test  --only-failures --timeout 30000 --bail --max-concurrency=1",
-    "lint": "bun run validate-macros && bun tsgo --noEmit && bun run test:prepare && bunx biome check --write",
+    "lint": "bun run validate-macros && bunx --bun biome check --write && bun tsgo --noEmit && bun run test:prepare",
     "validate-macros": "bun run ../scripts/validate-macro-imports.js"
   },
   "patchedDependencies": {},

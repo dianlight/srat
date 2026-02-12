@@ -14,15 +14,15 @@ import {
     Tooltip,
     Typography,
 } from "@mui/material";
+import { filesize } from "filesize";
 import { MuiChipsInput } from "mui-chips-input";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
     AutocompleteElement,
-    CheckboxElement,
     SelectElement,
     SwitchElement,
-    TextFieldElement,
+    TextFieldElement
 } from "react-hook-form-mui";
 import { useVolume } from "../../../hooks/volumeHook";
 import default_json from "../../../json/default_config.json";
@@ -44,7 +44,6 @@ import {
     toCamelCase,
     toKebabCase,
 } from "../utils";
-import { filesize } from "filesize";
 
 interface ShareEditFormProps {
     shareData?: ShareEditProps;
@@ -75,9 +74,8 @@ export function ShareEditForm({
     const {
         data: users,
         isLoading: usLoading,
-        error: usError,
     } = useUsersQuery();
-    const { disks: volumes, isLoading: vlLoading, error: vlError } = useVolumeHook();
+    const { disks: volumes, isLoading: vlLoading} = useVolumeHook();
     const [editName, setEditName] = useState(shareData?.org_name === undefined);
     const [activeCasingIndex, setActiveCasingIndex] = useState(0);
 
@@ -91,8 +89,6 @@ export function ShareEditForm({
         control,
         handleSubmit,
         watch,
-        formState: { errors },
-        reset,
         setValue,
         getValues,
     } = useForm<ShareEditProps>({

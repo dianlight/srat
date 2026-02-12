@@ -1,5 +1,5 @@
+import { beforeEach, describe, expect, it } from "bun:test";
 import "../../../test/setup";
-import { describe, it, expect, beforeEach } from "bun:test";
 
 describe("IssueCard Component", () => {
     beforeEach(() => {
@@ -188,7 +188,7 @@ describe("IssueCard Component", () => {
         const theme = createTheme();
         const user = userEvent.setup();
         let resolved = false;
-        const mockOnResolve = (id: number) => { resolved = true; };
+        const mockOnResolve = () => { resolved = true; };
         const mockIssue = {
             id: 7,
             title: "Resolvable Issue",
@@ -225,7 +225,7 @@ describe("IssueCard Component", () => {
         const theme = createTheme();
         const user = userEvent.setup();
         let dismissed = false;
-        const mockOnResolve = (id: number) => { dismissed = true; };
+        const mockOnResolve = () => { dismissed = true; };
         const mockIssue = {
             id: 8,
             title: "Dismissable Issue",

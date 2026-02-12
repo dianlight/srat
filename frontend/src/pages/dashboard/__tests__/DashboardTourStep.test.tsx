@@ -1,5 +1,5 @@
+import { beforeEach, describe, expect, it } from "bun:test";
 import "../../../../test/setup";
-import { describe, it, expect, beforeEach } from "bun:test";
 
 describe("DashboardTourStep", () => {
     beforeEach(() => {
@@ -149,7 +149,7 @@ describe("DashboardTourStep", () => {
         // Test action functions for steps that have them (steps 2-8)
         const stepsWithActions = DashboardSteps.slice(2);
 
-        stepsWithActions.forEach((step, index) => {
+        stepsWithActions.forEach((step) => {
             if (step.action) {
                 // Mock element
                 const mockElement = document.createElement('div');
@@ -163,7 +163,6 @@ describe("DashboardTourStep", () => {
     });
 
     it("tour event types are properly imported and used", async () => {
-        const { DashboardSteps } = await import("../DashboardTourStep");
         const { TourEventTypes } = await import("../../../utils/TourEvents");
 
         // Verify that TourEventTypes has the expected dashboard events

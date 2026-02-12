@@ -1,10 +1,8 @@
 import {
-	Button,
-	Dialog,
-	DialogTitle,
+    Dialog,
+    DialogTitle
 } from "@mui/material";
 import { Fragment } from "react";
-import { TabIDs } from "../../store/locationState";
 import { UserEditForm } from "./components/UserEditForm";
 import type { UsersProps } from "./types";
 

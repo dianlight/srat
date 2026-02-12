@@ -3,14 +3,11 @@ import Container from "@mui/material/Container";
 import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
 import pkg from "../../package.json";
-import { getGitCommitHash } from "../macro/GitCommitHash.ts" with {
-	type: "macro",
+import { getCompileYear } from "../macro/CompileYear.ts" with { type: "macro"
 };
-import { getCompileYear } from "../macro/CompileYear.ts" with {
-	type: "macro",
+import { getCurrentEnv } from "../macro/Environment.ts" with { type: "macro"
 };
-import { getCurrentEnv } from "../macro/Environment.ts" with {
-	type: "macro",
+import { getGitCommitHash } from "../macro/GitCommitHash.ts" with { type: "macro"
 };
 import { useGetServerEventsQuery } from "../store/sseApi.ts";
 
@@ -59,7 +56,7 @@ export function Footer() {
 						<Tooltip
 							title={
 								Object.entries(evdata?.heartbeat?.samba_process_status || {}).map(
-									([id, status], index) => (
+									([id, status], _index) => (
 										<div key={id}>
 											<strong>{id}</strong>: PID {status?.pid || "N/A"} - {status?.is_running ? "Running" : "Stopped"}
 										</div>

@@ -1,8 +1,8 @@
+import EditIcon from "@mui/icons-material/Edit";
 import FolderSharedIcon from "@mui/icons-material/FolderShared";
 import FolderSpecialIcon from "@mui/icons-material/FolderSpecial";
 import StorageIcon from "@mui/icons-material/Storage";
 import VisibilityIcon from "@mui/icons-material/Visibility";
-import EditIcon from "@mui/icons-material/Edit";
 import {
     Box,
     Chip,
@@ -10,12 +10,10 @@ import {
     Typography,
     useTheme,
 } from "@mui/material";
-import { ShareActions } from "./ShareActions";
 import { SimpleTreeView } from "@mui/x-tree-view/SimpleTreeView";
 import { TreeItem } from "@mui/x-tree-view/TreeItem";
 import { useConfirm } from "material-ui-confirm";
-import { Fragment, useMemo } from "react";
-import { toast } from "react-toastify";
+import { useMemo } from "react";
 import { addMessage } from "../../../store/errorSlice";
 import {
     type SharedResource,
@@ -24,7 +22,7 @@ import {
     usePutApiShareByShareNameEnableMutation,
 } from "../../../store/sratApi";
 import { useAppDispatch } from "../../../store/store";
-import type { Shared } from "react-redux";
+import { ShareActions } from "./ShareActions";
 
 interface SharesTreeViewTestOverrides {
     dispatch?: (action: unknown) => void;
@@ -105,7 +103,7 @@ export function SharesTreeView({
     }, [shares, protectedMode]);
 
     const handleEnable = async (
-        shareKey: string,
+        _shareKey: string,
         shareProps: SharedResource,
     ) => {
         const shareName = shareProps.name || "";
@@ -117,7 +115,7 @@ export function SharesTreeView({
     };
 
     const handleDisable = async (
-        shareKey: string,
+        _shareKey: string,
         shareProps: SharedResource,
     ) => {
         const shareName = shareProps.name || "";

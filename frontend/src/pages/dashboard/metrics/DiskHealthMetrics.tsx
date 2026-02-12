@@ -1,26 +1,26 @@
+import { Memory as SmartIcon, Warning as WarningIcon } from "@mui/icons-material";
 import {
-	Box,
-	Card,
-	CardContent,
-	Grid,
-	LinearProgress,
-	Paper,
-	Table,
-	TableBody,
-	TableCell,
-	TableContainer,
-	TableHead,
-	TableRow,
-	Tooltip,
-	Typography,
-	useTheme,
+    Box,
+    Card,
+    CardContent,
+    Grid,
+    LinearProgress,
+    Paper,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    Tooltip,
+    Typography,
+    useTheme,
 } from "@mui/material";
-import { Warning as WarningIcon, Memory as SmartIcon } from "@mui/icons-material";
-import { SafeSparkLineChart as SparkLineChart } from "../../../components/charts/SafeSparkLineChart";
-import { useEffect, useRef, useState } from "react";
-import type { DiskHealth, DiskIoStats, Partition, PerPartitionInfo } from "../../../store/sratApi";
 import { filesize } from "filesize";
+import { useEffect, useState } from "react";
+import { SafeSparkLineChart as SparkLineChart } from "../../../components/charts/SafeSparkLineChart";
 import { PreviewDialog } from "../../../components/PreviewDialog";
+import type { DiskHealth, DiskIoStats, PerPartitionInfo } from "../../../store/sratApi";
 
 const MAX_HISTORY_LENGTH = 10;
 

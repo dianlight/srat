@@ -1,5 +1,5 @@
+import { afterEach, describe, expect, it, mock } from "bun:test";
 import "../../../../test/setup";
-import { describe, it, expect, mock, afterEach } from "bun:test";
 
 describe("UserEditDialog component", () => {
     afterEach(async () => {
@@ -57,13 +57,13 @@ describe("UserEditDialog component", () => {
 
     it("displays read-only username for existing non-admin user and handles cancel", async () => {
         const React = await import("react");
-        const { render, screen, within } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const { UserEditDialog } = await import("../UserEditDialog");
 
         const onClose = mock(() => { });
 
-        const { container } = render(
+        render(
             React.createElement(UserEditDialog as any, {
                 open: true,
                 onClose,

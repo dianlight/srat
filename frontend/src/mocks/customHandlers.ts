@@ -1,9 +1,9 @@
 /**
  * Custom MSW request handlers
- * 
+ *
  * These handlers are manually defined to mock specific API endpoints
  * with custom logic or data that may not be covered by auto-generated handlers.
- * 
+ *
  * @see https://www.npmjs.com/package/msw-auto-mock
  */
 
@@ -151,4 +151,3 @@ export const customHandlers: RequestHandler[] = [
 		);
 	}),
 ];
-

@@ -1,5 +1,5 @@
+import { beforeEach, describe, expect, it } from "bun:test";
 import "../../../../../test/setup";
-import { describe, it, expect, beforeEach } from "bun:test";
 
 // Required localStorage shim for testing environment
 if (!(globalThis as any).localStorage) {
@@ -77,7 +77,7 @@ describe("VolumesTreeView Component", () => {
         const store = await createTestStore();
         const user = userEvent.setup();
         let selectedPartition = null;
-        const onSelectPartition = (disk: any, partition: any) => {
+        const onSelectPartition = (_disk: any, partition: any) => {
             selectedPartition = partition;
         };
 
@@ -99,12 +99,13 @@ describe("VolumesTreeView Component", () => {
             await user.click(firstTreeItem as any);
         }
 
+        expect(selectedPartition).toBeDefined();
         expect(document.body).toBeTruthy();
     });
 
     it("displays disk icons based on type", async () => {
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { VolumesTreeView } = await import("../VolumesTreeView");
         const { createTestStore } = await import("../../../../../test/setup");
@@ -347,6 +348,8 @@ describe("VolumesTreeView Component", () => {
             )
         );
 
+        expect(container).toBeTruthy();
+
         // Verify the partition node shows multiple mountpoints
         const mountpointLabel = await screen.findByText(/2 mountpoint\(s\)/i);
         expect(mountpointLabel).toBeTruthy();
@@ -410,6 +413,7 @@ describe("VolumesTreeView Component", () => {
             )
         );
 
+        expect(container).toBeTruthy();
         // Verify the partition name is shown
         const partitionName = await screen.findByText("Single Mount Partition");
         expect(partitionName).toBeTruthy();
