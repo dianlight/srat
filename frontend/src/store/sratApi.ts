@@ -1274,9 +1274,8 @@ export type DiskIoStats = {
 };
 export type PerPartitionInfo = {
   device: string;
+  filesystem_state?: FilesystemState;
   free_space_bytes: number;
-  fsck_needed: boolean;
-  fsck_supported: boolean;
   fstype: string;
   mount_point: string;
   name?: string;
@@ -1632,6 +1631,7 @@ export type UpdateProgress = {
 export type Partition = {
   device_path?: string;
   disk_id?: string;
+  filesystem_support?: FilesystemSupport;
   fs_type?: string;
   host_mount_point_data?: {
     [key: string]: MountPointData;
