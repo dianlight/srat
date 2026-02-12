@@ -1,0 +1,26 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to SRAT",
+        "description": "Enter the connection details for your SRAT instance.",
+        "data": {
+          "host": "Host",
+          "port": "Port"
+        }
+      },
+      "hassio_confirm": {
+        "title": "SRAT Add-on Discovered",
+        "description": "The SRAT add-on **{addon}** has been discovered at `{host}:{port}`. Do you want to set up this integration?"
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to the SRAT API. Please check the host and port.",
+      "unknown": "An unexpected error occurred."
+    },
+    "abort": {
+      "already_configured": "This SRAT instance is already configured.",
+      "not_srat_addon": "The discovered add-on is not a recognized SRAT add-on."
+    }
+  }
+}

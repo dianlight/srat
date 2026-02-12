@@ -9,6 +9,10 @@
 We would like to thank all supporters for their contributions and donations.
 With your donations, we are able to continue developing and improving this project. Your support is greatly appreciated.
 
+### ✨ Features
+
+- **HACS Custom Component**: Added a Home Assistant custom component (`custom_components/srat/`) compatible with HACS for direct integration with Home Assistant. Supports UI configuration wizard, Supervisor add-on autodiscovery via slug whitelist, SSE-based real-time updates, and exposes sensors compatible with the existing SRAT HA integration (samba status, process status, volume status, disk health, per-disk I/O, and per-partition health).
+
 ### 🧑‍🏫 Documentation
 
 ### 🐛 Bug Fixes
