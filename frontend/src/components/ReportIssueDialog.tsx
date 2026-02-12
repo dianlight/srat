@@ -1,34 +1,35 @@
-import {
-	Button,
-	Dialog,
-	DialogActions,
-	DialogContent,
-	DialogTitle,
-	FormHelperText,
-	FormLabel,
-	Typography,
-	Box,
-	useColorScheme,
-	Link,
-} from "@mui/material";
-import { useTheme } from "@mui/material/styles";
 import BugReportIcon from "@mui/icons-material/BugReport";
+import {
+    Box,
+    Button,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    FormHelperText,
+    FormLabel,
+    Link,
+    Typography
+} from "@mui/material";
+import FormControl from "@mui/material/FormControl";
+import MDEditor from "@uiw/react-md-editor/nohighlight";
 import { useMemo, useState } from "react";
 import {
-	usePostApiIssuesReportMutation, type IssueReportRequest, type IssueReportResponse } from "../store/sratApi";
+    Controller,
+    FormContainer,
+    SelectElement,
+    SwitchElement,
+    TextFieldElement,
+    TextareaAutosizeElement,
+    useForm
+} from "react-hook-form-mui";
 import { toast } from "react-toastify";
-import { addMessage } from "../store/errorSlice";
-import { useAppDispatch } from "../store/store";
-import { Controller,
-	FormContainer,
-	SelectElement,
-	SwitchElement,
-	TextFieldElement,
-	TextareaAutosizeElement,
-	useForm } from "react-hook-form-mui";
 import { useIssueTemplate } from "../hooks/useIssueTemplate";
-import MDEditor from "@uiw/react-md-editor/nohighlight";
-import FormControl from "@mui/material/FormControl";
+import { addMessage } from "../store/errorSlice";
+import {
+    usePostApiIssuesReportMutation, type IssueReportRequest, type IssueReportResponse
+} from "../store/sratApi";
+import { useAppDispatch } from "../store/store";
 import { useSystemLogs } from "./GlobalEventTracker";
 
 interface ReportIssueDialogProps {

@@ -1,19 +1,17 @@
 import {
-	Box,
-	Paper,
-	Table,
-	TableBody,
-	TableCell,
-	TableContainer,
-	TableHead,
-	TableRow,
-	Typography,
-	useTheme,
+    Box,
+    Paper,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    Typography,
+    useTheme,
 } from "@mui/material";
 import { SafeSparkLineChart as SparkLineChart } from "../../../components/charts/SafeSparkLineChart";
 import type { ProcessStatus } from "./types";
-
-const MAX_HISTORY_LENGTH = 10;
 
 interface ProcessMetricsProps {
 	processData: ProcessStatus[];
@@ -230,7 +228,7 @@ export function ProcessMetrics({
 							const rows = [
 								renderProcess(process, false, `process-${processIndex}`),
 							];
-							
+
 							if (
 								process.pid !== null &&
 								process.pid > 0 &&
@@ -240,13 +238,13 @@ export function ProcessMetrics({
 									rows.push(renderProcess(subprocess, true, `process-${processIndex}-sub-${subIndex}`));
 								});
 							}
-							
+
 							if (process.child_processes) {
 								process.child_processes.forEach((child, childIndex) => {
 									rows.push(renderProcess(child, true, `process-${processIndex}-child-${childIndex}`));
 								});
 							}
-							
+
 							return rows;
 						})}
 					</TableBody>

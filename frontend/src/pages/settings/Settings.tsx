@@ -1,13 +1,16 @@
 import AutorenewIcon from "@mui/icons-material/Autorenew"; // Icon for fetching hostname
-import PlaylistAddIcon from "@mui/icons-material/PlaylistAdd"; // Import an icon for the button
 import MenuIcon from "@mui/icons-material/Menu";
+import PlaylistAddIcon from "@mui/icons-material/PlaylistAdd"; // Import an icon for the button
 import SearchIcon from "@mui/icons-material/Search";
-import { CircularProgress, IconButton, Stack, Typography, TextField, Box, Paper, Drawer } from "@mui/material";
+import { Box, CircularProgress, Drawer, IconButton, Paper, Stack, TextField, Typography } from "@mui/material";
 import Button from "@mui/material/Button";
 import Divider from "@mui/material/Divider";
 import InputAdornment from "@mui/material/InputAdornment";
 import Tooltip from "@mui/material/Tooltip";
+import { SimpleTreeView } from "@mui/x-tree-view/SimpleTreeView";
+import { TreeItem } from "@mui/x-tree-view/TreeItem";
 import { MuiChipsInput } from "mui-chips-input";
+import { useEffect, useMemo, useState } from "react";
 import {
 	AutocompleteElement,
 	CheckboxElement,
@@ -16,31 +19,24 @@ import {
 	TextFieldElement,
 	useForm,
 } from "react-hook-form-mui";
-import { useEffect, useState, useMemo } from "react";
 import { InView } from "react-intersection-observer";
 import default_json from "../../json/default_config.json";
-import { TabIDs } from "../../store/locationState";
-import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
+import { getCurrentEnv } from "../../macro/Environment" with { type: 'macro' };
 import {
-	type InterfaceStat,
-	type Settings,
+	Telemetry_mode,
+	useGetApiCapabilitiesQuery,
 	useGetApiHostnameQuery,
 	useGetApiNicsQuery,
 	useGetApiSettingsQuery,
-	useGetApiUpdateChannelsQuery,
-	useGetApiTelemetryModesQuery,
 	useGetApiTelemetryInternetConnectionQuery,
-	useGetApiCapabilitiesQuery,
+	useGetApiTelemetryModesQuery,
 	usePutApiSettingsMutation,
-	Telemetry_mode,
-	type SystemCapabilities,
+	type InterfaceStat,
+	type Settings,
+	type SystemCapabilities
 } from "../../store/sratApi";
 import { useGetServerEventsQuery } from "../../store/sseApi";
-import { getCurrentEnv } from "../../macro/Environment" with { type: 'macro' };
-import { SimpleTreeView } from "@mui/x-tree-view/SimpleTreeView";
-import { TreeItem } from "@mui/x-tree-view/TreeItem";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
 
 // --- IP Address and CIDR Validation Helpers ---
 // Matches IPv4 address or IPv4 CIDR (e.g., 192.168.1.1 or 192.168.1.0/24)
@@ -136,7 +132,7 @@ const buildSettingsTree = (): SettingTreeNode[] => {
 				children: [],
 			};
 
-			Object.entries(subCategories).forEach(([subCategory, settings]) => {
+			Object.entries(subCategories).forEach(([subCategory, _settings]) => {
 				const leafNode: SettingTreeNode = {
 					id: `${category.toLowerCase()}_${subCategory.toLowerCase().replace(/\s+/g, '_')}`,
 					label: subCategory,
@@ -188,17 +184,9 @@ export function Settings() {
 			.filter((node): node is SettingTreeNode => node !== null);
 	}, [settingsTree, searchQuery]);
 
-	const { data: evdata, isLoading: is_evLoading } = useGetServerEventsQuery();
-
-	const {
-		data: globalConfig,
-		isLoading,
-		error,
-		refetch,
-	} = useGetApiSettingsQuery();
+	const { data: evdata } = useGetServerEventsQuery();
+	const { data: globalConfig } = useGetApiSettingsQuery();
 	const { data: nic, isLoading: inLoadinf } = useGetApiNicsQuery();
-	const { data: updateChannels, isLoading: isChLoading } =
-		useGetApiUpdateChannelsQuery();
 	const { data: telemetryModes, isLoading: isTelemetryLoading } =
 		useGetApiTelemetryModesQuery();
 	const { data: internetConnection, isLoading: isInternetLoading } =
@@ -213,8 +201,7 @@ export function Settings() {
 		watch,
 		setValue,
 		getValues,
-		formState,
-		subscribe,
+		formState
 	} = useForm({
 		mode: "onBlur",
 		values: globalConfig as Settings,
@@ -224,7 +211,6 @@ export function Settings() {
 	const {
 		data: hostname,
 		isLoading: isHostnameFetching,
-		error: host_error,
 		refetch: triggerGetSystemHostname,
 	} = useGetApiHostnameQuery();
 
@@ -1004,7 +990,7 @@ export function Settings() {
 						<Box sx={{ flex: 1, overflow: 'auto' }}>
 							<SimpleTreeView
 								expandedItems={expandedNodes}
-								onExpandedItemsChange={(event, nodeIds) => setExpandedNodes(nodeIds)}
+								onExpandedItemsChange={(_event, nodeIds) => setExpandedNodes(nodeIds)}
 								sx={{ p: 1 }}
 							>
 								{filteredTree.map(renderTree)}
@@ -1036,7 +1022,7 @@ export function Settings() {
 					>
 						<SimpleTreeView
 							expandedItems={expandedNodes}
-							onExpandedItemsChange={(event, nodeIds) => setExpandedNodes(nodeIds)}
+							onExpandedItemsChange={(_event, nodeIds) => setExpandedNodes(nodeIds)}
 							sx={{ p: 1 }}
 						>
 							{filteredTree.map(renderTree)}

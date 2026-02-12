@@ -24,11 +24,11 @@ import {
 import { useGetServerEventsQuery } from "../../store/sseApi";
 import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
 import { UserEditDialog } from "./UserEditDialog";
-import { UsersTreeView, UserDetailsPanel, UserEditForm } from "./components";
+import { UserDetailsPanel, UserEditForm, UsersTreeView } from "./components";
 import type { UsersProps } from "./types";
 
 export function Users() {
-	const { data: evdata, isLoading: is_evLoading } = useGetServerEventsQuery();
+	const { data: evdata } = useGetServerEventsQuery();
 	const users = useGetApiUsersQuery();
 	const confirm = useConfirm();
 
@@ -185,7 +185,7 @@ export function Users() {
 			description: "Do you really want to delete this user?",
 			acknowledgement:
 				"I understand that deleting the user will remove it permanently.",
-		}).then(({ confirmed, reason }) => {
+		}).then(({ confirmed }) => {
 			if (confirmed) {
 				if (!user.username) {
 					toast.error("Unable to delete user!");

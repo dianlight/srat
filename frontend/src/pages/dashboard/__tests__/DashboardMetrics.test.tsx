@@ -1,5 +1,5 @@
+import { beforeEach, describe, expect, it } from "bun:test";
 import "../../../../test/setup";
-import { describe, it, expect, beforeEach } from "bun:test";
 
 // Required localStorage shim for testing environment
 if (!(globalThis as any).localStorage) {
@@ -40,7 +40,7 @@ describe("DashboardMetrics Component", () => {
 
     it("renders metric cards", async () => {
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { DashboardMetrics } = await import("../DashboardMetrics");
         const { createTestStore } = await import("../../../../test/setup");
@@ -62,7 +62,7 @@ describe("DashboardMetrics Component", () => {
 
     it("renders accordion sections for different metric types", async () => {
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { DashboardMetrics } = await import("../DashboardMetrics");
         const { createTestStore } = await import("../../../../test/setup");

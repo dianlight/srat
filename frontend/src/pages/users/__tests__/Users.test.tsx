@@ -261,6 +261,7 @@ describe("Users component", () => {
             })
         );
 
+        expect(container).toBeTruthy();
         // Check for loading indicators
         const { screen } = await import("@testing-library/react");
         const loadingElements = screen.queryAllByRole("progressbar");

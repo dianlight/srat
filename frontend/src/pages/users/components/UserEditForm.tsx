@@ -6,14 +6,12 @@ import {
     Stack,
     Typography,
 } from "@mui/material";
-import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import {
     PasswordElement,
     PasswordRepeatElement,
     TextFieldElement,
 } from "react-hook-form-mui";
-import type { User } from "../../../store/sratApi";
 import type { UsersProps } from "../types";
 
 interface UserEditFormProps {
@@ -35,8 +33,7 @@ export function UserEditForm({
     const {
         control,
         handleSubmit,
-        reset,
-        formState: { errors, isValid, isDirty },
+        formState: { isDirty },
     } = useForm<UsersProps>({
         defaultValues: {
             username: "",

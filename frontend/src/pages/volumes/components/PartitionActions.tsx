@@ -1,14 +1,12 @@
 import {
-	faPlug,
-	faPlugCircleBolt,
-	faPlugCircleExclamation,
-	faPlugCircleMinus,
-	faPlugCircleXmark,
+    faPlug,
+    faPlugCircleBolt,
+    faPlugCircleExclamation,
+    faPlugCircleMinus,
+    faPlugCircleXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import AddIcon from "@mui/icons-material/Add";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
-import ScheduleOutlinedIcon from "@mui/icons-material/ScheduleOutlined";
-import ScheduleIcon from "@mui/icons-material/Schedule";
 import ShareIcon from "@mui/icons-material/Share";
 import {
 	IconButton,
@@ -21,10 +19,12 @@ import {
 	useMediaQuery,
 	useTheme,
 } from "@mui/material";
-import { useState } from "react";
+import { useState, type ReactElement } from "react";
 import { FontAwesomeSvgIcon } from "../../../components/FontAwesomeSvgIcon";
-import { type MountPointData,
-	type Partition } from "../../../store/sratApi";
+import {
+	type MountPointData,
+	type Partition
+} from "../../../store/sratApi";
 
 interface PartitionActionsProps {
 	partition: Partition;
@@ -75,7 +75,7 @@ export function PartitionActions({
 	//const mountPointCount = mpds.length;
 
 	// Determine action items based on mount point rules
-	const actionItems = [];
+	const actionItems: { key: string; title: string; icon: ReactElement; onClick: () => void }[] = [];
 	const keys = Object.keys(partition.mount_point_data || {});
 
 	//console.log("PartitionActions partition:", partition, "mount_point_data keys:", keys);

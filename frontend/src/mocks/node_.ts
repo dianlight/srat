@@ -1,6 +1,6 @@
 /**
  * MSW Server setup for Bun test environment (Node.js runtime)
- * 
+ *
  * This file configures MSW to intercept HTTP and WebSocket requests
  * in the Bun test runner environment.
  */
@@ -18,7 +18,7 @@ export const handlers = [...customHandlers, ...streamingHandlers];
 
 /**
  * Create MSW server instance
- * 
+ *
  * This server will intercept network requests in the Node.js (Bun) environment
  * and respond with mocked data.
  */

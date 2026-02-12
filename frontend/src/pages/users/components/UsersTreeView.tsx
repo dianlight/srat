@@ -25,7 +25,6 @@ export function UsersTreeView({
     users,
     selectedUserKey,
     onUserSelect,
-    readOnly = false,
     expandedItems,
     onExpandedItemsChange,
 }: UsersTreeViewProps) {

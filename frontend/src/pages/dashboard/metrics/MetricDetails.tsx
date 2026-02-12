@@ -1,13 +1,12 @@
 import { useState } from "react";
 import type { HealthPing } from "../../../store/sratApi";
+import { TourEvents, TourEventTypes } from "../../../utils/TourEvents";
 import { DiskHealthMetricsAccordion } from "./DiskHealthMetricsAccordion";
 import { NetworkHealthMetricsAccordion } from "./NetworkHealthMetricsAccordion";
 import { ProcessMetricsAccordion } from "./ProcessMetricsAccordion";
 import { SambaStatusMetricsAccordion } from "./SambaStatusMetricsAccordion";
 import { SystemMetricsAccordion } from "./SystemMetricsAccordion";
 import type { ProcessStatus } from "./types";
-import { TabIDs } from "../../../store/locationState";
-import { TourEvents, TourEventTypes } from "../../../utils/TourEvents";
 
 interface MetricDetailsProps {
 	health: HealthPing | null;
@@ -41,19 +40,19 @@ export function MetricDetails({
 		setExpandedAccordion(metricId);
 	};
 
-	TourEvents.on(TourEventTypes.DASHBOARD_STEP_4, (elem) => {
+	TourEvents.on(TourEventTypes.DASHBOARD_STEP_4, (_elem) => {
 		setExpandedAccordion("systemMetrics");
 	});
-	TourEvents.on(TourEventTypes.DASHBOARD_STEP_5, (elem) => {
+	TourEvents.on(TourEventTypes.DASHBOARD_STEP_5, (_elem) => {
 		setExpandedAccordion("processMetrics");
 	});
-	TourEvents.on(TourEventTypes.DASHBOARD_STEP_6, (elem) => {
+	TourEvents.on(TourEventTypes.DASHBOARD_STEP_6, (_elem) => {
 		setExpandedAccordion("diskHealthMetrics");
 	});
-	TourEvents.on(TourEventTypes.DASHBOARD_STEP_7, (elem) => {
+	TourEvents.on(TourEventTypes.DASHBOARD_STEP_7, (_elem) => {
 		setExpandedAccordion("networkHealthMetrics");
 	});
-	TourEvents.on(TourEventTypes.DASHBOARD_STEP_8, (elem) => {
+	TourEvents.on(TourEventTypes.DASHBOARD_STEP_8, (_elem) => {
 		setExpandedAccordion("sambaStatusMetrics");
 	});
 

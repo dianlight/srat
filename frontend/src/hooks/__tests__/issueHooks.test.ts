@@ -1,5 +1,5 @@
-import "../../../test/setup";
 import { beforeEach, describe, expect, it } from "bun:test";
+import "../../../test/setup";
 
 // Required localStorage shim for testing environment
 if (!(globalThis as unknown as { localStorage?: unknown }).localStorage) {
@@ -31,7 +31,7 @@ describe("useIgnoredIssues hook", () => {
 	});
 
 	it("initializes with empty ignored issues", async () => {
-		const _React = await import("react");
+		/*const _React = */await import("react");
 		const { renderHook } = await import("@testing-library/react");
 		const { useIgnoredIssues } = await import("../issueHooks");
 
@@ -41,7 +41,7 @@ describe("useIgnoredIssues hook", () => {
 	});
 
 	it("loads ignored issues from localStorage", async () => {
-		const _React = await import("react");
+		/*const _React = */await import("react");
 		const { renderHook } = await import("@testing-library/react");
 		const { useIgnoredIssues } = await import("../issueHooks");
 
@@ -53,7 +53,7 @@ describe("useIgnoredIssues hook", () => {
 	});
 
 	it("adds issue to ignored list", async () => {
-		const _React = await import("react");
+		/*const _React = */await import("react");
 		const { renderHook, act } = await import("@testing-library/react");
 		const { useIgnoredIssues } = await import("../issueHooks");
 
@@ -67,7 +67,7 @@ describe("useIgnoredIssues hook", () => {
 	});
 
 	it("removes issue from ignored list", async () => {
-		const _React = await import("react");
+		/*const _React = */await import("react");
 		const { renderHook, act } = await import("@testing-library/react");
 		const { useIgnoredIssues } = await import("../issueHooks");
 
@@ -83,7 +83,7 @@ describe("useIgnoredIssues hook", () => {
 	});
 
 	it("checks if issue is ignored", async () => {
-		const _React = await import("react");
+		/*const _React = */await import("react");
 		const { renderHook } = await import("@testing-library/react");
 		const { useIgnoredIssues } = await import("../issueHooks");
 
@@ -96,7 +96,7 @@ describe("useIgnoredIssues hook", () => {
 	});
 
 	it("persists changes to localStorage", async () => {
-		const _React = await import("react");
+		/*const _React = */await import("react");
 		const { renderHook, act, waitFor } = await import("@testing-library/react");
 		const { useIgnoredIssues } = await import("../issueHooks");
 
@@ -117,7 +117,7 @@ describe("useIgnoredIssues hook", () => {
 	});
 
 	it("handles string IDs", async () => {
-		const _React = await import("react");
+		/*const _React = */await import("react");
 		const { renderHook, act } = await import("@testing-library/react");
 		const { useIgnoredIssues } = await import("../issueHooks");
 
@@ -132,7 +132,7 @@ describe("useIgnoredIssues hook", () => {
 	});
 
 	it("handles mixed numeric and string IDs", async () => {
-		const _React = await import("react");
+		/*const _React = */await import("react");
 		const { renderHook, act } = await import("@testing-library/react");
 		const { useIgnoredIssues } = await import("../issueHooks");
 
@@ -150,7 +150,7 @@ describe("useIgnoredIssues hook", () => {
 	});
 
 	it("does not add duplicate issues", async () => {
-		const _React = await import("react");
+		/*const _React = */await import("react");
 		const { renderHook, act } = await import("@testing-library/react");
 		const { useIgnoredIssues } = await import("../issueHooks");
 
@@ -166,7 +166,7 @@ describe("useIgnoredIssues hook", () => {
 	});
 
 	it("handles invalid localStorage data gracefully", async () => {
-		const _React = await import("react");
+		/*const _React = */await import("react");
 		const { renderHook } = await import("@testing-library/react");
 		const { useIgnoredIssues } = await import("../issueHooks");
 

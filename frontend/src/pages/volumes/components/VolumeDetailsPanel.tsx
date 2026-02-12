@@ -1,14 +1,10 @@
-import BackupIcon from "@mui/icons-material/Backup";
-import EditIcon from "@mui/icons-material/Edit";
-import VisibilityIcon from "@mui/icons-material/Visibility";
-import FolderSpecialIcon from "@mui/icons-material/FolderSpecial";
-import StorageIcon from "@mui/icons-material/Storage";
 import ComputerIcon from "@mui/icons-material/Computer";
-import UsbIcon from "@mui/icons-material/Usb";
-import SdStorageIcon from "@mui/icons-material/SdStorage";
 import EjectIcon from "@mui/icons-material/Eject";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import SdStorageIcon from "@mui/icons-material/SdStorage";
 import SettingsIcon from "@mui/icons-material/Settings";
+import StorageIcon from "@mui/icons-material/Storage";
+import UsbIcon from "@mui/icons-material/Usb";
 import {
     Box,
     Card,
@@ -18,20 +14,16 @@ import {
     Collapse,
     Grid,
     IconButton,
-    Paper,
     Stack,
-    Typography,
+    Typography
 } from "@mui/material";
 import { filesize } from "filesize";
 import { useState } from "react";
-import { useNavigate } from "react-router";
 import { PreviewDialog } from "../../../components/PreviewDialog";
-import { SmartStatusPanel } from "./SmartStatusPanel";
-import { HDIdleDiskSettings } from "./HDIdleDiskSettings";
-import { type LocationState, TabIDs } from "../../../store/locationState";
-import { type Disk, type Partition, type SharedResource, Usage, Time_machine_support } from "../../../store/sratApi";
+import { type Disk, type Partition, Time_machine_support } from "../../../store/sratApi";
 import { decodeEscapeSequence } from "../utils";
-import { useForm } from "react-hook-form-mui";
+import { HDIdleDiskSettings } from "./HDIdleDiskSettings";
+import { SmartStatusPanel } from "./SmartStatusPanel";
 
 interface VolumeDetailsPanelProps {
     disk?: Disk;
@@ -44,7 +36,7 @@ export function VolumeDetailsPanel({
     partition,
     //  share,
 }: VolumeDetailsPanelProps) {
-    const navigate = useNavigate();
+    //const navigate = useNavigate();
     const [diskInfoExpanded, setDiskInfoExpanded] = useState(!partition);
     const [smartExpanded, setSmartExpanded] = useState(true);
     const [previewOpen, setPreviewOpen] = useState(false);
@@ -61,6 +53,7 @@ export function VolumeDetailsPanel({
         setPreviewObject(null);
     };
 
+    /*
     const navigateToShare = (share: SharedResource) => {
         if (share?.name) {
             // Navigate to the shares page and pass the share name as state
@@ -69,6 +62,7 @@ export function VolumeDetailsPanel({
             });
         }
     };
+    */
 
     // When nothing is selected, show placeholder
     if (!disk && !partition) {
@@ -389,7 +383,7 @@ export function VolumeDetailsPanel({
                                                 </Typography>
                                                 <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1, mt: 0.5 }}>
                                                     {mpds.map((mpd, index) => {
-                                                        const badges = [];
+                                                        const badges: string[] = [];
                                                         if (mpd?.is_to_mount_at_startup) {
                                                             badges.push("Auto-mount");
                                                         }

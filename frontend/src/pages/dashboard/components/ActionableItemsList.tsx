@@ -1,3 +1,5 @@
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import {
 	Alert,
 	Box,
@@ -9,19 +11,11 @@ import {
 	ListItemText,
 	Typography,
 } from "@mui/material";
-import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
-import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useNavigate } from "react-router-dom";
+import { useIgnoredIssues } from '../../../hooks/issueHooks';
 import { type LocationState, TabIDs } from "../../../store/locationState";
 import type { Partition } from "../../../store/sratApi";
 import { decodeEscapeSequence } from "../metrics/utils";
-import { useIgnoredIssues } from '../../../hooks/issueHooks';
-
-interface ActionablePartitionItem {
-	partition: Partition;
-	action: "mount" | "share" | "enable-share";
-	id: string;
-}
 
 interface ActionableItemsListProps {
 	actionablePartitions: { partition: Partition; action: "mount" | "share" | "enable-share" }[];
@@ -144,7 +138,7 @@ export function ActionableItemsList({
 											} else {
 												handleEnableShare(partition);
 											}
-										}}	
+										}}
 									>
 										{action === "mount" ? "Mount" : action === "share" ? "Create Share" : "Enable Share"}
 									</Button>

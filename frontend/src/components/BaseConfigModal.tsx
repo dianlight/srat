@@ -1,29 +1,29 @@
-import React, { useState, useEffect } from "react";
-import {
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    Typography,
-    Button,
-    Box,
-    Alert,
-    TextField,
-    Stack,
-    InputAdornment,
-    IconButton,
-    Tooltip,
-    CircularProgress,
-} from "@mui/material";
+import AutorenewIcon from "@mui/icons-material/Autorenew";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
-import AutorenewIcon from "@mui/icons-material/Autorenew";
 import {
-    usePutApiSettingsMutation,
-    usePutApiUseradminMutation,
+    Alert,
+    Box,
+    Button,
+    CircularProgress,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    IconButton,
+    InputAdornment,
+    Stack,
+    TextField,
+    Tooltip,
+    Typography,
+} from "@mui/material";
+import React, { useEffect, useState } from "react";
+import {
+    useGetApiHostnameQuery,
     useGetApiSettingsQuery,
     useGetApiUsersQuery,
-    useGetApiHostnameQuery,
+    usePutApiSettingsMutation,
+    usePutApiUseradminMutation,
     type Settings,
     type User,
 } from "../store/sratApi";
@@ -48,7 +48,7 @@ const BaseConfigModal: React.FC<BaseConfigModalProps> = ({ open, onClose }) => {
     const {
         data: systemHostname,
         isLoading: isHostnameFetching,
-        refetch: triggerGetSystemHostname,
+        //  refetch: triggerGetSystemHostname,
     } = useGetApiHostnameQuery();
     const [updateSettings] = usePutApiSettingsMutation();
     const [updateAdminUser] = usePutApiUseradminMutation();
@@ -70,6 +70,7 @@ const BaseConfigModal: React.FC<BaseConfigModalProps> = ({ open, onClose }) => {
         }
     }, [settings]);
 
+    /*
     const handleFetchHostname = async () => {
         try {
             const result = await triggerGetSystemHostname();
@@ -80,6 +81,7 @@ const BaseConfigModal: React.FC<BaseConfigModalProps> = ({ open, onClose }) => {
             console.error("Failed to fetch hostname:", error);
         }
     };
+    */
 
     const handleClickShowNewPassword = () => {
         setShowNewPassword(!showNewPassword);
@@ -315,8 +317,8 @@ const BaseConfigModal: React.FC<BaseConfigModalProps> = ({ open, onClose }) => {
                                             <span>
                                                 <IconButton
                                                     aria-label="fetch system hostname"
-                                                    onClick={
-                                                        handleFetchHostname
+                                                    onClick={() =>
+                                                        setHostname(systemHostname as string)
                                                     }
                                                     edge="end"
                                                     disabled={

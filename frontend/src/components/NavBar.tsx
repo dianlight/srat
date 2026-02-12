@@ -1,9 +1,10 @@
-import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import DataObjectIcon from "@mui/icons-material/DataObject";
 import { Download } from "@mui/icons-material";
 import AutoModeIcon from "@mui/icons-material/AutoMode";
 import BugReportIcon from "@mui/icons-material/BugReport"; // Import the BugReportIcon
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
+import DataObjectIcon from "@mui/icons-material/DataObject";
+import GitHubIcon from "@mui/icons-material/GitHub";
 import HelpIcon from "@mui/icons-material/Help";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import LightModeIcon from "@mui/icons-material/LightMode";
@@ -15,17 +16,16 @@ import ReportProblemIcon from "@mui/icons-material/ReportProblem";
 import SaveIcon from "@mui/icons-material/Save";
 import SystemSecurityUpdateIcon from "@mui/icons-material/SystemSecurityUpdate";
 import UndoIcon from "@mui/icons-material/Undo";
-import GitHubIcon from "@mui/icons-material/GitHub";
 import {
 	CircularProgress,
 	type CircularProgressProps,
 	Dialog,
-	DialogTitle,
 	DialogContent,
+	DialogTitle,
 	List,
 	ListItem,
-	ListItemText,
 	ListItemSecondaryAction,
+	ListItemText,
 	ListSubheader,
 	Menu,
 	MenuItem,
@@ -44,45 +44,42 @@ import { useColorScheme } from "@mui/material/styles";
 import Toolbar from "@mui/material/Toolbar";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
+import { type StepType, useTour } from '@reactour/tour';
 import { useConfirm } from "material-ui-confirm";
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation } from "react-router";
 import { toast } from "react-toastify";
 import pkg from "../../package.json";
-import github from "../img/github.svg";
+import { useUpdate } from "../hooks/updateHook";
+import { useIssueTemplate } from "../hooks/useIssueTemplate";
 import icon from "../img/icon.png";
 import logo from "../img/logo.png";
+import { getCurrentEnv } from "../macro/Environment" with { type: 'macro' };
 import { Dashboard } from "../pages/dashboard/Dashboard";
+import { DashboardSteps } from "../pages/dashboard/DashboardTourStep";
 import { Settings } from "../pages/settings/Settings";
+import { SettingsSteps } from "../pages/settings/SettingsTourStep";
 import { Shares } from "../pages/shares/Shares";
+import { SharesSteps } from "../pages/shares/SharesTourStep";
 import { SmbConf } from "../pages/SmbConf";
 import { Swagger } from "../pages/Swagger";
 import { Users } from "../pages/users/Users";
+import { UsersSteps } from "../pages/users/UsersSteps";
 import { Volumes } from "../pages/volumes/Volumes";
+import { VolumesSteps } from "../pages/volumes/VolumesTourStep";
 import { type LocationState, TabIDs } from "../store/locationState";
 import {
 	type DataDirtyTracker,
 	type HealthPing,
 	Update_process_state,
-	usePutApiSambaApplyMutation,
-	usePutApiUpdateMutation,
+	usePutApiUpdateMutation
 } from "../store/sratApi";
+import { useGetServerEventsQuery } from "../store/sseApi";
+import { DonationButton } from "./DonationButton";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { NotificationCenter } from "./NotificationCenter";
-import { DonationButton } from "./DonationButton";
 import { ReportIssueDialog } from "./ReportIssueDialog";
-import { useTour, type StepType } from '@reactour/tour'
-import { DashboardSteps } from "../pages/dashboard/DashboardTourStep";
-import { SharesSteps } from "../pages/shares/SharesTourStep";
-import { VolumesSteps } from "../pages/volumes/VolumesTourStep";
-import { SettingsSteps } from "../pages/settings/SettingsTourStep";
-import { UsersSteps } from "../pages/users/UsersSteps";
-import { useGetServerEventsQuery } from "../store/sseApi";
-import { get } from "react-hook-form";
-import { getCurrentEnv } from "../macro/Environment" with { type: 'macro' };
-import { useUpdate } from "../hooks/updateHook";
-import { useIssueTemplate } from "../hooks/useIssueTemplate";
 
 // Define tab configurations
 interface TabConfig {
@@ -204,7 +201,7 @@ function CircularProgressWithLabel(
 
 function TabPanel(props: TabPanelProps) {
 	const { children, value, index, tutorialSteps, ...other } = props;
-	const { setIsOpen: setTourOpen, isOpen: isTourOpen, setSteps } = useTour();
+	const { isOpen: isTourOpen, setSteps } = useTour();
 
 	useEffect(() => {
 		if (value === index && isTourOpen && tutorialSteps && setSteps) {
@@ -232,7 +229,7 @@ export function NavBar(props: {
 }) {
 	const location = useLocation();
 	const { setIsOpen: setTourOpen, isOpen: isTourOpen } = useTour();
-	const { update, isLoading: isUpdateLoading, error: updateError } = useUpdate();
+	const { update, isLoading: isUpdateLoading } = useUpdate();
 	//const _navigate = useNavigate();
 
 	const visibleTabs = useMemo(() => {
@@ -248,10 +245,10 @@ export function NavBar(props: {
 		}));
 	}, []);
 
-	const { data: evdata, error: everror, isLoading: evloading, fulfilledTimeStamp: evfulfilledTimeStamp } = useGetServerEventsQuery();
+	const { data: evdata } = useGetServerEventsQuery();
 
 	const [doUpdate] = usePutApiUpdateMutation();
-	const [restartSamba] = usePutApiSambaApplyMutation();
+	//const [restartSamba] = usePutApiSambaApplyMutation();
 
 	const { mode, setMode } = useColorScheme();
 	//const [update, setUpdate] = useState<string | undefined>()
@@ -264,7 +261,7 @@ export function NavBar(props: {
 	const [anchorElNav, setAnchorElNav] = useState<null | HTMLElement>(null);
 	const [reportIssueOpen, setReportIssueOpen] = useState(false);
 	const [githubMenuAnchor, setGithubMenuAnchor] = useState<null | HTMLElement>(null);
-	
+
 	// Fetch issue template at startup
 	const { isAvailable: issueTemplateAvailable } = useIssueTemplate();
 
@@ -293,7 +290,7 @@ export function NavBar(props: {
 		if (evdata && evdata !== prevEvdataRef.current) {
 			const changes: SSEMessage[] = [];
 			const prevData = prevEvdataRef.current;
-			
+
 			// Compare each event type to find what changed
 			for (const key of Object.keys(evdata) as Array<keyof typeof evdata>) {
 				if (!prevData || JSON.stringify(evdata[key]) !== JSON.stringify(prevData[key])) {
@@ -306,7 +303,7 @@ export function NavBar(props: {
 					}
 				}
 			}
-			
+
 			if (changes.length > 0) {
 				// Store more messages to allow filtering while still showing 3
 				setLastMessages((prev) => [...changes, ...prev].slice(0, 30));

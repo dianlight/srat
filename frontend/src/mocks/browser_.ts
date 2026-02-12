@@ -1,9 +1,9 @@
 /**
  * MSW Worker setup for browser environment
- * 
+ *
  * This file configures MSW to intercept HTTP and WebSocket requests
  * in the browser environment for manual testing and development.
- * 
+ *
  * To use this in your app:
  * 1. Run: bunx msw init public/ --save
  * 2. Import this file in your main app entry point (conditionally for dev only)
@@ -23,7 +23,7 @@ export const handlers = [...customHandlers, ...streamingHandlers];
 
 /**
  * Create MSW worker instance for browser
- * 
+ *
  * This worker will intercept network requests in the browser
  * and respond with mocked data.
  */
@@ -31,9 +31,9 @@ export const worker = setupWorker(...handlers);
 
 /**
  * Start the MSW worker in the browser
- * 
+ *
  * Usage in your app entry point (e.g., index.tsx):
- * 
+ *
  * if (process.env.NODE_ENV === 'development' && process.env.ENABLE_MSW === 'true') {
  *   import('./mocks/browser').then(({ startMockWorker }) => {
  *     startMockWorker().then(() => {
