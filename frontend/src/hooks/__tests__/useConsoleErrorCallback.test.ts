@@ -1,5 +1,5 @@
-import "../../../test/setup";
 import { beforeEach, describe, expect, it, mock } from "bun:test";
+import "../../../test/setup";
 
 describe("useConsoleErrorCallback hook", () => {
 	beforeEach(() => {
@@ -15,16 +15,11 @@ describe("useConsoleErrorCallback hook", () => {
 	});
 
 	it("registers callback on mount", async () => {
-		const _React = await import("react");
 		const { renderHook } = await import("@testing-library/react");
 		const { useConsoleErrorCallback } = await import(
 			"../useConsoleErrorCallback"
 		);
-
-		let _callbackExecuted = false;
-		const testCallback = () => {
-			_callbackExecuted = true;
-		};
+		const testCallback = () => { };
 
 		const { unmount } = renderHook(() => useConsoleErrorCallback(testCallback));
 
@@ -35,13 +30,12 @@ describe("useConsoleErrorCallback hook", () => {
 	});
 
 	it("unregisters callback on unmount", async () => {
-		const _React = await import("react");
 		const { renderHook } = await import("@testing-library/react");
 		const { useConsoleErrorCallback } = await import(
 			"../useConsoleErrorCallback"
 		);
 
-		const testCallback = () => {};
+		const testCallback = () => { };
 		const { unmount } = renderHook(() => useConsoleErrorCallback(testCallback));
 
 		// Unmount should trigger cleanup
@@ -50,19 +44,12 @@ describe("useConsoleErrorCallback hook", () => {
 	});
 
 	it("updates callback ref when callback changes", async () => {
-		const _React = await import("react");
 		const { renderHook } = await import("@testing-library/react");
 		const { useConsoleErrorCallback } = await import(
 			"../useConsoleErrorCallback"
 		);
-
-		let _count = 0;
-		const testCallback1 = () => {
-			_count = 1;
-		};
-		const testCallback2 = () => {
-			_count = 2;
-		};
+		const testCallback1 = () => { };
+		const testCallback2 = () => { };
 
 		const { rerender, unmount } = renderHook(
 			({ callback }) => useConsoleErrorCallback(callback),
@@ -76,7 +63,6 @@ describe("useConsoleErrorCallback hook", () => {
 	});
 
 	it("handles multiple callback invocations", async () => {
-		const _React = await import("react");
 		const { renderHook } = await import("@testing-library/react");
 		const { useConsoleErrorCallback } = await import(
 			"../useConsoleErrorCallback"
@@ -94,15 +80,12 @@ describe("useConsoleErrorCallback hook", () => {
 	});
 
 	it("works with callback that receives arguments", async () => {
-		const _React = await import("react");
 		const { renderHook } = await import("@testing-library/react");
 		const { useConsoleErrorCallback } = await import(
 			"../useConsoleErrorCallback"
 		);
-
-		let _receivedArgs: unknown[] = [];
 		const testCallback = (...args: unknown[]) => {
-			_receivedArgs = args;
+			void args;
 		};
 
 		const { unmount } = renderHook(() => useConsoleErrorCallback(testCallback));

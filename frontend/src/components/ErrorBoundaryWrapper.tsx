@@ -28,7 +28,7 @@ export const ErrorBoundaryWrapper: React.FC<ErrorBoundaryWrapperProps> = ({ chil
     return (
         <ErrorBoundary
             fallbackUI={ErrorFallback}
-            extra={(error, errorInfo) => ({
+            extra={(_error, errorInfo) => ({
                 timestamp: new Date().toISOString(),
                 userAgent: navigator.userAgent,
                 url: window.location.href,

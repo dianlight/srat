@@ -13,10 +13,10 @@ import {
     useMediaQuery,
     useTheme,
 } from "@mui/material";
-import { useState } from "react";
+import { useState, type ReactElement } from "react";
 import { TabIDs } from "../../../store/locationState";
-import type { SharedResource } from "../../../store/sratApi";
 import { Usage } from "../../../store/sratApi";
+import type { SharedResource } from "../../../store/sratApi";
 
 interface ShareActionsProps {
     shareKey: string;
@@ -51,7 +51,7 @@ export function ShareActions({
         setAnchorEl(null);
     };
 
-    const actionItems = [];
+    const actionItems: { key: string; title: string; icon: ReactElement; onClick: () => void }[] = [];
 
     if (
         !shareProps.mount_point_data?.invalid &&

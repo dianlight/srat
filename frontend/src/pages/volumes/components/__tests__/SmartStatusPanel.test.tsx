@@ -1,5 +1,5 @@
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import "../../../../../test/setup.ts";
-import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 
 // localStorage shim for testing
 if (!(globalThis as any).localStorage) {
@@ -28,19 +28,6 @@ describe("SmartStatusPanel Component", () => {
         const { cleanup } = await import("@testing-library/react");
         cleanup();
     });
-
-    // Helper to expand the SMART panel
-    async function expandSmartPanel() {
-        const { screen } = await import("@testing-library/react");
-        const userEvent = (await import("@testing-library/user-event")).default;
-        const expandButtons = await screen.findAllByRole("button");
-        // The expand button is usually the last one or has aria-expanded
-        const expandBtn = expandButtons.find((btn) => btn.getAttribute("aria-expanded") === "false");
-        if (expandBtn) {
-            const user = userEvent.setup();
-            await user.click(expandBtn as any);
-        }
-    }
 
     it("should not render when smartInfo is undefined", async () => {
         const React = await import("react");
@@ -309,7 +296,7 @@ describe("SmartStatusPanel Component", () => {
 
     it("should disable test actions when test is running", async () => {
         const React = await import("react");
-        const { render, screen, act, within, waitFor } = await import("@testing-library/react");
+        const { render, screen, act, waitFor } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const userEvent = (await import("@testing-library/user-event")).default;
         const { SmartStatusPanel } = await import("../SmartStatusPanel");
@@ -332,7 +319,7 @@ describe("SmartStatusPanel Component", () => {
             percent_complete: 50,
         } as any;
 
-        const { container } = render(
+        render(
             React.createElement(Provider, {
                 store,
                 children: React.createElement(SmartStatusPanel, {
@@ -417,7 +404,7 @@ describe("SmartStatusPanel Component", () => {
 
     it("should not render when smartInfo has supported false", async () => {
         const React = await import("react");
-        const { render, within } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { SmartStatusPanel } = await import("../SmartStatusPanel");
         const { createTestStore } = await import("../../../../../test/setup");

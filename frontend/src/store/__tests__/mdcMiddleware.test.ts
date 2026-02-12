@@ -190,7 +190,7 @@ describe("mdcMiddleware", () => {
 		const chain = mdcMiddleware(mockStoreApi as any)(next as any);
 
 		const action = null;
-		const _result = chain(action as any);
+		/*const _result =*/ chain(action as any);
 
 		// Should not throw
 		expect(true).toBe(true);

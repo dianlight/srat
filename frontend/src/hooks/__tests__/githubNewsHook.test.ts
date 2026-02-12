@@ -1,5 +1,5 @@
-import "../../../test/setup";
 import { beforeEach, describe, expect, it, mock } from "bun:test";
+import "../../../test/setup";
 
 describe("useGithubNews hook", () => {
 	beforeEach(() => {
@@ -8,7 +8,6 @@ describe("useGithubNews hook", () => {
 	});
 
 	it("initializes with loading state", async () => {
-		const _React = await import("react");
 		const { renderHook } = await import("@testing-library/react");
 		const { useGithubNews } = await import("../githubNewsHook");
 
@@ -28,7 +27,6 @@ describe("useGithubNews hook", () => {
 	});
 
 	it("fetches news successfully", async () => {
-		const _React = await import("react");
 		const { renderHook, waitFor } = await import("@testing-library/react");
 		const { useGithubNews } = await import("../githubNewsHook");
 
@@ -57,7 +55,6 @@ describe("useGithubNews hook", () => {
 	});
 
 	it("handles fetch errors", async () => {
-		const _React = await import("react");
 		const { renderHook, waitFor } = await import("@testing-library/react");
 		const { useGithubNews } = await import("../githubNewsHook");
 
@@ -77,7 +74,6 @@ describe("useGithubNews hook", () => {
 	});
 
 	it("filters old news items", async () => {
-		const _React = await import("react");
 		const { renderHook, waitFor } = await import("@testing-library/react");
 		const { useGithubNews } = await import("../githubNewsHook");
 
@@ -117,7 +113,6 @@ describe("useGithubNews hook", () => {
 	});
 
 	it("limits news items to maximum", async () => {
-		const _React = await import("react");
 		const { renderHook, waitFor } = await import("@testing-library/react");
 		const { useGithubNews } = await import("../githubNewsHook");
 
@@ -144,7 +139,6 @@ describe("useGithubNews hook", () => {
 	});
 
 	it("handles network errors", async () => {
-		const _React = await import("react");
 		const { renderHook, waitFor } = await import("@testing-library/react");
 		const { useGithubNews } = await import("../githubNewsHook");
 

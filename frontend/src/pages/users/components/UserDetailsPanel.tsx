@@ -36,7 +36,6 @@ interface UserDetailsPanelProps {
 export function UserDetailsPanel({
     user,
     userKey,
-    onEdit,
     onDelete,
     onEditClick,
     onCancelEdit,

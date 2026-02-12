@@ -1,10 +1,7 @@
 // Shared test setup (DOM globals, APIURL, and store helper)
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import "../../../../test/setup";
-import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { createTestStore } from "../../../../test/setup";
-
-// `vi` is provided by Bun at runtime; reference via globalThis for TypeScript compatibility
-const vi = (globalThis as any).vi as any;
 
 // Minimal localStorage shim for bun:test
 if (!(globalThis as any).localStorage) {

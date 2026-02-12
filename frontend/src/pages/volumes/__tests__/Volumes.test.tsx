@@ -1,5 +1,5 @@
+import { beforeEach, describe, expect, it } from "bun:test";
 import "../../../../test/setup";
-import { describe, it, expect, beforeEach } from "bun:test";
 
 // Required localStorage shim for testing environment
 if (!(globalThis as any).localStorage) {
@@ -424,6 +424,7 @@ describe("Volumes component", () => {
         const { screen } = await import("@testing-library/react");
         const loadingElements = screen.queryAllByRole("progressbar");
         expect(loadingElements.length).toBeGreaterThanOrEqual(0);
+        expect(container).toBeTruthy();
     });
 
     it("handles location state navigation", async () => {

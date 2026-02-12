@@ -1,5 +1,5 @@
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import "../../../../../test/setup";
-import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
 
 // Mock the sratApi hooks and types used by VolumeMountDialog and related components
 mock.module("../../../../store/sratApi", () => {
@@ -19,7 +19,7 @@ mock.module("../../../../store/sratApi", () => {
             util: makeUtil(),
         },
         // Mock the hook used by VolumeMountDialog
-        useGetApiFilesystemsQuery: (arg: any, options?: any) => ({
+        useGetApiFilesystemsQuery: (_arg: any, _options?: any) => ({
             data: [
                 { name: "ext4", mountFlags: ["rw", "ro", "noexec"] },
                 { name: "ntfs", mountFlags: ["rw", "ro"] },

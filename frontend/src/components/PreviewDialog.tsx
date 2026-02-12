@@ -1,20 +1,18 @@
+import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
-import { TreeItem } from "@mui/x-tree-view/TreeItem";
 import { SimpleTreeView } from '@mui/x-tree-view/SimpleTreeView';
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
-import Box from "@mui/material/Box";
-import { CopyButtonBar } from "./CopyButtonBar";
-import { 
-	isSensitiveField, 
-	censorValue, 
-	objectToPlainText, 
-	objectToMarkdown 
+import { TreeItem } from "@mui/x-tree-view/TreeItem";
+import {
+	censorValue,
+	isSensitiveField,
+	objectToMarkdown,
+	objectToPlainText
 } from "../utils/censorshipUtils";
+import { CopyButtonBar } from "./CopyButtonBar";
 
 export interface PreviewDialogProps {
 	open: boolean;

@@ -1,6 +1,6 @@
 import "../../../../test/setup";
 // Shared test setup (DOM globals, APIURL, and store helper)
-import { describe, it, expect, beforeEach } from "bun:test";
+import { beforeEach, describe, expect, it } from "bun:test";
 
 // Minimal localStorage shim for bun:test
 if (!(globalThis as any).localStorage) {
@@ -75,7 +75,7 @@ describe("Shares localStorage functionality", () => {
         try {
             const saved = localStorage.getItem("shares.expandedGroups");
             if (saved) {
-                const parsed = JSON.parse(saved);
+                JSON.parse(saved);
                 // This shouldn't be reached
                 expect(false).toBe(true);
             }

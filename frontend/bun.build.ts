@@ -1,13 +1,13 @@
 //import copy from 'bun-copy-plugin';
 
+import { Glob } from "bun";
+import type { BuildConfig, BuildOutput } from "bun";
 import { watch } from "node:fs";
 import { parseArgs } from "node:util";
-import type { BuildConfig, BuildOutput } from "bun";
-import { Glob, $ } from "bun";
 //import path from "node:path";
 import App from "./src/index.html";
 
-const { values, positionals } = parseArgs({
+const { values } = parseArgs({
 	args: Bun.argv,
 	options: {
 		watch: {
@@ -139,6 +139,7 @@ async function build(): Promise<BuildOutput | undefined> {
 		});
 		rebuild("initial build", null);
 	}
+	return undefined;
 }
 
 await build();

@@ -1,5 +1,5 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.3.15/schema.json",
+	"$schema": "https://biomejs.dev/schemas/2.3.14/schema.json",
 	"vcs": {
 		"enabled": true,
 		"clientKind": "git",
@@ -10,6 +10,7 @@
 		"includes": [
 			"src/**/*.ts",
 			"!src/store/sratApi.ts",
+			"!src/mocks",
 			"!src/**/__tests__",
 			"!src/**/*.test.*"
 		]

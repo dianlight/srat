@@ -1,7 +1,7 @@
 import { Box } from "@mui/material";
-import { apiUrl } from "../store/emptyApi";
 import normalizeUrl from 'normalize-url';
 import { useEffect, useState } from 'react';
+import { apiUrl } from "../store/emptyApi";
 
 // Import Prism and make it globally available for openapi-explorer
 if (typeof window !== 'undefined' && !(globalThis as any).__TEST__) {
@@ -23,6 +23,7 @@ export function Swagger() {
 		if ((globalThis as any).__TEST__) {
 			// In tests, mark as loaded immediately to show the overview
 			setLoaded(true);
+
 		} else if (typeof window !== 'undefined' && window.customElements) {
 			// Wait for the custom element to be registered
 			window.customElements.whenDefined('openapi-explorer')
@@ -45,6 +46,7 @@ export function Swagger() {
 		} else {
 			setLoaded(true);
 		}
+		return () => { };
 	}, []);
 
 	return (
@@ -69,4 +71,4 @@ export function Swagger() {
 			)}
 		</Box>
 	);
-}
+} 

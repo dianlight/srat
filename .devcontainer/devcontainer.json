@@ -104,7 +104,8 @@
 				"DavidAnson.vscode-markdownlint",
 				"neonxp.gotools",
 				"svvashishtha.go-interface-navigator",
-				"YoavBls.pretty-ts-errors"
+				"YoavBls.pretty-ts-errors",
+				"biomejs.biome"
 			],
 			"mcp": {
 				"servers": {

@@ -1,5 +1,5 @@
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import "../../../test/setup";
-import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
 
 // Mock react-syntax-highlighter to avoid refractor/lib/core dependency issues
 mock.module("react-syntax-highlighter", () => ({
@@ -41,7 +41,7 @@ describe("NavBar Component", () => {
 
     it("renders NavBar with AppBar and basic elements", async () => {
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
         const { NavBar } = await import("../NavBar");
@@ -82,7 +82,7 @@ describe("NavBar Component", () => {
 
     it("renders logo with hover functionality", async () => {
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
@@ -146,7 +146,7 @@ describe("NavBar Component", () => {
         const store = await createTestStore();
         const mockBodyRef = { current: document.createElement('div') };
 
-        const { container } = render(
+        /*const { container } =*/ render(
             React.createElement(
                 BrowserRouter,
                 null,
@@ -192,7 +192,7 @@ describe("NavBar Component", () => {
         const store = await createTestStore();
         const mockBodyRef = { current: document.createElement('div') };
 
-        const { container } = render(
+        /*const { container } =*/ render(
             React.createElement(
                 BrowserRouter,
                 null,
@@ -233,7 +233,7 @@ describe("NavBar Component", () => {
         const store = await createTestStore();
         const mockBodyRef = { current: document.createElement('div') };
 
-        const { container } = render(
+        /*const { container } =*/ render(
             React.createElement(
                 BrowserRouter,
                 null,
@@ -269,7 +269,7 @@ describe("NavBar Component", () => {
 
     it("renders help/tour button", async () => {
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
         const { NavBar } = await import("../NavBar");
@@ -307,7 +307,7 @@ describe("NavBar Component", () => {
 
     it("renders GitHub support button", async () => {
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
         const { userEvent } = await import("@testing-library/user-event");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
@@ -316,11 +316,13 @@ describe("NavBar Component", () => {
         const { Provider } = await import("react-redux");
 
         // Mock window.open
+        /*
         let openedUrl = '';
         (window as any).open = (url: string) => {
             openedUrl = url;
             return null;
         };
+        */
 
         const theme = createTheme();
         const store = await createTestStore();
@@ -360,7 +362,7 @@ describe("NavBar Component", () => {
 
     it("handles localStorage tab restoration", async () => {
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
         const { NavBar } = await import("../NavBar");
@@ -404,7 +406,7 @@ describe("NavBar Component", () => {
 
     it("handles error prop correctly", async () => {
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
         const { NavBar } = await import("../NavBar");
@@ -441,7 +443,7 @@ describe("NavBar Component", () => {
 
     it("renders tab panels with ErrorBoundary wrapping", async () => {
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
         const { NavBar } = await import("../NavBar");
@@ -473,13 +475,14 @@ describe("NavBar Component", () => {
             )
         );
 
+        expect(container).toBeTruthy();
         // Check that tab panels are created (they should be portaled to mockBodyRef.current)
         expect(mockBodyRef.current?.children.length).toBeGreaterThanOrEqual(0);
     });
 
     it("handles development environment indicators", async () => {
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
         const { NavBar } = await import("../NavBar");
@@ -517,7 +520,7 @@ describe("NavBar Component", () => {
 
     it("handles NotificationCenter rendering", async () => {
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
         const { NavBar } = await import("../NavBar");
@@ -589,6 +592,7 @@ describe("NavBar Component", () => {
             )
         );
 
+        expect(container).toBeTruthy();
         // Find menu button
         const menuButton = screen.queryByRole("button", { name: /navigation menu/i });
         if (menuButton) {
@@ -644,6 +648,7 @@ describe("NavBar Component", () => {
                 )
             )
         );
+        expect(container).toBeTruthy();
 
         // Find menu button and open menu
         const menuButton = screen.queryByRole("button", { name: /navigation menu/i });
@@ -667,7 +672,7 @@ describe("NavBar Component", () => {
 
     it("renders secure mode icons correctly", async () => {
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
         const { NavBar } = await import("../NavBar");
@@ -705,7 +710,7 @@ describe("NavBar Component", () => {
 
     it("renders read-only mode icon when applicable", async () => {
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
         const { NavBar } = await import("../NavBar");
@@ -756,7 +761,7 @@ describe("NavBar Component", () => {
         const store = await createTestStore();
         const mockBodyRef = { current: document.createElement('div') };
 
-        const { container } = render(
+        /*const { container } = */render(
             React.createElement(
                 BrowserRouter,
                 null,
@@ -804,7 +809,7 @@ describe("NavBar Component", () => {
         const store = await createTestStore();
         const mockBodyRef = { current: document.createElement('div') };
 
-        const { container } = render(
+        /*const { container } = */render(
             React.createElement(
                 BrowserRouter,
                 null,
@@ -843,7 +848,7 @@ describe("NavBar Component", () => {
 
     it("handles location state with tabId", async () => {
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { MemoryRouter } = await import("react-router-dom");
         const { NavBar } = await import("../NavBar");
@@ -881,7 +886,7 @@ describe("NavBar Component", () => {
 
     it("handles invalid stored tab index", async () => {
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
         const { NavBar } = await import("../NavBar");
@@ -955,6 +960,7 @@ describe("NavBar Component", () => {
                 )
             )
         );
+        expect(container).toBeTruthy();
 
         // Check for circular progress elements
         const progressElements = screen.queryAllByRole("progressbar");
@@ -1005,7 +1011,7 @@ describe("NavBar Component", () => {
 
     it("renders tab icons for dirty state", async () => {
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
         const { NavBar } = await import("../NavBar");

@@ -1,5 +1,5 @@
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import "../../../test/setup";
-import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 
 // Minimal localStorage shim for bun:test
 if (!(globalThis as any).localStorage) {
@@ -30,7 +30,7 @@ describe("Swagger page", () => {
 
     it("renders overview content and links", async () => {
         const React = await import("react");
-        const { render, screen, within } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Swagger } = await import("../Swagger");
