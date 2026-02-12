@@ -32,6 +32,10 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]  # Allow unused imports in __init__.py
+"tests/**/*.py" = [
+  "D103",   # Missing docstring in public function (test functions)
+  "S101",   # Use of assert (expected in tests)
+]
 
 [tool.ruff.lint.isort]
 known-first-party = ["custom_components.srat"]
@@ -39,6 +43,10 @@ force-sort-within-sections = true
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["custom_components/tests"]
 
 [tool.mypy]
 python_version = "3.12"

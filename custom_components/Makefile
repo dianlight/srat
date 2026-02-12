@@ -1,4 +1,5 @@
 COMPONENT_DIR := srat
+TEST_DIR := tests
 PYTHON_FILES := $(COMPONENT_DIR)/*.py
 
 .PHONY: help
@@ -6,13 +7,14 @@ help:
 	@echo "SRAT Custom Component – Development Targets"
 	@echo "============================================="
 	@echo ""
-	@echo "  make install    Install development dependencies"
-	@echo "  make format     Auto-format code with ruff"
-	@echo "  make lint       Lint code with ruff"
-	@echo "  make typecheck  Run mypy static type checking"
-	@echo "  make check      Run all checks (format-check + lint + typecheck)"
-	@echo "  make fix        Auto-fix linting issues where possible"
-	@echo "  make clean      Remove build/cache artifacts"
+	@echo "  make install      Install development dependencies"
+	@echo "  make format       Auto-format code with ruff"
+	@echo "  make lint         Lint code with ruff"
+	@echo "  make typecheck    Run mypy static type checking"
+	@echo "  make test         Run component tests with pytest"
+	@echo "  make check        Run all checks (format-check + lint + typecheck + test)"
+	@echo "  make fix          Auto-fix linting issues where possible"
+	@echo "  make clean        Remove build/cache artifacts"
 
 .PHONY: install
 install:
@@ -30,27 +32,31 @@ install-pip:
 
 .PHONY: format
 format:
-	ruff format $(COMPONENT_DIR)
+	ruff format $(COMPONENT_DIR) $(TEST_DIR)
 
 .PHONY: format-check
 format-check:
-	ruff format --check $(COMPONENT_DIR)
+	ruff format --check $(COMPONENT_DIR) $(TEST_DIR)
 
 .PHONY: lint
 lint:
-	ruff check $(COMPONENT_DIR)
+	ruff check $(COMPONENT_DIR) $(TEST_DIR)
 
 .PHONY: fix
 fix:
-	ruff check --fix $(COMPONENT_DIR)
-	ruff format $(COMPONENT_DIR)
+	ruff check --fix $(COMPONENT_DIR) $(TEST_DIR)
+	ruff format $(COMPONENT_DIR) $(TEST_DIR)
 
 .PHONY: typecheck
 typecheck:
 	mypy $(COMPONENT_DIR)
 
+.PHONY: test
+test:
+	cd .. && python -m pytest custom_components/tests -v -c custom_components/pyproject.toml
+
 .PHONY: check
-check: format-check lint typecheck
+check: format-check lint typecheck test
 	@echo ""
 	@echo "✓ All checks passed"
 
@@ -59,3 +65,4 @@ clean:
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name .mypy_cache -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name .ruff_cache -exec rm -rf {} + 2>/dev/null || true
+	find . -type d -name .pytest_cache -exec rm -rf {} + 2>/dev/null || true
