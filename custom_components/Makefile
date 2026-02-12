@@ -21,7 +21,7 @@ help:
 install:
 	@if command -v apk >/dev/null 2>&1; then \
 		echo "Alpine detected – installing via apk..."; \
-		apk add --no-cache python3 py3-pip py3-mypy py3-ruff; \
+		apk add --no-cache python3 py3-pip py3-mypy py3-ruff py3-pytest; \
 	else \
 		echo "Installing via pip..."; \
 		pip install -r requirements_dev.txt; \

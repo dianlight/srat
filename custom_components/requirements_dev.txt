@@ -3,4 +3,3 @@ mypy>=1.14.0
 homeassistant-stubs
 pytest-homeassistant-custom-component>=0.13.170
 pytest-asyncio>=0.23.0
-pytest-cov>=6.1.0
