@@ -1,9 +1,9 @@
 {
   "domain": "srat",
   "name": "SRAT - SambaNAS REST Administration Tool",
+  "after_dependencies": ["hassio"],
   "codeowners": ["@dianlight"],
   "config_flow": true,
-  "after_dependencies": ["hassio"],
   "dependencies": [],
   "documentation": "https://github.com/dianlight/srat/blob/main/docs/HOME_ASSISTANT_INTEGRATION.md",
   "integration_type": "hub",
