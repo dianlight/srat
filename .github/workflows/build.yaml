@@ -565,6 +565,7 @@ jobs:
         id: download_art
         with:
           name: binary-builds
+          path: /tmp/downloaded_builds
 
       - name: Create Release and Upload Assets
         if: github.event_name != 'release' || github.event.action != 'published' || !github.event.release.prerelease
