@@ -1,8 +1,10 @@
 <!-- DOCTOC SKIP -->
 
 ---
+
 description: 'Guidelines for TypeScript Development targeting TypeScript 5.x and ES2021 output'
-applyTo: '**/*.ts, **/*.tsx'
+applyTo: '**/\*.ts,**/\*.tsx'
+
 ---
 
 # TypeScript Development

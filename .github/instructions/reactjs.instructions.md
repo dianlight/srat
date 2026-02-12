@@ -1,8 +1,10 @@
 <!-- DOCTOC SKIP -->
 
 ---
+
 description: 'ReactJS development standards and best practices'
-applyTo: '**/*.jsx, **/*.tsx, **/*.js, **/*.ts, **/*.css, **/*.scss'
+applyTo: '**/\*.jsx,**/*.tsx, \*\*/*.js, **/\*.ts,**/*.css, \*\*/*.scss'
+
 ---
 
 # ReactJS Development Instructions
@@ -10,6 +12,7 @@ applyTo: '**/*.jsx, **/*.tsx, **/*.js, **/*.ts, **/*.css, **/*.scss'
 Instructions for building high-quality ReactJS applications with modern patterns, hooks, and best practices following the official React documentation at https://react.dev.
 
 ## Project Context
+
 - Latest React version (React 19+)
 - TypeScript for type safety (when applicable)
 - Functional components with hooks as default
@@ -20,6 +23,7 @@ Instructions for building high-quality ReactJS applications with modern patterns
 ## Development Standards
 
 ### Architecture
+
 - Use functional components with hooks as the primary pattern
 - Implement component composition over inheritance
 - Organize components by feature or domain for scalability
@@ -28,6 +32,7 @@ Instructions for building high-quality ReactJS applications with modern patterns
 - Implement proper component hierarchies with clear data flow
 
 ### TypeScript Integration
+
 - Use TypeScript interfaces for props, state, and component definitions
 - Define proper types for event handlers and refs
 - Implement generic components where appropriate
@@ -36,6 +41,7 @@ Instructions for building high-quality ReactJS applications with modern patterns
 - Create union types for component variants and states
 
 ### Component Design
+
 - Follow the single responsibility principle for components
 - Use descriptive and consistent naming conventions
 - Implement proper prop validation with TypeScript or PropTypes
@@ -44,6 +50,7 @@ Instructions for building high-quality ReactJS applications with modern patterns
 - Use composition patterns (render props, children as functions)
 
 ### State Management
+
 - Use `useState` for local component state
 - Implement `useReducer` for complex state logic
 - Leverage `useContext` for sharing state across component trees
@@ -52,6 +59,7 @@ Instructions for building high-quality ReactJS applications with modern patterns
 - Use React Query or SWR for server state management
 
 ### Hooks and Effects
+
 - Use `useEffect` with proper dependency arrays to avoid infinite loops
 - Implement cleanup functions in effects to prevent memory leaks
 - Use `useMemo` and `useCallback` for performance optimization when needed
@@ -60,6 +68,7 @@ Instructions for building high-quality ReactJS applications with modern patterns
 - Use `useRef` for accessing DOM elements and storing mutable values
 
 ### Styling
+
 - Use CSS Modules, Styled Components, or modern CSS-in-JS solutions
 - Implement responsive design with mobile-first approach
 - Follow BEM methodology or similar naming conventions for CSS classes
@@ -68,6 +77,7 @@ Instructions for building high-quality ReactJS applications with modern patterns
 - Ensure accessibility with proper ARIA attributes and semantic HTML
 
 ### Performance Optimization
+
 - Use `React.memo` for component memoization when appropriate
 - Implement code splitting with `React.lazy` and `Suspense`
 - Optimize bundle size with tree shaking and dynamic imports
@@ -76,6 +86,7 @@ Instructions for building high-quality ReactJS applications with modern patterns
 - Profile components with React DevTools to identify performance bottlenecks
 
 ### Data Fetching
+
 - Use modern data fetching libraries (React Query, SWR, Apollo Client)
 - Implement proper loading, error, and success states
 - Handle race conditions and request cancellation
@@ -84,6 +95,7 @@ Instructions for building high-quality ReactJS applications with modern patterns
 - Handle offline scenarios and network errors gracefully
 
 ### Error Handling
+
 - Implement Error Boundaries for component-level error handling
 - Use proper error states in data fetching
 - Implement fallback UI for error scenarios
@@ -92,6 +104,7 @@ Instructions for building high-quality ReactJS applications with modern patterns
 - Provide meaningful error messages to users
 
 ### Forms and Validation
+
 - Use controlled components for form inputs
 - Implement proper form validation with libraries like Formik, React Hook Form
 - Handle form submission and error states appropriately
@@ -100,6 +113,7 @@ Instructions for building high-quality ReactJS applications with modern patterns
 - Handle file uploads and complex form scenarios
 
 ### Routing
+
 - Use React Router for client-side routing
 - Implement nested routes and route protection
 - Handle route parameters and query strings properly
@@ -108,6 +122,7 @@ Instructions for building high-quality ReactJS applications with modern patterns
 - Implement breadcrumbs and navigation state management
 
 ### Testing
+
 - Write unit tests for components using React Testing Library
 - Test component behavior, not implementation details
 - Use Jest for test runner and assertion library
@@ -116,6 +131,7 @@ Instructions for building high-quality ReactJS applications with modern patterns
 - Test accessibility features and keyboard navigation
 
 ### Security
+
 - Sanitize user inputs to prevent XSS attacks
 - Validate and escape data before rendering
 - Use HTTPS for all external API calls
@@ -124,6 +140,7 @@ Instructions for building high-quality ReactJS applications with modern patterns
 - Use Content Security Policy (CSP) headers
 
 ### Accessibility
+
 - Use semantic HTML elements appropriately
 - Implement proper ARIA attributes and roles
 - Ensure keyboard navigation works for all interactive elements
@@ -132,6 +149,7 @@ Instructions for building high-quality ReactJS applications with modern patterns
 - Test with screen readers and accessibility tools
 
 ## Implementation Process
+
 1. Plan component architecture and data flow
 2. Set up project structure with proper folder organization
 3. Define TypeScript interfaces and types
@@ -146,6 +164,7 @@ Instructions for building high-quality ReactJS applications with modern patterns
 12. Add documentation and code comments
 
 ## Additional Guidelines
+
 - Follow React's naming conventions (PascalCase for components, camelCase for functions)
 - Use meaningful commit messages and maintain clean git history
 - Implement proper code splitting and lazy loading strategies
@@ -156,6 +175,7 @@ Instructions for building high-quality ReactJS applications with modern patterns
 - Use React Developer Tools for debugging and performance analysis
 
 ## Common Patterns
+
 - Higher-Order Components (HOCs) for cross-cutting concerns
 - Render props pattern for component composition
 - Compound components for related functionality
