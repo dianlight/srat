@@ -5,13 +5,18 @@ import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
 mock.module("../../../../store/sratApi", () => {
     const fakeReducer = (state: any = {}, _action: any) => state;
     const makeMiddleware = () => () => (next: any) => (action: any) => next(action);
+    const makeUtil = () => ({
+        resetApiState: () => ({ type: "sratApi/util/resetApiState" }),
+        upsertQueryData: () => ({ type: "sratApi/util/upsertQueryData" }),
+    });
 
     return {
         // Minimal RTK Query API object for store creation
         sratApi: {
-            reducerPath: "sratApi",
+            reducerPath: "api",
             reducer: fakeReducer,
-            middleware: makeMiddleware()
+            middleware: makeMiddleware(),
+            util: makeUtil(),
         },
         // Mock the hook used by VolumeMountDialog
         useGetApiFilesystemsQuery: (arg: any, options?: any) => ({
@@ -33,6 +38,12 @@ mock.module("../../../../store/sratApi", () => {
             VolumeUpdate: "volume_update",
             ShareUpdate: "share_update",
             UserUpdate: "user_update"
+        },
+        Update_channel: {
+            None: "None",
+            Develop: "Develop",
+            Release: "Release",
+            Prerelease: "Prerelease"
         },
         Update_process_state: {
             Idle: "idle",
