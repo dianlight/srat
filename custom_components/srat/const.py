@@ -10,11 +10,11 @@ DEFAULT_PORT = 8099
 DEFAULT_HOST = "localhost"
 
 # Addon slugs that can be auto-discovered via the Supervisor API
+# From https://github.com/dianlight/hassio-addons and
+# https://github.com/dianlight/hassio-addons-beta repositories
 ADDON_SLUG_WHITELIST = [
-    "c751bc52_srat",
-    "c751bc52_samba_nas",
-    "local_srat",
-    "local_samba_nas",
+    "local_sambanas2",
+    "sambanas2",
 ]
 
 # WebSocket reconnection settings

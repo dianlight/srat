@@ -1,0 +1,26 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Verbinding met SRAT",
+        "description": "Voer de verbindingsgegevens in voor uw SRAT-instantie.",
+        "data": {
+          "host": "Host",
+          "port": "Poort"
+        }
+      },
+      "hassio_confirm": {
+        "title": "SRAT Add-on ontdekt",
+        "description": "De SRAT add-on **{addon}** is ontdekt op `{host}:{port}`. Wilt u deze integratie instellen?"
+      }
+    },
+    "error": {
+      "cannot_connect": "Kan geen verbinding maken met de SRAT API. Controleer de host en poort.",
+      "unknown": "Er is een onverwachte fout opgetreden."
+    },
+    "abort": {
+      "already_configured": "Deze SRAT-instantie is al geconfigureerd.",
+      "not_srat_addon": "De ontdekte add-on is geen herkende SRAT add-on."
+    }
+  }
+}

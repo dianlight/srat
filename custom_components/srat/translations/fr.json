@@ -1,0 +1,26 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connexion à SRAT",
+        "description": "Entrez les détails de connexion pour votre instance SRAT.",
+        "data": {
+          "host": "Hôte",
+          "port": "Port"
+        }
+      },
+      "hassio_confirm": {
+        "title": "Module SRAT découvert",
+        "description": "Le module SRAT **{addon}** a été découvert à `{host}:{port}`. Voulez-vous configurer cette intégration ?"
+      }
+    },
+    "error": {
+      "cannot_connect": "Impossible de se connecter à l'API SRAT. Veuillez vérifier l'hôte et le port.",
+      "unknown": "Une erreur inattendue s'est produite."
+    },
+    "abort": {
+      "already_configured": "Cette instance SRAT est déjà configurée.",
+      "not_srat_addon": "Le module découvert n'est pas un module SRAT reconnu."
+    }
+  }
+}
