@@ -290,7 +290,7 @@ jobs:
         run: make -C custom_components test-ci
 
       - name: Upload Custom Component Coverage Report
-        uses: actions/upload-artifact@ea165f8d65b6db9a8b76aef5c55f8aab81d148fe # v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: custom-component-coverage-report
           path: custom_components/coverage.xml
