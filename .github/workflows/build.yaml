@@ -14,12 +14,15 @@ on:
       - '**.go'
       - '**.ts'
       - '**.tsx'
+      - '**.py'
       - '**/go.mod'
       - '**/go.sum'
       - '**/package.json'
       - '**/bun.lockb'
       - '**/Makefile'
       - 'bun.build.ts'
+      - 'custom_components/**'
+      - 'hacs.json'
       - '.github/workflows/build.yaml'
   release:
     types: ["published"]
@@ -249,6 +252,39 @@ jobs:
           name: frontend-coverage-report
           path: ./frontend/coverage/lcov.info
 
+  validate-custom-component:
+    name: Validate Custom Component
+    runs-on: ubuntu-latest
+    needs: setversion
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: HACS Validation
+        uses: hacs/action@main
+        with:
+          category: integration
+
+      - name: hassfest Validation
+        uses: home-assistant/actions/hassfest@master
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dev dependencies
+        run: make -C custom_components install-pip
+
+      - name: Ruff format check
+        run: make -C custom_components format-check
+
+      - name: Ruff lint
+        run: make -C custom_components lint
+
+      - name: Mypy type check
+        run: make -C custom_components typecheck
+
   update-coverage:
     name: Update Coverage Badges
     runs-on: ubuntu-latest
@@ -292,7 +328,7 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [setversion, test-backend, test-frontend]
+    needs: [setversion, test-backend, test-frontend, validate-custom-component]
     env:
       ROLLBAR_CLIENT_ACCESS_TOKEN: ${{ secrets.ROLLBAR_CLIENT_ACCESS_TOKEN || 'disabled' }}
       GIST_TOKEN: ${{ secrets.GIST_TOKEN || 'disabled' }}
@@ -521,6 +557,23 @@ jobs:
           retention-days: 7
           overwrite: true
 
+      - name: Create HACS custom component zip
+        if: github.event_name != 'pull_request'
+        run: |
+          cd custom_components/srat
+          zip -r /tmp/build_artifacts/srat.zip . -x '__pycache__/*' '*.pyc'
+          echo "HACS component zip created:"
+          unzip -l /tmp/build_artifacts/srat.zip
+
+      - name: Upload HACS component as artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: hacs-component
+          path: /tmp/build_artifacts/srat.zip
+          retention-days: 7
+          overwrite: true
+
   create-release:
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
@@ -574,6 +627,12 @@ jobs:
         id: download_art
         with:
           name: binary-builds
+          path: /tmp/downloaded_builds
+
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        id: download_hacs
+        with:
+          name: hacs-component
           path: /tmp/downloaded_builds
 
       - name: Create Release and Upload Assets

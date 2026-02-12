@@ -24,6 +24,10 @@ install:
 		pip install -r requirements_dev.txt; \
 	fi
 
+.PHONY: install-pip
+install-pip:
+	pip install -r requirements_dev.txt
+
 .PHONY: format
 format:
 	ruff format $(COMPONENT_DIR)

@@ -41,11 +41,10 @@ class SRATDataCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._session = session
         self._base_url = f"http://{host}:{port}"
 
-        # Register SSE listeners for real-time updates
-        ws_client.register_listener("disks", self._on_disk_update)
-        ws_client.register_listener("samba_status", self._on_samba_update)
-        ws_client.register_listener("server_process_status", self._on_process_update)
-        ws_client.register_listener("disk_health", self._on_health_update)
+        # Register WebSocket listeners for real-time updates
+        # Event types match backend/src/dto/webevent_type.go string values
+        ws_client.register_listener("volumes", self._on_disk_update)
+        ws_client.register_listener("heartbeat", self._on_heartbeat_update)
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch data from the SRAT REST API."""
@@ -83,26 +82,18 @@ class SRATDataCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         return data
 
-    def _on_disk_update(self, data: dict[str, Any]) -> None:
-        """Handle disk update from SSE."""
+    def _on_disk_update(self, data: Any) -> None:
+        """Handle volumes event from WebSocket (list of disks)."""
         if self.data is not None:
-            self.data["disks"] = data.get("disks", self.data.get("disks", []))
+            # The "volumes" event sends []*Disk{} directly
+            if isinstance(data, list):
+                self.data["disks"] = data
+            else:
+                self.data["disks"] = data.get("disks", self.data.get("disks", []))
             self.async_set_updated_data(self.data)
 
-    def _on_samba_update(self, data: dict[str, Any]) -> None:
-        """Handle samba status update from SSE."""
-        if self.data is not None:
-            self.data["samba_status"] = data
-            self.async_set_updated_data(self.data)
-
-    def _on_process_update(self, data: dict[str, Any]) -> None:
-        """Handle process status update from SSE."""
-        if self.data is not None:
-            self.data["process_status"] = data
-            self.async_set_updated_data(self.data)
-
-    def _on_health_update(self, data: dict[str, Any]) -> None:
-        """Handle disk health update from SSE."""
+    def _on_heartbeat_update(self, data: Any) -> None:
+        """Handle heartbeat event from WebSocket (HealthPing)."""
         if self.data is not None:
             self.data["disk_health"] = data
             self.async_set_updated_data(self.data)
