@@ -21,6 +21,14 @@
                 "commands": [
                     "cd frontend"
                 ]
+            },
+            {
+                "name": "custom_components",
+                "icon": "extensions",
+                "autoExecuteCommands": true,
+                "commands": [
+                    "cd custom_components"
+                ]
             }
         ]
     }

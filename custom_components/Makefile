@@ -72,3 +72,13 @@ clean:
 	find . -type d -name .mypy_cache -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name .ruff_cache -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name .pytest_cache -exec rm -rf {} + 2>/dev/null || true
+
+.PHONY: mount_remote
+mount_remote:
+	@umount -l /mnt/remote2 > /dev/null 2>&1 || :
+	@mkdir -p /mnt/remote2 > /dev/null 2>&1 || :
+	@sshfs -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3 ${HOMEASSISTANT_IP}:/config/custom_components /mnt/remote2
+
+.PHONY: install_remote
+install_remote: /mnt/remote2/srat/manifest.json
+	@rsync -rvuzP --del  ./srat ${HOMEASSISTANT_IP}:/config/custom_components
