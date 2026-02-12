@@ -233,8 +233,8 @@ func (s *settingService) HasDefaultValue(prop string) (bool, errors.E) {
 /*
 // GetValue retrieves a property value from the repository.
 // If the value is not found and a default exists in defaultSettings, returns the default value.
-// The return type is interface{} and depends on the type of the property.
-func (s *settingService) GetValue(prop string) (interface{}, errors.E) {
+// The return type is any and depends on the type of the property.
+func (s *settingService) GetValue(prop string) (any, errors.E) {
 	if prop == "" {
 		return nil, errors.New("property name cannot be empty")
 	}
@@ -265,7 +265,7 @@ func (s *settingService) GetValue(prop string) (interface{}, errors.E) {
 /*
 // getDefaultValue retrieves the default value for a property from defaultSettings.
 // Uses reflection to find and return the field value.
-func (s *settingService) getDefaultValue(prop string) (interface{}, errors.E) {
+func (s *settingService) getDefaultValue(prop string) (any, errors.E) {
 	if prop == "" {
 		return nil, errors.New("property name cannot be empty")
 	}
@@ -307,7 +307,7 @@ func (s *settingService) getDefaultValue(prop string) (interface{}, errors.E) {
 // SetValue sets a property value in the repository.
 // Validates that the value type is compatible with the existing value type (if set)
 // and with the default value type (if exists).
-func (s *settingService) SetValue(prop string, value interface{}) errors.E {
+func (s *settingService) SetValue(prop string, value any) errors.E {
 	if prop == "" {
 		return errors.New("property name cannot be empty")
 	}

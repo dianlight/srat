@@ -10,7 +10,6 @@ import (
 	"github.com/dianlight/srat/homeassistant/ingress"
 	"github.com/oapi-codegen/oapi-codegen/v2/pkg/securityprovider"
 	"github.com/stretchr/testify/suite"
-	"github.com/xorcare/pointer"
 )
 
 // IngressCITestSuite is a test suite for testing Home Assistant Ingress API interactions.
@@ -93,7 +92,7 @@ func (suite *IngressCITestSuite) TestCreateAndValidateIngressSession() {
 	suite.T().Skip("Skipping TestCreateAndValidateIngressSession Addons don't have the right permissions to create ingress sessions. ")
 	// 1. Create an Ingress Session
 	createReqBody := ingress.CreateIngressSessionJSONRequestBody{
-		UserId: pointer.String("2a68fe2cc380467eaf1e71c1c14f2230"),
+		UserId: new("2a68fe2cc380467eaf1e71c1c14f2230"),
 	}
 	createResp, err := suite.ingressClient.CreateIngressSessionWithResponse(suite.ctx, createReqBody)
 	suite.Require().NoError(err, "Error creating ingress session")

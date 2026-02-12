@@ -137,6 +137,26 @@ Follow idiomatic Go practices and community standards when writing Go code. Thes
 - Use type assertions carefully and check the second return value
 - Prefer generics over unconstrained types; when an unconstrained type is truly needed, use the predeclared alias `any` instead of `interface{}` (Go 1.18+)
 
+### Pointer Creation (Go 1.26)
+
+- Use Go 1.26's built-in `new(expr)` to create pointers to values in a single expression
+- `new(expr)` allocates a variable, sets it to the value of the expression, and returns a pointer
+- This replaces helper libraries like `xorcare/pointer` and avoids `&[]T{v}[0]` hacks
+- Particularly useful for optional pointer fields in JSON/protobuf structs
+
+```go
+// ✅ Go 1.26: new(expr) for pointer creation
+type Person struct {
+    Name string `json:"name"`
+    Age  *int   `json:"age"` // optional
+}
+p := Person{Name: "Alice", Age: new(42)}
+
+// Also works with function calls and complex expressions
+cfg.Timeout = new(time.Second * 30)
+opts.Verbose = new(true)
+```
+
 ### Pointers vs Values
 
 - Use pointer receivers for large structs or when you need to modify the receiver
@@ -180,7 +200,7 @@ Follow idiomatic Go practices and community standards when writing Go code. Thes
 - Choose between channels and mutexes based on the use case: use channels for communication, mutexes for protecting state
 - Use `sync.Once` for one-time initialization
 - WaitGroup usage by Go version:
-  - If `go >= 1.25` in `go.mod`, use the new `WaitGroup.Go` method ([documentation](https://pkg.go.dev/sync#WaitGroup)):
+  - If `go >= 1.25` in `go.mod` (current: 1.26), use the `WaitGroup.Go` method ([documentation](https://pkg.go.dev/sync#WaitGroup)):
 
     ```go
     var wg sync.WaitGroup
@@ -189,7 +209,7 @@ Follow idiomatic Go practices and community standards when writing Go code. Thes
     wg.Wait()
     ```
 
-  - If `go < 1.25`, use the classic `Add`/`Done` pattern
+  - If `go < 1.25`, use the classic `Add`/`Done` pattern (not applicable to this project)
 
 ## Error Handling Patterns
 
@@ -200,6 +220,18 @@ Follow idiomatic Go practices and community standards when writing Go code. Thes
 - Create custom error types for domain-specific errors
 - Export error variables for sentinel errors
 - Use `errors.Is` and `errors.As` for error checking
+- Prefer `errors.AsType[T](err)` over `errors.As(err, &target)` for type-safe, allocation-free error matching (Go 1.26)
+
+```go
+// ✅ Go 1.26: errors.AsType – type-safe, no pre-declaration needed
+if appErr, ok := errors.AsType[*AppError](err); ok {
+    handleAppError(appErr)
+}
+
+// Still valid but less preferred:
+var appErr *AppError
+if errors.As(err, &appErr) { ... }
+```
 
 ### Error Propagation
 
@@ -352,6 +384,7 @@ Follow idiomatic Go practices and community standards when writing Go code. Thes
 
 - `go fmt`: Format code
 - `go vet`: Find suspicious constructs
+- `go fix`: Apply automated code modernizations (revamped in Go 1.26 with dozens of modernizers)
 - `golangci-lint`: Additional linting (golint is deprecated)
 - `go test`: Run tests
 - `go mod`: Manage dependencies
@@ -378,3 +411,6 @@ Follow idiomatic Go practices and community standards when writing Go code. Thes
 - Over-using unconstrained types (for example, `any`); prefer specific types or generic type parameters with constraints. If an unconstrained type is required, use `any` rather than `interface{}`
 - Not considering the zero value of types
 - **Creating duplicate `package` declarations** - this is a compile error; always check existing files before adding package declarations
+- Using pointer helper libraries instead of Go 1.26's built-in `new(expr)` for pointer creation
+- Using `wg.Add(1)` + `go func() { defer wg.Done() }()` instead of `wg.Go(func() { ... })` (Go 1.25+)
+- Using `errors.As(err, &target)` when `errors.AsType[T](err)` would be clearer and type-safe (Go 1.26)

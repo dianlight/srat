@@ -14,7 +14,6 @@ import (
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
-	"github.com/xorcare/pointer"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 )
@@ -76,7 +75,7 @@ func (suite *VolumeHandlerSuite) TestListVolumes_ReturnsDiskPartitionMountPointD
 		//	PathHash:         xhashes.SHA1(mountPath),
 		DeviceId:         partID,
 		IsMounted:        true,
-		IsWriteSupported: pointer.Bool(true),
+		IsWriteSupported: new(true),
 		Type:             "ADDON",
 	}
 	partition := dto.Partition{
@@ -143,7 +142,7 @@ func (suite *VolumeHandlerSuite) TestPatchMountPointSettings_UpdatesIsToMountAtS
 		//PathHash:           mountPathHash,
 		DeviceId:           partID,
 		IsMounted:          false,
-		IsToMountAtStartup: pointer.Bool(false),
+		IsToMountAtStartup: new(false),
 		Type:               "ADDON",
 	}
 	partition := dto.Partition{
@@ -159,7 +158,7 @@ func (suite *VolumeHandlerSuite) TestPatchMountPointSettings_UpdatesIsToMountAtS
 
 	// Updated state: mount point with IsToMountAtStartup = true
 	mountPointUpdated := mountPointInitial
-	mountPointUpdated.IsToMountAtStartup = pointer.Bool(true)
+	mountPointUpdated.IsToMountAtStartup = new(true)
 	partitionUpdated := partition
 	partitionUpdated.MountPointData = &map[string]dto.MountPointData{mountPath: mountPointUpdated}
 	diskUpdated := disk
@@ -190,7 +189,7 @@ func (suite *VolumeHandlerSuite) TestPatchMountPointSettings_UpdatesIsToMountAtS
 		Path:               mountPath,
 		Root:               root,
 		Type:               "ADDON",
-		IsToMountAtStartup: pointer.Bool(true),
+		IsToMountAtStartup: new(true),
 	}
 	resp2 := apiInst.Patch("/volume/settings", patchBody)
 	suite.Require().Equal(http.StatusOK, resp2.Code)

@@ -60,7 +60,6 @@ func NewNetworkStatsService(lc fx.Lifecycle,
 	}
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			Ctx.Value("wg").(*sync.WaitGroup).Add(1)
 			err := ns.updateNetworkStats()
 			if err != nil {
 				// Ignore NotFound error, log others
@@ -70,10 +69,9 @@ func NewNetworkStatsService(lc fx.Lifecycle,
 					slog.ErrorContext(ctx, "Failed to update network stats", "error", err)
 				}
 			}
-			go func() {
-				defer Ctx.Value("wg").(*sync.WaitGroup).Done()
+			Ctx.Value("wg").(*sync.WaitGroup).Go(func() {
 				ns.run()
-			}()
+			})
 			return nil
 		},
 	})

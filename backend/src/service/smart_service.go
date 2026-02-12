@@ -277,7 +277,7 @@ func (s *smartService) GetHealthStatus(ctx context.Context, deviceId string) (*d
 }
 
 // checkSMARTHealth evaluates SMART attributes to determine disk health
-func checkSMARTHealth(smartStatus *dto.SmartStatus, _ interface{}, _ interface{}) *dto.SmartHealthStatus {
+func checkSMARTHealth(smartStatus *dto.SmartStatus, _ any, _ any) *dto.SmartHealthStatus {
 	health := &dto.SmartHealthStatus{
 		Passed:        true,
 		OverallStatus: "healthy",

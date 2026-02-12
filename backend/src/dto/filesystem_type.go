@@ -55,7 +55,7 @@ func MountFlagsMap() map[string]uintptr {
 	return flagMap
 }
 
-func (self *MountFlags) Scan(value interface{}) error {
+func (self *MountFlags) Scan(value any) error {
 	switch value := value.(type) {
 	case int:
 		for nflag, flags := range MountFlagsMap() {

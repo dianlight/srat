@@ -4,7 +4,7 @@
 
 This file highlights the must-know, discoverable rules and workflows for productive changes in this repo. Keep it short and actionable.
 
-- **Languages**: Go backend (Go 1.25), TypeScript React frontend (Bun runtime). See `backend/go.mod` and `frontend/package.json`/`bun.lockb`.
+- **Languages**: Go backend (Go 1.26), TypeScript React frontend (Bun runtime). See `backend/go.mod` and `frontend/package.json`/`bun.lockb`.
 - **Builds**: Root `Makefile` proxies to `backend/Makefile`. Frontend uses Bun: `cd frontend && bun install && bun run build`.
 - **Pre-commit**: Repository uses `pre-commit`. Do not edit `.git/hooks` manually. See `.pre-commit-config.yaml` and run `pre-commit install` locally.
 - **Tests**: Backend uses `testify/suite` with `mockio/v2`. Frontend uses `bun:test` with `@testing-library/react`. See below for patterns.
@@ -93,6 +93,92 @@ slog.Warn("Will retry", "attempt", n)
 ```
 
 Rationale: Using context-aware logging lets structured handlers attach trace/span, cancellation, and request lineage automatically. Avoid polluting code with artificial contexts—only leverage what is organically available.
+
+#### Go 1.26 Modern Patterns (MANDATORY RULES)
+
+When writing or modifying Go backend code, follow these Go 1.26 conventions:
+
+**1. Use `new(expr)` for pointer creation (Go 1.26)**
+
+Go 1.26's built-in `new` function accepts expressions, not just types. Use `new(expr)` instead of pointer helper functions or libraries.
+
+```go
+// ✅ CORRECT – Go 1.26 new(expr)
+Disabled:    new(false),
+FSType:      new("ext4"),
+Age:         new(yearsSince(born)),
+rmount.Type  = new(mount.MountType("nfs"))
+
+// ❌ WRONG – DO NOT use pointer helper libraries
+Disabled:    pointer.Bool(false),      // removed xorcare/pointer
+FSType:      pointer.String("ext4"),
+rmount.Type  = pointer.Any(mount.MountType("nfs")).(*mount.MountType)
+```
+
+The `xorcare/pointer` dependency has been removed. Never reintroduce it.
+
+**2. Use `any` instead of `interface{}` (Go 1.18+)**
+
+Always use the `any` alias. Never write `interface{}` in new or modified code.
+
+```go
+// ✅ CORRECT
+func process(v any) any { ... }
+attributes := map[string]any{"key": "value"}
+
+// ❌ WRONG
+func process(v interface{}) interface{} { ... }
+attributes := map[string]interface{}{"key": "value"}
+```
+
+Note: Generated files (`*.gen.go`, `*_gen.go`, `*_conv_gen.go`) may still contain `interface{}`—do not edit those manually; regenerate via `go generate`.
+
+**3. Use `WaitGroup.Go()` for goroutine lifecycle (Go 1.25+)**
+
+Use `sync.WaitGroup.Go(func())` instead of `Add(1)` + `go func() { defer Done() }()`.
+
+```go
+// ✅ CORRECT – WaitGroup.Go
+p.ctx.Value("wg").(*sync.WaitGroup).Go(func() {
+    p.run()
+})
+
+// ❌ WRONG – old Add/Done pattern
+p.ctx.Value("wg").(*sync.WaitGroup).Add(1)
+go func() {
+    defer p.ctx.Value("wg").(*sync.WaitGroup).Done()
+    p.run()
+}()
+```
+
+**4. Use `errors.AsType[T]()` for type-safe error checking (Go 1.26)**
+
+When checking error types with the standard library `errors` package, prefer `errors.AsType[T](err)` over `errors.As(err, &target)` for type-safe, allocation-free error matching.
+
+```go
+// ✅ CORRECT – Go 1.26 errors.AsType (standard library)
+if appErr, ok := errors.AsType[*AppError](err); ok {
+    fmt.Println("Got:", appErr)
+}
+
+// ⚠️ ACCEPTABLE – errors.As still valid (especially with third-party errors packages)
+var appErr *AppError
+if errors.As(err, &appErr) {
+    fmt.Println("Got:", appErr)
+}
+```
+
+Note: This project uses `gitlab.com/tozd/go/errors` which wraps standard `errors.As`. Use `errors.AsType` only with the standard library `errors` package.
+
+**5. Run `go fix` for automated modernization (Go 1.26)**
+
+Go 1.26's revamped `go fix` command applies dozens of modernizers automatically:
+
+- `interface{}` → `any`
+- Manual min/max logic → `min()`/`max()` built-ins
+- Loop patterns → `slices.Contains`, `slices.Sort`, etc.
+
+Run `go fix ./...` periodically to keep code current.
 
 ### Frontend Patterns
 

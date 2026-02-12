@@ -56,7 +56,7 @@ func TestConfigToMapWithUnicode(t *testing.T) {
 	assert.NotNil(t, result)
 
 	// Check if the unicode characters are preserved
-	sharePath, ok := (*result)["shares"].(map[string]interface{})["unicode"].(map[string]interface{})["path"].(string)
+	sharePath, ok := (*result)["shares"].(map[string]any)["unicode"].(map[string]any)["path"].(string)
 	assert.True(t, ok)
 	assert.Equal(t, "/path/to/unicode/文件夹", sharePath)
 }

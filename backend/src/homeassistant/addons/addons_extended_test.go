@@ -7,7 +7,6 @@ import (
 
 	"github.com/jarcoal/httpmock"
 	"github.com/stretchr/testify/assert"
-	"github.com/xorcare/pointer"
 )
 
 func TestActionResult_Fields(t *testing.T) {
@@ -255,7 +254,7 @@ func TestClient_GetSelfAddonLogsLeatestWithResponse_Success(t *testing.T) {
 			assert.NoError(t, err)
 
 			resp, err := client.GetSelfAddonLogsLatestWithResponse(context.Background(), &GetSelfAddonLogsLatestParams{
-				Lines:  pointer.Int(1000),
+				Lines:  new(1000),
 				Accept: tt.accept,
 			})
 			assert.NoError(t, err)
