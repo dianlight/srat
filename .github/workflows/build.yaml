@@ -287,12 +287,18 @@ jobs:
         run: make -C custom_components typecheck
 
       - name: Run tests
-        run: make -C custom_components test
+        run: make -C custom_components test-ci
+
+      - name: Upload Custom Component Coverage Report
+        uses: actions/upload-artifact@ea165f8d65b6db9a8b76aef5c55f8aab81d148fe # v4
+        with:
+          name: custom-component-coverage-report
+          path: custom_components/coverage.xml
 
   update-coverage:
     name: Update Coverage Badges
     runs-on: ubuntu-latest
-    needs: [setversion, test-backend, test-frontend,build]
+    needs: [setversion, test-backend, test-frontend, test-custom-component, build]
     permissions:
       contents: write
     steps:
@@ -327,7 +333,21 @@ jobs:
           files: ./frontend/coverage/lcov.info
           flags: frontend
           name: frontend-coverage
-          fail_ci_if_error: false          
+          fail_ci_if_error: false
+
+      - name: Restore Custom Component Coverage Report
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: custom-component-coverage-report
+
+      - name: Upload Custom Component Coverage to Codecov
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./custom_components/coverage.xml
+          flags: custom-component
+          name: custom-component-coverage
+          fail_ci_if_error: false
 
   build:
     name: Build

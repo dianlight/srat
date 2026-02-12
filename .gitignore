@@ -10,6 +10,7 @@ backend/tmp/
 !backend/src/config/
 .env.example
 backend/src/coverage*.out
+custom_components/coverage.xml
 backend/src/srat-cli
 backend/src/srat-server
 backend/src/srat-openapi

@@ -12,6 +12,7 @@ help:
 	@echo "  make lint         Lint code with ruff"
 	@echo "  make typecheck    Run mypy static type checking"
 	@echo "  make test         Run component tests with pytest"
+	@echo "  make test-ci      Run tests with coverage (XML for Codecov)"
 	@echo "  make check        Run all checks (format-check + lint + typecheck + test)"
 	@echo "  make fix          Auto-fix linting issues where possible"
 	@echo "  make clean        Remove build/cache artifacts"
@@ -54,6 +55,11 @@ typecheck:
 .PHONY: test
 test:
 	cd .. && python -m pytest custom_components/tests -v -c custom_components/pyproject.toml
+
+.PHONY: test-ci
+test-ci:
+	cd .. && python -m pytest custom_components/tests -v -c custom_components/pyproject.toml \
+		--cov=custom_components/srat --cov-report=xml:custom_components/coverage.xml
 
 .PHONY: check
 check: format-check lint typecheck test
