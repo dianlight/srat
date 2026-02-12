@@ -7,9 +7,9 @@ import logging
 from typing import Any
 
 import aiohttp
-import voluptuous as vol
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+import voluptuous as vol
 
 from .const import (
     ADDON_SLUG_WHITELIST,
@@ -31,7 +31,7 @@ USER_DATA_SCHEMA = vol.Schema(
 )
 
 
-class SRATConfigFlow(ConfigFlow, domain=DOMAIN):
+class SRATConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore[call-arg]
     """Handle a config flow for SRAT."""
 
     VERSION = 1
@@ -83,9 +83,7 @@ class SRATConfigFlow(ConfigFlow, domain=DOMAIN):
         port = config.get("port", discovery_info.get("port", DEFAULT_PORT))
 
         await self.async_set_unique_id(f"srat_{slug or host}")
-        self._abort_if_unique_id_configured(
-            updates={CONF_HOST: host, CONF_PORT: port}
-        )
+        self._abort_if_unique_id_configured(updates={CONF_HOST: host, CONF_PORT: port})
 
         self._discovery_info = {
             CONF_HOST: host,

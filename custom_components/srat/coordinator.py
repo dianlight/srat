@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 from datetime import timedelta
+import logging
 from typing import Any
 
 import aiohttp
@@ -59,30 +59,22 @@ class SRATDataCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         try:
             async with asyncio.timeout(10):
                 # Fetch disk data
-                async with self._session.get(
-                    f"{self._base_url}/disks"
-                ) as resp:
+                async with self._session.get(f"{self._base_url}/disks") as resp:
                     if resp.status == 200:
                         data["disks"] = await resp.json()
 
                 # Fetch samba status
-                async with self._session.get(
-                    f"{self._base_url}/samba/status"
-                ) as resp:
+                async with self._session.get(f"{self._base_url}/samba/status") as resp:
                     if resp.status == 200:
                         data["samba_status"] = await resp.json()
 
                 # Fetch process status
-                async with self._session.get(
-                    f"{self._base_url}/samba/process"
-                ) as resp:
+                async with self._session.get(f"{self._base_url}/samba/process") as resp:
                     if resp.status == 200:
                         data["process_status"] = await resp.json()
 
                 # Fetch disk health
-                async with self._session.get(
-                    f"{self._base_url}/health/disks"
-                ) as resp:
+                async with self._session.get(f"{self._base_url}/health/disks") as resp:
                     if resp.status == 200:
                         data["disk_health"] = await resp.json()
 

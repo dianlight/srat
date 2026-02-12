@@ -20,7 +20,7 @@ _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [Platform.SENSOR]
 
-SRATConfigEntry = ConfigEntry["SRATData"]
+type SRATConfigEntry = ConfigEntry
 
 
 class SRATData:
@@ -48,9 +48,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: SRATConfigEntry) -> bool
         async with asyncio.timeout(10):
             async with session.get(f"http://{host}:{port}/health") as resp:
                 if resp.status != 200:
-                    raise ConfigEntryNotReady(
-                        f"SRAT API returned status {resp.status}"
-                    )
+                    raise ConfigEntryNotReady(f"SRAT API returned status {resp.status}")
     except (aiohttp.ClientError, TimeoutError) as err:
         raise ConfigEntryNotReady(f"Cannot connect to SRAT at {host}:{port}") from err
 
@@ -98,8 +96,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: SRATConfigEntry) -> boo
     return unload_ok
 
 
-async def _async_update_listener(
-    hass: HomeAssistant, entry: SRATConfigEntry
-) -> None:
+async def _async_update_listener(hass: HomeAssistant, entry: SRATConfigEntry) -> None:
     """Handle options update."""
     await hass.config_entries.async_reload(entry.entry_id)

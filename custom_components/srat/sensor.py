@@ -56,9 +56,7 @@ async def async_setup_entry(
                     for partition in disk.get("partitions", []):
                         if isinstance(partition, dict):
                             entities.append(
-                                SRATPartitionSensor(
-                                    coordinator, entry, partition, disk
-                                )
+                                SRATPartitionSensor(coordinator, entry, partition, disk)
                             )
 
         health = coordinator.data.get("disk_health")
@@ -71,9 +69,7 @@ async def async_setup_entry(
             for device, info in health.get("partition_health", {}).items():
                 if isinstance(info, dict):
                     entities.append(
-                        SRATPartitionHealthSensor(
-                            coordinator, entry, device, info
-                        )
+                        SRATPartitionHealthSensor(coordinator, entry, device, info)
                     )
 
     async_add_entities(entities, update_before_add=False)
@@ -119,7 +115,9 @@ class SRATSambaStatusSensor(SRATSensorBase):
     @property
     def native_value(self) -> str | None:
         """Return the samba connection state."""
-        status = self.coordinator.data.get("samba_status") if self.coordinator.data else None
+        status = (
+            self.coordinator.data.get("samba_status") if self.coordinator.data else None
+        )
         if not isinstance(status, dict):
             return None
         sessions = status.get("sessions", [])
@@ -128,7 +126,9 @@ class SRATSambaStatusSensor(SRATSensorBase):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional attributes."""
-        status = self.coordinator.data.get("samba_status") if self.coordinator.data else None
+        status = (
+            self.coordinator.data.get("samba_status") if self.coordinator.data else None
+        )
         if not isinstance(status, dict):
             return {}
         return {
@@ -156,11 +156,16 @@ class SRATSambaProcessStatusSensor(SRATSensorBase):
     @property
     def native_value(self) -> str | None:
         """Return the overall process state."""
-        status = self.coordinator.data.get("process_status") if self.coordinator.data else None
+        status = (
+            self.coordinator.data.get("process_status")
+            if self.coordinator.data
+            else None
+        )
         if not isinstance(status, dict):
             return None
         running_count = sum(
-            1 for proc in status.values()
+            1
+            for proc in status.values()
             if isinstance(proc, dict) and proc.get("is_running")
         )
         total = len(status)
@@ -173,7 +178,11 @@ class SRATSambaProcessStatusSensor(SRATSensorBase):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return per-process attributes."""
-        status = self.coordinator.data.get("process_status") if self.coordinator.data else None
+        status = (
+            self.coordinator.data.get("process_status")
+            if self.coordinator.data
+            else None
+        )
         if not isinstance(status, dict):
             return {}
         attrs: dict[str, Any] = {}
@@ -217,9 +226,7 @@ class SRATVolumeStatusSensor(SRATSensorBase):
         if not isinstance(disks, list):
             return {}
         partition_count = sum(
-            len(d.get("partitions", []))
-            for d in disks
-            if isinstance(d, dict)
+            len(d.get("partitions", [])) for d in disks if isinstance(d, dict)
         )
         return {
             "disk_count": len(disks),
@@ -365,7 +372,9 @@ class SRATGlobalDiskHealthSensor(SRATSensorBase):
     @property
     def native_value(self) -> float | None:
         """Return total IOPS."""
-        health = self.coordinator.data.get("disk_health") if self.coordinator.data else None
+        health = (
+            self.coordinator.data.get("disk_health") if self.coordinator.data else None
+        )
         if not isinstance(health, dict):
             return None
         global_stats = health.get("global", {})
@@ -376,7 +385,9 @@ class SRATGlobalDiskHealthSensor(SRATSensorBase):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return global disk health attributes."""
-        health = self.coordinator.data.get("disk_health") if self.coordinator.data else None
+        health = (
+            self.coordinator.data.get("disk_health") if self.coordinator.data else None
+        )
         if not isinstance(health, dict):
             return {}
         global_stats = health.get("global", {})
@@ -439,7 +450,9 @@ class SRATDiskIOSensor(SRATSensorBase):
 
     def _find_stats(self) -> dict[str, Any] | None:
         """Find disk IO stats in current data."""
-        health = self.coordinator.data.get("disk_health") if self.coordinator.data else None
+        health = (
+            self.coordinator.data.get("disk_health") if self.coordinator.data else None
+        )
         if not isinstance(health, dict):
             return None
         return health.get("disk_io", {}).get(self._device_name)
@@ -495,7 +508,9 @@ class SRATPartitionHealthSensor(SRATSensorBase):
 
     def _find_info(self) -> dict[str, Any] | None:
         """Find partition health info in current data."""
-        health = self.coordinator.data.get("disk_health") if self.coordinator.data else None
+        health = (
+            self.coordinator.data.get("disk_health") if self.coordinator.data else None
+        )
         if not isinstance(health, dict):
             return None
         return health.get("partition_health", {}).get(self._device)

@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
+import contextlib
 import json
 import logging
-from collections.abc import Callable
 from typing import Any
 
 import aiohttp
@@ -80,10 +81,8 @@ class SRATWebSocketClient:
         self._should_reconnect = False
         if self._task and not self._task.done():
             self._task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._task
-            except asyncio.CancelledError:
-                pass
         self._connected = False
 
     async def _listen_loop(self) -> None:
@@ -156,6 +155,4 @@ class SRATWebSocketClient:
             try:
                 listener(parsed)
             except Exception:
-                _LOGGER.exception(
-                    "Error in SSE listener for event %s", event_type
-                )
+                _LOGGER.exception("Error in SSE listener for event %s", event_type)

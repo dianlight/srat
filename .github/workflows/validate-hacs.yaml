@@ -36,3 +36,27 @@ jobs:
 
       - name: hassfest Validation
         uses: home-assistant/actions/hassfest@master
+
+  lint-and-typecheck:
+    runs-on: ubuntu-latest
+    name: Lint and type-check custom component
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dev dependencies
+        run: pip install -r custom_components/requirements_dev.txt
+
+      - name: Ruff format check
+        run: make -C custom_components format-check
+
+      - name: Ruff lint
+        run: make -C custom_components lint
+
+      - name: Mypy type check
+        run: make -C custom_components typecheck
