@@ -88,6 +88,7 @@ describe("VolumeDetailsPanel Component", () => {
                 },
             },
         };
+        const partitionId = mockPartition.id;
 
         rerenderWithProviders(
             React.createElement(VolumeDetailsPanel as any, {
@@ -153,6 +154,7 @@ describe("VolumeDetailsPanel Component", () => {
                 },
             },
         };
+        const partitionId = mockPartition.id;
 
         await renderWithProviders(
             React.createElement(VolumeDetailsPanel as any, {
@@ -164,7 +166,7 @@ describe("VolumeDetailsPanel Component", () => {
                     store.dispatch(
                         sratApi.util.upsertQueryData(
                             "getApiFilesystemState",
-                            { partitionId: "part-1" },
+                            { partitionId },
                             {
                                 isClean: true,
                                 hasErrors: false,
@@ -187,8 +189,11 @@ describe("VolumeDetailsPanel Component", () => {
         const description = await screen.findByText(/Filesystem is clean/i);
         expect(description).toBeTruthy();
 
-        const additionalInfo = await screen.findByText(/Last check: 2026-02-10/i);
-        expect(additionalInfo).toBeTruthy();
+        const additionalInfo = await screen.findAllByText((content, element) => {
+            const text = element?.textContent ?? content;
+            return text.includes("Last check: 2026-02-10");
+        });
+        expect(additionalInfo.length).toBeGreaterThan(0);
     });
 
     it("shows error filesystem status tooltip", async () => {
@@ -215,6 +220,7 @@ describe("VolumeDetailsPanel Component", () => {
                 },
             },
         };
+        const partitionId = mockPartition.id;
 
         await renderWithProviders(
             React.createElement(VolumeDetailsPanel as any, {
@@ -226,7 +232,7 @@ describe("VolumeDetailsPanel Component", () => {
                     store.dispatch(
                         sratApi.util.upsertQueryData(
                             "getApiFilesystemState",
-                            { partitionId: "part-1" },
+                            { partitionId },
                             {
                                 isClean: false,
                                 hasErrors: true,
