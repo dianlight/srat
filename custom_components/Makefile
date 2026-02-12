@@ -16,7 +16,13 @@ help:
 
 .PHONY: install
 install:
-	pip install -r requirements_dev.txt
+	@if command -v apk >/dev/null 2>&1; then \
+		echo "Alpine detected – installing via apk..."; \
+		apk add --no-cache python3 py3-pip py3-mypy py3-ruff; \
+	else \
+		echo "Installing via pip..."; \
+		pip install -r requirements_dev.txt; \
+	fi
 
 .PHONY: format
 format:

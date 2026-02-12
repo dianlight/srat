@@ -3,7 +3,8 @@ set -x
 
 apk add --no-cache git make lsblk eudev gcc musl-dev linux-headers samba ethtool e2fsprogs e2fsprogs-extra \
  fuse3 exfatprogs ntfs-3g-progs apfs-fuse openssh-client sshfs pre-commit shadow \
- git-bash-completion git-prompt graphviz nix patch smartmontools zig minisign act 
+ git-bash-completion git-prompt graphviz nix patch smartmontools zig minisign act \
+ python3 py3-pip py3-mypy py3-ruff
 
 # Install Go from go.dev/dl/ – version extracted from backend/src/go.mod
 GO_VERSION=$(grep '^go ' /workspaces/srat/backend/src/go.mod | awk '{print $2}')
