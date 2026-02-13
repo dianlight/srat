@@ -83,6 +83,13 @@
         },
         {
             "commitMessageTopic": "{{groupName}} {{depName}}",
+            "groupName": "Custom Component",
+            "matchFileNames": [
+                "custom_components/**"
+            ]
+        },        
+        {
+            "commitMessageTopic": "{{groupName}} {{depName}}",
             "groupName": "CI/CD",
             "matchFileNames": [
                 ".guthub/workflows/**"

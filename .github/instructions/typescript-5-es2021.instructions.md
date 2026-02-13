@@ -28,7 +28,7 @@ applyTo: '**/\*.ts,**/\*.tsx'
 ## Project Organization
 
 - Follow the repository's folder and responsibility layout for new code.
-- Use kebab-case filenames (e.g., `user-session.ts`, `data-service.ts`) unless told otherwise.
+- Use kebab-case filenames (for example `user-session.ts`, `data-service.ts`) unless told otherwise.
 - Keep tests, types, and helpers near their implementation when it aids discovery.
 - Reuse or extend shared utilities before adding new ones.
 
@@ -40,7 +40,7 @@ applyTo: '**/\*.ts,**/\*.tsx'
 
 ## Formatting & Style
 
-- Run the repository's lint/format scripts (e.g., `npm run lint`) before submitting.
+- Run the repository's lint/format scripts (for example, `npm run lint`) before submitting.
 - Match the project's indentation, quote style, and trailing comma rules.
 - Keep functions focused; extract helpers when logic branches grow.
 - Favor immutable data and pure functions when practical.
@@ -50,7 +50,7 @@ applyTo: '**/\*.ts,**/\*.tsx'
 - Avoid `any` (implicit or explicit); prefer `unknown` plus narrowing.
 - Use discriminated unions for realtime events and state machines.
 - Centralize shared contracts instead of duplicating shapes.
-- Express intent with TypeScript utility types (e.g., `Readonly`, `Partial`, `Record`).
+- Express intent with TypeScript utility types (for example, `Readonly`, `Partial`, `Record`).
 
 ## Async, Events & Error Handling
 
@@ -65,7 +65,7 @@ applyTo: '**/\*.ts,**/\*.tsx'
 - Follow the repository's dependency injection or composition pattern; keep modules single-purpose.
 - Observe existing initialization and disposal sequences when wiring into lifecycles.
 - Keep transport, domain, and presentation layers decoupled with clear interfaces.
-- Supply lifecycle hooks (e.g., `initialize`, `dispose`) and targeted tests when adding services.
+- Supply lifecycle hooks (for example, `initialize`, `dispose`) and targeted tests when adding services.
 
 ## External Integrations
 

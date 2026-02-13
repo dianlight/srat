@@ -1,0 +1,232 @@
+openapi: 3.0.0
+info:
+  title: Home Assistant Supervisor - Discovery API
+  description: |-
+    API for managing discovery integration in Home Assistant Supervisor.
+    Add-ons can register services they provide so that integrations can auto-discover them.
+    Reference documentation: https://developers.home-assistant.io/docs/api/supervisor/endpoints#discovery
+  version: "2025.8.0"
+servers:
+  - url: http://{supervisor_host}
+    variables:
+      supervisor_host:
+        default: supervisor
+        description: The hostname or IP of the Supervisor.
+
+paths:
+  /discovery:
+    get:
+      summary: List all discovery services
+      description: Returns a list of all discovery service messages.
+      operationId: listDiscoveryServices
+      tags:
+        - Discovery
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Response with list of discovery services.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: string
+                    example: ok
+                  data:
+                    type: object
+                    properties:
+                      discovery:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/DiscoveryService'
+
+    post:
+      summary: Create a new discovery service
+      description: |-
+        Register a new discovery service. The add-on must list the service name in the 'discovery' 
+        array in its config.yaml, otherwise this call will fail with HTTP 403.
+        Returns a UUID that can be used to delete the discovery message later.
+      operationId: createDiscoveryService
+      tags:
+        - Discovery
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDiscoveryRequest'
+      responses:
+        '200':
+          description: Discovery service created successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: string
+                    example: ok
+                  data:
+                    type: object
+                    properties:
+                      uuid:
+                        type: string
+                        format: uuid
+                        description: UUID of the created discovery service.
+                        example: "550e8400-e29b-41d4-a716-446655440000"
+        '400':
+          description: Bad request - invalid input.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - add-on must list service in config.yaml discovery array.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /discovery/{uuid}:
+    get:
+      summary: Get discovery service by UUID
+      description: Returns details of a specific discovery service.
+      operationId: getDiscoveryService
+      tags:
+        - Discovery
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: uuid
+          in: path
+          required: true
+          description: UUID of the discovery service.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Discovery service details.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: string
+                    example: ok
+                  data:
+                    $ref: '#/components/schemas/DiscoveryService'
+        '404':
+          description: Discovery service not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Delete a discovery service
+      description: Removes a discovery service by its UUID.
+      operationId: deleteDiscoveryService
+      tags:
+        - Discovery
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: uuid
+          in: path
+          required: true
+          description: UUID of the discovery service to delete.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Discovery service deleted successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleOkResponse'
+        '404':
+          description: Discovery service not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: |-
+        Use the Supervisor token from the SUPERVISOR_TOKEN environment variable.
+        This is automatically available in Home Assistant add-ons.
+
+  schemas:
+    DiscoveryService:
+      type: object
+      description: A discovery service registered by an add-on.
+      properties:
+        addon:
+          type: string
+          description: Slug of the add-on that registered this service.
+          example: "local_srat"
+        service:
+          type: string
+          description: Name of the service being discovered.
+          example: "srat"
+        uuid:
+          type: string
+          format: uuid
+          description: Unique identifier for this discovery message.
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        config:
+          type: object
+          description: Configuration data for the service (free-form JSON).
+          additionalProperties: true
+          example:
+            host: "172.30.32.1"
+            port: 8099
+
+    CreateDiscoveryRequest:
+      type: object
+      required:
+        - service
+        - config
+      properties:
+        service:
+          type: string
+          description: |-
+            Name of the service to register. Must match an entry in the add-on's 
+            config.yaml 'discovery' array.
+          example: "srat"
+        config:
+          type: object
+          description: Configuration object with service-specific details.
+          additionalProperties: true
+          example:
+            host: "172.30.32.1"
+            port: 8099
+
+    SimpleOkResponse:
+      type: object
+      properties:
+        result:
+          type: string
+          example: ok
+
+    ErrorResponse:
+      type: object
+      properties:
+        result:
+          type: string
+          example: error
+        message:
+          type: string
+          description: Human-readable error message.
+          example: "Add-ons must list services they provide via discovery in their config!"
