@@ -7,7 +7,10 @@ import logging
 from typing import Any
 
 import aiohttp
-from homeassistant.components.hassio import HassioServiceInfo
+try:
+    from homeassistant.components.hassio.discovery import HassioServiceInfo
+except ImportError:  # pragma: no cover - fallback for older HA versions
+    from homeassistant.components.hassio import HassioServiceInfo
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import voluptuous as vol

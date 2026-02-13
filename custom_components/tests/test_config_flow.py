@@ -5,7 +5,10 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp
-from homeassistant.components.hassio import HassioServiceInfo
+try:
+    from homeassistant.components.hassio.discovery import HassioServiceInfo
+except ImportError:  # pragma: no cover - fallback for older HA versions
+    from homeassistant.components.hassio import HassioServiceInfo
 from homeassistant.config_entries import SOURCE_HASSIO, SOURCE_USER
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
