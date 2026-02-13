@@ -227,6 +227,7 @@ func prog(listener net.Listener) {
 			lc fx.Lifecycle,
 			//props_repo repository.PropertyRepositoryInterface,
 			_ service.SupervisorServiceInterface,
+			_ service.DiscoveryServiceInterface,
 			//			hdidle_service service.HDIdleServiceInterface,
 		) {
 			// Setting the actual LogLevel

@@ -105,6 +105,7 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 		service.NewHaWsService,
 		service.NewHardwareService,
 		service.NewHDIdleService,
+		service.NewDiscoveryService,
 		service.NewSettingService,
 		//repository.NewPropertyRepositoryRepository,
 		repository.NewIssueRepository,
