@@ -58,10 +58,12 @@ components:
           additionalProperties: true
           example: {"setting1": "value1", "setting2": 123}
         schema:
-          type: object
-          additionalProperties: true
-          nullable: true
-          example: {"setting1": "str", "setting2": "int"}
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+            nullable: true
+          example: [{"setting1": "str", "setting2": "int"}]
         arch:
           type: array
           items:
@@ -80,8 +82,8 @@ components:
           type: boolean
           example: true
         rating: # 1-6, 6 is gold
-          type: string
-          example: "6"
+          type: number
+          example: 6
         stage:
           type: string
           enum: [stable, experimental, deprecated]

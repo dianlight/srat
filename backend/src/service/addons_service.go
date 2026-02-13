@@ -141,7 +141,7 @@ func (s *AddonsService) GetInfo(ctx context.Context) (*addons.AddonInfoData, err
 
 	resp, err := s.addonsClient.GetSelfAddonInfoWithResponse(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get addon info")
+		return nil, errors.Wrapf(err, "failed to get addon info: %s", err.Error())
 	}
 
 	if resp.StatusCode() != http.StatusOK {

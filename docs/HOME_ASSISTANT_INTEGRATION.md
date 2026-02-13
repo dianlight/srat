@@ -3,15 +3,25 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [Entities Created](#entities-created)
-  - [Volume Status Entity](#volume-status-entity)
-  - [Disk Entities](#disk-entities)
-  - [Partition Entities](#partition-entities)
-  - [Samba Status Entity](#samba-status-entity)
-  - [Samba Process Status Entity](#samba-process-status-entity)
-- [How It Works](#how-it-works)
-- [Configuration](#configuration)
-- [Usage Example](#usage-example)
+- [Custom Component (HACS)](#custom-component-hacs)
+  - [Installation](#installation)
+    - [Via HACS (recommended)](#via-hacs-recommended)
+    - [Manual Installation](#manual-installation)
+  - [Configuration](#configuration)
+    - [Supervisor Autodiscovery](#supervisor-autodiscovery)
+    - [Manual Configuration](#manual-configuration)
+  - [Communication](#communication)
+  - [Entities](#entities)
+- [Built-in Entity Push (Add-on Mode)](#built-in-entity-push-add-on-mode)
+  - [Entities Created](#entities-created)
+    - [Volume Status Entity](#volume-status-entity)
+    - [Disk Entities](#disk-entities)
+    - [Partition Entities](#partition-entities)
+    - [Samba Status Entity](#samba-status-entity)
+    - [Samba Process Status Entity](#samba-process-status-entity)
+  - [How It Works](#how-it-works)
+  - [Configuration](#configuration-1)
+  - [Usage Example](#usage-example)
 - [Example Home Assistant Dashboard](#example-home-assistant-dashboard)
 - [Troubleshooting](#troubleshooting)
 - [Limitations](#limitations)
@@ -19,11 +29,81 @@
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-When SRAT has a configured Home Assistant Core API client, it will automatically create and update Home Assistant entities via the Core State API.
+SRAT provides two complementary Home Assistant integration methods:
 
-## Entities Created
+1. **Custom Component (HACS)** - A standalone integration installed via HACS or manually that communicates with SRAT over WebSocket.
+2. **Built-in Entity Push** - When running as an add-on, SRAT pushes entity state directly to Home Assistant via the Core State API.
 
-### Volume Status Entity
+## Custom Component (HACS)
+
+### Installation
+
+#### Via HACS (recommended)
+
+1. Open HACS in Home Assistant.
+2. Go to **Integrations** and click the three-dot menu → **Custom repositories**.
+3. Add `https://github.com/dianlight/srat` as an **Integration**.
+4. Search for "SRAT" and install it.
+5. Restart Home Assistant.
+
+#### Manual Installation
+
+1. Download `srat.zip` from the [latest release](https://github.com/dianlight/srat/releases).
+2. Extract the contents into `config/custom_components/srat/`.
+3. Restart Home Assistant.
+
+### Configuration
+
+After installation, add the integration via **Settings → Devices & Services → Add Integration → SRAT**.
+
+#### Supervisor Autodiscovery
+
+When running on a Home Assistant Supervisor host, the integration automatically discovers SRAT add-ons by checking the following known slugs:
+
+- `local_sambanas2` - from [dianlight/hassio-addons](https://github.com/dianlight/hassio-addons)
+- `sambanas2` - from [dianlight/hassio-addons-beta](https://github.com/dianlight/hassio-addons-beta)
+
+#### Manual Configuration
+
+For standalone SRAT installations, provide the host IP and port during setup. The integration validates the connection by calling the `/api/health` endpoint.
+
+### Communication
+
+The custom component communicates with the SRAT backend **exclusively via WebSocket** (`/ws` endpoint). No REST API polling is used. The connection uses the `X-Remote-User-Id` authentication header and supports automatic reconnection with configurable retry intervals.
+
+Two WebSocket events carry all sensor data:
+
+- **`volumes`** - disk and partition information (`[]*Disk`)
+- **`heartbeat`** - periodic health snapshot containing samba status, process status, disk health, network health, and addon stats (`HealthPing`)
+
+Until the first event of each type arrives, the corresponding sensors report as *unavailable*.
+
+For details on data not yet exposed as entities, see [MISSING_HA_INTEGRATION_DATA.md](MISSING_HA_INTEGRATION_DATA.md).
+
+### Entities
+
+The custom component exposes the following sensor entities:
+
+| Sensor                           | State                              | Key Attributes                                    |
+| -------------------------------- | ---------------------------------- | ------------------------------------------------- |
+| Samba Status                     | `connected` / `idle`               | version, session_count, tcon_count                |
+| Samba Process Status             | `running` / `partial` / `stopped`  | smbd_running, nmbd_running, wsdd2_running         |
+| Volume Status                    | disk count                         | total_disks, total_partitions, mounted_partitions |
+| Disk (per device)                | `connected`                        | model, vendor, serial, size_gb, connection_bus    |
+| Partition (per partition)        | `shared` / `mounted` / `unmounted` | device, name, size_gb, mount_path, share_count    |
+| Global Disk Health               | total IOPS                         | total_read_iops, total_write_iops                 |
+| Disk IO (per device)             | per-disk IOPS                      | read_iops, write_iops, read_bytes, write_bytes    |
+| Partition Health (per partition) | free bytes                         | total_bytes, used_bytes, used_percent             |
+
+---
+
+## Built-in Entity Push (Add-on Mode)
+
+When SRAT runs as a Home Assistant add-on with the `--addon` flag, it pushes entity state directly to Home Assistant via the Core State API without requiring the custom component.
+
+### Entities Created
+
+#### Volume Status Entity
 
 - **Entity ID**: `sensor.srat_volume_status`
 - **State**: Total number of disks
@@ -33,7 +113,7 @@ When SRAT has a configured Home Assistant Core API client, it will automatically
   - `mounted_partitions`: Number of partitions currently mounted
   - `shared_partitions`: Number of partitions with active Samba shares
 
-### Disk Entities
+#### Disk Entities
 
 For each detected disk, an entity is created:
 
@@ -51,7 +131,7 @@ For each detected disk, an entity is created:
   - `ejectable`: Whether the disk is ejectable
   - `partition_count`: Number of partitions on the disk
 
-### Partition Entities
+#### Partition Entities
 
 For each partition on each disk, an entity is created:
 
@@ -68,7 +148,7 @@ For each partition on each disk, an entity is created:
   - `mounted_count`: Number of active mount points
   - `share_count`: Number of active Samba shares
 
-### Samba Status Entity
+#### Samba Status Entity
 
 - **Entity ID**: `sensor.srat_samba_status`
 - **State**: "connected," "idle," or "unknown"
@@ -79,7 +159,7 @@ For each partition on each disk, an entity is created:
   - `session_count`: Number of active Samba sessions
   - `tcon_count`: Number of active tree connections
 
-### Samba Process Status Entity
+#### Samba Process Status Entity
 
 - **Entity ID**: `sensor.srat_samba_process_status`
 - **State**: "running," "partial," or "stopped"
@@ -95,7 +175,7 @@ For each partition on each disk, an entity is created:
   - `nmbd_cpu_percent`: nmbd CPU usage percentage (if running)
   - `nmbd_memory_percent`: nmbd memory usage percentage (if running)
 
-## How It Works
+### How It Works
 
 1. When SRAT starts in addon mode (`--addon` flag), it initializes the Home Assistant Core API client using the supervisor URL and token.
 
@@ -107,7 +187,7 @@ For each partition on each disk, an entity is created:
 
 5. Volume data broadcasts (when disks are mounted/unmounted) also trigger updates to disk, partition, and volume status entities.
 
-## Configuration
+### Configuration
 
 The integration is automatically enabled when:
 
@@ -117,7 +197,7 @@ The integration is automatically enabled when:
 
 The Core API client is automatically configured when running with the `--addon` flag, but can also be manually configured for standalone installations.
 
-## Usage Example
+### Usage Example
 
 When running SRAT as a Home Assistant addon:
 
