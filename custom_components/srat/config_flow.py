@@ -4,14 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import aiohttp
 
-try:
+if TYPE_CHECKING:
     from homeassistant.components.hassio.discovery import HassioServiceInfo
-except ImportError:  # pragma: no cover - fallback for older HA versions
-    from homeassistant.components.hassio import HassioServiceInfo
+
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import voluptuous as vol
