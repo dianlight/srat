@@ -129,6 +129,39 @@ Follow patch workflow (`make patch`, `backend/patches/*`). Never add direct `rep
 
 Strictly follow testing & import patterns from `/.github/copilot-instructions.md`. All user interactions must use `@testing-library/user-event`.
 
+### TypeScript 6.0/7.0 Compatibility
+
+The frontend uses **TypeScript 6.0 Beta / 7.0 Preview (tsgo)** with ES2022 target:
+
+- **Type checking**: Use `bun tsgo --noEmit` (not `tsc`)
+- **Compiler**: `@typescript/native-preview` (TypeScript 7.0 Go-based preview)
+- **Configuration**: See `frontend/tsconfig.json`
+- **Migration Guide**: See `frontend/TYPESCRIPT_MIGRATION.md`
+
+**Key rules when working with TypeScript code**:
+
+1. **Do NOT add deprecated compiler flags** to `tsconfig.json`:
+   - ❌ No `experimentalDecorators`
+   - ❌ No `useDefineForClassFields: false`
+   - ❌ No `target: es5` or ES2015 (minimum ES2022)
+
+2. **Use `override` keyword** for class methods that override parent methods:
+   ```typescript
+   class MyComponent extends Component {
+     public override render() { return <div />; }
+   }
+   ```
+
+3. **Follow strict type checking**:
+   - Avoid `any` type; use `unknown` with type guards
+   - Maintain `noImplicitOverride: true` setting
+   - See migration guide before enabling `noUncheckedIndexedAccess`
+
+4. **Resources**:
+   - Development guidelines: `.github/instructions/typescript-6-es2022.instructions.md`
+   - Migration status: `frontend/TYPESCRIPT_MIGRATION.md`
+   - Summary: `TYPESCRIPT_6_IMPLEMENTATION_SUMMARY.md`
+
 ## 11. Documentation
 
 Update `CHANGELOG.md` for user-visible changes. Provide rationale for breaking changes.

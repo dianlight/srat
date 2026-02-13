@@ -2,39 +2,37 @@
 
 ---
 
-description: '⚠️ DEPRECATED - See typescript-6-es2022.instructions.md instead'
-applyTo: ''
+description: 'Guidelines for TypeScript Development targeting TypeScript 6.0+ and ES2022 output'
+applyTo: '**/\*.ts,**/\*.tsx'
 
 ---
 
-# TypeScript Development (DEPRECATED)
+# TypeScript Development
 
-> ⚠️ **DEPRECATED**: This file is deprecated. The project has been upgraded to TypeScript 6.0/7.0.
->
-> **Please use**: `.github/instructions/typescript-6-es2022.instructions.md`
->
-> **Migration Guide**: `frontend/TYPESCRIPT_MIGRATION.md`
->
-> **Summary**: `TYPESCRIPT_6_IMPLEMENTATION_SUMMARY.md`
+> These instructions assume projects are built with TypeScript 6.0+ (or newer) compiling to an ES2022 JavaScript baseline. The project uses `@typescript/native-preview` (tsgo) which is the TypeScript 7.0 (Go-based) preview compiler.
 
----
+## TypeScript Version and Tooling
 
-## Deprecated Content (TypeScript 5.x / ES2021)
+- **TypeScript Version**: 6.0 Beta / 7.0 Preview (tsgo)
+- **Target**: ES2022 with modern ECMAScript features
+- **Type Checking**: Uses `bun tsgo --noEmit` command (not regular `tsc`)
+- **Migration Guide**: See `frontend/TYPESCRIPT_MIGRATION.md` for upgrade details
 
-This file previously contained guidelines for TypeScript 5.x targeting ES2021. The project now uses:
+### TypeScript 6.0/7.0 Key Changes
 
-- **TypeScript 6.0 Beta / 7.0 Preview (tsgo)**
-- **Target: ES2022**
-- **Removed deprecated flags**: `experimentalDecorators`, `useDefineForClassFields`
-- **Enabled strict flags**: `noImplicitOverride`
+**Removed Deprecated Flags** (Do not use):
+- ❌ `experimentalDecorators` - Use native decorators instead
+- ❌ `useDefineForClassFields: false` - ES2022+ requires default `true`
+- ❌ `target: es5` - ES2015+ is the minimum
+- ❌ Classic module resolution - Use `bundler` or `node`
 
-See the new instructions file for current guidelines.
+**Enabled Strict Flags**:
+- ✅ `noImplicitOverride: true` - Requires explicit `override` keyword on class methods
+- 🚧 `noUncheckedIndexedAccess: true` - TODO: See migration guide for implementation plan
 
----
-
-### Original Content Below (For Historical Reference Only)
-
-> These instructions assume projects are built with TypeScript 5.x (or newer) compiling to an ES2021 JavaScript baseline. Adjust guidance if your runtime requires older language targets or down-level transpilation.
+**Performance Benefits**:
+- 20-50% faster builds with `types: []` configuration
+- Better type inference and consistency
 
 ## Core Intent
 
@@ -45,10 +43,11 @@ See the new instructions file for current guidelines.
 
 ## General Guardrails
 
-- Target TypeScript 5.x / ES2021 and prefer native features over polyfills.
+- Target TypeScript 6.0+ / ES2022 and prefer native features over polyfills.
 - Use pure ES modules; never emit `require`, `module.exports`, or CommonJS helpers.
 - Rely on the project's build, lint, and test scripts unless asked otherwise.
 - Note design trade-offs when intent is not obvious.
+- Follow the TypeScript 6.0/7.0 migration guide when making config changes.
 
 ## Project Organization
 
@@ -76,6 +75,27 @@ See the new instructions file for current guidelines.
 - Use discriminated unions for realtime events and state machines.
 - Centralize shared contracts instead of duplicating shapes.
 - Express intent with TypeScript utility types (e.g., `Readonly`, `Partial`, `Record`).
+- With `noImplicitOverride` enabled, use `override` keyword for methods that override parent class methods.
+
+## Class Inheritance and Override Keyword
+
+With `noImplicitOverride: true` enabled, you **must** use the `override` keyword when overriding methods from a parent class:
+
+```typescript
+export class MyComponent extends Component<Props, State> {
+  // ✅ CORRECT - override keyword required
+  public override componentDidMount() {
+    // ...
+  }
+
+  public override render() {
+    return <div>...</div>;
+  }
+
+  // ❌ INCORRECT - missing override keyword
+  // public componentDidMount() { ... }
+}
+```
 
 ## Async, Events & Error Handling
 
@@ -128,6 +148,7 @@ See the new instructions file for current guidelines.
 - Expand integration or end-to-end suites when behavior crosses modules or platform APIs.
 - Run targeted test scripts for quick feedback before submitting.
 - Avoid brittle timing assertions; prefer fake timers or injected clocks.
+- Tests must follow patterns in `frontend/__tests__` directories.
 
 ## Performance & Reliability
 
@@ -141,3 +162,88 @@ See the new instructions file for current guidelines.
 - Add JSDoc to public APIs; include `@remarks` or `@example` when helpful.
 - Write comments that capture intent, and remove stale notes during refactors.
 - Update architecture or design docs when introducing significant patterns.
+
+## TypeScript Configuration Best Practices
+
+When modifying `tsconfig.json`:
+
+1. **Do not re-introduce deprecated flags**:
+   - No `experimentalDecorators`
+   - No `useDefineForClassFields: false`
+   - No `target: es5` or older
+   - No classic module resolution
+
+2. **Maintain strict type checking**:
+   - Keep `strict: true`
+   - Keep `noImplicitOverride: true`
+   - Consider enabling `noUncheckedIndexedAccess` after reviewing migration guide
+
+3. **Performance optimizations**:
+   - Keep `types: []` for faster builds
+   - Use `incremental: true` for caching
+   - Target ES2022 or newer for modern features
+
+4. **Reference the migration guide**:
+   - See `frontend/TYPESCRIPT_MIGRATION.md` for detailed upgrade information
+   - Check TODO items before enabling additional strict flags
+
+## Common Patterns for TypeScript 6.0+
+
+### Using Native Decorators (Not Experimental)
+
+```typescript
+// ✅ CORRECT - Native decorators (TypeScript 6.0+)
+function logged(target: any, context: ClassMethodDecoratorContext) {
+  return function(...args: any[]) {
+    console.log(`Calling ${String(context.name)}`);
+    return target.apply(this, args);
+  };
+}
+
+class MyClass {
+  @logged
+  myMethod() { }
+}
+```
+
+### Class Field Initialization (ES2022+ Semantics)
+
+```typescript
+// ✅ CORRECT - Class fields with ES2022+ semantics
+class MyComponent {
+  // Field initializers run after super() call
+  public state = { count: 0 };
+  
+  constructor() {
+    // super() called first (if extending)
+    // then field initializers run
+    // then constructor body runs
+  }
+}
+```
+
+### Indexed Access Safety (Future Enhancement)
+
+When `noUncheckedIndexedAccess` is enabled:
+
+```typescript
+// Future pattern (after migration)
+const items = ['a', 'b', 'c'];
+const item = items[0]; // Type: string | undefined
+
+// Use optional chaining or null checks
+const length = items[0]?.length;
+const value = items[0] ?? 'default';
+
+// Or explicit type guards
+if (items[0] !== undefined) {
+  const definiteValue = items[0]; // Type: string
+}
+```
+
+## Migration Resources
+
+- **Migration Guide**: `frontend/TYPESCRIPT_MIGRATION.md`
+- **Implementation Summary**: `TYPESCRIPT_6_IMPLEMENTATION_SUMMARY.md`
+- **Official Release Notes**: [TypeScript 6.0 Beta](https://devblogs.microsoft.com/typescript/announcing-typescript-6-0-beta/)
+- **TypeScript 7.0 Discussion**: [microsoft/typescript-go](https://github.com/microsoft/typescript-go/discussions/825)
