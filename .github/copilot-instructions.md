@@ -266,6 +266,44 @@ go mod vendor       # Vendor all dependencies (done automatically by make)
 - **Lint**: `cd frontend && bun run lint` (Biome formatter/linter)
 - **Test**: `cd frontend && bun test` (runs all tests with bun:test)
 
+#### TypeScript 6.0/7.0 Configuration
+
+The frontend uses **TypeScript 6.0 Beta / 7.0 Preview (tsgo)** for type checking:
+
+- **Type Checker**: Uses `bun tsgo --noEmit` (not regular `tsc`)
+- **Compiler**: `@typescript/native-preview` (TypeScript 7.0 Go-based preview)
+- **Target**: ES2022 with modern ECMAScript features
+- **Migration Guide**: See `frontend/TYPESCRIPT_MIGRATION.md` for upgrade details
+
+**Key Configuration Rules:**
+
+1. **Do NOT re-introduce deprecated flags**:
+   - ❌ No `experimentalDecorators`
+   - ❌ No `useDefineForClassFields: false`
+   - ❌ No `target: es5` or older targets
+   - ❌ No classic module resolution
+
+2. **Required Strict Flags** (already enabled):
+   - ✅ `noImplicitOverride: true` - Use `override` keyword for class methods
+   - ✅ `types: []` - For 20-50% faster builds
+   - 🚧 `noUncheckedIndexedAccess: true` - TODO (see migration guide)
+
+3. **When writing classes that extend parent classes**:
+   ```typescript
+   // ✅ CORRECT - override keyword required
+   export class ErrorBoundary extends Component<Props, State> {
+     public override componentDidCatch(error: Error, info: ErrorInfo) { }
+     public override render() { }
+   }
+   
+   // ❌ INCORRECT - missing override keyword
+   // public componentDidCatch(error: Error, info: ErrorInfo) { }
+   ```
+
+4. **Migration Resources**:
+   - `frontend/TYPESCRIPT_MIGRATION.md` - Complete migration guide
+   - `TYPESCRIPT_6_IMPLEMENTATION_SUMMARY.md` - Executive summary
+   - `.github/instructions/typescript-6-es2022.instructions.md` - Development guidelines
 ### Custom Component Development
 
 - **Install dev tools**: `cd custom_components && make install` (auto-detects Alpine; uses pip otherwise)
