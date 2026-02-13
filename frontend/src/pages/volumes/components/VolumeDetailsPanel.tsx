@@ -23,12 +23,11 @@ import {
 } from "@mui/material";
 import { filesize } from "filesize";
 import { useMemo, useState } from "react";
-import { useForm } from "react-hook-form-mui";
 import { PreviewDialog } from "../../../components/PreviewDialog";
-import { type LocationState, TabIDs } from "../../../store/locationState";
-import { type Disk, type Disk, type Partition, type Partition, type SharedResource, Time_machine_support, Time_machine_support, Usage } from "../../../store/sratApi";
-import { decodeEscapeSequence, decodeEscapeSequence } from "../utils";
+import { type Disk, type FilesystemState, type Partition, Time_machine_support, useGetApiFilesystemStateQuery } from "../../../store/sratApi";
+import { decodeEscapeSequence } from "../utils";
 import { HDIdleDiskSettings } from "./HDIdleDiskSettings";
+import { SmartStatusPanel } from "./SmartStatusPanel";
 
 interface VolumeDetailsPanelProps {
     disk?: Disk;

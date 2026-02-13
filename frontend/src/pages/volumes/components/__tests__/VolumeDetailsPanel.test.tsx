@@ -1,5 +1,5 @@
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import "../../../../../test/setup";
-import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 
 // Required localStorage shim for testing environment
 if (!(globalThis as any).localStorage) {
@@ -88,7 +88,7 @@ describe("VolumeDetailsPanel Component", () => {
                 },
             },
         };
-        const partitionId = mockPartition.id;
+        //const partitionId = mockPartition.id;
 
         rerenderWithProviders(
             React.createElement(VolumeDetailsPanel as any, {
