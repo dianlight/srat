@@ -5,6 +5,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp
+
 try:
     from homeassistant.components.hassio.discovery import HassioServiceInfo
 except ImportError:  # pragma: no cover - fallback for older HA versions

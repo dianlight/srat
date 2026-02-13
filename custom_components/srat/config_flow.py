@@ -7,6 +7,7 @@ import logging
 from typing import Any
 
 import aiohttp
+
 try:
     from homeassistant.components.hassio.discovery import HassioServiceInfo
 except ImportError:  # pragma: no cover - fallback for older HA versions
