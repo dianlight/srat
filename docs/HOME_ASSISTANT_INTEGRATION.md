@@ -60,16 +60,16 @@ For details on data not yet exposed as entities, see [MISSING_HA_INTEGRATION_DAT
 
 The custom component exposes the following sensor entities:
 
-| Sensor | State | Key Attributes |
-|--------|-------|----------------|
-| Samba Status | `connected` / `idle` | version, session_count, tcon_count |
-| Samba Process Status | `running` / `partial` / `stopped` | smbd_running, nmbd_running, wsdd2_running |
-| Volume Status | disk count | total_disks, total_partitions, mounted_partitions |
-| Disk (per device) | `connected` | model, vendor, serial, size_gb, connection_bus |
-| Partition (per partition) | `shared` / `mounted` / `unmounted` | device, name, size_gb, mount_path, share_count |
-| Global Disk Health | total IOPS | total_read_iops, total_write_iops |
-| Disk IO (per device) | per-disk IOPS | read_iops, write_iops, read_bytes, write_bytes |
-| Partition Health (per partition) | free bytes | total_bytes, used_bytes, used_percent |
+| Sensor                           | State                              | Key Attributes                                    |
+| -------------------------------- | ---------------------------------- | ------------------------------------------------- |
+| Samba Status                     | `connected` / `idle`               | version, session_count, tcon_count                |
+| Samba Process Status             | `running` / `partial` / `stopped`  | smbd_running, nmbd_running, wsdd2_running         |
+| Volume Status                    | disk count                         | total_disks, total_partitions, mounted_partitions |
+| Disk (per device)                | `connected`                        | model, vendor, serial, size_gb, connection_bus    |
+| Partition (per partition)        | `shared` / `mounted` / `unmounted` | device, name, size_gb, mount_path, share_count    |
+| Global Disk Health               | total IOPS                         | total_read_iops, total_write_iops                 |
+| Disk IO (per device)             | per-disk IOPS                      | read_iops, write_iops, read_bytes, write_bytes    |
+| Partition Health (per partition) | free bytes                         | total_bytes, used_bytes, used_percent             |
 
 ---
 

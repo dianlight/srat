@@ -3,7 +3,7 @@
 ---
 
 description: "Python coding conventions for the SRAT Home Assistant custom component"
-applyTo: "**/*.py"
+applyTo: "\**/*.py"
 
 ---
 
@@ -43,7 +43,7 @@ applyTo: "**/*.py"
 
 Every HA custom component lives in `custom_components/<domain>/` and requires:
 
-```
+```plaintext
 custom_components/srat/
 ├── __init__.py          # async_setup_entry / async_unload_entry
 ├── config_flow.py       # ConfigFlow subclass
@@ -176,7 +176,7 @@ make check         # Full check: format + lint + typecheck + test
 - Module-level docstrings explain the file's purpose
 - Class docstrings describe responsibility and data flow
 - Method docstrings use Google style with `Args:` / `Returns:` / `Raises:` sections when non-trivial
-- Use reStructuredText in docstrings for code references: `` ``event_type`` ``
+- Use reStructuredText in docstrings for code references: ` `event_type` `
 - In-line comments explain *why*, not *what*
 - Reference backend source files when relevant: `# See backend/src/api/ws.go`
 
@@ -200,15 +200,15 @@ make check         # Full check: format + lint + typecheck + test
 
 All custom component tooling runs via `custom_components/Makefile`:
 
-| Target       | Description                                      |
-| ------------ | ------------------------------------------------ |
-| `check`      | Run format-check + lint + typecheck + test        |
-| `lint`       | Run `ruff check`                                  |
-| `format`     | Run `ruff format` (auto-fix)                      |
-| `typecheck`  | Run `mypy`                                        |
-| `test`       | Run `pytest`                                      |
-| `test-ci`    | Run `pytest` with coverage (generates XML)        |
-| `fix`        | Run `ruff check --fix` + `ruff format`            |
-| `install`    | Install dev deps (auto-detects Alpine apk)        |
-| `install-pip`| Install dev deps via pip only                     |
-| `clean`      | Remove caches and build artifacts                 |
+| Target        | Description                                |
+| ------------- | ------------------------------------------ |
+| `check`       | Run format-check + lint + typecheck + test |
+| `lint`        | Run `ruff check`                           |
+| `format`      | Run `ruff format` (auto-fix)               |
+| `typecheck`   | Run `mypy`                                 |
+| `test`        | Run `pytest`                               |
+| `test-ci`     | Run `pytest` with coverage (generates XML) |
+| `fix`         | Run `ruff check --fix` + `ruff format`     |
+| `install`     | Install dev deps (auto-detects Alpine apk) |
+| `install-pip` | Install dev deps via pip only              |
+| `clean`       | Remove caches and build artifacts          |
