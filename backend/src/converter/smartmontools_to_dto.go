@@ -14,6 +14,7 @@ import (
 // goverter:default:update
 type SmartMonToolsToDto interface {
 	// goverter:map SmartSupport.Available Supported
+	// goverter:map SmartSupport.Enabled Enabled
 	// goverter:ignore DiskId
 	SmartMonToolsSmartInfoToSmartInfo(source *smartmontools.SMARTInfo) (target *dto.SmartInfo, err error)
 

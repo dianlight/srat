@@ -21,6 +21,13 @@ func (c *SmartMonToolsToDtoImpl) SmartMonToolsSmartInfoToSmartInfo(source *smart
 		if pBool != nil {
 			dtoSmartInfo.Supported = *pBool
 		}
+		var pBool2 *bool
+		if (*source).SmartSupport != nil {
+			pBool2 = &(*source).SmartSupport.Enabled
+		}
+		if pBool2 != nil {
+			dtoSmartInfo.Enabled = *pBool2
+		}
 		dtoSmartInfo.DiskType = (*source).DiskType
 		dtoSmartInfo.ModelFamily = (*source).ModelFamily
 		dtoSmartInfo.ModelName = (*source).ModelName
