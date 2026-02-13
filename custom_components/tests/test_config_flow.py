@@ -117,9 +117,9 @@ async def test_hassio_discovery(
 ) -> None:
     """Test Supervisor add-on auto-discovery."""
     discovery_info = HassioServiceInfo(
-        config={"host": "core-local-sambanas2", "port": 8099},
+        config={"host": "core-1a32f091-sambanas2", "port": 8099},
         name="SambaNas2",
-        slug="local_sambanas2",
+        slug="1a32f091_sambanas2",
         uuid="test-uuid-1234",
     )
 
@@ -139,7 +139,7 @@ async def test_hassio_discovery(
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["title"] == "SRAT"
-    assert result["data"]["host"] == "core-local-sambanas2"
+    assert result["data"]["host"] == "core-1a32f091-sambanas2"
     assert result["data"]["port"] == 8099
 
 
