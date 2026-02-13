@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/events"
 	"github.com/dianlight/tlog"
 	"github.com/prometheus/procfs/blockdevice"
 	"gitlab.com/tozd/go/errors"
@@ -22,6 +23,7 @@ import (
 // DiskStatsService is a service for collecting disk I/O statistics.
 type DiskStatsService interface {
 	GetDiskStats() (*dto.DiskHealth, errors.E)
+	InvalidateSmartCache(diskId string) // Invalidates SMART enabled cache for a disk (empty string = all)
 }
 
 type diskStatsService struct {
@@ -36,10 +38,11 @@ type diskStatsService struct {
 	hdidleService     HDIdleServiceInterface
 	readFile          func(string) ([]byte, error)
 	sysFsBasePath     string
+	smartEnabledCache map[string]bool // smartEnabledCache tracks SMART enabled/disabled state per disk to avoid unnecessary disk access
 }
 
 // NewDiskStatsService creates a new DiskStatsService.
-func NewDiskStatsService(lc fx.Lifecycle, VolumeService VolumeServiceInterface, Ctx context.Context, SmartService SmartServiceInterface, HDIdleService HDIdleServiceInterface) DiskStatsService {
+func NewDiskStatsService(lc fx.Lifecycle, VolumeService VolumeServiceInterface, Ctx context.Context, SmartService SmartServiceInterface, HDIdleService HDIdleServiceInterface, EventBus events.EventBusInterface) DiskStatsService {
 	var fs blockdevice.FS
 	var err error
 
@@ -52,17 +55,28 @@ func NewDiskStatsService(lc fx.Lifecycle, VolumeService VolumeServiceInterface, 
 	}
 
 	ds := &diskStatsService{
-		volumeService:  VolumeService,
-		blockdevice:    &fs,
-		ctx:            Ctx,
-		lastUpdateTime: time.Now(),
-		updateMutex:    &sync.Mutex{},
-		lastStats:      make(map[string]*blockdevice.IOStats),
-		smartService:   SmartService,
-		hdidleService:  HDIdleService,
-		readFile:       os.ReadFile,
-		sysFsBasePath:  "/sys/fs",
+		volumeService:     VolumeService,
+		blockdevice:       &fs,
+		ctx:               Ctx,
+		lastUpdateTime:    time.Now(),
+		updateMutex:       &sync.Mutex{},
+		lastStats:         make(map[string]*blockdevice.IOStats),
+		smartService:      SmartService,
+		hdidleService:     HDIdleService,
+		readFile:          os.ReadFile,
+		sysFsBasePath:     "/sys/fs",
+		smartEnabledCache: make(map[string]bool),
 	}
+
+	// Subscribe to SMART events to invalidate cache when SMART is enabled/disabled
+	unsubscribeSmart := EventBus.OnSmart(func(ctx context.Context, event events.SmartEvent) errors.E {
+		if event.SmartInfo.DiskId != "" {
+			tlog.DebugContext(ctx, "SMART event received, invalidating cache for disk", "disk", event.SmartInfo.DiskId, "event_type", event.Type)
+			ds.InvalidateSmartCache(event.SmartInfo.DiskId)
+		}
+		return nil
+	})
+
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			err := ds.updateDiskStats()
@@ -71,6 +85,12 @@ func NewDiskStatsService(lc fx.Lifecycle, VolumeService VolumeServiceInterface, 
 			}
 			wg := Ctx.Value("wg").(*sync.WaitGroup)
 			wg.Go(func() { ds.run() })
+			return nil
+		},
+		OnStop: func(ctx context.Context) error {
+			if unsubscribeSmart != nil {
+				unsubscribeSmart()
+			}
 			return nil
 		},
 	})
@@ -166,11 +186,14 @@ func (s *diskStatsService) updateDiskStats() errors.E {
 				s.lastStats[*disk.Id] = &stats
 
 				// --- Smart data population ---
-				if disk.DevicePath != nil {
+				// Only query SMART data if SMART is enabled to avoid unnecessary disk access
+				if disk.DevicePath != nil && s.isSmartEnabled(*disk.Id) {
 					smartStatus, err := s.smartService.GetSmartStatus(s.ctx, *disk.Id)
 					if err != nil && !errors.Is(err, dto.ErrorSMARTNotSupported) {
 						slog.WarnContext(s.ctx, "Error getting SMART status", "disk", *disk.Id, "err", err)
 					} else if smartStatus != nil {
+						// Update cache with current enabled state
+						s.smartEnabledCache[*disk.Id] = smartStatus.Enabled
 						s.currentDiskHealth.PerDiskIO[len(s.currentDiskHealth.PerDiskIO)-1].SmartData = smartStatus
 					}
 				}
@@ -269,21 +292,24 @@ func (s *diskStatsService) populatePerDiskInfo(disk *dto.Disk) {
 	if disk.DevicePath != nil {
 		diskInfo.DevicePath = *disk.DevicePath
 
-		// Get SMART info (static capabilities)
-		smartInfo, err := s.smartService.GetSmartInfo(s.ctx, *disk.Id)
-		if err != nil && !errors.Is(err, dto.ErrorSMARTNotSupported) {
-			tlog.WarnContext(s.ctx, "Error getting SMART info", "disk", *disk.Id, "err", err)
-		} else if smartInfo != nil {
-			diskInfo.SmartInfo = smartInfo
-		}
-
-		if diskInfo.SmartInfo != nil && diskInfo.SmartInfo.Supported {
-			// Get SMART health status
-			smartHealth, err := s.smartService.GetHealthStatus(s.ctx, *disk.Id)
+		// Only query SMART data if SMART is enabled to avoid unnecessary disk access
+		if s.isSmartEnabled(*disk.Id) {
+			// Get SMART info (static capabilities)
+			smartInfo, err := s.smartService.GetSmartInfo(s.ctx, *disk.Id)
 			if err != nil && !errors.Is(err, dto.ErrorSMARTNotSupported) {
-				tlog.WarnContext(s.ctx, "Error getting SMART health status", "disk", *disk.Id, "err", err)
-			} else if smartHealth != nil {
-				diskInfo.SmartHealth = smartHealth
+				tlog.WarnContext(s.ctx, "Error getting SMART info", "disk", *disk.Id, "err", err)
+			} else if smartInfo != nil {
+				diskInfo.SmartInfo = smartInfo
+			}
+
+			if diskInfo.SmartInfo != nil && diskInfo.SmartInfo.Supported {
+				// Get SMART health status
+				smartHealth, err := s.smartService.GetHealthStatus(s.ctx, *disk.Id)
+				if err != nil && !errors.Is(err, dto.ErrorSMARTNotSupported) {
+					tlog.WarnContext(s.ctx, "Error getting SMART health status", "disk", *disk.Id, "err", err)
+				} else if smartHealth != nil {
+					diskInfo.SmartHealth = smartHealth
+				}
 			}
 		}
 
@@ -517,6 +543,59 @@ func normalizeDeviceName(part *dto.Partition) string {
 		return sanitizeDeviceName(filepath.Base(*part.DevicePath))
 	}
 	return ""
+}
+
+// isSmartEnabled checks if SMART is enabled for a disk.
+// It uses a cache to avoid querying the disk unnecessarily.
+// On first check or cache miss, it queries SMART info once and caches the result.
+func (s *diskStatsService) isSmartEnabled(diskId string) bool {
+	// Check cache first
+	if enabled, exists := s.smartEnabledCache[diskId]; exists {
+		return enabled
+	}
+
+	// Cache miss - query once to populate cache
+	// Use a lightweight check that still accesses the disk but only once
+	smartInfo, err := s.smartService.GetSmartInfo(s.ctx, diskId)
+	if err != nil {
+		// SMART not supported or error - cache as disabled to avoid future queries
+		s.smartEnabledCache[diskId] = false
+		return false
+	}
+
+	if smartInfo == nil || !smartInfo.Supported {
+		// SMART not supported - cache as disabled
+		s.smartEnabledCache[diskId] = false
+		return false
+	}
+
+	// SMART is supported, now check if it's enabled
+	smartStatus, err := s.smartService.GetSmartStatus(s.ctx, diskId)
+	if err != nil {
+		// Error getting status - assume disabled to avoid future queries
+		s.smartEnabledCache[diskId] = false
+		return false
+	}
+
+	// Cache the enabled state
+	enabled := smartStatus != nil && smartStatus.Enabled
+	s.smartEnabledCache[diskId] = enabled
+	return enabled
+}
+
+// InvalidateSmartCache clears the SMART enabled cache for a specific disk or all disks.
+// This should be called when SMART is enabled or disabled via the API.
+func (s *diskStatsService) InvalidateSmartCache(diskId string) {
+	s.updateMutex.Lock()
+	defer s.updateMutex.Unlock()
+
+	if diskId == "" {
+		// Clear entire cache
+		s.smartEnabledCache = make(map[string]bool)
+	} else {
+		// Clear specific disk
+		delete(s.smartEnabledCache, diskId)
+	}
 }
 
 func sanitizeDeviceName(name string) string {
