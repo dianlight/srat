@@ -17,7 +17,7 @@ SRAT is a Samba administration tool with a Go REST API backend and React fronten
 
 - **Backend**: Clean architecture with API handlers → Services → Generated GORM helpers → Database (GORM/SQLite). Persistence now happens through the generated DBOM helpers rather than a handwritten repository tier.
 - **Frontend**: React + TypeScript + Material-UI + RTK Query for API state management
-- **Custom Component**: Python 3.12+ Home Assistant integration at `custom_components/srat/` — HACS-compatible, WebSocket-only data channel, config flow with Supervisor autodiscovery
+- **Custom Component**: Python 3.12+ Home Assistant integration at `custom_components/srat/` HACS-compatible, WebSocket-only data channel, config flow with Supervisor autodiscovery
 - **Communication**: REST API with Server-Sent Events (SSE) or WebSockets for real-time updates
 - **Database**: SQLite with GORM ORM, embedded in production binary
 - **Dependency Injection**: Uber FX throughout backend for service wiring

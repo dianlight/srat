@@ -13,7 +13,7 @@ applyTo: "\**/*.py"
 
 - **Target**: Python 3.12+ (as required by Home Assistant 2025.x)
 - **Always** start every `.py` file with `from __future__ import annotations` for PEP 604 union syntax (`X | None`) and forward references
-- Use modern type syntax: `list[str]`, `dict[str, Any]`, `tuple[int, ...]` — not `List`, `Dict`, `Tuple` from `typing`
+- Use modern type syntax: `list[str]`, `dict[str, Any]`, `tuple[int, ...]` - not `List`, `Dict`, `Tuple` from `typing`
 - Import `Any`, `Callable`, etc. from `typing`; import `Generator`, `Callable`, `Sequence` from `collections.abc`
 - Use `type` statement for type aliases (Python 3.12+): `type SRATConfigEntry = ConfigEntry`
 

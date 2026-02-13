@@ -3,12 +3,36 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+- [Custom Component (HACS)](#custom-component-hacs)
+  - [Installation](#installation)
+    - [Via HACS (recommended)](#via-hacs-recommended)
+    - [Manual Installation](#manual-installation)
+  - [Configuration](#configuration)
+    - [Supervisor Autodiscovery](#supervisor-autodiscovery)
+    - [Manual Configuration](#manual-configuration)
+  - [Communication](#communication)
+  - [Entities](#entities)
+- [Built-in Entity Push (Add-on Mode)](#built-in-entity-push-add-on-mode)
+  - [Entities Created](#entities-created)
+    - [Volume Status Entity](#volume-status-entity)
+    - [Disk Entities](#disk-entities)
+    - [Partition Entities](#partition-entities)
+    - [Samba Status Entity](#samba-status-entity)
+    - [Samba Process Status Entity](#samba-process-status-entity)
+  - [How It Works](#how-it-works)
+  - [Configuration](#configuration-1)
+  - [Usage Example](#usage-example)
+- [Example Home Assistant Dashboard](#example-home-assistant-dashboard)
+- [Troubleshooting](#troubleshooting)
+- [Limitations](#limitations)
+- [Entity IDs](#entity-ids)
+
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 SRAT provides two complementary Home Assistant integration methods:
 
-1. **Custom Component (HACS)** – A standalone integration installed via HACS or manually that communicates with SRAT over WebSocket.
-2. **Built-in Entity Push** – When running as an add-on, SRAT pushes entity state directly to Home Assistant via the Core State API.
+1. **Custom Component (HACS)** - A standalone integration installed via HACS or manually that communicates with SRAT over WebSocket.
+2. **Built-in Entity Push** - When running as an add-on, SRAT pushes entity state directly to Home Assistant via the Core State API.
 
 ## Custom Component (HACS)
 
@@ -36,8 +60,8 @@ After installation, add the integration via **Settings → Devices & Services �
 
 When running on a Home Assistant Supervisor host, the integration automatically discovers SRAT add-ons by checking the following known slugs:
 
-- `local_sambanas2` – from [dianlight/hassio-addons](https://github.com/dianlight/hassio-addons)
-- `sambanas2` – from [dianlight/hassio-addons-beta](https://github.com/dianlight/hassio-addons-beta)
+- `local_sambanas2` - from [dianlight/hassio-addons](https://github.com/dianlight/hassio-addons)
+- `sambanas2` - from [dianlight/hassio-addons-beta](https://github.com/dianlight/hassio-addons-beta)
 
 #### Manual Configuration
 
@@ -49,8 +73,8 @@ The custom component communicates with the SRAT backend **exclusively via WebSoc
 
 Two WebSocket events carry all sensor data:
 
-- **`volumes`** — disk and partition information (`[]*Disk`)
-- **`heartbeat`** — periodic health snapshot containing samba status, process status, disk health, network health, and addon stats (`HealthPing`)
+- **`volumes`** - disk and partition information (`[]*Disk`)
+- **`heartbeat`** - periodic health snapshot containing samba status, process status, disk health, network health, and addon stats (`HealthPing`)
 
 Until the first event of each type arrives, the corresponding sensors report as *unavailable*.
 

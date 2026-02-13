@@ -1,9 +1,6 @@
+<!-- DOCTOC SKIP -->
+
 # Missing Home Assistant Integration Data
-
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 This document tracks data that the SRAT custom component currently lacks
 or cannot expose as Home Assistant entities because the backend WebSocket
@@ -78,9 +75,9 @@ exposed** as Home Assistant entities or attributes.
 
 ### From `smart_test_status` → `SmartTestStatus`
 
-| Field              | Type              | Potential Entity | Notes                                    |
-| ------------------ | ----------------- | ---------------- | ---------------------------------------- |
-| SMART test results | `SmartTestStatus` | Sensor per disk  | S.M.A.R.T. self-test status and progress |
+| Field              | Type              | Potential Entity | Notes                               |
+| ------------------ | ----------------- | ---------------- | ----------------------------------- |
+| SMART test results | `SmartTestStatus` | Sensor per disk  | SMART self-test status and progress |
 
 ### From `updating` → `UpdateProgress`
 
@@ -96,9 +93,9 @@ exposed** as Home Assistant entities or attributes.
 
 ## Implementation Priority
 
-1. **High** – `shares` (SharedResource entities), `update_available`, `addon_stats`
-2. **Medium** – `alive`/`uptime` binary sensor, `network_health`, `smart_test_status`
-3. **Low** – `hello` metadata (version, machine_id), `dirty_data_tracker`, `error` events
+1. **High** - `shares` (SharedResource entities), `update_available`, `addon_stats`
+2. **Medium** - `alive`/`uptime` binary sensor, `network_health`, `smart_test_status`
+3. **Low** - `hello` metadata (version, machine_id), `dirty_data_tracker`, `error` events
 
 ## How to Add a New Sensor
 
