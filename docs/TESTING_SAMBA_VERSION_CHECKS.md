@@ -358,7 +358,7 @@ journalctl -u srat -f | grep -i "template\|version"
 ### Check Health Endpoint
 
 ```bash
-curl http://localhost:8000/health | jq '.samba_version, .samba_version_sufficient'
+curl http://localhost:8000/api/health | jq '.samba_version, .samba_version_sufficient'
 ```
 
 ### Manual Version Parsing

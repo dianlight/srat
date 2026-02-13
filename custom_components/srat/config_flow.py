@@ -124,7 +124,7 @@ class SRATConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore[call-arg]
         session = async_get_clientsession(self.hass)
         try:
             async with asyncio.timeout(10):
-                async with session.get(f"http://{host}:{port}/health") as resp:
+                async with session.get(f"http://{host}:{port}/api/health") as resp:
                     if resp.status != 200:
                         return "cannot_connect"
         except (aiohttp.ClientError, TimeoutError):

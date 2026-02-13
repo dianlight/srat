@@ -268,10 +268,10 @@ Example:
 
 ### Check Detected Samba Version
 
-The `/health` API endpoint includes version information:
+The `/api/health` API endpoint includes version information:
 
 ```bash
-curl http://localhost:8000/health
+curl http://localhost:8000/api/health
 ```
 
 Response:

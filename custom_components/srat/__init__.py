@@ -46,7 +46,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: SRATConfigEntry) -> bool
     # Verify the SRAT API is reachable
     try:
         async with asyncio.timeout(10):
-            async with session.get(f"http://{host}:{port}/health") as resp:
+            async with session.get(f"http://{host}:{port}/api/health") as resp:
                 if resp.status != 200:
                     raise ConfigEntryNotReady(f"SRAT API returned status {resp.status}")
     except (aiohttp.ClientError, TimeoutError) as err:

@@ -28,7 +28,7 @@ def mock_config_entry_data() -> dict[str, Any]:
 
 @pytest.fixture
 def mock_health_response() -> dict[str, Any]:
-    """Return a mock /health response."""
+    """Return a mock /api/health response."""
     return {"status": "ok"}
 
 

@@ -41,7 +41,7 @@ When running on a Home Assistant Supervisor host, the integration automatically 
 
 #### Manual Configuration
 
-For standalone SRAT installations, provide the host IP and port during setup. The integration validates the connection by calling the `/health` endpoint.
+For standalone SRAT installations, provide the host IP and port during setup. The integration validates the connection by calling the `/api/health` endpoint.
 
 ### Communication
 
