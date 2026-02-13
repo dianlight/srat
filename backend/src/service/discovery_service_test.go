@@ -51,7 +51,8 @@ func (suite *DiscoveryServiceTestSuite) TestRegisterDiscoverySuccess() {
 		suite.Equal("application/json", r.Header.Get("Content-Type"))
 
 		var body map[string]any
-		json.NewDecoder(r.Body).Decode(&body)
+		err := json.NewDecoder(r.Body).Decode(&body)
+		suite.NoError(err)
 		suite.Equal("srat", body["service"])
 		config := body["config"].(map[string]any)
 		suite.Equal("test-addon-host", config["host"])
@@ -177,7 +178,8 @@ func (suite *DiscoveryServiceTestSuite) TestRegisterDiscoverySkipsWithNoToken() 
 func (suite *DiscoveryServiceTestSuite) TestRegisterDiscoveryFallsBackToAddonIP() {
 	suite.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var body map[string]any
-		json.NewDecoder(r.Body).Decode(&body)
+		err := json.NewDecoder(r.Body).Decode(&body)
+		suite.NoError(err)
 		config := body["config"].(map[string]any)
 		suite.Equal("172.30.32.1", config["host"]) // Falls back to AddonIpAddress
 
