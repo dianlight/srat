@@ -1,12 +1,11 @@
 import { Box, Grid, Stack } from "@mui/material";
 import { useState } from "react";
 import { useGithubNews } from "../../hooks/githubNewsHook";
+import { TabIDs } from "../../store/locationState";
+import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
 import { DashboardActions } from "./DashboardActions";
 import { DashboardIntro } from "./DashboardIntro";
 import { DashboardMetrics } from "./DashboardMetrics";
-import { TabIDs } from "../../store/locationState";
-import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
-import { set } from "react-hook-form";
 
 export function Dashboard() {
 	const { news, isLoading: isLoadingNews, error: errorNews } = useGithubNews();
@@ -16,7 +15,7 @@ export function Dashboard() {
 		setIsIntroCollapsed((prev) => !prev);
 	};
 
-	TourEvents.on(TourEventTypes.DASHBOARD_STEP_2, (elem) => {
+	TourEvents.on(TourEventTypes.DASHBOARD_STEP_2, (_elem) => {
 		setIsIntroCollapsed(false);
 	});
 

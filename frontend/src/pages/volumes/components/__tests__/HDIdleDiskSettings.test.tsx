@@ -1,5 +1,5 @@
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import "../../../../../test/setup.ts";
-import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 
 // Required localStorage shim for testing environment
 if (!(globalThis as any).localStorage) {
@@ -38,7 +38,8 @@ describe("HDIdleDiskSettings Component", () => {
         // Override fetch to provide expected API responses for RTK Query hooks
         originalFetch = (globalThis as any).fetch;
 
-        (globalThis as any).fetch = async (url: string, init?: any) => {
+        (globalThis as any).fetch = async (url: string, init?: RequestInit) => {
+            void init;
             let body: any = {};
             if (typeof url === "string" && url.includes("/api/settings")) {
                 body = { hdidle_enabled: true };
@@ -64,7 +65,7 @@ describe("HDIdleDiskSettings Component", () => {
 
     it("renders accordion with disk settings title", async () => {
         const React = await import("react");
-        const { render, screen, waitFor } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { createTestStore } = await import("../../../../../test/setup");
         const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
@@ -97,7 +98,6 @@ describe("HDIdleDiskSettings Component", () => {
 
         const store = await createTestStore();
         const user = userEvent.setup();
-
         render(
             React.createElement(Provider, {
                 store,
@@ -136,7 +136,6 @@ describe("HDIdleDiskSettings Component", () => {
 
         const store = await createTestStore();
         const user = userEvent.setup();
-
         render(
             React.createElement(Provider, {
                 store,
@@ -165,7 +164,6 @@ describe("HDIdleDiskSettings Component", () => {
         const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { createTestStore } = await import("../../../../../test/setup");
-        const userEvent = (await import("@testing-library/user-event")).default;
         const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
 
         const mockDisk = createMockDisk({
@@ -176,7 +174,6 @@ describe("HDIdleDiskSettings Component", () => {
         });
 
         const store = await createTestStore();
-        const user = userEvent.setup();
 
         render(
             React.createElement(Provider, {
@@ -194,13 +191,11 @@ describe("HDIdleDiskSettings Component", () => {
         const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { createTestStore } = await import("../../../../../test/setup");
-        const userEvent = (await import("@testing-library/user-event")).default;
         const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
 
         const mockDisk = createMockDisk();
 
         const store = await createTestStore();
-        const user = userEvent.setup();
 
         render(
             React.createElement(Provider, {
@@ -273,7 +268,7 @@ describe("HDIdleDiskSettings Component", () => {
         );
 
         const expandBtn = await screen.findByRole("button", { name: /show more/i });
-        
+
         // Initially, expand button should be disabled (default is Enabled.Yes)
         expect((expandBtn as HTMLButtonElement).disabled).toBe(true);
 

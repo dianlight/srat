@@ -1,5 +1,5 @@
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import "../../../../../test/setup";
-import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
 
 describe("ShareEditForm component", () => {
     beforeEach(() => {
@@ -158,7 +158,7 @@ describe("ShareEditForm component", () => {
         const { overrides } = setupCommonOverrides();
 
         const React = await import("react");
-        const { render, screen, within } = await import("@testing-library/react");
+        const { render, within } = await import("@testing-library/react");
         const { Usage } = await import("../../../../store/sratApi");
         const { ShareEditForm } = await import("../ShareEditForm");
 

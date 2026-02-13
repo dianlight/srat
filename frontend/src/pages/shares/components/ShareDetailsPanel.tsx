@@ -1,10 +1,10 @@
 import BackupIcon from "@mui/icons-material/Backup";
 import EditIcon from "@mui/icons-material/Edit";
-import VisibilityIcon from "@mui/icons-material/Visibility";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import FolderSpecialIcon from "@mui/icons-material/FolderSpecial";
 import StorageIcon from "@mui/icons-material/Storage";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 import {
     Box,
     Card,
@@ -12,18 +12,17 @@ import {
     CardHeader,
     Chip,
     Collapse,
-    Divider,
     Grid,
     IconButton,
     Stack,
     Tooltip,
-    Typography,
+    Typography
 } from "@mui/material";
 import { filesize } from "filesize";
 import { useState } from "react";
+import { PreviewDialog } from "../../../components/PreviewDialog";
 import { type SharedResource, Time_machine_support, Usage } from "../../../store/sratApi";
 import type { ShareEditProps } from "../types";
-import { PreviewDialog } from "../../../components/PreviewDialog";
 
 interface ShareDetailsPanelProps {
     share?: SharedResource;
@@ -39,8 +38,6 @@ interface ShareDetailsPanelProps {
 export function ShareDetailsPanel({
     share,
     shareKey,
-    onEdit,
-    onDelete,
     onEditClick,
     onCancelEdit,
     isEditing = false,

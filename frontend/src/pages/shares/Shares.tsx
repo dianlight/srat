@@ -1,17 +1,15 @@
 import AddIcon from "@mui/icons-material/Add";
 import {
 	Box,
-	Button,
 	Grid,
 	IconButton,
 	Paper,
 	Stack,
 	Tooltip,
-	Typography,
+	Typography
 } from "@mui/material";
 import { useConfirm } from "material-ui-confirm";
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { InView } from "react-intersection-observer";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { toast } from "react-toastify";
 import { PreviewDialog } from "../../components/PreviewDialog";
@@ -27,22 +25,21 @@ import {
 	usePutApiShareByShareNameDisableMutation,
 	usePutApiShareByShareNameMutation,
 } from "../../store/sratApi";
+import { useGetServerEventsQuery } from "../../store/sseApi";
 import { useAppDispatch } from "../../store/store";
-import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
+import { ShareDetailsPanel, ShareEditForm, SharesTreeView } from "./components";
 import { ShareEditDialog } from "./ShareEditDialog";
 import type { ShareEditProps } from "./types";
 import { getPathBaseName, sanitizeAndUppercaseShareName } from "./utils";
-import { useGetServerEventsQuery } from "../../store/sseApi";
-import { SharesTreeView, ShareDetailsPanel, ShareEditForm } from "./components";
 
 
 export function Shares() {
-	const { data: evdata, isLoading: is_evLoading } = useGetServerEventsQuery();
+	const { data: evdata } = useGetServerEventsQuery();
 	const dispatch = useAppDispatch();
 	const location = useLocation();
 	const navigate = useNavigate();
-	const { shares, isLoading, error } = useShare();
-	const { disks: volumes, isLoading: vlLoading, error: vlError } = useVolume();
+	const { shares, isLoading } = useShare();
+	const { disks: volumes, isLoading: vlLoading } = useVolume();
 	const [selectedShareKey, setSelectedShareKey] = useState<string | undefined>(() => localStorage.getItem("shares.selectedShareKey") || undefined);
 	const [selectedShare, setSelectedShare] = useState<SharedResource | null>(null);
 	const [expandedGroups, setExpandedGroups] = useState<string[]>(() => {
@@ -126,7 +123,7 @@ export function Shares() {
 		const shareEntry = Object.entries(shares).find(([key, _]) => key === selectedShareKey);
 
 		if (shareEntry) {
-			const [key, shareData] = shareEntry;
+			const [_key, shareData] = shareEntry;
 			setSelectedShare(shareData);
 
 			// Ensure the containing group is expanded
@@ -267,7 +264,7 @@ export function Shares() {
 				});
 			return;
 		}
-			
+
 		if (!data.name || !data.mount_point_data?.path) {
 			dispatch(addMessage("Unable to save share!"));
 			return;
@@ -395,8 +392,8 @@ export function Shares() {
 						<SharesTreeView
 							shares={shares}
 							selectedShareKey={selectedShareKey}
-							onShareSelect={handleShareSelect} 
-							onViewVolumeSettings={handleViewVolumeSettings} 
+							onShareSelect={handleShareSelect}
+							onViewVolumeSettings={handleViewVolumeSettings}
 							protectedMode={evdata?.hello?.protected_mode === true}
 							readOnly={evdata?.hello?.read_only === true}
 							expandedItems={expandedGroups}

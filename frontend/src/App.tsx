@@ -1,15 +1,14 @@
 import { Backdrop, CircularProgress } from "@mui/material";
 import Container from "@mui/material/Container";
 import { useEffect, useRef, useState } from "react";
+import BaseConfigModal from "./components/BaseConfigModal";
 import { Footer } from "./components/Footer";
+import GlobalEventMonitor from "./components/GlobalEventTracker";
 import { NavBar } from "./components/NavBar";
 import TelemetryModal from "./components/TelemetryModal";
-import BaseConfigModal from "./components/BaseConfigModal";
-import { useTelemetryModal } from "./hooks/useTelemetryModal";
 import { useBaseConfigModal } from "./hooks/useBaseConfigModal";
+import { useTelemetryModal } from "./hooks/useTelemetryModal";
 import { useGetServerEventsQuery } from "./store/sseApi";
-import { useRollbarTelemetry } from "./hooks/useRollbarTelemetry";
-import GlobalEventMonitor from "./components/GlobalEventTracker";
 
 
 export function App() {

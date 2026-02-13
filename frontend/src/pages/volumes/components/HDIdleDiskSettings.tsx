@@ -17,16 +17,12 @@ import {
 	AutocompleteElement,
 	TextFieldElement,
 	useForm,
-	type Control,
 } from "react-hook-form-mui";
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useWatch } from "react-hook-form";
 import type { Disk, Settings, HdIdleDevice } from "../../../store/sratApi";
 import {
 	useGetApiSettingsQuery,
-	useGetApiDiskByDiskIdHdidleInfoQuery,
-	useGetApiDiskByDiskIdHdidleConfigQuery,
-	useGetApiDiskByDiskIdHdidleSupportQuery,
 	usePutApiDiskByDiskIdHdidleConfigMutation,
 	Enabled,
 } from "../../../store/sratApi";

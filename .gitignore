@@ -10,6 +10,7 @@ backend/tmp/
 !backend/src/config/
 .env.example
 backend/src/coverage*.out
+custom_components/coverage.xml
 backend/src/srat-cli
 backend/src/srat-server
 backend/src/srat-openapi
@@ -24,3 +25,10 @@ backend/src/config/metadata_constants.go
 backend/src/internal/updatekey/update-public-key.key
 backend/src/service/filesystem/example/example
 backend/src/internal/updatekey/update-private-key.key
+
+# Python
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/

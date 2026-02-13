@@ -1,7 +1,7 @@
 /**
  * Manual MSW handlers for WebSocket connections.
  * These handlers provide mock streaming data for testing real-time features.
- * 
+ *
  * Note: SSE (Server-Sent Events) is deprecated for this project and not implemented.
  * Use WebSocket for real-time streaming instead.
  */
@@ -16,7 +16,11 @@ import type {
 	UpdateProgress,
 	Welcome,
 } from "../store/sratApi";
-import { Supported_events, Update_channel, Update_process_state } from "../store/sratApi";
+import {
+	Supported_events,
+	Update_channel,
+	Update_process_state,
+} from "../store/sratApi";
 
 /**
  * Mock data generators for WebSocket events
@@ -111,10 +115,10 @@ const mockEventData = {
 
 /**
  * WebSocket handler for /ws endpoint using MSW's experimental ws API
- * 
+ *
  * This implementation uses MSW's native WebSocket support to mock WebSocket connections.
  * The handler listens for SUBSCRIBE messages and responds with mocked event data.
- * 
+ *
  * Features:
  * - Automatic hello message on connection
  * - Periodic heartbeat messages (500ms intervals)
@@ -140,12 +144,13 @@ export const wsHandler = wsLink.addEventListener("connection", ({ client }) => {
 	client.addEventListener("message", (event) => {
 		try {
 			const message = JSON.parse(event.data.toString());
-			
+
 			if (message.type === "SUBSCRIBE") {
 				// Respond with the requested event type
 				const eventType = message.event as Supported_events;
-				const eventData = mockEventData[eventType as keyof typeof mockEventData];
-				
+				const eventData =
+					mockEventData[eventType as keyof typeof mockEventData];
+
 				if (eventData) {
 					const responseMessage = `id: ${Date.now()}\nevent: ${eventType}\ndata: ${JSON.stringify(eventData())}`;
 					client.send(responseMessage);
@@ -164,7 +169,7 @@ export const wsHandler = wsLink.addEventListener("connection", ({ client }) => {
 
 /**
  * Export all streaming handlers
- * 
+ *
  * Note: Only WebSocket handlers are exported. SSE is deprecated for this project.
  */
 export const streamingHandlers = [wsHandler];

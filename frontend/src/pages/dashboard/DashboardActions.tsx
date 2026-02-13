@@ -1,30 +1,30 @@
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import {
-	Accordion,
-	AccordionDetails,
-	AccordionSummary,
-	Box,
-	FormControlLabel,
-	Switch,
-	Typography,
+    Accordion,
+    AccordionDetails,
+    AccordionSummary,
+    Box,
+    FormControlLabel,
+    Switch,
+    Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
-import { useVolume } from "../../hooks/volumeHook";
-import { Severity, useGetApiIssuesQuery, type Issue, type Partition } from "../../store/sratApi";
-import { ActionableItemsList } from "./components/ActionableItemsList";
 import IssueCard from "../../components/IssueCard";
+import { useVolume } from "../../hooks/volumeHook";
 import { TabIDs } from "../../store/locationState";
-import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
+import { Severity, useGetApiIssuesQuery, type Partition } from "../../store/sratApi";
 import { useGetServerEventsQuery } from "../../store/sseApi";
+import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
+import { ActionableItemsList } from "./components/ActionableItemsList";
 
 export function DashboardActions() {
 	const { disks, isLoading, error } = useVolume();
 	const [expanded, setExpanded] = useState(false);
 	const [showIgnored, setShowIgnored] = useState(false);
-	const { data: evdata, isLoading: is_evLoading } = useGetServerEventsQuery();
+	const { data: evdata } = useGetServerEventsQuery();
 	const { data: issues, isLoading: is_inLoading } = useGetApiIssuesQuery();
 
-	TourEvents.on(TourEventTypes.DASHBOARD_STEP_3, (elem) => {
+	TourEvents.on(TourEventTypes.DASHBOARD_STEP_3, (_elem) => {
 		setExpanded(true);
 	});
 
@@ -69,7 +69,7 @@ export function DashboardActions() {
 		return partitions;
 	}, [disks, evdata?.hello?.read_only]);
 
-	function handleResolveIssue(id: number): void {
+	function handleResolveIssue(_id: number): void {
 		throw new Error("Function not implemented.");
 	}
 

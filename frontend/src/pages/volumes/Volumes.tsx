@@ -1,11 +1,10 @@
 import {
-	Box,
-	FormControlLabel,
-	Grid,
-	Paper,
-	Stack,
-	Switch,
-	Typography,
+    FormControlLabel,
+    Grid,
+    Paper,
+    Stack,
+    Switch,
+    Typography
 } from "@mui/material";
 import { useConfirm } from "material-ui-confirm";
 import { useEffect, useState } from "react";
@@ -22,18 +21,17 @@ import {
 	usePatchApiVolumeSettingsMutation,
 	usePostApiVolumeMountMutation,
 } from "../../store/sratApi";
-import { VolumesTreeView, VolumeDetailsPanel, VolumeMountDialog } from "./components";
+import { useGetServerEventsQuery } from "../../store/sseApi";
+import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
+import { VolumeDetailsPanel, VolumeMountDialog, VolumesTreeView } from "./components";
 import {
 	decodeEscapeSequence,
 	getDiskIdentifier,
 	getPartitionIdentifier,
 } from "./utils";
-import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
-import { useGetServerEventsQuery } from "../../store/sseApi";
-import path from "node:path";
 
 export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
-	const { data: evdata, isLoading: is_evLoading } = useGetServerEventsQuery();
+	const { data: evdata } = useGetServerEventsQuery();
 	const [showPreview, setShowPreview] = useState<boolean>(false);
 	const [showMount, setShowMount] = useState<boolean>(false);
 	const location = useLocation();
@@ -191,10 +189,10 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 				setExpandedDisks((prev) => (prev.includes(diskIdentifier) ? prev : [...prev, diskIdentifier]));
 				return;
 			}
-		const partitionEntries = Object.entries(disk.partitions || {});
-		if (!partitionEntries || partitionEntries.length === 0) continue;
-		for (let partIdx = 0; partIdx < partitionEntries.length; partIdx++) {
-			const [partitionKey, partition] = partitionEntries[partIdx] as [string, Partition];
+			const partitionEntries = Object.entries(disk.partitions || {});
+			if (!partitionEntries || partitionEntries.length === 0) continue;
+			for (let partIdx = 0; partIdx < partitionEntries.length; partIdx++) {
+				const [partitionKey, partition] = partitionEntries[partIdx] as [string, Partition];
 				const partitionIdentifier = getPartitionIdentifier(
 					diskIdentifier,
 					partition,
@@ -234,7 +232,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 		};
 
 		// Normalize root path to avoid double slashes when root is "/"
-		const normalizedRoot = data.root === "/" ? "" : data.root;
+		//const normalizedRoot = data.root === "/" ? "" : data.root;
 
 		mountVolume({
 			mountPointData: submitData,
@@ -425,7 +423,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 	}
 
 	// Get the related share for the selected partition
-	const selectedShare = Object.values(selectedPartition?.mount_point_data || {})[0]?.share;
+	//const selectedShare = Object.values(selectedPartition?.mount_point_data || {})[0]?.share;
 
 	return (
 		<>

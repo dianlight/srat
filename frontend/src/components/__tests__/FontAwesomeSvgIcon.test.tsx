@@ -1,5 +1,5 @@
+import { beforeEach, describe, expect, it } from "bun:test";
 import "../../../test/setup";
-import { describe, it, expect, beforeEach } from "bun:test";
 
 describe("FontAwesomeSvgIcon Component", () => {
     beforeEach(() => {
@@ -109,7 +109,7 @@ describe("FontAwesomeSvgIcon Component", () => {
 
         const ref = React.createRef<SVGSVGElement>();
 
-        const { container } = render(
+        render(
             React.createElement(FontAwesomeSvgIcon, { icon: singlePathIcon, ref })
         );
 

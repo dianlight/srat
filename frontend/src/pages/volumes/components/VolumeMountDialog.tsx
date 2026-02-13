@@ -1,26 +1,24 @@
 import {
-	Button,
-	Chip,
-	Dialog,
-	DialogActions,
-	DialogContent,
-	DialogContentText,
-	DialogTitle,
-	Divider,
-	Grid,
-	InputLabel,
-	Stack,
-	Tooltip,
-	Typography,
+    Button,
+    Chip,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogContentText,
+    DialogTitle,
+    Divider,
+    Grid,
+    Stack,
+    Tooltip,
+    Typography
 } from "@mui/material";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import {
 	AutocompleteElement,
-	CheckboxElement,
 	SwitchElement,
 	TextFieldElement,
 	useFieldArray,
-	useForm,
+	useForm
 } from "react-hook-form-mui";
 import {
 	type FilesystemInfo,
@@ -49,8 +47,7 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 		handleSubmit,
 		watch,
 		reset,
-		formState: { errors, isDirty },
-		register,
+		formState: { errors },
 		setValue,
 	} = useForm<xMountPointData>({
 		defaultValues: {

@@ -1,0 +1,26 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "SRAT에 연결",
+        "description": "SRAT 인스턴스의 연결 정보를 입력하세요.",
+        "data": {
+          "host": "호스트",
+          "port": "포트"
+        }
+      },
+      "hassio_confirm": {
+        "title": "SRAT 애드온 발견",
+        "description": "SRAT 애드온 **{addon}**이(가) `{host}:{port}`에서 발견되었습니다. 이 통합을 설정하시겠습니까?"
+      }
+    },
+    "error": {
+      "cannot_connect": "SRAT API에 연결할 수 없습니다. 호스트와 포트를 확인하세요.",
+      "unknown": "예기치 않은 오류가 발생했습니다."
+    },
+    "abort": {
+      "already_configured": "이 SRAT 인스턴스는 이미 구성되어 있습니다.",
+      "not_srat_addon": "발견된 애드온은 인식된 SRAT 애드온이 아닙니다."
+    }
+  }
+}

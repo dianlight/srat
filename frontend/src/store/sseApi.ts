@@ -30,7 +30,7 @@ const DEFAULT_INACTIVITY_TIMEOUT_MS = 30_000;
 const DEFAULT_RECONNECT_DELAY_MS = 1_000;
 
 const getGlobalNumber = (key: string, fallback: number) => {
-	const value = (globalThis as any)?.[key];
+	const value = (globalThis as Record<string, unknown>)[key];
 	return typeof value === "number" && value >= 0 ? value : fallback;
 };
 

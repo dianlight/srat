@@ -114,25 +114,25 @@ type AddonInfoData struct {
 	IngressUrl       *string            `json:"ingress_url"`
 
 	// IpAddress IP address of the addon within the Docker network.
-	IpAddress       *string                 `json:"ip_address"`
-	Logo            *bool                   `json:"logo,omitempty"`
-	LongDescription *string                 `json:"long_description"`
-	Machine         *[]string               `json:"machine,omitempty"`
-	Name            *string                 `json:"name,omitempty"`
-	Options         *map[string]interface{} `json:"options,omitempty"`
-	Protected       *bool                   `json:"protected,omitempty"`
-	Rating          *string                 `json:"rating,omitempty"`
-	Repository      *string                 `json:"repository,omitempty"`
-	Schema          *map[string]interface{} `json:"schema"`
-	Slug            *string                 `json:"slug,omitempty"`
-	Stage           *AddonInfoDataStage     `json:"stage,omitempty"`
-	Startup         *AddonInfoDataStartup   `json:"startup,omitempty"`
-	State           *AddonInfoDataState     `json:"state,omitempty"`
-	Url             *string                 `json:"url"`
-	Version         *string                 `json:"version,omitempty"`
-	VersionLatest   *string                 `json:"version_latest"`
-	Watchdog        *bool                   `json:"watchdog,omitempty"`
-	WithStdin       *bool                   `json:"with_stdin,omitempty"`
+	IpAddress       *string                   `json:"ip_address"`
+	Logo            *bool                     `json:"logo,omitempty"`
+	LongDescription *string                   `json:"long_description"`
+	Machine         *[]string                 `json:"machine,omitempty"`
+	Name            *string                   `json:"name,omitempty"`
+	Options         *map[string]interface{}   `json:"options,omitempty"`
+	Protected       *bool                     `json:"protected,omitempty"`
+	Rating          *float32                  `json:"rating,omitempty"`
+	Repository      *string                   `json:"repository,omitempty"`
+	Schema          *[]map[string]interface{} `json:"schema,omitempty"`
+	Slug            *string                   `json:"slug,omitempty"`
+	Stage           *AddonInfoDataStage       `json:"stage,omitempty"`
+	Startup         *AddonInfoDataStartup     `json:"startup,omitempty"`
+	State           *AddonInfoDataState       `json:"state,omitempty"`
+	Url             *string                   `json:"url"`
+	Version         *string                   `json:"version,omitempty"`
+	VersionLatest   *string                   `json:"version_latest"`
+	Watchdog        *bool                     `json:"watchdog,omitempty"`
+	WithStdin       *bool                     `json:"with_stdin,omitempty"`
 }
 
 // AddonInfoDataBoot defines model for AddonInfoData.Boot.

@@ -1,0 +1,26 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "SRATに接続",
+        "description": "SRATインスタンスの接続情報を入力してください。",
+        "data": {
+          "host": "ホスト",
+          "port": "ポート"
+        }
+      },
+      "hassio_confirm": {
+        "title": "SRATアドオンが検出されました",
+        "description": "SRATアドオン **{addon}** が `{host}:{port}` で検出されました。この統合を設定しますか？"
+      }
+    },
+    "error": {
+      "cannot_connect": "SRAT APIに接続できません。ホストとポートを確認してください。",
+      "unknown": "予期しないエラーが発生しました。"
+    },
+    "abort": {
+      "already_configured": "このSRATインスタンスはすでに設定されています。",
+      "not_srat_addon": "検出されたアドオンは認識されたSRATアドオンではありません。"
+    }
+  }
+}
