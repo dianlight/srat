@@ -110,11 +110,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to listen on port %d: %s", *http_port, err)
 	}
-	prog(listener)
+	prog(listener, *http_port)
 	os.Exit(0)
 }
 
-func prog(listener net.Listener) {
+func prog(listener net.Listener, serverPort int) {
 	startupStart := time.Now()
 	tlog.Trace("=== STARTUP PHASE: Entry ===", "time", startupStart)
 
@@ -140,6 +140,7 @@ func prog(listener net.Listener) {
 
 	staticConfig := dto.ContextState{
 		AddonIpAddress: *addonIpAddress,
+		ServerPort:     serverPort,
 		ReadOnlyMode:   *roMode,
 		ProtectedMode:  *protectedMode,
 		SecureMode:     *secureMode,
@@ -227,6 +228,7 @@ func prog(listener net.Listener) {
 			lc fx.Lifecycle,
 			//props_repo repository.PropertyRepositoryInterface,
 			_ service.SupervisorServiceInterface,
+			_ service.HaDiscoveryServiceInterface,
 			//			hdidle_service service.HDIdleServiceInterface,
 		) {
 			// Setting the actual LogLevel

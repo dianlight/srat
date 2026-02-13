@@ -18,10 +18,14 @@
   - [8. Database & Migrations](#8-database--migrations)
   - [9. Patches to Dependencies](#9-patches-to-dependencies)
   - [10. Frontend Patterns](#10-frontend-patterns)
-  - [11. Documentation](#11-documentation)
-  - [12. Security](#12-security)
-  - [13. Performance](#13-performance)
-  - [14. Pull Request Checklist](#14-pull-request-checklist)
+  - [11. Custom Component (Home Assistant)](#11-custom-component-home-assistant)
+    - [Tooling](#tooling)
+    - [Makefile Targets](#makefile-targets)
+    - [Architecture](#architecture)
+  - [12. Documentation](#12-documentation)
+  - [13. Security](#13-security)
+  - [14. Performance](#14-performance)
+  - [15. Pull Request Checklist](#15-pull-request-checklist)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -37,6 +41,7 @@ Be respectful. Provide clear rationale in PR descriptions. Security or stability
 
 - Backend: Go 1.26
 - Frontend: Bun + React + TypeScript
+- Custom Component: Python 3.12+ with ruff (lint/format) and mypy (type-check)
 - Run `make prepare` once to install pre-commit hooks.
 
 ## 3. Branching & Commits
@@ -49,6 +54,7 @@ Be respectful. Provide clear rationale in PR descriptions. Security or stability
 
 - Backend: Add/extend `testify/suite` tests; ensure deterministic output.
 - Frontend: Place tests in `__tests__` directories; follow patterns in `/.github/copilot-instructions.md`.
+- Custom Component: Use `pytest-homeassistant-custom-component` for tests under `custom_components/tests/`. Run with `cd custom_components && make test`.
 - Minimum coverage thresholds enforced by CI; raise coverage when adding logic.
 
 ## 5. Logging RULE (Context-Aware) ✅
@@ -129,23 +135,53 @@ Follow patch workflow (`make patch`, `backend/patches/*`). Never add direct `rep
 
 Strictly follow testing & import patterns from `/.github/copilot-instructions.md`. All user interactions must use `@testing-library/user-event`.
 
-## 11. Documentation
+## 11. Custom Component (Home Assistant)
+
+The HACS-compatible custom component lives in `custom_components/srat/`. It is written in Python 3.12+ and uses the Home Assistant integration framework.
+
+### Tooling
+
+- **Lint & format**: [ruff](https://docs.astral.sh/ruff/) — configured in `custom_components/pyproject.toml`
+- **Type checking**: [mypy](https://mypy-lang.org/) — configured in `custom_components/pyproject.toml`
+- **Testing**: [pytest-homeassistant-custom-component](https://github.com/MatthewFlamm/pytest-homeassistant-custom-component) — tests in `custom_components/tests/`
+
+### Makefile Targets
+
+Run all targets from the `custom_components/` directory:
+
+```shell
+make install      # Install dev dependencies (prefers apk on Alpine, falls back to pip)
+make check        # Run all checks: format + lint + type-check + tests
+make lint         # ruff lint
+make format       # ruff format check
+make typecheck    # mypy type checking
+make test         # pytest tests
+make fix          # Auto-fix lint and format issues
+make clean        # Remove caches and build artifacts
+```
+
+### Architecture
+
+The component communicates with the SRAT backend exclusively via WebSocket (`/ws` endpoint). No REST API polling is used. See [Home Assistant Integration](docs/HOME_ASSISTANT_INTEGRATION.md) for details.
+
+## 12. Documentation
 
 Update `CHANGELOG.md` for user-visible changes. Provide rationale for breaking changes.
 
-## 12. Security
+## 13. Security
 
 Run `make security` locally before opening a PR touching sensitive areas (auth, execution, filesystem). Avoid logging credentials or secrets; masking is handled by `tlog` but still use discretion.
 
-## 13. Performance
+## 14. Performance
 
 Profile hotspots using provided `PPROF.md` guidance for significant performance-related changes.
 
-## 14. Pull Request Checklist
+## 15. Pull Request Checklist
 
 - [ ] Tests added / updated
 - [ ] Lint & format pass (`pre-commit run --all-files`)
-- [ ] Context logging rule satisfied
+- [ ] Context logging rule satisfied (backend)
+- [ ] Custom component checks pass (`cd custom_components && make check`, if applicable)
 - [ ] No stray `replace` directives
 - [ ] Documentation updated
 - [ ] No secrets or raw tokens in logs

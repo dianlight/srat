@@ -11,3 +11,4 @@ package homeassistant
 //go:generate go tool oapi-codegen -config cfg.yaml  -package addons -o addons/client.gen.go addons.yaml
 //go:generate go tool oapi-codegen -config cfg.yaml  -package resolution -o resolution/client.gen.go resolution.yaml
 //go:generate go tool oapi-codegen -config cfg.yaml  -package root -o root/client.gen.go root.yaml
+//go:generate go tool oapi-codegen -config cfg.yaml  -package discovery -o discovery/client.gen.go discovery.yaml

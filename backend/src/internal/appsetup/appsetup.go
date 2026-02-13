@@ -12,6 +12,7 @@ import (
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/homeassistant/addons"
 	"github.com/dianlight/srat/homeassistant/core_api"
+	"github.com/dianlight/srat/homeassistant/discovery"
 	"github.com/dianlight/srat/homeassistant/hardware"
 	"github.com/dianlight/srat/homeassistant/host"
 	"github.com/dianlight/srat/homeassistant/ingress"
@@ -105,6 +106,7 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 		service.NewHaWsService,
 		service.NewHardwareService,
 		service.NewHDIdleService,
+		service.NewHaDiscoveryService,
 		service.NewSettingService,
 		//repository.NewPropertyRepositoryRepository,
 		repository.NewIssueRepository,
@@ -151,6 +153,9 @@ func ProvideHAClientDependencies(params BaseAppParams) fx.Option {
 		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (root.ClientWithResponsesInterface, error) {
 			return root.NewClientWithResponses(params.StaticConfig.SupervisorURL, root.WithRequestEditorFn(bearerAuth.Intercept))
 		},
+		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (discovery.ClientWithResponsesInterface, error) {
+			return discovery.NewClientWithResponses(params.StaticConfig.SupervisorURL, discovery.WithRequestEditorFn(bearerAuth.Intercept))
+		},
 		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (websocket.ClientInterface, error) {
 			return websocket.NewClient(strings.Replace(params.StaticConfig.SupervisorURL, "http", "ws", 1), params.StaticConfig.SupervisorToken), nil
 		},
@@ -186,6 +191,9 @@ func ProvideHAClientDependenciesWithoutWebSocket(params BaseAppParams) fx.Option
 		},
 		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (root.ClientWithResponsesInterface, error) {
 			return root.NewClientWithResponses(params.StaticConfig.SupervisorURL, root.WithRequestEditorFn(bearerAuth.Intercept))
+		},
+		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (discovery.ClientWithResponsesInterface, error) {
+			return discovery.NewClientWithResponses(params.StaticConfig.SupervisorURL, discovery.WithRequestEditorFn(bearerAuth.Intercept))
 		},
 		// Note: websocket client is intentionally excluded
 	)

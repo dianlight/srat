@@ -17,6 +17,7 @@ SRAT is a Samba administration tool with a Go REST API backend and React fronten
 
 - **Backend**: Clean architecture with API handlers → Services → Generated GORM helpers → Database (GORM/SQLite). Persistence now happens through the generated DBOM helpers rather than a handwritten repository tier.
 - **Frontend**: React + TypeScript + Material-UI + RTK Query for API state management
+- **Custom Component**: Python 3.12+ Home Assistant integration at `custom_components/srat/` HACS-compatible, WebSocket-only data channel, config flow with Supervisor autodiscovery
 - **Communication**: REST API with Server-Sent Events (SSE) or WebSockets for real-time updates
 - **Database**: SQLite with GORM ORM, embedded in production binary
 - **Dependency Injection**: Uber FX throughout backend for service wiring
@@ -189,6 +190,17 @@ Run `go fix ./...` periodically to keep code current.
 - **API Integration**: Auto-generated RTK Query hooks from OpenAPI spec (see `frontend/src/store/sratApi.ts`). Never make change on `frontend/src/store/sratApi.ts` or on `backend/docs/openapi.*` directly; update Go code and run `cd frontend && bun run gen`.
 - **MUI Grid**: Use modern Grid syntax with `size` prop (for example, `<Grid size={{ xs: 12, sm: 6 }}>`)–Grid2 is now promoted as the default Grid in MUI v7.3.2+
 
+### Custom Component Patterns (Home Assistant)
+
+- **Integration entry**: `custom_components/srat/__init__.py`–`async_setup_entry` / `async_unload_entry`, runtime data in `entry.runtime_data`
+- **Config flow**: `custom_components/srat/config_flow.py`–Manual (host/port) + Supervisor autodiscovery via `HassioServiceInfo`
+- **Coordinator**: `custom_components/srat/coordinator.py`–`DataUpdateCoordinator` with `update_interval=None` (WebSocket-only, no REST polling)
+- **WebSocket client**: `custom_components/srat/websocket_client.py`–connects to `/ws` with `X-Remote-User-Id` auth header, auto-reconnect, SSE-formatted text frames
+- **Sensors**: `custom_components/srat/sensor.py`–8 sensor types as `CoordinatorEntity` subclasses, return `None` for unavailable
+- **Constants**: `custom_components/srat/const.py`–`DOMAIN`, addon slug whitelist, config keys
+- **Translations**: `custom_components/srat/strings.json` + `translations/` (12 languages)
+- **Tooling**: `ruff` (lint+format) + `mypy` (type-check) configured in `custom_components/pyproject.toml`. See `.github/instructions/python.instructions.md` for full Python coding guidelines.
+
 ## Development Workflows
 
 ### Backend Development
@@ -254,6 +266,17 @@ go mod vendor       # Vendor all dependencies (done automatically by make)
 - **Lint**: `cd frontend && bun run lint` (Biome formatter/linter)
 - **Test**: `cd frontend && bun test` (runs all tests with bun:test)
 
+### Custom Component Development
+
+- **Install dev tools**: `cd custom_components && make install` (auto-detects Alpine; uses pip otherwise)
+- **Format**: `cd custom_components && make format` (ruff format)
+- **Lint**: `cd custom_components && make lint` (ruff check)
+- **Type check**: `cd custom_components && make typecheck` (mypy)
+- **Test**: `cd custom_components && make test` (pytest with pytest-homeassistant-custom-component)
+- **Test with coverage**: `cd custom_components && make test-ci` (generates coverage.xml)
+- **Full check**: `cd custom_components && make check` (format-check + lint + typecheck + test)
+- **Auto-fix**: `cd custom_components && make fix` (ruff check --fix + format)
+
 ### Full Stack Development
 
 - **Prepare environment**: `make prepare` (installs pre-commit + dependencies)
@@ -262,7 +285,7 @@ go mod vendor       # Vendor all dependencies (done automatically by make)
 
 ## Testing Patterns
 
-- **Code coverage**: Backend uses `cd backend && make test`. Frontend uses `cd frontend && bun test --coverage`.
+- **Code coverage**: Backend uses `cd backend && make test`. Frontend uses `cd frontend && bun test --coverage`. Custom component uses `cd custom_components && make test-ci`.
 - **Test data**: Use `backend/test/data/` dirs for static test files
 - **Minimal coverage**: Backend enforces 5% coverage. Frontend enforces 80% functions coverage.
 - **New tests**: All new features/bug fixes must include tests covering positive and negative cases. Minimal functions coverage is 90% for frontend tests and 6% for backend tests.
@@ -357,6 +380,18 @@ describe("Component rendering", () => {
 });
 ```
 
+### Custom Component Testing (Home Assistant)
+
+- **Framework**: `pytest` with `pytest-homeassistant-custom-component` (v0.13+)
+- **Test directory**: `custom_components/tests/` (not inside `srat/`)
+- **Run tests**: `cd custom_components && make test` (runs from repo root for proper imports)
+- **Fixtures**: `conftest.py` with `auto_enable_custom_integrations` (autouse), mock data fixtures for disks, heartbeat, config entries
+- **Async**: `asyncio_mode = "auto"` — all test functions are automatically async
+- **Mocking aiohttp**: Use `MagicMock(spec=aiohttp.ClientSession)` with `session.get = MagicMock(return_value=async_ctx_manager)` — do NOT use `AsyncMock` for `session.get` directly
+- **Config flow tests**: Assert `FlowResultType.FORM`, `FlowResultType.CREATE_ENTRY`, `FlowResultType.ABORT`
+- **Sensor tests**: Verify `native_value`, `extra_state_attributes`, and unavailable (`None`) states
+- **Coverage**: `make test-ci` generates `coverage.xml` for Codecov
+
 ### Test-Driven Debugging (MANDATORY RULE FOR BUG FIXES)
 
 When addressing any issue or bug, **ALWAYS follow this workflow**:
@@ -369,11 +404,13 @@ When addressing any issue or bug, **ALWAYS follow this workflow**:
 3. **Verify the test fails**: Run the test suite to confirm your test fails before any code changes
    - Backend: `cd backend && make test` (run specific test if possible)
    - Frontend: `cd frontend && bun test [ComponentName]` (run specific test)
+   - Custom component: `cd custom_components && make test` (run specific test if possible)
 4. **Implement the fix**: Make minimal changes to fix the failing test
 5. **Verify the test passes**: Run the test again to confirm it now passes
 6. **Verify no regressions**: Run the full test suite for the affected module
    - Backend: `cd backend && make test`
    - Frontend: `cd frontend && bun test` with `--rerun-each 10` to detect flakiness
+   - Custom component: `cd custom_components && make check`
 
 **Benefits of this approach:**
 
@@ -435,8 +472,9 @@ When addressing any issue or bug, **ALWAYS follow this workflow**:
 
 - **Backend entry**: `backend/Makefile`, `backend/src/api/*`, `backend/src/service/*`
 - **Frontend entry**: `frontend/src/App.tsx`, `frontend/src/store/sratApi.ts`
+- **Custom component entry**: `custom_components/srat/__init__.py`, `custom_components/srat/config_flow.py`, `custom_components/srat/coordinator.py`
 - **Architecture**: `backend/src/dto/error_code.go`, `backend/src/converter/*`
-- **Build system**: Root `Makefile`, `frontend/bun.build.ts`
+- **Build system**: Root `Makefile`, `frontend/bun.build.ts`, `custom_components/Makefile`
 
 ## Common Gotchas
 

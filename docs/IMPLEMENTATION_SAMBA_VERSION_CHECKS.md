@@ -205,7 +205,7 @@ Or for removed options:
 3. **Prevention of Errors**: No more "unknown configuration option" warnings
 4. **Clear Documentation**: Warnings in config when features unavailable
 5. **Maintainable**: Easy to add new version checks for future Samba releases
-6. **Debuggable**: Version info available via `/health` API endpoint
+6. **Debuggable**: Version info available via `/api/health` API endpoint
 
 ## Testing Recommendations
 
@@ -213,7 +213,7 @@ Or for removed options:
 
 ```bash
 # Check detected version
-curl http://localhost:8000/health | grep samba_version
+curl http://localhost:8000/api/health | grep samba_version
 
 # View generated config
 testparm -s /etc/samba/smb.conf
