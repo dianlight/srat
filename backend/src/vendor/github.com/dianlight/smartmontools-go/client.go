@@ -82,6 +82,7 @@ type SmartClient interface {
 	RunSelfTestWithProgress(ctx context.Context, devicePath string, testType string, callback ProgressCallback) error
 	GetAvailableSelfTests(ctx context.Context, devicePath string) (*SelfTestInfo, error)
 	IsSMARTSupported(ctx context.Context, devicePath string) (*SmartSupport, error)
+	GetSMARTSupportFromInfo(smartInfo *SMARTInfo) *SmartSupport
 	EnableSMART(ctx context.Context, devicePath string) error
 	DisableSMART(ctx context.Context, devicePath string) error
 	AbortSelfTest(ctx context.Context, devicePath string) error
@@ -762,28 +763,64 @@ func (c *Client) GetAvailableSelfTests(ctx context.Context, devicePath string) (
 	return info, nil
 }
 
-// isSMARTSupported checks if SMART is supported on a device and if it's enabled
+// GetSMARTSupportFromInfo extracts SMART support status from a SMARTInfo struct.
+// This is a helper method that allows checking SMART availability and enablement status
+// without performing additional disk I/O. Applications should call GetSMARTInfo once,
+// cache the result, and use this method to check the SMART status from the cache.
+//
+// This pattern avoids periodic disk access and prevents waking disks from standby mode.
+//
+// Example usage:
+//
+//	// Get and cache SMART info once
+//	info, err := client.GetSMARTInfo(ctx, devicePath)
+//	if err != nil {
+//	    return err
+//	}
+//
+//	// Check SMART status from cached info (no disk access)
+//	support := client.GetSMARTSupportFromInfo(info)
+//	if support.Available && support.Enabled {
+//	    // SMART is available and enabled
+//	}
+//
+//	// After EnableSMART/DisableSMART, refresh the cache:
+//	if err := client.EnableSMART(ctx, devicePath); err != nil {
+//	    return err
+//	}
+//	// Refresh cache after state change
+//	info, err = client.GetSMARTInfo(ctx, devicePath)
+//	if err != nil {
+//	    return err
+//	}
+func (c *Client) GetSMARTSupportFromInfo(smartInfo *SMARTInfo) *SmartSupport {
+	return c.isSMARTSupported(smartInfo)
+}
+
+// isSMARTSupported checks if SMART is supported on a device and if it's enabled.
+// This is an internal helper that extracts SMART support status from SMARTInfo.
 func (c *Client) isSMARTSupported(smartInfo *SMARTInfo) *SmartSupport {
 
 	supportInfo := &SmartSupport{}
 
-	// Check NVMe SMART support first
+	// Check if smartctl provided smart_support field (both ATA and NVMe devices)
 	if smartInfo.SmartSupport != nil {
 		supportInfo.Available = smartInfo.SmartSupport.Available
 		supportInfo.Enabled = smartInfo.SmartSupport.Enabled
 		return supportInfo
 	}
 
-	// Check ATA SMART data presence for support
+	// Fallback: Check ATA SMART data presence for support
+	// This handles older smartctl versions that don't provide smart_support field
 	if smartInfo.AtaSmartData != nil {
 		supportInfo.Available = true
-		// For ATA devices, if SMART data is present, assume it's enabled
-		// (ATA devices typically don't have a separate enabled/disabled status in JSON)
+		// If ATA SMART data is present, SMART is likely enabled
+		// (older smartctl versions don't report disabled state in JSON)
 		supportInfo.Enabled = true
 		return supportInfo
 	}
 
-	// Check NVMe SMART health information as fallback
+	// Fallback: Check NVMe SMART health information
 	if smartInfo.NvmeSmartHealth != nil {
 		supportInfo.Available = true
 		supportInfo.Enabled = true
@@ -796,7 +833,30 @@ func (c *Client) isSMARTSupported(smartInfo *SMARTInfo) *SmartSupport {
 	return supportInfo
 }
 
-// IsSMARTSupported checks if SMART is supported on a device and if it's enabled
+// IsSMARTSupported checks if SMART is supported on a device and if it's enabled.
+//
+// WARNING: This method performs disk I/O by calling GetSMARTInfo internally.
+// For applications that need to check SMART status frequently (e.g., monitoring daemons),
+// it's recommended to call GetSMARTInfo once, cache the result, and use
+// GetSMARTSupportFromInfo to extract SMART support status from the cached data.
+// This avoids periodic disk access and prevents waking disks from standby mode.
+//
+// Preferred usage pattern for periodic monitoring:
+//
+//	// Initial query (performed once or when SMART status changes)
+//	info, err := client.GetSMARTInfo(ctx, devicePath)
+//	if err != nil {
+//	    return err
+//	}
+//
+//	// Cache the info and check SMART status without disk I/O
+//	support := client.GetSMARTSupportFromInfo(info)
+//	if !support.Enabled {
+//	    // Skip SMART monitoring when disabled
+//	    return
+//	}
+//
+// Only use IsSMARTSupported for one-off checks where disk access is acceptable.
 func (c *Client) IsSMARTSupported(ctx context.Context, devicePath string) (*SmartSupport, error) {
 	if ctx == nil {
 		ctx = c.defaultCtx

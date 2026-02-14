@@ -19,6 +19,7 @@ idiomatic Go API for accessing SMART information from storage devices.
   - SMART support detection and management
   - Self-test availability checking
   - Standby mode detection (ATA devices only)
+  - Efficient SMART monitoring with minimal disk I/O
 
 # Prerequisites
 
@@ -86,6 +87,34 @@ When a device is in standby mode:
 
 NVMe devices do not support standby mode detection and do not receive the
 --nocheck=standby flag.
+
+# Efficient SMART Monitoring
+
+When building monitoring applications that periodically check SMART status, avoid
+unnecessary disk I/O that can wake disks from standby mode. This is critical for:
+
+  - Home NAS systems with idle disk spindown
+  - Battery-powered devices
+  - Systems where periodic disk access causes audible noise
+
+Use GetSMARTSupportFromInfo to check SMART status from cached SMARTInfo data
+without disk I/O:
+
+	// Query once, cache the result
+	info, err := client.GetSMARTInfo(ctx, devicePath)
+	if err != nil {
+	    return err
+	}
+
+	// Check SMART status from cache - no disk access!
+	support := client.GetSMARTSupportFromInfo(info)
+	if !support.Enabled {
+	    // Skip monitoring when SMART is disabled
+	    return
+	}
+
+This pattern eliminates periodic disk access and prevents waking disks from
+standby mode. See the README for a complete monitoring example.
 
 # Permissions
 

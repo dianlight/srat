@@ -77,12 +77,12 @@ func NewDiskStatsService(lc fx.Lifecycle, VolumeService VolumeServiceInterface, 
 			// The SmartInfo now contains both Supported (hardware capability) and Enabled (software state)
 			// We cache the Enabled state to prevent any disk queries after enable/disable
 			enabled := event.SmartInfo.Enabled
-			
+
 			// Set cache with default expiration (30 minutes)
 			ds.smartEnabledCache.Set(event.SmartInfo.DiskId, enabled, cache.DefaultExpiration)
-			
-			tlog.DebugContext(ctx, "SMART event received, cache populated immediately", 
-				"disk", event.SmartInfo.DiskId, 
+
+			tlog.DebugContext(ctx, "SMART event received, cache populated immediately",
+				"disk", event.SmartInfo.DiskId,
 				"supported", event.SmartInfo.Supported,
 				"enabled", enabled,
 				"event_type", event.Type)
@@ -574,7 +574,7 @@ func (s *diskStatsService) isSmartEnabled(diskId string) bool {
 	// Cache miss - query once to populate cache
 	// This should rarely happen because cache is populated from SMART events
 	tlog.DebugContext(s.ctx, "SMART cache miss, querying disk", "disk", diskId)
-	
+
 	smartInfo, err := s.smartService.GetSmartInfo(s.ctx, diskId)
 	if err != nil {
 		// SMART not supported or error - cache as disabled to avoid future queries
