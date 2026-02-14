@@ -36,17 +36,21 @@ type diskStatsService struct {
 	hdidleService     HDIdleServiceInterface
 	filesystemService FilesystemServiceInterface
 	ioStatFetcher     func(string) (blockdevice.IOStats, error)
-}
-
-// NewDiskStatsService creates a new DiskStatsService.
-func NewDiskStatsService(lc fx.Lifecycle, VolumeService VolumeServiceInterface, Ctx context.Context, SmartService SmartServiceInterface, HDIdleService HDIdleServiceInterface, FilesystemService FilesystemServiceInterface) DiskStatsService {
 	readFile          func(string) ([]byte, error)
 	sysFsBasePath     string
 	smartEnabledCache *cache.Cache // smartEnabledCache tracks SMART enabled/disabled state per disk to avoid unnecessary disk access
 }
 
 // NewDiskStatsService creates a new DiskStatsService.
-func NewDiskStatsService(lc fx.Lifecycle, VolumeService VolumeServiceInterface, Ctx context.Context, SmartService SmartServiceInterface, HDIdleService HDIdleServiceInterface, EventBus events.EventBusInterface) DiskStatsService {
+func NewDiskStatsService(
+	lc fx.Lifecycle,
+	VolumeService VolumeServiceInterface,
+	Ctx context.Context,
+	SmartService SmartServiceInterface,
+	HDIdleService HDIdleServiceInterface,
+	EventBus events.EventBusInterface,
+	FilesystemService FilesystemServiceInterface,
+) DiskStatsService {
 	var fs blockdevice.FS
 	var err error
 
@@ -68,8 +72,8 @@ func NewDiskStatsService(lc fx.Lifecycle, VolumeService VolumeServiceInterface, 
 		smartService:      SmartService,
 		hdidleService:     HDIdleService,
 		filesystemService: FilesystemService,
-		readFile:       os.ReadFile,
-		sysFsBasePath:  "/sys/fs",
+		readFile:          os.ReadFile,
+		sysFsBasePath:     "/sys/fs",
 		// Initialize cache with 30 minute default expiration and 10 minute cleanup interval
 		smartEnabledCache: cache.New(30*time.Minute, 10*time.Minute),
 	}
@@ -420,6 +424,8 @@ func (s *diskStatsService) fetchDiskStats(deviceName string) (blockdevice.IOStat
 		return blockdevice.IOStats{}, err
 	}
 	return stats, nil
+}
+
 // isSmartEnabled checks if SMART is enabled for a disk.
 // It uses a cache to avoid querying the disk unnecessarily.
 // Cache is populated from SMART events when SMART is enabled/disabled via API.
@@ -476,9 +482,11 @@ func (s *diskStatsService) InvalidateSmartCache(diskId string) {
 	}
 }
 
+/*
 func sanitizeDeviceName(name string) string {
 	trimmed := strings.TrimSpace(name)
 	trimmed = strings.TrimPrefix(trimmed, "/dev/")
 	trimmed = strings.ReplaceAll(trimmed, "/", "!")
 	return trimmed
 }
+*/
