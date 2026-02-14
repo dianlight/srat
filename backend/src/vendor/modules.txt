@@ -106,8 +106,8 @@ github.com/dave/jennifer/jen
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
-# github.com/dianlight/smartmontools-go v0.2.4
-## explicit; go 1.25.0
+# github.com/dianlight/smartmontools-go v0.2.6
+## explicit; go 1.26
 github.com/dianlight/smartmontools-go
 # github.com/dianlight/tlog v0.2.2
 ## explicit; go 1.25.0

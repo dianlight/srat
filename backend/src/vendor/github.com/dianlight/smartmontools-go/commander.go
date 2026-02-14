@@ -14,6 +14,7 @@ type Commander interface {
 type Cmd interface {
 	Output() ([]byte, error)
 	Run() error
+	CombinedOutput() ([]byte, error)
 }
 
 // execCommander implements Commander using os/exec
@@ -21,5 +22,6 @@ type execCommander struct{}
 
 func (e execCommander) Command(ctx context.Context, logger logAdapter, name string, arg ...string) Cmd {
 	logger.DebugContext(ctx, "Executing command", "name", name, "args", arg)
-	return exec.CommandContext(ctx, name, arg...)
+	cmd := exec.CommandContext(ctx, name, arg...)
+	return cmd
 }

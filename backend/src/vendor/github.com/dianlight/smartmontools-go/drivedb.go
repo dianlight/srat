@@ -14,6 +14,26 @@ import (
 	"github.com/dianlight/tlog"
 )
 
+// drivedbCache holds the parsed drivedb entries to avoid reparsing on each access.
+var drivedbCache map[string]string
+
+// cloneDeviceTypeCache returns a copy of the global drivedb cache.
+// This prevents per-client mutations from affecting other clients.
+func cloneDeviceTypeCache() map[string]string {
+	if drivedbCache == nil {
+		return make(map[string]string)
+	}
+	copyCache := make(map[string]string, len(drivedbCache))
+	for key, value := range drivedbCache {
+		copyCache[key] = value
+	}
+	return copyCache
+}
+
+func init() {
+	drivedbCache = loadDrivedbAddendum()
+}
+
 //go:embed drivedb.h
 var drivedbH string
 
@@ -149,24 +169,38 @@ func expandProductIDPattern(vendor, prefix, pattern string) []string {
 	if match := charClassPattern.FindStringSubmatch(pattern); len(match) >= 3 {
 		firstChar := match[1]
 		chars := match[2]
+		// Pre-allocate slice based on character class size
+		ids = make([]string, 0, len(chars))
 		for _, c := range chars {
-			productID := fmt.Sprintf("0x%s%s%c", prefix, firstChar, c)
-			ids = append(ids, fmt.Sprintf("%s:%s", vendor, productID))
+			var buf strings.Builder
+			buf.WriteString(vendor)
+			buf.WriteString(":0x")
+			buf.WriteString(prefix)
+			buf.WriteRune(rune(firstChar[0]))
+			buf.WriteRune(c)
+			ids = append(ids, buf.String())
 		}
 		return ids
 	}
 
 	// Handle simple hex values like "80"
 	if len(pattern) == 2 {
-		productID := fmt.Sprintf("0x%s%s", prefix, pattern)
-		ids = append(ids, fmt.Sprintf("%s:%s", vendor, productID))
+		var buf strings.Builder
+		buf.WriteString(vendor)
+		buf.WriteString(":0x")
+		buf.WriteString(prefix)
+		buf.WriteString(pattern)
+		ids = append(ids, buf.String())
 		return ids
 	}
 
 	// Handle full 4-digit hex like "0562"
 	if len(pattern) == 4 {
-		productID := fmt.Sprintf("0x%s", pattern)
-		ids = append(ids, fmt.Sprintf("%s:%s", vendor, productID))
+		var buf strings.Builder
+		buf.WriteString(vendor)
+		buf.WriteString(":0x")
+		buf.WriteString(pattern)
+		ids = append(ids, buf.String())
 		return ids
 	}
 
