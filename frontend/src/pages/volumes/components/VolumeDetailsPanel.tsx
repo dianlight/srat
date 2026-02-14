@@ -266,7 +266,126 @@ export function VolumeDetailsPanel({
                                                 {disk.connection_bus || "N/A"}
                                             </Typography>
                                         </Grid>
-                                        {disk.serial && (
+                                    )}
+                                    <Grid size={{ xs: 12 }}>
+                                        <Typography variant="subtitle2" color="text.secondary">
+                                            Properties
+                                        </Typography>
+                                        <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1, mt: 0.5 }}>
+                                            {disk.removable && (
+                                                <Chip label="Removable" size="small" variant="outlined" />
+                                            )}
+                                            <Chip
+                                                label={`${Object.values(disk.partitions || {}).length || 0} Partition(s)`}
+                                                size="small"
+                                                variant="outlined"
+                                            />
+                                        </Stack>
+                                    </Grid>
+                                </Grid>
+                            </CardContent>
+                        </Collapse>
+                    </Card>
+                )}
+
+                {/* Disk-only panels: visible only when a disk is selected without a partition */}
+                {disk && !partition && disk.hdidle_device?.supported && (
+                    <HDIdleDiskSettings disk={disk} readOnly={false} />
+                )}
+                {disk && !partition && disk.smart_info?.supported && (
+                    <SmartStatusPanel
+                        smartInfo={disk.smart_info}
+                        diskId={disk.id}
+                        bus ={disk.connection_bus}
+                        isReadOnlyMode={false}
+                        isExpanded={smartExpanded}
+                        onSetExpanded={setSmartExpanded}
+                    />
+                )}
+                {/* Partition Information Card (shown only when a partition is selected) */}
+                {partition && (
+                    <Card>
+                        <CardHeader
+                            title="Partition Information"
+                            avatar={
+                                <IconButton onClick={() => openPreviewFor(partition, `Partition: ${decodeEscapeSequence(partition.name || partition.id || "Unnamed")}`)} aria-label="partition preview" size="small">
+                                    <StorageIcon color="primary" />
+                                </IconButton>
+                            }
+                        />
+                        <CardContent>
+                            <Grid container spacing={2}>
+                                <Grid size={{ xs: 12 }}>
+                                    <Typography variant="subtitle2" color="text.secondary">
+                                        Name
+                                    </Typography>
+                                    <Typography variant="h6">
+                                        {decodeEscapeSequence(partition.name || partition.id || "Unnamed Partition")}
+                                    </Typography>
+                                </Grid>
+                                {partition.size != null && (
+                                    <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                                        <Typography variant="subtitle2" color="text.secondary">
+                                            Size
+                                        </Typography>
+                                        <Typography variant="body2">
+                                            {filesize(partition.size, { round: 1 })}
+                                        </Typography>
+                                    </Grid>
+                                )}
+                                {(mountData?.fstype || partition.fs_type) && (
+                                    <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                                        <Typography variant="subtitle2" color="text.secondary">
+                                            File System
+                                        </Typography>
+                                        <Typography variant="body2">
+                                            {mountData?.fstype ?? partition.fs_type}
+                                        </Typography>
+                                    </Grid>
+                                )}
+                                {partition.legacy_device_name && (
+                                    <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                                        <Typography variant="subtitle2" color="text.secondary">
+                                            Device
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
+                                            {partition.legacy_device_name}
+                                        </Typography>
+                                    </Grid>
+                                )}
+                                {partition.id && (
+                                    <Grid size={{ xs: 12 }}>
+                                        <Typography variant="subtitle2" color="text.secondary">
+                                            Partition ID
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
+                                            {partition.id}
+                                        </Typography>
+                                    </Grid>
+                                )}
+
+
+                                {/* Mount Status */}
+                                <Grid size={{ xs: 12 }}>
+                                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+                                        Status
+                                    </Typography>
+                                    <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1 }}>
+                                        <Chip
+                                            label={isMounted ? "Mounted" : "Not Mounted"}
+                                            color={isMounted ? "success" : "default"}
+                                            size="small"
+                                        />
+                                        {partition.system && (
+                                            <Chip label="System" size="small" variant="outlined" />
+                                        )}
+                                    </Stack>
+                                </Grid>
+
+                                {/* Mount Information */}
+                                {isMounted && (
+                                    <>
+                                        {mpds.some((mpd) => mpd.disk_label) && (
                                             <Grid size={{ xs: 12, sm: 6 }}>
                                                 <Typography variant="subtitle2" color="text.secondary">
                                                     Serial

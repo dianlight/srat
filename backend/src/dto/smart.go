@@ -19,6 +19,7 @@ type SmartTempValue struct {
 type SmartInfo struct {
 	DiskId       string `json:"disk_id,omitempty"`
 	Supported    bool   `json:"supported"`
+	Enabled      bool   `json:"enabled"` // Whether SMART is currently enabled (software state)
 	DiskType     string `json:"disk_type,omitempty" enum:"SATA,NVMe,SCSI,Unknown"`
 	ModelFamily  string `json:"model_family,omitempty"`
 	ModelName    string `json:"model_name,omitempty"`

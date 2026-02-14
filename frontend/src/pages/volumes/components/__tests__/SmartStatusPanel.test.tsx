@@ -402,6 +402,53 @@ describe("SmartStatusPanel Component", () => {
         expect((disableButtons[0] as HTMLButtonElement).disabled).toBe(true);
     });
 
+    it("should disable SMART enable/disable for NVMe disks", async () => {
+        const React = await import("react");
+        const { render, screen, act } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { SmartStatusPanel } = await import("../SmartStatusPanel");
+        const { createTestStore } = await import("../../../../../test/setup");
+
+        const store = await createTestStore();
+        const mockSmartInfo = {
+            disk_type: "NVMe",
+            temperature: { value: 35 },
+            power_on_hours: { value: 1200 },
+            power_cycle_count: { value: 15 },
+            enabled: true,
+            supported: true,
+        } as any;
+
+        render(
+            React.createElement(Provider, {
+                store,
+                children: React.createElement(SmartStatusPanel, {
+                    smartInfo: mockSmartInfo,
+                    isSmartSupported: true,
+                    isReadOnlyMode: false,
+                }),
+            }),
+        );
+
+        const expandButtons = await screen.findAllByRole("button");
+        const expandBtn = expandButtons.find((btn) => btn.getAttribute("aria-expanded") === "false");
+        if (expandBtn) {
+            const user = userEvent.setup();
+            await act(async () => {
+                await user.click(expandBtn as any);
+            });
+        }
+
+        const enableButton = await screen.findByRole("button", { name: /enable smart/i });
+        expect(enableButton).toBeDisabled();
+        expect(enableButton).toHaveAttribute("title", "SMART control not supported for NVMe devices");
+
+        const disableButton = await screen.findByRole("button", { name: /disable smart/i });
+        expect(disableButton).toBeDisabled();
+        expect(disableButton).toHaveAttribute("title", "SMART control not supported for NVMe devices");
+    });
+
     it("should not render when smartInfo has supported false", async () => {
         const React = await import("react");
         const { render } = await import("@testing-library/react");

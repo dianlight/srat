@@ -77,6 +77,7 @@ func (f *fakeAddons) SetOptions(ctx context.Context, options *addons.AddonOption
 type fakeDiskStats struct{}
 
 func (f *fakeDiskStats) GetDiskStats() (*dto.DiskHealth, errors.E) { return &dto.DiskHealth{}, nil }
+func (f *fakeDiskStats) InvalidateSmartCache(diskId string)        {}
 
 type fakeNetStats struct{}
 

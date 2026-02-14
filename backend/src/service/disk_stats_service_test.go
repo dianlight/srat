@@ -9,6 +9,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
+	"github.com/patrickmn/go-cache"
 	"github.com/prometheus/procfs/blockdevice"
 	"github.com/stretchr/testify/suite"
 )
@@ -57,7 +58,20 @@ func (suite *DiskStatsServiceSuite) SetupTest() {
 		ioStatFetcher: func(string) (blockdevice.IOStats, error) {
 			return blockdevice.IOStats{}, nil
 		},
+		readFile:          os.ReadFile,
+		sysFsBasePath:     "/sys/fs",
+		smartEnabledCache: cache.New(5*time.Minute, 10*time.Minute), // Short TTL for tests
 	}
+}
+
+// Helper function to get cache value
+func getCacheValue(c *cache.Cache, key string) (bool, bool) {
+	if val, found := c.Get(key); found {
+		if boolVal, ok := val.(bool); ok {
+			return boolVal, true
+		}
+	}
+	return false, false
 }
 
 func (suite *DiskStatsServiceSuite) TearDownTest() {
@@ -193,4 +207,150 @@ func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_FsckStateFromFilesystemS
 	suite.NotNil(info[0].FilesystemState)
 	suite.True(info[0].FilesystemState.HasErrors)
 	suite.False(info[0].FilesystemState.IsClean)
+}
+
+func (suite *DiskStatsServiceSuite) TestIsSmartEnabled_CacheHit() {
+	// Test that cache hit returns cached value without querying SMART service
+	diskID := "disk-with-smart"
+
+	// Pre-populate cache
+	// Cache is already initialized in SetupTest
+	suite.ds.smartEnabledCache.Set(diskID, true, cache.DefaultExpiration)
+
+	// Act - should use cache, not call SMART service
+	enabled := suite.ds.isSmartEnabled(diskID)
+
+	// Assert
+	suite.True(enabled)
+	// Verify no SMART service calls were made (use Times(0) instead of Never)
+	mock.Verify(suite.smartMock, matchers.Times(0)).GetSmartInfo(mock.AnyContext(), mock.Any[string]())
+}
+
+func (suite *DiskStatsServiceSuite) TestIsSmartEnabled_CacheMiss_SmartEnabled() {
+	// Test that cache miss queries SMART and caches the result
+	diskID := "disk-enabled"
+	smartInfo := &dto.SmartInfo{
+		DiskId:    diskID,
+		Supported: true,
+		Enabled:   true, // Now using Enabled field from SmartInfo
+	}
+
+	// Arrange - cache is already empty from SetupTest
+	// No need to reinitialize
+
+	// Mock SMART service calls - now only GetSmartInfo is needed
+	mock.When(suite.smartMock.GetSmartInfo(mock.AnyContext(), mock.Exact(diskID))).ThenReturn(smartInfo, nil)
+
+	// Act
+	enabled := suite.ds.isSmartEnabled(diskID)
+
+	// Assert
+	suite.True(enabled)
+	// Check cache was populated
+	cachedValue, found := getCacheValue(suite.ds.smartEnabledCache, diskID)
+	suite.True(found, "Cache should be populated")
+	suite.True(cachedValue, "Cache should contain enabled=true")
+	mock.Verify(suite.smartMock, matchers.Times(1)).GetSmartInfo(mock.AnyContext(), mock.Exact(diskID))
+}
+
+func (suite *DiskStatsServiceSuite) TestIsSmartEnabled_CacheMiss_SmartDisabled() {
+	// Test that disabled SMART is cached
+	diskID := "disk-disabled"
+	smartInfo := &dto.SmartInfo{
+		DiskId:    diskID,
+		Supported: true,
+		Enabled:   false, // SMART is supported but disabled
+	}
+
+	// Arrange - cache is already empty from SetupTest
+
+	// Mock SMART service call
+	mock.When(suite.smartMock.GetSmartInfo(mock.AnyContext(), mock.Exact(diskID))).ThenReturn(smartInfo, nil)
+
+	// Act
+	enabled := suite.ds.isSmartEnabled(diskID)
+
+	// Assert
+	suite.False(enabled)
+	// Check cache was populated
+	cachedValue, found := getCacheValue(suite.ds.smartEnabledCache, diskID)
+	suite.True(found, "Cache should be populated")
+	suite.False(cachedValue, "Disabled state should be cached")
+
+	// Second call should use cache
+	enabled2 := suite.ds.isSmartEnabled(diskID)
+	suite.False(enabled2)
+
+	// Verify SMART service called only once (on first call)
+	mock.Verify(suite.smartMock, matchers.Times(1)).GetSmartInfo(mock.AnyContext(), mock.Exact(diskID))
+}
+
+func (suite *DiskStatsServiceSuite) TestIsSmartEnabled_SmartNotSupported() {
+	// Test that unsupported SMART is cached as disabled
+	diskID := "disk-no-smart"
+	smartInfo := &dto.SmartInfo{
+		DiskId:    diskID,
+		Supported: false,
+		Enabled:   false,
+	}
+
+	// Arrange - cache is already empty from SetupTest
+
+	// Mock SMART service call
+	mock.When(suite.smartMock.GetSmartInfo(mock.AnyContext(), mock.Exact(diskID))).ThenReturn(smartInfo, nil)
+
+	// Act
+	enabled := suite.ds.isSmartEnabled(diskID)
+
+	// Assert
+	suite.False(enabled)
+	cachedValue, found := getCacheValue(suite.ds.smartEnabledCache, diskID)
+	suite.True(found, "Cache should be populated")
+	suite.False(cachedValue, "Unsupported SMART should be cached as disabled")
+
+	// Verify only GetSmartInfo was called
+	mock.Verify(suite.smartMock, matchers.Times(1)).GetSmartInfo(mock.AnyContext(), mock.Exact(diskID))
+}
+
+func (suite *DiskStatsServiceSuite) TestInvalidateSmartCache_SpecificDisk() {
+	// Test that invalidating a specific disk clears only that disk's cache entry
+	disk1 := "disk-1"
+	disk2 := "disk-2"
+
+	// Arrange - populate cache
+	// Cache is already initialized in SetupTest
+	suite.ds.smartEnabledCache.Set(disk1, true, cache.DefaultExpiration)
+	suite.ds.smartEnabledCache.Set(disk2, false, cache.DefaultExpiration)
+
+	// Act - invalidate disk1
+	suite.ds.InvalidateSmartCache(disk1)
+
+	// Assert - disk1 should be removed, disk2 should remain
+	_, disk1Exists := getCacheValue(suite.ds.smartEnabledCache, disk1)
+	suite.False(disk1Exists, "disk1 should be removed from cache")
+
+	disk2Value, disk2Exists := getCacheValue(suite.ds.smartEnabledCache, disk2)
+	suite.True(disk2Exists, "disk2 should remain in cache")
+	suite.False(disk2Value, "disk2 value should be unchanged")
+}
+
+func (suite *DiskStatsServiceSuite) TestInvalidateSmartCache_AllDisks() {
+	// Test that invalidating with empty string clears entire cache
+	disk1 := "disk-1"
+	disk2 := "disk-2"
+
+	// Arrange - populate cache
+	// Cache is already initialized in SetupTest
+	suite.ds.smartEnabledCache.Set(disk1, true, cache.DefaultExpiration)
+	suite.ds.smartEnabledCache.Set(disk2, false, cache.DefaultExpiration)
+
+	// Act - invalidate all
+	suite.ds.InvalidateSmartCache("")
+
+	// Assert - cache should be empty (both entries should be gone)
+	_, disk1Exists := getCacheValue(suite.ds.smartEnabledCache, disk1)
+	suite.False(disk1Exists, "disk1 should be removed from cache")
+
+	_, disk2Exists := getCacheValue(suite.ds.smartEnabledCache, disk2)
+	suite.False(disk2Exists, "disk2 should be removed from cache")
 }

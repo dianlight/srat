@@ -21,6 +21,13 @@ func (c *SmartMonToolsToDtoImpl) SmartMonToolsSmartInfoToSmartInfo(source *smart
 		if pBool != nil {
 			dtoSmartInfo.Supported = *pBool
 		}
+		var pBool2 *bool
+		if (*source).SmartSupport != nil {
+			pBool2 = &(*source).SmartSupport.Enabled
+		}
+		if pBool2 != nil {
+			dtoSmartInfo.Enabled = *pBool2
+		}
 		dtoSmartInfo.DiskType = (*source).DiskType
 		dtoSmartInfo.ModelFamily = (*source).ModelFamily
 		dtoSmartInfo.ModelName = (*source).ModelName
@@ -60,10 +67,34 @@ func (c *SmartMonToolsToDtoImpl) SmartMonToolsSmartInfoToSmartStatus(source *sma
 			return nil, err
 		}
 		dtoSmartStatus.PowerCycleCount = dtoSmartRangeValue2
-		dtoSmartStatus.IsTestRunning = (*source).SmartStatus.Running
-		dtoSmartStatus.IsTestPassed = (*source).SmartStatus.Passed
-		dtoSmartStatus.IsInWarning = (*source).SmartStatus.Damaged
-		dtoSmartStatus.IsInDanger = (*source).SmartStatus.Critical
+		var pBool2 *bool
+		if (*source).SmartStatus != nil {
+			pBool2 = &(*source).SmartStatus.Running
+		}
+		if pBool2 != nil {
+			dtoSmartStatus.IsTestRunning = *pBool2
+		}
+		var pBool3 *bool
+		if (*source).SmartStatus != nil {
+			pBool3 = &(*source).SmartStatus.Passed
+		}
+		if pBool3 != nil {
+			dtoSmartStatus.IsTestPassed = *pBool3
+		}
+		var pBool4 *bool
+		if (*source).SmartStatus != nil {
+			pBool4 = &(*source).SmartStatus.Damaged
+		}
+		if pBool4 != nil {
+			dtoSmartStatus.IsInWarning = *pBool4
+		}
+		var pBool5 *bool
+		if (*source).SmartStatus != nil {
+			pBool5 = &(*source).SmartStatus.Critical
+		}
+		if pBool5 != nil {
+			dtoSmartStatus.IsInDanger = *pBool5
+		}
 		pDtoSmartStatus = &dtoSmartStatus
 	}
 	return pDtoSmartStatus, nil

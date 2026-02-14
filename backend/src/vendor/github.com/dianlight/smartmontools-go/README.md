@@ -256,7 +256,130 @@ fmt.Printf("Health: %v\n", info.SmartStatus.Passed)
 
 The embedded database is the official smartmontools `drivedb.h` which contains USB bridge definitions from the upstream project. See [docs/drivedb.md](./docs/drivedb.md) for details.
 
+### Efficient SMART Monitoring (Avoiding Periodic Disk Access)
+
+When building monitoring applications that periodically check SMART status, it's important to avoid unnecessary disk I/O that can wake disks from standby mode. This is especially important for:
+
+- Home NAS systems with idle disk spindown
+- Battery-powered devices
+- Systems with multiple drives where periodic access causes audible noise
+
+**❌ Inefficient approach (wakes disk every check):**
+
+```go
+// DON'T: This queries the disk on every call
+ticker := time.NewTicker(10 * time.Second)
+for range ticker.C {
+    // Error handling omitted for brevity in this anti-pattern example
+    support, _ := client.IsSMARTSupported(ctx, "/dev/sda") // Disk access!
+    if support.Enabled {
+        // ... monitor SMART data
+    }
+}
+```
+
+**✅ Efficient approach (cache and event-driven):**
+
+```go
+// DO: Query once, cache the result, update on events
+type DiskMonitor struct {
+    client     smartmontools.SmartClient
+    smartCache map[string]*smartmontools.SMARTInfo
+    cacheMutex sync.RWMutex
+}
+
+// Initial population or refresh after enable/disable
+func (m *DiskMonitor) refreshSMARTInfo(ctx context.Context, devicePath string) error {
+    info, err := m.client.GetSMARTInfo(ctx, devicePath)
+    if err != nil {
+        return err
+    }
+    
+    m.cacheMutex.Lock()
+    m.smartCache[devicePath] = info
+    m.cacheMutex.Unlock()
+    
+    return nil
+}
+
+// Check SMART status without disk I/O
+func (m *DiskMonitor) isSMARTEnabled(devicePath string) bool {
+    m.cacheMutex.RLock()
+    info, exists := m.smartCache[devicePath]
+    m.cacheMutex.RUnlock()
+    
+    if !exists {
+        return false
+    }
+    
+    // Extract status from cached info - no disk access!
+    support := m.client.GetSMARTSupportFromInfo(info)
+    return support.Available && support.Enabled
+}
+
+// Periodic monitoring loop
+func (m *DiskMonitor) monitorLoop(ctx context.Context, devicePath string) {
+    ticker := time.NewTicker(10 * time.Second)
+    defer ticker.Stop()
+    
+    for {
+        select {
+        case <-ticker.C:
+            // Check from cache - no disk I/O
+            if !m.isSMARTEnabled(devicePath) {
+                continue // Skip monitoring when SMART is disabled
+            }
+            
+            // Only query disk when SMART is enabled
+            info, err := m.client.GetSMARTInfo(ctx, devicePath)
+            if err != nil {
+                log.Printf("Error getting SMART info: %v", err)
+                continue
+            }
+            
+            // Update cache
+            m.cacheMutex.Lock()
+            m.smartCache[devicePath] = info
+            m.cacheMutex.Unlock()
+            
+            // Process SMART data...
+            
+        case <-ctx.Done():
+            return
+        }
+    }
+}
+
+// Call after enabling SMART to refresh cache
+func (m *DiskMonitor) enableSMART(ctx context.Context, devicePath string) error {
+    if err := m.client.EnableSMART(ctx, devicePath); err != nil {
+        return err
+    }
+    // Refresh cache immediately after enable
+    return m.refreshSMARTInfo(ctx, devicePath)
+}
+
+// Call after disabling SMART to refresh cache
+func (m *DiskMonitor) disableSMART(ctx context.Context, devicePath string) error {
+    if err := m.client.DisableSMART(ctx, devicePath); err != nil {
+        return err
+    }
+    // Refresh cache immediately after disable
+    return m.refreshSMARTInfo(ctx, devicePath)
+}
+```
+
+**Key principles:**
+1. Call `GetSMARTInfo` once at startup or when SMART enable/disable state changes
+2. Cache the `SMARTInfo` result in your application
+3. Use `GetSMARTSupportFromInfo` to check SMART status from the cache (no disk I/O)
+4. Only query the disk when SMART is known to be enabled
+5. Refresh the cache after calling `EnableSMART()` or `DisableSMART()`
+
+This approach eliminates unnecessary disk access and prevents waking disks from standby mode, resolving issues like [dianlight/hassio-addons#596](https://github.com/dianlight/hassio-addons/issues/596).
+
 ## API Reference
+
 
 See [APIDOC.md](APIDOC.md) for detailed API documentation.
 
