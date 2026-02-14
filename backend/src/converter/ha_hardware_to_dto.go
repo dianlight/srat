@@ -30,7 +30,7 @@ type HaHardwareToDto interface {
 
 	// goverter:useZeroValueOnPointerInconsistency
 	// goverter:useUnderlyingTypeMethods
-	// goverter:ignore MountPointData  DevicePath FsType RefreshVersion DiskId
+	// goverter:ignore MountPointData DevicePath FsType RefreshVersion DiskId FilesystemSupport
 	// goverter:map Device LegacyDevicePath
 	// goverter:map Device LegacyDeviceName | trimDevPrefix
 	// goverter:map . HostMountPointData | mountPointsToMountPointDatas
@@ -41,7 +41,7 @@ type HaHardwareToDto interface {
 	// goverter:update target
 	// goverter:useZeroValueOnPointerInconsistency
 	// goverter:useUnderlyingTypeMethods
-	// goverter:ignore MountPointData  DevicePath FsType RefreshVersion DiskId
+	// goverter:ignore MountPointData DevicePath FsType RefreshVersion DiskId FilesystemSupport
 	// goverter:map Device LegacyDevicePath
 	// goverter:map Device LegacyDeviceName | trimDevPrefix
 	// goverter:map . HostMountPointData | mountPointsToMountPointDatas

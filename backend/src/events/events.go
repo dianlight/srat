@@ -103,3 +103,9 @@ type PowerEvent struct {
 	PowerInfo   dto.HDIdleDevice
 	PowerStatus dto.HDIdleDeviceStatus
 }
+
+// FilesystemTaskEvent represents a filesystem operation event (format, check)
+type FilesystemTaskEvent struct {
+	Event
+	Task *dto.FilesystemTask
+}

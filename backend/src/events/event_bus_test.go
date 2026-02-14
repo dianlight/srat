@@ -537,3 +537,53 @@ func TestEventBusConcurrentEmits(t *testing.T) {
 		t.Fatal("timeout waiting for all events to be processed")
 	}
 }
+
+func TestEventBusFilesystemTask(t *testing.T) {
+	ctx := context.Background()
+	bus := NewEventBus(ctx)
+
+	var receivedEvent *FilesystemTaskEvent
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	// Register listener
+	unsubscribe := bus.OnFilesystemTask(func(ctx context.Context, event FilesystemTaskEvent) errors.E {
+		receivedEvent = &event
+		wg.Done()
+		return nil
+	})
+	defer unsubscribe()
+
+	// Emit event
+	task := &dto.FilesystemTask{
+		Device:         "/dev/sdb1",
+		Operation:      "format",
+		FilesystemType: "ext4",
+		Status:         "start",
+		Message:        "Starting format operation",
+	}
+	bus.EmitFilesystemTask(FilesystemTaskEvent{
+		Event: Event{Type: EventTypes.START},
+		Task:  task,
+	})
+
+	// Wait for event
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		require.NotNil(t, receivedEvent)
+		require.NotNil(t, receivedEvent.Task)
+		assert.Equal(t, "/dev/sdb1", receivedEvent.Task.Device)
+		assert.Equal(t, "format", receivedEvent.Task.Operation)
+		assert.Equal(t, "ext4", receivedEvent.Task.FilesystemType)
+		assert.Equal(t, "start", receivedEvent.Task.Status)
+		assert.Equal(t, EventTypes.START, receivedEvent.Type)
+	case <-time.After(5 * time.Second):
+		t.Fatal("timeout waiting for event")
+	}
+}

@@ -537,9 +537,10 @@ func (s *HomeAssistantService) sendPartitionHealthEntity(diskName string, partit
 		"fstype":              partition.FSType,
 		"total_space_bytes":   partition.TotalSpace,
 		"free_space_bytes":    partition.FreeSpace,
-		"fsck_needed":         partition.FsckNeeded,
-		"fsck_supported":      partition.FsckSupported,
 		"disk_name":           diskName,
+	}
+	if partition.FilesystemState != nil {
+		attributes["filesystem_state"] = partition.FilesystemState
 	}
 
 	// Calculate usage percentage

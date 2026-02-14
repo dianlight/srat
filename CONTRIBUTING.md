@@ -179,7 +179,7 @@ Profile hotspots using provided `PPROF.md` guidance for significant performance-
 ## 15. Pull Request Checklist
 
 - [ ] Tests added / updated
-- [ ] Lint & format pass (`pre-commit run --all-files`)
+- [ ] Lint & format pass (`prek run --all-files`)
 - [ ] Context logging rule satisfied (backend)
 - [ ] Custom component checks pass (`cd custom_components && make check`, if applicable)
 - [ ] No stray `replace` directives

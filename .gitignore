@@ -22,6 +22,8 @@ docs/TEST_COVERAGE.md.bak
 .lycheecache
 frontend/package-lock.json
 backend/src/config/metadata_constants.go
+backend/src/internal/updatekey/update-public-key.key
+backend/src/service/filesystem/example/example
 backend/src/internal/updatekey/update-private-key.key
 
 # Python
