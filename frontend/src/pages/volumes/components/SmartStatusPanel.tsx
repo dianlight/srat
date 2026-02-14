@@ -78,6 +78,7 @@ export function SmartStatusPanel({
         refetchOnMountOrArgChange: true,
     });
     const { smartTestStatus, isLoading: smartTestStatusLoading } = useSmartTestStatus(diskId || "");
+    const isSmartControlSupported = smartInfo?.disk_type !== "NVMe";
 
     // Don't render if SMART is not supported based on backend data
     if (!smartInfo?.supported) {
@@ -401,11 +402,13 @@ export function SmartStatusPanel({
                                     size="small"
                                     variant="outlined"
                                     onClick={enableSmart}
-                                    disabled={smartOperationLoading || smartStatusIsLoading || ((smartStatus as SmartStatus)?.enabled ?? false) || isReadOnlyMode}
+                                    disabled={smartOperationLoading || smartStatusIsLoading || ((smartStatus as SmartStatus)?.enabled ?? false) || isReadOnlyMode || !isSmartControlSupported}
                                     title={
-                                        (smartStatus as SmartStatus)?.enabled ?? false
-                                            ? "SMART already enabled"
-                                            : "Enable SMART monitoring"
+                                        !isSmartControlSupported
+                                            ? "SMART control not supported for NVMe devices"
+                                            : (smartStatus as SmartStatus)?.enabled ?? false
+                                                ? "SMART already enabled"
+                                                : "Enable SMART monitoring"
                                     }
                                 >
                                     Enable SMART
@@ -415,11 +418,13 @@ export function SmartStatusPanel({
                                     variant="outlined"
                                     color="error"
                                     onClick={disableSmart}
-                                    disabled={smartOperationLoading || smartStatusIsLoading || !((smartStatus as SmartStatus)?.enabled ?? false) || isReadOnlyMode}
+                                    disabled={smartOperationLoading || smartStatusIsLoading || !((smartStatus as SmartStatus)?.enabled ?? false) || isReadOnlyMode || !isSmartControlSupported}
                                     title={
-                                        !((smartStatus as SmartStatus)?.enabled ?? false)
-                                            ? "SMART already disabled"
-                                            : "Disable SMART monitoring"
+                                        !isSmartControlSupported
+                                            ? "SMART control not supported for NVMe devices"
+                                            : !((smartStatus as SmartStatus)?.enabled ?? false)
+                                                ? "SMART already disabled"
+                                                : "Disable SMART monitoring"
                                     }
                                 >
                                     Disable SMART
