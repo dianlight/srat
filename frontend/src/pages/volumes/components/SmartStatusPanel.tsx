@@ -51,6 +51,7 @@ export type SmartTestType = "short" | "long" | "conveyance";
 interface SmartStatusPanelProps {
     smartInfo?: SmartInfo;
     diskId?: string;
+    bus?: string;
     healthStatus?: SmartHealthStatus;
     testStatus?: SmartTestStatus;
     isSmartSupported?: boolean;
@@ -62,6 +63,7 @@ interface SmartStatusPanelProps {
 export function SmartStatusPanel({
     smartInfo,
     diskId,
+    bus,
     isReadOnlyMode = false,
     isExpanded: initialExpanded = true,
     onSetExpanded,
@@ -456,6 +458,12 @@ export function SmartStatusPanel({
                     <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 2 }}>
                         The selected test type will be executed on the disk. Running tests may impact disk performance.
                     </Typography>
+                    {bus?.toLowerCase() === "usb" && (
+                        <Typography variant="caption" color="error" sx={{ display: "block", mt: 2 }}>
+                            Warning: Running SMART self-tests on USB-connected drives may cause them to disconnect temporarily. Ensure you have backups of any important data before proceeding.
+                            Also note that SMART test can't be performed or results may be unreliable for USB drives due to limitations in how SMART data is reported over USB interfaces.
+                        </Typography>
+                    )}
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setShowStartTestDialog(false)}>Cancel</Button>
