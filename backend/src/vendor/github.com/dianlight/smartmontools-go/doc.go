@@ -5,6 +5,14 @@ to monitor and manage storage device health using S.M.A.R.T. data.
 The library wraps the smartctl command-line utility and provides a clean,
 idiomatic Go API for accessing SMART information from storage devices.
 
+# Go 1.26 Optimizations
+
+This library is optimized for Go 1.26+ and includes:
+  - Efficient string operations using strings.Builder
+  - Optimized hash-based message caching with minimal allocations
+  - Better error handling with strconv for version parsing
+  - Optimized slice operations and range patterns
+
 # Features
 
   - Device scanning and discovery
@@ -124,5 +132,13 @@ disk devices. The library will return errors if permissions are insufficient.
 # Thread Safety
 
 The Client type is safe for concurrent use by multiple goroutines.
+
+# Performance Considerations
+
+The library uses several optimization techniques:
+  - Device type caching to avoid repeated lookups
+  - Message caching with TTL to prevent duplicate logging
+  - Efficient string building for USB device ID construction
+  - Connection pooling and context-aware command execution
 */
 package smartmontools

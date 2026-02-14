@@ -41,11 +41,11 @@ help:
 
 test:
 	@echo "Running tests..."
-	$(GOTEST) ./...
+	$(GOTEST) -failfast ./...
 
 coverage:
 	@echo "Running tests with coverage..."
-	$(GOTEST) -coverprofile=coverage.txt ./... -covermode=atomic || true
+	$(GOTEST) -failfast -coverprofile=coverage.txt ./... -covermode=atomic || true
 	@echo "Summary:"
 	@if [ -f coverage.txt ]; then $(GOCMD) tool cover -func=coverage.txt | tail -n 1; fi
 

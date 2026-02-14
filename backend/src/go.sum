@@ -106,8 +106,8 @@ github.com/dave/jennifer v1.6.0/go.mod h1:AxTG893FiZKqxy3FP1kL80VMshSMuz2G+Egvsz
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/dianlight/smartmontools-go v0.2.5 h1:EFYT76Ms/wGjZmsefmo9uEHfxyYG8D+JlJkOP7Tipks=
-github.com/dianlight/smartmontools-go v0.2.5/go.mod h1:A0lllj5XQeMHnvkSYRxkxCo9Y3k17d9LDqTJd8mCO50=
+github.com/dianlight/smartmontools-go v0.2.6 h1:FP3lAbIBnuepNpJJDdLnMzJiTPcTxZAxZY8hot8NMDE=
+github.com/dianlight/smartmontools-go v0.2.6/go.mod h1:8H2HzJDma5ACWvCPfggdf8Ho8LU7rkgV6eJXQutS9Tk=
 github.com/dianlight/tlog v0.2.2 h1:SBXWqsIr2MLcTTMJtZvh5j5xYksYn5ZRjRudvtcCiPk=
 github.com/dianlight/tlog v0.2.2/go.mod h1:oX7P84OwzOWRKQGVtMCFq3NP8OVYRZosmt5WmDT9SyE=
 github.com/disintegration/gift v1.2.1 h1:Y005a1X4Z7Uc+0gLpSAsKhWi4qLtsdEcMIbbdvdZ6pc=

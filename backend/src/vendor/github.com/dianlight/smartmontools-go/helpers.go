@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -16,14 +17,15 @@ func isATADevice(deviceType string) bool {
 	return strings.Contains(dt, "ata") || strings.Contains(dt, "sat") || dt == "scsi"
 }
 
-// determineDiskType determines the type of disk based on available information
+// determineDiskType determines the type of disk based on available information.
+// Optimized to check conditions in order of likelihood and cost.
 func determineDiskType(info *SMARTInfo) string {
 	// Check for NVMe devices first
 	if info.Device.Type == "nvme" || info.NvmeSmartHealth != nil || info.NvmeControllerCapabilities != nil {
 		return "NVMe"
 	}
 
-	// Check rotation rate for ATA/SATA devices
+	// Check rotation rate for ATA/SATA devices (most reliable indicator)
 	if info.RotationRate != nil {
 		if *info.RotationRate == 0 {
 			return "SSD"
@@ -36,6 +38,7 @@ func determineDiskType(info *SMARTInfo) string {
 	if strings.Contains(deviceType, "nvme") {
 		return "NVMe"
 	}
+
 	if strings.Contains(deviceType, "sata") || strings.Contains(deviceType, "ata") || strings.Contains(deviceType, "sat") {
 		// If we have ATA SMART data but no rotation rate, try to infer
 		if info.AtaSmartData != nil {
@@ -81,16 +84,13 @@ func parseSmartctlVersion(output string) (int, int, error) {
 	if len(m) != 3 {
 		return 0, 0, fmt.Errorf("version pattern not found in output")
 	}
-	// Convert captures to ints
-	var (
-		major int
-		minor int
-	)
-	// Atoi without extra import by using fmt.Sscanf
-	if _, err := fmt.Sscanf(m[1], "%d", &major); err != nil {
+	// Convert captures to ints using strconv for better performance
+	major, err := strconv.Atoi(m[1])
+	if err != nil {
 		return 0, 0, fmt.Errorf("failed to parse major version: %w", err)
 	}
-	if _, err := fmt.Sscanf(m[2], "%d", &minor); err != nil {
+	minor, err := strconv.Atoi(m[2])
+	if err != nil {
 		return 0, 0, fmt.Errorf("failed to parse minor version: %w", err)
 	}
 	return major, minor, nil
