@@ -78,6 +78,130 @@ describe("VolumesTreeView Component", () => {
         expect(fstypeChip).toBeTruthy();
     });
 
+    it("shows filesystem alert icon when filesystem is not clear", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { VolumesTreeView } = await import("../VolumesTreeView");
+        const { getDiskIdentifier } = await import("../../utils");
+        const { createTestStore } = await import("../../../../../test/setup");
+
+        const store = await createTestStore();
+        const disks = [
+            {
+                id: "disk-alert",
+                model: "Alert Disk",
+                partitions: {
+                    "part-alert": {
+                        id: "part-alert",
+                        name: "Alert Partition",
+                        mount_point_data: {
+                            "/mnt/alert": {
+                                is_mounted: true,
+                                is_write_supported: true,
+                                fstype: "ext4",
+                                path: "/mnt/alert",
+                                type: "HOST",
+                            },
+                        },
+                    },
+                },
+            },
+        ];
+        const filesystemStateByPartitionId = {
+            "part-alert": {
+                hasErrors: true,
+                isClean: false,
+                isMounted: true,
+                stateDescription: "Filesystem errors detected",
+            },
+        };
+
+        const diskIdentifier = getDiskIdentifier(disks[0] as any, 0);
+
+        render(
+            React.createElement(
+                Provider,
+                {
+                    store,
+                    children: React.createElement(
+                        VolumesTreeView as any,
+                        createBaseProps({
+                            disks,
+                            expandedItems: [diskIdentifier],
+                            filesystemStateByPartitionId,
+                        }),
+                    ),
+                },
+            ),
+        );
+
+        const alertIcon = await screen.findByLabelText(
+            /filesystem status alert for alert partition/i,
+        );
+        expect(alertIcon).toBeTruthy();
+    });
+
+    it("does not show filesystem alert icon when filesystem is clean", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { VolumesTreeView } = await import("../VolumesTreeView");
+        const { getDiskIdentifier } = await import("../../utils");
+        const { createTestStore } = await import("../../../../../test/setup");
+
+        const store = await createTestStore();
+        const disks = [
+            {
+                id: "disk-clean",
+                model: "Clean Disk",
+                partitions: {
+                    "part-clean": {
+                        id: "part-clean",
+                        name: "Clean Partition",
+                        mount_point_data: {
+                            "/mnt/clean": {
+                                is_mounted: true,
+                                is_write_supported: true,
+                                fstype: "ext4",
+                                path: "/mnt/clean",
+                                type: "HOST",
+                            },
+                        },
+                    },
+                },
+            },
+        ];
+        const filesystemStateByPartitionId = {
+            "part-clean": {
+                hasErrors: false,
+                isClean: true,
+                isMounted: true,
+            },
+        };
+
+        const diskIdentifier = getDiskIdentifier(disks[0] as any, 0);
+
+        render(
+            React.createElement(
+                Provider,
+                {
+                    store,
+                    children: React.createElement(
+                        VolumesTreeView as any,
+                        createBaseProps({
+                            disks,
+                            expandedItems: [diskIdentifier],
+                            filesystemStateByPartitionId,
+                        }),
+                    ),
+                },
+            ),
+        );
+
+        expect(screen.queryByLabelText(/filesystem status alert/i)).toBeNull();
+    });
+
     it("renders multiple mountpoints with a parent node", async () => {
         const React = await import("react");
         const { render, screen } = await import("@testing-library/react");

@@ -7,7 +7,7 @@ import {
     Typography
 } from "@mui/material";
 import { useConfirm } from "material-ui-confirm";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { toast } from "react-toastify";
 import { PreviewDialog } from "../../components/PreviewDialog";
@@ -15,8 +15,10 @@ import { useVolume } from "../../hooks/volumeHook";
 import { type LocationState, TabIDs } from "../../store/locationState";
 import {
 	type Disk,
+	type FilesystemState,
 	type MountPointData,
 	type Partition,
+	type PerPartitionInfo,
 	useDeleteApiVolumeMutation,
 	usePatchApiVolumeSettingsMutation,
 	usePostApiVolumeMountMutation,
@@ -60,6 +62,23 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 	const [mountVolume, _mountVolumeResult] = usePostApiVolumeMountMutation();
 	const [umountVolume, _umountVolumeResult] = useDeleteApiVolumeMutation();
 	const [patchMountSettings] = usePatchApiVolumeSettingsMutation();
+	const perPartitionInfo = evdata?.heartbeat?.disk_health?.per_partition_info;
+	const filesystemStateByPartitionId = useMemo<Record<string, FilesystemState>>(() => {
+		const result: Record<string, FilesystemState> = {};
+		if (!perPartitionInfo) return result;
+
+		(Object.values(perPartitionInfo) as (PerPartitionInfo[] | null)[]).forEach(
+			(partitionInfos) => {
+				partitionInfos?.forEach((partitionInfo) => {
+					if (partitionInfo.device && partitionInfo.filesystem_state) {
+						result[partitionInfo.device] = partitionInfo.filesystem_state;
+					}
+				});
+			},
+		);
+
+		return result;
+	}, [perPartitionInfo]);
 
 	// Handle disk selection (top-level)
 	const handleDiskSelect = (disk: Disk) => {
@@ -510,6 +529,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 								expandedItems={expandedDisks}
 								onExpandedItemsChange={setExpandedDisks}
 								hideSystemPartitions={hideSystemPartitions}
+								filesystemStateByPartitionId={filesystemStateByPartitionId}
 								onDiskSelect={handleDiskSelect}
 								onPartitionSelect={handlePartitionSelect}
 								onToggleAutomount={handleToggleAutomount}

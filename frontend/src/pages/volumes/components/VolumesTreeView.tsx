@@ -1,6 +1,8 @@
 import ComputerIcon from "@mui/icons-material/Computer";
 import CreditScoreIcon from "@mui/icons-material/CreditScore";
 import EjectIcon from "@mui/icons-material/Eject";
+import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import SdStorageIcon from "@mui/icons-material/SdStorage";
 import SettingsSuggestIcon from "@mui/icons-material/SettingsSuggest";
 import StorageIcon from "@mui/icons-material/Storage";
@@ -16,7 +18,7 @@ import { SimpleTreeView } from "@mui/x-tree-view/SimpleTreeView";
 import { TreeItem } from "@mui/x-tree-view/TreeItem";
 import { filesize } from "filesize";
 import { useMemo } from "react";
-import { type Disk, type Partition } from "../../../store/sratApi";
+import { type Disk, type FilesystemState, type Partition } from "../../../store/sratApi";
 import {
     decodeEscapeSequence,
     getDiskIdentifier,
@@ -45,6 +47,7 @@ interface VolumesTreeViewProps {
     onGoToShare: (partition: Partition) => void;
     protectedMode?: boolean;
     readOnly?: boolean;
+    filesystemStateByPartitionId?: Record<string, FilesystemState>;
 }
 
 export function VolumesTreeView({
@@ -63,6 +66,7 @@ export function VolumesTreeView({
     onGoToShare,
     protectedMode = false,
     readOnly = false,
+    filesystemStateByPartitionId,
 }: VolumesTreeViewProps) {
     const theme = useTheme();
     // Normalize selected id to support both the new and legacy prop name
@@ -123,6 +127,40 @@ export function VolumesTreeView({
             return <SettingsSuggestIcon fontSize="small" {...iconColorProp} />;
         }
         return <StorageIcon fontSize="small" {...iconColorProp} />;
+    };
+
+    const renderFilesystemAlertIcon = (partition: Partition) => {
+        if (!filesystemStateByPartitionId || !partition.id) return null;
+        const filesystemState = filesystemStateByPartitionId[partition.id];
+        if (!filesystemState) return null;
+
+        const hasErrors = filesystemState.hasErrors;
+        const isClean = filesystemState.isClean;
+        if (!hasErrors && isClean) return null;
+
+        const labelText = hasErrors
+            ? "Filesystem has errors"
+            : "Filesystem not clean";
+        const tooltipText = filesystemState.stateDescription || labelText;
+        const partitionLabel = decodeEscapeSequence(
+            partition.name || partition.id || "partition",
+        );
+        const alertLabel = `Filesystem status alert for ${partitionLabel}`;
+        const icon = hasErrors
+            ? <ErrorOutlineIcon color="error" fontSize="small" />
+            : <HelpOutlineIcon color="disabled" fontSize="small" />;
+
+        return (
+            <Tooltip title={tooltipText} placement="top" arrow>
+                <Box
+                    role="img"
+                    aria-label={alertLabel}
+                    sx={{ display: "flex", alignItems: "center" }}
+                >
+                    {icon}
+                </Box>
+            </Tooltip>
+        );
     };
 
     // Helper function to render a single mountpoint leaf
@@ -237,6 +275,7 @@ export function VolumesTreeView({
             a[0].localeCompare(b[0]),
         );
         const isMounted = mpds.some((mpd) => mpd.is_mounted);
+        const filesystemAlertIcon = renderFilesystemAlertIcon(partition);
 
         // If partition has multiple mountpoints, create a parent node without actions
         if (mpdEntries.length > 1) {
@@ -303,6 +342,12 @@ export function VolumesTreeView({
                                     )}
                                 </Box>
                             </Box>
+
+                            {filesystemAlertIcon && (
+                                <Box sx={{ flexShrink: 0, mr: 1 }}>
+                                    {filesystemAlertIcon}
+                                </Box>
+                            )}
                         </Box>
                     }
                 >
@@ -380,6 +425,12 @@ export function VolumesTreeView({
                                 )}
                             </Box>
                         </Box>
+
+                        {filesystemAlertIcon && (
+                            <Box sx={{ flexShrink: 0, mr: 1 }}>
+                                {filesystemAlertIcon}
+                            </Box>
+                        )}
 
                         {!readOnly && (
                             <Box sx={{ flexShrink: 0 }}>
