@@ -303,6 +303,61 @@ func (suite *VolumeServiceTestSuite) TestMountVolume_PathEmpty() {
 	suite.Equal("Mount point path is empty", details["Message"])
 }
 
+func (suite *VolumeServiceTestSuite) TestMountVolume_UsesLinuxFsModule() {
+	partID := "part-ntfs"
+	diskID := "disk-ntfs"
+	mountPath := "/mnt/test-ntfs-module"
+	fsType := "ntfs"
+
+	deviceFile, err := os.CreateTemp("", "srat-ntfs-device-*")
+	suite.Require().NoError(err)
+	suite.Require().NoError(deviceFile.Close())
+
+	devicePath := deviceFile.Name()
+	suite.T().Cleanup(func() {
+		_ = os.Remove(devicePath)
+		_ = os.RemoveAll(mountPath)
+	})
+
+	mock.When(suite.mockHardwareClient.GetHardwareInfo()).ThenReturn(
+		map[string]dto.Disk{
+			diskID: {
+				Id: new(diskID),
+				Partitions: &map[string]dto.Partition{
+					partID: {
+						Id:         new(partID),
+						DiskId:     new(diskID),
+						DevicePath: new(devicePath),
+					},
+				},
+			},
+		},
+		nil,
+	).Verify(matchers.AtLeastOnce())
+
+	suite.volumeService.GetVolumesData()
+
+	expectedMountFsType := "ntfs3"
+	suite.mockMountOps(
+		nil,
+		func(source, target, fstype, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error) {
+			suite.Equal(expectedMountFsType, fstype)
+			return &mount.MountPoint{Path: target, Device: source, FSType: fstype, Flags: flags, Data: data}, nil
+		},
+		nil,
+	)
+
+	md := dto.MountPointData{
+		Path:     mountPath,
+		Root:     "/",
+		DeviceId: partID,
+		FSType:   &fsType,
+	}
+
+	errE := suite.volumeService.MountVolume(&md)
+	suite.Require().NoError(errE)
+}
+
 func (suite *VolumeServiceTestSuite) TestUnmountVolume_NotInCache() {
 	mountPath := "/mnt/notfound"
 
