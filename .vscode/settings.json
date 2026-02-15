@@ -207,7 +207,8 @@
   "typescript.preferences.preferTypeOnlyAutoImports": true,
   "biome.requireConfiguration": true,
   "editor.formatOnSave": true,
-  "biome.lsp.bin": "/root/.bun/bin/biome""chat.agent.thinking.generateTitles": true,
+  "biome.lsp.bin": "/root/.bun/bin/biome",
+  "chat.agent.thinking.generateTitles": true,
   "chat.agentSessionProjection.enabled": true,
   "chat.alternativeToolAction.enabled": true,
   "chat.checkpoints.showFileChanges": true,
@@ -225,5 +226,26 @@
   "github.copilot.chat.githubMcpServer.toolsets": [],
   "github.copilot.chat.newWorkspace.useContext7": true,
   "github.copilot.chat.switchAgent.enabled": true,
-  "githubIssues.useBranchForIssues": "prompt"
+  "githubIssues.useBranchForIssues": "prompt",
+  "todohighlight.include": [
+    "**/*.js",
+    "**/*.jsx",
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.html",
+    "**/*.css",
+    "**/*.scss",
+    "**/*.php",
+    "**/*.rb",
+    "**/*.txt",
+    "**/*.mdown",
+    "**/*.md",
+    "**/*.go"
+  ],
+  "todo-tree.filtering.ignoreGitSubmodules": true,
+  "todo-tree.filtering.excludeGlobs": [
+    "**/node_modules/*/**",
+    "**/vendor/*/**"
+  ],
+  "todo-tree.tree.showCountsInTree": true
 }
