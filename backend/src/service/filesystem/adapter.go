@@ -14,6 +14,9 @@ type FilesystemAdapter interface {
 	// GetName returns the filesystem type name (e.g., "ext4", "ntfs", "xfs")
 	GetName() string
 
+	// GetLinuxFsModule returns the Linux filesystem module/fstype name to use for mounting
+	GetLinuxFsModule() string
+
 	// GetDescription returns a human-readable description of the filesystem
 	GetDescription() string
 

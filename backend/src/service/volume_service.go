@@ -346,7 +346,15 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 		)
 	}
 
-	slog.DebugContext(ms.ctx, "Attempting to mount volume", "device", md.DeviceId, "path", md.Path, "fstype", md.FSType, "flags", flags, "data", data)
+	mountFsType := ""
+	if md.FSType != nil && *md.FSType != "" {
+		mountFsType = ms.fs_service.ResolveLinuxFsModule(*md.FSType)
+		if mountFsType == "" {
+			mountFsType = *md.FSType
+		}
+	}
+
+	slog.DebugContext(ms.ctx, "Attempting to mount volume", "device", md.DeviceId, "path", md.Path, "fstype", md.FSType, "mount_fstype", mountFsType, "flags", flags, "data", data)
 
 	var mp *mount.MountPoint
 	// Ensure secure directory permissions when creating mount point
@@ -359,6 +367,23 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 			"Path", md.Path,
 			"Message", "Device path is nil or empty, cannot mount",
 		)
+	} else if _, err := os.Stat(*md.Partition.DevicePath); err != nil {
+		if os.IsPermission(err) {
+			return errors.WithDetails(dto.ErrorOperationNotPermitted,
+				"DeviceId", md.DeviceId,
+				"Path", md.Path,
+				"DevicePath", *md.Partition.DevicePath,
+				"Message", "Permission denied to access device",
+				"Error", err.Error(),
+			)
+		}
+		return errors.WithDetails(dto.ErrorDeviceNotFound,
+			"DeviceId", md.DeviceId,
+			"Path", md.Path,
+			"DevicePath", *md.Partition.DevicePath,
+			"Message", "Device path does not exist",
+			"Error", err.Error(),
+		)
 	}
 
 	// FIXME: Manage mount with different roots if needed
@@ -367,7 +392,7 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 		mp, errS = ms.tryMountFunc(*md.Partition.DevicePath, md.Path, data, flags, mountFunc)
 	} else {
 		// Use Mount if FSType is specified
-		mp, errS = ms.doMountFunc(*md.Partition.DevicePath, md.Path, *md.FSType, data, flags, mountFunc)
+		mp, errS = ms.doMountFunc(*md.Partition.DevicePath, md.Path, mountFsType, data, flags, mountFunc)
 	}
 
 	if errS != nil {
@@ -382,6 +407,7 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 			"device_id", md.DeviceId,
 			"device_path", *md.Partition.DevicePath,
 			"fstype", fsTypeStr,
+			"mount_fstype", mountFsType,
 			"mount_path", md.Path,
 			"flags", flags,
 			"data", data,
@@ -404,12 +430,13 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 			"DevicePath", *md.Partition.DevicePath,
 			"MountPath", md.Path,
 			"FSType", fsTypeStr,
+			"MountFSType", mountFsType,
 			"Flags", flags,
 			"Data", data,
 			"Error", errS.Error(),
 		)
 	} else {
-		slog.InfoContext(ms.ctx, "Successfully mounted volume", "device", md.DeviceId, "path", md.Path, "fstype", md.FSType, "flags", mp.Flags, "data", mp.Data)
+		slog.InfoContext(ms.ctx, "Successfully mounted volume", "device", md.DeviceId, "path", md.Path, "fstype", md.FSType, "mount_fstype", mountFsType, "flags", mp.Flags, "data", mp.Data)
 		// Update dbom_mount_data with details from the actual mount point if available
 		errS = ms.convMDto.MountToMountPointData(mp, md, ms.disks)
 		if errS != nil {

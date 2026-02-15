@@ -19,6 +19,7 @@ func NewNtfsAdapter() FilesystemAdapter {
 	return &NtfsAdapter{
 		baseAdapter: baseAdapter{
 			name:          "ntfs",
+			linuxFsModule: "ntfs3",
 			description:   "NTFS Filesystem",
 			alpinePackage: "ntfs-3g-progs",
 			mkfsCommand:   "mkfs.ntfs",

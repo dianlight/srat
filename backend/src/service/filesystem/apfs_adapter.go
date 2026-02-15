@@ -18,6 +18,7 @@ func NewApfsAdapter() FilesystemAdapter {
 	return &ApfsAdapter{
 		baseAdapter: baseAdapter{
 			name:          "apfs",
+			linuxFsModule: "apfs",
 			description:   "Apple File System (read-only)",
 			alpinePackage: "apfs-fuse",
 			mkfsCommand:   "",

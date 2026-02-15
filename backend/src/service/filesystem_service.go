@@ -25,6 +25,10 @@ type FilesystemServiceInterface interface {
 	// Returns an empty list if the filesystem type is not recognized or has no specific flags.
 	GetFilesystemSpecificMountFlags(fsType string) ([]dto.MountFlag, errors.E)
 
+	// ResolveLinuxFsModule returns the Linux filesystem module/fstype name for mounting.
+	// Falls back to the provided filesystem type when no adapter is found.
+	ResolveLinuxFsModule(fsType string) string
+
 	// GetMountFlagsAndData converts a list of MountFlag structs into the syscall flags (uintptr)
 	// and the data string (string) for the syscall.Mount function.
 	MountFlagsToSyscallFlagAndData(inputFlags []dto.MountFlag) (uintptr, string, errors.E)
@@ -316,6 +320,27 @@ func (s *FilesystemService) GetFilesystemSpecificMountFlags(fsType string) ([]dt
 		return []dto.MountFlag{}, nil
 	}
 	return flags, nil
+}
+
+// ResolveLinuxFsModule returns the Linux filesystem module/fstype name for mounting.
+// Falls back to the provided filesystem type when no adapter is found.
+func (s *FilesystemService) ResolveLinuxFsModule(fsType string) string {
+	if fsType == "" {
+		return ""
+	}
+
+	adapter, err := s.registry.Get(fsType)
+	if err != nil {
+		slog.Debug("ResolveLinuxFsModule: adapter not found, using filesystem type", "fsType", fsType, "error", err)
+		return fsType
+	}
+
+	module := adapter.GetLinuxFsModule()
+	if module == "" {
+		return fsType
+	}
+
+	return module
 }
 
 // GetMountFlagsAndData converts a list of MountFlag structs into the syscall flags (uintptr)

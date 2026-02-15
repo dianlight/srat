@@ -20,6 +20,7 @@ type CommandResult struct {
 // baseAdapter provides common functionality for all filesystem adapters
 type baseAdapter struct {
 	name          string
+	linuxFsModule string
 	description   string
 	alpinePackage string
 	mkfsCommand   string
@@ -88,6 +89,14 @@ func (b *baseAdapter) checkCommandAvailability() dto.FilesystemSupport {
 
 // GetName returns the filesystem type name
 func (b *baseAdapter) GetName() string {
+	return b.name
+}
+
+// GetLinuxFsModule returns the Linux filesystem module/fstype name to use for mounting
+func (b *baseAdapter) GetLinuxFsModule() string {
+	if b.linuxFsModule != "" {
+		return b.linuxFsModule
+	}
 	return b.name
 }
 
