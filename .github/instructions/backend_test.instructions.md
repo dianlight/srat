@@ -696,4 +696,4 @@ If you encounter tests not following these patterns:
 - [Testify Suite Documentation](https://pkg.go.dev/github.com/stretchr/testify/suite)
 - [Mockio v2 Documentation](https://github.com/ovechkin-dm/mockio)
 - [Fx Testing Documentation](https://pkg.go.dev/go.uber.org/fx/fxtest)
-- [Huma Testing Documentation](https://huma.rocks/tutorial/testing/)
+- [Huma Testing Documentation](https://huma.rocks/tutorial/writing-tests/?h=testing)
