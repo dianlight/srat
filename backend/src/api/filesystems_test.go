@@ -69,7 +69,7 @@ func (suite *FilesystemHandlerSuite) TestListFilesystems_Success() {
 	mock.When(suite.mockFsService.ListSupportedTypes()).ThenReturn(fsTypes)
 
 	for _, fsType := range fsTypes {
-		info := &service.FilesystemInfo{
+		info := &dto.FilesystemInfo{
 			Name:             fsType,
 			Type:             fsType,
 			Description:      fsType + " filesystem",
@@ -90,7 +90,7 @@ func (suite *FilesystemHandlerSuite) TestListFilesystems_Success() {
 	resp := suite.testAPI.Get("/filesystems")
 	suite.Equal(http.StatusOK, resp.Code)
 
-	var result []api.FilesystemInfo
+	var result []dto.FilesystemInfo
 	err := json.Unmarshal(resp.Body.Bytes(), &result)
 	suite.Require().NoError(err)
 	suite.Len(result, 3)

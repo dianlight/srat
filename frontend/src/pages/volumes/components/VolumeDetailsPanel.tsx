@@ -375,14 +375,14 @@ export function VolumeDetailsPanel({
                                             </Typography>
                                         </Grid>
                                     )}
-                                    {(mountData?.fstype || partition.fs_type) && (
+                                    {partition.fs_type && (
                                         <>
                                             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                                                 <Typography variant="subtitle2" color="text.secondary">
                                                     File System
                                                 </Typography>
                                                 <Typography variant="body2">
-                                                    {mountData?.fstype ?? partition.fs_type}
+                                                    {partition.fs_type}
                                                 </Typography>
                                             </Grid>
 
@@ -407,10 +407,10 @@ export function VolumeDetailsPanel({
                                                             size="small"
                                                         />
                                                     )}
-                                                    {(mountData?.fstype || partition.fs_type) && (
+                                                    {partition.filesystem_info && (
                                                         <Tooltip title={filesystemStatusTooltip} arrow>
                                                             <Chip
-                                                                label={`${(mountData?.fstype ?? partition.fs_type)?.toUpperCase()} Filesystem`}
+                                                                label={partition.filesystem_info.Description || "Filesystem Info"}
                                                                 variant="outlined"
                                                                 size="small"
                                                                 icon={filesystemStatusIcon}

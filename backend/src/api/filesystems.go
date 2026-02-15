@@ -49,37 +49,16 @@ func (h *FilesystemHandler) getDiskMap() dto.DiskMap {
 	return diskMap
 }
 
-// FilesystemInfo combines filesystem type information with capability details
-type FilesystemInfo struct {
-	// Name is the filesystem type name
-	Name string `json:"name"`
-
-	// Type is the filesystem type (same as name for consistency)
-	Type string `json:"type"`
-
-	// Description provides a human-readable description of the filesystem
-	Description string `json:"description,omitempty"`
-
-	// MountFlags contains standard mount flags
-	MountFlags dto.MountFlags `json:"mountFlags"`
-
-	// CustomMountFlags contains filesystem-specific mount flags
-	CustomMountFlags dto.MountFlags `json:"customMountFlags"`
-
-	// Support contains filesystem capability information
-	Support *dto.FilesystemSupport `json:"support,omitempty"`
-}
-
 // ListFilesystems returns all supported filesystems with their capabilities
 func (h *FilesystemHandler) ListFilesystems(
 	ctx context.Context,
 	input *struct{},
-) (*struct{ Body []FilesystemInfo }, error) {
+) (*struct{ Body []dto.FilesystemInfo }, error) {
 	tlog.DebugContext(ctx, "Listing all filesystems with capabilities")
 
 	// Get all supported filesystem types
 	fsTypes := h.fsService.ListSupportedTypes()
-	result := make([]FilesystemInfo, 0, len(fsTypes))
+	result := make([]dto.FilesystemInfo, 0, len(fsTypes))
 
 	// Get capabilities for each filesystem using the new GetSupportAndInfo method
 	for _, fsType := range fsTypes {
@@ -89,17 +68,10 @@ func (h *FilesystemHandler) ListFilesystems(
 			continue
 		}
 
-		result = append(result, FilesystemInfo{
-			Name:             info.Name,
-			Type:             info.Type,
-			Description:      info.Description,
-			MountFlags:       info.MountFlags,
-			CustomMountFlags: info.CustomMountFlags,
-			Support:          info.Support,
-		})
+		result = append(result, *info)
 	}
 
-	return &struct{ Body []FilesystemInfo }{Body: result}, nil
+	return &struct{ Body []dto.FilesystemInfo }{Body: result}, nil
 }
 
 // FormatPartitionInput contains the input for formatting a partition

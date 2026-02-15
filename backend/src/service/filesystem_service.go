@@ -53,7 +53,7 @@ type FilesystemServiceInterface interface {
 
 	// GetSupportAndInfo returns filesystem support information along with name and description.
 	// This is the preferred method for API handlers to get filesystem information.
-	GetSupportAndInfo(ctx context.Context, fsType string) (*FilesystemInfo, errors.E)
+	GetSupportAndInfo(ctx context.Context, fsType string) (*dto.FilesystemInfo, errors.E)
 
 	// FormatPartition formats a device with the specified filesystem type.
 	// Returns an error if formatting cannot start, is already in progress, or fails.
@@ -71,27 +71,6 @@ type FilesystemServiceInterface interface {
 
 	// SetPartitionLabel sets the label of a partition's filesystem.
 	SetPartitionLabel(ctx context.Context, devicePath, fsType, label string) errors.E
-}
-
-// FilesystemInfo combines filesystem type information with capability details
-type FilesystemInfo struct {
-	// Name is the filesystem type name
-	Name string
-
-	// Type is the filesystem type (same as name for consistency)
-	Type string
-
-	// Description provides a human-readable description of the filesystem
-	Description string
-
-	// MountFlags contains standard mount flags
-	MountFlags []dto.MountFlag
-
-	// CustomMountFlags contains filesystem-specific mount flags
-	CustomMountFlags []dto.MountFlag
-
-	// Support contains filesystem capability information
-	Support *dto.FilesystemSupport
 }
 
 // FilesystemService implements the FilesystemServiceInterface.
@@ -519,7 +498,7 @@ func (s *FilesystemService) ListSupportedTypes() []string {
 }
 
 // GetSupportAndInfo returns filesystem support information along with name and description
-func (s *FilesystemService) GetSupportAndInfo(ctx context.Context, fsType string) (*FilesystemInfo, errors.E) {
+func (s *FilesystemService) GetSupportAndInfo(ctx context.Context, fsType string) (*dto.FilesystemInfo, errors.E) {
 	adapter, err := s.registry.Get(fsType)
 	if err != nil {
 		return nil, err
@@ -533,7 +512,7 @@ func (s *FilesystemService) GetSupportAndInfo(ctx context.Context, fsType string
 	standardFlags, _ := s.GetStandardMountFlags()
 	customFlags, _ := s.GetFilesystemSpecificMountFlags(fsType)
 
-	return &FilesystemInfo{
+	return &dto.FilesystemInfo{
 		Name:             adapter.GetName(),
 		Type:             fsType,
 		Description:      adapter.GetDescription(),

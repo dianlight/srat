@@ -864,39 +864,10 @@ func (self *VolumeService) getVolumesData() errors.E {
 	tlog.TraceContext(self.ctx, "Requesting GetVolumesData via singleflight...")
 
 	_, err, _ := self.sfGroup.Do("GetVolumesData", func() (any, error) {
-		// Mark that a refresh cycle is in progress to avoid recursive event-triggered refreshes
-		//	self.refreshing.Store(true)
-		//	defer self.refreshing.Store(false)
 		self.refreshVersion++
-		filesystemSupportCache := make(map[string]*dto.FilesystemSupport)
+		filesystemSupportCache := make(map[string]*dto.FilesystemInfo)
 
 		tlog.TraceContext(self.ctx, "Executing GetVolumesData core logic (singleflight)...")
-
-		// Use mock data in demo mode or when SRAT_MOCK is true
-		/*
-			if self.state.SupervisorURL == "demo" || os.Getenv("SRAT_MOCK") == "true" {
-				demoParts := map[string]dto.Partition{
-					"DemoPartition": {
-						Id:         new("DemoPartition"),
-						DevicePath: new("/dev/bogus"),
-						System:     new(false),
-						MountPointData: &map[string]dto.MountPointData{
-							"/mnt/bogus": {
-								Path:      "/mnt/bogus",
-								FSType:    new("ext4"),
-								IsMounted: false,
-							},
-						},
-					},
-				}
-
-				(*ret)["DemoDisk"] = dto.Disk{
-					Id:         new("DemoDisk"),
-					Partitions: &demoParts,
-				}
-				return &ret, nil
-			}
-		*/
 
 		// Skip hardware client if it's not initialized
 		if self.hardwareClient == nil {
@@ -931,21 +902,19 @@ func (self *VolumeService) getVolumesData() errors.E {
 			}
 
 			for pid, part := range *disk.Partitions {
-				fsSupport := &dto.FilesystemSupport{}
 				if part.FsType != nil && *part.FsType != "" {
 					if cached, ok := filesystemSupportCache[*part.FsType]; ok {
-						fsSupport = cached
+						part.FilesystemInfo = cached
 					} else {
 						info, err := self.fs_service.GetSupportAndInfo(self.ctx, *part.FsType)
 						if err != nil || info == nil || info.Support == nil {
-							fsSupport = &dto.FilesystemSupport{}
+							part.FilesystemInfo = &dto.FilesystemInfo{}
 						} else {
-							fsSupport = info.Support
+							part.FilesystemInfo = info
 						}
-						filesystemSupportCache[*part.FsType] = fsSupport
+						filesystemSupportCache[*part.FsType] = part.FilesystemInfo
 					}
 				}
-				part.FilesystemSupport = fsSupport
 				(*disk.Partitions)[pid] = part
 				//			if err := self.processPartitionMountData(&disk, pid, part, true); err != nil {
 				//				slog.WarnContext(self.ctx, "Failed to process partition mount data for new disk", "disk_id", *disk.Id, "partition_id", pid, "err", err)

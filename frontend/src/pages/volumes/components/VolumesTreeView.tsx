@@ -214,9 +214,9 @@ export function VolumesTreeView({
                                 </Typography>
                             </Tooltip>
                             <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 0.5 }}>
-                                {mpd.fstype && (
+                                {partition.fs_type && (
                                     <Chip
-                                        label={mpd.fstype}
+                                        label={partition.fs_type}
                                         size="small"
                                         variant="outlined"
                                         sx={{ fontSize: "0.7rem", height: 16 }}
@@ -332,9 +332,9 @@ export function VolumesTreeView({
                                         variant="outlined"
                                         sx={{ fontSize: "0.7rem", height: 16 }}
                                     />
-                                    {mpds[0]?.fstype && (
+                                    {partition.fs_type && (
                                         <Chip
-                                            label={mpds[0]?.fstype}
+                                            label={partition.fs_type}
                                             size="small"
                                             variant="outlined"
                                             sx={{ fontSize: "0.7rem", height: 16 }}
@@ -406,9 +406,9 @@ export function VolumesTreeView({
                                         sx={{ fontSize: "0.7rem", height: 16 }}
                                     />
                                 )}
-                                {mpds[0]?.fstype && (
+                                {partition.fs_type && (
                                     <Chip
-                                        label={mpds[0]?.fstype}
+                                        label={partition.fs_type}
                                         size="small"
                                         variant="outlined"
                                         sx={{ fontSize: "0.7rem", height: 16 }}

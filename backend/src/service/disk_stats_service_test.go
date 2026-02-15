@@ -183,7 +183,7 @@ func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_FsckStateFromFilesystemS
 	mock.When(suite.volumeMock.GetVolumesData()).ThenReturn([]*dto.Disk{disk})
 	mock.When(suite.hdidleMock.IsRunning()).ThenReturn(false)
 
-	support := &FilesystemInfo{
+	support := &dto.FilesystemInfo{
 		Support: &dto.FilesystemSupport{
 			CanCheck:    true,
 			CanGetState: true,

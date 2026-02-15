@@ -7,6 +7,27 @@ package dto
 //   - notes: array of progress messages (e.g., "Progress Status Not Supported")
 type ProgressCallback func(status string, percentual int, notes []string)
 
+// FilesystemInfo combines filesystem type information with capability details
+type FilesystemInfo struct {
+	// Name is the filesystem type name
+	Name string
+
+	// Type is the filesystem type (same as name for consistency)
+	Type string
+
+	// Description provides a human-readable description of the filesystem
+	Description string
+
+	// MountFlags contains standard mount flags
+	MountFlags []MountFlag
+
+	// CustomMountFlags contains filesystem-specific mount flags
+	CustomMountFlags []MountFlag
+
+	// Support contains filesystem capability information
+	Support *FilesystemSupport
+}
+
 // FilesystemSupport contains information about filesystem support on the system
 type FilesystemSupport struct {
 	// CanMount indicates if the filesystem can be mounted

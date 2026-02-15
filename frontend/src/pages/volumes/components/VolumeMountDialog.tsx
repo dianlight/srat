@@ -91,20 +91,20 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 
 			if (existingMountData?.fstype) {
 				// If existing fstype is set, ensure it's in the filesystems list
-				const fsCurrent = fsList.find((fs) => fs.name === existingMountData.fstype);
+				const fsCurrent = fsList.find((fs) => fs.Name === existingMountData.fstype);
 				if (fsCurrent) {
 					setUnsupportedFlags([]); // Reset before checking
 					setUnsupportedCustomFlags([]); // Reset before checking
 					// Check existing flags against supported flags for this FS
 					existingMountData?.flags?.forEach((flag) => {
-						console.log("Checking flag:", flag, fsCurrent.mountFlags);
-						if (!fsCurrent.mountFlags?.find((flagItem) => flagItem.name === flag.name)) {
+						console.log("Checking flag:", flag, fsCurrent.MountFlags);
+						if (!fsCurrent.MountFlags?.find((flagItem) => flagItem.name === flag.name)) {
 							setUnsupportedFlags((prev) => [...prev, flag]);
 						}
 					});
 					existingMountData?.custom_flags?.forEach((flag) => {
-						console.log("Checking custom flag:", flag, fsCurrent.customMountFlags);
-						if (!fsCurrent.customMountFlags?.find((flagItem) => flagItem.name === flag.name)) {
+						console.log("Checking custom flag:", flag, fsCurrent.CustomMountFlags);
+						if (!fsCurrent.CustomMountFlags?.find((flagItem) => flagItem.name === flag.name)) {
 							setUnsupportedCustomFlags((prev) => [...prev, flag]);
 						}
 					});
@@ -247,7 +247,7 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 										options={
 											fsLoading
 												? []
-												: fsList.map((fs) => fs.name)
+												: fsList.map((fs) => fs.Name)
 										}
 										autocompleteProps={{
 											freeSolo: true,
@@ -275,12 +275,12 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 									/>
 								</Grid>
 								<Grid size={{ xs: 12, sm: 6 }}>
-									{!fsLoading && (fsList.find((fs) => fs.name === watch("fstype"))?.mountFlags || []).length > 0 && (
+									{!fsLoading && (fsList.find((fs) => fs.Name === watch("fstype"))?.MountFlags || []).length > 0 && (
 										<AutocompleteElement<MountFlag, true, false, false, "div", xMountPointData, "flags">
 											multiple
 											name="flags"
 											label="Mount Flags"
-											options={fsLoading ? [] : fsList.find((fs) => fs.name === watch("fstype"))?.mountFlags || []} // Use string keys for options
+											options={fsLoading ? [] : fsList.find((fs) => fs.Name === watch("fstype"))?.MountFlags || []} // Use string keys for options
 											control={control}
 											autocompleteProps={{
 												disabled: props.readOnlyView,
@@ -339,12 +339,12 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 									)}
 								</Grid>
 								<Grid size={{ xs: 12, sm: 6 }}>
-									{!fsLoading && ((fsList.find((fs) => fs.name === watch("fstype"))?.customMountFlags || [])).length > 0 && (
+									{!fsLoading && ((fsList.find((fs) => fs.Name === watch("fstype"))?.CustomMountFlags || [])).length > 0 && (
 										<AutocompleteElement<MountFlag, true, false, false, "div", xMountPointData, "custom_flags">
 											multiple
 											name="custom_flags"
 											label="FileSystem specific Mount Flags"
-											options={fsLoading ? [] : fsList.find((fs) => fs.name === watch("fstype"))?.customMountFlags || []}
+											options={fsLoading ? [] : fsList.find((fs) => fs.Name === watch("fstype"))?.CustomMountFlags || []}
 											control={control}
 											autocompleteProps={{
 												disabled: props.readOnlyView,

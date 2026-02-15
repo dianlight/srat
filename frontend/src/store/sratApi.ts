@@ -1218,12 +1218,12 @@ export type FilesystemSupport = {
   missingTools?: string[] | null;
 };
 export type FilesystemInfo = {
-  customMountFlags: MountFlag[] | null;
-  description?: string;
-  mountFlags: MountFlag[] | null;
-  name: string;
-  support?: FilesystemSupport;
-  type: string;
+  CustomMountFlags: MountFlag[] | null;
+  Description: string;
+  MountFlags: MountFlag[] | null;
+  Name: string;
+  Support: FilesystemSupport;
+  Type: string;
 };
 export type StartHdIdleServiceOutputBody = {
   /** A URL to the JSON Schema for this object. */
@@ -1632,7 +1632,7 @@ export type UpdateProgress = {
 export type Partition = {
   device_path?: string;
   disk_id?: string;
-  filesystem_support?: FilesystemSupport;
+  filesystem_info?: FilesystemInfo;
   fs_type?: string;
   host_mount_point_data?: {
     [key: string]: MountPointData;
