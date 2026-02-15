@@ -1,6 +1,53 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+**Table of Contents** *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Backend Testing Instructions](#backend-testing-instructions)
+  - [Overview](#overview)
+  - [Core Testing Stack](#core-testing-stack)
+  - [Test Package Organization](#test-package-organization)
+    - [External Test Package (Preferred for Service/API Layers)](#external-test-package-preferred-for-serviceapi-layers)
+    - [Same Package (For Internal/Utils/Converters)](#same-package-for-internalutilsconverters)
+  - [Suite-Based Testing Pattern](#suite-based-testing-pattern)
+    - [Standard Test Suite Structure](#standard-test-suite-structure)
+    - [SetupTest and TearDownTest](#setuptest-and-teardowntest)
+  - [Dependency Injection with Fx](#dependency-injection-with-fx)
+    - [Providing Real Implementations](#providing-real-implementations)
+    - [Providing Mocks](#providing-mocks)
+    - [Providing Test Fixtures](#providing-test-fixtures)
+    - [Populating Suite Fields](#populating-suite-fields)
+  - [Mocking with Mockio](#mocking-with-mockio)
+    - [Creating Mocks](#creating-mocks)
+    - [Setting Expectations](#setting-expectations)
+    - [Verifying Calls](#verifying-calls)
+  - [Table-Driven Tests](#table-driven-tests)
+  - [API Handler Testing](#api-handler-testing)
+  - [Context and Cancellation](#context-and-cancellation)
+  - [Assertions](#assertions)
+    - [Require vs Assert](#require-vs-assert)
+    - [Common Assertions](#common-assertions)
+  - [Error Testing](#error-testing)
+  - [Test Data Management](#test-data-management)
+    - [In-Memory Database](#in-memory-database)
+    - [Mock Data Files](#mock-data-files)
+    - [Temporary Directories](#temporary-directories)
+  - [Testing Best Practices](#testing-best-practices)
+    - [DO](#do)
+    - [DON'T](#dont)
+  - [Example: Complete Service Test](#example-complete-service-test)
+  - [Example: Simple Converter/Utils Test](#example-simple-converterutils-test)
+  - [Common Patterns Summary](#common-patterns-summary)
+  - [Migration Guide](#migration-guide)
+  - [References](#references)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ---
+
 description: "Backend testing standards for the SRAT Go codebase"
-applyTo: "backend/src/**/*_test.go"
+applyTo: "backend/src/\**/*\_test.go"
+
 ---
 
 # Backend Testing Instructions
@@ -29,7 +76,7 @@ package service_test  // NOT package service
 import (
     "context"
     "testing"
-    
+
     "github.com/dianlight/srat/service"
     "github.com/stretchr/testify/suite"
     "go.uber.org/fx"
@@ -38,6 +85,7 @@ import (
 ```
 
 **Benefits:**
+
 - Forces testing through public interfaces only
 - Prevents access to unexported fields/methods
 - Better encapsulation and maintainability
@@ -123,6 +171,7 @@ func (suite *ServiceNameTestSuite) TearDownTest() {
 ```
 
 **Key Points:**
+
 - Use `fxtest.New(suite.T(), ...)` - never `fxtest.New(t, ...)` inside SetupTest
 - Always cancel context before waiting on WaitGroup
 - Use `fx.Populate` to extract dependencies into suite fields
@@ -224,6 +273,7 @@ mock.Verify(suite.mockDependency, matchers.Times(0)).GetData(mock.AnyContext(), 
 ```
 
 **Matchers:**
+
 - `mock.AnyContext()` - matches any context.Context
 - `mock.Any[T]()` - matches any value of type T
 - `mock.Exact(value)` - matches exact value
@@ -289,6 +339,7 @@ func (suite *ServiceTestSuite) TestMethodName() {
 ```
 
 **Key Points:**
+
 - Use `suite.T().Run(tc.name, ...)` for subtests within a suite
 - Use `require` for critical assertions (stops test on failure)
 - Use `assert` for non-critical assertions (continues test)
@@ -337,7 +388,7 @@ func (suite *HandlerTestSuite) TestGetResource() {
 
     // Make request
     resp := testAPI.Get("/resource/123")
-    
+
     // Assert HTTP response
     suite.Equal(http.StatusOK, resp.Code)
 
@@ -350,6 +401,7 @@ func (suite *HandlerTestSuite) TestGetResource() {
 ```
 
 **Humatest Patterns:**
+
 - `_, testAPI := humatest.New(suite.T())` - creates test API instance
 - Register handlers before making requests
 - Use `testAPI.Get()`, `testAPI.Post()`, etc. for HTTP methods
@@ -581,7 +633,7 @@ func (suite *ExampleServiceTestSuite) TestProcessData_Success() {
     // Arrange
     input := dto.Input{Value: "test"}
     expectedOutput := &dto.Output{Result: "processed"}
-    
+
     mock.When(suite.mockDependency.FetchData(mock.AnyContext(), mock.Exact("test"))).
         ThenReturn("data", nil)
 
@@ -597,7 +649,7 @@ func (suite *ExampleServiceTestSuite) TestProcessData_Success() {
 func (suite *ExampleServiceTestSuite) TestProcessData_Error() {
     // Arrange
     input := dto.Input{Value: "bad"}
-    
+
     mock.When(suite.mockDependency.FetchData(mock.AnyContext(), mock.Any[string]())).
         ThenReturn(nil, errors.New("fetch failed"))
 
@@ -629,9 +681,9 @@ import (
 func TestConvertToDTO(t *testing.T) {
     // Simple test without suite for utility functions
     input := "test-value"
-    
+
     result := ConvertToDTO(input)
-    
+
     require.NotNil(t, result)
     assert.Equal(t, "test-value", result.Value)
 }
@@ -658,15 +710,16 @@ func TestConvertToDTO_TableDriven(t *testing.T) {
 
 ## Common Patterns Summary
 
-| Test Type | Package | Suite | Fx/Fxtest | Mockio | Humatest |
-|-----------|---------|-------|-----------|--------|----------|
-| Service Layer | `_test` | ✅ Yes | ✅ Yes | ✅ Yes | ❌ No |
-| API Handlers | `_test` | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes |
-| Repository | `_test` | ✅ Yes | ⚠️ Maybe | ⚠️ Maybe | ❌ No |
-| Converters | Same pkg | ❌ No | ❌ No | ❌ No | ❌ No |
-| Utils/Helpers | Same pkg | ❌ No | ❌ No | ❌ No | ❌ No |
+| Test Type     | Package  | Suite  | Fx/Fxtest | Mockio   | Humatest |
+| ------------- | -------- | ------ | --------- | -------- | -------- |
+| Service Layer | `_test`  | ✅ Yes | ✅ Yes    | ✅ Yes   | ❌ No    |
+| API Handlers  | `_test`  | ✅ Yes | ✅ Yes    | ✅ Yes   | ✅ Yes   |
+| Repository    | `_test`  | ✅ Yes | ⚠️ Maybe  | ⚠️ Maybe | ❌ No    |
+| Converters    | Same pkg | ❌ No  | ❌ No     | ❌ No    | ❌ No    |
+| Utils/Helpers | Same pkg | ❌ No  | ❌ No     | ❌ No    | ❌ No    |
 
 **Legend:**
+
 - ✅ Yes: Always use
 - ❌ No: Never use
 - ⚠️ Maybe: Use if needed
