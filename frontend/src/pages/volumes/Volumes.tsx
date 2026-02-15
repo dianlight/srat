@@ -553,6 +553,16 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 						<VolumeDetailsPanel
 							disk={selectedDisk}
 							partition={selectedPartition}
+							protectedMode={evdata?.hello?.protected_mode === true}
+							readOnly={evdata?.hello?.read_only === true}
+							onToggleAutomount={handleToggleAutomount}
+							onMount={(partition) => {
+								setSelectedPartition(partition);
+								setShowMount(true);
+							}}
+							onUnmount={onSubmitUmountVolume}
+							onCreateShare={handleCreateShare}
+							onGoToShare={handleGoToShare}
 						//share={selectedShare}
 						/>
 					</Paper>

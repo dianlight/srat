@@ -10,6 +10,7 @@ import StorageIcon from "@mui/icons-material/Storage";
 import UsbIcon from "@mui/icons-material/Usb";
 import {
     Box,
+    Button,
     Card,
     CardContent,
     CardHeader,
@@ -27,17 +28,32 @@ import { PreviewDialog } from "../../../components/PreviewDialog";
 import { type Disk, type FilesystemState, type Partition, Time_machine_support, useGetApiFilesystemStateQuery } from "../../../store/sratApi";
 import { decodeEscapeSequence } from "../utils";
 import { HDIdleDiskSettings } from "./HDIdleDiskSettings";
+import { getPartitionActionItems } from "./partition-action-items";
 import { SmartStatusPanel } from "./SmartStatusPanel";
 
 interface VolumeDetailsPanelProps {
     disk?: Disk;
     partition?: Partition;
+    protectedMode?: boolean;
+    readOnly?: boolean;
+    onToggleAutomount?: (partition: Partition) => void;
+    onMount?: (partition: Partition) => void;
+    onUnmount?: (partition: Partition, force: boolean) => void;
+    onCreateShare?: (partition: Partition) => void;
+    onGoToShare?: (partition: Partition) => void;
     // share?: SharedResource;
 }
 
 export function VolumeDetailsPanel({
     disk,
     partition,
+    protectedMode = false,
+    readOnly = false,
+    onToggleAutomount,
+    onMount,
+    onUnmount,
+    onCreateShare,
+    onGoToShare,
     //  share,
 }: VolumeDetailsPanelProps) {
     //const navigate = useNavigate();
@@ -162,6 +178,32 @@ export function VolumeDetailsPanel({
             </Box>
         );
     }, [filesystemState, filesystemStateLoading]);
+
+    const partitionActionItems = useMemo(() => {
+        if (!partition) return null;
+        if (!onToggleAutomount || !onMount || !onUnmount || !onCreateShare || !onGoToShare) {
+            return null;
+        }
+        return getPartitionActionItems({
+            partition,
+            protectedMode,
+            onToggleAutomount,
+            onMount,
+            onUnmount,
+            onCreateShare,
+            onGoToShare,
+        });
+    }, [
+        partition,
+        protectedMode,
+        onToggleAutomount,
+        onMount,
+        onUnmount,
+        onCreateShare,
+        onGoToShare,
+    ]);
+
+    const readOnlyActionTooltip = "Read-only mode enabled. Actions are disabled.";
 
     // When nothing is selected, show placeholder
     if (!disk && !partition) {
@@ -526,6 +568,43 @@ export function VolumeDetailsPanel({
                                                         sx={{ fontFamily: "monospace" }}
                                                     />
                                                 ))}
+                                            </Stack>
+                                        </Grid>
+                                    )}
+
+                                    {partitionActionItems && partitionActionItems.length > 0 && (
+                                        <Grid size={{ xs: 12 }}>
+                                            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+                                                Actions
+                                            </Typography>
+                                            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ flexWrap: "wrap" }}>
+                                                {partitionActionItems.map((action) => {
+                                                    const button = (
+                                                        <Button
+                                                            size="small"
+                                                            variant="outlined"
+                                                            onClick={action.onClick}
+                                                            disabled={readOnly}
+                                                            title={readOnly ? readOnlyActionTooltip : action.title}
+                                                        >
+                                                            {action.title}
+                                                        </Button>
+                                                    );
+
+                                                    if (!readOnly) {
+                                                        return (
+                                                            <Box key={action.key}>
+                                                                {button}
+                                                            </Box>
+                                                        );
+                                                    }
+
+                                                    return (
+                                                        <Tooltip key={action.key} title={readOnlyActionTooltip}>
+                                                            <span>{button}</span>
+                                                        </Tooltip>
+                                                    );
+                                                })}
                                             </Stack>
                                         </Grid>
                                     )}

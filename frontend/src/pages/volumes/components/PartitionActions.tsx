@@ -22,9 +22,12 @@ import {
 import { useState, type ReactElement } from "react";
 import { FontAwesomeSvgIcon } from "../../../components/FontAwesomeSvgIcon";
 import {
-	type MountPointData,
 	type Partition
 } from "../../../store/sratApi";
+import {
+	getPartitionActionItems,
+	type PartitionActionKey,
+} from "./partition-action-items";
 
 interface PartitionActionsProps {
 	partition: Partition;
@@ -62,111 +65,29 @@ export function PartitionActions({
 		setAnchorEl(null);
 	};
 
-	// Check if partition is read-only or system partition
-	if (
-		protected_mode ||
-		partition.name?.startsWith("hassos-") ||
-		Object.keys(partition.host_mount_point_data || {}).length > 0
-	) {
+	const actionItems = getPartitionActionItems({
+		partition,
+		protectedMode: protected_mode,
+		onToggleAutomount,
+		onMount,
+		onUnmount,
+		onCreateShare,
+		onGoToShare,
+	});
+
+	if (!actionItems || actionItems.length === 0) {
 		return null;
 	}
 
-	//const mpds = Object.values(partition.mount_point_data || {});
-	//const mountPointCount = mpds.length;
-
-	// Determine action items based on mount point rules
-	const actionItems: { key: string; title: string; icon: ReactElement; onClick: () => void }[] = [];
-	const keys = Object.keys(partition.mount_point_data || {});
-
-	//console.log("PartitionActions partition:", partition, "mount_point_data keys:", keys);
-
-	// Rule 1: No mountpoint --> mount action
-	if (!partition.mount_point_data || keys.length === 0) {
-		actionItems.push({
-			key: "mount",
-			title: "Mount Partition",
-			icon: <FontAwesomeSvgIcon icon={faPlug} />,
-			onClick: () => onMount(partition),
-		});
-	}
-	// Single mountpoint: apply conditional rules
-	else if (keys.length === 1 && keys[0] && partition.mount_point_data[keys[0]]) {
-		const mpd = partition.mount_point_data[keys[0]] as MountPointData;
-		const isMounted = mpd?.is_mounted;
-		const hasEnabledShare = mpd?.share && mpd?.share.disabled === false;
-		const hasShare = mpd?.share !== null && mpd?.share !== undefined;
-		const hadNoShareOrIsDisabled = !hasShare || (mpd?.share && mpd?.share.disabled === true);
-
-		// Add automount toggle if mountpoint exists (unless mounted with enabled share)
-		const canShowAutomount = !(isMounted && hasEnabledShare);
-		if (canShowAutomount) {
-			if (mpd?.is_to_mount_at_startup) {
-				actionItems.push({
-					key: "disable-automount",
-					title: "Disable automatic mount",
-					icon: <FontAwesomeSvgIcon icon={faPlugCircleXmark} />,
-					onClick: () => onToggleAutomount(partition),
-				});
-			} else {
-				actionItems.push({
-					key: "enable-automount",
-					title: "Enable automatic mount",
-					icon: <FontAwesomeSvgIcon icon={faPlugCircleBolt} />,
-					onClick: () => onToggleAutomount(partition),
-				});
-			}
-		}
-
-		// Rule 3: Mountpoint but unmounted --> mount action
-		if (!isMounted) {
-			actionItems.push({
-				key: "mount",
-				title: "Mount Partition",
-				icon: <FontAwesomeSvgIcon icon={faPlug} />,
-				onClick: () => onMount(partition),
-			});
-		}
-		// Mounted cases
-		else {
-			// Rule 7: Mounted with share (enabled or disabled) --> show go to share
-			if (hasShare) {
-				actionItems.push({
-					key: "go-to-share",
-					title: "Go to Share",
-					icon: <ShareIcon fontSize="small" />,
-					onClick: () => onGoToShare(partition),
-				});
-			}
-			// Rule 6: Mounted with no share --> unmount actions (if automount not enabled)
-			if (hadNoShareOrIsDisabled && !mpd?.is_to_mount_at_startup) {
-				actionItems.push({
-					key: "unmount",
-					title: "Unmount Partition",
-					icon: <FontAwesomeSvgIcon icon={faPlugCircleMinus} />,
-					onClick: () => onUnmount(partition, false),
-				});
-				actionItems.push({
-					key: "force-unmount",
-					title: "Force Unmount Partition",
-					icon: <FontAwesomeSvgIcon icon={faPlugCircleExclamation} />,
-					onClick: () => onUnmount(partition, true),
-				});
-			}
-			// Rule 5: Mountpoint hasn't a share --> add share
-			if (!hasShare && mpd.path?.startsWith("/mnt/")) {
-				actionItems.push({
-					key: "create-share",
-					title: "Create Share",
-					icon: <AddIcon fontSize="small" />,
-					onClick: () => onCreateShare(partition),
-				});
-			}
-
-		}
-	} else {
-		console.warn("Partition has no mount_point_data:", partition);
-		return null;
-	}
+	const actionIcons: Record<PartitionActionKey, ReactElement> = {
+		"mount": <FontAwesomeSvgIcon icon={faPlug} />,
+		"enable-automount": <FontAwesomeSvgIcon icon={faPlugCircleBolt} />,
+		"disable-automount": <FontAwesomeSvgIcon icon={faPlugCircleXmark} />,
+		"unmount": <FontAwesomeSvgIcon icon={faPlugCircleMinus} />,
+		"force-unmount": <FontAwesomeSvgIcon icon={faPlugCircleExclamation} />,
+		"create-share": <AddIcon fontSize="small" />,
+		"go-to-share": <ShareIcon fontSize="small" />,
+	};
 
 	if (isSmallScreen) {
 		return (
@@ -197,7 +118,7 @@ export function PartitionActions({
 								handleMenuClose();
 							}}
 						>
-							<ListItemIcon>{action.icon}</ListItemIcon>
+							<ListItemIcon>{actionIcons[action.key]}</ListItemIcon>
 							<ListItemText>{action.title}</ListItemText>
 						</MenuItem>
 					))}
@@ -219,7 +140,7 @@ export function PartitionActions({
 						aria-label={action.title.toLowerCase()}
 						size="small"
 					>
-						{action.icon}
+						{actionIcons[action.key]}
 					</IconButton>
 				</Tooltip>
 			))}

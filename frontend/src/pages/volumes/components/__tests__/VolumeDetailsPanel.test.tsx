@@ -526,4 +526,114 @@ describe("VolumeDetailsPanel Component", () => {
 
         expect(container).toBeTruthy();
     });
+
+    it("renders partition actions when available", async () => {
+        const React = await import("react");
+        const { screen } = await import("@testing-library/react");
+        const { VolumeDetailsPanel } = await import("../VolumeDetailsPanel");
+
+        const mockDisk = {
+            id: "disk-1",
+            name: "sda",
+        };
+
+        const mockPartition = {
+            id: "part-1",
+            name: "sda1",
+            mount_point_data: {},
+        };
+
+        await renderWithProviders(
+            React.createElement(VolumeDetailsPanel as any, {
+                disk: mockDisk,
+                partition: mockPartition,
+                protectedMode: false,
+                readOnly: false,
+                onToggleAutomount: () => { },
+                onMount: () => { },
+                onUnmount: () => { },
+                onCreateShare: () => { },
+                onGoToShare: () => { },
+            }),
+        );
+
+        const mountButton = await screen.findByRole("button", { name: /mount partition/i });
+        expect(mountButton).toBeTruthy();
+    });
+
+    it("disables partition actions in read-only mode with tooltip", async () => {
+        const React = await import("react");
+        const { screen } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { VolumeDetailsPanel } = await import("../VolumeDetailsPanel");
+
+        const mockDisk = {
+            id: "disk-1",
+            name: "sda",
+        };
+
+        const mockPartition = {
+            id: "part-1",
+            name: "sda1",
+            mount_point_data: {},
+        };
+
+        await renderWithProviders(
+            React.createElement(VolumeDetailsPanel as any, {
+                disk: mockDisk,
+                partition: mockPartition,
+                protectedMode: false,
+                readOnly: true,
+                onToggleAutomount: () => { },
+                onMount: () => { },
+                onUnmount: () => { },
+                onCreateShare: () => { },
+                onGoToShare: () => { },
+            }),
+        );
+
+        const user = userEvent.setup();
+        const mountButton = await screen.findByRole("button", { name: /mount partition/i });
+        expect((mountButton as HTMLButtonElement).disabled).toBe(true);
+
+        const hoverTarget = mountButton.parentElement ?? mountButton;
+        await user.hover(hoverTarget as HTMLElement);
+
+        const tooltip = await screen.findByText(/read-only mode enabled/i);
+        expect(tooltip).toBeTruthy();
+    });
+
+    it("hides partition actions for hassos partitions", async () => {
+        const React = await import("react");
+        const { screen } = await import("@testing-library/react");
+        const { VolumeDetailsPanel } = await import("../VolumeDetailsPanel");
+
+        const mockDisk = {
+            id: "disk-1",
+            name: "sda",
+        };
+
+        const mockPartition = {
+            id: "part-1",
+            name: "hassos-data",
+            mount_point_data: {},
+        };
+
+        await renderWithProviders(
+            React.createElement(VolumeDetailsPanel as any, {
+                disk: mockDisk,
+                partition: mockPartition,
+                protectedMode: false,
+                readOnly: false,
+                onToggleAutomount: () => { },
+                onMount: () => { },
+                onUnmount: () => { },
+                onCreateShare: () => { },
+                onGoToShare: () => { },
+            }),
+        );
+
+        const actionsHeading = screen.queryByText(/actions/i);
+        expect(actionsHeading).toBeNull();
+    });
 });
