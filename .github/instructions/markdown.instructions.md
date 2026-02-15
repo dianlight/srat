@@ -24,7 +24,7 @@ Use GitHub Flavored Markdown (GFM) and follow SRAT documentation standards. Keep
 - Code: use fenced blocks with a language tag (for example, `bash,`go, ```tsx).
 - Links: use `[descriptive text](https://example.com)` and avoid bare URLs unless an autolink is the best choice.
 - Images: use `![alt text](url)` with meaningful alt text.
-- Tables: use GFM pipe tables with header rows.
+- Tables: use GFM pipe tables with header rows. Ensure each pipe (`|`) has exactly one space on each side (compact style) to comply with MD060.
 - Task lists: use `- [ ]` and `- [x]`.
 - End every file with exactly one newline.
 
