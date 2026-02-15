@@ -106,7 +106,8 @@ func (c *DtoToDbomConverterImpl) MountPointDataToMountPointPath(source dto.Mount
 		target.Path = source.Path
 	}
 	if source.Root != "" {
-		target.Root = source.Root
+		pString := source.Root
+		target.Root = &pString
 	}
 	if source.Type != "" {
 		target.Type = source.Type
@@ -142,8 +143,8 @@ func (c *DtoToDbomConverterImpl) MountPointPathToMountPointData(source dbom.Moun
 	if source.Path != "" {
 		target.Path = source.Path
 	}
-	if source.Root != "" {
-		target.Root = source.Root
+	if source.Root != nil {
+		target.Root = *source.Root
 	}
 	if source.Type != "" {
 		target.Type = source.Type
@@ -415,7 +416,8 @@ func (c *DtoToDbomConverterImpl) mountDataFlagToMountFlag(source dbom.MounDataFl
 func (c *DtoToDbomConverterImpl) mountPointDataToMountPointPath(source dto.MountPointData) (dbom.MountPointPath, error) {
 	var dbomMountPointPath dbom.MountPointPath
 	dbomMountPointPath.Path = source.Path
-	dbomMountPointPath.Root = source.Root
+	pString := source.Root
+	dbomMountPointPath.Root = &pString
 	dbomMountPointPath.Type = source.Type
 	xstring, err := mountPathToDeviceId(source.Path)
 	if err != nil {
@@ -441,7 +443,9 @@ func (c *DtoToDbomConverterImpl) mountPointPathToMountPointData(source dbom.Moun
 	dtoMountPointData.DiskSerial = DiskSerialFromPath(source.Path)
 	dtoMountPointData.DiskSize = DiskSizeFromPath(source.Path)
 	dtoMountPointData.Path = source.Path
-	dtoMountPointData.Root = source.Root
+	if source.Root != nil {
+		dtoMountPointData.Root = *source.Root
+	}
 	dtoMountPointData.Type = source.Type
 	pString := source.FSType
 	dtoMountPointData.FSType = &pString

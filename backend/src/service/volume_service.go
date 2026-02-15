@@ -1191,16 +1191,16 @@ func (ms *VolumeService) PatchMountPointSettings(root string, path string, patch
 	}
 
 	affected, err := gorm.G[*dbom.MountPointPath](ms.db).
-		Where(g.MountPointPath.Path.Eq(path)).
+		Where(g.MountPointPath.Root.Eq(root), g.MountPointPath.Path.Eq(path)).
 		Updates(ms.ctx, &dbMountData)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.Wrapf(dto.ErrorNotFound, "mount configuration with path %s not found", path)
+			return nil, errors.Wrapf(dto.ErrorNotFound, "mount configuration with root %s and path %s not found", root, path)
 		}
 		return nil, errors.WithStack(err)
 	}
 	if affected == 0 {
-		return nil, errors.Wrapf(dto.ErrorNotFound, "mount configuration with path %s not found", path)
+		return nil, errors.Wrapf(dto.ErrorNotFound, "mount configuration with root %s and path %s not found", root, path)
 	}
 
 	currentDto := dto.MountPointData{}

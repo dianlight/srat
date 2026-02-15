@@ -172,7 +172,7 @@ func (suite *VolumeServiceTestSuite) TestMountUnmountVolume_Success() {
 	}
 	dbomMountData := &dbom.MountPointPath{
 		Path:     mountPath,
-		Root:     root,
+		Root:     &root,
 		DeviceId: device,
 		FSType:   fsType,
 		Flags:    &dbom.MounDataFlags{dbom.MounDataFlag{Name: "noatime", NeedsValue: false}},
@@ -781,7 +781,7 @@ func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_Success_OnlySta
 
 	dbData := &dbom.MountPointPath{
 		Path:               path,
-		Root:               root,
+		Root:               &root,
 		DeviceId:           "/dev/sdc1",
 		FSType:             "ext4",
 		Type:               "ADDON",
@@ -819,7 +819,7 @@ func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_NoChanges() {
 
 	dbData := &dbom.MountPointPath{
 		Path:               path,
-		Root:               root,
+		Root:               &root,
 		DeviceId:           "/dev/sdd1",
 		FSType:             "btrfs",
 		Type:               "ADDON",
@@ -856,7 +856,7 @@ func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_UpdatesStartupF
 	originalStartup := new(false)
 	dbData := &dbom.MountPointPath{
 		Path:               mountPath,
-		Root:               root,
+		Root:               &root,
 		DeviceId:           *partID, // repository is keyed by device path
 		FSType:             "ext4",
 		IsToMountAtStartup: originalStartup,
