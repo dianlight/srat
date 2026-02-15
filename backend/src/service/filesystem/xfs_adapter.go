@@ -24,6 +24,7 @@ func NewXfsAdapter() FilesystemAdapter {
 			mkfsCommand:   "mkfs.xfs",
 			fsckCommand:   "xfs_repair",
 			labelCommand:  "xfs_admin",
+			stateCommand:  "xfs_repair",
 			signatures: []dto.FsMagicSignature{
 				{Offset: 0, Magic: []byte{'X', 'F', 'S', 'B'}},
 			},

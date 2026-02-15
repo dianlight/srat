@@ -1,5 +1,5 @@
-import '../../../../../test/setup';
 import { describe, expect, it } from "bun:test";
+import '../../../../../test/setup';
 import type { DiskHealth } from "../../../../store/sratApi";
 
 describe("DiskHealthMetrics", () => {
@@ -97,12 +97,12 @@ describe("DiskHealthMetrics", () => {
         const table = tables[tables.length - 1]!; // Get the most recent table
         const headerRow = within(table).getAllByRole("columnheader");
         const headerTexts = headerRow.map(h => h.textContent);
-        
+
         expect(headerTexts).toContain("Spin Status");
 
         const tbody = table.getElementsByTagName("tbody")[0];
         expect(tbody).toBeTruthy();
-        
+
         const rows = within(tbody as HTMLElement).getAllByRole("row");
         expect(rows.length).toBe(1);
 
@@ -110,7 +110,7 @@ describe("DiskHealthMetrics", () => {
         // Spin status should show pause icon for spun down disk
         const spinStatusCell = cells.find(cell => cell.textContent === "⏸");
         expect(spinStatusCell).toBeTruthy();
-        
+
         cleanup();
     });
 
@@ -145,9 +145,9 @@ describe("DiskHealthMetrics", () => {
         const table = tables[tables.length - 1]!; // Get the most recent table
         const headerRow = within(table).getAllByRole("columnheader");
         const headerTexts = headerRow.map(h => h.textContent);
-        
+
         expect(headerTexts).not.toContain("Spin Status");
-        
+
         cleanup();
     });
 
@@ -191,14 +191,14 @@ describe("DiskHealthMetrics", () => {
         const table = tables[tables.length - 1]!; // Get the most recent table
         const tbody = table.getElementsByTagName("tbody")[0];
         expect(tbody).toBeTruthy();
-        
+
         const rows = within(tbody as HTMLElement).getAllByRole("row");
         const cells = within(rows[0]!).getAllByRole("cell");
-        
+
         // Active disk should show play icon
         const spinStatusCell = cells.find(cell => cell.textContent === "▶");
         expect(spinStatusCell).toBeTruthy();
-        
+
         cleanup();
     });
 
@@ -239,14 +239,14 @@ describe("DiskHealthMetrics", () => {
         const table = tables[tables.length - 1]!; // Get the most recent table
         const tbody = table.getElementsByTagName("tbody")[0];
         expect(tbody).toBeTruthy();
-        
+
         const rows = within(tbody as HTMLElement).getAllByRole("row");
         const cells = within(rows[0]!).getAllByRole("cell");
-        
+
         // Should show N/A - find the third cell (after description and device headers)
         const spinStatusCell = cells[0]; // First cell after row headers
         expect(spinStatusCell?.textContent).toBe("N/A");
-        
+
         cleanup();
     });
 
@@ -269,6 +269,7 @@ describe("DiskHealthMetrics", () => {
                         supported: true,
                         disk_type: "HDD" as any,
                         rotation_rate: 7200,
+                        enabled: true,
                     },
                 },
             },
@@ -291,13 +292,13 @@ describe("DiskHealthMetrics", () => {
         const table = tables[tables.length - 1]!;
         const tbody = table.getElementsByTagName("tbody")[0];
         expect(tbody).toBeTruthy();
-        
+
         const rows = within(tbody as HTMLElement).getAllByRole("row");
         const deviceCell = within(rows[0]!).getAllByRole("rowheader")[1];
-        
+
         // Check that SMART icon is present
         expect(deviceCell?.getElementsByTagName('svg').length).toBeGreaterThan(0);
-        
+
         cleanup();
     });
 
@@ -318,6 +319,7 @@ describe("DiskHealthMetrics", () => {
                     device_id: "test-id",
                     smart_info: {
                         supported: true,
+                        enabled: true,
                         disk_type: "SSD" as any,
                         rotation_rate: 0,
                     },
@@ -342,13 +344,13 @@ describe("DiskHealthMetrics", () => {
         const table = tables[tables.length - 1]!;
         const tbody = table.getElementsByTagName("tbody")[0];
         expect(tbody).toBeTruthy();
-        
+
         const rows = within(tbody as HTMLElement).getAllByRole("row");
         const deviceCell = within(rows[0]!).getAllByRole("rowheader")[1];
-        
+
         // Check that SMART icon is present for SSD
         expect(deviceCell?.getElementsByTagName('svg').length).toBeGreaterThan(0);
-        
+
         cleanup();
     });
 
@@ -369,6 +371,7 @@ describe("DiskHealthMetrics", () => {
                     device_id: "test-id",
                     smart_info: {
                         supported: false,
+                        enabled: false,
                     },
                 },
             },
@@ -391,13 +394,13 @@ describe("DiskHealthMetrics", () => {
         const table = tables[tables.length - 1]!;
         const tbody = table.getElementsByTagName("tbody")[0];
         expect(tbody).toBeTruthy();
-        
+
         const rows = within(tbody as HTMLElement).getAllByRole("row");
         const deviceCell = within(rows[0]!).getAllByRole("rowheader")[1];
-        
+
         // Check that SMART icon is NOT present
         expect(deviceCell?.getElementsByTagName('svg').length).toBe(0);
-        
+
         cleanup();
     });
 });

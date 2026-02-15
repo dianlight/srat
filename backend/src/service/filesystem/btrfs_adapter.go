@@ -24,6 +24,7 @@ func NewBtrfsAdapter() FilesystemAdapter {
 			mkfsCommand:   "mkfs.btrfs",
 			fsckCommand:   "btrfs",
 			labelCommand:  "btrfs",
+			stateCommand:  "btrfs",
 			signatures: []dto.FsMagicSignature{
 				{Offset: 0x10040, Magic: []byte{'_', 'B', 'H', 'R', 'f', 'S', '_', 'M'}}, // 65600
 			},
@@ -49,12 +50,6 @@ func (a *BtrfsAdapter) GetMountFlags() []dto.MountFlag {
 // IsSupported checks if btrfs is supported on the system
 func (a *BtrfsAdapter) IsSupported(ctx context.Context) (dto.FilesystemSupport, errors.E) {
 	support := a.checkCommandAvailability()
-
-	// Override the check command availability since btrfs uses a single multi-purpose tool
-	support.CanCheck = commandExists("btrfs")
-	support.CanSetLabel = commandExists("btrfs")
-	support.CanGetState = commandExists("btrfs")
-
 	return support, nil
 }
 

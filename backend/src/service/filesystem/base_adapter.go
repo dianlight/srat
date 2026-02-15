@@ -26,6 +26,7 @@ type baseAdapter struct {
 	mkfsCommand   string
 	fsckCommand   string
 	labelCommand  string
+	stateCommand  string
 	signatures    []dto.FsMagicSignature
 }
 
@@ -81,8 +82,12 @@ func (b *baseAdapter) checkCommandAvailability() dto.FilesystemSupport {
 		}
 	}
 
-	// For now, state checking is not supported by default
-	support.CanGetState = false
+	if b.stateCommand != "" {
+		support.CanGetState = commandExists(b.stateCommand)
+		if !support.CanGetState {
+			support.MissingTools = append(support.MissingTools, b.stateCommand)
+		}
+	}
 
 	return support
 }

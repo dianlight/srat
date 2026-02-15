@@ -24,6 +24,7 @@ func NewExt4Adapter() FilesystemAdapter {
 			mkfsCommand:   "mkfs.ext4",
 			fsckCommand:   "fsck.ext4",
 			labelCommand:  "tune2fs",
+			stateCommand:  "tune2fs",
 			signatures: []dto.FsMagicSignature{
 				{Offset: 1080, Magic: []byte{0x53, 0xEF}}, // ext2/3/4, little-endian 0xEF53
 			},

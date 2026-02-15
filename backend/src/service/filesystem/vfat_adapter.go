@@ -24,6 +24,7 @@ func NewVfatAdapter() FilesystemAdapter {
 			mkfsCommand:   "mkfs.vfat",
 			fsckCommand:   "fsck.vfat",
 			labelCommand:  "fatlabel",
+			stateCommand:  "fsck.vfat",
 			signatures: []dto.FsMagicSignature{
 				{Offset: 82, Magic: []byte{'F', 'A', 'T', '3', '2', ' ', ' ', ' '}}, // FAT32 specific
 				{Offset: 54, Magic: []byte{'F', 'A', 'T', '1', '6', ' ', ' ', ' '}}, // FAT16 specific

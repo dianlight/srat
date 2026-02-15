@@ -25,6 +25,7 @@ func NewNtfsAdapter() FilesystemAdapter {
 			mkfsCommand:   "mkfs.ntfs",
 			fsckCommand:   "ntfsfix",
 			labelCommand:  "ntfslabel",
+			stateCommand:  "ntfsfix",
 			signatures: []dto.FsMagicSignature{
 				{Offset: 3, Magic: []byte{'N', 'T', 'F', 'S', ' ', ' ', ' ', ' '}}, // "NTFS    "
 			},

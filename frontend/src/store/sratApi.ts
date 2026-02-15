@@ -1081,6 +1081,7 @@ export type SmartInfo = {
   $schema?: string;
   disk_id?: string;
   disk_type?: Disk_type;
+  enabled: boolean;
   firmware_version?: string;
   model_family?: string;
   model_name?: string;

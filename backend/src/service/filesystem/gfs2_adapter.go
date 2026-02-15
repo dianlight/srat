@@ -24,6 +24,7 @@ func NewGfs2Adapter() FilesystemAdapter {
 			mkfsCommand:   "mkfs.gfs2",
 			fsckCommand:   "fsck.gfs2",
 			labelCommand:  "", // No label command
+			stateCommand:  "fsck.gfs2",
 			signatures: []dto.FsMagicSignature{
 				{Offset: 0x10, Magic: []byte{0x01, 0x16, 0x19, 0x70}},
 			},

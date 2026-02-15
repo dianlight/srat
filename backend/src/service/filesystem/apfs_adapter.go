@@ -24,6 +24,7 @@ func NewApfsAdapter() FilesystemAdapter {
 			mkfsCommand:   "",
 			fsckCommand:   "",
 			labelCommand:  "",
+			stateCommand:  "apfsutil",
 			signatures: []dto.FsMagicSignature{
 				{Offset: 0x20, Magic: []byte{'N', 'X', 'S', 'B'}}, // APFS container superblock
 			},
@@ -48,11 +49,6 @@ func (a *ApfsAdapter) IsSupported(ctx context.Context) (dto.FilesystemSupport, e
 	support.CanFormat = false                       // APFS formatting not supported on Linux
 	support.CanCheck = false                        // apfsutil provides read-only access, cannot check filesystem
 	support.CanSetLabel = false                     // APFS label modification not supported on Linux
-	support.CanGetState = commandExists("apfsutil") // apfsutil can provide filesystem state/info
-
-	if !support.CanGetState {
-		support.MissingTools = append(support.MissingTools, "apfsutil")
-	}
 
 	return support, nil
 }
