@@ -7,11 +7,15 @@ export type PartitionActionKey =
     | "unmount"
     | "force-unmount"
     | "create-share"
-    | "go-to-share";
+    | "go-to-share"
+    | "check-filesystem"
+    | "set-label"
+    | "format";
 
 export interface PartitionActionItem {
     key: PartitionActionKey;
     title: string;
+    color: "primary" | "secondary" | "warning" | "error" | "info" | "success" | undefined;
     onClick: () => void;
 }
 
@@ -49,6 +53,7 @@ export function getPartitionActionItems({
     if (!partition.mount_point_data || keys.length === 0) {
         actionItems.push({
             key: "mount",
+            color: undefined,
             title: "Mount Partition",
             onClick: () => onMount(partition),
         });
@@ -69,12 +74,14 @@ export function getPartitionActionItems({
                 actionItems.push({
                     key: "disable-automount",
                     title: "Disable automatic mount",
+                    color: "primary",
                     onClick: () => onToggleAutomount(partition),
                 });
             } else {
                 actionItems.push({
                     key: "enable-automount",
                     title: "Enable automatic mount",
+                    color: "primary",
                     onClick: () => onToggleAutomount(partition),
                 });
             }
@@ -84,6 +91,7 @@ export function getPartitionActionItems({
             actionItems.push({
                 key: "mount",
                 title: "Mount Partition",
+                color: undefined,
                 onClick: () => onMount(partition),
             });
         } else {
@@ -91,6 +99,7 @@ export function getPartitionActionItems({
                 actionItems.push({
                     key: "go-to-share",
                     title: "Go to Share",
+                    color: undefined,
                     onClick: () => onGoToShare(partition),
                 });
             }
@@ -99,11 +108,13 @@ export function getPartitionActionItems({
                 actionItems.push({
                     key: "unmount",
                     title: "Unmount Partition",
+                    color: undefined,
                     onClick: () => onUnmount(partition, false),
                 });
                 actionItems.push({
                     key: "force-unmount",
                     title: "Force Unmount Partition",
+                    color: "warning",
                     onClick: () => onUnmount(partition, true),
                 });
             }
@@ -112,11 +123,46 @@ export function getPartitionActionItems({
                 actionItems.push({
                     key: "create-share",
                     title: "Create Share",
+                    color: "success",
                     onClick: () => onCreateShare(partition),
                 });
             }
         }
 
+        // Additional Action on supported filesystems 
+        if (partition.filesystem_info?.Support?.canCheck && !isMounted) {
+            actionItems.push({
+                key: "check-filesystem",
+                title: "Check Filesystem",
+                color: "info",
+                onClick: () => {
+                    // Implement filesystem check action here
+                    console.log("Checking filesystem for partition:", partition.name);
+                },
+            });
+        }
+        if (partition.filesystem_info?.Support?.canSetLabel && !isMounted) {
+            actionItems.push({
+                key: "set-label",
+                title: "Set Label",
+                color: "info",
+                onClick: () => {
+                    // Implement set label action here
+                    console.log("Setting label for partition:", partition.name);
+                },
+            });
+        }
+        if (partition.filesystem_info?.Support?.canFormat && !isMounted) {
+            actionItems.push({
+                key: "format",
+                title: "Format Partition",
+                color: "error",
+                onClick: () => {
+                    // Implement format action here
+                    console.log("Formatting partition:", partition.name);
+                },
+            });
+        }
         return actionItems;
     }
 

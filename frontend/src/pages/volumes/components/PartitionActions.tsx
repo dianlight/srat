@@ -79,7 +79,7 @@ export function PartitionActions({
 		return null;
 	}
 
-	const actionIcons: Record<PartitionActionKey, ReactElement> = {
+	const actionIcons: Record<PartitionActionKey, ReactElement | null> = {
 		"mount": <FontAwesomeSvgIcon icon={faPlug} />,
 		"enable-automount": <FontAwesomeSvgIcon icon={faPlugCircleBolt} />,
 		"disable-automount": <FontAwesomeSvgIcon icon={faPlugCircleXmark} />,
@@ -87,6 +87,9 @@ export function PartitionActions({
 		"force-unmount": <FontAwesomeSvgIcon icon={faPlugCircleExclamation} />,
 		"create-share": <AddIcon fontSize="small" />,
 		"go-to-share": <ShareIcon fontSize="small" />,
+		"check-filesystem": null,
+		"set-label": null,
+		"format": null,
 	};
 
 	if (isSmallScreen) {
@@ -129,21 +132,24 @@ export function PartitionActions({
 
 	return (
 		<Stack direction="row" spacing={0} alignItems="center" sx={{ pr: 1 }}>
-			{actionItems.map((action) => (
-				<Tooltip title={action.title} key={action.key}>
-					<IconButton
-						onClick={(e) => {
-							e.stopPropagation();
-							action.onClick();
-						}}
-						edge="end"
-						aria-label={action.title.toLowerCase()}
-						size="small"
-					>
-						{actionIcons[action.key]}
-					</IconButton>
-				</Tooltip>
-			))}
+			{actionItems.
+				filter((action) => actionIcons[action.key]).
+				map((action) => (
+					<Tooltip title={action.title} key={action.key}>
+						<IconButton
+							onClick={(e) => {
+								e.stopPropagation();
+								action.onClick();
+							}}
+							edge="end"
+							aria-label={action.title.toLowerCase()}
+							size="small"
+							color={action.color}
+						>
+							{actionIcons[action.key]}
+						</IconButton>
+					</Tooltip>
+				))}
 		</Stack>
 	);
 }

@@ -584,6 +584,7 @@ export function VolumeDetailsPanel({
                                                             size="small"
                                                             variant="outlined"
                                                             onClick={action.onClick}
+                                                            color={ action.color || "primary" }
                                                             disabled={readOnly}
                                                             title={readOnly ? readOnlyActionTooltip : action.title}
                                                         >
