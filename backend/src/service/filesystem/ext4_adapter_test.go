@@ -33,7 +33,7 @@ func (suite *Ext4AdapterTestSuite) TestGetName() {
 func (suite *Ext4AdapterTestSuite) TestGetDescription() {
 	desc := suite.adapter.GetDescription()
 	suite.NotEmpty(desc)
-	suite.Contains(desc, "Extended")
+	suite.Contains(desc, "EXT4")
 }
 
 func (suite *Ext4AdapterTestSuite) TestGetLinuxFsModule() {

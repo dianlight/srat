@@ -19,7 +19,7 @@ func NewExt4Adapter() FilesystemAdapter {
 	return &Ext4Adapter{
 		baseAdapter: baseAdapter{
 			name:          "ext4",
-			description:   "Fourth Extended Filesystem",
+			description:   "EXT4 Filesystem",
 			alpinePackage: "e2fsprogs",
 			mkfsCommand:   "mkfs.ext4",
 			fsckCommand:   "fsck.ext4",

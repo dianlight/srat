@@ -19,7 +19,7 @@ func NewBtrfsAdapter() FilesystemAdapter {
 	return &BtrfsAdapter{
 		baseAdapter: baseAdapter{
 			name:          "btrfs",
-			description:   "B-tree Filesystem",
+			description:   "BTRFS Filesystem",
 			alpinePackage: "btrfs-progs",
 			mkfsCommand:   "mkfs.btrfs",
 			fsckCommand:   "btrfs",
