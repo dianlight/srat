@@ -27,6 +27,7 @@ import { useMemo, useState } from "react";
 import { PreviewDialog } from "../../../components/PreviewDialog";
 import { type Disk, type FilesystemState, type Partition, Time_machine_support, useGetApiFilesystemStateQuery } from "../../../store/sratApi";
 import { decodeEscapeSequence } from "../utils";
+import { FilesystemCheckDialog } from "./FilesystemCheckDialog";
 import { HDIdleDiskSettings } from "./HDIdleDiskSettings";
 import { getPartitionActionItems } from "./partition-action-items";
 import { SmartStatusPanel } from "./SmartStatusPanel";
@@ -62,6 +63,7 @@ export function VolumeDetailsPanel({
     const [previewOpen, setPreviewOpen] = useState(false);
     const [previewObject, setPreviewObject] = useState<any | null>(null);
     const [previewTitle, setPreviewTitle] = useState<string>("Preview");
+    const [checkDialogOpen, setCheckDialogOpen] = useState(false);
 
     const openPreviewFor = (obj: any, title?: string) => {
         setPreviewObject(obj);
@@ -192,6 +194,7 @@ export function VolumeDetailsPanel({
             onUnmount,
             onCreateShare,
             onGoToShare,
+            onCheckFilesystem: () => setCheckDialogOpen(true),
         });
     }, [
         partition,
@@ -201,6 +204,7 @@ export function VolumeDetailsPanel({
         onUnmount,
         onCreateShare,
         onGoToShare,
+        setCheckDialogOpen,
     ]);
 
     const readOnlyActionTooltip = "Read-only mode enabled. Actions are disabled.";
@@ -584,7 +588,7 @@ export function VolumeDetailsPanel({
                                                             size="small"
                                                             variant="outlined"
                                                             onClick={action.onClick}
-                                                            color={ action.color || "primary" }
+                                                            color={action.color || "primary"}
                                                             disabled={readOnly}
                                                             title={readOnly ? readOnlyActionTooltip : action.title}
                                                         >
@@ -869,6 +873,11 @@ export function VolumeDetailsPanel({
                 onClose={closePreview}
                 title={previewTitle}
                 objectToDisplay={previewObject}
+            />
+            <FilesystemCheckDialog
+                open={checkDialogOpen}
+                partition={partition}
+                onClose={() => setCheckDialogOpen(false)}
             />
         </Box >
     );

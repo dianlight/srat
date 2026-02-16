@@ -32,6 +32,7 @@ func (h *FilesystemHandler) RegisterFilesystemHandler(api huma.API) {
 	huma.Get(api, "/filesystems", h.ListFilesystems, huma.OperationTags("filesystems"))
 	huma.Post(api, "/filesystem/format", h.FormatPartition, huma.OperationTags("filesystems"))
 	huma.Post(api, "/filesystem/check", h.CheckPartition, huma.OperationTags("filesystems"))
+	huma.Post(api, "/filesystem/check/abort", h.AbortCheckPartition, huma.OperationTags("filesystems"))
 	huma.Get(api, "/filesystem/state", h.GetPartitionState, huma.OperationTags("filesystems"))
 	huma.Get(api, "/filesystem/label", h.GetPartitionLabel, huma.OperationTags("filesystems"))
 	huma.Put(api, "/filesystem/label", h.SetPartitionLabel, huma.OperationTags("filesystems"))
@@ -158,6 +159,12 @@ type CheckPartitionInput struct {
 	Verbose bool `query:"verbose" json:"verbose,omitempty" default:"false" doc:"Enable verbose output"`
 }
 
+// AbortCheckPartitionInput contains the input for canceling a filesystem check
+type AbortCheckPartitionInput struct {
+	// PartitionID is the unique partition identifier
+	PartitionID string `json:"partitionId" doc:"Unique partition identifier"`
+}
+
 // CheckPartition checks a partition's filesystem for errors
 func (h *FilesystemHandler) CheckPartition(
 	ctx context.Context,
@@ -214,6 +221,56 @@ func (h *FilesystemHandler) CheckPartition(
 		"errors_fixed", result.ErrorsFixed)
 
 	return &struct{ Body dto.CheckResult }{Body: *result}, nil
+}
+
+// AbortCheckPartition cancels a running filesystem check operation
+func (h *FilesystemHandler) AbortCheckPartition(
+	ctx context.Context,
+	input *struct {
+		Body AbortCheckPartitionInput
+	},
+) (*struct {
+	Body struct {
+		Success bool `json:"success"`
+	}
+}, error) {
+	req := input.Body
+	tlog.InfoContext(ctx, "Aborting filesystem check", "partition", req.PartitionID)
+
+	// Find the partition using DiskMap directly
+	diskMap := h.getDiskMap()
+	partition, _, found := diskMap.GetPartitionByID(req.PartitionID)
+	if !found {
+		return nil, huma.Error404NotFound("Partition not found")
+	}
+
+	// Get device path
+	devicePath := diskMap.GetPartitionDevicePath(partition)
+	if devicePath == "" {
+		return nil, huma.Error400BadRequest("Partition has no valid device path")
+	}
+
+	abortErr := h.fsService.AbortCheckPartition(ctx, devicePath)
+	if abortErr != nil {
+		if errors.Is(abortErr, dto.ErrorNotFound) {
+			return nil, huma.Error404NotFound("Check operation not running")
+		}
+		if errors.Is(abortErr, dto.ErrorConflict) {
+			return nil, huma.Error409Conflict("Another operation is running for this device")
+		}
+		tlog.ErrorContext(ctx, "Failed to abort filesystem check", "partition", req.PartitionID, "device", devicePath, "error", abortErr)
+		return nil, huma.Error500InternalServerError("Failed to abort filesystem check", abortErr)
+	}
+
+	return &struct {
+		Body struct {
+			Success bool `json:"success"`
+		}
+	}{
+		Body: struct {
+			Success bool `json:"success"`
+		}{Success: true},
+	}, nil
 }
 
 // PartitionStateInput contains the input for getting partition state

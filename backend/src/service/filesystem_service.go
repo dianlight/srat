@@ -63,6 +63,9 @@ type FilesystemServiceInterface interface {
 	// Returns an error if check cannot start, is already in progress, or fails.
 	CheckPartition(ctx context.Context, devicePath, fsType string, options dto.CheckOptions) (*dto.CheckResult, errors.E)
 
+	// AbortCheckPartition cancels a running filesystem check for the given device path.
+	AbortCheckPartition(ctx context.Context, devicePath string) errors.E
+
 	// GetPartitionState returns the state of a partition's filesystem.
 	GetPartitionState(ctx context.Context, devicePath, fsType string) (*dto.FilesystemState, errors.E)
 
@@ -104,8 +107,16 @@ type FilesystemService struct {
 	// activeOperations tracks which devices currently have operations running
 	activeOperations map[string]bool
 
+	// activeOperationInfo tracks operation metadata and cancel functions by device
+	activeOperationInfo map[string]filesystemOperation
+
 	// eventBus for emitting filesystem operation events
 	eventBus events.EventBusInterface
+}
+
+type filesystemOperation struct {
+	op     string
+	cancel context.CancelFunc
 }
 
 // Package-level variables for default configurations.
@@ -270,13 +281,33 @@ func NewFilesystemService(
 
 		registry: registry,
 
-		ctx:              ctx,
-		cancelFunc:       cancelFunc,
-		wg:               wg,
-		activeOperations: make(map[string]bool),
-		eventBus:         eventBus,
+		ctx:                 ctx,
+		cancelFunc:          cancelFunc,
+		wg:                  wg,
+		activeOperations:    make(map[string]bool),
+		activeOperationInfo: make(map[string]filesystemOperation),
+		eventBus:            eventBus,
 	}
 	return p
+}
+
+func (s *FilesystemService) startOperation(devicePath, op string) (context.Context, context.CancelFunc, errors.E) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.activeOperations[devicePath] {
+		return nil, nil, errors.WithDetails(dto.ErrorConflict, "Message", fmt.Sprintf("%s operation already in progress", op), "Device", devicePath)
+	}
+	opCtx, opCancel := context.WithCancel(s.ctx)
+	s.activeOperations[devicePath] = true
+	s.activeOperationInfo[devicePath] = filesystemOperation{op: op, cancel: opCancel}
+	return opCtx, opCancel, nil
+}
+
+func (s *FilesystemService) finishOperation(devicePath string) {
+	s.mu.Lock()
+	delete(s.activeOperations, devicePath)
+	delete(s.activeOperationInfo, devicePath)
+	s.mu.Unlock()
 }
 
 // GetStandardMountFlags returns the list of standard mount flags.
@@ -548,26 +579,16 @@ func (s *FilesystemService) FormatPartition(ctx context.Context, devicePath, fsT
 		return nil, errors.New(msg)
 	}
 
-	// Check if operation is already running on this device
-	s.mu.Lock()
-	if s.activeOperations[devicePath] {
-		s.mu.Unlock()
-		return nil, errors.WithDetails(dto.ErrorConflict, "Message", "format operation already in progress", "Device", devicePath)
+	opCtx, _, opErr := s.startOperation(devicePath, "format")
+	if opErr != nil {
+		return nil, opErr
 	}
-	// Mark operation as active
-	s.activeOperations[devicePath] = true
-	s.mu.Unlock()
 
 	// Start async operation
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
-		defer func() {
-			// Remove from active operations when done
-			s.mu.Lock()
-			delete(s.activeOperations, devicePath)
-			s.mu.Unlock()
-		}()
+		defer s.finishOperation(devicePath)
 
 		// Emit start event
 		if s.eventBus != nil {
@@ -622,7 +643,7 @@ func (s *FilesystemService) FormatPartition(ctx context.Context, devicePath, fsT
 		}
 
 		// Perform the format operation with progress callback
-		formatErr := adapter.Format(s.ctx, devicePath, options, progressCallback)
+		formatErr := adapter.Format(opCtx, devicePath, options, progressCallback)
 
 		if formatErr != nil {
 			// Emit failure event
@@ -692,26 +713,16 @@ func (s *FilesystemService) CheckPartition(ctx context.Context, devicePath, fsTy
 		return nil, errors.New(msg)
 	}
 
-	// Check if operation is already running on this device
-	s.mu.Lock()
-	if s.activeOperations[devicePath] {
-		s.mu.Unlock()
-		return nil, errors.WithDetails(dto.ErrorConflict, "Message", "check operation already in progress", "Device", devicePath)
+	opCtx, _, opErr := s.startOperation(devicePath, "check")
+	if opErr != nil {
+		return nil, opErr
 	}
-	// Mark operation as active
-	s.activeOperations[devicePath] = true
-	s.mu.Unlock()
 
 	// Start async operation
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
-		defer func() {
-			// Remove from active operations when done
-			s.mu.Lock()
-			delete(s.activeOperations, devicePath)
-			s.mu.Unlock()
-		}()
+		defer s.finishOperation(devicePath)
 
 		// Emit start event
 		if s.eventBus != nil {
@@ -766,9 +777,25 @@ func (s *FilesystemService) CheckPartition(ctx context.Context, devicePath, fsTy
 		}
 
 		// Perform the check operation with progress callback
-		result, checkErr := adapter.Check(s.ctx, devicePath, options, progressCallback)
+		result, checkErr := adapter.Check(opCtx, devicePath, options, progressCallback)
 
 		if checkErr != nil {
+			if errors.Is(checkErr, context.Canceled) || opCtx.Err() == context.Canceled {
+				if s.eventBus != nil {
+					s.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
+						Event: events.Event{Type: events.EventTypes.STOP},
+						Task: &dto.FilesystemTask{
+							Device:         devicePath,
+							Operation:      "check",
+							FilesystemType: fsType,
+							Status:         "canceled",
+							Message:        fmt.Sprintf("Check operation canceled for %s", devicePath),
+						},
+					})
+				}
+				slog.InfoContext(s.ctx, "Check operation canceled", "device", devicePath, "fsType", fsType)
+				return
+			}
 			// Emit failure event
 			if s.eventBus != nil {
 				s.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
@@ -808,6 +835,25 @@ func (s *FilesystemService) CheckPartition(ctx context.Context, devicePath, fsTy
 		Success: true,
 		Message: fmt.Sprintf("Check operation started for %s", devicePath),
 	}, nil
+}
+
+func (s *FilesystemService) AbortCheckPartition(ctx context.Context, devicePath string) errors.E {
+	s.mu.Lock()
+	opInfo, ok := s.activeOperationInfo[devicePath]
+	if !ok || !s.activeOperations[devicePath] {
+		s.mu.Unlock()
+		return errors.WithDetails(dto.ErrorNotFound, "Message", "check operation not running", "Device", devicePath)
+	}
+	if opInfo.op != "check" {
+		s.mu.Unlock()
+		return errors.WithDetails(dto.ErrorConflict, "Message", "operation running is not a check", "Device", devicePath, "Operation", opInfo.op)
+	}
+	cancel := opInfo.cancel
+	s.mu.Unlock()
+	if cancel != nil {
+		cancel()
+	}
+	return nil
 }
 
 // GetPartitionState returns the state of a partition's filesystem

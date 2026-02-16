@@ -161,6 +161,17 @@ const injectedRtkApi = api
         }),
         invalidatesTags: ["filesystems"],
       }),
+      postApiFilesystemCheckAbort: build.mutation<
+        PostApiFilesystemCheckAbortApiResponse,
+        PostApiFilesystemCheckAbortApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/filesystem/check/abort`,
+          method: "POST",
+          body: queryArg.abortCheckPartitionInput,
+        }),
+        invalidatesTags: ["filesystems"],
+      }),
       postApiFilesystemFormat: build.mutation<
         PostApiFilesystemFormatApiResponse,
         PostApiFilesystemFormatApiArg
@@ -664,6 +675,12 @@ export type PostApiFilesystemCheckApiResponse = /** status 200 OK */
 export type PostApiFilesystemCheckApiArg = {
   checkPartitionInput: CheckPartitionInput;
 };
+export type PostApiFilesystemCheckAbortApiResponse = /** status 200 OK */
+  | PostFilesystemCheckAbortResponse
+  | /** status default Error */ ErrorModel;
+export type PostApiFilesystemCheckAbortApiArg = {
+  abortCheckPartitionInput: AbortCheckPartitionInput;
+};
 export type PostApiFilesystemFormatApiResponse = /** status 200 OK */
   | CheckResult
   | /** status default Error */ ErrorModel;
@@ -847,6 +864,15 @@ export type SseApiResponse = /** status 200 OK */
           data: ErrorDataModel;
           /** The event name. */
           event: "error";
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
+          data: FilesystemTask;
+          /** The event name. */
+          event: "filesystem_task";
           /** The event ID. */
           id?: number;
           /** The retry time in milliseconds. */
@@ -1154,6 +1180,17 @@ export type CheckPartitionInput = {
   partitionId: string;
   /** Enable verbose output */
   verbose?: boolean;
+};
+export type PostFilesystemCheckAbortResponse = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  success: boolean;
+};
+export type AbortCheckPartitionInput = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  /** Unique partition identifier */
+  partitionId: string;
 };
 export type FormatPartitionInput = {
   /** A URL to the JSON Schema for this object. */
@@ -1596,6 +1633,17 @@ export type ErrorDataModel = {
   /** A URI reference to human-readable documentation for the error. */
   type?: string;
 };
+export type FilesystemTask = {
+  device: string;
+  error?: string;
+  filesystemType?: string;
+  message?: string;
+  notes?: string[] | null;
+  operation: string;
+  progress?: number;
+  result?: unknown;
+  status: string;
+};
 export type Welcome = {
   active_clients: number;
   build_version: string;
@@ -1757,6 +1805,8 @@ export enum Supported_events {
   Shares = "shares",
   DirtyDataTracker = "dirty_data_tracker",
   SmartTestStatus = "smart_test_status",
+  FilesystemTask = "filesystem_task",
+  Error = "error",
 }
 export enum Update_channel {
   None = "None",
@@ -1793,6 +1843,7 @@ export const {
   usePostApiDiskByDiskIdSmartTestAbortMutation,
   usePostApiDiskByDiskIdSmartTestStartMutation,
   usePostApiFilesystemCheckMutation,
+  usePostApiFilesystemCheckAbortMutation,
   usePostApiFilesystemFormatMutation,
   useGetApiFilesystemLabelQuery,
   usePatchApiFilesystemLabelMutation,

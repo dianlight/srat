@@ -27,6 +27,7 @@ export interface PartitionActionOptions {
     onUnmount: (partition: Partition, force: boolean) => void;
     onCreateShare: (partition: Partition) => void;
     onGoToShare: (partition: Partition) => void;
+    onCheckFilesystem?: (partition: Partition) => void;
 }
 
 export function getPartitionActionItems({
@@ -37,6 +38,7 @@ export function getPartitionActionItems({
     onUnmount,
     onCreateShare,
     onGoToShare,
+    onCheckFilesystem,
 }: PartitionActionOptions): PartitionActionItem[] | null {
     if (
         protectedMode ||
@@ -130,15 +132,12 @@ export function getPartitionActionItems({
         }
 
         // Additional Action on supported filesystems 
-        if (partition.filesystem_info?.Support?.canCheck && !isMounted) {
+        if (onCheckFilesystem && partition.filesystem_info?.Support?.canCheck && !isMounted) {
             actionItems.push({
                 key: "check-filesystem",
                 title: "Check Filesystem",
                 color: "info",
-                onClick: () => {
-                    // Implement filesystem check action here
-                    console.log("Checking filesystem for partition:", partition.name);
-                },
+                onClick: () => onCheckFilesystem(partition),
             });
         }
         if (partition.filesystem_info?.Support?.canSetLabel && !isMounted) {

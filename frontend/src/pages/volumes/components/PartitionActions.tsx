@@ -37,6 +37,7 @@ interface PartitionActionsProps {
 	onUnmount: (partition: Partition, force: boolean) => void;
 	onCreateShare: (partition: Partition) => void;
 	onGoToShare: (partition: Partition) => void;
+	onCheckFilesystem?: (partition: Partition) => void;
 }
 
 export function PartitionActions({
@@ -47,6 +48,7 @@ export function PartitionActions({
 	onUnmount,
 	onCreateShare,
 	onGoToShare,
+	onCheckFilesystem,
 }: PartitionActionsProps) {
 	const theme = useTheme();
 	const isSmallScreen = useMediaQuery(theme.breakpoints.between("sm", "md"));
@@ -73,6 +75,7 @@ export function PartitionActions({
 		onUnmount,
 		onCreateShare,
 		onGoToShare,
+		onCheckFilesystem,
 	});
 
 	if (!actionItems || actionItems.length === 0) {

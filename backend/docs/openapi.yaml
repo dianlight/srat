@@ -22,6 +22,22 @@ components:
       schema:
         type: string
   schemas:
+    AbortCheckPartitionInput:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/AbortCheckPartitionInput.json
+          format: uri
+          readOnly: true
+          type: string
+        partitionId:
+          description: Unique partition identifier
+          type: string
+      required:
+        - partitionId
+      type: object
     AddonStatsData:
       additionalProperties: false
       properties:
@@ -425,6 +441,36 @@ components:
         - canCheck
         - canSetLabel
         - canGetState
+      type: object
+    FilesystemTask:
+      additionalProperties: false
+      properties:
+        device:
+          type: string
+        error:
+          type: string
+        filesystemType:
+          type: string
+        message:
+          type: string
+        notes:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        operation:
+          type: string
+        progress:
+          format: int64
+          type: integer
+        result: {}
+        status:
+          type: string
+      required:
+        - device
+        - operation
+        - status
       type: object
     FormatPartitionInput:
       additionalProperties: false
@@ -1202,6 +1248,21 @@ components:
           type: string
       required:
         - test_type
+      type: object
+    Post-filesystem-check-abortResponse:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/Post-filesystem-check-abortResponse.json
+          format: uri
+          readOnly: true
+          type: string
+        success:
+          type: boolean
+      required:
+        - success
       type: object
     ProcessStatus:
       additionalProperties: false
@@ -2049,6 +2110,8 @@ components:
               - shares
               - dirty_data_tracker
               - smart_test_status
+              - filesystem_task
+              - error
             type: string
           type:
             - array
@@ -2194,8 +2257,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json-patch+json:
@@ -2341,8 +2404,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -2847,8 +2910,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
@@ -2939,6 +3002,55 @@ paths:
             X-Trace-Id:
               $ref: "#/components/headers/X-Trace-Id"
       summary: Post API filesystem check
+      tags:
+        - filesystems
+  /api/filesystem/check/abort:
+    post:
+      operationId: post-api-filesystem-check-abort
+      parameters:
+        - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AbortCheckPartitionInput"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Post-filesystem-check-abortResponse"
+          description: OK
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: Post API filesystem check abort
       tags:
         - filesystems
   /api/filesystem/format:
@@ -3321,8 +3433,8 @@ paths:
     post:
       operationId: post-api-hdidle-stop
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -3364,8 +3476,8 @@ paths:
     get:
       operationId: get-api-health
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -3738,8 +3850,8 @@ paths:
     get:
       operationId: list-api-nics
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -3867,8 +3979,8 @@ paths:
     get:
       operationId: get-api-samba-status
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -4331,8 +4443,8 @@ paths:
               - world
             maxLength: 30
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -4780,6 +4892,24 @@ paths:
                       type: object
                     - properties:
                         data:
+                          $ref: "#/components/schemas/FilesystemTask"
+                        event:
+                          const: filesystem_task
+                          description: The event name.
+                          type: string
+                        id:
+                          description: The event ID.
+                          type: integer
+                        retry:
+                          description: The retry time in milliseconds.
+                          type: integer
+                      required:
+                        - data
+                        - event
+                      title: Event filesystem_task
+                      type: object
+                    - properties:
+                        data:
                           $ref: "#/components/schemas/HealthPing"
                         event:
                           const: heartbeat
@@ -4974,8 +5104,8 @@ paths:
     get:
       operationId: get-api-telemetry-internet-connection
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -5306,8 +5436,8 @@ paths:
               - world
             maxLength: 30
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
@@ -5355,8 +5485,8 @@ paths:
     put:
       operationId: put-api-useradmin
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -5404,8 +5534,8 @@ paths:
     get:
       operationId: list-api-users
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -5464,8 +5594,8 @@ paths:
             default: false
             description: Force umount operation
             type: boolean
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "204":
           description: No Content
@@ -5503,8 +5633,8 @@ paths:
     post:
       operationId: post-api-volume-mount
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:

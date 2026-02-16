@@ -258,6 +258,47 @@ func (suite *FilesystemHandlerSuite) TestCheckPartition_Success() {
 	suite.False(result.ErrorsFound)
 }
 
+func (suite *FilesystemHandlerSuite) TestAbortCheckPartition_Success() {
+	partitionID := "test-partition-id"
+	devicePath := "/dev/sdb1"
+	fsType := "ext4"
+	diskID := "test-disk-id"
+
+	partition := dto.Partition{
+		Id:               &partitionID,
+		LegacyDevicePath: &devicePath,
+		FsType:           &fsType,
+	}
+
+	partitions := make(map[string]dto.Partition)
+	partitions[partitionID] = partition
+	disk := &dto.Disk{
+		Id:         &diskID,
+		Partitions: &partitions,
+	}
+
+	mock.When(suite.mockVolumeService.GetVolumesData()).
+		ThenReturn([]*dto.Disk{disk})
+
+	mock.When(suite.mockFsService.AbortCheckPartition(
+		mock.Any[context.Context](),
+		mock.Any[string](),
+	)).ThenReturn(nil)
+
+	resp := suite.testAPI.Post("/filesystem/check/abort", map[string]interface{}{
+		"partitionId": partitionID,
+	})
+
+	suite.Equal(http.StatusOK, resp.Code)
+
+	var result struct {
+		Success bool `json:"success"`
+	}
+	err := json.Unmarshal(resp.Body.Bytes(), &result)
+	suite.Require().NoError(err)
+	suite.True(result.Success)
+}
+
 func (suite *FilesystemHandlerSuite) TestGetPartitionState_Success() {
 	partitionID := "test-partition-id"
 	devicePath := "/dev/sdb1"

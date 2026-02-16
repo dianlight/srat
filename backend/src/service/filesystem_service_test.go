@@ -396,6 +396,12 @@ func (suite *FilesystemServiceTestSuite) TestGetMountFlagsAndData() {
 	}
 }
 
+func (suite *FilesystemServiceTestSuite) TestAbortCheckPartition_NoActiveOperation() {
+	err := suite.fsService.AbortCheckPartition(context.Background(), "/dev/test")
+	suite.Require().Error(err)
+	suite.True(errors.Is(err, dto.ErrorNotFound))
+}
+
 func (suite *FilesystemServiceTestSuite) TestMountFlagsToSyscallFlagAndData() {
 	testCases := []struct {
 		name            string

@@ -1,11 +1,11 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import { getServerEventBackend } from "../macro/Environment" with {
-	type: "macro",
+import { getServerEventBackend } from "../macro/Environment" with { type: "macro"
 };
 import { apiUrl } from "./emptyApi";
 import type {
 	DataDirtyTracker,
 	Disk,
+	FilesystemTask,
 	HealthPing,
 	SharedResource,
 	SmartTestStatus,
@@ -22,6 +22,7 @@ export type EventData = {
 	[Supported_events.Updating]: UpdateProgress;
 	[Supported_events.DirtyDataTracker]: DataDirtyTracker;
 	[Supported_events.SmartTestStatus]: SmartTestStatus;
+	[Supported_events.FilesystemTask]: FilesystemTask;
 } & {
 	__wsConnected?: boolean;
 };
