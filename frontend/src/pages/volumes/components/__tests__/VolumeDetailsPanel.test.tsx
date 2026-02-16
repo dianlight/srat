@@ -80,6 +80,7 @@ describe("VolumeDetailsPanel Component", () => {
         const mockPartition = {
             id: "part-1",
             name: "sda1",
+            fs_type: "ext4",
             mount_point_data: {
                 "/mnt/data": {
                     path: "/mnt/data",
@@ -145,6 +146,7 @@ describe("VolumeDetailsPanel Component", () => {
         const mockPartition = {
             id: "part-1",
             name: "sda1",
+            fs_type: "ext4",
             mount_point_data: {
                 "/mnt/data": {
                     path: "/mnt/data",
@@ -152,6 +154,9 @@ describe("VolumeDetailsPanel Component", () => {
                     is_mounted: true,
                     type: Type.Addon,
                 },
+            },
+            filesystem_info: {
+                Description: "EXT4 Filesystem",
             },
         };
         const partitionId = mockPartition.id;
@@ -211,6 +216,7 @@ describe("VolumeDetailsPanel Component", () => {
         const mockPartition = {
             id: "part-1",
             name: "sda1",
+            fs_type: "xfs",
             mount_point_data: {
                 "/mnt/data": {
                     path: "/mnt/data",
@@ -218,6 +224,9 @@ describe("VolumeDetailsPanel Component", () => {
                     is_mounted: false,
                     type: Type.Addon,
                 },
+            },
+            filesystem_info: {
+                Description: "XFS Filesystem",
             },
         };
         const partitionId = mockPartition.id;
@@ -269,6 +278,7 @@ describe("VolumeDetailsPanel Component", () => {
         const mockPartition = {
             id: "part-1",
             name: "sda1",
+            fs_type: "btrfs",
             mount_point_data: {
                 "/mnt/data": {
                     path: "/mnt/data",
@@ -276,6 +286,9 @@ describe("VolumeDetailsPanel Component", () => {
                     is_mounted: true,
                     type: Type.Addon,
                 },
+            },
+            filesystem_info: {
+                Description: "BTRFS Filesystem",
             },
         };
 

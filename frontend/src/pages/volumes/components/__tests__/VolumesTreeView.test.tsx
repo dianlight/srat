@@ -38,6 +38,7 @@ describe("VolumesTreeView Component", () => {
                         id: "part-1",
                         name: "Single Mount Partition",
                         size: 500000000,
+                        fs_type: "ext4",
                         mount_point_data: {
                             "/mnt/single": {
                                 is_mounted: true,
@@ -95,6 +96,7 @@ describe("VolumesTreeView Component", () => {
                     "part-alert": {
                         id: "part-alert",
                         name: "Alert Partition",
+                        fs_type: "ext4",
                         mount_point_data: {
                             "/mnt/alert": {
                                 is_mounted: true,
@@ -159,6 +161,7 @@ describe("VolumesTreeView Component", () => {
                     "part-clean": {
                         id: "part-clean",
                         name: "Clean Partition",
+                        fs_type: "ext4",
                         mount_point_data: {
                             "/mnt/clean": {
                                 is_mounted: true,
@@ -221,6 +224,7 @@ describe("VolumesTreeView Component", () => {
                         id: "part-2",
                         name: "Multi Mount Partition",
                         size: 1000000000,
+                        fs_type: "ext4",
                         mount_point_data: {
                             "/mnt/data1": {
                                 is_mounted: true,
@@ -289,6 +293,7 @@ describe("VolumesTreeView Component", () => {
                     "part-3": {
                         id: "part-3",
                         name: "Clickable Partition",
+                        fs_type: "ext4",
                         mount_point_data: {
                             "/mnt/click": {
                                 is_mounted: true,

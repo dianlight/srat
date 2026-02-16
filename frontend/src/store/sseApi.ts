@@ -1,6 +1,4 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import { getServerEventBackend } from "../macro/Environment" with { type: "macro"
-};
 import { apiUrl } from "./emptyApi";
 import type {
 	DataDirtyTracker,
@@ -47,6 +45,7 @@ const getGlobalNumber = (key: string, fallback: number) => {
  */
 
 // Create a separate API for SSE operations
+/*
 export const sseApi = createApi({
 	reducerPath: "sseApi",
 	baseQuery: fetchBaseQuery({
@@ -185,6 +184,7 @@ export const sseApi = createApi({
 		}),
 	}),
 });
+*/
 
 export const wsApi = createApi({
 	reducerPath: "wsApi",
@@ -361,7 +361,7 @@ export const wsApi = createApi({
 	}),
 });
 
-const useSseServerEventsQuery = sseApi.endpoints.getServerEvents.useQuery;
+//const useSseServerEventsQuery = sseApi.endpoints.getServerEvents.useQuery;
 
 const useWsServerEventsQuery = () => {
 	const result = wsApi.endpoints.getServerEvents.useQuery();
@@ -373,7 +373,11 @@ const useWsServerEventsQuery = () => {
 };
 
 // Export the hook
+/*
 export const useGetServerEventsQuery =
 	getServerEventBackend() === "SSE"
 		? useSseServerEventsQuery
 		: useWsServerEventsQuery;
+*/
+
+export const useGetServerEventsQuery = useWsServerEventsQuery;

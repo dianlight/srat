@@ -3,13 +3,13 @@
 // - ensures process.env.APIURL is set
 // - provides a helper to create a minimal Redux store with RTK Query APIs
 
-import { Window } from "happy-dom";
 import { configureStore } from "@reduxjs/toolkit";
-import '@testing-library/jest-dom'
+import '@testing-library/jest-dom';
+import { Window } from "happy-dom";
 // Initialize MSW for API mocking
 // This must be imported after all globals are set up
 import "./bun-setup";
-    
+
 // Install DOM globals immediately when this module is imported
 const win = new Window({
     settings: {
@@ -115,7 +115,7 @@ try {
     const originalRemoveChild = (globalThis as any).Node?.prototype?.removeChild;
     if (originalRemoveChild && !('__patched_removeChild' in (globalThis as any).Node.prototype)) {
         Object.defineProperty((globalThis as any).Node.prototype, '__patched_removeChild', { value: true });
-        (globalThis as any).Node.prototype.removeChild = function(child: any) {
+        (globalThis as any).Node.prototype.removeChild = function (child: any) {
             try { return originalRemoveChild.call(this, child); }
             catch { return child; }
         };
@@ -182,7 +182,6 @@ if (typeof process !== "undefined") {
 // This prevents the module loader from creating multiple instances of the same API
 let cachedApiModules: {
     sratApi: any;
-    sseApi: any;
     wsApi: any;
     errorSlice: any;
     mdcSlice: any;
@@ -200,7 +199,7 @@ export async function createTestStore() {
     // causing "middleware not added" errors from RTK Query.
     if (!cachedApiModules) {
         const [
-            { sseApi, wsApi },
+            { wsApi },
             { sratApi },
             { errorSlice },
             { mdcSlice },
@@ -212,10 +211,9 @@ export async function createTestStore() {
             import("../src/store/mdcSlice"),
             import("../src/store/mdcMiddleware"),
         ]);
-        
+
         cachedApiModules = {
             sratApi,
-            sseApi,
             wsApi,
             errorSlice,
             mdcSlice,
@@ -223,7 +221,7 @@ export async function createTestStore() {
         };
     }
 
-    const { sratApi, sseApi, wsApi, errorSlice, mdcSlice, mdcMiddleware } = cachedApiModules;
+    const { sratApi, wsApi, errorSlice, mdcSlice, mdcMiddleware } = cachedApiModules;
     const { setupListeners } = await import("@reduxjs/toolkit/query");
 
     // CRITICAL: Create a fresh store with RTK Query middleware
@@ -235,14 +233,12 @@ export async function createTestStore() {
             mdc: mdcSlice.reducer,
             //  [api.reducerPath]: api.reducer,
             [sratApi.reducerPath]: sratApi.reducer,
-            [sseApi.reducerPath]: sseApi.reducer,
             [wsApi.reducerPath]: wsApi.reducer,
         },
         middleware: (getDefaultMiddleware) =>
             getDefaultMiddleware()
                 .concat(mdcMiddleware)
                 .concat(sratApi.middleware)
-                .concat(sseApi.middleware)
                 .concat(wsApi.middleware),
     });
 
@@ -255,7 +251,6 @@ export async function createTestStore() {
     try {
         // Reset all API state to ensure clean slate for cache
         store.dispatch(sratApi.util.resetApiState());
-        store.dispatch(sseApi.util.resetApiState());
         store.dispatch(wsApi.util.resetApiState());
     } catch {
         // Silently ignore errors in case dispatch is not fully ready
