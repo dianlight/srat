@@ -307,7 +307,10 @@ func (a *BtrfsAdapter) GetState(ctx context.Context, device string) (dto.Filesys
 		}
 	} else {
 		// If we can't get stats, run a readonly check
-		checkOutput, checkExitCode, _ := runCommand(ctx, "btrfs", "check", "--readonly", device)
+		checkOutput, checkExitCode, err := runCommand(ctx, "btrfs", "check", "--readonly", device)
+		if err != nil {
+			return state, errors.WithDetails(err, "Device", device)
+		}
 		state.IsClean = checkExitCode == 0
 		state.HasErrors = checkExitCode != 0
 		state.AdditionalInfo["checkOutput"] = checkOutput

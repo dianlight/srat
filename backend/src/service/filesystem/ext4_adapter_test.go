@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service/filesystem"
 	"github.com/stretchr/testify/suite"
 )
@@ -35,6 +36,11 @@ func (suite *Ext4AdapterTestSuite) TestGetDescription() {
 	suite.Contains(desc, "Extended")
 }
 
+func (suite *Ext4AdapterTestSuite) TestGetLinuxFsModule() {
+	module := suite.adapter.GetLinuxFsModule()
+	suite.Equal("ext4", module)
+}
+
 func (suite *Ext4AdapterTestSuite) TestGetMountFlags() {
 	flags := suite.adapter.GetMountFlags()
 	suite.NotEmpty(flags)
@@ -64,4 +70,56 @@ func (suite *Ext4AdapterTestSuite) TestIsSupported() {
 	suite.NotEmpty(support.AlpinePackage)
 	suite.Equal("e2fsprogs", support.AlpinePackage)
 	// Note: Actual availability depends on system configuration
+}
+
+func (suite *Ext4AdapterTestSuite) TestGetFsSignatureMagic() {
+	signatures := suite.adapter.GetFsSignatureMagic()
+	suite.NotEmpty(signatures)
+	suite.Len(signatures, 1)
+	suite.Equal(int64(1080), signatures[0].Offset)
+	suite.Equal([]byte{0x53, 0xEF}, signatures[0].Magic)
+}
+
+func (suite *Ext4AdapterTestSuite) TestFormat_NonExistentDevice() {
+	// Test formatting a non-existent device
+	err := suite.adapter.Format(suite.ctx, "/dev/nonexistent-device-12345", dto.FormatOptions{}, nil)
+	suite.Error(err)
+}
+
+func (suite *Ext4AdapterTestSuite) TestCheck_NonExistentDevice() {
+	// Test checking a non-existent device
+	result, err := suite.adapter.Check(suite.ctx, "/dev/nonexistent-device-12345", dto.CheckOptions{}, nil)
+	suite.Error(err)
+	// Result may be zero-initialized or have error info
+	_ = result
+}
+
+func (suite *Ext4AdapterTestSuite) TestGetLabel_NonExistentDevice() {
+	// Test getting label from a non-existent device
+	label, err := suite.adapter.GetLabel(suite.ctx, "/dev/nonexistent-device-12345")
+	suite.Error(err)
+	suite.Empty(label)
+}
+
+func (suite *Ext4AdapterTestSuite) TestSetLabel_NonExistentDevice() {
+	// Test setting label on a non-existent device
+	err := suite.adapter.SetLabel(suite.ctx, "/dev/nonexistent-device-12345", "testlabel")
+	suite.Error(err)
+}
+
+func (suite *Ext4AdapterTestSuite) TestGetState_NonExistentDevice() {
+	// Test getting state from a non-existent device
+	state, err := suite.adapter.GetState(suite.ctx, "/dev/nonexistent-device-12345")
+	suite.Error(err)
+	// State may be zero-initialized or have error info
+	_ = state
+}
+
+func (suite *Ext4AdapterTestSuite) TestFormat_WithCancelledContext() {
+	// Test formatting with a cancelled context
+	cancelledCtx, cancel := context.WithCancel(suite.ctx)
+	cancel() // Cancel immediately
+
+	err := suite.adapter.Format(cancelledCtx, "/tmp/test-device", dto.FormatOptions{}, nil)
+	suite.Error(err)
 }

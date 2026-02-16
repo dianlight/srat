@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service/filesystem"
 	"github.com/stretchr/testify/suite"
 )
@@ -71,4 +72,37 @@ func (suite *ExfatAdapterTestSuite) TestIsDeviceSupportedWithSignature() {
 	supported, err := suite.adapter.IsDeviceSupported(suite.ctx, path)
 	suite.NoError(err)
 	suite.True(supported)
+}
+
+func (suite *ExfatAdapterTestSuite) TestGetLinuxFsModule() {
+	module := suite.adapter.GetLinuxFsModule()
+	suite.Equal("exfat", module)
+}
+
+func (suite *ExfatAdapterTestSuite) TestFormat_NonExistentDevice() {
+	err := suite.adapter.Format(suite.ctx, "/dev/nonexistent-exfat-12345", dto.FormatOptions{}, nil)
+	suite.Error(err)
+}
+
+func (suite *ExfatAdapterTestSuite) TestCheck_NonExistentDevice() {
+	result, err := suite.adapter.Check(suite.ctx, "/dev/nonexistent-exfat-12345", dto.CheckOptions{}, nil)
+	suite.Error(err)
+	_ = result
+}
+
+func (suite *ExfatAdapterTestSuite) TestGetLabel_NonExistentDevice() {
+	label, err := suite.adapter.GetLabel(suite.ctx, "/dev/nonexistent-exfat-12345")
+	suite.Error(err)
+	suite.Empty(label)
+}
+
+func (suite *ExfatAdapterTestSuite) TestSetLabel_NonExistentDevice() {
+	err := suite.adapter.SetLabel(suite.ctx, "/dev/nonexistent-exfat-12345", "testlabel")
+	suite.Error(err)
+}
+
+func (suite *ExfatAdapterTestSuite) TestGetState_NonExistentDevice() {
+	state, err := suite.adapter.GetState(suite.ctx, "/dev/nonexistent-exfat-12345")
+	suite.Error(err)
+	_ = state
 }

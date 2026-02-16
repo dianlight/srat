@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/tlog"
 	"gitlab.com/tozd/go/errors"
 )
 
@@ -46,8 +47,10 @@ func runCommand(ctx context.Context, name string, args ...string) (string, int, 
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			exitCode = exitErr.ExitCode()
 		} else {
-			return "", -1, errors.WithDetails(err, "Command", name, "Args", strings.Join(args, " "))
+			exitCode = -1
 		}
+		tlog.ErrorContext(ctx, "Error executing command", "command", name, "args", args, "exitCode", exitCode, "Output", string(output))
+		return strings.TrimSpace(string(output)), exitCode, errors.WithDetails(err, "Command", name, "Args", strings.Join(args, " "))
 	}
 
 	return strings.TrimSpace(string(output)), exitCode, nil

@@ -267,7 +267,10 @@ func (a *ExfatAdapter) GetState(ctx context.Context, device string) (dto.Filesys
 	}
 
 	// Run a read-only check to get filesystem state
-	output, exitCode, _ := runCommand(ctx, a.fsckCommand, "-n", device)
+	output, exitCode, err := runCommand(ctx, a.fsckCommand, "-n", device)
+	if err != nil {
+		return state, errors.WithDetails(err, "Device", device)
+	}
 
 	// Parse the output to determine filesystem state
 	switch exitCode {
