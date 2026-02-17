@@ -65,7 +65,7 @@ class GlobalEventTracker {
 
             if (event.target && (event.target as HTMLElement).tagName === 'IMG' || (event.target as HTMLElement).tagName === 'SCRIPT') {
                 message = `Fallimento caricamento risorsa: ${(event.target as HTMLElement).tagName}`;
-                source = (event.target as HTMLImageElement).src || (event.target as HTMLScriptElement).src;
+                source = (event.target as HTMLImageElement).src;
             } else {
                 message = event.error ? event.error.message : event.message;
                 source = event.filename || 'runtime';
