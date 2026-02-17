@@ -33,22 +33,6 @@
         "gomodVendor",
         "goGenerate"
     ],
-    "allowedUnsafeExecutions": [
-        "goGenerate"
-    ],
-    "allowedCommands": ["^cd backend$", "^make .*$"],
-    "postUpgradeTasks": {
-        "commands": [
-            "cd backend",
-            "make patch"
-        ],
-        "fileFilters": [
-            "**/go.mod",
-            "**/go.sum",
-            "vendor/**"
-        ],
-        "executionMode": "branch"
-    },
     "abandonmentThreshold": "8 years",
     "dependencyDashboardAutoclose": true,
     "customManagers": [
