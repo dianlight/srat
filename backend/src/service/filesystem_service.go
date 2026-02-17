@@ -8,7 +8,6 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"syscall"
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
@@ -148,33 +147,8 @@ var (
 	preferredMountFlagSources = []string{"ntfs", "vfat"}
 
 	// syscallFlagMap maps mount flag names (lowercase) to their corresponding syscall constants.
-	// This map includes flags that SET a bit. Flags like "rw" or "async"
-	// represent the ABSENCE of a restrictive bit and are handled by not setting MS_RDONLY or MS_SYNCHRONOUS.
-	// "defaults" is also handled by the base state (0) and subsequent overrides.
-	syscallFlagMap = map[string]uintptr{
-		"ro":          syscall.MS_RDONLY,
-		"nosuid":      syscall.MS_NOSUID,
-		"nodev":       syscall.MS_NODEV,
-		"noexec":      syscall.MS_NOEXEC,
-		"sync":        syscall.MS_SYNCHRONOUS,
-		"remount":     syscall.MS_REMOUNT,
-		"mand":        syscall.MS_MANDLOCK,
-		"dirsync":     syscall.MS_DIRSYNC,
-		"noatime":     syscall.MS_NOATIME,
-		"nodiratime":  syscall.MS_NODIRATIME,
-		"bind":        syscall.MS_BIND,
-		"rec":         syscall.MS_REC, // Used with MS_BIND for recursive bind mounts (rbind)
-		"silent":      syscall.MS_SILENT,
-		"posixacl":    syscall.MS_POSIXACL,
-		"acl":         syscall.MS_POSIXACL, // Common alias for posixacl
-		"unbindable":  syscall.MS_UNBINDABLE,
-		"private":     syscall.MS_PRIVATE,
-		"slave":       syscall.MS_SLAVE,
-		"shared":      syscall.MS_SHARED,
-		"relatime":    syscall.MS_RELATIME,
-		"strictatime": syscall.MS_STRICTATIME,
-		// "lazytime":    syscall.MS_LAZYTIME, // Not universally available, explicitly not mapped
-	}
+	// Shared with dto.MountFlagsMap() to keep a single source of truth.
+	syscallFlagMap = dto.MountFlagsMap()
 
 	// ignoredSyscallFlags are descriptive, represent default states, or are handled by other mechanisms
 	// (like the data field of mount) when converting to syscall flags. These will be ignored without warning.
