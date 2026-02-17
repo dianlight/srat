@@ -34,7 +34,7 @@ require (
 	github.com/pressly/goose/v3 v3.26.0
 	github.com/prometheus/procfs v0.19.2
 	github.com/rollbar/rollbar-go v1.4.8
-	github.com/samber/slog-http v1.11.1
+	github.com/samber/slog-http v1.12.0
 	github.com/sergi/go-diff v1.4.0
 	github.com/shomali11/util v0.0.0-20220717175126-f0771b70947f
 	github.com/teivah/broadcast v0.1.0
