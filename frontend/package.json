@@ -82,7 +82,7 @@
   "scripts": {
     "nextversion": "bun run version.ts -i alpha",
     "version": "bun run version.ts",
-    "build": "bun tsgo --noEmit && NODE_ENV=production bun run bun.build.ts",
+    "build": "bun tsgo --project tsconfig.prod.json --noEmit && NODE_ENV=production bun run bun.build.ts",
     "watch": "bun tsgo --noEmit && NODE_ENV=development bun run bun.build.ts -w",
     "gowatch": "bun tsgo --noEmit && NODE_ENV=development API_URL=http://localhost:3000/ bun run bun.build.ts -w -o ../backend/src/web/static",
     "clean": "rm -rf out",
