@@ -3,7 +3,7 @@ import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { Box, Typography } from "@mui/material";
 import { useMemo, type ReactNode } from "react";
-import { type FilesystemState, useGetApiFilesystemStateQuery } from "../../../store/sratApi";
+import { useGetApiFilesystemStateQuery, type FilesystemState } from "../../../store/sratApi";
 
 export interface UseFilesystemStateResult {
     filesystemState: FilesystemState | null;
