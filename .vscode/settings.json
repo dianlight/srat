@@ -233,4 +233,5 @@
     "**/vendor/*/**"
   ],
   "todo-tree.tree.showCountsInTree": true,
+  "biome.lsp.bin": "/root/.bun/install/global/node_modules/@biomejs/cli-linux-arm64-musl/biome",
 }
