@@ -33,6 +33,10 @@
         "gomodVendor",
         "goGenerate"
     ],
+    "allowedUnsafeExecutions": [
+        "goGenerate"
+    ],
+    "allowedCommands": ["^cd backend$", "^make .*$"],
     "postUpgradeTasks": {
         "commands": [
             "cd backend",
