@@ -420,8 +420,8 @@ github.com/samber/slog-common v0.20.0 h1:WaLnm/aCvBJSk5nR5aXZTFBaV0B47A+AEaEOiZD
 github.com/samber/slog-common v0.20.0/go.mod h1:+Ozat1jgnnE59UAlmNX1IF3IByHsODnnwf9jUcBZ+m8=
 github.com/samber/slog-formatter v1.2.2 h1:/JSzXcF0TUA1GRt/4g1AJc7h0ofyn7wx21oUjzpPh54=
 github.com/samber/slog-formatter v1.2.2/go.mod h1:zBYmoFkeV2LT3tyiaAehpJ1pOI+CtQz/xjXvbedx26Q=
-github.com/samber/slog-http v1.11.1 h1:bAQveHQo7nbExU/JtyVDUrqUWEeMJgMxY0UOSn0f+/c=
-github.com/samber/slog-http v1.11.1/go.mod h1:PAcQQrYFo5KM7Qbk50gNNwKEAMGCyfsw6GN5dI0iv9g=
+github.com/samber/slog-http v1.12.0 h1:Vbk9G9my//+GkY8Bc1FEviumgnxmmPaG6qyF4FX4rb0=
+github.com/samber/slog-http v1.12.0/go.mod h1:PAcQQrYFo5KM7Qbk50gNNwKEAMGCyfsw6GN5dI0iv9g=
 github.com/samber/slog-multi v1.7.1 h1:aCLXHRxgU+2v0PVlEOh7phynzM7CRo89ZgFtOwaqVEE=
 github.com/samber/slog-multi v1.7.1/go.mod h1:A4KQC99deqfkCDJcL/cO3kX6McX7FffQAx/8QHink+c=
 github.com/sergi/go-diff v1.0.0/go.mod h1:0CfEIISq7TuYL3j771MWULgwwjU+GofnZX9QAmXWZgo=
