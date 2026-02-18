@@ -69,11 +69,14 @@ func DefaultConfig(title, version string) Config {
 				Schemas: registry,
 			},
 		},
-		OpenAPIPath:   "/openapi",
-		DocsPath:      "/docs",
-		SchemasPath:   schemasPath,
-		Formats:       DefaultFormats,
-		DefaultFormat: "application/json",
+		OpenAPIPath:      "/openapi",
+		DocsPath:         "/docs",
+		DocsRenderer:     DocsRendererStoplightElements,
+		SchemasPath:      schemasPath,
+		Formats:          DefaultFormats,
+		DefaultFormat:    "application/json",
+		NoFormatFallback: false,
+		Transformers:     nil,
 		CreateHooks: []func(Config) Config{
 			func(c Config) Config {
 				// Add a link transformer to the API. This adds `Link` headers and
