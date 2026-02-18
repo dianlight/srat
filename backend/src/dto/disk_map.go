@@ -387,3 +387,42 @@ func (m *DiskMap) AddSmartInfo(smartInfo *SmartInfo) error {
 	(*m)[smartInfo.DiskId] = d
 	return nil
 }
+
+// GetPartitionDevicePath returns the best available device path for a partition.
+// It prefers the DevicePath field, falling back to LegacyDevicePath if DevicePath is not available.
+// Returns an empty string if neither path is available.
+func (m *DiskMap) GetPartitionDevicePath(partition *Partition) string {
+	if partition == nil {
+		return ""
+	}
+	// Prefer persistent device path
+	if partition.DevicePath != nil && *partition.DevicePath != "" {
+		return *partition.DevicePath
+	}
+	// Fallback to legacy device path
+	if partition.LegacyDevicePath != nil && *partition.LegacyDevicePath != "" {
+		return *partition.LegacyDevicePath
+	}
+	// Last resort: use legacy device name
+	if partition.LegacyDeviceName != nil && *partition.LegacyDeviceName != "" {
+		return *partition.LegacyDeviceName
+	}
+	return ""
+}
+
+// GetPartitionByID searches all disks for a partition with the given ID.
+// Returns the partition, the disk ID it belongs to, and true if found; otherwise returns false.
+func (m *DiskMap) GetPartitionByID(partitionID string) (*Partition, string, bool) {
+	if m == nil || *m == nil || partitionID == "" {
+		return nil, "", false
+	}
+	for diskID, disk := range *m {
+		if disk.Partitions == nil {
+			continue
+		}
+		if partition, found := (*disk.Partitions)[partitionID]; found {
+			return &partition, diskID, true
+		}
+	}
+	return nil, "", false
+}

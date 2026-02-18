@@ -13,6 +13,7 @@ var WebEventMap = WebEventMapTypes{
 	WebEventTypes.EVENTDIRTYTRACKER.String():    DataDirtyTracker{},
 	WebEventTypes.EVENTSMARTTESTSTATUS.String(): SmartTestStatus{},
 	WebEventTypes.EVENTERROR.String():           &ErrorDataModel{},
+	WebEventTypes.EVENTFILESYSTEMTASK.String():  FilesystemTask{},
 }
 
 func (WebEventMapTypes) IsValidEvent(event any) bool {

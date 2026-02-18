@@ -30,7 +30,7 @@ type ConfigToDtoConverter interface {
 
 	// g.overter:update target
 	// g.overter:ignore  Flags CustomFlags IsInvalid InvalidError Warnings Share IsToMountAtStartup
-	// goverter:ignore Flags CustomFlags InvalidError Warnings Share RefreshVersion
+	// goverter:ignore Flags CustomFlags InvalidError Warnings Share RefreshVersion Root
 	// goverter:ignore Partition
 	// goverter:map Path IsMounted | github.com/dianlight/srat/internal/osutil:IsMounted
 	// goverter:map IsInvalid | falseConst
@@ -43,7 +43,7 @@ type ConfigToDtoConverter interface {
 	// goverter:map Path DiskLabel | DiskLabelFromPath
 	// goverter:map Path DiskSerial | DiskSerialFromPath
 	// goverter:map Path DiskSize | DiskSizeFromPath
-	// goverter:map Path Root
+	// g.overter:map Path Root
 	ShareToMountPointData(source config.Share) (*dto.MountPointData, error)
 
 	// goverter:ignore _ Status

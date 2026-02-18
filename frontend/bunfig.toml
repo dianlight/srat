@@ -1,5 +1,16 @@
 [test]
 bail = 1 
 coverage = true # Enable coverage collection
+coveragePathIgnorePatterns = [
+  "**/node_modules/**",
+  "**/dist/**",
+  "**/build/**",
+  "**/coverage/**",
+  "**/mocks/**",
+  "**/macro/**",
+  "**/.devcontainer/**",
+  "src/store/sratApi.ts",
+] 
 coverageSkipTestFiles = true # Skip coverage for test files
-preload = "./test/setup.ts"
+preload = "./test/setup.ts" 
+smol = true # Reduce memory usage during test runs

@@ -5,9 +5,6 @@ import (
 	"log/slog"
 	"math"
 	"os"
-	"path/filepath"
-	"strconv"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -37,13 +34,23 @@ type diskStatsService struct {
 	updateMutex       *sync.Mutex
 	smartService      SmartServiceInterface
 	hdidleService     HDIdleServiceInterface
+	filesystemService FilesystemServiceInterface
+	ioStatFetcher     func(string) (blockdevice.IOStats, error)
 	readFile          func(string) ([]byte, error)
 	sysFsBasePath     string
 	smartEnabledCache *cache.Cache // smartEnabledCache tracks SMART enabled/disabled state per disk to avoid unnecessary disk access
 }
 
 // NewDiskStatsService creates a new DiskStatsService.
-func NewDiskStatsService(lc fx.Lifecycle, VolumeService VolumeServiceInterface, Ctx context.Context, SmartService SmartServiceInterface, HDIdleService HDIdleServiceInterface, EventBus events.EventBusInterface) DiskStatsService {
+func NewDiskStatsService(
+	lc fx.Lifecycle,
+	VolumeService VolumeServiceInterface,
+	Ctx context.Context,
+	SmartService SmartServiceInterface,
+	HDIdleService HDIdleServiceInterface,
+	EventBus events.EventBusInterface,
+	FilesystemService FilesystemServiceInterface,
+) DiskStatsService {
 	var fs blockdevice.FS
 	var err error
 
@@ -56,16 +63,17 @@ func NewDiskStatsService(lc fx.Lifecycle, VolumeService VolumeServiceInterface, 
 	}
 
 	ds := &diskStatsService{
-		volumeService:  VolumeService,
-		blockdevice:    &fs,
-		ctx:            Ctx,
-		lastUpdateTime: time.Now(),
-		updateMutex:    &sync.Mutex{},
-		lastStats:      make(map[string]*blockdevice.IOStats),
-		smartService:   SmartService,
-		hdidleService:  HDIdleService,
-		readFile:       os.ReadFile,
-		sysFsBasePath:  "/sys/fs",
+		volumeService:     VolumeService,
+		blockdevice:       &fs,
+		ctx:               Ctx,
+		lastUpdateTime:    time.Now(),
+		updateMutex:       &sync.Mutex{},
+		lastStats:         make(map[string]*blockdevice.IOStats),
+		smartService:      SmartService,
+		hdidleService:     HDIdleService,
+		filesystemService: FilesystemService,
+		readFile:          os.ReadFile,
+		sysFsBasePath:     "/sys/fs",
 		// Initialize cache with 30 minute default expiration and 10 minute cleanup interval
 		smartEnabledCache: cache.New(30*time.Minute, 10*time.Minute),
 	}
@@ -156,7 +164,7 @@ func (s *diskStatsService) updateDiskStats() errors.E {
 				slog.DebugContext(s.ctx, "Skipping disk with nil device", "diskID", *disk.Id)
 				continue
 			}
-			stats, _, err := s.blockdevice.SysBlockDeviceStat(*disk.LegacyDeviceName)
+			stats, err := s.fetchDiskStats(*disk.LegacyDeviceName)
 
 			if err != nil {
 				if os.IsNotExist(errors.Unwrap(err)) {
@@ -230,8 +238,7 @@ func (s *diskStatsService) updateDiskStats() errors.E {
 					} else {
 						name = "unknown"
 					}
-					fsckSupported := s.isFsckSupported(fstype)
-					fsckNeeded := s.determineFsckNeeded(&part, fstype, fsckSupported)
+					filesystemState := s.getFilesystemState(&part, fstype)
 					// Use partition size if available
 					// Get free space using syscall.Statfs
 					var totalSpace, freeSpace uint64
@@ -266,14 +273,13 @@ func (s *diskStatsService) updateDiskStats() errors.E {
 						}
 					}
 					info := dto.PerPartitionInfo{
-						Name:          name,
-						MountPoint:    mountPoint,
-						Device:        *part.Id,
-						FSType:        fstype,
-						FreeSpace:     freeSpace,
-						TotalSpace:    totalSpace,
-						FsckNeeded:    fsckNeeded,
-						FsckSupported: fsckSupported,
+						Name:            name,
+						MountPoint:      mountPoint,
+						Device:          *part.Id,
+						FSType:          fstype,
+						FreeSpace:       freeSpace,
+						TotalSpace:      totalSpace,
+						FilesystemState: filesystemState,
 					}
 					if s.currentDiskHealth.PerPartitionInfo[*disk.Id] == nil {
 						s.currentDiskHealth.PerPartitionInfo[*disk.Id] = make([]dto.PerPartitionInfo, 0)
@@ -367,195 +373,57 @@ func (s *diskStatsService) GetDiskStats() (*dto.DiskHealth, errors.E) {
 	return s.currentDiskHealth, nil
 }
 
-func (s *diskStatsService) isFsckSupported(fstype string) bool {
-	switch strings.ToLower(fstype) {
-	case "ext2", "ext3", "ext4", "xfs", "btrfs", "f2fs", "vfat", "exfat", "ntfs", "ntfs3":
-		return true
-	default:
-		return false
+func (s *diskStatsService) getFilesystemState(part *dto.Partition, fsType string) *dto.FilesystemState {
+	if part == nil || s.filesystemService == nil || fsType == "" {
+		return nil
 	}
+
+	info, err := s.filesystemService.GetSupportAndInfo(s.ctx, fsType)
+	if err != nil || info == nil || info.Support == nil || !info.Support.CanCheck {
+		return nil
+	}
+
+	devicePath := resolvePartitionDevicePath(part)
+	if devicePath == "" || !info.Support.CanGetState {
+		return nil
+	}
+
+	state, err := s.filesystemService.GetPartitionState(s.ctx, devicePath, fsType)
+	if err != nil || state == nil {
+		return nil
+	}
+
+	return state
 }
 
-func (s *diskStatsService) determineFsckNeeded(part *dto.Partition, fstype string, fsckSupported bool) bool {
-	if part == nil || !fsckSupported {
-		return false
-	}
-
-	mounted, hasMountInfo := partitionMountState(part)
-	if hasMountInfo && !mounted {
-		return true
-	}
-
-	if partitionHasDirtyIndicators(part) {
-		return true
-	}
-
-	if s.hasPendingFsState(part, fstype) {
-		return true
-	}
-
-	return false
-}
-
-func partitionMountState(part *dto.Partition) (isMounted bool, hasInfo bool) {
-	checkMounts := func(mounts *map[string]dto.MountPointData) {
-		if mounts == nil {
-			return
-		}
-		if len(*mounts) > 0 {
-			hasInfo = true
-		}
-		for _, mp := range *mounts {
-			if mp.IsMounted {
-				isMounted = true
-			}
-			if mp.Path != "" || mp.IsToMountAtStartup != nil {
-				hasInfo = true
-			}
-		}
-	}
-
-	checkMounts(part.MountPointData)
-	checkMounts(part.HostMountPointData)
-
-	return isMounted, hasInfo
-}
-
-func partitionHasDirtyIndicators(part *dto.Partition) bool {
-	hasIndicator := func(mounts *map[string]dto.MountPointData) bool {
-		if mounts == nil {
-			return false
-		}
-		for _, mp := range *mounts {
-			if mp.InvalidError != nil && containsDirtyKeyword(*mp.InvalidError) {
-				return true
-			}
-			if mp.Warnings != nil && containsDirtyKeyword(*mp.Warnings) {
-				return true
-			}
-		}
-		return false
-	}
-
-	return hasIndicator(part.MountPointData) || hasIndicator(part.HostMountPointData)
-}
-
-func containsDirtyKeyword(value string) bool {
-	lower := strings.ToLower(value)
-	keywords := []string{"fsck", "dirty", "recover", "inconsist", "corrupt"}
-	for _, keyword := range keywords {
-		if strings.Contains(lower, keyword) {
-			return true
-		}
-	}
-	return false
-}
-
-func (s *diskStatsService) hasPendingFsState(part *dto.Partition, fstype string) bool {
-	device := normalizeDeviceName(part)
-	if device == "" {
-		return false
-	}
-
-	switch strings.ToLower(fstype) {
-	case "ext2", "ext3", "ext4":
-		if s.checkSysfsState("ext4", device, []string{"needs_recovery", "error", "not clean"}) {
-			return true
-		}
-		base := filepath.Join(s.sysFsBasePath, "ext4", device)
-		if s.checkSysfsBool(filepath.Join(base, "needs_recovery")) {
-			return true
-		}
-		if s.checkSysfsNonZero(filepath.Join(base, "errors_count")) {
-			return true
-		}
-	case "xfs":
-		if s.checkSysfsState("xfs", device, []string{"dirty", "recover"}) {
-			return true
-		}
-		base := filepath.Join(s.sysFsBasePath, "xfs", device)
-		if s.checkSysfsNonZero(filepath.Join(base, "errors")) {
-			return true
-		}
-	case "f2fs":
-		if s.checkSysfsState("f2fs", device, []string{"dirty", "corrupt", "invalid"}) {
-			return true
-		}
-	}
-
-	return false
-}
-
-func (s *diskStatsService) checkSysfsState(fsDir, device string, keywords []string) bool {
-	statePath := filepath.Join(s.sysFsBasePath, fsDir, device, "state")
-	content, err := s.readTrimmed(statePath)
-	if err != nil {
-		return false
-	}
-	lower := strings.ToLower(content)
-	for _, keyword := range keywords {
-		if strings.Contains(lower, keyword) {
-			return true
-		}
-	}
-	return false
-}
-
-func (s *diskStatsService) checkSysfsBool(path string) bool {
-	content, err := s.readTrimmed(path)
-	if err != nil {
-		return false
-	}
-	if content == "" {
-		return false
-	}
-	switch strings.ToLower(content) {
-	case "0", "false", "clean":
-		return false
-	default:
-		return true
-	}
-}
-
-func (s *diskStatsService) checkSysfsNonZero(path string) bool {
-	content, err := s.readTrimmed(path)
-	if err != nil {
-		return false
-	}
-	if content == "" {
-		return false
-	}
-	if val, err := strconv.ParseUint(content, 10, 64); err == nil {
-		return val > 0
-	}
-	return true
-}
-
-func (s *diskStatsService) readTrimmed(path string) (string, error) {
-	if s.readFile == nil {
-		return "", os.ErrInvalid
-	}
-	data, err := s.readFile(path)
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(string(data)), nil
-}
-
-func normalizeDeviceName(part *dto.Partition) string {
+func resolvePartitionDevicePath(part *dto.Partition) string {
 	if part == nil {
 		return ""
 	}
-	if part.LegacyDeviceName != nil && *part.LegacyDeviceName != "" {
-		return sanitizeDeviceName(*part.LegacyDeviceName)
-	}
 	if part.LegacyDevicePath != nil && *part.LegacyDevicePath != "" {
-		return sanitizeDeviceName(filepath.Base(*part.LegacyDevicePath))
+		return *part.LegacyDevicePath
 	}
 	if part.DevicePath != nil && *part.DevicePath != "" {
-		return sanitizeDeviceName(filepath.Base(*part.DevicePath))
+		return *part.DevicePath
+	}
+	if part.LegacyDeviceName != nil && *part.LegacyDeviceName != "" {
+		return "/dev/" + *part.LegacyDeviceName
 	}
 	return ""
+}
+
+func (s *diskStatsService) fetchDiskStats(deviceName string) (blockdevice.IOStats, error) {
+	if s.ioStatFetcher != nil {
+		return s.ioStatFetcher(deviceName)
+	}
+	if s.blockdevice == nil {
+		return blockdevice.IOStats{}, os.ErrInvalid
+	}
+	stats, _, err := s.blockdevice.SysBlockDeviceStat(deviceName)
+	if err != nil {
+		return blockdevice.IOStats{}, err
+	}
+	return stats, nil
 }
 
 // isSmartEnabled checks if SMART is enabled for a disk.
@@ -614,9 +482,11 @@ func (s *diskStatsService) InvalidateSmartCache(diskId string) {
 	}
 }
 
+/*
 func sanitizeDeviceName(name string) string {
 	trimmed := strings.TrimSpace(name)
 	trimmed = strings.TrimPrefix(trimmed, "/dev/")
 	trimmed = strings.ReplaceAll(trimmed, "/", "!")
 	return trimmed
 }
+*/

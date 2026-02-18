@@ -54,30 +54,16 @@ func partitionFromDevice(device string, disks *dto.DiskMap) *dto.Partition {
 	return nil
 }
 
-/*
-// goverter:context disks
-func isToMountAtStartupFromPath(path string, disks *dto.DiskMap) *bool {
-	mp, ok := disks.GetMountPointByPath(path)
-	if !ok {
-		return pointer.Bool(false)
-	}
-	if mp.IsToMountAtStartup != nil {
-		return mp.IsToMountAtStartup
-	}
-	return pointer.Bool(false)
-}
-*/
-
 // goverter:context disks
 func rootFromPath(path string, disks *dto.DiskMap) string {
 	mp, ok := disks.GetMountPointByPath(path)
 	if !ok {
-		return path
+		return "/"
 	}
 	if mp.Root != "" {
 		return mp.Root
 	}
-	return path
+	return "/"
 }
 
 func uintptrToMountFlags(source uintptr) (*dto.MountFlags, error) {

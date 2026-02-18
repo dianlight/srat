@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"os"
-	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -23,6 +22,7 @@ type DiskStatsServiceSuite struct {
 	volumeMock VolumeServiceInterface
 	smartMock  SmartServiceInterface
 	hdidleMock HDIdleServiceInterface
+	fsMock     FilesystemServiceInterface
 	ds         *diskStatsService
 	ctx        context.Context
 	cancel     context.CancelFunc
@@ -43,6 +43,7 @@ func (suite *DiskStatsServiceSuite) SetupTest() {
 	suite.volumeMock = mock.Mock[VolumeServiceInterface](suite.ctrl)
 	suite.smartMock = mock.Mock[SmartServiceInterface](suite.ctrl)
 	suite.hdidleMock = mock.Mock[HDIdleServiceInterface](suite.ctrl)
+	suite.fsMock = mock.Mock[FilesystemServiceInterface](suite.ctrl)
 
 	// instantiate diskStatsService under test with mocks
 	suite.ds = &diskStatsService{
@@ -54,6 +55,10 @@ func (suite *DiskStatsServiceSuite) SetupTest() {
 		lastStats:         make(map[string]*blockdevice.IOStats),
 		smartService:      suite.smartMock,
 		hdidleService:     suite.hdidleMock,
+		filesystemService: suite.fsMock,
+		ioStatFetcher: func(string) (blockdevice.IOStats, error) {
+			return blockdevice.IOStats{}, nil
+		},
 		readFile:          os.ReadFile,
 		sysFsBasePath:     "/sys/fs",
 		smartEnabledCache: cache.New(5*time.Minute, 10*time.Minute), // Short TTL for tests
@@ -152,86 +157,57 @@ func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_SkipsDiskWithNilDevice()
 	mock.Verify(suite.volumeMock, matchers.Times(1)).GetVolumesData()
 }
 
-func (suite *DiskStatsServiceSuite) TestDetermineFsckNeeded_UnmountedConfiguredPartition() {
+func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_FsckStateFromFilesystemService() {
 	fsType := "ext4"
-	deviceID := "sda1"
-	mountPath := "/mnt/data"
-	mountData := map[string]dto.MountPointData{
-		mountPath: {
-			Path:      mountPath,
-			IsMounted: false,
-		},
-	}
+	diskID := "disk-1"
+	deviceName := "sda"
+	devicePath := "/dev/sda"
+	partitionID := "sda1"
+	partitionPath := "/dev/sda1"
 
 	partition := dto.Partition{
-		Id:               &deviceID,
-		LegacyDeviceName: &deviceID,
+		Id:               &partitionID,
+		LegacyDeviceName: &partitionID,
+		LegacyDevicePath: &partitionPath,
 		FsType:           &fsType,
-		MountPointData:   &mountData,
+	}
+	partitions := map[string]dto.Partition{partitionID: partition}
+
+	disk := &dto.Disk{
+		Id:               &diskID,
+		LegacyDeviceName: &deviceName,
+		DevicePath:       &devicePath,
+		Partitions:       &partitions,
 	}
 
-	needed := suite.ds.determineFsckNeeded(&partition, fsType, true)
-	suite.True(needed)
-}
+	mock.When(suite.volumeMock.GetVolumesData()).ThenReturn([]*dto.Disk{disk})
+	mock.When(suite.hdidleMock.IsRunning()).ThenReturn(false)
 
-func (suite *DiskStatsServiceSuite) TestDetermineFsckNeeded_ExtFilesystemDirtyState() {
-	fsType := "ext4"
-	deviceID := "sdb1"
-	mountData := map[string]dto.MountPointData{
-		"/data": {
-			Path:      "/data",
-			IsMounted: true,
+	support := &dto.FilesystemInfo{
+		Support: &dto.FilesystemSupport{
+			CanCheck:    true,
+			CanGetState: true,
 		},
 	}
+	mock.When(suite.fsMock.GetSupportAndInfo(mock.Any[context.Context](), mock.Any[string]())).
+		ThenReturn(support, nil)
 
-	partition := dto.Partition{
-		Id:               &deviceID,
-		LegacyDeviceName: &deviceID,
-		FsType:           &fsType,
-		MountPointData:   &mountData,
+	state := &dto.FilesystemState{
+		IsClean:   false,
+		HasErrors: true,
 	}
+	mock.When(suite.fsMock.GetPartitionState(mock.Any[context.Context](), mock.Any[string](), mock.Any[string]())).
+		ThenReturn(state, nil)
 
-	tempDir := suite.T().TempDir()
-	prevBase := suite.ds.sysFsBasePath
-	suite.ds.sysFsBasePath = tempDir
-	defer func() { suite.ds.sysFsBasePath = prevBase }()
+	err := suite.ds.updateDiskStats()
+	suite.NoError(err)
+	suite.NotNil(suite.ds.currentDiskHealth)
 
-	extDir := filepath.Join(tempDir, "ext4", deviceID)
-	suite.Require().NoError(os.MkdirAll(extDir, 0o755))
-	suite.Require().NoError(os.WriteFile(filepath.Join(extDir, "state"), []byte("needs_recovery"), 0o644))
-
-	needed := suite.ds.determineFsckNeeded(&partition, fsType, true)
-	suite.True(needed)
-}
-
-func (suite *DiskStatsServiceSuite) TestDetermineFsckNeeded_CleanMountedPartition() {
-	fsType := "ext4"
-	deviceID := "sdc1"
-	mountData := map[string]dto.MountPointData{
-		"/data": {
-			Path:      "/data",
-			IsMounted: true,
-		},
-	}
-
-	partition := dto.Partition{
-		Id:               &deviceID,
-		LegacyDeviceName: &deviceID,
-		FsType:           &fsType,
-		MountPointData:   &mountData,
-	}
-
-	tempDir := suite.T().TempDir()
-	prevBase := suite.ds.sysFsBasePath
-	suite.ds.sysFsBasePath = tempDir
-	defer func() { suite.ds.sysFsBasePath = prevBase }()
-
-	extDir := filepath.Join(tempDir, "ext4", deviceID)
-	suite.Require().NoError(os.MkdirAll(extDir, 0o755))
-	suite.Require().NoError(os.WriteFile(filepath.Join(extDir, "state"), []byte("clean"), 0o644))
-
-	needed := suite.ds.determineFsckNeeded(&partition, fsType, true)
-	suite.False(needed)
+	info := suite.ds.currentDiskHealth.PerPartitionInfo[diskID]
+	suite.Len(info, 1)
+	suite.NotNil(info[0].FilesystemState)
+	suite.True(info[0].FilesystemState.HasErrors)
+	suite.False(info[0].FilesystemState.IsClean)
 }
 
 func (suite *DiskStatsServiceSuite) TestIsSmartEnabled_CacheHit() {

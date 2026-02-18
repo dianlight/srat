@@ -2,7 +2,7 @@
 set -x
 
 apk add --no-cache git make lsblk eudev gcc musl-dev linux-headers samba ethtool e2fsprogs e2fsprogs-extra \
- fuse3 exfatprogs ntfs-3g-progs apfs-fuse openssh-client sshfs pre-commit shadow \
+ fuse3 exfatprogs ntfs-3g-progs apfs-fuse openssh-client sshfs shadow \
  git-bash-completion git-prompt graphviz nix patch smartmontools zig minisign act \
  python3 py3-pip py3-mypy ruff py3-ruff py3-pytest
 
@@ -36,7 +36,7 @@ make -C .. prepare || :
 bun install -g @j178/prek ||:
 
 #biome
-bun add -g biome ||:
+bun add -g biome @biomejs/cli-linux-arm64-musl ||:
 bun pm -g trust --all ||:
 #sed -i '1s/node/bun/' "$(realpath $HOME/.bun/bin/biome)" ||:
 #export BIOME_BINARY=$(realpath $HOME/.bun/bin/biome)

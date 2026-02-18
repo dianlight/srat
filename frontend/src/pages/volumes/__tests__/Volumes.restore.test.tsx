@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import "../../../../test/setup";
 import { createTestStore } from "../../../../test/setup";
+import { getDiskIdentifier, getPartitionIdentifier } from "../utils";
 
 // Minimal localStorage shim for bun:test
 if (!(globalThis as any).localStorage) {
@@ -31,9 +32,6 @@ describe("Volumes restored selection", () => {
     });
 
     it("restores selected partition and shows details", async () => {
-        // pre-populate saved selected partition id
-        localStorage.setItem("volumes.selectedPartitionId", "part-42");
-
         // Dynamically import React/testing utilities and the component after globals are set
         const React = await import("react");
         const { render, within } = await import("@testing-library/react");
@@ -46,16 +44,28 @@ describe("Volumes restored selection", () => {
             {
                 id: "disk-1",
                 model: "TestDisk",
-                partitions: [
-                    {
+                partitions: {
+                    "part-42": {
                         id: "part-42",
                         name: "RestoredPartition",
                         size: 1024,
-                        mount_point_data: [],
+                        mount_point_data: {},
                     },
-                ],
+                },
             },
         ];
+
+        const diskIdentifier = getDiskIdentifier(initialDisks[0] as any, 0);
+        const partitionKey = "part-42";
+        const partitionIdentifier = getPartitionIdentifier(
+            diskIdentifier,
+            (initialDisks[0].partitions as any)[partitionKey],
+            partitionKey,
+            0,
+        );
+
+        // pre-populate saved selected partition id
+        localStorage.setItem("volumes.selectedPartitionId", partitionIdentifier);
 
         const { container } = render(
             React.createElement(

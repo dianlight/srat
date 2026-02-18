@@ -346,7 +346,15 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 		)
 	}
 
-	slog.DebugContext(ms.ctx, "Attempting to mount volume", "device", md.DeviceId, "path", md.Path, "fstype", md.FSType, "flags", flags, "data", data)
+	mountFsType := ""
+	if md.FSType != nil && *md.FSType != "" {
+		mountFsType = ms.fs_service.ResolveLinuxFsModule(*md.FSType)
+		if mountFsType == "" {
+			mountFsType = *md.FSType
+		}
+	}
+
+	slog.DebugContext(ms.ctx, "Attempting to mount volume", "device", md.DeviceId, "path", md.Path, "fstype", md.FSType, "mount_fstype", mountFsType, "flags", flags, "data", data)
 
 	var mp *mount.MountPoint
 	// Ensure secure directory permissions when creating mount point
@@ -359,6 +367,23 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 			"Path", md.Path,
 			"Message", "Device path is nil or empty, cannot mount",
 		)
+	} else if _, err := os.Stat(*md.Partition.DevicePath); err != nil {
+		if os.IsPermission(err) {
+			return errors.WithDetails(dto.ErrorOperationNotPermitted,
+				"DeviceId", md.DeviceId,
+				"Path", md.Path,
+				"DevicePath", *md.Partition.DevicePath,
+				"Message", "Permission denied to access device",
+				"Error", err.Error(),
+			)
+		}
+		return errors.WithDetails(dto.ErrorDeviceNotFound,
+			"DeviceId", md.DeviceId,
+			"Path", md.Path,
+			"DevicePath", *md.Partition.DevicePath,
+			"Message", "Device path does not exist",
+			"Error", err.Error(),
+		)
 	}
 
 	// FIXME: Manage mount with different roots if needed
@@ -367,7 +392,7 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 		mp, errS = ms.tryMountFunc(*md.Partition.DevicePath, md.Path, data, flags, mountFunc)
 	} else {
 		// Use Mount if FSType is specified
-		mp, errS = ms.doMountFunc(*md.Partition.DevicePath, md.Path, *md.FSType, data, flags, mountFunc)
+		mp, errS = ms.doMountFunc(*md.Partition.DevicePath, md.Path, mountFsType, data, flags, mountFunc)
 	}
 
 	if errS != nil {
@@ -382,6 +407,7 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 			"device_id", md.DeviceId,
 			"device_path", *md.Partition.DevicePath,
 			"fstype", fsTypeStr,
+			"mount_fstype", mountFsType,
 			"mount_path", md.Path,
 			"flags", flags,
 			"data", data,
@@ -404,12 +430,13 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 			"DevicePath", *md.Partition.DevicePath,
 			"MountPath", md.Path,
 			"FSType", fsTypeStr,
+			"MountFSType", mountFsType,
 			"Flags", flags,
 			"Data", data,
 			"Error", errS.Error(),
 		)
 	} else {
-		slog.InfoContext(ms.ctx, "Successfully mounted volume", "device", md.DeviceId, "path", md.Path, "fstype", md.FSType, "flags", mp.Flags, "data", mp.Data)
+		slog.InfoContext(ms.ctx, "Successfully mounted volume", "device", md.DeviceId, "path", md.Path, "fstype", md.FSType, "mount_fstype", mountFsType, "flags", mp.Flags, "data", mp.Data)
 		// Update dbom_mount_data with details from the actual mount point if available
 		errS = ms.convMDto.MountToMountPointData(mp, md, ms.disks)
 		if errS != nil {
@@ -837,38 +864,10 @@ func (self *VolumeService) getVolumesData() errors.E {
 	tlog.TraceContext(self.ctx, "Requesting GetVolumesData via singleflight...")
 
 	_, err, _ := self.sfGroup.Do("GetVolumesData", func() (any, error) {
-		// Mark that a refresh cycle is in progress to avoid recursive event-triggered refreshes
-		//	self.refreshing.Store(true)
-		//	defer self.refreshing.Store(false)
 		self.refreshVersion++
+		filesystemSupportCache := make(map[string]*dto.FilesystemInfo)
 
 		tlog.TraceContext(self.ctx, "Executing GetVolumesData core logic (singleflight)...")
-
-		// Use mock data in demo mode or when SRAT_MOCK is true
-		/*
-			if self.state.SupervisorURL == "demo" || os.Getenv("SRAT_MOCK") == "true" {
-				demoParts := map[string]dto.Partition{
-					"DemoPartition": {
-						Id:         new("DemoPartition"),
-						DevicePath: new("/dev/bogus"),
-						System:     new(false),
-						MountPointData: &map[string]dto.MountPointData{
-							"/mnt/bogus": {
-								Path:      "/mnt/bogus",
-								FSType:    new("ext4"),
-								IsMounted: false,
-							},
-						},
-					},
-				}
-
-				(*ret)["DemoDisk"] = dto.Disk{
-					Id:         new("DemoDisk"),
-					Partitions: &demoParts,
-				}
-				return &ret, nil
-			}
-		*/
 
 		// Skip hardware client if it's not initialized
 		if self.hardwareClient == nil {
@@ -902,7 +901,21 @@ func (self *VolumeService) getVolumesData() errors.E {
 				slog.WarnContext(self.ctx, "Failed to update existing disk in cache", "disk_id", *disk.Id, "err", err)
 			}
 
-			for _, part := range *disk.Partitions {
+			for pid, part := range *disk.Partitions {
+				if part.FsType != nil && *part.FsType != "" {
+					if cached, ok := filesystemSupportCache[*part.FsType]; ok {
+						part.FilesystemInfo = cached
+					} else {
+						info, err := self.fs_service.GetSupportAndInfo(self.ctx, *part.FsType)
+						if err != nil || info == nil || info.Support == nil {
+							part.FilesystemInfo = &dto.FilesystemInfo{}
+						} else {
+							part.FilesystemInfo = info
+						}
+						filesystemSupportCache[*part.FsType] = part.FilesystemInfo
+					}
+				}
+				(*disk.Partitions)[pid] = part
 				//			if err := self.processPartitionMountData(&disk, pid, part, true); err != nil {
 				//				slog.WarnContext(self.ctx, "Failed to process partition mount data for new disk", "disk_id", *disk.Id, "partition_id", pid, "err", err)
 				//				continue
@@ -1147,16 +1160,16 @@ func (ms *VolumeService) PatchMountPointSettings(root string, path string, patch
 	}
 
 	affected, err := gorm.G[*dbom.MountPointPath](ms.db).
-		Where(g.MountPointPath.Path.Eq(path)).
+		Where(g.MountPointPath.Root.Eq(root), g.MountPointPath.Path.Eq(path)).
 		Updates(ms.ctx, &dbMountData)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.Wrapf(dto.ErrorNotFound, "mount configuration with path %s not found", path)
+			return nil, errors.Wrapf(dto.ErrorNotFound, "mount configuration with root %s and path %s not found", root, path)
 		}
 		return nil, errors.WithStack(err)
 	}
 	if affected == 0 {
-		return nil, errors.Wrapf(dto.ErrorNotFound, "mount configuration with path %s not found", path)
+		return nil, errors.Wrapf(dto.ErrorNotFound, "mount configuration with root %s and path %s not found", root, path)
 	}
 
 	currentDto := dto.MountPointData{}

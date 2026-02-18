@@ -157,7 +157,7 @@ func (broker *BroadcasterService) BroadcastMessage(msg any) any {
 	broker.relay.Broadcast(broadcastEvent{ID: broker.SentCounter.Load(), Message: msg})
 
 	// Send to Home Assistant if in secure mode
-	go broker.sendToHomeAssistant(msg)
+	go broker.sendToHomeAssistant(msg) // FiXME: put as broadcast listener
 
 	return msg
 }

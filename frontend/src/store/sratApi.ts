@@ -3,6 +3,7 @@ export const addTagTypes = [
   "system",
   "disk",
   "smart",
+  "filesystems",
   "hdidle",
   "Issues",
   "samba",
@@ -149,12 +150,91 @@ const injectedRtkApi = api
         }),
         invalidatesTags: ["disk"],
       }),
+      postApiFilesystemCheck: build.mutation<
+        PostApiFilesystemCheckApiResponse,
+        PostApiFilesystemCheckApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/filesystem/check`,
+          method: "POST",
+          body: queryArg.checkPartitionInput,
+        }),
+        invalidatesTags: ["filesystems"],
+      }),
+      postApiFilesystemCheckAbort: build.mutation<
+        PostApiFilesystemCheckAbortApiResponse,
+        PostApiFilesystemCheckAbortApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/filesystem/check/abort`,
+          method: "POST",
+          body: queryArg.abortCheckPartitionInput,
+        }),
+        invalidatesTags: ["filesystems"],
+      }),
+      postApiFilesystemFormat: build.mutation<
+        PostApiFilesystemFormatApiResponse,
+        PostApiFilesystemFormatApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/filesystem/format`,
+          method: "POST",
+          body: queryArg.formatPartitionInput,
+        }),
+        invalidatesTags: ["filesystems"],
+      }),
+      getApiFilesystemLabel: build.query<
+        GetApiFilesystemLabelApiResponse,
+        GetApiFilesystemLabelApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/filesystem/label`,
+          params: {
+            partition_id: queryArg.partitionId,
+          },
+        }),
+        providesTags: ["filesystems"],
+      }),
+      patchApiFilesystemLabel: build.mutation<
+        PatchApiFilesystemLabelApiResponse,
+        PatchApiFilesystemLabelApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/filesystem/label`,
+          method: "PATCH",
+          body: queryArg.body,
+        }),
+        invalidatesTags: ["filesystems"],
+      }),
+      putApiFilesystemLabel: build.mutation<
+        PutApiFilesystemLabelApiResponse,
+        PutApiFilesystemLabelApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/filesystem/label`,
+          method: "PUT",
+          body: queryArg.setPartitionLabelInput,
+        }),
+        invalidatesTags: ["filesystems"],
+      }),
+      getApiFilesystemState: build.query<
+        GetApiFilesystemStateApiResponse,
+        GetApiFilesystemStateApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/filesystem/state`,
+          params: {
+            partition_id: queryArg.partitionId,
+          },
+        }),
+        providesTags: ["filesystems"],
+      }),
       getApiFilesystems: build.query<
         GetApiFilesystemsApiResponse,
         GetApiFilesystemsApiArg
       >({
         query: () => ({ url: `/api/filesystems` }),
-        providesTags: ["system"],
+        providesTags: ["filesystems"],
       }),
       postApiHdidleStart: build.mutation<
         PostApiHdidleStartApiResponse,
@@ -589,8 +669,52 @@ export type PostApiDiskByDiskIdSmartTestStartApiArg = {
   diskId: string;
   postDiskByDiskIdSmartTestStartRequest: PostDiskByDiskIdSmartTestStartRequest;
 };
+export type PostApiFilesystemCheckApiResponse = /** status 200 OK */
+  | CheckResult
+  | /** status default Error */ ErrorModel;
+export type PostApiFilesystemCheckApiArg = {
+  checkPartitionInput: CheckPartitionInput;
+};
+export type PostApiFilesystemCheckAbortApiResponse = /** status 200 OK */
+  | PostFilesystemCheckAbortResponse
+  | /** status default Error */ ErrorModel;
+export type PostApiFilesystemCheckAbortApiArg = {
+  abortCheckPartitionInput: AbortCheckPartitionInput;
+};
+export type PostApiFilesystemFormatApiResponse = /** status 200 OK */
+  | CheckResult
+  | /** status default Error */ ErrorModel;
+export type PostApiFilesystemFormatApiArg = {
+  formatPartitionInput: FormatPartitionInput;
+};
+export type GetApiFilesystemLabelApiResponse = /** status 200 OK */
+  | GetFilesystemLabelResponse
+  | /** status default Error */ ErrorModel;
+export type GetApiFilesystemLabelApiArg = {
+  /** Unique partition identifier */
+  partitionId?: string;
+};
+export type PatchApiFilesystemLabelApiResponse = /** status 200 OK */
+  | PutFilesystemLabelResponse
+  | /** status default Error */ ErrorModel;
+export type PatchApiFilesystemLabelApiArg = {
+  body: JsonPatchOp[] | null;
+};
+export type PutApiFilesystemLabelApiResponse = /** status 200 OK */
+  | PutFilesystemLabelResponse
+  | /** status default Error */ ErrorModel;
+export type PutApiFilesystemLabelApiArg = {
+  setPartitionLabelInput: SetPartitionLabelInput;
+};
+export type GetApiFilesystemStateApiResponse = /** status 200 OK */
+  | FilesystemState
+  | /** status default Error */ ErrorModel;
+export type GetApiFilesystemStateApiArg = {
+  /** Unique partition identifier */
+  partitionId?: string;
+};
 export type GetApiFilesystemsApiResponse =
-  | /** status 200 OK */ (FilesystemType[] | null)
+  | /** status 200 OK */ (FilesystemInfo[] | null)
   | /** status default Error */ ErrorModel;
 export type GetApiFilesystemsApiArg = void;
 export type PostApiHdidleStartApiResponse = /** status 200 OK */
@@ -740,6 +864,15 @@ export type SseApiResponse = /** status 200 OK */
           data: ErrorDataModel;
           /** The event name. */
           event: "error";
+          /** The event ID. */
+          id?: number;
+          /** The retry time in milliseconds. */
+          retry?: number;
+        }
+      | {
+          data: FilesystemTask;
+          /** The event name. */
+          event: "filesystem_task";
           /** The event ID. */
           id?: number;
           /** The retry time in milliseconds. */
@@ -974,6 +1107,7 @@ export type SmartInfo = {
   $schema?: string;
   disk_id?: string;
   disk_type?: Disk_type;
+  enabled: boolean;
   firmware_version?: string;
   model_family?: string;
   model_name?: string;
@@ -1026,6 +1160,83 @@ export type PostDiskByDiskIdSmartTestStartRequest = {
   /** Type of test: short, long, or conveyance */
   test_type: string;
 };
+export type CheckResult = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  errorsFixed: boolean;
+  errorsFound: boolean;
+  exitCode: number;
+  message?: string;
+  success: boolean;
+};
+export type CheckPartitionInput = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  /** Automatically fix errors if possible */
+  autoFix?: boolean;
+  /** Force check even if filesystem appears clean */
+  force?: boolean;
+  /** Unique partition identifier */
+  partitionId: string;
+  /** Enable verbose output */
+  verbose?: boolean;
+};
+export type PostFilesystemCheckAbortResponse = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  success: boolean;
+};
+export type AbortCheckPartitionInput = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  /** Unique partition identifier */
+  partitionId: string;
+};
+export type FormatPartitionInput = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  /** Filesystem-specific formatting options */
+  additionalOptions?: {
+    [key: string]: string;
+  };
+  /** Filesystem type to format (ext4, vfat, ntfs, btrfs, xfs, etc.) */
+  filesystemType: string;
+  /** Force formatting even if device appears in use */
+  force?: boolean;
+  /** Optional filesystem label */
+  label?: string;
+  /** Unique partition identifier */
+  partitionId: string;
+};
+export type GetFilesystemLabelResponse = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  label: string;
+};
+export type PutFilesystemLabelResponse = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  success: boolean;
+};
+export type SetPartitionLabelInput = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  /** New filesystem label */
+  label: string;
+  /** Unique partition identifier */
+  partitionId: string;
+};
+export type FilesystemState = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  additionalInfo?: {
+    [key: string]: unknown;
+  };
+  hasErrors: boolean;
+  isClean: boolean;
+  isMounted: boolean;
+  stateDescription?: string;
+};
 export type MountFlag = {
   description?: string;
   name: string;
@@ -1034,11 +1245,22 @@ export type MountFlag = {
   value_description?: string;
   value_validation_regex?: string;
 };
-export type FilesystemType = {
-  customMountFlags: MountFlag[] | null;
-  mountFlags: MountFlag[] | null;
-  name: string;
-  type: string;
+export type FilesystemSupport = {
+  alpinePackage?: string;
+  canCheck: boolean;
+  canFormat: boolean;
+  canGetState: boolean;
+  canMount: boolean;
+  canSetLabel: boolean;
+  missingTools?: string[] | null;
+};
+export type FilesystemInfo = {
+  CustomMountFlags: MountFlag[] | null;
+  Description: string;
+  MountFlags: MountFlag[] | null;
+  Name: string;
+  Support: FilesystemSupport;
+  Type: string;
 };
 export type StartHdIdleServiceOutputBody = {
   /** A URL to the JSON Schema for this object. */
@@ -1090,9 +1312,8 @@ export type DiskIoStats = {
 };
 export type PerPartitionInfo = {
   device: string;
+  filesystem_state?: FilesystemState;
   free_space_bytes: number;
-  fsck_needed: boolean;
-  fsck_supported: boolean;
   fstype: string;
   mount_point: string;
   name?: string;
@@ -1412,6 +1633,17 @@ export type ErrorDataModel = {
   /** A URI reference to human-readable documentation for the error. */
   type?: string;
 };
+export type FilesystemTask = {
+  device: string;
+  error?: string;
+  filesystemType?: string;
+  message?: string;
+  notes?: string[] | null;
+  operation: string;
+  progress?: number;
+  result?: unknown;
+  status: string;
+};
 export type Welcome = {
   active_clients: number;
   build_version: string;
@@ -1448,6 +1680,7 @@ export type UpdateProgress = {
 export type Partition = {
   device_path?: string;
   disk_id?: string;
+  filesystem_info?: FilesystemInfo;
   fs_type?: string;
   host_mount_point_data?: {
     [key: string]: MountPointData;
@@ -1572,6 +1805,8 @@ export enum Supported_events {
   Shares = "shares",
   DirtyDataTracker = "dirty_data_tracker",
   SmartTestStatus = "smart_test_status",
+  FilesystemTask = "filesystem_task",
+  Error = "error",
 }
 export enum Update_channel {
   None = "None",
@@ -1607,6 +1842,13 @@ export const {
   useGetApiDiskByDiskIdSmartTestQuery,
   usePostApiDiskByDiskIdSmartTestAbortMutation,
   usePostApiDiskByDiskIdSmartTestStartMutation,
+  usePostApiFilesystemCheckMutation,
+  usePostApiFilesystemCheckAbortMutation,
+  usePostApiFilesystemFormatMutation,
+  useGetApiFilesystemLabelQuery,
+  usePatchApiFilesystemLabelMutation,
+  usePutApiFilesystemLabelMutation,
+  useGetApiFilesystemStateQuery,
   useGetApiFilesystemsQuery,
   usePostApiHdidleStartMutation,
   usePostApiHdidleStopMutation,

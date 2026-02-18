@@ -1,6 +1,8 @@
 import ComputerIcon from "@mui/icons-material/Computer";
 import CreditScoreIcon from "@mui/icons-material/CreditScore";
 import EjectIcon from "@mui/icons-material/Eject";
+import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import SdStorageIcon from "@mui/icons-material/SdStorage";
 import SettingsSuggestIcon from "@mui/icons-material/SettingsSuggest";
 import StorageIcon from "@mui/icons-material/Storage";
@@ -16,8 +18,13 @@ import { SimpleTreeView } from "@mui/x-tree-view/SimpleTreeView";
 import { TreeItem } from "@mui/x-tree-view/TreeItem";
 import { filesize } from "filesize";
 import { useMemo } from "react";
-import { type Disk, type Partition } from "../../../store/sratApi";
-import { decodeEscapeSequence } from "../utils";
+import { type Disk, type FilesystemState, type Partition } from "../../../store/sratApi";
+import {
+    decodeEscapeSequence,
+    getDiskIdentifier,
+    getMountpointIdentifier,
+    getPartitionIdentifier,
+} from "../utils";
 import { PartitionActions } from "./PartitionActions";
 
 interface VolumesTreeViewProps {
@@ -40,6 +47,7 @@ interface VolumesTreeViewProps {
     onGoToShare: (partition: Partition) => void;
     protectedMode?: boolean;
     readOnly?: boolean;
+    filesystemStateByPartitionId?: Record<string, FilesystemState>;
 }
 
 export function VolumesTreeView({
@@ -58,6 +66,7 @@ export function VolumesTreeView({
     onGoToShare,
     protectedMode = false,
     readOnly = false,
+    filesystemStateByPartitionId,
 }: VolumesTreeViewProps) {
     const theme = useTheme();
     // Normalize selected id to support both the new and legacy prop name
@@ -120,15 +129,49 @@ export function VolumesTreeView({
         return <StorageIcon fontSize="small" {...iconColorProp} />;
     };
 
+    const renderFilesystemAlertIcon = (partition: Partition) => {
+        if (!filesystemStateByPartitionId || !partition.id) return null;
+        const filesystemState = filesystemStateByPartitionId[partition.id];
+        if (!filesystemState) return null;
+
+        const hasErrors = filesystemState.hasErrors;
+        const isClean = filesystemState.isClean;
+        if (!hasErrors && isClean) return null;
+
+        const labelText = hasErrors
+            ? "Filesystem has errors"
+            : "Filesystem not clean";
+        const tooltipText = filesystemState.stateDescription || labelText;
+        const partitionLabel = decodeEscapeSequence(
+            partition.name || partition.id || "partition",
+        );
+        const alertLabel = `Filesystem status alert for ${partitionLabel}`;
+        const icon = hasErrors
+            ? <ErrorOutlineIcon color="error" fontSize="small" />
+            : <HelpOutlineIcon color="disabled" fontSize="small" />;
+
+        return (
+            <Tooltip title={tooltipText} placement="top" arrow>
+                <Box
+                    role="img"
+                    aria-label={alertLabel}
+                    sx={{ display: "flex", alignItems: "center" }}
+                >
+                    {icon}
+                </Box>
+            </Tooltip>
+        );
+    };
+
     // Helper function to render a single mountpoint leaf
     const renderMountpointItem = (
         disk: Disk,
         partition: Partition,
         mountpointKey: string,
         mpd: any,
-        parentIdentifier: string,
+        partitionIdentifier: string,
     ) => {
-        const mountpointIdentifier = `${parentIdentifier}-mp-${mountpointKey}`;
+        const mountpointIdentifier = getMountpointIdentifier(partitionIdentifier, mountpointKey);
         const isSelected = normalizedSelectedId === mountpointIdentifier;
         const mountpointPath = mpd.mount_point || mountpointKey;
 
@@ -171,9 +214,9 @@ export function VolumesTreeView({
                                 </Typography>
                             </Tooltip>
                             <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 0.5 }}>
-                                {mpd.fstype && (
+                                {partition.fs_type && (
                                     <Chip
-                                        label={mpd.fstype}
+                                        label={partition.fs_type}
                                         size="small"
                                         variant="outlined"
                                         sx={{ fontSize: "0.7rem", height: 16 }}
@@ -210,8 +253,19 @@ export function VolumesTreeView({
         );
     };
 
-    const renderPartitionItem = (disk: Disk, partition: Partition, diskIdx: number, partIdx: number) => {
-        const partitionIdentifier = partition.id || `${disk.id || `disk-${diskIdx}`}-part-${partIdx}`;
+    const renderPartitionItem = (
+        disk: Disk,
+        partition: Partition,
+        diskIdentifier: string,
+        partitionKey: string | undefined,
+        partIdx: number,
+    ) => {
+        const partitionIdentifier = getPartitionIdentifier(
+            diskIdentifier,
+            partition,
+            partitionKey,
+            partIdx,
+        );
         const isSelected = normalizedSelectedId === partitionIdentifier;
         const partitionNameDecoded = decodeEscapeSequence(
             partition.name || partition.id || "Unnamed Partition",
@@ -221,6 +275,7 @@ export function VolumesTreeView({
             a[0].localeCompare(b[0]),
         );
         const isMounted = mpds.some((mpd) => mpd.is_mounted);
+        const filesystemAlertIcon = renderFilesystemAlertIcon(partition);
 
         // If partition has multiple mountpoints, create a parent node without actions
         if (mpdEntries.length > 1) {
@@ -277,9 +332,9 @@ export function VolumesTreeView({
                                         variant="outlined"
                                         sx={{ fontSize: "0.7rem", height: 16 }}
                                     />
-                                    {mpds[0]?.fstype && (
+                                    {partition.fs_type && (
                                         <Chip
-                                            label={mpds[0]?.fstype}
+                                            label={partition.fs_type}
                                             size="small"
                                             variant="outlined"
                                             sx={{ fontSize: "0.7rem", height: 16 }}
@@ -287,6 +342,12 @@ export function VolumesTreeView({
                                     )}
                                 </Box>
                             </Box>
+
+                            {filesystemAlertIcon && (
+                                <Box sx={{ flexShrink: 0, mr: 1 }}>
+                                    {filesystemAlertIcon}
+                                </Box>
+                            )}
                         </Box>
                     }
                 >
@@ -345,9 +406,9 @@ export function VolumesTreeView({
                                         sx={{ fontSize: "0.7rem", height: 16 }}
                                     />
                                 )}
-                                {mpds[0]?.fstype && (
+                                {partition.fs_type && (
                                     <Chip
-                                        label={mpds[0]?.fstype}
+                                        label={partition.fs_type}
                                         size="small"
                                         variant="outlined"
                                         sx={{ fontSize: "0.7rem", height: 16 }}
@@ -364,6 +425,12 @@ export function VolumesTreeView({
                                 )}
                             </Box>
                         </Box>
+
+                        {filesystemAlertIcon && (
+                            <Box sx={{ flexShrink: 0, mr: 1 }}>
+                                {filesystemAlertIcon}
+                            </Box>
+                        )}
 
                         {!readOnly && (
                             <Box sx={{ flexShrink: 0 }}>
@@ -385,20 +452,19 @@ export function VolumesTreeView({
     };
 
     const renderDiskItem = (disk: Disk, diskIdx: number) => {
-        const diskIdentifier = disk.id || `disk-${diskIdx}`;
-        const partitions = Object.values(disk.partitions || {}).sort((a, b) => {
+        const diskIdentifier = getDiskIdentifier(disk, diskIdx);
+        const partitionEntries = Object.entries(disk.partitions || {}).sort(([, a], [, b]) => {
             const nameA = a.name || a.id || "";
             const nameB = b.name || b.id || "";
             return nameA.localeCompare(nameB);
         });
-        const filteredPartitions = partitions.filter(
-            (partition) =>
-                !(
-                    hideSystemPartitions &&
-                    (partition.system &&
-                        (partition.name?.startsWith("hassos-") ||
-                            (Object.values(partition.host_mount_point_data || {}).length > 0)))
-                ),
+        const filteredPartitions = partitionEntries.filter(([, partition]) =>
+            !(
+                hideSystemPartitions &&
+                (partition.system &&
+                    (partition.name?.startsWith("hassos-") ||
+                        (Object.values(partition.host_mount_point_data || {}).length > 0)))
+            ),
         ) || [];
 
         if (filteredPartitions.length === 0) return null;
@@ -461,8 +527,8 @@ export function VolumesTreeView({
                     </Box>
                 }
             >
-                {filteredPartitions.sort((a, b) => a.id?.localeCompare(b.id || "") || 0).map((partition, partIdx) =>
-                    renderPartitionItem(disk, partition, diskIdx, partIdx),
+                {filteredPartitions.map(([partitionKey, partition], partIdx) =>
+                    renderPartitionItem(disk, partition, diskIdentifier, partitionKey, partIdx),
                 )}
             </TreeItem>
         );

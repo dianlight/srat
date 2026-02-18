@@ -31,9 +31,9 @@ func NewHTTPServer(
 	sloghttp.TraceIDKey = "X-Trace-Id"
 	handler := sloghttp.NewWithConfig(slog.Default(), sloghttp.Config{
 		DefaultLevel:       tlog.LevelTrace,
-		WithRequestBody:    false,
+		WithRequestBody:    true,
 		WithRequestHeader:  true,
-		WithResponseBody:   false,
+		WithResponseBody:   true,
 		WithResponseHeader: true,
 		WithUserAgent:      true,
 		WithRequestID:      true,
