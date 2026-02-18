@@ -64,7 +64,6 @@ func (c *ConfigToDtoConverterImpl) ShareToMountPointData(source config.Share) (*
 	dtoMountPointData.DiskSerial = DiskSerialFromPath(source.Path)
 	dtoMountPointData.DiskSize = DiskSizeFromPath(source.Path)
 	dtoMountPointData.Path = source.Path
-	dtoMountPointData.Root = source.Path
 	dtoMountPointData.Type = pathToType(source.Path)
 	pString := source.FS
 	dtoMountPointData.FSType = &pString

@@ -23,7 +23,7 @@ The SRAT project utilizes various coding agents and tools to assist with develop
   - Formatters: `gofmt`, `biome` for frontend
   - Linters: `govet`, `testifylint`
 - **Configuration**: `.pre-commit-config.yaml`
-- **Installation**: Run `pre-commit install` in the repository root
+- **Installation**: Run `prek install` in the repository root
 
 ### Build Agents
 

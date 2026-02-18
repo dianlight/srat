@@ -15,9 +15,6 @@ func (c *MountToDbomImpl) MountToMountPointPath(source *mount.MountPoint, target
 		if source.Path != "" {
 			target.Path = source.Path
 		}
-		if source.Path != "" {
-			target.Root = source.Path
-		}
 		if source.Device != "" {
 			target.Type = pathToType(source.Device)
 		}

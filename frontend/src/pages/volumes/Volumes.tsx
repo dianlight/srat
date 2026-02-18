@@ -7,7 +7,7 @@ import {
     Typography
 } from "@mui/material";
 import { useConfirm } from "material-ui-confirm";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { toast } from "react-toastify";
 import { PreviewDialog } from "../../components/PreviewDialog";
@@ -15,8 +15,10 @@ import { useVolume } from "../../hooks/volumeHook";
 import { type LocationState, TabIDs } from "../../store/locationState";
 import {
 	type Disk,
+	type FilesystemState,
 	type MountPointData,
 	type Partition,
+	type PerPartitionInfo,
 	useDeleteApiVolumeMutation,
 	usePatchApiVolumeSettingsMutation,
 	usePostApiVolumeMountMutation,
@@ -24,7 +26,11 @@ import {
 import { useGetServerEventsQuery } from "../../store/sseApi";
 import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
 import { VolumeDetailsPanel, VolumeMountDialog, VolumesTreeView } from "./components";
-import { decodeEscapeSequence } from "./utils";
+import {
+	decodeEscapeSequence,
+	getDiskIdentifier,
+	getPartitionIdentifier,
+} from "./utils";
 
 export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 	const { data: evdata } = useGetServerEventsQuery();
@@ -56,13 +62,30 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 	const [mountVolume, _mountVolumeResult] = usePostApiVolumeMountMutation();
 	const [umountVolume, _umountVolumeResult] = useDeleteApiVolumeMutation();
 	const [patchMountSettings] = usePatchApiVolumeSettingsMutation();
+	const perPartitionInfo = evdata?.heartbeat?.disk_health?.per_partition_info;
+	const filesystemStateByPartitionId = useMemo<Record<string, FilesystemState>>(() => {
+		const result: Record<string, FilesystemState> = {};
+		if (!perPartitionInfo) return result;
+
+		(Object.values(perPartitionInfo) as (PerPartitionInfo[] | null)[]).forEach(
+			(partitionInfos) => {
+				partitionInfos?.forEach((partitionInfo) => {
+					if (partitionInfo.device && partitionInfo.filesystem_state) {
+						result[partitionInfo.device] = partitionInfo.filesystem_state;
+					}
+				});
+			},
+		);
+
+		return result;
+	}, [perPartitionInfo]);
 
 	// Handle disk selection (top-level)
 	const handleDiskSelect = (disk: Disk) => {
 		setSelectedDisk(disk);
 		setSelectedPartition(undefined);
-		const diskIdx = disks?.indexOf(disk) || 0;
-		const diskIdentifier = disk.id || `disk-${diskIdx}`;
+		const diskIdx = Math.max(disks?.indexOf(disk) ?? -1, 0);
+		const diskIdentifier = getDiskIdentifier(disk, diskIdx);
 		setSelectedPartitionId(diskIdentifier);
 		// Ensure the disk is expanded and persisted
 		setExpandedDisks((prev) => (prev.includes(diskIdentifier) ? prev : [...prev, diskIdentifier]));
@@ -72,13 +95,15 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 	const handlePartitionSelect = (disk: Disk, partition: Partition) => {
 		setSelectedDisk(disk);
 		setSelectedPartition(partition);
-		const diskIdx = disks?.indexOf(disk) || 0;
-		const partitions = Object.values(disk.partitions || {});
-		const partIdx = partitions.indexOf(partition);
-		const partitionId = partition.id || `${disk.id || `disk-${diskIdx}`}-part-${partIdx}`;
+		const diskIdx = Math.max(disks?.indexOf(disk) ?? -1, 0);
+		const diskIdentifier = getDiskIdentifier(disk, diskIdx);
+		const partitionEntries = Object.entries(disk.partitions || {});
+		const partitionEntry = partitionEntries.find(([, value]) => value === partition);
+		const partitionKey = partitionEntry?.[0];
+		const partIdx = Math.max(partitionEntry ? partitionEntries.indexOf(partitionEntry) : -1, 0);
+		const partitionId = getPartitionIdentifier(diskIdentifier, partition, partitionKey, partIdx);
 		setSelectedPartitionId(partitionId);
 		// Ensure the containing disk is expanded and persisted
-		const diskIdentifier = disk.id || `disk-${diskIdx}`;
 		setExpandedDisks((prev) => {
 			if (prev.includes(diskIdentifier)) return prev;
 			return [...prev, diskIdentifier];
@@ -174,8 +199,8 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 
 		// Try to locate the partition or disk corresponding to selectedPartitionId
 		for (const disk of disks) {
-			const diskIdx = disks.indexOf(disk);
-			const diskIdentifier = disk.id || `disk-${diskIdx}`;
+			const diskIdx = Math.max(disks.indexOf(disk), 0);
+			const diskIdentifier = getDiskIdentifier(disk, diskIdx);
 			if (diskIdentifier === selectedPartitionId) {
 				setSelectedDisk(disk);
 				setSelectedPartition(undefined);
@@ -183,11 +208,16 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 				setExpandedDisks((prev) => (prev.includes(diskIdentifier) ? prev : [...prev, diskIdentifier]));
 				return;
 			}
-			const partitions = Object.values(disk.partitions || {});
-			if (partitions.length === 0) continue;
-			for (const partition of partitions) {
-				const partIdx = partitions.indexOf(partition);
-				const partitionIdentifier = partition.id || `${disk.id || `disk-${diskIdx}`}-part-${partIdx}`;
+			const partitionEntries = Object.entries(disk.partitions || {});
+			if (!partitionEntries || partitionEntries.length === 0) continue;
+			for (let partIdx = 0; partIdx < partitionEntries.length; partIdx++) {
+				const [partitionKey, partition] = partitionEntries[partIdx] as [string, Partition];
+				const partitionIdentifier = getPartitionIdentifier(
+					diskIdentifier,
+					partition,
+					partitionKey,
+					partIdx,
+				);
 				if (partitionIdentifier === selectedPartitionId) {
 					setSelectedDisk(disk);
 					setSelectedPartition(partition);
@@ -499,6 +529,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 								expandedItems={expandedDisks}
 								onExpandedItemsChange={setExpandedDisks}
 								hideSystemPartitions={hideSystemPartitions}
+								filesystemStateByPartitionId={filesystemStateByPartitionId}
 								onDiskSelect={handleDiskSelect}
 								onPartitionSelect={handlePartitionSelect}
 								onToggleAutomount={handleToggleAutomount}
@@ -522,6 +553,16 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 						<VolumeDetailsPanel
 							disk={selectedDisk}
 							partition={selectedPartition}
+							protectedMode={evdata?.hello?.protected_mode === true}
+							readOnly={evdata?.hello?.read_only === true}
+							onToggleAutomount={handleToggleAutomount}
+							onMount={(partition) => {
+								setSelectedPartition(partition);
+								setShowMount(true);
+							}}
+							onUnmount={onSubmitUmountVolume}
+							onCreateShare={handleCreateShare}
+							onGoToShare={handleGoToShare}
 						//share={selectedShare}
 						/>
 					</Paper>

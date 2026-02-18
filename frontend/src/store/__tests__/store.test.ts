@@ -1,5 +1,5 @@
-import "../../../test/setup.ts";
 import { describe, expect, it } from "bun:test";
+import "../../../test/setup.ts";
 
 describe("Redux Store Configuration", () => {
 	it("exports a configured store instance", async () => {
@@ -12,7 +12,7 @@ describe("Redux Store Configuration", () => {
 	it("has all required reducers configured", async () => {
 		const { store } = await import("../store");
 		const { sratApi } = await import("../sratApi");
-		const { sseApi, wsApi } = await import("../sseApi");
+		const { wsApi } = await import("../sseApi");
 		const state = store.getState();
 
 		// Verify all expected slice states exist
@@ -20,7 +20,6 @@ describe("Redux Store Configuration", () => {
 		expect(state).toHaveProperty("mdc");
 		// API reducers use their reducerPath as keys
 		expect(state).toHaveProperty(sratApi.reducerPath);
-		expect(state).toHaveProperty(sseApi.reducerPath);
 		expect(state).toHaveProperty(wsApi.reducerPath);
 	});
 
@@ -51,7 +50,7 @@ describe("Redux Store Configuration", () => {
 	it("initializes with default state structure", async () => {
 		const { store } = await import("../store");
 		const { sratApi } = await import("../sratApi");
-		const { sseApi, wsApi } = await import("../sseApi");
+		const { wsApi } = await import("../sseApi");
 		const state = store.getState();
 
 		// Verify errors slice initializes
@@ -64,7 +63,6 @@ describe("Redux Store Configuration", () => {
 
 		// Verify API slices initialize with their reducerPath keys
 		expect(state[sratApi.reducerPath]).toBeTruthy();
-		expect(state[sseApi.reducerPath]).toBeTruthy();
 		expect(state[wsApi.reducerPath]).toBeTruthy();
 	});
 

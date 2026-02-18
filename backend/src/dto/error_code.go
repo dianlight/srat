@@ -25,3 +25,6 @@ var ErrorOperationNotPermittedInProtectedMode = errors.Base("Operation not permi
 var ErrorInvalidStateForOperation = errors.Base("Invalid state for operation")
 var ErrorSMARTOperationFailed = errors.Base("SMART operation failed")
 var ErrorSMARTTestInProgress = errors.Base("SMART test already in progress")
+var ErrorConflict = errors.Base("Operation conflict")
+var ErrorUnsupportedFilesystem = errors.Base("Unsupported filesystem type")
+var ErrorOperationNotPermitted = errors.Base("Operation not permitted")

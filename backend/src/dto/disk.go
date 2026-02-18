@@ -81,6 +81,9 @@ type Partition struct {
 	// FsType Filesystem type (e.g. ext4, ntfs, etc.).
 	FsType *string `json:"fs_type,omitempty"`
 
+	// FilesystemInfo contains detailed information about the filesystem type, including support details.
+	FilesystemInfo *FilesystemInfo `json:"filesystem_info,omitempty" readonly:"true"`
+
 	// Name Name of the filesystem (if known).
 	Name *string `json:"name,omitempty"`
 

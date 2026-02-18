@@ -441,12 +441,12 @@ describe("SmartStatusPanel Component", () => {
         }
 
         const enableButton = await screen.findByRole("button", { name: /enable smart/i });
-        expect(enableButton).toBeDisabled();
-        expect(enableButton).toHaveAttribute("title", "SMART control not supported for NVMe devices");
+        expect((enableButton as HTMLButtonElement).disabled).toBe(true);
+        expect(enableButton.getAttribute("title")).toBe("SMART control not supported for NVMe devices");
 
         const disableButton = await screen.findByRole("button", { name: /disable smart/i });
-        expect(disableButton).toBeDisabled();
-        expect(disableButton).toHaveAttribute("title", "SMART control not supported for NVMe devices");
+        expect((disableButton as HTMLButtonElement).disabled).toBe(true);
+        expect(disableButton.getAttribute("title")).toBe("SMART control not supported for NVMe devices");
     });
 
     it("should not render when smartInfo has supported false", async () => {

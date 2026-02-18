@@ -10,7 +10,8 @@ import {
     Grid,
     Stack,
     Tooltip,
-    Typography
+    Typography,
+    type AutocompleteRenderGetTagProps
 } from "@mui/material";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import {
@@ -21,12 +22,12 @@ import {
 	useForm
 } from "react-hook-form-mui";
 import {
-	type FilesystemType,
+	Type,
+	useGetApiFilesystemsQuery,
+	type FilesystemInfo,
 	type MountFlag,
 	type MountPointData,
 	type Partition,
-	Type,
-	useGetApiFilesystemsQuery,
 } from "../../../store/sratApi";
 import { decodeEscapeSequence } from "../utils";
 
@@ -69,7 +70,9 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 		error: fsError,
 	} = useGetApiFilesystemsQuery(undefined, { skip: !props.open });
 	// Ensure we always have an array to avoid runtime errors when the query is skipped
-	const fsList = (filesystems || []) as FilesystemType[];
+	const fsList = Array.isArray(filesystems)
+		? (filesystems as FilesystemInfo[])
+		: [];
 	const [mounting, setMounting] = useState(false);
 
 	const [unsupported_flags, setUnsupportedFlags] = useState<MountFlag[]>([]); // Array of unsupported flags (string) for display only
@@ -89,20 +92,20 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 
 			if (existingMountData?.fstype) {
 				// If existing fstype is set, ensure it's in the filesystems list
-				const fsCurrent = fsList.find((fs) => fs.name === existingMountData.fstype);
+				const fsCurrent = fsList.find((fs) => fs.Name === existingMountData.fstype);
 				if (fsCurrent) {
 					setUnsupportedFlags([]); // Reset before checking
 					setUnsupportedCustomFlags([]); // Reset before checking
 					// Check existing flags against supported flags for this FS
 					existingMountData?.flags?.forEach((flag) => {
-						console.log("Checking flag:", flag, fsCurrent.mountFlags);
-						if (!fsCurrent.mountFlags?.find((f) => f.name === flag.name)) {
+						console.log("Checking flag:", flag, fsCurrent.MountFlags);
+						if (!fsCurrent.MountFlags?.find((flagItem) => flagItem.name === flag.name)) {
 							setUnsupportedFlags((prev) => [...prev, flag]);
 						}
 					});
 					existingMountData?.custom_flags?.forEach((flag) => {
-						console.log("Checking custom flag:", flag, fsCurrent.customMountFlags);
-						if (!fsCurrent.customMountFlags?.find((f) => f.name === flag.name)) {
+						console.log("Checking custom flag:", flag, fsCurrent.CustomMountFlags);
+						if (!fsCurrent.CustomMountFlags?.find((flagItem) => flagItem.name === flag.name)) {
 							setUnsupportedCustomFlags((prev) => [...prev, flag]);
 						}
 					});
@@ -199,6 +202,63 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 	);
 	const partitionId = props.objectToEdit?.id || "N/A";
 
+	const selectedFilesystem = fsList.find((fs) => fs.Name === watch("fstype"));
+	const mountFlagsOptions = selectedFilesystem?.MountFlags || [];
+	const customMountFlagsOptions = selectedFilesystem?.CustomMountFlags || [];
+
+	const getMountFlagLabel = (option: MountFlag) => option.name;
+
+
+
+
+	const renderMountFlagOption = (
+		{ key, ...restProps }: { key: any },
+		option: MountFlag,
+	) => (
+		<li key={key} {...restProps}>
+			<Tooltip title={option.description || ""}>
+				<span>
+					{option.name}{" "}
+					{option.needsValue ? (
+						<span
+							style={{
+								fontSize: "0.8em",
+								color: "#888",
+							}}
+						>
+							(Requires Value)
+						</span>
+					) : null}
+				</span>
+			</Tooltip>
+		</li>
+	);
+
+	const renderMountFlagTags = (
+		values: MountFlag[],
+		getTagProps: AutocompleteRenderGetTagProps,
+		withNeedsValueColor = false,
+	) =>
+		values.filter((option) => option != null).map((option, index) => {
+			const { key, ...tagProps } = getTagProps({
+				index,
+			});
+			return (
+				<Chip
+					color={
+						withNeedsValueColor && option.needsValue
+							? "warning"
+							: "default"
+					}
+					key={key}
+					variant="filled"
+					label={option?.name || "error"}
+					size="small"
+					{...tagProps}
+				/>
+			);
+		});
+
 	return (
 		<Fragment>
 			<Dialog open={props.open} onClose={handleCancel} maxWidth="sm" fullWidth>
@@ -245,7 +305,7 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 										options={
 											fsLoading
 												? []
-												: fsList.map((fs) => fs.name)
+												: fsList.map((fs) => fs.Name)
 										}
 										autocompleteProps={{
 											freeSolo: true,
@@ -273,60 +333,22 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 									/>
 								</Grid>
 								<Grid size={{ xs: 12, sm: 6 }}>
-									{!fsLoading && (fsList.find((fs) => fs.name === watch("fstype"))?.mountFlags || []).length > 0 && (
-										<AutocompleteElement
+									{!fsLoading && mountFlagsOptions.length > 0 && (
+										<AutocompleteElement<MountFlag, true, false, false, "div", xMountPointData, "flags">
 											multiple
 											name="flags"
 											label="Mount Flags"
-											options={fsLoading ? [] : fsList.find((fs) => fs.name === watch("fstype"))?.mountFlags || []} // Use string keys for options
+											options={fsLoading ? [] : mountFlagsOptions}
 											control={control}
 											autocompleteProps={{
 												disabled: props.readOnlyView,
 												size: "small",
 												limitTags: 7,
-												getOptionLabel: (option) =>
-													(option as MountFlag).name, // Ensure label is just the name
-												renderOption: ({ key, ...restProps }, option) => (
-													<li key={key} {...restProps}  >
-														<Tooltip
-															title={(option as MountFlag).description || ""}
-														>
-															<span>
-																{(option as MountFlag).name}{" "}
-																{(option as MountFlag).needsValue ? (
-																	<span
-																		style={{
-																			fontSize: "0.8em",
-																			color: "#888",
-																		}}
-																	>
-																		(Requires Value)
-																	</span>
-																) : null}
-															</span>
-														</Tooltip>
-													</li>
-												),
-												isOptionEqualToValue(option, value) {
-													return option.name === value.name;
-												},
+												getOptionLabel: getMountFlagLabel,
+												renderOption: renderMountFlagOption,
+												isOptionEqualToValue: (option, value) => option.name === value.name,
 												renderTags: (values, getTagProps) =>
-													values.filter((option) => option != null).map((option, index) => {
-														const { key, ...tagProps } = getTagProps({
-															index,
-														});
-														return (
-															<Chip
-																key={key}
-																variant="filled" // "outlined" or "filled"
-																label={
-																	(option as MountFlag)?.name || "error"
-																}
-																size="small"
-																{...tagProps}
-															/>
-														);
-													}),
+													renderMountFlagTags(values as MountFlag[], getTagProps),
 											}}
 											textFieldProps={{
 												disabled: props.readOnlyView,
@@ -339,65 +361,22 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 									)}
 								</Grid>
 								<Grid size={{ xs: 12, sm: 6 }}>
-									{!fsLoading && ((fsList.find((fs) => fs.name === watch("fstype"))?.customMountFlags || [])).length > 0 && (
-										<AutocompleteElement
+									{!fsLoading && customMountFlagsOptions.length > 0 && (
+										<AutocompleteElement<MountFlag, true, false, false, "div", xMountPointData, "custom_flags">
 											multiple
 											name="custom_flags"
 											label="FileSystem specific Mount Flags"
-											options={fsLoading ? [] : fsList.find((fs) => fs.name === watch("fstype"))?.customMountFlags || []}
+											options={fsLoading ? [] : customMountFlagsOptions}
 											control={control}
 											autocompleteProps={{
 												disabled: props.readOnlyView,
 												size: "small",
 												limitTags: 7,
-												getOptionLabel: (option) =>
-													(option as MountFlag).name, // Ensure label is just the name
-												renderOption: ({ key, ...props }, option) => (
-													<li key={(option as MountFlag).name}{...props} >
-														<Tooltip
-															title={(option as MountFlag).description || ""}
-														>
-															<span>
-																{(option as MountFlag).name}{" "}
-																{(option as MountFlag).needsValue ? (
-																	<span
-																		style={{
-																			fontSize: "0.8em",
-																			color: "#888",
-																		}}
-																	>
-																		(Requires Value)
-																	</span>
-																) : null}
-															</span>
-														</Tooltip>
-													</li>
-												),
-												isOptionEqualToValue(option, value) {
-													return option.name === value.name;
-												},
+												getOptionLabel: getMountFlagLabel,
+												renderOption: renderMountFlagOption,
+												isOptionEqualToValue: (option, value) => option.name === value.name,
 												renderTags: (values, getTagProps) =>
-													values.filter((option) => option != null).map((option, index) => {
-														const { key, ...tagProps } = getTagProps({
-															index,
-														});
-														return (
-															<Chip
-																color={
-																	(option as MountFlag).needsValue
-																		? "warning"
-																		: "default"
-																}
-																key={key}
-																variant="filled" // "outlined" or "filled"
-																label={
-																	(option as MountFlag)?.name || "error"
-																}
-																size="small"
-																{...tagProps}
-															/>
-														);
-													}),
+													renderMountFlagTags(values as MountFlag[], getTagProps, true),
 												onChange: props.readOnlyView
 													? undefined
 													: (_event, value) => {

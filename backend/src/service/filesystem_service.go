@@ -1,17 +1,17 @@
 package service
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"log/slog"
-	"os"
 	"regexp"
+	"sort"
 	"strings"
-	"syscall"
+	"sync"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/events"
+	"github.com/dianlight/srat/service/filesystem"
 	"gitlab.com/tozd/go/errors"
 )
 
@@ -24,6 +24,10 @@ type FilesystemServiceInterface interface {
 	// Returns an empty list if the filesystem type is not recognized or has no specific flags.
 	GetFilesystemSpecificMountFlags(fsType string) ([]dto.MountFlag, errors.E)
 
+	// ResolveLinuxFsModule returns the Linux filesystem module/fstype name for mounting.
+	// Falls back to the provided filesystem type when no adapter is found.
+	ResolveLinuxFsModule(fsType string) string
+
 	// GetMountFlagsAndData converts a list of MountFlag structs into the syscall flags (uintptr)
 	// and the data string (string) for the syscall.Mount function.
 	MountFlagsToSyscallFlagAndData(inputFlags []dto.MountFlag) (uintptr, string, errors.E)
@@ -34,6 +38,41 @@ type FilesystemServiceInterface interface {
 
 	// FsTypeFromDevice attempts to determine the filesystem type of a block device by reading its magic numbers.
 	FsTypeFromDevice(devicePath string) (string, errors.E)
+
+	// GetAdapter returns the filesystem adapter for a given filesystem type.
+	// This method should only be used internally by the filesystem service.
+	// API handlers should use higher-level methods instead.
+	GetAdapter(fsType string) (filesystem.FilesystemAdapter, errors.E)
+
+	// GetSupportedFilesystems returns information about all supported filesystems.
+	GetSupportedFilesystems(ctx context.Context) (map[string]dto.FilesystemSupport, errors.E)
+
+	// ListSupportedTypes returns a list of all supported filesystem type names.
+	ListSupportedTypes() []string
+
+	// GetSupportAndInfo returns filesystem support information along with name and description.
+	// This is the preferred method for API handlers to get filesystem information.
+	GetSupportAndInfo(ctx context.Context, fsType string) (*dto.FilesystemInfo, errors.E)
+
+	// FormatPartition formats a device with the specified filesystem type.
+	// Returns an error if formatting cannot start, is already in progress, or fails.
+	FormatPartition(ctx context.Context, devicePath, fsType string, options dto.FormatOptions) (*dto.CheckResult, errors.E)
+
+	// CheckPartition checks a device's filesystem for errors.
+	// Returns an error if check cannot start, is already in progress, or fails.
+	CheckPartition(ctx context.Context, devicePath, fsType string, options dto.CheckOptions) (*dto.CheckResult, errors.E)
+
+	// AbortCheckPartition cancels a running filesystem check for the given device path.
+	AbortCheckPartition(ctx context.Context, devicePath string) errors.E
+
+	// GetPartitionState returns the state of a partition's filesystem.
+	GetPartitionState(ctx context.Context, devicePath, fsType string) (*dto.FilesystemState, errors.E)
+
+	// GetPartitionLabel returns the label of a partition's filesystem.
+	GetPartitionLabel(ctx context.Context, devicePath, fsType string) (string, errors.E)
+
+	// SetPartitionLabel sets the label of a partition's filesystem.
+	SetPartitionLabel(ctx context.Context, devicePath, fsType, label string) errors.E
 }
 
 // FilesystemService implements the FilesystemServiceInterface.
@@ -47,8 +86,36 @@ type FilesystemService struct {
 	// standardMountFlagsByName maps lowercase standard flag names to their MountFlag struct.
 	standardMountFlagsByName map[string]dto.MountFlag
 	// allKnownMountFlagsByName maps all lowercase known flag names (standard and specific)
-	// to their MountFlag struct, used for description lookups. Standard flags take precedence on conflict.
+	// to their MountFlag struct, used for description lookups. Standard flags take precedence on conflict,
+	// then preferred filesystem types (see preferredMountFlagSources) fill in remaining metadata.
 	allKnownMountFlagsByName map[string]dto.MountFlag
+
+	// registry holds the filesystem adapter registry
+	registry *filesystem.Registry
+
+	// Context and cancellation for async operations
+	ctx        context.Context
+	cancelFunc context.CancelFunc
+
+	// WaitGroup for tracking async operations
+	wg *sync.WaitGroup
+
+	// Mutex for protecting activeOperations map
+	mu sync.Mutex
+
+	// activeOperations tracks which devices currently have operations running
+	activeOperations map[string]bool
+
+	// activeOperationInfo tracks operation metadata and cancel functions by device
+	activeOperationInfo map[string]filesystemOperation
+
+	// eventBus for emitting filesystem operation events
+	eventBus events.EventBusInterface
+}
+
+type filesystemOperation struct {
+	op     string
+	cancel context.CancelFunc
 }
 
 // Package-level variables for default configurations.
@@ -75,131 +142,13 @@ var (
 		{Name: "relatime", Description: "Update inode access times relative to modify or change time."},
 	}
 
-	// defaultFsSpecificMountFlags maps filesystem types to their specific mount flags.
-	defaultFsSpecificMountFlags = map[string][]dto.MountFlag{
-		"ntfs": {
-			{Name: "uid", Description: "Set owner of all files to user ID", NeedsValue: true, ValueDescription: "User ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
-			{Name: "gid", Description: "Set group of all files to group ID", NeedsValue: true, ValueDescription: "Group ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
-			{Name: "fmask", Description: "Set file permissions mask (octal)", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
-			{Name: "dmask", Description: "Set directory permissions mask (octal)", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
-			{Name: "permissions", Description: "Respect NTFS permissions"},
-			{Name: "acl", Description: "Enable POSIX Access Control Lists support"},
-			{Name: "exec", Description: "Allow executing files (use with caution)"},
-		},
-		"xfs": {
-			{Name: "inode64", Description: "Enable 64-bit inode allocation for large filesystems"},
-			{Name: "noquota", Description: "Disable quota enforcement"},
-			{Name: "usrquota", Description: "Enable user quota enforcement"},
-			{Name: "grpquota", Description: "Enable group quota enforcement"},
-			{Name: "prjquota", Description: "Enable project quota enforcement"},
-			{Name: "discard", Description: "Enable discard/TRIM support"},
-			{Name: "nouuid", Description: "Ignore filesystem UUID to allow mounting duplicates"},
-			{Name: "allocsize", Description: "Set preferred allocation size", NeedsValue: true, ValueDescription: "Size in bytes optionally with K, M, or G suffix (e.g., 1G)", ValueValidationRegex: `^[0-9]+([kKmMgG])?$`},
-			{Name: "sunit", Description: "Set stripe unit size (in 512-byte blocks)", NeedsValue: true, ValueDescription: "Stripe unit in 512-byte blocks", ValueValidationRegex: `^[0-9]+$`},
-			{Name: "swidth", Description: "Set stripe width size (in 512-byte blocks)", NeedsValue: true, ValueDescription: "Stripe width in 512-byte blocks", ValueValidationRegex: `^[0-9]+$`},
-			{Name: "logbufs", Description: "Number of log buffers", NeedsValue: true, ValueDescription: "Integer between 2 and 8", ValueValidationRegex: `^[2-8]$`},
-			{Name: "logbsize", Description: "Log buffer size in bytes", NeedsValue: true, ValueDescription: "One of: 16384, 32768, 65536, 131072, 262144", ValueValidationRegex: `^(16384|32768|65536|131072|262144)$`},
-		},
-		"ntfs3": {
-			{Name: "uid", Description: "Set owner of all files to user ID", NeedsValue: true, ValueDescription: "User ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
-			{Name: "gid", Description: "Set group of all files to group ID", NeedsValue: true, ValueDescription: "Group ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
-			{Name: "fmask", Description: "Set file permissions mask (octal)", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
-			{Name: "dmask", Description: "Set directory permissions mask (octal)", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
-			{Name: "permissions", Description: "Respect NTFS permissions"},
-			{Name: "acl", Description: "Enable POSIX Access Control Lists support"},
-			{Name: "force", Description: "Force mount even if the volume is marked dirty"},
-			{Name: "norecover", Description: "Do not try to recover a dirty volume (default for ntfs3)"},
-			{Name: "iocharset", Description: "I/O character set (e.g., utf8)", NeedsValue: true, ValueDescription: "Character set name (e.g., utf8)", ValueValidationRegex: `^[a-zA-Z0-9_-]+$`},
-		},
-		"zfs": {
-			{Name: "zfsutil", Description: "Indicates that the mount is managed by ZFS utilities"},
-			{Name: "noauto", Description: "Can be used to prevent automatic mounting by zfs-mount-generator"},
-			{Name: "context", Description: "Set SELinux context for all files/directories", NeedsValue: true, ValueDescription: "SELinux context string", ValueValidationRegex: `^[\w:.-]+$`},
-			{Name: "fscontext", Description: "Set SELinux context for the filesystem superblock", NeedsValue: true, ValueDescription: "SELinux context string", ValueValidationRegex: `^[\w:.-]+$`},
-		},
-		"ext2": {
-			{Name: "acl", Description: "Enable POSIX Access Control Lists support"},
-			{Name: "user_xattr", Description: "Enable user extended attributes"},
-			{Name: "errors", Description: "Behavior on error (remount-ro, continue, panic)", NeedsValue: true, ValueDescription: "One of: continue, remount-ro, panic", ValueValidationRegex: `^(continue|remount-ro|panic)$`},
-			{Name: "discard", Description: "Enable discard/TRIM support"},
-		},
-		"ext3": {
-			{Name: "data", Description: "Data journaling mode (ordered, writeback, journal)", NeedsValue: true, ValueDescription: "One of: journal, ordered, writeback", ValueValidationRegex: `^(journal|ordered|writeback)$`},
-			{Name: "journal_checksum", Description: "Enable journal checksumming"},
-			{Name: "journal_async_commit", Description: "Commit data blocks asynchronously"},
-			{Name: "acl", Description: "Enable POSIX Access Control Lists support"},
-			{Name: "user_xattr", Description: "Enable user extended attributes"},
-			{Name: "errors", Description: "Behavior on error (remount-ro, continue, panic)", NeedsValue: true, ValueDescription: "One of: continue, remount-ro, panic", ValueValidationRegex: `^(continue|remount-ro|panic)$`},
-			{Name: "discard", Description: "Enable discard/TRIM support"},
-			{Name: "barrier", Description: "Enable/disable write barriers (0, 1)", NeedsValue: true, ValueDescription: "0 or 1", ValueValidationRegex: `^[01]$`},
-		},
-		"vfat": {
-			{Name: "uid", Description: "Set owner of all files to user ID", NeedsValue: true, ValueDescription: "User ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
-			{Name: "gid", Description: "Set group of all files to group ID", NeedsValue: true, ValueDescription: "Group ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
-			{Name: "fmask", Description: "Set file permissions mask (octal)", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
-			{Name: "dmask", Description: "Set directory permissions mask (octal)", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
-			{Name: "umask", Description: "Set umask (octal) - overrides fmask/dmask", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
-			{Name: "iocharset", Description: "I/O character set (e.g., utf8)", NeedsValue: true, ValueDescription: "Character set name (e.g., utf8)", ValueValidationRegex: `^[a-zA-Z0-9_-]+$`},
-			{Name: "codepage", Description: "Codepage for short filenames (e.g., 437)", NeedsValue: true, ValueDescription: "Codepage number (e.g., 437)", ValueValidationRegex: `^[0-9]+$`},
-			{Name: "shortname", Description: "Shortname case (lower, win95, winnt, mixed)", NeedsValue: true, ValueDescription: "One of: lower, win95, winnt, mixed", ValueValidationRegex: `^(lower|win95|winnt|mixed)$`},
-			{Name: "errors", Description: "Behavior on error (remount-ro, continue, panic)", NeedsValue: true, ValueDescription: "One of: continue, remount-ro, panic", ValueValidationRegex: `^(continue|remount-ro|panic)$`},
-		},
-		"exfat": {
-			{Name: "uid", Description: "Set owner of all files to user ID", NeedsValue: true, ValueDescription: "User ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
-			{Name: "gid", Description: "Set group of all files to group ID", NeedsValue: true, ValueDescription: "Group ID (numeric)", ValueValidationRegex: `^[0-9]+$`},
-			{Name: "umask", Description: "Set umask (octal) for files and directories", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
-			{Name: "fmask", Description: "Set file permissions mask (octal, overrides umask for files)", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
-			{Name: "dmask", Description: "Set directory permissions mask (octal, overrides umask for dirs)", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
-			{Name: "allow_utime", Description: "Allow non-root users to change file timestamps (requires umask/fmask/dmask to allow)", NeedsValue: true, ValueDescription: "Octal permission mask (e.g., 0022)", ValueValidationRegex: `^[0-7]{3,4}$`},
-			{Name: "iocharset", Description: "I/O character set (e.g., utf8)", NeedsValue: true, ValueDescription: "Character set name (e.g., utf8)", ValueValidationRegex: `^[a-zA-Z0-9_-]+$`},
-			{Name: "utf8", Description: "Use UTF-8 for filename encoding (often an alias for iocharset=utf8)"},
-			{Name: "codepage", Description: "Codepage for filename encoding (e.g., 437)", NeedsValue: true, ValueDescription: "Codepage number (e.g., 437)", ValueValidationRegex: `^[0-9]+$`},
-			{Name: "namecase", Description: "Filename case handling (default: asis, or: lower, upper)", NeedsValue: true, ValueDescription: "One of: asis, lower, upper", ValueValidationRegex: `^(asis|lower|upper)$`},
-			{Name: "errors", Description: "Behavior on error (remount-ro, continue, panic)", NeedsValue: true, ValueDescription: "One of: continue, remount-ro, panic", ValueValidationRegex: `^(continue|remount-ro|panic)$`},
-			{Name: "discard", Description: "Enable discard/TRIM support"},
-			{Name: "keep_last_dots", Description: "Keep trailing dots in filenames"},
-			{Name: "sys_tz", Description: "Use system timezone for timestamps instead of UTC"},
-			{Name: "time_offset", Description: "Time offset in minutes from UTC for timestamps", NeedsValue: true, ValueDescription: "Offset in minutes (e.g., -60 or 120)", ValueValidationRegex: `^[-+]?[0-9]+$`},
-		},
-		"ext4": {
-			{Name: "data", Description: "Data journaling mode (ordered, writeback, journal)", NeedsValue: true, ValueDescription: "One of: journal, ordered, writeback", ValueValidationRegex: `^(journal|ordered|writeback)$`},
-			{Name: "errors", Description: "Behavior on error (remount-ro, continue, panic)", NeedsValue: true, ValueDescription: "One of: continue, remount-ro, panic", ValueValidationRegex: `^(continue|remount-ro|panic)$`},
-			{Name: "discard", Description: "Enable discard/TRIM support"},
-			{Name: "barrier", Description: "Enable/disable write barriers (0, 1)", NeedsValue: true, ValueDescription: "0 or 1", ValueValidationRegex: `^[01]$`},
-			{Name: "noauto_da_alloc", Description: "Disable delayed allocation"},
-			{Name: "journal_checksum", Description: "Enable journal checksumming"},
-			{Name: "journal_async_commit", Description: "Commit data blocks asynchronously"},
-		},
-	}
+	// preferredMountFlagSources defines the filesystem types whose mount-flag metadata should
+	// be preferred when multiple adapters define the same option (e.g., uid, gid).
+	preferredMountFlagSources = []string{"ntfs", "vfat"}
 
 	// syscallFlagMap maps mount flag names (lowercase) to their corresponding syscall constants.
-	// This map includes flags that SET a bit. Flags like "rw" or "async"
-	// represent the ABSENCE of a restrictive bit and are handled by not setting MS_RDONLY or MS_SYNCHRONOUS.
-	// "defaults" is also handled by the base state (0) and subsequent overrides.
-	syscallFlagMap = map[string]uintptr{
-		"ro":          syscall.MS_RDONLY,
-		"nosuid":      syscall.MS_NOSUID,
-		"nodev":       syscall.MS_NODEV,
-		"noexec":      syscall.MS_NOEXEC,
-		"sync":        syscall.MS_SYNCHRONOUS,
-		"remount":     syscall.MS_REMOUNT,
-		"mand":        syscall.MS_MANDLOCK,
-		"dirsync":     syscall.MS_DIRSYNC,
-		"noatime":     syscall.MS_NOATIME,
-		"nodiratime":  syscall.MS_NODIRATIME,
-		"bind":        syscall.MS_BIND,
-		"rec":         syscall.MS_REC, // Used with MS_BIND for recursive bind mounts (rbind)
-		"silent":      syscall.MS_SILENT,
-		"posixacl":    syscall.MS_POSIXACL,
-		"acl":         syscall.MS_POSIXACL, // Common alias for posixacl
-		"unbindable":  syscall.MS_UNBINDABLE,
-		"private":     syscall.MS_PRIVATE,
-		"slave":       syscall.MS_SLAVE,
-		"shared":      syscall.MS_SHARED,
-		"relatime":    syscall.MS_RELATIME,
-		"strictatime": syscall.MS_STRICTATIME,
-		// "lazytime":    syscall.MS_LAZYTIME, // Not universally available, explicitly not mapped
-	}
+	// Shared with dto.MountFlagsMap() to keep a single source of truth.
+	syscallFlagMap = dto.MountFlagsMap()
 
 	// ignoredSyscallFlags are descriptive, represent default states, or are handled by other mechanisms
 	// (like the data field of mount) when converting to syscall flags. These will be ignored without warning.
@@ -220,26 +169,67 @@ var (
 	}
 )
 
-// Custom error types for FsTypeFromDevice
-var (
-	ErrorDeviceNotFound    = errors.New("device not found")
-	ErrorDeviceAccess      = errors.New("failed to access device")
-	ErrorUnknownFilesystem = errors.New("unknown filesystem type")
-)
+func orderedFilesystemTypesForMountFlags(registry *filesystem.Registry) []string {
+	types := registry.ListSupportedTypes()
+	if len(types) == 0 {
+		return types
+	}
+	sort.Strings(types)
+
+	ordered := make([]string, 0, len(types))
+	seen := make(map[string]bool, len(types))
+	available := make(map[string]bool, len(types))
+	for _, fsType := range types {
+		available[fsType] = true
+	}
+	for _, preferred := range preferredMountFlagSources {
+		if available[preferred] {
+			ordered = append(ordered, preferred)
+			seen[preferred] = true
+		}
+	}
+	for _, fsType := range types {
+		if !seen[fsType] {
+			ordered = append(ordered, fsType)
+		}
+	}
+
+	return ordered
+}
 
 // NewFilesystemService creates and initializes a new FilesystemService.
-func NewFilesystemService(ctx context.Context) FilesystemServiceInterface {
+func NewFilesystemService(
+	ctx context.Context,
+	cancelFunc context.CancelFunc,
+	eventBus events.EventBusInterface,
+) FilesystemServiceInterface {
 	// Initialize precomputed maps for efficient lookups
 	stdFlagsByName := make(map[string]dto.MountFlag, len(defaultStandardMountFlags))
 	for _, f := range defaultStandardMountFlags {
 		stdFlagsByName[strings.ToLower(f.Name)] = f
 	}
 
-	allKnownFlagsByName := make(map[string]dto.MountFlag, len(defaultStandardMountFlags)+len(defaultFsSpecificMountFlags)) // Estimate size
+	// Create filesystem adapter registry
+	registry := filesystem.NewRegistry()
+
+	// Build fsSpecificMountFlags from adapters using a deterministic order
+	orderedTypes := orderedFilesystemTypesForMountFlags(registry)
+	fsSpecificMountFlags := make(map[string][]dto.MountFlag, len(orderedTypes))
+	for _, fsType := range orderedTypes {
+		adapter, err := registry.Get(fsType)
+		if err != nil {
+			continue
+		}
+		fsSpecificMountFlags[fsType] = adapter.GetMountFlags()
+	}
+
+	// Build allKnownFlagsByName from standard flags and adapter flags
+	allKnownFlagsByName := make(map[string]dto.MountFlag, len(defaultStandardMountFlags))
 	for k, v := range stdFlagsByName {
 		allKnownFlagsByName[k] = v
 	}
-	for _, fsFlags := range defaultFsSpecificMountFlags {
+	for _, fsType := range orderedTypes {
+		fsFlags := fsSpecificMountFlags[fsType]
 		for _, f := range fsFlags {
 			lowerName := strings.ToLower(f.Name)
 			// Standard flags take precedence for descriptions if names collide.
@@ -249,14 +239,49 @@ func NewFilesystemService(ctx context.Context) FilesystemServiceInterface {
 		}
 	}
 
+	// Get WaitGroup from context
+	wg, ok := ctx.Value("wg").(*sync.WaitGroup)
+	if !ok {
+		// Fallback to a new WaitGroup if not provided in context
+		wg = &sync.WaitGroup{}
+	}
+
 	p := &FilesystemService{
 		standardMountFlags:   defaultStandardMountFlags,
-		fsSpecificMountFlags: defaultFsSpecificMountFlags,
+		fsSpecificMountFlags: fsSpecificMountFlags,
 
 		standardMountFlagsByName: stdFlagsByName,
 		allKnownMountFlagsByName: allKnownFlagsByName,
+
+		registry: registry,
+
+		ctx:                 ctx,
+		cancelFunc:          cancelFunc,
+		wg:                  wg,
+		activeOperations:    make(map[string]bool),
+		activeOperationInfo: make(map[string]filesystemOperation),
+		eventBus:            eventBus,
 	}
 	return p
+}
+
+func (s *FilesystemService) startOperation(devicePath, op string) (context.Context, context.CancelFunc, errors.E) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.activeOperations[devicePath] {
+		return nil, nil, errors.WithDetails(dto.ErrorConflict, "Message", fmt.Sprintf("%s operation already in progress", op), "Device", devicePath)
+	}
+	opCtx, opCancel := context.WithCancel(s.ctx)
+	s.activeOperations[devicePath] = true
+	s.activeOperationInfo[devicePath] = filesystemOperation{op: op, cancel: opCancel}
+	return opCtx, opCancel, nil
+}
+
+func (s *FilesystemService) finishOperation(devicePath string) {
+	s.mu.Lock()
+	delete(s.activeOperations, devicePath)
+	delete(s.activeOperationInfo, devicePath)
+	s.mu.Unlock()
 }
 
 // GetStandardMountFlags returns the list of standard mount flags.
@@ -279,6 +304,27 @@ func (s *FilesystemService) GetFilesystemSpecificMountFlags(fsType string) ([]dt
 		return []dto.MountFlag{}, nil
 	}
 	return flags, nil
+}
+
+// ResolveLinuxFsModule returns the Linux filesystem module/fstype name for mounting.
+// Falls back to the provided filesystem type when no adapter is found.
+func (s *FilesystemService) ResolveLinuxFsModule(fsType string) string {
+	if fsType == "" {
+		return ""
+	}
+
+	adapter, err := s.registry.Get(fsType)
+	if err != nil {
+		slog.Debug("ResolveLinuxFsModule: adapter not found, using filesystem type", "fsType", fsType, "error", err)
+		return fsType
+	}
+
+	module := adapter.GetLinuxFsModule()
+	if module == "" {
+		return fsType
+	}
+
+	return module
 }
 
 // GetMountFlagsAndData converts a list of MountFlag structs into the syscall flags (uintptr)
@@ -417,81 +463,429 @@ func (s *FilesystemService) SyscallDataToMountFlag(data string) ([]dto.MountFlag
 	return result, nil
 }
 
-// fsMagicSignature defines a structure to hold filesystem signature information.
-type fsMagicSignature struct {
-	fsType string
-	offset int64
-	magic  []byte
-}
-
-// fsSignatures is a list of known filesystem signatures.
-// The order can matter if signatures are subsets of others, though distinct offsets help.
-var knownFsSignatures = []fsMagicSignature{
-	// Filesystems with magic at/near offset 0
-	{fsType: "xfs", offset: 0, magic: []byte{'X', 'F', 'S', 'B'}},
-	{fsType: "squashfs", offset: 0, magic: []byte{0x68, 0x73, 0x71, 0x73}},              // "hsqs" little-endian
-	{fsType: "ntfs", offset: 3, magic: []byte{'N', 'T', 'F', 'S', ' ', ' ', ' ', ' '}},  // "NTFS    "
-	{fsType: "exfat", offset: 3, magic: []byte{'E', 'X', 'F', 'A', 'T', ' ', ' ', ' '}}, // "EXFAT   "
-
-	// FAT types
-	{fsType: "vfat", offset: 82, magic: []byte{'F', 'A', 'T', '3', '2', ' ', ' ', ' '}}, // FAT32 specific
-	{fsType: "vfat", offset: 54, magic: []byte{'F', 'A', 'T', '1', '6', ' ', ' ', ' '}}, // FAT16 specific
-	{fsType: "vfat", offset: 54, magic: []byte{'F', 'A', 'T', '1', '2', ' ', ' ', ' '}}, // FAT12 specific
-
-	// Filesystems with magic at larger offsets
-	{fsType: "f2fs", offset: 1024, magic: []byte{0x10, 0x20, 0xF5, 0xF2}}, // Little-endian 0xF2F52010
-	{fsType: "ext4", offset: 1080, magic: []byte{0x53, 0xEF}},             // ext2/3/4, little-endian 0xEF53
-
-	// ISO9660 - Primary Volume Descriptor
-	{fsType: "iso9660", offset: 0x8001, magic: []byte{'C', 'D', '0', '0', '1'}}, // 32769
-
-	// BTRFS
-	{fsType: "btrfs", offset: 0x10040, magic: []byte{'_', 'B', 'H', 'R', 'f', 'S', '_', 'M'}}, // 65600
-}
-
-const maxDeviceReadLength = 65608 // Max offset (btrfs: 65600) + max magic length (8)
-
 // FsTypeFromDevice attempts to determine the filesystem type of a block device by reading its magic numbers.
 func (s *FilesystemService) FsTypeFromDevice(devicePath string) (string, errors.E) {
-	file, err := os.Open(devicePath)
+	// Get all adapters for detection
+	adapters := s.registry.GetAll()
+
+	fsType, err := filesystem.DetectFilesystemType(devicePath, adapters)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return "", errors.WithDetails(dto.ErrorDeviceNotFound, "Path", devicePath, "Error", err)
+		// Map the error to the appropriate DTO error type for backward compatibility
+		if errors.Is(err, filesystem.ErrorDeviceNotFound) {
+			return "", errors.WithDetails(dto.ErrorDeviceNotFound, "Path", devicePath)
 		}
-		return "", errors.WithDetails(ErrorDeviceAccess, "Path", devicePath, "Operation", "Open", "Error", err)
-	}
-	defer file.Close()
-
-	buffer := make([]byte, maxDeviceReadLength)
-	n, err := file.ReadAt(buffer, 0)
-	if err != nil && err != io.EOF {
-		// For ReadAt, io.EOF is reported only if no bytes were read.
-		// If n > 0 and err == io.EOF, it means a partial read, which is fine.
-		// If n == 0 and err == io.EOF, the file is empty or smaller than our read attempt from offset 0.
-		return "", errors.WithDetails(ErrorDeviceAccess, "Path", devicePath, "Operation", "ReadAt", "Error", err)
+		return "", err
 	}
 
-	if n == 0 {
-		return "", errors.WithDetails(ErrorUnknownFilesystem, "Path", devicePath, "Reason", "Device is empty or too small")
+	if fsType == "" {
+		return "", errors.WithDetails(filesystem.ErrorUnknownFilesystem, "Path", devicePath)
 	}
 
-	// Use the actual number of bytes read for checks
-	validBuffer := buffer[:n]
+	slog.Debug("FsTypeFromDevice: Matched signature", "device", devicePath, "fstype", fsType)
+	return fsType, nil
+}
 
-	for _, sig := range knownFsSignatures {
-		// Ensure the signature's offset and length are within the bounds of what was read
-		sigEndOffset := sig.offset + int64(len(sig.magic))
-		if sig.offset < 0 || sigEndOffset > int64(len(validBuffer)) {
-			continue // Signature is out of bounds for the data read
+// GetAdapter returns the filesystem adapter for a given filesystem type.
+// This method should only be used internally by the filesystem service.
+// API handlers should use higher-level methods instead.
+func (s *FilesystemService) GetAdapter(fsType string) (filesystem.FilesystemAdapter, errors.E) {
+	return s.registry.Get(fsType)
+}
+
+// GetSupportedFilesystems returns information about all supported filesystems
+func (s *FilesystemService) GetSupportedFilesystems(ctx context.Context) (map[string]dto.FilesystemSupport, errors.E) {
+	return s.registry.GetSupportedFilesystems(ctx)
+}
+
+// ListSupportedTypes returns a list of all supported filesystem type names
+func (s *FilesystemService) ListSupportedTypes() []string {
+	return s.registry.ListSupportedTypes()
+}
+
+// GetSupportAndInfo returns filesystem support information along with name and description
+func (s *FilesystemService) GetSupportAndInfo(ctx context.Context, fsType string) (*dto.FilesystemInfo, errors.E) {
+	adapter, err := s.registry.Get(fsType)
+	if err != nil {
+		return nil, err
+	}
+
+	support, err := adapter.IsSupported(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to check filesystem support")
+	}
+
+	standardFlags, _ := s.GetStandardMountFlags()
+	customFlags, _ := s.GetFilesystemSpecificMountFlags(fsType)
+
+	return &dto.FilesystemInfo{
+		Name:             adapter.GetName(),
+		Type:             fsType,
+		Description:      adapter.GetDescription(),
+		MountFlags:       standardFlags,
+		CustomMountFlags: customFlags,
+		Support:          &support,
+	}, nil
+}
+
+// FormatPartition formats a device with the specified filesystem type
+// This operation executes asynchronously. It returns immediately after starting the operation
+// and emits events.FilesystemTaskEvent for start, success, and failure states.
+// Returns an error if the operation cannot be started or if another operation is already
+// running on the same device.
+func (s *FilesystemService) FormatPartition(ctx context.Context, devicePath, fsType string, options dto.FormatOptions) (*dto.CheckResult, errors.E) {
+	adapter, err := s.registry.Get(fsType)
+	if err != nil {
+		return nil, errors.Wrap(err, "unsupported filesystem type")
+	}
+
+	// Check if formatting is supported
+	support, err := adapter.IsSupported(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to check filesystem support")
+	}
+
+	if !support.CanFormat {
+		msg := fmt.Sprintf("Filesystem %s cannot be formatted on this system", fsType)
+		if len(support.MissingTools) > 0 {
+			msg += fmt.Sprintf(". Missing tools: %v. Install package: %s",
+				support.MissingTools, support.AlpinePackage)
+		}
+		return nil, errors.New(msg)
+	}
+
+	opCtx, _, opErr := s.startOperation(devicePath, "format")
+	if opErr != nil {
+		return nil, opErr
+	}
+
+	// Start async operation
+	s.wg.Add(1)
+	go func() {
+		defer s.wg.Done()
+		defer s.finishOperation(devicePath)
+
+		// Emit start event
+		if s.eventBus != nil {
+			s.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
+				Event: events.Event{Type: events.EventTypes.START},
+				Task: &dto.FilesystemTask{
+					Device:         devicePath,
+					Operation:      "format",
+					FilesystemType: fsType,
+					Status:         "start",
+					Message:        fmt.Sprintf("Starting format operation for %s as %s", devicePath, fsType),
+				},
+			})
 		}
 
-		// Compare the magic bytes
-		if bytes.Equal(validBuffer[sig.offset:sigEndOffset], sig.magic) {
-			slog.Debug("FsTypeFromDevice: Matched signature", "device", devicePath, "fstype", sig.fsType, "offset", sig.offset)
-			return sig.fsType, nil
+		// Log start of operation
+		slog.InfoContext(s.ctx, "Starting format operation", "device", devicePath, "fsType", fsType)
+
+		// Create progress callback that emits events
+		progressCallback := func(status string, percentual int, notes []string) {
+			if s.eventBus != nil {
+				message := fmt.Sprintf("Format %s: %s", devicePath, status)
+				if len(notes) > 0 {
+					message += " - " + strings.Join(notes, ", ")
+				}
+
+				var eventType events.EventType
+				switch status {
+				case "start":
+					eventType = events.EventTypes.START
+				case "success":
+					eventType = events.EventTypes.STOP
+				case "failure":
+					eventType = events.EventTypes.ERROR
+				default:
+					eventType = events.EventTypes.START // running state
+				}
+
+				s.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
+					Event: events.Event{Type: eventType},
+					Task: &dto.FilesystemTask{
+						Device:         devicePath,
+						Operation:      "format",
+						FilesystemType: fsType,
+						Status:         status,
+						Message:        message,
+						Progress:       percentual,
+						Notes:          notes,
+					},
+				})
+			}
 		}
+
+		// Perform the format operation with progress callback
+		formatErr := adapter.Format(opCtx, devicePath, options, progressCallback)
+
+		if formatErr != nil {
+			// Emit failure event
+			if s.eventBus != nil {
+				s.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
+					Event: events.Event{Type: events.EventTypes.ERROR},
+					Task: &dto.FilesystemTask{
+						Device:         devicePath,
+						Operation:      "format",
+						FilesystemType: fsType,
+						Status:         "failure",
+						Message:        fmt.Sprintf("Format operation failed for %s", devicePath),
+						Error:          formatErr.Error(),
+					},
+				})
+			}
+			// Log failure
+			slog.ErrorContext(s.ctx, "Format operation failed", "device", devicePath, "fsType", fsType, "error", formatErr)
+		} else {
+			// Emit success event
+			if s.eventBus != nil {
+				s.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
+					Event: events.Event{Type: events.EventTypes.STOP},
+					Task: &dto.FilesystemTask{
+						Device:         devicePath,
+						Operation:      "format",
+						FilesystemType: fsType,
+						Status:         "success",
+						Message:        fmt.Sprintf("Format operation completed successfully for %s", devicePath),
+					},
+				})
+			}
+			// Log success
+			slog.InfoContext(s.ctx, "Format operation completed successfully", "device", devicePath, "fsType", fsType)
+		}
+	}()
+
+	return &dto.CheckResult{
+		Success: true,
+		Message: fmt.Sprintf("Format operation started for %s as %s", devicePath, fsType),
+	}, nil
+}
+
+// CheckPartition checks a device's filesystem for errors
+// This operation executes asynchronously. It returns immediately after starting the operation
+// and emits events.FilesystemTaskEvent for start, success, and failure states.
+// Returns an error if the operation cannot be started or if another operation is already
+// running on the same device.
+func (s *FilesystemService) CheckPartition(ctx context.Context, devicePath, fsType string, options dto.CheckOptions) (*dto.CheckResult, errors.E) {
+	adapter, err := s.registry.Get(fsType)
+	if err != nil {
+		return nil, errors.Wrap(err, "unsupported filesystem type")
 	}
 
-	slog.Debug("FsTypeFromDevice: No known filesystem signature matched", "device", devicePath)
-	return "", errors.WithDetails(ErrorUnknownFilesystem, "Path", devicePath)
+	// Check if checking is supported
+	support, err := adapter.IsSupported(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to check filesystem support")
+	}
+
+	if !support.CanCheck {
+		msg := fmt.Sprintf("Filesystem %s cannot be checked on this system", fsType)
+		if len(support.MissingTools) > 0 {
+			msg += fmt.Sprintf(". Missing tools: %v. Install package: %s",
+				support.MissingTools, support.AlpinePackage)
+		}
+		return nil, errors.New(msg)
+	}
+
+	opCtx, _, opErr := s.startOperation(devicePath, "check")
+	if opErr != nil {
+		return nil, opErr
+	}
+
+	// Start async operation
+	s.wg.Add(1)
+	go func() {
+		defer s.wg.Done()
+		defer s.finishOperation(devicePath)
+
+		// Emit start event
+		if s.eventBus != nil {
+			s.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
+				Event: events.Event{Type: events.EventTypes.START},
+				Task: &dto.FilesystemTask{
+					Device:         devicePath,
+					Operation:      "check",
+					FilesystemType: fsType,
+					Status:         "start",
+					Message:        fmt.Sprintf("Starting check operation for %s", devicePath),
+				},
+			})
+		}
+
+		// Log start of operation
+		slog.InfoContext(s.ctx, "Starting check operation", "device", devicePath, "fsType", fsType)
+
+		// Create progress callback that emits events
+		progressCallback := func(status string, percentual int, notes []string) {
+			if s.eventBus != nil {
+				message := fmt.Sprintf("Check %s: %s", devicePath, status)
+				if len(notes) > 0 {
+					message += " - " + strings.Join(notes, ", ")
+				}
+
+				var eventType events.EventType
+				switch status {
+				case "start":
+					eventType = events.EventTypes.START
+				case "success":
+					eventType = events.EventTypes.STOP
+				case "failure":
+					eventType = events.EventTypes.ERROR
+				default:
+					eventType = events.EventTypes.START // running state
+				}
+
+				s.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
+					Event: events.Event{Type: eventType},
+					Task: &dto.FilesystemTask{
+						Device:         devicePath,
+						Operation:      "check",
+						FilesystemType: fsType,
+						Status:         status,
+						Message:        message,
+						Progress:       percentual,
+						Notes:          notes,
+					},
+				})
+			}
+		}
+
+		// Perform the check operation with progress callback
+		result, checkErr := adapter.Check(opCtx, devicePath, options, progressCallback)
+
+		if checkErr != nil {
+			if errors.Is(checkErr, context.Canceled) || opCtx.Err() == context.Canceled {
+				if s.eventBus != nil {
+					s.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
+						Event: events.Event{Type: events.EventTypes.STOP},
+						Task: &dto.FilesystemTask{
+							Device:         devicePath,
+							Operation:      "check",
+							FilesystemType: fsType,
+							Status:         "canceled",
+							Message:        fmt.Sprintf("Check operation canceled for %s", devicePath),
+						},
+					})
+				}
+				slog.InfoContext(s.ctx, "Check operation canceled", "device", devicePath, "fsType", fsType)
+				return
+			}
+			// Emit failure event
+			if s.eventBus != nil {
+				s.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
+					Event: events.Event{Type: events.EventTypes.ERROR},
+					Task: &dto.FilesystemTask{
+						Device:         devicePath,
+						Operation:      "check",
+						FilesystemType: fsType,
+						Status:         "failure",
+						Message:        fmt.Sprintf("Check operation failed for %s", devicePath),
+						Error:          checkErr.Error(),
+					},
+				})
+			}
+			// Log failure
+			slog.ErrorContext(s.ctx, "Check operation failed", "device", devicePath, "fsType", fsType, "error", checkErr)
+		} else {
+			// Emit success event
+			if s.eventBus != nil {
+				s.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
+					Event: events.Event{Type: events.EventTypes.STOP},
+					Task: &dto.FilesystemTask{
+						Device:         devicePath,
+						Operation:      "check",
+						FilesystemType: fsType,
+						Status:         "success",
+						Message:        fmt.Sprintf("Check operation completed successfully for %s", devicePath),
+					},
+				})
+			}
+			// Log success
+			slog.InfoContext(s.ctx, "Check operation completed successfully", "device", devicePath, "fsType", fsType, "result", result)
+		}
+	}()
+
+	return &dto.CheckResult{
+		Success: true,
+		Message: fmt.Sprintf("Check operation started for %s", devicePath),
+	}, nil
+}
+
+func (s *FilesystemService) AbortCheckPartition(ctx context.Context, devicePath string) errors.E {
+	s.mu.Lock()
+	opInfo, ok := s.activeOperationInfo[devicePath]
+	if !ok || !s.activeOperations[devicePath] {
+		s.mu.Unlock()
+		return errors.WithDetails(dto.ErrorNotFound, "Message", "check operation not running", "Device", devicePath)
+	}
+	if opInfo.op != "check" {
+		s.mu.Unlock()
+		return errors.WithDetails(dto.ErrorConflict, "Message", "operation running is not a check", "Device", devicePath, "Operation", opInfo.op)
+	}
+	cancel := opInfo.cancel
+	s.mu.Unlock()
+	if cancel != nil {
+		cancel()
+	}
+	return nil
+}
+
+// GetPartitionState returns the state of a partition's filesystem
+func (s *FilesystemService) GetPartitionState(ctx context.Context, devicePath, fsType string) (*dto.FilesystemState, errors.E) {
+	adapter, err := s.registry.Get(fsType)
+	if err != nil {
+		return nil, errors.Wrap(dto.ErrorUnsupportedFilesystem, "unsupported filesystem type")
+	}
+
+	state, stateErr := adapter.GetState(ctx, devicePath)
+	if stateErr != nil {
+		return nil, errors.Wrap(stateErr, "failed to get partition state")
+	}
+
+	return &state, nil
+}
+
+// GetPartitionLabel returns the label of a partition's filesystem
+func (s *FilesystemService) GetPartitionLabel(ctx context.Context, devicePath, fsType string) (string, errors.E) {
+	adapter, err := s.registry.Get(fsType)
+	if err != nil {
+		return "", errors.Wrap(dto.ErrorUnsupportedFilesystem, "unsupported filesystem type")
+	}
+
+	label, labelErr := adapter.GetLabel(ctx, devicePath)
+	if labelErr != nil {
+		return "", errors.Wrap(labelErr, "failed to get partition label")
+	}
+
+	return label, nil
+}
+
+// SetPartitionLabel sets the label of a partition's filesystem
+func (s *FilesystemService) SetPartitionLabel(ctx context.Context, devicePath, fsType, label string) errors.E {
+	adapter, err := s.registry.Get(fsType)
+	if err != nil {
+		return errors.Wrap(dto.ErrorUnsupportedFilesystem, "unsupported filesystem type")
+	}
+
+	// Check if setting label is supported
+	support, err := adapter.IsSupported(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to check filesystem support")
+	}
+
+	if !support.CanSetLabel {
+		msg := fmt.Sprintf("Filesystem %s cannot set labels on this system", fsType)
+		if len(support.MissingTools) > 0 {
+			msg += fmt.Sprintf(". Missing tools: %v. Install package: %s",
+				support.MissingTools, support.AlpinePackage)
+		}
+		return errors.New(msg)
+	}
+
+	setErr := adapter.SetLabel(ctx, devicePath, label)
+	if setErr != nil {
+		return errors.Wrap(setErr, "failed to set partition label")
+	}
+
+	return nil
 }

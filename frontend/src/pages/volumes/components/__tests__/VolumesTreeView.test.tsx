@@ -1,425 +1,385 @@
 import { beforeEach, describe, expect, it } from "bun:test";
 import "../../../../../test/setup";
 
-// Required localStorage shim for testing environment
-if (!(globalThis as any).localStorage) {
-    const _store: Record<string, string> = {};
-    (globalThis as any).localStorage = {
-        getItem: (k: string) => (_store.hasOwnProperty(k) ? _store[k] : null),
-        setItem: (k: string, v: string) => { _store[k] = String(v); },
-        removeItem: (k: string) => { delete _store[k]; },
-        clear: () => { for (const k of Object.keys(_store)) delete _store[k]; },
-    };
-}
+const createBaseProps = (overrides: Record<string, unknown> = {}) => ({
+    expandedItems: [],
+    onExpandedItemsChange: () => { },
+    onPartitionSelect: () => { },
+    onToggleAutomount: () => { },
+    onMount: () => { },
+    onUnmount: () => { },
+    onCreateShare: () => { },
+    onGoToShare: () => { },
+    ...overrides,
+});
 
 describe("VolumesTreeView Component", () => {
     beforeEach(() => {
         localStorage.clear();
-        document.body.innerHTML = '';
+        document.body.innerHTML = "";
     });
 
-    it("renders volumes tree view component", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { VolumesTreeView } = await import("../VolumesTreeView");
-        const { createTestStore } = await import("../../../../../test/setup");
-
-        const store = await createTestStore();
-
-        const { container } = render(
-            React.createElement(
-                Provider,
-                {
-                    store, children: React.createElement(VolumesTreeView as any, {
-                        onSelectPartition: () => { }
-                    })
-                }
-            )
-        );
-
-        expect(container).toBeTruthy();
-    });
-
-    it("renders tree structure with disks and partitions", async () => {
+    it("renders a single-mountpoint partition", async () => {
         const React = await import("react");
         const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { VolumesTreeView } = await import("../VolumesTreeView");
+        const { getDiskIdentifier } = await import("../../utils");
         const { createTestStore } = await import("../../../../../test/setup");
 
         const store = await createTestStore();
-
-        render(
-            React.createElement(
-                Provider,
-                {
-                    store, children: React.createElement(VolumesTreeView as any, {
-                        onSelectPartition: () => { }
-                    })
-                }
-            )
-        );
-
-        // Look for tree view elements using semantic query
-        const treeItems = screen.queryAllByRole("treeitem");
-        expect(treeItems.length).toBeGreaterThanOrEqual(0);
-    });
-
-    it("handles partition selection", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const userEvent = (await import("@testing-library/user-event")).default;
-        const { Provider } = await import("react-redux");
-        const { VolumesTreeView } = await import("../VolumesTreeView");
-        const { createTestStore } = await import("../../../../../test/setup");
-
-        const store = await createTestStore();
-        const user = userEvent.setup();
-        let selectedPartition = null;
-        const onSelectPartition = (_disk: any, partition: any) => {
-            selectedPartition = partition;
-        };
-
-        render(
-            React.createElement(
-                Provider,
-                {
-                    store, children: React.createElement(VolumesTreeView as any, {
-                        onSelectPartition
-                    })
-                }
-            )
-        );
-
-        // Try clicking a tree item using semantic query
-        const treeItems = screen.queryAllByRole("treeitem");
-        const firstTreeItem = treeItems[0];
-        if (treeItems.length > 0 && firstTreeItem) {
-            await user.click(firstTreeItem as any);
-        }
-
-        expect(selectedPartition).toBeDefined();
-        expect(document.body).toBeTruthy();
-    });
-
-    it("displays disk icons based on type", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { VolumesTreeView } = await import("../VolumesTreeView");
-        const { createTestStore } = await import("../../../../../test/setup");
-
-        const store = await createTestStore();
-
-        render(
-            React.createElement(
-                Provider,
-                {
-                    store, children: React.createElement(VolumesTreeView as any, {
-                        onSelectPartition: () => { }
-                    })
-                }
-            )
-        );
-
-        // Icons are implementation details, just verify component renders
-        expect(document.body).toBeTruthy();
-    });
-
-    it("shows partition mount status", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { VolumesTreeView } = await import("../VolumesTreeView");
-        const { createTestStore } = await import("../../../../../test/setup");
-
-        const store = await createTestStore();
-
-        const { container } = render(
-            React.createElement(
-                Provider,
-                {
-                    store, children: React.createElement(VolumesTreeView as any, {
-                        onSelectPartition: () => { }
-                    })
-                }
-            )
-        );
-
-        expect(container).toBeTruthy();
-    });
-
-    it("handles tree expansion and collapse", async () => {
-        const React = await import("react");
-        const { render, screen, act } = await import("@testing-library/react");
-        const userEvent = (await import("@testing-library/user-event")).default;
-        const { Provider } = await import("react-redux");
-        const { VolumesTreeView } = await import("../VolumesTreeView");
-        const { createTestStore } = await import("../../../../../test/setup");
-
-        const store = await createTestStore();
-        const user = userEvent.setup();
-
-        render(
-            React.createElement(
-                Provider,
-                {
-                    store, children: React.createElement(VolumesTreeView as any, {
-                        onSelectPartition: () => { }
-                    })
-                }
-            )
-        );
-
-        // Look for buttons in the tree (expand/collapse are buttons)
-        const buttons = screen.queryAllByRole("button");
-        if (buttons.length > 0) {
-            const firstButton = buttons[0];
-            if (firstButton) {
-                await act(async () => {
-                    await user.click(firstButton as any);
-                });
-            }
-        }
-
-        expect(document.body).toBeTruthy();
-    });
-
-    it("displays partition information", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { VolumesTreeView } = await import("../VolumesTreeView");
-        const { createTestStore } = await import("../../../../../test/setup");
-
-        const store = await createTestStore();
-
-        const { container } = render(
-            React.createElement(
-                Provider,
-                {
-                    store, children: React.createElement(VolumesTreeView as any, {
-                        onSelectPartition: () => { }
-                    })
-                }
-            )
-        );
-
-        // Verify component rendered
-        expect(container).toBeTruthy();
-    });
-
-    it("handles loading state", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { VolumesTreeView } = await import("../VolumesTreeView");
-        const { createTestStore } = await import("../../../../../test/setup");
-
-        const store = await createTestStore();
-
-        render(
-            React.createElement(
-                Provider,
-                {
-                    store, children: React.createElement(VolumesTreeView as any, {
-                        onSelectPartition: () => { }
-                    })
-                }
-            )
-        );
-
-        // Check for loading indicators using semantic query
-        const loadingElements = screen.queryAllByRole("progressbar");
-        expect(loadingElements.length).toBeGreaterThanOrEqual(0);
-    });
-
-    it("highlights selected partition", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { VolumesTreeView } = await import("../VolumesTreeView");
-        const { createTestStore } = await import("../../../../../test/setup");
-
-        const store = await createTestStore();
-
-        const { container } = render(
-            React.createElement(
-                Provider,
-                {
-                    store, children: React.createElement(VolumesTreeView as any, {
-                        onSelectPartition: () => { },
-                        selectedPartitionId: "test-partition"
-                    })
-                }
-            )
-        );
-
-        expect(container).toBeTruthy();
-    });
-
-    it("renders empty state when no disks available", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { VolumesTreeView } = await import("../VolumesTreeView");
-        const { createTestStore } = await import("../../../../../test/setup");
-
-        const store = await createTestStore();
-
-        const { container } = render(
-            React.createElement(
-                Provider,
-                {
-                    store, children: React.createElement(VolumesTreeView as any, {
-                        onSelectPartition: () => { }
-                    })
-                }
-            )
-        );
-
-        expect(container).toBeTruthy();
-    });
-
-    it("renders multiple mountpoints as separate tree items", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { VolumesTreeView } = await import("../VolumesTreeView");
-        const { createTestStore } = await import("../../../../../test/setup");
-
-        const store = await createTestStore();
-
-        // Create a partition with multiple mountpoints
-        const mockDisks = [
+        const disks = [
             {
                 id: "disk-1",
                 model: "Test Disk",
                 size: 1000000000,
-                connection_bus: "usb",
-                partitions: {
-                    "part-1": {
-                        id: "part-1",
-                        name: "Test Partition",
-                        size: 500000000,
-                        mount_point_data: {
-                            "/mnt/data1": {
-                                mount_point: "/mnt/data1",
-                                is_mounted: true,
-                                is_write_supported: true,
-                                fstype: "ext4"
-                            },
-                            "/mnt/data2": {
-                                mount_point: "/mnt/data2",
-                                is_mounted: false,
-                                is_write_supported: true,
-                                fstype: "ext4"
-                            }
-                        }
-                    }
-                }
-            }
-        ];
-
-        const expandedItems: string[] = ["disk-1"];
-        const onExpandedItemsChange = (items: string[]) => {
-            expandedItems.length = 0;
-            expandedItems.push(...items);
-        };
-
-        const { container } = render(
-            React.createElement(
-                Provider,
-                {
-                    store,
-                    children: React.createElement(VolumesTreeView as any, {
-                        disks: mockDisks,
-                        expandedItems,
-                        onExpandedItemsChange,
-                        onPartitionSelect: () => { },
-                        onToggleAutomount: () => { },
-                        onMount: () => { },
-                        onUnmount: () => { },
-                        onCreateShare: () => { },
-                        onGoToShare: () => { }
-                    })
-                }
-            )
-        );
-
-        expect(container).toBeTruthy();
-
-        // Verify the partition node shows multiple mountpoints
-        const mountpointLabel = await screen.findByText(/2 mountpoint\(s\)/i);
-        expect(mountpointLabel).toBeTruthy();
-
-        // Verify the partition name appears
-        const partitionName = await screen.findByText("Test Partition");
-        expect(partitionName).toBeTruthy();
-    });
-
-    it("renders single mountpoint partition without extra level", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { VolumesTreeView } = await import("../VolumesTreeView");
-        const { createTestStore } = await import("../../../../../test/setup");
-
-        const store = await createTestStore();
-
-        // Create a partition with single mountpoint
-        const mockDisks = [
-            {
-                id: "disk-1",
-                model: "Test Disk",
-                size: 1000000000,
-                connection_bus: "usb",
                 partitions: {
                     "part-1": {
                         id: "part-1",
                         name: "Single Mount Partition",
                         size: 500000000,
+                        fs_type: "ext4",
                         mount_point_data: {
                             "/mnt/single": {
-                                mount_point: "/mnt/single",
                                 is_mounted: true,
                                 is_write_supported: true,
-                                fstype: "ext4"
-                            }
-                        }
-                    }
-                }
-            }
+                                fstype: "ext4",
+                                path: "/mnt/single",
+                                type: "HOST",
+                            },
+                        },
+                    },
+                },
+            },
         ];
 
-        const { container } = render(
+        const diskIdentifier = getDiskIdentifier(disks[0] as any, 0);
+
+        render(
             React.createElement(
                 Provider,
                 {
                     store,
-                    children: React.createElement(VolumesTreeView as any, {
-                        disks: mockDisks,
-                        expandedItems: ["disk-1"],
-                        onExpandedItemsChange: () => { },
-                        onPartitionSelect: () => { },
-                        onToggleAutomount: () => { },
-                        onMount: () => { },
-                        onUnmount: () => { },
-                        onCreateShare: () => { },
-                        onGoToShare: () => { }
-                    })
-                }
-            )
+                    children: React.createElement(
+                        VolumesTreeView as any,
+                        createBaseProps({
+                            disks,
+                            expandedItems: [diskIdentifier],
+                        }),
+                    ),
+                },
+            ),
         );
 
-        expect(container).toBeTruthy();
-        // Verify the partition name is shown
         const partitionName = await screen.findByText("Single Mount Partition");
+        const mountChip = await screen.findByText("Mounted");
+        const fstypeChip = await screen.findByText("ext4");
         expect(partitionName).toBeTruthy();
+        expect(mountChip).toBeTruthy();
+        expect(fstypeChip).toBeTruthy();
+    });
 
-        // Check for absence of "mountpoint(s)" in text content - just verify component renders
-        expect(document.body).toBeTruthy();
+    it("shows filesystem alert icon when filesystem is not clear", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { VolumesTreeView } = await import("../VolumesTreeView");
+        const { getDiskIdentifier } = await import("../../utils");
+        const { createTestStore } = await import("../../../../../test/setup");
+
+        const store = await createTestStore();
+        const disks = [
+            {
+                id: "disk-alert",
+                model: "Alert Disk",
+                partitions: {
+                    "part-alert": {
+                        id: "part-alert",
+                        name: "Alert Partition",
+                        fs_type: "ext4",
+                        mount_point_data: {
+                            "/mnt/alert": {
+                                is_mounted: true,
+                                is_write_supported: true,
+                                fstype: "ext4",
+                                path: "/mnt/alert",
+                                type: "HOST",
+                            },
+                        },
+                    },
+                },
+            },
+        ];
+        const filesystemStateByPartitionId = {
+            "part-alert": {
+                hasErrors: true,
+                isClean: false,
+                isMounted: true,
+                stateDescription: "Filesystem errors detected",
+            },
+        };
+
+        const diskIdentifier = getDiskIdentifier(disks[0] as any, 0);
+
+        render(
+            React.createElement(
+                Provider,
+                {
+                    store,
+                    children: React.createElement(
+                        VolumesTreeView as any,
+                        createBaseProps({
+                            disks,
+                            expandedItems: [diskIdentifier],
+                            filesystemStateByPartitionId,
+                        }),
+                    ),
+                },
+            ),
+        );
+
+        const alertIcon = await screen.findByLabelText(
+            /filesystem status alert for alert partition/i,
+        );
+        expect(alertIcon).toBeTruthy();
+    });
+
+    it("does not show filesystem alert icon when filesystem is clean", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { VolumesTreeView } = await import("../VolumesTreeView");
+        const { getDiskIdentifier } = await import("../../utils");
+        const { createTestStore } = await import("../../../../../test/setup");
+
+        const store = await createTestStore();
+        const disks = [
+            {
+                id: "disk-clean",
+                model: "Clean Disk",
+                partitions: {
+                    "part-clean": {
+                        id: "part-clean",
+                        name: "Clean Partition",
+                        fs_type: "ext4",
+                        mount_point_data: {
+                            "/mnt/clean": {
+                                is_mounted: true,
+                                is_write_supported: true,
+                                fstype: "ext4",
+                                path: "/mnt/clean",
+                                type: "HOST",
+                            },
+                        },
+                    },
+                },
+            },
+        ];
+        const filesystemStateByPartitionId = {
+            "part-clean": {
+                hasErrors: false,
+                isClean: true,
+                isMounted: true,
+            },
+        };
+
+        const diskIdentifier = getDiskIdentifier(disks[0] as any, 0);
+
+        render(
+            React.createElement(
+                Provider,
+                {
+                    store,
+                    children: React.createElement(
+                        VolumesTreeView as any,
+                        createBaseProps({
+                            disks,
+                            expandedItems: [diskIdentifier],
+                            filesystemStateByPartitionId,
+                        }),
+                    ),
+                },
+            ),
+        );
+
+        expect(screen.queryByLabelText(/filesystem status alert/i)).toBeNull();
+    });
+
+    it("renders multiple mountpoints with a parent node", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { VolumesTreeView } = await import("../VolumesTreeView");
+        const { getDiskIdentifier } = await import("../../utils");
+        const { createTestStore } = await import("../../../../../test/setup");
+
+        const store = await createTestStore();
+        const disks = [
+            {
+                id: "disk-2",
+                model: "Multi Disk",
+                size: 2000000000,
+                partitions: {
+                    "part-2": {
+                        id: "part-2",
+                        name: "Multi Mount Partition",
+                        size: 1000000000,
+                        fs_type: "ext4",
+                        mount_point_data: {
+                            "/mnt/data1": {
+                                is_mounted: true,
+                                is_write_supported: true,
+                                fstype: "ext4",
+                                path: "/mnt/data1",
+                                type: "HOST",
+                            },
+                            "/mnt/data2": {
+                                is_mounted: false,
+                                is_write_supported: true,
+                                fstype: "ext4",
+                                path: "/mnt/data2",
+                                type: "HOST",
+                            },
+                        },
+                    },
+                },
+            },
+        ];
+
+        const diskIdentifier = getDiskIdentifier(disks[0] as any, 0);
+        render(
+            React.createElement(
+                Provider,
+                {
+                    store,
+                    children: React.createElement(
+                        VolumesTreeView as any,
+                        createBaseProps({
+                            disks,
+                            expandedItems: [diskIdentifier],
+                        }),
+                    ),
+                },
+            ),
+        );
+
+        const partitionName = await screen.findByText("Multi Mount Partition");
+        const mountpointLabel = await screen.findByText(/2 mountpoint\(s\)/i);
+        expect(partitionName).toBeTruthy();
+        expect(mountpointLabel).toBeTruthy();
+    });
+
+    it("invokes onPartitionSelect when a partition is clicked", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { Provider } = await import("react-redux");
+        const { VolumesTreeView } = await import("../VolumesTreeView");
+        const { getDiskIdentifier } = await import("../../utils");
+        const { createTestStore } = await import("../../../../../test/setup");
+
+        const store = await createTestStore();
+        const user = userEvent.setup();
+        let selectedPartitionId: string | null = null;
+        const onPartitionSelect = (_disk: any, partition: any) => {
+            selectedPartitionId = partition?.id ?? null;
+        };
+
+        const disks = [
+            {
+                id: "disk-3",
+                model: "Click Disk",
+                partitions: {
+                    "part-3": {
+                        id: "part-3",
+                        name: "Clickable Partition",
+                        fs_type: "ext4",
+                        mount_point_data: {
+                            "/mnt/click": {
+                                is_mounted: true,
+                                is_write_supported: true,
+                                fstype: "ext4",
+                                path: "/mnt/click",
+                                type: "HOST",
+                            },
+                        },
+                    },
+                },
+            },
+        ];
+
+        const diskIdentifier = getDiskIdentifier(disks[0] as any, 0);
+
+        render(
+            React.createElement(
+                Provider,
+                {
+                    store,
+                    children: React.createElement(
+                        VolumesTreeView as any,
+                        createBaseProps({
+                            disks,
+                            expandedItems: [diskIdentifier],
+                            onPartitionSelect,
+                        }),
+                    ),
+                },
+            ),
+        );
+
+        const partitionName = await screen.findByText("Clickable Partition");
+        await user.click(partitionName);
+
+        expect(partitionName).toBeTruthy();
+        expect(selectedPartitionId === "part-3").toBe(true);
+    });
+
+    it("filters system partitions when hideSystemPartitions is true", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { VolumesTreeView } = await import("../VolumesTreeView");
+        const { createTestStore } = await import("../../../../../test/setup");
+
+        const store = await createTestStore();
+        const disks = [
+            {
+                id: "disk-4",
+                model: "System Disk",
+                partitions: {
+                    "part-4": {
+                        id: "part-4",
+                        name: "hassos-data",
+                        system: true,
+                        mount_point_data: {},
+                        host_mount_point_data: {
+                            "/mnt/host": {
+                                path: "/mnt/host",
+                                type: "HOST",
+                            },
+                        },
+                    },
+                },
+            },
+        ];
+
+        render(
+            React.createElement(
+                Provider,
+                {
+                    store,
+                    children: React.createElement(
+                        VolumesTreeView as any,
+                        createBaseProps({
+                            disks,
+                            expandedItems: [],
+                        }),
+                    ),
+                },
+            ),
+        );
+
+        expect(screen.queryByText("SYSTEM DISK")).toBeNull();
     });
 });
 

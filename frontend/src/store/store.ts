@@ -6,7 +6,7 @@ import { githubApi } from "./githubApi";
 import mdcMiddleware from "./mdcMiddleware";
 import { mdcSlice } from "./mdcSlice";
 import { sratApi } from "./sratApi";
-import { sseApi, wsApi } from "./sseApi";
+import { wsApi } from "./sseApi";
 
 export const store = configureStore({
 	reducer: {
@@ -14,7 +14,6 @@ export const store = configureStore({
 		errors: errorSlice.reducer,
 		mdc: mdcSlice.reducer,
 		[sratApi.reducerPath]: sratApi.reducer,
-		[sseApi.reducerPath]: sseApi.reducer,
 		[wsApi.reducerPath]: wsApi.reducer,
 		[githubApi.reducerPath]: githubApi.reducer,
 	},
@@ -24,7 +23,6 @@ export const store = configureStore({
 		return getDefaultMiddleware()
 			.concat(mdcMiddleware)
 			.concat(sratApi.middleware)
-			.concat(sseApi.middleware)
 			.concat(wsApi.middleware)
 			.concat(githubApi.middleware);
 	},

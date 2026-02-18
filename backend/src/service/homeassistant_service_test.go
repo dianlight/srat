@@ -386,13 +386,15 @@ func (suite *HomeAssistantServiceTestSuite) TestSendDiskHealthEntities() {
 		PerPartitionInfo: map[string][]dto.PerPartitionInfo{
 			"sda": {
 				{
-					Device:        "/dev/sda1",
-					MountPoint:    "/",
-					FSType:        "ext4",
-					TotalSpace:    1000000000,
-					FreeSpace:     500000000,
-					FsckNeeded:    false,
-					FsckSupported: true,
+					Device:     "/dev/sda1",
+					MountPoint: "/",
+					FSType:     "ext4",
+					TotalSpace: 1000000000,
+					FreeSpace:  500000000,
+					FilesystemState: &dto.FilesystemState{
+						IsClean:   true,
+						HasErrors: false,
+					},
 				},
 			},
 		},
@@ -434,13 +436,15 @@ func (suite *HomeAssistantServiceTestSuite) TestSendDiskHealthEntitiesDisabled()
 		PerPartitionInfo: map[string][]dto.PerPartitionInfo{
 			"sda": {
 				{
-					Device:        "/dev/sda1",
-					MountPoint:    "/",
-					FSType:        "ext4",
-					TotalSpace:    1000000000,
-					FreeSpace:     500000000,
-					FsckNeeded:    false,
-					FsckSupported: true,
+					Device:     "/dev/sda1",
+					MountPoint: "/",
+					FSType:     "ext4",
+					TotalSpace: 1000000000,
+					FreeSpace:  500000000,
+					FilesystemState: &dto.FilesystemState{
+						IsClean:   true,
+						HasErrors: false,
+					},
 				},
 			},
 		},

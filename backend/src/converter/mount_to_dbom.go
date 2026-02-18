@@ -16,11 +16,11 @@ import (
 type MountToDbom interface {
 	// goverter:update target
 	// goverter:useZeroValueOnPointerInconsistency
-	// goverter:ignore CreatedAt UpdatedAt DeletedAt IsToMountAtStartup ExportedShare Flags
+	// goverter:ignore CreatedAt UpdatedAt DeletedAt IsToMountAtStartup ExportedShare Flags Root
 	// g.overter:map Flags Flags | uintptrToMounFlags
 	// goverter:map Data Data | stringToMounFlags
 	// goverter:map Device Type | pathToType
-	// goverter:map Path Root
+	// g.overter:map Path Root
 	// goverter:map Device DeviceId | deviceToDeviceId
 	MountToMountPointPath(source *mount.MountPoint, target *dbom.MountPointPath) error
 }
