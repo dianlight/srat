@@ -20,7 +20,7 @@ require (
 	github.com/adelolmo/hd-idle v0.0.0-20260125082707-310727a56de0
 	github.com/angusgmorrison/logfusc v0.1.0
 	github.com/benmcclelland/sgio v0.0.0-20250710154739-45e823ff1f46
-	github.com/danielgtaylor/huma/v2 v2.35.0
+	github.com/danielgtaylor/huma/v2 v2.36.0
 	github.com/dianlight/smartmontools-go v0.2.6
 	github.com/dianlight/tlog v0.2.2
 	github.com/fatih/color v1.18.0
@@ -85,8 +85,8 @@ require (
 	github.com/sethvargo/go-retry v0.3.0 // indirect
 	github.com/speakeasy-api/jsonpath v0.6.0 // indirect
 	github.com/spf13/afero v1.14.0 // indirect
-	github.com/spf13/cobra v1.9.1 // indirect
-	github.com/spf13/pflag v1.0.7 // indirect
+	github.com/spf13/cobra v1.10.2 // indirect
+	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/tdewolff/parse/v2 v2.8.3 // indirect
 	github.com/urfave/cli/v2 v2.27.7 // indirect
 	github.com/woodsbury/decimal128 v1.3.0 // indirect
@@ -96,7 +96,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.40.0 // indirect
 	golang.org/x/net v0.50.0 // indirect
 	golang.org/x/term v0.40.0 // indirect
-	google.golang.org/protobuf v1.36.8 // indirect
+	google.golang.org/protobuf v1.36.11 // indirect
 	gorm.io/driver/mysql v1.6.0 // indirect
 )
 
