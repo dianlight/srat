@@ -32,7 +32,7 @@ func (suite *BtrfsAdapterTestSuite) TestGetName() {
 func (suite *BtrfsAdapterTestSuite) TestGetDescription() {
 	desc := suite.adapter.GetDescription()
 	suite.NotEmpty(desc)
-	suite.Contains(desc, "tree")
+	suite.Contains(desc, "BTRFS")
 }
 
 func (suite *BtrfsAdapterTestSuite) TestGetMountFlags() {
