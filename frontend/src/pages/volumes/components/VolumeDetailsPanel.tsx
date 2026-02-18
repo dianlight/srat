@@ -235,6 +235,7 @@ export function VolumeDetailsPanel({
                     <SmartStatusPanel
                         smartInfo={disk.smart_info}
                         diskId={disk.id}
+                        bus ={disk.connection_bus}
                         isReadOnlyMode={false}
                         isExpanded={smartExpanded}
                         onSetExpanded={setSmartExpanded}

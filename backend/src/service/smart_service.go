@@ -56,6 +56,26 @@ func (s *smartService) MockDeviceToDevice(mock func(string) (string, error)) {
 	s.deviceIdToDevice = mock
 }
 
+func (s *smartService) smartInfoFromSMARTInfo(devicePath string, smartInfo *smartmontools.SMARTInfo) (*dto.SmartInfo, errors.E) {
+	ret, err := s.conv.SmartMonToolsSmartInfoToSmartInfo(smartInfo)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to convert SMART info for device %s", devicePath)
+	}
+	ret.DiskId = devicePath
+
+	if ret.DiskType == "" {
+		if smartInfo.AtaSmartData != nil {
+			// ATA/SATA device
+			ret.DiskType = "SATA"
+		} else if smartInfo.NvmeSmartHealth != nil || smartInfo.NvmeControllerCapabilities != nil {
+			// NVMe device
+			ret.DiskType = "NVMe"
+		}
+	}
+
+	return ret, nil
+}
+
 func (s *smartService) GetSmartInfo(ctx context.Context, deviceId string) (*dto.SmartInfo, errors.E) {
 
 	devicePath, err := s.deviceIdToDevice(deviceId)
@@ -80,23 +100,7 @@ func (s *smartService) GetSmartInfo(ctx context.Context, deviceId string) (*dto.
 		return nil, errors.Errorf("failed to get SMART info for device %s %w", devicePath, err)
 	}
 
-	ret, err := s.conv.SmartMonToolsSmartInfoToSmartInfo(smartInfo)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to convert SMART info for device %s", devicePath)
-	}
-	ret.DiskId = devicePath
-
-	if ret.DiskType == "" {
-		if smartInfo.AtaSmartData != nil {
-			// ATA/SATA device
-			ret.DiskType = "SATA"
-		} else if smartInfo.NvmeSmartHealth != nil || smartInfo.NvmeControllerCapabilities != nil {
-			// NVMe device
-			ret.DiskType = "NVMe"
-		}
-	}
-
-	return ret, nil
+	return s.smartInfoFromSMARTInfo(devicePath, smartInfo)
 }
 
 // GetSmartStatus returns dynamic SMART status data for a device
@@ -460,10 +464,10 @@ func (s *smartService) EnableSMART(ctx context.Context, deviceId string) errors.
 		return errors.Wrapf(err, "failed to enable SMART")
 	}
 
-	// Verify SMART is now enabled
+	// Verify SMART is now enabled (one-off check)
 	supportInfo, err := s.client.IsSMARTSupported(ctx, devicePath)
 	if err != nil {
-		tlog.Warn("SMART enabled but verification failed", "device", devicePath, "error", err)
+		tlog.WarnContext(ctx, "SMART enabled but verification failed", "device", devicePath, "error", err)
 		return errors.Wrap(err, "SMART enable succeeded but verification failed")
 	}
 
@@ -474,16 +478,21 @@ func (s *smartService) EnableSMART(ctx context.Context, deviceId string) errors.
 
 	slog.DebugContext(ctx, "SMART enabled and verified", "device", devicePath)
 
-	smartInfo, err := s.GetSmartInfo(ctx, deviceId)
+	smartInfo, err := s.client.GetSMARTInfo(ctx, devicePath)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get SMART info after enabling SMART")
+	}
+
+	smartInfoDto, errE := s.smartInfoFromSMARTInfo(devicePath, smartInfo)
+	if errE != nil {
+		return errE
 	}
 
 	s.eventBus.EmitSmart(events.SmartEvent{
 		Event: events.Event{
 			Type: events.EventTypes.UPDATE,
 		},
-		SmartInfo: *smartInfo,
+		SmartInfo: *smartInfoDto,
 	})
 
 	return nil
@@ -519,16 +528,21 @@ func (s *smartService) DisableSMART(ctx context.Context, deviceId string) errors
 
 	slog.DebugContext(ctx, "SMART disabled", "device", devicePath)
 
-	smartInfo, err := s.GetSmartInfo(ctx, deviceId)
+	smartInfo, err := s.client.GetSMARTInfo(ctx, devicePath)
 	if err != nil {
-		return errors.Errorf("failed to get SMART info after disabling SMART %w", err)
+		return errors.Wrapf(err, "failed to get SMART info after disabling SMART")
+	}
+
+	smartInfoDto, errE := s.smartInfoFromSMARTInfo(devicePath, smartInfo)
+	if errE != nil {
+		return errE
 	}
 
 	s.eventBus.EmitSmart(events.SmartEvent{
 		Event: events.Event{
 			Type: events.EventTypes.UPDATE,
 		},
-		SmartInfo: *smartInfo,
+		SmartInfo: *smartInfoDto,
 	})
 
 	return nil

@@ -3,6 +3,7 @@ package huma
 import (
 	"bytes"
 	"encoding/json"
+	"maps"
 	"net/http"
 	"reflect"
 	"time"
@@ -63,7 +64,7 @@ func isNilValue(v any) bool {
 	// https://go.dev/doc/faq#nil_error
 	vv := reflect.ValueOf(v)
 	switch vv.Kind() {
-	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Ptr, reflect.Slice:
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
 		return vv.IsNil()
 	}
 
@@ -88,9 +89,7 @@ func marshalJSON(fields []jsonFieldInfo, extensions map[string]any) ([]byte, err
 		value[v.name] = v.value
 	}
 
-	for k, v := range extensions {
-		value[k] = v
-	}
+	maps.Copy(value, extensions)
 
 	return json.Marshal(value)
 }
@@ -1495,9 +1494,23 @@ type OpenAPI struct {
 
 // AddOperation adds an operation to the OpenAPI. This is the preferred way to
 // add operations to the OpenAPI, as it will ensure that the operation is
-// properly added to the Paths map, and will call any registered OnAddOperation
+// properly added to the Paths map and will call any registered OnAddOperation
 // functions.
 func (o *OpenAPI) AddOperation(op *Operation) {
+	// Check this won't create a duplicate operation ID.
+	if op.OperationID != "" {
+		for _, pathItem := range o.Paths {
+			for _, existingOp := range []*Operation{
+				pathItem.Get, pathItem.Post, pathItem.Put, pathItem.Patch,
+				pathItem.Delete, pathItem.Head, pathItem.Options, pathItem.Trace,
+			} {
+				if existingOp != nil && existingOp.OperationID == op.OperationID {
+					panic("duplicate operation ID: " + op.OperationID)
+				}
+			}
+		}
+	}
+
 	if o.Paths == nil {
 		o.Paths = map[string]*PathItem{}
 	}

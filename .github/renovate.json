@@ -33,7 +33,7 @@
         "gomodVendor",
         "goGenerate"
     ],
-    "abandonmentThreshold": "5 years",
+    "abandonmentThreshold": "8 years",
     "dependencyDashboardAutoclose": true,
     "customManagers": [
         {
@@ -87,7 +87,7 @@
             "matchFileNames": [
                 "custom_components/**"
             ]
-        },        
+        },
         {
             "commitMessageTopic": "{{groupName}} {{depName}}",
             "groupName": "CI/CD",
@@ -96,10 +96,15 @@
             ]
         },
         {
-            "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+            "matchUpdateTypes": [
+                "minor",
+                "patch",
+                "pin",
+                "digest"
+            ],
             "automerge": true,
-            "automergeType": "pr", 
-            "minimumReleaseAge": "3 days"            
+            "automergeType": "pr",
+            "minimumReleaseAge": "3 days"
         }
     ]
 }
