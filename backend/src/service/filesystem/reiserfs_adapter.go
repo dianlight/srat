@@ -57,6 +57,8 @@ func (a *ReiserfsAdapter) IsSupported(ctx context.Context) (dto.FilesystemSuppor
 
 // Format formats a device with ReiserFS filesystem
 func (a *ReiserfsAdapter) Format(ctx context.Context, device string, options dto.FormatOptions, progress dto.ProgressCallback) errors.E {
+	defer invalidateCommandResultCache()
+
 	if progress != nil {
 		progress("start", 0, []string{"Starting reiserfs format"})
 	}
@@ -134,6 +136,8 @@ func (a *ReiserfsAdapter) Format(ctx context.Context, device string, options dto
 
 // Check runs filesystem check on a ReiserFS device
 func (a *ReiserfsAdapter) Check(ctx context.Context, device string, options dto.CheckOptions, progress dto.ProgressCallback) (dto.CheckResult, errors.E) {
+	defer invalidateCommandResultCache()
+
 	if progress != nil {
 		progress("start", 0, []string{"Starting reiserfs check"})
 	}
@@ -266,6 +270,8 @@ func (a *ReiserfsAdapter) GetLabel(ctx context.Context, device string) (string, 
 
 // SetLabel sets the ReiserFS filesystem label
 func (a *ReiserfsAdapter) SetLabel(ctx context.Context, device string, label string) errors.E {
+	defer invalidateCommandResultCache()
+
 	// Use reiserfstune -l to set the label
 	output, exitCode, err := runCommand(ctx, a.labelCommand, "-l", label, device)
 	if err != nil {

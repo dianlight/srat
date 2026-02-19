@@ -52,6 +52,8 @@ func (a *ExfatAdapter) IsSupported(ctx context.Context) (dto.FilesystemSupport, 
 
 // Format formats a device with exFAT filesystem
 func (a *ExfatAdapter) Format(ctx context.Context, device string, options dto.FormatOptions, progress dto.ProgressCallback) errors.E {
+	defer invalidateCommandResultCache()
+
 	if progress != nil {
 		progress("start", 0, []string{"Starting exfat format"})
 	}
@@ -125,6 +127,8 @@ func (a *ExfatAdapter) Format(ctx context.Context, device string, options dto.Fo
 
 // Check runs filesystem check on an exFAT device
 func (a *ExfatAdapter) Check(ctx context.Context, device string, options dto.CheckOptions, progress dto.ProgressCallback) (dto.CheckResult, errors.E) {
+	defer invalidateCommandResultCache()
+
 	if progress != nil {
 		progress("start", 0, []string{"Starting exfat check"})
 	}
@@ -248,6 +252,8 @@ func (a *ExfatAdapter) GetLabel(ctx context.Context, device string) (string, err
 
 // SetLabel sets the exFAT filesystem label
 func (a *ExfatAdapter) SetLabel(ctx context.Context, device string, label string) errors.E {
+	defer invalidateCommandResultCache()
+
 	output, exitCode, err := runCommand(ctx, a.labelCommand, device, label)
 	if err != nil {
 		return errors.WithDetails(err, "Device", device, "Label", label)

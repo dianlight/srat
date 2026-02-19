@@ -95,6 +95,10 @@ func runCommandCached(ctx context.Context, name string, args ...string) (string,
 	return output, exitCode, err
 }
 
+func invalidateCommandResultCache() {
+	commandResultCache.Flush()
+}
+
 func commandCacheKey(name string, args ...string) string {
 	var builder strings.Builder
 	builder.Grow(len(name) + len(args)*8)

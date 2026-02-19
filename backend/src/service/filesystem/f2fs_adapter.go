@@ -55,6 +55,8 @@ func (a *F2fsAdapter) IsSupported(ctx context.Context) (dto.FilesystemSupport, e
 
 // Format formats a device with F2FS filesystem
 func (a *F2fsAdapter) Format(ctx context.Context, device string, options dto.FormatOptions, progress dto.ProgressCallback) errors.E {
+	defer invalidateCommandResultCache()
+
 	if progress != nil {
 		progress("start", 0, []string{"Starting f2fs format"})
 	}
@@ -132,6 +134,8 @@ func (a *F2fsAdapter) Format(ctx context.Context, device string, options dto.For
 
 // Check runs filesystem check on an F2FS device
 func (a *F2fsAdapter) Check(ctx context.Context, device string, options dto.CheckOptions, progress dto.ProgressCallback) (dto.CheckResult, errors.E) {
+	defer invalidateCommandResultCache()
+
 	if progress != nil {
 		progress("start", 0, []string{"Starting f2fs check"})
 	}
@@ -259,6 +263,8 @@ func (a *F2fsAdapter) GetLabel(ctx context.Context, device string) (string, erro
 
 // SetLabel sets the F2FS filesystem label
 func (a *F2fsAdapter) SetLabel(ctx context.Context, device string, label string) errors.E {
+	defer invalidateCommandResultCache()
+
 	// F2FS can only set label during format
 	return errors.Errorf("F2FS does not support changing labels after format. Label must be set during mkfs.f2fs with -l option")
 }

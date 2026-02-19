@@ -55,6 +55,8 @@ func (a *BtrfsAdapter) IsSupported(ctx context.Context) (dto.FilesystemSupport, 
 
 // Format formats a device with btrfs filesystem
 func (a *BtrfsAdapter) Format(ctx context.Context, device string, options dto.FormatOptions, progress dto.ProgressCallback) errors.E {
+	defer invalidateCommandResultCache()
+
 	if progress != nil {
 		progress("start", 0, []string{"Starting btrfs format"})
 	}
@@ -132,6 +134,8 @@ func (a *BtrfsAdapter) Format(ctx context.Context, device string, options dto.Fo
 
 // Check runs filesystem check on a btrfs device
 func (a *BtrfsAdapter) Check(ctx context.Context, device string, options dto.CheckOptions, progress dto.ProgressCallback) (dto.CheckResult, errors.E) {
+	defer invalidateCommandResultCache()
+
 	if progress != nil {
 		progress("start", 0, []string{"Starting btrfs check"})
 	}
@@ -273,6 +277,8 @@ func (a *BtrfsAdapter) GetLabel(ctx context.Context, device string) (string, err
 
 // SetLabel sets the btrfs filesystem label
 func (a *BtrfsAdapter) SetLabel(ctx context.Context, device string, label string) errors.E {
+	defer invalidateCommandResultCache()
+
 	// Use 'btrfs filesystem label' to set the label
 	output, exitCode, err := runCommand(ctx, "btrfs", "filesystem", "label", device, label)
 	if err != nil {
