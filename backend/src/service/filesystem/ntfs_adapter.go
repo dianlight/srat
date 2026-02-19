@@ -271,6 +271,18 @@ func (a *NtfsAdapter) GetState(ctx context.Context, device string) (dto.Filesyst
 		AdditionalInfo: make(map[string]interface{}),
 	}
 
+	// check if device is mounted and not run getstate if it is, as ntfsfix doesn't support checking while mounted
+	outputMount, _, _ := runCommandCached(ctx, "mount")
+	isMounted := strings.Contains(outputMount, device)
+	state.IsMounted = isMounted
+
+	if isMounted {
+		state.IsClean = false
+		state.HasErrors = false
+		state.StateDescription = "Mounted (state cannot be determined)"
+		return state, nil
+	}
+
 	// Run state command in check-only mode to determine state
 	output, exitCode, err := runCommandCached(ctx, a.stateCommand, "-n", device)
 	if err != nil {
