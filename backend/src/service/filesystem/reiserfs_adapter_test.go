@@ -58,7 +58,13 @@ func (suite *ReiserfsAdapterTestSuite) TestGetMountFlags() {
 func (suite *ReiserfsAdapterTestSuite) TestIsSupported() {
 	support, err := suite.adapter.IsSupported(suite.ctx)
 	suite.NoError(err)
+	suite.False(support.CanFormat)
+	suite.True(support.CanMount)
+	suite.False(support.CanCheck)
+	suite.False(support.CanSetLabel)
+	suite.False(support.CanGetState)
 	suite.Equal("reiserfsprogs", support.AlpinePackage)
+	suite.NotEmpty(support.MissingTools)
 }
 
 func (suite *ReiserfsAdapterTestSuite) TestIsDeviceSupportedWithSignature() {

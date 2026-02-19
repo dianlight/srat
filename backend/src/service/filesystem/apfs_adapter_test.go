@@ -58,7 +58,13 @@ func (suite *ApfsAdapterTestSuite) TestGetMountFlags() {
 func (suite *ApfsAdapterTestSuite) TestIsSupported() {
 	support, err := suite.adapter.IsSupported(suite.ctx)
 	suite.NoError(err)
+	suite.False(support.CanFormat)
+	suite.True(support.CanMount)
+	suite.False(support.CanCheck)
+	suite.False(support.CanSetLabel)
+	suite.True(support.CanGetState)
 	suite.Equal("apfs-fuse", support.AlpinePackage)
+	suite.Empty(support.MissingTools)
 }
 
 func (suite *ApfsAdapterTestSuite) TestIsDeviceSupportedWithSignature() {

@@ -66,10 +66,14 @@ func (suite *Ext4AdapterTestSuite) TestGetMountFlags() {
 func (suite *Ext4AdapterTestSuite) TestIsSupported() {
 	support, err := suite.adapter.IsSupported(suite.ctx)
 	suite.Require().NoError(err)
+	suite.True(support.CanFormat, "ext4 should support formatting")
+	suite.True(support.CanMount, "ext4 should support mounting")
+	suite.True(support.CanCheck, "ext4 should support checking")
+	suite.True(support.CanSetLabel, "ext4 should support setting label")
+	suite.True(support.CanGetState, "ext4 should support getting state")
 
-	suite.NotEmpty(support.AlpinePackage)
 	suite.Equal("e2fsprogs", support.AlpinePackage)
-	// Note: Actual availability depends on system configuration
+	suite.Empty(support.MissingTools)
 }
 
 func (suite *Ext4AdapterTestSuite) TestGetFsSignatureMagic() {
