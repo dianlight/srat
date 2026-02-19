@@ -292,8 +292,8 @@ func (a *BtrfsAdapter) GetState(ctx context.Context, device string) (dto.Filesys
 		AdditionalInfo: make(map[string]interface{}),
 	}
 
-	// Use 'btrfs device stats' to get device statistics
-	output, exitCode, err := runCommand(ctx, "btrfs", "device", "stats", device)
+	// Use state command device stats to get device statistics
+	output, exitCode, err := runCommandCached(ctx, a.stateCommand, "device", "stats", device)
 	if err == nil && exitCode == 0 {
 		state.AdditionalInfo["deviceStats"] = output
 
@@ -307,7 +307,7 @@ func (a *BtrfsAdapter) GetState(ctx context.Context, device string) (dto.Filesys
 		}
 	} else {
 		// If we can't get stats, run a readonly check
-		checkOutput, checkExitCode, err := runCommand(ctx, "btrfs", "check", "--readonly", device)
+		checkOutput, checkExitCode, err := runCommandCached(ctx, a.stateCommand, "check", "--readonly", device)
 		if err != nil {
 			return state, errors.WithDetails(err, "Device", device)
 		}
@@ -323,7 +323,7 @@ func (a *BtrfsAdapter) GetState(ctx context.Context, device string) (dto.Filesys
 	}
 
 	// Check if filesystem is mounted
-	mountOutput, _, _ := runCommand(ctx, "mount")
+	mountOutput, _, _ := runCommandCached(ctx, "mount")
 	state.IsMounted = strings.Contains(mountOutput, device)
 
 	return state, nil

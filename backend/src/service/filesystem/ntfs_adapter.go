@@ -271,8 +271,8 @@ func (a *NtfsAdapter) GetState(ctx context.Context, device string) (dto.Filesyst
 		AdditionalInfo: make(map[string]interface{}),
 	}
 
-	// Run ntfsfix in check-only mode to determine state
-	output, exitCode, err := runCommand(ctx, a.fsckCommand, "-n", device)
+	// Run state command in check-only mode to determine state
+	output, exitCode, err := runCommandCached(ctx, a.stateCommand, "-n", device)
 	if err != nil {
 		return state, errors.WithDetails(err, "Device", device)
 	}
@@ -288,7 +288,7 @@ func (a *NtfsAdapter) GetState(ctx context.Context, device string) (dto.Filesyst
 	}
 
 	// Check if filesystem is mounted
-	mountOutput, _, _ := runCommand(ctx, "mount")
+	mountOutput, _, _ := runCommandCached(ctx, "mount")
 	state.IsMounted = strings.Contains(mountOutput, device)
 
 	state.AdditionalInfo["ntfsfixOutput"] = output

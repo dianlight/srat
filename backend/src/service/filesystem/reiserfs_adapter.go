@@ -285,8 +285,8 @@ func (a *ReiserfsAdapter) GetState(ctx context.Context, device string) (dto.File
 		AdditionalInfo: make(map[string]interface{}),
 	}
 
-	// Run a read-only check to get filesystem state
-	output, exitCode, _ := runCommand(ctx, a.fsckCommand, "--check", device)
+	// Run state command in read-only mode to get filesystem state
+	output, exitCode, _ := runCommandCached(ctx, a.stateCommand, "--check", device)
 
 	// Parse the output to determine filesystem state
 	switch exitCode {
@@ -303,7 +303,7 @@ func (a *ReiserfsAdapter) GetState(ctx context.Context, device string) (dto.File
 	}
 
 	// Check if filesystem is mounted
-	outputMount, _, _ := runCommand(ctx, "mount")
+	outputMount, _, _ := runCommandCached(ctx, "mount")
 	state.IsMounted = strings.Contains(outputMount, device)
 
 	// Store check output in additional info

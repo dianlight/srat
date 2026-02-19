@@ -266,8 +266,8 @@ func (a *ExfatAdapter) GetState(ctx context.Context, device string) (dto.Filesys
 		AdditionalInfo: make(map[string]interface{}),
 	}
 
-	// Run a read-only check to get filesystem state
-	output, exitCode, err := runCommand(ctx, a.fsckCommand, "-n", device)
+	// Run state command in read-only mode to get filesystem state
+	output, exitCode, err := runCommandCached(ctx, a.stateCommand, "-n", device)
 	if err != nil {
 		return state, errors.WithDetails(err, "Device", device)
 	}
@@ -287,7 +287,7 @@ func (a *ExfatAdapter) GetState(ctx context.Context, device string) (dto.Filesys
 	}
 
 	// Check if filesystem is mounted
-	outputMount, _, _ := runCommand(ctx, "mount")
+	outputMount, _, _ := runCommandCached(ctx, "mount")
 	state.IsMounted = strings.Contains(outputMount, device)
 
 	// Store check output in additional info

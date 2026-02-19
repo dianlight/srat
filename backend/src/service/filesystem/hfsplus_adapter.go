@@ -238,8 +238,8 @@ func (a *HfsplusAdapter) GetState(ctx context.Context, device string) (dto.Files
 		AdditionalInfo: make(map[string]interface{}),
 	}
 
-	// Run fsck to get filesystem state
-	output, exitCode, _ := runCommand(ctx, a.fsckCommand, device)
+	// Run state command to get filesystem state
+	output, exitCode, _ := runCommandCached(ctx, a.stateCommand, device)
 
 	// Parse the output to determine filesystem state
 	if exitCode == 0 {
@@ -253,7 +253,7 @@ func (a *HfsplusAdapter) GetState(ctx context.Context, device string) (dto.Files
 	}
 
 	// Check if filesystem is mounted
-	outputMount, _, _ := runCommand(ctx, "mount")
+	outputMount, _, _ := runCommandCached(ctx, "mount")
 	state.IsMounted = strings.Contains(outputMount, device)
 
 	// Store check output in additional info

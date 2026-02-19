@@ -291,8 +291,8 @@ func (a *XfsAdapter) GetState(ctx context.Context, device string) (dto.Filesyste
 		AdditionalInfo: make(map[string]interface{}),
 	}
 
-	// Run xfs_repair in no-modify mode to check state
-	output, exitCode, err := runCommand(ctx, a.fsckCommand, "-n", device)
+	// Run state command in no-modify mode to check state
+	output, exitCode, err := runCommandCached(ctx, a.stateCommand, "-n", device)
 	if err != nil {
 		return state, errors.WithDetails(err, "Device", device)
 	}
@@ -311,7 +311,7 @@ func (a *XfsAdapter) GetState(ctx context.Context, device string) (dto.Filesyste
 	}
 
 	// Check if filesystem is mounted
-	mountOutput, _, _ := runCommand(ctx, "mount")
+	mountOutput, _, _ := runCommandCached(ctx, "mount")
 	state.IsMounted = strings.Contains(mountOutput, device)
 
 	state.AdditionalInfo["repairOutput"] = output

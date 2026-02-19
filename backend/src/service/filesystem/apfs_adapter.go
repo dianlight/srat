@@ -96,7 +96,7 @@ func (a *ApfsAdapter) GetState(ctx context.Context, device string) (dto.Filesyst
 	}
 
 	// Check if filesystem is mounted
-	outputMount, _, _ := runCommand(ctx, "mount")
+	outputMount, _, _ := runCommandCached(ctx, "mount")
 	state.IsMounted = strings.Contains(outputMount, device)
 
 	// Add note about read-only status

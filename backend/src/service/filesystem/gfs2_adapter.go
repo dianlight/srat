@@ -248,8 +248,8 @@ func (a *Gfs2Adapter) GetState(ctx context.Context, device string) (dto.Filesyst
 		AdditionalInfo: make(map[string]interface{}),
 	}
 
-	// Run a read-only check to get filesystem state
-	output, exitCode, _ := runCommand(ctx, a.fsckCommand, "-n", device)
+	// Run state command in read-only mode to get filesystem state
+	output, exitCode, _ := runCommandCached(ctx, a.stateCommand, "-n", device)
 
 	// Parse the output to determine filesystem state
 	switch exitCode {
@@ -266,7 +266,7 @@ func (a *Gfs2Adapter) GetState(ctx context.Context, device string) (dto.Filesyst
 	}
 
 	// Check if filesystem is mounted
-	outputMount, _, _ := runCommand(ctx, "mount")
+	outputMount, _, _ := runCommandCached(ctx, "mount")
 	state.IsMounted = strings.Contains(outputMount, device)
 
 	// Store check output in additional info

@@ -299,8 +299,8 @@ func (a *Ext4Adapter) GetState(ctx context.Context, device string) (dto.Filesyst
 		AdditionalInfo: make(map[string]interface{}),
 	}
 
-	// Use tune2fs -l to get filesystem state information
-	output, exitCode, err := runCommand(ctx, a.labelCommand, "-l", device)
+	// Use state command to get filesystem state information
+	output, exitCode, err := runCommandCached(ctx, a.stateCommand, "-l", device)
 	if err != nil {
 		return state, errors.WithDetails(err, "Device", device)
 	}
@@ -335,7 +335,7 @@ func (a *Ext4Adapter) GetState(ctx context.Context, device string) (dto.Filesyst
 
 	// Check if filesystem is mounted
 	// This is a simple check - in a production system, you'd want to check /proc/mounts
-	output, _, _ = runCommand(ctx, "mount")
+	output, _, _ = runCommandCached(ctx, "mount")
 	state.IsMounted = strings.Contains(output, device)
 
 	if state.StateDescription == "" {
