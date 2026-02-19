@@ -58,7 +58,13 @@ func (suite *Gfs2AdapterTestSuite) TestGetMountFlags() {
 func (suite *Gfs2AdapterTestSuite) TestIsSupported() {
 	support, err := suite.adapter.IsSupported(suite.ctx)
 	suite.NoError(err)
+	suite.False(support.CanFormat)
+	suite.True(support.CanMount)
+	suite.False(support.CanCheck)
+	suite.False(support.CanSetLabel)
+	suite.False(support.CanGetState)
 	suite.Equal("gfs2-utils", support.AlpinePackage)
+	suite.NotEmpty(support.MissingTools)
 }
 
 func (suite *Gfs2AdapterTestSuite) TestIsDeviceSupportedWithSignature() {

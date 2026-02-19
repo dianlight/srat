@@ -57,6 +57,8 @@ func (a *VfatAdapter) IsSupported(ctx context.Context) (dto.FilesystemSupport, e
 
 // Format formats a device with vfat filesystem
 func (a *VfatAdapter) Format(ctx context.Context, device string, options dto.FormatOptions, progress dto.ProgressCallback) errors.E {
+	defer invalidateCommandResultCache()
+
 	if progress != nil {
 		progress("start", 0, []string{"Starting vfat format"})
 	}
@@ -133,6 +135,8 @@ func (a *VfatAdapter) Format(ctx context.Context, device string, options dto.For
 
 // Check runs filesystem check on a vfat device
 func (a *VfatAdapter) Check(ctx context.Context, device string, options dto.CheckOptions, progress dto.ProgressCallback) (dto.CheckResult, errors.E) {
+	defer invalidateCommandResultCache()
+
 	if progress != nil {
 		progress("start", 0, []string{"Starting vfat check"})
 	}
@@ -259,6 +263,8 @@ func (a *VfatAdapter) GetLabel(ctx context.Context, device string) (string, erro
 
 // SetLabel sets the vfat filesystem label
 func (a *VfatAdapter) SetLabel(ctx context.Context, device string, label string) errors.E {
+	defer invalidateCommandResultCache()
+
 	// fatlabel device newlabel
 	output, exitCode, err := runCommand(ctx, a.labelCommand, device, label)
 	if err != nil {
@@ -278,8 +284,8 @@ func (a *VfatAdapter) GetState(ctx context.Context, device string) (dto.Filesyst
 		AdditionalInfo: make(map[string]interface{}),
 	}
 
-	// For FAT filesystems, we can run fsck in read-only mode to check state
-	output, exitCode, err := runCommand(ctx, a.fsckCommand, "-n", device)
+	// For FAT filesystems, run state command in read-only mode to check state
+	output, exitCode, err := runCommandCached(ctx, a.stateCommand, "-n", device)
 	if err != nil {
 		return state, errors.WithDetails(err, "Device", device)
 	}
@@ -295,7 +301,7 @@ func (a *VfatAdapter) GetState(ctx context.Context, device string) (dto.Filesyst
 	}
 
 	// Check if filesystem is mounted
-	mountOutput, _, _ := runCommand(ctx, "mount")
+	mountOutput, _, _ := runCommandCached(ctx, "mount")
 	state.IsMounted = strings.Contains(mountOutput, device)
 
 	state.AdditionalInfo["fsckOutput"] = output

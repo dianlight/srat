@@ -20,7 +20,7 @@ func NewXfsAdapter() FilesystemAdapter {
 		baseAdapter: baseAdapter{
 			name:          "xfs",
 			description:   "XFS Filesystem",
-			alpinePackage: "xfsprogs",
+			alpinePackage: "xfsprogs-extra",
 			mkfsCommand:   "mkfs.xfs",
 			fsckCommand:   "xfs_repair",
 			labelCommand:  "xfs_admin",
@@ -58,6 +58,8 @@ func (a *XfsAdapter) IsSupported(ctx context.Context) (dto.FilesystemSupport, er
 
 // Format formats a device with xfs filesystem
 func (a *XfsAdapter) Format(ctx context.Context, device string, options dto.FormatOptions, progress dto.ProgressCallback) errors.E {
+	defer invalidateCommandResultCache()
+
 	if progress != nil {
 		progress("start", 0, []string{"Starting xfs format"})
 	}
@@ -135,6 +137,8 @@ func (a *XfsAdapter) Format(ctx context.Context, device string, options dto.Form
 
 // Check runs filesystem check on an xfs device
 func (a *XfsAdapter) Check(ctx context.Context, device string, options dto.CheckOptions, progress dto.ProgressCallback) (dto.CheckResult, errors.E) {
+	defer invalidateCommandResultCache()
+
 	if progress != nil {
 		progress("start", 0, []string{"Starting xfs check"})
 	}
@@ -272,6 +276,8 @@ func (a *XfsAdapter) GetLabel(ctx context.Context, device string) (string, error
 
 // SetLabel sets the xfs filesystem label
 func (a *XfsAdapter) SetLabel(ctx context.Context, device string, label string) errors.E {
+	defer invalidateCommandResultCache()
+
 	// Use xfs_admin -L to set the label
 	output, exitCode, err := runCommand(ctx, a.labelCommand, "-L", label, device)
 	if err != nil {
@@ -291,8 +297,8 @@ func (a *XfsAdapter) GetState(ctx context.Context, device string) (dto.Filesyste
 		AdditionalInfo: make(map[string]interface{}),
 	}
 
-	// Run xfs_repair in no-modify mode to check state
-	output, exitCode, err := runCommand(ctx, a.fsckCommand, "-n", device)
+	// Run state command in no-modify mode to check state
+	output, exitCode, err := runCommandCached(ctx, a.stateCommand, "-n", device)
 	if err != nil {
 		return state, errors.WithDetails(err, "Device", device)
 	}
@@ -311,7 +317,7 @@ func (a *XfsAdapter) GetState(ctx context.Context, device string) (dto.Filesyste
 	}
 
 	// Check if filesystem is mounted
-	mountOutput, _, _ := runCommand(ctx, "mount")
+	mountOutput, _, _ := runCommandCached(ctx, "mount")
 	state.IsMounted = strings.Contains(mountOutput, device)
 
 	state.AdditionalInfo["repairOutput"] = output

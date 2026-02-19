@@ -55,6 +55,8 @@ func (a *ApfsAdapter) IsSupported(ctx context.Context) (dto.FilesystemSupport, e
 
 // Format formats a device with APFS filesystem
 func (a *ApfsAdapter) Format(ctx context.Context, device string, options dto.FormatOptions, progress dto.ProgressCallback) errors.E {
+	defer invalidateCommandResultCache()
+
 	if progress != nil {
 		progress("failure", 0, []string{"APFS formatting is not supported on Linux"})
 	}
@@ -63,6 +65,8 @@ func (a *ApfsAdapter) Format(ctx context.Context, device string, options dto.For
 
 // Check runs filesystem check on an APFS device
 func (a *ApfsAdapter) Check(ctx context.Context, device string, options dto.CheckOptions, progress dto.ProgressCallback) (dto.CheckResult, errors.E) {
+	defer invalidateCommandResultCache()
+
 	if progress != nil {
 		progress("failure", 0, []string{"APFS filesystem checking is not supported on Linux"})
 	}
@@ -83,6 +87,8 @@ func (a *ApfsAdapter) GetLabel(ctx context.Context, device string) (string, erro
 
 // SetLabel sets the APFS filesystem label
 func (a *ApfsAdapter) SetLabel(ctx context.Context, device string, label string) errors.E {
+	defer invalidateCommandResultCache()
+
 	return errors.Errorf("APFS label modification is not supported on Linux. APFS is read-only on this system")
 }
 
@@ -96,7 +102,7 @@ func (a *ApfsAdapter) GetState(ctx context.Context, device string) (dto.Filesyst
 	}
 
 	// Check if filesystem is mounted
-	outputMount, _, _ := runCommand(ctx, "mount")
+	outputMount, _, _ := runCommandCached(ctx, "mount")
 	state.IsMounted = strings.Contains(outputMount, device)
 
 	// Add note about read-only status

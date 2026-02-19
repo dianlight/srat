@@ -1,8 +1,11 @@
 package filesystem
 
 import (
+	"context"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -231,4 +234,108 @@ func createFakeCommand(t *testing.T, dir, name string) {
 	if err := os.WriteFile(path, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
 		t.Fatalf("failed to create fake command %s: %v", name, err)
 	}
+}
+
+func TestRunCommandCached(t *testing.T) {
+	t.Run("same command and args are cached", func(t *testing.T) {
+		tempDir := t.TempDir()
+		counterFile := filepath.Join(tempDir, "counter.txt")
+		createCountingCommand(t, tempDir, "countcmd", counterFile)
+		t.Setenv("PATH", tempDir)
+
+		commandResultCache.Flush()
+		ctx := context.Background()
+
+		firstOutput, firstExitCode, firstErr := runCommandCached(ctx, "countcmd", "arg1")
+		if firstErr != nil {
+			t.Fatalf("expected no error on first cached command execution, got %v", firstErr)
+		}
+		if firstExitCode != 0 {
+			t.Fatalf("expected first exit code 0, got %d", firstExitCode)
+		}
+
+		secondOutput, secondExitCode, secondErr := runCommandCached(ctx, "countcmd", "arg1")
+		if secondErr != nil {
+			t.Fatalf("expected no error on second cached command execution, got %v", secondErr)
+		}
+		if secondExitCode != 0 {
+			t.Fatalf("expected second exit code 0, got %d", secondExitCode)
+		}
+
+		if firstOutput != secondOutput {
+			t.Fatalf("expected cached output to match, got first=%q second=%q", firstOutput, secondOutput)
+		}
+
+		count := readCounter(t, counterFile)
+		if count != 1 {
+			t.Fatalf("expected command to execute once with identical args, got %d executions", count)
+		}
+	})
+
+	t.Run("different args use different cache entries", func(t *testing.T) {
+		tempDir := t.TempDir()
+		createFakeCommand(t, tempDir, "countcmd")
+		t.Setenv("PATH", tempDir)
+
+		commandResultCache.Flush()
+		ctx := context.Background()
+
+		_, _, err := runCommandCached(ctx, "countcmd", "arg1")
+		if err != nil {
+			t.Fatalf("expected no error on first command execution, got %v", err)
+		}
+
+		_, _, err = runCommandCached(ctx, "countcmd", "arg2")
+		if err != nil {
+			t.Fatalf("expected no error on second command execution with different args, got %v", err)
+		}
+
+		keyArg1 := commandCacheKey("countcmd", "arg1")
+		keyArg2 := commandCacheKey("countcmd", "arg2")
+		if keyArg1 == keyArg2 {
+			t.Fatalf("expected cache keys to differ for different args")
+		}
+
+		if _, found := commandResultCache.Get(keyArg1); !found {
+			t.Fatalf("expected cache entry for arg1")
+		}
+		if _, found := commandResultCache.Get(keyArg2); !found {
+			t.Fatalf("expected cache entry for arg2")
+		}
+
+		if len(commandResultCache.Items()) != 2 {
+			t.Fatalf("expected 2 cache entries for different args, got %d", len(commandResultCache.Items()))
+		}
+	})
+}
+
+func createCountingCommand(t *testing.T, dir, name, counterFile string) {
+	t.Helper()
+	path := filepath.Join(dir, name)
+	script := "#!/bin/sh\n" +
+		"count=$(cat '" + counterFile + "' 2>/dev/null || echo 0)\n" +
+		"count=$((count + 1))\n" +
+		"echo \"$count\" > '" + counterFile + "'\n" +
+		"echo \"run-$count\"\n" +
+		"exit 0\n"
+
+	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
+		t.Fatalf("failed to create counting command %s: %v", name, err)
+	}
+}
+
+func readCounter(t *testing.T, counterFile string) int {
+	t.Helper()
+	content, err := os.ReadFile(counterFile)
+	if err != nil {
+		t.Fatalf("failed to read counter file %s: %v", counterFile, err)
+	}
+
+	counter := strings.TrimSpace(string(content))
+	value, err := strconv.Atoi(counter)
+	if err != nil {
+		t.Fatalf("unexpected counter value %q: %v", counter, err)
+	}
+
+	return value
 }

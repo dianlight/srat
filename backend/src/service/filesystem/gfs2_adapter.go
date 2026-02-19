@@ -53,6 +53,8 @@ func (a *Gfs2Adapter) IsSupported(ctx context.Context) (dto.FilesystemSupport, e
 
 // Format formats a device with GFS2 filesystem
 func (a *Gfs2Adapter) Format(ctx context.Context, device string, options dto.FormatOptions, progress dto.ProgressCallback) errors.E {
+	defer invalidateCommandResultCache()
+
 	if progress != nil {
 		progress("start", 0, []string{"Starting gfs2 format"})
 	}
@@ -129,6 +131,8 @@ func (a *Gfs2Adapter) Format(ctx context.Context, device string, options dto.For
 
 // Check runs filesystem check on a GFS2 device
 func (a *Gfs2Adapter) Check(ctx context.Context, device string, options dto.CheckOptions, progress dto.ProgressCallback) (dto.CheckResult, errors.E) {
+	defer invalidateCommandResultCache()
+
 	if progress != nil {
 		progress("start", 0, []string{"Starting gfs2 check"})
 	}
@@ -238,6 +242,8 @@ func (a *Gfs2Adapter) GetLabel(ctx context.Context, device string) (string, erro
 
 // SetLabel sets the GFS2 filesystem label
 func (a *Gfs2Adapter) SetLabel(ctx context.Context, device string, label string) errors.E {
+	defer invalidateCommandResultCache()
+
 	// GFS2 does not support labels
 	return errors.Errorf("GFS2 does not support filesystem labels")
 }
@@ -248,8 +254,8 @@ func (a *Gfs2Adapter) GetState(ctx context.Context, device string) (dto.Filesyst
 		AdditionalInfo: make(map[string]interface{}),
 	}
 
-	// Run a read-only check to get filesystem state
-	output, exitCode, _ := runCommand(ctx, a.fsckCommand, "-n", device)
+	// Run state command in read-only mode to get filesystem state
+	output, exitCode, _ := runCommandCached(ctx, a.stateCommand, "-n", device)
 
 	// Parse the output to determine filesystem state
 	switch exitCode {
@@ -266,7 +272,7 @@ func (a *Gfs2Adapter) GetState(ctx context.Context, device string) (dto.Filesyst
 	}
 
 	// Check if filesystem is mounted
-	outputMount, _, _ := runCommand(ctx, "mount")
+	outputMount, _, _ := runCommandCached(ctx, "mount")
 	state.IsMounted = strings.Contains(outputMount, device)
 
 	// Store check output in additional info

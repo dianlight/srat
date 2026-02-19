@@ -58,7 +58,13 @@ func (suite *F2fsAdapterTestSuite) TestGetMountFlags() {
 func (suite *F2fsAdapterTestSuite) TestIsSupported() {
 	support, err := suite.adapter.IsSupported(suite.ctx)
 	suite.NoError(err)
+	suite.True(support.CanFormat)
+	suite.True(support.CanMount)
+	suite.True(support.CanCheck)
+	suite.False(support.CanSetLabel)
+	suite.True(support.CanGetState)
 	suite.Equal("f2fs-tools", support.AlpinePackage)
+	suite.Empty(support.MissingTools)
 }
 
 func (suite *F2fsAdapterTestSuite) TestIsDeviceSupportedWithSignature() {

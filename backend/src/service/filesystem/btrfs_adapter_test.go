@@ -59,5 +59,11 @@ func (suite *BtrfsAdapterTestSuite) TestGetMountFlags() {
 func (suite *BtrfsAdapterTestSuite) TestIsSupported() {
 	support, err := suite.adapter.IsSupported(suite.ctx)
 	suite.NoError(err)
+	suite.True(support.CanFormat)
+	suite.True(support.CanMount)
+	suite.True(support.CanCheck)
+	suite.True(support.CanSetLabel)
+	suite.True(support.CanGetState)
 	suite.Equal("btrfs-progs", support.AlpinePackage)
+	suite.Empty(support.MissingTools)
 }

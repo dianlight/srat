@@ -4,13 +4,29 @@ import (
 	"bufio"
 	"context"
 	"os/exec"
+	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/tlog"
+	gocache "github.com/patrickmn/go-cache"
 	"gitlab.com/tozd/go/errors"
 )
+
+const (
+	commandResultCacheTTL             = 30 * time.Minute
+	commandResultCacheCleanupInterval = 10 * time.Minute
+)
+
+var commandResultCache = gocache.New(commandResultCacheTTL, commandResultCacheCleanupInterval)
+
+type cachedCommandResult struct {
+	Output   string
+	ExitCode int
+	Error    errors.E
+}
 
 // CommandResult holds the exit code and error from a command execution
 type CommandResult struct {
@@ -54,6 +70,51 @@ func runCommand(ctx context.Context, name string, args ...string) (string, int, 
 	}
 
 	return strings.TrimSpace(string(output)), exitCode, nil
+}
+
+// runCommandCached executes a command and caches the result by command name and exact args.
+// This limits command execution to at most once per cache TTL for each unique command+args key.
+func runCommandCached(ctx context.Context, name string, args ...string) (string, int, errors.E) {
+	cacheKey := commandCacheKey(name, args...)
+
+	if cached, ok := commandResultCache.Get(cacheKey); ok {
+		if result, castOk := cached.(cachedCommandResult); castOk {
+			return result.Output, result.ExitCode, result.Error
+		}
+
+		commandResultCache.Delete(cacheKey)
+	}
+
+	output, exitCode, err := runCommand(ctx, name, args...)
+	commandResultCache.Set(cacheKey, cachedCommandResult{
+		Output:   output,
+		ExitCode: exitCode,
+		Error:    err,
+	}, commandResultCacheTTL)
+
+	return output, exitCode, err
+}
+
+func invalidateCommandResultCache() {
+	commandResultCache.Flush()
+}
+
+func commandCacheKey(name string, args ...string) string {
+	var builder strings.Builder
+	builder.Grow(len(name) + len(args)*8)
+	appendPart := func(part string) {
+		builder.WriteString(strconv.Itoa(len(part)))
+		builder.WriteByte(':')
+		builder.WriteString(part)
+		builder.WriteByte('|')
+	}
+
+	appendPart(name)
+	for _, arg := range args {
+		appendPart(arg)
+	}
+
+	return builder.String()
 }
 
 // checkCommandAvailability checks if required commands are available

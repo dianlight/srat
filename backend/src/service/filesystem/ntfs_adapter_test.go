@@ -53,5 +53,11 @@ func (suite *NtfsAdapterTestSuite) TestGetMountFlags() {
 func (suite *NtfsAdapterTestSuite) TestIsSupported() {
 	support, err := suite.adapter.IsSupported(suite.ctx)
 	suite.NoError(err)
+	suite.True(support.CanFormat)
+	suite.True(support.CanMount)
+	suite.True(support.CanCheck)
+	suite.True(support.CanSetLabel)
+	suite.True(support.CanGetState)
 	suite.Equal("ntfs-3g-progs", support.AlpinePackage)
+	suite.Empty(support.MissingTools)
 }

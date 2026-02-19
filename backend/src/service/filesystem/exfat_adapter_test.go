@@ -59,7 +59,13 @@ func (suite *ExfatAdapterTestSuite) TestGetMountFlags() {
 func (suite *ExfatAdapterTestSuite) TestIsSupported() {
 	support, err := suite.adapter.IsSupported(suite.ctx)
 	suite.NoError(err)
+	suite.True(support.CanFormat)
+	suite.True(support.CanMount)
+	suite.True(support.CanCheck)
+	suite.True(support.CanSetLabel)
+	suite.True(support.CanGetState)
 	suite.Equal("exfatprogs", support.AlpinePackage)
+	suite.Empty(support.MissingTools)
 }
 
 func (suite *ExfatAdapterTestSuite) TestIsDeviceSupportedWithSignature() {

@@ -20,7 +20,7 @@ require (
 	github.com/adelolmo/hd-idle v0.0.0-20260125082707-310727a56de0
 	github.com/angusgmorrison/logfusc v0.1.0
 	github.com/benmcclelland/sgio v0.0.0-20250710154739-45e823ff1f46
-	github.com/danielgtaylor/huma/v2 v2.36.0
+	github.com/danielgtaylor/huma/v2 v2.37.0
 	github.com/dianlight/smartmontools-go v0.2.6
 	github.com/dianlight/tlog v0.2.2
 	github.com/fatih/color v1.18.0
@@ -94,7 +94,6 @@ require (
 	github.com/zarldev/goenums v0.4.4 // indirect
 	go.opentelemetry.io/otel v1.40.0 // indirect
 	go.opentelemetry.io/otel/trace v1.40.0 // indirect
-	golang.org/x/net v0.50.0 // indirect
 	golang.org/x/term v0.40.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gorm.io/driver/mysql v1.6.0 // indirect
@@ -149,7 +148,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.1 // indirect
 	golang.org/x/crypto v0.48.0 // indirect
-	golang.org/x/exp v0.0.0-20260212183809-81e46e3db34a
+	golang.org/x/exp v0.0.0-20260218203240-3dfff04db8fa
 	golang.org/x/mod v0.33.0 // indirect
 	golang.org/x/sync v0.19.0
 	golang.org/x/text v0.34.0 // indirect

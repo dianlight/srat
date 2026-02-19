@@ -53,6 +53,8 @@ func (a *Ext4Adapter) IsSupported(ctx context.Context) (dto.FilesystemSupport, e
 
 // Format formats a device with ext4 filesystem
 func (a *Ext4Adapter) Format(ctx context.Context, device string, options dto.FormatOptions, progress dto.ProgressCallback) errors.E {
+	defer invalidateCommandResultCache()
+
 	// Report start
 	if progress != nil {
 		progress("start", 0, []string{"Starting ext4 format"})
@@ -134,6 +136,8 @@ func (a *Ext4Adapter) Format(ctx context.Context, device string, options dto.For
 
 // Check runs filesystem check on an ext4 device
 func (a *Ext4Adapter) Check(ctx context.Context, device string, options dto.CheckOptions, progress dto.ProgressCallback) (dto.CheckResult, errors.E) {
+	defer invalidateCommandResultCache()
+
 	// Report start
 	if progress != nil {
 		progress("start", 0, []string{"Starting ext4 filesystem check"})
@@ -280,6 +284,8 @@ func (a *Ext4Adapter) GetLabel(ctx context.Context, device string) (string, erro
 
 // SetLabel sets the ext4 filesystem label
 func (a *Ext4Adapter) SetLabel(ctx context.Context, device string, label string) errors.E {
+	defer invalidateCommandResultCache()
+
 	// Use tune2fs -L to set the label
 	output, exitCode, err := runCommand(ctx, a.labelCommand, "-L", label, device)
 	if err != nil {
@@ -299,8 +305,8 @@ func (a *Ext4Adapter) GetState(ctx context.Context, device string) (dto.Filesyst
 		AdditionalInfo: make(map[string]interface{}),
 	}
 
-	// Use tune2fs -l to get filesystem state information
-	output, exitCode, err := runCommand(ctx, a.labelCommand, "-l", device)
+	// Use state command to get filesystem state information
+	output, exitCode, err := runCommandCached(ctx, a.stateCommand, "-l", device)
 	if err != nil {
 		return state, errors.WithDetails(err, "Device", device)
 	}
@@ -335,7 +341,7 @@ func (a *Ext4Adapter) GetState(ctx context.Context, device string) (dto.Filesyst
 
 	// Check if filesystem is mounted
 	// This is a simple check - in a production system, you'd want to check /proc/mounts
-	output, _, _ = runCommand(ctx, "mount")
+	output, _, _ = runCommandCached(ctx, "mount")
 	state.IsMounted = strings.Contains(output, device)
 
 	if state.StateDescription == "" {

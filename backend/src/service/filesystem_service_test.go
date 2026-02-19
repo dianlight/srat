@@ -262,7 +262,7 @@ func (suite *FilesystemServiceTestSuite) TestGetFilesystemSpecificMountFlags() {
 }
 
 func (suite *FilesystemServiceTestSuite) TestResolveLinuxFsModule() {
-	suite.Equal("", suite.fsService.ResolveLinuxFsModule(""))
+	suite.Empty(suite.fsService.ResolveLinuxFsModule(""))
 	suite.Equal("ntfs3", suite.fsService.ResolveLinuxFsModule("ntfs"))
 	suite.Equal("apfs", suite.fsService.ResolveLinuxFsModule("apfs"))
 	suite.Equal("unknownfs", suite.fsService.ResolveLinuxFsModule("unknownfs"))

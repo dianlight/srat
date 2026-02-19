@@ -53,6 +53,8 @@ func (a *HfsplusAdapter) IsSupported(ctx context.Context) (dto.FilesystemSupport
 
 // Format formats a device with HFS+ filesystem
 func (a *HfsplusAdapter) Format(ctx context.Context, device string, options dto.FormatOptions, progress dto.ProgressCallback) errors.E {
+	defer invalidateCommandResultCache()
+
 	if progress != nil {
 		progress("start", 0, []string{"Starting hfsplus format"})
 	}
@@ -126,6 +128,8 @@ func (a *HfsplusAdapter) Format(ctx context.Context, device string, options dto.
 
 // Check runs filesystem check on an HFS+ device
 func (a *HfsplusAdapter) Check(ctx context.Context, device string, options dto.CheckOptions, progress dto.ProgressCallback) (dto.CheckResult, errors.E) {
+	defer invalidateCommandResultCache()
+
 	if progress != nil {
 		progress("start", 0, []string{"Starting hfsplus check"})
 	}
@@ -228,6 +232,8 @@ func (a *HfsplusAdapter) GetLabel(ctx context.Context, device string) (string, e
 
 // SetLabel sets the HFS+ filesystem label
 func (a *HfsplusAdapter) SetLabel(ctx context.Context, device string, label string) errors.E {
+	defer invalidateCommandResultCache()
+
 	// HFS+ can only set label during format with -v option
 	return errors.Errorf("HFS+ does not support changing labels after format. Label must be set during mkfs.hfsplus with -v option")
 }
@@ -238,8 +244,8 @@ func (a *HfsplusAdapter) GetState(ctx context.Context, device string) (dto.Files
 		AdditionalInfo: make(map[string]interface{}),
 	}
 
-	// Run fsck to get filesystem state
-	output, exitCode, _ := runCommand(ctx, a.fsckCommand, device)
+	// Run state command to get filesystem state
+	output, exitCode, _ := runCommandCached(ctx, a.stateCommand, device)
 
 	// Parse the output to determine filesystem state
 	if exitCode == 0 {
@@ -253,7 +259,7 @@ func (a *HfsplusAdapter) GetState(ctx context.Context, device string) (dto.Files
 	}
 
 	// Check if filesystem is mounted
-	outputMount, _, _ := runCommand(ctx, "mount")
+	outputMount, _, _ := runCommandCached(ctx, "mount")
 	state.IsMounted = strings.Contains(outputMount, device)
 
 	// Store check output in additional info

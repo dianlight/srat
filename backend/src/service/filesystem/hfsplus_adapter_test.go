@@ -58,7 +58,13 @@ func (suite *HfsplusAdapterTestSuite) TestGetMountFlags() {
 func (suite *HfsplusAdapterTestSuite) TestIsSupported() {
 	support, err := suite.adapter.IsSupported(suite.ctx)
 	suite.NoError(err)
+	suite.True(support.CanFormat)
+	suite.True(support.CanMount)
+	suite.True(support.CanCheck)
+	suite.False(support.CanSetLabel)
+	suite.True(support.CanGetState)
 	suite.Equal("hfsprogs", support.AlpinePackage)
+	suite.Empty(support.MissingTools)
 }
 
 func (suite *HfsplusAdapterTestSuite) TestIsDeviceSupportedWithSignature() {

@@ -1,27 +1,40 @@
 // Shared test setup for bun:test
-// - installs a happy-dom Window as global window/document/localStorage
+// - installs happy-dom globals via GlobalRegistrator
 // - ensures process.env.APIURL is set
 // - provides a helper to create a minimal Redux store with RTK Query APIs
 
+import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { configureStore } from "@reduxjs/toolkit";
 import '@testing-library/jest-dom';
-import { Window } from "happy-dom";
-// Initialize MSW for API mocking
-// This must be imported after all globals are set up
 import "./bun-setup";
 
+const nativeGlobals = {
+    AbortController: (globalThis as any).AbortController,
+    AbortSignal: (globalThis as any).AbortSignal,
+    Event: (globalThis as any).Event,
+    EventTarget: (globalThis as any).EventTarget,
+    MessageEvent: (globalThis as any).MessageEvent,
+    BroadcastChannel: (globalThis as any).BroadcastChannel,
+    WebSocket: (globalThis as any).WebSocket,
+};
+
 // Install DOM globals immediately when this module is imported
-const win = new Window({
-    settings: {
-        enableJavaScriptEvaluation: true,
-        suppressCodeGenerationFromStringsWarning: true
-    },
-    url: "http://localhost:3000/"
-});
-(globalThis as any).window = win as any;
-(globalThis as any).document = win.document as any;
-(globalThis as any).navigator = win.navigator as any;
-(globalThis as any).location = win.location as any;
+if (!(globalThis as any).window || !(globalThis as any).document) {
+    GlobalRegistrator.register({
+        settings: {
+            enableJavaScriptEvaluation: true,
+            suppressCodeGenerationFromStringsWarning: true,
+        },
+        url: "http://localhost:3000/",
+    });
+}
+const win = (globalThis as any).window as Window & typeof globalThis;
+
+// Ensure SyntaxError exists on the happy-dom window for selector parser internals.
+if (!(win as any).SyntaxError) {
+    (win as any).SyntaxError = globalThis.SyntaxError;
+}
+(globalThis as any).SyntaxError = (win as any).SyntaxError;
 
 // Expose common DOM classes/globals used by libraries (MUI, Popper, Prism, etc.)
 (globalThis as any).Node = win.Node as any;
@@ -35,8 +48,34 @@ const win = new Window({
 (globalThis as any).ShadowRoot = (win as any).ShadowRoot as any;
 (globalThis as any).customElements = (win as any).customElements as any;
 (globalThis as any).getComputedStyle = win.getComputedStyle.bind(win);
+
+// Keep Bun-native runtime/event constructors for MSW WebSocket/BroadcastChannel internals.
+(globalThis as any).AbortController = nativeGlobals.AbortController;
+(globalThis as any).AbortSignal = nativeGlobals.AbortSignal;
+(globalThis as any).Event = nativeGlobals.Event;
+(globalThis as any).EventTarget = nativeGlobals.EventTarget;
+(globalThis as any).MessageEvent = nativeGlobals.MessageEvent;
+(globalThis as any).BroadcastChannel = nativeGlobals.BroadcastChannel;
+(globalThis as any).WebSocket = nativeGlobals.WebSocket;
 // Mark environment as test for components that conditionally load heavy browser-only modules
 ; (globalThis as any).__TEST__ = true;
+
+// happy-dom often returns zero-sized rectangles, which causes MUI Popover/Menu
+// to warn that anchorEl is not part of the document layout. Provide a stable,
+// non-zero default rectangle for test environments.
+if ((globalThis as any).HTMLElement?.prototype) {
+    (globalThis as any).HTMLElement.prototype.getBoundingClientRect = () => ({
+        x: 0,
+        y: 0,
+        top: 0,
+        left: 0,
+        right: 120,
+        bottom: 40,
+        width: 120,
+        height: 40,
+        toJSON: () => ({}),
+    });
+}
 
 // Polyfill CSSStyleSheet + adoptedStyleSheets used by lit/openapi-explorer
 if (!(globalThis as any).CSSStyleSheet) {

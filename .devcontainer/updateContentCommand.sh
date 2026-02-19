@@ -2,7 +2,7 @@
 set -x
 
 apk add --no-cache git make lsblk eudev gcc musl-dev linux-headers samba ethtool e2fsprogs e2fsprogs-extra \
- fuse3 exfatprogs ntfs-3g-progs apfs-fuse openssh-client sshfs shadow \
+ fuse3 exfatprogs btrfs-progs dosfstools 	hfsprogs f2fs-tools xfsprogs-extra ntfs-3g-progs apfs-fuse openssh-client sshfs shadow \
  git-bash-completion git-prompt graphviz nix patch smartmontools zig minisign act \
  python3 py3-pip py3-mypy ruff py3-ruff py3-pytest
 

@@ -52,6 +52,8 @@ func (a *ExfatAdapter) IsSupported(ctx context.Context) (dto.FilesystemSupport, 
 
 // Format formats a device with exFAT filesystem
 func (a *ExfatAdapter) Format(ctx context.Context, device string, options dto.FormatOptions, progress dto.ProgressCallback) errors.E {
+	defer invalidateCommandResultCache()
+
 	if progress != nil {
 		progress("start", 0, []string{"Starting exfat format"})
 	}
@@ -125,6 +127,8 @@ func (a *ExfatAdapter) Format(ctx context.Context, device string, options dto.Fo
 
 // Check runs filesystem check on an exFAT device
 func (a *ExfatAdapter) Check(ctx context.Context, device string, options dto.CheckOptions, progress dto.ProgressCallback) (dto.CheckResult, errors.E) {
+	defer invalidateCommandResultCache()
+
 	if progress != nil {
 		progress("start", 0, []string{"Starting exfat check"})
 	}
@@ -241,13 +245,22 @@ func (a *ExfatAdapter) GetLabel(ctx context.Context, device string) (string, err
 		return "", errors.Errorf("exfatlabel failed with exit code %d: %s", exitCode, output)
 	}
 
-	// exfatlabel outputs the label directly
-	label := strings.TrimSpace(output)
+	// exfatlabel outputs the label directly but search the output line with label: prefix to be more robust
+	var label string
+	for _, line := range strings.Split(output, "\n") {
+		if strings.HasPrefix(line, "label:") {
+			label = strings.TrimSpace(strings.TrimPrefix(line, "label:"))
+			break
+		}
+	}
+
 	return label, nil
 }
 
 // SetLabel sets the exFAT filesystem label
 func (a *ExfatAdapter) SetLabel(ctx context.Context, device string, label string) errors.E {
+	defer invalidateCommandResultCache()
+
 	output, exitCode, err := runCommand(ctx, a.labelCommand, device, label)
 	if err != nil {
 		return errors.WithDetails(err, "Device", device, "Label", label)
@@ -266,8 +279,8 @@ func (a *ExfatAdapter) GetState(ctx context.Context, device string) (dto.Filesys
 		AdditionalInfo: make(map[string]interface{}),
 	}
 
-	// Run a read-only check to get filesystem state
-	output, exitCode, err := runCommand(ctx, a.fsckCommand, "-n", device)
+	// Run state command in read-only mode to get filesystem state
+	output, exitCode, err := runCommandCached(ctx, a.stateCommand, "-n", device)
 	if err != nil {
 		return state, errors.WithDetails(err, "Device", device)
 	}
@@ -287,7 +300,7 @@ func (a *ExfatAdapter) GetState(ctx context.Context, device string) (dto.Filesys
 	}
 
 	// Check if filesystem is mounted
-	outputMount, _, _ := runCommand(ctx, "mount")
+	outputMount, _, _ := runCommandCached(ctx, "mount")
 	state.IsMounted = strings.Contains(outputMount, device)
 
 	// Store check output in additional info

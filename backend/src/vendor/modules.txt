@@ -80,8 +80,8 @@ github.com/cpuguy83/go-md2man/v2/md2man
 # github.com/creasty/defaults v1.8.0
 ## explicit; go 1.14
 github.com/creasty/defaults
-# github.com/danielgtaylor/huma/v2 v2.36.0
-## explicit; go 1.24.1
+# github.com/danielgtaylor/huma/v2 v2.37.0
+## explicit; go 1.25.0
 github.com/danielgtaylor/huma/v2
 github.com/danielgtaylor/huma/v2/adapters/humaflow
 github.com/danielgtaylor/huma/v2/adapters/humaflow/flow
@@ -573,7 +573,7 @@ golang.org/x/crypto/blake2b
 golang.org/x/crypto/blowfish
 golang.org/x/crypto/pbkdf2
 golang.org/x/crypto/scrypt
-# golang.org/x/exp v0.0.0-20260212183809-81e46e3db34a
+# golang.org/x/exp v0.0.0-20260218203240-3dfff04db8fa
 ## explicit; go 1.25.0
 golang.org/x/exp/constraints
 # golang.org/x/mod v0.33.0
@@ -584,7 +584,6 @@ golang.org/x/mod/module
 golang.org/x/mod/semver
 # golang.org/x/net v0.50.0
 ## explicit; go 1.24.0
-golang.org/x/net/idna
 # golang.org/x/sync v0.19.0
 ## explicit; go 1.24.0
 golang.org/x/sync/errgroup
@@ -615,9 +614,7 @@ golang.org/x/text/language
 golang.org/x/text/message
 golang.org/x/text/message/catalog
 golang.org/x/text/runes
-golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
-golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
 golang.org/x/text/width
 # golang.org/x/time v0.14.0
