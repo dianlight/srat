@@ -68,7 +68,7 @@
     "react-dom": "^19.2.4",
     "react-hook-form": "^7.71.1",
     "react-hook-form-mui": "^8.2.0",
-    "react-intersection-observer": "^10.0.2",
+    "react-intersection-observer": "^10.0.3",
     "react-redux": "^9.2.0",
     "react-router-dom": "^7.13.0",
     "react-syntax-highlighter": "^16.1.0",
