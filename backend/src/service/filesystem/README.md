@@ -48,6 +48,13 @@ The SRAT backend now implements a filesystem adapter pattern that provides a cle
 3. **Filesystem-Specific Adapters**: Implement filesystem-specific operations
 4. **Registry**: Manages and provides access to all filesystem adapters
 
+The mount and unmount low-level execution now follows the same adapter pattern:
+
+- `VolumeService` keeps validation, cache/DB updates, and event emission.
+- `FilesystemService` delegates low-level mount/unmount to the selected filesystem adapter.
+- `baseAdapter` provides the generic Linux implementation using `github.com/u-root/u-root/pkg/mount`.
+- Filesystem-specific adapters can override mount mechanics when needed (for example APFS uses `apfs-fuse`).
+
 ### Supported Filesystems
 
 | Filesystem | Alpine Package | Description                            |

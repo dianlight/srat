@@ -2,9 +2,11 @@ package filesystem
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/u-root/u-root/pkg/mount"
 	"gitlab.com/tozd/go/errors"
 )
 
@@ -46,11 +48,90 @@ func (a *ApfsAdapter) IsSupported(ctx context.Context) (dto.FilesystemSupport, e
 	// APFS is read-only on Linux via apfs-fuse package
 	// apfsutil provides information/metadata access but not format/check/modify operations
 	support := a.checkCommandAvailability()
+	support.CanMount = commandExists("apfs-fuse")
+	if !support.CanMount {
+		support.MissingTools = append(support.MissingTools, "apfs-fuse")
+	}
 	support.CanFormat = false   // APFS formatting not supported on Linux
 	support.CanCheck = false    // apfsutil provides read-only access, cannot check filesystem
 	support.CanSetLabel = false // APFS label modification not supported on Linux
 
 	return support, nil
+}
+
+// Mount mounts APFS with apfs-fuse.
+func (a *ApfsAdapter) Mount(
+	ctx context.Context,
+	source, target, fsType, data string,
+	flags uintptr,
+	prepareTarget func() error,
+) (*mount.MountPoint, errors.E) {
+	_ = fsType
+	_ = flags
+
+	if prepareTarget != nil {
+		if err := prepareTarget(); err != nil {
+			return nil, errors.WithDetails(err, "Target", target, "Message", "failed to prepare APFS mount target")
+		}
+	}
+
+	args := make([]string, 0, 4)
+	if strings.TrimSpace(data) != "" {
+		args = append(args, "-o", data)
+	}
+	args = append(args, source, target)
+
+	output, exitCode, err := runCommand(ctx, "apfs-fuse", args...)
+	if err != nil {
+		return nil, errors.WithDetails(err,
+			"Source", source,
+			"Target", target,
+			"Data", data,
+			"ExitCode", exitCode,
+			"Output", output,
+		)
+	}
+	if exitCode != 0 {
+		return nil, errors.WithDetails(errors.New("apfs-fuse mount failed"),
+			"Source", source,
+			"Target", target,
+			"Data", data,
+			"ExitCode", exitCode,
+			"Output", output,
+		)
+	}
+
+	return &mount.MountPoint{
+		Path:   target,
+		Device: source,
+		FSType: "apfs",
+		Flags:  flags,
+		Data:   data,
+	}, nil
+}
+
+// Unmount unmounts APFS using FUSE-first semantics.
+func (a *ApfsAdapter) Unmount(ctx context.Context, target string, force, lazy bool) errors.E {
+	if commandExists("fusermount3") {
+		output, exitCode, err := runCommand(ctx, "fusermount3", "-u", target)
+		if err == nil && exitCode == 0 {
+			return nil
+		}
+
+		if err != nil {
+			err = errors.WithDetails(err, "Output", output, "ExitCode", exitCode, "Target", target)
+			_ = err // fallback to generic unmount below
+		}
+	}
+
+	if err := a.baseAdapter.Unmount(ctx, target, force, lazy); err != nil {
+		return errors.WithDetails(err,
+			"Target", target,
+			"Message", fmt.Sprintf("APFS unmount failed via fusermount3 and generic unmount fallback: %v", err),
+		)
+	}
+
+	return nil
 }
 
 // Format formats a device with APFS filesystem

@@ -2,14 +2,20 @@ package osutil
 
 import (
 	"bufio"
+	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"fmt"
+	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 
 	"github.com/prometheus/procfs"
 	"golang.org/x/sys/unix"
@@ -32,10 +38,12 @@ type MountInfoEntry struct {
 }
 
 var (
-	overrideMu        sync.RWMutex
-	mountsOverride    func() ([]*procfs.MountInfo, error)
-	versionOverride   string
-	versionOverrideMu sync.RWMutex
+	overrideMu            sync.RWMutex
+	mountsOverride        func() ([]*procfs.MountInfo, error)
+	versionOverride       string
+	versionOverrideMu     sync.RWMutex
+	filesystemsOverride   func() ([]string, error)
+	filesystemsOverrideMu sync.RWMutex
 )
 
 // MockMountInfo replaces the mount info reader with the provided mount info string content
@@ -46,6 +54,24 @@ func MockMountInfo(content string) (restore func()) {
 	return setMountsOverride(func() ([]*procfs.MountInfo, error) {
 		return convertToProcs(mounts), nil
 	})
+}
+
+// MockFileSystems replaces GetFileSystems with the provided filesystem list
+// until the returned restore function is called. This is useful for testing.
+func MockFileSystems(filesystems []string) (restore func()) {
+	filesystemsOverrideMu.Lock()
+	defer filesystemsOverrideMu.Unlock()
+
+	oldOverride := filesystemsOverride
+	filesystemsOverride = func() ([]string, error) {
+		return filesystems, nil
+	}
+
+	return func() {
+		filesystemsOverrideMu.Lock()
+		defer filesystemsOverrideMu.Unlock()
+		filesystemsOverride = oldOverride
+	}
 }
 
 // parseMountInfoString parses mount info text format into MountInfoEntry structs.
@@ -468,4 +494,131 @@ func CommandExists(cmd []string) bool {
 	// For other commands, check if executable exists in PATH
 	_, err := exec.LookPath(cmdName)
 	return err == nil
+}
+
+// CreateBlockDevice creates a loop block device node using mknod.
+// Returns nil if the device already exists.
+func CreateBlockDevice(ctx context.Context, device string) error {
+	// Check if the device already exists
+	if _, err := os.Stat(device); !os.IsNotExist(err) {
+		slog.DebugContext(ctx, "Loop device already exists", "device", device)
+		return nil
+	}
+
+	// Extract major and minor numbers from device name
+	major, minor, err := extractMajorMinor(device)
+	if err != nil {
+		return fmt.Errorf("failed to extract major and minor numbers: %w", err)
+	}
+
+	// Create the block device using mknod syscall
+	dev := (major << 8) | minor
+	if err := syscall.Mknod(device, syscall.S_IFBLK|0660, dev); err != nil {
+		return fmt.Errorf("failed to create block device: %w", err)
+	}
+
+	return nil
+}
+
+// extractMajorMinor parses a loop device path (e.g. /dev/loop0) to extract major and minor numbers.
+// The major number for loop devices is always 7.
+func extractMajorMinor(device string) (int, int, error) {
+	re := regexp.MustCompile(`/dev/loop(\d+)`)
+	matches := re.FindStringSubmatch(device)
+	if len(matches) != 2 {
+		return 0, 0, fmt.Errorf("invalid device format: %s", device)
+	}
+
+	minor, err := strconv.Atoi(matches[1])
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to convert minor number: %w", err)
+	}
+
+	// The major number for loop devices is 7
+	major := 7
+	return major, minor, nil
+}
+
+// ReadLinesOffsetN reads contents from file and splits them by new line.
+// The offset tells at which line number to start.
+// The count determines the number of lines to read (starting from offset):
+// n >= 0: at most n lines
+// n < 0: whole file
+// Source: https://github.com/shirou/gopsutil
+func readLinesOffsetN(filename string, offset uint, n int) ([]string, error) {
+	f, err := os.Open(filename)
+	if err != nil {
+		return []string{""}, err
+	}
+	defer f.Close()
+
+	var ret []string
+
+	r := bufio.NewReader(f)
+	for i := uint(0); i < uint(n)+offset || n < 0; i++ {
+		line, err := r.ReadString('\n')
+		if err != nil {
+			if err == io.EOF && len(line) > 0 {
+				ret = append(ret, strings.Trim(line, "\n"))
+			}
+			break
+		}
+		if i < offset {
+			continue
+		}
+		ret = append(ret, strings.Trim(line, "\n"))
+	}
+
+	return ret, nil
+}
+
+// Source: https://github.com/shirou/gopsutil
+func GetFileSystems() ([]string, error) {
+	filesystemsOverrideMu.RLock()
+	override := filesystemsOverride
+	filesystemsOverrideMu.RUnlock()
+
+	if override != nil {
+		return override()
+	}
+
+	filename := "/proc/filesystems"
+	lines, err := readLinesOffsetN(filename, 0, -1)
+	if err != nil {
+		return nil, err
+	}
+	var ret []string
+	seen := make(map[string]struct{})
+	allowedNodev := map[string]struct{}{
+		"zfs":     {},
+		"fuse":    {},
+		"fuse3":   {},
+		"fuseblk": {},
+	}
+	for _, line := range lines {
+		cleaned := strings.TrimSpace(line)
+		if cleaned == "" {
+			continue
+		}
+		if !strings.HasPrefix(cleaned, "nodev") {
+			if _, exists := seen[cleaned]; !exists {
+				ret = append(ret, cleaned)
+				seen[cleaned] = struct{}{}
+			}
+			continue
+		}
+		fields := strings.Fields(cleaned)
+		if len(fields) != 2 {
+			continue
+		}
+		fsType := strings.TrimSpace(fields[1])
+		if _, ok := allowedNodev[fsType]; ok {
+			if _, exists := seen[fsType]; !exists {
+				ret = append(ret, fsType)
+				seen[fsType] = struct{}{}
+			}
+		}
+	}
+
+	return ret, nil
 }

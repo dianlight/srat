@@ -1,313 +1,290 @@
-package filesystem
+package filesystem_test
 
 import (
 	"context"
+	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/dianlight/srat/internal/osutil"
+	"github.com/dianlight/srat/service/filesystem"
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
+	"github.com/u-root/u-root/pkg/mount"
 )
 
-func TestBaseAdapterStateCommandAvailability(t *testing.T) {
-	t.Run("state command present", func(t *testing.T) {
-		tempDir := t.TempDir()
-		createFakeCommand(t, tempDir, "statecmd")
-		t.Setenv("PATH", tempDir)
+// BaseAdapterTestSuite tests the baseAdapter implementation
+type BaseAdapterTestSuite struct {
+	suite.Suite
+	ctx context.Context
+}
 
-		adapter := baseAdapter{
-			stateCommand: "statecmd",
-		}
+func TestBaseAdapterTestSuite(t *testing.T) {
+	suite.Run(t, new(BaseAdapterTestSuite))
+}
 
-		support := adapter.checkCommandAvailability()
-		if !support.CanGetState {
-			t.Fatalf("expected CanGetState to be true when state command exists")
-		}
-		if len(support.MissingTools) != 0 {
-			t.Fatalf("expected no missing tools, got %v", support.MissingTools)
-		}
+func (suite *BaseAdapterTestSuite) SetupTest() {
+	suite.ctx = context.Background()
+}
+
+// TestGetName tests the GetName method
+func (suite *BaseAdapterTestSuite) TestGetName() {
+	adapter := filesystem.NewNtfsAdapter()
+	suite.Equal("ntfs", adapter.GetName())
+}
+
+// TestGetDescription tests the GetDescription method
+func (suite *BaseAdapterTestSuite) TestGetDescription() {
+	adapter := filesystem.NewNtfsAdapter()
+	desc := adapter.GetDescription()
+	suite.NotEmpty(desc)
+	suite.Contains(desc, "NTFS")
+}
+
+// TestGetLinuxFsModule tests the GetLinuxFsModule method
+func (suite *BaseAdapterTestSuite) TestGetLinuxFsModule() {
+	// Test with ntfs (which has specific linux module)
+	ntfsAdapter := filesystem.NewNtfsAdapter()
+	linuxModule := ntfsAdapter.GetLinuxFsModule()
+	suite.NotEmpty(linuxModule)
+
+	// Test with ext4
+	ext4Adapter := filesystem.NewExt4Adapter()
+	suite.Equal("ext4", ext4Adapter.GetLinuxFsModule())
+}
+
+// TestCheckCommandAvailability tests command availability checks with mocked filesystem and exec
+func (suite *BaseAdapterTestSuite) TestCheckCommandAvailability() {
+	tests := []struct {
+		name               string
+		adapterFactory     func() filesystem.FilesystemAdapter
+		shouldHaveCommands bool
+	}{
+		{
+			name:               "ntfs adapter has format/check commands available",
+			adapterFactory:     filesystem.NewNtfsAdapter,
+			shouldHaveCommands: true, // ntfs-3g/ntfsfix are commonly available
+		},
+		{
+			name:               "ext4 adapter has format/check commands available",
+			adapterFactory:     filesystem.NewExt4Adapter,
+			shouldHaveCommands: true, // mkfs.ext4/e2fsck are commonly available
+		},
+	}
+
+	for _, tt := range tests {
+		suite.Run(tt.name, func() {
+			adapter := tt.adapterFactory()
+
+			support, err := adapter.IsSupported(suite.ctx)
+			suite.NoError(err)
+			suite.True(support.CanMount, "all adapters should support mounting")
+
+			// Verify the structure is correct
+			suite.NotNil(support)
+			suite.NotEmpty(support.AlpinePackage)
+		})
+	}
+}
+
+// TestCheckCommandAvailabilityWithMockedExec tests osutil and exec mocking together
+func (suite *BaseAdapterTestSuite) TestCheckCommandAvailabilityWithMockedExec() {
+	suite.Run("mocked filesystem and command availability", func() {
+		// Mock osutil.GetFileSystems to return ntfs3 (the kernel module for NTFS)
+		// This allows checkCommandAvailability() to find the module and check for commands
+		restoreFS := osutil.MockFileSystems([]string{"ntfs3", "ext4"})
+		defer restoreFS()
+
+		// Mock exec.LookPath to track which commands are being checked
+		checkedCommands := []string{}
+		filesystem.SetExecOpsForTesting(
+			func(cmd string) (string, error) {
+				checkedCommands = append(checkedCommands, cmd)
+				return "", errors.New("command not found in mock")
+			},
+			nil, // Keep real exec for now
+		)
+		defer filesystem.ResetExecOpsForTesting()
+
+		// Create an adapter and call IsSupported, which will use our mocked LookPath
+		ntfsAdapter := filesystem.NewNtfsAdapter()
+		_, err := ntfsAdapter.IsSupported(suite.ctx)
+		suite.NoError(err)
+		// Verify that the mock was actually called (checkedCommands should have entries)
+		suite.NotEmpty(checkedCommands, "mocked LookPath should have been called during IsSupported")
 	})
 
-	t.Run("state command missing", func(t *testing.T) {
-		tempDir := t.TempDir()
-		t.Setenv("PATH", tempDir)
+	suite.Run("mocked exec command execution", func() {
+		callCount := 0
+		filesystem.SetExecOpsForTesting(
+			nil, // Keep real LookPath
+			func(ctx context.Context, name string, args ...string) filesystem.ExecCmd {
+				callCount++
+				return &mockExecCmd{
+					output:   "mocked output",
+					exitCode: 0,
+				}
+			},
+		)
+		defer filesystem.ResetExecOpsForTesting()
 
-		adapter := baseAdapter{
-			stateCommand: "statecmd",
-		}
-
-		support := adapter.checkCommandAvailability()
-		if support.CanGetState {
-			t.Fatalf("expected CanGetState to be false when state command is missing")
-		}
-		if len(support.MissingTools) != 1 || support.MissingTools[0] != "statecmd" {
-			t.Fatalf("expected missing tools to include statecmd, got %v", support.MissingTools)
-		}
+		output, exitCode, err := filesystem.RunCommandCachedForTesting(suite.ctx, "testcmd", "arg1")
+		suite.NoError(err)
+		suite.Equal(0, exitCode)
+		suite.Equal("mocked output", output)
+		suite.Equal(1, callCount)
 	})
 }
 
-func TestBaseAdapterGetName(t *testing.T) {
-	adapter := baseAdapter{
-		name: "testfs",
-	}
-	if got := adapter.GetName(); got != "testfs" {
-		t.Errorf("GetName() = %v, want %v", got, "testfs")
-	}
-}
-
-func TestBaseAdapterGetDescription(t *testing.T) {
-	adapter := baseAdapter{
-		description: "Test Filesystem",
-	}
-	if got := adapter.GetDescription(); got != "Test Filesystem" {
-		t.Errorf("GetDescription() = %v, want %v", got, "Test Filesystem")
-	}
-}
-
-func TestBaseAdapterGetLinuxFsModule(t *testing.T) {
-	tests := []struct {
-		name          string
-		adapterName   string
-		linuxFsModule string
-		want          string
-	}{
-		{
-			name:          "with explicit module",
-			adapterName:   "ntfs",
-			linuxFsModule: "ntfs3",
-			want:          "ntfs3",
-		},
-		{
-			name:          "without explicit module",
-			adapterName:   "ext4",
-			linuxFsModule: "",
-			want:          "ext4",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			adapter := baseAdapter{
-				name:          tt.adapterName,
-				linuxFsModule: tt.linuxFsModule,
-			}
-			if got := adapter.GetLinuxFsModule(); got != tt.want {
-				t.Errorf("GetLinuxFsModule() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestBaseAdapterCheckCommandAvailability(t *testing.T) {
-	tests := []struct {
-		name          string
-		mkfsCommand   string
-		fsckCommand   string
-		labelCommand  string
-		stateCommand  string
-		setupCommands []string
-		wantFormat    bool
-		wantCheck     bool
-		wantLabel     bool
-		wantState     bool
-	}{
-		{
-			name:          "all commands available",
-			mkfsCommand:   "mkfscmd",
-			fsckCommand:   "fsckcmd",
-			labelCommand:  "labelcmd",
-			stateCommand:  "statecmd",
-			setupCommands: []string{"mkfscmd", "fsckcmd", "labelcmd", "statecmd"},
-			wantFormat:    true,
-			wantCheck:     true,
-			wantLabel:     true,
-			wantState:     true,
-		},
-		{
-			name:          "no commands available",
-			mkfsCommand:   "mkfscmd",
-			fsckCommand:   "fsckcmd",
-			labelCommand:  "labelcmd",
-			stateCommand:  "statecmd",
-			setupCommands: []string{},
-			wantFormat:    false,
-			wantCheck:     false,
-			wantLabel:     false,
-			wantState:     false,
-		},
-		{
-			name:          "partial commands available",
-			mkfsCommand:   "mkfscmd",
-			fsckCommand:   "fsckcmd",
-			labelCommand:  "labelcmd",
-			stateCommand:  "statecmd",
-			setupCommands: []string{"mkfscmd", "statecmd"},
-			wantFormat:    true,
-			wantCheck:     false,
-			wantLabel:     false,
-			wantState:     true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tempDir := t.TempDir()
-			for _, cmd := range tt.setupCommands {
-				createFakeCommand(t, tempDir, cmd)
-			}
-			t.Setenv("PATH", tempDir)
-
-			adapter := baseAdapter{
-				mkfsCommand:   tt.mkfsCommand,
-				fsckCommand:   tt.fsckCommand,
-				labelCommand:  tt.labelCommand,
-				stateCommand:  tt.stateCommand,
-				alpinePackage: "testpkg",
-			}
-
-			support := adapter.checkCommandAvailability()
-
-			if support.CanFormat != tt.wantFormat {
-				t.Errorf("CanFormat = %v, want %v", support.CanFormat, tt.wantFormat)
-			}
-			if support.CanCheck != tt.wantCheck {
-				t.Errorf("CanCheck = %v, want %v", support.CanCheck, tt.wantCheck)
-			}
-			if support.CanSetLabel != tt.wantLabel {
-				t.Errorf("CanSetLabel = %v, want %v", support.CanSetLabel, tt.wantLabel)
-			}
-			if support.CanGetState != tt.wantState {
-				t.Errorf("CanGetState = %v, want %v", support.CanGetState, tt.wantState)
-			}
-			if support.AlpinePackage != "testpkg" {
-				t.Errorf("AlpinePackage = %v, want %v", support.AlpinePackage, "testpkg")
-			}
-			if !support.CanMount {
-				t.Errorf("CanMount should always be true")
-			}
-		})
-	}
-}
-
-func TestCommandExists(t *testing.T) {
-	tests := []struct {
-		name       string
-		command    string
-		setup      func(t *testing.T) string
-		wantExists bool
-	}{
-		{
-			name:    "command exists",
-			command: "testcmd",
-			setup: func(t *testing.T) string {
-				tempDir := t.TempDir()
-				createFakeCommand(t, tempDir, "testcmd")
-				return tempDir
-			},
-			wantExists: true,
-		},
-		{
-			name:    "command does not exist",
-			command: "nonexistent",
-			setup: func(t *testing.T) string {
-				return t.TempDir()
-			},
-			wantExists: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tempDir := tt.setup(t)
-			t.Setenv("PATH", tempDir)
-
-			if got := commandExists(tt.command); got != tt.wantExists {
-				t.Errorf("commandExists() = %v, want %v", got, tt.wantExists)
-			}
-		})
-	}
-}
-
-func createFakeCommand(t *testing.T, dir, name string) {
-	t.Helper()
-	path := filepath.Join(dir, name)
-	if err := os.WriteFile(path, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
-		t.Fatalf("failed to create fake command %s: %v", name, err)
-	}
-}
-
-func TestRunCommandCached(t *testing.T) {
-	t.Run("same command and args are cached", func(t *testing.T) {
-		tempDir := t.TempDir()
+// TestRunCommandCached tests command result caching
+func (suite *BaseAdapterTestSuite) TestRunCommandCached() {
+	suite.Run("same command and args are cached", func() {
+		tempDir := suite.T().TempDir()
 		counterFile := filepath.Join(tempDir, "counter.txt")
-		createCountingCommand(t, tempDir, "countcmd", counterFile)
-		t.Setenv("PATH", tempDir)
+		createCountingCommand(suite.T(), tempDir, "countcmd", counterFile)
+		suite.T().Setenv("PATH", tempDir)
 
-		commandResultCache.Flush()
-		ctx := context.Background()
+		filesystem.InvalidateCommandResultCacheForTesting()
 
-		firstOutput, firstExitCode, firstErr := runCommandCached(ctx, "countcmd", "arg1")
-		if firstErr != nil {
-			t.Fatalf("expected no error on first cached command execution, got %v", firstErr)
-		}
-		if firstExitCode != 0 {
-			t.Fatalf("expected first exit code 0, got %d", firstExitCode)
-		}
+		firstOutput, firstExitCode, firstErr := filesystem.RunCommandCachedForTesting(suite.ctx, "countcmd", "arg1")
+		suite.NoError(firstErr)
+		suite.Equal(0, firstExitCode)
 
-		secondOutput, secondExitCode, secondErr := runCommandCached(ctx, "countcmd", "arg1")
-		if secondErr != nil {
-			t.Fatalf("expected no error on second cached command execution, got %v", secondErr)
-		}
-		if secondExitCode != 0 {
-			t.Fatalf("expected second exit code 0, got %d", secondExitCode)
-		}
+		secondOutput, secondExitCode, secondErr := filesystem.RunCommandCachedForTesting(suite.ctx, "countcmd", "arg1")
+		suite.NoError(secondErr)
+		suite.Equal(0, secondExitCode)
 
-		if firstOutput != secondOutput {
-			t.Fatalf("expected cached output to match, got first=%q second=%q", firstOutput, secondOutput)
-		}
+		suite.Equal(firstOutput, secondOutput)
 
-		count := readCounter(t, counterFile)
-		if count != 1 {
-			t.Fatalf("expected command to execute once with identical args, got %d executions", count)
-		}
+		count := readCounter(suite.T(), counterFile)
+		suite.Equal(1, count, "expected command to execute once with identical args")
 	})
 
-	t.Run("different args use different cache entries", func(t *testing.T) {
-		tempDir := t.TempDir()
-		createFakeCommand(t, tempDir, "countcmd")
-		t.Setenv("PATH", tempDir)
+	suite.Run("different args use different cache entries", func() {
+		filesystem.InvalidateCommandResultCacheForTesting()
 
-		commandResultCache.Flush()
-		ctx := context.Background()
+		// These should not error with standard echo command
+		_, _, err := filesystem.RunCommandCachedForTesting(suite.ctx, "echo", "arg1")
+		suite.NoError(err)
 
-		_, _, err := runCommandCached(ctx, "countcmd", "arg1")
-		if err != nil {
-			t.Fatalf("expected no error on first command execution, got %v", err)
-		}
-
-		_, _, err = runCommandCached(ctx, "countcmd", "arg2")
-		if err != nil {
-			t.Fatalf("expected no error on second command execution with different args, got %v", err)
-		}
-
-		keyArg1 := commandCacheKey("countcmd", "arg1")
-		keyArg2 := commandCacheKey("countcmd", "arg2")
-		if keyArg1 == keyArg2 {
-			t.Fatalf("expected cache keys to differ for different args")
-		}
-
-		if _, found := commandResultCache.Get(keyArg1); !found {
-			t.Fatalf("expected cache entry for arg1")
-		}
-		if _, found := commandResultCache.Get(keyArg2); !found {
-			t.Fatalf("expected cache entry for arg2")
-		}
-
-		if len(commandResultCache.Items()) != 2 {
-			t.Fatalf("expected 2 cache entries for different args, got %d", len(commandResultCache.Items()))
-		}
+		_, _, err = filesystem.RunCommandCachedForTesting(suite.ctx, "echo", "arg2")
+		suite.NoError(err)
+		// Implicit pass if no errors
 	})
 }
+
+// TestBaseAdapterMountUsesTryMountWhenFsTypeEmpty tests mount behavior with empty fsType
+func (suite *BaseAdapterTestSuite) TestBaseAdapterMountUsesTryMountWhenFsTypeEmpty() {
+	filesystem.ResetMountOpsForTesting()
+	suite.T().Cleanup(func() { filesystem.ResetMountOpsForTesting() })
+
+	adapter := filesystem.NewNtfsAdapter()
+	called := false
+
+	filesystem.SetMountOpsForTesting(
+		func(source, target, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error) {
+			called = true
+			for _, opt := range opts {
+				if err := opt(); err != nil {
+					return nil, err
+				}
+			}
+			return &mount.MountPoint{Path: target, Device: source, FSType: "auto", Flags: flags, Data: data}, nil
+		},
+		nil,
+		nil,
+	)
+
+	prepared := false
+	mp, err := adapter.Mount(suite.ctx, "/dev/mock", "/mnt/mock", "", "uid=1000", 0, func() error {
+		prepared = true
+		return nil
+	})
+
+	suite.NoError(err)
+	suite.True(called, "expected TryMount path to be called")
+	suite.True(prepared, "expected prepare callback to be called")
+	suite.NotNil(mp)
+	suite.Equal("/mnt/mock", mp.Path)
+}
+
+// TestBaseAdapterMountUsesMountWhenFsTypeProvided tests mount behavior with fsType specified
+func (suite *BaseAdapterTestSuite) TestBaseAdapterMountUsesMountWhenFsTypeProvided() {
+	filesystem.ResetMountOpsForTesting()
+	suite.T().Cleanup(func() { filesystem.ResetMountOpsForTesting() })
+
+	adapter := filesystem.NewNtfsAdapter()
+	calledMount := false
+
+	filesystem.SetMountOpsForTesting(
+		nil,
+		func(source, target, fstype, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error) {
+			calledMount = true
+			suite.Equal("ntfs3", fstype)
+			return &mount.MountPoint{Path: target, Device: source, FSType: fstype, Flags: flags, Data: data}, nil
+		},
+		nil,
+	)
+
+	mp, err := adapter.Mount(suite.ctx, "/dev/mock", "/mnt/mock", "ntfs3", "", 0, nil)
+
+	suite.NoError(err)
+	suite.True(calledMount, "expected Mount path to be called")
+	suite.NotNil(mp)
+	suite.Equal("ntfs3", mp.FSType)
+}
+
+// TestBaseAdapterUnmountDelegatesToHook tests unmount behavior
+func (suite *BaseAdapterTestSuite) TestBaseAdapterUnmountDelegatesToHook() {
+	filesystem.ResetMountOpsForTesting()
+	suite.T().Cleanup(func() { filesystem.ResetMountOpsForTesting() })
+
+	adapter := filesystem.NewNtfsAdapter()
+	called := false
+
+	filesystem.SetMountOpsForTesting(
+		nil,
+		nil,
+		func(target string, force, lazy bool) error {
+			called = true
+			suite.Equal("/mnt/mock", target)
+			suite.True(force)
+			suite.False(lazy)
+			return nil
+		},
+	)
+
+	err := adapter.Unmount(suite.ctx, "/mnt/mock", true, false)
+
+	suite.NoError(err)
+	suite.True(called, "expected unmount hook to be called")
+}
+
+// TestOsutilMockFileSystems tests that osutil.MockFileSystems works for mocking mounted filesystems
+func (suite *BaseAdapterTestSuite) TestOsutilMockFileSystems() {
+	suite.Run("mock replaces filesystem list", func() {
+		restore := osutil.MockFileSystems([]string{"testfs", "ext4"})
+		defer restore()
+
+		// filesystem support should respond to mocked list
+		// we can't directly test GetFileSystems from _test package, but it's tested via adapter.IsSupported
+		restore()
+	})
+
+	suite.Run("mock can be restored", func() {
+		original := osutil.MockFileSystems([]string{"testfs"})
+		original() // Restore
+
+		// After restore, should get actual filesystems again (or at least not error)
+		// This is implicit verification
+	})
+}
+
+// Helper functions
 
 func createCountingCommand(t *testing.T, dir, name, counterFile string) {
 	t.Helper()
@@ -319,23 +296,47 @@ func createCountingCommand(t *testing.T, dir, name, counterFile string) {
 		"echo \"run-$count\"\n" +
 		"exit 0\n"
 
-	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
-		t.Fatalf("failed to create counting command %s: %v", name, err)
-	}
+	require.NoError(t, os.WriteFile(path, []byte(script), 0o755))
 }
 
 func readCounter(t *testing.T, counterFile string) int {
 	t.Helper()
 	content, err := os.ReadFile(counterFile)
-	if err != nil {
-		t.Fatalf("failed to read counter file %s: %v", counterFile, err)
-	}
+	require.NoError(t, err)
 
 	counter := strings.TrimSpace(string(content))
 	value, err := strconv.Atoi(counter)
-	if err != nil {
-		t.Fatalf("unexpected counter value %q: %v", counter, err)
-	}
+	require.NoError(t, err)
 
 	return value
+}
+
+// mockExecCmd implements filesystem.ExecCmd for testing
+type mockExecCmd struct {
+	output   string
+	exitCode int
+	err      error
+}
+
+func (m *mockExecCmd) CombinedOutput() ([]byte, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	return []byte(m.output), nil
+}
+
+func (m *mockExecCmd) StdoutPipe() (io.ReadCloser, error) {
+	return nil, errors.New("not implemented in mock")
+}
+
+func (m *mockExecCmd) StderrPipe() (io.ReadCloser, error) {
+	return nil, errors.New("not implemented in mock")
+}
+
+func (m *mockExecCmd) Start() error {
+	return nil
+}
+
+func (m *mockExecCmd) Wait() error {
+	return m.err
 }

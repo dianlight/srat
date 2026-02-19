@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/srat/service/filesystem"
 	"github.com/stretchr/testify/suite"
 )
@@ -56,6 +57,9 @@ func (suite *ReiserfsAdapterTestSuite) TestGetMountFlags() {
 }
 
 func (suite *ReiserfsAdapterTestSuite) TestIsSupported() {
+	restore := osutil.MockFileSystems([]string{"reiserfs", "ext4"})
+	defer restore()
+
 	support, err := suite.adapter.IsSupported(suite.ctx)
 	suite.NoError(err)
 	suite.False(support.CanFormat)
