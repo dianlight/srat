@@ -5,13 +5,10 @@ import (
 	"log/slog"
 	"maps"
 	"os"
-	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
-	"syscall"
 
 	"fmt"
 
@@ -51,7 +48,6 @@ type VolumeServiceInterface interface {
 	PatchMountPointSettings(root string, path string, settingsPatch dto.MountPointData) (*dto.MountPointData, errors.E)
 	// Test only
 	MockSetProcfsGetMounts(f func() ([]*procfs.MountInfo, error))
-	CreateBlockDevice(device string) error
 }
 
 type VolumeService struct {
@@ -73,10 +69,6 @@ type VolumeService struct {
 	procfsGetMounts func() ([]*procfs.MountInfo, error)
 	disks           *dto.DiskMap
 	refreshVersion  uint32
-	// test hooks for mount operations
-	tryMountFunc func(source, target, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error)
-	doMountFunc  func(source, target, fstype, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error)
-	unmountFunc  func(target string, force, lazy bool) error
 }
 
 type VolumeServiceProps struct {
@@ -114,9 +106,6 @@ func NewVolumeService(
 		procfsGetMounts: procfs.GetMounts,
 		disks:           &dto.DiskMap{},
 		refreshVersion:  0,
-		tryMountFunc:    mount.TryMount,
-		doMountFunc:     mount.Mount,
-		unmountFunc:     mount.Unmount,
 	}
 
 	var unsubscribe [6]func()
@@ -347,16 +336,12 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 	}
 
 	mountFsType := ""
-	if md.FSType != nil && *md.FSType != "" {
-		mountFsType = ms.fs_service.ResolveLinuxFsModule(*md.FSType)
-		if mountFsType == "" {
-			mountFsType = *md.FSType
-		}
+	if md.FSType != nil {
+		mountFsType = *md.FSType
 	}
 
 	slog.DebugContext(ms.ctx, "Attempting to mount volume", "device", md.DeviceId, "path", md.Path, "fstype", md.FSType, "mount_fstype", mountFsType, "flags", flags, "data", data)
 
-	var mp *mount.MountPoint
 	// Ensure secure directory permissions when creating mount point
 	mountFunc := func() error { return os.MkdirAll(md.Path, 0o750) }
 
@@ -386,16 +371,9 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 		)
 	}
 
-	// FIXME: Manage mount with different roots if needed
-	if md.FSType == nil || *md.FSType == "" {
-		// Use TryMount if FSType is not specified
-		mp, errS = ms.tryMountFunc(*md.Partition.DevicePath, md.Path, data, flags, mountFunc)
-	} else {
-		// Use Mount if FSType is specified
-		mp, errS = ms.doMountFunc(*md.Partition.DevicePath, md.Path, mountFsType, data, flags, mountFunc)
-	}
+	mp, errMount := ms.fs_service.MountPartition(ms.ctx, *md.Partition.DevicePath, md.Path, mountFsType, data, flags, mountFunc)
 
-	if errS != nil {
+	if errMount != nil {
 		// Provide detailed error message with all context
 
 		fsTypeStr := "auto"
@@ -411,7 +389,7 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 			"mount_path", md.Path,
 			"flags", flags,
 			"data", data,
-			"mount_error", errS,
+			"mount_error", errMount,
 			"mountpoint_details", mp)
 
 		// Attempt to clean up directory if we created it and mount failed
@@ -425,7 +403,7 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 		}
 
 		return errors.WithDetails(dto.ErrorMountFail,
-			"Detail", fmt.Sprintf("Mount command failed: %v", errS),
+			"Detail", fmt.Sprintf("Mount command failed: %v", errMount),
 			"DeviceId", md.DeviceId,
 			"DevicePath", *md.Partition.DevicePath,
 			"MountPath", md.Path,
@@ -433,28 +411,28 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 			"MountFSType", mountFsType,
 			"Flags", flags,
 			"Data", data,
-			"Error", errS.Error(),
+			"Error", errMount.Error(),
 		)
 	} else {
 		slog.InfoContext(ms.ctx, "Successfully mounted volume", "device", md.DeviceId, "path", md.Path, "fstype", md.FSType, "mount_fstype", mountFsType, "flags", mp.Flags, "data", mp.Data)
 		// Update dbom_mount_data with details from the actual mount point if available
-		errS = ms.convMDto.MountToMountPointData(mp, md, ms.disks)
-		if errS != nil {
+		errConv := ms.convMDto.MountToMountPointData(mp, md, ms.disks)
+		if errConv != nil {
 			return errors.WithDetails(dto.ErrorMountFail,
 				"Detail", "Failed to convert mount details back to DTO after successful mount",
 				"DeviceId", md.DeviceId,
 				"MountPath", md.Path,
-				"Error", errS.Error(),
+				"Error", errConv.Error(),
 			)
 		}
-		errS = ms.disks.AddOrUpdateMountPoint(*md.Partition.DiskId, *md.Partition.Id, *md)
-		if errS != nil {
-			slog.ErrorContext(ms.ctx, "Failed to add mount point to in-memory cache after successful mount", "device", md.DeviceId, "path", md.Path, "err", errS)
+		errCache := ms.disks.AddOrUpdateMountPoint(*md.Partition.DiskId, *md.Partition.Id, *md)
+		if errCache != nil {
+			slog.ErrorContext(ms.ctx, "Failed to add mount point to in-memory cache after successful mount", "device", md.DeviceId, "path", md.Path, "err", errCache)
 			return errors.WithDetails(dto.ErrorMountFail,
 				"Detail", "Failed to add mount point to in-memory cache after successful mount",
 				"DeviceId", md.DeviceId,
 				"MountPath", md.Path,
-				"Error", errS.Error(),
+				"Error", errCache.Error(),
 			)
 		}
 		ms.eventBus.EmitMountPoint(events.MountPointEvent{
@@ -505,7 +483,11 @@ func (ms *VolumeService) UnmountVolume(path string, force bool) errors.E {
 
 func (ms *VolumeService) unmountVolume(md *dto.MountPointData, force bool) errors.E {
 	slog.DebugContext(ms.ctx, "Attempting to unmount volume", "path", md.Path, "force", force)
-	unmountErr := errors.WithStack(ms.unmountFunc(md.Path, force, !force))
+	fsType := ""
+	if md != nil && md.FSType != nil {
+		fsType = *md.FSType
+	}
+	unmountErr := ms.fs_service.UnmountPartition(ms.ctx, md.Path, fsType, force, !force)
 	if unmountErr != nil {
 		slog.ErrorContext(ms.ctx, "Failed to unmount volume", "path", md.Path, "err", unmountErr)
 		return errors.WithDetails(dto.ErrorUnmountFail, "Detail", unmountErr.Error(), "Path", md.Path, "Error", unmountErr)
@@ -1105,47 +1087,6 @@ func inferMountPointType(mountPoint *dto.MountPointData) string {
 	return "HOST"
 }
 
-func (self *VolumeService) CreateBlockDevice(device string) error {
-	// Controlla se il dispositivo esiste già
-	if _, err := os.Stat(device); !os.IsNotExist(err) {
-		slog.WarnContext(self.ctx, "Loop device already exists", "device", device)
-		return nil
-	}
-
-	// Estrai i numeri major e minor dal nome del dispositivo
-	major, minor, err := self.extractMajorMinor(device)
-	if err != nil {
-		return errors.Errorf("errore durante l'estrazione dei numeri major e minor: %v", err)
-	}
-
-	// Crea il dispositivo di blocco usando la syscall mknod
-	dev := (major << 8) | minor
-	err = syscall.Mknod(device, syscall.S_IFBLK|0660, dev)
-	if err != nil {
-		return errors.Errorf("errore durante la creazione del dispositivo di blocco: %v", err)
-	}
-
-	return nil
-}
-
-func (self *VolumeService) extractMajorMinor(device string) (int, int, error) {
-	re := regexp.MustCompile(`/dev/loop(\d+)`)
-	matches := re.FindStringSubmatch(device)
-	if len(matches) != 2 {
-		return 0, 0, fmt.Errorf("formato del dispositivo non valido")
-	}
-
-	minor, err := strconv.Atoi(matches[1])
-	if err != nil {
-		return 0, 0, fmt.Errorf("errore durante la conversione del numero minor: %v", err)
-	}
-
-	// Il numero major per i dispositivi di loop è generalmente 7
-	major := 7
-
-	return major, minor, nil
-}
-
 func (ms *VolumeService) PatchMountPointSettings(root string, path string, patchData dto.MountPointData) (*dto.MountPointData, errors.E) {
 
 	dbMountData, err := gorm.G[dbom.MountPointPath](ms.db).
@@ -1280,14 +1221,14 @@ func (ms *VolumeService) MockSetMountOps(
 	mountFn func(source, target, fstype, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error),
 	unmountFn func(target string, force, lazy bool) error,
 ) {
-	if tryMount != nil {
-		ms.tryMountFunc = tryMount
-	}
-	if mountFn != nil {
-		ms.doMountFunc = mountFn
-	}
-	if unmountFn != nil {
-		ms.unmountFunc = unmountFn
+	if fsSvc, ok := ms.fs_service.(interface {
+		MockSetMountOps(
+			tryMount func(source, target, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error),
+			mountFn func(source, target, fstype, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error),
+			unmountFn func(target string, force, lazy bool) error,
+		)
+	}); ok {
+		fsSvc.MockSetMountOps(tryMount, mountFn, unmountFn)
 	}
 }
 

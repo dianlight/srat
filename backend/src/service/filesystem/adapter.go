@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/u-root/u-root/pkg/mount"
 	"gitlab.com/tozd/go/errors"
 )
 
@@ -22,6 +23,14 @@ type FilesystemAdapter interface {
 
 	// GetMountFlags returns filesystem-specific mount flags
 	GetMountFlags() []dto.MountFlag
+
+	// Mount mounts a source device/file to target using filesystem-specific behavior.
+	// If fsType is empty, adapter should try auto-detection when supported.
+	// prepareTarget is an optional callback used to prepare the mount target directory.
+	Mount(ctx context.Context, source, target, fsType, data string, flags uintptr, prepareTarget func() error) (*mount.MountPoint, errors.E)
+
+	// Unmount unmounts the target using filesystem-specific behavior.
+	Unmount(ctx context.Context, target string, force, lazy bool) errors.E
 
 	// IsSupported checks if the filesystem is supported on the system
 	// and returns detailed support information

@@ -11,7 +11,9 @@ import (
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
+	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/srat/service/filesystem"
+	"github.com/u-root/u-root/pkg/mount"
 	"gitlab.com/tozd/go/errors"
 )
 
@@ -73,6 +75,15 @@ type FilesystemServiceInterface interface {
 
 	// SetPartitionLabel sets the label of a partition's filesystem.
 	SetPartitionLabel(ctx context.Context, devicePath, fsType, label string) errors.E
+
+	// MountPartition mounts a source to target by delegating mount mechanics to the filesystem adapter.
+	MountPartition(ctx context.Context, source, target, fsType, data string, flags uintptr, prepareTarget func() error) (*mount.MountPoint, errors.E)
+
+	// UnmountPartition unmounts a target by delegating unmount mechanics to the filesystem adapter.
+	UnmountPartition(ctx context.Context, target, fsType string, force, lazy bool) errors.E
+
+	// CreateBlockDevice creates a loop block device node using mknod.
+	CreateBlockDevice(ctx context.Context, device string) errors.E
 }
 
 // FilesystemService implements the FilesystemServiceInterface.
@@ -887,5 +898,58 @@ func (s *FilesystemService) SetPartitionLabel(ctx context.Context, devicePath, f
 		return errors.Wrap(setErr, "failed to set partition label")
 	}
 
+	return nil
+}
+
+func (s *FilesystemService) adapterForMountOps(fsType string) (filesystem.FilesystemAdapter, string) {
+	if strings.TrimSpace(fsType) == "" {
+		return filesystem.NewExt4Adapter(), ""
+	}
+
+	adapter, err := s.registry.Get(fsType)
+	if err != nil {
+		return filesystem.NewExt4Adapter(), fsType
+	}
+
+	mountFsType := adapter.GetLinuxFsModule()
+	if mountFsType == "" {
+		mountFsType = fsType
+	}
+
+	return adapter, mountFsType
+}
+
+// MountPartition mounts a source to target by delegating mount mechanics to the filesystem adapter.
+func (s *FilesystemService) MountPartition(
+	ctx context.Context,
+	source, target, fsType, data string,
+	flags uintptr,
+	prepareTarget func() error,
+) (*mount.MountPoint, errors.E) {
+	adapter, mountFsType := s.adapterForMountOps(fsType)
+	return adapter.Mount(ctx, source, target, mountFsType, data, flags, prepareTarget)
+}
+
+// UnmountPartition unmounts a target by delegating unmount mechanics to the filesystem adapter.
+func (s *FilesystemService) UnmountPartition(ctx context.Context, target, fsType string, force, lazy bool) errors.E {
+	adapter, _ := s.adapterForMountOps(fsType)
+	return adapter.Unmount(ctx, target, force, lazy)
+}
+
+// MockSetMountOps allows tests to override generic mount operations.
+func (s *FilesystemService) MockSetMountOps(
+	tryMount func(source, target, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error),
+	mountFn func(source, target, fstype, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error),
+	unmountFn func(target string, force, lazy bool) error,
+) {
+	filesystem.SetMountOpsForTesting(tryMount, mountFn, unmountFn)
+}
+
+// CreateBlockDevice creates a loop block device node using mknod.
+// Returns nil if the device already exists.
+func (s *FilesystemService) CreateBlockDevice(ctx context.Context, device string) errors.E {
+	if err := osutil.CreateBlockDevice(ctx, device); err != nil {
+		return errors.Wrap(err, "failed to create block device")
+	}
 	return nil
 }

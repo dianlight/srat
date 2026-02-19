@@ -10,9 +10,11 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/service"
+	"github.com/dianlight/srat/service/filesystem"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"github.com/u-root/u-root/pkg/mount"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
@@ -516,6 +518,75 @@ func (suite *FilesystemServiceTestSuite) TestGetSupportedFilesystems() {
 	}
 }
 
+func (suite *FilesystemServiceTestSuite) TestMountPartition_UsesAdapterLinuxModule() {
+	filesystem.ResetMountOpsForTesting()
+	suite.T().Cleanup(filesystem.ResetMountOpsForTesting)
+
+	fsSvc, ok := suite.fsService.(*service.FilesystemService)
+	suite.Require().True(ok)
+
+	calledMount := false
+	fsSvc.MockSetMountOps(
+		nil,
+		func(source, target, fstype, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error) {
+			calledMount = true
+			return &mount.MountPoint{Path: target, Device: source, FSType: fstype, Flags: flags, Data: data}, nil
+		},
+		nil,
+	)
+
+	mp, err := suite.fsService.MountPartition(suite.ctx, "/dev/mock", "/mnt/mock", "ntfs", "", 0, nil)
+	suite.Require().NoError(err)
+	suite.Require().NotNil(mp)
+	suite.True(calledMount)
+	suite.Equal("ntfs3", mp.FSType)
+}
+
+func (suite *FilesystemServiceTestSuite) TestMountPartition_AutoDetectWhenFsTypeEmpty() {
+	filesystem.ResetMountOpsForTesting()
+	suite.T().Cleanup(filesystem.ResetMountOpsForTesting)
+
+	fsSvc, ok := suite.fsService.(*service.FilesystemService)
+	suite.Require().True(ok)
+
+	calledTryMount := false
+	fsSvc.MockSetMountOps(
+		func(source, target, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error) {
+			calledTryMount = true
+			return &mount.MountPoint{Path: target, Device: source, FSType: "auto", Flags: flags, Data: data}, nil
+		},
+		nil,
+		nil,
+	)
+
+	mp, err := suite.fsService.MountPartition(suite.ctx, "/dev/mock", "/mnt/mock", "", "uid=1000", 0, nil)
+	suite.Require().NoError(err)
+	suite.Require().NotNil(mp)
+	suite.True(calledTryMount)
+}
+
+func (suite *FilesystemServiceTestSuite) TestUnmountPartition_DelegatesToGenericUnmount() {
+	filesystem.ResetMountOpsForTesting()
+	suite.T().Cleanup(filesystem.ResetMountOpsForTesting)
+
+	fsSvc, ok := suite.fsService.(*service.FilesystemService)
+	suite.Require().True(ok)
+
+	called := false
+	fsSvc.MockSetMountOps(
+		nil,
+		nil,
+		func(target string, force, lazy bool) error {
+			called = true
+			return nil
+		},
+	)
+
+	err := suite.fsService.UnmountPartition(suite.ctx, "/mnt/mock", "", true, false)
+	suite.Require().NoError(err)
+	suite.True(called)
+}
+
 func (suite *FilesystemServiceTestSuite) SetupTest() {
 	// Use FX to build the service with proper dependency injection
 	suite.app = fxtest.New(suite.T(),
@@ -548,4 +619,48 @@ func (suite *FilesystemServiceTestSuite) TearDownTest() {
 	if suite.app != nil {
 		suite.app.RequireStop()
 	}
+}
+func (suite *FilesystemServiceTestSuite) TestCreateBlockDevice_Success() {
+	device := "/dev/loop99"
+	defer func() {
+		// Clean up after test
+		_ = syscall.Unlink(device)
+	}()
+
+	err := suite.fsService.CreateBlockDevice(suite.ctx, device)
+	suite.Require().NoError(err, "CreateBlockDevice should succeed")
+
+	// Verify device was created
+	stat := &syscall.Stat_t{}
+	statErr := syscall.Stat(device, stat)
+	suite.Require().NoError(statErr, "Device should exist")
+	// Check mode - stat.Mode includes file type bits
+	suite.True((stat.Mode&syscall.S_IFMT) == syscall.S_IFBLK, "Device should be a block device")
+	suite.Equal(uint64(7), stat.Rdev>>8, "Major number should be 7")
+	suite.Equal(uint64(99), stat.Rdev&0xFF, "Minor number should be 99")
+}
+
+func (suite *FilesystemServiceTestSuite) TestCreateBlockDevice_AlreadyExists() {
+	device := "/dev/loop88"
+	defer func() {
+		// Clean up after test
+		_ = syscall.Unlink(device)
+	}()
+
+	// Create device first time
+	err := suite.fsService.CreateBlockDevice(suite.ctx, device)
+	suite.Require().NoError(err, "First CreateBlockDevice should succeed")
+
+	// Try to create again - should not error
+	err = suite.fsService.CreateBlockDevice(suite.ctx, device)
+	suite.NoError(err, "CreateBlockDevice on existing device should return nil")
+}
+
+func (suite *FilesystemServiceTestSuite) TestCreateBlockDevice_InvalidDeviceName() {
+	device := "/tmp/not_a_loop_device"
+
+	err := suite.fsService.CreateBlockDevice(suite.ctx, device)
+	suite.Error(err, "CreateBlockDevice with invalid device name should fail")
+	// Check that the error is about creating the block device (wraps the extraction error)
+	suite.Contains(err.Error(), "failed to create block device", "Error should be about block device creation failure")
 }

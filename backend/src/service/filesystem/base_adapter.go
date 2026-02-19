@@ -3,15 +3,19 @@ package filesystem
 import (
 	"bufio"
 	"context"
+	"io"
 	"os/exec"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/tlog"
 	gocache "github.com/patrickmn/go-cache"
+	"github.com/u-root/u-root/pkg/mount"
 	"gitlab.com/tozd/go/errors"
 )
 
@@ -21,6 +25,60 @@ const (
 )
 
 var commandResultCache = gocache.New(commandResultCacheTTL, commandResultCacheCleanupInterval)
+
+var (
+	baseTryMountFunc = mount.TryMount
+	baseDoMountFunc  = mount.Mount
+	baseUnmountFunc  = mount.Unmount
+)
+
+// Exec mocking for testing
+var (
+	execMockMu   sync.RWMutex
+	execLookPath func(string) (string, error) = exec.LookPath
+	execCommand  func(context.Context, string, ...string) ExecCmd
+)
+
+// execCmd interface wraps os/exec.Cmd for mocking
+type ExecCmd interface {
+	CombinedOutput() ([]byte, error)
+	StdoutPipe() (io.ReadCloser, error)
+	StderrPipe() (io.ReadCloser, error)
+	Start() error
+	Wait() error
+}
+
+// realExecCmd wraps exec.Cmd to implement ExecCmd interface
+type realExecCmd struct {
+	cmd *exec.Cmd
+}
+
+func (r *realExecCmd) CombinedOutput() ([]byte, error) {
+	return r.cmd.CombinedOutput()
+}
+
+func (r *realExecCmd) StdoutPipe() (io.ReadCloser, error) {
+	return r.cmd.StdoutPipe()
+}
+
+func (r *realExecCmd) StderrPipe() (io.ReadCloser, error) {
+	return r.cmd.StderrPipe()
+}
+
+func (r *realExecCmd) Start() error {
+	return r.cmd.Start()
+}
+
+func (r *realExecCmd) Wait() error {
+	return r.cmd.Wait()
+}
+
+func init() {
+	// Initialize with real exec implementation
+	execCommand = func(ctx context.Context, name string, args ...string) ExecCmd {
+		return &realExecCmd{cmd: exec.CommandContext(ctx, name, args...)}
+	}
+}
 
 type cachedCommandResult struct {
 	Output   string
@@ -47,15 +105,47 @@ type baseAdapter struct {
 	signatures    []dto.FsMagicSignature
 }
 
+// SetMountOpsForTesting allows overriding generic mount operations for tests.
+func SetMountOpsForTesting(
+	tryMount func(source, target, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error),
+	mountFn func(source, target, fstype, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error),
+	unmountFn func(target string, force, lazy bool) error,
+) {
+	if tryMount != nil {
+		baseTryMountFunc = tryMount
+	}
+	if mountFn != nil {
+		baseDoMountFunc = mountFn
+	}
+	if unmountFn != nil {
+		baseUnmountFunc = unmountFn
+	}
+}
+
+// ResetMountOpsForTesting restores generic mount operations defaults.
+func ResetMountOpsForTesting() {
+	baseTryMountFunc = mount.TryMount
+	baseDoMountFunc = mount.Mount
+	baseUnmountFunc = mount.Unmount
+}
+
 // commandExists checks if a command is available in the system PATH
 func commandExists(command string) bool {
-	_, err := exec.LookPath(command)
+	execMockMu.RLock()
+	lookPath := execLookPath
+	execMockMu.RUnlock()
+
+	_, err := lookPath(command)
 	return err == nil
 }
 
 // runCommand executes a command and returns the output
 func runCommand(ctx context.Context, name string, args ...string) (string, int, errors.E) {
-	cmd := exec.CommandContext(ctx, name, args...)
+	execMockMu.RLock()
+	cmdFactory := execCommand
+	execMockMu.RUnlock()
+
+	cmd := cmdFactory(ctx, name, args...)
 	output, err := cmd.CombinedOutput()
 	exitCode := 0
 
@@ -119,6 +209,18 @@ func commandCacheKey(name string, args ...string) string {
 
 // checkCommandAvailability checks if required commands are available
 func (b *baseAdapter) checkCommandAvailability() dto.FilesystemSupport {
+	filesystem, err := osutil.GetFileSystems()
+	if err != nil {
+		tlog.Warn("Failed to get filesystems for command availability check", "error", err)
+	} else if !slices.Contains(filesystem, b.GetLinuxFsModule()) {
+		tlog.Debug("Filesystem module not found in system, marking related commands as unavailable", "filesystem", b.GetLinuxFsModule())
+		return dto.FilesystemSupport{
+			CanMount:      false,
+			AlpinePackage: b.alpinePackage,
+			MissingTools:  []string{b.mkfsCommand, b.fsckCommand, b.labelCommand, b.stateCommand},
+		}
+	}
+
 	support := dto.FilesystemSupport{
 		CanMount:      true, // Most filesystems can be mounted if kernel supports them
 		AlpinePackage: b.alpinePackage,
@@ -187,6 +289,51 @@ func (b *baseAdapter) IsDeviceSupported(ctx context.Context, devicePath string) 
 	return checkDeviceMatchesSignatures(devicePath, b.signatures)
 }
 
+// Mount mounts source to target using a generic Linux mount implementation.
+func (b *baseAdapter) Mount(
+	ctx context.Context,
+	source, target, fsType, data string,
+	flags uintptr,
+	prepareTarget func() error,
+) (*mount.MountPoint, errors.E) {
+	opts := make([]func() error, 0, 1)
+	if prepareTarget != nil {
+		opts = append(opts, prepareTarget)
+	}
+
+	var (
+		mp  *mount.MountPoint
+		err error
+	)
+
+	if fsType == "" {
+		mp, err = baseTryMountFunc(source, target, data, flags, opts...)
+	} else {
+		mp, err = baseDoMountFunc(source, target, fsType, data, flags, opts...)
+	}
+	if err != nil {
+		return nil, errors.WithDetails(err,
+			"Source", source,
+			"Target", target,
+			"FSType", fsType,
+			"Flags", flags,
+			"Data", data,
+		)
+	}
+
+	return mp, nil
+}
+
+// Unmount unmounts target using a generic Linux unmount implementation.
+func (b *baseAdapter) Unmount(ctx context.Context, target string, force, lazy bool) errors.E {
+	_ = ctx
+	if err := baseUnmountFunc(target, force, lazy); err != nil {
+		return errors.WithDetails(err, "Target", target, "Force", force, "Lazy", lazy)
+	}
+
+	return nil
+}
+
 // executeCommandWithProgress executes a long-running command with real-time progress monitoring.
 // It returns channels for stdout and stderr output that can be consumed by the caller.
 // Supports context cancellation to gracefully interrupt the running process.
@@ -211,7 +358,11 @@ func (b *baseAdapter) executeCommandWithProgress(
 	resultChan := make(chan CommandResult, 1)
 
 	// Create command with context for cancellation support
-	cmd := exec.CommandContext(ctx, command, args...)
+	execMockMu.RLock()
+	cmdFactory := execCommand
+	execMockMu.RUnlock()
+
+	cmd := cmdFactory(ctx, command, args...)
 
 	// Setup pipes for stdout and stderr
 	stdout, err := cmd.StdoutPipe()
@@ -318,3 +469,48 @@ func (b *baseAdapter) executeCommandWithProgress(
 
 	return stdoutChan, stderrChan, resultChan
 }
+
+// ============= Testing Helpers (for testing only) =============
+
+// RunCommandCachedForTesting exposes runCommandCached for tests
+func RunCommandCachedForTesting(ctx context.Context, name string, args ...string) (string, int, errors.E) {
+	return runCommandCached(ctx, name, args...)
+}
+
+// InvalidateCommandResultCacheForTesting exposes cache invalidation for tests
+func InvalidateCommandResultCacheForTesting() {
+	invalidateCommandResultCache()
+}
+
+// SetExecOpsForTesting allows overriding exec operations for tests
+func SetExecOpsForTesting(
+	lookPath func(string) (string, error),
+	command func(context.Context, string, ...string) ExecCmd,
+) {
+	execMockMu.Lock()
+	defer execMockMu.Unlock()
+
+	if lookPath != nil {
+		execLookPath = lookPath
+	}
+	if command != nil {
+		execCommand = command
+	}
+}
+
+// ResetExecOpsForTesting restores exec operations to their defaults
+func ResetExecOpsForTesting() {
+	execMockMu.Lock()
+	defer execMockMu.Unlock()
+
+	execLookPath = exec.LookPath
+	execCommand = func(ctx context.Context, name string, args ...string) ExecCmd {
+		return &realExecCmd{cmd: exec.CommandContext(ctx, name, args...)}
+	}
+}
+
+// SetMountOpsForTesting is exported from base_adapter for testing purposes
+// This function is already exported as public SetMountOpsForTesting below
+
+// ResetMountOpsForTesting is exported from base_adapter for testing purposes
+// This function is already exported as public ResetMountOpsForTesting below

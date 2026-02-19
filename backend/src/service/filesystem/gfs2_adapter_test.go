@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/srat/service/filesystem"
 	"github.com/stretchr/testify/suite"
 )
@@ -56,6 +57,9 @@ func (suite *Gfs2AdapterTestSuite) TestGetMountFlags() {
 }
 
 func (suite *Gfs2AdapterTestSuite) TestIsSupported() {
+	restore := osutil.MockFileSystems([]string{"gfs2", "ext4"})
+	defer restore()
+
 	support, err := suite.adapter.IsSupported(suite.ctx)
 	suite.NoError(err)
 	suite.False(support.CanFormat)

@@ -32,6 +32,7 @@ type VolumeServiceTestSuite struct {
 	//mockMountRepo      repository.MountPointPathRepositoryInterface
 	mockHardwareClient service.HardwareServiceInterface
 	volumeService      service.VolumeServiceInterface
+	filesystemService  service.FilesystemServiceInterface
 	hardwareService    service.HardwareServiceInterface
 	eventBus           events.EventBusInterface
 	ctrl               *matchers.MockController
@@ -92,6 +93,7 @@ func (suite *VolumeServiceTestSuite) SetupTest() {
 		fx.Populate(&suite.volumeService),
 		//fx.Populate(&suite.mockMountRepo),
 		fx.Populate(&suite.mockHardwareClient),
+		fx.Populate(&suite.filesystemService),
 		fx.Populate(&suite.hardwareService),
 		fx.Populate(&suite.eventBus),
 		fx.Populate(&suite.ctx),
@@ -154,7 +156,7 @@ func (suite *VolumeServiceTestSuite) TestMountUnmountVolume_Success() {
 		return
 	}
 	suite.Require().NoError(err, "Error finding loop device")
-	err = suite.volumeService.CreateBlockDevice(device)
+	err = suite.filesystemService.CreateBlockDevice(suite.ctx, device)
 	suite.Require().NoError(err, "Error creating block device")
 	err = loop.SetFile(device, "../../test/data/image.dmg")
 	suite.Require().NoError(err, "Error setting loop device file")
