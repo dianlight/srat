@@ -171,6 +171,12 @@ jobs:
           make patch format
           cd ..
 
+      - name: Install Ubuntu Packages for Tests
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            fuse3 exfatprogs btrfs-progs dosfstools hfsprogs f2fs-tools xfsprogs-extra ntfs-3g-progs apfs-fuse
+
       - name: Test Backend ${{ needs.setversion.outputs.version }}
         # RECOMMENDATION: Investigate if 'sudo' is truly necessary for tests.
         # Running tests as root is a potential security risk.
