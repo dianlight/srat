@@ -175,7 +175,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            fuse3 exfatprogs btrfs-progs dosfstools hfsprogs f2fs-tools xfsprogs-extra ntfs-3g-progs apfs-fuse
+            fuse3 exfatprogs btrfs-progs dosfstools hfsprogs f2fs-tools xfsprogs ntfs-3g
 
       - name: Test Backend ${{ needs.setversion.outputs.version }}
         # RECOMMENDATION: Investigate if 'sudo' is truly necessary for tests.
