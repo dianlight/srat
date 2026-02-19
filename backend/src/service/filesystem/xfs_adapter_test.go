@@ -59,5 +59,11 @@ func (suite *XfsAdapterTestSuite) TestGetMountFlags() {
 func (suite *XfsAdapterTestSuite) TestIsSupported() {
 	support, err := suite.adapter.IsSupported(suite.ctx)
 	suite.NoError(err)
-	suite.Equal("xfsprogs", support.AlpinePackage)
+	suite.True(support.CanFormat)
+	suite.True(support.CanMount)
+	suite.True(support.CanCheck)
+	suite.True(support.CanSetLabel)
+	suite.True(support.CanGetState)
+	suite.Equal("xfsprogs-extra", support.AlpinePackage)
+	suite.Empty(support.MissingTools)
 }

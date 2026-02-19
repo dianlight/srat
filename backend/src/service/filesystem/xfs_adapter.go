@@ -20,7 +20,7 @@ func NewXfsAdapter() FilesystemAdapter {
 		baseAdapter: baseAdapter{
 			name:          "xfs",
 			description:   "XFS Filesystem",
-			alpinePackage: "xfsprogs",
+			alpinePackage: "xfsprogs-extra",
 			mkfsCommand:   "mkfs.xfs",
 			fsckCommand:   "xfs_repair",
 			labelCommand:  "xfs_admin",

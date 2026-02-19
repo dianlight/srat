@@ -245,8 +245,15 @@ func (a *ExfatAdapter) GetLabel(ctx context.Context, device string) (string, err
 		return "", errors.Errorf("exfatlabel failed with exit code %d: %s", exitCode, output)
 	}
 
-	// exfatlabel outputs the label directly
-	label := strings.TrimSpace(output)
+	// exfatlabel outputs the label directly but search the output line with label: prefix to be more robust
+	var label string
+	for _, line := range strings.Split(output, "\n") {
+		if strings.HasPrefix(line, "label:") {
+			label = strings.TrimSpace(strings.TrimPrefix(line, "label:"))
+			break
+		}
+	}
+
 	return label, nil
 }
 
