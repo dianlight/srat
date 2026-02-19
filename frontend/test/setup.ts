@@ -38,6 +38,23 @@ const win = new Window({
 // Mark environment as test for components that conditionally load heavy browser-only modules
 ; (globalThis as any).__TEST__ = true;
 
+// happy-dom often returns zero-sized rectangles, which causes MUI Popover/Menu
+// to warn that anchorEl is not part of the document layout. Provide a stable,
+// non-zero default rectangle for test environments.
+if ((globalThis as any).HTMLElement?.prototype) {
+    (globalThis as any).HTMLElement.prototype.getBoundingClientRect = () => ({
+        x: 0,
+        y: 0,
+        top: 0,
+        left: 0,
+        right: 120,
+        bottom: 40,
+        width: 120,
+        height: 40,
+        toJSON: () => ({}),
+    });
+}
+
 // Polyfill CSSStyleSheet + adoptedStyleSheets used by lit/openapi-explorer
 if (!(globalThis as any).CSSStyleSheet) {
     class CSSStyleSheetPolyfill {
