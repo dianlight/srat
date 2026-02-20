@@ -19,6 +19,39 @@ import { http, type RequestHandler } from "msw";
 // Placeholder for generated handlers
 // To generate, run: npm run gen:mocks
 export const customHandlers: RequestHandler[] = [
+	// Deterministic filesystem state endpoint mock used by volume detail tests
+	http.get("/api/filesystem/state", ({ request }) => {
+		const url = new URL(request.url);
+		const partitionId = url.searchParams.get("partition_id");
+
+		if (!partitionId) {
+			return new Response(JSON.stringify({ message: "partition_id is required" }), {
+				status: 400,
+				headers: {
+					"Content-Type": "application/json",
+				},
+			});
+		}
+
+		return new Response(
+			JSON.stringify({
+				isClean: true,
+				hasErrors: false,
+				isMounted: true,
+				stateDescription: "Filesystem is clean",
+				additionalInfo: {
+					"Last check": "2026-02-10",
+				},
+			}),
+			{
+				status: 200,
+				headers: {
+					"Content-Type": "application/json",
+				},
+			},
+		);
+	}),
+
 	// Example: Health endpoint mock
 	http.get("/api/health", () => {
 		return new Response(
