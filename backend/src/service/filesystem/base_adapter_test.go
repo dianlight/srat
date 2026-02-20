@@ -12,6 +12,7 @@ import (
 
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/srat/service/filesystem"
+	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/u-root/u-root/pkg/mount"
@@ -99,6 +100,13 @@ func (suite *BaseAdapterTestSuite) TestCheckCommandAvailabilityWithMockedExec() 
 		restoreFS := osutil.MockFileSystems([]string{"ntfs3", "ext4"})
 		defer restoreFS()
 
+		controller := mock.NewMockController(suite.T())
+		execMock := mock.Mock[filesystem.ExecCmd](controller)
+		mock.When(execMock.StdoutPipe()).ThenReturn(io.NopCloser(strings.NewReader("")), nil)
+		mock.When(execMock.StderrPipe()).ThenReturn(io.NopCloser(strings.NewReader("")), nil)
+		mock.When(execMock.Start()).ThenReturn(nil)
+		mock.When(execMock.Wait()).ThenReturn(nil)
+
 		// Mock exec.LookPath to track which commands are being checked
 		checkedCommands := []string{}
 		filesystem.SetExecOpsForTesting(
@@ -106,7 +114,9 @@ func (suite *BaseAdapterTestSuite) TestCheckCommandAvailabilityWithMockedExec() 
 				checkedCommands = append(checkedCommands, cmd)
 				return "", errors.New("command not found in mock")
 			},
-			nil, // Keep real exec for now
+			func(ctx context.Context, cmd string, args ...string) filesystem.ExecCmd {
+				return execMock
+			},
 		)
 		defer filesystem.ResetExecOpsForTesting()
 

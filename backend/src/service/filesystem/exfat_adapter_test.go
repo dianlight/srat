@@ -2,10 +2,14 @@ package filesystem_test
 
 import (
 	"context"
+	"errors"
+	"io"
+	"strings"
 	"testing"
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service/filesystem"
+	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -23,6 +27,28 @@ func (suite *ExfatAdapterTestSuite) SetupTest() {
 	suite.ctx = context.Background()
 	suite.adapter = filesystem.NewExfatAdapter()
 	suite.Require().NotNil(suite.adapter)
+
+	controller := mock.NewMockController(suite.T())
+	execMock := mock.Mock[filesystem.ExecCmd](controller)
+	mock.When(execMock.StdoutPipe()).ThenReturn(io.NopCloser(strings.NewReader("")), nil)
+	mock.When(execMock.StderrPipe()).ThenReturn(io.NopCloser(strings.NewReader("")), nil)
+	mock.When(execMock.Start()).ThenReturn(nil)
+	mock.When(execMock.Wait()).ThenReturn(nil)
+	filesystem.SetExecOpsForTesting(
+		func(cmd string) (string, error) {
+			if cmd != "" {
+				return cmd, nil
+			}
+			return "", errors.New("command not found")
+		},
+		func(ctx context.Context, cmd string, args ...string) filesystem.ExecCmd {
+			return execMock
+		},
+	)
+}
+
+func (suite *ExfatAdapterTestSuite) TearDownTest() {
+	filesystem.ResetExecOpsForTesting()
 }
 
 func (suite *ExfatAdapterTestSuite) TestGetName() {
@@ -86,28 +112,33 @@ func (suite *ExfatAdapterTestSuite) TestGetLinuxFsModule() {
 }
 
 func (suite *ExfatAdapterTestSuite) TestFormat_NonExistentDevice() {
+	filesystem.ResetExecOpsForTesting()
 	err := suite.adapter.Format(suite.ctx, "/dev/nonexistent-exfat-12345", dto.FormatOptions{}, nil)
 	suite.Error(err)
 }
 
 func (suite *ExfatAdapterTestSuite) TestCheck_NonExistentDevice() {
+	filesystem.ResetExecOpsForTesting()
 	result, err := suite.adapter.Check(suite.ctx, "/dev/nonexistent-exfat-12345", dto.CheckOptions{}, nil)
 	suite.Error(err)
 	_ = result
 }
 
 func (suite *ExfatAdapterTestSuite) TestGetLabel_NonExistentDevice() {
+	filesystem.ResetExecOpsForTesting()
 	label, err := suite.adapter.GetLabel(suite.ctx, "/dev/nonexistent-exfat-12345")
 	suite.Error(err)
 	suite.Empty(label)
 }
 
 func (suite *ExfatAdapterTestSuite) TestSetLabel_NonExistentDevice() {
+	filesystem.ResetExecOpsForTesting()
 	err := suite.adapter.SetLabel(suite.ctx, "/dev/nonexistent-exfat-12345", "testlabel")
 	suite.Error(err)
 }
 
 func (suite *ExfatAdapterTestSuite) TestGetState_NonExistentDevice() {
+	filesystem.ResetExecOpsForTesting()
 	state, err := suite.adapter.GetState(suite.ctx, "/dev/nonexistent-exfat-12345")
 	suite.Error(err)
 	_ = state
