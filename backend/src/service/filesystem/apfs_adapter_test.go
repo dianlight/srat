@@ -2,10 +2,12 @@ package filesystem_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/srat/service/filesystem"
+	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -23,6 +25,21 @@ func (suite *ApfsAdapterTestSuite) SetupTest() {
 	suite.ctx = context.Background()
 	suite.adapter = filesystem.NewApfsAdapter()
 	suite.Require().NotNil(suite.adapter)
+	controller := mock.NewMockController(suite.T())
+	execMock := mock.Mock[filesystem.ExecCmd](controller)
+	filesystem.SetExecOpsForTesting(
+		func(cmd string) (string, error) {
+			if cmd == "apfs-fuse" || cmd == "apfsutil" {
+				return cmd, nil
+			}
+			return "", errors.New("command not found")
+		}, func(ctx context.Context, cmd string, args ...string) filesystem.ExecCmd {
+			return execMock
+		})
+}
+
+func (suite *ApfsAdapterTestSuite) TearDownTest() {
+	filesystem.ResetExecOpsForTesting()
 }
 
 func (suite *ApfsAdapterTestSuite) TestGetName() {
