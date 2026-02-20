@@ -1,3 +1,7 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 Based on [write-good](https://github.com/btford/write-good).
 
 > Naive linter for English prose for developers who can't write good and wanna learn to do other stuff good too.
