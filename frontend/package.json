@@ -61,7 +61,7 @@
     "maskify-ts": "^3.5.0",
     "material-ui-confirm": "^4.0.0",
     "mui-chips-input": "^7.0.1",
-    "normalize-url": "^8.1.1",
+    "normalize-url": "^9.0.0",
     "openapi-explorer": "^2.4.788",
     "prismjs": "^1.30.0",
     "react": "^19.2.4",
