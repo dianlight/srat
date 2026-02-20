@@ -133,7 +133,7 @@ describe("VolumeDetailsPanel Component", () => {
 
     it("shows clean filesystem status tooltip with details", async () => {
         const React = await import("react");
-        const { screen } = await import("@testing-library/react");
+        const { screen, within } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const { VolumeDetailsPanel } = await import("../VolumeDetailsPanel");
         const { sratApi, Type } = await import("../../../../store/sratApi");
@@ -188,17 +188,17 @@ describe("VolumeDetailsPanel Component", () => {
         );
 
         const user = userEvent.setup();
-        const fsChip = await screen.findByText(/EXT4 Filesystem/i);
+        const chipLabel = await screen.findByText(/EXT4 Filesystem/i);
+        const fsChip = chipLabel.parentElement;
+        if (!fsChip) {
+            throw new Error("Expected filesystem chip root element to exist");
+        }
         await user.hover(fsChip);
 
-        const description = await screen.findByText(/Filesystem is clean/i);
-        expect(description).toBeTruthy();
-
-        const additionalInfo = await screen.findAllByText((content, element) => {
-            const text = element?.textContent ?? content;
-            return text.includes("Last check: 2026-02-10");
-        });
-        expect(additionalInfo.length).toBeGreaterThan(0);
+        const tooltip = await screen.findByRole("tooltip");
+        expect(within(tooltip).getByText(/Filesystem is clean/i)).toBeTruthy();
+        expect(within(tooltip).getByText(/Last check/i)).toBeTruthy();
+        expect(within(tooltip).getByText(/2026-02-10/)).toBeTruthy();
     });
 
     it("shows error filesystem status tooltip", async () => {
@@ -276,7 +276,6 @@ describe("VolumeDetailsPanel Component", () => {
         };
 
         const mockPartition = {
-            id: "part-1",
             name: "sda1",
             fs_type: "btrfs",
             mount_point_data: {
