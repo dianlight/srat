@@ -635,9 +635,9 @@ func (suite *FilesystemServiceTestSuite) TestCreateBlockDevice_Success() {
 	statErr := syscall.Stat(device, stat)
 	suite.Require().NoError(statErr, "Device should exist")
 	// Check mode - stat.Mode includes file type bits
-	suite.True((stat.Mode&syscall.S_IFMT) == syscall.S_IFBLK, "Device should be a block device")
-	suite.Equal(uint64(7), stat.Rdev>>8, "Major number should be 7")
-	suite.Equal(uint64(99), stat.Rdev&0xFF, "Minor number should be 99")
+	suite.EqualValues(stat.Mode&syscall.S_IFMT, syscall.S_IFBLK, "Device should be a block device")
+	suite.EqualValues(uint64(7), stat.Rdev>>8, "Major number should be 7")
+	suite.EqualValues(uint64(99), stat.Rdev&0xFF, "Minor number should be 99")
 }
 
 func (suite *FilesystemServiceTestSuite) TestCreateBlockDevice_AlreadyExists() {
