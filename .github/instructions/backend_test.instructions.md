@@ -189,6 +189,13 @@ fx.Populate(&suite.cancel),
 
 ## Mocking with Mockio
 
+Always use mockio for type-safe mocks instead of manual mock implementations. This ensures compile-time safety and reduces boilerplate.
+
+### General Role of Mocks
+- Mocks should be used for external dependencies (e.g., databases, external services) **do always** mock dependencies, never the service under test itself.
+- Use mocks to simulate various scenarios (success, errors, edge cases)
+- Verify interactions with dependencies (e.g., method calls, arguments)
+
 ### Creating Mocks
 
 Mockio v2 provides type-safe mock generation:
