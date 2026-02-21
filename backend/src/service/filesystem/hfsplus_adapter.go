@@ -17,19 +17,19 @@ type HfsplusAdapter struct {
 // NewHfsplusAdapter creates a new HfsplusAdapter instance
 func NewHfsplusAdapter() FilesystemAdapter {
 	return &HfsplusAdapter{
-		baseAdapter: baseAdapter{
-			name:          "hfsplus",
-			description:   "Hierarchical File System Plus",
-			alpinePackage: "hfsprogs",
-			mkfsCommand:   "mkfs.hfsplus",
-			fsckCommand:   "fsck.hfsplus",
-			labelCommand:  "", // No separate label command
-			stateCommand:  "fsck.hfsplus",
-			signatures: []dto.FsMagicSignature{
+		baseAdapter: newBaseAdapter(
+			"hfsplus",
+			"Hierarchical File System Plus",
+			"hfsprogs",
+			"mkfs.hfsplus",
+			"fsck.hfsplus",
+			"", // No separate label command
+			"fsck.hfsplus",
+			[]dto.FsMagicSignature{
 				{Offset: 0x400, Magic: []byte{0x48, 0x2B}}, // H+
 				{Offset: 0x400, Magic: []byte{0x48, 0x58}}, // HX (HFSX variant)
 			},
-		},
+		),
 	}
 }
 
@@ -53,7 +53,7 @@ func (a *HfsplusAdapter) IsSupported(ctx context.Context) (dto.FilesystemSupport
 
 // Format formats a device with HFS+ filesystem
 func (a *HfsplusAdapter) Format(ctx context.Context, device string, options dto.FormatOptions, progress dto.ProgressCallback) errors.E {
-	defer invalidateCommandResultCache()
+	defer a.invalidateCommandResultCache()
 
 	if progress != nil {
 		progress("start", 0, []string{"Starting hfsplus format"})
@@ -128,7 +128,7 @@ func (a *HfsplusAdapter) Format(ctx context.Context, device string, options dto.
 
 // Check runs filesystem check on an HFS+ device
 func (a *HfsplusAdapter) Check(ctx context.Context, device string, options dto.CheckOptions, progress dto.ProgressCallback) (dto.CheckResult, errors.E) {
-	defer invalidateCommandResultCache()
+	defer a.invalidateCommandResultCache()
 
 	if progress != nil {
 		progress("start", 0, []string{"Starting hfsplus check"})
@@ -232,7 +232,7 @@ func (a *HfsplusAdapter) GetLabel(ctx context.Context, device string) (string, e
 
 // SetLabel sets the HFS+ filesystem label
 func (a *HfsplusAdapter) SetLabel(ctx context.Context, device string, label string) errors.E {
-	defer invalidateCommandResultCache()
+	defer a.invalidateCommandResultCache()
 
 	// HFS+ can only set label during format with -v option
 	return errors.Errorf("HFS+ does not support changing labels after format. Label must be set during mkfs.hfsplus with -v option")
@@ -245,7 +245,7 @@ func (a *HfsplusAdapter) GetState(ctx context.Context, device string) (dto.Files
 	}
 
 	// Run state command to get filesystem state
-	output, exitCode, _ := runCommandCached(ctx, a.stateCommand, device)
+	output, exitCode, _ := a.runCommandCached(ctx, a.stateCommand, device)
 
 	// Parse the output to determine filesystem state
 	if exitCode == 0 {
@@ -259,7 +259,7 @@ func (a *HfsplusAdapter) GetState(ctx context.Context, device string) (dto.Files
 	}
 
 	// Check if filesystem is mounted
-	outputMount, _, _ := runCommandCached(ctx, "mount")
+	outputMount, _, _ := a.runCommandCached(ctx, "mount")
 	state.IsMounted = strings.Contains(outputMount, device)
 
 	// Store check output in additional info

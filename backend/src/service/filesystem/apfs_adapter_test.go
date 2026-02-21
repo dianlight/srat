@@ -14,6 +14,7 @@ import (
 type ApfsAdapterTestSuite struct {
 	suite.Suite
 	adapter filesystem.FilesystemAdapter
+	clean   func()
 	ctx     context.Context
 }
 
@@ -27,7 +28,7 @@ func (suite *ApfsAdapterTestSuite) SetupTest() {
 	suite.Require().NotNil(suite.adapter)
 	controller := mock.NewMockController(suite.T())
 	execMock := mock.Mock[filesystem.ExecCmd](controller)
-	filesystem.SetExecOpsForTesting(
+	suite.clean = suite.adapter.SetExecOpsForTesting(
 		func(cmd string) (string, error) {
 			if cmd == "apfs-fuse" || cmd == "apfsutil" {
 				return cmd, nil
@@ -39,7 +40,9 @@ func (suite *ApfsAdapterTestSuite) SetupTest() {
 }
 
 func (suite *ApfsAdapterTestSuite) TearDownTest() {
-	filesystem.ResetExecOpsForTesting()
+	if suite.clean != nil {
+		suite.clean()
+	}
 }
 
 func (suite *ApfsAdapterTestSuite) TestGetName() {

@@ -17,18 +17,18 @@ type ExfatAdapter struct {
 // NewExfatAdapter creates a new ExfatAdapter instance
 func NewExfatAdapter() FilesystemAdapter {
 	return &ExfatAdapter{
-		baseAdapter: baseAdapter{
-			name:          "exfat",
-			description:   "Extended File Allocation Table",
-			alpinePackage: "exfatprogs",
-			mkfsCommand:   "mkfs.exfat",
-			fsckCommand:   "fsck.exfat",
-			labelCommand:  "exfatlabel",
-			stateCommand:  "fsck.exfat",
-			signatures: []dto.FsMagicSignature{
+		baseAdapter: newBaseAdapter(
+			"exfat",
+			"Extended File Allocation Table",
+			"exfatprogs",
+			"mkfs.exfat",
+			"fsck.exfat",
+			"exfatlabel",
+			"fsck.exfat",
+			[]dto.FsMagicSignature{
 				{Offset: 3, Magic: []byte{'E', 'X', 'F', 'A', 'T', ' ', ' ', ' '}},
 			},
-		},
+		),
 	}
 }
 
@@ -52,7 +52,7 @@ func (a *ExfatAdapter) IsSupported(ctx context.Context) (dto.FilesystemSupport, 
 
 // Format formats a device with exFAT filesystem
 func (a *ExfatAdapter) Format(ctx context.Context, device string, options dto.FormatOptions, progress dto.ProgressCallback) errors.E {
-	defer invalidateCommandResultCache()
+	defer a.invalidateCommandResultCache()
 
 	if progress != nil {
 		progress("start", 0, []string{"Starting exfat format"})
@@ -127,7 +127,7 @@ func (a *ExfatAdapter) Format(ctx context.Context, device string, options dto.Fo
 
 // Check runs filesystem check on an exFAT device
 func (a *ExfatAdapter) Check(ctx context.Context, device string, options dto.CheckOptions, progress dto.ProgressCallback) (dto.CheckResult, errors.E) {
-	defer invalidateCommandResultCache()
+	defer a.invalidateCommandResultCache()
 
 	if progress != nil {
 		progress("start", 0, []string{"Starting exfat check"})
@@ -236,7 +236,7 @@ func (a *ExfatAdapter) Check(ctx context.Context, device string, options dto.Che
 
 // GetLabel retrieves the exFAT filesystem label
 func (a *ExfatAdapter) GetLabel(ctx context.Context, device string) (string, errors.E) {
-	output, exitCode, err := runCommand(ctx, a.labelCommand, device)
+	output, exitCode, err := a.runCommand(ctx, a.labelCommand, device)
 	if err != nil {
 		return "", errors.WithDetails(err, "Device", device)
 	}
@@ -259,9 +259,9 @@ func (a *ExfatAdapter) GetLabel(ctx context.Context, device string) (string, err
 
 // SetLabel sets the exFAT filesystem label
 func (a *ExfatAdapter) SetLabel(ctx context.Context, device string, label string) errors.E {
-	defer invalidateCommandResultCache()
+	defer a.invalidateCommandResultCache()
 
-	output, exitCode, err := runCommand(ctx, a.labelCommand, device, label)
+	output, exitCode, err := a.runCommand(ctx, a.labelCommand, device, label)
 	if err != nil {
 		return errors.WithDetails(err, "Device", device, "Label", label)
 	}
@@ -280,7 +280,7 @@ func (a *ExfatAdapter) GetState(ctx context.Context, device string) (dto.Filesys
 	}
 
 	// Run state command in read-only mode to get filesystem state
-	output, exitCode, err := runCommandCached(ctx, a.stateCommand, "-n", device)
+	output, exitCode, err := a.runCommandCached(ctx, a.stateCommand, "-n", device)
 	if err != nil {
 		return state, errors.WithDetails(err, "Device", device)
 	}
@@ -300,7 +300,7 @@ func (a *ExfatAdapter) GetState(ctx context.Context, device string) (dto.Filesys
 	}
 
 	// Check if filesystem is mounted
-	outputMount, _, _ := runCommandCached(ctx, "mount")
+	outputMount, _, _ := a.runCommandCached(ctx, "mount")
 	state.IsMounted = strings.Contains(outputMount, device)
 
 	// Store check output in additional info

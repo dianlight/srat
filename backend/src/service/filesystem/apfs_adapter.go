@@ -18,19 +18,18 @@ type ApfsAdapter struct {
 // NewApfsAdapter creates a new ApfsAdapter instance
 func NewApfsAdapter() FilesystemAdapter {
 	return &ApfsAdapter{
-		baseAdapter: baseAdapter{
-			name:          "apfs",
-			linuxFsModule: "apfs",
-			description:   "Apple File System (read-only)",
-			alpinePackage: "apfs-fuse",
-			mkfsCommand:   "",
-			fsckCommand:   "",
-			labelCommand:  "",
-			stateCommand:  "apfsutil",
-			signatures: []dto.FsMagicSignature{
+		baseAdapter: newBaseAdapter(
+			"apfs",
+			"Apple File System (read-only)",
+			"apfs-fuse",
+			"",
+			"",
+			"",
+			"apfsutil",
+			[]dto.FsMagicSignature{
 				{Offset: 0x20, Magic: []byte{'N', 'X', 'S', 'B'}}, // APFS container superblock
 			},
-		},
+		),
 	}
 }
 
@@ -48,7 +47,7 @@ func (a *ApfsAdapter) IsSupported(ctx context.Context) (dto.FilesystemSupport, e
 	// APFS is read-only on Linux via apfs-fuse package
 	// apfsutil provides information/metadata access but not format/check/modify operations
 	support := a.checkCommandAvailability()
-	support.CanMount = commandExists("apfs-fuse")
+	support.CanMount = a.commandExists("apfs-fuse")
 	if !support.CanMount {
 		support.MissingTools = append(support.MissingTools, "apfs-fuse")
 	}
@@ -81,7 +80,7 @@ func (a *ApfsAdapter) Mount(
 	}
 	args = append(args, source, target)
 
-	output, exitCode, err := runCommand(ctx, "apfs-fuse", args...)
+	output, exitCode, err := a.runCommand(ctx, "apfs-fuse", args...)
 	if err != nil {
 		return nil, errors.WithDetails(err,
 			"Source", source,
@@ -112,8 +111,8 @@ func (a *ApfsAdapter) Mount(
 
 // Unmount unmounts APFS using FUSE-first semantics.
 func (a *ApfsAdapter) Unmount(ctx context.Context, target string, force, lazy bool) errors.E {
-	if commandExists("fusermount3") {
-		output, exitCode, err := runCommand(ctx, "fusermount3", "-u", target)
+	if a.commandExists("fusermount3") {
+		output, exitCode, err := a.runCommand(ctx, "fusermount3", "-u", target)
 		if err == nil && exitCode == 0 {
 			return nil
 		}
@@ -136,7 +135,7 @@ func (a *ApfsAdapter) Unmount(ctx context.Context, target string, force, lazy bo
 
 // Format formats a device with APFS filesystem
 func (a *ApfsAdapter) Format(ctx context.Context, device string, options dto.FormatOptions, progress dto.ProgressCallback) errors.E {
-	defer invalidateCommandResultCache()
+	defer a.invalidateCommandResultCache()
 
 	if progress != nil {
 		progress("failure", 0, []string{"APFS formatting is not supported on Linux"})
@@ -146,7 +145,7 @@ func (a *ApfsAdapter) Format(ctx context.Context, device string, options dto.For
 
 // Check runs filesystem check on an APFS device
 func (a *ApfsAdapter) Check(ctx context.Context, device string, options dto.CheckOptions, progress dto.ProgressCallback) (dto.CheckResult, errors.E) {
-	defer invalidateCommandResultCache()
+	defer a.invalidateCommandResultCache()
 
 	if progress != nil {
 		progress("failure", 0, []string{"APFS filesystem checking is not supported on Linux"})
@@ -168,7 +167,7 @@ func (a *ApfsAdapter) GetLabel(ctx context.Context, device string) (string, erro
 
 // SetLabel sets the APFS filesystem label
 func (a *ApfsAdapter) SetLabel(ctx context.Context, device string, label string) errors.E {
-	defer invalidateCommandResultCache()
+	defer a.invalidateCommandResultCache()
 
 	return errors.Errorf("APFS label modification is not supported on Linux. APFS is read-only on this system")
 }
@@ -183,7 +182,7 @@ func (a *ApfsAdapter) GetState(ctx context.Context, device string) (dto.Filesyst
 	}
 
 	// Check if filesystem is mounted
-	outputMount, _, _ := runCommandCached(ctx, "mount")
+	outputMount, _, _ := a.runCommandCached(ctx, "mount")
 	state.IsMounted = strings.Contains(outputMount, device)
 
 	// Add note about read-only status

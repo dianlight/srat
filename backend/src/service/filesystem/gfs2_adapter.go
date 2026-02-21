@@ -17,18 +17,18 @@ type Gfs2Adapter struct {
 // NewGfs2Adapter creates a new Gfs2Adapter instance
 func NewGfs2Adapter() FilesystemAdapter {
 	return &Gfs2Adapter{
-		baseAdapter: baseAdapter{
-			name:          "gfs2",
-			description:   "Global File System 2",
-			alpinePackage: "gfs2-utils",
-			mkfsCommand:   "mkfs.gfs2",
-			fsckCommand:   "fsck.gfs2",
-			labelCommand:  "", // No label command
-			stateCommand:  "fsck.gfs2",
-			signatures: []dto.FsMagicSignature{
+		baseAdapter: newBaseAdapter(
+			"gfs2",
+			"Global File System 2",
+			"gfs2-utils",
+			"mkfs.gfs2",
+			"fsck.gfs2",
+			"", // No label command
+			"fsck.gfs2",
+			[]dto.FsMagicSignature{
 				{Offset: 0x10, Magic: []byte{0x01, 0x16, 0x19, 0x70}},
 			},
-		},
+		),
 	}
 }
 
@@ -53,7 +53,7 @@ func (a *Gfs2Adapter) IsSupported(ctx context.Context) (dto.FilesystemSupport, e
 
 // Format formats a device with GFS2 filesystem
 func (a *Gfs2Adapter) Format(ctx context.Context, device string, options dto.FormatOptions, progress dto.ProgressCallback) errors.E {
-	defer invalidateCommandResultCache()
+	defer a.invalidateCommandResultCache()
 
 	if progress != nil {
 		progress("start", 0, []string{"Starting gfs2 format"})
@@ -131,7 +131,7 @@ func (a *Gfs2Adapter) Format(ctx context.Context, device string, options dto.For
 
 // Check runs filesystem check on a GFS2 device
 func (a *Gfs2Adapter) Check(ctx context.Context, device string, options dto.CheckOptions, progress dto.ProgressCallback) (dto.CheckResult, errors.E) {
-	defer invalidateCommandResultCache()
+	defer a.invalidateCommandResultCache()
 
 	if progress != nil {
 		progress("start", 0, []string{"Starting gfs2 check"})
@@ -242,7 +242,7 @@ func (a *Gfs2Adapter) GetLabel(ctx context.Context, device string) (string, erro
 
 // SetLabel sets the GFS2 filesystem label
 func (a *Gfs2Adapter) SetLabel(ctx context.Context, device string, label string) errors.E {
-	defer invalidateCommandResultCache()
+	defer a.invalidateCommandResultCache()
 
 	// GFS2 does not support labels
 	return errors.Errorf("GFS2 does not support filesystem labels")
@@ -255,7 +255,7 @@ func (a *Gfs2Adapter) GetState(ctx context.Context, device string) (dto.Filesyst
 	}
 
 	// Run state command in read-only mode to get filesystem state
-	output, exitCode, _ := runCommandCached(ctx, a.stateCommand, "-n", device)
+	output, exitCode, _ := a.runCommandCached(ctx, a.stateCommand, "-n", device)
 
 	// Parse the output to determine filesystem state
 	switch exitCode {
@@ -272,7 +272,7 @@ func (a *Gfs2Adapter) GetState(ctx context.Context, device string) (dto.Filesyst
 	}
 
 	// Check if filesystem is mounted
-	outputMount, _, _ := runCommandCached(ctx, "mount")
+	outputMount, _, _ := a.runCommandCached(ctx, "mount")
 	state.IsMounted = strings.Contains(outputMount, device)
 
 	// Store check output in additional info

@@ -17,18 +17,18 @@ type F2fsAdapter struct {
 // NewF2fsAdapter creates a new F2fsAdapter instance
 func NewF2fsAdapter() FilesystemAdapter {
 	return &F2fsAdapter{
-		baseAdapter: baseAdapter{
-			name:          "f2fs",
-			description:   "Flash-Friendly File System",
-			alpinePackage: "f2fs-tools",
-			mkfsCommand:   "mkfs.f2fs",
-			fsckCommand:   "fsck.f2fs",
-			labelCommand:  "", // No separate label command
-			stateCommand:  "fsck.f2fs",
-			signatures: []dto.FsMagicSignature{
+		baseAdapter: newBaseAdapter(
+			"f2fs",
+			"Flash-Friendly File System",
+			"f2fs-tools",
+			"mkfs.f2fs",
+			"fsck.f2fs",
+			"", // No separate label command
+			"fsck.f2fs",
+			[]dto.FsMagicSignature{
 				{Offset: 0x400, Magic: []byte{0x10, 0x20, 0xF5, 0xF2}},
 			},
-		},
+		),
 	}
 }
 
@@ -55,7 +55,7 @@ func (a *F2fsAdapter) IsSupported(ctx context.Context) (dto.FilesystemSupport, e
 
 // Format formats a device with F2FS filesystem
 func (a *F2fsAdapter) Format(ctx context.Context, device string, options dto.FormatOptions, progress dto.ProgressCallback) errors.E {
-	defer invalidateCommandResultCache()
+	defer a.invalidateCommandResultCache()
 
 	if progress != nil {
 		progress("start", 0, []string{"Starting f2fs format"})
@@ -134,7 +134,7 @@ func (a *F2fsAdapter) Format(ctx context.Context, device string, options dto.For
 
 // Check runs filesystem check on an F2FS device
 func (a *F2fsAdapter) Check(ctx context.Context, device string, options dto.CheckOptions, progress dto.ProgressCallback) (dto.CheckResult, errors.E) {
-	defer invalidateCommandResultCache()
+	defer a.invalidateCommandResultCache()
 
 	if progress != nil {
 		progress("start", 0, []string{"Starting f2fs check"})
@@ -237,7 +237,7 @@ func (a *F2fsAdapter) Check(ctx context.Context, device string, options dto.Chec
 func (a *F2fsAdapter) GetLabel(ctx context.Context, device string) (string, errors.E) {
 	// F2FS doesn't have a separate label command
 	// Use fsck.f2fs to get info
-	output, exitCode, err := runCommand(ctx, a.fsckCommand, "-d", "1", device)
+	output, exitCode, err := a.runCommand(ctx, a.fsckCommand, "-d", "1", device)
 	if err != nil {
 		return "", errors.WithDetails(err, "Device", device)
 	}
@@ -263,7 +263,7 @@ func (a *F2fsAdapter) GetLabel(ctx context.Context, device string) (string, erro
 
 // SetLabel sets the F2FS filesystem label
 func (a *F2fsAdapter) SetLabel(ctx context.Context, device string, label string) errors.E {
-	defer invalidateCommandResultCache()
+	defer a.invalidateCommandResultCache()
 
 	// F2FS can only set label during format
 	return errors.Errorf("F2FS does not support changing labels after format. Label must be set during mkfs.f2fs with -l option")
@@ -276,7 +276,7 @@ func (a *F2fsAdapter) GetState(ctx context.Context, device string) (dto.Filesyst
 	}
 
 	// Run state command to get filesystem state
-	output, exitCode, _ := runCommandCached(ctx, a.stateCommand, device)
+	output, exitCode, _ := a.runCommandCached(ctx, a.stateCommand, device)
 
 	// Parse the output to determine filesystem state
 	if exitCode == 0 {
@@ -290,7 +290,7 @@ func (a *F2fsAdapter) GetState(ctx context.Context, device string) (dto.Filesyst
 	}
 
 	// Check if filesystem is mounted
-	outputMount, _, _ := runCommandCached(ctx, "mount")
+	outputMount, _, _ := a.runCommandCached(ctx, "mount")
 	state.IsMounted = strings.Contains(outputMount, device)
 
 	// Store check output in additional info

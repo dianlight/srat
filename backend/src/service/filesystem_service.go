@@ -936,15 +936,6 @@ func (s *FilesystemService) UnmountPartition(ctx context.Context, target, fsType
 	return adapter.Unmount(ctx, target, force, lazy)
 }
 
-// MockSetMountOps allows tests to override generic mount operations.
-func (s *FilesystemService) MockSetMountOps(
-	tryMount func(source, target, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error),
-	mountFn func(source, target, fstype, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error),
-	unmountFn func(target string, force, lazy bool) error,
-) {
-	filesystem.SetMountOpsForTesting(tryMount, mountFn, unmountFn)
-}
-
 // CreateBlockDevice creates a loop block device node using mknod.
 // Returns nil if the device already exists.
 func (s *FilesystemService) CreateBlockDevice(ctx context.Context, device string) errors.E {

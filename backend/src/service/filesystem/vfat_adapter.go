@@ -17,20 +17,20 @@ type VfatAdapter struct {
 // NewVfatAdapter creates a new VfatAdapter instance
 func NewVfatAdapter() FilesystemAdapter {
 	return &VfatAdapter{
-		baseAdapter: baseAdapter{
-			name:          "vfat",
-			description:   "FAT32 Filesystem",
-			alpinePackage: "dosfstools",
-			mkfsCommand:   "mkfs.vfat",
-			fsckCommand:   "fsck.vfat",
-			labelCommand:  "fatlabel",
-			stateCommand:  "fsck.vfat",
-			signatures: []dto.FsMagicSignature{
+		baseAdapter: newBaseAdapter(
+			"vfat",
+			"FAT32 Filesystem",
+			"dosfstools",
+			"mkfs.vfat",
+			"fsck.vfat",
+			"fatlabel",
+			"fsck.vfat",
+			[]dto.FsMagicSignature{
 				{Offset: 82, Magic: []byte{'F', 'A', 'T', '3', '2', ' ', ' ', ' '}}, // FAT32 specific
 				{Offset: 54, Magic: []byte{'F', 'A', 'T', '1', '6', ' ', ' ', ' '}}, // FAT16 specific
 				{Offset: 54, Magic: []byte{'F', 'A', 'T', '1', '2', ' ', ' ', ' '}}, // FAT12 specific
 			},
-		},
+		),
 	}
 }
 
@@ -57,7 +57,7 @@ func (a *VfatAdapter) IsSupported(ctx context.Context) (dto.FilesystemSupport, e
 
 // Format formats a device with vfat filesystem
 func (a *VfatAdapter) Format(ctx context.Context, device string, options dto.FormatOptions, progress dto.ProgressCallback) errors.E {
-	defer invalidateCommandResultCache()
+	defer a.invalidateCommandResultCache()
 
 	if progress != nil {
 		progress("start", 0, []string{"Starting vfat format"})
@@ -135,7 +135,7 @@ func (a *VfatAdapter) Format(ctx context.Context, device string, options dto.For
 
 // Check runs filesystem check on a vfat device
 func (a *VfatAdapter) Check(ctx context.Context, device string, options dto.CheckOptions, progress dto.ProgressCallback) (dto.CheckResult, errors.E) {
-	defer invalidateCommandResultCache()
+	defer a.invalidateCommandResultCache()
 
 	if progress != nil {
 		progress("start", 0, []string{"Starting vfat check"})
@@ -247,7 +247,7 @@ func (a *VfatAdapter) Check(ctx context.Context, device string, options dto.Chec
 // GetLabel retrieves the vfat filesystem label
 func (a *VfatAdapter) GetLabel(ctx context.Context, device string) (string, errors.E) {
 	// fatlabel without second argument shows the current label
-	output, exitCode, err := runCommand(ctx, a.labelCommand, device)
+	output, exitCode, err := a.runCommandCached(ctx, a.labelCommand, device)
 	if err != nil {
 		return "", errors.WithDetails(err, "Device", device)
 	}
@@ -263,10 +263,10 @@ func (a *VfatAdapter) GetLabel(ctx context.Context, device string) (string, erro
 
 // SetLabel sets the vfat filesystem label
 func (a *VfatAdapter) SetLabel(ctx context.Context, device string, label string) errors.E {
-	defer invalidateCommandResultCache()
+	defer a.invalidateCommandResultCache()
 
 	// fatlabel device newlabel
-	output, exitCode, err := runCommand(ctx, a.labelCommand, device, label)
+	output, exitCode, err := a.runCommandCached(ctx, a.labelCommand, device, label)
 	if err != nil {
 		return errors.WithDetails(err, "Device", device, "Label", label)
 	}
@@ -285,7 +285,7 @@ func (a *VfatAdapter) GetState(ctx context.Context, device string) (dto.Filesyst
 	}
 
 	// For FAT filesystems, run state command in read-only mode to check state
-	output, exitCode, err := runCommandCached(ctx, a.stateCommand, "-n", device)
+	output, exitCode, err := a.runCommandCached(ctx, a.stateCommand, "-n", device)
 	if err != nil {
 		return state, errors.WithDetails(err, "Device", device)
 	}
@@ -301,7 +301,7 @@ func (a *VfatAdapter) GetState(ctx context.Context, device string) (dto.Filesyst
 	}
 
 	// Check if filesystem is mounted
-	mountOutput, _, _ := runCommandCached(ctx, "mount")
+	mountOutput, _, _ := a.runCommandCached(ctx, "mount")
 	state.IsMounted = strings.Contains(mountOutput, device)
 
 	state.AdditionalInfo["fsckOutput"] = output

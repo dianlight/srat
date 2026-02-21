@@ -17,6 +17,7 @@ type HfsplusAdapterTestSuite struct {
 	suite.Suite
 	adapter filesystem.FilesystemAdapter
 	ctx     context.Context
+	cleanExec   func() // Optional cleanup function for tests that set exec ops
 }
 
 func TestHfsplusAdapterTestSuite(t *testing.T) {
@@ -34,7 +35,7 @@ func (suite *HfsplusAdapterTestSuite) SetupTest() {
 	mock.When(execMock.StderrPipe()).ThenReturn(io.NopCloser(strings.NewReader("")), nil)
 	mock.When(execMock.Start()).ThenReturn(nil)
 	mock.When(execMock.Wait()).ThenReturn(nil)
-	filesystem.SetExecOpsForTesting(
+	suite.cleanExec = suite.adapter.SetExecOpsForTesting(
 		func(cmd string) (string, error) {
 			if cmd != "" {
 				return cmd, nil
@@ -48,7 +49,9 @@ func (suite *HfsplusAdapterTestSuite) SetupTest() {
 }
 
 func (suite *HfsplusAdapterTestSuite) TearDownTest() {
-	filesystem.ResetExecOpsForTesting()
+	if suite.cleanExec != nil {
+		suite.cleanExec()
+	}
 }
 
 func (suite *HfsplusAdapterTestSuite) TestGetName() {
