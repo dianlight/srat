@@ -2,7 +2,7 @@ package converter
 
 import (
 	"github.com/dianlight/srat/dto"
-	"github.com/google/go-github/v82/github"
+	"github.com/google/go-github/v83/github"
 )
 
 // goverter:converter
