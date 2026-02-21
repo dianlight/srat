@@ -17,6 +17,7 @@ export interface UseFilesystemStateResult {
 export function useFilesystemState(partitionId?: string): UseFilesystemStateResult {
     const {
         data: filesystemStateResponse,
+        currentData: filesystemStateCurrentData,
         isLoading: filesystemStateLoading,
         isError: filesystemStateError,
     } = useGetApiFilesystemStateQuery(
@@ -24,15 +25,17 @@ export function useFilesystemState(partitionId?: string): UseFilesystemStateResu
         { skip: !partitionId },
     );
 
+    const filesystemStatePayload = filesystemStateResponse ?? filesystemStateCurrentData;
+
     const filesystemState = useMemo<FilesystemState | null>(() => {
-        if (!filesystemStateResponse) {
+        if (!filesystemStatePayload) {
             return null;
         }
-        if ("hasErrors" in filesystemStateResponse) {
-            return filesystemStateResponse;
+        if ("hasErrors" in filesystemStatePayload) {
+            return filesystemStatePayload;
         }
         return null;
-    }, [filesystemStateResponse]);
+    }, [filesystemStatePayload]);
 
     const filesystemStatus = useMemo(() => {
         if (!filesystemState) {
