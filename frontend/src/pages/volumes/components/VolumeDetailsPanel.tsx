@@ -116,14 +116,14 @@ export function VolumeDetailsPanel({
     );
 
     const filesystemState = useMemo<FilesystemState | null>(() => {
-        if (!filesystemStateResponse || filesystemStateError) {
+        if (!filesystemStateResponse) {
             return null;
         }
         if ("hasErrors" in filesystemStateResponse) {
             return filesystemStateResponse;
         }
         return null;
-    }, [filesystemStateError, filesystemStateResponse]);
+    }, [filesystemStateResponse]);
 
     const filesystemStatus = useMemo(() => {
         if (!filesystemState) {
