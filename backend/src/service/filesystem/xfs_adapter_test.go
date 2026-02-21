@@ -15,8 +15,10 @@ import (
 // XfsAdapterTestSuite tests the XfsAdapter
 type XfsAdapterTestSuite struct {
 	suite.Suite
-	adapter filesystem.FilesystemAdapter
-	ctx     context.Context
+	adapter    filesystem.FilesystemAdapter
+	ctx        context.Context
+	cleanExec  func() // Optional cleanup function for tests that set exec ops
+	cleanGetFs func() // Optional cleanup function for tests that set GetFs ops
 }
 
 func TestXfsAdapterTestSuite(t *testing.T) {
@@ -34,7 +36,7 @@ func (suite *XfsAdapterTestSuite) SetupTest() {
 	mock.When(execMock.StderrPipe()).ThenReturn(io.NopCloser(strings.NewReader("")), nil)
 	mock.When(execMock.Start()).ThenReturn(nil)
 	mock.When(execMock.Wait()).ThenReturn(nil)
-	filesystem.SetExecOpsForTesting(
+	suite.cleanExec = suite.adapter.SetExecOpsForTesting(
 		func(cmd string) (string, error) {
 			if cmd != "" {
 				return cmd, nil
@@ -45,10 +47,18 @@ func (suite *XfsAdapterTestSuite) SetupTest() {
 			return execMock
 		},
 	)
+	suite.cleanGetFs = suite.adapter.SetGetFilesystemsForTesting(func() ([]string, error) {
+		return []string{"xfs", "ext4"}, nil
+	})
 }
 
 func (suite *XfsAdapterTestSuite) TearDownTest() {
-	filesystem.ResetExecOpsForTesting()
+	if suite.cleanExec != nil {
+		suite.cleanExec()
+	}
+	if suite.cleanGetFs != nil {
+		suite.cleanGetFs()
+	}
 }
 
 func (suite *XfsAdapterTestSuite) TestGetName() {

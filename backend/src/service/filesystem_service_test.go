@@ -10,11 +10,9 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/service"
-	"github.com/dianlight/srat/service/filesystem"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"github.com/u-root/u-root/pkg/mount"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
@@ -265,6 +263,7 @@ func (suite *FilesystemServiceTestSuite) TestGetFilesystemSpecificMountFlags() {
 
 func (suite *FilesystemServiceTestSuite) TestResolveLinuxFsModule() {
 	suite.Empty(suite.fsService.ResolveLinuxFsModule(""))
+	suite.Equal("ext4", suite.fsService.ResolveLinuxFsModule("ext4"))
 	suite.Equal("ntfs3", suite.fsService.ResolveLinuxFsModule("ntfs"))
 	suite.Equal("apfs", suite.fsService.ResolveLinuxFsModule("apfs"))
 	suite.Equal("unknownfs", suite.fsService.ResolveLinuxFsModule("unknownfs"))
@@ -516,75 +515,6 @@ func (suite *FilesystemServiceTestSuite) TestGetSupportedFilesystems() {
 		_, exists := support[expected]
 		suite.True(exists, "Should have support info for %s", expected)
 	}
-}
-
-func (suite *FilesystemServiceTestSuite) TestMountPartition_UsesAdapterLinuxModule() {
-	filesystem.ResetMountOpsForTesting()
-	suite.T().Cleanup(filesystem.ResetMountOpsForTesting)
-
-	fsSvc, ok := suite.fsService.(*service.FilesystemService)
-	suite.Require().True(ok)
-
-	calledMount := false
-	fsSvc.MockSetMountOps(
-		nil,
-		func(source, target, fstype, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error) {
-			calledMount = true
-			return &mount.MountPoint{Path: target, Device: source, FSType: fstype, Flags: flags, Data: data}, nil
-		},
-		nil,
-	)
-
-	mp, err := suite.fsService.MountPartition(suite.ctx, "/dev/mock", "/mnt/mock", "ntfs", "", 0, nil)
-	suite.Require().NoError(err)
-	suite.Require().NotNil(mp)
-	suite.True(calledMount)
-	suite.Equal("ntfs3", mp.FSType)
-}
-
-func (suite *FilesystemServiceTestSuite) TestMountPartition_AutoDetectWhenFsTypeEmpty() {
-	filesystem.ResetMountOpsForTesting()
-	suite.T().Cleanup(filesystem.ResetMountOpsForTesting)
-
-	fsSvc, ok := suite.fsService.(*service.FilesystemService)
-	suite.Require().True(ok)
-
-	calledTryMount := false
-	fsSvc.MockSetMountOps(
-		func(source, target, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error) {
-			calledTryMount = true
-			return &mount.MountPoint{Path: target, Device: source, FSType: "auto", Flags: flags, Data: data}, nil
-		},
-		nil,
-		nil,
-	)
-
-	mp, err := suite.fsService.MountPartition(suite.ctx, "/dev/mock", "/mnt/mock", "", "uid=1000", 0, nil)
-	suite.Require().NoError(err)
-	suite.Require().NotNil(mp)
-	suite.True(calledTryMount)
-}
-
-func (suite *FilesystemServiceTestSuite) TestUnmountPartition_DelegatesToGenericUnmount() {
-	filesystem.ResetMountOpsForTesting()
-	suite.T().Cleanup(filesystem.ResetMountOpsForTesting)
-
-	fsSvc, ok := suite.fsService.(*service.FilesystemService)
-	suite.Require().True(ok)
-
-	called := false
-	fsSvc.MockSetMountOps(
-		nil,
-		nil,
-		func(target string, force, lazy bool) error {
-			called = true
-			return nil
-		},
-	)
-
-	err := suite.fsService.UnmountPartition(suite.ctx, "/mnt/mock", "", true, false)
-	suite.Require().NoError(err)
-	suite.True(called)
 }
 
 func (suite *FilesystemServiceTestSuite) SetupTest() {

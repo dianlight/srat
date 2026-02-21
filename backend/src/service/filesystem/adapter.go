@@ -61,4 +61,18 @@ type FilesystemAdapter interface {
 
 	// GetFsSignatureMagic returns the magic number signatures for this filesystem
 	GetFsSignatureMagic() []dto.FsMagicSignature
+
+	// Additional test for moc
+	SetMountOpsForTesting(
+		tryMount func(source, target, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error),
+		mountFn func(source, target, fstype, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error),
+		unmountFn func(target string, force, lazy bool) error,
+	) (reset func())
+
+	SetExecOpsForTesting(
+		lookPath func(string) (string, error),
+		command func(ctx context.Context, cmd string, args ...string) ExecCmd,
+	) (reset func())
+
+	SetGetFilesystemsForTesting(getFilesystems func() ([]string, error)) (reset func())
 }

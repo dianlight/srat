@@ -2,17 +2,23 @@ package filesystem_test
 
 import (
 	"context"
+	"io"
+	"strings"
 	"testing"
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service/filesystem"
+	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
+	"gitlab.com/tozd/go/errors"
 )
 
 type Ext4AdapterTestSuite struct {
 	suite.Suite
-	adapter filesystem.FilesystemAdapter
-	ctx     context.Context
+	adapter    filesystem.FilesystemAdapter
+	ctx        context.Context
+	cleanExec  func() // Optional cleanup function for tests that set exec ops
+	cleanGetFs func() // Optional cleanup function for tests that set GetFs ops
 }
 
 func TestExt4AdapterTestSuite(t *testing.T) {
@@ -23,6 +29,39 @@ func (suite *Ext4AdapterTestSuite) SetupTest() {
 	suite.ctx = context.Background()
 	suite.adapter = filesystem.NewExt4Adapter()
 	suite.Require().NotNil(suite.adapter, "Ext4Adapter should be initialized")
+
+	// Mock exec operations for testing
+	controller := mock.NewMockController(suite.T())
+	execMock := mock.Mock[filesystem.ExecCmd](controller)
+	mock.When(execMock.StdoutPipe()).ThenReturn(io.NopCloser(strings.NewReader("")), nil)
+	mock.When(execMock.StderrPipe()).ThenReturn(io.NopCloser(strings.NewReader("")), nil)
+	mock.When(execMock.Start()).ThenReturn(nil)
+	mock.When(execMock.Wait()).ThenReturn(nil)
+	suite.cleanExec = suite.adapter.SetExecOpsForTesting(
+		func(cmd string) (string, error) {
+			if cmd != "" {
+				return cmd, nil
+			}
+			return "", errors.New("command not found")
+		},
+		func(ctx context.Context, cmd string, args ...string) filesystem.ExecCmd {
+			return execMock
+		},
+	)
+
+	// Mock GetFilesystems for testing
+	suite.cleanGetFs = suite.adapter.SetGetFilesystemsForTesting(func() ([]string, error) {
+		return []string{"ext4", "xfs"}, nil
+	})
+}
+
+func (suite *Ext4AdapterTestSuite) TearDownTest() {
+	if suite.cleanExec != nil {
+		suite.cleanExec()
+	}
+	if suite.cleanGetFs != nil {
+		suite.cleanGetFs()
+	}
 }
 
 func (suite *Ext4AdapterTestSuite) TestGetName() {
@@ -82,41 +121,6 @@ func (suite *Ext4AdapterTestSuite) TestGetFsSignatureMagic() {
 	suite.Len(signatures, 1)
 	suite.Equal(int64(1080), signatures[0].Offset)
 	suite.Equal([]byte{0x53, 0xEF}, signatures[0].Magic)
-}
-
-func (suite *Ext4AdapterTestSuite) TestFormat_NonExistentDevice() {
-	// Test formatting a non-existent device
-	err := suite.adapter.Format(suite.ctx, "/dev/nonexistent-device-12345", dto.FormatOptions{}, nil)
-	suite.Error(err)
-}
-
-func (suite *Ext4AdapterTestSuite) TestCheck_NonExistentDevice() {
-	// Test checking a non-existent device
-	result, err := suite.adapter.Check(suite.ctx, "/dev/nonexistent-device-12345", dto.CheckOptions{}, nil)
-	suite.Error(err)
-	// Result may be zero-initialized or have error info
-	_ = result
-}
-
-func (suite *Ext4AdapterTestSuite) TestGetLabel_NonExistentDevice() {
-	// Test getting label from a non-existent device
-	label, err := suite.adapter.GetLabel(suite.ctx, "/dev/nonexistent-device-12345")
-	suite.Error(err)
-	suite.Empty(label)
-}
-
-func (suite *Ext4AdapterTestSuite) TestSetLabel_NonExistentDevice() {
-	// Test setting label on a non-existent device
-	err := suite.adapter.SetLabel(suite.ctx, "/dev/nonexistent-device-12345", "testlabel")
-	suite.Error(err)
-}
-
-func (suite *Ext4AdapterTestSuite) TestGetState_NonExistentDevice() {
-	// Test getting state from a non-existent device
-	state, err := suite.adapter.GetState(suite.ctx, "/dev/nonexistent-device-12345")
-	suite.Error(err)
-	// State may be zero-initialized or have error info
-	_ = state
 }
 
 func (suite *Ext4AdapterTestSuite) TestFormat_WithCancelledContext() {

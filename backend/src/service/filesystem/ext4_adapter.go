@@ -17,18 +17,18 @@ type Ext4Adapter struct {
 // NewExt4Adapter creates a new Ext4Adapter instance
 func NewExt4Adapter() FilesystemAdapter {
 	return &Ext4Adapter{
-		baseAdapter: baseAdapter{
-			name:          "ext4",
-			description:   "EXT4 Filesystem",
-			alpinePackage: "e2fsprogs",
-			mkfsCommand:   "mkfs.ext4",
-			fsckCommand:   "fsck.ext4",
-			labelCommand:  "tune2fs",
-			stateCommand:  "tune2fs",
-			signatures: []dto.FsMagicSignature{
+		baseAdapter: newBaseAdapter(
+			"ext4",
+			"EXT4 Filesystem",
+			"e2fsprogs",
+			"mkfs.ext4",
+			"fsck.ext4",
+			"tune2fs",
+			"tune2fs",
+			[]dto.FsMagicSignature{
 				{Offset: 1080, Magic: []byte{0x53, 0xEF}}, // ext2/3/4, little-endian 0xEF53
 			},
-		},
+		),
 	}
 }
 
@@ -53,7 +53,7 @@ func (a *Ext4Adapter) IsSupported(ctx context.Context) (dto.FilesystemSupport, e
 
 // Format formats a device with ext4 filesystem
 func (a *Ext4Adapter) Format(ctx context.Context, device string, options dto.FormatOptions, progress dto.ProgressCallback) errors.E {
-	defer invalidateCommandResultCache()
+	defer a.invalidateCommandResultCache()
 
 	// Report start
 	if progress != nil {
@@ -136,7 +136,7 @@ func (a *Ext4Adapter) Format(ctx context.Context, device string, options dto.For
 
 // Check runs filesystem check on an ext4 device
 func (a *Ext4Adapter) Check(ctx context.Context, device string, options dto.CheckOptions, progress dto.ProgressCallback) (dto.CheckResult, errors.E) {
-	defer invalidateCommandResultCache()
+	defer a.invalidateCommandResultCache()
 
 	// Report start
 	if progress != nil {
@@ -255,7 +255,7 @@ func (a *Ext4Adapter) Check(ctx context.Context, device string, options dto.Chec
 // GetLabel retrieves the ext4 filesystem label
 func (a *Ext4Adapter) GetLabel(ctx context.Context, device string) (string, errors.E) {
 	// Use tune2fs -l to get filesystem information
-	output, exitCode, err := runCommand(ctx, a.labelCommand, "-l", device)
+	output, exitCode, err := a.runCommand(ctx, a.labelCommand, "-l", device)
 	if err != nil {
 		return "", errors.WithDetails(err, "Device", device)
 	}
@@ -284,10 +284,10 @@ func (a *Ext4Adapter) GetLabel(ctx context.Context, device string) (string, erro
 
 // SetLabel sets the ext4 filesystem label
 func (a *Ext4Adapter) SetLabel(ctx context.Context, device string, label string) errors.E {
-	defer invalidateCommandResultCache()
+	defer a.invalidateCommandResultCache()
 
 	// Use tune2fs -L to set the label
-	output, exitCode, err := runCommand(ctx, a.labelCommand, "-L", label, device)
+	output, exitCode, err := a.runCommand(ctx, a.labelCommand, "-L", label, device)
 	if err != nil {
 		return errors.WithDetails(err, "Device", device, "Label", label)
 	}
@@ -306,7 +306,7 @@ func (a *Ext4Adapter) GetState(ctx context.Context, device string) (dto.Filesyst
 	}
 
 	// Use state command to get filesystem state information
-	output, exitCode, err := runCommandCached(ctx, a.stateCommand, "-l", device)
+	output, exitCode, err := a.runCommandCached(ctx, a.stateCommand, "-l", device)
 	if err != nil {
 		return state, errors.WithDetails(err, "Device", device)
 	}
@@ -341,7 +341,7 @@ func (a *Ext4Adapter) GetState(ctx context.Context, device string) (dto.Filesyst
 
 	// Check if filesystem is mounted
 	// This is a simple check - in a production system, you'd want to check /proc/mounts
-	output, _, _ = runCommandCached(ctx, "mount")
+	output, _, _ = a.runCommandCached(ctx, "mount")
 	state.IsMounted = strings.Contains(output, device)
 
 	if state.StateDescription == "" {

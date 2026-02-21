@@ -17,20 +17,20 @@ type ReiserfsAdapter struct {
 // NewReiserfsAdapter creates a new ReiserfsAdapter instance
 func NewReiserfsAdapter() FilesystemAdapter {
 	return &ReiserfsAdapter{
-		baseAdapter: baseAdapter{
-			name:          "reiserfs",
-			description:   "Reiser File System",
-			alpinePackage: "reiserfsprogs",
-			mkfsCommand:   "mkfs.reiserfs",
-			fsckCommand:   "fsck.reiserfs",
-			labelCommand:  "reiserfstune",
-			stateCommand:  "fsck.reiserfs",
-			signatures: []dto.FsMagicSignature{
+		baseAdapter: newBaseAdapter(
+			"reiserfs",
+			"Reiser File System",
+			"reiserfsprogs",
+			"mkfs.reiserfs",
+			"fsck.reiserfs",
+			"reiserfstune",
+			"fsck.reiserfs",
+			[]dto.FsMagicSignature{
 				{Offset: 0x10034, Magic: []byte{'R', 'e', 'I', 's', 'E', 'r', 'F', 's'}},      // ReiserFS v3.5
 				{Offset: 0x10034, Magic: []byte{'R', 'e', 'I', 's', 'E', 'r', '2', 'F', 's'}}, // ReiserFS v3.6
 				{Offset: 0x10034, Magic: []byte{'R', 'e', 'I', 's', 'E', 'r', '3', 'F', 's'}}, // ReiserFS v3.6 with journal
 			},
-		},
+		),
 	}
 }
 
@@ -57,7 +57,7 @@ func (a *ReiserfsAdapter) IsSupported(ctx context.Context) (dto.FilesystemSuppor
 
 // Format formats a device with ReiserFS filesystem
 func (a *ReiserfsAdapter) Format(ctx context.Context, device string, options dto.FormatOptions, progress dto.ProgressCallback) errors.E {
-	defer invalidateCommandResultCache()
+	defer a.invalidateCommandResultCache()
 
 	if progress != nil {
 		progress("start", 0, []string{"Starting reiserfs format"})
@@ -136,7 +136,7 @@ func (a *ReiserfsAdapter) Format(ctx context.Context, device string, options dto
 
 // Check runs filesystem check on a ReiserFS device
 func (a *ReiserfsAdapter) Check(ctx context.Context, device string, options dto.CheckOptions, progress dto.ProgressCallback) (dto.CheckResult, errors.E) {
-	defer invalidateCommandResultCache()
+	defer a.invalidateCommandResultCache()
 
 	if progress != nil {
 		progress("start", 0, []string{"Starting reiserfs check"})
@@ -244,7 +244,7 @@ func (a *ReiserfsAdapter) Check(ctx context.Context, device string, options dto.
 // GetLabel retrieves the ReiserFS filesystem label
 func (a *ReiserfsAdapter) GetLabel(ctx context.Context, device string) (string, errors.E) {
 	// Use reiserfstune to get filesystem information
-	output, exitCode, err := runCommand(ctx, a.labelCommand, device)
+	output, exitCode, err := a.runCommandCached(ctx, a.labelCommand, device)
 	if err != nil {
 		return "", errors.WithDetails(err, "Device", device)
 	}
@@ -270,10 +270,10 @@ func (a *ReiserfsAdapter) GetLabel(ctx context.Context, device string) (string, 
 
 // SetLabel sets the ReiserFS filesystem label
 func (a *ReiserfsAdapter) SetLabel(ctx context.Context, device string, label string) errors.E {
-	defer invalidateCommandResultCache()
+	defer a.invalidateCommandResultCache()
 
 	// Use reiserfstune -l to set the label
-	output, exitCode, err := runCommand(ctx, a.labelCommand, "-l", label, device)
+	output, exitCode, err := a.runCommandCached(ctx, a.labelCommand, "-l", label, device)
 	if err != nil {
 		return errors.WithDetails(err, "Device", device, "Label", label)
 	}
@@ -292,7 +292,7 @@ func (a *ReiserfsAdapter) GetState(ctx context.Context, device string) (dto.File
 	}
 
 	// Run state command in read-only mode to get filesystem state
-	output, exitCode, _ := runCommandCached(ctx, a.stateCommand, "--check", device)
+	output, exitCode, _ := a.runCommandCached(ctx, a.stateCommand, "--check", device)
 
 	// Parse the output to determine filesystem state
 	switch exitCode {
@@ -309,7 +309,7 @@ func (a *ReiserfsAdapter) GetState(ctx context.Context, device string) (dto.File
 	}
 
 	// Check if filesystem is mounted
-	outputMount, _, _ := runCommandCached(ctx, "mount")
+	outputMount, _, _ := a.runCommandCached(ctx, "mount")
 	state.IsMounted = strings.Contains(outputMount, device)
 
 	// Store check output in additional info

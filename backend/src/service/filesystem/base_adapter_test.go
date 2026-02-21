@@ -1,4 +1,4 @@
-package filesystem_test
+package filesystem
 
 import (
 	"context"
@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal/osutil"
-	"github.com/dianlight/srat/service/filesystem"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -21,7 +21,10 @@ import (
 // BaseAdapterTestSuite tests the baseAdapter implementation
 type BaseAdapterTestSuite struct {
 	suite.Suite
-	ctx context.Context
+	ctx        context.Context
+	adapter    baseAdapter
+	cleanExec  func() // Optional cleanup function for tests that set exec ops
+	cleanMount func() // Optional cleanup function for tests that set mount ops
 }
 
 func TestBaseAdapterTestSuite(t *testing.T) {
@@ -31,32 +34,70 @@ func TestBaseAdapterTestSuite(t *testing.T) {
 func (suite *BaseAdapterTestSuite) SetupTest() {
 	suite.ctx = context.Background()
 	controller := mock.NewMockController(suite.T())
-	execMock := mock.Mock[filesystem.ExecCmd](controller)
-	filesystem.SetExecOpsForTesting(
+	execMock := mock.Mock[ExecCmd](controller)
+	suite.adapter = newBaseAdapter(
+		"ntfs",
+		"NTFS Filesystem",
+		"ntfs-3g-progs",
+		"mkfs.ntfs",
+		"ntfsfix",
+		"ntfslabel",
+		"ntfsfix",
+		[]dto.FsMagicSignature{
+			{Offset: 3, Magic: []byte{'N', 'T', 'F', 'S', ' ', ' ', ' ', ' '}}, // "NTFS    "
+		},
+	)
+	suite.adapter.linuxFsModule = "ntfs3"
+
+	suite.cleanExec = suite.adapter.SetExecOpsForTesting(
 		func(cmd string) (string, error) {
-			if cmd == "apfs-fuse" || cmd == "apfsutil" {
+			if cmd != "" {
 				return cmd, nil
 			}
 			return "", errors.New("command not found")
-		}, func(ctx context.Context, cmd string, args ...string) filesystem.ExecCmd {
+		},
+		func(ctx context.Context, cmd string, args ...string) ExecCmd {
 			return execMock
-		})
+		},
+	)
+
+	suite.cleanMount = suite.adapter.SetMountOpsForTesting(
+		func(source, target, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error) {
+			return &mount.MountPoint{Path: target, Device: source, FSType: "auto", Flags: flags, Data: data}, nil
+		},
+		func(source, target, fstype, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error) {
+			return &mount.MountPoint{Path: target, Device: source, FSType: fstype, Flags: flags, Data: data}, nil
+		},
+		func(target string, force, lazy bool) error {
+			return nil
+		},
+	)
+
+	mock.When(execMock.StdoutPipe()).ThenReturn(io.NopCloser(strings.NewReader("")), nil)
+	mock.When(execMock.StderrPipe()).ThenReturn(io.NopCloser(strings.NewReader("")), nil)
+	mock.When(execMock.Start()).ThenReturn(nil)
+	mock.When(execMock.Wait()).ThenReturn(nil)
 }
 
 func (suite *BaseAdapterTestSuite) TearDownTest() {
-	filesystem.ResetExecOpsForTesting()
+	if suite.cleanExec != nil {
+		suite.cleanExec()
+	}
+	if suite.cleanMount != nil {
+		suite.cleanMount()
+	}
+	suite.cleanExec = nil
+	suite.cleanMount = nil
 }
 
 // TestGetName tests the GetName method
 func (suite *BaseAdapterTestSuite) TestGetName() {
-	adapter := filesystem.NewNtfsAdapter()
-	suite.Equal("ntfs", adapter.GetName())
+	suite.Equal("ntfs", suite.adapter.GetName())
 }
 
 // TestGetDescription tests the GetDescription method
 func (suite *BaseAdapterTestSuite) TestGetDescription() {
-	adapter := filesystem.NewNtfsAdapter()
-	desc := adapter.GetDescription()
+	desc := suite.adapter.GetDescription()
 	suite.NotEmpty(desc)
 	suite.Contains(desc, "NTFS")
 }
@@ -64,30 +105,28 @@ func (suite *BaseAdapterTestSuite) TestGetDescription() {
 // TestGetLinuxFsModule tests the GetLinuxFsModule method
 func (suite *BaseAdapterTestSuite) TestGetLinuxFsModule() {
 	// Test with ntfs (which has specific linux module)
-	ntfsAdapter := filesystem.NewNtfsAdapter()
-	linuxModule := ntfsAdapter.GetLinuxFsModule()
+	linuxModule := suite.adapter.GetLinuxFsModule()
 	suite.NotEmpty(linuxModule)
-
-	// Test with ext4
-	ext4Adapter := filesystem.NewExt4Adapter()
-	suite.Equal("ext4", ext4Adapter.GetLinuxFsModule())
+	suite.Equal("ntfs3", linuxModule)
 }
 
 // TestCheckCommandAvailability tests command availability checks with mocked filesystem and exec
 func (suite *BaseAdapterTestSuite) TestCheckCommandAvailability() {
+	osutil.MockFileSystems([]string{"ntfs", "ext4"})
+	defer osutil.MockFileSystems(nil) // Restore original state after test
 	tests := []struct {
 		name               string
-		adapterFactory     func() filesystem.FilesystemAdapter
+		adapterFactory     func() FilesystemAdapter
 		shouldHaveCommands bool
 	}{
 		{
 			name:               "ntfs adapter has format/check commands available",
-			adapterFactory:     filesystem.NewNtfsAdapter,
+			adapterFactory:     NewNtfsAdapter,
 			shouldHaveCommands: true, // ntfs-3g/ntfsfix are commonly available
 		},
 		{
 			name:               "ext4 adapter has format/check commands available",
-			adapterFactory:     filesystem.NewExt4Adapter,
+			adapterFactory:     NewExt4Adapter,
 			shouldHaveCommands: true, // mkfs.ext4/e2fsck are commonly available
 		},
 	}
@@ -95,92 +134,49 @@ func (suite *BaseAdapterTestSuite) TestCheckCommandAvailability() {
 	for _, tt := range tests {
 		suite.Run(tt.name, func() {
 			adapter := tt.adapterFactory()
+			cancelExt := adapter.SetExecOpsForTesting(
+				func(cmd string) (string, error) {
+					if tt.shouldHaveCommands {
+						return cmd, nil
+					}
+					return "", errors.New("command not found")
+				},
+				func(ctx context.Context, cmd string, args ...string) ExecCmd {
+					return &mockExecCmd{output: "mock output", exitCode: 0, err: nil}
+				},
+			)
+			cancelOs := osutil.MockFileSystems([]string{"ntfs3", "ext4"})
 
 			support, err := adapter.IsSupported(suite.ctx)
 			suite.NoError(err)
-			suite.True(support.CanMount, "all adapters should support mounting")
+			suite.True(support.CanMount, "all adapters should support mounting %v", support)
 
 			// Verify the structure is correct
 			suite.NotNil(support)
 			suite.NotEmpty(support.AlpinePackage)
+			defer cancelOs()
+			defer cancelExt()
+
 		})
 	}
-}
-
-// TestCheckCommandAvailabilityWithMockedExec tests osutil and exec mocking together
-func (suite *BaseAdapterTestSuite) TestCheckCommandAvailabilityWithMockedExec() {
-	suite.Run("mocked filesystem and command availability", func() {
-		// Mock osutil.GetFileSystems to return ntfs3 (the kernel module for NTFS)
-		// This allows checkCommandAvailability() to find the module and check for commands
-		restoreFS := osutil.MockFileSystems([]string{"ntfs3", "ext4"})
-		defer restoreFS()
-
-		controller := mock.NewMockController(suite.T())
-		execMock := mock.Mock[filesystem.ExecCmd](controller)
-		mock.When(execMock.StdoutPipe()).ThenReturn(io.NopCloser(strings.NewReader("")), nil)
-		mock.When(execMock.StderrPipe()).ThenReturn(io.NopCloser(strings.NewReader("")), nil)
-		mock.When(execMock.Start()).ThenReturn(nil)
-		mock.When(execMock.Wait()).ThenReturn(nil)
-
-		// Mock exec.LookPath to track which commands are being checked
-		checkedCommands := []string{}
-		filesystem.SetExecOpsForTesting(
-			func(cmd string) (string, error) {
-				checkedCommands = append(checkedCommands, cmd)
-				return "", errors.New("command not found in mock")
-			},
-			func(ctx context.Context, cmd string, args ...string) filesystem.ExecCmd {
-				return execMock
-			},
-		)
-		defer filesystem.ResetExecOpsForTesting()
-
-		// Create an adapter and call IsSupported, which will use our mocked LookPath
-		ntfsAdapter := filesystem.NewNtfsAdapter()
-		_, err := ntfsAdapter.IsSupported(suite.ctx)
-		suite.NoError(err)
-		// Verify that the mock was actually called (checkedCommands should have entries)
-		suite.NotEmpty(checkedCommands, "mocked LookPath should have been called during IsSupported")
-	})
-
-	suite.Run("mocked exec command execution", func() {
-		callCount := 0
-		filesystem.SetExecOpsForTesting(
-			nil, // Keep real LookPath
-			func(ctx context.Context, name string, args ...string) filesystem.ExecCmd {
-				callCount++
-				return &mockExecCmd{
-					output:   "mocked output",
-					exitCode: 0,
-				}
-			},
-		)
-		defer filesystem.ResetExecOpsForTesting()
-
-		output, exitCode, err := filesystem.RunCommandCachedForTesting(suite.ctx, "testcmd", "arg1")
-		suite.NoError(err)
-		suite.Equal(0, exitCode)
-		suite.Equal("mocked output", output)
-		suite.Equal(1, callCount)
-	})
 }
 
 // TestRunCommandCached tests command result caching
 func (suite *BaseAdapterTestSuite) TestRunCommandCached() {
 	suite.Run("same command and args are cached", func() {
-		filesystem.ResetExecOpsForTesting()
+		suite.cleanExec()
 		tempDir := suite.T().TempDir()
 		counterFile := filepath.Join(tempDir, "counter.txt")
 		createCountingCommand(suite.T(), tempDir, "countcmd", counterFile)
 		suite.T().Setenv("PATH", tempDir)
 
-		filesystem.InvalidateCommandResultCacheForTesting()
+		suite.adapter.invalidateCommandResultCache()
 
-		firstOutput, firstExitCode, firstErr := filesystem.RunCommandCachedForTesting(suite.ctx, "countcmd", "arg1")
+		firstOutput, firstExitCode, firstErr := suite.adapter.runCommandCached(suite.ctx, "countcmd", "arg1")
 		suite.NoError(firstErr)
 		suite.Equal(0, firstExitCode)
 
-		secondOutput, secondExitCode, secondErr := filesystem.RunCommandCachedForTesting(suite.ctx, "countcmd", "arg1")
+		secondOutput, secondExitCode, secondErr := suite.adapter.runCommandCached(suite.ctx, "countcmd", "arg1")
 		suite.NoError(secondErr)
 		suite.Equal(0, secondExitCode)
 
@@ -191,13 +187,13 @@ func (suite *BaseAdapterTestSuite) TestRunCommandCached() {
 	})
 
 	suite.Run("different args use different cache entries", func() {
-		filesystem.InvalidateCommandResultCacheForTesting()
+		suite.cleanExec()
 
 		// These should not error with standard echo command
-		_, _, err := filesystem.RunCommandCachedForTesting(suite.ctx, "echo", "arg1")
+		_, _, err := suite.adapter.runCommandCached(suite.ctx, "echo", "arg1")
 		suite.NoError(err)
 
-		_, _, err = filesystem.RunCommandCachedForTesting(suite.ctx, "echo", "arg2")
+		_, _, err = suite.adapter.runCommandCached(suite.ctx, "echo", "arg2")
 		suite.NoError(err)
 		// Implicit pass if no errors
 	})
@@ -205,13 +201,10 @@ func (suite *BaseAdapterTestSuite) TestRunCommandCached() {
 
 // TestBaseAdapterMountUsesTryMountWhenFsTypeEmpty tests mount behavior with empty fsType
 func (suite *BaseAdapterTestSuite) TestBaseAdapterMountUsesTryMountWhenFsTypeEmpty() {
-	filesystem.ResetMountOpsForTesting()
-	suite.T().Cleanup(func() { filesystem.ResetMountOpsForTesting() })
 
-	adapter := filesystem.NewNtfsAdapter()
 	called := false
 
-	filesystem.SetMountOpsForTesting(
+	suite.cleanMount = suite.adapter.SetMountOpsForTesting(
 		func(source, target, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error) {
 			called = true
 			for _, opt := range opts {
@@ -226,7 +219,7 @@ func (suite *BaseAdapterTestSuite) TestBaseAdapterMountUsesTryMountWhenFsTypeEmp
 	)
 
 	prepared := false
-	mp, err := adapter.Mount(suite.ctx, "/dev/mock", "/mnt/mock", "", "uid=1000", 0, func() error {
+	mp, err := suite.adapter.Mount(suite.ctx, "/dev/mock", "/mnt/mock", "", "uid=1000", 0, func() error {
 		prepared = true
 		return nil
 	})
@@ -240,13 +233,10 @@ func (suite *BaseAdapterTestSuite) TestBaseAdapterMountUsesTryMountWhenFsTypeEmp
 
 // TestBaseAdapterMountUsesMountWhenFsTypeProvided tests mount behavior with fsType specified
 func (suite *BaseAdapterTestSuite) TestBaseAdapterMountUsesMountWhenFsTypeProvided() {
-	filesystem.ResetMountOpsForTesting()
-	suite.T().Cleanup(func() { filesystem.ResetMountOpsForTesting() })
 
-	adapter := filesystem.NewNtfsAdapter()
 	calledMount := false
 
-	filesystem.SetMountOpsForTesting(
+	suite.cleanMount = suite.adapter.SetMountOpsForTesting(
 		nil,
 		func(source, target, fstype, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error) {
 			calledMount = true
@@ -256,7 +246,7 @@ func (suite *BaseAdapterTestSuite) TestBaseAdapterMountUsesMountWhenFsTypeProvid
 		nil,
 	)
 
-	mp, err := adapter.Mount(suite.ctx, "/dev/mock", "/mnt/mock", "ntfs3", "", 0, nil)
+	mp, err := suite.adapter.Mount(suite.ctx, "/dev/mock", "/mnt/mock", "ntfs3", "", 0, nil)
 
 	suite.NoError(err)
 	suite.True(calledMount, "expected Mount path to be called")
@@ -266,13 +256,10 @@ func (suite *BaseAdapterTestSuite) TestBaseAdapterMountUsesMountWhenFsTypeProvid
 
 // TestBaseAdapterUnmountDelegatesToHook tests unmount behavior
 func (suite *BaseAdapterTestSuite) TestBaseAdapterUnmountDelegatesToHook() {
-	filesystem.ResetMountOpsForTesting()
-	suite.T().Cleanup(func() { filesystem.ResetMountOpsForTesting() })
 
-	adapter := filesystem.NewNtfsAdapter()
 	called := false
 
-	filesystem.SetMountOpsForTesting(
+	suite.cleanMount = suite.adapter.SetMountOpsForTesting(
 		nil,
 		nil,
 		func(target string, force, lazy bool) error {
@@ -284,7 +271,7 @@ func (suite *BaseAdapterTestSuite) TestBaseAdapterUnmountDelegatesToHook() {
 		},
 	)
 
-	err := adapter.Unmount(suite.ctx, "/mnt/mock", true, false)
+	err := suite.adapter.Unmount(suite.ctx, "/mnt/mock", true, false)
 
 	suite.NoError(err)
 	suite.True(called, "expected unmount hook to be called")

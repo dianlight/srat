@@ -15,8 +15,9 @@ import (
 
 type Gfs2AdapterTestSuite struct {
 	suite.Suite
-	adapter filesystem.FilesystemAdapter
-	ctx     context.Context
+	adapter   filesystem.FilesystemAdapter
+	ctx       context.Context
+	cleanExec func() // Optional cleanup function for tests that set exec ops
 }
 
 func TestGfs2AdapterTestSuite(t *testing.T) {
@@ -34,7 +35,7 @@ func (suite *Gfs2AdapterTestSuite) SetupTest() {
 	mock.When(execMock.StderrPipe()).ThenReturn(io.NopCloser(strings.NewReader("")), nil)
 	mock.When(execMock.Start()).ThenReturn(nil)
 	mock.When(execMock.Wait()).ThenReturn(nil)
-	filesystem.SetExecOpsForTesting(
+	suite.cleanExec = suite.adapter.SetExecOpsForTesting(
 		func(cmd string) (string, error) {
 			return "", errors.New("command not found")
 		},
@@ -45,7 +46,9 @@ func (suite *Gfs2AdapterTestSuite) SetupTest() {
 }
 
 func (suite *Gfs2AdapterTestSuite) TearDownTest() {
-	filesystem.ResetExecOpsForTesting()
+	if suite.cleanExec != nil {
+		suite.cleanExec()
+	}
 }
 
 func (suite *Gfs2AdapterTestSuite) TestGetName() {

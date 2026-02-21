@@ -17,18 +17,18 @@ type BtrfsAdapter struct {
 // NewBtrfsAdapter creates a new BtrfsAdapter instance
 func NewBtrfsAdapter() FilesystemAdapter {
 	return &BtrfsAdapter{
-		baseAdapter: baseAdapter{
-			name:          "btrfs",
-			description:   "BTRFS Filesystem",
-			alpinePackage: "btrfs-progs",
-			mkfsCommand:   "mkfs.btrfs",
-			fsckCommand:   "btrfs",
-			labelCommand:  "btrfs",
-			stateCommand:  "btrfs",
-			signatures: []dto.FsMagicSignature{
+		baseAdapter: newBaseAdapter(
+			"btrfs",
+			"BTRFS Filesystem",
+			"btrfs-progs",
+			"mkfs.btrfs",
+			"btrfs",
+			"btrfs",
+			"btrfs",
+			[]dto.FsMagicSignature{
 				{Offset: 0x10040, Magic: []byte{'_', 'B', 'H', 'R', 'f', 'S', '_', 'M'}}, // 65600
 			},
-		},
+		),
 	}
 }
 
@@ -55,7 +55,7 @@ func (a *BtrfsAdapter) IsSupported(ctx context.Context) (dto.FilesystemSupport, 
 
 // Format formats a device with btrfs filesystem
 func (a *BtrfsAdapter) Format(ctx context.Context, device string, options dto.FormatOptions, progress dto.ProgressCallback) errors.E {
-	defer invalidateCommandResultCache()
+	defer a.invalidateCommandResultCache()
 
 	if progress != nil {
 		progress("start", 0, []string{"Starting btrfs format"})
@@ -134,7 +134,7 @@ func (a *BtrfsAdapter) Format(ctx context.Context, device string, options dto.Fo
 
 // Check runs filesystem check on a btrfs device
 func (a *BtrfsAdapter) Check(ctx context.Context, device string, options dto.CheckOptions, progress dto.ProgressCallback) (dto.CheckResult, errors.E) {
-	defer invalidateCommandResultCache()
+	defer a.invalidateCommandResultCache()
 
 	if progress != nil {
 		progress("start", 0, []string{"Starting btrfs check"})
@@ -240,7 +240,7 @@ func (a *BtrfsAdapter) Check(ctx context.Context, device string, options dto.Che
 // GetLabel retrieves the btrfs filesystem label
 func (a *BtrfsAdapter) GetLabel(ctx context.Context, device string) (string, errors.E) {
 	// Use 'btrfs filesystem show' to get filesystem information including label
-	output, exitCode, err := runCommand(ctx, "btrfs", "filesystem", "show", device)
+	output, exitCode, err := a.runCommand(ctx, "btrfs", "filesystem", "show", device)
 	if err != nil {
 		return "", errors.WithDetails(err, "Device", device)
 	}
@@ -277,10 +277,10 @@ func (a *BtrfsAdapter) GetLabel(ctx context.Context, device string) (string, err
 
 // SetLabel sets the btrfs filesystem label
 func (a *BtrfsAdapter) SetLabel(ctx context.Context, device string, label string) errors.E {
-	defer invalidateCommandResultCache()
+	defer a.invalidateCommandResultCache()
 
 	// Use 'btrfs filesystem label' to set the label
-	output, exitCode, err := runCommand(ctx, "btrfs", "filesystem", "label", device, label)
+	output, exitCode, err := a.runCommand(ctx, "btrfs", "filesystem", "label", device, label)
 	if err != nil {
 		return errors.WithDetails(err, "Device", device, "Label", label)
 	}
@@ -299,7 +299,7 @@ func (a *BtrfsAdapter) GetState(ctx context.Context, device string) (dto.Filesys
 	}
 
 	// Use state command device stats to get device statistics
-	output, exitCode, err := runCommandCached(ctx, a.stateCommand, "device", "stats", device)
+	output, exitCode, err := a.runCommandCached(ctx, a.stateCommand, "device", "stats", device)
 	if err == nil && exitCode == 0 {
 		state.AdditionalInfo["deviceStats"] = output
 
@@ -313,7 +313,7 @@ func (a *BtrfsAdapter) GetState(ctx context.Context, device string) (dto.Filesys
 		}
 	} else {
 		// If we can't get stats, run a readonly check
-		checkOutput, checkExitCode, err := runCommandCached(ctx, a.stateCommand, "check", "--readonly", device)
+		checkOutput, checkExitCode, err := a.runCommandCached(ctx, a.stateCommand, "check", "--readonly", device)
 		if err != nil {
 			return state, errors.WithDetails(err, "Device", device)
 		}
@@ -329,7 +329,7 @@ func (a *BtrfsAdapter) GetState(ctx context.Context, device string) (dto.Filesys
 	}
 
 	// Check if filesystem is mounted
-	mountOutput, _, _ := runCommandCached(ctx, "mount")
+	mountOutput, _, _ := a.runCommandCached(ctx, "mount")
 	state.IsMounted = strings.Contains(mountOutput, device)
 
 	return state, nil

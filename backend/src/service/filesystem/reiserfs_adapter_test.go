@@ -15,8 +15,10 @@ import (
 
 type ReiserfsAdapterTestSuite struct {
 	suite.Suite
-	adapter filesystem.FilesystemAdapter
-	ctx     context.Context
+	adapter    filesystem.FilesystemAdapter
+	ctx        context.Context
+	cleanExec  func() // Optional cleanup function for tests that set exec ops
+	cleanGetFs func() // Optional cleanup function for tests that set GetFs ops
 }
 
 func TestReiserfsAdapterTestSuite(t *testing.T) {
@@ -34,7 +36,7 @@ func (suite *ReiserfsAdapterTestSuite) SetupTest() {
 	mock.When(execMock.StderrPipe()).ThenReturn(io.NopCloser(strings.NewReader("")), nil)
 	mock.When(execMock.Start()).ThenReturn(nil)
 	mock.When(execMock.Wait()).ThenReturn(nil)
-	filesystem.SetExecOpsForTesting(
+	suite.cleanExec = suite.adapter.SetExecOpsForTesting(
 		func(cmd string) (string, error) {
 			return "", errors.New("command not found")
 		},
@@ -42,10 +44,18 @@ func (suite *ReiserfsAdapterTestSuite) SetupTest() {
 			return execMock
 		},
 	)
+	suite.cleanGetFs = suite.adapter.SetGetFilesystemsForTesting(func() ([]string, error) {
+		return []string{"reiserfs", "ext4"}, nil
+	})
 }
 
 func (suite *ReiserfsAdapterTestSuite) TearDownTest() {
-	filesystem.ResetExecOpsForTesting()
+	if suite.cleanExec != nil {
+		suite.cleanExec()
+	}
+	if suite.cleanGetFs != nil {
+		suite.cleanGetFs()
+	}
 }
 
 func (suite *ReiserfsAdapterTestSuite) TestGetName() {
