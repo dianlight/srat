@@ -479,21 +479,19 @@ func (s *FilesystemService) FsTypeFromDevice(devicePath string) (string, errors.
 	// Get all adapters for detection
 	adapters := s.registry.GetAll()
 
-	fsType, err := filesystem.DetectFilesystemType(devicePath, adapters)
-	if err != nil {
-		// Map the error to the appropriate DTO error type for backward compatibility
-		if errors.Is(err, filesystem.ErrorDeviceNotFound) {
-			return "", errors.WithDetails(dto.ErrorDeviceNotFound, "Path", devicePath)
+	for _, adapter := range adapters {
+		matches, err := adapter.IsDeviceSupported(s.ctx, devicePath)
+		if err != nil {
+			slog.Warn("Error checking device against adapter signatures", "device", devicePath, "adapter", adapter.GetName(), "error", err)
+			continue
 		}
-		return "", err
+		if matches {
+			slog.Debug("FsTypeFromDevice: Matched signature with adapter's IsDeviceSupported method", "device", devicePath, "adapter", adapter.GetName())
+			return adapter.GetName(), nil
+		}
 	}
 
-	if fsType == "" {
-		return "", errors.WithDetails(filesystem.ErrorUnknownFilesystem, "Path", devicePath)
-	}
-
-	slog.Debug("FsTypeFromDevice: Matched signature", "device", devicePath, "fstype", fsType)
-	return fsType, nil
+	return "", errors.WithDetails(dto.ErrorUnknownFilesystem, "Path", devicePath)
 }
 
 // GetAdapter returns the filesystem adapter for a given filesystem type.

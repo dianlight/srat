@@ -269,7 +269,7 @@ func (b *baseAdapter) GetFsSignatureMagic() []dto.FsMagicSignature {
 // the magic signature detection system.
 func (b *baseAdapter) IsDeviceSupported(ctx context.Context, devicePath string) (bool, errors.E) {
 	// Check if device matches any of the adapter's signatures
-	return checkDeviceMatchesSignatures(devicePath, b.signatures)
+	return b.checkDeviceMatchesSignatures(devicePath)
 }
 
 // Mount mounts source to target using a generic Linux mount implementation.

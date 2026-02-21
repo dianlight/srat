@@ -87,6 +87,16 @@ func TestFilesystemUtilsWithoutMockedCommands(t *testing.T) {
 				}
 			})
 
+			t.Run(adapter.GetName()+"_magic", func(t *testing.T) {
+				yes, err := adapter.IsDeviceSupported(t.Context(), device)
+				require.NoError(t, err, "Error checking device support for %s: %v", adapter.GetName(), err)
+				if yes {
+					t.Logf("Device %s correctly identified as supported by %s", device, adapter.GetName())
+				} else {
+					t.Errorf("Device %s not identified as supported by %s", device, adapter.GetName())
+				}
+			})
+
 			t.Run(adapter.GetName()+"_state", func(t *testing.T) {
 				if support.CanGetState {
 					_, stateErr := adapter.GetState(ctx, device)
