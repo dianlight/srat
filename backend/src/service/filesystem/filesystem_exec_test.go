@@ -75,15 +75,58 @@ func TestFilesystemUtilsWithoutMockedCommands(t *testing.T) {
 
 			t.Run(adapter.GetName()+"_format", func(t *testing.T) {
 				if support.CanFormat {
+					formatStep := []string{"start", "running", "success", "failure"}
+
 					formatErr := adapter.Format(ctx, device, dto.FormatOptions{
 						Label: label,
 						Force: true,
-					}, nil)
+					}, func(status string, percentage int, notes []string) {
+						t.Logf("Format progress for %s: status=%s, percentage=%d, notes=%v", adapter.GetName(), status, percentage, notes)
+						if status == "failure" {
+							t.Errorf("Format failed for %s: %v", adapter.GetName(), notes)
+						}
+						if percentage != 999 && (percentage < 0 || percentage > 100) {
+							t.Errorf("Invalid percentage value for %s: %d", adapter.GetName(), percentage)
+						}
+						if status == "success" && percentage == 100 && formatStep[0] == "running" {
+							formatStep = formatStep[1:]
+						}
+						if status != formatStep[0] {
+							t.Errorf("Unexpected status for %s: got %s, expected %s", adapter.GetName(), status, formatStep[0])
+						}
+						if status == "start" {
+							formatStep = formatStep[1:] // move to next expected step
+						} else if status == "running" && percentage == 999 {
+							// allow multiple running updates with percentage 999 (indeterminate progress)
+						} else if status == "running" {
+							if percentage < 0 || percentage > 100 {
+								t.Errorf("Invalid percentage value for %s: %d", adapter.GetName(), percentage)
+							}
+						} else if status == "success" {
+							if percentage != 100 {
+								t.Errorf("Success status should have 100%% percentage for %s, got %d", adapter.GetName(), percentage)
+							}
+						} else if status == "failure" {
+							if percentage != 0 {
+								t.Errorf("Failure status should have 0%% percentage for %s, got %d", adapter.GetName(), percentage)
+							}
+						}
+					})
 					if formatErr != nil {
 						t.Fatalf("format attempt failed for %s on %s: %v", adapter.GetName(), deviceFile, formatErr)
 					}
 				} else {
 					t.Skipf("skipping format test for %s as it is not supported", adapter.GetName())
+				}
+			})
+
+			t.Run(adapter.GetName()+"_magic", func(t *testing.T) {
+				yes, err := adapter.IsDeviceSupported(t.Context(), device)
+				require.NoError(t, err, "Error checking device support for %s: %v", adapter.GetName(), err)
+				if yes {
+					t.Logf("Device %s correctly identified as supported by %s", device, adapter.GetName())
+				} else {
+					t.Errorf("Device %s not identified as supported by %s", device, adapter.GetName())
 				}
 			})
 
@@ -100,11 +143,45 @@ func TestFilesystemUtilsWithoutMockedCommands(t *testing.T) {
 
 			t.Run(adapter.GetName()+"_check", func(t *testing.T) {
 				if support.CanCheck {
+					checkStep := []string{"start", "running", "success", "failure"}
 					_, checkErr := adapter.Check(ctx, device, dto.CheckOptions{
 						AutoFix: false,
 						Force:   true,
 						Verbose: false,
-					}, nil)
+					},
+						func(status string, percentage int, notes []string) {
+							t.Logf("Check progress for %s: status=%s, percentage=%d, notes=%v", adapter.GetName(), status, percentage, notes)
+							if status == "failure" {
+								t.Errorf("Check failed for %s: %v", adapter.GetName(), notes)
+							}
+							if percentage != 999 && (percentage < 0 || percentage > 100) {
+								t.Errorf("Invalid percentage value for %s: %d", adapter.GetName(), percentage)
+							}
+							if status == "success" && percentage == 100 && checkStep[0] == "running" {
+								checkStep = checkStep[1:]
+							}
+							if status != checkStep[0] {
+								t.Errorf("Unexpected status for %s: got %s, expected %s", adapter.GetName(), status, checkStep[0])
+							}
+							if status == "start" {
+								checkStep = checkStep[1:] // move to next expected step
+							} else if status == "running" && percentage == 999 {
+								// allow multiple running updates with percentage 999 (indeterminate progress)
+							} else if status == "running" {
+								if percentage < 0 || percentage > 100 {
+									t.Errorf("Invalid percentage value for %s: %d", adapter.GetName(), percentage)
+								}
+							} else if status == "success" {
+								if percentage != 100 {
+									t.Errorf("Success status should have 100%% percentage for %s, got %d", adapter.GetName(), percentage)
+								}
+							} else if status == "failure" {
+								if percentage != 0 {
+									t.Errorf("Failure status should have 0%% percentage for %s, got %d", adapter.GetName(), percentage)
+								}
+							}
+						},
+					)
 					if checkErr != nil {
 						t.Logf("check attempt failed for %s on %s: %v", adapter.GetName(), deviceFile, checkErr)
 					}

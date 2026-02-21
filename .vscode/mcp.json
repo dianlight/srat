@@ -54,6 +54,10 @@
       "env": {
         "PROJECT_ROOT": "/workspaces/srat",
       }
+    },
+    "github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/"
     }
   }
 }

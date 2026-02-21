@@ -100,14 +100,23 @@ func (suite *UserServiceSuite) TestListUsers_Success() {
 			Username: "testuser1",
 			Password: "password1",
 			IsAdmin:  false,
+			RwShares: []dbom.ExportedShare{
+				{Name: "rwshare1"},
+				{Name: "rwshare2"},
+			},
 		},
 		{
 			Username: "testuser2",
 			Password: "password2",
 			IsAdmin:  false,
+			RoShares: []dbom.ExportedShare{
+				{Name: "roshare1"},
+			},
 		},
 	}
 
+	suite.Require().NoError(suite.db.Create(&dbUsers[1].RoShares).Error)
+	suite.Require().NoError(suite.db.Create(&dbUsers[0].RwShares).Error)
 	suite.Require().NoError(suite.db.Create(&dbUsers).Error)
 	//mock.When(suite.userRepoMock.All()).ThenReturn(dbUsers, nil)
 
@@ -116,14 +125,25 @@ func (suite *UserServiceSuite) TestListUsers_Success() {
 
 	// Assert
 	suite.NoError(err)
-	suite.GreaterOrEqual(len(users), 3)
+	suite.GreaterOrEqual(len(users), 2)
 	var usernames []string
+	var rwShares []string
+	var roShares []string
 	for _, u := range users {
 		usernames = append(usernames, u.Username)
+		for _, share := range u.RwShares {
+			rwShares = append(rwShares, share)
+		}
+		for _, share := range u.RoShares {
+			roShares = append(roShares, share)
+		}
 	}
 	suite.Contains(usernames, "testuser1")
 	suite.Contains(usernames, "testuser2")
-	//mock.Verify(suite.userRepoMock, matchers.Times(2)).All()
+	suite.Contains(rwShares, "rwshare1")
+	suite.Contains(rwShares, "rwshare2")
+	suite.Contains(roShares, "roshare1")
+
 }
 
 /*

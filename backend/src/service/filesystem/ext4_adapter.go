@@ -56,8 +56,9 @@ func (a *Ext4Adapter) Format(ctx context.Context, device string, options dto.For
 	defer a.invalidateCommandResultCache()
 
 	// Report start
+	notes := []string{"Starting ext4 format"}
 	if progress != nil {
-		progress("start", 0, []string{"Starting ext4 format"})
+		progress("start", 0, notes)
 	}
 
 	args := []string{}
@@ -75,7 +76,8 @@ func (a *Ext4Adapter) Format(ctx context.Context, device string, options dto.For
 
 	// Report running (progress not supported for mkfs.ext4)
 	if progress != nil {
-		progress("running", 999, []string{"Progress Status Not Supported"})
+		notes = append(notes, "Progress status not supported for mkfs.ext4")
+		progress("running", 999, notes)
 	}
 
 	stdoutChan, stderrChan, resultChan := a.executeCommandWithProgress(ctx, a.mkfsCommand, args)
@@ -91,7 +93,8 @@ func (a *Ext4Adapter) Format(ctx context.Context, device string, options dto.For
 		for line := range stdoutChan {
 			outputLines = append(outputLines, line)
 			if progress != nil {
-				progress("running", 999, []string{line})
+				notes = append(notes, line)
+				progress("running", 999, notes)
 			}
 		}
 	}()
@@ -101,7 +104,8 @@ func (a *Ext4Adapter) Format(ctx context.Context, device string, options dto.For
 		for line := range stderrChan {
 			errorLines = append(errorLines, line)
 			if progress != nil {
-				progress("running", 999, []string{"ERROR: " + line})
+				notes = append(notes, "ERROR: "+line)
+				progress("running", 999, notes)
 			}
 		}
 	}()
@@ -120,7 +124,8 @@ func (a *Ext4Adapter) Format(ctx context.Context, device string, options dto.For
 
 	if result.ExitCode != 0 {
 		if progress != nil {
-			progress("failure", 0, []string{"mkfs.ext4 failed with exit code"})
+			notes = append(notes, "mkfs.ext4 failed with exit code")
+			progress("failure", 0, notes)
 		}
 		output := strings.Join(outputLines, "\n")
 		return errors.Errorf("mkfs.ext4 failed with exit code %d: %s", result.ExitCode, output)
@@ -128,7 +133,8 @@ func (a *Ext4Adapter) Format(ctx context.Context, device string, options dto.For
 
 	// Report success
 	if progress != nil {
-		progress("success", 100, []string{"Format completed successfully"})
+		notes = append(notes, "Format completed successfully")
+		progress("success", 100, notes)
 	}
 
 	return nil
@@ -138,9 +144,10 @@ func (a *Ext4Adapter) Format(ctx context.Context, device string, options dto.For
 func (a *Ext4Adapter) Check(ctx context.Context, device string, options dto.CheckOptions, progress dto.ProgressCallback) (dto.CheckResult, errors.E) {
 	defer a.invalidateCommandResultCache()
 
+	notes := []string{"Starting ext4 filesystem check"}
 	// Report start
 	if progress != nil {
-		progress("start", 0, []string{"Starting ext4 filesystem check"})
+		progress("start", 0, notes)
 	}
 
 	args := []string{}
@@ -163,7 +170,8 @@ func (a *Ext4Adapter) Check(ctx context.Context, device string, options dto.Chec
 
 	// Report running (progress not supported for fsck.ext4)
 	if progress != nil {
-		progress("running", 999, []string{"Progress Status Not Supported"})
+		notes := []string{"Progress status not supported for fsck.ext4"}
+		progress("running", 999, notes)
 	}
 
 	stdoutChan, stderrChan, resultChan := a.executeCommandWithProgress(ctx, a.fsckCommand, args)
@@ -179,7 +187,8 @@ func (a *Ext4Adapter) Check(ctx context.Context, device string, options dto.Chec
 		for line := range stdoutChan {
 			outputLines = append(outputLines, line)
 			if progress != nil {
-				progress("running", 999, []string{line})
+				notes = append(notes, line)
+				progress("running", 999, notes)
 			}
 		}
 	}()
@@ -189,7 +198,8 @@ func (a *Ext4Adapter) Check(ctx context.Context, device string, options dto.Chec
 		for line := range stderrChan {
 			errorLines = append(errorLines, line)
 			if progress != nil {
-				progress("running", 999, []string{"ERROR: " + line})
+				notes = append(notes, "ERROR: "+line)
+				progress("running", 999, notes)
 			}
 		}
 	}()
@@ -242,7 +252,8 @@ func (a *Ext4Adapter) Check(ctx context.Context, device string, options dto.Chec
 		result.ErrorsFound = true
 		result.ErrorsFixed = false
 		if progress != nil {
-			progress("failure", 0, []string{"Check failed with exit code"})
+			notes = append(notes, "Check failed with exit code")
+			progress("failure", 0, notes)
 		}
 		if cmdResult.Error != nil {
 			return result, errors.WithDetails(cmdResult.Error, "Device", device, "ExitCode", cmdResult.ExitCode)

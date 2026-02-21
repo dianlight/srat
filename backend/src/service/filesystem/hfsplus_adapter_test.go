@@ -15,9 +15,9 @@ import (
 
 type HfsplusAdapterTestSuite struct {
 	suite.Suite
-	adapter filesystem.FilesystemAdapter
-	ctx     context.Context
-	cleanExec   func() // Optional cleanup function for tests that set exec ops
+	adapter   filesystem.FilesystemAdapter
+	ctx       context.Context
+	cleanExec func() // Optional cleanup function for tests that set exec ops
 }
 
 func TestHfsplusAdapterTestSuite(t *testing.T) {

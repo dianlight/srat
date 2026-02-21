@@ -253,6 +253,7 @@ jobs:
           echo "Frontend Coverage: $COVERAGE%"
 
       - name: Save Frontend Coverage Report
+        if: ${{ github.actor != 'nektos/act' }}
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: frontend-coverage-report

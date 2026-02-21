@@ -18,6 +18,8 @@ import {
     Tooltip,
     Typography,
 } from "@mui/material";
+import { useState } from "react";
+import { PreviewDialog } from "../../../components/PreviewDialog";
 import type { User } from "../../../store/sratApi";
 import type { UsersProps } from "../types";
 
@@ -43,6 +45,7 @@ export function UserDetailsPanel({
     readOnly = false,
     children,
 }: UserDetailsPanelProps) {
+    const [showUserPreview, setShowUserPreview] = useState(false);
     if (!user || !userKey) {
         return (
             <Box
@@ -77,13 +80,18 @@ export function UserDetailsPanel({
                 <Card>
                     <CardHeader
                         avatar={
-                            <Avatar sx={{ bgcolor: user.is_admin ? "warning.main" : "primary.main" }}>
-                                {user.is_admin ? (
-                                    <AdminPanelSettingsIcon />
-                                ) : (
-                                    <AssignmentIndIcon />
-                                )}
-                            </Avatar>
+                            <Tooltip title="View user details">
+                                <Avatar
+                                    sx={{ bgcolor: user.is_admin ? "warning.main" : "primary.main" }}
+                                    onClick={() => setShowUserPreview(true)}
+                                >
+                                    {user.is_admin ? (
+                                        <AdminPanelSettingsIcon />
+                                    ) : (
+                                        <AssignmentIndIcon />
+                                    )}
+                                </Avatar>
+                            </Tooltip>
                         }
                         title={
                             <Typography variant="h5">
@@ -217,6 +225,15 @@ export function UserDetailsPanel({
                     )}
                 </Card>
             </Stack>
+
+
+            {/* User Preview Dialog */}
+            <PreviewDialog
+                title={`User: ${user?.username || 'N/A'}`}
+                objectToDisplay={user}
+                open={showUserPreview}
+                onClose={() => setShowUserPreview(false)}
+            />
         </Box>
     );
 }

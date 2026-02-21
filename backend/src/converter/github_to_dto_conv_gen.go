@@ -5,7 +5,7 @@ package converter
 
 import (
 	dto "github.com/dianlight/srat/dto"
-	github "github.com/google/go-github/v82/github"
+	github "github.com/google/go-github/v83/github"
 )
 
 type GitHubToDtoImpl struct{}

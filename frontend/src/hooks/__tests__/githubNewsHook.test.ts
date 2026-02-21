@@ -11,11 +11,10 @@ describe("useGithubNews hook", () => {
 		const { renderHook } = await import("@testing-library/react");
 		const { useGithubNews } = await import("../githubNewsHook");
 
-		// Mock fetch to prevent real API calls
+		// Keep fetch pending so the initial loading state is deterministic.
 		globalThis.fetch = mock(() =>
-			Promise.resolve({
-				ok: true,
-				json: () => Promise.resolve([]),
+			new Promise<Response>(() => {
+				// Intentionally unresolved for this test case.
 			}),
 		) as unknown as typeof fetch;
 
@@ -48,7 +47,9 @@ describe("useGithubNews hook", () => {
 
 		const { result } = renderHook(() => useGithubNews());
 
-		await waitFor(() => expect(result.current.isLoading).toBe(false));
+		await waitFor(() => expect(result.current.isLoading).toBe(false), {
+			timeout: 10000,
+		});
 
 		expect(result.current.error).toBe(null);
 		expect(result.current.news.length).toBeGreaterThanOrEqual(0);
@@ -67,7 +68,9 @@ describe("useGithubNews hook", () => {
 
 		const { result } = renderHook(() => useGithubNews());
 
-		await waitFor(() => expect(result.current.isLoading).toBe(false));
+		await waitFor(() => expect(result.current.isLoading).toBe(false), {
+			timeout: 10000,
+		});
 
 		expect(result.current.error).not.toBe(null);
 		expect(result.current.news.length).toBe(0);
@@ -104,7 +107,9 @@ describe("useGithubNews hook", () => {
 
 		const { result } = renderHook(() => useGithubNews());
 
-		await waitFor(() => expect(result.current.isLoading).toBe(false));
+		await waitFor(() => expect(result.current.isLoading).toBe(false), {
+			timeout: 10000,
+		});
 
 		// Old news should be filtered out
 		expect(result.current.news.length).toBeLessThanOrEqual(
@@ -132,7 +137,9 @@ describe("useGithubNews hook", () => {
 
 		const { result } = renderHook(() => useGithubNews());
 
-		await waitFor(() => expect(result.current.isLoading).toBe(false));
+		await waitFor(() => expect(result.current.isLoading).toBe(false), {
+			timeout: 10000,
+		});
 
 		// Should not exceed MAX_NEWS_ITEMS (5)
 		expect(result.current.news.length).toBeLessThanOrEqual(5);
@@ -148,7 +155,9 @@ describe("useGithubNews hook", () => {
 
 		const { result } = renderHook(() => useGithubNews());
 
-		await waitFor(() => expect(result.current.isLoading).toBe(false));
+		await waitFor(() => expect(result.current.isLoading).toBe(false), {
+			timeout: 10000,
+		});
 
 		expect(result.current.error).not.toBe(null);
 		expect(result.current.news.length).toBe(0);

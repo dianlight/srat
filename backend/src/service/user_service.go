@@ -128,7 +128,10 @@ func NewUserService(lc fx.Lifecycle, params UserServiceParams) UserServiceInterf
 }
 
 func (s *UserService) ListUsers() ([]dto.User, error) {
-	dbusers, err := gorm.G[dbom.SambaUser](s.db).Find(s.ctx)
+	dbusers, err := gorm.G[dbom.SambaUser](s.db).
+		Preload(g.SambaUser.RoShares.Name(), nil).
+		Preload(g.SambaUser.RwShares.Name(), nil).
+		Find(s.ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to list users from repository")
 	}
