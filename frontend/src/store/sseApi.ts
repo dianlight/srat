@@ -273,7 +273,7 @@ export const wsApi = createApi({
 							if (ws) ws.close();
 							connect();
 						}, reconnectDelayMs);
-						console.warn("* WebSocket reconnect scheduled:", reason);
+						//console.warn("* WebSocket reconnect scheduled:", reason);
 					};
 
 					const connect = () => {
