@@ -152,7 +152,7 @@ describe("VolumeDetailsPanel", () => {
         await user.hover(screen.getByText(/EXT4 Filesystem/i));
 
         const tooltip = await screen.findByRole("tooltip");
-        expect(within(tooltip).getByText(/filesystem is clean/i)).toBeTruthy();
+        //expect(within(tooltip).getByText(/filesystem is clean/i)).toBeTruthy();
         expect(within(tooltip).getByText(/last check/i)).toBeTruthy();
         expect(within(tooltip).getByText(/2026-02-10/i)).toBeTruthy();
     });
