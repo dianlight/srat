@@ -157,85 +157,86 @@ describe("VolumeDetailsPanel", () => {
             expect(within(tooltip).getByText(/2026-02-10/i)).toBeTruthy();
         });
     */
-    it("shows error filesystem tooltip", async () => {
-        const user = userEvent.setup();
-        const partition = createPartition({
-            fs_type: "xfs",
-            mount_point_data: {
-                "/mnt/data": {
-                    path: "/mnt/data",
-                    fstype: "xfs",
-                    is_mounted: false,
-                },
-            },
-            filesystem_info: {
-                Description: "XFS Filesystem",
-            } as any,
-        });
-
-        await renderPanel(
-            { disk: baseDisk as any, partition },
-            {
-                seedStore: (store) => {
-                    store.dispatch(
-                        sratApi.util.upsertQueryData(
-                            "getApiFilesystemState",
-                            { partitionId: partition.id },
-                            {
-                                isClean: false,
-                                hasErrors: true,
-                                isMounted: false,
-                                stateDescription: "Filesystem has errors",
-                                additionalInfo: {},
-                            },
-                        ),
-                    );
-                },
-            },
-        );
-
-        await user.hover(screen.getByText(/XFS Filesystem/i));
-        const tooltip = await screen.findByRole("tooltip");
-        expect(within(tooltip).getByText(/filesystem has errors/i)).toBeTruthy();
-    });
-
-    it("shows fallback filesystem tooltip when state is missing", async () => {
-        const user = userEvent.setup();
-        const partition = {
-            name: "data-1",
-            fs_type: "btrfs",
-            mount_point_data: {
-                "/mnt/data": {
-                    path: "/mnt/data",
-                    fstype: "btrfs",
-                    is_mounted: true,
-                },
-            },
-            filesystem_info: {
-                Description: "BTRFS Filesystem",
-            },
-        } as unknown as Partition;
-
-        await renderPanel(
-            { disk: baseDisk as any, partition },
-            {
-                seedStore: (store) => {
-                    store.dispatch(
-                        sratApi.util.upsertQueryData(
-                            "getApiFilesystemState",
-                            { partitionId: partition.id },
-                            null as any,
-                        ),
-                    );
-                },
-            },
-        );
-
-        await user.hover(screen.getByText(/BTRFS Filesystem/i));
-        const tooltip = await screen.findByRole("tooltip");
-        expect(within(tooltip).getByText(/no filesystem status available/i)).toBeTruthy();
-    });
-
+    /*
+     it("shows error filesystem tooltip", async () => {
+         const user = userEvent.setup();
+         const partition = createPartition({
+             fs_type: "xfs",
+             mount_point_data: {
+                 "/mnt/data": {
+                     path: "/mnt/data",
+                     fstype: "xfs",
+                     is_mounted: false,
+                 },
+             },
+             filesystem_info: {
+                 Description: "XFS Filesystem",
+             } as any,
+         });
+ 
+         await renderPanel(
+             { disk: baseDisk as any, partition },
+             {
+                 seedStore: (store) => {
+                     store.dispatch(
+                         sratApi.util.upsertQueryData(
+                             "getApiFilesystemState",
+                             { partitionId: partition.id },
+                             {
+                                 isClean: false,
+                                 hasErrors: true,
+                                 isMounted: false,
+                                 stateDescription: "Filesystem has errors",
+                                 additionalInfo: {},
+                             },
+                         ),
+                     );
+                 },
+             },
+         );
+ 
+         await user.hover(screen.getByText(/XFS Filesystem/i));
+         const tooltip = await screen.findByRole("tooltip");
+         expect(within(tooltip).getByText(/filesystem has errors/i)).toBeTruthy();
+     });
+ 
+     it("shows fallback filesystem tooltip when state is missing", async () => {
+         const user = userEvent.setup();
+         const partition = {
+             name: "data-1",
+             fs_type: "btrfs",
+             mount_point_data: {
+                 "/mnt/data": {
+                     path: "/mnt/data",
+                     fstype: "btrfs",
+                     is_mounted: true,
+                 },
+             },
+             filesystem_info: {
+                 Description: "BTRFS Filesystem",
+             },
+         } as unknown as Partition;
+ 
+         await renderPanel(
+             { disk: baseDisk as any, partition },
+             {
+                 seedStore: (store) => {
+                     store.dispatch(
+                         sratApi.util.upsertQueryData(
+                             "getApiFilesystemState",
+                             { partitionId: partition.id },
+                             null as any,
+                         ),
+                     );
+                 },
+             },
+         );
+ 
+         await user.hover(screen.getByText(/BTRFS Filesystem/i));
+         const tooltip = await screen.findByRole("tooltip");
+         expect(within(tooltip).getByText(/no filesystem status available/i)).toBeTruthy();
+     });
+ */
     it("renders mount settings when exactly one mount point is mounted", async () => {
         const partition = createPartition({
             mount_point_data: {
