@@ -195,7 +195,8 @@ describe("VolumeDetailsPanel", () => {
         );
 
         await user.hover(screen.getByText(/XFS Filesystem/i));
-        expect(await screen.findByText(/filesystem has errors/i)).toBeTruthy();
+        const tooltip = await screen.findByRole("tooltip");
+        expect(within(tooltip).getByText(/filesystem has errors/i)).toBeTruthy();
     });
 
     it("shows fallback filesystem tooltip when state is missing", async () => {
@@ -215,10 +216,24 @@ describe("VolumeDetailsPanel", () => {
             },
         } as unknown as Partition;
 
-        await renderPanel({ disk: baseDisk as any, partition });
+        await renderPanel(
+            { disk: baseDisk as any, partition },
+            {
+                seedStore: (store) => {
+                    store.dispatch(
+                        sratApi.util.upsertQueryData(
+                            "getApiFilesystemState",
+                            { partitionId: partition.id },
+                            null as any,
+                        ),
+                    );
+                },
+            },
+        );
 
         await user.hover(screen.getByText(/BTRFS Filesystem/i));
-        expect(await screen.findByText(/no filesystem status available/i)).toBeTruthy();
+        const tooltip = await screen.findByRole("tooltip");
+        expect(within(tooltip).getByText(/no filesystem status available/i)).toBeTruthy();
     });
 
     it("renders mount settings when exactly one mount point is mounted", async () => {

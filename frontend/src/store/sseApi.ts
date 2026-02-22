@@ -265,7 +265,7 @@ export const wsApi = createApi({
 						}
 					};
 
-					const scheduleReconnect = (reason: string) => {
+					const scheduleReconnect = (_reason: string) => {
 						if (isStopped || reconnectTimer) return;
 						reconnectTimer = setTimeout(() => {
 							reconnectTimer = null;
@@ -273,7 +273,7 @@ export const wsApi = createApi({
 							if (ws) ws.close();
 							connect();
 						}, reconnectDelayMs);
-						//console.warn("* WebSocket reconnect scheduled:", reason);
+						//console.warn("* WebSocket reconnect scheduled:", _reason);
 					};
 
 					const connect = () => {

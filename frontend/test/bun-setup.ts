@@ -10,7 +10,7 @@
  * import './test/bun-setup'; // or import from 'path/to/bun-setup.ts'
  */
 
-import { beforeAll, afterEach, afterAll } from "bun:test";
+import { afterAll, afterEach, beforeAll } from "bun:test";
 import { setupServer } from "msw/node";
 
 // We'll initialize the server later to avoid circular imports
@@ -27,15 +27,15 @@ beforeAll(async () => {
 	const { handlers: generatedHandlers } = await import("../src/mocks/handlers");
 	const { customHandlers } = await import("../src/mocks/customHandlers");
 	const { streamingHandlers } = await import("../src/mocks/streamingHandlers");
-	
+
 	const handlers = [...generatedHandlers, ...streamingHandlers, ...customHandlers];
 	server = setupServer(...handlers);
-	
+
 	server.listen({
 		onUnhandledRequest: "warn", // Warn about unhandled requests
 	});
-	
-	console.log("[MSW] Mock server started for Bun tests");
+
+	//console.log("[MSW] Mock server started for Bun tests");
 });
 
 /**
