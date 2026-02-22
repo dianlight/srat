@@ -20,7 +20,7 @@ require (
 	github.com/adelolmo/hd-idle v0.0.0-20260125082707-310727a56de0
 	github.com/angusgmorrison/logfusc v0.1.0
 	github.com/benmcclelland/sgio v0.0.0-20250710154739-45e823ff1f46
-	github.com/danielgtaylor/huma/v2 v2.37.0
+	github.com/danielgtaylor/huma/v2 v2.37.1
 	github.com/dianlight/smartmontools-go v0.2.6
 	github.com/dianlight/tlog v0.2.2
 	github.com/fatih/color v1.18.0
