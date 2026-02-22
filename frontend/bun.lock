@@ -28,7 +28,7 @@
         "maskify-ts": "^3.5.0",
         "material-ui-confirm": "^4.0.0",
         "mui-chips-input": "^7.0.1",
-        "normalize-url": "^8.1.1",
+        "normalize-url": "^9.0.0",
         "openapi-explorer": "^2.4.788",
         "prismjs": "^1.30.0",
         "react": "^19.2.4",
@@ -945,7 +945,7 @@
 
     "node-readfiles": ["node-readfiles@0.2.0", "", { "dependencies": { "es6-promise": "^3.2.1" } }, "sha512-SU00ZarexNlE4Rjdm83vglt5Y9yiQ+XI1XpflWlb7q7UTN1JUItm69xMeiQCTxtTfnzt+83T8Cx+vI2ED++VDA=="],
 
-    "normalize-url": ["normalize-url@8.1.1", "", {}, "sha512-JYc0DPlpGWB40kH5g07gGTrYuMqV653k3uBKY6uITPWds3M0ov3GaWGp9lbE3Bzngx8+XkfzgvASb9vk9JDFXQ=="],
+    "normalize-url": ["normalize-url@9.0.0", "", {}, "sha512-z9nC87iaZXXySbWWtTHfCFJyFvKaUAW6lODhikG7ILSbVgmwuFjUqkgnheHvAUcGedO29e2QGBRXMUD64aurqQ=="],
 
     "nth-check": ["nth-check@2.1.1", "", { "dependencies": { "boolbase": "^1.0.0" } }, "sha512-lqjrjmaOoAnWfMmBPL+XNnynZh2+swxiX3WUE0s4yEHI6m+AwrK2UZOimIRl3X/4QctVqS8AiZjFqyOGrMXb/w=="],
 
