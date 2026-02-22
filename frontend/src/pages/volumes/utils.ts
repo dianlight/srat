@@ -37,6 +37,9 @@ export function getPartitionIdentifier(
 	return `${diskIdentifier}::${partitionBase}`;
 }
 
-export function getMountpointIdentifier(partitionIdentifier: string, mountpointKey: string): string {
+export function getMountpointIdentifier(
+	partitionIdentifier: string,
+	mountpointKey: string,
+): string {
 	return `${partitionIdentifier}::mp::${mountpointKey}`;
 }
