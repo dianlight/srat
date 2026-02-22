@@ -1,177 +1,139 @@
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { cleanup, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
+import type { ComponentProps } from "react";
+import { Provider } from "react-redux";
+import { BrowserRouter } from "react-router-dom";
 import "../../../../../test/setup";
+import { createTestStore } from "../../../../../test/setup";
+import { type Partition, sratApi } from "../../../../store/sratApi";
+import { VolumeDetailsPanel } from "../VolumeDetailsPanel";
 
-// Required localStorage shim for testing environment
-if (!(globalThis as any).localStorage) {
-    const _store: Record<string, string> = {};
-    (globalThis as any).localStorage = {
-        getItem: (k: string) => (_store.hasOwnProperty(k) ? _store[k] : null),
-        setItem: (k: string, v: string) => { _store[k] = String(v); },
-        removeItem: (k: string) => { delete _store[k]; },
-        clear: () => { for (const k of Object.keys(_store)) delete _store[k]; },
-    };
+interface RenderOptions {
+    seedStore?: (store: any) => void;
 }
 
-// Helper function to render with Redux Provider and Router
-async function renderWithProviders(
-    element: any,
-    options?: { seedStore?: (store: any) => void },
-) {
-    const React = await import("react");
-    const { render } = await import("@testing-library/react");
-    const { BrowserRouter } = await import("react-router-dom");
-    const { Provider } = await import("react-redux");
-    const { createTestStore } = await import("../../../../../test/setup");
-    const store = await createTestStore();
+const baseDisk = {
+    id: "disk-1",
+    model: "Samsung SSD",
+    vendor: "Samsung",
+    size: 1_000_000_000,
+    removable: false,
+    connection_bus: "usb",
+    partitions: {},
+};
 
+const createPartition = (overrides: Record<string, unknown> = {}): Partition => ({
+    id: "part-1",
+    name: "data-1",
+    fs_type: "ext4",
+    size: 500_000_000,
+    mount_point_data: {},
+    ...overrides,
+}) as Partition;
+
+const renderPanel = async (
+    props: ComponentProps<typeof VolumeDetailsPanel>,
+    options?: RenderOptions,
+) => {
+    const store = await createTestStore();
     if (options?.seedStore) {
         options.seedStore(store);
     }
 
-    const wrapWithProviders = (child: any) =>
-        React.createElement(
-            Provider,
-            { store, children: React.createElement(BrowserRouter, null, child) },
-        );
+    return {
+        store,
+        ...render(
+            <Provider store={store}>
+                <BrowserRouter>
+                    <VolumeDetailsPanel {...props} />
+                </BrowserRouter>
+            </Provider>,
+        ),
+    };
+};
 
-    const renderResult = render(wrapWithProviders(element));
-    const rerenderWithProviders = (child: any) =>
-        renderResult.rerender(wrapWithProviders(child));
-
-    return { ...renderResult, store, rerenderWithProviders };
-}
-
-describe("VolumeDetailsPanel Component", () => {
+describe("VolumeDetailsPanel", () => {
     beforeEach(() => {
         localStorage.clear();
     });
 
-    afterEach(async () => {
-        const { cleanup } = await import("@testing-library/react");
+    afterEach(() => {
         cleanup();
     });
 
-    it("renders placeholder when no disk or partition selected", async () => {
-        const React = await import("react");
-        const { screen } = await import("@testing-library/react");
-        const { VolumeDetailsPanel } = await import("../VolumeDetailsPanel");
+    it("shows placeholder when nothing is selected", async () => {
+        await renderPanel({});
 
-        await renderWithProviders(React.createElement(VolumeDetailsPanel as any, {}));
-
-        // Should display a placeholder message
-        const placeholder = await screen.findByText(/Select a partition/i);
-        expect(placeholder).toBeTruthy();
+        expect(
+            await screen.findByText(/select a partition from the tree/i),
+        ).toBeTruthy();
     });
 
-    it("keeps hook order when selection appears", async () => {
-        const React = await import("react");
-        const { screen } = await import("@testing-library/react");
-        const { VolumeDetailsPanel } = await import("../VolumeDetailsPanel");
-
-        const { rerenderWithProviders } = await renderWithProviders(
-            React.createElement(VolumeDetailsPanel as any, {}),
-        );
-
-        const mockDisk = {
-            id: "disk-1",
-            name: "sda",
-        };
-
-        const mockPartition = {
-            id: "part-1",
-            name: "sda1",
-            fs_type: "ext4",
+    it("renders disk and partition sections", async () => {
+        const partition = createPartition({
             mount_point_data: {
                 "/mnt/data": {
                     path: "/mnt/data",
                     fstype: "ext4",
-                    is_mounted: true,
+                    is_mounted: false,
                 },
             },
-        };
-        //const partitionId = mockPartition.id;
+        });
 
-        rerenderWithProviders(
-            React.createElement(VolumeDetailsPanel as any, {
-                disk: mockDisk,
-                partition: mockPartition,
-            }),
-        );
+        await renderPanel({ disk: baseDisk as any, partition });
 
-        const header = await screen.findByText("Partition Information");
-        expect(header).toBeTruthy();
+        expect(await screen.findByText("Disk Information")).toBeTruthy();
+        expect(screen.getByText("Partition Information")).toBeTruthy();
+        expect(screen.getByText(/partition id/i)).toBeTruthy();
     });
 
-    it("renders disk and partition details", async () => {
-        const React = await import("react");
-        const { VolumeDetailsPanel } = await import("../VolumeDetailsPanel");
+    it("toggles disk details expansion", async () => {
+        const user = userEvent.setup();
+        await renderPanel({ disk: baseDisk as any, partition: createPartition() });
 
-        const mockDisk = {
-            id: "disk-1",
-            name: "sda",
-            size: 1000000000,
-            removable: false,
-            connection_bus: "usb"
-        };
+        expect(screen.queryByText(/^Vendor$/)).toBeNull();
 
-        const mockPartition = {
-            id: "part-1",
-            name: "sda1",
-            size: 500000000,
-            fstype: "ext4"
-        };
+        await user.click(screen.getByRole("button", { name: /show more/i }));
 
-        const { container } = await renderWithProviders(
-            React.createElement(VolumeDetailsPanel as any, {
-                disk: mockDisk,
-                partition: mockPartition
-            })
-        );
-
-        expect(container).toBeTruthy();
+        expect(screen.getByText(/^Vendor$/)).toBeTruthy();
+        expect(screen.getByText("Samsung")).toBeTruthy();
     });
 
-    it("shows clean filesystem status tooltip with details", async () => {
-        const React = await import("react");
-        const { screen, within } = await import("@testing-library/react");
-        const userEvent = (await import("@testing-library/user-event")).default;
-        const { VolumeDetailsPanel } = await import("../VolumeDetailsPanel");
-        const { sratApi, Type } = await import("../../../../store/sratApi");
+    it("opens preview dialog from disk preview button", async () => {
+        const user = userEvent.setup();
+        await renderPanel({ disk: baseDisk as any, partition: createPartition() });
 
-        const mockDisk = {
-            id: "disk-1",
-            name: "sda",
-        };
+        await user.click(screen.getByRole("button", { name: /disk preview/i }));
 
-        const mockPartition = {
-            id: "part-1",
-            name: "sda1",
+        expect(await screen.findByRole("dialog")).toBeTruthy();
+        expect(screen.getByText(/Disk: Samsung SSD/i)).toBeTruthy();
+    });
+
+    it("shows clean filesystem tooltip details", async () => {
+        const user = userEvent.setup();
+        const partition = createPartition({
             fs_type: "ext4",
             mount_point_data: {
                 "/mnt/data": {
                     path: "/mnt/data",
                     fstype: "ext4",
                     is_mounted: true,
-                    type: Type.Addon,
                 },
             },
             filesystem_info: {
                 Description: "EXT4 Filesystem",
-            },
-        };
-        const partitionId = mockPartition.id;
+            } as any,
+        });
 
-        await renderWithProviders(
-            React.createElement(VolumeDetailsPanel as any, {
-                disk: mockDisk,
-                partition: mockPartition,
-            }),
+        await renderPanel(
+            { disk: baseDisk as any, partition },
             {
                 seedStore: (store) => {
                     store.dispatch(
                         sratApi.util.upsertQueryData(
                             "getApiFilesystemState",
-                            { partitionId },
+                            { partitionId: partition.id },
                             {
                                 isClean: true,
                                 hasErrors: false,
@@ -187,61 +149,38 @@ describe("VolumeDetailsPanel Component", () => {
             },
         );
 
-        const user = userEvent.setup();
-        const chipLabel = await screen.findByText(/EXT4 Filesystem/i);
-        const fsChip = chipLabel.parentElement;
-        if (!fsChip) {
-            throw new Error("Expected filesystem chip root element to exist");
-        }
-        await user.hover(fsChip);
+        await user.hover(screen.getByText(/EXT4 Filesystem/i));
 
         const tooltip = await screen.findByRole("tooltip");
-        expect(within(tooltip).getByText(/Filesystem is clean/i)).toBeTruthy();
-        expect(within(tooltip).getByText(/Last check/i)).toBeTruthy();
-        expect(within(tooltip).getByText(/2026-02-10/)).toBeTruthy();
+        expect(within(tooltip).getByText(/filesystem is clean/i)).toBeTruthy();
+        expect(within(tooltip).getByText(/last check/i)).toBeTruthy();
+        expect(within(tooltip).getByText(/2026-02-10/i)).toBeTruthy();
     });
 
-    it("shows error filesystem status tooltip", async () => {
-        const React = await import("react");
-        const { screen } = await import("@testing-library/react");
-        const userEvent = (await import("@testing-library/user-event")).default;
-        const { VolumeDetailsPanel } = await import("../VolumeDetailsPanel");
-        const { sratApi, Type } = await import("../../../../store/sratApi");
-
-        const mockDisk = {
-            id: "disk-1",
-            name: "sda",
-        };
-
-        const mockPartition = {
-            id: "part-1",
-            name: "sda1",
+    it("shows error filesystem tooltip", async () => {
+        const user = userEvent.setup();
+        const partition = createPartition({
             fs_type: "xfs",
             mount_point_data: {
                 "/mnt/data": {
                     path: "/mnt/data",
                     fstype: "xfs",
                     is_mounted: false,
-                    type: Type.Addon,
                 },
             },
             filesystem_info: {
                 Description: "XFS Filesystem",
-            },
-        };
-        const partitionId = mockPartition.id;
+            } as any,
+        });
 
-        await renderWithProviders(
-            React.createElement(VolumeDetailsPanel as any, {
-                disk: mockDisk,
-                partition: mockPartition,
-            }),
+        await renderPanel(
+            { disk: baseDisk as any, partition },
             {
                 seedStore: (store) => {
                     store.dispatch(
                         sratApi.util.upsertQueryData(
                             "getApiFilesystemState",
-                            { partitionId },
+                            { partitionId: partition.id },
                             {
                                 isClean: false,
                                 hasErrors: true,
@@ -255,397 +194,114 @@ describe("VolumeDetailsPanel Component", () => {
             },
         );
 
-        const user = userEvent.setup();
-        const fsChip = await screen.findByText(/XFS Filesystem/i);
-        await user.hover(fsChip);
-
-        const description = await screen.findByText(/Filesystem has errors/i);
-        expect(description).toBeTruthy();
+        await user.hover(screen.getByText(/XFS Filesystem/i));
+        expect(await screen.findByText(/filesystem has errors/i)).toBeTruthy();
     });
 
-    it("shows no status available tooltip when state missing", async () => {
-        const React = await import("react");
-        const { screen } = await import("@testing-library/react");
-        const userEvent = (await import("@testing-library/user-event")).default;
-        const { VolumeDetailsPanel } = await import("../VolumeDetailsPanel");
-        const { Type } = await import("../../../../store/sratApi");
-
-        const mockDisk = {
-            id: "disk-1",
-            name: "sda",
-        };
-
-        const mockPartition = {
-            name: "sda1",
+    it("shows fallback filesystem tooltip when state is missing", async () => {
+        const user = userEvent.setup();
+        const partition = {
+            name: "data-1",
             fs_type: "btrfs",
             mount_point_data: {
                 "/mnt/data": {
                     path: "/mnt/data",
                     fstype: "btrfs",
                     is_mounted: true,
-                    type: Type.Addon,
                 },
             },
             filesystem_info: {
                 Description: "BTRFS Filesystem",
             },
-        };
+        } as unknown as Partition;
 
-        await renderWithProviders(
-            React.createElement(VolumeDetailsPanel as any, {
-                disk: mockDisk,
-                partition: mockPartition,
-            }),
-        );
+        await renderPanel({ disk: baseDisk as any, partition });
 
+        await user.hover(screen.getByText(/BTRFS Filesystem/i));
+        expect(await screen.findByText(/no filesystem status available/i)).toBeTruthy();
+    });
+
+    it("renders mount settings when exactly one mount point is mounted", async () => {
+        const partition = createPartition({
+            mount_point_data: {
+                "/mnt/data": {
+                    path: "/mnt/data",
+                    fstype: "ext4",
+                    is_mounted: true,
+                    is_to_mount_at_startup: true,
+                    is_write_supported: false,
+                    flags: [{ name: "uid", value: "1000" }],
+                    custom_flags: [{ name: "compress", value: "zstd" }],
+                },
+            },
+        });
+
+        await renderPanel({ disk: baseDisk as any, partition });
+
+        expect(await screen.findByText("Mount Settings")).toBeTruthy();
+        expect(screen.getByText(/automatic mount/i)).toBeTruthy();
+        expect(screen.getByText(/filesystem-specific mount flags/i)).toBeTruthy();
+        expect(screen.getByText(/write support/i)).toBeTruthy();
+    });
+
+    it("renders mount action and triggers callback", async () => {
         const user = userEvent.setup();
-        const fsChip = await screen.findByText(/BTRFS Filesystem/i);
-        await user.hover(fsChip);
+        const onMount = mock(() => undefined);
 
-        const description = await screen.findByText(/No filesystem status available/i);
-        expect(description).toBeTruthy();
+        await renderPanel({
+            disk: baseDisk as any,
+            partition: createPartition({ mount_point_data: {} }),
+            onToggleAutomount: mock(() => undefined),
+            onMount,
+            onUnmount: mock(() => undefined),
+            onCreateShare: mock(() => undefined),
+            onGoToShare: mock(() => undefined),
+        });
+
+        const mountButton = await screen.findByRole("button", {
+            name: /mount partition/i,
+        });
+        await user.click(mountButton);
+
+        expect(onMount).toHaveBeenCalledTimes(1);
     });
 
-    it("renders disk icon based on connection bus", async () => {
-        const React = await import("react");
-        const { VolumeDetailsPanel } = await import("../VolumeDetailsPanel");
-
-        const mockDisk = {
-            id: "disk-1",
-            name: "sda",
-            size: 1000000000,
-            removable: false,
-            connection_bus: "usb"
-        };
-
-        const mockPartition = {
-            id: "part-1",
-            name: "sda1"
-        };
-
-        const { container } = await renderWithProviders(
-            React.createElement(VolumeDetailsPanel as any, {
-                disk: mockDisk,
-                partition: mockPartition
-            })
-        );
-
-        // Verify icons are rendered using SVG elements
-        const icons = container.getElementsByTagName('svg');
-        expect(icons.length).toBeGreaterThanOrEqual(0);
-    });
-
-    it("renders disk icon for SDIO/MMC connection", async () => {
-        const React = await import("react");
-        const { VolumeDetailsPanel } = await import("../VolumeDetailsPanel");
-
-        const mockDisk = {
-            id: "disk-1",
-            name: "mmcblk0",
-            size: 1000000000,
-            removable: false,
-            connection_bus: "sdio"
-        };
-
-        const mockPartition = {
-            id: "part-1",
-            name: "mmcblk0p1"
-        };
-
-        const { container } = await renderWithProviders(
-            React.createElement(VolumeDetailsPanel as any, {
-                disk: mockDisk,
-                partition: mockPartition
-            })
-        );
-
-        expect(container).toBeTruthy();
-    });
-
-    it("renders eject icon for removable disks", async () => {
-        const React = await import("react");
-        const { VolumeDetailsPanel } = await import("../VolumeDetailsPanel");
-
-        const mockDisk = {
-            id: "disk-1",
-            name: "sdb",
-            size: 1000000000,
-            removable: true
-        };
-
-        const mockPartition = {
-            id: "part-1",
-            name: "sdb1"
-        };
-
-        const { container } = await renderWithProviders(
-            React.createElement(VolumeDetailsPanel as any, {
-                disk: mockDisk,
-                partition: mockPartition
-            })
-        );
-
-        expect(container).toBeTruthy();
-    });
-
-    it("displays partition size information", async () => {
-        const React = await import("react");
-        const { VolumeDetailsPanel } = await import("../VolumeDetailsPanel");
-
-        const mockDisk = {
-            id: "disk-1",
-            name: "sda",
-            size: 1000000000
-        };
-
-        const mockPartition = {
-            id: "part-1",
-            name: "sda1",
-            size: 500000000
-        };
-
-        const { container } = await renderWithProviders(
-            React.createElement(VolumeDetailsPanel as any, {
-                disk: mockDisk,
-                partition: mockPartition
-            })
-        );
-
-        // Check for size information in the container
-        expect(container.textContent).toBeTruthy();
-    });
-
-    it("renders shared resource information when provided", async () => {
-        const React = await import("react");
-        const { VolumeDetailsPanel } = await import("../VolumeDetailsPanel");
-
-        const mockDisk = {
-            id: "disk-1",
-            name: "sda"
-        };
-
-        const mockPartition = {
-            id: "part-1",
-            name: "sda1"
-        };
-
-        const mockShare = {
-            name: "shared-folder",
-            path: "/mnt/share"
-        };
-
-        const { container } = await renderWithProviders(
-            React.createElement(VolumeDetailsPanel as any, {
-                disk: mockDisk,
-                partition: mockPartition,
-                share: mockShare
-            })
-        );
-
-        expect(container).toBeTruthy();
-    });
-
-    it("handles disk info expansion toggle", async () => {
-        const React = await import("react");
-        const { act } = await import("@testing-library/react");
-        const userEvent = (await import("@testing-library/user-event")).default;
-        const { VolumeDetailsPanel } = await import("../VolumeDetailsPanel");
-
-        const mockDisk = {
-            id: "disk-1",
-            name: "sda",
-            size: 1000000000
-        };
-
-        const mockPartition = {
-            id: "part-1",
-            name: "sda1"
-        };
-
-        const { container } = await renderWithProviders(
-            React.createElement(VolumeDetailsPanel as any, {
-                disk: mockDisk,
-                partition: mockPartition
-            })
-        );
-
-        // Look for expand button
-        const { screen } = await import("@testing-library/react");
-        const expandButtons = screen.queryAllByRole("button");
-        // Find the expand button (typically has ExpandMore icon)
-        const firstExpandButton = expandButtons[0];
-        if (expandButtons.length > 0 && firstExpandButton) {
-            const user = userEvent.setup();
-            await act(async () => {
-                await user.click(firstExpandButton as any);
-            });
-        }
-
-        expect(container).toBeTruthy();
-    });
-
-    it("renders preview dialog when object is selected", async () => {
-        const React = await import("react");
-        const { VolumeDetailsPanel } = await import("../VolumeDetailsPanel");
-
-        const mockDisk = {
-            id: "disk-1",
-            name: "sda"
-        };
-
-        const mockPartition = {
-            id: "part-1",
-            name: "sda1"
-        };
-
-        const { container } = await renderWithProviders(
-            React.createElement(VolumeDetailsPanel as any, {
-                disk: mockDisk,
-                partition: mockPartition
-            })
-        );
-
-        // Check that PreviewDialog component is present
-        expect(container).toBeTruthy();
-    });
-
-    it("navigates to shares page when share is clicked", async () => {
-        const React = await import("react");
-        const { VolumeDetailsPanel } = await import("../VolumeDetailsPanel");
-
-        const mockDisk = {
-            id: "disk-1",
-            name: "sda"
-        };
-
-        const mockPartition = {
-            id: "part-1",
-            name: "sda1"
-        };
-
-        const mockShare = {
-            name: "test-share",
-            path: "/mnt/share"
-        };
-
-        const { container } = await renderWithProviders(
-            React.createElement(VolumeDetailsPanel as any, {
-                disk: mockDisk,
-                partition: mockPartition,
-                share: mockShare
-            })
-        );
-
-        expect(container).toBeTruthy();
-    });
-
-    it("renders partition actions when available", async () => {
-        const React = await import("react");
-        const { screen } = await import("@testing-library/react");
-        const { VolumeDetailsPanel } = await import("../VolumeDetailsPanel");
-
-        const mockDisk = {
-            id: "disk-1",
-            name: "sda",
-        };
-
-        const mockPartition = {
-            id: "part-1",
-            name: "sda1",
-            mount_point_data: {},
-        };
-
-        await renderWithProviders(
-            React.createElement(VolumeDetailsPanel as any, {
-                disk: mockDisk,
-                partition: mockPartition,
-                protectedMode: false,
-                readOnly: false,
-                onToggleAutomount: () => { },
-                onMount: () => { },
-                onUnmount: () => { },
-                onCreateShare: () => { },
-                onGoToShare: () => { },
-            }),
-        );
-
-        const mountButton = await screen.findByRole("button", { name: /mount partition/i });
-        expect(mountButton).toBeTruthy();
-    });
-
-    it("disables partition actions in read-only mode with tooltip", async () => {
-        const React = await import("react");
-        const { screen } = await import("@testing-library/react");
-        const userEvent = (await import("@testing-library/user-event")).default;
-        const { VolumeDetailsPanel } = await import("../VolumeDetailsPanel");
-
-        const mockDisk = {
-            id: "disk-1",
-            name: "sda",
-        };
-
-        const mockPartition = {
-            id: "part-1",
-            name: "sda1",
-            mount_point_data: {},
-        };
-
-        await renderWithProviders(
-            React.createElement(VolumeDetailsPanel as any, {
-                disk: mockDisk,
-                partition: mockPartition,
-                protectedMode: false,
-                readOnly: true,
-                onToggleAutomount: () => { },
-                onMount: () => { },
-                onUnmount: () => { },
-                onCreateShare: () => { },
-                onGoToShare: () => { },
-            }),
-        );
-
+    it("disables partition actions in read-only mode and shows tooltip", async () => {
         const user = userEvent.setup();
-        const mountButton = await screen.findByRole("button", { name: /mount partition/i });
+
+        await renderPanel({
+            disk: baseDisk as any,
+            partition: createPartition({ mount_point_data: {} }),
+            readOnly: true,
+            onToggleAutomount: mock(() => undefined),
+            onMount: mock(() => undefined),
+            onUnmount: mock(() => undefined),
+            onCreateShare: mock(() => undefined),
+            onGoToShare: mock(() => undefined),
+        });
+
+        const mountButton = await screen.findByRole("button", {
+            name: /mount partition/i,
+        });
         expect((mountButton as HTMLButtonElement).disabled).toBe(true);
 
         const hoverTarget = mountButton.parentElement ?? mountButton;
         await user.hover(hoverTarget as HTMLElement);
 
-        const tooltip = await screen.findByText(/read-only mode enabled/i);
-        expect(tooltip).toBeTruthy();
+        expect(await screen.findByText(/read-only mode enabled/i)).toBeTruthy();
     });
 
-    it("hides partition actions for hassos partitions", async () => {
-        const React = await import("react");
-        const { screen } = await import("@testing-library/react");
-        const { VolumeDetailsPanel } = await import("../VolumeDetailsPanel");
+    it("hides actions for hassos partitions", async () => {
+        await renderPanel({
+            disk: baseDisk as any,
+            partition: createPartition({ name: "hassos-data" }),
+            onToggleAutomount: mock(() => undefined),
+            onMount: mock(() => undefined),
+            onUnmount: mock(() => undefined),
+            onCreateShare: mock(() => undefined),
+            onGoToShare: mock(() => undefined),
+        });
 
-        const mockDisk = {
-            id: "disk-1",
-            name: "sda",
-        };
-
-        const mockPartition = {
-            id: "part-1",
-            name: "hassos-data",
-            mount_point_data: {},
-        };
-
-        await renderWithProviders(
-            React.createElement(VolumeDetailsPanel as any, {
-                disk: mockDisk,
-                partition: mockPartition,
-                protectedMode: false,
-                readOnly: false,
-                onToggleAutomount: () => { },
-                onMount: () => { },
-                onUnmount: () => { },
-                onCreateShare: () => { },
-                onGoToShare: () => { },
-            }),
-        );
-
-        const actionsHeading = screen.queryByText(/actions/i);
-        expect(actionsHeading).toBeNull();
+        expect(screen.queryByText(/^Actions$/)).toBeNull();
     });
 });
