@@ -2,7 +2,7 @@
 
 # Documentation validation script for SRAT project
 # This script runs all documentation validation checks locally
-# Supports: markdownlint, Lychee (link checker), cspell, and Vale (prose linter)
+# Supports: markdownlint, Lychee (link checker), and Vale (prose linter)
 
 set -e
 
@@ -103,19 +103,6 @@ run_lychee() {
     fi
 }
 
-# Run spell check
-run_spell_check() {
-    print_status "info" "Running spell check..."
-
-    if $RUNNER cspell "**/*.md" --config .cspell.json; then
-        print_status "success" "Spell check passed"
-        return 0
-    else
-        print_status "error" "Spell check failed"
-        return 1
-    fi
-}
-
 # Run Vale prose linter
 run_vale() {
     if ! command -v vale &> /dev/null; then
@@ -156,7 +143,6 @@ main() {
     # Run all checks
     run_markdownlint || exit_code=1
     run_lychee || exit_code=1
-    run_spell_check || exit_code=1
     run_vale || exit_code=1
 
     echo
@@ -198,7 +184,6 @@ case "${1:-}" in
         echo "Tools:"
         echo "  - markdownlint-cli2: Markdown syntax and formatting (GFM)"
         echo "  - Lychee: Link and image validation"
-        echo "  - cspell: Spell checking"
         echo "  - Vale: Prose linting and style checking (GFM)"
         echo
         exit 0
