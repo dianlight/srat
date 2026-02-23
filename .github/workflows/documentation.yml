@@ -92,6 +92,7 @@ jobs:
         run: make docs-fix
 
       - name: Create Pull Request with documentation fixes
+        id: cpr
         uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0 # v8.1.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -107,6 +108,15 @@ jobs:
           base: main
           delete-branch: true
           labels: documentation
+      - name: Auto approve
+        if: steps.cpr.outputs.pull-request-operation == 'created'
+        run: gh pr review --approve "${{ steps.cpr.outputs.pull-request-number }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
+      - name: Enable Pull Request Automerge
+        run: gh pr merge --merge --auto "${{ steps.cpr.outputs.pull-request-number }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}                  
 
   docs-validate:
     runs-on: ubuntu-latest
