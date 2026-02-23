@@ -36,7 +36,7 @@ docs-toc:
 		echo "Error: No package manager found. Please install bun or npm first."; \
 		exit 1; \
 	fi
-	@find . -name "*.md" -not -path "./node_modules/*" -not -path "./frontend/node_modules/*" -not -path "./backend/src/vendor/*" -not -path ".vale/*" | xargs bunx doctoc --github
+	@find . -name "*.md" -not -path "./node_modules/*" -not -path "./frontend/node_modules/*" -not -path "./backend/src/vendor/*" -not -path "./.vale/*" | xargs bunx doctoc --github
 
 .PHONY: docs-validate
 docs-validate:
