@@ -36,7 +36,7 @@ docs-toc:
 		echo "Error: No package manager found. Please install bun or npm first."; \
 		exit 1; \
 	fi
-	@find . -name "*.md" -not -path "./node_modules/*" -not -path "./frontend/node_modules/*" -not -path "./backend/src/vendor/*" | xargs bunx doctoc --github
+	@find . -name "*.md" -not -path "./node_modules/*" -not -path "./frontend/node_modules/*" -not -path "./backend/src/vendor/*" -not -path ".vale/*" | xargs bunx doctoc --github
 
 .PHONY: docs-validate
 docs-validate:
@@ -61,7 +61,7 @@ docs-fix:
 		echo "Warning: No package manager found. Auto-fix may fail."; \
 	fi
 	@./scripts/validate-docs.sh --fix
-	bunx markdownlint-cli2 "**/*.md" "#frontend/node_modules" "#backend/src/vendor" --fix
+	bunx markdownlint-cli2 "**/*.md" "#frontend/node_modules" "#backend/src/vendor" "#.vale" --fix
 
 .PHONY: docs-check
 docs-check:
