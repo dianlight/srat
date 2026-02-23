@@ -15,7 +15,7 @@
     "url": "https://github.com/dianlight/srat"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.2",
+    "@biomejs/biome": "2.4.3",
     "@happy-dom/global-registrator": "20.6.3",
     "@hookform/devtools": "4.4.0",
     "@rtk-query/codegen-openapi": "2.2.0",
