@@ -68,9 +68,15 @@ jobs:
   docs-maintenance:
     runs-on: ubuntu-latest
     name: Documentation Maintenance
-    needs: [docs-changes]
-    if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && needs.docs-changes.outputs.docs == 'true')
-    steps:
+    needs: [docs-changes] 
+    if: >-
+      github.event_name != 'pull_request' || 
+      (
+        github.event.pull_request.head.repo.full_name == github.repository && 
+        needs.docs-changes.outputs.docs == 'true' && 
+        !startsWith(github.head_ref, 'renovate/')
+      )
+     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
