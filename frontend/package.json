@@ -15,7 +15,7 @@
     "url": "https://github.com/dianlight/srat"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.2",
+    "@biomejs/biome": "2.4.3",
     "@happy-dom/global-registrator": "20.6.3",
     "@hookform/devtools": "4.4.0",
     "@rtk-query/codegen-openapi": "2.2.0",
@@ -30,7 +30,7 @@
     "@types/react-dom": "19.2.3",
     "@types/react-syntax-highlighter": "15.5.13",
     "@types/semver": "7.7.1",
-    "@typescript/native-preview": "7.0.0-dev.20260218.1",
+    "@typescript/native-preview": "7.0.0-dev.20260219.1",
     "msw": "2.12.10",
     "msw-auto-mock": "0.32.0"
   },
@@ -61,7 +61,7 @@
     "maskify-ts": "^3.5.0",
     "material-ui-confirm": "^4.0.0",
     "mui-chips-input": "^7.0.1",
-    "normalize-url": "^8.1.1",
+    "normalize-url": "^9.0.0",
     "openapi-explorer": "^2.4.788",
     "prismjs": "^1.30.0",
     "react": "^19.2.4",
