@@ -130,7 +130,6 @@ docs-help:
 	@echo "Validation tools:"
 	@echo "  - markdownlint-cli2: Markdown syntax and formatting (GFM)"
 	@echo "  - Lychee: Link and image validation"
-	@echo "  - cspell: Spell checking"
 	@echo "  - Vale: Prose linting and style checking (GFM)"
 	@echo ""
 	@echo "Package manager support:"
@@ -152,10 +151,10 @@ docs-install:
 	@echo "Note: Lychee and Vale should be installed separately (see docs-check)"
 	@if command -v bun >/dev/null 2>&1; then \
 		echo "Using bun to install JS-based documentation tools..."; \
-		bun add -g markdownlint-cli2 cspell prettier doctoc; \
+		bun add -g markdownlint-cli2 prettier doctoc; \
 	elif command -v npm >/dev/null 2>&1; then \
 		echo "Using npm to install JS-based documentation tools..."; \
-		npm install -g markdownlint-cli2 cspell prettier doctoc; \
+		npm install -g markdownlint-cli2 prettier doctoc; \
 	else \
 		echo "Error: Neither bun nor npm found. Please install one of them first."; \
 		exit 1; \
