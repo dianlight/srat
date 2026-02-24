@@ -1,110 +1,88 @@
 {
-    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-    "extends": [
-        "config:best-practices",
-        "customManagers:dockerfileVersions",
-        "customManagers:githubActionsVersions",
-        "customManagers:makefileVersions",
-        "customManagers:biomeVersions",
-        ":automergeDigest",
-        ":automergeLinters",
-        "replacements:all",
-        "security:openssf-scorecard",
-        "workarounds:all",
-        "group:monorepos"
-    ],
-    "labels": [
-        "dependencies",
-        "no-stale"
-    ],
-    "semanticCommits": "enabled",
-    "commitMessagePrefix": "⬆️",
-    "configMigration": true,
-    "rebaseWhen": "behind-base-branch",
-    "dependencyDashboard": true,
-    "separateMultipleMajor": true,
-    "major": {
-        "dependencyDashboardApproval": true
+  "$schema": "[https://docs.renovatebot.com/renovate-schema.json](https://docs.renovatebot.com/renovate-schema.json)",
+  "extends": [
+    "config:best-practices",
+    "customManagers:dockerfileVersions",
+    "customManagers:githubActionsVersions",
+    "customManagers:makefileVersions",
+    "customManagers:biomeVersions",
+    ":automergeDigest",
+    ":automergeLinters",
+    "replacements:all",
+    "security:openssf-scorecard",
+    "workarounds:all",
+    "group:monorepos"
+  ],
+  "labels": ["dependencies", "no-stale"],
+  "semanticCommits": "enabled",
+  "commitMessagePrefix": "⬆️",
+  "configMigration": true,
+  "rebaseWhen": "behind-base-branch",
+  "dependencyDashboard": true,
+  "separateMultipleMajor": true,
+  "major": {
+    "dependencyDashboardApproval": true
+  },
+  "postUpdateOptions": [
+    "gomodTidy",
+    "gomodUpdateImportPaths",
+    "gomodMassage",
+    "gomodVendor",
+    "goGenerate"
+  ],
+  "abandonmentThreshold": "8 years",
+  "dependencyDashboardAutoclose": true,
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": ["(^|/)package\\.json$"],
+      "matchStrings": [
+        "\"packageManager\":\\s+\"(?<depName>[^@]+)@(?<currentValue>[^@\\s]+)\""
+      ],
+      "autoReplaceStringTemplate": "\"packageManager\": \"{{{depName}}}@{{{newValue}}}\"",
+      "datasourceTemplate": "npm"
     },
-    "postUpdateOptions": [
-        "gomodTidy",
-        "gomodUpdateImportPaths",
-        "gomodMassage",
-        "gomodVendor",
-        "goGenerate"
-    ],
-    "abandonmentThreshold": "8 years",
-    "dependencyDashboardAutoclose": true,
-    "customManagers": [
-        {
-            "customType": "regex",
-            "managerFilePatterns": [
-                "/package\\.json$/"
-            ],
-            "matchStrings": [
-                "\"packageManager\":\\s+\"(?<depName>.+)@(?<currentValue>[^\\s]+)\""
-            ],
-            "autoReplaceStringTemplate": "\"packageManager\": \"{{{depName}}}@{{{newValue}}}\"",
-            "datasourceTemplate": "npm"
-        },
-        {
-            "customType": "regex",
-            "managerFilePatterns": [
-                "/\\.go$/",
-                "/Makefile/"
-            ],
-            "matchStrings": [
-                "go\\s+run\\s+(?<depName>.+)@(?<currentValue>[^\\s]+)"
-            ],
-            "autoReplaceStringTemplate": "go run {{{depName}}}@{{{newValue}}}",
-            "datasourceTemplate": "go"
-        }
-    ],
-    "packageRules": [
-        {
-            "matchPackageNames": [
-                "github.com/dianlight/srat"
-            ],
-            "enabled": false
-        },
-        {
-            "commitMessageTopic": "{{groupName}} {{depName}}",
-            "groupName": "BackEnd",
-            "matchFileNames": [
-                "backend/**"
-            ]
-        },
-        {
-            "commitMessageTopic": "{{groupName}} {{depName}}",
-            "groupName": "FrontEnd",
-            "matchFileNames": [
-                "frontend/**"
-            ]
-        },
-        {
-            "commitMessageTopic": "{{groupName}} {{depName}}",
-            "groupName": "Custom Component",
-            "matchFileNames": [
-                "custom_components/**"
-            ]
-        },
-        {
-            "commitMessageTopic": "{{groupName}} {{depName}}",
-            "groupName": "CI/CD",
-            "matchFileNames": [
-                ".guthub/workflows/**"
-            ]
-        },
-        {
-            "matchUpdateTypes": [
-                "minor",
-                "patch",
-                "pin",
-                "digest"
-            ],
-            "automerge": true,
-            "automergeType": "pr",
-            "minimumReleaseAge": "3 days"
-        }
-    ]
+    {
+      "customType": "regex",
+      "fileMatch": ["\\.go$", "Makefile$"],
+      "matchStrings": [
+        "go\\s+run\\s+(?<depName>[^@\\s]+)@(?<currentValue>[^@\\s]+)"
+      ],
+      "autoReplaceStringTemplate": "go run {{{depName}}}@{{{newValue}}}",
+      "datasourceTemplate": "go"
+    }
+  ],
+  "packageRules": [
+    {
+      "matchPackageNames": ["[github.com/dianlight/srat](https://github.com/dianlight/srat)"],
+      "enabled": false
+    },
+    {
+      "matchFileNames": ["backend/**"],
+      "groupName": "BackEnd",
+      "commitMessageTopic": "{{groupName}} {{depName}}"
+    },
+    {
+      "matchFileNames": ["frontend/**"],
+      "groupName": "FrontEnd",
+      "commitMessageTopic": "{{groupName}} {{depName}}"
+    },
+    {
+      "matchDatasources": ["pypi"],
+      "matchFileNames": ["custom_components/**"],
+      "groupName": "Custom Component (Python)",
+      "commitMessageTopic": "{{groupName}} {{depName}}"
+    },
+    {
+      "matchFileNames": [".github/workflows/**"],
+      "groupName": "CI/CD",
+      "commitMessageTopic": "{{groupName}} {{depName}}"
+    },
+    {
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "automerge": true,
+      "automergeType": "pr",
+      "minimumReleaseAge": "3 days"
+    }
+  ]
 }
