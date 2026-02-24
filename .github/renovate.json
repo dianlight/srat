@@ -13,7 +13,10 @@
     "workarounds:all",
     "group:monorepos"
   ],
-  "labels": ["dependencies", "no-stale"],
+  "labels": [
+    "dependencies",
+    "no-stale"
+  ],
   "semanticCommits": "enabled",
   "commitMessagePrefix": "⬆️",
   "configMigration": true,
@@ -35,7 +38,9 @@
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": ["(^|/)package\\.json$"],
+      "managerFilePatterns": [
+        "/(^|/)package\\.json$/"
+      ],
       "matchStrings": [
         "\"packageManager\":\\s+\"(?<depName>[^@]+)@(?<currentValue>[^@\\s]+)\""
       ],
@@ -44,7 +49,10 @@
     },
     {
       "customType": "regex",
-      "fileMatch": ["\\.go$", "Makefile$"],
+      "managerFilePatterns": [
+        "/\\.go$/",
+        "/Makefile$/"
+      ],
       "matchStrings": [
         "go\\s+run\\s+(?<depName>[^@\\s]+)@(?<currentValue>[^@\\s]+)"
       ],
@@ -54,32 +62,49 @@
   ],
   "packageRules": [
     {
-      "matchPackageNames": ["[github.com/dianlight/srat](https://github.com/dianlight/srat)"],
+      "matchPackageNames": [
+        "[github.com/dianlight/srat](https://github.com/dianlight/srat)"
+      ],
       "enabled": false
     },
     {
-      "matchFileNames": ["backend/**"],
+      "matchFileNames": [
+        "backend/**"
+      ],
       "groupName": "BackEnd",
       "commitMessageTopic": "{{groupName}} {{depName}}"
     },
     {
-      "matchFileNames": ["frontend/**"],
+      "matchFileNames": [
+        "frontend/**"
+      ],
       "groupName": "FrontEnd",
       "commitMessageTopic": "{{groupName}} {{depName}}"
     },
     {
-      "matchDatasources": ["pypi"],
-      "matchFileNames": ["custom_components/**"],
+      "matchDatasources": [
+        "pypi"
+      ],
+      "matchFileNames": [
+        "custom_components/**"
+      ],
       "groupName": "Custom Component (Python)",
       "commitMessageTopic": "{{groupName}} {{depName}}"
     },
     {
-      "matchFileNames": [".github/workflows/**"],
+      "matchFileNames": [
+        ".github/workflows/**"
+      ],
       "groupName": "CI/CD",
       "commitMessageTopic": "{{groupName}} {{depName}}"
     },
     {
-      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "pin",
+        "digest"
+      ],
       "automerge": true,
       "automergeType": "pr",
       "minimumReleaseAge": "3 days"
