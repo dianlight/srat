@@ -131,3 +131,16 @@ func (suite *DirtyDataServiceTestSuite) TestSetDirtySettings() {
 	suite.True(suite.dirtyDataService.IsTimerRunning())
 
 }
+
+func (suite *DirtyDataServiceTestSuite) TestSetDirtyOnMountPointEvent() {
+	suite.dirtyDataService.ResetDirtyDataTracker()
+	suite.eventBus.EmitMountPoint(events.MountPointEvent{
+		Event:      events.Event{Type: events.EventTypes.UPDATE},
+		MountPoint: &dto.MountPointData{Path: "/mnt/test"},
+	})
+	tracker := suite.dirtyDataService.GetDirtyDataTracker()
+	suite.True(tracker.Shares, "mount/unmount operations must mark shares dirty")
+	suite.False(tracker.Users)
+	suite.False(tracker.Settings)
+	suite.True(suite.dirtyDataService.IsTimerRunning())
+}

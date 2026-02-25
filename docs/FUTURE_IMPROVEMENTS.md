@@ -141,29 +141,121 @@ EjectDisk(diskID string) error
 
 ---
 
-## DirtyDataService Removal from Share and Volume Handlers
-
-**Location:** `backend/src/api/shares.go`, `backend/src/api/volumes.go`
-
-**Status:** `DirtyDataServiceInterface` was removed from the `ShareHandler` and
-`VolumeHandler` constructors. The dirty-state tracking for shares and volumes is now handled
-internally by the respective services (`ShareService`, `VolumeService`) via event bus
-subscriptions rather than direct handler injection.
-
-**Verification needed:** Confirm that all dirty-state updates that were previously triggered
-from the handlers are now correctly emitted by the services.
-
----
-
 ## Large Service Files — Splitting Candidates
 
-The following files exceed 800 lines and are candidates for decomposition:
+`service/volume_service.go` mount/unmount logic has been extracted to
+`service/volume_mount_manager.go` (`volumeMountManager` type). The remaining
+candidates are:
 
 | File | Lines | Suggestion |
 | ---- | ----- | ---------- |
-| `service/volume_service.go` | ~1 241 | Extract mount/unmount logic into a `MountManager` helper |
 | `service/filesystem_service.go` | ~944 | Extract async operation runner into a separate struct |
 | `service/hdidle_service.go` | ~823 | Extract disk-state tracking into a separate type |
 
 Splitting these files requires no interface changes if the public `*Interface` types are
 preserved; internal helper types and functions can be moved freely.
+
+---
+
+## Security and Stability Findings
+
+### Context Key Type Safety (Stability)
+
+**Location:** `cmd/srat-cli/main-cli.go`, `cmd/srat-server/main-server.go`,
+`events/events.go`, `server/ha_middleware.go`, and every test `SetupTest`.
+
+**Issue:** All `context.WithValue` calls use untyped string literals as keys (`"wg"`,
+`"user_id"`, `"event_uuid"`). The Go specification explicitly warns that using
+built-in types as context keys can cause collisions between packages, and the
+type assertion `ctx.Value("wg").(*sync.WaitGroup)` will panic if the key is
+absent (returns `nil`).
+
+**Fix:**
+
+```go
+// internal/ctxkeys/keys.go
+package ctxkeys
+
+type contextKey string
+
+const (
+    WaitGroup  contextKey = "wg"
+    UserID     contextKey = "user_id"
+    EventUUID  contextKey = "event_uuid"
+)
+```
+
+Replace all `context.WithValue(ctx, "wg", ...)` with `context.WithValue(ctx, ctxkeys.WaitGroup, ...)`.
+Add nil-guard before the type assertion:
+```go
+wg, _ := ctx.Value(ctxkeys.WaitGroup).(*sync.WaitGroup)
+if wg != nil {
+    wg.Go(...)
+}
+```
+
+---
+
+### Hardcoded IP Allowlist (Security)
+
+**Location:** `backend/src/server/ha_middleware.go:73`
+
+**Issue:** The HA middleware only allows requests from `172.30.32.2` and `127.0.0.1`.
+These addresses are specific to the default HA Supervisor network. Other Supervisor
+network configurations (e.g., custom Docker networks) will be blocked, and the list
+cannot be updated without recompiling.
+
+**Fix:** Read the allowed IPs from the `ContextState` (populated from addon config) or
+from an environment variable, falling back to the current defaults.
+
+---
+
+### CORS Wildcard with Credentials (Security)
+
+**Location:** `backend/src/server/http_server.go:45-52`
+
+**Issue:** The CORS configuration uses `AllowOriginFunc: func(origin string) bool { return true }`
+combined with `AllowCredentials: true`. According to the CORS specification, a server
+**must not** respond with a wildcard origin when the request includes credentials.
+While this combination works in many browsers due to pre-flight checks, it is
+semantically incorrect and may be exploitable in certain configurations.
+
+**Fix:** When running in addon mode (`ContextState.AddonMode`), restrict `AllowedOrigins`
+to the HA ingress origin. In development mode, the permissive policy is acceptable.
+
+---
+
+### Commented-out Ingress Session Validation (Security)
+
+**Location:** `backend/src/server/ha_middleware.go:28-66`
+
+**Issue:** The ingress session cookie validation against the Supervisor API is entirely
+commented out. The middleware currently trusts any request from the allowed IP range
+with a valid `X-Remote-User-Id` header, relying solely on network-level isolation.
+If the network trust boundary is compromised (e.g., another container on the same
+Docker network), unauthenticated access is possible.
+
+**Fix:** Re-enable the ingress session validation using `ingressClient`. The commented-out
+implementation already had caching via `gocache` to avoid per-request overhead.
+
+---
+
+### Unguarded `context.Value` Type Assertions (Stability)
+
+**Location:** `api/health.go:79`, `api/upgrade.go:109`, `service/volume_service.go:169`,
+`service/upgrade_service.go:94`, `service/upgrade_service.go:103`,
+`service/filesystem_service.go:254`
+
+**Issue:** Multiple call sites use the pattern:
+```go
+ctx.Value("wg").(*sync.WaitGroup).Go(...)
+```
+If the context does not contain the `"wg"` key the `Value` call returns `nil`, and the
+subsequent type assertion panics at runtime.
+
+**Fix:** Combine with the context key type safety fix above, and add nil-guards:
+```go
+if wg, ok := ctx.Value(ctxkeys.WaitGroup).(*sync.WaitGroup); ok && wg != nil {
+    wg.Go(...)
+}
+```
