@@ -568,9 +568,7 @@ func (s *FilesystemService) FormatPartition(ctx context.Context, devicePath, fsT
 	}
 
 	// Start async operation
-	s.wg.Add(1)
-	go func() {
-		defer s.wg.Done()
+	s.wg.Go(func() {
 		defer s.finishOperation(devicePath)
 
 		// Emit start event
@@ -662,7 +660,7 @@ func (s *FilesystemService) FormatPartition(ctx context.Context, devicePath, fsT
 			// Log success
 			slog.InfoContext(s.ctx, "Format operation completed successfully", "device", devicePath, "fsType", fsType)
 		}
-	}()
+	})
 
 	return &dto.CheckResult{
 		Success: true,
@@ -702,9 +700,7 @@ func (s *FilesystemService) CheckPartition(ctx context.Context, devicePath, fsTy
 	}
 
 	// Start async operation
-	s.wg.Add(1)
-	go func() {
-		defer s.wg.Done()
+	s.wg.Go(func() {
 		defer s.finishOperation(devicePath)
 
 		// Emit start event
@@ -812,7 +808,7 @@ func (s *FilesystemService) CheckPartition(ctx context.Context, devicePath, fsTy
 			// Log success
 			slog.InfoContext(s.ctx, "Check operation completed successfully", "device", devicePath, "fsType", fsType, "result", result)
 		}
-	}()
+	})
 
 	return &dto.CheckResult{
 		Success: true,

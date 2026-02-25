@@ -74,15 +74,7 @@ func NewHTTPServer(
 		},
 		OnStop: func(ctx context.Context) error {
 			slog.InfoContext(ctx, "Stopping HTTP server")
-			//state.Listener.Close()
 			cxtClose()
-			//ctx, cancel := context.WithTimeout(ctx, time.Second*10)
-			//defer cancel()
-			//err := srv.Shutdown(ctx)
-			//if err != nil {
-			//	return errors.WithStack(err)
-			//}
-			//time.Sleep(15 * time.Second)
 			apiContext.Value("wg").(*sync.WaitGroup).Done()
 			slog.InfoContext(ctx, "HTTP server stopped")
 			return nil

@@ -58,7 +58,6 @@ func checkFileSystemPermissions(dbPath string) errors.E {
 	// Check file permissions
 	fileInfo, err := os.Stat(filePath)
 	if err != nil {
-		//		slog.Error("Failed to get file info", "error", err, "path", filePath)
 		return errors.WithStack(err)
 	}
 

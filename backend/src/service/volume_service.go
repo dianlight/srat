@@ -42,9 +42,7 @@ type VolumeServiceInterface interface {
 	MountVolume(md *dto.MountPointData) errors.E
 	UnmountVolume(id string, force bool) errors.E
 	GetVolumesData() []*dto.Disk
-	//PathHashToPath(pathhash string) (string, errors.E)
 	GetDevicePathByDeviceID(deviceID string) (string, errors.E)
-	//EjectDisk(diskID string) error
 	PatchMountPointSettings(root string, path string, settingsPatch dto.MountPointData) (*dto.MountPointData, errors.E)
 	// Test only
 	MockSetProcfsGetMounts(f func() ([]*procfs.MountInfo, error))
@@ -54,7 +52,6 @@ type VolumeService struct {
 	ctx        context.Context
 	db         *gorm.DB
 	refreshing atomic.Bool
-	//broascasting    BroadcasterServiceInterface
 	hardwareClient  HardwareServiceInterface
 	fs_service      FilesystemServiceInterface
 	shareService    ShareServiceInterface

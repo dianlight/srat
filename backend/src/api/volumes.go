@@ -15,7 +15,6 @@ type VolumeHandler struct {
 	apiContext   *dto.ContextState
 	vservice     service.VolumeServiceInterface
 	shareService service.ShareServiceInterface
-	//dirtyservice service.DirtyDataServiceInterface
 }
 
 func NewVolumeHandler(
@@ -27,7 +26,6 @@ func NewVolumeHandler(
 	p.vservice = vservice
 	p.shareService = shareService
 	p.apiContext = apiContext
-	//p.dirtyservice = dirtyservice
 	return p
 }
 
@@ -44,7 +42,6 @@ func (self *VolumeHandler) RegisterVolumeHandlers(api huma.API) {
 	huma.Post(api, "/volume/mount", self.MountVolume, huma.OperationTags("volume"))
 	huma.Delete(api, "/volume", self.UmountVolume, huma.OperationTags("volume"))
 	huma.Patch(api, "/volume/settings", self.PatchMountPointSettings, huma.OperationTags("volume"))
-	// huma.Post(api, "/volume/disk/{disk_id}/eject", self.EjectDiskHandler, huma.OperationTags("volume"))
 }
 
 func (self *VolumeHandler) ListVolumes(ctx context.Context, input *struct{}) (*struct{ Body []*dto.Disk }, error) {

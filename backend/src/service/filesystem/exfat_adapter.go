@@ -276,7 +276,7 @@ func (a *ExfatAdapter) SetLabel(ctx context.Context, device string, label string
 // GetState returns the state of an exFAT filesystem
 func (a *ExfatAdapter) GetState(ctx context.Context, device string) (dto.FilesystemState, errors.E) {
 	state := dto.FilesystemState{
-		AdditionalInfo: make(map[string]interface{}),
+		AdditionalInfo: make(map[string]any),
 	}
 
 	// Run state command in read-only mode to get filesystem state

@@ -251,7 +251,7 @@ func (a *Gfs2Adapter) SetLabel(ctx context.Context, device string, label string)
 // GetState returns the state of a GFS2 filesystem
 func (a *Gfs2Adapter) GetState(ctx context.Context, device string) (dto.FilesystemState, errors.E) {
 	state := dto.FilesystemState{
-		AdditionalInfo: make(map[string]interface{}),
+		AdditionalInfo: make(map[string]any),
 	}
 
 	// Run state command in read-only mode to get filesystem state

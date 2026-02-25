@@ -294,7 +294,7 @@ func (a *XfsAdapter) SetLabel(ctx context.Context, device string, label string) 
 // GetState returns the state of an xfs filesystem
 func (a *XfsAdapter) GetState(ctx context.Context, device string) (dto.FilesystemState, errors.E) {
 	state := dto.FilesystemState{
-		AdditionalInfo: make(map[string]interface{}),
+		AdditionalInfo: make(map[string]any),
 	}
 
 	// Run state command in no-modify mode to check state
