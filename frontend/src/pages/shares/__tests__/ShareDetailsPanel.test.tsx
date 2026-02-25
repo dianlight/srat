@@ -1,6 +1,6 @@
-import "../../../../test/setup";
-import { describe, it, expect, afterEach } from "bun:test";
 import { act } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "bun:test";
+import "../../../../test/setup";
 
 describe("ShareDetailsPanel", () => {
     afterEach(async () => {
@@ -163,5 +163,33 @@ describe("ShareDetailsPanel", () => {
         // Check that Mount Point Information is visible using semantic query
         const mountPointInfo = screen.getByText("Mount Point Information");
         expect(mountPointInfo).toBeTruthy();
+    });
+
+    it("shows full share name in tooltip on hover", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        // @ts-expect-error - Query param ensures fresh module instance for mocks
+        const { ShareDetailsPanel } = await import("../components/ShareDetailsPanel?share-details-tooltip-test");
+
+        const share = await buildShare();
+        const longShareName =
+            "This is a very long share name to verify tooltip shows the complete value";
+        share.name = longShareName;
+
+        await act(async () => {
+            return render(
+                React.createElement(ShareDetailsPanel as any, {
+                    share,
+                    shareKey: "documents",
+                })
+            );
+        });
+
+        const user = userEvent.setup();
+        const shareNameNode = screen.getByText(longShareName);
+        await user.hover(shareNameNode);
+
+        expect(await screen.findByRole("tooltip")).toHaveTextContent(longShareName);
     });
 });

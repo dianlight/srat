@@ -136,25 +136,26 @@ export function SharesTreeView({
             dispatch(addMessage(JSON.stringify(error)));
         }
     };
-/*
-    const handleToggleShare = async (
-        event: React.MouseEvent<HTMLButtonElement>,
-        shareKey: string,
-        shareProps: SharedResource,
-    ) => {
-        event.stopPropagation();
-        const isEnabled = !shareProps.disabled;
-
-        if (isEnabled) {
-            await handleDisable(shareKey, shareProps);
-        } else {
-            await handleEnable(shareKey, shareProps);
-        }
-    };
-*/
+    /*
+        const handleToggleShare = async (
+            event: React.MouseEvent<HTMLButtonElement>,
+            shareKey: string,
+            shareProps: SharedResource,
+        ) => {
+            event.stopPropagation();
+            const isEnabled = !shareProps.disabled;
+    
+            if (isEnabled) {
+                await handleDisable(shareKey, shareProps);
+            } else {
+                await handleEnable(shareKey, shareProps);
+            }
+        };
+    */
     const renderShareItem = (shareKey: string, shareProps: SharedResource) => {
         const isSelected = selectedShareKey === shareKey;
         const isDisabled = shareProps.disabled;
+        const shareName = shareProps.name || shareKey;
 
         return (
             <TreeItem
@@ -189,10 +190,22 @@ export function SharesTreeView({
                             </Tooltip>
                         )}
 
-                        <Box sx={{ flexGrow: 1, mr: 1 }}>
-                            <Typography variant="body2" fontWeight={isSelected ? 600 : 400}>
-                                {shareProps.name}
-                            </Typography>
+                        <Box sx={{ flexGrow: 1, minWidth: 0, mr: 1 }}>
+                            <Tooltip title={shareName} arrow>
+                                <Typography
+                                    variant="body2"
+                                    fontWeight={isSelected ? 600 : 400}
+                                    noWrap
+                                    sx={{
+                                        display: "block",
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                        whiteSpace: "nowrap",
+                                    }}
+                                >
+                                    {shareName}
+                                </Typography>
+                            </Tooltip>
                             <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 0.5 }}>
                                 {shareProps.mount_point_data?.disk_label && (
                                     <Chip
