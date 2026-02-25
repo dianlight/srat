@@ -64,6 +64,7 @@ export function ShareDetailsPanel({
     }
 
     const mountData = share.mount_point_data;
+    const shareName = share.name || shareKey;
 
     return (
         <Box
@@ -311,9 +312,20 @@ export function ShareDetailsPanel({
                                     <Typography variant="subtitle2" color="text.secondary">
                                         Share Name
                                     </Typography>
-                                    <Typography variant="h6">
-                                        {share.name}
-                                    </Typography>
+                                    <Tooltip title={shareName} arrow>
+                                        <Typography
+                                            variant="h6"
+                                            noWrap
+                                            sx={{
+                                                display: "block",
+                                                overflow: "hidden",
+                                                textOverflow: "ellipsis",
+                                                whiteSpace: "nowrap",
+                                            }}
+                                        >
+                                            {shareName}
+                                        </Typography>
+                                    </Tooltip>
                                 </Grid>
 
                                 {/* Share Properties */}
