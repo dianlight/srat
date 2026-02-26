@@ -11,6 +11,7 @@ import (
 	"github.com/dianlight/srat/homeassistant/addons"
 	"github.com/dianlight/srat/homeassistant/discovery"
 	"github.com/dianlight/srat/service"
+	"github.com/dianlight/srat/internal/ctxkeys"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
@@ -55,7 +56,7 @@ func (suite *HaDiscoveryServiceTestSuite) TestRegisterDiscoverySuccess() {
 	}
 
 	suite.wg = &sync.WaitGroup{}
-	suite.ctx, suite.cancel = context.WithCancel(context.WithValue(context.Background(), "wg", suite.wg))
+	suite.ctx, suite.cancel = context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, suite.wg))
 
 	suite.app = fxtest.New(suite.T(),
 		fx.Provide(
@@ -113,7 +114,7 @@ func (suite *HaDiscoveryServiceTestSuite) TestRegisterDiscoverySkipsInDemoMode()
 	}
 
 	suite.wg = &sync.WaitGroup{}
-	suite.ctx, suite.cancel = context.WithCancel(context.WithValue(context.Background(), "wg", suite.wg))
+	suite.ctx, suite.cancel = context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, suite.wg))
 
 	suite.app = fxtest.New(suite.T(),
 		fx.Provide(
@@ -140,7 +141,7 @@ func (suite *HaDiscoveryServiceTestSuite) TestRegisterDiscoverySkipsWithEmptySup
 	}
 
 	suite.wg = &sync.WaitGroup{}
-	suite.ctx, suite.cancel = context.WithCancel(context.WithValue(context.Background(), "wg", suite.wg))
+	suite.ctx, suite.cancel = context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, suite.wg))
 
 	suite.app = fxtest.New(suite.T(),
 		fx.Provide(
@@ -166,7 +167,7 @@ func (suite *HaDiscoveryServiceTestSuite) TestRegisterDiscoverySkipsWithNoToken(
 	}
 
 	suite.wg = &sync.WaitGroup{}
-	suite.ctx, suite.cancel = context.WithCancel(context.WithValue(context.Background(), "wg", suite.wg))
+	suite.ctx, suite.cancel = context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, suite.wg))
 
 	suite.app = fxtest.New(suite.T(),
 		fx.Provide(
@@ -196,7 +197,7 @@ func (suite *HaDiscoveryServiceTestSuite) TestRegisterDiscoveryFallsBackToAddonI
 	}
 
 	suite.wg = &sync.WaitGroup{}
-	suite.ctx, suite.cancel = context.WithCancel(context.WithValue(context.Background(), "wg", suite.wg))
+	suite.ctx, suite.cancel = context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, suite.wg))
 
 	suite.app = fxtest.New(suite.T(),
 		fx.Provide(
@@ -253,7 +254,7 @@ func (suite *HaDiscoveryServiceTestSuite) TestRegisterDiscoveryHandlesHTTPError(
 	}
 
 	suite.wg = &sync.WaitGroup{}
-	suite.ctx, suite.cancel = context.WithCancel(context.WithValue(context.Background(), "wg", suite.wg))
+	suite.ctx, suite.cancel = context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, suite.wg))
 
 	suite.app = fxtest.New(suite.T(),
 		fx.Provide(
@@ -302,7 +303,7 @@ func (suite *HaDiscoveryServiceTestSuite) TestUnregisterDiscoverySuccess() {
 	}
 
 	suite.wg = &sync.WaitGroup{}
-	suite.ctx, suite.cancel = context.WithCancel(context.WithValue(context.Background(), "wg", suite.wg))
+	suite.ctx, suite.cancel = context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, suite.wg))
 
 	suite.app = fxtest.New(suite.T(),
 		fx.Provide(

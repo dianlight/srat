@@ -12,6 +12,7 @@ import (
 
 	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/dianlight/tlog"
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
@@ -60,22 +61,26 @@ func NewHTTPServer(
 	}
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			apiContext.Value("wg").(*sync.WaitGroup).Go(func() {
-				slog.Debug("Starting HTTP server at", "listener", listener.Addr(), "pid", os.Getpid())
-				if err := srv.Serve(listener); err != nil {
-					if err == http.ErrServerClosed {
-						slog.Info("HTTP server stopped gracefully")
-					} else {
-						log.Fatalf("%#+v", err)
+			if wg, ok := apiContext.Value(ctxkeys.WaitGroup).(*sync.WaitGroup); ok && wg != nil {
+				wg.Go(func() {
+					slog.Debug("Starting HTTP server at", "listener", listener.Addr(), "pid", os.Getpid())
+					if err := srv.Serve(listener); err != nil {
+						if err == http.ErrServerClosed {
+							slog.Info("HTTP server stopped gracefully")
+						} else {
+							log.Fatalf("%#+v", err)
+						}
 					}
-				}
-			})
+				})
+			}
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
 			slog.InfoContext(ctx, "Stopping HTTP server")
 			cxtClose()
-			apiContext.Value("wg").(*sync.WaitGroup).Done()
+			if wg, ok := apiContext.Value(ctxkeys.WaitGroup).(*sync.WaitGroup); ok && wg != nil {
+				wg.Done()
+			}
 			slog.InfoContext(ctx, "HTTP server stopped")
 			return nil
 		},

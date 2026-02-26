@@ -11,6 +11,7 @@ import (
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
+	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/srat/service/filesystem"
 	"github.com/u-root/u-root/pkg/mount"
@@ -251,7 +252,7 @@ func NewFilesystemService(
 	}
 
 	// Get WaitGroup from context
-	wg, ok := ctx.Value("wg").(*sync.WaitGroup)
+	wg, ok := ctx.Value(ctxkeys.WaitGroup).(*sync.WaitGroup)
 	if !ok {
 		// Fallback to a new WaitGroup if not provided in context
 		wg = &sync.WaitGroup{}

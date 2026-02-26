@@ -33,6 +33,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal/updatekey"
 	"github.com/dianlight/srat/service"
+	"github.com/dianlight/srat/internal/ctxkeys"
 )
 
 type UpgradeServiceTestSuite struct {
@@ -89,7 +90,7 @@ func (suite *UpgradeServiceTestSuite) SetupTest() {
 		fx.Provide(
 			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
 			func() (context.Context, context.CancelFunc) {
-				ctx := context.WithValue(context.Background(), "wg", suite.wg)
+				ctx := context.WithValue(context.Background(), ctxkeys.WaitGroup, suite.wg)
 				return context.WithCancel(ctx)
 			},
 			func() *dto.ContextState {

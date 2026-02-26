@@ -11,6 +11,7 @@ import (
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
+	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/dianlight/tlog"
 	"github.com/patrickmn/go-cache"
 	"github.com/prometheus/procfs/blockdevice"
@@ -104,8 +105,9 @@ func NewDiskStatsService(
 			if err != nil && !errors.Is(err, dto.ErrorNotFound) {
 				slog.WarnContext(ctx, "Failed to update disk stats", "error", err)
 			}
-			wg := Ctx.Value("wg").(*sync.WaitGroup)
-			wg.Go(func() { ds.run() })
+			if wg, ok := Ctx.Value(ctxkeys.WaitGroup).(*sync.WaitGroup); ok && wg != nil {
+				wg.Go(func() { ds.run() })
+			}
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {

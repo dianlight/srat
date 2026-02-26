@@ -18,6 +18,7 @@ import (
 	"github.com/dianlight/srat/homeassistant/hardware"
 	"github.com/dianlight/srat/internal"
 	"github.com/dianlight/srat/internal/appsetup"
+	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/tlog"
 	"github.com/gofri/go-github-ratelimit/v2/github_ratelimit"
@@ -177,7 +178,7 @@ func main() {
 	//	*dbfile = *dbfile + "?cache=shared&_pragma=foreign_keys(1)"
 	//}
 
-	apiCtx, apiCancel := context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
+	apiCtx, apiCancel := context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, &sync.WaitGroup{}))
 	defer apiCancel() // Ensure context is cancelled on exit
 
 	staticConfig := dto.ContextState{

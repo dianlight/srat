@@ -16,6 +16,7 @@ import (
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
+	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/prometheus/procfs"
@@ -70,7 +71,7 @@ func (suite *VolumeServiceTestSuite) SetupTest() {
 		fx.Provide(
 			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
 			func() (context.Context, context.CancelFunc) {
-				return context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
+				return context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, &sync.WaitGroup{}))
 			},
 			func() *dto.ContextState {
 				return &dto.ContextState{
@@ -118,7 +119,7 @@ func (suite *VolumeServiceTestSuite) TearDownTest() {
 		suite.cancel()
 	}
 	if suite.ctx != nil {
-		if wg := suite.ctx.Value("wg"); wg != nil {
+		if wg := suite.ctx.Value(ctxkeys.WaitGroup); wg != nil {
 			wg.(*sync.WaitGroup).Wait()
 		}
 	}

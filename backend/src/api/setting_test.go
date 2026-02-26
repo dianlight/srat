@@ -16,6 +16,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/service"
+	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
@@ -44,7 +45,7 @@ func (suite *SettingsHandlerSuite) SetupTest() {
 		fx.Provide(
 			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
 			func() (context.Context, context.CancelFunc) {
-				return context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
+				return context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, &sync.WaitGroup{}))
 			},
 			/*
 				func() *config.DefaultConfig {
@@ -155,7 +156,7 @@ func (suite *SettingsHandlerSuite) SetupTest() {
 // TearDownSuite runs once after all tests in the suite have finished
 func (suite *SettingsHandlerSuite) TearDownTest() {
 	suite.cancel()
-	suite.ctx.Value("wg").(*sync.WaitGroup).Wait()
+	suite.ctx.Value(ctxkeys.WaitGroup).(*sync.WaitGroup).Wait()
 	if suite.app != nil {
 		suite.app.RequireStop()
 	}

@@ -13,6 +13,7 @@ import (
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/srat/unixsamba"
+	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
@@ -62,7 +63,7 @@ func (suite *EventPropagationTestSuite) SetupTest() {
 		fx.Provide(
 			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
 			func() (context.Context, context.CancelFunc) {
-				ctx := context.WithValue(context.Background(), "wg", wg)
+				ctx := context.WithValue(context.Background(), ctxkeys.WaitGroup, wg)
 				return context.WithCancel(ctx)
 			},
 			/*
@@ -177,7 +178,7 @@ func (suite *EventPropagationTestSuite) SetupTest() {
 
 func (suite *EventPropagationTestSuite) TearDownTest() {
 	suite.cancel()
-	suite.ctx.Value("wg").(*sync.WaitGroup).Wait()
+	suite.ctx.Value(ctxkeys.WaitGroup).(*sync.WaitGroup).Wait()
 	//suite.app.RequireStop()
 }
 

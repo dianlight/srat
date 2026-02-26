@@ -119,28 +119,6 @@ if e, ok := stderrors.AsType[tozderrors.E](err); ok { ... }
 
 ---
 
-## Volume Service: EjectDisk Feature Not Implemented
-
-**Location:** `backend/src/api/volumes.go`, `backend/src/service/volume_service.go`
-
-**Status:** The `EjectDiskHandler` method exists in `VolumeHandler` but is not registered as a
-route. `EjectDisk` was also omitted from `VolumeServiceInterface`.
-
-**Required interface change:**
-
-```go
-// Add to VolumeServiceInterface in service/volume_service.go
-EjectDisk(diskID string) error
-```
-
-**Work to do:**
-1. Implement `EjectDisk` in `VolumeService`.
-2. Add `EjectDisk` to `VolumeServiceInterface`.
-3. Register the route in `RegisterVolumeHandlers`.
-4. Add tests for the new endpoint.
-
----
-
 ## Large Service Files — Splitting Candidates
 
 `service/volume_service.go` mount/unmount logic has been extracted to
@@ -158,43 +136,6 @@ preserved; internal helper types and functions can be moved freely.
 ---
 
 ## Security and Stability Findings
-
-### Context Key Type Safety (Stability)
-
-**Location:** `cmd/srat-cli/main-cli.go`, `cmd/srat-server/main-server.go`,
-`events/events.go`, `server/ha_middleware.go`, and every test `SetupTest`.
-
-**Issue:** All `context.WithValue` calls use untyped string literals as keys (`"wg"`,
-`"user_id"`, `"event_uuid"`). The Go specification explicitly warns that using
-built-in types as context keys can cause collisions between packages, and the
-type assertion `ctx.Value("wg").(*sync.WaitGroup)` will panic if the key is
-absent (returns `nil`).
-
-**Fix:**
-
-```go
-// internal/ctxkeys/keys.go
-package ctxkeys
-
-type contextKey string
-
-const (
-    WaitGroup  contextKey = "wg"
-    UserID     contextKey = "user_id"
-    EventUUID  contextKey = "event_uuid"
-)
-```
-
-Replace all `context.WithValue(ctx, "wg", ...)` with `context.WithValue(ctx, ctxkeys.WaitGroup, ...)`.
-Add nil-guard before the type assertion:
-```go
-wg, _ := ctx.Value(ctxkeys.WaitGroup).(*sync.WaitGroup)
-if wg != nil {
-    wg.Go(...)
-}
-```
-
----
 
 ### Hardcoded IP Allowlist (Security)
 
@@ -238,24 +179,3 @@ Docker network), unauthenticated access is possible.
 **Fix:** Re-enable the ingress session validation using `ingressClient`. The commented-out
 implementation already had caching via `gocache` to avoid per-request overhead.
 
----
-
-### Unguarded `context.Value` Type Assertions (Stability)
-
-**Location:** `api/health.go:79`, `api/upgrade.go:109`, `service/volume_service.go:169`,
-`service/upgrade_service.go:94`, `service/upgrade_service.go:103`,
-`service/filesystem_service.go:254`
-
-**Issue:** Multiple call sites use the pattern:
-```go
-ctx.Value("wg").(*sync.WaitGroup).Go(...)
-```
-If the context does not contain the `"wg"` key the `Value` call returns `nil`, and the
-subsequent type assertion panics at runtime.
-
-**Fix:** Combine with the context key type safety fix above, and add nil-guards:
-```go
-if wg, ok := ctx.Value(ctxkeys.WaitGroup).(*sync.WaitGroup); ok && wg != nil {
-    wg.Go(...)
-}
-```

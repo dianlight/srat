@@ -17,6 +17,7 @@ import (
 	"github.com/dianlight/srat/dbom/g"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
+	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/tlog"
 	"github.com/pilebones/go-udev/netlink"
@@ -168,9 +169,11 @@ func NewVolumeService(
 			if err != nil {
 				return err
 			}
-			p.ctx.Value("wg").(*sync.WaitGroup).Go(func() {
-				p.udevEventHandler()
-			})
+			if wg, ok := p.ctx.Value(ctxkeys.WaitGroup).(*sync.WaitGroup); ok && wg != nil {
+				wg.Go(func() {
+					p.udevEventHandler()
+				})
+			}
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
