@@ -843,12 +843,12 @@ func (s *FilesystemService) AbortCheckPartition(ctx context.Context, devicePath 
 func (s *FilesystemService) GetPartitionState(ctx context.Context, devicePath, fsType string) (*dto.FilesystemState, errors.E) {
 	adapter, err := s.registry.Get(fsType)
 	if err != nil {
-		return nil, errors.Wrap(dto.ErrorUnsupportedFilesystem, "unsupported filesystem type")
+		return nil, errors.Wrapf(dto.ErrorUnsupportedFilesystem, "unsupported filesystem type: %s", fsType)
 	}
 
 	state, stateErr := adapter.GetState(ctx, devicePath)
 	if stateErr != nil {
-		return nil, errors.Wrap(stateErr, "failed to get partition state")
+		return nil, errors.Wrapf(stateErr, "failed to get partition state for device: %s", devicePath)
 	}
 
 	return &state, nil
@@ -858,12 +858,12 @@ func (s *FilesystemService) GetPartitionState(ctx context.Context, devicePath, f
 func (s *FilesystemService) GetPartitionLabel(ctx context.Context, devicePath, fsType string) (string, errors.E) {
 	adapter, err := s.registry.Get(fsType)
 	if err != nil {
-		return "", errors.Wrap(dto.ErrorUnsupportedFilesystem, "unsupported filesystem type")
+		return "", errors.Wrapf(dto.ErrorUnsupportedFilesystem, "unsupported filesystem type: %s", fsType)
 	}
 
 	label, labelErr := adapter.GetLabel(ctx, devicePath)
 	if labelErr != nil {
-		return "", errors.Wrap(labelErr, "failed to get partition label")
+		return "", errors.Wrapf(labelErr, "failed to get partition label for device: %s", devicePath)
 	}
 
 	return label, nil
@@ -873,7 +873,7 @@ func (s *FilesystemService) GetPartitionLabel(ctx context.Context, devicePath, f
 func (s *FilesystemService) SetPartitionLabel(ctx context.Context, devicePath, fsType, label string) errors.E {
 	adapter, err := s.registry.Get(fsType)
 	if err != nil {
-		return errors.Wrap(dto.ErrorUnsupportedFilesystem, "unsupported filesystem type")
+		return errors.Wrapf(dto.ErrorUnsupportedFilesystem, "unsupported filesystem type: %s", fsType)
 	}
 
 	// Check if setting label is supported
@@ -893,7 +893,7 @@ func (s *FilesystemService) SetPartitionLabel(ctx context.Context, devicePath, f
 
 	setErr := adapter.SetLabel(ctx, devicePath, label)
 	if setErr != nil {
-		return errors.Wrap(setErr, "failed to set partition label")
+		return errors.Wrapf(setErr, "failed to set partition label for device: %s", devicePath)
 	}
 
 	return nil
