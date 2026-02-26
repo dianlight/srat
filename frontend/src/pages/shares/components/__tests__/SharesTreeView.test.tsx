@@ -337,6 +337,7 @@ describe("SharesTreeView component", () => {
         const shareNameNode = screen.getByText(longShareName);
         await user.hover(shareNameNode);
 
-        expect(await screen.findByRole("tooltip")).toHaveTextContent(longShareName);
+        const tooltip = await screen.findByRole("tooltip");
+        expect(tooltip.textContent).toBe(longShareName);
     });
 });

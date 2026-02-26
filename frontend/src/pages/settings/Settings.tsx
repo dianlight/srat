@@ -391,48 +391,54 @@ export function Settings() {
 				);
 
 			case 'ha_use_nfs':
-				return (
-					<Tooltip
-						title={
-							<>
-								<Typography variant="h6" component="div">
-									Use NFS for Home Assistant Integration (Experimental)
-								</Typography>
-								<Typography variant="body2">
-									If enabled, Home Assistant will mount shares using NFS instead of SMB/CIFS. This can be more efficient but is currently experimental.
-								</Typography>
-								{!((capabilities as SystemCapabilities)?.support_nfs ?? false) && (
-									<Typography variant="body2" sx={{ mt: 1, color: 'warning.light' }}>
-										<strong>Not available:</strong> NFS support is not detected on this system.
+				if (
+					false &&  // TODO:Temporarily disable the "Use NFS for HA" setting until it's fully implemented and tested, and we want to avoid showing it until it's ready
+					getCurrentEnv() === "production"
+				) {
+					return (
+						<Tooltip
+							title={
+								<>
+									<Typography variant="h6" component="div">
+										Use NFS for Home Assistant Integration (Experimental)
 									</Typography>
-								)}
-							</>
-						}
-					>
-						<span style={{ display: "inline-block", width: "100%" }}>
-							<SwitchElement
-								disabled={!(capabilities as SystemCapabilities)?.support_nfs}
-								switchProps={{
-									"aria-label": "Use NFS for HA",
-									size: "small",
-								}}
-								sx={{ display: "flex" }}
-								name="ha_use_nfs"
-								label={
-									<>
-										Use NFS for HA{" "}
-										<Typography component="span" variant="caption" sx={{ color: 'warning.main', ml: 1 }}>
-											(Experimental)
+									<Typography variant="body2">
+										If enabled, Home Assistant will mount shares using NFS instead of SMB/CIFS. This can be more efficient but is currently experimental.
+									</Typography>
+									{!((capabilities as SystemCapabilities)?.support_nfs ?? false) && (
+										<Typography variant="body2" sx={{ mt: 1, color: 'warning.light' }}>
+											<strong>Not available:</strong> NFS support is not detected on this system.
 										</Typography>
-									</>
-								}
-								labelPlacement="start"
-								control={control}
-							/>
-						</span>
-					</Tooltip>
-				);
-
+									)}
+								</>
+							}
+						>
+							<span style={{ display: "inline-block", width: "100%" }}>
+								<SwitchElement
+									disabled={!(capabilities as SystemCapabilities)?.support_nfs}
+									switchProps={{
+										"aria-label": "Use NFS for HA",
+										size: "small",
+									}}
+									sx={{ display: "flex" }}
+									name="ha_use_nfs"
+									label={
+										<>
+											Use NFS for HA{" "}
+											<Typography component="span" variant="caption" sx={{ color: 'warning.main', ml: 1 }}>
+												(Experimental)
+											</Typography>
+										</>
+									}
+									labelPlacement="start"
+									control={control}
+								/>
+							</span>
+						</Tooltip>
+					);
+				} else {
+					return <></>;
+				}
 			case 'hostname':
 				return (
 					<TextFieldElement

@@ -125,7 +125,7 @@ func (self *UpgradeService) updater() error {
 		select {
 		case <-self.ctx.Done():
 			slog.InfoContext(self.ctx, "Run process closed", "err", self.ctx.Err())
-			return errors.WithStack(self.ctx.Err())
+			return nil
 		case <-time.After(self.updateLimiter.Interval):
 			slog.DebugContext(self.ctx, "Version Checking...", "channel", self.state.UpdateChannel.String())
 			self.notifyClient(dto.UpdateProgress{

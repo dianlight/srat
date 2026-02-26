@@ -29,7 +29,7 @@ import { type Disk, type FilesystemState, type Partition, Time_machine_support, 
 import { decodeEscapeSequence } from "../utils";
 import { FilesystemCheckDialog } from "./FilesystemCheckDialog";
 import { HDIdleDiskSettings } from "./HDIdleDiskSettings";
-import { getPartitionActionItems } from "./partition-action-items";
+import { getPartitionActionItems } from "./PartitionActionItems";
 import { SmartStatusPanel } from "./SmartStatusPanel";
 
 interface VolumeDetailsPanelProps {
