@@ -81,7 +81,9 @@ func (suite *VolumeServiceTestSuite) SetupTest() {
 				// Provide a nil repository since it's only used in error cases in tests
 				return nil
 			},
+			func() *dto.DiskMap { return &dto.DiskMap{} },
 			dbom.NewDB,
+			service.NewVolumeMountManager,
 			service.NewVolumeService,
 			service.NewFilesystemService,
 			events.NewEventBus,

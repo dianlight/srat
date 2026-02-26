@@ -84,12 +84,14 @@ func (suite *EventPropagationTestSuite) SetupTest() {
 					DatabasePath: "file::memory:?cache=shared&_pragma=foreign_keys(1)",
 				}
 			},
+			func() *dto.DiskMap { return &dto.DiskMap{} },
 			dbom.NewDB,
 			events.NewEventBus,
 			NewDirtyDataService,
 			NewShareService,
 			NewUserService,
 			// Real VolumeService with injected test mount ops
+			NewVolumeMountManager,
 			NewVolumeService,
 			NewFilesystemService,
 			NewSettingService,

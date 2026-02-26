@@ -62,8 +62,7 @@ type VolumeService struct {
 	hdidleService   HDIdleServiceInterface
 	eventBus        events.EventBusInterface
 	convDto         converter.DtoToDbomConverterImpl
-	convMDto        converter.MountToDtoImpl
-	mounter         *volumeMountManager
+	mounter         VolumeMountManagerInterface
 	procfsGetMounts func() ([]*procfs.MountInfo, error)
 	disks           *dto.DiskMap
 	refreshVersion  uint32
@@ -74,7 +73,7 @@ type VolumeServiceProps struct {
 	Ctx context.Context
 	Db  *gorm.DB
 	//MountPointRepo    repository.MountPointPathRepositoryInterface
-	HardwareClient    HardwareServiceInterface `optional:"true"`
+	HardwareClient    HardwareServiceInterface      `optional:"true"`
 	FilesystemService FilesystemServiceInterface
 	ShareService      ShareServiceInterface
 	IssueService      IssueServiceInterface
@@ -82,6 +81,8 @@ type VolumeServiceProps struct {
 	HAService         HomeAssistantServiceInterface `optional:"true"`
 	HDIdleService     HDIdleServiceInterface        `optional:"true"`
 	EventBus          events.EventBusInterface
+	Mounter           VolumeMountManagerInterface
+	Disks             *dto.DiskMap
 }
 
 func NewVolumeService(
@@ -100,12 +101,11 @@ func NewVolumeService(
 		hdidleService:   in.HDIdleService,
 		eventBus:        in.EventBus,
 		convDto:         converter.DtoToDbomConverterImpl{},
-		convMDto:        converter.MountToDtoImpl{},
+		mounter:         in.Mounter,
 		procfsGetMounts: procfs.GetMounts,
-		disks:           &dto.DiskMap{},
+		disks:           in.Disks,
 		refreshVersion:  0,
 	}
-	p.mounter = newVolumeMountManager(p.ctx, p.fs_service, p.disks, p.convMDto, p.eventBus)
 
 	var unsubscribe [6]func()
 	unsubscribe[0] = p.eventBus.OnPartition(p.handlePartitionEvent)
@@ -367,7 +367,7 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 		)
 	}
 
-	if err := ms.mounter.mount(md, flags, data, mountFsType); err != nil {
+	if err := ms.mounter.Mount(md, flags, data, mountFsType); err != nil {
 		return err
 	}
 
@@ -412,7 +412,7 @@ func (ms *VolumeService) UnmountVolume(path string, force bool) errors.E {
 }
 
 func (ms *VolumeService) unmountVolume(md *dto.MountPointData, force bool) errors.E {
-	return ms.mounter.unmount(md, force)
+	return ms.mounter.Unmount(md, force)
 }
 
 func (self *VolumeService) udevEventHandler() {

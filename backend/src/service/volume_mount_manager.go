@@ -10,7 +10,15 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"gitlab.com/tozd/go/errors"
+	"go.uber.org/fx"
 )
+
+// VolumeMountManagerInterface defines the contract for OS-level mount/unmount operations.
+// Validation and higher-level coordination are handled by the caller (VolumeService).
+type VolumeMountManagerInterface interface {
+	Mount(md *dto.MountPointData, flags uintptr, data, mountFsType string) errors.E
+	Unmount(md *dto.MountPointData, force bool) errors.E
+}
 
 // volumeMountManager handles low-level mount and unmount OS operations.
 // It is responsible for creating/removing mount directories, calling the
@@ -25,28 +33,31 @@ type volumeMountManager struct {
 	eventBus  events.EventBusInterface
 }
 
-// newVolumeMountManager creates a new volumeMountManager.
-func newVolumeMountManager(
-	ctx context.Context,
-	fsService FilesystemServiceInterface,
-	disks *dto.DiskMap,
-	convMDto converter.MountToDtoImpl,
-	eventBus events.EventBusInterface,
-) *volumeMountManager {
+// VolumeMountManagerParams holds the fx-injectable dependencies for VolumeMountManager.
+type VolumeMountManagerParams struct {
+	fx.In
+	Ctx       context.Context
+	FsService FilesystemServiceInterface
+	Disks     *dto.DiskMap
+	EventBus  events.EventBusInterface
+}
+
+// NewVolumeMountManager creates a new VolumeMountManager via fx dependency injection.
+func NewVolumeMountManager(in VolumeMountManagerParams) VolumeMountManagerInterface {
 	return &volumeMountManager{
-		ctx:       ctx,
-		fsService: fsService,
-		disks:     disks,
-		convMDto:  convMDto,
-		eventBus:  eventBus,
+		ctx:       in.Ctx,
+		fsService: in.FsService,
+		disks:     in.Disks,
+		convMDto:  converter.MountToDtoImpl{},
+		eventBus:  in.EventBus,
 	}
 }
 
-// mount performs the actual OS-level mount operation: creates the mount
+// Mount performs the actual OS-level mount operation: creates the mount
 // directory, delegates to the filesystem adapter, updates the in-memory
 // cache, and emits a MountPointEvent on success.
 // Pre-conditions: md.Partition.DevicePath must be non-nil and non-empty.
-func (m *volumeMountManager) mount(md *dto.MountPointData, flags uintptr, data, mountFsType string) errors.E {
+func (m *volumeMountManager) Mount(md *dto.MountPointData, flags uintptr, data, mountFsType string) errors.E {
 	slog.DebugContext(m.ctx, "Attempting to mount volume",
 		"device", md.DeviceId, "path", md.Path,
 		"fstype", md.FSType, "mount_fstype", mountFsType,
@@ -125,11 +136,11 @@ func (m *volumeMountManager) mount(md *dto.MountPointData, flags uintptr, data, 
 	return nil
 }
 
-// unmount performs the actual OS-level unmount operation: calls the filesystem
+// Unmount performs the actual OS-level unmount operation: calls the filesystem
 // adapter, removes the mount directory, updates the in-memory cache, and
 // emits a MountPointEvent.
 // Validation and cache lookups are performed by the caller (VolumeService).
-func (m *volumeMountManager) unmount(md *dto.MountPointData, force bool) errors.E {
+func (m *volumeMountManager) Unmount(md *dto.MountPointData, force bool) errors.E {
 	slog.DebugContext(m.ctx, "Attempting to unmount volume", "path", md.Path, "force", force)
 	fsType := ""
 	if md != nil && md.FSType != nil {
