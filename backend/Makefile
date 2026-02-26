@@ -295,9 +295,9 @@ mount_remote:
 	@sshfs -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3 ${HOMEASSISTANT_IP}:/addon_configs/local_sambanas2 /mnt/remote
 
 .PHONY: build_remote
-build_remote: /mnt/remote/config.db3
+build_remote:
+	@[ -n "${HOMEASSISTANT_IP}" ] || (echo "HOMEASSISTANT_IP is not set" && exit 1)
 	@rm -rf ./dist/x86_64 || :
 	@$(MAKE) build AARGS="GOARCH=amd64" VERSION=$(VERSION) ARCH="x86_64" PPROF=1 && \
-    cp -v ./dist/x86_64/srat-cli /mnt/remote/upgrade/ && \
-    cp -v ./dist/x86_64/srat-server /mnt/remote/upgrade/ && \
+    rsync -avz --progress ./dist/x86_64/srat-cli ./dist/x86_64/srat-server ${HOMEASSISTANT_IP}:/addon_configs/local_sambanas2/upgrade/ && \
     echo "Remote build and deployment completed."

@@ -648,10 +648,15 @@ export function NavBar(props: {
 								</IconButton>
 							)}
 							{evdata?.updating?.progress !== undefined ? (
-								<CircularProgressWithLabel
-									value={evdata.updating.progress}
-									color="success"
-								/>
+								<Tooltip
+									title={`${evdata.updating.update_process_state} ${evdata.updating.progress}%`}
+									arrow
+								>
+									<CircularProgressWithLabel
+										value={evdata.updating.progress}
+										color="success"
+									/>
+								</Tooltip>
 							) : (
 								<></>
 							)}

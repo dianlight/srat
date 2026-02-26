@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import type { ComponentProps } from "react";
@@ -6,7 +6,7 @@ import { Provider } from "react-redux";
 import { BrowserRouter } from "react-router-dom";
 import "../../../../../test/setup";
 import { createTestStore } from "../../../../../test/setup";
-import { type Partition, sratApi } from "../../../../store/sratApi";
+import { type Partition } from "../../../../store/sratApi";
 import { VolumeDetailsPanel } from "../VolumeDetailsPanel";
 
 interface RenderOptions {

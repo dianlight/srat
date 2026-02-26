@@ -1,5 +1,5 @@
+import { beforeEach, describe, expect, it } from "bun:test";
 import "../../../../../test/setup";
-import { describe, it, expect, beforeEach } from "bun:test";
 
 // localStorage shim for testing
 if (!(globalThis as any).localStorage) {
@@ -254,5 +254,84 @@ describe("UserEditForm component", () => {
 
         const usernameField = await screen.findByLabelText(/username/i);
         expect((usernameField as HTMLInputElement).disabled).toBe(true);
+    });
+
+    it("does not require password fields in edit mode", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const { UserEditForm } = await import("../UserEditForm");
+
+        render(
+            React.createElement(UserEditForm as any, {
+                userData: { username: "testuser", password: "", doCreate: false, is_admin: false },
+                onSubmit: () => { },
+            })
+        );
+
+        const passwordField = await screen.findByLabelText(/^password$/i);
+        const repeatPasswordField = await screen.findByLabelText(/repeat password/i);
+
+        expect((passwordField as HTMLInputElement).required).toBe(false);
+        expect((repeatPasswordField as HTMLInputElement).required).toBe(false);
+    });
+
+    it("requires matching repeat password in edit mode when password is set", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { UserEditForm } = await import("../UserEditForm");
+
+        let submitCount = 0;
+
+        render(
+            React.createElement(UserEditForm as any, {
+                userData: { username: "testuser", password: "", doCreate: false, is_admin: false },
+                onSubmit: () => {
+                    submitCount += 1;
+                },
+            })
+        );
+
+        const user = userEvent.setup();
+        const passwordField = await screen.findByLabelText(/^password$/i);
+        const repeatPasswordField = await screen.findByLabelText(/repeat password/i);
+
+        await user.type(passwordField, "secret1");
+        await user.type(repeatPasswordField, "secret2");
+
+        const saveButton = await screen.findByRole("button", { name: /save changes/i });
+        await user.click(saveButton);
+
+        expect(submitCount).toBe(0);
+    });
+
+    it("submits in edit mode when password and repeat password match", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { UserEditForm } = await import("../UserEditForm");
+
+        let submitCount = 0;
+
+        render(
+            React.createElement(UserEditForm as any, {
+                userData: { username: "testuser", password: "", doCreate: false, is_admin: false },
+                onSubmit: () => {
+                    submitCount += 1;
+                },
+            })
+        );
+
+        const user = userEvent.setup();
+        const passwordField = await screen.findByLabelText(/^password$/i);
+        const repeatPasswordField = await screen.findByLabelText(/repeat password/i);
+
+        await user.type(passwordField, "secret1");
+        await user.type(repeatPasswordField, "secret1");
+
+        const saveButton = await screen.findByRole("button", { name: /save changes/i });
+        await user.click(saveButton);
+
+        expect(submitCount).toBe(1);
     });
 });

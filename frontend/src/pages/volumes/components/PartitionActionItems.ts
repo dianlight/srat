@@ -1,3 +1,4 @@
+import { getCurrentEnv } from "../../../macro/Environment";
 import type { MountPointData, Partition } from "../../../store/sratApi";
 
 export type PartitionActionKey =
@@ -16,13 +17,13 @@ export interface PartitionActionItem {
 	key: PartitionActionKey;
 	title: string;
 	color:
-		| "primary"
-		| "secondary"
-		| "warning"
-		| "error"
-		| "info"
-		| "success"
-		| undefined;
+	| "primary"
+	| "secondary"
+	| "warning"
+	| "error"
+	| "info"
+	| "success"
+	| undefined;
 	onClick: () => void;
 }
 
@@ -139,19 +140,26 @@ export function getPartitionActionItems({
 		}
 
 		// Additional Action on supported filesystems
+		// TODO: not ready to be enabled because not fully implemented and tested, and we want to avoid showing it until it's ready
 		if (
+			false &&  // Temporarily disable the "Check Filesystem" action until it's fully implemented and tested
 			onCheckFilesystem &&
 			partition.filesystem_info?.Support?.canCheck &&
-			!isMounted
+			!isMounted &&
+			getCurrentEnv() !== "production"
 		) {
 			actionItems.push({
 				key: "check-filesystem",
 				title: "Check Filesystem",
 				color: "info",
-				onClick: () => onCheckFilesystem(partition),
+				onClick: () => onCheckFilesystem?.(partition),
 			});
 		}
-		if (partition.filesystem_info?.Support?.canSetLabel && !isMounted) {
+		if (
+			false &&  // Temporarily disable the "Set Label" action until it's fully implemented and tested
+			partition.filesystem_info?.Support?.canSetLabel &&
+			!isMounted &&
+			getCurrentEnv() !== "production") {
 			actionItems.push({
 				key: "set-label",
 				title: "Set Label",
@@ -162,7 +170,11 @@ export function getPartitionActionItems({
 				},
 			});
 		}
-		if (partition.filesystem_info?.Support?.canFormat && !isMounted) {
+		if (
+			false &&  // Temporarily disable the "Format Partition" action until it's fully implemented and tested
+			partition.filesystem_info?.Support?.canFormat &&
+			!isMounted &&
+			getCurrentEnv() !== "production") {
 			actionItems.push({
 				key: "format",
 				title: "Format Partition",

@@ -57,7 +57,7 @@ describe("SharesTreeView component", () => {
         const onSelect = mock(() => { });
         const store = await createTestStore();
 
-        const { getByText } = render(
+        const { getByLabelText } = render(
             React.createElement(
                 Provider as any,
                 { store },
@@ -87,9 +87,9 @@ describe("SharesTreeView component", () => {
 
         const user = userEvent.setup();
         await waitFor(() => {
-            expect(getByText("Documents")).toBeTruthy();
+            expect(getByLabelText("Documents")).toBeTruthy();
         });
-        const documentsNode = getByText("Documents");
+        const documentsNode = getByLabelText("Documents");
         await user.click(documentsNode);
         expect(onSelect).toHaveBeenCalledWith("doc", expect.objectContaining({ name: "Documents" }));
 
@@ -97,9 +97,9 @@ describe("SharesTreeView component", () => {
         const clickShareAction = async (actionName: RegExp, shareText: string) => {
             // Find the share node first to ensure we're targeting the right share
             await waitFor(() => {
-                expect(getByText(shareText)).toBeTruthy();
+                expect(getByLabelText(shareText)).toBeTruthy();
             });
-            const shareNode = getByText(shareText);
+            const shareNode = getByLabelText(shareText);
             const shareContainer = shareNode.closest('[role="treeitem"]');
             if (!shareContainer) return;
 
@@ -288,11 +288,56 @@ describe("SharesTreeView component", () => {
             )
         );
 
-        const documents = await within(container).findAllByText(/Documents/);
+        const documents = await within(container).findAllByLabelText("Documents");
         expect(documents).toHaveLength(1);
         expect(documents[0]).toBeTruthy();
         // In readOnly mode, ShareActions component should not be rendered
         expect(within(container).queryByRole("button", { name: /disable share/i })).toBeNull();
         expect(within(container).queryByRole("button", { name: /enable share/i })).toBeNull();
+    });
+
+    it("shows full share name in tooltip on hover", async () => {
+        const { overrides } = setupOverrides();
+
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { Provider } = await import("react-redux");
+        const { createTestStore } = await import("../../../../../test/setup");
+        // @ts-expect-error - Query param loads isolated module instance
+        const { SharesTreeView } = await import("../SharesTreeView?shares-tree-tooltip");
+        const store = await createTestStore();
+
+        const longShareName =
+            "This is a very long share name to verify tooltip shows the complete value";
+
+        render(
+            React.createElement(
+                Provider as any,
+                { store },
+                React.createElement(SharesTreeView as any, {
+                    shares: {
+                        long: {
+                            name: longShareName,
+                            usage: "none",
+                            mount_point_data: {},
+                            disabled: false,
+                        },
+                    },
+                    expandedItems: ["group-none"],
+                    onExpandedItemsChange: () => { },
+                    selectedShareKey: undefined,
+                    onShareSelect: () => { },
+                    testOverrides: overrides,
+                })
+            )
+        );
+
+        const user = userEvent.setup();
+        const shareNameNode = screen.getByText(longShareName);
+        await user.hover(shareNameNode);
+
+        const tooltip = await screen.findByRole("tooltip");
+        expect(tooltip.textContent).toBe(longShareName);
     });
 });

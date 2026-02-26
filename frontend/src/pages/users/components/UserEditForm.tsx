@@ -9,8 +9,7 @@ import {
 import { useForm } from "react-hook-form";
 import {
     PasswordElement,
-    PasswordRepeatElement,
-    TextFieldElement,
+    TextFieldElement
 } from "react-hook-form-mui";
 import type { UsersProps } from "../types";
 
@@ -109,27 +108,45 @@ export function UserEditForm({
                                 name="password"
                                 autoComplete="new-password"
                                 label="Password"
-                                required
+                                required={isNewUser}
                                 fullWidth
                                 control={control}
                                 disabled={disabled}
                                 rules={{
-                                    required: "Password is required",
-                                    minLength: {
-                                        value: 4,
-                                        message: "Password must be at least 4 characters",
+                                    required: isNewUser ? "Password is required" : false,
+                                    validate: (value) => {
+                                        const password = value?.trim() || "";
+                                        if (!password) {
+                                            return true;
+                                        }
+
+                                        return password.length >= 4
+                                            || "Password must be at least 4 characters";
                                     },
                                 }}
                             />
-                            <PasswordRepeatElement
-                                passwordFieldName="password"
+                            <PasswordElement
                                 name="password-repeat"
                                 autoComplete="new-password"
                                 label="Repeat Password"
-                                required
+                                required={isNewUser}
                                 fullWidth
                                 control={control}
                                 disabled={disabled}
+                                rules={{
+                                    required: isNewUser ? "Repeat Password is required" : false,
+                                    validate: (value, formValues) => {
+                                        const password = formValues.password?.trim() || "";
+                                        const repeatPassword = value?.trim() || "";
+
+                                        if (!password && !repeatPassword) {
+                                            return true;
+                                        }
+
+                                        return password === repeatPassword
+                                            || "Passwords do not match";
+                                    },
+                                }}
                             />
                         </Stack>
                     </Grid>
