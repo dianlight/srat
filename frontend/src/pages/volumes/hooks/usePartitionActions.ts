@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type { Partition } from "../../../store/sratApi";
-import { getPartitionActionItems } from "../components/partition-action-items";
+import { getPartitionActionItems } from "../components/PartitionActionItems";
 
 export interface UsePartitionActionsParams {
 	partition?: Partition;
@@ -42,7 +42,7 @@ export function usePartitionActions({
 			onUnmount,
 			onCreateShare,
 			onGoToShare,
-			onCheckFilesystem: onCheckFilesystem || (() => {}),
+			onCheckFilesystem: onCheckFilesystem || (() => { }),
 		});
 	}, [
 		partition,
