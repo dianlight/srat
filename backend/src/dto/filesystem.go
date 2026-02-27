@@ -12,7 +12,7 @@ type FilesystemInfo struct {
 	// Name is the filesystem type name
 	Name string
 
-	// Type is the filesystem type (same as name for consistency)
+	// Type is the filesystem type (must be the name for linux kernel module, e.g., "ext4", "ntfs3", "vfat")
 	Type string
 
 	// Description provides a human-readable description of the filesystem

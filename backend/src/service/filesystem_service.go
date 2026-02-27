@@ -528,7 +528,7 @@ func (s *FilesystemService) GetSupportAndInfo(ctx context.Context, fsType string
 
 	return &dto.FilesystemInfo{
 		Name:             adapter.GetName(),
-		Type:             fsType,
+		Type:             adapter.GetLinuxFsModule(),
 		Description:      adapter.GetDescription(),
 		MountFlags:       standardFlags,
 		CustomMountFlags: customFlags,
