@@ -523,14 +523,14 @@ func (s *FilesystemService) GetSupportAndInfo(ctx context.Context, fsType string
 		return nil, errors.Wrap(err, "failed to check filesystem support")
 	}
 
-	standardFlags, _ := s.GetStandardMountFlags()
+	//standardFlags, _ := s.GetStandardMountFlags()
 	customFlags, _ := s.GetFilesystemSpecificMountFlags(fsType)
 
 	return &dto.FilesystemInfo{
-		Name:             adapter.GetName(),
-		Type:             adapter.GetLinuxFsModule(),
-		Description:      adapter.GetDescription(),
-		MountFlags:       standardFlags,
+		Name:        adapter.GetName(),
+		Type:        adapter.GetLinuxFsModule(),
+		Description: adapter.GetDescription(),
+		//MountFlags:       standardFlags,
 		CustomMountFlags: customFlags,
 		Support:          &support,
 	}, nil

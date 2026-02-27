@@ -41,6 +41,7 @@ func (a *ExfatAdapter) GetMountFlags() []dto.MountFlag {
 		{Name: "dmask", Description: "Directory mode creation mask", NeedsValue: true, ValueDescription: "Octal mask (e.g., 022)", ValueValidationRegex: `^[0-7]{3,4}$`},
 		{Name: "fmask", Description: "File mode creation mask (alternative to umask)", NeedsValue: true, ValueDescription: "Octal mask (e.g., 022)", ValueValidationRegex: `^[0-7]{3,4}$`},
 		{Name: "iocharset", Description: "Character set for filename conversion", NeedsValue: true, ValueDescription: "Charset name (e.g., utf8)", ValueValidationRegex: `^[a-zA-Z0-9_-]+$`},
+		{Name: "errors", Description: "Behavior on error (remount-ro, continue, panic)", NeedsValue: true, ValueDescription: "One of: continue, remount-ro, panic", ValueValidationRegex: `^(continue|remount-ro|panic)$`},
 	}
 }
 

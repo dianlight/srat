@@ -7,25 +7,32 @@ package dto
 //   - notes: array of progress messages (e.g., "Progress Status Not Supported")
 type ProgressCallback func(status string, percentual int, notes []string)
 
+type FilesystemsInfo struct {
+	// MountFlags contains standard mount flags
+	MountFlags []MountFlag `json:"mount_flags"`
+	// Filesystems is a list of supported filesystems with their information
+	Filesystems []FilesystemInfo `json:"filesystems"`
+}
+
 // FilesystemInfo combines filesystem type information with capability details
 type FilesystemInfo struct {
 	// Name is the filesystem type name
-	Name string
+	Name string `json:"name"`
 
 	// Type is the filesystem type (must be the name for linux kernel module, e.g., "ext4", "ntfs3", "vfat")
-	Type string
+	Type string `json:"type"`
 
 	// Description provides a human-readable description of the filesystem
-	Description string
+	Description string `json:"description,omitempty"`
 
 	// MountFlags contains standard mount flags
-	MountFlags []MountFlag
+	//MountFlags []MountFlag
 
 	// CustomMountFlags contains filesystem-specific mount flags
-	CustomMountFlags []MountFlag
+	CustomMountFlags []MountFlag `json:"custom_mount_flags,omitempty"`
 
 	// Support contains filesystem capability information
-	Support *FilesystemSupport
+	Support *FilesystemSupport `json:"support,omitempty"`
 }
 
 // FilesystemSupport contains information about filesystem support on the system
