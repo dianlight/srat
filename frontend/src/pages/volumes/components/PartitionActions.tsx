@@ -1,9 +1,9 @@
 import {
-    faPlug,
-    faPlugCircleBolt,
-    faPlugCircleExclamation,
-    faPlugCircleMinus,
-    faPlugCircleXmark,
+	faPlug,
+	faPlugCircleBolt,
+	faPlugCircleExclamation,
+	faPlugCircleMinus,
+	faPlugCircleXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import AddIcon from "@mui/icons-material/Add";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
@@ -27,7 +27,7 @@ import {
 import {
 	getPartitionActionItems,
 	type PartitionActionKey,
-} from "./partition-action-items";
+} from "./PartitionActionItems";
 
 interface PartitionActionsProps {
 	partition: Partition;

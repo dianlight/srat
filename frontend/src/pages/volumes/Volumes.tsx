@@ -1,10 +1,10 @@
 import {
-    FormControlLabel,
-    Grid,
-    Paper,
-    Stack,
-    Switch,
-    Typography
+	FormControlLabel,
+	Grid,
+	Paper,
+	Stack,
+	Switch,
+	Typography
 } from "@mui/material";
 import { useConfirm } from "material-ui-confirm";
 import { useEffect, useMemo, useState } from "react";
@@ -387,6 +387,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 				patchMountPointData: {
 					...mountData,
 					is_to_mount_at_startup: newAutomountState,
+					share: undefined,
 				},
 			})
 				.unwrap()

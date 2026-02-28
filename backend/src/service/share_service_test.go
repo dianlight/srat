@@ -1168,6 +1168,184 @@ func (suite *ShareServiceSuite) TestCreateAndUpdateShareWithNumericPrefix() {
 	suite.Len(result2.Users, 1, "Should have 1 user after second update")
 }
 
+func (suite *ShareServiceSuite) TestUpdateShareRenamePreservesRwAndRoAssociations() {
+	adminUserName := "homeassistant%" + rand.Text()[:5]
+	rwUserName := "rwuser%" + rand.Text()[:5]
+	roUserName := "rouser%" + rand.Text()[:5]
+
+	mock.When(suite.userService.GetAdmin()).ThenReturn(&dto.User{
+		Username: adminUserName,
+		IsAdmin:  true,
+	}, nil)
+
+	suite.Require().NoError(suite.db.Create(&dbom.SambaUser{
+		Username: adminUserName,
+		Password: "test-admin",
+		IsAdmin:  true,
+	}).Error)
+	suite.Require().NoError(suite.db.Create(&dbom.SambaUser{
+		Username: rwUserName,
+		Password: "test-rw",
+		IsAdmin:  false,
+	}).Error)
+	suite.Require().NoError(suite.db.Create(&dbom.SambaUser{
+		Username: roUserName,
+		Password: "test-ro",
+		IsAdmin:  false,
+	}).Error)
+
+	oldName := "rename-share-old"
+	newName := "rename-share-new"
+
+	created, err := suite.shareService.CreateShare(dto.SharedResource{
+		Name:     oldName,
+		Disabled: boolPtr(false),
+		MountPointData: &dto.MountPointData{
+			Path:     "/mnt/rename-share",
+			DeviceId: "rename-device",
+			Type:     "ADDON",
+		},
+		Users: []dto.User{
+			{Username: adminUserName},
+			{Username: rwUserName},
+		},
+		RoUsers: []dto.User{
+			{Username: roUserName},
+		},
+	})
+	suite.Require().NoError(err)
+	suite.Require().NotNil(created)
+
+	renamePayload := dto.SharedResource{
+		Name:     newName,
+		Disabled: boolPtr(false),
+		MountPointData: &dto.MountPointData{
+			Path:     "/mnt/rename-share",
+			DeviceId: "rename-device",
+			Type:     "ADDON",
+		},
+		Users: []dto.User{
+			{Username: adminUserName},
+			{Username: rwUserName},
+		},
+		RoUsers: []dto.User{
+			{Username: roUserName},
+		},
+	}
+
+	result, err := suite.shareService.UpdateShare(oldName, renamePayload)
+
+	suite.Require().NoError(err, "Renaming a share should not fail with foreign key constraints")
+	suite.Require().NotNil(result)
+	suite.Equal(newName, result.Name)
+	suite.Len(result.Users, 2)
+	suite.Len(result.RoUsers, 1)
+
+	oldShare, oldErr := suite.shareService.GetShare(oldName)
+	suite.Error(oldErr)
+	suite.Nil(oldShare)
+	suite.True(errors.Is(oldErr, dto.ErrorShareNotFound))
+
+	newShare, newErr := suite.shareService.GetShare(newName)
+	suite.Require().NoError(newErr)
+	suite.Require().NotNil(newShare)
+	suite.Equal(newName, newShare.Name)
+	suite.Len(newShare.Users, 2)
+	suite.Len(newShare.RoUsers, 1)
+
+	var oldRWCount int64
+	suite.Require().NoError(
+		suite.db.Table("user_rw_share").Where("exported_share_name = ?", oldName).Count(&oldRWCount).Error,
+	)
+	suite.Equal(int64(0), oldRWCount)
+
+	var oldROCount int64
+	suite.Require().NoError(
+		suite.db.Table("user_ro_share").Where("exported_share_name = ?", oldName).Count(&oldROCount).Error,
+	)
+	suite.Equal(int64(0), oldROCount)
+
+	var newRWCount int64
+	suite.Require().NoError(
+		suite.db.Table("user_rw_share").Where("exported_share_name = ?", newName).Count(&newRWCount).Error,
+	)
+	suite.Equal(int64(2), newRWCount)
+
+	var newROCount int64
+	suite.Require().NoError(
+		suite.db.Table("user_ro_share").Where("exported_share_name = ?", newName).Count(&newROCount).Error,
+	)
+	suite.Equal(int64(1), newROCount)
+}
+
+func (suite *ShareServiceSuite) TestUpdateShareRenameToExistingNameReturnsConflict() {
+	adminUserName := "homeassistant%" + rand.Text()[:5]
+
+	mock.When(suite.userService.GetAdmin()).ThenReturn(&dto.User{
+		Username: adminUserName,
+		IsAdmin:  true,
+	}, nil)
+
+	suite.Require().NoError(suite.db.Create(&dbom.SambaUser{
+		Username: adminUserName,
+		Password: "test-admin",
+		IsAdmin:  true,
+	}).Error)
+
+	firstShareName := "rename-conflict-first"
+	secondShareName := "rename-conflict-second"
+
+	firstCreated, firstErr := suite.shareService.CreateShare(dto.SharedResource{
+		Name:     firstShareName,
+		Disabled: boolPtr(false),
+		MountPointData: &dto.MountPointData{
+			Path:     "/mnt/rename-conflict-first",
+			DeviceId: "rename-conflict-first-device",
+			Type:     "ADDON",
+		},
+		Users: []dto.User{{Username: adminUserName}},
+	})
+	suite.Require().NoError(firstErr)
+	suite.Require().NotNil(firstCreated)
+
+	secondCreated, secondErr := suite.shareService.CreateShare(dto.SharedResource{
+		Name:     secondShareName,
+		Disabled: boolPtr(false),
+		MountPointData: &dto.MountPointData{
+			Path:     "/mnt/rename-conflict-second",
+			DeviceId: "rename-conflict-second-device",
+			Type:     "ADDON",
+		},
+		Users: []dto.User{{Username: adminUserName}},
+	})
+	suite.Require().NoError(secondErr)
+	suite.Require().NotNil(secondCreated)
+
+	_, err := suite.shareService.UpdateShare(firstShareName, dto.SharedResource{
+		Name:     secondShareName,
+		Disabled: boolPtr(false),
+		MountPointData: &dto.MountPointData{
+			Path:     "/mnt/rename-conflict-first",
+			DeviceId: "rename-conflict-first-device",
+			Type:     "ADDON",
+		},
+		Users: []dto.User{{Username: adminUserName}},
+	})
+
+	suite.Require().Error(err)
+	suite.Contains(err.Error(), "already exists")
+
+	firstShare, firstGetErr := suite.shareService.GetShare(firstShareName)
+	suite.Require().NoError(firstGetErr)
+	suite.Require().NotNil(firstShare)
+	suite.Equal(firstShareName, firstShare.Name)
+
+	secondShare, secondGetErr := suite.shareService.GetShare(secondShareName)
+	suite.Require().NoError(secondGetErr)
+	suite.Require().NotNil(secondShare)
+	suite.Equal(secondShareName, secondShare.Name)
+}
+
 // Helper functions
 func boolPtr(b bool) *bool {
 	return &b

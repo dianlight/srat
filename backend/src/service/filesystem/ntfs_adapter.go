@@ -6,12 +6,16 @@ import (
 	"sync"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/prometheus/procfs"
 	"gitlab.com/tozd/go/errors"
 )
 
 // NtfsAdapter implements FilesystemAdapter for NTFS filesystems
 type NtfsAdapter struct {
 	baseAdapter
+	lastUnmountedState   map[string]dto.FilesystemState
+	lastUnmountedStateMu sync.RWMutex
+	isDeviceMounted      func(device string) bool
 }
 
 // NewNtfsAdapter creates a new NtfsAdapter instance
@@ -29,6 +33,21 @@ func NewNtfsAdapter() FilesystemAdapter {
 				{Offset: 3, Magic: []byte{'N', 'T', 'F', 'S', ' ', ' ', ' ', ' '}}, // "NTFS    "
 			},
 		),
+		lastUnmountedState: make(map[string]dto.FilesystemState),
+		isDeviceMounted: func(device string) bool {
+			mounts, err := procfs.GetMounts()
+			if err != nil {
+				return false
+			}
+
+			for _, mount := range mounts {
+				if mount.Source == device {
+					return true
+				}
+			}
+
+			return false
+		},
 	}
 	ret.linuxFsModule = "ntfs3" // Use ntfs3 kernel module for Linux if available, fallback to ntfs-3g user-space driver
 	return ret
@@ -44,6 +63,7 @@ func (a *NtfsAdapter) GetMountFlags() []dto.MountFlag {
 		{Name: "permissions", Description: "Respect NTFS permissions"},
 		{Name: "acl", Description: "Enable POSIX Access Control Lists support"},
 		{Name: "exec", Description: "Allow executing files (use with caution)"},
+		{Name: "iocharset", Description: "I/O character set (e.g., utf8)", NeedsValue: true, ValueDescription: "Character set name (e.g., utf8)", ValueValidationRegex: `^[a-zA-Z0-9_-]+$`},
 	}
 }
 
@@ -279,14 +299,25 @@ func (a *NtfsAdapter) GetState(ctx context.Context, device string) (dto.Filesyst
 	}
 
 	// check if device is mounted and not run getstate if it is, as ntfsfix doesn't support checking while mounted
-	outputMount, _, _ := a.runCommandCached(ctx, "mount")
-	isMounted := strings.Contains(outputMount, device)
+	isMounted := a.isDeviceMounted(device)
 	state.IsMounted = isMounted
 
 	if isMounted {
-		state.IsClean = false
+		if cachedState, ok := a.getLastUnmountedState(device); ok {
+			cachedState.IsMounted = true
+			if cachedState.StateDescription != "" {
+				cachedState.StateDescription = "Mounted (last known: " + cachedState.StateDescription + ")"
+			} else {
+				cachedState.StateDescription = "Mounted (last known state)"
+			}
+			cachedState.AdditionalInfo["stateSource"] = "cached_unmounted_state"
+			return cachedState, nil
+		}
+
+		state.IsClean = true
 		state.HasErrors = false
-		state.StateDescription = "Mounted (state cannot be determined)"
+		state.StateDescription = "Mounted (no previous unmounted state; assuming clean)"
+		state.AdditionalInfo["stateSource"] = "assumed_clean_mounted"
 		return state, nil
 	}
 
@@ -306,11 +337,50 @@ func (a *NtfsAdapter) GetState(ctx context.Context, device string) (dto.Filesyst
 		state.StateDescription = "Has errors or inconsistencies"
 	}
 
-	// Check if filesystem is mounted
-	mountOutput, _, _ := a.runCommandCached(ctx, "mount")
-	state.IsMounted = strings.Contains(mountOutput, device)
-
 	state.AdditionalInfo["ntfsfixOutput"] = output
+	a.setLastUnmountedState(device, state)
 
 	return state, nil
+}
+
+func (a *NtfsAdapter) getLastUnmountedState(device string) (dto.FilesystemState, bool) {
+	a.lastUnmountedStateMu.RLock()
+	defer a.lastUnmountedStateMu.RUnlock()
+
+	state, ok := a.lastUnmountedState[device]
+	if !ok {
+		return dto.FilesystemState{}, false
+	}
+
+	copiedState := state
+	if copiedState.AdditionalInfo == nil {
+		copiedState.AdditionalInfo = make(map[string]interface{})
+	} else {
+		copiedInfo := make(map[string]interface{}, len(copiedState.AdditionalInfo))
+		for key, value := range copiedState.AdditionalInfo {
+			copiedInfo[key] = value
+		}
+		copiedState.AdditionalInfo = copiedInfo
+	}
+
+	return copiedState, true
+}
+
+func (a *NtfsAdapter) setLastUnmountedState(device string, state dto.FilesystemState) {
+	a.lastUnmountedStateMu.Lock()
+	defer a.lastUnmountedStateMu.Unlock()
+
+	stateToStore := state
+	stateToStore.IsMounted = false
+	if stateToStore.AdditionalInfo == nil {
+		stateToStore.AdditionalInfo = make(map[string]interface{})
+	} else {
+		copiedInfo := make(map[string]interface{}, len(stateToStore.AdditionalInfo))
+		for key, value := range stateToStore.AdditionalInfo {
+			copiedInfo[key] = value
+		}
+		stateToStore.AdditionalInfo = copiedInfo
+	}
+
+	a.lastUnmountedState[device] = stateToStore
 }

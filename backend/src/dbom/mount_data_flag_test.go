@@ -98,7 +98,7 @@ func TestMounDataFlagsValue(t *testing.T) {
 		t.Fatalf("Value failed: %v", err)
 	}
 
-	expectedValue := "ro,noexec,uid=1000,gid=1000"
+	expectedValue := "gid=1000,noexec,ro,uid=1000"
 	if value != expectedValue {
 		t.Errorf("Expected value '%s', got '%s'", expectedValue, value)
 	}

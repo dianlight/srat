@@ -123,13 +123,13 @@ export function Users() {
 	};
 
 	function onSubmitEditUser(data?: UsersProps) {
-		if (!data || !data.username || !data.password) {
+		if (!data || !data.username || (!data.password && data.doCreate)) {
 			console.log("Data is invalid", data);
 			return;
 		}
 
-		data.username = data.username.trim();
-		data.password = data.password.trim();
+		data.username = data.username.toLocaleLowerCase().trim();
+		data.password = data?.password?.trim();
 
 		if (data.doCreate) {
 			userCreate({ user: data })

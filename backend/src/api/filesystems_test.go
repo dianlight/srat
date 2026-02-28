@@ -71,10 +71,10 @@ func (suite *FilesystemHandlerSuite) TestListFilesystems_Success() {
 
 	for _, fsType := range fsTypes {
 		info := &dto.FilesystemInfo{
-			Name:             fsType,
-			Type:             fsType,
-			Description:      fsType + " filesystem",
-			MountFlags:       []dto.MountFlag{{Name: "rw"}},
+			Name:        fsType,
+			Type:        fsType,
+			Description: fsType + " filesystem",
+			//MountFlags:       []dto.MountFlag{{Name: "rw"}},
 			CustomMountFlags: []dto.MountFlag{{Name: "discard"}},
 			Support: &dto.FilesystemSupport{
 				CanMount:      true,
@@ -91,12 +91,12 @@ func (suite *FilesystemHandlerSuite) TestListFilesystems_Success() {
 	resp := suite.testAPI.Get("/filesystems")
 	suite.Equal(http.StatusOK, resp.Code)
 
-	var result []dto.FilesystemInfo
+	result := dto.FilesystemsInfo{}
 	err := json.Unmarshal(resp.Body.Bytes(), &result)
 	suite.Require().NoError(err)
-	suite.Len(result, 3)
+	suite.Len(result.Filesystems, 3)
 
-	for _, fs := range result {
+	for _, fs := range result.Filesystems {
 		suite.NotNil(fs.Support)
 		suite.True(fs.Support.CanMount)
 		suite.True(fs.Support.CanFormat)
