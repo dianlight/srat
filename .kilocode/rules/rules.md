@@ -21,4 +21,4 @@ These instructions are **mandatory** and take precedence over any general coding
 
 3. If you have any questions about the project's coding standards, ask for clarification before proceeding.
 
-4. Create commit messages following instructions in [`.github/.copilot-commit-message-instructions.md`](.github/commit-messages.md) to ensure clear and consistent commit history.
+4. Create commit messages following instructions in [`.github/.copilot-commit-message-instructions.md`](.github/.copilot-commit-message-instructions.md) to ensure clear and consistent commit history.
