@@ -1,33 +1,34 @@
 import {
-	Button,
-	Chip,
-	Dialog,
-	DialogActions,
-	DialogContent,
-	DialogContentText,
-	DialogTitle,
-	Divider,
-	Grid,
-	Stack,
-	Tooltip,
-	Typography,
-	type AutocompleteRenderGetTagProps
+    Button,
+    Chip,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogContentText,
+    DialogTitle,
+    Divider,
+    Grid,
+    Stack,
+    Tooltip,
+    Typography,
+    type AutocompleteRenderGetTagProps
 } from "@mui/material";
 import { Fragment, useEffect, useState } from "react";
 import {
-	AutocompleteElement,
-	SwitchElement,
-	TextFieldElement,
-	useFieldArray,
-	useForm
+    AutocompleteElement,
+    SwitchElement,
+    TextFieldElement,
+    useFieldArray,
+    useForm,
+    useWatch
 } from "react-hook-form-mui";
 import {
-	Type,
-	useGetApiFilesystemsQuery,
-	type FilesystemsInfo,
-	type MountFlag,
-	type MountPointData,
-	type Partition
+    Type,
+    useGetApiFilesystemsQuery,
+    type FilesystemsInfo,
+    type MountFlag,
+    type MountPointData,
+    type Partition
 } from "../../../store/sratApi";
 import { decodeEscapeSequence } from "../utils";
 
@@ -64,6 +65,7 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 		control, // control props comes from useForm (optional: if you are using FormProvider)
 		name: "custom_flags_values", // unique name for your Field Array
 	});
+	const fstype = useWatch({ control, name: "fstype" });
 	const {
 		data: filesystems,
 		isLoading: fsLoading,
@@ -78,12 +80,19 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 
 	const [customMountFlagsOptions, setCustomMountFlagsOptions] = useState<MountFlag[]>([]);
 
-	// Use useEffect to update form values when objectToEdit changes or dialog opens
+	// Update customMountFlagsOptions when fstype changes (user interaction)
 	useEffect(() => {
-		if (props.open && props.objectToEdit && !fsLoading) {
-			const selectedFilesystem = (filesystems as FilesystemsInfo)?.filesystems?.find((fs) => fs.type === watch("fstype"));
+		if (props.open && !fsLoading) {
+			const selectedFilesystem = (filesystems as FilesystemsInfo)?.filesystems?.find((fs) => fs.type === fstype);
 			setCustomMountFlagsOptions(selectedFilesystem?.custom_mount_flags || []);
 		}
+		// filesystems intentionally omitted: RTK Query returns stable refs in production;
+		// initial population is handled by the objectToEdit effect below.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [props.open, fstype, fsLoading]);
+
+	// Use useEffect to update form values when objectToEdit changes or dialog opens
+	useEffect(() => {
 		if (props.open && props.objectToEdit) {
 			const suggestedName = decodeEscapeSequence(
 				props.objectToEdit.name || props.objectToEdit.id || "new_mount",
@@ -154,7 +163,7 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 				is_to_mount_at_startup: false,
 			}); // Reset to default values when closing
 		}
-	}, [props.open, props.objectToEdit, reset, replace, watch("fstype"), fsLoading, props.open, props.objectToEdit, filesystems]);
+	}, [props.open, props.objectToEdit, reset, replace, fsLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
 	async function handleCloseSubmit(formData: xMountPointData) {
 		if (props.readOnlyView) {
