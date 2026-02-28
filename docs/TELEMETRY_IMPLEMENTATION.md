@@ -3,10 +3,10 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [Backend Environment Variables](#backend-environment-variables)
+- [back-end Environment Variables](#back-end-environment-variables)
 - [Overview](#overview)
 - [Features Implemented](#features-implemented)
-  - [Backend (Go)](#backend-go)
+  - [back-end (Go)](#back-end-go)
   - [Frontend (React/TypeScript)](#frontend-reacttypescript)
     - [Frontend usage examples](#frontend-usage-examples)
 - [User Experience](#user-experience)
@@ -14,16 +14,16 @@
   - [Settings Page](#settings-page)
   - [Error Handling](#error-handling)
 - [Configuration](#configuration)
-  - [Backend Environment Variables](#backend-environment-variables-1)
+  - [back-end Environment Variables](#back-end-environment-variables-1)
   - [Frontend Configuration](#frontend-configuration)
 - [Privacy Compliance](#privacy-compliance)
 - [Migration Path](#migration-path)
 - [Security Considerations](#security-considerations)
 - [Dependencies Added](#dependencies-added)
-  - [Backend](#backend)
+  - [back-end](#back-end)
   - [Frontend](#frontend)
 - [Files Created/Modified](#files-createdmodified)
-  - [Backend](#backend-1)
+  - [back-end](#back-end-1)
   - [Frontend](#frontend-1)
 - [Testing](#testing)
 
@@ -31,14 +31,14 @@
 
 This document describes the implementation of Rollbar telemetry and error reporting with configurable privacy modes.
 
-## Backend Environment Variables
+## back-end Environment Variables
 
 - `ROLLBAR_CLIENT_ACCESS_TOKEN`: Unified Rollbar access token (embedded at build time via ldflags)
 - `ROLLBAR_ENVIRONMENT`: Override automatic environment detection (embedded at build time via ldflags)
 - Version is automatically set from `config.Version` (configured via build ldflags)
-- Environment auto-detected: "development" for dev versions, "production" for releases
+- Environment autodetected: "development" for dev versions, "production" for releases
 - Security: Tokens are embedded at build time, not read from runtime environment
-- Simplification: Same token can be used for both backend and frontend
+- Simplification: Same token can be used for both back-end and frontend
 
 ## Overview
 
@@ -51,7 +51,7 @@ The telemetry system provides four configuration modes:
 
 ## Features Implemented
 
-### Backend (Go)
+### back-end (Go)
 
 1. **TelemetryMode Enum** (`dto/telemetry_mode.go`)
    - Generated enum with values: Ask, All, Errors, Disabled
@@ -162,12 +162,12 @@ export function SaveButton() {
 
 ## Configuration
 
-### Backend Environment Variables
+### back-end Environment Variables
 
 - `ROLLBAR_CLIENT_ACCESS_TOKEN.`: Server-side Rollbar access token (embedded at build time via ldflags)
 - `ROLLBAR_ENVIRONMENT`: Override automatic environment detection (embedded at build time via ldflags)
 - Version is automatically set from `config.Version` (configured via build ldflags)
-- Environment auto-detected: "development" for dev versions, "production" for releases
+- Environment autodetected: "development" for dev versions, "production" for releases
 - **Security**: Tokens are embedded at build time, not read from runtime environment
 
 ### Frontend Configuration
@@ -204,7 +204,7 @@ Existing installations will:
 
 ## Dependencies Added
 
-### Backend
+### back-end
 
 - `github.com/rollbar/rollbar-go` v1.4.8
 
@@ -214,7 +214,7 @@ Existing installations will:
 
 ## Files Created/Modified
 
-### Backend
+### back-end
 
 - `dto/telemetry_mode.go` (new)
 - `dto/telemetrymodes_enums.go` (generated)
@@ -243,7 +243,7 @@ Existing installations will:
 
 To test the implementation:
 
-1. **Build and run backend**: `go run ./cmd/srat-server` with appropriate flags
+1. **Build and run back-end**: `go run ./cmd/srat-server` with appropriate flags
 2. **Build and serve frontend**: `bun run build && bun run dev`
 3. **Test scenarios**:
    - Fresh install (should show telemetry modal)

@@ -4,7 +4,7 @@
 - [Samba Version Checks in SRAT](#samba-version-checks-in-srat)
   - [Overview](#overview)
   - [Architecture](#architecture)
-    - [Backend Components](#backend-components)
+    - [back-end Components](#back-end-components)
       - [1. Version Detection (`backend/src/internal/osutil/osutil.go`)](#1-version-detection-backendsrcinternalosutilosutilgo)
       - [2. Template Context Enhancement (`backend/src/service/samba_service.go`)](#2-template-context-enhancement-backendsrcservicesamba_servicego)
       - [3. Template Functions (`backend/src/tempio/template.go`)](#3-template-functions-backendsrctempiotemplatego)
@@ -46,7 +46,7 @@ This document describes the Samba version checking infrastructure implemented in
 
 ## Architecture
 
-### Backend Components
+### back-end Components
 
 #### 1. Version Detection (`backend/src/internal/osutil/osutil.go`)
 
@@ -343,7 +343,7 @@ curl -X POST http://localhost:8000/samba/config
 
 - [Samba Release Notes](<https://wiki.samba.org/index.php/Samba_Features_added/changed_(by_release)>)
 - [SMB over QUIC Implementation](./SMB_OVER_QUIC_IMPLEMENTATION.md)
-- [SRAT Backend Architecture](../README.md)
+- [SRAT back-end Architecture](../README.md)
 
 ## References
 

@@ -41,7 +41,7 @@
 
 ## Overview
 
-The SRAT backend has been refactored to use an **event-driven architecture** with the `github.com/maniartech/signals` library for inter-service communication. This replaces direct service-to-service coupling with a decoupled, event-based system.
+The SRAT back-end has been refactored to use an **event-driven architecture** with the `github.com/maniartech/signals` library for inter-service communication. This replaces direct service-to-service coupling with a decoupled, event-based system.
 
 ## Architecture
 

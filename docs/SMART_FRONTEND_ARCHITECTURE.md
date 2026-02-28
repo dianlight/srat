@@ -7,9 +7,9 @@
   - [State Management Flow](#state-management-flow)
   - [API Integration Points](#api-integration-points)
     - [Current State (Placeholder)](#current-state-placeholder)
-    - [Future State (After Backend Implementation)](#future-state-after-backend-implementation)
+    - [Future State (After back-end Implementation)](#future-state-after-back-end-implementation)
   - [Type Definitions](#type-definitions)
-    - [SmartInfo (from Backend)](#smartinfo-from-backend)
+    - [SmartInfo (from back-end)](#smartinfo-from-back-end)
     - [SmartHealthStatus (Local)](#smarthealthstatus-local)
     - [SmartTestStatus (Local)](#smartteststatus-local)
     - [SmartTestType](#smarttesttype)
@@ -151,7 +151,7 @@ useSmartOperations Hook
    └─ console.log + toast (simulated)
 ```
 
-### Future State (After Backend Implementation)
+### Future State (After back-end Implementation)
 
 ```txt
 useSmartOperations Hook
@@ -167,7 +167,7 @@ useSmartOperations Hook
 
 ## Type Definitions
 
-### SmartInfo (from Backend)
+### SmartInfo (from back-end)
 
 ```typescript
 interface SmartInfo {
