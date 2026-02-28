@@ -4,6 +4,21 @@
 
 This document provides an overview of the agents and automated systems used in the SRAT project development and operation.
 
+> **Important**: All coding agents must read and follow the instructions in [`.github/copilot-instructions.md`](.github/copilot-instructions.md) before making any changes to the codebase. Additionally, agents should consult the specialized instruction files in [`.github/instructions/`](.github/instructions/) for language-specific and task-specific guidance.
+
+## Reading Copilot Instructions
+
+Before any code modification task, agents **must**:
+
+1. Read [`.github/copilot-instructions.md`](.github/copilot-instructions.md) for the complete set of non-negotiable rules
+2. Read the relevant specialized instruction files from [`.github/instructions/`](.github/instructions/):
+   - [`go.instructions.md`](.github/instructions/go.instructions.md) - Go backend development
+   - [`reactjs.instructions.md`](.github/instructions/reactjs.instructions.md) - React frontend development
+   - [`python.instructions.md`](.github/instructions/python.instructions.md) - Python/Home Assistant integration
+   - [`backend_test.instructions.md`](.github/instructions/backend_test.instructions.md) - Backend testing
+   - [`fontend_test.instructions.md`](.github/instructions/fontend_test.instructions.md) - Frontend testing
+   - [`markdown.instructions.md`](.github/instructions/markdown.instructions.md) - Markdown documentation
+
 ## Coding Agents
 
 The SRAT project utilizes various coding agents and tools to assist with development, testing, and maintenance:
@@ -12,8 +27,9 @@ The SRAT project utilizes various coding agents and tools to assist with develop
 
 - **Purpose**: AI-powered code generation and assistance
 - **Usage**: Integrated into VS Code for real-time code suggestions, refactoring, and documentation
-- **Configuration**: See `.github/copilot-instructions.md` for project-specific guidelines
-- **Languages Supported**: Go (backend), TypeScript/React (frontend)
+- **Configuration**: See [`.github/copilot-instructions.md`](.github/copilot-instructions.md) for project-specific guidelines
+- **Languages Supported**: Go (backend), TypeScript/React (frontend), Python (Home Assistant)
+- **Required Reading**: All agents must read and follow the copilot instructions before any code changes
 
 ### Pre-commit Hooks
 

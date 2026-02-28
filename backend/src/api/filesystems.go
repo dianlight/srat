@@ -54,8 +54,14 @@ func (h *FilesystemHandler) getDiskMap() dto.DiskMap {
 func (h *FilesystemHandler) ListFilesystems(
 	ctx context.Context,
 	input *struct{},
-) (*struct{ Body []dto.FilesystemInfo }, error) {
+) (*struct{ Body dto.FilesystemsInfo }, error) {
 	tlog.DebugContext(ctx, "Listing all filesystems with capabilities")
+
+	// Standrd mount flags are the same for all filesystems, so we can retrieve them once
+	mountFlsgs, err := h.fsService.GetStandardMountFlags()
+	if err != nil {
+		tlog.WarnContext(ctx, "Failed to get standard mount flags", "error", err)
+	}
 
 	// Get all supported filesystem types
 	fsTypes := h.fsService.ListSupportedTypes()
@@ -72,7 +78,10 @@ func (h *FilesystemHandler) ListFilesystems(
 		result = append(result, *info)
 	}
 
-	return &struct{ Body []dto.FilesystemInfo }{Body: result}, nil
+	return &struct{ Body dto.FilesystemsInfo }{Body: dto.FilesystemsInfo{
+		MountFlags:  mountFlsgs,
+		Filesystems: result,
+	}}, nil
 }
 
 // FormatPartitionInput contains the input for formatting a partition

@@ -63,6 +63,7 @@ func (a *NtfsAdapter) GetMountFlags() []dto.MountFlag {
 		{Name: "permissions", Description: "Respect NTFS permissions"},
 		{Name: "acl", Description: "Enable POSIX Access Control Lists support"},
 		{Name: "exec", Description: "Allow executing files (use with caution)"},
+		{Name: "iocharset", Description: "I/O character set (e.g., utf8)", NeedsValue: true, ValueDescription: "Character set name (e.g., utf8)", ValueValidationRegex: `^[a-zA-Z0-9_-]+$`},
 	}
 }
 

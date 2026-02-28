@@ -713,8 +713,8 @@ export type GetApiFilesystemStateApiArg = {
   /** Unique partition identifier */
   partitionId?: string;
 };
-export type GetApiFilesystemsApiResponse =
-  | /** status 200 OK */ (FilesystemInfo[] | null)
+export type GetApiFilesystemsApiResponse = /** status 200 OK */
+  | FilesystemsInfo
   | /** status default Error */ ErrorModel;
 export type GetApiFilesystemsApiArg = void;
 export type PostApiHdidleStartApiResponse = /** status 200 OK */
@@ -1255,12 +1255,17 @@ export type FilesystemSupport = {
   missingTools?: string[] | null;
 };
 export type FilesystemInfo = {
-  CustomMountFlags: MountFlag[] | null;
-  Description: string;
-  MountFlags: MountFlag[] | null;
-  Name: string;
-  Support: FilesystemSupport;
-  Type: string;
+  custom_mount_flags?: MountFlag[] | null;
+  description?: string;
+  name: string;
+  support?: FilesystemSupport;
+  type: string;
+};
+export type FilesystemsInfo = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  filesystems: FilesystemInfo[] | null;
+  mount_flags: MountFlag[] | null;
 };
 export type StartHdIdleServiceOutputBody = {
   /** A URL to the JSON Schema for this object. */

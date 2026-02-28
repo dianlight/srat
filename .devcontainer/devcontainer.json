@@ -104,7 +104,8 @@
 				"neonxp.gotools",
 				"svvashishtha.go-interface-navigator",
 				"YoavBls.pretty-ts-errors",
-				"biomejs.biome"
+				"biomejs.biome",
+				"kilocode.kilo-code"
 			],
 			"mcp": {
 				"servers": {
