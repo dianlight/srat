@@ -7,21 +7,21 @@
       "dependencies": {
         "@emotion/react": "^11.14.0",
         "@emotion/styled": "^11.14.1",
-        "@fontsource/roboto": "^5.2.9",
-        "@fortawesome/free-brands-svg-icons": "^7.1.0",
-        "@fortawesome/free-regular-svg-icons": "^7.1.0",
-        "@fortawesome/free-solid-svg-icons": "^7.1.0",
+        "@fontsource/roboto": "^5.2.10",
+        "@fortawesome/free-brands-svg-icons": "^7.2.0",
+        "@fortawesome/free-regular-svg-icons": "^7.2.0",
+        "@fortawesome/free-solid-svg-icons": "^7.2.0",
         "@fortawesome/react-fontawesome": "^3.2.0",
-        "@mui/icons-material": "^7.3.7",
-        "@mui/material": "^7.3.7",
+        "@mui/icons-material": "^7.3.8",
+        "@mui/material": "^7.3.8",
         "@mui/x-charts": "^8.27.0",
-        "@mui/x-tree-view": "^8.27.0",
+        "@mui/x-tree-view": "^8.27.2",
         "@reactour/tour": "^3.8.0",
         "@reduxjs/toolkit": "^2.11.2",
         "@rollbar/react": "^1.0.0",
         "@types/js-yaml": "^4.0.9",
         "@uiw/react-md-editor": "^4.0.11",
-        "emittery": "^1.2.0",
+        "emittery": "^1.2.1",
         "filesize": "^11.0.13",
         "humanize-duration": "^3.33.2",
         "js-yaml": "^4.1.1",
@@ -33,12 +33,12 @@
         "prismjs": "^1.30.0",
         "react": "^19.2.4",
         "react-dom": "^19.2.4",
-        "react-hook-form": "^7.71.1",
+        "react-hook-form": "^7.71.2",
         "react-hook-form-mui": "^8.2.0",
         "react-intersection-observer": "^10.0.3",
         "react-redux": "^9.2.0",
-        "react-router-dom": "^7.13.0",
-        "react-syntax-highlighter": "^16.1.0",
+        "react-router-dom": "^7.13.1",
+        "react-syntax-highlighter": "^16.1.1",
         "react-toastify": "^11.0.5",
         "refractor": "^5.0.0",
         "rollbar": "3.0.0-rc.1",
@@ -579,7 +579,7 @@
 
     "ee-first": ["ee-first@1.1.1", "", {}, "sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow=="],
 
-    "emittery": ["emittery@1.2.0", "", {}, "sha512-KxdRyyFcS85pH3dnU8Y5yFUm2YJdaHwcBZWrfG8o89ZY9a13/f9itbN+YG3ELbBo9Pg5zvIozstmuV8bX13q6g=="],
+    "emittery": ["emittery@1.2.1", "", {}, "sha512-sFz64DCRjirhwHLxofFqxYQm6DCp6o0Ix7jwKQvuCHPn4GMRZNuBZyLPu9Ccmk/QSCAMZt6FOUqA8JZCQvA9fw=="],
 
     "emoji-regex": ["emoji-regex@8.0.0", "", {}, "sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A=="],
 
@@ -1055,7 +1055,7 @@
 
     "react-simple-animate": ["react-simple-animate@3.5.3", "", { "peerDependencies": { "react-dom": "^16.8.0 || ^17 || ^18 || ^19" } }, "sha512-Ob+SmB5J1tXDEZyOe2Hf950K4M8VaWBBmQ3cS2BUnTORqHjhK0iKG8fB+bo47ZL15t8d3g/Y0roiqH05UBjG7A=="],
 
-    "react-syntax-highlighter": ["react-syntax-highlighter@16.1.0", "", { "dependencies": { "@babel/runtime": "^7.28.4", "highlight.js": "^10.4.1", "highlightjs-vue": "^1.0.0", "lowlight": "^1.17.0", "prismjs": "^1.30.0", "refractor": "^5.0.0" }, "peerDependencies": { "react": ">= 0.14.0" } }, "sha512-E40/hBiP5rCNwkeBN1vRP+xow1X0pndinO+z3h7HLsHyjztbyjfzNWNKuAsJj+7DLam9iT4AaaOZnueCU+Nplg=="],
+    "react-syntax-highlighter": ["react-syntax-highlighter@16.1.1", "", { "dependencies": { "@babel/runtime": "^7.28.4", "highlight.js": "^10.4.1", "highlightjs-vue": "^1.0.0", "lowlight": "^1.17.0", "prismjs": "^1.30.0", "refractor": "^5.0.0" }, "peerDependencies": { "react": ">= 0.14.0" } }, "sha512-PjVawBGy80C6YbC5DDZJeUjBmC7skaoEUdvfFQediQHgCL7aKyVHe57SaJGfQsloGDac+gCpTfRdtxzWWKmCXA=="],
 
     "react-toastify": ["react-toastify@11.0.5", "", { "dependencies": { "clsx": "^2.1.1" }, "peerDependencies": { "react": "^18 || ^19", "react-dom": "^18 || ^19" } }, "sha512-EpqHBGvnSTtHYhCPLxML05NLY2ZX0JURbAdNYa6BUkk+amz4wbKBQvoKQAB0ardvSarUBuY4Q4s1sluAzZwkmA=="],
 
