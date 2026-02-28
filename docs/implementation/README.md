@@ -46,5 +46,5 @@ When adding new implementation documentation:
 ## Related Documentation
 
 - [Main Documentation Guidelines](../DOCUMENTATION_GUIDELINES.md)
-- [Backend Development Notes](../../backend/NOTES.md)
+- [back-end Development Notes](../../backend/NOTES.md)
 - [Main Project README](../../README.md)

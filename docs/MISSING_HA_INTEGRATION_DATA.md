@@ -3,10 +3,10 @@
 # Missing Home Assistant Integration Data
 
 This document tracks data that the SRAT custom component currently lacks
-or cannot expose as Home Assistant entities because the backend WebSocket
+or cannot expose as Home Assistant entities because the back-end WebSocket
 events do not provide it.
 
-All communication between the custom component and the SRAT backend uses
+All communication between the custom component and the SRAT back-end uses
 a **single WebSocket connection** (`/ws`). The two events that carry
 sensor data are:
 
@@ -37,10 +37,10 @@ exposed** as Home Assistant entities or attributes.
 
 | Field              | Type               | Potential Entity       | Notes                                              |
 | ------------------ | ------------------ | ---------------------- | -------------------------------------------------- |
-| `alive`            | `bool`             | Binary sensor          | Whether the SRAT backend is alive                  |
-| `aliveTime`        | `int64`            | Sensor (timestamp)     | Backend start time as Unix epoch                   |
-| `uptime`           | `int64`            | Sensor (duration)      | Backend uptime in seconds                          |
-| `last_error`       | `string`           | Sensor (diagnostic)    | Last error message from backend                    |
+| `alive`            | `bool`             | Binary sensor          | Whether the SRAT back-end is alive                 |
+| `aliveTime`        | `int64`            | Sensor (timestamp)     | back-end start time as Unix epoch                  |
+| `uptime`           | `int64`            | Sensor (duration)      | back-end uptime in seconds                         |
+| `last_error`       | `string`           | Sensor (diagnostic)    | Last error message from back-end                   |
 | `update_available` | `bool`             | Update / Binary sensor | Whether an addon update is available               |
 | `dirty_tracking`   | `DataDirtyTracker` | Sensor / Attributes    | Tracks unsaved configuration changes               |
 | `addon_stats`      | `AddonStatsData`   | Sensor                 | CPU, memory, network stats for the addon container |
@@ -55,11 +55,11 @@ exposed** as Home Assistant entities or attributes.
 | `supported_events` | `[]string` | Diagnostic attribute | Events the server supports                               |
 | `update_channel`   | `string`   | Sensor / Select      | Current update channel (None/Develop/Release/Prerelease) |
 | `machine_id`       | `string`   | Device attribute     | Machine identifier                                       |
-| `build_version`    | `string`   | Device attribute     | Backend build version                                    |
+| `build_version`    | `string`   | Device attribute     | back-end build version                                   |
 | `secure_mode`      | `bool`     | Binary sensor        | Whether secure mode is enabled                           |
 | `protected_mode`   | `bool`     | Binary sensor        | Whether protected mode is enabled                        |
 | `read_only`        | `bool`     | Binary sensor        | Whether the system is in read-only mode                  |
-| `startTime`        | `int64`    | Sensor (timestamp)   | Backend start time                                       |
+| `startTime`        | `int64`    | Sensor (timestamp)   | back-end start time                                      |
 
 ### From `shares` → `[]SharedResource`
 
@@ -87,9 +87,9 @@ exposed** as Home Assistant entities or attributes.
 
 ### From `error` → `ErrorDataModel`
 
-| Field         | Type             | Potential Entity                | Notes                               |
-| ------------- | ---------------- | ------------------------------- | ----------------------------------- |
-| Error details | `ErrorDataModel` | Event / Persistent notification | Backend error with code and message |
+| Field         | Type             | Potential Entity                | Notes                                |
+| ------------- | ---------------- | ------------------------------- | ------------------------------------ |
+| Error details | `ErrorDataModel` | Event / Persistent notification | back-end error with code and message |
 
 ## Implementation Priority
 

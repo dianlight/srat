@@ -28,7 +28,7 @@
 
 ## ✅ Implementation Complete
 
-The SRAT backend event-driven architecture has been successfully refactored to use **`github.com/maniartech/signals v1.3.1`** as instructed.
+The SRAT back-end event-driven architecture has been successfully refactored to use **`github.com/maniartech/signals v1.3.1`** as instructed.
 
 ## Summary of Changes
 
@@ -87,7 +87,7 @@ TOTAL: 12/12 PASS ............................ 0.513s
 
 ## Build Status
 
-✅ **Full backend compiles without errors**
+✅ **Full back-end compiles without errors**
 
 ```plaintext
 github.com/dianlight/srat/events        (signals integration)
@@ -174,7 +174,7 @@ The `maniartech/signals` library provides:
 
 - **Go Version**: 1.25.3
 - **Signals Library**: github.com/maniartech/signals v1.3.1
-- **Backend Module**: github.com/dianlight/srat
+- **back-end Module**: github.com/dianlight/srat
 - **Branch**: main
 
 ## Verification Commands
@@ -194,7 +194,7 @@ cd backend/src && go build -v ./... 2>&1 | grep -i error
 
 ## Conclusion
 
-The SRAT backend now uses a production-ready, industry-standard signals library for its event-driven architecture. This implementation:
+The SRAT back-end now uses a production-ready, industry-standard signals library for its event-driven architecture. This implementation:
 
 - ✅ Uses `github.com/maniartech/signals` as instructed
 - ✅ Maintains 100% backward compatibility

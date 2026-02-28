@@ -4,7 +4,7 @@
 - [Share Volume Verification](#share-volume-verification)
   - [Overview](#overview)
   - [Volume States and Share Behavior](#volume-states-and-share-behavior)
-    - [1. Volume Mounted and Read-Write (RW)](#1-volume-mounted-and-read-write-rw)
+    - [1. Volume Mounted and Read-Write](#1-volume-mounted-and-read-write)
     - [2. Volume Mounted and Read-Only (RO)](#2-volume-mounted-and-read-only-ro)
     - [3. Volume Not Mounted](#3-volume-not-mounted)
     - [4. Volume Does Not Exist](#4-volume-does-not-exist)
@@ -35,7 +35,7 @@ SRAT automatically verifies the state of volumes associated with shares and mark
 
 ## Volume States and Share Behavior
 
-### 1. Volume Mounted and Read-Write (RW)
+### 1. Volume Mounted and Read-Write
 
 **Behavior:**
 
@@ -267,7 +267,7 @@ Comprehensive tests cover all volume states:
 
 Potential improvements to consider:
 
-1. **Auto-recovery**: Automatically re-enable shares when volumes become available
+1. **Autorecovery**: Automatically re-enable shares when volumes become available
 2. **Notification System**: Alert administrators when shares are disabled due to volume issues
 3. **Volume Health Monitoring**: Track volume health metrics and predict failures
 4. **Graceful Degradation**: Allow read-only access when write support is temporarily unavailable

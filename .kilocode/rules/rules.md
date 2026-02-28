@@ -20,10 +20,10 @@ Before generating or modifying any code in this project, you **must** read and f
 1. Read [`.github/copilot-instructions.md`](.github/copilot-instructions.md) — contains the complete set of non-negotiable coding rules for this project.
 
 2. Read the relevant language/task-specific instruction file(s) from [`.github/instructions/`](.github/instructions/):
-   - [`go.instructions.md`](.github/instructions/go.instructions.md) — Go backend development rules
+   - [`go.instructions.md`](.github/instructions/go.instructions.md) — Go back-end development rules
    - [`reactjs.instructions.md`](.github/instructions/reactjs.instructions.md) — React/TypeScript frontend rules
    - [`python.instructions.md`](.github/instructions/python.instructions.md) — Python / Home Assistant integration rules
-   - [`backend_test.instructions.md`](.github/instructions/backend_test.instructions.md) — Backend testing rules
+   - [`backend_test.instructions.md`](.github/instructions/backend_test.instructions.md) — back-end testing rules
    - [`fontend_test.instructions.md`](.github/instructions/fontend_test.instructions.md) — Frontend testing rules
    - [`markdown.instructions.md`](.github/instructions/markdown.instructions.md) — Markdown documentation rules
 
