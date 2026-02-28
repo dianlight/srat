@@ -1,7 +1,17 @@
+<!-- DOCTOC SKIP -->
+
 When making function calls using tools that accept array or object parameters ensure those are structured using JSON. For example:
+
+```xml
 <example_complex_tool>
-<parameter>[{"color": "orange", "options": {"option_key_1": true, "option_key_2": "value"}}, {"color": "purple", "options": {"option_key_1": true, "option_key_2": "value"}}]</parameter>
+  <parameter>[
+    {"color": "orange", "options": {"option_key_1": true, "option_key_2": "value"}},
+    {"color": "purple", "options": {"option_key_1": true, "option_key_2": "value"}}
+  ]</parameter>
 </example_complex_tool>
+```
+
+> **Note:** Never pass array or object parameters as plain strings or inline text — always use valid JSON syntax.
 
 # Project Coding Instructions
 
