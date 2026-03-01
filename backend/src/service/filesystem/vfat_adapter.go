@@ -301,8 +301,7 @@ func (a *VfatAdapter) GetState(ctx context.Context, device string) (dto.Filesyst
 	}
 
 	// Check if filesystem is mounted
-	mountOutput, _, _ := a.runCommandCached(ctx, "mount")
-	state.IsMounted = strings.Contains(mountOutput, device)
+	state.IsMounted = a.isDeviceMounted(device)
 
 	state.AdditionalInfo["fsckOutput"] = output
 

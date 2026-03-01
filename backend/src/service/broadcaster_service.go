@@ -79,7 +79,6 @@ func NewBroadcasterService(
 			for _, unsub := range unsubscribe {
 				unsub()
 			}
-			b.relay.Close()
 			return nil
 		},
 	})

@@ -23,6 +23,7 @@ import (
 	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/dianlight/srat/internal/updatekey"
 	"github.com/dianlight/srat/internal/urlutil"
+	"github.com/dianlight/tlog"
 	"github.com/fsnotify/fsnotify"
 	"github.com/google/go-github/v83/github"
 	"github.com/vvair/selfupdate"
@@ -369,9 +370,9 @@ func (self *UpgradeService) GetUpgradeReleaseAsset() (ass *dto.ReleaseAsset, err
 			return nil, errors.WithMessage(dto.ErrorNoUpdateAvailable, "No releases found")
 		} else if len(releases) > 0 {
 			for _, release := range releases {
-				slog.DebugContext(self.ctx, "Found Release", "tag_name", release.GetTagName(), "prerelease", release.GetPrerelease())
+				tlog.TraceContext(self.ctx, "Found Release", "tag_name", release.GetTagName(), "prerelease", release.GetPrerelease())
 				if release.GetPrerelease() && self.state.UpdateChannel.String() != dto.UpdateChannels.PRERELEASE.String() {
-					slog.DebugContext(self.ctx, "Skip PreRelease", "tag_name", release.GetTagName())
+					tlog.TraceContext(self.ctx, "Skip PreRelease", "tag_name", release.GetTagName())
 					continue
 				}
 
@@ -380,7 +381,7 @@ func (self *UpgradeService) GetUpgradeReleaseAsset() (ass *dto.ReleaseAsset, err
 					slog.WarnContext(self.ctx, "Error parsing version", "version", *release.TagName, "err", err)
 					continue
 				}
-				slog.DebugContext(self.ctx, "Checking version", "current", myversion, "release", *release.TagName, "compare", myversion.Compare(assertVersion))
+				tlog.TraceContext(self.ctx, "Checking version", "current", myversion, "release", *release.TagName, "compare", myversion.Compare(assertVersion))
 
 				if myversion.GreaterThanEqual(assertVersion) {
 					continue

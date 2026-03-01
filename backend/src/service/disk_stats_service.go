@@ -26,20 +26,21 @@ type DiskStatsService interface {
 }
 
 type diskStatsService struct {
-	volumeService     VolumeServiceInterface
-	blockdevice       *blockdevice.FS
-	ctx               context.Context
-	lastUpdateTime    time.Time                       // lastUpdateTime is used to track the last time disk stats were updated.
-	lastStats         map[string]*blockdevice.IOStats // lastStats stores the last collected disk I/O statistics.
-	currentDiskHealth *dto.DiskHealth
-	updateMutex       *sync.Mutex
-	smartService      SmartServiceInterface
-	hdidleService     HDIdleServiceInterface
-	filesystemService FilesystemServiceInterface
-	ioStatFetcher     func(string) (blockdevice.IOStats, error)
-	readFile          func(string) ([]byte, error)
-	sysFsBasePath     string
-	smartEnabledCache *cache.Cache // smartEnabledCache tracks SMART enabled/disabled state per disk to avoid unnecessary disk access
+	volumeService          VolumeServiceInterface
+	blockdevice            *blockdevice.FS
+	ctx                    context.Context
+	lastUpdateTime         time.Time                       // lastUpdateTime is used to track the last time disk stats were updated.
+	lastStats              map[string]*blockdevice.IOStats // lastStats stores the last collected disk I/O statistics.
+	currentDiskHealth      *dto.DiskHealth
+	updateMutex            *sync.Mutex
+	smartService           SmartServiceInterface
+	hdidleService          HDIdleServiceInterface
+	filesystemService      FilesystemServiceInterface
+	ioStatFetcher          func(string) (blockdevice.IOStats, error)
+	readFile               func(string) ([]byte, error)
+	sysFsBasePath          string
+	smartEnabledCache      *cache.Cache // smartEnabledCache tracks SMART enabled/disabled state per disk to avoid unnecessary disk access
+	pauseResumeCommandChan chan string  // Channel to signal run process to pause/resume
 }
 
 // NewDiskStatsService creates a new DiskStatsService.
@@ -76,12 +77,14 @@ func NewDiskStatsService(
 		readFile:          os.ReadFile,
 		sysFsBasePath:     "/sys/fs",
 		// Initialize cache with 30 minute default expiration and 10 minute cleanup interval
-		smartEnabledCache: cache.New(30*time.Minute, 10*time.Minute),
+		smartEnabledCache:      cache.New(30*time.Minute, 10*time.Minute),
+		pauseResumeCommandChan: make(chan string, 1), // Channel to signal run process to pause/resume
 	}
 
+	unsubscribe := make([]func(), 2)
 	// Subscribe to SMART events to populate cache immediately when SMART is enabled/disabled
 	// This ensures no disk queries are needed after the state change
-	unsubscribeSmart := EventBus.OnSmart(func(ctx context.Context, event events.SmartEvent) errors.E {
+	unsubscribe[0] = EventBus.OnSmart(func(ctx context.Context, event events.SmartEvent) errors.E {
 		if event.SmartInfo.DiskId != "" {
 			// The SmartInfo now contains both Supported (hardware capability) and Enabled (software state)
 			// We cache the Enabled state to prevent any disk queries after enable/disable
@@ -98,21 +101,30 @@ func NewDiskStatsService(
 		}
 		return nil
 	})
+	unsubscribe[1] = EventBus.OnServerProccess(func(ctx context.Context, event events.ServerProcessEvent) errors.E {
+		slog.DebugContext(ctx, "DiskStatsService received ServerProcess event", "tracker", event.DataDirtyTracker)
+		if event.Type == events.EventTypes.CLEAN {
+			ds.pauseResumeCommandChan <- "resume"
+		} else {
+			ds.pauseResumeCommandChan <- "suspend"
+		}
+		return nil
+	})
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			err := ds.updateDiskStats()
-			if err != nil && !errors.Is(err, dto.ErrorNotFound) {
-				slog.WarnContext(ctx, "Failed to update disk stats", "error", err)
-			}
+			//err := ds.updateDiskStats()
+			//if err != nil && !errors.Is(err, dto.ErrorNotFound) {
+		  //	slog.WarnContext(ctx, "Failed to update disk stats", "error", err)
+			//}
 			if wg, ok := Ctx.Value(ctxkeys.WaitGroup).(*sync.WaitGroup); ok && wg != nil {
 				wg.Go(func() { ds.run() })
 			}
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
-			if unsubscribeSmart != nil {
-				unsubscribeSmart()
+			for _, unsub := range unsubscribe {
+				unsub()
 			}
 			return nil
 		},
@@ -123,8 +135,24 @@ func NewDiskStatsService(
 func (self *diskStatsService) run() error {
 	for {
 		select {
+		case cmd := <-self.pauseResumeCommandChan:
+			if cmd == "suspend" {
+				slog.DebugContext(self.ctx, "Suspending disk stats collection due to server process event")
+				// Wait for resume signal
+				for {
+					select {
+					case cmd := <-self.pauseResumeCommandChan:
+						if cmd == "resume" {
+							slog.DebugContext(self.ctx, "Resuming disk stats collection due to server process event")
+						}
+					case <-self.ctx.Done():
+						slog.DebugContext(self.ctx, "Run process closed while suspended", "err", self.ctx.Err())
+						return errors.WithStack(self.ctx.Err())
+					}
+				}
+			}
 		case <-self.ctx.Done():
-			slog.InfoContext(self.ctx, "Run process closed", "err", self.ctx.Err())
+			slog.DebugContext(self.ctx, "Run process closed", "err", self.ctx.Err())
 			return errors.WithStack(self.ctx.Err())
 		case <-time.After(time.Second * 10):
 			err := self.updateDiskStats()

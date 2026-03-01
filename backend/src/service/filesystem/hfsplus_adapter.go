@@ -259,8 +259,7 @@ func (a *HfsplusAdapter) GetState(ctx context.Context, device string) (dto.Files
 	}
 
 	// Check if filesystem is mounted
-	outputMount, _, _ := a.runCommandCached(ctx, "mount")
-	state.IsMounted = strings.Contains(outputMount, device)
+	state.IsMounted = a.isDeviceMounted(device)
 
 	// Store check output in additional info
 	if output != "" {
