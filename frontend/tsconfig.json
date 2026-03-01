@@ -8,7 +8,7 @@
 		"lib": [
 			"ES2022",
 			"DOM",
-			"DOM.Iterable", 
+			"DOM.Iterable",
 			"WebWorker"
 		],
 		// Removed deprecated flags for TS 6.0/7.0 compatibility:
@@ -54,8 +54,8 @@
 		// Bundler mode (not from HA)
 		"moduleResolution": "bundler",
 		"allowImportingTsExtensions": true,
+		"allowArbitraryExtensions": true,
 		"verbatimModuleSyntax": true,
-		
 		// Best practices (not from HA)
 		"skipLibCheck": true,
 		

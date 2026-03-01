@@ -6,8 +6,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/danielgtaylor/huma/v2/sse"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
+	"github.com/dianlight/srat/server/ws"
 	"github.com/dianlight/srat/service"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
@@ -71,6 +73,30 @@ func (suite *BroadcasterServiceTestSuite) TearDownTest() {
 	if suite.app != nil {
 		suite.app.RequireStop()
 	}
+}
+
+func (suite *BroadcasterServiceTestSuite) TestProcessWebSocketChannelAfterStop_DoesNotPanic() {
+	suite.app.RequireStop()
+	suite.app = nil
+	suite.cancel()
+
+	suite.NotPanics(func() {
+		suite.broadcasterService.ProcessWebSocketChannel(func(msg ws.Message) errors.E {
+			return nil
+		})
+	})
+}
+
+func (suite *BroadcasterServiceTestSuite) TestProcessHttpChannelAfterStop_DoesNotPanic() {
+	suite.app.RequireStop()
+	suite.app = nil
+	suite.cancel()
+
+	suite.NotPanics(func() {
+		suite.broadcasterService.ProcessHttpChannel(func(msg sse.Message) error {
+			return nil
+		})
+	})
 }
 
 // --- shouldSkipClientSend Tests ---

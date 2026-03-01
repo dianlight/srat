@@ -14,7 +14,7 @@
 - [Technical Implementation Details](#technical-implementation-details)
   - [Dependency Injection:](#dependency-injection)
   - [Broadcasting Architecture:](#broadcasting-architecture)
-  - [API Client Integration:](#api-client-integration)
+  - [Client Integration:](#client-integration)
   - [Entity Management:](#entity-management)
 - [Configuration](#configuration)
 - [Testing](#testing)
@@ -79,7 +79,7 @@ This implementation adds automatic Home Assistant integration to SRAT when a Hom
 - Automatic routing of disk/samba data to Home Assistant
 - Type-safe message handling with appropriate entity updates
 
-### API Client Integration:
+### Client Integration:
 
 - Uses generated Core API client from OpenAPI spec
 - Proper authentication via supervisor token

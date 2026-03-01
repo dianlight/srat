@@ -144,7 +144,7 @@ export function getPartitionActionItems({
 		if (
 			false &&  // Temporarily disable the "Check Filesystem" action until it's fully implemented and tested
 			onCheckFilesystem &&
-			partition.filesystem_info?.Support?.canCheck &&
+			partition.filesystem_info?.support?.canCheck &&
 			!isMounted &&
 			getCurrentEnv() !== "production"
 		) {
@@ -157,7 +157,7 @@ export function getPartitionActionItems({
 		}
 		if (
 			false &&  // Temporarily disable the "Set Label" action until it's fully implemented and tested
-			partition.filesystem_info?.Support?.canSetLabel &&
+			partition.filesystem_info?.support?.canSetLabel &&
 			!isMounted &&
 			getCurrentEnv() !== "production") {
 			actionItems.push({
@@ -172,7 +172,7 @@ export function getPartitionActionItems({
 		}
 		if (
 			false &&  // Temporarily disable the "Format Partition" action until it's fully implemented and tested
-			partition.filesystem_info?.Support?.canFormat &&
+			partition.filesystem_info?.support?.canFormat &&
 			!isMounted &&
 			getCurrentEnv() !== "production") {
 			actionItems.push({

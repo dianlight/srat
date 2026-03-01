@@ -5,7 +5,7 @@
   - [Issue Reference](#issue-reference)
   - [Implementation Status: ✅ COMPLETE (Enhanced)](#implementation-status--complete-enhanced)
   - [What Was Implemented](#what-was-implemented)
-    - [Backend Components](#backend-components)
+    - [back-end Components](#back-end-components)
     - [Frontend Components](#frontend-components)
     - [Documentation](#documentation)
   - [Enhanced Detection Logic](#enhanced-detection-logic)
@@ -14,7 +14,7 @@
   - [Known Issues & Workarounds](#known-issues--workarounds)
     - [RTK Query Code Generator](#rtk-query-code-generator)
   - [Verification](#verification)
-    - [Backend](#backend)
+    - [back-end](#back-end)
     - [Frontend](#frontend)
   - [Testing Summary](#testing-summary)
   - [Database Schema](#database-schema)
@@ -36,7 +36,7 @@ All components have been successfully implemented, enhanced, and tested.
 
 ## What Was Implemented
 
-### Backend Components
+### back-end Components
 
 1. **Settings DTO** (`backend/src/dto/settings.go`)
    - Added `SMBoverQUIC *bool` field with default value `true`
@@ -79,7 +79,7 @@ All components have been successfully implemented, enhanced, and tested.
 
 1. **API Integration** (`frontend/src/store/sratApi.ts`)
    - Enhanced `SystemCapabilities` type with all new fields
-   - Manually updated to match backend DTO structure
+   - Manually updated to match back-end DTO structure
    - Added type safety for all capability fields
    - **Note**: Manually updated due to RTK Query codegen issue
 
@@ -156,7 +156,7 @@ GetCapabilitiesHandler:
 
 ## Verification
 
-### Backend
+### back-end
 
 ```bash
 cd ./backend
@@ -176,9 +176,9 @@ bun gen          # ⚠️ Fails (known issue, workaround applied)
 
 ## Testing Summary
 
-- ✅ Backend compiles without errors
+- ✅ back-end compiles without errors
 - ✅ Frontend builds without errors
-- ✅ Backend tests pass (osutil: 75.0% coverage)
+- ✅ back-end tests pass (osutil: 75.0% coverage)
 - ✅ Frontend tests pass (267 tests, 69.92% function coverage)
 - ✅ OpenAPI documentation generated successfully
 - ✅ Code follows established patterns and conventions

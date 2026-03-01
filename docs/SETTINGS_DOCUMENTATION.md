@@ -20,10 +20,10 @@
     - [Telemetry Mode](#telemetry-mode)
   - [Home Assistant Settings](#home-assistant-settings)
     - [Export Stats to Home Assistant](#export-stats-to-home-assistant)
-    - [Use NFS for Home Assistant Integration (Experimental)](#use-nfs-for-home-assistant-integration-experimental)
+    - [Use Network File System for Home Assistant Integration (Experimental)](#use-network-file-system-for-home-assistant-integration-experimental)
   - [Implementation Details](#implementation-details)
     - [Template Generation](#template-generation)
-    - [Backend Storage](#backend-storage)
+    - [back-end Storage](#back-end-storage)
     - [API Endpoint](#api-endpoint)
     - [Frontend Integration](#frontend-integration)
   - [Related Documentation](#related-documentation)
@@ -144,7 +144,7 @@ This document provides detailed information about all SRAT settings available in
 - **Default**: `true`
 - **Description**: When enabled, exports share statistics and Samba server statistics to Home Assistant as entities
 
-### Use NFS for Home Assistant Integration (Experimental)
+### Use Network File System for Home Assistant Integration (Experimental)
 
 - **Type**: Boolean
 - **Default**: `false`
@@ -182,7 +182,7 @@ map to guest = Bad User
 {{- end }}
 ```
 
-### Backend Storage
+### back-end Storage
 
 Settings are stored in the database and mapped between:
 

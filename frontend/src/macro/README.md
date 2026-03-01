@@ -2,7 +2,7 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Macro Import Validator](#macro-import-validator)
-  - [What are Macros?](#what-are-macros)
+  - [What are Macros](#what-are-macros)
   - [Files](#files)
   - [Macro Files](#macro-files)
   - [Import Rules](#import-rules)
@@ -15,7 +15,7 @@
 
 This directory contains files related to validating and working with macro imports in the SRAT frontend.
 
-### What are Macros?
+### What are Macros
 
 Macros are special TypeScript files that use Bun's macro feature to execute at compile time. They are stored in this directory and must be imported with a special assertion to work correctly with the bundler.
 

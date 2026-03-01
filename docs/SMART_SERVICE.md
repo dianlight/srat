@@ -3,7 +3,7 @@
 
 - [SMART Service Enhancement](#smart-service-enhancement)
   - [Overview](#overview)
-  - [API Methods](#api-methods)
+  - [Service Methods](#service-methods)
     - [GetHealthStatus(devicePath string)](#gethealthstatusdevicepath-string)
     - [StartSelfTest(devicePath string, testType SmartTestType)](#startselftestdevicepath-string-testtype-smarttesttype)
     - [AbortSelfTest(devicePath string)](#abortselftestdevicepath-string)
@@ -41,7 +41,7 @@ The SMART service has been extended with comprehensive disk health monitoring an
 
 **Implementation Note**: This service uses a **patched version** of `github.com/anatol/smart.go` that exposes file descriptors for direct device control. The patch is managed via `gohack` and applied automatically during the build process (`make patch`). See [Platform Support](#platform-support) and [Limitations](#limitations) sections for details.
 
-## API Methods
+## Service Methods
 
 ### GetHealthStatus(devicePath string)
 

@@ -1,7 +1,7 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [SRAT Backend Event-Driven Architecture Refactoring](#srat-backend-event-driven-architecture-refactoring)
+- [SRAT back-end Event-Driven Architecture Refactoring](#srat-back-end-event-driven-architecture-refactoring)
   - [Overview](#overview)
   - [What Changed](#what-changed)
     - [✅ New Components Created](#-new-components-created)
@@ -38,11 +38,11 @@
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-# SRAT Backend Event-Driven Architecture Refactoring
+# SRAT back-end Event-Driven Architecture Refactoring
 
 ## Overview
 
-The SRAT backend has been successfully refactored to use an **event-driven architecture** for inter-service communication. This replaces direct service-to-service dependencies with a decoupled, event-based system that automatically propagates state changes to connected clients.
+The SRAT back-end has been successfully refactored to use an **event-driven architecture** for inter-service communication. This replaces direct service-to-service dependencies with a decoupled, event-based system that automatically propagates state changes to connected clients.
 
 ## What Changed
 
@@ -370,7 +370,7 @@ A: No risk. Listeners are cleaned up automatically. `Context` cancellation handl
 
 ## Summary
 
-The SRAT backend now has a modern, efficient event-driven architecture that:
+The SRAT back-end now has a modern, efficient event-driven architecture that:
 
 - ✅ Eliminates service coupling
 - ✅ Provides real-time client updates

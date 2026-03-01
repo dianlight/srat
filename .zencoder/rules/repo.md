@@ -13,11 +13,11 @@ alwaysApply: true
 
 ## Repository Summary
 
-SRAT (SambaNAS REST Administration Tool) is a system designed to provide a simplified user interface for configuring SAMBA. It's developed to work within Home Assistant as an addon but can also be used in other contexts. The project consists of a React-based frontend and a Go-based backend with a RESTful API.
+SRAT (SambaNAS REST Administration Tool) is a system designed to provide a simplified user interface for configuring SAMBA. It's developed to work within Home Assistant as an addon but can also be used in other contexts. The project consists of a React-based frontend and a Go-based back-end with a RESTful API.
 
 ## Repository Structure
 
-- **backend/**: Go-based backend with RESTful API implementation
+- **`backend/`**: Go-based back-end with RESTful API implementation
 - **frontend/**: React-based frontend with TypeScript
 - **config/**: Home Assistant configuration files
 - **docs/**: Project documentation
@@ -25,15 +25,15 @@ SRAT (SambaNAS REST Administration Tool) is a system designed to provide a simpl
 
 ### Main Repository Components
 
-- **Backend API Server**: Go-based REST API for SAMBA configuration
+- **back-end API Server**: Go-based REST API for SAMBA configuration
 - **Frontend Web UI**: React application for user interface
 - **Home Assistant Integration**: Configuration for Home Assistant addon
 
 ## Projects
 
-### Backend (Go API Server)
+### back-end (Go API Server)
 
-**Configuration File**: backend/src/go.mod
+**Configuration File**: `backend/src/go.mod`
 
 #### Language & Runtime
 
@@ -104,14 +104,14 @@ cd frontend && bun install && bun run build
 
 ## Database
 
-SRAT uses SQLite for persistence via the GORM ORM. The backend initializes the database with resilience-focused defaults including WAL journal mode, busy timeout settings, and foreign key constraints. The database path can be set via the `--db` flag when running the server.
+SRAT uses SQLite for persistence via the GORM ORM. The back-end initializes the database with resilience-focused defaults including WAL journal mode, busy timeout settings, and foreign key constraints. The database path can be set via the `--db` flag when running the server.
 
 ## Development Environment
 
 **Prerequisites**:
 
 - Bun (JavaScript runtime and package manager)
-- Go (for backend development)
+- Go (for back-end development)
 - prek (for git hooks)
 
 **Setup Commands**:
@@ -129,7 +129,7 @@ make ALL
 
 ## Testing & Validation
 
-**Backend Testing**: Go's built-in testing framework
+**back-end Testing**: Go's built-in testing framework
 **Documentation Validation**: Comprehensive validation tools including markdown linting, link checking, and spell checking
 **Security Scanning**: Uses gosec to scan Go code for security issues
 

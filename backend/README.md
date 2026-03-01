@@ -1,4 +1,4 @@
-# Backend
+# back-end
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
@@ -55,7 +55,7 @@ srat-openapi -out ./docs/
 
 ## Security scanning
 
-Run gosec to scan the backend codebase:
+Run gosec to scan the back-end codebase:
 
 - make security (alias of `make -C ./backend gosec`)
 - Reports are limited to high severity and high confidence issues; generated files are excluded.

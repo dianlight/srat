@@ -152,7 +152,7 @@ func (self *HealthHanler) run() error {
 
 			stats, err := self.addonsService.GetStats()
 			if err != nil {
-				slog.WarnContext(self.ctx, "Error getting addon stats for health ping", "err", err)
+				slog.WarnContext(self.ctx, "Warning getting addon stats for health ping", "err", err)
 				self.HealthPing.AddonStats = nil // Clear stats on error
 			} else {
 				self.HealthPing.AddonStats = stats
@@ -160,7 +160,7 @@ func (self *HealthHanler) run() error {
 			self.checkSamba()
 			diskStats, err := self.diskStatsService.GetDiskStats()
 			if err != nil {
-				slog.WarnContext(self.ctx, "Error getting disk stats for health ping", "err", err)
+				slog.WarnContext(self.ctx, "Warning getting disk stats for health ping", "err", err)
 				self.HealthPing.DiskHealth = nil
 			} else {
 				self.HealthPing.DiskHealth = diskStats
@@ -169,14 +169,14 @@ func (self *HealthHanler) run() error {
 			}
 			netStats, err := self.networkStatsService.GetNetworkStats()
 			if err != nil {
-				slog.WarnContext(self.ctx, "Error getting network stats for health ping", "err", err)
+				slog.WarnContext(self.ctx, "Warning getting network stats for health ping", "err", err)
 				self.HealthPing.NetworkHealth = nil
 			} else {
 				self.HealthPing.NetworkHealth = netStats
 			}
 			sambaStatus, err := self.sambaService.GetSambaStatus()
 			if err != nil {
-				slog.WarnContext(self.ctx, "Error getting samba status for health ping", "err", err)
+				slog.WarnContext(self.ctx, "Warning getting samba status for health ping", "err", err)
 				self.HealthPing.SambaStatus = nil
 			} else {
 				self.HealthPing.SambaStatus = sambaStatus

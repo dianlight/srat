@@ -329,8 +329,7 @@ func (a *BtrfsAdapter) GetState(ctx context.Context, device string) (dto.Filesys
 	}
 
 	// Check if filesystem is mounted
-	mountOutput, _, _ := a.runCommandCached(ctx, "mount")
-	state.IsMounted = strings.Contains(mountOutput, device)
+	state.IsMounted = a.isDeviceMounted(device)
 
 	return state, nil
 }

@@ -2,16 +2,16 @@
 
 ---
 
-description: "Backend testing standards for the SRAT Go codebase"
-applyTo: "backend/src/\**/*\_test.go"
+description: "back-end testing standards for the SRAT Go codebase"
+applyTo: "`backend/src/**/*_test.go`"
 
 ---
 
-# Backend Testing Instructions
+# back-end Testing Instructions
 
 ## Overview
 
-All backend tests in the SRAT project follow consistent patterns using testify/suite, mockio/v2 for mocking, and uber-go/fx for dependency injection in tests. These instructions ensure uniform, maintainable, and comprehensive test coverage.
+All back-end tests in the SRAT project follow consistent patterns using testify/suite, mockio/v2 for mocking, and uber-go/fx for dependency injection in tests. These instructions ensure uniform, maintainable, and comprehensive test coverage.
 
 ## Core Testing Stack
 
