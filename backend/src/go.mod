@@ -9,7 +9,7 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/oapi-codegen/runtime v1.2.0
 	github.com/pilebones/go-udev v0.9.1
-	github.com/shirou/gopsutil/v4 v4.26.1
+	github.com/shirou/gopsutil/v4 v4.26.2
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/sys v0.41.0
 )
@@ -26,13 +26,13 @@ require (
 	github.com/fatih/color v1.18.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/gofri/go-github-ratelimit/v2 v2.0.2
-	github.com/google/go-github/v83 v83.0.0
+	github.com/google/go-github/v84 v84.0.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/jarcoal/httpmock v1.4.1
 	github.com/lonegunmanb/go-defaults v1.4.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pressly/goose/v3 v3.27.0
-	github.com/prometheus/procfs v0.20.0
+	github.com/prometheus/procfs v0.20.1
 	github.com/rollbar/rollbar-go v1.4.8
 	github.com/samber/slog-http v1.12.0
 	github.com/sergi/go-diff v1.4.0
@@ -109,7 +109,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/ebitengine/purego v0.9.1 // indirect
+	github.com/ebitengine/purego v0.10.0 // indirect
 	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.0 // indirect
 	github.com/getkin/kin-openapi v0.133.0 // indirect
@@ -129,7 +129,7 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
-	github.com/oapi-codegen/oapi-codegen/v2 v2.5.1
+	github.com/oapi-codegen/oapi-codegen/v2 v2.6.0
 	github.com/perimeterx/marshmallow v1.1.5 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.0 // indirect
@@ -167,8 +167,8 @@ require (
 	github.com/ovechkin-dm/mockio/v2 v2.0.4
 	github.com/rs/cors v1.11.1
 	github.com/thoas/go-funk v0.9.3
-	github.com/u-root/u-root v0.15.0
-	gitlab.com/tozd/go/errors v0.10.0
+	github.com/u-root/u-root v0.16.0
+	gitlab.com/tozd/go/errors v0.11.0
 	go.uber.org/fx v1.24.0
 	golang.org/x/time v0.14.0
 	gopkg.in/yaml.v3 v3.0.1
