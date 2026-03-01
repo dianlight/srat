@@ -98,7 +98,7 @@ export function ShareDetailsPanel({
                             }}
                         >
                             <Chip
-                                label="Share Disabled"
+                                label="Invalid Mount Point Data"
                                 color="error"
                                 variant="filled"
                                 size="small"
