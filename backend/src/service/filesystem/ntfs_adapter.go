@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/dianlight/srat/dto"
-	"github.com/prometheus/procfs"
 	"gitlab.com/tozd/go/errors"
 )
 
@@ -15,7 +14,6 @@ type NtfsAdapter struct {
 	baseAdapter
 	lastUnmountedState   map[string]dto.FilesystemState
 	lastUnmountedStateMu sync.RWMutex
-	isDeviceMounted      func(device string) bool
 }
 
 // NewNtfsAdapter creates a new NtfsAdapter instance
@@ -34,20 +32,6 @@ func NewNtfsAdapter() FilesystemAdapter {
 			},
 		),
 		lastUnmountedState: make(map[string]dto.FilesystemState),
-		isDeviceMounted: func(device string) bool {
-			mounts, err := procfs.GetMounts()
-			if err != nil {
-				return false
-			}
-
-			for _, mount := range mounts {
-				if mount.Source == device {
-					return true
-				}
-			}
-
-			return false
-		},
 	}
 	ret.linuxFsModule = "ntfs3" // Use ntfs3 kernel module for Linux if available, fallback to ntfs-3g user-space driver
 	return ret
