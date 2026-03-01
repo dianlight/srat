@@ -315,7 +315,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Restore Backend Coverage Report
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
         with:
           name: backend-coverage-report
 
@@ -329,7 +329,7 @@ jobs:
           fail_ci_if_error: false
 
       - name: Restore Frontend Coverage Report
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
         with:
           name: frontend-coverage-report
 
@@ -343,7 +343,7 @@ jobs:
           fail_ci_if_error: false
 
       - name: Restore Custom Component Coverage Report
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
         with:
           name: custom-component-coverage-report
 
@@ -654,13 +654,13 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      - uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
         id: download_art
         with:
           name: binary-builds
           path: /tmp/downloaded_builds
 
-      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      - uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
         id: download_hacs
         with:
           name: hacs-component
