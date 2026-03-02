@@ -3,8 +3,10 @@ package service
 import (
 	"context"
 	"log/slog"
+	"maps"
 	"math"
 	"os"
+	"slices"
 	"sync"
 	"syscall"
 	"time"
@@ -26,7 +28,7 @@ type DiskStatsService interface {
 }
 
 type diskStatsService struct {
-	volumeService          VolumeServiceInterface
+	disks                  *dto.DiskMap
 	blockdevice            *blockdevice.FS
 	ctx                    context.Context
 	lastUpdateTime         time.Time                       // lastUpdateTime is used to track the last time disk stats were updated.
@@ -46,7 +48,7 @@ type diskStatsService struct {
 // NewDiskStatsService creates a new DiskStatsService.
 func NewDiskStatsService(
 	lc fx.Lifecycle,
-	VolumeService VolumeServiceInterface,
+	disks *dto.DiskMap,
 	Ctx context.Context,
 	SmartService SmartServiceInterface,
 	HDIdleService HDIdleServiceInterface,
@@ -65,7 +67,7 @@ func NewDiskStatsService(
 	}
 
 	ds := &diskStatsService{
-		volumeService:     VolumeService,
+		disks:             disks,
 		blockdevice:       &fs,
 		ctx:               Ctx,
 		lastUpdateTime:    time.Now(),
@@ -168,7 +170,7 @@ func (s *diskStatsService) updateDiskStats() errors.E {
 	s.updateMutex.Lock()
 	defer s.updateMutex.Unlock()
 
-	disks := s.volumeService.GetVolumesData()
+	disks := slices.Collect(maps.Values(*s.disks))
 
 	// Check HDIdle service status
 	hdidleRunning := false

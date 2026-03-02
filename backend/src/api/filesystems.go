@@ -12,18 +12,18 @@ import (
 
 // FilesystemHandler handles filesystem-related API endpoints
 type FilesystemHandler struct {
-	fsService     service.FilesystemServiceInterface
-	volumeService service.VolumeServiceInterface
+	fsService service.FilesystemServiceInterface
+	disks     *dto.DiskMap
 }
 
 // NewFilesystemHandler creates a new FilesystemHandler
 func NewFilesystemHandler(
 	fsService service.FilesystemServiceInterface,
-	volumeService service.VolumeServiceInterface,
+	disks *dto.DiskMap,
 ) *FilesystemHandler {
 	return &FilesystemHandler{
-		fsService:     fsService,
-		volumeService: volumeService,
+		fsService: fsService,
+		disks:     disks,
 	}
 }
 
@@ -38,17 +38,6 @@ func (h *FilesystemHandler) RegisterFilesystemHandler(api huma.API) {
 	huma.Put(api, "/filesystem/label", h.SetPartitionLabel, huma.OperationTags("filesystems"))
 }
 
-// Helper function to get DiskMap from VolumeService
-func (h *FilesystemHandler) getDiskMap() dto.DiskMap {
-	volumes := h.volumeService.GetVolumesData()
-	diskMap := make(dto.DiskMap)
-	for _, disk := range volumes {
-		if disk.Id != nil {
-			diskMap[*disk.Id] = disk
-		}
-	}
-	return diskMap
-}
 
 // ListFilesystems returns all supported filesystems with their capabilities
 func (h *FilesystemHandler) ListFilesystems(
@@ -117,7 +106,7 @@ func (h *FilesystemHandler) FormatPartition(
 		"force", req.Force)
 
 	// Find the partition using DiskMap directly
-	diskMap := h.getDiskMap()
+	diskMap := h.disks
 	partition, _, found := diskMap.GetPartitionByID(req.PartitionID)
 	if !found {
 		tlog.ErrorContext(ctx, "Partition not found", "partition_id", req.PartitionID)
@@ -188,7 +177,7 @@ func (h *FilesystemHandler) CheckPartition(
 		"force", req.Force)
 
 	// Find the partition using DiskMap directly
-	diskMap := h.getDiskMap()
+	diskMap := h.disks
 	partition, _, found := diskMap.GetPartitionByID(req.PartitionID)
 	if !found {
 		return nil, huma.Error404NotFound("Partition not found")
@@ -247,7 +236,7 @@ func (h *FilesystemHandler) AbortCheckPartition(
 	tlog.InfoContext(ctx, "Aborting filesystem check", "partition", req.PartitionID)
 
 	// Find the partition using DiskMap directly
-	diskMap := h.getDiskMap()
+	diskMap := h.disks
 	partition, _, found := diskMap.GetPartitionByID(req.PartitionID)
 	if !found {
 		return nil, huma.Error404NotFound("Partition not found")
@@ -296,7 +285,7 @@ func (h *FilesystemHandler) GetPartitionState(
 	tlog.DebugContext(ctx, "Getting partition state", "partition", input.PartitionID)
 
 	// Find the partition using DiskMap directly
-	diskMap := h.getDiskMap()
+	diskMap := h.disks
 	partition, _, found := diskMap.GetPartitionByID(input.PartitionID)
 	if !found {
 		return nil, huma.Error404NotFound("Partition not found")
@@ -363,7 +352,7 @@ func (h *FilesystemHandler) GetPartitionLabel(
 	tlog.DebugContext(ctx, "Getting partition label", "partition", input.PartitionID)
 
 	// Find the partition using DiskMap directly
-	diskMap := h.getDiskMap()
+	diskMap := h.disks
 	partition, _, found := diskMap.GetPartitionByID(input.PartitionID)
 	if !found {
 		return nil, huma.Error404NotFound("Partition not found")
@@ -421,7 +410,7 @@ func (h *FilesystemHandler) SetPartitionLabel(
 		"label", req.Label)
 
 	// Find the partition using DiskMap directly
-	diskMap := h.getDiskMap()
+	diskMap := h.disks
 	partition, _, found := diskMap.GetPartitionByID(req.PartitionID)
 	if !found {
 		return nil, huma.Error404NotFound("Partition not found")

@@ -20,7 +20,7 @@ import (
 type DiskStatsServiceSuite struct {
 	suite.Suite
 	ctrl       *matchers.MockController
-	volumeMock VolumeServiceInterface
+	testDisks  *dto.DiskMap
 	smartMock  SmartServiceInterface
 	hdidleMock HDIdleServiceInterface
 	fsMock     FilesystemServiceInterface
@@ -41,14 +41,14 @@ func (suite *DiskStatsServiceSuite) SetupTest() {
 	suite.ctx, suite.cancel = context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, &wg))
 
 	// create mocks
-	suite.volumeMock = mock.Mock[VolumeServiceInterface](suite.ctrl)
+	suite.testDisks = &dto.DiskMap{}
 	suite.smartMock = mock.Mock[SmartServiceInterface](suite.ctrl)
 	suite.hdidleMock = mock.Mock[HDIdleServiceInterface](suite.ctrl)
 	suite.fsMock = mock.Mock[FilesystemServiceInterface](suite.ctrl)
 
 	// instantiate diskStatsService under test with mocks
 	suite.ds = &diskStatsService{
-		volumeService:     suite.volumeMock,
+		disks:             suite.testDisks,
 		blockdevice:       &blockdevice.FS{}, // zero value; tests avoid calling SysBlockDeviceStat
 		ctx:               suite.ctx,
 		lastUpdateTime:    time.Now(),
@@ -93,8 +93,7 @@ func (suite *DiskStatsServiceSuite) TestGetDiskStatsNotInitialized() {
 }
 
 func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_NoVolumes() {
-	// Arrange: VolumeService returns ErrorNotFound to simulate no volumes
-	mock.When(suite.volumeMock.GetVolumesData()).ThenReturn(nil)
+	// Arrange: testDisks is empty by default (set in SetupTest)
 	mock.When(suite.hdidleMock.IsRunning()).ThenReturn(false)
 
 	// Act
@@ -110,9 +109,6 @@ func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_NoVolumes() {
 	suite.NotNil(suite.ds.currentDiskHealth.PerPartitionInfo)
 	suite.Empty(suite.ds.currentDiskHealth.PerPartitionInfo)
 	suite.False(suite.ds.currentDiskHealth.HDIdleRunning)
-
-	// Verify mock call
-	mock.Verify(suite.volumeMock, matchers.Times(1)).GetVolumesData()
 }
 
 func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_SkipsDiskWithNilDevice() {
@@ -130,14 +126,12 @@ func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_SkipsDiskWithNilDevice()
 			},
 		},
 	}
-	d := dto.Disk{
+	d := &dto.Disk{
 		Id:               &diskID,
 		LegacyDeviceName: nil, // important: should be skipped
 		Partitions:       &partitions,
 	}
-	disks := []*dto.Disk{&d}
-
-	mock.When(suite.volumeMock.GetVolumesData()).ThenReturn(disks)
+	(*suite.testDisks)[diskID] = d
 	mock.When(suite.hdidleMock.IsRunning()).ThenReturn(false)
 
 	// Act
@@ -153,9 +147,6 @@ func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_SkipsDiskWithNilDevice()
 		_, exists := suite.ds.currentDiskHealth.PerPartitionInfo[*d.Id]
 		suite.False(exists)
 	}
-
-	// Verify mock call
-	mock.Verify(suite.volumeMock, matchers.Times(1)).GetVolumesData()
 }
 
 func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_FsckStateFromFilesystemService() {
@@ -181,7 +172,7 @@ func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_FsckStateFromFilesystemS
 		Partitions:       &partitions,
 	}
 
-	mock.When(suite.volumeMock.GetVolumesData()).ThenReturn([]*dto.Disk{disk})
+	(*suite.testDisks)[diskID] = disk
 	mock.When(suite.hdidleMock.IsRunning()).ThenReturn(false)
 
 	support := &dto.FilesystemInfo{
