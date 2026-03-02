@@ -8,8 +8,8 @@ import (
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/host"
-	"github.com/dianlight/srat/service"
 	"github.com/dianlight/srat/internal/ctxkeys"
+	"github.com/dianlight/srat/service"
 
 	// gocache "github.com/patrickmn/go-cache" // Not strictly needed for these tests
 	"github.com/ovechkin-dm/mockio/v2/matchers"

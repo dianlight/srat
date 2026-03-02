@@ -9,8 +9,8 @@ import (
 	"github.com/danielgtaylor/huma/v2/sse"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/addons"
-	"github.com/dianlight/srat/server/ws"
 	"github.com/dianlight/srat/internal/ctxkeys"
+	"github.com/dianlight/srat/server/ws"
 	"gitlab.com/tozd/go/errors"
 )
 

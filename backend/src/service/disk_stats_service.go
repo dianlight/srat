@@ -117,7 +117,7 @@ func NewDiskStatsService(
 		OnStart: func(ctx context.Context) error {
 			//err := ds.updateDiskStats()
 			//if err != nil && !errors.Is(err, dto.ErrorNotFound) {
-		  //	slog.WarnContext(ctx, "Failed to update disk stats", "error", err)
+			//	slog.WarnContext(ctx, "Failed to update disk stats", "error", err)
 			//}
 			if wg, ok := Ctx.Value(ctxkeys.WaitGroup).(*sync.WaitGroup); ok && wg != nil {
 				wg.Go(func() { ds.run() })

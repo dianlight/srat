@@ -38,7 +38,6 @@ func (h *FilesystemHandler) RegisterFilesystemHandler(api huma.API) {
 	huma.Put(api, "/filesystem/label", h.SetPartitionLabel, huma.OperationTags("filesystems"))
 }
 
-
 // ListFilesystems returns all supported filesystems with their capabilities
 func (h *FilesystemHandler) ListFilesystems(
 	ctx context.Context,

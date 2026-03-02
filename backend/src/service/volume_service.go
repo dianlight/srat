@@ -51,9 +51,9 @@ type VolumeServiceInterface interface {
 }
 
 type VolumeService struct {
-	ctx        context.Context
-	db         *gorm.DB
-	refreshing atomic.Bool
+	ctx             context.Context
+	db              *gorm.DB
+	refreshing      atomic.Bool
 	hardwareClient  HardwareServiceInterface
 	fs_service      FilesystemServiceInterface
 	shareService    ShareServiceInterface
@@ -75,7 +75,7 @@ type VolumeServiceProps struct {
 	Ctx context.Context
 	Db  *gorm.DB
 	//MountPointRepo    repository.MountPointPathRepositoryInterface
-	HardwareClient    HardwareServiceInterface      `optional:"true"`
+	HardwareClient    HardwareServiceInterface `optional:"true"`
 	FilesystemService FilesystemServiceInterface
 	ShareService      ShareServiceInterface
 	IssueService      IssueServiceInterface

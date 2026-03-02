@@ -8,8 +8,8 @@ import (
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/addons"
-	"github.com/dianlight/srat/service"
 	"github.com/dianlight/srat/internal/ctxkeys"
+	"github.com/dianlight/srat/service"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"

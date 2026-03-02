@@ -9,8 +9,8 @@ import (
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
-	"github.com/dianlight/srat/service"
 	"github.com/dianlight/srat/internal/ctxkeys"
+	"github.com/dianlight/srat/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"

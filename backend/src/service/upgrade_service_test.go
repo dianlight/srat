@@ -31,9 +31,9 @@ import (
 	// Project-specific packages
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/dianlight/srat/internal/updatekey"
 	"github.com/dianlight/srat/service"
-	"github.com/dianlight/srat/internal/ctxkeys"
 )
 
 type UpgradeServiceTestSuite struct {
