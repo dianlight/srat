@@ -30,7 +30,7 @@
     "@types/react-dom": "19.2.3",
     "@types/react-syntax-highlighter": "15.5.13",
     "@types/semver": "7.7.1",
-    "@typescript/native-preview": "7.0.0-dev.20260226.1",
+    "@typescript/native-preview": "7.0.0-dev.20260301.1",
     "msw": "2.12.10",
     "msw-auto-mock": "0.32.0"
   },
@@ -74,7 +74,7 @@
     "react-syntax-highlighter": "^16.1.1",
     "react-toastify": "^11.0.5",
     "refractor": "^5.0.0",
-    "rollbar": "3.0.0-rc.1",
+    "rollbar": "3.0.0",
     "semver": "^7.7.4",
     "toposort": "^2.0.2",
     "uuid": "^13.0.0"
