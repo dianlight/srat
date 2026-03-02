@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/prometheus/procfs"
 	"github.com/prometheus/procfs/sysfs"
 	"gitlab.com/tozd/go/errors"
@@ -69,9 +70,11 @@ func NewNetworkStatsService(lc fx.Lifecycle,
 					slog.ErrorContext(ctx, "Failed to update network stats", "error", err)
 				}
 			}
-			Ctx.Value("wg").(*sync.WaitGroup).Go(func() {
-				ns.run()
-			})
+			if wg, ok := Ctx.Value(ctxkeys.WaitGroup).(*sync.WaitGroup); ok && wg != nil {
+				wg.Go(func() {
+					ns.run()
+				})
+			}
 			return nil
 		},
 	})

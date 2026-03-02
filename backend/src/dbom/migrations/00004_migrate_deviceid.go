@@ -27,7 +27,6 @@ func Up00004(ctx context.Context, db *sql.DB) error {
 		return err
 	}
 	for i, path := range paths {
-		//fmt.Printf("Processing path: %s\n", path)
 		device := devices[i]
 		if device == "" {
 			continue
@@ -49,7 +48,6 @@ func Up00004(ctx context.Context, db *sql.DB) error {
 					if err != nil {
 						continue
 					}
-					//fmt.Printf("Resolved link: %s -> %s\n", linkPath, resolved)
 					if resolved == "/dev/"+device {
 						deviceID = entry.Name()
 						break
@@ -57,7 +55,6 @@ func Up00004(ctx context.Context, db *sql.DB) error {
 				}
 			}
 		}
-		//fmt.Printf("Device: %s, DeviceID: %s\n", device, deviceID)
 		if deviceID != "" {
 			query := "UPDATE mount_point_paths SET device_id = $1 WHERE path = $2"
 			if _, err := db.ExecContext(ctx, query, deviceID, path); err != nil {

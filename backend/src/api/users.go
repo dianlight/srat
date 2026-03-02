@@ -23,7 +23,6 @@ func NewUserHandler(
 
 func (self *UserHandler) RegisterUserHandler(api huma.API) {
 	huma.Get(api, "/users", self.ListUsers, huma.OperationTags("user"))
-	//huma.Get(api, "/useradmin", self.GetAdminUser, huma.OperationTags("user"))
 	huma.Put(api, "/useradmin", self.UpdateAdminUser, huma.OperationTags("user"))
 	huma.Post(api, "/user", self.CreateUser, huma.OperationTags("user"))
 	huma.Put(api, "/user/{username}", self.UpdateUser, huma.OperationTags("user"))

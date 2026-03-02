@@ -10,6 +10,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/service"
+	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -523,7 +524,7 @@ func (suite *FilesystemServiceTestSuite) SetupTest() {
 		fx.Provide(
 			//	func() *matchers.MockController { return mock.NewMockController(suite.T()) },
 			func() (context.Context, context.CancelFunc) {
-				ctx := context.WithValue(context.Background(), "wg", suite.wg)
+				ctx := context.WithValue(context.Background(), ctxkeys.WaitGroup, suite.wg)
 				return context.WithCancel(ctx)
 			},
 			func() *dto.ContextState {

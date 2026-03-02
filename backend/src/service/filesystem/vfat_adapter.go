@@ -281,7 +281,7 @@ func (a *VfatAdapter) SetLabel(ctx context.Context, device string, label string)
 // GetState returns the state of a vfat filesystem
 func (a *VfatAdapter) GetState(ctx context.Context, device string) (dto.FilesystemState, errors.E) {
 	state := dto.FilesystemState{
-		AdditionalInfo: make(map[string]interface{}),
+		AdditionalInfo: make(map[string]any),
 	}
 
 	// For FAT filesystems, run state command in read-only mode to check state

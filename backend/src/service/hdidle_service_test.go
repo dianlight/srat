@@ -12,6 +12,7 @@ import (
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/homeassistant/hardware"
 	"github.com/dianlight/srat/service"
+	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
@@ -66,7 +67,7 @@ func (suite *HDIdleServiceSuite) SetupTest() {
 		fx.Provide(
 			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
 			func() (context.Context, context.CancelFunc) {
-				return context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
+				return context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, &sync.WaitGroup{}))
 			},
 			func() *dto.ContextState {
 				return &dto.ContextState{
@@ -108,7 +109,7 @@ func (suite *HDIdleServiceSuite) setupWithServiceEnabled() {
 		fx.Provide(
 			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
 			func() (context.Context, context.CancelFunc) {
-				return context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
+				return context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, &sync.WaitGroup{}))
 			},
 			func() *dto.ContextState {
 				return &dto.ContextState{

@@ -116,7 +116,7 @@ type FilesystemState struct {
 	StateDescription string `json:"stateDescription,omitempty"`
 
 	// AdditionalInfo contains filesystem-specific state information
-	AdditionalInfo map[string]interface{} `json:"additionalInfo,omitempty"`
+	AdditionalInfo map[string]any `json:"additionalInfo,omitempty"`
 }
 
 // FsMagicSignature defines a structure to hold filesystem signature information
@@ -155,5 +155,5 @@ type FilesystemTask struct {
 	Notes []string `json:"notes,omitempty"`
 
 	// Result contains operation result details (for success status)
-	Result interface{} `json:"result,omitempty"`
+	Result any `json:"result,omitempty"`
 }

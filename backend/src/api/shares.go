@@ -12,18 +12,15 @@ import (
 )
 
 type ShareHandler struct {
-	apiContext *dto.ContextState
-	//dirtyservice service.DirtyDataServiceInterface
+	apiContext   *dto.ContextState
 	shareService service.ShareServiceInterface
 }
 
 func NewShareHandler(apiContext *dto.ContextState,
-	//dirtyService service.DirtyDataServiceInterface,
 	shareService service.ShareServiceInterface,
 ) *ShareHandler {
 	p := new(ShareHandler)
 	p.apiContext = apiContext
-	//p.dirtyservice = dirtyService
 	p.shareService = shareService
 	return p
 }

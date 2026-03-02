@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/patrickmn/go-cache"
@@ -37,7 +38,7 @@ func (suite *DiskStatsServiceSuite) SetupTest() {
 	suite.ctrl = mock.NewMockController(suite.T())
 	// create context with waitgroup as used by service code
 	var wg sync.WaitGroup
-	suite.ctx, suite.cancel = context.WithCancel(context.WithValue(context.Background(), "wg", &wg))
+	suite.ctx, suite.cancel = context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, &wg))
 
 	// create mocks
 	suite.volumeMock = mock.Mock[VolumeServiceInterface](suite.ctrl)

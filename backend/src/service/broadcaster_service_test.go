@@ -11,6 +11,7 @@ import (
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/server/ws"
 	"github.com/dianlight/srat/service"
+	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
@@ -43,7 +44,7 @@ func (suite *BroadcasterServiceTestSuite) SetupTest() {
 		fx.Provide(
 			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
 			func() (context.Context, context.CancelFunc) {
-				ctx := context.WithValue(context.Background(), "wg", suite.wg)
+				ctx := context.WithValue(context.Background(), ctxkeys.WaitGroup, suite.wg)
 				return context.WithCancel(ctx)
 			},
 			func() *dto.ContextState {

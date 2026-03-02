@@ -272,7 +272,7 @@ func (a *F2fsAdapter) SetLabel(ctx context.Context, device string, label string)
 // GetState returns the state of an F2FS filesystem
 func (a *F2fsAdapter) GetState(ctx context.Context, device string) (dto.FilesystemState, errors.E) {
 	state := dto.FilesystemState{
-		AdditionalInfo: make(map[string]interface{}),
+		AdditionalInfo: make(map[string]any),
 	}
 
 	// Run state command to get filesystem state

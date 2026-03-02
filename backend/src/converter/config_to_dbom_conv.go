@@ -115,7 +115,6 @@ func (c *ConfigToDbomConverterImpl) DbomObjectsToConfig(properties dbom.Properti
 	for _, user := range users {
 		if user.IsAdmin {
 			tconfig.Username = user.Username
-			//tconfig.Password = user.Password
 		} else {
 			var tuser config.User
 			errS := c.SambaUserToUser(user, &tuser)

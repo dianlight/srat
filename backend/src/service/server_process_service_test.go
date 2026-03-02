@@ -19,6 +19,7 @@ import (
 	"github.com/dianlight/srat/homeassistant/mount"
 	"github.com/dianlight/srat/internal/osutil"
 	service "github.com/dianlight/srat/service"
+	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/sergi/go-diff/diffmatchpatch"
@@ -89,7 +90,7 @@ func (suite *ServerProcessServiceSuite) SetupTest() {
 		fx.Provide(
 			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
 			func() (context.Context, context.CancelFunc) {
-				return context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
+				return context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, &sync.WaitGroup{}))
 			},
 			func() *dto.ContextState {
 				sharedResources := dto.ContextState{}
@@ -164,7 +165,7 @@ func (suite *ServerProcessServiceSuite) SetupTest() {
 
 func (suite *ServerProcessServiceSuite) TearDownTest() {
 	suite.cancel()
-	suite.ctx.Value("wg").(*sync.WaitGroup).Wait()
+	suite.ctx.Value(ctxkeys.WaitGroup).(*sync.WaitGroup).Wait()
 	suite.app.RequireStop()
 }
 

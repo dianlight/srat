@@ -10,6 +10,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/addons"
 	"github.com/dianlight/srat/server/ws"
+	"github.com/dianlight/srat/internal/ctxkeys"
 	"gitlab.com/tozd/go/errors"
 )
 
@@ -88,7 +89,7 @@ func (f *fakeNetStats) GetNetworkStats() (*dto.NetworkStats, errors.E) {
 func TestHealthRunLoopInternal(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	ctx, cancel := context.WithCancel(context.Background())
-	ctx = context.WithValue(ctx, "wg", wg)
+	ctx = context.WithValue(ctx, ctxkeys.WaitGroup, wg)
 
 	state := &dto.ContextState{StartTime: time.Now().Add(-1 * time.Second), Heartbeat: 1}
 	b := &fakeBroadcaster{}

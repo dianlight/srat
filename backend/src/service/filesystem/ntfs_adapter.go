@@ -279,7 +279,7 @@ func (a *NtfsAdapter) SetLabel(ctx context.Context, device string, label string)
 // GetState returns the state of an ntfs filesystem
 func (a *NtfsAdapter) GetState(ctx context.Context, device string) (dto.FilesystemState, errors.E) {
 	state := dto.FilesystemState{
-		AdditionalInfo: make(map[string]interface{}),
+		AdditionalInfo: make(map[string]any),
 	}
 
 	// check if device is mounted and not run getstate if it is, as ntfsfix doesn't support checking while mounted

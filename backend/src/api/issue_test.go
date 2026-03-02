@@ -11,6 +11,7 @@ import (
 	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service"
+	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
@@ -37,7 +38,7 @@ func (suite *IssueHandlerSuite) SetupTest() {
 		fx.Provide(
 			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
 			func() (context.Context, context.CancelFunc) {
-				return context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
+				return context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, &sync.WaitGroup{}))
 			},
 			api.NewIssueAPI,
 			mock.Mock[service.IssueServiceInterface],
@@ -55,7 +56,7 @@ func (suite *IssueHandlerSuite) SetupTest() {
 func (suite *IssueHandlerSuite) TearDownTest() {
 	if suite.cancel != nil {
 		suite.cancel()
-		if wg, ok := suite.ctx.Value("wg").(*sync.WaitGroup); ok {
+		if wg, ok := suite.ctx.Value(ctxkeys.WaitGroup).(*sync.WaitGroup); ok {
 			wg.Wait()
 		}
 	}

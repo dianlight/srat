@@ -149,8 +149,6 @@ func (self *Config) ReadConfigBuffer(buffer []byte) error {
 func (in *Config) ConfigToMap() *map[string]any {
 	var nconfig map[string]any
 
-	//log.Println(pretty.Sprint("New Config:", in))
-
 	// Parse json
 	buffer, err := json.Marshal(&in)
 	if err != nil {
@@ -162,8 +160,6 @@ func (in *Config) ConfigToMap() *map[string]any {
 		log.Fatal(err_2)
 		return nil
 	}
-
-	//log.Println(pretty.Sprint("New Config2:", nconfig))
 
 	return &nconfig
 }

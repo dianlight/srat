@@ -213,7 +213,6 @@ func (c *Client) connectLoop(ctx context.Context, connectedCh chan<- struct{}) {
 
 			// default: proceed if no auth required
 			needAuth := false
-			//slog.Info("received hello message", "message", string(msg))
 			if tRaw, ok := helloMsg["type"]; ok {
 				var t string
 				if err := json.Unmarshal(tRaw, &t); err == nil && t == "auth_required" {
@@ -231,7 +230,6 @@ func (c *Client) connectLoop(ctx context.Context, connectedCh chan<- struct{}) {
 				if err := conn.SetWriteDeadline(time.Now().Add(5 * time.Second)); err == nil {
 					// ignore SetWriteDeadline error; do the write
 				}
-				//slog.Info("sending auth payload", "payload", authPayload)
 				if err := conn.WriteJSON(authPayload); err != nil {
 					_ = conn.Close()
 					slog.Warn("failed to send auth payload", "error", err)

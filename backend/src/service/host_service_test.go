@@ -9,6 +9,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/host"
 	"github.com/dianlight/srat/service"
+	"github.com/dianlight/srat/internal/ctxkeys"
 
 	// gocache "github.com/patrickmn/go-cache" // Not strictly needed for these tests
 	"github.com/ovechkin-dm/mockio/v2/matchers"
@@ -50,7 +51,7 @@ func (suite *HostServiceTestSuite) SetupTest() {
 			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
 			func() (context.Context, context.CancelFunc) {
 				ctx, cancel := context.WithCancel(context.Background())
-				return context.WithValue(ctx, "wg", &sync.WaitGroup{}), cancel
+				return context.WithValue(ctx, ctxkeys.WaitGroup, &sync.WaitGroup{}), cancel
 			},
 			func() *dto.ContextState {
 				return suite.staticConfig
@@ -74,7 +75,7 @@ func (suite *HostServiceTestSuite) TearDownTest() {
 	}
 	if suite.app != nil {
 		// Wait for app to stop to ensure all background goroutines (if any) complete.
-		// suite.ctx.Value("wg").(*sync.WaitGroup).Wait() // If services add to WG
+		// suite.ctx.Value(ctxkeys.WaitGroup).(*sync.WaitGroup).Wait() // If services add to WG
 		suite.app.RequireStop()
 	}
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
+	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
@@ -71,7 +72,7 @@ func (suite *DirtyDataServiceTestSuite) SetupTest() {
 		fx.Provide(
 			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
 			func() (context.Context, context.CancelFunc) {
-				return context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
+				return context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, &sync.WaitGroup{}))
 			},
 			NewDirtyDataService,
 			events.NewEventBus,
@@ -86,7 +87,7 @@ func (suite *DirtyDataServiceTestSuite) SetupTest() {
 
 func (suite *DirtyDataServiceTestSuite) TearDownTest() {
 	suite.cancel()
-	suite.ctx.Value("wg").(*sync.WaitGroup).Wait()
+	suite.ctx.Value(ctxkeys.WaitGroup).(*sync.WaitGroup).Wait()
 	suite.app.RequireStop()
 }
 
@@ -130,4 +131,17 @@ func (suite *DirtyDataServiceTestSuite) TestSetDirtySettings() {
 	suite.True(tracker.Settings)
 	suite.True(suite.dirtyDataService.IsTimerRunning())
 
+}
+
+func (suite *DirtyDataServiceTestSuite) TestSetDirtyOnMountPointEvent() {
+	suite.dirtyDataService.ResetDirtyDataTracker()
+	suite.eventBus.EmitMountPoint(events.MountPointEvent{
+		Event:      events.Event{Type: events.EventTypes.UPDATE},
+		MountPoint: &dto.MountPointData{Path: "/mnt/test"},
+	})
+	tracker := suite.dirtyDataService.GetDirtyDataTracker()
+	suite.True(tracker.Shares, "mount/unmount operations must mark shares dirty")
+	suite.False(tracker.Users)
+	suite.False(tracker.Settings)
+	suite.True(suite.dirtyDataService.IsTimerRunning())
 }

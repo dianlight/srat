@@ -415,9 +415,7 @@ func (b *baseAdapter) executeCommandWithProgress(
 	var wg sync.WaitGroup
 
 	// Scan stdout in a goroutine
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
 			select {
@@ -426,12 +424,10 @@ func (b *baseAdapter) executeCommandWithProgress(
 			case stdoutChan <- scanner.Text():
 			}
 		}
-	}()
+	})
 
 	// Scan stderr in a goroutine
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		scanner := bufio.NewScanner(stderr)
 		for scanner.Scan() {
 			select {
@@ -440,7 +436,7 @@ func (b *baseAdapter) executeCommandWithProgress(
 			case stderrChan <- scanner.Text():
 			}
 		}
-	}()
+	})
 
 	// Wait for command to complete and send result
 	go func() {

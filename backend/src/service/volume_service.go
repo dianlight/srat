@@ -18,6 +18,7 @@ import (
 	"github.com/dianlight/srat/dbom/g"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
+	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/tlog"
 	"github.com/pilebones/go-udev/netlink"
@@ -43,9 +44,7 @@ type VolumeServiceInterface interface {
 	MountVolume(md *dto.MountPointData) errors.E
 	UnmountVolume(id string, force bool) errors.E
 	GetVolumesData() []*dto.Disk
-	//PathHashToPath(pathhash string) (string, errors.E)
 	GetDevicePathByDeviceID(deviceID string) (string, errors.E)
-	//EjectDisk(diskID string) error
 	PatchMountPointSettings(root string, path string, settingsPatch dto.MountPointData) (*dto.MountPointData, errors.E)
 	// Test only
 	MockSetProcfsGetMounts(f func() ([]*procfs.MountInfo, error))
@@ -55,7 +54,6 @@ type VolumeService struct {
 	ctx        context.Context
 	db         *gorm.DB
 	refreshing atomic.Bool
-	//broascasting    BroadcasterServiceInterface
 	hardwareClient  HardwareServiceInterface
 	fs_service      FilesystemServiceInterface
 	shareService    ShareServiceInterface
@@ -66,7 +64,7 @@ type VolumeService struct {
 	hdidleService   HDIdleServiceInterface
 	eventBus        events.EventBusInterface
 	convDto         converter.DtoToDbomConverterImpl
-	convMDto        converter.MountToDtoImpl
+	mounter         VolumeMountManagerInterface
 	procfsGetMounts func() ([]*procfs.MountInfo, error)
 	disks           *dto.DiskMap
 	refreshVersion  uint32
@@ -77,7 +75,7 @@ type VolumeServiceProps struct {
 	Ctx context.Context
 	Db  *gorm.DB
 	//MountPointRepo    repository.MountPointPathRepositoryInterface
-	HardwareClient    HardwareServiceInterface `optional:"true"`
+	HardwareClient    HardwareServiceInterface      `optional:"true"`
 	FilesystemService FilesystemServiceInterface
 	ShareService      ShareServiceInterface
 	IssueService      IssueServiceInterface
@@ -85,6 +83,8 @@ type VolumeServiceProps struct {
 	HAService         HomeAssistantServiceInterface `optional:"true"`
 	HDIdleService     HDIdleServiceInterface        `optional:"true"`
 	EventBus          events.EventBusInterface
+	Mounter           VolumeMountManagerInterface
+	Disks             *dto.DiskMap
 }
 
 func NewVolumeService(
@@ -103,9 +103,9 @@ func NewVolumeService(
 		hdidleService:   in.HDIdleService,
 		eventBus:        in.EventBus,
 		convDto:         converter.DtoToDbomConverterImpl{},
-		convMDto:        converter.MountToDtoImpl{},
+		mounter:         in.Mounter,
 		procfsGetMounts: procfs.GetMounts,
-		disks:           &dto.DiskMap{},
+		disks:           in.Disks,
 		refreshVersion:  0,
 	}
 
@@ -169,9 +169,11 @@ func NewVolumeService(
 			if err != nil {
 				return err
 			}
-			p.ctx.Value("wg").(*sync.WaitGroup).Go(func() {
-				p.udevEventHandler()
-			})
+			if wg, ok := p.ctx.Value(ctxkeys.WaitGroup).(*sync.WaitGroup); ok && wg != nil {
+				wg.Go(func() {
+					p.udevEventHandler()
+				})
+			}
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
@@ -321,26 +323,23 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 		mountFsType = *md.FSType
 	}
 
-	slog.DebugContext(ms.ctx, "Attempting to mount volume", "device", md.DeviceId, "path", md.Path, "fstype", md.FSType, "mount_fstype", mountFsType, "flags", flags, "data", data)
-
-	// Ensure secure directory permissions when creating mount point
-	mountFunc := func() error { return os.MkdirAll(md.Path, 0o750) }
-
-	// Final validation before mount - ensure DevicePath is not nil
+	// Final validation: ensure DevicePath is non-nil and exists on the OS before
+	// delegating to the mount manager.
 	if md.Partition.DevicePath == nil || *md.Partition.DevicePath == "" {
 		return errors.WithDetails(dto.ErrorDeviceNotFound,
 			"DeviceId", md.DeviceId,
 			"Path", md.Path,
 			"Message", "Device path is nil or empty, cannot mount",
 		)
-	} else if _, err := os.Stat(*md.Partition.DevicePath); err != nil {
-		if os.IsPermission(err) {
+	}
+	if _, statErr := os.Stat(*md.Partition.DevicePath); statErr != nil {
+		if os.IsPermission(statErr) {
 			return errors.WithDetails(dto.ErrorOperationNotPermitted,
 				"DeviceId", md.DeviceId,
 				"Path", md.Path,
 				"DevicePath", *md.Partition.DevicePath,
 				"Message", "Permission denied to access device",
-				"Error", err.Error(),
+				"Error", statErr.Error(),
 			)
 		}
 		return errors.WithDetails(dto.ErrorDeviceNotFound,
@@ -348,81 +347,15 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 			"Path", md.Path,
 			"DevicePath", *md.Partition.DevicePath,
 			"Message", "Device path does not exist",
-			"Error", err.Error(),
+			"Error", statErr.Error(),
 		)
 	}
 
-	mp, errMount := ms.fs_service.MountPartition(ms.ctx, *md.Partition.DevicePath, md.Path, mountFsType, data, flags, mountFunc)
-
-	if errMount != nil {
-		// Provide detailed error message with all context
-
-		fsTypeStr := "auto"
-		if md.FSType != nil {
-			fsTypeStr = *md.FSType
-		}
-
-		slog.ErrorContext(ms.ctx, "Failed to mount volume",
-			"device_id", md.DeviceId,
-			"device_path", *md.Partition.DevicePath,
-			"fstype", fsTypeStr,
-			"mount_fstype", mountFsType,
-			"mount_path", md.Path,
-			"flags", flags,
-			"data", data,
-			"mount_error", errMount,
-			"mountpoint_details", mp)
-
-		// Attempt to clean up directory if we created it and mount failed
-		if _, statErr := os.Stat(md.Path); statErr == nil {
-			// Directory exists, try to remove it
-			if removeErr := os.Remove(md.Path); removeErr != nil {
-				slog.WarnContext(ms.ctx, "Failed to cleanup mount directory after mount failure",
-					"path", md.Path,
-					"cleanup_error", removeErr)
-			}
-		}
-
-		return errors.WithDetails(dto.ErrorMountFail,
-			"Detail", fmt.Sprintf("Mount command failed: %v", errMount),
-			"DeviceId", md.DeviceId,
-			"DevicePath", *md.Partition.DevicePath,
-			"MountPath", md.Path,
-			"FSType", fsTypeStr,
-			"MountFSType", mountFsType,
-			"Flags", flags,
-			"Data", data,
-			"Error", errMount.Error(),
-		)
-	} else {
-		slog.InfoContext(ms.ctx, "Successfully mounted volume", "device", md.DeviceId, "path", md.Path, "fstype", md.FSType, "mount_fstype", mountFsType, "flags", mp.Flags, "data", mp.Data)
-		// Update dbom_mount_data with details from the actual mount point if available
-		errConv := ms.convMDto.MountToMountPointData(mp, md, ms.disks)
-		if errConv != nil {
-			return errors.WithDetails(dto.ErrorMountFail,
-				"Detail", "Failed to convert mount details back to DTO after successful mount",
-				"DeviceId", md.DeviceId,
-				"MountPath", md.Path,
-				"Error", errConv.Error(),
-			)
-		}
-		errCache := ms.disks.AddOrUpdateMountPoint(*md.Partition.DiskId, *md.Partition.Id, *md)
-		if errCache != nil {
-			slog.ErrorContext(ms.ctx, "Failed to add mount point to in-memory cache after successful mount", "device", md.DeviceId, "path", md.Path, "err", errCache)
-			return errors.WithDetails(dto.ErrorMountFail,
-				"Detail", "Failed to add mount point to in-memory cache after successful mount",
-				"DeviceId", md.DeviceId,
-				"MountPath", md.Path,
-				"Error", errCache.Error(),
-			)
-		}
-		ms.eventBus.EmitMountPoint(events.MountPointEvent{
-			Event:      events.Event{Type: events.EventTypes.UPDATE},
-			MountPoint: md,
-		})
+	if err := ms.mounter.Mount(md, flags, data, mountFsType); err != nil {
+		return err
 	}
 
-	// Dismiss any existing failure notifications since the mount was successful
+	// Dismiss any existing failure notifications since the mount was successful.
 	ms.dismissAutomountNotification(md.DeviceId, "automount_failure")
 	ms.dismissAutomountNotification(md.DeviceId, "unmounted_partition")
 
@@ -447,35 +380,7 @@ func (ms *VolumeService) UnmountVolume(path string, force bool) errors.E {
 }
 
 func (ms *VolumeService) unmountVolume(md *dto.MountPointData, force bool) errors.E {
-	slog.DebugContext(ms.ctx, "Attempting to unmount volume", "path", md.Path, "force", force)
-	fsType := ""
-	if md != nil && md.FSType != nil {
-		fsType = *md.FSType
-	}
-	unmountErr := ms.fs_service.UnmountPartition(ms.ctx, md.Path, fsType, force, !force)
-	if unmountErr != nil {
-		slog.ErrorContext(ms.ctx, "Failed to unmount volume", "path", md.Path, "err", unmountErr)
-		return errors.WithDetails(dto.ErrorUnmountFail, "Detail", unmountErr.Error(), "Path", md.Path, "Error", unmountErr)
-	}
-
-	slog.InfoContext(ms.ctx, "Successfully unmounted volume", "path", md.Path)
-
-	if err := os.Remove(md.Path); err != nil {
-		slog.WarnContext(ms.ctx, "Failed to remove mount point directory", "path", md.Path, "err", err)
-	} else {
-		slog.DebugContext(ms.ctx, "Removed mount point directory", "path", md.Path)
-	}
-	// Unmount succeeded
-	if md != nil && md.Partition != nil && md.Partition.DiskId != nil && md.Partition.Id != nil {
-		md.IsMounted = false
-		ms.eventBus.EmitMountPoint(events.MountPointEvent{
-			Event:      events.Event{Type: events.EventTypes.UPDATE},
-			MountPoint: md,
-		})
-		ms.disks.AddOrUpdateMountPoint(*md.Partition.DiskId, *md.Partition.Id, *md)
-	}
-
-	return nil
+	return ms.mounter.Unmount(md, force)
 }
 
 func (self *VolumeService) udevEventHandler() {

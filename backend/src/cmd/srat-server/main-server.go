@@ -26,6 +26,7 @@ import (
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal"
+	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/dianlight/srat/server"
 
 	"go.uber.org/fx"
@@ -135,7 +136,7 @@ func prog(listener net.Listener, serverPort int) {
 	//	*dbfile = *dbfile + "?cache=shared&_pragma=foreign_keys(1)"
 	//}
 
-	apiCtx, apiCancel := context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
+	apiCtx, apiCancel := context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, &sync.WaitGroup{}))
 	// apiCancel is called at the end of Run() by FX lifecycle or explicitly if Run errors
 
 	staticConfig := dto.ContextState{
@@ -278,7 +279,7 @@ func prog(listener net.Listener, serverPort int) {
 
 	tlog.Trace("=== STARTUP PHASE: FX Complete ===", "elapsed", time.Since(startupStart))
 	slog.Info("Stopping SRAT", "pid", os.Getpid())
-	apiCtx.Value("wg").(*sync.WaitGroup).Wait() // Ensure background tasks complete
+	apiCtx.Value(ctxkeys.WaitGroup).(*sync.WaitGroup).Wait() // Ensure background tasks complete
 	apiCancel()                                 // Explicitly cancel context
 	slog.Info("SRAT stopped", "pid", os.Getpid())
 	os.Exit(0)

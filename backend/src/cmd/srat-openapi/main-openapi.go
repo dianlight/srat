@@ -15,6 +15,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal"
 	"github.com/dianlight/srat/internal/appsetup"
+	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/dianlight/srat/server"
 	"github.com/dianlight/tlog"
 
@@ -59,7 +60,7 @@ func main() {
 		log.Fatalf("Invalid log level: %s", *logLevelString)
 	}
 
-	apiCtx, apiCancel := context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
+	apiCtx, apiCancel := context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, &sync.WaitGroup{}))
 	defer apiCancel() // Ensure context is cancelled on exit
 	staticConfig := dto.ContextState{
 		ReadOnlyMode:  false,
