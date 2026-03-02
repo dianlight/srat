@@ -360,33 +360,23 @@ components:
     FilesystemInfo:
       additionalProperties: false
       properties:
-        CustomMountFlags:
+        custom_mount_flags:
           items:
             $ref: "#/components/schemas/MountFlag"
           type:
             - array
             - "null"
-        Description:
+        description:
           type: string
-        MountFlags:
-          items:
-            $ref: "#/components/schemas/MountFlag"
-          type:
-            - array
-            - "null"
-        Name:
+        name:
           type: string
-        Support:
+        support:
           $ref: "#/components/schemas/FilesystemSupport"
-        Type:
+        type:
           type: string
       required:
-        - Name
-        - Type
-        - Description
-        - MountFlags
-        - CustomMountFlags
-        - Support
+        - name
+        - type
       type: object
     FilesystemState:
       additionalProperties: false
@@ -471,6 +461,32 @@ components:
         - device
         - operation
         - status
+      type: object
+    FilesystemsInfo:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/FilesystemsInfo.json
+          format: uri
+          readOnly: true
+          type: string
+        filesystems:
+          items:
+            $ref: "#/components/schemas/FilesystemInfo"
+          type:
+            - array
+            - "null"
+        mount_flags:
+          items:
+            $ref: "#/components/schemas/MountFlag"
+          type:
+            - array
+            - "null"
+      required:
+        - mount_flags
+        - filesystems
       type: object
     FormatPartitionInput:
       additionalProperties: false
@@ -2560,8 +2576,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2760,8 +2776,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -3113,8 +3129,8 @@ paths:
           schema:
             description: Unique partition identifier
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -3341,7 +3357,7 @@ paths:
         - filesystems
   /api/filesystems:
     get:
-      operationId: list-api-filesystems
+      operationId: get-api-filesystems
       parameters:
         - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
@@ -3350,11 +3366,7 @@ paths:
           content:
             application/json:
               schema:
-                items:
-                  $ref: "#/components/schemas/FilesystemInfo"
-                type:
-                  - array
-                  - "null"
+                $ref: "#/components/schemas/FilesystemsInfo"
           description: OK
           headers:
             X-Span-Id:
@@ -3383,7 +3395,7 @@ paths:
               $ref: "#/components/headers/X-Span-Id"
             X-Trace-Id:
               $ref: "#/components/headers/X-Trace-Id"
-      summary: List API filesystems
+      summary: Get API filesystems
       tags:
         - filesystems
   /api/hdidle/start:
@@ -3706,8 +3718,8 @@ paths:
     get:
       operationId: get-issue-template
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3756,8 +3768,8 @@ paths:
             format: int64
             minimum: 0
             type: integer
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "204":
           description: No Content
@@ -4793,8 +4805,8 @@ paths:
     get:
       operationId: list-api-shares
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -5057,8 +5069,8 @@ paths:
     get:
       operationId: get-api-status
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -5143,8 +5155,8 @@ paths:
     get:
       operationId: list-api-telemetry-modes
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -5275,8 +5287,8 @@ paths:
     get:
       operationId: list-api-update-channels
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -5322,8 +5334,8 @@ paths:
     post:
       operationId: post-api-user
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
@@ -5588,8 +5600,8 @@ paths:
             default: false
             description: Force umount operation
             type: boolean
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "204":
           description: No Content

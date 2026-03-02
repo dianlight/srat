@@ -7,7 +7,7 @@
     - [1. EventBus Implementation](#1-eventbus-implementation)
       - [Before (Custom Implementation)](#before-custom-implementation)
       - [After (Signals Library)](#after-signals-library)
-    - [2. Key API Differences](#2-key-api-differences)
+    - [2. Key Interface Differences](#2-key-interface-differences)
     - [3. Code Changes](#3-code-changes)
       - [Imports Updated](#imports-updated)
       - [EventBus struct (No change in field names)](#eventbus-struct-no-change-in-field-names)
@@ -39,7 +39,7 @@
 
 ## Overview
 
-The SRAT backend event-driven architecture has been refactored to use **`github.com/maniartech/signals`** library for inter-service communication instead of a custom implementation.
+The SRAT back-end event-driven architecture has been refactored to use **`github.com/maniartech/signals`** library for inter-service communication instead of a custom implementation.
 
 ## What Changed
 
@@ -60,7 +60,7 @@ The SRAT backend event-driven architecture has been refactored to use **`github.
 - Uses `AddListener()` and `RemoveListener()` for subscription management
 - Uses `Emit(ctx context.Context, payload T)` for event emission
 
-### 2. Key API Differences
+### 2. Key Interface Differences
 
 | Operation     | Custom                            | Signals Library                    |
 | ------------- | --------------------------------- | ---------------------------------- |
@@ -184,7 +184,7 @@ TestEventBusUnsubscribe ........................ PASS
 
 ## Build Status
 
-✅ **Full backend compiles successfully**
+✅ **Full back-end compiles successfully**
 
 ```plaintext
 github.com/dianlight/srat/events
@@ -245,7 +245,7 @@ The `maniartech/signals` library provides:
 
 - Integration with signals library
 - All tests passing
-- Full backend compilation
+- Full back-end compilation
 - Documentation
 
 ### Manual Implementation (Future)
@@ -277,4 +277,4 @@ For more information about the signals library, see:
 
 ## Summary
 
-The SRAT backend now uses a proven, production-ready signals library for its event-driven architecture. This simplifies the codebase, improves reliability, and leverages industry-standard patterns. All functionality remains identical from the user's perspective.
+The SRAT back-end now uses a proven, production-ready signals library for its event-driven architecture. This simplifies the codebase, improves reliability, and leverages industry-standard patterns. All functionality remains identical from the user's perspective.

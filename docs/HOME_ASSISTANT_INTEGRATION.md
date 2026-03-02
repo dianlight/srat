@@ -69,7 +69,7 @@ For standalone SRAT installations, provide the host IP and port during setup. Th
 
 ### Communication
 
-The custom component communicates with the SRAT backend **exclusively via WebSocket** (`/ws` endpoint). No REST API polling is used. The connection uses the `X-Remote-User-Id` authentication header and supports automatic reconnection with configurable retry intervals.
+The custom component communicates with the SRAT back-end **exclusively via WebSocket** (`/ws` endpoint). No REST API polling is used. The connection uses the `X-Remote-User-Id` authentication header and supports automatic reconnection with configurable retry intervals.
 
 Two WebSocket events carry all sensor data:
 

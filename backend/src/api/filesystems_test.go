@@ -23,13 +23,13 @@ import (
 
 type FilesystemHandlerSuite struct {
 	suite.Suite
-	handler           *api.FilesystemHandler
-	mockFsService     service.FilesystemServiceInterface
-	mockVolumeService service.VolumeServiceInterface
-	testAPI           humatest.TestAPI
-	ctx               context.Context
-	cancel            context.CancelFunc
-	app               *fxtest.App
+	handler       *api.FilesystemHandler
+	mockFsService service.FilesystemServiceInterface
+	diskMap       *dto.DiskMap
+	testAPI       humatest.TestAPI
+	ctx           context.Context
+	cancel        context.CancelFunc
+	app           *fxtest.App
 }
 
 func TestFilesystemHandlerSuite(t *testing.T) {
@@ -45,11 +45,11 @@ func (suite *FilesystemHandlerSuite) SetupTest() {
 			},
 			api.NewFilesystemHandler,
 			mock.Mock[service.FilesystemServiceInterface],
-			mock.Mock[service.VolumeServiceInterface],
+			func() *dto.DiskMap { return &dto.DiskMap{} },
 		),
 		fx.Populate(&suite.handler),
 		fx.Populate(&suite.mockFsService),
-		fx.Populate(&suite.mockVolumeService),
+		fx.Populate(&suite.diskMap),
 		fx.Populate(&suite.ctx),
 		fx.Populate(&suite.cancel),
 	)
@@ -71,10 +71,10 @@ func (suite *FilesystemHandlerSuite) TestListFilesystems_Success() {
 
 	for _, fsType := range fsTypes {
 		info := &dto.FilesystemInfo{
-			Name:             fsType,
-			Type:             fsType,
-			Description:      fsType + " filesystem",
-			MountFlags:       []dto.MountFlag{{Name: "rw"}},
+			Name:        fsType,
+			Type:        fsType,
+			Description: fsType + " filesystem",
+			//MountFlags:       []dto.MountFlag{{Name: "rw"}},
 			CustomMountFlags: []dto.MountFlag{{Name: "discard"}},
 			Support: &dto.FilesystemSupport{
 				CanMount:      true,
@@ -91,12 +91,12 @@ func (suite *FilesystemHandlerSuite) TestListFilesystems_Success() {
 	resp := suite.testAPI.Get("/filesystems")
 	suite.Equal(http.StatusOK, resp.Code)
 
-	var result []dto.FilesystemInfo
+	result := dto.FilesystemsInfo{}
 	err := json.Unmarshal(resp.Body.Bytes(), &result)
 	suite.Require().NoError(err)
-	suite.Len(result, 3)
+	suite.Len(result.Filesystems, 3)
 
-	for _, fs := range result {
+	for _, fs := range result.Filesystems {
 		suite.NotNil(fs.Support)
 		suite.True(fs.Support.CanMount)
 		suite.True(fs.Support.CanFormat)
@@ -125,9 +125,8 @@ func (suite *FilesystemHandlerSuite) TestFormatPartition_Success() {
 		Partitions: &partitions,
 	}
 
-	// Mock volume service to return disk data
-	mock.When(suite.mockVolumeService.GetVolumesData()).
-		ThenReturn([]*dto.Disk{disk})
+	// Populate disk map with test disk
+	(*suite.diskMap)[diskID] = disk
 
 	// Mock filesystem service to format
 	formatResult := &dto.CheckResult{
@@ -158,9 +157,7 @@ func (suite *FilesystemHandlerSuite) TestFormatPartition_Success() {
 }
 
 func (suite *FilesystemHandlerSuite) TestFormatPartition_PartitionNotFound() {
-	// Mock empty disks array (no partitions found)
-	mock.When(suite.mockVolumeService.GetVolumesData()).
-		ThenReturn([]*dto.Disk{})
+	// diskMap is empty by default (no partitions found)
 
 	resp := suite.testAPI.Post("/filesystem/format", map[string]interface{}{
 		"partitionId":    "non-existent",
@@ -190,15 +187,15 @@ func (suite *FilesystemHandlerSuite) TestFormatPartition_UnsupportedFilesystem()
 		Partitions: &partitions,
 	}
 
-	mock.When(suite.mockVolumeService.GetVolumesData()).
-		ThenReturn([]*dto.Disk{disk})
-
 	mock.When(suite.mockFsService.FormatPartition(
 		mock.Any[context.Context](),
 		mock.Any[string](),
 		mock.Any[string](),
 		mock.Any[dto.FormatOptions](),
 	)).ThenReturn(nil, errors.New("unsupported filesystem"))
+
+	// Populate disk map with test disk
+	(*suite.diskMap)[diskID] = disk
 
 	resp := suite.testAPI.Post("/filesystem/format", map[string]interface{}{
 		"partitionId":    partitionID,
@@ -228,8 +225,7 @@ func (suite *FilesystemHandlerSuite) TestCheckPartition_Success() {
 		Partitions: &partitions,
 	}
 
-	mock.When(suite.mockVolumeService.GetVolumesData()).
-		ThenReturn([]*dto.Disk{disk})
+	(*suite.diskMap)[diskID] = disk
 
 	checkResult := &dto.CheckResult{
 		Success:     true,
@@ -278,8 +274,7 @@ func (suite *FilesystemHandlerSuite) TestAbortCheckPartition_Success() {
 		Partitions: &partitions,
 	}
 
-	mock.When(suite.mockVolumeService.GetVolumesData()).
-		ThenReturn([]*dto.Disk{disk})
+	(*suite.diskMap)[diskID] = disk
 
 	mock.When(suite.mockFsService.AbortCheckPartition(
 		mock.Any[context.Context](),
@@ -320,8 +315,7 @@ func (suite *FilesystemHandlerSuite) TestGetPartitionState_Success() {
 		Partitions: &partitions,
 	}
 
-	mock.When(suite.mockVolumeService.GetVolumesData()).
-		ThenReturn([]*dto.Disk{disk})
+	(*suite.diskMap)[diskID] = disk
 
 	state := &dto.FilesystemState{
 		IsClean:          true,
@@ -367,8 +361,7 @@ func (suite *FilesystemHandlerSuite) TestGetPartitionLabel_Success() {
 		Partitions: &partitions,
 	}
 
-	mock.When(suite.mockVolumeService.GetVolumesData()).
-		ThenReturn([]*dto.Disk{disk})
+	(*suite.diskMap)[diskID] = disk
 
 	mock.When(suite.mockFsService.GetPartitionLabel(
 		mock.Any[context.Context](),
@@ -409,8 +402,7 @@ func (suite *FilesystemHandlerSuite) TestSetPartitionLabel_Success() {
 		Partitions: &partitions,
 	}
 
-	mock.When(suite.mockVolumeService.GetVolumesData()).
-		ThenReturn([]*dto.Disk{disk})
+	(*suite.diskMap)[diskID] = disk
 
 	mock.When(suite.mockFsService.SetPartitionLabel(
 		mock.Any[context.Context](),

@@ -58,6 +58,14 @@
     "github": {
       "type": "http",
       "url": "https://api.githubcopilot.com/mcp/"
-    }
+    },
+    "vale-mcp": {
+      "type": "stdio",
+      "command": "bunx",
+      "args": [
+        "-y",
+        "@iflow-mcp/chrischinchilla-vale-mcp"
+      ]
+    },
   }
 }

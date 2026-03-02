@@ -333,25 +333,7 @@ func emitEvent[T any](signal signals.SyncSignal[T], ctx context.Context, event T
 
 // Disk event methods
 func (eb *EventBus) EmitDisk(event DiskEvent) {
-	//diskID := "unknown"
-	//if event.Disk.Id != nil {
-	//	diskID = *event.Disk.Id
-	//}
 	emitEvent(eb.disk, eb.ctx, event)
-	/*
-		if event.Disk.Partitions != nil {
-			for _, partition := range *event.Disk.Partitions {
-				tlog.Trace("Emitting Partition event for disk", "partition", partition, "disk", diskID)
-				eb.EmitPartition(PartitionEvent{
-					Event: Event{
-						Type: event.Type,
-					},
-					Partition: &partition,
-					Disk:      event.Disk,
-				})
-			}
-		}
-	*/
 }
 
 func (eb *EventBus) OnDisk(handler func(context.Context, DiskEvent) errors.E) func() {

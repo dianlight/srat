@@ -3,6 +3,7 @@ package dbom
 import (
 	"database/sql/driver"
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -44,6 +45,12 @@ func (self *MounDataFlags) Scan(value any) error {
 }
 
 func (self *MounDataFlags) Add(value MounDataFlag) error {
+	for i, flag := range *self {
+		if flag.Name == value.Name {
+			(*self)[i] = value
+			return nil
+		}
+	}
 	*self = append(*self, value)
 	return nil
 }
@@ -53,8 +60,13 @@ func (self *MounDataFlags) Add(value MounDataFlag) error {
 // If a flag needs a value, it will be formatted as "name=value".
 // Otherwise, it will be just the name of the flag.
 func (self MounDataFlags) Value() (driver.Value, error) {
-	flags := make([]string, len(self))
-	for ix, flag := range self {
+	sorted := make([]MounDataFlag, len(self))
+	copy(sorted, self)
+	sort.Slice(sorted, func(i, j int) bool {
+		return sorted[i].Name < sorted[j].Name
+	})
+	flags := make([]string, len(sorted))
+	for ix, flag := range sorted {
 		if flag.NeedsValue {
 			flags[ix] = fmt.Sprintf("%s=%s", flag.Name, flag.FlagValue)
 		} else {

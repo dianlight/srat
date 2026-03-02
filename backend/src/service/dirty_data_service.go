@@ -39,7 +39,7 @@ func NewDirtyDataService(lc fx.Lifecycle, ctx context.Context, eventBus events.E
 	p.eventBus = eventBus
 	p.timerMutex = sync.Mutex{}
 
-	unsubscribe := make([]func(), 5)
+	unsubscribe := make([]func(), 4)
 	if eventBus != nil {
 		unsubscribe[0] = eventBus.OnShare(func(ctx context.Context, event events.ShareEvent) errors.E {
 			slog.DebugContext(ctx, "DirtyDataService received Share event", "share", event.Share.Name)
@@ -61,11 +61,6 @@ func NewDirtyDataService(lc fx.Lifecycle, ctx context.Context, eventBus events.E
 			if event.Type == events.EventTypes.CLEAN {
 				p.resetDirtyStatus()
 			}
-			return nil
-		})
-		unsubscribe[4] = eventBus.OnMountPoint(func(ctx context.Context, mpe events.MountPointEvent) errors.E {
-			slog.DebugContext(ctx, "DirtyDataService received MountPoint event", "mountpoint", mpe.MountPoint.Path)
-			p.setDirtyShares()
 			return nil
 		})
 

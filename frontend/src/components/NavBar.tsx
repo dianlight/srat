@@ -622,7 +622,7 @@ export function NavBar(props: {
 							{!isUpdateLoading && update.Available && (
 								<IconButton onClick={handleDoUpdate} size="small">
 									<Tooltip
-										title={`Update ${update.Progress.release_asset?.last_release} available`}
+										title={`Update ${update.Progress.release_asset?.last_release || ""} available`}
 										arrow
 									>
 										{((update_status) => {

@@ -282,19 +282,16 @@ func (s *ShareService) UpdateShare(name string, share dto.SharedResource) (*dto.
 		}
 		return nil, errors.Wrap(err, "failed to get share")
 	}
-
-	// Clear associations before updating to avoid foreign key constraint violations
-	if err := s.db.WithContext(s.ctx).Model(&dbShare).Association("Users").Clear(); err != nil {
-		return nil, errors.Wrap(err, "failed to clear Users associations during update")
-	}
-	if err := s.db.WithContext(s.ctx).Model(&dbShare).Association("RoUsers").Clear(); err != nil {
-		return nil, errors.Wrap(err, "failed to clear RoUsers associations during update")
-	}
+	originalName := dbShare.Name
 
 	var conv converter.DtoToDbomConverterImpl
 	err = conv.SharedResourceToExportedShare(share, &dbShare)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to convert share")
+	}
+	updatedName := dbShare.Name
+	if dbShare.MountPointDataRoot != nil && *dbShare.MountPointDataRoot == "" {
+		dbShare.MountPointDataRoot = nil
 	}
 
 	if len(dbShare.Users) == 0 {
@@ -310,15 +307,66 @@ func (s *ShareService) UpdateShare(name string, share dto.SharedResource) (*dto.
 		dbShare.Users = append(dbShare.Users, dbomAdmin)
 	}
 
-	if _, err := gorm.G[dbom.ExportedShare](s.db).Updates(s.ctx, dbShare); err != nil {
-		// Note: gorm.ErrDuplicatedKey might not be standard across all GORM dialects/drivers.
-		// Checking for a more generic "constraint violation" or relying on the FindByName check might be more robust.
-		return nil, errors.Wrapf(err, "failed to update share '%s' err %v", share.Name, err)
+	txErr := s.db.WithContext(s.ctx).Transaction(func(tx *gorm.DB) error {
+		if originalName != updatedName {
+			var existingCount int64
+			if err := tx.Model(&dbom.ExportedShare{}).Where("name = ?", updatedName).Count(&existingCount).Error; err != nil {
+				return errors.Wrap(err, "failed to check target share name availability")
+			}
+			if existingCount > 0 {
+				return errors.Errorf("share '%s' already exists", updatedName)
+			}
+		}
+
+		var currentShare dbom.ExportedShare
+		if err := tx.Where("name = ?", originalName).First(&currentShare).Error; err != nil {
+			return errors.Wrapf(err, "failed to load current share '%s' for update", originalName)
+		}
+
+		// Clear associations before updating PK fields to avoid FK violations during rename.
+		if err := tx.Model(&currentShare).Association("Users").Clear(); err != nil {
+			return errors.Wrap(err, "failed to clear Users associations during update")
+		}
+		if err := tx.Model(&currentShare).Association("RoUsers").Clear(); err != nil {
+			return errors.Wrap(err, "failed to clear RoUsers associations during update")
+		}
+
+		if err := tx.Model(&currentShare).
+			Omit("Users", "RoUsers").
+			Updates(&dbShare).Error; err != nil {
+			return err
+		}
+
+		var reloadedShare dbom.ExportedShare
+		if err := tx.Where("name = ?", updatedName).First(&reloadedShare).Error; err != nil {
+			return errors.Wrapf(err, "failed to reload updated share '%s'", updatedName)
+		}
+
+		if err := tx.Model(&reloadedShare).Association("Users").Replace(dbShare.Users); err != nil {
+			return errors.Wrap(err, "failed to update Users associations during update")
+		}
+		if err := tx.Model(&reloadedShare).Association("RoUsers").Replace(dbShare.RoUsers); err != nil {
+			return errors.Wrap(err, "failed to update RoUsers associations during update")
+		}
+
+		return nil
+	})
+	if txErr != nil {
+		return nil, errors.Wrapf(txErr, "failed to update share '%s' err %v", updatedName, txErr)
 	}
 
-	createdDtoShare, errS := conv.ExportedShareToSharedResource(dbShare)
+	updatedDbShare, err := gorm.G[dbom.ExportedShare](s.db).
+		Preload("MountPointData", nil).
+		Preload("Users", nil).
+		Preload("RoUsers", nil).
+		Where(g.ExportedShare.Name.Eq(updatedName)).First(s.ctx)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to load updated share '%s'", updatedName)
+	}
+
+	createdDtoShare, errS := conv.ExportedShareToSharedResource(updatedDbShare)
 	if errS != nil {
-		return nil, errors.Wrapf(errS, "failed to convert created dbom.ExportedShare back to dto.SharedResource for share '%s'", dbShare.Name)
+		return nil, errors.Wrapf(errS, "failed to convert created dbom.ExportedShare back to dto.SharedResource for share '%s'", updatedDbShare.Name)
 	}
 
 	if err := s.VerifyShare(&createdDtoShare); err != nil {

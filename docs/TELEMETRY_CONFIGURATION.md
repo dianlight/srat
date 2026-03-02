@@ -5,10 +5,10 @@
 
 - [Overview](#overview)
 - [Environment Variables](#environment-variables)
-  - [Backend (Go)](#backend-go)
+  - [back-end (Go)](#back-end-go)
   - [Frontend (TypeScript)](#frontend-typescript)
 - [Version Management](#version-management)
-  - [Backend](#backend)
+  - [back-end](#back-end)
   - [Frontend](#frontend)
 - [Environment Detection](#environment-detection)
   - [Automatic Environment Detection](#automatic-environment-detection)
@@ -43,14 +43,14 @@ The SRAT telemetry system uses Rollbar for error reporting and analytics. Config
 
 ## Environment Variables
 
-### Backend (Go)
+### back-end (Go)
 
-| Variable                      | Required | Description                                  | Default                                                                   |
-| ----------------------------- | -------- | -------------------------------------------- | ------------------------------------------------------------------------- |
-| `ROLLBAR_CLIENT_ACCESS_TOKEN` | No       | Rollbar access token (set at build time)     | `""` (disabled)                                                           |
-| `ROLLBAR_ENVIRONMENT`         | No       | Rollbar environment name (set at build time) | Auto-detected from version (`development`, `prerelease`, or `production`) |
+| Variable                      | Required | Description                                  | Default                                                                  |
+| ----------------------------- | -------- | -------------------------------------------- | ------------------------------------------------------------------------ |
+| `ROLLBAR_CLIENT_ACCESS_TOKEN` | No       | Rollbar access token (set at build time)     | `""` (disabled)                                                          |
+| `ROLLBAR_ENVIRONMENT`         | No       | Rollbar environment name (set at build time) | Autodetected from version (`development`, `prerelease`, or `production`) |
 
-**Note**: Backend telemetry configuration is set at **build time** via ldflags, not runtime environment variables.
+**Note**: back-end telemetry configuration is set at **build time** via ldflags, not runtime environment variables.
 
 ### Frontend (TypeScript)
 
@@ -60,9 +60,9 @@ The SRAT telemetry system uses Rollbar for error reporting and analytics. Config
 
 ## Version Management
 
-### Backend
+### back-end
 
-The backend version and telemetry configuration are automatically set at build time using Go ldflags:
+The back-end version and telemetry configuration are automatically set at build time using Go ldflags:
 
 ```bash
 -ldflags="-X github.com/dianlight/srat/config.Version=$(VERSION) \
@@ -151,12 +151,12 @@ docker build \
 
 ### Unified Rollbar Token
 
-- Single token can be used by both backend and frontend
+- Single token can be used by both back-end and frontend
 - Simplifies configuration and deployment
 - Can be either server-side or client-side token depending on your Rollbar setup
 - Required for error reporting from both components
 
-Note: Using a single token simplifies configuration but consider security implications in your specific deployment. If preferred, you can supply different tokens for backend and frontend by customizing your build pipelines.
+Note: Using a single token simplifies configuration but consider security implications in your specific deployment. If preferred, you can supply different tokens for back-end and frontend by customizing your build pipelines.
 
 ## Security Considerations
 
@@ -169,7 +169,7 @@ Note: Using a single token simplifies configuration but consider security implic
 
 When tokens are not configured at build time:
 
-- Backend telemetry service initializes with empty token (disabled)
+- back-end telemetry service initializes with empty token (disabled)
 - Frontend telemetry service initializes with `accessToken: "disabled"`
 - No data is sent to Rollbar
 - Application functions normally
@@ -191,7 +191,7 @@ When tokens are not configured at build time:
    ```
 
 3. **Verify version detection**:
-   - Check backend logs for "Rollbar telemetry configured" message
+   - Check back-end logs for "Rollbar telemetry configured" message
    - Check frontend console for telemetry configuration message
 
 4. **Test error reporting**:

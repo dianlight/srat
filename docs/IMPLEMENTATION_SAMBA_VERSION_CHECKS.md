@@ -4,7 +4,7 @@
 - [Summary: Samba Version Checks Implementation](#summary-samba-version-checks-implementation)
   - [Overview](#overview)
   - [Changes Made](#changes-made)
-    - [1. Backend Infrastructure](#1-backend-infrastructure)
+    - [1. back-end Infrastructure](#1-back-end-infrastructure)
       - [`backend/src/internal/osutil/osutil.go`](#backendsrcinternalosutilosutilgo)
       - [`backend/src/service/samba_service.go`](#backendsrcservicesamba_servicego)
       - [`backend/src/tempio/template.go`](#backendsrctempiotemplatego)
@@ -41,7 +41,7 @@ I have successfully implemented comprehensive Samba version checking in SRAT to 
 
 ## Changes Made
 
-### 1. Backend Infrastructure
+### 1. back-end Infrastructure
 
 #### `backend/src/internal/osutil/osutil.go`
 
@@ -120,7 +120,7 @@ I have successfully implemented comprehensive Samba version checking in SRAT to 
 Comprehensive guide including:
 
 - Architecture overview of version checking system
-- Backend components explanation
+- back-end components explanation
 - Template functions documentation
 - Version feature mapping (4.21, 4.22, 4.23)
 - Configuration behavior by version

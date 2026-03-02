@@ -317,8 +317,7 @@ func (a *XfsAdapter) GetState(ctx context.Context, device string) (dto.Filesyste
 	}
 
 	// Check if filesystem is mounted
-	mountOutput, _, _ := a.runCommandCached(ctx, "mount")
-	state.IsMounted = strings.Contains(mountOutput, device)
+	state.IsMounted = a.isDeviceMounted(device)
 
 	state.AdditionalInfo["repairOutput"] = output
 

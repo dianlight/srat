@@ -71,7 +71,7 @@ SRAT documentation fully supports GitHub Flavored Markdown (GFM) features:
 
 #### Style Guidelines
 
-- **Use clear, concise language**—avoid vague terms like "simply," "obviously," "just."
+- **Use clear, concise language**: avoid vague terms like "simply," "obviously," "just."
 - **Include concrete examples** rather than vague descriptions
 - **Document error codes** and their meanings
 - **Follow semantic versioning** in CHANGELOG.md
@@ -179,7 +179,7 @@ The `.github/workflows/documentation.yml` workflow runs on:
 4. **Format Check** - Ensures consistent formatting
 5. **Content Validation** - Checks structure and requirements
 6. **Security Check** - Scans for sensitive information
-7. **Auto-fix** - Automatically fixes common issues
+7. **Autofix** - Automatically fixes common issues
 
 ### Integration with GitHub Copilot
 
@@ -278,7 +278,7 @@ When making breaking changes:
 
 **Format check failures:**
 
-- Run `prettier --write "**/*.md"` to auto-fix
+- Run `prettier --write "**/*.md"` to autofix
 - Check for consistent indentation
 - Ensure proper line endings
 

@@ -10,7 +10,7 @@
   - [3. **Automatic Notification Management**](#3-automatic-notification-management)
 - [Technical Implementation](#technical-implementation)
   - [Modified Files](#modified-files)
-    - [1. **Home Assistant Core API** (`backend/src/homeassistant/core_api.yaml`)](#1-home-assistant-core-api-backendsrchomeassistantcore_apiyaml)
+    - [1. **Home Assistant Core Interface** (`backend/src/homeassistant/core_api.yaml`)](#1-home-assistant-core-interface-backendsrchomeassistantcore_apiyaml)
     - [2. **Home Assistant Service** (`backend/src/service/homeassistant_service.go`)](#2-home-assistant-service-backendsrcservicehomeassistant_servicego)
     - [3. **Volume Service** (`backend/src/service/volume_service.go`)](#3-volume-service-backendsrcservicevolume_servicego)
     - [4. **CLI Application** (`backend/src/cmd/srat-cli/main-cli.go`)](#4-cli-application-backendsrccmdsrat-climain-cligo)
@@ -23,7 +23,7 @@
     - [When Devices Are Removed](#when-devices-are-removed)
 - [Usage Examples](#usage-examples)
   - [Home Assistant Notifications](#home-assistant-notifications)
-  - [API Integration](#api-integration)
+  - [Integration Details](#integration-details)
 - [Benefits](#benefits)
 - [Configuration](#configuration)
 - [Error Handling](#error-handling)
@@ -61,7 +61,7 @@ This implementation adds persistent notifications through Home Assistant's `/api
 
 ### Modified Files
 
-#### 1. **Home Assistant Core API** (`backend/src/homeassistant/core_api.yaml`)
+#### 1. **Home Assistant Core Interface** (`backend/src/homeassistant/core_api.yaml`)
 
 - Added `/core/api/services/{domain}/{service}` endpoint for calling Home Assistant services
 - Added `ServiceData` and `ServiceResult` schemas for service calls
@@ -133,7 +133,7 @@ This implementation adds persistent notifications through Home Assistant's `/api
 
 When a device marked for automount fails to mount, users will see persistent notifications in their Home Assistant interface with clear, actionable information about what went wrong.
 
-### API Integration
+### Integration Details
 
 The system uses Home Assistant's standard persistent notification service:
 

@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"maps"
 	"reflect"
+	"slices"
 	"strings"
 	"sync/atomic"
 
@@ -35,7 +37,7 @@ type BroadcasterService struct {
 	haService        HomeAssistantServiceInterface
 	haRootService    HaRootServiceInterface
 	eventBus         events.EventBusInterface
-	volumeService    VolumeServiceInterface
+	disks            *dto.DiskMap
 	shareService     ShareServiceInterface
 }
 
@@ -51,7 +53,7 @@ func NewBroadcasterService(
 	haRootService HaRootServiceInterface,
 	state *dto.ContextState,
 	eventBus events.EventBusInterface,
-	volumeService VolumeServiceInterface,
+	disks *dto.DiskMap,
 	shareService ShareServiceInterface,
 ) (broker BroadcasterServiceInterface) {
 	// Instantiate a broker
@@ -63,7 +65,7 @@ func NewBroadcasterService(
 		SentCounter:   atomic.Uint64{},
 		haRootService: haRootService,
 		eventBus:      eventBus,
-		volumeService: volumeService,
+		disks:         disks,
 		shareService:  shareService,
 	}
 
@@ -79,7 +81,6 @@ func NewBroadcasterService(
 			for _, unsub := range unsubscribe {
 				unsub()
 			}
-			b.relay.Close()
 			return nil
 		},
 	})
@@ -96,7 +97,7 @@ func (broker *BroadcasterService) setupEventListeners() []func() {
 			diskID = *event.Disk.Id
 		}
 		slog.DebugContext(ctx, "BroadcasterService received Disk event", "disk", diskID)
-		broker.BroadcastMessage(broker.volumeService.GetVolumesData())
+		broker.BroadcastMessage(slices.Collect(maps.Values(*broker.disks)))
 		return nil
 	})
 	// Listen for share events
@@ -114,7 +115,7 @@ func (broker *BroadcasterService) setupEventListeners() []func() {
 	// Listen for mount point events
 	ret[2] = broker.eventBus.OnMountPoint(func(ctx context.Context, event events.MountPointEvent) errors.E {
 		slog.DebugContext(ctx, "BroadcasterService received MountPointMounted event", "mount_point", event.MountPoint.Path)
-		broker.BroadcastMessage(broker.volumeService.GetVolumesData())
+		broker.BroadcastMessage(slices.Collect(maps.Values(*broker.disks)))
 		return nil
 	})
 	ret[3] = broker.eventBus.OnDirtyData(func(ctx context.Context, dde events.DirtyDataEvent) errors.E {

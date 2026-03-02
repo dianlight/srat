@@ -351,9 +351,7 @@ func (a *Ext4Adapter) GetState(ctx context.Context, device string) (dto.Filesyst
 	}
 
 	// Check if filesystem is mounted
-	// This is a simple check - in a production system, you'd want to check /proc/mounts
-	output, _, _ = a.runCommandCached(ctx, "mount")
-	state.IsMounted = strings.Contains(output, device)
+	state.IsMounted = a.isDeviceMounted(device)
 
 	if state.StateDescription == "" {
 		state.StateDescription = "Unknown"

@@ -40,7 +40,7 @@ Currently under development and in an alpha state, SRAT is set to become the pre
   - [Running Tests](#running-tests)
 - [Contribute](#contribute)
 - [License](#license)
-- [Development: pre-commit hooks](#development-pre-commit-hooks)
+- [Development: Pre-Commit Hooks](#development-pre-commit-hooks)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -65,11 +65,11 @@ or
 
 ### Local Development
 
-For local development setup, follow the instructions below for backend and frontend development.
+For local development setup, follow the instructions below for back-end and frontend development.
 
 ## Home Assistant Custom Component
 
-SRAT includes a [HACS](https://hacs.xyz/)-compatible Home Assistant custom component at `custom_components/srat/`. It communicates with the SRAT backend exclusively via WebSocket, supporting Supervisor autodiscovery and a UI configuration wizard.
+SRAT includes a [HACS](https://hacs.xyz/)-compatible Home Assistant custom component at `custom_components/srat/`. It communicates with the SRAT back-end exclusively via WebSocket, supporting Supervisor autodiscovery and a UI configuration wizard.
 
 For full details, see [Home Assistant Integration](docs/HOME_ASSISTANT_INTEGRATION.md).
 
@@ -89,7 +89,7 @@ For full details, see [Home Assistant Integration](docs/HOME_ASSISTANT_INTEGRATI
 
 ## Usage
 
-SRAT can be used to manage Samba shares, users, and configurations via a modern web UI or REST API. For detailed feature usage, see the documentation in the `docs/` folder or access the API docs at `/docs` when running the backend server.
+SRAT can be used to manage Samba shares, users, and configurations via a modern web UI or REST API. For detailed feature usage, see the documentation in the `docs/` folder or access the API docs at `/docs` when running the back-end server.
 
 ### Feature Documentation
 
@@ -100,7 +100,7 @@ SRAT can be used to manage Samba shares, users, and configurations via a modern 
 
 ## Database
 
-SRAT uses SQLite for persistence via the GORM ORM. The backend initializes the database with resilience-focused defaults:
+SRAT uses SQLite for persistence via the GORM ORM. The back-end initializes the database with resilience-focused defaults:
 
 - journal_mode=WAL for safe readers during writes
 - busy_timeout=5000 ms to reduce transient SQLITE_BUSY
@@ -183,7 +183,7 @@ This project uses gosec to scan Go code for common security issues.
 Quick usage:
 
 - Run full repo security check: `make security`
-- Or only backend: `cd backend && make gosec`
+- Or only back-end: `cd backend && make gosec`
 
 Notes:
 
@@ -208,7 +208,7 @@ make ALL
 
 ## Testing and Coverage
 
-SRAT maintains high test coverage across both backend and frontend. The coverage badges at the top of this README are automatically updated.
+SRAT maintains high test coverage across both back-end and frontend. The coverage badges at the top of this README are automatically updated.
 
 📊 **[View Detailed Coverage Report & History →](https://codecov.io/github/dianlight/srat)**
 
@@ -240,7 +240,7 @@ You can add information on how they can open issues or how they can sponsor the 
 
 [Apache 2.0 license](./LICENSE)
 
-## Development: pre-commit hooks
+## Development: Pre-Commit Hooks
 
 This repository manages all git hooks via prek. Don’t add scripts under .git/hooks or set core.hooksPath.
 
@@ -252,7 +252,7 @@ Quick start:
 
 Enforced hooks:
 
-- On commit: gosec security scan for backend Go changes (high severity/high confidence)
-- On push: backend quick build + test
+- On commit: gosec security scan for back-end Go changes (high severity/high confidence)
+- On push: back-end quick build + test
 
 See .pre-commit-config.yaml for full list. The legacy .githooks directory is deprecated.

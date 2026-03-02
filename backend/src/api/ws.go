@@ -93,6 +93,11 @@ func (self *WsMessageSender) SendFunc(msg ws.Message) errors.E {
 // HandleWebSocket handles the WebSocket upgrade and connection
 // This method should be called from an HTTP handler that matches the /ws path
 func (self *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
+	if self.ctx.Err() != nil {
+		http.Error(w, "service shutting down", http.StatusServiceUnavailable)
+		return
+	}
+
 	conn, err := self.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		slog.ErrorContext(self.ctx, "Failed to upgrade connection to WebSocket", "error", err)
@@ -114,8 +119,12 @@ func (self *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Req
 		ObjectMap:  self.ObjectMap,
 		Mutex:      sync.Mutex{},
 	}
+	if self.ctx.Err() != nil {
+		slog.DebugContext(self.ctx, "Skipping WebSocket channel processing during shutdown")
+		return
+	}
 
-	self.broadcaster.ProcessWebSocketChannel(wsMessageSender.SendFunc)
+	go self.broadcaster.ProcessWebSocketChannel(wsMessageSender.SendFunc)
 
 	// Start ping ticker
 	pingTicker := time.NewTicker(30 * time.Second)

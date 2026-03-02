@@ -69,7 +69,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: SRATConfigEntry) -> boo
 ```
 
 - Use `async_get_clientsession(hass)` for HTTP/WS — never create your own `aiohttp.ClientSession`
-- Raise `ConfigEntryNotReady` if the backend is unreachable during setup
+- Raise `ConfigEntryNotReady` if the back-end is unreachable during setup
 - Store runtime data in `entry.runtime_data` (not `hass.data`)
 - Forward platform setup: `await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)`
 
@@ -178,7 +178,7 @@ make check         # Full check: format + lint + typecheck + test
 - Method docstrings use Google style with `Args:` / `Returns:` / `Raises:` sections when non-trivial
 - Use reStructuredText in docstrings for code references: ` `event_type` `
 - In-line comments explain *why*, not *what*
-- Reference backend source files when relevant: `# See backend/src/api/ws.go`
+- Reference back-end source files when relevant: `# See backend/src/api/ws.go`
 
 ## Security
 
@@ -204,7 +204,7 @@ All custom component tooling runs via `custom_components/Makefile`:
 | ------------- | ------------------------------------------ |
 | `check`       | Run format-check + lint + typecheck + test |
 | `lint`        | Run `ruff check`                           |
-| `format`      | Run `ruff format` (auto-fix)               |
+| `format`      | Run `ruff format` (autofix)                |
 | `typecheck`   | Run `mypy`                                 |
 | `test`        | Run `pytest`                               |
 | `test-ci`     | Run `pytest` with coverage (generates XML) |

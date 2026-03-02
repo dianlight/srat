@@ -277,6 +277,18 @@ func (suite *BaseAdapterTestSuite) TestBaseAdapterUnmountDelegatesToHook() {
 	suite.True(called, "expected unmount hook to be called")
 }
 
+func (suite *BaseAdapterTestSuite) TestIsDeviceMounted_UsesOverride() {
+	device := "/dev/test0"
+
+	reset := suite.adapter.SetIsDeviceMountedForTesting(func(candidate string) bool {
+		return candidate == device
+	})
+	defer reset()
+
+	suite.True(suite.adapter.isDeviceMounted(device))
+	suite.False(suite.adapter.isDeviceMounted("/dev/other0"))
+}
+
 // TestOsutilMockFileSystems tests that osutil.MockFileSystems works for mocking mounted filesystems
 func (suite *BaseAdapterTestSuite) TestOsutilMockFileSystems() {
 	suite.Run("mock replaces filesystem list", func() {

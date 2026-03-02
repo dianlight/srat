@@ -37,7 +37,7 @@
 
 ## Overview
 
-The SRAT backend now implements a filesystem adapter pattern that provides a clean, extensible interface for managing different filesystem types. Each supported filesystem has its own adapter that implements common operations like formatting, checking, and label management.
+The SRAT back-end now implements a filesystem adapter pattern that provides a clean, extensible interface for managing different filesystem types. Each supported filesystem has its own adapter that implements common operations like formatting, checking, and label management.
 
 ## Architecture
 
@@ -337,7 +337,7 @@ New methods have been added without breaking any existing functionality:
 
 ## HTTP API Endpoints
 
-The SRAT backend provides HTTP API endpoints for filesystem operations through the `FilesystemHandler`:
+The SRAT back-end provides HTTP API endpoints for filesystem operations through the `FilesystemHandler`:
 
 ### List Filesystems
 

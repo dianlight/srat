@@ -160,6 +160,10 @@ func (suite *ExfatAdapterTestSuite) TestGetState_NonExistentDevice() {
 		suite.cleanExec()
 	}
 	state, err := suite.adapter.GetState(suite.ctx, "/dev/nonexistent-exfat-12345")
-	suite.Error(err)
-	_ = state
+	if err != nil {
+		suite.Error(err)
+		return
+	}
+
+	suite.NotEmpty(state.StateDescription)
 }

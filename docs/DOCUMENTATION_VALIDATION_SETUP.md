@@ -65,7 +65,7 @@ This document summarizes the comprehensive documentation validation system imple
   - **Vale**: Prose linting and style checking (GFM-aware)
   - Format checking (prettier)
   - Content validation (custom checks)
-  - Auto-fix capabilities
+  - Autofix capabilities
 
 ### 3. Pre-commit Hooks Configuration (Updated `.pre-commit-config.yaml`)
 
@@ -117,7 +117,7 @@ This document summarizes the comprehensive documentation validation system imple
   - Lychee link and image validation
   - cspell spell checking
   - Vale prose linting (non-blocking warnings)
-  - Auto-fix capabilities
+  - Autofix capabilities
   - Colored output and error reporting
   - Graceful handling of optional tools
 
@@ -125,7 +125,7 @@ This document summarizes the comprehensive documentation validation system imple
 
 - **`make docs-check`**: Check if all dependencies are installed (includes Lychee and Vale checks)
 - **`make docs-validate`**: Run documentation validation with all tools (GFM-aware)
-- **`make docs-fix`**: Auto-fix documentation formatting
+- **`make docs-fix`**: Autofix documentation formatting
 - **`make docs-install`**: Install JS-based documentation tools (markdownlint, cspell, prettier)
 - **`make docs-toc`**: Generate table of contents for markdown files
 - **`make docs-help`**: Show all available documentation commands with tool status
@@ -191,7 +191,7 @@ This document summarizes the comprehensive documentation validation system imple
    - Validate all documentation on PRs (GFM-aware)
    - Run Lychee link checking weekly
    - Generate link validation reports
-   - Auto-fix issues when possible
+   - Autofix issues when possible
    - Run Vale prose linting (warnings are non-blocking)
 
 2. **Review Process**:
@@ -220,7 +220,7 @@ This document summarizes the comprehensive documentation validation system imple
 ### Developer Experience
 
 - **Local validation** before commits
-- **Auto-fix capabilities** for common issues
+- **Autofix capabilities** for common issues
 - **Clear error messages** for quick resolution
 - **Integration with existing workflow**
 

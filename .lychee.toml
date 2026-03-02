@@ -52,7 +52,7 @@ include_verbatim = false
 require_https = false
 
 # Check email addresses
-check_email = true
+include_mail = true
 
 # GitHub Flavored Markdown support
 # Lychee natively supports GFM syntax including:

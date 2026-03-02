@@ -15,6 +15,7 @@ import (
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/tlog"
 	gocache "github.com/patrickmn/go-cache"
+	"github.com/prometheus/procfs"
 	"github.com/u-root/u-root/pkg/mount"
 	"gitlab.com/tozd/go/errors"
 )
@@ -90,6 +91,7 @@ type baseAdapter struct {
 	execLookPath     func(string) (string, error)
 	execCommand      func(context.Context, string, ...string) ExecCmd
 	getFilesystems   func() ([]string, error) // Optional override for osutil.GetFileSystems, used in command availability checks
+	isDeviceMountedF func(device string) bool
 }
 
 func newBaseAdapter(name, description, alpinePackage, mkfsCommand, fsckCommand, labelCommand, stateCommand string, signatures []dto.FsMagicSignature) baseAdapter {
@@ -138,8 +140,19 @@ func (b *baseAdapter) runCommand(ctx context.Context, name string, args ...strin
 		} else {
 			exitCode = -1
 		}
-		tlog.ErrorContext(ctx, "Error executing command", "command", name, "args", args, "exitCode", exitCode, "Output", string(output))
-		return strings.TrimSpace(string(output)), exitCode, errors.WithDetails(err, "Command", name, "Args", strings.Join(args, " "))
+		if errors.Is(err, context.Canceled) ||
+			errors.Is(err, exec.ErrNotFound) ||
+			errors.Is(err, context.DeadlineExceeded) ||
+			errors.Is(err, exec.ErrDot) ||
+			errors.Is(err, exec.ErrWaitDelay) ||
+			strings.Contains(err.Error(), "permission denied") ||
+			strings.Contains(err.Error(), "executable file not found") ||
+			strings.Contains(err.Error(), "no such file or directory") ||
+			strings.Contains(err.Error(), "cannot find the file") {
+			tlog.ErrorContext(ctx, "Error executing command", "command", name, "args", args, "exitCode", exitCode, "Output", string(output), "error", err)
+			return strings.TrimSpace(string(output)), exitCode, errors.WithDetails(err, "Command", name, "Args", strings.Join(args, " "), "error", "command not found")
+		}
+		return strings.TrimSpace(string(output)), exitCode, nil
 	}
 
 	return strings.TrimSpace(string(output)), exitCode, nil
@@ -166,6 +179,25 @@ func (b *baseAdapter) runCommandCached(ctx context.Context, name string, args ..
 	}, commandResultCacheTTL)
 
 	return output, exitCode, err
+}
+
+func (b *baseAdapter) isDeviceMounted(device string) bool {
+	if b.isDeviceMountedF != nil {
+		return b.isDeviceMountedF(device)
+	}
+
+	mounts, err := procfs.GetMounts()
+	if err != nil {
+		return false
+	}
+
+	for _, mount := range mounts {
+		if mount.Source == device {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (b *baseAdapter) invalidateCommandResultCache() {

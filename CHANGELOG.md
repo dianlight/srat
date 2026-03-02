@@ -38,7 +38,7 @@ With your donations, we are able to continue developing and improving this proje
 - **Update Engine Replacement**: Replaced jpillora/overseer with minio/selfupdate for binary updates. The new implementation provides more reliable updates with cryptographic signature verification using minisign. Updates will now properly restart the service when running under s6 supervision.
 - **SMB over QUIC Default Behavior Change**: The SMB over QUIC feature is now disabled by default. Users must explicitly enable it in the settings to use this functionality. This change aims to enhance security and stability by preventing unintended use of the experimental protocol.
 - **Telemetry Service Update**: The telemetry service has been updated to use Rollbar for error tracking and monitoring. This change may require users to review their privacy settings and consent to data collection, as Rollbar collects different types of data compared to the previous telemetry solution.
-- **Auto-Update Service Modification**: The auto-update service has been modified to support multiple update channels (stable, beta, dev) and local development builds. Users may need to reconfigure their update preferences to align with the new channel system.
+- **Autoupdate Service Modification**: The autoupdate service has been modified to support multiple update channels (stable, beta, dev) and local development builds. Users may need to reconfigure their update preferences to align with the new channel system.
 - **Disk Health Payload Update**: Per-partition disk health now reports `filesystem_state` and no longer includes the redundant `fsck_needed` field.
 - **Partition Filesystem Support**: Per-partition disk health no longer includes `fsck_supported`; filesystem support is now reported on partitions as `filesystem_support`.
 
@@ -61,7 +61,7 @@ With your donations, we are able to continue developing and improving this proje
   - Automatic routing to appropriate repository (dianlight/srat or dianlight/hassos-addon) based on problem type
   - Pre-populated GitHub issue URL with diagnostic information
   - Downloads diagnostic files for attachment to the issue
-- **Auto-Update with Signature Verification (#358)**: Implemented a new auto-update mechanism using minio/selfupdate with cryptographic signature verification
+- **Autoupdate with Signature Verification (#358)**: Implemented a new autoupdate mechanism using minio/selfupdate with cryptographic signature verification
   - Added `--auto-update` flag to automatically download and apply updates without user acceptance
   - Updates are signed with minisign (Ed25519) signatures for security
   - Automatic restart when running under s6 supervision
@@ -70,7 +70,7 @@ With your donations, we are able to continue developing and improving this proje
 - **Allow Guest Setting**: Added new `Allow Guest` boolean setting in Settings → General section to enable anonymous guest access to Samba shares. When enabled, configures Samba with `guest account = nobody` and `map to guest = Bad User` for secure guest authentication.
 - **Enhanced SMART Service [#234](https://github.com/dianlight/srat/issues/234)**: Implemented comprehensive SMART disk monitoring and control features:
 - **SMB over QUIC Support [#227](https://github.com/dianlight/srat/issues/227)**: Added comprehensive support for SMB over QUIC transport protocol with intelligent system detection
-- **Auto-Update Service**: Implemented a backend service for automatic updates from GitHub releases, with support for multiple channels and local development builds.
+- **Autoupdate Service**: Implemented a back-end service for automatic updates from GitHub releases, with support for multiple channels and local development builds.
 - **Telemetry Configuration**: Added UI in Settings to configure telemetry modes, dependent on internet connectivity.
 - Manage `local master` option (?)
 - Add Rollbar telemetry service for error tracking and monitoring

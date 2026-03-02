@@ -9,7 +9,7 @@
   - [What Data We Collect](#what-data-we-collect)
     - [Error Information (Errors and All modes)](#error-information-errors-and-all-modes)
     - [Usage Analytics (All mode only)](#usage-analytics-all-mode-only)
-  - [What Data We DO NOT Collect](#what-data-we-do-not-collect)
+  - [What Data We Do Not Collect](#what-data-we-do-not-collect)
 - [How We Use Your Data](#how-we-use-your-data)
 - [Data Transmission and Storage](#data-transmission-and-storage)
 - [Your Control and Choices](#your-control-and-choices)
@@ -69,7 +69,7 @@ When telemetry is enabled, we may collect the following information:
 - Technical performance metrics
 - Session information (no personal identifiers)
 
-### What Data We DO NOT Collect
+### What Data We Do Not Collect
 
 SRAT never collects:
 

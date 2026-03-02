@@ -416,7 +416,7 @@ export function VolumeDetailsPanel({
                                                     {partition.filesystem_info && (
                                                         <Tooltip title={filesystemStatusTooltip} arrow>
                                                             <Chip
-                                                                label={partition.filesystem_info.Description || "Filesystem Info"}
+                                                                label={partition.filesystem_info.description || "Filesystem Info"}
                                                                 variant="outlined"
                                                                 size="small"
                                                                 icon={filesystemStatusIcon}

@@ -60,7 +60,7 @@ This is a Go package. You can add it to your project using `go get`:
 go get gitlab.com/tozd/go/errors
 ```
 
-It requires Go 1.17 or newer.
+It requires Go 1.18 or newer.
 
 ## Usage
 
@@ -342,7 +342,7 @@ with errors made by `github.com/pkg/errors` in large codebases with mixed use of
 packages it has to depend on `github.com/pkg/errors` to get one type (`errors.StackTrace`) from it
 so that it can extract stack traces from those errors. It is using no code from `github.com/pkg/errors`.
 
-BTW, this package itself does not require to import it to be able to extract all data from its errors.
+BTW, this package itself does not require to be imported to be able to extract all data from its errors.
 Interfaces used by this package do not use custom types.
 Another lesson learned from `github.com/pkg/errors`.
 
@@ -390,6 +390,11 @@ Another lesson learned from `github.com/pkg/errors`.
   minimal library for wrapping errors with stack traces. Does not provide
   `errors.Errorf` not does it support `%w` format verb. It is not possible to
   access unformatted stack trace.
+- [github.com/morikuni/failure](https://github.com/morikuni/failure) – Supports recording
+  a stack trace and structured details. It uses API significantly different from
+  `github.com/pkg/errors` and it does not support JSON marshaling of errors. It uses
+  a custom type for stack traces so it is not possible to extract them from errors
+  without importing the package.
 
 ## GitHub mirror
 

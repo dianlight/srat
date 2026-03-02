@@ -39,7 +39,7 @@ Use GitHub Flavored Markdown (GFM) and follow SRAT documentation standards. Keep
 
 - Run documentation checks when changing docs:
   - `make docs-validate`
-  - `make docs-fix` (to auto-fix formatting)
+  - `make docs-fix` (to autofix formatting)
 - Address markdownlint, Vale, cspell, and link-check findings.
 
 ## Common pitfalls to avoid

@@ -6,7 +6,7 @@
   - [What Was Done](#what-was-done)
     - [1. Dependency Integration](#1-dependency-integration)
     - [2. EventBus Refactoring](#2-eventbus-refactoring)
-    - [3. API Wrapper](#3-api-wrapper)
+    - [3. Interface Wrapper](#3-interface-wrapper)
     - [4. Key Implementation Changes](#4-key-implementation-changes)
       - [Old (Custom)](#old-custom)
       - [New (Signals Library)](#new-signals-library)
@@ -16,7 +16,7 @@
   - [Test Results](#test-results)
     - [All Tests Passing ✅](#all-tests-passing-)
   - [Build Verification](#build-verification)
-    - [Full Backend Compilation ✅](#full-backend-compilation-)
+    - [Full back-end Compilation ✅](#full-back-end-compilation-)
   - [Technical Details](#technical-details)
     - [Signals Library API Used](#signals-library-api-used)
     - [Features Provided by Signals Library](#features-provided-by-signals-library)
@@ -60,7 +60,7 @@
 - Updated all 8 signal fields in EventBus struct
 - Implemented 40 interface methods using signals library API
 
-### 3. API Wrapper
+### 3. Interface Wrapper
 
 Created a clean wrapper layer in EventBusInterface that:
 
@@ -140,7 +140,7 @@ Total Time: 0.513 seconds
 
 ## Build Verification
 
-### Full Backend Compilation ✅
+### Full back-end Compilation ✅
 
 ```plaintext
 ✅ github.com/dianlight/srat/events
@@ -272,7 +272,7 @@ The `maniartech/signals` library is:
 - ✅ All imports updated
 - ✅ EventBus refactored
 - ✅ All 12 tests passing
-- ✅ Full backend compiles
+- ✅ Full back-end compiles
 - ✅ No breaking changes
 - ✅ Documentation complete
 - ✅ Backward compatible
@@ -311,7 +311,7 @@ grep -n "signals" backend/src/events/event_bus.go
 
 ## Conclusion
 
-The SRAT backend now uses `github.com/maniartech/signals v1.3.1` for its event system. The implementation is:
+The SRAT back-end now uses `github.com/maniartech/signals v1.3.1` for its event system. The implementation is:
 
 - ✅ Complete and tested
 - ✅ Production-ready

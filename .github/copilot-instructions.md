@@ -18,10 +18,10 @@ These instructions are the concise, must-follow rules for working in SRAT. Keep 
 
 ## Repo at a glance
 
-- **Languages**: Go 1.26 backend, TypeScript React frontend (Bun), Python 3.12+ Home Assistant integration.
+- **Languages**: Go 1.26 back-end, TypeScript React frontend (Bun), Python 3.12+ Home Assistant integration.
 - **Architecture**: API handlers → services → generated GORM helpers → SQLite (embedded). Frontend uses MUI + RTK Query. Custom component is WebSocket‑only.
 
-## Backend (Go) essentials
+## back-end (Go) essentials
 
 - Use **context‑aware logging** (`slog.*Context`, `tlog.*Context`) when a real `context.Context` is already in scope. Never manufacture a context for logging.
 - Go 1.26 rules: use `new(expr)` for pointer values, use `any` (not `interface{}`), use `WaitGroup.Go`, prefer `errors.AsType[T]` (standard library).
@@ -41,7 +41,7 @@ These instructions are the concise, must-follow rules for working in SRAT. Keep 
 
 ## Build, generate, test (short list)
 
-- Backend: `cd backend && make dev|build|test|format|gen`
+- back-end: `cd backend && make dev|build|test|format|gen`
 - Frontend: `cd frontend && bun install && bun run build|dev|lint|test|gen`
 - Custom component: `cd custom_components && make check|test|lint|format|typecheck`
 

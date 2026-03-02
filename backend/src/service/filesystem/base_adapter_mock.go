@@ -57,3 +57,10 @@ func (b *baseAdapter) SetGetFilesystemsForTesting(getFilesystems func() ([]strin
 		b.getFilesystems = osutil.GetFileSystems
 	}
 }
+
+func (b *baseAdapter) SetIsDeviceMountedForTesting(isDeviceMounted func(device string) bool) (reset func()) {
+	b.isDeviceMountedF = isDeviceMounted
+	return func() {
+		b.isDeviceMountedF = nil
+	}
+}

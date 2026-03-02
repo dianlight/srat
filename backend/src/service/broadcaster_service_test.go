@@ -2,12 +2,16 @@ package service_test
 
 import (
 	"context"
+	"maps"
+	"slices"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/danielgtaylor/huma/v2/sse"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
+	"github.com/dianlight/srat/server/ws"
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
@@ -23,7 +27,6 @@ import (
 type BroadcasterServiceTestSuite struct {
 	suite.Suite
 	broadcasterService service.BroadcasterServiceInterface
-	mockVolumeService  service.VolumeServiceInterface
 	mockShareService   service.ShareServiceInterface
 	eventBus           events.EventBusInterface
 	app                *fxtest.App
@@ -54,12 +57,11 @@ func (suite *BroadcasterServiceTestSuite) SetupTest() {
 			service.NewBroadcasterService,
 			mock.Mock[service.HomeAssistantServiceInterface],
 			mock.Mock[service.HaRootServiceInterface],
-			mock.Mock[service.VolumeServiceInterface],
+			func() *dto.DiskMap { return &dto.DiskMap{} },
 			mock.Mock[service.ShareServiceInterface],
 		),
 		fx.Populate(&suite.ctx, &suite.cancel),
 		fx.Populate(&suite.eventBus),
-		fx.Populate(&suite.mockVolumeService),
 		fx.Populate(&suite.mockShareService),
 		fx.Populate(&suite.broadcasterService),
 	)
@@ -72,6 +74,30 @@ func (suite *BroadcasterServiceTestSuite) TearDownTest() {
 	if suite.app != nil {
 		suite.app.RequireStop()
 	}
+}
+
+func (suite *BroadcasterServiceTestSuite) TestProcessWebSocketChannelAfterStop_DoesNotPanic() {
+	suite.app.RequireStop()
+	suite.app = nil
+	suite.cancel()
+
+	suite.NotPanics(func() {
+		suite.broadcasterService.ProcessWebSocketChannel(func(msg ws.Message) errors.E {
+			return nil
+		})
+	})
+}
+
+func (suite *BroadcasterServiceTestSuite) TestProcessHttpChannelAfterStop_DoesNotPanic() {
+	suite.app.RequireStop()
+	suite.app = nil
+	suite.cancel()
+
+	suite.NotPanics(func() {
+		suite.broadcasterService.ProcessHttpChannel(func(msg sse.Message) error {
+			return nil
+		})
+	})
 }
 
 // --- shouldSkipClientSend Tests ---
@@ -139,12 +165,12 @@ func (b *broadcasterServiceForTesting) shouldSkipClientSend(msg any) bool {
 // BroadcasterServiceEventMappingTestSuite tests the event to broadcast mapping
 type BroadcasterServiceEventMappingTestSuite struct {
 	suite.Suite
-	mockVolumeService service.VolumeServiceInterface
-	eventBus          events.EventBusInterface
-	ctx               context.Context
-	cancel            context.CancelFunc
-	relay             *broadcast.Relay[broadcastEventForTesting]
-	unsubs            []func()
+	testDisks *dto.DiskMap
+	eventBus  events.EventBusInterface
+	ctx       context.Context
+	cancel    context.CancelFunc
+	relay     *broadcast.Relay[broadcastEventForTesting]
+	unsubs    []func()
 }
 
 type broadcastEventForTesting struct {
@@ -160,9 +186,7 @@ func (suite *BroadcasterServiceEventMappingTestSuite) SetupTest() {
 	suite.ctx, suite.cancel = context.WithCancel(context.Background())
 	suite.eventBus = events.NewEventBus(suite.ctx)
 	suite.relay = broadcast.NewRelay[broadcastEventForTesting]()
-
-	ctrl := mock.NewMockController(suite.T())
-	suite.mockVolumeService = mock.Mock[service.VolumeServiceInterface](ctrl)
+	suite.testDisks = &dto.DiskMap{}
 }
 
 func (suite *BroadcasterServiceEventMappingTestSuite) TearDownTest() {
@@ -178,7 +202,7 @@ func (suite *BroadcasterServiceEventMappingTestSuite) setupEventListeners() {
 
 	// Listen for disk events
 	suite.unsubs = append(suite.unsubs, suite.eventBus.OnDisk(func(ctx context.Context, event events.DiskEvent) errors.E {
-		suite.relay.Broadcast(broadcastEventForTesting{Message: suite.mockVolumeService.GetVolumesData()})
+		suite.relay.Broadcast(broadcastEventForTesting{Message: slices.Collect(maps.Values(*suite.testDisks))})
 		return nil
 	}))
 
@@ -192,7 +216,7 @@ func (suite *BroadcasterServiceEventMappingTestSuite) setupEventListeners() {
 
 	// Listen for mount point events
 	suite.unsubs = append(suite.unsubs, suite.eventBus.OnMountPoint(func(ctx context.Context, event events.MountPointEvent) errors.E {
-		suite.relay.Broadcast(broadcastEventForTesting{Message: suite.mockVolumeService.GetVolumesData()})
+		suite.relay.Broadcast(broadcastEventForTesting{Message: slices.Collect(maps.Values(*suite.testDisks))})
 		return nil
 	}))
 }
@@ -212,8 +236,9 @@ func (suite *BroadcasterServiceEventMappingTestSuite) recv() (any, bool) {
 */
 
 func (suite *BroadcasterServiceEventMappingTestSuite) TestDiskEvent_BroadcastsVolumesData() {
-	expectedDisks := []*dto.Disk{{Id: new("expected-disk")}}
-	mock.When(suite.mockVolumeService.GetVolumesData()).ThenReturn(expectedDisks)
+	expectedDiskID := "expected-disk"
+	expectedDisk := &dto.Disk{Id: &expectedDiskID}
+	(*suite.testDisks)[expectedDiskID] = expectedDisk
 
 	suite.setupEventListeners()
 	listener := suite.relay.Listener(10)
@@ -229,17 +254,14 @@ func (suite *BroadcasterServiceEventMappingTestSuite) TestDiskEvent_BroadcastsVo
 	case ev := <-listener.Ch():
 		disks, ok := ev.Message.([]*dto.Disk)
 		suite.True(ok, "expected []*dto.Disk, got %T", ev.Message)
-		suite.Equal(expectedDisks, disks)
-		mock.Verify(suite.mockVolumeService, matchers.Times(1)).GetVolumesData()
+		suite.Len(disks, 1)
+		suite.Equal(expectedDisk, disks[0])
 	case <-time.After(2 * time.Second):
 		suite.Fail("disk event should produce a broadcast")
 	}
 }
 
 func (suite *BroadcasterServiceEventMappingTestSuite) TestShareEvent_BroadcastsShareItself() {
-	expectedDisks := []*dto.Disk{{Id: new("expected-disk")}}
-	mock.When(suite.mockVolumeService.GetVolumesData()).ThenReturn(expectedDisks)
-
 	suite.setupEventListeners()
 	listener := suite.relay.Listener(10)
 	defer listener.Close()
@@ -256,16 +278,15 @@ func (suite *BroadcasterServiceEventMappingTestSuite) TestShareEvent_BroadcastsS
 		gotShare, ok := ev.Message.(dto.SharedResource)
 		suite.True(ok, "expected dto.SharedResource, got %T", ev.Message)
 		suite.Equal(*share, gotShare)
-		// GetVolumesData should not be called for share events
-		mock.Verify(suite.mockVolumeService, matchers.Times(0)).GetVolumesData()
 	case <-time.After(2 * time.Second):
 		suite.Fail("share event should produce a broadcast")
 	}
 }
 
 func (suite *BroadcasterServiceEventMappingTestSuite) TestMountPointEvent_BroadcastsVolumesData() {
-	expectedDisks := []*dto.Disk{{Id: new("expected-disk")}}
-	mock.When(suite.mockVolumeService.GetVolumesData()).ThenReturn(expectedDisks)
+	expectedDiskID := "expected-disk"
+	expectedDisk := &dto.Disk{Id: &expectedDiskID}
+	(*suite.testDisks)[expectedDiskID] = expectedDisk
 
 	suite.setupEventListeners()
 	listener := suite.relay.Listener(10)
@@ -282,8 +303,8 @@ func (suite *BroadcasterServiceEventMappingTestSuite) TestMountPointEvent_Broadc
 	case ev := <-listener.Ch():
 		disks, ok := ev.Message.([]*dto.Disk)
 		suite.True(ok, "expected []*dto.Disk, got %T", ev.Message)
-		suite.Equal(expectedDisks, disks)
-		mock.Verify(suite.mockVolumeService, matchers.Times(1)).GetVolumesData()
+		suite.Len(disks, 1)
+		suite.Equal(expectedDisk, disks[0])
 	case <-time.After(2 * time.Second):
 		suite.Fail("mountpoint event should produce a broadcast")
 	}

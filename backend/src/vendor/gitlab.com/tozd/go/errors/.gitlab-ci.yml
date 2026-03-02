@@ -13,8 +13,8 @@ test:
 
   before_script:
     - apk --update add make bash gcc musl-dev
-    - (cd /go; go install gotest.tools/gotestsum@v1.12.0)
-    - (cd /go; go install github.com/boumenot/gocover-cobertura@v1.2.0)
+    - (cd /go; go install gotest.tools/gotestsum@$GOTESTSUM)
+    - (cd /go; go install github.com/boumenot/gocover-cobertura@$COBERTURA)
     - go version
 
   script:
@@ -37,16 +37,30 @@ test:
 
   parallel:
     matrix:
-      - IMAGE_TAG: ['1.18-alpine3.17', '1.19-alpine3.18', '1.20-alpine3.18', '1.21-alpine3.18', '1.22-alpine3.18', '1.23-alpine3.19']
+      - GOTESTSUM: "v1.11.0"
+        COBERTURA: "v1.3.0"
+        IMAGE_TAG:
+          [
+            "1.18-alpine3.17",
+            "1.19-alpine3.18",
+            "1.20-alpine3.18",
+            "1.21-alpine3.18",
+            "1.22-alpine3.18",
+            "1.23-alpine3.21",
+            "1.24-alpine3.22",
+          ]
+      - GOTESTSUM: "v1.13.0"
+        COBERTURA: "v1.4.0"
+        IMAGE_TAG: ["1.25-alpine3.22", "1.26-alpine3.22"]
 
 lint:
   stage: test
 
-  image: golang:1.23-alpine3.19
+  image: golang:1.26-alpine3.22
 
   before_script:
     - apk --update add make bash gcc musl-dev
-    - wget -O- -nv https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.60.3
+    - wget -O- -nv https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.10.1
 
   script:
     - make lint-ci
@@ -60,12 +74,12 @@ lint:
 fmt:
   stage: test
 
-  image: golang:1.23-alpine3.19
+  image: golang:1.26-alpine3.22
 
   before_script:
     - apk --update add make bash git gcc musl-dev grep
-    - go install mvdan.cc/gofumpt@v0.7.0
-    - go install golang.org/x/tools/cmd/goimports@v0.24.0
+    - go install mvdan.cc/gofumpt@v0.9.1
+    - go install golang.org/x/tools/cmd/goimports@v0.37.0
 
   script:
     - make fmt-ci
@@ -73,22 +87,22 @@ fmt:
 lint_docs:
   stage: test
 
-  image: node:20.17-alpine3.19
+  image: node:24.10-alpine3.22
 
   before_script:
-    - apk --update add make bash
+    - apk --update add make bash git
 
   script:
-    - make lint-docs
+    - make lint-docs-ci
 
 audit:
   stage: test
 
-  image: golang:1.23-alpine3.19
+  image: golang:1.26-alpine3.22
 
   before_script:
     - apk --update add make bash git gcc musl-dev
-    - go install github.com/sonatype-nexus-community/nancy@v1.0.46
+    - go install github.com/sonatype-nexus-community/nancy@v1.0.52
 
   script:
     - make audit
@@ -96,7 +110,7 @@ audit:
 commits:
   stage: test
 
-  image: golang:1.23-alpine3.19
+  image: golang:1.26-alpine3.22
 
   variables:
     GIT_DEPTH: "0"
@@ -110,7 +124,7 @@ commits:
 publish:
   stage: deploy
 
-  image: golang:1.23-alpine3.19
+  image: golang:1.26-alpine3.22
 
   script:
     - GOPROXY=proxy.golang.org go list -m "gitlab.com/tozd/go/errors@$CI_COMMIT_REF_NAME"

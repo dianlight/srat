@@ -1,10 +1,10 @@
-# PPROF USE DOCUMENTATION
+# pprof Use Documentation
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Build with pprof](#build-with-pprof)
-  - [CPU USE PPROF](#cpu-use-pprof)
+  - [CPU Use pprof](#cpu-use-pprof)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -14,7 +14,7 @@ Using build tags pprof the srat-server also expose standard pprof endpoints
 
 Refer to https://pkg.go.dev/net/http/pprof
 
-### CPU USE PPROF
+### CPU Use pprof
 
 Use pprof tool to see cpu profiling
 

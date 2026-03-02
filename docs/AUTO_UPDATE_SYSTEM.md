@@ -1,7 +1,7 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [SRAT Auto-Update System](#srat-auto-update-system)
+- [SRAT Autoupdate System](#srat-autoupdate-system)
   - [Overview](#overview)
   - [Features](#features)
   - [How It Works](#how-it-works)
@@ -43,11 +43,11 @@
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-# SRAT Auto-Update System
+# SRAT Autoupdate System
 
 ## Overview
 
-SRAT uses a secure auto-update mechanism based on `minio/selfupdate` with cryptographic signature verification using minisign (Ed25519). This ensures that updates are authentic and haven't been tampered with.
+SRAT uses a secure autoupdate mechanism based on `minio/selfupdate` with cryptographic signature verification using minisign (Ed25519). This ensures that updates are authentic and haven't been tampered with.
 
 ## Features
 
