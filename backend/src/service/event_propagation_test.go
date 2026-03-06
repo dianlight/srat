@@ -59,12 +59,19 @@ func (suite *EventPropagationTestSuite) SetupTest() {
 	// Create context with WaitGroup
 	wg := &sync.WaitGroup{}
 
+	var ctx context.Context
+	var cancel context.CancelFunc
+
 	suite.app = fxtest.New(suite.T(),
 		fx.Provide(
 			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
-			func() (context.Context, context.CancelFunc) {
-				ctx := context.WithValue(context.Background(), ctxkeys.WaitGroup, wg)
-				return context.WithCancel(ctx)
+			func() context.Context {
+				ctxVal := context.WithValue(context.Background(), ctxkeys.WaitGroup, wg)
+				ctx, cancel = context.WithCancel(ctxVal)
+				return ctx
+			},
+			func() context.CancelFunc {
+				return cancel
 			},
 			/*
 				func() *config.DefaultConfig {
