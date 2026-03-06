@@ -59,6 +59,7 @@ func TestUserUsernamePattern(t *testing.T) {
 		"testuser",
 		"a",
 		"admin",
+		"john doe",
 	}
 
 	for _, username := range validUsernames {

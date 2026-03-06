@@ -44,7 +44,7 @@ func TestEventPropagationTestSuite(t *testing.T) {
 }
 
 func (suite *EventPropagationTestSuite) SetupTest() {
-
+	os.Setenv("SRAT_MOCK", "true")
 	defer func() {
 		if r := recover(); r != nil {
 			suite.T().Logf("Panic recovered in SetupTest: %v", r)

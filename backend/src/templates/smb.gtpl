@@ -72,6 +72,7 @@
    multicast dns register = yes
 
    security = user
+   username map = /etc/samba/smbusers
    ntlm auth = yes
    {{if .allow_guest -}}
    guest account = nobody

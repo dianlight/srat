@@ -97,7 +97,7 @@ func (handler *UserHandler) CreateUser(ctx context.Context, input *struct {
 //   - A struct containing the updated user details.
 //   - An error if any issue occurs during the update process.
 func (handler *UserHandler) UpdateUser(ctx context.Context, input *struct {
-	UserName string   `path:"username" maxLength:"30" example:"world" doc:"Username"`
+	UserName string   `path:"username" pattern:"[a-zA-Z0-9 _-]+" maxLength:"30" example:"john doe" doc:"Username"`
 	Body     dto.User `required:"true"`
 }) (*struct{ Body dto.User }, error) {
 	updatedUser, err := handler.userService.UpdateUser(input.UserName, input.Body)
@@ -142,7 +142,7 @@ func (handler *UserHandler) UpdateAdminUser(ctx context.Context, input *struct {
 }
 
 func (handler *UserHandler) DeleteUser(ctx context.Context, input *struct {
-	UserName string `path:"username" minimum:"1" maxLength:"30" example:"world" doc:"Username"`
+	UserName string `path:"username" pattern:"[a-zA-Z0-9 _-]+" minimum:"1" maxLength:"30" example:"john doe" doc:"Username"`
 }) (*struct{}, error) {
 	err := handler.userService.DeleteUser(input.UserName)
 	if err != nil {

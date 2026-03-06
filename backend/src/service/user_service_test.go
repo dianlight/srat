@@ -623,6 +623,28 @@ func (suite *UserServiceSuite) TestDeleteUser_UserNotFound() {
 	//mock.Verify(suite.userRepoMock, matchers.Times(1)).Delete(username)
 }
 
+func TestNormalizeUsernameForUnixSamba(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{name: "no spaces", input: "janedoe", expected: "janedoe"},
+		{name: "single space", input: "jane doe", expected: "janedoe"},
+		{name: "multiple spaces", input: "jane   doe", expected: "janedoe"},
+		{name: "leading and trailing spaces", input: "  jane doe  ", expected: "janedoe"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			actual := NormalizeUsernameForUnixSamba(tc.input)
+			if actual != tc.expected {
+				t.Fatalf("NormalizeUsernameForUnixSamba(%q) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
+}
+
 /*
 func (suite *UserServiceSuite) TestDeleteUser_RepositoryError() {
 	// Arrange

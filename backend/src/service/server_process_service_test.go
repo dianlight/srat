@@ -26,6 +26,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
+	"gorm.io/gorm"
 )
 
 type ServerProcessServiceSuite struct {
@@ -37,6 +38,7 @@ type ServerProcessServiceSuite struct {
 	ctx             context.Context
 	cancel          context.CancelFunc
 	app             *fxtest.App
+	db              *gorm.DB
 }
 
 func TestSambaServiceSuite(t *testing.T) {
@@ -143,6 +145,7 @@ func (suite *ServerProcessServiceSuite) SetupTest() {
 		//fx.Populate(&suite.shareRepo),
 		fx.Populate(&suite.ctx),
 		fx.Populate(&suite.cancel),
+		fx.Populate(&suite.db),
 	)
 	/*
 		mock.When(suite.samba_user_repo.All()).ThenReturn(dbom.SambaUsers{
@@ -618,6 +621,35 @@ func (suite *ServerProcessServiceSuite) TestCreateConfigStream_VersionPatchVaria
 	// Samba 4.23.5 - should NOT have fruit:posix_rename but SHOULD have server smb transports
 	suite.NotContains(configStr, "fruit:posix_rename = yes", "Samba 4.23.5 should NOT include fruit:posix_rename")
 	suite.Contains(configStr, "server smb transports", "Samba 4.23.5 should include server smb transports")
+}
+
+func (suite *ServerProcessServiceSuite) TestCreateSambaUsersMapStream_WithSpaceUsername() {
+	suite.Require().NoError(suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Unscoped().Delete(&dbom.SambaUser{}).Error)
+
+	suite.Require().NoError(suite.db.Create(&dbom.SambaUser{Username: "john doe", Password: "secret1"}).Error)
+	suite.Require().NoError(suite.db.Create(&dbom.SambaUser{Username: "janedoe", Password: "secret2"}).Error)
+
+	stream, errE := suite.serverService.CreateSambaUsersMapStream()
+	suite.Require().NoError(errE)
+	suite.Require().NotNil(stream)
+
+	configStr := string(*stream)
+	suite.Contains(configStr, "johndoe = \"john doe\"", "normalized mapping should be generated when username contains spaces")
+	suite.NotContains(configStr, "janedoe = \"janedoe\"", "mapping should not be generated when username does not require normalization")
+}
+
+func (suite *ServerProcessServiceSuite) TestCreateSambaUsersMapStream_GroupsAliasesByNormalizedUsername() {
+	suite.Require().NoError(suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Unscoped().Delete(&dbom.SambaUser{}).Error)
+
+	suite.Require().NoError(suite.db.Create(&dbom.SambaUser{Username: "john doe", Password: "secret1"}).Error)
+	suite.Require().NoError(suite.db.Create(&dbom.SambaUser{Username: "john  doe", Password: "secret2"}).Error)
+
+	stream, errE := suite.serverService.CreateSambaUsersMapStream()
+	suite.Require().NoError(errE)
+	suite.Require().NotNil(stream)
+
+	configStr := string(*stream)
+	suite.Contains(configStr, "johndoe = \"john  doe\" \"john doe\"", "aliases with the same normalized username should share one mapping row")
 }
 
 func (suite *ServerProcessServiceSuite) TestCreateConfigStream_VersionPatchVariations_4_24_0() {
