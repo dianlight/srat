@@ -40,7 +40,7 @@
   "github.copilot.chat.byok.ollamaEndpoint": "",
   "github.copilot.chat.codesearch.enabled": true,
   "githubLocalActions.actCommand": "act",
-  "chat.tools.terminal.autoReplyToPrompts": false,
+  "chat.tools.terminal.autoReplyToPrompts": true,
   "chat.mcp.gallery.enabled": true,
   "problems.showCurrentInStatus": true,
   "better-comments.highlightPlainText": true,
@@ -235,4 +235,8 @@
   "todo-tree.tree.showCountsInTree": true,
   "biome.lsp.bin": "/root/.bun/install/global/node_modules/@biomejs/cli-linux-arm64-musl/biome",
   "todo-tree.highlights.useColourScheme": true,
+  "chat.planAgent.defaultModel": "Auto (copilot)",
+  "chat.editing.explainChanges.enabled": true,
+  "chat.unifiedAgentsBar.enabled": true,
+  "chat.restoreLastPanelSession": true,
 }
