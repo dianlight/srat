@@ -6,21 +6,21 @@ repos:
     hooks:
       - id: check-added-large-files
         args: ["--maxkb=1024"]
-        exclude: ^backend/src/vendor/
+        exclude: ^backend/src/vendor/|^\.vale/|^\.github/
       - id: check-merge-conflict
-        exclude: ^backend/src/vendor/
+        exclude: ^backend/src/vendor/|^\.vale/|^\.github/
       #- id: end-of-file-fixer
      #- id: trailing-whitespace
       - id: check-yaml
-        exclude: ^backend/src/vendor/
+        exclude: ^backend/src/vendor/|^\.vale/|^\.github/
       - id: check-toml
-        exclude: ^backend/src/vendor/
+        exclude: ^backend/src/vendor/|^\.vale/|^\.github/
       - id: check-xml
-        exclude: ^backend/src/vendor/
+        exclude: ^backend/src/vendor/|^\.vale/|^\.github/
       - id: check-case-conflict
-        exclude: ^backend/src/vendor/
+        exclude: ^backend/src/vendor/|^\.vale/|^\.github/
       - id: check-symlinks
-        exclude: ^backend/src/vendor/
+        exclude: ^backend/src/vendor/|^\.vale/|^\.github/
 
   - repo: local
     hooks:
@@ -69,7 +69,7 @@ repos:
         entry: bash
         language: system
         files: '\\.(md)$'
-        exclude: ^backend/src/vendor/
+        exclude: ^backend/src/vendor/|^\.vale/|^\.github/
         args:
           - -c
           - |
@@ -90,7 +90,7 @@ repos:
         entry: bash
         language: system
         files: '^CHANGELOG\\.md$'
-        exclude: ^backend/src/vendor/
+        exclude: ^backend/src/vendor/|^\.vale/|^\.github/
         args:
           - -c
           - |
@@ -107,7 +107,7 @@ repos:
         entry: bash
         language: system
         files: '\\.(md)$'
-        exclude: ^backend/src/vendor/
+        exclude: ^backend/src/vendor/|^\.vale/|^\.github/
         args:
           - -c
           - |
@@ -124,7 +124,7 @@ repos:
         entry: bash
         language: system
         files: '\\.(md)$'
-        exclude: ^backend/src/vendor/
+        exclude: ^backend/src/vendor/|^\.vale/|^\.github/
         args:
           - -c
           - |
@@ -147,6 +147,6 @@ repos:
         pass_filenames: false
         stages: [pre-commit]
         files: '^backend/src/.*\\.go$'
-        exclude: ^backend/src/vendor/
+        exclude: ^backend/src/vendor/|^\.vale/|^\.github/
 
   # tekwizely/pre-commit-golang is optional; local hooks cover our needs

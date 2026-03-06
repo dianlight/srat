@@ -32,7 +32,7 @@ func (f *fakeBroadcaster) ProcessWebSocketChannel(send ws.Sender) {}
 // minimal fakes for other services
 type fakeSamba struct{}
 
-func (f *fakeSamba) CreateSambaConfigStream() (data *[]byte, err errors.E) { return nil, nil }
+func (f *fakeSamba) CreateSambaConfigStream() (data *[]byte, err errors.E)   { return nil, nil }
 func (f *fakeSamba) CreateSambaUsersMapStream() (data *[]byte, err errors.E) { return nil, nil }
 func (f *fakeSamba) GetServerProcesses() (*dto.ServerProcessStatus, errors.E) {
 	return &dto.ServerProcessStatus{}, nil

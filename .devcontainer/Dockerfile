@@ -72,7 +72,8 @@ COPY frontend/package.json /tmp/srat-package.json
 ENV BUN_INSTALL=/root/.bun
 ENV PATH=/root/.bun/bin:${PATH}
 RUN BUN_VERSION="$(jq -r '.packageManager' /tmp/srat-package.json | sed 's/bun@/bun-v/')" \
-    && curl -fsSL https://bun.sh/install | bash -s "$BUN_VERSION"
+    && curl -fsSL https://bun.sh/install | bash -s "$BUN_VERSION" \
+    && ln -sf /root/.bun/bin/bun /root/.bun/bin/bunx 
 
 # Optional global tooling used by contributor workflows.
 RUN PATH=/root/.bun/bin:${PATH} \

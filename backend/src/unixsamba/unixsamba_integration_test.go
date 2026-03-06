@@ -284,4 +284,3 @@ func (s *UnixSambaIntegrationTestSuite) TestCheckSambaUser_FullLifecycle_Real() 
 	err := unixsamba.CheckSambaUser(username, wrongPassword)
 	s.Require().Error(err)
 }
-

@@ -239,4 +239,5 @@
   "chat.editing.explainChanges.enabled": true,
   "chat.unifiedAgentsBar.enabled": true,
   "chat.restoreLastPanelSession": true,
+  "workbench.browser.enableChatTools": true,
 }

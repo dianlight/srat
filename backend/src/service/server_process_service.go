@@ -18,8 +18,8 @@ import (
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/homeassistant/mount"
 	"github.com/dianlight/srat/internal/osutil"
-	"github.com/dianlight/srat/templates"
 	"github.com/dianlight/srat/tempio"
+	"github.com/dianlight/srat/templates"
 	"github.com/dianlight/tlog"
 	"github.com/lonegunmanb/go-defaults"
 	cache "github.com/patrickmn/go-cache"
@@ -290,7 +290,7 @@ func (self *ServerService) CreateSambaConfigStream() (data *[]byte, err errors.E
 
 func (self *ServerService) CreateSambaUsersMapStream() (data *[]byte, err errors.E) {
 	type sambaUserMapping struct {
-		UnixUsername  string
+		UnixUsername   string
 		SambaUsernames []string
 	}
 
@@ -320,7 +320,7 @@ func (self *ServerService) CreateSambaUsersMapStream() (data *[]byte, err errors
 		aliases := aliasesByUnixUser[unixUsername]
 		sort.Strings(aliases)
 		mappings = append(mappings, sambaUserMapping{
-			UnixUsername:  unixUsername,
+			UnixUsername:   unixUsername,
 			SambaUsernames: aliases,
 		})
 	}

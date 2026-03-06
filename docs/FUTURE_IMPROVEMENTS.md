@@ -1,8 +1,8 @@
 <!-- DOCTOC SKIP -->
 
-# Backend Future Improvements
+# Back-end Future Improvements
 
-This document lists identified refactoring opportunities and unfinished work in the backend
+This document lists identified refactoring opportunities and unfinished work in the back-end
 that require interface changes or significant restructuring and were therefore deferred.
 
 ## HDIdle Service: Missing Global-Status and Delete-Config Endpoints
@@ -14,11 +14,11 @@ that require interface changes or significant restructuring and were therefore d
 
 **Endpoints to restore:**
 
-| Method | Path | Handler |
-| ------ | ---- | ------- |
-| GET | `/hdidle/status` | `getServiceStatus` |
-| GET | `/hdidle/effective-config` | `getEffectiveConfig` |
-| DELETE | `/disk/{disk_id}/hdidle/config` | `deleteConfig` |
+| Method | Path                            | Handler              |
+| ------ | ------------------------------- | -------------------- |
+| GET    | `/hdidle/status`                | `getServiceStatus`   |
+| GET    | `/hdidle/effective-config`      | `getEffectiveConfig` |
+| DELETE | `/disk/{disk_id}/hdidle/config` | `deleteConfig`       |
 
 **Required interface changes:**
 
@@ -29,6 +29,7 @@ GetEffectiveConfig() HDIdleEffectiveConfig
 ```
 
 **Work to do:**
+
 1. Add `GetStatus` and `GetEffectiveConfig` to `HDIdleServiceInterface`.
 2. Implement both methods in `HDIdleService`.
 3. Re-register the three route handlers in `RegisterHDIdleHandler`.
@@ -52,6 +53,7 @@ FindByDevice(device string) ([]*dbom.MountPointPath, error)
 ```
 
 **Work to do:**
+
 1. Uncomment the methods in the interface and implement them in the generated query helper.
 2. Add tests covering both methods.
 
@@ -73,6 +75,7 @@ ExportedShareToSharedResource(source dbom.ExportedShare, target *dto.SharedResou
 ```
 
 **Work to do:**
+
 1. Uncomment the method in `DtoToDbomConverterInterface`.
 2. Verify the goverter-generated implementation is correct and has tests.
 
@@ -88,6 +91,7 @@ no-op. The migration depends on packages (`dto`, `converter`, `dbom`) that would
 import cycle at migration time, which is why it was disabled.
 
 **Work to do:**
+
 1. Resolve the import-cycle issue (e.g., move default-seeding logic to application startup
    rather than a SQL migration).
 2. Re-enable or replace the migration body.
@@ -125,10 +129,10 @@ if e, ok := stderrors.AsType[tozderrors.E](err); ok { ... }
 `service/volume_mount_manager.go` (`volumeMountManager` type). The remaining
 candidates are:
 
-| File | Lines | Suggestion |
-| ---- | ----- | ---------- |
-| `service/filesystem_service.go` | ~944 | Extract async operation runner into a separate struct |
-| `service/hdidle_service.go` | ~823 | Extract disk-state tracking into a separate type |
+| File                            | Lines | Suggestion                                            |
+| ------------------------------- | ----- | ----------------------------------------------------- |
+| `service/filesystem_service.go` | ~944  | Extract async operation runner into a separate struct |
+| `service/hdidle_service.go`     | ~823  | Extract disk-state tracking into a separate type      |
 
 Splitting these files requires no interface changes if the public `*Interface` types are
 preserved; internal helper types and functions can be moved freely.
@@ -178,4 +182,3 @@ Docker network), unauthenticated access is possible.
 
 **Fix:** Re-enable the ingress session validation using `ingressClient`. The commented-out
 implementation already had caching via `gocache` to avoid per-request overhead.
-

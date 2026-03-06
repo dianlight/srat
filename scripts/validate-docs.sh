@@ -76,7 +76,7 @@ check_dependencies() {
 # Run markdownlint
 run_markdownlint() {
     print_status "info" "Running markdownlint (GitHub Flavored Markdown)..."
-    if $RUNNER markdownlint-cli2 "**/*.md" "#frontend/node_modules" "#backend/src/vendor" ; then
+    if $RUNNER markdownlint-cli2 "**/*.md" "#frontend/node_modules" "#backend/src/vendor" "#.vale" "#.github" ; then
         print_status "success" "Markdownlint passed"
         return 0
     else
@@ -120,7 +120,7 @@ run_vale() {
     fi
     
     # Run Vale on all markdown files
-    if find . -name "*.md" -not -path "./frontend/node_modules/*" -not -path "./.git/*" -not -path "./backend/src/vendor/*" -not -name "CHANGELOG.md" -exec vale {} + ; then
+    if find . -name "*.md" -not -path "./frontend/node_modules/*" -not -path "./.git/*" -not -path "./backend/src/vendor/*" -not -path "./.vale/*" -not -path "./.github/*" -not -name "CHANGELOG.md"  -exec vale {} + ; then
         print_status "success" "Vale prose linting passed"
         return 0
     else
@@ -202,10 +202,10 @@ case "${1:-}" in
         fi
         
         # Fix markdown formatting
-        $RUNNER prettier --write "**/*.md" --ignore-path ".gitignore" --ignore-path ".prettierignore"
+        $RUNNER prettier --write "**/*.md" --ignore-path ".gitignore" --ignore-path ".prettierignore" --ignore-path ".markdownlint-cli2.jsonc" --ignore-path ".vale.ini" --ignore-path ".lychee.toml" --ignore-path "CHANGELOG.md" --ignore-path "frontend/node_modules/**" --ignore-path "backend/src/vendor/**" --ignore-path ".vale/**" --ignore-path ".github/**"
         
         # Fix markdownlint issues
-        $RUNNER markdownlint-cli2 "**/*.md" "#frontend/node_modules" "#backend/src/vendor" --fix
+        $RUNNER markdownlint-cli2 "**/*.md" "#frontend/node_modules/**" "#backend/src/vendor/**" "#.vale/**" "#.github/**" --fix
         
         print_status "success" "Auto-fix completed"
         exit 0
