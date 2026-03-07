@@ -707,6 +707,7 @@ func (self *UpgradeService) InstallUpdatePackage(updatePkg *UpdatePackage) error
 			OnProgress: func(target string, progress, total uint64) {
 				if total > 0 {
 					percent := float64(progress) / float64(total) * 100
+					percent = float64(int(percent*10)) / 10 // Round to 1 decimal place
 					self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSDOWNLOADING, Progress: percent})
 					slog.DebugContext(self.ctx, "Installing", "target", target, "percent", percent, "progress", progress, "total", total)
 				} else {
