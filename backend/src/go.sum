@@ -251,8 +251,8 @@ github.com/jinzhu/inflection v1.0.0 h1:K317FqzuhWc8YvSVlFMCCUb36O/S9MCKRDI7QkRKD
 github.com/jinzhu/inflection v1.0.0/go.mod h1:h+uFLlag+Qp1Va5pdKtLDYj+kHp5pxUVkryuEj+Srlc=
 github.com/jinzhu/now v1.1.5 h1:/o9tlHleP7gOFmsnYNz3RGnqzefHA47wQpKrrdTIwXQ=
 github.com/jinzhu/now v1.1.5/go.mod h1:d3SSVoowX0Lcu0IBviAWJpolVfI5UJVZZ7cO71lE/z8=
-github.com/jmattheis/goverter v1.9.3 h1:dTGAI9sqNgVsd9vkHDKpVJCE/Aw6WlIokqrAdSWP2PI=
-github.com/jmattheis/goverter v1.9.3/go.mod h1:1n3q6zf7j58tXcRWHbLFxK2Jk8WQVzr0d3nuaCcRqeg=
+github.com/jmattheis/goverter v1.9.4 h1:xdBN4TL/ihGkm1V1TqQ7gmTSVA3G4TI3/C/iK26nJqs=
+github.com/jmattheis/goverter v1.9.4/go.mod h1:1n3q6zf7j58tXcRWHbLFxK2Jk8WQVzr0d3nuaCcRqeg=
 github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af/go.mod h1:Nht3zPeWKUH0NzdCt2Blrr5ys8VGpn0CEB0cQHVjt7k=
 github.com/joho/godotenv v1.5.1 h1:7eLL/+HRGLY0ldzfGMeQkb7vMd0as4CfYvUVzLqw0N0=
 github.com/joho/godotenv v1.5.1/go.mod h1:f4LDr5Voq0i2e/R5DDNOoa2zzDfwtkZa6DnEwAbqwq4=
