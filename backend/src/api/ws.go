@@ -64,10 +64,23 @@ type WsMessageSender struct {
 	Mutex      sync.Mutex
 }
 
-func (self *WsMessageSender) SendFunc(msg ws.Message) errors.E {
+func (self *WsMessageSender) writeMessage(messageType int, data []byte) errors.E {
 	self.Mutex.Lock()
 	defer self.Mutex.Unlock()
 
+	if self.Connection == nil {
+		return errors.New("WebSocket connection is nil")
+	}
+
+	err := self.Connection.WriteMessage(messageType, data)
+	if err != nil {
+		return errors.WithDetails(err, "message", "Failed to write message to WebSocket")
+	}
+
+	return nil
+}
+
+func (self *WsMessageSender) SendFunc(msg ws.Message) errors.E {
 	eventData, err := json.Marshal(msg.Data)
 	if err != nil {
 		return errors.WithDetails(err, "message", "Failed to marshal event data", "event", msg)
@@ -78,16 +91,15 @@ func (self *WsMessageSender) SendFunc(msg ws.Message) errors.E {
 		return errors.Errorf("unknown event type for WebSocket: %T", msg.Data)
 	}
 
-	if self.Connection == nil {
-		return errors.New("WebSocket connection is nil")
-	}
-	err = self.Connection.WriteMessage(websocket.TextMessage,
-		fmt.Appendf(nil, "id: %d\nevent: %s\ndata: %s\n\n", msg.ID, typeName, eventData),
-	)
+	err = self.writeMessage(websocket.TextMessage, fmt.Appendf(nil, "id: %d\nevent: %s\ndata: %s\n\n", msg.ID, typeName, eventData))
 	if err != nil {
 		return errors.WithDetails(err, "message", "Failed to write message to WebSocket", "event", msg)
 	}
 	return nil
+}
+
+func (self *WsMessageSender) SendPing() errors.E {
+	return self.writeMessage(websocket.PingMessage, nil)
 }
 
 // HandleWebSocket handles the WebSocket upgrade and connection
@@ -142,7 +154,7 @@ func (self *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Req
 			return
 		case <-pingTicker.C:
 			// Send ping to keep connection alive
-			err := conn.WriteMessage(websocket.PingMessage, nil)
+			err := wsMessageSender.SendPing()
 			if err != nil {
 				tlog.TraceContext(self.ctx, "Error sending ping to WebSocket client", "err", err)
 				return
