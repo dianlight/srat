@@ -12,6 +12,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/tlog"
 )
@@ -76,9 +77,11 @@ func NewHealthHandler(lc fx.Lifecycle, param HealthHandlerParams) *HealthHanler 
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			p.ctx.Value("wg").(*sync.WaitGroup).Go(func() {
-				p.run()
-			})
+			if wg, ok := p.ctx.Value(ctxkeys.WaitGroup).(*sync.WaitGroup); ok && wg != nil {
+				wg.Go(func() {
+					p.run()
+				})
+			}
 			return nil
 		},
 	})
@@ -144,7 +147,6 @@ func (self *HealthHanler) run() error {
 			self.OutputEventsInterleave = time.Duration(math.MaxInt64) // FIX rollbar#32
 			return errors.WithStack(self.ctx.Err())
 		case <-time.After(self.OutputEventsInterleave): // Use a timer to control loop frequency
-			//			self.ProtectedMode = self.apictx.ProtectedMode
 			// Get Addon Stats
 			self.HealthPing.Uptime = time.Since(self.state.StartTime).Milliseconds()
 

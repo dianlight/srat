@@ -12,6 +12,7 @@ import (
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
+	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
@@ -49,7 +50,7 @@ func (suite *UserServiceSuite) SetupTest() {
 		fx.Provide(
 			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
 			func() (context.Context, context.CancelFunc) {
-				ctx := context.WithValue(context.Background(), "wg", suite.wg)
+				ctx := context.WithValue(context.Background(), ctxkeys.WaitGroup, suite.wg)
 				return context.WithCancel(ctx)
 			},
 			/*
@@ -620,6 +621,28 @@ func (suite *UserServiceSuite) TestDeleteUser_UserNotFound() {
 	suite.Error(err)
 	suite.True(errors.Is(err, dto.ErrorUserNotFound), "expected ErrorUserNotFound but got %v", err)
 	//mock.Verify(suite.userRepoMock, matchers.Times(1)).Delete(username)
+}
+
+func TestNormalizeUsernameForUnixSamba(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{name: "no spaces", input: "janedoe", expected: "janedoe"},
+		{name: "single space", input: "jane doe", expected: "janedoe"},
+		{name: "multiple spaces", input: "jane   doe", expected: "janedoe"},
+		{name: "leading and trailing spaces", input: "  jane doe  ", expected: "janedoe"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			actual := NormalizeUsernameForUnixSamba(tc.input)
+			if actual != tc.expected {
+				t.Fatalf("NormalizeUsernameForUnixSamba(%q) = %q, want %q", tc.input, actual, tc.expected)
+			}
+		})
+	}
 }
 
 /*

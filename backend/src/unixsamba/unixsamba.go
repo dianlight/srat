@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dianlight/srat/internal/osutil"
 	"gitlab.com/tozd/go/errors" // Import the new errors package
 )
 
@@ -183,8 +184,16 @@ func GetByUsername(username string) (*UserInfo, error) {
 		var e errors.E
 		if errors.As(err, &e) {
 			details := e.Details()
-			if stderr, ok := details["stderr"].(string); ok && (strings.Contains(stderr, "No such user") || strings.Contains(stderr, "does not exist")) {
-				info.IsSambaUser = false // Explicitly set, though it's the default
+			if stderr, ok := details["stderr"].(string); ok {
+				lwrStderr := strings.ToLower(stderr)
+				if strings.Contains(lwrStderr, "no such user") ||
+					strings.Contains(lwrStderr, "does not exist") ||
+					strings.Contains(lwrStderr, "username not found") ||
+					strings.Contains(lwrStderr, "user not found") {
+					info.IsSambaUser = false // Explicitly set, though it's the default
+				} else {
+					return info, errors.Wrapf(err, "pdbedit check for samba user '%s' failed", username)
+				}
 			} else {
 				return info, errors.Wrapf(err, "pdbedit check for samba user '%s' failed", username)
 			}
@@ -251,6 +260,11 @@ func CreateSambaUser(username string, password string, options UserOptions) erro
 	if err != nil {
 		return errors.Errorf("failed to add user '%s' to Samba or set password %w", username, err)
 	}
+
+	// Use CheckSambaUser to verify the new Samba user is functional with the new password before confirming success. This also serves as a sanity check that the user can authenticate with Samba after the rename.
+	if err := CheckSambaUser(username, password); err != nil {
+		return errors.Wrapf(err, "verification of Samba user '%s' failed after creation", username)
+	}
 	return nil
 }
 
@@ -294,6 +308,12 @@ func DeleteSambaUser(username string, deleteSystemUser bool, deleteHomeDir bool)
 			return errors.Wrapf(sysErr, "failed to delete system user '%s'", username)
 		}
 	}
+
+	// Use CheckSambaUser to verify the new Samba user is deleted. If the user still exists in Samba, this will return an error which we can log but not fail on since the main deletion logic has already been attempted.
+	if err := CheckSambaUser(username, "invalidpasswordforsure"); err == nil {
+		slog.Warn("User still appears to exist in Samba after deletion attempt", "username", username)
+	}
+
 	return nil
 }
 
@@ -311,6 +331,11 @@ func ChangePassword(username string, newPassword string, sambaOnly bool) error {
 		if sysErr != nil {
 			return errors.Wrapf(sysErr, "failed to change system password for user '%s'", username)
 		}
+	}
+
+	// Use CheckSambaUser to verify the new Samba user is functional with the new password before confirming success. This also serves as a sanity check that the user can authenticate with Samba after the rename.
+	if err := CheckSambaUser(username, newPassword); err != nil {
+		return errors.Wrapf(err, "verification of Samba user '%s' failed after password change", username)
 	}
 	return nil
 }
@@ -380,7 +405,119 @@ func RenameUsername(oldUsername string, newUsername string, renameHomeDir bool, 
 	if addErr != nil {
 		return errors.Wrapf(addErr, "failed to add new Samba user '%s' after renaming", newUsername)
 	}
+
+	// Use CheckSambaUser to verify the new Samba user is functional with the new password before confirming success. This also serves as a sanity check that the user can authenticate with Samba after the rename.
+	if err := CheckSambaUser(newUsername, newPasswordForSamba); err != nil {
+		return errors.Wrapf(err, "verification of new Samba user '%s' failed after renaming", newUsername)
+	}
+
 	return nil
+}
+
+// CheckSambaUser verifies that username exists as an active Samba user and that
+// password is correct.
+//
+// Steps:
+//  1. pdbedit -L -v confirms the account exists and the Account Flags contain
+//     [U] (active). Accounts flagged [D] (disabled) or [L] (locked) are rejected.
+//  2. pdbedit -L -w extracts the stored NT password hash (smbpasswd format).
+//     The NT hash of the supplied password is computed in pure Go (MD4 of the
+//     UTF-16LE-encoded password) and compared with the stored value.
+//     This approach works regardless of whether smbd is running.
+func CheckSambaUser(username, password string) error {
+	// Step 1: Confirm the user exists in the Samba database and is active.
+	pdbeditOutput, err := cmdExec.RunCommand("pdbedit", "-L", "-v", "-u", username)
+	if err != nil {
+		var e errors.E
+		if errors.As(err, &e) {
+			if stderr, ok := e.Details()["stderr"].(string); ok {
+				lwr := strings.ToLower(stderr)
+				if strings.Contains(lwr, "no such user") ||
+					strings.Contains(lwr, "username not found") ||
+					strings.Contains(lwr, "user not found") ||
+					strings.Contains(lwr, "does not exist") {
+					return errors.Errorf("samba user '%s' not found", username)
+				}
+			}
+		}
+		return errors.Wrapf(err, "pdbedit check for samba user '%s' failed", username)
+	}
+
+	// Parse Account Flags from pdbedit output.
+	accountFlags := ""
+	scanner := bufio.NewScanner(strings.NewReader(pdbeditOutput))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		parts := strings.SplitN(line, ":", 2)
+		if len(parts) == 2 && strings.TrimSpace(parts[0]) == "Account Flags" {
+			accountFlags = strings.TrimSpace(parts[1])
+			break
+		}
+	}
+
+	if !strings.Contains(accountFlags, "U") {
+		return errors.Errorf("samba user '%s' account is not active (flags: %s)", username, accountFlags)
+	}
+	if strings.Contains(accountFlags, "D") || strings.Contains(accountFlags, "L") {
+		return errors.Errorf("samba user '%s' account is disabled or locked (flags: %s)", username, accountFlags)
+	}
+
+	// Step 2: Extract the stored NT hash via pdbedit smbpasswd format and
+	// compare it with the NT hash of the supplied password.
+	smbPasswdOut, err := cmdExec.RunCommand("pdbedit", "-L", "-w", "-u", username)
+	if err != nil {
+		return errors.Wrapf(err, "failed to read samba password hash for user '%s'", username)
+	}
+
+	storedNTHash, err := parseSmbPasswdNTHash(username, smbPasswdOut)
+	if err != nil {
+		return errors.Wrapf(err, "failed to parse samba password hash for user '%s'", username)
+	}
+
+	// A hash of 32 'X' characters means no password is set.
+	if isSmbDisabledHash(storedNTHash) {
+		return errors.Errorf("samba user '%s' has no password set", username)
+	}
+
+	if !strings.EqualFold(osutil.NTHash(password), storedNTHash) {
+		return errors.Errorf("invalid password for samba user '%s'", username)
+	}
+	return nil
+}
+
+// parseSmbPasswdNTHash extracts the NT hash field from a pdbedit -L -w output
+// line.  The smbpasswd format is: username:uid:LMHASH:NTHASH:flags:::
+func parseSmbPasswdNTHash(username, output string) (string, error) {
+	for _, line := range strings.Split(strings.TrimSpace(output), "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, username+":") {
+			continue
+		}
+		parts := strings.SplitN(line, ":", 5)
+		if len(parts) < 4 {
+			continue
+		}
+		nt := strings.ToUpper(parts[3])
+		if len(nt) != 32 {
+			return "", errors.Errorf("unexpected NT hash length %d in pdbedit smbpasswd output", len(nt))
+		}
+		return nt, nil
+	}
+	return "", errors.New("NT hash line not found in pdbedit smbpasswd output")
+}
+
+// isSmbDisabledHash reports whether the hash string represents a disabled or
+// unset Samba password (all 32 characters are 'X').
+func isSmbDisabledHash(hash string) bool {
+	if len(hash) != 32 {
+		return false
+	}
+	for _, c := range hash {
+		if c != 'X' {
+			return false
+		}
+	}
+	return true
 }
 
 // ListSambaUsers retrieves a list of all usernames known to Samba.

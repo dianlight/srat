@@ -176,10 +176,19 @@ This document provides detailed information about all SRAT settings available in
 The `AllowGuest` setting is rendered into the Samba configuration file during template generation via the smb.gtpl template:
 
 ```gotmpl
+username map = /etc/samba/smbusers
 {{if .allow_guest -}}
 guest account = nobody
 map to guest = Bad User
 {{- end }}
+```
+
+SRAT also generates `/etc/samba/smbusers` on startup and on user/config changes. This file contains mappings for usernames that include spaces, mapping each Samba username to a normalized Unix username with spaces removed.
+
+Example:
+
+```text
+johndoe = "john doe"
 ```
 
 ### back-end Storage

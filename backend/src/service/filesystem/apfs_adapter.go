@@ -177,7 +177,7 @@ func (a *ApfsAdapter) SetLabel(ctx context.Context, device string, label string)
 // GetState returns the state of an APFS filesystem
 func (a *ApfsAdapter) GetState(ctx context.Context, device string) (dto.FilesystemState, errors.E) {
 	state := dto.FilesystemState{
-		AdditionalInfo:   make(map[string]interface{}),
+		AdditionalInfo:   make(map[string]any),
 		IsClean:          true,  // Assume clean since we can't check
 		HasErrors:        false, // Assume no errors since we can't check
 		StateDescription: "Read-only (no Linux tools)",

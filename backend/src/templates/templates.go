@@ -2,7 +2,7 @@ package templates
 
 import "embed"
 
-//go:embed smb.gtpl
+//go:embed *.gtpl
 var Template_content embed.FS
 
 //g o:embed default_config.json

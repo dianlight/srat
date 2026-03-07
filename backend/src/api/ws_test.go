@@ -10,6 +10,7 @@ import (
 	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
+	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/dianlight/srat/service"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -38,7 +39,7 @@ func (suite *WsHandlerSuite) SetupTest() {
 		fx.Provide(
 			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
 			func() (context.Context, context.CancelFunc) {
-				ctx := context.WithValue(context.Background(), "wg", suite.wg)
+				ctx := context.WithValue(context.Background(), ctxkeys.WaitGroup, suite.wg)
 				return context.WithCancel(ctx)
 			},
 			func() *dto.ContextState { return &dto.ContextState{} },
@@ -47,7 +48,7 @@ func (suite *WsHandlerSuite) SetupTest() {
 			events.NewEventBus,
 			mock.Mock[service.HomeAssistantServiceInterface],
 			mock.Mock[service.HaRootServiceInterface],
-			mock.Mock[service.VolumeServiceInterface],
+			func() *dto.DiskMap { return &dto.DiskMap{} },
 			mock.Mock[service.ShareServiceInterface],
 			///mock.Mock[service.BroadcasterServiceInterface],
 		),

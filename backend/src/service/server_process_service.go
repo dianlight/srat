@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/dianlight/srat/homeassistant/mount"
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/srat/tempio"
+	"github.com/dianlight/srat/templates"
 	"github.com/dianlight/tlog"
 	"github.com/lonegunmanb/go-defaults"
 	cache "github.com/patrickmn/go-cache"
@@ -28,6 +30,7 @@ import (
 
 type ServerServiceInterface interface {
 	CreateSambaConfigStream() (data *[]byte, err errors.E)
+	CreateSambaUsersMapStream() (data *[]byte, err errors.E)
 	GetServerProcesses() (*dto.ServerProcessStatus, errors.E)
 	GetSambaStatus() (*dto.SambaStatus, errors.E)
 	WriteConfigsAndRestartProcesses(ctx context.Context) errors.E
@@ -85,6 +88,8 @@ type serviceConfig struct {
 }
 
 var (
+	sambaUsersMapFile = "/etc/samba/smbusers"
+
 	serviceConfigMap = map[string]serviceConfig{
 		"smbd": {
 			Name:                 "smbd",
@@ -194,6 +199,9 @@ func NewServerProcessesService(lc fx.Lifecycle, in ServerServiceParams) ServerSe
 		OnStart: func(ctx context.Context) error {
 			serviceStart := time.Now()
 			tlog.TraceContext(ctx, "=== SERVICE INIT: ServerProcesses Starting ===")
+			if err := p.writeSambaUsersMapConfig(ctx); err != nil {
+				return err
+			}
 			defer func() {
 				tlog.TraceContext(ctx, "=== SERVICE INIT: ServerProcesses Complete ===", "duration", time.Since(serviceStart))
 			}()
@@ -278,6 +286,60 @@ func (self *ServerService) CreateSambaConfigStream() (data *[]byte, err errors.E
 
 	datar, err := tempio.RenderTemplateBuffer(config_2, self.state.Template)
 	return &datar, errors.WithStack(err)
+}
+
+func (self *ServerService) CreateSambaUsersMapStream() (data *[]byte, err errors.E) {
+	type sambaUserMapping struct {
+		UnixUsername   string
+		SambaUsernames []string
+	}
+
+	users, listErr := self.user_service.ListUsers()
+	if listErr != nil {
+		return nil, errors.WithStack(listErr)
+	}
+
+	aliasesByUnixUser := make(map[string][]string)
+	for _, user := range users {
+		normalizedUsername := NormalizeUsernameForUnixSamba(user.Username)
+		if normalizedUsername == "" || normalizedUsername == user.Username {
+			continue
+		}
+
+		aliasesByUnixUser[normalizedUsername] = append(aliasesByUnixUser[normalizedUsername], user.Username)
+	}
+
+	sortedUnixUsers := make([]string, 0, len(aliasesByUnixUser))
+	for unixUsername := range aliasesByUnixUser {
+		sortedUnixUsers = append(sortedUnixUsers, unixUsername)
+	}
+	sort.Strings(sortedUnixUsers)
+
+	mappings := make([]sambaUserMapping, 0, len(sortedUnixUsers))
+	for _, unixUsername := range sortedUnixUsers {
+		aliases := aliasesByUnixUser[unixUsername]
+		sort.Strings(aliases)
+		mappings = append(mappings, sambaUserMapping{
+			UnixUsername:   unixUsername,
+			SambaUsernames: aliases,
+		})
+	}
+
+	templateData, templateErr := templates.Template_content.ReadFile("smbusers.gtpl")
+	if templateErr != nil {
+		return nil, errors.WithStack(templateErr)
+	}
+
+	renderData := map[string]any{
+		"mappings": mappings,
+	}
+
+	rendered, renderErr := tempio.RenderTemplateBuffer(&renderData, templateData)
+	if renderErr != nil {
+		return nil, errors.WithStack(renderErr)
+	}
+
+	return &rendered, nil
 }
 
 func (self *ServerService) jSONFromDatabase() (tconfig config.Config, err errors.E) {
@@ -427,6 +489,22 @@ func (self *ServerService) writeSambaConfig(ctx context.Context) errors.E {
 	return nil
 }
 
+func (self *ServerService) writeSambaUsersMapConfig(ctx context.Context) errors.E {
+	tlog.TraceContext(ctx, "Writing Samba username map file", "file", sambaUsersMapFile)
+
+	stream, err := self.CreateSambaUsersMapStream()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	errWrite := os.WriteFile(sambaUsersMapFile, *stream, 0o644)
+	if errWrite != nil {
+		return errors.WithStack(errWrite)
+	}
+
+	return nil
+}
+
 func (self *ServerService) testSambaConfig(ctx context.Context) errors.E {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
@@ -504,6 +582,10 @@ func (self *ServerService) restartServerServices(ctx context.Context, dirty dto.
 // WriteSambaConfig Test and Restart
 func (self *ServerService) writeConfigsAndRestartServers(ctx context.Context, dirty dto.DataDirtyTracker) errors.E {
 	err := self.writeSambaConfig(ctx)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	err = self.writeSambaUsersMapConfig(ctx)
 	if err != nil {
 		return errors.WithStack(err)
 	}

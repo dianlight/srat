@@ -241,7 +241,7 @@ func (a *HfsplusAdapter) SetLabel(ctx context.Context, device string, label stri
 // GetState returns the state of an HFS+ filesystem
 func (a *HfsplusAdapter) GetState(ctx context.Context, device string) (dto.FilesystemState, errors.E) {
 	state := dto.FilesystemState{
-		AdditionalInfo: make(map[string]interface{}),
+		AdditionalInfo: make(map[string]any),
 	}
 
 	// Run state command to get filesystem state

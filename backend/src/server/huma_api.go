@@ -96,8 +96,6 @@ func NewHumaAPI(v struct {
 					Ref: "#/components/headers/" + key,
 				}
 			}
-
-			//			maps.Copy(op.Responses[code].Headers, config.Components.Headers)
 		}
 	})
 

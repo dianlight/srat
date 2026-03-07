@@ -10,6 +10,7 @@ import (
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/root"
+	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -102,7 +103,7 @@ func TestHaRootServiceSuite(t *testing.T) {
 
 func (s *HaRootServiceSuite) SetupTest() {
 	var wg sync.WaitGroup
-	s.ctx, s.cancel = context.WithCancel(context.WithValue(context.Background(), "wg", &wg))
+	s.ctx, s.cancel = context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, &wg))
 	// Ensure package cache is clean between tests
 	haRootSystemInfoCache.Flush()
 	// default service with nil client; individual tests will set svc.client as needed

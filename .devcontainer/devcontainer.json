@@ -1,6 +1,9 @@
 {
 	"name": "SRAT",
-	"image": "ghcr.io/hassio-addons/base:20.0.1",
+	"build": {
+		"dockerfile": "Dockerfile",
+		"context": ".."
+	},
 	//"image": "ghcr.io/hassio-addons/base:edge",
 	"runArgs": [
 		"--cap-add=SYS_PTRACE",
@@ -12,7 +15,7 @@
 	],
 	"initializeCommand": "mkdir -p .devcontainer && touch .devcontainer/.env && chmod 600 .devcontainer/.env",
 	"updateContentCommand": {
-		"mainScrip": ".devcontainer/updateContentCommand.sh"
+		"mainScript": ".devcontainer/updateContentCommand.sh"
 	},
 	"remoteUser": "root",
 	"postCreateCommand": ".devcontainer/postCreateCommand.sh",

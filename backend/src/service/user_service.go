@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/angusgmorrison/logfusc"
 	"github.com/dianlight/srat/converter"
@@ -21,6 +22,12 @@ import (
 
 const defaultAdminUsername = "admin"
 const defaultAdminPassword = "changeme!"
+
+// NormalizeUsernameForUnixSamba strips spaces from Samba usernames for Unix account mapping.
+func NormalizeUsernameForUnixSamba(username string) string {
+	trimmed := strings.TrimSpace(username)
+	return strings.ReplaceAll(trimmed, " ", "")
+}
 
 type UserServiceInterface interface {
 	ListUsers() ([]dto.User, error)
@@ -68,6 +75,10 @@ func NewUserService(lc fx.Lifecycle, params UserServiceParams) UserServiceInterf
 			if err != nil {
 				slog.ErrorContext(ctx, "Cant load settings", "err", err)
 			}
+			if setting == nil {
+				slog.WarnContext(ctx, "Settings are nil, using default startup settings")
+				setting = &dto.Settings{}
+			}
 			HASmbPassword := setting.HASmbPassword.Expose()
 			if HASmbPassword == "" {
 				slog.ErrorContext(ctx, "Cant get HASmbPassword setting (regenerated password will be used)")
@@ -107,7 +118,8 @@ func NewUserService(lc fx.Lifecycle, params UserServiceParams) UserServiceInterf
 			}
 			for _, user := range users {
 				slog.InfoContext(ctx, "Autocreating user", "name", user.Username)
-				err = unixsamba.CreateSambaUser(user.Username, user.Password, unixsamba.UserOptions{
+				normalizedUsername := NormalizeUsernameForUnixSamba(user.Username)
+				err = unixsamba.CreateSambaUser(normalizedUsername, user.Password, unixsamba.UserOptions{
 					CreateHome:    false,
 					SystemAccount: false,
 					Shell:         "/sbin/nologin",
@@ -332,9 +344,12 @@ func (self *UserService) rename(oldname string, newname string) errors.E {
 			return errors.Wrapf(err, "failed to find user %s before renaming", oldname)
 		}
 
-		if os.Getenv("SRAT_MOCK") != "true" {
+		normalizedOldName := NormalizeUsernameForUnixSamba(oldname)
+		normalizedNewName := NormalizeUsernameForUnixSamba(newname)
+
+		if os.Getenv("SRAT_MOCK") != "true" && normalizedOldName != normalizedNewName {
 			// Attempt to rename the user in the underlying system (Samba/Unix) first
-			if err := unixsamba.RenameUsername(oldname, newname, false, smbuser.Password); err != nil {
+			if err := unixsamba.RenameUsername(normalizedOldName, normalizedNewName, false, smbuser.Password); err != nil {
 				return errors.Wrapf(err, "failed to rename user in unix/samba from %s to %s", oldname, newname)
 			}
 		}

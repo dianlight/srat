@@ -44,7 +44,6 @@ func NewSettingsHanler(
 // Parameters:
 // - api: The huma.API instance to register the routes with.
 func (self *SettingsHanler) RegisterSettings(api huma.API) {
-	//slog.Debug("Autoregister Settings")
 	huma.Get(api, "/settings", self.GetSettings, huma.OperationTags("system"))
 	huma.Put(api, "/settings", self.UpdateSettings, huma.OperationTags("system"))
 }

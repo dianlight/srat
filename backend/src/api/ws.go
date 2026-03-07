@@ -93,6 +93,12 @@ func (self *WsMessageSender) SendFunc(msg ws.Message) errors.E {
 // HandleWebSocket handles the WebSocket upgrade and connection
 // This method should be called from an HTTP handler that matches the /ws path
 func (self *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		if recoverErr := recover(); recoverErr != nil {
+			slog.ErrorContext(self.ctx, "WebSocket handler panicked", "panic", recoverErr)
+		}
+	}()
+
 	if self.ctx.Err() != nil {
 		http.Error(w, "service shutting down", http.StatusServiceUnavailable)
 		return

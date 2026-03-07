@@ -9,6 +9,7 @@ import (
 	"github.com/danielgtaylor/huma/v2/sse"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/addons"
+	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/dianlight/srat/server/ws"
 	"gitlab.com/tozd/go/errors"
 )
@@ -31,7 +32,8 @@ func (f *fakeBroadcaster) ProcessWebSocketChannel(send ws.Sender) {}
 // minimal fakes for other services
 type fakeSamba struct{}
 
-func (f *fakeSamba) CreateSambaConfigStream() (data *[]byte, err errors.E) { return nil, nil }
+func (f *fakeSamba) CreateSambaConfigStream() (data *[]byte, err errors.E)   { return nil, nil }
+func (f *fakeSamba) CreateSambaUsersMapStream() (data *[]byte, err errors.E) { return nil, nil }
 func (f *fakeSamba) GetServerProcesses() (*dto.ServerProcessStatus, errors.E) {
 	return &dto.ServerProcessStatus{}, nil
 }
@@ -88,7 +90,7 @@ func (f *fakeNetStats) GetNetworkStats() (*dto.NetworkStats, errors.E) {
 func TestHealthRunLoopInternal(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	ctx, cancel := context.WithCancel(context.Background())
-	ctx = context.WithValue(ctx, "wg", wg)
+	ctx = context.WithValue(ctx, ctxkeys.WaitGroup, wg)
 
 	state := &dto.ContextState{StartTime: time.Now().Add(-1 * time.Second), Heartbeat: 1}
 	b := &fakeBroadcaster{}

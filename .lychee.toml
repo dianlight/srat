@@ -40,6 +40,8 @@ exclude_path = [
   "frontend/node_modules/",
   "backend/src/vendor/",
   ".git/",
+  ".vale/",
+  ".github/",
 ]
 
 # Check the specified file extensions

@@ -11,6 +11,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/tlog"
 	"gitlab.com/tozd/go/errors"
@@ -106,22 +107,24 @@ func (handler *UpgradeHanler) UpdateHandler(ctx context.Context, input *struct{}
 
 	slog.InfoContext(ctx, "Updating to version", "version", assets.LastRelease)
 
-	handler.ctx.Value("wg").(*sync.WaitGroup).Go(func() {
-		updatePkg, err := handler.upgader.DownloadAndExtractBinaryAsset(assets.ArchAsset)
-		if err != nil {
-			slog.ErrorContext(handler.ctx, "Error downloading and extracting binary asset", "err", err)
-			return
-		}
-		err = handler.upgader.ApplyUpdateAndRestart(updatePkg)
-		if err != nil {
-			slog.ErrorContext(handler.ctx, "Error applying update", "err", err)
-			return
-		}
-		// If a test has set the testDone channel, signal completion.
-		if handler.testDone != nil {
-			close(handler.testDone)
-		}
-	})
+	if wg, ok := handler.ctx.Value(ctxkeys.WaitGroup).(*sync.WaitGroup); ok && wg != nil {
+		wg.Go(func() {
+			updatePkg, err := handler.upgader.DownloadAndExtractBinaryAsset(assets.ArchAsset)
+			if err != nil {
+				slog.ErrorContext(handler.ctx, "Error downloading and extracting binary asset", "err", err)
+				return
+			}
+			err = handler.upgader.ApplyUpdateAndRestart(updatePkg)
+			if err != nil {
+				slog.ErrorContext(handler.ctx, "Error applying update", "err", err)
+				return
+			}
+			// If a test has set the testDone channel, signal completion.
+			if handler.testDone != nil {
+				close(handler.testDone)
+			}
+		})
+	}
 
 	return &struct{ Body dto.UpdateProgress }{Body: dto.UpdateProgress{
 		ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSDOWNLOADING,
