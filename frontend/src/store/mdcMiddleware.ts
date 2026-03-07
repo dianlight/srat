@@ -58,8 +58,8 @@ export const mdcMiddleware: Middleware = (storeApi) => (next) => (action) => {
 					const h = headers as Record<string, string>;
 					const v =
 						h[key] ??
-						(h as Record<string, string>)[key.toLowerCase()] ??
-						(h as Record<string, string>)[key.toUpperCase()];
+						h[key.toLowerCase()] ??
+						h[key.toUpperCase()];
 					return v ?? null;
 				};
 
