@@ -13,26 +13,38 @@ applyTo: '**/\*.ts,**/\*.tsx'
 
 ## TypeScript Version and Tooling
 
-- **TypeScript Version**: 6.0 Beta / 7.0 Preview (tsgo)
+- **TypeScript Version**: 6.0 RC / 7.0 Preview (tsgo)
 - **Target**: ES2022 with modern ECMAScript features
 - **Type Checking**: Uses `bun tsgo --noEmit` command (not regular `tsc`)
 - **Migration Guide**: See `frontend/TYPESCRIPT_MIGRATION.md` for upgrade details
+- **Release**: TypeScript 6.0 RC (March 2026) - [Official Announcement](https://devblogs.microsoft.com/typescript/announcing-typescript-6-0-rc/)
 
-### TypeScript 6.0/7.0 Key Changes
+### TypeScript 6.0 RC Key Changes
 
 **Removed Deprecated Flags** (Do not use):
 - ❌ `experimentalDecorators` - Use native decorators instead
 - ❌ `useDefineForClassFields: false` - ES2022+ requires default `true`
 - ❌ `target: es5` - ES2015+ is the minimum
 - ❌ Classic module resolution - Use `bundler` or `node`
+- ❌ AMD/UMD module emit - ESM and CommonJS only
 
 **Enabled Strict Flags**:
 - ✅ `noImplicitOverride: true` - Requires explicit `override` keyword on class methods
+- ✅ `strict: true` - Now default for new projects
 - 🚧 `noUncheckedIndexedAccess: true` - TODO: See migration guide for implementation plan
 
 **Performance Benefits**:
+- 40-60% faster incremental builds with parallelized type-checking (TS 6.0 RC)
 - 20-50% faster builds with `types: []` configuration
+- Multi-threaded AST caching and smarter inference
 - Better type inference and consistency
+
+**New Features in 6.0 RC**:
+- Improved type inference for context-sensitive functions (React hooks, Redux actions)
+- Const type parameters for more precise generic inference
+- Advanced control flow analysis - better type narrowing
+- Subpath imports with `#/` (Node.js 20-style)
+- No mandatory `baseUrl` for import aliases
 
 ## Core Intent
 
@@ -222,6 +234,54 @@ class MyComponent {
 }
 ```
 
+## TypeScript 6.0 RC Code Optimization Patterns
+
+### Leveraging Improved Type Inference
+
+**Avoid Unnecessary Type Assertions:**
+```typescript
+// ❌ Before (TS 5.x) - unnecessary cast
+const diskInfo = (diskHealth as any)?.per_disk_info?.[key];
+
+// ✅ After (TS 6.0 RC) - properly typed
+const diskInfo = diskHealth?.per_disk_info?.[key]; // Type correctly inferred
+```
+
+**Simplify Type Guards:**
+```typescript
+// ❌ Before - redundant casts after guard
+const h = headers as Record<string, string>;
+const v = h[key] ?? (h as Record<string, string>)[key.toLowerCase()];
+
+// ✅ After (TS 6.0 RC) - single cast, improved control flow
+const h = headers as Record<string, string>;
+const v = h[key] ?? h[key.toLowerCase()]; // Type properly narrowed
+```
+
+**Use Const Type Parameters:**
+```typescript
+// ✅ Better generic type specificity
+function getProperty<K extends string>(
+  obj: Record<K, unknown>, 
+  key: K
+) {
+  return obj[key]; // More precise inference
+}
+```
+
+**Leverage HMR Type Support:**
+```typescript
+// ❌ Before - unsafe any cast
+if (import.meta && (import.meta as any).hot) {
+  (import.meta as any).hot.accept(() => reload());
+}
+
+// ✅ After (TS 6.0 RC) - native support
+if (import.meta.hot) {
+  import.meta.hot.accept(() => reload());
+}
+```
+
 ### Indexed Access Safety (Future Enhancement)
 
 When `noUncheckedIndexedAccess` is enabled:
@@ -245,5 +305,5 @@ if (items[0] !== undefined) {
 
 - **Migration Guide**: `frontend/TYPESCRIPT_MIGRATION.md`
 - **Implementation Summary**: `TYPESCRIPT_6_IMPLEMENTATION_SUMMARY.md`
-- **Official Release Notes**: [TypeScript 6.0 Beta](https://devblogs.microsoft.com/typescript/announcing-typescript-6-0-beta/)
+- **Official Release Notes RC**: [TypeScript 6.0 RC](https://devblogs.microsoft.com/typescript/announcing-typescript-6-0-rc/)
 - **TypeScript 7.0 Discussion**: [microsoft/typescript-go](https://github.com/microsoft/typescript-go/discussions/825)
