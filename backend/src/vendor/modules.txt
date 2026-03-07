@@ -221,7 +221,7 @@ github.com/jinzhu/inflection
 # github.com/jinzhu/now v1.1.5
 ## explicit; go 1.12
 github.com/jinzhu/now
-# github.com/jmattheis/goverter v1.9.3
+# github.com/jmattheis/goverter v1.9.4
 ## explicit; go 1.23.0
 github.com/jmattheis/goverter
 github.com/jmattheis/goverter/builder
