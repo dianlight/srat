@@ -92,7 +92,7 @@ func NewUserService(lc fx.Lifecycle, params UserServiceParams) UserServiceInterf
 				setting.HASmbPassword = logfusc.NewSecret(HASmbPassword)
 				us.settingService.UpdateSettings(setting)
 			}
-			err = unixsamba.CreateSambaUser("_ha_mount_user_", HASmbPassword, unixsamba.UserOptions{
+			err = unixsamba.CreateSambaUser(ctx, "_ha_mount_user_", HASmbPassword, unixsamba.UserOptions{
 				CreateHome:    false,
 				SystemAccount: false,
 				Shell:         "/sbin/nologin",
@@ -119,7 +119,7 @@ func NewUserService(lc fx.Lifecycle, params UserServiceParams) UserServiceInterf
 			for _, user := range users {
 				slog.InfoContext(ctx, "Autocreating user", "name", user.Username)
 				normalizedUsername := NormalizeUsernameForUnixSamba(user.Username)
-				err = unixsamba.CreateSambaUser(normalizedUsername, user.Password, unixsamba.UserOptions{
+				err = unixsamba.CreateSambaUser(ctx, normalizedUsername, user.Password, unixsamba.UserOptions{
 					CreateHome:    false,
 					SystemAccount: false,
 					Shell:         "/sbin/nologin",
@@ -349,7 +349,7 @@ func (self *UserService) rename(oldname string, newname string) errors.E {
 
 		if os.Getenv("SRAT_MOCK") != "true" && normalizedOldName != normalizedNewName {
 			// Attempt to rename the user in the underlying system (Samba/Unix) first
-			if err := unixsamba.RenameUsername(normalizedOldName, normalizedNewName, false, smbuser.Password); err != nil {
+			if err := unixsamba.RenameUsername(tx.Statement.Context, normalizedOldName, normalizedNewName, smbuser.Password); err != nil {
 				return errors.Wrapf(err, "failed to rename user in unix/samba from %s to %s", oldname, newname)
 			}
 		}

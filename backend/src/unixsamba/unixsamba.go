@@ -3,6 +3,7 @@ package unixsamba
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"log/slog"
 	"os/exec"
 	"os/user"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/dianlight/srat/internal/osutil"
+	"github.com/dianlight/tlog"
 	"gitlab.com/tozd/go/errors" // Import the new errors package
 )
 
@@ -31,8 +33,8 @@ type UserInfo struct {
 
 // CommandExecutor defines an interface for running external commands.
 type CommandExecutor interface {
-	RunCommand(command string, args ...string) (string, error)
-	RunCommandWithInput(stdinContent string, command string, args ...string) (string, error)
+	RunCommand(ctx context.Context, command string, args ...string) (string, error)
+	RunCommandWithInput(ctx context.Context, stdinContent string, command string, args ...string) (string, error)
 }
 
 // OSUserLookuper defines an interface for looking up OS users.
@@ -80,8 +82,8 @@ type UserOptions struct {
 }
 
 // RunCommand is the actual implementation for running commands.
-func (d *defaultCommandExecutor) RunCommand(command string, args ...string) (string, error) {
-	cmd := exec.Command(command, args...)
+func (d *defaultCommandExecutor) RunCommand(ctx context.Context, command string, args ...string) (string, error) {
+	cmd := exec.CommandContext(ctx, command, args...)
 	var outData bytes.Buffer
 	var stderrData bytes.Buffer
 	cmd.Stdout = &outData
@@ -104,8 +106,8 @@ func (d *defaultCommandExecutor) RunCommand(command string, args ...string) (str
 }
 
 // RunCommandWithInput is the actual implementation for running commands with stdin.
-func (d *defaultCommandExecutor) RunCommandWithInput(stdinContent string, command string, args ...string) (string, error) {
-	cmd := exec.Command(command, args...)
+func (d *defaultCommandExecutor) RunCommandWithInput(ctx context.Context, stdinContent string, command string, args ...string) (string, error) {
+	cmd := exec.CommandContext(ctx, command, args...)
 	cmd.Stdin = strings.NewReader(stdinContent)
 	var outData bytes.Buffer
 	var stderrData bytes.Buffer
@@ -139,7 +141,7 @@ func (d *defaultOSUserLookuper) Lookup(username string) (*user.User, error) {
 }
 
 // GetByUsername retrieves information about a Unix user and checks their Samba status.
-func GetByUsername(username string) (*UserInfo, error) {
+func GetByUsername(ctx context.Context, username string) (*UserInfo, error) {
 	sysUser, err := osUser.Lookup(username)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to lookup system user '%s'", username)
@@ -154,7 +156,7 @@ func GetByUsername(username string) (*UserInfo, error) {
 		IsSambaUser: false,
 	}
 
-	pdbeditOutput, err := cmdExec.RunCommand("pdbedit", "-L", "-v", "-u", username)
+	pdbeditOutput, err := cmdExec.RunCommand(ctx, "pdbedit", "-L", "-v", "-u", username)
 	if err == nil {
 		info.IsSambaUser = true
 		scanner := bufio.NewScanner(strings.NewReader(pdbeditOutput))
@@ -205,7 +207,7 @@ func GetByUsername(username string) (*UserInfo, error) {
 }
 
 // CreateSambaUser creates a system Unix user and then adds them to the Samba database.
-func CreateSambaUser(username string, password string, options UserOptions) errors.E {
+func CreateSambaUser(ctx context.Context, username string, password string, options UserOptions) errors.E {
 	useraddArgs := []string{}
 	if !options.CreateHome {
 		useraddArgs = append(useraddArgs, "-M")
@@ -231,7 +233,7 @@ func CreateSambaUser(username string, password string, options UserOptions) erro
 	useraddArgs = append(useraddArgs, "--badname") //  do not check for bad names
 	useraddArgs = append(useraddArgs, username)
 
-	_, err := cmdExec.RunCommand("useradd", useraddArgs...)
+	_, err := cmdExec.RunCommand(ctx, "useradd", useraddArgs...)
 	if err != nil {
 		// Check if the error is because the user already exists
 		var e errors.E
@@ -256,21 +258,23 @@ func CreateSambaUser(username string, password string, options UserOptions) erro
 	}
 
 	smbPasswdInput := password + "\n" + password + "\n"
-	_, err = cmdExec.RunCommandWithInput(smbPasswdInput, "smbpasswd", "-a", "-s", username)
+	_, err = cmdExec.RunCommandWithInput(ctx, smbPasswdInput, "smbpasswd", "-a", "-s", username)
 	if err != nil {
 		return errors.Errorf("failed to add user '%s' to Samba or set password %w", username, err)
 	}
 
 	// Use CheckSambaUser to verify the new Samba user is functional with the new password before confirming success. This also serves as a sanity check that the user can authenticate with Samba after the rename.
-	if err := CheckSambaUser(username, password); err != nil {
+	if err := CheckSambaUser(ctx, username, password); err != nil {
 		return errors.Wrapf(err, "verification of Samba user '%s' failed after creation", username)
 	}
+
+	tlog.Debug("User created successfully:", "username", username)
 	return nil
 }
 
 // DeleteSambaUser deletes a user from Samba and optionally from the system.
-func DeleteSambaUser(username string, deleteSystemUser bool, deleteHomeDir bool) error {
-	_, err := cmdExec.RunCommand("smbpasswd", "-x", username)
+func DeleteSambaUser(ctx context.Context, username string) error {
+	_, err := cmdExec.RunCommand(ctx, "smbpasswd", "-x", username)
 	sambaUserDeleted := err == nil
 
 	if err != nil {
@@ -287,129 +291,123 @@ func DeleteSambaUser(username string, deleteSystemUser bool, deleteHomeDir bool)
 			}
 		}
 
-		if !isUserNotFoundErr && !deleteSystemUser { // If it's another error and we are ONLY deleting samba user
+		if !isUserNotFoundErr { // If it's another error and we are ONLY deleting samba user
 			return errors.Wrapf(err, "failed to delete user '%s' from Samba", username)
 		}
 		// If isUserNotFoundErr, we can proceed to system user deletion without erroring here.
 	}
 
-	if deleteSystemUser {
-		userdelArgs := []string{}
-		if deleteHomeDir {
-			userdelArgs = append(userdelArgs, "--remove-home")
+	userdelArgs := []string{}
+
+	userdelArgs = append(userdelArgs, "--remove-home")
+
+	userdelArgs = append(userdelArgs, username)
+	_, sysErr := cmdExec.RunCommand(ctx, "deluser", userdelArgs...)
+	if sysErr != nil {
+		// If Samba deletion also failed (and it wasn't "user not found")
+		if !sambaUserDeleted {
+			return errors.Wrapf(sysErr, "failed to delete system user '%s' (Samba deletion also failed: %v)", username, err)
 		}
-		userdelArgs = append(userdelArgs, username)
-		_, sysErr := cmdExec.RunCommand("deluser", userdelArgs...)
-		if sysErr != nil {
-			// If Samba deletion also failed (and it wasn't "user not found")
-			if !sambaUserDeleted {
-				return errors.Wrapf(sysErr, "failed to delete system user '%s' (Samba deletion also failed: %v)", username, err)
-			}
-			return errors.Wrapf(sysErr, "failed to delete system user '%s'", username)
-		}
+		return errors.Wrapf(sysErr, "failed to delete system user '%s'", username)
 	}
 
 	// Use CheckSambaUser to verify the new Samba user is deleted. If the user still exists in Samba, this will return an error which we can log but not fail on since the main deletion logic has already been attempted.
-	if err := CheckSambaUser(username, "invalidpasswordforsure"); err == nil {
+	if err := CheckSambaUser(ctx, username, "invalidpasswordforsure"); err == nil {
 		slog.Warn("User still appears to exist in Samba after deletion attempt", "username", username)
 	}
+
+	tlog.Debug("User deleted successfully", "username", username)
 
 	return nil
 }
 
 // ChangePassword changes a user's Samba password and optionally their system password.
-func ChangePassword(username string, newPassword string, sambaOnly bool) error {
+func ChangePassword(ctx context.Context, username string, newPassword string) error {
 	smbPasswdInput := newPassword + "\n" + newPassword + "\n"
-	_, err := cmdExec.RunCommandWithInput(smbPasswdInput, "smbpasswd", "-s", username)
+	_, err := cmdExec.RunCommandWithInput(ctx, smbPasswdInput, "smbpasswd", "-s", username)
 	if err != nil {
 		return errors.Wrapf(err, "failed to change Samba password for user '%s'", username)
 	}
 
-	if !sambaOnly {
-		chpasswdInput := username + ":" + newPassword + "\n"
-		_, sysErr := cmdExec.RunCommandWithInput(chpasswdInput, "chpasswd")
-		if sysErr != nil {
-			return errors.Wrapf(sysErr, "failed to change system password for user '%s'", username)
-		}
-	}
-
 	// Use CheckSambaUser to verify the new Samba user is functional with the new password before confirming success. This also serves as a sanity check that the user can authenticate with Samba after the rename.
-	if err := CheckSambaUser(username, newPassword); err != nil {
+	if err := CheckSambaUser(ctx, username, newPassword); err != nil {
 		return errors.Wrapf(err, "verification of Samba user '%s' failed after password change", username)
 	}
+
+	tlog.DebugContext(ctx, "Password changed successfully", "username", username)
 	return nil
 }
 
 // RenameUsername renames a Unix system user and attempts to reflect this in Samba.
 // WARNING: This will likely change the user's Samba SID.
-func RenameUsername(oldUsername string, newUsername string, renameHomeDir bool, newPasswordForSamba string) error {
+func RenameUsername(ctx context.Context, oldUsername string, newUsername string, newPasswordForSamba string) error {
+	if newPasswordForSamba == "" {
+		return errors.New("a new password must be provided to re-add user to Samba after renaming")
+	}
+
 	if _, err := osUser.Lookup(newUsername); err == nil {
 		return errors.Errorf("new username '%s' already exists on the system", newUsername)
 	}
 
-	sambaInfo, sambaErr := GetByUsername(newUsername)
-	if sambaErr == nil && sambaInfo.IsSambaUser { // User found and is a samba user
+	// Check Samba status directly. This must be independent from system user lookup
+	// because Samba users can exist without a resolvable system account.
+	pdbeditOutput, sambaErr := cmdExec.RunCommand(ctx, "pdbedit", "-L", "-v", "-u", newUsername)
+	if sambaErr == nil {
+		_ = pdbeditOutput
 		return errors.Errorf("new username '%s' already appears to be a Samba user", newUsername)
-	} else if sambaErr != nil { // GetByUsername returned an error
-		// Check if it's a pdbedit execution error (not just "user not found" for samba part)
-		var e errors.E
-		isPdbeditIssue := false
-		if errors.As(sambaErr, &e) {
-			details := e.Details()
-			// Check if the *original* error for pdbedit (before GetByUsername wrapped it) was more than just user not found
-			// This is tricky as GetByUsername already filters "No such user" for the Samba part.
-			// Any error from GetByUsername at this stage implies a more fundamental issue if it's not a system user lookup error
-			// (which should have been caught by the first user.Lookup(newUsername)).
-			// So, if sambaErr exists, it means either the system lookup within GetByUsername failed (unlikely here)
-			// or the pdbedit command itself had an execution issue beyond just user not found.
-			if cmd, ok := details["command"].(string); ok && cmd == "pdbedit" {
-				isPdbeditIssue = true // Indicates a failure in running pdbedit itself.
-			}
-		}
-		if isPdbeditIssue {
-			return errors.Wrapf(sambaErr, "failed to verify Samba status for new username '%s' due to pdbedit execution issue", newUsername)
-		}
-		// If not a pdbedit issue (e.g. system user not found in GetByUsername, which is good here), we can proceed.
 	}
 
-	usermodArgs := []string{"-l", newUsername, oldUsername}
-	_, err := cmdExec.RunCommand("usermod", usermodArgs...)
-	if err != nil {
-		return errors.Wrapf(err, "failed to rename system user login from '%s' to '%s'", oldUsername, newUsername)
+	// Ignore "user not found" errors from pdbedit and only fail on real command issues.
+	var e errors.E
+	if !errors.As(sambaErr, &e) {
+		return errors.Wrapf(sambaErr, "failed to verify Samba status for new username '%s' due to pdbedit execution issue", newUsername)
 	}
 
-	if renameHomeDir {
-		currentSysUser, lookupErr := osUser.Lookup(newUsername)
-		if lookupErr != nil {
-			return errors.Wrapf(lookupErr, "failed to lookup new system user '%s' after rename", newUsername)
-		}
-		newHomeDir := "/home/" + newUsername
-		if currentSysUser.HomeDir != newHomeDir {
-			_, err = cmdExec.RunCommand("usermod", "-d", newHomeDir, "-m", newUsername)
-			if err != nil {
-				return errors.Wrapf(err, "failed to move/rename home directory to '%s' for user '%s'", newHomeDir, newUsername)
-			}
-		}
+	details := e.Details()
+	stderr, _ := details["stderr"].(string)
+	lwrStderr := strings.ToLower(stderr)
+	if !(strings.Contains(lwrStderr, "no such user") ||
+		strings.Contains(lwrStderr, "does not exist") ||
+		strings.Contains(lwrStderr, "username not found") ||
+		strings.Contains(lwrStderr, "user not found")) {
+		return errors.Wrapf(sambaErr, "failed to verify Samba status for new username '%s' due to pdbedit execution issue", newUsername)
 	}
 
-	_, delErr := cmdExec.RunCommand("smbpasswd", "-x", oldUsername)
+	_, delErr := cmdExec.RunCommand(ctx, "smbpasswd", "-x", oldUsername)
 	if delErr != nil {
 		slog.Error("Unable to delete old Samba user", "error", delErr, "username", oldUsername)
 	}
 
-	if newPasswordForSamba == "" {
-		return errors.New("a new password must be provided to re-add user to Samba after renaming")
+	usermodArgs := []string{"-l", newUsername, oldUsername}
+	_, err := cmdExec.RunCommand(ctx, "usermod", usermodArgs...)
+	if err != nil {
+		return errors.Wrapf(err, "failed to rename system user login from '%s' to '%s'", oldUsername, newUsername)
 	}
+
+	// If the user still points to /home/<oldUsername>, rename/move it to /home/<newUsername>.
+	if updatedUser, lookupErr := osUser.Lookup(newUsername); lookupErr == nil {
+		expectedOldHomeDir := "/home/" + oldUsername
+		expectedNewHomeDir := "/home/" + newUsername
+		if updatedUser.HomeDir == expectedOldHomeDir {
+			_, homeErr := cmdExec.RunCommand(ctx, "usermod", "-d", expectedNewHomeDir, "-m", newUsername)
+			if homeErr != nil {
+				return errors.Wrapf(homeErr, "failed to move/rename home directory for user '%s'", newUsername)
+			}
+		}
+	}
+
 	smbPasswdInput := newPasswordForSamba + "\n" + newPasswordForSamba + "\n"
-	_, addErr := cmdExec.RunCommandWithInput(smbPasswdInput, "smbpasswd", "-a", "-s", newUsername)
+	_, addErr := cmdExec.RunCommandWithInput(ctx, smbPasswdInput, "smbpasswd", "-a", "-s", newUsername)
 	if addErr != nil {
 		return errors.Wrapf(addErr, "failed to add new Samba user '%s' after renaming", newUsername)
 	}
 
 	// Use CheckSambaUser to verify the new Samba user is functional with the new password before confirming success. This also serves as a sanity check that the user can authenticate with Samba after the rename.
-	if err := CheckSambaUser(newUsername, newPasswordForSamba); err != nil {
+	if err := CheckSambaUser(ctx, newUsername, newPasswordForSamba); err != nil {
 		return errors.Wrapf(err, "verification of new Samba user '%s' failed after renaming", newUsername)
 	}
+
+	tlog.Debug("User renamed successfully", "old_username", oldUsername, "new_username", newUsername)
 
 	return nil
 }
@@ -424,9 +422,9 @@ func RenameUsername(oldUsername string, newUsername string, renameHomeDir bool, 
 //     The NT hash of the supplied password is computed in pure Go (MD4 of the
 //     UTF-16LE-encoded password) and compared with the stored value.
 //     This approach works regardless of whether smbd is running.
-func CheckSambaUser(username, password string) error {
+func CheckSambaUser(ctx context.Context, username, password string) error {
 	// Step 1: Confirm the user exists in the Samba database and is active.
-	pdbeditOutput, err := cmdExec.RunCommand("pdbedit", "-L", "-v", "-u", username)
+	pdbeditOutput, err := cmdExec.RunCommand(ctx, "pdbedit", "-L", "-v", "-u", username)
 	if err != nil {
 		var e errors.E
 		if errors.As(err, &e) {
@@ -464,7 +462,7 @@ func CheckSambaUser(username, password string) error {
 
 	// Step 2: Extract the stored NT hash via pdbedit smbpasswd format and
 	// compare it with the NT hash of the supplied password.
-	smbPasswdOut, err := cmdExec.RunCommand("pdbedit", "-L", "-w", "-u", username)
+	smbPasswdOut, err := cmdExec.RunCommand(ctx, "pdbedit", "-L", "-w", "-u", username)
 	if err != nil {
 		return errors.Wrapf(err, "failed to read samba password hash for user '%s'", username)
 	}
@@ -522,8 +520,8 @@ func isSmbDisabledHash(hash string) bool {
 
 // ListSambaUsers retrieves a list of all usernames known to Samba.
 // This function requires privileges to run `pdbedit -L`.
-func ListSambaUsers() ([]string, error) {
-	output, err := cmdExec.RunCommand("pdbedit", "-L")
+func ListSambaUsers(ctx context.Context) ([]string, error) {
+	output, err := cmdExec.RunCommand(ctx, "pdbedit", "-L")
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to list samba users with pdbedit -L")
 	}
@@ -546,6 +544,8 @@ func ListSambaUsers() ([]string, error) {
 	if err := scanner.Err(); err != nil {
 		return users, errors.Wrap(err, "failed to scan pdbedit output")
 	}
+
+	tlog.Debug("Listed Samba users successfully", "count", len(users))
 
 	return users, nil
 }

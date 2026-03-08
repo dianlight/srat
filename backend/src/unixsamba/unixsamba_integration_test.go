@@ -1,6 +1,7 @@
 package unixsamba_test
 
 import (
+	"context"
 	"fmt"
 	"math/rand/v2"
 	"os"
@@ -58,8 +59,8 @@ func randomTestUsername() string {
 }
 
 // cleanupUser is a best-effort helper used in T.Cleanup callbacks.
-func cleanupUser(username string) {
-	err := unixsamba.DeleteSambaUser(username, true, false)
+func cleanupUser(ctx context.Context, username string) {
+	err := unixsamba.DeleteSambaUser(ctx, username)
 	if err != nil {
 		fmt.Printf("cleanupUser: failed to delete user %q: %v\n", username, err)
 	}
@@ -71,7 +72,7 @@ func (s *UnixSambaIntegrationTestSuite) TestListSambaUsers_Real() {
 	s.requireCommands("pdbedit")
 	s.requireRoot()
 
-	users, err := unixsamba.ListSambaUsers()
+	users, err := unixsamba.ListSambaUsers(s.T().Context())
 	s.Require().NoError(err)
 	// Result may be nil (empty database) or a populated slice – both are valid.
 	_ = users
@@ -82,7 +83,7 @@ func (s *UnixSambaIntegrationTestSuite) TestListSambaUsers_Real() {
 func (s *UnixSambaIntegrationTestSuite) TestGetByUsername_NonExistentUser_Real() {
 	// os/user.Lookup fails before any external command is invoked, so no
 	// command availability or root check is needed.
-	info, err := unixsamba.GetByUsername("__no_such_srat_user__")
+	info, err := unixsamba.GetByUsername(s.T().Context(), "__no_such_srat_user__")
 	s.Require().Error(err)
 	s.Nil(info)
 }
@@ -92,7 +93,7 @@ func (s *UnixSambaIntegrationTestSuite) TestGetByUsername_ExistingSystemUser_Rea
 	s.requireRoot()
 
 	// "root" is guaranteed to exist as a system user in any Linux environment.
-	info, err := unixsamba.GetByUsername("root")
+	info, err := unixsamba.GetByUsername(s.T().Context(), "root")
 	s.Require().NoError(err)
 	s.Require().NotNil(info)
 	s.Equal("root", info.Username)
@@ -108,10 +109,10 @@ func (s *UnixSambaIntegrationTestSuite) TestCreateGetDeleteSambaUser_Real() {
 	username := randomTestUsername()
 	password := "T3stP@ss!"
 
-	s.T().Cleanup(func() { cleanupUser(username) })
+	s.T().Cleanup(func() { cleanupUser(s.T().Context(), username) })
 
 	// Create
-	errE := unixsamba.CreateSambaUser(username, password, unixsamba.UserOptions{
+	errE := unixsamba.CreateSambaUser(s.T().Context(), username, password, unixsamba.UserOptions{
 		Shell:      "/sbin/nologin",
 		CreateHome: false,
 	})
@@ -123,7 +124,7 @@ func (s *UnixSambaIntegrationTestSuite) TestCreateGetDeleteSambaUser_Real() {
 	)
 
 	// Inspect via GetByUsername
-	info, err := unixsamba.GetByUsername(username)
+	info, err := unixsamba.GetByUsername(s.T().Context(), username)
 	s.Require().NoError(err)
 	s.Require().NotNil(info)
 	s.Equal(username, info.Username)
@@ -131,23 +132,17 @@ func (s *UnixSambaIntegrationTestSuite) TestCreateGetDeleteSambaUser_Real() {
 	s.True(info.SambaPasswordSet, "Samba password should be marked as set")
 
 	// Should appear in ListSambaUsers
-	users, err := unixsamba.ListSambaUsers()
+	users, err := unixsamba.ListSambaUsers(s.T().Context())
 	s.Require().NoError(err)
 	s.Contains(users, username)
 
 	// Delete from Samba database only
-	err = unixsamba.DeleteSambaUser(username, false, false)
+	err = unixsamba.DeleteSambaUser(s.T().Context(), username)
 	s.Require().NoError(err)
 
-	// No longer a Samba user, but still a system user
-	info, err = unixsamba.GetByUsername(username)
-	s.Require().NoError(err)
-	s.Require().NotNil(info)
-	s.False(info.IsSambaUser, "user should not be a Samba user after Samba-only deletion")
-
-	// Delete system user
-	err = unixsamba.DeleteSambaUser(username, true, false)
-	s.Require().NoError(err)
+	// No longer a Samba user and system user
+	info, err = unixsamba.GetByUsername(s.T().Context(), username)
+	s.Require().Error(err)
 
 	// System user must be gone
 	_, lookupErr := user.Lookup(username)
@@ -163,25 +158,25 @@ func (s *UnixSambaIntegrationTestSuite) TestCreateSambaUser_SystemUserAlreadyExi
 	username := randomTestUsername()
 	password := "T3stP@ss!"
 
-	s.T().Cleanup(func() { cleanupUser(username) })
+	s.T().Cleanup(func() { cleanupUser(s.T().Context(), username) })
 
 	// First creation
-	s.Require().NoError(unixsamba.CreateSambaUser(username, password, unixsamba.UserOptions{
+	s.Require().NoError(unixsamba.CreateSambaUser(s.T().Context(), username, password, unixsamba.UserOptions{
 		Shell:      "/sbin/nologin",
 		CreateHome: false,
 	}))
 
 	// Remove only from Samba so the system user still exists
-	err := unixsamba.DeleteSambaUser(username, false, false)
+	err := unixsamba.DeleteSambaUser(s.T().Context(), username)
 	s.Require().NoError(err)
 
 	// Re-create: system user exists, should be added to Samba without error
-	s.Require().NoError(unixsamba.CreateSambaUser(username, password, unixsamba.UserOptions{
+	s.Require().NoError(unixsamba.CreateSambaUser(s.T().Context(), username, password, unixsamba.UserOptions{
 		Shell:      "/sbin/nologin",
 		CreateHome: false,
 	}))
 
-	info, err := unixsamba.GetByUsername(username)
+	info, err := unixsamba.GetByUsername(s.T().Context(), username)
 	s.Require().NoError(err)
 	s.True(info.IsSambaUser)
 }
@@ -196,14 +191,14 @@ func (s *UnixSambaIntegrationTestSuite) TestChangePassword_SambaOnly_Real() {
 	password := "Init1@lPass!"
 	newPassword := "N3wP@ssw0rd!"
 
-	s.T().Cleanup(func() { cleanupUser(username) })
+	s.T().Cleanup(func() { cleanupUser(s.T().Context(), username) })
 
-	s.Require().NoError(unixsamba.CreateSambaUser(username, password, unixsamba.UserOptions{
+	s.Require().NoError(unixsamba.CreateSambaUser(s.T().Context(), username, password, unixsamba.UserOptions{
 		Shell:      "/sbin/nologin",
 		CreateHome: false,
 	}))
 
-	err := unixsamba.ChangePassword(username, newPassword, true)
+	err := unixsamba.ChangePassword(s.T().Context(), username, newPassword)
 	s.Require().NoError(err)
 }
 
@@ -219,22 +214,22 @@ func (s *UnixSambaIntegrationTestSuite) TestRenameUsername_Real() {
 	newPassword := "N3wP@ssw0rd!"
 
 	s.T().Cleanup(func() {
-		cleanupUser(oldUsername)
-		cleanupUser(newUsername)
+		cleanupUser(s.T().Context(), oldUsername)
+		cleanupUser(s.T().Context(), newUsername)
 	})
 
 	// Create the original user
-	s.Require().NoError(unixsamba.CreateSambaUser(oldUsername, password, unixsamba.UserOptions{
+	s.Require().NoError(unixsamba.CreateSambaUser(s.T().Context(), oldUsername, password, unixsamba.UserOptions{
 		Shell:      "/sbin/nologin",
 		CreateHome: false,
 	}))
 
 	// Rename
-	err := unixsamba.RenameUsername(oldUsername, newUsername, false, newPassword)
+	err := unixsamba.RenameUsername(s.T().Context(), oldUsername, newUsername, newPassword)
 	s.Require().NoError(err)
 
 	// New username must exist as a Samba user
-	info, err := unixsamba.GetByUsername(newUsername)
+	info, err := unixsamba.GetByUsername(s.T().Context(), newUsername)
 	s.Require().NoError(err)
 	s.Require().NotNil(info)
 	s.Equal(newUsername, info.Username)
@@ -253,7 +248,7 @@ func (s *UnixSambaIntegrationTestSuite) TestCheckSambaUser_UserNotFound_Real() {
 	s.requireCommands("pdbedit")
 	s.requireRoot()
 
-	err := unixsamba.CheckSambaUser("__no_such_srat_smb_user__", "irrelevant")
+	err := unixsamba.CheckSambaUser(s.T().Context(), "__no_such_srat_smb_user__", "irrelevant")
 	s.Require().Error(err)
 	s.Contains(err.Error(), "not found")
 }
@@ -269,18 +264,18 @@ func (s *UnixSambaIntegrationTestSuite) TestCheckSambaUser_FullLifecycle_Real() 
 	password := "CheckP@ss1!"
 	wrongPassword := "Wr0ngP@ss!"
 
-	s.T().Cleanup(func() { cleanupUser(username) })
+	s.T().Cleanup(func() { cleanupUser(s.T().Context(), username) })
 
 	// Create the Samba account.
-	s.Require().NoError(unixsamba.CreateSambaUser(username, password, unixsamba.UserOptions{
+	s.Require().NoError(unixsamba.CreateSambaUser(s.T().Context(), username, password, unixsamba.UserOptions{
 		Shell:      "/sbin/nologin",
 		CreateHome: false,
 	}))
 
 	// Correct password must pass via pdbedit NT hash comparison.
-	s.Require().NoError(unixsamba.CheckSambaUser(username, password))
+	s.Require().NoError(unixsamba.CheckSambaUser(s.T().Context(), username, password))
 
 	// Wrong password must fail.
-	err := unixsamba.CheckSambaUser(username, wrongPassword)
+	err := unixsamba.CheckSambaUser(s.T().Context(), username, wrongPassword)
 	s.Require().Error(err)
 }

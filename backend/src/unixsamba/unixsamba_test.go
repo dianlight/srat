@@ -58,9 +58,9 @@ Password last set:    1679800000
 Last logon:           1711447200
 	`
 	mock.When(s.mockOSUser.Lookup(username)).ThenReturn(sysUser, nil).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", username)).ThenReturn(pdbeditOutput, nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-v", "-u", username)).ThenReturn(pdbeditOutput, nil).Verify(matchers.Times(1))
 
-	info, err := unixsamba.GetByUsername(username)
+	info, err := unixsamba.GetByUsername(s.T().Context(), username)
 
 	s.Require().NoError(err)
 	s.Require().NotNil(info)
@@ -84,9 +84,9 @@ func (s *UnixSambaTestSuite) TestGetByUsername_Success_SambaUserNotExists() {
 	pdbeditErr := errors.WithDetails(errors.New("pdbedit failed"), "desc", "command execution failed",
 		"stderr", "No such user testuser",
 	)
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", username)).ThenReturn("", pdbeditErr).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-v", "-u", username)).ThenReturn("", pdbeditErr).Verify(matchers.Times(1))
 
-	info, err := unixsamba.GetByUsername(username)
+	info, err := unixsamba.GetByUsername(s.T().Context(), username)
 
 	s.Require().NoError(err)
 	s.Require().NotNil(info)
@@ -100,7 +100,7 @@ func (s *UnixSambaTestSuite) TestGetByUsername_SystemUserNotFound() {
 
 	mock.When(s.mockOSUser.Lookup(username)).ThenReturn(nil, lookupErr).Verify(matchers.Times(1))
 
-	info, err := unixsamba.GetByUsername(username)
+	info, err := unixsamba.GetByUsername(s.T().Context(), username)
 
 	s.Require().Error(err)
 	s.Nil(info)
@@ -113,9 +113,9 @@ func (s *UnixSambaTestSuite) TestGetByUsername_PdbeditCommandFails() {
 	pdbeditCmdErr := errors.WithDetails(errors.New("some pdbedit error"), "desc", "command execution failed", "stderr", "some other error")
 
 	mock.When(s.mockOSUser.Lookup(username)).ThenReturn(sysUser, nil).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", username)).ThenReturn("", pdbeditCmdErr).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-v", "-u", username)).ThenReturn("", pdbeditCmdErr).Verify(matchers.Times(1))
 
-	info, err := unixsamba.GetByUsername(username)
+	info, err := unixsamba.GetByUsername(s.T().Context(), username)
 
 	s.Require().Error(err)
 	s.NotNil(info) // Info struct might be partially filled before the error
@@ -136,12 +136,12 @@ func (s *UnixSambaTestSuite) TestCreateSambaUser_Success_NewUser() {
 	smbPasswdLine := username + ":1001:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX:A9FDFA038C4B75EBC76DC855DD74F0DA:[U          ]:::"
 	pdbeditVerbose := "Unix username:        newuser\nAccount Flags:        [U          ]\n"
 
-	mock.When(s.mockCmdExec.RunCommand("useradd", "-s", "/bin/bash", "--badname", username)).ThenReturn("", nil).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommandWithInput(password+"\n"+password+"\n", "smbpasswd", "-a", "-s", username)).ThenReturn("", nil).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", username)).ThenReturn(pdbeditVerbose, nil).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-w", "-u", username)).ThenReturn(smbPasswdLine, nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "useradd", "-s", "/bin/bash", "--badname", username)).ThenReturn("", nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommandWithInput(s.T().Context(), password+"\n"+password+"\n", "smbpasswd", "-a", "-s", username)).ThenReturn("", nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-v", "-u", username)).ThenReturn(pdbeditVerbose, nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-w", "-u", username)).ThenReturn(smbPasswdLine, nil).Verify(matchers.Times(1))
 
-	err := unixsamba.CreateSambaUser(username, password, options)
+	err := unixsamba.CreateSambaUser(s.T().Context(), username, password, options)
 	s.Require().NoError(err)
 }
 
@@ -156,12 +156,12 @@ func (s *UnixSambaTestSuite) TestCreateSambaUser_Success_SystemUserExists() {
 	useraddErr := errors.WithDetails(errors.New("useradd failed"), "desc", "command execution failed",
 		"stderr", "useradd: user 'existinguser' already exists",
 	)
-	mock.When(s.mockCmdExec.RunCommand("useradd", "-M", "--badname", username)).ThenReturn("", useraddErr).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommandWithInput(password+"\n"+password+"\n", "smbpasswd", "-a", "-s", username)).ThenReturn("", nil).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", username)).ThenReturn(pdbeditVerbose, nil).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-w", "-u", username)).ThenReturn(smbPasswdLine, nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "useradd", "-M", "--badname", username)).ThenReturn("", useraddErr).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommandWithInput(s.T().Context(), password+"\n"+password+"\n", "smbpasswd", "-a", "-s", username)).ThenReturn("", nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-v", "-u", username)).ThenReturn(pdbeditVerbose, nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-w", "-u", username)).ThenReturn(smbPasswdLine, nil).Verify(matchers.Times(1))
 
-	err := unixsamba.CreateSambaUser(username, password, options)
+	err := unixsamba.CreateSambaUser(s.T().Context(), username, password, options)
 	s.Require().NoError(err)
 }
 
@@ -172,10 +172,10 @@ func (s *UnixSambaTestSuite) TestCreateSambaUser_UseraddFails_UserNotExists() {
 	useraddActualErr := errors.New("some useradd error")
 	useraddCmdErr := errors.WithDetails(useraddActualErr, "desc", "command execution failed", "stderr", "some useradd error")
 
-	mock.When(s.mockCmdExec.RunCommand("useradd", "-M", "--badname", username)).ThenReturn("", useraddCmdErr).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "useradd", "-M", "--badname", username)).ThenReturn("", useraddCmdErr).Verify(matchers.Times(1))
 	mock.When(s.mockOSUser.Lookup(username)).ThenReturn(nil, errors.New("user not found")).Verify(matchers.Times(1))
 
-	err := unixsamba.CreateSambaUser(username, password, options)
+	err := unixsamba.CreateSambaUser(s.T().Context(), username, password, options)
 	s.Require().Error(err)
 	s.Contains(err.Error(), fmt.Sprintf("failed to create system user '%s'", username))
 	s.True(errors.Is(err, useraddCmdErr))
@@ -188,10 +188,10 @@ func (s *UnixSambaTestSuite) TestCreateSambaUser_SmbPasswdFails() {
 	smbPasswdActualErr := errors.New("smbpasswd error")
 	smbPasswdCmdErr := errors.WithDetails(smbPasswdActualErr, "desc", "command execution with input failed", "stderr", "smb error")
 
-	mock.When(s.mockCmdExec.RunCommand("useradd", "-M", "--badname", username)).ThenReturn("", nil).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommandWithInput(password+"\n"+password+"\n", "smbpasswd", "-a", "-s", username)).ThenReturn("", smbPasswdCmdErr).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "useradd", "-M", "--badname", username)).ThenReturn("", nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommandWithInput(s.T().Context(), password+"\n"+password+"\n", "smbpasswd", "-a", "-s", username)).ThenReturn("", smbPasswdCmdErr).Verify(matchers.Times(1))
 
-	err := unixsamba.CreateSambaUser(username, password, options)
+	err := unixsamba.CreateSambaUser(s.T().Context(), username, password, options)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "failed to add user 'newuser' to Samba or set password")
 	s.True(errors.Is(err, smbPasswdCmdErr))
@@ -224,7 +224,7 @@ func (s *UnixSambaTestSuite) TestCreateSambaUser_WithOptions() {
 		username,
 	}
 
-	mock.When(s.mockCmdExec.RunCommand("useradd",
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "useradd",
 		expectedUseraddArgs[0],
 		expectedUseraddArgs[1], expectedUseraddArgs[2],
 		expectedUseraddArgs[3], expectedUseraddArgs[4],
@@ -237,41 +237,23 @@ func (s *UnixSambaTestSuite) TestCreateSambaUser_WithOptions() {
 		ThenReturn("", nil).
 		Verify(matchers.Times(1))
 
-	mock.When(s.mockCmdExec.RunCommandWithInput(password+"\n"+password+"\n", "smbpasswd", "-a", "-s", username)).
-		ThenReturn("", nil).
-		Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", username)).ThenReturn(pdbeditVerbose, nil).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-w", "-u", username)).ThenReturn(smbPasswdLine, nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommandWithInput(s.T().Context(), password+"\n"+password+"\n", "smbpasswd", "-a", "-s", username)).ThenReturn("", nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-v", "-u", username)).ThenReturn(pdbeditVerbose, nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-w", "-u", username)).ThenReturn(smbPasswdLine, nil).Verify(matchers.Times(1))
 
-	err := unixsamba.CreateSambaUser(username, password, options)
+	err := unixsamba.CreateSambaUser(s.T().Context(), username, password, options)
 	s.Require().NoError(err)
 }
 
 // --- DeleteSambaUser Tests ---
 
-func (s *UnixSambaTestSuite) TestDeleteSambaUser_SambaOnly_Success() {
-	username := "smbdeluser"
-	mock.When(s.mockCmdExec.RunCommand("smbpasswd", "-x", username)).ThenReturn("", nil).Verify(matchers.Times(1))
-
-	err := unixsamba.DeleteSambaUser(username, false, false)
-	s.Require().NoError(err)
-}
-
-func (s *UnixSambaTestSuite) TestDeleteSambaUser_SambaAndSystem_Success() {
+func (s *UnixSambaTestSuite) TestDeleteSambaUser_Success() {
 	username := "sysdeluser"
-	mock.When(s.mockCmdExec.RunCommand("smbpasswd", "-x", username)).ThenReturn("", nil).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommand("deluser", username)).ThenReturn("", nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "smbpasswd", "-x", username)).ThenReturn("", nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "deluser", "--remove-home", username)).ThenReturn("", nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-v", "-u", username)).ThenReturn("", nil).Verify(matchers.Times(1))
 
-	err := unixsamba.DeleteSambaUser(username, true, false)
-	s.Require().NoError(err)
-}
-
-func (s *UnixSambaTestSuite) TestDeleteSambaUser_SambaAndSystemWithHome_Success() {
-	username := "homedeluser"
-	mock.When(s.mockCmdExec.RunCommand("smbpasswd", "-x", username)).ThenReturn("", nil).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommand("deluser", "--remove-home", username)).ThenReturn("", nil).Verify(matchers.Times(1))
-
-	err := unixsamba.DeleteSambaUser(username, true, true)
+	err := unixsamba.DeleteSambaUser(s.T().Context(), username)
 	s.Require().NoError(err)
 }
 
@@ -280,9 +262,9 @@ func (s *UnixSambaTestSuite) TestDeleteSambaUser_SmbPasswdFails_NotUserNotFound(
 	smbErrActual := errors.New("smb error")
 	smbCmdErr := errors.WithDetails(smbErrActual, "desc", "command execution failed", "stderr", "some other smb error")
 
-	mock.When(s.mockCmdExec.RunCommand("smbpasswd", "-x", username)).ThenReturn("", smbCmdErr).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "smbpasswd", "-x", username)).ThenReturn("", smbCmdErr).Verify(matchers.Times(1))
 
-	err := unixsamba.DeleteSambaUser(username, false, false) // Samba only
+	err := unixsamba.DeleteSambaUser(s.T().Context(), username)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "failed to delete user 'smbdeluser' from Samba")
 	s.True(errors.Is(err, smbCmdErr))
@@ -294,10 +276,10 @@ func (s *UnixSambaTestSuite) TestDeleteSambaUser_SmbPasswdUserNotFound_SystemDel
 		"stderr", "Failed to find entry for user smbnotfound.",
 	)
 
-	mock.When(s.mockCmdExec.RunCommand("smbpasswd", "-x", username)).ThenReturn("", smbCmdErr).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommand("deluser", username)).ThenReturn("", nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "smbpasswd", "-x", username)).ThenReturn("", smbCmdErr).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "deluser", "--remove-home", username)).ThenReturn("", nil).Verify(matchers.Times(1))
 
-	err := unixsamba.DeleteSambaUser(username, true, false)
+	err := unixsamba.DeleteSambaUser(s.T().Context(), username)
 	s.Require().NoError(err) // Error from smbpasswd -x (user not found) is ignored if system deletion is requested and succeeds
 }
 
@@ -306,30 +288,13 @@ func (s *UnixSambaTestSuite) TestDeleteSambaUser_UserdelFails() {
 	userdelActualErr := errors.New("userdel error")
 	userdelCmdErr := errors.WithDetails(userdelActualErr, "desc", "command execution failed", "stderr", "userdel critical error")
 
-	mock.When(s.mockCmdExec.RunCommand("smbpasswd", "-x", username)).ThenReturn("", nil).Verify(matchers.Times(1)) // Samba deletion succeeds
-	mock.When(s.mockCmdExec.RunCommand("deluser", username)).ThenReturn("", userdelCmdErr).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "smbpasswd", "-x", username)).ThenReturn("", nil).Verify(matchers.Times(1)) // Samba deletion succeeds
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "deluser", "--remove-home", username)).ThenReturn("", userdelCmdErr).Verify(matchers.Times(1))
 
-	err := unixsamba.DeleteSambaUser(username, true, false)
+	err := unixsamba.DeleteSambaUser(s.T().Context(), username)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "failed to delete system user 'sysdeluser'")
 	s.True(errors.Is(err, userdelCmdErr))
-}
-
-func (s *UnixSambaTestSuite) TestDeleteSambaUser_BothFail_SystemErrorPropagated() {
-	username := "bothfailuser"
-	smbErrActual := errors.New("smb error")
-	smbCmdErr := errors.WithDetails(smbErrActual, "desc", "command execution failed", "stderr", "some other smb error")
-	userdelActualErr := errors.New("userdel error")
-	userdelCmdErr := errors.WithDetails(userdelActualErr, "desc", "command execution failed", "stderr", "userdel critical error")
-
-	mock.When(s.mockCmdExec.RunCommand("smbpasswd", "-x", username)).ThenReturn("", smbCmdErr).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommand("deluser", username)).ThenReturn("", userdelCmdErr).Verify(matchers.Times(1))
-
-	err := unixsamba.DeleteSambaUser(username, true, false)
-	s.Require().Error(err)
-	// The error message indicates both failures, but the primary returned error is from userdel
-	s.Contains(err.Error(), fmt.Sprintf("failed to delete system user '%s' (Samba deletion also failed: %v)", username, smbCmdErr))
-	s.True(errors.Is(err, userdelCmdErr)) // The wrapped error is userdelCmdErr
 }
 
 // --- ChangePassword Tests ---
@@ -342,11 +307,11 @@ func (s *UnixSambaTestSuite) TestChangePassword_SambaOnly_Success() {
 	smbPasswdLine := username + ":1001:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX:7F43E2A648F47B9AE704C3A00ABB6A2D:[U          ]:::"
 	pdbeditVerbose := "Unix username:        changepwuser\nAccount Flags:        [U          ]\n"
 
-	mock.When(s.mockCmdExec.RunCommandWithInput(input, "smbpasswd", "-s", username)).ThenReturn("", nil).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", username)).ThenReturn(pdbeditVerbose, nil).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-w", "-u", username)).ThenReturn(smbPasswdLine, nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommandWithInput(s.T().Context(), input, "smbpasswd", "-s", username)).ThenReturn("", nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-v", "-u", username)).ThenReturn(pdbeditVerbose, nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-w", "-u", username)).ThenReturn(smbPasswdLine, nil).Verify(matchers.Times(1))
 
-	err := unixsamba.ChangePassword(username, newPassword, true)
+	err := unixsamba.ChangePassword(s.T().Context(), username, newPassword)
 	s.Require().NoError(err)
 }
 
@@ -354,17 +319,17 @@ func (s *UnixSambaTestSuite) TestChangePassword_SambaAndSystem_Success() {
 	username := "changepwuser"
 	newPassword := "newSecurePassword"
 	sambaInput := newPassword + "\n" + newPassword + "\n"
-	chpasswdInput := username + ":" + newPassword + "\n"
+	//chpasswdInput := username + ":" + newPassword + "\n"
 	// NT hash for "newSecurePassword" = 7F43E2A648F47B9AE704C3A00ABB6A2D
 	smbPasswdLine := username + ":1001:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX:7F43E2A648F47B9AE704C3A00ABB6A2D:[U          ]:::"
 	pdbeditVerbose := "Unix username:        changepwuser\nAccount Flags:        [U          ]\n"
 
-	mock.When(s.mockCmdExec.RunCommandWithInput(sambaInput, "smbpasswd", "-s", username)).ThenReturn("", nil).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommandWithInput(chpasswdInput, "chpasswd")).ThenReturn("", nil).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", username)).ThenReturn(pdbeditVerbose, nil).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-w", "-u", username)).ThenReturn(smbPasswdLine, nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommandWithInput(s.T().Context(), sambaInput, "smbpasswd", "-s", username)).ThenReturn("", nil).Verify(matchers.Times(1))
+	//mock.When(s.mockCmdExec.RunCommandWithInput(s.T().Context(), chpasswdInput, "chpasswd")).ThenReturn("", nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-v", "-u", username)).ThenReturn(pdbeditVerbose, nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-w", "-u", username)).ThenReturn(smbPasswdLine, nil).Verify(matchers.Times(1))
 
-	err := unixsamba.ChangePassword(username, newPassword, false)
+	err := unixsamba.ChangePassword(s.T().Context(), username, newPassword)
 	s.Require().NoError(err)
 }
 
@@ -375,29 +340,12 @@ func (s *UnixSambaTestSuite) TestChangePassword_SmbPasswdFails() {
 	smbErrActual := errors.New("smb error")
 	smbCmdErr := errors.WithDetails(smbErrActual, "desc", "command execution with input failed", "stderr", "smb change error")
 
-	mock.When(s.mockCmdExec.RunCommandWithInput(input, "smbpasswd", "-s", username)).ThenReturn("", smbCmdErr).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommandWithInput(s.T().Context(), input, "smbpasswd", "-s", username)).ThenReturn("", smbCmdErr).Verify(matchers.Times(1))
 
-	err := unixsamba.ChangePassword(username, newPassword, true)
+	err := unixsamba.ChangePassword(s.T().Context(), username, newPassword)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "failed to change Samba password for user 'changepwuser'")
 	s.True(errors.Is(err, smbCmdErr))
-}
-
-func (s *UnixSambaTestSuite) TestChangePassword_ChPasswdFails() {
-	username := "changepwuser"
-	newPassword := "newSecurePassword"
-	sambaInput := newPassword + "\n" + newPassword + "\n"
-	chpasswdInput := username + ":" + newPassword + "\n"
-	sysErrActual := errors.New("sys error")
-	sysCmdErr := errors.WithDetails(sysErrActual, "desc", "command execution with input failed", "stderr", "chpasswd error")
-
-	mock.When(s.mockCmdExec.RunCommandWithInput(sambaInput, "smbpasswd", "-s", username)).ThenReturn("", nil).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommandWithInput(chpasswdInput, "chpasswd")).ThenReturn("", sysCmdErr).Verify(matchers.Times(1))
-
-	err := unixsamba.ChangePassword(username, newPassword, false)
-	s.Require().Error(err)
-	s.Contains(err.Error(), "failed to change system password for user 'changepwuser'")
-	s.True(errors.Is(err, sysCmdErr))
 }
 
 // --- RenameUsername Tests ---
@@ -408,58 +356,67 @@ func (s *UnixSambaTestSuite) TestRenameUsername_Success_NoHomeRename() {
 	newPassword := "newpass"
 	sambaInput := newPassword + "\n" + newPassword + "\n"
 
-	// 1. Check if newUsername exists (system) - should not exist
-	mock.When(s.mockOSUser.Lookup(newUsername)).ThenReturn(nil, user.UnknownUserError(newUsername)).Verify(matchers.Times(2))
-
-	// 2. GetByUsername(newUsername) - for Samba check
-	//    2a. osUser.Lookup(newUsername) within GetByUsername - should not exist
-	//mock.When(s.mockOSUser.Lookup(newUsername)).ThenReturn(nil, user.UnknownUserError(newUsername)).Verify(matchers.Times(1))
-	//    2b. pdbedit for newUsername - should fail with "No such user" or similar
-	//pdbeditErr := errors.WithDetails(errors.New("pdbedit failed"), "desc", "command execution failed", "stderr", "No such user newname")
-	//mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", newUsername)).ThenReturn("", pdbeditErr).Verify(matchers.Times(1))
+	mock.When(s.mockOSUser.Lookup(newUsername)).
+		ThenReturn(nil, user.UnknownUserError(newUsername)).                                 // Initial system check
+		ThenReturn(&user.User{Username: newUsername, HomeDir: "/home/" + newUsername}, nil). // Post-rename home check
+		Verify(matchers.Times(2))
+	pdbeditNotFoundErr := errors.WithDetails(errors.New("pdbedit failed"), "desc", "command execution failed", "stderr", "No such user")
+	pdbeditVerbose := "Unix username:        newname\nAccount Flags:        [U          ]\n"
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-v", "-u", newUsername)).
+		ThenReturn("", pdbeditNotFoundErr). // Pre-rename samba existence check
+		ThenReturn(pdbeditVerbose, nil).    // CheckSambaUser verification
+		Verify(matchers.Times(2))
 
 	// 3. usermod -l
-	mock.When(s.mockCmdExec.RunCommand("usermod", "-l", newUsername, oldUsername)).ThenReturn("", nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "usermod", "-l", newUsername, oldUsername)).ThenReturn("", nil).Verify(matchers.Times(1))
 
 	// 4. smbpasswd -x oldname
-	mock.When(s.mockCmdExec.RunCommand("smbpasswd", "-x", oldUsername)).ThenReturn("", nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "smbpasswd", "-x", oldUsername)).ThenReturn("", nil).Verify(matchers.Times(1))
 
 	// 5. smbpasswd -a -s newname
-	mock.When(s.mockCmdExec.RunCommandWithInput(sambaInput, "smbpasswd", "-a", "-s", newUsername)).ThenReturn("", nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommandWithInput(s.T().Context(), sambaInput, "smbpasswd", "-a", "-s", newUsername)).ThenReturn("", nil).Verify(matchers.Times(1))
 
 	// 6. CheckSambaUser verification: pdbedit -L -v and pdbedit -L -w for newUsername
 	// NT hash for "newpass" = 18DA6C2895C549E266745951D5DC66CB
 	smbPasswdLine := newUsername + ":1001:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX:18DA6C2895C549E266745951D5DC66CB:[U          ]:::"
-	pdbeditVerbose := "Unix username:        newname\nAccount Flags:        [U          ]\n"
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", newUsername)).ThenReturn(pdbeditVerbose, nil).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-w", "-u", newUsername)).ThenReturn(smbPasswdLine, nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-w", "-u", newUsername)).ThenReturn(smbPasswdLine, nil).Verify(matchers.Times(1))
 
-	err := unixsamba.RenameUsername(oldUsername, newUsername, false, newPassword)
+	err := unixsamba.RenameUsername(s.T().Context(), oldUsername, newUsername, newPassword)
 	s.Require().NoError(err)
 }
 
 func (s *UnixSambaTestSuite) TestRenameUsername_Success_WithHomeRename() {
-	s.T().Skip("Not useful for Rat")
 	oldUsername := "oldhome"
 	newUsername := "newhome"
 	newPassword := "newpass"
 	sambaInput := newPassword + "\n" + newPassword + "\n"
 	expectedNewHomeDir := "/home/" + newUsername
 
-	mock.When(s.mockOSUser.Lookup(newUsername)).ThenReturn(nil, user.UnknownUserError(newUsername)).Verify(matchers.Times(2)) // Once for initial check, once for GetByUsername
+	mock.When(s.mockOSUser.Lookup(newUsername)).
+		ThenReturn(nil, user.UnknownUserError(newUsername)).                                 // Initial check
+		ThenReturn(&user.User{Username: newUsername, HomeDir: "/home/" + oldUsername}, nil). // Post-rename home check
+		Verify(matchers.Times(2))
 	pdbeditErr := errors.WithDetails(errors.New("pdbedit failed"), "desc", "command execution failed", "stderr", "No such user")
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", newUsername)).ThenReturn("", pdbeditErr).Verify(matchers.Times(1))
+	pdbeditVerbose := "Unix username:        newhome\nAccount Flags:        [U          ]\n"
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-v", "-u", newUsername)).
+		ThenReturn("", pdbeditErr).      // Pre-rename samba existence check
+		ThenReturn(pdbeditVerbose, nil). // CheckSambaUser verification
+		Verify(matchers.Times(2))
 
-	mock.When(s.mockCmdExec.RunCommand("usermod", "-l", newUsername, oldUsername)).ThenReturn("", nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "usermod", "-l", newUsername, oldUsername)).ThenReturn("", nil).Verify(matchers.Times(1))
 
 	// For home dir rename part
-	mock.When(s.mockOSUser.Lookup(newUsername)).ThenReturn(&user.User{Username: newUsername, HomeDir: "/home/" + oldUsername}, nil).Verify(matchers.Times(1)) // After login rename, before home dir rename
-	mock.When(s.mockCmdExec.RunCommand("usermod", "-d", expectedNewHomeDir, "-m", newUsername)).ThenReturn("", nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "usermod", "-d", expectedNewHomeDir, "-m", newUsername)).ThenReturn("", nil).Verify(matchers.Times(1))
 
-	mock.When(s.mockCmdExec.RunCommand("smbpasswd", "-x", oldUsername)).ThenReturn("", nil).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommandWithInput(sambaInput, "smbpasswd", "-a", "-s", newUsername)).ThenReturn("", nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "smbpasswd", "-x", oldUsername)).ThenReturn("", nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommandWithInput(s.T().Context(), sambaInput, "smbpasswd", "-a", "-s", newUsername)).ThenReturn("", nil).Verify(matchers.Times(1))
 
-	err := unixsamba.RenameUsername(oldUsername, newUsername, true, newPassword)
+	// CheckSambaUser verification: pdbedit -L -v and pdbedit -L -w for newUsername
+	// NT hash for "newpass" = 18DA6C2895C549E266745951D5DC66CB
+	smbPasswdLine := newUsername + ":1001:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX:18DA6C2895C549E266745951D5DC66CB:[U          ]:::"
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-w", "-u", newUsername)).ThenReturn(smbPasswdLine, nil).Verify(matchers.Times(1))
+
+	err := unixsamba.RenameUsername(s.T().Context(), oldUsername, newUsername, newPassword)
 	s.Require().NoError(err)
 }
 
@@ -468,67 +425,64 @@ func (s *UnixSambaTestSuite) TestRenameUsername_Error_NewUserSystemExists() {
 	newUsername := "existing"
 	mock.When(s.mockOSUser.Lookup(newUsername)).ThenReturn(&user.User{Username: newUsername}, nil).Verify(matchers.Times(1))
 
-	err := unixsamba.RenameUsername(oldUsername, newUsername, false, "pass")
+	err := unixsamba.RenameUsername(s.T().Context(), oldUsername, newUsername, "pass")
 	s.Require().Error(err)
 	s.EqualError(err, "new username 'existing' already exists on the system")
 }
 
 func (s *UnixSambaTestSuite) TestRenameUsername_Error_NewUserSambaExists() {
-	s.T().Skip("FIXME") // FIXME:Correct unit test or function
 	oldUsername := "old"
 	newUsername := "sambanew"
 
-	mock.When(s.mockOSUser.Lookup(newUsername)).ThenReturn(nil, user.UnknownUserError(newUsername)).Verify(matchers.Times(1)) // System check passes
+	mock.When(s.mockOSUser.Lookup(newUsername)).ThenReturn(nil, user.UnknownUserError(newUsername)).Verify(matchers.Times(1))
 
-	// GetByUsername for newUsername finds a samba user
-	mock.When(s.mockOSUser.Lookup(newUsername)).ThenReturn(&user.User{Username: newUsername}, nil).Verify(matchers.Times(1)) // Inside GetByUsername
+	// pdbedit finds a samba user.
 	pdbeditOutput := "User SID: S-1-5-blah"
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", newUsername)).ThenReturn(pdbeditOutput, nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-v", "-u", newUsername)).ThenReturn(pdbeditOutput, nil).Verify(matchers.Times(1))
 
-	err := unixsamba.RenameUsername(oldUsername, newUsername, false, "pass")
+	err := unixsamba.RenameUsername(s.T().Context(), oldUsername, newUsername, "pass")
 	s.Require().Error(err)
-	s.EqualError(err, "new username 'sambanew' already appears to be a Samba user")
+	s.EqualError(err, "new username 'sambanew' already appears to be a Samba user", "err", errors.Unwrap(err))
 }
 
 func (s *UnixSambaTestSuite) TestRenameUsername_Error_PdbeditIssueForNewUser() {
-	s.T().Skip("FIXME") // FIXME:Correct unit test or function
+
 	oldUsername := "old"
 	newUsername := "pdbissue"
 
-	mock.When(s.mockOSUser.Lookup(newUsername)).ThenReturn(nil, user.UnknownUserError(newUsername)).Verify(matchers.Times(1)) // System check passes
+	mock.When(s.mockOSUser.Lookup(newUsername)).ThenReturn(nil, user.UnknownUserError(newUsername)).Verify(matchers.Times(1))
 
-	// GetByUsername for newUsername encounters pdbedit execution error
-	mock.When(s.mockOSUser.Lookup(newUsername)).ThenReturn(&user.User{Username: newUsername}, nil).Verify(matchers.Times(1)) // Inside GetByUsername
+	// pdbedit check for newUsername encounters execution error
 	pdbeditActualErr := errors.New("pdbedit command failed")
 	pdbeditCmdErr := errors.WithDetails(pdbeditActualErr, "desc", "command execution failed", "command", "pdbedit", "stderr", "critical pdbedit error")
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", newUsername)).ThenReturn("", pdbeditCmdErr).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-v", "-u", newUsername)).ThenReturn("", pdbeditCmdErr).Verify(matchers.Times(1))
 
-	err := unixsamba.RenameUsername(oldUsername, newUsername, false, "pass")
+	err := unixsamba.RenameUsername(s.T().Context(), oldUsername, newUsername, "pass")
 	s.Require().Error(err)
 	s.Contains(err.Error(), "failed to verify Samba status for new username 'pdbissue' due to pdbedit execution issue")
 	s.True(errors.Is(err, pdbeditCmdErr))
 }
 
 func (s *UnixSambaTestSuite) TestRenameUsername_Error_UsermodLoginFails() {
-	s.T().Skip("FIXME") // FIXME:Correct unit test or function
+
 	oldUsername := "old"
 	newUsername := "new"
 	usermodErrActual := errors.New("usermod error")
 	usermodCmdErr := errors.WithDetails(usermodErrActual, "desc", "command execution failed", "stderr", "usermod fail")
 
-	mock.When(s.mockOSUser.Lookup(newUsername)).ThenReturn(nil, user.UnknownUserError(newUsername)).Verify(matchers.Times(2))
+	mock.When(s.mockOSUser.Lookup(newUsername)).ThenReturn(nil, user.UnknownUserError(newUsername)).Verify(matchers.Times(1))
 	pdbeditErr := errors.WithDetails(errors.New("pdbedit failed"), "desc", "command execution failed", "stderr", "No such user")
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", newUsername)).ThenReturn("", pdbeditErr).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommand("usermod", "-l", newUsername, oldUsername)).ThenReturn("", usermodCmdErr).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-v", "-u", newUsername)).ThenReturn("", pdbeditErr).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "smbpasswd", "-x", oldUsername)).ThenReturn("", nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "usermod", "-l", newUsername, oldUsername)).ThenReturn("", usermodCmdErr).Verify(matchers.Times(1))
 
-	err := unixsamba.RenameUsername(oldUsername, newUsername, false, "pass")
+	err := unixsamba.RenameUsername(s.T().Context(), oldUsername, newUsername, "pass")
 	s.Require().Error(err)
 	s.Contains(err.Error(), "failed to rename system user login")
 	s.True(errors.Is(err, usermodCmdErr))
 }
 
 func (s *UnixSambaTestSuite) TestRenameUsername_Error_UsermodHomeFails() {
-	s.T().Skip("Not useful for Rat")
 	oldUsername := "oldhome"
 	newUsername := "newhome"
 	newPassword := "newpass"
@@ -536,44 +490,48 @@ func (s *UnixSambaTestSuite) TestRenameUsername_Error_UsermodHomeFails() {
 	usermodHomeErrActual := errors.New("usermod home error")
 	usermodHomeCmdErr := errors.WithDetails(usermodHomeErrActual, "desc", "command execution failed", "stderr", "usermod home fail")
 
-	mock.When(s.mockOSUser.Lookup(newUsername)).ThenReturn(nil, user.UnknownUserError(newUsername)).Verify(matchers.Times(2))
+	mock.When(s.mockOSUser.Lookup(newUsername)).
+		ThenReturn(nil, user.UnknownUserError(newUsername)).
+		ThenReturn(&user.User{Username: newUsername, HomeDir: "/home/" + oldUsername}, nil).
+		Verify(matchers.Times(2))
 	pdbeditErr := errors.WithDetails(errors.New("pdbedit failed"), "desc", "command execution failed", "stderr", "No such user")
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", newUsername)).ThenReturn("", pdbeditErr).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommand("usermod", "-l", newUsername, oldUsername)).ThenReturn("", nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-v", "-u", newUsername)).ThenReturn("", pdbeditErr).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "smbpasswd", "-x", oldUsername)).ThenReturn("", nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "usermod", "-l", newUsername, oldUsername)).ThenReturn("", nil).Verify(matchers.Times(1))
 
-	mock.When(s.mockOSUser.Lookup(newUsername)).ThenReturn(&user.User{Username: newUsername, HomeDir: "/home/" + oldUsername}, nil).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommand("usermod", "-d", expectedNewHomeDir, "-m", newUsername)).ThenReturn("", usermodHomeCmdErr).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "usermod", "-d", expectedNewHomeDir, "-m", newUsername)).ThenReturn("", usermodHomeCmdErr).Verify(matchers.Times(1))
 
-	err := unixsamba.RenameUsername(oldUsername, newUsername, true, newPassword)
+	err := unixsamba.RenameUsername(s.T().Context(), oldUsername, newUsername, newPassword)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "failed to move/rename home directory")
 	s.True(errors.Is(err, usermodHomeCmdErr))
 }
 
 func (s *UnixSambaTestSuite) TestRenameUsername_Error_NoPasswordForSamba() {
-	s.T().Skip("FIXME") // FIXME:Correct unit test or function
-	err := unixsamba.RenameUsername("old", "new", false, "")
+	err := unixsamba.RenameUsername(s.T().Context(), "old", "new", "")
 	s.Require().Error(err)
 	s.EqualError(err, "a new password must be provided to re-add user to Samba after renaming")
 }
 
 func (s *UnixSambaTestSuite) TestRenameUsername_Error_SmbPasswdAddFails() {
-	s.T().Skip("FIXME") // FIXME:Correct unit test or function
 	oldUsername := "old"
 	newUsername := "new"
 	newPassword := "newpass"
 	sambaInput := newPassword + "\n" + newPassword + "\n"
 	smbAddErrActual := errors.New("smb add error")
-	smbAddCmdErr := errors.WithDetails(smbAddErrActual, "command execution with input failed", "stderr", "smb add fail")
+	smbAddCmdErr := errors.WithDetails(smbAddErrActual, "desc", "command execution with input failed", "stderr", "smb add fail")
 
-	mock.When(s.mockOSUser.Lookup(newUsername)).ThenReturn(nil, user.UnknownUserError(newUsername)).Verify(matchers.Times(2))
+	mock.When(s.mockOSUser.Lookup(newUsername)).
+		ThenReturn(nil, user.UnknownUserError(newUsername)).
+		ThenReturn(&user.User{Username: newUsername, HomeDir: "/home/" + newUsername}, nil).
+		Verify(matchers.Times(2))
 	pdbeditErr := errors.WithDetails(errors.New("pdbedit failed"), "desc", "command execution failed", "stderr", "No such user")
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", newUsername)).ThenReturn("", pdbeditErr).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommand("usermod", "-l", newUsername, oldUsername)).ThenReturn("", nil).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommand("smbpasswd", "-x", oldUsername)).ThenReturn("", nil).Verify(matchers.Times(1)) // Deletion of old samba user
-	mock.When(s.mockCmdExec.RunCommandWithInput(sambaInput, "smbpasswd", "-a", "-s", newUsername)).ThenReturn("", smbAddCmdErr).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-v", "-u", newUsername)).ThenReturn("", pdbeditErr).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "usermod", "-l", newUsername, oldUsername)).ThenReturn("", nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "smbpasswd", "-x", oldUsername)).ThenReturn("", nil).Verify(matchers.Times(1)) // Deletion of old samba user
+	mock.When(s.mockCmdExec.RunCommandWithInput(s.T().Context(), sambaInput, "smbpasswd", "-a", "-s", newUsername)).ThenReturn("", smbAddCmdErr).Verify(matchers.Times(1))
 
-	err := unixsamba.RenameUsername(oldUsername, newUsername, false, newPassword)
+	err := unixsamba.RenameUsername(s.T().Context(), oldUsername, newUsername, newPassword)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "failed to add new Samba user 'new' after renaming")
 	s.True(errors.Is(err, smbAddCmdErr))
@@ -587,18 +545,18 @@ user1:1001:User One
 user2:1002:User Two
 adminuser:1000:Admin
 	`
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L")).ThenReturn(pdbeditOutput, nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L")).ThenReturn(pdbeditOutput, nil).Verify(matchers.Times(1))
 
-	users, err := unixsamba.ListSambaUsers()
+	users, err := unixsamba.ListSambaUsers(s.T().Context())
 	s.Require().NoError(err)
 	s.Require().ElementsMatch([]string{"user1", "user2", "adminuser"}, users)
 }
 
 func (s *UnixSambaTestSuite) TestListSambaUsers_Success_Empty() {
 	pdbeditOutput := ""
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L")).ThenReturn(pdbeditOutput, nil).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L")).ThenReturn(pdbeditOutput, nil).Verify(matchers.Times(1))
 
-	users, err := unixsamba.ListSambaUsers()
+	users, err := unixsamba.ListSambaUsers(s.T().Context())
 	s.Require().NoError(err)
 	s.Empty(users)
 }
@@ -607,39 +565,14 @@ func (s *UnixSambaTestSuite) TestListSambaUsers_PdbeditFails() {
 	pdbeditActualErr := errors.New("pdbedit list error")
 	pdbeditCmdErr := errors.WithDetails(pdbeditActualErr, "desc", "command execution failed", "stderr", "pdbedit -L failed")
 
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L")).ThenReturn("", pdbeditCmdErr).Verify(matchers.Times(1))
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L")).ThenReturn("", pdbeditCmdErr).Verify(matchers.Times(1))
 
-	users, err := unixsamba.ListSambaUsers()
+	users, err := unixsamba.ListSambaUsers(s.T().Context())
 	s.Require().Error(err)
 	s.Nil(users)
 	s.Contains(err.Error(), "failed to list samba users with pdbedit -L")
 	s.True(errors.Is(err, pdbeditCmdErr))
 }
-
-/*
-// --- Helper for creating errors with details for command execution ---
-func newCmdExecError(cmd string, args []string, stderr string, underlyingErr error) error {
-	if underlyingErr == nil {
-		underlyingErr = errors.New("command execution failed")
-	}
-	details := []any{"command execution failed", "command", cmd, "args", strings.Join(args, " ")}
-	if stderr != "" {
-		details = append(details, "stderr", stderr)
-	}
-	return errors.WithDetails(underlyingErr, details...)
-}
-
-func newCmdExecWithInputError(cmd string, args []string, stdin string, stderr string, underlyingErr error) error {
-	if underlyingErr == nil {
-		underlyingErr = errors.New("command execution with input failed")
-	}
-	details := []any{"command execution with input failed", "command", cmd, "args", strings.Join(args, " "), "stdin_preview", stdin}
-	if stderr != "" {
-		details = append(details, "stderr", stderr)
-	}
-	return errors.WithDetails(underlyingErr, details...)
-}
-*/
 
 // --- CheckSambaUser Tests ---
 
@@ -651,12 +584,12 @@ func (s *UnixSambaTestSuite) TestCheckSambaUser_Success() {
 	smbPasswdLine := username + ":1001:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX:B2C60158793D1414461032ADD2B99D8B:[U          ]:::"
 	pdbeditOutput := "Unix username:        activeuser\nAccount Flags:        [U          ]\n"
 
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", username)).
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-v", "-u", username)).
 		ThenReturn(pdbeditOutput, nil).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-w", "-u", username)).
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-w", "-u", username)).
 		ThenReturn(smbPasswdLine, nil).Verify(matchers.Times(1))
 
-	s.Require().NoError(unixsamba.CheckSambaUser(username, password))
+	s.Require().NoError(unixsamba.CheckSambaUser(s.T().Context(), username, password))
 }
 
 func (s *UnixSambaTestSuite) TestCheckSambaUser_UserNotFound() {
@@ -666,10 +599,10 @@ func (s *UnixSambaTestSuite) TestCheckSambaUser_UserNotFound() {
 		"stderr", "Username not found: nosuchsmbuser",
 	)
 
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", username)).
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-v", "-u", username)).
 		ThenReturn("", pdbeditErr).Verify(matchers.Times(1))
 
-	err := unixsamba.CheckSambaUser(username, password)
+	err := unixsamba.CheckSambaUser(s.T().Context(), username, password)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "not found")
 }
@@ -681,10 +614,10 @@ func (s *UnixSambaTestSuite) TestCheckSambaUser_PdbeditCommandFails() {
 		"stderr", "unexpected pdbedit error",
 	)
 
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", username)).
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-v", "-u", username)).
 		ThenReturn("", pdbeditErr).Verify(matchers.Times(1))
 
-	err := unixsamba.CheckSambaUser(username, password)
+	err := unixsamba.CheckSambaUser(s.T().Context(), username, password)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "pdbedit check for samba user")
 }
@@ -695,10 +628,10 @@ func (s *UnixSambaTestSuite) TestCheckSambaUser_AccountNotActive() {
 	// Account Flags do not contain [U]
 	pdbeditOutput := "Unix username:        nouflag\nAccount Flags:        [           ]\n"
 
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", username)).
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-v", "-u", username)).
 		ThenReturn(pdbeditOutput, nil).Verify(matchers.Times(1))
 
-	err := unixsamba.CheckSambaUser(username, password)
+	err := unixsamba.CheckSambaUser(s.T().Context(), username, password)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "not active")
 }
@@ -709,10 +642,10 @@ func (s *UnixSambaTestSuite) TestCheckSambaUser_AccountDisabled() {
 	// Account Flags contain both [U] and [D]
 	pdbeditOutput := "Unix username:        disableduser\nAccount Flags:        [DU         ]\n"
 
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", username)).
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-v", "-u", username)).
 		ThenReturn(pdbeditOutput, nil).Verify(matchers.Times(1))
 
-	err := unixsamba.CheckSambaUser(username, password)
+	err := unixsamba.CheckSambaUser(s.T().Context(), username, password)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "disabled or locked")
 }
@@ -723,10 +656,10 @@ func (s *UnixSambaTestSuite) TestCheckSambaUser_AccountLocked() {
 	// Account Flags contain [U] and [L]
 	pdbeditOutput := "Unix username:        lockeduser\nAccount Flags:        [LU         ]\n"
 
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", username)).
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-v", "-u", username)).
 		ThenReturn(pdbeditOutput, nil).Verify(matchers.Times(1))
 
-	err := unixsamba.CheckSambaUser(username, password)
+	err := unixsamba.CheckSambaUser(s.T().Context(), username, password)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "disabled or locked")
 }
@@ -738,12 +671,12 @@ func (s *UnixSambaTestSuite) TestCheckSambaUser_WrongPassword_SmbLogonFailure() 
 	smbPasswdLine := username + ":1001:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX:B2C60158793D1414461032ADD2B99D8B:[U          ]:::"
 	pdbeditOutput := "Unix username:        testuser\nAccount Flags:        [U          ]\n"
 
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", username)).
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-v", "-u", username)).
 		ThenReturn(pdbeditOutput, nil).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-w", "-u", username)).
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-w", "-u", username)).
 		ThenReturn(smbPasswdLine, nil).Verify(matchers.Times(1))
 
-	err := unixsamba.CheckSambaUser(username, password)
+	err := unixsamba.CheckSambaUser(s.T().Context(), username, password)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "invalid password")
 }
@@ -755,12 +688,12 @@ func (s *UnixSambaTestSuite) TestCheckSambaUser_WrongPassword_SmbWrongPassword()
 	smbPasswdLine := username + ":1001:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX:B2C60158793D1414461032ADD2B99D8B:[U          ]:::"
 	pdbeditOutput := "Unix username:        testuser\nAccount Flags:        [U          ]\n"
 
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", username)).
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-v", "-u", username)).
 		ThenReturn(pdbeditOutput, nil).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-w", "-u", username)).
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-w", "-u", username)).
 		ThenReturn(smbPasswdLine, nil).Verify(matchers.Times(1))
 
-	err := unixsamba.CheckSambaUser(username, password)
+	err := unixsamba.CheckSambaUser(s.T().Context(), username, password)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "invalid password")
 }
@@ -773,12 +706,12 @@ func (s *UnixSambaTestSuite) TestCheckSambaUser_PdbeditHashFails() {
 		"stderr", "failed to open database",
 	)
 
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", username)).
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-v", "-u", username)).
 		ThenReturn(pdbeditOutput, nil).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-w", "-u", username)).
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-w", "-u", username)).
 		ThenReturn("", pdbeditHashErr).Verify(matchers.Times(1))
 
-	err := unixsamba.CheckSambaUser(username, password)
+	err := unixsamba.CheckSambaUser(s.T().Context(), username, password)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "failed to read samba password hash")
 }
@@ -790,12 +723,12 @@ func (s *UnixSambaTestSuite) TestCheckSambaUser_NTHashDisabled() {
 	smbPasswdLine := username + ":1001:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX:[U          ]:::"
 	pdbeditOutput := "Unix username:        testuser\nAccount Flags:        [U          ]\n"
 
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", username)).
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-v", "-u", username)).
 		ThenReturn(pdbeditOutput, nil).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-w", "-u", username)).
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-w", "-u", username)).
 		ThenReturn(smbPasswdLine, nil).Verify(matchers.Times(1))
 
-	err := unixsamba.CheckSambaUser(username, password)
+	err := unixsamba.CheckSambaUser(s.T().Context(), username, password)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "no password set")
 }
@@ -806,12 +739,12 @@ func (s *UnixSambaTestSuite) TestCheckSambaUser_NTHashParseError() {
 	// Return output with no recognisable smbpasswd line for the user.
 	pdbeditOutput := "Unix username:        testuser\nAccount Flags:        [U          ]\n"
 
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-v", "-u", username)).
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-v", "-u", username)).
 		ThenReturn(pdbeditOutput, nil).Verify(matchers.Times(1))
-	mock.When(s.mockCmdExec.RunCommand("pdbedit", "-L", "-w", "-u", username)).
+	mock.When(s.mockCmdExec.RunCommand(s.T().Context(), "pdbedit", "-L", "-w", "-u", username)).
 		ThenReturn("unrecognised output line", nil).Verify(matchers.Times(1))
 
-	err := unixsamba.CheckSambaUser(username, password)
+	err := unixsamba.CheckSambaUser(s.T().Context(), username, password)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "failed to parse samba password hash")
 }
