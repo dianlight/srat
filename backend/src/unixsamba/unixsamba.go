@@ -163,7 +163,7 @@ func GetByUsername(ctx context.Context, username string) (*UserInfo, error) {
 		IsSambaUser: false,
 	}
 
-	pdbeditOutput, err := cmdExec.RunCommand(ctx, "pdbedit", "-L", "-v", "-u", username)
+	pdbeditOutput, err := cmdExec.RunCommand(ctx, "pdbedit", "-L", "-v", "-u", NormalizeUsernameForUnixSamba(username))
 	if err == nil {
 		info.IsSambaUser = true
 		scanner := bufio.NewScanner(strings.NewReader(pdbeditOutput))
@@ -238,7 +238,7 @@ func CreateSambaUser(ctx context.Context, username string, password string, opti
 		useraddArgs = append(useraddArgs, "-u", options.UID)
 	}
 	useraddArgs = append(useraddArgs, "--badname") //  do not check for bad names
-	useraddArgs = append(useraddArgs, username)
+	useraddArgs = append(useraddArgs, NormalizeUsernameForUnixSamba(username))
 
 	_, err := cmdExec.RunCommand(ctx, "useradd", useraddArgs...)
 	if err != nil {
@@ -247,13 +247,13 @@ func CreateSambaUser(ctx context.Context, username string, password string, opti
 		userExists := false
 		if errors.As(err, &e) {
 			details := e.Details()
-			if stderr, ok := details["stderr"].(string); ok && strings.Contains(strings.ToLower(stderr), "useradd: user "+strings.ToLower(username)+" already exists") {
+			if stderr, ok := details["stderr"].(string); ok && strings.Contains(strings.ToLower(stderr), "useradd: user "+strings.ToLower(NormalizeUsernameForUnixSamba(username))+" already exists") {
 				userExists = true
 			}
 		}
 		// Fallback check using os/user if structured error didn't confirm
 		if !userExists {
-			if _, lookupErr := osUser.Lookup(username); lookupErr == nil {
+			if _, lookupErr := osUser.Lookup(NormalizeUsernameForUnixSamba(username)); lookupErr == nil {
 				userExists = true
 			}
 		}
@@ -265,7 +265,7 @@ func CreateSambaUser(ctx context.Context, username string, password string, opti
 	}
 
 	smbPasswdInput := password + "\n" + password + "\n"
-	_, err = cmdExec.RunCommandWithInput(ctx, smbPasswdInput, "smbpasswd", "-a", "-s", username)
+	_, err = cmdExec.RunCommandWithInput(ctx, smbPasswdInput, "smbpasswd", "-a", "-s", NormalizeUsernameForUnixSamba(username))
 	if err != nil {
 		return errors.Errorf("failed to add user '%s' to Samba or set password %w", username, err)
 	}
@@ -281,7 +281,7 @@ func CreateSambaUser(ctx context.Context, username string, password string, opti
 
 // DeleteSambaUser deletes a user from Samba and optionally from the system.
 func DeleteSambaUser(ctx context.Context, username string) error {
-	_, err := cmdExec.RunCommand(ctx, "smbpasswd", "-x", username)
+	_, err := cmdExec.RunCommand(ctx, "smbpasswd", "-x", NormalizeUsernameForUnixSamba(username))
 	sambaUserDeleted := err == nil
 
 	if err != nil {
@@ -308,7 +308,7 @@ func DeleteSambaUser(ctx context.Context, username string) error {
 
 	userdelArgs = append(userdelArgs, "--remove-home")
 
-	userdelArgs = append(userdelArgs, username)
+	userdelArgs = append(userdelArgs, NormalizeUsernameForUnixSamba(username))
 	_, sysErr := cmdExec.RunCommand(ctx, "deluser", userdelArgs...)
 	if sysErr != nil {
 		// If Samba deletion also failed (and it wasn't "user not found")
@@ -331,7 +331,7 @@ func DeleteSambaUser(ctx context.Context, username string) error {
 // ChangePassword changes a user's Samba password and optionally their system password.
 func ChangePassword(ctx context.Context, username string, newPassword string) error {
 	smbPasswdInput := newPassword + "\n" + newPassword + "\n"
-	_, err := cmdExec.RunCommandWithInput(ctx, smbPasswdInput, "smbpasswd", "-s", username)
+	_, err := cmdExec.RunCommandWithInput(ctx, smbPasswdInput, "smbpasswd", "-s", NormalizeUsernameForUnixSamba(username))
 	if err != nil {
 		return errors.Wrapf(err, "failed to change Samba password for user '%s'", username)
 	}
@@ -352,13 +352,13 @@ func RenameUsername(ctx context.Context, oldUsername string, newUsername string,
 		return errors.New("a new password must be provided to re-add user to Samba after renaming")
 	}
 
-	if _, err := osUser.Lookup(newUsername); err == nil {
+	if _, err := osUser.Lookup(NormalizeUsernameForUnixSamba(newUsername)); err == nil {
 		return errors.Errorf("new username '%s' already exists on the system", newUsername)
 	}
 
 	// Check Samba status directly. This must be independent from system user lookup
 	// because Samba users can exist without a resolvable system account.
-	pdbeditOutput, sambaErr := cmdExec.RunCommand(ctx, "pdbedit", "-L", "-v", "-u", newUsername)
+	pdbeditOutput, sambaErr := cmdExec.RunCommand(ctx, "pdbedit", "-L", "-v", "-u", NormalizeUsernameForUnixSamba(newUsername))
 	if sambaErr == nil {
 		_ = pdbeditOutput
 		return errors.Errorf("new username '%s' already appears to be a Samba user", newUsername)
@@ -380,23 +380,23 @@ func RenameUsername(ctx context.Context, oldUsername string, newUsername string,
 		return errors.Wrapf(sambaErr, "failed to verify Samba status for new username '%s' due to pdbedit execution issue", newUsername)
 	}
 
-	_, delErr := cmdExec.RunCommand(ctx, "smbpasswd", "-x", oldUsername)
+	_, delErr := cmdExec.RunCommand(ctx, "smbpasswd", "-x", NormalizeUsernameForUnixSamba(oldUsername))
 	if delErr != nil {
 		slog.Error("Unable to delete old Samba user", "error", delErr, "username", oldUsername)
 	}
 
-	usermodArgs := []string{"-l", newUsername, oldUsername}
+	usermodArgs := []string{"-l", NormalizeUsernameForUnixSamba(newUsername), NormalizeUsernameForUnixSamba(oldUsername)}
 	_, err := cmdExec.RunCommand(ctx, "usermod", usermodArgs...)
 	if err != nil {
 		return errors.Wrapf(err, "failed to rename system user login from '%s' to '%s'", oldUsername, newUsername)
 	}
 
 	// If the user still points to /home/<oldUsername>, rename/move it to /home/<newUsername>.
-	if updatedUser, lookupErr := osUser.Lookup(newUsername); lookupErr == nil {
-		expectedOldHomeDir := "/home/" + oldUsername
-		expectedNewHomeDir := "/home/" + newUsername
+	if updatedUser, lookupErr := osUser.Lookup(NormalizeUsernameForUnixSamba(newUsername)); lookupErr == nil {
+		expectedOldHomeDir := "/home/" + NormalizeUsernameForUnixSamba(oldUsername)
+		expectedNewHomeDir := "/home/" + NormalizeUsernameForUnixSamba(newUsername)
 		if updatedUser.HomeDir == expectedOldHomeDir {
-			_, homeErr := cmdExec.RunCommand(ctx, "usermod", "-d", expectedNewHomeDir, "-m", newUsername)
+			_, homeErr := cmdExec.RunCommand(ctx, "usermod", "-d", expectedNewHomeDir, "-m", NormalizeUsernameForUnixSamba(newUsername))
 			if homeErr != nil {
 				return errors.Wrapf(homeErr, "failed to move/rename home directory for user '%s'", newUsername)
 			}
@@ -404,9 +404,9 @@ func RenameUsername(ctx context.Context, oldUsername string, newUsername string,
 	}
 
 	smbPasswdInput := newPasswordForSamba + "\n" + newPasswordForSamba + "\n"
-	_, addErr := cmdExec.RunCommandWithInput(ctx, smbPasswdInput, "smbpasswd", "-a", "-s", newUsername)
+	_, addErr := cmdExec.RunCommandWithInput(ctx, smbPasswdInput, "smbpasswd", "-a", "-s", NormalizeUsernameForUnixSamba(newUsername))
 	if addErr != nil {
-		return errors.Wrapf(addErr, "failed to add new Samba user '%s' after renaming", newUsername)
+		return errors.Wrapf(addErr, "failed to add new Samba user '%s' after renaming", NormalizeUsernameForUnixSamba(newUsername))
 	}
 
 	// Use CheckSambaUser to verify the new Samba user is functional with the new password before confirming success. This also serves as a sanity check that the user can authenticate with Samba after the rename.
@@ -430,6 +430,7 @@ func RenameUsername(ctx context.Context, oldUsername string, newUsername string,
 //     UTF-16LE-encoded password) and compared with the stored value.
 //     This approach works regardless of whether smbd is running.
 func CheckSambaUser(ctx context.Context, username, password string) error {
+	username = NormalizeUsernameForUnixSamba(username)
 	// Step 1: Confirm the user exists in the Samba database and is active.
 	pdbeditOutput, err := cmdExec.RunCommand(ctx, "pdbedit", "-L", "-v", "-u", username)
 	if err != nil {
@@ -555,4 +556,9 @@ func ListSambaUsers(ctx context.Context) ([]string, error) {
 	tlog.Debug("Listed Samba users successfully", "count", len(users))
 
 	return users, nil
+}
+
+func NormalizeUsernameForUnixSamba(username string) string {
+	trimmed := strings.TrimSpace(username)
+	return strings.ReplaceAll(trimmed, " ", "")
 }

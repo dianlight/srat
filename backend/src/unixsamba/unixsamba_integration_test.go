@@ -181,6 +181,126 @@ func (s *UnixSambaIntegrationTestSuite) TestCreateSambaUser_SystemUserAlreadyExi
 	s.True(info.IsSambaUser)
 }
 
+func (s *UnixSambaIntegrationTestSuite) TestCreateSambaUser_UsernameWithSpaces_Real() {
+	s.requireCommands("useradd", "smbpasswd", "pdbedit", "deluser", "usermod")
+	s.requireRoot()
+
+	baseUsername := randomTestUsername()
+	usernameWithSpaces := baseUsername[:4] + " " + baseUsername[4:]
+	normalizedUsername := unixsamba.NormalizeUsernameForUnixSamba(usernameWithSpaces)
+	password := "T3stP@ss!"
+
+	s.T().Cleanup(func() { cleanupUser(s.T().Context(), normalizedUsername) })
+
+	s.Require().NoError(unixsamba.CreateSambaUser(s.T().Context(), usernameWithSpaces, password, unixsamba.UserOptions{
+		Shell:      "/sbin/nologin",
+		CreateHome: false,
+	}))
+
+	info, err := unixsamba.GetByUsername(s.T().Context(), normalizedUsername)
+	s.Require().NoError(err)
+	s.Require().NotNil(info)
+	s.Equal(normalizedUsername, info.Username)
+	s.True(info.IsSambaUser)
+
+	users, err := unixsamba.ListSambaUsers(s.T().Context())
+	s.Require().NoError(err)
+	s.Contains(users, normalizedUsername)
+	s.NotContains(users, usernameWithSpaces)
+}
+
+func (s *UnixSambaIntegrationTestSuite) TestChangePassword_UsernameWithSpaces_Real() {
+	s.requireCommands("useradd", "smbpasswd", "pdbedit", "deluser", "usermod")
+	s.requireRoot()
+
+	baseUsername := randomTestUsername()
+	usernameWithSpaces := baseUsername[:4] + " " + baseUsername[4:]
+	normalizedUsername := unixsamba.NormalizeUsernameForUnixSamba(usernameWithSpaces)
+	password := "Init1@lPass!"
+	newPassword := "N3wP@ssw0rd!"
+
+	s.T().Cleanup(func() { cleanupUser(s.T().Context(), normalizedUsername) })
+
+	s.Require().NoError(unixsamba.CreateSambaUser(s.T().Context(), usernameWithSpaces, password, unixsamba.UserOptions{
+		Shell:      "/sbin/nologin",
+		CreateHome: false,
+	}))
+
+	err := unixsamba.ChangePassword(s.T().Context(), usernameWithSpaces, newPassword)
+	s.Require().NoError(err)
+
+	// Ensure old password no longer works and new password works.
+	err = unixsamba.CheckSambaUser(s.T().Context(), normalizedUsername, password)
+	s.Require().Error(err)
+	err = unixsamba.CheckSambaUser(s.T().Context(), normalizedUsername, newPassword)
+	s.Require().NoError(err)
+}
+
+func (s *UnixSambaIntegrationTestSuite) TestRenameUsername_WithSpaces_Real() {
+	s.requireCommands("useradd", "smbpasswd", "pdbedit", "deluser", "usermod")
+	s.requireRoot()
+
+	oldBase := randomTestUsername()
+	newBase := randomTestUsername()
+	oldUsernameWithSpaces := oldBase[:4] + " " + oldBase[4:]
+	newUsernameWithSpaces := newBase[:4] + " " + newBase[4:]
+	oldNormalized := unixsamba.NormalizeUsernameForUnixSamba(oldUsernameWithSpaces)
+	newNormalized := unixsamba.NormalizeUsernameForUnixSamba(newUsernameWithSpaces)
+	password := "Init1@lPass!"
+	newPassword := "N3wP@ssw0rd!"
+
+	s.T().Cleanup(func() {
+		cleanupUser(s.T().Context(), oldNormalized)
+		cleanupUser(s.T().Context(), newNormalized)
+	})
+
+	s.Require().NoError(unixsamba.CreateSambaUser(s.T().Context(), oldUsernameWithSpaces, password, unixsamba.UserOptions{
+		Shell:      "/sbin/nologin",
+		CreateHome: false,
+	}))
+
+	err := unixsamba.RenameUsername(s.T().Context(), oldUsernameWithSpaces, newUsernameWithSpaces, newPassword)
+	s.Require().NoError(err)
+
+	info, err := unixsamba.GetByUsername(s.T().Context(), newNormalized)
+	s.Require().NoError(err)
+	s.Require().NotNil(info)
+	s.Equal(newNormalized, info.Username)
+	s.True(info.IsSambaUser)
+
+	_, lookupErr := user.Lookup(oldNormalized)
+	s.Require().Error(lookupErr, "old system user should not exist after rename")
+
+	err = unixsamba.CheckSambaUser(s.T().Context(), newNormalized, newPassword)
+	s.Require().NoError(err)
+}
+
+func (s *UnixSambaIntegrationTestSuite) TestDeleteSambaUser_UsernameWithSpaces_Real() {
+	s.requireCommands("useradd", "smbpasswd", "pdbedit", "deluser", "usermod")
+	s.requireRoot()
+
+	baseUsername := randomTestUsername()
+	usernameWithSpaces := baseUsername[:4] + " " + baseUsername[4:]
+	normalizedUsername := unixsamba.NormalizeUsernameForUnixSamba(usernameWithSpaces)
+	password := "T3stP@ss!"
+
+	s.T().Cleanup(func() { cleanupUser(s.T().Context(), normalizedUsername) })
+
+	s.Require().NoError(unixsamba.CreateSambaUser(s.T().Context(), usernameWithSpaces, password, unixsamba.UserOptions{
+		Shell:      "/sbin/nologin",
+		CreateHome: false,
+	}))
+
+	err := unixsamba.DeleteSambaUser(s.T().Context(), usernameWithSpaces)
+	s.Require().NoError(err)
+
+	_, getErr := unixsamba.GetByUsername(s.T().Context(), normalizedUsername)
+	s.Require().Error(getErr)
+
+	_, lookupErr := user.Lookup(normalizedUsername)
+	s.Require().Error(lookupErr, "system user should have been removed")
+}
+
 // --- ChangePassword ---
 
 func (s *UnixSambaIntegrationTestSuite) TestChangePassword_SambaOnly_Real() {
