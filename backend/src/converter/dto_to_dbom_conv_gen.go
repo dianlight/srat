@@ -213,30 +213,36 @@ func (c *DtoToDbomConverterImpl) MountPointPathsToMountPointDatas(source []dbom.
 	}
 	return pDtoMountPointDataList, nil
 }
-func (c *DtoToDbomConverterImpl) SambaUserToUser(source dbom.SambaUser, target *dto.User) error {
-	target.Username = source.Username
-	target.Password = stringToSecret(source.Password)
-	target.IsAdmin = source.IsAdmin
+func (c *DtoToDbomConverterImpl) SambaUserToUser(source dbom.SambaUser) (dto.User, error) {
+	var dtoUser dto.User
+	dtoUser.Username = source.Username
+	dtoUser.Password = stringToSecret(source.Password)
+	dtoUser.IsAdmin = source.IsAdmin
+	dtoUser.IsValid = checkUserValid(source)
 	if source.RwShares != nil {
-		target.RwShares = make([]string, len(source.RwShares))
+		dtoUser.RwShares = make([]string, len(source.RwShares))
 		for i := 0; i < len(source.RwShares); i++ {
-			target.RwShares[i] = exportedShareToString(source.RwShares[i])
+			dtoUser.RwShares[i] = exportedShareToString(source.RwShares[i])
 		}
 	}
 	if source.RoShares != nil {
-		target.RoShares = make([]string, len(source.RoShares))
+		dtoUser.RoShares = make([]string, len(source.RoShares))
 		for j := 0; j < len(source.RoShares); j++ {
-			target.RoShares[j] = exportedShareToString(source.RoShares[j])
+			dtoUser.RoShares[j] = exportedShareToString(source.RoShares[j])
 		}
 	}
-	return nil
+	return dtoUser, nil
 }
 func (c *DtoToDbomConverterImpl) SambaUsersToUsers(source []dbom.SambaUser) ([]dto.User, error) {
 	var dtoUserList []dto.User
 	if source != nil {
 		dtoUserList = make([]dto.User, len(source))
 		for i := 0; i < len(source); i++ {
-			dtoUserList[i] = c.dbomSambaUserToDtoUser(source[i])
+			dtoUser, err := c.SambaUserToUser(source[i])
+			if err != nil {
+				return nil, err
+			}
+			dtoUserList[i] = dtoUser
 		}
 	}
 	return dtoUserList, nil
@@ -366,25 +372,6 @@ func (c *DtoToDbomConverterImpl) dbomMountPointPathToPDtoMountPointData(source d
 		return nil, err
 	}
 	return &dtoMountPointData, nil
-}
-func (c *DtoToDbomConverterImpl) dbomSambaUserToDtoUser(source dbom.SambaUser) dto.User {
-	var dtoUser dto.User
-	dtoUser.Username = source.Username
-	dtoUser.Password = stringToSecret(source.Password)
-	dtoUser.IsAdmin = source.IsAdmin
-	if source.RwShares != nil {
-		dtoUser.RwShares = make([]string, len(source.RwShares))
-		for i := 0; i < len(source.RwShares); i++ {
-			dtoUser.RwShares[i] = exportedShareToString(source.RwShares[i])
-		}
-	}
-	if source.RoShares != nil {
-		dtoUser.RoShares = make([]string, len(source.RoShares))
-		for j := 0; j < len(source.RoShares); j++ {
-			dtoUser.RoShares[j] = exportedShareToString(source.RoShares[j])
-		}
-	}
-	return dtoUser
 }
 func (c *DtoToDbomConverterImpl) dtoHdidleCommandToPDtoHdidleCommand(source dto.HdidleCommand) *dto.HdidleCommand {
 	return &source

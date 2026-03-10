@@ -20,6 +20,7 @@ import (
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/srat/tempio"
 	"github.com/dianlight/srat/templates"
+	"github.com/dianlight/srat/unixsamba"
 	"github.com/dianlight/tlog"
 	"github.com/lonegunmanb/go-defaults"
 	cache "github.com/patrickmn/go-cache"
@@ -301,7 +302,7 @@ func (self *ServerService) CreateSambaUsersMapStream() (data *[]byte, err errors
 
 	aliasesByUnixUser := make(map[string][]string)
 	for _, user := range users {
-		normalizedUsername := NormalizeUsernameForUnixSamba(user.Username)
+		normalizedUsername := unixsamba.NormalizeUsernameForUnixSamba(user.Username)
 		if normalizedUsername == "" || normalizedUsername == user.Username {
 			continue
 		}

@@ -37,6 +37,7 @@ type EventPropagationTestSuite struct {
 	dirtyDataService   DirtyDataServiceInterface
 	volumeService      VolumeServiceInterface
 	mockHardwareClient HardwareServiceInterface
+	sambaMock          *unixsamba.MockSystem
 }
 
 func TestEventPropagationTestSuite(t *testing.T) {
@@ -177,8 +178,9 @@ func (suite *EventPropagationTestSuite) SetupTest() {
 		*/
 	}
 
-	unixsamba.SetCommandExecutor(mock.Mock[unixsamba.CommandExecutor](ctrl))
-	unixsamba.SetOSUserLookuper(mock.Mock[unixsamba.OSUserLookuper](ctrl))
+	suite.sambaMock = unixsamba.NewMockSystem()
+	unixsamba.SetCommandExecutor(suite.sambaMock)
+	unixsamba.SetOSUserLookuper(suite.sambaMock)
 	// Setup global mock for share repo to avoid nil pointer errors when mount point events trigger share lookups
 	//mock.When(suite.mockShareRepo.FindByMountPath(mock.Any[string]())).ThenReturn(nil, errors.WithStack(gorm.ErrRecordNotFound))
 }
@@ -186,6 +188,7 @@ func (suite *EventPropagationTestSuite) SetupTest() {
 func (suite *EventPropagationTestSuite) TearDownTest() {
 	suite.cancel()
 	suite.ctx.Value(ctxkeys.WaitGroup).(*sync.WaitGroup).Wait()
+	unixsamba.ResetExecutorsToDefaults()
 	//suite.app.RequireStop()
 }
 

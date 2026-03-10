@@ -4,7 +4,6 @@ import (
 	"context"
 	"log/slog"
 	"os"
-	"strings"
 
 	"github.com/angusgmorrison/logfusc"
 	"github.com/dianlight/srat/converter"
@@ -15,6 +14,7 @@ import (
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/srat/unixsamba"
+	"github.com/dianlight/tlog"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 	"gorm.io/gorm"
@@ -24,10 +24,6 @@ const defaultAdminUsername = "admin"
 const defaultAdminPassword = "changeme!"
 
 // NormalizeUsernameForUnixSamba strips spaces from Samba usernames for Unix account mapping.
-func NormalizeUsernameForUnixSamba(username string) string {
-	trimmed := strings.TrimSpace(username)
-	return strings.ReplaceAll(trimmed, " ", "")
-}
 
 type UserServiceInterface interface {
 	ListUsers() ([]dto.User, error)
@@ -69,11 +65,11 @@ func NewUserService(lc fx.Lifecycle, params UserServiceParams) UserServiceInterf
 			if os.Getenv("SRAT_MOCK") == "true" {
 				return nil
 			}
-			slog.DebugContext(ctx, "******* Autocreating users ********")
+			tlog.TraceContext(ctx, "******* Autocreating users ********")
 
 			setting, err := us.settingService.Load()
 			if err != nil {
-				slog.ErrorContext(ctx, "Cant load settings", "err", err)
+				tlog.ErrorContext(ctx, "Cant load settings", "err", err)
 			}
 			if setting == nil {
 				slog.WarnContext(ctx, "Settings are nil, using default startup settings")
@@ -117,9 +113,8 @@ func NewUserService(lc fx.Lifecycle, params UserServiceParams) UserServiceInterf
 				}
 			}
 			for _, user := range users {
-				slog.InfoContext(ctx, "Autocreating user", "name", user.Username)
-				normalizedUsername := NormalizeUsernameForUnixSamba(user.Username)
-				err = unixsamba.CreateSambaUser(ctx, normalizedUsername, user.Password, unixsamba.UserOptions{
+				tlog.InfoContext(ctx, "Autocreating user", "name", user.Username)
+				err = unixsamba.CreateSambaUser(ctx, user.Username, user.Password, unixsamba.UserOptions{
 					CreateHome:    false,
 					SystemAccount: false,
 					Shell:         "/sbin/nologin",
@@ -147,15 +142,10 @@ func (s *UserService) ListUsers() ([]dto.User, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to list users from repository")
 	}
-	var users []dto.User
 	var conv converter.DtoToDbomConverterImpl
-	for _, dbuser := range dbusers {
-		var user dto.User
-		errS := conv.SambaUserToUser(dbuser, &user)
-		if errS != nil {
-			return nil, errors.Wrapf(errS, "failed to convert db user %s to dto", dbuser.Username)
-		}
-		users = append(users, user)
+	users, err := conv.SambaUsersToUsers(dbusers)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to convert db users to dto")
 	}
 	return users, nil
 }
@@ -168,9 +158,8 @@ func (s *UserService) GetAdmin() (*dto.User, error) {
 		}
 		return nil, errors.Wrap(err, "failed to get admin user from repository")
 	}
-	var user dto.User
 	var conv converter.DtoToDbomConverterImpl
-	errS := conv.SambaUserToUser(dbuser, &user)
+	user, errS := conv.SambaUserToUser(dbuser)
 	if errS != nil {
 		return nil, errors.Wrap(errS, "failed to convert admin db user to dto")
 	}
@@ -184,29 +173,47 @@ func (s *UserService) CreateUser(userDto dto.User) (*dto.User, error) {
 		return nil, errors.Wrap(err, "failed to convert user DTO to DBOM")
 	}
 
-	upd, err := gorm.G[dbom.SambaUser](s.db).
+	upd, err := gorm.G[dbom.SambaUser](s.db.Debug()).
 		Scopes(dbom.IncludeSoftDeleted).
 		Where(g.SambaUser.Username.Eq(dbUser.Username)).
 		Where(g.SambaUser.DeletedAt.IsNotNull()).
-		Update(s.ctx, g.SambaUser.DeletedAt.Column().Name, nil)
+		Select("Password", "DeletedAt"). // Explicitly include DeletedAt in the UPDATE
+		Updates(s.ctx, dbom.SambaUser{
+			DeletedAt: gorm.DeletedAt{Valid: false}, // Clear DeletedAt to restore
+			Password:  dbUser.Password,
+		})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to restore soft-deleted user %s if existed", dbUser.Username)
 	}
 	if upd > 0 {
-		return s.UpdateUser(userDto.Username, userDto)
-	}
-
-	slog.Debug("Attempting to create user in DB", "dbUser", dbUser)
-	if err := gorm.G[dbom.SambaUser](s.db).Create(s.ctx, &dbUser); err != nil {
-		if errors.Is(err, gorm.ErrDuplicatedKey) {
-			return nil, dto.ErrorUserAlreadyExists
+		// Restore Soft Deleted
+		if num, err := gorm.G[dbom.SambaUser](s.db.Debug()).
+			Where(g.SambaUser.Username.Eq(dbUser.Username)).
+			Updates(s.ctx, dbUser); err != nil && num == 0 {
+			return nil, errors.Wrapf(err, "failed to save updated user %s to repository", dbUser.Username)
 		}
-		//slog.Error("Error creating user in repository", "err", err)
-		return nil, errors.Wrap(err, "failed to create user in repository")
+	} else if upd == 0 {
+		if err := gorm.G[dbom.SambaUser](s.db).Create(s.ctx, &dbUser); err != nil {
+			if errors.Is(err, gorm.ErrDuplicatedKey) {
+				return nil, dto.ErrorUserAlreadyExists
+			}
+			//tlog.Error("Error creating user in repository", "err", err)
+			return nil, errors.Wrap(err, "failed to create user in repository")
+		}
+	}
+	err = unixsamba.CreateSambaUser(s.ctx, dbUser.Username, dbUser.Password, unixsamba.UserOptions{
+		CreateHome:    false,
+		SystemAccount: false,
+		Shell:         "/sbin/nologin",
+	})
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to restore samba user %s for soft-deleted user", dbUser.Username)
 	}
 
-	var createdUserDto dto.User
-	if err := conv.SambaUserToUser(dbUser, &createdUserDto); err != nil {
+	//slog.Debug("Attempting to create user in DB", "dbUser", dbUser)
+
+	createdUserDto, err := conv.SambaUserToUser(dbUser)
+	if err != nil {
 		return nil, errors.Wrap(err, "failed to convert created DBOM user back to DTO")
 	}
 
@@ -221,7 +228,7 @@ func (s *UserService) CreateUser(userDto dto.User) (*dto.User, error) {
 }
 
 func (s *UserService) UpdateUser(currentUsername string, userDto dto.User) (*dto.User, error) {
-	dbUser, err := gorm.G[dbom.SambaUser](s.db).Where(g.SambaUser.Username.Eq(currentUsername)).First(s.ctx)
+	dbUser, err := gorm.G[dbom.SambaUser](s.db.Debug()).Where(g.SambaUser.Username.Eq(currentUsername)).First(s.ctx)
 
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -230,37 +237,22 @@ func (s *UserService) UpdateUser(currentUsername string, userDto dto.User) (*dto
 		return nil, errors.Wrapf(err, "failed to get user %s from repository %v", currentUsername, err)
 	}
 
+	currentPassword := dbUser.Password // Store current password for potential use in rename or password change
+
 	var conv converter.DtoToDbomConverterImpl
 
-	if userDto.Username != "" && userDto.Username != currentUsername {
-		// Handle rename
-		if _, checkErr := gorm.G[dbom.SambaUser](s.db).Where(g.SambaUser.Username.Eq(userDto.Username)).First(s.ctx); checkErr == nil {
-			return nil, errors.WithMessagef(dto.ErrorUserAlreadyExists, "cannot rename to %s, user already exists", userDto.Username)
-		} else if !errors.Is(checkErr, gorm.ErrRecordNotFound) {
-			return nil, errors.Wrapf(checkErr, "error checking if new username %s exists", userDto.Username)
-		}
-		if err := s.rename(currentUsername, userDto.Username); err != nil {
-			return nil, errors.Wrapf(err, "failed to rename user from %s to %s. err %v", currentUsername, userDto.Username, err)
-		}
-		dbUser.Username = userDto.Username // Update username in the struct for subsequent save
-	}
-
-	// Apply other DTO changes to dbUser
-	// Ensure the DTO's username is consistent with dbUser.Username for the converter
-	originalDtoUsername := userDto.Username
-	userDto.Username = dbUser.Username
+	// Apply other DTO changes to dbUser without affecting the username (which is already handled)
 	if err := conv.UserToSambaUser(userDto, &dbUser); err != nil {
-		userDto.Username = originalDtoUsername // Restore for error message consistency
 		return nil, errors.Wrap(err, "failed to convert user DTO to DBOM for update")
 	}
-	userDto.Username = originalDtoUsername // Restore for caller, if they inspect it
 
-	if _, err := gorm.G[dbom.SambaUser](s.db).Updates(s.ctx, dbUser); err != nil {
-		return nil, errors.Wrapf(err, "failed to save updated user %s to repository", dbUser.Username)
+	dbUser, err = s.updateUser(currentUsername, currentPassword, dbUser) // Update the user and handle renaming if needed
+	if err != nil {
+		return nil, err
 	}
 
-	var updatedUserDto dto.User
-	if err := conv.SambaUserToUser(dbUser, &updatedUserDto); err != nil {
+	updatedUserDto, err := conv.SambaUserToUser(dbUser)
+	if err != nil {
 		return nil, errors.Wrap(err, "failed to convert updated DBOM user back to DTO")
 	}
 
@@ -274,6 +266,40 @@ func (s *UserService) UpdateUser(currentUsername string, userDto dto.User) (*dto
 	return &updatedUserDto, nil
 }
 
+func (s *UserService) updateUser(currentUsername string, currentPassword string, dbUser dbom.SambaUser) (dbom.SambaUser, error) {
+
+	errF := s.db.Transaction(func(tx *gorm.DB) error {
+
+		if dbUser.Username != "" && dbUser.Username != currentUsername {
+			// Handle rename
+			if _, checkErr := gorm.G[dbom.SambaUser](tx.Debug()).Where(g.SambaUser.Username.Eq(dbUser.Username)).First(s.ctx); checkErr == nil {
+				return errors.WithMessagef(dto.ErrorUserAlreadyExists, "cannot rename to %s, user already exists", dbUser.Username)
+			} else if !errors.Is(checkErr, gorm.ErrRecordNotFound) {
+				return errors.Wrapf(checkErr, "error checking if new username %s exists", dbUser.Username)
+			}
+			if err := unixsamba.RenameUsername(tx.Statement.Context, currentUsername, dbUser.Username, dbUser.Password); err != nil {
+				return errors.Wrapf(err, "failed to rename user in unix/samba from %s to %s", currentUsername, dbUser.Username)
+			}
+		}
+		if dbUser.Password != "" && dbUser.Password != currentPassword {
+			// Handle change password
+			err := unixsamba.ChangePassword(tx.Statement.Context, dbUser.Username, dbUser.Password)
+			if err != nil {
+				return errors.Wrapf(err, "failed to change password for user %s", dbUser.Username)
+			}
+		}
+
+		if _, err := gorm.G[dbom.SambaUser](tx.Debug()).
+			Where(g.SambaUser.Username.Eq(currentUsername)).
+			Updates(tx.Statement.Context, dbUser); err != nil {
+			return errors.Wrapf(err, "failed to save updated user %s to repository", dbUser.Username)
+		}
+		return nil
+	})
+
+	return dbUser, errF
+}
+
 func (s *UserService) UpdateAdminUser(userDto dto.User) (*dto.User, error) {
 	// This method is more complex due to potential admin username change.
 	// The existing logic in api.UserHandler for UpdateAdminUser can be moved here.
@@ -283,6 +309,7 @@ func (s *UserService) UpdateAdminUser(userDto dto.User) (*dto.User, error) {
 		return nil, errors.Wrap(err, "failed to get admin user")
 	}
 	originalAdminUsername := dbUser.Username
+	originalAdminPassword := dbUser.Password
 
 	var conv converter.DtoToDbomConverterImpl
 	if err := conv.UserToSambaUser(userDto, &dbUser); err != nil {
@@ -290,23 +317,13 @@ func (s *UserService) UpdateAdminUser(userDto dto.User) (*dto.User, error) {
 	}
 	dbUser.IsAdmin = true // Ensure admin status
 
-	if dbUser.Username != originalAdminUsername {
-		if _, checkErr := gorm.G[dbom.SambaUser](s.db).Where(g.SambaUser.Username.Eq(dbUser.Username)).First(s.ctx); checkErr == nil {
-			return nil, errors.WithMessagef(dto.ErrorUserAlreadyExists, "cannot rename admin from %s to %s, username already exists", originalAdminUsername, dbUser.Username)
-		} else if !errors.Is(checkErr, gorm.ErrRecordNotFound) && dbUser.Username != originalAdminUsername {
-			return nil, errors.Wrapf(checkErr, "error checking if new admin username %s exists", dbUser.Username)
-		}
-		if err := s.rename(originalAdminUsername, dbUser.Username); err != nil {
-			return nil, errors.Wrapf(err, "failed to rename admin user from %s to %s", originalAdminUsername, dbUser.Username)
-		}
+	dbUser, err = s.updateUser(originalAdminUsername, originalAdminPassword, dbUser) // Update the user and handle renaming if needed
+	if err != nil {
+		return nil, err
 	}
 
-	if _, err := gorm.G[dbom.SambaUser](s.db).Updates(s.ctx, dbUser); err != nil {
-		return nil, errors.Wrap(err, "failed to save updated admin user")
-	}
-
-	var updatedAdminDto dto.User
-	if err := conv.SambaUserToUser(dbUser, &updatedAdminDto); err != nil {
+	updatedAdminDto, err := conv.SambaUserToUser(dbUser)
+	if err != nil {
 		return nil, errors.Wrap(err, "failed to convert updated admin DBOM to DTO")
 	}
 	s.eventBus.EmitUser(events.UserEvent{
@@ -326,6 +343,12 @@ func (s *UserService) DeleteUser(username string) error {
 	if err != nil {
 		return errors.Wrapf(err, "failed to delete user %s from repository %v", username, err)
 	}
+
+	err = unixsamba.DeleteSambaUser(s.ctx, username)
+	if err != nil {
+		return errors.Wrapf(err, "failed to delete samba user %s", username)
+	}
+
 	s.eventBus.EmitUser(events.UserEvent{
 		Event: events.Event{
 			Type: events.EventTypes.REMOVE,
@@ -333,31 +356,4 @@ func (s *UserService) DeleteUser(username string) error {
 		User: &dto.User{Username: username},
 	})
 	return nil
-}
-
-func (self *UserService) rename(oldname string, newname string) errors.E {
-	return errors.WithStack(self.db.Transaction(func(tx *gorm.DB) error {
-		var smbuser dbom.SambaUser
-		// First, retrieve the user to get the password *before* updating the name.
-		// We need the original password for the unixsamba.RenameUsername call.
-		if err := tx.Where("username = ?", oldname).First(&smbuser).Error; err != nil {
-			return errors.Wrapf(err, "failed to find user %s before renaming", oldname)
-		}
-
-		normalizedOldName := NormalizeUsernameForUnixSamba(oldname)
-		normalizedNewName := NormalizeUsernameForUnixSamba(newname)
-
-		if os.Getenv("SRAT_MOCK") != "true" && normalizedOldName != normalizedNewName {
-			// Attempt to rename the user in the underlying system (Samba/Unix) first
-			if err := unixsamba.RenameUsername(tx.Statement.Context, normalizedOldName, normalizedNewName, smbuser.Password); err != nil {
-				return errors.Wrapf(err, "failed to rename user in unix/samba from %s to %s", oldname, newname)
-			}
-		}
-
-		// Update the username in the database
-		if err := tx.Model(&dbom.SambaUser{}).Where("username = ?", oldname).Update("username", newname).Error; err != nil {
-			return errors.Wrapf(err, "failed to update username in database from %s to %s", oldname, newname)
-		}
-		return nil
-	}))
 }

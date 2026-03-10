@@ -1,9 +1,11 @@
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
+import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import GroupIcon from "@mui/icons-material/Group";
 import {
     Box,
     Chip,
+    Tooltip,
     Typography,
     useTheme,
 } from "@mui/material";
@@ -29,6 +31,25 @@ export function UsersTreeView({
     onExpandedItemsChange,
 }: UsersTreeViewProps) {
     const theme = useTheme();
+
+    const getInvalidUserMessage = (user: User): string => {
+        const messageKeys = [
+            "error",
+            "invalid_error",
+            "validation_error",
+            "reason",
+            "message",
+        ] as const;
+
+        for (const key of messageKeys) {
+            const value = user[key];
+            if (typeof value === "string" && value.trim().length > 0) {
+                return value;
+            }
+        }
+
+        return "User configuration is invalid";
+    };
 
     const groupedAndSortedUsers = useMemo(() => {
         if (!users || !Array.isArray(users)) {
@@ -68,6 +89,8 @@ export function UsersTreeView({
     const renderUserItem = (user: User) => {
         const userKey = user.username || "";
         const isSelected = selectedUserKey === userKey;
+        const isUserInvalid = user.is_valid !== true;
+        const invalidMessage = isUserInvalid ? getInvalidUserMessage(user) : "";
         const userRwShares = user.rw_shares || [];
         const userRoShares = user.ro_shares || [];
         const totalShares = userRwShares.length + userRoShares.length;
@@ -105,6 +128,18 @@ export function UsersTreeView({
                                 {user.username}
                             </Typography>
                             <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 0.5 }}>
+                                {isUserInvalid && (
+                                    <Tooltip title={invalidMessage} arrow>
+                                        <Chip
+                                            size="small"
+                                            variant="outlined"
+                                            color="error"
+                                            icon={<ErrorOutlineIcon />}
+                                            label="Invalid"
+                                            sx={{ fontSize: "0.7rem", height: 16 }}
+                                        />
+                                    </Tooltip>
+                                )}
                                 {user.is_admin && (
                                     <Chip
                                         size="small"
