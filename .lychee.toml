@@ -42,6 +42,10 @@ exclude_path = [
   ".git/",
   ".vale/",
   ".github/",
+  ".vscode/",
+  ".kilocode/",
+  ".zed/",
+  ".zencoder/",
 ]
 
 # Check the specified file extensions
