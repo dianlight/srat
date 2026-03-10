@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -492,6 +493,12 @@ func (self *ServerService) writeSambaConfig(ctx context.Context) errors.E {
 
 func (self *ServerService) writeSambaUsersMapConfig(ctx context.Context) errors.E {
 	tlog.TraceContext(ctx, "Writing Samba username map file", "file", sambaUsersMapFile)
+
+	// Create directory if it doesn't exist
+	dirPath := filepath.Dir(sambaUsersMapFile)
+	if err := os.MkdirAll(dirPath, 0o755); err != nil {
+		return errors.WithStack(err)
+	}
 
 	stream, err := self.CreateSambaUsersMapStream()
 	if err != nil {
