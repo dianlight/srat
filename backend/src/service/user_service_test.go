@@ -436,6 +436,55 @@ func (suite *UserServiceSuite) TestUpdateUser_RenameSuccess() {
 	suite.True(suite.dirtyService.GetDirtyDataTracker().Users)
 }
 
+func (suite *UserServiceSuite) TestUpdateUser_RenameWithShares_Success() {
+	// Arrange
+	currentUsername := fmt.Sprintf("rnshares_old%d", time.Now().UnixNano())
+	newUsername := fmt.Sprintf("rnshares_new%d", time.Now().UnixNano())
+
+	// Create user via service so the mock system registers it for samba operations
+	_, err := suite.userService.CreateUser(dto.User{
+		Username: currentUsername,
+		Password: dto.NewSecret("password"),
+		IsAdmin:  false,
+	})
+	suite.Require().NoError(err)
+
+	// Create shares and associate them with the user directly in the DB
+	rwShare := dbom.ExportedShare{Name: fmt.Sprintf("rnrw_%d", time.Now().UnixNano())}
+	roShare := dbom.ExportedShare{Name: fmt.Sprintf("rnro_%d", time.Now().UnixNano())}
+	suite.Require().NoError(suite.db.Create(&rwShare).Error)
+	suite.Require().NoError(suite.db.Create(&roShare).Error)
+	suite.Require().NoError(suite.db.Model(&dbom.SambaUser{Username: currentUsername}).Association("RwShares").Append(&rwShare))
+	suite.Require().NoError(suite.db.Model(&dbom.SambaUser{Username: currentUsername}).Association("RoShares").Append(&roShare))
+
+	userDto := dto.User{
+		Username: newUsername,
+		Password: dto.NewSecret("password"),
+		IsAdmin:  false,
+	}
+
+	// Act
+	updatedUser, err := suite.userService.UpdateUser(currentUsername, userDto)
+
+	// Assert
+	suite.Require().NoError(err, "expected no error but got '%v'", err)
+	suite.Require().NotNil(updatedUser)
+	suite.Equal(newUsername, updatedUser.Username)
+	suite.True(suite.dirtyService.GetDirtyDataTracker().Users)
+
+	// Verify shares are still associated with the renamed user (CASCADE on primary key update)
+	var renamedUser dbom.SambaUser
+	suite.Require().NoError(
+		suite.db.Preload("RwShares").Preload("RoShares").
+			Where("username = ?", newUsername).
+			First(&renamedUser).Error,
+	)
+	suite.Require().Len(renamedUser.RwShares, 1)
+	suite.Require().Len(renamedUser.RoShares, 1)
+	suite.Equal(rwShare.Name, renamedUser.RwShares[0].Name)
+	suite.Equal(roShare.Name, renamedUser.RoShares[0].Name)
+}
+
 func (suite *UserServiceSuite) TestUpdateUser_RenameToExistingUser() {
 	// Arrange
 	currentUsername := fmt.Sprintf("roldname%d", time.Now().Unix())
@@ -664,6 +713,48 @@ func (suite *UserServiceSuite) TestDeleteUser_Success_Reget() {
 	result := suite.db.Where("username = ?", username).First(&user)
 	suite.Require().Error(result.Error)
 	suite.True(errors.Is(result.Error, gorm.ErrRecordNotFound))
+}
+
+func (suite *UserServiceSuite) TestDeleteUser_WithShares_Success() {
+	// Arrange
+	username := fmt.Sprintf("delshares_%d", time.Now().UnixNano())
+
+	// Create user via service so the mock system registers it for samba operations
+	_, err := suite.userService.CreateUser(dto.User{
+		Username: username,
+		Password: dto.NewSecret("password"),
+		IsAdmin:  false,
+	})
+	suite.Require().NoError(err)
+
+	// Create shares and associate them with the user directly in the DB
+	rwShare := dbom.ExportedShare{Name: fmt.Sprintf("delrw_%d", time.Now().UnixNano())}
+	roShare := dbom.ExportedShare{Name: fmt.Sprintf("delro_%d", time.Now().UnixNano())}
+	suite.Require().NoError(suite.db.Create(&rwShare).Error)
+	suite.Require().NoError(suite.db.Create(&roShare).Error)
+	suite.Require().NoError(suite.db.Model(&dbom.SambaUser{Username: username}).Association("RwShares").Append(&rwShare))
+	suite.Require().NoError(suite.db.Model(&dbom.SambaUser{Username: username}).Association("RoShares").Append(&roShare))
+
+	// Act
+	err = suite.userService.DeleteUser(username)
+
+	// Assert
+	suite.Require().NoError(err)
+	suite.True(suite.dirtyService.GetDirtyDataTracker().Users)
+
+	// Verify the user is soft-deleted (not found by normal query)
+	var deletedUser dbom.SambaUser
+	result := suite.db.Where("username = ?", username).First(&deletedUser)
+	suite.True(errors.Is(result.Error, gorm.ErrRecordNotFound))
+
+	// Verify the shares themselves are NOT deleted (user deletion must not cascade to shares)
+	var existingRwShare dbom.ExportedShare
+	suite.Require().NoError(suite.db.Where("name = ?", rwShare.Name).First(&existingRwShare).Error)
+	suite.Equal(rwShare.Name, existingRwShare.Name)
+
+	var existingRoShare dbom.ExportedShare
+	suite.Require().NoError(suite.db.Where("name = ?", roShare.Name).First(&existingRoShare).Error)
+	suite.Equal(roShare.Name, existingRoShare.Name)
 }
 
 func (suite *UserServiceSuite) TestDeleteUser_UserNotFound() {

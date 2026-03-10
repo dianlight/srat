@@ -280,6 +280,13 @@ func (s *UserService) updateUser(currentUsername string, currentPassword string,
 			if err := unixsamba.RenameUsername(tx.Statement.Context, currentUsername, dbUser.Username, dbUser.Password); err != nil {
 				return errors.Wrapf(err, "failed to rename user in unix/samba from %s to %s", currentUsername, dbUser.Username)
 			}
+			// Rename the primary key in DB as a targeted single-column update so that
+			// ON UPDATE CASCADE propagates to the user_rw_share / user_ro_share join tables.
+			if err := tx.Model(&dbom.SambaUser{}).Where("username = ?", currentUsername).Update("username", dbUser.Username).Error; err != nil {
+				return errors.Wrapf(err, "failed to rename username in DB from %s to %s", currentUsername, dbUser.Username)
+			}
+			// Advance the local variable so the general Updates below targets the new PK.
+			currentUsername = dbUser.Username
 		}
 		if dbUser.Password != "" && dbUser.Password != currentPassword {
 			// Handle change password
