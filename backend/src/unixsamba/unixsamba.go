@@ -83,7 +83,7 @@ type UserOptions struct {
 
 // RunCommand is the actual implementation for running commands.
 func (d *defaultCommandExecutor) RunCommand(ctx context.Context, command string, args ...string) (string, error) {
-	tlog.DebugContext(ctx, "RunCommand", "command", command, "args", args)
+	//tlog.DebugContext(ctx, "RunCommand", "command", command, "args", args)
 	cmd := exec.CommandContext(ctx, command, args...)
 	var outData bytes.Buffer
 	var stderrData bytes.Buffer
@@ -108,12 +108,12 @@ func (d *defaultCommandExecutor) RunCommand(ctx context.Context, command string,
 
 // RunCommandWithInput is the actual implementation for running commands with stdin.
 func (d *defaultCommandExecutor) RunCommandWithInput(ctx context.Context, stdinContent string, command string, args ...string) (string, error) {
-	tlog.DebugContext(ctx, "RunCommandWithInput", "command", command, "args", args, "stdin_preview", func() string {
+	/*tlog.DebugContext(ctx, "RunCommandWithInput", "command", command, "args", args, "stdin_preview", func() string {
 		if len(stdinContent) > 50 {
 			return stdinContent[:50] + "..."
 		}
 		return stdinContent
-	}())
+	}())*/
 	cmd := exec.CommandContext(ctx, command, args...)
 	cmd.Stdin = strings.NewReader(stdinContent)
 	var outData bytes.Buffer
