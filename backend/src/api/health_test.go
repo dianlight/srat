@@ -12,6 +12,7 @@ import (
 	"github.com/danielgtaylor/huma/v2/humatest"
 	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/dianlight/srat/service"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
@@ -41,7 +42,7 @@ func (suite *HealthHandlerSuite) SetupTest() {
 		fx.Provide(
 			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
 			func() (context.Context, context.CancelFunc) {
-				return context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
+				return context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, &sync.WaitGroup{}))
 			},
 			api.NewHealthHandler,
 			mock.Mock[service.BroadcasterServiceInterface],
@@ -81,7 +82,7 @@ func (suite *HealthHandlerSuite) SetupTest() {
 // TearDownSuite runs once after all tests in the suite have finished
 func (suite *HealthHandlerSuite) TearDownTest() {
 	suite.cancel()
-	suite.ctx.Value("wg").(*sync.WaitGroup).Wait()
+	suite.ctx.Value(ctxkeys.WaitGroup).(*sync.WaitGroup).Wait()
 	suite.app.RequireStop()
 }
 

@@ -11,6 +11,7 @@ import (
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
+	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/srat/service/filesystem"
 	"github.com/u-root/u-root/pkg/mount"
@@ -251,7 +252,7 @@ func NewFilesystemService(
 	}
 
 	// Get WaitGroup from context
-	wg, ok := ctx.Value("wg").(*sync.WaitGroup)
+	wg, ok := ctx.Value(ctxkeys.WaitGroup).(*sync.WaitGroup)
 	if !ok {
 		// Fallback to a new WaitGroup if not provided in context
 		wg = &sync.WaitGroup{}
@@ -568,9 +569,7 @@ func (s *FilesystemService) FormatPartition(ctx context.Context, devicePath, fsT
 	}
 
 	// Start async operation
-	s.wg.Add(1)
-	go func() {
-		defer s.wg.Done()
+	s.wg.Go(func() {
 		defer s.finishOperation(devicePath)
 
 		// Emit start event
@@ -662,7 +661,7 @@ func (s *FilesystemService) FormatPartition(ctx context.Context, devicePath, fsT
 			// Log success
 			slog.InfoContext(s.ctx, "Format operation completed successfully", "device", devicePath, "fsType", fsType)
 		}
-	}()
+	})
 
 	return &dto.CheckResult{
 		Success: true,
@@ -702,9 +701,7 @@ func (s *FilesystemService) CheckPartition(ctx context.Context, devicePath, fsTy
 	}
 
 	// Start async operation
-	s.wg.Add(1)
-	go func() {
-		defer s.wg.Done()
+	s.wg.Go(func() {
 		defer s.finishOperation(devicePath)
 
 		// Emit start event
@@ -812,7 +809,7 @@ func (s *FilesystemService) CheckPartition(ctx context.Context, devicePath, fsTy
 			// Log success
 			slog.InfoContext(s.ctx, "Check operation completed successfully", "device", devicePath, "fsType", fsType, "result", result)
 		}
-	}()
+	})
 
 	return &dto.CheckResult{
 		Success: true,

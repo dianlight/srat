@@ -295,7 +295,7 @@ func (a *BtrfsAdapter) SetLabel(ctx context.Context, device string, label string
 // GetState returns the state of a btrfs filesystem
 func (a *BtrfsAdapter) GetState(ctx context.Context, device string) (dto.FilesystemState, errors.E) {
 	state := dto.FilesystemState{
-		AdditionalInfo: make(map[string]interface{}),
+		AdditionalInfo: make(map[string]any),
 	}
 
 	// Use state command device stats to get device statistics

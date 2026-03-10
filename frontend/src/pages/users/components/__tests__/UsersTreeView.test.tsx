@@ -1,5 +1,5 @@
+import { beforeEach, describe, expect, it } from "bun:test";
 import "../../../../../test/setup";
-import { describe, it, expect, beforeEach } from "bun:test";
 
 // localStorage shim for testing
 if (!(globalThis as any).localStorage) {
@@ -244,5 +244,42 @@ describe("UsersTreeView component", () => {
         const zebraUser = await screen.findByText("zebra");
         expect(alphaUser).toBeTruthy();
         expect(zebraUser).toBeTruthy();
+    });
+
+    it("marks invalid users and shows their error message", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { UsersTreeView } = await import("../UsersTreeView");
+
+        const mockUsers = [
+            {
+                username: "broken-user",
+                is_admin: false,
+                is_valid: false,
+                error: "Missing Samba account",
+                rw_shares: [],
+                ro_shares: [],
+            },
+        ];
+
+        render(
+            React.createElement(UsersTreeView as any, {
+                users: mockUsers,
+                selectedUserKey: undefined,
+                onUserSelect: () => { },
+                expandedItems: ["group-users"],
+                onExpandedItemsChange: () => { },
+            })
+        );
+
+        const invalidChip = await screen.findByText("Invalid");
+        expect(invalidChip).toBeTruthy();
+
+        const user = userEvent.setup();
+        await user.hover(invalidChip);
+
+        const tooltipMessage = await screen.findByText("Missing Samba account");
+        expect(tooltipMessage).toBeTruthy();
     });
 });

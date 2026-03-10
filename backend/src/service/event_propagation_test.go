@@ -11,6 +11,7 @@ import (
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
+	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/srat/unixsamba"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
@@ -36,6 +37,7 @@ type EventPropagationTestSuite struct {
 	dirtyDataService   DirtyDataServiceInterface
 	volumeService      VolumeServiceInterface
 	mockHardwareClient HardwareServiceInterface
+	sambaMock          *unixsamba.MockSystem
 }
 
 func TestEventPropagationTestSuite(t *testing.T) {
@@ -43,7 +45,7 @@ func TestEventPropagationTestSuite(t *testing.T) {
 }
 
 func (suite *EventPropagationTestSuite) SetupTest() {
-
+	os.Setenv("SRAT_MOCK", "true")
 	defer func() {
 		if r := recover(); r != nil {
 			suite.T().Logf("Panic recovered in SetupTest: %v", r)
@@ -58,12 +60,19 @@ func (suite *EventPropagationTestSuite) SetupTest() {
 	// Create context with WaitGroup
 	wg := &sync.WaitGroup{}
 
+	var ctx context.Context
+	var cancel context.CancelFunc
+
 	suite.app = fxtest.New(suite.T(),
 		fx.Provide(
 			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
-			func() (context.Context, context.CancelFunc) {
-				ctx := context.WithValue(context.Background(), "wg", wg)
-				return context.WithCancel(ctx)
+			func() context.Context {
+				ctxVal := context.WithValue(context.Background(), ctxkeys.WaitGroup, wg)
+				ctx, cancel = context.WithCancel(ctxVal)
+				return ctx
+			},
+			func() context.CancelFunc {
+				return cancel
 			},
 			/*
 				func() *config.DefaultConfig {
@@ -84,12 +93,14 @@ func (suite *EventPropagationTestSuite) SetupTest() {
 					DatabasePath: "file::memory:?cache=shared&_pragma=foreign_keys(1)",
 				}
 			},
+			func() *dto.DiskMap { return &dto.DiskMap{} },
 			dbom.NewDB,
 			events.NewEventBus,
 			NewDirtyDataService,
 			NewShareService,
 			NewUserService,
 			// Real VolumeService with injected test mount ops
+			NewVolumeMountManager,
 			NewVolumeService,
 			NewFilesystemService,
 			NewSettingService,
@@ -167,15 +178,17 @@ func (suite *EventPropagationTestSuite) SetupTest() {
 		*/
 	}
 
-	unixsamba.SetCommandExecutor(mock.Mock[unixsamba.CommandExecutor](ctrl))
-	unixsamba.SetOSUserLookuper(mock.Mock[unixsamba.OSUserLookuper](ctrl))
+	suite.sambaMock = unixsamba.NewMockSystem()
+	unixsamba.SetCommandExecutor(suite.sambaMock)
+	unixsamba.SetOSUserLookuper(suite.sambaMock)
 	// Setup global mock for share repo to avoid nil pointer errors when mount point events trigger share lookups
 	//mock.When(suite.mockShareRepo.FindByMountPath(mock.Any[string]())).ThenReturn(nil, errors.WithStack(gorm.ErrRecordNotFound))
 }
 
 func (suite *EventPropagationTestSuite) TearDownTest() {
 	suite.cancel()
-	suite.ctx.Value("wg").(*sync.WaitGroup).Wait()
+	suite.ctx.Value(ctxkeys.WaitGroup).(*sync.WaitGroup).Wait()
+	unixsamba.ResetExecutorsToDefaults()
 	//suite.app.RequireStop()
 }
 

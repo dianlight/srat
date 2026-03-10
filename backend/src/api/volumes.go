@@ -15,7 +15,6 @@ type VolumeHandler struct {
 	apiContext   *dto.ContextState
 	vservice     service.VolumeServiceInterface
 	shareService service.ShareServiceInterface
-	//dirtyservice service.DirtyDataServiceInterface
 }
 
 func NewVolumeHandler(
@@ -27,7 +26,6 @@ func NewVolumeHandler(
 	p.vservice = vservice
 	p.shareService = shareService
 	p.apiContext = apiContext
-	//p.dirtyservice = dirtyservice
 	return p
 }
 
@@ -44,7 +42,6 @@ func (self *VolumeHandler) RegisterVolumeHandlers(api huma.API) {
 	huma.Post(api, "/volume/mount", self.MountVolume, huma.OperationTags("volume"))
 	huma.Delete(api, "/volume", self.UmountVolume, huma.OperationTags("volume"))
 	huma.Patch(api, "/volume/settings", self.PatchMountPointSettings, huma.OperationTags("volume"))
-	// huma.Post(api, "/volume/disk/{disk_id}/eject", self.EjectDiskHandler, huma.OperationTags("volume"))
 }
 
 func (self *VolumeHandler) ListVolumes(ctx context.Context, input *struct{}) (*struct{ Body []*dto.Disk }, error) {
@@ -114,32 +111,6 @@ func (self *VolumeHandler) UmountVolume(ctx context.Context, input *struct {
 
 	return nil, nil
 }
-
-/*
-func (self *VolumeHandler) EjectDiskHandler(ctx context.Context, input *struct {
-	DiskID string `path:"disk_id" doc:"The ID of the disk to eject (e.g., sda, sdb)"`
-}) (*struct{ Status int }, error) {
-	if self.apiContext.ReadOnlyMode {
-		return nil, huma.Error403Forbidden("Cannot eject disk in read-only mode")
-	}
-
-	err := self.vservice.EjectDisk(input.DiskID)
-	if err != nil {
-		if errors.Is(err, dto.ErrorDeviceNotFound) {
-			return nil, huma.Error404NotFound(fmt.Sprintf("Disk '%s' not found or not ejectable", input.DiskID), err)
-		}
-		if errors.Is(err, dto.ErrorInvalidParameter) {
-			return nil, huma.Error400BadRequest(fmt.Sprintf("Invalid parameter for ejecting disk '%s'", input.DiskID), err)
-		}
-		// Error is already logged by the service layer
-		// Return a more generic error to the client
-		return nil, huma.Error500InternalServerError(fmt.Sprintf("Failed to eject disk '%s': %s", input.DiskID, err.Error()), err)
-	}
-
-	// Return 204 No Content on success
-	return &struct{ Status int }{Status: http.StatusNoContent}, nil
-}
-*/
 
 type PatchMountPointData struct {
 	_ struct{} `json:"-" additionalProperties:"true"`

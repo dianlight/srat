@@ -10,6 +10,7 @@ import (
 	"github.com/danielgtaylor/huma/v2/humatest"
 	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/dianlight/srat/service"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
@@ -33,7 +34,7 @@ func (suite *UserHandlerSuite) SetupTest() {
 		fx.Provide(
 			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
 			func() (context.Context, context.CancelFunc) {
-				return context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
+				return context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, &sync.WaitGroup{}))
 			},
 			api.NewUserHandler,
 			mock.Mock[service.UserServiceInterface],
@@ -49,7 +50,7 @@ func (suite *UserHandlerSuite) SetupTest() {
 func (suite *UserHandlerSuite) TearDownTest() {
 	if suite.cancel != nil {
 		suite.cancel()
-		suite.ctx.Value("wg").(*sync.WaitGroup).Wait()
+		suite.ctx.Value(ctxkeys.WaitGroup).(*sync.WaitGroup).Wait()
 	}
 	suite.app.RequireStop()
 }

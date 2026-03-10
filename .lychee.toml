@@ -40,6 +40,12 @@ exclude_path = [
   "frontend/node_modules/",
   "backend/src/vendor/",
   ".git/",
+  ".vale/",
+  ".github/",
+  ".vscode/",
+  ".kilocode/",
+  ".zed/",
+  ".zencoder/",
 ]
 
 # Check the specified file extensions
@@ -86,9 +92,6 @@ verbose = "info"
 
 # Method to use for checking links
 method = "get"
-
-# Follow redirects
-follow_redirects = false
 
 # Maximum number of redirects to follow
 max_redirects = 10

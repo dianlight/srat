@@ -103,6 +103,46 @@ func (suite *WsMessageSenderSuite) TestSendFunc_SuccessWithHealthPing() {
 	suite.Equal(expectedEventName, suite.wsMessageSender.ObjectMap["dto.HealthPing"])
 }
 
+func (suite *WsMessageSenderSuite) TestSendPing_NilConnection() {
+	err := suite.wsMessageSender.SendPing()
+	suite.Require().Error(err)
+	suite.Require().Contains(err.Error(), "WebSocket connection is nil")
+}
+
+func (suite *WsMessageSenderSuite) TestSendPing_ConcurrentWithSendFunc_NilConnection() {
+	const goroutines = 100
+
+	errCh := make(chan error, goroutines*2)
+	var wg sync.WaitGroup
+
+	for i := 0; i < goroutines; i++ {
+		i := i
+		wg.Go(func() {
+			errCh <- suite.wsMessageSender.SendPing()
+
+			errCh <- suite.wsMessageSender.SendFunc(ws.Message{
+				ID: i,
+				Data: dto.HealthPing{
+					Alive:     true,
+					AliveTime: time.Now().Unix(),
+				},
+			})
+		})
+	}
+
+	wg.Wait()
+	close(errCh)
+
+	count := 0
+	for err := range errCh {
+		suite.Require().Error(err)
+		suite.Require().Contains(err.Error(), "WebSocket connection is nil")
+		count++
+	}
+
+	suite.Equal(goroutines*2, count)
+}
+
 // TestSendFunc_SuccessWithShares tests sending a SharedResource list
 func (suite *WsMessageSenderSuite) TestSendFunc_SuccessWithShares() {
 	msg := ws.Message{

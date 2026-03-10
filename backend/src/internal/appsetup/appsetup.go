@@ -58,6 +58,7 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 		func() *slog.Logger { return slog.Default() },
 		func() (context.Context, context.CancelFunc) { return params.Ctx, params.CancelFn },
 		func() *dto.ContextState { return params.StaticConfig },
+		func() *dto.DiskMap { return &dto.DiskMap{} },
 		func(ctx context.Context) events.EventBusInterface { return events.NewEventBus(ctx) },
 		func() *github.Client {
 			rateLimiter := github_ratelimit.New(nil)
@@ -86,6 +87,7 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 		service.NewAddonsService,
 		service.NewHomeAssistantService,
 		service.NewBroadcasterService,
+		service.NewVolumeMountManager,
 		service.NewVolumeService,
 		service.NewServerProcessesService,
 		service.NewUpgradeService,
