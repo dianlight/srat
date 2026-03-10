@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -53,7 +54,7 @@ func (suite *HAMiddlewareSuite) TestAuthorizedIPAndHeader() {
 	var receivedUserID string
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		handlerCalled = true
-		val := r.Context().Value("user_id")
+		val := r.Context().Value(ctxkeys.UserID)
 		if v, ok := val.(string); ok {
 			receivedUserID = v
 		}
@@ -76,7 +77,7 @@ func (suite *HAMiddlewareSuite) TestAuthorizedIPAndHeader_HAIP() {
 	var receivedUserID string
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		handlerCalled = true
-		val := r.Context().Value("user_id")
+		val := r.Context().Value(ctxkeys.UserID)
 		if v, ok := val.(string); ok {
 			receivedUserID = v
 		}

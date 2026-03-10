@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/google/uuid"
 )
 
@@ -14,7 +15,7 @@ type Event struct {
 
 // GetEventUUID retrieves the UUID from context
 func GetEventUUID(ctx context.Context) string {
-	if val := ctx.Value("event_uuid"); val != nil {
+	if val := ctx.Value(ctxkeys.EventUUID); val != nil {
 		if id, ok := val.(string); ok {
 			return id
 		}
@@ -25,7 +26,7 @@ func GetEventUUID(ctx context.Context) string {
 // ContextWithEventUUID returns a new context with the event UUID set
 func ContextWithEventUUID(ctx context.Context) context.Context {
 	if GetEventUUID(ctx) == "" {
-		return context.WithValue(ctx, "event_uuid", uuid.New().String())
+		return context.WithValue(ctx, ctxkeys.EventUUID, uuid.New().String())
 	}
 	return ctx
 }

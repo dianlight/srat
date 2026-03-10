@@ -1,10 +1,13 @@
 package converter
 
 import (
+	"context"
+	"log/slog"
 	"time"
 
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/unixsamba"
 )
 
 // goverter:converter
@@ -124,8 +127,15 @@ type DtoToDbomConverter interface {
 	// goverter:update target
 	// goverter:ignore _
 	// goverter:update:ignoreZeroValueField:basic no
-	SambaUserToUser(source dbom.SambaUser, target *dto.User) error
+	// goverter:map . IsValid | checkUserValid
+	//SambaUserToUser(source dbom.SambaUser, target *dto.User) error
 
+	// goverter:ignore _
+	// goverter:update:ignoreZeroValueField:basic no
+	// goverter:map . IsValid | checkUserValid
+	SambaUserToUser(source dbom.SambaUser) (target dto.User, err error)
+
+	// goverter:useUnderlyingTypeMethods yes
 	SambaUsersToUsers(source []dbom.SambaUser) (target []dto.User, err error)
 
 	// goverter:update target
@@ -168,4 +178,16 @@ func partitionFromDeviceId(source string, disks []*dto.Disk) *dto.Partition {
 		}
 	}
 	return nil
+}
+
+func checkUserValid(dbUser dbom.SambaUser) bool {
+	// A user is considered valid if it has a valid username and password
+	if dbUser.Username == "" || dbUser.Password == "" {
+		return false
+	}
+	err := unixsamba.CheckSambaUser(context.Background(), dbUser.Username, dbUser.Password)
+	if err != nil {
+		slog.Warn("Failed to validate user with unixsamba", "username", dbUser.Username, "error", err)
+	}
+	return err == nil
 }

@@ -18,8 +18,6 @@ type BrokerHandler struct {
 
 type BrokerInterface interface {
 	RegisterSse(api huma.API)
-	// Stream(w http.ResponseWriter, r *http.Request)
-	// BroadcastMessage(msg any) (any, error)
 }
 
 func NewSSEBroker(broadcaster service.BroadcasterServiceInterface) (broker BrokerInterface) {

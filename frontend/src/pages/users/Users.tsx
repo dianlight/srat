@@ -128,7 +128,7 @@ export function Users() {
 			return;
 		}
 
-		data.username = data.username.toLocaleLowerCase().trim();
+		data.username = data.username.trim();
 		data.password = data?.password?.trim();
 
 		if (data.doCreate) {

@@ -313,7 +313,7 @@ func (a *Ext4Adapter) SetLabel(ctx context.Context, device string, label string)
 // GetState returns the state of an ext4 filesystem
 func (a *Ext4Adapter) GetState(ctx context.Context, device string) (dto.FilesystemState, errors.E) {
 	state := dto.FilesystemState{
-		AdditionalInfo: make(map[string]interface{}),
+		AdditionalInfo: make(map[string]any),
 	}
 
 	// Use state command to get filesystem state information

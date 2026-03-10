@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+
+	"github.com/dianlight/srat/internal/ctxkeys"
 )
 
 // NewHAMiddleware creates a middleware function that ensures requests are coming from
@@ -87,7 +89,7 @@ func NewHAMiddleware( /*ingressClient ingress.ClientWithResponsesInterface*/ ) f
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return
 			}
-			ctx := context.WithValue(r.Context(), "user_id", user_id)
+			ctx := context.WithValue(r.Context(), ctxkeys.UserID, user_id)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

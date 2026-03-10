@@ -63,13 +63,6 @@ func NewDirtyDataService(lc fx.Lifecycle, ctx context.Context, eventBus events.E
 			}
 			return nil
 		})
-		/*
-			unsubscribe[4] = eventBus.OnMountPoint(func(ctx context.Context, mpe events.MountPointEvent) errors.E {
-				slog.DebugContext(ctx, "DirtyDataService received MountPoint event", "mountpoint", mpe.MountPoint.Path)
-				p.setDirtyShares()
-				return nil
-			})
-		*/
 
 	}
 

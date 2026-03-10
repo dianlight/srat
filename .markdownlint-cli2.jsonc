@@ -73,7 +73,8 @@
         "frontend/node_modules/**",
         "backend/src/vendor/**",
         ".git/**",
-        ".vale/**"
+        ".vale/**",
+        ".github/**"
     ],
     "gitignore": true
 }

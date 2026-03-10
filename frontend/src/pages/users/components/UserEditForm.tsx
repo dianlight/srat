@@ -94,8 +94,8 @@ export function UserEditForm({
                                     message: "Username must be at least 2 characters",
                                 },
                                 pattern: {
-                                    value: /^[a-zA-Z0-9_-]+$/,
-                                    message: "Username can only contain letters, numbers, underscores, and hyphens",
+                                    value: /^[a-zA-Z0-9 _-]+$/,
+                                    message: "Username can only contain letters, numbers, spaces, underscores, and hyphens",
                                 },
                             }}
                         />

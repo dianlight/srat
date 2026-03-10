@@ -55,6 +55,42 @@ describe("UserEditDialog component", () => {
         expect(submitted?.doCreate).toBe(true);
     });
 
+    it("accepts usernames with spaces", async () => {
+        const React = await import("react");
+        const { render, screen, waitFor } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { UserEditDialog } = await import("../UserEditDialog");
+
+        const onClose = mock(() => { });
+
+        render(
+            React.createElement(UserEditDialog as any, {
+                open: true,
+                onClose,
+                objectToEdit: { doCreate: true },
+            })
+        );
+
+        const usernameInput = await screen.findByLabelText(/Username/i);
+        const user = userEvent.setup();
+        await user.type(usernameInput as any, "john doe");
+
+        const passwordInput = await screen.findByLabelText(/password/i, {
+            selector: 'input[name="password"]',
+        });
+        await user.type(passwordInput as any, "Secret123!");
+
+        const repeatInput = await screen.findByLabelText(/repeat password/i);
+        await user.type(repeatInput as any, "Secret123!");
+
+        const submitButton = await screen.findByRole("button", { name: /create/i });
+        await user.click(submitButton as any);
+
+        await waitFor(() => expect(onClose).toHaveBeenCalled());
+        const submitted = (onClose.mock.calls as any[])[0]?.[0];
+        expect(submitted?.username).toBe("john doe");
+    });
+
     it("displays read-only username for existing non-admin user and handles cancel", async () => {
         const React = await import("react");
         const { render, screen } = await import("@testing-library/react");

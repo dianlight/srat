@@ -1581,6 +1581,7 @@ export type User = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
   is_admin?: boolean;
+  is_valid?: boolean;
   password?: string;
   ro_shares?: string[] | null;
   rw_shares?: string[] | null;

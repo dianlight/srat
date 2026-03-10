@@ -11,6 +11,7 @@ import (
 	"github.com/dianlight/srat/dbom/g"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
+	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/dianlight/srat/service"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
@@ -42,7 +43,7 @@ func (suite *ShareServiceSuite) SetupTest() {
 		fx.Provide(
 			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
 			func() (context.Context, context.CancelFunc) {
-				return context.WithCancel(context.WithValue(context.Background(), "wg", &sync.WaitGroup{}))
+				return context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, &sync.WaitGroup{}))
 			},
 			func() *dto.ContextState {
 				sharedResources := dto.ContextState{}

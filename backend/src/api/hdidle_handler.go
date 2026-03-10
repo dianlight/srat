@@ -29,23 +29,16 @@ func NewHDIdleHandler(params HDIdleHandlerParams) *HDIdleHandler {
 
 // RegisterHDIdleHandler registers the HTTP handlers for HDIdle-related operations.
 // It sets up the following routes:
-// - GET /hdidle/status: Get overall HDIdle service status and all monitored disks.
-// - GET /hdidle/effective-config: Get effective configuration (enabled flag and device list).
 // - POST /hdidle/start: Start the HDIdle monitoring service.
 // - POST /hdidle/stop: Stop the HDIdle monitoring service.
 // - GET /disk/{disk_id}/hdidle/info: Get HDIdle status for a specific disk.
 // - GET /disk/{disk_id}/hdidle/config: Get HDIdle configuration for a specific disk.
 // - PUT /disk/{disk_id}/hdidle/config: Update HDIdle configuration for a specific disk.
-// - DELETE /disk/{disk_id}/hdidle/config: Delete HDIdle configuration for a specific disk.
 // - GET /disk/{disk_id}/hdidle/support: Check if a disk supports HDIdle spindown commands.
 //
 // Parameters:
 // - api: The huma.API instance to register the handlers with.
 func (h *HDIdleHandler) RegisterHDIdleHandler(api huma.API) {
-	// Global HDIdle service endpoints
-	// Disabled: service.GetStatus/GetEffectiveConfig are commented out in HDIdleServiceInterface
-	//huma.Get(api, "/hdidle/status", h.getServiceStatus, huma.OperationTags("hdidle"))
-	//huma.Get(api, "/hdidle/effective-config", h.getEffectiveConfig, huma.OperationTags("hdidle"))
 	huma.Post(api, "/hdidle/start", h.startService, huma.OperationTags("hdidle"))
 	huma.Post(api, "/hdidle/stop", h.stopService, huma.OperationTags("hdidle"))
 
@@ -53,7 +46,6 @@ func (h *HDIdleHandler) RegisterHDIdleHandler(api huma.API) {
 	huma.Get(api, "/disk/{disk_id}/hdidle/info", h.getStatus, huma.OperationTags("disk"))
 	huma.Get(api, "/disk/{disk_id}/hdidle/config", h.getConfig, huma.OperationTags("disk"))
 	huma.Put(api, "/disk/{disk_id}/hdidle/config", h.putConfig, huma.OperationTags("disk"))
-	//huma.Delete(api, "/disk/{disk_id}/hdidle/config", h.deleteConfig, huma.OperationTags("disk"))
 	huma.Get(api, "/disk/{disk_id}/hdidle/support", h.checkSupport, huma.OperationTags("disk"))
 }
 
@@ -137,38 +129,6 @@ func (h *HDIdleHandler) getStatus(ctx context.Context, input *struct {
 	return output, nil
 }
 
-/*
-// GetHDIdleServiceStatusOutput represents the response for the overall HDIdle service status.
-// Disabled because HDIdleServiceInterface no longer exposes GetStatus.
-type GetHDIdleServiceStatusOutput struct {
-	Body *service.HDIdleStatus
-}
-
-// getServiceStatus returns the overall status of the HDIdle monitoring service,
-// including whether it's running and the status of all monitored disks.
-func (h *HDIdleHandler) getServiceStatus(ctx context.Context, input *struct{}) (*GetHDIdleServiceStatusOutput, error) {
-	status, err := h.hdidleService.GetStatus()
-	if err != nil {
-		return nil, huma.Error500InternalServerError("Failed to get HDIdle service status", err)
-	}
-
-	return &GetHDIdleServiceStatusOutput{Body: status}, nil
-}
-
-// GetHDIdleEffectiveConfigOutput represents the response for the effective HDIdle configuration.
-// Disabled because HDIdleServiceInterface no longer exposes GetEffectiveConfig.
-type GetHDIdleEffectiveConfigOutput struct {
-	Body service.HDIdleEffectiveConfig
-}
-
-// getEffectiveConfig returns the effective configuration of the HDIdle service,
-// including whether it's enabled and the list of devices being monitored.
-func (h *HDIdleHandler) getEffectiveConfig(ctx context.Context, input *struct{}) (*GetHDIdleEffectiveConfigOutput, error) {
-	config := h.hdidleService.GetEffectiveConfig()
-	return &GetHDIdleEffectiveConfigOutput{Body: config}, nil
-}
-*/
-
 // StartHDIdleServiceOutput represents the response for starting the HDIdle service.
 type StartHDIdleServiceOutput struct {
 	Body struct {
@@ -244,58 +204,6 @@ func (h *HDIdleHandler) stopService(ctx context.Context, input *struct{}) (*Stop
 		},
 	}, nil
 }
-
-// DeleteHDIdleConfigOutput represents the response for deleting HDIdle device configuration.
-type DeleteHDIdleConfigOutput struct {
-	Body struct {
-		Message string `json:"message"`
-	}
-}
-
-/*
-// deleteConfig removes the HDIdle configuration for a specific device,
-// resetting it to use default settings.
-func (h *HDIdleHandler) deleteConfig(ctx context.Context, input *struct {
-	DiskID string `path:"disk_id" required:"true" doc:"The disk ID (not the device path)"`
-}) (*DeleteHDIdleConfigOutput, error) {
-	// Get current config to reset it
-	// disk_id represents the stable disk identifier. Convert it to the device path.
-	devicePath := "/dev/disk/by-id/" + input.DiskID
-	config, err := h.hdidleService.GetDeviceConfig(devicePath)
-	if err != nil {
-		return nil, huma.Error500InternalServerError("Failed to retrieve HDIdle configuration", err)
-	}
-
-	// Reset to defaults by saving with NOENABLED
-	config.Enabled = dto.HdidleEnableds.NOENABLED
-	config.IdleTime = 0
-	config.CommandType = dto.HdidleCommand{} // Reset to zero value/default
-	config.PowerCondition = 0
-
-	err = h.hdidleService.SaveDeviceConfig(*config)
-	if err != nil {
-		return nil, huma.Error500InternalServerError("Failed to delete HDIdle device configuration", err)
-	}
-
-	// Restart service if running to apply changes
-	if h.hdidleService.IsRunning() {
-		if stopErr := h.hdidleService.Stop(); stopErr != nil {
-			return nil, huma.Error500InternalServerError("Failed to stop HDIdle service", stopErr)
-		}
-		if startErr := h.hdidleService.Start(); startErr != nil {
-			return nil, huma.Error500InternalServerError("Failed to restart HDIdle service", startErr)
-		}
-	}
-
-	return &DeleteHDIdleConfigOutput{
-		Body: struct {
-			Message string `json:"message"`
-		}{
-			Message: "HDIdle configuration deleted successfully",
-		},
-	}, nil
-}
-*/
 
 // GetHDIdleSupportOutput represents the response for checking HDIdle device support.
 type GetHDIdleSupportOutput struct {

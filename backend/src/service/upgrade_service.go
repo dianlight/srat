@@ -20,6 +20,7 @@ import (
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/dianlight/srat/internal/updatekey"
 	"github.com/dianlight/srat/internal/urlutil"
 	"github.com/dianlight/tlog"
@@ -92,18 +93,22 @@ func NewUpgradeService(lc fx.Lifecycle, in UpgradeServiceProps) (UpgradeServiceI
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			if p.state.UpdateChannel != dto.UpdateChannels.NONE {
-				p.ctx.Value("wg").(*sync.WaitGroup).Go(func() {
-					err := p.updater()
-					if err != nil {
-						slog.ErrorContext(p.ctx, "Error in run loop", "err", err)
-					}
-				})
+				if wg, ok := p.ctx.Value(ctxkeys.WaitGroup).(*sync.WaitGroup); ok && wg != nil {
+					wg.Go(func() {
+						err := p.updater()
+						if err != nil {
+							slog.ErrorContext(p.ctx, "Error in run loop", "err", err)
+						}
+					})
+				}
 
 				// Start file watcher for develop channel
 				if p.state.UpdateChannel == dto.UpdateChannels.DEVELOP {
-					p.ctx.Value("wg").(*sync.WaitGroup).Go(func() {
-						p.watchForDevelopUpdates()
-					})
+					if wg, ok := p.ctx.Value(ctxkeys.WaitGroup).(*sync.WaitGroup); ok && wg != nil {
+						wg.Go(func() {
+							p.watchForDevelopUpdates()
+						})
+					}
 					slog.DebugContext(p.ctx, "File watcher for develop updates started")
 				}
 			}
@@ -702,6 +707,7 @@ func (self *UpgradeService) InstallUpdatePackage(updatePkg *UpdatePackage) error
 			OnProgress: func(target string, progress, total uint64) {
 				if total > 0 {
 					percent := float64(progress) / float64(total) * 100
+					percent = float64(int(percent*10)) / 10 // Round to 1 decimal place
 					self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSDOWNLOADING, Progress: percent})
 					slog.DebugContext(self.ctx, "Installing", "target", target, "percent", percent, "progress", progress, "total", total)
 				} else {
