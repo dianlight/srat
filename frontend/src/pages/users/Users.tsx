@@ -14,6 +14,7 @@ import { InView } from "react-intersection-observer";
 import { toast } from "react-toastify";
 import { TabIDs } from "../../store/locationState";
 import {
+	type SharedResource,
 	type User,
 	useDeleteApiUserByUsernameMutation,
 	useGetApiSharesQuery,
@@ -221,7 +222,7 @@ export function Users() {
 	});
 
 	const isReadOnly = evdata?.hello?.read_only || false;
-	const availableShares = (shares.data || [])
+	const availableShares = (shares.data as SharedResource[] || [])
 		.filter((share) => Boolean(share?.name) && !share?.disabled)
 		.map((share) => share.name as string);
 

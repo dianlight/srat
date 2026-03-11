@@ -20,6 +20,7 @@ func NewExt4Adapter() FilesystemAdapter {
 		baseAdapter: newBaseAdapter(
 			"ext4",
 			"EXT4 Filesystem",
+			true,
 			"e2fsprogs",
 			"mkfs.ext4",
 			"fsck.ext4",

@@ -20,6 +20,7 @@ func NewBtrfsAdapter() FilesystemAdapter {
 		baseAdapter: newBaseAdapter(
 			"btrfs",
 			"BTRFS Filesystem",
+			true,
 			"btrfs-progs",
 			"mkfs.btrfs",
 			"btrfs",

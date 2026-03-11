@@ -20,6 +20,7 @@ func NewGfs2Adapter() FilesystemAdapter {
 		baseAdapter: newBaseAdapter(
 			"gfs2",
 			"Global File System 2",
+			true,
 			"gfs2-utils",
 			"mkfs.gfs2",
 			"fsck.gfs2",

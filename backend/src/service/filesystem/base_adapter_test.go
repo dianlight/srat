@@ -38,6 +38,7 @@ func (suite *BaseAdapterTestSuite) SetupTest() {
 	suite.adapter = newBaseAdapter(
 		"ntfs",
 		"NTFS Filesystem",
+		false,
 		"ntfs-3g-progs",
 		"mkfs.ntfs",
 		"ntfsfix",
@@ -108,6 +109,24 @@ func (suite *BaseAdapterTestSuite) TestGetLinuxFsModule() {
 	linuxModule := suite.adapter.GetLinuxFsModule()
 	suite.NotEmpty(linuxModule)
 	suite.Equal("ntfs3", linuxModule)
+}
+
+// TestIsExportable tests the IsExportable method.
+func (suite *BaseAdapterTestSuite) TestIsExportable() {
+	suite.False(suite.adapter.IsExportable(suite.ctx))
+
+	exportableAdapter := newBaseAdapter(
+		"ext4",
+		"EXT4 Filesystem",
+		true,
+		"e2fsprogs",
+		"mkfs.ext4",
+		"fsck.ext4",
+		"tune2fs",
+		"tune2fs",
+		[]dto.FsMagicSignature{{Offset: 1080, Magic: []byte{0x53, 0xEF}}},
+	)
+	suite.True(exportableAdapter.IsExportable(suite.ctx))
 }
 
 // TestCheckCommandAvailability tests command availability checks with mocked filesystem and exec

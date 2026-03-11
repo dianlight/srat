@@ -20,6 +20,7 @@ func NewVfatAdapter() FilesystemAdapter {
 		baseAdapter: newBaseAdapter(
 			"vfat",
 			"FAT32 Filesystem",
+			false,
 			"dosfstools",
 			"mkfs.vfat",
 			"fsck.vfat",

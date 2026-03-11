@@ -20,6 +20,7 @@ func NewHfsplusAdapter() FilesystemAdapter {
 		baseAdapter: newBaseAdapter(
 			"hfsplus",
 			"Hierarchical File System Plus",
+			false,
 			"hfsprogs",
 			"mkfs.hfsplus",
 			"fsck.hfsplus",

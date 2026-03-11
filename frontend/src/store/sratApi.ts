@@ -1252,6 +1252,7 @@ export type FilesystemSupport = {
   canGetState: boolean;
   canMount: boolean;
   canSetLabel: boolean;
+  isExportable: boolean;
   missingTools?: string[] | null;
 };
 export type FilesystemInfo = {

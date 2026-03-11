@@ -20,6 +20,7 @@ func NewExfatAdapter() FilesystemAdapter {
 		baseAdapter: newBaseAdapter(
 			"exfat",
 			"Extended File Allocation Table",
+			false,
 			"exfatprogs",
 			"mkfs.exfat",
 			"fsck.exfat",

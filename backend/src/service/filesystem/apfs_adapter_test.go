@@ -84,11 +84,16 @@ func (suite *ApfsAdapterTestSuite) TestIsSupported() {
 	suite.NoError(err)
 	suite.False(support.CanFormat)
 	suite.True(support.CanMount)
+	suite.False(support.IsExportable)
 	suite.False(support.CanCheck)
 	suite.False(support.CanSetLabel)
 	suite.True(support.CanGetState)
 	suite.Equal("apfs-fuse", support.AlpinePackage)
 	suite.Empty(support.MissingTools)
+}
+
+func (suite *ApfsAdapterTestSuite) TestIsExportable() {
+	suite.False(suite.adapter.IsExportable(suite.ctx))
 }
 
 func (suite *ApfsAdapterTestSuite) TestIsDeviceSupportedWithSignature() {

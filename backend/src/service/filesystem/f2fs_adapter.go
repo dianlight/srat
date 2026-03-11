@@ -20,6 +20,7 @@ func NewF2fsAdapter() FilesystemAdapter {
 		baseAdapter: newBaseAdapter(
 			"f2fs",
 			"Flash-Friendly File System",
+			true,
 			"f2fs-tools",
 			"mkfs.f2fs",
 			"fsck.f2fs",

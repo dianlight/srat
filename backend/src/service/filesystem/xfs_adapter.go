@@ -20,6 +20,7 @@ func NewXfsAdapter() FilesystemAdapter {
 		baseAdapter: newBaseAdapter(
 			"xfs",
 			"XFS Filesystem",
+			true,
 			"xfsprogs-extra",
 			"mkfs.xfs",
 			"xfs_repair",

@@ -22,6 +22,7 @@ func NewNtfsAdapter() FilesystemAdapter {
 		baseAdapter: newBaseAdapter(
 			"ntfs",
 			"NTFS Filesystem",
+			false,
 			"ntfs-3g-progs",
 			"mkfs.ntfs",
 			"ntfsfix",

@@ -40,6 +40,9 @@ type FilesystemSupport struct {
 	// CanMount indicates if the filesystem can be mounted
 	CanMount bool `json:"canMount"`
 
+	// IsExportable indicates if the filesystem can be exported via Linux NFS
+	IsExportable bool `json:"isExportable"`
+
 	// CanFormat indicates if the filesystem can be formatted (mkfs available)
 	CanFormat bool `json:"canFormat"`
 
