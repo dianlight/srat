@@ -127,6 +127,23 @@ describe("UserEditForm component", () => {
         expect(passwordCount).toBe(2);
     });
 
+    it("renders read/write and read-only share selectors", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const { UserEditForm } = await import("../UserEditForm");
+
+        render(
+            React.createElement(UserEditForm as any, {
+                userData: { username: "", password: "", doCreate: true },
+                availableShares: ["media", "backup"],
+                onSubmit: () => { },
+            })
+        );
+
+        expect(await screen.findByLabelText(/read\/write shares/i)).toBeTruthy();
+        expect(await screen.findByLabelText(/read-only shares/i)).toBeTruthy();
+    });
+
     it("renders cancel button when onCancel provided", async () => {
         const React = await import("react");
         const { render, screen } = await import("@testing-library/react");
@@ -333,5 +350,45 @@ describe("UserEditForm component", () => {
         await user.click(saveButton);
 
         expect(submitCount).toBe(1);
+    });
+
+    it("keeps share association exclusive between rw and ro on submit", async () => {
+        const React = await import("react");
+        const { render, screen, waitFor } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { UserEditForm } = await import("../UserEditForm");
+
+        const submitted: any[] = [];
+
+        render(
+            React.createElement(UserEditForm as any, {
+                userData: {
+                    username: "testuser",
+                    password: "",
+                    doCreate: false,
+                    is_admin: false,
+                    rw_shares: ["media"],
+                    ro_shares: ["media", "archive"],
+                },
+                availableShares: ["media", "archive"],
+                onSubmit: (data: any) => {
+                    submitted.push(data);
+                },
+            })
+        );
+
+        const user = userEvent.setup();
+        const passwordField = await screen.findByLabelText(/^password$/i);
+        const repeatPasswordField = await screen.findByLabelText(/repeat password/i);
+
+        await user.type(passwordField, "secret1");
+        await user.type(repeatPasswordField, "secret1");
+
+        const saveButton = await screen.findByRole("button", { name: /save changes/i });
+        await user.click(saveButton);
+
+        await waitFor(() => expect(submitted.length).toBe(1));
+        expect(submitted[0]?.rw_shares).toEqual(["media"]);
+        expect(submitted[0]?.ro_shares).toEqual(["archive"]);
     });
 });

@@ -2,12 +2,15 @@ import {
     Box,
     Button,
     CardContent,
+    Chip,
     Grid,
     Stack,
     Typography,
+    type AutocompleteRenderGetTagProps,
 } from "@mui/material";
 import { useForm } from "react-hook-form";
 import {
+    AutocompleteElement,
     PasswordElement,
     TextFieldElement
 } from "react-hook-form-mui";
@@ -18,6 +21,7 @@ interface UserEditFormProps {
     onSubmit: (data: UsersProps) => void;
     onCancel?: () => void;
     disabled?: boolean;
+    availableShares?: string[];
 }
 
 export function UserEditForm({
@@ -25,6 +29,7 @@ export function UserEditForm({
     onSubmit,
     onCancel,
     disabled = false,
+    availableShares = [],
 }: UserEditFormProps) {
     const isNewUser = userData?.doCreate === true;
     const isAdmin = userData?.is_admin === true;
@@ -32,6 +37,7 @@ export function UserEditForm({
     const {
         control,
         handleSubmit,
+        watch,
         formState: { isDirty },
     } = useForm<UsersProps>({
         defaultValues: {
@@ -39,6 +45,8 @@ export function UserEditForm({
             password: "",
             is_admin: false,
             doCreate: false,
+            rw_shares: [],
+            ro_shares: [],
         },
         values: userData,
         mode: "onChange",
@@ -48,12 +56,40 @@ export function UserEditForm({
             reset(userData);
         }, [userData, reset]);
     */
+    const selectedRwShares = watch("rw_shares") || [];
+    const selectedRoShares = watch("ro_shares") || [];
+
+    const renderShareTags = (
+        values: string[],
+        getTagProps: AutocompleteRenderGetTagProps,
+        color: "success" | "secondary",
+    ) =>
+        values.filter((share) => Boolean(share)).map((share, index) => {
+            const { key, ...tagProps } = getTagProps({ index });
+            return (
+                <Chip
+                    key={key}
+                    label={share}
+                    size="small"
+                    color={color}
+                    variant="outlined"
+                    {...tagProps}
+                />
+            );
+        });
+
     const handleFormSubmit = (data: UsersProps) => {
+        const uniqueRwShares = Array.from(new Set((data.rw_shares || []).filter(Boolean)));
+        const uniqueRoShares = Array.from(new Set((data.ro_shares || []).filter(Boolean)))
+            .filter((share) => !uniqueRwShares.includes(share));
+
         // Trim whitespace from username and password
         const trimmedData: UsersProps = {
             ...data,
             username: data.username?.trim() || "",
             password: data.password?.trim() || "",
+            rw_shares: uniqueRwShares,
+            ro_shares: uniqueRoShares,
         };
         onSubmit(trimmedData);
     };
@@ -152,6 +188,52 @@ export function UserEditForm({
                     </Grid>
 
                     {/* User Type Information */}
+                    <Grid size={{ xs: 12, md: 6 }}>
+                        <AutocompleteElement<string, true, false, false, "div", UsersProps, "rw_shares">
+                            multiple
+                            name="rw_shares"
+                            label="Read/Write Shares"
+                            options={availableShares}
+                            control={control}
+                            autocompleteProps={{
+                                disabled,
+                                size: "small",
+                                limitTags: 5,
+                                getOptionDisabled: (option) => selectedRoShares.includes(option),
+                                renderTags: (values, getTagProps) =>
+                                    renderShareTags(values as string[], getTagProps, "success"),
+                            }}
+                            textFieldProps={{
+                                disabled,
+                                helperText: "Choose shares with read/write access",
+                                InputLabelProps: { shrink: true },
+                            }}
+                        />
+                    </Grid>
+
+                    <Grid size={{ xs: 12, md: 6 }}>
+                        <AutocompleteElement<string, true, false, false, "div", UsersProps, "ro_shares">
+                            multiple
+                            name="ro_shares"
+                            label="Read-Only Shares"
+                            options={availableShares}
+                            control={control}
+                            autocompleteProps={{
+                                disabled,
+                                size: "small",
+                                limitTags: 5,
+                                getOptionDisabled: (option) => selectedRwShares.includes(option),
+                                renderTags: (values, getTagProps) =>
+                                    renderShareTags(values as string[], getTagProps, "secondary"),
+                            }}
+                            textFieldProps={{
+                                disabled,
+                                helperText: "Choose shares with read-only access",
+                                InputLabelProps: { shrink: true },
+                            }}
+                        />
+                    </Grid>
+
                     <Grid size={12}>
                         <Box sx={{ bgcolor: "action.hover", p: 2, borderRadius: 1 }}>
                             <Typography variant="body2" color="text.secondary">
