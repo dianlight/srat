@@ -69,6 +69,7 @@ type SambaSession struct {
 		CreationTime  CustomTime `json:"creation_time"`
 		LocalAddress  string     `json:"local_address"`
 		RemoteAddress string     `json:"remote_address"`
+		Transport     string     `json:"transport,omitempty"`
 	} `json:"channels"`
 }
 
