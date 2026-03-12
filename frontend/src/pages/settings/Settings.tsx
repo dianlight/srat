@@ -392,8 +392,7 @@ export function Settings() {
 
 			case 'ha_use_nfs':
 				if (
-					false &&  // TODO:Temporarily disable the "Use NFS for HA" setting until it's fully implemented and tested, and we want to avoid showing it until it's ready
-					getCurrentEnv() === "production"
+					getCurrentEnv() === "remote"
 				) {
 					return (
 						<Tooltip
