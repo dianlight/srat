@@ -45,7 +45,9 @@ RUN apk add --no-cache \
     xfsprogs-extra \
     zig \
     apfs-fuse \
-    act
+    act \
+    && apk add --no-cache  --repository=https://dl-cdn.alpinelinux.org/alpine/edge/main  --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community  \
+    zfs
 
 # Documentation validation tools (from edge repositories).
 RUN apk add --no-cache --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community vale \
