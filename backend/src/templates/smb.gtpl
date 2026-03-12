@@ -25,11 +25,11 @@
    {{if .smb_over_quic -}}
    # SMB over QUIC settings (requires Samba 4.23.0+)
    {{if versionAtLeast .samba_version 4 23 -}}
-   server smb3 encryption = mandatory
    smb3 unix extensions = yes
-   tls enable = yes 
+   tls enabled = yes 
    tls keyfile = /config/server.key
    tls certfile = /config/server.cert
+   tls cafile = /config/ca.cert
    #tls trust system cas = yes
    #tls verify peer = no_check
    {{- else -}}
