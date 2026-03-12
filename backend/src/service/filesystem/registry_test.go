@@ -48,7 +48,7 @@ func (suite *RegistryTestSuite) TestGetAll() {
 	suite.NotEmpty(adapters)
 
 	// Check that we have all expected adapters
-	expectedFS := []string{"ext4", "vfat", "ntfs", "btrfs", "xfs"}
+	expectedFS := []string{"ext4", "vfat", "ntfs", "btrfs", "xfs", "zfs"}
 	foundFS := make(map[string]bool)
 
 	for _, adapter := range adapters {
@@ -63,10 +63,10 @@ func (suite *RegistryTestSuite) TestGetAll() {
 func (suite *RegistryTestSuite) TestListSupportedTypes() {
 	types := suite.registry.ListSupportedTypes()
 	suite.NotEmpty(types)
-	suite.GreaterOrEqual(len(types), 11, "Should have at least 11 filesystem types")
+	suite.GreaterOrEqual(len(types), 12, "Should have at least 12 filesystem types")
 
 	// Check for expected types
-	expectedTypes := []string{"ext4", "vfat", "ntfs", "btrfs", "xfs", "exfat", "f2fs", "gfs2", "hfsplus", "reiserfs", "apfs"}
+	expectedTypes := []string{"ext4", "vfat", "ntfs", "btrfs", "xfs", "exfat", "f2fs", "gfs2", "hfsplus", "reiserfs", "zfs", "apfs"}
 	for _, expected := range expectedTypes {
 		suite.Contains(types, expected)
 	}

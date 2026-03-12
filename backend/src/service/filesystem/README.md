@@ -69,6 +69,7 @@ The mount and unmount low-level execution now follows the same adapter pattern:
 | gfs2       | gfs2-utils     | Global File System 2 (Cluster FS)      |
 | hfsplus    | hfsprogs       | HFS Plus (Mac OS Extended)             |
 | reiserfs   | reiserfsprogs  | ReiserFS Filesystem                    |
+| zfs        | zfs            | ZFS Filesystem (mount support in SRAT) |
 | apfs       | N/A            | Apple File System (read-only on Linux) |
 
 ## Usage
@@ -235,6 +236,14 @@ Each filesystem adapter uses specific commands from its Alpine package:
 - **Check**: `xfs_repair [-n] [-v] device`
 - **Get Label**: `xfs_admin -l device` (parses output)
 - **Set Label**: `xfs_admin -L label device`
+
+### zfs (zfs)
+
+- **Mount**: Kernel/module mount support via `zfs` fstype
+- **Format**: Not supported by SRAT (ZFS provisioning is pool-level)
+- **Check**: Not supported by SRAT (ZFS health checks are pool-level)
+- **Get Label**: Not supported by SRAT (dataset/pool naming model)
+- **Set Label**: Not supported by SRAT (dataset/pool naming model)
 
 ## Adding New Filesystem Adapters
 
