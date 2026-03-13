@@ -241,4 +241,23 @@
   "chat.restoreLastPanelSession": true,
   "workbench.browser.enableChatTools": true,
   "chat.autopilot.enabled": true,
+  "githubIssues.createIssueTriggers": [
+    "TODO",
+    "FIXME",
+    "BUG",
+    "HACK"
+  ],
+  "todo-tree.general.tags": [
+    "TODO",
+    "FIXME",
+    "BUG",
+    "REVIEW",
+    "STUB"
+  ],
+  "todo-tree.highlights.defaultHighlight": {
+    "type": "text",
+    "foreground": "#ffaa00",
+    "fontWeight": "bold"
+  },
+  "todo-tree.tree.showScanModeButton": true
 }
