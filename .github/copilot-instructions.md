@@ -60,3 +60,24 @@ These instructions are the concise, must-follow rules for working in SRAT. Keep 
 
 - Patches live in `backend/patches/`. Apply with `cd backend && make patch`.
 - Update vendor via `cd backend/src && go mod vendor` then re‑apply patches.
+
+## Git Branch Naming Convention
+
+When asked to generate a Git command or branch name from a Markdown task:
+
+1.  Use prefixes: `feature/` for new items, `fix/` for bugs, `docs/` for documentation, and `refactor/` for code improvements.
+    
+2.  Convert the task title to "kebab-case" (lowercase, replace spaces/underscores with hyphens).
+    
+3.  Strip emojis, special characters, and common stop-words (a, the, of, for, with).
+    
+4.  Example: "Task: \[ \] Implement user login validation" -> `feature/implement-user-login-validation`.
+    
+
+## Contextual Awareness
+
+*   **Markdown Authority**: Always treat "Implementation Notes" in `.md` files as the primary source of truth for business logic.
+    
+*   **Cross-Repo Logic**: If "Target Repo" is specified in the Markdown header, assume all code generation or terminal commands apply to that specific directory.
+    
+*   **Task Scanning**: When a user mentions a task by name, look for the corresponding checkbox in open Markdown files to understand the requirements.

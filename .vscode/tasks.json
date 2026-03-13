@@ -1,0 +1,19 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Git: Create Branch from Selection",
+      "type": "shell",
+      "command": "SELECTED=\"${selectedText}\"; CLEANED=$(echo $SELECTED | tr '[:upper:]' '[:lower:]' | sed 's/ /-/g' | sed 's/[^a-z0-9-]//g'); git checkout -b \"feature/$CLEANED\"",
+      "problemMatcher": [],
+      "group": "none",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "detail": "Creates a kebab-case feature branch from the text currently selected in your Markdown file."
+    }
+  ]
+}
