@@ -1369,6 +1369,7 @@ export type Value = {
   creation_time: string;
   local_address: string;
   remote_address: string;
+  transport?: string;
 };
 export type SambaSessionEncryptionStruct = {
   cipher: string;
