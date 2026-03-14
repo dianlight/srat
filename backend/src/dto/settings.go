@@ -3,14 +3,12 @@ package dto
 import "github.com/angusgmorrison/logfusc"
 
 type Settings struct {
-	Hostname  string `json:"hostname,omitempty" default:"homeassistant"`
-	Workgroup string `json:"workgroup,omitempty" default:"WORKGROUP"`
-	//Mountoptions      []string `json:"mountoptions,omitempty"`
-	AllowHost         []string `json:"allow_hosts,omitempty" nullable:"false" default:"[\"10.0.0.0/8\",\"100.0.0.0/8\",\"172.16.0.0/12\",\"192.168.0.0/16\",\"169.254.0.0/16\",\"fe80::/10\",\"fc00::/7\"]"`
-	CompatibilityMode bool     `json:"compatibility_mode,omitempty" default:"false"`
-	Interfaces        []string `json:"interfaces,omitempty" nullable:"false" default:"[]"`
-	BindAllInterfaces bool     `json:"bind_all_interfaces,omitempty" default:"true"`
-	//LogLevel                      string                 `json:"log_level,omitempty"`
+	Hostname                      string                 `json:"hostname,omitempty" default:"homeassistant"`
+	Workgroup                     string                 `json:"workgroup,omitempty" default:"WORKGROUP"`
+	AllowHost                     []string               `json:"allow_hosts,omitempty" nullable:"false" default:"[\"10.0.0.0/8\",\"100.0.0.0/8\",\"172.16.0.0/12\",\"192.168.0.0/16\",\"169.254.0.0/16\",\"fe80::/10\",\"fc00::/7\"]"`
+	CompatibilityMode             bool                   `json:"compatibility_mode,omitempty" default:"false"`
+	Interfaces                    []string               `json:"interfaces,omitempty" nullable:"false" default:"[]"`
+	BindAllInterfaces             bool                   `json:"bind_all_interfaces,omitempty" default:"true"`
 	MultiChannel                  bool                   `json:"multi_channel,omitempty" default:"true"`
 	AllowGuest                    *bool                  `json:"allow_guest,omitempty" default:"false"`
 	TelemetryMode                 TelemetryMode          `json:"telemetry_mode,omitempty" enum:"Ask,All,Errors,Disabled"`

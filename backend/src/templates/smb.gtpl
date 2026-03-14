@@ -27,9 +27,9 @@
    {{if versionAtLeast .samba_version 4 23 -}}
    smb3 unix extensions = yes
    tls enabled = yes 
-   tls keyfile = /config/server.key
-   tls certfile = /config/server.cert
-   tls cafile = /config/ca.cert
+   tls keyfile = /ssl/sambanas/server.key
+   tls certfile = /ssl/sambanas/server.crt
+   tls cafile = /ssl/sambanas/ca.crt
    #tls trust system cas = yes
    #tls verify peer = no_check
    {{- else -}}
