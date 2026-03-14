@@ -1,4 +1,4 @@
-FROM ghcr.io/hassio-addons/base:20.0.1
+FROM ghcr.io/hassio-addons/base:20.0.1@sha256:81e9befb43d927cea0738683381835f1660dce5f5794b5417b39a5768c0ecf59
 
 SHELL ["/bin/bash", "-lc"]
 
