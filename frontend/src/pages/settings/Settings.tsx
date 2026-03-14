@@ -1,7 +1,14 @@
+import AppsIcon from "@mui/icons-material/Apps";
 import AutorenewIcon from "@mui/icons-material/Autorenew"; // Icon for fetching hostname
+import DevicesIcon from "@mui/icons-material/Devices";
+import HomeIcon from "@mui/icons-material/Home";
+import InsightsIcon from "@mui/icons-material/Insights";
+import LanIcon from "@mui/icons-material/Lan";
 import MenuIcon from "@mui/icons-material/Menu";
 import PlaylistAddIcon from "@mui/icons-material/PlaylistAdd"; // Import an icon for the button
 import SearchIcon from "@mui/icons-material/Search";
+import SecurityIcon from "@mui/icons-material/Security";
+import TuneIcon from "@mui/icons-material/Tune";
 import { Box, CircularProgress, Drawer, IconButton, Paper, Stack, TextField, Typography } from "@mui/material";
 import Button from "@mui/material/Button";
 import Divider from "@mui/material/Divider";
@@ -10,7 +17,7 @@ import Tooltip from "@mui/material/Tooltip";
 import { SimpleTreeView } from "@mui/x-tree-view/SimpleTreeView";
 import { TreeItem } from "@mui/x-tree-view/TreeItem";
 import { MuiChipsInput } from "mui-chips-input";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
 	AutocompleteElement,
 	CheckboxElement,
@@ -258,11 +265,49 @@ export function Settings() {
 	};
 
 	// Render tree node recursively
+	const renderTreeLabel = (node: SettingTreeNode) => {
+		const iconProps = { fontSize: "small" as const, sx: { color: "text.secondary" } };
+
+		let icon: ReactNode = null;
+		switch (node.id) {
+			case "general":
+				icon = <TuneIcon {...iconProps} />;
+				break;
+			case "network":
+				icon = <LanIcon {...iconProps} />;
+				break;
+			case "network_devices":
+				icon = <DevicesIcon {...iconProps} />;
+				break;
+			case "network_access_control":
+				icon = <SecurityIcon {...iconProps} />;
+				break;
+			case "telemetry":
+				icon = <InsightsIcon {...iconProps} />;
+				break;
+			case "homeassistant":
+				icon = <HomeIcon {...iconProps} />;
+				break;
+			case "app_configuration":
+				icon = <AppsIcon {...iconProps} />;
+				break;
+			default:
+				icon = null;
+		}
+
+		return (
+			<Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+				{icon}
+				<Typography variant="body2">{node.label}</Typography>
+			</Stack>
+		);
+	};
+
 	const renderTree = (node: SettingTreeNode) => (
 		<TreeItem
 			key={node.id}
 			itemId={node.id}
-			label={node.label}
+			label={renderTreeLabel(node)}
 			onClick={() => handleSelectSetting(node.settingName)}
 		>
 			{node.children?.map(renderTree)}
@@ -322,24 +367,6 @@ export function Settings() {
 
 		// Individual field rendering (existing logic)
 		switch (settingName) {
-			/*
-						case 'update_channel':
-							return (
-								<AutocompleteElement
-									label="Update Channel"
-									name="update_channel"
-									loading={isChLoading}
-									autocompleteProps={{
-										size: "small",
-										disabled: evdata?.hello?.read_only || getCurrentEnv() === "production",
-										contentEditable: false,
-										disableClearable: true
-									}}
-									options={(updateChannels as string[]) || []}
-									{...commonProps}
-								/>
-							);
-			*/
 			case 'telemetry_mode':
 				return (
 					<>
