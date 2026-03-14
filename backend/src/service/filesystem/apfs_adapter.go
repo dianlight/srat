@@ -21,6 +21,7 @@ func NewApfsAdapter() FilesystemAdapter {
 		baseAdapter: newBaseAdapter(
 			"apfs",
 			"Apple File System (read-only)",
+			false,
 			"apfs-fuse",
 			"",
 			"",

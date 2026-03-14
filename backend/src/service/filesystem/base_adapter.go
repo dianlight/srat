@@ -78,6 +78,7 @@ type baseAdapter struct {
 	name          string
 	linuxFsModule string
 	description   string
+	exportable    bool
 	alpinePackage string
 	mkfsCommand   string
 	fsckCommand   string
@@ -94,10 +95,11 @@ type baseAdapter struct {
 	isDeviceMountedF func(device string) bool
 }
 
-func newBaseAdapter(name, description, alpinePackage, mkfsCommand, fsckCommand, labelCommand, stateCommand string, signatures []dto.FsMagicSignature) baseAdapter {
+func newBaseAdapter(name, description string, exportable bool, alpinePackage, mkfsCommand, fsckCommand, labelCommand, stateCommand string, signatures []dto.FsMagicSignature) baseAdapter {
 	return baseAdapter{
 		name:             name,
 		description:      description,
+		exportable:       exportable,
 		alpinePackage:    alpinePackage,
 		mkfsCommand:      mkfsCommand,
 		fsckCommand:      fsckCommand,
@@ -231,6 +233,7 @@ func (b *baseAdapter) checkCommandAvailability() dto.FilesystemSupport {
 		tlog.Debug("Filesystem module not found in system, marking related commands as unavailable", "filesystem", b.GetLinuxFsModule())
 		return dto.FilesystemSupport{
 			CanMount:      false,
+			IsExportable:  b.exportable,
 			AlpinePackage: b.alpinePackage,
 			MissingTools:  []string{b.mkfsCommand, b.fsckCommand, b.labelCommand, b.stateCommand},
 		}
@@ -238,6 +241,7 @@ func (b *baseAdapter) checkCommandAvailability() dto.FilesystemSupport {
 
 	support := dto.FilesystemSupport{
 		CanMount:      true, // Most filesystems can be mounted if kernel supports them
+		IsExportable:  b.exportable,
 		AlpinePackage: b.alpinePackage,
 		MissingTools:  []string{},
 	}
@@ -276,6 +280,13 @@ func (b *baseAdapter) checkCommandAvailability() dto.FilesystemSupport {
 // GetName returns the filesystem type name
 func (b *baseAdapter) GetName() string {
 	return b.name
+}
+
+// IsExportable returns whether the filesystem can be exported via Linux NFS.
+func (b *baseAdapter) IsExportable(ctx context.Context) bool {
+	_ = ctx
+
+	return b.exportable
 }
 
 // GetLinuxFsModule returns the Linux filesystem module/fstype name to use for mounting

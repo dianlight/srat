@@ -115,12 +115,14 @@ func TestSambaSession_Channels(t *testing.T) {
 			CreationTime  dto.CustomTime `json:"creation_time"`
 			LocalAddress  string         `json:"local_address"`
 			RemoteAddress string         `json:"remote_address"`
+			Transport     string         `json:"transport,omitempty"`
 		}{
 			"channel-1": {
 				ChannelID:     "channel-1",
 				CreationTime:  ct,
 				LocalAddress:  "192.168.1.1:445",
 				RemoteAddress: "192.168.1.100:51234",
+				Transport:     "TCP",
 			},
 		},
 	}

@@ -10,7 +10,7 @@ import (
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
-	"github.com/dianlight/srat/homeassistant/addons"
+	"github.com/dianlight/srat/homeassistant/apps"
 	"github.com/dianlight/srat/homeassistant/core_api"
 	"github.com/dianlight/srat/homeassistant/discovery"
 	"github.com/dianlight/srat/homeassistant/hardware"
@@ -143,8 +143,8 @@ func ProvideHAClientDependencies(params BaseAppParams) fx.Option {
 		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (host.ClientWithResponsesInterface, error) {
 			return host.NewClientWithResponses(params.StaticConfig.SupervisorURL, host.WithRequestEditorFn(bearerAuth.Intercept))
 		},
-		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (addons.ClientWithResponsesInterface, error) {
-			return addons.NewClientWithResponses(params.StaticConfig.SupervisorURL, addons.WithRequestEditorFn(bearerAuth.Intercept))
+		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (apps.ClientWithResponsesInterface, error) {
+			return apps.NewClientWithResponses(params.StaticConfig.SupervisorURL, apps.WithRequestEditorFn(bearerAuth.Intercept))
 		},
 		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (resolution.ClientWithResponsesInterface, error) {
 			return resolution.NewClientWithResponses(params.StaticConfig.SupervisorURL, resolution.WithRequestEditorFn(bearerAuth.Intercept))
@@ -182,8 +182,8 @@ func ProvideHAClientDependenciesWithoutWebSocket(params BaseAppParams) fx.Option
 		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (host.ClientWithResponsesInterface, error) {
 			return host.NewClientWithResponses(params.StaticConfig.SupervisorURL, host.WithRequestEditorFn(bearerAuth.Intercept))
 		},
-		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (addons.ClientWithResponsesInterface, error) {
-			return addons.NewClientWithResponses(params.StaticConfig.SupervisorURL, addons.WithRequestEditorFn(bearerAuth.Intercept))
+		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (apps.ClientWithResponsesInterface, error) {
+			return apps.NewClientWithResponses(params.StaticConfig.SupervisorURL, apps.WithRequestEditorFn(bearerAuth.Intercept))
 		},
 		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (resolution.ClientWithResponsesInterface, error) {
 			return resolution.NewClientWithResponses(params.StaticConfig.SupervisorURL, resolution.WithRequestEditorFn(bearerAuth.Intercept))

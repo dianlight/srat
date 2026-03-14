@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/homeassistant/addons"
+	"github.com/dianlight/srat/homeassistant/apps"
 	"github.com/dianlight/srat/homeassistant/core_api"
 	"github.com/dianlight/srat/homeassistant/hardware"
 	"github.com/dianlight/srat/homeassistant/host"
@@ -70,7 +70,7 @@ func (suite *AppSetupSuite) TestNewFXLoggerOption() {
 
 func (suite *AppSetupSuite) TestProvideHAClientDependencies() {
 	var (
-		addonsClient     addons.ClientWithResponsesInterface
+		addonsClient     apps.ClientWithResponsesInterface
 		hardwareClient   hardware.ClientWithResponsesInterface
 		mountClient      mount.ClientWithResponsesInterface
 		hostClient       host.ClientWithResponsesInterface
@@ -107,8 +107,8 @@ func (suite *AppSetupSuite) TestProvideHAClientDependencies() {
 	suite.Require().NotNil(coreAPIClient)
 	suite.Require().NotNil(rootClient)
 	suite.Require().NotNil(ingressClient)
-	if client, ok := addonsClient.(*addons.ClientWithResponses); ok {
-		if core, ok := client.ClientInterface.(*addons.Client); ok {
+	if client, ok := addonsClient.(*apps.ClientWithResponses); ok {
+		if core, ok := client.ClientInterface.(*apps.Client); ok {
 			suite.Equal("http://example.org/", core.Server)
 		} else {
 			suite.T().Fatalf("unexpected addons client interface type %T", client.ClientInterface)

@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/homeassistant/addons"
+	"github.com/dianlight/srat/homeassistant/apps"
 	"github.com/dianlight/srat/homeassistant/discovery"
 	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/dianlight/srat/service"
@@ -77,7 +77,7 @@ func (suite *HaDiscoveryServiceTestSuite) TestRegisterDiscoverySuccess() {
 		) {
 			// Mock addon info
 			mock.When(addonsService.GetInfo(mock.Any[context.Context]())).
-				ThenReturn(&addons.AddonInfoData{
+				ThenReturn(&apps.AppInfoData{
 					Hostname: &hostname,
 				}, nil)
 
@@ -218,7 +218,7 @@ func (suite *HaDiscoveryServiceTestSuite) TestRegisterDiscoveryFallsBackToAddonI
 		) {
 			// Return nil hostname — forces fallback to AddonIpAddress
 			mock.When(addonsService.GetInfo(mock.Any[context.Context]())).
-				ThenReturn(&addons.AddonInfoData{}, nil)
+				ThenReturn(&apps.AppInfoData{}, nil)
 
 			// Mock discovery registration
 			mock.When(discoveryClient.CreateDiscoveryServiceWithResponse(
@@ -274,7 +274,7 @@ func (suite *HaDiscoveryServiceTestSuite) TestRegisterDiscoveryHandlesHTTPError(
 			discoveryClient discovery.ClientWithResponsesInterface,
 		) {
 			mock.When(addonsService.GetInfo(mock.Any[context.Context]())).
-				ThenReturn(&addons.AddonInfoData{
+				ThenReturn(&apps.AppInfoData{
 					Hostname: &hostname,
 				}, nil)
 
@@ -323,7 +323,7 @@ func (suite *HaDiscoveryServiceTestSuite) TestUnregisterDiscoverySuccess() {
 			discoveryClient discovery.ClientWithResponsesInterface,
 		) {
 			mock.When(addonsService.GetInfo(mock.Any[context.Context]())).
-				ThenReturn(&addons.AddonInfoData{
+				ThenReturn(&apps.AppInfoData{
 					Hostname: &hostname,
 				}, nil)
 

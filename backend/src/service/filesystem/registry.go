@@ -31,6 +31,7 @@ func NewRegistry() *Registry {
 	registry.Register(NewGfs2Adapter())
 	registry.Register(NewHfsplusAdapter())
 	registry.Register(NewReiserfsAdapter())
+	registry.Register(NewZfsAdapter())
 	registry.Register(NewApfsAdapter())
 
 	return registry

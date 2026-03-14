@@ -8,7 +8,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2/sse"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/homeassistant/addons"
+	"github.com/dianlight/srat/homeassistant/apps"
 	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/dianlight/srat/server/ws"
 	"gitlab.com/tozd/go/errors"
@@ -61,18 +61,27 @@ func (f *fakeDirty) IsClean() bool          { return true }
 
 type fakeAddons struct{}
 
-func (f *fakeAddons) GetStats() (*addons.AddonStatsData, errors.E) {
-	return &addons.AddonStatsData{}, nil
+func (f *fakeAddons) GetStats() (*apps.AppStatsData, errors.E) {
+	return &apps.AppStatsData{}, nil
 }
 
 func (f *fakeAddons) GetLatestLogs(ctx context.Context) (string, errors.E) {
 	return "fake addon logs", nil
 }
 
-func (f *fakeAddons) GetInfo(ctx context.Context) (*addons.AddonInfoData, errors.E) {
-	return &addons.AddonInfoData{}, nil
+func (f *fakeAddons) GetInfo(ctx context.Context) (*apps.AppInfoData, errors.E) {
+	return &apps.AppInfoData{}, nil
 }
-func (f *fakeAddons) SetOptions(ctx context.Context, options *addons.AddonOptionsRequest) errors.E {
+
+func (f *fakeAddons) GetAppConfig(ctx context.Context) (*dto.AppConfigData, errors.E) {
+	return &dto.AppConfigData{Options: map[string]any{}, RuntimeConfig: map[string]any{}, RequiresRestart: true}, nil
+}
+
+func (f *fakeAddons) GetAppConfigSchema(ctx context.Context) (*dto.AppConfigSchema, errors.E) {
+	return &dto.AppConfigSchema{RequiresRestart: true, Fields: []dto.AppConfigSchemaField{}}, nil
+}
+
+func (f *fakeAddons) SetAppConfig(ctx context.Context, options map[string]any) errors.E {
 	return nil
 }
 

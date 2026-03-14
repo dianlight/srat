@@ -32,14 +32,15 @@ func NewDirtyDataService(lc fx.Lifecycle, ctx context.Context, eventBus events.E
 	p := new(DirtyDataService)
 	p.ctx = ctx
 	p.dataDirtyTracker = dto.DataDirtyTracker{
-		Shares:   true,
-		Users:    true,
-		Settings: true,
+		Shares:    true,
+		Users:     true,
+		Settings:  true,
+		AppConfig: false,
 	}
 	p.eventBus = eventBus
 	p.timerMutex = sync.Mutex{}
 
-	unsubscribe := make([]func(), 4)
+	unsubscribe := make([]func(), 5)
 	if eventBus != nil {
 		unsubscribe[0] = eventBus.OnShare(func(ctx context.Context, event events.ShareEvent) errors.E {
 			slog.DebugContext(ctx, "DirtyDataService received Share event", "share", event.Share.Name)
@@ -56,7 +57,12 @@ func NewDirtyDataService(lc fx.Lifecycle, ctx context.Context, eventBus events.E
 			p.setDirtySettings()
 			return nil
 		})
-		unsubscribe[3] = eventBus.OnServerProccess(func(ctx context.Context, event events.ServerProcessEvent) errors.E {
+		unsubscribe[3] = eventBus.OnAppConfig(func(ctx context.Context, event events.AppConfigEvent) errors.E {
+			slog.DebugContext(ctx, "DirtyDataService received AppConfig event", "config", event.Config)
+			p.setDirtyAppConfig()
+			return nil
+		})
+		unsubscribe[4] = eventBus.OnServerProccess(func(ctx context.Context, event events.ServerProcessEvent) errors.E {
 			slog.DebugContext(ctx, "DirtyDataService received Samba event", "tracker", event.DataDirtyTracker)
 			if event.Type == events.EventTypes.CLEAN {
 				p.resetDirtyStatus()
@@ -131,9 +137,17 @@ func (p *DirtyDataService) setDirtySettings() {
 	p.startTimer()
 }
 
+func (p *DirtyDataService) setDirtyAppConfig() {
+	p.dataDirtyTracker.AppConfig = true
+}
+
+func (p *DirtyDataService) hasManagedDirtyData() bool {
+	return p.dataDirtyTracker.Shares || p.dataDirtyTracker.Users || p.dataDirtyTracker.Settings
+}
+
 // GetDirtyDataTracker returns the dirty data tracker
 func (p *DirtyDataService) GetDirtyDataTracker() dto.DataDirtyTracker {
-	if !p.IsClean() && !p.IsTimerRunning() {
+	if p.hasManagedDirtyData() && !p.IsTimerRunning() {
 		p.startTimer()
 	}
 	return p.dataDirtyTracker
@@ -155,5 +169,5 @@ func (p *DirtyDataService) IsTimerRunning() bool {
 }
 
 func (p *DirtyDataService) IsClean() bool {
-	return !p.dataDirtyTracker.Shares && !p.dataDirtyTracker.Users && !p.dataDirtyTracker.Settings && p.timer == nil
+	return !p.dataDirtyTracker.Shares && !p.dataDirtyTracker.Users && !p.dataDirtyTracker.Settings && !p.dataDirtyTracker.AppConfig && p.timer == nil
 }

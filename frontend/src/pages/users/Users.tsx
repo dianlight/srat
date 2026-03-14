@@ -14,8 +14,10 @@ import { InView } from "react-intersection-observer";
 import { toast } from "react-toastify";
 import { TabIDs } from "../../store/locationState";
 import {
+	type SharedResource,
 	type User,
 	useDeleteApiUserByUsernameMutation,
+	useGetApiSharesQuery,
 	useGetApiUsersQuery,
 	usePostApiUserMutation,
 	usePutApiUseradminMutation,
@@ -30,6 +32,7 @@ import type { UsersProps } from "./types";
 export function Users() {
 	const { data: evdata } = useGetServerEventsQuery();
 	const users = useGetApiUsersQuery();
+	const shares = useGetApiSharesQuery();
 	const confirm = useConfirm();
 
 	// Selection state
@@ -219,12 +222,16 @@ export function Users() {
 	});
 
 	const isReadOnly = evdata?.hello?.read_only || false;
+	const availableShares = (shares.data as SharedResource[] || [])
+		.filter((share) => Boolean(share?.name) && !share?.disabled)
+		.map((share) => share.name as string);
 
 	return (
 		<InView>
 			{/* Create User Dialog */}
 			<UserEditDialog
 				objectToEdit={createUserData}
+				availableShares={availableShares}
 				open={showCreateDialog}
 				onClose={(data) => {
 					if (data) {
@@ -299,6 +306,7 @@ export function Users() {
 										password: "",
 										doCreate: false,
 									}}
+									availableShares={availableShares}
 									onSubmit={(data) => {
 										onSubmitEditUser(data);
 									}}

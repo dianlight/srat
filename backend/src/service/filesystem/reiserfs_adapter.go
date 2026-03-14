@@ -20,6 +20,7 @@ func NewReiserfsAdapter() FilesystemAdapter {
 		baseAdapter: newBaseAdapter(
 			"reiserfs",
 			"Reiser File System",
+			true,
 			"reiserfsprogs",
 			"mkfs.reiserfs",
 			"fsck.reiserfs",

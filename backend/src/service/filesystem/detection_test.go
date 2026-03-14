@@ -55,6 +55,7 @@ func (suite *DetectionTestSuite) TestAllAdaptersHaveIsDeviceSupported() {
 		filesystem.NewNtfsAdapter(),
 		filesystem.NewBtrfsAdapter(),
 		filesystem.NewXfsAdapter(),
+		filesystem.NewZfsAdapter(),
 	}
 
 	// Create a temp file that won't match any signatures

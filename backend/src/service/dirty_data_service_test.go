@@ -94,9 +94,10 @@ func (suite *DirtyDataServiceTestSuite) TearDownTest() {
 func (suite *DirtyDataServiceTestSuite) TestNewDirtyDataService() {
 	suite.NotNil(suite.dirtyDataService)
 	suite.Equal(dto.DataDirtyTracker{
-		Shares:   true,
-		Users:    true,
-		Settings: true,
+		Shares:    true,
+		Users:     true,
+		Settings:  true,
+		AppConfig: false,
 	}, suite.dirtyDataService.GetDirtyDataTracker())
 }
 
@@ -131,4 +132,17 @@ func (suite *DirtyDataServiceTestSuite) TestSetDirtySettings() {
 	suite.True(tracker.Settings)
 	suite.True(suite.dirtyDataService.IsTimerRunning())
 
+}
+
+func (suite *DirtyDataServiceTestSuite) TestSetDirtyAppConfig() {
+	suite.dirtyDataService.ResetDirtyDataTracker()
+	suite.eventBus.EmitAppConfig(events.AppConfigEvent{Config: &dto.AppConfigUpdateRequest{Options: map[string]any{"log_level": "debug"}}})
+
+	tracker := suite.dirtyDataService.GetDirtyDataTracker()
+	suite.False(tracker.Shares)
+	suite.False(tracker.Users)
+	suite.False(tracker.Settings)
+	suite.True(tracker.AppConfig)
+	suite.False(suite.dirtyDataService.IsTimerRunning())
+	suite.False(suite.dirtyDataService.IsClean())
 }

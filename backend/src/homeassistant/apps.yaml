@@ -1,0 +1,1271 @@
+openapi: 3.0.0
+info:
+  title: Home Assistant Supervisor Apps API
+  version: "1.0.0"
+  description: API for managing apps (formerly known as add-ons) via Home Assistant Supervisor, based on documentation at https://developers.home-assistant.io/docs/api/supervisor/endpoints#apps
+  contact:
+    name: Home Assistant Developers
+    url: https://developers.home-assistant.io/docs/api/supervisor/
+servers:
+  - url: http://{supervisor_address}
+    description: Base URL for the Home Assistant Supervisor API.
+    variables:
+      supervisor_address:
+        default: supervisor
+        description: "Hostname or IP address of the Supervisor. Examples: 'supervisor' (for internal Docker calls like from an app), '172.30.32.2' (Supervisor's default Docker IP), or '<YOUR_HA_IP_ADDRESS>:8123/api/hassio' (if accessing via Home Assistant Ingress)."
+
+components:
+  schemas:
+    AppInfoData:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Example App"
+        slug:
+          type: string
+          example: "self" # Use 'self' to refer to the current app
+        description:
+          type: string
+          example: "An example app."
+        long_description:
+          type: string
+          nullable: true
+          example: "This is a more detailed description of the example app."
+        auto_update:
+          type: boolean
+          example: false
+        advanced:
+          type: boolean
+          example: false
+        apparmor:
+          type: string
+          nullable: true
+          example: "default"
+        audio:
+          type: boolean
+          example: false
+        audio_input:
+          type: number
+          format: float
+          nullable: true
+        audio_output:
+          type: number
+          format: float
+          nullable: true
+        auto_uart:
+          type: boolean
+          example: false
+        available:
+          type: boolean
+          example: false
+        boot_config:
+          type: string
+          nullable: true
+          example: "auto"
+        build:
+          type: boolean
+          example: false
+        changelog:
+          type: boolean
+          example: false
+        repository:
+          type: string
+          example: "local"
+        version:
+          type: string
+          example: "1.2.3"
+        version_latest:
+          type: string
+          nullable: true
+          example: "1.2.4"
+        state:
+          type: string
+          enum: [started, stopped, unknown, error]
+          example: "started"
+        boot:
+          type: string
+          enum: [auto, manual]
+          example: "auto"
+        options:
+          type: object
+          additionalProperties: true
+          example: {"setting1": "value1", "setting2": 123}
+        network:
+          type: object
+          additionalProperties: true
+        network_description:
+          type: object
+          additionalProperties: true
+          nullable: true
+        detached:
+          type: boolean
+          example: false
+        devices:
+          type: array
+          items:
+            type: string
+        devicetree:
+          type: boolean
+          example: false
+        discovery:
+          type: array
+          items:
+            type: string
+        dns:
+          type: array
+          items:
+            type: string
+        docker_api:
+          type: boolean
+          example: false
+        documentation:
+          type: boolean
+          example: false
+        translations:
+          type: object
+          additionalProperties: true
+          description: Language-keyed translations returned by Supervisor (for example translations.en.configuration.<option_key>).
+        schema:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+            nullable: true
+          example: [{"setting1": "str", "setting2": "int"}]
+        arch:
+          type: array
+          items:
+            type: string
+          example: ["amd64", "aarch64"]
+        machine:
+          type: array
+          items:
+            type: string
+          example: ["qemux86-64"]
+        hostname:
+          type: string
+          nullable: true
+          example: "example-app-container-name"
+        homeassistant:
+          type: string
+          nullable: true
+        hassio_role:
+          type: string
+          nullable: true
+        protected:
+          type: boolean
+          example: true
+        rating: # 1-6, 6 is gold
+          nullable: true
+          description: Rating can be numeric or a string range depending on Supervisor/app metadata.
+          oneOf:
+            - type: number
+              minimum: 1
+              maximum: 6
+            - type: string
+          example: "1-6"
+        stage:
+          type: string
+          enum: [stable, experimental, deprecated]
+          example: "stable"
+        startup:
+          type: string
+          enum: [initialize, system, services, application, once]
+          example: "application"
+        watchdog:
+          type: boolean
+          example: true
+        with_stdin:
+          type: boolean
+          example: false
+        ingress:
+          type: boolean
+          example: false
+        ingress_entry:
+          type: string
+          nullable: true
+        ingress_panel:
+          type: boolean
+          example: false
+        ingress_port:
+          type: integer
+          nullable: true
+        ingress_url:
+          type: string
+          nullable: true
+        icon:
+          type: boolean
+          example: true
+        logo:
+          type: boolean
+          example: true
+        url:
+          type: string
+          format: url
+          nullable: true
+        host_network:
+          type: boolean
+          example: false
+        host_dbus:
+          type: boolean
+          example: false
+        host_ipc:
+          type: boolean
+          example: false
+        host_pid:
+          type: boolean
+          example: false
+        host_uts:
+          type: boolean
+          example: false
+        full_access:
+          type: boolean
+          example: false
+        kernel_modules:
+          type: boolean
+          example: false
+        hassio_api:
+          type: boolean
+          example: true
+        homeassistant_api:
+          type: boolean
+          example: false
+        auth_api:
+          type: boolean
+          example: true # Usually true for apps to validate sessions
+        ip_address:
+          type: string
+          format: ipv4
+          nullable: true
+          description: "IP address of the app within the Docker network."
+          example: "172.30.33.0"
+        privileged:
+          type: array
+          items:
+            type: string
+        services_role:
+          type: array
+          items:
+            type: string
+        stdin:
+          type: boolean
+          example: false
+        system_managed:
+          type: boolean
+          example: false
+        system_managed_config_entry:
+          type: string
+          nullable: true
+        udev:
+          type: boolean
+          example: false
+        update_available:
+          type: boolean
+          example: false
+        usb:
+          type: boolean
+          example: false
+        video:
+          type: boolean
+          example: false
+        webui:
+          type: string
+          nullable: true
+        signed:
+          type: boolean
+          example: false
+
+    AppInfoResponse:
+      type: object
+      properties:
+        result:
+          type: string
+          enum: [ok]
+        data:
+          $ref: '#/components/schemas/AppInfoData'
+      required:
+        - result
+        - data
+
+    AppStatsData:
+      type: object
+      properties:
+        cpu_percent:
+          type: number
+          format: double
+        memory_usage:
+          type: integer
+          description: "Memory usage in bytes."
+        memory_limit:
+          type: integer
+          description: "Memory limit in bytes."
+        memory_percent:
+          type: number
+          format: double
+        network_rx:
+          type: integer
+          description: "Network received bytes."
+        network_tx:
+          type: integer
+          description: "Network transmitted bytes."
+        blk_read:
+          type: integer
+          description: "Block device read bytes."
+        blk_write:
+          type: integer
+          description: "Block device written bytes."
+
+    AppStatsResponse:
+      type: object
+      properties:
+        result:
+          type: string
+          enum: [ok]
+        data:
+          $ref: '#/components/schemas/AppStatsData'
+      required:
+        - result
+        - data
+
+    AppOptionsRequest:
+      type: object
+      properties:
+        boot:
+          type: string
+          enum: [auto, manual]
+          description: "Optional boot mode to set for the app."
+        auto_update:
+          type: boolean
+          description: "Optional auto-update setting to set for the app."
+        network:
+          type: object
+          additionalProperties: true
+          description: "Optional network configuration to set for the app."
+        options:
+          type: object
+          additionalProperties: true
+          description: "App configuration options to set. Structure depends on the app's schema."
+        audio_output:
+          type: number
+          format: float
+          description: "Optional audio output setting to set for the app."
+        audio_input:
+          type: number
+          format: float
+          description: "Optional audio input setting to set for the app."
+        ingress_panel:
+          type: boolean
+          description: "Optional ingress panel setting to set for the app."
+        watchdog:
+          type: boolean
+          description: "Optional watchdog setting to set for the app."
+
+    AppSysOptionsRequest:
+      type: object
+      properties:
+        boot:
+          type: string
+          enum: [auto, manual]
+          description: "Boot mode to set for the app."
+        auto_update:
+          type: boolean
+          description: "Auto-update setting to set for the app."
+        ingress_panel:
+          type: boolean
+          description: "Ingress panel visibility setting for the app."
+        watchdog:
+          type: boolean
+          description: "Watchdog setting for the app."
+        protected:
+          type: boolean
+          description: "Whether the app is protected (requires unprotect to install from non-official repo)."
+
+    AppStdinRequest:
+      type: object
+      properties:
+        input:
+          type: string
+          description: "Data to send to the app's standard input."
+      required:
+        - input
+
+    UpdateSelfAppRequest:
+      type: object
+      properties:
+        version:
+          type: string
+          description: "Optional specific version to update/downgrade to. If omitted, updates to the latest available version."
+          example: "1.2.5"
+
+    AppInstallRequest:
+      type: object
+      properties:
+        version:
+          type: string
+          description: "Optional specific version to install. If omitted, installs the latest available version."
+          example: "1.2.3"
+
+    AppOptionsConfigData:
+      type: object
+      description: "Runtime configuration data for the app."
+      additionalProperties: true
+
+    AppOptionsConfigResponse:
+      type: object
+      properties:
+        result:
+          type: string
+          enum: [ok]
+        data:
+          $ref: '#/components/schemas/AppOptionsConfigData'
+      required:
+        - result
+        - data
+
+    AppListItem:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Example App"
+        slug:
+          type: string
+          example: "example_app"
+        description:
+          type: string
+        advanced:
+          type: boolean
+        stage:
+          type: string
+          enum: [stable, experimental, deprecated]
+        repository:
+          type: string
+        version:
+          type: string
+          nullable: true
+        version_latest:
+          type: string
+          nullable: true
+        update_available:
+          type: boolean
+        available:
+          type: boolean
+        installed:
+          type: boolean
+        detached:
+          type: boolean
+        homeassistant:
+          type: string
+          nullable: true
+        state:
+          type: string
+          enum: [started, stopped, unknown, error, none]
+          nullable: true
+        url:
+          type: string
+          format: url
+          nullable: true
+        icon:
+          type: boolean
+        logo:
+          type: boolean
+
+    AppListData:
+      type: object
+      properties:
+        addons:
+          type: array
+          items:
+            $ref: '#/components/schemas/AppListItem'
+
+    AppListResponse:
+      type: object
+      properties:
+        result:
+          type: string
+          enum: [ok]
+        data:
+          $ref: '#/components/schemas/AppListData'
+      required:
+        - result
+        - data
+
+    ActionResult:
+      type: object
+      properties:
+        result:
+          type: string
+          enum: [ok]
+          description: Indicates the outcome of the action.
+        data: # Data can be an empty object or contain specific info for some actions
+          type: object
+          additionalProperties: true # Allows for flexibility if data is returned
+          description: Additional data, often an empty object.
+          example: {}
+      required:
+        - result
+
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          nullable: true # Supervisor sometimes returns errors without a message field, or with it as null
+        data: # Sometimes error responses also include a data object
+          type: object
+          additionalProperties: true
+          nullable: true
+      # 'message' is not always strictly required by the Supervisor API for all error responses.
+      # Some errors might just be a status code with an empty or non-JSON body.
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT # Supervisor token is an opaque string, JWT is a common placeholder
+
+security:
+  - bearerAuth: []
+
+paths:
+  # ---- Global app operations ----
+
+  /addons:
+    get:
+      summary: List All Apps
+      description: Returns a list of all apps (installed and available) known to the Supervisor.
+      operationId: listApps
+      tags:
+        - Apps
+      responses:
+        '200':
+          description: Successful response with list of apps.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppListResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /addons/reload:
+    post:
+      summary: Reload Apps
+      description: Instructs the Supervisor to reload the list of available apps from all configured repositories.
+      operationId: reloadApps
+      tags:
+        - Apps
+      responses:
+        '200':
+          description: Apps reloaded successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResult'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ---- Per-app operations (generic slug, use 'self' for the current app) ----
+
+  /addons/{addon}/info:
+    get:
+      summary: Get App Information
+      description: Returns detailed information about the specified app. Use 'self' as the slug to get info about the current app.
+      operationId: getAppInfo
+      tags:
+        - Apps
+      parameters:
+        - name: addon
+          in: path
+          required: true
+          description: The slug of the app, or 'self' for the current app.
+          schema:
+            type: string
+            example: "self"
+      responses:
+        '200':
+          description: Successful response with app information.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppInfoResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /addons/{addon}/options:
+    post:
+      summary: Set App Options
+      description: Updates the configuration options for the specified app. Use 'self' as the slug target the current app.
+      operationId: setAppOptions
+      tags:
+        - Apps
+      parameters:
+        - name: addon
+          in: path
+          required: true
+          description: The slug of the app, or 'self' for the current app.
+          schema:
+            type: string
+            example: "self"
+      requestBody:
+        description: App options to set.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppOptionsRequest'
+      responses:
+        '200':
+          description: App options updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResult'
+        '400':
+          description: Bad Request (e.g., invalid options).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /addons/{addon}/sys_options:
+    post:
+      summary: Set App System Options
+      description: Updates system-level options (boot mode, auto-update, watchdog, etc.) for the specified app.
+      operationId: setAppSysOptions
+      tags:
+        - Apps
+      parameters:
+        - name: addon
+          in: path
+          required: true
+          description: The slug of the app, or 'self' for the current app.
+          schema:
+            type: string
+            example: "self"
+      requestBody:
+        description: System options to set.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppSysOptionsRequest'
+      responses:
+        '200':
+          description: App system options updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResult'
+        '400':
+          description: Bad Request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /addons/{addon}/options/validate:
+    post:
+      summary: Validate App Options
+      description: Validates the given options against the app's schema without applying them.
+      operationId: validateAppOptions
+      tags:
+        - Apps
+      parameters:
+        - name: addon
+          in: path
+          required: true
+          description: The slug of the app, or 'self' for the current app.
+          schema:
+            type: string
+            example: "self"
+      requestBody:
+        description: App options to validate.
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Options are valid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResult'
+        '400':
+          description: Options validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /addons/{addon}/options/config:
+    get:
+      summary: Get App Options Config
+      description: Returns the current rendered/resolved configuration data for the specified app.
+      operationId: getAppOptionsConfig
+      tags:
+        - Apps
+      parameters:
+        - name: addon
+          in: path
+          required: true
+          description: The slug of the app, or 'self' for the current app.
+          schema:
+            type: string
+            example: "self"
+      responses:
+        '200':
+          description: Successful response with app options config.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppOptionsConfigResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /addons/{addon}/install:
+    post:
+      summary: Install App
+      description: Installs the specified app. Optionally specify a version to install.
+      operationId: installApp
+      tags:
+        - Apps
+      parameters:
+        - name: addon
+          in: path
+          required: true
+          description: The slug of the app to install.
+          schema:
+            type: string
+            example: "core_ssh"
+      requestBody:
+        description: Optional installation parameters.
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppInstallRequest'
+      responses:
+        '200':
+          description: App installation initiated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResult'
+        '400':
+          description: Bad Request (e.g., invalid version).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /addons/{addon}/changelog:
+    get:
+      summary: Get App Changelog
+      description: Returns the changelog for the specified app.
+      operationId: getAppChangelog
+      tags:
+        - Apps
+      parameters:
+        - name: addon
+          in: path
+          required: true
+          description: The slug of the app, or 'self' for the current app.
+          schema:
+            type: string
+            example: "self"
+      responses:
+        '200':
+          description: Changelog content (Markdown).
+          content:
+            text/markdown:
+              schema:
+                type: string
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /addons/{addon}/documentation:
+    get:
+      summary: Get App Documentation
+      description: Returns the documentation for the specified app.
+      operationId: getAppDocumentation
+      tags:
+        - Apps
+      parameters:
+        - name: addon
+          in: path
+          required: true
+          description: The slug of the app, or 'self' for the current app.
+          schema:
+            type: string
+            example: "self"
+      responses:
+        '200':
+          description: Documentation content (Markdown).
+          content:
+            text/markdown:
+              schema:
+                type: string
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /addons/{addon}/icon:
+    get:
+      summary: Get App Icon
+      description: Returns the icon image for the specified app.
+      operationId: getAppIcon
+      tags:
+        - Apps
+      parameters:
+        - name: addon
+          in: path
+          required: true
+          description: The slug of the app, or 'self' for the current app.
+          schema:
+            type: string
+            example: "self"
+      responses:
+        '200':
+          description: App icon image.
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /addons/{addon}/logo:
+    get:
+      summary: Get App Logo
+      description: Returns the logo image for the specified app.
+      operationId: getAppLogo
+      tags:
+        - Apps
+      parameters:
+        - name: addon
+          in: path
+          required: true
+          description: The slug of the app, or 'self' for the current app.
+          schema:
+            type: string
+            example: "self"
+      responses:
+        '200':
+          description: App logo image.
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /addons/{addon}/logs:
+    get:
+      summary: Get App Logs
+      description: Retrieves logs for the specified app.
+      operationId: getAppLogs
+      tags:
+        - Apps
+      parameters:
+        - name: addon
+          in: path
+          required: true
+          description: The slug of the app, or 'self' for the current app.
+          schema:
+            type: string
+            example: "self"
+        - name: Accept
+          in: header
+          description: Preferred log format.
+          required: true
+          schema:
+            type: string
+            enum:
+              - "text/x-log"
+              - "text/plain"
+            default: "text/x-log"
+      responses:
+        '200':
+          description: App logs retrieved successfully.
+          content:
+            text/plain:
+              schema:
+                type: string
+            text/x-log:
+              schema:
+                type: string
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /addons/{addon}/logs/follow:
+    get:
+      summary: Follow App Logs
+      description: Returns a streaming response that follows new log entries for the specified app.
+      operationId: getAppLogsFollow
+      tags:
+        - Apps
+      parameters:
+        - name: addon
+          in: path
+          required: true
+          description: The slug of the app, or 'self' for the current app.
+          schema:
+            type: string
+            example: "self"
+        - name: Accept
+          in: header
+          description: Preferred log format.
+          required: true
+          schema:
+            type: string
+            enum:
+              - "text/x-log"
+              - "text/plain"
+            default: "text/x-log"
+      responses:
+        '200':
+          description: Streaming log output.
+          content:
+            text/plain:
+              schema:
+                type: string
+            text/x-log:
+              schema:
+                type: string
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /addons/{addon}/logs/latest:
+    get:
+      summary: Get App Latest Startup Logs
+      description: Returns all logs from the latest startup of the specified app container.
+      operationId: getAppLogsLatest
+      tags:
+        - Apps
+      parameters:
+        - name: addon
+          in: path
+          required: true
+          description: The slug of the app, or 'self' for the current app.
+          schema:
+            type: string
+            example: "self"
+        - in: query
+          name: lines
+          schema:
+            type: integer
+            minimum: 1
+            default: 100
+          required: false
+          description: Number of log lines to retrieve from the end of the latest startup logs.
+        - name: Accept
+          in: header
+          description: Preferred log format.
+          required: true
+          schema:
+            type: string
+            enum:
+              - "text/x-log"
+              - "text/plain"
+            default: "text/x-log"
+      responses:
+        '200':
+          description: App logs retrieved successfully.
+          content:
+            text/plain:
+              schema:
+                type: string
+            text/x-log:
+              schema:
+                type: string
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /addons/{addon}/logs/boots/{bootid}:
+    get:
+      summary: Get App Logs for a Specific Boot
+      description: Returns logs for the specified boot of the specified app.
+      operationId: getAppLogsBoot
+      tags:
+        - Apps
+      parameters:
+        - name: addon
+          in: path
+          required: true
+          description: The slug of the app, or 'self' for the current app.
+          schema:
+            type: string
+            example: "self"
+        - name: bootid
+          in: path
+          required: true
+          description: The boot ID or offset (e.g., 0 for current boot, -1 for previous, or a specific boot ID string).
+          schema:
+            type: string
+            example: "0"
+        - name: Accept
+          in: header
+          description: Preferred log format.
+          required: true
+          schema:
+            type: string
+            enum:
+              - "text/x-log"
+              - "text/plain"
+            default: "text/x-log"
+      responses:
+        '200':
+          description: App logs for the specified boot.
+          content:
+            text/plain:
+              schema:
+                type: string
+            text/x-log:
+              schema:
+                type: string
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /addons/{addon}/logs/boots/{bootid}/follow:
+    get:
+      summary: Follow App Logs for a Specific Boot
+      description: Returns a streaming response that follows log entries for the specified boot of the specified app.
+      operationId: getAppLogsBootFollow
+      tags:
+        - Apps
+      parameters:
+        - name: addon
+          in: path
+          required: true
+          description: The slug of the app, or 'self' for the current app.
+          schema:
+            type: string
+            example: "self"
+        - name: bootid
+          in: path
+          required: true
+          description: The boot ID or offset.
+          schema:
+            type: string
+            example: "0"
+        - name: Accept
+          in: header
+          description: Preferred log format.
+          required: true
+          schema:
+            type: string
+            enum:
+              - "text/x-log"
+              - "text/plain"
+            default: "text/x-log"
+      responses:
+        '200':
+          description: Streaming log output for the specified boot.
+          content:
+            text/plain:
+              schema:
+                type: string
+            text/x-log:
+              schema:
+                type: string
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ---- Self-app-specific operations (only applicable to the running app itself) ----
+
+  /addons/self/stats:
+    get:
+      summary: Get Self App Stats
+      description: Returns resource usage statistics for the current (self) app.
+      operationId: getSelfAppStats
+      tags:
+        - Apps
+      responses:
+        '200':
+          description: Successful response with app statistics.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppStatsResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /addons/self/restart:
+    post:
+      summary: Restart Self App
+      description: Restarts the current (self) app.
+      operationId: restartSelfApp
+      tags:
+        - Apps
+      responses:
+        '200':
+          description: App is restarting.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResult'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /addons/self/update:
+    post:
+      summary: Update Self App
+      description: Checks for updates for the current (self) app and applies the latest or a specified version.
+      operationId: updateSelfApp
+      tags:
+        - Apps
+      requestBody:
+        description: Optionally specify a version to update/downgrade to.
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSelfAppRequest'
+      responses:
+        '200':
+          description: App update process initiated or no update available.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResult'
+        '400':
+          description: Bad Request (e.g., invalid version).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /addons/self/stdin:
+    post:
+      summary: Send Data to Self App STDIN
+      description: Sends data to the standard input of the current (self) app. The app must be configured to accept stdin.
+      operationId: sendSelfAppStdin
+      tags:
+        - Apps
+      requestBody:
+        description: Data to send.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppStdinRequest'
+      responses:
+        '200':
+          description: Data sent to stdin successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResult'
+        '400':
+          description: Bad Request (e.g., app not configured for stdin).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

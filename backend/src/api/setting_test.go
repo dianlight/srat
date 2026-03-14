@@ -28,6 +28,7 @@ type SettingsHandlerSuite struct {
 	suite.Suite
 	dirtyService   service.DirtyDataServiceInterface
 	settingService service.SettingServiceInterface
+	addonsService  service.AddonsServiceInterface
 	//db           *gorm.DB
 	api *api.SettingsHanler
 	//config                 config.Config
@@ -66,6 +67,7 @@ func (suite *SettingsHandlerSuite) SetupTest() {
 			service.NewDirtyDataService,
 			service.NewSettingService,
 			events.NewEventBus,
+			mock.Mock[service.AddonsServiceInterface],
 			//repository.NewPropertyRepositoryRepository,
 			mock.Mock[service.TelemetryServiceInterface],
 			//			mock.Mock[service.BroadcasterServiceInterface],
@@ -101,6 +103,7 @@ func (suite *SettingsHandlerSuite) SetupTest() {
 		//fx.Populate(&suite.propertyRepository),
 		fx.Populate(&suite.dirtyService),
 		fx.Populate(&suite.settingService),
+		fx.Populate(&suite.addonsService),
 		//fx.Populate(&suite.config),
 		fx.Populate(&suite.ctx),
 		fx.Populate(&suite.cancel),
@@ -326,4 +329,84 @@ func (suite *SettingsHandlerSuite) TestGetSettingsHandler_DoesNotLeakSecrets() {
 
 	suite.NotContains(body, "HASmbPassword", "Response should not include HASmbPassword field")
 	suite.NotContains(body, "top-secret", "Response should not include secret value")
+}
+
+func (suite *SettingsHandlerSuite) TestGetAppConfigHandler() {
+	_, api := humatest.New(suite.T())
+	suite.api.RegisterSettings(api)
+
+	mock.When(suite.addonsService.GetAppConfig(mock.AnyContext())).
+		ThenReturn(&dto.AppConfigData{
+			Options:         map[string]any{"log_level": "info", "enabled": true},
+			RuntimeConfig:   map[string]any{"rendered": true},
+			RequiresRestart: true,
+		}, nil)
+
+	rr := api.Get("/settings/app-config")
+	suite.Require().Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
+
+	var res dto.AppConfigData
+	err := json.Unmarshal(rr.Body.Bytes(), &res)
+	suite.Require().NoError(err)
+	suite.Equal("info", res.Options["log_level"])
+	suite.Equal(true, res.RequiresRestart)
+}
+
+func (suite *SettingsHandlerSuite) TestGetAppConfigSchemaHandler() {
+	_, api := humatest.New(suite.T())
+	suite.api.RegisterSettings(api)
+
+	mock.When(suite.addonsService.GetAppConfigSchema(mock.AnyContext())).
+		ThenReturn(&dto.AppConfigSchema{
+			Description:     "Example app",
+			LongDescription: "Example long description",
+			RequiresRestart: true,
+			Fields: []dto.AppConfigSchemaField{
+				{Name: "log_level", Constraint: "str", Description: "Logging level", Optional: false, Options: []string{"debug", "info"}},
+			},
+		}, nil)
+
+	rr := api.Get("/settings/app-config/schema")
+	suite.Require().Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
+
+	var res dto.AppConfigSchema
+	err := json.Unmarshal(rr.Body.Bytes(), &res)
+	suite.Require().NoError(err)
+	suite.Equal("Example app", res.Description)
+	suite.Len(res.Fields, 1)
+	suite.Equal("log_level", res.Fields[0].Name)
+	suite.Equal("str", res.Fields[0].Constraint)
+	suite.ElementsMatch([]string{"debug", "info"}, res.Fields[0].Options)
+}
+
+func (suite *SettingsHandlerSuite) TestUpdateAppConfigHandler() {
+	_, api := humatest.New(suite.T())
+	suite.api.RegisterSettings(api)
+	autopatch.AutoPatch(api)
+	suite.dirtyService.ResetDirtyDataTracker()
+
+	request := dto.AppConfigUpdateRequest{
+		Options: map[string]any{"log_level": "debug", "enabled": true},
+	}
+
+	mock.When(suite.addonsService.SetAppConfig(mock.AnyContext(), mock.Any[map[string]any]())).
+		ThenReturn(nil)
+	mock.When(suite.addonsService.GetAppConfig(mock.AnyContext())).
+		ThenReturn(&dto.AppConfigData{
+			Options:         request.Options,
+			RuntimeConfig:   map[string]any{"rendered": true},
+			RequiresRestart: true,
+		}, nil)
+
+	rr := api.Put("/settings/app-config", request)
+	suite.Require().Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
+
+	var res dto.AppConfigData
+	err := json.Unmarshal(rr.Body.Bytes(), &res)
+	suite.Require().NoError(err)
+	suite.Equal("debug", res.Options["log_level"])
+
+	tracker := suite.dirtyService.GetDirtyDataTracker()
+	suite.True(tracker.AppConfig)
+	suite.False(tracker.Settings)
 }

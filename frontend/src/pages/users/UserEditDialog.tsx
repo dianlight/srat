@@ -1,6 +1,6 @@
 import {
-    Dialog,
-    DialogTitle
+	Dialog,
+	DialogTitle
 } from "@mui/material";
 import { Fragment } from "react";
 import { UserEditForm } from "./components/UserEditForm";
@@ -10,6 +10,7 @@ export function UserEditDialog(props: {
 	open: boolean;
 	onClose: (data?: UsersProps) => void;
 	objectToEdit?: UsersProps;
+	availableShares?: string[];
 }) {
 	function handleCloseSubmit(data: UsersProps) {
 		props.onClose(data);
@@ -29,6 +30,7 @@ export function UserEditDialog(props: {
 				</DialogTitle>
 				<UserEditForm
 					userData={props.objectToEdit}
+					availableShares={props.availableShares}
 					onSubmit={handleCloseSubmit}
 					onCancel={handleCancel}
 				/>

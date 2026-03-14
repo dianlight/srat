@@ -36,6 +36,9 @@ type FilesystemAdapter interface {
 	// and returns detailed support information
 	IsSupported(ctx context.Context) (dto.FilesystemSupport, errors.E)
 
+	// IsExportable returns whether the filesystem can be exported via Linux NFS.
+	IsExportable(ctx context.Context) bool
+
 	// Format formats a device with this filesystem
 	// progress callback receives status updates (start/running/success/failure),
 	// percentual (0-100, or 999 for unsupported), and notes

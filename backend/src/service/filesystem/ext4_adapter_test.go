@@ -107,12 +107,17 @@ func (suite *Ext4AdapterTestSuite) TestIsSupported() {
 	suite.Require().NoError(err)
 	suite.True(support.CanFormat, "ext4 should support formatting")
 	suite.True(support.CanMount, "ext4 should support mounting")
+	suite.True(support.IsExportable, "ext4 should support Linux NFS export")
 	suite.True(support.CanCheck, "ext4 should support checking")
 	suite.True(support.CanSetLabel, "ext4 should support setting label")
 	suite.True(support.CanGetState, "ext4 should support getting state")
 
 	suite.Equal("e2fsprogs", support.AlpinePackage)
 	suite.Empty(support.MissingTools)
+}
+
+func (suite *Ext4AdapterTestSuite) TestIsExportable() {
+	suite.True(suite.adapter.IsExportable(suite.ctx))
 }
 
 func (suite *Ext4AdapterTestSuite) TestGetFsSignatureMagic() {

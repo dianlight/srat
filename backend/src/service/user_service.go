@@ -173,7 +173,7 @@ func (s *UserService) CreateUser(userDto dto.User) (*dto.User, error) {
 		return nil, errors.Wrap(err, "failed to convert user DTO to DBOM")
 	}
 
-	upd, err := gorm.G[dbom.SambaUser](s.db.Debug()).
+	upd, err := gorm.G[dbom.SambaUser](s.db).
 		Scopes(dbom.IncludeSoftDeleted).
 		Where(g.SambaUser.Username.Eq(dbUser.Username)).
 		Where(g.SambaUser.DeletedAt.IsNotNull()).
@@ -187,7 +187,7 @@ func (s *UserService) CreateUser(userDto dto.User) (*dto.User, error) {
 	}
 	if upd > 0 {
 		// Restore Soft Deleted
-		if num, err := gorm.G[dbom.SambaUser](s.db.Debug()).
+		if num, err := gorm.G[dbom.SambaUser](s.db).
 			Where(g.SambaUser.Username.Eq(dbUser.Username)).
 			Updates(s.ctx, dbUser); err != nil && num == 0 {
 			return nil, errors.Wrapf(err, "failed to save updated user %s to repository", dbUser.Username)
@@ -228,7 +228,7 @@ func (s *UserService) CreateUser(userDto dto.User) (*dto.User, error) {
 }
 
 func (s *UserService) UpdateUser(currentUsername string, userDto dto.User) (*dto.User, error) {
-	dbUser, err := gorm.G[dbom.SambaUser](s.db.Debug()).Where(g.SambaUser.Username.Eq(currentUsername)).First(s.ctx)
+	dbUser, err := gorm.G[dbom.SambaUser](s.db).Where(g.SambaUser.Username.Eq(currentUsername)).First(s.ctx)
 
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -272,7 +272,7 @@ func (s *UserService) updateUser(currentUsername string, currentPassword string,
 
 		if dbUser.Username != "" && dbUser.Username != currentUsername {
 			// Handle rename
-			if _, checkErr := gorm.G[dbom.SambaUser](tx.Debug()).Where(g.SambaUser.Username.Eq(dbUser.Username)).First(s.ctx); checkErr == nil {
+			if _, checkErr := gorm.G[dbom.SambaUser](tx).Where(g.SambaUser.Username.Eq(dbUser.Username)).First(s.ctx); checkErr == nil {
 				return errors.WithMessagef(dto.ErrorUserAlreadyExists, "cannot rename to %s, user already exists", dbUser.Username)
 			} else if !errors.Is(checkErr, gorm.ErrRecordNotFound) {
 				return errors.Wrapf(checkErr, "error checking if new username %s exists", dbUser.Username)
@@ -296,7 +296,7 @@ func (s *UserService) updateUser(currentUsername string, currentPassword string,
 			}
 		}
 
-		if _, err := gorm.G[dbom.SambaUser](tx.Debug()).
+		if _, err := gorm.G[dbom.SambaUser](tx).
 			Where(g.SambaUser.Username.Eq(currentUsername)).
 			Updates(tx.Statement.Context, dbUser); err != nil {
 			return errors.Wrapf(err, "failed to save updated user %s to repository", dbUser.Username)

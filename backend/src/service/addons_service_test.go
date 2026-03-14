@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/homeassistant/addons"
+	"github.com/dianlight/srat/homeassistant/apps"
 	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/dianlight/srat/service"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
@@ -21,7 +21,7 @@ import (
 type AddonsServiceTestSuite struct {
 	suite.Suite
 	addonsService    service.AddonsServiceInterface
-	mockAddonsClient addons.ClientWithResponsesInterface
+	mockAddonsClient apps.ClientWithResponsesInterface
 	app              *fxtest.App
 	ctx              context.Context
 	cancel           context.CancelFunc
@@ -43,11 +43,9 @@ func (suite *AddonsServiceTestSuite) SetupTest() {
 			},
 			service.NewAddonsService,
 			func() *dto.ContextState {
-				return &dto.ContextState{
-					HACoreReady: true,
-				}
+				return &dto.ContextState{HACoreReady: true}
 			},
-			mock.Mock[addons.ClientWithResponsesInterface],
+			mock.Mock[apps.ClientWithResponsesInterface],
 			mock.Mock[service.HaWsServiceInterface],
 		),
 		fx.Populate(&suite.ctx, &suite.cancel),
@@ -65,71 +63,42 @@ func (suite *AddonsServiceTestSuite) TearDownTest() {
 	}
 }
 
-// --- GetStats Tests ---
-
 func (suite *AddonsServiceTestSuite) TestGetStats_Success() {
 	cpu := 55.5
-	mem := int(1024 * 1024 * 100) // 100MB
-	expectedStats := addons.AddonStatsData{
-		CpuPercent:  &cpu,
-		MemoryUsage: &mem,
-	}
-	mockResponse := &addons.GetSelfAddonStatsResponse{
+	mem := int(1024 * 1024 * 100)
+	expectedStats := apps.AppStatsData{CpuPercent: &cpu, MemoryUsage: &mem}
+	mockResponse := &apps.GetSelfAppStatsResponse{
 		HTTPResponse: &http.Response{StatusCode: http.StatusOK},
-		JSON200: &addons.AddonStatsResponse{
-			Data: expectedStats,
-		},
+		JSON200:      &apps.AppStatsResponse{Data: expectedStats},
 	}
 
-	mock.When(suite.mockAddonsClient.GetSelfAddonStatsWithResponse(mock.AnyContext())).
+	mock.When(suite.mockAddonsClient.GetSelfAppStatsWithResponse(mock.AnyContext())).
 		ThenReturn(mockResponse, nil).
 		Verify(matchers.Times(1))
-
-	mock.When(suite.mockAddonsClient.GetSelfAddonInfoWithResponse(suite.ctx)).
-		ThenReturn(&addons.GetSelfAddonInfoResponse{
-			HTTPResponse: &http.Response{StatusCode: http.StatusOK},
-			JSON200: &addons.AddonInfoResponse{
-				Data: addons.AddonInfoData{
-					Protected: new(false),
-				},
-			},
-		}, nil)
-		//.Verify(matchers.Times(1))
 
 	stats, err := suite.addonsService.GetStats()
 	suite.Require().NoError(err)
 	suite.Require().NotNil(stats)
 	suite.Equal(expectedStats, *stats)
-	suite.Equal(cpu, *stats.CpuPercent)
-	suite.Equal(mem, *stats.MemoryUsage)
 }
 
 func (suite *AddonsServiceTestSuite) TestGetStats_CacheHit() {
 	cpu := 55.5
-	mem := int(1024 * 1024 * 100) // 100MB
-	expectedStats := addons.AddonStatsData{
-		CpuPercent:  &cpu,
-		MemoryUsage: &mem,
-	}
-	mockResponse := &addons.GetSelfAddonStatsResponse{
+	mem := int(1024 * 1024 * 100)
+	expectedStats := apps.AppStatsData{CpuPercent: &cpu, MemoryUsage: &mem}
+	mockResponse := &apps.GetSelfAppStatsResponse{
 		HTTPResponse: &http.Response{StatusCode: http.StatusOK},
-		JSON200: &addons.AddonStatsResponse{
-			Data: expectedStats,
-		},
+		JSON200:      &apps.AppStatsResponse{Data: expectedStats},
 	}
 
-	// Expect the client to be called only once.
-	mock.When(suite.mockAddonsClient.GetSelfAddonStatsWithResponse(suite.ctx)).
+	mock.When(suite.mockAddonsClient.GetSelfAppStatsWithResponse(suite.ctx)).
 		ThenReturn(mockResponse, nil).
 		Verify(matchers.Times(1))
 
-	// First call (cache miss)
 	stats1, err1 := suite.addonsService.GetStats()
 	suite.Require().NoError(err1)
 	suite.Require().NotNil(stats1)
-	suite.Equal(expectedStats, *stats1)
 
-	// Second call (should be a cache hit)
 	stats2, err2 := suite.addonsService.GetStats()
 	suite.Require().NoError(err2)
 	suite.Require().NotNil(stats2)
@@ -138,7 +107,7 @@ func (suite *AddonsServiceTestSuite) TestGetStats_CacheHit() {
 
 func (suite *AddonsServiceTestSuite) TestGetStats_ClientError() {
 	apiError := errors.New("network failure")
-	mock.When(suite.mockAddonsClient.GetSelfAddonStatsWithResponse(suite.ctx)).
+	mock.When(suite.mockAddonsClient.GetSelfAppStatsWithResponse(suite.ctx)).
 		ThenReturn(nil, apiError).
 		Verify(matchers.Times(1))
 
@@ -150,11 +119,11 @@ func (suite *AddonsServiceTestSuite) TestGetStats_ClientError() {
 }
 
 func (suite *AddonsServiceTestSuite) TestGetStats_Non200Status() {
-	mockResponse := &addons.GetSelfAddonStatsResponse{
+	mockResponse := &apps.GetSelfAppStatsResponse{
 		HTTPResponse: &http.Response{StatusCode: http.StatusNotFound, Status: "Not Found"},
 		Body:         []byte("addon not found"),
 	}
-	mock.When(suite.mockAddonsClient.GetSelfAddonStatsWithResponse(suite.ctx)).
+	mock.When(suite.mockAddonsClient.GetSelfAppStatsWithResponse(suite.ctx)).
 		ThenReturn(mockResponse, nil).
 		Verify(matchers.Times(1))
 
@@ -165,11 +134,11 @@ func (suite *AddonsServiceTestSuite) TestGetStats_Non200Status() {
 }
 
 func (suite *AddonsServiceTestSuite) TestGetStats_NilJSONResponse() {
-	mockResponse := &addons.GetSelfAddonStatsResponse{
+	mockResponse := &apps.GetSelfAppStatsResponse{
 		HTTPResponse: &http.Response{StatusCode: http.StatusOK},
 		JSON200:      nil,
 	}
-	mock.When(suite.mockAddonsClient.GetSelfAddonStatsWithResponse(suite.ctx)).
+	mock.When(suite.mockAddonsClient.GetSelfAppStatsWithResponse(suite.ctx)).
 		ThenReturn(mockResponse, nil).
 		Verify(matchers.Times(1))
 
@@ -177,6 +146,177 @@ func (suite *AddonsServiceTestSuite) TestGetStats_NilJSONResponse() {
 	suite.Nil(stats)
 	suite.Require().Error(err)
 	suite.ErrorContains(err, "addon stats not available or data incomplete")
+}
+
+func (suite *AddonsServiceTestSuite) TestGetAppConfigSchema_Success() {
+	desc := "Example app"
+	longDesc := "Example long description"
+	fieldLogLevel := map[string]interface{}{"log_level": "str"}
+	fieldEnabled := map[string]interface{}{"enabled": "bool"}
+	schema := []*map[string]interface{}{
+		&fieldLogLevel,
+		&fieldEnabled,
+	}
+
+	mock.When(suite.mockAddonsClient.GetAppInfoWithResponse(suite.ctx, "self")).
+		ThenReturn(&apps.GetAppInfoResponse{
+			HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+			JSON200: &apps.AppInfoResponse{Data: apps.AppInfoData{
+				Description:     &desc,
+				LongDescription: &longDesc,
+				Schema:          &schema,
+			}},
+		}, nil).
+		Verify(matchers.Times(1))
+
+	result, err := suite.addonsService.GetAppConfigSchema(suite.ctx)
+	suite.Require().NoError(err)
+	suite.Require().NotNil(result)
+	suite.Equal("Example app", result.Description)
+	suite.Equal("Example long description", result.LongDescription)
+	suite.True(result.RequiresRestart)
+	suite.Len(result.Fields, 2)
+
+	fieldConstraints := make(map[string]string)
+	for _, field := range result.Fields {
+		fieldConstraints[field.Name] = field.Constraint
+	}
+	suite.Equal("str", fieldConstraints["log_level"])
+	suite.Equal("bool", fieldConstraints["enabled"])
+}
+
+func (suite *AddonsServiceTestSuite) TestGetAppConfigSchema_DescriptorItems() {
+	descriptorAutoUpdate := map[string]interface{}{
+		"name":     "auto_update",
+		"type":     "bool",
+		"optional": true,
+	}
+	descriptorLogLevel := map[string]interface{}{
+		"name":    "log_level",
+		"type":    "str",
+		"options": []interface{}{"trace", "debug", "info"},
+	}
+	schema := []*map[string]interface{}{
+		&descriptorAutoUpdate,
+		&descriptorLogLevel,
+	}
+
+	mock.When(suite.mockAddonsClient.GetAppInfoWithResponse(suite.ctx, "self")).
+		ThenReturn(&apps.GetAppInfoResponse{
+			HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+			JSON200: &apps.AppInfoResponse{Data: apps.AppInfoData{
+				Schema: &schema,
+			}},
+		}, nil).
+		Verify(matchers.Times(1))
+
+	result, err := suite.addonsService.GetAppConfigSchema(suite.ctx)
+	suite.Require().NoError(err)
+	suite.Require().NotNil(result)
+
+	type fieldExpectation struct {
+		constraint string
+		optional   bool
+		options    []string
+	}
+	fieldMap := make(map[string]fieldExpectation)
+	for _, field := range result.Fields {
+		fieldMap[field.Name] = fieldExpectation{
+			constraint: field.Constraint,
+			optional:   field.Optional,
+			options:    field.Options,
+		}
+	}
+
+	suite.Contains(fieldMap, "auto_update")
+	suite.Equal("bool", fieldMap["auto_update"].constraint)
+	suite.True(fieldMap["auto_update"].optional)
+
+	suite.Contains(fieldMap, "log_level")
+	suite.Equal("str", fieldMap["log_level"].constraint)
+	suite.ElementsMatch([]string{"trace", "debug", "info"}, fieldMap["log_level"].options)
+}
+
+func (suite *AddonsServiceTestSuite) TestGetAppConfigSchema_FieldDescriptionsFromTranslations() {
+	fieldEnabled := map[string]interface{}{"enabled": "bool"}
+	fieldLogLevel := map[string]interface{}{"log_level": "str"}
+	schema := []*map[string]interface{}{
+		&fieldEnabled,
+		&fieldLogLevel,
+	}
+
+	translations := map[string]interface{}{
+		"en": map[string]interface{}{
+			"configuration": map[string]interface{}{
+				"enabled":   "Enable or disable the feature",
+				"log_level": "Application logging level",
+			},
+		},
+	}
+
+	mock.When(suite.mockAddonsClient.GetAppInfoWithResponse(suite.ctx, "self")).
+		ThenReturn(&apps.GetAppInfoResponse{
+			HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+			JSON200: &apps.AppInfoResponse{Data: apps.AppInfoData{
+				Schema:       &schema,
+				Translations: &translations,
+			}},
+		}, nil).
+		Verify(matchers.Times(1))
+
+	result, err := suite.addonsService.GetAppConfigSchema(suite.ctx)
+	suite.Require().NoError(err)
+	suite.Require().NotNil(result)
+
+	fieldDescriptions := make(map[string]string)
+	for _, field := range result.Fields {
+		fieldDescriptions[field.Name] = field.Description
+	}
+
+	suite.Equal("Enable or disable the feature", fieldDescriptions["enabled"])
+	suite.Equal("Application logging level", fieldDescriptions["log_level"])
+}
+
+func (suite *AddonsServiceTestSuite) TestSetAppConfig_Success() {
+	options := map[string]any{"log_level": "debug", "enabled": true}
+	request := apps.SetAppOptionsJSONRequestBody{Options: &options}
+
+	mock.When(suite.mockAddonsClient.SetAppOptionsWithResponse(suite.ctx, "self", request)).
+		ThenReturn(&apps.SetAppOptionsResponse{
+			HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+		}, nil).
+		Verify(matchers.Times(1))
+
+	err := suite.addonsService.SetAppConfig(suite.ctx, options)
+	suite.Require().NoError(err)
+}
+
+func (suite *AddonsServiceTestSuite) TestGetAppConfig_Success() {
+	options := map[string]interface{}{"log_level": "info"}
+	runtimeConfig := apps.AppOptionsConfigData{"rendered": true}
+
+	mock.When(suite.mockAddonsClient.GetAppInfoWithResponse(suite.ctx, "self")).
+		ThenReturn(&apps.GetAppInfoResponse{
+			HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+			JSON200: &apps.AppInfoResponse{Data: apps.AppInfoData{
+				Options: &options,
+			}},
+		}, nil)
+
+	mock.When(suite.mockAddonsClient.GetAppOptionsConfigWithResponse(suite.ctx, "self")).
+		ThenReturn(&apps.GetAppOptionsConfigResponse{
+			HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+			JSON200: &apps.AppOptionsConfigResponse{
+				Data: runtimeConfig,
+			},
+		}, nil)
+
+	result, err := suite.addonsService.GetAppConfig(suite.ctx)
+	suite.Require().NoError(err)
+	suite.Require().NotNil(result)
+	suite.Equal("info", result.Options["log_level"])
+	suite.Equal(true, result.RuntimeConfig["rendered"])
+	suite.True(result.RequiresRestart)
 }
 
 func (suite *AddonsServiceTestSuite) TestGetStats_ClientNotInitialized() {
@@ -191,12 +331,9 @@ func (suite *AddonsServiceTestSuite) TestGetStats_ClientNotInitialized() {
 			service.NewAddonsService,
 			mock.Mock[service.HaWsServiceInterface],
 			func() *dto.ContextState {
-				return &dto.ContextState{
-					HACoreReady: true,
-				}
+				return &dto.ContextState{HACoreReady: true}
 			},
-			// Provide a nil client explicitly
-			func() addons.ClientWithResponsesInterface { return nil },
+			func() apps.ClientWithResponsesInterface { return nil },
 		),
 		fx.Populate(&addonsService),
 	)
