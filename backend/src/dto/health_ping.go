@@ -1,6 +1,6 @@
 package dto
 
-import "github.com/dianlight/srat/homeassistant/addons"
+import "github.com/dianlight/srat/homeassistant/apps"
 
 type HealthPing struct {
 	Alive              bool                   `json:"alive"`
@@ -9,7 +9,7 @@ type HealthPing struct {
 	LastError          string                 `json:"last_error"`
 	Dirty              DataDirtyTracker       `json:"dirty_tracking"`
 	UpdateAvailable    bool                   `json:"update_available"`
-	AddonStats         *addons.AddonStatsData `json:"addon_stats"`
+	AddonStats         *apps.AppStatsData `json:"addon_stats"`
 	DiskHealth         *DiskHealth            `json:"disk_health"`
 	NetworkHealth      *NetworkStats          `json:"network_health"`
 	SambaStatus        *SambaStatus           `json:"samba_status"`

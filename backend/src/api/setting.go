@@ -2,15 +2,20 @@ package api
 
 import (
 	"context"
+	"errors"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/service"
+	"github.com/dianlight/tlog"
 )
 
 type SettingsHanler struct {
 	apiContext     *dto.ContextState
 	settingService service.SettingServiceInterface
+	addonsService  service.AddonsServiceInterface
+	eventBus       events.EventBusInterface
 }
 
 // NewSettingsHanler creates a new instance of SettingsHanler with the provided
@@ -28,10 +33,14 @@ type SettingsHanler struct {
 func NewSettingsHanler(
 	apiContext *dto.ContextState,
 	settingService service.SettingServiceInterface,
+	addonsService service.AddonsServiceInterface,
+	eventBus events.EventBusInterface,
 ) *SettingsHanler {
 	p := new(SettingsHanler)
 	p.apiContext = apiContext
 	p.settingService = settingService
+	p.addonsService = addonsService
+	p.eventBus = eventBus
 
 	return p
 }
@@ -46,6 +55,9 @@ func NewSettingsHanler(
 func (self *SettingsHanler) RegisterSettings(api huma.API) {
 	huma.Get(api, "/settings", self.GetSettings, huma.OperationTags("system"))
 	huma.Put(api, "/settings", self.UpdateSettings, huma.OperationTags("system"))
+	huma.Get(api, "/settings/app-config", self.GetAppConfig, huma.OperationTags("system"))
+	huma.Put(api, "/settings/app-config", self.UpdateAppConfig, huma.OperationTags("system"))
+	huma.Get(api, "/settings/app-config/schema", self.GetAppConfigSchema, huma.OperationTags("system"))
 }
 
 // UpdateSettings updates the settings based on the provided input.
@@ -93,4 +105,44 @@ func (self *SettingsHanler) GetSettings(ctx context.Context, input *struct{}) (*
 	}
 
 	return &struct{ Body dto.Settings }{Body: *settings}, nil
+}
+
+// GetAppConfig retrieves current app options and rendered runtime config.
+func (self *SettingsHanler) GetAppConfig(ctx context.Context, input *struct{}) (*struct{ Body dto.AppConfigData }, error) {
+	config, err := self.addonsService.GetAppConfig(ctx)
+	if err != nil {
+		tlog.ErrorContext(ctx, "Failed to load app configuration", "error", errors.Unwrap(err))
+		return nil, huma.Error500InternalServerError("Failed to load app configuration: %v", err)
+	}
+
+	return &struct{ Body dto.AppConfigData }{Body: *config}, nil
+}
+
+// GetAppConfigSchema retrieves app options schema and app descriptions.
+func (self *SettingsHanler) GetAppConfigSchema(ctx context.Context, input *struct{}) (*struct{ Body dto.AppConfigSchema }, error) {
+	schema, err := self.addonsService.GetAppConfigSchema(ctx)
+	if err != nil {
+		return nil, huma.Error500InternalServerError("Failed to load app configuration schema: %v", err)
+	}
+
+	return &struct{ Body dto.AppConfigSchema }{Body: *schema}, nil
+}
+
+// UpdateAppConfig updates app options and marks app configuration as dirty.
+func (self *SettingsHanler) UpdateAppConfig(ctx context.Context, input *struct {
+	Body dto.AppConfigUpdateRequest
+}) (*struct{ Body dto.AppConfigData }, error) {
+	err := self.addonsService.SetAppConfig(ctx, input.Body.Options)
+	if err != nil {
+		return nil, huma.Error500InternalServerError("Failed to update app configuration: %v", err)
+	}
+
+	self.eventBus.EmitAppConfig(events.AppConfigEvent{Config: &input.Body})
+
+	config, getErr := self.addonsService.GetAppConfig(ctx)
+	if getErr != nil {
+		return nil, huma.Error500InternalServerError("App configuration updated but reload failed: %v", getErr)
+	}
+
+	return &struct{ Body dto.AppConfigData }{Body: *config}, nil
 }

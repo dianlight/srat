@@ -217,6 +217,9 @@ type EventBusInterface interface {
 	// Setting events
 	EmitSetting(event SettingEvent)
 	OnSetting(handler func(context.Context, SettingEvent) errors.E) func()
+	// AppConfig events
+	EmitAppConfig(event AppConfigEvent)
+	OnAppConfig(handler func(context.Context, AppConfigEvent) errors.E) func()
 	// Samba events
 	EmitServerProcess(event ServerProcessEvent)
 	OnServerProccess(handler func(context.Context, ServerProcessEvent) errors.E) func()
@@ -256,6 +259,7 @@ type EventBus struct {
 	mountPoint     signals.SyncSignal[MountPointEvent]
 	user           signals.SyncSignal[UserEvent]
 	setting        signals.SyncSignal[SettingEvent]
+	appConfig      signals.SyncSignal[AppConfigEvent]
 	samba          signals.SyncSignal[ServerProcessEvent]
 	volume         signals.SyncSignal[VolumeEvent]
 	dirtyData      signals.SyncSignal[DirtyDataEvent]
@@ -275,6 +279,7 @@ func NewEventBus(ctx context.Context) EventBusInterface {
 		mountPoint:     *signals.NewSync[MountPointEvent](),
 		user:           *signals.NewSync[UserEvent](),
 		setting:        *signals.NewSync[SettingEvent](),
+		appConfig:      *signals.NewSync[AppConfigEvent](),
 		samba:          *signals.NewSync[ServerProcessEvent](),
 		volume:         *signals.NewSync[VolumeEvent](),
 		dirtyData:      *signals.NewSync[DirtyDataEvent](),
@@ -387,6 +392,15 @@ func (eb *EventBus) EmitSetting(event SettingEvent) {
 
 func (eb *EventBus) OnSetting(handler func(context.Context, SettingEvent) errors.E) func() {
 	return onEvent(eb.setting, "Setting", handler)
+}
+
+// AppConfig event methods
+func (eb *EventBus) EmitAppConfig(event AppConfigEvent) {
+	emitEvent(eb.appConfig, eb.ctx, event)
+}
+
+func (eb *EventBus) OnAppConfig(handler func(context.Context, AppConfigEvent) errors.E) func() {
+	return onEvent(eb.appConfig, "AppConfig", handler)
 }
 
 // Samba event methods

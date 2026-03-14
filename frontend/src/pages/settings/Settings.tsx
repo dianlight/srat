@@ -37,6 +37,7 @@ import {
 } from "../../store/sratApi";
 import { useGetServerEventsQuery } from "../../store/sseApi";
 import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
+import { AppConfigurationPanel } from "./AppConfigurationPanel";
 
 // --- IP Address and CIDR Validation Helpers ---
 // Matches IPv4 address or IPv4 CIDR (e.g., 192.168.1.1 or 192.168.1.0/24)
@@ -143,6 +144,12 @@ const buildSettingsTree = (): SettingTreeNode[] => {
 
 			tree.push(categoryNode);
 		}
+	});
+
+	tree.push({
+		id: "app_configuration",
+		label: "App Configuration",
+		settingName: "app_configuration",
 	});
 
 	return tree;
@@ -268,6 +275,10 @@ export function Settings() {
 			control,
 			disabled: evdata?.hello?.read_only,
 		};
+
+		if (settingName === "app_configuration") {
+			return <AppConfigurationPanel readOnly={Boolean(evdata?.hello?.read_only)} />;
+		}
 
 		let all_categories = { ...categories };
 		if (getCurrentEnv() !== 'production') {
@@ -1066,30 +1077,32 @@ export function Settings() {
 				</Box>
 
 				{/* Bottom Button Bar */}
-				<Paper sx={{ p: { xs: 1.5, md: 2 }, borderTop: 1, borderColor: 'divider' }}>
-					<Stack
-						direction={{ xs: 'column', sm: 'row' }}
-						spacing={2}
-						sx={{
-							justifyContent: { xs: 'stretch', sm: 'flex-end' },
-							alignItems: { xs: 'stretch', sm: 'center' },
-						}}
-					>
-						<Button onClick={() => reset()} disabled={!formState.isDirty} fullWidth={true}>
-							Reset
-						</Button>
-						<Button
-							type="submit"
-							form="settingsform"
-							disabled={!formState.isDirty}
-							variant="outlined"
-							color="success"
-							fullWidth={true}
+				{selectedSetting !== "app_configuration" ? (
+					<Paper sx={{ p: { xs: 1.5, md: 2 }, borderTop: 1, borderColor: 'divider' }}>
+						<Stack
+							direction={{ xs: 'column', sm: 'row' }}
+							spacing={2}
+							sx={{
+								justifyContent: { xs: 'stretch', sm: 'flex-end' },
+								alignItems: { xs: 'stretch', sm: 'center' },
+							}}
 						>
-							Apply
-						</Button>
-					</Stack>
-				</Paper>
+							<Button onClick={() => reset()} disabled={!formState.isDirty} fullWidth={true}>
+								Reset
+							</Button>
+							<Button
+								type="submit"
+								form="settingsform"
+								disabled={!formState.isDirty}
+								variant="outlined"
+								color="success"
+								fullWidth={true}
+							>
+								Apply
+							</Button>
+						</Stack>
+					</Paper>
+				) : null}
 			</Box>
 		</InView>
 	);

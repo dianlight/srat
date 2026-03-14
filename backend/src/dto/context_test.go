@@ -47,14 +47,16 @@ func TestContextState(t *testing.T) {
 
 func TestDataDirtyTracker(t *testing.T) {
 	tracker := dto.DataDirtyTracker{
-		Shares:   true,
-		Users:    false,
-		Settings: false,
+		Shares:    true,
+		Users:     false,
+		Settings:  false,
+		AppConfig: false,
 	}
 
 	assert.True(t, tracker.Shares)
 	assert.False(t, tracker.Users)
 	assert.False(t, tracker.Settings)
+	assert.False(t, tracker.AppConfig)
 }
 
 func TestDataDirtyTrackerAllFalse(t *testing.T) {
@@ -63,18 +65,21 @@ func TestDataDirtyTrackerAllFalse(t *testing.T) {
 	assert.False(t, tracker.Shares)
 	assert.False(t, tracker.Users)
 	assert.False(t, tracker.Settings)
+	assert.False(t, tracker.AppConfig)
 }
 
 func TestDataDirtyTrackerAllTrue(t *testing.T) {
 	tracker := dto.DataDirtyTracker{
-		Shares:   true,
-		Users:    true,
-		Settings: true,
+		Shares:    true,
+		Users:     true,
+		Settings:  true,
+		AppConfig: true,
 	}
 
 	assert.True(t, tracker.Shares)
 	assert.True(t, tracker.Users)
 	assert.True(t, tracker.Settings)
+	assert.True(t, tracker.AppConfig)
 }
 
 func TestHealthPing(t *testing.T) {

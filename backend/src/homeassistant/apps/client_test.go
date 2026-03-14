@@ -1,4 +1,4 @@
-package addons
+package apps
 
 import (
 	"context"
@@ -31,7 +31,7 @@ func TestNewClientAppliesOptions(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "http://example.com/", client.Server)
 
-	_, err = client.GetSelfAddonInfo(context.Background())
+	_, err = client.GetAppInfo(context.Background(), "self")
 	require.Error(t, err)
 	assert.True(t, called)
 	require.NotNil(t, lastReq)
@@ -39,7 +39,7 @@ func TestNewClientAppliesOptions(t *testing.T) {
 	assert.True(t, editorCalled)
 
 	additionalCalled := false
-	req, err := NewGetSelfAddonInfoRequest(client.Server)
+	req, err := NewGetAppInfoRequest(client.Server, "self")
 	require.NoError(t, err)
 	err = client.applyEditors(context.Background(), req, []RequestEditorFn{func(ctx context.Context, req *http.Request) error {
 		additionalCalled = true

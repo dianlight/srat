@@ -68,6 +68,12 @@ type SettingEvent struct {
 	Setting *dto.Settings
 }
 
+// AppConfigEvent represents an app configuration-related event.
+type AppConfigEvent struct {
+	Event
+	Config *dto.AppConfigUpdateRequest
+}
+
 // ServerProcessEvent represents a Samba-related event
 type ServerProcessEvent struct {
 	Event

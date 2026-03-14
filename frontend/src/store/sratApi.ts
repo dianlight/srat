@@ -369,6 +369,42 @@ const injectedRtkApi = api
         }),
         invalidatesTags: ["system"],
       }),
+      getApiSettingsAppConfig: build.query<
+        GetApiSettingsAppConfigApiResponse,
+        GetApiSettingsAppConfigApiArg
+      >({
+        query: () => ({ url: `/api/settings/app-config` }),
+        providesTags: ["system"],
+      }),
+      patchApiSettingsAppConfig: build.mutation<
+        PatchApiSettingsAppConfigApiResponse,
+        PatchApiSettingsAppConfigApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/settings/app-config`,
+          method: "PATCH",
+          body: queryArg.body,
+        }),
+        invalidatesTags: ["system"],
+      }),
+      putApiSettingsAppConfig: build.mutation<
+        PutApiSettingsAppConfigApiResponse,
+        PutApiSettingsAppConfigApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/settings/app-config`,
+          method: "PUT",
+          body: queryArg.appConfigUpdateRequest,
+        }),
+        invalidatesTags: ["system"],
+      }),
+      getApiSettingsAppConfigSchema: build.query<
+        GetApiSettingsAppConfigSchemaApiResponse,
+        GetApiSettingsAppConfigSchemaApiArg
+      >({
+        query: () => ({ url: `/api/settings/app-config/schema` }),
+        providesTags: ["system"],
+      }),
       postApiShare: build.mutation<PostApiShareApiResponse, PostApiShareApiArg>(
         {
           query: (queryArg) => ({
@@ -796,6 +832,26 @@ export type PutApiSettingsApiResponse = /** status 200 OK */
 export type PutApiSettingsApiArg = {
   settings: Settings;
 };
+export type GetApiSettingsAppConfigApiResponse = /** status 200 OK */
+  | AppConfigData
+  | /** status default Error */ ErrorModel;
+export type GetApiSettingsAppConfigApiArg = void;
+export type PatchApiSettingsAppConfigApiResponse = /** status 200 OK */
+  | AppConfigData
+  | /** status default Error */ ErrorModel;
+export type PatchApiSettingsAppConfigApiArg = {
+  body: JsonPatchOp[] | null;
+};
+export type PutApiSettingsAppConfigApiResponse = /** status 200 OK */
+  | AppConfigData
+  | /** status default Error */ ErrorModel;
+export type PutApiSettingsAppConfigApiArg = {
+  appConfigUpdateRequest: AppConfigUpdateRequest;
+};
+export type GetApiSettingsAppConfigSchemaApiResponse = /** status 200 OK */
+  | AppConfigSchema
+  | /** status default Error */ ErrorModel;
+export type GetApiSettingsAppConfigSchemaApiArg = void;
 export type PostApiShareApiResponse = /** status 200 OK */
   | SharedResource
   | /** status default Error */ ErrorModel;
@@ -1280,7 +1336,7 @@ export type StopHdIdleServiceOutputBody = {
   message: string;
   running: boolean;
 };
-export type AddonStatsData = {
+export type AppStatsData = {
   blk_read?: number;
   blk_write?: number;
   cpu_percent?: number;
@@ -1291,6 +1347,7 @@ export type AddonStatsData = {
   network_tx?: number;
 };
 export type DataDirtyTracker = {
+  app_config: boolean;
   settings: boolean;
   shares: boolean;
   users: boolean;
@@ -1439,7 +1496,7 @@ export type SambaStatus = {
 export type HealthPing = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
-  addon_stats: AddonStatsData;
+  addon_stats: AppStatsData;
   alive: boolean;
   aliveTime: number;
   dirty_tracking: DataDirtyTracker;
@@ -1555,6 +1612,37 @@ export type Settings = {
   smb_over_quic?: boolean;
   telemetry_mode?: Telemetry_mode;
   workgroup?: string;
+};
+export type AppConfigData = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  options: {
+    [key: string]: unknown;
+  };
+  requires_restart: boolean;
+  runtime_config: {
+    [key: string]: unknown;
+  };
+};
+export type AppConfigUpdateRequest = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  options: {
+    [key: string]: unknown;
+  };
+};
+export type AppConfigSchemaField = {
+  constraint: string;
+  description?: string;
+  name: string;
+};
+export type AppConfigSchema = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  description?: string;
+  fields: AppConfigSchemaField[] | null;
+  long_description?: string;
+  requires_restart: boolean;
 };
 export type MountPointData = {
   /** A URL to the JSON Schema for this object. */
@@ -1875,6 +1963,10 @@ export const {
   useGetApiSettingsQuery,
   usePatchApiSettingsMutation,
   usePutApiSettingsMutation,
+  useGetApiSettingsAppConfigQuery,
+  usePatchApiSettingsAppConfigMutation,
+  usePutApiSettingsAppConfigMutation,
+  useGetApiSettingsAppConfigSchemaQuery,
   usePostApiShareMutation,
   useDeleteApiShareByShareNameMutation,
   useGetApiShareByShareNameQuery,

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
@@ -671,20 +672,32 @@ func (self *ServerService) writeNFSConfig(ctx context.Context) errors.E {
 			continue
 		}
 
-		// Generate NFS export entry
-		// Format: /path/to/share *(rw,sync,no_subtree_check,no_root_squash,fsid=X)
-		// Using fsid based on share index to ensure unique identification
-		exportsContent.WriteString(path)
-		exportsContent.WriteString(" ")
-		exportsContent.WriteString(hostname)
-		exportsContent.WriteString("(rw,sync,mp,no_subtree_check,no_root_squash")
-		// fsid need to be a UUID valid format
-		//exportsContent.WriteString(",fsid=")
-		//exportsContent.WriteString(strings.ReplaceAll(share.MountPointData.DeviceId, "-", ""))
-		exportsContent.WriteString(")\n")
+		// Skip if mount point data fs is not exportable (e.g. apfs)
+		// TODO: we should popolate partition and filesystem info in the mount struct so that we can make a more informed decision about nfs vs cifs and also populate the path for nfs mounts instead of defaulting to the share name
 
-		exportCount++
-		tlog.DebugContext(ctx, "Added NFS export", "name", share.Name, "path", path, "usage", usage)
+		if share.MountPointData.Partition != nil &&
+			share.MountPointData.Partition.FilesystemInfo != nil &&
+			share.MountPointData.Partition.FilesystemInfo.Support != nil &&
+			share.MountPointData.Partition.FilesystemInfo.Support.IsExportable {
+			// Generate NFS export entry
+			// Format: /path/to/share *(rw,sync,no_subtree_check,no_root_squash,fsid=X)
+			// Using fsid based on share index to ensure unique identification
+			exportsContent.WriteString(path)
+			exportsContent.WriteString(" ")
+			exportsContent.WriteString(hostname)
+			exportsContent.WriteString("(rw,sync,mp,no_subtree_check,no_root_squash")
+			// fsid need to be a UUID valid format
+			//exportsContent.WriteString(",fsid=")
+			//exportsContent.WriteString(strings.ReplaceAll(share.MountPointData.DeviceId, "-", ""))
+			exportsContent.WriteString(")\n")
+
+			exportCount++
+			tlog.DebugContext(ctx, "Added NFS export", "name", share.Name, "path", path, "usage", usage)
+		} else {
+			tlog.DebugContext(ctx, "Skipping share with non-exportable filesystem", "name", share.Name, "filesystem", spew.Sdump(share.MountPointData))
+			continue
+		}
+
 	}
 
 	slog.InfoContext(ctx, "Generated NFS exports configuration", "exportCount", exportCount)

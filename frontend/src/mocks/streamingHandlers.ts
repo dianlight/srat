@@ -47,6 +47,7 @@ const mockEventData = {
 			shares: false,
 			users: false,
 			settings: false,
+			app_config: false,
 		},
 		update_available: false,
 		addon_stats: {
@@ -101,6 +102,7 @@ const mockEventData = {
 		shares: false,
 		users: false,
 		settings: false,
+		app_config: false,
 	}),
 
 	smart_test_status: (): SmartTestStatus => ({

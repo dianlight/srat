@@ -1,5 +1,6 @@
+import { beforeEach, describe, expect, it } from "bun:test";
+import { http, HttpResponse } from "msw";
 import "../../../../test/setup";
-import { describe, it, expect, beforeEach } from "bun:test";
 
 // LocalStorage mock for the tests
 if (!(globalThis as any).localStorage) {
@@ -60,6 +61,9 @@ describe("Settings", () => {
 
     it("can import API hooks from sratApi", async () => {
         const {
+            useGetApiSettingsAppConfigQuery,
+            useGetApiSettingsAppConfigSchemaQuery,
+            usePutApiSettingsAppConfigMutation,
             useGetApiHostnameQuery,
             useGetApiNicsQuery,
             useGetApiSettingsQuery,
@@ -71,6 +75,9 @@ describe("Settings", () => {
             Telemetry_mode
         } = await import("../../../store/sratApi");
 
+        expect(typeof useGetApiSettingsAppConfigQuery).toBe("function");
+        expect(typeof useGetApiSettingsAppConfigSchemaQuery).toBe("function");
+        expect(typeof usePutApiSettingsAppConfigMutation).toBe("function");
         expect(typeof useGetApiHostnameQuery).toBe("function");
         expect(typeof useGetApiNicsQuery).toBe("function");
         expect(typeof useGetApiSettingsQuery).toBe("function");
@@ -441,5 +448,198 @@ describe("Settings", () => {
 
         // Component should render without errors
         expect(screen.queryAllByRole('button').length).toBeGreaterThan(0);
+    });
+
+    it("renders app configuration category and restart warning", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { getMswServer } = await import("../../../../test/bun-setup");
+        const { Settings } = await import("../Settings");
+        const { createTestStore } = await import("../../../../test/setup");
+
+        const server = await getMswServer();
+        server.use(
+            http.get(/.*\/api\/settings\/app-config$/, () => HttpResponse.json({
+                options: {
+                    auto_update: false,
+                    clean_upgrade_dir: false,
+                    disable_ipv6: false,
+                    factory_reset: false,
+                    leave_front_door_open: false,
+                    log_level: "info",
+                    srat_update_channel: "release",
+                    use_external_kernel_modules: true,
+                },
+                runtime_config: { rendered: true },
+                requires_restart: true,
+            })),
+            http.get(/.*\/api\/settings\/app-config\/schema$/, () => HttpResponse.json({
+                description: "Configure the current app.",
+                long_description: "Schema-driven settings for the running app.",
+                requires_restart: true,
+                fields: [
+                    { name: "auto_update", constraint: "bool", description: "Auto update", optional: false },
+                    { name: "clean_upgrade_dir", constraint: "bool", description: "Clean upgrade dir", optional: false },
+                    { name: "disable_ipv6", constraint: "bool", description: "Disable ipv6", optional: false },
+                    { name: "factory_reset", constraint: "bool", description: "Factory reset", optional: false },
+                    { name: "leave_front_door_open", constraint: "bool", description: "Leave front door open", optional: false },
+                    { name: "log_level", constraint: "str", description: "Logging verbosity", optional: false, options: ["trace", "debug", "info", "notice", "warning", "error", "fatal"] },
+                    { name: "srat_update_channel", constraint: "str", description: "Update channel", optional: false, options: ["none", "develop", "release", "prerelease"] },
+                    { name: "use_external_kernel_modules", constraint: "bool", description: "Use external modules", optional: false },
+                ],
+            })),
+        );
+
+        const store = await createTestStore();
+        const theme = createTheme();
+
+        render(
+            React.createElement(
+                Provider,
+                {
+                    store, children:
+                        React.createElement(
+                            ThemeProvider,
+                            { theme },
+                            React.createElement(Settings as any)
+                        )
+                }
+            )
+        );
+
+        const user = userEvent.setup();
+        const appConfigTreeItems = await screen.findAllByText("App Configuration");
+        await user.click(appConfigTreeItems[0] as HTMLElement);
+
+        expect(await screen.findByText(/changes require an app restart/i)).toBeTruthy();
+        expect((await screen.findAllByRole("switch")).length).toBeGreaterThanOrEqual(6);
+        expect((await screen.findAllByRole("switch", { name: /auto update/i })).length).toBeGreaterThan(0);
+        expect((await screen.findAllByRole("switch", { name: /clean upgrade dir/i })).length).toBeGreaterThan(0);
+        expect((await screen.findAllByRole("switch", { name: /use external kernel modules/i })).length).toBeGreaterThan(0);
+        expect(await screen.findByRole("combobox", { name: /log level/i })).toBeTruthy();
+        expect(await screen.findByRole("combobox", { name: /srat update channel/i })).toBeTruthy();
+    });
+
+    it("renders app configuration from option values when schema map is descriptor-like", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { getMswServer } = await import("../../../../test/bun-setup");
+        const { Settings } = await import("../Settings");
+        const { createTestStore } = await import("../../../../test/setup");
+
+        const server = await getMswServer();
+        server.use(
+            http.get(/.*\/api\/settings\/app-config$/, () => HttpResponse.json({
+                options: {
+                    auto_update: true,
+                    clean_upgrade_dir: false,
+                    disable_ipv6: false,
+                    factory_reset: false,
+                    leave_front_door_open: true,
+                    log_level: "debug",
+                    srat_update_channel: "develop",
+                    use_external_kernel_modules: true,
+                },
+                runtime_config: { rendered: true },
+                requires_restart: true,
+            })),
+            http.get(/.*\/api\/settings\/app-config\/schema$/, () => HttpResponse.json({
+                description: "Configure the current app.",
+                long_description: "Schema-driven settings for the running app.",
+                requires_restart: true,
+                fields: [],
+            })),
+        );
+
+        const store = await createTestStore();
+        const theme = createTheme();
+
+        render(
+            React.createElement(
+                Provider,
+                {
+                    store, children:
+                        React.createElement(
+                            ThemeProvider,
+                            { theme },
+                            React.createElement(Settings as any)
+                        )
+                }
+            )
+        );
+
+        const user = userEvent.setup();
+        const appConfigTreeItems = await screen.findAllByText("App Configuration");
+        await user.click(appConfigTreeItems[0] as HTMLElement);
+
+        expect((await screen.findAllByRole("switch")).length).toBeGreaterThanOrEqual(6);
+        expect((await screen.findAllByRole("switch", { name: /auto update/i })).length).toBeGreaterThan(0);
+        expect((await screen.findAllByRole("switch", { name: /use external kernel modules/i })).length).toBeGreaterThan(0);
+        expect(await screen.findByRole("textbox", { name: /log level/i })).toBeTruthy();
+        expect(await screen.findByRole("textbox", { name: /srat update channel/i })).toBeTruthy();
+    });
+
+    it("hides rendered runtime configuration when it matches options", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { getMswServer } = await import("../../../../test/bun-setup");
+        const { Settings } = await import("../Settings");
+        const { createTestStore } = await import("../../../../test/setup");
+
+        const sameConfig = {
+            auto_update: true,
+            log_level: "debug",
+        };
+
+        const server = await getMswServer();
+        server.use(
+            http.get(/.*\/api\/settings\/app-config$/, () => HttpResponse.json({
+                options: sameConfig,
+                runtime_config: sameConfig,
+                requires_restart: true,
+            })),
+            http.get(/.*\/api\/settings\/app-config\/schema$/, () => HttpResponse.json({
+                description: "Configure the current app.",
+                long_description: "Schema-driven settings for the running app.",
+                requires_restart: true,
+                fields: [
+                    { name: "auto_update", constraint: "bool", description: "Auto update", optional: false },
+                    { name: "log_level", constraint: "str", description: "Logging verbosity", optional: false, options: ["debug", "info"] },
+                ],
+            })),
+        );
+
+        const store = await createTestStore();
+        const theme = createTheme();
+
+        render(
+            React.createElement(
+                Provider,
+                {
+                    store, children:
+                        React.createElement(
+                            ThemeProvider,
+                            { theme },
+                            React.createElement(Settings as any)
+                        )
+                }
+            )
+        );
+
+        const user = userEvent.setup();
+        const appConfigTreeItems = await screen.findAllByText("App Configuration");
+        await user.click(appConfigTreeItems[0] as HTMLElement);
+
+        expect(await screen.findByRole("switch", { name: /auto update/i })).toBeTruthy();
+        expect(screen.queryByText(/rendered runtime configuration/i)).toBeNull();
     });
 });

@@ -665,6 +665,68 @@ func (suite *ServerProcessServiceSuite) TestCreateConfigStream_VersionPatchVaria
 	suite.Contains(configStr, "server smb transports", "Samba 4.24.0 should include server smb transports")
 }
 
+// TestCreateConfigStream_Samba423_QUICEnabled tests that QUIC transport and TLS settings
+// are included when SMBoverQUIC is enabled on Samba 4.23+.
+func (suite *ServerProcessServiceSuite) TestCreateConfigStream_Samba423_QUICEnabled() {
+	defer osutil.MockSambaVersion("4.23.0")()
+
+	mock.When(suite.setting_service.Load()).ThenReturn(&dto.Settings{
+		Hostname:          "test-host",
+		Workgroup:         "WORKGROUP",
+		AllowHost:         []string{"10.0.0.0/8", "100.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "169.254.0.0/16", "fe80::/10", "fc00::/7"},
+		Interfaces:        []string{"wlan0", "end0"},
+		BindAllInterfaces: false,
+		CompatibilityMode: false,
+		LocalMaster:       new(true),
+		HAUseNFS:          new(true),
+		AllowGuest:        new(false),
+		SMBoverQUIC:       new(true),
+	}, nil)
+
+	mock.When(suite.share_service.ListShares()).ThenReturn([]dto.SharedResource{}, nil)
+
+	stream, errE := suite.serverService.CreateSambaConfigStream()
+	suite.Require().NoError(errE)
+	suite.Require().NotNil(stream)
+
+	configStr := string(*stream)
+	suite.Contains(configStr, "quic", "Samba 4.23+ with QUIC enabled should include quic in server smb transports")
+	suite.Contains(configStr, "tls enabled = yes", "Samba 4.23+ with QUIC enabled should include TLS settings")
+	suite.Contains(configStr, "tls keyfile", "Samba 4.23+ with QUIC enabled should include tls keyfile")
+	suite.Contains(configStr, "tls certfile", "Samba 4.23+ with QUIC enabled should include tls certfile")
+	suite.Contains(configStr, "smb3 unix extensions = yes", "Samba 4.23+ with QUIC enabled should include smb3 unix extensions")
+	suite.NotContains(configStr, "WARNING: SMB over QUIC requires Samba 4.23.0+", "Samba 4.23+ should not emit version warning for QUIC")
+}
+
+// TestCreateConfigStream_Samba421_QUICEnabled tests that QUIC is NOT activated on
+// Samba versions below 4.23 even when SMBoverQUIC is enabled, and a warning is emitted.
+func (suite *ServerProcessServiceSuite) TestCreateConfigStream_Samba421_QUICEnabled() {
+	defer osutil.MockSambaVersion("4.21.0")()
+
+	mock.When(suite.setting_service.Load()).ThenReturn(&dto.Settings{
+		Hostname:          "test-host",
+		Workgroup:         "WORKGROUP",
+		AllowHost:         []string{"10.0.0.0/8", "100.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "169.254.0.0/16", "fe80::/10", "fc00::/7"},
+		Interfaces:        []string{"wlan0", "end0"},
+		BindAllInterfaces: false,
+		CompatibilityMode: false,
+		LocalMaster:       new(true),
+		HAUseNFS:          new(true),
+		AllowGuest:        new(false),
+		SMBoverQUIC:       new(true),
+	}, nil)
+
+	mock.When(suite.share_service.ListShares()).ThenReturn([]dto.SharedResource{}, nil)
+
+	stream, errE := suite.serverService.CreateSambaConfigStream()
+	suite.Require().NoError(errE)
+	suite.Require().NotNil(stream)
+
+	configStr := string(*stream)
+	suite.NotContains(configStr, "tls enabled = yes", "Samba 4.21 should NOT include TLS/QUIC settings")
+	suite.Contains(configStr, "WARNING: SMB over QUIC requires Samba 4.23.0+", "Samba 4.21 should emit version warning when QUIC is requested")
+}
+
 // TestGetSambaProcess_ReturnsProcessStatus tests that GetSambaProcess returns process status
 func (suite *ServerProcessServiceSuite) TestGetSambaProcess_ReturnsProcessStatus() {
 	// GetSambaProcess should return a non-nil SambaProcessStatus

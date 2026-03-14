@@ -709,6 +709,131 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_Update400_WithRetryLo
 	mock.Verify(suite.mountClient, matchers.Times(1)).CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())
 }
 
+// newNfsMountTestApp recreates the supervisor service app with a mocked SettingServiceInterface so
+// each NFS/CIFS selection test can independently control the HAUseNFS setting.
+// SupervisorURL "demo" is used so NetworkGetAllMounted returns an empty map without real API calls.
+func (suite *SupervisorServiceSuite) newNfsMountTestApp() (settingService service.SettingServiceInterface) {
+	suite.app.RequireStop()
+	suite.app = fxtest.New(suite.T(),
+		fx.Provide(
+			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
+			func() (context.Context, context.CancelFunc) { return context.WithCancel(context.Background()) },
+			func() *dto.ContextState {
+				return &dto.ContextState{HACoreReady: true, SupervisorURL: "demo", AddonIpAddress: "172.30.32.1"}
+			},
+			service.NewSupervisorService,
+			events.NewEventBus,
+			mock.Mock[mount.ClientWithResponsesInterface],
+			mock.Mock[service.ShareServiceInterface],
+			mock.Mock[service.DirtyDataServiceInterface],
+			mock.Mock[service.SettingServiceInterface],
+		),
+		fx.Populate(&suite.supervisorService),
+		fx.Populate(&suite.mountClient),
+		fx.Populate(&settingService),
+	)
+	suite.app.RequireStart()
+	return settingService
+}
+
+// shareWithExportableFS returns a SharedResource whose partition filesystem has IsExportable set as specified.
+func shareWithExportableFS(exportable bool) dto.SharedResource {
+	return dto.SharedResource{
+		Name:  "test-share",
+		Usage: "media",
+		MountPointData: &dto.MountPointData{
+			Path: "/mnt/test",
+			Partition: &dto.Partition{
+				FilesystemInfo: &dto.FilesystemInfo{
+					Support: &dto.FilesystemSupport{IsExportable: exportable},
+				},
+			},
+		},
+	}
+}
+
+// TestNetworkMountShare_UseNfsFalse_ExportableFS checks that useNfs=false always uses CIFS,
+// even when the partition filesystem is NFS-exportable.
+func (suite *SupervisorServiceSuite) TestNetworkMountShare_UseNfsFalse_ExportableFS() {
+	settingService := suite.newNfsMountTestApp()
+
+	useNfs := false
+	mock.When(settingService.Load()).ThenReturn(&dto.Settings{HAUseNFS: &useNfs}, nil)
+
+	mountCaptor := mock.Captor[mount.Mount]()
+	mock.When(suite.mountClient.CreateMountWithResponse(mock.Any[context.Context](), mountCaptor.Capture())).
+		ThenReturn(&mount.CreateMountResponse{HTTPResponse: &http.Response{StatusCode: 200}, Body: []byte(`{"result":"ok"}`)}, nil)
+
+	err := suite.supervisorService.NetworkMountShare(context.Background(), shareWithExportableFS(true))
+
+	suite.Require().NoError(err)
+	captured := mountCaptor.Last()
+	suite.Require().NotNil(captured.Type)
+	suite.Equal(mount.MountType("cifs"), *captured.Type, "useNfs=false with exportable fs should use CIFS")
+}
+
+// TestNetworkMountShare_UseNfsFalse_NonExportableFS checks that useNfs=false always uses CIFS
+// when the partition filesystem is not NFS-exportable.
+func (suite *SupervisorServiceSuite) TestNetworkMountShare_UseNfsFalse_NonExportableFS() {
+	settingService := suite.newNfsMountTestApp()
+
+	useNfs := false
+	mock.When(settingService.Load()).ThenReturn(&dto.Settings{HAUseNFS: &useNfs}, nil)
+
+	mountCaptor := mock.Captor[mount.Mount]()
+	mock.When(suite.mountClient.CreateMountWithResponse(mock.Any[context.Context](), mountCaptor.Capture())).
+		ThenReturn(&mount.CreateMountResponse{HTTPResponse: &http.Response{StatusCode: 200}, Body: []byte(`{"result":"ok"}`)}, nil)
+
+	err := suite.supervisorService.NetworkMountShare(context.Background(), shareWithExportableFS(false))
+
+	suite.Require().NoError(err)
+	captured := mountCaptor.Last()
+	suite.Require().NotNil(captured.Type)
+	suite.Equal(mount.MountType("cifs"), *captured.Type, "useNfs=false with non-exportable fs should use CIFS")
+}
+
+// TestNetworkMountShare_UseNfsTrue_ExportableFS checks that useNfs=true with an NFS-exportable
+// partition selects NFS as the mount protocol.
+func (suite *SupervisorServiceSuite) TestNetworkMountShare_UseNfsTrue_ExportableFS() {
+	settingService := suite.newNfsMountTestApp()
+
+	useNfs := true
+	mock.When(settingService.Load()).ThenReturn(&dto.Settings{HAUseNFS: &useNfs}, nil)
+
+	mountCaptor := mock.Captor[mount.Mount]()
+	mock.When(suite.mountClient.CreateMountWithResponse(mock.Any[context.Context](), mountCaptor.Capture())).
+		ThenReturn(&mount.CreateMountResponse{HTTPResponse: &http.Response{StatusCode: 200}, Body: []byte(`{"result":"ok"}`)}, nil)
+
+	err := suite.supervisorService.NetworkMountShare(context.Background(), shareWithExportableFS(true))
+
+	suite.Require().NoError(err)
+	captured := mountCaptor.Last()
+	suite.Require().NotNil(captured.Type)
+	suite.Equal(mount.MountType("nfs"), *captured.Type, "useNfs=true with exportable fs should use NFS")
+	suite.Require().NotNil(captured.Path)
+	suite.Equal("/mnt/test", *captured.Path, "NFS mount should set the share path")
+}
+
+// TestNetworkMountShare_UseNfsTrue_NonExportableFS checks that useNfs=true falls back to CIFS
+// when the partition filesystem is not NFS-exportable.
+func (suite *SupervisorServiceSuite) TestNetworkMountShare_UseNfsTrue_NonExportableFS() {
+	settingService := suite.newNfsMountTestApp()
+
+	useNfs := true
+	mock.When(settingService.Load()).ThenReturn(&dto.Settings{HAUseNFS: &useNfs}, nil)
+
+	mountCaptor := mock.Captor[mount.Mount]()
+	mock.When(suite.mountClient.CreateMountWithResponse(mock.Any[context.Context](), mountCaptor.Capture())).
+		ThenReturn(&mount.CreateMountResponse{HTTPResponse: &http.Response{StatusCode: 200}, Body: []byte(`{"result":"ok"}`)}, nil)
+
+	err := suite.supervisorService.NetworkMountShare(context.Background(), shareWithExportableFS(false))
+
+	suite.Require().NoError(err)
+	captured := mountCaptor.Last()
+	suite.Require().NotNil(captured.Type)
+	suite.Equal(mount.MountType("cifs"), *captured.Type, "useNfs=true with non-exportable fs should fall back to CIFS")
+}
+
 // NetworkUnmountAllShares should unmount all eligible shares (media/share/backup) that are currently mounted
 func (suite *SupervisorServiceSuite) TestNetworkUnmountAllShares_Success() {
 	// Shares configured in the system

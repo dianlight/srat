@@ -1,4 +1,4 @@
-package addons
+package apps
 
 import (
 	"context"
@@ -30,13 +30,13 @@ func TestActionResult_EmptyData(t *testing.T) {
 	assert.Equal(t, ActionResultResultOk, result.Result)
 }
 
-func TestAddonInfoDataBoot_Values(t *testing.T) {
+func TestAppInfoDataBoot_Values(t *testing.T) {
 	tests := []struct {
 		name  string
-		value AddonInfoDataBoot
+		value AppInfoDataBoot
 	}{
-		{"Auto", AddonInfoDataBootAuto},
-		{"Manual", AddonInfoDataBootManual},
+		{"Auto", AppInfoDataBootAuto},
+		{"Manual", AppInfoDataBootManual},
 	}
 
 	for _, tt := range tests {
@@ -46,14 +46,14 @@ func TestAddonInfoDataBoot_Values(t *testing.T) {
 	}
 }
 
-func TestAddonInfoDataStage_Values(t *testing.T) {
+func TestAppInfoDataStage_Values(t *testing.T) {
 	tests := []struct {
 		name  string
-		value AddonInfoDataStage
+		value AppInfoDataStage
 	}{
-		{"Deprecated", Deprecated},
-		{"Experimental", Experimental},
-		{"Stable", Stable},
+		{"Deprecated", AppInfoDataStageDeprecated},
+		{"Experimental", AppInfoDataStageExperimental},
+		{"Stable", AppInfoDataStageStable},
 	}
 
 	for _, tt := range tests {
@@ -63,10 +63,10 @@ func TestAddonInfoDataStage_Values(t *testing.T) {
 	}
 }
 
-func TestAddonInfoDataStartup_Values(t *testing.T) {
+func TestAppInfoDataStartup_Values(t *testing.T) {
 	tests := []struct {
 		name  string
-		value AddonInfoDataStartup
+		value AppInfoDataStartup
 	}{
 		{"Application", Application},
 		{"Initialize", Initialize},
@@ -82,15 +82,15 @@ func TestAddonInfoDataStartup_Values(t *testing.T) {
 	}
 }
 
-func TestAddonInfoDataState_Values(t *testing.T) {
+func TestAppInfoDataState_Values(t *testing.T) {
 	tests := []struct {
 		name  string
-		value AddonInfoDataState
+		value AppInfoDataState
 	}{
-		{"Error", Error},
-		{"Started", Started},
-		{"Stopped", Stopped},
-		{"Unknown", Unknown},
+		{"Error", AppInfoDataStateError},
+		{"Started", AppInfoDataStateStarted},
+		{"Stopped", AppInfoDataStateStopped},
+		{"Unknown", AppInfoDataStateUnknown},
 	}
 
 	for _, tt := range tests {
@@ -100,17 +100,17 @@ func TestAddonInfoDataState_Values(t *testing.T) {
 	}
 }
 
-func TestAddonInfoData_Fields(t *testing.T) {
+func TestAppInfoData_Fields(t *testing.T) {
 	arch := []string{"amd64", "aarch64"}
 	authApi := true
 	autoUpdate := false
-	boot := AddonInfoDataBootAuto
-	desc := "Test Addon"
+	boot := AppInfoDataBootAuto
+	desc := "Test App"
 	fullAccess := true
-	hostname := "test-addon"
+	hostname := "test-app"
 	icon := true
 
-	data := AddonInfoData{
+	data := AppInfoData{
 		Arch:        &arch,
 		AuthApi:     &authApi,
 		AutoUpdate:  &autoUpdate,
@@ -125,16 +125,16 @@ func TestAddonInfoData_Fields(t *testing.T) {
 	assert.Len(t, *data.Arch, 2)
 	assert.True(t, *data.AuthApi)
 	assert.False(t, *data.AutoUpdate)
-	assert.Equal(t, AddonInfoDataBootAuto, *data.Boot)
-	assert.Equal(t, "Test Addon", *data.Description)
+	assert.Equal(t, AppInfoDataBootAuto, *data.Boot)
+	assert.Equal(t, "Test App", *data.Description)
 	assert.True(t, *data.FullAccess)
-	assert.Equal(t, "test-addon", *data.Hostname)
+	assert.Equal(t, "test-app", *data.Hostname)
 	assert.True(t, *data.Icon)
 }
 
-func TestClient_GetSelfAddonInfoSuccess(t *testing.T) {
+func TestClient_GetAppInfoSuccess(t *testing.T) {
 	mockTransport := httpmock.NewMockTransport()
-	infoResponse := httpmock.NewStringResponse(http.StatusOK, `{"result":"ok","data":{"description":"Test addon"}}`)
+	infoResponse := httpmock.NewStringResponse(http.StatusOK, `{"result":"ok","data":{"description":"Test app"}}`)
 	infoResponse.Header.Set("Content-Type", "application/json")
 	mockTransport.RegisterResponder(http.MethodGet, "http://example.com/addons/self/info", httpmock.ResponderFromResponse(infoResponse))
 	clientHTTP := &http.Client{Transport: mockTransport}
@@ -142,7 +142,7 @@ func TestClient_GetSelfAddonInfoSuccess(t *testing.T) {
 	client, err := NewClient("http://example.com", WithHTTPClient(clientHTTP))
 	assert.NoError(t, err)
 
-	resp, err := client.GetSelfAddonInfo(context.Background())
+	resp, err := client.GetAppInfo(context.Background(), "self")
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
 }
@@ -159,40 +159,40 @@ func TestClient_WithBaseURL(t *testing.T) {
 	assert.Equal(t, "http://override.com/", client.Server)
 }
 
-func TestNewGetSelfAddonInfoRequest(t *testing.T) {
-	req, err := NewGetSelfAddonInfoRequest("http://example.com")
+func TestNewGetAppInfoRequest(t *testing.T) {
+	req, err := NewGetAppInfoRequest("http://example.com", "self")
 	assert.NoError(t, err)
 	assert.NotNil(t, req)
 	assert.Equal(t, http.MethodGet, req.Method)
 }
 
-func TestNewGetSelfAddonOptionsRequest(t *testing.T) {
-	req, err := NewSetSelfAddonOptionsRequest("http://example.com", AddonOptionsRequest{})
+func TestNewSetAppOptionsRequest(t *testing.T) {
+	req, err := NewSetAppOptionsRequest("http://example.com", "self", AppOptionsRequest{})
 	assert.NoError(t, err)
 	assert.NotNil(t, req)
 	assert.Equal(t, http.MethodPost, req.Method)
 	assert.Equal(t, "application/json", req.Header.Get("Content-Type"))
 }
 
-func TestNewGetSelfAddonStatsRequest(t *testing.T) {
-	req, err := NewGetSelfAddonStatsRequest("http://example.com")
+func TestNewGetSelfAppStatsRequest(t *testing.T) {
+	req, err := NewGetSelfAppStatsRequest("http://example.com")
 	assert.NoError(t, err)
 	assert.NotNil(t, req)
 	assert.Equal(t, http.MethodGet, req.Method)
 }
 
-func TestClient_GetSelfAddonLogsWithResponse_Success(t *testing.T) {
+func TestClient_GetAppLogsWithResponse_Success(t *testing.T) {
 	tests := []struct {
 		name   string
-		accept GetSelfAddonLogsParamsAccept
+		accept GetAppLogsParamsAccept
 	}{
 		{
 			name:   "AcceptTextPlain",
-			accept: GetSelfAddonLogsParamsAcceptTextplain,
+			accept: GetAppLogsParamsAcceptTextplain,
 		},
 		{
 			name:   "AcceptTextXLog",
-			accept: GetSelfAddonLogsParamsAcceptTextxLog,
+			accept: GetAppLogsParamsAcceptTextxLog,
 		},
 	}
 
@@ -212,7 +212,7 @@ func TestClient_GetSelfAddonLogsWithResponse_Success(t *testing.T) {
 			client, err := NewClientWithResponses("http://example.com", WithHTTPClient(clientHTTP))
 			assert.NoError(t, err)
 
-			resp, err := client.GetSelfAddonLogsWithResponse(context.Background(), &GetSelfAddonLogsParams{Accept: tt.accept})
+			resp, err := client.GetAppLogsWithResponse(context.Background(), "self", &GetAppLogsParams{Accept: tt.accept})
 			assert.NoError(t, err)
 			assert.NotNil(t, resp)
 			assert.Equal(t, http.StatusOK, resp.StatusCode())
@@ -222,18 +222,18 @@ func TestClient_GetSelfAddonLogsWithResponse_Success(t *testing.T) {
 	}
 }
 
-func TestClient_GetSelfAddonLogsLeatestWithResponse_Success(t *testing.T) {
+func TestClient_GetAppLogsLatestWithResponse_Success(t *testing.T) {
 	tests := []struct {
 		name   string
-		accept GetSelfAddonLogsLatestParamsAccept
+		accept GetAppLogsLatestParamsAccept
 	}{
 		{
 			name:   "AcceptTextPlain",
-			accept: GetSelfAddonLogsLatestParamsAcceptTextplain,
+			accept: Textplain,
 		},
 		{
 			name:   "AcceptTextXLog",
-			accept: GetSelfAddonLogsLatestParamsAcceptTextxLog,
+			accept: TextxLog,
 		},
 	}
 
@@ -253,7 +253,7 @@ func TestClient_GetSelfAddonLogsLeatestWithResponse_Success(t *testing.T) {
 			client, err := NewClientWithResponses("http://example.com", WithHTTPClient(clientHTTP))
 			assert.NoError(t, err)
 
-			resp, err := client.GetSelfAddonLogsLatestWithResponse(context.Background(), &GetSelfAddonLogsLatestParams{
+			resp, err := client.GetAppLogsLatestWithResponse(context.Background(), "self", &GetAppLogsLatestParams{
 				Lines:  new(1000),
 				Accept: tt.accept,
 			})
