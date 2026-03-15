@@ -38,6 +38,9 @@ The SMART service has been extended with comprehensive disk health monitoring an
 - **Self-Test Execution**: Initiate, abort, and monitor SMART self-tests (short, long, conveyance)
 - **SMART Control**: Enable or disable SMART functionality on devices
 - **Pre-Failure Alerts**: Automatic warnings when disk attributes indicate potential failure
+- **Sleep-Friendly Mitigation**: The `disable_smart` setting disables SRAT-side SMART polling and hides SMART UI/API integration paths when you need to keep disks asleep
+
+When `disable_smart` is enabled from the SRAT settings page, SRAT stops background SMART enrichment in `DiskStatsService` and direct SMART API operations return a clear disabled-state response instead of touching the disk. This is intended as a practical mitigation for environments where SMART activity can wake sleeping disks.
 
 **Implementation Note**: This service uses a **patched version** of `github.com/anatol/smart.go` that exposes file descriptors for direct device control. The patch is managed via `gohack` and applied automatically during the build process (`make patch`). See [Platform Support](#platform-support) and [Limitations](#limitations) sections for details.
 
@@ -304,6 +307,8 @@ The service uses specific error types for different failure scenarios:
 - `ErrorSMARTOperationFailed`: SMART operation failed at device level
 - `ErrorSMARTTestInProgress`: Cannot start new test while one is running
 - `ErrorInvalidParameter`: Invalid test type or parameter provided
+
+When SRAT SMART integration is disabled via `disable_smart`, direct SMART API endpoints return HTTP `409 Conflict` with a disabled-state error instead of performing device access.
 
 ## Limitations
 

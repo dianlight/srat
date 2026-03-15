@@ -74,7 +74,8 @@
         "backend/src/vendor/**",
         ".git/**",
         ".vale/**",
-        ".github/**"
+        ".github/**",
+        "docs/tasks/**"
     ],
     "gitignore": true
 }

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/angusgmorrison/logfusc"
+	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/google/go-github/v84/github"
@@ -489,6 +490,20 @@ func TestConfigToDto_TimeMachineSupportFromFS_AllTypes(t *testing.T) {
 			assert.Equal(t, tt.expected, *result)
 		})
 	}
+}
+
+func TestConfigDisableSmartToSetting_ExplicitDisableSmartWins(t *testing.T) {
+	disabled := true
+
+	assert.True(t, configDisableSmartToSetting(config.Config{
+		Smart:        true,
+		DisableSmart: &disabled,
+	}))
+}
+
+func TestConfigDisableSmartToSetting_FallsBackToLegacySmartFlag(t *testing.T) {
+	assert.False(t, configDisableSmartToSetting(config.Config{Smart: true}))
+	assert.True(t, configDisableSmartToSetting(config.Config{Smart: false}))
 }
 
 func TestConfigToDto_FSTypeIsWriteSupported(t *testing.T) {

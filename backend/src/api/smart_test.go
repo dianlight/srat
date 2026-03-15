@@ -22,14 +22,33 @@ import (
 
 type SmartHandlerSuite struct {
 	suite.Suite
-	app           *fxtest.App
-	handler       *api.SmartHandler
-	mockSmartSvc  service.SmartServiceInterface
-	mockVolumeSvc service.VolumeServiceInterface
-	mockDirtySvc  service.DirtyDataServiceInterface
-	mockBroadSvc  service.BroadcasterServiceInterface
-	ctx           context.Context
-	cancel        context.CancelFunc
+	app            *fxtest.App
+	handler        *api.SmartHandler
+	mockSmartSvc   service.SmartServiceInterface
+	mockSettingSvc service.SettingServiceInterface
+	mockVolumeSvc  service.VolumeServiceInterface
+	mockDirtySvc   service.DirtyDataServiceInterface
+	mockBroadSvc   service.BroadcasterServiceInterface
+	ctx            context.Context
+	cancel         context.CancelFunc
+}
+
+type fixedSettingService struct {
+	settings *dto.Settings
+}
+
+func (s fixedSettingService) Load() (*dto.Settings, errors.E) {
+	return s.settings, nil
+}
+
+func (s fixedSettingService) UpdateSettings(_ *dto.Settings) errors.E {
+	return nil
+}
+
+func (s fixedSettingService) SetCommandExists(func([]string) bool) {}
+
+func (s fixedSettingService) DumpTable() (string, errors.E) {
+	return "", nil
 }
 
 func TestSmartHandlerSuite(t *testing.T) { suite.Run(t, new(SmartHandlerSuite)) }
@@ -44,12 +63,14 @@ func (suite *SmartHandlerSuite) SetupTest() {
 			func() *dto.ContextState { return &dto.ContextState{} },
 			api.NewSmartHandler,
 			mock.Mock[service.SmartServiceInterface],
+			mock.Mock[service.SettingServiceInterface],
 			mock.Mock[service.VolumeServiceInterface],
 			mock.Mock[service.DirtyDataServiceInterface],
 			mock.Mock[service.BroadcasterServiceInterface],
 		),
 		fx.Populate(&suite.handler),
 		fx.Populate(&suite.mockSmartSvc),
+		fx.Populate(&suite.mockSettingSvc),
 		fx.Populate(&suite.mockVolumeSvc),
 		fx.Populate(&suite.mockDirtySvc),
 		fx.Populate(&suite.mockBroadSvc),
@@ -57,6 +78,7 @@ func (suite *SmartHandlerSuite) SetupTest() {
 		fx.Populate(&suite.cancel),
 	)
 	suite.app.RequireStart()
+	mock.When(suite.mockSettingSvc.Load()).ThenReturn(&dto.Settings{DisableSmart: false}, nil)
 }
 
 func (suite *SmartHandlerSuite) TearDownTest() {
@@ -324,6 +346,7 @@ func (suite *SmartHandlerSuite) TestReadOnlyModeRejectsStartTest() {
 		suite.ctx,
 		suite.mockSmartSvc,
 		&dto.ContextState{ReadOnlyMode: true},
+		suite.mockSettingSvc,
 		suite.mockBroadSvc,
 	)
 
@@ -336,4 +359,21 @@ func (suite *SmartHandlerSuite) TestReadOnlyModeRejectsStartTest() {
 		"test_type": "short",
 	})
 	suite.Require().Equal(http.StatusForbidden, resp.Code)
+}
+
+func (suite *SmartHandlerSuite) TestGetSmartInfoDisabledBySettings() {
+	disabledHandler := api.NewSmartHandler(
+		suite.ctx,
+		suite.mockSmartSvc,
+		&dto.ContextState{},
+		fixedSettingService{settings: &dto.Settings{DisableSmart: true}},
+		suite.mockBroadSvc,
+	)
+
+	_, apiInst := humatest.New(suite.T())
+	disabledHandler.RegisterSmartHandlers(apiInst)
+
+	resp := apiInst.Get("/disk/sda/smart/info")
+	suite.Require().Equal(http.StatusConflict, resp.Code)
+	mock.Verify(suite.mockSmartSvc, matchers.Times(0)).GetSmartInfo(mock.Any[context.Context](), mock.Any[string]())
 }

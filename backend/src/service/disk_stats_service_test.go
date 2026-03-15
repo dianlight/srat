@@ -219,6 +219,16 @@ func (suite *DiskStatsServiceSuite) TestIsSmartEnabled_CacheHit() {
 	mock.Verify(suite.smartMock, matchers.Times(0)).GetSmartInfo(mock.AnyContext(), mock.Any[string]())
 }
 
+func (suite *DiskStatsServiceSuite) TestIsSmartEnabled_DisableSmartSetting() {
+	diskID := "disk-disabled-by-setting"
+	suite.ds.smartIntegrationDisabled.Store(true)
+
+	enabled := suite.ds.isSmartEnabled(diskID)
+
+	suite.False(enabled)
+	mock.Verify(suite.smartMock, matchers.Times(0)).GetSmartInfo(mock.AnyContext(), mock.Any[string]())
+}
+
 func (suite *DiskStatsServiceSuite) TestIsSmartEnabled_CacheMiss_SmartEnabled() {
 	// Test that cache miss queries SMART and caches the result
 	diskID := "disk-enabled"
@@ -346,4 +356,52 @@ func (suite *DiskStatsServiceSuite) TestInvalidateSmartCache_AllDisks() {
 
 	_, disk2Exists := getCacheValue(suite.ds.smartEnabledCache, disk2)
 	suite.False(disk2Exists, "disk2 should be removed from cache")
+}
+
+func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_DisableSmartSkipsBackgroundPolling() {
+	diskID := "disk-1"
+	deviceName := "sda"
+	devicePath := "/dev/sda"
+	legacyDevicePath := "/dev/sda1"
+	partitionID := "sda1"
+	fsType := "ext4"
+	partitions := map[string]dto.Partition{
+		partitionID: {
+			Id:               &partitionID,
+			LegacyDeviceName: &partitionID,
+			LegacyDevicePath: &legacyDevicePath,
+			FsType:           &fsType,
+		},
+	}
+
+	(*suite.testDisks)[diskID] = &dto.Disk{
+		Id:               &diskID,
+		LegacyDeviceName: &deviceName,
+		DevicePath:       &devicePath,
+		Partitions:       &partitions,
+	}
+
+	suite.ds.smartIntegrationDisabled.Store(true)
+	suite.ds.lastStats[diskID] = &blockdevice.IOStats{}
+	suite.ds.ioStatFetcher = func(string) (blockdevice.IOStats, error) {
+		return blockdevice.IOStats{ReadIOs: 5, WriteIOs: 3}, nil
+	}
+
+	mock.When(suite.hdidleMock.IsRunning()).ThenReturn(false)
+	support := &dto.FilesystemInfo{Support: &dto.FilesystemSupport{CanCheck: true, CanGetState: true}}
+	mock.When(suite.fsMock.GetSupportAndInfo(mock.Any[context.Context](), mock.Any[string]())).ThenReturn(support, nil)
+	mock.When(suite.fsMock.GetPartitionState(mock.Any[context.Context](), mock.Any[string](), mock.Any[string]())).ThenReturn(&dto.FilesystemState{}, nil)
+
+	err := suite.ds.updateDiskStats()
+
+	suite.NoError(err)
+	suite.NotNil(suite.ds.currentDiskHealth)
+	suite.Len(suite.ds.currentDiskHealth.PerDiskIO, 1)
+	suite.Nil(suite.ds.currentDiskHealth.PerDiskIO[0].SmartData)
+	suite.Contains(suite.ds.currentDiskHealth.PerDiskInfo, diskID)
+	suite.Nil(suite.ds.currentDiskHealth.PerDiskInfo[diskID].SmartInfo)
+	suite.Nil(suite.ds.currentDiskHealth.PerDiskInfo[diskID].SmartHealth)
+	mock.Verify(suite.smartMock, matchers.Times(0)).GetSmartInfo(mock.AnyContext(), mock.Any[string]())
+	mock.Verify(suite.smartMock, matchers.Times(0)).GetSmartStatus(mock.AnyContext(), mock.Any[string]())
+	mock.Verify(suite.smartMock, matchers.Times(0)).GetHealthStatus(mock.AnyContext(), mock.Any[string]())
 }

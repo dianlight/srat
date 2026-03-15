@@ -450,6 +450,65 @@ describe("Settings", () => {
         expect(screen.queryAllByRole('button').length).toBeGreaterThan(0);
     });
 
+    it("renders disable smart toggle with default false", async () => {
+        const React = await import("react");
+        const { render, screen, within } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { http, HttpResponse } = await import("msw");
+        const { getMswServer } = await import("../../../../test/bun-setup");
+        const { Settings } = await import("../Settings");
+        const { createTestStore } = await import("../../../../test/setup");
+
+        const server = await getMswServer();
+        server.use(
+            http.get(/.*\/api\/settings$/, () => HttpResponse.json({
+                hostname: "homeassistant",
+                workgroup: "WORKGROUP",
+                allow_hosts: ["10.0.0.0/8"],
+                compatibility_mode: false,
+                interfaces: [],
+                bind_all_interfaces: true,
+                multi_channel: true,
+                allow_guest: false,
+                telemetry_mode: "Ask",
+                local_master: true,
+                export_stats_to_ha: false,
+                ha_use_nfs: false,
+                smb_over_quic: false,
+                disable_smart: false,
+            })),
+        );
+
+        const store = await createTestStore();
+        const theme = createTheme();
+
+        render(
+            React.createElement(
+                Provider,
+                {
+                    store, children:
+                        React.createElement(
+                            ThemeProvider,
+                            { theme },
+                            React.createElement(Settings as any)
+                        )
+                }
+            )
+        );
+
+        const user = userEvent.setup();
+        const generalTreeItem = await screen.findByRole("treeitem", { name: /general/i });
+        await user.click(within(generalTreeItem).getByText(/general/i));
+
+        const toggles = await screen.findAllByLabelText(/disable smart integration/i);
+        const toggle = toggles.find((element) => element.tagName === "INPUT") as HTMLInputElement | undefined;
+
+        expect(toggle).toBeTruthy();
+        expect(toggle?.checked).toBe(false);
+    });
+
     it("renders app configuration category and restart warning", async () => {
         const React = await import("react");
         const { render, screen, within } = await import("@testing-library/react");

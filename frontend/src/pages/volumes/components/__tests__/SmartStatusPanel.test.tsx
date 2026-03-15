@@ -82,6 +82,61 @@ describe("SmartStatusPanel Component", () => {
         expect(container.firstChild).toBeFalsy();
     });
 
+    it("should not render when SMART integration is disabled in settings", async () => {
+        const React = await import("react");
+        const { render, waitFor } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { http, HttpResponse } = await import("msw");
+        const { getMswServer } = await import("../../../../../test/bun-setup");
+        const { SmartStatusPanel } = await import("../SmartStatusPanel");
+        const { createTestStore } = await import("../../../../../test/setup");
+
+        const server = await getMswServer();
+        server.use(
+            http.get(/.*\/api\/settings$/, () => HttpResponse.json({
+                hostname: "homeassistant",
+                workgroup: "WORKGROUP",
+                allow_hosts: ["10.0.0.0/8"],
+                compatibility_mode: false,
+                interfaces: [],
+                bind_all_interfaces: true,
+                multi_channel: true,
+                allow_guest: false,
+                telemetry_mode: "Ask",
+                local_master: true,
+                export_stats_to_ha: false,
+                ha_use_nfs: false,
+                smb_over_quic: false,
+                disable_smart: true,
+            })),
+        );
+
+        const store = await createTestStore();
+        const mockSmartInfo = {
+            disk_type: "SATA",
+            temperature: { value: 45 },
+            power_on_hours: { value: 10000 },
+            power_cycle_count: { value: 500 },
+            enabled: true,
+            supported: true,
+        } as any;
+
+        const { container } = render(
+            React.createElement(Provider, {
+                store,
+                children: React.createElement(SmartStatusPanel, {
+                    smartInfo: mockSmartInfo,
+                    diskId: "disk-001",
+                    isSmartSupported: true,
+                }),
+            }),
+        );
+
+        await waitFor(() => {
+            expect(container.firstChild).toBeFalsy();
+        });
+    });
+
     it("should render SMART status when data is available", async () => {
         const React = await import("react");
         const { render, screen, act } = await import("@testing-library/react");

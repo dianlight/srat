@@ -20,6 +20,7 @@
     - [ntfs (ntfs-3g-progs)](#ntfs-ntfs-3g-progs)
     - [btrfs (btrfs-progs)](#btrfs-btrfs-progs)
     - [xfs (xfsprogs)](#xfs-xfsprogs)
+    - [zfs (zfs)](#zfs-zfs)
   - [Adding New Filesystem Adapters](#adding-new-filesystem-adapters)
   - [Testing](#testing)
   - [Backward Compatibility](#backward-compatibility)

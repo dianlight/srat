@@ -17,6 +17,7 @@ type Settings struct {
 	HAUseNFS                      *bool                  `json:"ha_use_nfs,omitempty" default:"false"`
 	HASmbPassword                 logfusc.Secret[string] `json:"-"`
 	SMBoverQUIC                   *bool                  `json:"smb_over_quic,omitempty" default:"false"`
+	DisableSmart                  bool                   `json:"disable_smart,omitempty" default:"false"`
 	HDIdleEnabled                 *bool                  `json:"hdidle_enabled,omitempty" default:"false"`
 	HDIdleDefaultIdleTime         int                    `json:"hdidle_default_idle_time,omitempty"` // seconds
 	HDIdleDefaultCommandType      HdidleCommand          `json:"hdidle_default_command_type,omitempty" enum:"scsi,ata"`

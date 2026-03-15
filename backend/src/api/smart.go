@@ -15,6 +15,7 @@ type SmartHandler struct {
 	ctx             context.Context
 	status          *dto.ContextState
 	smartService    service.SmartServiceInterface
+	settingService  service.SettingServiceInterface
 	broadcasterServ service.BroadcasterServiceInterface
 }
 
@@ -22,14 +23,30 @@ func NewSmartHandler(
 	ctx context.Context,
 	smartService service.SmartServiceInterface,
 	status *dto.ContextState,
+	settingService service.SettingServiceInterface,
 	broadcasterServ service.BroadcasterServiceInterface,
 ) *SmartHandler {
 	return &SmartHandler{
 		ctx:             ctx,
 		status:          status,
 		smartService:    smartService,
+		settingService:  settingService,
 		broadcasterServ: broadcasterServ,
 	}
+}
+
+func (h *SmartHandler) ensureSmartIntegrationEnabled(ctx context.Context) error {
+	settings, err := h.settingService.Load()
+	if err != nil {
+		tlog.ErrorContext(ctx, "Failed to load settings for SMART request", "error", err)
+		return huma.Error500InternalServerError("Failed to load settings", err)
+	}
+
+	if settings != nil && settings.DisableSmart {
+		return huma.Error409Conflict("SMART integration is disabled in settings")
+	}
+
+	return nil
 }
 
 // RegisterSmartHandlers registers the HTTP handlers for SMART-related operations.
@@ -59,6 +76,10 @@ func (h *SmartHandler) RegisterSmartHandlers(api huma.API) {
 func (h *SmartHandler) GetSmartInfo(ctx context.Context, input *struct {
 	DiskID string `path:"disk_id" required:"true" doc:"The disk ID or device path"`
 }) (*struct{ Body *dto.SmartInfo }, error) {
+	if err := h.ensureSmartIntegrationEnabled(ctx); err != nil {
+		return nil, err
+	}
+
 	//devicePath, errE := h.volumeService.GetDevicePathByDeviceID(input.DiskID)
 	//if errE != nil {
 	//	return nil, huma.Error404NotFound("Disk not found", errors.New("disk not found"))
@@ -82,6 +103,9 @@ func (h *SmartHandler) GetSmartInfo(ctx context.Context, input *struct {
 func (h *SmartHandler) GetSmartStatus(ctx context.Context, input *struct {
 	DiskID string `path:"disk_id" required:"true" doc:"The disk ID or device path"`
 }) (*struct{ Body *dto.SmartStatus }, error) {
+	if err := h.ensureSmartIntegrationEnabled(ctx); err != nil {
+		return nil, err
+	}
 
 	smartStatus, errE := h.smartService.GetSmartStatus(ctx, input.DiskID)
 	if errE != nil {
@@ -99,6 +123,10 @@ func (h *SmartHandler) GetSmartStatus(ctx context.Context, input *struct {
 func (h *SmartHandler) GetSmartHealth(ctx context.Context, input *struct {
 	DiskID string `path:"disk_id" required:"true" doc:"The disk ID or device path"`
 }) (*struct{ Body *dto.SmartHealthStatus }, error) {
+	if err := h.ensureSmartIntegrationEnabled(ctx); err != nil {
+		return nil, err
+	}
+
 	// Get disk info to find device path
 
 	healthStatus, errE := h.smartService.GetHealthStatus(ctx, input.DiskID)
@@ -117,6 +145,9 @@ func (h *SmartHandler) GetSmartHealth(ctx context.Context, input *struct {
 func (h *SmartHandler) GetSmartTestStatus(ctx context.Context, input *struct {
 	DiskID string `path:"disk_id" required:"true" doc:"The disk ID or device path"`
 }) (*struct{ Body *dto.SmartTestStatus }, error) {
+	if err := h.ensureSmartIntegrationEnabled(ctx); err != nil {
+		return nil, err
+	}
 
 	testStatus, errE := h.smartService.GetTestStatus(ctx, input.DiskID)
 	if errE != nil {
@@ -141,6 +172,9 @@ func (h *SmartHandler) StartSmartTest(ctx context.Context, input *struct {
 	// Check read-only mode
 	if h.status.ReadOnlyMode {
 		return nil, huma.Error403Forbidden("Read-only mode enabled", errors.New("read-only mode"))
+	}
+	if err := h.ensureSmartIntegrationEnabled(ctx); err != nil {
+		return nil, err
 	}
 
 	// Start the test (progress callback support pending upstream library capability)
@@ -167,6 +201,9 @@ func (h *SmartHandler) AbortSmartTest(ctx context.Context, input *struct {
 	if h.status.ReadOnlyMode {
 		return nil, huma.Error403Forbidden("Read-only mode enabled", errors.New("read-only mode"))
 	}
+	if err := h.ensureSmartIntegrationEnabled(ctx); err != nil {
+		return nil, err
+	}
 
 	// Abort the test
 	errE := h.smartService.AbortSelfTest(ctx, input.DiskID)
@@ -189,6 +226,9 @@ func (h *SmartHandler) EnableSmart(ctx context.Context, input *struct {
 	if h.status.ReadOnlyMode {
 		return nil, huma.Error403Forbidden("Read-only mode enabled", errors.New("read-only mode"))
 	}
+	if err := h.ensureSmartIntegrationEnabled(ctx); err != nil {
+		return nil, err
+	}
 
 	// Enable SMART
 	errE := h.smartService.EnableSMART(ctx, input.DiskID)
@@ -210,6 +250,9 @@ func (h *SmartHandler) DisableSmart(ctx context.Context, input *struct {
 	// Check read-only mode
 	if h.status.ReadOnlyMode {
 		return nil, huma.Error403Forbidden("Read-only mode enabled", errors.New("read-only mode"))
+	}
+	if err := h.ensureSmartIntegrationEnabled(ctx); err != nil {
+		return nil, err
 	}
 
 	// Disable SMART
