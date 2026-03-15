@@ -46,6 +46,7 @@ exclude_path = [
   ".kilocode/",
   ".zed/",
   ".zencoder/",
+  "docs/tasks/",
 ]
 
 # Check the specified file extensions
