@@ -1,6 +1,6 @@
 # [FEATURE]: HDIdle Service Completion
 
-**Target Repo:** `srat`  **Status:** 📅 Planned  **Issue Link:** _TBD_
+**Target Repo:** `srat`  **Status:** 📅 Planned  **Issue Link:** [hassio-addons#596](https://github.com/dianlight/hassio-addons/issues/596)
 
 ## 🎯 Objective
 
@@ -39,6 +39,7 @@ Complete the HDIdle integration end-to-end: restore the missing backend API endp
 - [ ] Task 9: Frontend component test — HDIdle settings panel renders and partition action item is visible
 - [ ] Task 10: Update OpenAPI spec and regenerate frontend types (`cd frontend && bun run gen`)
 - [ ] Task 11: Documentation — update `docs/HDIDLE_SERVICE.md` with the new endpoints
+- [ ] Task 12: Investigate and fix excessive SMART disk polling — add configurable poll interval and/or idle threshold to `DiskStatsService` so SMART queries do not keep spin-up USB drives awake (see [hassio-addons#596](https://github.com/dianlight/hassio-addons/issues/596))
 
 ## 🧠 Implementation Notes (Copilot Context)
 
@@ -83,3 +84,4 @@ Both guards are simple boolean conditions; set them to `true` (or remove the con
 - [ ] `frontend/src/pages/settings/Settings.tsx:112` — `// TODO: Enable when HDIdle feature is ready`
 - [ ] `frontend/src/pages/volumes/components/PartitionActionItems.ts:143` — `// TODO: not ready to be enabled`
 - [ ] `docs/FUTURE_IMPROVEMENTS.md` — "HDIdle Service: Missing Global-Status and Delete-Config Endpoints" section (remove once done)
+- [ ] [hassio-addons#596](https://github.com/dianlight/hassio-addons/issues/596) — High disk access rate due to SMART polling even when no SMB operations are active; disabling SMART stops the behavior

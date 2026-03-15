@@ -1,6 +1,6 @@
 # [FEATURE]: Volume Mount Intelligence — NFS/CIFS Decision, Event Cache Retry
 
-**Target Repo:** `srat`  **Status:** 📅 Planned  **Issue Link:** _TBD_
+**Target Repo:** `srat`  **Status:** 📅 Planned  **Issue Link:** [hassio-addons#581](https://github.com/dianlight/hassio-addons/issues/581)
 
 ## 🎯 Objective
 
@@ -41,6 +41,7 @@ Enrich the volume mount structs with partition and filesystem metadata so that s
 - [ ] Task 8: Unit tests — broadcaster dirty-push: verify no broadcast when data unchanged
 - [ ] Task 9: Integration test — mount a loopback ext4 device, trigger a remove event, verify cache eviction
 - [ ] Task 10: Documentation — update `docs/SMART_SERVICE.md` or `docs/SHARE_VOLUME_VERIFICATION.md` with the event-driven mount flow
+- [ ] Task 11: After reboot, ensure symlinks under `/media/` are restored for shares configured for media usage — investigate why they disappear after unclean shutdown and add a recovery step at startup to re-create them (see [hassio-addons#581](https://github.com/dianlight/hassio-addons/issues/581))
 
 ## 🧠 Implementation Notes (Copilot Context)
 
@@ -101,3 +102,4 @@ case EventTypeRemove:
 - [ ] `backend/src/service/volume_service.go:447` — `// TODO: Check if cache contain the partition. If yes retry mount`
 - [ ] `backend/src/service/volume_service.go:450` — `// TODO: Check if cache contain the partition. if yes umount and remove from cache`
 - [ ] `backend/src/service/broadcaster_service.go:123` — `// TODO: implement push of dirty data status only`
+- [ ] [hassio-addons#581](https://github.com/dianlight/hassio-addons/issues/581) — Files inside `/media/SERVER` disappear after reboot; workaround is to toggle share usage to `none` and back to `media`

@@ -1,6 +1,6 @@
 # [FIX]: Database and ORM Stubs Completion
 
-**Target Repo:** `srat`  **Status:** 📅 Planned  **Issue Link:** _TBD_
+**Target Repo:** `srat`  **Status:** 📅 Planned  **Issue Link:** [hassio-addons#573](https://github.com/dianlight/hassio-addons/issues/573)
 
 ## 🎯 Objective
 
@@ -38,6 +38,7 @@ Complete three deferred database/ORM items that were left as stubs or no-ops: im
 - [ ] Task 6: Re-enable (or replace) the `Up00009` migration body once the import cycle is broken; ensure it is idempotent (only seeds rows that don't already exist)
 - [ ] Task 7: Integration test — run migrations against an in-memory SQLite DB and verify the `properties` table is seeded correctly after `00009`
 - [ ] Task 8: Documentation — update `docs/FUTURE_IMPROVEMENTS.md` to remove completed items
+- [ ] Task 9: Fix share soft-delete so that re-creating a share with the same name succeeds — ensure the `delete` operation physically removes or marks the DB record in a way that allows `CreateShare` to insert a new row without hitting the unique-key constraint (see [hassio-addons#573](https://github.com/dianlight/hassio-addons/issues/573))
 
 ## 🧠 Implementation Notes (Copilot Context)
 
@@ -86,3 +87,4 @@ Option A is cleaner and keeps defaults close to the application startup logic.
 - [ ] `backend/src/converter/dto_to_dbom_conv_gen.go` — generated implementation to verify
 - [ ] `backend/src/dbom/migrations/00009_write_properties_from_default.go` — `Up00009` body wrapped in `/* */`
 - [ ] `docs/FUTURE_IMPROVEMENTS.md` — sections "MountPointPath Query", "Converter", "Migration 00009" (remove once done)
+- [ ] [hassio-addons#573](https://github.com/dianlight/hassio-addons/issues/573) — `failed to save share 'TIMEMACHINE' to repository: duplicated key not allowed` after deleting and recreating a share with the same name
