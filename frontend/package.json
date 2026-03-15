@@ -87,7 +87,7 @@
     "gowatch": "bun tsgo --noEmit && NODE_ENV=development API_URL=http://localhost:3000/ bun run bun.build.ts -w -o ../backend/src/web/static",
     "clean": "rm -rf out",
     "dev": "bun tsgo --noEmit && NODE_ENV=development bun --hot run bun.build.ts -w -s ./out",
-    "dev:remote": "bun tsgo --noEmit && NODE_ENV=remote API_URL=http://192.168.0.68:3000/ bun --hot run bun.build.ts -w -s ./out",
+    "dev:remote": "bun tsgo --noEmit && NODE_ENV=remote API_URL=${SUPERVISOR_URL%/}:3000/ bun --hot run bun.build.ts -w -s ./out",
     "gen": "bunx @rtk-query/codegen-openapi api.config.js && bun tsgo --noEmit",
     "gen:mocks": "bunx msw-auto-mock ../backend/docs/openapi.json --typescript -o src/mocks",
     "test": "bun tsgo --noEmit && AGENT=1 BUN_TEST_NO_COVERAGE_THRESHOLD=1 bun test --preload ./test/setup.ts --bail --timeout 10000 --max-concurrency=1",
