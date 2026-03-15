@@ -30,9 +30,41 @@ Use these companion skills to manage the task lifecycle:
 	- Maps task type to the correct changelog section (`FEATURE` → Features, `FIX` → Bug Fixes, etc.) and avoids duplicate entries.
 	- Example prompts: `update changelog`, `add changelog entry`, `generate release notes`.
 
+- **`/start-task-work`**
+	- Starts implementation from an existing task file with guardrails.
+	- Ensures `Issue Link` is present (reuses/creates `dianlight/srat` issue), confirms branch strategy when starting on `main`, inspects code, and proposes a plan summary before coding.
+	- Supports optional strict mode (`strict-id`) to require exact numeric task ID matching.
+	- Keeps the task document updated at every phase transition.
+	- Example prompts: `start task 012`, `begin work on docs/tasks/009_*.md`, `start implementation from task`.
+
+- **`/implement-task-phase`**
+	- Executes exactly one checklist item from a task at a time.
+	- Enforces incremental changes, targeted validation, and immediate task-doc updates before moving on.
+	- Example prompts: `implement next task item for task 012`, `do phase 4 from task 009`.
+
+- **`/close-task-work`**
+	- Finalizes completed task workstreams.
+	- Verifies checklist completion, updates task status to done, syncs completion to linked issue, and optionally prepares PR-ready summary text.
+	- Example prompts: `close task 012`, `wrap up task 009 with issue-and-pr summary`.
+
 ## Suggested Workflow
 
 1. Create planning docs with `/create-task`.
-2. Keep tasks aligned with GitHub using `/sync-tasks`.
-3. Generate standup/progress summaries via `/task-status`.
-4. Publish user-facing release notes with `/update-changelog`.
+2. Start safely from a chosen task using `/start-task-work`.
+3. Implement incrementally using `/implement-task-phase`.
+4. Keep tasks aligned with GitHub using `/sync-tasks`.
+5. Generate standup/progress summaries via `/task-status`.
+6. Close completed workstreams with `/close-task-work`.
+7. Publish user-facing release notes with `/update-changelog`.
+
+## Tiny Cheat Sheet
+
+Copy-paste prompts for the common lifecycle:
+
+- `create task Add SMB share quota warnings`
+- `start task 012 strict-id`
+- `implement next task item for task 012`
+- `sync tasks export all`
+- `task status`
+- `close task 012`
+- `update changelog`
