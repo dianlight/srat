@@ -1598,6 +1598,7 @@ export type Settings = {
   allow_hosts?: string[];
   bind_all_interfaces?: boolean;
   compatibility_mode?: boolean;
+  disable_smart?: boolean;
   export_stats_to_ha?: boolean;
   ha_use_nfs?: boolean;
   hdidle_default_command_type?: Hdidle_default_command_type;
@@ -1635,6 +1636,8 @@ export type AppConfigSchemaField = {
   constraint: string;
   description?: string;
   name: string;
+  optional?: boolean;
+  options?: string[] | null;
 };
 export type AppConfigSchema = {
   /** A URL to the JSON Schema for this object. */

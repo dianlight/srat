@@ -39,7 +39,7 @@ Complete the HDIdle integration end-to-end: restore the missing backend API endp
 - [ ] Task 9: Frontend component test — HDIdle settings panel renders and partition action item is visible
 - [ ] Task 10: Update OpenAPI spec and regenerate frontend types (`cd frontend && bun run gen`)
 - [ ] Task 11: Documentation — update `docs/HDIDLE_SERVICE.md` with the new endpoints
-- [ ] Task 12: Investigate and fix excessive SMART disk polling — add configurable poll interval and/or idle threshold to `DiskStatsService` so SMART queries do not keep spin-up USB drives awake (see [hassio-addons#596](https://github.com/dianlight/hassio-addons/issues/596))
+- [ ] Task 12: Investigate and fix excessive SMART disk polling — add configurable poll interval and/or idle threshold to `DiskStatsService` so SMART queries do not keep spin-up USB drives awake (see [hassio-addons#596](https://github.com/dianlight/hassio-addons/issues/596)). Short-term mitigation now exists in [task 014](./014_disable-smart-integration-setting.md) via the `disable_smart` setting.
 
 ## 🧠 Implementation Notes (Copilot Context)
 

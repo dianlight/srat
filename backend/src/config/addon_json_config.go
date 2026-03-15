@@ -53,6 +53,9 @@ type Config struct {
 	//WSDD2         bool   `json:"wsdd2"`
 	HDDIdle int  `json:"hdd_idle_seconds"`
 	Smart   bool `json:"enable_smart"`
+	// DisableSmart supersedes the legacy enable_smart flag. When unset, callers
+	// should continue to interpret Smart for backward compatibility.
+	DisableSmart *bool `json:"disable_smart,omitempty"`
 	//MQTTNextGen   bool   `json:"mqtt_nexgen_entities"`
 	//MQTTEnable    bool   `json:"mqtt_enable"`
 	//MQTTHost      string `json:"mqtt_host"`

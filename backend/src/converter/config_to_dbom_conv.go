@@ -75,7 +75,9 @@ func (c *ConfigToDbomConverterImpl) PropertiesToConfig(source dbom.Properties, t
 			} else if reflect.ValueOf(prop.Value).CanConvert(newvalue.Type()) {
 				newvalue.Set(reflect.ValueOf(prop.Value).Convert(newvalue.Type()))
 			} else if newvalue.Kind() == reflect.Ptr && newvalue.Type().Elem().Kind() == reflect.TypeOf(prop.Value).Kind() {
-				newvalue.Set(reflect.ValueOf(prop.Value).Addr())
+				ptr := reflect.New(newvalue.Type().Elem())
+				ptr.Elem().Set(reflect.ValueOf(prop.Value).Convert(newvalue.Type().Elem()))
+				newvalue.Set(ptr)
 			} else if reflect.TypeOf(prop.Value).Kind() == reflect.Ptr && reflect.TypeOf(prop.Value).Elem().Kind() == newvalue.Kind() {
 				newvalue.Set(reflect.ValueOf(prop.Value).Elem())
 			} else {

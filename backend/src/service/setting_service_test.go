@@ -295,6 +295,16 @@ func (suite *SettingServiceSuite) TestUpdateSettings_SaveAndLoad_AllFieldTypes()
 			},
 		},
 		{
+			name: "DisableSmart_True",
+			settingsFactory: func() dto.Settings {
+				return dto.Settings{DisableSmart: true}
+			},
+			verifyFunc: func(loaded *dto.Settings, err error) {
+				suite.Require().NoError(err)
+				suite.True(loaded.DisableSmart)
+			},
+		},
+		{
 			name: "Interfaces_Array",
 			settingsFactory: func() dto.Settings {
 				return dto.Settings{Interfaces: []string{"eth0", "eth1"}}

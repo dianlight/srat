@@ -8,6 +8,7 @@ import (
 	"os"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -28,21 +29,23 @@ type DiskStatsService interface {
 }
 
 type diskStatsService struct {
-	disks                  *dto.DiskMap
-	blockdevice            *blockdevice.FS
-	ctx                    context.Context
-	lastUpdateTime         time.Time                       // lastUpdateTime is used to track the last time disk stats were updated.
-	lastStats              map[string]*blockdevice.IOStats // lastStats stores the last collected disk I/O statistics.
-	currentDiskHealth      *dto.DiskHealth
-	updateMutex            *sync.Mutex
-	smartService           SmartServiceInterface
-	hdidleService          HDIdleServiceInterface
-	filesystemService      FilesystemServiceInterface
-	ioStatFetcher          func(string) (blockdevice.IOStats, error)
-	readFile               func(string) ([]byte, error)
-	sysFsBasePath          string
-	smartEnabledCache      *cache.Cache // smartEnabledCache tracks SMART enabled/disabled state per disk to avoid unnecessary disk access
-	pauseResumeCommandChan chan string  // Channel to signal run process to pause/resume
+	disks                    *dto.DiskMap
+	blockdevice              *blockdevice.FS
+	ctx                      context.Context
+	lastUpdateTime           time.Time                       // lastUpdateTime is used to track the last time disk stats were updated.
+	lastStats                map[string]*blockdevice.IOStats // lastStats stores the last collected disk I/O statistics.
+	currentDiskHealth        *dto.DiskHealth
+	updateMutex              *sync.Mutex
+	smartService             SmartServiceInterface
+	hdidleService            HDIdleServiceInterface
+	filesystemService        FilesystemServiceInterface
+	ioStatFetcher            func(string) (blockdevice.IOStats, error)
+	readFile                 func(string) ([]byte, error)
+	sysFsBasePath            string
+	smartEnabledCache        *cache.Cache // smartEnabledCache tracks SMART enabled/disabled state per disk to avoid unnecessary disk access
+	smartIntegrationDisabled atomic.Bool
+	settingService           SettingServiceInterface
+	pauseResumeCommandChan   chan string // Channel to signal run process to pause/resume
 }
 
 // NewDiskStatsService creates a new DiskStatsService.
@@ -53,6 +56,7 @@ func NewDiskStatsService(
 	SmartService SmartServiceInterface,
 	HDIdleService HDIdleServiceInterface,
 	EventBus events.EventBusInterface,
+	SettingService SettingServiceInterface,
 	FilesystemService FilesystemServiceInterface,
 ) DiskStatsService {
 	var fs blockdevice.FS
@@ -75,6 +79,7 @@ func NewDiskStatsService(
 		lastStats:         make(map[string]*blockdevice.IOStats),
 		smartService:      SmartService,
 		hdidleService:     HDIdleService,
+		settingService:    SettingService,
 		filesystemService: FilesystemService,
 		readFile:          os.ReadFile,
 		sysFsBasePath:     "/sys/fs",
@@ -83,10 +88,23 @@ func NewDiskStatsService(
 		pauseResumeCommandChan: make(chan string, 1), // Channel to signal run process to pause/resume
 	}
 
-	unsubscribe := make([]func(), 2)
+	if SettingService != nil {
+		settings, err := SettingService.Load()
+		if err != nil {
+			slog.WarnContext(Ctx, "Failed to load settings for SMART integration state", "error", err)
+		} else if settings != nil {
+			ds.smartIntegrationDisabled.Store(settings.DisableSmart)
+		}
+	}
+
+	unsubscribe := make([]func(), 3)
 	// Subscribe to SMART events to populate cache immediately when SMART is enabled/disabled
 	// This ensures no disk queries are needed after the state change
 	unsubscribe[0] = EventBus.OnSmart(func(ctx context.Context, event events.SmartEvent) errors.E {
+		if ds.isSmartIntegrationDisabled() {
+			return nil
+		}
+
 		if event.SmartInfo.DiskId != "" {
 			// The SmartInfo now contains both Supported (hardware capability) and Enabled (software state)
 			// We cache the Enabled state to prevent any disk queries after enable/disable
@@ -109,6 +127,14 @@ func NewDiskStatsService(
 			ds.pauseResumeCommandChan <- "resume"
 		} else {
 			ds.pauseResumeCommandChan <- "suspend"
+		}
+		return nil
+	})
+	unsubscribe[2] = EventBus.OnSetting(func(ctx context.Context, event events.SettingEvent) errors.E {
+		disabled := event.Setting != nil && event.Setting.DisableSmart
+		if previous := ds.smartIntegrationDisabled.Swap(disabled); previous != disabled {
+			ds.smartEnabledCache.Flush()
+			slog.DebugContext(ctx, "Updated SMART integration runtime state", "disabled", disabled)
 		}
 		return nil
 	})
@@ -240,7 +266,7 @@ func (s *diskStatsService) updateDiskStats() errors.E {
 
 				// --- Smart data population ---
 				// Only query SMART data if SMART is enabled to avoid unnecessary disk access
-				if disk.DevicePath != nil && s.isSmartEnabled(*disk.Id) {
+				if !s.isSmartIntegrationDisabled() && disk.DevicePath != nil && s.isSmartEnabled(*disk.Id) {
 					smartStatus, err := s.smartService.GetSmartStatus(s.ctx, *disk.Id)
 					if err != nil && !errors.Is(err, dto.ErrorSMARTNotSupported) {
 						slog.WarnContext(s.ctx, "Error getting SMART status", "disk", *disk.Id, "err", err)
@@ -344,7 +370,7 @@ func (s *diskStatsService) populatePerDiskInfo(disk *dto.Disk) {
 		diskInfo.DevicePath = *disk.DevicePath
 
 		// Only query SMART data if SMART is enabled to avoid unnecessary disk access
-		if s.isSmartEnabled(*disk.Id) {
+		if !s.isSmartIntegrationDisabled() && s.isSmartEnabled(*disk.Id) {
 			// Get SMART info (static capabilities)
 			smartInfo, err := s.smartService.GetSmartInfo(s.ctx, *disk.Id)
 			if err != nil && !errors.Is(err, dto.ErrorSMARTNotSupported) {
@@ -374,6 +400,10 @@ func (s *diskStatsService) populatePerDiskInfo(disk *dto.Disk) {
 	}
 
 	s.currentDiskHealth.PerDiskInfo[*disk.Id] = diskInfo
+}
+
+func (s *diskStatsService) isSmartIntegrationDisabled() bool {
+	return s.smartIntegrationDisabled.Load()
 }
 
 // getHDIdleDeviceStatus retrieves the HDIdle status for a specific device.
@@ -463,6 +493,11 @@ func (s *diskStatsService) fetchDiskStats(deviceName string) (blockdevice.IOStat
 // Cache is populated from SMART events when SMART is enabled/disabled via API.
 // On cache miss, it queries SMART info once and caches the result.
 func (s *diskStatsService) isSmartEnabled(diskId string) bool {
+	if s.isSmartIntegrationDisabled() {
+		tlog.DebugContext(s.ctx, "SMART integration disabled, skipping SMART state lookup", "disk", diskId)
+		return false
+	}
+
 	// Check cache first using go-cache
 	if cachedValue, found := s.smartEnabledCache.Get(diskId); found {
 		if enabled, ok := cachedValue.(bool); ok {

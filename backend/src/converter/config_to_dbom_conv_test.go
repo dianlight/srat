@@ -104,6 +104,26 @@ func TestPropertiesToConfig_AllFieldsAreMapped(t *testing.T) {
 	assert.Equal(t, "opt-in", cfg.TelemetryMode)
 }
 
+func TestPropertiesToConfig_PtrFieldFromBareValue(t *testing.T) {
+	conv := ConfigToDbomConverterImpl{}
+
+	// Config.DisableSmart and Config.HAUseNFS are *bool; storing bare bool in
+	// the property previously triggered "reflect.Value.Addr of unaddressable value".
+	properties := dbom.Properties{
+		"DisableSmart": {Key: "DisableSmart", Value: true},
+		"HAUseNFS":     {Key: "HAUseNFS", Value: false},
+	}
+
+	var cfg config.Config
+	err := conv.PropertiesToConfig(properties, &cfg)
+	require.NoError(t, err)
+
+	require.NotNil(t, cfg.DisableSmart)
+	assert.True(t, *cfg.DisableSmart)
+	require.NotNil(t, cfg.HAUseNFS)
+	assert.False(t, *cfg.HAUseNFS)
+}
+
 func TestPropertiesToConfig_StringBoolsAndNilValues(t *testing.T) {
 	conv := ConfigToDbomConverterImpl{}
 

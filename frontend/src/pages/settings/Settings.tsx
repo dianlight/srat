@@ -99,7 +99,7 @@ interface SettingTreeNode {
 
 // Define categories structure for dynamic tree building
 const categories: { [key: string]: { [key: string]: string[] } | string[] } = {
-	'General': ['hostname', 'workgroup', 'local_master', 'compatibility_mode', 'allow_guest'],
+	'General': ['hostname', 'workgroup', 'local_master', 'compatibility_mode', 'allow_guest', 'disable_smart'],
 	'Network': {
 		'Devices': ['bind_all_interfaces', 'interfaces', 'multi_channel', 'smb_over_quic'],
 		'Access Control': ['allow_hosts'],
@@ -593,6 +593,39 @@ export function Settings() {
 						name="allow_guest"
 						{...commonProps}
 					/>
+				);
+
+			case 'disable_smart':
+				return (
+					<Tooltip
+						title={
+							<>
+								<Typography variant="h6" component="div">
+									Disable SMART Integration
+								</Typography>
+								<Typography variant="body2">
+									Stops SRAT-side SMART polling and hides SMART-related UI so sleeping disks are less likely to spin up in the background.
+								</Typography>
+								<Typography variant="body2" sx={{ mt: 1 }}>
+									Leave this off unless you specifically need to reduce wake-ups on idle disks.
+								</Typography>
+							</>
+						}
+					>
+						<span style={{ display: "inline-block", width: "100%" }}>
+							<SwitchElement
+								switchProps={{
+									'aria-label': 'Disable SMART Integration',
+									size: "small",
+								}}
+								id="disable_smart"
+								label="Disable SMART Integration"
+								labelPlacement="start"
+								name="disable_smart"
+								{...commonProps}
+							/>
+						</span>
+					</Tooltip>
 				);
 
 			case 'workgroup':

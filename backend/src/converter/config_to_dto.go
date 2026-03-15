@@ -69,6 +69,7 @@ type ConfigToDtoConverter interface {
 	// goverter:update:ignoreZeroValueField no
 	// goverter:map TelemetryMode TelemetryMode | github.com/dianlight/srat/dto:ParseTelemetryMode
 	// goverter:map HDIdleDefaultCommandType HDIdleDefaultCommandType | github.com/dianlight/srat/dto:ParseHdidleCommand
+	// goverter:map . DisableSmart | configDisableSmartToSetting
 	// goverter:ignore HASmbPassword
 	ConfigToSettings(source config.Config, target *dto.Settings) error
 
@@ -177,4 +178,12 @@ func TimeMachineSupportFromFS(fsType string) *dto.TimeMachineSupport {
 	default:
 		return &dto.TimeMachineSupports.UNKNOWN
 	}
+}
+
+func configDisableSmartToSetting(source config.Config) bool {
+	if source.DisableSmart != nil {
+		return *source.DisableSmart
+	}
+
+	return !source.Smart
 }

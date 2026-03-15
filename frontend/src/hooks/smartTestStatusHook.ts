@@ -7,7 +7,7 @@ import { useGetServerEventsQuery } from "../store/sseApi";
 
 export function useSmartTestStatus(diskId: string) {
 	const { data, error, isLoading, isSuccess, refetch } =
-		useGetApiDiskByDiskIdSmartTestQuery({ diskId: diskId });
+		useGetApiDiskByDiskIdSmartTestQuery({ diskId: diskId }, { skip: !diskId });
 	const {
 		data: evdata,
 		error: everror,
