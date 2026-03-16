@@ -37,6 +37,7 @@ type SupervisorService struct {
 	dirty_data_service DirtyDataServiceInterface
 	settingService     SettingServiceInterface
 	eventBus           events.EventBusInterface
+	disks              *dto.DiskMap
 }
 
 type SupervisorServiceParams struct {
@@ -50,6 +51,7 @@ type SupervisorServiceParams struct {
 	DirtyDataService DirtyDataServiceInterface
 	SettingService   SettingServiceInterface
 	EventBus         events.EventBusInterface
+	Disks            *dto.DiskMap `optional:"true"`
 }
 
 func NewSupervisorService(lc fx.Lifecycle, in SupervisorServiceParams) SupervisorServiceInterface {
@@ -63,6 +65,7 @@ func NewSupervisorService(lc fx.Lifecycle, in SupervisorServiceParams) Superviso
 	p.share_service = in.ShareService
 	p.settingService = in.SettingService
 	p.eventBus = in.EventBus
+	p.disks = in.Disks
 	unsubscribe := make([]func(), 3)
 	unsubscribe[0] = p.eventBus.OnServerProccess(func(ctx context.Context, event events.ServerProcessEvent) errors.E {
 		slog.DebugContext(ctx, "SupervisorService received ServerProcess event", "tracker", event.DataDirtyTracker)
@@ -245,21 +248,22 @@ func (self *SupervisorService) networkMountShareWithRetry(ctx context.Context, s
 	}
 
 	rmount, ok := mounts[share.Name]
+	enrichSharePartitionFromCache(&share, self.disks)
 	if !ok {
-		// TODO: we should popolate partition and filesystem info in the mount struct so that we can make a more informed decision about nfs vs cifs and also populate the path for nfs mounts instead of defaulting to the share name
 		// new mount
 		rmount = mount.Mount{}
 		conv.SharedResourceToMount(share, &rmount)
 		rmount.Server = &self.state.AddonIpAddress
 
-		if *useNfs &&
-			share.MountPointData != nil &&
-			share.MountPointData.Partition != nil &&
-			share.MountPointData.Partition.FilesystemInfo != nil &&
-			share.MountPointData.Partition.FilesystemInfo.Support != nil &&
-			share.MountPointData.Partition.FilesystemInfo.Support.IsExportable {
+		if *useNfs && isShareNFSExportable(ctx, share) {
+			nfsPath := resolveActualMountPointPath(share)
+			if nfsPath == "" {
+				nfsPath = share.Name
+			}
 			rmount.Type = new(mount.MountType("nfs"))
-			rmount.Path = new(share.MountPointData.Path)
+			rmount.Path = new(nfsPath)
+			rmount.Username = nil
+			rmount.Password = nil
 		} else {
 			rmount.Type = new(mount.MountType("cifs"))
 			rmount.Username = mountUsername
@@ -301,17 +305,16 @@ func (self *SupervisorService) networkMountShareWithRetry(ctx context.Context, s
 		*rmount.State != "active" ||
 		(*useNfs && *rmount.Type == "cifs") ||
 		(!*useNfs && *rmount.Type == "nfs") {
-		// TODO: we should popolate partition and filesystem info in the mount struct so that we can make a more informed decision about nfs vs cifs and also populate the path for nfs mounts instead of defaulting to the share name
-
 		conv.SharedResourceToMount(share, &rmount)
-		if *useNfs &&
-			share.MountPointData != nil &&
-			share.MountPointData.Partition != nil &&
-			share.MountPointData.Partition.FilesystemInfo != nil &&
-			share.MountPointData.Partition.FilesystemInfo.Support != nil &&
-			share.MountPointData.Partition.FilesystemInfo.Support.IsExportable {
+		if *useNfs && isShareNFSExportable(ctx, share) {
+			nfsPath := resolveActualMountPointPath(share)
+			if nfsPath == "" {
+				nfsPath = share.Name
+			}
 			rmount.Type = new(mount.MountType("nfs"))
-			rmount.Path = new(share.MountPointData.Path)
+			rmount.Path = new(nfsPath)
+			rmount.Username = nil
+			rmount.Password = nil
 		} else {
 			rmount.Type = new(mount.MountType("cifs"))
 			rmount.Username = mountUsername

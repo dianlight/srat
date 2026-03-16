@@ -205,6 +205,9 @@ func NewServerProcessesService(lc fx.Lifecycle, in ServerServiceParams) ServerSe
 			if err := p.writeSambaUsersMapConfig(ctx); err != nil {
 				return err
 			}
+			if err := p.recoverMediaUsageSymlinks(ctx, "/media"); err != nil {
+				slog.WarnContext(ctx, "Media symlink startup recovery completed with warnings", "err", err)
+			}
 			defer func() {
 				tlog.TraceContext(ctx, "=== SERVICE INIT: ServerProcesses Complete ===", "duration", time.Since(serviceStart))
 			}()
@@ -514,6 +517,77 @@ func (self *ServerService) writeSambaUsersMapConfig(ctx context.Context) errors.
 	return nil
 }
 
+func (self *ServerService) recoverMediaUsageSymlinks(ctx context.Context, linkRoot string) errors.E {
+	if strings.TrimSpace(linkRoot) == "" {
+		return nil
+	}
+
+	shares, err := self.share_service.ListShares()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	if err := os.MkdirAll(linkRoot, 0o755); err != nil {
+		return errors.WithStack(err)
+	}
+
+	for _, share := range shares {
+		if share.Usage != dto.UsageAsMedia {
+			continue
+		}
+		if share.Disabled != nil && *share.Disabled {
+			continue
+		}
+		if share.MountPointData == nil || share.MountPointData.Path == "" {
+			continue
+		}
+		if share.Status != nil && !share.Status.IsValid {
+			continue
+		}
+
+		targetPath := share.MountPointData.Path
+		if !filepath.IsAbs(targetPath) {
+			slog.WarnContext(ctx, "Skipping media symlink recovery for non-absolute mount path", "share", share.Name, "target", targetPath)
+			continue
+		}
+
+		if _, statErr := os.Stat(targetPath); statErr != nil {
+			slog.WarnContext(ctx, "Skipping media symlink recovery because target path is unavailable", "share", share.Name, "target", targetPath, "err", statErr)
+			continue
+		}
+
+		linkPath := filepath.Join(linkRoot, share.Name)
+		if info, lstatErr := os.Lstat(linkPath); lstatErr == nil {
+			if info.Mode()&os.ModeSymlink == 0 {
+				slog.WarnContext(ctx, "Skipping media symlink recovery because destination exists and is not a symlink", "share", share.Name, "link", linkPath)
+				continue
+			}
+
+			currentTarget, readErr := os.Readlink(linkPath)
+			if readErr == nil && currentTarget == targetPath {
+				continue
+			}
+
+			if removeErr := os.Remove(linkPath); removeErr != nil {
+				slog.WarnContext(ctx, "Failed to remove stale media symlink", "share", share.Name, "link", linkPath, "err", removeErr)
+				continue
+			}
+		} else if !os.IsNotExist(lstatErr) {
+			slog.WarnContext(ctx, "Failed to inspect media symlink destination", "share", share.Name, "link", linkPath, "err", lstatErr)
+			continue
+		}
+
+		if symlinkErr := os.Symlink(targetPath, linkPath); symlinkErr != nil {
+			slog.WarnContext(ctx, "Failed to create media symlink", "share", share.Name, "target", targetPath, "link", linkPath, "err", symlinkErr)
+			continue
+		}
+
+		slog.InfoContext(ctx, "Recovered media symlink", "share", share.Name, "target", targetPath, "link", linkPath)
+	}
+
+	return nil
+}
+
 func (self *ServerService) testSambaConfig(ctx context.Context) errors.E {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
@@ -673,12 +747,7 @@ func (self *ServerService) writeNFSConfig(ctx context.Context) errors.E {
 		}
 
 		// Skip if mount point data fs is not exportable (e.g. apfs)
-		// TODO: we should popolate partition and filesystem info in the mount struct so that we can make a more informed decision about nfs vs cifs and also populate the path for nfs mounts instead of defaulting to the share name
-
-		if share.MountPointData.Partition != nil &&
-			share.MountPointData.Partition.FilesystemInfo != nil &&
-			share.MountPointData.Partition.FilesystemInfo.Support != nil &&
-			share.MountPointData.Partition.FilesystemInfo.Support.IsExportable {
+		if isShareNFSExportable(ctx, share) {
 			// Generate NFS export entry
 			// Format: /path/to/share *(rw,sync,no_subtree_check,no_root_squash,fsid=X)
 			// Using fsid based on share index to ensure unique identification
