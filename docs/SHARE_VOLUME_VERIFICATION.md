@@ -13,6 +13,10 @@
     - [Home Assistant Mount Status](#home-assistant-mount-status)
   - [API Response Fields](#api-response-fields)
   - [Verification Logic](#verification-logic)
+  - [Event-Driven Mount Intelligence Flow](#event-driven-mount-intelligence-flow)
+    - [NFS vs CIFS Selection](#nfs-vs-cifs-selection)
+    - [Udev Add/Remove Handling](#udev-addremove-handling)
+    - [Dirty-Data Broadcast Deduplication](#dirty-data-broadcast-deduplication)
   - [Testing](#testing)
     - [API Tests (`backend/src/api/shares_test.go`)](#api-tests-backendsrcapishares_testgo)
     - [Service Tests (`backend/src/service/share_service_test.go`)](#service-tests-backendsrcserviceshare_service_testgo)
@@ -208,6 +212,32 @@ The `VerifyShare` method in `ShareService` performs the following checks in orde
 4. **Mount Status**: Verify the volume is currently mounted
 5. **Write Support vs Permissions**: Ensure RO volumes don't have RW users
 6. **Home Assistant Status**: For non-internal shares, verify HA mount status
+
+## Event-Driven Mount Intelligence Flow
+
+SRAT now applies mount-intelligence decisions and cache updates reactively instead of relying only on periodic refreshes.
+
+### NFS vs CIFS Selection
+
+- Share mount protocol selection is based on filesystem exportability from adapter logic (`IsExportable(ctx)`), not only precomputed metadata.
+- For NFS-eligible filesystems, SRAT resolves the export path from the actual mount point when available, then falls back safely.
+- For non-exportable filesystems, SRAT falls back to CIFS credentials automatically.
+
+### Udev Add/Remove Handling
+
+- **Partition add**:
+  - If the partition is already tracked and has startup-mount intent, SRAT retries mount immediately.
+  - Otherwise SRAT invalidates hardware cache and refreshes volume data.
+- **Partition remove**:
+  - SRAT unmounts tracked mounted paths for the partition.
+  - The partition entry is removed from `dto.DiskMap`.
+  - Hardware cache is invalidated and volume data refreshed.
+
+### Dirty-Data Broadcast Deduplication
+
+- Dirty tracker updates are hashed before broadcasting.
+- If the computed hash is unchanged, SRAT skips broadcasting the dirty state event.
+- This reduces redundant websocket/SSE traffic and Home Assistant sync churn.
 
 ## Testing
 

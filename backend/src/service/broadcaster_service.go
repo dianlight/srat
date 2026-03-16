@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"maps"
@@ -39,6 +41,7 @@ type BroadcasterService struct {
 	eventBus         events.EventBusInterface
 	disks            *dto.DiskMap
 	shareService     ShareServiceInterface
+	lastDirtyHash    atomic.Value
 }
 
 type broadcastEvent struct {
@@ -120,7 +123,13 @@ func (broker *BroadcasterService) setupEventListeners() []func() {
 	})
 	ret[3] = broker.eventBus.OnDirtyData(func(ctx context.Context, dde events.DirtyDataEvent) errors.E {
 		slog.DebugContext(ctx, "BroadcasterService received DirtyData event", "tracker", dde.DataDirtyTracker)
-		broker.BroadcastMessage(dde.DataDirtyTracker) // TODO: implement push of dirty data status only
+		currentHash := hashDirtyTracker(dde.DataDirtyTracker)
+		if lastHash, ok := broker.lastDirtyHash.Load().(string); ok && lastHash == currentHash {
+			tlog.TraceContext(ctx, "Skipping unchanged dirty data tracker broadcast", "tracker", dde.DataDirtyTracker)
+			return nil
+		}
+		broker.lastDirtyHash.Store(currentHash)
+		broker.BroadcastMessage(dde.DataDirtyTracker)
 		return nil
 	})
 	ret[4] = broker.eventBus.OnSmart(func(ctx context.Context, event events.SmartEvent) errors.E {
@@ -332,4 +341,13 @@ func (broker *BroadcasterService) createWelcomeMessage() dto.Welcome {
 		}
 	}
 	return welcomeMsg
+}
+
+func hashDirtyTracker(tracker dto.DataDirtyTracker) string {
+	payload, err := json.Marshal(tracker)
+	if err != nil {
+		return fmt.Sprintf("fallback:%v", tracker)
+	}
+	hash := sha256.Sum256(payload)
+	return fmt.Sprintf("%x", hash)
 }

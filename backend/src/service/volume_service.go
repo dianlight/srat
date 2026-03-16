@@ -420,7 +420,6 @@ func (self *VolumeService) udevEventHandler() {
 					slog.DebugContext(self.ctx, "Ignoring Udev event for non-disk/partition block device", "devname", devName, "devtype", devType)
 					continue
 				}
-				// FIXME: Process Right events here sending events to refresh volumes data
 				// Process block device events
 				if action == "remove" && devType == "disk" {
 					bus, _ := uevent.Env["ID_BUS"]
@@ -444,10 +443,19 @@ func (self *VolumeService) udevEventHandler() {
 					continue
 				} else if devType == "partition" && action == "add" {
 					slog.InfoContext(self.ctx, "Processing partition addition event", "action", action, "devname", devName)
-					// TODO:Check if cache contain the partition. If yes retry mount process else InvalidateHarduer and getvolumeData
+					if self.handlePartitionUdevAddEvent(devName) {
+						continue
+					}
+					if self.hardwareClient != nil {
+						self.hardwareClient.InvalidateHardwareInfo()
+					}
+					err := self.getVolumesData()
+					if err != nil {
+						slog.ErrorContext(self.ctx, "Failed to refresh volume cache after partition add event", "devname", devName, "err", err)
+					}
 				} else if devType == "partition" && action == "remove" {
 					slog.InfoContext(self.ctx, "Processing partition removal event", "action", action, "devname", devName)
-					// TODO:Check if cache contain the partition. if yes umount and remove from cache
+					self.handlePartitionUdevRemoveEvent(devName)
 				}
 			}
 		case err := <-errorChan:
@@ -470,6 +478,98 @@ func (self *VolumeService) udevEventHandler() {
 				slog.ErrorContext(self.ctx, "Error received from Udev monitor", "err", err)
 			}
 		}
+	}
+}
+
+func (self *VolumeService) findPartitionByDevName(devName string) (*dto.Partition, string, bool) {
+	if self.disks == nil || devName == "" {
+		return nil, "", false
+	}
+
+	for diskID, disk := range *self.disks {
+		if disk.Partitions == nil {
+			continue
+		}
+		for _, partition := range *disk.Partitions {
+			if matchPartitionWithDevName(&partition, devName) {
+				p := partition
+				return &p, diskID, true
+			}
+		}
+	}
+
+	return nil, "", false
+}
+
+func (self *VolumeService) handlePartitionUdevAddEvent(devName string) bool {
+	partition, _, found := self.findPartitionByDevName(devName)
+	if !found || partition == nil || partition.Id == nil || *partition.Id == "" {
+		return false
+	}
+
+	if partition.MountPointData == nil || len(*partition.MountPointData) == 0 {
+		return false
+	}
+
+	handled := false
+	for _, mountPoint := range *partition.MountPointData {
+		if mountPoint.IsToMountAtStartup == nil || !*mountPoint.IsToMountAtStartup || mountPoint.IsMounted {
+			continue
+		}
+
+		mountCopy := mountPoint
+		mountCopy.Partition = partition
+		mountCopy.DeviceId = *partition.Id
+		if mountCopy.Path == "" {
+			continue
+		}
+
+		err := self.MountVolume(&mountCopy)
+		if err != nil {
+			slog.WarnContext(self.ctx, "Failed automount retry for partition add event", "devname", devName, "path", mountCopy.Path, "err", err)
+			continue
+		}
+
+		handled = true
+	}
+
+	return handled
+}
+
+func (self *VolumeService) handlePartitionUdevRemoveEvent(devName string) {
+	partition, diskID, found := self.findPartitionByDevName(devName)
+	if !found || partition == nil || partition.Id == nil || *partition.Id == "" {
+		if self.hardwareClient != nil {
+			self.hardwareClient.InvalidateHardwareInfo()
+		}
+		if err := self.getVolumesData(); err != nil {
+			slog.ErrorContext(self.ctx, "Failed to refresh volume cache after unknown partition removal", "devname", devName, "err", err)
+		}
+		return
+	}
+
+	if partition.MountPointData != nil {
+		for _, mountPoint := range *partition.MountPointData {
+			if mountPoint.Path == "" || !mountPoint.IsMounted {
+				continue
+			}
+			mountCopy := mountPoint
+			if err := self.unmountVolume(&mountCopy, true); err != nil {
+				slog.WarnContext(self.ctx, "Failed to unmount path during partition remove handling", "path", mountCopy.Path, "devname", devName, "err", err)
+			}
+		}
+	}
+
+	removed := self.disks.RemovePartition(diskID, *partition.Id)
+	if !removed {
+		slog.DebugContext(self.ctx, "Partition removal event did not find cache entry to delete", "disk_id", diskID, "partition_id", *partition.Id, "devname", devName)
+	}
+
+	if self.hardwareClient != nil {
+		self.hardwareClient.InvalidateHardwareInfo()
+	}
+	if err := self.getVolumesData(); err != nil {
+		slog.ErrorContext(self.ctx, "Failed to refresh volume cache after partition remove event", "devname", devName, "err", err)
 	}
 }
 
