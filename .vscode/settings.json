@@ -203,12 +203,44 @@
     "FIXME",
     "BUG",
     "REVIEW",
-    "STUB"
+    "STUB",
+    "📅 Planned",
+    "🔄 In Progress",
+    "✅ Done"
   ],
   "todo-tree.highlights.defaultHighlight": {
     "type": "text",
     "foreground": "#ffaa00",
     "fontWeight": "bold"
   },
-  "todo-tree.tree.showScanModeButton": true
+  "todo-tree.tree.scanMode": "workspace only",
+  "todo-tree.tree.showScanModeButton": true,
+  "todo-tree.highlights.customHighlight": {
+    "**Status:** 📅 Planned": {
+      "foreground": "#FFCC00", // Giallo/Arancio
+      "icon": "calendar",
+      "type": "text"
+    },
+    "**Status:** 🔄 In Progress": {
+      "foreground": "#3498db", // Blu
+      "icon": "flame",
+      "type": "text"
+    },
+    "**Status:** ✅ Done": {
+      "foreground": "#2ecc71", // Verde
+      "icon": "check-circle",
+      "type": "text"
+    }
+  },
+  "todo-tree.tree.showBadges": false,
+  //"todo-tree.regex.regex": "(//|#|<!--|/\\*)\\s*($TAGS)|\\*\\*Status:\\*\\*.*?($TAGS)",
+  "todo-tree.regex.regex": "(//|#|\\*\\*|<!--|;|/\\*|^|^[ \\t]*(-|\\d+.))\\s*($TAGS)",
+  "todo-tree.general.showActivityBarBadge": true,
+  "todo-tree.regex.regexCaseSensitive": false,
+  "todo-tree.general.schemes": [
+    "file",
+    "ssh",
+    "untitled",
+    "vscode-notebook-cell"
+  ]
 }
