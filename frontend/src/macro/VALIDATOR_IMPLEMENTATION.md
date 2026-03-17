@@ -1,3 +1,4 @@
+- ✅ `src/store/wsApi.ts` - Environment
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
@@ -140,7 +141,7 @@ All macro imports in the codebase have been verified and corrected:
 - ✅ `src/pages/volumes/components/HDIdleDiskSettings.tsx` - Environment
 - ✅ `src/pages/volumes/components/SmartStatusPanel.tsx` - Environment
 - ✅ `src/store/emptyApi.ts` - Environment
-- ✅ `src/store/sseApi.ts` - Environment
+- ✅ `src/store/wsApi.ts` - Environment
 
 ## Next Steps
 

@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/danielgtaylor/huma/v2/sse"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/internal/ctxkeys"
@@ -83,18 +82,6 @@ func (suite *BroadcasterServiceTestSuite) TestProcessWebSocketChannelAfterStop_D
 
 	suite.NotPanics(func() {
 		suite.broadcasterService.ProcessWebSocketChannel(func(msg ws.Message) errors.E {
-			return nil
-		})
-	})
-}
-
-func (suite *BroadcasterServiceTestSuite) TestProcessHttpChannelAfterStop_DoesNotPanic() {
-	suite.app.RequireStop()
-	suite.app = nil
-	suite.cancel()
-
-	suite.NotPanics(func() {
-		suite.broadcasterService.ProcessHttpChannel(func(msg sse.Message) error {
 			return nil
 		})
 	})

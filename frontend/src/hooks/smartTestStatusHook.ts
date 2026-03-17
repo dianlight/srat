@@ -3,7 +3,7 @@ import {
 	type SmartTestStatus,
 	useGetApiDiskByDiskIdSmartTestQuery,
 } from "../store/sratApi";
-import { useGetServerEventsQuery } from "../store/sseApi";
+import { useGetServerEventsQuery } from "../store/wsApi";
 
 export function useSmartTestStatus(diskId: string) {
 	const { data, error, isLoading, isSuccess, refetch } =

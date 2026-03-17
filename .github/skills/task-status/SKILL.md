@@ -7,6 +7,7 @@ argument-hint: 'Optional filter: "all" (default), "done", "in-progress", "planne
 # Task Status Report
 
 Reads all task documents in `docs/tasks/` and generates a grouped progress summary.
+Also overwrite `docs/tasks/TASK_STATUS.md` with the same report for easy reference.
 
 ## When to Use
 

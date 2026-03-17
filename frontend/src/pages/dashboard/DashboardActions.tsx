@@ -1,19 +1,19 @@
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import {
-    Accordion,
-    AccordionDetails,
-    AccordionSummary,
-    Box,
-    FormControlLabel,
-    Switch,
-    Typography,
+	Accordion,
+	AccordionDetails,
+	AccordionSummary,
+	Box,
+	FormControlLabel,
+	Switch,
+	Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import IssueCard from "../../components/IssueCard";
 import { useVolume } from "../../hooks/volumeHook";
 import { TabIDs } from "../../store/locationState";
 import { Severity, useGetApiIssuesQuery, type Partition } from "../../store/sratApi";
-import { useGetServerEventsQuery } from "../../store/sseApi";
+import { useGetServerEventsQuery } from "../../store/wsApi";
 import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
 import { ActionableItemsList } from "./components/ActionableItemsList";
 

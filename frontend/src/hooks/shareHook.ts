@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { type SharedResource, useGetApiSharesQuery } from "../store/sratApi";
-import { useGetServerEventsQuery } from "../store/sseApi";
+import { useGetServerEventsQuery } from "../store/wsApi";
 
 export function useShare() {
 	const { data, error, isLoading } = useGetApiSharesQuery();

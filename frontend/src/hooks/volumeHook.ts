@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { type Disk, useGetApiVolumesQuery } from "../store/sratApi";
-import { useGetServerEventsQuery } from "../store/sseApi";
+import { useGetServerEventsQuery } from "../store/wsApi";
 
 export function useVolume() {
 	const {

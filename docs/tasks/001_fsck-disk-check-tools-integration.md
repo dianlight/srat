@@ -17,7 +17,7 @@ Improve the integration of `fsck.*` and related disk-check utilities across the 
 
 - **Outputs:**
   - `dto.CheckResult`: `success`, `errorsFound`, `errorsFixed`, `message`, `exitCode`
-  - Real-time progress via SSE `filesystem_task` events
+  - Real-time progress via WebSocket `filesystem_task` events
   - UI feedback: tool availability warnings, install hints, check history
 
 - **Dependencies:**
@@ -50,7 +50,7 @@ Improve the integration of `fsck.*` and related disk-check utilities across the 
 - ZFS adapter intentionally has no `Check` implementation (pool-level ops only).
 - `FilesystemSupport.CanCheck bool` is returned by `adapter.IsSupported(ctx)` and already checked in `FilesystemService.CheckPartition` before starting the operation.
 - `MissingTools []string` and `AlpinePackage string` are available in `FilesystemSupport` for user-facing hints.
-- Real-time progress is delivered via SSE `filesystem_task` events consumed by `FilesystemCheckDialog`.
+- Real-time progress is delivered via WebSocket `filesystem_task` events consumed by `FilesystemCheckDialog`.
 
 ### Gaps to address
 

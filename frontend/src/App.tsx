@@ -8,7 +8,7 @@ import { NavBar } from "./components/NavBar";
 import TelemetryModal from "./components/TelemetryModal";
 import { useBaseConfigModal } from "./hooks/useBaseConfigModal";
 import { useTelemetryModal } from "./hooks/useTelemetryModal";
-import { useGetServerEventsQuery } from "./store/sseApi";
+import { useGetServerEventsQuery } from "./store/wsApi";
 
 
 export function App() {

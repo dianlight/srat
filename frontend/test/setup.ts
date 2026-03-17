@@ -244,7 +244,7 @@ export async function createTestStore() {
             { mdcSlice },
             mdcMiddlewareModule,
         ] = await Promise.all([
-            import("../src/store/sseApi"),
+            import("../src/store/wsApi"),
             import("../src/store/sratApi"),
             import("../src/store/errorSlice"),
             import("../src/store/mdcSlice"),

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { describe, expect, it } from "bun:test";
 import "../../../../../test/setup";
 
 async function renderWithProviders(element: any, options?: { seedStore?: (store: any) => void }) {
@@ -17,20 +17,6 @@ async function renderWithProviders(element: any, options?: { seedStore?: (store:
 }
 
 describe("FilesystemCheckDialog", () => {
-    const originalEventSource = (globalThis as any).EventSource;
-
-    beforeEach(() => {
-        (globalThis as any).EventSource = class {
-            addEventListener() { }
-            removeEventListener() { }
-            close() { }
-        } as any;
-    });
-
-    afterEach(() => {
-        (globalThis as any).EventSource = originalEventSource;
-    });
-
     it("shows switches and logs area when verbose is enabled", async () => {
         const React = await import("react");
         const { screen } = await import("@testing-library/react");

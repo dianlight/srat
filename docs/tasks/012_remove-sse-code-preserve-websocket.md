@@ -1,6 +1,6 @@
 # [REFACTOR]: Remove SSE Code, Preserve WebSocket
 
-**Target Repo:** `srat`  **Status:** 📅 Planned  **Issue Link:** _TBD_
+**Target Repo:** `srat`  **Status:** ✅ Done  **Issue Link:** https://github.com/dianlight/srat/issues/501
 
 ## 🎯 Objective
 
@@ -25,18 +25,18 @@ Remove all Server-Sent Events (SSE) related code from the backend (Go) and front
 
 ## 📝 Task List
 
-- [ ] Task 1: Delete `backend/src/api/sse.go` and `backend/src/api/sse_test.go`
-- [ ] Task 2: Remove `ProcessHttpChannel(send sse.Sender)` from `BroadcasterServiceInterface` in `broadcaster_service.go` and delete the corresponding method implementation
-- [ ] Task 3: Remove `TestProcessHttpChannelAfterStop_DoesNotPanic` from `broadcaster_service_test.go`
-- [ ] Task 4: Remove `ProcessHttpChannel` stub from `fakeBroadcaster` in `health_run_internal_test.go`
-- [ ] Task 5: Remove `server.AsHumaRoute(api.NewSSEBroker)` from `main-server.go` and `main-openapi.go`; remove any now-unused `api` package import if applicable
-- [ ] Task 6: Clean up `frontend/src/store/sseApi.ts` — delete the large commented-out `sseApi` `createApi` block (~lines 47–187), update/remove SSE-only JSDoc comments; rename file to `wsApi.ts` and update all imports across the frontend
-- [ ] Task 7: Remove SSE-specific test cases from `frontend/src/store/__tests__/sseApi.test.tsx` (those importing/using `sseApi`); rename file to `wsApi.test.tsx` if file is renamed in Task 6
-- [ ] Task 8: Run backend tests — `cd backend/src && go test ./api ./service` — and fix any compilation errors
-- [ ] Task 9: Run frontend tests — `cd frontend && bun test --preload ./test/setup.ts` — and fix any failures
-- [ ] Task 10: Regenerate OpenAPI spec and verify `/sse` endpoint is gone — `cd backend && make gen` then inspect `backend/docs/openapi.json`
-- [ ] Task 11: Run `cd backend && make build` to confirm no build errors
-- [ ] Task 12: Documentation — update any doc files that mention SSE as the real-time transport (e.g. `docs/EVENT_DRIVEN_ARCHITECTURE.md`, `docs/HOME_ASSISTANT_INTEGRATION.md`, task files `001_*` and `002_*` that reference SSE events)
+- [x] Task 1: Delete `backend/src/api/sse.go` and `backend/src/api/sse_test.go`
+- [x] Task 2: Remove `ProcessHttpChannel(send sse.Sender)` from `BroadcasterServiceInterface` in `broadcaster_service.go` and delete the corresponding method implementation
+- [x] Task 3: Remove `TestProcessHttpChannelAfterStop_DoesNotPanic` from `broadcaster_service_test.go`
+- [x] Task 4: Remove `ProcessHttpChannel` stub from `fakeBroadcaster` in `health_run_internal_test.go`
+- [x] Task 5: Remove `server.AsHumaRoute(api.NewSSEBroker)` from `main-server.go` and `main-openapi.go`; remove any now-unused `api` package import if applicable
+- [x] Task 6: Clean up `frontend/src/store/sseApi.ts` — delete the large commented-out `sseApi` `createApi` block (~lines 47–187), update/remove SSE-only JSDoc comments; rename file to `wsApi.ts` and update all imports across the frontend
+- [x] Task 7: Remove SSE-specific test cases from `frontend/src/store/__tests__/sseApi.test.tsx` (those importing/using `sseApi`); rename file to `wsApi.test.tsx` if file is renamed in Task 6
+- [x] Task 8: Run backend tests — `cd backend/src && go test ./api ./service` — and fix any compilation errors
+- [x] Task 9: Run frontend tests — `cd frontend && bun test --preload ./test/setup.ts` — and fix any failures (SmartStatusPanel tests now all pass)
+- [x] Task 10: Regenerate OpenAPI spec and verify `/sse` endpoint is gone — `cd backend && make gen` then inspect `backend/docs/openapi.json`
+- [x] Task 11: Run `cd backend && make build` to confirm no build errors
+- [x] Task 12: Documentation — update any doc files that mention SSE as the real-time transport (e.g. `docs/EVENT_DRIVEN_ARCHITECTURE.md`, `docs/HOME_ASSISTANT_INTEGRATION.md`, task files `001_*` and `002_*` that reference SSE events)
 
 ## 🧠 Implementation Notes (Copilot Context)
 
@@ -69,15 +69,23 @@ After removing `api/sse.go` the `"github.com/danielgtaylor/huma/v2/sse"` import 
 
 `mockio`-generated mocks of `BroadcasterServiceInterface` are regenerated automatically. Any hand-written mock or `fakeBroadcaster` struct must be manually updated to remove the `ProcessHttpChannel` method.
 
+### Implementation execution notes
+
+- 2026-03-17: Backend SSE route/handler and broadcaster HTTP channel path removed.
+- 2026-03-17: Frontend `sseApi.ts` replaced by `wsApi.ts`; imports and tests migrated.
+- 2026-03-17: Regenerated OpenAPI and frontend RTK client (`bun run gen`) to remove stale `/api/sse` contracts.
+- Validation summary: targeted backend tests (`./api`, `BroadcasterService` suite), focused frontend tests, `make gen`, and `make build` pass; full frontend build succeeds with no compile errors.
+- 2026-03-17 Polish Pass: Verified SmartStatusPanel tests now pass (18/18); verified all core SSE removal changes in place; frontend build completes successfully with zero compilation errors.
+
 ## 🔗 Code References & TODOs
 
-- [ ] `backend/src/api/sse.go` — delete entire file
-- [ ] `backend/src/api/sse_test.go` — delete entire file
-- [ ] `backend/src/service/broadcaster_service.go:27` — remove `ProcessHttpChannel(send sse.Sender)` from interface
-- [ ] `backend/src/service/broadcaster_service.go:222-265` (approx) — remove `ProcessHttpChannel` implementation
-- [ ] `backend/src/service/broadcaster_service_test.go:91` — remove `TestProcessHttpChannelAfterStop_DoesNotPanic`
-- [ ] `backend/src/api/health_run_internal_test.go:29` — remove `ProcessHttpChannel` stub from `fakeBroadcaster`
-- [ ] `backend/src/cmd/srat-server/main-server.go:181` — remove `server.AsHumaRoute(api.NewSSEBroker)`
-- [ ] `backend/src/cmd/srat-openapi/main-openapi.go:84` — remove `server.AsHumaRoute(api.NewSSEBroker)`
-- [ ] `frontend/src/store/sseApi.ts` — remove `sseApi` commented block + SSE JSDoc; optionally rename file
-- [ ] `frontend/src/store/__tests__/sseApi.test.tsx` — remove `sseApi`-based test cases
+- [x] `backend/src/api/sse.go` — delete entire file
+- [x] `backend/src/api/sse_test.go` — delete entire file
+- [x] `backend/src/service/broadcaster_service.go:27` — remove `ProcessHttpChannel(send sse.Sender)` from interface
+- [x] `backend/src/service/broadcaster_service.go:222-265` (approx) — remove `ProcessHttpChannel` implementation
+- [x] `backend/src/service/broadcaster_service_test.go:91` — remove `TestProcessHttpChannelAfterStop_DoesNotPanic`
+- [x] `backend/src/api/health_run_internal_test.go:29` — remove `ProcessHttpChannel` stub from `fakeBroadcaster`
+- [x] `backend/src/cmd/srat-server/main-server.go:181` — remove `server.AsHumaRoute(api.NewSSEBroker)`
+- [x] `backend/src/cmd/srat-openapi/main-openapi.go:84` — remove `server.AsHumaRoute(api.NewSSEBroker)`
+- [x] `frontend/src/store/sseApi.ts` — removed and replaced by `frontend/src/store/wsApi.ts`
+- [x] `frontend/src/store/__tests__/sseApi.test.tsx` — removed and replaced by `frontend/src/store/__tests__/wsApi.test.tsx`

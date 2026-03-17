@@ -478,10 +478,6 @@ const injectedRtkApi = api
         query: () => ({ url: `/api/shares` }),
         providesTags: ["share"],
       }),
-      sse: build.query<SseApiResponse, SseApiArg>({
-        query: () => ({ url: `/api/sse` }),
-        providesTags: ["system"],
-      }),
       getApiStatus: build.query<GetApiStatusApiResponse, GetApiStatusApiArg>({
         query: () => ({ url: `/api/status` }),
         providesTags: ["system"],
@@ -905,92 +901,6 @@ export type GetApiSharesApiResponse =
   | /** status 200 OK */ (SharedResource[] | null)
   | /** status default Error */ ErrorModel;
 export type GetApiSharesApiArg = void;
-export type SseApiResponse = /** status 200 OK */
-  | (
-      | {
-          data: DataDirtyTracker;
-          /** The event name. */
-          event: "dirty_data_tracker";
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
-          data: ErrorDataModel;
-          /** The event name. */
-          event: "error";
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
-          data: FilesystemTask;
-          /** The event name. */
-          event: "filesystem_task";
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
-          data: HealthPing;
-          /** The event name. */
-          event: "heartbeat";
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
-          data: Welcome;
-          /** The event name. */
-          event: "hello";
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
-          data: SharedResource[] | null;
-          /** The event name. */
-          event: "shares";
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
-          data: SmartTestStatus;
-          /** The event name. */
-          event: "smart_test_status";
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
-          data: UpdateProgress;
-          /** The event name. */
-          event: "updating";
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-      | {
-          data: Disk[] | null;
-          /** The event name. */
-          event: "volumes";
-          /** The event ID. */
-          id?: number;
-          /** The retry time in milliseconds. */
-          retry?: number;
-        }
-    )[]
-  | /** status default Error */ ErrorModel;
-export type SseApiArg = void;
 export type GetApiStatusApiResponse = /** status 200 OK */
   | boolean
   | /** status default Error */ ErrorModel;
@@ -1718,43 +1628,6 @@ export type SharedResourcePostData = {
   veto_files?: string[];
   [key: string]: unknown;
 };
-export type ErrorDataModel = {
-  /** A human-readable explanation specific to this occurrence of the problem. */
-  detail?: string;
-  /** Optional list of individual error details */
-  errors?: ErrorDetail[] | null;
-  /** A URI reference that identifies the specific occurrence of the problem. */
-  instance?: string;
-  /** HTTP status code */
-  status?: number;
-  /** A short, human-readable summary of the problem type. This value should not change between occurrences of the error. */
-  title?: string;
-  /** A URI reference to human-readable documentation for the error. */
-  type?: string;
-};
-export type FilesystemTask = {
-  device: string;
-  error?: string;
-  filesystemType?: string;
-  message?: string;
-  notes?: string[] | null;
-  operation: string;
-  progress?: number;
-  result?: unknown;
-  status: string;
-};
-export type Welcome = {
-  active_clients: number;
-  build_version: string;
-  machine_id?: string;
-  message: string;
-  protected_mode: boolean;
-  read_only: boolean;
-  secure_mode: boolean;
-  startTime: number;
-  supported_events: Supported_events[] | null;
-  update_channel: Update_channel;
-};
 export type BinaryAsset = {
   browser_download_url?: string;
   digest?: string;
@@ -1775,6 +1648,29 @@ export type UpdateProgress = {
   progress?: number;
   release_asset?: ReleaseAsset;
   update_process_state?: Update_process_state;
+};
+export type PatchMountPointData = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  custom_flags?: MountFlag[];
+  device_id?: string;
+  disk_label?: string;
+  disk_serial?: string;
+  disk_size?: number;
+  flags?: MountFlag[];
+  fstype?: string;
+  invalid?: boolean;
+  invalid_error?: string;
+  is_mounted?: boolean;
+  is_to_mount_at_startup?: boolean;
+  is_write_supported?: boolean;
+  path: string;
+  refresh_version?: number;
+  root?: string;
+  time_machine_support?: Time_machine_support;
+  type: Type;
+  warnings?: string;
+  [key: string]: unknown;
 };
 export type Partition = {
   device_path?: string;
@@ -1816,29 +1712,6 @@ export type Disk = {
   size?: number;
   smart_info?: SmartInfo;
   vendor?: string;
-};
-export type PatchMountPointData = {
-  /** A URL to the JSON Schema for this object. */
-  $schema?: string;
-  custom_flags?: MountFlag[];
-  device_id?: string;
-  disk_label?: string;
-  disk_serial?: string;
-  disk_size?: number;
-  flags?: MountFlag[];
-  fstype?: string;
-  invalid?: boolean;
-  invalid_error?: string;
-  is_mounted?: boolean;
-  is_to_mount_at_startup?: boolean;
-  is_write_supported?: boolean;
-  path: string;
-  refresh_version?: number;
-  root?: string;
-  time_machine_support?: Time_machine_support;
-  type: Type;
-  warnings?: string;
-  [key: string]: unknown;
 };
 export enum Command_type {
   Scsi = "scsi",
@@ -1895,23 +1768,6 @@ export enum Usage {
   Media = "media",
   Share = "share",
   Internal = "internal",
-}
-export enum Supported_events {
-  Hello = "hello",
-  Updating = "updating",
-  Volumes = "volumes",
-  Heartbeat = "heartbeat",
-  Shares = "shares",
-  DirtyDataTracker = "dirty_data_tracker",
-  SmartTestStatus = "smart_test_status",
-  FilesystemTask = "filesystem_task",
-  Error = "error",
-}
-export enum Update_channel {
-  None = "None",
-  Develop = "Develop",
-  Release = "Release",
-  Prerelease = "Prerelease",
 }
 export enum Update_process_state {
   Idle = "Idle",
@@ -1978,7 +1834,6 @@ export const {
   usePutApiShareByShareNameDisableMutation,
   usePutApiShareByShareNameEnableMutation,
   useGetApiSharesQuery,
-  useSseQuery,
   useGetApiStatusQuery,
   useGetApiTelemetryInternetConnectionQuery,
   useGetApiTelemetryModesQuery,

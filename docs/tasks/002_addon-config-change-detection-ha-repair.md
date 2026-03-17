@@ -16,7 +16,7 @@ Detect when the Home Assistant Supervisor changes the addon configuration (`/dat
   - A fallback polling interval (e.g., every 60 s), configurable via `AppConfig`
 
 - **Outputs:**
-  - SSE event of type `app_config_changed` emitted on the SRAT event bus → consumed by the frontend
+  - WebSocket event of type `app_config_changed` emitted on the SRAT event bus → consumed by the frontend
   - Frontend popup/snackbar: "Addon configuration has changed. Reload required." with a **Reload** action button
   - HA Repair issue (`ir.async_create_issue`) via the Go backend calling the Supervisor API; falls back to `persistent_notification` if Repairs API is unavailable
   - Repair/notification auto-dismissed once the config has been reloaded (restart or live-reload)
@@ -27,7 +27,7 @@ Detect when the Home Assistant Supervisor changes the addon configuration (`/dat
   - `backend/src/config/addon_options.go` — options file path constant
   - `backend/src/events/` — define new `AddonConfigChangedEvent` event type
   - `backend/src/dto/app_config.go` — `AppConfigData.RequiresRestart` flag
-  - `frontend/src/` — new snackbar/banner component triggered by the new SSE event
+  - `frontend/src/` — new snackbar/banner component triggered by the new WebSocket event
   - `custom_components/srat/` — alternative path: listen for the HA push event and call `async_reload` entry
 
 ## 📝 Task List
@@ -38,7 +38,7 @@ Detect when the Home Assistant Supervisor changes the addon configuration (`/dat
 - [ ] Task 4: On config change detected, emit `AddonConfigChangedEvent` on event bus and set `AppConfigData.RequiresRestart = true` in the config DTO
 - [ ] Task 5: Add `CreateRepairIssue` / `DismissRepairIssue` helpers to `HomeAssistantService` using HA Supervisor Repairs API (`/core/api/repairs/issues`); fall back to `persistent_notification` when Repairs endpoint returns 404
 - [ ] Task 6: Wire the watcher service into the fx dependency graph (`appsetup.go`)
-- [ ] Task 7: Frontend — subscribe to the new `app_config_changed` SSE event in RTK Query; show a persistent `Snackbar` / `Alert` with a **Reload** button calling `POST /api/app-config/reload` (or triggering browser reload)
+- [ ] Task 7: Frontend — subscribe to the new `app_config_changed` WebSocket event in RTK Query; show a persistent `Snackbar` / `Alert` with a **Reload** button calling `POST /api/app-config/reload` (or triggering browser reload)
 - [ ] Task 8: Auto-dismiss the HA Repair issue / persistent notification after a successful config reload
 - [ ] Task 9: Unit testing — `AddonConfigWatcherService` with a mock fsnotify watcher; test hash-based deduplication, debounce, and fallback path
 - [ ] Task 10: Integration testing — end-to-end: write to a temp options file, verify `AddonConfigChangedEvent` emitted and `RequiresRestart` flipped
@@ -78,7 +78,7 @@ else:
 
 ### Frontend popup
 
-- Add a new `useAddonConfigChangedBanner` hook that watches the SSE stream for `app_config_changed` events.
+- Add a new `useAddonConfigChangedBanner` hook that watches the WebSocket stream for `app_config_changed` events.
 - Render a `MUI Alert severity="warning"` inside a persistent `Snackbar` at the top of the page layout (not a blocking modal).
 - Include a **Reload config** button; on click call the reload endpoint and dismiss the banner.
 - Use `AppConfigData.requires_restart` from the existing config endpoint as the initial state source (for page refreshes).

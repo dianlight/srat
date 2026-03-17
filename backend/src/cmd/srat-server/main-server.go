@@ -178,7 +178,6 @@ func prog(listener net.Listener, serverPort int) {
 		appsetup.ProvideCyclicDependencyWorkaroundOption(),
 		fx.Provide(
 			func() net.Listener { return listener },
-			server.AsHumaRoute(api.NewSSEBroker),
 			func() (smartmontools.SmartClient, error) {
 				return smartmontools.NewClient(smartmontools.WithTLogHandler(tlog.NewLoggerWithLevel(tlog.LevelInfo)))
 			},

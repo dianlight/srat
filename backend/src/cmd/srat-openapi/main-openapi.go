@@ -81,7 +81,6 @@ func main() {
 		appsetup.ProvideCoreDependencies(appParams),
 		appsetup.ProvideCyclicDependencyWorkaroundOption(),
 		fx.Provide(
-			server.AsHumaRoute(api.NewSSEBroker),
 			server.AsHumaRoute(api.NewHealthHandler),
 			server.AsHumaRoute(api.NewShareHandler),
 			server.AsHumaRoute(api.NewVolumeHandler),

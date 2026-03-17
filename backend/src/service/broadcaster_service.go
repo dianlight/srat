@@ -20,13 +20,10 @@ import (
 	"github.com/teivah/broadcast"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
-
-	"github.com/danielgtaylor/huma/v2/sse"
 )
 
 type BroadcasterServiceInterface interface {
 	BroadcastMessage(msg any) any
-	ProcessHttpChannel(send sse.Sender)
 	ProcessWebSocketChannel(send ws.Sender)
 }
 
@@ -225,51 +222,6 @@ func (broker *BroadcasterService) sendToHomeAssistant(msg any) {
 		}
 	default:
 		tlog.TraceContext(broker.ctx, "Skipping Home Assistant entity update for unsupported message type", "type", fmt.Sprintf("%T", msg), "msg", msg)
-	}
-}
-
-// ProcessHttpChannel processes an HTTP channel for Server-Sent Events (SSE).
-// It filters out Home Assistant-specific events that should not be sent to web clients
-// and only sends events that are registered with the SSE system.
-func (broker *BroadcasterService) ProcessHttpChannel(send sse.Sender) {
-	broker.ConnectedClients.Add(1)
-	defer broker.ConnectedClients.Add(-1)
-
-	listener := broker.relay.Listener(5)
-	defer listener.Close() // Close the listener when done
-
-	slog.DebugContext(broker.ctx, "SSE Connected client", "actual clients", broker.ConnectedClients.Load())
-
-	err := send(sse.Message{
-		ID:    0,
-		Retry: 1000,
-		Data:  broker.createWelcomeMessage(),
-	})
-	if err != nil {
-		slog.WarnContext(broker.ctx, "Error sending welcome message to SSE client", "err", err)
-	}
-
-	for {
-		select {
-		case <-broker.ctx.Done():
-			slog.InfoContext(broker.ctx, "SSE Process Closed", "err", broker.ctx.Err(), "active clients", broker.ConnectedClients.Load())
-			return
-		case event := <-listener.Ch():
-			// Filter out Home Assistant-specific events that shouldn't go to SSE clients
-			if dto.WebEventMap.IsValidEvent(event.Message) {
-				continue
-			}
-
-			err := send(sse.Message{
-				ID:    int(event.ID),
-				Retry: 1000,
-				Data:  event.Message,
-			})
-			if err != nil {
-				slog.WarnContext(broker.ctx, "Error sending event to client", "event", event, "err", err, "active clients", broker.ConnectedClients.Load())
-				return
-			}
-		}
 	}
 }
 

@@ -9,7 +9,7 @@ import { getCurrentEnv } from "../macro/Environment.ts" with { type: "macro"
 };
 import { getGitCommitHash } from "../macro/GitCommitHash.ts" with { type: "macro"
 };
-import { useGetServerEventsQuery } from "../store/sseApi.ts";
+import { useGetServerEventsQuery } from "../store/wsApi.ts";
 
 export function Footer() {
 	const theme = useTheme();

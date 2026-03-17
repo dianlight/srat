@@ -23,7 +23,7 @@ import {
 	usePatchApiVolumeSettingsMutation,
 	usePostApiVolumeMountMutation,
 } from "../../store/sratApi";
-import { useGetServerEventsQuery } from "../../store/sseApi";
+import { useGetServerEventsQuery } from "../../store/wsApi";
 import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
 import { VolumeDetailsPanel, VolumeMountDialog, VolumesTreeView } from "./components";
 import {
