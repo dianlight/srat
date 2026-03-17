@@ -4,7 +4,7 @@ import {
 	type UpdateProgress,
 	useGetApiUpdateQuery,
 } from "../store/sratApi";
-import { useGetServerEventsQuery } from "../store/sseApi";
+import { useGetServerEventsQuery } from "../store/wsApi";
 
 export function useUpdate() {
 	const { data, error, isLoading, isSuccess, refetch } = useGetApiUpdateQuery();

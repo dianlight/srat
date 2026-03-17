@@ -12,7 +12,7 @@ describe("Redux Store Configuration", () => {
 	it("has all required reducers configured", async () => {
 		const { store } = await import("../store");
 		const { sratApi } = await import("../sratApi");
-		const { wsApi } = await import("../sseApi");
+		const { wsApi } = await import("../wsApi");
 		const state = store.getState();
 
 		// Verify all expected slice states exist
@@ -50,7 +50,7 @@ describe("Redux Store Configuration", () => {
 	it("initializes with default state structure", async () => {
 		const { store } = await import("../store");
 		const { sratApi } = await import("../sratApi");
-		const { wsApi } = await import("../sseApi");
+		const { wsApi } = await import("../wsApi");
 		const state = store.getState();
 
 		// Verify errors slice initializes

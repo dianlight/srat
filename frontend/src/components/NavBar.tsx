@@ -75,7 +75,7 @@ import {
 	Update_process_state,
 	usePutApiUpdateMutation
 } from "../store/sratApi";
-import { useGetServerEventsQuery } from "../store/sseApi";
+import { useGetServerEventsQuery } from "../store/wsApi";
 import { DonationButton } from "./DonationButton";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { NotificationCenter } from "./NotificationCenter";

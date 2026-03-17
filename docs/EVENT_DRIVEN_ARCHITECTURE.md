@@ -100,7 +100,6 @@ graph TB
     subgraph "Client Communication"
         subgraph "Web Clients"
             WS[WebSocket Clients<br/>Filtered Events]
-            SSE[SSE Clients<br/>Filtered Events]
         end
         subgraph "Home Assistant Integration"
             HA1[HA: DiskEntities<br/>VolumeStatus]
@@ -142,7 +141,6 @@ graph TB
     STE -.->|Available| FL
 
     BS -->|Broadcast| WS
-    BS -->|Broadcast| SSE
     BS -->|Send Entities| HA1
     BS -->|Send Health| HA2
     BS -->|Send Status| HA3
@@ -162,7 +160,6 @@ graph TB
     style STE fill:#f3e5f5,stroke:#4a148c,stroke-dasharray: 5 5
     style FL fill:#e8f5e9,stroke:#1b5e20,stroke-dasharray: 5 5
     style WS fill:#e3f2fd,stroke:#1565c0
-    style SSE fill:#e3f2fd,stroke:#1565c0
     style HA1 fill:#e8f5e9,stroke:#2e7d32
     style HA2 fill:#e8f5e9,stroke:#2e7d32
     style HA3 fill:#e8f5e9,stroke:#2e7d32
@@ -241,7 +238,7 @@ service.eventBus.EmitShareDisabled(events.ShareEvent{Share: share})
 
 - Listens to all event types from EventBus
 - Relays events through existing broadcast relay
-- Filters events appropriately for different client types (SSE vs WebSocket)
+- Filters events appropriately for different client types (currently WebSocket)
 - Sends events to Home Assistant if applicable
 
 ## Dependency Injection Setup
@@ -311,7 +308,7 @@ func (vs *VolumeService) detectNewDisk(disk *dto.Disk) {
 
 ### Step 4: Test with Clients
 
-- Connect WebSocket/SSE clients
+- Connect WebSocket clients
 - Verify events are received on client side
 - Check Home Assistant integration (if enabled)
 
@@ -476,7 +473,7 @@ Look for these log messages:
 - [ ] Update VolumeService to emit disk/partition events
 - [ ] Update ShareService to emit share events
 - [ ] Test WebSocket client receives events
-- [ ] Test SSE client receives events
+- [ ] Test WebSocket client receives events
 - [ ] Verify Home Assistant integration (if used)
 - [ ] Load test with high event frequency
 - [ ] Document any custom event types added

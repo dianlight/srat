@@ -8,7 +8,7 @@ import {
 	type SambaStatus,
 	useGetApiHealthQuery,
 } from "../store/sratApi";
-import { useGetServerEventsQuery } from "../store/sseApi";
+import { useGetServerEventsQuery } from "../store/wsApi";
 
 export function useHealth() {
 	const [health, setHealth] = useState<HealthPing>({

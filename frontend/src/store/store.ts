@@ -6,7 +6,7 @@ import { githubApi } from "./githubApi";
 import mdcMiddleware from "./mdcMiddleware";
 import { mdcSlice } from "./mdcSlice";
 import { sratApi } from "./sratApi";
-import { wsApi } from "./sseApi";
+import { wsApi } from "./wsApi";
 
 export const store = configureStore({
 	reducer: {

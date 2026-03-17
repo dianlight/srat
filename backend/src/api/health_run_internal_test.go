@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/danielgtaylor/huma/v2/sse"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/apps"
 	"github.com/dianlight/srat/internal/ctxkeys"
@@ -26,7 +25,6 @@ func (f *fakeBroadcaster) BroadcastMessage(msg any) any {
 	f.mu.Unlock()
 	return msg
 }
-func (f *fakeBroadcaster) ProcessHttpChannel(send sse.Sender)     {}
 func (f *fakeBroadcaster) ProcessWebSocketChannel(send ws.Sender) {}
 
 // minimal fakes for other services

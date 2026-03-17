@@ -42,7 +42,7 @@ import {
 	type Settings,
 	type SystemCapabilities
 } from "../../store/sratApi";
-import { useGetServerEventsQuery } from "../../store/sseApi";
+import { useGetServerEventsQuery } from "../../store/wsApi";
 import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
 import { AppConfigurationPanel } from "./AppConfigurationPanel";
 

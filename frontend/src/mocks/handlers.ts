@@ -508,17 +508,6 @@ export const handlers = [
 			...resultArray[next(`get /api/shares`) % resultArray.length],
 		);
 	}),
-	http.get(`${baseURL}/api/sse`, async () => {
-		const resultArray = [
-			[getSse200Response(), { status: 200 }],
-			[getSse4XxResponse(), { status: 4 }],
-			[getSsedefaultResponse(), { status: NaN }],
-		] as [any, { status: number }][];
-
-		return HttpResponse.json(
-			...resultArray[next(`get /api/sse`) % resultArray.length],
-		);
-	}),
 	http.get(`${baseURL}/api/status`, async () => {
 		const resultArray = [
 			[getGetApiStatus200Response(), { status: 200 }],
@@ -2306,18 +2295,6 @@ export function getListApiShares4XxResponse() {
 }
 
 export function getListApiSharesdefaultResponse() {
-	return null;
-}
-
-export function getSse200Response() {
-	return null;
-}
-
-export function getSse4XxResponse() {
-	return null;
-}
-
-export function getSsedefaultResponse() {
 	return null;
 }
 

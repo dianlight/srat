@@ -11,7 +11,7 @@ import {
 	Telemetry_mode,
 	useGetApiSettingsQuery,
 } from "../store/sratApi";
-import { useGetServerEventsQuery } from "../store/sseApi";
+import { useGetServerEventsQuery } from "../store/wsApi";
 
 // Extend Rollbar configuration to allow optional Replay settings not present in types
 type RollbarConfigWithReplay = Rollbar.Configuration & { replay?: unknown };
@@ -109,8 +109,8 @@ export const useRollbarTelemetry = () => {
 					},
 					person: evdata?.hello.machine_id
 						? {
-								id: evdata.hello.machine_id,
-							}
+							id: evdata.hello.machine_id,
+						}
 						: undefined,
 				},
 				enabled: enableRollbar,

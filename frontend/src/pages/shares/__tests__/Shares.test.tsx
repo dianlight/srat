@@ -33,7 +33,7 @@ describe.skip("Shares page", () => {
         // Without this, module-mocked tests can corrupt the global API instances
         try {
             const { sratApi } = await import("../../../store/sratApi");
-            await import("../../../store/sseApi");
+            await import("../../../store/wsApi");
             // Force clear all internal subscription state
             if ((sratApi as any).internalActions) {
                 // Reset middleware tracking
@@ -162,8 +162,8 @@ describe.skip("Shares page", () => {
             }),
         }));
 
-        // Mock sseApi hook as imported by Shares component (../../store/sseApi)
-        mock.module("../../store/sseApi", () => ({
+        // Mock wsApi hook as imported by Shares component (../../store/wsApi)
+        mock.module("../../store/wsApi", () => ({
             useGetServerEventsQuery: () => ({
                 data: { hello: { read_only: false, protected_mode: false } },
                 isLoading: false,
@@ -173,8 +173,7 @@ describe.skip("Shares page", () => {
         // Minimal API shapes for store creation dynamic imports from test/setup.ts
         const fakeReducer = (state: any = {}, _action: any) => state;
         const makeMiddleware = () => () => (next: any) => (action: any) => next(action);
-        mock.module("../src/store/sseApi", () => ({
-            sseApi: { reducerPath: "sseApi", reducer: fakeReducer, middleware: makeMiddleware() },
+        mock.module("../src/store/wsApi", () => ({
             wsApi: { reducerPath: "wsApi", reducer: fakeReducer, middleware: makeMiddleware() },
         }));
 
@@ -294,8 +293,7 @@ describe.skip("Shares page", () => {
             ],
         }));
 
-        mock.module(path.resolve(__dirname, "../../../store/sseApi.ts"), () => ({
-            sseApi: { reducerPath: "sseApi", reducer: fakeReducer, middleware: makeMiddleware() },
+        mock.module(path.resolve(__dirname, "../../../store/wsApi.ts"), () => ({
             wsApi: { reducerPath: "wsApi", reducer: fakeReducer, middleware: makeMiddleware() },
             useGetServerEventsQuery: () => ({
                 data: { hello: { read_only: false, protected_mode: false } },

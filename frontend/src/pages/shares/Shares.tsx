@@ -25,8 +25,8 @@ import {
 	usePutApiShareByShareNameDisableMutation,
 	usePutApiShareByShareNameMutation,
 } from "../../store/sratApi";
-import { useGetServerEventsQuery } from "../../store/sseApi";
 import { useAppDispatch } from "../../store/store";
+import { useGetServerEventsQuery } from "../../store/wsApi";
 import { ShareDetailsPanel, ShareEditForm, SharesTreeView } from "./components";
 import { ShareEditDialog } from "./ShareEditDialog";
 import type { ShareEditProps } from "./types";

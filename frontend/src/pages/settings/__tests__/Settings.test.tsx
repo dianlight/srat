@@ -90,7 +90,7 @@ describe("Settings", () => {
     });
 
     it("can import SSE API hook", async () => {
-        const { useGetServerEventsQuery } = await import("../../../store/sseApi");
+        const { useGetServerEventsQuery } = await import("../../../store/wsApi");
         expect(typeof useGetServerEventsQuery).toBe("function");
     });
 
