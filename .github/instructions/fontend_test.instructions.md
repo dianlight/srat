@@ -15,6 +15,7 @@ applyTo: **/frontend/**/\*.test.{js,jsx,ts,tsx}
 - **Library:** Use @testing-library/react.
 - **Language:** TypeScript (ensure strict typing for props and mocks).
 - **Matchings:** Use @testing-library/jest-dom matchers (manually imported or configured via setup file).
+- **Timeout:** Use a default test timeout of 5000ms (configurable in bun:test options).
 
 ## **2\. Core Philosophy**
 
