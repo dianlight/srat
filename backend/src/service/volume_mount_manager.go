@@ -117,6 +117,11 @@ func (m *volumeMountManager) Mount(md *dto.MountPointData, flags uintptr, data, 
 		)
 	}
 
+	// Mount succeeded, so this mount point must be marked as mounted.
+	// The conversion step uses a best-effort mount table lookup that can be
+	// transiently stale in some environments.
+	md.IsMounted = true
+
 	if errCache := m.disks.AddOrUpdateMountPoint(*md.Partition.DiskId, *md.Partition.Id, *md); errCache != nil {
 		slog.ErrorContext(m.ctx, "Failed to add mount point to in-memory cache after successful mount",
 			"device", md.DeviceId, "path", md.Path, "err", errCache)
