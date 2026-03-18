@@ -71,7 +71,7 @@ _Generated: <date>_
 
 ---
 
-## ✅ Done
+## ✅ - Done
 
 ### [001] Title
 - **Type:** FEATURE | **Issues:** [srat#185](url)
@@ -79,7 +79,7 @@ _Generated: <date>_
 
 ---
 
-## 🔄 In Progress
+## 🔄 - In Progress
 
 ### [003] Title
 - **Type:** FIX | **Issues:** [hassio-addons#596](url)
@@ -88,7 +88,7 @@ _Generated: <date>_
 
 ---
 
-## 📅 Planned
+## 📅 - Planned
 
 ### [008] Title
 - **Type:** FEATURE | **Issues:** [srat#184](url)
