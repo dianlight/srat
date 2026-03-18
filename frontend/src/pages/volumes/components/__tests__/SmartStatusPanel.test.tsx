@@ -87,54 +87,63 @@ describe("SmartStatusPanel Component", () => {
         const { render, waitFor } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { http, HttpResponse } = await import("msw");
-        const { getMswServer } = await import("../../../../../test/bun-setup");
         const { SmartStatusPanel } = await import("../SmartStatusPanel");
         const { createTestStore } = await import("../../../../../test/setup");
+        const { withTestHandlers } = await import("../../../../../test/bun-setup");
+        const { sratApi } = await import("../../../../../src/store/sratApi");
 
-        const server = await getMswServer();
-        server.use(
-            http.get(/.*\/api\/settings$/, () => HttpResponse.json({
-                hostname: "homeassistant",
-                workgroup: "WORKGROUP",
-                allow_hosts: ["10.0.0.0/8"],
-                compatibility_mode: false,
-                interfaces: [],
-                bind_all_interfaces: true,
-                multi_channel: true,
-                allow_guest: false,
-                telemetry_mode: "Ask",
-                local_master: true,
-                export_stats_to_ha: false,
-                ha_use_nfs: false,
-                smb_over_quic: false,
-                disable_smart: true,
-            })),
-        );
-
-        const store = await createTestStore();
-        const mockSmartInfo = {
-            disk_type: "SATA",
-            temperature: { value: 45 },
-            power_on_hours: { value: 10000 },
-            power_cycle_count: { value: 500 },
-            enabled: true,
-            supported: true,
+        const settingsPayload = {
+            hostname: "homeassistant",
+            workgroup: "WORKGROUP",
+            allow_hosts: ["10.0.0.0/8"],
+            compatibility_mode: false,
+            interfaces: [],
+            bind_all_interfaces: true,
+            multi_channel: true,
+            allow_guest: false,
+            telemetry_mode: "Ask",
+            local_master: true,
+            export_stats_to_ha: false,
+            ha_use_nfs: false,
+            smb_over_quic: false,
+            disable_smart: true,
         } as any;
 
-        const { container } = render(
-            React.createElement(Provider, {
-                store,
-                children: React.createElement(SmartStatusPanel, {
-                    smartInfo: mockSmartInfo,
-                    diskId: "disk-001",
-                    isSmartSupported: true,
-                }),
-            }),
-        );
+        await withTestHandlers(
+            [
+                http.get("/api/settings", () => HttpResponse.json(settingsPayload)),
+                http.get(/.*\/api\/settings(?:\?.*)?$/, () => HttpResponse.json(settingsPayload)),
+            ],
+            async () => {
+                const store = await createTestStore();
+                (store.dispatch as any)(
+                    sratApi.util.upsertQueryData("getApiSettings", undefined, settingsPayload),
+                );
+                const mockSmartInfo = {
+                    disk_type: "SATA",
+                    temperature: { value: 45 },
+                    power_on_hours: { value: 10000 },
+                    power_cycle_count: { value: 500 },
+                    enabled: true,
+                    supported: true,
+                } as any;
 
-        await waitFor(() => {
-            expect(container.firstChild).toBeFalsy();
-        });
+                const { container } = render(
+                    React.createElement(Provider, {
+                        store,
+                        children: React.createElement(SmartStatusPanel, {
+                            smartInfo: mockSmartInfo,
+                            diskId: "disk-001",
+                            isSmartSupported: true,
+                        }),
+                    }),
+                );
+
+                await waitFor(() => {
+                    expect(container.firstChild).toBeNull();
+                }, { timeout: 1500 });
+            },
+        );
     });
 
     it("should render SMART status when data is available", async () => {

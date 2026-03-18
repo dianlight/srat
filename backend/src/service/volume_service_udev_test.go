@@ -8,7 +8,6 @@ import (
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
-	"github.com/dianlight/srat/internal/osutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/u-root/u-root/pkg/mount/loop"
@@ -200,22 +199,20 @@ func TestHandlePartitionUdevRemoveEvent_LoopbackExt4EvictsCache(t *testing.T) {
 
 	require.NoError(t, svc.MountVolume(&mountData))
 	t.Cleanup(func() {
-		mounted, mountErr := osutil.IsMounted(mountPath)
-		if mountErr == nil && mounted {
-			_ = svc.unmountVolume(&mountData, true)
-		}
+		_ = svc.unmountVolume(&mountData, true)
 	})
 
-	mounted, err := osutil.IsMounted(mountPath)
-	require.NoError(t, err)
-	require.True(t, mounted)
+	cachedMount, ok := disks.GetMountPoint(diskID, partitionID, mountPath)
+	require.True(t, ok)
+	require.NotNil(t, cachedMount)
+	require.True(t, cachedMount.IsMounted)
 
 	svc.handlePartitionUdevRemoveEvent(devName)
 
 	_, found := disks.GetPartition(diskID, partitionID)
 	assert.False(t, found)
 
-	mounted, err = osutil.IsMounted(mountPath)
-	require.NoError(t, err)
-	assert.False(t, mounted)
+	_, statErr := os.Stat(mountPath)
+	assert.Error(t, statErr)
+	assert.True(t, os.IsNotExist(statErr))
 }

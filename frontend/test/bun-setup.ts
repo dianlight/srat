@@ -13,8 +13,11 @@
 import { afterAll, afterEach, beforeAll } from "bun:test";
 import { setupServer } from "msw/node";
 
+type SetupServerHandler = Parameters<typeof setupServer>[number];
+
 // We'll initialize the server later to avoid circular imports
 let server: ReturnType<typeof setupServer> | null = null;
+let defaultHandlers: SetupServerHandler[] = [];
 
 /**
  * Start MSW server before all tests
@@ -29,6 +32,7 @@ beforeAll(async () => {
 	const { streamingHandlers } = await import("../src/mocks/streamingHandlers");
 
 	const handlers = [...generatedHandlers, ...streamingHandlers, ...customHandlers];
+	defaultHandlers = handlers;
 	server = setupServer(...handlers);
 
 	server.listen({
@@ -91,6 +95,27 @@ export async function getMswServer() {
 		throw new Error("MSW server not initialized");
 	}
 	return server;
+}
+
+/**
+ * Run a test block with isolated MSW handlers.
+ *
+ * This replaces runtime handlers for the duration of the callback, then restores
+ * defaults, preventing cross-test interference from shared handler state.
+ */
+export async function withTestHandlers<T>(
+	handlers: SetupServerHandler | SetupServerHandler[],
+	run: () => Promise<T>,
+): Promise<T> {
+	const activeServer = await getMswServer();
+	const scopedHandlers = Array.isArray(handlers) ? handlers : [handlers];
+
+	activeServer.resetHandlers(...scopedHandlers, ...defaultHandlers);
+	try {
+		return await run();
+	} finally {
+		activeServer.resetHandlers(...defaultHandlers);
+	}
 }
 
 export const mswServer = server;
