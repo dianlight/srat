@@ -2,6 +2,7 @@ package api_test
 
 import (
 	"context"
+	"fmt"
 	"net/http/httptest"
 	"sync"
 	"testing"
@@ -27,6 +28,7 @@ type WsHandlerSuite struct {
 	app             *fxtest.App
 	ctx             context.Context
 	cancel          context.CancelFunc
+	state           *dto.ContextState
 	mockBroadcaster service.BroadcasterServiceInterface
 }
 
@@ -52,7 +54,7 @@ func (suite *WsHandlerSuite) SetupTest() {
 			mock.Mock[service.ShareServiceInterface],
 			///mock.Mock[service.BroadcasterServiceInterface],
 		),
-		fx.Populate(&suite.ctx, &suite.cancel),
+		fx.Populate(&suite.ctx, &suite.cancel, &suite.state),
 		fx.Populate(&suite.mockBroadcaster),
 	)
 
@@ -62,7 +64,7 @@ func (suite *WsHandlerSuite) SetupTest() {
 func (suite *WsHandlerSuite) TestWebSocketUpgrade() {
 
 	// Create handler
-	h := api.NewWebSocketBroker(suite.ctx, suite.mockBroadcaster)
+	h := api.NewWebSocketBroker(suite.ctx, suite.mockBroadcaster, suite.state)
 
 	// Register on router
 	r := mux.NewRouter()
@@ -89,7 +91,7 @@ func (suite *WsHandlerSuite) TestWebSocketUpgrade() {
 func (suite *WsHandlerSuite) TestWebSocketReceivesMessagesFromBroadcaster() {
 	// Use a real BroadcasterService so we can broadcast messages into the WebSocket handler.
 
-	h := api.NewWebSocketBroker(suite.ctx, suite.mockBroadcaster)
+	h := api.NewWebSocketBroker(suite.ctx, suite.mockBroadcaster, suite.state)
 	r := mux.NewRouter()
 	h.RegisterWs(r)
 
@@ -126,4 +128,83 @@ func (suite *WsHandlerSuite) TestWebSocketReceivesMessagesFromBroadcaster() {
 	suite.Require().NoError(err)
 	suite.Contains(string(msg2), "event: updating")
 	suite.Contains(string(msg2), "v1.2.3")
+}
+
+func (suite *WsHandlerSuite) TestWebSocketAcceptsValidatedInboundHelo() {
+	h := api.NewWebSocketBroker(suite.ctx, suite.mockBroadcaster, suite.state)
+	r := mux.NewRouter()
+	h.RegisterWs(r)
+
+	srv := httptest.NewServer(r)
+	defer srv.Close()
+
+	url := "ws" + srv.URL[len("http"):] + "/ws"
+	conn, resp, err := websocket.DefaultDialer.Dial(url, nil)
+	if err != nil {
+		suite.Failf("Dial failed", "err=%v resp=%v", err, resp)
+		return
+	}
+	defer conn.Close()
+
+	conn.SetReadDeadline(time.Now().Add(1 * time.Second))
+	_, msg1, err := conn.ReadMessage()
+	suite.Require().NoError(err)
+	suite.Contains(string(msg1), "event: hello")
+
+	err = conn.WriteJSON(dto.HeloMessage{
+		Type:      dto.HomeAssistantClientMessageTypeHelo,
+		Component: dto.HomeAssistantComponentSRAT,
+		Version:   "2026.03.1",
+	})
+	suite.Require().NoError(err)
+	suite.Eventually(func() bool {
+		return suite.state.HAWsComponent != nil && suite.state.HAWsComponent.Version == "2026.03.1"
+	}, time.Second, 10*time.Millisecond)
+	suite.Require().NotNil(suite.state.HAWsComponent)
+	suite.Equal(dto.HomeAssistantComponentSRAT, suite.state.HAWsComponent.Component)
+
+	suite.mockBroadcaster.BroadcastMessage(dto.UpdateProgress{Progress: 7})
+	_, msg2, err := conn.ReadMessage()
+	suite.Require().NoError(err)
+	suite.Contains(string(msg2), "event: updating")
+	suite.Contains(string(msg2), "\"progress\":7")
+
+	err = conn.Close()
+	suite.Require().NoError(err)
+	suite.Eventually(func() bool {
+		return suite.state.HAWsComponent == nil
+	}, time.Second, 10*time.Millisecond)
+}
+
+func (suite *WsHandlerSuite) TestWebSocketIgnoresMalformedInboundPayload() {
+	h := api.NewWebSocketBroker(suite.ctx, suite.mockBroadcaster, suite.state)
+	r := mux.NewRouter()
+	h.RegisterWs(r)
+
+	srv := httptest.NewServer(r)
+	defer srv.Close()
+
+	url := "ws" + srv.URL[len("http"):] + "/ws"
+	conn, resp, err := websocket.DefaultDialer.Dial(url, nil)
+	if err != nil {
+		suite.Failf("Dial failed", "err=%v resp=%v", err, resp)
+		return
+	}
+	defer conn.Close()
+
+	conn.SetReadDeadline(time.Now().Add(1 * time.Second))
+	_, msg1, err := conn.ReadMessage()
+	suite.Require().NoError(err)
+	suite.Contains(string(msg1), "event: hello")
+
+	err = conn.WriteMessage(websocket.TextMessage, []byte("{not-json"))
+	suite.Require().NoError(err)
+	time.Sleep(50 * time.Millisecond)
+	suite.Nil(suite.state.HAWsComponent)
+
+	suite.mockBroadcaster.BroadcastMessage(dto.UpdateProgress{Progress: 11})
+	_, msg2, err := conn.ReadMessage()
+	suite.Require().NoError(err)
+	suite.Contains(string(msg2), "event: updating")
+	suite.Contains(string(msg2), fmt.Sprintf("\"progress\":%d", 11))
 }

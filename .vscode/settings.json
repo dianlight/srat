@@ -242,5 +242,7 @@
     "ssh",
     "untitled",
     "vscode-notebook-cell"
-  ]
+  ],
+  "chat.imageCarousel.enabled": true,
+  "imageCarousel.explorerContextMenu.enabled": true
 }

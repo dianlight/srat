@@ -19,6 +19,7 @@ from collections.abc import Callable
 import contextlib
 import json
 import logging
+from pathlib import Path
 from typing import Any
 
 import aiohttp
@@ -26,6 +27,27 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 _LOGGER = logging.getLogger(__name__)
+
+_MANIFEST_PATH = Path(__file__).with_name("manifest.json")
+
+
+def _load_integration_version() -> str:
+    """Load the integration version from the manifest."""
+    try:
+        manifest = json.loads(_MANIFEST_PATH.read_text(encoding="utf-8"))
+    except (FileNotFoundError, OSError, json.JSONDecodeError):
+        _LOGGER.warning("Unable to load SRAT integration version from manifest")
+        return "0.0.0"
+
+    version = manifest.get("version")
+    if isinstance(version, str) and version:
+        return version
+
+    _LOGGER.warning("SRAT integration manifest version missing or invalid")
+    return "0.0.0"
+
+
+INTEGRATION_VERSION = _load_integration_version()
 
 
 class SRATWebSocketClient:
@@ -41,12 +63,14 @@ class SRATWebSocketClient:
         host: str,
         port: int,
         reconnect_interval: int = 5,
+        integration_version: str | None = None,
     ) -> None:
         """Initialize the SRAT WebSocket client."""
         self._hass = hass
         self._host = host
         self._port = port
         self._reconnect_interval = reconnect_interval
+        self._integration_version = integration_version or INTEGRATION_VERSION
         self._listeners: dict[str, list[Callable[[Any], None]]] = {}
         self._task: asyncio.Task | None = None
         self._connected = False
@@ -109,6 +133,7 @@ class SRATWebSocketClient:
                 ) as ws:
                     self._connected = True
                     _LOGGER.info("Connected to SRAT WebSocket at %s", url)
+                    await self._send_helo(ws)
 
                     async for msg in ws:
                         if msg.type == aiohttp.WSMsgType.TEXT:
@@ -127,7 +152,7 @@ class SRATWebSocketClient:
             except asyncio.CancelledError:
                 _LOGGER.debug("SRAT WebSocket listener cancelled")
                 break
-            except (aiohttp.ClientError, TimeoutError) as err:
+            except (aiohttp.ClientError, ConnectionError, OSError, RuntimeError, TimeoutError) as err:
                 self._connected = False
                 if self._should_reconnect:
                     _LOGGER.warning(
@@ -138,6 +163,19 @@ class SRATWebSocketClient:
                     await asyncio.sleep(self._reconnect_interval)
 
         self._connected = False
+
+    async def _send_helo(self, ws: aiohttp.ClientWebSocketResponse) -> None:
+        """Send the initial client-to-server handshake message."""
+        payload = {
+            "type": "helo",
+            "component": "srat",
+            "version": self._integration_version,
+        }
+        _LOGGER.info(
+            "Sending SRAT WebSocket helo with integration version %s",
+            self._integration_version,
+        )
+        await ws.send_json(payload)
 
     def _parse_ws_message(self, raw: str) -> None:
         """Parse an SSE-formatted WebSocket text frame.
