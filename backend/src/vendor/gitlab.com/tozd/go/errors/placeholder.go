@@ -52,7 +52,8 @@ func UnmarshalJSON(data []byte) (error, E) { //nolint:revive,staticcheck
 	if ok {
 		err := json.Unmarshal(errorData, &msg)
 		if err != nil {
-			return nil, WithMessage(err, "error")
+			// "error" field is not a string, treat it as a detail.
+			payload["error"] = errorData
 		}
 	}
 
@@ -61,9 +62,10 @@ func UnmarshalJSON(data []byte) (error, E) { //nolint:revive,staticcheck
 	if ok {
 		err := json.Unmarshal(stackData, &s)
 		if err != nil {
-			return nil, WithMessage(err, "stack")
-		}
-		if len(s) == 0 {
+			// "stack" field is not a stack trace, treat it as a detail.
+			payload["stack"] = stackData
+			s = nil
+		} else if len(s) == 0 {
 			s = nil
 		}
 	}
@@ -73,7 +75,9 @@ func UnmarshalJSON(data []byte) (error, E) { //nolint:revive,staticcheck
 	if ok {
 		cause, errE = UnmarshalJSON(causeData)
 		if errE != nil {
-			return nil, WithMessage(errE, "cause")
+			// "cause" field is not an error, treat it as a detail.
+			payload["cause"] = causeData
+			cause = nil
 		}
 	}
 
@@ -83,20 +87,26 @@ func UnmarshalJSON(data []byte) (error, E) { //nolint:revive,staticcheck
 		var errorsSliceData []json.RawMessage
 		err := json.Unmarshal(errorsData, &errorsSliceData)
 		if err != nil {
-			return nil, WithMessage(err, "errors")
-		}
-		for i, d := range errorsSliceData {
-			e, errE := UnmarshalJSON(d)
-			if errE != nil {
-				return nil, WithMessagef(errE, "errors: %d", i)
-			}
-			if e != nil {
-				// If e is equal to cause, we want to have e be the same pointer to cause, so that
-				// handling of wrapError-like errors can be simplified in formatting and JSON marshal.
-				if cause != nil && reflect.DeepEqual(e, cause) { //nolint:govet
-					errs = append(errs, cause)
-				} else {
-					errs = append(errs, e)
+			// "errors" field is not a slice, treat it as a detail.
+			payload["errors"] = errorsData
+			errs = nil
+		} else {
+			for _, d := range errorsSliceData {
+				e, errE := UnmarshalJSON(d)
+				if errE != nil {
+					// "errors" field is not a slice of errors, treat it as a detail.
+					payload["errors"] = errorsData
+					errs = nil
+					break
+				}
+				if e != nil {
+					// If e is equal to cause, we want to have e be the same pointer to cause, so that
+					// handling of wrapError-like errors can be simplified in formatting and JSON marshal.
+					if cause != nil && reflect.DeepEqual(e, cause) { //nolint:govet
+						errs = append(errs, cause)
+					} else {
+						errs = append(errs, e)
+					}
 				}
 			}
 		}
@@ -110,7 +120,9 @@ func UnmarshalJSON(data []byte) (error, E) { //nolint:revive,staticcheck
 		var v interface{}
 		err := json.Unmarshal(value, &v)
 		if err != nil {
-			return nil, WithMessage(err, key)
+			errE := WithMessage(err, key)
+			Details(errE)["json"] = string(value)
+			return nil, errE
 		}
 		details[key] = v
 	}

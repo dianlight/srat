@@ -524,8 +524,8 @@ github.com/yusufpapurcu/wmi v1.2.4 h1:zFUKzehAFReQwLys1b/iSMl+JQGSCSjtVqQn9bBrPo
 github.com/yusufpapurcu/wmi v1.2.4/go.mod h1:SBZ9tNy3G9/m5Oi98Zks0QjeHVDvuK0qfxQmPyzfmi0=
 github.com/zarldev/goenums v0.4.4 h1:XaiQQ3JkqmR4d89CfHXnfwELmM1dlhrFl39ZGJHHqic=
 github.com/zarldev/goenums v0.4.4/go.mod h1:b1eaKd0nTXZkDulke5iuDrkXUub/XbWMzT+50UimZFc=
-gitlab.com/tozd/go/errors v0.11.0 h1:4d6w6k+eAiwhjOhS0MA9YRj3tQ5NExx4amdVhX26yXQ=
-gitlab.com/tozd/go/errors v0.11.0/go.mod h1:9oQ31+x7iUOEVsrXLDR+iMD8794G5uqLp6eEnYtvD8M=
+gitlab.com/tozd/go/errors v0.11.1 h1:xMPBH+ecV0+8q60QtAGZ1E62FMuOOwpMP0hD4JZfjVo=
+gitlab.com/tozd/go/errors v0.11.1/go.mod h1:9oQ31+x7iUOEVsrXLDR+iMD8794G5uqLp6eEnYtvD8M=
 go.opentelemetry.io/otel v1.40.0 h1:oA5YeOcpRTXq6NN7frwmwFR0Cn3RhTVZvXsP4duvCms=
 go.opentelemetry.io/otel v1.40.0/go.mod h1:IMb+uXZUKkMXdPddhwAHm6UfOwJyh4ct1ybIlV14J0g=
 go.opentelemetry.io/otel/trace v1.40.0 h1:WA4etStDttCSYuhwvEa8OP8I5EWu24lkOzp+ZYblVjw=
