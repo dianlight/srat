@@ -168,6 +168,18 @@ graph TB
 
 ## Integration Points
 
+WebSocket delivery is now the only real-time transport in SRAT after the SSE cleanup completed in task `012`. In addition to outbound event streaming, the `/ws` endpoint also accepts a small inbound handshake from the Home Assistant custom component:
+
+```json
+{
+  "type": "helo",
+  "component": "srat",
+  "version": "2026.03.1"
+}
+```
+
+That `helo` payload is processed before any future client-to-server message types and allows the backend to track which Home Assistant integration build is attached to the current WebSocket session.
+
 ### VolumeService
 
 **Changes Made:**

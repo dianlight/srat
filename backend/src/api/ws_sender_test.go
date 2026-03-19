@@ -30,7 +30,7 @@ func TestWsMessageSenderSuite(t *testing.T) {
 
 func (suite *WsMessageSenderSuite) SetupTest() {
 	mockController := mock.NewMockController(suite.T())
-	suite.hanlder = api.NewWebSocketBroker(suite.T().Context(), mock.Mock[service.BroadcasterServiceInterface](mockController))
+	suite.hanlder = api.NewWebSocketBroker(suite.T().Context(), mock.Mock[service.BroadcasterServiceInterface](mockController), &dto.ContextState{})
 	//suite.mockConn = mock.Mock[*websocket.Conn](mockController)
 	suite.wsMessageSender = &api.WsMessageSender{
 		//Connection: suite.mockConn,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"reflect"
@@ -22,12 +23,13 @@ import (
 type WebSocketHandler struct {
 	ctx         context.Context
 	broadcaster service.BroadcasterServiceInterface
+	state       *dto.ContextState
 	upgrader    websocket.Upgrader
 	eventMap    map[string]any
 	ObjectMap   map[string]string
 }
 
-func NewWebSocketBroker(ctx context.Context, broadcaster service.BroadcasterServiceInterface) *WebSocketHandler {
+func NewWebSocketBroker(ctx context.Context, broadcaster service.BroadcasterServiceInterface, state *dto.ContextState) *WebSocketHandler {
 	// Instantiate a WebSocket broker
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
@@ -44,6 +46,7 @@ func NewWebSocketBroker(ctx context.Context, broadcaster service.BroadcasterServ
 	return &WebSocketHandler{
 		ctx:         ctx,
 		broadcaster: broadcaster,
+		state:       state,
 		upgrader:    upgrader,
 		eventMap:    dto.WebEventMap,
 		ObjectMap:   reverseMap,
@@ -102,6 +105,72 @@ func (self *WsMessageSender) SendPing() errors.E {
 	return self.writeMessage(websocket.PingMessage, nil)
 }
 
+func (self *WebSocketHandler) clearHomeAssistantComponentConnection() {
+	if self.state == nil {
+		return
+	}
+
+	self.state.HAWsComponent = nil
+}
+
+func (self *WebSocketHandler) setHomeAssistantComponentConnection(message dto.HeloMessage) {
+	if self.state == nil {
+		return
+	}
+
+	self.state.HAWsComponent = &dto.HomeAssistantComponentConnection{
+		Component:   message.Component,
+		Version:     message.Version,
+		HAVersion:   message.HAVersion,
+		EntryID:     message.EntryID,
+		ConnectedAt: time.Now(),
+	}
+}
+
+func (self *WebSocketHandler) handleInboundMessage(messageType int, payload []byte) {
+	if messageType != websocket.TextMessage {
+		return
+	}
+
+	var envelope dto.ClientMessageEnvelope
+	if err := json.Unmarshal(payload, &envelope); err != nil {
+		slog.WarnContext(self.ctx, "Ignoring invalid inbound WebSocket payload", "error", err)
+		return
+	}
+
+	switch envelope.Type {
+	case dto.HomeAssistantClientMessageTypeHelo:
+		var message dto.HeloMessage
+		if err := json.Unmarshal(payload, &message); err != nil {
+			slog.WarnContext(self.ctx, "Ignoring malformed helo message", "error", err)
+			return
+		}
+		if err := message.Validate(); err != nil {
+			slog.WarnContext(self.ctx, "Ignoring invalid helo message", "error", err)
+			return
+		}
+		self.setHomeAssistantComponentConnection(message)
+		slog.InfoContext(self.ctx, "Home Assistant WebSocket handshake accepted", "component", message.Component, "version", message.Version, "entry_id", message.EntryID)
+	default:
+		slog.WarnContext(self.ctx, "Ignoring unsupported inbound WebSocket message type", "type", envelope.Type)
+	}
+}
+
+func (self *WebSocketHandler) readInboundMessages(conn *websocket.Conn, readErr chan<- error) {
+	defer close(readErr)
+
+	for {
+		messageType, payload, err := conn.ReadMessage()
+		if err != nil {
+			readErr <- err
+			return
+		}
+
+		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		self.handleInboundMessage(messageType, payload)
+	}
+}
+
 // HandleWebSocket handles the WebSocket upgrade and connection
 // This method should be called from an HTTP handler that matches the /ws path
 func (self *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
@@ -121,10 +190,15 @@ func (self *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Req
 		slog.ErrorContext(self.ctx, "Failed to upgrade connection to WebSocket", "error", err)
 		return
 	}
+	defer self.clearHomeAssistantComponentConnection()
 	defer conn.Close()
 
 	// Handle ping/pong for connection health
 	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	conn.SetPingHandler(func(appData string) error {
+		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		return conn.WriteControl(websocket.PongMessage, []byte(appData), time.Now().Add(5*time.Second))
+	})
 	conn.SetPongHandler(func(string) error {
 		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 		return nil
@@ -143,6 +217,8 @@ func (self *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Req
 	}
 
 	go self.broadcaster.ProcessWebSocketChannel(wsMessageSender.SendFunc)
+	readErr := make(chan error, 1)
+	go self.readInboundMessages(conn, readErr)
 
 	// Start ping ticker
 	pingTicker := time.NewTicker(30 * time.Second)
@@ -151,6 +227,16 @@ func (self *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Req
 	for {
 		select {
 		case <-self.ctx.Done():
+			return
+		case err, ok := <-readErr:
+			if !ok {
+				return
+			}
+			if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) || errors.Is(err, io.EOF) {
+				tlog.TraceContext(self.ctx, "WebSocket client disconnected", "err", err)
+				return
+			}
+			tlog.TraceContext(self.ctx, "Inbound WebSocket reader stopped", "err", err)
 			return
 		case <-pingTicker.C:
 			// Send ping to keep connection alive
