@@ -31,10 +31,9 @@ Resolve Time Machine backup failures on macOS Tahoe (macOS 15+) connecting to Sa
 - [ ] Task 1: Research and document the Samba parameters required for macOS Tahoe Time Machine compatibility — focus on `fruit:model`, `fruit:metadata`, `fruit:posix_rename`, `server signing`, `smb3 unix extensions`
 - [ ] Task 2: Update `smb.gtpl` Time Machine share block with the verified parameter set (add any missing `fruit:` options, ensure `vfs objects` order is correct)
 - [ ] Task 3: Add global `smb.conf` options for SMB signing compatibility: `server signing = auto` (or `required` if needed) and `ntlm auth = ntlmv2-only`
-- [ ] Task 4: Expose a `log_level` or `samba_log_level` setting in `AppConfig` that maps to Samba's `log level` directive — enables users to diagnose Time Machine issues without editing raw config
-- [ ] Task 5: Add a documentation page `docs/TIMEMACHINE_COMPATIBILITY.md` covering the required Samba parameters and macOS version compatibility matrix
-- [ ] Task 6: Unit tests — template rendering with `TimeMachineSupport = "supported"`: verify `fruit:` section is present and contains required keys
-- [ ] Task 7: Regression test — template rendering with `TimeMachineSupport = "unsupported"`: verify `fruit:` section is absent
+- [ ] Task 4: Add a documentation page `docs/TIMEMACHINE_COMPATIBILITY.md` covering the required Samba parameters and macOS version compatibility matrix
+- [ ] Task 5: Unit tests — template rendering with `TimeMachineSupport = "supported"`: verify `fruit:` section is present and contains required keys
+- [ ] Task 6: Regression test — template rendering with `TimeMachineSupport = "unsupported"`: verify `fruit:` section is absent
 
 ## 🧠 Implementation Notes (Copilot Context)
 
@@ -63,10 +62,6 @@ Resolve Time Machine backup failures on macOS Tahoe (macOS 15+) connecting to Sa
   ntlm auth = ntlmv2-only
   smb3 unix extensions = no
 ```
-
-### Diagnosing disconnects
-
-Users can set `log level = 3 vfs:10` in `smb.conf` to capture fruit VFS events. Adding a configurable `samba_log_level` field in `AppConfig` (default `1`) mapped directly to `log level = {{ .SambaLogLevel }}` in `smb.gtpl` would allow runtime debugging without a UI change.
 
 ### `fruit:model` parameter
 

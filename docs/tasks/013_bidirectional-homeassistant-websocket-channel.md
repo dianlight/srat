@@ -75,12 +75,22 @@ Optional follow-up fields if implementation needs them:
 - Add inbound frame reading without blocking or breaking keepalive behavior
 - Do not tie the first implementation to SSE concepts; task `012` is removing the remaining SSE-specific transport leftovers
 - Keep protocol parsing explicit and testable; avoid baking ad-hoc JSON parsing directly into unrelated services if a small DTO or handler abstraction would make the message contract clearer
+- Client connection metadata (e.g. version) can be stored in the existing HA integration context or in a new runtime structure, but should be easily accessible for future use in automation rules or diagnostics
+- Multiple clients are not expected in the near term, but the protocol design should not preclude supporting multiple connections in the future if needed (e.g. by including a unique client ID in the handshake)
+- Client messages must be validated and sanitized to prevent malformed payloads from crashing the handler; invalid messages should be logged and ignored without disrupting the connection
+- Client messages should not trigger any existing server-to-client events or state changes until the handshake is successfully completed and the client identity is known
+- The handshake should be re-sent on reconnect, as the backend should treat each WebSocket session as a fresh registration even if the same client connects multiple times
+- The backend should log successful handshakes with the reported component version for visibility into what clients are connecting and for easier debugging in the future when more message types are added
+- The backend should be designed to easily accommodate additional client-to-server message types in the future, using a clear routing or handler pattern based on the `type` field in the payload
+
 
 ### Custom component design constraints
 
 - Send `helo` only after the WebSocket is fully connected
 - Re-send `helo` after reconnect, because the backend should treat each WS session as a fresh registration
 - Keep listener registration and sensor update behavior unchanged for this task; the goal is to add the first upstream message, not redesign the coordinator
+- The custom component should log the handshake send action for visibility, including the version being reported
+- The custom component should handle any connection errors gracefully and attempt to reconnect as it does today, ensuring that the handshake will be re-attempted on the next successful connection
 
 ### Testing guidance
 
