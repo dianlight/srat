@@ -349,7 +349,7 @@ func (suite *SettingsHandlerSuite) TestGetAppConfigHandler() {
 	err := json.Unmarshal(rr.Body.Bytes(), &res)
 	suite.Require().NoError(err)
 	suite.Equal("info", res.Options["log_level"])
-	suite.Equal(true, res.RequiresRestart)
+	suite.True(res.RequiresRestart)
 }
 
 func (suite *SettingsHandlerSuite) TestGetAppConfigSchemaHandler() {

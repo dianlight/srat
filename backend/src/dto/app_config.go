@@ -2,10 +2,10 @@ package dto
 
 // AppConfigSchemaField describes one configurable app option.
 type AppConfigSchemaField struct {
-	Name        string `json:"name"`
-	Constraint  string `json:"constraint"`
-	Description string `json:"description,omitempty"`
-	Optional    bool   `json:"optional,omitempty"`
+	Name        string   `json:"name"`
+	Constraint  string   `json:"constraint"`
+	Description string   `json:"description,omitempty"`
+	Optional    bool     `json:"optional,omitempty"`
 	Options     []string `json:"options,omitempty"`
 }
 
