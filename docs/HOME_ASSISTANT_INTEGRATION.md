@@ -71,6 +71,20 @@ For standalone SRAT installations, provide the host IP and port during setup. Th
 
 The custom component communicates with the SRAT back-end **exclusively via WebSocket** (`/ws` endpoint). No REST API polling is used. The connection uses the `X-Remote-User-Id` authentication header and supports automatic reconnection with configurable retry intervals.
 
+Task `012` removed the legacy SSE transport completely, so the Home Assistant custom component now relies on `/ws` as the only real-time channel.
+
+Immediately after each successful WebSocket connection, the custom component sends a client-to-server handshake payload so SRAT can identify the connected integration build:
+
+```json
+{
+  "type": "helo",
+  "component": "srat",
+  "version": "2026.03.1"
+}
+```
+
+The `helo` message is intentionally distinct from the server-to-client `hello` event. SRAT validates the payload, records the active custom component metadata for the current `/ws` session, and expects the handshake to be re-sent after reconnect.
+
 Two WebSocket events carry all sensor data:
 
 - **`volumes`** - disk and partition information (`[]*Disk`)
