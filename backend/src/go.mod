@@ -7,7 +7,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/maniartech/signals v1.3.1
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/oapi-codegen/runtime v1.2.0
+	github.com/oapi-codegen/runtime v1.3.0
 	github.com/pilebones/go-udev v0.9.1
 	github.com/shirou/gopsutil/v4 v4.26.2
 	github.com/stretchr/testify v1.11.1
@@ -168,7 +168,7 @@ require (
 	github.com/rs/cors v1.11.1
 	github.com/thoas/go-funk v0.9.3
 	github.com/u-root/u-root v0.16.0
-	gitlab.com/tozd/go/errors v0.11.0
+	gitlab.com/tozd/go/errors v0.11.1
 	go.uber.org/fx v1.24.0
 	golang.org/x/time v0.15.0
 	gopkg.in/yaml.v3 v3.0.1
