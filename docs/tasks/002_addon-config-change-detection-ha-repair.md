@@ -45,6 +45,10 @@ Detect when the Home Assistant Supervisor changes the addon configuration (`/dat
 - [ ] Task 11: Frontend component test — `AddonConfigChangedBanner` renders on event, Reload button triggers correct action
 - [ ] Task 12: Update OpenAPI spec and regenerate frontend types (`cd frontend && bun run gen`)
 - [ ] Task 13: Documentation — update `docs/SETTINGS_DOCUMENTATION.md` with the change-detection behaviour
+- [ ] Task 14: Add a note in the HA integration docs about the new Repair issue that appears when config changes, and how to resolve it
+- [ ] Task 15: Optional enhancement — in the custom component, listen for the `app_config_changed` WebSocket event and trigger an `async_reload` of the integration to apply changes without requiring a full Home Assistant restart
+- [ ] Task 16: Code review, cleanup, and final validation
+- [ ] Task 17: Ask to create a PR with the task implementation and link it here for tracking
 
 ## 🧠 Implementation Notes (Copilot Context)
 
