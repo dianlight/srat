@@ -32,7 +32,12 @@ Improve the onboarding experience for new users by adding two complementary UI f
 
 ## 📝 Task List
 
-- [ ] Task 1: Create `frontend/src/components/wizard/SetupWizard.tsx` — multi-step dialog using MUI `Stepper` + `Dialog`; steps: Network → First Share → User Account
+- [ ] Task 1: Create `frontend/src/components/wizard/SetupWizard.tsx` — multi-step dialog using MUI `Stepper` + `Dialog`; steps: Network → First Share → User Account. Each step is a separate component with its own form and validation using `react-hook-form`. Also merging actual startup dialigs like `frontend/src/components/TelemetryModal.tsx` and `frontend/src/components/BaseConfigModal.tsx` into this new `SetupWizard` component.
+- [ ] Task 1.1: Essential Samba configuration step like in `frontend/src/components/BaseConfigModal.tsx`
+- [ ] Task 1.2: Network step — fetch available network interfaces from `GET /settings`, allow user to select one (dropdown or list)
+- [ ] Task 1.3: First Share step — fetch volumes from `GET /volumes`, allow user to select a volume and enter a share name; validate share name is not empty
+- [ ] Task 1.4: User Account step — form for username and password (with confirm); validate non-empty and matching passwords
+- [ ] Task 1.5: Telemetry opt-in step (optional) — simple yes/no choice with explanation of what telemetry is and how it helps
 - [ ] Task 2: Implement first-launch detection logic — check `localStorage.getItem('srat_wizard_seen')`; if absent, auto-open wizard after initial data load
 - [ ] Task 3: Wire wizard steps to existing RTK Query mutations: `useUpdateSettingsMutation`, `useCreateShareMutation`
 - [ ] Task 4: Add "Run Setup Wizard" button to the Settings page (`frontend/src/pages/settings/Settings.tsx`)
