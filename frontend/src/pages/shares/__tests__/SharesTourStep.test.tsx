@@ -1,5 +1,5 @@
+import { describe, expect, it } from "bun:test";
 import "../../../../test/setup";
-import { describe, it, expect } from "bun:test";
 
 describe("Shares tour steps", () => {
     it("includes expected structure and actions", async () => {
@@ -34,5 +34,17 @@ describe("Shares tour steps", () => {
         ]);
 
         expect(seenEvents.every((evt) => allowed.has(evt))).toBe(true);
+    });
+
+    it("picks the first available share for guided tour actions", async () => {
+        const { getTourTargetShare } = await import("../Shares");
+
+        const target = getTourTargetShare({
+            media: { name: "Media", usage: "general" } as any,
+            backups: { name: "Backups", usage: "backup" } as any,
+        });
+
+        expect(target?.[0]).toBe("media");
+        expect(target?.[1].name).toBe("Media");
     });
 });

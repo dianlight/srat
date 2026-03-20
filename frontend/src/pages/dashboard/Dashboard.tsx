@@ -1,5 +1,5 @@
 import { Box, Grid, Stack } from "@mui/material";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useGithubNews } from "../../hooks/githubNewsHook";
 import { TabIDs } from "../../store/locationState";
 import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
@@ -15,9 +15,17 @@ export function Dashboard() {
 		setIsIntroCollapsed((prev) => !prev);
 	};
 
-	TourEvents.on(TourEventTypes.DASHBOARD_STEP_2, (_elem) => {
-		setIsIntroCollapsed(false);
-	});
+	useEffect(() => {
+		const handleDashboardStep2 = () => {
+			setIsIntroCollapsed(false);
+		};
+
+		TourEvents.on(TourEventTypes.DASHBOARD_STEP_2, handleDashboardStep2);
+
+		return () => {
+			TourEvents.off(TourEventTypes.DASHBOARD_STEP_2, handleDashboardStep2);
+		};
+	}, []);
 
 	return (
 		<Grid

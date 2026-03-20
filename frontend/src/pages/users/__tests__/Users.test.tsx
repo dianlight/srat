@@ -1,5 +1,5 @@
+import { beforeEach, describe, expect, it } from "bun:test";
 import "../../../../test/setup";
-import { describe, it, expect, beforeEach } from "bun:test";
 
 // localStorage shim for testing
 if (!(globalThis as any).localStorage) {

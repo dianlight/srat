@@ -1,4 +1,5 @@
 import {
+	Box,
 	FormControlLabel,
 	Grid,
 	Paper,
@@ -31,6 +32,34 @@ import {
 	getDiskIdentifier,
 	getPartitionIdentifier,
 } from "./utils";
+
+type TourVolumeSelection = {
+	disk: Disk;
+	partition?: Partition;
+};
+
+export function getTourVolumeSelection(
+	disks?: Disk[],
+	hideSystemPartitions = false,
+): TourVolumeSelection | undefined {
+	if (!Array.isArray(disks) || disks.length === 0) return undefined;
+
+	for (const disk of disks) {
+		const partitions = Object.values(disk.partitions || {});
+		const visiblePartition = partitions.find((partition) => {
+			if (!partition) return false;
+			if (!hideSystemPartitions) return true;
+
+			return !(partition.name?.startsWith("hassos-") || partition.system === true);
+		});
+
+		if (visiblePartition) {
+			return { disk, partition: visiblePartition };
+		}
+	}
+
+	return { disk: disks[0]! };
+}
 
 export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 	const { data: evdata } = useGetServerEventsQuery();
@@ -404,28 +433,28 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 	}
 
 	useEffect(() => {
-		const handleVolumesStep3 = () => {
-			// find first disk and expand it - this will be handled by the tree view default expansion
+		const selectTourVolume = () => {
+			const target = getTourVolumeSelection(disks, hideSystemPartitions);
+			if (!target) return;
+
+			if (target.partition) {
+				handlePartitionSelect(target.disk, target.partition);
+				return;
+			}
+
+			handleDiskSelect(target.disk);
 		};
 
-		const handleVolumesStep4 = () => {
-			// find first disk and expand it - this will be handled by the tree view default expansion
-		};
-
-		const handleVolumesStep5 = () => {
-			// find first disk and expand it - this will be handled by the tree view default expansion
-		};
-
-		TourEvents.on(TourEventTypes.VOLUMES_STEP_3, handleVolumesStep3);
-		TourEvents.on(TourEventTypes.VOLUMES_STEP_4, handleVolumesStep4);
-		TourEvents.on(TourEventTypes.VOLUMES_STEP_5, handleVolumesStep5);
+		const disposeVolumesStep3 = TourEvents.on(TourEventTypes.VOLUMES_STEP_3, selectTourVolume);
+		const disposeVolumesStep4 = TourEvents.on(TourEventTypes.VOLUMES_STEP_4, selectTourVolume);
+		const disposeVolumesStep5 = TourEvents.on(TourEventTypes.VOLUMES_STEP_5, selectTourVolume);
 
 		return () => {
-			TourEvents.off(TourEventTypes.VOLUMES_STEP_3, handleVolumesStep3);
-			TourEvents.off(TourEventTypes.VOLUMES_STEP_4, handleVolumesStep4);
-			TourEvents.off(TourEventTypes.VOLUMES_STEP_5, handleVolumesStep5);
+			disposeVolumesStep3();
+			disposeVolumesStep4();
+			disposeVolumesStep5();
 		};
-	}, []);
+	}, [disks, hideSystemPartitions]);
 
 	// Handle loading and error states
 	if (isLoading) {
@@ -486,7 +515,12 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 			/>
 
 			{/* Main Layout Grid */}
-			<Grid container spacing={2} sx={{ minHeight: "calc(100vh - 200px)" }}>
+			<Grid
+				container
+				spacing={2}
+				sx={{ minHeight: "calc(100vh - 200px)" }}
+				data-tutor={`reactour__tab${TabIDs.VOLUMES}__step0`}
+			>
 				{/* Left Panel - Tree View */}
 				<Grid size={{ xs: 12, sm: 5, md: 4, lg: 3 }}>
 					<Paper sx={{ height: "100%", p: 1 }} data-tutor={`reactour__tab${TabIDs.VOLUMES}__step3`}>
@@ -550,22 +584,27 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 
 				{/* Right Panel - Details */}
 				<Grid size={{ xs: 12, sm: 7, md: 8, lg: 9 }}>
-					<Paper sx={{ height: "100%", overflow: "hidden" }}>
-						<VolumeDetailsPanel
-							disk={selectedDisk}
-							partition={selectedPartition}
-							protectedMode={evdata?.hello?.protected_mode === true}
-							readOnly={evdata?.hello?.read_only === true}
-							onToggleAutomount={handleToggleAutomount}
-							onMount={(partition) => {
-								setSelectedPartition(partition);
-								setShowMount(true);
-							}}
-							onUnmount={onSubmitUmountVolume}
-							onCreateShare={handleCreateShare}
-							onGoToShare={handleGoToShare}
-						//share={selectedShare}
-						/>
+					<Paper
+						sx={{ height: "100%", overflow: "hidden" }}
+						data-tutor={`reactour__tab${TabIDs.VOLUMES}__step4`}
+					>
+						<Box data-tutor={`reactour__tab${TabIDs.VOLUMES}__step5`}>
+							<VolumeDetailsPanel
+								disk={selectedDisk}
+								partition={selectedPartition}
+								protectedMode={evdata?.hello?.protected_mode === true}
+								readOnly={evdata?.hello?.read_only === true}
+								onToggleAutomount={handleToggleAutomount}
+								onMount={(partition) => {
+									setSelectedPartition(partition);
+									setShowMount(true);
+								}}
+								onUnmount={onSubmitUmountVolume}
+								onCreateShare={handleCreateShare}
+								onGoToShare={handleGoToShare}
+							//share={selectedShare}
+							/>
+						</Box>
 					</Paper>
 				</Grid>
 			</Grid>

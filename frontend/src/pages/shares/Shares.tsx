@@ -27,10 +27,19 @@ import {
 } from "../../store/sratApi";
 import { useAppDispatch } from "../../store/store";
 import { useGetServerEventsQuery } from "../../store/wsApi";
+import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
 import { ShareDetailsPanel, ShareEditForm, SharesTreeView } from "./components";
 import { ShareEditDialog } from "./ShareEditDialog";
 import type { ShareEditProps } from "./types";
 import { getPathBaseName, sanitizeAndUppercaseShareName } from "./utils";
+
+export function getTourTargetShare(
+	shares?: SharedResource[] | Record<string, SharedResource>
+): [string, SharedResource] | undefined {
+	if (!shares) return undefined;
+
+	return Object.entries(shares).find(([, share]) => Boolean(share?.name));
+}
 
 
 export function Shares() {
@@ -307,6 +316,24 @@ export function Shares() {
 				});
 		}
 	}
+
+	useEffect(() => {
+		const selectTourShare = () => {
+			const targetShare = getTourTargetShare(shares);
+			if (!targetShare) return;
+
+			const [shareKey, shareData] = targetShare;
+			handleShareSelect(shareKey, shareData);
+		};
+
+		const disposeSharesStep3 = TourEvents.on(TourEventTypes.SHARES_STEP_3, selectTourShare);
+		const disposeSharesStep4 = TourEvents.on(TourEventTypes.SHARES_STEP_4, selectTourShare);
+
+		return () => {
+			disposeSharesStep3();
+			disposeSharesStep4();
+		};
+	}, [shares]);
 
 	return (
 		<>

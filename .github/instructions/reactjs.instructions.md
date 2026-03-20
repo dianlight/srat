@@ -130,6 +130,15 @@ Instructions for building high-quality ReactJS applications with modern patterns
 - Mock external dependencies and API calls appropriately
 - Test accessibility features and keyboard navigation
 
+### Guided Tour & Overlay (SRAT)
+
+- Treat `frontend/src/utils/TourEvents.ts` as the authoritative source for guided-tour event names and payload contracts.
+- Register `TourEvents.on(...)` subscriptions inside `useEffect` and always clean them up on unmount.
+- Keep every `*TourStep.tsx` selector aligned with a real `data-tutor="reactour__tab...__step..."` anchor in live page components.
+- Prefer stable container anchors for tour selectors; avoid volatile nested nodes that frequently change during UI refactors.
+- If a tour `action` mutates UI state (for example selecting a panel), ensure the action makes the target selector available before highlight.
+- Add/update focused tests for tour changes (step structure, emitted events, listener cleanup behavior).
+
 ### Security
 
 - Sanitize user inputs to prevent XSS attacks

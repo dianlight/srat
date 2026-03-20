@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { HealthPing } from "../../../store/sratApi";
 import { TourEvents, TourEventTypes } from "../../../utils/TourEvents";
 import { DiskHealthMetricsAccordion } from "./DiskHealthMetricsAccordion";
@@ -40,21 +40,37 @@ export function MetricDetails({
 		setExpandedAccordion(metricId);
 	};
 
-	TourEvents.on(TourEventTypes.DASHBOARD_STEP_4, (_elem) => {
-		setExpandedAccordion("systemMetrics");
-	});
-	TourEvents.on(TourEventTypes.DASHBOARD_STEP_5, (_elem) => {
-		setExpandedAccordion("processMetrics");
-	});
-	TourEvents.on(TourEventTypes.DASHBOARD_STEP_6, (_elem) => {
-		setExpandedAccordion("diskHealthMetrics");
-	});
-	TourEvents.on(TourEventTypes.DASHBOARD_STEP_7, (_elem) => {
-		setExpandedAccordion("networkHealthMetrics");
-	});
-	TourEvents.on(TourEventTypes.DASHBOARD_STEP_8, (_elem) => {
-		setExpandedAccordion("sambaStatusMetrics");
-	});
+	useEffect(() => {
+		const handleDashboardStep4 = () => {
+			setExpandedAccordion("systemMetrics");
+		};
+		const handleDashboardStep5 = () => {
+			setExpandedAccordion("processMetrics");
+		};
+		const handleDashboardStep6 = () => {
+			setExpandedAccordion("diskHealthMetrics");
+		};
+		const handleDashboardStep7 = () => {
+			setExpandedAccordion("networkHealthMetrics");
+		};
+		const handleDashboardStep8 = () => {
+			setExpandedAccordion("sambaStatusMetrics");
+		};
+
+		TourEvents.on(TourEventTypes.DASHBOARD_STEP_4, handleDashboardStep4);
+		TourEvents.on(TourEventTypes.DASHBOARD_STEP_5, handleDashboardStep5);
+		TourEvents.on(TourEventTypes.DASHBOARD_STEP_6, handleDashboardStep6);
+		TourEvents.on(TourEventTypes.DASHBOARD_STEP_7, handleDashboardStep7);
+		TourEvents.on(TourEventTypes.DASHBOARD_STEP_8, handleDashboardStep8);
+
+		return () => {
+			TourEvents.off(TourEventTypes.DASHBOARD_STEP_4, handleDashboardStep4);
+			TourEvents.off(TourEventTypes.DASHBOARD_STEP_5, handleDashboardStep5);
+			TourEvents.off(TourEventTypes.DASHBOARD_STEP_6, handleDashboardStep6);
+			TourEvents.off(TourEventTypes.DASHBOARD_STEP_7, handleDashboardStep7);
+			TourEvents.off(TourEventTypes.DASHBOARD_STEP_8, handleDashboardStep8);
+		};
+	}, []);
 
 	return (
 		<>
