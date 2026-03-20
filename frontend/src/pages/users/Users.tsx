@@ -29,6 +29,12 @@ import { UserEditDialog } from "./UserEditDialog";
 import { UserDetailsPanel, UserEditForm, UsersTreeView } from "./components";
 import type { UsersProps } from "./types";
 
+export function getTourTargetUser(users?: User[] | null): User | undefined {
+	if (!Array.isArray(users) || users.length === 0) return undefined;
+
+	return users.find((user) => !user.is_admin) ?? users[0];
+}
+
 export function Users() {
 	const { data: evdata } = useGetServerEventsQuery();
 	const users = useGetApiUsersQuery();
@@ -216,10 +222,20 @@ export function Users() {
 	}
 
 	// Tour event handler
-	TourEvents.on(TourEventTypes.USERS_STEP_3, () => {
-		setCreateUserData({ username: "", password: "", doCreate: true });
-		setShowCreateDialog(true);
-	});
+	useEffect(() => {
+		const handleUsersStep3 = () => {
+			const targetUser = getTourTargetUser(Array.isArray(users.data) ? users.data : undefined);
+			if (!targetUser?.username) return;
+
+			handleUserSelect(targetUser.username, targetUser);
+		};
+
+		const disposeUsersStep3 = TourEvents.on(TourEventTypes.USERS_STEP_3, handleUsersStep3);
+
+		return () => {
+			disposeUsersStep3();
+		};
+	}, [users.data]);
 
 	const isReadOnly = evdata?.hello?.read_only || false;
 	const availableShares = (shares.data as SharedResource[] || [])
