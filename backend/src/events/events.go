@@ -72,6 +72,8 @@ type SettingEvent struct {
 type AppConfigEvent struct {
 	Event
 	Config *dto.AppConfigUpdateRequest
+	Path   string
+	Hash   string
 }
 
 // ServerProcessEvent represents a Samba-related event

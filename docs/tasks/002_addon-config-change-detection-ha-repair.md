@@ -1,6 +1,6 @@
 # [FEATURE]: Addon Config Change Detection with UI Popup and HA Repair
 
-**Target Repo:** `srat`  **Status:** 📅 Planned  **Issue Link:** _TBD_
+**Target Repo:** `srat`  **Status:** 🔄 In Progress  **Issue Link:** https://github.com/dianlight/srat/issues/517
 
 ## 🎯 Objective
 
@@ -22,26 +22,29 @@ Detect when the Home Assistant Supervisor changes the addon configuration (`/dat
   - Repair/notification auto-dismissed once the config has been reloaded (restart or live-reload)
 
 - **Dependencies:**
+  - **Prerequisite Task:** `docs/tasks/018_home-assistant-repairs-proxy-service.md` must be completed before implementing the Repairs-specific parts of this task (Task 5 and Task 8).
   - `backend/src/service/homeassistant_service.go` — existing `persistent_notification` helpers; add Repair API calls here
   - `backend/src/service/upgrade_service.go` — reference implementation for `fsnotify` file watcher + debounce pattern
   - `backend/src/config/addon_options.go` — options file path constant
-  - `backend/src/events/` — define new `AddonConfigChangedEvent` event type
+  - `backend/src/events/` — extend `AppConfigEvent` with external-change metadata (`path`, `hash`)
   - `backend/src/dto/app_config.go` — `AppConfigData.RequiresRestart` flag
   - `frontend/src/` — new snackbar/banner component triggered by the new WebSocket event
   - `custom_components/srat/` — alternative path: listen for the HA push event and call `async_reload` entry
 
 ## 📝 Task List
 
-- [ ] Task 1: Define `AddonConfigChangedEvent` in `backend/src/events/events.go` and add emit helper to event bus
+- [x] Task 1: Extend `AppConfigEvent` in `backend/src/events/events.go` with external-change metadata (`path`, `hash`) and reuse existing app-config event bus helpers
 - [ ] Task 2: Implement `AddonConfigWatcherService` in `backend/src/service/` — watch `/data/options.json` via `fsnotify` with debounce; on change compute a content hash to suppress spurious triggers
 - [ ] Task 3: Try HA Supervisor events first — subscribe to `supervisor/event` WebSocket topic; if not available (no Supervisor token) fall back to the fsnotify watcher with configurable interval
-- [ ] Task 4: On config change detected, emit `AddonConfigChangedEvent` on event bus and set `AppConfigData.RequiresRestart = true` in the config DTO
+- [ ] Task 4: On config change detected, emit `AppConfigEvent` (with `path`/`hash`) on event bus and set `AppConfigData.RequiresRestart = true` in the config DTO
 - [ ] Task 5: Add `CreateRepairIssue` / `DismissRepairIssue` helpers to `HomeAssistantService` using HA Supervisor Repairs API (`/core/api/repairs/issues`); fall back to `persistent_notification` when Repairs endpoint returns 404
 - [ ] Task 6: Wire the watcher service into the fx dependency graph (`appsetup.go`)
 - [ ] Task 7: Frontend — subscribe to the new `app_config_changed` WebSocket event in RTK Query; show a persistent `Snackbar` / `Alert` with a **Reload** button calling `POST /api/app-config/reload` (or triggering browser reload)
 - [ ] Task 8: Auto-dismiss the HA Repair issue / persistent notification after a successful config reload
+
+> **Dependency note:** Do not start Task 5 or Task 8 before `docs/tasks/018_home-assistant-repairs-proxy-service.md` is completed.
 - [ ] Task 9: Unit testing — `AddonConfigWatcherService` with a mock fsnotify watcher; test hash-based deduplication, debounce, and fallback path
-- [ ] Task 10: Integration testing — end-to-end: write to a temp options file, verify `AddonConfigChangedEvent` emitted and `RequiresRestart` flipped
+- [ ] Task 10: Integration testing — end-to-end: write to a temp options file, verify `AppConfigEvent` (with external metadata) emitted and `RequiresRestart` flipped
 - [ ] Task 11: Frontend component test — `AddonConfigChangedBanner` renders on event, Reload button triggers correct action
 - [ ] Task 12: Update OpenAPI spec and regenerate frontend types (`cd frontend && bun run gen`)
 - [ ] Task 13: Documentation — update `docs/SETTINGS_DOCUMENTATION.md` with the change-detection behaviour
@@ -95,12 +98,21 @@ Define `AddonOptionsFilePath = "/data/options.json"` in `config/addon_options.go
 
 Add `addonConfigPollInterval` (default `60s`) to `AppConfig` schema, exposed in the settings UI under "Advanced".
 
+### Progress notes
+
+- Merged the dedicated addon-config event into `AppConfigEvent` in `backend/src/events/events.go`.
+- `AppConfigEvent` now carries optional external-change metadata via `path` and `hash` fields.
+- Removed dedicated addon-config event-bus hooks and reused `EmitAppConfig` / `OnAppConfig` in `backend/src/events/event_bus.go`.
+- Updated event-bus test coverage in `backend/src/events/event_bus_test.go` and verified with targeted test run (`go test ./events`).
+
 ## 🔗 Code References & TODOs
 
 - [ ] `backend/src/service/upgrade_service.go:178` — reference fsnotify + debounce pattern to reuse
 - [ ] `backend/src/service/homeassistant_service.go:590` — `CreatePersistentNotification` to extend with Repair API
 - [ ] `backend/src/dto/app_config.go:25` — `RequiresRestart bool` field (already exists, ensure it is set on external change)
-- [ ] `backend/src/events/events.go` — add `AddonConfigChangedEvent` type and `EmitAddonConfigChanged` helper
+- [x] `backend/src/events/events.go` — `AppConfigEvent` extended with external-change fields (`path`, `hash`)
+- [x] `backend/src/events/event_bus.go` — unified on existing `EmitAppConfig` / `OnAppConfig` (removed dedicated addon-config hooks)
+- [x] `backend/src/events/event_bus_test.go` — updated coverage for merged app-config event flow
 - [ ] `backend/src/internal/appsetup/appsetup.go` — register `AddonConfigWatcherService` in fx
 - [ ] `frontend/src/` — `TODO: AddonConfigChangedBanner` component + `useAddonConfigChangedBanner` hook
 - [ ] `custom_components/srat/__init__.py` — optionally handle `app_config_changed` WS event to trigger `async_reload` without requiring HA Repairs
