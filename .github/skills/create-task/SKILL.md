@@ -77,6 +77,10 @@ Use [task-template.md](../../../docs/task-template.md) as the base. Fill in:
 - [ ] Task 2: ...
 - [ ] Task 3: Unit testing
 - [ ] Task 4: Integration and documentation
+- [ ] Task 5: Accessibility (if applicable)
+- [ ] Task 6: Code review and cleanup
+- [ ] Task 7: Final testing and validation
+- [ ] Task 8: Ask to create a PR with the task implementation and link it here for tracking
 
 ## 🧠 Implementation Notes (Copilot Context)
 ...
