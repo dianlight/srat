@@ -44,6 +44,8 @@ Create a backend repair-management service that can request, track, and resolve 
 - [ ] Task 10: Unit testing for backend DTO parsing, queueing, reconnect flush behavior, and repair-state reconciliation
 - [ ] Task 11: Custom component testing for WebSocket proxy handling and Repairs integration behavior
 - [ ] Task 12: Integration and documentation
+- [ ] Task 13: Code review, cleanup, and final validation
+- [ ] Task 14: Ask to create a PR with the task implementation and link it here for tracking
 
 ## 🧠 Implementation Notes (Copilot Context)
 
