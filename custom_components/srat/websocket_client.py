@@ -152,7 +152,13 @@ class SRATWebSocketClient:
             except asyncio.CancelledError:
                 _LOGGER.debug("SRAT WebSocket listener cancelled")
                 break
-            except (aiohttp.ClientError, ConnectionError, OSError, RuntimeError, TimeoutError) as err:
+            except (
+                aiohttp.ClientError,
+                ConnectionError,
+                OSError,
+                RuntimeError,
+                TimeoutError,
+            ) as err:
                 self._connected = False
                 if self._should_reconnect:
                     _LOGGER.warning(
