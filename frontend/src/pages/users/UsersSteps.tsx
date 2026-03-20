@@ -1,5 +1,5 @@
-import type { StepType } from '@reactour/tour'
 import { Box, Divider, Typography } from '@mui/material';
+import type { StepType } from '@reactour/tour';
 import { TabIDs } from '../../store/locationState';
 import { TourEvents, TourEventTypes } from '../../utils/TourEvents';
 
@@ -48,7 +48,7 @@ export const UsersSteps: StepType[] = [
                 Edit User
             </Typography>
             <Typography variant="body1">
-                Select a user and click the edit icon to update their information or change their password.
+                Select a user to reveal the quick edit action, then use it to update password, admin access, and share permissions.
             </Typography>
         </>,
         action: (elem) => {
@@ -63,28 +63,6 @@ export const UsersSteps: StepType[] = [
             </Typography>
             <Typography variant="body1">
                 Remove a user by clicking the delete icon. You’ll be asked to confirm before the user is permanently deleted.
-            </Typography>
-        </>,
-    },
-    {
-        selector: `[data-tutor="reactour__tab${TabIDs.USERS}__step5"]`,
-        content: <>
-            <Typography variant="h6" component="h2" gutterBottom>
-                User Status & Permissions
-            </Typography>
-            <Typography variant="body1">
-                View each user’s status (enabled/disabled) and their assigned permissions. You can toggle user access as needed.
-            </Typography>
-        </>,
-    },
-    {
-        selector: `[data-tutor="reactour__tab${TabIDs.USERS}__step6"]`,
-        content: <>
-            <Typography variant="h6" component="h2" gutterBottom>
-                Save Changes
-            </Typography>
-            <Typography variant="body1">
-                Don’t forget to save your changes after adding, editing, or deleting users. The save button is enabled when there are unsaved changes.
             </Typography>
         </>,
     },

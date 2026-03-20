@@ -24,9 +24,17 @@ export function DashboardActions() {
 	const { data: evdata } = useGetServerEventsQuery();
 	const { data: issues, isLoading: is_inLoading } = useGetApiIssuesQuery();
 
-	TourEvents.on(TourEventTypes.DASHBOARD_STEP_3, (_elem) => {
-		setExpanded(true);
-	});
+	useEffect(() => {
+		const handleDashboardStep3 = () => {
+			setExpanded(true);
+		};
+
+		TourEvents.on(TourEventTypes.DASHBOARD_STEP_3, handleDashboardStep3);
+
+		return () => {
+			TourEvents.off(TourEventTypes.DASHBOARD_STEP_3, handleDashboardStep3);
+		};
+	}, []);
 
 	const actionablePartitions = useMemo(() => {
 		const partitions: { partition: Partition; action: "mount" | "share" | "enable-share" }[] =

@@ -1,5 +1,5 @@
-import type { StepType } from '@reactour/tour'
 import { Box, Divider, Typography } from '@mui/material';
+import type { StepType } from '@reactour/tour';
 import { TabIDs } from '../../store/locationState';
 import { TourEvents, TourEventTypes } from '../../utils/TourEvents';
 
@@ -35,10 +35,10 @@ export const SettingsSteps: StepType[] = [
         selector: `[data-tutor="reactour__tab${TabIDs.SETTINGS}__step2"]`,
         content: <>
             <Typography variant="h6" component="h2" gutterBottom>
-                Update Channel & Telemetry
+                Search and Filter Settings
             </Typography>
             <Typography variant="body1" >
-                Configure your update channel preferences and telemetry settings. The update channel determines which version updates you receive, while telemetry helps improve the software.
+                Use the search bar to quickly find settings categories and fields. This is the fastest way to navigate large configuration sets.
             </Typography>
         </>,
     },

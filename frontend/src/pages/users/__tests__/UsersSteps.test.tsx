@@ -1,8 +1,10 @@
+import { describe, expect, it } from "bun:test";
 import "../../../../test/setup";
-import { describe, it, expect } from "bun:test";
 
 describe("Users tour steps", () => {
-    it("lists user onboarding steps and fires edit event", async () => {
+    it("lists user onboarding steps and keeps step 3 aligned with edit actions", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
         const { UsersSteps } = await import("../UsersSteps");
         const { TourEvents, TourEventTypes } = await import("../../../utils/TourEvents");
 
@@ -31,5 +33,9 @@ describe("Users tour steps", () => {
         if (emittedEvent !== null) {
             expect(emittedEvent as string).toBe(TourEventTypes.USERS_STEP_3);
         }
+
+        render(React.createElement(React.Fragment, null, UsersSteps[3]?.content as any));
+
+        expect(screen.getByText("Edit User")).toBeTruthy();
     });
 });

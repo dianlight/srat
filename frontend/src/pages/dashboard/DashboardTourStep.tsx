@@ -1,6 +1,6 @@
-import type { StepType } from '@reactour/tour'
-import { TabIDs } from '../../store/locationState';
 import { Box, Divider, Typography } from '@mui/material';
+import type { StepType } from '@reactour/tour';
+import { TabIDs } from '../../store/locationState';
 import { TourEvents, TourEventTypes } from '../../utils/TourEvents';
 export const DashboardSteps: StepType[] = [
     {
@@ -97,10 +97,7 @@ export const DashboardSteps: StepType[] = [
                 <strong>nmbd</strong>: Manages NetBIOS name resolution and browsing. It helps devices discover your server on the local network and supports legacy Windows networking.
             </Typography>
             <Typography variant="body2" paragraph>
-                <strong>wsdd2</strong>: Provides Web Service Discovery, allowing Windows 10+ clients to find your shares automatically using modern protocols.
-            </Typography>
-            <Typography variant="body2" paragraph>
-                <strong>avahi</strong>: Implements mDNS/DNS-SD (Bonjour/ZeroConf), making your server discoverable by macOS, Linux, and other devices supporting network service discovery.
+                <strong>wsddn</strong>: Provides Web Service Discovery, allowing Windows 10+ clients to find your shares automatically using modern protocols.
             </Typography>
             <Typography variant="body1" >
                 Monitoring these processes helps ensure your network shares and discovery features are working correctly.

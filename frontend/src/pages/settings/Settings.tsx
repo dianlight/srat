@@ -29,6 +29,7 @@ import {
 import { InView } from "react-intersection-observer";
 import default_json from "../../json/default_config.json";
 import { getCurrentEnv } from "../../macro/Environment" with { type: 'macro' };
+import { TabIDs } from "../../store/locationState";
 import {
 	Telemetry_mode,
 	useGetApiCapabilitiesQuery,
@@ -478,50 +479,53 @@ export function Settings() {
 				}
 			case 'hostname':
 				return (
-					<TextFieldElement
-						size="small"
-						sx={{ display: "flex" }}
-						name="hostname"
-						label="Hostname"
-						required
-						rules={{
-							required: "Hostname is required.",
-							pattern: {
-								value: HOSTNAME_REGEX,
-								message:
-									"Invalid hostname. Use alphanumeric characters and hyphens (not at start/end). Max 63 chars.",
-							},
-							maxLength: {
-								value: 63,
-								message: "Hostname cannot exceed 63 characters.",
-							},
-						}}
-						slotProps={{
-							input: {
-								endAdornment: (
-									<InputAdornment position="end">
-										<Tooltip title="Fetch current system hostname">
-											<span>
-												<IconButton
-													aria-label="fetch system hostname"
-													onClick={handleFetchHostname}
-													edge="end"
-													disabled={evdata?.hello?.read_only || isHostnameFetching}
-												>
-													{isHostnameFetching ? (
-														<CircularProgress size={20} />
-													) : (
-														<AutorenewIcon />
-													)}
-												</IconButton>
-											</span>
-										</Tooltip>
-									</InputAdornment>
-								),
-							},
-						}}
-						{...commonProps}
-					/>
+					<Box data-tutor={`reactour__tab${TabIDs.SETTINGS}__step3`}>
+						<TextFieldElement
+							size="small"
+							sx={{ display: "flex" }}
+							name="hostname"
+							label="Hostname"
+							required
+							rules={{
+								required: "Hostname is required.",
+								pattern: {
+									value: HOSTNAME_REGEX,
+									message:
+										"Invalid hostname. Use alphanumeric characters and hyphens (not at start/end). Max 63 chars.",
+								},
+								maxLength: {
+									value: 63,
+									message: "Hostname cannot exceed 63 characters.",
+								},
+							}}
+							slotProps={{
+								input: {
+									endAdornment: (
+										<InputAdornment position="end">
+											<Tooltip title="Fetch current system hostname">
+												<span>
+													<IconButton
+														aria-label="fetch system hostname"
+														onClick={handleFetchHostname}
+														edge="end"
+														disabled={evdata?.hello?.read_only || isHostnameFetching}
+														data-tutor={`reactour__tab${TabIDs.SETTINGS}__step4`}
+													>
+														{isHostnameFetching ? (
+															<CircularProgress size={20} />
+														) : (
+															<AutorenewIcon />
+														)}
+													</IconButton>
+												</span>
+											</Tooltip>
+										</InputAdornment>
+									),
+								},
+							}}
+							{...commonProps}
+						/>
+					</Box>
 				);
 
 			case 'local_master':
@@ -567,17 +571,19 @@ export function Settings() {
 
 			case 'compatibility_mode':
 				return (
-					<SwitchElement
-						switchProps={{
-							'aria-label': 'Compatibility Mode',
-							size: "small",
-						}}
-						id="compatibility_mode"
-						label="Compatibility Mode"
-						labelPlacement="start"
-						name="compatibility_mode"
-						{...commonProps}
-					/>
+					<Box data-tutor={`reactour__tab${TabIDs.SETTINGS}__step7`}>
+						<SwitchElement
+							switchProps={{
+								'aria-label': 'Compatibility Mode',
+								size: "small",
+							}}
+							id="compatibility_mode"
+							label="Compatibility Mode"
+							labelPlacement="start"
+							name="compatibility_mode"
+							{...commonProps}
+						/>
+					</Box>
 				);
 
 			case 'allow_guest':
@@ -654,106 +660,109 @@ export function Settings() {
 
 			case 'allow_hosts':
 				return (
-					<Controller
-						name="allow_hosts"
-						control={control}
-						defaultValue={[]}
-						disabled={evdata?.hello?.read_only}
-						rules={{
-							required: "Allow Hosts cannot be empty.",
-							validate: (chips: string[] | undefined) => {
-								if (!chips || chips.length === 0) return true;
+					<Box data-tutor={`reactour__tab${TabIDs.SETTINGS}__step5`}>
+						<Controller
+							name="allow_hosts"
+							control={control}
+							defaultValue={[]}
+							disabled={evdata?.hello?.read_only}
+							rules={{
+								required: "Allow Hosts cannot be empty.",
+								validate: (chips: string[] | undefined) => {
+									if (!chips || chips.length === 0) return true;
 
-								for (const chip of chips) {
-									if (
-										typeof chip !== "string" ||
-										!isValidIpAddressOrCidr(chip)
-									) {
-										return `Invalid entry: "${chip}". Only IPv4/IPv6 addresses or CIDR notation allowed.`;
+									for (const chip of chips) {
+										if (
+											typeof chip !== "string" ||
+											!isValidIpAddressOrCidr(chip)
+										) {
+											return `Invalid entry: "${chip}". Only IPv4/IPv6 addresses or CIDR notation allowed.`;
+										}
 									}
-								}
-								return true;
-							},
-						}}
-						render={({ field, fieldState: { error } }) => (
-							<MuiChipsInput
-								{...field}
-								size="small"
-								label="Allow Hosts"
-								required
-								hideClearAll
-								validate={(chipValue) =>
-									typeof chipValue === "string" &&
-									isValidIpAddressOrCidr(chipValue)
-								}
-								error={!!error}
-								helperText={error ? error.message : undefined}
-								slotProps={{
-									input: {
-										endAdornment: (
-											<InputAdornment position="end" sx={{ pr: 1 }}>
-												{!evdata?.hello?.read_only && (
-													<Tooltip title="Add suggested default Allow Hosts">
-														<IconButton
-															aria-label="add suggested default allow hosts"
-															onClick={() => {
-																const currentAllowHosts: string[] =
-																	getValues("allow_hosts") || [];
-																const defaultAllowHosts: string[] =
-																	default_json.allow_hosts || [];
-																const validDefaultHosts =
-																	defaultAllowHosts.filter((host) =>
-																		isValidIpAddressOrCidr(host),
+									return true;
+								},
+							}}
+							render={({ field, fieldState: { error } }) => (
+								<MuiChipsInput
+									{...field}
+									size="small"
+									label="Allow Hosts"
+									required
+									hideClearAll
+									validate={(chipValue) =>
+										typeof chipValue === "string" &&
+										isValidIpAddressOrCidr(chipValue)
+									}
+									error={!!error}
+									helperText={error ? error.message : undefined}
+									slotProps={{
+										input: {
+											endAdornment: (
+												<InputAdornment position="end" sx={{ pr: 1 }}>
+													{!evdata?.hello?.read_only && (
+														<Tooltip title="Add suggested default Allow Hosts">
+															<IconButton
+																aria-label="add suggested default allow hosts"
+																onClick={() => {
+																	const currentAllowHosts: string[] =
+																		getValues("allow_hosts") || [];
+																	const defaultAllowHosts: string[] =
+																		default_json.allow_hosts || [];
+																	const validDefaultHosts =
+																		defaultAllowHosts.filter((host) =>
+																			isValidIpAddressOrCidr(host),
+																		);
+																	const newAllowHostsToAdd =
+																		validDefaultHosts.filter(
+																			(defaultHost) =>
+																				!currentAllowHosts.includes(
+																					defaultHost,
+																				),
+																		);
+																	setValue(
+																		"allow_hosts",
+																		[
+																			...currentAllowHosts,
+																			...newAllowHostsToAdd,
+																		],
+																		{
+																			shouldDirty: true,
+																			shouldValidate: true,
+																		},
 																	);
-																const newAllowHostsToAdd =
-																	validDefaultHosts.filter(
-																		(defaultHost) =>
-																			!currentAllowHosts.includes(
-																				defaultHost,
-																			),
-																	);
-																setValue(
-																	"allow_hosts",
-																	[
-																		...currentAllowHosts,
-																		...newAllowHostsToAdd,
-																	],
-																	{
-																		shouldDirty: true,
-																		shouldValidate: true,
-																	},
-																);
-															}}
-															edge="end"
-														>
-															<PlaylistAddIcon />
-														</IconButton>
-													</Tooltip>
-												)}
-											</InputAdornment>
-										),
-									},
-								}}
-								renderChip={(Component, key, props) => {
-									const isDefault = default_json.allow_hosts?.includes(
-										props.label as string,
-									);
-									return (
-										<Component
-											key={key}
-											{...props}
-											sx={{
-												color: isDefault
-													? "text.secondary"
-													: "text.primary",
-											}}
-											size="small"
-										/>
-									);
-								}}
-							/>
-						)}
-					/>
+																}}
+																edge="end"
+																data-tutor={`reactour__tab${TabIDs.SETTINGS}__step6`}
+															>
+																<PlaylistAddIcon />
+															</IconButton>
+														</Tooltip>
+													)}
+												</InputAdornment>
+											),
+										},
+									}}
+									renderChip={(Component, key, props) => {
+										const isDefault = default_json.allow_hosts?.includes(
+											props.label as string,
+										);
+										return (
+											<Component
+												key={key}
+												{...props}
+												sx={{
+													color: isDefault
+														? "text.secondary"
+														: "text.primary",
+												}}
+												size="small"
+											/>
+										);
+									}}
+								/>
+							)}
+						/>
+					</Box>
 				);
 
 			case 'multi_channel':
@@ -834,7 +843,7 @@ export function Settings() {
 
 			case 'bind_all_interfaces':
 				return (
-					<>
+					<Box data-tutor={`reactour__tab${TabIDs.SETTINGS}__step8`}>
 						<CheckboxElement
 							size="small"
 							id="bind_all_interfaces"
@@ -858,7 +867,7 @@ export function Settings() {
 							}}
 							control={control}
 						/>
-					</>
+					</Box>
 				);
 
 			case 'interfaces':
@@ -992,7 +1001,7 @@ export function Settings() {
 		};
 
 		const handleSettingsStep8 = () => {
-			setSelectedSetting('interfaces');
+			setSelectedSetting('network_devices');
 		};
 
 		TourEvents.on(TourEventTypes.SETTINGS_STEP_3, handleSettingsStep3);
@@ -1008,9 +1017,15 @@ export function Settings() {
 
 	return (
 		<InView>
-			<Box sx={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+			<Box
+				sx={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' }}
+				data-tutor={`reactour__tab${TabIDs.SETTINGS}__step0`}
+			>
 				{/* Search Bar */}
-				<Paper sx={{ p: { xs: 1.5, md: 2 }, borderBottom: 1, borderColor: 'divider' }}>
+				<Paper
+					sx={{ p: { xs: 1.5, md: 2 }, borderBottom: 1, borderColor: 'divider' }}
+					data-tutor={`reactour__tab${TabIDs.SETTINGS}__step2`}
+				>
 					<Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
 						<Box sx={{ display: { xs: 'flex', md: 'none' } }}>
 							<IconButton
@@ -1138,7 +1153,10 @@ export function Settings() {
 
 				{/* Bottom Button Bar */}
 				{selectedSetting !== "app_configuration" ? (
-					<Paper sx={{ p: { xs: 1.5, md: 2 }, borderTop: 1, borderColor: 'divider' }}>
+					<Paper
+						sx={{ p: { xs: 1.5, md: 2 }, borderTop: 1, borderColor: 'divider' }}
+						data-tutor={`reactour__tab${TabIDs.SETTINGS}__step9`}
+					>
 						<Stack
 							direction={{ xs: 'column', sm: 'row' }}
 							spacing={2}
