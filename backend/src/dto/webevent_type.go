@@ -13,4 +13,5 @@ const (
 	eventSmartTestStatus                     // "smart_test_status"
 	eventFilesystemTask                      // "filesystem_task"
 	eventError                               // "error"
+	eventRepairCommand                       // "repair_command"
 )

@@ -14,6 +14,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import CONF_HOST, CONF_PORT, DOMAIN, WS_RECONNECT_INTERVAL
 from .coordinator import SRATDataCoordinator
+from .repairs import SRATRepairProxy
 from .websocket_client import SRATWebSocketClient
 
 _LOGGER = logging.getLogger(__name__)
@@ -30,10 +31,12 @@ class SRATData:
         self,
         coordinator: SRATDataCoordinator,
         ws_client: SRATWebSocketClient,
+        repair_proxy: SRATRepairProxy,
     ) -> None:
         """Initialize runtime data."""
         self.coordinator = coordinator
         self.ws_client = ws_client
+        self.repair_proxy = repair_proxy
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: SRATConfigEntry) -> bool:
@@ -71,9 +74,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: SRATConfigEntry) -> bool
     # Start WebSocket connection — data arrives via events
     await ws_client.async_connect()
 
+    repair_proxy = SRATRepairProxy(hass=hass, ws_client=ws_client)
+    repair_proxy.register()
+
     entry.runtime_data = SRATData(
         coordinator=coordinator,
         ws_client=ws_client,
+        repair_proxy=repair_proxy,
     )
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -87,6 +94,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: SRATConfigEntry) -> boo
     """Unload a SRAT config entry."""
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         # Disconnect WebSocket
+        entry.runtime_data.repair_proxy.unregister()
         await entry.runtime_data.ws_client.async_disconnect()
 
     return unload_ok

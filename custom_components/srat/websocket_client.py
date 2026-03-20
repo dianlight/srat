@@ -75,6 +75,8 @@ class SRATWebSocketClient:
         self._task: asyncio.Task | None = None
         self._connected = False
         self._should_reconnect = True
+        self._ws: aiohttp.ClientWebSocketResponse | None = None
+        self._send_lock = asyncio.Lock()
 
     @property
     def connected(self) -> bool:
@@ -132,6 +134,7 @@ class SRATWebSocketClient:
                     autoping=True,
                 ) as ws:
                     self._connected = True
+                    self._ws = ws
                     _LOGGER.info("Connected to SRAT WebSocket at %s", url)
                     await self._send_helo(ws)
 
@@ -167,8 +170,48 @@ class SRATWebSocketClient:
                         self._reconnect_interval,
                     )
                     await asyncio.sleep(self._reconnect_interval)
+            finally:
+                self._ws = None
 
         self._connected = False
+
+    async def async_send_repair_lifecycle_event(
+        self,
+        *,
+        repair_id: str,
+        status: str,
+        command_id: str | None = None,
+        error: str | None = None,
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        """Send a repair lifecycle event to the backend over the active WebSocket."""
+        if not self._connected or self._ws is None:
+            _LOGGER.debug(
+                "Skipping repair lifecycle send while disconnected: %s/%s",
+                repair_id,
+                status,
+            )
+            return
+
+        payload: dict[str, Any] = {
+            "type": "repair_lifecycle",
+            "repair_id": repair_id,
+            "status": status,
+        }
+        if command_id:
+            payload["command_id"] = command_id
+        if error:
+            payload["error"] = error
+        if details:
+            payload["details"] = details
+
+        async with self._send_lock:
+            try:
+                await self._ws.send_json(payload)
+            except (RuntimeError, ConnectionError, aiohttp.ClientError):
+                _LOGGER.exception(
+                    "Failed to send repair lifecycle event for %s", repair_id
+                )
 
     async def _send_helo(self, ws: aiohttp.ClientWebSocketResponse) -> None:
         """Send the initial client-to-server handshake message."""

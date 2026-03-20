@@ -14,6 +14,7 @@ var WebEventMap = WebEventMapTypes{
 	WebEventTypes.EVENTSMARTTESTSTATUS.String(): SmartTestStatus{},
 	WebEventTypes.EVENTERROR.String():           &ErrorDataModel{},
 	WebEventTypes.EVENTFILESYSTEMTASK.String():  FilesystemTask{},
+	WebEventTypes.EVENTREPAIRCOMMAND.String():   RepairCommandMessage{},
 }
 
 func (WebEventMapTypes) IsValidEvent(event any) bool {

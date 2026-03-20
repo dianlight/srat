@@ -21,15 +21,16 @@ import (
 )
 
 type WebSocketHandler struct {
-	ctx         context.Context
-	broadcaster service.BroadcasterServiceInterface
-	state       *dto.ContextState
-	upgrader    websocket.Upgrader
-	eventMap    map[string]any
-	ObjectMap   map[string]string
+	ctx           context.Context
+	broadcaster   service.BroadcasterServiceInterface
+	repairService service.RepairServiceInterface
+	state         *dto.ContextState
+	upgrader      websocket.Upgrader
+	eventMap      map[string]any
+	ObjectMap     map[string]string
 }
 
-func NewWebSocketBroker(ctx context.Context, broadcaster service.BroadcasterServiceInterface, state *dto.ContextState) *WebSocketHandler {
+func NewWebSocketBroker(ctx context.Context, broadcaster service.BroadcasterServiceInterface, repairService service.RepairServiceInterface, state *dto.ContextState) *WebSocketHandler {
 	// Instantiate a WebSocket broker
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
@@ -44,12 +45,13 @@ func NewWebSocketBroker(ctx context.Context, broadcaster service.BroadcasterServ
 	reverseMap := reverseMap(dto.WebEventMap)
 
 	return &WebSocketHandler{
-		ctx:         ctx,
-		broadcaster: broadcaster,
-		state:       state,
-		upgrader:    upgrader,
-		eventMap:    dto.WebEventMap,
-		ObjectMap:   reverseMap,
+		ctx:           ctx,
+		broadcaster:   broadcaster,
+		repairService: repairService,
+		state:         state,
+		upgrader:      upgrader,
+		eventMap:      dto.WebEventMap,
+		ObjectMap:     reverseMap,
 	}
 }
 
@@ -125,6 +127,12 @@ func (self *WebSocketHandler) setHomeAssistantComponentConnection(message dto.He
 		EntryID:     message.EntryID,
 		ConnectedAt: time.Now(),
 	}
+
+	if self.repairService != nil {
+		for _, queued := range self.repairService.FlushQueuedCommands() {
+			self.broadcaster.BroadcastMessage(queued)
+		}
+	}
 }
 
 func (self *WebSocketHandler) handleInboundMessage(messageType int, payload []byte) {
@@ -139,7 +147,7 @@ func (self *WebSocketHandler) handleInboundMessage(messageType int, payload []by
 	}
 
 	switch envelope.Type {
-	case dto.HomeAssistantClientMessageTypeHelo:
+	case dto.ClientEventTypes.CLIENTEVENTTYPEHELO.String():
 		var message dto.HeloMessage
 		if err := json.Unmarshal(payload, &message); err != nil {
 			slog.WarnContext(self.ctx, "Ignoring malformed helo message", "error", err)
@@ -151,6 +159,22 @@ func (self *WebSocketHandler) handleInboundMessage(messageType int, payload []by
 		}
 		self.setHomeAssistantComponentConnection(message)
 		slog.InfoContext(self.ctx, "Home Assistant WebSocket handshake accepted", "component", message.Component, "version", message.Version, "entry_id", message.EntryID)
+	case dto.ClientEventTypes.CLIENTEVENTTYPEREPAIRLIFECYCLE.String():
+		var message dto.RepairLifecycleMessage
+		if err := json.Unmarshal(payload, &message); err != nil {
+			slog.WarnContext(self.ctx, "Ignoring malformed repair lifecycle message", "error", err)
+			return
+		}
+		if err := message.Validate(); err != nil {
+			slog.WarnContext(self.ctx, "Ignoring invalid repair lifecycle message", "error", err)
+			return
+		}
+		if self.repairService != nil {
+			if _, err := self.repairService.ApplyLifecycle(message); err != nil {
+				slog.WarnContext(self.ctx, "Failed to apply repair lifecycle to repair service", "error", err, "repair_id", message.RepairID)
+			}
+		}
+		slog.InfoContext(self.ctx, "Accepted Home Assistant repair lifecycle message", "repair_id", message.RepairID, "status", message.Status, "command_id", message.CommandID)
 	default:
 		slog.WarnContext(self.ctx, "Ignoring unsupported inbound WebSocket message type", "type", envelope.Type)
 	}

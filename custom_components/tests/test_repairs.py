@@ -1,0 +1,93 @@
+"""Tests for SRAT repairs proxy behavior."""
+
+from __future__ import annotations
+
+from unittest.mock import AsyncMock, MagicMock, patch
+
+from homeassistant.core import HomeAssistant
+
+from custom_components.srat.repairs import SRATRepairProxy
+from custom_components.srat.websocket_client import SRATWebSocketClient
+
+
+async def test_repair_proxy_handles_upsert_command(hass: HomeAssistant) -> None:
+    """Test upsert command creates/updates issue and reports lifecycle created."""
+    ws_client = AsyncMock(spec=SRATWebSocketClient)
+    proxy = SRATRepairProxy(hass=hass, ws_client=ws_client)
+
+    payload = {
+        "command_id": "cmd-1",
+        "repair_id": "disk_space_low",
+        "action": "upsert",
+        "translation_key": "disk_space_low",
+        "severity": "warning",
+        "is_fixable": True,
+        "is_persistent": True,
+    }
+
+    with patch("custom_components.srat.repairs.ir.async_create_issue") as create_issue:
+        await proxy.async_handle_repair_command(payload)
+
+    create_issue.assert_called_once()
+    ws_client.async_send_repair_lifecycle_event.assert_awaited_once_with(
+        repair_id="disk_space_low",
+        command_id="cmd-1",
+        status="created",
+    )
+
+
+async def test_repair_proxy_handles_delete_command(hass: HomeAssistant) -> None:
+    """Test delete command removes issue and reports lifecycle deleted."""
+    ws_client = AsyncMock(spec=SRATWebSocketClient)
+    proxy = SRATRepairProxy(hass=hass, ws_client=ws_client)
+
+    payload = {
+        "command_id": "cmd-2",
+        "repair_id": "disk_space_low",
+        "action": "delete",
+    }
+
+    with patch("custom_components.srat.repairs.ir.async_delete_issue") as delete_issue:
+        await proxy.async_handle_repair_command(payload)
+
+    delete_issue.assert_called_once_with(hass, "srat", "disk_space_low")
+    ws_client.async_send_repair_lifecycle_event.assert_awaited_once_with(
+        repair_id="disk_space_low",
+        command_id="cmd-2",
+        status="deleted",
+    )
+
+
+async def test_repair_proxy_reports_error_for_invalid_action(
+    hass: HomeAssistant,
+) -> None:
+    """Test invalid action emits lifecycle error response."""
+    ws_client = AsyncMock(spec=SRATWebSocketClient)
+    proxy = SRATRepairProxy(hass=hass, ws_client=ws_client)
+
+    payload = {
+        "command_id": "cmd-3",
+        "repair_id": "disk_space_low",
+        "action": "unknown",
+    }
+
+    await proxy.async_handle_repair_command(payload)
+
+    ws_client.async_send_repair_lifecycle_event.assert_awaited_once()
+    kwargs = ws_client.async_send_repair_lifecycle_event.await_args.kwargs
+    assert kwargs["repair_id"] == "disk_space_low"
+    assert kwargs["status"] == "error"
+
+
+def test_repair_proxy_register_and_unregister(hass: HomeAssistant) -> None:
+    """Test listener registration lifecycle on websocket client."""
+    ws_client = MagicMock(spec=SRATWebSocketClient)
+    remove_listener = MagicMock()
+    ws_client.register_listener.return_value = remove_listener
+
+    proxy = SRATRepairProxy(hass=hass, ws_client=ws_client)
+    proxy.register()
+    ws_client.register_listener.assert_called_once()
+
+    proxy.unregister()
+    remove_listener.assert_called_once()
