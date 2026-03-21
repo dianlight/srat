@@ -1,7 +1,9 @@
 package service
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"sort"
 	"strconv"
@@ -197,11 +199,42 @@ func (s *AddonsService) GetAppConfig(ctx context.Context) (*dto.AppConfigData, e
 		runtimeConfig[key] = value
 	}
 
+	requiresRestart := hasConfigDrift(options, runtimeConfig)
+
 	return &dto.AppConfigData{
 		Options:         options,
 		RuntimeConfig:   runtimeConfig,
-		RequiresRestart: true,
+		RequiresRestart: requiresRestart,
 	}, nil
+}
+
+func hasConfigDrift(options map[string]any, runtimeConfig map[string]any) bool {
+	if len(options) != len(runtimeConfig) {
+		return true
+	}
+
+	for key, optionValue := range options {
+		runtimeValue, ok := runtimeConfig[key]
+		if !ok {
+			return true
+		}
+
+		if !valuesEqual(optionValue, runtimeValue) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func valuesEqual(left any, right any) bool {
+	leftJSON, leftErr := json.Marshal(left)
+	rightJSON, rightErr := json.Marshal(right)
+	if leftErr == nil && rightErr == nil {
+		return bytes.Equal(leftJSON, rightJSON)
+	}
+
+	return false
 }
 
 func (s *AddonsService) GetAppConfigSchema(ctx context.Context) (*dto.AppConfigSchema, errors.E) {

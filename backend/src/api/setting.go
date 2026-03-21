@@ -9,6 +9,7 @@ import (
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/tlog"
+	"github.com/google/uuid"
 )
 
 type SettingsHanler struct {
@@ -18,6 +19,7 @@ type SettingsHanler struct {
 	eventBus       events.EventBusInterface
 	repairService  service.RepairServiceInterface
 	haService      service.HomeAssistantServiceInterface
+	broadcaster    service.BroadcasterServiceInterface
 }
 
 // NewSettingsHanler creates a new instance of SettingsHanler with the provided
@@ -39,6 +41,7 @@ func NewSettingsHanler(
 	eventBus events.EventBusInterface,
 	repairService service.RepairServiceInterface,
 	haService service.HomeAssistantServiceInterface,
+	broadcaster service.BroadcasterServiceInterface,
 ) *SettingsHanler {
 	p := new(SettingsHanler)
 	p.apiContext = apiContext
@@ -47,6 +50,7 @@ func NewSettingsHanler(
 	p.eventBus = eventBus
 	p.repairService = repairService
 	p.haService = haService
+	p.broadcaster = broadcaster
 
 	return p
 }
@@ -115,10 +119,16 @@ func (self *SettingsHanler) GetSettings(ctx context.Context, input *struct{}) (*
 
 // GetAppConfig retrieves current app options and rendered runtime config.
 func (self *SettingsHanler) GetAppConfig(ctx context.Context, input *struct{}) (*struct{ Body dto.AppConfigData }, error) {
+	const repairID = "addon_config_changed"
+
 	config, err := self.addonsService.GetAppConfig(ctx)
 	if err != nil {
 		tlog.ErrorContext(ctx, "Failed to load app configuration", "error", errors.Unwrap(err))
 		return nil, huma.Error500InternalServerError("Failed to load app configuration: %v", err)
+	}
+
+	if !config.RequiresRestart {
+		self.dismissAddonConfigIssue(ctx, repairID)
 	}
 
 	return &struct{ Body dto.AppConfigData }{Body: *config}, nil
@@ -152,17 +162,33 @@ func (self *SettingsHanler) UpdateAppConfig(ctx context.Context, input *struct {
 		return nil, huma.Error500InternalServerError("App configuration updated but reload failed: %v", getErr)
 	}
 
+	self.dismissAddonConfigIssue(ctx, repairID)
+
+	return &struct{ Body dto.AppConfigData }{Body: *config}, nil
+}
+
+func (self *SettingsHanler) dismissAddonConfigIssue(ctx context.Context, repairID string) {
 	if self.repairService != nil {
 		dismissErr := self.repairService.Delete(repairID)
 		if dismissErr != nil {
 			tlog.WarnContext(ctx, "Unable to dismiss addon config repair issue", "repair_id", repairID, "error", dismissErr)
 		}
-	} else if self.haService != nil {
+
+		if self.broadcaster != nil {
+			self.broadcaster.BroadcastMessage(dto.RepairCommandMessage{
+				CommandID: uuid.NewString(),
+				RepairID:  repairID,
+				Action:    dto.RepairCommandActionDelete,
+			})
+		}
+
+		return
+	}
+
+	if self.haService != nil {
 		dismissErr := self.haService.DismissPersistentNotification(repairID)
 		if dismissErr != nil {
 			tlog.WarnContext(ctx, "Unable to dismiss addon config persistent notification", "notification_id", repairID, "error", dismissErr)
 		}
 	}
-
-	return &struct{ Body dto.AppConfigData }{Body: *config}, nil
 }
