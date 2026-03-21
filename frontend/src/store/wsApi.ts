@@ -1,54 +1,19 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { apiUrl } from "./emptyApi";
 import type {
+    AppConfigChangedNotification,
     DataDirtyTracker,
     Disk,
+    FilesystemTask,
     HealthPing,
+    RepairCommandMessage,
     SharedResource,
     SmartTestStatus,
     UpdateProgress,
+    Welcome,
 } from "./sratApi";
+import { Supported_events } from "./sratApi";
 
-export enum Supported_events {
-    Heartbeat = "heartbeat",
-    Volumes = "volumes",
-    Shares = "shares",
-    Hello = "hello",
-    Updating = "updating",
-    DirtyDataTracker = "dirty_data_tracker",
-    AppConfigChanged = "app_config_changed",
-    SmartTestStatus = "smart_test_status",
-    FilesystemTask = "filesystem_task",
-    Error = "error",
-}
-
-export interface Welcome {
-    message?: string;
-    active_clients?: number;
-    supported_events?: string[];
-    update_channel?: string;
-    build_version?: string;
-    secure_mode?: boolean;
-    protected_mode?: boolean;
-    read_only?: boolean;
-    startTime?: number;
-    machine_id?: string;
-}
-
-export interface FilesystemTask {
-    device?: string;
-    operation?: string;
-    status?: string;
-    progress?: number;
-    message?: string;
-    notes?: string[];
-}
-
-export interface AppConfigChanged {
-    path?: string;
-    hash?: string;
-    type?: string;
-}
 
 export type EventData = {
     [Supported_events.Heartbeat]: HealthPing;
@@ -57,9 +22,10 @@ export type EventData = {
     [Supported_events.Hello]: Welcome;
     [Supported_events.Updating]: UpdateProgress;
     [Supported_events.DirtyDataTracker]: DataDirtyTracker;
-    [Supported_events.AppConfigChanged]: AppConfigChanged;
+    [Supported_events.AppConfigChanged]: AppConfigChangedNotification;
     [Supported_events.SmartTestStatus]: SmartTestStatus;
     [Supported_events.FilesystemTask]: FilesystemTask;
+    [Supported_events.RepairCommand]: RepairCommandMessage;
 } & {
     __wsConnected?: boolean;
 };

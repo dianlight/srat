@@ -23,9 +23,21 @@ func NewSystemHanler(host_service service.HostServiceInterface) *SystemHanler {
 }
 
 func (self *SystemHanler) RegisterSystemHanler(api huma.API) {
+	huma.Get(api, "/welcome", self.HandleWelcome, huma.OperationTags("system", "internal"))
+	huma.Get(api, "/appconfig", self.HandleAppConfig, huma.OperationTags("system", "internal"))
 	huma.Get(api, "/nics", self.GetNICsHandler, huma.OperationTags("system"))
 	huma.Get(api, "/hostname", self.GetHostnameHandler, huma.OperationTags("system"))
 	huma.Get(api, "/capabilities", self.GetCapabilitiesHandler, huma.OperationTags("system"))
+}
+
+func (self *SystemHanler) HandleWelcome(ctx context.Context, input *struct{}) (*struct{ Body dto.Welcome }, error) {
+	return nil, huma.Error500InternalServerError("You are not welcome!", nil)
+}
+
+func (self *SystemHanler) HandleAppConfig(ctx context.Context, input *struct{}) (*struct {
+	Body dto.AppConfigChangedNotification
+}, error) {
+	return nil, huma.Error500InternalServerError("App configuration not available", nil)
 }
 
 // GetNICsHandler handles the request to retrieve network interface card (NIC) information.

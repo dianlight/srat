@@ -36,6 +36,8 @@ func (h *FilesystemHandler) RegisterFilesystemHandler(api huma.API) {
 	huma.Get(api, "/filesystem/state", h.GetPartitionState, huma.OperationTags("filesystems"))
 	huma.Get(api, "/filesystem/label", h.GetPartitionLabel, huma.OperationTags("filesystems"))
 	huma.Put(api, "/filesystem/label", h.SetPartitionLabel, huma.OperationTags("filesystems"))
+	huma.Get(api, "/filesystem/task", h.HandleTask, huma.OperationTags("filesystems", "internal"))
+
 }
 
 // ListFilesystems returns all supported filesystems with their capabilities
@@ -453,4 +455,11 @@ func (h *FilesystemHandler) SetPartitionLabel(
 			Success bool `json:"success"`
 		}{Success: true},
 	}, nil
+}
+
+func (h *FilesystemHandler) HandleTask(
+	ctx context.Context,
+	input *struct{},
+) (*struct{ Body dto.FilesystemTask }, error) {
+	return nil, huma.Error500InternalServerError("Failed to get task status", nil)
 }

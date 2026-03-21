@@ -1,6 +1,7 @@
 import { emptySplitApi as api } from "./emptyApi";
 export const addTagTypes = [
   "system",
+  "internal",
   "disk",
   "smart",
   "filesystems",
@@ -17,6 +18,13 @@ const injectedRtkApi = api
   })
   .injectEndpoints({
     endpoints: (build) => ({
+      getApiAppconfig: build.query<
+        GetApiAppconfigApiResponse,
+        GetApiAppconfigApiArg
+      >({
+        query: () => ({ url: `/api/appconfig` }),
+        providesTags: ["system", "internal"],
+      }),
       getApiCapabilities: build.query<
         GetApiCapabilitiesApiResponse,
         GetApiCapabilitiesApiArg
@@ -229,6 +237,13 @@ const injectedRtkApi = api
         }),
         providesTags: ["filesystems"],
       }),
+      getApiFilesystemTask: build.query<
+        GetApiFilesystemTaskApiResponse,
+        GetApiFilesystemTaskApiArg
+      >({
+        query: () => ({ url: `/api/filesystem/task` }),
+        providesTags: ["filesystems", "internal"],
+      }),
       getApiFilesystems: build.query<
         GetApiFilesystemsApiResponse,
         GetApiFilesystemsApiArg
@@ -318,6 +333,10 @@ const injectedRtkApi = api
       getApiNics: build.query<GetApiNicsApiResponse, GetApiNicsApiArg>({
         query: () => ({ url: `/api/nics` }),
         providesTags: ["system"],
+      }),
+      repair: build.mutation<RepairApiResponse, RepairApiArg>({
+        query: () => ({ url: `/api/repairMessage`, method: "TRACE" }),
+        invalidatesTags: ["Issues", "internal"],
       }),
       putApiRestart: build.mutation<
         PutApiRestartApiResponse,
@@ -606,10 +625,20 @@ const injectedRtkApi = api
           providesTags: ["volume"],
         },
       ),
+      getApiWelcome: build.query<GetApiWelcomeApiResponse, GetApiWelcomeApiArg>(
+        {
+          query: () => ({ url: `/api/welcome` }),
+          providesTags: ["system", "internal"],
+        },
+      ),
     }),
     overrideExisting: false,
   });
 export { injectedRtkApi as sratApi };
+export type GetApiAppconfigApiResponse = /** status 200 OK */
+  | AppConfigChangedNotification
+  | /** status default Error */ ErrorModel;
+export type GetApiAppconfigApiArg = void;
 export type GetApiCapabilitiesApiResponse = /** status 200 OK */
   | SystemCapabilities
   | /** status default Error */ ErrorModel;
@@ -752,6 +781,10 @@ export type GetApiFilesystemStateApiArg = {
   /** Unique partition identifier */
   partitionId?: string;
 };
+export type GetApiFilesystemTaskApiResponse = /** status 200 OK */
+  | FilesystemTask
+  | /** status default Error */ ErrorModel;
+export type GetApiFilesystemTaskApiArg = void;
 export type GetApiFilesystemsApiResponse = /** status 200 OK */
   | FilesystemsInfo
   | /** status default Error */ ErrorModel;
@@ -808,6 +841,10 @@ export type GetApiNicsApiResponse =
   | /** status 200 OK */ (InterfaceStat[] | null)
   | /** status default Error */ ErrorModel;
 export type GetApiNicsApiArg = void;
+export type RepairApiResponse = /** status 200 OK */
+  | RepairCommandMessage
+  | /** status default Error */ ErrorModel;
+export type RepairApiArg = void;
 export type PutApiRestartApiResponse = /** status 200 OK */
   | string
   | /** status default Error */ ErrorModel;
@@ -988,21 +1025,15 @@ export type GetApiVolumesApiResponse =
   | /** status 200 OK */ (Disk[] | null)
   | /** status default Error */ ErrorModel;
 export type GetApiVolumesApiArg = void;
-export type SystemCapabilities = {
+export type GetApiWelcomeApiResponse = /** status 200 OK */
+  | Welcome
+  | /** status default Error */ ErrorModel;
+export type GetApiWelcomeApiArg = void;
+export type AppConfigChangedNotification = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
-  /** Whether QUIC kernel module is loaded */
-  has_kernel_module: boolean;
-  /** Installed Samba version */
-  samba_version: string;
-  /** Whether Samba version >= 4.23.0 */
-  samba_version_sufficient: boolean;
-  /** Whether NFS is supported */
-  support_nfs: boolean;
-  /** Whether SMB over QUIC is supported */
-  supports_quic: boolean;
-  /** Reason why QUIC is not supported */
-  unsupported_reason?: string;
+  hash?: string;
+  path?: string;
 };
 export type ErrorDetail = {
   /** Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id' */
@@ -1027,6 +1058,22 @@ export type ErrorModel = {
   title?: string;
   /** A URI reference to human-readable documentation for the error. */
   type?: string;
+};
+export type SystemCapabilities = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  /** Whether QUIC kernel module is loaded */
+  has_kernel_module: boolean;
+  /** Installed Samba version */
+  samba_version: string;
+  /** Whether Samba version >= 4.23.0 */
+  samba_version_sufficient: boolean;
+  /** Whether NFS is supported */
+  support_nfs: boolean;
+  /** Whether SMB over QUIC is supported */
+  supports_quic: boolean;
+  /** Reason why QUIC is not supported */
+  unsupported_reason?: string;
 };
 export type HdIdleDevice = {
   /** A URL to the JSON Schema for this object. */
@@ -1213,6 +1260,19 @@ export type FilesystemState = {
   isClean: boolean;
   isMounted: boolean;
   stateDescription?: string;
+};
+export type FilesystemTask = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  device: string;
+  error?: string;
+  filesystemType?: string;
+  message?: string;
+  notes?: string[] | null;
+  operation: string;
+  progress?: number;
+  result?: unknown;
+  status: string;
 };
 export type MountFlag = {
   description?: string;
@@ -1507,6 +1567,25 @@ export type InterfaceStat = {
   mtu: number;
   name: string;
 };
+export type RepairCommandMessage = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  action: string;
+  breaks_in_ha_version?: string;
+  command_id: string;
+  data?: {
+    [key: string]: unknown;
+  };
+  is_fixable: boolean;
+  is_persistent: boolean;
+  learn_more_url?: string;
+  repair_id: string;
+  severity?: string;
+  translation_key?: string;
+  translation_placeholders?: {
+    [key: string]: string;
+  };
+};
 export type SmbConf = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
@@ -1724,6 +1803,20 @@ export type Disk = {
   smart_info?: SmartInfo;
   vendor?: string;
 };
+export type Welcome = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  active_clients: number;
+  build_version: string;
+  machine_id?: string;
+  message: string;
+  protected_mode: boolean;
+  read_only: boolean;
+  secure_mode: boolean;
+  startTime: number;
+  supported_events: Supported_events[] | null;
+  update_channel: Update_channel;
+};
 export enum Command_type {
   Scsi = "scsi",
   Ata = "ata",
@@ -1793,7 +1886,27 @@ export enum Update_process_state {
   NeedRestart = "NeedRestart",
   Error = "Error",
 }
+export enum Supported_events {
+  Hello = "hello",
+  Updating = "updating",
+  Volumes = "volumes",
+  Heartbeat = "heartbeat",
+  Shares = "shares",
+  DirtyDataTracker = "dirty_data_tracker",
+  SmartTestStatus = "smart_test_status",
+  FilesystemTask = "filesystem_task",
+  Error = "error",
+  RepairCommand = "repair_command",
+  AppConfigChanged = "app_config_changed",
+}
+export enum Update_channel {
+  None = "None",
+  Develop = "Develop",
+  Release = "Release",
+  Prerelease = "Prerelease",
+}
 export const {
+  useGetApiAppconfigQuery,
   useGetApiCapabilitiesQuery,
   useGetApiDiskByDiskIdHdidleConfigQuery,
   usePatchApiDiskByDiskIdHdidleConfigMutation,
@@ -1815,6 +1928,7 @@ export const {
   usePatchApiFilesystemLabelMutation,
   usePutApiFilesystemLabelMutation,
   useGetApiFilesystemStateQuery,
+  useGetApiFilesystemTaskQuery,
   useGetApiFilesystemsQuery,
   usePostApiHdidleStartMutation,
   usePostApiHdidleStopMutation,
@@ -1827,6 +1941,7 @@ export const {
   useDeleteApiIssuesByIdMutation,
   usePutApiIssuesByIdMutation,
   useGetApiNicsQuery,
+  useRepairMutation,
   usePutApiRestartMutation,
   usePutApiSambaApplyMutation,
   useGetApiSambaConfigQuery,
@@ -1861,4 +1976,5 @@ export const {
   usePostApiVolumeMountMutation,
   usePatchApiVolumeSettingsMutation,
   useGetApiVolumesQuery,
+  useGetApiWelcomeQuery,
 } = injectedRtkApi;
