@@ -34,8 +34,8 @@ Detect when the Home Assistant Supervisor changes the addon configuration (`/dat
 ## 📝 Task List
 
 - [x] Task 1: Extend `AppConfigEvent` in `backend/src/events/events.go` with external-change metadata (`path`, `hash`) and reuse existing app-config event bus helpers
-- [ ] Task 3: Implement `AddonConfigWatcherService` with HA Supervisor event-first detection — attempt `supervisor/event` subscription for addon config changes; if unavailable/unsupported, fall back to `/data/options.json` `fsnotify` + debounce + hash dedup, with optional interval polling as a safety net
-- [ ] Task 4: On config change detected, emit `AppConfigEvent` (with `path`/`hash`) on event bus and set `AppConfigData.RequiresRestart = true` in the config DTO
+- [x] Task 3: Implement `AddonConfigWatcherService` with HA Supervisor event-first detection — attempt `supervisor/event` subscription for addon config changes; if unavailable/unsupported, fall back to `/data/options.json` `fsnotify` + debounce + hash dedup, with optional interval polling as a safety net
+- [x] Task 4: On config change detected, emit `AppConfigEvent` (with `path`/`hash`) on event bus and set `AppConfigData.RequiresRestart = true` in the config DTO
 - [ ] Task 5: Inject `RepairService` into `AddonConfigWatcherService` and call `RepairService.Create()` with a stable `repair_id = "addon_config_changed"`, `severity = warning`, `is_fixable = false`, `translation_key = "addon_config_changed"` when an external config change is detected; fall back to `HomeAssistantService.CreatePersistentNotification()` if `RepairService` is nil
 - [ ] Task 6: Wire the watcher service into the fx dependency graph (`appsetup.go`)
 - [ ] Task 7: Frontend — subscribe to the new `app_config_changed` WebSocket event in RTK Query; show a persistent `Snackbar` / `Alert` with a **Reload** button calling `POST /api/app-config/reload` (or triggering browser reload)
@@ -117,10 +117,15 @@ Add `addonConfigPollInterval` (default `60s`) to `AppConfig` schema, exposed in 
 - Removed dedicated addon-config event-bus hooks and reused `EmitAppConfig` / `OnAppConfig` in `backend/src/events/event_bus.go`.
 - Updated event-bus test coverage in `backend/src/events/event_bus_test.go` and verified with targeted test run (`go test ./events`).
 - Consolidated detection implementation scope: removed standalone Task 2 and folded it into Task 3 so there is a single event-first detection task with fallback behavior.
+- Task 3 complete: `AddonConfigWatcherService` implemented (`backend/src/service/addon_config_watcher_service.go`) with Supervisor-event-first detection, fsnotify fallback (500 ms debounce), and 60 s interval safety-net ticker. SHA-256 hash dedup in `maybeNotify`. `AddonOptionsFilePath` var added to `config/addon_options.go`; 8 unit tests (race-clean) in `addon_config_watcher_service_test.go`.
+- Task 4 complete: `AddonConfigWatcherService` now injects `events.EventBusInterface` and uses `emitChanged` as the default `onChanged` handler. `emitChanged` emits `AppConfigEvent{Type: UPDATE, Path, Hash}` on the event bus; `DirtyDataService` marks `AppConfig` dirty in response. `RequiresRestart` is already always `true` in `AddonsService.GetAppConfig`. 2 new tests: `TestEmitChanged_EmitsAppConfigEvent` (uses real EventBus), `TestEmitChanged_NilEventBus` (no panic on nil bus).
 
 ## 🔗 Code References & TODOs
 
 - [ ] `backend/src/service/upgrade_service.go:178` — reference fsnotify + debounce pattern to reuse
+- [x] `backend/src/service/addon_config_watcher_service.go` — `AddonConfigWatcherService` with Supervisor WS event + fsnotify + ticker detection; SHA-256 hash dedup in `maybeNotify`; `onChanged` hook (log-only in Task 3; replaced in Task 4)
+- [x] `backend/src/service/addon_config_watcher_service_test.go` — 8 unit tests: hashFile, maybeNotify dedup, concurrent safety, fsnotify write detection
+- [x] `backend/src/config/addon_options.go` — `var AddonOptionsFilePath = "/data/options.json"` added
 - [ ] `backend/src/service/homeassistant_service.go:590` — `CreatePersistentNotification` / `DismissPersistentNotification` as fallback when RepairService not available
 - [ ] `backend/src/service/repair_service.go` — inject `RepairService` into `AddonConfigWatcherService`; call `Create`/`Delete` for `addon_config_changed` repair ID
 - [ ] `backend/src/dto/repair_proxy.go` — use `RepairCommandMessage` (with `RepairCommandActionUpsert` / `RepairCommandActionDelete`) when building repair commands
