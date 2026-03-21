@@ -28,3 +28,10 @@ type AppConfigData struct {
 type AppConfigUpdateRequest struct {
 	Options map[string]any `json:"options"`
 }
+
+// AppConfigChangedNotification is the WebSocket event payload sent when the addon
+// configuration file changes externally (e.g. from the Home Assistant supervisor UI).
+type AppConfigChangedNotification struct {
+	Path string `json:"path,omitempty"`
+	Hash string `json:"hash,omitempty"`
+}

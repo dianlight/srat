@@ -296,3 +296,31 @@ func (suite *BroadcasterServiceEventMappingTestSuite) TestMountPointEvent_Broadc
 		suite.Fail("mountpoint event should produce a broadcast")
 	}
 }
+
+func (suite *BroadcasterServiceEventMappingTestSuite) TestAppConfigEvent_BroadcastsNotification() {
+	suite.unsubs = append(suite.unsubs, suite.eventBus.OnAppConfig(func(ctx context.Context, event events.AppConfigEvent) errors.E {
+		suite.relay.Broadcast(broadcastEventForTesting{Message: dto.AppConfigChangedNotification{
+			Path: event.Path,
+			Hash: event.Hash,
+		}})
+		return nil
+	}))
+
+	listener := suite.relay.Listener(10)
+	defer listener.Close()
+
+	suite.eventBus.EmitAppConfig(events.AppConfigEvent{
+		Path: "/data/options.json",
+		Hash: "abc123",
+	})
+
+	select {
+	case ev := <-listener.Ch():
+		notification, ok := ev.Message.(dto.AppConfigChangedNotification)
+		suite.True(ok, "expected dto.AppConfigChangedNotification, got %T", ev.Message)
+		suite.Equal("/data/options.json", notification.Path)
+		suite.Equal("abc123", notification.Hash)
+	case <-time.After(2 * time.Second):
+		suite.Fail("app config event should produce a broadcast")
+	}
+}
