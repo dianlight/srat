@@ -17,6 +17,7 @@ import (
 	"github.com/dianlight/srat/homeassistant/websocket"
 	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/fsnotify/fsnotify"
+	"github.com/google/uuid"
 	"go.uber.org/fx"
 )
 
@@ -32,12 +33,14 @@ type AddonConfigWatcherServiceInterface interface{}
 //  3. Interval ticker (default 60 s) as a safety net for NFS / overlay-FS environments
 //
 // onChanged is invoked at most once per unique SHA-256 content hash.
-// It emits an AppConfigEvent on the event bus with the detected path and hash.
+// It emits an AppConfigEvent on the event bus and creates a Repair issue (or persistent notification fallback).
 type AddonConfigWatcherService struct {
 	ctx             context.Context
 	wsClient        websocket.ClientInterface
 	state           *dto.ContextState
 	eventBus        events.EventBusInterface
+	repairService   RepairServiceInterface
+	haService       HomeAssistantServiceInterface
 	watchCtx        context.Context
 	watchCancel     context.CancelFunc
 	hashMu          sync.Mutex
@@ -51,10 +54,12 @@ type AddonConfigWatcherService struct {
 // AddonConfigWatcherServiceParams holds all FX-injected dependencies.
 type AddonConfigWatcherServiceParams struct {
 	fx.In
-	Ctx      context.Context
-	State    *dto.ContextState
-	EventBus events.EventBusInterface
-	WsClient websocket.ClientInterface `optional:"true"`
+	Ctx           context.Context
+	State         *dto.ContextState
+	EventBus      events.EventBusInterface
+	RepairService RepairServiceInterface        `optional:"true"`
+	HAService     HomeAssistantServiceInterface `optional:"true"`
+	WsClient      websocket.ClientInterface     `optional:"true"`
 }
 
 // NewAddonConfigWatcherService creates the service and registers FX lifecycle hooks.
@@ -64,6 +69,8 @@ func NewAddonConfigWatcherService(lc fx.Lifecycle, params AddonConfigWatcherServ
 		wsClient:        params.WsClient,
 		state:           params.State,
 		eventBus:        params.EventBus,
+		repairService:   params.RepairService,
+		haService:       params.HAService,
 		pollInterval:    60 * time.Second,
 		optionsFilePath: config.AddonOptionsFilePath,
 	}
@@ -225,17 +232,50 @@ func (s *AddonConfigWatcherService) maybeNotify(path, hash string) {
 }
 
 // emitChanged is the default onChanged handler.
-// It logs the detection and emits an AppConfigEvent on the event bus so that
-// DirtyDataService, BroadcasterService, and other listeners are notified.
+// It logs the detection, emits an AppConfigEvent on the event bus, and creates a Repair issue
+// (or falls back to a HA persistent notification when RepairService is unavailable).
 func (s *AddonConfigWatcherService) emitChanged(path, hash string) {
 	slog.InfoContext(s.ctx, "addon_config_watcher: external addon config change detected",
 		"path", path, "hash", hash)
+
 	if s.eventBus != nil {
 		s.eventBus.EmitAppConfig(events.AppConfigEvent{
 			Event: events.Event{Type: events.EventTypes.UPDATE},
 			Path:  path,
 			Hash:  hash,
 		})
+	}
+
+	const repairID = "addon_config_changed"
+
+	if s.repairService != nil {
+		cmd := dto.RepairCommandMessage{
+			CommandID:      uuid.New().String(),
+			RepairID:       repairID,
+			Action:         dto.RepairCommandActionUpsert,
+			TranslationKey: repairID,
+			Severity:       dto.RepairIssueSeverityWarning,
+			IsFixable:      false,
+			IsPersistent:   true,
+		}
+		_, err := s.repairService.Create(cmd)
+		if err != nil {
+			// If the repair already exists (idempotent) that is fine; log other errors.
+			slog.WarnContext(s.ctx, "addon_config_watcher: could not create repair issue", "err", err)
+		}
+		return
+	}
+
+	// Fallback: create a HA persistent notification when RepairService is not available.
+	if s.haService != nil {
+		err := s.haService.CreatePersistentNotification(
+			repairID,
+			"Addon configuration changed externally",
+			"The addon options file was modified outside of SRAT. Reload the configuration to apply the new settings.",
+		)
+		if err != nil {
+			slog.WarnContext(s.ctx, "addon_config_watcher: could not create persistent notification", "err", err)
+		}
 	}
 }
 

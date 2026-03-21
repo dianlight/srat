@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -237,3 +238,73 @@ func (s *AddonConfigWatcherServiceSuite) TestEmitChanged_NilEventBus() {
 		svc.emitChanged("/data/options.json", "deadbeef")
 	})
 }
+
+// TestEmitChanged_CreatesRepairIssue verifies that emitChanged calls RepairService.Create
+// with repair_id="addon_config_changed", severity=warning, is_fixable=false, is_persistent=true.
+func (s *AddonConfigWatcherServiceSuite) TestEmitChanged_CreatesRepairIssue() {
+	ctx := context.Background()
+	rs := NewRepairService(ctx, &dto.ContextState{})
+	svc := &AddonConfigWatcherService{
+		ctx:           ctx,
+		repairService: rs,
+	}
+	svc.emitChanged("/data/options.json", "abc123")
+	repair, ok := rs.Get("addon_config_changed")
+	require.True(s.T(), ok, "repair issue should exist after emitChanged")
+	assert.Equal(s.T(), "addon_config_changed", repair.RepairID)
+	assert.Equal(s.T(), dto.RepairIssueSeverityWarning, repair.Command.Severity)
+	assert.Equal(s.T(), dto.RepairCommandActionUpsert, repair.Command.Action)
+	assert.False(s.T(), repair.Command.IsFixable)
+	assert.True(s.T(), repair.Command.IsPersistent)
+}
+
+// TestEmitChanged_RepairAlreadyExists_NoPanic verifies that a second emitChanged call
+// (when the repair issue already exists) logs a warning but does not panic.
+func (s *AddonConfigWatcherServiceSuite) TestEmitChanged_RepairAlreadyExists_NoPanic() {
+	ctx := context.Background()
+	rs := NewRepairService(ctx, &dto.ContextState{})
+	svc := &AddonConfigWatcherService{
+		ctx:           ctx,
+		repairService: rs,
+	}
+	svc.emitChanged("/data/options.json", "abc123")
+	// Second call should not panic even though the repair already exists.
+	assert.NotPanics(s.T(), func() {
+		svc.emitChanged("/data/options.json", "xyz456")
+	})
+}
+
+// TestEmitChanged_FallsBackToNotification verifies that CreatePersistentNotification
+// is called with the correct arguments when repairService is nil.
+func (s *AddonConfigWatcherServiceSuite) TestEmitChanged_FallsBackToNotification() {
+	stub := &stubHAService{}
+	svc := &AddonConfigWatcherService{
+		ctx:       context.Background(),
+		haService: stub,
+	}
+	svc.emitChanged("/data/options.json", "abc123")
+	assert.True(s.T(), stub.notifCalled, "CreatePersistentNotification should have been called")
+	assert.Equal(s.T(), "addon_config_changed", stub.notifID)
+}
+
+// stubHAService implements HomeAssistantServiceInterface for testing the HA fallback path.
+type stubHAService struct {
+	notifCalled bool
+	notifID     string
+	notifTitle  string
+	notifMsg    string
+}
+
+func (s *stubHAService) SendDiskEntities(_ *[]*dto.Disk) error                         { return nil }
+func (s *stubHAService) SendSambaStatusEntity(_ *dto.SambaStatus) error                { return nil }
+func (s *stubHAService) SendSambaProcessStatusEntity(_ *dto.ServerProcessStatus) error { return nil }
+func (s *stubHAService) SendVolumeStatusEntity(_ *[]*dto.Disk) error                   { return nil }
+func (s *stubHAService) SendDiskHealthEntities(_ *dto.DiskHealth) error                { return nil }
+func (s *stubHAService) CreatePersistentNotification(id, title, msg string) error {
+	s.notifCalled = true
+	s.notifID = id
+	s.notifTitle = title
+	s.notifMsg = msg
+	return nil
+}
+func (s *stubHAService) DismissPersistentNotification(_ string) error { return nil }
