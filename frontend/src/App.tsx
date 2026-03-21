@@ -11,6 +11,20 @@ import { useTelemetryModal } from "./hooks/useTelemetryModal";
 import { useGetApiSettingsAppConfigQuery, usePutApiRestartMutation } from "./store/sratApi";
 import { useGetServerEventsQuery } from "./store/wsApi";
 
+// Track Backdrop open state to detect transition
+function useBackdropReload(open: boolean, error: any, alive: boolean | undefined) {
+	const prevOpen = useRef(open);
+	useEffect(() => {
+		if (prevOpen.current && !open) {
+			// Backdrop just closed
+			if (error !== undefined || alive === false) {
+				window.location.reload();
+			}
+		}
+		prevOpen.current = open;
+	}, [open, error, alive]);
+}
+
 
 export function App() {
 	const [errorInfo, setErrorInfo] = useState<string>("");
@@ -22,6 +36,10 @@ export function App() {
 	const [restartAddon] = usePutApiRestartMutation();
 	const { shouldShow: showTelemetryModal, dismiss: dismissTelemetryModal } = useTelemetryModal();
 	const { shouldShow: showBaseConfigModal, dismiss: dismissBaseConfigModal } = useBaseConfigModal();
+
+	// Compute Backdrop open state
+	const backdropOpen = evdata?.heartbeat?.alive === false || isLoading || herror !== undefined;
+	useBackdropReload(backdropOpen, herror, evdata?.heartbeat?.alive);
 	//const { reportError, reportEvent, telemetryMode, isLoading: rollbarLoading } = useRollbarTelemetry();
 
 	// This useEffect handles the automatic reset of errors after a delay.
@@ -105,8 +123,8 @@ export function App() {
 			</Container>
 			<Backdrop
 				sx={(theme) => ({ color: "#fff", zIndex: theme.zIndex.drawer + 1 })}
-				open={evdata?.heartbeat?.alive === false || (isLoading) || herror !== undefined}
-				content={(isLoading) ? "Loading..." : "Server is not reachable"}
+				open={backdropOpen}
+				content={isLoading ? "Loading..." : "Server is not reachable"}
 			>
 				<CircularProgress color="inherit" />
 			</Backdrop>
@@ -120,7 +138,7 @@ export function App() {
 			/>
 			<Snackbar
 				anchorOrigin={{ vertical: "top", horizontal: "center" }}
-				open={showAddonConfigChangedBanner}
+				open={showAddonConfigChangedBanner && !(evdata?.heartbeat?.alive === false || isLoading || herror !== undefined)}
 			>
 				<Alert
 					severity="warning"
