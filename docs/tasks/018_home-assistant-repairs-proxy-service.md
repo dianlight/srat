@@ -1,6 +1,6 @@
 # [FEATURE]: Home Assistant Repairs Proxy Service
 
-**Target Repo:** `srat` **Status:** 📅 Planned **Issue Link:** _TBD_
+**Target Repo:** `srat` **Status:** ✅ Done **Issue Link:** https://github.com/dianlight/srat/issues/518
 
 ## 🎯 Objective
 
@@ -32,18 +32,19 @@ Create a backend repair-management service that can request, track, and resolve 
 
 ## 📝 Task List
 
-- [ ] Task 1: Define backend repair proxy domain model and message contracts for server→client commands and client→server repair lifecycle events
-- [ ] Task 2: Extend backend WebSocket handling to accept inbound repair event messages from the custom component in addition to `helo`
-- [ ] Task 3: Add a backend `RepairService` that manages repair requests, tracks their state, and exposes create/update/delete/query operations to other services
-- [ ] Task 4: Implement queueing for repair commands while the custom component is disconnected, and flush the queue after a valid reconnection/`helo`
-- [ ] Task 5: Extend WebSocket event registration so repair messages are treated as first-class SRAT WebSocket messages
-- [ ] Task 6: Implement custom component proxy logic to receive backend repair commands and translate them to Home Assistant Repairs issue operations
-- [ ] Task 7: Add Home Assistant Repairs flow support in the custom component for fixable issues, including callback/reporting back to the backend when a repair is created, ignored, fixed, or deleted
-- [ ] Task 8: Add backend listeners for custom-component repair events so managed repair state stays synchronized with Home Assistant
-- [ ] Task 9: Define reconnection/idempotency rules so queued repair actions do not create duplicate issues after reconnects or restarts
-- [ ] Task 10: Unit testing for backend DTO parsing, queueing, reconnect flush behavior, and repair-state reconciliation
-- [ ] Task 11: Custom component testing for WebSocket proxy handling and Repairs integration behavior
-- [ ] Task 12: Integration and documentation
+- [x] Task 1: Define backend repair proxy domain model and message contracts for server→client commands and client→server repair lifecycle events
+- [x] Task 2: Extend backend WebSocket handling to accept inbound repair event messages from the custom component in addition to `helo`
+- [x] Task 3: Add a backend `RepairService` that manages repair requests, tracks their state, and exposes create/update/delete/query operations to other services
+- [x] Task 4: Implement queueing for repair commands while the custom component is disconnected, and flush the queue after a valid reconnection/`helo`
+- [x] Task 5: Extend WebSocket event registration so repair messages are treated as first-class SRAT WebSocket messages
+- [x] Task 6: Implement custom component proxy logic to receive backend repair commands and translate them to Home Assistant Repairs issue operations
+- [x] Task 7: Add Home Assistant Repairs flow support in the custom component for fixable issues, including callback/reporting back to the backend when a repair is created, ignored, fixed, or deleted
+- [x] Task 8: Add backend listeners for custom-component repair events so managed repair state stays synchronized with Home Assistant
+- [x] Task 9: Define reconnection/idempotency rules so queued repair actions do not create duplicate issues after reconnects or restarts
+- [x] Task 10: Unit testing for backend DTO parsing, queueing, reconnect flush behavior, and repair-state reconciliation
+- [x] Task 11: Custom component testing for WebSocket proxy handling and Repairs integration behavior
+- [x] Task 12: Integration and documentation
+- [x] Task 13: Code review, cleanup, and final validation
 
 ## 🧠 Implementation Notes (Copilot Context)
 
@@ -61,17 +62,35 @@ Create a backend repair-management service that can request, track, and resolve 
 - The custom component likely needs a dedicated `repairs.py` module plus WebSocket event handlers that map backend repair operations to HA issue registry actions and repair-flow results.
 - Backend state reconciliation should support events such as created, updated, ignored, fixed, dismissed, deleted, and error.
 - If repair operations cannot be executed immediately because the component is disconnected, the backend should preserve intent and emit the command once connectivity is restored.
+- Start-work progress: linked issue https://github.com/dianlight/srat/issues/518 and confirmed branch strategy is to stay on `main` for now.
+- Phase update (Task 1 complete): added backend DTO contracts for `RepairCommandMessage` and `RepairLifecycleMessage` with validation and test coverage; added outbound WebSocket event `repair_command` to typed event registrations.
+- Phase update (Task 2 complete): `/ws` inbound router now accepts validated `repair_lifecycle` messages and ignores malformed/invalid lifecycle payloads.
+- Phase update (Task 3 complete): added `RepairService` with create/update/delete/get/list operations plus lifecycle reconciliation (`ApplyLifecycle`) and in-memory managed state tracking for repairs.
+- Phase update (Task 4 complete): `RepairService` now queues commands while HA custom component is disconnected and exposes `FlushQueuedCommands`; websocket `helo` now flushes queued commands through the existing broadcast pipeline.
+- Phase update (Task 5 complete): `repair_command` is registered in WebSocket typed events (`WebEventType`, `WebEventMap`, welcome supported-events metadata), and validated by DTO/API tests.
+- Phase update (Task 6 complete): added custom component `SRATRepairProxy` to consume `repair_command` events and proxy `upsert/reconcile/delete` actions to Home Assistant `issue_registry` operations.
+- Phase update (Task 7 complete): added `repairs.py` flow support via `async_create_fix_flow` and `SRATIssueRepairFlow` to report `fixed` lifecycle events back to the backend.
+- Phase update (Task 8 complete): inbound `repair_lifecycle` events are now applied to backend managed state through `RepairService.ApplyLifecycle` in websocket routing.
+- Phase update (Task 9 complete): queue replay is idempotent by `command_id` deduplication inside `RepairService`, preventing duplicate flushes after reconnect.
+- Phase update (Task 10-11 complete): added/updated focused backend (`dto`, `api`, `service`) and custom-component (`test_repairs.py`, websocket/init tests) coverage for repair proxy contracts and flows.
+- Phase update (Task 12 complete): integrated backend + custom-component repair proxy behavior and aligned task documentation with concrete implementation artifacts.
+- Phase update (Task 13 complete): performed targeted validation for backend (`go test` focused suites) and custom component (`pytest` focused suites), all passing.
+- Completion summary: repair lifecycle state is now owned by `RepairService` per managed repair instead of `ContextState`, client message routing uses generated `ClientEventTypes` enums directly, and the custom component remote deployment was validated on the Home Assistant test environment.
+- Remote validation summary: `backend && make build_remote` completed successfully, add-on `local_sambanas2` restarted cleanly, `custom_components && make mount_remote && make install_remote` succeeded, Home Assistant core reload succeeded, and Home Assistant configuration validation remained green throughout the deploy flow.
 
 ## 🔗 Code References & TODOs
 
-- [ ] `TODO: backend/src/api/ws.go` - Extend inbound message routing beyond `helo` to support repair lifecycle events from the custom component
-- [ ] `TODO: backend/src/dto/helo.go` - Reuse or extend client message envelope conventions for repair event payloads
-- [ ] `TODO: backend/src/dto/webevent_map.go` - Add repair-related WebSocket event payload mappings
-- [ ] `TODO: backend/src/dto/webevent_type.go` - Define new repair-related WebSocket event types and regenerate enum outputs if needed
-- [ ] `TODO: backend/src/service/broadcaster_service.go` - Decide whether repair commands use the existing broadcast relay or a dedicated queued sender
-- [ ] `TODO: backend/src/service/` - Add `RepairService` (or similarly named service) to manage repair command queueing and state reconciliation
-- [ ] `TODO: backend/src/events/` - Add Home Assistant repair lifecycle events to the event bus if backend consumers need subscriptions
-- [ ] `TODO: custom_components/srat/websocket_client.py` - Handle backend repair commands and send repair lifecycle acknowledgements/events back to the backend
-- [ ] `TODO: custom_components/srat/repairs.py` - Add Home Assistant Repairs integration bridge (`issue_registry` / `RepairsFlow`) for proxy-managed issues
-- [ ] `TODO: custom_components/srat/__init__.py` - Register/unregister repair proxy handlers during integration setup and unload
-- [ ] `FIXME: backend/custom component contract` - Specify stable repair IDs, event names, ack/error payloads, and reconnect replay rules
+- [x] `DONE: backend/src/api/ws.go` - Extend inbound message routing beyond `helo` to support repair lifecycle events from the custom component
+- [x] `DONE: backend/src/dto/helo.go` - Reuse or extend client message envelope conventions for repair event payloads
+- [x] `DONE: backend/src/dto/webevent_map.go` - Add repair-related WebSocket event payload mappings
+- [x] `DONE: backend/src/dto/webevent_type.go` - Define new repair-related WebSocket event types and regenerate enum outputs if needed
+- [x] `DONE: backend/src/dto/repair_proxy.go` - Add repair proxy command/lifecycle DTO contracts and validation
+- [x] `DONE: backend/src/dto/repair_proxy_test.go` - Add DTO contract validation/roundtrip tests for repair proxy messages
+- [x] `DONE: backend/src/service/repair_service.go` - Add `RepairService` to manage repair state and lifecycle reconciliation operations
+- [x] `DONE: backend/src/service/repair_service_test.go` - Add targeted backend tests for repair service CRUD and lifecycle transitions
+- [x] `DONE: backend/src/api/ws.go` - Apply inbound repair lifecycle events to RepairService for state synchronization
+- [x] `DONE: backend/src/service/repair_service.go` - Add queue idempotency and reconnect-safe command replay semantics
+- [x] `DONE: custom_components/srat/websocket_client.py` - Send repair lifecycle acknowledgements/events back to backend
+- [x] `DONE: custom_components/srat/repairs.py` - Add Home Assistant Repairs integration bridge (`issue_registry` / `RepairsFlow`) for proxy-managed issues
+- [x] `DONE: custom_components/srat/__init__.py` - Register/unregister repair proxy handlers during integration setup and unload
+- [x] `DONE: backend/custom component contract` - Stable repair IDs, event names, lifecycle payload shape, and reconnect replay semantics are now implemented through `RepairCommandMessage`, `RepairLifecycleMessage`, `RepairService` queue deduplication, and generated `ClientEventTypes`/`WebEventType` registrations

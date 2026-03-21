@@ -2,10 +2,8 @@ package dto
 
 import "fmt"
 
-const (
-	HomeAssistantClientMessageTypeHelo = "helo"
-	HomeAssistantComponentSRAT         = "srat"
-)
+// HomeAssistantComponentSRAT is the component identifier for the SRAT custom component.
+const HomeAssistantComponentSRAT = "srat"
 
 // ClientMessageEnvelope contains the routing metadata for inbound WebSocket
 // messages sent by Home Assistant clients.
@@ -31,7 +29,7 @@ type HeloMessage struct {
 // Validate checks whether the helo payload is usable by the backend handshake
 // router.
 func (msg HeloMessage) Validate() error {
-	if msg.Type != HomeAssistantClientMessageTypeHelo {
+	if msg.Type != ClientEventTypes.CLIENTEVENTTYPEHELO.String() {
 		return fmt.Errorf("invalid helo type %q", msg.Type)
 	}
 	if msg.Component == "" {

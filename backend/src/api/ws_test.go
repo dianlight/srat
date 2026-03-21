@@ -30,6 +30,7 @@ type WsHandlerSuite struct {
 	cancel          context.CancelFunc
 	state           *dto.ContextState
 	mockBroadcaster service.BroadcasterServiceInterface
+	repairService   service.RepairServiceInterface
 }
 
 func TestWsHandlerSuite(t *testing.T) { suite.Run(t, new(WsHandlerSuite)) }
@@ -46,6 +47,7 @@ func (suite *WsHandlerSuite) SetupTest() {
 			},
 			func() *dto.ContextState { return &dto.ContextState{} },
 			service.NewUpgradeService,
+			service.NewRepairService,
 			service.NewBroadcasterService,
 			events.NewEventBus,
 			mock.Mock[service.HomeAssistantServiceInterface],
@@ -56,6 +58,7 @@ func (suite *WsHandlerSuite) SetupTest() {
 		),
 		fx.Populate(&suite.ctx, &suite.cancel, &suite.state),
 		fx.Populate(&suite.mockBroadcaster),
+		fx.Populate(&suite.repairService),
 	)
 
 	suite.app.RequireStart()
@@ -64,7 +67,7 @@ func (suite *WsHandlerSuite) SetupTest() {
 func (suite *WsHandlerSuite) TestWebSocketUpgrade() {
 
 	// Create handler
-	h := api.NewWebSocketBroker(suite.ctx, suite.mockBroadcaster, suite.state)
+	h := api.NewWebSocketBroker(suite.ctx, suite.mockBroadcaster, suite.repairService, suite.state)
 
 	// Register on router
 	r := mux.NewRouter()
@@ -91,7 +94,7 @@ func (suite *WsHandlerSuite) TestWebSocketUpgrade() {
 func (suite *WsHandlerSuite) TestWebSocketReceivesMessagesFromBroadcaster() {
 	// Use a real BroadcasterService so we can broadcast messages into the WebSocket handler.
 
-	h := api.NewWebSocketBroker(suite.ctx, suite.mockBroadcaster, suite.state)
+	h := api.NewWebSocketBroker(suite.ctx, suite.mockBroadcaster, suite.repairService, suite.state)
 	r := mux.NewRouter()
 	h.RegisterWs(r)
 
@@ -131,7 +134,7 @@ func (suite *WsHandlerSuite) TestWebSocketReceivesMessagesFromBroadcaster() {
 }
 
 func (suite *WsHandlerSuite) TestWebSocketAcceptsValidatedInboundHelo() {
-	h := api.NewWebSocketBroker(suite.ctx, suite.mockBroadcaster, suite.state)
+	h := api.NewWebSocketBroker(suite.ctx, suite.mockBroadcaster, suite.repairService, suite.state)
 	r := mux.NewRouter()
 	h.RegisterWs(r)
 
@@ -152,7 +155,7 @@ func (suite *WsHandlerSuite) TestWebSocketAcceptsValidatedInboundHelo() {
 	suite.Contains(string(msg1), "event: hello")
 
 	err = conn.WriteJSON(dto.HeloMessage{
-		Type:      dto.HomeAssistantClientMessageTypeHelo,
+		Type:      dto.ClientEventTypes.CLIENTEVENTTYPEHELO.String(),
 		Component: dto.HomeAssistantComponentSRAT,
 		Version:   "2026.03.1",
 	})
@@ -177,7 +180,7 @@ func (suite *WsHandlerSuite) TestWebSocketAcceptsValidatedInboundHelo() {
 }
 
 func (suite *WsHandlerSuite) TestWebSocketIgnoresMalformedInboundPayload() {
-	h := api.NewWebSocketBroker(suite.ctx, suite.mockBroadcaster, suite.state)
+	h := api.NewWebSocketBroker(suite.ctx, suite.mockBroadcaster, suite.repairService, suite.state)
 	r := mux.NewRouter()
 	h.RegisterWs(r)
 
@@ -207,4 +210,181 @@ func (suite *WsHandlerSuite) TestWebSocketIgnoresMalformedInboundPayload() {
 	suite.Require().NoError(err)
 	suite.Contains(string(msg2), "event: updating")
 	suite.Contains(string(msg2), fmt.Sprintf("\"progress\":%d", 11))
+}
+
+func (suite *WsHandlerSuite) TestWebSocketAcceptsValidatedInboundRepairLifecycle() {
+	_, err := suite.repairService.Create(dto.RepairCommandMessage{
+		CommandID:      "cmd-1",
+		RepairID:       "disk_space_low",
+		Action:         dto.RepairCommandActionUpsert,
+		TranslationKey: "disk_space_low",
+		Severity:       dto.RepairIssueSeverityWarning,
+	})
+	suite.Require().NoError(err)
+
+	h := api.NewWebSocketBroker(suite.ctx, suite.mockBroadcaster, suite.repairService, suite.state)
+	r := mux.NewRouter()
+	h.RegisterWs(r)
+
+	srv := httptest.NewServer(r)
+	defer srv.Close()
+
+	url := "ws" + srv.URL[len("http"):] + "/ws"
+	conn, resp, err := websocket.DefaultDialer.Dial(url, nil)
+	if err != nil {
+		suite.Failf("Dial failed", "err=%v resp=%v", err, resp)
+		return
+	}
+	defer conn.Close()
+
+	conn.SetReadDeadline(time.Now().Add(1 * time.Second))
+	_, welcomeMsg, err := conn.ReadMessage()
+	suite.Require().NoError(err)
+	suite.Contains(string(welcomeMsg), "event: hello")
+
+	err = conn.WriteJSON(dto.RepairLifecycleMessage{
+		Type:      dto.ClientEventTypes.CLIENTEVENTTYPEREPAIRLIFECYCLE.String(),
+		CommandID: "cmd-1",
+		RepairID:  "disk_space_low",
+		Status:    dto.RepairLifecycleStatusCreated,
+	})
+	suite.Require().NoError(err)
+
+	suite.Eventually(func() bool {
+		repair, ok := suite.repairService.Get("disk_space_low")
+		return ok && repair != nil && repair.Lifecycle != nil &&
+			repair.Lifecycle.RepairID == "disk_space_low" &&
+			repair.Lifecycle.Status == dto.RepairLifecycleStatusCreated
+	}, time.Second, 10*time.Millisecond)
+}
+
+func (suite *WsHandlerSuite) TestWebSocketIgnoresInvalidInboundRepairLifecycle() {
+	_, err := suite.repairService.Create(dto.RepairCommandMessage{
+		CommandID:      "cmd-2",
+		RepairID:       "disk_space_low",
+		Action:         dto.RepairCommandActionUpsert,
+		TranslationKey: "disk_space_low",
+		Severity:       dto.RepairIssueSeverityWarning,
+	})
+	suite.Require().NoError(err)
+
+	h := api.NewWebSocketBroker(suite.ctx, suite.mockBroadcaster, suite.repairService, suite.state)
+	r := mux.NewRouter()
+	h.RegisterWs(r)
+
+	srv := httptest.NewServer(r)
+	defer srv.Close()
+
+	url := "ws" + srv.URL[len("http"):] + "/ws"
+	conn, resp, err := websocket.DefaultDialer.Dial(url, nil)
+	if err != nil {
+		suite.Failf("Dial failed", "err=%v resp=%v", err, resp)
+		return
+	}
+	defer conn.Close()
+
+	conn.SetReadDeadline(time.Now().Add(1 * time.Second))
+	_, welcomeMsg, err := conn.ReadMessage()
+	suite.Require().NoError(err)
+	suite.Contains(string(welcomeMsg), "event: hello")
+
+	err = conn.WriteJSON(dto.RepairLifecycleMessage{
+		Type:     dto.ClientEventTypes.CLIENTEVENTTYPEREPAIRLIFECYCLE.String(),
+		RepairID: "disk_space_low",
+		Status:   dto.RepairLifecycleStatus("broken"),
+	})
+	suite.Require().NoError(err)
+	time.Sleep(50 * time.Millisecond)
+	repair, ok := suite.repairService.Get("disk_space_low")
+	suite.True(ok)
+	suite.Nil(repair.Lifecycle)
+}
+
+func (suite *WsHandlerSuite) TestWebSocketRepairLifecycleSynchronizesRepairServiceState() {
+	_, err := suite.repairService.Create(dto.RepairCommandMessage{
+		CommandID:      "cmd-100",
+		RepairID:       "disk_space_low",
+		Action:         dto.RepairCommandActionUpsert,
+		TranslationKey: "disk_space_low",
+		Severity:       dto.RepairIssueSeverityWarning,
+	})
+	suite.Require().NoError(err)
+
+	h := api.NewWebSocketBroker(suite.ctx, suite.mockBroadcaster, suite.repairService, suite.state)
+	r := mux.NewRouter()
+	h.RegisterWs(r)
+
+	srv := httptest.NewServer(r)
+	defer srv.Close()
+
+	url := "ws" + srv.URL[len("http"):] + "/ws"
+	conn, resp, err := websocket.DefaultDialer.Dial(url, nil)
+	if err != nil {
+		suite.Failf("Dial failed", "err=%v resp=%v", err, resp)
+		return
+	}
+	defer conn.Close()
+
+	conn.SetReadDeadline(time.Now().Add(1 * time.Second))
+	_, welcomeMsg, err := conn.ReadMessage()
+	suite.Require().NoError(err)
+	suite.Contains(string(welcomeMsg), "event: hello")
+
+	err = conn.WriteJSON(dto.RepairLifecycleMessage{
+		Type:      dto.ClientEventTypes.CLIENTEVENTTYPEREPAIRLIFECYCLE.String(),
+		CommandID: "cmd-100",
+		RepairID:  "disk_space_low",
+		Status:    dto.RepairLifecycleStatusIgnored,
+	})
+	suite.Require().NoError(err)
+
+	suite.Eventually(func() bool {
+		repair, ok := suite.repairService.Get("disk_space_low")
+		return ok && repair != nil && repair.Status == dto.RepairLifecycleStatusIgnored
+	}, time.Second, 10*time.Millisecond)
+}
+
+func (suite *WsHandlerSuite) TestWebSocketFlushesQueuedRepairCommandsAfterHelo() {
+	err := suite.repairService.EnqueueCommand(dto.RepairCommandMessage{
+		CommandID:      "cmd-queued-1",
+		RepairID:       "disk_space_low",
+		Action:         dto.RepairCommandActionUpsert,
+		TranslationKey: "disk_space_low",
+		Severity:       dto.RepairIssueSeverityWarning,
+		IsPersistent:   true,
+	})
+	suite.Require().NoError(err)
+
+	h := api.NewWebSocketBroker(suite.ctx, suite.mockBroadcaster, suite.repairService, suite.state)
+	r := mux.NewRouter()
+	h.RegisterWs(r)
+
+	srv := httptest.NewServer(r)
+	defer srv.Close()
+
+	url := "ws" + srv.URL[len("http"):] + "/ws"
+	conn, resp, err := websocket.DefaultDialer.Dial(url, nil)
+	if err != nil {
+		suite.Failf("Dial failed", "err=%v resp=%v", err, resp)
+		return
+	}
+	defer conn.Close()
+
+	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+	_, welcomeMsg, err := conn.ReadMessage()
+	suite.Require().NoError(err)
+	suite.Contains(string(welcomeMsg), "event: hello")
+
+	err = conn.WriteJSON(dto.HeloMessage{
+		Type:      dto.ClientEventTypes.CLIENTEVENTTYPEHELO.String(),
+		Component: dto.HomeAssistantComponentSRAT,
+		Version:   "2026.03.1",
+	})
+	suite.Require().NoError(err)
+
+	_, flushedMsg, err := conn.ReadMessage()
+	suite.Require().NoError(err)
+	suite.Contains(string(flushedMsg), "event: repair_command")
+	suite.Contains(string(flushedMsg), "\"repair_id\":\"disk_space_low\"")
+	suite.Equal(0, suite.repairService.QueueSize())
 }

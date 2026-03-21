@@ -21,6 +21,7 @@ func TestWebEventType_String(t *testing.T) {
 		{"Dirty Tracker", dto.WebEventTypes.EVENTDIRTYTRACKER, "dirty_data_tracker"},
 		{"Smart Test Status", dto.WebEventTypes.EVENTSMARTTESTSTATUS, "smart_test_status"},
 		{"Error", dto.WebEventTypes.EVENTERROR, "error"},
+		{"Repair Command", dto.WebEventTypes.EVENTREPAIRCOMMAND, "repair_command"},
 	}
 
 	for _, tt := range tests {
@@ -43,6 +44,7 @@ func TestWebEventType_IsValidEvent_ValidTypes(t *testing.T) {
 		{"Valid DataDirtyTracker", dto.DataDirtyTracker{}},
 		{"Valid SmartTestStatus", dto.SmartTestStatus{}},
 		{"Valid ErrorModel", &dto.ErrorDataModel{}},
+		{"Valid RepairCommandMessage", dto.RepairCommandMessage{}},
 	}
 
 	for _, tt := range tests {
@@ -82,6 +84,7 @@ func TestWebEventMap_ContainsAllEventTypes(t *testing.T) {
 		"dirty_data_tracker",
 		"smart_test_status",
 		"error",
+		"repair_command",
 	}
 
 	for _, key := range expectedKeys {
@@ -90,7 +93,7 @@ func TestWebEventMap_ContainsAllEventTypes(t *testing.T) {
 }
 
 func TestWebEventMap_Size(t *testing.T) {
-	assert.Len(t, dto.WebEventMap, 9, "WebEventMap should contain exactly 8 event types")
+	assert.Len(t, dto.WebEventMap, 10, "WebEventMap should contain exactly 10 event types")
 }
 
 func TestWebEventType_IsValidEvent_WithConcreteTypes(t *testing.T) {
