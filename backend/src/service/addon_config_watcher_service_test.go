@@ -14,6 +14,7 @@ import (
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
+	"github.com/fsnotify/fsnotify"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -25,6 +26,27 @@ type AddonConfigWatcherServiceSuite struct {
 	suite.Suite
 	tmpDir string
 }
+
+type mockFsnotifyWatcher struct {
+	events    chan fsnotify.Event
+	errors    chan error
+	addedPath string
+	closed    bool
+}
+
+func (m *mockFsnotifyWatcher) Add(name string) error {
+	m.addedPath = name
+	return nil
+}
+
+func (m *mockFsnotifyWatcher) Close() error {
+	m.closed = true
+	return nil
+}
+
+func (m *mockFsnotifyWatcher) Events() <-chan fsnotify.Event { return m.events }
+
+func (m *mockFsnotifyWatcher) Errors() <-chan error { return m.errors }
 
 func TestAddonConfigWatcherServiceSuite(t *testing.T) {
 	suite.Run(t, new(AddonConfigWatcherServiceSuite))
@@ -188,6 +210,118 @@ func (s *AddonConfigWatcherServiceSuite) TestWatchViaFsnotify_DetectsWrite() {
 		assert.Equal(s.T(), sha256hex(newContent), gotHash)
 	case <-time.After(3 * time.Second):
 		s.Fail("fsnotify did not detect file change within 3 s")
+	}
+
+	cancel()
+	wg.Wait()
+}
+
+// TestWatchViaFsnotify_MockWatcher_DebouncesAndDedups verifies the fsnotify path
+// using a mock watcher, ensuring rapid duplicate write events produce one notification.
+func (s *AddonConfigWatcherServiceSuite) TestWatchViaFsnotify_MockWatcher_DebouncesAndDedups() {
+	initialContent := []byte(`{"workgroup":"OLD"}`)
+	path := s.writeOptionsFile(initialContent)
+
+	changed := make(chan string, 2)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	mw := &mockFsnotifyWatcher{
+		events: make(chan fsnotify.Event, 4),
+		errors: make(chan error, 1),
+	}
+
+	svc := &AddonConfigWatcherService{
+		ctx:             ctx,
+		watchCtx:        ctx,
+		watchCancel:     cancel,
+		optionsFilePath: path,
+		lastHash:        sha256hex(initialContent),
+		debounceDelay:   30 * time.Millisecond,
+		newFsnotify: func() (fsnotifyWatcher, error) {
+			return mw, nil
+		},
+		onChanged: func(_ string, h string) {
+			changed <- h
+		},
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		svc.watchViaFsnotify()
+	}()
+
+	newContent := []byte(`{"workgroup":"NEW"}`)
+	require.NoError(s.T(), os.WriteFile(path, newContent, 0600))
+
+	// Duplicate rapid events should be coalesced by debounce logic.
+	mw.events <- fsnotify.Event{Name: path, Op: fsnotify.Write}
+	mw.events <- fsnotify.Event{Name: path, Op: fsnotify.Write}
+
+	select {
+	case gotHash := <-changed:
+		assert.Equal(s.T(), sha256hex(newContent), gotHash)
+	case <-time.After(2 * time.Second):
+		s.Fail("mock fsnotify watcher did not emit change within 2 s")
+	}
+
+	select {
+	case <-changed:
+		s.Fail("duplicate notification emitted for debounced duplicate write events")
+	case <-time.After(150 * time.Millisecond):
+		// expected: no second emit
+	}
+
+	assert.Equal(s.T(), path, mw.addedPath)
+
+	cancel()
+	close(mw.events)
+	wg.Wait()
+	assert.True(s.T(), mw.closed)
+}
+
+// TestWatchViaTicker_FallbackDetectsWrite verifies ticker fallback detects file changes
+// when relying on hash polling instead of fsnotify events.
+func (s *AddonConfigWatcherServiceSuite) TestWatchViaTicker_FallbackDetectsWrite() {
+	initialContent := []byte(`{"workgroup":"OLD"}`)
+	path := s.writeOptionsFile(initialContent)
+
+	changed := make(chan string, 1)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	svc := &AddonConfigWatcherService{
+		ctx:             ctx,
+		watchCtx:        ctx,
+		watchCancel:     cancel,
+		pollInterval:    20 * time.Millisecond,
+		optionsFilePath: path,
+		lastHash:        sha256hex(initialContent),
+		onChanged: func(_ string, h string) {
+			select {
+			case changed <- h:
+			default:
+			}
+		},
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		svc.watchViaTicker()
+	}()
+
+	newContent := []byte(`{"workgroup":"NEW"}`)
+	require.NoError(s.T(), os.WriteFile(path, newContent, 0600))
+
+	select {
+	case gotHash := <-changed:
+		assert.Equal(s.T(), sha256hex(newContent), gotHash)
+	case <-time.After(2 * time.Second):
+		s.Fail("ticker fallback did not detect options file change within 2 s")
 	}
 
 	cancel()

@@ -47,9 +47,31 @@ type AddonConfigWatcherService struct {
 	lastHash        string
 	pollInterval    time.Duration
 	optionsFilePath string // defaults to config.AddonOptionsFilePath; overridable in tests
+	newFsnotify     func() (fsnotifyWatcher, error)
+	debounceAfter   func(time.Duration, func()) timerStopper
+	debounceDelay   time.Duration
 	// onChanged is called once per unique options-file hash. Defaults to emitChanged.
 	onChanged func(path, hash string)
 }
+
+type timerStopper interface {
+	Stop() bool
+}
+
+type fsnotifyWatcher interface {
+	Add(name string) error
+	Close() error
+	Events() <-chan fsnotify.Event
+	Errors() <-chan error
+}
+
+type realFsnotifyWatcher struct {
+	*fsnotify.Watcher
+}
+
+func (w *realFsnotifyWatcher) Events() <-chan fsnotify.Event { return w.Watcher.Events }
+
+func (w *realFsnotifyWatcher) Errors() <-chan error { return w.Watcher.Errors }
 
 // AddonConfigWatcherServiceParams holds all FX-injected dependencies.
 type AddonConfigWatcherServiceParams struct {
@@ -73,6 +95,17 @@ func NewAddonConfigWatcherService(lc fx.Lifecycle, params AddonConfigWatcherServ
 		haService:       params.HAService,
 		pollInterval:    60 * time.Second,
 		optionsFilePath: config.AddonOptionsFilePath,
+		newFsnotify: func() (fsnotifyWatcher, error) {
+			watcher, err := fsnotify.NewWatcher()
+			if err != nil {
+				return nil, err
+			}
+			return &realFsnotifyWatcher{Watcher: watcher}, nil
+		},
+		debounceAfter: func(d time.Duration, f func()) timerStopper {
+			return time.AfterFunc(d, f)
+		},
+		debounceDelay: 500 * time.Millisecond,
 	}
 	s.onChanged = s.emitChanged
 	s.watchCtx, s.watchCancel = context.WithCancel(params.Ctx)
@@ -152,7 +185,18 @@ func (s *AddonConfigWatcherService) watchViaSupervisorEvents() {
 // watchViaFsnotify watches the options file using fsnotify with a 500 ms debounce.
 // It adds the file (not the directory) to the watcher and reacts to Write / Create / Rename events.
 func (s *AddonConfigWatcherService) watchViaFsnotify() {
-	watcher, err := fsnotify.NewWatcher()
+	newWatcher := s.newFsnotify
+	if newWatcher == nil {
+		newWatcher = func() (fsnotifyWatcher, error) {
+			watcher, err := fsnotify.NewWatcher()
+			if err != nil {
+				return nil, err
+			}
+			return &realFsnotifyWatcher{Watcher: watcher}, nil
+		}
+	}
+
+	watcher, err := newWatcher()
 	if err != nil {
 		slog.WarnContext(s.ctx, "addon_config_watcher: cannot create fsnotify watcher", "err", err)
 		return
@@ -164,14 +208,23 @@ func (s *AddonConfigWatcherService) watchViaFsnotify() {
 		return
 	}
 
-	const debounceDelay = 500 * time.Millisecond
-	var debounceTimer *time.Timer
+	debounceDelay := s.debounceDelay
+	if debounceDelay <= 0 {
+		debounceDelay = 500 * time.Millisecond
+	}
+	debounceAfter := s.debounceAfter
+	if debounceAfter == nil {
+		debounceAfter = func(d time.Duration, f func()) timerStopper {
+			return time.AfterFunc(d, f)
+		}
+	}
+	var debounceTimer timerStopper
 
 	for {
 		select {
 		case <-s.watchCtx.Done():
 			return
-		case event, ok := <-watcher.Events:
+		case event, ok := <-watcher.Events():
 			if !ok {
 				return
 			}
@@ -181,7 +234,7 @@ func (s *AddonConfigWatcherService) watchViaFsnotify() {
 			if debounceTimer != nil {
 				debounceTimer.Stop()
 			}
-			debounceTimer = time.AfterFunc(debounceDelay, func() {
+			debounceTimer = debounceAfter(debounceDelay, func() {
 				hash, err := s.hashFile(s.optionsFilePath)
 				if err != nil {
 					slog.WarnContext(s.ctx, "addon_config_watcher: cannot hash options file after fsnotify event", "err", err)
@@ -189,7 +242,7 @@ func (s *AddonConfigWatcherService) watchViaFsnotify() {
 				}
 				s.maybeNotify(s.optionsFilePath, hash)
 			})
-		case err, ok := <-watcher.Errors:
+		case err, ok := <-watcher.Errors():
 			if !ok {
 				return
 			}
