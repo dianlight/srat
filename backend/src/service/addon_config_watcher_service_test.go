@@ -6,6 +6,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
@@ -14,6 +16,9 @@ import (
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
+	"github.com/dianlight/srat/homeassistant/apps"
+	"github.com/dianlight/srat/homeassistant/websocket"
+	"github.com/dianlight/srat/server/ws"
 	"github.com/fsnotify/fsnotify"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -48,6 +53,94 @@ func (m *mockFsnotifyWatcher) Events() <-chan fsnotify.Event { return m.events }
 
 func (m *mockFsnotifyWatcher) Errors() <-chan error { return m.errors }
 
+type mockSupervisorWSClient struct {
+	mu        sync.Mutex
+	attempts  int
+	succeedOn int
+	handler   func(json.RawMessage)
+}
+
+func (m *mockSupervisorWSClient) Connect(ctx context.Context) error { return nil }
+
+func (m *mockSupervisorWSClient) Send(messageType int, data []byte) error { return nil }
+
+func (m *mockSupervisorWSClient) CallService(ctx context.Context, domain, service string, serviceData map[string]any) error {
+	return nil
+}
+
+func (m *mockSupervisorWSClient) GetStates(ctx context.Context) ([]map[string]any, error) { return nil, nil }
+
+func (m *mockSupervisorWSClient) SubscribeEvents(ctx context.Context, eventType string, handler func(json.RawMessage)) (func() error, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.attempts++
+	if m.attempts < m.succeedOn {
+		return nil, assert.AnError
+	}
+	m.handler = handler
+	return func() error { return nil }, nil
+}
+
+func (m *mockSupervisorWSClient) GetConfig(ctx context.Context) (map[string]any, error) { return nil, nil }
+
+func (m *mockSupervisorWSClient) Receive() <-chan []byte { return nil }
+
+func (m *mockSupervisorWSClient) Close() error { return nil }
+
+func (m *mockSupervisorWSClient) SubscribeConnectionEvents(handler func(event websocket.ConnectionEvent)) (func(), error) {
+	return func() {}, nil
+}
+
+func (m *mockSupervisorWSClient) emit(raw json.RawMessage) {
+	m.mu.Lock()
+	handler := m.handler
+	m.mu.Unlock()
+	if handler != nil {
+		handler(raw)
+	}
+}
+
+func (m *mockSupervisorWSClient) Attempts() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.attempts
+}
+
+type mockAddonInfoClient struct {
+	mu      sync.Mutex
+	options map[string]any
+	err     error
+}
+
+func (m *mockAddonInfoClient) GetAppInfoWithResponse(ctx context.Context, addon string, reqEditors ...apps.RequestEditorFn) (*apps.GetAppInfoResponse, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	optionsCopy := make(map[string]any, len(m.options))
+	for key, value := range m.options {
+		optionsCopy[key] = value
+	}
+
+	return &apps.GetAppInfoResponse{
+		HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+		JSON200: &apps.AppInfoResponse{
+			Result: apps.AppInfoResponseResultOk,
+			Data: apps.AppInfoData{
+				Options: &optionsCopy,
+			},
+		},
+	}, nil
+}
+
+func (m *mockAddonInfoClient) SetOptions(options map[string]any) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.options = options
+}
+
 func TestAddonConfigWatcherServiceSuite(t *testing.T) {
 	suite.Run(t, new(AddonConfigWatcherServiceSuite))
 }
@@ -69,6 +162,13 @@ func sha256hex(b []byte) string {
 	h := sha256.New()
 	h.Write(b)
 	return hex.EncodeToString(h.Sum(nil))
+}
+
+func sha256hexJSON(t *testing.T, v any) string {
+	t.Helper()
+	payload, err := json.Marshal(v)
+	require.NoError(t, err)
+	return sha256hex(payload)
 }
 
 // TestHashFile_ReturnsCorrectDigest verifies hashFile returns the expected SHA-256 hex value.
@@ -216,6 +316,127 @@ func (s *AddonConfigWatcherServiceSuite) TestWatchViaFsnotify_DetectsWrite() {
 	wg.Wait()
 }
 
+func (s *AddonConfigWatcherServiceSuite) TestWatchViaSupervisorEvents_RetriesUntilSubscribed() {
+	content := []byte(`{"workgroup":"WORKGROUP","name":"test"}`)
+	path := s.writeOptionsFile(content)
+	changed := make(chan string, 1)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	wsClient := &mockSupervisorWSClient{succeedOn: 2}
+	svc := &AddonConfigWatcherService{
+		ctx:             ctx,
+		watchCtx:        ctx,
+		watchCancel:     cancel,
+		wsClient:        wsClient,
+		optionsFilePath: path,
+		retryDelay:      10 * time.Millisecond,
+		onChanged: func(p, h string) {
+			select {
+			case changed <- h:
+			default:
+			}
+		},
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		svc.watchViaSupervisorEvents()
+	}()
+
+	require.Eventually(s.T(), func() bool {
+		return wsClient.Attempts() >= 2
+	}, time.Second, 10*time.Millisecond)
+
+	wsClient.emit(json.RawMessage(`{"data":{"event":"addon_config_changed","slug":"local_sambanas2"}}`))
+
+	select {
+	case gotHash := <-changed:
+		assert.Equal(s.T(), sha256hex(content), gotHash)
+	case <-time.After(time.Second):
+		s.Fail("supervisor event subscription did not retry and emit a change notification")
+	}
+
+	cancel()
+	wg.Wait()
+}
+
+func (s *AddonConfigWatcherServiceSuite) TestParseSupervisorAddonConfigChanged_AcceptsContractVariants() {
+	testCases := []struct {
+		name      string
+		payload   string
+		expected  string
+		expSlug   string
+		expectedOK bool
+	}{
+		{
+			name:       "nested data.event contract",
+			payload:    `{"data":{"event":"addon_config_changed","slug":"local_sambanas2"}}`,
+			expected:   "addon_config_changed",
+			expSlug:    "local_sambanas2",
+			expectedOK: true,
+		},
+		{
+			name:       "nested data.event_type contract",
+			payload:    `{"data":{"event_type":"addon_config_changed","addon":"local_sambanas2"}}`,
+			expected:   "addon_config_changed",
+			expSlug:    "local_sambanas2",
+			expectedOK: true,
+		},
+		{
+			name:       "flat contract",
+			payload:    `{"event":"addon_config_changed","slug":"local_sambanas2"}`,
+			expected:   "addon_config_changed",
+			expSlug:    "local_sambanas2",
+			expectedOK: true,
+		},
+		{
+			name:       "other event ignored",
+			payload:    `{"data":{"event":"core_config_updated","slug":"local_sambanas2"}}`,
+			expected:   "core_config_updated",
+			expSlug:    "local_sambanas2",
+			expectedOK: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		s.T().Run(tc.name, func(t *testing.T) {
+			eventName, slug, ok, err := parseSupervisorAddonConfigChanged(json.RawMessage(tc.payload))
+			require.NoError(t, err)
+			assert.Equal(t, tc.expected, eventName)
+			assert.Equal(t, tc.expSlug, slug)
+			assert.Equal(t, tc.expectedOK, ok)
+		})
+	}
+}
+
+func (s *AddonConfigWatcherServiceSuite) TestParseSupervisorAddonConfigChanged_InvalidJSON() {
+	_, _, _, err := parseSupervisorAddonConfigChanged(json.RawMessage(`{"data":`))
+	require.Error(s.T(), err)
+}
+
+func (s *AddonConfigWatcherServiceSuite) TestHashObservedConfig_UsesSupervisorOptionsWhenAvailable() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	addonClient := &mockAddonInfoClient{
+		options: map[string]any{"clean_upgrade_dir": true, "log_level": "info"},
+	}
+	svc := &AddonConfigWatcherService{
+		ctx:          ctx,
+		watchCtx:     ctx,
+		watchCancel:  cancel,
+		addonsClient: addonClient,
+	}
+
+	hash, err := svc.hashObservedConfig()
+	require.NoError(s.T(), err)
+	assert.Equal(s.T(), sha256hexJSON(s.T(), addonClient.options), hash)
+	assert.Equal(s.T(), supervisorOptionsSource, svc.observedConfigPath())
+}
+
 // TestWatchViaFsnotify_MockWatcher_DebouncesAndDedups verifies the fsnotify path
 // using a mock watcher, ensuring rapid duplicate write events produce one notification.
 func (s *AddonConfigWatcherServiceSuite) TestWatchViaFsnotify_MockWatcher_DebouncesAndDedups() {
@@ -328,6 +549,56 @@ func (s *AddonConfigWatcherServiceSuite) TestWatchViaTicker_FallbackDetectsWrite
 	wg.Wait()
 }
 
+func (s *AddonConfigWatcherServiceSuite) TestWatchViaTicker_UsesSupervisorOptionsWhenAvailable() {
+	changed := make(chan struct {
+		path string
+		hash string
+	}, 1)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	addonClient := &mockAddonInfoClient{
+		options: map[string]any{"clean_upgrade_dir": false},
+	}
+	svc := &AddonConfigWatcherService{
+		ctx:          ctx,
+		watchCtx:     ctx,
+		watchCancel:  cancel,
+		addonsClient: addonClient,
+		pollInterval: 20 * time.Millisecond,
+		lastHash:     sha256hexJSON(s.T(), addonClient.options),
+		onChanged: func(path, hash string) {
+			select {
+			case changed <- struct {
+				path string
+				hash string
+			}{path: path, hash: hash}:
+			default:
+			}
+		},
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		svc.watchViaTicker()
+	}()
+
+	addonClient.SetOptions(map[string]any{"clean_upgrade_dir": true})
+
+	select {
+	case got := <-changed:
+		assert.Equal(s.T(), supervisorOptionsSource, got.path)
+		assert.Equal(s.T(), sha256hexJSON(s.T(), map[string]any{"clean_upgrade_dir": true}), got.hash)
+	case <-time.After(2 * time.Second):
+		s.Fail("ticker did not detect supervisor addon options change within 2 s")
+	}
+
+	cancel()
+	wg.Wait()
+}
+
 // TestEmitChanged_EmitsAppConfigEvent verifies that emitChanged publishes an AppConfigEvent
 // on the event bus with the correct Path, Hash, and EventType.
 func (s *AddonConfigWatcherServiceSuite) TestEmitChanged_EmitsAppConfigEvent() {
@@ -392,6 +663,49 @@ func (s *AddonConfigWatcherServiceSuite) TestEmitChanged_CreatesRepairIssue() {
 	assert.True(s.T(), repair.Command.IsPersistent)
 }
 
+// TestEmitChanged_BroadcastsRepairCommand verifies that emitChanged immediately
+// broadcasts the repair command when a broadcaster is available.
+func (s *AddonConfigWatcherServiceSuite) TestEmitChanged_BroadcastsRepairCommand() {
+	ctx := context.Background()
+	rs := NewRepairService(ctx, &dto.ContextState{})
+	b := &stubBroadcaster{}
+	svc := &AddonConfigWatcherService{
+		ctx:           ctx,
+		repairService: rs,
+		broadcaster:   b,
+	}
+
+	svc.emitChanged("/data/options.json", "abc123")
+
+	require.Len(s.T(), b.messages, 1)
+	cmd, ok := b.messages[0].(dto.RepairCommandMessage)
+	require.True(s.T(), ok, "expected a repair command broadcast")
+	assert.Equal(s.T(), "addon_config_changed", cmd.RepairID)
+	assert.Equal(s.T(), dto.RepairCommandActionUpsert, cmd.Action)
+}
+
+// TestEmitChanged_DuplicateRepairStillBroadcasts verifies that duplicate repair
+// creation refreshes the repair state and still broadcasts the repair command.
+func (s *AddonConfigWatcherServiceSuite) TestEmitChanged_DuplicateRepairStillBroadcasts() {
+	ctx := context.Background()
+	rs := NewRepairService(ctx, &dto.ContextState{})
+	b := &stubBroadcaster{}
+	svc := &AddonConfigWatcherService{
+		ctx:           ctx,
+		repairService: rs,
+		broadcaster:   b,
+	}
+
+	svc.emitChanged("/data/options.json", "abc123")
+	svc.emitChanged("/data/options.json", "xyz456")
+
+	require.Len(s.T(), b.messages, 2)
+	cmd, ok := b.messages[1].(dto.RepairCommandMessage)
+	require.True(s.T(), ok, "expected a repair command broadcast")
+	assert.Equal(s.T(), "addon_config_changed", cmd.RepairID)
+	assert.Equal(s.T(), dto.RepairCommandActionUpsert, cmd.Action)
+}
+
 // TestEmitChanged_RepairAlreadyExists_NoPanic verifies that a second emitChanged call
 // (when the repair issue already exists) logs a warning but does not panic.
 func (s *AddonConfigWatcherServiceSuite) TestEmitChanged_RepairAlreadyExists_NoPanic() {
@@ -428,6 +742,17 @@ type stubHAService struct {
 	notifTitle  string
 	notifMsg    string
 }
+
+type stubBroadcaster struct {
+	messages []any
+}
+
+func (s *stubBroadcaster) BroadcastMessage(msg any) any {
+	s.messages = append(s.messages, msg)
+	return msg
+}
+
+func (s *stubBroadcaster) ProcessWebSocketChannel(_ ws.Sender) {}
 
 func (s *stubHAService) SendDiskEntities(_ *[]*dto.Disk) error                         { return nil }
 func (s *stubHAService) SendSambaStatusEntity(_ *dto.SambaStatus) error                { return nil }

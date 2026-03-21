@@ -11,6 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.srat.connection import homeassistant_auth_headers
 from custom_components.srat.const import DOMAIN
 
 
@@ -61,6 +62,44 @@ async def test_setup_entry(
     assert entry.state is ConfigEntryState.LOADED
 
 
+    async def test_setup_entry_sends_homeassistant_auth_header(
+        hass: HomeAssistant,
+        mock_config_entry_data: dict[str, Any],
+    ) -> None:
+        """Test setup health checks include the HA auth header."""
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data=mock_config_entry_data,
+            entry_id="test_entry_headers",
+        )
+        entry.add_to_hass(hass)
+
+        mock_session = _mock_session(200)
+        with (
+            patch(
+                "custom_components.srat.async_get_clientsession",
+                return_value=mock_session,
+            ),
+            patch(
+                "custom_components.srat.SRATWebSocketClient",
+            ) as mock_ws_cls,
+        ):
+            mock_ws = AsyncMock()
+            mock_ws.register_listener = lambda event, cb: lambda: None
+            mock_ws.async_connect = AsyncMock()
+            mock_ws.async_disconnect = AsyncMock()
+            mock_ws_cls.return_value = mock_ws
+
+            assert await async_setup_component(hass, DOMAIN, {})
+            await hass.async_block_till_done()
+
+        assert entry.state is ConfigEntryState.LOADED
+        mock_session.get.assert_called_once_with(
+            f"http://{mock_config_entry_data['host']}:{mock_config_entry_data['port']}/api/health",
+            headers=homeassistant_auth_headers(),
+        )
+
+
 async def test_setup_entry_health_check_fails(
     hass: HomeAssistant,
     mock_config_entry_data: dict[str, Any],
@@ -81,6 +120,44 @@ async def test_setup_entry_health_check_fails(
         await hass.async_block_till_done()
 
     assert entry.state is ConfigEntryState.SETUP_RETRY
+
+
+async def test_setup_entry_prefers_supervisor_gateway_host(
+    hass: HomeAssistant,
+) -> None:
+    """Test Supervisor-discovered entries prefer the gateway host for SRAT."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            "host": "local-sambanas2",
+            "port": 62246,
+            "addon_slug": "local_sambanas2",
+        },
+        entry_id="test_gateway_host",
+    )
+    entry.add_to_hass(hass)
+
+    with (
+        patch(
+            "custom_components.srat.async_get_clientsession",
+            return_value=_mock_session(200),
+        ),
+        patch(
+            "custom_components.srat.SRATWebSocketClient",
+        ) as mock_ws_cls,
+    ):
+        mock_ws = AsyncMock()
+        mock_ws.register_listener = lambda event, cb: lambda: None
+        mock_ws.async_connect = AsyncMock()
+        mock_ws.async_disconnect = AsyncMock()
+        mock_ws_cls.return_value = mock_ws
+
+        assert await async_setup_component(hass, DOMAIN, {})
+        await hass.async_block_till_done()
+
+    assert entry.state is ConfigEntryState.LOADED
+    assert mock_ws_cls.call_args.kwargs["host"] == "local-sambanas2"
+    assert mock_ws_cls.call_args.kwargs["addon_slug"] == "local_sambanas2"
 
 
 async def test_unload_entry(

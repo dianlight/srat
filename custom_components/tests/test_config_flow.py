@@ -14,7 +14,8 @@ from homeassistant.config_entries import SOURCE_HASSIO, SOURCE_USER
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 
-from custom_components.srat.const import DOMAIN
+from custom_components.srat.connection import homeassistant_auth_headers
+from custom_components.srat.const import DOMAIN, SUPERVISOR_GATEWAY_HOST
 
 
 def _mock_session(status: int = 200) -> MagicMock:
@@ -54,6 +55,32 @@ async def test_user_flow_success(
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["title"] == "SRAT (192.168.1.100:8099)"
     assert result["data"] == {"host": "192.168.1.100", "port": 8099}
+
+
+async def test_user_flow_sends_homeassistant_auth_header(
+    hass: HomeAssistant,
+    mock_setup_entry: AsyncMock,
+) -> None:
+    """Test manual connection checks include the HA auth header."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+
+    session = _mock_session(200)
+    with patch(
+        "custom_components.srat.config_flow.async_get_clientsession",
+        return_value=session,
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            user_input={"host": "192.168.1.100", "port": 8099},
+        )
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    session.get.assert_called_once_with(
+        "http://192.168.1.100:8099/api/health",
+        headers=homeassistant_auth_headers(),
+    )
 
 
 async def test_user_flow_cannot_connect(
@@ -143,8 +170,9 @@ async def test_hassio_discovery(
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["title"] == "SRAT"
-    assert result["data"]["host"] == "core-1a32f091-sambanas2"
+    assert result["data"]["host"] == SUPERVISOR_GATEWAY_HOST
     assert result["data"]["port"] == 8099
+    assert result["data"]["addon_slug"] == "1a32f091_sambanas2"
 
 
 async def test_hassio_discovery_rejects_unknown_slug(

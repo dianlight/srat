@@ -20,12 +20,34 @@ func (suite *HAMiddlewareSuite) SetupTest() {
 
 func (suite *HAMiddlewareSuite) TestMissingUserIdHeader() {
 	handlerCalled := false
+	var receivedUserID string
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handlerCalled = true
+		val := r.Context().Value(ctxkeys.UserID)
+		if v, ok := val.(string); ok {
+			receivedUserID = v
+		}
+		w.WriteHeader(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req.RemoteAddr = "127.0.0.1:12345"
+	rr := httptest.NewRecorder()
+
+	suite.middleware(handler).ServeHTTP(rr, req)
+	suite.Equal(http.StatusOK, rr.Code)
+	suite.True(handlerCalled)
+	suite.Equal("homeassistant", receivedUserID)
+}
+
+func (suite *HAMiddlewareSuite) TestMissingUserIdHeaderUnauthorizedIP() {
+	handlerCalled := false
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		handlerCalled = true
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
-	req.RemoteAddr = "127.0.0.1:12345"
+	req.RemoteAddr = "192.168.1.100:12345"
 	rr := httptest.NewRecorder()
 
 	suite.middleware(handler).ServeHTTP(rr, req)
@@ -93,6 +115,28 @@ func (suite *HAMiddlewareSuite) TestAuthorizedIPAndHeader_HAIP() {
 	suite.Equal(http.StatusOK, rr.Code)
 	suite.True(handlerCalled)
 	suite.Equal("user789", receivedUserID)
+}
+
+func (suite *HAMiddlewareSuite) TestMissingUserIdHeader_TrustedSupervisorSubnet() {
+	handlerCalled := false
+	var receivedUserID string
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handlerCalled = true
+		val := r.Context().Value(ctxkeys.UserID)
+		if v, ok := val.(string); ok {
+			receivedUserID = v
+		}
+		w.WriteHeader(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req.RemoteAddr = "172.30.32.1:45678"
+	rr := httptest.NewRecorder()
+
+	suite.middleware(handler).ServeHTTP(rr, req)
+	suite.Equal(http.StatusOK, rr.Code)
+	suite.True(handlerCalled)
+	suite.Equal("homeassistant", receivedUserID)
 }
 
 func TestHAMiddlewareSuite(t *testing.T) {

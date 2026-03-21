@@ -165,7 +165,8 @@ export const wsApi = createApi({
                         clearInactivityTimer();
                         setWsConnected(false);
 
-                        ws = new WebSocket(`${apiUrl.replace(/^http/, "ws")}/ws`);
+                        const wsUrl = new URL("ws", apiUrl.replace(/^http/, "ws")).toString();
+                        ws = new WebSocket(wsUrl);
 
                         ws.addEventListener("open", () => {
                             setWsConnected(true);

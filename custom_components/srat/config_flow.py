@@ -15,6 +15,7 @@ from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import voluptuous as vol
 
+from .connection import homeassistant_auth_headers, iter_connection_hosts
 from .const import (
     ADDON_SLUG_WHITELIST,
     CONF_ADDON_SLUG,
@@ -83,7 +84,8 @@ class SRATConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore[call-arg]
             return self.async_abort(reason="not_srat_addon")
 
         config = discovery_info.config or {}
-        host = config.get("host", DEFAULT_HOST)
+        discovered_host = config.get("host", DEFAULT_HOST)
+        host = iter_connection_hosts(discovered_host, slug)[0]
         port = config.get("port", DEFAULT_PORT)
 
         await self.async_set_unique_id(f"srat_{slug or host}")
@@ -124,7 +126,10 @@ class SRATConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore[call-arg]
         session = async_get_clientsession(self.hass)
         try:
             async with asyncio.timeout(10):
-                async with session.get(f"http://{host}:{port}/api/health") as resp:
+                async with session.get(
+                    f"http://{host}:{port}/api/health",
+                    headers=homeassistant_auth_headers(),
+                ) as resp:
                     if resp.status != 200:
                         return "cannot_connect"
         except (aiohttp.ClientError, TimeoutError):
