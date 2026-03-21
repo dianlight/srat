@@ -37,7 +37,7 @@ Detect when the Home Assistant Supervisor changes the addon configuration (`/dat
 - [x] Task 3: Implement `AddonConfigWatcherService` with HA Supervisor event-first detection — attempt `supervisor/event` subscription for addon config changes; if unavailable/unsupported, fall back to `/data/options.json` `fsnotify` + debounce + hash dedup, with optional interval polling as a safety net
 - [x] Task 4: On config change detected, emit `AppConfigEvent` (with `path`/`hash`) on event bus and set `AppConfigData.RequiresRestart = true` in the config DTO
 - [x] Task 5: Inject `RepairService` into `AddonConfigWatcherService` and call `RepairService.Create()` with a stable `repair_id = "addon_config_changed"`, `severity = warning`, `is_fixable = false`, `translation_key = "addon_config_changed"` when an external config change is detected; fall back to `HomeAssistantService.CreatePersistentNotification()` if `RepairService` is nil
-- [ ] Task 6: Wire the watcher service into the fx dependency graph (`appsetup.go`)
+- [x] Task 6: Wire the watcher service into the fx dependency graph (`appsetup.go`)
 - [ ] Task 7: Frontend — subscribe to the new `app_config_changed` WebSocket event in RTK Query; show a persistent `Snackbar` / `Alert` with a **Reload** button calling `POST /api/app-config/reload` (or triggering browser reload)
 - [ ] Task 8: Auto-dismiss the Repair after a successful config reload by calling `RepairService.Delete("addon_config_changed")` (or `HomeAssistantService.DismissPersistentNotification()` for the fallback path) inside the reload handler
 - [ ] Task 9: Unit testing — `AddonConfigWatcherService` with a mock fsnotify watcher; test hash-based deduplication, debounce, and fallback path
@@ -119,6 +119,7 @@ Add `addonConfigPollInterval` (default `60s`) to `AppConfig` schema, exposed in 
 - Consolidated detection implementation scope: removed standalone Task 2 and folded it into Task 3 so there is a single event-first detection task with fallback behavior.
 - Task 3 complete: `AddonConfigWatcherService` implemented (`backend/src/service/addon_config_watcher_service.go`) with Supervisor-event-first detection, fsnotify fallback (500 ms debounce), and 60 s interval safety-net ticker. SHA-256 hash dedup in `maybeNotify`. `AddonOptionsFilePath` var added to `config/addon_options.go`; 8 unit tests (race-clean) in `addon_config_watcher_service_test.go`.
 - Task 4 complete: `AddonConfigWatcherService` now injects `events.EventBusInterface` and uses `emitChanged` as the default `onChanged` handler. `emitChanged` emits `AppConfigEvent{Type: UPDATE, Path, Hash}` on the event bus; `DirtyDataService` marks `AppConfig` dirty in response. `RequiresRestart` is already always `true` in `AddonsService.GetAppConfig`. 2 new tests: `TestEmitChanged_EmitsAppConfigEvent` (uses real EventBus), `TestEmitChanged_NilEventBus` (no panic on nil bus).
+- Task 6 complete: `service.NewAddonConfigWatcherService` is now registered in `ProvideCoreDependencies` (`backend/src/internal/appsetup/appsetup.go`), so watcher lifecycle hooks are started by FX in normal app boot.
 
 ## 🔗 Code References & TODOs
 
@@ -133,6 +134,6 @@ Add `addonConfigPollInterval` (default `60s`) to `AppConfig` schema, exposed in 
 - [x] `backend/src/events/events.go` — `AppConfigEvent` extended with external-change fields (`path`, `hash`)
 - [x] `backend/src/events/event_bus.go` — unified on existing `EmitAppConfig` / `OnAppConfig` (removed dedicated addon-config hooks)
 - [x] `backend/src/events/event_bus_test.go` — updated coverage for merged app-config event flow
-- [ ] `backend/src/internal/appsetup/appsetup.go` — register `AddonConfigWatcherService` in fx
+- [x] `backend/src/internal/appsetup/appsetup.go` — register `AddonConfigWatcherService` in fx
 - [ ] `frontend/src/` — `TODO: AddonConfigChangedBanner` component + `useAddonConfigChangedBanner` hook
 - [ ] `custom_components/srat/__init__.py` — optionally handle `app_config_changed` WS event to trigger `async_reload` without requiring HA Repairs
