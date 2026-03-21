@@ -84,6 +84,8 @@ func NewHAMiddleware( /*ingressClient ingress.ClientWithResponsesInterface*/ ) f
 						break
 					}
 				}
+			} else {
+				slog.WarnContext(r.Context(), "Failed to parse remote IP address", "ip", ip, "error", err)
 			}
 
 			if !allowed {
