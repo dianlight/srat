@@ -29,6 +29,8 @@ type SettingsHandlerSuite struct {
 	dirtyService   service.DirtyDataServiceInterface
 	settingService service.SettingServiceInterface
 	addonsService  service.AddonsServiceInterface
+	repairService  service.RepairServiceInterface
+	haService      service.HomeAssistantServiceInterface
 	//db           *gorm.DB
 	api *api.SettingsHanler
 	//config                 config.Config
@@ -68,6 +70,8 @@ func (suite *SettingsHandlerSuite) SetupTest() {
 			service.NewSettingService,
 			events.NewEventBus,
 			mock.Mock[service.AddonsServiceInterface],
+			mock.Mock[service.RepairServiceInterface],
+			mock.Mock[service.HomeAssistantServiceInterface],
 			//repository.NewPropertyRepositoryRepository,
 			mock.Mock[service.TelemetryServiceInterface],
 			//			mock.Mock[service.BroadcasterServiceInterface],
@@ -104,6 +108,8 @@ func (suite *SettingsHandlerSuite) SetupTest() {
 		fx.Populate(&suite.dirtyService),
 		fx.Populate(&suite.settingService),
 		fx.Populate(&suite.addonsService),
+		fx.Populate(&suite.repairService),
+		fx.Populate(&suite.haService),
 		//fx.Populate(&suite.config),
 		fx.Populate(&suite.ctx),
 		fx.Populate(&suite.cancel),
@@ -397,6 +403,8 @@ func (suite *SettingsHandlerSuite) TestUpdateAppConfigHandler() {
 			RuntimeConfig:   map[string]any{"rendered": true},
 			RequiresRestart: true,
 		}, nil)
+	mock.When(suite.repairService.Delete(mock.Exact("addon_config_changed"))).
+		ThenReturn(nil)
 
 	rr := api.Put("/settings/app-config", request)
 	suite.Require().Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
@@ -409,4 +417,35 @@ func (suite *SettingsHandlerSuite) TestUpdateAppConfigHandler() {
 	tracker := suite.dirtyService.GetDirtyDataTracker()
 	suite.True(tracker.AppConfig)
 	suite.False(tracker.Settings)
+
+	mock.Verify(suite.repairService, matchers.Times(1)).Delete(mock.Exact("addon_config_changed"))
+	mock.Verify(suite.haService, matchers.Times(0)).DismissPersistentNotification(mock.Any[string]())
+}
+
+func (suite *SettingsHandlerSuite) TestUpdateAppConfigHandler_FallbackDismissPersistentNotificationWhenRepairServiceNil() {
+	_, humaAPI := humatest.New(suite.T())
+	eventBus := events.NewEventBus(suite.ctx)
+	handler := api.NewSettingsHanler(&dto.ContextState{}, suite.settingService, suite.addonsService, eventBus, nil, suite.haService)
+	handler.RegisterSettings(humaAPI)
+	autopatch.AutoPatch(humaAPI)
+
+	request := dto.AppConfigUpdateRequest{
+		Options: map[string]any{"log_level": "debug"},
+	}
+
+	mock.When(suite.addonsService.SetAppConfig(mock.AnyContext(), mock.Any[map[string]any]())).
+		ThenReturn(nil)
+	mock.When(suite.addonsService.GetAppConfig(mock.AnyContext())).
+		ThenReturn(&dto.AppConfigData{
+			Options:         request.Options,
+			RuntimeConfig:   map[string]any{"rendered": true},
+			RequiresRestart: true,
+		}, nil)
+	mock.When(suite.haService.DismissPersistentNotification(mock.Exact("addon_config_changed"))).
+		ThenReturn(nil)
+
+	rr := humaAPI.Put("/settings/app-config", request)
+	suite.Require().Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
+
+	mock.Verify(suite.haService, matchers.Times(1)).DismissPersistentNotification(mock.Exact("addon_config_changed"))
 }

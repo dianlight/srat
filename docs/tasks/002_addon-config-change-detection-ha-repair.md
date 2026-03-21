@@ -39,7 +39,7 @@ Detect when the Home Assistant Supervisor changes the addon configuration (`/dat
 - [x] Task 5: Inject `RepairService` into `AddonConfigWatcherService` and call `RepairService.Create()` with a stable `repair_id = "addon_config_changed"`, `severity = warning`, `is_fixable = false`, `translation_key = "addon_config_changed"` when an external config change is detected; fall back to `HomeAssistantService.CreatePersistentNotification()` if `RepairService` is nil
 - [x] Task 6: Wire the watcher service into the fx dependency graph (`appsetup.go`)
 - [x] Task 7: Frontend — subscribe to the new `app_config_changed` WebSocket event in RTK Query; show a persistent `Snackbar` / `Alert` with a **Reload** button calling `POST /api/app-config/reload` (or triggering browser reload)
-- [ ] Task 8: Auto-dismiss the Repair after a successful config reload by calling `RepairService.Delete("addon_config_changed")` (or `HomeAssistantService.DismissPersistentNotification()` for the fallback path) inside the reload handler
+- [x] Task 8: Auto-dismiss the Repair after a successful config reload by calling `RepairService.Delete("addon_config_changed")` (or `HomeAssistantService.DismissPersistentNotification()` for the fallback path) inside the reload handler
 - [ ] Task 9: Unit testing — `AddonConfigWatcherService` with a mock fsnotify watcher; test hash-based deduplication, debounce, and fallback path
 - [ ] Task 10: Integration testing — end-to-end: write to a temp options file, verify `AppConfigEvent` (with external metadata) emitted and `RequiresRestart` flipped
 - [ ] Task 11: Frontend component test — `AddonConfigChangedBanner` renders on event, Reload button triggers correct action. Verify it shows on receiving the WebSocket event and that clicking Reload calls the expected API endpoint. Test the auto-dismissal after reload as well. 
@@ -121,6 +121,7 @@ Add `addonConfigPollInterval` (default `60s`) to `AppConfig` schema, exposed in 
 - Task 4 complete: `AddonConfigWatcherService` now injects `events.EventBusInterface` and uses `emitChanged` as the default `onChanged` handler. `emitChanged` emits `AppConfigEvent{Type: UPDATE, Path, Hash}` on the event bus; `DirtyDataService` marks `AppConfig` dirty in response. `RequiresRestart` is already always `true` in `AddonsService.GetAppConfig`. 2 new tests: `TestEmitChanged_EmitsAppConfigEvent` (uses real EventBus), `TestEmitChanged_NilEventBus` (no panic on nil bus).
 - Task 6 complete: `service.NewAddonConfigWatcherService` is now registered in `ProvideCoreDependencies` (`backend/src/internal/appsetup/appsetup.go`), so watcher lifecycle hooks are started by FX in normal app boot.
 - Task 7 complete: frontend WebSocket typing now includes `app_config_changed` in `frontend/src/store/wsApi.ts`. `frontend/src/App.tsx` now shows a persistent top `Snackbar`/`Alert` with a **Reload** action (browser reload), and it is activated either by a received `app_config_changed` event or by initial `requires_restart` from `GET /api/settings/app-config`.
+- Task 8 complete: `UpdateAppConfig` (`backend/src/api/setting.go`) now auto-dismisses `addon_config_changed` after successful config update+reload by calling `RepairService.Delete("addon_config_changed")`; when `RepairService` is unavailable, it falls back to `HomeAssistantService.DismissPersistentNotification("addon_config_changed")`. Added API tests for both paths in `backend/src/api/setting_test.go`.
 
 ## 🔗 Code References & TODOs
 
@@ -130,6 +131,8 @@ Add `addonConfigPollInterval` (default `60s`) to `AppConfig` schema, exposed in 
 - [x] `backend/src/config/addon_options.go` — `var AddonOptionsFilePath = "/data/options.json"` added
 - [ ] `backend/src/service/homeassistant_service.go:590` — `CreatePersistentNotification` / `DismissPersistentNotification` as fallback when RepairService not available
 - [ ] `backend/src/service/repair_service.go` — inject `RepairService` into `AddonConfigWatcherService`; call `Create`/`Delete` for `addon_config_changed` repair ID
+- [x] `backend/src/api/setting.go` — auto-dismiss `addon_config_changed` on successful app-config update/reload (RepairService delete + HA notification fallback)
+- [x] `backend/src/api/setting_test.go` — coverage for repair dismissal and fallback notification dismissal
 - [ ] `backend/src/dto/repair_proxy.go` — use `RepairCommandMessage` (with `RepairCommandActionUpsert` / `RepairCommandActionDelete`) when building repair commands
 - [ ] `backend/src/dto/app_config.go:25` — `RequiresRestart bool` field (already exists, ensure it is set on external change)
 - [x] `backend/src/events/events.go` — `AppConfigEvent` extended with external-change fields (`path`, `hash`)

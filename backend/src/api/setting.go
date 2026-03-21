@@ -16,6 +16,8 @@ type SettingsHanler struct {
 	settingService service.SettingServiceInterface
 	addonsService  service.AddonsServiceInterface
 	eventBus       events.EventBusInterface
+	repairService  service.RepairServiceInterface
+	haService      service.HomeAssistantServiceInterface
 }
 
 // NewSettingsHanler creates a new instance of SettingsHanler with the provided
@@ -35,12 +37,16 @@ func NewSettingsHanler(
 	settingService service.SettingServiceInterface,
 	addonsService service.AddonsServiceInterface,
 	eventBus events.EventBusInterface,
+	repairService service.RepairServiceInterface,
+	haService service.HomeAssistantServiceInterface,
 ) *SettingsHanler {
 	p := new(SettingsHanler)
 	p.apiContext = apiContext
 	p.settingService = settingService
 	p.addonsService = addonsService
 	p.eventBus = eventBus
+	p.repairService = repairService
+	p.haService = haService
 
 	return p
 }
@@ -132,6 +138,8 @@ func (self *SettingsHanler) GetAppConfigSchema(ctx context.Context, input *struc
 func (self *SettingsHanler) UpdateAppConfig(ctx context.Context, input *struct {
 	Body dto.AppConfigUpdateRequest
 }) (*struct{ Body dto.AppConfigData }, error) {
+	const repairID = "addon_config_changed"
+
 	err := self.addonsService.SetAppConfig(ctx, input.Body.Options)
 	if err != nil {
 		return nil, huma.Error500InternalServerError("Failed to update app configuration: %v", err)
@@ -142,6 +150,18 @@ func (self *SettingsHanler) UpdateAppConfig(ctx context.Context, input *struct {
 	config, getErr := self.addonsService.GetAppConfig(ctx)
 	if getErr != nil {
 		return nil, huma.Error500InternalServerError("App configuration updated but reload failed: %v", getErr)
+	}
+
+	if self.repairService != nil {
+		dismissErr := self.repairService.Delete(repairID)
+		if dismissErr != nil {
+			tlog.WarnContext(ctx, "Unable to dismiss addon config repair issue", "repair_id", repairID, "error", dismissErr)
+		}
+	} else if self.haService != nil {
+		dismissErr := self.haService.DismissPersistentNotification(repairID)
+		if dismissErr != nil {
+			tlog.WarnContext(ctx, "Unable to dismiss addon config persistent notification", "notification_id", repairID, "error", dismissErr)
+		}
 	}
 
 	return &struct{ Body dto.AppConfigData }{Body: *config}, nil
