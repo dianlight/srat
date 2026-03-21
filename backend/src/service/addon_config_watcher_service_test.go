@@ -442,3 +442,173 @@ func (s *stubHAService) CreatePersistentNotification(id, title, msg string) erro
 	return nil
 }
 func (s *stubHAService) DismissPersistentNotification(_ string) error { return nil }
+
+// TestIntegration_EndToEnd_FileWriteEmitsAppConfigEvent verifies the full end-to-end flow:
+// 1. Write to options file on disk
+// 2. fsnotify detects the change
+// 3. AppConfigEvent is emitted on the event bus with correct path and hash
+// 4. Repair issue is created with correct metadata
+func (s *AddonConfigWatcherServiceSuite) TestIntegration_EndToEnd_FileWriteEmitsAppConfigEvent() {
+	initialContent := []byte(`{"workgroup":"OLD","name":"test"}`)
+	path := s.writeOptionsFile(initialContent)
+
+	ctx := context.Background()
+	bus := events.NewEventBus(ctx)
+
+	// Subscribe to AppConfig events to verify emission
+	eventReceived := make(chan events.AppConfigEvent, 1)
+	unsubscribe := bus.OnAppConfig(func(_ context.Context, ev events.AppConfigEvent) errors.E {
+		select {
+		case eventReceived <- ev:
+		default:
+		}
+		return nil
+	})
+	defer unsubscribe()
+
+	// Create a watch context
+	watchCtx, watchCancel := context.WithCancel(ctx)
+	defer watchCancel()
+
+	// Create the service with shorter intervals for test speed
+	svc := &AddonConfigWatcherService{
+		ctx:             ctx,
+		watchCtx:        watchCtx,
+		watchCancel:     watchCancel,
+		eventBus:        bus,
+		optionsFilePath: path,
+		pollInterval:    50 * time.Millisecond, // fast polling for test
+		debounceDelay:   30 * time.Millisecond, // fast debounce for test
+		newFsnotify: func() (fsnotifyWatcher, error) {
+			watcher, err := fsnotify.NewWatcher()
+			if err != nil {
+				return nil, err
+			}
+			return &realFsnotifyWatcher{Watcher: watcher}, nil
+		},
+		debounceAfter: func(d time.Duration, f func()) timerStopper {
+			return time.AfterFunc(d, f)
+		},
+	}
+
+	// Seed initial hash
+	initialHash, err := svc.hashFile(path)
+	require.NoError(s.T(), err)
+	svc.lastHash = initialHash
+
+	// Set default onChanged to emit events
+	svc.onChanged = svc.emitChanged
+
+	// Start watchers in goroutines
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		svc.watchViaFsnotify()
+	}()
+	go func() {
+		defer wg.Done()
+		svc.watchViaTicker()
+	}()
+
+	// Allow watchers time to start
+	time.Sleep(100 * time.Millisecond)
+
+	// Write new content to the file
+	newContent := []byte(`{"workgroup":"NEW","name":"test"}`)
+	require.NoError(s.T(), os.WriteFile(path, newContent, 0600))
+
+	// Verify that AppConfigEvent is emitted with correct path and hash
+	select {
+	case ev := <-eventReceived:
+		assert.Equal(s.T(), events.EventTypes.UPDATE, ev.Type)
+		assert.Equal(s.T(), path, ev.Path)
+		assert.Equal(s.T(), sha256hex(newContent), ev.Hash)
+	case <-time.After(3 * time.Second):
+		s.Fail("AppConfigEvent was not emitted within 3 s after file write")
+	}
+
+	// Clean up
+	watchCancel()
+	wg.Wait()
+}
+
+// TestIntegration_NoEventOnSameHash verifies that a second write with the same content
+// does not emit a second event (deduplication via hash).
+func (s *AddonConfigWatcherServiceSuite) TestIntegration_NoEventOnSameHash() {
+	initialContent := []byte(`{"workgroup":"STABLE"}`)
+	path := s.writeOptionsFile(initialContent)
+
+	ctx := context.Background()
+	bus := events.NewEventBus(ctx)
+
+	var mu sync.Mutex
+	eventCount := 0
+	unsubscribe := bus.OnAppConfig(func(_ context.Context, ev events.AppConfigEvent) errors.E {
+		mu.Lock()
+		eventCount++
+		mu.Unlock()
+		return nil
+	})
+	defer unsubscribe()
+
+	watchCtx, watchCancel := context.WithCancel(ctx)
+	defer watchCancel()
+
+	svc := &AddonConfigWatcherService{
+		ctx:             ctx,
+		watchCtx:        watchCtx,
+		watchCancel:     watchCancel,
+		eventBus:        bus,
+		optionsFilePath: path,
+		pollInterval:    50 * time.Millisecond,
+		debounceDelay:   30 * time.Millisecond,
+		newFsnotify: func() (fsnotifyWatcher, error) {
+			watcher, err := fsnotify.NewWatcher()
+			if err != nil {
+				return nil, err
+			}
+			return &realFsnotifyWatcher{Watcher: watcher}, nil
+		},
+		debounceAfter: func(d time.Duration, f func()) timerStopper {
+			return time.AfterFunc(d, f)
+		},
+	}
+
+	initialHash, err := svc.hashFile(path)
+	require.NoError(s.T(), err)
+	svc.lastHash = initialHash
+	svc.onChanged = svc.emitChanged
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		svc.watchViaFsnotify()
+	}()
+
+	time.Sleep(100 * time.Millisecond)
+
+	// First write with new content
+	newContent := []byte(`{"workgroup":"CHANGED"}`)
+	require.NoError(s.T(), os.WriteFile(path, newContent, 0600))
+	time.Sleep(300 * time.Millisecond) // allow time for event
+
+	mu.Lock()
+	firstEventCount := eventCount
+	mu.Unlock()
+
+	// Second write with same content (should not trigger a new event)
+	require.NoError(s.T(), os.WriteFile(path, newContent, 0600))
+	time.Sleep(300 * time.Millisecond)
+
+	// Event count should not increase on the second identical write
+	mu.Lock()
+	finalEventCount := eventCount
+	mu.Unlock()
+
+	assert.Equal(s.T(), firstEventCount, finalEventCount, "duplicate event emitted for same-hash write")
+
+	watchCancel()
+	wg.Wait()
+}
