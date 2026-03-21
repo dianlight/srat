@@ -22,8 +22,8 @@ Detect when the Home Assistant Supervisor changes the addon configuration (`/dat
   - Repair/notification auto-dismissed once the config has been reloaded (restart or live-reload)
 
 - **Dependencies:**
-  - **Prerequisite Task:** `docs/tasks/018_home-assistant-repairs-proxy-service.md` must be completed before implementing the Repairs-specific parts of this task (Task 5 and Task 8).
-  - `backend/src/service/homeassistant_service.go` — existing `persistent_notification` helpers; add Repair API calls here
+  - **Prerequisite Task:** `docs/tasks/018_home-assistant-repairs-proxy-service.md` ✅ **Done** — `RepairService` interface and `dto.RepairCommandMessage`/`dto.RepairLifecycleMessage` contracts are available; Tasks 5 and 8 can now be implemented.
+  - `backend/src/service/homeassistant_service.go` — existing `persistent_notification` helpers (fallback only; prefer `RepairService`)
   - `backend/src/service/upgrade_service.go` — reference implementation for `fsnotify` file watcher + debounce pattern
   - `backend/src/config/addon_options.go` — options file path constant
   - `backend/src/events/` — extend `AppConfigEvent` with external-change metadata (`path`, `hash`)
@@ -34,24 +34,24 @@ Detect when the Home Assistant Supervisor changes the addon configuration (`/dat
 ## 📝 Task List
 
 - [x] Task 1: Extend `AppConfigEvent` in `backend/src/events/events.go` with external-change metadata (`path`, `hash`) and reuse existing app-config event bus helpers
-- [ ] Task 2: Implement `AddonConfigWatcherService` in `backend/src/service/` — watch `/data/options.json` via `fsnotify` with debounce; on change compute a content hash to suppress spurious triggers
-- [ ] Task 3: Try HA Supervisor events first — subscribe to `supervisor/event` WebSocket topic; if not available (no Supervisor token) fall back to the fsnotify watcher with configurable interval
+- [ ] Task 3: Implement `AddonConfigWatcherService` with HA Supervisor event-first detection — attempt `supervisor/event` subscription for addon config changes; if unavailable/unsupported, fall back to `/data/options.json` `fsnotify` + debounce + hash dedup, with optional interval polling as a safety net
 - [ ] Task 4: On config change detected, emit `AppConfigEvent` (with `path`/`hash`) on event bus and set `AppConfigData.RequiresRestart = true` in the config DTO
-- [ ] Task 5: Add `CreateRepairIssue` / `DismissRepairIssue` helpers to `HomeAssistantService` using HA Supervisor Repairs API (`/core/api/repairs/issues`); fall back to `persistent_notification` when Repairs endpoint returns 404
+- [ ] Task 5: Inject `RepairService` into `AddonConfigWatcherService` and call `RepairService.Create()` with a stable `repair_id = "addon_config_changed"`, `severity = warning`, `is_fixable = false`, `translation_key = "addon_config_changed"` when an external config change is detected; fall back to `HomeAssistantService.CreatePersistentNotification()` if `RepairService` is nil
 - [ ] Task 6: Wire the watcher service into the fx dependency graph (`appsetup.go`)
 - [ ] Task 7: Frontend — subscribe to the new `app_config_changed` WebSocket event in RTK Query; show a persistent `Snackbar` / `Alert` with a **Reload** button calling `POST /api/app-config/reload` (or triggering browser reload)
-- [ ] Task 8: Auto-dismiss the HA Repair issue / persistent notification after a successful config reload
-
-> **Dependency note:** Do not start Task 5 or Task 8 before `docs/tasks/018_home-assistant-repairs-proxy-service.md` is completed.
+- [ ] Task 8: Auto-dismiss the Repair after a successful config reload by calling `RepairService.Delete("addon_config_changed")` (or `HomeAssistantService.DismissPersistentNotification()` for the fallback path) inside the reload handler
 - [ ] Task 9: Unit testing — `AddonConfigWatcherService` with a mock fsnotify watcher; test hash-based deduplication, debounce, and fallback path
 - [ ] Task 10: Integration testing — end-to-end: write to a temp options file, verify `AppConfigEvent` (with external metadata) emitted and `RequiresRestart` flipped
-- [ ] Task 11: Frontend component test — `AddonConfigChangedBanner` renders on event, Reload button triggers correct action
+- [ ] Task 11: Frontend component test — `AddonConfigChangedBanner` renders on event, Reload button triggers correct action. Verify it shows on receiving the WebSocket event and that clicking Reload calls the expected API endpoint. Test the auto-dismissal after reload as well. 
 - [ ] Task 12: Update OpenAPI spec and regenerate frontend types (`cd frontend && bun run gen`)
 - [ ] Task 13: Documentation — update `docs/SETTINGS_DOCUMENTATION.md` with the change-detection behaviour
 - [ ] Task 14: Add a note in the HA integration docs about the new Repair issue that appears when config changes, and how to resolve it
 - [ ] Task 15: Optional enhancement — in the custom component, listen for the `app_config_changed` WebSocket event and trigger an `async_reload` of the integration to apply changes without requiring a full Home Assistant restart
 - [ ] Task 16: Code review, cleanup, and final validation
-- [ ] Task 17: Ask to create a PR with the task implementation and link it here for tracking
+- [ ] Task 17: Use test-remote-environment to verify the full flow in a real Supervisor environment (config change → Repair issue → reload → Repair auto-dismissal) and verify if the supervisor event is received correctly; adjust detection logic if needed based on real-world behavior (e.g., event availability, fsnotify reliability, etc.). If supervisor events are reliable, consider removing the fallback polling mechanism to reduce complexity and resource usage. If supervisor events are unreliable, consider making the fallback watcher the primary detection method and removing the supervisor event subscription to simplify the implementation.
+- [ ] Task 18: Clean the code removing any debug/testing code used during development and add comments where necessary to explain the detection logic and Repair flow for future maintainers
+- [ ] Task 19: If the Repair issue flow is well-received and effective, consider implementing a similar pattern for other critical issues that require user action, such as missing custom component, connectivity issues, etc. (this can be a separate follow-up task)
+- [ ] Task 20: Ask to create a PR with the task implementation and link it here for tracking
 
 ## 🧠 Implementation Notes (Copilot Context)
 
@@ -69,19 +69,31 @@ else:
         to re-read file and compare hash (handles NFS/overlay FS where inotify may not fire)
 ```
 
-### HA Repair issue vs persistent notification
+### HA Repair issue via RepairService (task 018 complete)
 
-- Prefer `POST /core/api/repairs/issues` (HA 2022.9+):
-  ```json
-  {
-    "domain": "srat",
-    "issue_id": "addon_config_changed",
-    "severity": "warning",
-    "translation_key": "addon_config_changed"
-  }
-  ```
-- Detect availability: if the Supervisor `/core/api/repairs/issues` returns `404`, fall back to `persistent_notification.create` (already implemented in `HomeAssistantService`).
-- Dismiss on reload: call `DELETE /core/api/repairs/issues/srat/addon_config_changed` or `persistent_notification.dismiss`.
+Task 018 delivered `RepairService` in `backend/src/service/repair_service.go` and the supporting DTO contracts in `backend/src/dto/repair_proxy.go`. Repairs are now created by calling `RepairService.Create()` with a `dto.RepairCommandMessage`:
+
+```go
+cmd := dto.RepairCommandMessage{
+    CommandID:      uuid.NewString(),
+    RepairID:       "addon_config_changed",
+    Action:         dto.RepairCommandActionUpsert,
+    TranslationKey: "addon_config_changed",
+    Severity:       dto.RepairIssueSeverityWarning,
+    IsFixable:      false,
+    IsPersistent:   true,
+}
+repairService.Create(cmd)
+```
+
+The service queues the command when the custom component is disconnected and flushes it automatically on the next `helo` handshake.
+
+On reload, dismiss with:
+```go
+repairService.Delete("addon_config_changed")
+```
+
+Fallback to `persistent_notification` only if `RepairService` is unavailable (e.g., running outside the Supervisor in a dev environment without HA WebSocket connectivity).
 
 ### Frontend popup
 
@@ -104,11 +116,14 @@ Add `addonConfigPollInterval` (default `60s`) to `AppConfig` schema, exposed in 
 - `AppConfigEvent` now carries optional external-change metadata via `path` and `hash` fields.
 - Removed dedicated addon-config event-bus hooks and reused `EmitAppConfig` / `OnAppConfig` in `backend/src/events/event_bus.go`.
 - Updated event-bus test coverage in `backend/src/events/event_bus_test.go` and verified with targeted test run (`go test ./events`).
+- Consolidated detection implementation scope: removed standalone Task 2 and folded it into Task 3 so there is a single event-first detection task with fallback behavior.
 
 ## 🔗 Code References & TODOs
 
 - [ ] `backend/src/service/upgrade_service.go:178` — reference fsnotify + debounce pattern to reuse
-- [ ] `backend/src/service/homeassistant_service.go:590` — `CreatePersistentNotification` to extend with Repair API
+- [ ] `backend/src/service/homeassistant_service.go:590` — `CreatePersistentNotification` / `DismissPersistentNotification` as fallback when RepairService not available
+- [ ] `backend/src/service/repair_service.go` — inject `RepairService` into `AddonConfigWatcherService`; call `Create`/`Delete` for `addon_config_changed` repair ID
+- [ ] `backend/src/dto/repair_proxy.go` — use `RepairCommandMessage` (with `RepairCommandActionUpsert` / `RepairCommandActionDelete`) when building repair commands
 - [ ] `backend/src/dto/app_config.go:25` — `RequiresRestart bool` field (already exists, ensure it is set on external change)
 - [x] `backend/src/events/events.go` — `AppConfigEvent` extended with external-change fields (`path`, `hash`)
 - [x] `backend/src/events/event_bus.go` — unified on existing `EmitAppConfig` / `OnAppConfig` (removed dedicated addon-config hooks)
