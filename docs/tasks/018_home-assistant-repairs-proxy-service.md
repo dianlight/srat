@@ -1,6 +1,6 @@
 # [FEATURE]: Home Assistant Repairs Proxy Service
 
-**Target Repo:** `srat` **Status:** 🔄 In Progress **Issue Link:** https://github.com/dianlight/srat/issues/518
+**Target Repo:** `srat` **Status:** ✅ Done **Issue Link:** https://github.com/dianlight/srat/issues/518
 
 ## 🎯 Objective
 
@@ -64,7 +64,7 @@ Create a backend repair-management service that can request, track, and resolve 
 - If repair operations cannot be executed immediately because the component is disconnected, the backend should preserve intent and emit the command once connectivity is restored.
 - Start-work progress: linked issue https://github.com/dianlight/srat/issues/518 and confirmed branch strategy is to stay on `main` for now.
 - Phase update (Task 1 complete): added backend DTO contracts for `RepairCommandMessage` and `RepairLifecycleMessage` with validation and test coverage; added outbound WebSocket event `repair_command` to typed event registrations.
-- Phase update (Task 2 complete): `/ws` inbound router now accepts validated `repair_lifecycle` messages, stores the latest lifecycle payload in runtime state, and ignores malformed/invalid lifecycle payloads.
+- Phase update (Task 2 complete): `/ws` inbound router now accepts validated `repair_lifecycle` messages and ignores malformed/invalid lifecycle payloads.
 - Phase update (Task 3 complete): added `RepairService` with create/update/delete/get/list operations plus lifecycle reconciliation (`ApplyLifecycle`) and in-memory managed state tracking for repairs.
 - Phase update (Task 4 complete): `RepairService` now queues commands while HA custom component is disconnected and exposes `FlushQueuedCommands`; websocket `helo` now flushes queued commands through the existing broadcast pipeline.
 - Phase update (Task 5 complete): `repair_command` is registered in WebSocket typed events (`WebEventType`, `WebEventMap`, welcome supported-events metadata), and validated by DTO/API tests.
@@ -75,6 +75,8 @@ Create a backend repair-management service that can request, track, and resolve 
 - Phase update (Task 10-11 complete): added/updated focused backend (`dto`, `api`, `service`) and custom-component (`test_repairs.py`, websocket/init tests) coverage for repair proxy contracts and flows.
 - Phase update (Task 12 complete): integrated backend + custom-component repair proxy behavior and aligned task documentation with concrete implementation artifacts.
 - Phase update (Task 13 complete): performed targeted validation for backend (`go test` focused suites) and custom component (`pytest` focused suites), all passing.
+- Completion summary: repair lifecycle state is now owned by `RepairService` per managed repair instead of `ContextState`, client message routing uses generated `ClientEventTypes` enums directly, and the custom component remote deployment was validated on the Home Assistant test environment.
+- Remote validation summary: `backend && make build_remote` completed successfully, add-on `local_sambanas2` restarted cleanly, `custom_components && make mount_remote && make install_remote` succeeded, Home Assistant core reload succeeded, and Home Assistant configuration validation remained green throughout the deploy flow.
 
 ## 🔗 Code References & TODOs
 
@@ -91,4 +93,4 @@ Create a backend repair-management service that can request, track, and resolve 
 - [x] `DONE: custom_components/srat/websocket_client.py` - Send repair lifecycle acknowledgements/events back to backend
 - [x] `DONE: custom_components/srat/repairs.py` - Add Home Assistant Repairs integration bridge (`issue_registry` / `RepairsFlow`) for proxy-managed issues
 - [x] `DONE: custom_components/srat/__init__.py` - Register/unregister repair proxy handlers during integration setup and unload
-- [ ] `FIXME: backend/custom component contract` - Specify stable repair IDs, event names, ack/error payloads, and reconnect replay rules
+- [x] `DONE: backend/custom component contract` - Stable repair IDs, event names, lifecycle payload shape, and reconnect replay semantics are now implemented through `RepairCommandMessage`, `RepairLifecycleMessage`, `RepairService` queue deduplication, and generated `ClientEventTypes`/`WebEventType` registrations
