@@ -77,11 +77,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: SRATConfigEntry) -> bool
     repair_proxy = SRATRepairProxy(hass=hass, ws_client=ws_client)
     repair_proxy.register()
 
+    # Listen for remote configuration changes and trigger integration reload
+    def _on_app_config_changed(event_data: dict) -> None:
+        """Handle app_config_changed event from the backend."""
+        _LOGGER.info("Addon configuration changed, reloading integration")
+        hass.async_create_task(hass.config_entries.async_reload(entry.entry_id))
+
+    unregister_listener = ws_client.register_listener("app_config_changed", _on_app_config_changed)
+
     entry.runtime_data = SRATData(
         coordinator=coordinator,
         ws_client=ws_client,
         repair_proxy=repair_proxy,
     )
+
+    # Store unregister function for cleanup on unload
+    def _on_unload() -> None:
+        unregister_listener()
+
+    entry.async_on_unload(_on_unload)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 

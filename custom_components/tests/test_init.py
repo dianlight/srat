@@ -50,7 +50,7 @@ async def test_setup_entry(
         ) as mock_ws_cls,
     ):
         mock_ws = AsyncMock()
-        mock_ws.register_listener = lambda event, cb: None
+        mock_ws.register_listener = lambda event, cb: lambda: None
         mock_ws.async_connect = AsyncMock()
         mock_ws.async_disconnect = AsyncMock()
         mock_ws_cls.return_value = mock_ws
@@ -105,7 +105,7 @@ async def test_unload_entry(
         ) as mock_ws_cls,
     ):
         mock_ws = AsyncMock()
-        mock_ws.register_listener = lambda event, cb: None
+        mock_ws.register_listener = lambda event, cb: lambda: None
         mock_ws.async_connect = AsyncMock()
         mock_ws.async_disconnect = AsyncMock()
         mock_ws_cls.return_value = mock_ws
