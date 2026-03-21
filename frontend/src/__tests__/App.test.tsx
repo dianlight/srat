@@ -66,11 +66,14 @@ describe("App - AddonConfigChangedBanner Component", () => {
         expect(appCode).toMatch(/setShowAddonConfigChangedBanner\(false\)/);
     });
 
-    it("verifies Reload button calls window.location.reload()", async () => {
+    it("verifies Reload button calls backend restart endpoint before reloading", async () => {
         const appSource = await import("../App");
         const appCode = (appSource.App).toString();
         // Check for Reload button
         expect(appCode).toMatch(/Reload/);
+        // Check for generated RTK restart mutation usage
+        expect(appCode).toMatch(/usePutApiRestartMutation/);
+        expect(appCode).toMatch(/restartAddon\(\)\.unwrap\(\)/);
         // Check for window.location.reload() call
         expect(appCode).toMatch(/window\.location\.reload\(\)/);
     });

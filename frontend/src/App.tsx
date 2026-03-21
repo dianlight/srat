@@ -8,16 +8,18 @@ import { NavBar } from "./components/NavBar";
 import TelemetryModal from "./components/TelemetryModal";
 import { useBaseConfigModal } from "./hooks/useBaseConfigModal";
 import { useTelemetryModal } from "./hooks/useTelemetryModal";
-import { useGetApiSettingsAppConfigQuery } from "./store/sratApi";
+import { useGetApiSettingsAppConfigQuery, usePutApiRestartMutation } from "./store/sratApi";
 import { useGetServerEventsQuery } from "./store/wsApi";
 
 
 export function App() {
-	const [errorInfo, _setErrorInfo] = useState<string>("");
+	const [errorInfo, setErrorInfo] = useState<string>("");
 	const [showAddonConfigChangedBanner, setShowAddonConfigChangedBanner] = useState(false);
+	const [isRestartingAddon, setIsRestartingAddon] = useState(false);
 	const mainArea = useRef<HTMLDivElement>(null);
 	const { data: evdata, isLoading, error: herror } = useGetServerEventsQuery();
 	const { data: appConfigResponse } = useGetApiSettingsAppConfigQuery();
+	const [restartAddon] = usePutApiRestartMutation();
 	const { shouldShow: showTelemetryModal, dismiss: dismissTelemetryModal } = useTelemetryModal();
 	const { shouldShow: showBaseConfigModal, dismiss: dismissBaseConfigModal } = useBaseConfigModal();
 	//const { reportError, reportEvent, telemetryMode, isLoading: rollbarLoading } = useRollbarTelemetry();
@@ -66,6 +68,25 @@ export function App() {
 		};
 	}, []);
 
+	async function handleReloadWithAddonRestart() {
+		if (isRestartingAddon) {
+			return;
+		}
+
+		setIsRestartingAddon(true);
+		setErrorInfo("");
+
+		try {
+			await restartAddon().unwrap();
+
+			window.location.reload();
+		} catch (error) {
+			console.error("Addon restart failed", error);
+			setErrorInfo("Addon restart failed. Please retry.");
+			setIsRestartingAddon(false);
+		}
+	}
+
 	return (
 		<>
 			<GlobalEventMonitor />
@@ -110,11 +131,12 @@ export function App() {
 								color="inherit"
 								size="small"
 								onClick={() => setShowAddonConfigChangedBanner(false)}
+								disabled={isRestartingAddon}
 							>
 								Ignore
 							</Button>
-							<Button color="inherit" size="small" onClick={() => window.location.reload()}>
-								Reload
+							<Button color="inherit" size="small" onClick={handleReloadWithAddonRestart} disabled={isRestartingAddon}>
+								{isRestartingAddon ? "Restarting..." : "Reload"}
 							</Button>
 						</>
 					}

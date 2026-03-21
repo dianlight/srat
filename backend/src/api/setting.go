@@ -65,9 +65,20 @@ func NewSettingsHanler(
 func (self *SettingsHanler) RegisterSettings(api huma.API) {
 	huma.Get(api, "/settings", self.GetSettings, huma.OperationTags("system"))
 	huma.Put(api, "/settings", self.UpdateSettings, huma.OperationTags("system"))
+	huma.Put(api, "/restart", self.RestartAddon, huma.OperationTags("system"))
 	huma.Get(api, "/settings/app-config", self.GetAppConfig, huma.OperationTags("system"))
 	huma.Put(api, "/settings/app-config", self.UpdateAppConfig, huma.OperationTags("system"))
 	huma.Get(api, "/settings/app-config/schema", self.GetAppConfigSchema, huma.OperationTags("system"))
+}
+
+// RestartAddon triggers a Home Assistant Supervisor restart for the current addon.
+func (self *SettingsHanler) RestartAddon(ctx context.Context, input *struct{}) (*struct{ Body string }, error) {
+	err := self.addonsService.RestartSelfApp(ctx)
+	if err != nil {
+		return nil, huma.Error500InternalServerError("Failed to restart addon: %v", err)
+	}
+
+	return &struct{ Body string }{Body: "addon restart requested"}, nil
 }
 
 // UpdateSettings updates the settings based on the provided input.

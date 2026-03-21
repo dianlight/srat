@@ -20,6 +20,7 @@ import (
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
+	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 )
@@ -478,4 +479,28 @@ func (suite *SettingsHandlerSuite) TestUpdateAppConfigHandler_FallbackDismissPer
 	suite.Require().Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
 
 	mock.Verify(suite.haService, matchers.Times(1)).DismissPersistentNotification(mock.Exact("addon_config_changed"))
+}
+
+func (suite *SettingsHandlerSuite) TestRestartAddonHandler() {
+	_, humaAPI := humatest.New(suite.T())
+	suite.api.RegisterSettings(humaAPI)
+
+	mock.When(suite.addonsService.RestartSelfApp(mock.AnyContext())).
+		ThenReturn(nil)
+
+	rr := humaAPI.Put("/restart", map[string]any{})
+	suite.Require().Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
+	mock.Verify(suite.addonsService, matchers.Times(1)).RestartSelfApp(mock.AnyContext())
+}
+
+func (suite *SettingsHandlerSuite) TestRestartAddonHandler_FailsWhenServiceFails() {
+	_, humaAPI := humatest.New(suite.T())
+	suite.api.RegisterSettings(humaAPI)
+
+	mock.When(suite.addonsService.RestartSelfApp(mock.AnyContext())).
+		ThenReturn(errors.New("restart failed"))
+
+	rr := humaAPI.Put("/restart", map[string]any{})
+	suite.Require().Equal(http.StatusInternalServerError, rr.Code, "Response body: %s", rr.Body.String())
+	mock.Verify(suite.addonsService, matchers.Times(1)).RestartSelfApp(mock.AnyContext())
 }
