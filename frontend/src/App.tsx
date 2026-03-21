@@ -1,4 +1,4 @@
-import { Backdrop, CircularProgress } from "@mui/material";
+import { Alert, Backdrop, Button, CircularProgress, Snackbar } from "@mui/material";
 import Container from "@mui/material/Container";
 import { useEffect, useRef, useState } from "react";
 import BaseConfigModal from "./components/BaseConfigModal";
@@ -8,13 +8,16 @@ import { NavBar } from "./components/NavBar";
 import TelemetryModal from "./components/TelemetryModal";
 import { useBaseConfigModal } from "./hooks/useBaseConfigModal";
 import { useTelemetryModal } from "./hooks/useTelemetryModal";
+import { useGetApiSettingsAppConfigQuery } from "./store/sratApi";
 import { useGetServerEventsQuery } from "./store/wsApi";
 
 
 export function App() {
 	const [errorInfo, _setErrorInfo] = useState<string>("");
+	const [showAddonConfigChangedBanner, setShowAddonConfigChangedBanner] = useState(false);
 	const mainArea = useRef<HTMLDivElement>(null);
 	const { data: evdata, isLoading, error: herror } = useGetServerEventsQuery();
+	const { data: appConfigResponse } = useGetApiSettingsAppConfigQuery();
 	const { shouldShow: showTelemetryModal, dismiss: dismissTelemetryModal } = useTelemetryModal();
 	const { shouldShow: showBaseConfigModal, dismiss: dismissBaseConfigModal } = useBaseConfigModal();
 	//const { reportError, reportEvent, telemetryMode, isLoading: rollbarLoading } = useRollbarTelemetry();
@@ -34,6 +37,18 @@ export function App() {
 			if (timer) clearTimeout(timer);
 		};
 	}, [herror]);
+
+	useEffect(() => {
+		if (appConfigResponse && "requires_restart" in appConfigResponse && appConfigResponse.requires_restart) {
+			setShowAddonConfigChangedBanner(true);
+		}
+	}, [appConfigResponse]);
+
+	useEffect(() => {
+		if (evdata?.app_config_changed) {
+			setShowAddonConfigChangedBanner(true);
+		}
+	}, [evdata?.app_config_changed]);
 
 	useEffect(() => {
 		function onBeforeUnload(ev: BeforeUnloadEvent) {
@@ -82,6 +97,31 @@ export function App() {
 				open={showTelemetryModal}
 				onClose={dismissTelemetryModal}
 			/>
+			<Snackbar
+				anchorOrigin={{ vertical: "top", horizontal: "center" }}
+				open={showAddonConfigChangedBanner}
+			>
+				<Alert
+					severity="warning"
+					variant="filled"
+					action={
+						<>
+							<Button
+								color="inherit"
+								size="small"
+								onClick={() => setShowAddonConfigChangedBanner(false)}
+							>
+								Ignore
+							</Button>
+							<Button color="inherit" size="small" onClick={() => window.location.reload()}>
+								Reload
+							</Button>
+						</>
+					}
+				>
+					Addon configuration has changed. Reload required.
+				</Alert>
+			</Snackbar>
 		</>
 	);
 }

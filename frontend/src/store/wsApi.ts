@@ -16,6 +16,7 @@ export enum Supported_events {
     Hello = "hello",
     Updating = "updating",
     DirtyDataTracker = "dirty_data_tracker",
+    AppConfigChanged = "app_config_changed",
     SmartTestStatus = "smart_test_status",
     FilesystemTask = "filesystem_task",
     Error = "error",
@@ -43,6 +44,12 @@ export interface FilesystemTask {
     notes?: string[];
 }
 
+export interface AppConfigChanged {
+    path?: string;
+    hash?: string;
+    type?: string;
+}
+
 export type EventData = {
     [Supported_events.Heartbeat]: HealthPing;
     [Supported_events.Volumes]: Disk[];
@@ -50,6 +57,7 @@ export type EventData = {
     [Supported_events.Hello]: Welcome;
     [Supported_events.Updating]: UpdateProgress;
     [Supported_events.DirtyDataTracker]: DataDirtyTracker;
+    [Supported_events.AppConfigChanged]: AppConfigChanged;
     [Supported_events.SmartTestStatus]: SmartTestStatus;
     [Supported_events.FilesystemTask]: FilesystemTask;
 } & {
