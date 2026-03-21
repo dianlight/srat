@@ -37,7 +37,6 @@ type AddonConfigWatcherServiceInterface interface{}
 type AddonConfigWatcherService struct {
 	ctx             context.Context
 	wsClient        websocket.ClientInterface
-	state           *dto.ContextState
 	eventBus        events.EventBusInterface
 	repairService   RepairServiceInterface
 	haService       HomeAssistantServiceInterface
@@ -77,7 +76,6 @@ func (w *realFsnotifyWatcher) Errors() <-chan error { return w.Watcher.Errors }
 type AddonConfigWatcherServiceParams struct {
 	fx.In
 	Ctx           context.Context
-	State         *dto.ContextState
 	EventBus      events.EventBusInterface
 	RepairService RepairServiceInterface        `optional:"true"`
 	HAService     HomeAssistantServiceInterface `optional:"true"`
@@ -89,7 +87,6 @@ func NewAddonConfigWatcherService(lc fx.Lifecycle, params AddonConfigWatcherServ
 	s := &AddonConfigWatcherService{
 		ctx:             params.Ctx,
 		wsClient:        params.WsClient,
-		state:           params.State,
 		eventBus:        params.EventBus,
 		repairService:   params.RepairService,
 		haService:       params.HAService,
