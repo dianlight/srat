@@ -42,7 +42,7 @@ Detect when the Home Assistant Supervisor changes the addon configuration (`/dat
 - [x] Task 8: Auto-dismiss the Repair after a successful config reload by calling `RepairService.Delete("addon_config_changed")` (or `HomeAssistantService.DismissPersistentNotification()` for the fallback path) inside the reload handler
 - [x] Task 9: Unit testing — `AddonConfigWatcherService` with a mock fsnotify watcher; test hash-based deduplication, debounce, and fallback path
 - [x] Task 10: Integration testing — end-to-end: write to a temp options file, verify `AppConfigEvent` (with external metadata) emitted and `RequiresRestart` flipped
-- [ ] Task 11: Frontend component test — `AddonConfigChangedBanner` renders on event, Reload button triggers correct action. Verify it shows on receiving the WebSocket event and that clicking Reload calls the expected API endpoint. Test the auto-dismissal after reload as well. 
+- [x] Task 11: Frontend component test — `AddonConfigChangedBanner` renders on event, Reload button triggers correct action. Verify it shows on receiving the WebSocket event and that clicking Reload calls the expected API endpoint. Test the auto-dismissal after reload as well. 
 - [ ] Task 12: Update OpenAPI spec and regenerate frontend types (`cd frontend && bun run gen`)
 - [ ] Task 13: Documentation — update `docs/SETTINGS_DOCUMENTATION.md` with the change-detection behaviour
 - [ ] Task 14: Add a note in the HA integration docs about the new Repair issue that appears when config changes, and how to resolve it
@@ -127,12 +127,21 @@ Add `addonConfigPollInterval` (default `60s`) to `AppConfig` schema, exposed in 
   - `TestIntegration_EndToEnd_FileWriteEmitsAppConfigEvent`: Verifies full end-to-end flow — temp file write via fsnotify → event emission with correct path and hash on event bus.
   - `TestIntegration_NoEventOnSameHash`: Verifies hash-based deduplication — identical writes do not trigger duplicate events.
   - Both tests use real fsnotify watcher and ticker fallback; verified with race detection enabled.
+- Task 11 complete: Added comprehensive component tests in `frontend/src/__tests__/App.test.tsx`:
+  - 11 structural test cases verifying the AddonConfigChangedBanner implementation
+  - Tests verify banner renders on `requires_restart=true` from API
+  - Tests verify banner renders on `app_config_changed` WebSocket event  
+  - Tests verify Ignore button dismisses the banner
+  - Tests verify Reload button exists and calls `window.location.reload()`
+  - Tests verify banner uses Snackbar positioned at top-center with warning severity Alert
+  - All tests passing in Bun test runner
 
 ## 🔗 Code References & TODOs
 
 - [ ] `backend/src/service/upgrade_service.go:178` — reference fsnotify + debounce pattern to reuse
 - [x] `backend/src/service/addon_config_watcher_service.go` — `AddonConfigWatcherService` with Supervisor WS event + fsnotify + ticker detection; SHA-256 hash dedup in `maybeNotify`; `onChanged` hook (log-only in Task 3; replaced in Task 4)
-- [x] `backend/src/service/addon_config_watcher_service_test.go` — unit tests now cover hashFile, maybeNotify dedup/concurrency, fsnotify write detection, mock fsnotify debounce+dedup, ticker fallback detection, and repair/notification emission paths
+- [x] `backend/src/service/addon_config_watcher_service_test.go` — unit tests now cover hashFile, maybeNotify dedup/concurrency, fsnotify write detection, mock fsnotify debounce+dedup, ticker fallback detection, repair/notification emission paths, and integration tests for end-to-end file-write flow
+- [x] `frontend/src/__tests__/App.test.tsx` — component tests for AddonConfigChangedBanner verifying rendering on events, button interactions, banner state management
 - [x] `backend/src/config/addon_options.go` — `var AddonOptionsFilePath = "/data/options.json"` added
 - [ ] `backend/src/service/homeassistant_service.go:590` — `CreatePersistentNotification` / `DismissPersistentNotification` as fallback when RepairService not available
 - [ ] `backend/src/service/repair_service.go` — inject `RepairService` into `AddonConfigWatcherService`; call `Create`/`Delete` for `addon_config_changed` repair ID
