@@ -108,3 +108,36 @@ async def test_listen_loop_resends_helo_after_reconnect(
     }
     first_ws.send_json.assert_awaited_once_with(expected_payload)
     second_ws.send_json.assert_awaited_once_with(expected_payload)
+
+
+async def test_send_repair_lifecycle_event_when_connected(
+    hass: HomeAssistant,
+) -> None:
+    """Test sending repair lifecycle payload over active websocket connection."""
+    client = SRATWebSocketClient(
+        hass=hass,
+        host="192.168.1.100",
+        port=8099,
+        integration_version="2026.03.1",
+    )
+
+    ws = AsyncMock(spec=aiohttp.ClientWebSocketResponse)
+    client._connected = True
+    client._ws = ws
+
+    await client.async_send_repair_lifecycle_event(
+        repair_id="disk_space_low",
+        command_id="cmd-1",
+        status="created",
+        details={"attempt": 1},
+    )
+
+    ws.send_json.assert_awaited_once_with(
+        {
+            "type": "repair_lifecycle",
+            "repair_id": "disk_space_low",
+            "command_id": "cmd-1",
+            "status": "created",
+            "details": {"attempt": 1},
+        }
+    )

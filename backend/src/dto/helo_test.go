@@ -14,7 +14,7 @@ func TestHeloMessage_JSONRoundTrip(t *testing.T) {
 	entryID := "entry-123"
 
 	message := dto.HeloMessage{
-		Type:         dto.HomeAssistantClientMessageTypeHelo,
+		Type:         dto.ClientEventTypes.CLIENTEVENTTYPEHELO.String(),
 		Component:    dto.HomeAssistantComponentSRAT,
 		Version:      "2026.03.1",
 		HAVersion:    &haVersion,
@@ -42,7 +42,7 @@ func TestHeloMessage_Validate(t *testing.T) {
 		{
 			name: "valid helo message",
 			message: dto.HeloMessage{
-				Type:      dto.HomeAssistantClientMessageTypeHelo,
+				Type:      dto.ClientEventTypes.CLIENTEVENTTYPEHELO.String(),
 				Component: dto.HomeAssistantComponentSRAT,
 				Version:   "2026.03.1",
 			},
@@ -59,7 +59,7 @@ func TestHeloMessage_Validate(t *testing.T) {
 		{
 			name: "requires component",
 			message: dto.HeloMessage{
-				Type:    dto.HomeAssistantClientMessageTypeHelo,
+				Type:    dto.ClientEventTypes.CLIENTEVENTTYPEHELO.String(),
 				Version: "2026.03.1",
 			},
 			errorString: "component is required",
@@ -67,7 +67,7 @@ func TestHeloMessage_Validate(t *testing.T) {
 		{
 			name: "requires version",
 			message: dto.HeloMessage{
-				Type:      dto.HomeAssistantClientMessageTypeHelo,
+				Type:      dto.ClientEventTypes.CLIENTEVENTTYPEHELO.String(),
 				Component: dto.HomeAssistantComponentSRAT,
 			},
 			errorString: "version is required",
@@ -92,5 +92,12 @@ func TestClientMessageEnvelope_UnmarshalHeloHeader(t *testing.T) {
 	var envelope dto.ClientMessageEnvelope
 	err := json.Unmarshal([]byte(`{"type":"helo","component":"srat","version":"2026.03.1"}`), &envelope)
 	require.NoError(t, err)
-	assert.Equal(t, dto.HomeAssistantClientMessageTypeHelo, envelope.Type)
+	assert.Equal(t, dto.ClientEventTypes.CLIENTEVENTTYPEHELO.String(), envelope.Type)
+}
+
+func TestClientMessageEnvelope_UnmarshalRepairLifecycleHeader(t *testing.T) {
+	var envelope dto.ClientMessageEnvelope
+	err := json.Unmarshal([]byte(`{"type":"repair_lifecycle","repair_id":"disk_space_low","status":"created"}`), &envelope)
+	require.NoError(t, err)
+	assert.Equal(t, dto.ClientEventTypes.CLIENTEVENTTYPEREPAIRLIFECYCLE.String(), envelope.Type)
 }
