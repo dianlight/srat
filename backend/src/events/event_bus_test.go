@@ -587,3 +587,41 @@ func TestEventBusFilesystemTask(t *testing.T) {
 		t.Fatal("timeout waiting for event")
 	}
 }
+
+func TestEventBusAppConfigChanged(t *testing.T) {
+	ctx := context.Background()
+	bus := NewEventBus(ctx)
+
+	var receivedEvent *AppConfigEvent
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	unsubscribe := bus.OnAppConfig(func(ctx context.Context, event AppConfigEvent) errors.E {
+		receivedEvent = &event
+		wg.Done()
+		return nil
+	})
+	defer unsubscribe()
+
+	bus.EmitAppConfig(AppConfigEvent{
+		Event: Event{Type: EventTypes.UPDATE},
+		Path:  "/data/options.json",
+		Hash:  "abc123",
+	})
+
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		require.NotNil(t, receivedEvent)
+		assert.Equal(t, EventTypes.UPDATE, receivedEvent.Type)
+		assert.Equal(t, "/data/options.json", receivedEvent.Path)
+		assert.Equal(t, "abc123", receivedEvent.Hash)
+	case <-time.After(5 * time.Second):
+		t.Fatal("timeout waiting for app config changed event")
+	}
+}

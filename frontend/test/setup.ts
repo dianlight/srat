@@ -1,3 +1,7 @@
+// Ensure test environment flag for deterministic rendering in components
+if (!(globalThis as any).__TEST__) {
+    (globalThis as any).__TEST__ = true;
+}
 // Shared test setup for bun:test
 // - installs happy-dom globals via GlobalRegistrator
 // - ensures process.env.APIURL is set

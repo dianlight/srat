@@ -18,8 +18,25 @@ With your donations, we are able to continue developing and improving this proje
 ### ✨ Features
 
 - **HACS Custom Component**: Added a Home Assistant custom component (`custom_components/srat/`) compatible with HACS for direct integration with Home Assistant. Supports UI configuration wizard, Supervisor add-on autodiscovery via slug whitelist, WebSocket-based real-time updates, and exposes sensors compatible with the existing SRAT HA integration (samba status, process status, volume status, disk health, per-disk I/O, and per-partition health). Includes full test suite using `pytest-homeassistant-custom-component` and Python code quality tooling (ruff, mypy) integrated into CI. *Early internal implementation serving as the foundation for upcoming releases.*
-
-### 🧑‍🏫 Documentation
+- **Report Issue on GitHub**: Added new "Report Issue" functionality allowing users to easily create GitHub issues with automated diagnostic data collection:
+  - Button in top navigation bar to open issue reporting dialog
+  - Problem type selector (Frontend UI, HA Integration, Addon, or Samba problems)
+  - Markdown-compatible description field
+  - Optional data collection: contextual data (URL, navigation history, browser info, console errors), addon logs, and sanitized SRAT configuration
+  - Automatic routing to appropriate repository (dianlight/srat or dianlight/hassos-addon) based on problem type
+  - Pre-populated GitHub issue URL with diagnostic information
+  - Downloads diagnostic files for attachment to the issue
+- **Autoupdate with Signature Verification (#358)**: Implemented a new autoupdate mechanism using minio/selfupdate with cryptographic signature verification:
+  - Added `--auto-update` flag to automatically download and apply updates without user acceptance
+  - Updates are signed with minisign (Ed25519) signatures for security
+  - Automatic restart when running under s6 supervision
+  - Public key is embedded in the binary for signature verification
+  - Build workflow automatically signs all release binaries
+- **Allow Guest Setting**: Added new `Allow Guest` boolean setting in Settings → General section to enable anonymous guest access to Samba shares. When enabled, configures Samba with `guest account = nobody` and `map to guest = Bad User` for secure guest authentication.
+- **Enhanced SMART Service [#234](https://github.com/dianlight/srat/issues/234)**: Implemented comprehensive SMART disk monitoring and control features including health assessment, temperature monitoring, and attribute tracking.
+- **SMB over QUIC Support [#227](https://github.com/dianlight/srat/issues/227)**: Added comprehensive support for SMB over QUIC transport protocol with intelligent system detection and automatic fallback to TCP when QUIC is unavailable.
+- **Autoupdate Service**: Implemented a back-end service for automatic updates from GitHub releases, with support for multiple channels (stable, beta, dev) and local development builds.
+- **Telemetry Configuration**: Added UI in Settings to configure telemetry modes (Rollbar error tracking), dependent on internet connectivity and user consent.
 
 ### 🐛 Bug Fixes
 
@@ -50,33 +67,6 @@ With your donations, we are able to continue developing and improving this proje
   - Replaced all `interface{}` with `any` alias (147 occurrences) following Go modernizer patterns
   - Replaced `sync.WaitGroup` `Add(1)/Done()` patterns with `WaitGroup.Go()` method in production code
 - Updated dependencies to latest versions to ensure security and compatibility.
-
-### ✨ Features
-
-- **Report Issue on GitHub**: Added new "Report Issue" functionality allowing users to easily create GitHub issues with automated diagnostic data collection:
-  - Button in top navigation bar to open issue reporting dialog
-  - Problem type selector (Frontend UI, HA Integration, Addon, or Samba problems)
-  - Markdown-compatible description field
-  - Optional data collection: contextual data (URL, navigation history, browser info, console errors), addon logs, and sanitized SRAT configuration
-  - Automatic routing to appropriate repository (dianlight/srat or dianlight/hassos-addon) based on problem type
-  - Pre-populated GitHub issue URL with diagnostic information
-  - Downloads diagnostic files for attachment to the issue
-- **Autoupdate with Signature Verification (#358)**: Implemented a new autoupdate mechanism using minio/selfupdate with cryptographic signature verification
-  - Added `--auto-update` flag to automatically download and apply updates without user acceptance
-  - Updates are signed with minisign (Ed25519) signatures for security
-  - Automatic restart when running under s6 supervision
-  - Public key is embedded in the binary for signature verification
-  - Build workflow automatically signs all release binaries
-- **Allow Guest Setting**: Added new `Allow Guest` boolean setting in Settings → General section to enable anonymous guest access to Samba shares. When enabled, configures Samba with `guest account = nobody` and `map to guest = Bad User` for secure guest authentication.
-- **Enhanced SMART Service [#234](https://github.com/dianlight/srat/issues/234)**: Implemented comprehensive SMART disk monitoring and control features:
-- **SMB over QUIC Support [#227](https://github.com/dianlight/srat/issues/227)**: Added comprehensive support for SMB over QUIC transport protocol with intelligent system detection
-- **Autoupdate Service**: Implemented a back-end service for automatic updates from GitHub releases, with support for multiple channels and local development builds.
-- **Telemetry Configuration**: Added UI in Settings to configure telemetry modes, dependent on internet connectivity.
-- Manage `local master` option (?)
-- Add Rollbar telemetry service for error tracking and monitoring
-- Help screen or overlay help/tour [#82](https://github.com/dianlight/srat/issues/82)
-- Smart Control [#100](https://github.com/dianlight/srat/issues/100)
-- HDD Spin down [#101](https://github.com/dianlight/srat/issues/101)
 
 ### 🏗 Chore
 

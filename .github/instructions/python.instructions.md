@@ -39,39 +39,56 @@ applyTo: "\**/*.py"
 
 ## Home Assistant Integration Patterns
 
-### Module Structure
+### Module Structure (Actual)
 
-Every HA custom component lives in `custom_components/<domain>/` and requires:
+Every HA custom component lives in `custom_components/<domain>/` and the SRAT integration includes:
 
 ```plaintext
 custom_components/srat/
-├── __init__.py          # async_setup_entry / async_unload_entry
-├── config_flow.py       # ConfigFlow subclass
-├── const.py             # DOMAIN, config keys, defaults
-├── coordinator.py       # DataUpdateCoordinator subclass
-├── manifest.json        # Integration metadata (version injected at build)
-├── sensor.py            # SensorEntity subclasses
-├── strings.json         # UI strings (English, canonical)
-├── translations/        # i18n files (one per language)
-└── websocket_client.py  # Real-time WebSocket client
+├── __init__.py            # Integration setup, runtime data, entry points
+├── config_flow.py         # ConfigFlow for manual and Supervisor discovery setup
+├── connection.py          # Connection helpers for backend host/headers
+├── const.py               # Constants (domain, config keys, defaults, etc.)
+├── coordinator.py         # SRATDataCoordinator: WebSocket-only, no REST polling
+├── manifest.json          # Integration metadata (version injected at build)
+├── repairs.py             # Home Assistant Repairs proxy and repair flows
+├── sensor.py              # SensorEntity subclasses (status, disk, partition, health)
+├── strings.json           # UI strings (English, canonical)
+├── translations/          # i18n files (per language)
+└── websocket_client.py    # Real-time WebSocket client, event dispatch, repair lifecycle
 ```
 
-### Entry Points (`__init__.py`)
+#### Key Notes:
+- No `services.yaml` or `binary_sensor.py` (sensors only).
+- All runtime data is attached to `entry.runtime_data` (see `SRATData` in `__init__.py`).
+- `repairs.py` implements both the proxy and the custom repair flow.
+- `connection.py` is a small utility for host/header logic.
 
-```python
-async def async_setup_entry(hass: HomeAssistant, entry: SRATConfigEntry) -> bool:
-    """Set up SRAT from a config entry."""
-    ...
+### Doc Base (Responsibilities)
 
-async def async_unload_entry(hass: HomeAssistant, entry: SRATConfigEntry) -> bool:
-    """Unload a SRAT config entry."""
-    ...
-```
-
-- Use `async_get_clientsession(hass)` for HTTP/WS — never create your own `aiohttp.ClientSession`
-- Raise `ConfigEntryNotReady` if the back-end is unreachable during setup
-- Store runtime data in `entry.runtime_data` (not `hass.data`)
-- Forward platform setup: `await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)`
+- **`__init__.py`**:  
+    - Handles `async_setup_entry` and `async_unload_entry`.
+    - Defines `SRATData` for runtime state (coordinator, ws_client, repair_proxy).
+    - Registers the sensor platform.
+- **`config_flow.py`**:  
+    - Implements `SRATConfigFlow` for both manual and Supervisor-based setup.
+    - Validates backend connectivity before entry creation.
+- **`connection.py`**:  
+    - Provides `homeassistant_auth_headers()` and `iter_connection_hosts()` for connection logic.
+- **`const.py`**:  
+    - Centralizes all config keys, defaults, and domain constants.
+- **`coordinator.py`**:  
+    - `SRATDataCoordinator` receives all data via WebSocket events (`volumes`, `heartbeat`).
+    - No REST polling; sensors are unavailable until first event.
+- **`repairs.py`**:  
+    - `SRATRepairProxy` listens for backend repair commands and syncs with HA issue registry.
+    - `SRATIssueRepairFlow` reports fix status back to backend.
+- **`sensor.py`**:  
+    - Defines all sensor entities: status, process, volume, disk, partition, health.
+    - Uses dynamic entity creation for disks/partitions.
+- **`websocket_client.py`**:  
+    - Manages the WebSocket connection, event parsing, listener registration, and repair lifecycle events.
+    - Handles reconnects, authentication, and SSE-style event parsing.
 
 ### Config Flow (`config_flow.py`)
 
@@ -136,6 +153,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: SRATConfigEntry) -> boo
 - **Test runner**: `pytest` with `pytest-homeassistant-custom-component`
 - **Async**: `pytest-asyncio` with `asyncio_mode = "auto"`
 - **Coverage**: `pytest-cov` — run `make test-ci` in `custom_components/`
+- **Formatter**: `ruff format` (also checks formatting in CI)
+- **Linter**: `ruff check` with same rules as main code
+- **Type checker**: `mypy` with same strict config as main code
 - Tests live in `custom_components/tests/` (not inside `srat/`)
 - Run from repo root: `cd custom_components && make test`
 
@@ -164,8 +184,16 @@ import pytest
 
 ### Running Tests
 
+**Before running final tests, always format your code:**
+
+- Run `ruff format .` in the `custom_components/` directory, or
+- Use `make format` (preferred for consistency)
+
+Then run tests:
+
 ```bash
 cd custom_components
+make format        # Format code (required before final test)
 make test          # Run all tests
 make test-ci       # Run with coverage (generates coverage.xml)
 make check         # Full check: format + lint + typecheck + test

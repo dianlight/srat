@@ -11,6 +11,7 @@
     - [Supervisor Autodiscovery](#supervisor-autodiscovery)
     - [Manual Configuration](#manual-configuration)
   - [Communication](#communication)
+    - [Configuration Changes](#configuration-changes)
   - [Entities](#entities)
 - [Built-in Entity Push (Add-on Mode)](#built-in-entity-push-add-on-mode)
   - [Entities Created](#entities-created)
@@ -93,6 +94,22 @@ Two WebSocket events carry all sensor data:
 Until the first event of each type arrives, the corresponding sensors report as *unavailable*.
 
 For details on data not yet exposed as entities, see [MISSING_HA_INTEGRATION_DATA.md](MISSING_HA_INTEGRATION_DATA.md).
+
+### Configuration Changes
+
+When the SRAT addon configuration is modified (either through Home Assistant or directly), the system automatically detects the change and creates a **Repair issue** in Home Assistant to alert you:
+
+- **Repair Issue**: `addon_config_changed`
+- **Severity**: Warning
+- **What It Means**: The addon's configuration has been updated and requires a reload to apply the changes
+- **How to Resolve**:
+  1. In Home Assistant, go to **Settings → System → Repairs**
+  2. Find the "Addon Configuration Changed" repair issue
+  3. Click **Reload** or **Fix** to apply the changes (or manually reload the SRAT add-on if preferred)
+  4. The repair issue automatically closes after the addon reloads
+- **Alternative**: You can also reload the SRAT add-on manually from **Settings → Add-ons → SRAT Sambanas 2 → Restart** to close the repair issue
+
+The system monitors for external configuration changes continuously, so you'll always be prompted if the addon config changes unexpectedly.
 
 ### Entities
 

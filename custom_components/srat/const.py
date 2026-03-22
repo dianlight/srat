@@ -1,5 +1,7 @@
 """Constants for the SRAT integration."""
 
+from __future__ import annotations
+
 DOMAIN = "srat"
 
 CONF_HOST = "host"
@@ -8,6 +10,7 @@ CONF_ADDON_SLUG = "addon_slug"
 
 DEFAULT_PORT = 8099
 DEFAULT_HOST = "localhost"
+SUPERVISOR_GATEWAY_HOST = "172.30.32.1"
 
 # Addon slugs that can be auto-discovered via the Supervisor API.
 # HA slug format: first 8 chars of SHA1(repo_url) + "_" + addon_name.

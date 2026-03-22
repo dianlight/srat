@@ -293,7 +293,7 @@ func (suite *AddonsServiceTestSuite) TestSetAppConfig_Success() {
 
 func (suite *AddonsServiceTestSuite) TestGetAppConfig_Success() {
 	options := map[string]interface{}{"log_level": "info"}
-	runtimeConfig := apps.AppOptionsConfigData{"rendered": true}
+	runtimeConfig := apps.AppOptionsConfigData{"log_level": "info"}
 
 	mock.When(suite.mockAddonsClient.GetAppInfoWithResponse(suite.ctx, "self")).
 		ThenReturn(&apps.GetAppInfoResponse{
@@ -315,7 +315,33 @@ func (suite *AddonsServiceTestSuite) TestGetAppConfig_Success() {
 	suite.Require().NoError(err)
 	suite.Require().NotNil(result)
 	suite.Equal("info", result.Options["log_level"])
-	suite.Equal(true, result.RuntimeConfig["rendered"])
+	suite.Equal("info", result.RuntimeConfig["log_level"])
+	suite.False(result.RequiresRestart)
+}
+
+func (suite *AddonsServiceTestSuite) TestGetAppConfig_RequiresRestartWhenConfigDrifts() {
+	options := map[string]interface{}{"log_level": "info", "disable_ipv6": true}
+	runtimeConfig := apps.AppOptionsConfigData{"log_level": "debug", "disable_ipv6": true}
+
+	mock.When(suite.mockAddonsClient.GetAppInfoWithResponse(suite.ctx, "self")).
+		ThenReturn(&apps.GetAppInfoResponse{
+			HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+			JSON200: &apps.AppInfoResponse{Data: apps.AppInfoData{
+				Options: &options,
+			}},
+		}, nil)
+
+	mock.When(suite.mockAddonsClient.GetAppOptionsConfigWithResponse(suite.ctx, "self")).
+		ThenReturn(&apps.GetAppOptionsConfigResponse{
+			HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+			JSON200: &apps.AppOptionsConfigResponse{
+				Data: runtimeConfig,
+			},
+		}, nil)
+
+	result, err := suite.addonsService.GetAppConfig(suite.ctx)
+	suite.Require().NoError(err)
+	suite.Require().NotNil(result)
 	suite.True(result.RequiresRestart)
 }
 
