@@ -28,15 +28,20 @@ Implement a generic backend/frontend system that executes commands on the backen
 
 ## 📝 Task List
 
-- [ ] Task 1: Audit and catalog all backend exec call sites to replace with a generic command runner abstraction
-- [ ] Task 2: Implement backend generic command execution service with line-by-line stdout/stderr streaming, bounded ring buffer (500 lines), and exit code/state tracking
-- [ ] Task 3: Integrate command stream events into existing WebSocket channel without breaking current event consumers
-- [ ] Task 4: Identify the right MUI component pattern for a readonly terminal that can efficiently append lines and visually distinguish stdout vs stderr (e.g., color coding) and also check for existing libraries that can be adapted
-- [ ] Task 5: Define and implement a frontend readonly terminal component that can display live command output with distinct styling for stdout vs stderr and supports efficient appending of new lines
-- [ ] Task 6: Add Notification Center logic to show stderr alert when no command-output component instance is open
-- [ ] Task 7: Implement notification action to open a generic popup showing last 500 lines and exit code/termination status
-- [ ] Task 8: Add unit/integration tests for backend command streaming, buffer trimming, and frontend notification/popup behavior
-- [ ] Task 9: Integration and documentation updates for architecture, event contract, and operator usage
+- [ ] Task 1: Audit and catalog all backend exec call sites to replace with a generic command runner abstraction. Refactor incrementally to preserve existing behavior while enabling the new streaming/event contract. Define the command runner interface and event schema in collaboration with frontend to ensure it meets UI needs.
+- [ ] Task 2: Define WebSocket event names and payload schema for streaming command output and process lifecycle events (e.g., `command_output`, `command_started`, `command_terminated`) with necessary metadata (execution id, timestamp, channel, exit code).
+- [ ] Task 3: Design the frontend readonly terminal component pattern (potentially leveraging existing libraries) that can efficiently append lines and visually distinguish `stdout` vs `stderr` (e.g., color coding). Define the component API for receiving streamed events and updating the display.
+- [ ] Task 4: Implement backend generic command execution service with line-by-line stdout/stderr streaming, bounded ring buffer (500 lines), and exit code/state tracking
+- [ ] Task 5: Integrate the command execution service with the WebSocket event system to emit real-time updates to the frontend, ensuring that existing event consumers are not disrupted.
+- [ ] Task 6: Rerun all existing backend and frontend tests to confirm that current exec-based features remain functional and that the new event contract is correctly implemented. Add new tests for the command runner abstraction and event streaming as needed.
+- [ ] Task 7: Identify the right MUI component pattern for a readonly terminal that can efficiently append lines and visually distinguish stdout vs stderr (e.g., color coding) and also check for existing libraries that can be adapted
+- [ ] Task 8: Define and implement a frontend readonly terminal component that can display live command output with distinct styling for stdout vs stderr and supports efficient appending of new lines
+- [ ] Task 9: Add Notification Center logic to show stderr alert when no command-output component instance is open
+- [ ] Task 10: Implement notification action to open a generic popup showing last 500 lines and exit code/termination status
+- [ ] Task 11: Add unit/integration tests for backend command streaming, buffer trimming, and frontend notification/popup behavior
+- [ ] Task 12: Integration and documentation updates for architecture, event contract, and operator usage
+- [ ] Task 13: Migrate any remaining exec usage in backend to the new command runner abstraction, ensuring that all command executions benefit from the new streaming and event capabilities. If the actual exec use cases don't have a specific test, create the test for it and then migrate to the new command runner abstraction. Perform a final code review and security audit to ensure that there are no risks of command injection or sensitive data exposure in the new implementation.
+- [ ] Task 14: Final code review code cleanup, and documentation updates to ensure that the new feature is well-documented for future maintainers and users.
 
 ## 🧠 Implementation Notes (Copilot Context)
 
