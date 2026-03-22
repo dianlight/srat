@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "bun:test";
+import '../../test/setup';
 
 /**
  * App Component - AddonConfigChangedBanner Tests
