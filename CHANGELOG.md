@@ -37,6 +37,12 @@ With your donations, we are able to continue developing and improving this proje
 - **SMB over QUIC Support [#227](https://github.com/dianlight/srat/issues/227)**: Added comprehensive support for SMB over QUIC transport protocol with intelligent system detection and automatic fallback to TCP when QUIC is unavailable.
 - **Autoupdate Service**: Implemented a back-end service for automatic updates from GitHub releases, with support for multiple channels (stable, beta, dev) and local development builds.
 - **Telemetry Configuration**: Added UI in Settings to configure telemetry modes (Rollbar error tracking), dependent on internet connectivity and user consent.
+- **Volume Mount Intelligence**: Enriched volume mount structs with partition and filesystem metadata to enable informed NFS vs CIFS export decisions and implemented proper volume-event handling for cache retry and invalidation. ([#500](https://github.com/dianlight/srat/issues/500))
+- **Bidirectional Home Assistant WebSocket**: Introduced client-to-server WebSocket messaging, starting with a `helo` handshake that allows the custom component to announce its identity and version to the backend. ([#508](https://github.com/dianlight/srat/issues/508))
+- **Disable SMART Integration Setting**: Added a new setting to disable SMART integration, helping mitigate excessive disk wake-ups in sleeping-disk scenarios. ([#499](https://github.com/dianlight/srat/issues/499))
+- **Home Assistant Repairs Proxy Service**: Implemented a backend service to manage Home Assistant repairs via the custom component, with queued commands and lifecycle synchronization over WebSocket. ([#518](https://github.com/dianlight/srat/issues/518))
+- **Overlay Helper System Improvements**: Refactored the TourEvents system for better accuracy and type safety, added comprehensive tests, and established frontend maintenance guidelines. ([#515](https://github.com/dianlight/srat/issues/515))
+- Add repair service and proxy for Home Assistant integration
 
 ### 🐛 Bug Fixes
 
