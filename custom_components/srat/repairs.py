@@ -8,6 +8,7 @@ from typing import Any
 
 from homeassistant.components.repairs import ConfirmRepairFlow, RepairsFlow
 from homeassistant.core import HomeAssistant
+from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import issue_registry as ir
 
 from .const import DOMAIN
@@ -127,7 +128,7 @@ class SRATRepairProxy:
                 return
 
             raise ValueError(f"unsupported repair action: {action}")
-        except Exception as err:  # noqa: BLE001
+        except Exception as err:
             _LOGGER.exception("Failed to handle repair command %s", repair_id)
             await self._ws_client.async_send_repair_lifecycle_event(
                 repair_id=repair_id,
@@ -147,8 +148,8 @@ class SRATIssueRepairFlow(ConfirmRepairFlow):
         self._ws_client = ws_client
 
     async def async_step_confirm(
-        self, user_input: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+        self, user_input: dict[str, str] | None = None
+    ) -> FlowResult:
         """Handle confirmation and report successful fix events."""
         result = await super().async_step_confirm(user_input)
         if user_input is not None and self._ws_client is not None:

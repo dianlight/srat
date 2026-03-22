@@ -89,7 +89,7 @@ func NewBroadcasterService(
 }
 
 func (broker *BroadcasterService) setupEventListeners() []func() {
-	ret := make([]func(), 6)
+	ret := make([]func(), 7)
 	// Listen for disk events
 	ret[0] = broker.eventBus.OnDisk(func(ctx context.Context, event events.DiskEvent) errors.E {
 		diskID := "unknown"
@@ -142,6 +142,14 @@ func (broker *BroadcasterService) setupEventListeners() []func() {
 		}
 		slog.DebugContext(ctx, "BroadcasterService received Error event", "error", event.Error)
 		broker.BroadcastMessage(event.Error)
+		return nil
+	})
+	ret[6] = broker.eventBus.OnAppConfig(func(ctx context.Context, event events.AppConfigEvent) errors.E {
+		slog.DebugContext(ctx, "BroadcasterService received AppConfig event", "path", event.Path, "hash", event.Hash)
+		broker.BroadcastMessage(dto.AppConfigChangedNotification{
+			Path: event.Path,
+			Hash: event.Hash,
+		})
 		return nil
 	})
 

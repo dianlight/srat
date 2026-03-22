@@ -4,14 +4,15 @@ package dto
 type webEventType int
 
 const (
-	eventHello           webEventType = iota // "hello"
-	eventUpdating                            // "updating"
-	eventVolumes                             // "volumes"
-	eventHeartbeat                           // "heartbeat"
-	eventShares                              // "shares"
-	eventDirtyTracker                        // "dirty_data_tracker"
-	eventSmartTestStatus                     // "smart_test_status"
-	eventFilesystemTask                      // "filesystem_task"
-	eventError                               // "error"
-	eventRepairCommand                       // "repair_command"
+	eventHello            webEventType = iota // "hello"
+	eventUpdating                             // "updating"
+	eventVolumes                              // "volumes"
+	eventHeartbeat                            // "heartbeat"
+	eventShares                               // "shares"
+	eventDirtyTracker                         // "dirty_data_tracker"
+	eventSmartTestStatus                      // "smart_test_status"
+	eventFilesystemTask                       // "filesystem_task"
+	eventError                                // "error"
+	eventRepairCommand                        // "repair_command"
+	eventAppConfigChanged                     // "app_config_changed"
 )

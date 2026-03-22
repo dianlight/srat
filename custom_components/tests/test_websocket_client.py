@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import aiohttp
 from homeassistant.core import HomeAssistant
 
+from custom_components.srat.connection import homeassistant_auth_headers
 from custom_components.srat.websocket_client import SRATWebSocketClient
 
 
@@ -55,6 +56,10 @@ async def test_listen_loop_sends_helo_on_connect(hass: HomeAssistant) -> None:
         return_value=session,
     ):
         await client._listen_loop()
+
+    assert (
+        session.ws_connect.call_args.kwargs["headers"] == homeassistant_auth_headers()
+    )
 
     ws.send_json.assert_awaited_once_with(
         {
@@ -108,6 +113,53 @@ async def test_listen_loop_resends_helo_after_reconnect(
     }
     first_ws.send_json.assert_awaited_once_with(expected_payload)
     second_ws.send_json.assert_awaited_once_with(expected_payload)
+
+
+async def test_listen_loop_prefers_supervisor_gateway_host(
+    hass: HomeAssistant,
+) -> None:
+    """Test that Supervisor add-on connections try the gateway host first."""
+    client = SRATWebSocketClient(
+        hass=hass,
+        host="local-sambanas2",
+        port=62246,
+        reconnect_interval=0,
+        integration_version="2026.03.1",
+        addon_slug="local_sambanas2",
+    )
+    client._should_reconnect = True
+
+    ws = AsyncMock(spec=aiohttp.ClientWebSocketResponse)
+    ws.__aiter__.return_value = []
+
+    session = MagicMock(spec=aiohttp.ClientSession)
+    session.ws_connect = MagicMock(
+        side_effect=[
+            aiohttp.ClientConnectionError("gateway failed"),
+            _WebSocketContextManager(
+                ws,
+                lambda: setattr(client, "_should_reconnect", False),
+            ),
+        ]
+    )
+
+    with patch(
+        "custom_components.srat.websocket_client.async_get_clientsession",
+        return_value=session,
+    ):
+        await client._listen_loop()
+
+    assert session.ws_connect.call_args_list[0].args[0] == "ws://172.30.32.1:62246/ws"
+    assert (
+        session.ws_connect.call_args_list[1].args[0] == "ws://local-sambanas2:62246/ws"
+    )
+    ws.send_json.assert_awaited_once_with(
+        {
+            "type": "helo",
+            "component": "srat",
+            "version": "2026.03.1",
+        }
+    )
 
 
 async def test_send_repair_lifecycle_event_when_connected(

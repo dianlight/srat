@@ -21,6 +21,7 @@
   - [Home Assistant Settings](#home-assistant-settings)
     - [Export Stats to Home Assistant](#export-stats-to-home-assistant)
     - [Use Network File System for Home Assistant Integration (Experimental)](#use-network-file-system-for-home-assistant-integration-experimental)
+    - [Configuration Change Detection](#configuration-change-detection)
   - [Implementation Details](#implementation-details)
     - [Template Generation](#template-generation)
     - [back-end Storage](#back-end-storage)
@@ -168,6 +169,34 @@ This document provides detailed information about all SRAT settings available in
   - The setting will be automatically disabled if NFS tools are not available
 - **UI Location**: Settings → HomeAssistant → Use NFS for HA
 - **API Field**: `ha_use_nfs` (boolean)
+
+### Configuration Change Detection
+
+- **Purpose**: Automatically detects when the addon's configuration has changed externally and notifies the user
+- **How It Works**:
+  - **Primary Detection**: Listens to Home Assistant Supervisor events for configuration changes
+  - **Fallback Detection**: Uses file system monitoring (fsnotify) to detect changes to the configuration file on disk
+  - **Deduplication**: Changes are deduplicated using content hashing to avoid duplicate notifications from the same change
+- **Detection Behavior**:
+  - Configuration changes can occur externally (e.g., via Home Assistant UI or API)
+  - When a change is detected, a manifest Repair issue `addon_config_changed` is automatically created
+  - The Repair issue provides users with a convenient way to reload the addon through the Home Assistant UI
+- **User Notification**:
+  - A yellow warning banner appears at the top of the SRAT web UI when a configuration change is detected
+  - The banner reads: "The addon configuration has been updated. Please reload the page to apply changes."
+  - Contains an "Ignore" button to dismiss the banner
+  - Contains a "Reload" button to immediately reload the web UI
+- **Auto-Dismiss**:
+  - The banner automatically dismisses when the user reloads the web page
+  - This prevents stale notifications after the configuration has been applied
+- **Repair Issue Lifecycle**:
+  - The Repair issue `addon_config_changed` is automatically created when a change is detected
+  - The issue is automatically resolved (closed) when the addon is reloaded or restarted
+  - Users can also manually resolve the issue through Home Assistant's Repairs interface
+- **Technical Details**:
+  - The system monitors the `/config/custom_components/srat/manifest.json` file for changes
+  - Configuration file changes trigger a `app_config_changed` WebSocket event sent to connected clients
+  - Detection is event-driven and low-overhead, using efficient file watching and content hashing
 
 ## Implementation Details
 

@@ -26,16 +26,17 @@ type WebEventType struct {
 // webEventTypesContainer is the container for all enum values.
 // It is private and should not be used directly use the public methods on the WebEventType type.
 type webEventTypesContainer struct {
-	EVENTHELLO           WebEventType
-	EVENTUPDATING        WebEventType
-	EVENTVOLUMES         WebEventType
-	EVENTHEARTBEAT       WebEventType
-	EVENTSHARES          WebEventType
-	EVENTDIRTYTRACKER    WebEventType
-	EVENTSMARTTESTSTATUS WebEventType
-	EVENTFILESYSTEMTASK  WebEventType
-	EVENTERROR           WebEventType
-	EVENTREPAIRCOMMAND   WebEventType
+	EVENTHELLO            WebEventType
+	EVENTUPDATING         WebEventType
+	EVENTVOLUMES          WebEventType
+	EVENTHEARTBEAT        WebEventType
+	EVENTSHARES           WebEventType
+	EVENTDIRTYTRACKER     WebEventType
+	EVENTSMARTTESTSTATUS  WebEventType
+	EVENTFILESYSTEMTASK   WebEventType
+	EVENTERROR            WebEventType
+	EVENTREPAIRCOMMAND    WebEventType
+	EVENTAPPCONFIGCHANGED WebEventType
 }
 
 // WebEventTypes is a main entry point using the WebEventType type.
@@ -72,6 +73,9 @@ var WebEventTypes = webEventTypesContainer{
 	EVENTREPAIRCOMMAND: WebEventType{
 		webEventType: eventRepairCommand,
 	},
+	EVENTAPPCONFIGCHANGED: WebEventType{
+		webEventType: eventAppConfigChanged,
+	},
 }
 
 // invalidWebEventType is an invalid sentinel value for WebEventType
@@ -93,6 +97,7 @@ func (w webEventTypesContainer) allSlice() []WebEventType {
 		WebEventTypes.EVENTFILESYSTEMTASK,
 		WebEventTypes.EVENTERROR,
 		WebEventTypes.EVENTREPAIRCOMMAND,
+		WebEventTypes.EVENTAPPCONFIGCHANGED,
 	}
 }
 
@@ -189,6 +194,7 @@ var webEventTypesNameMap = map[string]WebEventType{
 	"filesystem_task":    WebEventTypes.EVENTFILESYSTEMTASK,
 	"error":              WebEventTypes.EVENTERROR,
 	"repair_command":     WebEventTypes.EVENTREPAIRCOMMAND,
+	"app_config_changed": WebEventTypes.EVENTAPPCONFIGCHANGED,
 }
 
 // stringToWebEventType converts a string representation of an enum value into its WebEventType representation
@@ -230,16 +236,17 @@ func ExhaustiveWebEventTypes(f func(WebEventType)) {
 
 // validWebEventTypes is a map of enum values to their validity
 var validWebEventTypes = map[WebEventType]bool{
-	WebEventTypes.EVENTHELLO:           true,
-	WebEventTypes.EVENTUPDATING:        true,
-	WebEventTypes.EVENTVOLUMES:         true,
-	WebEventTypes.EVENTHEARTBEAT:       true,
-	WebEventTypes.EVENTSHARES:          true,
-	WebEventTypes.EVENTDIRTYTRACKER:    true,
-	WebEventTypes.EVENTSMARTTESTSTATUS: true,
-	WebEventTypes.EVENTFILESYSTEMTASK:  true,
-	WebEventTypes.EVENTERROR:           true,
-	WebEventTypes.EVENTREPAIRCOMMAND:   true,
+	WebEventTypes.EVENTHELLO:            true,
+	WebEventTypes.EVENTUPDATING:         true,
+	WebEventTypes.EVENTVOLUMES:          true,
+	WebEventTypes.EVENTHEARTBEAT:        true,
+	WebEventTypes.EVENTSHARES:           true,
+	WebEventTypes.EVENTDIRTYTRACKER:     true,
+	WebEventTypes.EVENTSMARTTESTSTATUS:  true,
+	WebEventTypes.EVENTFILESYSTEMTASK:   true,
+	WebEventTypes.EVENTERROR:            true,
+	WebEventTypes.EVENTREPAIRCOMMAND:    true,
+	WebEventTypes.EVENTAPPCONFIGCHANGED: true,
 }
 
 // IsValid checks whether the WebEventTypes value is valid.
@@ -340,21 +347,22 @@ func (w *WebEventType) UnmarshalYAML(by []byte) error {
 }
 
 // webeventtypeNames is a constant string slice containing all enum values cononical absolute names
-const webeventtypeNames = "helloupdatingvolumesheartbeatsharesdirty_data_trackersmart_test_statusfilesystem_taskerrorrepair_command"
+const webeventtypeNames = "helloupdatingvolumesheartbeatsharesdirty_data_trackersmart_test_statusfilesystem_taskerrorrepair_commandapp_config_changed"
 
 // webeventtypeNamesMap is a map of enum values to their canonical absolute
 // name positions within the webeventtypeNames string slice
 var webeventtypeNamesMap = map[WebEventType]string{
-	WebEventTypes.EVENTHELLO:           webeventtypeNames[0:5],
-	WebEventTypes.EVENTUPDATING:        webeventtypeNames[5:13],
-	WebEventTypes.EVENTVOLUMES:         webeventtypeNames[13:20],
-	WebEventTypes.EVENTHEARTBEAT:       webeventtypeNames[20:29],
-	WebEventTypes.EVENTSHARES:          webeventtypeNames[29:35],
-	WebEventTypes.EVENTDIRTYTRACKER:    webeventtypeNames[35:53],
-	WebEventTypes.EVENTSMARTTESTSTATUS: webeventtypeNames[53:70],
-	WebEventTypes.EVENTFILESYSTEMTASK:  webeventtypeNames[70:85],
-	WebEventTypes.EVENTERROR:           webeventtypeNames[85:90],
-	WebEventTypes.EVENTREPAIRCOMMAND:   webeventtypeNames[90:104],
+	WebEventTypes.EVENTHELLO:            webeventtypeNames[0:5],
+	WebEventTypes.EVENTUPDATING:         webeventtypeNames[5:13],
+	WebEventTypes.EVENTVOLUMES:          webeventtypeNames[13:20],
+	WebEventTypes.EVENTHEARTBEAT:        webeventtypeNames[20:29],
+	WebEventTypes.EVENTSHARES:           webeventtypeNames[29:35],
+	WebEventTypes.EVENTDIRTYTRACKER:     webeventtypeNames[35:53],
+	WebEventTypes.EVENTSMARTTESTSTATUS:  webeventtypeNames[53:70],
+	WebEventTypes.EVENTFILESYSTEMTASK:   webeventtypeNames[70:85],
+	WebEventTypes.EVENTERROR:            webeventtypeNames[85:90],
+	WebEventTypes.EVENTREPAIRCOMMAND:    webeventtypeNames[90:104],
+	WebEventTypes.EVENTAPPCONFIGCHANGED: webeventtypeNames[104:122],
 }
 
 // String implements the Stringer interface.
@@ -373,7 +381,7 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the goenums command to generate them again.
 	// Does not identify newly added constant values unless order changes
-	var x [10]struct{}
+	var x [11]struct{}
 	_ = x[eventHello]
 	_ = x[eventUpdating-1]
 	_ = x[eventVolumes-2]
@@ -384,4 +392,5 @@ func _() {
 	_ = x[eventFilesystemTask-7]
 	_ = x[eventError-8]
 	_ = x[eventRepairCommand-9]
+	_ = x[eventAppConfigChanged-10]
 }
