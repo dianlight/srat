@@ -13,6 +13,7 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"io"
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
@@ -68,7 +69,9 @@ func (m *mockSupervisorWSClient) CallService(ctx context.Context, domain, servic
 	return nil
 }
 
-func (m *mockSupervisorWSClient) GetStates(ctx context.Context) ([]map[string]any, error) { return nil, nil }
+func (m *mockSupervisorWSClient) GetStates(ctx context.Context) ([]map[string]any, error) {
+	return nil, nil
+}
 
 func (m *mockSupervisorWSClient) SubscribeEvents(ctx context.Context, eventType string, handler func(json.RawMessage)) (func() error, error) {
 	m.mu.Lock()
@@ -81,7 +84,9 @@ func (m *mockSupervisorWSClient) SubscribeEvents(ctx context.Context, eventType 
 	return func() error { return nil }, nil
 }
 
-func (m *mockSupervisorWSClient) GetConfig(ctx context.Context) (map[string]any, error) { return nil, nil }
+func (m *mockSupervisorWSClient) GetConfig(ctx context.Context) (map[string]any, error) {
+	return nil, nil
+}
 
 func (m *mockSupervisorWSClient) Receive() <-chan []byte { return nil }
 
@@ -152,7 +157,15 @@ func (s *AddonConfigWatcherServiceSuite) SetupTest() {
 // writeOptionsFile writes content to a temp options file and returns the path.
 func (s *AddonConfigWatcherServiceSuite) writeOptionsFile(content []byte) string {
 	path := filepath.Join(s.tmpDir, "options.json")
-	err := os.WriteFile(path, content, 0600)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
+	s.Require().NoError(err)
+	if len(content) > 0 {
+		_, err = f.Write(content)
+		s.Require().NoError(err)
+		err = f.Sync() // Ensure content is flushed to disk
+		s.Require().NoError(err)
+	}
+	err = f.Close()
 	s.Require().NoError(err)
 	return path
 }
@@ -305,6 +318,15 @@ func (s *AddonConfigWatcherServiceSuite) TestWatchViaFsnotify_DetectsWrite() {
 	newContent := []byte(`{"workgroup":"NEW"}`)
 	require.NoError(s.T(), os.WriteFile(path, newContent, 0600))
 
+	// Debug: print file contents and hash after write
+	f, err := os.Open(path)
+	s.Require().NoError(err)
+	defer f.Close()
+	data, err := io.ReadAll(f)
+	s.Require().NoError(err)
+	s.T().Logf("[DEBUG] File contents after write: %q", string(data))
+	s.T().Logf("[DEBUG] File hash after write: %s", sha256hex(data))
+
 	select {
 	case gotHash := <-changed:
 		assert.Equal(s.T(), sha256hex(newContent), gotHash)
@@ -365,10 +387,10 @@ func (s *AddonConfigWatcherServiceSuite) TestWatchViaSupervisorEvents_RetriesUnt
 
 func (s *AddonConfigWatcherServiceSuite) TestParseSupervisorAddonConfigChanged_AcceptsContractVariants() {
 	testCases := []struct {
-		name      string
-		payload   string
-		expected  string
-		expSlug   string
+		name       string
+		payload    string
+		expected   string
+		expSlug    string
 		expectedOK bool
 	}{
 		{
