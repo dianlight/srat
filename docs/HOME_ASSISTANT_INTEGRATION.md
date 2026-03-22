@@ -11,7 +11,7 @@
     - [Supervisor Autodiscovery](#supervisor-autodiscovery)
     - [Manual Configuration](#manual-configuration)
   - [Communication](#communication)
-    - [Configuration Changes](#configuration-changes)
+  - [Configuration Changes](#configuration-changes)
   - [Entities](#entities)
 - [Built-in Entity Push (Add-on Mode)](#built-in-entity-push-add-on-mode)
   - [Entities Created](#entities-created)
