@@ -11,20 +11,6 @@ import { useTelemetryModal } from "./hooks/useTelemetryModal";
 import { useGetApiSettingsAppConfigQuery, usePutApiRestartMutation } from "./store/sratApi";
 import { useGetServerEventsQuery } from "./store/wsApi";
 
-// Track Backdrop open state to detect transition
-function useBackdropReload(open: boolean, error: any, alive: boolean | undefined) {
-	const prevOpen = useRef(open);
-	useEffect(() => {
-		if (prevOpen.current && !open) {
-			// Backdrop just closed
-			if (error !== undefined || alive === false) {
-				window.location.reload();
-			}
-		}
-		prevOpen.current = open;
-	}, [open, error, alive]);
-}
-
 
 export function App() {
 	const [errorInfo, setErrorInfo] = useState<string>("");
@@ -36,11 +22,25 @@ export function App() {
 	const [restartAddon] = usePutApiRestartMutation();
 	const { shouldShow: showTelemetryModal, dismiss: dismissTelemetryModal } = useTelemetryModal();
 	const { shouldShow: showBaseConfigModal, dismiss: dismissBaseConfigModal } = useBaseConfigModal();
-
+	const [backdropOpen, setBackdropOpen] = useState(true);
+	const backdropPrevOpen = useRef(undefined as boolean | undefined);
 	// Compute Backdrop open state
-	const backdropOpen = evdata?.heartbeat?.alive === false || isLoading || herror !== undefined;
-	useBackdropReload(backdropOpen, herror, evdata?.heartbeat?.alive);
-	//const { reportError, reportEvent, telemetryMode, isLoading: rollbarLoading } = useRollbarTelemetry();
+	useEffect(() => {
+		const newBackdropOpen = evdata?.heartbeat?.alive === false || isLoading || herror !== undefined;
+		//console.log("Computing backdrop open state:", { alive: evdata?.heartbeat?.alive, isLoading, herror, newBackdropOpen });
+		setBackdropOpen(newBackdropOpen);
+		return () => {
+			if (backdropPrevOpen.current === true && newBackdropOpen === false) {
+				//console.log("Backdrop is closing, reloading page to recover from error or server unavailability");
+				setShowAddonConfigChangedBanner(false);
+				window.location.reload();
+			}
+			if (backdropPrevOpen.current !== undefined || backdropOpen === false) {
+				//console.log("Cleaning up backdrop open state effect", { alive: evdata?.heartbeat?.alive, isLoading, herror, backdropPrevOpen: backdropPrevOpen.current, backdropOpen });
+				backdropPrevOpen.current = backdropOpen;
+			}
+		}
+	}, [evdata, isLoading, herror]);
 
 	// This useEffect handles the automatic reset of errors after a delay.
 	// It ensures that a timer is set only when an error occurs, and cleared if the error resolves
