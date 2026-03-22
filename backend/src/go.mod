@@ -23,7 +23,7 @@ require (
 	github.com/danielgtaylor/huma/v2 v2.37.2
 	github.com/dianlight/smartmontools-go v0.2.6
 	github.com/dianlight/tlog v0.2.2
-	github.com/fatih/color v1.18.0
+	github.com/fatih/color v1.19.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/gofri/go-github-ratelimit/v2 v2.0.2
 	github.com/google/go-github/v84 v84.0.0
