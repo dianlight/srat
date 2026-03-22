@@ -57,7 +57,9 @@ async def test_listen_loop_sends_helo_on_connect(hass: HomeAssistant) -> None:
     ):
         await client._listen_loop()
 
-    assert session.ws_connect.call_args.kwargs["headers"] == homeassistant_auth_headers()
+    assert (
+        session.ws_connect.call_args.kwargs["headers"] == homeassistant_auth_headers()
+    )
 
     ws.send_json.assert_awaited_once_with(
         {

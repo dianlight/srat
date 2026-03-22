@@ -61,7 +61,6 @@ async def test_setup_entry(
 
     assert entry.state is ConfigEntryState.LOADED
 
-
     async def test_setup_entry_sends_homeassistant_auth_header(
         hass: HomeAssistant,
         mock_config_entry_data: dict[str, Any],
