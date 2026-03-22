@@ -53,66 +53,70 @@ type BaseAppParams struct {
 
 // ProvideCoreDependencies provides FX options for core services and repositories.
 func ProvideCoreDependencies(params BaseAppParams) fx.Option {
-	return fx.Provide(
-		dbom.NewDB,
-		func() *slog.Logger { return slog.Default() },
-		func() (context.Context, context.CancelFunc) { return params.Ctx, params.CancelFn },
-		func() *dto.ContextState { return params.StaticConfig },
-		func() *dto.DiskMap { return &dto.DiskMap{} },
-		func(ctx context.Context) events.EventBusInterface { return events.NewEventBus(ctx) },
-		func() *github.Client {
-			rateLimiter := github_ratelimit.New(nil)
-			client := github.NewClient(&http.Client{
-				Transport: rateLimiter,
-			})
-			if config.GistToken != "" {
-				client = client.WithAuthToken(config.GistToken)
-			}
-			return client
-		},
-		/*
-			func() *config.DefaultConfig {
-				var nconfig config.Config
-				buffer, err := templates.Default_Config_content.ReadFile("default_config.json")
-				if err != nil {
-					log.Fatalf("Cant read default config file %#+v", err)
+	return fx.Options(
+		fx.Provide(
+			dbom.NewDB,
+			func() *slog.Logger { return slog.Default() },
+			func() (context.Context, context.CancelFunc) { return params.Ctx, params.CancelFn },
+			func() *dto.ContextState { return params.StaticConfig },
+			func() *dto.DiskMap { return &dto.DiskMap{} },
+			func(ctx context.Context) events.EventBusInterface { return events.NewEventBus(ctx) },
+			func() *github.Client {
+				rateLimiter := github_ratelimit.New(nil)
+				client := github.NewClient(&http.Client{
+					Transport: rateLimiter,
+				})
+				if config.GistToken != "" {
+					client = client.WithAuthToken(config.GistToken)
 				}
-				err = nconfig.LoadConfigBuffer(buffer) // Assign to existing err
-				if err != nil {
-					log.Fatalf("Cant load default config from buffer %#+v", err)
-				}
-				return &config.DefaultConfig{Config: nconfig}
+				return client
 			},
-		*/
-		service.NewAddonsService,
-		service.NewHomeAssistantService,
-		service.NewBroadcasterService,
-		service.NewVolumeMountManager,
-		service.NewVolumeService,
-		service.NewServerProcessesService,
-		service.NewUpgradeService,
-		service.NewDirtyDataService,
-		service.NewSupervisorService,
-		service.NewHaRootService,
-		service.NewFilesystemService,
-		service.NewShareService,
-		service.NewUserService,
-		service.NewHostService,
-		service.NewDiskStatsService,
-		service.NewNetworkStatsService,
-		service.NewSmartService,
-		service.NewIssueService,
-		service.NewRepairService,
-		service.NewIssueReportService,
-		service.NewIssueTemplateService,
-		service.NewTelemetryService,
-		service.NewHaWsService,
-		service.NewHardwareService,
-		service.NewHDIdleService,
-		service.NewHaDiscoveryService,
-		service.NewSettingService,
-		//repository.NewPropertyRepositoryRepository,
-		repository.NewIssueRepository,
+			/*
+				func() *config.DefaultConfig {
+					var nconfig config.Config
+					buffer, err := templates.Default_Config_content.ReadFile("default_config.json")
+					if err != nil {
+						log.Fatalf("Cant read default config file %#+v", err)
+					}
+					err = nconfig.LoadConfigBuffer(buffer) // Assign to existing err
+					if err != nil {
+						log.Fatalf("Cant load default config from buffer %#+v", err)
+					}
+					return &config.DefaultConfig{Config: nconfig}
+				},
+			*/
+			service.NewAddonsService,
+			service.NewHomeAssistantService,
+			service.NewBroadcasterService,
+			service.NewVolumeMountManager,
+			service.NewVolumeService,
+			service.NewServerProcessesService,
+			service.NewUpgradeService,
+			service.NewDirtyDataService,
+			service.NewSupervisorService,
+			service.NewHaRootService,
+			service.NewFilesystemService,
+			service.NewShareService,
+			service.NewUserService,
+			service.NewHostService,
+			service.NewDiskStatsService,
+			service.NewNetworkStatsService,
+			service.NewSmartService,
+			service.NewIssueService,
+			service.NewRepairService,
+			service.NewAddonConfigWatcherService,
+			service.NewIssueReportService,
+			service.NewIssueTemplateService,
+			service.NewTelemetryService,
+			service.NewHaWsService,
+			service.NewHardwareService,
+			service.NewHDIdleService,
+			service.NewHaDiscoveryService,
+			service.NewSettingService,
+			//repository.NewPropertyRepositoryRepository,
+			repository.NewIssueRepository,
+		),
+		fx.Invoke(func(service.AddonConfigWatcherServiceInterface) {}),
 	)
 }
 

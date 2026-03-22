@@ -173,6 +173,18 @@ func (a *IssueAPI) RegisterIssueHandler(api huma.API) {
 			},
 		}, nil
 	})
+
+	huma.Register(api, huma.Operation{
+		OperationID: "repair",
+		Summary:     "Repair Message Object for Home Assistant to trigger repairs from the frontend",
+		Method:      http.MethodTrace,
+		Path:        "/repairMessage",
+		Tags:        []string{"Issues", "internal"},
+	}, func(ctx context.Context, input *struct{}) (*struct {
+		Body dto.RepairCommandMessage
+	}, error) {
+		return nil, huma.Error500InternalServerError("failed to repair issue", nil)
+	})
 }
 
 // Fx provides the issue API as a dependency.

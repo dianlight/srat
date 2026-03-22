@@ -1,7 +1,9 @@
 package service
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"sort"
 	"strconv"
@@ -27,6 +29,7 @@ type AddonsServiceInterface interface {
 	GetAppConfig(ctx context.Context) (*dto.AppConfigData, errors.E)
 	GetAppConfigSchema(ctx context.Context) (*dto.AppConfigSchema, errors.E)
 	SetAppConfig(ctx context.Context, options map[string]any) errors.E
+	RestartSelfApp(ctx context.Context) errors.E
 }
 
 // AddonsService provides methods to interact with Home Assistant apps.
@@ -197,11 +200,42 @@ func (s *AddonsService) GetAppConfig(ctx context.Context) (*dto.AppConfigData, e
 		runtimeConfig[key] = value
 	}
 
+	requiresRestart := hasConfigDrift(options, runtimeConfig)
+
 	return &dto.AppConfigData{
 		Options:         options,
 		RuntimeConfig:   runtimeConfig,
-		RequiresRestart: true,
+		RequiresRestart: requiresRestart,
 	}, nil
+}
+
+func hasConfigDrift(options map[string]any, runtimeConfig map[string]any) bool {
+	if len(options) != len(runtimeConfig) {
+		return true
+	}
+
+	for key, optionValue := range options {
+		runtimeValue, ok := runtimeConfig[key]
+		if !ok {
+			return true
+		}
+
+		if !valuesEqual(optionValue, runtimeValue) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func valuesEqual(left any, right any) bool {
+	leftJSON, leftErr := json.Marshal(left)
+	rightJSON, rightErr := json.Marshal(right)
+	if leftErr == nil && rightErr == nil {
+		return bytes.Equal(leftJSON, rightJSON)
+	}
+
+	return false
 }
 
 func (s *AddonsService) GetAppConfigSchema(ctx context.Context) (*dto.AppConfigSchema, errors.E) {
@@ -575,6 +609,28 @@ func (s *AddonsService) SetAppConfig(ctx context.Context, options map[string]any
 
 	if resp.StatusCode() != http.StatusOK {
 		return errors.Errorf("failed to set addon options: status %d, body: %s", resp.StatusCode(), string(resp.Body))
+	}
+
+	return nil
+}
+
+func (s *AddonsService) RestartSelfApp(ctx context.Context) errors.E {
+	if s.addonsClient == nil {
+		return errors.New("addons client is not initialized")
+	}
+
+	resp, err := s.addonsClient.RestartSelfAppWithResponse(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to restart addon")
+	}
+
+	if resp == nil || resp.HTTPResponse == nil {
+		return errors.New("failed to restart addon: empty response")
+	}
+
+	statusCode := resp.StatusCode()
+	if statusCode < http.StatusOK || statusCode >= http.StatusMultipleChoices {
+		return errors.Errorf("failed to restart addon: status %d, body: %s", statusCode, string(resp.Body))
 	}
 
 	return nil

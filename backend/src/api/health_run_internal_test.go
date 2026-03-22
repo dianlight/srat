@@ -83,6 +83,10 @@ func (f *fakeAddons) SetAppConfig(ctx context.Context, options map[string]any) e
 	return nil
 }
 
+func (f *fakeAddons) RestartSelfApp(ctx context.Context) errors.E {
+	return nil
+}
+
 type fakeDiskStats struct{}
 
 func (f *fakeDiskStats) GetDiskStats() (*dto.DiskHealth, errors.E) { return &dto.DiskHealth{}, nil }

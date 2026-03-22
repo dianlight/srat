@@ -110,4 +110,21 @@ describe("wsApi reconnect behavior", () => {
 
         subscription.unsubscribe();
     });
+
+    it("builds websocket URL without double slash path", async () => {
+        const store = await createTestStore();
+        const { wsApi } = await import("../../store/wsApi");
+
+        const subscription = store.dispatch(
+            wsApi.endpoints.getServerEvents.initiate(),
+        );
+        await subscription;
+
+        expect(MockWebSocket.instances.length).toBe(1);
+        const socket = MockWebSocket.instances[0];
+        expect(socket?.url).toContain("/ws");
+        expect(socket?.url).not.toContain("//ws");
+
+        subscription.unsubscribe();
+    });
 });

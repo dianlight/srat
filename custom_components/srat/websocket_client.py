@@ -26,6 +26,8 @@ import aiohttp
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
+from .connection import homeassistant_auth_headers, iter_connection_hosts
+
 _LOGGER = logging.getLogger(__name__)
 
 _MANIFEST_PATH = Path(__file__).with_name("manifest.json")
@@ -64,11 +66,13 @@ class SRATWebSocketClient:
         port: int,
         reconnect_interval: int = 5,
         integration_version: str | None = None,
+        addon_slug: str | None = None,
     ) -> None:
         """Initialize the SRAT WebSocket client."""
         self._hass = hass
         self._host = host
         self._port = port
+        self._connection_hosts = iter_connection_hosts(host, addon_slug)
         self._reconnect_interval = reconnect_interval
         self._integration_version = integration_version or INTEGRATION_VERSION
         self._listeners: dict[str, list[Callable[[Any], None]]] = {}
@@ -119,59 +123,78 @@ class SRATWebSocketClient:
     async def _listen_loop(self) -> None:
         """Main WebSocket listen loop with automatic reconnection."""
         session = async_get_clientsession(self._hass)
-        url = f"ws://{self._host}:{self._port}/ws"
-        # Auth header required by backend/src/server/ha_middleware.go
-        headers = {"X-Remote-User-Id": "homeassistant"}
+        headers = homeassistant_auth_headers()
 
         while self._should_reconnect:
-            try:
-                _LOGGER.debug("Connecting to SRAT WebSocket at %s", url)
-                async with session.ws_connect(
-                    url,
-                    headers=headers,
-                    heartbeat=30,
-                    autoclose=True,
-                    autoping=True,
-                ) as ws:
-                    self._connected = True
-                    self._ws = ws
-                    _LOGGER.info("Connected to SRAT WebSocket at %s", url)
-                    await self._send_helo(ws)
+            reconnect_reason = "WebSocket closed"
 
-                    async for msg in ws:
-                        if msg.type == aiohttp.WSMsgType.TEXT:
-                            self._parse_ws_message(msg.data)
-                        elif msg.type == aiohttp.WSMsgType.ERROR:
-                            _LOGGER.warning("SRAT WebSocket error: %s", ws.exception())
-                            break
-                        elif msg.type in (
-                            aiohttp.WSMsgType.CLOSE,
-                            aiohttp.WSMsgType.CLOSING,
-                            aiohttp.WSMsgType.CLOSED,
-                        ):
-                            _LOGGER.debug("SRAT WebSocket closed")
-                            break
+            for candidate_host in self._connection_hosts:
+                url = f"ws://{candidate_host}:{self._port}/ws"
+                try:
+                    _LOGGER.debug("Connecting to SRAT WebSocket at %s", url)
+                    async with session.ws_connect(
+                        url,
+                        headers=headers,
+                        heartbeat=30,
+                        autoclose=True,
+                        autoping=True,
+                    ) as ws:
+                        self._connected = True
+                        self._ws = ws
+                        _LOGGER.info("Connected to SRAT WebSocket at %s", url)
+                        await self._send_helo(ws)
 
-            except asyncio.CancelledError:
-                _LOGGER.debug("SRAT WebSocket listener cancelled")
-                break
-            except (
-                aiohttp.ClientError,
-                ConnectionError,
-                OSError,
-                RuntimeError,
-                TimeoutError,
-            ) as err:
-                self._connected = False
-                if self._should_reconnect:
-                    _LOGGER.warning(
-                        "SRAT WebSocket connection lost (%s), reconnecting in %ss",
+                        async for msg in ws:
+                            if msg.type == aiohttp.WSMsgType.TEXT:
+                                self._parse_ws_message(msg.data)
+                            elif msg.type == aiohttp.WSMsgType.ERROR:
+                                reconnect_reason = str(ws.exception())
+                                _LOGGER.warning(
+                                    "SRAT WebSocket error: %s", ws.exception()
+                                )
+                                break
+                            elif msg.type in (
+                                aiohttp.WSMsgType.CLOSE,
+                                aiohttp.WSMsgType.CLOSING,
+                                aiohttp.WSMsgType.CLOSED,
+                            ):
+                                _LOGGER.debug("SRAT WebSocket closed")
+                                break
+
+                    break
+                except asyncio.CancelledError:
+                    _LOGGER.debug("SRAT WebSocket listener cancelled")
+                    self._should_reconnect = False
+                    break
+                except (
+                    aiohttp.ClientError,
+                    ConnectionError,
+                    OSError,
+                    RuntimeError,
+                    TimeoutError,
+                ) as err:
+                    reconnect_reason = str(err)
+                    self._connected = False
+                    self._ws = None
+                    _LOGGER.debug(
+                        "SRAT WebSocket connection failed for %s: %s",
+                        url,
                         err,
-                        self._reconnect_interval,
                     )
-                    await asyncio.sleep(self._reconnect_interval)
-            finally:
-                self._ws = None
+                    continue
+                finally:
+                    self._ws = None
+
+            self._connected = False
+            if not self._should_reconnect:
+                break
+
+            _LOGGER.warning(
+                "SRAT WebSocket connection lost (%s), reconnecting in %ss",
+                reconnect_reason,
+                self._reconnect_interval,
+            )
+            await asyncio.sleep(self._reconnect_interval)
 
         self._connected = False
 

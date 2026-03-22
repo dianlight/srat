@@ -7,16 +7,18 @@
  */
 
 import { ws } from "msw";
-import type {
-	DataDirtyTracker,
-	Disk,
-	HealthPing,
-	SharedResource,
-	SmartTestStatus,
-	UpdateProgress,
+import {
+	Supported_events,
+	Update_channel,
+	Update_process_state,
+	type DataDirtyTracker,
+	type Disk,
+	type HealthPing,
+	type SharedResource,
+	type SmartTestStatus,
+	type UpdateProgress,
+	type Welcome
 } from "../store/sratApi";
-import { Update_process_state } from "../store/sratApi";
-import { Supported_events, type Welcome } from "../store/wsApi";
 
 /**
  * Mock data generators for WebSocket events
@@ -26,7 +28,7 @@ const mockEventData = {
 		message: "Welcome to SRAT (Mocked)",
 		active_clients: 1,
 		supported_events: Object.values(Supported_events),
-		update_channel: "develop",
+		update_channel: Update_channel.Develop,
 		build_version: "2026.1.0-dev-mock",
 		secure_mode: true,
 		protected_mode: false,
