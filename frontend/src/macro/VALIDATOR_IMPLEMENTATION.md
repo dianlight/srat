@@ -1,6 +1,6 @@
 - ✅ `src/store/wsApi.ts` - Environment
-  <!-- START doctoc generated TOC please keep comment here to allow auto update -->
-  <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Macro Import Validator - Implementation Summary](#macro-import-validator---implementation-summary)
   - [Overview](#overview)

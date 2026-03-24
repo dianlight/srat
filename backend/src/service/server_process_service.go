@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"log"
 	"log/slog"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -31,12 +33,83 @@ import (
 	"go.uber.org/fx"
 )
 
+// Mockable functions for testing
+var (
+	NetInterfaceByName = net.InterfaceByName
+	NetInterfaceAddrs  = func(iface *net.Interface) ([]net.Addr, error) { return iface.Addrs() }
+)
+
+// SetNetInterfaceByName allows overriding net.InterfaceByName in tests.
+func SetNetInterfaceByName(fn func(name string) (*net.Interface, error)) {
+	NetInterfaceByName = fn
+}
+
+// SetNetInterfaceAddrs allows overriding iface.Addrs() in tests.
+func SetNetInterfaceAddrs(fn func(iface *net.Interface) ([]net.Addr, error)) {
+	NetInterfaceAddrs = fn
+}
+
+// ResolveInterfaceIPv4s converts interface names to their IPv4 addresses.
+// Always includes 127.0.0.1 (loopback) regardless of the input names.
+// For each interface, only IPv4 addresses are returned (IPv6 is ignored).
+// Logs warnings for interfaces that cannot be resolved or have no IPv4 addresses.
+func ResolveInterfaceIPv4s(names []string) []string {
+	var ips []string
+	seen := make(map[string]any)
+
+	// Always include loopback
+	//	ips = append(ips, "127.0.0.1")
+	//	seen["127.0.0.1"] = struct{}{}
+
+	for _, name := range names {
+		iface, err := NetInterfaceByName(name)
+		if err != nil {
+			slog.Warn("Failed to resolve network interface", "interface", name, "error", err)
+			continue
+		}
+		addrs, err := NetInterfaceAddrs(iface)
+		if err != nil {
+			slog.Warn("Failed to get addresses for interface", "interface", name, "error", err)
+			continue
+		}
+		found := false
+		for _, addr := range addrs {
+			var ip net.IP
+			switch v := addr.(type) {
+			case *net.IPNet:
+				ip = v.IP
+			case *net.IPAddr:
+				ip = v.IP
+			}
+			if ip == nil || ip.IsLinkLocalUnicast() {
+				continue
+			}
+			// Only allow IPv4
+			if ip.To4() == nil {
+				continue
+			}
+			ipStr := ip.String()
+			if _, ok := seen[ipStr]; ok {
+				continue
+			}
+			ips = append(ips, ipStr)
+			seen[ipStr] = struct{}{}
+			found = true
+		}
+		if !found {
+			slog.Warn("Interface has no suitable IPv4 addresses", "interface", name)
+		}
+	}
+	return ips
+}
+
 type ServerServiceInterface interface {
 	CreateSambaConfigStream() (data *[]byte, err errors.E)
 	CreateSambaUsersMapStream() (data *[]byte, err errors.E)
 	GetServerProcesses() (*dto.ServerProcessStatus, errors.E)
 	GetSambaStatus() (*dto.SambaStatus, errors.E)
 	WriteConfigsAndRestartProcesses(ctx context.Context) errors.E
+	SetState(state *dto.ContextState)
 }
 
 type ServerProcessStatus interface {
@@ -282,6 +355,17 @@ func (self *ServerService) CreateSambaConfigStream() (data *[]byte, err errors.E
 	//ctsx := ctx.Value("context_state").(*dto.Status)
 	config.DockerInterface = self.state.DockerInterface
 	config.DockerNet = self.state.DockerNet
+
+	// If config.Intrfaces don't contain "lo" (loopback), add it automatically to ensure local connectivity
+	if !slices.Contains(config.Interfaces, "lo") {
+		config.Interfaces = append([]string{"lo"}, config.Interfaces...)
+	}
+	// Resolve interface names to IP addresses only if I need only IPv4
+	if self.state.DisableIPv6 {
+		config.Interfaces = ResolveInterfaceIPv4s(config.Interfaces)
+		config.DockerInterface = ResolveInterfaceIPv4s([]string{self.state.DockerInterface})[0]
+	}
+
 	config_2 := config.ConfigToMap()
 
 	// Add Samba version information to the template context
@@ -778,4 +862,8 @@ func (self *ServerService) writeNFSConfig(ctx context.Context) errors.E {
 	}
 
 	return nil
+}
+
+func (self *ServerService) SetState(state *dto.ContextState) {
+	self.state = state
 }

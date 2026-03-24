@@ -95,8 +95,8 @@ This document provides detailed information about all SRAT settings available in
 
 - **Type**: String Array
 - **Default**: Empty (requires binding all interfaces or explicit selection)
-- **Description**: List of network interfaces to bind to (for example, `eth0`, `wlan0`)
-- **Example**: `["eth0", "docker0"]`
+- **Description**: List of network interfaces to bind to (for example, `eth0`, `wlan0`). **Note**: Interface names are automatically resolved to IP addresses during Samba configuration generation. This ensures that when IPv4 is preferred (via `--ipv4-only` flag), only IPv4 addresses are used. The loopback address `127.0.0.1` is always included regardless of this list.
+- **Example**: `["eth0", "docker0"]` (these will be converted to IPs like `192.168.1.10 172.17.0.1` in `smb.conf`)
 
 #### Multi Channel
 
@@ -178,7 +178,7 @@ This document provides detailed information about all SRAT settings available in
   - **Fallback Detection**: Uses file system monitoring (fsnotify) to detect changes to the configuration file on disk
   - **Deduplication**: Changes are deduplicated using content hashing to avoid duplicate notifications from the same change
 - **Detection Behavior**:
-  - Configuration changes can occur externally (e.g., via Home Assistant UI or API)
+  - Configuration changes can occur externally (for example, via Home Assistant UI or API)
   - When a change is detected, a manifest Repair issue `addon_config_changed` is automatically created
   - The Repair issue provides users with a convenient way to reload the addon through the Home Assistant UI
 - **User Notification**:
@@ -186,7 +186,7 @@ This document provides detailed information about all SRAT settings available in
   - The banner reads: "The addon configuration has been updated. Please reload the page to apply changes."
   - Contains an "Ignore" button to dismiss the banner
   - Contains a "Reload" button to immediately reload the web UI
-- **Auto-Dismiss**:
+- **Auto Dismiss**:
   - The banner automatically dismisses when the user reloads the web page
   - This prevents stale notifications after the configuration has been applied
 - **Repair Issue Lifecycle**:

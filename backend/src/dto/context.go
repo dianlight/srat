@@ -24,6 +24,7 @@ type ContextState struct {
 	UpdateChannel   UpdateChannel                     // Current Update Channel
 	UpdateAvailable bool                              // Whether an update is available
 	AutoUpdate      bool                              // Whether automatic updates are enabled
+	DisableIPv6     bool                              // Whether IPv6 should be disabled for interface resolution
 	SambaConfigFile string                            // Path to the Samba configuration file
 	Template        []byte                            // Template data for generating configuration files
 	DockerInterface string                            // Name of the Docker network interface

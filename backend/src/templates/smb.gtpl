@@ -91,7 +91,7 @@
 
    bind interfaces only = {{ .bind_all_interfaces | default false | ternary "no" "yes" }}
    {{ if not .bind_all_interfaces -}}
-   interfaces = lo {{ .interfaces | join " " }} {{ .docker_interface | default " "}}
+   interfaces = {{ .interfaces | join " " }} {{ .docker_interface | default " "}}
    {{- end }}
    hosts allow = 127.0.0.1 {{ .allow_hosts | join " " }} {{ .docker_net | default " " }}
 
