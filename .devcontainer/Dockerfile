@@ -62,7 +62,7 @@ RUN GO_VERSION="$(awk '/^go / {print $2}' /tmp/srat-go.mod)" \
     aarch64) GO_ARCH="arm64" ;; \
     *) echo "Unsupported architecture: ${ARCH_RAW}"; exit 1 ;; \
     esac \
-    && wget -nv "https://go.dev/dl/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz" -O /tmp/go.tar.gz \
+    && curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz" -o /tmp/go.tar.gz \
     && rm -rf /usr/local/go \
     && tar -C /usr/local -xzf /tmp/go.tar.gz \
     && rm -f /tmp/go.tar.gz \
