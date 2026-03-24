@@ -1,8 +1,5 @@
 ---
 name: create-pr
-category: workflow
-scope: workspace
-version: 1.0
 description: >
   Automate creation or update of a pull request from the current branch to main, with detailed PR body, task/issue linking, and user prompts for draft/auto-merge. Fallback to commit summary if no task is found.
 ---
