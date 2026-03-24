@@ -67,7 +67,8 @@ RUN GO_VERSION="$(awk '/^go / {print $2}' /tmp/srat-go.mod)" \
     && tar -C /usr/local -xzf /tmp/go.tar.gz \
     && rm -f /tmp/go.tar.gz \
     && ln -sf /usr/local/go/bin/go /usr/local/bin/go \
-    && ln -sf /usr/local/go/bin/gofmt /usr/local/bin/gofmt
+    && ln -sf /usr/local/go/bin/gofmt /usr/local/bin/gofmt \
+    && curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b /usr/local/go/bin v2.11.4
 
 # Install Bun based on frontend/package.json packageManager.
 COPY frontend/package.json /tmp/srat-package.json
