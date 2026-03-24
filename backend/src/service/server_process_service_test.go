@@ -5,8 +5,10 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -39,6 +41,7 @@ type ServerProcessServiceSuite struct {
 	cancel          context.CancelFunc
 	app             *fxtest.App
 	db              *gorm.DB
+	state           *dto.ContextState
 }
 
 func TestSambaServiceSuite(t *testing.T) {
@@ -86,6 +89,44 @@ func (suite *ServerProcessServiceSuite) SetupTest() {
 	}
 	converter.MockFuncOsStat(fs.Stat)
 
+	// Mock network interfaces for IP resolution
+	service.SetNetInterfaceByName(func(name string) (*net.Interface, error) {
+		if name == "wlan0" || name == "end0" || name == "lo" || name == "hassio" {
+			return &net.Interface{Name: name}, nil
+		}
+		return nil, fmt.Errorf("interface not found: %s", name)
+	})
+	service.SetNetInterfaceAddrs(func(iface *net.Interface) ([]net.Addr, error) {
+		switch iface.Name {
+		case "lo":
+			ipNet := &net.IPNet{
+				IP:   net.IPv4(127, 0, 0, 1),
+				Mask: net.CIDRMask(8, 32),
+			}
+			return []net.Addr{ipNet}, nil
+		case "wlan0":
+			ipNet := &net.IPNet{
+				IP:   net.IPv4(192, 168, 1, 10),
+				Mask: net.CIDRMask(24, 32),
+			}
+			return []net.Addr{ipNet}, nil
+		case "end0":
+			ipNet := &net.IPNet{
+				IP:   net.IPv4(10, 0, 0, 5),
+				Mask: net.CIDRMask(24, 32),
+			}
+			return []net.Addr{ipNet}, nil
+		case "hassio":
+			ipNet := &net.IPNet{
+				IP:   net.IPv4(172, 30, 32, 1),
+				Mask: net.CIDRMask(24, 32),
+			}
+			return []net.Addr{ipNet}, nil
+		default:
+			return nil, fmt.Errorf("no addresses for interface %s", iface.Name)
+		}
+	})
+
 	//os.Setenv("HOSTNAME", "test-host")
 
 	suite.app = fxtest.New(suite.T(),
@@ -104,6 +145,7 @@ func (suite *ServerProcessServiceSuite) SetupTest() {
 					suite.T().Errorf("Cant read template file %s", err)
 				}
 				sharedResources.DatabasePath = "file::memory:?cache=shared&_pragma=foreign_keys(1)"
+				sharedResources.DisableIPv6 = false
 				return &sharedResources
 			},
 			/*
@@ -146,6 +188,7 @@ func (suite *ServerProcessServiceSuite) SetupTest() {
 		fx.Populate(&suite.ctx),
 		fx.Populate(&suite.cancel),
 		fx.Populate(&suite.db),
+		fx.Populate(&suite.state),
 	)
 	/*
 		mock.When(suite.samba_user_repo.All()).ThenReturn(dbom.SambaUsers{
@@ -396,6 +439,44 @@ func (suite *ServerProcessServiceSuite) compareConfigSections(generatedConfig *[
 	}
 }
 
+// readTargetConfVariant reads the smb.conf file for a given variant (currently only default is used)
+func readTargetConfVariant(variants []string) ([]byte, error) {
+	// For now, ignore variant and always read the default test config
+	bytes, err := os.ReadFile("../../test/data/smb.conf")
+	if len(variants) == 0 {
+		variants = []string{"def"}
+	}
+
+	// Read all bytes line by line and filter out all line non conatining the variant.
+	// The variant lines are in the form !<tag>,<tag2>,.. <content>
+	var filteredLines []string
+	scanner := bufio.NewScanner(strings.NewReader(string(bytes)))
+	for scanner.Scan() {
+		line := scanner.Text()
+		trimmedLine := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmedLine, "!") {
+			parts := strings.SplitN(trimmedLine[1:], " ", 2)
+			if len(parts) == 2 {
+				tags := strings.Split(parts[0], ",")
+				for _, tag := range tags {
+					if slices.Contains(variants, tag) {
+						filteredLines = append(filteredLines, parts[1])
+						break
+					}
+				}
+			} else {
+				// If line starts with ! but doesn't have a space, treat it as normal line (could be a comment or malformed line)
+				filteredLines = append(filteredLines, line)
+			}
+		} else {
+			filteredLines = append(filteredLines, line)
+		}
+	}
+	filteredContent := strings.Join(filteredLines, "\n")
+
+	return []byte(filteredContent), err
+}
+
 // Base test with Samba 4.23 (latest modern version)
 func (suite *ServerProcessServiceSuite) TestCreateConfigStream() {
 	defer osutil.MockSambaVersion("4.23.0")()
@@ -405,7 +486,34 @@ func (suite *ServerProcessServiceSuite) TestCreateConfigStream() {
 	suite.Require().NoError(errE)
 	suite.NotNil(stream)
 
-	fsbyte, err := os.ReadFile("../../test/data/smb.conf")
+	fsbyte, err := readTargetConfVariant(nil)
+	suite.Require().NoError(err)
+
+	var re = regexp.MustCompile(`(?m)^\[([^[]+)\]\n(?:^[^[].*\n+)+`)
+
+	var expected = make(map[string]string)
+	for _, match := range re.FindAllStringSubmatch(string(fsbyte), -1) {
+		expected[match[1]] = strings.TrimSpace(match[0])
+	}
+
+	suite.compareConfigSections(stream, "Samba4.23", expected)
+}
+
+// Base test with Samba 4.23 (latest modern version)
+func (suite *ServerProcessServiceSuite) TestCreateConfigStreamIPv4() {
+	defer osutil.MockSambaVersion("4.23.0")()
+	suite.setupCommonMocks()
+
+	targetServerService := suite.serverService
+	targetState := *suite.state
+	targetState.DisableIPv6 = true
+	targetServerService.SetState(&targetState)
+
+	stream, errE := targetServerService.CreateSambaConfigStream()
+	suite.Require().NoError(errE)
+	suite.NotNil(stream)
+
+	fsbyte, err := readTargetConfVariant([]string{"ipv4"})
 	suite.Require().NoError(err)
 
 	var re = regexp.MustCompile(`(?m)^\[([^[]+)\]\n(?:^[^[].*\n+)+`)
@@ -764,3 +872,198 @@ func (suite *SambaHandlerSuite) checkStringInSMBConfig(testvalue string, expecte
 	return true
 }
 */
+
+// TestResolveInterfaceIPv4s_Unit tests the resolveInterfaceIPv4s helper function.
+type ResolveInterfaceIPv4sSuite struct {
+	suite.Suite
+	originalInterfaceByName func(name string) (*net.Interface, error)
+	originalInterfaceAddrs  func(iface *net.Interface) ([]net.Addr, error)
+}
+
+func TestResolveInterfaceIPv4sSuite(t *testing.T) {
+	suite.Run(t, new(ResolveInterfaceIPv4sSuite))
+}
+
+func (suite *ResolveInterfaceIPv4sSuite) SetupTest() {
+	suite.originalInterfaceByName = service.NetInterfaceByName
+	suite.originalInterfaceAddrs = service.NetInterfaceAddrs
+}
+
+func (suite *ResolveInterfaceIPv4sSuite) TearDownTest() {
+	service.SetNetInterfaceByName(suite.originalInterfaceByName)
+	service.SetNetInterfaceAddrs(suite.originalInterfaceAddrs)
+}
+
+func (suite *ResolveInterfaceIPv4sSuite) TestResolveInterfaceIPv4s_IPv4Only() {
+	service.SetNetInterfaceByName(func(name string) (*net.Interface, error) {
+		if name == "eth0" {
+			return &net.Interface{Name: "eth0"}, nil
+		}
+		return nil, fmt.Errorf("interface not found")
+	})
+	service.SetNetInterfaceAddrs(func(iface *net.Interface) ([]net.Addr, error) {
+		if iface.Name == "eth0" {
+			ipNet := &net.IPNet{
+				IP:   net.IPv4(192, 168, 1, 10),
+				Mask: net.CIDRMask(24, 32),
+			}
+			return []net.Addr{ipNet}, nil
+		}
+		return nil, fmt.Errorf("interface not found")
+	})
+
+	result := service.ResolveInterfaceIPv4s([]string{"eth0"})
+	//	suite.Contains(result, "127.0.0.1", "should always include loopback")
+	suite.Contains(result, "192.168.1.10", "should include IPv4 address")
+	suite.Len(result, 1, "should have exactly 1 IP: eth0")
+}
+
+func (suite *ResolveInterfaceIPv4sSuite) TestResolveInterfaceIPv4s_IPv6Only() {
+	service.SetNetInterfaceByName(func(name string) (*net.Interface, error) {
+		if name == "eth0" {
+			return &net.Interface{Name: "eth0"}, nil
+		}
+		return nil, fmt.Errorf("interface not found")
+	})
+	service.SetNetInterfaceAddrs(func(iface *net.Interface) ([]net.Addr, error) {
+		if iface.Name == "eth0" {
+			ipNet := &net.IPNet{
+				IP:   net.ParseIP("2001:db8::1"),
+				Mask: net.CIDRMask(64, 128),
+			}
+			return []net.Addr{ipNet}, nil
+		}
+		return nil, fmt.Errorf("interface not found")
+	})
+
+	result := service.ResolveInterfaceIPv4s([]string{"eth0"})
+	//suite.Contains(result, "127.0.0.1")
+	suite.NotContains(result, "2001:db8::1")
+	suite.Len(result, 0)
+}
+
+func (suite *ResolveInterfaceIPv4sSuite) TestResolveInterfaceIPv4s_DualStack() {
+	service.SetNetInterfaceByName(func(name string) (*net.Interface, error) {
+		if name == "eth0" {
+			return &net.Interface{Name: "eth0"}, nil
+		}
+		return nil, fmt.Errorf("interface not found")
+	})
+	service.SetNetInterfaceAddrs(func(iface *net.Interface) ([]net.Addr, error) {
+		if iface.Name == "eth0" {
+			ipv4 := &net.IPNet{
+				IP:   net.IPv4(192, 168, 1, 10),
+				Mask: net.CIDRMask(24, 32),
+			}
+			ipv6 := &net.IPNet{
+				IP:   net.ParseIP("2001:db8::1"),
+				Mask: net.CIDRMask(64, 128),
+			}
+			return []net.Addr{ipv4, ipv6}, nil
+		}
+		return nil, fmt.Errorf("interface not found")
+	})
+
+	result := service.ResolveInterfaceIPv4s([]string{"eth0"})
+	//suite.Contains(result, "127.0.0.1")
+	suite.Contains(result, "192.168.1.10")
+	suite.NotContains(result, "2001:db8::1")
+	suite.Len(result, 1)
+}
+
+func (suite *ResolveInterfaceIPv4sSuite) TestResolveInterfaceIPv4s_MissingInterface() {
+	service.SetNetInterfaceByName(func(name string) (*net.Interface, error) {
+		if name == "eth0" {
+			return &net.Interface{Name: "eth0"}, nil
+		}
+		return nil, fmt.Errorf("interface not found")
+	})
+	service.SetNetInterfaceAddrs(func(iface *net.Interface) ([]net.Addr, error) {
+		return nil, fmt.Errorf("no addresses")
+	})
+
+	result := service.ResolveInterfaceIPv4s([]string{"eth0", "nonexistent"})
+	//suite.Contains(result, "127.0.0.1", "should still include loopback")
+	suite.Len(result, 0)
+}
+
+func (suite *ResolveInterfaceIPv4sSuite) TestResolveInterfaceIPv4s_MultipleInterfaces() {
+	service.SetNetInterfaceByName(func(name string) (*net.Interface, error) {
+		if name == "eth0" || name == "wlan0" {
+			return &net.Interface{Name: name}, nil
+		}
+		return nil, fmt.Errorf("interface not found")
+	})
+	service.SetNetInterfaceAddrs(func(iface *net.Interface) ([]net.Addr, error) {
+		switch iface.Name {
+		case "eth0":
+			ipNet := &net.IPNet{
+				IP:   net.IPv4(192, 168, 1, 10),
+				Mask: net.CIDRMask(24, 32),
+			}
+			return []net.Addr{ipNet}, nil
+		case "wlan0":
+			ipNet := &net.IPNet{
+				IP:   net.IPv4(10, 0, 0, 5),
+				Mask: net.CIDRMask(24, 32),
+			}
+			return []net.Addr{ipNet}, nil
+		}
+		return nil, fmt.Errorf("interface not found")
+	})
+
+	result := service.ResolveInterfaceIPv4s([]string{"eth0", "wlan0"})
+	//suite.Contains(result, "127.0.0.1")
+	suite.Contains(result, "192.168.1.10")
+	suite.Contains(result, "10.0.0.5")
+	suite.Len(result, 2)
+}
+
+func (suite *ResolveInterfaceIPv4sSuite) TestResolveInterfaceIPv4s_Deduplication() {
+	// Both interfaces share the same IP (e.g., alias)
+	service.SetNetInterfaceByName(func(name string) (*net.Interface, error) {
+		if name == "eth0" || name == "eth0:1" {
+			return &net.Interface{Name: name}, nil
+		}
+		return nil, fmt.Errorf("interface not found")
+	})
+	service.SetNetInterfaceAddrs(func(iface *net.Interface) ([]net.Addr, error) {
+		ipNet := &net.IPNet{
+			IP:   net.IPv4(192, 168, 1, 10),
+			Mask: net.CIDRMask(24, 32),
+		}
+		return []net.Addr{ipNet}, nil
+	})
+
+	result := service.ResolveInterfaceIPv4s([]string{"eth0", "eth0:1"})
+	//suite.Contains(result, "127.0.0.1")
+	suite.Contains(result, "192.168.1.10")
+	suite.Len(result, 1, "should deduplicate duplicate IPs")
+}
+
+func (suite *ResolveInterfaceIPv4sSuite) TestResolveInterfaceIPv4s_LinkLocalFiltered() {
+	service.SetNetInterfaceByName(func(name string) (*net.Interface, error) {
+		if name == "eth0" {
+			return &net.Interface{Name: "eth0"}, nil
+		}
+		return nil, fmt.Errorf("interface not found")
+	})
+	service.SetNetInterfaceAddrs(func(iface *net.Interface) ([]net.Addr, error) {
+		if iface.Name == "eth0" {
+			ipv4 := &net.IPNet{
+				IP:   net.IPv4(192, 168, 1, 10),
+				Mask: net.CIDRMask(24, 32),
+			}
+			linkLocal := &net.IPNet{
+				IP:   net.ParseIP("169.254.1.1"),
+				Mask: net.CIDRMask(16, 32),
+			}
+			return []net.Addr{ipv4, linkLocal}, nil
+		}
+		return nil, fmt.Errorf("interface not found")
+	})
+
+	result := service.ResolveInterfaceIPv4s([]string{"eth0"})
+	suite.Contains(result, "192.168.1.10")
+	suite.NotContains(result, "169.254.1.1", "link-local addresses should be filtered")
+}

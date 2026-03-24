@@ -41,6 +41,8 @@ func (f *fakeSamba) RestartSambaService(ctx context.Context) errors.E           
 func (f *fakeSamba) TestSambaConfig(ctx context.Context) errors.E                 { return nil }
 func (f *fakeSamba) WriteConfigsAndRestartProcesses(ctx context.Context) errors.E { return nil }
 
+func (f *fakeSamba) SetState(state *dto.ContextState) {}
+
 type fakeDirty struct {
 	// callbacks []func() errors.E
 }
