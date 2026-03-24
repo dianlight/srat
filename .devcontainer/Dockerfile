@@ -62,12 +62,13 @@ RUN GO_VERSION="$(awk '/^go / {print $2}' /tmp/srat-go.mod)" \
     aarch64) GO_ARCH="arm64" ;; \
     *) echo "Unsupported architecture: ${ARCH_RAW}"; exit 1 ;; \
     esac \
-    && wget -nv "https://go.dev/dl/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz" -O /tmp/go.tar.gz \
+    && curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz" -o /tmp/go.tar.gz \
     && rm -rf /usr/local/go \
     && tar -C /usr/local -xzf /tmp/go.tar.gz \
     && rm -f /tmp/go.tar.gz \
     && ln -sf /usr/local/go/bin/go /usr/local/bin/go \
-    && ln -sf /usr/local/go/bin/gofmt /usr/local/bin/gofmt
+    && ln -sf /usr/local/go/bin/gofmt /usr/local/bin/gofmt \
+    && curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b /usr/local/go/bin v2.11.4
 
 # Install Bun based on frontend/package.json packageManager.
 COPY frontend/package.json /tmp/srat-package.json

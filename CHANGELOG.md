@@ -17,6 +17,7 @@ With your donations, we are able to continue developing and improving this proje
 
 ### ✨ Features
 
+- **Interface IP Resolution**: Samba configuration now resolves network interface names to IP addresses at generation time, ensuring IPv4 preference is honored. The `--ipv4-only` CLI flag allows disabling IPv6 addresses in the `interfaces` directive. This prevents issues where interface names could resolve to IPv6 addresses, causing connectivity problems when IPv4 is preferred.
 - **HACS Custom Component**: Added a Home Assistant custom component (`custom_components/srat/`) compatible with HACS for direct integration with Home Assistant. Supports UI configuration wizard, Supervisor add-on autodiscovery via slug whitelist, WebSocket-based real-time updates, and exposes sensors compatible with the existing SRAT HA integration (samba status, process status, volume status, disk health, per-disk I/O, and per-partition health). Includes full test suite using `pytest-homeassistant-custom-component` and Python code quality tooling (ruff, mypy) integrated into CI. *Early internal implementation serving as the foundation for upcoming releases.*
 - **Report Issue on GitHub**: Added new "Report Issue" functionality allowing users to easily create GitHub issues with automated diagnostic data collection:
   - Button in top navigation bar to open issue reporting dialog

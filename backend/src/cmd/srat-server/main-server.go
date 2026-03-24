@@ -49,6 +49,7 @@ var addonIpAddress *string
 var logLevelString *string
 var protectedMode *bool
 var autoUpdate *bool
+var noIPv6 *bool
 var upgrade_channel dto.UpdateChannel
 
 func validateSambaConfig(path string) error {
@@ -81,6 +82,7 @@ func main() {
 	upgradeDataDir = flag.String("upgrade-data-dir", "/data/upgrade", "Persistent upgrades data directory")
 	_ = flag.String("update-file-path", os.TempDir()+"/"+filepath.Base(os.Args[0]), "Update file path - used for addon updates *deprecated*")
 	addonIpAddress = flag.String("ip-address", "127.0.0.1", "Addon IP address // $(bashio::addon.ip_address)")
+	noIPv6 = flag.Bool("ipv4-only", false, "Disable IPv6 addresses in Samba interface binding")
 
 	flag.Parse()
 
@@ -149,6 +151,7 @@ func prog(listener net.Listener, serverPort int) {
 		UpdateChannel:   upgrade_channel,
 		UpdateDataDir:   *upgradeDataDir,
 		AutoUpdate:      *autoUpdate,
+		DisableIPv6:     *noIPv6,
 		SambaConfigFile: *smbConfigFile,
 		Template:        internal.GetTemplateData(),
 		DockerInterface: *dockerInterface,
