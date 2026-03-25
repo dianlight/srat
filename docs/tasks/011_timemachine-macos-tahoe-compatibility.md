@@ -37,6 +37,41 @@ Resolve Time Machine backup failures on macOS Tahoe (macOS 15+) connecting to Sa
 
 ## 🧠 Implementation Notes (Copilot Context)
 
+
+---
+#### Pre-Implementation Plan (2026-03-25)
+
+**Objective & Acceptance Criteria**
+- Ensure backups complete without disconnects or errors.
+- All required Samba parameters for Time Machine/macOS compatibility are present and correct in generated configs.
+
+**Impacted Files/Components**
+- `backend/src/templates/smb.gtpl` (Samba config template)
+- `backend/src/service/server_process_service.go` (template data prep)
+- `backend/src/dto/` (TimeMachineSupport field)
+- `docs/TIMEMACHINE_COMPATIBILITY.md` (new doc)
+- Unit/regression tests for template rendering
+
+**Step-by-Step Plan**
+1. Research & document required Samba parameters for macOS Tahoe (fruit:*, signing, SMB3, etc.).
+2. Update `smb.gtpl` Time Machine share block with all required/verified parameters.
+3. Add/verify global `server signing` and `ntlm auth` options.
+4. Create `docs/TIMEMACHINE_COMPATIBILITY.md` with config matrix and guidance.
+5. Add/expand unit and regression tests for template rendering (TimeMachineSupport supported/unsupported).
+6. (Optional) Add backend log/endpoint for current Samba Time Machine config.
+
+**Test/Validation Strategy**
+- Unit tests: Template renders correct config for both supported/unsupported Time Machine shares.
+- Manual/CI: Validate config against macOS Tahoe client (if possible).
+- Documentation review: Ensure doc covers all required parameters and compatibility notes.
+
+**Risks & Edge Cases**
+- Samba version differences (older versions may not support all fruit: options).
+- macOS client-side changes in future releases.
+- Unintended config changes affecting non-Time Machine shares.
+
+---
+
 ### Known working Samba Time Machine parameters (macOS Ventura/Sonoma/Tahoe)
 
 ```ini
