@@ -34,6 +34,7 @@ Resolve Time Machine backup failures on macOS Tahoe (macOS 15+) connecting to Sa
 - [ ] Task 4: Add a documentation page `docs/TIMEMACHINE_COMPATIBILITY.md` covering the required Samba parameters and macOS version compatibility matrix
 - [ ] Task 5: Unit tests — template rendering with `TimeMachineSupport = "supported"`: verify `fruit:` section is present and contains required keys
 - [ ] Task 6: Regression test — template rendering with `TimeMachineSupport = "unsupported"`: verify `fruit:` section is absent
+- [ ] Task 7: Add a note on UI on Time Machine share switch if Compatibility mode is enabled that it may not work with macOS 15+. Also add a note con Compatibility Switch on UI that it can cause issues with macOS 15+ Time Machine backups.
 
 ## 🧠 Implementation Notes (Copilot Context)
 
