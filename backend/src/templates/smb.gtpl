@@ -39,11 +39,25 @@
    {{- end }}
 
    unix extensions = no
-   vfs objects = acl_xattr catia fruit streams_xattr recycle
+   # --- Apple macOS/Time Machine compatibility (see vfs_fruit(8), Samba wiki) ---
+   # The following fruit: options MUST be set in [global] to take effect (see vfs_fruit(8)):
+   #   fruit:aapl           - Enables Apple's SMB2+ AAPL extension (performance, metadata)
+   #   fruit:model          - Sets Finder icon (cosmetic, default: MacSamba)
+   #   fruit:nfs_aces       - Controls NFS ACEs for UNIX mode (default: yes, set no for Mac clients)
+   #   fruit:copyfile       - Enables Mac copyfile ioctl (default: no, set yes for full compatibility)
+   # These are GLOBAL ONLY: setting them per-share has no effect.
+   vfs objects = acl_xattr catia fruit 
    fruit:aapl = yes
    fruit:model = MacSamba
+   fruit:nfs_aces = no
+   fruit:copyfile = yes
 
+   # The following fruit: options CAN be set globally or per-share (see vfs_fruit(8)):
+   #   fruit:resource, fruit:metadata, fruit:veto_appledouble, fruit:wipe_intentionally_left_blank_rfork,
+   #   fruit:zero_file_id, fruit:delete_empty_adfiles, fruit:posix_rename (needed for TM <4.23)
+   # Best practice: set globally for consistent Mac behavior, override per-share only if needed.
    fruit:resource = file
+   fruit:metadata = stream
    fruit:veto_appledouble = no
    {{if versionAtLeast .samba_version 4 22 -}}
    {{- else -}}
@@ -52,10 +66,8 @@
    fruit:wipe_intentionally_left_blank_rfork = yes
    fruit:zero_file_id = yes
    fruit:delete_empty_adfiles = yes
-   fruit:copyfile = yes
-   fruit:nfs_aces = no
-   fruit:metadata = stream
-   fruit:veto_appledouble = no
+
+   # Spotlight backend (optional, for search integration)
    spotlight = yes
 
    # Performance Enhancements for network
@@ -147,17 +159,17 @@
 {{ end }}
 
 # TM:{{ if has .data.fs $unsupported }}unsupported{{else}}{{ .data.timemachine }}{{ end }} US:{{ .data.users|default .username|join "," }} {{ .data.ro_users|join "," }}{{- if .medialibrary.enable }}{{ if .data.usage }} CL:{{ .data.usage }}{{ end }} FS:{{ .data.fs | default "native" }} {{ if .data.recycle_bin_enabled }}RECYCLEBIN{{ end }} {{ end }}
+# Note:"Setting vfs objects in a share will overwrite the globally configured option, it will NOT supplement them."
 {{- if and .data.timemachine (has .data.fs $unsupported | not ) }}
-   vfs objects = catia fruit streams_xattr{{ if .data.recycle_bin_enabled }} recycle{{ end }}
+   vfs objects = acl_xattr catia fruit streams_xattr{{ if .data.recycle_bin_enabled }} recycle{{ end }}
 
    # Time Machine Settings Ref: https://github.com/markthomas93/samba.apple.templates
    fruit:time machine = yes
    {{ if .data.TimeMachineMaxSize -}}
    fruit:time machine max size = {{ .data.TimeMachineMaxSize }}
    {{- end }}
-   fruit:metadata = stream
 {{ else }}
-   vfs objects = catia{{ if .data.recycle_bin_enabled }} recycle{{ end }}{{/*- printf "/*%#v* /" . -*/}}
+   vfs objects = acl_xattr catia fruit {{ if .data.recycle_bin_enabled }} recycle{{ end }}{{/*- printf "/*%#v* /" . -*/}}
 {{ end }}
 
 {{ end }}
