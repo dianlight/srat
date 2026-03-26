@@ -1,3 +1,4 @@
+// Test that TimeMachineSupport=supported renders correct fruit section in the config
 package service_test
 
 import (

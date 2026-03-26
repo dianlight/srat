@@ -29,9 +29,9 @@ Resolve Time Machine backup failures on macOS Tahoe (macOS 15+) connecting to Sa
 ## 📝 Task List
 
 - [x] Task 1: Research and document the Samba parameters required for macOS Tahoe Time Machine compatibility — focus on `fruit:model`, `fruit:metadata`, `fruit:posix_rename`, `server signing`, `smb3 unix extensions`
-- [ ] Task 2: Update `smb.gtpl` Time Machine share block with the verified parameter set (add any missing `fruit:` options, ensure `vfs objects` order is correct)
-- [ ] Task 3: Add global `smb.conf` options for SMB signing compatibility: `server signing = auto` (or `required` if needed) and `ntlm auth = ntlmv2-only`
-- [ ] Task 4: Add a documentation page `docs/TIMEMACHINE_COMPATIBILITY.md` covering the required Samba parameters and macOS version compatibility matrix
+- [x] Task 2: Update `smb.gtpl` Time Machine share block with the verified parameter set (add any missing `fruit:` options, ensure `vfs objects` order is correct)
+- [x] Task 3: Add global `smb.conf` options for SMB signing compatibility: `server signing = auto` (or `required` if needed) and `ntlm auth = ntlmv2-only`
+- [x] Task 4: Add a documentation page `docs/TIMEMACHINE_COMPATIBILITY.md` covering the required Samba parameters and macOS version compatibility matrix
 - [ ] Task 5: Unit tests — template rendering with `TimeMachineSupport = "supported"`: verify `fruit:` section is present and contains required keys
 - [ ] Task 6: Regression test — template rendering with `TimeMachineSupport = "unsupported"`: verify `fruit:` section is absent
 - [ ] Task 7: Add a note on UI on Time Machine share switch if Compatibility mode is enabled that it may not work with macOS 15+. Also add a note con Compatibility Switch on UI that it can cause issues with macOS 15+ Time Machine backups.

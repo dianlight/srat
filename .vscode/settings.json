@@ -244,5 +244,8 @@
     "vscode-notebook-cell"
   ],
   "chat.imageCarousel.enabled": true,
-  "imageCarousel.explorerContextMenu.enabled": true
+  "imageCarousel.explorerContextMenu.enabled": true,
+  "workbench.fontAliasing": "auto",
+  "markdown.preview.fontSize": 12,
+  "editor.fontFamily": "Fira Code,Menlo, Monaco, 'Courier New', monospace"
 }
