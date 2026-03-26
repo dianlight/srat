@@ -155,8 +155,6 @@
    guest ok = yes
    {{- end }}
 
-
-
 # DEBUG: {{ toJson .data  }}|$name={{ $name }}|.shares={{ .shares }}|
 
 {{if .data.recycle_bin_enabled }}
@@ -175,7 +173,7 @@
 # TM:{{ if has .data.fs $unsupported }}unsupported{{else}}{{ .data.timemachine }}{{ end }} US:{{ .data.users|default .username|join "," }} {{ .data.ro_users|join "," }}{{- if .medialibrary.enable }}{{ if .data.usage }} CL:{{ .data.usage }}{{ end }} FS:{{ .data.fs | default "native" }} {{ if .data.recycle_bin_enabled }}RECYCLEBIN{{ end }} {{ end }}
 # Note:"Setting vfs objects in a share will overwrite the globally configured option, it will NOT supplement them."
 {{- if and .data.timemachine (has .data.fs $unsupported | not ) }}
-   vfs objects = acl_xattr catia fruit streams_xattr{{ if .data.recycle_bin_enabled }} recycle{{ end }}
+   vfs objects = acl_xattr catia fruit streams_xattr{{- if .data.recycle_bin_enabled -}} recycle{{- end }}
 
    # Time Machine Settings Ref: https://github.com/markthomas93/samba.apple.templates
    fruit:time machine = yes
@@ -183,7 +181,8 @@
    fruit:time machine max size = {{ .data.TimeMachineMaxSize }}
    {{- end }}
 {{ else }}
-   vfs objects = acl_xattr catia fruit {{ if .data.recycle_bin_enabled }} recycle{{ end }}{{/*- printf "/*%#v* /" . -*/}}
+   vfs objects = acl_xattr catia fruit{{- if .data.recycle_bin_enabled }} recycle{{- end }}
+   
 {{ end }}
 
 {{ end }}
