@@ -141,7 +141,14 @@ describe("SmartStatusPanel Component", () => {
                     }),
                 );
 
-                await waitForElementToBeRemoved(() => container.firstChild);
+                try {
+                    await waitForElementToBeRemoved(() => container.firstChild, { timeout: 15000 });
+                } catch (err) {
+                    // Print debug output if the element is not removed
+                    // eslint-disable-next-line no-console
+                    console.error("[DEBUG] SmartStatusPanel not removed. Container HTML:", container.innerHTML);
+                    throw err;
+                }
             },
         );
     });
