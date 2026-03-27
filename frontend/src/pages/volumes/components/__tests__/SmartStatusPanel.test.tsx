@@ -140,6 +140,9 @@ describe("SmartStatusPanel Component", () => {
                         }),
                     }),
                 );
+                console.log("[DEBUG] After render - container.firstChild:", container.firstChild);
+                // Log the full store state for debugging (cast to any to avoid TS errors)
+                console.log("[DEBUG] Full store state:", (store.getState() as any));
 
                 try {
                     await waitForElementToBeRemoved(() => container.firstChild, { timeout: 60000 });
