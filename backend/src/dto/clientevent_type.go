@@ -5,5 +5,5 @@ type clientEventType int
 
 const (
 	clientEventTypeHelo            clientEventType = iota // "helo"
-	clientEventTypeRepairLifecycle                         // "repair_lifecycle"
+	clientEventTypeRepairLifecycle                        // "repair_lifecycle"
 )

@@ -12,8 +12,8 @@
    client min protocol = NT1
    server min protocol = NT1
    {{- else -}}
-   server min protocol = SMB2_10
    client min protocol = SMB2_10
+   server min protocol = SMB2_10
    {{- end }}
 
    {{if not .multi_channel -}}
@@ -89,16 +89,12 @@
    # --- SMB signing and authentication compatibility for macOS 15+ (Tahoe) ---
    # See: https://wiki.samba.org/index.php/Configure_Samba_to_Work_Better_with_Mac_OS_X
    # server signing: required for macOS 15+ Time Machine, but only supported in Samba >= 4.0
-   {{if versionAtLeast .samba_version 4 0 -}}
    server signing = auto
-   {{- end }}
    # ntlm auth: restrict to ntlmv2-only for security (Samba >= 4.8), but always allow for NT1 compatibility mode
    {{if .compatibility_mode -}}
    ntlm auth = yes
-   {{- else if versionAtLeast .samba_version 4 8 -}}
-   ntlm auth = ntlmv2-only
    {{- else -}}
-   ntlm auth = yes
+   ntlm auth = ntlmv2-only
    {{- end }}
    {{if .allow_guest -}}
    guest account = nobody
@@ -182,7 +178,7 @@
    {{- end }}
 {{ else }}
    vfs objects = acl_xattr catia fruit{{- if .data.recycle_bin_enabled }} recycle{{- end }}
-   
+
 {{ end }}
 
 {{ end }}
