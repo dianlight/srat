@@ -84,7 +84,7 @@ describe("SmartStatusPanel Component", () => {
 
     it("should not render when SMART integration is disabled in settings", async () => {
         const React = await import("react");
-        const { render, waitFor } = await import("@testing-library/react");
+        const { render } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { http, HttpResponse } = await import("msw");
         const { SmartStatusPanel } = await import("../SmartStatusPanel");
@@ -109,7 +109,8 @@ describe("SmartStatusPanel Component", () => {
             disable_smart: true,
         } as any;
 
-        // Increased timeout for CI stability
+        // Refactored to event-based assertion for CI stability
+        const { waitForElementToBeRemoved } = await import("@testing-library/react");
         await withTestHandlers(
             [
                 http.get("/api/settings", () => HttpResponse.json(settingsPayload)),
@@ -140,9 +141,7 @@ describe("SmartStatusPanel Component", () => {
                     }),
                 );
 
-                await waitFor(() => {
-                    expect(container.firstChild).toBeNull();
-                }, { timeout: 15000 }); // Increased from 1500ms to 5000ms for CI
+                await waitForElementToBeRemoved(() => container.firstChild);
             },
         );
     });
