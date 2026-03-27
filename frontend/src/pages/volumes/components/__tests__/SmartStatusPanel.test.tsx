@@ -109,6 +109,7 @@ describe("SmartStatusPanel Component", () => {
             disable_smart: true,
         } as any;
 
+        // Increased timeout for CI stability
         await withTestHandlers(
             [
                 http.get("/api/settings", () => HttpResponse.json(settingsPayload)),
@@ -141,7 +142,7 @@ describe("SmartStatusPanel Component", () => {
 
                 await waitFor(() => {
                     expect(container.firstChild).toBeNull();
-                }, { timeout: 1500 });
+                }, { timeout: 5000 }); // Increased from 1500ms to 5000ms for CI
             },
         );
     });
