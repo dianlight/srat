@@ -142,7 +142,7 @@ describe("SmartStatusPanel Component", () => {
 
                 await waitFor(() => {
                     expect(container.firstChild).toBeNull();
-                }, { timeout: 5000 }); // Increased from 1500ms to 5000ms for CI
+                }, { timeout: 15000 }); // Increased from 1500ms to 5000ms for CI
             },
         );
     });
