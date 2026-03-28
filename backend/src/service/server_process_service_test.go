@@ -1,3 +1,4 @@
+// Test that TimeMachineSupport=supported renders correct fruit section in the config
 package service_test
 
 import (
@@ -14,6 +15,7 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
@@ -215,9 +217,23 @@ func (suite *ServerProcessServiceSuite) TearDownTest() {
 	suite.app.RequireStop()
 }
 
+func (suite *ServerProcessServiceSuite) SetupSubTest() {
+	// Just a sanity check to ensure that the test setup is working and mocks are properly injected
+	suite.SetupTest()
+	suite.setupSharesMocks()
+}
+
+func (suite *ServerProcessServiceSuite) TearDownSubTest() {
+	suite.TearDownTest()
+}
+
 // Helper function to setup common test data
 func (suite *ServerProcessServiceSuite) setupCommonMocks() {
+	suite.setupSettingsMocks()
+	suite.setupSharesMocks()
+}
 
+func (suite *ServerProcessServiceSuite) setupSettingsMocks() {
 	mock.When(suite.setting_service.Load()).ThenReturn(&dto.Settings{
 		Hostname:          "test-host",
 		Workgroup:         "WORKGROUP",
@@ -229,7 +245,8 @@ func (suite *ServerProcessServiceSuite) setupCommonMocks() {
 		HAUseNFS:          new(true),
 		AllowGuest:        new(false),
 	}, nil)
-
+}
+func (suite *ServerProcessServiceSuite) setupSharesMocks() {
 	mock.When(suite.share_service.ListShares()).ThenReturn([]dto.SharedResource{
 		{
 			Name: "CONFIG",
@@ -440,12 +457,22 @@ func (suite *ServerProcessServiceSuite) compareConfigSections(generatedConfig *[
 }
 
 // readTargetConfVariant reads the smb.conf file for a given variant (currently only default is used)
-func readTargetConfVariant(variants []string) ([]byte, error) {
+func readTargetConfVariant(variants []string, version semver.Version) ([]byte, error) {
 	// For now, ignore variant and always read the default test config
 	bytes, err := os.ReadFile("../../test/data/smb.conf")
-	if len(variants) == 0 {
-		variants = []string{"def"}
+
+	// Generate automatic version tag in the form >(version) or <(version) based on the version parameter
+	// The version in the tag are only mayor and minor, patch is ignored for simplicity since we only have major version boundaries in the config template
+	// If version is 4.22.0, the tag will be >4.22 and generate all tag  for older  versions
+	baseVersion := semver.New(4, 21, 0, "", "")
+	var versionTags []string
+	for v := *baseVersion; v.Major() <= version.Major(); v = v.IncMajor() {
+		for ; v.Minor() <= version.Minor(); v = v.IncMinor() {
+			versionTags = append(versionTags, fmt.Sprintf(">%d.%d", v.Major(), v.Minor()))
+		}
 	}
+
+	variants = append(variants, versionTags...)
 
 	// Read all bytes line by line and filter out all line non conatining the variant.
 	// The variant lines are in the form !<tag>,<tag2>,.. <content>
@@ -454,18 +481,52 @@ func readTargetConfVariant(variants []string) ([]byte, error) {
 	for scanner.Scan() {
 		line := scanner.Text()
 		trimmedLine := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmedLine, "!") {
+		if len(trimmedLine) == 0 {
+			filteredLines = append(filteredLines, line)
+			continue
+		}
+		prefix := trimmedLine[0:1]
+		if prefix == "|" || prefix == "&" || prefix == "!" {
 			parts := strings.SplitN(trimmedLine[1:], " ", 2)
 			if len(parts) == 2 {
 				tags := strings.Split(parts[0], ",")
-				for _, tag := range tags {
-					if slices.Contains(variants, tag) {
-						filteredLines = append(filteredLines, parts[1])
-						break
+				switch prefix {
+				case "|":
+					// OR - include line if any tag matches
+					for _, tag := range tags {
+						if slices.Contains(variants, tag) {
+							filteredLines = append(filteredLines, parts[1])
+							break
+						}
 					}
+				case "&":
+					// AND - include line if all tags match (for simplicity, we will treat it as OR since we don't have complex combinations in the test config)
+					mtc := 0
+					for _, tag := range tags {
+						if slices.Contains(variants, tag) {
+							mtc++
+						}
+					}
+					if mtc == len(tags) {
+						filteredLines = append(filteredLines, parts[1])
+					}
+				case "!":
+					// NOT - include line if one of the tags match
+					mtc := 0
+					for _, tag := range tags {
+						if slices.Contains(variants, tag) {
+							mtc++
+						}
+					}
+					if mtc == 0 {
+						filteredLines = append(filteredLines, parts[1])
+					}
+				default:
+					// Invalid prefix, treat as normal line
+					filteredLines = append(filteredLines, line)
 				}
 			} else {
-				// If line starts with ! but doesn't have a space, treat it as normal line (could be a comment or malformed line)
+				// If line starts with |,! or & but doesn't have a space, treat it as normal line (could be a comment or malformed line)
 				filteredLines = append(filteredLines, line)
 			}
 		} else {
@@ -477,6 +538,90 @@ func readTargetConfVariant(variants []string) ([]byte, error) {
 	return []byte(filteredContent), err
 }
 
+func (suite *ServerProcessServiceSuite) TestCreateConfigStream_AllVersionAndMode() {
+	version := []semver.Version{
+		*semver.New(4, 21, 0, "", ""),
+		*semver.New(4, 22, 0, "", ""),
+		*semver.New(4, 23, 0, "", ""),
+		*semver.New(4, 24, 0, "", ""),
+	}
+
+	variants := [][]string{
+		{},
+		{"ipv4"},
+		{"cmp_mode"},
+		{"ipv4", "cmp_mode"},
+		{"mch"},
+		{"ipv4", "mch"},
+		{"cmp_mode", "mch"},
+		{"ipv4", "cmp_mode", "mch"},
+		{"guest"},
+		{"ipv4", "guest"},
+		{"cmp_mode", "guest"},
+		{"ipv4", "cmp_mode", "guest"},
+		{"mch", "guest"},
+		{"ipv4", "mch", "guest"},
+		{"cmp_mode", "mch", "guest"},
+		{"ipv4", "cmp_mode", "mch", "guest"},
+		{"nomaster"},
+		{"ipv4", "nomaster"},
+		{"cmp_mode", "nomaster"},
+		{"ipv4", "cmp_mode", "nomaster"},
+		{"mch", "nomaster"},
+		{"ipv4", "mch", "nomaster"},
+		{"cmp_mode", "mch", "nomaster"},
+		{"ipv4", "cmp_mode", "mch", "nomaster"},
+		//{"ball"},
+	}
+
+	for _, v := range version {
+		for _, variant := range variants {
+			suite.Run(fmt.Sprintf("SambaVersion_%s_Variant_%v", v.String(), variant), func() {
+				defer osutil.MockSambaVersion(v.String())()
+				//suite.setupCommonMocks()
+				//suite.T().Logf("Compatibility mode: %v, Multi-channel: %v, Disable IPv6: %v", slices.Contains(variant, "cmp_mode"), slices.Contains(variant, "mch"), slices.Contains(variant, "ipv4"))
+				mock.When(suite.setting_service.Load()).ThenReturn(&dto.Settings{
+					Hostname:          "test-host",
+					Workgroup:         "WORKGROUP",
+					AllowHost:         []string{"10.0.0.0/8", "100.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "169.254.0.0/16", "fe80::/10", "fc00::/7"},
+					Interfaces:        []string{"wlan0", "end0"},
+					BindAllInterfaces: false,
+					CompatibilityMode: slices.Contains(variant, "cmp_mode"),
+					MultiChannel:      slices.Contains(variant, "mch"),
+					LocalMaster:       new(!slices.Contains(variant, "nomaster")),
+					HAUseNFS:          new(true),
+					AllowGuest:        new(slices.Contains(variant, "guest")),
+				}, nil)
+				targetServerService := suite.serverService
+				targetState := *suite.state
+				if slices.Contains(variant, "ipv4") {
+					targetState.DisableIPv6 = true
+				}
+				targetServerService.SetState(&targetState)
+
+				settings, _ := suite.setting_service.Load()
+				suite.T().Logf("Actual settings for test: variant=%#v, settings=%#v", variant, settings)
+
+				stream, errE := suite.serverService.CreateSambaConfigStream()
+				suite.Require().NoError(errE)
+				suite.NotNil(stream)
+
+				fsbyte, err := readTargetConfVariant(variant, v)
+				suite.Require().NoError(err)
+
+				var re = regexp.MustCompile(`(?m)^\[([^[]+)\]\n(?:^[^[].*\n+)+`)
+
+				var expected = make(map[string]string)
+				for _, match := range re.FindAllStringSubmatch(string(fsbyte), -1) {
+					expected[match[1]] = strings.TrimSpace(match[0])
+				}
+
+				suite.compareConfigSections(stream, fmt.Sprintf("SambaVersion_%s", v.String()), expected)
+			})
+		}
+	}
+}
+
 // Base test with Samba 4.23 (latest modern version)
 func (suite *ServerProcessServiceSuite) TestCreateConfigStream() {
 	defer osutil.MockSambaVersion("4.23.0")()
@@ -486,7 +631,7 @@ func (suite *ServerProcessServiceSuite) TestCreateConfigStream() {
 	suite.Require().NoError(errE)
 	suite.NotNil(stream)
 
-	fsbyte, err := readTargetConfVariant(nil)
+	fsbyte, err := readTargetConfVariant(nil, *semver.New(4, 23, 0, "", ""))
 	suite.Require().NoError(err)
 
 	var re = regexp.MustCompile(`(?m)^\[([^[]+)\]\n(?:^[^[].*\n+)+`)
@@ -513,7 +658,7 @@ func (suite *ServerProcessServiceSuite) TestCreateConfigStreamIPv4() {
 	suite.Require().NoError(errE)
 	suite.NotNil(stream)
 
-	fsbyte, err := readTargetConfVariant([]string{"ipv4"})
+	fsbyte, err := readTargetConfVariant([]string{"ipv4"}, *semver.New(4, 23, 0, "", ""))
 	suite.Require().NoError(err)
 
 	var re = regexp.MustCompile(`(?m)^\[([^[]+)\]\n(?:^[^[].*\n+)+`)
@@ -939,7 +1084,7 @@ func (suite *ResolveInterfaceIPv4sSuite) TestResolveInterfaceIPv4s_IPv6Only() {
 	result := service.ResolveInterfaceIPv4s([]string{"eth0"})
 	//suite.Contains(result, "127.0.0.1")
 	suite.NotContains(result, "2001:db8::1")
-	suite.Len(result, 0)
+	suite.Empty(result)
 }
 
 func (suite *ResolveInterfaceIPv4sSuite) TestResolveInterfaceIPv4s_DualStack() {
@@ -984,7 +1129,7 @@ func (suite *ResolveInterfaceIPv4sSuite) TestResolveInterfaceIPv4s_MissingInterf
 
 	result := service.ResolveInterfaceIPv4s([]string{"eth0", "nonexistent"})
 	//suite.Contains(result, "127.0.0.1", "should still include loopback")
-	suite.Len(result, 0)
+	suite.Empty(result)
 }
 
 func (suite *ResolveInterfaceIPv4sSuite) TestResolveInterfaceIPv4s_MultipleInterfaces() {

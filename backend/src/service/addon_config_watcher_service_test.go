@@ -7,13 +7,13 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
 	"testing"
 	"time"
-	"io"
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
@@ -191,15 +191,15 @@ func (s *AddonConfigWatcherServiceSuite) TestHashFile_ReturnsCorrectDigest() {
 
 	svc := &AddonConfigWatcherService{}
 	got, err := svc.hashFile(path)
-	require.NoError(s.T(), err)
-	assert.Equal(s.T(), sha256hex(content), got)
+	s.Require().NoError(err)
+	s.Equal(sha256hex(content), got)
 }
 
 // TestHashFile_MissingFile verifies hashFile returns an error for a non-existent path.
 func (s *AddonConfigWatcherServiceSuite) TestHashFile_MissingFile() {
 	svc := &AddonConfigWatcherService{}
 	_, err := svc.hashFile(filepath.Join(s.tmpDir, "nonexistent.json"))
-	assert.Error(s.T(), err)
+	s.Error(err)
 }
 
 // TestHashFile_EmptyFile verifies hashFile succeeds on an empty (zero-byte) file.
@@ -207,8 +207,8 @@ func (s *AddonConfigWatcherServiceSuite) TestHashFile_EmptyFile() {
 	path := s.writeOptionsFile(nil)
 	svc := &AddonConfigWatcherService{}
 	got, err := svc.hashFile(path)
-	require.NoError(s.T(), err)
-	assert.Equal(s.T(), sha256hex(nil), got)
+	s.Require().NoError(err)
+	s.Equal(sha256hex(nil), got)
 }
 
 // TestMaybeNotify_NoCallOnSameHash verifies onChanged is NOT called when the hash is unchanged.
@@ -220,7 +220,7 @@ func (s *AddonConfigWatcherServiceSuite) TestMaybeNotify_NoCallOnSameHash() {
 	}
 
 	svc.maybeNotify("/data/options.json", "abc123")
-	assert.Equal(s.T(), 0, callCount)
+	s.Equal(0, callCount)
 }
 
 // TestMaybeNotify_CallOnNewHash verifies onChanged IS called with correct args when the hash changes.
@@ -235,8 +235,8 @@ func (s *AddonConfigWatcherServiceSuite) TestMaybeNotify_CallOnNewHash() {
 	}
 
 	svc.maybeNotify("/data/options.json", "def456")
-	assert.Equal(s.T(), "/data/options.json", gotPath)
-	assert.Equal(s.T(), "def456", gotHash)
+	s.Equal("/data/options.json", gotPath)
+	s.Equal("def456", gotHash)
 }
 
 // TestMaybeNotify_NoDuplicateAfterChange verifies repeating the same new hash does not re-trigger.
@@ -249,7 +249,7 @@ func (s *AddonConfigWatcherServiceSuite) TestMaybeNotify_NoDuplicateAfterChange(
 
 	svc.maybeNotify("/data/options.json", "def456") // first change → call
 	svc.maybeNotify("/data/options.json", "def456") // same hash again → no second call
-	assert.Equal(s.T(), 1, callCount)
+	s.Equal(1, callCount)
 }
 
 // TestMaybeNotify_ConcurrentSafety verifies concurrent calls do not data-race.
@@ -275,8 +275,8 @@ func (s *AddonConfigWatcherServiceSuite) TestMaybeNotify_ConcurrentSafety() {
 	}
 	wg.Wait()
 	// Each goroutine supplies a unique hash; dedup must not panic and must not exceed 20 calls.
-	assert.GreaterOrEqual(s.T(), callCount, 1)
-	assert.LessOrEqual(s.T(), callCount, 20)
+	s.GreaterOrEqual(callCount, 1)
+	s.LessOrEqual(callCount, 20)
 }
 
 // TestWatchViaFsnotify_DetectsWrite verifies the fsnotify watcher detects a file write
@@ -316,7 +316,7 @@ func (s *AddonConfigWatcherServiceSuite) TestWatchViaFsnotify_DetectsWrite() {
 
 	// Overwrite with new content.
 	newContent := []byte(`{"workgroup":"NEW"}`)
-	require.NoError(s.T(), os.WriteFile(path, newContent, 0600))
+	s.Require().NoError(os.WriteFile(path, newContent, 0600))
 
 	// Debug: print file contents and hash after write
 	f, err := os.Open(path)
@@ -329,7 +329,7 @@ func (s *AddonConfigWatcherServiceSuite) TestWatchViaFsnotify_DetectsWrite() {
 
 	select {
 	case gotHash := <-changed:
-		assert.Equal(s.T(), sha256hex(newContent), gotHash)
+		s.Equal(sha256hex(newContent), gotHash)
 	case <-time.After(3 * time.Second):
 		s.Fail("fsnotify did not detect file change within 3 s")
 	}
@@ -368,7 +368,7 @@ func (s *AddonConfigWatcherServiceSuite) TestWatchViaSupervisorEvents_RetriesUnt
 		svc.watchViaSupervisorEvents()
 	}()
 
-	require.Eventually(s.T(), func() bool {
+	s.Require().Eventually(func() bool {
 		return wsClient.Attempts() >= 2
 	}, time.Second, 10*time.Millisecond)
 
@@ -376,7 +376,7 @@ func (s *AddonConfigWatcherServiceSuite) TestWatchViaSupervisorEvents_RetriesUnt
 
 	select {
 	case gotHash := <-changed:
-		assert.Equal(s.T(), sha256hex(content), gotHash)
+		s.Equal(sha256hex(content), gotHash)
 	case <-time.After(time.Second):
 		s.Fail("supervisor event subscription did not retry and emit a change notification")
 	}
@@ -436,7 +436,7 @@ func (s *AddonConfigWatcherServiceSuite) TestParseSupervisorAddonConfigChanged_A
 
 func (s *AddonConfigWatcherServiceSuite) TestParseSupervisorAddonConfigChanged_InvalidJSON() {
 	_, _, _, err := parseSupervisorAddonConfigChanged(json.RawMessage(`{"data":`))
-	require.Error(s.T(), err)
+	s.Require().Error(err)
 }
 
 func (s *AddonConfigWatcherServiceSuite) TestHashObservedConfig_UsesSupervisorOptionsWhenAvailable() {
@@ -454,9 +454,9 @@ func (s *AddonConfigWatcherServiceSuite) TestHashObservedConfig_UsesSupervisorOp
 	}
 
 	hash, err := svc.hashObservedConfig()
-	require.NoError(s.T(), err)
-	assert.Equal(s.T(), sha256hexJSON(s.T(), addonClient.options), hash)
-	assert.Equal(s.T(), supervisorOptionsSource, svc.observedConfigPath())
+	s.Require().NoError(err)
+	s.Equal(sha256hexJSON(s.T(), addonClient.options), hash)
+	s.Equal(supervisorOptionsSource, svc.observedConfigPath())
 }
 
 // TestWatchViaFsnotify_MockWatcher_DebouncesAndDedups verifies the fsnotify path
@@ -497,7 +497,7 @@ func (s *AddonConfigWatcherServiceSuite) TestWatchViaFsnotify_MockWatcher_Deboun
 	}()
 
 	newContent := []byte(`{"workgroup":"NEW"}`)
-	require.NoError(s.T(), os.WriteFile(path, newContent, 0600))
+	s.Require().NoError(os.WriteFile(path, newContent, 0600))
 
 	// Duplicate rapid events should be coalesced by debounce logic.
 	mw.events <- fsnotify.Event{Name: path, Op: fsnotify.Write}
@@ -505,7 +505,7 @@ func (s *AddonConfigWatcherServiceSuite) TestWatchViaFsnotify_MockWatcher_Deboun
 
 	select {
 	case gotHash := <-changed:
-		assert.Equal(s.T(), sha256hex(newContent), gotHash)
+		s.Equal(sha256hex(newContent), gotHash)
 	case <-time.After(2 * time.Second):
 		s.Fail("mock fsnotify watcher did not emit change within 2 s")
 	}
@@ -517,12 +517,12 @@ func (s *AddonConfigWatcherServiceSuite) TestWatchViaFsnotify_MockWatcher_Deboun
 		// expected: no second emit
 	}
 
-	assert.Equal(s.T(), path, mw.addedPath)
+	s.Equal(path, mw.addedPath)
 
 	cancel()
 	close(mw.events)
 	wg.Wait()
-	assert.True(s.T(), mw.closed)
+	s.True(mw.closed)
 }
 
 // TestWatchViaTicker_FallbackDetectsWrite verifies ticker fallback detects file changes
@@ -558,11 +558,11 @@ func (s *AddonConfigWatcherServiceSuite) TestWatchViaTicker_FallbackDetectsWrite
 	}()
 
 	newContent := []byte(`{"workgroup":"NEW"}`)
-	require.NoError(s.T(), os.WriteFile(path, newContent, 0600))
+	s.Require().NoError(os.WriteFile(path, newContent, 0600))
 
 	select {
 	case gotHash := <-changed:
-		assert.Equal(s.T(), sha256hex(newContent), gotHash)
+		s.Equal(sha256hex(newContent), gotHash)
 	case <-time.After(2 * time.Second):
 		s.Fail("ticker fallback did not detect options file change within 2 s")
 	}
@@ -611,8 +611,8 @@ func (s *AddonConfigWatcherServiceSuite) TestWatchViaTicker_UsesSupervisorOption
 
 	select {
 	case got := <-changed:
-		assert.Equal(s.T(), supervisorOptionsSource, got.path)
-		assert.Equal(s.T(), sha256hexJSON(s.T(), map[string]any{"clean_upgrade_dir": true}), got.hash)
+		s.Equal(supervisorOptionsSource, got.path)
+		s.Equal(sha256hexJSON(s.T(), map[string]any{"clean_upgrade_dir": true}), got.hash)
 	case <-time.After(2 * time.Second):
 		s.Fail("ticker did not detect supervisor addon options change within 2 s")
 	}
@@ -646,9 +646,9 @@ func (s *AddonConfigWatcherServiceSuite) TestEmitChanged_EmitsAppConfigEvent() {
 
 	select {
 	case ev := <-received:
-		assert.Equal(s.T(), events.EventTypes.UPDATE, ev.Type)
-		assert.Equal(s.T(), "/data/options.json", ev.Path)
-		assert.Equal(s.T(), "deadbeef", ev.Hash)
+		s.Equal(events.EventTypes.UPDATE, ev.Type)
+		s.Equal("/data/options.json", ev.Path)
+		s.Equal("deadbeef", ev.Hash)
 	case <-time.After(2 * time.Second):
 		s.Fail("AppConfigEvent was not emitted within 2 s")
 	}
@@ -661,7 +661,7 @@ func (s *AddonConfigWatcherServiceSuite) TestEmitChanged_NilEventBus() {
 		eventBus: nil,
 	}
 	// Must not panic.
-	assert.NotPanics(s.T(), func() {
+	s.NotPanics(func() {
 		svc.emitChanged("/data/options.json", "deadbeef")
 	})
 }
@@ -677,12 +677,12 @@ func (s *AddonConfigWatcherServiceSuite) TestEmitChanged_CreatesRepairIssue() {
 	}
 	svc.emitChanged("/data/options.json", "abc123")
 	repair, ok := rs.Get("addon_config_changed")
-	require.True(s.T(), ok, "repair issue should exist after emitChanged")
-	assert.Equal(s.T(), "addon_config_changed", repair.RepairID)
-	assert.Equal(s.T(), dto.RepairIssueSeverityWarning, repair.Command.Severity)
-	assert.Equal(s.T(), dto.RepairCommandActionUpsert, repair.Command.Action)
-	assert.False(s.T(), repair.Command.IsFixable)
-	assert.True(s.T(), repair.Command.IsPersistent)
+	s.Require().True(ok, "repair issue should exist after emitChanged")
+	s.Equal("addon_config_changed", repair.RepairID)
+	s.Equal(dto.RepairIssueSeverityWarning, repair.Command.Severity)
+	s.Equal(dto.RepairCommandActionUpsert, repair.Command.Action)
+	s.False(repair.Command.IsFixable)
+	s.True(repair.Command.IsPersistent)
 }
 
 // TestEmitChanged_BroadcastsRepairCommand verifies that emitChanged immediately
@@ -699,11 +699,11 @@ func (s *AddonConfigWatcherServiceSuite) TestEmitChanged_BroadcastsRepairCommand
 
 	svc.emitChanged("/data/options.json", "abc123")
 
-	require.Len(s.T(), b.messages, 1)
+	s.Require().Len(b.messages, 1)
 	cmd, ok := b.messages[0].(dto.RepairCommandMessage)
-	require.True(s.T(), ok, "expected a repair command broadcast")
-	assert.Equal(s.T(), "addon_config_changed", cmd.RepairID)
-	assert.Equal(s.T(), dto.RepairCommandActionUpsert, cmd.Action)
+	s.Require().True(ok, "expected a repair command broadcast")
+	s.Equal("addon_config_changed", cmd.RepairID)
+	s.Equal(dto.RepairCommandActionUpsert, cmd.Action)
 }
 
 // TestEmitChanged_DuplicateRepairStillBroadcasts verifies that duplicate repair
@@ -721,11 +721,11 @@ func (s *AddonConfigWatcherServiceSuite) TestEmitChanged_DuplicateRepairStillBro
 	svc.emitChanged("/data/options.json", "abc123")
 	svc.emitChanged("/data/options.json", "xyz456")
 
-	require.Len(s.T(), b.messages, 2)
+	s.Require().Len(b.messages, 2)
 	cmd, ok := b.messages[1].(dto.RepairCommandMessage)
-	require.True(s.T(), ok, "expected a repair command broadcast")
-	assert.Equal(s.T(), "addon_config_changed", cmd.RepairID)
-	assert.Equal(s.T(), dto.RepairCommandActionUpsert, cmd.Action)
+	s.Require().True(ok, "expected a repair command broadcast")
+	s.Equal("addon_config_changed", cmd.RepairID)
+	s.Equal(dto.RepairCommandActionUpsert, cmd.Action)
 }
 
 // TestEmitChanged_RepairAlreadyExists_NoPanic verifies that a second emitChanged call
@@ -739,7 +739,7 @@ func (s *AddonConfigWatcherServiceSuite) TestEmitChanged_RepairAlreadyExists_NoP
 	}
 	svc.emitChanged("/data/options.json", "abc123")
 	// Second call should not panic even though the repair already exists.
-	assert.NotPanics(s.T(), func() {
+	s.NotPanics(func() {
 		svc.emitChanged("/data/options.json", "xyz456")
 	})
 }
@@ -753,8 +753,8 @@ func (s *AddonConfigWatcherServiceSuite) TestEmitChanged_FallsBackToNotification
 		haService: stub,
 	}
 	svc.emitChanged("/data/options.json", "abc123")
-	assert.True(s.T(), stub.notifCalled, "CreatePersistentNotification should have been called")
-	assert.Equal(s.T(), "addon_config_changed", stub.notifID)
+	s.True(stub.notifCalled, "CreatePersistentNotification should have been called")
+	s.Equal("addon_config_changed", stub.notifID)
 }
 
 // stubHAService implements HomeAssistantServiceInterface for testing the HA fallback path.
@@ -840,7 +840,7 @@ func (s *AddonConfigWatcherServiceSuite) TestIntegration_EndToEnd_FileWriteEmits
 
 	// Seed initial hash
 	initialHash, err := svc.hashFile(path)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 	svc.lastHash = initialHash
 
 	// Set default onChanged to emit events
@@ -863,14 +863,35 @@ func (s *AddonConfigWatcherServiceSuite) TestIntegration_EndToEnd_FileWriteEmits
 
 	// Write new content to the file
 	newContent := []byte(`{"workgroup":"NEW","name":"test"}`)
-	require.NoError(s.T(), os.WriteFile(path, newContent, 0600))
+	s.Require().NoError(os.WriteFile(path, newContent, 0600))
+
+	// Ensure file is fully flushed and non-empty before proceeding (fix race)
+	f, err := os.Open(path)
+	s.Require().NoError(err)
+	err = f.Sync()
+	f.Close()
+	s.Require().NoError(err)
+
+	// Optionally poll file size to ensure write is visible
+	deadline := time.Now().Add(1 * time.Second)
+	for {
+		fi, err := os.Stat(path)
+		s.Require().NoError(err)
+		if fi.Size() >= int64(len(newContent)) {
+			break
+		}
+		if time.Now().After(deadline) {
+			s.FailNow("File write not visible after 1s")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
 
 	// Verify that AppConfigEvent is emitted with correct path and hash
 	select {
 	case ev := <-eventReceived:
-		assert.Equal(s.T(), events.EventTypes.UPDATE, ev.Type)
-		assert.Equal(s.T(), path, ev.Path)
-		assert.Equal(s.T(), sha256hex(newContent), ev.Hash)
+		s.Equal(events.EventTypes.UPDATE, ev.Type)
+		s.Equal(path, ev.Path)
+		s.Equal(sha256hex(newContent), ev.Hash)
 	case <-time.After(3 * time.Second):
 		s.Fail("AppConfigEvent was not emitted within 3 s after file write")
 	}
@@ -923,7 +944,7 @@ func (s *AddonConfigWatcherServiceSuite) TestIntegration_NoEventOnSameHash() {
 	}
 
 	initialHash, err := svc.hashFile(path)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 	svc.lastHash = initialHash
 	svc.onChanged = svc.emitChanged
 
@@ -938,7 +959,7 @@ func (s *AddonConfigWatcherServiceSuite) TestIntegration_NoEventOnSameHash() {
 
 	// First write with new content
 	newContent := []byte(`{"workgroup":"CHANGED"}`)
-	require.NoError(s.T(), os.WriteFile(path, newContent, 0600))
+	s.Require().NoError(os.WriteFile(path, newContent, 0600))
 	time.Sleep(300 * time.Millisecond) // allow time for event
 
 	mu.Lock()
@@ -946,7 +967,7 @@ func (s *AddonConfigWatcherServiceSuite) TestIntegration_NoEventOnSameHash() {
 	mu.Unlock()
 
 	// Second write with same content (should not trigger a new event)
-	require.NoError(s.T(), os.WriteFile(path, newContent, 0600))
+	s.Require().NoError(os.WriteFile(path, newContent, 0600))
 	time.Sleep(300 * time.Millisecond)
 
 	// Event count should not increase on the second identical write
@@ -954,7 +975,7 @@ func (s *AddonConfigWatcherServiceSuite) TestIntegration_NoEventOnSameHash() {
 	finalEventCount := eventCount
 	mu.Unlock()
 
-	assert.Equal(s.T(), firstEventCount, finalEventCount, "duplicate event emitted for same-hash write")
+	s.Equal(firstEventCount, finalEventCount, "duplicate event emitted for same-hash write")
 
 	watchCancel()
 	wg.Wait()

@@ -33,16 +33,17 @@ Implement end-to-end custom component lifecycle management for Home Assistant ad
 
 - [ ] Task 1: Add backend status detection for custom component presence in `/config/custom_components` and installed version from `manifest.json`
 - [ ] Task 2: Add/update backend APIs to expose component status, latest available version, and lifecycle actions (install/upgrade/uninstall)
-- [ ] Task 3: Custom component need to be embedded as a zip artifact (`srat.zip`) in release assets for both stable and pre-release channels, containing the necessary files to be extracted into `/config/custom_components/srat`
-- [ ] Task 4: Ensure install/upgrade use the embedded artifact or flow downloads `srat.zip` from configured channel (release/pre-release/develop) and extracts into target directory. Special case for "develop" channel where the source file are located in `/addon_configs/local_sambanas2/upgrade/srat.zip` and should be used directly without download if the version in the manifest is older or equal to the one in the develop channel (use the same rule of other updates).
-- [ ] Task 5: Ensure update flow also works when component is already installed (upgrade-in-place)
-- [ ] Task 6: Add uninstall flow that removes `custom_components/srat` safely and refreshes status
-- [ ] Task 7: Add single-notification issue in `backend/src/dto/issue.go` when component is missing and disconnected. Ensure it does not spam multiple notifications on repeated checks. The issue should include a `ResolutionLink` that opens the dialog flow for installation guidance. This issue should be automatically resolved when the component is detected as installed and connected again. Implement necessary logic to check for existing issues of this type before emitting new ones to prevent duplicates.
-- [ ] Task 8: After install/upgrade/uninstall actions, trigger home assistant core restart confirmation popup in frontend, and only call the restart API if user confirms. Ensure that the status is refreshed after restart to reflect any changes.
-- [ ] Task 9: Add frontend buttons in Settings → HomeAssistant for Install/Upgrade/Uninstall with enable/disable state based on current component status and action availability (e.g., disable Install if already installed, disable Upgrade if no newer version, etc.)
-- [ ] Task 10: Ensure all backend/frontend interactions are robust, with proper error handling and user feedback (e.g., show error messages if install/upgrade/uninstall fails, show loading states during operations, etc.)
-- [ ] Task 11: Unit testing (backend detection/actions, issue emission logic, frontend button-state logic)
-- [ ] Task 12: Integration and documentation
+- [ ] Task 3: Modify Makefile and release process to ensure `srat.zip` artifact is generated and contains the necessary files for installation (including `manifest.json` with version info)
+- [ ] Task 4: Embed at build time `srat.zip` for installation/upgrade flows
+- [ ] Task 5: Ensure install/upgrade use the embedded artifact or flow downloads `srat.zip` from configured channel (release/pre-release/develop) and extracts into target directory. Special case for "develop" channel where the source file are located in `/addon_configs/local_sambanas2/upgrade/srat.zip` and should be used directly without download if the version in the manifest is older or equal to the one in the develop channel (use the same rule of other updates).
+- [ ] Task 6: Ensure update flow also works when component is already installed (upgrade-in-place)
+- [ ] Task 7: Add uninstall flow that removes `custom_components/srat` safely and refreshes status
+- [ ] Task 8: Add single-notification issue in `backend/src/dto/issue.go` when component is missing and disconnected. Ensure it does not spam multiple notifications on repeated checks. The issue should include a `ResolutionLink` that opens the dialog flow for installation guidance. This issue should be automatically resolved when the component is detected as installed and connected again. Implement necessary logic to check for existing issues of this type before emitting new ones to prevent duplicates.
+- [ ] Task 9: After install/upgrade/uninstall actions, trigger home assistant core restart confirmation popup in frontend, and only call the restart API if user confirms. Ensure that the status is refreshed after restart to reflect any changes.
+- [ ] Task 10: Add frontend buttons in Settings → HomeAssistant for Install/Upgrade/Uninstall with enable/disable state based on current component status and action availability (e.g., disable Install if already installed, disable Upgrade if no newer version, etc.)
+- [ ] Task 11: Ensure all backend/frontend interactions are robust, with proper error handling and user feedback (e.g., show error messages if install/upgrade/uninstall fails, show loading states during operations, etc.)
+- [ ] Task 12: Unit testing (backend detection/actions, issue emission logic, frontend button-state logic)
+- [ ] Task 13: Integration and documentation
 
 ## 🧠 Implementation Notes (Copilot Context)
 

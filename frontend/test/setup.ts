@@ -9,8 +9,21 @@ if (!(globalThis as any).__TEST__) {
 
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { configureStore } from "@reduxjs/toolkit";
+//import { configure } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import "./bun-setup";
+
+/*
+configure({
+    throwSuggestions: false,
+    getElementError: (message: string | null, container) => {
+        const error = new Error([message || "Unknown error", JSON.stringify(container.firstChild)].filter(Boolean).join("\n\n"));
+        error.name = 'TestingLibraryElementError';
+        error.stack = undefined;
+        return error;
+    },
+});
+*/
 
 const nativeGlobals = {
     AbortController: (globalThis as any).AbortController,

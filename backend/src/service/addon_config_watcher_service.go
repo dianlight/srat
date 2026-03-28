@@ -165,7 +165,7 @@ type supervisorEventData struct {
 	EventType string `json:"event_type"`
 	Slug      string `json:"slug"`
 	Addon     string `json:"addon"`
-	Data struct {
+	Data      struct {
 		Event     string `json:"event"`
 		EventType string `json:"event_type"`
 		Slug      string `json:"slug"`
