@@ -30,7 +30,7 @@ import {
 import { PreviewDialog } from "../../../components/PreviewDialog";
 import { useSmartTestStatus } from "../../../hooks/smartTestStatusHook";
 import { useSmartOperations } from "../../../hooks/useSmartOperations";
-import { useGetApiDiskByDiskIdSmartStatusQuery, useGetApiSettingsQuery, type Settings, type SmartInfo, type SmartStatus } from "../../../store/sratApi";
+import { useGetApiDiskByDiskIdSmartStatusQuery, type SmartInfo, type SmartStatus } from "../../../store/sratApi";
 
 // Local type definitions for SMART data that isn't in the OpenAPI spec yet
 interface SmartHealthStatus {
@@ -72,20 +72,15 @@ export function SmartStatusPanel({
     const [showStartTestDialog, setShowStartTestDialog] = useState(false);
     const [showPreviewDialog, setShowPreviewDialog] = useState(false);
     const [selectedTestType, setSelectedTestType] = useState<SmartTestType>("short");
-    const { data: settings, isLoading: settingsLoading } = useGetApiSettingsQuery();
-    //const isValidSettings = (data: unknown): data is Settings => {
-    //    return data !== null && typeof data === "object" && "hostname" in data;
-    //};
-    // const smartIntegrationDisabled = isValidSettings(settings) ? (settings.disable_smart ?? false) : false;
-    const [smartIntegrationDisabled, setSmartIntegrationDisabled] = useState(false);
+    // Settings and disable_smart are now handled in VolumeDetailsPanel
     const { startSelfTest, abortSelfTest, enableSmart, disableSmart, isLoading: smartOperationLoading, isSuccess: smartOperationSuccess } = useSmartOperations(diskId);
     const { data: smartStatus, isLoading: smartStatusIsLoading, refetch: refetchSmartStatus } = useGetApiDiskByDiskIdSmartStatusQuery({
         diskId: diskId || ""
     }, {
-        skip: !diskId || smartIntegrationDisabled,
+        skip: !diskId,
         refetchOnMountOrArgChange: true,
     });
-    const { smartTestStatus, isLoading: smartTestStatusLoading } = useSmartTestStatus(smartIntegrationDisabled ? "" : (diskId || ""));
+    const { smartTestStatus, isLoading: smartTestStatusLoading } = useSmartTestStatus(diskId || "");
     const isSmartControlSupported = smartInfo?.disk_type !== "NVMe";
 
     const handleStartTest = () => {
@@ -116,20 +111,13 @@ export function SmartStatusPanel({
         */
 
     useEffect(() => {
-        if (!settingsLoading && settings) {
-            setSmartIntegrationDisabled((settings as Settings)?.disable_smart ?? false);
-        }
-    }, [settings, settingsLoading]);
-
-    useEffect(() => {
         if (smartOperationSuccess && !smartOperationLoading) {
             refetchSmartStatus();
         }
     }, [smartOperationSuccess]);
 
     // Don't render if SMART is not supported based on backend data.
-    // Keep this after hooks so React's hook ordering stays stable when settings load.
-    if (smartIntegrationDisabled || !smartInfo?.supported) {
+    if (!smartInfo?.supported) {
         return null;
     }
 
