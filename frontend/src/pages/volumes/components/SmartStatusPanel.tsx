@@ -72,11 +72,12 @@ export function SmartStatusPanel({
     const [showStartTestDialog, setShowStartTestDialog] = useState(false);
     const [showPreviewDialog, setShowPreviewDialog] = useState(false);
     const [selectedTestType, setSelectedTestType] = useState<SmartTestType>("short");
-    const { data: settings } = useGetApiSettingsQuery();
-    const isValidSettings = (data: unknown): data is Settings => {
-        return data !== null && typeof data === "object" && "hostname" in data;
-    };
-    const smartIntegrationDisabled = isValidSettings(settings) ? (settings.disable_smart ?? false) : false;
+    const { data: settings, isLoading: settingsLoading } = useGetApiSettingsQuery();
+    //const isValidSettings = (data: unknown): data is Settings => {
+    //    return data !== null && typeof data === "object" && "hostname" in data;
+    //};
+    // const smartIntegrationDisabled = isValidSettings(settings) ? (settings.disable_smart ?? false) : false;
+    const [smartIntegrationDisabled, setSmartIntegrationDisabled] = useState(false);
     const { startSelfTest, abortSelfTest, enableSmart, disableSmart, isLoading: smartOperationLoading, isSuccess: smartOperationSuccess } = useSmartOperations(diskId);
     const { data: smartStatus, isLoading: smartStatusIsLoading, refetch: refetchSmartStatus } = useGetApiDiskByDiskIdSmartStatusQuery({
         diskId: diskId || ""
@@ -113,6 +114,12 @@ export function SmartStatusPanel({
             return "error";
         };
         */
+
+    useEffect(() => {
+        if (!settingsLoading && settings) {
+            setSmartIntegrationDisabled((settings as Settings)?.disable_smart ?? false);
+        }
+    }, [settings, settingsLoading]);
 
     useEffect(() => {
         if (smartOperationSuccess && !smartOperationLoading) {
