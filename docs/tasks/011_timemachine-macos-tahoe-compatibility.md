@@ -1,6 +1,6 @@
 # [FIX]: Time Machine Compatibility with macOS Tahoe and Later
 
-**Target Repo:** `srat`  **Status:** 🔄 In Progress  **Issue Link:** https://github.com/dianlight/srat/issues/526 (refs [hassio-addons#536](https://github.com/dianlight/hassio-addons/issues/536))
+**Target Repo:** `srat`  **Status:** ✅ Done  **Issue Link:** https://github.com/dianlight/srat/issues/526 (refs [hassio-addons#536](https://github.com/dianlight/hassio-addons/issues/536))
 
 ## 🎯 Objective
 
