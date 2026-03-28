@@ -110,7 +110,6 @@ describe("SmartStatusPanel Component", () => {
         } as any;
 
         // Refactored to event-based assertion for CI stability
-        const { waitForElementToBeRemoved } = await import("@testing-library/react");
         await withTestHandlers(
             [
                 http.get("/api/settings", () => HttpResponse.json(settingsPayload)),
@@ -147,11 +146,17 @@ describe("SmartStatusPanel Component", () => {
                 // console.log("[DEBUG] Full store state:", (store.getState() as any));
 
                 try {
-                    await waitForElementToBeRemoved(() => container.firstChild, { timeout: 60000 });
+                    // Prefer explicit assertion via waitFor to avoid flaky element-detached errors
+                    const { waitFor } = await import("@testing-library/react");
+                    await waitFor(() => {
+                        expect(container.firstChild).toBeNull();
+                    }, { timeout: 5000 });
                 } catch (err) {
-                    // Print debug output if the element is not removed
+                    // Print debug output if the element is not removed to help CI investigation
                     // eslint-disable-next-line no-console
                     console.error("[DEBUG] SmartStatusPanel not removed. Container HTML:", container.innerHTML);
+                    // eslint-disable-next-line no-console
+                    try { console.error("[DEBUG] Store state:", JSON.stringify((store.getState() as any))); } catch (_) { }
                     throw err;
                 }
             },
