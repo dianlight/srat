@@ -121,6 +121,8 @@ describe("SmartStatusPanel Component", () => {
                 (store.dispatch as any)(
                     sratApi.util.upsertQueryData("getApiSettings", undefined, settingsPayload),
                 );
+                // allow microtask queue to flush so RTK Query subscriptions observe the upserted data
+                await Promise.resolve();
                 const mockSmartInfo = {
                     disk_type: "SATA",
                     temperature: { value: 45 },
