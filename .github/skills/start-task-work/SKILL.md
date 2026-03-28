@@ -91,6 +91,7 @@ Use strict mode when users want deterministic automation and no accidental task 
   - Test/validation strategy
   - Risks and edge cases
 4. Present this summary to the user and wait for approval before writing code.
+5. Update `## 🧠 Implementation Notes` with the agreed plan and any constraints or blockers.
 
 ### 5. Update the Task Document at Every Phase
 

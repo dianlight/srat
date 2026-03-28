@@ -11,8 +11,8 @@ Migrate the entire monorepo to use [mise.jdx.dev](https://mise.jdx.dev) for tool
 - **Dependencies:** mise.jdx.dev, all current build/test/lint tools, documentation files referencing Makefile
 
 ## 📝 Task List
-- [ ] Task 1: Audit and clean up Makefile, remove unused targets
-- [ ] Task 2: Plan and document mise migration steps for all subprojects (backend, frontend, custom_components)
+- [x] Task 1: Audit and clean up Makefile, remove unused targets
+- [x] Task 2: Plan and document mise migration steps for all subprojects (backend, frontend, custom_components)
 - [ ] Task 3: Implement mise configuration for all environments and workflows
 - [ ] Task 4: Remove Makefile and all Makefile-relative configs
 - [ ] Task 5: Update all documentation to reference mise workflows
@@ -58,6 +58,65 @@ Migrate the entire monorepo to use [mise.jdx.dev](https://mise.jdx.dev) for tool
 - Risks: Missed Makefile logic, CI/CD or devcontainer breakage, stale Makefile references, incomplete migration of subprojects.
 
 ## 🔗 Code References & TODOs
-- [ ] TODO: Remove Makefile and related scripts
-- [ ] TODO: Update docs/README.md, backend/README.md, frontend/README.md, custom_components/README.md
-- [ ] FIXME: Any Makefile-specific logic in scripts/
+
+## 🗺️ Mise Migration Plan
+
+This plan details the steps to migrate all subprojects (backend, frontend, custom_components) to use mise.jdx.dev for toolchain and environment management, replacing Makefile-based workflows.
+
+---
+
+### 1. Backend
+- **Create `.mise.toml` in repo root** with required tools:
+	- `go` (specify current version from `go.mod`)
+	- `bun` (for frontend build integration)
+	- `node` (if any scripts require it)
+	- `python` (for custom_components integration)
+- **Replace Makefile build/test/lint targets** with mise scripts:
+	- `mise run build` → Go build pipeline
+	- `mise run test` → Go test pipeline
+	- `mise run format` → Go format/lint pipeline
+- **Update documentation** to reference mise commands for backend workflows.
+
+### 2. Frontend
+- **Add frontend tool versions to `.mise.toml`**:
+	- `bun` (specify version from `bunfig.toml` or `package.json` engines)
+	- `node` (if needed for codegen or legacy scripts)
+- **Replace Makefile or shell script calls** with mise scripts:
+	- `mise run dev` → `bun run dev`
+	- `mise run build` → `bun run build`
+	- `mise run test` → `bun run test`
+- **Update frontend/README.md** to reference mise workflows.
+
+### 3. Custom Components
+- **Add Python tool version to `.mise.toml`**:
+	- `python` (specify version from `pyproject.toml` or `requirements_dev.txt`)
+- **Replace Makefile targets** with mise scripts:
+	- `mise run install` → pip install
+	- `mise run test` → pytest
+	- `mise run lint` → ruff
+	- `mise run typecheck` → mypy
+- **Update custom_components/README.md** to reference mise workflows.
+
+### 4. Devcontainer & Onboarding
+- **Update `.devcontainer/devcontainer.json`** to install and initialize mise.
+- **Add onboarding instructions** for mise in root `README.md`.
+
+### 5. CI/CD
+- **Update GitHub Actions workflows** to use mise for toolchain setup and scripts.
+- **Reference mise CI docs:** https://mise.jdx.dev/continuous-integration.html#github-actions
+
+### 6. Validation
+- Test all build, test, and lint commands via mise locally and in CI.
+- Remove Makefiles only after full validation.
+
+---
+
+**Next Steps:**
+- Implement `.mise.toml` and scripts per above.
+- Update all documentation and onboarding.
+- Validate all workflows.
+- Remove Makefiles and obsolete configs.
+
+# [ ] TODO: Remove Makefile and related scripts
+# [ ] TODO: Update docs/README.md, backend/README.md, frontend/README.md, custom_components/README.md
+# [ ] FIXME: Any Makefile-specific logic in scripts/
