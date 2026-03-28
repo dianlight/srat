@@ -865,6 +865,27 @@ func (s *AddonConfigWatcherServiceSuite) TestIntegration_EndToEnd_FileWriteEmits
 	newContent := []byte(`{"workgroup":"NEW","name":"test"}`)
 	s.Require().NoError(os.WriteFile(path, newContent, 0600))
 
+	// Ensure file is fully flushed and non-empty before proceeding (fix race)
+	f, err := os.Open(path)
+	s.Require().NoError(err)
+	err = f.Sync()
+	f.Close()
+	s.Require().NoError(err)
+
+	// Optionally poll file size to ensure write is visible
+	deadline := time.Now().Add(1 * time.Second)
+	for {
+		fi, err := os.Stat(path)
+		s.Require().NoError(err)
+		if fi.Size() >= int64(len(newContent)) {
+			break
+		}
+		if time.Now().After(deadline) {
+			s.FailNow("File write not visible after 1s")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
 	// Verify that AppConfigEvent is emitted with correct path and hash
 	select {
 	case ev := <-eventReceived:
