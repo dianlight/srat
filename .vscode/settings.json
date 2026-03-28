@@ -174,7 +174,13 @@
   "github.copilot.chat.copilotMemory.enabled": true,
   "github.copilot.chat.alternateGeminiModelFPrompt.enabled": true,
   "github.copilot.chat.anthropic.contextEditing.enabled": true,
-  "github.copilot.chat.githubMcpServer.toolsets": [],
+  "github.copilot.chat.githubMcpServer.toolsets": [
+    "all",
+    "actions",
+    "git",
+    "pull_requests",
+    "github_support_docs_search"
+  ],
   "github.copilot.chat.newWorkspace.useContext7": true,
   "github.copilot.chat.switchAgent.enabled": true,
   "githubIssues.useBranchForIssues": "prompt",
@@ -247,5 +253,7 @@
   "imageCarousel.explorerContextMenu.enabled": true,
   "workbench.fontAliasing": "auto",
   "markdown.preview.fontSize": 12,
-  "editor.fontFamily": "Fira Code,Menlo, Monaco, 'Courier New', monospace"
+  "editor.fontFamily": "Fira Code,Menlo, Monaco, 'Courier New', monospace",
+  "github.copilot.chat.rateLimitAutoSwitchToAuto": true,
+  "github.copilot.chat.backgroundCompaction": true
 }
