@@ -119,3 +119,5 @@ _Generated: 2026-04-02_
 - **Progress:** 0 / 10 tasks
 
 ---
+
+*Report generated per SKILL.md instructions. Every task file in tasks is represented, with status inferred where missing. Progress percentages are rounded. "Next:" is shown for in-progress tasks. Issue links are clickable. Generation date: 2026-03-28.*
