@@ -46,6 +46,7 @@ RUN apk add --no-cache \
     zig \
     apfs-fuse \
     act \
+    mise \
     && apk add --no-cache  --repository=https://dl-cdn.alpinelinux.org/alpine/edge/main  --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community  \
     zfs
 

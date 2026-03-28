@@ -104,12 +104,10 @@
 				"TypeScriptTeam.native-preview",
 				"nguyenngoclong.terminal-keeper",
 				"DavidAnson.vscode-markdownlint",
-				//"neonxp.gotools",
 				"svvashishtha.go-interface-navigator",
 				"YoavBls.pretty-ts-errors",
-				//"kilocode.kilo-code",
-				//"Anthropic.claude-code",
-				"biomejs.biome"
+				"biomejs.biome",
+				"hverlin.mise-vscode"
 			],
 			"mcp": {
 				"servers": {
