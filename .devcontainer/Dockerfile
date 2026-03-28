@@ -82,4 +82,5 @@ RUN BUN_VERSION="$(jq -r '.packageManager' /tmp/srat-package.json | sed 's/bun@/
 RUN PATH=/root/.bun/bin:${PATH} \
     && bun install -g @j178/prek \
     && bun add -g biome @biomejs/cli-linux-arm64-musl \
+    && bun --bun install -g @github/copilot \
     && bun pm -g trust --all
