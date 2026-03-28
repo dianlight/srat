@@ -90,7 +90,7 @@ export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
 		// Prepare request payload
 		const requestPayload = {
 			...formData,
-			console_errors: formData.include_console_errors ? logs.map((log) => log.String()) : [],
+			console_errors: formData.include_console_errors ? logs.map((log) => log.toString()) : [],
 		} as IssueReportRequest;
 
 		try {
