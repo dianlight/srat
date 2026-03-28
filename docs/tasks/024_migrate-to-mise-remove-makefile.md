@@ -1,6 +1,6 @@
 # [REFACTOR]: Migrate to mise.jdx.dev and Remove Makefile
 
-**Target Repo:** `srat`  **Status:** 📅 Planned  **Issue Link:** _TBD_
+**Target Repo:** `srat`  **Status:** 🔄 In Progress  **Issue Link:** https://github.com/dianlight/srat/issues/532
 
 ## 🎯 Objective
 Migrate the entire monorepo to use [mise.jdx.dev](https://mise.jdx.dev) for toolchain and environment management, removing all Makefile-relative configurations. Clean up the Makefile by removing unused targets before migration. After migration, optimize all processes and update documentation accordingly.
@@ -32,11 +32,30 @@ Migrate the entire monorepo to use [mise.jdx.dev](https://mise.jdx.dev) for tool
 - [ ] Task 19: Ask to create a PR with the task implementation and link it here for tracking
 
 ## 🧠 Implementation Notes (Copilot Context)
-- Remove unused Makefile targets before starting migration
-- Use mise to manage all tool versions and scripts (Go, Node, Python, etc.)
-- Ensure all CI/CD and local workflows are compatible with mise
-- Update all developer and CI documentation to reference mise commands
-- Optimize scripts and processes for performance and maintainability
+**Branch:** `refactor/migrate-to-mise-remove-makefile` (feature branch created)
+
+**Pre-implementation Plan:**
+- Fully migrate the monorepo to use mise.jdx.dev for all toolchain and environment management.
+- Remove all Makefile-relative configs and the Makefile itself.
+- All build, test, lint, and dev workflows must work via mise.
+- Documentation and CI/CD must reference mise, not Makefile.
+- Impacted files: `/Makefile`, `/backend/Makefile`, `/custom_components/Makefile`, scripts referencing Makefile, all README.md/docs, devcontainer, CI/CD config.
+- Step-by-step plan:
+	1. Audit and clean up all Makefiles, removing unused targets.
+	2. Plan and document mise migration steps for backend, frontend, and custom_components.
+	3. Implement mise configuration for all environments and workflows.
+	4. Remove Makefile and all Makefile-relative configs.
+	5. Update all documentation to reference mise workflows.
+	6. Optimize and test all build, test, and lint processes under mise.
+	7. Update CI/CD pipelines for mise compatibility.
+	8. Evaluate hk.jdx.dev for possible integration.
+	9. Migrate devcontainer and developer setup to mise.
+	10. Add mise MCP config for all tools/scripts.
+	11. Add VSCode mise plugin/config to devcontainer.
+	12. Update Renovate config if needed.
+	13. Final code review and validation.
+- Test/validation: All build, test, and lint commands must succeed using mise; onboarding/setup must work; CI/CD must pass; docs must be accurate.
+- Risks: Missed Makefile logic, CI/CD or devcontainer breakage, stale Makefile references, incomplete migration of subprojects.
 
 ## 🔗 Code References & TODOs
 - [ ] TODO: Remove Makefile and related scripts
