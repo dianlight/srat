@@ -72,12 +72,7 @@ export function censorPlainText(text: string): string {
 				const key = key1 || key2 || key3 || key4 || key5;
 				const value = val1 || val2 || val3 || val4 || val5;
 
-				if (
-					key &&
-					isSensitiveField(key) &&
-					value !== undefined &&
-					value.trim()
-				) {
+				if (key && isSensitiveField(key) && value?.trim()) {
 					const censoredVal = censorValue(value.trim());
 
 					// Reconstruct with appropriate quoting

@@ -41,14 +41,13 @@ export type TourEventPayload = Element | null;
 export type TourEventMap = Record<TourEventTypes, TourEventPayload>;
 
 const emitter = new Emittery();
-const wrappedListeners = new Map<TourEventTypes, WeakMap<Function, (payload: unknown) => void>>();
+const wrappedListeners = new Map<
+	TourEventTypes,
+	WeakMap<Function, (payload: unknown) => void>
+>();
 
 const getPayload = (payload: unknown): TourEventPayload => {
-	if (
-		typeof payload === "object" &&
-		payload !== null &&
-		"data" in payload
-	) {
+	if (typeof payload === "object" && payload !== null && "data" in payload) {
 		return (payload as { data: TourEventPayload }).data;
 	}
 

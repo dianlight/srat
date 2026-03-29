@@ -1,4 +1,6 @@
-import { getCurrentEnv } from "../../../macro/Environment";
+import { getCurrentEnv } from "../../../macro/Environment" with {
+	type: "macro",
+};
 import type { MountPointData, Partition } from "../../../store/sratApi";
 
 export type PartitionActionKey =
@@ -17,13 +19,13 @@ export interface PartitionActionItem {
 	key: PartitionActionKey;
 	title: string;
 	color:
-	| "primary"
-	| "secondary"
-	| "warning"
-	| "error"
-	| "info"
-	| "success"
-	| undefined;
+		| "primary"
+		| "secondary"
+		| "warning"
+		| "error"
+		| "info"
+		| "success"
+		| undefined;
 	onClick: () => void;
 }
 
@@ -142,7 +144,7 @@ export function getPartitionActionItems({
 		// Additional Action on supported filesystems
 		// TODO: not ready to be enabled because not fully implemented and tested, and we want to avoid showing it until it's ready
 		if (
-			false &&  // Temporarily disable the "Check Filesystem" action until it's fully implemented and tested
+			false && // Temporarily disable the "Check Filesystem" action until it's fully implemented and tested
 			onCheckFilesystem &&
 			partition.filesystem_info?.support?.canCheck &&
 			!isMounted &&
@@ -156,10 +158,11 @@ export function getPartitionActionItems({
 			});
 		}
 		if (
-			false &&  // Temporarily disable the "Set Label" action until it's fully implemented and tested
+			false && // Temporarily disable the "Set Label" action until it's fully implemented and tested
 			partition.filesystem_info?.support?.canSetLabel &&
 			!isMounted &&
-			getCurrentEnv() !== "production") {
+			getCurrentEnv() !== "production"
+		) {
 			actionItems.push({
 				key: "set-label",
 				title: "Set Label",
@@ -171,10 +174,11 @@ export function getPartitionActionItems({
 			});
 		}
 		if (
-			false &&  // Temporarily disable the "Format Partition" action until it's fully implemented and tested
+			false && // Temporarily disable the "Format Partition" action until it's fully implemented and tested
 			partition.filesystem_info?.support?.canFormat &&
 			!isMounted &&
-			getCurrentEnv() !== "production") {
+			getCurrentEnv() !== "production"
+		) {
 			actionItems.push({
 				key: "format",
 				title: "Format Partition",

@@ -120,7 +120,7 @@ run_vale() {
     fi
     
     # Run Vale on all markdown files
-    if find . -name "*.md" -not -path "./frontend/node_modules/*" -not -path "./.git/*" -not -path "./backend/src/vendor/*" -not -path "./.vale/*" -not -path "./.github/*" -not -path "./docs/tasks/*" -not -name "CHANGELOG.md"   -exec vale {} + ; then
+    if find . -name "*.md" -not -path "./frontend/node_modules/*" -not -path "./.git/*" -not -path "./backend/src/vendor/*" -not -path "./.vale/*" -not -path "./.github/*" -not -path "./docs/tasks/*" -not -path "./custom_components/.venv/*" -not -name "CHANGELOG.md"   -exec vale {} + ; then
         print_status "success" "Vale prose linting passed"
         return 0
     else

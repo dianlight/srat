@@ -42,7 +42,7 @@ export function usePartitionActions({
 			onUnmount,
 			onCreateShare,
 			onGoToShare,
-			onCheckFilesystem: onCheckFilesystem || (() => { }),
+			onCheckFilesystem: onCheckFilesystem || (() => {}),
 		});
 	}, [
 		partition,
