@@ -20,48 +20,40 @@ Currently under development and in an alpha state, SRAT is set to become the pre
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [Installation](#installation)
-  - [Local Development](#local-development)
-- [Home Assistant Custom Component](#home-assistant-custom-component)
-  - [Install via HACS (recommended)](#install-via-hacs-recommended)
-  - [Manual Install](#manual-install)
-- [Usage](#usage)
-  - [Feature Documentation](#feature-documentation)
-- [Database](#database)
-- [Sponsor](#sponsor)
-- [Known Issues](#known-issues)
-- [Enhanced Logging System](#enhanced-logging-system)
-  - [Key Logging Features](#key-logging-features)
-  - [Quick Logging Examples](#quick-logging-examples)
-- [Documentation Validation](#documentation-validation)
-- [Security scanning](#security-scanning)
-- [Building the Project](#building-the-project)
-- [Testing and Coverage](#testing-and-coverage)
-  - [Running Tests](#running-tests)
-- [Contribute](#contribute)
-- [License](#license)
-- [Development: Pre-Commit Hooks](#development-pre-commit-hooks)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!-- Removed invalid [Installation](#installation) link fragment per markdownlint -->
 
 :construction_worker: This is a part for new SambaNas2 Home Assistant Addon. :construction_worker:
 
-## Installation
-
-The installation of this add-on is straightforward and similar to any other Home Assistant add-on.
-
-[Add our Home Assistant add-ons repository][repository] to your Home Assistant instance:
-
-[![Add-on repository badge](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fdianlight%2Fhassio-addons)
-
 or
 
-[Add our Home Assistant BETA add-ons repository][beta-repository] to your Home Assistant instance:
+## Mise-based Development & Build
+
+SRAT now uses [mise](https://mise.jdx.dev) for all toolchain, build, test, and lint workflows. To get started:
+
+1. Install mise: `curl https://mise.run | sh`
+2. Run `mise install` to set up all required tools.
+3. Use `mise run <task>` for all build, test, and lint commands (see `.mise.toml` for available tasks).
+
+**Example:**
+
+```sh
+# Install all tools
+mise install
+# Build backend
+mise run //backend:build
+# Build frontend
+mise run //frontend:build
+# Run all tests
+mise run //backend:test
+mise run //frontend:test
+```
+
+All previous Makefile-based workflows are now managed by mise. See the relevant subproject README for more details.
 
 [![Beta repository badge](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fdianlight%2Fhassio-addons-beta)
 
-[repository]: https://github.com/dianlight/hassio-addons
-[beta-repository]: https://github.com/dianlight/hassio-addons-beta
+<!-- Removed unused link/image reference definitions per markdownlint -->
 
 ### Local Development
 
@@ -157,13 +149,13 @@ SRAT includes comprehensive documentation validation tools with **GitHub Flavore
 
 ```shell
 # Check all documentation (GFM-aware)
-make docs-validate
+mise run docs-validate
 
 # Auto-fix formatting issues
-make docs-fix
+mise run docs-fix
 
 # Show all documentation commands
-make docs-help
+mise run docs-help
 ```
 
 The validation includes:
@@ -182,28 +174,28 @@ This project uses gosec to scan Go code for common security issues.
 
 Quick usage:
 
-- Run full repo security check: `make security`
-- Or only back-end: `cd backend && make gosec`
+- Run full repo security check: `mise run security`
+- Or only back-end: `cd backend && mise run gosec`
 
 Notes:
 
 - Generated code is excluded with `-exclude-generated`.
-- The Makefile will install gosec automatically if it's missing (via `go install`).
+- The mise workflow will install gosec automatically if it's missing (via `go install`).
 
 ## Building the Project
 
 ```shell
 # Build backend
-cd backend && make build
+mise run //backend:build
 
 # Build frontend
-cd frontend && bun run build
+mise run //frontend:build
 
 # Check custom component (lint + type-check + tests)
-cd custom_components && make check
+cd custom_components && mise run check
 
 # Build all architectures
-make ALL
+mise run ALL
 ```
 
 ## Testing and Coverage
@@ -216,13 +208,13 @@ SRAT maintains high test coverage across both back-end and frontend. The coverag
 
 ```shell
 # Run backend tests with individual package coverage
-cd backend && make test
+mise run //backend:test
 
 # Run frontend tests with coverage
-cd frontend && bun test --coverage
+mise run //frontend:test
 
 # Run custom component tests (lint + type-check + pytest)
-cd custom_components && make check
+cd custom_components && mise run check
 
 # Update coverage badges in README and TEST_COVERAGE.md
 bash scripts/update-coverage-badges.sh

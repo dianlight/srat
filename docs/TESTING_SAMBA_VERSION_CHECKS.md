@@ -55,7 +55,7 @@ cd backend/src
 go build ./internal/osutil ./tempio ./service
 
 # Build full backend (if Makefile available)
-cd ../.. && cd backend && make build
+cd ../.. && mise run //backend:build
 ```
 
 ## Unit Test Coverage

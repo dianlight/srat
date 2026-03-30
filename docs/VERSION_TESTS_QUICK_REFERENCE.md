@@ -211,10 +211,10 @@ Execution:     ~0.23s
 
 ```bash
 # Pre-commit
-make test
+mise run //backend:test
 
 # Test specific package
-cd backend && make test TESTPKG=./src/service
+mise run //backend:test -- TESTPKG=./src/service
 
 # With coverage
 go test ./service -cover

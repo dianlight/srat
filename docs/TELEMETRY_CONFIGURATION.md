@@ -97,7 +97,7 @@ Set `ROLLBAR_ENVIRONMENT` at build time to override automatic detection:
 
 ```bash
 export ROLLBAR_ENVIRONMENT="staging"
-make build
+mise run //backend:build
 ```
 
 ## Build-time Configuration
@@ -118,13 +118,13 @@ make build
 
    ```bash
    source .env
-   make build
+  mise run //backend:build
    ```
 
    Or set variables inline:
 
    ```bash
-   ROLLBAR_CLIENT_ACCESS_TOKEN=token make build
+  ROLLBAR_CLIENT_ACCESS_TOKEN=token mise run //backend:build
    ```
 
 ### CI/CD (GitHub Actions)
@@ -187,7 +187,7 @@ When tokens are not configured at build time:
 2. **Build with tokens**:
 
    ```bash
-   ROLLBAR_CLIENT_ACCESS_TOKEN=your_token make build
+  ROLLBAR_CLIENT_ACCESS_TOKEN=your_token mise run //backend:build
    ```
 
 3. **Verify version detection**:

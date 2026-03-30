@@ -273,7 +273,7 @@ This ensures a single EventBus instance is available to all services.
 
 ```bash
 cd backend
-make test
+mise run //backend:test
 # Or specifically for events:
 go test ./events/... -v
 ```
@@ -295,7 +295,7 @@ All tests use synchronization primitives (WaitGroup, channels, timeouts) to ensu
 
 ```bash
 cd backend
-make test_build
+mise run //backend:test_build
 ```
 
 ### Step 2: Update Services to Emit Events
@@ -480,8 +480,8 @@ Look for these log messages:
 
 ## Migration Checklist
 
-- [ ] Verify `make test_build` compiles successfully
-- [ ] Run `make test` - all tests pass
+- [ ] Verify `mise run //backend:test_build` compiles successfully
+- [ ] Run `mise run //backend:test` - all tests pass
 - [ ] Update VolumeService to emit disk/partition events
 - [ ] Update ShareService to emit share events
 - [ ] Test WebSocket client receives events

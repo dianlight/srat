@@ -78,7 +78,7 @@ Option A is cleaner and keeps defaults close to the application startup logic.
 
 - The goverter-generated implementation in `dto_to_dbom_conv_gen.go` should already exist.
 - Verify field mappings are complete; add `//goverter:map` annotations if any field requires custom transformation.
-- Add the method signature to `DtoToDbomConverterInterface` and regenerate if needed: `cd backend && make gen`.
+- Add the method signature to `DtoToDbomConverterInterface` and regenerate if needed: `mise run //backend:gen`.
 
 ## 🔗 Code References & TODOs
 

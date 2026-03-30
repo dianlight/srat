@@ -13,22 +13,34 @@
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-To install dependencies:
 
-```bash
-bun install
+## Mise-based Frontend Workflows
+
+All frontend build, test, and lint workflows are now managed by [mise](https://mise.jdx.dev).
+
+**Common commands:**
+
+```sh
+# Build frontend
+mise run //frontend:build
+# Run frontend tests
+mise run //frontend:test
+# Lint frontend
+mise run //frontend:lint
 ```
+
+See `.mise.toml` for all available tasks.
 
 To start the dev server with hot reload:
 
-```bash
-bun run dev
+```sh
+mise run //frontend:dev
 ```
 
 To build the production bundle (outputs to `../backend/src/web/static`):
 
-```bash
-bun run build
+```sh
+mise run //frontend:build
 ```
 
 **Note about API code generation:** The `bun run gen` command (RTK Query codegen from OpenAPI) currently fails due to a TypeScript version mismatch issue in `@rtk-query/codegen-openapi`. This is a [documented issue](https://github.com/reduxjs/redux-toolkit/issues/2425) in the Redux Toolkit repository. For now the workaround is to install `@rtk-query/codegen-openapi` globally with npm and run with node not bun.

@@ -123,12 +123,12 @@ This document summarizes the comprehensive documentation validation system imple
 
 ### 6. Makefile Targets (Updated `Makefile`)
 
-- **`make docs-check`**: Check if all dependencies are installed (includes Lychee and Vale checks)
-- **`make docs-validate`**: Run documentation validation with all tools (GFM-aware)
-- **`make docs-fix`**: Autofix documentation formatting
-- **`make docs-install`**: Install JS-based documentation tools (markdownlint, cspell, prettier)
-- **`make docs-toc`**: Generate table of contents for markdown files
-- **`make docs-help`**: Show all available documentation commands with tool status
+- **`mise run docs-check`**: Check if all dependencies are installed (includes Lychee and Vale checks)
+- **`mise run docs-validate`**: Run documentation validation with all tools (GFM-aware)
+- **`mise run docs-fix`**: Autofix documentation formatting
+- **`mise run docs-install`**: Install JS-based documentation tools (markdownlint, cspell, prettier)
+- **`mise run docs-toc`**: Generate table of contents for markdown files
+- **`mise run docs-help`**: Show all available documentation commands with tool status
 
 ### 7. GitHub Templates
 
@@ -152,9 +152,9 @@ This document summarizes the comprehensive documentation validation system imple
 1. **Initial Setup**:
 
    ```bash
-   make docs-check   # Check dependencies (including Lychee and Vale)
-   make prepare      # Install pre-commit hooks
-   make docs-install # Install JS-based documentation tools
+  mise run docs-check   # Check dependencies (including Lychee and Vale)
+  mise run prepare      # Install pre-commit hooks
+  mise run docs-install # Install JS-based documentation tools
    ```
 
    **Optional but recommended:**
@@ -164,8 +164,8 @@ This document summarizes the comprehensive documentation validation system imple
 2. **Before Committing**:
 
    ```bash
-   make docs-validate # Check documentation (all tools, GFM-aware)
-   make docs-fix      # Auto-fix formatting issues
+  mise run docs-validate # Check documentation (all tools, GFM-aware)
+  mise run docs-fix      # Auto-fix formatting issues
    ```
 
 3. **Sync Vale styles** (if Vale is installed):
@@ -177,7 +177,7 @@ This document summarizes the comprehensive documentation validation system imple
 4. **Get Help**:
 
    ```bash
-   make docs-help     # Show all documentation commands and tool status
+  mise run docs-help     # Show all documentation commands and tool status
    ```
 
 5. **Pre-commit hooks will automatically**:

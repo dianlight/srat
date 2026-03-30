@@ -152,12 +152,12 @@ custom_components/srat/
 
 - **Test runner**: `pytest` with `pytest-homeassistant-custom-component`
 - **Async**: `pytest-asyncio` with `asyncio_mode = "auto"`
-- **Coverage**: `pytest-cov` — run `make test-ci` in `custom_components/`
+- **Coverage**: `pytest-cov` — run `mise run test-ci` in `custom_components/`
 - **Formatter**: `ruff format` (also checks formatting in CI)
 - **Linter**: `ruff check` with same rules as main code
 - **Type checker**: `mypy` with same strict config as main code
 - Tests live in `custom_components/tests/` (not inside `srat/`)
-- Run from repo root: `cd custom_components && make test`
+- Run from repo root: `cd custom_components && mise run test`
 
 ### Test Structure
 
@@ -187,16 +187,16 @@ import pytest
 **Before running final tests, always format your code:**
 
 - Run `ruff format .` in the `custom_components/` directory, or
-- Use `make format` (preferred for consistency)
+- Use `mise run format` (preferred for consistency)
 
 Then run tests:
 
 ```bash
 cd custom_components
-make format        # Format code (required before final test)
-make test          # Run all tests
-make test-ci       # Run with coverage (generates coverage.xml)
-make check         # Full check: format + lint + typecheck + test
+mise run format        # Format code (required before final test)
+mise run test          # Run all tests
+mise run test-ci       # Run with coverage (generates coverage.xml)
+mise run check         # Full check: format + lint + typecheck + test
 ```
 
 ## Documentation

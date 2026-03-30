@@ -332,7 +332,7 @@ suite.compareConfigSections(stream, "TestName", expected)
 
 ### Test Compilation Issues
 
-- Ensure patches applied: `cd backend && make patch`
+- Ensure patches applied: `mise run //backend:patch`
 - Check Go version: `go version`
 - Run: `go mod tidy && go mod download`
 

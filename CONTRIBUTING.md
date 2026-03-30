@@ -42,7 +42,7 @@ Be respectful. Provide clear rationale in PR descriptions. Security or stability
 - back-end: Go 1.26
 - Frontend: Bun + React + TypeScript
 - Custom Component: Python 3.12+ with ruff (lint/format) and mypy (type-check)
-- Run `make prepare` once to install pre-commit hooks.
+- Run `mise run prepare` once to install pre-commit hooks.
 
 ## 3. Branching & Commits
 
@@ -54,7 +54,7 @@ Be respectful. Provide clear rationale in PR descriptions. Security or stability
 
 - back-end: Add/extend `testify/suite` tests; ensure deterministic output.
 - Frontend: Place tests in `__tests__` directories; follow patterns in `/.github/copilot-instructions.md`.
-- Custom Component: Use `pytest-homeassistant-custom-component` for tests under `custom_components/tests/`. Run with `cd custom_components && make test`.
+- Custom Component: Use `pytest-homeassistant-custom-component` for tests under `custom_components/tests/`. Run with `cd custom_components && mise run test`.
 - Minimum coverage thresholds enforced by CI; raise coverage when adding logic.
 
 ## 5. Logging RULE (Context-Aware) ✅
@@ -129,7 +129,7 @@ See `/.github/copilot-instructions.md` for detailed examples.
 
 ## 9. Patches to Dependencies
 
-Follow patch workflow (`make patch`, `backend/patches/*`). Never add direct `replace` directives in `go.mod`.
+Follow patch workflow (`mise run //backend:patch`, `backend/patches/*`). Never add direct `replace` directives in `go.mod`.
 
 ## 10. Frontend Patterns
 
@@ -150,14 +150,14 @@ The HACS-compatible custom component lives in `custom_components/srat/`. It is w
 Run all targets from the `custom_components/` directory:
 
 ```shell
-make install      # Install dev dependencies (prefers apk on Alpine, falls back to pip)
-make check        # Run all checks: format + lint + type-check + tests
-make lint         # ruff lint
-make format       # ruff format check
-make typecheck    # mypy type checking
-make test         # pytest tests
-make fix          # Auto-fix lint and format issues
-make clean        # Remove caches and build artifacts
+mise run install      # Install dev dependencies (prefers apk on Alpine, falls back to pip)
+mise run check        # Run all checks: format + lint + type-check + tests
+mise run lint         # ruff lint
+mise run format       # ruff format check
+mise run typecheck    # mypy type checking
+mise run test         # pytest tests
+mise run fix          # Auto-fix lint and format issues
+mise run clean        # Remove caches and build artifacts
 ```
 
 ### Architecture
@@ -170,7 +170,7 @@ Update `CHANGELOG.md` for user-visible changes. Provide rationale for breaking c
 
 ## 13. Security
 
-Run `make security` locally before opening a PR touching sensitive areas (auth, execution, filesystem). Avoid logging credentials or secrets; masking is handled by `tlog` but still use discretion.
+Run `mise run security` locally before opening a PR touching sensitive areas (auth, execution, filesystem). Avoid logging credentials or secrets; masking is handled by `tlog` but still use discretion.
 
 ## 14. Performance
 
@@ -181,7 +181,7 @@ Profile hotspots using provided `PPROF.md` guidance for significant performance-
 - [ ] Tests added / updated
 - [ ] Lint & format pass (`prek run --all-files`)
 - [ ] Context logging rule satisfied (back-end)
-- [ ] Custom component checks pass (`cd custom_components && make check`, if applicable)
+- [ ] Custom component checks pass (`cd custom_components && mise run check`, if applicable)
 - [ ] No stray `replace` directives
 - [ ] Documentation updated
 - [ ] No secrets or raw tokens in logs

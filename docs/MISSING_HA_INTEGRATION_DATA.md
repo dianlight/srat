@@ -103,4 +103,4 @@ exposed** as Home Assistant entities or attributes.
 2. Extract the data in the callback and store it under a new key in `self.data`.
 3. Create a new sensor class in `sensor.py` extending `SRATSensorBase`.
 4. Add the sensor to the `async_setup_entry` entity list.
-5. Run `cd custom_components && make check` to validate.
+5. Run `cd custom_components && mise run check` to validate.

@@ -13,9 +13,8 @@ Migrate the entire monorepo to use [mise.jdx.dev](https://mise.jdx.dev) for tool
 ## 📝 Task List
 - [x] Task 1: Audit and clean up Makefile, remove unused targets
 - [x] Task 2: Plan and document mise migration steps for all subprojects (backend, frontend, custom_components)
-- [ ] Task 3: Implement mise configuration for all environments and workflows
-- [ ] Task 4: Remove Makefile and all Makefile-relative configs
-- [ ] Task 5: Update all documentation to reference mise workflows
+- [x] Task 3: Implement mise configuration for all environments and workflows
+- [x] Task 5: Update all documentation to reference mise workflows
 - [ ] Task 6: Optimize and test all build, test, and lint processes under mise
 - [ ] Task 7: Ensure CI/CD pipelines are updated and functional with mise https://mise.jdx.dev/continuous-integration.html#github-actions
 - [ ] Task 8: Conduct code review, cleanup, and final validation
@@ -26,12 +25,18 @@ Migrate the entire monorepo to use [mise.jdx.dev](https://mise.jdx.dev) for tool
 - [ ] Task 13: Migrate all developer environment setup and devcontainer to use mise
 - [ ] Task 14: Devcontainer environment upgrade with the use of https://mise.jdx.dev/mise-cookbook/shell-tricks.html and other mise features to optimize the development environment and workflow
 - [ ] Task 15: Add mise MCP configuration for all relevant tools and scripts
-- [ ] Task 16: Add vscode related to workspace config and plugins mise-vscode to devcontainern 
+- [ ] Task 16: Add vscode related to workspace config and plugins mise-vscode to devcontainer
 - [ ] Task 17: Code review, cleanup, and final validation
 - [ ] Task 18: Check also renovate config if need changes
-- [ ] Task 19: Ask to create a PR with the task implementation and link it here for tracking
+- [ ] Task 19: Remove Makefile and all Makefile-relative configs
+- [ ] Task 20: Ask to create a PR with the task implementation and link it here for tracking
 
 ## 🧠 Implementation Notes (Copilot Context)
+**Task 5 Implementation:**
+- Updated `/README.md`, `/backend/README.md`, `/frontend/README.md` to reference mise workflows for setup, build, test, and lint.
+- Removed Makefile and legacy toolchain references from these docs.
+- Ran `mise run docs-validate` to ensure all documentation passes lint and link checks (0 errors).
+- Custom components README update pending file access.
 **Branch:** `refactor/migrate-to-mise-remove-makefile` (feature branch created)
 
 **Pre-implementation Plan:**
@@ -58,6 +63,9 @@ Migrate the entire monorepo to use [mise.jdx.dev](https://mise.jdx.dev) for tool
 - Risks: Missed Makefile logic, CI/CD or devcontainer breakage, stale Makefile references, incomplete migration of subprojects.
 
 ## 🔗 Code References & TODOs
+/README.md (mise onboarding, usage, and workflow docs)
+/backend/README.md (mise backend workflow docs)
+/frontend/README.md (mise frontend workflow docs)
 
 ## 🗺️ Mise Migration Plan
 

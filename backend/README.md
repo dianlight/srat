@@ -11,6 +11,24 @@
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
+
+## Mise-based Backend Workflows
+
+All backend build, test, and lint workflows are now managed by [mise](https://mise.jdx.dev).
+
+**Common commands:**
+
+```sh
+# Build backend
+mise run //backend:build
+# Run backend tests
+mise run //backend:test
+# Lint/format backend
+mise run //backend:lint
+```
+
+See `.mise.toml` for all available tasks.
+
 ## CLI Commands
 
 The SRAT CLI (`srat-cli`) provides several commands for managing the Samba administration tool.
