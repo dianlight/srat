@@ -58,21 +58,22 @@
 		"HOST_PROJECT_PATH": "${localWorkspaceFolder}",
 		"PS1": "%(?:%{%}%1{➜%} :%{%}%1{➜%} ) %{%}%c%{%} $(git_prompt_info)"
 	},
-	//	"containerEnv": {
-	// These will be set as environment variables inside the container
-	//		"HOMEASSISTANT_IP": "${localEnv:HOMEASSISTANT_IP}",
-	//		"HOMEASSISTANT_SSH_USER": "${localEnv:HOMEASSISTANT_SSH_USER}"
-	//	},
+	"containerEnv": {
+		// These will be set as environment variables inside the container
+		"MISE_EXPERIMENTAL": "1"
+		//		"HOMEASSISTANT_IP": "${localEnv:HOMEASSISTANT_IP}",
+		//		"HOMEASSISTANT_SSH_USER": "${localEnv:HOMEASSISTANT_SSH_USER}"
+	},
 	"userEnvProbe": "loginInteractiveShell",
 	"customizations": {
 		"vscode": {
 			"settings": {
 				"terminal.integrated.profiles.linux": {
-					"bash": {
-						"path": "/bin/bash"
+					"zsh": {
+						"path": "/bin/zsh"
 					}
 				},
-				"terminal.integrated.defaultProfile.linux": "bash",
+				"terminal.integrated.defaultProfile.linux": "zsh",
 				"go.toolsManagement.checkForUpdates": "local",
 				"go.useLanguageServer": true,
 				"go.lintTool": "golangci-lint",
@@ -80,10 +81,10 @@
 					"--fast"
 				]
 			},
-			"terminal.integrated.defaultProfile.linux": "bash",
+			"terminal.integrated.defaultProfile.linux": "zsh",
 			"terminal.integrated.profiles.linux": {
-				"bash": {
-					"path": "/bin/bash"
+				"zsh": {
+					"path": "/bin/zsh"
 				}
 			},
 			"extensions": [
@@ -93,7 +94,6 @@
 				"mortenson.go-template-transpiler-extension",
 				"Gruntfuggly.todo-tree",
 				"yy0931.vscode-sqlite3-editor",
-				"be5invis.toml",
 				"zoellner.openapi-preview",
 				"golang.go",
 				"GitHub.remotehub",
@@ -107,7 +107,9 @@
 				"svvashishtha.go-interface-navigator",
 				"YoavBls.pretty-ts-errors",
 				"biomejs.biome",
-				"hverlin.mise-vscode"
+				"hverlin.mise-vscode",
+				"tamasfe.even-better-toml",
+				"chrischinchilla.vale-vscode"
 			],
 			"mcp": {
 				"servers": {
@@ -147,7 +149,8 @@
 		"ghcr.io/devcontainers/features/common-utils:2": {
 			"installZsh": true,
 			"installOhMyZsh": true,
-			"configureZshAsDefaultShell": true
+			"configureZshAsDefaultShell": true,
+			"installOhMyZshConfig": true
 		},
 		"ghcr.io/cirolosapio/devcontainers-features/alpine-docker-outside-of-docker:0": {
 			"installDockerCompose": true

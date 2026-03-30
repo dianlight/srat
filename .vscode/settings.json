@@ -255,5 +255,11 @@
   "markdown.preview.fontSize": 12,
   "editor.fontFamily": "Fira Code,Menlo, Monaco, 'Courier New', monospace",
   "github.copilot.chat.rateLimitAutoSwitchToAuto": true,
-  "github.copilot.chat.backgroundCompaction": true
+  "github.copilot.chat.backgroundCompaction": true,
+  "mise.configureExtensionsAutomatically": true,
+  "bun.runtime": "/root/.local/share/mise/shims/bun",
+  "go.goroot": "/root/.local/share/mise/installs/go/1.26.1",
+  "go.alternateTools": {
+    "go": "/root/.local/share/mise/shims/go"
+  }
 }

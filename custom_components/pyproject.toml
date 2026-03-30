@@ -46,10 +46,10 @@ convention = "google"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["custom_components/tests"]
+testpaths = ["tests"]
 
 [tool.mypy]
-python_version = "3.13"
+python_version = "3.14"
 show_error_codes = true
 follow_imports = "silent"
 ignore_missing_imports = true

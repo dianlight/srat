@@ -1,0 +1,38 @@
+
+[prepare.bun]
+
+[tools]
+biome = '2.4.9'
+
+[hooks]
+enter = "mise run prepare"
+
+[tasks]
+build = "bun run build"
+clean = "bun clean"
+dev = "bun run dev"
+dev-remote = "bun run dev:remote"
+gen = "bun run gen"
+#gen-mocks = "bun run gen:mocks"
+gowatch = "bun run gowatch"
+lint = "bun run lint"
+test = "bun run test"
+watch = "bun run watch"
+
+[tasks.build-static]
+usage = '''
+arg "<dir>" help="Target Directory to build" default="./src/web/static"
+flag "--version [version]" help="Build version" env="VERSION" 
+'''
+run = [
+    'echo ${usage_version?}',
+    'rm -rf ../backend/${usage_dir?}/* || :',
+    'mkdir -p ../backend/${usage_dir?} || :',
+	'touch ../backend/${usage_dir?}/.keep',
+	'bun run version -o ${usage_version?}',
+	'bun run build -o ../backend/${usage_dir?}'
+]
+sources = [
+    "src/**/*",
+]
+quiet = true
