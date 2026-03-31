@@ -10,6 +10,7 @@ config_roots = [
 [settings]
 npm.package_manager = "bun"
 npm.bun = true
+env_shell_expand = true
 
 [settings.python]
 compile = false
