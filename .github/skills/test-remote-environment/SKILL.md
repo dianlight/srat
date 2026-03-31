@@ -1,6 +1,6 @@
 ---
 name: test-remote-environment
-description: "Test the SRAT project against the live Home Assistant test environment. Deploys the backend binary via 'make build_remote', starts the frontend dev server with 'bun dev:remote', controls the local_sambanas2 addon (start/stop/restart) via the Home Assistant MCP, reads addon logs, and browses/validates the UI with Playwright at http://localhost:3080/. Triggers on: 'test remote', 'test in HA', 'deploy to test', 'check test environment', 'test on addon', 'run integration test'."
+description: "Test the SRAT project against the live Home Assistant test environment. Deploys the backend binary via 'mise //backend:build:remote', starts the frontend dev server with 'mise run //frontend:dev:remote', controls the local_sambanas2 addon (start/stop/restart) via the Home Assistant MCP, reads addon logs, and browses/validates the UI with Playwright at http://localhost:3080/. Triggers on: 'test remote', 'test in HA', 'deploy to test', 'check test environment', 'test on addon', 'run integration test'."
 argument-hint: "Describe what to test and whether custom component interaction is needed (e.g., 'test share creation flow, include custom component: yes')."
 ---
 
@@ -45,7 +45,7 @@ Before running the procedure, decide whether custom component deployment is in s
 Run in the `backend/` terminal (background, it may take a minute):
 
 ```bash
-cd backend && make build_remote
+mise //backend:build:remote
 ```
 
 - This cross-compiles for `amd64`, then `rsync`s the binaries into `/addon_configs/local_sambanas2/upgrade/` on the HA host.
@@ -127,7 +127,7 @@ mcp_home-assistan_ha_addon_logs  →  slug: "local_sambanas2"
 Only needed when testing UI changes. Run in the `frontend/` terminal (background):
 
 ```bash
-cd frontend && bun dev:remote
+mise run //frontend:dev:remote
 ```
 
 - `API_URL` is derived automatically from `SUPERVISOR_URL` — the script computes `${SUPERVISOR_URL%/}:3000/` (strips trailing slash, appends the SRAT backend port). Ensure `SUPERVISOR_URL` is set before running.
@@ -214,8 +214,8 @@ Build successful?
 | Custom component fails after deploy | Reload/setup error in HA | Run `mcp_home-assistan_ha_check_config`, then inspect addon/core logs for traceback and fix component imports/schema |
 | Frontend build loop / TS errors | Type error in changed file | Fix the error shown in frontend terminal stdout |
 | Playwright blank page | Frontend not yet ready | Wait for `Bun.serve listening on :3080` in terminal |
-| WebSocket not connecting | Proxy / CORS | Check `bun dev:remote` stdout for proxy errors |
-| Browser console CORS errors | API_URL mismatch | Verify `HOMEASSISTANT_IP` matches `API_URL` in `package.json` `dev:remote` |
+| WebSocket not connecting | Proxy / CORS | Check `mise run //frontend:dev:remote` stdout for proxy errors |
+| Browser console CORS errors | API_URL mismatch | Verify `HOMEASSISTANT_IP` matches `API_URL` in `.mise.toml` `dev:remote` |
 
 ## Increase Custom Component Verbosity
 

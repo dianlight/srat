@@ -76,7 +76,7 @@ Create a backend repair-management service that can request, track, and resolve 
 - Phase update (Task 12 complete): integrated backend + custom-component repair proxy behavior and aligned task documentation with concrete implementation artifacts.
 - Phase update (Task 13 complete): performed targeted validation for backend (`go test` focused suites) and custom component (`pytest` focused suites), all passing.
 - Completion summary: repair lifecycle state is now owned by `RepairService` per managed repair instead of `ContextState`, client message routing uses generated `ClientEventTypes` enums directly, and the custom component remote deployment was validated on the Home Assistant test environment.
-- Remote validation summary: `backend && make build_remote` completed successfully, add-on `local_sambanas2` restarted cleanly, `custom_components && make mount_remote && make install_remote` succeeded, Home Assistant core reload succeeded, and Home Assistant configuration validation remained green throughout the deploy flow.
+- Remote validation summary: `mise //backend:build:remote` completed successfully, add-on `local_sambanas2` restarted cleanly, `custom_components && make mount_remote && make install_remote` succeeded, Home Assistant core reload succeeded, and Home Assistant configuration validation remained green throughout the deploy flow.
 
 ## 🔗 Code References & TODOs
 
