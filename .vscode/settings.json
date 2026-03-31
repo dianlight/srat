@@ -253,7 +253,7 @@
   "imageCarousel.explorerContextMenu.enabled": true,
   "workbench.fontAliasing": "auto",
   "markdown.preview.fontSize": 12,
-  "editor.fontFamily": "Fira Code,Menlo, Monaco, 'Courier New', monospace",
+  "editor.fontFamily": "JetBrains Mono,FiraCode-Retina,Fira Code,Menlo, Monaco, 'Courier New', monospace",
   "github.copilot.chat.rateLimitAutoSwitchToAuto": true,
   "github.copilot.chat.backgroundCompaction": true,
   "mise.configureExtensionsAutomatically": true,
@@ -261,5 +261,6 @@
   "go.goroot": "/root/.local/share/mise/installs/go/1.26.1",
   "go.alternateTools": {
     "go": "/root/.local/share/mise/shims/go"
-  }
+  },
+  "editor.fontSize": 13
 }
