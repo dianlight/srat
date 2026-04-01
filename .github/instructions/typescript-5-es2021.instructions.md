@@ -9,7 +9,7 @@ applyTo: ''
 
 # TypeScript Development (DEPRECATED)
 
-> ⚠️ **DEPRECATED**: This file is deprecated. The project has been upgraded to TypeScript 6.0/7.0.
+> ⚠️ **DEPRECATED**: This file is deprecated. The project has been upgraded to TypeScript 6.0 final.
 >
 > **Please use**: `.github/instructions/typescript-6-es2022.instructions.md`
 >
@@ -23,10 +23,13 @@ applyTo: ''
 
 This file previously contained guidelines for TypeScript 5.x targeting ES2021. The project now uses:
 
-- **TypeScript 6.0 Beta / 7.0 Preview (tsgo)**
+- **TypeScript 6.0 final (March 23, 2026) - Last JavaScript-based version**
+- **TypeScript 7.0 Preview (tsgo) - Go-native compiler**
 - **Target: ES2022**
-- **Removed deprecated flags**: `experimentalDecorators`, `useDefineForClassFields`
+- **Removed deprecated flags**: `experimentalDecorators`, `useDefineForClassFields`, `baseUrl`, `outFile`
 - **Enabled strict flags**: `noImplicitOverride`
+
+TypeScript 6.0 final is the last JavaScript-based version before the transformative Go-native TypeScript 7.0 compiler.
 
 See the new instructions file for current guidelines.
 

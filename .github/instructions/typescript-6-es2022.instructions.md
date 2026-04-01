@@ -13,13 +13,13 @@ applyTo: '**/\*.ts,**/\*.tsx'
 
 ## TypeScript Version and Tooling
 
-- **TypeScript Version**: 6.0 RC / 7.0 Preview (tsgo)
+- **TypeScript Version**: 6.0 final / 7.0 Preview (tsgo)
 - **Target**: ES2022 with modern ECMAScript features
 - **Type Checking**: Uses `bun tsgo --noEmit` command (not regular `tsc`)
 - **Migration Guide**: See `frontend/TYPESCRIPT_MIGRATION.md` for upgrade details
-- **Release**: TypeScript 6.0 RC (March 2026) - [Official Announcement](https://devblogs.microsoft.com/typescript/announcing-typescript-6-0-rc/)
+- **Release**: TypeScript 6.0 final (March 23, 2026) - [Official Announcement](https://devblogs.microsoft.com/typescript/announcing-typescript-6-0/)
 
-### TypeScript 6.0 RC Key Changes
+### TypeScript 6.0 Key Changes
 
 **Removed Deprecated Flags** (Do not use):
 - ❌ `experimentalDecorators` - Use native decorators instead
@@ -27,6 +27,9 @@ applyTo: '**/\*.ts,**/\*.tsx'
 - ❌ `target: es5` - ES2015+ is the minimum
 - ❌ Classic module resolution - Use `bundler` or `node`
 - ❌ AMD/UMD module emit - ESM and CommonJS only
+- ❌ `baseUrl` - No longer required for path mappings (deprecated in 6.0)
+- ❌ `outFile` - No longer supported
+- ❌ Import assertion syntax - Use import attributes instead
 
 **Enabled Strict Flags**:
 - ✅ `noImplicitOverride: true` - Requires explicit `override` keyword on class methods
@@ -34,17 +37,19 @@ applyTo: '**/\*.ts,**/\*.tsx'
 - 🚧 `noUncheckedIndexedAccess: true` - TODO: See migration guide for implementation plan
 
 **Performance Benefits**:
-- 40-60% faster incremental builds with parallelized type-checking (TS 6.0 RC)
+- 40-60% faster incremental builds with parallelized type-checking (TS 6.0)
 - 20-50% faster builds with `types: []` configuration
 - Multi-threaded AST caching and smarter inference
 - Better type inference and consistency
 
-**New Features in 6.0 RC**:
+**New Features in 6.0**:
 - Improved type inference for context-sensitive functions (React hooks, Redux actions)
 - Const type parameters for more precise generic inference
 - Advanced control flow analysis - better type narrowing
 - Subpath imports with `#/` (Node.js 20-style)
 - No mandatory `baseUrl` for import aliases
+- Updated DOM types including Temporal API support
+- Function expression type-checking aligned with TS 7.0
 
 ## Core Intent
 
@@ -234,7 +239,7 @@ class MyComponent {
 }
 ```
 
-## TypeScript 6.0 RC Code Optimization Patterns
+## TypeScript 6.0 Code Optimization Patterns
 
 ### Leveraging Improved Type Inference
 
@@ -243,7 +248,7 @@ class MyComponent {
 // ❌ Before (TS 5.x) - unnecessary cast
 const diskInfo = (diskHealth as any)?.per_disk_info?.[key];
 
-// ✅ After (TS 6.0 RC) - properly typed
+// ✅ After (TS 6.0) - properly typed
 const diskInfo = diskHealth?.per_disk_info?.[key]; // Type correctly inferred
 ```
 
@@ -253,7 +258,7 @@ const diskInfo = diskHealth?.per_disk_info?.[key]; // Type correctly inferred
 const h = headers as Record<string, string>;
 const v = h[key] ?? (h as Record<string, string>)[key.toLowerCase()];
 
-// ✅ After (TS 6.0 RC) - single cast, improved control flow
+// ✅ After (TS 6.0) - single cast, improved control flow
 const h = headers as Record<string, string>;
 const v = h[key] ?? h[key.toLowerCase()]; // Type properly narrowed
 ```
@@ -276,10 +281,20 @@ if (import.meta && (import.meta as any).hot) {
   (import.meta as any).hot.accept(() => reload());
 }
 
-// ✅ After (TS 6.0 RC) - native support
+// ✅ After (TS 6.0) - native support
 if (import.meta.hot) {
   import.meta.hot.accept(() => reload());
 }
+```
+
+**Avoid Deprecated Import Assertions:**
+```typescript
+// ❌ Deprecated in TS 6.0
+import data from './data.json' assert { type: 'json' };
+const module = await import('./module.js', { assert: { type: 'module' } });
+
+// ✅ Use import attributes instead (when supported by runtime)
+import data from './data.json' with { type: 'json' };
 ```
 
 ### Indexed Access Safety (Future Enhancement)
@@ -305,5 +320,6 @@ if (items[0] !== undefined) {
 
 - **Migration Guide**: `frontend/TYPESCRIPT_MIGRATION.md`
 - **Implementation Summary**: `TYPESCRIPT_6_IMPLEMENTATION_SUMMARY.md`
-- **Official Release Notes RC**: [TypeScript 6.0 RC](https://devblogs.microsoft.com/typescript/announcing-typescript-6-0-rc/)
+- **Official Release Notes**: [TypeScript 6.0](https://devblogs.microsoft.com/typescript/announcing-typescript-6-0/)
+- **TypeScript 6.0 Documentation**: [Release Notes](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-6-0.html)
 - **TypeScript 7.0 Discussion**: [microsoft/typescript-go](https://github.com/microsoft/typescript-go/discussions/825)

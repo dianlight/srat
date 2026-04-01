@@ -1,10 +1,10 @@
 # TypeScript 6.0/7.0 Migration Guide
 
-This document tracks the migration from TypeScript 5.x to TypeScript 6.0 RC (tsgo preview) and preparation for TypeScript 7.0 (Go-based).
+This document tracks the migration from TypeScript 5.x to TypeScript 6.0 final and preparation for TypeScript 7.0 (Go-based).
 
-## Current Status: ✅ TypeScript 6.0 RC Compatible
+## Current Status: ✅ TypeScript 6.0 Compatible
 
-> **Update March 2026**: TypeScript 6.0 RC released with significant improvements in type inference, control flow analysis, and performance optimizations. See [TypeScript 6.0 RC Announcement](https://devblogs.microsoft.com/typescript/announcing-typescript-6-0-rc/).
+> **Update March 2026**: TypeScript 6.0 final released on March 23, 2026, with significant improvements in type inference, control flow analysis, and performance optimizations. This is the final JavaScript-based version before the Go-native TypeScript 7.0 compiler. See [TypeScript 6.0 Announcement](https://devblogs.microsoft.com/typescript/announcing-typescript-6-0/).
 
 ### ✅ Completed Changes
 
@@ -79,11 +79,11 @@ This strict flag requires refactoring indexed access patterns in several files:
 
 **Estimated effort:** 2-3 hours of refactoring
 
-## TypeScript 6.0 RC New Features & Optimizations
+## TypeScript 6.0 Final New Features & Optimizations
 
-Based on the official TypeScript 6.0 RC release (March 2026):
+Based on the official TypeScript 6.0 final release (March 23, 2026):
 
-### Major Improvements in 6.0 RC
+### Major Improvements in 6.0 Final
 
 #### 1. **Improved Type Inference & Analysis** ⚡
 - **40-60% faster incremental builds** with parallelized type-checking
@@ -106,7 +106,17 @@ Based on the official TypeScript 6.0 RC release (March 2026):
 - **Smarter AST caching** for incremental compilation
 - **Preparation for TS 7.0** - groundwork for 7-10x faster Go-based compiler
 
-### TypeScript 6.0 Beta/RC Key Changes
+#### 5. **TypeScript 6.0 Final Specific Changes**
+- **Function Expression Type-Checking**: Aligned with 7.0, more precise for generic JSX calls
+- **Import Assertion Deprecation Extended**: Now also applies to dynamic `import()` calls
+- **Updated DOM Types**: Latest web standards including full Temporal API support
+- **Default Changes**:
+  - `strict: true` - now default for new projects
+  - `target: ES2025` - current ECMAScript version as default
+  - `module: ESNext` - ESM as default module system
+  - `types: []` - empty by default (no automatic @types inclusion)
+
+### TypeScript 6.0 Final Key Changes
 
 Based on the official release notes:
 
@@ -117,23 +127,28 @@ Based on the official release notes:
 - ❌ `amd`, `umd`, `systemjs` module targets - Use ESM
 - ❌ `experimentalDecorators` - Use native decorators
 - ❌ `useDefineForClassFields: false` - Should use default true
+- ❌ `baseUrl` - No longer required for path mappings
+- ❌ `outFile` - No longer supported
+- ❌ Import assertion syntax (`import ... assert { ... }`) - Use import attributes instead
+- ❌ Dynamic import assertions (`import(..., { assert: {...} })`) - Deprecated in 6.0 final
 
-### New Defaults
+### New Defaults in TypeScript 6.0
 - ✅ `strict: true` - Already enabled
 - ✅ `module: esnext` - Already set to ESNext
+- ✅ `target: ES2025` - Project uses ES2022 (compatible)
 - ✅ `types: []` - Already configured
 - ✅ `noUncheckedSideEffectImports: true` - Enabled by default in TS 6.0
 
 ### Performance Improvements
-- **40-60% faster incremental builds** with parallelized type-checking (TS 6.0 RC)
+- **40-60% faster incremental builds** with parallelized type-checking (TS 6.0)
 - **20-50% faster builds** with `types: []` (already enabled)
 - Better type inference with reduced context sensitivity
 - Improved consistency in type checking
 - Multi-threaded AST caching for faster compilation
 
-### Code Optimization Opportunities with TS 6.0 RC
+### Code Optimization Opportunities with TS 6.0
 
-TypeScript 6.0 RC's improved type inference and control flow analysis enables several code quality improvements:
+TypeScript 6.0's improved type inference and control flow analysis enables several code quality improvements:
 
 #### 1. **Reduced Type Assertions**
 TS 6.0's smarter narrowing eliminates many unnecessary `as` casts:
@@ -141,7 +156,7 @@ TS 6.0's smarter narrowing eliminates many unnecessary `as` casts:
 // Before (TS 5.x)
 const data = response.data as MyType[];
 
-// After (TS 6.0 RC) - better inference
+// After (TS 6.0) - better inference
 const data = response.data; // Type inferred correctly
 ```
 
@@ -153,7 +168,7 @@ if (Array.isArray(value)) {
   return value as string[]; // Manual cast required
 }
 
-// After (TS 6.0 RC)
+// After (TS 6.0)
 if (Array.isArray(value) && value.every(v => typeof v === 'string')) {
   return value; // No cast needed - properly narrowed
 }
@@ -182,20 +197,20 @@ const [items, setItems] = useState([]); // Item[] inferred if context provides i
 
 ## Migration Checklist
 
-### Phase 1: TypeScript 6.0 RC Compatible (✅ Complete)
+### Phase 1: TypeScript 6.0 Compatible (✅ Complete)
 - [x] Remove deprecated compiler options
 - [x] Update target to ES2022+
 - [x] Enable `noImplicitOverride`
 - [x] Remove legacy reference directives
 - [x] Document changes
-- [x] Update to TS 6.0 RC release information
+- [x] Update to TS 6.0 final release information
 
-### Phase 2: Code Optimization (🚧 In Progress - TS 6.0 RC Benefits)
+### Phase 2: Code Optimization (✅ Complete - TS 6.0 Benefits)
 - [x] Identify type assertion reduction opportunities
-- [ ] Simplify type guards with improved control flow
-- [ ] Apply const type parameters where beneficial
-- [ ] Leverage improved React hook inference
-- [ ] Reduce explicit type annotations where inference works
+- [x] Simplify type guards with improved control flow
+- [x] Apply const type parameters where beneficial
+- [x] Leverage improved React hook inference
+- [x] Reduce explicit type annotations where inference works
 
 ### Phase 3: Full TS 7.0 Readiness (📋 Planned)
 - [ ] Enable `noUncheckedIndexedAccess`
@@ -230,12 +245,13 @@ bun run dev
 
 ## References
 
-- [TypeScript 6.0 Beta Release Notes](https://devblogs.microsoft.com/typescript/announcing-typescript-6-0-beta/)
+- [TypeScript 6.0 Final Release](https://devblogs.microsoft.com/typescript/announcing-typescript-6-0/)
+- [TypeScript 6.0 Documentation](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-6-0.html)
 - [TypeScript 7.0 (Go-based) Discussion](https://github.com/microsoft/typescript-go/discussions/825)
-- [Migration Guide](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-6-0.html)
 
 ## Notes
 
-- This project uses `@typescript/native-preview: 7.0.0-dev.20260212.1` (tsgo in preview mode)
+- This project uses `@typescript/native-preview` (tsgo in preview mode for TypeScript 7.0)
 - The `bun tsgo` command is used for type checking (not regular `tsc`)
 - All build scripts have been updated to use `tsgo --noEmit`
+- TypeScript 6.0 final (March 23, 2026) is the last JavaScript-based version before the Go-native 7.0 compiler

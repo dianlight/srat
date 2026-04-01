@@ -1,6 +1,6 @@
 {
 	"compilerOptions": {
-		// TypeScript 6.0/7.0 Ready Configuration
+		// TypeScript 6.0 Final / 7.0 Ready Configuration
 		// https://github.com/home-assistant/frontend/blob/dev/tsconfig.json
 		
 		// Language Options - Updated for TS 6.0+ (ES2022+ recommended)
@@ -11,9 +11,11 @@
 			"DOM.Iterable",
 			"WebWorker"
 		],
-		// Removed deprecated flags for TS 6.0/7.0 compatibility:
-		// - experimentalDecorators: true (deprecated in TS 6.0, use native decorators)
-		// - useDefineForClassFields: false (deprecated, should use default true for ES2022+ class fields)
+		// Removed deprecated flags for TS 6.0 final / 7.0 compatibility:
+		// - experimentalDecorators: true (removed in TS 6.0, use native decorators)
+		// - useDefineForClassFields: false (removed, now defaults to true for ES2022+ class fields)
+		// - baseUrl (deprecated in TS 6.0, no longer required for path mappings)
+		// - outFile (removed in TS 6.0, not supported)
 		
 	    // Modules
 	    "module": "ESNext",
@@ -27,7 +29,7 @@
 	    "incremental": true,
 	    "tsBuildInfoFile": "node_modules/.cache/typescript/.tsbuildinfo",
 		
-		// Type checking options - Enhanced for TS 6.0/7.0
+		// Type checking options - Enhanced for TS 6.0 final / 7.0
 	    "noUnusedLocals": true,
 	    "noUnusedParameters": true,
 	    "noImplicitReturns": true,
