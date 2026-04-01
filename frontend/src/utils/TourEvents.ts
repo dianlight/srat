@@ -43,7 +43,10 @@ export type TourEventMap = Record<TourEventTypes, TourEventPayload>;
 const emitter = new Emittery();
 const wrappedListeners = new Map<
 	TourEventTypes,
-	WeakMap<Function, (payload: unknown) => void>
+	WeakMap<
+		(payload: TourEventMap[TourEventTypes]) => void,
+		(payload: TourEventMap[TourEventTypes]) => void
+	>
 >();
 
 const getPayload = (payload: unknown): TourEventPayload => {
@@ -54,14 +57,17 @@ const getPayload = (payload: unknown): TourEventPayload => {
 	return payload as TourEventPayload;
 };
 
-const getEventListeners = (event: TourEventTypes) => {
+function getEventListeners<TEvent extends TourEventTypes>(event: TEvent) {
 	let eventListeners = wrappedListeners.get(event);
 	if (!eventListeners) {
-		eventListeners = new WeakMap<Function, (payload: unknown) => void>();
+		eventListeners = new WeakMap<
+			(payload: TourEventMap[TEvent]) => void,
+			(payload: TourEventMap[TEvent]) => void
+		>();
 		wrappedListeners.set(event, eventListeners);
 	}
 	return eventListeners;
-};
+}
 
 export const TourEvents = {
 	/**
@@ -114,7 +120,7 @@ export const TourEvents = {
 			return;
 		}
 
-		emitter.off(event, wrapped);
+		emitter.off(event, wrapped as unknown as (payload: unknown) => void);
 		eventListeners.delete(listener);
 	},
 
@@ -126,7 +132,7 @@ export const TourEvents = {
 		payload: TourEventMap[TEvent],
 	) => {
 		try {
-			await emitter.emit(event, payload);
+			await emitter.emit<TEvent>(event, payload);
 		} catch (error) {
 			console.warn(`[TourEvents] Failed to emit ${event}`, error);
 		}

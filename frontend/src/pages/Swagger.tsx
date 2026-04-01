@@ -1,19 +1,19 @@
 import { Box } from "@mui/material";
-import normalizeUrl from 'normalize-url';
-import { useEffect, useState } from 'react';
+import normalizeUrl from "normalize-url";
+import { useEffect, useState } from "react";
 import { apiUrl } from "../store/emptyApi";
 
 // Import Prism and make it globally available for openapi-explorer
-if (typeof window !== 'undefined' && !(globalThis as any).__TEST__) {
-	import('prismjs').then((Prism) => {
+if (typeof window !== "undefined" && !(globalThis as any).__TEST__) {
+	import("prismjs").then((Prism) => {
 		(window as any).Prism = Prism.default || Prism;
 		// Load the openapi-explorer after Prism is available
-		import('openapi-explorer');
+		import("openapi-explorer");
 	});
 }
 
 // Allow the custom web component <openapi-explorer> in TSX
-const OpenApiExplorer = 'openapi-explorer' as any;
+const OpenApiExplorer = "openapi-explorer" as any;
 
 export function Swagger() {
 	const [loaded, setLoaded] = useState(false);
@@ -23,22 +23,22 @@ export function Swagger() {
 		if ((globalThis as any).__TEST__) {
 			// In tests, mark as loaded immediately to show the overview
 			setLoaded(true);
-
-		} else if (typeof window !== 'undefined' && window.customElements) {
+		} else if (typeof window !== "undefined" && window.customElements) {
 			// Wait for the custom element to be registered
-			window.customElements.whenDefined('openapi-explorer')
+			window.customElements
+				.whenDefined("openapi-explorer")
 				.then(() => {
-					console.log('openapi-explorer custom element is ready');
+					console.log("openapi-explorer custom element is ready");
 					setLoaded(true);
 				})
 				.catch((err) => {
-					console.error('Error waiting for openapi-explorer:', err);
+					console.error("Error waiting for openapi-explorer:", err);
 					setLoaded(true);
 				});
 
 			// Fallback timeout in case whenDefined doesn't resolve
 			const timeout = setTimeout(() => {
-				console.log('openapi-explorer timeout, marking as loaded anyway');
+				console.log("openapi-explorer timeout, marking as loaded anyway");
 				setLoaded(true);
 			}, 2000);
 
@@ -46,11 +46,18 @@ export function Swagger() {
 		} else {
 			setLoaded(true);
 		}
-		return () => { };
+		return () => {};
 	}, []);
 
 	return (
-		<Box sx={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column' }}>
+		<Box
+			sx={{
+				height: "100%",
+				width: "100%",
+				display: "flex",
+				flexDirection: "column",
+			}}
+		>
 			{loaded ? (
 				<OpenApiExplorer
 					spec-url={normalizeUrl(`${apiUrl}/openapi.yaml`)}
@@ -59,7 +66,8 @@ export function Swagger() {
 					<div slot="overview">
 						<h1>API Documentation</h1>
 						<p>
-							<a href={normalizeUrl(`${apiUrl}/openapi.json`)}>JSON</a> | <a href={normalizeUrl(`${apiUrl}/openapi.yaml`)}>YAML</a>
+							<a href={normalizeUrl(`${apiUrl}/openapi.json`)}>JSON</a> |{" "}
+							<a href={normalizeUrl(`${apiUrl}/openapi.yaml`)}>YAML</a>
 						</p>
 					</div>
 				</OpenApiExplorer>
@@ -71,4 +79,4 @@ export function Swagger() {
 			)}
 		</Box>
 	);
-} 
+}

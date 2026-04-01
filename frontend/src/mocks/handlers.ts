@@ -47,7 +47,7 @@ export const handlers = [
 
 		return HttpResponse.json(
 			...resultArray[
-			next(`get /api/disk/:diskId/hdidle/config`) % resultArray.length
+				next(`get /api/disk/:diskId/hdidle/config`) % resultArray.length
 			],
 		);
 	}),
@@ -60,7 +60,7 @@ export const handlers = [
 
 		return HttpResponse.json(
 			...resultArray[
-			next(`patch /api/disk/:diskId/hdidle/config`) % resultArray.length
+				next(`patch /api/disk/:diskId/hdidle/config`) % resultArray.length
 			],
 		);
 	}),
@@ -73,7 +73,7 @@ export const handlers = [
 
 		return HttpResponse.json(
 			...resultArray[
-			next(`put /api/disk/:diskId/hdidle/config`) % resultArray.length
+				next(`put /api/disk/:diskId/hdidle/config`) % resultArray.length
 			],
 		);
 	}),
@@ -86,7 +86,7 @@ export const handlers = [
 
 		return HttpResponse.json(
 			...resultArray[
-			next(`get /api/disk/:diskId/hdidle/info`) % resultArray.length
+				next(`get /api/disk/:diskId/hdidle/info`) % resultArray.length
 			],
 		);
 	}),
@@ -99,7 +99,7 @@ export const handlers = [
 
 		return HttpResponse.json(
 			...resultArray[
-			next(`get /api/disk/:diskId/hdidle/support`) % resultArray.length
+				next(`get /api/disk/:diskId/hdidle/support`) % resultArray.length
 			],
 		);
 	}),
@@ -112,7 +112,7 @@ export const handlers = [
 
 		return HttpResponse.json(
 			...resultArray[
-			next(`post /api/disk/:diskId/smart/disable`) % resultArray.length
+				next(`post /api/disk/:diskId/smart/disable`) % resultArray.length
 			],
 		);
 	}),
@@ -125,7 +125,7 @@ export const handlers = [
 
 		return HttpResponse.json(
 			...resultArray[
-			next(`post /api/disk/:diskId/smart/enable`) % resultArray.length
+				next(`post /api/disk/:diskId/smart/enable`) % resultArray.length
 			],
 		);
 	}),
@@ -138,7 +138,7 @@ export const handlers = [
 
 		return HttpResponse.json(
 			...resultArray[
-			next(`get /api/disk/:diskId/smart/health`) % resultArray.length
+				next(`get /api/disk/:diskId/smart/health`) % resultArray.length
 			],
 		);
 	}),
@@ -151,7 +151,7 @@ export const handlers = [
 
 		return HttpResponse.json(
 			...resultArray[
-			next(`get /api/disk/:diskId/smart/info`) % resultArray.length
+				next(`get /api/disk/:diskId/smart/info`) % resultArray.length
 			],
 		);
 	}),
@@ -164,7 +164,7 @@ export const handlers = [
 
 		return HttpResponse.json(
 			...resultArray[
-			next(`get /api/disk/:diskId/smart/status`) % resultArray.length
+				next(`get /api/disk/:diskId/smart/status`) % resultArray.length
 			],
 		);
 	}),
@@ -177,7 +177,7 @@ export const handlers = [
 
 		return HttpResponse.json(
 			...resultArray[
-			next(`get /api/disk/:diskId/smart/test`) % resultArray.length
+				next(`get /api/disk/:diskId/smart/test`) % resultArray.length
 			],
 		);
 	}),
@@ -190,7 +190,7 @@ export const handlers = [
 
 		return HttpResponse.json(
 			...resultArray[
-			next(`post /api/disk/:diskId/smart/test/abort`) % resultArray.length
+				next(`post /api/disk/:diskId/smart/test/abort`) % resultArray.length
 			],
 		);
 	}),
@@ -203,7 +203,7 @@ export const handlers = [
 
 		return HttpResponse.json(
 			...resultArray[
-			next(`post /api/disk/:diskId/smart/test/start`) % resultArray.length
+				next(`post /api/disk/:diskId/smart/test/start`) % resultArray.length
 			],
 		);
 	}),
@@ -480,7 +480,7 @@ export const handlers = [
 
 		return HttpResponse.json(
 			...resultArray[
-			next(`put /api/share/:shareName/disable`) % resultArray.length
+				next(`put /api/share/:shareName/disable`) % resultArray.length
 			],
 		);
 	}),
@@ -493,7 +493,7 @@ export const handlers = [
 
 		return HttpResponse.json(
 			...resultArray[
-			next(`put /api/share/:shareName/enable`) % resultArray.length
+				next(`put /api/share/:shareName/enable`) % resultArray.length
 			],
 		);
 	}),
@@ -528,7 +528,7 @@ export const handlers = [
 
 		return HttpResponse.json(
 			...resultArray[
-			next(`get /api/telemetry/internet-connection`) % resultArray.length
+				next(`get /api/telemetry/internet-connection`) % resultArray.length
 			],
 		);
 	}),

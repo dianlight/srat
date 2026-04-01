@@ -8,16 +8,16 @@
 
 import { ws } from "msw";
 import {
-	Supported_events,
-	Update_channel,
-	Update_process_state,
 	type DataDirtyTracker,
 	type Disk,
 	type HealthPing,
 	type SharedResource,
 	type SmartTestStatus,
+	Supported_events,
+	Update_channel,
+	Update_process_state,
 	type UpdateProgress,
-	type Welcome
+	type Welcome,
 } from "../store/sratApi";
 
 /**

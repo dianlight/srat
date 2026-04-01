@@ -17,23 +17,23 @@ import SaveIcon from "@mui/icons-material/Save";
 import SystemSecurityUpdateIcon from "@mui/icons-material/SystemSecurityUpdate";
 import UndoIcon from "@mui/icons-material/Undo";
 import {
-	CircularProgress,
-	type CircularProgressProps,
-	Dialog,
-	DialogContent,
-	DialogTitle,
-	List,
-	ListItem,
-	ListItemSecondaryAction,
-	ListItemText,
-	ListSubheader,
-	Menu,
-	MenuItem,
-	Switch,
-	Tab,
-	Tabs,
-	useMediaQuery,
-	useTheme,
+    CircularProgress,
+    type CircularProgressProps,
+    Dialog,
+    DialogContent,
+    DialogTitle,
+    List,
+    ListItem,
+    ListItemSecondaryAction,
+    ListItemText,
+    ListSubheader,
+    Menu,
+    MenuItem,
+    Switch,
+    Tab,
+    Tabs,
+    useMediaQuery,
+    useTheme,
 } from "@mui/material";
 //import { DirtyDataContext, ModeContext } from "../Contexts"
 import AppBar from "@mui/material/AppBar";
@@ -62,7 +62,7 @@ import { Settings } from "../pages/settings/Settings";
 import { SettingsSteps } from "../pages/settings/SettingsTourStep";
 import { Shares } from "../pages/shares/Shares";
 import { SharesSteps } from "../pages/shares/SharesTourStep";
-import { SmbConf } from "../pages/SmbConf";
+import { SmbConfPage } from "../pages/SmbConf";
 import { Swagger } from "../pages/Swagger";
 import { Users } from "../pages/users/Users";
 import { UsersSteps } from "../pages/users/UsersSteps";
@@ -70,10 +70,10 @@ import { Volumes } from "../pages/volumes/Volumes";
 import { VolumesSteps } from "../pages/volumes/VolumesTourStep";
 import { type LocationState, TabIDs } from "../store/locationState";
 import {
-	type DataDirtyTracker,
-	type HealthPing,
-	Update_process_state,
-	usePutApiUpdateMutation
+    type DataDirtyTracker,
+    type HealthPing,
+    Update_process_state,
+    usePutApiUpdateMutation
 } from "../store/sratApi";
 import { useGetServerEventsQuery } from "../store/wsApi";
 import { DonationButton } from "./DonationButton";
@@ -107,7 +107,7 @@ const ALL_TAB_CONFIGS: TabConfig[] = [
 	{
 		id: TabIDs.SMB_FILE_CONFIG,
 		label: "smb.conf",
-		component: <SmbConf />,
+		component: <SmbConfPage />,
 		isDevelopmentOnly: true,
 		tutorialSteps: NoTutorialSteps,
 	},

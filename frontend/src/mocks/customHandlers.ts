@@ -25,12 +25,15 @@ export const customHandlers: RequestHandler[] = [
 		const partitionId = url.searchParams.get("partition_id");
 
 		if (!partitionId) {
-			return new Response(JSON.stringify({ message: "partition_id is required" }), {
-				status: 400,
-				headers: {
-					"Content-Type": "application/json",
+			return new Response(
+				JSON.stringify({ message: "partition_id is required" }),
+				{
+					status: 400,
+					headers: {
+						"Content-Type": "application/json",
+					},
 				},
-			});
+			);
 		}
 
 		return new Response(

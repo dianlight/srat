@@ -1,9 +1,9 @@
 //import copy from 'bun-copy-plugin';
 
-import { Glob } from "bun";
-import type { BuildConfig, BuildOutput } from "bun";
 import { watch } from "node:fs";
 import { parseArgs } from "node:util";
+import type { BuildConfig, BuildOutput } from "bun";
+import { Glob } from "bun";
 //import path from "node:path";
 import App from "./src/index.html";
 
@@ -55,7 +55,8 @@ const buildConfig: BuildConfig = {
 		//copy("src/index.html", "out/index.html")
 		//  html({})
 	],
-	tsconfig: values.watch || values.serve ? "tsconfig.json" : "tsconfig.prod.json",
+	tsconfig:
+		values.watch || values.serve ? "tsconfig.json" : "tsconfig.prod.json",
 	/*
 	define: {
 		"process.env.APIURL": APIURL,
@@ -82,8 +83,7 @@ async function build(): Promise<BuildOutput | undefined> {
 	} else if (values.serve) {
 		console.log(`Serving ${values.outDir}`);
 		Bun.serve({
-			routes:
-			{
+			routes: {
 				"/*": App,
 			},
 			port: 3080,
@@ -107,7 +107,7 @@ async function build(): Promise<BuildOutput | undefined> {
 					console.log(`D ${values.outDir}/${file}`);
 					Bun.file(`${values.outDir}/${file}`)
 						.delete()
-						.catch((_err) => { });
+						.catch((_err) => {});
 				}
 			} catch (err) {
 				// Directory might not exist yet on first build

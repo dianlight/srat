@@ -1,17 +1,17 @@
+import { Box } from "@mui/material";
 import { useColorScheme } from "@mui/material/styles";
+import { useMemo } from "react";
 import { InView } from "react-intersection-observer";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import {
-	a11yDark,
-	a11yLight,
+    a11yDark,
+    a11yLight,
 } from "react-syntax-highlighter/dist/esm/styles/hljs";
-import { type SmbConf, useGetApiSambaConfigQuery } from "../store/sratApi";
-import { Box } from "@mui/material";
 import { CopyButtonBar } from "../components/CopyButtonBar";
+import { type SmbConf, useGetApiSambaConfigQuery } from "../store/sratApi";
 import { censorPlainText } from "../utils/censorshipUtils";
-import { useMemo } from "react";
 
-export function SmbConf() {
+export function SmbConfPage() {
 	const { mode } = useColorScheme();
 	const smbconfig = useGetApiSambaConfigQuery();
 

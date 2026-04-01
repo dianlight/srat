@@ -37,6 +37,11 @@ Migrate the entire monorepo to use [mise.jdx.dev](https://mise.jdx.dev) for tool
 - Removed Makefile and legacy toolchain references from these docs.
 - Ran `mise run docs-validate` to ensure all documentation passes lint and link checks (0 errors).
 - Custom components README update pending file access.
+**Task 6 Validation Retry (2026-04-01):**
+- Frontend lint blocker fixed by aligning `frontend/biome.json` schema with installed Biome CLI, replacing string concatenation with a template literal in `frontend/src/store/wsApi.ts`, and removing constant-condition guards in `frontend/src/pages/volumes/components/PartitionActionItems.ts` via a runtime feature flag (`__SRAT_ENABLE_EXPERIMENTAL_PARTITION_ACTIONS`).
+- `mise run //frontend:lint` now succeeds (non-failing warnings remain in `src/utils/TourEvents.ts` about `Function` type usage).
+- Backend integration test previously observed as failing now passes both in isolation (`go test ./service -run TestAddonConfigWatcherServiceSuite/TestIntegration_EndToEnd_FileWriteEmitsAppConfigEvent -v`) and in full workflow (`mise run //backend:test`).
+- Remaining Task 6 gap: `mise run //backend:build` without explicit `--arch` still fails (`usage_arch: parameter not set`); build works with explicit architecture (e.g., `mise run //backend:build -- --arch=x86_64`).
 **Branch:** `refactor/migrate-to-mise-remove-makefile` (feature branch created)
 
 **Pre-implementation Plan:**
