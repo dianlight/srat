@@ -1,0 +1,76 @@
+amends "package://github.com/jdx/hk/releases/download/v1.39.0/hk@1.39.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.39.0/hk@1.39.0#/Builtins.pkl"
+
+local linters = new Mapping<String, Step> {
+    // Add linters here. Examples:
+    // ["prettier"] = Builtins.prettier
+    // ["eslint"] = Builtins.eslint
+    //["check-conventional-commits"] = Builtins.checkConventionalCommits
+    //["check-executables-have-shebangs"] = Builtins.checkExecutablesHaveShebangs
+
+    ["ruff"] = Builtins.ruff
+    ["ruff-format"] = Builtins.ruff_format
+    ["mypy"] = Builtins.mypy
+
+    ["biome"] = (Builtins.biome) {
+//        glob = "src/**/*"  // Only files in src/
+//        types = List("python")  // That are Python files
+//        glob = List("*.js", "*.ts","*.tsx", "*.jsx")
+    }
+
+
+    ["go-fmt"] = Builtins.go_fmt
+    ["go-sec"] = Builtins.go_sec
+    ["go-vet"] = Builtins.go_vet
+    ["golangci-lint"] = Builtins.golangci_lint
+    ["gomod-tidy"] = Builtins.gomod_tidy
+    ["err-check"] = (Builtins.err_check) {
+        glob = "**/*.go"
+    }
+
+    ["lychee"] = (Builtins.lychee) {
+        glob = "**/*.md"
+    }
+    ["markdown-lint"] = (Builtins.markdown_lint) {
+        glob = "**/*.md"
+    }
+    ["vale"] = (Builtins.vale) {
+        glob = "**/*.md"
+    }
+
+    ["mise"] = (Builtins.mise) {
+        //glob = "**/*.ts"
+    }
+
+    ["shellcheck"] = (Builtins.shellcheck) {
+        glob = "**/*.sh"
+    }
+    ["shfmt"] = (Builtins.shfmt) {
+        glob = "**/*.sh"
+    }   
+
+    ["tombi"] = Builtins.tombi
+    ["tombi-format"] = Builtins.tombi_format
+
+
+    // Or define custom steps:
+    // ["custom"] {
+    //     glob = "**/*.py"
+    //     check = "mypy {{ files }}"
+    // }
+}
+
+hooks {
+    ["pre-commit"] {
+        fix = true
+        stash = "git"
+        steps = linters
+    }
+    ["fix"] {
+        fix = true
+        steps = linters
+    }
+    ["check"] {
+        steps = linters
+    }
+}

@@ -329,6 +329,54 @@ backend = "npm:doctoc"
 version = "3.8.1"
 backend = "npm:prettier"
 
+[[tools.pkl]]
+version = "0.31.1"
+backend = "aqua:apple/pkl"
+
+[tools.pkl."platforms.linux-arm64"]
+checksum = "sha256:7ef10e743daa921fb94ae7bdb9ec6986f362bf250c55814b9ea2aeb13f2d083e"
+url = "https://github.com/apple/pkl/releases/download/0.31.1/pkl-linux-aarch64"
+
+[tools.pkl."platforms.linux-arm64-musl"]
+checksum = "sha256:7ef10e743daa921fb94ae7bdb9ec6986f362bf250c55814b9ea2aeb13f2d083e"
+url = "https://github.com/apple/pkl/releases/download/0.31.1/pkl-linux-aarch64"
+
+[tools.pkl."platforms.linux-x64"]
+checksum = "sha256:618f13955d755cafbfe8c9cba1d27635848cd49dbc6abffd398d2751db1231bf"
+url = "https://github.com/apple/pkl/releases/download/0.31.1/pkl-linux-amd64"
+
+[tools.pkl."platforms.linux-x64-baseline"]
+checksum = "sha256:618f13955d755cafbfe8c9cba1d27635848cd49dbc6abffd398d2751db1231bf"
+url = "https://github.com/apple/pkl/releases/download/0.31.1/pkl-linux-amd64"
+
+[tools.pkl."platforms.linux-x64-musl"]
+checksum = "sha256:618f13955d755cafbfe8c9cba1d27635848cd49dbc6abffd398d2751db1231bf"
+url = "https://github.com/apple/pkl/releases/download/0.31.1/pkl-linux-amd64"
+
+[tools.pkl."platforms.linux-x64-musl-baseline"]
+checksum = "sha256:618f13955d755cafbfe8c9cba1d27635848cd49dbc6abffd398d2751db1231bf"
+url = "https://github.com/apple/pkl/releases/download/0.31.1/pkl-linux-amd64"
+
+[tools.pkl."platforms.macos-arm64"]
+checksum = "sha256:1b6a5438d9624cd2798a7530721bbbfa27ef72efe5c878a1b6c546c6e7ca0e8f"
+url = "https://github.com/apple/pkl/releases/download/0.31.1/pkl-macos-aarch64"
+
+[tools.pkl."platforms.macos-x64"]
+checksum = "sha256:22123ed4ae4c03afa8c54c69f77f0bec39b0fa0f67b09d6d148e0a376a2a471d"
+url = "https://github.com/apple/pkl/releases/download/0.31.1/pkl-macos-amd64"
+
+[tools.pkl."platforms.macos-x64-baseline"]
+checksum = "sha256:22123ed4ae4c03afa8c54c69f77f0bec39b0fa0f67b09d6d148e0a376a2a471d"
+url = "https://github.com/apple/pkl/releases/download/0.31.1/pkl-macos-amd64"
+
+[tools.pkl."platforms.windows-x64"]
+checksum = "sha256:a8834481667325b44c539dbb758d7365a16389070f343c04b639bbe525ede013"
+url = "https://github.com/apple/pkl/releases/download/0.31.1/pkl-windows-amd64.exe"
+
+[tools.pkl."platforms.windows-x64-baseline"]
+checksum = "sha256:a8834481667325b44c539dbb758d7365a16389070f343c04b639bbe525ede013"
+url = "https://github.com/apple/pkl/releases/download/0.31.1/pkl-windows-amd64.exe"
+
 [[tools.prek]]
 version = "0.3.8"
 backend = "aqua:j178/prek"
@@ -478,6 +526,54 @@ url = "https://github.com/astral-sh/ruff/releases/download/0.15.8/ruff-x86_64-pc
 [tools.ruff."platforms.windows-x64-baseline"]
 checksum = "sha256:1e6ebd021dc9cefa8b9f15b5d6500c275ec49a0f2da968824845c34f30060c78"
 url = "https://github.com/astral-sh/ruff/releases/download/0.15.8/ruff-x86_64-pc-windows-msvc.zip"
+
+[[tools.tombi]]
+version = "0.9.13"
+backend = "aqua:tombi-toml/tombi"
+
+[tools.tombi."platforms.linux-arm64"]
+checksum = "sha256:db2bf291f42193a4bd5aebbddd37f1154f7a179b8952ea1ca20290800f0d344d"
+url = "https://github.com/tombi-toml/tombi/releases/download/v0.9.13/tombi-cli-0.9.13-aarch64-unknown-linux-musl.gz"
+
+[tools.tombi."platforms.linux-arm64-musl"]
+checksum = "sha256:db2bf291f42193a4bd5aebbddd37f1154f7a179b8952ea1ca20290800f0d344d"
+url = "https://github.com/tombi-toml/tombi/releases/download/v0.9.13/tombi-cli-0.9.13-aarch64-unknown-linux-musl.gz"
+
+[tools.tombi."platforms.linux-x64"]
+checksum = "sha256:55023b6a24f12c5be2fb6dd826a5f3763e701d4175352619518ac5092540d61a"
+url = "https://github.com/tombi-toml/tombi/releases/download/v0.9.13/tombi-cli-0.9.13-x86_64-unknown-linux-musl.gz"
+
+[tools.tombi."platforms.linux-x64-baseline"]
+checksum = "sha256:55023b6a24f12c5be2fb6dd826a5f3763e701d4175352619518ac5092540d61a"
+url = "https://github.com/tombi-toml/tombi/releases/download/v0.9.13/tombi-cli-0.9.13-x86_64-unknown-linux-musl.gz"
+
+[tools.tombi."platforms.linux-x64-musl"]
+checksum = "sha256:55023b6a24f12c5be2fb6dd826a5f3763e701d4175352619518ac5092540d61a"
+url = "https://github.com/tombi-toml/tombi/releases/download/v0.9.13/tombi-cli-0.9.13-x86_64-unknown-linux-musl.gz"
+
+[tools.tombi."platforms.linux-x64-musl-baseline"]
+checksum = "sha256:55023b6a24f12c5be2fb6dd826a5f3763e701d4175352619518ac5092540d61a"
+url = "https://github.com/tombi-toml/tombi/releases/download/v0.9.13/tombi-cli-0.9.13-x86_64-unknown-linux-musl.gz"
+
+[tools.tombi."platforms.macos-arm64"]
+checksum = "sha256:608e397c0b1a874814113cd337464589db858364aad26146ce5c778d4cbcbdea"
+url = "https://github.com/tombi-toml/tombi/releases/download/v0.9.13/tombi-cli-0.9.13-aarch64-apple-darwin.gz"
+
+[tools.tombi."platforms.macos-x64"]
+checksum = "sha256:00232564a55f84a19b571769207ce319056b96800e25ed2fab44203e71e38443"
+url = "https://github.com/tombi-toml/tombi/releases/download/v0.9.13/tombi-cli-0.9.13-x86_64-apple-darwin.gz"
+
+[tools.tombi."platforms.macos-x64-baseline"]
+checksum = "sha256:00232564a55f84a19b571769207ce319056b96800e25ed2fab44203e71e38443"
+url = "https://github.com/tombi-toml/tombi/releases/download/v0.9.13/tombi-cli-0.9.13-x86_64-apple-darwin.gz"
+
+[tools.tombi."platforms.windows-x64"]
+checksum = "sha256:b886f817ea20a561ca330c9bc4097392c5d6471d94faabad41283763044b79cc"
+url = "https://github.com/tombi-toml/tombi/releases/download/v0.9.13/tombi-cli-0.9.13-x86_64-pc-windows-msvc.zip"
+
+[tools.tombi."platforms.windows-x64-baseline"]
+checksum = "sha256:b886f817ea20a561ca330c9bc4097392c5d6471d94faabad41283763044b79cc"
+url = "https://github.com/tombi-toml/tombi/releases/download/v0.9.13/tombi-cli-0.9.13-x86_64-pc-windows-msvc.zip"
 
 [[tools.vale]]
 version = "3.14.1"
