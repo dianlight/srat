@@ -169,9 +169,9 @@ mise run //backend:gen         # ✅ Generates OpenAPI docs
 
 ```bash
 cd ./frontend
-bun run build    # ✅ Builds successfully
-bun test         # ✅ All tests pass (267 pass, 1 skip, 69.92% function coverage)
-bun gen          # ⚠️ Fails (known issue, workaround applied)
+mise run //frontend:build    # ✅ Builds successfully
+mise run //frontend:test     # ✅ All tests pass (267 pass, 1 skip, 69.92% function coverage)
+mise run //frontend:gen      # ⚠️ Fails (known issue, workaround applied)
 ```
 
 ## Testing Summary

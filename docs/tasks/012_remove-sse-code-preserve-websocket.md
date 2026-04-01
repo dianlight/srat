@@ -33,7 +33,7 @@ Remove all Server-Sent Events (SSE) related code from the backend (Go) and front
 - [x] Task 6: Clean up `frontend/src/store/sseApi.ts` — delete the large commented-out `sseApi` `createApi` block (~lines 47–187), update/remove SSE-only JSDoc comments; rename file to `wsApi.ts` and update all imports across the frontend
 - [x] Task 7: Remove SSE-specific test cases from `frontend/src/store/__tests__/sseApi.test.tsx` (those importing/using `sseApi`); rename file to `wsApi.test.tsx` if file is renamed in Task 6
 - [x] Task 8: Run backend tests — `cd backend/src && go test ./api ./service` — and fix any compilation errors
-- [x] Task 9: Run frontend tests — `cd frontend && bun test --preload ./test/setup.ts` — and fix any failures (SmartStatusPanel tests now all pass)
+- [x] Task 9: Run frontend tests — `mise run //frontend:test` — and fix any failures (SmartStatusPanel tests now all pass)
 - [x] Task 10: Regenerate OpenAPI spec and verify `/sse` endpoint is gone — `cd backend && make gen` then inspect `backend/docs/openapi.json`
 - [x] Task 11: Run `cd backend && make build` to confirm no build errors
 - [x] Task 12: Documentation — update any doc files that mention SSE as the real-time transport (e.g. `docs/EVENT_DRIVEN_ARCHITECTURE.md`, `docs/HOME_ASSISTANT_INTEGRATION.md`, task files `001_*` and `002_*` that reference SSE events)

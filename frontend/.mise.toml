@@ -11,12 +11,11 @@ enter = "mise run prepare"
 
 [tasks]
 build = "bun run build"
-clean = "bun clean"
-dev = "bun run dev"
+clean = "rm -rf out"
+dev = "tsgo --noEmit && NODE_ENV=development bun --hot run bun.build.ts -w -s ./out"
 gowatch = "bun run gowatch"
-lint = "bun run lint"
-test = "bun run test"
 watch = "bun run watch"
+validate-macros = "bun ../scripts/validate-macro-imports.js"
 
 [tasks.build-static]
 usage = '''
@@ -55,9 +54,45 @@ usage = '''
 arg "<url>" help="API URL" env="SUPERVISOR_URL"
 '''
 env = { NODE_ENV = "remote" }
+depends = [
+    { task = "generate" },
+]
 run = [
     "tsgo --noEmit",
     "echo API_URL=${usage_url%/}:3000/",
     "API_URL=${usage_url%/}:3000/ bun --hot run bun.build.ts -w -s ./out",
 ]
 quiet = true
+
+[tasks.update]
+run = [
+  "bun upgrade --latest",
+  "bun update -i",
+  { task = "test" },
+]
+
+
+[tasks.lint]
+depends = [
+    { task = "validate-macros" },
+]
+run = [
+    "biome check --write",
+    "tsgo --noEmit",
+    "bun ./scripts/add-test-setup.js",
+]
+
+[tasks.test]
+run = [
+    "bun ./scripts/add-test-setup.js",
+    "tsgo --noEmit",
+    "AGENT=1 BUN_TEST_NO_COVERAGE_THRESHOLD=1 bun test --preload ./test/setup.ts --bail --timeout 10000 --max-concurrency=1 --reporter=dot",
+]
+quiet = true
+
+[tasks."test:ci"]
+run = [
+    "bun ./scripts/add-test-setup.js",
+    "bun test --preload ./test/setup.ts --only-failures --timeout 60000 --bail --max-concurrency=1",
+]
+quiet = true  

@@ -110,12 +110,12 @@ export function ErrorTelemetryBinder() {
 
 ## Test Setup Enforcement
 
-All test files must import the shared test setup (`import '../../../../test/setup'`). This is enforced by the `test:prepare` script, which runs automatically before linting (see `package.json` lint script). If any test file is missing the setup import, lint will fail. To fix, run `bun run test:fix`.
+All test files must import the shared test setup (`import '../../../../test/setup'`). This is enforced by the `bun ./scripts/add-test-setup.js` script, which runs automatically before linting and testing. If the setup import is missing, the script will add it to the top of the file.
 
 Run tests locally:
 
 ```bash
-bun test
+mise run //frontend:test
 ```
 
 **Testing Standards:**
@@ -131,5 +131,5 @@ bun test
 Run linter and typecheck:
 
 ```bash
-bun run lint
+mise run //frontend:lint
 ```

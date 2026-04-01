@@ -51,7 +51,7 @@ To validate that all macro imports are correct, run:
 
 ```bash
 cd frontend
-bun run validate-macros
+mise run //frontend:validate-macros
 ```
 
 This script will:
@@ -71,4 +71,4 @@ This script will:
    import { yourFunction } from "../macro/YourMacro" with { type: "macro" };
    ```
 
-4. Verify the import by running `bun run validate-macros`
+4. Verify the import by running `mise run //frontend:validate-macros`

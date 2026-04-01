@@ -48,8 +48,8 @@ These instructions are the concise, must-follow rules for working in SRAT. Keep 
 ## Testing rules (fast summary)
 
 - **Bug fixes require a failing test first**, then the fix, then re‑run tests.
-- Frontend tests: use `bun:test`, React Testing Library, and **`user-event` only** (no `fireEvent`).
-- Frontend test stability: run `bun test --rerun-each 10` for modified tests.
+- Frontend tests: use `mise run //frontend:test`, React Testing Library, and **`user-event` only** (no `fireEvent`).
+- Frontend test stability: run `mise run //frontend:test --rerun-each 10` for modified tests.
 
 ## Docs & quality gates
 

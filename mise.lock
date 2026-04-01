@@ -224,9 +224,98 @@ url = "https://github.com/golangci/golangci-lint/releases/download/v2.11.4/golan
 checksum = "sha256:4932cfca5e75bf60fe1c576edf459e5e809e6644664a068185d64b84af3fad9e"
 url = "https://github.com/golangci/golangci-lint/releases/download/v2.11.4/golangci-lint-2.11.4-windows-amd64.zip"
 
+[[tools.hk]]
+version = "1.39.0"
+backend = "aqua:jdx/hk"
+
+[tools.hk."platforms.linux-arm64"]
+checksum = "sha256:209b73effe9f36fc5eee5a6ec0e833a501ed67f1041fbb3aeac9923ee252eb53"
+url = "https://github.com/jdx/hk/releases/download/v1.39.0/hk-aarch64-unknown-linux-gnu.tar.gz"
+
+[tools.hk."platforms.linux-arm64-musl"]
+checksum = "sha256:209b73effe9f36fc5eee5a6ec0e833a501ed67f1041fbb3aeac9923ee252eb53"
+url = "https://github.com/jdx/hk/releases/download/v1.39.0/hk-aarch64-unknown-linux-gnu.tar.gz"
+
+[tools.hk."platforms.linux-x64"]
+checksum = "sha256:559c72b512f7ec3df48f7a1e0f4d1c1082dd24a26f7d40865805dcc12dbf2a7c"
+url = "https://github.com/jdx/hk/releases/download/v1.39.0/hk-x86_64-unknown-linux-gnu.tar.gz"
+
+[tools.hk."platforms.linux-x64-baseline"]
+checksum = "sha256:559c72b512f7ec3df48f7a1e0f4d1c1082dd24a26f7d40865805dcc12dbf2a7c"
+url = "https://github.com/jdx/hk/releases/download/v1.39.0/hk-x86_64-unknown-linux-gnu.tar.gz"
+
+[tools.hk."platforms.linux-x64-musl"]
+checksum = "sha256:559c72b512f7ec3df48f7a1e0f4d1c1082dd24a26f7d40865805dcc12dbf2a7c"
+url = "https://github.com/jdx/hk/releases/download/v1.39.0/hk-x86_64-unknown-linux-gnu.tar.gz"
+
+[tools.hk."platforms.linux-x64-musl-baseline"]
+checksum = "sha256:559c72b512f7ec3df48f7a1e0f4d1c1082dd24a26f7d40865805dcc12dbf2a7c"
+url = "https://github.com/jdx/hk/releases/download/v1.39.0/hk-x86_64-unknown-linux-gnu.tar.gz"
+
+[tools.hk."platforms.macos-arm64"]
+checksum = "sha256:0df1d19a8a7b052def3b1048a38681218ce4e04579c1805fa74457f8e634ee82"
+url = "https://github.com/jdx/hk/releases/download/v1.39.0/hk-aarch64-apple-darwin.tar.gz"
+
+[tools.hk."platforms.windows-x64"]
+checksum = "sha256:4fdbc4dfe17191fdc2157e2ddb9cf32d0e9fb4c6c0cddae2f8f2ea4b0b351fca"
+url = "https://github.com/jdx/hk/releases/download/v1.39.0/hk-x86_64-pc-windows-msvc.zip"
+
+[tools.hk."platforms.windows-x64-baseline"]
+checksum = "sha256:4fdbc4dfe17191fdc2157e2ddb9cf32d0e9fb4c6c0cddae2f8f2ea4b0b351fca"
+url = "https://github.com/jdx/hk/releases/download/v1.39.0/hk-x86_64-pc-windows-msvc.zip"
+
 [[tools."http:lychee"]]
 version = "0.23.0"
 backend = "http:lychee"
+
+[[tools.jq]]
+version = "1.8.1"
+backend = "aqua:jqlang/jq"
+
+[tools.jq."platforms.linux-arm64"]
+checksum = "sha256:6bc62f25981328edd3cfcfe6fe51b073f2d7e7710d7ef7fcdac28d4e384fc3d4"
+url = "https://github.com/jqlang/jq/releases/download/jq-1.8.1/jq-linux-arm64"
+provenance = "github-attestations"
+
+[tools.jq."platforms.linux-arm64-musl"]
+checksum = "sha256:6bc62f25981328edd3cfcfe6fe51b073f2d7e7710d7ef7fcdac28d4e384fc3d4"
+url = "https://github.com/jqlang/jq/releases/download/jq-1.8.1/jq-linux-arm64"
+
+[tools.jq."platforms.linux-x64"]
+checksum = "sha256:020468de7539ce70ef1bceaf7cde2e8c4f2ca6c3afb84642aabc5c97d9fc2a0d"
+url = "https://github.com/jqlang/jq/releases/download/jq-1.8.1/jq-linux-amd64"
+
+[tools.jq."platforms.linux-x64-baseline"]
+checksum = "sha256:020468de7539ce70ef1bceaf7cde2e8c4f2ca6c3afb84642aabc5c97d9fc2a0d"
+url = "https://github.com/jqlang/jq/releases/download/jq-1.8.1/jq-linux-amd64"
+
+[tools.jq."platforms.linux-x64-musl"]
+checksum = "sha256:020468de7539ce70ef1bceaf7cde2e8c4f2ca6c3afb84642aabc5c97d9fc2a0d"
+url = "https://github.com/jqlang/jq/releases/download/jq-1.8.1/jq-linux-amd64"
+
+[tools.jq."platforms.linux-x64-musl-baseline"]
+checksum = "sha256:020468de7539ce70ef1bceaf7cde2e8c4f2ca6c3afb84642aabc5c97d9fc2a0d"
+url = "https://github.com/jqlang/jq/releases/download/jq-1.8.1/jq-linux-amd64"
+
+[tools.jq."platforms.macos-arm64"]
+checksum = "sha256:a9fe3ea2f86dfc72f6728417521ec9067b343277152b114f4e98d8cb0e263603"
+url = "https://github.com/jqlang/jq/releases/download/jq-1.8.1/jq-macos-arm64"
+
+[tools.jq."platforms.macos-x64"]
+checksum = "sha256:e80dbe0d2a2597e3c11c404f03337b981d74b4a8504b70586c354b7697a7c27f"
+url = "https://github.com/jqlang/jq/releases/download/jq-1.8.1/jq-macos-amd64"
+
+[tools.jq."platforms.macos-x64-baseline"]
+checksum = "sha256:e80dbe0d2a2597e3c11c404f03337b981d74b4a8504b70586c354b7697a7c27f"
+url = "https://github.com/jqlang/jq/releases/download/jq-1.8.1/jq-macos-amd64"
+
+[tools.jq."platforms.windows-x64"]
+checksum = "sha256:23cb60a1354eed6bcc8d9b9735e8c7b388cd1fdcb75726b93bc299ef22dd9334"
+url = "https://github.com/jqlang/jq/releases/download/jq-1.8.1/jq-windows-amd64.exe"
+
+[tools.jq."platforms.windows-x64-baseline"]
+checksum = "sha256:23cb60a1354eed6bcc8d9b9735e8c7b388cd1fdcb75726b93bc299ef22dd9334"
+url = "https://github.com/jqlang/jq/releases/download/jq-1.8.1/jq-windows-amd64.exe"
 
 [[tools.markdownlint-cli2]]
 version = "0.22.0"
@@ -235,6 +324,10 @@ backend = "npm:markdownlint-cli2"
 [[tools."npm:doctoc"]]
 version = "2.3.0"
 backend = "npm:doctoc"
+
+[[tools."npm:prettier"]]
+version = "3.8.1"
+backend = "npm:prettier"
 
 [[tools.prek]]
 version = "0.3.8"
