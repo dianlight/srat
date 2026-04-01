@@ -14,3 +14,4 @@ coveragePathIgnorePatterns = [
 coverageSkipTestFiles = true # Skip coverage for test files
 preload = "./test/setup.ts" 
 smol = true # Reduce memory usage during test runs
+timeout = 10000

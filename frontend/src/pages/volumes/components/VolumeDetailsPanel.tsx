@@ -25,7 +25,7 @@ import {
 import { filesize } from "filesize";
 import { useMemo, useState } from "react";
 import { PreviewDialog } from "../../../components/PreviewDialog";
-import { type Disk, type FilesystemState, type Partition, Time_machine_support, useGetApiFilesystemStateQuery } from "../../../store/sratApi";
+import { type Disk, type FilesystemState, type Partition, Time_machine_support, useGetApiFilesystemStateQuery, useGetApiSettingsQuery } from '../../../store/sratApi';
 import { decodeEscapeSequence } from "../utils";
 import { FilesystemCheckDialog } from "./FilesystemCheckDialog";
 import { HDIdleDiskSettings } from "./HDIdleDiskSettings";
@@ -64,6 +64,9 @@ export function VolumeDetailsPanel({
     const [previewObject, setPreviewObject] = useState<any | null>(null);
     const [previewTitle, setPreviewTitle] = useState<string>("Preview");
     const [checkDialogOpen, setCheckDialogOpen] = useState(false);
+
+    // Fetch settings for disable_smart
+    const { data: settings, isLoading: settingsLoading } = useGetApiSettingsQuery();
 
     const openPreviewFor = (obj: any, title?: string) => {
         setPreviewObject(obj);
@@ -339,7 +342,8 @@ export function VolumeDetailsPanel({
                 {disk && !partition && disk.hdidle_device?.supported && (
                     <HDIdleDiskSettings disk={disk} readOnly={false} />
                 )}
-                {disk && !partition && disk.smart_info?.supported && (
+                {/* Only render SmartStatusPanel if settings are loaded and disable_smart is not true */}
+                {disk && !partition && !settingsLoading && settings && !(settings as any)?.disable_smart && disk.smart_info?.supported && (
                     <SmartStatusPanel
                         smartInfo={disk.smart_info}
                         diskId={disk.id}

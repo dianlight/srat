@@ -7,20 +7,42 @@ export class LogEntry {
     args: string[];
     time: string;
 
+
     constructor(source: string, level: string, args: any[]) {
         this.source = source;
         this.level = level;
         this.args = args.map(arg => {
             if (arg instanceof Error) return arg.message;
-            return typeof arg === 'object' ? JSON.stringify(arg) : String(arg);
+            if (typeof arg === 'object') {
+                return safeStringify(arg);
+            }
+            return String(arg);
         });
         this.time = new Date().toLocaleTimeString();
     }
 
-    String() {
+    toString() {
         return `[${this.time}] [${this.source}] [${this.level}] ${this.args?.join(' ')}`;
     }
 }
+
+// Helper to safely stringify objects, handling cycles
+function safeStringify(obj: any): string {
+    const seen = new WeakSet();
+    try {
+        return JSON.stringify(obj, function(_, value) {
+            if (typeof value === 'object' && value !== null) {
+                if (seen.has(value)) return '[Circular]';
+                seen.add(value);
+            }
+            return value;
+        });
+    } catch {
+        return '[Unserializable]';
+    }
+}
+
+// (Stray String() method removed; only toString() remains inside LogEntry)
 
 /**
  * GlobalEventTracker: Classe Singleton per la gestione degli eventi.

@@ -1,28 +1,6 @@
+<!-- DOCTOC SKIP -->
+
 - ✅ `src/store/wsApi.ts` - Environment
-  <!-- START doctoc generated TOC please keep comment here to allow auto update -->
-  <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-
-- [Macro Import Validator - Implementation Summary](#macro-import-validator---implementation-summary)
-  - [Overview](#overview)
-  - [Components Created](#components-created)
-    - [1. **Validator Script** (`scripts/validate-macro-imports.js`)](#1-validator-script-scriptsvalidate-macro-importsjs)
-    - [3. **Documentation** (`frontend/src/macro/README.md`)](#3-documentation-frontendsrcmacroreadmemd)
-    - [4. **Package Script** (updated `frontend/package.json`)](#4-package-script-updated-frontendpackagejson)
-  - [Files Modified](#files-modified)
-  - [Files Created](#files-created)
-  - [Usage](#usage)
-    - [Manual Validation](#manual-validation)
-    - [Direct Script Usage](#direct-script-usage)
-    - [CI/CD Integration](#cicd-integration)
-  - [Example Correct Imports](#example-correct-imports)
-  - [Validation Results](#validation-results)
-  - [Next Steps](#next-steps)
-  - [Technical Details](#technical-details)
-    - [Regex Pattern](#regex-pattern)
-    - [Multi-line Support](#multi-line-support)
-  - [Limitations & Future Improvements](#limitations--future-improvements)
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 # Macro Import Validator - Implementation Summary
 

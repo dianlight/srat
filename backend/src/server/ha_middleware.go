@@ -3,8 +3,8 @@ package server
 import (
 	"context"
 	"log/slog"
-	"net/netip"
 	"net/http"
+	"net/netip"
 	"strings"
 
 	"github.com/dianlight/srat/internal/ctxkeys"
