@@ -168,7 +168,7 @@ export function DiskHealthMetrics({
 						<TableRow>
 							<TableCell>Description</TableCell>
 							<TableCell>Device</TableCell>
-							{(diskHealth as any)?.hdidle_running && (
+							{diskHealth?.hdidle_running && (
 								<TableCell align="center">Spin Status</TableCell>
 							)}
 							<TableCell align="right">Reads IOP/s</TableCell>
@@ -183,7 +183,7 @@ export function DiskHealthMetrics({
 					<TableBody>
 						{sortedDiskIo.map((io) => {
 							// Look up SMART health from per_disk_info using device_description as key
-							const diskInfo = (diskHealth as any)?.per_disk_info?.[io.device_description];
+							const diskInfo = diskHealth?.per_disk_info?.[io.device_description];
 							const smartHealth = diskInfo?.smart_health;
 							const isSmartHealthOk = !smartHealth || smartHealth.passed;
 							const smartHealthTooltip = smartHealth && !smartHealth.passed
@@ -244,7 +244,7 @@ export function DiskHealthMetrics({
 											{io.device_name}
 										</Box>
 									</TableCell>
-									{(diskHealth as any)?.hdidle_running && (
+									{diskHealth?.hdidle_running && (
 										<TableCell align="center">
 											{diskInfo?.hdidle_status ? (
 												<Tooltip 

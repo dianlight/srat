@@ -2,12 +2,40 @@
 
 ---
 
-description: 'Guidelines for TypeScript Development targeting TypeScript 5.x and ES2021 output'
-applyTo: '**/\*.ts,**/\*.tsx'
+description: '⚠️ DEPRECATED - See typescript-6-es2022.instructions.md instead'
+applyTo: ''
 
 ---
 
-# TypeScript Development
+# TypeScript Development (DEPRECATED)
+
+> ⚠️ **DEPRECATED**: This file is deprecated. The project has been upgraded to TypeScript 6.0 final.
+>
+> **Please use**: `.github/instructions/typescript-6-es2022.instructions.md`
+>
+> **Migration Guide**: `frontend/TYPESCRIPT_MIGRATION.md`
+>
+> **Summary**: `TYPESCRIPT_6_IMPLEMENTATION_SUMMARY.md`
+
+---
+
+## Deprecated Content (TypeScript 5.x / ES2021)
+
+This file previously contained guidelines for TypeScript 5.x targeting ES2021. The project now uses:
+
+- **TypeScript 6.0 final (March 23, 2026) - Last JavaScript-based version**
+- **TypeScript 7.0 Preview (tsgo) - Go-native compiler**
+- **Target: ES2022**
+- **Removed deprecated flags**: `experimentalDecorators`, `useDefineForClassFields`, `baseUrl`, `outFile`
+- **Enabled strict flags**: `noImplicitOverride`
+
+TypeScript 6.0 final is the last JavaScript-based version before the transformative Go-native TypeScript 7.0 compiler.
+
+See the new instructions file for current guidelines.
+
+---
+
+### Original Content Below (For Historical Reference Only)
 
 > These instructions assume projects are built with TypeScript 5.x (or newer) compiling to an ES2021 JavaScript baseline. Adjust guidance if your runtime requires older language targets or down-level transpilation.
 
