@@ -10,7 +10,7 @@ local linters = new Mapping<String, Step> {
     ["ruff-format"] = Builtins.ruff_format
     ["mypy"] = Builtins.mypy
 
-    //["biome"] = (Builtins.biome)
+    ["biome"] = (Builtins.biome)
 
     ["go-fmt"] = Builtins.go_fmt
     ["go-sec"] = Builtins.go_sec
@@ -21,17 +21,17 @@ local linters = new Mapping<String, Step> {
         glob = "**/*.go"
     }
 
-    //["lychee"] = (Builtins.lychee) {
-    //    glob = "**/*.md"
-    //}
-    //["markdownlint-cli2"] {
-    //    glob = "**/*.md"
-    //    check = "markdownlint-cli2 {{ files }}"
-    //    fix = "markdownlint-cli2 --fix {{ files }}"
-    //}
-    //["vale"] = (Builtins.vale) {
-    //    glob = "**/*.md"
-    //}
+    ["lychee"] = (Builtins.lychee) {
+        glob = "**/*.md"
+    }
+    ["markdownlint-cli2"] {
+        glob = "**/*.md"
+        check = "markdownlint-cli2 {{ files }}"
+        fix = "markdownlint-cli2 --fix {{ files }}"
+    }
+    ["vale"] = (Builtins.vale) {
+        glob = "**/*.md"
+    }
 
     ["mise"] = (Builtins.mise) {
         //glob = "**/*.ts"
@@ -47,12 +47,6 @@ local linters = new Mapping<String, Step> {
     ["tombi"] = Builtins.tombi
     ["tombi-format"] = Builtins.tombi_format
 
-
-    // Or define custom steps:
-    // ["custom"] {
-    //     glob = "**/*.py"
-    //     check = "mypy {{ files }}"
-    // }
 }
 
 hooks {

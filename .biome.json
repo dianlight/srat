@@ -1,3 +1,14 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.4.9/schema.json"
+	"$schema": "https://biomejs.dev/schemas/2.4.9/schema.json",
+	"files": {
+		"ignoreUnknown": true,
+		"includes": [
+			"frontend/src/**/*.ts",
+			"frontend/src/**/*.tsx",
+			"!frontend/src/store/sratApi.ts",
+			"!frontend/src/mocks",
+			"!frontend/src/**/*.test.*",
+			"!frontend/test/setup.ts"
+		]
+	}
 }
