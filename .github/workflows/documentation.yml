@@ -149,7 +149,6 @@ jobs:
         with:
           bun-version: latest
 
-
       - name: Run markdownlint (GFM)
         run: bunx markdownlint-cli2 "**/*.md" "#frontend/node_modules" "#backend/src/vendor"
 
@@ -167,7 +166,35 @@ jobs:
       - name: Install docutils
         run: sudo apt-get install -y docutils
 
+      - name: Count modified Markdown files
+        id: md_changes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          case "${{ github.event_name }}" in
+            pull_request)
+              base_sha="${{ github.event.pull_request.base.sha }}"
+              ;;
+            push)
+              base_sha="${{ github.event.before }}"
+              ;;
+            *)
+              base_sha=""
+              ;;
+          esac
+
+          if [[ -z "$base_sha" ]]; then
+            count=0
+          else
+            count="$(git diff --name-only "$base_sha" "${{ github.sha }}" -- '*.md' | wc -l | tr -d '[:space:]')"
+          fi
+
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          echo "Modified Markdown files: $count"
+
       - name: Run Vale prose linter (GFM)
+        if: ${{ fromJSON(steps.md_changes.outputs.count) < 5 }}
         uses: vale-cli/vale-action@d89dee975228ae261d22c15adcd03578634d429c # v2.1.1
         with:
           version: 3.13.0
@@ -175,7 +202,6 @@ jobs:
           reporter: github-pr-check
           vale_flags: "--glob='!{frontend/node_modules/**/*.md,backend/src/vendor/**/*.md,.git/**}'"
           fail_on_error: true
-          filter_mode: file
 
 
       - name: Generate Lychee report
