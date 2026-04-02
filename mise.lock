@@ -16,7 +16,15 @@ url = "https://github.com/nektos/act/releases/download/v0.2.86/act_Linux_arm64.t
 checksum = "sha256:f83f11968f19c43bf439d18b279247eb9c95df5eb984e6eebf8aa0e433b270ba"
 url = "https://github.com/nektos/act/releases/download/v0.2.86/act_Linux_x86_64.tar.gz"
 
+[tools.act."platforms.linux-x64-baseline"]
+checksum = "sha256:f83f11968f19c43bf439d18b279247eb9c95df5eb984e6eebf8aa0e433b270ba"
+url = "https://github.com/nektos/act/releases/download/v0.2.86/act_Linux_x86_64.tar.gz"
+
 [tools.act."platforms.linux-x64-musl"]
+checksum = "sha256:f83f11968f19c43bf439d18b279247eb9c95df5eb984e6eebf8aa0e433b270ba"
+url = "https://github.com/nektos/act/releases/download/v0.2.86/act_Linux_x86_64.tar.gz"
+
+[tools.act."platforms.linux-x64-musl-baseline"]
 checksum = "sha256:f83f11968f19c43bf439d18b279247eb9c95df5eb984e6eebf8aa0e433b270ba"
 url = "https://github.com/nektos/act/releases/download/v0.2.86/act_Linux_x86_64.tar.gz"
 
@@ -28,7 +36,15 @@ url = "https://github.com/nektos/act/releases/download/v0.2.86/act_Darwin_arm64.
 checksum = "sha256:fecb71483e6799388788454b3cfa13658e52b706d7389a4cd772cb6d160b87ef"
 url = "https://github.com/nektos/act/releases/download/v0.2.86/act_Darwin_x86_64.tar.gz"
 
+[tools.act."platforms.macos-x64-baseline"]
+checksum = "sha256:fecb71483e6799388788454b3cfa13658e52b706d7389a4cd772cb6d160b87ef"
+url = "https://github.com/nektos/act/releases/download/v0.2.86/act_Darwin_x86_64.tar.gz"
+
 [tools.act."platforms.windows-x64"]
+checksum = "sha256:f5a0c663f2e3d372119049a0ae74de51b6b9b9e40aa5d2d82f1bd05378da0cdf"
+url = "https://github.com/nektos/act/releases/download/v0.2.86/act_Windows_x86_64.zip"
+
+[tools.act."platforms.windows-x64-baseline"]
 checksum = "sha256:f5a0c663f2e3d372119049a0ae74de51b6b9b9e40aa5d2d82f1bd05378da0cdf"
 url = "https://github.com/nektos/act/releases/download/v0.2.86/act_Windows_x86_64.zip"
 
@@ -79,8 +95,17 @@ url = "https://github.com/biomejs/biome/releases/download/%40biomejs/biome%402.4
 [tools.biome."platforms.linux-x64"]
 checksum = "sha256:209550f80e5443011de329f658f86f496008a82e081626349cfe1dddd6156425"
 url = "https://github.com/biomejs/biome/releases/download/%40biomejs/biome%402.4.9/biome-linux-x64"
+provenance = "github-attestations"
+
+[tools.biome."platforms.linux-x64-baseline"]
+checksum = "sha256:209550f80e5443011de329f658f86f496008a82e081626349cfe1dddd6156425"
+url = "https://github.com/biomejs/biome/releases/download/%40biomejs/biome%402.4.9/biome-linux-x64"
 
 [tools.biome."platforms.linux-x64-musl"]
+checksum = "sha256:209550f80e5443011de329f658f86f496008a82e081626349cfe1dddd6156425"
+url = "https://github.com/biomejs/biome/releases/download/%40biomejs/biome%402.4.9/biome-linux-x64"
+
+[tools.biome."platforms.linux-x64-musl-baseline"]
 checksum = "sha256:209550f80e5443011de329f658f86f496008a82e081626349cfe1dddd6156425"
 url = "https://github.com/biomejs/biome/releases/download/%40biomejs/biome%402.4.9/biome-linux-x64"
 
@@ -92,7 +117,15 @@ url = "https://github.com/biomejs/biome/releases/download/%40biomejs/biome%402.4
 checksum = "sha256:f5b7e584d1e993157638ce2d32335dbe754c4be94c4774f43aaf569918161c15"
 url = "https://github.com/biomejs/biome/releases/download/%40biomejs/biome%402.4.9/biome-darwin-x64"
 
+[tools.biome."platforms.macos-x64-baseline"]
+checksum = "sha256:f5b7e584d1e993157638ce2d32335dbe754c4be94c4774f43aaf569918161c15"
+url = "https://github.com/biomejs/biome/releases/download/%40biomejs/biome%402.4.9/biome-darwin-x64"
+
 [tools.biome."platforms.windows-x64"]
+checksum = "sha256:b33519e33e6807e37d57767f7c49fc8fe5205819d267924a8fe8a20d7ce296cf"
+url = "https://github.com/biomejs/biome/releases/download/%40biomejs/biome%402.4.9/biome-win32-x64.exe"
+
+[tools.biome."platforms.windows-x64-baseline"]
 checksum = "sha256:b33519e33e6807e37d57767f7c49fc8fe5205819d267924a8fe8a20d7ce296cf"
 url = "https://github.com/biomejs/biome/releases/download/%40biomejs/biome%402.4.9/biome-win32-x64.exe"
 
@@ -207,8 +240,17 @@ url = "https://github.com/golangci/golangci-lint/releases/download/v2.11.4/golan
 [tools.golangci-lint."platforms.linux-x64"]
 checksum = "sha256:200c5b7503f67b59a6743ccf32133026c174e272b930ee79aa2aa6f37aca7ef1"
 url = "https://github.com/golangci/golangci-lint/releases/download/v2.11.4/golangci-lint-2.11.4-linux-amd64.tar.gz"
+provenance = "github-attestations"
+
+[tools.golangci-lint."platforms.linux-x64-baseline"]
+checksum = "sha256:200c5b7503f67b59a6743ccf32133026c174e272b930ee79aa2aa6f37aca7ef1"
+url = "https://github.com/golangci/golangci-lint/releases/download/v2.11.4/golangci-lint-2.11.4-linux-amd64.tar.gz"
 
 [tools.golangci-lint."platforms.linux-x64-musl"]
+checksum = "sha256:200c5b7503f67b59a6743ccf32133026c174e272b930ee79aa2aa6f37aca7ef1"
+url = "https://github.com/golangci/golangci-lint/releases/download/v2.11.4/golangci-lint-2.11.4-linux-amd64.tar.gz"
+
+[tools.golangci-lint."platforms.linux-x64-musl-baseline"]
 checksum = "sha256:200c5b7503f67b59a6743ccf32133026c174e272b930ee79aa2aa6f37aca7ef1"
 url = "https://github.com/golangci/golangci-lint/releases/download/v2.11.4/golangci-lint-2.11.4-linux-amd64.tar.gz"
 
@@ -220,7 +262,15 @@ url = "https://github.com/golangci/golangci-lint/releases/download/v2.11.4/golan
 checksum = "sha256:c900d4048db75d1edfd550fd11cf6a9b3008e7caa8e119fcddbc700412d63e60"
 url = "https://github.com/golangci/golangci-lint/releases/download/v2.11.4/golangci-lint-2.11.4-darwin-amd64.tar.gz"
 
+[tools.golangci-lint."platforms.macos-x64-baseline"]
+checksum = "sha256:c900d4048db75d1edfd550fd11cf6a9b3008e7caa8e119fcddbc700412d63e60"
+url = "https://github.com/golangci/golangci-lint/releases/download/v2.11.4/golangci-lint-2.11.4-darwin-amd64.tar.gz"
+
 [tools.golangci-lint."platforms.windows-x64"]
+checksum = "sha256:4932cfca5e75bf60fe1c576edf459e5e809e6644664a068185d64b84af3fad9e"
+url = "https://github.com/golangci/golangci-lint/releases/download/v2.11.4/golangci-lint-2.11.4-windows-amd64.zip"
+
+[tools.golangci-lint."platforms.windows-x64-baseline"]
 checksum = "sha256:4932cfca5e75bf60fe1c576edf459e5e809e6644664a068185d64b84af3fad9e"
 url = "https://github.com/golangci/golangci-lint/releases/download/v2.11.4/golangci-lint-2.11.4-windows-amd64.zip"
 
@@ -268,6 +318,10 @@ url = "https://github.com/jdx/hk/releases/download/v1.39.0/hk-x86_64-pc-windows-
 version = "0.23.0"
 backend = "http:lychee"
 
+[tools."http:lychee"."platforms.linux-x64"]
+checksum = "blake3:bbed573ef370099691cc8f9d2c0186eeabb582e45fad970d5adc55fa515f0884"
+url = "https://github.com/lycheeverse/lychee/releases/download/lychee-v0.23.0/lychee-x86_64-unknown-linux-gnu.tar.gz"
+
 [[tools.jq]]
 version = "1.8.1"
 backend = "aqua:jqlang/jq"
@@ -284,6 +338,7 @@ url = "https://github.com/jqlang/jq/releases/download/jq-1.8.1/jq-linux-arm64"
 [tools.jq."platforms.linux-x64"]
 checksum = "sha256:020468de7539ce70ef1bceaf7cde2e8c4f2ca6c3afb84642aabc5c97d9fc2a0d"
 url = "https://github.com/jqlang/jq/releases/download/jq-1.8.1/jq-linux-amd64"
+provenance = "github-attestations"
 
 [tools.jq."platforms.linux-x64-baseline"]
 checksum = "sha256:020468de7539ce70ef1bceaf7cde2e8c4f2ca6c3afb84642aabc5c97d9fc2a0d"
@@ -635,6 +690,7 @@ url = "https://github.com/tamasfe/taplo/releases/download/0.10.0/taplo-linux-aar
 url = "https://github.com/tamasfe/taplo/releases/download/0.10.0/taplo-linux-aarch64.gz"
 
 [tools.taplo."platforms.linux-x64"]
+checksum = "blake3:4871fab0e60275a1eb46e7190726e144f56c9a9527f59b0d1da5a042baead8e2"
 url = "https://github.com/tamasfe/taplo/releases/download/0.10.0/taplo-linux-x86_64.gz"
 
 [tools.taplo."platforms.linux-x64-baseline"]
@@ -725,7 +781,15 @@ url = "https://github.com/vale-cli/vale/releases/download/v3.14.1/vale_3.14.1_Li
 checksum = "sha256:ff2b49ffaa9dcd246fd5008f03ff67746d2790b75bf4d3657e2fb9530fb96db3"
 url = "https://github.com/vale-cli/vale/releases/download/v3.14.1/vale_3.14.1_Linux_64-bit.tar.gz"
 
+[tools.vale."platforms.linux-x64-baseline"]
+checksum = "sha256:ff2b49ffaa9dcd246fd5008f03ff67746d2790b75bf4d3657e2fb9530fb96db3"
+url = "https://github.com/vale-cli/vale/releases/download/v3.14.1/vale_3.14.1_Linux_64-bit.tar.gz"
+
 [tools.vale."platforms.linux-x64-musl"]
+checksum = "sha256:ff2b49ffaa9dcd246fd5008f03ff67746d2790b75bf4d3657e2fb9530fb96db3"
+url = "https://github.com/vale-cli/vale/releases/download/v3.14.1/vale_3.14.1_Linux_64-bit.tar.gz"
+
+[tools.vale."platforms.linux-x64-musl-baseline"]
 checksum = "sha256:ff2b49ffaa9dcd246fd5008f03ff67746d2790b75bf4d3657e2fb9530fb96db3"
 url = "https://github.com/vale-cli/vale/releases/download/v3.14.1/vale_3.14.1_Linux_64-bit.tar.gz"
 
@@ -737,6 +801,14 @@ url = "https://github.com/vale-cli/vale/releases/download/v3.14.1/vale_3.14.1_ma
 checksum = "sha256:98970ca11179b3166d7d7a10119d10121784cf6d4c40397ee065cbc1651d51d6"
 url = "https://github.com/vale-cli/vale/releases/download/v3.14.1/vale_3.14.1_macOS_64-bit.tar.gz"
 
+[tools.vale."platforms.macos-x64-baseline"]
+checksum = "sha256:98970ca11179b3166d7d7a10119d10121784cf6d4c40397ee065cbc1651d51d6"
+url = "https://github.com/vale-cli/vale/releases/download/v3.14.1/vale_3.14.1_macOS_64-bit.tar.gz"
+
 [tools.vale."platforms.windows-x64"]
+checksum = "sha256:e75228aa7eec07dab8875830c039d7d1216514793d0c46d95740a96dc2f96ae1"
+url = "https://github.com/vale-cli/vale/releases/download/v3.14.1/vale_3.14.1_Windows_64-bit.zip"
+
+[tools.vale."platforms.windows-x64-baseline"]
 checksum = "sha256:e75228aa7eec07dab8875830c039d7d1216514793d0c46d95740a96dc2f96ae1"
 url = "https://github.com/vale-cli/vale/releases/download/v3.14.1/vale_3.14.1_Windows_64-bit.zip"
