@@ -1,6 +1,5 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
 - [TypeScript 6.0/7.0 Migration Guide](#typescript-6070-migration-guide)
   - [Current Status: ✅ TypeScript 6.0 Compatible](#current-status--typescript-60-compatible)

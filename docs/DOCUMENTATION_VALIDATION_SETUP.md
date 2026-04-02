@@ -151,34 +151,35 @@ This document summarizes the comprehensive documentation validation system imple
 
 1. **Initial Setup**:
 
-  ```bash
-  mise run docs-check      # Check dependencies (including Lychee and Vale)
-  mise run //root:prepare  # Install pre-commit hooks
-  mise run docs-install    # Install JS-based documentation tools
-  ```
+```bash
+mise run docs-check      # Check dependencies (including Lychee and Vale)
+mise run //root:prepare  # Install pre-commit hooks
+mise run docs-install    # Install JS-based documentation tools
+```
 
-   **Optional but recommended:**
-   - Install Lychee: [https://lychee.cli.rs/#/installation](https://lychee.cli.rs/#/installation)
-   - Install Vale: [https://vale.sh/docs/vale-cli/installation/](https://vale.sh/docs/vale-cli/installation/)
+**Optional but recommended:**
+
+- Install Lychee: [https://lychee.cli.rs/#/installation](https://lychee.cli.rs/#/installation)
+- Install Vale: [https://vale.sh/docs/vale-cli/installation/](https://vale.sh/docs/vale-cli/installation/)
 
 2. **Before Committing**:
 
-  ```bash
-  mise run docs-validate  # Check documentation (all tools, GFM-aware)
-  mise run docs-fix       # Auto-fix formatting issues
-  ```
+```bash
+mise run docs-validate  # Check documentation (all tools, GFM-aware)
+mise run docs-fix       # Auto-fix formatting issues
+```
 
 3. **Sync Vale styles** (if Vale is installed):
 
-  ```bash
-  vale sync  # Download and update Vale styles
-  ```
+```bash
+vale sync  # Download and update Vale styles
+```
 
 4. **Get Help**:
 
-  ```bash
-  mise run docs-help  # Show all documentation commands and tool status
-  ```
+```bash
+mise run docs-help  # Show all documentation commands and tool status
+```
 
 5. **Pre-commit hooks will automatically**:
    - Check Markdown formatting (GFM-compatible)

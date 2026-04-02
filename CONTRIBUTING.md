@@ -6,7 +6,7 @@
   - [2. Development Environment](#2-development-environment)
   - [3. Branching & Commits](#3-branching--commits)
   - [4. Testing Requirements](#4-testing-requirements)
-  - [5. Logging RULE (Context-Aware) ✅](#5-logging-rule-context-aware-)
+  - [5. Logging Rule (Context Aware) ✅](#5-logging-rule-context-aware-)
     - [Allowed When No Context Exists](#allowed-when-no-context-exists)
     - [NEVER Do](#never-do)
     - [Goroutines](#goroutines)
