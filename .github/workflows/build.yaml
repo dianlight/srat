@@ -168,7 +168,7 @@ jobs:
         uses: jdx/mise-action@v2
         with:
           install: true
-          experimental: true
+          experimental: true          
 
       - name: Install Ubuntu Packages for Tests
         run: |
@@ -177,12 +177,10 @@ jobs:
             fuse3 exfatprogs btrfs-progs dosfstools hfsprogs f2fs-tools xfsprogs ntfs-3g
 
       - name: Test Backend ${{ needs.setversion.outputs.version }}
-        # RECOMMENDATION: Investigate if 'sudo' is truly necessary for tests.
-        # Running tests as root is a potential security risk.
         id: test_backend
         run: |
           set -o pipefail
-          sudo mise run //backend:test 2>&1 | tee backend/backend_test_output.txt
+          sudo -E $(which mise) run //backend:test 2>&1 | tee backend/backend_test_output.txt
 
       - name: Extract Backend Coverage
         id: extract_coverage
