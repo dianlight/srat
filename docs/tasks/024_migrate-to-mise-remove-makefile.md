@@ -24,7 +24,7 @@ Migrate the entire monorepo to use [mise.jdx.dev](https://mise.jdx.dev) for tool
 - [x] Task 12: Add mise MCP configuration for all relevant tools and scripts
 - [x] Task 13: Add vscode related to workspace config and plugins mise-vscode to devcontainer
 - [ ] Task 14: Code review, cleanup, and final validation
-- [ ] Task 15: Check also renovate config if need changes
+- [x] Task 15: Check also renovate config if need changes
 - [ ] Task 16: Remove Makefile and all Makefile-relative configs
 - [ ] Task 17: Ask to create a PR with the task implementation and link it here for tracking
 
@@ -106,6 +106,17 @@ Migrate the entire monorepo to use [mise.jdx.dev](https://mise.jdx.dev) for tool
 - Verified the devcontainer already provisions a mise-focused VS Code extension in `.devcontainer/devcontainer.json` under `customizations.vscode.extensions`.
 - Existing devcontainer MCP-related settings are also present under `customizations.vscode.mcp`, so the editor environment is already prepared for MCP-enabled workflows.
 - Result: No additional devcontainer wiring was required for this phase; the repository already includes the necessary VS Code extension/bootstrap configuration.
+**Task 15 Renovate Configuration Review (2026-04-02):**
+- Reviewed `.github/renovate.json` after the mise migration and confirmed Renovate has native support for `.mise.toml` files via its built-in `mise` manager.
+- Removed stale Makefile-era configuration that no longer matches the repository's intended source of truth:
+	- Dropped `customManagers:makefileVersions` from `extends`
+	- Restricted the custom `go run module@version` regex manager to Go source files only by removing the `/Makefile$/` pattern
+- Removed the broken Renovate `$schema` entry, which had been stored as a Markdown link string and triggered untrusted remote-schema diagnostics in the editor.
+- Validation notes:
+	- No non-vendor Makefiles contain Renovate-managed `_VERSION` annotations
+	- No non-vendor Makefiles contain `go run module@version` patterns that require Renovate regex management
+	- Native Renovate `mise` support now covers the repository's tool version source of truth
+- Result: Renovate is aligned with the mise-first monorepo layout and no longer carries unnecessary Makefile-specific update rules.
 **Branch:** `refactor/migrate-to-mise-remove-makefile` (feature branch created)
 
 **Pre-implementation Plan:**
@@ -135,6 +146,7 @@ Migrate the entire monorepo to use [mise.jdx.dev](https://mise.jdx.dev) for tool
 /README.md (mise onboarding, usage, and workflow docs)
 /backend/README.md (mise backend workflow docs)
 /frontend/README.md (mise frontend workflow docs)
+/.github/renovate.json (dependency update automation aligned to mise)
 
 ## 🗺️ Mise Migration Plan
 

@@ -1,10 +1,8 @@
 {
-  "$schema": "[https://docs.renovatebot.com/renovate-schema.json](https://docs.renovatebot.com/renovate-schema.json)",
   "extends": [
     "config:best-practices",
     "customManagers:dockerfileVersions",
     "customManagers:githubActionsVersions",
-    "customManagers:makefileVersions",
     "customManagers:biomeVersions",
     ":automergeDigest",
     ":automergeLinters",
@@ -50,8 +48,7 @@
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "/\\.go$/",
-        "/Makefile$/"
+        "/\\.go$/"
       ],
       "matchStrings": [
         "go\\s+run\\s+(?<depName>[^@\\s]+)@(?<currentValue>[^@\\s]+)"
@@ -63,7 +60,7 @@
   "packageRules": [
     {
       "matchPackageNames": [
-        "[github.com/dianlight/srat](https://github.com/dianlight/srat)"
+        "github.com/dianlight/srat"
       ],
       "enabled": false
     },
