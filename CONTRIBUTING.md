@@ -18,6 +18,7 @@
   - [8. Database & Migrations](#8-database--migrations)
   - [9. Patches to Dependencies](#9-patches-to-dependencies)
   - [10. Frontend Patterns](#10-frontend-patterns)
+    - [TypeScript 6.0/7.0 Compatibility](#typescript-6070-compatibility)
   - [11. Custom Component (Home Assistant)](#11-custom-component-home-assistant)
     - [Tooling](#tooling)
     - [Makefile Targets](#makefile-targets)
@@ -57,7 +58,7 @@ Be respectful. Provide clear rationale in PR descriptions. Security or stability
 - Custom Component: Use `pytest-homeassistant-custom-component` for tests under `custom_components/tests/`. Run with `cd custom_components && mise run test`.
 - Minimum coverage thresholds enforced by CI; raise coverage when adding logic.
 
-## 5. Logging RULE (Context-Aware) ✅
+## 5. Logging Rule (Context Aware) ✅
 
 You MUST prefer context-aware logging for `slog` and `tlog` when a `context.Context` value is already in scope.
 
@@ -152,6 +153,7 @@ The frontend uses **TypeScript 6.0 Beta / 7.0 Preview (tsgo)** with ES2022 targe
    - ❌ No `target: es5` or ES2015 (minimum ES2022)
 
 2. **Use `override` keyword** for class methods that override parent methods:
+
    ```typescript
    class MyComponent extends Component {
      public override render() { return <div />; }

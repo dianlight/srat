@@ -1,3 +1,3 @@
 export function getCompileYear(): string {
-	return new Date().getFullYear().toString();
+  return new Date().getFullYear().toString();
 }

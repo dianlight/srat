@@ -133,8 +133,12 @@ outputs = ["src/vendor/**/*.pdone"]
 quiet = true
 
 [tasks.format]
+alias = ["fmt","lint"]
 depends = [
     { task = "patch" },
+]
+depends_post = [
+    { task = "security" },
 ]
 run = [
 	"go mod -C src tidy",

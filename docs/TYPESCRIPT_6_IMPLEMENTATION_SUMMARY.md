@@ -1,3 +1,26 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [TypeScript 6.0/7.0 Preparation - Implementation Summary](#typescript-6070-preparation---implementation-summary)
+  - [Overview](#overview)
+  - [What Was Changed](#what-was-changed)
+    - [1. TypeScript Configuration (`frontend/tsconfig.json`)](#1-typescript-configuration-frontendtsconfigjson)
+    - [2. Package Configuration (`frontend/package.json`)](#2-package-configuration-frontendpackagejson)
+    - [3. Code Cleanup](#3-code-cleanup)
+    - [4. Documentation](#4-documentation)
+  - [Benefits](#benefits)
+    - [Immediate Benefits](#immediate-benefits)
+    - [Future Benefits](#future-benefits)
+  - [What's Left for TypeScript 7.0](#whats-left-for-typescript-70)
+    - [Enable `noUncheckedIndexedAccess: true`](#enable-nouncheckedindexedaccess-true)
+  - [Current Status](#current-status)
+  - [Testing](#testing)
+  - [References](#references)
+  - [Questions?](#questions)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # TypeScript 6.0/7.0 Preparation - Implementation Summary
 
 ## Overview
@@ -9,6 +32,7 @@ This document summarizes the work completed to prepare the SRAT frontend for Typ
 ### 1. TypeScript Configuration (`frontend/tsconfig.json`)
 
 **Removed Deprecated Flags:**
+
 - ❌ `experimentalDecorators: true` - Deprecated in TypeScript 6.0
   - **Reason**: TypeScript 6.0 promotes native decorators; the experimental flag is no longer needed
   - **Impact**: No code changes required (not using legacy decorators)
@@ -18,17 +42,20 @@ This document summarizes the work completed to prepare the SRAT frontend for Typ
   - **Impact**: Aligns with modern ECMAScript class field behavior
 
 **Updated Language Target:**
+
 - 📈 Changed `target` from `ES2021` to `ES2022`
 - 📈 Changed `lib` from `ES2021` to `ES2022`
   - **Reason**: Better alignment with modern ECMAScript features
   - **Impact**: Access to newer JavaScript APIs while maintaining browser compatibility
 
 **Enabled New Strict Flags:**
+
 - ✅ `noImplicitOverride: true` - New TypeScript 6.0+ strict flag
   - **Reason**: Requires explicit `override` keyword on class methods that override parent methods
   - **Impact**: Code was already compliant (see `ErrorBoundary.tsx`)
 
 **Documented Future Work:**
+
 - 📝 Added TODO comment for `noUncheckedIndexedAccess`
   - **Reason**: Enabling this requires refactoring ~6 files with indexed access patterns
   - **Status**: Documented in migration guide, left commented out for now
@@ -36,17 +63,20 @@ This document summarizes the work completed to prepare the SRAT frontend for Typ
 ### 2. Package Configuration (`frontend/package.json`)
 
 **Updated Peer Dependencies:**
+
 ```json
 "peerDependencies": {
   "typescript": "^6.0.0-beta || ^5.9.3"
 }
 ```
+
 - **Reason**: Support both TypeScript 6.0 beta and current 5.9.3
 - **Impact**: Allows using either version without peer dependency warnings
 
 ### 3. Code Cleanup
 
 **Removed Legacy Reference Directive:**
+
 - File: `frontend/src/macro/__tests__/Environment.test.ts`
 - Removed: `/// <reference types="bun-types" />`
 - **Reason**: Legacy triple-slash reference directives are discouraged in modern TypeScript
@@ -55,6 +85,7 @@ This document summarizes the work completed to prepare the SRAT frontend for Typ
 ### 4. Documentation
 
 **Created Comprehensive Migration Guide:**
+
 - File: `frontend/TYPESCRIPT_MIGRATION.md`
 - **Contents**:
   - Complete list of changes made
@@ -65,6 +96,7 @@ This document summarizes the work completed to prepare the SRAT frontend for Typ
   - Reference links to official documentation
 
 **Updated CHANGELOG:**
+
 - File: `CHANGELOG.md`
 - Added comprehensive entry in the "Maintenance" section
 - Documents all TypeScript 6.0/7.0 preparation work
@@ -72,6 +104,7 @@ This document summarizes the work completed to prepare the SRAT frontend for Typ
 ## Benefits
 
 ### Immediate Benefits
+
 1. ✅ **TypeScript 6.0 Compatible**: No deprecation warnings
 2. 🚀 **Build Performance**: Using `types: []` provides 20-50% faster builds
 3. 🎯 **Modern Standards**: ES2022 target enables latest ECMAScript features
@@ -79,6 +112,7 @@ This document summarizes the work completed to prepare the SRAT frontend for Typ
 5. 📚 **Well Documented**: Clear migration path for future work
 
 ### Future Benefits
+
 1. 🔮 **TypeScript 7.0 Ready**: When TS 7.0 releases, only minor refactoring needed
 2. 🛡️ **Better Type Safety**: Path to enable `noUncheckedIndexedAccess` is documented
 3. 🏗️ **Maintainable**: Clear documentation helps future developers
@@ -88,6 +122,7 @@ This document summarizes the work completed to prepare the SRAT frontend for Typ
 The following work is **optional** and would enable the strictest TypeScript settings. It's documented in `frontend/TYPESCRIPT_MIGRATION.md`:
 
 ### Enable `noUncheckedIndexedAccess: true`
+
 This flag makes TypeScript treat all indexed accesses as potentially undefined, improving type safety but requiring explicit null checks.
 
 **Files requiring changes (~6 files, ~13 locations):**
@@ -145,12 +180,13 @@ bun run lint
 
 - [TypeScript 6.0 Beta Announcement](https://devblogs.microsoft.com/typescript/announcing-typescript-6-0-beta/)
 - [TypeScript 7.0 (Go-based) Discussion](https://github.com/microsoft/typescript-go/discussions/825)
-- [Migration Guide](frontend/TYPESCRIPT_MIGRATION.md)
+- [Migration Guide](../frontend/TYPESCRIPT_MIGRATION.md)
 - [CHANGELOG](../CHANGELOG.md)
 
 ## Questions?
 
 For questions or issues related to this migration:
+
 1. Check `frontend/TYPESCRIPT_MIGRATION.md` for detailed information
 2. Review the code changes in this PR
 3. Open a GitHub issue if you encounter problems

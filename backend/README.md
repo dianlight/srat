@@ -3,6 +3,7 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+- [Mise-based Backend Workflows](#mise-based-backend-workflows)
 - [CLI Commands](#cli-commands)
   - [Database Requirements](#database-requirements)
     - [Examples](#examples)
@@ -11,10 +12,9 @@
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-
 ## Mise-based Backend Workflows
 
-All backend build, test, and lint workflows are now managed by [mise](https://mise.jdx.dev).
+All back-end build, test, and lint workflows are now managed by [mise](https://mise.jdx.dev).
 
 **Common commands:**
 

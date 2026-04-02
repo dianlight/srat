@@ -127,13 +127,19 @@
 	"files.autoSaveWhenNoErrors": true,
 	"files.autoSaveWorkspaceFilesOnly": true,
 	"go.diagnostic.vulncheck": "Imports",
-	"go.languageServerFlags": ["-mcp.listen=localhost:8092"],
+	"go.languageServerFlags": [
+		"-mcp.listen=localhost:8092"
+	],
 	"chat.mcp.serverSampling": {
 		"srat/.vscode/mcp.json: gopls-mcp": {
-			"allowedModels": ["copilot/claude-sonnet-4.5"]
+			"allowedModels": [
+				"copilot/claude-sonnet-4.5"
+			]
 		},
 		"srat/.vscode/mcp.json: sqlite": {
-			"allowedModels": ["copilot/auto"]
+			"allowedModels": [
+				"copilot/auto"
+			]
 		}
 	},
 	"github.copilot.chat.agent.autoFix": true,
@@ -192,7 +198,12 @@
 	"chat.restoreLastPanelSession": true,
 	"workbench.browser.enableChatTools": true,
 	"chat.autopilot.enabled": true,
-	"githubIssues.createIssueTriggers": ["TODO", "FIXME", "BUG", "HACK"],
+	"githubIssues.createIssueTriggers": [
+		"TODO",
+		"FIXME",
+		"BUG",
+		"HACK"
+	],
 	"todo-tree.general.tags": [
 		"TODO",
 		"FIXME",
@@ -251,5 +262,8 @@
 	"go.alternateTools": {
 		"go": "/root/.local/share/mise/shims/go"
 	},
-	"editor.fontSize": 13
+	"editor.fontSize": 13,
+	"vale.enableSpellcheck": true,
+	"vale.valeCLI.syncOnStartup": true,
+	"vale.readabilityProblemLocation": "both"
 }

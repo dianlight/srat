@@ -314,3 +314,5 @@ zfs
 Deduplication
 deduplicated
 fsnotify
+tsc
+tsgo

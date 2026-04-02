@@ -152,9 +152,9 @@ This document summarizes the comprehensive documentation validation system imple
 1. **Initial Setup**:
 
    ```bash
-  mise run docs-check   # Check dependencies (including Lychee and Vale)
-  mise run prepare      # Install pre-commit hooks
-  mise run docs-install # Install JS-based documentation tools
+   mise run docs-check   # Check dependencies (including Lychee and Vale)
+   mise run prepare      # Install pre-commit hooks
+   mise run docs-install # Install JS-based documentation tools
    ```
 
    **Optional but recommended:**
@@ -164,8 +164,8 @@ This document summarizes the comprehensive documentation validation system imple
 2. **Before Committing**:
 
    ```bash
-  mise run docs-validate # Check documentation (all tools, GFM-aware)
-  mise run docs-fix      # Auto-fix formatting issues
+   mise run docs-validate # Check documentation (all tools, GFM-aware)
+   mise run docs-fix      # Auto-fix formatting issues
    ```
 
 3. **Sync Vale styles** (if Vale is installed):
@@ -177,7 +177,7 @@ This document summarizes the comprehensive documentation validation system imple
 4. **Get Help**:
 
    ```bash
-  mise run docs-help     # Show all documentation commands and tool status
+   mise run docs-help     # Show all documentation commands and tool status
    ```
 
 5. **Pre-commit hooks will automatically**:

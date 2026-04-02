@@ -4,65 +4,65 @@ import { useMemo } from "react";
 import { InView } from "react-intersection-observer";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import {
-    a11yDark,
-    a11yLight,
+  a11yDark,
+  a11yLight,
 } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import { CopyButtonBar } from "../components/CopyButtonBar";
 import { type SmbConf, useGetApiSambaConfigQuery } from "../store/sratApi";
 import { censorPlainText } from "../utils/censorshipUtils";
 
 export function SmbConfPage() {
-	const { mode } = useColorScheme();
-	const smbconfig = useGetApiSambaConfigQuery();
+  const { mode } = useColorScheme();
+  const smbconfig = useGetApiSambaConfigQuery();
 
-	// Censor sensitive data in the config
-	const configData = (smbconfig.data as SmbConf)?.data || "";
-	const censoredData = useMemo(() => censorPlainText(configData), [configData]);
+  // Censor sensitive data in the config
+  const configData = (smbconfig.data as SmbConf)?.data || "";
+  const censoredData = useMemo(() => censorPlainText(configData), [configData]);
 
-	return (
-		<InView
-			as="div"
-			onChange={(_inView, _entry) => {
-				//console.log("Inview:", inView)
-				smbconfig.refetch();
-			}}
-		>
-			<Box sx={{ position: 'relative' }}>
-				{/* Floating copy button bar */}
-				<Box
-					sx={{
-						position: 'sticky',
-						top: 0,
-						zIndex: 10,
-						backgroundColor: 'background.paper',
-						borderBottom: 1,
-						borderColor: 'divider',
-						p: 1,
-						display: 'flex',
-						justifyContent: 'flex-end',
-						gap: 1
-					}}
-				>
-					<CopyButtonBar
-						plainTextContent={censoredData}
-						markdownContent={`\`\`\`ini\n${censoredData}\n\`\`\``}
-						markdownTitle="Samba Configuration"
-					/>
-				</Box>
+  return (
+    <InView
+      as="div"
+      onChange={(_inView, _entry) => {
+        //console.log("Inview:", inView)
+        smbconfig.refetch();
+      }}
+    >
+      <Box sx={{ position: "relative" }}>
+        {/* Floating copy button bar */}
+        <Box
+          sx={{
+            position: "sticky",
+            top: 0,
+            zIndex: 10,
+            backgroundColor: "background.paper",
+            borderBottom: 1,
+            borderColor: "divider",
+            p: 1,
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: 1,
+          }}
+        >
+          <CopyButtonBar
+            plainTextContent={censoredData}
+            markdownContent={`\`\`\`ini\n${censoredData}\n\`\`\``}
+            markdownTitle="Samba Configuration"
+          />
+        </Box>
 
-				<SyntaxHighlighter
-					customStyle={{ fontSize: "0.7rem" }}
-					language="ini"
-					style={mode === "light" ? a11yLight : a11yDark}
-					wrapLines
-					wrapLongLines
-					showInlineLineNumbers
-					showLineNumbers
-					useInlineStyles
-				>
-					{smbconfig.isLoading ? "...Loading..." : censoredData}
-				</SyntaxHighlighter>
-			</Box>
-		</InView >
-	);
+        <SyntaxHighlighter
+          customStyle={{ fontSize: "0.7rem" }}
+          language="ini"
+          style={mode === "light" ? a11yLight : a11yDark}
+          wrapLines
+          wrapLongLines
+          showInlineLineNumbers
+          showLineNumbers
+          useInlineStyles
+        >
+          {smbconfig.isLoading ? "...Loading..." : censoredData}
+        </SyntaxHighlighter>
+      </Box>
+    </InView>
+  );
 }

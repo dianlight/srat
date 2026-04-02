@@ -44,8 +44,8 @@ local linters = new Mapping<String, Step> {
         glob = "**/*.sh"
     }   
 
-    ["tombi"] = Builtins.tombi
-    ["tombi-format"] = Builtins.tombi_format
+    ["taplo"] = Builtins.taplo
+    ["taplo-format"] = Builtins.taplo_format 
 
 }
 

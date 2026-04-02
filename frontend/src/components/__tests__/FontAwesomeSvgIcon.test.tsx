@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it } from "bun:test";
 import "../../../test/setup";
 
+type FaIcon = {
+    icon: [number, number, unknown, unknown, string | string[]];
+};
+
 describe("FontAwesomeSvgIcon Component", () => {
     beforeEach(() => {
         // Clear the DOM before each test
@@ -13,7 +17,7 @@ describe("FontAwesomeSvgIcon Component", () => {
         const { render } = await import("@testing-library/react");
         const { FontAwesomeSvgIcon } = await import("../FontAwesomeSvgIcon");
 
-        const singlePathIcon = {
+        const singlePathIcon: FaIcon = {
             icon: [16, 16, [], "f000", "M8 0C3.58 0 0 3.58 0 8s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8z"]
         };
 
@@ -40,7 +44,7 @@ describe("FontAwesomeSvgIcon Component", () => {
         const { render } = await import("@testing-library/react");
         const { FontAwesomeSvgIcon } = await import("../FontAwesomeSvgIcon");
 
-        const multiPathIcon = {
+        const multiPathIcon: FaIcon = {
             icon: [
                 24,
                 24,
@@ -82,7 +86,7 @@ describe("FontAwesomeSvgIcon Component", () => {
         const { render } = await import("@testing-library/react");
         const { FontAwesomeSvgIcon } = await import("../FontAwesomeSvgIcon");
 
-        const customSizeIcon = {
+        const customSizeIcon: FaIcon = {
             icon: [32, 20, [], "f002", "M0 0h32v20H0z"]
         };
 
@@ -103,7 +107,7 @@ describe("FontAwesomeSvgIcon Component", () => {
         const { render } = await import("@testing-library/react");
         const { FontAwesomeSvgIcon } = await import("../FontAwesomeSvgIcon");
 
-        const singlePathIcon = {
+        const singlePathIcon: FaIcon = {
             icon: [16, 16, [], "f000", "M8 0C3.58 0 0 3.58 0 8s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8z"]
         };
 
@@ -123,7 +127,7 @@ describe("FontAwesomeSvgIcon Component", () => {
         const { render } = await import("@testing-library/react");
         const { FontAwesomeSvgIcon } = await import("../FontAwesomeSvgIcon");
 
-        const emptyMultiPathIcon = {
+        const emptyMultiPathIcon: FaIcon = {
             icon: [16, 16, [], "f003", []]
         };
 
@@ -145,7 +149,7 @@ describe("FontAwesomeSvgIcon Component", () => {
         const { render } = await import("@testing-library/react");
         const { FontAwesomeSvgIcon } = await import("../FontAwesomeSvgIcon");
 
-        const complexMultiPathIcon = {
+        const complexMultiPathIcon: FaIcon = {
             icon: [
                 16,
                 16,

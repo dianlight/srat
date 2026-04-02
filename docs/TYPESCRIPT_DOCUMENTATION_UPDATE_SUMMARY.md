@@ -1,3 +1,37 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Documentation Update Summary - TypeScript 6.0/7.0](#documentation-update-summary---typescript-6070)
+  - [Overview](#overview)
+  - [Files Created](#files-created)
+    - [1. `.github/instructions/typescript-6-es2022.instructions.md` (NEW)](#1-githubinstructionstypescript-6-es2022instructionsmd-new)
+  - [Files Updated](#files-updated)
+    - [2. `.github/instructions/typescript-5-es2021.instructions.md` (DEPRECATED)](#2-githubinstructionstypescript-5-es2021instructionsmd-deprecated)
+    - [3. `.github/copilot-instructions.md`](#3-githubcopilot-instructionsmd)
+    - [4. `CONTRIBUTING.md`](#4-contributingmd)
+    - [5. `frontend/README.md`](#5-frontendreadmemd)
+  - [Documentation Structure](#documentation-structure)
+    - [Hierarchical Organization](#hierarchical-organization)
+    - [Cross-References](#cross-references)
+  - [Key Messages Across All Documentation](#key-messages-across-all-documentation)
+    - [Deprecated Flags (Forbidden)](#deprecated-flags-forbidden)
+    - [Required Patterns](#required-patterns)
+    - [TypeScript Tooling](#typescript-tooling)
+  - [Benefits of Documentation Updates](#benefits-of-documentation-updates)
+    - [1. Developer Onboarding](#1-developer-onboarding)
+    - [2. Prevents Regressions](#2-prevents-regressions)
+    - [3. Multiple Entry Points](#3-multiple-entry-points)
+    - [4. Consistency](#4-consistency)
+    - [5. Future-Proof](#5-future-proof)
+  - [Validation Checklist](#validation-checklist)
+  - [Statistics](#statistics)
+  - [Verification Commands](#verification-commands)
+  - [Next Steps for Developers](#next-steps-for-developers)
+  - [Conclusion](#conclusion)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Documentation Update Summary - TypeScript 6.0/7.0
 
 ## Overview
@@ -11,6 +45,7 @@ This document summarizes the comprehensive documentation updates made to reflect
 **Purpose**: Active TypeScript development guidelines for TS 6.0+ / ES2022
 
 **Key Sections**:
+
 - TypeScript Version and Tooling (tsgo usage)
 - TypeScript 6.0/7.0 Key Changes
 - Class Inheritance and Override Keyword
@@ -28,6 +63,7 @@ This document summarizes the comprehensive documentation updates made to reflect
 ### 2. `.github/instructions/typescript-5-es2021.instructions.md` (DEPRECATED)
 
 **Changes**:
+
 - Added prominent deprecation notice at top of file
 - Removed from active applyTo scope (now empty)
 - Redirects to typescript-6-es2022.instructions.md
@@ -40,6 +76,7 @@ This document summarizes the comprehensive documentation updates made to reflect
 **Section Added**: "TypeScript 6.0/7.0 Configuration" (lines 257-295)
 
 **Content**:
+
 - TypeScript compiler version and tooling info
 - Key configuration rules (deprecated flags to avoid)
 - Required strict flags
@@ -53,6 +90,7 @@ This document summarizes the comprehensive documentation updates made to reflect
 **Section Added**: "TypeScript 6.0/7.0 Compatibility" (under "## 10. Frontend Patterns")
 
 **Content**:
+
 - TypeScript version and tooling overview
 - Key rules when working with TypeScript code
 - Deprecated compiler flags to avoid
@@ -67,6 +105,7 @@ This document summarizes the comprehensive documentation updates made to reflect
 **Addition**: TypeScript 6.0/7.0 note added after API generation note
 
 **Content**:
+
 - Brief mention of TypeScript 6.0 Beta / 7.0 Preview usage
 - Note about tsgo for type checking (not tsc)
 - Reference to TYPESCRIPT_MIGRATION.md
@@ -77,7 +116,7 @@ This document summarizes the comprehensive documentation updates made to reflect
 
 ### Hierarchical Organization
 
-```
+```text
 Quick Reference (Overview)
 ├── .github/copilot-instructions.md
 │   └── TypeScript 6.0/7.0 Configuration subsection
@@ -117,6 +156,7 @@ Deprecated (Historical)
 ### Cross-References
 
 All documentation files consistently reference:
+
 1. `frontend/TYPESCRIPT_MIGRATION.md` - Complete migration guide
 2. `TYPESCRIPT_6_IMPLEMENTATION_SUMMARY.md` - Executive summary
 3. `.github/instructions/typescript-6-es2022.instructions.md` - Development guidelines
@@ -127,6 +167,7 @@ All documentation files consistently reference:
 ### Deprecated Flags (Forbidden)
 
 Consistently documented across all files:
+
 - ❌ `experimentalDecorators` - Use native decorators
 - ❌ `useDefineForClassFields: false` - ES2022+ requires true
 - ❌ `target: es5` or ES2015 - Minimum ES2022
@@ -135,6 +176,7 @@ Consistently documented across all files:
 ### Required Patterns
 
 Consistently documented:
+
 - ✅ Use `override` keyword for class method overrides
 - ✅ Target ES2022 or newer
 - ✅ Use `bun tsgo --noEmit` for type checking (not `tsc`)
@@ -143,6 +185,7 @@ Consistently documented:
 ### TypeScript Tooling
 
 Consistently documented:
+
 - **Type Checker**: `bun tsgo --noEmit` (not regular `tsc`)
 - **Compiler**: `@typescript/native-preview` (TypeScript 7.0 Go-based preview)
 - **Version**: TypeScript 6.0 Beta / 7.0 Preview
@@ -151,22 +194,28 @@ Consistently documented:
 ## Benefits of Documentation Updates
 
 ### 1. Developer Onboarding
+
 New developers have clear, consistent guidelines across all documentation sources.
 
 ### 2. Prevents Regressions
+
 Deprecated flags explicitly documented as forbidden prevents accidental re-introduction.
 
 ### 3. Multiple Entry Points
+
 Developers can find guidance at appropriate detail level:
+
 - Quick reference in copilot-instructions.md
 - Contributing guidelines in CONTRIBUTING.md
 - Comprehensive guide in typescript-6-es2022.instructions.md
 - Migration details in TYPESCRIPT_MIGRATION.md
 
 ### 4. Consistency
+
 Same information presented consistently across all files ensures no conflicting guidance.
 
 ### 5. Future-Proof
+
 Documentation ready for TypeScript 7.0 (Go-based) release with clear migration path.
 
 ## Validation Checklist

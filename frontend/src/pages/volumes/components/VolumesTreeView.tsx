@@ -7,550 +7,603 @@ import SdStorageIcon from "@mui/icons-material/SdStorage";
 import SettingsSuggestIcon from "@mui/icons-material/SettingsSuggest";
 import StorageIcon from "@mui/icons-material/Storage";
 import UsbIcon from "@mui/icons-material/Usb";
-import {
-    Box,
-    Chip,
-    Tooltip,
-    Typography,
-    useTheme,
-} from "@mui/material";
+import { Box, Chip, Tooltip, Typography, useTheme } from "@mui/material";
 import { SimpleTreeView } from "@mui/x-tree-view/SimpleTreeView";
 import { TreeItem } from "@mui/x-tree-view/TreeItem";
 import { filesize } from "filesize";
 import { useMemo } from "react";
-import { type Disk, type FilesystemState, type Partition } from "../../../store/sratApi";
+import type {
+  Disk,
+  FilesystemState,
+  MountPointData,
+  Partition,
+} from "../../../store/sratApi";
 import {
-    decodeEscapeSequence,
-    getDiskIdentifier,
-    getMountpointIdentifier,
-    getPartitionIdentifier,
+  decodeEscapeSequence,
+  getDiskIdentifier,
+  getMountpointIdentifier,
+  getPartitionIdentifier,
 } from "../utils";
 import { PartitionActions } from "./PartitionActions";
 
 interface VolumesTreeViewProps {
-    disks?: Disk[];
-    // Selected item id can be either a disk id or a partition id
-    selectedItemId?: string;
-    // Backward-compat for older callers/tests
-    selectedPartitionId?: string;
-    hideSystemPartitions?: boolean;
-    // Controlled expanded items and change callback (required)
-    expandedItems: string[];
-    onExpandedItemsChange: (items: string[]) => void;
-    // Selection handlers
-    onDiskSelect?: (disk: Disk) => void;
-    onPartitionSelect: (disk: Disk, partition: Partition) => void;
-    onToggleAutomount: (partition: Partition) => void;
-    onMount: (partition: Partition) => void;
-    onUnmount: (partition: Partition, force: boolean) => void;
-    onCreateShare: (partition: Partition) => void;
-    onGoToShare: (partition: Partition) => void;
-    protectedMode?: boolean;
-    readOnly?: boolean;
-    filesystemStateByPartitionId?: Record<string, FilesystemState>;
+  disks?: Disk[];
+  // Selected item id can be either a disk id or a partition id
+  selectedItemId?: string;
+  // Backward-compat for older callers/tests
+  selectedPartitionId?: string;
+  hideSystemPartitions?: boolean;
+  // Controlled expanded items and change callback (required)
+  expandedItems: string[];
+  onExpandedItemsChange: (items: string[]) => void;
+  // Selection handlers
+  onDiskSelect?: (disk: Disk) => void;
+  onPartitionSelect: (disk: Disk, partition: Partition) => void;
+  onToggleAutomount: (partition: Partition) => void;
+  onMount: (partition: Partition) => void;
+  onUnmount: (partition: Partition, force: boolean) => void;
+  onCreateShare: (partition: Partition) => void;
+  onGoToShare: (partition: Partition) => void;
+  protectedMode?: boolean;
+  readOnly?: boolean;
+  filesystemStateByPartitionId?: Record<string, FilesystemState>;
 }
 
 export function VolumesTreeView({
-    disks,
-    selectedItemId,
-    selectedPartitionId,
-    hideSystemPartitions = true,
-    expandedItems,
-    onExpandedItemsChange,
-    onDiskSelect,
-    onPartitionSelect,
-    onToggleAutomount,
-    onMount,
-    onUnmount,
-    onCreateShare,
-    onGoToShare,
-    protectedMode = false,
-    readOnly = false,
-    filesystemStateByPartitionId,
+  disks,
+  selectedItemId,
+  selectedPartitionId,
+  hideSystemPartitions = true,
+  expandedItems,
+  onExpandedItemsChange,
+  onDiskSelect,
+  onPartitionSelect,
+  onToggleAutomount,
+  onMount,
+  onUnmount,
+  onCreateShare,
+  onGoToShare,
+  protectedMode = false,
+  readOnly = false,
+  filesystemStateByPartitionId,
 }: VolumesTreeViewProps) {
-    const theme = useTheme();
-    // Normalize selected id to support both the new and legacy prop name
-    const normalizedSelectedId = selectedItemId ?? selectedPartitionId;
+  const theme = useTheme();
+  // Normalize selected id to support both the new and legacy prop name
+  const normalizedSelectedId = selectedItemId ?? selectedPartitionId;
 
-    const filteredDisks = useMemo(() => {
-        if (!disks) return [];
+  const filteredDisks = useMemo(() => {
+    if (!disks) return [];
 
-        return disks.filter((disk) => {
-            const partitions = Object.values(disk.partitions || {});
-            if (partitions.length === 0) return false;
+    return disks.filter((disk) => {
+      const partitions = Object.values(disk.partitions || {});
+      if (partitions.length === 0) return false;
 
-            const visiblePartitions = partitions.filter(
-                (partition) =>
-                    !(
-                        hideSystemPartitions &&
-                        (partition.system &&
-                            (partition.name?.startsWith("hassos-") ||
-                                (Object.values(partition.host_mount_point_data || {}).length > 0)))
-                    ),
-            );
+      const visiblePartitions = partitions.filter(
+        (partition) =>
+          !(
+            hideSystemPartitions &&
+            partition.system &&
+            (partition.name?.startsWith("hassos-") ||
+              Object.values(partition.host_mount_point_data || {}).length > 0)
+          ),
+      );
 
-            return visiblePartitions.length > 0;
-        });
-    }, [disks, hideSystemPartitions]);
+      return visiblePartitions.length > 0;
+    });
+  }, [disks, hideSystemPartitions]);
 
-    // Helper function to render disk icon
-    const renderDiskIcon = (disk: Disk) => {
-        switch (disk.connection_bus?.toLowerCase()) {
-            case "usb":
-                return <UsbIcon />;
-            case "sdio":
-            case "mmc":
-                return <SdStorageIcon />;
-        }
-        if (disk.removable) {
-            return <EjectIcon />;
-        }
-        return <ComputerIcon />;
-    };
+  // Helper function to render disk icon
+  const renderDiskIcon = (disk: Disk) => {
+    switch (disk.connection_bus?.toLowerCase()) {
+      case "usb":
+        return <UsbIcon />;
+      case "sdio":
+      case "mmc":
+        return <SdStorageIcon />;
+    }
+    if (disk.removable) {
+      return <EjectIcon />;
+    }
+    return <ComputerIcon />;
+  };
 
-    // Helper function to render partition icon
-    const renderPartitionIcon = (partition: Partition) => {
-        const isToMountAtStartup =
-            partition.mount_point_data?.[0]?.is_to_mount_at_startup === true;
-        const iconColorProp = isToMountAtStartup
-            ? { color: "primary" as const }
-            : {};
+  // Helper function to render partition icon
+  const renderPartitionIcon = (partition: Partition) => {
+    const isToMountAtStartup =
+      partition.mount_point_data?.[0]?.is_to_mount_at_startup === true;
+    const iconColorProp = isToMountAtStartup
+      ? { color: "primary" as const }
+      : {};
 
-        if (partition.name === "hassos-data") {
-            return <CreditScoreIcon fontSize="small" {...iconColorProp} />;
-        }
-        if (
-            partition.system ||
-            partition.name?.startsWith("hassos-") ||
-            (Object.values(partition.host_mount_point_data || {}).length > 0)
-        ) {
-            return <SettingsSuggestIcon fontSize="small" {...iconColorProp} />;
-        }
-        return <StorageIcon fontSize="small" {...iconColorProp} />;
-    };
+    if (partition.name === "hassos-data") {
+      return <CreditScoreIcon fontSize="small" {...iconColorProp} />;
+    }
+    if (
+      partition.system ||
+      partition.name?.startsWith("hassos-") ||
+      Object.values(partition.host_mount_point_data || {}).length > 0
+    ) {
+      return <SettingsSuggestIcon fontSize="small" {...iconColorProp} />;
+    }
+    return <StorageIcon fontSize="small" {...iconColorProp} />;
+  };
 
-    const renderFilesystemAlertIcon = (partition: Partition) => {
-        if (!filesystemStateByPartitionId || !partition.id) return null;
-        const filesystemState = filesystemStateByPartitionId[partition.id];
-        if (!filesystemState) return null;
+  const renderFilesystemAlertIcon = (partition: Partition) => {
+    if (!filesystemStateByPartitionId || !partition.id) return null;
+    const filesystemState = filesystemStateByPartitionId[partition.id];
+    if (!filesystemState) return null;
 
-        const hasErrors = filesystemState.hasErrors;
-        const isClean = filesystemState.isClean;
-        if (!hasErrors && isClean) return null;
+    const hasErrors = filesystemState.hasErrors;
+    const isClean = filesystemState.isClean;
+    if (!hasErrors && isClean) return null;
 
-        const labelText = hasErrors
-            ? "Filesystem has errors"
-            : "Filesystem not clean";
-        const tooltipText = filesystemState.stateDescription || labelText;
-        const partitionLabel = decodeEscapeSequence(
-            partition.name || partition.id || "partition",
-        );
-        const alertLabel = `Filesystem status alert for ${partitionLabel}`;
-        const icon = hasErrors
-            ? <ErrorOutlineIcon color="error" fontSize="small" />
-            : <HelpOutlineIcon color="disabled" fontSize="small" />;
-
-        return (
-            <Tooltip title={tooltipText} placement="top" arrow>
-                <Box
-                    role="img"
-                    aria-label={alertLabel}
-                    sx={{ display: "flex", alignItems: "center" }}
-                >
-                    {icon}
-                </Box>
-            </Tooltip>
-        );
-    };
-
-    // Helper function to render a single mountpoint leaf
-    const renderMountpointItem = (
-        disk: Disk,
-        partition: Partition,
-        mountpointKey: string,
-        mpd: any,
-        partitionIdentifier: string,
-    ) => {
-        const mountpointIdentifier = getMountpointIdentifier(partitionIdentifier, mountpointKey);
-        const isSelected = normalizedSelectedId === mountpointIdentifier;
-        const mountpointPath = mpd.mount_point || mountpointKey;
-
-        return (
-            <TreeItem
-                key={mountpointIdentifier}
-                itemId={mountpointIdentifier}
-                label={
-                    <Box
-                        sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            py: 0.5,
-                            px: 1,
-                            backgroundColor: isSelected ? theme.palette.action.selected : "transparent",
-                            borderRadius: 1,
-                            "&:hover": {
-                                backgroundColor: theme.palette.action.hover,
-                            },
-                        }}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onPartitionSelect(disk, partition);
-                        }}
-                    >
-                        {renderPartitionIcon(partition)}
-
-                        <Box sx={{ flexGrow: 1, ml: 1, mr: 1, minWidth: 0 }}>
-                            <Tooltip title={mountpointPath} placement="top">
-                                <Typography
-                                    variant="body2"
-                                    fontWeight={isSelected ? 600 : 400}
-                                    sx={{
-                                        overflow: "hidden",
-                                        textOverflow: "ellipsis",
-                                        whiteSpace: "nowrap",
-                                    }}
-                                >
-                                    {mountpointPath}
-                                </Typography>
-                            </Tooltip>
-                            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 0.5 }}>
-                                {partition.fs_type && (
-                                    <Chip
-                                        label={partition.fs_type}
-                                        size="small"
-                                        variant="outlined"
-                                        sx={{ fontSize: "0.7rem", height: 16 }}
-                                    />
-                                )}
-                                {mpd.is_mounted && (
-                                    <Chip
-                                        label={!mpd.is_write_supported ? "Mounted (Read-Only)" : "Mounted"}
-                                        size="small"
-                                        variant="outlined"
-                                        color={!mpd.is_write_supported ? "secondary" : "success"}
-                                        sx={{ fontSize: "0.7rem", height: 16 }}
-                                    />
-                                )}
-                            </Box>
-                        </Box>
-
-                        {!readOnly && (
-                            <Box sx={{ flexShrink: 0 }}>
-                                <PartitionActions
-                                    partition={partition}
-                                    protected_mode={protectedMode}
-                                    onToggleAutomount={onToggleAutomount}
-                                    onMount={onMount}
-                                    onUnmount={onUnmount}
-                                    onCreateShare={onCreateShare}
-                                    onGoToShare={onGoToShare}
-                                />
-                            </Box>
-                        )}
-                    </Box>
-                }
-            />
-        );
-    };
-
-    const renderPartitionItem = (
-        disk: Disk,
-        partition: Partition,
-        diskIdentifier: string,
-        partitionKey: string | undefined,
-        partIdx: number,
-    ) => {
-        const partitionIdentifier = getPartitionIdentifier(
-            diskIdentifier,
-            partition,
-            partitionKey,
-            partIdx,
-        );
-        const isSelected = normalizedSelectedId === partitionIdentifier;
-        const partitionNameDecoded = decodeEscapeSequence(
-            partition.name || partition.id || "Unnamed Partition",
-        );
-        const mpds = Object.values(partition.mount_point_data || {});
-        const mpdEntries = Object.entries(partition.mount_point_data || {}).sort((a, b) =>
-            a[0].localeCompare(b[0]),
-        );
-        const isMounted = mpds.some((mpd) => mpd.is_mounted);
-        const filesystemAlertIcon = renderFilesystemAlertIcon(partition);
-
-        // If partition has multiple mountpoints, create a parent node without actions
-        if (mpdEntries.length > 1) {
-            return (
-                <TreeItem
-                    key={partitionIdentifier}
-                    itemId={partitionIdentifier}
-                    label={
-                        <Box
-                            sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                py: 0.5,
-                                px: 1,
-                                backgroundColor: isSelected ? theme.palette.action.selected : "transparent",
-                                borderRadius: 1,
-                                "&:hover": {
-                                    backgroundColor: theme.palette.action.hover,
-                                },
-                            }}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onPartitionSelect(disk, partition);
-                            }}
-                        >
-                            {renderPartitionIcon(partition)}
-
-                            <Box sx={{ flexGrow: 1, ml: 1, mr: 1, minWidth: 0 }}>
-                                <Tooltip title={partitionNameDecoded} placement="top">
-                                    <Typography
-                                        variant="body2"
-                                        fontWeight={isSelected ? 600 : 400}
-                                        sx={{
-                                            overflow: "hidden",
-                                            textOverflow: "ellipsis",
-                                            whiteSpace: "nowrap",
-                                        }}
-                                    >
-                                        {partitionNameDecoded}
-                                    </Typography>
-                                </Tooltip>
-                                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 0.5 }}>
-                                    {partition.size != null && (
-                                        <Chip
-                                            label={filesize(partition.size, { round: 0 })}
-                                            size="small"
-                                            variant="outlined"
-                                            sx={{ fontSize: "0.7rem", height: 16 }}
-                                        />
-                                    )}
-                                    <Chip
-                                        label={`${mpdEntries.length} mountpoint(s)`}
-                                        size="small"
-                                        variant="outlined"
-                                        sx={{ fontSize: "0.7rem", height: 16 }}
-                                    />
-                                    {partition.fs_type && (
-                                        <Chip
-                                            label={partition.fs_type}
-                                            size="small"
-                                            variant="outlined"
-                                            sx={{ fontSize: "0.7rem", height: 16 }}
-                                        />
-                                    )}
-                                </Box>
-                            </Box>
-
-                            {filesystemAlertIcon && (
-                                <Box sx={{ flexShrink: 0, mr: 1 }}>
-                                    {filesystemAlertIcon}
-                                </Box>
-                            )}
-                        </Box>
-                    }
-                >
-                    {mpdEntries.map(([key, mpd]) =>
-                        renderMountpointItem(disk, partition, key, mpd, partitionIdentifier)
-                    )}
-                </TreeItem>
-            );
-        }
-
-        // Single mountpoint - render as before with actions on the partition level
-        return (
-            <TreeItem
-                key={partitionIdentifier}
-                itemId={partitionIdentifier}
-                label={
-                    <Box
-                        sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            py: 0.5,
-                            px: 1,
-                            backgroundColor: isSelected ? theme.palette.action.selected : "transparent",
-                            borderRadius: 1,
-                            "&:hover": {
-                                backgroundColor: theme.palette.action.hover,
-                            },
-                        }}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onPartitionSelect(disk, partition);
-                        }}
-                    >
-                        {renderPartitionIcon(partition)}
-
-                        <Box sx={{ flexGrow: 1, ml: 1, mr: 1, minWidth: 0 }}>
-                            <Tooltip title={partitionNameDecoded} placement="top">
-                                <Typography
-                                    variant="body2"
-                                    fontWeight={isSelected ? 600 : 400}
-                                    sx={{
-                                        overflow: "hidden",
-                                        textOverflow: "ellipsis",
-                                        whiteSpace: "nowrap",
-                                    }}
-                                >
-                                    {partitionNameDecoded}
-                                </Typography>
-                            </Tooltip>
-                            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 0.5 }}>
-                                {partition.size != null && (
-                                    <Chip
-                                        label={filesize(partition.size, { round: 0 })}
-                                        size="small"
-                                        variant="outlined"
-                                        sx={{ fontSize: "0.7rem", height: 16 }}
-                                    />
-                                )}
-                                {partition.fs_type && (
-                                    <Chip
-                                        label={partition.fs_type}
-                                        size="small"
-                                        variant="outlined"
-                                        sx={{ fontSize: "0.7rem", height: 16 }}
-                                    />
-                                )}
-                                {isMounted && (
-                                    <Chip
-                                        label={mpds.length > 0 && mpds.every(mp => !mp.is_write_supported) ? "Mounted (Read-Only)" : "Mounted"}
-                                        size="small"
-                                        variant="outlined"
-                                        color={mpds.length > 0 && mpds.every(mp => !mp.is_write_supported) ? "secondary" : "success"}
-                                        sx={{ fontSize: "0.7rem", height: 16 }}
-                                    />
-                                )}
-                            </Box>
-                        </Box>
-
-                        {filesystemAlertIcon && (
-                            <Box sx={{ flexShrink: 0, mr: 1 }}>
-                                {filesystemAlertIcon}
-                            </Box>
-                        )}
-
-                        {!readOnly && (
-                            <Box sx={{ flexShrink: 0 }}>
-                                <PartitionActions
-                                    partition={partition}
-                                    protected_mode={protectedMode}
-                                    onToggleAutomount={onToggleAutomount}
-                                    onMount={onMount}
-                                    onUnmount={onUnmount}
-                                    onCreateShare={onCreateShare}
-                                    onGoToShare={onGoToShare}
-                                />
-                            </Box>
-                        )}
-                    </Box>
-                }
-            />
-        );
-    };
-
-    const renderDiskItem = (disk: Disk, diskIdx: number) => {
-        const diskIdentifier = getDiskIdentifier(disk, diskIdx);
-        const partitionEntries = Object.entries(disk.partitions || {}).sort(([, a], [, b]) => {
-            const nameA = a.name || a.id || "";
-            const nameB = b.name || b.id || "";
-            return nameA.localeCompare(nameB);
-        });
-        const filteredPartitions = partitionEntries.filter(([, partition]) =>
-            !(
-                hideSystemPartitions &&
-                (partition.system &&
-                    (partition.name?.startsWith("hassos-") ||
-                        (Object.values(partition.host_mount_point_data || {}).length > 0)))
-            ),
-        ) || [];
-
-        if (filteredPartitions.length === 0) return null;
-
-        const isSelected = normalizedSelectedId === diskIdentifier;
-
-        return (
-            <TreeItem
-                key={diskIdentifier}
-                itemId={diskIdentifier}
-                label={
-                    <Box
-                        sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            py: 1,
-                            px: 1,
-                            backgroundColor: isSelected ? theme.palette.action.selected : "transparent",
-                            borderRadius: 1,
-                            "&:hover": {
-                                backgroundColor: theme.palette.action.hover,
-                            },
-                        }}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onDiskSelect?.(disk);
-                        }}
-                    >
-                        {renderDiskIcon(disk)}
-
-                        <Box sx={{ flexGrow: 1, ml: 1 }}>
-                            <Typography variant="subtitle2" fontWeight={600}>
-                                {disk.model?.toUpperCase() || `Disk ${diskIdx + 1}`}
-                            </Typography>
-                            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 0.5 }}>
-                                <Chip
-                                    label={`${filteredPartitions.length} partition(s)`}
-                                    size="small"
-                                    variant="outlined"
-                                    sx={{ fontSize: "0.7rem", height: 16 }}
-                                />
-                                {disk.size != null && (
-                                    <Chip
-                                        label={filesize(disk.size, { round: 1 })}
-                                        size="small"
-                                        variant="outlined"
-                                        sx={{ fontSize: "0.7rem", height: 16 }}
-                                    />
-                                )}
-                                {disk.connection_bus && (
-                                    <Chip
-                                        label={disk.connection_bus}
-                                        size="small"
-                                        variant="outlined"
-                                        sx={{ fontSize: "0.7rem", height: 16 }}
-                                    />
-                                )}
-                            </Box>
-                        </Box>
-                    </Box>
-                }
-            >
-                {filteredPartitions.map(([partitionKey, partition], partIdx) =>
-                    renderPartitionItem(disk, partition, diskIdentifier, partitionKey, partIdx),
-                )}
-            </TreeItem>
-        );
-    };
+    const labelText = hasErrors
+      ? "Filesystem has errors"
+      : "Filesystem not clean";
+    const tooltipText = filesystemState.stateDescription || labelText;
+    const partitionLabel = decodeEscapeSequence(
+      partition.name || partition.id || "partition",
+    );
+    const alertLabel = `Filesystem status alert for ${partitionLabel}`;
+    const icon = hasErrors ? (
+      <ErrorOutlineIcon color="error" fontSize="small" />
+    ) : (
+      <HelpOutlineIcon color="disabled" fontSize="small" />
+    );
 
     return (
-        <Box sx={{ height: "100%", overflow: "auto" }}>
-            <SimpleTreeView
-                selectedItems={normalizedSelectedId || ""}
-                expandedItems={expandedItems}
-                onExpandedItemsChange={(_, items) => {
-                    // SimpleTreeView may emit different shapes; normalize to string[] when possible
-                    if (!items) return;
-                    if (Array.isArray(items)) {
-                        onExpandedItemsChange(items as string[]);
-                    } else if ((items as any)?.items && Array.isArray((items as any).items)) {
-                        onExpandedItemsChange((items as any).items as string[]);
-                    }
-                }}
-            >
-                {filteredDisks.sort((a, b) => a.id?.localeCompare(b.id || "") || 0).map((disk, diskIdx) => renderDiskItem(disk, diskIdx))}
-            </SimpleTreeView>
+      <Tooltip title={tooltipText} placement="top" arrow>
+        <Box
+          role="img"
+          aria-label={alertLabel}
+          sx={{ display: "flex", alignItems: "center" }}
+        >
+          {icon}
         </Box>
+      </Tooltip>
     );
-} 
+  };
+
+  // Helper function to render a single mountpoint leaf
+  const renderMountpointItem = (
+    disk: Disk,
+    partition: Partition,
+    mountpointKey: string,
+    mpd: MountPointData,
+    partitionIdentifier: string,
+  ) => {
+    const mountpointIdentifier = getMountpointIdentifier(
+      partitionIdentifier,
+      mountpointKey,
+    );
+    const isSelected = normalizedSelectedId === mountpointIdentifier;
+    const mountpointPath = mpd.path || mountpointKey;
+
+    return (
+      <TreeItem
+        key={mountpointIdentifier}
+        itemId={mountpointIdentifier}
+        label={
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              py: 0.5,
+              px: 1,
+              backgroundColor: isSelected
+                ? theme.palette.action.selected
+                : "transparent",
+              borderRadius: 1,
+              "&:hover": {
+                backgroundColor: theme.palette.action.hover,
+              },
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onPartitionSelect(disk, partition);
+            }}
+          >
+            {renderPartitionIcon(partition)}
+
+            <Box sx={{ flexGrow: 1, ml: 1, mr: 1, minWidth: 0 }}>
+              <Tooltip title={mountpointPath} placement="top">
+                <Typography
+                  variant="body2"
+                  fontWeight={isSelected ? 600 : 400}
+                  sx={{
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {mountpointPath}
+                </Typography>
+              </Tooltip>
+              <Box
+                sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 0.5 }}
+              >
+                {partition.fs_type && (
+                  <Chip
+                    label={partition.fs_type}
+                    size="small"
+                    variant="outlined"
+                    sx={{ fontSize: "0.7rem", height: 16 }}
+                  />
+                )}
+                {mpd.is_mounted && (
+                  <Chip
+                    label={
+                      !mpd.is_write_supported
+                        ? "Mounted (Read-Only)"
+                        : "Mounted"
+                    }
+                    size="small"
+                    variant="outlined"
+                    color={!mpd.is_write_supported ? "secondary" : "success"}
+                    sx={{ fontSize: "0.7rem", height: 16 }}
+                  />
+                )}
+              </Box>
+            </Box>
+
+            {!readOnly && (
+              <Box sx={{ flexShrink: 0 }}>
+                <PartitionActions
+                  partition={partition}
+                  protected_mode={protectedMode}
+                  onToggleAutomount={onToggleAutomount}
+                  onMount={onMount}
+                  onUnmount={onUnmount}
+                  onCreateShare={onCreateShare}
+                  onGoToShare={onGoToShare}
+                />
+              </Box>
+            )}
+          </Box>
+        }
+      />
+    );
+  };
+
+  const renderPartitionItem = (
+    disk: Disk,
+    partition: Partition,
+    diskIdentifier: string,
+    partitionKey: string | undefined,
+    partIdx: number,
+  ) => {
+    const partitionIdentifier = getPartitionIdentifier(
+      diskIdentifier,
+      partition,
+      partitionKey,
+      partIdx,
+    );
+    const isSelected = normalizedSelectedId === partitionIdentifier;
+    const partitionNameDecoded = decodeEscapeSequence(
+      partition.name || partition.id || "Unnamed Partition",
+    );
+    const mpds = Object.values(partition.mount_point_data || {});
+    const mpdEntries = Object.entries(partition.mount_point_data || {}).sort(
+      (a, b) => a[0].localeCompare(b[0]),
+    );
+    const isMounted = mpds.some((mpd) => mpd.is_mounted);
+    const filesystemAlertIcon = renderFilesystemAlertIcon(partition);
+
+    // If partition has multiple mountpoints, create a parent node without actions
+    if (mpdEntries.length > 1) {
+      return (
+        <TreeItem
+          key={partitionIdentifier}
+          itemId={partitionIdentifier}
+          label={
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                py: 0.5,
+                px: 1,
+                backgroundColor: isSelected
+                  ? theme.palette.action.selected
+                  : "transparent",
+                borderRadius: 1,
+                "&:hover": {
+                  backgroundColor: theme.palette.action.hover,
+                },
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onPartitionSelect(disk, partition);
+              }}
+            >
+              {renderPartitionIcon(partition)}
+
+              <Box sx={{ flexGrow: 1, ml: 1, mr: 1, minWidth: 0 }}>
+                <Tooltip title={partitionNameDecoded} placement="top">
+                  <Typography
+                    variant="body2"
+                    fontWeight={isSelected ? 600 : 400}
+                    sx={{
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {partitionNameDecoded}
+                  </Typography>
+                </Tooltip>
+                <Box
+                  sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 0.5 }}
+                >
+                  {partition.size != null && (
+                    <Chip
+                      label={filesize(partition.size, { round: 0 })}
+                      size="small"
+                      variant="outlined"
+                      sx={{ fontSize: "0.7rem", height: 16 }}
+                    />
+                  )}
+                  <Chip
+                    label={`${mpdEntries.length} mountpoint(s)`}
+                    size="small"
+                    variant="outlined"
+                    sx={{ fontSize: "0.7rem", height: 16 }}
+                  />
+                  {partition.fs_type && (
+                    <Chip
+                      label={partition.fs_type}
+                      size="small"
+                      variant="outlined"
+                      sx={{ fontSize: "0.7rem", height: 16 }}
+                    />
+                  )}
+                </Box>
+              </Box>
+
+              {filesystemAlertIcon && (
+                <Box sx={{ flexShrink: 0, mr: 1 }}>{filesystemAlertIcon}</Box>
+              )}
+            </Box>
+          }
+        >
+          {mpdEntries.map(([key, mpd]) =>
+            renderMountpointItem(
+              disk,
+              partition,
+              key,
+              mpd,
+              partitionIdentifier,
+            ),
+          )}
+        </TreeItem>
+      );
+    }
+
+    // Single mountpoint - render as before with actions on the partition level
+    return (
+      <TreeItem
+        key={partitionIdentifier}
+        itemId={partitionIdentifier}
+        label={
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              py: 0.5,
+              px: 1,
+              backgroundColor: isSelected
+                ? theme.palette.action.selected
+                : "transparent",
+              borderRadius: 1,
+              "&:hover": {
+                backgroundColor: theme.palette.action.hover,
+              },
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onPartitionSelect(disk, partition);
+            }}
+          >
+            {renderPartitionIcon(partition)}
+
+            <Box sx={{ flexGrow: 1, ml: 1, mr: 1, minWidth: 0 }}>
+              <Tooltip title={partitionNameDecoded} placement="top">
+                <Typography
+                  variant="body2"
+                  fontWeight={isSelected ? 600 : 400}
+                  sx={{
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {partitionNameDecoded}
+                </Typography>
+              </Tooltip>
+              <Box
+                sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 0.5 }}
+              >
+                {partition.size != null && (
+                  <Chip
+                    label={filesize(partition.size, { round: 0 })}
+                    size="small"
+                    variant="outlined"
+                    sx={{ fontSize: "0.7rem", height: 16 }}
+                  />
+                )}
+                {partition.fs_type && (
+                  <Chip
+                    label={partition.fs_type}
+                    size="small"
+                    variant="outlined"
+                    sx={{ fontSize: "0.7rem", height: 16 }}
+                  />
+                )}
+                {isMounted && (
+                  <Chip
+                    label={
+                      mpds.length > 0 &&
+                      mpds.every((mp) => !mp.is_write_supported)
+                        ? "Mounted (Read-Only)"
+                        : "Mounted"
+                    }
+                    size="small"
+                    variant="outlined"
+                    color={
+                      mpds.length > 0 &&
+                      mpds.every((mp) => !mp.is_write_supported)
+                        ? "secondary"
+                        : "success"
+                    }
+                    sx={{ fontSize: "0.7rem", height: 16 }}
+                  />
+                )}
+              </Box>
+            </Box>
+
+            {filesystemAlertIcon && (
+              <Box sx={{ flexShrink: 0, mr: 1 }}>{filesystemAlertIcon}</Box>
+            )}
+
+            {!readOnly && (
+              <Box sx={{ flexShrink: 0 }}>
+                <PartitionActions
+                  partition={partition}
+                  protected_mode={protectedMode}
+                  onToggleAutomount={onToggleAutomount}
+                  onMount={onMount}
+                  onUnmount={onUnmount}
+                  onCreateShare={onCreateShare}
+                  onGoToShare={onGoToShare}
+                />
+              </Box>
+            )}
+          </Box>
+        }
+      />
+    );
+  };
+
+  const renderDiskItem = (disk: Disk, diskIdx: number) => {
+    const diskIdentifier = getDiskIdentifier(disk, diskIdx);
+    const partitionEntries = Object.entries(disk.partitions || {}).sort(
+      ([, a], [, b]) => {
+        const nameA = a.name || a.id || "";
+        const nameB = b.name || b.id || "";
+        return nameA.localeCompare(nameB);
+      },
+    );
+    const filteredPartitions =
+      partitionEntries.filter(
+        ([, partition]) =>
+          !(
+            hideSystemPartitions &&
+            partition.system &&
+            (partition.name?.startsWith("hassos-") ||
+              Object.values(partition.host_mount_point_data || {}).length > 0)
+          ),
+      ) || [];
+
+    if (filteredPartitions.length === 0) return null;
+
+    const isSelected = normalizedSelectedId === diskIdentifier;
+
+    return (
+      <TreeItem
+        key={diskIdentifier}
+        itemId={diskIdentifier}
+        label={
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              py: 1,
+              px: 1,
+              backgroundColor: isSelected
+                ? theme.palette.action.selected
+                : "transparent",
+              borderRadius: 1,
+              "&:hover": {
+                backgroundColor: theme.palette.action.hover,
+              },
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDiskSelect?.(disk);
+            }}
+          >
+            {renderDiskIcon(disk)}
+
+            <Box sx={{ flexGrow: 1, ml: 1 }}>
+              <Typography variant="subtitle2" fontWeight={600}>
+                {disk.model?.toUpperCase() || `Disk ${diskIdx + 1}`}
+              </Typography>
+              <Box
+                sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 0.5 }}
+              >
+                <Chip
+                  label={`${filteredPartitions.length} partition(s)`}
+                  size="small"
+                  variant="outlined"
+                  sx={{ fontSize: "0.7rem", height: 16 }}
+                />
+                {disk.size != null && (
+                  <Chip
+                    label={filesize(disk.size, { round: 1 })}
+                    size="small"
+                    variant="outlined"
+                    sx={{ fontSize: "0.7rem", height: 16 }}
+                  />
+                )}
+                {disk.connection_bus && (
+                  <Chip
+                    label={disk.connection_bus}
+                    size="small"
+                    variant="outlined"
+                    sx={{ fontSize: "0.7rem", height: 16 }}
+                  />
+                )}
+              </Box>
+            </Box>
+          </Box>
+        }
+      >
+        {filteredPartitions.map(([partitionKey, partition], partIdx) =>
+          renderPartitionItem(
+            disk,
+            partition,
+            diskIdentifier,
+            partitionKey,
+            partIdx,
+          ),
+        )}
+      </TreeItem>
+    );
+  };
+
+  return (
+    <Box sx={{ height: "100%", overflow: "auto" }}>
+      <SimpleTreeView
+        selectedItems={normalizedSelectedId || ""}
+        expandedItems={expandedItems}
+        onExpandedItemsChange={(_, items) => {
+          // SimpleTreeView may emit different shapes; normalize to string[] when possible
+          if (!items) return;
+          if (Array.isArray(items)) {
+            onExpandedItemsChange(items as string[]);
+          } else if (
+            (items as Record<string, unknown>)?.items &&
+            Array.isArray((items as Record<string, unknown>).items)
+          ) {
+            onExpandedItemsChange(
+              (items as Record<string, unknown>).items as string[],
+            );
+          }
+        }}
+      >
+        {filteredDisks
+          .sort((a, b) => a.id?.localeCompare(b.id || "") || 0)
+          .map((disk, diskIdx) => renderDiskItem(disk, diskIdx))}
+      </SimpleTreeView>
+    </Box>
+  );
+}

@@ -23,7 +23,8 @@ hk = "1.39.0"
 jq = "1.8.1"
 pkl = "0.31.1"
 biome = "2.4.9"
-tombi = "latest"
+#tombi = "latest"
+taplo = "0.10.0"
 
 [tools."http:lychee"]
 platforms.linux-x64.url = "https://github.com/lycheeverse/lychee/releases/download/lychee-v{{version}}/lychee-x86_64-unknown-linux-gnu.tar.gz"
