@@ -2,7 +2,7 @@
 
 # [FEATURE]: Generic Live Command Execution Console via WebSocket
 
-**Target Repo:** `srat`  **Status:** 📅 Planned  **Issue Link:** [Optional GH Issue URL]
+**Target Repo:** `srat`  **Status:** 🔄 In Progress  **Issue Link:** https://github.com/dianlight/srat/issues/540
 
 ## 🎯 Objective
 
