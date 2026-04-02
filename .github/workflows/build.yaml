@@ -168,6 +168,7 @@ jobs:
         uses: jdx/mise-action@v2
         with:
           install: true
+          experimental: true
 
       - name: Install Ubuntu Packages for Tests
         run: |
@@ -218,10 +219,15 @@ jobs:
         with:
           bun-version-file: frontend/package.json
 
+      - name: Setup mise
+        uses: jdx/mise-action@v2
+        with:
+          install: true
+          experimental: true
+
       - name: Prepare frontend for ${{ needs.setversion.outputs.version }}
         run: |       
-          cd frontend
-          bun install
+          mise run //frontend:prepare
 
       - name: Test Frontend ${{ needs.setversion.outputs.version }}
         id: test_frontend
@@ -235,8 +241,7 @@ jobs:
             echo "frontend/test/setup.ts not found (pwd: $(pwd))"
             ls -la || true
           fi
-          cd frontend
-          bun test:ci --coverage-reporter=lcov 2>&1 | tee frontend_test_output.txt
+          mise run //frontend:test:ci 2>&1 | tee frontend_test_output.txt
 
       - name: Extract Frontend Coverage
         id: extract_coverage
@@ -283,6 +288,7 @@ jobs:
         uses: jdx/mise-action@v2
         with:
           install: true
+          experimental: true
 
       - name: Install dev dependencies
         run: mise run //custom_components:install
@@ -297,7 +303,7 @@ jobs:
         run: mise run //custom_components:typecheck
 
       - name: Run tests
-        run: mise run //custom_components:test-ci
+        run: mise run //custom_components:test:ci
 
       - name: Upload Custom Component Coverage Report
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
@@ -387,12 +393,13 @@ jobs:
         uses: jdx/mise-action@v2
         with:
           install: true
+          experimental: true
 
-      - name: Prepare env for ${{ needs.setversion.outputs.version }}
-        run: |
-          mise run //backend:patch
-          mise run //backend:format
-          cd frontend && bun install && cd ..
+#      - name: Prepare env for ${{ needs.setversion.outputs.version }}
+#        run: |
+#          mise run //backend:patch
+#          mise run //backend:format
+#          cd frontend && bun install && cd ..
 
       - name: Set custom component version
         run: |

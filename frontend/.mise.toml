@@ -14,6 +14,7 @@ dev = "tsgo --noEmit && NODE_ENV=development bun --hot run bun.build.ts -w -s ./
 gowatch = "bun run gowatch"
 watch = "bun run watch"
 validate-macros = "bun ../scripts/validate-macro-imports.js"
+prepare = "bun install"
 
 [tasks.build-static]
 usage = '''
@@ -87,6 +88,6 @@ quiet = true
 [tasks."test:ci"]
 run = [
   "bun ./scripts/add-test-setup.js",
-  "bun test --preload ./test/setup.ts --only-failures --timeout 60000 --bail --max-concurrency=1",
+  "bun test --preload ./test/setup.ts --only-failures --timeout 60000 --bail --max-concurrency=1 --coverage-reporter=lcov",
 ]
 quiet = true
