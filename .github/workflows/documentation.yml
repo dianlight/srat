@@ -7,7 +7,6 @@ on:
       - "**/*.md"
       - ".github/workflows/documentation.yml"
       - "scripts/validate-docs.sh"
-      - "Makefile"
       - ".lychee.toml"
       - ".vale.ini"
       - ".markdownlint-cli2.jsonc"
@@ -47,7 +46,6 @@ jobs:
               - "**/*.md"
               - ".github/workflows/documentation.yml"
               - "scripts/validate-docs.sh"
-              - "Makefile"
               - ".lychee.toml"
               - ".vale.ini"
               - ".markdownlint-cli2.jsonc"
@@ -82,14 +80,16 @@ jobs:
         with:
           bun-version: latest
 
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
-      - uses: j178/prek-action@79f765515bd648eb4d6bb1b17277b7cb22cb6468 # v2
+      - name: Setup mise
+        uses: jdx/mise-action@v2
+        with:
+          install: true
 
       - name: Generate TOC for Markdown files
-        run: make docs-toc
+        run: mise run docs-toc
 
       - name: Auto-fix formatting issues
-        run: make docs-fix
+        run: mise run docs-fix
 
       - name: Create Pull Request with documentation fixes
         id: cpr

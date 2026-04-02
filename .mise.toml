@@ -12,6 +12,7 @@ env_shell_expand = true
 compile = false
 
 [tools]
+go = "1.26.1"
 act = "0.2.86"
 vale = "3.14.1"
 markdownlint-cli2 = "0.22.0"
@@ -25,6 +26,8 @@ pkl = "0.31.1"
 biome = "2.4.9"
 #tombi = "latest"
 taplo = "0.10.0"
+golangci-lint = "2.11.4"
+
 
 [tools."http:lychee"]
 platforms.linux-x64.url = "https://github.com/lycheeverse/lychee/releases/download/lychee-v{{version}}/lychee-x86_64-unknown-linux-gnu.tar.gz"
