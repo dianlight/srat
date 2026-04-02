@@ -27,6 +27,8 @@ biome = "2.4.9"
 #tombi = "latest"
 taplo = "0.10.0"
 golangci-lint = "2.11.4"
+shellcheck = "0.11.0"
+shfmt = "3.13.0"
 
 
 [tools."http:lychee"]

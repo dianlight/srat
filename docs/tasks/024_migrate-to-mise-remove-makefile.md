@@ -17,7 +17,7 @@ Migrate the entire monorepo to use [mise.jdx.dev](https://mise.jdx.dev) for tool
 - [x] Task 5: Update all documentation to reference mise workflows
 - [x] Task 6: Optimize and test all build, test, and lint processes under mise
 - [x] Task 7: Ensure CI/CD pipelines are updated and functional with mise https://mise.jdx.dev/continuous-integration.html#github-actions and hk.jdx.dev/why-hk.html if applicable. Ensure all CI/CD workflows pass successfully with mise integration and remove any Makefile and prek references from CI/CD configs.
-- [ ] Task 8: Conduct code review, cleanup, and final validation
+- [x] Task 8: Conduct code review, cleanup, and final validation
 - [ ] Task 9: Evaluate the use of https://hk.jdx.dev/why-hk.html over prek for any relevant optimizations or improvements and better mise integration
 - [ ] Task 10: Implement any necessary changes based on the evaluation of hk.jdx.dev and integrate it into the workflow if beneficial
 - [ ] Task 11: Update documentation to reflect any changes made based on the hk.jdx.dev evaluation and integration
@@ -47,6 +47,14 @@ Migrate the entire monorepo to use [mise.jdx.dev](https://mise.jdx.dev) for tool
 - `build.yaml`: replaced `make patch format` → `mise run //backend:patch && mise run //backend:format`, `make test` → `mise run //backend:test`, `make -C custom_components *` → respective `mise run //custom_components:*` tasks, `make ALL VERSION=...` → `mise run version -- --version=... && mise run all`. Added `jdx/mise-action@v2` setup step to all affected jobs.
 - `documentation.yml`: replaced `prek-action` + `make docs-toc`/`make docs-fix` with `jdx/mise-action@v2` + `mise run docs-toc`/`mise run docs-fix`. Removed `Makefile` from path triggers in both files.
 - YAML syntax validated with js-yaml. No `make` or `prek` references remain in any CI workflow.
+**Task 8 Code Review & Cleanup (2026-04-02):**
+- Reviewed all project Makefiles (`/Makefile`, `/backend/Makefile`, `/custom_components/Makefile`) — exist and contain logic, scheduled for removal in Task 19.
+- Searched for remaining `make`/`prek` references outside vendor: found in `.devcontainer/updateContentCommand.sh` and `docs/README_EVENT_SYSTEM.md`.
+- Updated `.devcontainer/updateContentCommand.sh`: changed `make -C .. prepare` → `mise run //root:prepare`.
+- Updated `docs/README_EVENT_SYSTEM.md`: changed `make dev` → `mise run //backend:dev`.
+- Task verification: `mise tasks --all` confirms all backend, frontend, custom_components, and root tasks are available; tested `mise run //frontend:lint` ✅.
+- YAML syntax validation: both workflow files parse correctly with js-yaml.
+- Result: All critical references updated. No `make` or `prek` in active workflow configs or documentation. Project is ready for PR and remaining tasks (hk.jdx.dev evaluation, devcontainer, tool version management, etc.).
 **Branch:** `refactor/migrate-to-mise-remove-makefile` (feature branch created)
 
 **Pre-implementation Plan:**
