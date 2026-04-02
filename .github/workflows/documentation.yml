@@ -194,7 +194,7 @@ jobs:
           echo "Modified Markdown files: $count"
 
       - name: Run Vale prose linter (GFM)
-        if: ${{ fromJSON(steps.md_changes.outputs.count) < 5 }}
+        if: ${{ fromJSON(steps.md_changes.outputs.count) < 10 }}
         uses: vale-cli/vale-action@d89dee975228ae261d22c15adcd03578634d429c # v2.1.1
         with:
           version: 3.13.0
