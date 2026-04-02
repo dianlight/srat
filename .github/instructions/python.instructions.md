@@ -224,19 +224,18 @@ mise run check         # Full check: format + lint + typecheck + test
 - `iot_class: local_push` (WebSocket push, no polling)
 - `integration_type: hub` (single integration managing multiple entities)
 
-## Makefile Targets
+## Mise Tasks
 
-All custom component tooling runs via `custom_components/Makefile`:
+All custom component tooling runs via `custom_components/.mise.toml`:
 
-| Target        | Description                                |
-| ------------- | ------------------------------------------ |
-| `check`       | Run format-check + lint + typecheck + test |
-| `lint`        | Run `ruff check`                           |
-| `format`      | Run `ruff format` (autofix)                |
-| `typecheck`   | Run `mypy`                                 |
-| `test`        | Run `pytest`                               |
-| `test-ci`     | Run `pytest` with coverage (generates XML) |
-| `fix`         | Run `ruff check --fix` + `ruff format`     |
-| `install`     | Install dev deps (auto-detects Alpine apk) |
-| `install-pip` | Install dev deps via pip only              |
-| `clean`       | Remove caches and build artifacts          |
+| Task             | Description                                |
+| ---------------- | ------------------------------------------ |
+| `mise run check` | Run format-check + lint + typecheck + test |
+| `mise run lint`  | Run `ruff check`                           |
+| `mise run format`| Run `ruff format` (autofix)                |
+| `mise run typecheck` | Run `mypy`                            |
+| `mise run test`  | Run `pytest`                               |
+| `mise run test-ci` | Run `pytest` with coverage (generates XML) |
+| `mise run fix`   | Run `ruff check --fix` + `ruff format`     |
+| `mise run install` | Install dev dependencies                 |
+| `mise run clean` | Remove caches and build artifacts          |

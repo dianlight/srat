@@ -260,7 +260,8 @@
 	"bun.runtime": "/root/.local/share/mise/shims/bun",
 	"go.goroot": "/root/.local/share/mise/installs/go/1.26.1",
 	"go.alternateTools": {
-		"go": "/root/.local/share/mise/shims/go"
+		"go": "/root/.local/share/mise/shims/go",
+		"gopls": "/root/.local/share/mise/shims/gopls"
 	},
 	"editor.fontSize": 13,
 	"vale.enableSpellcheck": true,

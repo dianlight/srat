@@ -88,7 +88,6 @@
 				}
 			},
 			"extensions": [
-				"ms-vscode.makefile-tools",
 				"github.vscode-github-actions",
 				"esbenp.prettier-vscode",
 				"mortenson.go-template-transpiler-extension",

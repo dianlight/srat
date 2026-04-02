@@ -25,7 +25,7 @@ Migrate the entire monorepo to use [mise.jdx.dev](https://mise.jdx.dev) for tool
 - [x] Task 13: Add vscode related to workspace config and plugins mise-vscode to devcontainer
 - [x] Task 14: Code review, cleanup, and final validation
 - [x] Task 15: Check also renovate config if need changes
-- [ ] Task 16: Remove Makefile and all Makefile-relative configs
+- [x] Task 16: Remove Makefile and all Makefile-relative configs
 - [ ] Task 17: Ask to create a PR with the task implementation and link it here for tracking
 
 ## 🧠 Implementation Notes (Copilot Context)
@@ -136,6 +136,20 @@ Migrate the entire monorepo to use [mise.jdx.dev](https://mise.jdx.dev) for tool
 	- Backend build still requires an explicit `--arch` argument; the explicit build path works and produces a verified binary
 	- Generated build side effects (`frontend/package.json` version bump and regenerated test fixture data) were reverted after validation so only intentional migration changes remain
 - Result: The migrated mise workflows now pass documentation, lint, test, and build validation across the repository. The remaining work is structural cleanup (Task 16) and PR creation (Task 17).
+**Task 16 Remove Makefiles and Makefile-relative Configs (2026-04-02):**
+- Deleted the legacy project Makefiles:
+	- `/Makefile`
+	- `/backend/Makefile`
+	- `/custom_components/Makefile`
+- Updated remaining active references/configuration that still assumed Makefiles existed:
+	- Removed `ms-vscode.makefile-tools` from `/.devcontainer/devcontainer.json`
+	- Updated `/.github/instructions/python.instructions.md` from Makefile targets to mise tasks
+	- Updated `/.github/skills/test-remote-environment/SKILL.md` to deploy the custom component with `mise run install-remote`
+	- Updated `/backend/NOTES.md`, `/docs/DOCUMENTATION_VALIDATION_SETUP.md`, `/docs/TESTING_SAMBA_VERSION_CHECKS.md`, and `/backend/src/service/filesystem/README.md` to reference mise workflows instead of Makefile commands
+	- Updated `/backend/.mise.toml` and `/backend/src/config/metadata_constants.go` so generated metadata files no longer claim they were created by Makefile
+- Validation scope for this phase is documentation/config focused because the executable build/test workflows were already fully validated in Task 14 and are implemented via mise, not the removed Makefiles.
+- Validation result: `mise run docs-validate` passed after fixing one markdownlint formatting issue in `/docs/DOCUMENTATION_VALIDATION_SETUP.md`; remaining `Makefile` hits are limited to vendored third-party files outside the migration scope.
+- Result: The repository no longer contains project Makefiles, and active developer instructions/configuration now consistently point to mise as the single workflow entry point.
 **Branch:** `refactor/migrate-to-mise-remove-makefile` (feature branch created)
 
 **Pre-implementation Plan:**
@@ -168,6 +182,11 @@ Migrate the entire monorepo to use [mise.jdx.dev](https://mise.jdx.dev) for tool
 /.github/renovate.json (dependency update automation aligned to mise)
 /docs/DOCUMENTATION_GUIDELINES.md (documentation commands aligned to mise)
 /backend/src/service/filesystem/README.md (filesystem test command aligned to mise)
+/backend/NOTES.md (patched dependency workflow aligned to mise)
+/docs/DOCUMENTATION_VALIDATION_SETUP.md (documentation setup summary aligned to mise)
+/.github/instructions/python.instructions.md (custom component instructions aligned to mise)
+/.github/skills/test-remote-environment/SKILL.md (remote deployment guidance aligned to mise)
+/.devcontainer/devcontainer.json (obsolete Makefile extension removed)
 
 ## 🗺️ Mise Migration Plan
 

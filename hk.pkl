@@ -40,6 +40,7 @@ local linters = new Mapping<String, Step> {
 
     ["lychee"] = (Builtins.lychee) {
         glob = "**/*.md"
+        exclude = List(".github/**/*.md")
     }
     ["markdownlint-cli2"] {
         glob = "**/*.md"
@@ -48,7 +49,7 @@ local linters = new Mapping<String, Step> {
     }
     ["vale"] = (Builtins.vale) {
         glob = "**/*.md"
-        exclude = List("CHANGELOG.md", "docs/tasks/*.md")
+        exclude = List("CHANGELOG.md", "docs/tasks/*.md",".github/**/*.md")
     }
 
     ["mise"] = (Builtins.mise) {

@@ -22,9 +22,19 @@ fix = "ruff check --fix srat tests && ruff format srat tests"
 format = "ruff format srat tests"
 format-check = "ruff format --check srat tests"
 install = "pip install -r requirements_dev.txt"
-install-remote = "rsync -rvuzP --del ./srat ${HOMEASSISTANT_IP}:/config/custom_components"
+#install-remote = "rsync -rvuzP --del ./srat ${HOMEASSISTANT_IP}:/config/custom_components"
 lint = "ruff check srat tests"
 #mount-remote = "umount -l /mnt/remote2 > /dev/null 2>&1 || : && mkdir -p /mnt/remote2 > /dev/null 2>&1 || : && sshfs -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3 ${HOMEASSISTANT_IP}:/config/custom_components /mnt/remote2"
 test = "python -m pytest tests -v -c pyproject.toml"
 test-ci = "python -m pytest tests -v -c pyproject.toml --cov=srat --cov-report=xml:coverage.xml"
 typecheck = "mypy srat"
+
+[tasks."install:remote"]
+depends = [
+    { task = "lint" },
+    { task = "typecheck" },
+    { task = "test" },
+]
+alias = "install-remote"
+run = "rsync -rvuzP --del ./srat ${HOMEASSISTANT_IP}:/config/custom_components"
+quiet = true

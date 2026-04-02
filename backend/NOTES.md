@@ -41,7 +41,7 @@ This document contains development notes, useful packages, and technical referen
 SRAT uses Go's vendor mechanism to manage patched dependencies. This approach provides several benefits:
 
 1. **Reproducible builds** - All dependencies are versioned and committed
-2. **Patch persistence** - Patches are applied during `make patch` and persist in vendor directory
+2. **Patch persistence** - Patches are applied during `mise run patch` and persist in vendor directory
 3. **No external tools** - Uses standard `go mod vendor` and the `patch` utility
 
 **Patched Libraries:**
@@ -54,16 +54,16 @@ SRAT uses Go's vendor mechanism to manage patched dependencies. This approach pr
 
 ```bash
 # Initial setup or after updating dependencies
-cd backend/src && go mod vendor && cd .. && make patch
+cd backend/src && go mod vendor && cd .. && mise run patch
 
 # For development
-make build          # Automatically applies patches
-make format        # Applies patches before formatting
-make test          # Applies patches before testing
+mise run build      # Automatically applies patches
+mise run format     # Applies patches before formatting
+mise run test       # Applies patches before testing
 
 # To create new patches
 # 1. Edit files in backend/src/vendor/github.com/{library}/
-# 2. Test changes with `make build` or `make test`
+# 2. Test changes with `mise run build` or `mise run test`
 # 3. Generate patch: diff -Naur original patched > patches/name.patch
 # 4. Commit patch file and vendored changes
 ```
@@ -74,7 +74,7 @@ make test          # Applies patches before testing
 - Multiple patches can target the same file (for example, smart.go has two patches)
 - Patches are applied in alphabetical order by filename
 - The vendor directory is committed to preserve patches
-- When updating a library, re-run `go mod vendor && make patch`
+- When updating a library, re-run `go mod vendor && mise run patch`
 
 ## Go Packages
 

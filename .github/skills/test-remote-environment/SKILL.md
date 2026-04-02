@@ -100,7 +100,7 @@ Only run this step when the argument indicates custom component interaction (or 
 Deploy the custom component to the remote HA environment:
 
 ```bash
-cd custom_components && make install_remote
+cd custom_components && mise run install:remote
 ```
 
 Then reload Home Assistant configuration/core as needed via MCP:
