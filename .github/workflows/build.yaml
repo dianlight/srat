@@ -165,7 +165,7 @@ jobs:
           cache-dependency-path: "**/*.sum"
 
       - name: Setup mise
-        uses: jdx/mise-action@v2
+        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4
         with:
           install: true
           experimental: true          
@@ -218,7 +218,7 @@ jobs:
           bun-version-file: frontend/package.json
 
       - name: Setup mise
-        uses: jdx/mise-action@v2
+        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4
         with:
           install: true
           experimental: true
@@ -283,7 +283,7 @@ jobs:
           python-version: "3.14"
 
       - name: Setup mise
-        uses: jdx/mise-action@v2
+        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4
         with:
           install: true
           experimental: true
@@ -388,7 +388,7 @@ jobs:
           bun-version-file: frontend/package.json
 
       - name: Setup mise
-        uses: jdx/mise-action@v2
+        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4
         with:
           install: true
           experimental: true
