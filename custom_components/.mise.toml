@@ -4,7 +4,7 @@ auto = true
 [tools]
 python = "3.14.3"
 ruff = "0.15.8"
-"pipx:mypy" = "1.14.0"
+"pipx:mypy" = "1.19.1"
 pipx = "latest"
 
 [env]
