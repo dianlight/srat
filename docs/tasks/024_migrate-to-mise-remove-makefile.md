@@ -23,7 +23,7 @@ Migrate the entire monorepo to use [mise.jdx.dev](https://mise.jdx.dev) for tool
 - [x] Task 11: Devcontainer environment upgrade with the use of https://mise.jdx.dev/mise-cookbook/shell-tricks.html and other mise features to optimize the development environment and workflow
 - [x] Task 12: Add mise MCP configuration for all relevant tools and scripts
 - [x] Task 13: Add vscode related to workspace config and plugins mise-vscode to devcontainer
-- [ ] Task 14: Code review, cleanup, and final validation
+- [x] Task 14: Code review, cleanup, and final validation
 - [x] Task 15: Check also renovate config if need changes
 - [ ] Task 16: Remove Makefile and all Makefile-relative configs
 - [ ] Task 17: Ask to create a PR with the task implementation and link it here for tracking
@@ -117,6 +117,25 @@ Migrate the entire monorepo to use [mise.jdx.dev](https://mise.jdx.dev) for tool
 	- No non-vendor Makefiles contain `go run module@version` patterns that require Renovate regex management
 	- Native Renovate `mise` support now covers the repository's tool version source of truth
 - Result: Renovate is aligned with the mise-first monorepo layout and no longer carries unnecessary Makefile-specific update rules.
+**Task 14 Code Review, Cleanup, and Final Validation (2026-04-02):**
+- Final cleanup removed remaining active migration leftovers in user-facing docs:
+	- Removed the stale `prek` badge from `/README.md`
+	- Updated `/backend/README.md` security scanning commands from `make` to `mise run`
+	- Updated `/docs/DOCUMENTATION_GUIDELINES.md` documentation workflow commands from `make` to `mise run`
+	- Updated `/backend/src/service/filesystem/README.md` test instructions to use `mise run //backend:test -- ./service/filesystem`
+- Final validation commands executed successfully:
+	- `mise run docs-validate`
+	- `mise run //frontend:lint`
+	- `mise run //backend:test`
+	- `mise run //custom_components:check`
+	- `hk check`
+	- `mise run //frontend:build`
+	- `mise run //backend:build -- --arch=aarch64`
+- Validation notes:
+	- `hk check` passed with only a non-blocking lychee redirect warning
+	- Backend build still requires an explicit `--arch` argument; the explicit build path works and produces a verified binary
+	- Generated build side effects (`frontend/package.json` version bump and regenerated test fixture data) were reverted after validation so only intentional migration changes remain
+- Result: The migrated mise workflows now pass documentation, lint, test, and build validation across the repository. The remaining work is structural cleanup (Task 16) and PR creation (Task 17).
 **Branch:** `refactor/migrate-to-mise-remove-makefile` (feature branch created)
 
 **Pre-implementation Plan:**
@@ -147,6 +166,8 @@ Migrate the entire monorepo to use [mise.jdx.dev](https://mise.jdx.dev) for tool
 /backend/README.md (mise backend workflow docs)
 /frontend/README.md (mise frontend workflow docs)
 /.github/renovate.json (dependency update automation aligned to mise)
+/docs/DOCUMENTATION_GUIDELINES.md (documentation commands aligned to mise)
+/backend/src/service/filesystem/README.md (filesystem test command aligned to mise)
 
 ## 🗺️ Mise Migration Plan
 
