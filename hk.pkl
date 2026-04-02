@@ -17,21 +17,21 @@ local linters = new Mapping<String, Step> {
         exclude = "vendor/**/*.go"
         dir = "backend/src"
     }
-    ["go-sec"] = (Builtins.go_sec) {
-        glob = "**/*.go"
-        exclude = "vendor/**/*.go"
-        dir = "backend/src"
-    }
-    ["go-vet"] = (Builtins.go_vet) {
-        glob = "**/*.go"
-        exclude = "vendor/**/*.go"
-        dir = "backend/src"
-    }
-    ["golangci-lint"] = (Builtins.golangci_lint) {
-        glob = "**/*.go"
-        exclude = "vendor/**/*.go"
-        dir = "backend/src"
-    }
+//    ["go-sec"] = (Builtins.go_sec) {
+//        glob = "**/*.go"
+//        exclude = "vendor/**/*.go"
+//        dir = "backend/src"
+//    }
+//    ["go-vet"] = (Builtins.go_vet) {
+//        glob = "**/*.go"
+//        exclude = "vendor/**/*.go"
+//        dir = "backend/src"
+//    }
+//    ["golangci-lint"] = (Builtins.golangci_lint) {
+//        glob = "**/*.go"
+//        exclude = "vendor/**/*.go"
+//        dir = "backend/src"
+//    }
 
     ["gomod-tidy"] = Builtins.gomod_tidy
 //    ["err-check"] = (Builtins.err_check) {

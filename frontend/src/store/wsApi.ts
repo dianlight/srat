@@ -2,6 +2,9 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { apiUrl } from "./emptyApi";
 import type {
   AppConfigChangedNotification,
+  CommandOutputNotification,
+  CommandStartedNotification,
+  CommandTerminatedNotification,
   DataDirtyTracker,
   Disk,
   FilesystemTask,
@@ -25,6 +28,9 @@ export type EventData = {
   [Supported_events.SmartTestStatus]: SmartTestStatus;
   [Supported_events.FilesystemTask]: FilesystemTask;
   [Supported_events.RepairCommand]: RepairCommandMessage;
+  command_started?: CommandStartedNotification;
+  command_output?: CommandOutputNotification;
+  command_terminated?: CommandTerminatedNotification;
 } & {
   __wsConnected?: boolean;
 };
@@ -170,6 +176,16 @@ export const wsApi = createApi({
                 updateCachedData((draft) => {
                   if (draft !== undefined && draft !== null) {
                     draft[eventTypeEnum] = JSON.parse(data);
+                  }
+                });
+              } else if (
+                eventType === "command_started" ||
+                eventType === "command_output" ||
+                eventType === "command_terminated"
+              ) {
+                updateCachedData((draft) => {
+                  if (draft !== undefined && draft !== null) {
+                    draft[eventType] = JSON.parse(data);
                   }
                 });
               } else {

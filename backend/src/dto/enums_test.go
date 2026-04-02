@@ -359,7 +359,7 @@ func TestEventType_All(t *testing.T) {
 	for range dto.WebEventTypes.All() {
 		count++
 	}
-	assert.Equal(t, 11, count)
+	assert.Equal(t, 14, count)
 }
 
 func TestEventType_MarshalYAML(t *testing.T) {

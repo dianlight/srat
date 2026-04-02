@@ -169,6 +169,7 @@ func (suite *ServerProcessServiceSuite) SetupTest() {
 			mock.Mock[service.ShareServiceInterface],
 			service.NewUserService,
 			mock.Mock[service.BroadcasterServiceInterface],
+			mock.Mock[service.CommandExecutionServiceInterface],
 			mock.Mock[service.DirtyDataServiceInterface],
 			//mock.Mock[service.SupervisorServiceInterface],
 			//mock.Mock[repository.ExportedShareRepositoryInterface],

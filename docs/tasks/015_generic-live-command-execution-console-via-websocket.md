@@ -31,14 +31,14 @@ Implement a generic backend/frontend system that executes commands on the backen
 ## 📝 Task List
 
 - [ ] Task 1: Audit and catalog all backend exec call sites to replace with a generic command runner abstraction. Refactor incrementally to preserve existing behavior while enabling the new streaming/event contract. Define the command runner interface and event schema in collaboration with frontend to ensure it meets UI needs.
-- [ ] Task 2: Define WebSocket event names and payload schema for streaming command output and process lifecycle events (e.g., `command_output`, `command_started`, `command_terminated`) with necessary metadata (execution id, timestamp, channel, exit code).
+- [x] Task 2: Define WebSocket event names and payload schema for streaming command output and process lifecycle events (e.g., `command_output`, `command_started`, `command_terminated`) with necessary metadata (execution id, timestamp, channel, exit code).
 - [ ] Task 3: Find the right MUI component pattern for a readonly terminal that can efficiently append lines and visually distinguish stdout vs stderr (e.g., color coding) and also check for existing libraries that can be adapted. If a suitable library is found, evaluate it for performance and customization needs. If not, ask if design a custom component pattern that meets the requirements.
 - [ ] Task 4: Design the frontend readonly terminal component pattern that can efficiently append lines and visually distinguish `stdout` vs `stderr` (e.g., color coding). Define the component API for receiving streamed events and updating the display.
-- [ ] Task 5: Implement backend generic command execution service with line-by-line stdout/stderr streaming, bounded ring buffer (500 lines), and exit code/state tracking
-- [ ] Task 6: Integrate the command execution service with the WebSocket event system to emit real-time updates to the frontend, ensuring that existing event consumers are not disrupted.
+- [x] Task 5: Implement backend generic command execution service with line-by-line stdout/stderr streaming, bounded ring buffer (500 lines), and exit code/state tracking
+- [x] Task 6: Integrate the command execution service with the WebSocket event system to emit real-time updates to the frontend, ensuring that existing event consumers are not disrupted.
 - [ ] Task 7: Rerun all existing backend and frontend tests to confirm that current exec-based features remain functional and that the new event contract is correctly implemented. Add new tests for the command runner abstraction and event streaming as needed.
-- [ ] Task 8: Add Notification Center logic to show stderr alert when no command-output component instance is open
-- [ ] Task 9: Implement notification action to open a generic popup showing last 500 lines and exit code/termination status
+- [x] Task 8: Add Notification Center logic to show stderr alert when no command-output component instance is open
+- [x] Task 9: Implement notification action to open a generic popup showing last 500 lines and exit code/termination status
 - [ ] Task 10: Add unit/integration tests for backend command streaming, buffer trimming, and frontend notification/popup behavior
 - [ ] Task 11: Integration and documentation updates for architecture, event contract, and operator usage
 - [ ] Task 12: Migrate any remaining exec usage in backend to the new command runner abstraction, ensuring that all command executions benefit from the new streaming and event capabilities. If the actual exec use cases don't have a specific test, create the test for it and then migrate to the new command runner abstraction. Perform a final code review and security audit to ensure that there are no risks of command injection or sensitive data exposure in the new implementation.
@@ -47,6 +47,18 @@ Implement a generic backend/frontend system that executes commands on the backen
 - [ ] Task 15: Create a PR with the implementation and link it to this task for tracking. Ensure that the PR description clearly outlines the changes made, the new features added, and any important notes for reviewers. 
 
 ## 🧠 Implementation Notes (Copilot Context)
+
+- Agreed implementation sequence:
+  - Define backend event contract first (`command_started`, `command_output`, `command_terminated`) in DTO enums/map before wiring services.
+  - Introduce a reusable command runner service with execution id, line-by-line streaming, bounded ring buffer (500 lines), and termination metadata.
+  - Integrate command events into existing event bus → broadcaster → WebSocket pipeline without creating a parallel transport.
+  - Migrate initial high-value call sites in `server_process_service.go` (test/restart/start/stop commands) behind the new abstraction, preserving current behavior.
+  - Add frontend event consumption and readonly terminal/popup/notification flow after backend contract and emission are stable.
+  - Validate with focused backend + frontend tests, then broaden to full regression.
+- Initial risks to handle explicitly:
+  - High-output backpressure and event ordering between output lines and termination events.
+  - Multi-execution concurrency isolation by execution id.
+  - Command safety (no shell interpolation), error redaction, and bounded in-memory retention.
 
 - Design a reusable backend command runner interface (for example: `Start`, `Subscribe`, `GetSnapshot`, `Stop`) and adapt existing exec usage to it incrementally.
 - Keep backward compatibility by preserving current functionality and event semantics where possible.
@@ -58,11 +70,44 @@ Implement a generic backend/frontend system that executes commands on the backen
 - Notification rule (first implementation): if a `stderr` line arrives and no terminal viewer is open, create a notification with an action button to open the popup viewer.
 - Popup viewer should load/show: execution id, command label, latest 500 lines, and final/ongoing exit status.
 - Define and document a stable event payload contract shared by backend and frontend (`_TBD_` final schema).
+- Implemented milestone:
+  - Added DTO payloads for `command_started`, `command_output`, `command_terminated` in `backend/src/dto/command_execution.go`.
+  - Extended websocket event enum/map registration in `backend/src/dto/webevent_type.go`, generated `backend/src/dto/webeventtypes_enums.go`, and `backend/src/dto/webevent_map.go`.
+  - Added/updated backend tests in `backend/src/dto/webevent_type_test.go` and `backend/src/dto/enums_test.go`.
+  - Added `backend/src/service/command_execution_service.go` with:
+    - async `Start(...)` execution,
+    - sync `Execute(...)` wrapper for incremental migration,
+    - line-by-line stdout/stderr streaming,
+    - 500-line bounded in-memory snapshot buffering,
+    - termination status/exit-code tracking.
+  - Wired service in FX (`backend/src/internal/appsetup/appsetup.go`) and migrated first `server_process_service.go` call sites (`GetSambaStatus`, `testSambaConfig`, restart/start/stop commands) to use the runner with a fallback path.
+  - Added focused service tests in `backend/src/service/command_execution_service_test.go`.
+  - Updated frontend websocket parsing in `frontend/src/store/wsApi.ts` to accept `command_started`, `command_output`, and `command_terminated` events without modifying generated `sratApi.ts`.
+  - Added first-pass command output UX in `frontend/src/App.tsx`:
+    - local 500-line per-execution buffering in UI state,
+    - stderr toast when popup is closed,
+    - toast action button opening command popup,
+    - popup showing execution id/status/exit code and readonly output,
+    - download button exporting captured output as `.txt`.
+  - Validated frontend ws layer and app integration via `bun test src/store/__tests__/wsApi.test.tsx src/__tests__/App.test.tsx`.
 
 ## 🔗 Code References & TODOs
 
-- [ ] `TODO: audit` - Find and list all `exec` usage in backend to migrate behind generic runner.
-- [ ] `TODO: websocket-contract` - Define event names/payload shape for command output and process state.
-- [ ] `TODO: ui-component` - Add readonly terminal component in frontend UI library/features.
-- [ ] `TODO: notification-action` - Add Notification Center action that opens command-output popup.
-- [ ] `FIXME: _TBD_` - Confirm concurrency/backpressure behavior for long-running/high-output commands.
+- [ ] `TODO: audit` - Backend `exec` migration inventory:
+  - `backend/src/service/server_process_service.go` (`GetSambaStatus`, `testSambaConfig`, `restartServerServices`, `OnStop` shutdown flow)
+  - `backend/src/service/filesystem/base_adapter.go` (`runCommand`, `executeCommandWithProgress`) and adapters calling it
+  - `backend/src/unixsamba/unixsamba.go` (`defaultCommandExecutor.RunCommand` + user-management call sites)
+  - `backend/src/internal/osutil/osutil.go` (Samba version probing)
+- [x] `TODO: websocket-contract` - Contract definition/wiring touchpoints:
+  - `backend/src/dto/webevent_type.go`
+  - `backend/src/dto/webeventtypes_enums.go` (generated)
+  - `backend/src/dto/webevent_map.go`
+  - `backend/src/service/broadcaster_service.go`
+  - `backend/src/api/ws.go`
+- [ ] `TODO: ui-component` - Frontend consumer + presentation touchpoints:
+  - `frontend/src/store/wsApi.ts`
+  - `frontend/src/components/NotificationCenter.tsx`
+  - `frontend/src/components/PreviewDialog.tsx`
+  - `frontend/src/pages/**` (placement decision for terminal viewer and popup trigger)
+- [ ] `TODO: notification-action` - Add action workflow from stderr notification to popup open state + selected execution id.
+- [ ] `FIXME: backpressure` - Confirm queue/ring-buffer strategy for long-running or high-output command streams and define drop/truncate policy.

@@ -88,6 +88,7 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 			service.NewAddonsService,
 			service.NewHomeAssistantService,
 			service.NewBroadcasterService,
+			service.NewCommandExecutionService,
 			service.NewVolumeMountManager,
 			service.NewVolumeService,
 			service.NewServerProcessesService,

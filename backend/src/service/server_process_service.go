@@ -132,6 +132,7 @@ type ServerService struct {
 	dbomConv         converter.DtoToDbomConverterImpl
 	hdidle_service   HDIdleServiceInterface
 	eventBus         events.EventBusInterface
+	commandRunner    CommandExecutionServiceInterface
 	status           dto.ServerProcessStatus
 	internalServices []ServerProcessStatus
 }
@@ -149,6 +150,7 @@ type ServerServiceParams struct {
 	Mount_client      mount.ClientWithResponsesInterface `optional:"true"`
 	Hdidle_service    HDIdleServiceInterface
 	EventBus          events.EventBusInterface
+	CommandRunner     CommandExecutionServiceInterface
 	InternalProcesses []ServerProcessStatus `group:"internal_services"`
 }
 
@@ -241,6 +243,7 @@ func NewServerProcessesService(lc fx.Lifecycle, in ServerServiceParams) ServerSe
 
 	p.dbomConv = converter.DtoToDbomConverterImpl{}
 	p.hdidle_service = in.Hdidle_service
+	p.commandRunner = in.CommandRunner
 
 	p.status = dto.ServerProcessStatus{}
 	p.internalServices = in.InternalProcesses
@@ -301,10 +304,9 @@ func NewServerProcessesService(lc fx.Lifecycle, in ServerServiceParams) ServerSe
 					continue
 				}
 				slog.InfoContext(p.ctx, "Stopping service", "service", processName)
-				cmdStop := exec.CommandContext(p.ctx, processConfig.StopCommand[0], processConfig.StopCommand[1:]...)
-				outStop, err := cmdStop.CombinedOutput()
+				outStop, err := p.runCommandWithRunner(p.ctx, "service-stop-"+processName, "Stop "+processName, processConfig.StopCommand)
 				if err != nil {
-					slog.ErrorContext(p.ctx, "Error stopping service", "service", processName, "error", err, "output", string(outStop))
+					slog.ErrorContext(p.ctx, "Error stopping service", "service", processName, "error", err, "output", outStop)
 				}
 			}
 			return nil
@@ -314,20 +316,58 @@ func NewServerProcessesService(lc fx.Lifecycle, in ServerServiceParams) ServerSe
 	return p
 }
 
+func (self *ServerService) commandOutputFromSnapshot(snapshot dto.CommandExecutionSnapshot) string {
+	if len(snapshot.Lines) == 0 {
+		return ""
+	}
+	builder := strings.Builder{}
+	for i, line := range snapshot.Lines {
+		if i > 0 {
+			builder.WriteByte('\n')
+		}
+		builder.WriteString(line.Line)
+	}
+	return builder.String()
+}
+
+func (self *ServerService) runCommandWithRunner(ctx context.Context, commandID, label string, args []string) (string, errors.E) {
+	if len(args) == 0 {
+		return "", errors.New("missing command")
+	}
+
+	if self.commandRunner == nil {
+		cmd := exec.CommandContext(ctx, args[0], args[1:]...)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			return string(out), errors.WithStack(err)
+		}
+		return string(out), nil
+	}
+
+	snapshot, err := self.commandRunner.Execute(ctx, commandID, label, args[0], args[1:]...)
+	output := self.commandOutputFromSnapshot(snapshot)
+	if err != nil {
+		return output, errors.WithStack(err)
+	}
+
+	return output, nil
+}
+
 func (self *ServerService) GetSambaStatus() (*dto.SambaStatus, errors.E) {
 	if x, found := self.cache.Get("samba_status"); found {
 		return x.(*dto.SambaStatus), nil
 	}
 
-	cmd := exec.Command("smbstatus", "-j")
-	out, err := cmd.Output()
+	ctx, cancel := context.WithTimeout(self.ctx, 30*time.Second)
+	defer cancel()
+
+	out, err := self.runCommandWithRunner(ctx, "samba-status", "Samba status", []string{"smbstatus", "-j"})
 	if err != nil {
-		outErr, _ := cmd.CombinedOutput()
-		return nil, errors.Errorf("Error executing smbstatus: %w \n %#v", err, map[string]any{"error": err, "output": string(out), "errout": string(outErr), "cmd": cmd.String()})
+		return nil, errors.Errorf("Error executing smbstatus: %w \n %#v", err, map[string]any{"error": err, "output": out, "cmd": "smbstatus -j"})
 	}
 
 	// Validate that output is valid JSON before unmarshaling
-	outStr := strings.TrimSpace(string(out))
+	outStr := strings.TrimSpace(out)
 	if outStr == "" {
 		return nil, errors.New("smbstatus returned empty output")
 	}
@@ -336,9 +376,9 @@ func (self *ServerService) GetSambaStatus() (*dto.SambaStatus, errors.E) {
 	}
 
 	var status dto.SambaStatus
-	err = json.Unmarshal(out, &status)
-	if err != nil {
-		return nil, errors.Errorf("failed to parse smbstatus output as JSON: %w (output: %s)", err, outStr)
+	unmarshalErr := json.Unmarshal([]byte(out), &status)
+	if unmarshalErr != nil {
+		return nil, errors.Errorf("failed to parse smbstatus output as JSON: %w (output: %s)", unmarshalErr, outStr)
 	}
 
 	self.cache.Set("samba_status", &status, cache.DefaultExpiration)
@@ -677,11 +717,9 @@ func (self *ServerService) testSambaConfig(ctx context.Context) errors.E {
 	defer cancel()
 	tlog.TraceContext(ctx, "Testing Samba configuration file", "file", self.state.SambaConfigFile)
 
-	// Check samba configuration with exec testparm -s
-	cmd := exec.CommandContext(ctx, "testparm", "-s", self.state.SambaConfigFile)
-	out, err := cmd.CombinedOutput()
+	out, err := self.runCommandWithRunner(ctx, "samba-testparm", "Validate samba config", []string{"testparm", "-s", self.state.SambaConfigFile})
 	if err != nil {
-		return errors.Errorf("Error executing testparm: %w \n %#v", err, map[string]any{"error": err, "output": string(out)})
+		return errors.Errorf("Error executing testparm: %w \n %#v", err, map[string]any{"error": err, "output": out})
 	}
 	return nil
 }
@@ -705,17 +743,15 @@ func (self *ServerService) restartServerServices(ctx context.Context, dirty dto.
 			if procStatus, ok := (*process)[processName]; ok {
 				if procStatus.Pid <= 0 || dirty.AndMask(processConfig.HardResetServiceMask) {
 					slog.InfoContext(ctx, "Performing hard restart of service...", "service", processName)
-					cmdHardRestart := exec.CommandContext(ctx, processConfig.HardResetCommand[0], processConfig.HardResetCommand[1:]...)
-					outHardRestart, err := cmdHardRestart.CombinedOutput()
-					if err != nil {
-						return errors.Errorf("Error performing hard restart of service %s: %w \n %#v", processName, err, map[string]any{"error": err, "output": string(outHardRestart)})
+					outHardRestart, restartErr := self.runCommandWithRunner(ctx, "service-hard-restart-"+processName, "Hard restart "+processName, processConfig.HardResetCommand)
+					if restartErr != nil {
+						return errors.Errorf("Error performing hard restart of service %s: %w \n %#v", processName, restartErr, map[string]any{"error": restartErr, "output": outHardRestart})
 					}
 				} else if dirty.AndMask(processConfig.SoftResetServiceMask) {
 					slog.InfoContext(ctx, "Performing soft restart of service...", "service", processName)
-					cmdSoftRestart := exec.CommandContext(ctx, processConfig.SoftResetCommand[0], processConfig.SoftResetCommand[1:]...)
-					outSoftRestart, err := cmdSoftRestart.CombinedOutput()
-					if err != nil {
-						return errors.Errorf("Error performing soft restart of service %s: %w \n %#v", processName, err, map[string]any{"error": err, "output": string(outSoftRestart)})
+					outSoftRestart, restartErr := self.runCommandWithRunner(ctx, "service-soft-restart-"+processName, "Soft restart "+processName, processConfig.SoftResetCommand)
+					if restartErr != nil {
+						return errors.Errorf("Error performing soft restart of service %s: %w \n %#v", processName, restartErr, map[string]any{"error": restartErr, "output": outSoftRestart})
 					}
 				} else {
 					slog.InfoContext(ctx, "No restart needed for service.", "service", processName)
@@ -724,10 +760,9 @@ func (self *ServerService) restartServerServices(ctx context.Context, dirty dto.
 				slog.WarnContext(ctx, "Samba process not found, perform start command if exists.", "process", processName)
 				if len(processConfig.StartCommand) > 0 && osutil.CommandExists(processConfig.StartCommand) {
 					slog.InfoContext(ctx, "Starting service...", "service", processName)
-					cmdStart := exec.CommandContext(ctx, processConfig.StartCommand[0], processConfig.StartCommand[1:]...)
-					outStart, err := cmdStart.CombinedOutput()
-					if err != nil {
-						return errors.Errorf("Error starting service %s: %w \n %#v", processName, err, map[string]any{"error": err, "output": string(outStart)})
+					outStart, startErr := self.runCommandWithRunner(ctx, "service-start-"+processName, "Start "+processName, processConfig.StartCommand)
+					if startErr != nil {
+						return errors.Errorf("Error starting service %s: %w \n %#v", processName, startErr, map[string]any{"error": startErr, "output": outStart})
 					}
 				} else {
 					slog.InfoContext(ctx, "No start command defined for service or command does not exist, skipping.", "service", processName)
