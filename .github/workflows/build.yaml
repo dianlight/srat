@@ -182,7 +182,7 @@ jobs:
         id: test_backend
         run: |
           set -o pipefail
-          sudo -E mise run //backend:test 2>&1 | tee backend/backend_test_output.txt
+          sudo mise run //backend:test 2>&1 | tee backend/backend_test_output.txt
 
       - name: Extract Backend Coverage
         id: extract_coverage
