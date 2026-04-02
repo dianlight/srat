@@ -175,7 +175,7 @@ jobs:
           reporter: github-pr-check
           vale_flags: "--glob='!{frontend/node_modules/**/*.md,backend/src/vendor/**/*.md,.git/**}'"
           fail_on_error: true
-          filter_mode: diff_context
+          filter_mode: file
 
 
       - name: Generate Lychee report
