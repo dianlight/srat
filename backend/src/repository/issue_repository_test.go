@@ -8,8 +8,8 @@ import (
 
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/repository"
+	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/suite"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 

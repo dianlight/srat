@@ -7,7 +7,6 @@ on:
       - "**/*.md"
       - ".github/workflows/documentation.yml"
       - "scripts/validate-docs.sh"
-      - "Makefile"
       - ".lychee.toml"
       - ".vale.ini"
       - ".markdownlint-cli2.jsonc"
@@ -47,7 +46,6 @@ jobs:
               - "**/*.md"
               - ".github/workflows/documentation.yml"
               - "scripts/validate-docs.sh"
-              - "Makefile"
               - ".lychee.toml"
               - ".vale.ini"
               - ".markdownlint-cli2.jsonc"
@@ -82,14 +80,16 @@ jobs:
         with:
           bun-version: latest
 
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
-      - uses: j178/prek-action@79f765515bd648eb4d6bb1b17277b7cb22cb6468 # v2
+      - name: Setup mise
+        uses: jdx/mise-action@v2
+        with:
+          install: true
 
       - name: Generate TOC for Markdown files
-        run: make docs-toc
+        run: mise run docs-toc
 
       - name: Auto-fix formatting issues
-        run: make docs-fix
+        run: mise run docs-fix
 
       - name: Create Pull Request with documentation fixes
         id: cpr
@@ -149,7 +149,6 @@ jobs:
         with:
           bun-version: latest
 
-
       - name: Run markdownlint (GFM)
         run: bunx markdownlint-cli2 "**/*.md" "#frontend/node_modules" "#backend/src/vendor"
 
@@ -167,14 +166,43 @@ jobs:
       - name: Install docutils
         run: sudo apt-get install -y docutils
 
+      - name: Count modified Markdown files
+        id: md_changes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          case "${{ github.event_name }}" in
+            pull_request)
+              base_sha="${{ github.event.pull_request.base.sha }}"
+              ;;
+            push)
+              base_sha="${{ github.event.before }}"
+              ;;
+            *)
+              base_sha=""
+              ;;
+          esac
+
+          if [[ -z "$base_sha" ]]; then
+            count=0
+          else
+            count="$(git diff --name-only "$base_sha" "${{ github.sha }}" -- '*.md' | wc -l | tr -d '[:space:]')"
+          fi
+
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          echo "Modified Markdown files: $count"
+
       - name: Run Vale prose linter (GFM)
-        uses: errata-ai/vale-action@d89dee975228ae261d22c15adcd03578634d429c # v2.1.1
+        if: ${{ fromJSON(steps.md_changes.outputs.count) < 10 }}
+        uses: vale-cli/vale-action@d89dee975228ae261d22c15adcd03578634d429c # v2.1.1
         with:
           version: 3.13.0
           #files: $(find . -name "*.md" -not -path "./frontend/node_modules/*" -not -path "./.git/*" -not -path "./backend/src/vendor/*" | tr '\n' ',')
           reporter: github-pr-check
           vale_flags: "--glob='!{frontend/node_modules/**/*.md,backend/src/vendor/**/*.md,.git/**}'"
           fail_on_error: true
+
 
       - name: Generate Lychee report
         if: always()

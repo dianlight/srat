@@ -7,7 +7,15 @@
     "sessions": {
         "default": [
             {
+                "name": "project_root",
+                "shellPath": "/bin/zsh",
+                "icon": "root-folder",
+                "autoExecuteCommands": true,
+                "commands": []
+            },
+            {
                 "name": "backend",
+                "shellPath": "/bin/zsh",
                 "icon": "server-environment",
                 "autoExecuteCommands": true,
                 "commands": [
@@ -16,6 +24,7 @@
             },
             {
                 "name": "frontend",
+                "shellPath": "/bin/zsh",
                 "icon": "browser",
                 "autoExecuteCommands": true,
                 "commands": [
@@ -24,6 +33,7 @@
             },
             {
                 "name": "custom_components",
+                "shellPath": "/bin/zsh",
                 "icon": "extensions",
                 "autoExecuteCommands": true,
                 "commands": [

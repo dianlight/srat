@@ -1,41 +1,15 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.4.10/schema.json",
-	"vcs": {
-		"enabled": true,
-		"clientKind": "git",
-		"useIgnoreFile": true
-	},
+	"$schema": "https://biomejs.dev/schemas/2.4.9/schema.json",
+	"extends": "//",
 	"files": {
-		"ignoreUnknown": false,
+		"ignoreUnknown": true,
 		"includes": [
 			"src/**/*.ts",
+			"src/**/*.tsx",
 			"!src/store/sratApi.ts",
 			"!src/mocks",
-			"!src/**/__tests__",
-			"!src/**/*.test.*"
+			"!src/**/*.test.*",
+			"!test/setup.ts"
 		]
-	},
-	"formatter": {
-		"enabled": true,
-		"indentStyle": "tab"
-	},
-	"linter": {
-		"enabled": true,
-		"rules": {
-			"recommended": true
-		}
-	},
-	"javascript": {
-		"formatter": {
-			"quoteStyle": "double"
-		}
-	},
-	"assist": {
-		"enabled": true,
-		"actions": {
-			"source": {
-				"organizeImports": "on"
-			}
-		}
 	}
 }

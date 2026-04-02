@@ -3,32 +3,32 @@ import { type SharedResource, useGetApiSharesQuery } from "../store/sratApi";
 import { useGetServerEventsQuery } from "../store/wsApi";
 
 export function useShare() {
-	const { data, error, isLoading } = useGetApiSharesQuery();
-	const {
-		data: evdata,
-		error: everror,
-		isLoading: evloading,
-	} = useGetServerEventsQuery();
+  const { data, error, isLoading } = useGetApiSharesQuery();
+  const {
+    data: evdata,
+    error: everror,
+    isLoading: evloading,
+  } = useGetServerEventsQuery();
 
-	const [shares, setShares] = useState<Array<SharedResource>>([]);
+  const [shares, setShares] = useState<Array<SharedResource>>([]);
 
-	useEffect(() => {
-		if (!isLoading) {
-			//console.log("Update Shares Data from REST API");
-			setShares(data as SharedResource[]);
-		}
-	}, [data, isLoading]);
+  useEffect(() => {
+    if (!isLoading) {
+      //console.log("Update Shares Data from REST API");
+      setShares(data as SharedResource[]);
+    }
+  }, [data, isLoading]);
 
-	useEffect(() => {
-		if (!evloading && evdata?.shares) {
-			//console.log("Update Shares Data from SSE", evdata.share);
-			setShares(evdata.shares);
-		}
-	}, [evdata, evloading]);
+  useEffect(() => {
+    if (!evloading && evdata?.shares) {
+      //console.log("Update Shares Data from SSE", evdata.share);
+      setShares(evdata.shares);
+    }
+  }, [evdata, evloading]);
 
-	return {
-		shares: shares,
-		isLoading: isLoading && evloading,
-		error: error || everror,
-	};
+  return {
+    shares: shares,
+    isLoading: isLoading && evloading,
+    error: error || everror,
+  };
 }

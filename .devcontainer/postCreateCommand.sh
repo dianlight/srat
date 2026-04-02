@@ -92,3 +92,25 @@ prompt_for_var ROLLBAR_CLIENT_ACCESS_TOKEN "Enter your Rollbar Client Access Tok
 prompt_for_var GIST_TOKEN "Enter your GitHub Gist Token (with 'gist' scope)" "" 60
 
 echo "Environment variables processed. Check ${ENV_FILE}"
+
+## Mise
+
+# Resolve workspace path (Dev Containers mount your repo under /workspaces/<name>)
+WORKSPACE_DIR="${WORKSPACE_DIR:-${PWD}}"
+
+# Point to your repo's mise.toml (adjust if stored elsewhere)
+MISE_FILE="$WORKSPACE_DIR/.mise.toml"
+
+if [[ -f "$MISE_FILE" ]]; then
+  /usr/bin/mise trust "$MISE_FILE"
+  /usr/bin/mise install
+else
+  echo "WARN: $MISE_FILE not found. Skipping mise install."
+fi
+
+# --- Optional: set zsh as default shell if available ---
+if command -v zsh >/dev/null 2>&1; then
+  sudo chsh -s "$(command -v zsh)" "$USER" || true
+fi
+
+echo 'eval "$(mise activate zsh --shims)"'  >> ~/.zshrc

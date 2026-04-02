@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import {
-	type ConsoleErrorCallback,
-	registerConsoleErrorCallback,
+  type ConsoleErrorCallback,
+  registerConsoleErrorCallback,
 } from "../devtool/consoleErrorRegistry";
 
 /**
@@ -9,13 +9,13 @@ import {
  * The callback is registered on mount and unregistered on unmount.
  */
 export function useConsoleErrorCallback(cb: ConsoleErrorCallback) {
-	const cbRef = useRef(cb);
-	cbRef.current = cb;
+  const cbRef = useRef(cb);
+  cbRef.current = cb;
 
-	useEffect(() => {
-		const unsubscribe = registerConsoleErrorCallback((...args) =>
-			cbRef.current(...args),
-		);
-		return () => unsubscribe();
-	}, []);
+  useEffect(() => {
+    const unsubscribe = registerConsoleErrorCallback((...args) =>
+      cbRef.current(...args),
+    );
+    return () => unsubscribe();
+  }, []);
 }

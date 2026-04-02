@@ -9,27 +9,27 @@ import { sratApi } from "./sratApi";
 import { wsApi } from "./wsApi";
 
 export const store = configureStore({
-	reducer: {
-		//        dirty: dirtySlice.reducer,
-		errors: errorSlice.reducer,
-		mdc: mdcSlice.reducer,
-		[sratApi.reducerPath]: sratApi.reducer,
-		[wsApi.reducerPath]: wsApi.reducer,
-		[githubApi.reducerPath]: githubApi.reducer,
-	},
-	middleware: (getDefaultMiddleware) => {
-		// By default, put our MDC middleware before RTK Query so it can read outgoing args;
-		// it will also observe fulfilled/rejected after RTKQ since all middlewares see all actions.
-		return getDefaultMiddleware()
-			.concat(mdcMiddleware)
-			.concat(sratApi.middleware)
-			.concat(wsApi.middleware)
-			.concat(githubApi.middleware);
-	},
-	// Redux DevTools integration is built into configureStore by default
-	// No need for @redux-devtools/extension package - RTK handles it automatically
-	// DevTools will be enabled in development mode and disabled in production
-	devTools: process.env.NODE_ENV !== "production",
+  reducer: {
+    //        dirty: dirtySlice.reducer,
+    errors: errorSlice.reducer,
+    mdc: mdcSlice.reducer,
+    [sratApi.reducerPath]: sratApi.reducer,
+    [wsApi.reducerPath]: wsApi.reducer,
+    [githubApi.reducerPath]: githubApi.reducer,
+  },
+  middleware: (getDefaultMiddleware) => {
+    // By default, put our MDC middleware before RTK Query so it can read outgoing args;
+    // it will also observe fulfilled/rejected after RTKQ since all middlewares see all actions.
+    return getDefaultMiddleware()
+      .concat(mdcMiddleware)
+      .concat(sratApi.middleware)
+      .concat(wsApi.middleware)
+      .concat(githubApi.middleware);
+  },
+  // Redux DevTools integration is built into configureStore by default
+  // No need for @redux-devtools/extension package - RTK handles it automatically
+  // DevTools will be enabled in development mode and disabled in production
+  devTools: process.env.NODE_ENV !== "production",
 });
 
 setupListeners(store.dispatch);

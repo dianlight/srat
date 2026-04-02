@@ -1,0 +1,205 @@
+[prepare.go]
+
+[tools]
+air = '1.64.5'
+"go:github.com/securego/gosec/v2/cmd/gosec" = "v2.25.0"
+"npm:@redocly/cli" = "2.25.3"
+
+
+[tasks]
+clean = "go -C src clean && rm -rf dist"
+dev = "SRAT_DEVMODE=true go tool -C src air -c .air.toml"
+mount-remote = "umount -l /mnt/remote > /dev/null 2>&1 || : && mkdir -p /mnt/remote > /dev/null 2>&1 || : && sshfs -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3 ${HOMEASSISTANT_IP}:/addon_configs/local_sambanas2 /mnt/remote"
+#test-ci = "go test ./... -coverprofile=coverage.out && go tool cover -func=coverage.out | grep total:"
+
+[tasks.update]
+run = [
+  "go run -C src github.com/oligot/go-mod-upgrade",
+]
+depends_post = [
+    { task = "patch" },
+]
+
+[tasks.build]
+depends = [
+  { task = "patch" },
+  { task = "metadata" },
+]
+usage = '''
+flag "--version [version]" help="Build version" env="VERSION" 
+flag "--arch [arch]" help="Target architecture" env="ARCH" {
+  choices "x86_64" "aarch64" 
+}
+flag "--pprof" help="Include pprof profiling support" 
+flag "--zig" help="Use Zig as the C compiler for musl builds (Linux)"
+flag "--cgo" help="Enable CGO for the build (default: disabled)"
+arg "<rollbar_token>" help="Rollbar client access token" env="ROLLBAR_CLIENT_ACCESS_TOKEN"
+arg "<rollbar_env>" help="Rollbar environment" env="ROLLBAR_ENVIRONMENT" default="production"
+arg "<gist_token>" help="GitHub Gist token" env="GIST_TOKEN"
+'''
+env = { _.file = "/tmp/.env.tmp" }
+run = [
+    {
+        task = "//frontend:build-static",
+    },
+    'echo Building ${usage_version?} for architecture ${usage_arch?} [tags=p${usage_pprof:+prof},embedallowed]...',
+    'mkdir -p dist/${usage_arch?} || :',
+    'touch dist/${usage_arch?}/.keep',
+    '''
+      set +x +e
+      #METADATA_C_STRING="version=${usage_version?};commit=$(git rev-parse --short HEAD);build_at=$(date +%Y-%m-%dT%H:%M:%S);format=elf-json"
+      METADATA_C_JSON="{\"version\":\"v${usage_version?}\"}"
+      CGO_CFLAGS="-DELF_METADATA=$METADATA_C_JSON"
+      if [ "$usage_arch" = "aarch64" ]; then
+        GOARCH=arm64
+      else
+        GOARCH=amd64
+      fi
+      export CGO_CFLAGS GOARCH
+      ${usage_cgo:+CGO_ENABLED=1} \
+      ${usage_zig:+CC="zig cc -target ${usage_arch?}-linux-musl"} \
+      go build -C src -tags=p${usage_pprof:+prof},embedallowed -ldflags="-s -w \
+           -X github.com/dianlight/srat/config.Version="${usage_version?}" \
+           -X github.com/dianlight/srat/config.CommitHash=$(git rev-parse --short HEAD) \
+           -X github.com/dianlight/srat/config.BuildTimestamp=$(date +%Y-%m-%dT%H:%M:%S) \
+           -X github.com/dianlight/srat/config.RollbarToken=${usage_rollbar_token?} \
+           -X github.com/dianlight/srat/config.RollbarEnvironment=${usage_rollbar_env?} \
+           -X github.com/dianlight/srat/config.GistToken=${usage_gist_token?}" -o ../dist/${usage_arch?}/ ./...
+    ''',
+    'echo Verifying embedded version in dist/${usage_arch?}/srat-server...',
+    '''
+      set +x +e
+      EMBEDDED_VERSION=$(../scripts/extract-binary-version.sh dist/${usage_arch?}/srat-server 2>&1)
+      if [ $? -eq 0 ]; then
+        if [ "$EMBEDDED_VERSION" = "v${usage_version?}" ]; then
+          echo "✓ Version verified: $EMBEDDED_VERSION"
+        else
+          echo "✗ Version mismatch! Expected: v${usage_version?}, Got: $EMBEDDED_VERSION"
+          exit 1
+        fi
+      else
+        echo "⚠ Warning: Could not extract version from binary: $EMBEDDED_VERSION"
+      fi
+    '''
+]
+sources = ["src/**/*.go"]
+outputs = ["dist/*/srat-server", "dist/*/srat-cli", "dist/*/srat-openapi"]
+quiet = true
+
+[tasks."build:remote"]
+description = "Build the project for remote deployment (e.g., ARM64) and prepare the dist directory for deployment. This task ensures that the dist directory is clean and ready for the new build artifacts. It checks for the HOMEASSISTANT_IP environment variable to ensure that the build is intended for remote deployment. If the variable is not set, it will output an error message and exit. If the variable is set, it will proceed to remove any existing x86_64 build artifacts from the dist directory, ensuring that only the new build artifacts for the target architecture will be present after the build process."
+depends = [
+   { task = "clean" },
+   { task = "build",
+    args = [
+      "--arch=x86_64",
+      "--pprof"
+    ]
+  },
+]
+run = [
+	'[ -n "${HOMEASSISTANT_IP}" ] || (echo "HOMEASSISTANT_IP is not set" && exit 1)',
+  'rsync -avz --progress ./dist/x86_64/srat-cli ./dist/x86_64/srat-server ${HOMEASSISTANT_IP}:/addon_configs/local_sambanas2/upgrade/'
+]
+quiet = true
+
+[tasks.patch]
+run = """
+	set +x +e; 
+	echo "Applying patches to vendored dependencies..."; 
+	if ! command -v patch >/dev/null 2>&1; then 
+		echo "ERROR: 'patch' command not found. Please install patch utility."; 
+		exit 1; 
+	fi; 
+	go -C src mod vendor; 
+	find src/vendor -name "*.rej" -delete 2>/dev/null
+	if [ -f "patches/goenums.patch" ] && [ -d "src/vendor/github.com/zarldev/goenums" ]; then 
+		echo "Applying goenums.patch..."; 
+		patch -d src/vendor/github.com/zarldev/goenums -p1 < $(pwd)/patches/goenums.patch || (echo "ERROR: Failed to apply goenums.patch"; exit 1); 
+    touch src/vendor/github.com/zarldev/goenums/.pdone
+	fi
+	if [ -f "patches/gorm-generics.patch" ] && [ -d "src/vendor/gorm.io/gorm" ]; then 
+		echo "Applying gorm-generics.patch..."; 
+		patch -d src/vendor/gorm.io/gorm -p1 < $(pwd)/patches/gorm-generics.patch || (echo "ERROR: Failed to apply gorm-generics.patch"; exit 1); 
+    touch src/vendor/gorm.io/gorm/.pdone
+	fi 
+  find $(pwd)/src/vendor -name "*.rej" -delete || (echo "WARNING: Some patches could not be applied"; exit 0);
+	echo "Patches applied successfully"
+"""
+sources = ["patches/*.patch"]
+outputs = ["src/vendor/**/*.pdone"]
+quiet = true
+
+[tasks.format]
+alias = ["fmt","lint"]
+depends = [
+    { task = "patch" },
+]
+depends_post = [
+    { task = "security" },
+]
+run = [
+	"go mod -C src tidy",
+	"go -C src vet ./... ",
+	"go tool -C src  testifylint --fix ./... ",
+	"go -C src fmt ./..."
+]
+quiet = true
+
+[tasks.test]
+depends = [
+    { task = "patch" },
+]
+run = [
+	"go -C src tool gotest -p 1 -failfast  -timeout 120s -tags embedallowed_no  -coverprofile=coverage.out -cover ./...",
+	"go -C src tool cover -func=coverage.out | grep total: | awk '{print \"Total coverage: \" $3}'"
+]
+quiet = true
+
+[tasks.metadata]
+depends = [
+    { task = "//:version"},
+]
+usage = '''
+flag "--version [version]" help="Build version" env="VERSION" 
+'''
+env = { _.file = "/tmp/.env.tmp" }
+run =[
+	'echo "Generating metadata constants ${usage_version:?}..."',
+  'echo "// Code generated by mise task; DO NOT EDIT." > src/config/metadata_constants.go',
+	'echo "//go:build !cgo" >> src/config/metadata_constants.go',
+	'echo "" >> src/config/metadata_constants.go',
+	'echo "package config" >> src/config/metadata_constants.go',
+	'echo "const MetadataJSON = \"SRAT_METADATA:{\\\"version\\\": \\\"v${usage_version:?}\\\"}\"" >> src/config/metadata_constants.go',
+]
+outputs = ["src/config/metadata_constants.go"]
+quiet = true
+
+[tasks.security]
+run = [
+  "go run -C src golang.org/x/vuln/cmd/govulncheck@latest ./...",
+  "cd src; gosec -exclude-generated -severity high -confidence high ./..."
+]
+
+[tasks."generate:openapi"]
+alias = ["gen:openapi"]
+run = [
+   "go run -C src ./cmd/srat-openapi -out ../docs",
+   "redocly lint ./docs/openapi.yaml"
+]
+sources = ["src/**/*.go"]
+outputs = ["docs/openapi.yaml"]
+
+[tasks.generate]
+alias = ["gen"]
+run = "go generate -C src ./..."
+depends_post = [
+    { task = "generate:openapi" },
+]
+sources = [
+  "src/**/*.go"
+  ]
+outputs = [
+  "src/dbom/g/**/*.go",
+  "src/dto/**/*_enums.go",
+  ]

@@ -117,7 +117,7 @@ go test ./events/... -v  # ✅ All 12 tests pass in 0.51s
 ### Run
 
 ```bash
-make dev  # Start development server with hot-reload
+mise run //backend:dev  # Start development server with hot-reload
 ```
 
 ## Implementation Status

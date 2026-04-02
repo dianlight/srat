@@ -66,6 +66,16 @@
 				"-y",
 				"@iflow-mcp/chrischinchilla-vale-mcp"
 			]
+		},
+		"mise": {
+			"type": "stdio",
+			"command": "mise",
+			"args": [
+				"mcp"
+			],
+			"env": {
+				"MISE_EXPERIMENTAL": "1"
+			}
 		}
 	}
 }

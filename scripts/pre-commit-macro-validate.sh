@@ -9,7 +9,7 @@
 echo "🔍 Validating macro imports..."
 
 cd frontend
-bun run validate-macros
+mise  run //frontend:validate-macros
 
 if [ $? -ne 0 ]; then
     echo "❌ Macro import validation failed!"

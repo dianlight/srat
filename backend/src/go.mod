@@ -41,7 +41,6 @@ require (
 	github.com/vvair/selfupdate v0.0.0-20251221113910-176caa7ce89e
 	gorm.io/cli/gorm v0.2.4
 	gorm.io/datatypes v1.2.7
-	gorm.io/driver/sqlite v1.6.0
 )
 
 require (

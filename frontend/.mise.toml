@@ -1,0 +1,93 @@
+[prepare.bun]
+
+[tools]
+"npm:@rtk-query/codegen-openapi" = "2.2.0"
+"npm:@typescript/native-preview" = "7.0.0-dev.20260331.1"
+
+[hooks]
+enter = "mise run prepare"
+
+[tasks]
+build = "bun run build"
+clean = "rm -rf out"
+dev = "tsgo --noEmit && NODE_ENV=development bun --hot run bun.build.ts -w -s ./out"
+gowatch = "bun run gowatch"
+watch = "bun run watch"
+validate-macros = "bun ../scripts/validate-macro-imports.js"
+prepare = "bun install"
+
+[tasks.build-static]
+usage = '''
+arg "<dir>" help="Target Directory to build" default="./src/web/static"
+flag "--version [version]" help="Build version" env="VERSION" 
+'''
+run = [
+  "echo ${usage_version?}",
+  "rm -rf ../backend/${usage_dir?}/* || :",
+  "mkdir -p ../backend/${usage_dir?} || :",
+  "touch ../backend/${usage_dir?}/.keep",
+  "bun run version -o ${usage_version?}",
+  "bun run build -o ../backend/${usage_dir?}"
+]
+sources = [
+  "src/**/*",
+]
+quiet = true
+
+[tasks.generate]
+alias = ["gen", "gen:openapi", "gen:types"]
+run = ["rtk-query-codegen-openapi api.config.js", "tsgo --noEmit"]
+sources = [
+  "api.config.js",
+  "../backend/docs/openapi.json",
+]
+outputs = [
+  "./src/store/sratApi.ts",
+]
+
+[tasks."dev:remote"]
+usage = '''
+arg "<url>" help="API URL" env="SUPERVISOR_URL"
+'''
+env = { NODE_ENV = "remote" }
+depends = [
+  { task = "generate" },
+]
+run = [
+  "tsgo --noEmit",
+  "echo API_URL=${usage_url%/}:3000/",
+  "API_URL=${usage_url%/}:3000/ bun --hot run bun.build.ts -w -s ./out",
+]
+quiet = true
+
+[tasks.update]
+run = [
+  "bun upgrade --latest",
+  "bun update -i",
+  { task = "test" },
+]
+
+[tasks.lint]
+depends = [
+  { task = "validate-macros" },
+]
+run = [
+  "biome check --no-errors-on-unmatched --write",
+  "tsgo --noEmit",
+  "bun ./scripts/add-test-setup.js",
+]
+
+[tasks.test]
+run = [
+  "bun ./scripts/add-test-setup.js",
+  "tsgo --noEmit",
+  "AGENT=1 BUN_TEST_NO_COVERAGE_THRESHOLD=1 bun test --preload ./test/setup.ts --bail --timeout 10000 --max-concurrency=1 --reporter=dot",
+]
+quiet = true
+
+[tasks."test:ci"]
+run = [
+  "bun ./scripts/add-test-setup.js",
+  "bun test --preload ./test/setup.ts --only-failures --timeout 60000 --bail --max-concurrency=1 --coverage-reporter=lcov",
+]
+quiet = true

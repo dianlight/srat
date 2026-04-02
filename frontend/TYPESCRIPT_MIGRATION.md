@@ -1,3 +1,42 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [TypeScript 6.0/7.0 Migration Guide](#typescript-6070-migration-guide)
+  - [Current Status: ✅ TypeScript 6.0 Compatible](#current-status--typescript-60-compatible)
+    - [✅ Completed Changes](#-completed-changes)
+      - [1. **Removed Deprecated Compiler Options**](#1-removed-deprecated-compiler-options)
+      - [2. **Enabled New Strict Flags**](#2-enabled-new-strict-flags)
+      - [3. **Code Cleanup**](#3-code-cleanup)
+      - [4. **Documentation**](#4-documentation)
+    - [🚧 TODO for Full TypeScript 7.0 Readiness](#-todo-for-full-typescript-70-readiness)
+      - [Enable `noUncheckedIndexedAccess: true`](#enable-nouncheckedindexedaccess-true)
+  - [TypeScript 6.0 Final New Features & Optimizations](#typescript-60-final-new-features--optimizations)
+    - [Major Improvements in 6.0 Final](#major-improvements-in-60-final)
+      - [1. **Improved Type Inference & Analysis** ⚡](#1-improved-type-inference--analysis-)
+      - [2. **Module & Import Enhancements**](#2-module--import-enhancements)
+      - [3. **Configuration Changes**](#3-configuration-changes)
+      - [4. **Performance & Build Optimizations**](#4-performance--build-optimizations)
+      - [5. **TypeScript 6.0 Final Specific Changes**](#5-typescript-60-final-specific-changes)
+    - [TypeScript 6.0 Final Key Changes](#typescript-60-final-key-changes)
+    - [Deprecated Features (Will be removed in TS 7.0)](#deprecated-features-will-be-removed-in-ts-70)
+    - [New Defaults in TypeScript 6.0](#new-defaults-in-typescript-60)
+    - [Performance Improvements](#performance-improvements)
+    - [Code Optimization Opportunities with TS 6.0](#code-optimization-opportunities-with-ts-60)
+      - [1. **Reduced Type Assertions**](#1-reduced-type-assertions)
+      - [2. **Simplified Type Guards**](#2-simplified-type-guards)
+      - [3. **Const Type Parameters**](#3-const-type-parameters)
+      - [4. **React Hook Inference**](#4-react-hook-inference)
+  - [Migration Checklist](#migration-checklist)
+    - [Phase 1: TypeScript 6.0 Compatible (✅ Complete)](#phase-1-typescript-60-compatible--complete)
+    - [Phase 2: Code Optimization (✅ Complete - TS 6.0 Benefits)](#phase-2-code-optimization--complete---ts-60-benefits)
+    - [Phase 3: Full TS 7.0 Readiness (📋 Planned)](#phase-3-full-ts-70-readiness--planned)
+    - [Phase 4: Testing & Validation](#phase-4-testing--validation)
+  - [Testing the Changes](#testing-the-changes)
+  - [References](#references)
+  - [Notes](#notes)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # TypeScript 6.0/7.0 Migration Guide
 
 This document tracks the migration from TypeScript 5.x to TypeScript 6.0 final and preparation for TypeScript 7.0 (Go-based).
@@ -9,19 +48,23 @@ This document tracks the migration from TypeScript 5.x to TypeScript 6.0 final a
 ### ✅ Completed Changes
 
 #### 1. **Removed Deprecated Compiler Options**
+
 - ✅ Removed `experimentalDecorators: true` - Deprecated in TS 6.0, native decorators should be used
 - ✅ Removed `useDefineForClassFields: false` - Deprecated, now defaults to true for ES2022+ class fields
 - ✅ Updated `target` from `ES2021` to `ES2022` - Better alignment with modern ECMAScript features
 - ✅ Updated `lib` from `ES2021` to `ES2022`
 
 #### 2. **Enabled New Strict Flags**
+
 - ✅ `noImplicitOverride: true` - Code already uses `override` keyword correctly (see `ErrorBoundary.tsx`)
 - ✅ `types: []` - Already configured, provides 20-50% build performance improvement
 
 #### 3. **Code Cleanup**
+
 - ✅ Removed legacy `/// <reference types="bun-types" />` directive from `src/macro/__tests__/Environment.test.ts`
 
 #### 4. **Documentation**
+
 - ✅ Added inline comments explaining TS 6.0/7.0 changes
 - ✅ Created this migration guide
 
@@ -36,12 +79,13 @@ This strict flag requires refactoring indexed access patterns in several files:
 1. **Dashboard Metrics** (~6 locations)
    - `src/pages/DashBoard/DiskHealthMetrics.tsx` - Object property access without guards
    - `src/pages/DashBoard/NetworkHealthMetrics.tsx` - Similar pattern
-   
+
    **Pattern to fix:**
+
    ```typescript
    // Before
    newHistory[deviceName].read_iops = updateHistory(...);
-   
+
    // After
    if (newHistory[deviceName]) {
      newHistory[deviceName].read_iops = updateHistory(...);
@@ -51,26 +95,30 @@ This strict flag requires refactoring indexed access patterns in several files:
 2. **Tree View Components** (~4 locations)
    - `src/components/SharesTreeView.tsx` - Array indexing in sort callbacks
    - `src/components/VolumesTreeView.tsx` - Similar pattern
-   
+
    **Pattern to fix:**
+
    ```typescript
    // Before
-   Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]))
-   
+   Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
+
    // After
-   Object.entries(groups).sort((a, b) => (a[0] ?? "").localeCompare(b[0] ?? ""))
+   Object.entries(groups).sort((a, b) =>
+     (a[0] ?? "").localeCompare(b[0] ?? ""),
+   );
    ```
 
 3. **Store Utilities** (~3 locations)
    - `src/store/sseApi.ts` - Dynamic object key assignment
    - `src/store/mdcSlice.ts` - Uint8Array indexing
-   
+
    **Pattern to fix:**
+
    ```typescript
    // Before
    const versionByte = bytes[6];
    if (versionByte !== undefined) {...}
-   
+
    // After
    const versionByte = bytes[6];
    if (versionByte != null) {...}
@@ -86,27 +134,32 @@ Based on the official TypeScript 6.0 final release (March 23, 2026):
 ### Major Improvements in 6.0 Final
 
 #### 1. **Improved Type Inference & Analysis** ⚡
+
 - **40-60% faster incremental builds** with parallelized type-checking
 - **Smarter type inference** for context-sensitive functions (React hooks, Redux actions)
 - **Const type parameters** for more precise generic inference
 - **Advanced control flow analysis** - better type narrowing with discriminated unions
 
 #### 2. **Module & Import Enhancements**
+
 - **Subpath imports with `#/`** - Node.js 20-style imports supported
 - **No mandatory `baseUrl`** - simplified module resolution for monorepos
 - **Removal of AMD/UMD** - ESM and CommonJS are the standards
 
 #### 3. **Configuration Changes**
+
 - **`strict` mode now default** - all new projects enforce stricter type-checking
 - **Smarter `rootDir` defaults** - auto-detects from tsconfig.json location
 - **Updated DOM types** - ES2025/ES2026 support including Temporal API
 
 #### 4. **Performance & Build Optimizations**
+
 - **Multi-threaded type-checking** for parallel builds
 - **Smarter AST caching** for incremental compilation
 - **Preparation for TS 7.0** - groundwork for 7-10x faster Go-based compiler
 
 #### 5. **TypeScript 6.0 Final Specific Changes**
+
 - **Function Expression Type-Checking**: Aligned with 7.0, more precise for generic JSX calls
 - **Import Assertion Deprecation Extended**: Now also applies to dynamic `import()` calls
 - **Updated DOM Types**: Latest web standards including full Temporal API support
@@ -121,6 +174,7 @@ Based on the official TypeScript 6.0 final release (March 23, 2026):
 Based on the official release notes:
 
 ### Deprecated Features (Will be removed in TS 7.0)
+
 - ❌ `target: es5` - ES2015 (ES6) is now the minimum
 - ❌ `classic` module resolution - Use `node` or `bundler`
 - ❌ `--downlevelIteration` - No longer needed with ES2015+
@@ -133,6 +187,7 @@ Based on the official release notes:
 - ❌ Dynamic import assertions (`import(..., { assert: {...} })`) - Deprecated in 6.0 final
 
 ### New Defaults in TypeScript 6.0
+
 - ✅ `strict: true` - Already enabled
 - ✅ `module: esnext` - Already set to ESNext
 - ✅ `target: ES2025` - Project uses ES2022 (compatible)
@@ -140,6 +195,7 @@ Based on the official release notes:
 - ✅ `noUncheckedSideEffectImports: true` - Enabled by default in TS 6.0
 
 ### Performance Improvements
+
 - **40-60% faster incremental builds** with parallelized type-checking (TS 6.0)
 - **20-50% faster builds** with `types: []` (already enabled)
 - Better type inference with reduced context sensitivity
@@ -151,7 +207,9 @@ Based on the official release notes:
 TypeScript 6.0's improved type inference and control flow analysis enables several code quality improvements:
 
 #### 1. **Reduced Type Assertions**
+
 TS 6.0's smarter narrowing eliminates many unnecessary `as` casts:
+
 ```typescript
 // Before (TS 5.x)
 const data = response.data as MyType[];
@@ -161,7 +219,9 @@ const data = response.data; // Type inferred correctly
 ```
 
 #### 2. **Simplified Type Guards**
+
 Control flow analysis is stronger - fewer defensive casts needed:
+
 ```typescript
 // Before
 if (Array.isArray(value)) {
@@ -169,13 +229,15 @@ if (Array.isArray(value)) {
 }
 
 // After (TS 6.0)
-if (Array.isArray(value) && value.every(v => typeof v === 'string')) {
+if (Array.isArray(value) && value.every((v) => typeof v === "string")) {
   return value; // No cast needed - properly narrowed
 }
 ```
 
 #### 3. **Const Type Parameters**
+
 Generic functions gain more precision:
+
 ```typescript
 // Use const type parameters for better type specificity
 function getProperty<K extends string>(obj: Record<K, unknown>, key: K) {
@@ -184,7 +246,9 @@ function getProperty<K extends string>(obj: Record<K, unknown>, key: K) {
 ```
 
 #### 4. **React Hook Inference**
+
 `useState`, `useMemo`, `useCallback` have better type inference:
+
 ```typescript
 // Before - explicit generic needed
 const [items, setItems] = useState<Item[]>([]);
@@ -198,6 +262,7 @@ const [items, setItems] = useState([]); // Item[] inferred if context provides i
 ## Migration Checklist
 
 ### Phase 1: TypeScript 6.0 Compatible (✅ Complete)
+
 - [x] Remove deprecated compiler options
 - [x] Update target to ES2022+
 - [x] Enable `noImplicitOverride`
@@ -206,6 +271,7 @@ const [items, setItems] = useState([]); // Item[] inferred if context provides i
 - [x] Update to TS 6.0 final release information
 
 ### Phase 2: Code Optimization (✅ Complete - TS 6.0 Benefits)
+
 - [x] Identify type assertion reduction opportunities
 - [x] Simplify type guards with improved control flow
 - [x] Apply const type parameters where beneficial
@@ -213,6 +279,7 @@ const [items, setItems] = useState([]); // Item[] inferred if context provides i
 - [x] Reduce explicit type annotations where inference works
 
 ### Phase 3: Full TS 7.0 Readiness (📋 Planned)
+
 - [ ] Enable `noUncheckedIndexedAccess`
 - [ ] Refactor dashboard metrics components
 - [ ] Refactor tree view components
@@ -221,6 +288,7 @@ const [items, setItems] = useState([]); // Item[] inferred if context provides i
 - [ ] Verify build performance improvements (40-60% faster target)
 
 ### Phase 4: Testing & Validation
+
 - [ ] Run `bun tsgo --noEmit` to verify type checking
 - [ ] Run frontend tests
 - [ ] Run production build

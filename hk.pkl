@@ -1,0 +1,84 @@
+amends "package://github.com/jdx/hk/releases/download/v1.39.0/hk@1.39.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.39.0/hk@1.39.0#/Builtins.pkl"
+
+local linters = new Mapping<String, Step> {
+
+    //["check-conventional-commits"] = Builtins.checkConventionalCommits
+    //["check-executables-have-shebangs"] = Builtins.checkExecutablesHaveShebangs
+
+    ["ruff"] = Builtins.ruff
+    ["ruff-format"] = Builtins.ruff_format
+    ["mypy"] = Builtins.mypy
+
+    ["biome"] = (Builtins.biome)
+
+    ["go-fmt"] = (Builtins.go_fmt) {
+        glob = "**/*.go"
+        exclude = "vendor/**/*.go"
+        dir = "backend/src"
+    }
+    ["go-sec"] = (Builtins.go_sec) {
+        glob = "**/*.go"
+        exclude = "vendor/**/*.go"
+        dir = "backend/src"
+    }
+    ["go-vet"] = (Builtins.go_vet) {
+        glob = "**/*.go"
+        exclude = "vendor/**/*.go"
+        dir = "backend/src"
+    }
+    ["golangci-lint"] = (Builtins.golangci_lint) {
+        glob = "**/*.go"
+        exclude = "vendor/**/*.go"
+        dir = "backend/src"
+    }
+
+    ["gomod-tidy"] = Builtins.gomod_tidy
+//    ["err-check"] = (Builtins.err_check) {
+//        glob = "**/*.go"
+//    }
+
+    ["lychee"] = (Builtins.lychee) {
+        glob = "**/*.md"
+        exclude = List(".github/**/*.md")
+    }
+    ["markdownlint-cli2"] {
+        glob = "**/*.md"
+        check = "markdownlint-cli2 {{ files }}"
+        fix = "markdownlint-cli2 --fix {{ files }}"
+    }
+    ["vale"] = (Builtins.vale) {
+        glob = "**/*.md"
+        exclude = List("CHANGELOG.md", "docs/tasks/*.md",".github/**/*.md")
+    }
+
+    ["mise"] = (Builtins.mise) {
+        //glob = "**/*.ts"
+    }
+
+    ["shellcheck"] = (Builtins.shellcheck) {
+        glob = "**/*.sh"
+    }
+    ["shfmt"] = (Builtins.shfmt) {
+        glob = "**/*.sh"
+    }   
+
+    ["taplo"] = Builtins.taplo
+    ["taplo-format"] = Builtins.taplo_format 
+
+}
+
+hooks {
+    ["pre-commit"] {
+        fix = true
+        stash = "git"
+        steps = linters
+    }
+    ["fix"] {
+        fix = true
+        steps = linters
+    }
+    ["check"] {
+        steps = linters
+    }
+}

@@ -3,6 +3,7 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+- [Mise-based Frontend Workflows](#mise-based-frontend-workflows)
 - [Console Error Callback Registry](#console-error-callback-registry)
   - [API](#api)
   - [Behavior](#behavior)
@@ -13,22 +14,33 @@
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-To install dependencies:
+## Mise-based Frontend Workflows
 
-```bash
-bun install
+All frontend build, test, and lint workflows are now managed by [mise](https://mise.jdx.dev).
+
+**Common commands:**
+
+```sh
+# Build frontend
+mise run //frontend:build
+# Run frontend tests
+mise run //frontend:test
+# Lint frontend
+mise run //frontend:lint
 ```
+
+See `.mise.toml` for all available tasks.
 
 To start the dev server with hot reload:
 
-```bash
-bun run dev
+```sh
+mise run //frontend:dev
 ```
 
 To build the production bundle (outputs to `../backend/src/web/static`):
 
-```bash
-bun run build
+```sh
+mise run //frontend:build
 ```
 
 **Note about API code generation:** The `bun run gen` command (RTK Query codegen from OpenAPI) currently fails due to a TypeScript version mismatch issue in `@rtk-query/codegen-openapi`. This is a [documented issue](https://github.com/reduxjs/redux-toolkit/issues/2425) in the Redux Toolkit repository. For now the workaround is to install `@rtk-query/codegen-openapi` globally with npm and run with node not bun.
@@ -100,12 +112,12 @@ export function ErrorTelemetryBinder() {
 
 ## Test Setup Enforcement
 
-All test files must import the shared test setup (`import '../../../../test/setup'`). This is enforced by the `test:prepare` script, which runs automatically before linting (see `package.json` lint script). If any test file is missing the setup import, lint will fail. To fix, run `bun run test:fix`.
+All test files must import the shared test setup (`import '../../../../test/setup'`). This is enforced by the `bun ./scripts/add-test-setup.js` script, which runs automatically before linting and testing. If the setup import is missing, the script will add it to the top of the file.
 
 Run tests locally:
 
 ```bash
-bun test
+mise run //frontend:test
 ```
 
 **Testing Standards:**
@@ -121,5 +133,5 @@ bun test
 Run linter and typecheck:
 
 ```bash
-bun run lint
+mise run //frontend:lint
 ```

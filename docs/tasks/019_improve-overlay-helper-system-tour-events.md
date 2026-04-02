@@ -88,11 +88,11 @@ Refactor and improve the `TourEvents` overlay helper system to accurately reflec
 ### Phase Updates
 - 2026-03-20: Completed Task 2 by refactoring `frontend/src/utils/TourEvents.ts` with a typed event payload map, explicit `on/off/once` lifecycle helpers (including unsubscribe return), protected `emit` error handling, and listener cleanup helper (`clearListeners`).
 - 2026-03-20: Targeted validation passed with `cd frontend && bun tsgo --noEmit` (exit code 0).
-- 2026-03-20: Completed Task 3 by adding `frontend/src/utils/__tests__/TourEvents.test.ts` covering emit/listen/off/once/clear/error behavior; targeted test run passed (`bun test --preload ./test/setup.ts src/utils/__tests__/TourEvents.test.ts`).
+- 2026-03-20: Completed Task 3 by adding `frontend/src/utils/__tests__/TourEvents.test.ts` covering emit/listen/off/once/clear/error behavior; targeted test run passed (`mise run //frontend:test src/utils/__tests__/TourEvents.test.ts`).
 - 2026-03-20: Completed Task 4 by removing outdated users tour steps, fixing missing settings/volumes tour anchors, and aligning guided-tour actions with current page structure.
 - 2026-03-20: Completed Task 5 by adding SRAT-specific guided-tour maintenance rules to `.github/instructions/reactjs.instructions.md`.
 - 2026-03-20: Completed Task 6 by adding JSDoc to public `TourEvents` contracts and API methods.
-- 2026-03-20: Validation after Task 4/5/6 passed (`bun test --preload ./test/setup.ts` for focused tour tests + `bun tsgo --noEmit`, all green).
-- 2026-03-20: Completed Task 7 by running the full frontend suite (`cd frontend && bun test --preload ./test/setup.ts --bail --timeout 10000 --max-concurrency=1 --reporter=dot`) with 607 pass / 1 skip / 0 fail.
+- 2026-03-20: Validation after Task 4/5/6 passed (`mise run //frontend:test src/utils/__tests__/TourEvents.test.ts` for focused tour tests + `bun tsgo --noEmit`, all green).
+- 2026-03-20: Completed Task 7 by running the full frontend suite (`mise run //frontend:test --preload ./test/setup.ts --bail --timeout 10000 --max-concurrency=1 --reporter=dot`) with 607 pass / 1 skip / 0 fail.
 - 2026-03-20: Completed Task 8 by finalizing integration-level validation notes and documentation updates.
 - 2026-03-20: Documentation validation also passed from repo root with `make docs-validate`.

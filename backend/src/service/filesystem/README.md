@@ -317,8 +317,7 @@ func NewRegistry() *Registry {
 Run the filesystem adapter tests:
 
 ```bash
-cd backend
-make test
+mise run //backend:test -- ./service/filesystem
 ```
 
 Or test specific adapters:

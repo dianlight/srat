@@ -160,18 +160,18 @@ GetCapabilitiesHandler:
 
 ```bash
 cd ./backend
-make test_build  # ✅ Builds successfully
-make test        # ✅ All tests pass (33.5% API coverage)
-make gen         # ✅ Generates OpenAPI docs
+mise run //backend:test_build  # ✅ Builds successfully
+mise run //backend:test        # ✅ All tests pass (33.5% API coverage)
+mise run //backend:gen         # ✅ Generates OpenAPI docs
 ```
 
 ### Frontend
 
 ```bash
 cd ./frontend
-bun run build    # ✅ Builds successfully
-bun test         # ✅ All tests pass (267 pass, 1 skip, 69.92% function coverage)
-bun gen          # ⚠️ Fails (known issue, workaround applied)
+mise run //frontend:build    # ✅ Builds successfully
+mise run //frontend:test     # ✅ All tests pass (267 pass, 1 skip, 69.92% function coverage)
+mise run //frontend:gen      # ⚠️ Fails (known issue, workaround applied)
 ```
 
 ## Testing Summary

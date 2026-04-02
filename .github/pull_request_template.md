@@ -27,7 +27,7 @@
 
 <!-- Describe the tests you ran to verify your changes -->
 
-- [ ] Unit tests pass (`make test` in back-end)
+- [ ] Unit tests pass (`mise run //backend:test` in back-end)
 - [ ] Integration tests pass
 - [ ] Manual testing performed
 - [ ] New tests added for new functionality

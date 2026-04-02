@@ -110,26 +110,26 @@ The project uses several tools to validate documentation with full **GitHub Flav
 
 ```bash
 # Check dependencies (including Lychee and Vale)
-make docs-check
+mise run docs-check
 
 # Install JS-based documentation tools
-make docs-install
+mise run docs-install
 
 # Note: Lychee and Vale need separate installation
 # Lychee: https://lychee.cli.rs/#/installation
 # Vale: https://vale.sh/docs/vale-cli/installation/
 
 # Run all documentation validation checks (GFM-aware)
-make docs-validate
+mise run docs-validate
 
 # Auto-fix formatting issues
-make docs-fix
+mise run docs-fix
 
 # Generate table of contents
-make docs-toc
+mise run docs-toc
 
 # Show all available documentation commands
-make docs-help
+mise run docs-help
 
 # Run individual validation script
 ./scripts/validate-docs.sh
@@ -151,7 +151,7 @@ Documentation validation runs automatically via pre-commit hooks:
 
 ````bash
 # Install pre-commit hooks
-make prepare
+mise run //root:prepare
 
 # Run pre-commit manually
 pre-commit run --all-files

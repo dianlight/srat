@@ -1,0 +1,43 @@
+[prepare.pip]
+auto = true
+
+[tools]
+python = "3.14.3"
+ruff = "0.15.8"
+"pipx:mypy" = "1.14.0"
+pipx = "latest"
+
+[env]
+# Crea un venv nella cartella .venv e lo attiva automaticamente
+_.python.venv = { path = ".venv", create = true }
+
+[hooks]
+# Ogni volta che entri nella cartella o il file cambia, esegue l'installazione
+enter = "pip install -r requirements_dev.txt"
+
+[tasks]
+check = "mise run format-check && mise run lint && mise run typecheck && mise run test"
+clean = "find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true && find . -type d -name .mypy_cache -exec rm -rf {} + 2>/dev/null || true && find . -type d -name .ruff_cache -exec rm -rf {} + 2>/dev/null || true && find . -type d -name .pytest_cache -exec rm -rf {} + 2>/dev/null || true"
+fix = "ruff check --fix srat tests && ruff format srat tests"
+format = "ruff format srat tests"
+format-check = "ruff format --check srat tests"
+install = "pip install -r requirements_dev.txt"
+#install-remote = "rsync -rvuzP --del ./srat ${HOMEASSISTANT_IP}:/config/custom_components"
+lint = "ruff check srat tests"
+#mount-remote = "umount -l /mnt/remote2 > /dev/null 2>&1 || : && mkdir -p /mnt/remote2 > /dev/null 2>&1 || : && sshfs -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3 ${HOMEASSISTANT_IP}:/config/custom_components /mnt/remote2"
+test = "python -m pytest tests -v -c pyproject.toml"
+typecheck = "mypy srat"
+
+[tasks."install:remote"]
+depends = [
+    { task = "lint" },
+    { task = "typecheck" },
+    { task = "test" },
+]
+alias = "install-remote"
+run = "rsync -rvuzP --del ./srat ${HOMEASSISTANT_IP}:/config/custom_components"
+quiet = true
+
+[tasks."test:ci"]
+alias = "test-ci"
+run = "python -m pytest tests -v -c pyproject.toml --cov=srat --cov-report=xml:coverage.xml"

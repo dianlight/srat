@@ -1,317 +1,334 @@
 import BugReportIcon from "@mui/icons-material/BugReport";
 import {
-    Box,
-    Button,
-    Dialog,
-    DialogActions,
-    DialogContent,
-    DialogTitle,
-    FormHelperText,
-    FormLabel,
-    Link,
-    Typography
+  Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormHelperText,
+  FormLabel,
+  Link,
+  Typography,
 } from "@mui/material";
 import FormControl from "@mui/material/FormControl";
 import MDEditor from "@uiw/react-md-editor/nohighlight";
 import { useMemo, useState } from "react";
 import {
-    Controller,
-    FormContainer,
-    SelectElement,
-    SwitchElement,
-    TextFieldElement,
-    TextareaAutosizeElement,
-    useForm
+  Controller,
+  FormContainer,
+  SelectElement,
+  SwitchElement,
+  TextareaAutosizeElement,
+  TextFieldElement,
+  useForm,
 } from "react-hook-form-mui";
 import { toast } from "react-toastify";
 import { useIssueTemplate } from "../hooks/useIssueTemplate";
 import { addMessage } from "../store/errorSlice";
 import {
-    usePostApiIssuesReportMutation, type IssueReportRequest, type IssueReportResponse
+  type IssueReportRequest,
+  type IssueReportResponse,
+  usePostApiIssuesReportMutation,
 } from "../store/sratApi";
 import { useAppDispatch } from "../store/store";
 import { useSystemLogs } from "./GlobalEventTracker";
 
 interface ReportIssueDialogProps {
-	open: boolean;
-	onClose: () => void;
+  open: boolean;
+  onClose: () => void;
 }
 
+// Define problemTypeLabels first, before using it in useMemo
+const problemTypeLabels: Record<string, string> = {
+  frontend_ui: "Frontend UI Problem",
+  ha_integration: "Home Assistant Integration Problem",
+  addon: "Addon Problem",
+  samba: "Samba Problem",
+};
 
 export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
-	const { template, isLoading: templateLoading } = useIssueTemplate();
-	const [popupBlockedUrl, setPopupBlockedUrl] = useState<string | null>(null);
+  const { template, isLoading: templateLoading } = useIssueTemplate();
+  const [popupBlockedUrl, setPopupBlockedUrl] = useState<string | null>(null);
 
-	// Define problemTypeLabels first, before using it in useMemo
-	const problemTypeLabels: Record<string, string> = {
-		frontend_ui: "Frontend UI Problem",
-		ha_integration: "Home Assistant Integration Problem",
-		addon: "Addon Problem",
-		samba: "Samba Problem",
-	};
+  const { logs } = useSystemLogs();
 
-	const { logs } = useSystemLogs();
+  const formContext = useForm<IssueReportRequest>({
+    defaultValues: {
+      problem_type: "frontend_ui",
+      title: "",
+      description: "",
+      reproducing_steps: "",
+      include_console_errors: true,
+      include_addon_logs: false,
+      include_addon_config: false,
+      include_srat_config: false,
+      //include_database_dump: false,
+    } as IssueReportRequest,
+  });
+  const dispatch = useAppDispatch();
+  const [postApiIssuesReport] = usePostApiIssuesReportMutation();
 
-	const formContext = useForm<IssueReportRequest>({
-		defaultValues: {
-			problem_type: "frontend_ui",
-			title: "",
-			description: "",
-			reproducing_steps: "",
-			include_console_errors: true,
-			include_addon_logs: false,
-			include_addon_config: false,
-			include_srat_config: false,
-			//include_database_dump: false,
-		} as IssueReportRequest,
-	});
-	const dispatch = useAppDispatch();
-	const [postApiIssuesReport] = usePostApiIssuesReportMutation();
+  // Extract problem types from template
+  const problemTypeOptions = useMemo(() => {
+    if (!template?.body) {
+      return Object.entries(problemTypeLabels).map(([value, label]) => ({
+        id: value,
+        label,
+      }));
+    }
 
-	// Extract problem types from template
-	const problemTypeOptions = useMemo(() => {
-		if (!template || !template.body) {
-			return Object.entries(problemTypeLabels).map(([value, label]) => ({ id: value, label }));
-		}
+    const problemTypeField = template.body.find(
+      (field: Record<string, unknown>) => field?.id === "problem_type",
+    );
+    if (problemTypeField?.attributes?.options) {
+      return problemTypeField.attributes.options.map((option: string) => ({
+        id: option.toLowerCase().replace(/\s+/g, "_"),
+        label: option,
+      }));
+    }
 
-		const problemTypeField = template.body.find((field: any) => field?.id === "problem_type");
-		if (problemTypeField?.attributes?.options) {
-			return problemTypeField.attributes.options.map((option: string) => ({
-				id: option.toLowerCase().replace(/\s+/g, "_"),
-				label: option,
-			}));
-		}
+    return Object.entries(problemTypeLabels).map(([value, label]) => ({
+      id: value,
+      label,
+    }));
+  }, [template]);
 
-		return Object.entries(problemTypeLabels).map(([value, label]) => ({ id: value, label }));
-	}, [template, problemTypeLabels]);
+  const handleSubmit = async (formData: IssueReportRequest) => {
+    // Prepare request payload
+    const requestPayload = {
+      ...formData,
+      console_errors: formData.include_console_errors
+        ? logs.map((log) => log.toString())
+        : [],
+    } as IssueReportRequest;
 
+    try {
+      postApiIssuesReport({ issueReportRequest: requestPayload })
+        .unwrap()
+        .then((res) => {
+          const data = res as IssueReportResponse;
+          try {
+            const url = new URL(data.github_url);
+            console.log(
+              "GitHub URL for issue creation:",
+              url,
+              data.github_url.length,
+            );
+            const result = window.open(url.toString(), "_blank");
+            if (result === null) {
+              setPopupBlockedUrl(url.toString());
+            }
+            toast.info(`Issue ${data.issue_title} created successfully.`);
+          } catch (error) {
+            console.error(error);
+            dispatch(addMessage(JSON.stringify(error)));
+            toast.error(
+              `Unable to create issue: ${error?.toString() || "Unknown error"}`,
+              {
+                autoClose: false,
+                type: "error",
+                data: error,
+              },
+            );
+          }
 
-	const handleSubmit = async (formData: IssueReportRequest) => {
-		// Prepare request payload
-		const requestPayload = {
-			...formData,
-			console_errors: formData.include_console_errors ? logs.map((log) => log.toString()) : [],
-		} as IssueReportRequest;
+          onClose();
+          return res;
+        })
+        .catch((err) => {
+          dispatch(addMessage(JSON.stringify(err)));
+          toast.error(
+            `Unable to create issue: ${err?.toString() || "Unknown error"}`,
+            {
+              autoClose: false,
+              type: "error",
+              data: err,
+            },
+          );
+        });
+    } catch (error) {
+      console.error("Error generating issue report:", error);
+      alert("Failed to generate issue report. Please try again.");
+    }
+  };
 
-		try {
-			postApiIssuesReport({ issueReportRequest: requestPayload }).unwrap()
-				.then((res) => {
-					const data = res as IssueReportResponse;
-					try {
-						const url = new URL(data.github_url);
-						console.log("GitHub URL for issue creation:", url, data.github_url.length);
-						const result = window.open(url.toString(), "_blank");
-						if (result === null) {
-							setPopupBlockedUrl(url.toString());
-						}
-						toast.info(
-							`Issue ${data.issue_title} created successfully.`,
-						);
-					} catch (error) {
-						console.error(error);
-						dispatch(addMessage(JSON.stringify(error)));
-						toast.error(
-							`Unable to create issue: ${error?.toString() || "Unknown error"}`,
-							{
-								autoClose: false,
-								type: "error",
-								data: error,
-							}
-						);
-					}
+  return (
+    <>
+      <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+        <DialogTitle>
+          <Box display="flex" alignItems="center" gap={1}>
+            <BugReportIcon />
+            <Typography variant="h6">
+              {template?.name || "Report Issue on GitHub"}
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          {templateLoading ? (
+            <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
+              <Typography>Loading template...</Typography>
+            </Box>
+          ) : (
+            <FormContainer
+              formContext={formContext}
+              onSuccess={handleSubmit}
+              mode="onChange"
+              FormProps={{
+                id: "report-issue-form",
+              }}
+            >
+              <Box
+                sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}
+              >
+                <TextFieldElement
+                  label="Title"
+                  name="title"
+                  fullWidth
+                  required
+                />
 
-					onClose();
-					return res;
-				})
-				.catch((err) => {
-					dispatch(addMessage(JSON.stringify(err)));
-					toast.error(
-						`Unable to create issue: ${err?.toString() || "Unknown error"}`,
-						{
-							autoClose: false,
-							type: "error",
-							data: err,
-						}
-					);
-				});
+                {/* Problem Type Selector */}
+                <SelectElement
+                  label="Problem Type"
+                  name="problem_type"
+                  fullWidth
+                  options={problemTypeOptions}
+                  required
+                />
+                <Controller
+                  name="description"
+                  control={formContext.control}
+                  rules={{ required: true }}
+                  render={({ field, fieldState }) => {
+                    const hasError = Boolean(fieldState.error);
+                    return (
+                      <FormControl
+                        variant="outlined"
+                        component="div"
+                        margin="dense"
+                        required
+                        fullWidth
+                        error={hasError}
+                      >
+                        <FormLabel id="report-issue-description-label">
+                          Description
+                        </FormLabel>
+                        <Box
+                          role="group"
+                          aria-labelledby="report-issue-description-label"
+                          //data-color-mode={document.documentElement.getAttribute("data-color-mode") || mode}
+                        >
+                          <MDEditor
+                            value={field.value}
+                            onChange={(value) => field.onChange(value ?? "")}
+                            onBlur={field.onBlur}
+                            textareaProps={{
+                              "aria-labelledby":
+                                "report-issue-description-label",
+                              placeholder:
+                                "Describe the issue in detail. You can use Markdown formatting.",
+                            }}
+                          />
+                        </Box>
+                        <FormHelperText id="my-helper-text">
+                          Describe the issue in detail. You can use Markdown
+                          formatting.
+                        </FormHelperText>
+                      </FormControl>
+                    );
+                  }}
+                />
 
+                <TextareaAutosizeElement
+                  label="Reproducing Steps"
+                  name="reproducing_steps"
+                  resizeStyle="both"
+                  rows={3}
+                  fullWidth
+                  minRows={4}
+                  placeholder="List the steps needed to reproduce the issue."
+                />
 
-		} catch (error) {
-			console.error("Error generating issue report:", error);
-			alert("Failed to generate issue report. Please try again.");
-		}
-	};
+                {/* Include Options */}
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                  <Typography variant="subtitle2">
+                    Include in Report:
+                  </Typography>
 
-	return (
-		<>
-			<Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-				<DialogTitle>
-					<Box display="flex" alignItems="center" gap={1}>
-						<BugReportIcon />
-						<Typography variant="h6">
-							{template?.name || "Report Issue on GitHub"}
-						</Typography>
-					</Box>
-				</DialogTitle>
-				<DialogContent>
-					{templateLoading ? (
-						<Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
-							<Typography>Loading template...</Typography>
-						</Box>
-					) : (
-						<FormContainer
-							formContext={formContext}
-							onSuccess={handleSubmit}
-							mode="onChange"
-							FormProps={{
-								id: "report-issue-form"
-							}}
-						>
-							<Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
-								<TextFieldElement
-									label="Title"
-									name="title"
-									fullWidth
-									required
-								/>
+                  <SwitchElement
+                    name="include_console_errors"
+                    label="Console errors (from browser developer tools)"
+                  />
 
-								{/* Problem Type Selector */}
-								<SelectElement
-									label="Problem Type"
-									name="problem_type"
-									fullWidth
-									options={problemTypeOptions}
-									required
-								/>
-								<Controller
-									name="description"
-									control={formContext.control}
-									rules={{ required: true }}
-									render={({ field, fieldState }) => {
-										const hasError = Boolean(fieldState.error);
-										return (
-											<FormControl
-												variant="outlined"
-												component="div"
-												margin="dense"
-												required
-												fullWidth
-												error={hasError}
-											>
-												<FormLabel id="report-issue-description-label">Description</FormLabel>
-												<Box
-													role="group"
-													aria-labelledby="report-issue-description-label"
-												//data-color-mode={document.documentElement.getAttribute("data-color-mode") || mode}
-												>
-													<MDEditor
-														value={field.value}
-														onChange={(value) => field.onChange(value ?? "")}
-														onBlur={field.onBlur}
-														textareaProps={{
-															"aria-labelledby": "report-issue-description-label",
-															placeholder: "Describe the issue in detail. You can use Markdown formatting.",
-														}}
-													/>
-												</Box>
-												<FormHelperText id="my-helper-text">
-													Describe the issue in detail. You can use Markdown formatting.
-												</FormHelperText>
-											</FormControl>
-										);
-									}}
-								/>
+                  <SwitchElement
+                    name="include_addon_logs"
+                    label="Addon logs (from last boot)"
+                  />
 
+                  <SwitchElement
+                    name="include_addon_config"
+                    label="Addon configuration (sanitized - passwords removed)"
+                  />
 
+                  <SwitchElement
+                    name="include_srat_config"
+                    label="SRAT configuration (sanitized - passwords removed)"
+                  />
 
-								<TextareaAutosizeElement
-									label="Reproducing Steps"
-									name="reproducing_steps"
-									resizeStyle="both"
-									rows={3}
-									fullWidth
-									minRows={4}
-									placeholder="List the steps needed to reproduce the issue."
-								/>
-
-								{/* Include Options */}
-								<Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-
-									<Typography variant="subtitle2">Include in Report:</Typography>
-
-									<SwitchElement
-										name="include_console_errors"
-										label="Console errors (from browser developer tools)"
-									/>
-
-									<SwitchElement
-										name="include_addon_logs"
-										label="Addon logs (from last boot)"
-									/>
-
-									<SwitchElement
-										name="include_addon_config"
-										label="Addon configuration (sanitized - passwords removed)"
-									/>
-
-
-									<SwitchElement
-										name="include_srat_config"
-										label="SRAT configuration (sanitized - passwords removed)"
-									/>
-
-									{/* 								<SwitchElement
+                  {/* 								<SwitchElement
 										name="include_database_dump"
 										label="Database dump (sanitized - passwords removed)"
 									/> */}
+                </Box>
 
-								</Box>
+                <Typography variant="caption" color="text.secondary">
+                  Note: When you click "Create Issue", diagnostic requested
+                  files will be uploaded to gist, and a new GitHub issue page
+                  will open with pre-filled information.
+                </Typography>
+              </Box>
+            </FormContainer>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={onClose}>Cancel</Button>
+          <Button
+            type="submit"
+            form="report-issue-form"
+            variant="contained"
+            color="primary"
+            disabled={!formContext.formState.isDirty}
+          >
+            Create Issue
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-								<Typography variant="caption" color="text.secondary">
-									Note: When you click "Create Issue", diagnostic requested files will be
-									uploaded to gist, and a new GitHub issue page will open with
-									pre-filled information.
-								</Typography>
-							</Box>
-						</FormContainer>)}
-				</DialogContent>
-				<DialogActions>
-					<Button onClick={onClose}>Cancel</Button>
-					<Button
-						type="submit"
-						form="report-issue-form"
-						variant="contained"
-						color="primary"
-						disabled={!formContext.formState.isDirty}
-					>
-						Create Issue
-					</Button>
-				</DialogActions>
-			</Dialog>
-
-			<Dialog
-				open={Boolean(popupBlockedUrl)}
-				onClose={() => setPopupBlockedUrl(null)}
-				maxWidth="sm"
-				fullWidth
-			>
-				<DialogTitle>Popup blocked</DialogTitle>
-				<DialogContent>
-					<Typography sx={{ mb: 2 }}>
-						Your browser blocked the popup. Use the link below to create the issue:
-					</Typography>
-					<Link
-						href={popupBlockedUrl ?? "#"}
-						target="_blank"
-						rel="noopener noreferrer"
-					>
-						Open issue link
-					</Link>
-				</DialogContent>
-				<DialogActions>
-					<Button onClick={() => setPopupBlockedUrl(null)}>Close</Button>
-				</DialogActions>
-			</Dialog>
-		</>
-	);
+      <Dialog
+        open={Boolean(popupBlockedUrl)}
+        onClose={() => setPopupBlockedUrl(null)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Popup blocked</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ mb: 2 }}>
+            Your browser blocked the popup. Use the link below to create the
+            issue:
+          </Typography>
+          <Link
+            href={popupBlockedUrl ?? "#"}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Open issue link
+          </Link>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPopupBlockedUrl(null)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+    </>
+  );
 }

@@ -19,68 +19,68 @@ let originalConsoleError: ((...args: unknown[]) => void) | null = null;
 const listeners = new Set<ConsoleErrorCallback>();
 
 function ensurePatched() {
-	if (patched) return;
-	if (typeof console === "undefined" || typeof console.error !== "function") {
-		patched = true; // nothing to patch
-		return;
-	}
+  if (patched) return;
+  if (typeof console === "undefined" || typeof console.error !== "function") {
+    patched = true; // nothing to patch
+    return;
+  }
 
-	originalConsoleError = console.error.bind(console);
-	// Accessing dynamic property on console; cast to unknown then to Record
-	(console as unknown as Record<string, (...args: unknown[]) => void>).error = (
-		...args: unknown[]
-	) => {
-		try {
-			originalConsoleError?.(...args);
-		} finally {
-			if (listeners.size > 0) {
-				const snapshot = Array.from(listeners);
-				queueMicrotask(() => {
-					for (const cb of snapshot) {
-						try {
-							cb(...args);
-						} catch {
-							// prevent callback errors from cascading
-						}
-					}
-				});
-			}
-		}
-	};
+  originalConsoleError = console.error.bind(console);
+  // Accessing dynamic property on console; cast to unknown then to Record
+  (console as unknown as Record<string, (...args: unknown[]) => void>).error = (
+    ...args: unknown[]
+  ) => {
+    try {
+      originalConsoleError?.(...args);
+    } finally {
+      if (listeners.size > 0) {
+        const snapshot = Array.from(listeners);
+        queueMicrotask(() => {
+          for (const cb of snapshot) {
+            try {
+              cb(...args);
+            } catch {
+              // prevent callback errors from cascading
+            }
+          }
+        });
+      }
+    }
+  };
 
-	patched = true;
+  patched = true;
 }
 
 /** Register a callback; returns an unsubscribe function. */
 export function registerConsoleErrorCallback(
-	cb: ConsoleErrorCallback,
+  cb: ConsoleErrorCallback,
 ): () => void {
-	ensurePatched();
-	listeners.add(cb);
-	let active = true;
-	return () => {
-		if (!active) return;
-		active = false;
-		listeners.delete(cb);
-	};
+  ensurePatched();
+  listeners.add(cb);
+  let active = true;
+  return () => {
+    if (!active) return;
+    active = false;
+    listeners.delete(cb);
+  };
 }
 
 /** Count of active callbacks (diagnostics/testing). */
 export function getConsoleErrorCallbackCount(): number {
-	return listeners.size;
+  return listeners.size;
 }
 
 /** Force-enable the console.error patch. Usually not needed. */
 export function enableConsoleErrorPatch(): void {
-	ensurePatched();
+  ensurePatched();
 }
 
 /** Restore original console.error. Use for tests only. */
 export function disableConsoleErrorPatch(): void {
-	if (!patched) return;
-	if (originalConsoleError) {
-		(console as unknown as Record<string, (...args: unknown[]) => void>).error =
-			originalConsoleError;
-	}
-	patched = false;
+  if (!patched) return;
+  if (originalConsoleError) {
+    (console as unknown as Record<string, (...args: unknown[]) => void>).error =
+      originalConsoleError;
+  }
+  patched = false;
 }

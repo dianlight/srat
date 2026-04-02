@@ -152,12 +152,12 @@ custom_components/srat/
 
 - **Test runner**: `pytest` with `pytest-homeassistant-custom-component`
 - **Async**: `pytest-asyncio` with `asyncio_mode = "auto"`
-- **Coverage**: `pytest-cov` — run `make test-ci` in `custom_components/`
+- **Coverage**: `pytest-cov` — run `mise run test-ci` in `custom_components/`
 - **Formatter**: `ruff format` (also checks formatting in CI)
 - **Linter**: `ruff check` with same rules as main code
 - **Type checker**: `mypy` with same strict config as main code
 - Tests live in `custom_components/tests/` (not inside `srat/`)
-- Run from repo root: `cd custom_components && make test`
+- Run from repo root: `cd custom_components && mise run test`
 
 ### Test Structure
 
@@ -187,16 +187,16 @@ import pytest
 **Before running final tests, always format your code:**
 
 - Run `ruff format .` in the `custom_components/` directory, or
-- Use `make format` (preferred for consistency)
+- Use `mise run format` (preferred for consistency)
 
 Then run tests:
 
 ```bash
 cd custom_components
-make format        # Format code (required before final test)
-make test          # Run all tests
-make test-ci       # Run with coverage (generates coverage.xml)
-make check         # Full check: format + lint + typecheck + test
+mise run format        # Format code (required before final test)
+mise run test          # Run all tests
+mise run test-ci       # Run with coverage (generates coverage.xml)
+mise run check         # Full check: format + lint + typecheck + test
 ```
 
 ## Documentation
@@ -224,19 +224,18 @@ make check         # Full check: format + lint + typecheck + test
 - `iot_class: local_push` (WebSocket push, no polling)
 - `integration_type: hub` (single integration managing multiple entities)
 
-## Makefile Targets
+## Mise Tasks
 
-All custom component tooling runs via `custom_components/Makefile`:
+All custom component tooling runs via `custom_components/.mise.toml`:
 
-| Target        | Description                                |
-| ------------- | ------------------------------------------ |
-| `check`       | Run format-check + lint + typecheck + test |
-| `lint`        | Run `ruff check`                           |
-| `format`      | Run `ruff format` (autofix)                |
-| `typecheck`   | Run `mypy`                                 |
-| `test`        | Run `pytest`                               |
-| `test-ci`     | Run `pytest` with coverage (generates XML) |
-| `fix`         | Run `ruff check --fix` + `ruff format`     |
-| `install`     | Install dev deps (auto-detects Alpine apk) |
-| `install-pip` | Install dev deps via pip only              |
-| `clean`       | Remove caches and build artifacts          |
+| Task             | Description                                |
+| ---------------- | ------------------------------------------ |
+| `mise run check` | Run format-check + lint + typecheck + test |
+| `mise run lint`  | Run `ruff check`                           |
+| `mise run format`| Run `ruff format` (autofix)                |
+| `mise run typecheck` | Run `mypy`                            |
+| `mise run test`  | Run `pytest`                               |
+| `mise run test-ci` | Run `pytest` with coverage (generates XML) |
+| `mise run fix`   | Run `ruff check --fix` + `ruff format`     |
+| `mise run install` | Install dev dependencies                 |
+| `mise run clean` | Remove caches and build artifacts          |

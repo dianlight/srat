@@ -42,7 +42,7 @@ The SMART service has been extended with comprehensive disk health monitoring an
 
 When `disable_smart` is enabled from the SRAT settings page, SRAT stops background SMART enrichment in `DiskStatsService` and direct SMART API operations return a clear disabled-state response instead of touching the disk. This is intended as a practical mitigation for environments where SMART activity can wake sleeping disks.
 
-**Implementation Note**: This service uses a **patched version** of `github.com/anatol/smart.go` that exposes file descriptors for direct device control. The patch is managed via `gohack` and applied automatically during the build process (`make patch`). See [Platform Support](#platform-support) and [Limitations](#limitations) sections for details.
+**Implementation Note**: This service uses a **patched version** of `github.com/anatol/smart.go` that exposes file descriptors for direct device control. The patch is managed via `gohack` and applied automatically during the build process (`mise run //backend:patch`). See [Platform Support](#platform-support) and [Limitations](#limitations) sections for details.
 
 ## Service Methods
 
@@ -272,7 +272,7 @@ The SMART service uses a patched version of `github.com/anatol/smart.go` to expo
 
 ```bash
 cd backend
-make patch  # Applies all library patches including smart.go
+mise run //backend:patch  # Applies all library patches including smart.go
 ```
 
 Multiple patches are applied to smart.go in alphabetical order:
@@ -291,7 +291,7 @@ These patches enable:
 - Location: `backend/patches/smart.go-*.patch`
 - Applied libraries: `github.com/anatol/smart.go`, `github.com/zarldev/goenums`, `github.com/jpillora/overseer`
 - Tool: `gohack` (manages local library modifications)
-- Automatic: Patches are applied during `make all` or `make patch`
+- Automatic: Patches are applied during `mise run ALL` or `mise run //backend:patch`
 
 ### Other Platforms
 
@@ -326,11 +326,11 @@ The SMART service implementation relies on a **patched version** of the `github.
 
 ```bash
 cd backend
-make patch  # Downloads libraries via gohack and applies patches
-make build  # Build with patched libraries
+mise run //backend:patch  # Downloads libraries via gohack and applies patches
+mise run //backend:build  # Build with patched libraries
 ```
 
-The patch is automatically applied when running `make all` and is required for the following operations:
+The patch is automatically applied when running `mise run ALL` and is required for the following operations:
 
 - EnableSMART/DisableSMART
 - StartSelfTest/AbortSelfTest
@@ -360,7 +360,7 @@ Comprehensive tests are provided in `smart_service_test.go`:
 
 ```bash
 cd backend
-make test
+mise run //backend:test
 ```
 
 Tests cover:

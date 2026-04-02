@@ -53,9 +53,9 @@ Run the smallest relevant checks first, then broaden only if needed.
 
 Suggested verification order:
 
-- Backend changes: targeted `go test` package(s)
-- Frontend changes: targeted `bun test` file(s)
-- Custom component changes: targeted `pytest` test(s)
+- Backend changes: targeted `mise run //backend:test` package(s)
+- Frontend changes: targeted `mise run //frontend:test` file(s)
+- Custom component changes: targeted `mise run //custom_components:test` test(s)
 - Doc-only changes: docs validation checks as needed
 
 If tests fail:

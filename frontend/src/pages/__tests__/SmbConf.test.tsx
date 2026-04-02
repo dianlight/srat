@@ -1,5 +1,5 @@
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import "../../../test/setup";
-import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
 
 // Mock react-syntax-highlighter to avoid refractor/lib/core dependency issues
 mock.module("react-syntax-highlighter", () => ({
@@ -42,7 +42,7 @@ describe("SmbConf Component", () => {
         const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Provider } = await import("react-redux");
-        const { SmbConf } = await import("../SmbConf");
+        const { SmbConfPage: SmbConf } = await import("../SmbConf");
         const { createTestStore } = await import("../../../test/setup");
 
         const theme = createTheme();
@@ -69,7 +69,7 @@ describe("SmbConf Component", () => {
         const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Provider } = await import("react-redux");
-        const { SmbConf } = await import("../SmbConf");
+        const { SmbConfPage: SmbConf } = await import("../SmbConf");
         const { createTestStore } = await import("../../../test/setup");
 
         const theme = createTheme();
@@ -96,7 +96,7 @@ describe("SmbConf Component", () => {
         const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Provider } = await import("react-redux");
-        const { SmbConf } = await import("../SmbConf");
+        const { SmbConfPage: SmbConf } = await import("../SmbConf");
         const { createTestStore } = await import("../../../test/setup");
 
         const theme = createTheme();
@@ -124,7 +124,7 @@ describe("SmbConf Component", () => {
         const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Provider } = await import("react-redux");
-        const { SmbConf } = await import("../SmbConf");
+        const { SmbConfPage: SmbConf } = await import("../SmbConf");
         const { createTestStore } = await import("../../../test/setup");
 
         const theme = createTheme({
@@ -155,7 +155,7 @@ describe("SmbConf Component", () => {
         const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Provider } = await import("react-redux");
-        const { SmbConf } = await import("../SmbConf");
+        const { SmbConfPage: SmbConf } = await import("../SmbConf");
         const { createTestStore } = await import("../../../test/setup");
 
         const theme = createTheme({
@@ -186,7 +186,7 @@ describe("SmbConf Component", () => {
         const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Provider } = await import("react-redux");
-        const { SmbConf } = await import("../SmbConf");
+        const { SmbConfPage: SmbConf } = await import("../SmbConf");
         const { createTestStore } = await import("../../../test/setup");
 
         const theme = createTheme();
@@ -213,7 +213,7 @@ describe("SmbConf Component", () => {
         const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Provider } = await import("react-redux");
-        const { SmbConf } = await import("../SmbConf");
+        const { SmbConfPage: SmbConf } = await import("../SmbConf");
         const { createTestStore } = await import("../../../test/setup");
 
         const theme = createTheme();
@@ -245,7 +245,7 @@ describe("SmbConf Component", () => {
 
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Provider } = await import("react-redux");
-        const { SmbConf } = await import("../SmbConf");
+        const { SmbConfPage: SmbConf } = await import("../SmbConf");
         const { createTestStore } = await import("../../../test/setup");
 
         const theme = createTheme();
@@ -281,7 +281,7 @@ describe("SmbConf Component", () => {
         const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Provider } = await import("react-redux");
-        const { SmbConf } = await import("../SmbConf");
+        const { SmbConfPage: SmbConf } = await import("../SmbConf");
         const { createTestStore } = await import("../../../test/setup");
 
         const theme = createTheme();
@@ -308,7 +308,7 @@ describe("SmbConf Component", () => {
         const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Provider } = await import("react-redux");
-        const { SmbConf } = await import("../SmbConf");
+        const { SmbConfPage: SmbConf } = await import("../SmbConf");
         const { createTestStore } = await import("../../../test/setup");
 
         const theme = createTheme();
@@ -350,7 +350,7 @@ describe("SmbConf Component", () => {
         const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Provider } = await import("react-redux");
-        const { SmbConf } = await import("../SmbConf");
+        const { SmbConfPage: SmbConf } = await import("../SmbConf");
         const { createTestStore } = await import("../../../test/setup");
 
         const theme = createTheme();

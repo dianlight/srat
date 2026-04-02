@@ -25,7 +25,7 @@ These instructions are the concise, must-follow rules for working in SRAT. Keep 
 
 - Use **context‑aware logging** (`slog.*Context`, `tlog.*Context`) when a real `context.Context` is already in scope. Never manufacture a context for logging.
 - Go 1.26 rules: use `new(expr)` for pointer values, use `any` (not `interface{}`), use `WaitGroup.Go`, prefer `errors.AsType[T]` (standard library).
-- Do **not** edit vendored code unless using the patch workflow (`backend/patches/` + `make patch`).
+- Do **not** edit vendored code unless using the patch workflow (`backend/patches/` + `mise run //backend:patch`).
 
 ## Frontend essentials
 
@@ -41,25 +41,25 @@ These instructions are the concise, must-follow rules for working in SRAT. Keep 
 
 ## Build, generate, test (short list)
 
-- back-end: `cd backend && make dev|build|test|format|gen`
-- Frontend: `cd frontend && bun install && bun run build|dev|lint|test|gen`
-- Custom component: `cd custom_components && make check|test|lint|format|typecheck`
+- **Back-end:** `mise run //backend:dev|build|test|format|gen`
+- **Frontend:** `mise run //frontend:build|dev|lint|test|gen`
+- **Custom component:** `mise run //custom_components:check|test|lint|format|typecheck`
 
 ## Testing rules (fast summary)
 
 - **Bug fixes require a failing test first**, then the fix, then re‑run tests.
-- Frontend tests: use `bun:test`, React Testing Library, and **`user-event` only** (no `fireEvent`).
-- Frontend test stability: run `bun test --rerun-each 10` for modified tests.
+- Frontend tests: use `mise run //frontend:test`, React Testing Library, and **`user-event` only** (no `fireEvent`).
+- Frontend test stability: run `mise run //frontend:test --rerun-each 10` for modified tests.
 
 ## Docs & quality gates
 
-- Docs: `make docs-validate` (and `make docs-fix` when needed).
-- Security: `make security`.
+- Docs: `mise run docs-validate` (and `mise run docs-fix` when needed).
+- Security: `mise run security`.
 
 ## Patching external Go libs
 
-- Patches live in `backend/patches/`. Apply with `cd backend && make patch`.
-- Update vendor via `cd backend/src && go mod vendor` then re‑apply patches.
+- Patches live in `backend/patches/`. Apply with `mise run //backend:patch`.
+- Update vendor via `cd backend/src && go mod vendor` then re‑apply patches with `mise run //backend:patch`.
 
 ## Git Branch Naming Convention
 

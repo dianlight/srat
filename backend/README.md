@@ -3,6 +3,7 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+- [Mise-based Backend Workflows](#mise-based-backend-workflows)
 - [CLI Commands](#cli-commands)
   - [Database Requirements](#database-requirements)
     - [Examples](#examples)
@@ -10,6 +11,23 @@
 - [Security scanning](#security-scanning)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+## Mise-based Backend Workflows
+
+All back-end build, test, and lint workflows are now managed by [mise](https://mise.jdx.dev).
+
+**Common commands:**
+
+```sh
+# Build backend
+mise run //backend:build
+# Run backend tests
+mise run //backend:test
+# Lint/format backend
+mise run //backend:lint
+```
+
+See `.mise.toml` for all available tasks.
 
 ## CLI Commands
 
@@ -57,9 +75,9 @@ srat-openapi -out ./docs/
 
 Run gosec to scan the back-end codebase:
 
-- make security (alias of `make -C ./backend gosec`)
+- `mise run security` from the repository root, or `mise run //backend:gosec` from the back-end workspace
 - Reports are limited to high severity and high confidence issues; generated files are excluded.
-- To scan all severities locally, run: `make -C ./backend gosec_all`
+- To scan all severities locally, run: `mise run //backend:gosec_all`
 
 Exit codes:
 
