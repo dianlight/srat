@@ -93,10 +93,13 @@ const enableBody = (target: unknown) => {
 
 const rootEl = document.getElementById("root");
 if (!rootEl) throw new Error("Root element #root not found");
-import.meta.hot.data.root ??= ReactDOM.createRoot(rootEl);
-const root = import.meta.hot.data.root as ReturnType<
-  typeof ReactDOM.createRoot
->;
+let root: ReturnType<typeof ReactDOM.createRoot>;
+if (import.meta.hot) {
+  import.meta.hot.data.root ??= ReactDOM.createRoot(rootEl);
+  root = import.meta.hot.data.root as ReturnType<typeof ReactDOM.createRoot>;
+} else {
+  root = ReactDOM.createRoot(rootEl);
+}
 root.render(
   <RollbarProvider config={{}}>
     <CssBaseline />
