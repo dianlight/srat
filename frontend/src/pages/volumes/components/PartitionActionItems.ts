@@ -62,139 +62,134 @@ export function getPartitionActionItems({
   const mountPointData = partition.mount_point_data || {};
   const keys = Object.keys(mountPointData);
 
-  if (!partition.mount_point_data || keys.length === 0) {
-    actionItems.push({
-      key: "mount",
-      color: undefined,
-      title: "Mount Partition",
-      onClick: () => onMount(partition),
-    });
-    return actionItems;
-  }
+  const mpd = mountPointData[keys[0]] as MountPointData;
+  const isMounted = mpd?.is_mounted;
+  const hasEnabledShare = mpd?.share && mpd?.share.disabled === false;
+  const hasShare = mpd?.share !== null && mpd?.share !== undefined;
+  const hadNoShareOrIsDisabled =
+    !hasShare || (mpd?.share && mpd?.share.disabled === true);
 
-  if (keys.length === 1 && keys[0] && mountPointData[keys[0]]) {
-    const mpd = mountPointData[keys[0]] as MountPointData;
-    const isMounted = mpd?.is_mounted;
-    const hasEnabledShare = mpd?.share && mpd?.share.disabled === false;
-    const hasShare = mpd?.share !== null && mpd?.share !== undefined;
-    const hadNoShareOrIsDisabled =
-      !hasShare || (mpd?.share && mpd?.share.disabled === true);
-
-    const canShowAutomount = !(isMounted && hasEnabledShare);
-    if (canShowAutomount) {
-      if (mpd?.is_to_mount_at_startup) {
-        actionItems.push({
-          key: "disable-automount",
-          title: "Disable automatic mount",
-          color: "primary",
-          onClick: () => onToggleAutomount(partition),
-        });
-      } else {
-        actionItems.push({
-          key: "enable-automount",
-          title: "Enable automatic mount",
-          color: "primary",
-          onClick: () => onToggleAutomount(partition),
-        });
-      }
-    }
-
-    if (!isMounted) {
+  const canShowAutomount = !(isMounted && hasEnabledShare) && mpd;
+  if (canShowAutomount) {
+    if (mpd?.is_to_mount_at_startup) {
       actionItems.push({
-        key: "mount",
-        title: "Mount Partition",
-        color: undefined,
-        onClick: () => onMount(partition),
+        key: "disable-automount",
+        title: "Disable automatic mount",
+        color: "primary",
+        onClick: () => onToggleAutomount(partition),
       });
     } else {
-      if (hasShare) {
-        actionItems.push({
-          key: "go-to-share",
-          title: "Go to Share",
-          color: undefined,
-          onClick: () => onGoToShare(partition),
-        });
-      }
-
-      if (hadNoShareOrIsDisabled && !mpd?.is_to_mount_at_startup) {
-        actionItems.push({
-          key: "unmount",
-          title: "Unmount Partition",
-          color: undefined,
-          onClick: () => onUnmount(partition, false),
-        });
-        actionItems.push({
-          key: "force-unmount",
-          title: "Force Unmount Partition",
-          color: "warning",
-          onClick: () => onUnmount(partition, true),
-        });
-      }
-
-      if (!hasShare && mpd.path?.startsWith("/mnt/")) {
-        actionItems.push({
-          key: "create-share",
-          title: "Create Share",
-          color: "success",
-          onClick: () => onCreateShare(partition),
-        });
-      }
-    }
-
-    // Additional Action on supported filesystems
-    // TODO: not ready to be enabled because not fully implemented and tested, and we want to avoid showing it until it's ready
-    if (
-      // biome-ignore lint/correctness/noConstantCondition: temporarily disabled pending full implementation
-      false && // Temporarily disable the "Check Filesystem" action until it's fully implemented and tested
-      onCheckFilesystem &&
-      partition.filesystem_info?.support?.canCheck &&
-      !isMounted &&
-      getCurrentEnv() !== "production"
-    ) {
       actionItems.push({
-        key: "check-filesystem",
-        title: "Check Filesystem",
-        color: "info",
-        onClick: () => onCheckFilesystem?.(partition),
+        key: "enable-automount",
+        title: "Enable automatic mount",
+        color: "primary",
+        onClick: () => onToggleAutomount(partition),
       });
     }
-    if (
-      // biome-ignore lint/correctness/noConstantCondition: temporarily disabled pending full implementation
-      false && // Temporarily disable the "Set Label" action until it's fully implemented and tested
-      partition.filesystem_info?.support?.canSetLabel &&
-      !isMounted &&
-      getCurrentEnv() !== "production"
-    ) {
-      actionItems.push({
-        key: "set-label",
-        title: "Set Label",
-        color: "info",
-        onClick: () => {
-          // Implement set label action here
-          console.log("Setting label for partition:", partition.name);
-        },
-      });
-    }
-    if (
-      // biome-ignore lint/correctness/noConstantCondition: temporarily disabled pending full implementation
-      false && // Temporarily disable the "Format Partition" action until it's fully implemented and tested
-      partition.filesystem_info?.support?.canFormat &&
-      !isMounted &&
-      getCurrentEnv() !== "production"
-    ) {
-      actionItems.push({
-        key: "format",
-        title: "Format Partition",
-        color: "error",
-        onClick: () => {
-          // Implement format action here
-          console.log("Formatting partition:", partition.name);
-        },
-      });
-    }
-    return actionItems;
   }
 
-  console.warn("Partition has no mount_point_data:", partition);
-  return null;
+  if (!isMounted) {
+    actionItems.push({
+      key: "mount",
+      title: "Mount Partition",
+      color: undefined,
+      onClick: () => onMount(partition),
+    });
+  } else {
+    if (hasShare) {
+      actionItems.push({
+        key: "go-to-share",
+        title: "Go to Share",
+        color: undefined,
+        onClick: () => onGoToShare(partition),
+      });
+    }
+
+    if (hadNoShareOrIsDisabled && !mpd?.is_to_mount_at_startup) {
+      actionItems.push({
+        key: "unmount",
+        title: "Unmount Partition",
+        color: undefined,
+        onClick: () => onUnmount(partition, false),
+      });
+      actionItems.push({
+        key: "force-unmount",
+        title: "Force Unmount Partition",
+        color: "warning",
+        onClick: () => onUnmount(partition, true),
+      });
+    }
+
+    if (!hasShare && mpd.path?.startsWith("/mnt/")) {
+      actionItems.push({
+        key: "create-share",
+        title: "Create Share",
+        color: "success",
+        onClick: () => onCreateShare(partition),
+      });
+    }
+  }
+
+  // Additional Action on supported filesystems
+  if (
+    onCheckFilesystem &&
+    partition.filesystem_info?.support?.canCheck &&
+    !isMounted &&
+    getCurrentEnv() === "remote"
+  ) {
+    actionItems.push({
+      key: "check-filesystem",
+      title: "Check Filesystem",
+      color: "info",
+      onClick: () => onCheckFilesystem?.(partition),
+    });
+  } else if (!isMounted) {
+    console.debug(
+      "Check Filesystem action not added for partition:",
+      partition,
+      {
+        canCheck: partition.filesystem_info?.support?.canCheck,
+        isMounted,
+        currentEnv: getCurrentEnv(),
+      },
+    );
+  }
+  if (
+    partition.filesystem_info?.support?.canSetLabel &&
+    !isMounted &&
+    getCurrentEnv() === "remote"
+  ) {
+    actionItems.push({
+      key: "set-label",
+      title: "Set Label",
+      color: "info",
+      onClick: () => {
+        // Implement set label action here
+        console.log("Setting label for partition:", partition.name);
+      },
+    });
+  } else if (!isMounted) {
+    console.debug("Set Label action not added for partition:", partition, {
+      canSetLabel: partition.filesystem_info?.support?.canSetLabel,
+      isMounted,
+      currentEnv: getCurrentEnv(),
+    });
+  }
+  if (
+    partition.filesystem_info?.support?.canFormat &&
+    !isMounted &&
+    getCurrentEnv() === "remote"
+  ) {
+    actionItems.push({
+      key: "format",
+      title: "Format Partition",
+      color: "error",
+      onClick: () => {
+        // Implement format action here
+        console.log("Formatting partition:", partition.name);
+      },
+    });
+  }
+  //console.debug("Generated action items for partition:", partition.name, actionItems);
+  return actionItems;
 }

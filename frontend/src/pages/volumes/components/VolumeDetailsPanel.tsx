@@ -33,10 +33,10 @@ import {
   useGetApiFilesystemStateQuery,
   useGetApiSettingsQuery,
 } from "../../../store/sratApi";
+import { usePartitionActions } from "../hooks/usePartitionActions";
 import { decodeEscapeSequence } from "../utils";
 import { FilesystemCheckDialog } from "./FilesystemCheckDialog";
 import { HDIdleDiskSettings } from "./HDIdleDiskSettings";
-import { getPartitionActionItems } from "./PartitionActionItems";
 import { SmartStatusPanel } from "./SmartStatusPanel";
 
 interface VolumeDetailsPanelProps {
@@ -62,15 +62,23 @@ export function VolumeDetailsPanel({
   onUnmount,
   onCreateShare,
   onGoToShare,
-  //  share,
 }: VolumeDetailsPanelProps) {
-  //const navigate = useNavigate();
   const [diskInfoExpanded, setDiskInfoExpanded] = useState(!partition);
   const [smartExpanded, setSmartExpanded] = useState(true);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewObject, setPreviewObject] = useState<object | null>(null);
   const [previewTitle, setPreviewTitle] = useState<string>("Preview");
   const [checkDialogOpen, setCheckDialogOpen] = useState(false);
+  const partitionActionItems = usePartitionActions({
+    partition,
+    protectedMode,
+    onToggleAutomount,
+    onMount,
+    onUnmount,
+    onCreateShare,
+    onGoToShare,
+    onCheckFilesystem: () => setCheckDialogOpen(true),
+  });
 
   // Fetch settings for disable_smart
   const { data: settings, isLoading: settingsLoading } =
@@ -85,17 +93,6 @@ export function VolumeDetailsPanel({
     setPreviewOpen(false);
     setPreviewObject(null);
   };
-
-  /*
-    const navigateToShare = (share: SharedResource) => {
-        if (share?.name) {
-            // Navigate to the shares page and pass the share name as state
-            navigate("/", {
-                state: { tabId: TabIDs.SHARES, shareName: share.name } as LocationState,
-            });
-        }
-    };
-    */
 
   // Helper function to render disk icon
   const renderDiskIcon = (disk: Disk) => {
@@ -114,7 +111,6 @@ export function VolumeDetailsPanel({
 
   const mpds = Object.values(partition?.mount_point_data || {});
   const mountData = mpds[0];
-  //const allShares = mpds.flatMap((mpd) => mpd.shares).filter(Boolean) || [];
   const isMounted = mpds.some((mpd) => mpd.is_mounted);
   const partitionId = partition?.id;
   const {
@@ -195,37 +191,6 @@ export function VolumeDetailsPanel({
       </Box>
     );
   }, [filesystemState, filesystemStateLoading]);
-
-  const partitionActionItems = useMemo(() => {
-    if (!partition) return null;
-    if (
-      !onToggleAutomount ||
-      !onMount ||
-      !onUnmount ||
-      !onCreateShare ||
-      !onGoToShare
-    ) {
-      return null;
-    }
-    return getPartitionActionItems({
-      partition,
-      protectedMode,
-      onToggleAutomount,
-      onMount,
-      onUnmount,
-      onCreateShare,
-      onGoToShare,
-      onCheckFilesystem: () => setCheckDialogOpen(true),
-    });
-  }, [
-    partition,
-    protectedMode,
-    onToggleAutomount,
-    onMount,
-    onUnmount,
-    onCreateShare,
-    onGoToShare,
-  ]);
 
   const readOnlyActionTooltip = "Read-only mode enabled. Actions are disabled.";
 

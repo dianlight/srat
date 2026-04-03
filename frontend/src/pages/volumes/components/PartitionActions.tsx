@@ -22,10 +22,8 @@ import {
 import { type ReactElement, useState } from "react";
 import { FontAwesomeSvgIcon } from "../../../components/FontAwesomeSvgIcon";
 import type { Partition } from "../../../store/sratApi";
-import {
-  getPartitionActionItems,
-  type PartitionActionKey,
-} from "./PartitionActionItems";
+import { usePartitionActions } from "../hooks/usePartitionActions";
+import type { PartitionActionKey } from "./PartitionActionItems";
 
 interface PartitionActionsProps {
   partition: Partition;
@@ -64,8 +62,7 @@ export function PartitionActions({
     (e as React.MouseEvent<HTMLElement>)?.stopPropagation();
     setAnchorEl(null);
   };
-
-  const actionItems = getPartitionActionItems({
+  const actionItems = usePartitionActions({
     partition,
     protectedMode: protected_mode,
     onToggleAutomount,

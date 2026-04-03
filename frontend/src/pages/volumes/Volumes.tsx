@@ -440,6 +440,8 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
   function handleToggleAutomount(partition: Partition) {
     if (evdata?.hello?.read_only) return;
 
+    console.log("Toggling automount for partition:", partition);
+
     for (const [path, mountData] of Object.entries(
       partition.mount_point_data || {},
     )) {

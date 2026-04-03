@@ -10,7 +10,7 @@ export interface UsePartitionActionsParams {
   onUnmount?: (partition: Partition, force: boolean) => void;
   onCreateShare?: (partition: Partition) => void;
   onGoToShare?: (partition: Partition) => void;
-  onCheckFilesystem?: () => void;
+  onCheckFilesystem?: (partition: Partition) => void;
 }
 
 export function usePartitionActions({
