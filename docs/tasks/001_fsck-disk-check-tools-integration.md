@@ -47,7 +47,7 @@ The next goal is end-to-end coherence from adapter capability detection to user 
 - [x] Task 5: Implement error handling and user feedback in the frontend when a check operation fails, including displaying the error message returned from the backend and any relevant diagnostics.
 - [x] Task 6: Ensure that the check operation can be aborted by the user and that the backend properly handles the abort request, including cleaning up any ongoing processes and returning an appropriate response.
 - [x] Task 7: Add unit tests for the backend service methods and adapter implementations related to filesystem checking, as well as integration tests for the API endpoints and frontend components.
-- [ ] Task 8: Update documentation to reflect the new disk check features, including any user-facing instructions for how to use the check functionality and interpret results.
+- [x] Task 8: Update documentation to reflect the new disk check features, including any user-facing instructions for how to use the check functionality and interpret results.
 - [x] Task 9: Verify that the frontend correctly handles cases where the required check tools are not available, showing appropriate warnings and installation hints based on the `MissingTools` and `AlpinePackage` information from the backend.
 - [ ] Task 10: Repeat the job done from task 2 to 9 for the related `Format()` and `SetLabel()` functionalities, ensuring a consistent user experience across all disk management operations.
 - [ ] Task 11: Clean up any temporary debug code (e.g., console logs) and ensure that all new code adheres to the project's coding standards and best practices.
@@ -103,6 +103,7 @@ The next goal is end-to-end coherence from adapter capability detection to user 
 - Removed debug `console.*` action-flow noise from `PartitionActionItems.ts`.
 - Added backend service tests in `filesystem_service_test.go` for `CheckPartition` unsupported filesystem and unsupported capability flows.
 - Added frontend integration tests in `FilesystemLabelFormatDialog.test.tsx` for unsupported set-label/format states and button disabling.
+- Updated `backend/src/service/filesystem/README.md` with support preflight endpoint usage (`/filesystem/support`), missing tools/package guidance, websocket `filesystem_task` progress notes (`progress=999` indeterminate), and check abort endpoint examples.
 
 ## 🔗 Code References & TODOs
 
