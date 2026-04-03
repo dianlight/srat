@@ -159,13 +159,13 @@ jobs:
           fetch-depth: 0
 
       - name: Setup go
-        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version-file: 'backend/src/go.mod'
           cache-dependency-path: "**/*.sum"
 
       - name: Setup mise
-        uses: jdx/mise-action@v2
+        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4
         with:
           install: true
           experimental: true          
@@ -218,7 +218,7 @@ jobs:
           bun-version-file: frontend/package.json
 
       - name: Setup mise
-        uses: jdx/mise-action@v2
+        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4
         with:
           install: true
           experimental: true
@@ -269,13 +269,13 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: HACS Validation
-        uses: hacs/action@main
+        uses: hacs/action@dcb30e72781db3f207d5236b861172774ab0b485 # main
         with:
           category: integration
           ignore: brands
 
       - name: hassfest Validation
-        uses: home-assistant/actions/hassfest@master
+        uses: home-assistant/actions/hassfest@5752577ea7cc5aefb064b0b21432f18fe4d6ba90 # master
 
       - name: Set up Python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
@@ -283,7 +283,7 @@ jobs:
           python-version: "3.14"
 
       - name: Setup mise
-        uses: jdx/mise-action@v2
+        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4
         with:
           install: true
           experimental: true
@@ -378,7 +378,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup go
-        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version-file: 'backend/src/go.mod'
           cache-dependency-path: "**/*.sum"
@@ -388,7 +388,7 @@ jobs:
           bun-version-file: frontend/package.json
 
       - name: Setup mise
-        uses: jdx/mise-action@v2
+        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4
         with:
           install: true
           experimental: true
@@ -623,7 +623,7 @@ jobs:
     needs: [build, setversion]
     steps:
       - name: Delete old draft releases
-        uses: hugo19941994/delete-draft-releases@d375ad67d25fed7520a8020c3a6561fff5260c1e # v2.0.0
+        uses: hugo19941994/delete-draft-releases@3f19a25abf2ce87850c2268938f98f14e4d3d1f1 # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
