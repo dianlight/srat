@@ -136,6 +136,36 @@ describe("FilesystemCheckDialog", () => {
         expect(explanation).toBeTruthy();
     });
 
+    it("does not animate progress when check is idle", async () => {
+        const React = await import("react");
+        const { screen } = await import("@testing-library/react");
+        const { FilesystemCheckDialog } = await import("../FilesystemCheckDialog");
+
+        const partition = {
+            id: "part-idle",
+            name: "idle-data",
+            device_path: "/dev/sdd1",
+        };
+
+        await renderWithProviders(
+            React.createElement(FilesystemCheckDialog as any, {
+                open: true,
+                partition,
+                taskOverride: {
+                    device: "/dev/sdd1",
+                    operation: "check",
+                    status: "idle",
+                    progress: 0,
+                },
+                onClose: () => { },
+            }),
+        );
+
+        expect(screen.queryByText(/Working.../i)).toBeNull();
+        const zeroPercent = await screen.findByText("0%");
+        expect(zeroPercent).toBeTruthy();
+    });
+
     it("shows unsupported check hint for zfs support profile from preflight", async () => {
         const React = await import("react");
         const { screen } = await import("@testing-library/react");

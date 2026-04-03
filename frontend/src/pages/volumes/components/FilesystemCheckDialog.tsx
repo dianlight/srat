@@ -229,7 +229,9 @@ export function FilesystemCheckDialog({
 
   const progressValue =
     typeof task?.progress === "number" ? task.progress : progress;
-  const showIndeterminate = progressValue === 999 || progressValue <= 0;
+  const clampedProgressValue = Math.min(100, Math.max(0, progressValue));
+  const showIndeterminate =
+    isRunning && (progressValue === 999 || progressValue <= 0);
   const showUnsupportedHint = !isSupportLoading && !canCheck;
   const partitionLabel = decodeEscapeSequence(
     partition?.name || partition?.id || "Selected partition",
@@ -278,11 +280,7 @@ export function FilesystemCheckDialog({
             </Typography>
             <LinearProgress
               variant={showIndeterminate ? "indeterminate" : "determinate"}
-              value={
-                showIndeterminate
-                  ? undefined
-                  : Math.min(100, Math.max(0, progressValue))
-              }
+              value={showIndeterminate ? undefined : clampedProgressValue}
             />
             <Stack
               direction="row"
@@ -295,7 +293,7 @@ export function FilesystemCheckDialog({
               <Typography variant="caption" color="text.secondary">
                 {showIndeterminate
                   ? "Working..."
-                  : `${Math.round(progressValue)}%`}
+                  : `${Math.round(clampedProgressValue)}%`}
               </Typography>
             </Stack>
             {progressValue === 999 && (
