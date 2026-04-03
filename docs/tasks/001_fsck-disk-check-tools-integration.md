@@ -53,7 +53,7 @@ The next goal is end-to-end coherence from adapter capability detection to user 
 - [x] Task 11: Clean up any temporary debug code (e.g., console logs) and ensure that all new code adheres to the project's coding standards and best practices.
 - [x] Task 12: Conduct thorough testing across different filesystem types to ensure that the check, format, and label operations work correctly and that the UI feedback is accurate for each type.
 - [x] Task 13: Run `hk check` to ensure that all new code is properly linted and formatted, and that all tests pass successfully
-- [ ] Task 14: Do end-to-end testing of the entire flow, from initiating a check operation in the UI to receiving real-time updates and handling results, to ensure a smooth and intuitive user experience. Use the remote development environment to simulate different scenarios, including missing tools and operation failures, to validate the robustness of the implementation.
+- [x] Task 14: Do end-to-end testing of the entire flow, from initiating a check operation in the UI to receiving real-time updates and handling results, to ensure a smooth and intuitive user experience. Use the remote development environment to simulate different scenarios, including missing tools and operation failures, to validate the robustness of the implementation.
 - [ ] Task 15: Push the changes to the repository and create a pull request for review, ensuring that the PR description clearly outlines the changes made and any relevant context for reviewers.
 
 ## 🧠 Implementation Notes (Copilot Context)
@@ -121,6 +121,21 @@ The next goal is end-to-end coherence from adapter capability detection to user 
   - Installed missing local toolchain dependencies for checks via `cd custom_components && mise install` (added `ruff` in this container).
   - `hk check --all --check` now runs but fails at repository-root `gomod-tidy` because Go module root is `backend/src` (no top-level `go.mod`).
   - Validated current modified file set with check-mode hook run: `HK_FIX=0 hk check docs/tasks/001_fsck-disk-check-tools-integration.md` ✅ (`lychee`, `markdownlint-cli2` passed).
+- Task 14 remote end-to-end validation (HA test environment):
+  - Deployed backend remotely with `mise //backend:build:remote` and restarted addon `local_sambanas2`.
+  - Started remote UI dev server (`mise run //frontend:dev:remote`) and validated live UI at `http://localhost:3080/`.
+  - Executed filesystem-check flow on real partition `SYSTEM2` (vfat):
+    - UI action `Check Filesystem` -> `Start` showed expected start state/toast.
+    - Addon logs confirm backend success path: `Check operation completed successfully` with `fsck.fat` output and exit code handling.
+  - Executed abort/failure flow:
+    - UI action `Stop` after completion returned user-facing error `Check operation not running`.
+    - Backend logged expected `404` on `/api/filesystem/check/abort` (operation already finished).
+  - Executed missing-tools/unsupported flow in live UI:
+    - Opened `Format Partition`, changed fs type to `zfs`.
+    - Dialog showed warning `Format tools are not available...` with install hint `apk add zfs` and disabled `Format` button.
+  - Executed operation-failure flow in live UI:
+    - `Set Label` with value `SYSTEM2_TEST` (12 chars) returned `500` and UI error toast `Failed to set partition label`.
+    - Backend logs show root cause from tool constraints: `fatlabel: labels can be no longer than 11 characters`.
 
 ## 🔗 Code References & TODOs
 
