@@ -203,3 +203,6 @@ outputs = [
   "src/dbom/g/**/*.go",
   "src/dto/**/*_enums.go",
   ]
+
+[tasks.golangci-lint]
+run = "cd src && golangci-lint run --fix"
