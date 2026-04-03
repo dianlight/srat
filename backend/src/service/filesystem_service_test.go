@@ -404,6 +404,33 @@ func (suite *FilesystemServiceTestSuite) TestAbortCheckPartition_NoActiveOperati
 	suite.True(errors.Is(err, dto.ErrorNotFound))
 }
 
+func (suite *FilesystemServiceTestSuite) TestCheckPartition_UnsupportedFilesystemType() {
+	result, err := suite.fsService.CheckPartition(
+		context.Background(),
+		"/dev/test",
+		"unknown-fs",
+		dto.CheckOptions{},
+	)
+
+	suite.Nil(result)
+	suite.Require().Error(err)
+	suite.Contains(err.Error(), "unsupported filesystem type")
+}
+
+func (suite *FilesystemServiceTestSuite) TestCheckPartition_UnsupportedCapability() {
+	result, err := suite.fsService.CheckPartition(
+		context.Background(),
+		"/dev/test",
+		"zfs",
+		dto.CheckOptions{},
+	)
+
+	suite.Nil(result)
+	suite.Require().Error(err)
+	suite.Contains(err.Error(), "cannot be checked")
+	suite.Contains(err.Error(), "Install package")
+}
+
 func (suite *FilesystemServiceTestSuite) TestMountFlagsToSyscallFlagAndData() {
 	testCases := []struct {
 		name            string
