@@ -7,6 +7,7 @@ import {
   DialogContentText,
   DialogTitle,
   FormControlLabel,
+  MenuItem,
   Stack,
   Switch,
   TextField,
@@ -16,8 +17,10 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import {
   type ErrorModel,
+  type FilesystemsInfo,
   type Partition,
   useGetApiFilesystemSupportQuery,
+  useGetApiFilesystemsQuery,
   usePostApiFilesystemFormatMutation,
 } from "../../../store/sratApi";
 import { decodeEscapeSequence } from "../utils";
@@ -36,6 +39,9 @@ export function FilesystemFormatDialog({
   const [filesystemType, setFilesystemType] = useState("ext4");
   const [label, setLabel] = useState("");
   const [force, setForce] = useState(false);
+
+  const { data: filesystemsData, isFetching: isFilesystemsLoading } =
+    useGetApiFilesystemsQuery(undefined, { skip: !open });
 
   const {
     data: supportData,
@@ -65,6 +71,31 @@ export function FilesystemFormatDialog({
     return supportData;
   }, [supportData]);
 
+  const formatCapableFilesystemTypes = useMemo(
+    () =>
+      ((filesystemsData as FilesystemsInfo | undefined)?.filesystems ?? [])
+        .filter((filesystem) => filesystem?.support?.canFormat)
+        .map((filesystem) => ({
+          type: filesystem.type,
+          label: filesystem.description
+            ? `${filesystem.description} (${filesystem.type})`
+            : filesystem.type,
+        })),
+    [filesystemsData],
+  );
+
+  const isSelectedFormatTypeAvailable = useMemo(
+    () =>
+      formatCapableFilesystemTypes.some(
+        (filesystem) => filesystem.type === filesystemType,
+      ),
+    [filesystemType, formatCapableFilesystemTypes],
+  );
+
+  const dropdownFilesystemType = isSelectedFormatTypeAvailable
+    ? filesystemType
+    : "";
+
   const canFormat = useMemo(() => {
     if (support?.canFormat !== undefined) {
       return support.canFormat;
@@ -92,6 +123,24 @@ export function FilesystemFormatDialog({
       "Failed to verify format support."
     );
   }, [isSupportError, supportError]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    if (formatCapableFilesystemTypes.length === 0) {
+      return;
+    }
+
+    const isCurrentTypeAvailable = formatCapableFilesystemTypes.some(
+      (filesystem) => filesystem.type === filesystemType,
+    );
+
+    if (!isCurrentTypeAvailable) {
+      setFilesystemType(formatCapableFilesystemTypes[0].type);
+    }
+  }, [filesystemType, formatCapableFilesystemTypes, open]);
 
   const handleFormat = async () => {
     if (!partition?.id) {
@@ -166,12 +215,25 @@ export function FilesystemFormatDialog({
 
           <TextField
             label="Filesystem type"
-            value={filesystemType}
+            value={dropdownFilesystemType}
             onChange={(event) => setFilesystemType(event.target.value)}
             fullWidth
-            disabled={isFormatting}
-            placeholder="ext4"
-          />
+            disabled={isFormatting || isFilesystemsLoading}
+            select
+            helperText={
+              isFilesystemsLoading
+                ? "Loading available filesystems..."
+                : formatCapableFilesystemTypes.length === 0
+                  ? "No filesystem available for format"
+                  : undefined
+            }
+          >
+            {formatCapableFilesystemTypes.map((filesystem) => (
+              <MenuItem key={filesystem.type} value={filesystem.type}>
+                {filesystem.label}
+              </MenuItem>
+            ))}
+          </TextField>
 
           <TextField
             label="Label (optional)"
@@ -205,6 +267,8 @@ export function FilesystemFormatDialog({
             isFormatting ||
             !partition?.id ||
             filesystemType.trim().length === 0 ||
+            formatCapableFilesystemTypes.length === 0 ||
+            !isSelectedFormatTypeAvailable ||
             isSupportLoading ||
             !canFormat
           }

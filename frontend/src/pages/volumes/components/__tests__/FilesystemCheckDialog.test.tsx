@@ -76,6 +76,39 @@ describe("FilesystemCheckDialog", () => {
         expect(progressBar).toBeTruthy();
     });
 
+    it("shows running command output in logs when notes are not provided", async () => {
+        const React = await import("react");
+        const { screen } = await import("@testing-library/react");
+        const { FilesystemCheckDialog } = await import("../FilesystemCheckDialog");
+
+        const partition = {
+            id: "part-2",
+            name: "data2",
+            device_path: "/dev/sde1",
+        };
+
+        await renderWithProviders(
+            React.createElement(FilesystemCheckDialog as any, {
+                open: true,
+                partition,
+                initialVerbose: true,
+                taskOverride: {
+                    device: "/dev/sde1",
+                    operation: "check",
+                    status: "running",
+                    progress: 999,
+                    message: "fsck.ext4: checking inode tables",
+                },
+                onClose: () => { },
+            }),
+        );
+
+        const logsField = await screen.findByRole("textbox");
+        expect((logsField as HTMLInputElement).value).toContain(
+            "fsck.ext4: checking inode tables",
+        );
+    });
+
     it("disables start and shows unsupported hint when check is not available", async () => {
         const React = await import("react");
         const { screen } = await import("@testing-library/react");

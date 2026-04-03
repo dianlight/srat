@@ -81,7 +81,8 @@ export function FilesystemCheckDialog({
   const [status, setStatus] = useState<string>("idle");
   const [message, setMessage] = useState<string>("");
 
-  const lastNotesRef = useRef<string>("");
+  const lastNotesRef = useRef<string[]>([]);
+  const lastMessageRef = useRef<string>("");
 
   const task = useMemo<FilesystemTask | null>(() => {
     if (taskOverride) {
@@ -143,7 +144,8 @@ export function FilesystemCheckDialog({
     setStatus("idle");
     setMessage("");
     setVerbose(Boolean(initialVerbose));
-    lastNotesRef.current = "";
+    lastNotesRef.current = [];
+    lastMessageRef.current = "";
   }, [open, partition?.id, initialVerbose, partition]);
 
   useEffect(() => {
@@ -159,11 +161,37 @@ export function FilesystemCheckDialog({
     }
     const taskNotes = task.notes ?? [];
     if (taskNotes.length > 0) {
-      const notesSignature = taskNotes.join("\n");
-      if (notesSignature !== lastNotesRef.current) {
-        lastNotesRef.current = notesSignature;
+      const previousNotes = lastNotesRef.current;
+      const isCumulativeNotes =
+        taskNotes.length >= previousNotes.length &&
+        previousNotes.every((note, index) => note === taskNotes[index]);
+
+      if (isCumulativeNotes) {
+        const newNotes = taskNotes.slice(previousNotes.length);
+        if (newNotes.length > 0) {
+          setLogs((prev) => [...prev, ...newNotes]);
+        }
+      }
+
+      if (!isCumulativeNotes) {
         setLogs((prev) => [...prev, ...taskNotes]);
       }
+
+      lastNotesRef.current = taskNotes;
+    }
+
+    const taskMessage = task.message?.trim();
+    if (
+      isRunningStatus(task.status) &&
+      taskMessage &&
+      taskNotes.length === 0 &&
+      taskMessage !== lastMessageRef.current
+    ) {
+      setLogs((prev) => [...prev, taskMessage]);
+    }
+
+    if (taskMessage) {
+      lastMessageRef.current = taskMessage;
     }
   }, [open, task]);
 

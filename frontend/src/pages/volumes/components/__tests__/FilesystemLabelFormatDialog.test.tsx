@@ -179,7 +179,7 @@ describe("Filesystem label/format dialogs", () => {
     expect(installHints.length).toBeGreaterThan(0);
   });
 
-  it("updates format support feedback when filesystem type changes", async () => {
+  it("shows only format-capable filesystems in format type dropdown", async () => {
     const React = await import("react");
     const { screen } = await import("@testing-library/react");
     const userEvent = (await import("@testing-library/user-event")).default;
@@ -199,17 +199,63 @@ describe("Filesystem label/format dialogs", () => {
 
     const server = await getMswServer();
     server.use(
+      http.get("/api/filesystems", () =>
+        HttpResponse.json({
+          filesystems: [
+            {
+              name: "Extended Filesystem",
+              type: "ext4",
+              description: "EXT4 Filesystem",
+              support: {
+                canMount: true,
+                canFormat: true,
+                canCheck: true,
+                canSetLabel: true,
+                canGetState: true,
+                isExportable: false,
+              },
+            },
+            {
+              name: "Flash-Friendly FS",
+              type: "f2fs",
+              description: "F2FS Filesystem",
+              support: {
+                canMount: true,
+                canFormat: true,
+                canCheck: true,
+                canSetLabel: false,
+                canGetState: true,
+                isExportable: false,
+              },
+            },
+            {
+              name: "ZFS",
+              type: "zfs",
+              description: "ZFS",
+              support: {
+                canMount: true,
+                canFormat: false,
+                canCheck: false,
+                canSetLabel: false,
+                canGetState: true,
+                isExportable: false,
+              },
+            },
+          ],
+          mount_flags: [],
+        }),
+      ),
       http.get("/api/filesystem/support", ({ request }) => {
         const fsType = new URL(request.url).searchParams.get("fstype");
-        if (fsType === "zfs") {
+        if (fsType === "ext4") {
           return HttpResponse.json({
             canMount: true,
-            canFormat: false,
-            canCheck: false,
-            canSetLabel: false,
+            canFormat: true,
+            canCheck: true,
+            canSetLabel: true,
             canGetState: true,
-            alpinePackage: "zfs",
-            missingTools: ["zpool"],
+            alpinePackage: "e2fsprogs",
+            missingTools: [],
           });
         }
 
@@ -236,21 +282,23 @@ describe("Filesystem label/format dialogs", () => {
     const formatButton = await screen.findByRole("button", { name: /format/i });
     expect((formatButton as HTMLButtonElement).disabled).toBe(false);
 
-    const fsTypeInput = await screen.findByRole("textbox", {
+    const fsTypeDropdown = await screen.findByRole("combobox", {
       name: /filesystem type/i,
     });
     const user = userEvent.setup();
-    await user.clear(fsTypeInput as HTMLInputElement);
-    await user.type(fsTypeInput as HTMLInputElement, "zfs");
+    await user.click(fsTypeDropdown);
 
-    const hints = await screen.findAllByText(/Format tools are not available/i);
-    expect(hints.length).toBeGreaterThan(0);
-    const installHints = await screen.findAllByText(/apk add zfs/i);
-    expect(installHints.length).toBeGreaterThan(0);
-
-    const disabledFormatButton = await screen.findByRole("button", {
-      name: /format/i,
+    const ext4Option = await screen.findByRole("option", {
+      name: /EXT4 Filesystem \(ext4\)/i,
     });
-    expect((disabledFormatButton as HTMLButtonElement).disabled).toBe(true);
+    expect(ext4Option).toBeTruthy();
+
+    const f2fsOption = await screen.findByRole("option", {
+      name: /F2FS Filesystem \(f2fs\)/i,
+    });
+    expect(f2fsOption).toBeTruthy();
+
+    const zfsOption = screen.queryByRole("option", { name: /ZFS \(zfs\)/i });
+    expect(zfsOption).toBeNull();
   });
 });
