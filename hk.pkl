@@ -21,16 +21,19 @@ local linters = new Mapping<String, Step> {
 //        glob = "**/*.go"
 //        exclude = "vendor/**/*.go"
 //        dir = "backend/src"
+//        batch = true
 //    }
 //    ["go-vet"] = (Builtins.go_vet) {
 //        glob = "**/*.go"
 //        exclude = "vendor/**/*.go"
 //        dir = "backend/src"
+//        batch = true
 //    }
 //    ["golangci-lint"] = (Builtins.golangci_lint) {
 //        glob = "**/*.go"
 //        exclude = "vendor/**/*.go"
 //        dir = "backend/src"
+//        batch = true
 //    }
 
     ["gomod-tidy"] = Builtins.gomod_tidy

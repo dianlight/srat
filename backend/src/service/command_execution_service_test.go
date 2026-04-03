@@ -10,7 +10,6 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/server/ws"
 	"github.com/dianlight/srat/service"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -73,19 +72,19 @@ func (suite *CommandExecutionServiceTestSuite) TestStart_StreamsStdoutAndStderrA
 		"-c",
 		"echo stdout-line; echo stderr-line 1>&2",
 	)
-	require.NoError(suite.T(), err)
-	require.NotEmpty(suite.T(), executionID)
+	suite.Require().NoError(err)
+	suite.Require().NotEmpty(executionID)
 
 	snapshot := suite.waitForCompletion(executionID, 2*time.Second)
-	require.False(suite.T(), snapshot.Running)
-	require.Len(suite.T(), snapshot.Lines, 2)
+	suite.Require().False(snapshot.Running)
+	suite.Require().Len(snapshot.Lines, 2)
 
 	channels := []dto.CommandOutputChannel{snapshot.Lines[0].Channel, snapshot.Lines[1].Channel}
-	require.Contains(suite.T(), channels, dto.CommandOutputChannelStdout)
-	require.Contains(suite.T(), channels, dto.CommandOutputChannelStderr)
+	suite.Require().Contains(channels, dto.CommandOutputChannelStdout)
+	suite.Require().Contains(channels, dto.CommandOutputChannelStderr)
 
 	messages := suite.broadcaster.Messages()
-	require.NotEmpty(suite.T(), messages)
+	suite.Require().NotEmpty(messages)
 
 	var started bool
 	var terminated bool
@@ -100,10 +99,10 @@ func (suite *CommandExecutionServiceTestSuite) TestStart_StreamsStdoutAndStderrA
 			terminated = true
 		}
 	}
-	require.True(suite.T(), started, "expected command_started notification")
-	require.True(suite.T(), terminated, "expected command_terminated notification")
-	require.Contains(suite.T(), outputChannels, dto.CommandOutputChannelStdout)
-	require.Contains(suite.T(), outputChannels, dto.CommandOutputChannelStderr)
+	suite.Require().True(started, "expected command_started notification")
+	suite.Require().True(terminated, "expected command_terminated notification")
+	suite.Require().Contains(outputChannels, dto.CommandOutputChannelStdout)
+	suite.Require().Contains(outputChannels, dto.CommandOutputChannelStderr)
 }
 
 func (suite *CommandExecutionServiceTestSuite) TestStart_TrimsSnapshotTo500Lines() {
@@ -115,13 +114,13 @@ func (suite *CommandExecutionServiceTestSuite) TestStart_TrimsSnapshotTo500Lines
 		"-c",
 		"i=1; while [ $i -le 520 ]; do echo line-$i; i=$((i+1)); done",
 	)
-	require.NoError(suite.T(), err)
+	suite.Require().NoError(err)
 
 	snapshot := suite.waitForCompletion(executionID, 3*time.Second)
-	require.Len(suite.T(), snapshot.Lines, 500)
-	require.True(suite.T(), strings.HasPrefix(snapshot.Lines[0].Line, "line-"))
-	require.Equal(suite.T(), "line-21", snapshot.Lines[0].Line)
-	require.Equal(suite.T(), "line-520", snapshot.Lines[len(snapshot.Lines)-1].Line)
+	suite.Require().Len(snapshot.Lines, 500)
+	suite.Require().True(strings.HasPrefix(snapshot.Lines[0].Line, "line-"))
+	suite.Require().Equal("line-21", snapshot.Lines[0].Line)
+	suite.Require().Equal("line-520", snapshot.Lines[len(snapshot.Lines)-1].Line)
 }
 
 func (suite *CommandExecutionServiceTestSuite) TestStart_ReturnsErrorWhenCommandIsMissing() {
@@ -131,17 +130,17 @@ func (suite *CommandExecutionServiceTestSuite) TestStart_ReturnsErrorWhenCommand
 		"Missing",
 		"definitely-missing-command-binary",
 	)
-	require.Error(suite.T(), err)
-	require.Empty(suite.T(), executionID)
+	suite.Require().Error(err)
+	suite.Require().Empty(executionID)
 
 	messages := suite.broadcaster.Messages()
-	require.NotEmpty(suite.T(), messages)
+	suite.Require().NotEmpty(messages)
 
 	last, ok := messages[len(messages)-1].(dto.CommandTerminatedNotification)
-	require.True(suite.T(), ok)
-	require.False(suite.T(), last.Success)
-	require.Equal(suite.T(), -1, last.ExitCode)
-	require.NotEmpty(suite.T(), last.Error)
+	suite.Require().True(ok)
+	suite.Require().False(last.Success)
+	suite.Require().Equal(-1, last.ExitCode)
+	suite.Require().NotEmpty(last.Error)
 }
 
 func (suite *CommandExecutionServiceTestSuite) TestExecute_ReturnsCompletedSnapshot() {
@@ -153,11 +152,11 @@ func (suite *CommandExecutionServiceTestSuite) TestExecute_ReturnsCompletedSnaps
 		"-c",
 		"echo sync-line",
 	)
-	require.NoError(suite.T(), err)
-	require.False(suite.T(), snapshot.Running)
-	require.True(suite.T(), snapshot.Success)
-	require.NotEmpty(suite.T(), snapshot.ExecutionID)
-	require.NotEmpty(suite.T(), snapshot.Lines)
+	suite.Require().NoError(err)
+	suite.Require().False(snapshot.Running)
+	suite.Require().True(snapshot.Success)
+	suite.Require().NotEmpty(snapshot.ExecutionID)
+	suite.Require().NotEmpty(snapshot.Lines)
 }
 
 func (suite *CommandExecutionServiceTestSuite) TestExecute_ReturnsErrorOnFailure() {
@@ -169,10 +168,10 @@ func (suite *CommandExecutionServiceTestSuite) TestExecute_ReturnsErrorOnFailure
 		"-c",
 		"echo fail-line; exit 7",
 	)
-	require.Error(suite.T(), err)
-	require.False(suite.T(), snapshot.Running)
-	require.False(suite.T(), snapshot.Success)
-	require.Equal(suite.T(), 7, snapshot.ExitCode)
+	suite.Require().Error(err)
+	suite.Require().False(snapshot.Running)
+	suite.Require().False(snapshot.Success)
+	suite.Require().Equal(7, snapshot.ExitCode)
 }
 
 var _ service.BroadcasterServiceInterface = (*commandExecutionBroadcasterMock)(nil)

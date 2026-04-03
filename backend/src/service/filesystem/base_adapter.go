@@ -41,6 +41,21 @@ type realExecCmd struct {
 	cmd *exec.Cmd
 }
 
+type filesystemCommandExecutor interface {
+	LookPath(command string) (string, error)
+	Command(ctx context.Context, name string, args ...string) ExecCmd
+}
+
+type defaultFilesystemCommandExecutor struct{}
+
+func (d *defaultFilesystemCommandExecutor) LookPath(command string) (string, error) {
+	return exec.LookPath(command)
+}
+
+func (d *defaultFilesystemCommandExecutor) Command(ctx context.Context, name string, args ...string) ExecCmd {
+	return &realExecCmd{cmd: exec.CommandContext(ctx, name, args...)}
+}
+
 func (r *realExecCmd) CombinedOutput() ([]byte, error) {
 	return r.cmd.CombinedOutput()
 }
@@ -89,8 +104,7 @@ type baseAdapter struct {
 	baseTryMountFunc func(source, target, data string, flags uintptr, prepareTarget ...func() error) (*mount.MountPoint, error)
 	baseDoMountFunc  func(source, target, fstype, data string, flags uintptr, prepareTarget ...func() error) (*mount.MountPoint, error)
 	baseUnmountFunc  func(target string, force, lazy bool) error
-	execLookPath     func(string) (string, error)
-	execCommand      func(context.Context, string, ...string) ExecCmd
+	commandExecutor  filesystemCommandExecutor
 	getFilesystems   func() ([]string, error) // Optional override for osutil.GetFileSystems, used in command availability checks
 	isDeviceMountedF func(device string) bool
 }
@@ -109,17 +123,14 @@ func newBaseAdapter(name, description string, exportable bool, alpinePackage, mk
 		baseTryMountFunc: mount.TryMount,
 		baseDoMountFunc:  mount.Mount,
 		baseUnmountFunc:  mount.Unmount,
-		execLookPath:     exec.LookPath,
-		execCommand: func(ctx context.Context, name string, args ...string) ExecCmd {
-			return &realExecCmd{cmd: exec.CommandContext(ctx, name, args...)}
-		},
-		getFilesystems: osutil.GetFileSystems,
+		commandExecutor:  &defaultFilesystemCommandExecutor{},
+		getFilesystems:   osutil.GetFileSystems,
 	}
 }
 
 // commandExists checks if a command is available in the system PATH
 func (b *baseAdapter) commandExists(command string) bool {
-	_, err := b.execLookPath(command)
+	_, err := b.commandExecutor.LookPath(command)
 	if err != nil {
 		if errors.Is(err, exec.ErrNotFound) {
 			return false
@@ -132,7 +143,7 @@ func (b *baseAdapter) commandExists(command string) bool {
 
 // runCommand executes a command and returns the output
 func (b *baseAdapter) runCommand(ctx context.Context, name string, args ...string) (string, int, errors.E) {
-	cmd := b.execCommand(ctx, name, args...)
+	cmd := b.commandExecutor.Command(ctx, name, args...)
 	output, err := cmd.CombinedOutput()
 	exitCode := 0
 
@@ -383,7 +394,7 @@ func (b *baseAdapter) executeCommandWithProgress(
 	stderrChan := make(chan string, 100)
 	resultChan := make(chan CommandResult, 1)
 
-	cmd := b.execCommand(ctx, command, args...)
+	cmd := b.commandExecutor.Command(ctx, command, args...)
 
 	// Setup pipes for stdout and stderr
 	stdout, err := cmd.StdoutPipe()
