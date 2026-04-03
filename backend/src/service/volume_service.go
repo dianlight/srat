@@ -411,8 +411,8 @@ func (self *VolumeService) udevEventHandler() {
 			// Filter events - only interested in block devices for now
 			if subsystem, ok := uevent.Env["SUBSYSTEM"]; ok && subsystem == "block" {
 				action := uevent.Action
-				devName, _ := uevent.Env["DEVNAME"]
-				devType, _ := uevent.Env["DEVTYPE"]
+				devName := uevent.Env["DEVNAME"]
+				devType := uevent.Env["DEVTYPE"]
 
 				slog.DebugContext(self.ctx, "Received Udev block event", "action", action, "devname", devName, "devtype", devType, "env", uevent.Env)
 
@@ -422,9 +422,9 @@ func (self *VolumeService) udevEventHandler() {
 				}
 				// Process block device events
 				if action == "remove" && devType == "disk" {
-					bus, _ := uevent.Env["ID_BUS"]
-					suffix, _ := uevent.Env[".PART_SUFFIX"]
-					serial, _ := uevent.Env["ID_SERIAL"]
+					bus := uevent.Env["ID_BUS"]
+					suffix := uevent.Env[".PART_SUFFIX"]
+					serial := uevent.Env["ID_SERIAL"]
 
 					slog.InfoContext(self.ctx, "Processing block device removal event", "devname", devName, "bus", bus, "serial", serial, "suffix", suffix)
 					self.disks.Remove(bus + "-" + serial + suffix)

@@ -123,7 +123,7 @@ func NewSupervisorService(lc fx.Lifecycle, in SupervisorServiceParams) Superviso
 				return err
 			}
 		} else if event.Type == events.EventTypes.UPDATE &&
-			(event.Share.Disabled != nil && *event.Share.Disabled == true) {
+			(event.Share.Disabled != nil && *event.Share.Disabled) {
 			err := p.NetworkUnmountShare(ctx, event.Share.Name)
 			if err != nil {
 				slog.ErrorContext(ctx, "Error unmounting share from ha_supervisor", "share", event.Share.Name, "err", err)
@@ -191,7 +191,7 @@ func NewSupervisorService(lc fx.Lifecycle, in SupervisorServiceParams) Superviso
 func (self *SupervisorService) NetworkGetAllMounted(ctx context.Context) (mounts map[string]mount.Mount, err errors.E) {
 	_supervisor_api_mutex.Lock()
 	defer _supervisor_api_mutex.Unlock()
-	if self.state.HACoreReady == false {
+	if !self.state.HACoreReady {
 		return nil, errors.Errorf("HA Core is not ready")
 	}
 
@@ -226,7 +226,7 @@ func (self *SupervisorService) networkMountShareWithRetry(ctx context.Context, s
 		return errors.Errorf("Exceeded maximum retries to mount share %s", share.Name)
 	}
 
-	if self.state.HACoreReady == false {
+	if !self.state.HACoreReady {
 		return errors.Errorf("HA Core is not ready")
 	}
 
@@ -342,7 +342,7 @@ func (self *SupervisorService) networkMountShareWithRetry(ctx context.Context, s
 }
 
 func (self *SupervisorService) NetworkUnmountShare(ctx context.Context, shareName string) errors.E {
-	if self.state.HACoreReady == false {
+	if !self.state.HACoreReady {
 		return errors.Errorf("HA Core is not ready")
 	}
 
@@ -369,7 +369,7 @@ func (self *SupervisorService) NetworkUnmountShare(ctx context.Context, shareNam
 }
 
 func (self *SupervisorService) NetworkMountAllShares(ctx context.Context) errors.E {
-	if self.state.HACoreReady == false {
+	if !self.state.HACoreReady {
 		slog.InfoContext(ctx, "HA Core is not ready, skipping mountHaStorage")
 		return nil
 	}

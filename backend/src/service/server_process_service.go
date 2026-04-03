@@ -252,7 +252,7 @@ func NewServerProcessesService(lc fx.Lifecycle, in ServerServiceParams) ServerSe
 	unsubscribe[0] = p.eventBus.OnDirtyData(func(ctx context.Context, event events.DirtyDataEvent) errors.E {
 		if event.Type == events.EventTypes.RESTART {
 			slog.InfoContext(ctx, "ServerProcesses received RESTART event, writing and restarting Samba configuration...")
-			if event.DataDirtyTracker.Settings == true {
+			if event.DataDirtyTracker.Settings {
 				if setting, err2 := p.setting_service.Load(); err2 != nil {
 					slog.ErrorContext(ctx, "Error getting HAUseNFS setting", "error", err2)
 					return err2
@@ -796,7 +796,7 @@ func (self *ServerService) writeConfigsAndRestartServers(ctx context.Context, di
 		return errors.WithStack(err)
 	}
 
-	if setting, err2 := self.setting_service.Load(); err2 == nil && setting.HAUseNFS != nil && *setting.HAUseNFS == true {
+	if setting, err2 := self.setting_service.Load(); err2 == nil && setting.HAUseNFS != nil && *setting.HAUseNFS {
 		err = self.writeNFSConfig(ctx)
 		if err != nil {
 			return errors.WithStack(err)

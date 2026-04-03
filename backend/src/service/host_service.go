@@ -54,7 +54,7 @@ func (self *HostService) GetHostName() (string, error) {
 	self.hostnameMutex.Lock()
 	defer self.hostnameMutex.Unlock()
 
-	if self.state.HACoreReady == false {
+	if !self.state.HACoreReady {
 		return "homeassistant", errors.New("Home Assistant core is not ready")
 	}
 

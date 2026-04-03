@@ -63,7 +63,7 @@ func (s *HomeAssistantService) SendDiskEntities(disks *[]*dto.Disk) error {
 		return nil
 	}
 
-	if s.coreClient == nil || disks == nil || s.state.HACoreReady == false {
+	if s.coreClient == nil || disks == nil || !s.state.HACoreReady {
 		slog.DebugContext(s.ctx, "Skipping sending disk entities to Home Assistant", "core_client", s.coreClient != nil, "disks", disks != nil)
 		return nil
 	}
@@ -91,7 +91,7 @@ func (s *HomeAssistantService) SendSambaStatusEntity(status *dto.SambaStatus) er
 		return nil
 	}
 
-	if s.coreClient == nil || status == nil || s.state.HACoreReady == false {
+	if s.coreClient == nil || status == nil || !s.state.HACoreReady {
 		slog.DebugContext(s.ctx, "Skipping sending Samba status entity to Home Assistant", "core_client", s.coreClient != nil, "status", status != nil)
 		return nil
 	}
@@ -141,7 +141,7 @@ func (s *HomeAssistantService) SendSambaProcessStatusEntity(status *dto.ServerPr
 		return nil
 	}
 
-	if s.coreClient == nil || status == nil || s.state.HACoreReady == false {
+	if s.coreClient == nil || status == nil || !s.state.HACoreReady {
 		slog.DebugContext(s.ctx, "Skipping sending Samba process status entity to Home Assistant", "core_client", s.coreClient != nil, "status", status != nil)
 		return nil
 	}
@@ -204,7 +204,7 @@ func (s *HomeAssistantService) SendVolumeStatusEntity(data *[]*dto.Disk) error {
 		return nil
 	}
 
-	if s.coreClient == nil || data == nil || s.state.HACoreReady == false {
+	if s.coreClient == nil || data == nil || !s.state.HACoreReady {
 		slog.DebugContext(s.ctx, "Skipping sending volume status entity to Home Assistant", "core_client", s.coreClient != nil, "data", data != nil)
 		return nil
 	}
@@ -408,7 +408,7 @@ func (s *HomeAssistantService) SendDiskHealthEntities(diskHealth *dto.DiskHealth
 		return nil
 	}
 
-	if s.coreClient == nil || diskHealth == nil || s.state.HACoreReady == false {
+	if s.coreClient == nil || diskHealth == nil || !s.state.HACoreReady {
 		return nil
 	}
 
