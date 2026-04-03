@@ -146,6 +146,59 @@ func (suite *FilesystemHandlerSuite) TestGetFilesystemSupport_UnsupportedFsType(
 	suite.Equal(http.StatusBadRequest, resp.Code)
 }
 
+func (suite *FilesystemHandlerSuite) TestGetFilesystemSupport_MultiFilesystemCapabilityProfiles() {
+	mock.When(suite.mockFsService.ListSupportedTypes()).ThenReturn([]string{"f2fs", "zfs"})
+
+	mock.When(suite.mockFsService.GetSupportAndInfo(mock.Any[context.Context](), mock.Exact("f2fs"))).
+		ThenReturn(&dto.FilesystemInfo{
+			Type: "f2fs",
+			Support: &dto.FilesystemSupport{
+				CanMount:      true,
+				CanFormat:     true,
+				CanCheck:      true,
+				CanSetLabel:   false,
+				CanGetState:   true,
+				AlpinePackage: "f2fs-tools",
+				MissingTools:  []string{},
+			},
+		}, nil)
+
+	mock.When(suite.mockFsService.GetSupportAndInfo(mock.Any[context.Context](), mock.Exact("zfs"))).
+		ThenReturn(&dto.FilesystemInfo{
+			Type: "zfs",
+			Support: &dto.FilesystemSupport{
+				CanMount:      true,
+				CanFormat:     false,
+				CanCheck:      false,
+				CanSetLabel:   false,
+				CanGetState:   true,
+				AlpinePackage: "zfs",
+				MissingTools:  []string{"zpool"},
+			},
+		}, nil)
+
+	respF2fs := suite.testAPI.Get("/filesystem/support?fstype=f2fs")
+	suite.Equal(http.StatusOK, respF2fs.Code)
+	var supportF2fs dto.FilesystemSupport
+	err := json.Unmarshal(respF2fs.Body.Bytes(), &supportF2fs)
+	suite.Require().NoError(err)
+	suite.True(supportF2fs.CanCheck)
+	suite.True(supportF2fs.CanFormat)
+	suite.False(supportF2fs.CanSetLabel)
+	suite.Equal("f2fs-tools", supportF2fs.AlpinePackage)
+
+	respZfs := suite.testAPI.Get("/filesystem/support?fstype=zfs")
+	suite.Equal(http.StatusOK, respZfs.Code)
+	var supportZfs dto.FilesystemSupport
+	err = json.Unmarshal(respZfs.Body.Bytes(), &supportZfs)
+	suite.Require().NoError(err)
+	suite.False(supportZfs.CanCheck)
+	suite.False(supportZfs.CanFormat)
+	suite.False(supportZfs.CanSetLabel)
+	suite.Equal("zfs", supportZfs.AlpinePackage)
+	suite.Contains(supportZfs.MissingTools, "zpool")
+}
+
 func (suite *FilesystemHandlerSuite) TestFormatPartition_Success() {
 	partitionID := "test-partition-id"
 	devicePath := "/dev/sdb1"

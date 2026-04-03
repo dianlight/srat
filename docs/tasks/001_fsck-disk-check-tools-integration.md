@@ -50,8 +50,8 @@ The next goal is end-to-end coherence from adapter capability detection to user 
 - [x] Task 8: Update documentation to reflect the new disk check features, including any user-facing instructions for how to use the check functionality and interpret results.
 - [x] Task 9: Verify that the frontend correctly handles cases where the required check tools are not available, showing appropriate warnings and installation hints based on the `MissingTools` and `AlpinePackage` information from the backend.
 - [x] Task 10: Repeat the job done from task 2 to 9 for the related `Format()` and `SetLabel()` functionalities, ensuring a consistent user experience across all disk management operations.
-- [ ] Task 11: Clean up any temporary debug code (e.g., console logs) and ensure that all new code adheres to the project's coding standards and best practices.
-- [ ] Task 12: Conduct thorough testing across different filesystem types to ensure that the check, format, and label operations work correctly and that the UI feedback is accurate for each type.
+- [x] Task 11: Clean up any temporary debug code (e.g., console logs) and ensure that all new code adheres to the project's coding standards and best practices.
+- [x] Task 12: Conduct thorough testing across different filesystem types to ensure that the check, format, and label operations work correctly and that the UI feedback is accurate for each type.
 - [ ] Task 13: Run `hk check` to ensure that all new code is properly linted and formatted, and that all tests pass successfully
 - [ ] Task 14: Do end-to-end testing of the entire flow, from initiating a check operation in the UI to receiving real-time updates and handling results, to ensure a smooth and intuitive user experience.
 - [ ] Task 15: Push the changes to the repository and create a pull request for review, ensuring that the PR description clearly outlines the changes made and any relevant context for reviewers.
@@ -106,6 +106,17 @@ The next goal is end-to-end coherence from adapter capability detection to user 
 - Updated `backend/src/service/filesystem/README.md` with support preflight endpoint usage (`/filesystem/support`), missing tools/package guidance, websocket `filesystem_task` progress notes (`progress=999` indeterminate), and check abort endpoint examples.
 - Added parity-focused frontend assertions in `FilesystemLabelFormatDialog.test.tsx` to verify preflight-driven missing-tools and `apk add <package>` hints for both label and format flows.
 - Re-ran the targeted dialog suite with stability mode (`--rerun-each 10`) and confirmed consistent pass (30/30).
+- Audited Task 001 scope files (`FilesystemCheckDialog`, `FilesystemFormatDialog`, `FilesystemLabelDialog`, `PartitionActionItems`, `VolumeDetailsPanel`, and related tests) and confirmed no temporary `console.log/debug/info` or TODO/FIXME debug leftovers in this feature path.
+- Re-ran focused frontend validation for Task 001 dialogs: `FilesystemCheckDialog.test.tsx` + `FilesystemLabelFormatDialog.test.tsx` (8/8 passing).
+- Added backend API multi-filesystem capability profile test coverage in `api/filesystems_test.go` for:
+  - `f2fs` (`canCheck=true`, `canFormat=true`, `canSetLabel=false`, `alpinePackage=f2fs-tools`)
+  - `zfs` (`canCheck=false`, `canFormat=false`, `canSetLabel=false`, `missingTools=[zpool]`, `alpinePackage=zfs`)
+- Added frontend multi-filesystem UI coverage:
+  - `FilesystemCheckDialog.test.tsx`: verifies zfs preflight disables Start and renders missing-tool/install-hint feedback.
+  - `FilesystemLabelFormatDialog.test.tsx`: verifies format support feedback updates when filesystem type changes (`f2fs` -> `zfs`) and button state updates accordingly.
+- Validation run summary:
+  - Backend targeted test: `go test ./api -run 'TestFilesystemHandlerSuite/(TestGetFilesystemSupport_MultiFilesystemCapabilityProfiles|TestGetFilesystemSupport_Success|TestGetFilesystemSupport_UnsupportedFsType)'` ✅
+  - Frontend targeted tests: `FilesystemCheckDialog.test.tsx` + `FilesystemLabelFormatDialog.test.tsx` => 10/10 passing ✅
 
 ## 🔗 Code References & TODOs
 

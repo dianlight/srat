@@ -178,4 +178,79 @@ describe("Filesystem label/format dialogs", () => {
     const installHints = await screen.findAllByText(/apk add e2fsprogs/i);
     expect(installHints.length).toBeGreaterThan(0);
   });
+
+  it("updates format support feedback when filesystem type changes", async () => {
+    const React = await import("react");
+    const { screen } = await import("@testing-library/react");
+    const userEvent = (await import("@testing-library/user-event")).default;
+    const { FilesystemFormatDialog } = await import("../FilesystemFormatDialog");
+
+    const partition = {
+      id: "part-format-2",
+      name: "switch-test",
+      device_path: "/dev/sdf1",
+      fs_type: "f2fs",
+      filesystem_info: {
+        support: {
+          canFormat: true,
+        },
+      },
+    };
+
+    const server = await getMswServer();
+    server.use(
+      http.get("/api/filesystem/support", ({ request }) => {
+        const fsType = new URL(request.url).searchParams.get("fstype");
+        if (fsType === "zfs") {
+          return HttpResponse.json({
+            canMount: true,
+            canFormat: false,
+            canCheck: false,
+            canSetLabel: false,
+            canGetState: true,
+            alpinePackage: "zfs",
+            missingTools: ["zpool"],
+          });
+        }
+
+        return HttpResponse.json({
+          canMount: true,
+          canFormat: true,
+          canCheck: true,
+          canSetLabel: false,
+          canGetState: true,
+          alpinePackage: "f2fs-tools",
+          missingTools: [],
+        });
+      }),
+    );
+
+    await renderWithProviders(
+      React.createElement(FilesystemFormatDialog as any, {
+        open: true,
+        partition,
+        onClose: () => {},
+      }),
+    );
+
+    const formatButton = await screen.findByRole("button", { name: /format/i });
+    expect((formatButton as HTMLButtonElement).disabled).toBe(false);
+
+    const fsTypeInput = await screen.findByRole("textbox", {
+      name: /filesystem type/i,
+    });
+    const user = userEvent.setup();
+    await user.clear(fsTypeInput as HTMLInputElement);
+    await user.type(fsTypeInput as HTMLInputElement, "zfs");
+
+    const hints = await screen.findAllByText(/Format tools are not available/i);
+    expect(hints.length).toBeGreaterThan(0);
+    const installHints = await screen.findAllByText(/apk add zfs/i);
+    expect(installHints.length).toBeGreaterThan(0);
+
+    const disabledFormatButton = await screen.findByRole("button", {
+      name: /format/i,
+    });
+    expect((disabledFormatButton as HTMLButtonElement).disabled).toBe(true);
+  });
 });
