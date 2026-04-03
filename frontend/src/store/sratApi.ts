@@ -247,6 +247,18 @@ const injectedRtkApi = api
         }),
         providesTags: ["filesystems"],
       }),
+      getApiFilesystemSupport: build.query<
+        GetApiFilesystemSupportApiResponse,
+        GetApiFilesystemSupportApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/filesystem/support`,
+          params: {
+            fstype: queryArg.fstype,
+          },
+        }),
+        providesTags: ["filesystems"],
+      }),
       getApiFilesystemTask: build.query<
         GetApiFilesystemTaskApiResponse,
         GetApiFilesystemTaskApiArg
@@ -796,6 +808,13 @@ export type GetApiFilesystemStateApiArg = {
   /** Unique partition identifier */
   partitionId?: string;
 };
+export type GetApiFilesystemSupportApiResponse = /** status 200 OK */
+  | FilesystemSupport
+  | /** status default Error */ ErrorModel;
+export type GetApiFilesystemSupportApiArg = {
+  /** Filesystem type identifier */
+  fstype?: string;
+};
 export type GetApiFilesystemTaskApiResponse = /** status 200 OK */
   | FilesystemTask
   | /** status default Error */ ErrorModel;
@@ -1326,6 +1345,18 @@ export type FilesystemState = {
   isMounted: boolean;
   stateDescription?: string;
 };
+export type FilesystemSupport = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  alpinePackage?: string;
+  canCheck: boolean;
+  canFormat: boolean;
+  canGetState: boolean;
+  canMount: boolean;
+  canSetLabel: boolean;
+  isExportable: boolean;
+  missingTools?: string[] | null;
+};
 export type FilesystemTask = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
@@ -1346,16 +1377,6 @@ export type MountFlag = {
   value?: string;
   value_description?: string;
   value_validation_regex?: string;
-};
-export type FilesystemSupport = {
-  alpinePackage?: string;
-  canCheck: boolean;
-  canFormat: boolean;
-  canGetState: boolean;
-  canMount: boolean;
-  canSetLabel: boolean;
-  isExportable: boolean;
-  missingTools?: string[] | null;
 };
 export type FilesystemInfo = {
   custom_mount_flags?: MountFlag[] | null;
@@ -1997,6 +2018,7 @@ export const {
   usePatchApiFilesystemLabelMutation,
   usePutApiFilesystemLabelMutation,
   useGetApiFilesystemStateQuery,
+  useGetApiFilesystemSupportQuery,
   useGetApiFilesystemTaskQuery,
   useGetApiFilesystemsQuery,
   usePostApiHdidleStartMutation,

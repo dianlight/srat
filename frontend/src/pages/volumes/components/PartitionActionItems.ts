@@ -38,6 +38,8 @@ export interface PartitionActionOptions {
   onCreateShare: (partition: Partition) => void;
   onGoToShare: (partition: Partition) => void;
   onCheckFilesystem?: (partition: Partition) => void;
+  onSetFilesystemLabel?: (partition: Partition) => void;
+  onFormatPartition?: (partition: Partition) => void;
 }
 
 export function getPartitionActionItems({
@@ -49,6 +51,8 @@ export function getPartitionActionItems({
   onCreateShare,
   onGoToShare,
   onCheckFilesystem,
+  onSetFilesystemLabel,
+  onFormatPartition,
 }: PartitionActionOptions): PartitionActionItem[] | null {
   if (
     protectedMode ||
@@ -143,18 +147,9 @@ export function getPartitionActionItems({
       color: "info",
       onClick: () => onCheckFilesystem?.(partition),
     });
-  } else if (!isMounted) {
-    console.debug(
-      "Check Filesystem action not added for partition:",
-      partition,
-      {
-        canCheck: partition.filesystem_info?.support?.canCheck,
-        isMounted,
-        currentEnv: getCurrentEnv(),
-      },
-    );
   }
   if (
+    onSetFilesystemLabel &&
     partition.filesystem_info?.support?.canSetLabel &&
     !isMounted &&
     getCurrentEnv() === "remote"
@@ -163,19 +158,11 @@ export function getPartitionActionItems({
       key: "set-label",
       title: "Set Label",
       color: "info",
-      onClick: () => {
-        // Implement set label action here
-        console.log("Setting label for partition:", partition.name);
-      },
-    });
-  } else if (!isMounted) {
-    console.debug("Set Label action not added for partition:", partition, {
-      canSetLabel: partition.filesystem_info?.support?.canSetLabel,
-      isMounted,
-      currentEnv: getCurrentEnv(),
+      onClick: () => onSetFilesystemLabel?.(partition),
     });
   }
   if (
+    onFormatPartition &&
     partition.filesystem_info?.support?.canFormat &&
     !isMounted &&
     getCurrentEnv() === "remote"
@@ -184,12 +171,8 @@ export function getPartitionActionItems({
       key: "format",
       title: "Format Partition",
       color: "error",
-      onClick: () => {
-        // Implement format action here
-        console.log("Formatting partition:", partition.name);
-      },
+      onClick: () => onFormatPartition?.(partition),
     });
   }
-  //console.debug("Generated action items for partition:", partition.name, actionItems);
   return actionItems;
 }

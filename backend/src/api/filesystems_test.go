@@ -103,6 +103,49 @@ func (suite *FilesystemHandlerSuite) TestListFilesystems_Success() {
 	}
 }
 
+func (suite *FilesystemHandlerSuite) TestGetFilesystemSupport_Success() {
+	fsType := "ext4"
+	mock.When(suite.mockFsService.ListSupportedTypes()).ThenReturn([]string{fsType})
+	expected := &dto.FilesystemInfo{
+		Name:        fsType,
+		Type:        fsType,
+		Description: "ext4 filesystem",
+		Support: &dto.FilesystemSupport{
+			CanMount:      true,
+			CanFormat:     true,
+			CanCheck:      true,
+			CanSetLabel:   true,
+			CanGetState:   true,
+			AlpinePackage: "e2fsprogs",
+			MissingTools:  []string{},
+		},
+	}
+
+	mock.When(suite.mockFsService.GetSupportAndInfo(mock.Any[context.Context](), mock.Exact(fsType))).
+		ThenReturn(expected, nil)
+
+	resp := suite.testAPI.Get("/filesystem/support?fstype=ext4")
+	suite.Equal(http.StatusOK, resp.Code)
+
+	var result dto.FilesystemSupport
+	err := json.Unmarshal(resp.Body.Bytes(), &result)
+	suite.Require().NoError(err)
+	suite.True(result.CanCheck)
+	suite.Equal("e2fsprogs", result.AlpinePackage)
+}
+
+func (suite *FilesystemHandlerSuite) TestGetFilesystemSupport_MissingFsType() {
+	resp := suite.testAPI.Get("/filesystem/support")
+	suite.Equal(http.StatusBadRequest, resp.Code)
+}
+
+func (suite *FilesystemHandlerSuite) TestGetFilesystemSupport_UnsupportedFsType() {
+	mock.When(suite.mockFsService.ListSupportedTypes()).ThenReturn([]string{"ext4", "xfs"})
+
+	resp := suite.testAPI.Get("/filesystem/support?fstype=zfsx")
+	suite.Equal(http.StatusBadRequest, resp.Code)
+}
+
 func (suite *FilesystemHandlerSuite) TestFormatPartition_Success() {
 	partitionID := "test-partition-id"
 	devicePath := "/dev/sdb1"

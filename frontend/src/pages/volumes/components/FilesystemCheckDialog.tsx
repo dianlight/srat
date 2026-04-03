@@ -1,4 +1,5 @@
 import {
+  Alert,
   Box,
   Button,
   Dialog,
@@ -16,8 +17,10 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import {
+  type ErrorModel,
   type FilesystemTask,
   type Partition,
+  useGetApiFilesystemSupportQuery,
   usePostApiFilesystemCheckAbortMutation,
   usePostApiFilesystemCheckMutation,
 } from "../../../store/sratApi";
@@ -55,6 +58,16 @@ export function FilesystemCheckDialog({
   initialVerbose,
 }: FilesystemCheckDialogProps) {
   const { data: eventData } = useGetServerEventsQuery();
+  const fsType = partition?.fs_type ?? "";
+  const {
+    data: supportData,
+    isFetching: isSupportLoading,
+    isError: isSupportError,
+    error: supportError,
+  } = useGetApiFilesystemSupportQuery(
+    { fstype: fsType },
+    { skip: !open || fsType === "" },
+  );
   const [startCheck, { isLoading: isStarting }] =
     usePostApiFilesystemCheckMutation();
   const [abortCheck, { isLoading: isStopping }] =
@@ -86,6 +99,41 @@ export function FilesystemCheckDialog({
     () => isRunningStatus(task?.status) || isRunningStatus(status),
     [task?.status, status],
   );
+
+  const support = useMemo(() => {
+    if (!supportData || !("canCheck" in supportData)) {
+      return null;
+    }
+    return supportData;
+  }, [supportData]);
+
+  const canCheck = useMemo(() => {
+    if (support?.canCheck !== undefined) {
+      return support.canCheck;
+    }
+    if (partition?.filesystem_info?.support?.canCheck !== undefined) {
+      return partition.filesystem_info.support.canCheck;
+    }
+    return true;
+  }, [partition?.filesystem_info?.support?.canCheck, support?.canCheck]);
+
+  const supportErrorMessage = useMemo(() => {
+    if (!isSupportError) {
+      return "";
+    }
+    const maybeError = supportError as {
+      data?: ErrorModel;
+      error?: string;
+      message?: string;
+    };
+    return (
+      maybeError?.data?.detail ||
+      maybeError?.data?.title ||
+      maybeError?.error ||
+      maybeError?.message ||
+      "Failed to verify filesystem check support."
+    );
+  }, [isSupportError, supportError]);
 
   useEffect(() => {
     if (!open) return;
@@ -182,6 +230,7 @@ export function FilesystemCheckDialog({
   const progressValue =
     typeof task?.progress === "number" ? task.progress : progress;
   const showIndeterminate = progressValue === 999 || progressValue <= 0;
+  const showUnsupportedHint = !isSupportLoading && !canCheck;
   const partitionLabel = decodeEscapeSequence(
     partition?.name || partition?.id || "Selected partition",
   );
@@ -195,6 +244,30 @@ export function FilesystemCheckDialog({
             Run a filesystem consistency check. Use AutoFix to repair errors
             when possible.
           </DialogContentText>
+
+          {showUnsupportedHint && (
+            <Alert severity="warning">
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                Check tools are not available for this filesystem on the current
+                system.
+              </Typography>
+              {support?.missingTools && support.missingTools.length > 0 && (
+                <Typography variant="body2">
+                  Missing tools: {support.missingTools.join(", ")}
+                </Typography>
+              )}
+              {support?.alpinePackage && (
+                <Typography variant="body2">
+                  Install hint: <code>apk add {support.alpinePackage}</code>
+                </Typography>
+              )}
+            </Alert>
+          )}
+
+          {isSupportError && (
+            <Alert severity="info">{supportErrorMessage}</Alert>
+          )}
+
           <Box>
             <Typography
               variant="subtitle2"
@@ -225,6 +298,12 @@ export function FilesystemCheckDialog({
                   : `${Math.round(progressValue)}%`}
               </Typography>
             </Stack>
+            {progressValue === 999 && (
+              <Typography variant="caption" color="text.secondary">
+                This tool does not report incremental progress. Live output is
+                shown in logs.
+              </Typography>
+            )}
           </Box>
 
           {message && (
@@ -287,7 +366,13 @@ export function FilesystemCheckDialog({
           onClick={isRunning ? handleStop : handleStart}
           color={isRunning ? "error" : "primary"}
           variant="contained"
-          disabled={isStarting || isStopping || !partition?.id}
+          disabled={
+            isStarting ||
+            isStopping ||
+            !partition?.id ||
+            (!isRunning && isSupportLoading) ||
+            (!isRunning && !canCheck)
+          }
         >
           {isRunning ? "Stop" : "Start"}
         </Button>

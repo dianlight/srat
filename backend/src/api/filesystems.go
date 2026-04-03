@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"slices"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/dianlight/srat/dto"
@@ -30,6 +31,7 @@ func NewFilesystemHandler(
 // RegisterFilesystemHandler registers all filesystem-related endpoints
 func (h *FilesystemHandler) RegisterFilesystemHandler(api huma.API) {
 	huma.Get(api, "/filesystems", h.ListFilesystems, huma.OperationTags("filesystems"))
+	huma.Get(api, "/filesystem/support", h.GetFilesystemSupport, huma.OperationTags("filesystems"))
 	huma.Post(api, "/filesystem/format", h.FormatPartition, huma.OperationTags("filesystems"))
 	huma.Post(api, "/filesystem/check", h.CheckPartition, huma.OperationTags("filesystems"))
 	huma.Post(api, "/filesystem/check/abort", h.AbortCheckPartition, huma.OperationTags("filesystems"))
@@ -38,6 +40,38 @@ func (h *FilesystemHandler) RegisterFilesystemHandler(api huma.API) {
 	huma.Put(api, "/filesystem/label", h.SetPartitionLabel, huma.OperationTags("filesystems"))
 	huma.Get(api, "/filesystem/task", h.HandleTask, huma.OperationTags("filesystems", "internal"))
 
+}
+
+// FilesystemSupportInput contains the input for querying support for one filesystem type.
+type FilesystemSupportInput struct {
+	// FsType is the filesystem type identifier (e.g., ext4, xfs, ntfs)
+	FsType string `query:"fstype" json:"fstype" doc:"Filesystem type identifier"`
+}
+
+// GetFilesystemSupport returns capability information for a single filesystem type.
+func (h *FilesystemHandler) GetFilesystemSupport(
+	ctx context.Context,
+	input *FilesystemSupportInput,
+) (*struct{ Body dto.FilesystemSupport }, error) {
+	fsType := input.FsType
+	if fsType == "" {
+		return nil, huma.Error400BadRequest("Filesystem type is required")
+	}
+	if !slices.Contains(h.fsService.ListSupportedTypes(), fsType) {
+		return nil, huma.Error400BadRequest("Unsupported filesystem type")
+	}
+
+	info, err := h.fsService.GetSupportAndInfo(ctx, fsType)
+	if err != nil {
+		tlog.ErrorContext(ctx, "Failed to get filesystem support", "filesystem", fsType, "error", err)
+		return nil, huma.Error500InternalServerError("Failed to get filesystem support", err)
+	}
+
+	if info.Support == nil {
+		return nil, huma.Error500InternalServerError("Filesystem support information unavailable", nil)
+	}
+
+	return &struct{ Body dto.FilesystemSupport }{Body: *info.Support}, nil
 }
 
 // ListFilesystems returns all supported filesystems with their capabilities

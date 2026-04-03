@@ -36,6 +36,8 @@ import {
 import { usePartitionActions } from "../hooks/usePartitionActions";
 import { decodeEscapeSequence } from "../utils";
 import { FilesystemCheckDialog } from "./FilesystemCheckDialog";
+import { FilesystemFormatDialog } from "./FilesystemFormatDialog";
+import { FilesystemLabelDialog } from "./FilesystemLabelDialog";
 import { HDIdleDiskSettings } from "./HDIdleDiskSettings";
 import { SmartStatusPanel } from "./SmartStatusPanel";
 
@@ -69,6 +71,8 @@ export function VolumeDetailsPanel({
   const [previewObject, setPreviewObject] = useState<object | null>(null);
   const [previewTitle, setPreviewTitle] = useState<string>("Preview");
   const [checkDialogOpen, setCheckDialogOpen] = useState(false);
+  const [formatDialogOpen, setFormatDialogOpen] = useState(false);
+  const [labelDialogOpen, setLabelDialogOpen] = useState(false);
   const partitionActionItems = usePartitionActions({
     partition,
     protectedMode,
@@ -78,6 +82,8 @@ export function VolumeDetailsPanel({
     onCreateShare,
     onGoToShare,
     onCheckFilesystem: () => setCheckDialogOpen(true),
+    onSetFilesystemLabel: () => setLabelDialogOpen(true),
+    onFormatPartition: () => setFormatDialogOpen(true),
   });
 
   // Fetch settings for disable_smart
@@ -1019,6 +1025,16 @@ export function VolumeDetailsPanel({
         open={checkDialogOpen}
         partition={partition}
         onClose={() => setCheckDialogOpen(false)}
+      />
+      <FilesystemLabelDialog
+        open={labelDialogOpen}
+        partition={partition}
+        onClose={() => setLabelDialogOpen(false)}
+      />
+      <FilesystemFormatDialog
+        open={formatDialogOpen}
+        partition={partition}
+        onClose={() => setFormatDialogOpen(false)}
       />
     </Box>
   );
