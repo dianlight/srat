@@ -886,14 +886,27 @@ func (s *AddonConfigWatcherServiceSuite) TestIntegration_EndToEnd_FileWriteEmits
 		time.Sleep(10 * time.Millisecond)
 	}
 
-	// Verify that AppConfigEvent is emitted with correct path and hash
-	select {
-	case ev := <-eventReceived:
-		s.Equal(events.EventTypes.UPDATE, ev.Type)
-		s.Equal(path, ev.Path)
-		s.Equal(sha256hex(newContent), ev.Hash)
-	case <-time.After(3 * time.Second):
-		s.Fail("AppConfigEvent was not emitted within 3 s after file write")
+	// Verify that an AppConfigEvent with the expected final hash is emitted.
+	// On some filesystems a transient intermediate hash can be observed while a
+	// truncate+write sequence is in progress, so keep listening until timeout.
+	expectedHash := sha256hex(newContent)
+	timeoutCh := time.After(3 * time.Second)
+	matched := false
+	for !matched {
+		select {
+		case ev := <-eventReceived:
+			if ev.Path != path || ev.Hash != expectedHash {
+				s.T().Logf("[DEBUG] Ignoring intermediate AppConfigEvent: type=%s path=%s hash=%s", ev.Type, ev.Path, ev.Hash)
+				continue
+			}
+			s.Equal(events.EventTypes.UPDATE, ev.Type)
+			s.Equal(path, ev.Path)
+			s.Equal(expectedHash, ev.Hash)
+			matched = true
+		case <-timeoutCh:
+			s.Fail("AppConfigEvent with expected hash was not emitted within 3 s after file write")
+			matched = true
+		}
 	}
 
 	// Clean up
