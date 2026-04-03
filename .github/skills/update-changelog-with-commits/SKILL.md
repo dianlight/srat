@@ -1,7 +1,7 @@
 ---
 name: update-changelog-with-commits
 description: 'Update CHANGELOG.md from completed tasks AND important commits since last release. Combines task-based entries with commit-based entries, prioritizing by lines changed. Triggers on: "update changelog with commits", "changelog from tasks and commits", "generate release notes with git".'
-argument-hint: 'Optional: "top N" (default 5) to limit commit entries by lines changed; task selection defaults to all ✅ Done tasks'
+argument-hint: 'Optional: "top N" (default 5) to limit commit entries by lines changed; task selection defaults to all ✅ Complete tasks'
 ---
 
 # Update Changelog with Commits
@@ -34,7 +34,7 @@ Run: `git describe --tags --abbrev=0` to get the most recent release tag.
 ### 3. Collect Completed Tasks
 
 Read all task files from `docs/tasks/*.md` and filter:
-- **Status = ✅ Done** (only completed tasks)
+- **Status = ✅ Complete** (only completed tasks)
 - Extract: TaskID, Title, Type ([FEATURE]/[FIX]/[DOCS]/[REFACTOR]), Objective, GitHub issue links
 
 ### 4. Collect Commits Since Last Release
@@ -150,7 +150,7 @@ Follow the existing CHANGELOG.md style:
 
 ## Quality Checklist
 
-- [ ] Only ✅ Done tasks are included (unless user explicitly overrides)
+- [ ] Only ✅ Complete tasks are included (unless user explicitly overrides)
 - [ ] Only top N commits by lines changed are included
 - [ ] No duplicate entries (checked against existing Unreleased section)
 - [ ] Missing subsections are created in canonical order

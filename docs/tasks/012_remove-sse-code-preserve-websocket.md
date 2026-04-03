@@ -1,6 +1,6 @@
 # [REFACTOR]: Remove SSE Code, Preserve WebSocket
 
-**Target Repo:** `srat`  **Status:** ✅ Done  **Issue Link:** https://github.com/dianlight/srat/issues/501
+**Target Repo:** `srat`  **Status:** ✅ Complete  **Issue Link:** https://github.com/dianlight/srat/issues/501
 
 ## 🎯 Objective
 

@@ -39,7 +39,7 @@ Finalizes a task from `docs/tasks/` after implementation is complete.
 
 If all checklist items are complete:
 
-1. Set `**Status:**` to `✅ Done`
+1. Set `**Status:**` to `✅ Complete`
 2. Ensure `## 🧠 Implementation Notes` contains a concise completion summary:
   - what changed
   - what was validated
@@ -86,7 +86,7 @@ Provide:
 ## Completion Checks
 
 - [ ] Task checklist fully complete
-- [ ] Task status updated to `✅ Done`
+- [ ] Task status updated to `✅ Complete`
 - [ ] Issue comment posted with completion summary
 - [ ] Issue closure handled per user choice/policy
 - [ ] Optional PR summary generated when requested

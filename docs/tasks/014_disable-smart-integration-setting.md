@@ -1,6 +1,6 @@
 # [FIX]: Disable SMART Integration Setting
 
-**Target Repo:** `srat`  **Status:** ✅ Done  **Issue Link:** [srat#499](https://github.com/dianlight/srat/issues/499)
+**Target Repo:** `srat`  **Status:** ✅ Complete  **Issue Link:** [srat#499](https://github.com/dianlight/srat/issues/499)
 
 ## 🎯 Objective
 

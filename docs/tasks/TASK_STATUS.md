@@ -4,7 +4,7 @@ _Generated: 2026-04-02_
 ## Summary
 | Status | Count | Progress |
 |--------|-------|----------|
-| ✅ Done | 9 | 9/24 tasks |
+| ✅ Complete | 9 | 9/24 tasks |
 | 🔄 In Progress | 1 | 1/24 tasks |
 | 📅 Planned | 14 | 14/24 tasks |
 | **Total** | **24** | **38%** |

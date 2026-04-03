@@ -1,6 +1,6 @@
 # [FIX]: Use IP Addresses Instead of Interface Names in SMB.Conf
 
-**Target Repo:** `srat`  **Status:** ✅ Done  **Issue Link:** [srat#356](https://github.com/dianlight/srat/issues/356)
+**Target Repo:** `srat`  **Status:** ✅ Complete  **Issue Link:** [srat#356](https://github.com/dianlight/srat/issues/356)
 
 ## 🎯 Objective
 

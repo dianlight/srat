@@ -1,7 +1,7 @@
 ---
 name: update-changelog
 description: 'Read completed or updated tasks from docs/tasks/ and append structured entries to CHANGELOG.md under the [ 🚧 Unreleased ] section, following the existing changelog format. Triggers on: "update changelog", "add to changelog", "changelog from tasks", "generate release notes", "write changelog entry".'
-argument-hint: 'Optional scope: "all done" (tasks marked ✅ Done), "since <TaskID>" (tasks from NNN onwards), or a specific task filename/ID to add just one entry'
+argument-hint: 'Optional scope: "all done" (tasks marked ✅ Complete), "since <TaskID>" (tasks from NNN onwards), or a specific task filename/ID to add just one entry'
 ---
 
 # Update Changelog
@@ -34,10 +34,10 @@ The format of each entry is a single bullet in the matching subsection:
 
 | Argument | Tasks to include |
 |----------|-----------------|
-| `all done` (default) | All task files where **Status = ✅ Done** |
+| `all done` (default) | All task files where **Status = ✅ Complete** |
 | `since NNN` | All task files with TaskID ≥ NNN, regardless of status |
 | `NNN` or filename | Only the specified task file |
-| _(none)_ | All task files with **Status = ✅ Done** |
+| _(none)_ | All task files with **Status = ✅ Complete** |
 
 For tasks that are `🔄 In Progress`, only include if the user explicitly passes the task ID or `since NNN` scope.
 
@@ -128,7 +128,7 @@ Always create them in the above order (Features first, Maintenance last).
 
 ## Quality Checklist
 
-- [ ] Only entries for `✅ Done` tasks are added (unless the user explicitly requests otherwise)
+- [ ] Only entries for `✅ Complete` tasks are added (unless the user explicitly requests otherwise)
 - [ ] No duplicate entries (check before inserting)
 - [ ] Entry text is user-facing, not implementation-facing
 - [ ] Each entry is placed in the correct subsection for its task type

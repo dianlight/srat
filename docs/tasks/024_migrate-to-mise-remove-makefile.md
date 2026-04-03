@@ -1,6 +1,6 @@
 # [REFACTOR]: Migrate to mise.jdx.dev and Remove Makefile
 
-**Target Repo:** `srat`  **Status:** ✅ Done  **Issue Link:** https://github.com/dianlight/srat/issues/532
+**Target Repo:** `srat`  **Status:** ✅ Complete  **Issue Link:** https://github.com/dianlight/srat/issues/532
 
 ## 🎯 Objective
 Migrate the entire monorepo to use [mise.jdx.dev](https://mise.jdx.dev) for toolchain and environment management, removing all Makefile-relative configurations. Clean up the Makefile by removing unused targets before migration. After migration, optimize all processes and update documentation accordingly.

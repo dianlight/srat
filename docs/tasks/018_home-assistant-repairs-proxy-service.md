@@ -1,6 +1,6 @@
 # [FEATURE]: Home Assistant Repairs Proxy Service
 
-**Target Repo:** `srat` **Status:** ✅ Done **Issue Link:** https://github.com/dianlight/srat/issues/518
+**Target Repo:** `srat` **Status:** ✅ Complete **Issue Link:** https://github.com/dianlight/srat/issues/518
 
 ## 🎯 Objective
 

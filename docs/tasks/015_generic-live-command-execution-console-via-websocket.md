@@ -2,7 +2,7 @@
 
 # [FEATURE]: Generic Live Command Execution Console via WebSocket
 
-**Target Repo:** `srat`  **Status:** 🔄 In Progress  **Issue Link:** https://github.com/dianlight/srat/issues/540
+**Target Repo:** `srat`  **Status:** ✅ Complete  **Issue Link:** https://github.com/dianlight/srat/issues/540
 
 ## 🎯 Objective
 
@@ -48,7 +48,7 @@ Implement a generic backend/frontend system that executes commands on the backen
 - [x] Task 14.b: Migrate `unixsamba` command executor implementation paths to the execution abstraction (or explicit adapter) with security checks.
 - [x] Task 14.c: Migrate `service/filesystem` adapter execution paths (`runCommand`, `executeCommandWithProgress`) to the execution abstraction while preserving long-running/progress behavior.
 - [x] Task 15: Final code review code cleanup, and documentation updates to ensure that the new feature is well-documented for future maintainers and users.
-- [ ] Task 16: Mark the task as complete and prepare for release. 
+- [x] Task 16: Mark the task as complete and prepare for release. 
 - [ ] Task 17: Create a PR with the implementation and link it to this task for tracking. Ensure that the PR description clearly outlines the changes made, the new features added, and any important notes for reviewers. 
 
 ## 🧠 Implementation Notes (Copilot Context)
@@ -163,6 +163,12 @@ Implement a generic backend/frontend system that executes commands on the backen
     - New implementation summary doc: `docs/implementation/IMPLEMENTATION_COMMAND_EXECUTION.md` (lints clean — 0 errors).
     - Confirmed existing docs already cover the event contract: `docs/EVENT_DRIVEN_ARCHITECTURE.md`, `docs/EVENT_SYSTEM_QUICK_REFERENCE.md`, `.github/instructions/backend-command-execution.instructions.md`.
     - Backend compile check: `go build ./...` — exit 0.
+  - Task 16 completed:
+    - Marked task status as complete in this task document.
+    - Release-readiness gate verified from latest workspace runs:
+      - `hk check` ✓ (project root)
+      - `mise test` ✓ (frontend)
+    - Prepared handoff for final PR phase (Task 17).
   - Task 14.c completed:
     - Migrated `backend/src/service/filesystem/base_adapter.go` command execution paths to an explicit filesystem execution abstraction via `filesystemCommandExecutor`.
     - Routed both `runCommand` and `executeCommandWithProgress` through the adapter (`commandExecutor.Command(...)`) while preserving existing long-running progress stream semantics.

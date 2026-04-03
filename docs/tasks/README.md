@@ -21,7 +21,7 @@ Use these companion skills to manage the task lifecycle:
 	- Example prompts: `sync tasks`, `import issues`, `export task status`.
 
 - **`/task-status`**
-	- Generates a Markdown progress report grouped by status (`📅 Planned`, `🔄 In Progress`, `✅ Done`).
+	- Generates a Markdown progress report grouped by status (`📅 Planned`, `🔄 In Progress`, `✅ Complete`).
 	- Supports filters by status, type, or repo.
 	- Example prompts: `task status`, `weekly standup`, `show task progress`.
 
