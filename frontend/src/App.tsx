@@ -18,6 +18,7 @@ import BaseConfigModal from "./components/BaseConfigModal";
 import { Footer } from "./components/Footer";
 import GlobalEventMonitor from "./components/GlobalEventTracker";
 import { NavBar } from "./components/NavBar";
+import { ReadonlyCommandTerminal } from "./components/ReadonlyCommandTerminal";
 import TelemetryModal from "./components/TelemetryModal";
 import { useBaseConfigModal } from "./hooks/useBaseConfigModal";
 import { useTelemetryModal } from "./hooks/useTelemetryModal";
@@ -380,26 +381,7 @@ export function App() {
               ? "Running"
               : `${selectedCommandSession?.success ? "Success" : "Failed"} (exit ${selectedCommandSession?.exit_code ?? "n/a"})`}
           </Typography>
-          <Box
-            component="pre"
-            sx={{
-              m: 0,
-              p: 1.5,
-              maxHeight: 420,
-              overflow: "auto",
-              bgcolor: "background.default",
-              border: "1px solid",
-              borderColor: "divider",
-              borderRadius: 1,
-              fontFamily: "monospace",
-              fontSize: "0.78rem",
-              whiteSpace: "pre-wrap",
-            }}
-          >
-            {(selectedCommandSession?.lines ?? [])
-              .map((line) => `[${line.channel}] ${line.line}`)
-              .join("\n") || "No output available."}
-          </Box>
+          <ReadonlyCommandTerminal lines={selectedCommandSession?.lines} />
         </DialogContent>
         <DialogActions>
           <Button onClick={downloadCommandOutput} variant="outlined">
