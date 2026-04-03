@@ -16,6 +16,8 @@ These instructions are the concise, must-follow rules for working in SRAT. Keep 
 - **Add tests**: When fixing bugs or adding features, include tests that cover the new behavior and edge cases. Follow the testing guidelines in the instruction files.
 - **Test your changes**: Always run the relevant tests after making changes to ensure you haven't introduced regressions. Follow the testing guidelines in the instruction files.
 - **Document your changes**: If your change affects the behavior of the system, update the relevant documentation and add comments to your code where necessary to explain non-obvious logic or decisions.
+- **Verify before finalizing**: Before finalizing any code changes, review your work to ensure it adheres to the above rules and the specific guidelines in the instruction files. If you're unsure about any aspect of your changes, ask for a review or feedback from a human developer. Always aim for high-quality, maintainable code that aligns with the project's standards and goals.
+- **Commit precheck**: Ensure that all pre-commit checks (linters, formatters, security scanners) pass before finalizing your changes. If any checks fail, address the issues and re-run the checks until they pass successfully.
 
 ## Repo at a glance
 
@@ -56,6 +58,7 @@ These instructions are the concise, must-follow rules for working in SRAT. Keep 
 
 - Docs: `mise run docs-validate` (and `mise run docs-fix` when needed).
 - Security: `mise run security`.
+- Changes Checker: `hk check` (and `hk fix` when needed).
 
 ## Patching external Go libs
 
