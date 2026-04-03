@@ -49,7 +49,7 @@ Implement a generic backend/frontend system that executes commands on the backen
 - [x] Task 14.c: Migrate `service/filesystem` adapter execution paths (`runCommand`, `executeCommandWithProgress`) to the execution abstraction while preserving long-running/progress behavior.
 - [x] Task 15: Final code review code cleanup, and documentation updates to ensure that the new feature is well-documented for future maintainers and users.
 - [x] Task 16: Mark the task as complete and prepare for release. 
-- [ ] Task 17: Create a PR with the implementation and link it to this task for tracking. Ensure that the PR description clearly outlines the changes made, the new features added, and any important notes for reviewers. 
+- [x] Task 17: Create a PR with the implementation and link it to this task for tracking. Ensure that the PR description clearly outlines the changes made, the new features added, and any important notes for reviewers. 
 
 ## 🧠 Implementation Notes (Copilot Context)
 
@@ -169,6 +169,10 @@ Implement a generic backend/frontend system that executes commands on the backen
       - `hk check` ✓ (project root)
       - `mise test` ✓ (frontend)
     - Prepared handoff for final PR phase (Task 17).
+  - Task 17 completed:
+    - PR created: https://github.com/dianlight/srat/pull/542
+    - PR is ready for review and linked to issue closure (`Closes #540`).
+    - Auto-merge enabled (squash) when all repository requirements/checks are satisfied.
   - Task 14.c completed:
     - Migrated `backend/src/service/filesystem/base_adapter.go` command execution paths to an explicit filesystem execution abstraction via `filesystemCommandExecutor`.
     - Routed both `runCommand` and `executeCommandWithProgress` through the adapter (`commandExecutor.Command(...)`) while preserving existing long-running progress stream semantics.
