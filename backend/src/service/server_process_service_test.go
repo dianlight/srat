@@ -443,11 +443,11 @@ func (suite *ServerProcessServiceSuite) compareConfigSections(generatedConfig *[
 					line := scanner.Text()
 					switch d.Type {
 					case diffmatchpatch.DiffDelete:
-						diffEvidenceBuilder.WriteString(fmt.Sprintf("- %s\n", line))
+						fmt.Fprintf(&diffEvidenceBuilder, "- %s\n", line)
 					case diffmatchpatch.DiffInsert:
-						diffEvidenceBuilder.WriteString(fmt.Sprintf("+ %s\n", line))
+						fmt.Fprintf(&diffEvidenceBuilder, "+ %s\n", line)
 					case diffmatchpatch.DiffEqual:
-						diffEvidenceBuilder.WriteString(fmt.Sprintf("  %s\n", line))
+						fmt.Fprintf(&diffEvidenceBuilder, "  %s\n", line)
 					}
 				}
 			}

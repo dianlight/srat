@@ -276,7 +276,7 @@ func (m *MockSystem) RunCommand(ctx context.Context, command string, args ...str
 			var b strings.Builder
 			for _, username := range keys {
 				state := m.users[username]
-				b.WriteString(fmt.Sprintf("%s:%s:%s\n", username, state.osUser.Uid, state.osUser.Name))
+				fmt.Fprintf(&b, "%s:%s:%s\n", username, state.osUser.Uid, state.osUser.Name)
 			}
 			return b.String(), nil
 		}

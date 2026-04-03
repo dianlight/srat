@@ -407,10 +407,7 @@ func RenameUsername(ctx context.Context, oldUsername string, newUsername string,
 	details := e.Details()
 	stderr, _ := details["stderr"].(string)
 	lwrStderr := strings.ToLower(stderr)
-	if !(strings.Contains(lwrStderr, "no such user") ||
-		strings.Contains(lwrStderr, "does not exist") ||
-		strings.Contains(lwrStderr, "username not found") ||
-		strings.Contains(lwrStderr, "user not found")) {
+	if !strings.Contains(lwrStderr, "no such user") && !strings.Contains(lwrStderr, "does not exist") && !strings.Contains(lwrStderr, "username not found") && !strings.Contains(lwrStderr, "user not found") {
 		return errors.Wrapf(sambaErr, "failed to verify Samba status for new username '%s' due to pdbedit execution issue", newUsername)
 	}
 

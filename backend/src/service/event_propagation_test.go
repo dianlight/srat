@@ -207,7 +207,7 @@ func (suite *EventPropagationTestSuite) TestShareServiceToDirtyDataService() {
 	})
 	defer unsubscribe()
 	unsubscribeShare := suite.eventBus.OnShare(func(ctx context.Context, event events.ShareEvent) errors.E {
-		if event.Event.Type == events.EventTypes.ADD {
+		if event.Type == events.EventTypes.ADD {
 			shareEventReceived.Store(true)
 		}
 		wg.Done()

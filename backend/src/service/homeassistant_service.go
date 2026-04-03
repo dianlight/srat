@@ -105,7 +105,7 @@ func (s *HomeAssistantService) SendSambaStatusEntity(status *dto.SambaStatus) er
 		"device_class":  "connectivity",
 		"version":       status.Version,
 		"smb_conf":      status.SmbConf,
-		"timestamp":     status.Timestamp.Time.Format("2006-01-02T15:04:05Z07:00"),
+		"timestamp":     status.Timestamp.Format("2006-01-02T15:04:05Z07:00"),
 		"session_count": len(status.Sessions),
 		"tcon_count":    len(status.Tcons),
 	}

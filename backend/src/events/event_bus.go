@@ -186,7 +186,7 @@ func writeValue(b *strings.Builder, rv reflect.Value, seen map[uintptr]bool, dep
 			b.WriteString(s.String())
 			return
 		}
-		b.WriteString(fmt.Sprint(rv.Interface()))
+		fmt.Fprint(b, rv.Interface())
 		return
 	}
 	// Last resort: type name

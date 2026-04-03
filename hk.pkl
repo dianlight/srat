@@ -33,7 +33,7 @@ local linters = new Mapping<String, Step> {
         glob = "**/*.go"
         exclude = "vendor/**/*.go"
         dir = "backend/src"
-        check = "golangci-lint run --fix=false  --fast  ./..."
+        check = "golangci-lint run --fix=false  --fast-only  ./..."
         fix = "golangci-lint run --fix ./..."
     }
 

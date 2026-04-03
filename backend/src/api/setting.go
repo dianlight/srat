@@ -181,7 +181,7 @@ func (self *SettingsHanler) UpdateAppConfig(ctx context.Context, input *struct {
 func (self *SettingsHanler) dismissAddonConfigIssue(ctx context.Context, repairID string) {
 	if self.repairService != nil {
 		dismissErr := self.repairService.Delete(repairID)
-		if dismissErr != nil {
+		if dismissErr != nil && !errors.Is(dismissErr, dto.ErrorNotFound) {
 			tlog.WarnContext(ctx, "Unable to dismiss addon config repair issue", "repair_id", repairID, "error", dismissErr)
 		}
 
@@ -198,7 +198,7 @@ func (self *SettingsHanler) dismissAddonConfigIssue(ctx context.Context, repairI
 
 	if self.haService != nil {
 		dismissErr := self.haService.DismissPersistentNotification(repairID)
-		if dismissErr != nil {
+		if dismissErr != nil && !errors.Is(dismissErr, dto.ErrorNotFound) {
 			tlog.WarnContext(ctx, "Unable to dismiss addon config persistent notification", "notification_id", repairID, "error", dismissErr)
 		}
 	}

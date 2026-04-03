@@ -113,7 +113,7 @@ func (self *HealthHanler) HealthCheckHandler(ctx context.Context, input *struct{
 }
 
 func (self *HealthHanler) HealthStatusHandler(ctx context.Context, input *struct{}) (*struct{ Body bool }, error) {
-	return &struct{ Body bool }{Body: self.HealthPing.Alive}, nil
+	return &struct{ Body bool }{Body: self.Alive}, nil
 }
 
 // checkSamba checks the status of the Samba process using the sambaService.
@@ -126,7 +126,7 @@ func (self *HealthHanler) checkSamba() {
 	if err != nil {
 		tlog.ErrorContext(self.ctx, "Error reading processes", "err", err)
 	}
-	self.HealthPing.SambaProcessStatus = *sambaProcess
+	self.SambaProcessStatus = *sambaProcess
 }
 
 // run is a method of HealthHandler that continuously monitors the health status
@@ -150,48 +150,48 @@ func (self *HealthHanler) run() error {
 			return errors.WithStack(self.ctx.Err())
 		case <-time.After(self.OutputEventsInterleave): // Use a timer to control loop frequency
 			// Get Addon Stats
-			self.HealthPing.Uptime = time.Since(self.state.StartTime).Milliseconds()
+			self.Uptime = time.Since(self.state.StartTime).Milliseconds()
 
-			self.HealthPing.UpdateAvailable = self.state.UpdateAvailable
+			self.UpdateAvailable = self.state.UpdateAvailable
 
 			stats, err := self.addonsService.GetStats()
 			if err != nil {
 				slog.WarnContext(self.ctx, "Warning getting addon stats for health ping", "err", err)
-				self.HealthPing.AddonStats = nil // Clear stats on error
+				self.AddonStats = nil // Clear stats on error
 			} else {
-				self.HealthPing.AddonStats = stats
+				self.AddonStats = stats
 			}
 			self.checkSamba()
 			diskStats, err := self.diskStatsService.GetDiskStats()
 			if err != nil {
 				slog.WarnContext(self.ctx, "Warning getting disk stats for health ping", "err", err)
-				self.HealthPing.DiskHealth = nil
+				self.DiskHealth = nil
 			} else {
-				self.HealthPing.DiskHealth = diskStats
+				self.DiskHealth = diskStats
 				// Also broadcast the disk health separately for Home Assistant integration
 				self.broadcaster.BroadcastMessage(*diskStats)
 			}
 			netStats, err := self.networkStatsService.GetNetworkStats()
 			if err != nil {
 				slog.WarnContext(self.ctx, "Warning getting network stats for health ping", "err", err)
-				self.HealthPing.NetworkHealth = nil
+				self.NetworkHealth = nil
 			} else {
-				self.HealthPing.NetworkHealth = netStats
+				self.NetworkHealth = netStats
 			}
 			sambaStatus, err := self.sambaService.GetSambaStatus()
 			if err != nil {
 				slog.WarnContext(self.ctx, "Warning getting samba status for health ping", "err", err)
-				self.HealthPing.SambaStatus = nil
+				self.SambaStatus = nil
 			} else {
-				self.HealthPing.SambaStatus = sambaStatus
+				self.SambaStatus = sambaStatus
 				// Also broadcast the samba status separately for Home Assistant integration
 				self.broadcaster.BroadcastMessage(*sambaStatus)
 			}
 
 			// Also broadcast the samba process status separately for Home Assistant integration
-			self.broadcaster.BroadcastMessage(self.HealthPing.SambaProcessStatus)
+			self.broadcaster.BroadcastMessage(self.SambaProcessStatus)
 
-			self.HealthPing.Dirty = self.dirtyService.GetDirtyDataTracker()
+			self.Dirty = self.dirtyService.GetDirtyDataTracker()
 			self.AliveTime = time.Now().UnixMilli()
 			self.broadcaster.BroadcastMessage(self.HealthPing)
 

@@ -458,7 +458,7 @@ func (self *UpgradeService) extractFile(f *zip.File, dest string) (*UpdateFile, 
 	if f.FileInfo().IsDir() {
 		return nil, errors.Errorf("directories are not supported in update package: %s", f.Name)
 	}
-	if f.FileHeader.Comment == "" {
+	if f.Comment == "" {
 		return nil, errors.Errorf("file has no signature in comment: %s", f.Name)
 	}
 
@@ -489,7 +489,7 @@ func (self *UpgradeService) extractFile(f *zip.File, dest string) (*UpdateFile, 
 	}
 	defer out.Close()
 
-	size := f.FileHeader.UncompressedSize64
+	size := f.UncompressedSize64
 	tracker := &progressTracker{
 		Total:  size,
 		Target: path,
@@ -507,7 +507,7 @@ func (self *UpgradeService) extractFile(f *zip.File, dest string) (*UpdateFile, 
 	// Copy content
 	//
 	//_, err = io.Copy(out, io.TeeReader(rc, tracker))
-	err = self.verifier.Load([]byte(f.FileHeader.Comment), []byte(updatekey.UpdatePublicKey))
+	err = self.verifier.Load([]byte(f.Comment), []byte(updatekey.UpdatePublicKey))
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -524,7 +524,7 @@ func (self *UpgradeService) extractFile(f *zip.File, dest string) (*UpdateFile, 
 
 	return &UpdateFile{
 		Path:      path,
-		Signature: []byte(f.FileHeader.Comment),
+		Signature: []byte(f.Comment),
 		Size:      f.FileInfo().Size(),
 	}, errors.WithStack(err)
 }

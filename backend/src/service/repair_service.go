@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dianlight/srat/dto"
+	"gitlab.com/tozd/go/errors"
 )
 
 type RepairServiceInterface interface {
@@ -105,14 +106,14 @@ func (s *RepairService) Update(command dto.RepairCommandMessage) (*dto.ManagedRe
 
 func (s *RepairService) Delete(repairID string) error {
 	if repairID == "" {
-		return fmt.Errorf("repair_id is required")
+		return errors.BaseWrapf(dto.ErrorInvalidParameter, "repair_id is required")
 	}
 
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	if _, ok := s.state[repairID]; !ok {
-		return fmt.Errorf("repair %q not found", repairID)
+		return errors.BaseWrapf(dto.ErrorNotFound, "repair %q not found", repairID)
 	}
 
 	delete(s.state, repairID)

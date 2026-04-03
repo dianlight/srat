@@ -173,7 +173,7 @@ func (self *settingService) DumpTable() (string, errors.E) {
 		return "", errors.WithStack(err)
 	}
 	for _, prop := range props {
-		ret.WriteString(fmt.Sprintf("Key: %s, Value: %v\n", prop.Key, prop.Value))
+		fmt.Fprintf(&ret, "Key: %s, Value: %v\n", prop.Key, prop.Value)
 	}
 	return ret.String(), nil
 }
