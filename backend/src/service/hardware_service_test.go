@@ -89,7 +89,7 @@ func (suite *HardwareServiceSuite) TestGetHardwareInfo_Success() {
 	// Assert
 	suite.NoError(err)
 	suite.NotNil(disks)
-	mock.Verify(suite.haClient, matchers.Times(1)).GetHardwareInfoWithResponse(mock.Any[context.Context]())
+	_, _ = mock.Verify(suite.haClient, matchers.Times(1)).GetHardwareInfoWithResponse(mock.Any[context.Context]())
 }
 
 func (suite *HardwareServiceSuite) TestGetHardwareInfo_EmptyDrives() {
@@ -166,7 +166,7 @@ func (suite *HardwareServiceSuite) TestInvalidateHardwareInfo() {
 	suite.NoError(err)
 
 	// Verify API was called twice (not cached after invalidation)
-	mock.Verify(suite.haClient, matchers.Times(2)).GetHardwareInfoWithResponse(mock.Any[context.Context]())
+	_, _ = mock.Verify(suite.haClient, matchers.Times(2)).GetHardwareInfoWithResponse(mock.Any[context.Context]())
 }
 
 func (suite *HardwareServiceSuite) TestGetHardwareInfo_ClientError() {

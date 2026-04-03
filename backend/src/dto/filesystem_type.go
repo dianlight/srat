@@ -60,7 +60,7 @@ func (self *MountFlags) Scan(value any) error {
 	case int:
 		for nflag, flags := range MountFlagsMap() {
 			if value&int(flags) != 0 {
-				self.Add(MountFlag{
+				_ = self.Add(MountFlag{
 					Name:       nflag,
 					NeedsValue: false,
 				})
@@ -69,7 +69,7 @@ func (self *MountFlags) Scan(value any) error {
 	case uintptr:
 		for nflag, flags := range MountFlagsMap() {
 			if value&uintptr(flags) != 0 {
-				self.Add(MountFlag{
+				_ = self.Add(MountFlag{
 					Name:       nflag,
 					NeedsValue: false,
 				})
@@ -78,7 +78,7 @@ func (self *MountFlags) Scan(value any) error {
 	case int64:
 		for nflag, flags := range MountFlagsMap() {
 			if value&int64(flags) != 0 {
-				self.Add(MountFlag{
+				_ = self.Add(MountFlag{
 					Name:       nflag,
 					NeedsValue: false,
 				})
@@ -87,7 +87,7 @@ func (self *MountFlags) Scan(value any) error {
 	case []string:
 		for _, flag := range value {
 			if !strings.Contains(flag, "=") {
-				self.Add(MountFlag{
+				_ = self.Add(MountFlag{
 					Name:       flag,
 					NeedsValue: false,
 				})
@@ -95,7 +95,7 @@ func (self *MountFlags) Scan(value any) error {
 				// Extract the value after the '='
 				parts := strings.SplitN(flag, "=", 2)
 				if len(parts) == 2 {
-					self.Add(MountFlag{
+					_ = self.Add(MountFlag{
 						Name:       parts[0],
 						NeedsValue: true,
 						FlagValue:  parts[1],
@@ -106,7 +106,7 @@ func (self *MountFlags) Scan(value any) error {
 	case string:
 		for _, flag := range strings.Split(value, ",") {
 			if !strings.Contains(flag, "=") {
-				self.Add(MountFlag{
+				_ = self.Add(MountFlag{
 					Name:       flag,
 					NeedsValue: false,
 				})
@@ -114,7 +114,7 @@ func (self *MountFlags) Scan(value any) error {
 				// Extract the value after the '='
 				parts := strings.SplitN(flag, "=", 2)
 				if len(parts) == 2 {
-					self.Add(MountFlag{
+					_ = self.Add(MountFlag{
 						Name:       parts[0],
 						NeedsValue: true,
 						FlagValue:  parts[1],
@@ -125,12 +125,12 @@ func (self *MountFlags) Scan(value any) error {
 	case map[string]string:
 		for k, v := range value {
 			if v == "" {
-				self.Add(MountFlag{
+				_ = self.Add(MountFlag{
 					Name:       k,
 					NeedsValue: false,
 				})
 			} else {
-				self.Add(MountFlag{
+				_ = self.Add(MountFlag{
 					Name:       k,
 					NeedsValue: true,
 					FlagValue:  v,

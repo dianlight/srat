@@ -53,7 +53,7 @@ func (suite *ResolutionServiceSuite) TestCreateIssue_NoOpDemoMode() {
 	err := suite.svc.CreateIssue(dto.ResolutionIssue{})
 	suite.NoError(err)
 	// Should not call DismissIssue on demo mode
-	mock.Verify(suite.client, matchers.Times(0)).DismissIssueWithResponse(mock.AnyContext(), mock.Any[types.UUID]())
+	_, _ = mock.Verify(suite.client, matchers.Times(0)).DismissIssueWithResponse(mock.AnyContext(), mock.Any[types.UUID]())
 }
 
 func (suite *ResolutionServiceSuite) TestCreateIssue_NoOpHACoreNotReady() {
@@ -62,14 +62,14 @@ func (suite *ResolutionServiceSuite) TestCreateIssue_NoOpHACoreNotReady() {
 	err := suite.svc.CreateIssue(dto.ResolutionIssue{})
 	suite.NoError(err)
 	// Should not call DismissIssue when HA core not ready
-	mock.Verify(suite.client, matchers.Times(0)).DismissIssueWithResponse(mock.AnyContext(), mock.Any[types.UUID]())
+	_, _ = mock.Verify(suite.client, matchers.Times(0)).DismissIssueWithResponse(mock.AnyContext(), mock.Any[types.UUID]())
 }
 
 func (suite *ResolutionServiceSuite) TestDeleteIssue_NoOpDemoMode() {
 	suite.state.SupervisorURL = "demo"
 	err := suite.svc.DeleteIssue(types.UUID{})
 	suite.NoError(err)
-	mock.Verify(suite.client, matchers.Times(0)).DismissIssueWithResponse(mock.AnyContext(), mock.Any[types.UUID]())
+	_, _ = mock.Verify(suite.client, matchers.Times(0)).DismissIssueWithResponse(mock.AnyContext(), mock.Any[types.UUID]())
 }
 
 func (suite *ResolutionServiceSuite) TestDeleteIssue_NoOpHACoreNotReady() {
@@ -77,7 +77,7 @@ func (suite *ResolutionServiceSuite) TestDeleteIssue_NoOpHACoreNotReady() {
 	suite.state.HACoreReady = false
 	err := suite.svc.DeleteIssue(types.UUID{})
 	suite.NoError(err)
-	mock.Verify(suite.client, matchers.Times(0)).DismissIssueWithResponse(mock.AnyContext(), mock.Any[types.UUID]())
+	_, _ = mock.Verify(suite.client, matchers.Times(0)).DismissIssueWithResponse(mock.AnyContext(), mock.Any[types.UUID]())
 }
 
 func (suite *ResolutionServiceSuite) TestDeleteIssue_ClientError() {

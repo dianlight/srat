@@ -201,7 +201,11 @@ func (s *HDIdleService) Start() errors.E {
 		go func() {
 
 			//s.running = true
-			defer s.Stop()
+			defer func() {
+				if err := s.Stop(); err != nil {
+					tlog.WarnContext(s.ctx, "Error while stopping HDIdle service", "error", err)
+				}
+			}()
 			s.monitorLoop()
 		}()
 	}

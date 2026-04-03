@@ -96,7 +96,7 @@ func (suite *HostServiceTestSuite) TestGetHostName_DemoMode_CachesResult() {
 	// Verify host client was not called because GetHostInfoWithResponse is a method on the client.
 	// If the client itself was never constructed or used, this check is implicit.
 	// To be explicit, if GetHostInfoWithResponse is the specific method:
-	mock.Verify(suite.mockHostClient, matchers.Times(0)).GetHostInfoWithResponse(mock.AnyContext())
+	_, _ = mock.Verify(suite.mockHostClient, matchers.Times(0)).GetHostInfoWithResponse(mock.AnyContext())
 }
 
 func (suite *HostServiceTestSuite) TestGetHostName_APISuccess_CacheMissThenHit() {

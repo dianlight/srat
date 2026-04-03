@@ -57,7 +57,6 @@ type TelemetryService struct {
 
 	settingService SettingServiceInterface
 	haroot         HaRootServiceInterface
-	eventBus       events.EventBusInterface
 
 	// tlog callback management
 	tlogErrorCallbackID string
@@ -116,13 +115,17 @@ func NewTelemetryService(lc fx.Lifecycle, Ctx context.Context,
 	}
 
 	unsubscribe := eventBus.OnSetting(func(ctx context.Context, event events.SettingEvent) errors.E {
-		tm.Configure(event.Setting.TelemetryMode)
+		if err := tm.Configure(event.Setting.TelemetryMode); err != nil {
+			slog.WarnContext(ctx, "Failed to reconfigure telemetry", "error", err)
+		}
 		return nil
 	})
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			tm.Configure(tm.mode)
+			if err := tm.Configure(tm.mode); err != nil {
+				slog.WarnContext(ctx, "Failed to configure telemetry on start", "error", err)
+			}
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
@@ -254,10 +257,12 @@ func (ts *TelemetryService) Configure(mode dto.TelemetryMode) errors.E {
 
 		// Send a test event if mode is All
 		if mode == dto.TelemetryModes.TELEMETRYMODEALL {
-			ts.ReportEvent("telemetry_enabled", map[string]any{
+			if err := ts.ReportEvent("telemetry_enabled", map[string]any{
 				"version":     ts.version,
 				"environment": ts.environment,
-			})
+			}); err != nil {
+				slog.WarnContext(ts.ctx, "Failed to report telemetry_enabled event", "error", err)
+			}
 		}
 	} else {
 		slog.InfoContext(ts.ctx, "Rollbar telemetry disabled", "mode", mode.String(), "internet", ts.IsConnectedToInternet())

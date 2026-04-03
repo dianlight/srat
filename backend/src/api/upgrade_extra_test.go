@@ -46,9 +46,9 @@ func (suite *UpgradeHandlerSuite) TestUpdateHandlerStartsBackgroundFlow() {
 		suite.T().Fatal("timeout waiting for update background goroutine to finish")
 	}
 
-	mock.Verify(suite.mockUpgradeService, matchers.Times(1)).GetUpgradeReleaseAsset()
-	mock.Verify(suite.mockUpgradeService, matchers.Times(1)).DownloadAndExtractBinaryAsset(mock.Any[dto.BinaryAsset]())
-	mock.Verify(suite.mockUpgradeService, matchers.Times(1)).ApplyUpdateAndRestart(mock.Any[*service.UpdatePackage]())
+	_, _ = mock.Verify(suite.mockUpgradeService, matchers.Times(1)).GetUpgradeReleaseAsset()
+	_, _ = mock.Verify(suite.mockUpgradeService, matchers.Times(1)).DownloadAndExtractBinaryAsset(mock.Any[dto.BinaryAsset]())
+	_ = mock.Verify(suite.mockUpgradeService, matchers.Times(1)).ApplyUpdateAndRestart(mock.Any[*service.UpdatePackage]())
 }
 
 func (suite *UpgradeHandlerSuite) TestGetUpdateChannelsFiltersDevelopCorrectly() {

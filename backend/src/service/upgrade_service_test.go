@@ -539,7 +539,7 @@ func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_Success(
 		}),
 	)
 	// Re-run to capture broadcasts
-	updatePkg, err = suite.upgradeService.DownloadAndExtractBinaryAsset(asset)
+	_, err = suite.upgradeService.DownloadAndExtractBinaryAsset(asset)
 	suite.Require().NoError(err)
 
 	suite.ContainsProgress(progressEvents, dto.UpdateProcessStates.UPDATESTATUSDOWNLOADING, 0)

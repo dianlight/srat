@@ -181,7 +181,9 @@ func NewSupervisorService(lc fx.Lifecycle, in SupervisorServiceParams) Superviso
 			for _, unsub := range unsubscribe {
 				unsub()
 			}
-			p.NetworkUnmountAllShares(ctx)
+			if err := p.NetworkUnmountAllShares(ctx); err != nil {
+				slog.WarnContext(ctx, "Error while unmounting shares on supervisor stop", "error", err)
+			}
 			return nil
 		},
 	})
@@ -252,7 +254,9 @@ func (self *SupervisorService) networkMountShareWithRetry(ctx context.Context, s
 	if !ok {
 		// new mount
 		rmount = mount.Mount{}
-		conv.SharedResourceToMount(share, &rmount)
+		if err := conv.SharedResourceToMount(share, &rmount); err != nil {
+			return errors.Wrap(err, "failed converting share to HA mount payload")
+		}
 		rmount.Server = &self.state.AddonIpAddress
 
 		if *useNfs && isShareNFSExportable(ctx, share) {
@@ -261,7 +265,7 @@ func (self *SupervisorService) networkMountShareWithRetry(ctx context.Context, s
 				nfsPath = share.Name
 			}
 			rmount.Type = new(mount.MountType("nfs"))
-			rmount.Path = new(nfsPath)
+			rmount.Path = &nfsPath
 			rmount.Username = nil
 			rmount.Password = nil
 		} else {
@@ -305,14 +309,16 @@ func (self *SupervisorService) networkMountShareWithRetry(ctx context.Context, s
 		*rmount.State != "active" ||
 		(*useNfs && *rmount.Type == "cifs") ||
 		(!*useNfs && *rmount.Type == "nfs") {
-		conv.SharedResourceToMount(share, &rmount)
+		if err := conv.SharedResourceToMount(share, &rmount); err != nil {
+			return errors.Wrap(err, "failed converting share to HA mount update payload")
+		}
 		if *useNfs && isShareNFSExportable(ctx, share) {
 			nfsPath := resolveActualMountPointPath(share)
 			if nfsPath == "" {
 				nfsPath = share.Name
 			}
 			rmount.Type = new(mount.MountType("nfs"))
-			rmount.Path = new(nfsPath)
+			rmount.Path = &nfsPath
 			rmount.Username = nil
 			rmount.Password = nil
 		} else {

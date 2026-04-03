@@ -319,7 +319,7 @@ func (suite *EventPropagationTestSuite) TestMountPointEventPropagation() {
 		Type:      "ADDON",
 		IsMounted: true,
 	}
-	suite.eventBus.EmitMountPoint(events.MountPointEvent{
+	_ = suite.eventBus.EmitMountPoint(events.MountPointEvent{
 		Event: events.Event{
 			Type: events.EventTypes.UPDATE,
 		},
@@ -419,7 +419,7 @@ func (suite *EventPropagationTestSuite) TestMultipleListenersReceiveSameEvent() 
 	share := &dto.SharedResource{
 		Name: "broadcast-test",
 	}
-	suite.eventBus.EmitShare(events.ShareEvent{
+	_ = suite.eventBus.EmitShare(events.ShareEvent{
 		Event: events.Event{
 			Type: events.EventTypes.ADD,
 		},
@@ -537,7 +537,7 @@ func (suite *EventPropagationTestSuite) TestConcurrentEventPropagation() {
 	// Action: Emit multiple events concurrently
 	for i := 0; i < numEmissions; i++ {
 		go func(idx int) {
-			suite.eventBus.EmitShare(events.ShareEvent{
+			_ = suite.eventBus.EmitShare(events.ShareEvent{
 				Share: &dto.SharedResource{Name: "share-" + string(rune(idx))},
 			})
 		}(i)
@@ -584,7 +584,7 @@ func (suite *EventPropagationTestSuite) TestEventUnsubscription() {
 	})
 
 	// First emission - should be received
-	suite.eventBus.EmitShare(events.ShareEvent{
+	_ = suite.eventBus.EmitShare(events.ShareEvent{
 		Share: &dto.SharedResource{Name: "before-unsub"},
 	})
 
@@ -606,7 +606,7 @@ func (suite *EventPropagationTestSuite) TestEventUnsubscription() {
 	unsubscribe()
 
 	// Second emission - should NOT be received
-	suite.eventBus.EmitShare(events.ShareEvent{
+	_ = suite.eventBus.EmitShare(events.ShareEvent{
 		Share: &dto.SharedResource{Name: "after-unsub"},
 	})
 

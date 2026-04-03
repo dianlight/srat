@@ -255,7 +255,7 @@ func (suite *BroadcasterServiceEventMappingTestSuite) TestShareEvent_BroadcastsS
 
 	// Emit share event
 	share := &dto.SharedResource{Name: "share-1"}
-	suite.eventBus.EmitShare(events.ShareEvent{
+	_ = suite.eventBus.EmitShare(events.ShareEvent{
 		Event: events.Event{Type: events.EventTypes.ADD},
 		Share: share,
 	})
@@ -281,7 +281,7 @@ func (suite *BroadcasterServiceEventMappingTestSuite) TestMountPointEvent_Broadc
 
 	// Emit mount point event
 	mp := &dto.MountPointData{Path: "/mnt/x", IsMounted: true}
-	suite.eventBus.EmitMountPoint(events.MountPointEvent{
+	_ = suite.eventBus.EmitMountPoint(events.MountPointEvent{
 		Event:      events.Event{Type: events.EventTypes.UPDATE},
 		MountPoint: mp,
 	})

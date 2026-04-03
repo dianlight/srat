@@ -73,7 +73,9 @@ func NewSettingService(
 	if err != nil {
 		slog.Error("Cant load default settings", "error", err)
 	} else {
-		s.UpdateSettings(defConfig)
+		if err := s.UpdateSettings(defConfig); err != nil {
+			slog.Error("Cant persist default settings", "error", err)
+		}
 	}
 
 	return s

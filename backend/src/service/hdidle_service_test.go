@@ -272,7 +272,7 @@ func (suite *HDIdleServiceSuite) TestCheckDeviceSupport_RecommendedCommandNilWhe
 func (suite *HDIdleServiceSuite) TestGetProcessStatus_WhenNotRunning() {
 	// When service is not running, should return idle status
 	parentPid := int32(12345)
-	suite.service.Stop()
+	_ = suite.service.Stop()
 	status := suite.service.GetProcessStatus(parentPid)
 
 	suite.NotNil(status)

@@ -197,7 +197,11 @@ func (c *Client) connectLoop(ctx context.Context, connectedCh chan<- struct{}) {
 			// read the initial message which should be an auth/hello message
 			var helloMsg map[string]json.RawMessage
 			// set a short deadline for the handshake
-			conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+			if err := conn.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
+				_ = conn.Close()
+				slog.Warn("failed to set read deadline for websocket hello", "error", err)
+				continue
+			}
 			_, msg, err := conn.ReadMessage()
 			if err != nil {
 				_ = conn.Close()
@@ -227,8 +231,10 @@ func (c *Client) connectLoop(ctx context.Context, connectedCh chan<- struct{}) {
 					authPayload["access_token"] = c.supervisorToken
 				}
 				// write auth
-				if err := conn.SetWriteDeadline(time.Now().Add(5 * time.Second)); err == nil {
-					// ignore SetWriteDeadline error; do the write
+				if err := conn.SetWriteDeadline(time.Now().Add(5 * time.Second)); err != nil {
+					_ = conn.Close()
+					slog.Warn("failed to set write deadline for websocket auth", "error", err)
+					continue
 				}
 				if err := conn.WriteJSON(authPayload); err != nil {
 					_ = conn.Close()
@@ -237,7 +243,11 @@ func (c *Client) connectLoop(ctx context.Context, connectedCh chan<- struct{}) {
 				}
 
 				// wait for auth_ok or auth_invalid
-				conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+				if err := conn.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
+					_ = conn.Close()
+					slog.Warn("failed to set read deadline for websocket auth response", "error", err)
+					continue
+				}
 				_, msg, err := conn.ReadMessage()
 				if err != nil {
 					_ = conn.Close()
@@ -336,7 +346,9 @@ func (c *Client) Send(messageType int, data []byte) error {
 		return errors.New("not connected")
 	}
 
-	c.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+	if err := c.conn.SetWriteDeadline(time.Now().Add(5 * time.Second)); err != nil {
+		return err
+	}
 	return c.conn.WriteMessage(messageType, data)
 }
 
@@ -347,7 +359,9 @@ func (c *Client) writeJSON(v any) error {
 	if c.conn == nil {
 		return errors.New("not connected")
 	}
-	c.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+	if err := c.conn.SetWriteDeadline(time.Now().Add(5 * time.Second)); err != nil {
+		return err
+	}
 	return c.conn.WriteJSON(v)
 }
 
@@ -567,7 +581,10 @@ func (c *Client) readLoop() {
 			return
 		}
 
-		conn.SetReadDeadline(time.Now().Add(30 * time.Second))
+		if err := conn.SetReadDeadline(time.Now().Add(30 * time.Second)); err != nil {
+			c.Close()
+			return
+		}
 		mt, msg, err := conn.ReadMessage()
 		if err != nil {
 			// on read error, close and exit

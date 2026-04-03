@@ -38,7 +38,6 @@ type ServerProcessServiceSuite struct {
 	serverService   service.ServerServiceInterface
 	share_service   service.ShareServiceInterface
 	setting_service service.SettingServiceInterface
-	ctrl            *matchers.MockController
 	ctx             context.Context
 	cancel          context.CancelFunc
 	app             *fxtest.App

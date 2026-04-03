@@ -141,7 +141,7 @@ func (s *UnixSambaIntegrationTestSuite) TestCreateGetDeleteSambaUser_Real() {
 	s.Require().NoError(err)
 
 	// No longer a Samba user and system user
-	info, err = unixsamba.GetByUsername(s.T().Context(), username)
+	_, err = unixsamba.GetByUsername(s.T().Context(), username)
 	s.Require().Error(err)
 
 	// System user must be gone

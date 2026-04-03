@@ -211,5 +211,5 @@ func (suite *VolumeHandlerSuite) TestPatchMountPointSettings_UpdatesIsToMountAtS
 
 	mock.Verify(suite.mockVolumeSvc, matchers.Times(2)).GetVolumesData()
 	//mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).PathHashToPath(mountPathHash)
-	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).PatchMountPointSettings(mock.Any[string](), mock.Any[string](), mock.Any[dto.MountPointData]())
+	_, _ = mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).PatchMountPointSettings(mock.Any[string](), mock.Any[string](), mock.Any[dto.MountPointData]())
 }

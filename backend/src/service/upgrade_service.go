@@ -598,7 +598,11 @@ func (self *UpgradeService) DownloadAndExtractBinaryAsset(asset dto.BinaryAsset)
 	// --- Verify Checksum ---
 	if asset.Digest != "" {
 		slog.InfoContext(self.ctx, "Verifying downloaded asset checksum", "expected_digest", asset.Digest)
-		downloadedFilePath.Seek(0, io.SeekStart) // Reset file pointer
+		if _, err := downloadedFilePath.Seek(0, io.SeekStart); err != nil { // Reset file pointer
+			errWrapped := errors.Wrapf(err, "failed to reset downloaded file pointer")
+			self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+			return nil, errWrapped
+		}
 
 		if strings.HasPrefix(asset.Digest, "sha256:") {
 			h := sha256.New()
@@ -617,7 +621,11 @@ func (self *UpgradeService) DownloadAndExtractBinaryAsset(asset dto.BinaryAsset)
 				return nil, errWrapped
 			}
 			slog.InfoContext(self.ctx, "Checksum verification passed for downloaded asset")
-			downloadedFilePath.Seek(0, io.SeekStart)
+			if _, err := downloadedFilePath.Seek(0, io.SeekStart); err != nil {
+				errWrapped := errors.Wrapf(err, "failed to reset downloaded file pointer after checksum validation")
+				self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+				return nil, errWrapped
+			}
 		} else {
 			errWrapped := errors.Errorf("unsupported digest format for asset %v: %s", downloadedFilePath.Name(), asset.Digest)
 			self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})

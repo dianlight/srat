@@ -133,7 +133,7 @@ func (m *volumeMountManager) Mount(md *dto.MountPointData, flags uintptr, data, 
 		)
 	}
 
-	m.eventBus.EmitMountPoint(events.MountPointEvent{
+	_ = m.eventBus.EmitMountPoint(events.MountPointEvent{
 		Event:      events.Event{Type: events.EventTypes.UPDATE},
 		MountPoint: md,
 	})
@@ -146,9 +146,16 @@ func (m *volumeMountManager) Mount(md *dto.MountPointData, flags uintptr, data, 
 // emits a MountPointEvent.
 // Validation and cache lookups are performed by the caller (VolumeService).
 func (m *volumeMountManager) Unmount(md *dto.MountPointData, force bool) errors.E {
+	if md == nil {
+		return errors.WithDetails(dto.ErrorInvalidParameter,
+			"Detail", "MountPointData is nil",
+			"Operation", "Unmount",
+		)
+	}
+
 	slog.DebugContext(m.ctx, "Attempting to unmount volume", "path", md.Path, "force", force)
 	fsType := ""
-	if md != nil && md.FSType != nil {
+	if md.FSType != nil {
 		fsType = *md.FSType
 	}
 
@@ -166,13 +173,15 @@ func (m *volumeMountManager) Unmount(md *dto.MountPointData, force bool) errors.
 		slog.DebugContext(m.ctx, "Removed mount point directory", "path", md.Path)
 	}
 
-	if md != nil && md.Partition != nil && md.Partition.DiskId != nil && md.Partition.Id != nil {
+	if md.Partition != nil && md.Partition.DiskId != nil && md.Partition.Id != nil {
 		md.IsMounted = false
-		m.eventBus.EmitMountPoint(events.MountPointEvent{
+		_ = m.eventBus.EmitMountPoint(events.MountPointEvent{
 			Event:      events.Event{Type: events.EventTypes.UPDATE},
 			MountPoint: md,
 		})
-		m.disks.AddOrUpdateMountPoint(*md.Partition.DiskId, *md.Partition.Id, *md)
+		if err := m.disks.AddOrUpdateMountPoint(*md.Partition.DiskId, *md.Partition.Id, *md); err != nil {
+			slog.WarnContext(m.ctx, "Failed to update mount point cache after unmount", "path", md.Path, "error", err)
+		}
 	}
 
 	return nil

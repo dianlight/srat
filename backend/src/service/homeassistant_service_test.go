@@ -100,7 +100,7 @@ func (suite *HomeAssistantServiceTestSuite) TestSendSambaStatusEntity() {
 
 	// Assert
 	//mock.Verify(suite.propRepo, mock.AtLeastOnce()).Value(mock.Any[string]())
-	mock.Verify(suite.client, mock.AtLeastOnce()).PostEntityStateWithResponse(mock.AnyContext(), mock.Any[string](), mock.Any[core_api.EntityState]())
+	_, _ = mock.Verify(suite.client, mock.AtLeastOnce()).PostEntityStateWithResponse(mock.AnyContext(), mock.Any[string](), mock.Any[core_api.EntityState]())
 
 	suite.NoError(err)
 }
@@ -125,7 +125,7 @@ func (suite *HomeAssistantServiceTestSuite) TestSendSambaStatusEntityDisabled() 
 
 	// Assert
 	//mock.Verify(suite.propRepo, mock.AtLeastOnce()).Value(mock.Any[string]())
-	mock.Verify(suite.client, mock.Never()).PostEntityStateWithResponse(mock.AnyContext(), mock.Any[string](), mock.Any[core_api.EntityState]())
+	_, _ = mock.Verify(suite.client, mock.Never()).PostEntityStateWithResponse(mock.AnyContext(), mock.Any[string](), mock.Any[core_api.EntityState]())
 
 	suite.NoError(err)
 }
@@ -164,7 +164,7 @@ func (suite *HomeAssistantServiceTestSuite) TestSendSambaProcessStatusEntity() {
 	// Assert
 	// Assert
 	//mock.Verify(suite.propRepo, mock.AtLeastOnce()).Value(mock.Any[string]())
-	mock.Verify(suite.client, mock.AtLeastOnce()).PostEntityStateWithResponse(mock.AnyContext(), mock.Any[string](), mock.Any[core_api.EntityState]())
+	_, _ = mock.Verify(suite.client, mock.AtLeastOnce()).PostEntityStateWithResponse(mock.AnyContext(), mock.Any[string](), mock.Any[core_api.EntityState]())
 	suite.NoError(err)
 }
 
@@ -201,7 +201,7 @@ func (suite *HomeAssistantServiceTestSuite) TestSendSambaProcessStatusEntityDisa
 
 	// Assert
 	//mock.Verify(suite.propRepo, mock.AtLeastOnce()).Value(mock.Any[string]())
-	mock.Verify(suite.client, mock.Never()).PostEntityStateWithResponse(mock.AnyContext(), mock.Any[string](), mock.Any[core_api.EntityState]())
+	_, _ = mock.Verify(suite.client, mock.Never()).PostEntityStateWithResponse(mock.AnyContext(), mock.Any[string](), mock.Any[core_api.EntityState]())
 	suite.NoError(err)
 }
 
@@ -256,7 +256,7 @@ func (suite *HomeAssistantServiceTestSuite) TestSendDiskEntities() {
 
 	// Assert
 	//mock.Verify(suite.propRepo, mock.AtLeastOnce()).Value(mock.Any[string]())
-	mock.Verify(suite.client, mock.AtLeastOnce()).PostEntityStateWithResponse(mock.AnyContext(), mock.Any[string](), mock.Any[core_api.EntityState]())
+	_, _ = mock.Verify(suite.client, mock.AtLeastOnce()).PostEntityStateWithResponse(mock.AnyContext(), mock.Any[string](), mock.Any[core_api.EntityState]())
 	suite.NoError(err)
 }
 
@@ -311,7 +311,7 @@ func (suite *HomeAssistantServiceTestSuite) TestSendDiskEntitiesDisabled() {
 
 	// Assert
 	//mock.Verify(suite.propRepo, mock.AtLeastOnce()).Value(mock.Any[string]())
-	mock.Verify(suite.client, mock.Never()).PostEntityStateWithResponse(mock.AnyContext(), mock.Any[string](), mock.Any[core_api.EntityState]())
+	_, _ = mock.Verify(suite.client, mock.Never()).PostEntityStateWithResponse(mock.AnyContext(), mock.Any[string](), mock.Any[core_api.EntityState]())
 	suite.NoError(err)
 }
 
@@ -412,7 +412,7 @@ func (suite *HomeAssistantServiceTestSuite) TestSendDiskHealthEntities() {
 
 	// Assert
 	//mock.Verify(suite.propRepo, mock.AtLeastOnce()).Value(mock.Any[string]())
-	mock.Verify(suite.client, mock.AtLeastOnce()).PostEntityStateWithResponse(mock.AnyContext(), mock.Any[string](), mock.Any[core_api.EntityState]())
+	_, _ = mock.Verify(suite.client, mock.AtLeastOnce()).PostEntityStateWithResponse(mock.AnyContext(), mock.Any[string](), mock.Any[core_api.EntityState]())
 	suite.NoError(err)
 }
 
@@ -462,7 +462,7 @@ func (suite *HomeAssistantServiceTestSuite) TestSendDiskHealthEntitiesDisabled()
 
 	// Assert
 	//mock.Verify(suite.propRepo, mock.AtLeastOnce()).Value(mock.Any[string]())
-	mock.Verify(suite.client, mock.Never()).PostEntityStateWithResponse(mock.AnyContext(), mock.Any[string](), mock.Any[core_api.EntityState]())
+	_, _ = mock.Verify(suite.client, mock.Never()).PostEntityStateWithResponse(mock.AnyContext(), mock.Any[string](), mock.Any[core_api.EntityState]())
 	suite.NoError(err)
 }
 
@@ -492,7 +492,7 @@ func (suite *HomeAssistantServiceTestSuite) TestCreatePersistentNotification_Suc
 
 	// Assert
 	suite.NoError(err)
-	mock.Verify(suite.client, matchers.Times(1)).CallServiceWithResponse(
+	_, _ = mock.Verify(suite.client, matchers.Times(1)).CallServiceWithResponse(
 		mock.AnyContext(),
 		mock.Any[string](),
 		mock.Any[string](),
@@ -531,7 +531,7 @@ func (suite *HomeAssistantServiceTestSuite) TestCreatePersistentNotification_Alr
 	// Assert
 	suite.NoError(err)
 	// Should only be called once (first time), not the second time
-	mock.Verify(suite.client, matchers.Times(1)).CallServiceWithResponse(
+	_, _ = mock.Verify(suite.client, matchers.Times(1)).CallServiceWithResponse(
 		mock.AnyContext(),
 		mock.Any[string](),
 		mock.Any[string](),
@@ -577,7 +577,7 @@ func (suite *HomeAssistantServiceTestSuite) TestDismissPersistentNotification_Cl
 	suite.NoError(err)
 
 	// Assert - should be called 3 times total (first create, skipped second, third after dismiss)
-	mock.Verify(suite.client, matchers.Times(3)).CallServiceWithResponse(
+	_, _ = mock.Verify(suite.client, matchers.Times(3)).CallServiceWithResponse(
 		mock.AnyContext(),
 		mock.Any[string](),
 		mock.Any[string](),
@@ -605,7 +605,7 @@ func (suite *HomeAssistantServiceTestSuite) TestCreatePersistentNotification_NoC
 
 	// Assert
 	suite.NoError(err)
-	mock.Verify(suite.client, mock.Never()).CallServiceWithResponse(
+	_, _ = mock.Verify(suite.client, mock.Never()).CallServiceWithResponse(
 		mock.AnyContext(),
 		mock.Any[string](),
 		mock.Any[string](),

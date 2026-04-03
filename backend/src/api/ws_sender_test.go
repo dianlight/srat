@@ -12,14 +12,12 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/server/ws"
 	"github.com/dianlight/srat/service"
-	"github.com/gorilla/websocket"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
 )
 
 type WsMessageSenderSuite struct {
 	suite.Suite
-	mockConn        *websocket.Conn
 	hanlder         *api.WebSocketHandler
 	wsMessageSender *api.WsMessageSender
 }

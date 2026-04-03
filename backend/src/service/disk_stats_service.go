@@ -146,7 +146,11 @@ func NewDiskStatsService(
 			//	slog.WarnContext(ctx, "Failed to update disk stats", "error", err)
 			//}
 			if wg, ok := Ctx.Value(ctxkeys.WaitGroup).(*sync.WaitGroup); ok && wg != nil {
-				wg.Go(func() { ds.run() })
+				wg.Go(func() {
+					if err := ds.run(); err != nil && !errors.Is(err, context.Canceled) {
+						slog.WarnContext(ds.ctx, "DiskStatsService run loop stopped with error", "error", err)
+					}
+				})
 			}
 			return nil
 		},

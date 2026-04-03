@@ -128,7 +128,6 @@ func (s *HomeAssistantService) SendSambaStatusEntity(status *dto.SambaStatus) er
 
 	if resp.StatusCode() >= 400 {
 		return errors.Errorf("failed to send samba status entity: HTTP %d", resp.StatusCode())
-	} else {
 	}
 
 	tlog.TraceContext(s.ctx, "Sent Samba status entity to Home Assistant", "entity_id", entityId, "state", state, "response", string(resp.Body))
