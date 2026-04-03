@@ -41,11 +41,12 @@ Implement a generic backend/frontend system that executes commands on the backen
 - [x] Task 9: Add Notification Center logic to show stderr alert when no command-output component instance is open
 - [x] Task 10: Implement notification action to open a generic popup showing last 500 lines and exit code/termination status
 - [x] Task 11: Add unit/integration tests for backend command streaming, buffer trimming, and frontend notification/popup behavior
-- [ ] Task 12: Integration and documentation updates for architecture, event contract, and operator usage
-- [ ] Task 13: Migrate any remaining exec usage in backend to the new command runner abstraction, ensuring that all command executions benefit from the new streaming and event capabilities. If the actual exec use cases don't have a specific test, create the test for it and then migrate to the new command runner abstraction. Perform a final code review and security audit to ensure that there are no risks of command injection or sensitive data exposure in the new implementation.
-- [ ] Task 14: Final code review code cleanup, and documentation updates to ensure that the new feature is well-documented for future maintainers and users.
-- [ ] Task 15: Mark the task as complete and prepare for release. 
-- [ ] Task 16: Create a PR with the implementation and link it to this task for tracking. Ensure that the PR description clearly outlines the changes made, the new features added, and any important notes for reviewers. 
+- [x] Task 12: Integration and documentation updates for architecture, event contract, and operator usage
+- [ ] Task 13: Create a Github copilot instruction that guide how use the execution system and how implement. Make it a required instruction to follow always when there is an execution on the backend.
+- [ ] Task 14: Migrate any remaining exec usage in backend to the new command runner abstraction, ensuring that all command executions benefit from the new streaming and event capabilities. If the actual exec use cases don't have a specific test, create the test for it and then migrate to the new command runner abstraction. Perform a final code review and security audit to ensure that there are no risks of command injection or sensitive data exposure in the new implementation.
+- [ ] Task 15: Final code review code cleanup, and documentation updates to ensure that the new feature is well-documented for future maintainers and users.
+- [ ] Task 16: Mark the task as complete and prepare for release. 
+- [ ] Task 17: Create a PR with the implementation and link it to this task for tracking. Ensure that the PR description clearly outlines the changes made, the new features added, and any important notes for reviewers. 
 
 ## 🧠 Implementation Notes (Copilot Context)
 
@@ -106,6 +107,11 @@ Implement a generic backend/frontend system that executes commands on the backen
     - Validation:
       - `go test ./service -run TestCommandExecutionServiceTestSuite` ✓
       - `bun test src/__tests__/App.commandEvents.test.tsx src/components/__tests__/ReadonlyCommandTerminal.test.tsx` ✓
+  - Implemented Task 12 documentation integration updates:
+    - Updated `docs/EVENT_DRIVEN_ARCHITECTURE.md` with command execution architecture notes, lifecycle ordering (`command_started` → `command_output` → `command_terminated`), and explicit WebSocket contract field references.
+    - Updated `docs/EVENT_SYSTEM_QUICK_REFERENCE.md` with WebSocket-only event flow wording and operator-facing command console usage/troubleshooting notes.
+    - Validation:
+      - `npx --yes markdownlint-cli2 /workspaces/srat/docs/EVENT_DRIVEN_ARCHITECTURE.md /workspaces/srat/docs/EVENT_SYSTEM_QUICK_REFERENCE.md` ✓
 
   **Phase 1 status (current as of 2026-04-02):**
   ✅ All core infrastructure implemented and validated:
@@ -142,6 +148,9 @@ Implement a generic backend/frontend system that executes commands on the backen
   - `frontend/src/components/NotificationCenter.tsx`
   - `frontend/src/components/PreviewDialog.tsx`
   - `frontend/src/pages/**` (placement decision for terminal viewer and popup trigger)
+- [x] `TODO: docs` - Architecture/event-contract/operator docs touchpoints:
+  - `docs/EVENT_DRIVEN_ARCHITECTURE.md`
+  - `docs/EVENT_SYSTEM_QUICK_REFERENCE.md`
 - [ ] `TODO: notification-action` - Add action workflow from stderr notification to popup open state + selected execution id.
 - [ ] `FIXME: backpressure` - Confirm queue/ring-buffer strategy for long-running or high-output command streams and define drop/truncate policy.
 
