@@ -8,7 +8,6 @@ import (
 	"slices"
 	"strings"
 	"sync"
-	"sync/atomic"
 
 	"fmt"
 
@@ -53,7 +52,6 @@ type VolumeServiceInterface interface {
 type VolumeService struct {
 	ctx             context.Context
 	db              *gorm.DB
-	refreshing      atomic.Bool
 	hardwareClient  HardwareServiceInterface
 	fs_service      FilesystemServiceInterface
 	shareService    ShareServiceInterface
@@ -155,12 +153,16 @@ func NewVolumeService(
 		return nil
 	})
 	unsubscribe[4] = p.eventBus.OnSmart(func(ctx context.Context, se events.SmartEvent) errors.E {
-		p.disks.AddSmartInfo(&se.SmartInfo)
+		if err := p.disks.AddSmartInfo(&se.SmartInfo); err != nil {
+			slog.WarnContext(ctx, "Failed to add SMART info to disk cache", "error", err)
+		}
 		return nil
 	})
 	unsubscribe[5] = p.eventBus.OnPower(func(ctx context.Context, pe events.PowerEvent) errors.E {
 		// Handle PowerEvent
-		p.disks.AddHDIdleDevice(&pe.PowerInfo)
+		if err := p.disks.AddHDIdleDevice(&pe.PowerInfo); err != nil {
+			slog.WarnContext(ctx, "Failed to add HDIdle device info to disk cache", "error", err)
+		}
 		return nil
 	})
 	lc.Append(fx.Hook{
@@ -368,7 +370,7 @@ func (ms *VolumeService) UnmountVolume(path string, force bool) errors.E {
 	if ok && md.Share != nil && md.Share.Status.IsHAMounted {
 		slog.DebugContext(ms.ctx, "Found mount point as HAMounted", "path", path)
 		md.IsInvalid = true
-		ms.eventBus.EmitShare(events.ShareEvent{
+		_ = ms.eventBus.EmitShare(events.ShareEvent{
 			Event: events.Event{Type: events.EventTypes.REMOVE},
 			Share: md.Share,
 		})
@@ -411,8 +413,8 @@ func (self *VolumeService) udevEventHandler() {
 			// Filter events - only interested in block devices for now
 			if subsystem, ok := uevent.Env["SUBSYSTEM"]; ok && subsystem == "block" {
 				action := uevent.Action
-				devName, _ := uevent.Env["DEVNAME"]
-				devType, _ := uevent.Env["DEVTYPE"]
+				devName := uevent.Env["DEVNAME"]
+				devType := uevent.Env["DEVTYPE"]
 
 				slog.DebugContext(self.ctx, "Received Udev block event", "action", action, "devname", devName, "devtype", devType, "env", uevent.Env)
 
@@ -422,9 +424,9 @@ func (self *VolumeService) udevEventHandler() {
 				}
 				// Process block device events
 				if action == "remove" && devType == "disk" {
-					bus, _ := uevent.Env["ID_BUS"]
-					suffix, _ := uevent.Env[".PART_SUFFIX"]
-					serial, _ := uevent.Env["ID_SERIAL"]
+					bus := uevent.Env["ID_BUS"]
+					suffix := uevent.Env[".PART_SUFFIX"]
+					serial := uevent.Env["ID_SERIAL"]
 
 					slog.InfoContext(self.ctx, "Processing block device removal event", "devname", devName, "bus", bus, "serial", serial, "suffix", suffix)
 					self.disks.Remove(bus + "-" + serial + suffix)
@@ -749,8 +751,12 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 			mountPoint.Root = prtstate.Root
 			mountPoint.RefreshVersion = self.refreshVersion
 			mountPoint.IsWriteSupported = &iw
-			mountPoint.Flags.Scan(prtstate.Options)
-			mountPoint.CustomFlags.Scan(prtstate.SuperOptions)
+			if err := mountPoint.Flags.Scan(prtstate.Options); err != nil {
+				slog.WarnContext(ctx, "Failed to scan mount flags", "mount_path", prtstate.MountPoint, "error", err)
+			}
+			if err := mountPoint.CustomFlags.Scan(prtstate.SuperOptions); err != nil {
+				slog.WarnContext(ctx, "Failed to scan custom mount flags", "mount_path", prtstate.MountPoint, "error", err)
+			}
 			mountPoint.FSType = &prtstate.FSType
 			mountPoint.Type = "ADDON"
 			err := self.disks.AddOrUpdateMountPoint(*e.Partition.DiskId, *e.Partition.Id, *mountPoint)
@@ -759,7 +765,7 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 				continue
 			}
 			if !oldstate {
-				self.eventBus.EmitMountPoint(events.MountPointEvent{
+				_ = self.eventBus.EmitMountPoint(events.MountPointEvent{
 					Event:      events.Event{Type: events.EventTypes.UPDATE},
 					MountPoint: mountPoint,
 				})
@@ -781,14 +787,18 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 				Partition:        e.Partition,
 				RefreshVersion:   self.refreshVersion,
 			}
-			mountPoint.Flags.Scan(prtstate.Options)
-			mountPoint.CustomFlags.Scan(prtstate.SuperOptions)
+			if err := mountPoint.Flags.Scan(prtstate.Options); err != nil {
+				slog.WarnContext(ctx, "Failed to scan mount flags", "mount_path", prtstate.MountPoint, "error", err)
+			}
+			if err := mountPoint.CustomFlags.Scan(prtstate.SuperOptions); err != nil {
+				slog.WarnContext(ctx, "Failed to scan custom mount flags", "mount_path", prtstate.MountPoint, "error", err)
+			}
 			err := self.disks.AddOrUpdateMountPoint(*e.Partition.DiskId, *e.Partition.Id, mountPoint)
 			if err != nil {
 				slog.WarnContext(self.ctx, "Failed to add mount point to disk map", "disk_id", *e.Partition.DiskId, "partition_id", *e.Partition.Id, "mount_path", mountPoint.Path, "err", err)
 				continue
 			}
-			self.eventBus.EmitMountPoint(events.MountPointEvent{
+			_ = self.eventBus.EmitMountPoint(events.MountPointEvent{
 				Event:      events.Event{Type: events.EventTypes.ADD},
 				MountPoint: &mountPoint,
 			})
@@ -819,7 +829,7 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 				continue
 			}
 			if oldtstate || (mountPoint.IsToMountAtStartup != nil && *mountPoint.IsToMountAtStartup) {
-				self.eventBus.EmitMountPoint(events.MountPointEvent{
+				_ = self.eventBus.EmitMountPoint(events.MountPointEvent{
 					Event:      events.Event{Type: events.EventTypes.UPDATE},
 					MountPoint: mountPoint,
 				})
@@ -955,7 +965,7 @@ func (ms *VolumeService) PatchMountPointSettings(root string, path string, patch
 			}
 		}
 	}
-	ms.eventBus.EmitMountPoint(events.MountPointEvent{
+	_ = ms.eventBus.EmitMountPoint(events.MountPointEvent{
 		Event:      events.Event{Type: events.EventTypes.UPDATE},
 		MountPoint: &currentDto,
 	})

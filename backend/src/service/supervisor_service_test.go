@@ -234,7 +234,7 @@ func (suite *SupervisorServiceSuite) TestNetworkUnmountShare_Success() {
 
 	// Assert
 	suite.NoError(err)
-	mock.Verify(suite.mountClient, matchers.Times(1)).RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())
+	_, _ = mock.Verify(suite.mountClient, matchers.Times(1)).RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())
 }
 
 func (suite *SupervisorServiceSuite) TestNetworkUnmountShare_ErrorResponse() {
@@ -316,7 +316,7 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_CreateSuccess() {
 
 	// Assert
 	suite.Require().NoError(err)
-	mock.Verify(suite.mountClient, matchers.Times(1)).CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())
+	_, _ = mock.Verify(suite.mountClient, matchers.Times(1)).CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())
 }
 
 func (suite *SupervisorServiceSuite) TestNetworkMountShare_Create400WithRetrySuccess() {
@@ -372,8 +372,8 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_Create400WithRetrySuc
 
 	// Assert
 	suite.NoError(err)
-	mock.Verify(suite.mountClient, matchers.Times(2)).CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())
-	mock.Verify(suite.mountClient, matchers.Times(1)).RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())
+	_, _ = mock.Verify(suite.mountClient, matchers.Times(2)).CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())
+	_, _ = mock.Verify(suite.mountClient, matchers.Times(1)).RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())
 }
 
 func (suite *SupervisorServiceSuite) TestNetworkMountShare_Create400WithRetryFail() {
@@ -422,8 +422,8 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_Create400WithRetryFai
 	// Assert
 	suite.Error(err)
 	suite.Contains(err.Error(), "after removing stale mount")
-	mock.Verify(suite.mountClient, matchers.Times(2)).CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())
-	mock.Verify(suite.mountClient, matchers.Times(1)).RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())
+	_, _ = mock.Verify(suite.mountClient, matchers.Times(2)).CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())
+	_, _ = mock.Verify(suite.mountClient, matchers.Times(1)).RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())
 }
 
 func (suite *SupervisorServiceSuite) TestNetworkMountShare_Create400WithRemoveFail() {
@@ -473,8 +473,8 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_Create400WithRemoveFa
 	suite.Error(err)
 	suite.Contains(err.Error(), "Error creating mount")
 	// Only one create attempt since remove failed
-	mock.Verify(suite.mountClient, matchers.Times(1)).CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())
-	mock.Verify(suite.mountClient, matchers.Times(1)).RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())
+	_, _ = mock.Verify(suite.mountClient, matchers.Times(1)).CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())
+	_, _ = mock.Verify(suite.mountClient, matchers.Times(1)).RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())
 }
 
 // TestNetworkMountShare_Issue221_ExactScenario tests the exact scenario described in issue #221
@@ -533,8 +533,8 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_Issue221_ExactScenari
 
 	// Assert - the fix should handle this gracefully
 	suite.NoError(err, "Issue #221 fix should handle stale systemd units")
-	mock.Verify(suite.mountClient, matchers.Times(2)).CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())
-	mock.Verify(suite.mountClient, matchers.Times(1)).RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())
+	_, _ = mock.Verify(suite.mountClient, matchers.Times(2)).CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())
+	_, _ = mock.Verify(suite.mountClient, matchers.Times(1)).RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())
 }
 
 // TestNetworkMountShare_Update400_NoRetryLogic tests the scenario where an update fails with 400
@@ -618,9 +618,9 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_Update400_NoRetryLogi
 
 	// Assert - with retry logic, this should now succeed
 	suite.NoError(err, "Update path now has retry logic for 400 errors")
-	mock.Verify(suite.mountClient, matchers.Times(1)).UpdateMountWithResponse(mock.Any[context.Context](), mock.Any[string](), mock.Any[mount.Mount]())
-	mock.Verify(suite.mountClient, matchers.Times(1)).RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())
-	mock.Verify(suite.mountClient, matchers.Times(1)).CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())
+	_, _ = mock.Verify(suite.mountClient, matchers.Times(1)).UpdateMountWithResponse(mock.Any[context.Context](), mock.Any[string](), mock.Any[mount.Mount]())
+	_, _ = mock.Verify(suite.mountClient, matchers.Times(1)).RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())
+	_, _ = mock.Verify(suite.mountClient, matchers.Times(1)).CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())
 }
 
 // TestNetworkMountShare_Update400_WithRetryLogic tests the retry logic for update operations
@@ -704,9 +704,9 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_Update400_WithRetryLo
 
 	// Assert - with the fix, it should: attempt update -> get 400 -> remove -> create -> succeed
 	suite.NoError(err)
-	mock.Verify(suite.mountClient, matchers.Times(1)).UpdateMountWithResponse(mock.Any[context.Context](), mock.Any[string](), mock.Any[mount.Mount]())
-	mock.Verify(suite.mountClient, matchers.Times(1)).RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())
-	mock.Verify(suite.mountClient, matchers.Times(1)).CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())
+	_, _ = mock.Verify(suite.mountClient, matchers.Times(1)).UpdateMountWithResponse(mock.Any[context.Context](), mock.Any[string](), mock.Any[mount.Mount]())
+	_, _ = mock.Verify(suite.mountClient, matchers.Times(1)).RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())
+	_, _ = mock.Verify(suite.mountClient, matchers.Times(1)).CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())
 }
 
 // newNfsMountTestApp recreates the supervisor service app with a mocked SettingServiceInterface so
@@ -879,7 +879,7 @@ func (suite *SupervisorServiceSuite) TestNetworkUnmountAllShares_Success() {
 
 	// Assert
 	suite.NoError(err)
-	mock.Verify(suite.mountClient, matchers.Times(3)).RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())
+	_, _ = mock.Verify(suite.mountClient, matchers.Times(3)).RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())
 }
 
 // NetworkUnmountAllShares should skip disabled and invalid shares
@@ -926,7 +926,7 @@ func (suite *SupervisorServiceSuite) TestNetworkUnmountAllShares_SkipsDisabledAn
 
 	// Assert: ok-backup and invalid-share (usage=share) should be unmounted
 	suite.NoError(err)
-	mock.Verify(suite.mountClient, matchers.Times(2)).RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())
+	_, _ = mock.Verify(suite.mountClient, matchers.Times(2)).RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())
 }
 
 // NetworkMountAllShares should do nothing when HA Core is not ready
@@ -960,8 +960,8 @@ func (suite *SupervisorServiceSuite) TestNetworkMountAllShares_HACoreNotReady() 
 
 	// Assert: no mount attempts
 	suite.NoError(err)
-	mock.Verify(suite.mountClient, matchers.Times(0)).CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())
-	mock.Verify(suite.mountClient, matchers.Times(0)).UpdateMountWithResponse(mock.Any[context.Context](), mock.Any[string](), mock.Any[mount.Mount]())
+	_, _ = mock.Verify(suite.mountClient, matchers.Times(0)).CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())
+	_, _ = mock.Verify(suite.mountClient, matchers.Times(0)).UpdateMountWithResponse(mock.Any[context.Context](), mock.Any[string](), mock.Any[mount.Mount]())
 }
 
 // NetworkMountAllShares should skip when AddonIpAddress is empty
@@ -1016,7 +1016,7 @@ func (suite *SupervisorServiceSuite) TestNetworkMountAllShares_AddonIpEmpty() {
 
 	// Assert
 	suite.NoError(err)
-	mock.Verify(suite.mountClient, matchers.Times(0)).CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())
+	_, _ = mock.Verify(suite.mountClient, matchers.Times(0)).CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())
 }
 
 // NetworkMountAllShares mounts eligible shares and unmounts lost mounts
@@ -1089,7 +1089,7 @@ func (suite *SupervisorServiceSuite) TestNetworkMountAllShares_MountsEligibleAnd
 	// Assert
 	suite.Require().NoError(err)
 	// 3 eligible shares should trigger create
-	mock.Verify(suite.mountClient, matchers.Times(3)).CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())
+	_, _ = mock.Verify(suite.mountClient, matchers.Times(3)).CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())
 	// One orphan share should be unmounted
-	mock.Verify(suite.mountClient, matchers.Times(1)).RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())
+	_, _ = mock.Verify(suite.mountClient, matchers.Times(1)).RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())
 }

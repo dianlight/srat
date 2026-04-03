@@ -92,7 +92,7 @@ func (suite *HDIdleHandlerSuite) TestGetConfigSuccess() {
 	suite.Equal(time.Duration(300), out.IdleTime)
 	suite.Equal(dto.HdidleEnableds.YESENABLED, out.Enabled)
 
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).GetDeviceConfig(mock.Substring(diskID))
+	_, _ = mock.Verify(suite.mockHDIdleService, matchers.Times(1)).GetDeviceConfig(mock.Substring(diskID))
 }
 
 func (suite *HDIdleHandlerSuite) TestGetConfigError() {
@@ -106,7 +106,7 @@ func (suite *HDIdleHandlerSuite) TestGetConfigError() {
 	resp := apiInst.Get("/disk/sda/hdidle/config")
 	suite.Require().Equal(http.StatusInternalServerError, resp.Code)
 
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).GetDeviceConfig(mock.Substring(diskID))
+	_, _ = mock.Verify(suite.mockHDIdleService, matchers.Times(1)).GetDeviceConfig(mock.Substring(diskID))
 }
 
 // =============================================================================
@@ -149,9 +149,9 @@ func (suite *HDIdleHandlerSuite) TestPutConfigSuccess() {
 	suite.NoError(json.Unmarshal(resp.Body.Bytes(), &out))
 	suite.Equal(time.Duration(600), out.IdleTime)
 
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).GetDeviceConfig(mock.Substring(diskID))
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).SaveDeviceConfig(mock.Any[dto.HDIdleDevice]())
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).Start()
+	_, _ = mock.Verify(suite.mockHDIdleService, matchers.Times(1)).GetDeviceConfig(mock.Substring(diskID))
+	_ = mock.Verify(suite.mockHDIdleService, matchers.Times(1)).SaveDeviceConfig(mock.Any[dto.HDIdleDevice]())
+	_ = mock.Verify(suite.mockHDIdleService, matchers.Times(1)).Start()
 }
 
 func (suite *HDIdleHandlerSuite) TestPutConfigWithRestartSuccess() {
@@ -183,8 +183,8 @@ func (suite *HDIdleHandlerSuite) TestPutConfigWithRestartSuccess() {
 	resp := apiInst.Put("/disk/sda/hdidle/config", inputConfig)
 	suite.Require().Equal(http.StatusOK, resp.Code)
 
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).Stop()
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).Start()
+	_ = mock.Verify(suite.mockHDIdleService, matchers.Times(1)).Stop()
+	_ = mock.Verify(suite.mockHDIdleService, matchers.Times(1)).Start()
 }
 
 func (suite *HDIdleHandlerSuite) TestPutConfigDevicePathMismatch() {
@@ -241,7 +241,7 @@ func (suite *HDIdleHandlerSuite) TestPutConfigStopError() {
 	resp := apiInst.Put("/disk/sda/hdidle/config", inputConfig)
 	suite.Require().Equal(http.StatusInternalServerError, resp.Code)
 
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).Stop()
+	_ = mock.Verify(suite.mockHDIdleService, matchers.Times(1)).Stop()
 }
 
 func (suite *HDIdleHandlerSuite) TestPutConfigSaveError() {
@@ -270,7 +270,7 @@ func (suite *HDIdleHandlerSuite) TestPutConfigSaveError() {
 	resp := apiInst.Put("/disk/sda/hdidle/config", inputConfig)
 	suite.Require().Equal(http.StatusInternalServerError, resp.Code)
 
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).SaveDeviceConfig(mock.Any[dto.HDIdleDevice]())
+	_ = mock.Verify(suite.mockHDIdleService, matchers.Times(1)).SaveDeviceConfig(mock.Any[dto.HDIdleDevice]())
 }
 
 func (suite *HDIdleHandlerSuite) TestPutConfigStartError() {
@@ -301,7 +301,7 @@ func (suite *HDIdleHandlerSuite) TestPutConfigStartError() {
 	resp := apiInst.Put("/disk/sda/hdidle/config", inputConfig)
 	suite.Require().Equal(http.StatusInternalServerError, resp.Code)
 
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).Start()
+	_ = mock.Verify(suite.mockHDIdleService, matchers.Times(1)).Start()
 }
 
 // =============================================================================
@@ -329,7 +329,7 @@ func (suite *HDIdleHandlerSuite) TestGetStatusSuccess() {
 	suite.Equal("sda", out.Name)
 	suite.False(out.SpunDown)
 
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).GetDeviceStatus(mock.Substring(diskID))
+	_, _ = mock.Verify(suite.mockHDIdleService, matchers.Times(1)).GetDeviceStatus(mock.Substring(diskID))
 }
 
 func (suite *HDIdleHandlerSuite) TestGetStatusError() {
@@ -343,7 +343,7 @@ func (suite *HDIdleHandlerSuite) TestGetStatusError() {
 	resp := apiInst.Get("/disk/sda/hdidle/info")
 	suite.Require().Equal(http.StatusInternalServerError, resp.Code)
 
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).GetDeviceStatus(mock.Substring(diskID))
+	_, _ = mock.Verify(suite.mockHDIdleService, matchers.Times(1)).GetDeviceStatus(mock.Substring(diskID))
 }
 
 // =============================================================================
@@ -382,7 +382,7 @@ func (suite *HDIdleHandlerSuite) TestStartServiceSuccess() {
 	suite.True(out.Running)
 
 	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).IsRunning()
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).Start()
+	_ = mock.Verify(suite.mockHDIdleService, matchers.Times(1)).Start()
 }
 
 func (suite *HDIdleHandlerSuite) TestStartServiceAlreadyRunning() {
@@ -403,7 +403,7 @@ func (suite *HDIdleHandlerSuite) TestStartServiceAlreadyRunning() {
 	suite.True(out.Running)
 
 	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).IsRunning()
-	mock.Verify(suite.mockHDIdleService, matchers.Times(0)).Start()
+	_ = mock.Verify(suite.mockHDIdleService, matchers.Times(0)).Start()
 }
 
 func (suite *HDIdleHandlerSuite) TestStartServiceError() {
@@ -416,7 +416,7 @@ func (suite *HDIdleHandlerSuite) TestStartServiceError() {
 	resp := apiInst.Post("/hdidle/start", struct{}{})
 	suite.Require().Equal(http.StatusInternalServerError, resp.Code)
 
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).Start()
+	_ = mock.Verify(suite.mockHDIdleService, matchers.Times(1)).Start()
 }
 
 // =============================================================================
@@ -442,7 +442,7 @@ func (suite *HDIdleHandlerSuite) TestStopServiceSuccess() {
 	suite.False(out.Running)
 
 	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).IsRunning()
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).Stop()
+	_ = mock.Verify(suite.mockHDIdleService, matchers.Times(1)).Stop()
 }
 
 func (suite *HDIdleHandlerSuite) TestStopServiceNotRunning() {
@@ -463,7 +463,7 @@ func (suite *HDIdleHandlerSuite) TestStopServiceNotRunning() {
 	suite.False(out.Running)
 
 	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).IsRunning()
-	mock.Verify(suite.mockHDIdleService, matchers.Times(0)).Stop()
+	_ = mock.Verify(suite.mockHDIdleService, matchers.Times(0)).Stop()
 }
 
 func (suite *HDIdleHandlerSuite) TestStopServiceError() {
@@ -476,7 +476,7 @@ func (suite *HDIdleHandlerSuite) TestStopServiceError() {
 	resp := apiInst.Post("/hdidle/stop", struct{}{})
 	suite.Require().Equal(http.StatusInternalServerError, resp.Code)
 
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).Stop()
+	_ = mock.Verify(suite.mockHDIdleService, matchers.Times(1)).Stop()
 }
 
 // =============================================================================
@@ -510,7 +510,7 @@ func (suite *HDIdleHandlerSuite) TestCheckSupportSuccess() {
 	suite.True(out.SupportsATA)
 	suite.Equal("/dev/sda", out.DevicePath)
 
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).CheckDeviceSupport(mock.Substring(diskID))
+	_, _ = mock.Verify(suite.mockHDIdleService, matchers.Times(1)).CheckDeviceSupport(mock.Substring(diskID))
 }
 
 func (suite *HDIdleHandlerSuite) TestCheckSupportNotSupported() {
@@ -536,7 +536,7 @@ func (suite *HDIdleHandlerSuite) TestCheckSupportNotSupported() {
 	suite.False(out.Supported)
 	suite.Equal("device does not support SG interface", out.ErrorMessage)
 
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).CheckDeviceSupport(mock.Substring(diskID))
+	_, _ = mock.Verify(suite.mockHDIdleService, matchers.Times(1)).CheckDeviceSupport(mock.Substring(diskID))
 }
 
 func (suite *HDIdleHandlerSuite) TestCheckSupportError() {
@@ -550,5 +550,5 @@ func (suite *HDIdleHandlerSuite) TestCheckSupportError() {
 	resp := apiInst.Get("/disk/sda/hdidle/support")
 	suite.Require().Equal(http.StatusInternalServerError, resp.Code, "Returned body: %s", resp.Body.String())
 
-	mock.Verify(suite.mockHDIdleService, matchers.Times(1)).CheckDeviceSupport(mock.Substring(diskID))
+	_, _ = mock.Verify(suite.mockHDIdleService, matchers.Times(1)).CheckDeviceSupport(mock.Substring(diskID))
 }

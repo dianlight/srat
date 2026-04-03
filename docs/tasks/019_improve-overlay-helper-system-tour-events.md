@@ -2,7 +2,7 @@
 
 # [FEATURE]: Improve Overlay Helper System & Tour Events
 
-**Target Repo:** `srat` **Status:** ✅ Done **Issue Link:** [#515](https://github.com/dianlight/srat/issues/515)
+**Target Repo:** `srat` **Status:** ✅ Complete **Issue Link:** [#515](https://github.com/dianlight/srat/issues/515)
 
 ## 🎯 Objective
 

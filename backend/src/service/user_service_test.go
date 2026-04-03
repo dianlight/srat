@@ -144,12 +144,8 @@ func (suite *UserServiceSuite) TestListUsers_Success() {
 	for _, u := range users {
 		suite.True(u.IsValid)
 		usernames = append(usernames, u.Username)
-		for _, share := range u.RwShares {
-			rwShares = append(rwShares, share)
-		}
-		for _, share := range u.RoShares {
-			roShares = append(roShares, share)
-		}
+		rwShares = append(rwShares, u.RwShares...)
+		roShares = append(roShares, u.RoShares...)
 	}
 	suite.Contains(usernames, "testuser1")
 	suite.Contains(usernames, "testuser2")

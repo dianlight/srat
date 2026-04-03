@@ -38,7 +38,6 @@ type ServerProcessServiceSuite struct {
 	serverService   service.ServerServiceInterface
 	share_service   service.ShareServiceInterface
 	setting_service service.SettingServiceInterface
-	ctrl            *matchers.MockController
 	ctx             context.Context
 	cancel          context.CancelFunc
 	app             *fxtest.App
@@ -169,6 +168,7 @@ func (suite *ServerProcessServiceSuite) SetupTest() {
 			mock.Mock[service.ShareServiceInterface],
 			service.NewUserService,
 			mock.Mock[service.BroadcasterServiceInterface],
+			mock.Mock[service.CommandExecutionServiceInterface],
 			mock.Mock[service.DirtyDataServiceInterface],
 			//mock.Mock[service.SupervisorServiceInterface],
 			//mock.Mock[repository.ExportedShareRepositoryInterface],

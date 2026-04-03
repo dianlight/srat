@@ -191,11 +191,11 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 									partition.FsType = device.Attributes.IDFSTYPE
 								}
 							}
-							name := ""
 							if partition.Name != nil {
-								name = *partition.Name
+								partition.System = new(strings.HasPrefix(*partition.Name, "hassos-"))
+							} else {
+								partition.System = new(false)
 							}
-							partition.System = new(strings.HasPrefix(name, "hassos-"))
 							// write back into the map
 							(*diskDto.Partitions)[pid] = partition
 						}

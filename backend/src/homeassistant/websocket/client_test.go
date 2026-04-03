@@ -169,7 +169,9 @@ func TestHelpers_CallGetAndSubscribe(t *testing.T) {
 		got <- ev
 	})
 	require.NoError(t, err)
-	defer unsub()
+	defer func() {
+		_ = unsub()
+	}()
 
 	select {
 	case ev := <-got:

@@ -201,7 +201,11 @@ func (s *HDIdleService) Start() errors.E {
 		go func() {
 
 			//s.running = true
-			defer s.Stop()
+			defer func() {
+				if err := s.Stop(); err != nil {
+					tlog.WarnContext(s.ctx, "Error while stopping HDIdle service", "error", err)
+				}
+			}()
 			s.monitorLoop()
 		}()
 	}
@@ -281,7 +285,7 @@ func (s *HDIdleService) getRealPathNotSimlink(path string) string {
 
 func (s *HDIdleService) GetDeviceConfig(path string) (*dto.HDIdleDevice, errors.E) {
 
-	if s.config.Enabled == false {
+	if !s.config.Enabled {
 		return nil, errors.Wrap(dto.ErrorHDIdleNotSupported, "HDIdle service is disabled")
 	}
 
@@ -695,7 +699,7 @@ func (s *HDIdleService) updateDiskState(name string, reads, writes uint64, now t
 		slog.DebugContext(s.ctx, "Disk not configured for HDIdle, skipping", "disk", name, "devices", s.config.Devices)
 		return
 	} else {
-		if dv.Enabled == dto.HdidleEnableds.NOENABLED || dv.Supported == false {
+		if dv.Enabled == dto.HdidleEnableds.NOENABLED || !dv.Supported {
 			// Device explicitly disabled for HDIdle, skip processing
 			return
 		}

@@ -139,7 +139,7 @@ func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterfa
 			tlog.TraceContext(ctx, "No share found for mount point", "path", event.MountPoint.Path)
 			return nil
 		}
-		s.eventBus.EmitShare(events.ShareEvent{
+		_ = s.eventBus.EmitShare(events.ShareEvent{
 			Event: events.Event{Type: events.EventTypes.UPDATE},
 			Share: share, // Let subscribers fetch the share if needed
 		})
@@ -262,7 +262,7 @@ func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResourc
 		slog.Warn("Share verification failed", "share", dtoShare.Name, "err", err)
 	}
 
-	s.eventBus.EmitShare(events.ShareEvent{
+	_ = s.eventBus.EmitShare(events.ShareEvent{
 		Event: events.Event{Type: events.EventTypes.ADD},
 		Share: &dtoShare,
 	})
@@ -373,7 +373,7 @@ func (s *ShareService) UpdateShare(name string, share dto.SharedResource) (*dto.
 		slog.Warn("New share verification failed", "share", createdDtoShare.Name, "err", err)
 	}
 
-	s.eventBus.EmitShare(events.ShareEvent{
+	_ = s.eventBus.EmitShare(events.ShareEvent{
 		Event: events.Event{Type: events.EventTypes.UPDATE},
 		Share: &createdDtoShare,
 	})
@@ -388,7 +388,7 @@ func (s *ShareService) DeleteShare(name string) errors.E {
 	if err != nil { // Leverage GetShare for not-found check
 		return err
 	}
-	s.eventBus.EmitShare(events.ShareEvent{
+	_ = s.eventBus.EmitShare(events.ShareEvent{
 		Event: events.Event{Type: events.EventTypes.REMOVE},
 		Share: ashare,
 	})
@@ -487,7 +487,7 @@ func (s *ShareService) SetShareFromPathEnabled(path string, enabled bool) (*dto.
 	if errS != nil {
 		return nil, errors.Wrap(errS, "failed to convert share")
 	}
-	s.eventBus.EmitShare(events.ShareEvent{
+	_ = s.eventBus.EmitShare(events.ShareEvent{
 		Event: events.Event{Type: events.EventTypes.UPDATE},
 		Share: &dtoShare,
 	})
@@ -518,7 +518,7 @@ func (s *ShareService) setShareEnabled(name string, enabled bool) (*dto.SharedRe
 	if errS != nil {
 		return nil, errors.Wrap(errS, "failed to convert share")
 	}
-	s.eventBus.EmitShare(events.ShareEvent{
+	_ = s.eventBus.EmitShare(events.ShareEvent{
 		Event: events.Event{Type: events.EventTypes.UPDATE},
 		Share: &dtoShare,
 	})

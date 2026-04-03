@@ -34,7 +34,7 @@ func (suite *VolumeHandlerSuite) TestMountVolumeSuccess() {
 	suite.NoError(json.Unmarshal(resp.Body.Bytes(), &out))
 	suite.Equal(path, out.Path)
 
-	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).MountVolume(mock.Any[*dto.MountPointData]())
+	_ = mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).MountVolume(mock.Any[*dto.MountPointData]())
 
 }
 
@@ -53,7 +53,7 @@ func (suite *VolumeHandlerSuite) TestUmountVolumeSuccess() {
 
 	//mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).PathHashToPath(mock.Any[string]())
 	//mock.Verify(suite.mockShareSvc, matchers.Times(1)).SetShareFromPathEnabled(mock.Any[string](), mock.Any[bool]())
-	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).UnmountVolume(mock.Any[string](), mock.Any[bool]())
+	_ = mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).UnmountVolume(mock.Any[string](), mock.Any[bool]())
 }
 
 /*
@@ -89,7 +89,7 @@ func (suite *VolumeHandlerSuite) TestPatchVolumeSettingsSuccess() {
 	suite.Equal(mountPath, out.Path)
 
 	//mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).PathHashToPath(mock.Any[string]())
-	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).PatchMountPointSettings(mock.Any[string](), mock.Any[string](), mock.Any[dto.MountPointData]())
+	_, _ = mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).PatchMountPointSettings(mock.Any[string](), mock.Any[string](), mock.Any[dto.MountPointData]())
 }
 
 func (suite *VolumeHandlerSuite) TestMountVolumeErrorBranches() {

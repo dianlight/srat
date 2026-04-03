@@ -28,14 +28,14 @@ func (self *MounDataFlags) Scan(value any) error {
 			// Extract the value after the '='
 			parts := strings.SplitN(flag, "=", 2)
 			if len(parts) == 2 {
-				self.Add(MounDataFlag{
+				_ = self.Add(MounDataFlag{
 					Name:       parts[0],
 					NeedsValue: true,
 					FlagValue:  parts[1],
 				})
 			}
 		} else if flag != "" {
-			self.Add(MounDataFlag{
+			_ = self.Add(MounDataFlag{
 				Name:       flag,
 				NeedsValue: false,
 			})

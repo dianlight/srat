@@ -218,13 +218,21 @@ BroadcasterService
     ├─ Relays through broadcast relay
     │
     ▼
-Connected Clients (SSE, WebSocket)
+Connected Clients (WebSocket)
     │
     ├─ Receive events in real-time
     │
     ▼
 Home Assistant (if enabled)
 ```
+
+For command execution console flows, use `execution_id` as the correlation key and process events in lifecycle order:
+
+1. `command_started`
+2. `command_output` (streaming lines)
+3. `command_terminated`
+
+Keep only a bounded tail buffer (SRAT uses 500 lines) for UI popups and downloads.
 
 ## Files Reference
 
@@ -265,6 +273,18 @@ Look for:
 - Check logs for "Emitting" message
 - Verify subscriber is connected before emit
 - Check for panics in event handler
+
+**Command popup does not show expected status/output?**
+
+- Verify `command_started` arrives before `command_output` / `command_terminated` for the same `execution_id`
+- Verify state keys use API field names consistently (`execution_id`, `command_id`, `exit_code`, `finished_at`)
+- Verify stderr toast action opens the popup bound to the same `execution_id`
+
+**Operator quick usage (frontend)**
+
+- When a command emits a `stderr` line and no popup is open, a toast alert appears.
+- Use **Open Output** in the toast to inspect live/last buffered output.
+- Use **Download** in the popup to export buffered output as text.
 
 **Multiple events?**
 

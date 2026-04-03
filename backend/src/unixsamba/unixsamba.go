@@ -52,6 +52,32 @@ type defaultOSUserLookuper struct{}
 var cmdExec CommandExecutor = &defaultCommandExecutor{}
 var osUser OSUserLookuper = &defaultOSUserLookuper{}
 
+var allowedUnixSambaCommands = map[string]any{
+	"pdbedit":   nil,
+	"useradd":   nil,
+	"smbpasswd": nil,
+	"deluser":   nil,
+	"usermod":   nil,
+}
+
+func validateUnixSambaCommand(command string, args ...string) error {
+	if strings.TrimSpace(command) == "" {
+		return errors.New("command cannot be empty")
+	}
+
+	if _, ok := allowedUnixSambaCommands[command]; !ok {
+		return errors.WithDetails(errors.New("command is not allowed"), "command", command)
+	}
+
+	for _, arg := range args {
+		if strings.ContainsAny(arg, "\r\n") {
+			return errors.WithDetails(errors.New("command argument contains invalid newline characters"), "command", command)
+		}
+	}
+
+	return nil
+}
+
 // SetCommandExecutor allows overriding the default command executor for testing.
 func SetCommandExecutor(executor CommandExecutor) {
 	cmdExec = executor
@@ -83,6 +109,10 @@ type UserOptions struct {
 
 // RunCommand is the actual implementation for running commands.
 func (d *defaultCommandExecutor) RunCommand(ctx context.Context, command string, args ...string) (string, error) {
+	if err := validateUnixSambaCommand(command, args...); err != nil {
+		return "", err
+	}
+
 	//tlog.DebugContext(ctx, "RunCommand", "command", command, "args", args)
 	cmd := exec.CommandContext(ctx, command, args...)
 	var outData bytes.Buffer
@@ -108,6 +138,10 @@ func (d *defaultCommandExecutor) RunCommand(ctx context.Context, command string,
 
 // RunCommandWithInput is the actual implementation for running commands with stdin.
 func (d *defaultCommandExecutor) RunCommandWithInput(ctx context.Context, stdinContent string, command string, args ...string) (string, error) {
+	if err := validateUnixSambaCommand(command, args...); err != nil {
+		return "", err
+	}
+
 	/*tlog.DebugContext(ctx, "RunCommandWithInput", "command", command, "args", args, "stdin_preview", func() string {
 		if len(stdinContent) > 50 {
 			return stdinContent[:50] + "..."

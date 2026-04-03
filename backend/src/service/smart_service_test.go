@@ -249,8 +249,10 @@ func (suite *SmartServiceSuite) TestGetSmartInfoDeviceNotReadable() {
 	// Create a temp file and remove read permission
 	tempFile, _ := os.CreateTemp("", "testdevice")
 	defer os.Remove(tempFile.Name())
-	os.Chmod(tempFile.Name(), 0000)
-	defer os.Chmod(tempFile.Name(), 0644) // Restore for cleanup
+	suite.Require().NoError(os.Chmod(tempFile.Name(), 0000))
+	defer func() {
+		_ = os.Chmod(tempFile.Name(), 0644) // Restore for cleanup
+	}()
 
 	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
 		return tempFile.Name(), nil

@@ -316,3 +316,8 @@ deduplicated
 fsnotify
 tsc
 tsgo
+injectable
+allowlist
+Scrollable
+monospace
+stderr

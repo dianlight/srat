@@ -13,6 +13,7 @@ Before any code modification task, agents **must**:
 1. Read [`.github/copilot-instructions.md`](.github/copilot-instructions.md) for the complete set of non-negotiable rules
 2. Read the relevant specialized instruction files from [`.github/instructions/`](.github/instructions/):
    - [`go.instructions.md`](.github/instructions/go.instructions.md) - Go back-end development
+   - [`backend-command-execution.instructions.md`](.github/instructions/backend-command-execution.instructions.md) - Mandatory rules for back-end command execution and migration
    - [`reactjs.instructions.md`](.github/instructions/reactjs.instructions.md) - React frontend development
    - [`python.instructions.md`](.github/instructions/python.instructions.md) - Python/Home Assistant integration
    - [`backend_test.instructions.md`](.github/instructions/backend_test.instructions.md) - back-end testing

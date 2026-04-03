@@ -73,7 +73,9 @@ func NewSettingService(
 	if err != nil {
 		slog.Error("Cant load default settings", "error", err)
 	} else {
-		s.UpdateSettings(defConfig)
+		if err := s.UpdateSettings(defConfig); err != nil {
+			slog.Error("Cant persist default settings", "error", err)
+		}
 	}
 
 	return s
@@ -112,7 +114,7 @@ func (s *settingService) Load() (setting *dto.Settings, err errors.E) {
 func (self *settingService) ValidateSettings(setting *dto.Settings) {
 	// Validate HAUseNFS setting - NFS must be available if enabled
 	if setting.HAUseNFS != nil && *setting.HAUseNFS {
-		if self.commandExists([]string{"exportfs"}) == false {
+		if !self.commandExists([]string{"exportfs"}) {
 			// NFS is not available, force the setting to false
 			slog.Warn("NFS is not available on this system (exportfs command not found). Setting ha_use_nfs to false.")
 			falseVal := false

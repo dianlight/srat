@@ -32,6 +32,16 @@ const injectedRtkApi = api
         query: () => ({ url: `/api/capabilities` }),
         providesTags: ["system"],
       }),
+      getApiCommandOutput: build.query<
+        GetApiCommandOutputApiResponse,
+        GetApiCommandOutputApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/command_output`,
+          body: queryArg.getCommandOutputRequest,
+        }),
+        providesTags: ["system", "internal"],
+      }),
       getApiDiskByDiskIdHdidleConfig: build.query<
         GetApiDiskByDiskIdHdidleConfigApiResponse,
         GetApiDiskByDiskIdHdidleConfigApiArg
@@ -643,6 +653,11 @@ export type GetApiCapabilitiesApiResponse = /** status 200 OK */
   | SystemCapabilities
   | /** status default Error */ ErrorModel;
 export type GetApiCapabilitiesApiArg = void;
+export type GetApiCommandOutputApiResponse =
+  /** status default Error */ ErrorModel;
+export type GetApiCommandOutputApiArg = {
+  getCommandOutputRequest: GetCommandOutputRequest;
+};
 export type GetApiDiskByDiskIdHdidleConfigApiResponse = /** status 200 OK */
   | HdIdleDevice
   | /** status default Error */ ErrorModel;
@@ -1074,6 +1089,56 @@ export type SystemCapabilities = {
   supports_quic: boolean;
   /** Reason why QUIC is not supported */
   unsupported_reason?: string;
+};
+export type CommandOutputNotification = {
+  channel: string;
+  command_id: string;
+  execution_id: string;
+  line: string;
+  timestamp: number;
+};
+export type CommandOutputLineSnapshot = {
+  channel: string;
+  line: string;
+  timestamp: number;
+};
+export type CommandExecutionSnapshot = {
+  args?: string[] | null;
+  command: string;
+  command_id: string;
+  error?: string;
+  execution_id: string;
+  exit_code?: number;
+  finished_at?: number;
+  label?: string;
+  lines: CommandOutputLineSnapshot[] | null;
+  running: boolean;
+  started_at: number;
+  success: boolean;
+};
+export type CommandStartedNotification = {
+  args?: string[] | null;
+  command: string;
+  command_id: string;
+  execution_id: string;
+  label?: string;
+  started_at: number;
+};
+export type CommandTerminatedNotification = {
+  command_id: string;
+  error?: string;
+  execution_id: string;
+  exit_code: number;
+  finished_at: number;
+  success: boolean;
+};
+export type GetCommandOutputRequest = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  CommandOutputEvent: CommandOutputNotification;
+  CommandSessionState: CommandExecutionSnapshot;
+  CommandStartedEvent: CommandStartedNotification;
+  CommandTerminatedEvent: CommandTerminatedNotification;
 };
 export type HdIdleDevice = {
   /** A URL to the JSON Schema for this object. */
@@ -1898,6 +1963,9 @@ export enum Supported_events {
   Error = "error",
   RepairCommand = "repair_command",
   AppConfigChanged = "app_config_changed",
+  CommandStarted = "command_started",
+  CommandOutput = "command_output",
+  CommandTerminated = "command_terminated",
 }
 export enum Update_channel {
   None = "None",
@@ -1908,6 +1976,7 @@ export enum Update_channel {
 export const {
   useGetApiAppconfigQuery,
   useGetApiCapabilitiesQuery,
+  useGetApiCommandOutputQuery,
   useGetApiDiskByDiskIdHdidleConfigQuery,
   usePatchApiDiskByDiskIdHdidleConfigMutation,
   usePutApiDiskByDiskIdHdidleConfigMutation,

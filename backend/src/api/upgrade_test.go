@@ -72,7 +72,7 @@ func (suite *UpgradeHandlerSuite) TestGetUpdateInfoSuccess() {
 	resp := apiInst.Get("/update")
 	suite.Require().Equal(http.StatusOK, resp.Code)
 	suite.Contains(resp.Body.String(), "v1.2.3")
-	mock.Verify(suite.mockUpgradeService, matchers.Times(1)).GetUpgradeReleaseAsset()
+	_, _ = mock.Verify(suite.mockUpgradeService, matchers.Times(1)).GetUpgradeReleaseAsset()
 }
 
 func (suite *UpgradeHandlerSuite) TestGetUpdateInfoNoUpdate() {
@@ -81,5 +81,5 @@ func (suite *UpgradeHandlerSuite) TestGetUpdateInfoNoUpdate() {
 	suite.handler.RegisterUpgradeHanler(apiInst)
 	resp := apiInst.Get("/update")
 	suite.Require().Equal(http.StatusNoContent, resp.Code, "body", resp.Body.String())
-	mock.Verify(suite.mockUpgradeService, matchers.Times(1)).GetUpgradeReleaseAsset()
+	_, _ = mock.Verify(suite.mockUpgradeService, matchers.Times(1)).GetUpgradeReleaseAsset()
 }

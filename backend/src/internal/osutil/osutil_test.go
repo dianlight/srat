@@ -1,6 +1,8 @@
 package osutil
 
 import (
+	"context"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -251,29 +253,50 @@ func (suite *OsutilSuite) TestIsKernelModuleLoaded() {
 
 func (suite *OsutilSuite) TestGetSambaVersion() {
 	t := suite.T()
-	// This test will attempt to get Samba version if installed
-	version, err := GetSambaVersion()
+	restoreExec := MockSambaVersionExec(func(ctx context.Context, name string, args ...string) ([]byte, error) {
+		require.Equal(t, "smbd", name)
+		require.Equal(t, []string{"--version"}, args)
+		return []byte("Version 4.23.2\n"), nil
+	})
+	t.Cleanup(restoreExec)
 
-	// If Samba is not installed, we should get an error (that's OK for test)
-	// If it is installed, version should not be empty
-	if err == nil {
-		assert.NotEmpty(t, version, "Samba version should not be empty when no error")
-	}
-	// If error, it's OK - Samba might not be installed in test environment
+	version, err := GetSambaVersion()
+	require.NoError(t, err)
+	assert.Equal(t, "4.23.2", version)
+}
+
+func (suite *OsutilSuite) TestGetSambaVersion_CommandError() {
+	t := suite.T()
+	restoreExec := MockSambaVersionExec(func(_ context.Context, _ string, _ ...string) ([]byte, error) {
+		return nil, errors.New("command failed")
+	})
+	t.Cleanup(restoreExec)
+
+	version, err := GetSambaVersion()
+	require.Error(t, err)
+	assert.Empty(t, version)
+}
+
+func (suite *OsutilSuite) TestGetSambaVersion_InvalidOutput() {
+	t := suite.T()
+	restoreExec := MockSambaVersionExec(func(_ context.Context, _ string, _ ...string) ([]byte, error) {
+		return []byte("not-a-version-line"), nil
+	})
+	t.Cleanup(restoreExec)
+
+	version, err := GetSambaVersion()
+	require.NoError(t, err)
+	assert.Empty(t, version)
 }
 
 func (suite *OsutilSuite) TestIsSambaVersionSufficient() {
 	t := suite.T()
-	// This test will check if Samba version meets minimum requirement
-	sufficient, err := IsSambaVersionSufficient()
+	restoreVersion := MockSambaVersion("4.23.1")
+	t.Cleanup(restoreVersion)
 
-	// If Samba is not installed, we might get an error (that's OK)
-	// The function should handle this gracefully
-	if err == nil {
-		// If no error, the result should be a valid boolean
-		assert.IsType(t, false, sufficient)
-	}
-	// If error, it's OK - Samba might not be installed in test environment
+	sufficient, err := IsSambaVersionSufficient()
+	require.NoError(t, err)
+	assert.True(t, sufficient)
 }
 
 func (suite *OsutilSuite) TestGenerateSecurePassword() {

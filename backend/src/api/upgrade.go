@@ -22,7 +22,6 @@ type UpgradeHanler struct {
 	apictx      *dto.ContextState
 	upgader     service.UpgradeServiceInterface
 	broadcaster service.BroadcasterServiceInterface
-	progress    dto.UpdateProgress
 	//pw          *utility.ProgressWriter
 	// testDone is a test-only hook that, if non-nil, will be closed when the
 	// background update goroutine finishes (either success or failure). Tests

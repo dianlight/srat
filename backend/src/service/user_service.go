@@ -86,7 +86,9 @@ func NewUserService(lc fx.Lifecycle, params UserServiceParams) UserServiceInterf
 					HASmbPassword = newPwd
 				}
 				setting.HASmbPassword = logfusc.NewSecret(HASmbPassword)
-				us.settingService.UpdateSettings(setting)
+				if err := us.settingService.UpdateSettings(setting); err != nil {
+					slog.WarnContext(ctx, "Failed to persist regenerated HA SMB password", "error", err)
+				}
 			}
 			err = unixsamba.CreateSambaUser(ctx, "_ha_mount_user_", HASmbPassword, unixsamba.UserOptions{
 				CreateHome:    false,

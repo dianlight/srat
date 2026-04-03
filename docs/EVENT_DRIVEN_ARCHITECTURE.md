@@ -43,6 +43,8 @@
 
 The SRAT back-end has been refactored to use an **event-driven architecture** with the `github.com/maniartech/signals` library for inter-service communication. This replaces direct service-to-service coupling with a decoupled, event-based system.
 
+The same event-driven transport now powers the generic live command execution console over WebSocket (`command_started`, `command_output`, `command_terminated`).
+
 ## Architecture
 
 ### Core Components
@@ -60,6 +62,9 @@ The SRAT back-end has been refactored to use an **event-driven architecture** wi
 - `PartitionEvent` - Partition added/removed events
 - `ShareEvent` - Share created/updated/deleted/enabled/disabled events
 - `MountPointEvent` - Mount point mounted/unmounted events
+- `CommandStartedNotification` - Command lifecycle started signal to clients
+- `CommandOutputNotification` - Channel-tagged output line signal (`stdout`/`stderr`)
+- `CommandTerminatedNotification` - Command completion signal with exit status
 
 ### Event Flow Diagram
 
@@ -179,6 +184,14 @@ WebSocket delivery is now the only real-time transport in SRAT after the SSE cle
 ```
 
 That `helo` payload is processed before any future client-to-server message types and allows the backend to track which Home Assistant integration build is attached to the current WebSocket session.
+
+For command execution streaming, clients should expect this lifecycle ordering for each `execution_id`:
+
+1. `command_started`
+2. `command_output` (zero or more lines)
+3. `command_terminated`
+
+The frontend correlates all lines and final status by `execution_id` and keeps a bounded 500-line tail buffer for popup rendering.
 
 ### VolumeService
 
@@ -396,6 +409,17 @@ type MountPointEvent struct {
 - `EmitMountPointUnmounted(event)` - Fired when mount point is unmounted
 - `OnMountPointMounted(handler)` - Subscribe to mount operations
 - `OnMountPointUnmounted(handler)` - Subscribe to unmount operations
+
+**Command Execution WebSocket Contract**
+
+- `command_started`
+    - Fields: `execution_id`, `command_id`, `label`, `command`, `args`, `started_at`
+- `command_output`
+    - Fields: `execution_id`, `command_id`, `channel` (`stdout|stderr`), `line`, `timestamp`
+- `command_terminated`
+    - Fields: `execution_id`, `command_id`, `success`, `exit_code`, `error`, `finished_at`
+
+Contract DTO definitions live in `backend/src/dto/command_execution.go` and are mapped to WebSocket event names in `backend/src/dto/webevent_map.go`.
 
 ## Example: Adding a New Event Type
 

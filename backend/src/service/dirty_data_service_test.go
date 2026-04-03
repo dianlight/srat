@@ -36,7 +36,7 @@ func (suite *DirtyDataServiceTestSuite) TestIsCleanInitialState() {
 
 func (suite *DirtyDataServiceTestSuite) TestIsCleanWithDirtyShares() {
 	suite.dirtyDataService.ResetDirtyDataTracker()
-	suite.eventBus.EmitShare(events.ShareEvent{Share: &dto.SharedResource{Name: "testshare"}})
+	_ = suite.eventBus.EmitShare(events.ShareEvent{Share: &dto.SharedResource{Name: "testshare"}})
 	suite.False(suite.dirtyDataService.IsClean())
 }
 
@@ -54,14 +54,14 @@ func (suite *DirtyDataServiceTestSuite) TestIsCleanWithDirtySettings() {
 
 func (suite *DirtyDataServiceTestSuite) TestIsCleanWithMultipleDirtyFlags() {
 	suite.dirtyDataService.ResetDirtyDataTracker()
-	suite.eventBus.EmitShare(events.ShareEvent{Share: &dto.SharedResource{Name: "testshare"}})
+	_ = suite.eventBus.EmitShare(events.ShareEvent{Share: &dto.SharedResource{Name: "testshare"}})
 	suite.eventBus.EmitUser(events.UserEvent{User: &dto.User{}})
 	suite.False(suite.dirtyDataService.IsClean())
 }
 
 func (suite *DirtyDataServiceTestSuite) TestIsCleanAfterReset() {
 	suite.dirtyDataService.ResetDirtyDataTracker()
-	suite.eventBus.EmitShare(events.ShareEvent{Share: &dto.SharedResource{Name: "testshare"}})
+	_ = suite.eventBus.EmitShare(events.ShareEvent{Share: &dto.SharedResource{Name: "testshare"}})
 	suite.False(suite.dirtyDataService.IsClean())
 	suite.dirtyDataService.ResetDirtyDataTracker()
 	suite.True(suite.dirtyDataService.IsClean())
@@ -103,7 +103,7 @@ func (suite *DirtyDataServiceTestSuite) TestNewDirtyDataService() {
 
 func (suite *DirtyDataServiceTestSuite) TestSetDirtyShares() {
 	suite.dirtyDataService.ResetDirtyDataTracker()
-	suite.eventBus.EmitShare(events.ShareEvent{Share: &dto.SharedResource{Name: "testshare"}})
+	_ = suite.eventBus.EmitShare(events.ShareEvent{Share: &dto.SharedResource{Name: "testshare"}})
 	//time.Sleep(500 * time.Millisecond)
 	tracker := suite.dirtyDataService.GetDirtyDataTracker()
 	suite.True(tracker.Shares)

@@ -79,7 +79,9 @@ func NewHealthHandler(lc fx.Lifecycle, param HealthHandlerParams) *HealthHanler 
 		OnStart: func(ctx context.Context) error {
 			if wg, ok := p.ctx.Value(ctxkeys.WaitGroup).(*sync.WaitGroup); ok && wg != nil {
 				wg.Go(func() {
-					p.run()
+					if err := p.run(); err != nil && !errors.Is(err, context.Canceled) {
+						slog.WarnContext(p.ctx, "Health handler loop stopped with error", "error", err)
+					}
 				})
 			}
 			return nil

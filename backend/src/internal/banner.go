@@ -35,7 +35,7 @@ func Banner(module string, command string) {
 	colInfo.Print("Documentation: ")
 	colLink.Println("https://github.com/dianlight/SRAT")
 	level := tlog.GetLevelString()
-	colLevel := color.New(color.FgHiWhite)
+	var colLevel *color.Color
 
 	switch level {
 	case "debug", "DEBUG", "Debug":

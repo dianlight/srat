@@ -216,7 +216,7 @@ func (suite *DiskStatsServiceSuite) TestIsSmartEnabled_CacheHit() {
 	// Assert
 	suite.True(enabled)
 	// Verify no SMART service calls were made (use Times(0) instead of Never)
-	mock.Verify(suite.smartMock, matchers.Times(0)).GetSmartInfo(mock.AnyContext(), mock.Any[string]())
+	_, _ = mock.Verify(suite.smartMock, matchers.Times(0)).GetSmartInfo(mock.AnyContext(), mock.Any[string]())
 }
 
 func (suite *DiskStatsServiceSuite) TestIsSmartEnabled_DisableSmartSetting() {
@@ -226,7 +226,7 @@ func (suite *DiskStatsServiceSuite) TestIsSmartEnabled_DisableSmartSetting() {
 	enabled := suite.ds.isSmartEnabled(diskID)
 
 	suite.False(enabled)
-	mock.Verify(suite.smartMock, matchers.Times(0)).GetSmartInfo(mock.AnyContext(), mock.Any[string]())
+	_, _ = mock.Verify(suite.smartMock, matchers.Times(0)).GetSmartInfo(mock.AnyContext(), mock.Any[string]())
 }
 
 func (suite *DiskStatsServiceSuite) TestIsSmartEnabled_CacheMiss_SmartEnabled() {
@@ -253,7 +253,7 @@ func (suite *DiskStatsServiceSuite) TestIsSmartEnabled_CacheMiss_SmartEnabled() 
 	cachedValue, found := getCacheValue(suite.ds.smartEnabledCache, diskID)
 	suite.True(found, "Cache should be populated")
 	suite.True(cachedValue, "Cache should contain enabled=true")
-	mock.Verify(suite.smartMock, matchers.Times(1)).GetSmartInfo(mock.AnyContext(), mock.Exact(diskID))
+	_, _ = mock.Verify(suite.smartMock, matchers.Times(1)).GetSmartInfo(mock.AnyContext(), mock.Exact(diskID))
 }
 
 func (suite *DiskStatsServiceSuite) TestIsSmartEnabled_CacheMiss_SmartDisabled() {
@@ -285,7 +285,7 @@ func (suite *DiskStatsServiceSuite) TestIsSmartEnabled_CacheMiss_SmartDisabled()
 	suite.False(enabled2)
 
 	// Verify SMART service called only once (on first call)
-	mock.Verify(suite.smartMock, matchers.Times(1)).GetSmartInfo(mock.AnyContext(), mock.Exact(diskID))
+	_, _ = mock.Verify(suite.smartMock, matchers.Times(1)).GetSmartInfo(mock.AnyContext(), mock.Exact(diskID))
 }
 
 func (suite *DiskStatsServiceSuite) TestIsSmartEnabled_SmartNotSupported() {
@@ -312,7 +312,7 @@ func (suite *DiskStatsServiceSuite) TestIsSmartEnabled_SmartNotSupported() {
 	suite.False(cachedValue, "Unsupported SMART should be cached as disabled")
 
 	// Verify only GetSmartInfo was called
-	mock.Verify(suite.smartMock, matchers.Times(1)).GetSmartInfo(mock.AnyContext(), mock.Exact(diskID))
+	_, _ = mock.Verify(suite.smartMock, matchers.Times(1)).GetSmartInfo(mock.AnyContext(), mock.Exact(diskID))
 }
 
 func (suite *DiskStatsServiceSuite) TestInvalidateSmartCache_SpecificDisk() {
@@ -401,7 +401,7 @@ func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_DisableSmartSkipsBackgro
 	suite.Contains(suite.ds.currentDiskHealth.PerDiskInfo, diskID)
 	suite.Nil(suite.ds.currentDiskHealth.PerDiskInfo[diskID].SmartInfo)
 	suite.Nil(suite.ds.currentDiskHealth.PerDiskInfo[diskID].SmartHealth)
-	mock.Verify(suite.smartMock, matchers.Times(0)).GetSmartInfo(mock.AnyContext(), mock.Any[string]())
-	mock.Verify(suite.smartMock, matchers.Times(0)).GetSmartStatus(mock.AnyContext(), mock.Any[string]())
-	mock.Verify(suite.smartMock, matchers.Times(0)).GetHealthStatus(mock.AnyContext(), mock.Any[string]())
+	_, _ = mock.Verify(suite.smartMock, matchers.Times(0)).GetSmartInfo(mock.AnyContext(), mock.Any[string]())
+	_, _ = mock.Verify(suite.smartMock, matchers.Times(0)).GetSmartStatus(mock.AnyContext(), mock.Any[string]())
+	_, _ = mock.Verify(suite.smartMock, matchers.Times(0)).GetHealthStatus(mock.AnyContext(), mock.Any[string]())
 }

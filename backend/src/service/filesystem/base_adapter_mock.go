@@ -2,11 +2,23 @@ package filesystem
 
 import (
 	"context"
-	"os/exec"
 
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/u-root/u-root/pkg/mount"
 )
+
+type testFilesystemCommandExecutor struct {
+	lookPath func(string) (string, error)
+	command  func(context.Context, string, ...string) ExecCmd
+}
+
+func (t *testFilesystemCommandExecutor) LookPath(command string) (string, error) {
+	return t.lookPath(command)
+}
+
+func (t *testFilesystemCommandExecutor) Command(ctx context.Context, name string, args ...string) ExecCmd {
+	return t.command(ctx, name, args...)
+}
 
 // SetMountOpsForTesting allows overriding generic mount operations for tests.
 func (b *baseAdapter) SetMountOpsForTesting(
@@ -30,22 +42,29 @@ func (b *baseAdapter) SetMountOpsForTesting(
 	}
 }
 
-// SetExecOpsForTesting allows overriding exec operations for tests
+// SetExecOpsForTesting allows overriding command execution operations for tests.
 func (b *baseAdapter) SetExecOpsForTesting(
 	lookPath func(string) (string, error),
 	command func(context.Context, string, ...string) ExecCmd,
 ) (reset func()) {
+	original := b.commandExecutor
+
+	testExecutor := &testFilesystemCommandExecutor{}
 	if lookPath != nil {
-		b.execLookPath = lookPath
+		testExecutor.lookPath = lookPath
+	} else {
+		testExecutor.lookPath = b.commandExecutor.LookPath
 	}
 	if command != nil {
-		b.execCommand = command
+		testExecutor.command = command
+	} else {
+		testExecutor.command = b.commandExecutor.Command
 	}
+
+	b.commandExecutor = testExecutor
+
 	return func() {
-		b.execLookPath = exec.LookPath
-		b.execCommand = func(ctx context.Context, name string, args ...string) ExecCmd {
-			return &realExecCmd{cmd: exec.CommandContext(ctx, name, args...)}
-		}
+		b.commandExecutor = original
 	}
 }
 

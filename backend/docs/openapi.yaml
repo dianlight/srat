@@ -242,6 +242,139 @@ components:
         - errorsFixed
         - exitCode
       type: object
+    CommandExecutionSnapshot:
+      additionalProperties: false
+      properties:
+        args:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        command:
+          type: string
+        command_id:
+          type: string
+        error:
+          type: string
+        execution_id:
+          type: string
+        exit_code:
+          format: int64
+          type: integer
+        finished_at:
+          format: int64
+          type: integer
+        label:
+          type: string
+        lines:
+          items:
+            $ref: "#/components/schemas/CommandOutputLineSnapshot"
+          type:
+            - array
+            - "null"
+        running:
+          type: boolean
+        started_at:
+          format: int64
+          type: integer
+        success:
+          type: boolean
+      required:
+        - execution_id
+        - command_id
+        - command
+        - started_at
+        - running
+        - success
+        - lines
+      type: object
+    CommandOutputLineSnapshot:
+      additionalProperties: false
+      properties:
+        channel:
+          type: string
+        line:
+          type: string
+        timestamp:
+          format: int64
+          type: integer
+      required:
+        - channel
+        - line
+        - timestamp
+      type: object
+    CommandOutputNotification:
+      additionalProperties: false
+      properties:
+        channel:
+          type: string
+        command_id:
+          type: string
+        execution_id:
+          type: string
+        line:
+          type: string
+        timestamp:
+          format: int64
+          type: integer
+      required:
+        - execution_id
+        - command_id
+        - channel
+        - line
+        - timestamp
+      type: object
+    CommandStartedNotification:
+      additionalProperties: false
+      properties:
+        args:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        command:
+          type: string
+        command_id:
+          type: string
+        execution_id:
+          type: string
+        label:
+          type: string
+        started_at:
+          format: int64
+          type: integer
+      required:
+        - execution_id
+        - command_id
+        - command
+        - started_at
+      type: object
+    CommandTerminatedNotification:
+      additionalProperties: false
+      properties:
+        command_id:
+          type: string
+        error:
+          type: string
+        execution_id:
+          type: string
+        exit_code:
+          format: int64
+          type: integer
+        finished_at:
+          format: int64
+          type: integer
+        success:
+          type: boolean
+      required:
+        - execution_id
+        - command_id
+        - exit_code
+        - success
+        - finished_at
+      type: object
     DataDirtyTracker:
       additionalProperties: false
       properties:
@@ -593,6 +726,30 @@ components:
       required:
         - partitionId
         - filesystemType
+      type: object
+    Get-command-outputRequest:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/Get-command-outputRequest.json
+          format: uri
+          readOnly: true
+          type: string
+        CommandOutputEvent:
+          $ref: "#/components/schemas/CommandOutputNotification"
+        CommandSessionState:
+          $ref: "#/components/schemas/CommandExecutionSnapshot"
+        CommandStartedEvent:
+          $ref: "#/components/schemas/CommandStartedNotification"
+        CommandTerminatedEvent:
+          $ref: "#/components/schemas/CommandTerminatedNotification"
+      required:
+        - CommandStartedEvent
+        - CommandOutputEvent
+        - CommandTerminatedEvent
+        - CommandSessionState
       type: object
     Get-filesystem-labelResponse:
       additionalProperties: false
@@ -2260,6 +2417,9 @@ components:
               - error
               - repair_command
               - app_config_changed
+              - command_started
+              - command_output
+              - command_terminated
             type: string
           type:
             - array
@@ -2388,6 +2548,52 @@ paths:
       summary: Get API capabilities
       tags:
         - system
+  /api/command_output:
+    get:
+      operationId: get-api-command-output
+      parameters:
+        - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Get-command-outputRequest"
+        required: true
+      responses:
+        "204":
+          description: No Content
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: Get API command output
+      tags:
+        - system
+        - internal
   /api/disk/{disk_id}/hdidle/config:
     get:
       operationId: get-api-disk-by-disk-id-hdidle-config
@@ -2399,8 +2605,8 @@ paths:
           schema:
             description: The disk ID (not the device path)
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -2702,8 +2908,8 @@ paths:
           schema:
             description: The disk ID (not the device path)
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -2752,8 +2958,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2902,8 +3108,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3002,8 +3208,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -3305,8 +3511,8 @@ paths:
           schema:
             description: Unique partition identifier
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3348,8 +3554,8 @@ paths:
       description: Partial update operation supporting both JSON Merge Patch & JSON Patch updates.
       operationId: patch-api-filesystem-label
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json-patch+json:
@@ -3436,8 +3642,8 @@ paths:
     put:
       operationId: put-api-filesystem-label
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -3579,8 +3785,8 @@ paths:
     get:
       operationId: get-api-filesystems
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -3622,8 +3828,8 @@ paths:
     post:
       operationId: post-api-hdidle-start
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -3794,8 +4000,8 @@ paths:
     get:
       operationId: get-issues
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3938,8 +4144,8 @@ paths:
     get:
       operationId: get-issue-template
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3988,8 +4194,8 @@ paths:
             format: int64
             minimum: 0
             type: integer
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "204":
           description: No Content
@@ -4298,8 +4504,8 @@ paths:
     get:
       operationId: get-api-samba-status
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -5468,8 +5674,8 @@ paths:
     get:
       operationId: list-api-telemetry-modes
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -5757,8 +5963,8 @@ paths:
             maxLength: 30
             pattern: "[a-zA-Z0-9 _-]+"
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -5954,8 +6160,8 @@ paths:
     post:
       operationId: post-api-volume-mount
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -6003,8 +6209,8 @@ paths:
     patch:
       operationId: patch-api-volume-settings
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -6052,8 +6258,8 @@ paths:
     get:
       operationId: list-api-volumes
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:

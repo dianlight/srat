@@ -64,9 +64,9 @@ func (suite *IssueServiceSuite) TestCreateExistingIncrementsRepeatingSuccess() {
 
 	// Assert
 	suite.NoError(err)
-	mock.Verify(suite.issueRepo, matchers.Times(1)).FindByTitle(mock.Any[string]())
-	mock.Verify(suite.issueRepo, matchers.Times(1)).Update(existing)
-	mock.Verify(suite.issueRepo, matchers.Times(0)).Create(mock.Any[*dbom.Issue]())
+	_, _ = mock.Verify(suite.issueRepo, matchers.Times(1)).FindByTitle(mock.Any[string]())
+	_ = mock.Verify(suite.issueRepo, matchers.Times(1)).Update(existing)
+	_ = mock.Verify(suite.issueRepo, matchers.Times(0)).Create(mock.Any[*dbom.Issue]())
 }
 
 func (suite *IssueServiceSuite) TestCreateNewCreatesSuccess() {
@@ -79,9 +79,9 @@ func (suite *IssueServiceSuite) TestCreateNewCreatesSuccess() {
 
 	// Assert
 	suite.NoError(err)
-	mock.Verify(suite.issueRepo, matchers.Times(1)).FindByTitle(mock.Any[string]())
-	mock.Verify(suite.issueRepo, matchers.Times(1)).Create(mock.Any[*dbom.Issue]())
-	mock.Verify(suite.issueRepo, matchers.Times(0)).Update(mock.Any[*dbom.Issue]())
+	_, _ = mock.Verify(suite.issueRepo, matchers.Times(1)).FindByTitle(mock.Any[string]())
+	_ = mock.Verify(suite.issueRepo, matchers.Times(1)).Create(mock.Any[*dbom.Issue]())
+	_ = mock.Verify(suite.issueRepo, matchers.Times(0)).Update(mock.Any[*dbom.Issue]())
 }
 
 func (suite *IssueServiceSuite) TestCreateFindByTitleError() {
@@ -94,9 +94,9 @@ func (suite *IssueServiceSuite) TestCreateFindByTitleError() {
 
 	// Assert
 	suite.Error(err)
-	mock.Verify(suite.issueRepo, matchers.Times(1)).FindByTitle(mock.Any[string]())
-	mock.Verify(suite.issueRepo, matchers.Times(0)).Create(mock.Any[*dbom.Issue]())
-	mock.Verify(suite.issueRepo, matchers.Times(0)).Update(mock.Any[*dbom.Issue]())
+	_, _ = mock.Verify(suite.issueRepo, matchers.Times(1)).FindByTitle(mock.Any[string]())
+	_ = mock.Verify(suite.issueRepo, matchers.Times(0)).Create(mock.Any[*dbom.Issue]())
+	_ = mock.Verify(suite.issueRepo, matchers.Times(0)).Update(mock.Any[*dbom.Issue]())
 }
 
 func (suite *IssueServiceSuite) TestCreateUpdateError() {
@@ -114,8 +114,8 @@ func (suite *IssueServiceSuite) TestCreateUpdateError() {
 
 	// Assert
 	suite.Error(err)
-	mock.Verify(suite.issueRepo, matchers.Times(1)).FindByTitle(mock.Any[string]())
-	mock.Verify(suite.issueRepo, matchers.Times(1)).Update(existing)
+	_, _ = mock.Verify(suite.issueRepo, matchers.Times(1)).FindByTitle(mock.Any[string]())
+	_ = mock.Verify(suite.issueRepo, matchers.Times(1)).Update(existing)
 }
 
 func (suite *IssueServiceSuite) TestCreateCreateError() {
@@ -129,8 +129,8 @@ func (suite *IssueServiceSuite) TestCreateCreateError() {
 
 	// Assert
 	suite.Error(err)
-	mock.Verify(suite.issueRepo, matchers.Times(1)).FindByTitle(mock.Any[string]())
-	mock.Verify(suite.issueRepo, matchers.Times(1)).Create(mock.Any[*dbom.Issue]())
+	_, _ = mock.Verify(suite.issueRepo, matchers.Times(1)).FindByTitle(mock.Any[string]())
+	_ = mock.Verify(suite.issueRepo, matchers.Times(1)).Create(mock.Any[*dbom.Issue]())
 }
 
 func (suite *IssueServiceSuite) TestResolveSuccess() {
@@ -142,7 +142,7 @@ func (suite *IssueServiceSuite) TestResolveSuccess() {
 
 	// Assert
 	suite.NoError(err)
-	mock.Verify(suite.issueRepo, matchers.Times(1)).Delete(uint(1))
+	_ = mock.Verify(suite.issueRepo, matchers.Times(1)).Delete(uint(1))
 }
 
 func (suite *IssueServiceSuite) TestResolveError() {
@@ -155,7 +155,7 @@ func (suite *IssueServiceSuite) TestResolveError() {
 
 	// Assert
 	suite.Error(err)
-	mock.Verify(suite.issueRepo, matchers.Times(1)).Delete(uint(999))
+	_ = mock.Verify(suite.issueRepo, matchers.Times(1)).Delete(uint(999))
 }
 
 func (suite *IssueServiceSuite) TestFindOpenSuccess() {
@@ -173,7 +173,7 @@ func (suite *IssueServiceSuite) TestFindOpenSuccess() {
 	suite.NoError(err)
 	suite.NotNil(issues)
 	suite.Len(issues, 2)
-	mock.Verify(suite.issueRepo, matchers.Times(1)).FindOpen()
+	_, _ = mock.Verify(suite.issueRepo, matchers.Times(1)).FindOpen()
 }
 
 func (suite *IssueServiceSuite) TestFindOpenError() {
@@ -187,7 +187,7 @@ func (suite *IssueServiceSuite) TestFindOpenError() {
 	// Assert
 	suite.Error(err)
 	suite.Nil(issues)
-	mock.Verify(suite.issueRepo, matchers.Times(1)).FindOpen()
+	_, _ = mock.Verify(suite.issueRepo, matchers.Times(1)).FindOpen()
 }
 
 func (suite *IssueServiceSuite) TestUpdateSuccess() {
@@ -201,7 +201,7 @@ func (suite *IssueServiceSuite) TestUpdateSuccess() {
 	// Assert
 	suite.NoError(err)
 	suite.NotNil(result)
-	mock.Verify(suite.issueRepo, matchers.Times(1)).Update(mock.Any[*dbom.Issue]())
+	_ = mock.Verify(suite.issueRepo, matchers.Times(1)).Update(mock.Any[*dbom.Issue]())
 }
 
 func (suite *IssueServiceSuite) TestUpdateError() {
@@ -216,5 +216,5 @@ func (suite *IssueServiceSuite) TestUpdateError() {
 	// Assert
 	suite.Error(err)
 	suite.Nil(result)
-	mock.Verify(suite.issueRepo, matchers.Times(1)).Update(mock.Any[*dbom.Issue]())
+	_ = mock.Verify(suite.issueRepo, matchers.Times(1)).Update(mock.Any[*dbom.Issue]())
 }

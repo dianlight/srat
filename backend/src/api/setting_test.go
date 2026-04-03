@@ -360,7 +360,7 @@ func (suite *SettingsHandlerSuite) TestGetAppConfigHandler() {
 	suite.Require().NoError(err)
 	suite.Equal("info", res.Options["log_level"])
 	suite.True(res.RequiresRestart)
-	mock.Verify(suite.repairService, matchers.Times(0)).Delete(mock.Any[string]())
+	_ = mock.Verify(suite.repairService, matchers.Times(0)).Delete(mock.Any[string]())
 	mock.Verify(suite.broadcaster, matchers.Times(0)).BroadcastMessage(mock.Any[any]())
 }
 
@@ -382,7 +382,7 @@ func (suite *SettingsHandlerSuite) TestGetAppConfigHandler_AutoDismissesRepairWh
 	rr := humaAPI.Get("/settings/app-config")
 	suite.Require().Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
 
-	mock.Verify(suite.repairService, matchers.Times(1)).Delete(mock.Exact("addon_config_changed"))
+	_ = mock.Verify(suite.repairService, matchers.Times(1)).Delete(mock.Exact("addon_config_changed"))
 	mock.Verify(suite.broadcaster, matchers.Times(1)).BroadcastMessage(mock.Any[dto.RepairCommandMessage]())
 }
 
@@ -448,9 +448,9 @@ func (suite *SettingsHandlerSuite) TestUpdateAppConfigHandler() {
 	suite.True(tracker.AppConfig)
 	suite.False(tracker.Settings)
 
-	mock.Verify(suite.repairService, matchers.Times(1)).Delete(mock.Exact("addon_config_changed"))
+	_ = mock.Verify(suite.repairService, matchers.Times(1)).Delete(mock.Exact("addon_config_changed"))
 	mock.Verify(suite.broadcaster, matchers.Times(1)).BroadcastMessage(mock.Any[dto.RepairCommandMessage]())
-	mock.Verify(suite.haService, matchers.Times(0)).DismissPersistentNotification(mock.Any[string]())
+	_ = mock.Verify(suite.haService, matchers.Times(0)).DismissPersistentNotification(mock.Any[string]())
 }
 
 func (suite *SettingsHandlerSuite) TestUpdateAppConfigHandler_FallbackDismissPersistentNotificationWhenRepairServiceNil() {
@@ -478,7 +478,7 @@ func (suite *SettingsHandlerSuite) TestUpdateAppConfigHandler_FallbackDismissPer
 	rr := humaAPI.Put("/settings/app-config", request)
 	suite.Require().Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
 
-	mock.Verify(suite.haService, matchers.Times(1)).DismissPersistentNotification(mock.Exact("addon_config_changed"))
+	_ = mock.Verify(suite.haService, matchers.Times(1)).DismissPersistentNotification(mock.Exact("addon_config_changed"))
 }
 
 func (suite *SettingsHandlerSuite) TestRestartAddonHandler() {
@@ -490,7 +490,7 @@ func (suite *SettingsHandlerSuite) TestRestartAddonHandler() {
 
 	rr := humaAPI.Put("/restart", map[string]any{})
 	suite.Require().Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
-	mock.Verify(suite.addonsService, matchers.Times(1)).RestartSelfApp(mock.AnyContext())
+	_ = mock.Verify(suite.addonsService, matchers.Times(1)).RestartSelfApp(mock.AnyContext())
 }
 
 func (suite *SettingsHandlerSuite) TestRestartAddonHandler_FailsWhenServiceFails() {
@@ -502,5 +502,5 @@ func (suite *SettingsHandlerSuite) TestRestartAddonHandler_FailsWhenServiceFails
 
 	rr := humaAPI.Put("/restart", map[string]any{})
 	suite.Require().Equal(http.StatusInternalServerError, rr.Code, "Response body: %s", rr.Body.String())
-	mock.Verify(suite.addonsService, matchers.Times(1)).RestartSelfApp(mock.AnyContext())
+	_ = mock.Verify(suite.addonsService, matchers.Times(1)).RestartSelfApp(mock.AnyContext())
 }

@@ -271,10 +271,11 @@ export function ProcessMetrics({
     </>
   );
 }
-
+/*
 // Force a full reload on HMR updates to avoid @mui/x-charts internal hook mismatch during hot swapping
 if (import.meta?.hot) {
   import.meta.hot.accept(() => {
     window.location.reload();
   });
 }
+*/

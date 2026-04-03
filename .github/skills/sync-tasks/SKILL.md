@@ -41,7 +41,7 @@ Scan `docs/tasks/*.md` (excluding `README.md`). For each file, extract:
 - **TaskID** (the leading `NNN` from the filename)
 - **Title** (first `# [TYPE]:` heading line)
 - **Linked issues** (all `[repo#NNN]` patterns in the document)
-- **Status** (`📅 Planned` / `🔄 In Progress` / `✅ Done`)
+- **Status** (`📅 Planned` / `🔄 In Progress` / `✅ Complete`)
 
 Build an index: `Set<"repo#number">` of already-linked issues.
 
@@ -171,9 +171,9 @@ Scan `docs/tasks/*.md`. For each task, extract:
 
 | Condition | Action |
 |-----------|--------|
-| All task items checked  AND  status is `✅ Done` | **Close** the linked GitHub issue(s) with a summary comment |
+| All task items checked  AND  status is `✅ Complete` | **Close** the linked GitHub issue(s) with a summary comment |
 | ≥ 1 task item checked  AND  status is `🔄 In Progress` | **Post a progress comment** on linked issue(s) |
-| Task has no issue link  AND  status is NOT `✅ Done` | **Create a new GitHub issue** for the task |
+| Task has no issue link  AND  status is NOT `✅ Complete` | **Create a new GitHub issue** for the task |
 | Task already closed on GitHub | Skip |
 
 ### B-3. Post Progress Comment

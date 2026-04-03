@@ -38,7 +38,7 @@ func NewResolutionService(in ResolutionServiceParams) ResolutionServiceInterface
 }
 
 func (s *ResolutionService) CreateIssue(issue dto.ResolutionIssue) error {
-	if s.state.SupervisorURL == "demo" || s.state.HACoreReady == false {
+	if s.state.SupervisorURL == "demo" || !s.state.HACoreReady {
 		return nil
 	}
 	/*
@@ -66,7 +66,7 @@ func (s *ResolutionService) CreateIssue(issue dto.ResolutionIssue) error {
 }
 
 func (s *ResolutionService) DeleteIssue(uuid types.UUID) error {
-	if s.state.SupervisorURL == "demo" || s.state.HACoreReady == false {
+	if s.state.SupervisorURL == "demo" || !s.state.HACoreReady {
 		return nil
 	}
 

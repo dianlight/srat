@@ -111,7 +111,7 @@ func (suite *WsHandlerSuite) TestWebSocketReceivesMessagesFromBroadcaster() {
 	defer conn.Close()
 
 	// Read two text messages and assert they contain expected event names
-	conn.SetReadDeadline(time.Now().Add(1 * time.Second))
+	suite.Require().NoError(conn.SetReadDeadline(time.Now().Add(1 * time.Second)))
 	_, msg1, err := conn.ReadMessage()
 	suite.Require().NoError(err)
 	suite.Contains(string(msg1), "event: hello")
@@ -149,7 +149,7 @@ func (suite *WsHandlerSuite) TestWebSocketAcceptsValidatedInboundHelo() {
 	}
 	defer conn.Close()
 
-	conn.SetReadDeadline(time.Now().Add(1 * time.Second))
+	suite.Require().NoError(conn.SetReadDeadline(time.Now().Add(1 * time.Second)))
 	_, msg1, err := conn.ReadMessage()
 	suite.Require().NoError(err)
 	suite.Contains(string(msg1), "event: hello")
@@ -195,7 +195,7 @@ func (suite *WsHandlerSuite) TestWebSocketIgnoresMalformedInboundPayload() {
 	}
 	defer conn.Close()
 
-	conn.SetReadDeadline(time.Now().Add(1 * time.Second))
+	suite.Require().NoError(conn.SetReadDeadline(time.Now().Add(1 * time.Second)))
 	_, msg1, err := conn.ReadMessage()
 	suite.Require().NoError(err)
 	suite.Contains(string(msg1), "event: hello")
@@ -237,7 +237,7 @@ func (suite *WsHandlerSuite) TestWebSocketAcceptsValidatedInboundRepairLifecycle
 	}
 	defer conn.Close()
 
-	conn.SetReadDeadline(time.Now().Add(1 * time.Second))
+	suite.Require().NoError(conn.SetReadDeadline(time.Now().Add(1 * time.Second)))
 	_, welcomeMsg, err := conn.ReadMessage()
 	suite.Require().NoError(err)
 	suite.Contains(string(welcomeMsg), "event: hello")
@@ -283,7 +283,7 @@ func (suite *WsHandlerSuite) TestWebSocketIgnoresInvalidInboundRepairLifecycle()
 	}
 	defer conn.Close()
 
-	conn.SetReadDeadline(time.Now().Add(1 * time.Second))
+	suite.Require().NoError(conn.SetReadDeadline(time.Now().Add(1 * time.Second)))
 	_, welcomeMsg, err := conn.ReadMessage()
 	suite.Require().NoError(err)
 	suite.Contains(string(welcomeMsg), "event: hello")
@@ -325,7 +325,7 @@ func (suite *WsHandlerSuite) TestWebSocketRepairLifecycleSynchronizesRepairServi
 	}
 	defer conn.Close()
 
-	conn.SetReadDeadline(time.Now().Add(1 * time.Second))
+	suite.Require().NoError(conn.SetReadDeadline(time.Now().Add(1 * time.Second)))
 	_, welcomeMsg, err := conn.ReadMessage()
 	suite.Require().NoError(err)
 	suite.Contains(string(welcomeMsg), "event: hello")
@@ -370,7 +370,7 @@ func (suite *WsHandlerSuite) TestWebSocketFlushesQueuedRepairCommandsAfterHelo()
 	}
 	defer conn.Close()
 
-	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+	suite.Require().NoError(conn.SetReadDeadline(time.Now().Add(2 * time.Second)))
 	_, welcomeMsg, err := conn.ReadMessage()
 	suite.Require().NoError(err)
 	suite.Contains(string(welcomeMsg), "event: hello")

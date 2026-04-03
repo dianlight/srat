@@ -141,12 +141,21 @@ func main() {
 	switch command {
 	case "start":
 		os.Exit(0) // Deprecated
-		startCmd.Parse(flag.Args()[1:])
+		if err := startCmd.Parse(flag.Args()[1:]); err != nil {
+			slog.Error("failed to parse start command arguments", "error", err)
+			os.Exit(1)
+		}
 	case "stop":
 		os.Exit(0) // Deprecated
-		stopCmd.Parse(flag.Args()[1:])
+		if err := stopCmd.Parse(flag.Args()[1:]); err != nil {
+			slog.Error("failed to parse stop command arguments", "error", err)
+			os.Exit(1)
+		}
 	case "upgrade":
-		upgradeCmd.Parse(flag.Args()[1:])
+		if err := upgradeCmd.Parse(flag.Args()[1:]); err != nil {
+			slog.Error("failed to parse upgrade command arguments", "error", err)
+			os.Exit(1)
+		}
 		var ett error
 		updch, ett = dto.ParseUpdateChannel(*upgradeChannel)
 		if ett != nil {
@@ -155,7 +164,10 @@ func main() {
 			os.Exit(1)
 		}
 	case "version":
-		versionCmd.Parse(flag.Args()[1:])
+		if err := versionCmd.Parse(flag.Args()[1:]); err != nil {
+			slog.Error("failed to parse version command arguments", "error", err)
+			os.Exit(1)
+		}
 		fmt.Print(formatVersionMessage(*shortVersion))
 		if !*shortVersion {
 			fmt.Print("Build Metadata: ", config.GetCurrentBinaryVersion().String(), "\n")
@@ -440,9 +452,13 @@ func main() {
 		log.Fatalf("Error during FX setup: %v", err)
 	}
 
-	app.Start(context.Background())
+	if err := app.Start(context.Background()); err != nil {
+		log.Fatalf("Error starting app: %v", err)
+	}
 	// apiCancel is deferred
-	app.Stop(context.Background())
+	if err := app.Stop(context.Background()); err != nil {
+		log.Fatalf("Error stopping app: %v", err)
+	}
 	// os.Exit(0) is implicit if main returns
 }
 

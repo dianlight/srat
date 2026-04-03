@@ -14,6 +14,8 @@ import (
 	"gitlab.com/tozd/go/errors"
 )
 
+type eventBusTestUUIDKey struct{}
+
 func TestEventBusDisk(t *testing.T) {
 	ctx := context.Background()
 	bus := NewEventBus(ctx)
@@ -116,7 +118,7 @@ func TestEventBusShare(t *testing.T) {
 	share := &dto.SharedResource{
 		Name: "test-share",
 	}
-	bus.EmitShare(ShareEvent{Share: share})
+	_ = bus.EmitShare(ShareEvent{Share: share})
 
 	// Wait for event
 	done := make(chan struct{})
@@ -154,7 +156,7 @@ func TestEventBusMountPoint(t *testing.T) {
 	mountPoint := &dto.MountPointData{
 		Path: "/mnt/test",
 	}
-	bus.EmitMountPoint(MountPointEvent{MountPoint: mountPoint})
+	_ = bus.EmitMountPoint(MountPointEvent{MountPoint: mountPoint})
 
 	// Wait for event
 	done := make(chan struct{})
@@ -360,7 +362,7 @@ func TestEventBusUUIDGeneration(t *testing.T) {
 	share := &dto.SharedResource{
 		Name: "test-share",
 	}
-	bus.EmitShare(ShareEvent{
+	_ = bus.EmitShare(ShareEvent{
 		Event: Event{
 			Type: EventTypes.ADD,
 		},
@@ -389,7 +391,7 @@ func TestEventBusUUIDGeneration(t *testing.T) {
 // TestEventBusUUIDNotOverwritten tests that pre-set UUID in context is not overwritten
 func TestEventBusUUIDNotOverwritten(t *testing.T) {
 	presetUUID := "550e8400-e29b-41d4-a716-446655440000"
-	ctx := context.WithValue(context.Background(), struct{}{}, presetUUID)
+	ctx := context.WithValue(context.Background(), eventBusTestUUIDKey{}, presetUUID)
 	bus := NewEventBus(ctx)
 
 	var receivedEvent *ShareEvent
@@ -408,7 +410,7 @@ func TestEventBusUUIDNotOverwritten(t *testing.T) {
 	share := &dto.SharedResource{
 		Name: "test-share",
 	}
-	bus.EmitShare(ShareEvent{
+	_ = bus.EmitShare(ShareEvent{
 		Event: Event{
 			Type: EventTypes.ADD,
 		},
@@ -466,7 +468,7 @@ func TestEventBusMultipleListenersGetSameUUID(t *testing.T) {
 	share := &dto.SharedResource{
 		Name: "test-share",
 	}
-	bus.EmitShare(ShareEvent{
+	_ = bus.EmitShare(ShareEvent{
 		Event: Event{
 			Type: EventTypes.ADD,
 		},

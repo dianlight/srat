@@ -74,7 +74,7 @@ func (suite *IssueHandlerSuite) TestGetIssuesSuccess() {
 
 	resp := apiInst.Get("/issues")
 	suite.Require().Equal(http.StatusOK, resp.Code)
-	mock.Verify(suite.mockIssueSvc, matchers.Times(1)).FindOpen()
+	_, _ = mock.Verify(suite.mockIssueSvc, matchers.Times(1)).FindOpen()
 }
 
 func (suite *IssueHandlerSuite) TestGetIssuesError() {
@@ -83,7 +83,7 @@ func (suite *IssueHandlerSuite) TestGetIssuesError() {
 	suite.handler.RegisterIssueHandler(apiInst)
 	resp := apiInst.Get("/issues")
 	suite.Require().Equal(http.StatusInternalServerError, resp.Code)
-	mock.Verify(suite.mockIssueSvc, matchers.Times(1)).FindOpen()
+	_, _ = mock.Verify(suite.mockIssueSvc, matchers.Times(1)).FindOpen()
 }
 
 func (suite *IssueHandlerSuite) TestCreateIssueSuccess() {
@@ -100,7 +100,7 @@ func (suite *IssueHandlerSuite) TestCreateIssueSuccess() {
 		"ignored":     false,
 	})
 	suite.Require().Equal(http.StatusOK, resp.Code)
-	mock.Verify(suite.mockIssueSvc, matchers.Times(1)).Create(mock.Any[*dto.Issue]())
+	_ = mock.Verify(suite.mockIssueSvc, matchers.Times(1)).Create(mock.Any[*dto.Issue]())
 }
 
 func (suite *IssueHandlerSuite) TestCreateIssueError() {
@@ -116,7 +116,7 @@ func (suite *IssueHandlerSuite) TestCreateIssueError() {
 		"ignored":     false,
 	})
 	suite.Require().Equal(http.StatusInternalServerError, resp.Code)
-	mock.Verify(suite.mockIssueSvc, matchers.Times(1)).Create(mock.Any[*dto.Issue]())
+	_ = mock.Verify(suite.mockIssueSvc, matchers.Times(1)).Create(mock.Any[*dto.Issue]())
 }
 
 func (suite *IssueHandlerSuite) TestResolveIssueSuccess() {
@@ -125,7 +125,7 @@ func (suite *IssueHandlerSuite) TestResolveIssueSuccess() {
 	suite.handler.RegisterIssueHandler(apiInst)
 	resp := apiInst.Delete("/issues/1")
 	suite.Require().Equal(http.StatusNoContent, resp.Code)
-	mock.Verify(suite.mockIssueSvc, matchers.Times(1)).Resolve(uint(1))
+	_ = mock.Verify(suite.mockIssueSvc, matchers.Times(1)).Resolve(uint(1))
 }
 
 func (suite *IssueHandlerSuite) TestResolveIssueError() {
@@ -134,7 +134,7 @@ func (suite *IssueHandlerSuite) TestResolveIssueError() {
 	suite.handler.RegisterIssueHandler(apiInst)
 	resp := apiInst.Delete("/issues/1")
 	suite.Require().Equal(http.StatusInternalServerError, resp.Code)
-	mock.Verify(suite.mockIssueSvc, matchers.Times(1)).Resolve(uint(1))
+	_ = mock.Verify(suite.mockIssueSvc, matchers.Times(1)).Resolve(uint(1))
 }
 
 func (suite *IssueHandlerSuite) TestUpdateIssueSuccess() {
@@ -154,7 +154,7 @@ func (suite *IssueHandlerSuite) TestUpdateIssueSuccess() {
 	var out dto.Issue
 	suite.NoError(json.Unmarshal(resp.Body.Bytes(), &out))
 	suite.Equal(uint(1), out.ID)
-	mock.Verify(suite.mockIssueSvc, matchers.Times(1)).Update(mock.Any[*dto.Issue]())
+	_, _ = mock.Verify(suite.mockIssueSvc, matchers.Times(1)).Update(mock.Any[*dto.Issue]())
 }
 
 func (suite *IssueHandlerSuite) TestUpdateIssueError() {
@@ -170,7 +170,7 @@ func (suite *IssueHandlerSuite) TestUpdateIssueError() {
 		"ignored":     false,
 	})
 	suite.Require().Equal(http.StatusInternalServerError, resp.Code)
-	mock.Verify(suite.mockIssueSvc, matchers.Times(1)).Update(mock.Any[*dto.Issue]())
+	_, _ = mock.Verify(suite.mockIssueSvc, matchers.Times(1)).Update(mock.Any[*dto.Issue]())
 }
 
 // TestCreateIssueValidationError ensures missing required fields trigger 422 before hitting service layer
@@ -182,5 +182,5 @@ func (suite *IssueHandlerSuite) TestCreateIssueValidationError() {
 	resp := apiInst.Post("/issues", map[string]any{"title": "T"})
 	suite.Require().Equal(http.StatusUnprocessableEntity, resp.Code)
 	// Ensure Create was never invoked
-	mock.Verify(suite.mockIssueSvc, matchers.Times(0)).Create(mock.Any[*dto.Issue]())
+	_ = mock.Verify(suite.mockIssueSvc, matchers.Times(0)).Create(mock.Any[*dto.Issue]())
 }

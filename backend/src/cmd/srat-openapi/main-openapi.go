@@ -123,9 +123,13 @@ func main() {
 		),
 	)
 
-	app.Start(context.Background())
+	if err := app.Start(context.Background()); err != nil {
+		log.Fatalf("Error starting app: %v", err)
+	}
 	// apiCancel is deferred
-	app.Stop(context.Background())
+	if err := app.Stop(context.Background()); err != nil {
+		log.Fatalf("Error stopping app: %v", err)
+	}
 
 	os.Exit(0)
 }

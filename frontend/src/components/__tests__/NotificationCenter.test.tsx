@@ -1,5 +1,16 @@
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 import "../../../test/setup";
-import { describe, it, expect, beforeEach } from "bun:test";
+
+mock.module("react-toastify/addons/use-notification-center", () => ({
+    useNotificationCenter: () => ({
+        notifications: [],
+        unreadCount: 0,
+        clear: () => { },
+        markAllAsRead: () => { },
+        remove: () => { },
+        markAsRead: () => { },
+    }),
+}));
 
 // Required localStorage shim for testing environment
 if (!(globalThis as any).localStorage) {

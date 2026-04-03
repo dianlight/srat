@@ -122,35 +122,6 @@ func (s *HaRootServiceSuite) TearDownTest() {
 	haRootSystemInfoCache.Flush()
 }
 
-// Helper to adapt fake responses into the concrete shapes used by the service methods.
-// The real generated client returns concrete types; our HaRootService methods only access
-// StatusCode() and JSON200 fields, so we create the expected concrete types here.
-
-type concreteGetSystemResp struct {
-	status  int
-	JSON200 *struct{ Data *root.SystemInfo }
-}
-
-func (r *concreteGetSystemResp) StatusCode() int { return r.status }
-
-type concreteGetAvailableResp struct {
-	status  int
-	JSON200 *struct {
-		Data *struct {
-			AvailableUpdates *[]root.UpdateItem
-		}
-	}
-}
-
-func (r *concreteGetAvailableResp) StatusCode() int { return r.status }
-
-type concreteSimpleResp struct {
-	status  int
-	JSON200 *struct{}
-}
-
-func (r *concreteSimpleResp) StatusCode() int { return r.status }
-
 // Test: if cache contains value, GetSystemInfo returns it without using client
 func (s *HaRootServiceSuite) TestGetSystemInfo_CacheReturnedWhenPresent() {
 	sys := &root.SystemInfo{Hostname: new("cached-host")}

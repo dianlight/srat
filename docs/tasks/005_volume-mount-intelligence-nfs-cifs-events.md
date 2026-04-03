@@ -1,6 +1,6 @@
 # [FEATURE]: Volume Mount Intelligence — NFS/CIFS Decision, Event Cache Retry
 
-**Target Repo:** `srat`  **Status:** ✅ Done  **Issue Link:** [dianlight/srat#500](https://github.com/dianlight/srat/issues/500)
+**Target Repo:** `srat`  **Status:** ✅ Complete  **Issue Link:** [dianlight/srat#500](https://github.com/dianlight/srat/issues/500)
 
 ## 🎯 Objective
 

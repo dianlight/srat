@@ -1,6 +1,6 @@
 ---
 name: task-status
-description: 'Generate a Markdown progress report of all tasks in docs/tasks/ grouped by status (📅 Planned / 🔄 In Progress / ✅ Done). Optionally filter by type (FEATURE/FIX/DOCS/REFACTOR) or linked repo. Output is suitable for a weekly standup, GitHub comment, or PR description. Triggers on: "task status", "show task progress", "what tasks are done", "weekly standup", "task report", "progress report", "list tasks".'
+description: 'Generate a Markdown progress report of all tasks in docs/tasks/ grouped by status (📅 Planned / 🔄 In Progress / ✅ Complete). Optionally filter by type (FEATURE/FIX/DOCS/REFACTOR) or linked repo. Output is suitable for a weekly standup, GitHub comment, or PR description. Triggers on: "task status", "show task progress", "what tasks are done", "weekly standup", "task report", "progress report", "list tasks".'
 argument-hint: 'Optional filter: "all" (default), "done", "in-progress", "planned", "features", "fixes", or a GitHub repo name ("srat" / "hassio-addons")'
 ---
 
@@ -31,21 +31,21 @@ For each file, extract:
 | **TaskID** | Leading digits of the filename (`001`, `002`, …) |
 | **Type** | First heading: `# [FEATURE]`, `# [FIX]`, `# [DOCS]`, `# [REFACTOR]` |
 | **Title** | Text after the `[TYPE]:` prefix in the first heading |
-| **Status** | `**Status:**` field in the header line (must match one of: `📅 Planned`, `🔄 In Progress`, `✅ Done`) |
+| **Status** | `**Status:**` field in the header line (must match one of: `📅 Planned`, `🔄 In Progress`, `✅ Complete`) |
 | **Issue Links** | All `[repo#NNN](url)` patterns in the file |
 | **Progress** | Count `- [x]` vs `- [ ]` items under `## 📝 Task List` |
 
 If `**Status:**` is missing or unrecognised, infer from task list:
 - 0 checked → `📅 Planned`
 - 1+ checked, not all → `🔄 In Progress`
-- All checked → `✅ Done`
+- All checked → `✅ Complete`
 
 ### 2. Apply Filter
 
 | Argument | Behaviour |
 |----------|-----------|
 | `all` (default) | Include all tasks regardless of status or type |
-| `done` | Only `✅ Done` tasks |
+| `done` | Only `✅ Complete` tasks |
 | `in-progress` | Only `🔄 In Progress` tasks |
 | `planned` | Only `📅 Planned` tasks |
 | `features` | Only `[FEATURE]` type |
@@ -64,7 +64,7 @@ _Generated: <date>_
 ## Summary
 | Status | Count | Progress |
 |--------|-------|----------|
-| ✅ Done | N | N/T tasks |
+| ✅ Complete | N | N/T tasks |
 | 🔄 In Progress | N | N/T tasks |
 | 📅 Planned | N | N/T tasks |
 | **Total** | **T** | **overall %** |

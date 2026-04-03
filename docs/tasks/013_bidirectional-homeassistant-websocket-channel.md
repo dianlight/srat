@@ -1,6 +1,6 @@
 # [FEATURE]: Bidirectional Home Assistant WebSocket Channel
 
-**Target Repo:** `srat`  **Status:** ✅ Done  **Issue Link:** https://github.com/dianlight/srat/issues/508
+**Target Repo:** `srat`  **Status:** ✅ Complete  **Issue Link:** https://github.com/dianlight/srat/issues/508
 
 ## 🎯 Objective
 

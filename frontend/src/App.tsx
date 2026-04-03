@@ -1,20 +1,31 @@
 import {
   Alert,
   Backdrop,
+  Box,
   Button,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Snackbar,
+  Typography,
 } from "@mui/material";
 import Container from "@mui/material/Container";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "react-toastify";
 import BaseConfigModal from "./components/BaseConfigModal";
 import { Footer } from "./components/Footer";
 import GlobalEventMonitor from "./components/GlobalEventTracker";
 import { NavBar } from "./components/NavBar";
+import { ReadonlyCommandTerminal } from "./components/ReadonlyCommandTerminal";
 import TelemetryModal from "./components/TelemetryModal";
 import { useBaseConfigModal } from "./hooks/useBaseConfigModal";
 import { useTelemetryModal } from "./hooks/useTelemetryModal";
 import {
+  type CommandExecutionSnapshot,
+  type CommandStartedNotification,
+  type CommandTerminatedNotification,
   useGetApiSettingsAppConfigQuery,
   usePutApiRestartMutation,
 } from "./store/sratApi";
@@ -35,6 +46,14 @@ export function App() {
     useBaseConfigModal();
   const [backdropOpen, setBackdropOpen] = useState(true);
   const backdropPrevOpen = useRef(undefined as boolean | undefined);
+  const [commandSessions, setCommandSessions] = useState<
+    Record<string, CommandExecutionSnapshot>
+  >({});
+  const [commandDialogExecutionId, setCommandDialogExecutionId] = useState<
+    string | null
+  >(null);
+  const [commandDialogOpen, setCommandDialogOpen] = useState(false);
+  const commandEventDedupRef = useRef<string>("");
   // Compute Backdrop open state
   useEffect(() => {
     const newBackdropOpen =
@@ -121,6 +140,156 @@ export function App() {
     }
   }
 
+  const upsertCommandStarted = useCallback(
+    (event: CommandStartedNotification) => {
+      setCommandSessions((previous) => {
+        const current = previous[event.execution_id];
+        return {
+          ...previous,
+          [event.execution_id]: {
+            execution_id: event.execution_id,
+            command_id: event.command_id,
+            label: event.label,
+            command: event.command,
+            args: event.args ?? [],
+            started_at: event.started_at,
+            running: true,
+            success: current?.success,
+            exit_code: current?.exit_code,
+            finished_at: current?.finished_at,
+            error: current?.error,
+            lines: current?.lines ?? [],
+          },
+        };
+      });
+    },
+    [],
+  );
+
+  const openCommandDialog = useCallback((executionId: string) => {
+    setCommandDialogExecutionId(executionId);
+    setCommandDialogOpen(true);
+  }, []);
+
+  useEffect(() => {
+    const event = evdata?.command_started;
+    if (!event) {
+      return;
+    }
+    upsertCommandStarted(event);
+  }, [evdata?.command_started, upsertCommandStarted]);
+
+  useEffect(() => {
+    const event = evdata?.command_output;
+    if (!event) {
+      return;
+    }
+
+    const dedupeKey = `${event.execution_id}:${event.channel}:${event.timestamp}:${event.line}`;
+    if (commandEventDedupRef.current === dedupeKey) {
+      return;
+    }
+    commandEventDedupRef.current = dedupeKey;
+
+    setCommandSessions((previous) => {
+      const current = previous[event.execution_id] ?? {
+        execution_id: event.execution_id,
+        command_id: event.command_id,
+        command: event.command_id,
+        args: [],
+        started_at: event.timestamp,
+        running: true,
+        lines: [],
+      };
+
+      const lines = [...(current.lines || []), event].slice(-500);
+
+      return {
+        ...previous,
+        [event.execution_id]: {
+          ...current,
+          command_id: event.command_id,
+          running: current.running,
+          lines,
+        },
+      };
+    });
+
+    if (event.channel === "stderr" && !commandDialogOpen) {
+      toast.error(
+        <Box>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            Command stderr detected for {event.command_id}
+          </Typography>
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={() => openCommandDialog(event.execution_id)}
+          >
+            Open Output
+          </Button>
+        </Box>,
+        { autoClose: 7000 },
+      );
+    }
+  }, [evdata?.command_output, commandDialogOpen, openCommandDialog]);
+
+  useEffect(() => {
+    const event: CommandTerminatedNotification | undefined =
+      evdata?.command_terminated;
+    if (!event) {
+      return;
+    }
+
+    setCommandSessions((previous) => {
+      const current = previous[event.execution_id] ?? {
+        execution_id: event.execution_id,
+        command_id: event.command_id,
+        command: event.command_id,
+        args: [],
+        started_at: event.finished_at,
+        running: false,
+        lines: [],
+      };
+
+      return {
+        ...previous,
+        [event.execution_id]: {
+          ...current,
+          running: false,
+          success: event.success,
+          exit_code: event.exit_code,
+          finished_at: event.finished_at,
+          error: event.error,
+        },
+      };
+    });
+  }, [evdata?.command_terminated]);
+
+  const selectedCommandSession =
+    commandDialogExecutionId === null
+      ? undefined
+      : commandSessions[commandDialogExecutionId];
+
+  const downloadCommandOutput = () => {
+    if (!selectedCommandSession) {
+      return;
+    }
+    const lines = selectedCommandSession.lines
+      ?.map((line) => `[${line.channel}] ${line.line}`)
+      .join("\n");
+    if (!lines) {
+      return;
+    }
+    const blob = new Blob([lines], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${selectedCommandSession.execution_id}.log.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <>
       <GlobalEventMonitor />
@@ -190,6 +359,42 @@ export function App() {
           Addon configuration has changed. Reload required.
         </Alert>
       </Snackbar>
+      <Dialog
+        open={commandDialogOpen}
+        onClose={() => setCommandDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          Command Output:{" "}
+          {selectedCommandSession?.label ??
+            selectedCommandSession?.command_id ??
+            "Unknown"}
+        </DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            Execution: {selectedCommandSession?.execution_id}
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            Status:{" "}
+            {selectedCommandSession?.running
+              ? "Running"
+              : `${selectedCommandSession?.success ? "Success" : "Failed"} (exit ${selectedCommandSession?.exit_code ?? "n/a"})`}
+          </Typography>
+          <ReadonlyCommandTerminal lines={selectedCommandSession?.lines} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={downloadCommandOutput} variant="outlined">
+            Download
+          </Button>
+          <Button
+            onClick={() => setCommandDialogOpen(false)}
+            variant="contained"
+          >
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }

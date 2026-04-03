@@ -35,7 +35,6 @@ type VolumeServiceTestSuite struct {
 	filesystemService  service.FilesystemServiceInterface
 	hardwareService    service.HardwareServiceInterface
 	eventBus           events.EventBusInterface
-	ctrl               *matchers.MockController
 	ctx                context.Context
 	cancel             context.CancelFunc
 	app                *fxtest.App
@@ -238,7 +237,7 @@ func (suite *VolumeServiceTestSuite) TestMountUnmountVolume_Success() {
 	defer func() {
 		err := suite.volumeService.UnmountVolume(mountPath, true) // Cleanup
 		suite.Require().Nil(err, "Expected no error on unmount")
-		loop.ClearFile(device)
+		_ = loop.ClearFile(device)
 	}()
 	// --- Execute ---
 	errE := suite.volumeService.MountVolume(&mountData)

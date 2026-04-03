@@ -152,7 +152,8 @@ depends = [
 ]
 run = [
 	"go -C src tool gotest -p 1 -failfast  -timeout 120s -tags embedallowed_no  -coverprofile=coverage.out -cover ./...",
-	"go -C src tool cover -func=coverage.out | grep total: | awk '{print \"Total coverage: \" $3}'"
+	"go -C src tool cover -func=coverage.out | grep total: | awk '{print \"Total coverage: \" $3}'",
+  "git restore test/data/image.dmg"
 ]
 quiet = true
 
@@ -203,3 +204,6 @@ outputs = [
   "src/dbom/g/**/*.go",
   "src/dto/**/*_enums.go",
   ]
+
+[tasks.golangci-lint]
+run = "cd src && golangci-lint run --fix"

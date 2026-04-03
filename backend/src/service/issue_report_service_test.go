@@ -99,7 +99,7 @@ func (suite *IssueReportServiceSuite) TestGenerateIssueReport_FrontendUI() {
 	suite.Contains(report.GitHubURL, "github.com/dianlight/srat")
 	suite.Contains(report.IssueTitle, "[UI]")
 	suite.Contains(report.GitHubURL, "Button+not+working")
-	mock.Verify(suite.mockSettingService, matchers.Times(0)).Load()
+	_, _ = mock.Verify(suite.mockSettingService, matchers.Times(0)).Load()
 }
 
 func (suite *IssueReportServiceSuite) TestGenerateIssueReport_AddonProblem() {
@@ -143,7 +143,7 @@ func (suite *IssueReportServiceSuite) TestGenerateIssueReport_WithConfig() {
 	suite.Require().NoError(err)
 	suite.NotNil(report)
 	//suite.NotNil(report.SanitizedConfig)
-	mock.Verify(suite.mockSettingService, matchers.Times(1)).Load()
+	_, _ = mock.Verify(suite.mockSettingService, matchers.Times(1)).Load()
 }
 
 func (suite *IssueReportServiceSuite) TestGenerateIssueReport_SambaProblem() {
@@ -218,7 +218,7 @@ func (suite *IssueReportServiceSuite) TestGenerateIssueReport_SambaProblem_WithL
 
 	callInfo := httpmock.GetCallCountInfo()
 	suite.Equal(1, callInfo["POST https://api.github.com/gists"])
-	mock.Verify(suite.mockSettingService, matchers.Times(1)).Load()
+	_, _ = mock.Verify(suite.mockSettingService, matchers.Times(1)).Load()
 }
 
 func (suite *IssueReportServiceSuite) TestGenerateIssueReport_SambaProblem_WithSensitiveDiagnosticsSmall() {
@@ -285,7 +285,7 @@ func (suite *IssueReportServiceSuite) TestGenerateIssueReport_SambaProblem_WithS
 
 	callInfo := httpmock.GetCallCountInfo()
 	suite.Equal(0, callInfo["POST https://api.github.com/gists"])
-	mock.Verify(suite.mockSettingService, matchers.Times(1)).Load()
+	_, _ = mock.Verify(suite.mockSettingService, matchers.Times(1)).Load()
 }
 
 func (suite *IssueReportServiceSuite) TestGenerateIssueReport_SambaProblem_WithSensitiveDiagnosticsLarge() {
@@ -366,5 +366,5 @@ func (suite *IssueReportServiceSuite) TestGenerateIssueReport_SambaProblem_WithS
 
 	callInfo := httpmock.GetCallCountInfo()
 	suite.Equal(1, callInfo["POST https://api.github.com/gists"])
-	mock.Verify(suite.mockSettingService, matchers.Times(1)).Load()
+	_, _ = mock.Verify(suite.mockSettingService, matchers.Times(1)).Load()
 }

@@ -338,7 +338,7 @@ func emitEvent[T any](signal signals.SyncSignal[T], ctx context.Context, event T
 
 // Disk event methods
 func (eb *EventBus) EmitDisk(event DiskEvent) {
-	emitEvent(eb.disk, eb.ctx, event)
+	_ = emitEvent(eb.disk, eb.ctx, event)
 }
 
 func (eb *EventBus) OnDisk(handler func(context.Context, DiskEvent) errors.E) func() {
@@ -347,7 +347,7 @@ func (eb *EventBus) OnDisk(handler func(context.Context, DiskEvent) errors.E) fu
 
 // Partition event methods
 func (eb *EventBus) EmitPartition(event PartitionEvent) {
-	emitEvent(eb.partition, eb.ctx, event)
+	_ = emitEvent(eb.partition, eb.ctx, event)
 }
 
 func (eb *EventBus) OnPartition(handler func(context.Context, PartitionEvent) errors.E) func() {
@@ -378,7 +378,7 @@ func (eb *EventBus) OnMountPointUnmounted(handler func(context.Context, MountPoi
 
 // User event methods
 func (eb *EventBus) EmitUser(event UserEvent) {
-	emitEvent(eb.user, eb.ctx, event)
+	_ = emitEvent(eb.user, eb.ctx, event)
 }
 
 func (eb *EventBus) OnUser(handler func(context.Context, UserEvent) errors.E) func() {
@@ -387,7 +387,7 @@ func (eb *EventBus) OnUser(handler func(context.Context, UserEvent) errors.E) fu
 
 // Setting event methods
 func (eb *EventBus) EmitSetting(event SettingEvent) {
-	emitEvent(eb.setting, eb.ctx, event)
+	_ = emitEvent(eb.setting, eb.ctx, event)
 }
 
 func (eb *EventBus) OnSetting(handler func(context.Context, SettingEvent) errors.E) func() {
@@ -396,7 +396,7 @@ func (eb *EventBus) OnSetting(handler func(context.Context, SettingEvent) errors
 
 // AppConfig event methods
 func (eb *EventBus) EmitAppConfig(event AppConfigEvent) {
-	emitEvent(eb.appConfig, eb.ctx, event)
+	_ = emitEvent(eb.appConfig, eb.ctx, event)
 }
 
 func (eb *EventBus) OnAppConfig(handler func(context.Context, AppConfigEvent) errors.E) func() {
@@ -405,7 +405,7 @@ func (eb *EventBus) OnAppConfig(handler func(context.Context, AppConfigEvent) er
 
 // Samba event methods
 func (eb *EventBus) EmitServerProcess(event ServerProcessEvent) {
-	emitEvent(eb.samba, eb.ctx, event)
+	_ = emitEvent(eb.samba, eb.ctx, event)
 }
 
 func (eb *EventBus) OnServerProccess(handler func(context.Context, ServerProcessEvent) errors.E) func() {
@@ -414,7 +414,7 @@ func (eb *EventBus) OnServerProccess(handler func(context.Context, ServerProcess
 
 // Volume event methods
 func (eb *EventBus) EmitVolume(event VolumeEvent) {
-	emitEvent(eb.volume, eb.ctx, event)
+	_ = emitEvent(eb.volume, eb.ctx, event)
 }
 
 func (eb *EventBus) OnVolume(handler func(context.Context, VolumeEvent) errors.E) func() {
@@ -423,7 +423,7 @@ func (eb *EventBus) OnVolume(handler func(context.Context, VolumeEvent) errors.E
 
 // Dirty data event methods
 func (eb *EventBus) EmitDirtyData(event DirtyDataEvent) {
-	emitEvent(eb.dirtyData, eb.ctx, event)
+	_ = emitEvent(eb.dirtyData, eb.ctx, event)
 }
 
 func (eb *EventBus) OnDirtyData(handler func(context.Context, DirtyDataEvent) errors.E) func() {
@@ -432,7 +432,7 @@ func (eb *EventBus) OnDirtyData(handler func(context.Context, DirtyDataEvent) er
 
 // Home Assistant event methods
 func (eb *EventBus) EmitHomeAssistant(event HomeAssistantEvent) {
-	emitEvent(eb.homeAssistant, eb.ctx, event)
+	_ = emitEvent(eb.homeAssistant, eb.ctx, event)
 }
 
 func (eb *EventBus) OnHomeAssistant(handler func(context.Context, HomeAssistantEvent) errors.E) func() {
@@ -441,7 +441,7 @@ func (eb *EventBus) OnHomeAssistant(handler func(context.Context, HomeAssistantE
 
 // Smart event methods
 func (eb *EventBus) EmitSmart(event SmartEvent) {
-	emitEvent(eb.smart, eb.ctx, event)
+	_ = emitEvent(eb.smart, eb.ctx, event)
 }
 
 func (eb *EventBus) OnSmart(handler func(context.Context, SmartEvent) errors.E) func() {
@@ -450,7 +450,7 @@ func (eb *EventBus) OnSmart(handler func(context.Context, SmartEvent) errors.E) 
 
 // Power event methods
 func (eb *EventBus) EmitPower(event PowerEvent) {
-	emitEvent(eb.power, eb.ctx, event)
+	_ = emitEvent(eb.power, eb.ctx, event)
 }
 
 func (eb *EventBus) OnPower(handler func(context.Context, PowerEvent) errors.E) func() {
@@ -459,7 +459,7 @@ func (eb *EventBus) OnPower(handler func(context.Context, PowerEvent) errors.E) 
 
 // Filesystem task event methods
 func (eb *EventBus) EmitFilesystemTask(event FilesystemTaskEvent) {
-	emitEvent(eb.filesystemTask, eb.ctx, event)
+	_ = emitEvent(eb.filesystemTask, eb.ctx, event)
 }
 
 func (eb *EventBus) OnFilesystemTask(handler func(context.Context, FilesystemTaskEvent) errors.E) func() {

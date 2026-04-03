@@ -125,7 +125,7 @@ func (suite *SmartHandlerSuite) TestGetSmartInfoSuccess() {
 	suite.True(out.Supported)
 
 	//mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).GetVolumesData()
-	mock.Verify(suite.mockSmartSvc, matchers.Times(1)).GetSmartInfo(mock.Any[context.Context](), mock.Exact(diskID))
+	_, _ = mock.Verify(suite.mockSmartSvc, matchers.Times(1)).GetSmartInfo(mock.Any[context.Context](), mock.Exact(diskID))
 }
 
 func (suite *SmartHandlerSuite) TestGetSmartInfoNotSupported() {
@@ -149,7 +149,7 @@ func (suite *SmartHandlerSuite) TestGetSmartInfoNotSupported() {
 	suite.Require().Equal(http.StatusNotAcceptable, resp.Code)
 
 	//mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).GetVolumesData()
-	mock.Verify(suite.mockSmartSvc, matchers.Times(1)).GetSmartInfo(mock.Any[context.Context](), mock.Exact(diskID))
+	_, _ = mock.Verify(suite.mockSmartSvc, matchers.Times(1)).GetSmartInfo(mock.Any[context.Context](), mock.Exact(diskID))
 }
 
 func (suite *SmartHandlerSuite) TestGetSmartHealthSuccess() {
@@ -183,7 +183,7 @@ func (suite *SmartHandlerSuite) TestGetSmartHealthSuccess() {
 	suite.Equal("healthy", out.OverallStatus)
 
 	//mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).GetVolumesData()
-	mock.Verify(suite.mockSmartSvc, matchers.Times(1)).GetHealthStatus(mock.Any[context.Context](), mock.Exact(diskID))
+	_, _ = mock.Verify(suite.mockSmartSvc, matchers.Times(1)).GetHealthStatus(mock.Any[context.Context](), mock.Exact(diskID))
 }
 
 func (suite *SmartHandlerSuite) TestGetSmartTestStatusSuccess() {
@@ -215,7 +215,7 @@ func (suite *SmartHandlerSuite) TestGetSmartTestStatusSuccess() {
 	suite.Equal("idle", out.Status)
 
 	//mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).GetVolumesData()
-	mock.Verify(suite.mockSmartSvc, matchers.Times(1)).GetTestStatus(mock.Any[context.Context](), mock.Exact(diskID))
+	_, _ = mock.Verify(suite.mockSmartSvc, matchers.Times(1)).GetTestStatus(mock.Any[context.Context](), mock.Exact(diskID))
 }
 
 func (suite *SmartHandlerSuite) TestStartSmartTestSuccess() {
@@ -240,7 +240,7 @@ func (suite *SmartHandlerSuite) TestStartSmartTestSuccess() {
 	suite.Require().Equal(http.StatusOK, resp.Code)
 
 	//mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).GetVolumesData()
-	mock.Verify(suite.mockSmartSvc, matchers.Times(1)).StartSelfTest(mock.Any[context.Context](), mock.Exact(diskID), mock.Equal(dto.SmartTestTypes.SMARTTESTTYPESHORT))
+	_ = mock.Verify(suite.mockSmartSvc, matchers.Times(1)).StartSelfTest(mock.Any[context.Context](), mock.Exact(diskID), mock.Equal(dto.SmartTestTypes.SMARTTESTTYPESHORT))
 
 }
 
@@ -265,7 +265,7 @@ func (suite *SmartHandlerSuite) TestAbortSmartTestSuccess() {
 	suite.Require().Equal(http.StatusOK, resp.Code)
 
 	//mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).GetDevicePathByDeviceID(mock.Exact(diskID))
-	mock.Verify(suite.mockSmartSvc, matchers.Times(1)).AbortSelfTest(mock.Any[context.Context](), mock.Exact(diskID))
+	_ = mock.Verify(suite.mockSmartSvc, matchers.Times(1)).AbortSelfTest(mock.Any[context.Context](), mock.Exact(diskID))
 }
 
 func (suite *SmartHandlerSuite) TestEnableSmartSuccess() {
@@ -289,7 +289,7 @@ func (suite *SmartHandlerSuite) TestEnableSmartSuccess() {
 	suite.Require().Equal(http.StatusOK, resp.Code)
 
 	//mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).GetVolumesData()
-	mock.Verify(suite.mockSmartSvc, matchers.Times(1)).EnableSMART(mock.Any[context.Context](), mock.Exact(diskID))
+	_ = mock.Verify(suite.mockSmartSvc, matchers.Times(1)).EnableSMART(mock.Any[context.Context](), mock.Exact(diskID))
 }
 
 func (suite *SmartHandlerSuite) TestDisableSmartSuccess() {
@@ -313,7 +313,7 @@ func (suite *SmartHandlerSuite) TestDisableSmartSuccess() {
 	suite.Require().Equal(http.StatusOK, resp.Code)
 
 	//	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).GetVolumesData()
-	mock.Verify(suite.mockSmartSvc, matchers.Times(1)).DisableSMART(mock.Any[context.Context](), mock.Exact(diskID))
+	_ = mock.Verify(suite.mockSmartSvc, matchers.Times(1)).DisableSMART(mock.Any[context.Context](), mock.Exact(diskID))
 }
 
 func (suite *SmartHandlerSuite) TestDiskNotFound() {
@@ -375,5 +375,5 @@ func (suite *SmartHandlerSuite) TestGetSmartInfoDisabledBySettings() {
 
 	resp := apiInst.Get("/disk/sda/smart/info")
 	suite.Require().Equal(http.StatusConflict, resp.Code)
-	mock.Verify(suite.mockSmartSvc, matchers.Times(0)).GetSmartInfo(mock.Any[context.Context](), mock.Any[string]())
+	_, _ = mock.Verify(suite.mockSmartSvc, matchers.Times(0)).GetSmartInfo(mock.Any[context.Context](), mock.Any[string]())
 }

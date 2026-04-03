@@ -38,12 +38,10 @@ func (s *IssueService) Create(issue *dto.Issue) error {
 		if err := s.repo.Update(existingIssue); err != nil {
 			return err
 		}
-		issue = s.converter.ToDto(dbom)
 	} else {
 		if err := s.repo.Create(dbom); err != nil {
 			return err
 		}
-		issue = s.converter.ToDto(dbom)
 	}
 	return nil
 }

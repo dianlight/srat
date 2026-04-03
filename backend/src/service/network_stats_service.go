@@ -72,7 +72,9 @@ func NewNetworkStatsService(lc fx.Lifecycle,
 			}
 			if wg, ok := Ctx.Value(ctxkeys.WaitGroup).(*sync.WaitGroup); ok && wg != nil {
 				wg.Go(func() {
-					ns.run()
+					if err := ns.run(); err != nil && !errors.Is(err, context.Canceled) {
+						slog.WarnContext(ns.ctx, "NetworkStatsService run loop stopped with error", "error", err)
+					}
 				})
 			}
 			return nil

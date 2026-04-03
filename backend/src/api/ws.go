@@ -190,7 +190,10 @@ func (self *WebSocketHandler) readInboundMessages(conn *websocket.Conn, readErr 
 			return
 		}
 
-		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		if err := conn.SetReadDeadline(time.Now().Add(60 * time.Second)); err != nil {
+			readErr <- err
+			return
+		}
 		self.handleInboundMessage(messageType, payload)
 	}
 }
@@ -218,14 +221,18 @@ func (self *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Req
 	defer conn.Close()
 
 	// Handle ping/pong for connection health
-	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	if err := conn.SetReadDeadline(time.Now().Add(60 * time.Second)); err != nil {
+		slog.WarnContext(self.ctx, "Failed to set initial WebSocket read deadline", "error", err)
+		return
+	}
 	conn.SetPingHandler(func(appData string) error {
-		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		if err := conn.SetReadDeadline(time.Now().Add(60 * time.Second)); err != nil {
+			return err
+		}
 		return conn.WriteControl(websocket.PongMessage, []byte(appData), time.Now().Add(5*time.Second))
 	})
 	conn.SetPongHandler(func(string) error {
-		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
-		return nil
+		return conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 	})
 
 	slog.DebugContext(self.ctx, "WebSocket client connected")

@@ -218,14 +218,16 @@ func prog(listener net.Listener, serverPort int) {
 				// Static Routes
 				router.PathPrefix("/").Handler(http.FileServer(static)).Methods(http.MethodGet)
 				//
-				router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+				if err := router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
 					template, err := route.GetPathTemplate()
 					if err != nil {
 						return errors.WithMessage(err)
 					}
 					tlog.Trace("Route:", "template", template)
 					return nil
-				})
+				}); err != nil {
+					slog.Warn("Failed to enumerate routes", "error", err)
+				}
 			},
 		),
 		fx.Invoke(func(

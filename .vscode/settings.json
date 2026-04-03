@@ -212,7 +212,7 @@
 		"STUB",
 		"📅 Planned",
 		"🔄 In Progress",
-		"✅ Done"
+		"✅ Completeletelete"
 	],
 	"todo-tree.highlights.defaultHighlight": {
 		"type": "text",
@@ -232,7 +232,7 @@
 			"icon": "flame",
 			"type": "text"
 		},
-		"**Status:** ✅ Done": {
+		"**Status:** ✅ Completelete": {
 			"foreground": "#2ecc71", // Verde
 			"icon": "check-circle",
 			"type": "text"
@@ -261,10 +261,21 @@
 	"go.goroot": "/root/.local/share/mise/installs/go/1.26.1",
 	"go.alternateTools": {
 		"go": "/root/.local/share/mise/shims/go",
-		"gopls": "/root/.local/share/mise/shims/gopls"
+		"gopls": "/root/.local/share/mise/shims/gopls",
+		"customFormatter": "golangci-lint"
 	},
 	"editor.fontSize": 13,
 	"vale.enableSpellcheck": true,
 	"vale.valeCLI.syncOnStartup": true,
-	"vale.readabilityProblemLocation": "both"
+	"vale.readabilityProblemLocation": "both",
+	"go.lintTool": "golangci-lint",
+	"go.lintFlags": [
+		"--path-mode=abs",
+		"--fast-only"
+	],
+	"go.formatTool": "custom",
+	"go.formatFlags": [
+		"fmt",
+		"--stdin"
+	]
 }
