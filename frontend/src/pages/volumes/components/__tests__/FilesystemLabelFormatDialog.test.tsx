@@ -24,6 +24,29 @@ async function renderWithProviders(
 }
 
 describe("Filesystem label/format dialogs", () => {
+  it("prefills Label field with current partition label on open", async () => {
+    const React = await import("react");
+    const { screen } = await import("@testing-library/react");
+    const { FilesystemLabelDialog } = await import("../FilesystemLabelDialog");
+
+    const partition = {
+      id: "part-label-prefill-1",
+      name: "media",
+      device_path: "/dev/sde1",
+    };
+
+    await renderWithProviders(
+      React.createElement(FilesystemLabelDialog as any, {
+        open: true,
+        partition,
+        onClose: () => {},
+      }),
+    );
+
+    const input = await screen.findByRole("textbox", { name: /label/i });
+    expect((input as HTMLInputElement).value).toBe("media");
+  });
+
   it("disables Set Label when label tools are unavailable", async () => {
     const React = await import("react");
     const { screen } = await import("@testing-library/react");

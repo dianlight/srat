@@ -32,6 +32,10 @@ export function FilesystemLabelDialog({
   onClose,
 }: FilesystemLabelDialogProps) {
   const [label, setLabel] = useState("");
+  const currentLabel = useMemo(
+    () => decodeEscapeSequence(partition?.name ?? ""),
+    [partition?.name],
+  );
   const fsType = partition?.fs_type ?? "";
   const {
     data: supportData,
@@ -49,8 +53,8 @@ export function FilesystemLabelDialog({
     if (!open) {
       return;
     }
-    setLabel("");
-  }, [open]);
+    setLabel(currentLabel);
+  }, [currentLabel, open]);
 
   const support = useMemo(() => {
     if (!supportData || !("canSetLabel" in supportData)) {
