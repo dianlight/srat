@@ -192,6 +192,10 @@ url = "https://dl.google.com/go/go1.26.1.windows-amd64.zip"
 checksum = "sha256:9b68112c913f45b7aebbf13c036721264bbba7e03a642f8f7490c561eebd1ecc"
 url = "https://dl.google.com/go/go1.26.1.windows-amd64.zip"
 
+[[tools."go:golang.org/x/tools/gopls"]]
+version = "0.21.1"
+backend = "go:golang.org/x/tools/gopls"
+
 [[tools.golangci-lint]]
 version = "2.11.4"
 backend = "aqua:golangci/golangci-lint"
