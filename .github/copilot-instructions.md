@@ -8,7 +8,8 @@ These instructions are the concise, must-follow rules for working in SRAT. Keep 
 
 - **Read the file header first**: Always read the top comment/header of any file you modify; file‑specific rules override everything else.
 - **No git writes**: Never run `git add/commit/push` unless the user explicitly asks.
-- **Follow instruction files**: Use the specialized guidance in `.github/instructions/` for Go, Python, React, Markdown, and frontend tests.
+- **Follow instruction files**: Use the specialized guidance in `.github/instructions/` for Go, Python, React, Markdown, frontend tests, and backend command execution.
+- **Mandatory for backend execution**: When implementing or migrating backend command execution, always follow `.github/instructions/backend-command-execution.instructions.md`.
 - **Ask for clarification**: If a user request is ambiguous or could lead to unintended consequences, ask for clarification before proceeding.
 - **Respect existing code**: Follow the established architecture, style, and patterns of the codebase. Avoid introducing new abstractions or styles unless necessary.
 - **Prioritize maintainability**: Write clear, readable code that other developers can easily understand and maintain. Avoid clever or complex solutions when a straightforward approach will do.

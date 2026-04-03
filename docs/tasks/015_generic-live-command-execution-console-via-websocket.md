@@ -42,7 +42,7 @@ Implement a generic backend/frontend system that executes commands on the backen
 - [x] Task 10: Implement notification action to open a generic popup showing last 500 lines and exit code/termination status
 - [x] Task 11: Add unit/integration tests for backend command streaming, buffer trimming, and frontend notification/popup behavior
 - [x] Task 12: Integration and documentation updates for architecture, event contract, and operator usage
-- [ ] Task 13: Create a Github copilot instruction that guide how use the execution system and how implement. Make it a required instruction to follow always when there is an execution on the backend.
+- [x] Task 13: Create a Github copilot instruction that guide how use the execution system and how implement. Make it a required instruction to follow always when there is an execution on the backend.
 - [ ] Task 14: Migrate any remaining exec usage in backend to the new command runner abstraction, ensuring that all command executions benefit from the new streaming and event capabilities. If the actual exec use cases don't have a specific test, create the test for it and then migrate to the new command runner abstraction. Perform a final code review and security audit to ensure that there are no risks of command injection or sensitive data exposure in the new implementation.
 - [ ] Task 15: Final code review code cleanup, and documentation updates to ensure that the new feature is well-documented for future maintainers and users.
 - [ ] Task 16: Mark the task as complete and prepare for release. 
@@ -112,6 +112,10 @@ Implement a generic backend/frontend system that executes commands on the backen
     - Updated `docs/EVENT_SYSTEM_QUICK_REFERENCE.md` with WebSocket-only event flow wording and operator-facing command console usage/troubleshooting notes.
     - Validation:
       - `npx --yes markdownlint-cli2 /workspaces/srat/docs/EVENT_DRIVEN_ARCHITECTURE.md /workspaces/srat/docs/EVENT_SYSTEM_QUICK_REFERENCE.md` ✓
+  - Implemented Task 13 mandatory Copilot instruction for backend execution:
+    - Added `.github/instructions/backend-command-execution.instructions.md` with required architecture, event contract, safety, migration, and validation rules for backend command execution work.
+    - Updated `.github/copilot-instructions.md` to explicitly require this instruction whenever backend execution is implemented/migrated.
+    - Updated `AGENTS.md` required-reading list to include the new instruction file.
 
   **Phase 1 status (current as of 2026-04-02):**
   ✅ All core infrastructure implemented and validated:
@@ -151,6 +155,10 @@ Implement a generic backend/frontend system that executes commands on the backen
 - [x] `TODO: docs` - Architecture/event-contract/operator docs touchpoints:
   - `docs/EVENT_DRIVEN_ARCHITECTURE.md`
   - `docs/EVENT_SYSTEM_QUICK_REFERENCE.md`
+- [x] `TODO: instructions` - Backend execution guidance touchpoints:
+  - `.github/instructions/backend-command-execution.instructions.md`
+  - `.github/copilot-instructions.md`
+  - `AGENTS.md`
 - [ ] `TODO: notification-action` - Add action workflow from stderr notification to popup open state + selected execution id.
 - [ ] `FIXME: backpressure` - Confirm queue/ring-buffer strategy for long-running or high-output command streams and define drop/truncate policy.
 
