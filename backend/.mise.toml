@@ -39,9 +39,7 @@ arg "<gist_token>" help="GitHub Gist token" env="GIST_TOKEN"
 '''
 env = { _.file = "/tmp/.env.tmp" }
 run = [
-    {
-        task = "//frontend:build-static",
-    },
+    'mise //frontend:build:static --version ${usage_version?} src/web/static',
     'echo Building ${usage_version?} for architecture ${usage_arch?} [tags=p${usage_pprof:+prof},embedallowed]...',
     'mkdir -p dist/${usage_arch?} || :',
     'touch dist/${usage_arch?}/.keep',

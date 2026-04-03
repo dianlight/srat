@@ -106,7 +106,7 @@ run = """
 	fi
     echo "Set ROLLBAR_ENVIRONMENT based on version: $(grep ROLLBAR_ENVIRONMENT /tmp/.env.tmp | cut -d= -f2)"
 """
-quiet = false
+quiet = true
 
 [tasks.all]
 depends = [

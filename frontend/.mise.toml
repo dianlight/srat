@@ -8,7 +8,6 @@
 enter = "mise run prepare"
 
 [tasks]
-build = "bun run build"
 clean = "rm -rf out"
 dev = "tsgo --noEmit && NODE_ENV=development bun --hot run bun.build.ts -w -s ./out"
 gowatch = "bun run gowatch"
@@ -16,21 +15,36 @@ watch = "bun run watch"
 validate-macros = "bun ../scripts/validate-macro-imports.js"
 prepare = "bun install"
 
-[tasks.build-static]
+[tasks."build:static"]
 usage = '''
-arg "<dir>" help="Target Directory to build" default="./src/web/static"
+arg "<dir>" help="Target Directory to build" default="src/web/static" env="TARGET_DIR"
 flag "--version [version]" help="Build version" env="VERSION" 
 '''
+alias = ["build-static"]
 run = [
-  "echo ${usage_version?}",
-  "rm -rf ../backend/${usage_dir?}/* || :",
-  "mkdir -p ../backend/${usage_dir?} || :",
-  "touch ../backend/${usage_dir?}/.keep",
-  "bun run version -o ${usage_version?}",
-  "bun run build -o ../backend/${usage_dir?}"
+  "echo ${usage_version?} ${usage_dir:?}",
+  "rm -rf ../backend/${usage_dir:?}/* || :",
+  "mkdir -p ../backend/${usage_dir:?} || :",
+  "touch ../backend/${usage_dir:?}/.keep",
+  "mise run version ${usage_version?}",
+  "mise run build ../backend/${usage_dir:?}"
 ]
 sources = [
   "src/**/*",
+]
+quiet = true
+
+[tasks.build]
+usage = '''
+arg "<dir>" help="Target Directory to build" env="TARGET_DIR"
+'''
+depends = [
+  { task = "lint" },
+]
+env = { NODE_ENV = "production" }
+run = [
+  "tsgo --project tsconfig.prod.json --noEmit ",
+  "bun run bun.build.ts -o ${usage_dir?}",
 ]
 quiet = true
 
@@ -76,6 +90,7 @@ run = [
   "tsgo --noEmit",
   "bun ./scripts/add-test-setup.js",
 ]
+quiet = true
 
 [tasks.test]
 run = [
@@ -90,4 +105,13 @@ run = [
   "bun ./scripts/add-test-setup.js",
   "bun test --preload ./test/setup.ts --only-failures --timeout 60000 --bail --max-concurrency=1 --coverage-reporter=lcov",
 ]
+quiet = true
+
+[tasks.version]
+usage = '''
+arg "[version]" help="Build version" env="VERSION" 
+'''
+run = '''
+   bun run version.ts ${usage_version:+-o ${usage_version?}}
+   '''
 quiet = true
