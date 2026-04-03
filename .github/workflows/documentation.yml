@@ -108,6 +108,9 @@ jobs:
           base: main
           delete-branch: true
           labels: documentation
+          add-paths: |
+            *.md
+          
       - name: Check outputs
         if: ${{ steps.cpr.outputs.pull-request-number }}
         run: |
