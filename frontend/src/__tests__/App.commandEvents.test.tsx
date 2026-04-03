@@ -40,61 +40,62 @@ let wsState: Record<string, unknown> = {
   heartbeat: { alive: true },
 };
 
-mock.module("../store/wsApi", () => ({
-  wsApi: {
-    reducerPath: "wsApi",
-    reducer: () => ({}),
-    middleware: () => (next: (action: unknown) => unknown) => (action: unknown) =>
-      next(action),
-  },
-  useGetServerEventsQuery: () => ({
-    data: wsState,
-    isLoading: false,
-    error: undefined,
-  }),
-}));
+const registerModuleMocks = () => {
+  mock.module("../store/wsApi", () => ({
+    wsApi: {
+      reducerPath: "wsApi",
+      reducer: () => ({}),
+      middleware: () => (next: (action: unknown) => unknown) => (action: unknown) =>
+        next(action),
+    },
+    useGetServerEventsQuery: () => ({
+      data: wsState,
+      isLoading: false,
+      error: undefined,
+    }),
+  }));
 
-mock.module("react-toastify", () => ({
-  toast: {
-    error: (...args: unknown[]) => toastErrorMock(...args),
-  },
-}));
+  mock.module("react-toastify", () => ({
+    toast: {
+      error: (...args: unknown[]) => toastErrorMock(...args),
+    },
+  }));
 
-mock.module("../hooks/useTelemetryModal", () => ({
-  useTelemetryModal: () => ({ shouldShow: false, dismiss: () => undefined }),
-}));
+  mock.module("../hooks/useTelemetryModal", () => ({
+    useTelemetryModal: () => ({ shouldShow: false, dismiss: () => undefined }),
+  }));
 
-mock.module("../hooks/useBaseConfigModal", () => ({
-  useBaseConfigModal: () => ({ shouldShow: false, dismiss: () => undefined }),
-}));
+  mock.module("../hooks/useBaseConfigModal", () => ({
+    useBaseConfigModal: () => ({ shouldShow: false, dismiss: () => undefined }),
+  }));
 
-mock.module("../components/NavBar", () => ({
-  NavBar: () => <div data-testid="mock-navbar">NavBar</div>,
-}));
+  mock.module("../components/NavBar", () => ({
+    NavBar: () => <div data-testid="mock-navbar">NavBar</div>,
+  }));
 
-mock.module("../components/Footer", () => ({
-  Footer: () => <div data-testid="mock-footer">Footer</div>,
-}));
+  mock.module("../components/GlobalEventTracker", () => ({
+    default: () => <div data-testid="mock-event-monitor">EventMonitor</div>,
+  }));
 
-mock.module("../components/GlobalEventTracker", () => ({
-  default: () => <div data-testid="mock-event-monitor">EventMonitor</div>,
-}));
+  mock.module("../components/BaseConfigModal", () => ({
+    default: () => null,
+  }));
 
-mock.module("../components/BaseConfigModal", () => ({
-  default: () => null,
-}));
-
-mock.module("../components/TelemetryModal", () => ({
-  default: () => null,
-}));
+  mock.module("../components/TelemetryModal", () => ({
+    default: () => null,
+  }));
+};
 
 describe("App command events", () => {
   afterEach(() => {
+    mock.restore();
     cleanup();
     document.body.innerHTML = "";
   });
 
   beforeEach(() => {
+    mock.restore();
+    registerModuleMocks();
     wsState = { heartbeat: { alive: true } };
     toastErrorMock.mockClear();
     document.body.innerHTML = "";
@@ -162,6 +163,7 @@ describe("App command events", () => {
         started_at: 100,
       },
     };
+
     rerender(
       <Provider store={store}>
         <App />
@@ -178,6 +180,7 @@ describe("App command events", () => {
         timestamp: 101,
       },
     };
+
     rerender(
       <Provider store={store}>
         <App />
@@ -206,6 +209,7 @@ describe("App command events", () => {
         error: "exit 2",
       },
     };
+
     rerender(
       <Provider store={store}>
         <App />
