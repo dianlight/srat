@@ -45,7 +45,7 @@ Implement a generic backend/frontend system that executes commands on the backen
 - [x] Task 13: Create a Github copilot instruction that guide how use the execution system and how implement. Make it a required instruction to follow always when there is an execution on the backend.
 - [ ] Task 14: Migrate any remaining exec usage in backend to the new command runner abstraction, ensuring that all command executions benefit from the new streaming and event capabilities. If the actual exec use cases don't have a specific test, create the test for it and then migrate to the new command runner abstraction. Perform a final code review and security audit to ensure that there are no risks of command injection or sensitive data exposure in the new implementation.
 - [x] Task 14.a: Migrate `internal/osutil` Samba version probing to an execution abstraction with tests.
-- [ ] Task 14.b: Migrate `unixsamba` command executor implementation paths to the execution abstraction (or explicit adapter) with security checks.
+- [x] Task 14.b: Migrate `unixsamba` command executor implementation paths to the execution abstraction (or explicit adapter) with security checks.
 - [ ] Task 14.c: Migrate `service/filesystem` adapter execution paths (`runCommand`, `executeCommandWithProgress`) to the execution abstraction while preserving long-running/progress behavior.
 - [ ] Task 15: Final code review code cleanup, and documentation updates to ensure that the new feature is well-documented for future maintainers and users.
 - [ ] Task 16: Mark the task as complete and prepare for release. 
@@ -140,6 +140,16 @@ Implement a generic backend/frontend system that executes commands on the backen
       - `go test ./internal/osutil -run 'TestOsutilSuite/(TestGetSambaVersion|TestGetSambaVersion_CommandError|TestGetSambaVersion_InvalidOutput|TestIsSambaVersionSufficient)'` ✓
       - `go test ./internal/osutil` ✓
       - `golangci-lint run internal/osutil/osutil.go internal/osutil/osutil_test.go` ✓
+  - Task 14.b completed:
+    - Added an explicit secure execution adapter in `backend/src/unixsamba/unixsamba.go` via `validateUnixSambaCommand` and allowlisted commands (`pdbedit`, `useradd`, `smbpasswd`, `deluser`, `usermod`).
+    - Enforced command validation in both `RunCommand` and `RunCommandWithInput` paths (reject unknown commands and newline-injected args).
+    - Added focused security tests in `backend/src/unixsamba/unixsamba_security_test.go`:
+      - allows known commands,
+      - rejects unknown commands,
+      - rejects newline-containing arguments.
+    - Validation:
+      - `go test ./unixsamba -run 'TestUnixSambaTestSuite|TestValidateUnixSambaCommand'` ✓
+      - `golangci-lint run unixsamba/unixsamba.go unixsamba/unixsamba_security_test.go` ✓
 
   **Phase 1 status (current as of 2026-04-02):**
   ✅ All core infrastructure implemented and validated:
@@ -160,7 +170,7 @@ Implement a generic backend/frontend system that executes commands on the backen
 - [ ] `TODO: audit` - Backend `exec` migration inventory:
   - `backend/src/service/server_process_service.go` (`GetSambaStatus`, `testSambaConfig`, `restartServerServices`, `OnStop` shutdown flow) ✅ migrated to command runner, fallback removed
   - `backend/src/service/filesystem/base_adapter.go` (`runCommand`, `executeCommandWithProgress`) and adapters calling it
-  - `backend/src/unixsamba/unixsamba.go` (`defaultCommandExecutor.RunCommand` + user-management call sites)
+  - `backend/src/unixsamba/unixsamba.go` (`defaultCommandExecutor.RunCommand` + user-management call sites) ✅ secured via explicit command validation adapter and tests
   - `backend/src/internal/osutil/osutil.go` (Samba version probing) ✅ migrated via injectable execution abstraction
 - [x] `TODO: websocket-contract` - Contract definition/wiring touchpoints:
   - `backend/src/dto/webevent_type.go`
