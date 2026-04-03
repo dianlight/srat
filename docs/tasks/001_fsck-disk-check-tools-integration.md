@@ -1,12 +1,21 @@
-# [FEATURE]: fsck and Disk Check Tools Integration
+# [FEATURE]: Disk Check Tools Integration (check, format, label)
 
-**Target Repo:** `srat`  **Status:** 📅 Planned  **Issue Link:** [#185](https://github.com/dianlight/srat/issues/185)
+**Target Repo:** `srat`  
+**Status:** 📅 Planned  
+**Issue Link:** [#185](https://github.com/dianlight/srat/issues/185)
 
 ## 🎯 Objective
 
-Improve the integration of `fsck.*` and related disk-check utilities across the SRAT filesystem adapter stack. While the `Check()` interface and basic API endpoints (`/api/filesystem/check`, `/api/filesystem/check/abort`) are already present, the goal is to surface tool availability to users, ensure consistent tool detection across all adapters, and extend the UI to guide users when required tools are missing or checks are not supported.
+Improve the integration of disk-management utilities across the SRAT filesystem adapter stack. The core interfaces and API endpoints for check/format/abort are already present (for example, `/api/filesystem/check`, `/api/filesystem/check/abort`, `/api/filesystem/format`, `/api/filesystem/format/abort`).
 
-> _Context for Copilot: The `FilesystemAdapter.Check()` method is already implemented for ext4, xfs, btrfs, ntfs, vfat, f2fs, reiserfs, and exfat adapters. ZFS intentionally omits Check (pool-level). The `FilesystemSupport` struct carries `CanCheck bool` and `MissingTools []string`. The goal is end-to-end coherence: detection → UI feedback → action._
+The next goal is end-to-end coherence from adapter capability detection to user feedback in the UI:
+
+- Surface tool availability before execution
+- Keep tool detection consistent across adapters
+- Provide actionable guidance when required tools are missing
+- Ensure check/format/label flows behave consistently
+
+> _Context for Copilot: The `FilesystemAdapter.Check()` method is already implemented for ext4, xfs, btrfs, ntfs, vfat, f2fs, reiserfs, and exfat adapters. ZFS intentionally omits `Check` (pool-level operation). The `FilesystemSupport` struct carries `CanCheck bool` and `MissingTools []string`. The goal is end-to-end coherence: detection → UI feedback → action._
 
 ## 🛠️ Technical Specifications
 
@@ -14,11 +23,12 @@ Improve the integration of `fsck.*` and related disk-check utilities across the 
   - Partition/device identifier (`partitionId`)
   - Check options: `autoFix`, `force`, `verbose`
   - Filesystem type (resolved from `dto.DiskMap`)
+  - Label value for `SetLabel()` operations
 
 - **Outputs:**
   - `dto.CheckResult`: `success`, `errorsFound`, `errorsFixed`, `message`, `exitCode`
   - Real-time progress via WebSocket `filesystem_task` events
-  - UI feedback: tool availability warnings, install hints, check history
+  - UI feedback: tool availability warnings, install hints, and operation status/results
 
 - **Dependencies:**
   - `backend/src/service/filesystem/` — adapter implementations
@@ -31,40 +41,45 @@ Improve the integration of `fsck.*` and related disk-check utilities across the 
 
 ## 📝 Task List
 
-- [ ] Task 1: Audit `IsSupported().CanCheck` across all adapters — verify tool lookup is correct and handles missing binaries gracefully
-- [ ] Task 2: Expose `FilesystemSupport` (especially `CanCheck`, `MissingTools`, `AlpinePackage`) via a dedicated API endpoint or embed it in the existing volume/partition listing response
-- [ ] Task 3: Update `FilesystemCheckDialog.tsx` to show a warning/hint when `CanCheck=false`, including the Alpine package name to install
-- [ ] Task 4: Investigate and implement scheduled/automatic disk check triggers (e.g., on mount, or periodic background checks)
-- [ ] Task 5: Enhance `dto.CheckResult` with additional diagnostics if tools support it (e.g., pass/fail summary, bad block count)
-- [ ] Task 6: Unit testing — backend adapter `Check()` unit tests for all adapters, including missing-tool path
-- [ ] Task 7: Integration tests — `CheckPartition` service method with mocked adapters
-- [ ] Task 8: Frontend component test for `FilesystemCheckDialog` covering missing-tool warning state
-- [ ] Task 9: Update OpenAPI spec and regenerate frontend types (`cd frontend && bun run gen`)
-- [ ] Task 10: Documentation — update `docs/SHARE_VOLUME_VERIFICATION.md` or create new `docs/FSCK_INTEGRATION.md`
+- [ ] Task 1: Verify the backend api support for all needed functions (`CheckPartition`, `AbortCheckPartition`, `FormatPartition`, `AbortFormatPartition`, `SetLabelPartition`) and their integration with the adapter layer
+- [ ] Task 2: Modify `FilesystemCheckDialog.tsx` and `VolumeDetailsPanel.tsx`, trace the flow of the "Check Filesystem" action through the frontend, API call, service layer, and adapter execution to ensure all pieces are wired correctly. Add the visual terminal output display in the dialog to show real-time progress and results from the check operation.
+- [ ] Task 3: Implement frontend logic to handle real-time progress updates from WebSocket `filesystem_task` events and display them in the `FilesystemCheckDialog`.
+- [ ] Task 5: Implement error handling and user feedback in the frontend when a check operation fails, including displaying the error message returned from the backend and any relevant diagnostics.
+- [ ] Task 6: Ensure that the check operation can be aborted by the user and that the backend properly handles the abort request, including cleaning up any ongoing processes and returning an appropriate response.
+- [ ] Task 7: Add unit tests for the backend service methods and adapter implementations related to filesystem checking, as well as integration tests for the API endpoints and frontend components.
+- [ ] Task 8: Update documentation to reflect the new disk check features, including any user-facing instructions for how to use the check functionality and interpret results.
+- [ ] Task 9: Verify that the frontend correctly handles cases where the required check tools are not available, showing appropriate warnings and installation hints based on the `MissingTools` and `AlpinePackage` information from the backend.
+- [ ] Task 10: Repeat the job done from task 2 to 9 for the related `Format()` and `SetLabel()` functionalities, ensuring a consistent user experience across all disk management operations.
+- [ ] Task 11: Clean up any temporary debug code (e.g., console logs) and ensure that all new code adheres to the project's coding standards and best practices.
+- [ ] Task 12: Conduct thorough testing across different filesystem types to ensure that the check, format, and label operations work correctly and that the UI feedback is accurate for each type.
+- [ ] Task 13: Run `hk check` to ensure that all new code is properly linted and formatted, and that all tests pass successfully
+- [ ] Task 14: Do end-to-end testing of the entire flow, from initiating a check operation in the UI to receiving real-time updates and handling results, to ensure a smooth and intuitive user experience.
+- [ ] Task 15: Push the changes to the repository and create a pull request for review, ensuring that the PR description clearly outlines the changes made and any relevant context for reviewers.
 
 ## 🧠 Implementation Notes (Copilot Context)
 
 ### Current state
 
 - `FilesystemAdapter.Check(ctx, device, options, progress)` is defined in `service/filesystem/adapter.go` and implemented for: `ext4` (`fsck.ext4`), `xfs` (`xfs_repair`), `btrfs` (`btrfs check`), `ntfs` (`ntfsfix`), `vfat` (`fsck.fat`), `f2fs` (`fsck.f2fs`), `reiserfs` (`fsckfix` or `reiserfsck`), `exfat` (`fsck.exfat`).
-- ZFS adapter intentionally has no `Check` implementation (pool-level ops only).
-- `FilesystemSupport.CanCheck bool` is returned by `adapter.IsSupported(ctx)` and already checked in `FilesystemService.CheckPartition` before starting the operation.
+- ZFS adapter intentionally has no `Check` implementation (pool-level operations only).
+- `FilesystemSupport.CanCheck` is returned by `adapter.IsSupported(ctx)` and already checked in `FilesystemService.CheckPartition` before starting the operation.
 - `MissingTools []string` and `AlpinePackage string` are available in `FilesystemSupport` for user-facing hints.
 - Real-time progress is delivered via WebSocket `filesystem_task` events consumed by `FilesystemCheckDialog`.
 
 ### Gaps to address
 
-- The frontend currently shows a generic error if `CanCheck=false`; it should instead show a structured hint (e.g., "Install `e2fsprogs` via `apk add e2fsprogs`").
+- The frontend currently shows a generic error if `CanCheck = false`; it should instead show a structured hint (for example, "Install `e2fsprogs` via `apk add e2fsprogs`").
 - There is no lightweight API call to pre-check whether a tool is available before the user opens the dialog.
 - No scheduled or post-mount automatic check mechanism exists.
-- Some adapters report `progress=999` (unsupported) throughout; consider adding a note in the UI so users understand this is normal.
-- `CheckResult` exit codes vary by tool; consider a normalised severity enum (`clean`, `errors_found`, `errors_fixed`, `fatal`).
+- Some adapters report `progress = 999` (unsupported) throughout; add a note in the UI so users understand this is expected behavior.
+- `CheckResult` exit codes vary by tool; consider a normalized severity enum (`clean`, `errors_found`, `errors_fixed`, `fatal`).
 
 ### Suggested approach
 
 1. Add a `GET /api/filesystem/support?fstype=<type>` endpoint (or extend existing `/api/filesystem/info`) that returns `FilesystemSupport` for a given filesystem type.
-2. In `FilesystemCheckDialog`, call this endpoint on open and render a disabled state with install instructions when `canCheck=false`.
-3. For scheduled checks, add a background `ticker` in `FilesystemService` gated by a new `AppConfig` boolean `autoFsckOnMount`.
+2. In `FilesystemCheckDialog`, call this endpoint on open and render a disabled state with install instructions when `canCheck = false`.
+3. Reuse the same capability-detection and guidance pattern for `Format()` and `SetLabel()` dialogs/actions.
+4. Optionally, for scheduled checks, add a background ticker in `FilesystemService` gated by a new `AppConfig` boolean `autoFsckOnMount`.
 
 ## 🔗 Code References & TODOs
 
@@ -74,4 +89,4 @@ Improve the integration of `fsck.*` and related disk-check utilities across the 
 - [ ] `backend/src/api/filesystems.go:166` — `CheckPartition` HTTP handler
 - [ ] `frontend/src/pages/volumes/components/FilesystemCheckDialog.tsx` — UI component to update
 - [ ] `frontend/src/pages/volumes/components/VolumeDetailsPanel.tsx:190` — button that opens the dialog
-- [ ] `FIXME: all adapters` — verify `IsSupported()` correctly resolves tool binary paths using `lookPath` (testable via `SetExecOpsForTesting`)
+- [ ] `FIXME: all adapters` — verify `IsSupported()` consistently resolves tool binary paths using `lookPath` (testable via `SetExecOpsForTesting`)
