@@ -40,12 +40,12 @@ Implement a generic backend/frontend system that executes commands on the backen
 - [x] Task 8: Rerun all existing backend and frontend tests (backend ✓ all suites, frontend ✓ 613 pass)
 - [x] Task 9: Add Notification Center logic to show stderr alert when no command-output component instance is open
 - [x] Task 10: Implement notification action to open a generic popup showing last 500 lines and exit code/termination status
-- [ ] Task 11: Add unit/integration tests for backend command streaming, buffer trimming, and frontend notification/popup behavior
+- [x] Task 11: Add unit/integration tests for backend command streaming, buffer trimming, and frontend notification/popup behavior
 - [ ] Task 12: Integration and documentation updates for architecture, event contract, and operator usage
-- [ ] Task 12: Migrate any remaining exec usage in backend to the new command runner abstraction, ensuring that all command executions benefit from the new streaming and event capabilities. If the actual exec use cases don't have a specific test, create the test for it and then migrate to the new command runner abstraction. Perform a final code review and security audit to ensure that there are no risks of command injection or sensitive data exposure in the new implementation.
-- [ ] Task 13: Final code review code cleanup, and documentation updates to ensure that the new feature is well-documented for future maintainers and users.
-- [ ] Task 14: Mark the task as complete and prepare for release. Ensure that all documentation is up to date, including any new API contracts, usage instructions, and architectural diagrams. Communicate the new feature to the team and provide any necessary training or support for using the new command execution console.
-- [ ] Task 15: Create a PR with the implementation and link it to this task for tracking. Ensure that the PR description clearly outlines the changes made, the new features added, and any important notes for reviewers. 
+- [ ] Task 13: Migrate any remaining exec usage in backend to the new command runner abstraction, ensuring that all command executions benefit from the new streaming and event capabilities. If the actual exec use cases don't have a specific test, create the test for it and then migrate to the new command runner abstraction. Perform a final code review and security audit to ensure that there are no risks of command injection or sensitive data exposure in the new implementation.
+- [ ] Task 14: Final code review code cleanup, and documentation updates to ensure that the new feature is well-documented for future maintainers and users.
+- [ ] Task 15: Mark the task as complete and prepare for release. 
+- [ ] Task 16: Create a PR with the implementation and link it to this task for tracking. Ensure that the PR description clearly outlines the changes made, the new features added, and any important notes for reviewers. 
 
 ## 🧠 Implementation Notes (Copilot Context)
 
@@ -96,6 +96,16 @@ Implement a generic backend/frontend system that executes commands on the backen
     - Visual distinction: `stderr` lines render with `error.main`, `stdout` with `text.primary`
     - Integrated into popup in `frontend/src/App.tsx`
     - Validated with `bun test src/components/__tests__/ReadonlyCommandTerminal.test.tsx src/__tests__/App.test.tsx`
+  - Implemented Task 11 focused test coverage updates:
+    - Backend: strengthened `backend/src/service/command_execution_service_test.go` to assert `CommandOutputNotification` broadcast channels include both `stdout` and `stderr`.
+    - Frontend: added `frontend/src/__tests__/App.commandEvents.test.tsx` to verify:
+      - stderr output triggers toast notification when dialog is closed,
+      - toast action opens command-output popup,
+      - popup shows execution id, stderr line, and terminated failed status.
+    - Stabilized popup state fields in `frontend/src/App.tsx` (`execution_id`, `command_id`, `exit_code`, `finished_at`) for correct UI rendering.
+    - Validation:
+      - `go test ./service -run TestCommandExecutionServiceTestSuite` ✓
+      - `bun test src/__tests__/App.commandEvents.test.tsx src/components/__tests__/ReadonlyCommandTerminal.test.tsx` ✓
 
   **Phase 1 status (current as of 2026-04-02):**
   ✅ All core infrastructure implemented and validated:
@@ -127,6 +137,8 @@ Implement a generic backend/frontend system that executes commands on the backen
 - [ ] `TODO: ui-component` - Frontend consumer + presentation touchpoints:
   - `frontend/src/store/wsApi.ts`
   - `frontend/src/components/ReadonlyCommandTerminal.tsx`
+  - `frontend/src/__tests__/App.commandEvents.test.tsx`
+  - `frontend/src/components/__tests__/ReadonlyCommandTerminal.test.tsx`
   - `frontend/src/components/NotificationCenter.tsx`
   - `frontend/src/components/PreviewDialog.tsx`
   - `frontend/src/pages/**` (placement decision for terminal viewer and popup trigger)

@@ -193,7 +193,7 @@ export function App() {
 
     setCommandSessions((previous) => {
       const current = previous[event.execution_id] ?? {
-        executionId: event.execution_id,
+        execution_id: event.execution_id,
         command_id: event.command_id,
         command: event.command_id,
         args: [],
@@ -208,7 +208,7 @@ export function App() {
         ...previous,
         [event.execution_id]: {
           ...current,
-          commandId: event.command_id,
+          command_id: event.command_id,
           running: current.running,
           lines,
         },
@@ -243,11 +243,11 @@ export function App() {
 
     setCommandSessions((previous) => {
       const current = previous[event.execution_id] ?? {
-        executionId: event.execution_id,
-        commandId: event.command_id,
+        execution_id: event.execution_id,
+        command_id: event.command_id,
         command: event.command_id,
         args: [],
-        startedAt: event.finished_at,
+        started_at: event.finished_at,
         running: false,
         lines: [],
       };
@@ -258,8 +258,8 @@ export function App() {
           ...current,
           running: false,
           success: event.success,
-          exitCode: event.exit_code,
-          finishedAt: event.finished_at,
+          exit_code: event.exit_code,
+          finished_at: event.finished_at,
           error: event.error,
         },
       };

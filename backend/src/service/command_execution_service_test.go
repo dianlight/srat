@@ -89,16 +89,21 @@ func (suite *CommandExecutionServiceTestSuite) TestStart_StreamsStdoutAndStderrA
 
 	var started bool
 	var terminated bool
+	var outputChannels []dto.CommandOutputChannel
 	for _, message := range messages {
-		switch message.(type) {
+		switch typed := message.(type) {
 		case dto.CommandStartedNotification:
 			started = true
+		case dto.CommandOutputNotification:
+			outputChannels = append(outputChannels, typed.Channel)
 		case dto.CommandTerminatedNotification:
 			terminated = true
 		}
 	}
 	require.True(suite.T(), started, "expected command_started notification")
 	require.True(suite.T(), terminated, "expected command_terminated notification")
+	require.Contains(suite.T(), outputChannels, dto.CommandOutputChannelStdout)
+	require.Contains(suite.T(), outputChannels, dto.CommandOutputChannelStderr)
 }
 
 func (suite *CommandExecutionServiceTestSuite) TestStart_TrimsSnapshotTo500Lines() {
