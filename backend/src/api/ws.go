@@ -170,11 +170,11 @@ func (self *WebSocketHandler) handleInboundMessage(messageType int, payload []by
 			return
 		}
 		if self.repairService != nil {
-			if _, err := self.repairService.ApplyLifecycle(message); err != nil {
+			if _, err := self.repairService.ApplyLifecycle(message); err != nil && !errors.Is(err, dto.ErrorNotFound) {
 				slog.WarnContext(self.ctx, "Failed to apply repair lifecycle to repair service", "error", err, "repair_id", message.RepairID)
 			}
 		}
-		slog.InfoContext(self.ctx, "Accepted Home Assistant repair lifecycle message", "repair_id", message.RepairID, "status", message.Status, "command_id", message.CommandID)
+		slog.DebugContext(self.ctx, "Accepted Home Assistant repair lifecycle message", "repair_id", message.RepairID, "status", message.Status, "command_id", message.CommandID)
 	default:
 		slog.WarnContext(self.ctx, "Ignoring unsupported inbound WebSocket message type", "type", envelope.Type)
 	}

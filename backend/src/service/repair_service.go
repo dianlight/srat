@@ -155,7 +155,7 @@ func (s *RepairService) ApplyLifecycle(event dto.RepairLifecycleMessage) (*dto.M
 
 	record, ok := s.state[event.RepairID]
 	if !ok {
-		return nil, fmt.Errorf("repair %q not found", event.RepairID)
+		return nil, errors.BaseWrapf(dto.ErrorNotFound, "repair %q not found", event.RepairID)
 	}
 
 	record.Status = event.Status
