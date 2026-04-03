@@ -38,10 +38,14 @@ type MountInfoEntry struct {
 }
 
 var (
-	overrideMu            sync.RWMutex
-	mountsOverride        func() ([]*procfs.MountInfo, error)
-	versionOverride       string
-	versionOverrideMu     sync.RWMutex
+	overrideMu        sync.RWMutex
+	mountsOverride    func() ([]*procfs.MountInfo, error)
+	versionOverride   string
+	versionOverrideMu sync.RWMutex
+	sambaVersionExec  = func(ctx context.Context, name string, args ...string) ([]byte, error) {
+		return exec.CommandContext(ctx, name, args...).Output()
+	}
+	sambaVersionExecMu    sync.RWMutex
 	filesystemsOverride   func() ([]string, error)
 	filesystemsOverrideMu sync.RWMutex
 )
@@ -238,6 +242,21 @@ func MockSambaVersion(version string) (restore func()) {
 	}
 }
 
+// MockSambaVersionExec replaces the command executor used by GetSambaVersion
+// until the returned restore function is called. This is useful for testing.
+func MockSambaVersionExec(execFn func(ctx context.Context, name string, args ...string) ([]byte, error)) (restore func()) {
+	sambaVersionExecMu.Lock()
+	previousExec := sambaVersionExec
+	sambaVersionExec = execFn
+	sambaVersionExecMu.Unlock()
+
+	return func() {
+		sambaVersionExecMu.Lock()
+		sambaVersionExec = previousExec
+		sambaVersionExecMu.Unlock()
+	}
+}
+
 func setMountsOverride(fn func() ([]*procfs.MountInfo, error)) (restore func()) {
 	overrideMu.Lock()
 	previous := mountsOverride
@@ -375,8 +394,11 @@ func GetSambaVersion() (string, error) {
 	}
 	versionOverrideMu.RUnlock()
 
-	cmd := exec.Command("smbd", "--version")
-	output, err := cmd.Output()
+	sambaVersionExecMu.RLock()
+	execFn := sambaVersionExec
+	sambaVersionExecMu.RUnlock()
+
+	output, err := execFn(context.Background(), "smbd", "--version")
 	if err != nil {
 		return "", err
 	}

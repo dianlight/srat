@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"net"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"slices"
 	"sort"
@@ -336,12 +335,7 @@ func (self *ServerService) runCommandWithRunner(ctx context.Context, commandID, 
 	}
 
 	if self.commandRunner == nil {
-		cmd := exec.CommandContext(ctx, args[0], args[1:]...)
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			return string(out), errors.WithStack(err)
-		}
-		return string(out), nil
+		return "", errors.New("command runner is not configured")
 	}
 
 	snapshot, err := self.commandRunner.Execute(ctx, commandID, label, args[0], args[1:]...)

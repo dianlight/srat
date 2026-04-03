@@ -44,6 +44,9 @@ Implement a generic backend/frontend system that executes commands on the backen
 - [x] Task 12: Integration and documentation updates for architecture, event contract, and operator usage
 - [x] Task 13: Create a Github copilot instruction that guide how use the execution system and how implement. Make it a required instruction to follow always when there is an execution on the backend.
 - [ ] Task 14: Migrate any remaining exec usage in backend to the new command runner abstraction, ensuring that all command executions benefit from the new streaming and event capabilities. If the actual exec use cases don't have a specific test, create the test for it and then migrate to the new command runner abstraction. Perform a final code review and security audit to ensure that there are no risks of command injection or sensitive data exposure in the new implementation.
+- [x] Task 14.a: Migrate `internal/osutil` Samba version probing to an execution abstraction with tests.
+- [ ] Task 14.b: Migrate `unixsamba` command executor implementation paths to the execution abstraction (or explicit adapter) with security checks.
+- [ ] Task 14.c: Migrate `service/filesystem` adapter execution paths (`runCommand`, `executeCommandWithProgress`) to the execution abstraction while preserving long-running/progress behavior.
 - [ ] Task 15: Final code review code cleanup, and documentation updates to ensure that the new feature is well-documented for future maintainers and users.
 - [ ] Task 16: Mark the task as complete and prepare for release. 
 - [ ] Task 17: Create a PR with the implementation and link it to this task for tracking. Ensure that the PR description clearly outlines the changes made, the new features added, and any important notes for reviewers. 
@@ -116,6 +119,27 @@ Implement a generic backend/frontend system that executes commands on the backen
     - Added `.github/instructions/backend-command-execution.instructions.md` with required architecture, event contract, safety, migration, and validation rules for backend command execution work.
     - Updated `.github/copilot-instructions.md` to explicitly require this instruction whenever backend execution is implemented/migrated.
     - Updated `AGENTS.md` required-reading list to include the new instruction file.
+  - Task 14 progress (current phase):
+    - Migrated `backend/src/service/server_process_service.go` to remove the last direct `os/exec` fallback in `runCommandWithRunner`; the service now requires `CommandExecutionServiceInterface`.
+    - Validation:
+      - `go test ./service -run 'Test(CommandExecutionServiceTestSuite|SambaServiceSuite|ServerProcessServiceSuite)'` ✓
+      - `go test ./service` ✓
+    - Blocker to fully complete Task 14 in this single phase: remaining non-test direct execution still exists in:
+      - `backend/src/internal/osutil/osutil.go`
+      - `backend/src/unixsamba/unixsamba.go`
+      - `backend/src/service/filesystem/base_adapter.go`
+    - Added follow-up checklist items `Task 14.a`, `Task 14.b`, and `Task 14.c` to split migration safely.
+  - Task 14.a completed:
+    - Migrated `backend/src/internal/osutil/osutil.go` Samba version probing from direct inline `exec.Command` usage to an injectable execution abstraction (`MockSambaVersionExec`).
+    - Added deterministic tests in `backend/src/internal/osutil/osutil_test.go`:
+      - `TestGetSambaVersion` (successful parse)
+      - `TestGetSambaVersion_CommandError`
+      - `TestGetSambaVersion_InvalidOutput`
+      - Updated `TestIsSambaVersionSufficient` to deterministic mocked version path.
+    - Validation:
+      - `go test ./internal/osutil -run 'TestOsutilSuite/(TestGetSambaVersion|TestGetSambaVersion_CommandError|TestGetSambaVersion_InvalidOutput|TestIsSambaVersionSufficient)'` ✓
+      - `go test ./internal/osutil` ✓
+      - `golangci-lint run internal/osutil/osutil.go internal/osutil/osutil_test.go` ✓
 
   **Phase 1 status (current as of 2026-04-02):**
   ✅ All core infrastructure implemented and validated:
@@ -134,10 +158,10 @@ Implement a generic backend/frontend system that executes commands on the backen
 ## 🔗 Code References & TODOs
 
 - [ ] `TODO: audit` - Backend `exec` migration inventory:
-  - `backend/src/service/server_process_service.go` (`GetSambaStatus`, `testSambaConfig`, `restartServerServices`, `OnStop` shutdown flow)
+  - `backend/src/service/server_process_service.go` (`GetSambaStatus`, `testSambaConfig`, `restartServerServices`, `OnStop` shutdown flow) ✅ migrated to command runner, fallback removed
   - `backend/src/service/filesystem/base_adapter.go` (`runCommand`, `executeCommandWithProgress`) and adapters calling it
   - `backend/src/unixsamba/unixsamba.go` (`defaultCommandExecutor.RunCommand` + user-management call sites)
-  - `backend/src/internal/osutil/osutil.go` (Samba version probing)
+  - `backend/src/internal/osutil/osutil.go` (Samba version probing) ✅ migrated via injectable execution abstraction
 - [x] `TODO: websocket-contract` - Contract definition/wiring touchpoints:
   - `backend/src/dto/webevent_type.go`
   - `backend/src/dto/webeventtypes_enums.go` (generated)
