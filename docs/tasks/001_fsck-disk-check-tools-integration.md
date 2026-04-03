@@ -49,7 +49,7 @@ The next goal is end-to-end coherence from adapter capability detection to user 
 - [x] Task 7: Add unit tests for the backend service methods and adapter implementations related to filesystem checking, as well as integration tests for the API endpoints and frontend components.
 - [x] Task 8: Update documentation to reflect the new disk check features, including any user-facing instructions for how to use the check functionality and interpret results.
 - [x] Task 9: Verify that the frontend correctly handles cases where the required check tools are not available, showing appropriate warnings and installation hints based on the `MissingTools` and `AlpinePackage` information from the backend.
-- [ ] Task 10: Repeat the job done from task 2 to 9 for the related `Format()` and `SetLabel()` functionalities, ensuring a consistent user experience across all disk management operations.
+- [x] Task 10: Repeat the job done from task 2 to 9 for the related `Format()` and `SetLabel()` functionalities, ensuring a consistent user experience across all disk management operations.
 - [ ] Task 11: Clean up any temporary debug code (e.g., console logs) and ensure that all new code adheres to the project's coding standards and best practices.
 - [ ] Task 12: Conduct thorough testing across different filesystem types to ensure that the check, format, and label operations work correctly and that the UI feedback is accurate for each type.
 - [ ] Task 13: Run `hk check` to ensure that all new code is properly linted and formatted, and that all tests pass successfully
@@ -104,6 +104,8 @@ The next goal is end-to-end coherence from adapter capability detection to user 
 - Added backend service tests in `filesystem_service_test.go` for `CheckPartition` unsupported filesystem and unsupported capability flows.
 - Added frontend integration tests in `FilesystemLabelFormatDialog.test.tsx` for unsupported set-label/format states and button disabling.
 - Updated `backend/src/service/filesystem/README.md` with support preflight endpoint usage (`/filesystem/support`), missing tools/package guidance, websocket `filesystem_task` progress notes (`progress=999` indeterminate), and check abort endpoint examples.
+- Added parity-focused frontend assertions in `FilesystemLabelFormatDialog.test.tsx` to verify preflight-driven missing-tools and `apk add <package>` hints for both label and format flows.
+- Re-ran the targeted dialog suite with stability mode (`--rerun-each 10`) and confirmed consistent pass (30/30).
 
 ## 🔗 Code References & TODOs
 
