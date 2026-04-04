@@ -23,6 +23,7 @@ import (
 	"github.com/dianlight/srat/internal"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
+	servicefilesystem "github.com/dianlight/srat/service/filesystem"
 	"github.com/dianlight/tlog"
 	"github.com/gofri/go-github-ratelimit/v2/github_ratelimit"
 	"github.com/google/go-github/v84/github"
@@ -118,6 +119,9 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 			repository.NewIssueRepository,
 		),
 		fx.Invoke(func(service.AddonConfigWatcherServiceInterface) {}),
+		fx.Invoke(func(commandRunner service.CommandExecutionServiceInterface) {
+			servicefilesystem.SetDefaultCommandRunner(commandRunner)
+		}),
 	)
 }
 

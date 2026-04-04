@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"io"
-	"os/exec"
 	"slices"
 	"strconv"
 	"strings"
@@ -25,9 +24,20 @@ const (
 	commandResultCacheCleanupInterval = 10 * time.Minute
 )
 
-var commandResultCache = gocache.New(commandResultCacheTTL, commandResultCacheCleanupInterval)
+var (
+	commandResultCache     = gocache.New(commandResultCacheTTL, commandResultCacheCleanupInterval)
+	defaultCommandRunnerMu sync.RWMutex
+	defaultCommandRunner   CommandRunner
+)
 
-// execCmd interface wraps os/exec.Cmd
+// CommandRunner abstracts the project-standard command execution service without introducing a package cycle.
+type CommandRunner interface {
+	Start(ctx context.Context, commandID, label, command string, args ...string) (string, error)
+	Execute(ctx context.Context, commandID, label, command string, args ...string) (dto.CommandExecutionSnapshot, error)
+	GetSnapshot(executionID string) (dto.CommandExecutionSnapshot, bool)
+}
+
+// ExecCmd abstracts a started command for adapters and tests.
 type ExecCmd interface {
 	CombinedOutput() ([]byte, error)
 	StdoutPipe() (io.ReadCloser, error)
@@ -36,44 +46,317 @@ type ExecCmd interface {
 	Wait() error
 }
 
-// realExecCmd wraps exec.Cmd to implement ExecCmd interface
-type realExecCmd struct {
-	cmd *exec.Cmd
-}
-
 type filesystemCommandExecutor interface {
 	LookPath(command string) (string, error)
 	Command(ctx context.Context, name string, args ...string) ExecCmd
 }
 
-type defaultFilesystemCommandExecutor struct{}
+type defaultFilesystemCommandExecutor struct {
+	runner CommandRunner
+}
+
+type commandExecutionError struct {
+	exitCode int
+	err      error
+}
+
+func (e *commandExecutionError) Error() string {
+	if e == nil || e.err == nil {
+		return "command execution failed"
+	}
+	return e.err.Error()
+}
+
+func (e *commandExecutionError) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.err
+}
+
+func (e *commandExecutionError) ExitCode() int {
+	if e == nil {
+		return -1
+	}
+	return e.exitCode
+}
+
+type commandRunnerExecCmd struct {
+	ctx    context.Context
+	runner CommandRunner
+	name   string
+	args   []string
+
+	stdoutReader *io.PipeReader
+	stdoutWriter *io.PipeWriter
+	stderrReader *io.PipeReader
+	stderrWriter *io.PipeWriter
+
+	mu            sync.Mutex
+	done          chan struct{}
+	started       bool
+	executionID   string
+	nextLineIndex int
+	waitErr       error
+	pipeCloseOnce sync.Once
+}
+
+// SetDefaultCommandRunner wires the shared project command execution service into filesystem adapters.
+func SetDefaultCommandRunner(runner CommandRunner) (reset func()) {
+	defaultCommandRunnerMu.Lock()
+	previous := defaultCommandRunner
+	defaultCommandRunner = runner
+	defaultCommandRunnerMu.Unlock()
+
+	return func() {
+		defaultCommandRunnerMu.Lock()
+		defaultCommandRunner = previous
+		defaultCommandRunnerMu.Unlock()
+	}
+}
+
+func getDefaultCommandRunner() CommandRunner {
+	defaultCommandRunnerMu.RLock()
+	defer defaultCommandRunnerMu.RUnlock()
+	return defaultCommandRunner
+}
+
+func (d *defaultFilesystemCommandExecutor) resolveRunner() CommandRunner {
+	if d != nil && d.runner != nil {
+		return d.runner
+	}
+	if runner := getDefaultCommandRunner(); runner != nil {
+		return runner
+	}
+	return getStandaloneCommandRunner()
+}
 
 func (d *defaultFilesystemCommandExecutor) LookPath(command string) (string, error) {
-	return exec.LookPath(command)
+	command = strings.TrimSpace(command)
+	if command == "" {
+		return "", errors.New("command is empty")
+	}
+	if !osutil.CommandExists([]string{command}) {
+		return "", errors.New("command not found")
+	}
+	return command, nil
 }
 
 func (d *defaultFilesystemCommandExecutor) Command(ctx context.Context, name string, args ...string) ExecCmd {
-	return &realExecCmd{cmd: exec.CommandContext(ctx, name, args...)}
+	return &commandRunnerExecCmd{
+		ctx:    ctx,
+		runner: d.resolveRunner(),
+		name:   name,
+		args:   append([]string(nil), args...),
+	}
 }
 
-func (r *realExecCmd) CombinedOutput() ([]byte, error) {
-	return r.cmd.CombinedOutput()
+func (c *commandRunnerExecCmd) CombinedOutput() ([]byte, error) {
+	if c.runner == nil {
+		return nil, errors.New("filesystem command runner is not configured")
+	}
+
+	snapshot, err := c.runner.Execute(
+		c.ctx,
+		"filesystem:"+c.name,
+		"Filesystem "+c.name,
+		c.name,
+		c.args...,
+	)
+	output := joinCommandOutput(snapshot.Lines)
+	if err != nil {
+		exitCode := snapshot.ExitCode
+		if exitCode == 0 {
+			exitCode = -1
+		}
+		return []byte(output), &commandExecutionError{exitCode: exitCode, err: err}
+	}
+
+	return []byte(output), nil
 }
 
-func (r *realExecCmd) StdoutPipe() (io.ReadCloser, error) {
-	return r.cmd.StdoutPipe()
+func joinCommandOutput(lines []dto.CommandOutputLineSnapshot) string {
+	if len(lines) == 0 {
+		return ""
+	}
+
+	var builder strings.Builder
+	for idx, line := range lines {
+		if idx > 0 {
+			builder.WriteByte('\n')
+		}
+		builder.WriteString(line.Line)
+	}
+
+	return strings.TrimSpace(builder.String())
 }
 
-func (r *realExecCmd) StderrPipe() (io.ReadCloser, error) {
-	return r.cmd.StderrPipe()
+func (c *commandRunnerExecCmd) StdoutPipe() (io.ReadCloser, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.started {
+		return nil, errors.New("stdout pipe must be requested before start")
+	}
+	if c.stdoutReader != nil {
+		return nil, errors.New("stdout pipe already requested")
+	}
+	c.stdoutReader, c.stdoutWriter = io.Pipe()
+	return c.stdoutReader, nil
 }
 
-func (r *realExecCmd) Start() error {
-	return r.cmd.Start()
+func (c *commandRunnerExecCmd) StderrPipe() (io.ReadCloser, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.started {
+		return nil, errors.New("stderr pipe must be requested before start")
+	}
+	if c.stderrReader != nil {
+		return nil, errors.New("stderr pipe already requested")
+	}
+	c.stderrReader, c.stderrWriter = io.Pipe()
+	return c.stderrReader, nil
 }
 
-func (r *realExecCmd) Wait() error {
-	return r.cmd.Wait()
+func (c *commandRunnerExecCmd) Start() error {
+	c.mu.Lock()
+	if c.started {
+		c.mu.Unlock()
+		return errors.New("command already started")
+	}
+	if c.runner == nil {
+		c.mu.Unlock()
+		return errors.New("filesystem command runner is not configured")
+	}
+	c.started = true
+	c.done = make(chan struct{})
+	c.mu.Unlock()
+
+	executionID, err := c.runner.Start(
+		c.ctx,
+		"filesystem:"+c.name,
+		"Filesystem "+c.name,
+		c.name,
+		c.args...,
+	)
+	if err != nil {
+		c.setWaitErr(&commandExecutionError{exitCode: -1, err: err})
+		c.closePipes()
+		close(c.done)
+		return c.waitErr
+	}
+
+	c.mu.Lock()
+	c.executionID = executionID
+	c.mu.Unlock()
+
+	go c.forwardOutput(executionID)
+	return nil
+}
+
+func (c *commandRunnerExecCmd) Wait() error {
+	c.mu.Lock()
+	done := c.done
+	started := c.started
+	c.mu.Unlock()
+	if !started || done == nil {
+		return errors.New("command not started")
+	}
+	<-done
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.waitErr
+}
+
+func (c *commandRunnerExecCmd) forwardOutput(executionID string) {
+	defer func() {
+		c.closePipes()
+		close(c.done)
+	}()
+
+	ticker := time.NewTicker(10 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-c.ctx.Done():
+			c.setWaitErr(&commandExecutionError{exitCode: -1, err: c.ctx.Err()})
+			return
+		case <-ticker.C:
+			snapshot, ok := c.runner.GetSnapshot(executionID)
+			if !ok {
+				continue
+			}
+
+			c.writePendingLines(snapshot)
+			if snapshot.Running {
+				continue
+			}
+
+			if !snapshot.Success {
+				errMessage := snapshot.Error
+				if errMessage == "" {
+					errMessage = "command execution failed"
+				}
+				c.setWaitErr(&commandExecutionError{exitCode: snapshot.ExitCode, err: errors.New(errMessage)})
+			}
+			return
+		}
+	}
+}
+
+func (c *commandRunnerExecCmd) writePendingLines(snapshot dto.CommandExecutionSnapshot) {
+	c.mu.Lock()
+	start := c.nextLineIndex
+	if start >= len(snapshot.Lines) {
+		c.mu.Unlock()
+		return
+	}
+	pending := append([]dto.CommandOutputLineSnapshot(nil), snapshot.Lines[start:]...)
+	c.nextLineIndex = len(snapshot.Lines)
+	stdoutWriter := c.stdoutWriter
+	stderrWriter := c.stderrWriter
+	c.mu.Unlock()
+
+	for _, line := range pending {
+		var writer *io.PipeWriter
+		switch line.Channel {
+		case dto.CommandOutputChannelStdout:
+			writer = stdoutWriter
+		case dto.CommandOutputChannelStderr:
+			writer = stderrWriter
+		default:
+			continue
+		}
+		if writer == nil {
+			continue
+		}
+		_, _ = io.WriteString(writer, line.Line+"\n")
+	}
+}
+
+func (c *commandRunnerExecCmd) closePipes() {
+	c.pipeCloseOnce.Do(func() {
+		c.mu.Lock()
+		stdoutWriter := c.stdoutWriter
+		stderrWriter := c.stderrWriter
+		c.stdoutWriter = nil
+		c.stderrWriter = nil
+		c.mu.Unlock()
+
+		if stdoutWriter != nil {
+			_ = stdoutWriter.Close()
+		}
+		if stderrWriter != nil {
+			_ = stderrWriter.Close()
+		}
+	})
+}
+
+func (c *commandRunnerExecCmd) setWaitErr(err error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.waitErr = err
 }
 
 type cachedCommandResult struct {
@@ -143,11 +426,19 @@ func newBaseAdapter(
 	}
 }
 
+func (b *baseAdapter) SetCommandRunner(runner CommandRunner) (reset func()) {
+	original := b.commandExecutor
+	b.commandExecutor = &defaultFilesystemCommandExecutor{runner: runner}
+	return func() {
+		b.commandExecutor = original
+	}
+}
+
 // commandExists checks if a command is available in the system PATH
 func (b *baseAdapter) commandExists(command string) bool {
 	_, err := b.commandExecutor.LookPath(command)
 	if err != nil {
-		if errors.Is(err, exec.ErrNotFound) {
+		if strings.Contains(err.Error(), "command not found") {
 			return false
 		}
 		tlog.Warn("Error checking command existence", "command", command, "error", err)
@@ -163,20 +454,18 @@ func (b *baseAdapter) runCommand(ctx context.Context, name string, args ...strin
 	exitCode := 0
 
 	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
+		exitCode = -1
+		if exitErr, ok := err.(interface{ ExitCode() int }); ok {
 			exitCode = exitErr.ExitCode()
-		} else {
-			exitCode = -1
 		}
 		if errors.Is(err, context.Canceled) ||
-			errors.Is(err, exec.ErrNotFound) ||
 			errors.Is(err, context.DeadlineExceeded) ||
-			errors.Is(err, exec.ErrDot) ||
-			errors.Is(err, exec.ErrWaitDelay) ||
 			strings.Contains(err.Error(), "permission denied") ||
 			strings.Contains(err.Error(), "executable file not found") ||
 			strings.Contains(err.Error(), "no such file or directory") ||
-			strings.Contains(err.Error(), "cannot find the file") {
+			strings.Contains(err.Error(), "cannot find the file") ||
+			strings.Contains(err.Error(), "command not found") ||
+			strings.Contains(err.Error(), "not configured") {
 			tlog.ErrorContext(ctx, "Error executing command", "command", name, "args", args, "exitCode", exitCode, "Output", string(output), "error", err)
 			return strings.TrimSpace(string(output)), exitCode, errors.WithDetails(err, "Command", name, "Args", strings.Join(args, " "), "error", "command not found")
 		}
@@ -508,7 +797,7 @@ func (b *baseAdapter) executeCommandWithProgress(
 			result.Error = errors.WithDetails(ctx.Err(), "command", command, "error", "context cancelled")
 		default:
 			if cmdErr != nil {
-				if exitErr, ok := cmdErr.(*exec.ExitError); ok {
+				if exitErr, ok := cmdErr.(interface{ ExitCode() int }); ok {
 					result.ExitCode = exitErr.ExitCode()
 					result.Error = errors.WithDetails(
 						cmdErr,
