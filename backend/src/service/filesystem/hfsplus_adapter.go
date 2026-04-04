@@ -26,6 +26,7 @@ func NewHfsplusAdapter() FilesystemAdapter {
 			"fsck.hfsplus",
 			"", // No separate label command
 			"fsck.hfsplus",
+			`^[^\x00/]{1,255}$`,
 			[]dto.FsMagicSignature{
 				{Offset: 0x400, Magic: []byte{0x48, 0x2B}}, // H+
 				{Offset: 0x400, Magic: []byte{0x48, 0x58}}, // HX (HFSX variant)

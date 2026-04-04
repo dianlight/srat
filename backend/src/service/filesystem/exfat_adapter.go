@@ -26,6 +26,7 @@ func NewExfatAdapter() FilesystemAdapter {
 			"fsck.exfat",
 			"exfatlabel",
 			"fsck.exfat",
+			`^[^\x00/]{1,15}$`,
 			[]dto.FsMagicSignature{
 				{Offset: 3, Magic: []byte{'E', 'X', 'F', 'A', 'T', ' ', ' ', ' '}},
 			},

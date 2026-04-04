@@ -26,6 +26,7 @@ func NewReiserfsAdapter() FilesystemAdapter {
 			"fsck.reiserfs",
 			"reiserfstune",
 			"fsck.reiserfs",
+			`^[^\x00/]{1,16}$`,
 			[]dto.FsMagicSignature{
 				{Offset: 0x10034, Magic: []byte{'R', 'e', 'I', 's', 'E', 'r', 'F', 's'}},      // ReiserFS v3.5
 				{Offset: 0x10034, Magic: []byte{'R', 'e', 'I', 's', 'E', 'r', '2', 'F', 's'}}, // ReiserFS v3.6

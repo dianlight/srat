@@ -26,6 +26,7 @@ func NewF2fsAdapter() FilesystemAdapter {
 			"fsck.f2fs",
 			"", // No separate label command
 			"fsck.f2fs",
+			`^[^\x00/]{1,512}$`,
 			[]dto.FsMagicSignature{
 				{Offset: 0x400, Magic: []byte{0x10, 0x20, 0xF5, 0xF2}},
 			},

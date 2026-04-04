@@ -44,6 +44,7 @@ func (suite *BaseAdapterTestSuite) SetupTest() {
 		"ntfsfix",
 		"ntfslabel",
 		"ntfsfix",
+		`^[^\x00/]{1,32}$`,
 		[]dto.FsMagicSignature{
 			{Offset: 3, Magic: []byte{'N', 'T', 'F', 'S', ' ', ' ', ' ', ' '}}, // "NTFS    "
 		},
@@ -124,6 +125,7 @@ func (suite *BaseAdapterTestSuite) TestIsExportable() {
 		"fsck.ext4",
 		"tune2fs",
 		"tune2fs",
+		`^[^\x00/]{1,16}$`,
 		[]dto.FsMagicSignature{{Offset: 1080, Magic: []byte{0x53, 0xEF}}},
 	)
 	suite.True(exportableAdapter.IsExportable(suite.ctx))

@@ -28,6 +28,7 @@ func NewNtfsAdapter() FilesystemAdapter {
 			"ntfsfix",
 			"ntfslabel",
 			"ntfsfix",
+			`^[^\x00/]{1,32}$`,
 			[]dto.FsMagicSignature{
 				{Offset: 3, Magic: []byte{'N', 'T', 'F', 'S', ' ', ' ', ' ', ' '}}, // "NTFS    "
 			},

@@ -77,11 +77,14 @@ func (suite *FilesystemHandlerSuite) TestListFilesystems_Success() {
 			//MountFlags:       []dto.MountFlag{{Name: "rw"}},
 			CustomMountFlags: []dto.MountFlag{{Name: "discard"}},
 			Support: &dto.FilesystemSupport{
-				CanMount:      true,
-				CanFormat:     true,
-				CanCheck:      true,
-				CanSetLabel:   true,
-				AlpinePackage: fsType + "-progs",
+				CanMount:               true,
+				CanFormat:              true,
+				CanCheck:               true,
+				CanSetLabel:            true,
+				IsFormatReportProgress: false,
+				IsCheckReportProgress:  false,
+				LabelRule:              `^[^\x00/]{1,16}$`,
+				AlpinePackage:          fsType + "-progs",
 			},
 		}
 		mock.When(suite.mockFsService.GetSupportAndInfo(mock.Any[context.Context](), mock.Any[string]())).
@@ -111,13 +114,16 @@ func (suite *FilesystemHandlerSuite) TestGetFilesystemSupport_Success() {
 		Type:        fsType,
 		Description: "ext4 filesystem",
 		Support: &dto.FilesystemSupport{
-			CanMount:      true,
-			CanFormat:     true,
-			CanCheck:      true,
-			CanSetLabel:   true,
-			CanGetState:   true,
-			AlpinePackage: "e2fsprogs",
-			MissingTools:  []string{},
+			CanMount:               true,
+			CanFormat:              true,
+			CanCheck:               true,
+			CanSetLabel:            true,
+			CanGetState:            true,
+			IsFormatReportProgress: false,
+			IsCheckReportProgress:  false,
+			LabelRule:              `^[^\x00/]{1,16}$`,
+			AlpinePackage:          "e2fsprogs",
+			MissingTools:           []string{},
 		},
 	}
 
@@ -132,6 +138,9 @@ func (suite *FilesystemHandlerSuite) TestGetFilesystemSupport_Success() {
 	suite.Require().NoError(err)
 	suite.True(result.CanCheck)
 	suite.Equal("e2fsprogs", result.AlpinePackage)
+	suite.False(result.IsFormatReportProgress)
+	suite.False(result.IsCheckReportProgress)
+	suite.Equal(`^[^\x00/]{1,16}$`, result.LabelRule)
 }
 
 func (suite *FilesystemHandlerSuite) TestGetFilesystemSupport_MissingFsType() {
@@ -153,13 +162,16 @@ func (suite *FilesystemHandlerSuite) TestGetFilesystemSupport_MultiFilesystemCap
 		ThenReturn(&dto.FilesystemInfo{
 			Type: "f2fs",
 			Support: &dto.FilesystemSupport{
-				CanMount:      true,
-				CanFormat:     true,
-				CanCheck:      true,
-				CanSetLabel:   false,
-				CanGetState:   true,
-				AlpinePackage: "f2fs-tools",
-				MissingTools:  []string{},
+				CanMount:               true,
+				CanFormat:              true,
+				CanCheck:               true,
+				CanSetLabel:            false,
+				CanGetState:            true,
+				IsFormatReportProgress: false,
+				IsCheckReportProgress:  false,
+				LabelRule:              `^[^\x00/]{1,512}$`,
+				AlpinePackage:          "f2fs-tools",
+				MissingTools:           []string{},
 			},
 		}, nil)
 
@@ -167,13 +179,16 @@ func (suite *FilesystemHandlerSuite) TestGetFilesystemSupport_MultiFilesystemCap
 		ThenReturn(&dto.FilesystemInfo{
 			Type: "zfs",
 			Support: &dto.FilesystemSupport{
-				CanMount:      true,
-				CanFormat:     false,
-				CanCheck:      false,
-				CanSetLabel:   false,
-				CanGetState:   true,
-				AlpinePackage: "zfs",
-				MissingTools:  []string{"zpool"},
+				CanMount:               true,
+				CanFormat:              false,
+				CanCheck:               false,
+				CanSetLabel:            false,
+				CanGetState:            true,
+				IsFormatReportProgress: false,
+				IsCheckReportProgress:  false,
+				LabelRule:              "",
+				AlpinePackage:          "zfs",
+				MissingTools:           []string{"zpool"},
 			},
 		}, nil)
 
@@ -186,6 +201,9 @@ func (suite *FilesystemHandlerSuite) TestGetFilesystemSupport_MultiFilesystemCap
 	suite.True(supportF2fs.CanFormat)
 	suite.False(supportF2fs.CanSetLabel)
 	suite.Equal("f2fs-tools", supportF2fs.AlpinePackage)
+	suite.False(supportF2fs.IsFormatReportProgress)
+	suite.False(supportF2fs.IsCheckReportProgress)
+	suite.Equal(`^[^\x00/]{1,512}$`, supportF2fs.LabelRule)
 
 	respZfs := suite.testAPI.Get("/filesystem/support?fstype=zfs")
 	suite.Equal(http.StatusOK, respZfs.Code)
@@ -197,6 +215,9 @@ func (suite *FilesystemHandlerSuite) TestGetFilesystemSupport_MultiFilesystemCap
 	suite.False(supportZfs.CanSetLabel)
 	suite.Equal("zfs", supportZfs.AlpinePackage)
 	suite.Contains(supportZfs.MissingTools, "zpool")
+	suite.False(supportZfs.IsFormatReportProgress)
+	suite.False(supportZfs.IsCheckReportProgress)
+	suite.Empty(supportZfs.LabelRule)
 }
 
 func (suite *FilesystemHandlerSuite) TestFormatPartition_Success() {

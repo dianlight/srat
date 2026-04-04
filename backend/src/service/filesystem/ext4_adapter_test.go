@@ -111,6 +111,9 @@ func (suite *Ext4AdapterTestSuite) TestIsSupported() {
 	suite.True(support.CanCheck, "ext4 should support checking")
 	suite.True(support.CanSetLabel, "ext4 should support setting label")
 	suite.True(support.CanGetState, "ext4 should support getting state")
+	suite.False(support.IsFormatReportProgress, "ext4 format progress should be indeterminate")
+	suite.False(support.IsCheckReportProgress, "ext4 check progress should be indeterminate")
+	suite.Equal(`^[^\x00/]{1,16}$`, support.LabelRule)
 
 	suite.Equal("e2fsprogs", support.AlpinePackage)
 	suite.Empty(support.MissingTools)

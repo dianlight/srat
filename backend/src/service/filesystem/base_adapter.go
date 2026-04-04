@@ -94,12 +94,16 @@ type baseAdapter struct {
 	linuxFsModule string
 	description   string
 	exportable    bool
-	alpinePackage string
-	mkfsCommand   string
-	fsckCommand   string
-	labelCommand  string
-	stateCommand  string
-	signatures    []dto.FsMagicSignature
+	labelRule     string
+	// All adapters currently emit indeterminate progress (999) and do not parse numeric progress.
+	isFormatReportProgress bool
+	isCheckReportProgress  bool
+	alpinePackage          string
+	mkfsCommand            string
+	fsckCommand            string
+	labelCommand           string
+	stateCommand           string
+	signatures             []dto.FsMagicSignature
 	//
 	baseTryMountFunc func(source, target, data string, flags uintptr, prepareTarget ...func() error) (*mount.MountPoint, error)
 	baseDoMountFunc  func(source, target, fstype, data string, flags uintptr, prepareTarget ...func() error) (*mount.MountPoint, error)
@@ -109,22 +113,25 @@ type baseAdapter struct {
 	isDeviceMountedF func(device string) bool
 }
 
-func newBaseAdapter(name, description string, exportable bool, alpinePackage, mkfsCommand, fsckCommand, labelCommand, stateCommand string, signatures []dto.FsMagicSignature) baseAdapter {
+func newBaseAdapter(name, description string, exportable bool, alpinePackage, mkfsCommand, fsckCommand, labelCommand, stateCommand, labelRule string, signatures []dto.FsMagicSignature) baseAdapter {
 	return baseAdapter{
-		name:             name,
-		description:      description,
-		exportable:       exportable,
-		alpinePackage:    alpinePackage,
-		mkfsCommand:      mkfsCommand,
-		fsckCommand:      fsckCommand,
-		labelCommand:     labelCommand,
-		stateCommand:     stateCommand,
-		signatures:       signatures,
-		baseTryMountFunc: mount.TryMount,
-		baseDoMountFunc:  mount.Mount,
-		baseUnmountFunc:  mount.Unmount,
-		commandExecutor:  &defaultFilesystemCommandExecutor{},
-		getFilesystems:   osutil.GetFileSystems,
+		name:                   name,
+		description:            description,
+		exportable:             exportable,
+		labelRule:              labelRule,
+		isFormatReportProgress: false,
+		isCheckReportProgress:  false,
+		alpinePackage:          alpinePackage,
+		mkfsCommand:            mkfsCommand,
+		fsckCommand:            fsckCommand,
+		labelCommand:           labelCommand,
+		stateCommand:           stateCommand,
+		signatures:             signatures,
+		baseTryMountFunc:       mount.TryMount,
+		baseDoMountFunc:        mount.Mount,
+		baseUnmountFunc:        mount.Unmount,
+		commandExecutor:        &defaultFilesystemCommandExecutor{},
+		getFilesystems:         osutil.GetFileSystems,
 	}
 }
 
@@ -243,18 +250,24 @@ func (b *baseAdapter) checkCommandAvailability() dto.FilesystemSupport {
 	} else if !slices.Contains(filesystem, b.GetLinuxFsModule()) {
 		tlog.Debug("Filesystem module not found in system, marking related commands as unavailable", "filesystem", b.GetLinuxFsModule())
 		return dto.FilesystemSupport{
-			CanMount:      false,
-			IsExportable:  b.exportable,
-			AlpinePackage: b.alpinePackage,
-			MissingTools:  []string{b.mkfsCommand, b.fsckCommand, b.labelCommand, b.stateCommand},
+			CanMount:               false,
+			IsExportable:           b.exportable,
+			IsFormatReportProgress: b.isFormatReportProgress,
+			IsCheckReportProgress:  b.isCheckReportProgress,
+			LabelRule:              b.labelRule,
+			AlpinePackage:          b.alpinePackage,
+			MissingTools:           []string{b.mkfsCommand, b.fsckCommand, b.labelCommand, b.stateCommand},
 		}
 	}
 
 	support := dto.FilesystemSupport{
-		CanMount:      true, // Most filesystems can be mounted if kernel supports them
-		IsExportable:  b.exportable,
-		AlpinePackage: b.alpinePackage,
-		MissingTools:  []string{},
+		CanMount:               true, // Most filesystems can be mounted if kernel supports them
+		IsExportable:           b.exportable,
+		IsFormatReportProgress: b.isFormatReportProgress,
+		IsCheckReportProgress:  b.isCheckReportProgress,
+		LabelRule:              b.labelRule,
+		AlpinePackage:          b.alpinePackage,
+		MissingTools:           []string{},
 	}
 
 	if b.mkfsCommand != "" {

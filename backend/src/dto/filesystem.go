@@ -55,6 +55,15 @@ type FilesystemSupport struct {
 	// CanGetState indicates if filesystem state can be retrieved
 	CanGetState bool `json:"canGetState"`
 
+	// IsFormatReportProgress indicates if format command reports parsable progress
+	IsFormatReportProgress bool `json:"isFormatReportProgress"`
+
+	// IsCheckReportProgress indicates if check command reports parsable progress
+	IsCheckReportProgress bool `json:"isCheckReportProgress"`
+
+	// LabelRule is the regex used to validate label values for this filesystem
+	LabelRule string `json:"labelRule"`
+
 	// AlpinePackage is the Alpine Linux package name that provides support
 	AlpinePackage string `json:"alpinePackage,omitempty"`
 
