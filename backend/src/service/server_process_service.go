@@ -751,7 +751,7 @@ func (self *ServerService) restartServerServices(ctx context.Context, dirty dto.
 					slog.InfoContext(ctx, "No restart needed for service.", "service", processName)
 				}
 			} else {
-				slog.WarnContext(ctx, "Samba process not found, perform start command if exists.", "process", processName)
+				slog.InfoContext(ctx, "Managed service not running yet; starting if configured", "service", processName)
 				if len(processConfig.StartCommand) > 0 && osutil.CommandExists(processConfig.StartCommand) {
 					slog.InfoContext(ctx, "Starting service...", "service", processName)
 					outStart, startErr := self.runCommandWithRunner(ctx, "service-start-"+processName, "Start "+processName, processConfig.StartCommand)
