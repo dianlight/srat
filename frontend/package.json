@@ -90,7 +90,7 @@
     "_test": "bun tsgo --noEmit && AGENT=1 BUN_TEST_NO_COVERAGE_THRESHOLD=1 bun test --preload ./test/setup.ts --bail --timeout 10000 --max-concurrency=1 --reporter=dot",
     "_test:prepare": "bun ./scripts/add-test-setup.js",
     "_test:fix": "bun ./scripts/add-test-setup.js --apply",
-    "_test:ci": "bun run test:prepare && bun test  --only-failures --timeout 60000 --bail --max-concurrency=1",
+    "_test:ci": "bun run test:prepare && bun test --coverage --bail --timeout 60000 --max-concurrency=1",
     "_lint": "bun run validate-macros && bunx --bun biome check --write && bun tsgo --noEmit && bun run test:prepare",
     "_validate-macros": "bun run ../scripts/validate-macro-imports.js"
   },

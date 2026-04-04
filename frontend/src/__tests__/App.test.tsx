@@ -48,8 +48,8 @@ describe("App - AddonConfigChangedBanner Component", () => {
         const appCode = (appSource.App).toString();
         // Check for requires_restart check
         expect(appCode).toMatch(/requires_restart/);
-        // Check for setShowAddonConfigChangedBanner(true)
-        expect(appCode).toMatch(/setShowAddonConfigChangedBanner\(true\)/);
+        // Match both readable (true) and minified (!0) boolean forms
+        expect(appCode).toMatch(/setShowAddonConfigChangedBanner\((?:true|!0)\)/);
     });
 
     it("verifies banner renders when app_config_changed event received", async () => {
@@ -64,7 +64,8 @@ describe("App - AddonConfigChangedBanner Component", () => {
         const appCode = (appSource.App).toString();
         // Check for Ignore button with dismiss handler
         expect(appCode).toMatch(/Ignore/);
-        expect(appCode).toMatch(/setShowAddonConfigChangedBanner\(false\)/);
+        // Match both readable (false) and minified (!1) boolean forms
+        expect(appCode).toMatch(/setShowAddonConfigChangedBanner\((?:false|!1)\)/);
     });
 
     it("verifies Reload button calls backend restart endpoint before reloading", async () => {
