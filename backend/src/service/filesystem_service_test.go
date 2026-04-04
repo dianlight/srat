@@ -270,6 +270,15 @@ func (suite *FilesystemServiceTestSuite) TestResolveLinuxFsModule() {
 	suite.Equal("unknownfs", suite.fsService.ResolveLinuxFsModule("unknownfs"))
 }
 
+func (suite *FilesystemServiceTestSuite) TestGetSupportAndInfo_AcceptsLinuxFsModuleAlias() {
+	info, err := suite.fsService.GetSupportAndInfo(suite.ctx, "ntfs3")
+	suite.Require().NoError(err)
+	suite.Require().NotNil(info)
+	suite.Equal("ntfs", info.Name)
+	suite.Equal("ntfs3", info.Type)
+	suite.NotNil(info.Support)
+}
+
 func (suite *FilesystemServiceTestSuite) TestGetMountFlagsAndData() {
 	testCases := []struct {
 		name             string

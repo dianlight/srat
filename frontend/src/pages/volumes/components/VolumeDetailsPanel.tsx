@@ -73,6 +73,15 @@ export function VolumeDetailsPanel({
   const [checkDialogOpen, setCheckDialogOpen] = useState(false);
   const [formatDialogOpen, setFormatDialogOpen] = useState(false);
   const [labelDialogOpen, setLabelDialogOpen] = useState(false);
+
+  const openDialog = (setDialogOpen: (open: boolean) => void) => {
+    const activeElement = document.activeElement;
+    if (activeElement instanceof HTMLElement) {
+      activeElement.blur();
+    }
+    setDialogOpen(true);
+  };
+
   const partitionActionItems = usePartitionActions({
     partition,
     protectedMode,
@@ -81,9 +90,9 @@ export function VolumeDetailsPanel({
     onUnmount,
     onCreateShare,
     onGoToShare,
-    onCheckFilesystem: () => setCheckDialogOpen(true),
-    onSetFilesystemLabel: () => setLabelDialogOpen(true),
-    onFormatPartition: () => setFormatDialogOpen(true),
+    onCheckFilesystem: () => openDialog(setCheckDialogOpen),
+    onSetFilesystemLabel: () => openDialog(setLabelDialogOpen),
+    onFormatPartition: () => openDialog(setFormatDialogOpen),
   });
 
   // Fetch settings for disable_smart

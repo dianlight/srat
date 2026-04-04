@@ -310,6 +310,10 @@ func (s *FilesystemService) GetStandardMountFlags() ([]dto.MountFlag, errors.E) 
 
 // GetFilesystemSpecificMountFlags returns the list of mount flags specific to the given filesystem type.
 func (s *FilesystemService) GetFilesystemSpecificMountFlags(fsType string) ([]dto.MountFlag, errors.E) {
+	if adapter, err := s.registry.Get(fsType); err == nil {
+		fsType = adapter.GetName()
+	}
+
 	flags, ok := s.fsSpecificMountFlags[fsType]
 	if !ok {
 		// Return an empty list if no specific flags are defined for this type
@@ -525,7 +529,7 @@ func (s *FilesystemService) GetSupportAndInfo(ctx context.Context, fsType string
 	}
 
 	//standardFlags, _ := s.GetStandardMountFlags()
-	customFlags, _ := s.GetFilesystemSpecificMountFlags(fsType)
+	customFlags, _ := s.GetFilesystemSpecificMountFlags(adapter.GetName())
 
 	return &dto.FilesystemInfo{
 		Name:        adapter.GetName(),

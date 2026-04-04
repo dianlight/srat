@@ -136,6 +136,9 @@ The next goal is end-to-end coherence from adapter capability detection to user 
   - Executed operation-failure flow in live UI:
     - `Set Label` with value `SYSTEM2_TEST` (12 chars) returned `500` and UI error toast `Failed to set partition label`.
     - Backend logs show root cause from tool constraints: `fatlabel: labels can be no longer than 11 characters`.
+  - Manual follow-up fix (2026-04-04):
+    - Support preflight now accepts Linux filesystem module aliases such as `ntfs3`/`fuseblk` instead of rejecting them as unsupported, fixing the browser-side `GET /api/filesystem/support?fstype=ntfs3 -> 400` error seen during manual validation.
+    - Dialog launchers now blur the triggering action before opening, which avoids the dev-console `aria-hidden` accessibility warning observed while opening the filesystem dialogs.
 
 ## 🔗 Code References & TODOs
 
