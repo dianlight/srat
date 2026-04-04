@@ -51,6 +51,7 @@ interface VolumeDetailsPanelProps {
   onUnmount?: (partition: Partition, force: boolean) => void;
   onCreateShare?: (partition: Partition) => void;
   onGoToShare?: (partition: Partition) => void;
+  onLabelUpdated?: (partitionId: string, label: string) => void;
   // share?: SharedResource;
 }
 
@@ -64,6 +65,7 @@ export function VolumeDetailsPanel({
   onUnmount,
   onCreateShare,
   onGoToShare,
+  onLabelUpdated,
 }: VolumeDetailsPanelProps) {
   const [diskInfoExpanded, setDiskInfoExpanded] = useState(!partition);
   const [smartExpanded, setSmartExpanded] = useState(true);
@@ -1039,6 +1041,7 @@ export function VolumeDetailsPanel({
         open={labelDialogOpen}
         partition={partition}
         onClose={() => setLabelDialogOpen(false)}
+        onLabelUpdated={onLabelUpdated}
       />
       <FilesystemFormatDialog
         open={formatDialogOpen}

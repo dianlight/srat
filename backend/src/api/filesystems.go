@@ -7,6 +7,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/tlog"
 )
@@ -15,16 +16,19 @@ import (
 type FilesystemHandler struct {
 	fsService service.FilesystemServiceInterface
 	disks     *dto.DiskMap
+	eventBus  events.EventBusInterface
 }
 
 // NewFilesystemHandler creates a new FilesystemHandler
 func NewFilesystemHandler(
 	fsService service.FilesystemServiceInterface,
 	disks *dto.DiskMap,
+	eventBus events.EventBusInterface,
 ) *FilesystemHandler {
 	return &FilesystemHandler{
 		fsService: fsService,
 		disks:     disks,
+		eventBus:  eventBus,
 	}
 }
 
@@ -446,7 +450,7 @@ func (h *FilesystemHandler) SetPartitionLabel(
 
 	// Find the partition using DiskMap directly
 	diskMap := h.disks
-	partition, _, found := diskMap.GetPartitionByID(req.PartitionID)
+	partition, diskID, found := diskMap.GetPartitionByID(req.PartitionID)
 	if !found {
 		return nil, huma.Error404NotFound("Partition not found")
 	}
@@ -474,6 +478,21 @@ func (h *FilesystemHandler) SetPartitionLabel(
 			"label", req.Label,
 			"error", labelErr)
 		return nil, huma.Error500InternalServerError("Failed to set partition label", labelErr)
+	}
+
+	updatedPartition := *partition
+	updatedPartition.Name = new(req.Label)
+	if err := diskMap.AddPartition(diskID, updatedPartition); err != nil {
+		tlog.WarnContext(ctx, "Failed to update partition label in disk cache",
+			"partition", req.PartitionID,
+			"disk", diskID,
+			"label", req.Label,
+			"error", err)
+	} else if disk, ok := diskMap.Get(diskID); ok && h.eventBus != nil {
+		h.eventBus.EmitDisk(events.DiskEvent{
+			Event: events.Event{Type: events.EventTypes.UPDATE},
+			Disk:  disk,
+		})
 	}
 
 	tlog.InfoContext(ctx, "Successfully set partition label",

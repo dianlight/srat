@@ -353,6 +353,31 @@ describe("Volumes component", () => {
         expect(container).toBeTruthy();
     });
 
+    it("updates the nested partition label in the volumes tree data", async () => {
+        const { updatePartitionLabelInDisks } = await import("../Volumes");
+
+        const initialDisks = [
+            {
+                id: "disk1",
+                partitions: {
+                    part1: {
+                        id: "part1",
+                        name: "old-label",
+                    },
+                },
+            },
+        ];
+
+        const updatedDisks = updatePartitionLabelInDisks(
+            initialDisks as any,
+            "part1",
+            "PROVA_EXT4_4",
+        );
+
+        expect((updatedDisks[0] as any).partitions.part1.name).toBe("PROVA_EXT4_4");
+        expect((initialDisks[0] as any).partitions.part1.name).toBe("old-label");
+    });
+
     it("handles disk expansion toggle", async () => {
         const React = await import("react");
         const { render } = await import("@testing-library/react");

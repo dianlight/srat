@@ -7,10 +7,12 @@ import (
 	"net/http"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2/humatest"
 	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/dianlight/srat/service"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
@@ -26,6 +28,7 @@ type FilesystemHandlerSuite struct {
 	handler       *api.FilesystemHandler
 	mockFsService service.FilesystemServiceInterface
 	diskMap       *dto.DiskMap
+	eventBus      events.EventBusInterface
 	testAPI       humatest.TestAPI
 	ctx           context.Context
 	cancel        context.CancelFunc
@@ -43,6 +46,7 @@ func (suite *FilesystemHandlerSuite) SetupTest() {
 			func() (context.Context, context.CancelFunc) {
 				return context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, &sync.WaitGroup{}))
 			},
+			func(ctx context.Context) events.EventBusInterface { return events.NewEventBus(ctx) },
 			api.NewFilesystemHandler,
 			mock.Mock[service.FilesystemServiceInterface],
 			func() *dto.DiskMap { return &dto.DiskMap{} },
@@ -50,6 +54,7 @@ func (suite *FilesystemHandlerSuite) SetupTest() {
 		fx.Populate(&suite.handler),
 		fx.Populate(&suite.mockFsService),
 		fx.Populate(&suite.diskMap),
+		fx.Populate(&suite.eventBus),
 		fx.Populate(&suite.ctx),
 		fx.Populate(&suite.cancel),
 	)
@@ -535,12 +540,14 @@ func (suite *FilesystemHandlerSuite) TestSetPartitionLabel_Success() {
 	devicePath := "/dev/sdb1"
 	fsType := "ext4"
 	newLabel := "NewLabel"
+	oldLabel := "OldLabel"
 	diskID := "test-disk-id"
 
 	partition := dto.Partition{
 		Id:               &partitionID,
 		LegacyDevicePath: &devicePath,
 		FsType:           &fsType,
+		Name:             &oldLabel,
 	}
 
 	// Create disk with partition
@@ -560,6 +567,13 @@ func (suite *FilesystemHandlerSuite) TestSetPartitionLabel_Success() {
 		mock.Any[string](),
 	)).ThenReturn(nil)
 
+	diskUpdateCh := make(chan events.DiskEvent, 1)
+	unsubscribe := suite.eventBus.OnDisk(func(ctx context.Context, event events.DiskEvent) errors.E {
+		diskUpdateCh <- event
+		return nil
+	})
+	defer unsubscribe()
+
 	resp := suite.testAPI.Put("/filesystem/label", map[string]interface{}{
 		"partitionId": partitionID,
 		"label":       newLabel,
@@ -573,4 +587,21 @@ func (suite *FilesystemHandlerSuite) TestSetPartitionLabel_Success() {
 	err := json.Unmarshal(resp.Body.Bytes(), &result)
 	suite.Require().NoError(err)
 	suite.True(result.Success)
+
+	updatedPartition, _, found := suite.diskMap.GetPartitionByID(partitionID)
+	suite.True(found)
+	suite.Require().NotNil(updatedPartition)
+	suite.Require().NotNil(updatedPartition.Name)
+	suite.Equal(newLabel, *updatedPartition.Name)
+
+	select {
+	case event := <-diskUpdateCh:
+		suite.Require().NotNil(event.Disk)
+		eventPartition, ok := (*event.Disk.Partitions)[partitionID]
+		suite.True(ok)
+		suite.Require().NotNil(eventPartition.Name)
+		suite.Equal(newLabel, *eventPartition.Name)
+	case <-time.After(time.Second):
+		suite.Fail("expected disk update event after relabel")
+	}
 }

@@ -15,15 +15,18 @@ import { toast } from "react-toastify";
 import {
   type ErrorModel,
   type Partition,
+  sratApi,
   useGetApiFilesystemSupportQuery,
   usePutApiFilesystemLabelMutation,
 } from "../../../store/sratApi";
+import { useAppDispatch } from "../../../store/store";
 import { decodeEscapeSequence, getFilesystemLabelValidation } from "../utils";
 
 interface FilesystemLabelDialogProps {
   open: boolean;
   partition?: Partition;
   onClose: () => void;
+  onLabelUpdated?: (partitionId: string, label: string) => void;
 }
 
 interface FilesystemSupportWithLabelRule {
@@ -37,7 +40,9 @@ export function FilesystemLabelDialog({
   open,
   partition,
   onClose,
+  onLabelUpdated,
 }: FilesystemLabelDialogProps) {
+  const dispatch = useAppDispatch();
   const [label, setLabel] = useState("");
   const currentLabel = useMemo(
     () => decodeEscapeSequence(partition?.name ?? ""),
@@ -132,12 +137,15 @@ export function FilesystemLabelDialog({
     }
 
     try {
+      const nextLabel = label.trim();
       await setLabelMutation({
         setPartitionLabelInput: {
           partitionId: partition.id,
-          label: label.trim(),
+          label: nextLabel,
         },
       }).unwrap();
+      onLabelUpdated?.(partition.id, nextLabel);
+      dispatch(sratApi.util.invalidateTags(["volume"]));
       toast.success("Filesystem label updated.");
       onClose();
     } catch (err: unknown) {

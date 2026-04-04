@@ -1,24 +1,21 @@
 import {
   Alert,
   Backdrop,
-  Box,
   Button,
   CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   Snackbar,
-  Typography,
 } from "@mui/material";
 import Container from "@mui/material/Container";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import BaseConfigModal from "./components/BaseConfigModal";
+import {
+  CommandOutputDialog,
+  CommandOutputToastContent,
+} from "./components/CommandOutputDialog";
 import { Footer } from "./components/Footer";
 import GlobalEventMonitor from "./components/GlobalEventTracker";
 import { NavBar } from "./components/NavBar";
-import { ReadonlyCommandTerminal } from "./components/ReadonlyCommandTerminal";
 import TelemetryModal from "./components/TelemetryModal";
 import { useBaseConfigModal } from "./hooks/useBaseConfigModal";
 import { useTelemetryModal } from "./hooks/useTelemetryModal";
@@ -217,18 +214,10 @@ export function App() {
 
     if (event.channel === "stderr" && !commandDialogOpen) {
       toast.error(
-        <Box>
-          <Typography variant="body2" sx={{ mb: 1 }}>
-            Command stderr detected for {event.command_id}
-          </Typography>
-          <Button
-            size="small"
-            variant="outlined"
-            onClick={() => openCommandDialog(event.execution_id)}
-          >
-            Open Output
-          </Button>
-        </Box>,
+        <CommandOutputToastContent
+          commandId={event.command_id}
+          onOpenOutput={() => openCommandDialog(event.execution_id)}
+        />,
         { autoClose: 7000 },
       );
     }
@@ -359,42 +348,12 @@ export function App() {
           Addon configuration has changed. Reload required.
         </Alert>
       </Snackbar>
-      <Dialog
+      <CommandOutputDialog
         open={commandDialogOpen}
+        session={selectedCommandSession}
         onClose={() => setCommandDialogOpen(false)}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>
-          Command Output:{" "}
-          {selectedCommandSession?.label ??
-            selectedCommandSession?.command_id ??
-            "Unknown"}
-        </DialogTitle>
-        <DialogContent dividers>
-          <Typography variant="body2" sx={{ mb: 1 }}>
-            Execution: {selectedCommandSession?.execution_id}
-          </Typography>
-          <Typography variant="body2" sx={{ mb: 2 }}>
-            Status:{" "}
-            {selectedCommandSession?.running
-              ? "Running"
-              : `${selectedCommandSession?.success ? "Success" : "Failed"} (exit ${selectedCommandSession?.exit_code ?? "n/a"})`}
-          </Typography>
-          <ReadonlyCommandTerminal lines={selectedCommandSession?.lines} />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={downloadCommandOutput} variant="outlined">
-            Download
-          </Button>
-          <Button
-            onClick={() => setCommandDialogOpen(false)}
-            variant="contained"
-          >
-            Close
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onDownload={downloadCommandOutput}
+      />
     </>
   );
 }

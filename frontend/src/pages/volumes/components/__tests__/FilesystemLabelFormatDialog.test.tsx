@@ -54,6 +54,80 @@ describe("Filesystem label/format dialogs", () => {
     expect((input as HTMLInputElement).value).toBe("media");
   });
 
+  it("propagates a successful label change so the tree and details can refresh", async () => {
+    const React = await import("react");
+    const { screen, waitFor } = await import("@testing-library/react");
+    const userEvent = (await import("@testing-library/user-event")).default;
+    const { sratApi } = await import("../../../../store/sratApi");
+    const { FilesystemLabelDialog } = await import("../FilesystemLabelDialog");
+
+    const initialPartition = {
+      id: "part-label-refresh-1",
+      name: "old-label",
+      device_path: "/dev/sdf1",
+      fs_type: "ext4",
+    };
+
+    const Wrapper = () => {
+      const [partition, setPartition] = React.useState(initialPartition);
+
+      return React.createElement(
+        React.Fragment,
+        null,
+        React.createElement("div", null, `Tree label: ${partition.name}`),
+        React.createElement("div", null, `Detail label: ${partition.name}`),
+        React.createElement(FilesystemLabelDialog as any, {
+          open: true,
+          partition,
+          onClose: () => {},
+          onLabelUpdated: (partitionId: string, label: string) => {
+            if (partitionId === partition.id) {
+              setPartition((current) => ({ ...current, name: label }));
+            }
+          },
+        }),
+      );
+    };
+
+    await renderWithProviders(React.createElement(Wrapper), {
+      seedStore: (store) => {
+        (store as any).dispatch(
+          sratApi.util.upsertQueryData(
+            "getApiFilesystemSupport",
+            { fstype: "ext4" },
+            {
+              canMount: true,
+              canFormat: true,
+              canCheck: true,
+              canSetLabel: true,
+              canGetState: true,
+              labelRule: "^.{1,16}$",
+              alpinePackage: "e2fsprogs",
+              missingTools: [],
+              isExportable: false,
+              isCheckReportProgress: false,
+              isFormatReportProgress: false,
+            },
+          ),
+        );
+      },
+    });
+
+    expect(await screen.findByText("Tree label: old-label")).toBeTruthy();
+    expect(screen.getByText("Detail label: old-label")).toBeTruthy();
+
+    const user = userEvent.setup();
+    const input = await screen.findByRole("textbox", { name: /label/i });
+    await user.clear(input);
+    await user.type(input, "NEWLABEL");
+    await user.click(screen.getByRole("button", { name: /^set label$/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Tree label: NEWLABEL")).toBeTruthy();
+      expect(screen.getByText("Detail label: NEWLABEL")).toBeTruthy();
+    });
+  });
+
   it("disables Set Label when label tools are unavailable", async () => {
     const React = await import("react");
     const { screen } = await import("@testing-library/react");

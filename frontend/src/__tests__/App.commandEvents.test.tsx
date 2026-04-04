@@ -225,4 +225,67 @@ describe("App command events", () => {
 
     toastRender.unmount();
   });
+
+  it("does not leak react-toastify helper props into DOM when rendering stderr toast content", async () => {
+    const { App } = await import("../App");
+    const store = await createTestStore();
+    const server = await getMswServer();
+    server.use(
+      http.get("/api/settings/app-config", () => {
+        return HttpResponse.json({ requires_restart: false });
+      }),
+    );
+
+    const originalConsoleError = console.error;
+    const consoleErrorMock = mock((..._args: unknown[]) => undefined);
+    console.error = consoleErrorMock as typeof console.error;
+
+    try {
+      wsState = {
+        heartbeat: { alive: true },
+        command_output: {
+          execution_id: "exec-3",
+          command_id: "cmd-3",
+          channel: "stderr",
+          line: "permission denied",
+          timestamp: 103,
+        },
+      };
+
+      render(
+        <Provider store={store}>
+          <App />
+        </Provider>,
+      );
+
+      await waitFor(() => {
+        expect(toastErrorMock.mock.calls.length).toBe(1);
+      });
+
+      const calls = toastErrorMock.mock.calls as unknown as unknown[][];
+      const lastCall = calls[calls.length - 1] ?? [];
+      const toastContent = lastCall[0] as React.ReactElement<Record<string, unknown>>;
+      const toastRender = render(
+        React.cloneElement<Record<string, unknown>>(toastContent, {
+          closeToast: () => undefined,
+          toastProps: {},
+          isPaused: false,
+          data: undefined,
+        }),
+      );
+
+      const loggedWarnings = consoleErrorMock.mock.calls
+        .flat()
+        .map((entry) => String(entry))
+        .join("\n");
+
+      expect(loggedWarnings).not.toContain("closeToast");
+      expect(loggedWarnings).not.toContain("toastProps");
+      expect(loggedWarnings).not.toContain("isPaused");
+
+      toastRender.unmount();
+    } finally {
+      console.error = originalConsoleError;
+    }
+  });
 });

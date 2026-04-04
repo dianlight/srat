@@ -67,6 +67,45 @@ export function getTourVolumeSelection(
   return { disk: disks[0] as Disk };
 }
 
+export function updatePartitionLabelInDisks(
+  disks: Disk[] | undefined,
+  partitionId: string,
+  label: string,
+): Disk[] {
+  if (!Array.isArray(disks) || disks.length === 0) {
+    return [];
+  }
+
+  let hasChanges = false;
+  const nextDisks = disks.map((disk) => {
+    const partitionEntries = Object.entries(disk.partitions || {});
+    if (partitionEntries.length === 0) {
+      return disk;
+    }
+
+    let diskChanged = false;
+    const nextPartitions = Object.fromEntries(
+      partitionEntries.map(([key, partition]) => {
+        if (
+          !partition ||
+          partition.id !== partitionId ||
+          partition.name === label
+        ) {
+          return [key, partition];
+        }
+
+        diskChanged = true;
+        hasChanges = true;
+        return [key, { ...partition, name: label }];
+      }),
+    );
+
+    return diskChanged ? { ...disk, partitions: nextPartitions } : disk;
+  });
+
+  return hasChanges ? nextDisks : disks;
+}
+
 export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
   const { data: evdata } = useGetServerEventsQuery();
   const [showPreview, setShowPreview] = useState<boolean>(false);
@@ -78,9 +117,10 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
     localStorage.getItem("volumes.hideSystemPartitions") === "true",
   ); // Default to hide system partitions
   const volumeHook = useVolume();
-  const disks = initialDisks ?? volumeHook.disks;
+  const sourceDisks = initialDisks ?? volumeHook.disks;
   const isLoading = initialDisks ? false : volumeHook.isLoading;
   const error = initialDisks ? null : volumeHook.error;
+  const [disks, setDisks] = useState<Disk[]>(sourceDisks ?? []);
   const [selectedDisk, setSelectedDisk] = useState<Disk | undefined>(undefined);
   const [selectedPartition, setSelectedPartition] = useState<
     Partition | undefined
@@ -103,6 +143,10 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
   const [mountVolume, _mountVolumeResult] = usePostApiVolumeMountMutation();
   const [umountVolume, _umountVolumeResult] = useDeleteApiVolumeMutation();
   const [patchMountSettings] = usePatchApiVolumeSettingsMutation();
+
+  useEffect(() => {
+    setDisks(sourceDisks ?? []);
+  }, [sourceDisks]);
   const perPartitionInfo = evdata?.heartbeat?.disk_health?.per_partition_info;
   const filesystemStateByPartitionId = useMemo<
     Record<string, FilesystemState>
@@ -169,6 +213,21 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
       });
     },
     [disks],
+  );
+
+  const handlePartitionLabelUpdated = useCallback(
+    (partitionId: string, label: string) => {
+      setDisks((currentDisks) =>
+        updatePartitionLabelInDisks(currentDisks, partitionId, label),
+      );
+      setSelectedPartition((currentPartition) => {
+        if (!currentPartition || currentPartition.id !== partitionId) {
+          return currentPartition;
+        }
+        return { ...currentPartition, name: label };
+      });
+    },
+    [],
   );
 
   // Persist selection and expanded disks to localStorage
@@ -675,6 +734,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
                 onUnmount={onSubmitUmountVolume}
                 onCreateShare={handleCreateShare}
                 onGoToShare={handleGoToShare}
+                onLabelUpdated={handlePartitionLabelUpdated}
                 //share={selectedShare}
               />
             </Box>

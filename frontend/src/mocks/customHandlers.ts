@@ -159,6 +159,28 @@ export const customHandlers: RequestHandler[] = [
 			},
 		});
 	}),
+
+	// Deterministic filesystem label update endpoint used by volume relabel tests.
+	http.put("/api/filesystem/label", async ({ request }) => {
+		const body = (await request.json().catch(() => ({}))) as {
+			partitionId?: string;
+			label?: string;
+		};
+
+		return new Response(
+			JSON.stringify({
+				success: true,
+				partitionId: body.partitionId ?? "",
+				label: body.label ?? "",
+			}),
+			{
+				status: 200,
+				headers: {
+					"Content-Type": "application/json",
+				},
+			},
+		);
+	}),
 	// Deterministic GitHub discussions endpoint used by dashboard news widgets.
 	http.get("https://api.github.com/repos/:owner/:repo/discussions", ({ request, params }) => {
 		const url = new URL(request.url);
