@@ -36,7 +36,7 @@ By the end of this workflow, you should produce **one** of these outcomes:
 
 ### 1. Re-read the Current Session for Evidence
 
-Review the current chat session, changed files, and validation results. Extract any candidate lesson in one sentence:
+Review the current chat session, changed files, and validation results. Start from the beginning or from the last use of this skill and extract any candidate lesson in one sentence:
 
 - **Implementation pattern** — e.g. a canonical API hook, lifecycle wiring, or config source of truth
 - **Testing pattern** — e.g. a shared MSW override helper, stable mock shape, or required test command
