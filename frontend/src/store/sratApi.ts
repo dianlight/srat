@@ -1354,7 +1354,10 @@ export type FilesystemSupport = {
   canGetState: boolean;
   canMount: boolean;
   canSetLabel: boolean;
+  isCheckReportProgress: boolean;
   isExportable: boolean;
+  isFormatReportProgress: boolean;
+  labelRule: string;
   missingTools?: string[] | null;
 };
 export type FilesystemTask = {

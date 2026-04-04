@@ -23,12 +23,19 @@ import {
   useGetApiFilesystemsQuery,
   usePostApiFilesystemFormatMutation,
 } from "../../../store/sratApi";
-import { decodeEscapeSequence } from "../utils";
+import { decodeEscapeSequence, getFilesystemLabelValidation } from "../utils";
 
 interface FilesystemFormatDialogProps {
   open: boolean;
   partition?: Partition;
   onClose: () => void;
+}
+
+interface FilesystemSupportWithLabelRule {
+  alpinePackage?: string;
+  canFormat?: boolean;
+  labelRule?: string | null;
+  missingTools?: string[] | null;
 }
 
 export function FilesystemFormatDialog({
@@ -64,12 +71,15 @@ export function FilesystemFormatDialog({
     setForce(false);
   }, [open, partition?.fs_type]);
 
-  const support = useMemo(() => {
+  const support = useMemo<FilesystemSupportWithLabelRule | null>(() => {
     if (!supportData || !("canFormat" in supportData)) {
       return null;
     }
-    return supportData;
+    return supportData as FilesystemSupportWithLabelRule;
   }, [supportData]);
+
+  const isSupportPending =
+    open && filesystemType.trim() !== "" && supportData === undefined;
 
   const formatCapableFilesystemTypes = useMemo(
     () =>
@@ -142,6 +152,23 @@ export function FilesystemFormatDialog({
     }
   }, [filesystemType, formatCapableFilesystemTypes, open]);
 
+  const labelRule = useMemo(() => {
+    if (support?.labelRule) {
+      return support.labelRule;
+    }
+    const partitionSupport = partition?.filesystem_info?.support as
+      | FilesystemSupportWithLabelRule
+      | undefined;
+    return partitionSupport?.labelRule ?? "";
+  }, [partition?.filesystem_info?.support, support?.labelRule]);
+
+  const labelValidation = useMemo(
+    () => getFilesystemLabelValidation(label, labelRule, true),
+    [label, labelRule],
+  );
+
+  const showLabelError = label.trim().length > 0 && !labelValidation.isValid;
+
   const handleFormat = async () => {
     if (!partition?.id) {
       toast.error("Partition not selected.");
@@ -149,6 +176,10 @@ export function FilesystemFormatDialog({
     }
     if (!filesystemType.trim()) {
       toast.error("Filesystem type is required.");
+      return;
+    }
+    if (!labelValidation.isValid) {
+      toast.error(labelValidation.helperText || "Label format is not valid.");
       return;
     }
 
@@ -241,6 +272,8 @@ export function FilesystemFormatDialog({
             onChange={(event) => setLabel(event.target.value)}
             fullWidth
             disabled={isFormatting}
+            error={showLabelError}
+            helperText={labelValidation.helperText}
           />
 
           <FormControlLabel
@@ -269,6 +302,8 @@ export function FilesystemFormatDialog({
             filesystemType.trim().length === 0 ||
             formatCapableFilesystemTypes.length === 0 ||
             !isSelectedFormatTypeAvailable ||
+            !labelValidation.isValid ||
+            isSupportPending ||
             isSupportLoading ||
             !canFormat
           }

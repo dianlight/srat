@@ -272,6 +272,10 @@ url = "https://github.com/jdx/hk/releases/download/v1.39.0/hk-x86_64-pc-windows-
 version = "0.23.0"
 backend = "http:lychee"
 
+[tools."http:lychee"."platforms.macos-arm64"]
+checksum = "blake3:3338398a17df55ef8d01bedcf2b42ae922ed608236e44be281004d40d41e9b61"
+url = "https://github.com/lycheeverse/lychee/releases/download/lychee-v0.23.0/lychee-arm64-macos.tar.gz"
+
 [[tools.jq]]
 version = "1.8.1"
 backend = "aqua:jqlang/jq"

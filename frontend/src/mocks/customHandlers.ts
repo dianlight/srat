@@ -9,6 +9,19 @@
 
 import { http, type RequestHandler } from "msw";
 
+const filesystemSupportOverrides = new Map<string, Record<string, unknown>>();
+
+export function setFilesystemSupportOverride(
+	fsType: string,
+	response: Record<string, unknown>,
+) {
+	filesystemSupportOverrides.set(fsType.toLowerCase(), response);
+}
+
+export function clearFilesystemSupportOverrides() {
+	filesystemSupportOverrides.clear();
+}
+
 /**
 
  * 
@@ -55,6 +68,97 @@ export const customHandlers: RequestHandler[] = [
 		);
 	}),
 
+	// Deterministic filesystem support endpoint mock used by volume dialog tests.
+	http.get("/api/filesystem/support", ({ request }) => {
+		const url = new URL(request.url);
+		const fsType = (url.searchParams.get("fstype") ?? "").toLowerCase();
+		const override = filesystemSupportOverrides.get(fsType);
+
+		if (override) {
+			return new Response(JSON.stringify(override), {
+				status: 200,
+				headers: {
+					"Content-Type": "application/json",
+				},
+			});
+		}
+
+		const supportByFsType: Record<string, Record<string, unknown>> = {
+			ext4: {
+				canMount: true,
+				canFormat: true,
+				canCheck: true,
+				canSetLabel: true,
+				canGetState: true,
+				isExportable: false,
+				isFormatReportProgress: false,
+				isCheckReportProgress: false,
+				labelRule: "^[^\\x00/]{1,16}$",
+				alpinePackage: "e2fsprogs",
+				missingTools: [],
+			},
+			vfat: {
+				canMount: true,
+				canFormat: true,
+				canCheck: true,
+				canSetLabel: true,
+				canGetState: true,
+				isExportable: false,
+				isFormatReportProgress: false,
+				isCheckReportProgress: false,
+				labelRule: "^[A-Za-z0-9 ]{1,11}$",
+				alpinePackage: "dosfstools",
+				missingTools: [],
+			},
+			f2fs: {
+				canMount: true,
+				canFormat: true,
+				canCheck: true,
+				canSetLabel: false,
+				canGetState: true,
+				isExportable: false,
+				isFormatReportProgress: false,
+				isCheckReportProgress: false,
+				labelRule: "^[^\\x00/]{1,512}$",
+				alpinePackage: "f2fs-tools",
+				missingTools: [],
+			},
+			zfs: {
+				canMount: true,
+				canFormat: false,
+				canCheck: false,
+				canSetLabel: false,
+				canGetState: true,
+				isExportable: false,
+				isFormatReportProgress: false,
+				isCheckReportProgress: false,
+				labelRule: "",
+				alpinePackage: "",
+				missingTools: [],
+			},
+		};
+
+		const fallback = {
+			canMount: true,
+			canFormat: true,
+			canCheck: true,
+			canSetLabel: true,
+			canGetState: true,
+			isExportable: false,
+			isFormatReportProgress: false,
+			isCheckReportProgress: false,
+			labelRule: "",
+			alpinePackage: "",
+			missingTools: [],
+		};
+
+		return new Response(JSON.stringify(supportByFsType[fsType] ?? fallback), {
+			status: 200,
+			headers: {
+				"Content-Type": "application/json",
+			},
+		});
+	}),
 	// Example: Health endpoint mock
 	http.get("/api/health", () => {
 		return new Response(

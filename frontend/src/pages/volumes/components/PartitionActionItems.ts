@@ -57,7 +57,8 @@ export function getPartitionActionItems({
   if (
     protectedMode ||
     partition.name?.startsWith("hassos-") ||
-    Object.values(partition.host_mount_point_data || {}).length > 0
+    Object.values(partition.host_mount_point_data || {}).length > 0 ||
+    Object.values(partition.mount_point_data || {}).length > 1
   ) {
     return null;
   }

@@ -18,12 +18,19 @@ import {
   useGetApiFilesystemSupportQuery,
   usePutApiFilesystemLabelMutation,
 } from "../../../store/sratApi";
-import { decodeEscapeSequence } from "../utils";
+import { decodeEscapeSequence, getFilesystemLabelValidation } from "../utils";
 
 interface FilesystemLabelDialogProps {
   open: boolean;
   partition?: Partition;
   onClose: () => void;
+}
+
+interface FilesystemSupportWithLabelRule {
+  alpinePackage?: string;
+  canSetLabel?: boolean;
+  labelRule?: string | null;
+  missingTools?: string[] | null;
 }
 
 export function FilesystemLabelDialog({
@@ -56,12 +63,14 @@ export function FilesystemLabelDialog({
     setLabel(currentLabel);
   }, [currentLabel, open]);
 
-  const support = useMemo(() => {
+  const support = useMemo<FilesystemSupportWithLabelRule | null>(() => {
     if (!supportData || !("canSetLabel" in supportData)) {
       return null;
     }
-    return supportData;
+    return supportData as FilesystemSupportWithLabelRule;
   }, [supportData]);
+
+  const isSupportPending = open && fsType !== "" && supportData === undefined;
 
   const canSetLabel = useMemo(() => {
     if (support?.canSetLabel !== undefined) {
@@ -91,6 +100,23 @@ export function FilesystemLabelDialog({
     );
   }, [isSupportError, supportError]);
 
+  const labelRule = useMemo(() => {
+    if (support?.labelRule) {
+      return support.labelRule;
+    }
+    const partitionSupport = partition?.filesystem_info?.support as
+      | FilesystemSupportWithLabelRule
+      | undefined;
+    return partitionSupport?.labelRule ?? "";
+  }, [partition?.filesystem_info?.support, support?.labelRule]);
+
+  const labelValidation = useMemo(
+    () => getFilesystemLabelValidation(label, labelRule, false),
+    [label, labelRule],
+  );
+
+  const showLabelError = label.trim().length > 0 && !labelValidation.isValid;
+
   const handleSetLabel = async () => {
     if (!partition?.id) {
       toast.error("Partition not selected.");
@@ -98,6 +124,10 @@ export function FilesystemLabelDialog({
     }
     if (!label.trim()) {
       toast.error("Please enter a label.");
+      return;
+    }
+    if (!labelValidation.isValid) {
+      toast.error(labelValidation.helperText || "Label format is not valid.");
       return;
     }
 
@@ -168,6 +198,8 @@ export function FilesystemLabelDialog({
             fullWidth
             disabled={isSaving}
             placeholder="Enter new label"
+            error={showLabelError}
+            helperText={labelValidation.helperText}
           />
         </Stack>
       </DialogContent>
@@ -182,6 +214,8 @@ export function FilesystemLabelDialog({
             isSaving ||
             !partition?.id ||
             label.trim().length === 0 ||
+            !labelValidation.isValid ||
+            isSupportPending ||
             isSupportLoading ||
             !canSetLabel
           }

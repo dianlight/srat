@@ -31,7 +31,7 @@ beforeAll(async () => {
 	const { customHandlers } = await import("../src/mocks/customHandlers");
 	const { streamingHandlers } = await import("../src/mocks/streamingHandlers");
 
-	const handlers = [...generatedHandlers, ...streamingHandlers, ...customHandlers];
+	const handlers = [...customHandlers, ...streamingHandlers, ...generatedHandlers];
 	defaultHandlers = handlers;
 	server = setupServer(...handlers);
 
@@ -48,9 +48,15 @@ beforeAll(async () => {
  * This ensures that any runtime handler modifications made during a test
  * don't leak into other tests, maintaining test isolation.
  */
-afterEach(() => {
+afterEach(async () => {
+	const { cleanup } = await import("@testing-library/react");
+	const { clearFilesystemSupportOverrides } = await import(
+		"../src/mocks/customHandlers"
+	);
+	cleanup();
+	clearFilesystemSupportOverrides();
 	if (server) {
-		server.resetHandlers();
+		server.resetHandlers(...defaultHandlers);
 	}
 });
 
