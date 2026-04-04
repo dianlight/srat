@@ -159,6 +159,38 @@ export const customHandlers: RequestHandler[] = [
 			},
 		});
 	}),
+	// Deterministic GitHub discussions endpoint used by dashboard news widgets.
+	http.get("https://api.github.com/repos/:owner/:repo/discussions", ({ request, params }) => {
+		const url = new URL(request.url);
+		const category = url.searchParams.get("category");
+		if (category !== "announcements") {
+			return new Response(JSON.stringify([]), {
+				status: 200,
+				headers: {
+					"Content-Type": "application/json",
+				},
+			});
+		}
+
+		return new Response(
+			JSON.stringify([
+				{
+					id: 1,
+					number: 1,
+					title: `${String(params.repo)} announcement`,
+					html_url: `https://github.com/${String(params.owner)}/${String(params.repo)}/discussions/1`,
+					created_at: "2026-04-01T12:00:00.000Z",
+				},
+			]),
+			{
+				status: 200,
+				headers: {
+					"Content-Type": "application/json",
+				},
+			},
+		);
+	}),
+
 	// Example: Health endpoint mock
 	http.get("/api/health", () => {
 		return new Response(
