@@ -74,6 +74,7 @@ The Go back-end implements several service agents for Samba administration:
 - **back-end**: `testify/suite` with `mockio/v2` for unit and integration tests
 - **Frontend**: bun:test + React Testing Library for component tests
 - **HTTP Testing**: `humatest` for API endpoint validation
+- **Manual remote test observation**: Use [`.github/skills/watch-manual-test/SKILL.md`](.github/skills/watch-manual-test/SKILL.md) when the user manually drives the UI and Copilot should watch browser activity plus frontend, back-end, addon, and Home Assistant logs, then ask whether to ignore or fix detected issues.
 
 ### Documentation Agents
 
