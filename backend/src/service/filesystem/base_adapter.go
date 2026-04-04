@@ -92,6 +92,7 @@ type CommandResult struct {
 type baseAdapter struct {
 	name          string
 	linuxFsModule string
+	aliasNames    []string
 	description   string
 	exportable    bool
 	labelRule     string
@@ -113,9 +114,16 @@ type baseAdapter struct {
 	isDeviceMountedF func(device string) bool
 }
 
-func newBaseAdapter(name, description string, exportable bool, alpinePackage, mkfsCommand, fsckCommand, labelCommand, stateCommand, labelRule string, signatures []dto.FsMagicSignature) baseAdapter {
+func newBaseAdapter(
+	name, description string,
+	exportable bool,
+	alpinePackage, mkfsCommand, fsckCommand, labelCommand, stateCommand, labelRule string,
+	signatures []dto.FsMagicSignature,
+	aliasNames ...string,
+) baseAdapter {
 	return baseAdapter{
 		name:                   name,
+		aliasNames:             slices.Clone(aliasNames),
 		description:            description,
 		exportable:             exportable,
 		labelRule:              labelRule,
@@ -319,6 +327,17 @@ func (b *baseAdapter) GetLinuxFsModule() string {
 		return b.linuxFsModule
 	}
 	return b.name
+}
+
+// GetAliasNames returns other filesystem names that should resolve to this adapter.
+func (b *baseAdapter) GetAliasNames() []string {
+	aliases := slices.Clone(b.aliasNames)
+	linuxModule := b.GetLinuxFsModule()
+	if linuxModule != "" && linuxModule != b.name && !slices.Contains(aliases, linuxModule) {
+		aliases = append(aliases, linuxModule)
+	}
+
+	return aliases
 }
 
 // GetDescription returns the filesystem description

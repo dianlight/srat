@@ -108,7 +108,6 @@ func (suite *FilesystemHandlerSuite) TestListFilesystems_Success() {
 
 func (suite *FilesystemHandlerSuite) TestGetFilesystemSupport_Success() {
 	fsType := "ext4"
-	mock.When(suite.mockFsService.ListSupportedTypes()).ThenReturn([]string{fsType})
 	expected := &dto.FilesystemInfo{
 		Name:        fsType,
 		Type:        fsType,
@@ -148,8 +147,41 @@ func (suite *FilesystemHandlerSuite) TestGetFilesystemSupport_MissingFsType() {
 	suite.Equal(http.StatusBadRequest, resp.Code)
 }
 
+func (suite *FilesystemHandlerSuite) TestGetFilesystemSupport_AcceptsLinuxFsModuleAlias() {
+	expected := &dto.FilesystemInfo{
+		Name:        "ntfs",
+		Type:        "ntfs3",
+		Description: "NTFS Filesystem",
+		Support: &dto.FilesystemSupport{
+			CanMount:               true,
+			CanFormat:              true,
+			CanCheck:               true,
+			CanSetLabel:            true,
+			CanGetState:            true,
+			IsFormatReportProgress: false,
+			IsCheckReportProgress:  false,
+			LabelRule:              `^[^\x00/]{1,32}$`,
+			AlpinePackage:          "ntfs-3g-progs",
+			MissingTools:           []string{},
+		},
+	}
+
+	mock.When(suite.mockFsService.GetSupportAndInfo(mock.Any[context.Context](), mock.Exact("ntfs3"))).
+		ThenReturn(expected, nil)
+
+	resp := suite.testAPI.Get("/filesystem/support?fstype=ntfs3")
+	suite.Equal(http.StatusOK, resp.Code)
+
+	var result dto.FilesystemSupport
+	err := json.Unmarshal(resp.Body.Bytes(), &result)
+	suite.Require().NoError(err)
+	suite.True(result.CanCheck)
+	suite.Equal("ntfs-3g-progs", result.AlpinePackage)
+}
+
 func (suite *FilesystemHandlerSuite) TestGetFilesystemSupport_UnsupportedFsType() {
-	mock.When(suite.mockFsService.ListSupportedTypes()).ThenReturn([]string{"ext4", "xfs"})
+	mock.When(suite.mockFsService.GetSupportAndInfo(mock.Any[context.Context](), mock.Exact("zfsx"))).
+		ThenReturn(nil, errors.New("unsupported filesystem type: zfsx"))
 
 	resp := suite.testAPI.Get("/filesystem/support?fstype=zfsx")
 	suite.Equal(http.StatusBadRequest, resp.Code)

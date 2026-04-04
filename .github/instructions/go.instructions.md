@@ -173,6 +173,7 @@ opts.Verbose = new(true)
 - Use embedding for composition
 - Define interfaces close to where they're used, not where they're implemented
 - Don't export interfaces unless necessary
+- In `backend/src/service/filesystem`, declare filesystem aliases on the adapter via `GetAliasNames()` / `baseAdapter.aliasNames` rather than hardcoding alias switches in `Registry`; keep the registry generic so new filesystem variants are added by updating the adapter only
 
 ## Concurrency
 

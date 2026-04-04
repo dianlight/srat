@@ -32,6 +32,9 @@ func NewNtfsAdapter() FilesystemAdapter {
 			[]dto.FsMagicSignature{
 				{Offset: 3, Magic: []byte{'N', 'T', 'F', 'S', ' ', ' ', ' ', ' '}}, // "NTFS    "
 			},
+			"ntfs3",
+			"ntfs-3g",
+			"fuseblk",
 		),
 		lastUnmountedState: make(map[string]dto.FilesystemState),
 	}

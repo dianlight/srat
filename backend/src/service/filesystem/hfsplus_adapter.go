@@ -31,6 +31,7 @@ func NewHfsplusAdapter() FilesystemAdapter {
 				{Offset: 0x400, Magic: []byte{0x48, 0x2B}}, // H+
 				{Offset: 0x400, Magic: []byte{0x48, 0x58}}, // HX (HFSX variant)
 			},
+			"hfs+",
 		),
 	}
 }

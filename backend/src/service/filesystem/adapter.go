@@ -18,6 +18,9 @@ type FilesystemAdapter interface {
 	// GetLinuxFsModule returns the Linux filesystem module/fstype name to use for mounting
 	GetLinuxFsModule() string
 
+	// GetAliasNames returns other filesystem names that should resolve to this adapter.
+	GetAliasNames() []string
+
 	// GetDescription returns a human-readable description of the filesystem
 	GetDescription() string
 

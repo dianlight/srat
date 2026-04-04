@@ -112,6 +112,29 @@ func (suite *BaseAdapterTestSuite) TestGetLinuxFsModule() {
 	suite.Equal("ntfs3", linuxModule)
 }
 
+// TestGetAliasNames tests the GetAliasNames method.
+func (suite *BaseAdapterTestSuite) TestGetAliasNames() {
+	suite.adapter = newBaseAdapter(
+		"ntfs",
+		"NTFS Filesystem",
+		false,
+		"ntfs-3g-progs",
+		"mkfs.ntfs",
+		"ntfsfix",
+		"ntfslabel",
+		"ntfsfix",
+		`^[^\x00/]{1,32}$`,
+		[]dto.FsMagicSignature{
+			{Offset: 3, Magic: []byte{'N', 'T', 'F', 'S', ' ', ' ', ' ', ' '}},
+		},
+		"ntfs3",
+		"ntfs-3g",
+		"fuseblk",
+	)
+
+	suite.Equal([]string{"ntfs3", "ntfs-3g", "fuseblk"}, suite.adapter.GetAliasNames())
+}
+
 // TestIsExportable tests the IsExportable method.
 func (suite *BaseAdapterTestSuite) TestIsExportable() {
 	suite.False(suite.adapter.IsExportable(suite.ctx))

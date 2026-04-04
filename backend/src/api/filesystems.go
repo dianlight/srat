@@ -3,7 +3,7 @@ package api
 import (
 	"context"
 	"errors"
-	"slices"
+	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/dianlight/srat/dto"
@@ -53,16 +53,16 @@ func (h *FilesystemHandler) GetFilesystemSupport(
 	ctx context.Context,
 	input *FilesystemSupportInput,
 ) (*struct{ Body dto.FilesystemSupport }, error) {
-	fsType := input.FsType
+	fsType := strings.TrimSpace(input.FsType)
 	if fsType == "" {
 		return nil, huma.Error400BadRequest("Filesystem type is required")
-	}
-	if !slices.Contains(h.fsService.ListSupportedTypes(), fsType) {
-		return nil, huma.Error400BadRequest("Unsupported filesystem type")
 	}
 
 	info, err := h.fsService.GetSupportAndInfo(ctx, fsType)
 	if err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "unsupported filesystem type") {
+			return nil, huma.Error400BadRequest("Unsupported filesystem type")
+		}
 		tlog.ErrorContext(ctx, "Failed to get filesystem support", "filesystem", fsType, "error", err)
 		return nil, huma.Error500InternalServerError("Failed to get filesystem support", err)
 	}

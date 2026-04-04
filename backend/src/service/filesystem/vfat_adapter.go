@@ -32,6 +32,9 @@ func NewVfatAdapter() FilesystemAdapter {
 				{Offset: 0x36, Magic: []byte{'F', 'A', 'T', '1', '6', ' ', ' ', ' '}}, // FAT16 specific
 				{Offset: 0x36, Magic: []byte{'F', 'A', 'T', '1', '2', ' ', ' ', ' '}}, // FAT12 specific
 			},
+			"fat",
+			"fat32",
+			"msdos",
 		),
 	}
 }

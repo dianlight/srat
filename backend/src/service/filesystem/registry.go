@@ -2,6 +2,7 @@ package filesystem
 
 import (
 	"context"
+	"strings"
 	"sync"
 
 	"github.com/dianlight/srat/dto"
@@ -44,17 +45,45 @@ func (r *Registry) Register(adapter FilesystemAdapter) {
 	r.adapters[adapter.GetName()] = adapter
 }
 
-// Get retrieves a filesystem adapter by name
+func canonicalizeFilesystemType(fsType string) string {
+	return strings.ToLower(strings.TrimSpace(fsType))
+}
+
+func adapterMatchesFilesystemType(adapter FilesystemAdapter, normalized string) bool {
+	if canonicalizeFilesystemType(adapter.GetName()) == normalized {
+		return true
+	}
+
+	for _, aliasName := range adapter.GetAliasNames() {
+		if canonicalizeFilesystemType(aliasName) == normalized {
+			return true
+		}
+	}
+
+	return false
+}
+
+// Get retrieves a filesystem adapter by name or by an alias declared by the adapter.
 func (r *Registry) Get(fsType string) (FilesystemAdapter, errors.E) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	adapter, ok := r.adapters[fsType]
-	if !ok {
+	normalized := canonicalizeFilesystemType(fsType)
+	if normalized == "" {
 		return nil, errors.Errorf("unsupported filesystem type: %s", fsType)
 	}
 
-	return adapter, nil
+	if adapter, ok := r.adapters[normalized]; ok {
+		return adapter, nil
+	}
+
+	for _, adapter := range r.adapters {
+		if adapterMatchesFilesystemType(adapter, normalized) {
+			return adapter, nil
+		}
+	}
+
+	return nil, errors.Errorf("unsupported filesystem type: %s", fsType)
 }
 
 // GetAll returns all registered filesystem adapters
