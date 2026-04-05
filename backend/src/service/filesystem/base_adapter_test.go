@@ -3,13 +3,10 @@ package filesystem
 import (
 	"context"
 	"errors"
-	"io"
-	"strings"
 	"testing"
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal/osutil"
-	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
 	"github.com/u-root/u-root/pkg/mount"
 )
@@ -29,8 +26,6 @@ func TestBaseAdapterTestSuite(t *testing.T) {
 
 func (suite *BaseAdapterTestSuite) SetupTest() {
 	suite.ctx = context.Background()
-	controller := mock.NewMockController(suite.T())
-	execMock := mock.Mock[ExecCmd](controller)
 	suite.adapter = newBaseAdapter(
 		"ntfs",
 		"NTFS Filesystem",
@@ -54,9 +49,6 @@ func (suite *BaseAdapterTestSuite) SetupTest() {
 			}
 			return "", errors.New("command not found")
 		},
-		func(ctx context.Context, cmd string, args ...string) ExecCmd {
-			return execMock
-		},
 	)
 
 	suite.cleanMount = suite.adapter.SetMountOpsForTesting(
@@ -71,10 +63,6 @@ func (suite *BaseAdapterTestSuite) SetupTest() {
 		},
 	)
 
-	mock.When(execMock.StdoutPipe()).ThenReturn(io.NopCloser(strings.NewReader("")), nil)
-	mock.When(execMock.StderrPipe()).ThenReturn(io.NopCloser(strings.NewReader("")), nil)
-	mock.When(execMock.Start()).ThenReturn(nil)
-	mock.When(execMock.Wait()).ThenReturn(nil)
 }
 
 func (suite *BaseAdapterTestSuite) TearDownTest() {
@@ -180,9 +168,6 @@ func (suite *BaseAdapterTestSuite) TestCheckCommandAvailability() {
 						return cmd, nil
 					}
 					return "", errors.New("command not found")
-				},
-				func(ctx context.Context, cmd string, args ...string) ExecCmd {
-					return &mockExecCmd{output: "mock output", exitCode: 0, err: nil}
 				},
 			)
 			cancelOs := osutil.MockFileSystems([]string{"ntfs3", "ext4"})
@@ -371,6 +356,60 @@ func (suite *BaseAdapterTestSuite) TestSetCommandRunner_UsesInjectedRunnerForRun
 	suite.Equal("runner-output", output)
 }
 
+func (suite *BaseAdapterTestSuite) TestSetCommandRunner_StreamsProgressFromSnapshots() {
+	callCount := 0
+	reset := suite.adapter.SetCommandRunner(&fakeCommandRunner{
+		start: func(_ context.Context, _ string, _ string, _ string, _ ...string) (string, error) {
+			return "exec-1", nil
+		},
+		getSnapshot: func(executionID string) (dto.CommandExecutionSnapshot, bool) {
+			callCount++
+			baseLines := []dto.CommandOutputLineSnapshot{{
+				Channel: dto.CommandOutputChannelStdout,
+				Line:    "out-1",
+			}, {
+				Channel: dto.CommandOutputChannelStderr,
+				Line:    "err-1",
+			}}
+
+			snapshot := dto.CommandExecutionSnapshot{
+				ExecutionID: executionID,
+				Running:     callCount < 3,
+				Success:     true,
+				ExitCode:    0,
+				Lines:       append([]dto.CommandOutputLineSnapshot(nil), baseLines...),
+			}
+			if callCount >= 2 {
+				snapshot.Lines = append(snapshot.Lines, dto.CommandOutputLineSnapshot{
+					Channel: dto.CommandOutputChannelStdout,
+					Line:    "out-2",
+				})
+			}
+			return snapshot, true
+		},
+	})
+	defer reset()
+
+	stdoutChan, stderrChan, resultChan := suite.adapter.executeCommandWithProgress(suite.ctx, "runner-command", []string{"arg1"})
+
+	var stdoutLines []string
+	for line := range stdoutChan {
+		stdoutLines = append(stdoutLines, line)
+	}
+
+	var stderrLines []string
+	for line := range stderrChan {
+		stderrLines = append(stderrLines, line)
+	}
+
+	result, ok := <-resultChan
+	suite.True(ok)
+	suite.NoError(result.Error)
+	suite.Equal(0, result.ExitCode)
+	suite.Equal([]string{"out-1", "out-2"}, stdoutLines)
+	suite.Equal([]string{"err-1"}, stderrLines)
+}
+
 // TestOsutilMockFileSystems tests that osutil.MockFileSystems works for mocking mounted filesystems
 func (suite *BaseAdapterTestSuite) TestOsutilMockFileSystems() {
 	suite.Run("mock replaces filesystem list", func() {
@@ -394,9 +433,20 @@ func (suite *BaseAdapterTestSuite) TestOsutilMockFileSystems() {
 // Helper functions
 
 type fakeCommandRunner struct {
+	lookPath    func(string) (string, error)
 	start       func(context.Context, string, string, string, ...string) (string, error)
 	execute     func(context.Context, string, string, string, ...string) (dto.CommandExecutionSnapshot, error)
 	getSnapshot func(string) (dto.CommandExecutionSnapshot, bool)
+}
+
+func (f *fakeCommandRunner) LookPath(command string) (string, error) {
+	if f.lookPath != nil {
+		return f.lookPath(command)
+	}
+	if command == "" {
+		return "", errors.New("not implemented")
+	}
+	return command, nil
 }
 
 func (f *fakeCommandRunner) Start(ctx context.Context, commandID, label, command string, args ...string) (string, error) {
@@ -406,6 +456,10 @@ func (f *fakeCommandRunner) Start(ctx context.Context, commandID, label, command
 	return "", errors.New("not implemented")
 }
 
+func (f *fakeCommandRunner) StartWithInput(ctx context.Context, commandID, label, _ string, command string, args ...string) (string, error) {
+	return f.Start(ctx, commandID, label, command, args...)
+}
+
 func (f *fakeCommandRunner) Execute(ctx context.Context, commandID, label, command string, args ...string) (dto.CommandExecutionSnapshot, error) {
 	if f.execute != nil {
 		return f.execute(ctx, commandID, label, command, args...)
@@ -413,39 +467,13 @@ func (f *fakeCommandRunner) Execute(ctx context.Context, commandID, label, comma
 	return dto.CommandExecutionSnapshot{}, errors.New("not implemented")
 }
 
+func (f *fakeCommandRunner) ExecuteWithInput(ctx context.Context, commandID, label, _ string, command string, args ...string) (dto.CommandExecutionSnapshot, error) {
+	return f.Execute(ctx, commandID, label, command, args...)
+}
+
 func (f *fakeCommandRunner) GetSnapshot(executionID string) (dto.CommandExecutionSnapshot, bool) {
 	if f.getSnapshot != nil {
 		return f.getSnapshot(executionID)
 	}
 	return dto.CommandExecutionSnapshot{}, false
-}
-
-// mockExecCmd implements filesystem.ExecCmd for testing
-type mockExecCmd struct {
-	output   string
-	exitCode int
-	err      error
-}
-
-func (m *mockExecCmd) CombinedOutput() ([]byte, error) {
-	if m.err != nil {
-		return nil, m.err
-	}
-	return []byte(m.output), nil
-}
-
-func (m *mockExecCmd) StdoutPipe() (io.ReadCloser, error) {
-	return nil, errors.New("not implemented in mock")
-}
-
-func (m *mockExecCmd) StderrPipe() (io.ReadCloser, error) {
-	return nil, errors.New("not implemented in mock")
-}
-
-func (m *mockExecCmd) Start() error {
-	return nil
-}
-
-func (m *mockExecCmd) Wait() error {
-	return m.err
 }

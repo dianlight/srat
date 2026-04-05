@@ -2,13 +2,10 @@ package filesystem_test
 
 import (
 	"context"
-	"io"
-	"strings"
 	"testing"
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service/filesystem"
-	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
 	"gitlab.com/tozd/go/errors"
 )
@@ -30,22 +27,12 @@ func (suite *Ext4AdapterTestSuite) SetupTest() {
 	suite.adapter = filesystem.NewExt4Adapter()
 	suite.Require().NotNil(suite.adapter, "Ext4Adapter should be initialized")
 
-	// Mock exec operations for testing
-	controller := mock.NewMockController(suite.T())
-	execMock := mock.Mock[filesystem.ExecCmd](controller)
-	mock.When(execMock.StdoutPipe()).ThenReturn(io.NopCloser(strings.NewReader("")), nil)
-	mock.When(execMock.StderrPipe()).ThenReturn(io.NopCloser(strings.NewReader("")), nil)
-	mock.When(execMock.Start()).ThenReturn(nil)
-	mock.When(execMock.Wait()).ThenReturn(nil)
 	suite.cleanExec = suite.adapter.SetExecOpsForTesting(
 		func(cmd string) (string, error) {
 			if cmd != "" {
 				return cmd, nil
 			}
 			return "", errors.New("command not found")
-		},
-		func(ctx context.Context, cmd string, args ...string) filesystem.ExecCmd {
-			return execMock
 		},
 	)
 

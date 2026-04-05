@@ -75,10 +75,7 @@ type FilesystemAdapter interface {
 		unmountFn func(target string, force, lazy bool) error,
 	) (reset func())
 
-	SetExecOpsForTesting(
-		lookPath func(string) (string, error),
-		command func(ctx context.Context, cmd string, args ...string) ExecCmd,
-	) (reset func())
+	SetExecOpsForTesting(lookPath func(string) (string, error)) (reset func())
 
 	SetGetFilesystemsForTesting(getFilesystems func() ([]string, error)) (reset func())
 }

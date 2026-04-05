@@ -8,6 +8,12 @@ const (
 	CommandOutputChannelStderr CommandOutputChannel = "stderr"
 )
 
+// CommandExecutionNotification is the typed payload contract for command
+// lifecycle notifications emitted by the shared executor.
+type CommandExecutionNotification interface {
+	isCommandExecutionNotification()
+}
+
 // CommandStartedNotification announces the start of a command execution.
 type CommandStartedNotification struct {
 	ExecutionID string   `json:"execution_id"`
@@ -18,6 +24,8 @@ type CommandStartedNotification struct {
 	StartedAt   int64    `json:"started_at"`
 }
 
+func (CommandStartedNotification) isCommandExecutionNotification() {}
+
 // CommandOutputNotification carries one output line from an execution stream.
 type CommandOutputNotification struct {
 	ExecutionID string               `json:"execution_id"`
@@ -26,6 +34,8 @@ type CommandOutputNotification struct {
 	Line        string               `json:"line"`
 	Timestamp   int64                `json:"timestamp"`
 }
+
+func (CommandOutputNotification) isCommandExecutionNotification() {}
 
 // CommandTerminatedNotification announces command completion with final status.
 type CommandTerminatedNotification struct {
@@ -36,6 +46,8 @@ type CommandTerminatedNotification struct {
 	FinishedAt  int64  `json:"finished_at"`
 	Error       string `json:"error,omitempty"`
 }
+
+func (CommandTerminatedNotification) isCommandExecutionNotification() {}
 
 // CommandOutputLineSnapshot stores one buffered output line for an execution.
 type CommandOutputLineSnapshot struct {

@@ -3,12 +3,9 @@ package filesystem_test
 import (
 	"context"
 	"errors"
-	"io"
-	"strings"
 	"testing"
 
 	"github.com/dianlight/srat/service/filesystem"
-	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -30,21 +27,12 @@ func (suite *BtrfsAdapterTestSuite) SetupTest() {
 	suite.adapter = filesystem.NewBtrfsAdapter()
 	suite.Require().NotNil(suite.adapter)
 
-	controller := mock.NewMockController(suite.T())
-	execMock := mock.Mock[filesystem.ExecCmd](controller)
-	mock.When(execMock.StdoutPipe()).ThenReturn(io.NopCloser(strings.NewReader("")), nil)
-	mock.When(execMock.StderrPipe()).ThenReturn(io.NopCloser(strings.NewReader("")), nil)
-	mock.When(execMock.Start()).ThenReturn(nil)
-	mock.When(execMock.Wait()).ThenReturn(nil)
 	suite.cleanExec = suite.adapter.SetExecOpsForTesting(
 		func(cmd string) (string, error) {
 			if cmd != "" {
 				return cmd, nil
 			}
 			return "", errors.New("command not found")
-		},
-		func(ctx context.Context, cmd string, args ...string) filesystem.ExecCmd {
-			return execMock
 		},
 	)
 	suite.cleanGetFs = suite.adapter.SetGetFilesystemsForTesting(func() ([]string, error) {

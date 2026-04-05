@@ -20,6 +20,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/homeassistant/mount"
+	"github.com/dianlight/srat/internal/commandexec"
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/srat/tempio"
 	"github.com/dianlight/srat/templates"
@@ -131,7 +132,7 @@ type ServerService struct {
 	dbomConv         converter.DtoToDbomConverterImpl
 	hdidle_service   HDIdleServiceInterface
 	eventBus         events.EventBusInterface
-	commandRunner    CommandExecutionServiceInterface
+	commandRunner    commandexec.Executor
 	status           dto.ServerProcessStatus
 	internalServices []ServerProcessStatus
 }
@@ -149,7 +150,7 @@ type ServerServiceParams struct {
 	Mount_client      mount.ClientWithResponsesInterface `optional:"true"`
 	Hdidle_service    HDIdleServiceInterface
 	EventBus          events.EventBusInterface
-	CommandRunner     CommandExecutionServiceInterface
+	CommandRunner     commandexec.Executor
 	InternalProcesses []ServerProcessStatus `group:"internal_services"`
 }
 
@@ -403,8 +404,8 @@ func (self *ServerService) CreateSambaConfigStream() (data *[]byte, err errors.E
 	config_2 := config.ConfigToMap()
 
 	// Add Samba version information to the template context
-	sambaVersion, _ := osutil.GetSambaVersion()
-	isSambaVersionSufficient, _ := osutil.IsSambaVersionSufficient()
+	sambaVersion, _ := unixsamba.GetSambaVersion()
+	isSambaVersionSufficient, _ := unixsamba.IsSambaVersionSufficient()
 	(*config_2)["samba_version"] = sambaVersion
 	(*config_2)["samba_version_sufficient"] = isSambaVersionSufficient
 

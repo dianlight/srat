@@ -246,6 +246,10 @@ type EventBusInterface interface {
 	// Filesystem task events
 	EmitFilesystemTask(event FilesystemTaskEvent)
 	OnFilesystemTask(handler func(context.Context, FilesystemTaskEvent) errors.E) func()
+
+	// Command execution lifecycle events
+	EmitCommandExecution(event CommandExecutionEvent)
+	OnCommandExecution(handler func(context.Context, CommandExecutionEvent) errors.E) func()
 }
 
 // EventBus implements EventBusInterface using maniartech/signals SyncSignal
@@ -253,40 +257,42 @@ type EventBus struct {
 	ctx context.Context
 
 	// Synchronous signals (no goroutine dispatch) for deterministic ordering & error management
-	disk           signals.SyncSignal[DiskEvent]
-	partition      signals.SyncSignal[PartitionEvent]
-	share          signals.SyncSignal[ShareEvent]
-	mountPoint     signals.SyncSignal[MountPointEvent]
-	user           signals.SyncSignal[UserEvent]
-	setting        signals.SyncSignal[SettingEvent]
-	appConfig      signals.SyncSignal[AppConfigEvent]
-	samba          signals.SyncSignal[ServerProcessEvent]
-	volume         signals.SyncSignal[VolumeEvent]
-	dirtyData      signals.SyncSignal[DirtyDataEvent]
-	homeAssistant  signals.SyncSignal[HomeAssistantEvent]
-	smart          signals.SyncSignal[SmartEvent]
-	power          signals.SyncSignal[PowerEvent]
-	filesystemTask signals.SyncSignal[FilesystemTaskEvent]
+	disk             signals.SyncSignal[DiskEvent]
+	partition        signals.SyncSignal[PartitionEvent]
+	share            signals.SyncSignal[ShareEvent]
+	mountPoint       signals.SyncSignal[MountPointEvent]
+	user             signals.SyncSignal[UserEvent]
+	setting          signals.SyncSignal[SettingEvent]
+	appConfig        signals.SyncSignal[AppConfigEvent]
+	samba            signals.SyncSignal[ServerProcessEvent]
+	volume           signals.SyncSignal[VolumeEvent]
+	dirtyData        signals.SyncSignal[DirtyDataEvent]
+	homeAssistant    signals.SyncSignal[HomeAssistantEvent]
+	smart            signals.SyncSignal[SmartEvent]
+	power            signals.SyncSignal[PowerEvent]
+	filesystemTask   signals.SyncSignal[FilesystemTaskEvent]
+	commandExecution signals.SyncSignal[CommandExecutionEvent]
 }
 
 // NewEventBus creates a new EventBus instance
 func NewEventBus(ctx context.Context) EventBusInterface {
 	return &EventBus{
-		ctx:            ctx,
-		disk:           *signals.NewSync[DiskEvent](),
-		partition:      *signals.NewSync[PartitionEvent](),
-		share:          *signals.NewSync[ShareEvent](),
-		mountPoint:     *signals.NewSync[MountPointEvent](),
-		user:           *signals.NewSync[UserEvent](),
-		setting:        *signals.NewSync[SettingEvent](),
-		appConfig:      *signals.NewSync[AppConfigEvent](),
-		samba:          *signals.NewSync[ServerProcessEvent](),
-		volume:         *signals.NewSync[VolumeEvent](),
-		dirtyData:      *signals.NewSync[DirtyDataEvent](),
-		homeAssistant:  *signals.NewSync[HomeAssistantEvent](),
-		smart:          *signals.NewSync[SmartEvent](),
-		power:          *signals.NewSync[PowerEvent](),
-		filesystemTask: *signals.NewSync[FilesystemTaskEvent](),
+		ctx:              ctx,
+		disk:             *signals.NewSync[DiskEvent](),
+		partition:        *signals.NewSync[PartitionEvent](),
+		share:            *signals.NewSync[ShareEvent](),
+		mountPoint:       *signals.NewSync[MountPointEvent](),
+		user:             *signals.NewSync[UserEvent](),
+		setting:          *signals.NewSync[SettingEvent](),
+		appConfig:        *signals.NewSync[AppConfigEvent](),
+		samba:            *signals.NewSync[ServerProcessEvent](),
+		volume:           *signals.NewSync[VolumeEvent](),
+		dirtyData:        *signals.NewSync[DirtyDataEvent](),
+		homeAssistant:    *signals.NewSync[HomeAssistantEvent](),
+		smart:            *signals.NewSync[SmartEvent](),
+		power:            *signals.NewSync[PowerEvent](),
+		filesystemTask:   *signals.NewSync[FilesystemTaskEvent](),
+		commandExecution: *signals.NewSync[CommandExecutionEvent](),
 	}
 }
 
@@ -464,4 +470,13 @@ func (eb *EventBus) EmitFilesystemTask(event FilesystemTaskEvent) {
 
 func (eb *EventBus) OnFilesystemTask(handler func(context.Context, FilesystemTaskEvent) errors.E) func() {
 	return onEvent(eb.filesystemTask, "FilesystemTask", handler)
+}
+
+// Command execution lifecycle event methods
+func (eb *EventBus) EmitCommandExecution(event CommandExecutionEvent) {
+	_ = emitEvent(eb.commandExecution, eb.ctx, event)
+}
+
+func (eb *EventBus) OnCommandExecution(handler func(context.Context, CommandExecutionEvent) errors.E) func() {
+	return onEvent(eb.commandExecution, "CommandExecution", handler)
 }

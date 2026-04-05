@@ -1,4 +1,4 @@
-package service
+package commandexec
 
 import (
 	"bufio"
@@ -6,36 +6,57 @@ import (
 	"errors"
 	"io"
 	"os/exec"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/events"
 	"github.com/google/uuid"
 )
 
-const commandExecutionBufferSize = 500
+const bufferSize = 500
 
-type CommandExecutionServiceInterface interface {
+// Executor defines the shared backend contract for starting commands, collecting
+// snapshots, and emitting lifecycle notifications through the shared event bus.
+type Executor interface {
+	LookPath(command string) (string, error)
 	Start(ctx context.Context, commandID, label, command string, args ...string) (string, error)
+	StartWithInput(ctx context.Context, commandID, label, stdinContent, command string, args ...string) (string, error)
 	Execute(ctx context.Context, commandID, label, command string, args ...string) (dto.CommandExecutionSnapshot, error)
+	ExecuteWithInput(ctx context.Context, commandID, label, stdinContent, command string, args ...string) (dto.CommandExecutionSnapshot, error)
 	GetSnapshot(executionID string) (dto.CommandExecutionSnapshot, bool)
 }
 
-type CommandExecutionService struct {
-	broadcaster BroadcasterServiceInterface
+// Service is the default in-memory implementation of `Executor`.
+type Service struct {
+	eventBus events.EventBusInterface
 
 	mu        sync.RWMutex
 	snapshots map[string]dto.CommandExecutionSnapshot
 }
 
-func NewCommandExecutionService(broadcaster BroadcasterServiceInterface) CommandExecutionServiceInterface {
-	return &CommandExecutionService{
-		broadcaster: broadcaster,
-		snapshots:   make(map[string]dto.CommandExecutionSnapshot),
+// NewCommandExecutor is the FX-friendly constructor for the shared command executor.
+func NewCommandExecutor(eventBus events.EventBusInterface) Executor {
+	return &Service{
+		eventBus:  eventBus,
+		snapshots: make(map[string]dto.CommandExecutionSnapshot),
 	}
 }
 
-func (s *CommandExecutionService) Start(ctx context.Context, commandID, label, command string, args ...string) (string, error) {
+func (s *Service) LookPath(command string) (string, error) {
+	command = strings.TrimSpace(command)
+	if command == "" {
+		return "", errors.New("command is empty")
+	}
+	return exec.LookPath(command)
+}
+
+func (s *Service) Start(ctx context.Context, commandID, label, command string, args ...string) (string, error) {
+	return s.StartWithInput(ctx, commandID, label, "", command, args...)
+}
+
+func (s *Service) StartWithInput(ctx context.Context, commandID, label, stdinContent, command string, args ...string) (string, error) {
 	executionID := uuid.NewString()
 	startedAt := time.Now().UnixMilli()
 
@@ -47,24 +68,26 @@ func (s *CommandExecutionService) Start(ctx context.Context, commandID, label, c
 		Args:        append([]string(nil), args...),
 		StartedAt:   startedAt,
 		Running:     true,
-		Lines:       make([]dto.CommandOutputLineSnapshot, 0, commandExecutionBufferSize),
+		Lines:       make([]dto.CommandOutputLineSnapshot, 0, bufferSize),
 	}
 
 	s.mu.Lock()
 	s.snapshots[executionID] = snapshot
 	s.mu.Unlock()
 
-	started := dto.CommandStartedNotification{
+	s.emitCommandEvent(events.EventTypes.START, dto.CommandStartedNotification{
 		ExecutionID: executionID,
 		CommandID:   commandID,
 		Label:       label,
 		Command:     command,
 		Args:        append([]string(nil), args...),
 		StartedAt:   startedAt,
-	}
-	s.broadcaster.BroadcastMessage(started)
+	})
 
 	cmd := exec.CommandContext(ctx, command, args...)
+	if stdinContent != "" {
+		cmd.Stdin = strings.NewReader(stdinContent)
+	}
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
 		s.terminateWithError(executionID, commandID, -1, err.Error())
@@ -102,12 +125,13 @@ func (s *CommandExecutionService) Start(ctx context.Context, commandID, label, c
 				exitCode = exitErr.ExitCode()
 			}
 		}
+		finishedAt := time.Now().UnixMilli()
 
 		s.mu.Lock()
 		snapshot, ok := s.snapshots[executionID]
 		if ok {
 			snapshot.Running = false
-			snapshot.FinishedAt = time.Now().UnixMilli()
+			snapshot.FinishedAt = finishedAt
 			snapshot.ExitCode = exitCode
 			snapshot.Success = success
 			snapshot.Error = errMsg
@@ -115,12 +139,16 @@ func (s *CommandExecutionService) Start(ctx context.Context, commandID, label, c
 		}
 		s.mu.Unlock()
 
-		s.broadcaster.BroadcastMessage(dto.CommandTerminatedNotification{
+		eventType := events.EventTypes.STOP
+		if !success {
+			eventType = events.EventTypes.ERROR
+		}
+		s.emitCommandEvent(eventType, dto.CommandTerminatedNotification{
 			ExecutionID: executionID,
 			CommandID:   commandID,
 			ExitCode:    exitCode,
 			Success:     success,
-			FinishedAt:  time.Now().UnixMilli(),
+			FinishedAt:  finishedAt,
 			Error:       errMsg,
 		})
 	}()
@@ -128,8 +156,12 @@ func (s *CommandExecutionService) Start(ctx context.Context, commandID, label, c
 	return executionID, nil
 }
 
-func (s *CommandExecutionService) Execute(ctx context.Context, commandID, label, command string, args ...string) (dto.CommandExecutionSnapshot, error) {
-	executionID, err := s.Start(ctx, commandID, label, command, args...)
+func (s *Service) Execute(ctx context.Context, commandID, label, command string, args ...string) (dto.CommandExecutionSnapshot, error) {
+	return s.ExecuteWithInput(ctx, commandID, label, "", command, args...)
+}
+
+func (s *Service) ExecuteWithInput(ctx context.Context, commandID, label, stdinContent, command string, args ...string) (dto.CommandExecutionSnapshot, error) {
+	executionID, err := s.StartWithInput(ctx, commandID, label, stdinContent, command, args...)
 	if err != nil {
 		return dto.CommandExecutionSnapshot{}, err
 	}
@@ -159,7 +191,7 @@ func (s *CommandExecutionService) Execute(ctx context.Context, commandID, label,
 	}
 }
 
-func (s *CommandExecutionService) GetSnapshot(executionID string) (dto.CommandExecutionSnapshot, bool) {
+func (s *Service) GetSnapshot(executionID string) (dto.CommandExecutionSnapshot, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -173,7 +205,7 @@ func (s *CommandExecutionService) GetSnapshot(executionID string) (dto.CommandEx
 	return copySnapshot, true
 }
 
-func (s *CommandExecutionService) scanPipe(
+func (s *Service) scanPipe(
 	ctx context.Context,
 	executionID, commandID string,
 	channel dto.CommandOutputChannel,
@@ -199,14 +231,14 @@ func (s *CommandExecutionService) scanPipe(
 				Line:      line,
 				Timestamp: ts,
 			})
-			if len(snapshot.Lines) > commandExecutionBufferSize {
-				snapshot.Lines = append([]dto.CommandOutputLineSnapshot(nil), snapshot.Lines[len(snapshot.Lines)-commandExecutionBufferSize:]...)
+			if len(snapshot.Lines) > bufferSize {
+				snapshot.Lines = append([]dto.CommandOutputLineSnapshot(nil), snapshot.Lines[len(snapshot.Lines)-bufferSize:]...)
 			}
 			s.snapshots[executionID] = snapshot
 		}
 		s.mu.Unlock()
 
-		s.broadcaster.BroadcastMessage(dto.CommandOutputNotification{
+		s.emitCommandEvent(events.EventTypes.UPDATE, dto.CommandOutputNotification{
 			ExecutionID: executionID,
 			CommandID:   commandID,
 			Channel:     channel,
@@ -216,7 +248,9 @@ func (s *CommandExecutionService) scanPipe(
 	}
 }
 
-func (s *CommandExecutionService) terminateWithError(executionID, commandID string, exitCode int, errMsg string) {
+func (s *Service) terminateWithError(executionID, commandID string, exitCode int, errMsg string) {
+	finishedAt := time.Now().UnixMilli()
+
 	s.mu.Lock()
 	snapshot, ok := s.snapshots[executionID]
 	if ok {
@@ -224,17 +258,56 @@ func (s *CommandExecutionService) terminateWithError(executionID, commandID stri
 		snapshot.Success = false
 		snapshot.ExitCode = exitCode
 		snapshot.Error = errMsg
-		snapshot.FinishedAt = time.Now().UnixMilli()
+		snapshot.FinishedAt = finishedAt
 		s.snapshots[executionID] = snapshot
 	}
 	s.mu.Unlock()
 
-	s.broadcaster.BroadcastMessage(dto.CommandTerminatedNotification{
+	s.emitCommandEvent(events.EventTypes.ERROR, dto.CommandTerminatedNotification{
 		ExecutionID: executionID,
 		CommandID:   commandID,
 		ExitCode:    exitCode,
 		Success:     false,
-		FinishedAt:  time.Now().UnixMilli(),
+		FinishedAt:  finishedAt,
 		Error:       errMsg,
 	})
 }
+
+// JoinChannelOutput joins buffered command output lines, optionally filtering by channel.
+func JoinChannelOutput(lines []dto.CommandOutputLineSnapshot, channels ...dto.CommandOutputChannel) string {
+	if len(lines) == 0 {
+		return ""
+	}
+
+	allowed := make(map[dto.CommandOutputChannel]struct{}, len(channels))
+	for _, channel := range channels {
+		allowed[channel] = struct{}{}
+	}
+
+	var builder strings.Builder
+	for _, line := range lines {
+		if len(allowed) > 0 {
+			if _, ok := allowed[line.Channel]; !ok {
+				continue
+			}
+		}
+		if builder.Len() > 0 {
+			builder.WriteByte('\n')
+		}
+		builder.WriteString(line.Line)
+	}
+
+	return strings.TrimSpace(builder.String())
+}
+
+func (s *Service) emitCommandEvent(eventType events.EventType, message dto.CommandExecutionNotification) {
+	if s == nil || s.eventBus == nil {
+		return
+	}
+	s.eventBus.EmitCommandExecution(events.CommandExecutionEvent{
+		Event:   events.Event{Type: eventType},
+		Message: message,
+	})
+}
+
+var _ Executor = (*Service)(nil)

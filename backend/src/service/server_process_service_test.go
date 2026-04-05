@@ -21,9 +21,11 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/homeassistant/mount"
+	"github.com/dianlight/srat/internal/commandexec"
 	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/dianlight/srat/internal/osutil"
 	service "github.com/dianlight/srat/service"
+	"github.com/dianlight/srat/unixsamba"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/sergi/go-diff/diffmatchpatch"
@@ -168,7 +170,7 @@ func (suite *ServerProcessServiceSuite) SetupTest() {
 			mock.Mock[service.ShareServiceInterface],
 			service.NewUserService,
 			mock.Mock[service.BroadcasterServiceInterface],
-			mock.Mock[service.CommandExecutionServiceInterface],
+			mock.Mock[commandexec.Executor],
 			mock.Mock[service.DirtyDataServiceInterface],
 			//mock.Mock[service.SupervisorServiceInterface],
 			//mock.Mock[repository.ExportedShareRepositoryInterface],
@@ -577,7 +579,7 @@ func (suite *ServerProcessServiceSuite) TestCreateConfigStream_AllVersionAndMode
 	for _, v := range version {
 		for _, variant := range variants {
 			suite.Run(fmt.Sprintf("SambaVersion_%s_Variant_%v", v.String(), variant), func() {
-				defer osutil.MockSambaVersion(v.String())()
+				defer unixsamba.MockSambaVersion(v.String())()
 				//suite.setupCommonMocks()
 				//suite.T().Logf("Compatibility mode: %v, Multi-channel: %v, Disable IPv6: %v", slices.Contains(variant, "cmp_mode"), slices.Contains(variant, "mch"), slices.Contains(variant, "ipv4"))
 				mock.When(suite.setting_service.Load()).ThenReturn(&dto.Settings{
@@ -624,7 +626,7 @@ func (suite *ServerProcessServiceSuite) TestCreateConfigStream_AllVersionAndMode
 
 // Base test with Samba 4.23 (latest modern version)
 func (suite *ServerProcessServiceSuite) TestCreateConfigStream() {
-	defer osutil.MockSambaVersion("4.23.0")()
+	defer unixsamba.MockSambaVersion("4.23.0")()
 	suite.setupCommonMocks()
 
 	stream, errE := suite.serverService.CreateSambaConfigStream()
@@ -646,7 +648,7 @@ func (suite *ServerProcessServiceSuite) TestCreateConfigStream() {
 
 // Base test with Samba 4.23 (latest modern version)
 func (suite *ServerProcessServiceSuite) TestCreateConfigStreamIPv4() {
-	defer osutil.MockSambaVersion("4.23.0")()
+	defer unixsamba.MockSambaVersion("4.23.0")()
 	suite.setupCommonMocks()
 
 	targetServerService := suite.serverService
@@ -673,7 +675,7 @@ func (suite *ServerProcessServiceSuite) TestCreateConfigStreamIPv4() {
 
 // Test with Samba 4.21.0 - earliest supported version
 func (suite *ServerProcessServiceSuite) TestCreateConfigStream_Samba421() {
-	defer osutil.MockSambaVersion("4.21.0")()
+	defer unixsamba.MockSambaVersion("4.21.0")()
 	suite.setupCommonMocks()
 
 	stream, errE := suite.serverService.CreateSambaConfigStream()
@@ -690,7 +692,7 @@ func (suite *ServerProcessServiceSuite) TestCreateConfigStream_Samba421() {
 
 // Test with Samba 4.22.0 - middle supported version
 func (suite *ServerProcessServiceSuite) TestCreateConfigStream_Samba422() {
-	defer osutil.MockSambaVersion("4.22.0")()
+	defer unixsamba.MockSambaVersion("4.22.0")()
 	suite.setupCommonMocks()
 
 	stream, errE := suite.serverService.CreateSambaConfigStream()
@@ -707,7 +709,7 @@ func (suite *ServerProcessServiceSuite) TestCreateConfigStream_Samba422() {
 
 // Test with Samba 4.23.0 - latest modern version with full features
 func (suite *ServerProcessServiceSuite) TestCreateConfigStream_Samba423() {
-	defer osutil.MockSambaVersion("4.23.0")()
+	defer unixsamba.MockSambaVersion("4.23.0")()
 	suite.setupCommonMocks()
 
 	stream, errE := suite.serverService.CreateSambaConfigStream()
@@ -724,7 +726,7 @@ func (suite *ServerProcessServiceSuite) TestCreateConfigStream_Samba423() {
 
 // Test with Samba 4.24.0 - future version
 func (suite *ServerProcessServiceSuite) TestCreateConfigStream_Samba424() {
-	defer osutil.MockSambaVersion("4.24.0")()
+	defer unixsamba.MockSambaVersion("4.24.0")()
 	suite.setupCommonMocks()
 
 	stream, errE := suite.serverService.CreateSambaConfigStream()
@@ -741,7 +743,7 @@ func (suite *ServerProcessServiceSuite) TestCreateConfigStream_Samba424() {
 
 // Test with Samba 5.0.0 - major version bump (hypothetical future)
 func (suite *ServerProcessServiceSuite) TestCreateConfigStream_Samba500() {
-	defer osutil.MockSambaVersion("5.0.0")()
+	defer unixsamba.MockSambaVersion("5.0.0")()
 	suite.setupCommonMocks()
 
 	stream, errE := suite.serverService.CreateSambaConfigStream()
@@ -756,7 +758,7 @@ func (suite *ServerProcessServiceSuite) TestCreateConfigStream_Samba500() {
 
 // Test with unparseable version string (should fallback gracefully)
 func (suite *ServerProcessServiceSuite) TestCreateConfigStream_InvalidVersion() {
-	defer osutil.MockSambaVersion("invalid-version-string")()
+	defer unixsamba.MockSambaVersion("invalid-version-string")()
 	suite.setupCommonMocks()
 
 	stream, errE := suite.serverService.CreateSambaConfigStream()
@@ -772,7 +774,7 @@ func (suite *ServerProcessServiceSuite) TestCreateConfigStream_InvalidVersion() 
 
 // Test with empty version string (edge case)
 func (suite *ServerProcessServiceSuite) TestCreateConfigStream_EmptyVersion() {
-	defer osutil.MockSambaVersion("")()
+	defer unixsamba.MockSambaVersion("")()
 	suite.setupCommonMocks()
 
 	stream, errE := suite.serverService.CreateSambaConfigStream()
@@ -786,7 +788,7 @@ func (suite *ServerProcessServiceSuite) TestCreateConfigStream_EmptyVersion() {
 // Test version comparison logic for boundary conditions
 func (suite *ServerProcessServiceSuite) TestCreateConfigStream_VersionBoundary_4_21_9() {
 	// Test version 4.21.9 (should still be 4.21 behavior)
-	defer osutil.MockSambaVersion("4.21.9")()
+	defer unixsamba.MockSambaVersion("4.21.9")()
 	suite.setupCommonMocks()
 
 	stream, errE := suite.serverService.CreateSambaConfigStream()
@@ -799,7 +801,7 @@ func (suite *ServerProcessServiceSuite) TestCreateConfigStream_VersionBoundary_4
 // Test version comparison logic for boundary conditions
 func (suite *ServerProcessServiceSuite) TestCreateConfigStream_VersionBoundary_4_22_1() {
 	// Test version 4.22.1 (should be 4.22 behavior)
-	defer osutil.MockSambaVersion("4.22.1")()
+	defer unixsamba.MockSambaVersion("4.22.1")()
 	suite.setupCommonMocks()
 
 	stream, errE := suite.serverService.CreateSambaConfigStream()
@@ -812,7 +814,7 @@ func (suite *ServerProcessServiceSuite) TestCreateConfigStream_VersionBoundary_4
 // Test version comparison logic for boundary conditions
 func (suite *ServerProcessServiceSuite) TestCreateConfigStream_VersionBoundary_4_23_0() {
 	// Test version 4.23.0 (exact match)
-	defer osutil.MockSambaVersion("4.23.0")()
+	defer unixsamba.MockSambaVersion("4.23.0")()
 	suite.setupCommonMocks()
 
 	stream, errE := suite.serverService.CreateSambaConfigStream()
@@ -825,7 +827,7 @@ func (suite *ServerProcessServiceSuite) TestCreateConfigStream_VersionBoundary_4
 // Test version with patch level variations
 // These tests verify that version boundaries are correctly detected
 func (suite *ServerProcessServiceSuite) TestCreateConfigStream_VersionPatchVariations_4_20() {
-	defer osutil.MockSambaVersion("4.20.0")()
+	defer unixsamba.MockSambaVersion("4.20.0")()
 	suite.setupCommonMocks()
 
 	stream, errE := suite.serverService.CreateSambaConfigStream()
@@ -838,7 +840,7 @@ func (suite *ServerProcessServiceSuite) TestCreateConfigStream_VersionPatchVaria
 }
 
 func (suite *ServerProcessServiceSuite) TestCreateConfigStream_VersionPatchVariations_4_21_17() {
-	defer osutil.MockSambaVersion("4.21.17")()
+	defer unixsamba.MockSambaVersion("4.21.17")()
 	suite.setupCommonMocks()
 
 	stream, errE := suite.serverService.CreateSambaConfigStream()
@@ -851,7 +853,7 @@ func (suite *ServerProcessServiceSuite) TestCreateConfigStream_VersionPatchVaria
 }
 
 func (suite *ServerProcessServiceSuite) TestCreateConfigStream_VersionPatchVariations_4_22_10() {
-	defer osutil.MockSambaVersion("4.22.10")()
+	defer unixsamba.MockSambaVersion("4.22.10")()
 	suite.setupCommonMocks()
 
 	stream, errE := suite.serverService.CreateSambaConfigStream()
@@ -864,7 +866,7 @@ func (suite *ServerProcessServiceSuite) TestCreateConfigStream_VersionPatchVaria
 }
 
 func (suite *ServerProcessServiceSuite) TestCreateConfigStream_VersionPatchVariations_4_23_5() {
-	defer osutil.MockSambaVersion("4.23.5")()
+	defer unixsamba.MockSambaVersion("4.23.5")()
 	suite.setupCommonMocks()
 
 	stream, errE := suite.serverService.CreateSambaConfigStream()
@@ -906,7 +908,7 @@ func (suite *ServerProcessServiceSuite) TestCreateSambaUsersMapStream_GroupsAlia
 }
 
 func (suite *ServerProcessServiceSuite) TestCreateConfigStream_VersionPatchVariations_4_24_0() {
-	defer osutil.MockSambaVersion("4.24.0")()
+	defer unixsamba.MockSambaVersion("4.24.0")()
 	suite.setupCommonMocks()
 
 	stream, errE := suite.serverService.CreateSambaConfigStream()
@@ -921,7 +923,7 @@ func (suite *ServerProcessServiceSuite) TestCreateConfigStream_VersionPatchVaria
 // TestCreateConfigStream_Samba423_QUICEnabled tests that QUIC transport and TLS settings
 // are included when SMBoverQUIC is enabled on Samba 4.23+.
 func (suite *ServerProcessServiceSuite) TestCreateConfigStream_Samba423_QUICEnabled() {
-	defer osutil.MockSambaVersion("4.23.0")()
+	defer unixsamba.MockSambaVersion("4.23.0")()
 
 	mock.When(suite.setting_service.Load()).ThenReturn(&dto.Settings{
 		Hostname:          "test-host",
@@ -954,7 +956,7 @@ func (suite *ServerProcessServiceSuite) TestCreateConfigStream_Samba423_QUICEnab
 // TestCreateConfigStream_Samba421_QUICEnabled tests that QUIC is NOT activated on
 // Samba versions below 4.23 even when SMBoverQUIC is enabled, and a warning is emitted.
 func (suite *ServerProcessServiceSuite) TestCreateConfigStream_Samba421_QUICEnabled() {
-	defer osutil.MockSambaVersion("4.21.0")()
+	defer unixsamba.MockSambaVersion("4.21.0")()
 
 	mock.When(suite.setting_service.Load()).ThenReturn(&dto.Settings{
 		Hostname:          "test-host",

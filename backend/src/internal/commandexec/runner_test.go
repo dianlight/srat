@@ -1,4 +1,4 @@
-package service_test
+package commandexec
 
 import (
 	"context"
@@ -8,52 +8,53 @@ import (
 	"time"
 
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/server/ws"
-	"github.com/dianlight/srat/service"
+	"github.com/dianlight/srat/events"
 	"github.com/stretchr/testify/suite"
+	"gitlab.com/tozd/go/errors"
 )
 
-type commandExecutionBroadcasterMock struct {
+type commandEventCollector struct {
 	mu       sync.Mutex
 	messages []any
 }
 
-func (m *commandExecutionBroadcasterMock) BroadcastMessage(msg any) any {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.messages = append(m.messages, msg)
-	return msg
+func (c *commandEventCollector) Handle(_ context.Context, event events.CommandExecutionEvent) errors.E {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.messages = append(c.messages, event.Message)
+	return nil
 }
 
-func (m *commandExecutionBroadcasterMock) ProcessWebSocketChannel(_ ws.Sender) {}
-
-func (m *commandExecutionBroadcasterMock) Messages() []any {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	copied := make([]any, len(m.messages))
-	copy(copied, m.messages)
+func (c *commandEventCollector) Messages() []any {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	copied := make([]any, len(c.messages))
+	copy(copied, c.messages)
 	return copied
 }
 
-type CommandExecutionServiceTestSuite struct {
+type CommandExecutorTestSuite struct {
 	suite.Suite
-	service     service.CommandExecutionServiceInterface
-	broadcaster *commandExecutionBroadcasterMock
+	executor  Executor
+	collector *commandEventCollector
 }
 
-func TestCommandExecutionServiceTestSuite(t *testing.T) {
-	suite.Run(t, new(CommandExecutionServiceTestSuite))
+func TestCommandExecutorTestSuite(t *testing.T) {
+	suite.Run(t, new(CommandExecutorTestSuite))
 }
 
-func (suite *CommandExecutionServiceTestSuite) SetupTest() {
-	suite.broadcaster = &commandExecutionBroadcasterMock{}
-	suite.service = service.NewCommandExecutionService(suite.broadcaster)
+func (suite *CommandExecutorTestSuite) SetupTest() {
+	eventBus := events.NewEventBus(context.Background())
+	suite.collector = &commandEventCollector{}
+	unsubscribe := eventBus.OnCommandExecution(suite.collector.Handle)
+	suite.T().Cleanup(unsubscribe)
+	suite.executor = NewCommandExecutor(eventBus)
 }
 
-func (suite *CommandExecutionServiceTestSuite) waitForCompletion(executionID string, timeout time.Duration) dto.CommandExecutionSnapshot {
+func (suite *CommandExecutorTestSuite) waitForCompletion(executionID string, timeout time.Duration) dto.CommandExecutionSnapshot {
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
-		snapshot, ok := suite.service.GetSnapshot(executionID)
+		snapshot, ok := suite.executor.GetSnapshot(executionID)
 		if ok && !snapshot.Running {
 			return snapshot
 		}
@@ -63,8 +64,8 @@ func (suite *CommandExecutionServiceTestSuite) waitForCompletion(executionID str
 	return dto.CommandExecutionSnapshot{}
 }
 
-func (suite *CommandExecutionServiceTestSuite) TestStart_StreamsStdoutAndStderrAndStoresSnapshot() {
-	executionID, err := suite.service.Start(
+func (suite *CommandExecutorTestSuite) TestStart_StreamsStdoutAndStderrAndStoresSnapshot() {
+	executionID, err := suite.executor.Start(
 		context.Background(),
 		"test-command",
 		"Test Command",
@@ -83,7 +84,7 @@ func (suite *CommandExecutionServiceTestSuite) TestStart_StreamsStdoutAndStderrA
 	suite.Require().Contains(channels, dto.CommandOutputChannelStdout)
 	suite.Require().Contains(channels, dto.CommandOutputChannelStderr)
 
-	messages := suite.broadcaster.Messages()
+	messages := suite.collector.Messages()
 	suite.Require().NotEmpty(messages)
 
 	var started bool
@@ -105,8 +106,8 @@ func (suite *CommandExecutionServiceTestSuite) TestStart_StreamsStdoutAndStderrA
 	suite.Require().Contains(outputChannels, dto.CommandOutputChannelStderr)
 }
 
-func (suite *CommandExecutionServiceTestSuite) TestStart_TrimsSnapshotTo500Lines() {
-	executionID, err := suite.service.Start(
+func (suite *CommandExecutorTestSuite) TestStart_TrimsSnapshotTo500Lines() {
+	executionID, err := suite.executor.Start(
 		context.Background(),
 		"trim-buffer",
 		"Trim Buffer",
@@ -123,8 +124,8 @@ func (suite *CommandExecutionServiceTestSuite) TestStart_TrimsSnapshotTo500Lines
 	suite.Require().Equal("line-520", snapshot.Lines[len(snapshot.Lines)-1].Line)
 }
 
-func (suite *CommandExecutionServiceTestSuite) TestStart_ReturnsErrorWhenCommandIsMissing() {
-	executionID, err := suite.service.Start(
+func (suite *CommandExecutorTestSuite) TestStart_ReturnsErrorWhenCommandIsMissing() {
+	executionID, err := suite.executor.Start(
 		context.Background(),
 		"missing-command",
 		"Missing",
@@ -133,7 +134,7 @@ func (suite *CommandExecutionServiceTestSuite) TestStart_ReturnsErrorWhenCommand
 	suite.Require().Error(err)
 	suite.Require().Empty(executionID)
 
-	messages := suite.broadcaster.Messages()
+	messages := suite.collector.Messages()
 	suite.Require().NotEmpty(messages)
 
 	last, ok := messages[len(messages)-1].(dto.CommandTerminatedNotification)
@@ -143,8 +144,8 @@ func (suite *CommandExecutionServiceTestSuite) TestStart_ReturnsErrorWhenCommand
 	suite.Require().NotEmpty(last.Error)
 }
 
-func (suite *CommandExecutionServiceTestSuite) TestExecute_ReturnsCompletedSnapshot() {
-	snapshot, err := suite.service.Execute(
+func (suite *CommandExecutorTestSuite) TestExecute_ReturnsCompletedSnapshot() {
+	snapshot, err := suite.executor.Execute(
 		context.Background(),
 		"execute-sync",
 		"Execute Sync",
@@ -159,8 +160,8 @@ func (suite *CommandExecutionServiceTestSuite) TestExecute_ReturnsCompletedSnaps
 	suite.Require().NotEmpty(snapshot.Lines)
 }
 
-func (suite *CommandExecutionServiceTestSuite) TestExecute_ReturnsErrorOnFailure() {
-	snapshot, err := suite.service.Execute(
+func (suite *CommandExecutorTestSuite) TestExecute_ReturnsErrorOnFailure() {
+	snapshot, err := suite.executor.Execute(
 		context.Background(),
 		"execute-fail",
 		"Execute Fail",
@@ -174,4 +175,19 @@ func (suite *CommandExecutionServiceTestSuite) TestExecute_ReturnsErrorOnFailure
 	suite.Require().Equal(7, snapshot.ExitCode)
 }
 
-var _ service.BroadcasterServiceInterface = (*commandExecutionBroadcasterMock)(nil)
+func (suite *CommandExecutorTestSuite) TestExecuteWithInput_PassesStdinToCommand() {
+	snapshot, err := suite.executor.ExecuteWithInput(
+		context.Background(),
+		"execute-with-input",
+		"Execute With Input",
+		"copilot-input",
+		"sh",
+		"-c",
+		"read value; echo stdin:$value",
+	)
+	suite.Require().NoError(err)
+	suite.Require().False(snapshot.Running)
+	suite.Require().True(snapshot.Success)
+	suite.Require().NotEmpty(snapshot.Lines)
+	suite.Require().Equal("stdin:copilot-input", snapshot.Lines[len(snapshot.Lines)-1].Line)
+}
