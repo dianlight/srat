@@ -62,16 +62,23 @@ If the environment is not ready:
 - **ask the user first** whether they want you to prepare or restart it
 - only after they confirm, use the same setup approach as `test-remote-environment`
 
-### 2. Open or Reuse the Frontend, Then Hand Control to the User
+### 2. Open server log streams for live monitoring
+
+Before handing control to the user, open live log streams for:
+- supervisor logs with the command ` ssh root@192.168.0.68 -t ha supervisor log -f` that shows real-time logs from the supervisor, which may include relevant output from Home Assistant and addons
+- backend and addon logs with the command `ssh root@192.168.0.68 -t ha app log  local_sambanas2 -f` that shows real-time logs from the `local_sambanas2` addon, which is the main addon for SRAT and will include relevant output from the backend and any custom components. Adjust the addon name if needed to match your setup. 
+
+### 3. Open or Reuse the Frontend, Then Hand Control to the User
 
 Open or reuse the frontend at:
 
-```text
+```url
 http://localhost:3080/
 ```
 
 After the page is ready:
 
+- attach the browser tools for monitoring console and network activity
 - confirm that the user can interact with it
 - state that you are now **watching** rather than driving
 - avoid automatic clicks or navigation unless requested
@@ -80,14 +87,14 @@ Good handoff wording:
 
 - `The app is open. Please go ahead with your manual steps; I'll watch the browser and logs for issues.`
 
-### 3. Live Observation Loop
+### 4. Live Observation Loop
 
 While the user performs actions, keep repeating this loop:
 
 1. note the latest user action or reported symptom
 2. inspect the browser for visible changes, warnings, banners, or disconnects
 3. inspect browser console and network activity for JS errors, failed requests, or slow responses
-4. inspect frontend and backend/addon logs for lines that correlate with the last action
+4. inspect supervisor, frontend and backend/addon logs for lines that correlate with the last action
 5. summarize only meaningful findings back to the user
 
 Prefer short, evidence-based updates such as:
@@ -95,7 +102,7 @@ Prefer short, evidence-based updates such as:
 - `I saw a failed `POST /api/shares` request with status 500 right after the save click.`
 - `The browser stayed responsive, but the backend logged a validation error for the same action.`
 
-### 4. Error Handling Decision Point
+### 5. Error Handling Decision Point
 
 When you find an issue — or the user reports a strange effect — pause the session briefly and ask:
 
@@ -112,7 +119,7 @@ If the user says **fix it**:
 - collect the exact evidence first: console error, failed request, stack trace, and the action that triggered it
 - investigate the root cause before editing code
 
-### 5. Autonomous Fix Cycle for Approved Issues
+### 6. Autonomous Fix Cycle for Approved Issues
 
 When the user approves a fix attempt:
 
@@ -126,7 +133,7 @@ When the user approves a fix attempt:
 
 If the retry still shows a problem, return to root-cause investigation instead of stacking guesses.
 
-### 6. User-Initiated Reports During the Session
+### 7. User-Initiated Reports During the Session
 
 At any time, the user may send messages like:
 
@@ -145,7 +152,7 @@ When the report is ambiguous, ask for the minimum needed clarification:
 
 Then correlate that report with the surrounding browser and backend evidence.
 
-### 7. Retry and Continue Watching
+### 8. Retry and Continue Watching
 
 After a fix or after choosing to ignore an issue:
 
@@ -153,7 +160,7 @@ After a fix or after choosing to ignore an issue:
 - keep watching the same signals
 - confirm whether the symptom is gone, changed, or still present
 
-### 8. Wrap Up the Session
+### 9. Wrap Up the Session
 
 At the end, provide a short summary grouped by:
 
