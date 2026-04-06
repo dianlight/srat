@@ -60,6 +60,20 @@ const matchesPartitionDevice = (
   return candidates.has(task.device ?? "");
 };
 
+const extractTaskResultMessage = (task?: FilesystemTask | null) => {
+  const result = task?.result;
+  if (!result || typeof result !== "object") {
+    return "";
+  }
+
+  const maybeResult = result as {
+    Message?: string;
+    message?: string;
+  };
+
+  return (maybeResult.Message ?? maybeResult.message ?? "").trim();
+};
+
 export function FilesystemFormatDialog({
   open,
   partition,
@@ -79,6 +93,8 @@ export function FilesystemFormatDialog({
 
   const lastNotesRef = useRef<string[]>([]);
   const lastMessageRef = useRef<string>("");
+  const lastErrorRef = useRef<string>("");
+  const lastResultMessageRef = useRef<string>("");
 
   const { data: filesystemsData, isFetching: isFilesystemsLoading } =
     useGetApiFilesystemsQuery(undefined, { skip: !open });
@@ -130,6 +146,8 @@ export function FilesystemFormatDialog({
     setMessage("");
     lastNotesRef.current = [];
     lastMessageRef.current = "";
+    lastErrorRef.current = "";
+    lastResultMessageRef.current = "";
 
     if (!partitionId) {
       return;
@@ -207,9 +225,6 @@ export function FilesystemFormatDialog({
     if (task.status) {
       setStatus(task.status);
     }
-    if (task.message) {
-      setMessage(task.message);
-    }
     if (typeof task.progress === "number") {
       setProgress(task.progress);
     }
@@ -234,16 +249,44 @@ export function FilesystemFormatDialog({
     }
 
     const taskMessage = task.message?.trim() ?? "";
-    if (
-      taskMessage &&
-      !taskNotes.includes(taskMessage) &&
-      taskMessage !== lastMessageRef.current
-    ) {
-      setLogs((prev) => [...prev, taskMessage]);
+    const taskError = task.error?.trim() ?? "";
+    const resultMessage = extractTaskResultMessage(task);
+    const preferredMessage =
+      task.status === "failure"
+        ? taskError || taskMessage || resultMessage
+        : taskMessage || resultMessage || taskError;
+
+    if (preferredMessage) {
+      setMessage(preferredMessage);
+    }
+
+    const fallbackMessages = Array.from(
+      new Set(
+        [taskError, taskMessage, resultMessage].filter(
+          (line): line is string => line.length > 0,
+        ),
+      ),
+    ).filter((line) => !taskNotes.includes(line));
+
+    const newFallbackMessages = fallbackMessages.filter(
+      (line) =>
+        line !== lastErrorRef.current &&
+        line !== lastMessageRef.current &&
+        line !== lastResultMessageRef.current,
+    );
+
+    if (newFallbackMessages.length > 0) {
+      setLogs((prev) => [...prev, ...newFallbackMessages]);
     }
 
     if (taskMessage) {
       lastMessageRef.current = taskMessage;
+    }
+    if (taskError) {
+      lastErrorRef.current = taskError;
+    }
+    if (resultMessage) {
+      lastResultMessageRef.current = resultMessage;
     }
   }, [open, task]);
 
@@ -336,6 +379,9 @@ export function FilesystemFormatDialog({
   const clampedProgressValue = Math.min(100, Math.max(0, progressValue));
   const showIndeterminate =
     isRunning && (progressValue === 999 || progressValue <= 0);
+  const currentStatus = task?.status || status;
+  const statusMessage = message.trim();
+  const isCompletedSuccessfully = currentStatus === "success";
   const partitionLabel = decodeEscapeSequence(
     partition?.name || partition?.id || "Selected partition",
   );
@@ -407,11 +453,21 @@ export function FilesystemFormatDialog({
             )}
           </Box>
 
-          {message && (
-            <Typography variant="body2" color="text.secondary">
-              {message}
-            </Typography>
+          {statusMessage && currentStatus === "failure" && (
+            <Alert severity="error">{statusMessage}</Alert>
           )}
+
+          {statusMessage && currentStatus === "success" && (
+            <Alert severity="success">{statusMessage}</Alert>
+          )}
+
+          {statusMessage &&
+            currentStatus !== "failure" &&
+            currentStatus !== "success" && (
+              <Typography variant="body2" color="text.secondary">
+                {statusMessage}
+              </Typography>
+            )}
 
           <TextField
             label="Filesystem type"
@@ -485,25 +541,27 @@ export function FilesystemFormatDialog({
         <Button onClick={onClose} color="secondary" variant="outlined">
           Close
         </Button>
-        <Button
-          onClick={handleFormat}
-          color="error"
-          variant="contained"
-          disabled={
-            isFormatting ||
-            isRunning ||
-            !partition?.id ||
-            filesystemType.trim().length === 0 ||
-            formatCapableFilesystemTypes.length === 0 ||
-            !isSelectedFormatTypeAvailable ||
-            !labelValidation.isValid ||
-            isSupportPending ||
-            isSupportLoading ||
-            !canFormat
-          }
-        >
-          {isRunning ? "Formatting..." : "Format"}
-        </Button>
+        {!isCompletedSuccessfully && (
+          <Button
+            onClick={handleFormat}
+            color="error"
+            variant="contained"
+            disabled={
+              isFormatting ||
+              isRunning ||
+              !partition?.id ||
+              filesystemType.trim().length === 0 ||
+              formatCapableFilesystemTypes.length === 0 ||
+              !isSelectedFormatTypeAvailable ||
+              !labelValidation.isValid ||
+              isSupportPending ||
+              isSupportLoading ||
+              !canFormat
+            }
+          >
+            {isRunning ? "Formatting..." : "Format"}
+          </Button>
+        )}
       </DialogActions>
     </Dialog>
   );

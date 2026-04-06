@@ -624,6 +624,183 @@ describe("Filesystem label/format dialogs", () => {
     );
   });
 
+  it("hides the Format action after a successful format", async () => {
+    const React = await import("react");
+    const { screen } = await import("@testing-library/react");
+    const { sratApi } = await import("../../../../store/sratApi");
+    const { FilesystemFormatDialog } = await import("../FilesystemFormatDialog");
+
+    const partition = {
+      id: "part-format-success-1",
+      name: "success-format",
+      device_path: "/dev/sdj1",
+      fs_type: "ext4",
+      filesystem_info: {
+        support: {
+          canFormat: true,
+        },
+      },
+    };
+
+    await withTestHandlers(
+      [
+        http.get(filesystemsUrl, () =>
+          HttpResponse.json({
+            filesystems: [
+              {
+                name: "Extended Filesystem",
+                type: "ext4",
+                description: "EXT4 Filesystem",
+                support: {
+                  canMount: true,
+                  canFormat: true,
+                  canCheck: true,
+                  canSetLabel: true,
+                  canGetState: true,
+                  isExportable: false,
+                  isCheckReportProgress: false,
+                  isFormatReportProgress: false,
+                },
+              },
+            ],
+            mount_flags: [],
+          }),
+        ),
+      ],
+      async () => {
+        await renderWithProviders(
+          React.createElement(FilesystemFormatDialog as any, {
+            open: true,
+            partition,
+            onClose: () => {},
+            taskOverride: {
+              device: "/dev/sdj1",
+              operation: "format",
+              status: "success",
+              progress: 100,
+              message: "Format completed successfully.",
+            },
+          }),
+          {
+            seedStore: (store) => {
+              store.dispatch(
+                sratApi.util.upsertQueryData(
+                  "getApiFilesystemSupport",
+                  { fstype: "ext4" },
+                  {
+                    canMount: true,
+                    canFormat: true,
+                    canCheck: true,
+                    canSetLabel: true,
+                    canGetState: true,
+                    labelRule: "^[^\\x00/]{1,16}$",
+                    alpinePackage: "e2fsprogs",
+                    missingTools: [],
+                    isExportable: false,
+                    isCheckReportProgress: false,
+                    isFormatReportProgress: false,
+                  },
+                ),
+              );
+            },
+          },
+        );
+
+        expect(await screen.findByText(/Format completed successfully\./i)).toBeTruthy();
+        expect(screen.queryByRole("button", { name: /^format$/i })).toBeNull();
+        expect(await screen.findByRole("button", { name: /close/i })).toBeTruthy();
+      },
+    );
+  });
+
+  it("shows the formatter error after a failed format", async () => {
+    const React = await import("react");
+    const { screen } = await import("@testing-library/react");
+    const { sratApi } = await import("../../../../store/sratApi");
+    const { FilesystemFormatDialog } = await import("../FilesystemFormatDialog");
+
+    const partition = {
+      id: "part-format-failure-1",
+      name: "failure-format",
+      device_path: "/dev/sdk1",
+      fs_type: "ext4",
+      filesystem_info: {
+        support: {
+          canFormat: true,
+        },
+      },
+    };
+
+    await withTestHandlers(
+      [
+        http.get(filesystemsUrl, () =>
+          HttpResponse.json({
+            filesystems: [
+              {
+                name: "Extended Filesystem",
+                type: "ext4",
+                description: "EXT4 Filesystem",
+                support: {
+                  canMount: true,
+                  canFormat: true,
+                  canCheck: true,
+                  canSetLabel: true,
+                  canGetState: true,
+                  isExportable: false,
+                  isCheckReportProgress: false,
+                  isFormatReportProgress: false,
+                },
+              },
+            ],
+            mount_flags: [],
+          }),
+        ),
+      ],
+      async () => {
+        await renderWithProviders(
+          React.createElement(FilesystemFormatDialog as any, {
+            open: true,
+            partition,
+            onClose: () => {},
+            taskOverride: {
+              device: "/dev/sdk1",
+              operation: "format",
+              status: "failure",
+              progress: 100,
+              error: "mkfs.ext4: /dev/sdk1 is busy",
+            },
+          }),
+          {
+            seedStore: (store) => {
+              store.dispatch(
+                sratApi.util.upsertQueryData(
+                  "getApiFilesystemSupport",
+                  { fstype: "ext4" },
+                  {
+                    canMount: true,
+                    canFormat: true,
+                    canCheck: true,
+                    canSetLabel: true,
+                    canGetState: true,
+                    labelRule: "^[^\\x00/]{1,16}$",
+                    alpinePackage: "e2fsprogs",
+                    missingTools: [],
+                    isExportable: false,
+                    isCheckReportProgress: false,
+                    isFormatReportProgress: false,
+                  },
+                ),
+              );
+            },
+          },
+        );
+
+        expect(await screen.findByText(/mkfs\.ext4: \/dev\/sdk1 is busy/i)).toBeTruthy();
+        expect(await screen.findByRole("button", { name: /^format$/i })).toBeTruthy();
+      },
+    );
+  });
+
   it("shows only format-capable filesystems in format type dropdown", async () => {
     const React = await import("react");
     const { fireEvent, screen } = await import("@testing-library/react");

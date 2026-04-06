@@ -410,6 +410,46 @@ func (suite *BaseAdapterTestSuite) TestSetCommandRunner_StreamsProgressFromSnaps
 	suite.Equal([]string{"err-1"}, stderrLines)
 }
 
+func (suite *BaseAdapterTestSuite) TestSetCommandRunner_FailedSnapshotIncludesStderrInError() {
+	reset := suite.adapter.SetCommandRunner(&fakeCommandRunner{
+		start: func(_ context.Context, _ string, _ string, _ string, _ ...string) (string, error) {
+			return "exec-err", nil
+		},
+		getSnapshot: func(executionID string) (dto.CommandExecutionSnapshot, bool) {
+			return dto.CommandExecutionSnapshot{
+				ExecutionID: executionID,
+				Running:     false,
+				Success:     false,
+				ExitCode:    1,
+				Error:       "exit status 1",
+				Lines: []dto.CommandOutputLineSnapshot{{
+					Channel: dto.CommandOutputChannelStderr,
+					Line:    "mkfs.xfs: /dev/test is busy",
+				}},
+			}, true
+		},
+	})
+	defer reset()
+
+	stdoutChan, stderrChan, resultChan := suite.adapter.executeCommandWithProgress(suite.ctx, "runner-command", []string{"arg1"})
+
+	for range stdoutChan {
+	}
+
+	var stderrLines []string
+	for line := range stderrChan {
+		stderrLines = append(stderrLines, line)
+	}
+
+	result, ok := <-resultChan
+	suite.True(ok)
+	suite.Error(result.Error)
+	suite.Equal(1, result.ExitCode)
+	suite.Equal([]string{"mkfs.xfs: /dev/test is busy"}, stderrLines)
+	suite.Contains(result.Error.Error(), "exit status 1")
+	suite.Contains(result.Error.Error(), "mkfs.xfs: /dev/test is busy")
+}
+
 // TestOsutilMockFileSystems tests that osutil.MockFileSystems works for mocking mounted filesystems
 func (suite *BaseAdapterTestSuite) TestOsutilMockFileSystems() {
 	suite.Run("mock replaces filesystem list", func() {

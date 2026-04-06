@@ -97,6 +97,7 @@ export function FilesystemCheckDialog({
 
   const lastNotesRef = useRef<string[]>([]);
   const lastMessageRef = useRef<string>("");
+  const lastErrorRef = useRef<string>("");
   const lastResultMessageRef = useRef<string>("");
 
   const task = useMemo<FilesystemTask | null>(() => {
@@ -163,6 +164,7 @@ export function FilesystemCheckDialog({
     setVerbose(Boolean(initialVerbose));
     lastNotesRef.current = [];
     lastMessageRef.current = "";
+    lastErrorRef.current = "";
     lastResultMessageRef.current = "";
   }, [open, partitionId, initialVerbose]);
 
@@ -170,9 +172,6 @@ export function FilesystemCheckDialog({
     if (!open || !task) return;
     if (task.status) {
       setStatus(task.status);
-    }
-    if (task.message) {
-      setMessage(task.message);
     }
     if (typeof task.progress === "number") {
       setProgress(task.progress);
@@ -199,33 +198,47 @@ export function FilesystemCheckDialog({
     }
 
     const taskMessage = task.message?.trim() ?? "";
+    const taskError = task.error?.trim() ?? "";
     const resultMessage = extractTaskResultMessage(task);
+    const preferredMessage =
+      task.status === "failure"
+        ? taskError || taskMessage || resultMessage
+        : taskMessage || resultMessage || taskError;
+
+    if (preferredMessage) {
+      setMessage(preferredMessage);
+    }
+
     const fallbackMessages = Array.from(
       new Set(
-        [taskMessage, resultMessage].filter(
+        [taskError, taskMessage, resultMessage].filter(
           (line): line is string => line.length > 0,
         ),
       ),
     ).filter((line) => !taskNotes.includes(line));
 
-    if (taskNotes.length === 0 && fallbackMessages.length > 0) {
-      const newFallbackMessages = fallbackMessages.filter((line) => {
-        if (line === taskMessage) {
-          return line !== lastMessageRef.current;
-        }
-        if (line === resultMessage) {
-          return line !== lastResultMessageRef.current;
-        }
-        return true;
-      });
-
-      if (newFallbackMessages.length > 0) {
-        setLogs((prev) => [...prev, ...newFallbackMessages]);
+    const newFallbackMessages = fallbackMessages.filter((line) => {
+      if (line === taskError) {
+        return line !== lastErrorRef.current;
       }
+      if (line === taskMessage) {
+        return line !== lastMessageRef.current;
+      }
+      if (line === resultMessage) {
+        return line !== lastResultMessageRef.current;
+      }
+      return true;
+    });
+
+    if (newFallbackMessages.length > 0) {
+      setLogs((prev) => [...prev, ...newFallbackMessages]);
     }
 
     if (taskMessage) {
       lastMessageRef.current = taskMessage;
+    }
+    if (taskError) {
+      lastErrorRef.current = taskError;
     }
     if (resultMessage) {
       lastResultMessageRef.current = resultMessage;

@@ -148,6 +148,40 @@ describe("FilesystemCheckDialog", () => {
         );
     });
 
+    it("shows stderr details in logs when a check fails", async () => {
+        const React = await import("react");
+        const { screen } = await import("@testing-library/react");
+        const { FilesystemCheckDialog } = await import("../FilesystemCheckDialog");
+
+        const partition = {
+            id: "part-failure",
+            name: "failure-data",
+            device_path: "/dev/sdz9",
+        };
+
+        await renderWithProviders(
+            React.createElement(FilesystemCheckDialog as any, {
+                open: true,
+                partition,
+                initialVerbose: true,
+                taskOverride: {
+                    device: "/dev/sdz9",
+                    operation: "check",
+                    status: "failure",
+                    progress: 100,
+                    message: "Check operation failed for /dev/sdz9",
+                    error: "fsck.ext4: Superblock invalid on /dev/sdz9",
+                },
+                onClose: () => { },
+            }),
+        );
+
+        const logsField = await screen.findByRole("textbox");
+        expect((logsField as HTMLInputElement).value).toContain(
+            "fsck.ext4: Superblock invalid on /dev/sdz9",
+        );
+    });
+
     it("keeps the reported success state when the selected partition object refreshes", async () => {
         const React = await import("react");
         const { screen } = await import("@testing-library/react");

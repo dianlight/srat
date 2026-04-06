@@ -444,6 +444,8 @@ func (b *baseAdapter) executeCommandWithProgress(
 		ticker := time.NewTicker(10 * time.Millisecond)
 		defer ticker.Stop()
 
+		stdoutLines := make([]string, 0)
+		stderrLines := make([]string, 0)
 		nextLineIndex := 0
 		for {
 			select {
@@ -466,8 +468,10 @@ func (b *baseAdapter) executeCommandWithProgress(
 					var target chan string
 					switch line.Channel {
 					case dto.CommandOutputChannelStdout:
+						stdoutLines = append(stdoutLines, line.Line)
 						target = stdoutChan
 					case dto.CommandOutputChannelStderr:
+						stderrLines = append(stderrLines, line.Line)
 						target = stderrChan
 					default:
 						continue
@@ -495,9 +499,16 @@ func (b *baseAdapter) executeCommandWithProgress(
 					if exitCode == 0 {
 						exitCode = -1
 					}
-					errMessage := snapshot.Error
+					stderrText := strings.TrimSpace(strings.Join(stderrLines, "\n"))
+					stdoutText := strings.TrimSpace(strings.Join(stdoutLines, "\n"))
+					errMessage := strings.TrimSpace(snapshot.Error)
 					if errMessage == "" {
 						errMessage = "command execution failed"
+					}
+					if stderrText != "" && !strings.Contains(errMessage, stderrText) {
+						errMessage += ": " + stderrText
+					} else if stdoutText != "" && !strings.Contains(errMessage, stdoutText) {
+						errMessage += ": " + stdoutText
 					}
 					result.ExitCode = exitCode
 					result.Error = errors.WithDetails(
@@ -505,6 +516,8 @@ func (b *baseAdapter) executeCommandWithProgress(
 						"command", command,
 						"args", strings.Join(args, " "),
 						"exitCode", exitCode,
+						"stdout", stdoutText,
+						"stderr", stderrText,
 					)
 				}
 

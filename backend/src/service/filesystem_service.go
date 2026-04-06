@@ -632,6 +632,10 @@ func (s *FilesystemService) FormatPartition(ctx context.Context, devicePath, fsT
 		formatErr := adapter.Format(opCtx, devicePath, options, progressCallback)
 
 		if formatErr != nil {
+			failureNotes := make([]string, 0, 1)
+			if errorMessage := strings.TrimSpace(formatErr.Error()); errorMessage != "" {
+				failureNotes = append(failureNotes, errorMessage)
+			}
 			// Emit failure event
 			if s.eventBus != nil {
 				s.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
@@ -643,6 +647,7 @@ func (s *FilesystemService) FormatPartition(ctx context.Context, devicePath, fsT
 						Status:         "failure",
 						Message:        fmt.Sprintf("Format operation failed for %s", devicePath),
 						Error:          formatErr.Error(),
+						Notes:          failureNotes,
 					},
 				})
 			}
@@ -781,6 +786,10 @@ func (s *FilesystemService) CheckPartition(ctx context.Context, devicePath, fsTy
 				slog.InfoContext(s.ctx, "Check operation canceled", "device", devicePath, "fsType", fsType)
 				return
 			}
+			failureNotes := make([]string, 0, 1)
+			if errorMessage := strings.TrimSpace(checkErr.Error()); errorMessage != "" {
+				failureNotes = append(failureNotes, errorMessage)
+			}
 			// Emit failure event
 			if s.eventBus != nil {
 				s.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
@@ -792,6 +801,7 @@ func (s *FilesystemService) CheckPartition(ctx context.Context, devicePath, fsTy
 						Status:         "failure",
 						Message:        fmt.Sprintf("Check operation failed for %s", devicePath),
 						Error:          checkErr.Error(),
+						Notes:          failureNotes,
 					},
 				})
 			}
