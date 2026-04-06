@@ -50,6 +50,20 @@ const matchesPartitionDevice = (
   return candidates.has(task.device ?? "");
 };
 
+const extractTaskResultMessage = (task?: FilesystemTask | null) => {
+  const result = task?.result;
+  if (!result || typeof result !== "object") {
+    return "";
+  }
+
+  const maybeResult = result as {
+    Message?: string;
+    message?: string;
+  };
+
+  return (maybeResult.Message ?? maybeResult.message ?? "").trim();
+};
+
 export function FilesystemCheckDialog({
   open,
   partition,
@@ -83,6 +97,7 @@ export function FilesystemCheckDialog({
 
   const lastNotesRef = useRef<string[]>([]);
   const lastMessageRef = useRef<string>("");
+  const lastResultMessageRef = useRef<string>("");
 
   const task = useMemo<FilesystemTask | null>(() => {
     if (taskOverride) {
@@ -136,9 +151,11 @@ export function FilesystemCheckDialog({
     );
   }, [isSupportError, supportError]);
 
+  const partitionId = partition?.id;
+
   useEffect(() => {
     if (!open) return;
-    if (!partition) return;
+    if (!partitionId) return;
     setLogs([]);
     setProgress(0);
     setStatus("idle");
@@ -146,7 +163,8 @@ export function FilesystemCheckDialog({
     setVerbose(Boolean(initialVerbose));
     lastNotesRef.current = [];
     lastMessageRef.current = "";
-  }, [open, partition?.id, initialVerbose, partition]);
+    lastResultMessageRef.current = "";
+  }, [open, partitionId, initialVerbose]);
 
   useEffect(() => {
     if (!open || !task) return;
@@ -180,18 +198,37 @@ export function FilesystemCheckDialog({
       lastNotesRef.current = taskNotes;
     }
 
-    const taskMessage = task.message?.trim();
-    if (
-      isRunningStatus(task.status) &&
-      taskMessage &&
-      taskNotes.length === 0 &&
-      taskMessage !== lastMessageRef.current
-    ) {
-      setLogs((prev) => [...prev, taskMessage]);
+    const taskMessage = task.message?.trim() ?? "";
+    const resultMessage = extractTaskResultMessage(task);
+    const fallbackMessages = Array.from(
+      new Set(
+        [taskMessage, resultMessage].filter(
+          (line): line is string => line.length > 0,
+        ),
+      ),
+    ).filter((line) => !taskNotes.includes(line));
+
+    if (taskNotes.length === 0 && fallbackMessages.length > 0) {
+      const newFallbackMessages = fallbackMessages.filter((line) => {
+        if (line === taskMessage) {
+          return line !== lastMessageRef.current;
+        }
+        if (line === resultMessage) {
+          return line !== lastResultMessageRef.current;
+        }
+        return true;
+      });
+
+      if (newFallbackMessages.length > 0) {
+        setLogs((prev) => [...prev, ...newFallbackMessages]);
+      }
     }
 
     if (taskMessage) {
       lastMessageRef.current = taskMessage;
+    }
+    if (resultMessage) {
+      lastResultMessageRef.current = resultMessage;
     }
   }, [open, task]);
 

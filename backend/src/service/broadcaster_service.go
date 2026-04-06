@@ -89,7 +89,7 @@ func NewBroadcasterService(
 }
 
 func (broker *BroadcasterService) setupEventListeners() []func() {
-	ret := make([]func(), 8)
+	ret := make([]func(), 9)
 	// Listen for disk events
 	ret[0] = broker.eventBus.OnDisk(func(ctx context.Context, event events.DiskEvent) errors.E {
 		diskID := "unknown"
@@ -155,6 +155,14 @@ func (broker *BroadcasterService) setupEventListeners() []func() {
 	ret[7] = broker.eventBus.OnCommandExecution(func(ctx context.Context, event events.CommandExecutionEvent) errors.E {
 		slog.DebugContext(ctx, "BroadcasterService received CommandExecution event", "type", event.Type, "message_type", fmt.Sprintf("%T", event.Message))
 		broker.BroadcastMessage(event.Message)
+		return nil
+	})
+	ret[8] = broker.eventBus.OnFilesystemTask(func(ctx context.Context, event events.FilesystemTaskEvent) errors.E {
+		if event.Task == nil {
+			return nil
+		}
+		slog.DebugContext(ctx, "BroadcasterService received FilesystemTask event", "operation", event.Task.Operation, "status", event.Task.Status, "device", event.Task.Device)
+		broker.BroadcastMessage(*event.Task)
 		return nil
 	})
 

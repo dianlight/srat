@@ -109,6 +109,100 @@ describe("FilesystemCheckDialog", () => {
         );
     });
 
+    it("shows completion details in logs when a check succeeds without notes", async () => {
+        const React = await import("react");
+        const { screen } = await import("@testing-library/react");
+        const { FilesystemCheckDialog } = await import("../FilesystemCheckDialog");
+
+        const partition = {
+            id: "part-success",
+            name: "success-data",
+            device_path: "/dev/sdf1",
+        };
+
+        await renderWithProviders(
+            React.createElement(FilesystemCheckDialog as any, {
+                open: true,
+                partition,
+                initialVerbose: true,
+                taskOverride: {
+                    device: "/dev/sdf1",
+                    operation: "check",
+                    status: "success",
+                    progress: 100,
+                    message: "Filesystem check completed successfully for /dev/sdf1",
+                    result: {
+                        Message: "fsck.ext4: clean, 12/1024 files, 128/8192 blocks",
+                    },
+                },
+                onClose: () => { },
+            }),
+        );
+
+        const logsField = await screen.findByRole("textbox");
+        expect((logsField as HTMLInputElement).value).toContain(
+            "Filesystem check completed successfully for /dev/sdf1",
+        );
+        expect((logsField as HTMLInputElement).value).toContain(
+            "fsck.ext4: clean, 12/1024 files, 128/8192 blocks",
+        );
+    });
+
+    it("keeps the reported success state when the selected partition object refreshes", async () => {
+        const React = await import("react");
+        const { screen } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { FilesystemCheckDialog } = await import("../FilesystemCheckDialog");
+
+        const taskOverride = {
+            device: "/dev/sdg1",
+            operation: "check",
+            status: "success",
+            progress: 100,
+            message: "Filesystem check completed successfully for /dev/sdg1",
+        };
+
+        const partition = {
+            id: "part-refresh",
+            name: "refresh-data",
+            device_path: "/dev/sdg1",
+        };
+
+        const { rerender, store } = await renderWithProviders(
+            React.createElement(FilesystemCheckDialog as any, {
+                open: true,
+                partition,
+                initialVerbose: true,
+                taskOverride,
+                onClose: () => { },
+            }),
+        );
+
+        const initialLogsField = await screen.findByRole("textbox");
+        expect((initialLogsField as HTMLInputElement).value).toContain(
+            "Filesystem check completed successfully for /dev/sdg1",
+        );
+
+        rerender(
+            React.createElement(Provider, {
+                store,
+                children: React.createElement(FilesystemCheckDialog as any, {
+                    open: true,
+                    partition: { ...partition },
+                    initialVerbose: true,
+                    taskOverride,
+                    onClose: () => { },
+                }),
+            }),
+        );
+
+        const refreshedLogsField = await screen.findByRole("textbox");
+        expect((refreshedLogsField as HTMLInputElement).value).toContain(
+            "Filesystem check completed successfully for /dev/sdg1",
+        );
+        expect(await screen.findByText("SUCCESS")).toBeTruthy();
+    });
+
     it("disables start and shows unsupported hint when check is not available", async () => {
         const React = await import("react");
         const { screen } = await import("@testing-library/react");

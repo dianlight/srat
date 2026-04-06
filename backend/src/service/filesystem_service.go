@@ -797,6 +797,11 @@ func (s *FilesystemService) CheckPartition(ctx context.Context, devicePath, fsTy
 			// Log failure
 			slog.ErrorContext(s.ctx, "Check operation failed", "device", devicePath, "fsType", fsType, "error", checkErr)
 		} else {
+			completionNotes := make([]string, 0, 1)
+			if message := strings.TrimSpace(result.Message); message != "" {
+				completionNotes = append(completionNotes, message)
+			}
+
 			// Emit success event
 			if s.eventBus != nil {
 				s.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
@@ -807,6 +812,9 @@ func (s *FilesystemService) CheckPartition(ctx context.Context, devicePath, fsTy
 						FilesystemType: fsType,
 						Status:         "success",
 						Message:        fmt.Sprintf("Check operation completed successfully for %s", devicePath),
+						Progress:       100,
+						Notes:          completionNotes,
+						Result:         result,
 					},
 				})
 			}
