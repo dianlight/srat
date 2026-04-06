@@ -659,6 +659,7 @@ func (s *FilesystemService) FormatPartition(ctx context.Context, devicePath, fsT
 						FilesystemType: fsType,
 						Status:         "success",
 						Message:        fmt.Sprintf("Format operation completed successfully for %s", devicePath),
+						Progress:       100,
 					},
 				})
 			}

@@ -79,6 +79,9 @@ type FormatOptions struct {
 	// Force forces formatting even if the device appears to be in use
 	Force bool `json:"force,omitempty"`
 
+	// Verbose enables verbose command output when supported by the formatter
+	Verbose bool `json:"verbose,omitempty"`
+
 	// AdditionalOptions contains filesystem-specific options
 	AdditionalOptions map[string]string `json:"additionalOptions,omitempty"`
 }

@@ -1315,6 +1315,8 @@ export type FormatPartitionInput = {
   label?: string;
   /** Unique partition identifier */
   partitionId: string;
+  /** Enable verbose formatter output */
+  verbose?: boolean;
 };
 export type GetFilesystemLabelResponse = {
   /** A URL to the JSON Schema for this object. */

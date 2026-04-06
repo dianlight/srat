@@ -126,6 +126,9 @@ type FormatPartitionInput struct {
 	// Force forces formatting even if the device appears to be in use
 	Force bool `json:"force,omitempty" default:"false" doc:"Force formatting even if device appears in use"`
 
+	// Verbose enables verbose formatter output when supported
+	Verbose bool `json:"verbose,omitempty" default:"false" doc:"Enable verbose formatter output"`
+
 	// AdditionalOptions contains filesystem-specific formatting options
 	AdditionalOptions map[string]string `json:"additionalOptions,omitempty" doc:"Filesystem-specific formatting options"`
 }
@@ -142,7 +145,8 @@ func (h *FilesystemHandler) FormatPartition(
 		"partition", req.PartitionID,
 		"filesystem", req.FilesystemType,
 		"label", req.Label,
-		"force", req.Force)
+		"force", req.Force,
+		"verbose", req.Verbose)
 
 	// Find the partition using DiskMap directly
 	diskMap := h.disks
@@ -162,6 +166,7 @@ func (h *FilesystemHandler) FormatPartition(
 	result, formatErr := h.fsService.FormatPartition(ctx, devicePath, req.FilesystemType, dto.FormatOptions{
 		Label:             req.Label,
 		Force:             req.Force,
+		Verbose:           req.Verbose,
 		AdditionalOptions: req.AdditionalOptions,
 	})
 

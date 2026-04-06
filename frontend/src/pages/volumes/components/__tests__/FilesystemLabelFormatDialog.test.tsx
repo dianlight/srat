@@ -5,6 +5,7 @@ import { withTestHandlers } from "../../../../../test/bun-setup";
 import "../../../../../test/setup";
 
 const filesystemsUrl = /.*\/api\/filesystems(?:\?.*)?$/;
+const formatUrl = /.*\/api\/filesystem\/format(?:\?.*)?$/;
 
 afterEach(() => {
   cleanup();
@@ -423,6 +424,204 @@ describe("Filesystem label/format dialogs", () => {
     expect(missingTools.length).toBeGreaterThan(0);
     const installHints = await screen.findAllByText(/apk add e2fsprogs/i);
     expect(installHints.length).toBeGreaterThan(0);
+  });
+
+  it("renders format progress and logs when verbose mode is enabled", async () => {
+    const React = await import("react");
+    const { screen } = await import("@testing-library/react");
+    const { sratApi } = await import("../../../../store/sratApi");
+    const { FilesystemFormatDialog } = await import("../FilesystemFormatDialog");
+
+    const partition = {
+      id: "part-format-progress-1",
+      name: "format-progress",
+      device_path: "/dev/sdh1",
+      fs_type: "ext4",
+      filesystem_info: {
+        support: {
+          canFormat: true,
+        },
+      },
+    };
+
+    await withTestHandlers(
+      [
+        http.get(filesystemsUrl, () =>
+          HttpResponse.json({
+            filesystems: [
+              {
+                name: "Extended Filesystem",
+                type: "ext4",
+                description: "EXT4 Filesystem",
+                support: {
+                  canMount: true,
+                  canFormat: true,
+                  canCheck: true,
+                  canSetLabel: true,
+                  canGetState: true,
+                  isExportable: false,
+                  isCheckReportProgress: false,
+                  isFormatReportProgress: false,
+                },
+              },
+            ],
+            mount_flags: [],
+          }),
+        ),
+      ],
+      async () => {
+        await renderWithProviders(
+          React.createElement(FilesystemFormatDialog as any, {
+            open: true,
+            partition,
+            initialVerbose: true,
+            taskOverride: {
+              device: "/dev/sdh1",
+              operation: "format",
+              status: "running",
+              progress: 42,
+              notes: ["mkfs.ext4: writing inode tables"],
+            },
+            onClose: () => {},
+          }),
+          {
+            seedStore: (store) => {
+              store.dispatch(
+                sratApi.util.upsertQueryData(
+                  "getApiFilesystemSupport",
+                  { fstype: "ext4" },
+                  {
+                    canMount: true,
+                    canFormat: true,
+                    canCheck: true,
+                    canSetLabel: true,
+                    canGetState: true,
+                    labelRule: "^[^\\x00/]{1,16}$",
+                    alpinePackage: "e2fsprogs",
+                    missingTools: [],
+                    isExportable: false,
+                    isCheckReportProgress: false,
+                    isFormatReportProgress: false,
+                  },
+                ),
+              );
+            },
+          },
+        );
+
+        expect(
+          await screen.findByRole("switch", { name: /verbose/i }),
+        ).toBeTruthy();
+        const logsField = await screen.findByRole("textbox", {
+          name: /logs/i,
+        });
+        expect((logsField as HTMLInputElement).value).toContain(
+          "mkfs.ext4: writing inode tables",
+        );
+        expect(await screen.findByRole("progressbar")).toBeTruthy();
+        expect(await screen.findByText("RUNNING")).toBeTruthy();
+      },
+    );
+  });
+
+  it("submits the verbose flag when starting a format", async () => {
+    const React = await import("react");
+    const { screen, waitFor } = await import("@testing-library/react");
+    const userEvent = (await import("@testing-library/user-event")).default;
+    const { sratApi } = await import("../../../../store/sratApi");
+    const { FilesystemFormatDialog } = await import("../FilesystemFormatDialog");
+
+    const partition = {
+      id: "part-format-verbose-1",
+      name: "verbose-format",
+      device_path: "/dev/sdi1",
+      fs_type: "ext4",
+      filesystem_info: {
+        support: {
+          canFormat: true,
+        },
+      },
+    };
+
+    let requestBody: Record<string, unknown> | null = null;
+
+    await withTestHandlers(
+      [
+        http.get(filesystemsUrl, () =>
+          HttpResponse.json({
+            filesystems: [
+              {
+                name: "Extended Filesystem",
+                type: "ext4",
+                description: "EXT4 Filesystem",
+                support: {
+                  canMount: true,
+                  canFormat: true,
+                  canCheck: true,
+                  canSetLabel: true,
+                  canGetState: true,
+                  isExportable: false,
+                  isCheckReportProgress: false,
+                  isFormatReportProgress: false,
+                },
+              },
+            ],
+            mount_flags: [],
+          }),
+        ),
+        http.post(formatUrl, async ({ request }) => {
+          requestBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json({
+            success: true,
+            errorsFound: false,
+            errorsFixed: false,
+            exitCode: 0,
+            message: "Format operation started for /dev/sdi1 as ext4",
+          });
+        }),
+      ],
+      async () => {
+        await renderWithProviders(
+          React.createElement(FilesystemFormatDialog as any, {
+            open: true,
+            partition,
+            onClose: () => {},
+          }),
+          {
+            seedStore: (store) => {
+              store.dispatch(
+                sratApi.util.upsertQueryData(
+                  "getApiFilesystemSupport",
+                  { fstype: "ext4" },
+                  {
+                    canMount: true,
+                    canFormat: true,
+                    canCheck: true,
+                    canSetLabel: true,
+                    canGetState: true,
+                    labelRule: "^[^\\x00/]{1,16}$",
+                    alpinePackage: "e2fsprogs",
+                    missingTools: [],
+                    isExportable: false,
+                    isCheckReportProgress: false,
+                    isFormatReportProgress: false,
+                  },
+                ),
+              );
+            },
+          },
+        );
+
+        const user = userEvent.setup();
+        await user.click(await screen.findByRole("switch", { name: /verbose/i }));
+        await user.click(await screen.findByRole("button", { name: /^format$/i }));
+
+        await waitFor(() => {
+          expect(requestBody).toBeTruthy();
+          expect(requestBody?.verbose).toBe(true);
+        });
+      },
+    );
   });
 
   it("shows only format-capable filesystems in format type dropdown", async () => {
