@@ -29,7 +29,7 @@ export function CommandOutputToastContent({
   return (
     <Box>
       <Typography variant="body2" sx={{ mb: 1 }}>
-        Command stderr detected for {commandId}
+        Command failed for {commandId}
       </Typography>
       <Button size="small" variant="outlined" onClick={handleOpenOutput}>
         Open Output

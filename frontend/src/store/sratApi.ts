@@ -1113,6 +1113,7 @@ export type CommandOutputNotification = {
   channel: string;
   command_id: string;
   execution_id: string;
+  exit_code?: number;
   line: string;
   timestamp: number;
 };

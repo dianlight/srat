@@ -106,6 +106,38 @@ func (suite *CommandExecutorTestSuite) TestStart_StreamsStdoutAndStderrAndStores
 	suite.Require().Contains(outputChannels, dto.CommandOutputChannelStderr)
 }
 
+func (suite *CommandExecutorTestSuite) TestStart_PopulatesOutputExitCodeWhenAvailable() {
+	executionID, err := suite.executor.Start(
+		context.Background(),
+		"exit-code-output",
+		"Exit Code Output",
+		"sh",
+		"-c",
+		"i=1; while [ $i -le 2000 ]; do echo stderr-$i 1>&2; i=$((i+1)); done; exit 7",
+	)
+	suite.Require().NoError(err)
+
+	snapshot := suite.waitForCompletion(executionID, 3*time.Second)
+	suite.Require().False(snapshot.Running)
+	suite.Require().Equal(7, snapshot.ExitCode)
+
+	messages := suite.collector.Messages()
+	suite.Require().NotEmpty(messages)
+
+	sawOutputWithExitCode := false
+	for _, message := range messages {
+		typed, ok := message.(dto.CommandOutputNotification)
+		if !ok || typed.ExitCode == nil {
+			continue
+		}
+		suite.Require().Equal(7, *typed.ExitCode)
+		sawOutputWithExitCode = true
+		break
+	}
+
+	suite.Require().True(sawOutputWithExitCode, "expected at least one command_output notification with exit code")
+}
+
 func (suite *CommandExecutorTestSuite) TestStart_TrimsSnapshotTo500Lines() {
 	executionID, err := suite.executor.Start(
 		context.Background(),

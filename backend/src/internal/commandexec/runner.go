@@ -126,6 +126,7 @@ func (s *Service) StartWithInput(ctx context.Context, commandID, label, stdinCon
 			}
 		}
 		finishedAt := time.Now().UnixMilli()
+		var lastOutputLine *dto.CommandOutputLineSnapshot
 
 		s.mu.Lock()
 		snapshot, ok := s.snapshots[executionID]
@@ -135,9 +136,30 @@ func (s *Service) StartWithInput(ctx context.Context, commandID, label, stdinCon
 			snapshot.ExitCode = exitCode
 			snapshot.Success = success
 			snapshot.Error = errMsg
+			for i := len(snapshot.Lines) - 1; i >= 0; i-- {
+				lineCopy := snapshot.Lines[i]
+				if lastOutputLine == nil {
+					lastOutputLine = &lineCopy
+				}
+				if snapshot.Lines[i].Channel == dto.CommandOutputChannelStderr {
+					lastOutputLine = &lineCopy
+					break
+				}
+			}
 			s.snapshots[executionID] = snapshot
 		}
 		s.mu.Unlock()
+
+		if lastOutputLine != nil {
+			s.emitCommandEvent(events.EventTypes.UPDATE, dto.CommandOutputNotification{
+				ExecutionID: executionID,
+				CommandID:   commandID,
+				Channel:     lastOutputLine.Channel,
+				Line:        lastOutputLine.Line,
+				Timestamp:   lastOutputLine.Timestamp,
+				ExitCode:    new(exitCode),
+			})
+		}
 
 		eventType := events.EventTypes.STOP
 		if !success {

@@ -27,12 +27,15 @@ type CommandStartedNotification struct {
 func (CommandStartedNotification) isCommandExecutionNotification() {}
 
 // CommandOutputNotification carries one output line from an execution stream.
+// ExitCode is nil while the command is still running and becomes available once
+// the process has already finished.
 type CommandOutputNotification struct {
 	ExecutionID string               `json:"execution_id"`
 	CommandID   string               `json:"command_id"`
 	Channel     CommandOutputChannel `json:"channel"`
 	Line        string               `json:"line"`
 	Timestamp   int64                `json:"timestamp"`
+	ExitCode    *int                 `json:"exit_code,omitempty"`
 }
 
 func (CommandOutputNotification) isCommandExecutionNotification() {}

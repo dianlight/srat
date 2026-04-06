@@ -51,6 +51,7 @@ export function App() {
   >(null);
   const [commandDialogOpen, setCommandDialogOpen] = useState(false);
   const commandEventDedupRef = useRef<string>("");
+  const commandToastDedupRef = useRef<Set<string>>(new Set());
   // Compute Backdrop open state
   useEffect(() => {
     const newBackdropOpen =
@@ -168,6 +169,24 @@ export function App() {
     setCommandDialogOpen(true);
   }, []);
 
+  const showCommandFailureToast = useCallback(
+    (executionId: string, commandId: string) => {
+      if (commandDialogOpen || commandToastDedupRef.current.has(executionId)) {
+        return;
+      }
+
+      commandToastDedupRef.current.add(executionId);
+      toast.error(
+        <CommandOutputToastContent
+          commandId={commandId}
+          onOpenOutput={() => openCommandDialog(executionId)}
+        />,
+        { autoClose: 7000 },
+      );
+    },
+    [commandDialogOpen, openCommandDialog],
+  );
+
   useEffect(() => {
     const event = evdata?.command_started;
     if (!event) {
@@ -182,7 +201,7 @@ export function App() {
       return;
     }
 
-    const dedupeKey = `${event.execution_id}:${event.channel}:${event.timestamp}:${event.line}`;
+    const dedupeKey = `${event.execution_id}:${event.channel}:${event.timestamp}:${event.line}:${event.exit_code ?? "pending"}`;
     if (commandEventDedupRef.current === dedupeKey) {
       return;
     }
@@ -199,7 +218,14 @@ export function App() {
         lines: [],
       };
 
-      const lines = [...(current.lines || []), event].slice(-500);
+      const previousLines = current.lines || [];
+      const lastLine = previousLines[previousLines.length - 1];
+      const lines =
+        lastLine?.channel === event.channel &&
+        lastLine?.line === event.line &&
+        lastLine?.timestamp === event.timestamp
+          ? previousLines
+          : [...previousLines, event].slice(-500);
 
       return {
         ...previous,
@@ -212,16 +238,14 @@ export function App() {
       };
     });
 
-    if (event.channel === "stderr" && !commandDialogOpen) {
-      toast.error(
-        <CommandOutputToastContent
-          commandId={event.command_id}
-          onOpenOutput={() => openCommandDialog(event.execution_id)}
-        />,
-        { autoClose: 7000 },
-      );
+    if (
+      event.channel === "stderr" &&
+      typeof event.exit_code === "number" &&
+      event.exit_code !== 0
+    ) {
+      showCommandFailureToast(event.execution_id, event.command_id);
     }
-  }, [evdata?.command_output, commandDialogOpen, openCommandDialog]);
+  }, [evdata?.command_output, showCommandFailureToast]);
 
   useEffect(() => {
     const event: CommandTerminatedNotification | undefined =
@@ -253,7 +277,11 @@ export function App() {
         },
       };
     });
-  }, [evdata?.command_terminated]);
+
+    if (event.exit_code !== 0) {
+      showCommandFailureToast(event.execution_id, event.command_id);
+    }
+  }, [evdata?.command_terminated, showCommandFailureToast]);
 
   const selectedCommandSession =
     commandDialogExecutionId === null
