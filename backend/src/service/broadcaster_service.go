@@ -170,6 +170,10 @@ func (broker *BroadcasterService) setupEventListeners() []func() {
 }
 
 func (broker *BroadcasterService) BroadcastMessage(msg any) any {
+	if msg == nil {
+		tlog.WarnContext(broker.ctx, "Attempted to broadcast nil message")
+		return nil
+	}
 
 	if reflect.ValueOf(msg).Kind() == reflect.Ptr {
 		if reflect.ValueOf(msg).IsNil() {
@@ -177,6 +181,8 @@ func (broker *BroadcasterService) BroadcastMessage(msg any) any {
 			return msg
 		}
 	}
+
+	msg = dto.SanitizeWebEventData(msg)
 
 	if _, ok := msg.(dto.HealthPing); !ok {
 		tlog.TraceContext(broker.ctx, "Queued Message", "type", fmt.Sprintf("%T", msg), "msg", msg)

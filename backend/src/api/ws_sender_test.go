@@ -183,6 +183,44 @@ func (suite *WsMessageSenderSuite) TestSendFunc_SuccessWithVolumes() {
 	suite.Equal("volumes", suite.wsMessageSender.ObjectMap[typeName])
 }
 
+func (suite *WsMessageSenderSuite) TestSendFunc_SanitizesVolumeShareBackReferences() {
+	diskID := "disk-1"
+	partitionID := "disk-1-part-1"
+	mountPath := "/media/test"
+	fsType := "ext4"
+
+	share := &dto.SharedResource{Name: "media"}
+	mountPoint := &dto.MountPointData{
+		Path:     mountPath,
+		DeviceId: partitionID,
+		FSType:   &fsType,
+		Share:    share,
+	}
+	share.MountPointData = mountPoint
+
+	partition := dto.Partition{
+		Id:     &partitionID,
+		DiskId: &diskID,
+		FsType: &fsType,
+	}
+	mountPoint.Partition = &partition
+
+	mountPoints := map[string]dto.MountPointData{mountPath: *mountPoint}
+	partition.MountPointData = &mountPoints
+	partitions := map[string]dto.Partition{partitionID: partition}
+
+	msg := ws.Message{
+		Data: []*dto.Disk{{
+			Id:         &diskID,
+			Partitions: &partitions,
+		}},
+	}
+
+	err := suite.wsMessageSender.SendFunc(msg)
+	suite.Require().Error(err)
+	suite.Require().Contains(err.Error(), "WebSocket connection is nil")
+}
+
 // TestSendFunc_SuccessWithDirtyTracker tests sending a DataDirtyTracker message
 func (suite *WsMessageSenderSuite) TestSendFunc_SuccessWithDirtyTracker() {
 	msg := ws.Message{

@@ -85,10 +85,21 @@ func (self *WsMessageSender) writeMessage(messageType int, data []byte) errors.E
 	return nil
 }
 
-func (self *WsMessageSender) SendFunc(msg ws.Message) errors.E {
-	eventData, err := json.Marshal(msg.Data)
+func (self *WsMessageSender) SendFunc(msg ws.Message) (retErr errors.E) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			retErr = errors.WithDetails(
+				errors.Errorf("panic while sending WebSocket event: %v", recovered),
+				"message", "Failed to marshal event data",
+				"event_type", fmt.Sprintf("%T", msg.Data),
+			)
+		}
+	}()
+
+	safeData := dto.SanitizeWebEventData(msg.Data)
+	eventData, err := json.Marshal(safeData)
 	if err != nil {
-		return errors.WithDetails(err, "message", "Failed to marshal event data", "event", msg)
+		return errors.WithDetails(err, "message", "Failed to marshal event data", "event_type", fmt.Sprintf("%T", msg.Data))
 	}
 
 	typeName, ok := self.ObjectMap[reflect.TypeOf(msg.Data).String()]
