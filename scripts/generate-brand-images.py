@@ -44,7 +44,7 @@ def _resize_icon(src: Path, size: int) -> Image.Image:
     """Return a square icon resized to *size* × *size*."""
     with Image.open(src) as img:
         img = img.convert("RGBA")
-        return img.resize((size, size), Image.LANCZOS)
+        return img.resize((size, size), Image.Resampling.LANCZOS)
 
 
 def _resize_logo(src: Path, shortest_side: int) -> Image.Image:
@@ -60,7 +60,7 @@ def _resize_logo(src: Path, shortest_side: int) -> Image.Image:
             # height is the shortest side
             new_h = shortest_side
             new_w = round(w * shortest_side / h)
-        return img.resize((new_w, new_h), Image.LANCZOS)
+        return img.resize((new_w, new_h), Image.Resampling.LANCZOS)
 
 
 def _save(image: Image.Image, dest: Path) -> None:
