@@ -80,7 +80,9 @@ const registerModuleMocks = () => {
   }));
 
   mock.module("../components/GlobalEventTracker", () => ({
+    __esModule: true,
     default: () => <div data-testid="mock-event-monitor">EventMonitor</div>,
+    useSystemLogs: () => ({ logs: [], clearLogs: () => undefined }),
   }));
 
   mock.module("../components/BaseConfigModal", () => ({

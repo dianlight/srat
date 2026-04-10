@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import "../../../../test/setup";
 
 // Required localStorage shim for testing environment
@@ -14,9 +14,14 @@ if (!(globalThis as any).localStorage) {
 
 describe("Volumes component", () => {
     beforeEach(() => {
+        mock.restore();
         localStorage.clear();
         // Clear DOM between tests
         document.body.innerHTML = "";
+    });
+
+    afterEach(() => {
+        mock.restore();
     });
 
     it("renders volumes page without crashing", async () => {
@@ -635,6 +640,64 @@ describe("Volumes component", () => {
         // Test basic functionality
         const result = decodeEscapeSequence("test");
         expect(result).toBe("test");
+    });
+
+    it("does not trigger a setState-in-render warning when the volumes query fails", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { BrowserRouter } = await import("react-router-dom");
+        const { createTestStore } = await import("../../../../test/setup");
+
+        mock.module("../../../hooks/volumeHook", () => ({
+            useVolume: () => ({
+                disks: [],
+                isLoading: false,
+                error: { status: "FETCH_ERROR", error: "TypeError: Failed to fetch" },
+            }),
+        }));
+
+        const { Volumes } = await import("../Volumes");
+        const { useSystemLogs } = await import("../../../components/GlobalEventTracker");
+
+        const LogProbe = () => {
+            useSystemLogs();
+            return null;
+        };
+
+        const store = await createTestStore();
+        const originalConsoleError = console.error;
+        const consoleErrorMock = mock((..._args: unknown[]) => undefined);
+        console.error = consoleErrorMock as typeof console.error;
+
+        try {
+            render(
+                React.createElement(
+                    BrowserRouter,
+                    null,
+                    React.createElement(Provider, {
+                        store,
+                        children: React.createElement(React.Fragment, {
+                            children: [
+                                React.createElement(LogProbe, { key: "log-probe" }),
+                                React.createElement(Volumes as any, { key: "volumes" }),
+                            ],
+                        }),
+                    })
+                )
+            );
+
+            expect(screen.queryByText(/Error loading volume information/i)).toBeTruthy();
+
+            const loggedWarnings = consoleErrorMock.mock.calls
+                .flat()
+                .map((entry) => String(entry))
+                .join("\n");
+
+            expect(loggedWarnings).not.toContain("Cannot update a component");
+        } finally {
+            console.error = originalConsoleError;
+        }
     });
 
     it("exports components from index correctly", async () => {

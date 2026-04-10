@@ -8,7 +8,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useConfirm } from "material-ui-confirm";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { toast } from "react-toastify";
 import { PreviewDialog } from "../../components/PreviewDialog";
@@ -143,6 +143,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
   const [mountVolume, _mountVolumeResult] = usePostApiVolumeMountMutation();
   const [umountVolume, _umountVolumeResult] = useDeleteApiVolumeMutation();
   const [patchMountSettings] = usePatchApiVolumeSettingsMutation();
+  const loggedLoadErrorRef = useRef<string>("");
 
   useEffect(() => {
     setDisks(sourceDisks ?? []);
@@ -548,6 +549,21 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
   }
 
   useEffect(() => {
+    if (!error) {
+      loggedLoadErrorRef.current = "";
+      return;
+    }
+
+    const errorSignature = JSON.stringify(error);
+    if (loggedLoadErrorRef.current === errorSignature) {
+      return;
+    }
+
+    loggedLoadErrorRef.current = errorSignature;
+    console.error("Error loading volumes:", error);
+  }, [error]);
+
+  useEffect(() => {
     const selectTourVolume = () => {
       const target = getTourVolumeSelection(disks, hideSystemPartitions);
       if (!target) return;
@@ -586,8 +602,6 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
   }
 
   if (error) {
-    // Provide a more user-friendly error message
-    console.error("Error loading volumes:", error);
     return (
       <Typography color="error">
         Error loading volume information. Please try again later.

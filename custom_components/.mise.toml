@@ -35,7 +35,10 @@ depends = [
     { task = "test" },
 ]
 alias = "install-remote"
-run = "rsync -rvuzP --del ./srat ${HOMEASSISTANT_IP}:/config/custom_components"
+run = [
+    "rsync -rvuzP --del ./srat ${HOMEASSISTANT_IP}:/config/custom_components",
+    "ssh root@${HOMEASSISTANT_IP} -t 'ha core restart'",
+    ]
 quiet = true
 
 [tasks."test:ci"]

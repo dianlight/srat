@@ -23,7 +23,7 @@ export function CommandOutputToastContent({
 }: CommandOutputToastContentProps) {
   const handleOpenOutput = () => {
     onOpenOutput();
-    closeToast?.(true);
+    closeToast?.();
   };
 
   return (
