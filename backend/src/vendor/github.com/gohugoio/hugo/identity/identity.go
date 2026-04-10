@@ -41,10 +41,9 @@ const (
 var NopManager = new(nopManager)
 
 // NewIdentityManager creates a new Manager.
-func NewManager(name string, opts ...ManagerOption) Manager {
+func NewManager(opts ...ManagerOption) Manager {
 	idm := &identityManager{
 		Identity: Anonymous,
-		name:     name,
 		ids:      Identities{},
 	}
 
@@ -94,9 +93,6 @@ func FirstIdentity(v any) Identity {
 func PrintIdentityInfo(v any) {
 	WalkIdentitiesDeep(v, func(level int, id Identity) bool {
 		var s string
-		if idm, ok := id.(*identityManager); ok {
-			s = " " + idm.name
-		}
 		fmt.Printf("%s%s (%T)%s\n", strings.Repeat("  ", level), id.IdentifierBase(), id, s)
 		return false
 	})
@@ -154,8 +150,8 @@ type DependencyManagerScopedProvider interface {
 // ForEeachIdentityProvider provides a way iterate over identities.
 type ForEeachIdentityProvider interface {
 	// ForEeachIdentityProvider calls cb for each Identity.
-	// If cb returns true, the iteration is terminated.
-	// The return value is whether the iteration was terminated.
+	// If cb returns false, the iteration is terminated.
+	// It returns false if the iteration was terminated early.
 	ForEeachIdentity(cb func(id Identity) bool) bool
 }
 
@@ -249,6 +245,11 @@ type SignalRebuilder interface {
 	SignalRebuild(ids ...Identity)
 }
 
+// IsRebuildProvider signals if we're in a rebuild or not.
+type IsRebuildProvider interface {
+	IsRebuild() bool
+}
+
 // IncrementByOne implements Incrementer adding 1 every time Incr is called.
 type IncrementByOne struct {
 	counter uint64
@@ -295,9 +296,6 @@ func (s StringIdentity) IdentifierBase() string {
 
 type identityManager struct {
 	Identity
-
-	// Only used for debugging.
-	name string
 
 	// mu protects _changes_ to this manager,
 	// reads currently assumes no concurrent writes.
@@ -363,10 +361,6 @@ func (im *identityManager) GetDependencyManagerForScopesAll() []Manager {
 	return []Manager{im}
 }
 
-func (im *identityManager) String() string {
-	return fmt.Sprintf("IdentityManager(%s)", im.name)
-}
-
 func (im *identityManager) forEeachIdentity(fn func(id Identity) bool) bool {
 	// The absence of a lock here is deliberate. This is currently only used on server reloads
 	// in a single-threaded context.
@@ -376,11 +370,11 @@ func (im *identityManager) forEeachIdentity(fn func(id Identity) bool) bool {
 		}
 	}
 	for _, fe := range im.forEachIds {
-		if fe.ForEeachIdentity(fn) {
-			return true
+		if !fe.ForEeachIdentity(fn) {
+			return false
 		}
 	}
-	return false
+	return true
 }
 
 type nopManager int
