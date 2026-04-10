@@ -9,6 +9,48 @@ export function decodeEscapeSequence(source: unknown): string {
   });
 }
 
+export function getFilesystemLabelValidation(
+  label: string,
+  labelRule: unknown,
+  optional = false,
+): {
+  isValid: boolean;
+  helperText?: string;
+} {
+  const normalizedRule = typeof labelRule === "string" ? labelRule.trim() : "";
+  const normalizedLabel = label.trim();
+
+  if (!normalizedRule) {
+    return {
+      isValid: optional || normalizedLabel.length > 0,
+    };
+  }
+
+  const acceptedFormatHint = `Accepted format: ${normalizedRule}`;
+
+  if (normalizedLabel.length === 0) {
+    return {
+      isValid: optional,
+      helperText: acceptedFormatHint,
+    };
+  }
+
+  try {
+    const isValid = new RegExp(normalizedRule).test(normalizedLabel);
+    return {
+      isValid,
+      helperText: isValid
+        ? acceptedFormatHint
+        : `Invalid label. ${acceptedFormatHint}`,
+    };
+  } catch {
+    return {
+      isValid: true,
+      helperText: acceptedFormatHint,
+    };
+  }
+}
+
 export function getDiskIdentifier(disk: Disk, fallbackIndex: number): string {
   return (
     disk.id ||

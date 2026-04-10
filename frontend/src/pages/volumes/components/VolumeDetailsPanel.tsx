@@ -36,6 +36,8 @@ import {
 import { usePartitionActions } from "../hooks/usePartitionActions";
 import { decodeEscapeSequence } from "../utils";
 import { FilesystemCheckDialog } from "./FilesystemCheckDialog";
+import { FilesystemFormatDialog } from "./FilesystemFormatDialog";
+import { FilesystemLabelDialog } from "./FilesystemLabelDialog";
 import { HDIdleDiskSettings } from "./HDIdleDiskSettings";
 import { SmartStatusPanel } from "./SmartStatusPanel";
 
@@ -49,6 +51,7 @@ interface VolumeDetailsPanelProps {
   onUnmount?: (partition: Partition, force: boolean) => void;
   onCreateShare?: (partition: Partition) => void;
   onGoToShare?: (partition: Partition) => void;
+  onLabelUpdated?: (partitionId: string, label: string) => void;
   // share?: SharedResource;
 }
 
@@ -62,6 +65,7 @@ export function VolumeDetailsPanel({
   onUnmount,
   onCreateShare,
   onGoToShare,
+  onLabelUpdated,
 }: VolumeDetailsPanelProps) {
   const [diskInfoExpanded, setDiskInfoExpanded] = useState(!partition);
   const [smartExpanded, setSmartExpanded] = useState(true);
@@ -69,6 +73,17 @@ export function VolumeDetailsPanel({
   const [previewObject, setPreviewObject] = useState<object | null>(null);
   const [previewTitle, setPreviewTitle] = useState<string>("Preview");
   const [checkDialogOpen, setCheckDialogOpen] = useState(false);
+  const [formatDialogOpen, setFormatDialogOpen] = useState(false);
+  const [labelDialogOpen, setLabelDialogOpen] = useState(false);
+
+  const openDialog = (setDialogOpen: (open: boolean) => void) => {
+    const activeElement = document.activeElement;
+    if (activeElement instanceof HTMLElement) {
+      activeElement.blur();
+    }
+    setDialogOpen(true);
+  };
+
   const partitionActionItems = usePartitionActions({
     partition,
     protectedMode,
@@ -77,7 +92,9 @@ export function VolumeDetailsPanel({
     onUnmount,
     onCreateShare,
     onGoToShare,
-    onCheckFilesystem: () => setCheckDialogOpen(true),
+    onCheckFilesystem: () => openDialog(setCheckDialogOpen),
+    onSetFilesystemLabel: () => openDialog(setLabelDialogOpen),
+    onFormatPartition: () => openDialog(setFormatDialogOpen),
   });
 
   // Fetch settings for disable_smart
@@ -1019,6 +1036,17 @@ export function VolumeDetailsPanel({
         open={checkDialogOpen}
         partition={partition}
         onClose={() => setCheckDialogOpen(false)}
+      />
+      <FilesystemLabelDialog
+        open={labelDialogOpen}
+        partition={partition}
+        onClose={() => setLabelDialogOpen(false)}
+        onLabelUpdated={onLabelUpdated}
+      />
+      <FilesystemFormatDialog
+        open={formatDialogOpen}
+        partition={partition}
+        onClose={() => setFormatDialogOpen(false)}
       />
     </Box>
   );

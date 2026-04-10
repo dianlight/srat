@@ -21,8 +21,11 @@ import (
 	"github.com/dianlight/srat/homeassistant/root"
 	"github.com/dianlight/srat/homeassistant/websocket"
 	"github.com/dianlight/srat/internal"
+	"github.com/dianlight/srat/internal/commandexec"
 	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
+	servicefilesystem "github.com/dianlight/srat/service/filesystem"
+	"github.com/dianlight/srat/unixsamba"
 	"github.com/dianlight/tlog"
 	"github.com/gofri/go-github-ratelimit/v2/github_ratelimit"
 	"github.com/google/go-github/v84/github"
@@ -88,7 +91,7 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 			service.NewAddonsService,
 			service.NewHomeAssistantService,
 			service.NewBroadcasterService,
-			service.NewCommandExecutionService,
+			commandexec.NewCommandExecutor,
 			service.NewVolumeMountManager,
 			service.NewVolumeService,
 			service.NewServerProcessesService,
@@ -118,6 +121,10 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 			repository.NewIssueRepository,
 		),
 		fx.Invoke(func(service.AddonConfigWatcherServiceInterface) {}),
+		fx.Invoke(func(commandRunner commandexec.Executor) {
+			servicefilesystem.SetDefaultCommandRunner(commandRunner)
+			unixsamba.SetCommandRunner(commandRunner)
+		}),
 	)
 }
 

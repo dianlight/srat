@@ -107,7 +107,7 @@ func NewVolumeService(
 		refreshVersion:  0,
 	}
 
-	var unsubscribe [6]func()
+	var unsubscribe [7]func()
 	unsubscribe[0] = p.eventBus.OnPartition(p.handlePartitionEvent)
 	unsubscribe[1] = p.eventBus.OnMountPoint(p.handleMountPointEvent)
 	unsubscribe[2] = p.eventBus.OnHomeAssistant(func(ctx context.Context, hae events.HomeAssistantEvent) errors.E {
@@ -165,6 +165,7 @@ func NewVolumeService(
 		}
 		return nil
 	})
+	unsubscribe[6] = p.eventBus.OnFilesystemTask(p.handleFilesystemTaskEvent)
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			err := p.getVolumesData()
@@ -704,6 +705,60 @@ func (self *VolumeService) getVolumesData() errors.E {
 	}
 
 	return nil
+}
+
+func (self *VolumeService) handleFilesystemTaskEvent(ctx context.Context, e events.FilesystemTaskEvent) errors.E {
+	if e.Task == nil || !strings.EqualFold(e.Task.Operation, "format") || !strings.EqualFold(e.Task.Status, "success") {
+		return nil
+	}
+
+	slog.InfoContext(ctx, "Refreshing volume cache after successful format task", "device", e.Task.Device, "filesystem_type", e.Task.FilesystemType)
+
+	if self.hardwareClient != nil {
+		self.hardwareClient.InvalidateHardwareInfo()
+	}
+
+	if err := self.getVolumesData(); err != nil {
+		slog.ErrorContext(ctx, "Failed to refresh volume cache after format success", "device", e.Task.Device, "err", err)
+		return err
+	}
+
+	disk := self.findDiskForDevicePath(e.Task.Device)
+	if disk == nil {
+		slog.DebugContext(ctx, "No disk found to broadcast after format refresh", "device", e.Task.Device)
+		return nil
+	}
+
+	self.eventBus.EmitDisk(events.DiskEvent{
+		Event: events.Event{Type: events.EventTypes.UPDATE},
+		Disk:  disk,
+	})
+
+	return nil
+}
+
+func (self *VolumeService) findDiskForDevicePath(devicePath string) *dto.Disk {
+	if self.disks == nil || *self.disks == nil {
+		return nil
+	}
+
+	normalizedDevice := strings.TrimSpace(devicePath)
+	var fallback *dto.Disk
+	for _, disk := range *self.disks {
+		if fallback == nil {
+			fallback = disk
+		}
+		if disk.Partitions == nil {
+			continue
+		}
+		for _, partition := range *disk.Partitions {
+			if strings.TrimSpace(self.disks.GetPartitionDevicePath(&partition)) == normalizedDevice {
+				return disk
+			}
+		}
+	}
+
+	return fallback
 }
 
 func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.PartitionEvent) errors.E {

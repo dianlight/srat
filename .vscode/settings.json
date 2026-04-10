@@ -277,5 +277,6 @@
 	"go.formatFlags": [
 		"fmt",
 		"--stdin"
-	]
+	],
+	"chat.tools.terminal.backgroundNotifications": true
 }

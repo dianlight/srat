@@ -247,6 +247,18 @@ const injectedRtkApi = api
         }),
         providesTags: ["filesystems"],
       }),
+      getApiFilesystemSupport: build.query<
+        GetApiFilesystemSupportApiResponse,
+        GetApiFilesystemSupportApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/filesystem/support`,
+          params: {
+            fstype: queryArg.fstype,
+          },
+        }),
+        providesTags: ["filesystems"],
+      }),
       getApiFilesystemTask: build.query<
         GetApiFilesystemTaskApiResponse,
         GetApiFilesystemTaskApiArg
@@ -796,6 +808,13 @@ export type GetApiFilesystemStateApiArg = {
   /** Unique partition identifier */
   partitionId?: string;
 };
+export type GetApiFilesystemSupportApiResponse = /** status 200 OK */
+  | FilesystemSupport
+  | /** status default Error */ ErrorModel;
+export type GetApiFilesystemSupportApiArg = {
+  /** Filesystem type identifier */
+  fstype?: string;
+};
 export type GetApiFilesystemTaskApiResponse = /** status 200 OK */
   | FilesystemTask
   | /** status default Error */ ErrorModel;
@@ -1094,6 +1113,7 @@ export type CommandOutputNotification = {
   channel: string;
   command_id: string;
   execution_id: string;
+  exit_code?: number;
   line: string;
   timestamp: number;
 };
@@ -1296,6 +1316,8 @@ export type FormatPartitionInput = {
   label?: string;
   /** Unique partition identifier */
   partitionId: string;
+  /** Enable verbose formatter output */
+  verbose?: boolean;
 };
 export type GetFilesystemLabelResponse = {
   /** A URL to the JSON Schema for this object. */
@@ -1326,6 +1348,21 @@ export type FilesystemState = {
   isMounted: boolean;
   stateDescription?: string;
 };
+export type FilesystemSupport = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  alpinePackage?: string;
+  canCheck: boolean;
+  canFormat: boolean;
+  canGetState: boolean;
+  canMount: boolean;
+  canSetLabel: boolean;
+  isCheckReportProgress: boolean;
+  isExportable: boolean;
+  isFormatReportProgress: boolean;
+  labelRule: string;
+  missingTools?: string[] | null;
+};
 export type FilesystemTask = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
@@ -1346,16 +1383,6 @@ export type MountFlag = {
   value?: string;
   value_description?: string;
   value_validation_regex?: string;
-};
-export type FilesystemSupport = {
-  alpinePackage?: string;
-  canCheck: boolean;
-  canFormat: boolean;
-  canGetState: boolean;
-  canMount: boolean;
-  canSetLabel: boolean;
-  isExportable: boolean;
-  missingTools?: string[] | null;
 };
 export type FilesystemInfo = {
   custom_mount_flags?: MountFlag[] | null;
@@ -1997,6 +2024,7 @@ export const {
   usePatchApiFilesystemLabelMutation,
   usePutApiFilesystemLabelMutation,
   useGetApiFilesystemStateQuery,
+  useGetApiFilesystemSupportQuery,
   useGetApiFilesystemTaskQuery,
   useGetApiFilesystemsQuery,
   usePostApiHdidleStartMutation,

@@ -3,17 +3,10 @@ package filesystem
 import (
 	"context"
 	"errors"
-	"io"
-	"os"
-	"path/filepath"
-	"strconv"
-	"strings"
 	"testing"
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal/osutil"
-	"github.com/ovechkin-dm/mockio/v2/mock"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/u-root/u-root/pkg/mount"
 )
@@ -33,8 +26,6 @@ func TestBaseAdapterTestSuite(t *testing.T) {
 
 func (suite *BaseAdapterTestSuite) SetupTest() {
 	suite.ctx = context.Background()
-	controller := mock.NewMockController(suite.T())
-	execMock := mock.Mock[ExecCmd](controller)
 	suite.adapter = newBaseAdapter(
 		"ntfs",
 		"NTFS Filesystem",
@@ -44,6 +35,7 @@ func (suite *BaseAdapterTestSuite) SetupTest() {
 		"ntfsfix",
 		"ntfslabel",
 		"ntfsfix",
+		`^[^\x00/]{1,32}$`,
 		[]dto.FsMagicSignature{
 			{Offset: 3, Magic: []byte{'N', 'T', 'F', 'S', ' ', ' ', ' ', ' '}}, // "NTFS    "
 		},
@@ -56,9 +48,6 @@ func (suite *BaseAdapterTestSuite) SetupTest() {
 				return cmd, nil
 			}
 			return "", errors.New("command not found")
-		},
-		func(ctx context.Context, cmd string, args ...string) ExecCmd {
-			return execMock
 		},
 	)
 
@@ -74,10 +63,6 @@ func (suite *BaseAdapterTestSuite) SetupTest() {
 		},
 	)
 
-	mock.When(execMock.StdoutPipe()).ThenReturn(io.NopCloser(strings.NewReader("")), nil)
-	mock.When(execMock.StderrPipe()).ThenReturn(io.NopCloser(strings.NewReader("")), nil)
-	mock.When(execMock.Start()).ThenReturn(nil)
-	mock.When(execMock.Wait()).ThenReturn(nil)
 }
 
 func (suite *BaseAdapterTestSuite) TearDownTest() {
@@ -111,6 +96,29 @@ func (suite *BaseAdapterTestSuite) TestGetLinuxFsModule() {
 	suite.Equal("ntfs3", linuxModule)
 }
 
+// TestGetAliasNames tests the GetAliasNames method.
+func (suite *BaseAdapterTestSuite) TestGetAliasNames() {
+	suite.adapter = newBaseAdapter(
+		"ntfs",
+		"NTFS Filesystem",
+		false,
+		"ntfs-3g-progs",
+		"mkfs.ntfs",
+		"ntfsfix",
+		"ntfslabel",
+		"ntfsfix",
+		`^[^\x00/]{1,32}$`,
+		[]dto.FsMagicSignature{
+			{Offset: 3, Magic: []byte{'N', 'T', 'F', 'S', ' ', ' ', ' ', ' '}},
+		},
+		"ntfs3",
+		"ntfs-3g",
+		"fuseblk",
+	)
+
+	suite.Equal([]string{"ntfs3", "ntfs-3g", "fuseblk"}, suite.adapter.GetAliasNames())
+}
+
 // TestIsExportable tests the IsExportable method.
 func (suite *BaseAdapterTestSuite) TestIsExportable() {
 	suite.False(suite.adapter.IsExportable(suite.ctx))
@@ -124,6 +132,7 @@ func (suite *BaseAdapterTestSuite) TestIsExportable() {
 		"fsck.ext4",
 		"tune2fs",
 		"tune2fs",
+		`^[^\x00/]{1,16}$`,
 		[]dto.FsMagicSignature{{Offset: 1080, Magic: []byte{0x53, 0xEF}}},
 	)
 	suite.True(exportableAdapter.IsExportable(suite.ctx))
@@ -160,9 +169,6 @@ func (suite *BaseAdapterTestSuite) TestCheckCommandAvailability() {
 					}
 					return "", errors.New("command not found")
 				},
-				func(ctx context.Context, cmd string, args ...string) ExecCmd {
-					return &mockExecCmd{output: "mock output", exitCode: 0, err: nil}
-				},
 			)
 			cancelOs := osutil.MockFileSystems([]string{"ntfs3", "ext4"})
 
@@ -184,10 +190,20 @@ func (suite *BaseAdapterTestSuite) TestCheckCommandAvailability() {
 func (suite *BaseAdapterTestSuite) TestRunCommandCached() {
 	suite.Run("same command and args are cached", func() {
 		suite.cleanExec()
-		tempDir := suite.T().TempDir()
-		counterFile := filepath.Join(tempDir, "counter.txt")
-		createCountingCommand(suite.T(), tempDir, "countcmd", counterFile)
-		suite.T().Setenv("PATH", tempDir)
+		runCount := 0
+		suite.cleanExec = suite.adapter.SetCommandRunner(&fakeCommandRunner{
+			execute: func(_ context.Context, _ string, _ string, _ string, _ ...string) (dto.CommandExecutionSnapshot, error) {
+				runCount++
+				return dto.CommandExecutionSnapshot{
+					Success:  true,
+					ExitCode: 0,
+					Lines: []dto.CommandOutputLineSnapshot{{
+						Channel: dto.CommandOutputChannelStdout,
+						Line:    "run-1",
+					}},
+				}, nil
+			},
+		})
 
 		suite.adapter.invalidateCommandResultCache()
 
@@ -200,21 +216,32 @@ func (suite *BaseAdapterTestSuite) TestRunCommandCached() {
 		suite.Equal(0, secondExitCode)
 
 		suite.Equal(firstOutput, secondOutput)
-
-		count := readCounter(suite.T(), counterFile)
-		suite.Equal(1, count, "expected command to execute once with identical args")
+		suite.Equal(1, runCount, "expected command to execute once with identical args")
 	})
 
 	suite.Run("different args use different cache entries", func() {
 		suite.cleanExec()
+		runCount := 0
+		suite.cleanExec = suite.adapter.SetCommandRunner(&fakeCommandRunner{
+			execute: func(_ context.Context, _ string, _ string, _ string, _ ...string) (dto.CommandExecutionSnapshot, error) {
+				runCount++
+				return dto.CommandExecutionSnapshot{
+					Success:  true,
+					ExitCode: 0,
+					Lines: []dto.CommandOutputLineSnapshot{{
+						Channel: dto.CommandOutputChannelStdout,
+						Line:    "run",
+					}},
+				}, nil
+			},
+		})
 
-		// These should not error with standard echo command
 		_, _, err := suite.adapter.runCommandCached(suite.ctx, "echo", "arg1")
 		suite.NoError(err)
 
 		_, _, err = suite.adapter.runCommandCached(suite.ctx, "echo", "arg2")
 		suite.NoError(err)
-		// Implicit pass if no errors
+		suite.Equal(2, runCount, "expected different args to bypass the cache")
 	})
 }
 
@@ -308,6 +335,121 @@ func (suite *BaseAdapterTestSuite) TestIsDeviceMounted_UsesOverride() {
 	suite.False(suite.adapter.isDeviceMounted("/dev/other0"))
 }
 
+func (suite *BaseAdapterTestSuite) TestSetCommandRunner_UsesInjectedRunnerForRunCommand() {
+	reset := suite.adapter.SetCommandRunner(&fakeCommandRunner{
+		execute: func(_ context.Context, _ string, _ string, _ string, _ ...string) (dto.CommandExecutionSnapshot, error) {
+			return dto.CommandExecutionSnapshot{
+				Success:  true,
+				ExitCode: 0,
+				Lines: []dto.CommandOutputLineSnapshot{{
+					Channel: dto.CommandOutputChannelStdout,
+					Line:    "runner-output",
+				}},
+			}, nil
+		},
+	})
+	defer reset()
+
+	output, exitCode, err := suite.adapter.runCommand(suite.ctx, "runner-command", "arg1")
+	suite.NoError(err)
+	suite.Equal(0, exitCode)
+	suite.Equal("runner-output", output)
+}
+
+func (suite *BaseAdapterTestSuite) TestSetCommandRunner_StreamsProgressFromSnapshots() {
+	callCount := 0
+	reset := suite.adapter.SetCommandRunner(&fakeCommandRunner{
+		start: func(_ context.Context, _ string, _ string, _ string, _ ...string) (string, error) {
+			return "exec-1", nil
+		},
+		getSnapshot: func(executionID string) (dto.CommandExecutionSnapshot, bool) {
+			callCount++
+			baseLines := []dto.CommandOutputLineSnapshot{{
+				Channel: dto.CommandOutputChannelStdout,
+				Line:    "out-1",
+			}, {
+				Channel: dto.CommandOutputChannelStderr,
+				Line:    "err-1",
+			}}
+
+			snapshot := dto.CommandExecutionSnapshot{
+				ExecutionID: executionID,
+				Running:     callCount < 3,
+				Success:     true,
+				ExitCode:    0,
+				Lines:       append([]dto.CommandOutputLineSnapshot(nil), baseLines...),
+			}
+			if callCount >= 2 {
+				snapshot.Lines = append(snapshot.Lines, dto.CommandOutputLineSnapshot{
+					Channel: dto.CommandOutputChannelStdout,
+					Line:    "out-2",
+				})
+			}
+			return snapshot, true
+		},
+	})
+	defer reset()
+
+	stdoutChan, stderrChan, resultChan := suite.adapter.executeCommandWithProgress(suite.ctx, "runner-command", []string{"arg1"})
+
+	var stdoutLines []string
+	for line := range stdoutChan {
+		stdoutLines = append(stdoutLines, line)
+	}
+
+	var stderrLines []string
+	for line := range stderrChan {
+		stderrLines = append(stderrLines, line)
+	}
+
+	result, ok := <-resultChan
+	suite.True(ok)
+	suite.NoError(result.Error)
+	suite.Equal(0, result.ExitCode)
+	suite.Equal([]string{"out-1", "out-2"}, stdoutLines)
+	suite.Equal([]string{"err-1"}, stderrLines)
+}
+
+func (suite *BaseAdapterTestSuite) TestSetCommandRunner_FailedSnapshotIncludesStderrInError() {
+	reset := suite.adapter.SetCommandRunner(&fakeCommandRunner{
+		start: func(_ context.Context, _ string, _ string, _ string, _ ...string) (string, error) {
+			return "exec-err", nil
+		},
+		getSnapshot: func(executionID string) (dto.CommandExecutionSnapshot, bool) {
+			return dto.CommandExecutionSnapshot{
+				ExecutionID: executionID,
+				Running:     false,
+				Success:     false,
+				ExitCode:    1,
+				Error:       "exit status 1",
+				Lines: []dto.CommandOutputLineSnapshot{{
+					Channel: dto.CommandOutputChannelStderr,
+					Line:    "mkfs.xfs: /dev/test is busy",
+				}},
+			}, true
+		},
+	})
+	defer reset()
+
+	stdoutChan, stderrChan, resultChan := suite.adapter.executeCommandWithProgress(suite.ctx, "runner-command", []string{"arg1"})
+
+	for range stdoutChan {
+	}
+
+	var stderrLines []string
+	for line := range stderrChan {
+		stderrLines = append(stderrLines, line)
+	}
+
+	result, ok := <-resultChan
+	suite.True(ok)
+	suite.Error(result.Error)
+	suite.Equal(1, result.ExitCode)
+	suite.Equal([]string{"mkfs.xfs: /dev/test is busy"}, stderrLines)
+	suite.Contains(result.Error.Error(), "exit status 1")
+	suite.Contains(result.Error.Error(), "mkfs.xfs: /dev/test is busy")
+}
+
 // TestOsutilMockFileSystems tests that osutil.MockFileSystems works for mocking mounted filesystems
 func (suite *BaseAdapterTestSuite) TestOsutilMockFileSystems() {
 	suite.Run("mock replaces filesystem list", func() {
@@ -330,57 +472,48 @@ func (suite *BaseAdapterTestSuite) TestOsutilMockFileSystems() {
 
 // Helper functions
 
-func createCountingCommand(t *testing.T, dir, name, counterFile string) {
-	t.Helper()
-	path := filepath.Join(dir, name)
-	script := "#!/bin/sh\n" +
-		"count=$(cat '" + counterFile + "' 2>/dev/null || echo 0)\n" +
-		"count=$((count + 1))\n" +
-		"echo \"$count\" > '" + counterFile + "'\n" +
-		"echo \"run-$count\"\n" +
-		"exit 0\n"
-
-	require.NoError(t, os.WriteFile(path, []byte(script), 0o755))
+type fakeCommandRunner struct {
+	lookPath    func(string) (string, error)
+	start       func(context.Context, string, string, string, ...string) (string, error)
+	execute     func(context.Context, string, string, string, ...string) (dto.CommandExecutionSnapshot, error)
+	getSnapshot func(string) (dto.CommandExecutionSnapshot, bool)
 }
 
-func readCounter(t *testing.T, counterFile string) int {
-	t.Helper()
-	content, err := os.ReadFile(counterFile)
-	require.NoError(t, err)
-
-	counter := strings.TrimSpace(string(content))
-	value, err := strconv.Atoi(counter)
-	require.NoError(t, err)
-
-	return value
-}
-
-// mockExecCmd implements filesystem.ExecCmd for testing
-type mockExecCmd struct {
-	output   string
-	exitCode int
-	err      error
-}
-
-func (m *mockExecCmd) CombinedOutput() ([]byte, error) {
-	if m.err != nil {
-		return nil, m.err
+func (f *fakeCommandRunner) LookPath(command string) (string, error) {
+	if f.lookPath != nil {
+		return f.lookPath(command)
 	}
-	return []byte(m.output), nil
+	if command == "" {
+		return "", errors.New("not implemented")
+	}
+	return command, nil
 }
 
-func (m *mockExecCmd) StdoutPipe() (io.ReadCloser, error) {
-	return nil, errors.New("not implemented in mock")
+func (f *fakeCommandRunner) Start(ctx context.Context, commandID, label, command string, args ...string) (string, error) {
+	if f.start != nil {
+		return f.start(ctx, commandID, label, command, args...)
+	}
+	return "", errors.New("not implemented")
 }
 
-func (m *mockExecCmd) StderrPipe() (io.ReadCloser, error) {
-	return nil, errors.New("not implemented in mock")
+func (f *fakeCommandRunner) StartWithInput(ctx context.Context, commandID, label, _ string, command string, args ...string) (string, error) {
+	return f.Start(ctx, commandID, label, command, args...)
 }
 
-func (m *mockExecCmd) Start() error {
-	return nil
+func (f *fakeCommandRunner) Execute(ctx context.Context, commandID, label, command string, args ...string) (dto.CommandExecutionSnapshot, error) {
+	if f.execute != nil {
+		return f.execute(ctx, commandID, label, command, args...)
+	}
+	return dto.CommandExecutionSnapshot{}, errors.New("not implemented")
 }
 
-func (m *mockExecCmd) Wait() error {
-	return m.err
+func (f *fakeCommandRunner) ExecuteWithInput(ctx context.Context, commandID, label, _ string, command string, args ...string) (dto.CommandExecutionSnapshot, error) {
+	return f.Execute(ctx, commandID, label, command, args...)
+}
+
+func (f *fakeCommandRunner) GetSnapshot(executionID string) (dto.CommandExecutionSnapshot, bool) {
+	if f.getSnapshot != nil {
+		return f.getSnapshot(executionID)
+	}
+	return dto.CommandExecutionSnapshot{}, false
 }

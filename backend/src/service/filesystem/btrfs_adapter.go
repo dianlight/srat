@@ -26,6 +26,7 @@ func NewBtrfsAdapter() FilesystemAdapter {
 			"btrfs",
 			"btrfs",
 			"btrfs",
+			`^[^\x00/]{1,255}$`,
 			[]dto.FsMagicSignature{
 				{Offset: 0x10040, Magic: []byte{'_', 'B', 'H', 'R', 'f', 'S', '_', 'M'}}, // 65600
 			},

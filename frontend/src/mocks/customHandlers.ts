@@ -9,6 +9,19 @@
 
 import { http, type RequestHandler } from "msw";
 
+const filesystemSupportOverrides = new Map<string, Record<string, unknown>>();
+
+export function setFilesystemSupportOverride(
+	fsType: string,
+	response: Record<string, unknown>,
+) {
+	filesystemSupportOverrides.set(fsType.toLowerCase(), response);
+}
+
+export function clearFilesystemSupportOverrides() {
+	filesystemSupportOverrides.clear();
+}
+
 /**
 
  * 
@@ -46,6 +59,151 @@ export const customHandlers: RequestHandler[] = [
 					"Last check": "2026-02-10",
 				},
 			}),
+			{
+				status: 200,
+				headers: {
+					"Content-Type": "application/json",
+				},
+			},
+		);
+	}),
+
+	// Deterministic filesystem support endpoint mock used by volume dialog tests.
+	http.get("/api/filesystem/support", ({ request }) => {
+		const url = new URL(request.url);
+		const fsType = (url.searchParams.get("fstype") ?? "").toLowerCase();
+		const override = filesystemSupportOverrides.get(fsType);
+
+		if (override) {
+			return new Response(JSON.stringify(override), {
+				status: 200,
+				headers: {
+					"Content-Type": "application/json",
+				},
+			});
+		}
+
+		const supportByFsType: Record<string, Record<string, unknown>> = {
+			ext4: {
+				canMount: true,
+				canFormat: true,
+				canCheck: true,
+				canSetLabel: true,
+				canGetState: true,
+				isExportable: false,
+				isFormatReportProgress: false,
+				isCheckReportProgress: false,
+				labelRule: "^[^\\x00/]{1,16}$",
+				alpinePackage: "e2fsprogs",
+				missingTools: [],
+			},
+			vfat: {
+				canMount: true,
+				canFormat: true,
+				canCheck: true,
+				canSetLabel: true,
+				canGetState: true,
+				isExportable: false,
+				isFormatReportProgress: false,
+				isCheckReportProgress: false,
+				labelRule: "^[A-Za-z0-9 ]{1,11}$",
+				alpinePackage: "dosfstools",
+				missingTools: [],
+			},
+			f2fs: {
+				canMount: true,
+				canFormat: true,
+				canCheck: true,
+				canSetLabel: false,
+				canGetState: true,
+				isExportable: false,
+				isFormatReportProgress: false,
+				isCheckReportProgress: false,
+				labelRule: "^[^\\x00/]{1,512}$",
+				alpinePackage: "f2fs-tools",
+				missingTools: [],
+			},
+			zfs: {
+				canMount: true,
+				canFormat: false,
+				canCheck: false,
+				canSetLabel: false,
+				canGetState: true,
+				isExportable: false,
+				isFormatReportProgress: false,
+				isCheckReportProgress: false,
+				labelRule: "",
+				alpinePackage: "",
+				missingTools: [],
+			},
+		};
+
+		const fallback = {
+			canMount: true,
+			canFormat: true,
+			canCheck: true,
+			canSetLabel: true,
+			canGetState: true,
+			isExportable: false,
+			isFormatReportProgress: false,
+			isCheckReportProgress: false,
+			labelRule: "",
+			alpinePackage: "",
+			missingTools: [],
+		};
+
+		return new Response(JSON.stringify(supportByFsType[fsType] ?? fallback), {
+			status: 200,
+			headers: {
+				"Content-Type": "application/json",
+			},
+		});
+	}),
+
+	// Deterministic filesystem label update endpoint used by volume relabel tests.
+	http.put("/api/filesystem/label", async ({ request }) => {
+		const body = (await request.json().catch(() => ({}))) as {
+			partitionId?: string;
+			label?: string;
+		};
+
+		return new Response(
+			JSON.stringify({
+				success: true,
+				partitionId: body.partitionId ?? "",
+				label: body.label ?? "",
+			}),
+			{
+				status: 200,
+				headers: {
+					"Content-Type": "application/json",
+				},
+			},
+		);
+	}),
+	// Deterministic GitHub discussions endpoint used by dashboard news widgets.
+	http.get("https://api.github.com/repos/:owner/:repo/discussions", ({ request, params }) => {
+		const url = new URL(request.url);
+		const category = url.searchParams.get("category");
+		if (category !== "announcements") {
+			return new Response(JSON.stringify([]), {
+				status: 200,
+				headers: {
+					"Content-Type": "application/json",
+				},
+			});
+		}
+
+		return new Response(
+			JSON.stringify([
+				{
+					id: 1,
+					number: 1,
+					title: `${String(params.repo)} announcement`,
+					html_url: `https://github.com/${String(params.owner)}/${String(params.repo)}/discussions/1`,
+					created_at: "2026-04-01T12:00:00.000Z",
+				},
+			]),
 			{
 				status: 200,
 				headers: {

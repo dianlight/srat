@@ -8,13 +8,19 @@ import { TreeItem } from "@mui/x-tree-view/TreeItem";
 import { useMemo } from "react";
 import type { User } from "../../../store/sratApi";
 
+type UserListEntry = User | null | undefined;
+
 interface UsersTreeViewProps {
-  users?: User[];
+  users?: UserListEntry[];
   selectedUserKey?: string;
   onUserSelect: (userKey: string, user: User) => void;
   readOnly?: boolean;
   expandedItems: string[];
   onExpandedItemsChange: (items: string[]) => void;
+}
+
+function isUserListEntry(user: UserListEntry): user is User {
+  return Boolean(user && typeof user === "object");
 }
 
 export function UsersTreeView({
@@ -50,10 +56,11 @@ export function UsersTreeView({
       return [];
     }
 
+    const validUsers = users.filter(isUserListEntry);
     const adminUsers: User[] = [];
     const regularUsers: User[] = [];
 
-    users.forEach((user) => {
+    validUsers.forEach((user) => {
       if (user.is_admin) {
         adminUsers.push(user);
       } else {

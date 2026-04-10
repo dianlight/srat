@@ -62,7 +62,9 @@ Use [task-template.md](../../../docs/task-template.md) as the base. Fill in:
 ```markdown
 # [FEATURE/FIX/DOCS/REFACTOR]: <Title>
 
-**Target Repo:** `srat`  **Status:** 📅 Planned  **Issue Link:** [Optional]
+**Target Repo:** `srat`  
+**Status:** 📅 Planned  
+**Issue Link:** [Optional]
 
 ## 🎯 Objective
 ...

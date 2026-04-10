@@ -118,3 +118,11 @@ type FilesystemTaskEvent struct {
 	Event
 	Task *dto.FilesystemTask
 }
+
+// CommandExecutionEvent represents a command lifecycle notification emitted by
+// the shared command executor. Message is always one of the typed command
+// notification DTOs.
+type CommandExecutionEvent struct {
+	Event
+	Message dto.CommandExecutionNotification
+}

@@ -3,9 +3,11 @@ package api
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/tlog"
 )
@@ -14,22 +16,26 @@ import (
 type FilesystemHandler struct {
 	fsService service.FilesystemServiceInterface
 	disks     *dto.DiskMap
+	eventBus  events.EventBusInterface
 }
 
 // NewFilesystemHandler creates a new FilesystemHandler
 func NewFilesystemHandler(
 	fsService service.FilesystemServiceInterface,
 	disks *dto.DiskMap,
+	eventBus events.EventBusInterface,
 ) *FilesystemHandler {
 	return &FilesystemHandler{
 		fsService: fsService,
 		disks:     disks,
+		eventBus:  eventBus,
 	}
 }
 
 // RegisterFilesystemHandler registers all filesystem-related endpoints
 func (h *FilesystemHandler) RegisterFilesystemHandler(api huma.API) {
 	huma.Get(api, "/filesystems", h.ListFilesystems, huma.OperationTags("filesystems"))
+	huma.Get(api, "/filesystem/support", h.GetFilesystemSupport, huma.OperationTags("filesystems"))
 	huma.Post(api, "/filesystem/format", h.FormatPartition, huma.OperationTags("filesystems"))
 	huma.Post(api, "/filesystem/check", h.CheckPartition, huma.OperationTags("filesystems"))
 	huma.Post(api, "/filesystem/check/abort", h.AbortCheckPartition, huma.OperationTags("filesystems"))
@@ -38,6 +44,38 @@ func (h *FilesystemHandler) RegisterFilesystemHandler(api huma.API) {
 	huma.Put(api, "/filesystem/label", h.SetPartitionLabel, huma.OperationTags("filesystems"))
 	huma.Get(api, "/filesystem/task", h.HandleTask, huma.OperationTags("filesystems", "internal"))
 
+}
+
+// FilesystemSupportInput contains the input for querying support for one filesystem type.
+type FilesystemSupportInput struct {
+	// FsType is the filesystem type identifier (e.g., ext4, xfs, ntfs)
+	FsType string `query:"fstype" json:"fstype" doc:"Filesystem type identifier"`
+}
+
+// GetFilesystemSupport returns capability information for a single filesystem type.
+func (h *FilesystemHandler) GetFilesystemSupport(
+	ctx context.Context,
+	input *FilesystemSupportInput,
+) (*struct{ Body dto.FilesystemSupport }, error) {
+	fsType := strings.TrimSpace(input.FsType)
+	if fsType == "" {
+		return nil, huma.Error400BadRequest("Filesystem type is required")
+	}
+
+	info, err := h.fsService.GetSupportAndInfo(ctx, fsType)
+	if err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "unsupported filesystem type") {
+			return nil, huma.Error400BadRequest("Unsupported filesystem type")
+		}
+		tlog.ErrorContext(ctx, "Failed to get filesystem support", "filesystem", fsType, "error", err)
+		return nil, huma.Error500InternalServerError("Failed to get filesystem support", err)
+	}
+
+	if info.Support == nil {
+		return nil, huma.Error500InternalServerError("Filesystem support information unavailable", nil)
+	}
+
+	return &struct{ Body dto.FilesystemSupport }{Body: *info.Support}, nil
 }
 
 // ListFilesystems returns all supported filesystems with their capabilities
@@ -88,6 +126,9 @@ type FormatPartitionInput struct {
 	// Force forces formatting even if the device appears to be in use
 	Force bool `json:"force,omitempty" default:"false" doc:"Force formatting even if device appears in use"`
 
+	// Verbose enables verbose formatter output when supported
+	Verbose bool `json:"verbose,omitempty" default:"false" doc:"Enable verbose formatter output"`
+
 	// AdditionalOptions contains filesystem-specific formatting options
 	AdditionalOptions map[string]string `json:"additionalOptions,omitempty" doc:"Filesystem-specific formatting options"`
 }
@@ -104,7 +145,8 @@ func (h *FilesystemHandler) FormatPartition(
 		"partition", req.PartitionID,
 		"filesystem", req.FilesystemType,
 		"label", req.Label,
-		"force", req.Force)
+		"force", req.Force,
+		"verbose", req.Verbose)
 
 	// Find the partition using DiskMap directly
 	diskMap := h.disks
@@ -124,6 +166,7 @@ func (h *FilesystemHandler) FormatPartition(
 	result, formatErr := h.fsService.FormatPartition(ctx, devicePath, req.FilesystemType, dto.FormatOptions{
 		Label:             req.Label,
 		Force:             req.Force,
+		Verbose:           req.Verbose,
 		AdditionalOptions: req.AdditionalOptions,
 	})
 
@@ -412,7 +455,7 @@ func (h *FilesystemHandler) SetPartitionLabel(
 
 	// Find the partition using DiskMap directly
 	diskMap := h.disks
-	partition, _, found := diskMap.GetPartitionByID(req.PartitionID)
+	partition, diskID, found := diskMap.GetPartitionByID(req.PartitionID)
 	if !found {
 		return nil, huma.Error404NotFound("Partition not found")
 	}
@@ -440,6 +483,21 @@ func (h *FilesystemHandler) SetPartitionLabel(
 			"label", req.Label,
 			"error", labelErr)
 		return nil, huma.Error500InternalServerError("Failed to set partition label", labelErr)
+	}
+
+	updatedPartition := *partition
+	updatedPartition.Name = new(req.Label)
+	if err := diskMap.AddPartition(diskID, updatedPartition); err != nil {
+		tlog.WarnContext(ctx, "Failed to update partition label in disk cache",
+			"partition", req.PartitionID,
+			"disk", diskID,
+			"label", req.Label,
+			"error", err)
+	} else if disk, ok := diskMap.Get(diskID); ok && h.eventBus != nil {
+		h.eventBus.EmitDisk(events.DiskEvent{
+			Event: events.Event{Type: events.EventTypes.UPDATE},
+			Disk:  disk,
+		})
 	}
 
 	tlog.InfoContext(ctx, "Successfully set partition label",

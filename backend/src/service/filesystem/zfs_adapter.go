@@ -28,6 +28,7 @@ func NewZfsAdapter() FilesystemAdapter {
 			"",
 			"",
 			"",
+			"",
 			nil,
 		),
 	}

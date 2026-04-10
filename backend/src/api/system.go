@@ -9,6 +9,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/srat/service"
+	"github.com/dianlight/srat/unixsamba"
 	"github.com/shirou/gopsutil/v4/net"
 )
 
@@ -118,14 +119,14 @@ func (handler *SystemHanler) GetCapabilitiesHandler(ctx context.Context, input *
 	var reasons []string
 
 	// Check Samba version
-	sambaVersionSufficient, err := osutil.IsSambaVersionSufficient()
+	sambaVersionSufficient, err := unixsamba.IsSambaVersionSufficient()
 	if err != nil {
 		slog.Warn("Failed to check Samba version", "error", err)
 		capabilities.SambaVersion = "unknown"
 		capabilities.SambaVersionSufficient = false
 		reasons = append(reasons, "Samba version could not be determined")
 	} else {
-		version, _ := osutil.GetSambaVersion()
+		version, _ := unixsamba.GetSambaVersion()
 		capabilities.SambaVersion = version
 		capabilities.SambaVersionSufficient = sambaVersionSufficient
 		if !sambaVersionSufficient {

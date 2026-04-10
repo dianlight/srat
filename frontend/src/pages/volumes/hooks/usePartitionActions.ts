@@ -11,6 +11,8 @@ export interface UsePartitionActionsParams {
   onCreateShare?: (partition: Partition) => void;
   onGoToShare?: (partition: Partition) => void;
   onCheckFilesystem?: (partition: Partition) => void;
+  onSetFilesystemLabel?: (partition: Partition) => void;
+  onFormatPartition?: (partition: Partition) => void;
 }
 
 export function usePartitionActions({
@@ -22,6 +24,8 @@ export function usePartitionActions({
   onCreateShare,
   onGoToShare,
   onCheckFilesystem,
+  onSetFilesystemLabel,
+  onFormatPartition,
 }: UsePartitionActionsParams) {
   return useMemo(() => {
     if (!partition) return null;
@@ -43,6 +47,8 @@ export function usePartitionActions({
       onCreateShare,
       onGoToShare,
       onCheckFilesystem: onCheckFilesystem || (() => {}),
+      onSetFilesystemLabel: onSetFilesystemLabel || (() => {}),
+      onFormatPartition: onFormatPartition || (() => {}),
     });
   }, [
     partition,
@@ -53,5 +59,7 @@ export function usePartitionActions({
     onCreateShare,
     onGoToShare,
     onCheckFilesystem,
+    onSetFilesystemLabel,
+    onFormatPartition,
   ]);
 }

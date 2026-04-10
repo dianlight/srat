@@ -3,21 +3,44 @@ package filesystem
 import (
 	"context"
 
+	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/u-root/u-root/pkg/mount"
 )
 
 type testFilesystemCommandExecutor struct {
-	lookPath func(string) (string, error)
-	command  func(context.Context, string, ...string) ExecCmd
+	lookPath         func(string) (string, error)
+	start            func(context.Context, string, string, string, ...string) (string, error)
+	execute          func(context.Context, string, string, string, ...string) (dto.CommandExecutionSnapshot, error)
+	executeWithInput func(context.Context, string, string, string, string, ...string) (dto.CommandExecutionSnapshot, error)
+	getSnapshot      func(string) (dto.CommandExecutionSnapshot, bool)
 }
 
 func (t *testFilesystemCommandExecutor) LookPath(command string) (string, error) {
 	return t.lookPath(command)
 }
 
-func (t *testFilesystemCommandExecutor) Command(ctx context.Context, name string, args ...string) ExecCmd {
-	return t.command(ctx, name, args...)
+func (t *testFilesystemCommandExecutor) Start(ctx context.Context, commandID, label, command string, args ...string) (string, error) {
+	return t.start(ctx, commandID, label, command, args...)
+}
+
+func (t *testFilesystemCommandExecutor) StartWithInput(ctx context.Context, commandID, label, _ string, command string, args ...string) (string, error) {
+	return t.Start(ctx, commandID, label, command, args...)
+}
+
+func (t *testFilesystemCommandExecutor) Execute(ctx context.Context, commandID, label, command string, args ...string) (dto.CommandExecutionSnapshot, error) {
+	return t.execute(ctx, commandID, label, command, args...)
+}
+
+func (t *testFilesystemCommandExecutor) ExecuteWithInput(ctx context.Context, commandID, label, stdinContent, command string, args ...string) (dto.CommandExecutionSnapshot, error) {
+	if t.executeWithInput != nil {
+		return t.executeWithInput(ctx, commandID, label, stdinContent, command, args...)
+	}
+	return t.Execute(ctx, commandID, label, command, args...)
+}
+
+func (t *testFilesystemCommandExecutor) GetSnapshot(executionID string) (dto.CommandExecutionSnapshot, bool) {
+	return t.getSnapshot(executionID)
 }
 
 // SetMountOpsForTesting allows overriding generic mount operations for tests.
@@ -42,23 +65,19 @@ func (b *baseAdapter) SetMountOpsForTesting(
 	}
 }
 
-// SetExecOpsForTesting allows overriding command execution operations for tests.
-func (b *baseAdapter) SetExecOpsForTesting(
-	lookPath func(string) (string, error),
-	command func(context.Context, string, ...string) ExecCmd,
-) (reset func()) {
+// SetExecOpsForTesting allows overriding command discovery operations for tests.
+func (b *baseAdapter) SetExecOpsForTesting(lookPath func(string) (string, error)) (reset func()) {
 	original := b.commandExecutor
+	current := b.resolveCommandExecutor()
 
-	testExecutor := &testFilesystemCommandExecutor{}
+	testExecutor := &testFilesystemCommandExecutor{
+		lookPath:    current.LookPath,
+		start:       current.Start,
+		execute:     current.Execute,
+		getSnapshot: current.GetSnapshot,
+	}
 	if lookPath != nil {
 		testExecutor.lookPath = lookPath
-	} else {
-		testExecutor.lookPath = b.commandExecutor.LookPath
-	}
-	if command != nil {
-		testExecutor.command = command
-	} else {
-		testExecutor.command = b.commandExecutor.Command
 	}
 
 	b.commandExecutor = testExecutor

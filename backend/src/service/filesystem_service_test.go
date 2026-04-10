@@ -270,6 +270,15 @@ func (suite *FilesystemServiceTestSuite) TestResolveLinuxFsModule() {
 	suite.Equal("unknownfs", suite.fsService.ResolveLinuxFsModule("unknownfs"))
 }
 
+func (suite *FilesystemServiceTestSuite) TestGetSupportAndInfo_AcceptsLinuxFsModuleAlias() {
+	info, err := suite.fsService.GetSupportAndInfo(suite.ctx, "ntfs3")
+	suite.Require().NoError(err)
+	suite.Require().NotNil(info)
+	suite.Equal("ntfs", info.Name)
+	suite.Equal("ntfs3", info.Type)
+	suite.NotNil(info.Support)
+}
+
 func (suite *FilesystemServiceTestSuite) TestGetMountFlagsAndData() {
 	testCases := []struct {
 		name             string
@@ -402,6 +411,33 @@ func (suite *FilesystemServiceTestSuite) TestAbortCheckPartition_NoActiveOperati
 	err := suite.fsService.AbortCheckPartition(context.Background(), "/dev/test")
 	suite.Require().Error(err)
 	suite.True(errors.Is(err, dto.ErrorNotFound))
+}
+
+func (suite *FilesystemServiceTestSuite) TestCheckPartition_UnsupportedFilesystemType() {
+	result, err := suite.fsService.CheckPartition(
+		context.Background(),
+		"/dev/test",
+		"unknown-fs",
+		dto.CheckOptions{},
+	)
+
+	suite.Nil(result)
+	suite.Require().Error(err)
+	suite.Contains(err.Error(), "unsupported filesystem type")
+}
+
+func (suite *FilesystemServiceTestSuite) TestCheckPartition_UnsupportedCapability() {
+	result, err := suite.fsService.CheckPartition(
+		context.Background(),
+		"/dev/test",
+		"zfs",
+		dto.CheckOptions{},
+	)
+
+	suite.Nil(result)
+	suite.Require().Error(err)
+	suite.Contains(err.Error(), "cannot be checked")
+	suite.Contains(err.Error(), "Install package")
 }
 
 func (suite *FilesystemServiceTestSuite) TestMountFlagsToSyscallFlagAndData() {

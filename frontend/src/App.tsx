@@ -1,24 +1,21 @@
 import {
   Alert,
   Backdrop,
-  Box,
   Button,
   CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   Snackbar,
-  Typography,
 } from "@mui/material";
 import Container from "@mui/material/Container";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import BaseConfigModal from "./components/BaseConfigModal";
+import {
+  CommandOutputDialog,
+  CommandOutputToastContent,
+} from "./components/CommandOutputDialog";
 import { Footer } from "./components/Footer";
 import GlobalEventMonitor from "./components/GlobalEventTracker";
 import { NavBar } from "./components/NavBar";
-import { ReadonlyCommandTerminal } from "./components/ReadonlyCommandTerminal";
 import TelemetryModal from "./components/TelemetryModal";
 import { useBaseConfigModal } from "./hooks/useBaseConfigModal";
 import { useTelemetryModal } from "./hooks/useTelemetryModal";
@@ -54,6 +51,7 @@ export function App() {
   >(null);
   const [commandDialogOpen, setCommandDialogOpen] = useState(false);
   const commandEventDedupRef = useRef<string>("");
+  const commandToastDedupRef = useRef<Set<string>>(new Set());
   // Compute Backdrop open state
   useEffect(() => {
     const newBackdropOpen =
@@ -171,6 +169,24 @@ export function App() {
     setCommandDialogOpen(true);
   }, []);
 
+  const showCommandFailureToast = useCallback(
+    (executionId: string, commandId: string) => {
+      if (commandDialogOpen || commandToastDedupRef.current.has(executionId)) {
+        return;
+      }
+
+      commandToastDedupRef.current.add(executionId);
+      toast.error(
+        <CommandOutputToastContent
+          commandId={commandId}
+          onOpenOutput={() => openCommandDialog(executionId)}
+        />,
+        { autoClose: 7000 },
+      );
+    },
+    [commandDialogOpen, openCommandDialog],
+  );
+
   useEffect(() => {
     const event = evdata?.command_started;
     if (!event) {
@@ -185,7 +201,7 @@ export function App() {
       return;
     }
 
-    const dedupeKey = `${event.execution_id}:${event.channel}:${event.timestamp}:${event.line}`;
+    const dedupeKey = `${event.execution_id}:${event.channel}:${event.timestamp}:${event.line}:${event.exit_code ?? "pending"}`;
     if (commandEventDedupRef.current === dedupeKey) {
       return;
     }
@@ -202,7 +218,14 @@ export function App() {
         lines: [],
       };
 
-      const lines = [...(current.lines || []), event].slice(-500);
+      const previousLines = current.lines || [];
+      const lastLine = previousLines[previousLines.length - 1];
+      const lines =
+        lastLine?.channel === event.channel &&
+        lastLine?.line === event.line &&
+        lastLine?.timestamp === event.timestamp
+          ? previousLines
+          : [...previousLines, event].slice(-500);
 
       return {
         ...previous,
@@ -215,24 +238,14 @@ export function App() {
       };
     });
 
-    if (event.channel === "stderr" && !commandDialogOpen) {
-      toast.error(
-        <Box>
-          <Typography variant="body2" sx={{ mb: 1 }}>
-            Command stderr detected for {event.command_id}
-          </Typography>
-          <Button
-            size="small"
-            variant="outlined"
-            onClick={() => openCommandDialog(event.execution_id)}
-          >
-            Open Output
-          </Button>
-        </Box>,
-        { autoClose: 7000 },
-      );
+    if (
+      event.channel === "stderr" &&
+      typeof event.exit_code === "number" &&
+      event.exit_code !== 0
+    ) {
+      showCommandFailureToast(event.execution_id, event.command_id);
     }
-  }, [evdata?.command_output, commandDialogOpen, openCommandDialog]);
+  }, [evdata?.command_output, showCommandFailureToast]);
 
   useEffect(() => {
     const event: CommandTerminatedNotification | undefined =
@@ -264,7 +277,11 @@ export function App() {
         },
       };
     });
-  }, [evdata?.command_terminated]);
+
+    if (event.exit_code !== 0) {
+      showCommandFailureToast(event.execution_id, event.command_id);
+    }
+  }, [evdata?.command_terminated, showCommandFailureToast]);
 
   const selectedCommandSession =
     commandDialogExecutionId === null
@@ -359,42 +376,12 @@ export function App() {
           Addon configuration has changed. Reload required.
         </Alert>
       </Snackbar>
-      <Dialog
+      <CommandOutputDialog
         open={commandDialogOpen}
+        session={selectedCommandSession}
         onClose={() => setCommandDialogOpen(false)}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>
-          Command Output:{" "}
-          {selectedCommandSession?.label ??
-            selectedCommandSession?.command_id ??
-            "Unknown"}
-        </DialogTitle>
-        <DialogContent dividers>
-          <Typography variant="body2" sx={{ mb: 1 }}>
-            Execution: {selectedCommandSession?.execution_id}
-          </Typography>
-          <Typography variant="body2" sx={{ mb: 2 }}>
-            Status:{" "}
-            {selectedCommandSession?.running
-              ? "Running"
-              : `${selectedCommandSession?.success ? "Success" : "Failed"} (exit ${selectedCommandSession?.exit_code ?? "n/a"})`}
-          </Typography>
-          <ReadonlyCommandTerminal lines={selectedCommandSession?.lines} />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={downloadCommandOutput} variant="outlined">
-            Download
-          </Button>
-          <Button
-            onClick={() => setCommandDialogOpen(false)}
-            variant="contained"
-          >
-            Close
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onDownload={downloadCommandOutput}
+      />
     </>
   );
 }

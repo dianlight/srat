@@ -2,15 +2,16 @@ package unixsamba
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"log/slog"
-	"os/exec"
 	"os/user"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/internal/commandexec"
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/tlog"
 	"gitlab.com/tozd/go/errors" // Import the new errors package
@@ -42,15 +43,24 @@ type OSUserLookuper interface {
 	Lookup(username string) (*user.User, error)
 }
 
-// defaultCommandExecutor implements CommandExecutor using os/exec.
+// defaultCommandExecutor implements CommandExecutor by delegating to the shared
+// backend command execution service.
 type defaultCommandExecutor struct{}
 
 // defaultOSUserLookuper implements OSUserLookuper using os/user.
 type defaultOSUserLookuper struct{}
 
 // Package-level variables for holding the implementations.
-var cmdExec CommandExecutor = &defaultCommandExecutor{}
-var osUser OSUserLookuper = &defaultOSUserLookuper{}
+var (
+	cmdExec              CommandExecutor = &defaultCommandExecutor{}
+	osUser               OSUserLookuper  = &defaultOSUserLookuper{}
+	commandRunnerMu      sync.RWMutex
+	commandRunner        commandexec.Executor = commandexec.NewCommandExecutor(nil)
+	sambaVersionOverride string
+	sambaVersionMu       sync.RWMutex
+	sambaVersionExec     = defaultSambaVersionExec
+	sambaVersionExecMu   sync.RWMutex
+)
 
 var allowedUnixSambaCommands = map[string]any{
 	"pdbedit":   nil,
@@ -58,6 +68,7 @@ var allowedUnixSambaCommands = map[string]any{
 	"smbpasswd": nil,
 	"deluser":   nil,
 	"usermod":   nil,
+	"smbd":      nil,
 }
 
 func validateUnixSambaCommand(command string, args ...string) error {
@@ -88,11 +99,142 @@ func SetOSUserLookuper(lookuper OSUserLookuper) {
 	osUser = lookuper
 }
 
+// SetCommandRunner installs the shared command execution service used by unixsamba helpers.
+// It returns a reset function for tests and temporary overrides.
+func SetCommandRunner(runner commandexec.Executor) (reset func()) {
+	commandRunnerMu.Lock()
+	previous := commandRunner
+	commandRunner = runner
+	commandRunnerMu.Unlock()
+
+	return func() {
+		commandRunnerMu.Lock()
+		commandRunner = previous
+		commandRunnerMu.Unlock()
+	}
+}
+
+func getCommandRunner() commandexec.Executor {
+	commandRunnerMu.RLock()
+	defer commandRunnerMu.RUnlock()
+	if commandRunner == nil {
+		return commandexec.NewCommandExecutor(nil)
+	}
+	return commandRunner
+}
+
+func defaultSambaVersionExec(ctx context.Context, name string, args ...string) ([]byte, error) {
+	output, err := cmdExec.RunCommand(ctx, name, args...)
+	return []byte(output), err
+}
+
+// MockSambaVersion replaces the Samba version for testing purposes until the
+// returned restore function is called.
+func MockSambaVersion(version string) (restore func()) {
+	sambaVersionMu.Lock()
+	previousVersion := sambaVersionOverride
+	sambaVersionOverride = version
+	sambaVersionMu.Unlock()
+
+	return func() {
+		sambaVersionMu.Lock()
+		sambaVersionOverride = previousVersion
+		sambaVersionMu.Unlock()
+	}
+}
+
+// MockSambaVersionExec replaces the command executor used by `GetSambaVersion`
+// until the returned restore function is called. This is useful for testing.
+func MockSambaVersionExec(execFn func(ctx context.Context, name string, args ...string) ([]byte, error)) (restore func()) {
+	sambaVersionExecMu.Lock()
+	previousExec := sambaVersionExec
+	sambaVersionExec = execFn
+	sambaVersionExecMu.Unlock()
+
+	return func() {
+		sambaVersionExecMu.Lock()
+		sambaVersionExec = previousExec
+		sambaVersionExecMu.Unlock()
+	}
+}
+
 // ResetExecutorsToDefaults restores the default command executor and OS user lookuper.
 // This is primarily intended for use in test cleanup.
 func ResetExecutorsToDefaults() {
 	cmdExec = &defaultCommandExecutor{}
 	osUser = &defaultOSUserLookuper{}
+
+	sambaVersionMu.Lock()
+	sambaVersionOverride = ""
+	sambaVersionMu.Unlock()
+
+	sambaVersionExecMu.Lock()
+	sambaVersionExec = defaultSambaVersionExec
+	sambaVersionExecMu.Unlock()
+}
+
+// GetSambaVersion retrieves the installed Samba version.
+// Returns version string (e.g., "4.23.0") or empty string if not found.
+func GetSambaVersion() (string, error) {
+	sambaVersionMu.RLock()
+	if sambaVersionOverride != "" {
+		defer sambaVersionMu.RUnlock()
+		return sambaVersionOverride, nil
+	}
+	sambaVersionMu.RUnlock()
+
+	sambaVersionExecMu.RLock()
+	execFn := sambaVersionExec
+	sambaVersionExecMu.RUnlock()
+
+	output, err := execFn(context.Background(), "smbd", "--version")
+	if err != nil {
+		return "", err
+	}
+
+	versionLine := strings.TrimSpace(string(output))
+	parts := strings.Fields(versionLine)
+	if len(parts) >= 2 && strings.ToLower(parts[0]) == "version" {
+		return parts[1], nil
+	}
+
+	return "", nil
+}
+
+// IsSambaVersionSufficient checks if Samba version meets minimum requirement.
+// Returns true if version >= 4.23.0.
+func IsSambaVersionSufficient() (bool, error) {
+	return IsSambaVersionAtLeast(4, 23)
+}
+
+// IsSambaVersionAtLeast checks if the installed Samba version meets the specified minimum version.
+// Example: IsSambaVersionAtLeast(4, 21) returns true if version >= 4.21.0.
+func IsSambaVersionAtLeast(majorRequired, minorRequired int) (bool, error) {
+	version, err := GetSambaVersion()
+	if err != nil || version == "" {
+		return false, err
+	}
+
+	parts := strings.Split(version, ".")
+	if len(parts) < 2 {
+		return false, nil
+	}
+
+	major, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return false, err
+	}
+
+	minor, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return false, err
+	}
+
+	if major > majorRequired || (major == majorRequired && minor >= minorRequired) {
+		return true, nil
+	}
+
+	return false, nil
 }
 
 // UserOptions specifies parameters for creating a new system user.
@@ -109,69 +251,59 @@ type UserOptions struct {
 
 // RunCommand is the actual implementation for running commands.
 func (d *defaultCommandExecutor) RunCommand(ctx context.Context, command string, args ...string) (string, error) {
-	if err := validateUnixSambaCommand(command, args...); err != nil {
-		return "", err
-	}
-
-	//tlog.DebugContext(ctx, "RunCommand", "command", command, "args", args)
-	cmd := exec.CommandContext(ctx, command, args...)
-	var outData bytes.Buffer
-	var stderrData bytes.Buffer
-	cmd.Stdout = &outData
-	cmd.Stderr = &stderrData
-
-	err := cmd.Run()
-	stdout := outData.String()
-	stderr := stderrData.String()
-
-	if err != nil {
-		// Use errors.Errorf for structured error information
-		return stdout, errors.WithDetails(err, "desc", "command execution failed",
-			"command", command,
-			"args", args,
-			"stderr", stderr,
-			"stdout", stdout,
-		)
-	}
-	return stdout, nil
+	return executeUnixSambaCommand(ctx, "", command, args...)
 }
 
 // RunCommandWithInput is the actual implementation for running commands with stdin.
 func (d *defaultCommandExecutor) RunCommandWithInput(ctx context.Context, stdinContent string, command string, args ...string) (string, error) {
+	return executeUnixSambaCommand(ctx, stdinContent, command, args...)
+}
+
+func executeUnixSambaCommand(ctx context.Context, stdinContent, command string, args ...string) (string, error) {
 	if err := validateUnixSambaCommand(command, args...); err != nil {
 		return "", err
 	}
 
-	/*tlog.DebugContext(ctx, "RunCommandWithInput", "command", command, "args", args, "stdin_preview", func() string {
-		if len(stdinContent) > 50 {
-			return stdinContent[:50] + "..."
-		}
-		return stdinContent
-	}())*/
-	cmd := exec.CommandContext(ctx, command, args...)
-	cmd.Stdin = strings.NewReader(stdinContent)
-	var outData bytes.Buffer
-	var stderrData bytes.Buffer
-	cmd.Stdout = &outData
-	cmd.Stderr = &stderrData
+	runner := getCommandRunner()
+	if runner == nil {
+		return "", errors.New("command runner is not configured")
+	}
 
-	err := cmd.Run()
-	stdout := outData.String()
-	stderr := stderrData.String()
+	commandID := "unixsamba:" + command
+	label := "Unix Samba " + command
 
+	var (
+		snapshot dto.CommandExecutionSnapshot
+		err      error
+	)
+	if stdinContent != "" {
+		snapshot, err = runner.ExecuteWithInput(ctx, commandID, label, stdinContent, command, args...)
+	} else {
+		snapshot, err = runner.Execute(ctx, commandID, label, command, args...)
+	}
+
+	stdout := commandexec.JoinChannelOutput(snapshot.Lines, dto.CommandOutputChannelStdout)
+	stderr := commandexec.JoinChannelOutput(snapshot.Lines, dto.CommandOutputChannelStderr)
 	if err != nil {
-		return stdout, errors.WithDetails(err, "desc", "command execution with input failed",
+		desc := "command execution failed"
+		details := []any{
 			"command", command,
 			"args", args,
-			"stdin_preview", func() string {
-				if len(stdinContent) > 50 {
-					return stdinContent[:50] + "..."
-				}
-				return stdinContent
-			}(),
 			"stderr", stderr,
 			"stdout", stdout,
-		)
+		}
+		if stdinContent != "" {
+			desc = "command execution with input failed"
+			details = append(details,
+				"stdin_preview", func() string {
+					if len(stdinContent) > 50 {
+						return stdinContent[:50] + "..."
+					}
+					return stdinContent
+				}(),
+			)
+		}
+		return stdout, errors.WithDetails(err, append([]any{"desc", desc}, details...)...)
 	}
 	return stdout, nil
 }

@@ -2,13 +2,10 @@ package filesystem_test
 
 import (
 	"context"
-	"io"
-	"strings"
 	"testing"
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service/filesystem"
-	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
 	"gitlab.com/tozd/go/errors"
 )
@@ -30,22 +27,12 @@ func (suite *Ext4AdapterTestSuite) SetupTest() {
 	suite.adapter = filesystem.NewExt4Adapter()
 	suite.Require().NotNil(suite.adapter, "Ext4Adapter should be initialized")
 
-	// Mock exec operations for testing
-	controller := mock.NewMockController(suite.T())
-	execMock := mock.Mock[filesystem.ExecCmd](controller)
-	mock.When(execMock.StdoutPipe()).ThenReturn(io.NopCloser(strings.NewReader("")), nil)
-	mock.When(execMock.StderrPipe()).ThenReturn(io.NopCloser(strings.NewReader("")), nil)
-	mock.When(execMock.Start()).ThenReturn(nil)
-	mock.When(execMock.Wait()).ThenReturn(nil)
 	suite.cleanExec = suite.adapter.SetExecOpsForTesting(
 		func(cmd string) (string, error) {
 			if cmd != "" {
 				return cmd, nil
 			}
 			return "", errors.New("command not found")
-		},
-		func(ctx context.Context, cmd string, args ...string) filesystem.ExecCmd {
-			return execMock
 		},
 	)
 
@@ -111,6 +98,9 @@ func (suite *Ext4AdapterTestSuite) TestIsSupported() {
 	suite.True(support.CanCheck, "ext4 should support checking")
 	suite.True(support.CanSetLabel, "ext4 should support setting label")
 	suite.True(support.CanGetState, "ext4 should support getting state")
+	suite.False(support.IsFormatReportProgress, "ext4 format progress should be indeterminate")
+	suite.False(support.IsCheckReportProgress, "ext4 check progress should be indeterminate")
+	suite.Equal(`^[^\x00/]{1,16}$`, support.LabelRule)
 
 	suite.Equal("e2fsprogs", support.AlpinePackage)
 	suite.Empty(support.MissingTools)
