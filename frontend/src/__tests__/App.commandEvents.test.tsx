@@ -391,4 +391,26 @@ describe("App command events", () => {
       console.error = originalConsoleError;
     }
   });
+
+  it("still opens output when a stale closeToast callback throws", async () => {
+    const { CommandOutputToastContent } = await import("../components/CommandOutputDialog");
+    const onOpenOutputMock = mock(() => undefined);
+    const closeToastMock = mock(() => {
+      throw new TypeError("stale closeToast");
+    });
+    const user = userEvent.setup();
+
+    render(
+      <CommandOutputToastContent
+        commandId="cmd-stale"
+        onOpenOutput={onOpenOutputMock}
+        closeToast={closeToastMock}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Open Output" }));
+
+    expect(onOpenOutputMock.mock.calls.length).toBe(1);
+    expect(closeToastMock.mock.calls.length).toBe(1);
+  });
 });

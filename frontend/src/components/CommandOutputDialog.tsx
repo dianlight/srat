@@ -23,7 +23,18 @@ export function CommandOutputToastContent({
 }: CommandOutputToastContentProps) {
   const handleOpenOutput = () => {
     onOpenOutput();
-    closeToast?.();
+
+    if (!closeToast) {
+      return;
+    }
+
+    try {
+      closeToast();
+    } catch {
+      // NotificationCenter can re-render the stored toast content outside the
+      // original toast lifecycle, leaving a stale closeToast callback behind.
+      // Opening the output dialog should still succeed in that case.
+    }
   };
 
   return (
