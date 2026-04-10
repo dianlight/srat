@@ -7,6 +7,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/internal/commandexec"
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/srat/unixsamba"
@@ -14,12 +15,14 @@ import (
 )
 
 type SystemHanler struct {
-	host_service service.HostServiceInterface
+	host_service     service.HostServiceInterface
+	command_executor commandexec.Executor
 }
 
-func NewSystemHanler(host_service service.HostServiceInterface) *SystemHanler {
+func NewSystemHanler(host_service service.HostServiceInterface, command_executor commandexec.Executor) *SystemHanler {
 	p := new(SystemHanler)
 	p.host_service = host_service
+	p.command_executor = command_executor
 	return p
 }
 
@@ -43,14 +46,22 @@ func (self *SystemHanler) HandleAppConfig(ctx context.Context, input *struct{}) 
 }
 
 func (self *SystemHanler) HandleCommandOutput(ctx context.Context, input *struct {
-	Body struct {
-		CommandStartedEvent    dto.CommandStartedNotification
-		CommandOutputEvent     dto.CommandOutputNotification
-		CommandTerminatedEvent dto.CommandTerminatedNotification
-		CommandSessionState    dto.CommandExecutionSnapshot
+	ExecutionID string `query:"execution_id" doc:"Command execution ID to inspect"`
+}) (*struct{ Body dto.CommandExecutionSnapshot }, error) {
+	executionID := strings.TrimSpace(input.ExecutionID)
+	if executionID == "" {
+		return nil, huma.Error400BadRequest("execution_id is required", nil)
 	}
-}) (*struct{}, error) {
-	return nil, huma.Error500InternalServerError("Command output not available", nil)
+	if self.command_executor == nil {
+		return nil, huma.Error500InternalServerError("Command output service is not available", nil)
+	}
+
+	snapshot, ok := self.command_executor.GetSnapshot(executionID)
+	if !ok {
+		return nil, huma.Error404NotFound("Command output not available", nil)
+	}
+
+	return &struct{ Body dto.CommandExecutionSnapshot }{Body: snapshot}, nil
 }
 
 // GetNICsHandler handles the request to retrieve network interface card (NIC) information.

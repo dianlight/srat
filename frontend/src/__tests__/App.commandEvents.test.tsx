@@ -101,7 +101,7 @@ describe("App command events", () => {
     document.body.innerHTML = "";
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
     mock.restore();
     registerModuleMocks();
     wsState = { heartbeat: { alive: true } };
@@ -109,6 +109,13 @@ describe("App command events", () => {
     document.body.innerHTML = "";
     localStorage.clear();
     sessionStorage.clear();
+
+    const server = await getMswServer();
+    server.use(
+      http.get("/api/command_output", () => {
+        return HttpResponse.json({ message: "not found" }, { status: 404 });
+      }),
+    );
   });
 
   it("does not show stderr toast while exit code is unavailable", async () => {
@@ -363,6 +370,93 @@ describe("App command events", () => {
     expect(screen.getByText(/fsck\.fat 4\.2/)).toBeTruthy();
     expect(screen.getByText(/\[stderr\]/)).toBeTruthy();
     expect(screen.getByText(/dirty bit is set/)).toBeTruthy();
+  });
+
+  it("backfills the full command output history when the dialog opens", async () => {
+    const { App } = await import("../App");
+    const store = await createTestStore();
+    const server = await getMswServer();
+    server.use(
+      http.get("/api/settings/app-config", () => {
+        return HttpResponse.json({ requires_restart: false });
+      }),
+      http.get("/api/command_output", ({ request }) => {
+        const url = new URL(request.url);
+        if (url.searchParams.get("execution_id") !== "exec-backfill") {
+          return HttpResponse.json({ message: "not found" }, { status: 404 });
+        }
+
+        return HttpResponse.json({
+          execution_id: "exec-backfill",
+          command_id: "cmd-backfill",
+          label: "Filesystem Check",
+          command: "fsck.fat",
+          args: ["-a", "/dev/sdb1"],
+          started_at: 100,
+          finished_at: 103,
+          running: false,
+          success: false,
+          exit_code: 1,
+          error: "exit status 1",
+          lines: [
+            {
+              channel: "stdout",
+              line: "fsck.fat 4.2 (2021-01-31)",
+              timestamp: 101,
+            },
+            {
+              channel: "stdout",
+              line: "/dev/disk/by-id/demo-part1: 9 files, 621/16343 clusters",
+              timestamp: 102,
+            },
+          ],
+        });
+      }),
+    );
+
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <Provider store={store}>
+        <App />
+      </Provider>,
+    );
+
+    wsState = {
+      heartbeat: { alive: true },
+      command_output: {
+        execution_id: "exec-backfill",
+        command_id: "cmd-backfill",
+        channel: "stderr",
+        line: "exit status 1",
+        timestamp: 103,
+        exit_code: 1,
+      },
+    };
+
+    rerender(
+      <Provider store={store}>
+        <App />
+      </Provider>,
+    );
+
+    await waitFor(() => {
+      expect(toastErrorMock.mock.calls.length).toBeGreaterThan(0);
+    });
+
+    const calls = toastErrorMock.mock.calls as unknown as unknown[][];
+    const lastCall = calls[calls.length - 1] ?? [];
+    const toastContent = lastCall[0] as React.ReactElement;
+    const toastRender = render(toastContent);
+
+    await user.click(screen.getByRole("button", { name: "Open Output" }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/fsck\.fat 4\.2/)).toBeTruthy();
+      expect(screen.getByText(/621\/16343 clusters/)).toBeTruthy();
+      expect(screen.getAllByText(/\[stdout\]/).length).toBeGreaterThan(0);
+    });
+
+    toastRender.unmount();
   });
 
   it("does not leak react-toastify helper props into DOM when rendering stderr toast content", async () => {

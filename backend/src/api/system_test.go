@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"testing"
@@ -11,6 +12,7 @@ import (
 	"github.com/danielgtaylor/huma/v2/humatest"
 	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/internal/commandexec"
 	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/dianlight/srat/service"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
@@ -26,6 +28,7 @@ type SystemHandlerSuite struct {
 	suite.Suite
 	systemHandler   *api.SystemHanler
 	mockHostService service.HostServiceInterface
+	commandExecutor commandexec.Executor
 	testAPI         humatest.TestAPI
 	ctx             context.Context
 	cancel          context.CancelFunc
@@ -43,11 +46,13 @@ func (suite *SystemHandlerSuite) SetupTest() {
 			func() (context.Context, context.CancelFunc) {
 				return context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, &sync.WaitGroup{}))
 			},
+			func() commandexec.Executor { return commandexec.NewCommandExecutor(nil) },
 			api.NewSystemHanler,
 			mock.Mock[service.HostServiceInterface],
 		),
 		fx.Populate(&suite.systemHandler),
 		fx.Populate(&suite.mockHostService),
+		fx.Populate(&suite.commandExecutor),
 		fx.Populate(&suite.ctx),
 		fx.Populate(&suite.cancel),
 	)
@@ -149,5 +154,46 @@ func (suite *SystemHandlerSuite) TestGetCapabilitiesHandler_Success() {
 	// If QUIC is not supported, there should be a reason
 	if !result.SupportsQUIC {
 		suite.NotEmpty(result.UnsupportedReason)
+	}
+}
+
+func (suite *SystemHandlerSuite) TestHandleCommandOutput_ReturnsBufferedSnapshot() {
+	snapshot, err := suite.commandExecutor.Execute(
+		suite.ctx,
+		"cmd-backfill",
+		"Filesystem Check",
+		"sh",
+		"-c",
+		"printf 'fsck.fat 4.2 (2021-01-31)\\n'; printf '/dev/demo: 9 files, 621/16343 clusters\\n'; printf 'exit status 1\\n' >&2; exit 1",
+	)
+	suite.Error(err)
+	suite.False(snapshot.Success)
+
+	resp := suite.testAPI.Get("/command_output?execution_id=" + url.QueryEscape(snapshot.ExecutionID))
+	suite.Equal(http.StatusOK, resp.Code)
+
+	var result dto.CommandExecutionSnapshot
+	err = json.Unmarshal(resp.Body.Bytes(), &result)
+	suite.Require().NoError(err)
+	suite.Equal(snapshot.ExecutionID, result.ExecutionID)
+	suite.Len(result.Lines, 3)
+
+	var seenStart, seenSummary, seenStderr bool
+	for _, line := range result.Lines {
+		switch {
+		case line.Line == "fsck.fat 4.2 (2021-01-31)":
+			seenStart = true
+		case line.Line == "/dev/demo: 9 files, 621/16343 clusters":
+			seenSummary = true
+		case line.Channel == dto.CommandOutputChannelStderr && strings.Contains(line.Line, "exit status 1"):
+			seenStderr = true
+		}
+	}
+
+	suite.True(seenStart, "expected the initial stdout line in the buffered snapshot")
+	suite.True(seenSummary, "expected the later stdout summary line in the buffered snapshot")
+	suite.True(seenStderr, "expected the stderr line in the buffered snapshot")
+	if result.Error != "" {
+		suite.Contains(result.Error, "exit status 1")
 	}
 }

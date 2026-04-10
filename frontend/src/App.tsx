@@ -22,12 +22,51 @@ import { useBaseConfigModal } from "./hooks/useBaseConfigModal";
 import { useTelemetryModal } from "./hooks/useTelemetryModal";
 import {
   type CommandExecutionSnapshot,
+  type CommandOutputLineSnapshot,
   type CommandStartedNotification,
   type CommandTerminatedNotification,
   useGetApiSettingsAppConfigQuery,
   usePutApiRestartMutation,
 } from "./store/sratApi";
 import { useGetServerEventsQuery } from "./store/wsApi";
+
+function mergeCommandLines(
+  existing: CommandOutputLineSnapshot[] | null | undefined,
+  incoming: CommandOutputLineSnapshot[] | null | undefined,
+): CommandOutputLineSnapshot[] {
+  const merged: CommandOutputLineSnapshot[] = [];
+  const seen = new Set<string>();
+
+  const appendLine = (line: CommandOutputLineSnapshot) => {
+    const key = `${line.timestamp}:${line.channel}:${line.line}`;
+    if (seen.has(key)) {
+      return;
+    }
+    seen.add(key);
+    merged.push(line);
+  };
+
+  for (const line of incoming ?? []) {
+    appendLine(line);
+  }
+  for (const line of existing ?? []) {
+    appendLine(line);
+  }
+
+  return merged;
+}
+
+function mergeCommandSession(
+  current: CommandExecutionSnapshot | undefined,
+  incoming: CommandExecutionSnapshot,
+): CommandExecutionSnapshot {
+  return {
+    ...(current ?? {}),
+    ...incoming,
+    args: incoming.args ?? current?.args ?? [],
+    lines: mergeCommandLines(current?.lines, incoming.lines),
+  } as CommandExecutionSnapshot;
+}
 
 export function App() {
   const [errorInfo, setErrorInfo] = useState<string>("");
@@ -165,10 +204,33 @@ export function App() {
     [],
   );
 
-  const openCommandDialog = useCallback((executionId: string) => {
-    setCommandDialogExecutionId(executionId);
-    setCommandDialogOpen(true);
+  const backfillCommandSession = useCallback(async (executionId: string) => {
+    try {
+      const response = await fetch(
+        `/api/command_output?execution_id=${encodeURIComponent(executionId)}`,
+      );
+      if (!response.ok) {
+        return;
+      }
+
+      const snapshot = (await response.json()) as CommandExecutionSnapshot;
+      setCommandSessions((previous) => ({
+        ...previous,
+        [executionId]: mergeCommandSession(previous[executionId], snapshot),
+      }));
+    } catch {
+      // Best-effort backfill only; keep the live websocket output if the snapshot is unavailable.
+    }
   }, []);
+
+  const openCommandDialog = useCallback(
+    (executionId: string) => {
+      void backfillCommandSession(executionId);
+      setCommandDialogExecutionId(executionId);
+      setCommandDialogOpen(true);
+    },
+    [backfillCommandSession],
+  );
 
   const showCommandFailureToast = useCallback(
     (executionId: string, commandId: string) => {
@@ -279,10 +341,16 @@ export function App() {
       };
     });
 
+    void backfillCommandSession(event.execution_id);
+
     if (event.exit_code !== 0) {
       showCommandFailureToast(event.execution_id, event.command_id);
     }
-  }, [evdata?.command_terminated, showCommandFailureToast]);
+  }, [
+    evdata?.command_terminated,
+    backfillCommandSession,
+    showCommandFailureToast,
+  ]);
 
   const selectedCommandSession =
     commandDialogExecutionId === null
