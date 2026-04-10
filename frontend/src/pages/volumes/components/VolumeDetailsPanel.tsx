@@ -686,14 +686,21 @@ export function VolumeDetailsPanel({
                     >
                       Actions
                     </Typography>
-                    <Stack
-                      direction={{ xs: "column", sm: "row" }}
-                      spacing={1}
-                      sx={{ flexWrap: "wrap" }}
+                    <Box
+                      sx={{
+                        display: "grid",
+                        gridTemplateColumns: {
+                          xs: "minmax(0, 1fr)",
+                          sm: "repeat(auto-fit, minmax(min(100%, 11rem), 1fr))",
+                        },
+                        gap: 1,
+                        alignItems: "stretch",
+                      }}
                     >
                       {partitionActionItems.map((action) => {
                         const button = (
                           <Button
+                            fullWidth
                             size="small"
                             variant="outlined"
                             onClick={action.onClick}
@@ -702,25 +709,34 @@ export function VolumeDetailsPanel({
                             title={
                               readOnly ? readOnlyActionTooltip : action.title
                             }
+                            sx={{
+                              justifyContent: "center",
+                              whiteSpace: "nowrap",
+                            }}
                           >
                             {action.title}
                           </Button>
                         );
 
                         if (!readOnly) {
-                          return <Box key={action.key}>{button}</Box>;
+                          return (
+                            <Box key={action.key} sx={{ minWidth: 0 }}>
+                              {button}
+                            </Box>
+                          );
                         }
 
                         return (
-                          <Tooltip
-                            key={action.key}
-                            title={readOnlyActionTooltip}
-                          >
-                            <span>{button}</span>
-                          </Tooltip>
+                          <Box key={action.key} sx={{ minWidth: 0 }}>
+                            <Tooltip title={readOnlyActionTooltip}>
+                              <span style={{ display: "block", width: "100%" }}>
+                                {button}
+                              </span>
+                            </Tooltip>
+                          </Box>
                         );
                       })}
-                    </Stack>
+                    </Box>
                   </Grid>
                 )}
               </Grid>

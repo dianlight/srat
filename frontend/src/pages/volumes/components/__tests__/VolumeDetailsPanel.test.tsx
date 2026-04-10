@@ -282,6 +282,33 @@ describe("VolumeDetailsPanel", () => {
         expect(onMount).toHaveBeenCalledTimes(1);
     });
 
+    it("lays out partition action buttons in a responsive grid", async () => {
+        await renderPanel({
+            disk: baseDisk as any,
+            partition: createPartition({
+                mount_point_data: {},
+                filesystem_info: {
+                    support: {
+                        canCheck: true,
+                        canSetLabel: true,
+                        canFormat: true,
+                    },
+                },
+            }),
+            onToggleAutomount: mock(() => undefined),
+            onMount: mock(() => undefined),
+            onUnmount: mock(() => undefined),
+            onCreateShare: mock(() => undefined),
+            onGoToShare: mock(() => undefined),
+        });
+
+        const actionsHeading = await screen.findByText(/^Actions$/);
+        const actionsContainer = actionsHeading.nextElementSibling as HTMLElement;
+
+        expect(actionsContainer).toBeTruthy();
+        expect(getComputedStyle(actionsContainer).display).toBe("grid");
+    });
+
     it("disables partition actions in read-only mode and shows tooltip", async () => {
         const user = userEvent.setup();
 
