@@ -56,8 +56,14 @@ const registerModuleMocks = () => {
   }));
 
   mock.module("react-toastify", () => ({
+    Slide: undefined,
+    ToastContainer: () => null,
     toast: {
       error: (...args: unknown[]) => toastErrorMock(...args),
+      info: (..._args: unknown[]) => undefined,
+      success: (..._args: unknown[]) => undefined,
+      warn: (..._args: unknown[]) => undefined,
+      warning: (..._args: unknown[]) => undefined,
     },
   }));
 

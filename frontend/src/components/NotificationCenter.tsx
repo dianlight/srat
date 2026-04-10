@@ -20,7 +20,7 @@ import {
   useMediaQuery,
 } from "@mui/material";
 import Card from "@mui/material/Card";
-import { type ReactNode, useState } from "react";
+import { isValidElement, type ReactNode, useState } from "react";
 import { Slide, ToastContainer } from "react-toastify";
 import { useNotificationCenter } from "react-toastify/addons/use-notification-center";
 import type { ErrorModel } from "../store/sratApi";
@@ -28,7 +28,7 @@ import { FontAwesomeSvgIcon } from "./FontAwesomeSvgIcon";
 
 interface Data {
   exclude: boolean;
-  error?: ErrorModel;
+  error?: unknown;
 }
 
 export function NotificationCenter() {
@@ -85,6 +85,61 @@ export function NotificationCenter() {
       default:
         return "info";
     }
+  }
+
+  function formatProblemValue(value: unknown): string | undefined {
+    if (value === null || value === undefined) {
+      return undefined;
+    }
+
+    if (
+      typeof value === "string" ||
+      typeof value === "number" ||
+      typeof value === "boolean" ||
+      typeof value === "bigint"
+    ) {
+      return String(value);
+    }
+
+    if (Array.isArray(value)) {
+      const items = value
+        .map((entry) => formatProblemValue(entry))
+        .filter((entry): entry is string => Boolean(entry));
+      return items.length > 0 ? items.join(", ") : undefined;
+    }
+
+    if (typeof value === "object") {
+      const structuredValue = value as Partial<ErrorModel> & {
+        message?: string;
+      };
+      const summary =
+        structuredValue.title ??
+        structuredValue.detail ??
+        structuredValue.message;
+      if (summary) {
+        return summary;
+      }
+
+      try {
+        return JSON.stringify(value, null, 2);
+      } catch {
+        return String(value);
+      }
+    }
+
+    return String(value);
+  }
+
+  function renderNotificationContent(content: unknown): ReactNode {
+    if (content === null || content === undefined || content === false) {
+      return null;
+    }
+
+    if (isValidElement(content)) {
+      return content;
+    }
+
+    return formatProblemValue(content) ?? null;
   }
 
   /*
@@ -149,68 +204,120 @@ export function NotificationCenter() {
             <Stack sx={{ width: "100%", minHeight: "10em" }} spacing={0}>
               {notifications
                 .filter((n) => !n.read || showRead)
-                .map((notification) => (
-                  <Alert
-                    key={notification.id}
-                    variant={notification.read ? "standard" : "outlined"}
-                    severity={toMUISeverity(notification.type)}
-                    action={
-                      <>
-                        <Tooltip title="Remove notification" arrow>
-                          <IconButton
-                            onClickCapture={() => remove(notification.id)}
-                            aria-label="close"
-                            color="inherit"
-                            size="small"
-                            onClick={() => {}}
-                          >
-                            <CloseIcon fontSize="inherit" />
-                          </IconButton>
-                        </Tooltip>
-                        {!notification.read && (
-                          <Tooltip title="Mark as read" arrow>
+                .map((notification) => {
+                  const renderedContent = renderNotificationContent(
+                    notification.content,
+                  );
+                  const structuredError =
+                    notification.data?.error &&
+                    typeof notification.data.error === "object"
+                      ? (notification.data.error as Partial<ErrorModel> & {
+                          message?: string;
+                          errors?: Array<{
+                            message?: string;
+                            value?: unknown;
+                            location?: string | string[];
+                          }> | null;
+                        })
+                      : undefined;
+                  const fallbackError =
+                    !structuredError?.title &&
+                    !structuredError?.detail &&
+                    !structuredError?.message &&
+                    !structuredError?.errors?.length
+                      ? formatProblemValue(notification.data?.error)
+                      : undefined;
+
+                  return (
+                    <Alert
+                      key={notification.id}
+                      variant={notification.read ? "standard" : "outlined"}
+                      severity={toMUISeverity(notification.type)}
+                      action={
+                        <>
+                          <Tooltip title="Remove notification" arrow>
                             <IconButton
-                              onClickCapture={() => markAsRead(notification.id)}
+                              onClickCapture={() => remove(notification.id)}
                               aria-label="close"
                               color="inherit"
                               size="small"
                               onClick={() => {}}
                             >
-                              <CheckIcon fontSize="inherit" />
+                              <CloseIcon fontSize="inherit" />
                             </IconButton>
                           </Tooltip>
-                        )}
-                      </>
-                    }
-                    sx={{ mb: 2 }}
-                  >
-                    <Typography variant="subtitle2" gutterBottom>
-                      {notification.content?.toLocaleString()}
-                    </Typography>
-                    <Divider />
-                    {notification.data?.error && (
-                      <>
-                        {notification.data.error.title && (
+                          {!notification.read && (
+                            <Tooltip title="Mark as read" arrow>
+                              <IconButton
+                                onClickCapture={() =>
+                                  markAsRead(notification.id)
+                                }
+                                aria-label="close"
+                                color="inherit"
+                                size="small"
+                                onClick={() => {}}
+                              >
+                                <CheckIcon fontSize="inherit" />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                        </>
+                      }
+                      sx={{ mb: 2 }}
+                    >
+                      {renderedContent && (
+                        <>
+                          <Box sx={{ mb: 1, whiteSpace: "pre-wrap" }}>
+                            {renderedContent}
+                          </Box>
+                          <Divider />
+                        </>
+                      )}
+                      {structuredError?.title && (
+                        <Typography variant="body2" gutterBottom>
+                          {structuredError.title}
+                        </Typography>
+                      )}
+                      {structuredError?.detail && (
+                        <Typography variant="body2" gutterBottom>
+                          {structuredError.detail}
+                        </Typography>
+                      )}
+                      {structuredError?.message &&
+                        structuredError.message !== structuredError.title &&
+                        structuredError.message !== structuredError.detail && (
                           <Typography variant="body2" gutterBottom>
-                            {notification.data.error.title}
+                            {structuredError.message}
                           </Typography>
                         )}
-                        {notification.data.error.detail && (
-                          <Typography variant="body2" gutterBottom>
-                            {notification.data.error.detail}
-                          </Typography>
-                        )}
-                        {notification.data.error.errors?.map((error, index) => (
+                      {structuredError?.errors?.map((error, index) => {
+                        const valueText = formatProblemValue(error.value);
+                        const locationText = Array.isArray(error.location)
+                          ? error.location.join(" → ")
+                          : error.location;
+                        const line = [error.message, valueText, locationText]
+                          .filter(Boolean)
+                          .join(" ");
+
+                        return (
                           // biome-ignore lint/suspicious/noArrayIndexKey: no unique id available on error items
                           <Typography key={index} variant="body2" gutterBottom>
-                            {error.message} {error.value as ReactNode}{" "}
-                            {error.location}
+                            {line}
                           </Typography>
-                        ))}
-                      </>
-                    )}
-                  </Alert>
-                ))}
+                        );
+                      })}
+                      {fallbackError && (
+                        <Typography
+                          variant="body2"
+                          gutterBottom
+                          sx={{ whiteSpace: "pre-wrap" }}
+                        >
+                          {fallbackError}
+                        </Typography>
+                      )}
+                    </Alert>
+                  );
+                })}
             </Stack>
             <Divider />
             <Toolbar variant="dense" disableGutters>

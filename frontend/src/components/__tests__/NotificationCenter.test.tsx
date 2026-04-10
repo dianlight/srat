@@ -1,15 +1,17 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 import "../../../test/setup";
 
+const mockNotificationCenterState = {
+    notifications: [] as Array<any>,
+    unreadCount: 0,
+    clear: () => { },
+    markAllAsRead: () => { },
+    remove: () => { },
+    markAsRead: () => { },
+};
+
 mock.module("react-toastify/addons/use-notification-center", () => ({
-    useNotificationCenter: () => ({
-        notifications: [],
-        unreadCount: 0,
-        clear: () => { },
-        markAllAsRead: () => { },
-        remove: () => { },
-        markAsRead: () => { },
-    }),
+    useNotificationCenter: () => mockNotificationCenterState,
 }));
 
 // Required localStorage shim for testing environment
@@ -26,6 +28,8 @@ if (!(globalThis as any).localStorage) {
 describe("NotificationCenter Component", () => {
     beforeEach(() => {
         localStorage.clear();
+        mockNotificationCenterState.notifications = [];
+        mockNotificationCenterState.unreadCount = 0;
         // Clear DOM before each test
         document.body.innerHTML = '';
     });
@@ -162,6 +166,43 @@ describe("NotificationCenter Component", () => {
             // Check for notification list container - component renders without errors
             expect(container).toBeTruthy();
         }
+    });
+
+    it("shows React notification content instead of object placeholders", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
+        const { NotificationCenter } = await import("../NotificationCenter");
+
+        mockNotificationCenterState.notifications = [
+            {
+                id: "toast-1",
+                createdAt: Date.now(),
+                read: false,
+                type: "error",
+                content: React.createElement("span", null, "Detailed command failure"),
+                data: { exclude: false },
+            },
+        ];
+        mockNotificationCenterState.unreadCount = 1;
+
+        const theme = createTheme();
+        const user = userEvent.setup();
+
+        render(
+            React.createElement(
+                ThemeProvider,
+                { theme },
+                React.createElement(NotificationCenter as any)
+            )
+        );
+
+        const notificationButton = screen.getAllByRole("button")[0];
+        await user.click(notificationButton!);
+
+        expect(screen.queryByText("Detailed command failure")).toBeTruthy();
+        expect(screen.queryByText("[object Object]")).toBeNull();
     });
 
     it("handles notification actions (clear, mark as read)", async () => {
