@@ -11,7 +11,7 @@ require (
 	github.com/pilebones/go-udev v0.9.1
 	github.com/shirou/gopsutil/v4 v4.26.3
 	github.com/stretchr/testify v1.11.1
-	golang.org/x/sys v0.42.0
+	golang.org/x/sys v0.43.0
 )
 
 require (
@@ -47,7 +47,7 @@ require (
 	filippo.io/edwards25519 v1.2.0 // indirect
 	github.com/AlecAivazis/survey/v2 v2.3.7 // indirect
 	github.com/Antonboom/testifylint v1.6.4 // indirect
-	github.com/air-verse/air v1.64.5 // indirect
+	github.com/air-verse/air v1.65.0 // indirect
 	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/apex/log v1.9.0 // indirect
 	github.com/bep/godartsass/v2 v2.5.0 // indirect
