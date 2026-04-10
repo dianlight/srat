@@ -85,3 +85,14 @@ When asked to generate a Git command or branch name from a Markdown task:
 *   **Cross-Repo Logic**: If "Target Repo" is specified in the Markdown header, assume all code generation or terminal commands apply to that specific directory.
     
 *   **Task Scanning**: When a user mentions a task by name, look for the corresponding checkbox in open Markdown files to understand the requirements.
+
+## Instruction Files
+*   **Purpose**: Instruction files in `.github/instructions/` provide specific guidelines for different file types and scenarios. Always check for an applicable instruction file before making changes.
+*   **Format**: These files use YAML front matter to specify which files they apply to and contain concise instructions for code style, testing, or other practices.
+*   **Learning**: Familiarize yourself with the existing instruction files to ensure your contributions align with the project's standards and practices.
+*   **Updating Instructions**: If you notice a gap in the existing instructions or have suggestions for improvement, you can propose changes to the instruction files themselves, but always ensure that any modifications are clear, concise, and maintainable.
+*  **Examples**: Refer to the existing instruction files for examples of how to format and structure your own instructions if you need to create new ones.
+* **Adherence**: Always adhere to the guidelines specified in the instruction files when working on relevant code sections to maintain consistency and quality across the project.
+* **Feedback**: If you have questions about the instructions or need clarification, don't hesitate to ask for feedback from human developers to ensure you're on the right track.
+* **Continuous Improvement**: The instruction files are living documents. As the project evolves, these instructions may need to be updated to reflect new best practices or changes in the codebase. Always be open to improving the instructions as needed. But always ask for feedback before making changes to the instruction files to ensure that any updates are beneficial and align with the project's goals.
+* **Testing Instructions**: Pay special attention to instruction files related to testing, as they often contain critical guidelines for ensuring the reliability and maintainability of tests. Always follow these instructions closely when writing or modifying tests.

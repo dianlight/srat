@@ -87,6 +87,61 @@ func (suite *BroadcasterServiceTestSuite) TestProcessWebSocketChannelAfterStop_D
 	})
 }
 
+func (suite *BroadcasterServiceTestSuite) TestFilesystemTaskEvent_IsBroadcastToWebSocketClients() {
+	messages := make(chan ws.Message, 8)
+
+	go suite.broadcasterService.ProcessWebSocketChannel(func(msg ws.Message) errors.E {
+		messages <- msg
+		return nil
+	})
+
+	startupDeadline := time.After(2 * time.Second)
+	for {
+		select {
+		case msg := <-messages:
+			if _, ok := msg.Data.(dto.Welcome); ok {
+				goto emitFilesystemTask
+			}
+		case <-startupDeadline:
+			suite.Fail("websocket channel should send a welcome message before broadcasting events")
+			return
+		}
+	}
+
+emitFilesystemTask:
+	suite.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
+		Event: events.Event{Type: events.EventTypes.STOP},
+		Task: &dto.FilesystemTask{
+			Device:         "/dev/test",
+			Operation:      "check",
+			FilesystemType: "ext4",
+			Status:         "success",
+			Message:        "Check operation completed successfully for /dev/test",
+			Progress:       100,
+			Notes:          []string{"fsck.ext4: clean"},
+		},
+	})
+
+	deadline := time.After(2 * time.Second)
+	for {
+		select {
+		case msg := <-messages:
+			task, ok := msg.Data.(dto.FilesystemTask)
+			if !ok {
+				continue
+			}
+			suite.Equal("check", task.Operation)
+			suite.Equal("success", task.Status)
+			suite.Equal("/dev/test", task.Device)
+			suite.Equal([]string{"fsck.ext4: clean"}, task.Notes)
+			return
+		case <-deadline:
+			suite.Fail("filesystem task event should be broadcast to websocket clients")
+			return
+		}
+	}
+}
+
 // --- shouldSkipClientSend Tests ---
 
 // BroadcasterServiceSkipEventTestSuite tests the shouldSkipClientSend method

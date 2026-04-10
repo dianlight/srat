@@ -103,7 +103,7 @@ describe("App command events", () => {
     sessionStorage.clear();
   });
 
-  it("shows stderr toast when stderr output event arrives and dialog is closed", async () => {
+  it("does not show stderr toast while exit code is unavailable", async () => {
     const { App } = await import("../App");
     const store = await createTestStore();
     const server = await getMswServer();
@@ -121,6 +121,99 @@ describe("App command events", () => {
         channel: "stderr",
         line: "permission denied",
         timestamp: 1,
+      },
+    };
+
+    render(
+      <Provider store={store}>
+        <App />
+      </Provider>,
+    );
+
+    await waitFor(() => {
+      expect(toastErrorMock.mock.calls.length).toBe(0);
+    });
+  });
+
+  it("shows failure toast after command termination with a non-zero exit code", async () => {
+    const { App } = await import("../App");
+    const store = await createTestStore();
+    const server = await getMswServer();
+    server.use(
+      http.get("/api/settings/app-config", () => {
+        return HttpResponse.json({ requires_restart: false });
+      }),
+    );
+
+    const { rerender } = render(
+      <Provider store={store}>
+        <App />
+      </Provider>,
+    );
+
+    wsState = {
+      heartbeat: { alive: true },
+      command_output: {
+        execution_id: "exec-1c",
+        command_id: "cmd-1c",
+        channel: "stderr",
+        line: "permission denied",
+        timestamp: 3,
+      },
+    };
+
+    rerender(
+      <Provider store={store}>
+        <App />
+      </Provider>,
+    );
+
+    await waitFor(() => {
+      expect(toastErrorMock.mock.calls.length).toBe(0);
+    });
+
+    wsState = {
+      heartbeat: { alive: true },
+      command_terminated: {
+        execution_id: "exec-1c",
+        command_id: "cmd-1c",
+        exit_code: 9,
+        finished_at: 4,
+        success: false,
+        error: "exit 9",
+      },
+    };
+
+    rerender(
+      <Provider store={store}>
+        <App />
+      </Provider>,
+    );
+
+    await waitFor(() => {
+      expect(toastErrorMock.mock.calls.length).toBe(1);
+    });
+  });
+
+  it("shows stderr toast when stderr output arrives with a non-zero exit code", async () => {
+    const { App } = await import("../App");
+    const store = await createTestStore();
+    const server = await getMswServer();
+    server.use(
+      http.get("/api/settings/app-config", () => {
+        return HttpResponse.json({ requires_restart: false });
+      }),
+    );
+
+    wsState = {
+      heartbeat: { alive: true },
+      command_output: {
+        execution_id: "exec-1b",
+        command_id: "cmd-1b",
+        channel: "stderr",
+        line: "permission denied",
+        timestamp: 2,
+        exit_code: 1,
       },
     };
 
@@ -178,6 +271,7 @@ describe("App command events", () => {
         channel: "stderr",
         line: "boom",
         timestamp: 101,
+        exit_code: 2,
       },
     };
 
@@ -224,5 +318,69 @@ describe("App command events", () => {
     });
 
     toastRender.unmount();
+  });
+
+  it("does not leak react-toastify helper props into DOM when rendering stderr toast content", async () => {
+    const { App } = await import("../App");
+    const store = await createTestStore();
+    const server = await getMswServer();
+    server.use(
+      http.get("/api/settings/app-config", () => {
+        return HttpResponse.json({ requires_restart: false });
+      }),
+    );
+
+    const originalConsoleError = console.error;
+    const consoleErrorMock = mock((..._args: unknown[]) => undefined);
+    console.error = consoleErrorMock as typeof console.error;
+
+    try {
+      wsState = {
+        heartbeat: { alive: true },
+        command_output: {
+          execution_id: "exec-3",
+          command_id: "cmd-3",
+          channel: "stderr",
+          line: "permission denied",
+          timestamp: 103,
+          exit_code: 1,
+        },
+      };
+
+      render(
+        <Provider store={store}>
+          <App />
+        </Provider>,
+      );
+
+      await waitFor(() => {
+        expect(toastErrorMock.mock.calls.length).toBe(1);
+      });
+
+      const calls = toastErrorMock.mock.calls as unknown as unknown[][];
+      const lastCall = calls[calls.length - 1] ?? [];
+      const toastContent = lastCall[0] as React.ReactElement<Record<string, unknown>>;
+      const toastRender = render(
+        React.cloneElement<Record<string, unknown>>(toastContent, {
+          closeToast: () => undefined,
+          toastProps: {},
+          isPaused: false,
+          data: undefined,
+        }),
+      );
+
+      const loggedWarnings = consoleErrorMock.mock.calls
+        .flat()
+        .map((entry) => String(entry))
+        .join("\n");
+
+      expect(loggedWarnings).not.toContain("closeToast");
+      expect(loggedWarnings).not.toContain("toastProps");
+      expect(loggedWarnings).not.toContain("isPaused");
+
+      toastRender.unmount();
+    } finally {
+      console.error = originalConsoleError;
+    }
   });
 });

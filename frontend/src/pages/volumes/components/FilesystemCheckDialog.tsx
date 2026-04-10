@@ -1,4 +1,5 @@
 import {
+  Alert,
   Box,
   Button,
   Dialog,
@@ -16,8 +17,10 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import {
+  type ErrorModel,
   type FilesystemTask,
   type Partition,
+  useGetApiFilesystemSupportQuery,
   usePostApiFilesystemCheckAbortMutation,
   usePostApiFilesystemCheckMutation,
 } from "../../../store/sratApi";
@@ -47,6 +50,20 @@ const matchesPartitionDevice = (
   return candidates.has(task.device ?? "");
 };
 
+const extractTaskResultMessage = (task?: FilesystemTask | null) => {
+  const result = task?.result;
+  if (!result || typeof result !== "object") {
+    return "";
+  }
+
+  const maybeResult = result as {
+    Message?: string;
+    message?: string;
+  };
+
+  return (maybeResult.Message ?? maybeResult.message ?? "").trim();
+};
+
 export function FilesystemCheckDialog({
   open,
   partition,
@@ -55,6 +72,16 @@ export function FilesystemCheckDialog({
   initialVerbose,
 }: FilesystemCheckDialogProps) {
   const { data: eventData } = useGetServerEventsQuery();
+  const fsType = partition?.fs_type ?? "";
+  const {
+    data: supportData,
+    isFetching: isSupportLoading,
+    isError: isSupportError,
+    error: supportError,
+  } = useGetApiFilesystemSupportQuery(
+    { fstype: fsType },
+    { skip: !open || fsType === "" },
+  );
   const [startCheck, { isLoading: isStarting }] =
     usePostApiFilesystemCheckMutation();
   const [abortCheck, { isLoading: isStopping }] =
@@ -68,7 +95,10 @@ export function FilesystemCheckDialog({
   const [status, setStatus] = useState<string>("idle");
   const [message, setMessage] = useState<string>("");
 
-  const lastNotesRef = useRef<string>("");
+  const lastNotesRef = useRef<string[]>([]);
+  const lastMessageRef = useRef<string>("");
+  const lastErrorRef = useRef<string>("");
+  const lastResultMessageRef = useRef<string>("");
 
   const task = useMemo<FilesystemTask | null>(() => {
     if (taskOverride) {
@@ -87,35 +117,131 @@ export function FilesystemCheckDialog({
     [task?.status, status],
   );
 
+  const support = useMemo(() => {
+    if (!supportData || !("canCheck" in supportData)) {
+      return null;
+    }
+    return supportData;
+  }, [supportData]);
+
+  const canCheck = useMemo(() => {
+    if (support?.canCheck !== undefined) {
+      return support.canCheck;
+    }
+    if (partition?.filesystem_info?.support?.canCheck !== undefined) {
+      return partition.filesystem_info.support.canCheck;
+    }
+    return true;
+  }, [partition?.filesystem_info?.support?.canCheck, support?.canCheck]);
+
+  const supportErrorMessage = useMemo(() => {
+    if (!isSupportError) {
+      return "";
+    }
+    const maybeError = supportError as {
+      data?: ErrorModel;
+      error?: string;
+      message?: string;
+    };
+    return (
+      maybeError?.data?.detail ||
+      maybeError?.data?.title ||
+      maybeError?.error ||
+      maybeError?.message ||
+      "Failed to verify filesystem check support."
+    );
+  }, [isSupportError, supportError]);
+
+  const partitionId = partition?.id;
+
   useEffect(() => {
     if (!open) return;
-    if (!partition) return;
+    if (!partitionId) return;
     setLogs([]);
     setProgress(0);
     setStatus("idle");
     setMessage("");
     setVerbose(Boolean(initialVerbose));
-    lastNotesRef.current = "";
-  }, [open, partition?.id, initialVerbose, partition]);
+    lastNotesRef.current = [];
+    lastMessageRef.current = "";
+    lastErrorRef.current = "";
+    lastResultMessageRef.current = "";
+  }, [open, partitionId, initialVerbose]);
 
   useEffect(() => {
     if (!open || !task) return;
     if (task.status) {
       setStatus(task.status);
     }
-    if (task.message) {
-      setMessage(task.message);
-    }
     if (typeof task.progress === "number") {
       setProgress(task.progress);
     }
     const taskNotes = task.notes ?? [];
     if (taskNotes.length > 0) {
-      const notesSignature = taskNotes.join("\n");
-      if (notesSignature !== lastNotesRef.current) {
-        lastNotesRef.current = notesSignature;
+      const previousNotes = lastNotesRef.current;
+      const isCumulativeNotes =
+        taskNotes.length >= previousNotes.length &&
+        previousNotes.every((note, index) => note === taskNotes[index]);
+
+      if (isCumulativeNotes) {
+        const newNotes = taskNotes.slice(previousNotes.length);
+        if (newNotes.length > 0) {
+          setLogs((prev) => [...prev, ...newNotes]);
+        }
+      }
+
+      if (!isCumulativeNotes) {
         setLogs((prev) => [...prev, ...taskNotes]);
       }
+
+      lastNotesRef.current = taskNotes;
+    }
+
+    const taskMessage = task.message?.trim() ?? "";
+    const taskError = task.error?.trim() ?? "";
+    const resultMessage = extractTaskResultMessage(task);
+    const preferredMessage =
+      task.status === "failure"
+        ? taskError || taskMessage || resultMessage
+        : taskMessage || resultMessage || taskError;
+
+    if (preferredMessage) {
+      setMessage(preferredMessage);
+    }
+
+    const fallbackMessages = Array.from(
+      new Set(
+        [taskError, taskMessage, resultMessage].filter(
+          (line): line is string => line.length > 0,
+        ),
+      ),
+    ).filter((line) => !taskNotes.includes(line));
+
+    const newFallbackMessages = fallbackMessages.filter((line) => {
+      if (line === taskError) {
+        return line !== lastErrorRef.current;
+      }
+      if (line === taskMessage) {
+        return line !== lastMessageRef.current;
+      }
+      if (line === resultMessage) {
+        return line !== lastResultMessageRef.current;
+      }
+      return true;
+    });
+
+    if (newFallbackMessages.length > 0) {
+      setLogs((prev) => [...prev, ...newFallbackMessages]);
+    }
+
+    if (taskMessage) {
+      lastMessageRef.current = taskMessage;
+    }
+    if (taskError) {
+      lastErrorRef.current = taskError;
+    }
+    if (resultMessage) {
+      lastResultMessageRef.current = resultMessage;
     }
   }, [open, task]);
 
@@ -181,7 +307,10 @@ export function FilesystemCheckDialog({
 
   const progressValue =
     typeof task?.progress === "number" ? task.progress : progress;
-  const showIndeterminate = progressValue === 999 || progressValue <= 0;
+  const clampedProgressValue = Math.min(100, Math.max(0, progressValue));
+  const showIndeterminate =
+    isRunning && (progressValue === 999 || progressValue <= 0);
+  const showUnsupportedHint = !isSupportLoading && !canCheck;
   const partitionLabel = decodeEscapeSequence(
     partition?.name || partition?.id || "Selected partition",
   );
@@ -195,6 +324,30 @@ export function FilesystemCheckDialog({
             Run a filesystem consistency check. Use AutoFix to repair errors
             when possible.
           </DialogContentText>
+
+          {showUnsupportedHint && (
+            <Alert severity="warning">
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                Check tools are not available for this filesystem on the current
+                system.
+              </Typography>
+              {support?.missingTools && support.missingTools.length > 0 && (
+                <Typography variant="body2">
+                  Missing tools: {support.missingTools.join(", ")}
+                </Typography>
+              )}
+              {support?.alpinePackage && (
+                <Typography variant="body2">
+                  Install hint: <code>apk add {support.alpinePackage}</code>
+                </Typography>
+              )}
+            </Alert>
+          )}
+
+          {isSupportError && (
+            <Alert severity="info">{supportErrorMessage}</Alert>
+          )}
+
           <Box>
             <Typography
               variant="subtitle2"
@@ -205,11 +358,7 @@ export function FilesystemCheckDialog({
             </Typography>
             <LinearProgress
               variant={showIndeterminate ? "indeterminate" : "determinate"}
-              value={
-                showIndeterminate
-                  ? undefined
-                  : Math.min(100, Math.max(0, progressValue))
-              }
+              value={showIndeterminate ? undefined : clampedProgressValue}
             />
             <Stack
               direction="row"
@@ -222,9 +371,15 @@ export function FilesystemCheckDialog({
               <Typography variant="caption" color="text.secondary">
                 {showIndeterminate
                   ? "Working..."
-                  : `${Math.round(progressValue)}%`}
+                  : `${Math.round(clampedProgressValue)}%`}
               </Typography>
             </Stack>
+            {progressValue === 999 && (
+              <Typography variant="caption" color="text.secondary">
+                This tool does not report incremental progress. Live output is
+                shown in logs.
+              </Typography>
+            )}
           </Box>
 
           {message && (
@@ -287,7 +442,13 @@ export function FilesystemCheckDialog({
           onClick={isRunning ? handleStop : handleStart}
           color={isRunning ? "error" : "primary"}
           variant="contained"
-          disabled={isStarting || isStopping || !partition?.id}
+          disabled={
+            isStarting ||
+            isStopping ||
+            !partition?.id ||
+            (!isRunning && isSupportLoading) ||
+            (!isRunning && !canCheck)
+          }
         >
           {isRunning ? "Stop" : "Start"}
         </Button>

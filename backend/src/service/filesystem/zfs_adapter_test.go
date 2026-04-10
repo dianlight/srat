@@ -70,6 +70,9 @@ func (suite *ZfsAdapterTestSuite) TestIsSupported() {
 	suite.False(support.CanCheck)
 	suite.False(support.CanSetLabel)
 	suite.True(support.CanGetState)
+	suite.False(support.IsFormatReportProgress)
+	suite.False(support.IsCheckReportProgress)
+	suite.Empty(support.LabelRule)
 	suite.Equal("zfs", support.AlpinePackage)
 }
 

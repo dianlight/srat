@@ -43,6 +43,30 @@ func (suite *RegistryTestSuite) TestGetAdapter() {
 	suite.Nil(adapter)
 }
 
+func (suite *RegistryTestSuite) TestGetAdapterByAlias() {
+	tests := []struct {
+		lookup string
+		want   string
+	}{
+		{lookup: "ntfs3", want: "ntfs"},
+		{lookup: "ntfs-3g", want: "ntfs"},
+		{lookup: "fuseblk", want: "ntfs"},
+		{lookup: "fat32", want: "vfat"},
+		{lookup: "msdos", want: "vfat"},
+		{lookup: "hfs+", want: "hfsplus"},
+	}
+
+	for _, tt := range tests {
+		suite.Run(tt.lookup, func() {
+			adapter, err := suite.registry.Get(tt.lookup)
+			suite.Require().NoError(err)
+			suite.Require().NotNil(adapter)
+			suite.Equal(tt.want, adapter.GetName())
+			suite.Contains(adapter.GetAliasNames(), tt.lookup)
+		})
+	}
+}
+
 func (suite *RegistryTestSuite) TestGetAll() {
 	adapters := suite.registry.GetAll()
 	suite.NotEmpty(adapters)

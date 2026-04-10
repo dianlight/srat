@@ -27,6 +27,7 @@ func NewApfsAdapter() FilesystemAdapter {
 			"",
 			"",
 			"apfsutil",
+			"",
 			[]dto.FsMagicSignature{
 				{Offset: 0x20, Magic: []byte{'N', 'X', 'S', 'B'}},   // APFS container superblock
 				{Offset: 0x5020, Magic: []byte{'N', 'X', 'S', 'B'}}, // APFS container superblock

@@ -1,10 +1,7 @@
 package filesystem
 
 import (
-	"bufio"
 	"context"
-	"io"
-	"os/exec"
 	"slices"
 	"strconv"
 	"strings"
@@ -12,6 +9,7 @@ import (
 	"time"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/internal/commandexec"
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/tlog"
 	gocache "github.com/patrickmn/go-cache"
@@ -25,55 +23,47 @@ const (
 	commandResultCacheCleanupInterval = 10 * time.Minute
 )
 
-var commandResultCache = gocache.New(commandResultCacheTTL, commandResultCacheCleanupInterval)
+var (
+	commandResultCache     = gocache.New(commandResultCacheTTL, commandResultCacheCleanupInterval)
+	defaultCommandRunnerMu sync.RWMutex
+	defaultCommandRunner   commandexec.Executor = commandexec.NewCommandExecutor(nil)
+)
 
-// execCmd interface wraps os/exec.Cmd
-type ExecCmd interface {
-	CombinedOutput() ([]byte, error)
-	StdoutPipe() (io.ReadCloser, error)
-	StderrPipe() (io.ReadCloser, error)
-	Start() error
-	Wait() error
+// SetDefaultCommandRunner wires the shared project command execution service into filesystem adapters.
+func SetDefaultCommandRunner(runner commandexec.Executor) (reset func()) {
+	defaultCommandRunnerMu.Lock()
+	previous := defaultCommandRunner
+	defaultCommandRunner = runner
+	defaultCommandRunnerMu.Unlock()
+
+	return func() {
+		defaultCommandRunnerMu.Lock()
+		defaultCommandRunner = previous
+		defaultCommandRunnerMu.Unlock()
+	}
 }
 
-// realExecCmd wraps exec.Cmd to implement ExecCmd interface
-type realExecCmd struct {
-	cmd *exec.Cmd
+func getDefaultCommandRunner() commandexec.Executor {
+	defaultCommandRunnerMu.RLock()
+	runner := defaultCommandRunner
+	defaultCommandRunnerMu.RUnlock()
+	if runner != nil {
+		return runner
+	}
+
+	defaultCommandRunnerMu.Lock()
+	defer defaultCommandRunnerMu.Unlock()
+	if defaultCommandRunner == nil {
+		defaultCommandRunner = commandexec.NewCommandExecutor(nil)
+	}
+	return defaultCommandRunner
 }
 
-type filesystemCommandExecutor interface {
-	LookPath(command string) (string, error)
-	Command(ctx context.Context, name string, args ...string) ExecCmd
-}
-
-type defaultFilesystemCommandExecutor struct{}
-
-func (d *defaultFilesystemCommandExecutor) LookPath(command string) (string, error) {
-	return exec.LookPath(command)
-}
-
-func (d *defaultFilesystemCommandExecutor) Command(ctx context.Context, name string, args ...string) ExecCmd {
-	return &realExecCmd{cmd: exec.CommandContext(ctx, name, args...)}
-}
-
-func (r *realExecCmd) CombinedOutput() ([]byte, error) {
-	return r.cmd.CombinedOutput()
-}
-
-func (r *realExecCmd) StdoutPipe() (io.ReadCloser, error) {
-	return r.cmd.StdoutPipe()
-}
-
-func (r *realExecCmd) StderrPipe() (io.ReadCloser, error) {
-	return r.cmd.StderrPipe()
-}
-
-func (r *realExecCmd) Start() error {
-	return r.cmd.Start()
-}
-
-func (r *realExecCmd) Wait() error {
-	return r.cmd.Wait()
+func (b *baseAdapter) resolveCommandExecutor() commandexec.Executor {
+	if b != nil && b.commandExecutor != nil {
+		return b.commandExecutor
+	}
+	return getDefaultCommandRunner()
 }
 
 type cachedCommandResult struct {
@@ -92,47 +82,72 @@ type CommandResult struct {
 type baseAdapter struct {
 	name          string
 	linuxFsModule string
+	aliasNames    []string
 	description   string
 	exportable    bool
-	alpinePackage string
-	mkfsCommand   string
-	fsckCommand   string
-	labelCommand  string
-	stateCommand  string
-	signatures    []dto.FsMagicSignature
+	labelRule     string
+	// All adapters currently emit indeterminate progress (999) and do not parse numeric progress.
+	isFormatReportProgress bool
+	isCheckReportProgress  bool
+	alpinePackage          string
+	mkfsCommand            string
+	fsckCommand            string
+	labelCommand           string
+	stateCommand           string
+	signatures             []dto.FsMagicSignature
 	//
 	baseTryMountFunc func(source, target, data string, flags uintptr, prepareTarget ...func() error) (*mount.MountPoint, error)
 	baseDoMountFunc  func(source, target, fstype, data string, flags uintptr, prepareTarget ...func() error) (*mount.MountPoint, error)
 	baseUnmountFunc  func(target string, force, lazy bool) error
-	commandExecutor  filesystemCommandExecutor
+	commandExecutor  commandexec.Executor
 	getFilesystems   func() ([]string, error) // Optional override for osutil.GetFileSystems, used in command availability checks
 	isDeviceMountedF func(device string) bool
 }
 
-func newBaseAdapter(name, description string, exportable bool, alpinePackage, mkfsCommand, fsckCommand, labelCommand, stateCommand string, signatures []dto.FsMagicSignature) baseAdapter {
+func newBaseAdapter(
+	name, description string,
+	exportable bool,
+	alpinePackage, mkfsCommand, fsckCommand, labelCommand, stateCommand, labelRule string,
+	signatures []dto.FsMagicSignature,
+	aliasNames ...string,
+) baseAdapter {
 	return baseAdapter{
-		name:             name,
-		description:      description,
-		exportable:       exportable,
-		alpinePackage:    alpinePackage,
-		mkfsCommand:      mkfsCommand,
-		fsckCommand:      fsckCommand,
-		labelCommand:     labelCommand,
-		stateCommand:     stateCommand,
-		signatures:       signatures,
-		baseTryMountFunc: mount.TryMount,
-		baseDoMountFunc:  mount.Mount,
-		baseUnmountFunc:  mount.Unmount,
-		commandExecutor:  &defaultFilesystemCommandExecutor{},
-		getFilesystems:   osutil.GetFileSystems,
+		name:                   name,
+		aliasNames:             slices.Clone(aliasNames),
+		description:            description,
+		exportable:             exportable,
+		labelRule:              labelRule,
+		isFormatReportProgress: false,
+		isCheckReportProgress:  false,
+		alpinePackage:          alpinePackage,
+		mkfsCommand:            mkfsCommand,
+		fsckCommand:            fsckCommand,
+		labelCommand:           labelCommand,
+		stateCommand:           stateCommand,
+		signatures:             signatures,
+		baseTryMountFunc:       mount.TryMount,
+		baseDoMountFunc:        mount.Mount,
+		baseUnmountFunc:        mount.Unmount,
+		getFilesystems:         osutil.GetFileSystems,
+	}
+}
+
+// SetCommandRunner temporarily overrides the shared command executor used by this adapter.
+// It returns a reset function, which is mainly used by tests.
+func (b *baseAdapter) SetCommandRunner(runner commandexec.Executor) (reset func()) {
+	original := b.commandExecutor
+	b.commandExecutor = runner
+	return func() {
+		b.commandExecutor = original
 	}
 }
 
 // commandExists checks if a command is available in the system PATH
 func (b *baseAdapter) commandExists(command string) bool {
-	_, err := b.commandExecutor.LookPath(command)
+	executor := b.resolveCommandExecutor()
+	_, err := executor.LookPath(command)
 	if err != nil {
-		if errors.Is(err, exec.ErrNotFound) {
+		if strings.Contains(err.Error(), "command not found") {
 			return false
 		}
 		tlog.Warn("Error checking command existence", "command", command, "error", err)
@@ -143,32 +158,30 @@ func (b *baseAdapter) commandExists(command string) bool {
 
 // runCommand executes a command and returns the output
 func (b *baseAdapter) runCommand(ctx context.Context, name string, args ...string) (string, int, errors.E) {
-	cmd := b.commandExecutor.Command(ctx, name, args...)
-	output, err := cmd.CombinedOutput()
-	exitCode := 0
+	executor := b.resolveCommandExecutor()
+	snapshot, err := executor.Execute(ctx, "filesystem:"+name, "Filesystem "+name, name, args...)
+	output := commandexec.JoinChannelOutput(snapshot.Lines)
+	exitCode := snapshot.ExitCode
 
 	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			exitCode = exitErr.ExitCode()
-		} else {
+		if exitCode == 0 {
 			exitCode = -1
 		}
 		if errors.Is(err, context.Canceled) ||
-			errors.Is(err, exec.ErrNotFound) ||
 			errors.Is(err, context.DeadlineExceeded) ||
-			errors.Is(err, exec.ErrDot) ||
-			errors.Is(err, exec.ErrWaitDelay) ||
 			strings.Contains(err.Error(), "permission denied") ||
 			strings.Contains(err.Error(), "executable file not found") ||
 			strings.Contains(err.Error(), "no such file or directory") ||
-			strings.Contains(err.Error(), "cannot find the file") {
-			tlog.ErrorContext(ctx, "Error executing command", "command", name, "args", args, "exitCode", exitCode, "Output", string(output), "error", err)
-			return strings.TrimSpace(string(output)), exitCode, errors.WithDetails(err, "Command", name, "Args", strings.Join(args, " "), "error", "command not found")
+			strings.Contains(err.Error(), "cannot find the file") ||
+			strings.Contains(err.Error(), "command not found") ||
+			strings.Contains(err.Error(), "not configured") {
+			tlog.ErrorContext(ctx, "Error executing command", "command", name, "args", args, "exitCode", exitCode, "Output", output, "error", err)
+			return output, exitCode, errors.WithDetails(err, "Command", name, "Args", strings.Join(args, " "), "error", "command not found")
 		}
-		return strings.TrimSpace(string(output)), exitCode, nil
+		return output, exitCode, nil
 	}
 
-	return strings.TrimSpace(string(output)), exitCode, nil
+	return output, exitCode, nil
 }
 
 // runCommandCached executes a command and caches the result by command name and exact args.
@@ -243,18 +256,24 @@ func (b *baseAdapter) checkCommandAvailability() dto.FilesystemSupport {
 	} else if !slices.Contains(filesystem, b.GetLinuxFsModule()) {
 		tlog.Debug("Filesystem module not found in system, marking related commands as unavailable", "filesystem", b.GetLinuxFsModule())
 		return dto.FilesystemSupport{
-			CanMount:      false,
-			IsExportable:  b.exportable,
-			AlpinePackage: b.alpinePackage,
-			MissingTools:  []string{b.mkfsCommand, b.fsckCommand, b.labelCommand, b.stateCommand},
+			CanMount:               false,
+			IsExportable:           b.exportable,
+			IsFormatReportProgress: b.isFormatReportProgress,
+			IsCheckReportProgress:  b.isCheckReportProgress,
+			LabelRule:              b.labelRule,
+			AlpinePackage:          b.alpinePackage,
+			MissingTools:           []string{b.mkfsCommand, b.fsckCommand, b.labelCommand, b.stateCommand},
 		}
 	}
 
 	support := dto.FilesystemSupport{
-		CanMount:      true, // Most filesystems can be mounted if kernel supports them
-		IsExportable:  b.exportable,
-		AlpinePackage: b.alpinePackage,
-		MissingTools:  []string{},
+		CanMount:               true, // Most filesystems can be mounted if kernel supports them
+		IsExportable:           b.exportable,
+		IsFormatReportProgress: b.isFormatReportProgress,
+		IsCheckReportProgress:  b.isCheckReportProgress,
+		LabelRule:              b.labelRule,
+		AlpinePackage:          b.alpinePackage,
+		MissingTools:           []string{},
 	}
 
 	if b.mkfsCommand != "" {
@@ -306,6 +325,17 @@ func (b *baseAdapter) GetLinuxFsModule() string {
 		return b.linuxFsModule
 	}
 	return b.name
+}
+
+// GetAliasNames returns other filesystem names that should resolve to this adapter.
+func (b *baseAdapter) GetAliasNames() []string {
+	aliases := slices.Clone(b.aliasNames)
+	linuxModule := b.GetLinuxFsModule()
+	if linuxModule != "" && linuxModule != b.name && !slices.Contains(aliases, linuxModule) {
+		aliases = append(aliases, linuxModule)
+	}
+
+	return aliases
 }
 
 // GetDescription returns the filesystem description
@@ -389,40 +419,13 @@ func (b *baseAdapter) executeCommandWithProgress(
 	command string,
 	args []string,
 ) (<-chan string, <-chan string, <-chan CommandResult) {
-	// Create channels for output and result
 	stdoutChan := make(chan string, 100)
 	stderrChan := make(chan string, 100)
 	resultChan := make(chan CommandResult, 1)
 
-	cmd := b.commandExecutor.Command(ctx, command, args...)
-
-	// Setup pipes for stdout and stderr
-	stdout, err := cmd.StdoutPipe()
+	executor := b.resolveCommandExecutor()
+	executionID, err := executor.Start(ctx, "filesystem:"+command, "Filesystem "+command, command, args...)
 	if err != nil {
-		close(stdoutChan)
-		close(stderrChan)
-		resultChan <- CommandResult{
-			ExitCode: -1,
-			Error:    errors.WithDetails(err, "command", command, "error", "failed to create stdout pipe"),
-		}
-		close(resultChan)
-		return stdoutChan, stderrChan, resultChan
-	}
-
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		close(stdoutChan)
-		close(stderrChan)
-		resultChan <- CommandResult{
-			ExitCode: -1,
-			Error:    errors.WithDetails(err, "command", command, "error", "failed to create stderr pipe"),
-		}
-		close(resultChan)
-		return stdoutChan, stderrChan, resultChan
-	}
-
-	// Start the command
-	if err := cmd.Start(); err != nil {
 		close(stdoutChan)
 		close(stderrChan)
 		resultChan <- CommandResult{
@@ -433,66 +436,95 @@ func (b *baseAdapter) executeCommandWithProgress(
 		return stdoutChan, stderrChan, resultChan
 	}
 
-	// WaitGroup to wait for goroutines to finish
-	var wg sync.WaitGroup
-
-	// Scan stdout in a goroutine
-	wg.Go(func() {
-		scanner := bufio.NewScanner(stdout)
-		for scanner.Scan() {
-			select {
-			case <-ctx.Done():
-				return
-			case stdoutChan <- scanner.Text():
-			}
-		}
-	})
-
-	// Scan stderr in a goroutine
-	wg.Go(func() {
-		scanner := bufio.NewScanner(stderr)
-		for scanner.Scan() {
-			select {
-			case <-ctx.Done():
-				return
-			case stderrChan <- scanner.Text():
-			}
-		}
-	})
-
-	// Wait for command to complete and send result
 	go func() {
-		wg.Wait()
-		close(stdoutChan)
-		close(stderrChan)
+		defer close(stdoutChan)
+		defer close(stderrChan)
+		defer close(resultChan)
 
-		result := CommandResult{ExitCode: 0}
-		cmdErr := cmd.Wait()
+		ticker := time.NewTicker(10 * time.Millisecond)
+		defer ticker.Stop()
 
-		select {
-		case <-ctx.Done():
-			// Context was cancelled
-			result.ExitCode = -1
-			result.Error = errors.WithDetails(ctx.Err(), "command", command, "error", "context cancelled")
-		default:
-			if cmdErr != nil {
-				if exitErr, ok := cmdErr.(*exec.ExitError); ok {
-					result.ExitCode = exitErr.ExitCode()
+		stdoutLines := make([]string, 0)
+		stderrLines := make([]string, 0)
+		nextLineIndex := 0
+		for {
+			select {
+			case <-ctx.Done():
+				resultChan <- CommandResult{
+					ExitCode: -1,
+					Error:    errors.WithDetails(ctx.Err(), "command", command, "error", "context cancelled"),
+				}
+				return
+			case <-ticker.C:
+				snapshot, ok := executor.GetSnapshot(executionID)
+				if !ok {
+					continue
+				}
+				if nextLineIndex > len(snapshot.Lines) {
+					nextLineIndex = len(snapshot.Lines)
+				}
+
+				for _, line := range snapshot.Lines[nextLineIndex:] {
+					var target chan string
+					switch line.Channel {
+					case dto.CommandOutputChannelStdout:
+						stdoutLines = append(stdoutLines, line.Line)
+						target = stdoutChan
+					case dto.CommandOutputChannelStderr:
+						stderrLines = append(stderrLines, line.Line)
+						target = stderrChan
+					default:
+						continue
+					}
+
+					select {
+					case <-ctx.Done():
+						resultChan <- CommandResult{
+							ExitCode: -1,
+							Error:    errors.WithDetails(ctx.Err(), "command", command, "error", "context cancelled"),
+						}
+						return
+					case target <- line.Line:
+					}
+				}
+				nextLineIndex = len(snapshot.Lines)
+
+				if snapshot.Running {
+					continue
+				}
+
+				result := CommandResult{ExitCode: snapshot.ExitCode}
+				if !snapshot.Success {
+					exitCode := snapshot.ExitCode
+					if exitCode == 0 {
+						exitCode = -1
+					}
+					stderrText := strings.TrimSpace(strings.Join(stderrLines, "\n"))
+					stdoutText := strings.TrimSpace(strings.Join(stdoutLines, "\n"))
+					errMessage := strings.TrimSpace(snapshot.Error)
+					if errMessage == "" {
+						errMessage = "command execution failed"
+					}
+					if stderrText != "" && !strings.Contains(errMessage, stderrText) {
+						errMessage += ": " + stderrText
+					} else if stdoutText != "" && !strings.Contains(errMessage, stdoutText) {
+						errMessage += ": " + stdoutText
+					}
+					result.ExitCode = exitCode
 					result.Error = errors.WithDetails(
-						cmdErr,
+						errors.New(errMessage),
 						"command", command,
 						"args", strings.Join(args, " "),
-						"exitCode", exitErr.ExitCode(),
+						"exitCode", exitCode,
+						"stdout", stdoutText,
+						"stderr", stderrText,
 					)
-				} else {
-					result.ExitCode = -1
-					result.Error = errors.WithDetails(cmdErr, "command", command)
 				}
+
+				resultChan <- result
+				return
 			}
 		}
-
-		resultChan <- result
-		close(resultChan)
 	}()
 
 	return stdoutChan, stderrChan, resultChan

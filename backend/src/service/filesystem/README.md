@@ -111,6 +111,11 @@ fmt.Printf("Alpine package: %s\n", support.AlpinePackage)
 if !support.CanFormat {
     fmt.Printf("Missing tools: %v\n", support.MissingTools)
 }
+
+// For UI preflight checks you can query one filesystem type directly:
+// GET /filesystem/support?fstype=ext4
+// The response returns dto.FilesystemSupport with can* flags,
+// missingTools and alpinePackage for actionable user guidance.
 ```
 
 ### Formatting a Device
@@ -424,6 +429,28 @@ Response:
   "errorsFixed": false,
   "message": "Filesystem is clean",
   "exitCode": 0
+}
+```
+
+Check, format and label operations are started asynchronously in SRAT and
+progress is published via WebSocket `filesystem_task` events. Frontend dialogs
+use this stream to render live logs and status updates. Some tools do not
+expose incremental progress; in those cases adapters can report `progress=999`,
+which should be treated as indeterminate progress while still showing live
+output lines.
+
+If support preflight reports missing tools (for example from
+`GET /filesystem/support?fstype=<type>`), user-facing guidance should include
+both `missingTools` and the suggested `alpinePackage` installation hint.
+
+Abort an active filesystem check with:
+
+```plaintext
+POST /filesystem/check/abort
+Content-Type: application/json
+
+{
+  "partitionId": "partition-uuid"
 }
 ```
 

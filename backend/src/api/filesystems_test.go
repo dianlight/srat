@@ -7,10 +7,12 @@ import (
 	"net/http"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2/humatest"
 	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/dianlight/srat/service"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
@@ -26,6 +28,7 @@ type FilesystemHandlerSuite struct {
 	handler       *api.FilesystemHandler
 	mockFsService service.FilesystemServiceInterface
 	diskMap       *dto.DiskMap
+	eventBus      events.EventBusInterface
 	testAPI       humatest.TestAPI
 	ctx           context.Context
 	cancel        context.CancelFunc
@@ -43,6 +46,7 @@ func (suite *FilesystemHandlerSuite) SetupTest() {
 			func() (context.Context, context.CancelFunc) {
 				return context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, &sync.WaitGroup{}))
 			},
+			func(ctx context.Context) events.EventBusInterface { return events.NewEventBus(ctx) },
 			api.NewFilesystemHandler,
 			mock.Mock[service.FilesystemServiceInterface],
 			func() *dto.DiskMap { return &dto.DiskMap{} },
@@ -50,6 +54,7 @@ func (suite *FilesystemHandlerSuite) SetupTest() {
 		fx.Populate(&suite.handler),
 		fx.Populate(&suite.mockFsService),
 		fx.Populate(&suite.diskMap),
+		fx.Populate(&suite.eventBus),
 		fx.Populate(&suite.ctx),
 		fx.Populate(&suite.cancel),
 	)
@@ -77,11 +82,14 @@ func (suite *FilesystemHandlerSuite) TestListFilesystems_Success() {
 			//MountFlags:       []dto.MountFlag{{Name: "rw"}},
 			CustomMountFlags: []dto.MountFlag{{Name: "discard"}},
 			Support: &dto.FilesystemSupport{
-				CanMount:      true,
-				CanFormat:     true,
-				CanCheck:      true,
-				CanSetLabel:   true,
-				AlpinePackage: fsType + "-progs",
+				CanMount:               true,
+				CanFormat:              true,
+				CanCheck:               true,
+				CanSetLabel:            true,
+				IsFormatReportProgress: false,
+				IsCheckReportProgress:  false,
+				LabelRule:              `^[^\x00/]{1,16}$`,
+				AlpinePackage:          fsType + "-progs",
 			},
 		}
 		mock.When(suite.mockFsService.GetSupportAndInfo(mock.Any[context.Context](), mock.Any[string]())).
@@ -101,6 +109,152 @@ func (suite *FilesystemHandlerSuite) TestListFilesystems_Success() {
 		suite.True(fs.Support.CanMount)
 		suite.True(fs.Support.CanFormat)
 	}
+}
+
+func (suite *FilesystemHandlerSuite) TestGetFilesystemSupport_Success() {
+	fsType := "ext4"
+	expected := &dto.FilesystemInfo{
+		Name:        fsType,
+		Type:        fsType,
+		Description: "ext4 filesystem",
+		Support: &dto.FilesystemSupport{
+			CanMount:               true,
+			CanFormat:              true,
+			CanCheck:               true,
+			CanSetLabel:            true,
+			CanGetState:            true,
+			IsFormatReportProgress: false,
+			IsCheckReportProgress:  false,
+			LabelRule:              `^[^\x00/]{1,16}$`,
+			AlpinePackage:          "e2fsprogs",
+			MissingTools:           []string{},
+		},
+	}
+
+	mock.When(suite.mockFsService.GetSupportAndInfo(mock.Any[context.Context](), mock.Exact(fsType))).
+		ThenReturn(expected, nil)
+
+	resp := suite.testAPI.Get("/filesystem/support?fstype=ext4")
+	suite.Equal(http.StatusOK, resp.Code)
+
+	var result dto.FilesystemSupport
+	err := json.Unmarshal(resp.Body.Bytes(), &result)
+	suite.Require().NoError(err)
+	suite.True(result.CanCheck)
+	suite.Equal("e2fsprogs", result.AlpinePackage)
+	suite.False(result.IsFormatReportProgress)
+	suite.False(result.IsCheckReportProgress)
+	suite.Equal(`^[^\x00/]{1,16}$`, result.LabelRule)
+}
+
+func (suite *FilesystemHandlerSuite) TestGetFilesystemSupport_MissingFsType() {
+	resp := suite.testAPI.Get("/filesystem/support")
+	suite.Equal(http.StatusBadRequest, resp.Code)
+}
+
+func (suite *FilesystemHandlerSuite) TestGetFilesystemSupport_AcceptsLinuxFsModuleAlias() {
+	expected := &dto.FilesystemInfo{
+		Name:        "ntfs",
+		Type:        "ntfs3",
+		Description: "NTFS Filesystem",
+		Support: &dto.FilesystemSupport{
+			CanMount:               true,
+			CanFormat:              true,
+			CanCheck:               true,
+			CanSetLabel:            true,
+			CanGetState:            true,
+			IsFormatReportProgress: false,
+			IsCheckReportProgress:  false,
+			LabelRule:              `^[^\x00/]{1,32}$`,
+			AlpinePackage:          "ntfs-3g-progs",
+			MissingTools:           []string{},
+		},
+	}
+
+	mock.When(suite.mockFsService.GetSupportAndInfo(mock.Any[context.Context](), mock.Exact("ntfs3"))).
+		ThenReturn(expected, nil)
+
+	resp := suite.testAPI.Get("/filesystem/support?fstype=ntfs3")
+	suite.Equal(http.StatusOK, resp.Code)
+
+	var result dto.FilesystemSupport
+	err := json.Unmarshal(resp.Body.Bytes(), &result)
+	suite.Require().NoError(err)
+	suite.True(result.CanCheck)
+	suite.Equal("ntfs-3g-progs", result.AlpinePackage)
+}
+
+func (suite *FilesystemHandlerSuite) TestGetFilesystemSupport_UnsupportedFsType() {
+	mock.When(suite.mockFsService.GetSupportAndInfo(mock.Any[context.Context](), mock.Exact("zfsx"))).
+		ThenReturn(nil, errors.New("unsupported filesystem type: zfsx"))
+
+	resp := suite.testAPI.Get("/filesystem/support?fstype=zfsx")
+	suite.Equal(http.StatusBadRequest, resp.Code)
+}
+
+func (suite *FilesystemHandlerSuite) TestGetFilesystemSupport_MultiFilesystemCapabilityProfiles() {
+	mock.When(suite.mockFsService.ListSupportedTypes()).ThenReturn([]string{"f2fs", "zfs"})
+
+	mock.When(suite.mockFsService.GetSupportAndInfo(mock.Any[context.Context](), mock.Exact("f2fs"))).
+		ThenReturn(&dto.FilesystemInfo{
+			Type: "f2fs",
+			Support: &dto.FilesystemSupport{
+				CanMount:               true,
+				CanFormat:              true,
+				CanCheck:               true,
+				CanSetLabel:            false,
+				CanGetState:            true,
+				IsFormatReportProgress: false,
+				IsCheckReportProgress:  false,
+				LabelRule:              `^[^\x00/]{1,512}$`,
+				AlpinePackage:          "f2fs-tools",
+				MissingTools:           []string{},
+			},
+		}, nil)
+
+	mock.When(suite.mockFsService.GetSupportAndInfo(mock.Any[context.Context](), mock.Exact("zfs"))).
+		ThenReturn(&dto.FilesystemInfo{
+			Type: "zfs",
+			Support: &dto.FilesystemSupport{
+				CanMount:               true,
+				CanFormat:              false,
+				CanCheck:               false,
+				CanSetLabel:            false,
+				CanGetState:            true,
+				IsFormatReportProgress: false,
+				IsCheckReportProgress:  false,
+				LabelRule:              "",
+				AlpinePackage:          "zfs",
+				MissingTools:           []string{"zpool"},
+			},
+		}, nil)
+
+	respF2fs := suite.testAPI.Get("/filesystem/support?fstype=f2fs")
+	suite.Equal(http.StatusOK, respF2fs.Code)
+	var supportF2fs dto.FilesystemSupport
+	err := json.Unmarshal(respF2fs.Body.Bytes(), &supportF2fs)
+	suite.Require().NoError(err)
+	suite.True(supportF2fs.CanCheck)
+	suite.True(supportF2fs.CanFormat)
+	suite.False(supportF2fs.CanSetLabel)
+	suite.Equal("f2fs-tools", supportF2fs.AlpinePackage)
+	suite.False(supportF2fs.IsFormatReportProgress)
+	suite.False(supportF2fs.IsCheckReportProgress)
+	suite.Equal(`^[^\x00/]{1,512}$`, supportF2fs.LabelRule)
+
+	respZfs := suite.testAPI.Get("/filesystem/support?fstype=zfs")
+	suite.Equal(http.StatusOK, respZfs.Code)
+	var supportZfs dto.FilesystemSupport
+	err = json.Unmarshal(respZfs.Body.Bytes(), &supportZfs)
+	suite.Require().NoError(err)
+	suite.False(supportZfs.CanCheck)
+	suite.False(supportZfs.CanFormat)
+	suite.False(supportZfs.CanSetLabel)
+	suite.Equal("zfs", supportZfs.AlpinePackage)
+	suite.Contains(supportZfs.MissingTools, "zpool")
+	suite.False(supportZfs.IsFormatReportProgress)
+	suite.False(supportZfs.IsCheckReportProgress)
+	suite.Empty(supportZfs.LabelRule)
 }
 
 func (suite *FilesystemHandlerSuite) TestFormatPartition_Success() {
@@ -386,12 +540,14 @@ func (suite *FilesystemHandlerSuite) TestSetPartitionLabel_Success() {
 	devicePath := "/dev/sdb1"
 	fsType := "ext4"
 	newLabel := "NewLabel"
+	oldLabel := "OldLabel"
 	diskID := "test-disk-id"
 
 	partition := dto.Partition{
 		Id:               &partitionID,
 		LegacyDevicePath: &devicePath,
 		FsType:           &fsType,
+		Name:             &oldLabel,
 	}
 
 	// Create disk with partition
@@ -411,6 +567,13 @@ func (suite *FilesystemHandlerSuite) TestSetPartitionLabel_Success() {
 		mock.Any[string](),
 	)).ThenReturn(nil)
 
+	diskUpdateCh := make(chan events.DiskEvent, 1)
+	unsubscribe := suite.eventBus.OnDisk(func(ctx context.Context, event events.DiskEvent) errors.E {
+		diskUpdateCh <- event
+		return nil
+	})
+	defer unsubscribe()
+
 	resp := suite.testAPI.Put("/filesystem/label", map[string]interface{}{
 		"partitionId": partitionID,
 		"label":       newLabel,
@@ -424,4 +587,21 @@ func (suite *FilesystemHandlerSuite) TestSetPartitionLabel_Success() {
 	err := json.Unmarshal(resp.Body.Bytes(), &result)
 	suite.Require().NoError(err)
 	suite.True(result.Success)
+
+	updatedPartition, _, found := suite.diskMap.GetPartitionByID(partitionID)
+	suite.True(found)
+	suite.Require().NotNil(updatedPartition)
+	suite.Require().NotNil(updatedPartition.Name)
+	suite.Equal(newLabel, *updatedPartition.Name)
+
+	select {
+	case event := <-diskUpdateCh:
+		suite.Require().NotNil(event.Disk)
+		eventPartition, ok := (*event.Disk.Partitions)[partitionID]
+		suite.True(ok)
+		suite.Require().NotNil(eventPartition.Name)
+		suite.Equal(newLabel, *eventPartition.Name)
+	case <-time.After(time.Second):
+		suite.Fail("expected disk update event after relabel")
+	}
 }

@@ -1,8 +1,6 @@
 package osutil
 
 import (
-	"context"
-	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -249,54 +247,6 @@ func (suite *OsutilSuite) TestIsKernelModuleLoaded() {
 	loaded, err := IsKernelModuleLoaded("definitely_not_a_real_module_xyz123")
 	assert.NoError(t, err)
 	assert.False(t, loaded)
-}
-
-func (suite *OsutilSuite) TestGetSambaVersion() {
-	t := suite.T()
-	restoreExec := MockSambaVersionExec(func(ctx context.Context, name string, args ...string) ([]byte, error) {
-		require.Equal(t, "smbd", name)
-		require.Equal(t, []string{"--version"}, args)
-		return []byte("Version 4.23.2\n"), nil
-	})
-	t.Cleanup(restoreExec)
-
-	version, err := GetSambaVersion()
-	require.NoError(t, err)
-	assert.Equal(t, "4.23.2", version)
-}
-
-func (suite *OsutilSuite) TestGetSambaVersion_CommandError() {
-	t := suite.T()
-	restoreExec := MockSambaVersionExec(func(_ context.Context, _ string, _ ...string) ([]byte, error) {
-		return nil, errors.New("command failed")
-	})
-	t.Cleanup(restoreExec)
-
-	version, err := GetSambaVersion()
-	require.Error(t, err)
-	assert.Empty(t, version)
-}
-
-func (suite *OsutilSuite) TestGetSambaVersion_InvalidOutput() {
-	t := suite.T()
-	restoreExec := MockSambaVersionExec(func(_ context.Context, _ string, _ ...string) ([]byte, error) {
-		return []byte("not-a-version-line"), nil
-	})
-	t.Cleanup(restoreExec)
-
-	version, err := GetSambaVersion()
-	require.NoError(t, err)
-	assert.Empty(t, version)
-}
-
-func (suite *OsutilSuite) TestIsSambaVersionSufficient() {
-	t := suite.T()
-	restoreVersion := MockSambaVersion("4.23.1")
-	t.Cleanup(restoreVersion)
-
-	sufficient, err := IsSambaVersionSufficient()
-	require.NoError(t, err)
-	assert.True(t, sufficient)
 }
 
 func (suite *OsutilSuite) TestGenerateSecurePassword() {

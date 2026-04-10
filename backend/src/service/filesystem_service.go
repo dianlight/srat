@@ -310,6 +310,10 @@ func (s *FilesystemService) GetStandardMountFlags() ([]dto.MountFlag, errors.E) 
 
 // GetFilesystemSpecificMountFlags returns the list of mount flags specific to the given filesystem type.
 func (s *FilesystemService) GetFilesystemSpecificMountFlags(fsType string) ([]dto.MountFlag, errors.E) {
+	if adapter, err := s.registry.Get(fsType); err == nil {
+		fsType = adapter.GetName()
+	}
+
 	flags, ok := s.fsSpecificMountFlags[fsType]
 	if !ok {
 		// Return an empty list if no specific flags are defined for this type
@@ -525,7 +529,7 @@ func (s *FilesystemService) GetSupportAndInfo(ctx context.Context, fsType string
 	}
 
 	//standardFlags, _ := s.GetStandardMountFlags()
-	customFlags, _ := s.GetFilesystemSpecificMountFlags(fsType)
+	customFlags, _ := s.GetFilesystemSpecificMountFlags(adapter.GetName())
 
 	return &dto.FilesystemInfo{
 		Name:        adapter.GetName(),
@@ -628,6 +632,10 @@ func (s *FilesystemService) FormatPartition(ctx context.Context, devicePath, fsT
 		formatErr := adapter.Format(opCtx, devicePath, options, progressCallback)
 
 		if formatErr != nil {
+			failureNotes := make([]string, 0, 1)
+			if errorMessage := strings.TrimSpace(formatErr.Error()); errorMessage != "" {
+				failureNotes = append(failureNotes, errorMessage)
+			}
 			// Emit failure event
 			if s.eventBus != nil {
 				s.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
@@ -639,6 +647,7 @@ func (s *FilesystemService) FormatPartition(ctx context.Context, devicePath, fsT
 						Status:         "failure",
 						Message:        fmt.Sprintf("Format operation failed for %s", devicePath),
 						Error:          formatErr.Error(),
+						Notes:          failureNotes,
 					},
 				})
 			}
@@ -655,6 +664,7 @@ func (s *FilesystemService) FormatPartition(ctx context.Context, devicePath, fsT
 						FilesystemType: fsType,
 						Status:         "success",
 						Message:        fmt.Sprintf("Format operation completed successfully for %s", devicePath),
+						Progress:       100,
 					},
 				})
 			}
@@ -776,6 +786,10 @@ func (s *FilesystemService) CheckPartition(ctx context.Context, devicePath, fsTy
 				slog.InfoContext(s.ctx, "Check operation canceled", "device", devicePath, "fsType", fsType)
 				return
 			}
+			failureNotes := make([]string, 0, 1)
+			if errorMessage := strings.TrimSpace(checkErr.Error()); errorMessage != "" {
+				failureNotes = append(failureNotes, errorMessage)
+			}
 			// Emit failure event
 			if s.eventBus != nil {
 				s.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
@@ -787,12 +801,18 @@ func (s *FilesystemService) CheckPartition(ctx context.Context, devicePath, fsTy
 						Status:         "failure",
 						Message:        fmt.Sprintf("Check operation failed for %s", devicePath),
 						Error:          checkErr.Error(),
+						Notes:          failureNotes,
 					},
 				})
 			}
 			// Log failure
 			slog.ErrorContext(s.ctx, "Check operation failed", "device", devicePath, "fsType", fsType, "error", checkErr)
 		} else {
+			completionNotes := make([]string, 0, 1)
+			if message := strings.TrimSpace(result.Message); message != "" {
+				completionNotes = append(completionNotes, message)
+			}
+
 			// Emit success event
 			if s.eventBus != nil {
 				s.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
@@ -803,6 +823,9 @@ func (s *FilesystemService) CheckPartition(ctx context.Context, devicePath, fsTy
 						FilesystemType: fsType,
 						Status:         "success",
 						Message:        fmt.Sprintf("Check operation completed successfully for %s", devicePath),
+						Progress:       100,
+						Notes:          completionNotes,
+						Result:         result,
 					},
 				})
 			}

@@ -1,10 +1,17 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import "../../../test/setup";
+
+const originalFetch = globalThis.fetch;
 
 describe("useGithubNews hook", () => {
 	beforeEach(() => {
-		// Clear any mocks
 		mock.restore();
+		globalThis.fetch = originalFetch;
+	});
+
+	afterEach(() => {
+		mock.restore();
+		globalThis.fetch = originalFetch;
 	});
 
 	it("initializes with loading state", async () => {

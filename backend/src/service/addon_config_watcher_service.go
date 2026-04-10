@@ -9,6 +9,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -194,6 +195,18 @@ func parseSupervisorAddonConfigChanged(raw json.RawMessage) (event string, slug 
 	return event, slug, event == "addon_config_changed", nil
 }
 
+func shouldWarnSupervisorSubscriptionFailure(err error, attempt int) bool {
+	if err == nil {
+		return false
+	}
+
+	if attempt <= 1 && strings.Contains(strings.ToLower(err.Error()), "not connected") {
+		return false
+	}
+
+	return true
+}
+
 // watchViaSupervisorEvents subscribes to "supervisor_event" on the HA Core WebSocket
 // (proxied through ws://supervisor/core/websocket).
 // It filters for events of type "addon_config_changed" and delegates to maybeNotify.
@@ -235,7 +248,11 @@ func (s *AddonConfigWatcherService) watchViaSupervisorEvents() {
 			return
 		}
 
-		slog.WarnContext(s.ctx, "addon_config_watcher: supervisor_event subscription failed; retrying", "err", err, "retry_delay", retryDelay, "attempt", attempt)
+		if shouldWarnSupervisorSubscriptionFailure(err, attempt) {
+			slog.WarnContext(s.ctx, "addon_config_watcher: supervisor_event subscription failed; retrying", "err", err, "retry_delay", retryDelay, "attempt", attempt)
+		} else {
+			slog.InfoContext(s.ctx, "addon_config_watcher: supervisor_event subscription not ready yet; retrying", "err", err, "retry_delay", retryDelay, "attempt", attempt)
+		}
 
 		select {
 		case <-time.After(retryDelay):

@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"math"
+	"strings"
 	"sync"
 	"time"
 
@@ -46,6 +47,32 @@ type HealthHandlerParams struct {
 	NetworkStatService service.NetworkStatsService
 	DiskStatsService   service.DiskStatsService
 	HaRootService      service.HaRootServiceInterface `optional:"true"`
+}
+
+func isExpectedStartupHealthError(component string, err error) bool {
+	if err == nil {
+		return false
+	}
+
+	msg := strings.ToLower(err.Error())
+	switch component {
+	case "disk stats":
+		return strings.Contains(msg, "disk stats not initialized")
+	case "samba status":
+		return strings.Contains(msg, "smbstatus returned non-json output") ||
+			strings.Contains(msg, "smbstatus returned empty output")
+	default:
+		return false
+	}
+}
+
+func logHealthFetchError(ctx context.Context, component string, err error) {
+	if isExpectedStartupHealthError(component, err) {
+		slog.DebugContext(ctx, "Health subsystem still warming up", "component", component, "err", err)
+		return
+	}
+
+	slog.WarnContext(ctx, "Warning getting "+component+" for health ping", "err", err)
 }
 
 func NewHealthHandler(lc fx.Lifecycle, param HealthHandlerParams) *HealthHanler {
@@ -164,7 +191,7 @@ func (self *HealthHanler) run() error {
 			self.checkSamba()
 			diskStats, err := self.diskStatsService.GetDiskStats()
 			if err != nil {
-				slog.WarnContext(self.ctx, "Warning getting disk stats for health ping", "err", err)
+				logHealthFetchError(self.ctx, "disk stats", err)
 				self.DiskHealth = nil
 			} else {
 				self.DiskHealth = diskStats
@@ -180,7 +207,7 @@ func (self *HealthHanler) run() error {
 			}
 			sambaStatus, err := self.sambaService.GetSambaStatus()
 			if err != nil {
-				slog.WarnContext(self.ctx, "Warning getting samba status for health ping", "err", err)
+				logHealthFetchError(self.ctx, "samba status", err)
 				self.SambaStatus = nil
 			} else {
 				self.SambaStatus = sambaStatus

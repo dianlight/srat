@@ -100,6 +100,42 @@ func (f *fakeNetStats) GetNetworkStats() (*dto.NetworkStats, errors.E) {
 	return &dto.NetworkStats{}, nil
 }
 
+func TestIsExpectedStartupHealthError(t *testing.T) {
+	testCases := []struct {
+		name      string
+		component string
+		err       error
+		expected  bool
+	}{
+		{
+			name:      "disk stats warmup is expected",
+			component: "disk stats",
+			err:       errors.New("disk stats not initialized"),
+			expected:  true,
+		},
+		{
+			name:      "samba non json warmup is expected",
+			component: "samba status",
+			err:       errors.New("smbstatus returned non-JSON output: /var/cache/samba/locking.tdb not initialised"),
+			expected:  true,
+		},
+		{
+			name:      "real addon stats failure still warns",
+			component: "addon stats",
+			err:       errors.New("permission denied"),
+			expected:  false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := isExpectedStartupHealthError(tc.component, tc.err); got != tc.expected {
+				t.Fatalf("isExpectedStartupHealthError(%q) = %v, want %v", tc.component, got, tc.expected)
+			}
+		})
+	}
+}
+
 func TestHealthRunLoopInternal(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	ctx, cancel := context.WithCancel(context.Background())

@@ -26,6 +26,7 @@ func NewXfsAdapter() FilesystemAdapter {
 			"xfs_repair",
 			"xfs_admin",
 			"xfs_repair",
+			`^[^\x00/]{1,12}$`,
 			[]dto.FsMagicSignature{
 				{Offset: 0, Magic: []byte{'X', 'F', 'S', 'B'}},
 			},

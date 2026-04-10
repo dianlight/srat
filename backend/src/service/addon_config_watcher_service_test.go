@@ -338,6 +338,13 @@ func (s *AddonConfigWatcherServiceSuite) TestWatchViaFsnotify_DetectsWrite() {
 	wg.Wait()
 }
 
+func (s *AddonConfigWatcherServiceSuite) TestShouldWarnSupervisorSubscriptionFailure() {
+	s.False(shouldWarnSupervisorSubscriptionFailure(nil, 1))
+	s.False(shouldWarnSupervisorSubscriptionFailure(errors.New("not connected"), 1))
+	s.True(shouldWarnSupervisorSubscriptionFailure(errors.New("not connected"), 2))
+	s.True(shouldWarnSupervisorSubscriptionFailure(errors.New("permission denied"), 1))
+}
+
 func (s *AddonConfigWatcherServiceSuite) TestWatchViaSupervisorEvents_RetriesUntilSubscribed() {
 	content := []byte(`{"workgroup":"WORKGROUP","name":"test"}`)
 	path := s.writeOptionsFile(content)

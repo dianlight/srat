@@ -29,10 +29,17 @@ import { UserDetailsPanel, UserEditForm, UsersTreeView } from "./components";
 import type { UsersProps } from "./types";
 import { UserEditDialog } from "./UserEditDialog";
 
-export function getTourTargetUser(users?: User[] | null): User | undefined {
+function isValidUser(user: User | null | undefined): user is User {
+  return Boolean(user && typeof user === "object");
+}
+
+export function getTourTargetUser(
+  users?: ReadonlyArray<User | null | undefined> | null,
+): User | undefined {
   if (!Array.isArray(users) || users.length === 0) return undefined;
 
-  return users.find((user) => !user.is_admin) ?? users[0];
+  const validUsers = users.filter(isValidUser);
+  return validUsers.find((user) => !user.is_admin) ?? validUsers[0];
 }
 
 export function Users() {
@@ -106,7 +113,10 @@ export function Users() {
       return;
     if (!selectedUserKey) return;
 
-    const foundUser = users.data.find(
+    const availableUsers = users.data.filter(isValidUser);
+    if (availableUsers.length === 0) return;
+
+    const foundUser = availableUsers.find(
       (user) => user.username === selectedUserKey,
     );
 

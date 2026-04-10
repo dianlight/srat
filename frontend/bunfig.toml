@@ -1,6 +1,12 @@
 [test]
-bail = 1 
-coverage = true # Enable coverage collection
+# bail: stop after N failures. Set to 0 to disable (show all failures).
+# In CI, override with --bail to fail fast.
+bail = 1
+# Coverage is disabled by default for speed (~12s overhead).
+# Enable in CI with: bun test --coverage
+# or run: mise run //frontend:test:ci
+coverageReporter = ["text", "lcov"]
+#coverage = false
 coveragePathIgnorePatterns = [
   "**/node_modules/**",
   "**/dist/**",
@@ -10,8 +16,9 @@ coveragePathIgnorePatterns = [
   "**/macro/**",
   "**/.devcontainer/**",
   "src/store/sratApi.ts",
-] 
+  "test/**",
+]
 coverageSkipTestFiles = true # Skip coverage for test files
-preload = "./test/setup.ts" 
-smol = true # Reduce memory usage during test runs
+preload = "./test/setup.ts"
+# smol=true increases GC pressure and is slower in practice — disabled.
 timeout = 10000

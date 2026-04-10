@@ -1,5 +1,5 @@
-import "../../../../test/setup";
 import { describe, expect, it } from "bun:test";
+import "../../../../test/setup";
 
 describe("volumes utils", () => {
 	it("decodeEscapeSequence decodes hex sequences", async () => {
@@ -44,6 +44,42 @@ describe("volumes utils", () => {
 
 		const result = decodeEscapeSequence("test\\x41"); // A
 		expect(result).toBe("testA");
+	});
+
+	it("getFilesystemLabelValidation validates labels against the provided regex", async () => {
+		const { getFilesystemLabelValidation } = await import("../utils");
+
+		const invalidResult = getFilesystemLabelValidation(
+			"bad-label!",
+			"^[A-Z0-9]{1,5}$",
+		);
+		expect(invalidResult.isValid).toBe(false);
+		expect(invalidResult.helperText).toContain(
+			"Accepted format: ^[A-Z0-9]{1,5}$",
+		);
+
+		const validResult = getFilesystemLabelValidation(
+			"DATA",
+			"^[A-Z0-9]{1,5}$",
+		);
+		expect(validResult.isValid).toBe(true);
+		expect(validResult.helperText).toContain(
+			"Accepted format: ^[A-Z0-9]{1,5}$",
+		);
+	});
+
+	it("getFilesystemLabelValidation allows an empty optional label", async () => {
+		const { getFilesystemLabelValidation } = await import("../utils");
+
+		const result = getFilesystemLabelValidation(
+			"",
+			"^[A-Z0-9]{1,5}$",
+			true,
+		);
+		expect(result.isValid).toBe(true);
+		expect(result.helperText).toContain(
+			"Accepted format: ^[A-Z0-9]{1,5}$",
+		);
 	});
 
 

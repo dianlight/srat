@@ -13,9 +13,10 @@ Use these rules whenever backend code executes system commands, migrates legacy 
 
 ## Required architecture
 
-- Use `service.CommandExecutionServiceInterface` as the default execution path for backend command execution.
+- Use `internal/commandexec.Executor` as the default execution path for backend command execution, typically provided by `commandexec.NewCommandExecutor`.
 - Prefer `Execute(...)` for synchronous command needs and `Start(...)` for asynchronous/streamed flows.
-- Do not introduce new direct `os/exec` usage in services that can use the command execution service.
+- Do not introduce new direct `os/exec` usage in services that can use the shared command executor.
+- Emit command lifecycle notifications through `events.EventBusInterface` as `events.CommandExecutionEvent`; `BroadcasterService` should subscribe and forward those DTOs instead of being called directly.
 - Keep execution correlation by `execution_id` and preserve event ordering:
   1. `command_started`
   2. `command_output` (zero or more)

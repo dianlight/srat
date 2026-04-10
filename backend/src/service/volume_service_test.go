@@ -7,6 +7,7 @@ import (
 	"os"
 	"sync"
 	"testing"
+	"time"
 
 	// Needed for MockBroadcaster
 
@@ -22,6 +23,7 @@ import (
 	"github.com/prometheus/procfs"
 	"github.com/stretchr/testify/suite"
 	"github.com/u-root/u-root/pkg/mount/loop"
+	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 	"gorm.io/gorm"
@@ -149,6 +151,101 @@ func (suite *VolumeServiceTestSuite) TestEmitMountPointWithoutTypeDefaultsToAddo
 	var dbMount dbom.MountPointPath
 	suite.Require().NoError(suite.db.Where("path = ? AND root = ?", mountPath, root).First(&dbMount).Error)
 	suite.Equal("ADDON", dbMount.Type)
+}
+
+func (suite *VolumeServiceTestSuite) TestFormatSuccessEventRefreshesPartitionCache() {
+	diskID := "disk-format-refresh"
+	partitionID := "disk-format-refresh-part1"
+	devicePath := "/dev/sdz1"
+	initialFsType := "ext4"
+	updatedFsType := "xfs"
+	initialName := "before-format"
+	updatedName := "after-format"
+
+	mock.When(suite.mockHardwareClient.GetHardwareInfo()).ThenReturn(
+		map[string]dto.Disk{
+			diskID: {
+				Id:    &diskID,
+				Model: new("Format Refresh Disk"),
+				Partitions: &map[string]dto.Partition{
+					partitionID: {
+						Id:         &partitionID,
+						DiskId:     &diskID,
+						DevicePath: new(devicePath),
+						FsType:     &initialFsType,
+						Name:       &initialName,
+					},
+				},
+			},
+		},
+		nil,
+	).ThenReturn(
+		map[string]dto.Disk{
+			diskID: {
+				Id:    &diskID,
+				Model: new("Format Refresh Disk"),
+				Partitions: &map[string]dto.Partition{
+					partitionID: {
+						Id:         &partitionID,
+						DiskId:     &diskID,
+						DevicePath: new(devicePath),
+						FsType:     &updatedFsType,
+						Name:       &updatedName,
+					},
+				},
+			},
+		},
+		nil,
+	).Verify(matchers.AtLeastOnce())
+
+	suite.hardwareService.InvalidateHardwareInfo()
+	disksBefore := suite.volumeService.GetVolumesData()
+	suite.Require().Len(disksBefore, 1)
+	beforePart, ok := (*disksBefore[0].Partitions)[partitionID]
+	suite.Require().True(ok, "expected partition to be present before refresh")
+	suite.Require().NotNil(beforePart.FsType)
+	suite.Equal(initialFsType, *beforePart.FsType)
+	suite.Require().NotNil(beforePart.Name)
+	suite.Equal(initialName, *beforePart.Name)
+
+	diskUpdate := make(chan struct{}, 1)
+	unsubscribe := suite.eventBus.OnDisk(func(ctx context.Context, event events.DiskEvent) errors.E {
+		if event.Type == events.EventTypes.UPDATE && event.Disk != nil && event.Disk.Id != nil && *event.Disk.Id == diskID {
+			select {
+			case diskUpdate <- struct{}{}:
+			default:
+			}
+		}
+		return nil
+	})
+	defer unsubscribe()
+
+	suite.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
+		Event: events.Event{Type: events.EventTypes.STOP},
+		Task: &dto.FilesystemTask{
+			Device:         devicePath,
+			Operation:      "format",
+			FilesystemType: updatedFsType,
+			Status:         "success",
+			Message:        "Format operation completed successfully for " + devicePath,
+			Progress:       100,
+		},
+	})
+
+	select {
+	case <-diskUpdate:
+	case <-time.After(2 * time.Second):
+		suite.T().Fatal("timeout waiting for disk refresh event after format success")
+	}
+
+	disksAfter := suite.volumeService.GetVolumesData()
+	suite.Require().Len(disksAfter, 1)
+	afterPart, ok := (*disksAfter[0].Partitions)[partitionID]
+	suite.Require().True(ok, "expected partition to be present after refresh")
+	suite.Require().NotNil(afterPart.FsType)
+	suite.Equal(updatedFsType, *afterPart.FsType)
+	suite.Require().NotNil(afterPart.Name)
+	suite.Equal(updatedName, *afterPart.Name)
 }
 
 // --- MountVolume Tests ---

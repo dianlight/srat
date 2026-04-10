@@ -38,14 +38,8 @@ type MountInfoEntry struct {
 }
 
 var (
-	overrideMu        sync.RWMutex
-	mountsOverride    func() ([]*procfs.MountInfo, error)
-	versionOverride   string
-	versionOverrideMu sync.RWMutex
-	sambaVersionExec  = func(ctx context.Context, name string, args ...string) ([]byte, error) {
-		return exec.CommandContext(ctx, name, args...).Output()
-	}
-	sambaVersionExecMu    sync.RWMutex
+	overrideMu            sync.RWMutex
+	mountsOverride        func() ([]*procfs.MountInfo, error)
 	filesystemsOverride   func() ([]string, error)
 	filesystemsOverrideMu sync.RWMutex
 )
@@ -227,36 +221,6 @@ func convertToMap(fields []string) map[string]string {
 	return result
 }
 
-// MockSambaVersion replaces the Samba version for testing purposes until the
-// returned restore function is called.
-func MockSambaVersion(version string) (restore func()) {
-	versionOverrideMu.Lock()
-	previousVersion := versionOverride
-	versionOverride = version
-	versionOverrideMu.Unlock()
-
-	return func() {
-		versionOverrideMu.Lock()
-		versionOverride = previousVersion
-		versionOverrideMu.Unlock()
-	}
-}
-
-// MockSambaVersionExec replaces the command executor used by GetSambaVersion
-// until the returned restore function is called. This is useful for testing.
-func MockSambaVersionExec(execFn func(ctx context.Context, name string, args ...string) ([]byte, error)) (restore func()) {
-	sambaVersionExecMu.Lock()
-	previousExec := sambaVersionExec
-	sambaVersionExec = execFn
-	sambaVersionExecMu.Unlock()
-
-	return func() {
-		sambaVersionExecMu.Lock()
-		sambaVersionExec = previousExec
-		sambaVersionExecMu.Unlock()
-	}
-}
-
 func setMountsOverride(fn func() ([]*procfs.MountInfo, error)) (restore func()) {
 	overrideMu.Lock()
 	previous := mountsOverride
@@ -378,99 +342,6 @@ func IsKernelModuleLoaded(moduleName string) (bool, error) {
 
 	if err := scanner.Err(); err != nil {
 		return false, err
-	}
-
-	return false, nil
-}
-
-// GetSambaVersion retrieves the installed Samba version.
-// Returns version string (e.g., "4.23.0") or empty string if not found.
-func GetSambaVersion() (string, error) {
-	// Check if version is mocked (for testing)
-	versionOverrideMu.RLock()
-	if versionOverride != "" {
-		defer versionOverrideMu.RUnlock()
-		return versionOverride, nil
-	}
-	versionOverrideMu.RUnlock()
-
-	sambaVersionExecMu.RLock()
-	execFn := sambaVersionExec
-	sambaVersionExecMu.RUnlock()
-
-	output, err := execFn(context.Background(), "smbd", "--version")
-	if err != nil {
-		return "", err
-	}
-
-	// Parse version from output like "Version 4.23.0"
-	versionLine := strings.TrimSpace(string(output))
-	parts := strings.Fields(versionLine)
-	if len(parts) >= 2 && strings.ToLower(parts[0]) == "version" {
-		return parts[1], nil
-	}
-
-	return "", nil
-}
-
-// IsSambaVersionSufficient checks if Samba version meets minimum requirement.
-// Returns true if version >= 4.23.0
-func IsSambaVersionSufficient() (bool, error) {
-	version, err := GetSambaVersion()
-	if err != nil || version == "" {
-		return false, err
-	}
-
-	// Parse version string
-	parts := strings.Split(version, ".")
-	if len(parts) < 2 {
-		return false, nil
-	}
-
-	major, err := strconv.Atoi(parts[0])
-	if err != nil {
-		return false, err
-	}
-
-	minor, err := strconv.Atoi(parts[1])
-	if err != nil {
-		return false, err
-	}
-
-	// Check if version >= 4.23
-	if major > 4 || (major == 4 && minor >= 23) {
-		return true, nil
-	}
-
-	return false, nil
-}
-
-// IsSambaVersionAtLeast checks if the installed Samba version meets the specified minimum version.
-// Example: IsSambaVersionAtLeast(4, 21) returns true if version >= 4.21.0
-func IsSambaVersionAtLeast(majorRequired, minorRequired int) (bool, error) {
-	version, err := GetSambaVersion()
-	if err != nil || version == "" {
-		return false, err
-	}
-
-	parts := strings.Split(version, ".")
-	if len(parts) < 2 {
-		return false, nil
-	}
-
-	major, err := strconv.Atoi(parts[0])
-	if err != nil {
-		return false, err
-	}
-
-	minor, err := strconv.Atoi(parts[1])
-	if err != nil {
-		return false, err
-	}
-
-	// Check if version >= required
-	if major > majorRequired || (major == majorRequired && minor >= minorRequired) {
-		return true, nil
 	}
 
 	return false, nil
