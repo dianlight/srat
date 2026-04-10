@@ -67,6 +67,7 @@ docs-fix = "./scripts/validate-docs.sh --fix && bunx markdownlint-cli2 '**/*.md'
 # gemini = "bun --bun $(which gemini)"
 # check = "mise run docs-check && mise run security && prek run --files $(find . -name '*.md' | grep -v 'node_modules')"
 # security = "mise run backend:security"
+brand-images = "python3 scripts/generate-brand-images.py"
 clean-local-branches = "scripts/cleanup-old-local-branches.sh"
 clean-local-branches-dry = "scripts/cleanup-old-local-branches.sh --dry"
 clean-local-tags = "scripts/cleanup-old-local-tags.sh"
