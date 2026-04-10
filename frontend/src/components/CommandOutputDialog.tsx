@@ -7,7 +7,10 @@ import {
   DialogTitle,
   Typography,
 } from "@mui/material";
-import type { CommandExecutionSnapshot } from "../store/sratApi";
+import type {
+  CommandExecutionSnapshot,
+  CommandOutputLineSnapshot,
+} from "../store/sratApi";
 import { ReadonlyCommandTerminal } from "./ReadonlyCommandTerminal";
 
 export interface CommandOutputToastContentProps {
@@ -56,12 +59,41 @@ interface CommandOutputDialogProps {
   onDownload: () => void;
 }
 
+export function getCommandOutputLines(
+  session?: CommandExecutionSnapshot,
+): CommandOutputLineSnapshot[] {
+  const lines = [...(session?.lines ?? [])];
+  const errorText = session?.error?.trim();
+
+  if (!errorText) {
+    return lines;
+  }
+
+  const alreadyIncluded = lines.some(
+    (line) => line.channel === "stderr" && line.line.trim() === errorText,
+  );
+
+  if (alreadyIncluded) {
+    return lines;
+  }
+
+  return [
+    ...lines,
+    {
+      channel: "stderr",
+      line: errorText,
+      timestamp: session?.finished_at ?? session?.started_at ?? Date.now(),
+    },
+  ];
+}
+
 export function CommandOutputDialog({
   open,
   session,
   onClose,
   onDownload,
 }: CommandOutputDialogProps) {
+  const displayLines = getCommandOutputLines(session);
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>
@@ -77,7 +109,7 @@ export function CommandOutputDialog({
             ? "Running"
             : `${session?.success ? "Success" : "Failed"} (exit ${session?.exit_code ?? "n/a"})`}
         </Typography>
-        <ReadonlyCommandTerminal lines={session?.lines} />
+        <ReadonlyCommandTerminal lines={displayLines} />
       </DialogContent>
       <DialogActions>
         <Button onClick={onDownload} variant="outlined">

@@ -12,6 +12,7 @@ import BaseConfigModal from "./components/BaseConfigModal";
 import {
   CommandOutputDialog,
   CommandOutputToastContent,
+  getCommandOutputLines,
 } from "./components/CommandOutputDialog";
 import { Footer } from "./components/Footer";
 import GlobalEventMonitor from "./components/GlobalEventTracker";
@@ -292,8 +293,8 @@ export function App() {
     if (!selectedCommandSession) {
       return;
     }
-    const lines = selectedCommandSession.lines
-      ?.map((line) => `[${line.channel}] ${line.line}`)
+    const lines = getCommandOutputLines(selectedCommandSession)
+      .map((line) => `[${line.channel}] ${line.line}`)
       .join("\n");
     if (!lines) {
       return;

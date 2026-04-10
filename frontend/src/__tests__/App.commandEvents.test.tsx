@@ -321,11 +321,48 @@ describe("App command events", () => {
     await waitFor(() => {
       expect(screen.getByText(/Command Output:/)).toBeTruthy();
       expect(screen.getByText(/Execution: exec-2/)).toBeTruthy();
-      expect(screen.getByText(/\[stderr\]/)).toBeTruthy();
+      expect(screen.getAllByText(/\[stderr\]/).length).toBeGreaterThan(0);
       expect(screen.getByText("boom")).toBeTruthy();
     });
 
     toastRender.unmount();
+  });
+
+  it("shows the termination error as stderr when only stdout lines were buffered", async () => {
+    const { CommandOutputDialog } = await import("../components/CommandOutputDialog");
+
+    render(
+      <CommandOutputDialog
+        open
+        onClose={() => undefined}
+        onDownload={() => undefined}
+        session={{
+          execution_id: "exec-2b",
+          command_id: "cmd-2b",
+          label: "Filesystem Check",
+          command: "fsck.fat",
+          args: ["-a", "/dev/sdb1"],
+          started_at: 100,
+          finished_at: 102,
+          running: false,
+          success: false,
+          exit_code: 1,
+          error: "fsck.fat: dirty bit is set",
+          lines: [
+            {
+              channel: "stdout",
+              line: "fsck.fat 4.2 (2021-01-31)",
+              timestamp: 101,
+            },
+          ],
+        }}
+      />,
+    );
+
+    expect(screen.getByText(/\[stdout\]/)).toBeTruthy();
+    expect(screen.getByText(/fsck\.fat 4\.2/)).toBeTruthy();
+    expect(screen.getByText(/\[stderr\]/)).toBeTruthy();
+    expect(screen.getByText(/dirty bit is set/)).toBeTruthy();
   });
 
   it("does not leak react-toastify helper props into DOM when rendering stderr toast content", async () => {

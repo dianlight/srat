@@ -45,7 +45,14 @@ export function ReadonlyCommandTerminal({
                   color: isStderr ? "error.main" : "text.primary",
                 }}
               >
-                <Box component="span" sx={{ color: "text.secondary" }}>
+                <Box
+                  component="span"
+                  sx={{
+                    mr: 0.75,
+                    fontWeight: 600,
+                    color: isStderr ? "error.main" : "text.secondary",
+                  }}
+                >
                   [{line.channel}]
                 </Box>
                 {line.line}
