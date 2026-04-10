@@ -1,7 +1,7 @@
 # [FEATURE]: Disk Check Tools Integration (check, format, label)
 
 **Target Repo:** `srat`  
-**Status:** 🔄 In Progress  
+**Status:** ✅ Complete  
 **Issue Link:** [#185](https://github.com/dianlight/srat/issues/185)
 
 ## 🎯 Objective
@@ -54,7 +54,7 @@ The next goal is end-to-end coherence from adapter capability detection to user 
 - [x] Task 12: Conduct thorough testing across different filesystem types to ensure that the check, format, and label operations work correctly and that the UI feedback is accurate for each type.
 - [x] Task 13: Run `hk check` to ensure that all new code is properly linted and formatted, and that all tests pass successfully
 - [x] Task 14: Do end-to-end testing of the entire flow, from initiating a check operation in the UI to receiving real-time updates and handling results, to ensure a smooth and intuitive user experience. Use the remote development environment to simulate different scenarios, including missing tools and operation failures, to validate the robustness of the implementation.
-- [ ] Task 15: Push the changes to the repository and create a pull request for review, ensuring that the PR description clearly outlines the changes made and any relevant context for reviewers.
+- [x] Task 15: Push the changes to the repository and create a pull request for review, ensuring that the PR description clearly outlines the changes made and any relevant context for reviewers.
 
 ## 🧠 Implementation Notes (Copilot Context)
 
@@ -147,6 +147,9 @@ The next goal is end-to-end coherence from adapter capability detection to user 
   - Fresh verification evidence:
     - `cd /workspaces/srat/backend/src && go test ./service/filesystem` ✅
     - `cd /workspaces/srat/backend/src && go test ./service -run 'TestCommandExecutionServiceTestSuite|TestFilesystemServiceTestSuite' && go test ./api -run 'TestFilesystemHandlerSuite'` ✅
+- Closure summary (2026-04-10):
+  - Task checklist is complete and PR [#557](https://github.com/dianlight/srat/pull/557) has been opened against `main`.
+  - The PR summary groups the backend, frontend, docs, and validation work and references `Closes #185` for merge-time issue closure.
 
 ## 🔗 Code References & TODOs
 
