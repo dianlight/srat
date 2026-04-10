@@ -103,7 +103,7 @@ quiet = true
 [tasks."test:ci"]
 run = [
   "bun ./scripts/add-test-setup.js",
-  "bun test --preload ./test/setup.ts --only-failures --timeout 60000 --bail --max-concurrency=1 --coverage --coverage-reporter=lcov",
+  "bun test --preload ./test/setup.ts --only-failures --timeout 60000 --bail --max-concurrency=1 --coverage",
 ]
 quiet = true
 
