@@ -15,9 +15,14 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import {
+  createTerminalLines,
+  ReadonlyCommandTerminal,
+} from "../../../components/ReadonlyCommandTerminal";
+import {
+  type CommandOutputLineSnapshot,
   type ErrorModel,
   type FilesystemsInfo,
   type FilesystemTask,
@@ -86,7 +91,7 @@ export function FilesystemFormatDialog({
   const [label, setLabel] = useState("");
   const [force, setForce] = useState(false);
   const [verbose, setVerbose] = useState(Boolean(initialVerbose));
-  const [logs, setLogs] = useState<string[]>([]);
+  const [logs, setLogs] = useState<CommandOutputLineSnapshot[]>([]);
   const [progress, setProgress] = useState<number>(0);
   const [status, setStatus] = useState<string>("idle");
   const [message, setMessage] = useState<string>("");
@@ -95,6 +100,23 @@ export function FilesystemFormatDialog({
   const lastMessageRef = useRef<string>("");
   const lastErrorRef = useRef<string>("");
   const lastResultMessageRef = useRef<string>("");
+  const nextLogTimestampRef = useRef(0);
+
+  const appendLogs = useCallback(
+    (entries: string[], channel: "stdout" | "stderr" | "info" = "info") => {
+      if (entries.length === 0) {
+        return;
+      }
+
+      const startTimestamp = Date.now() + nextLogTimestampRef.current;
+      nextLogTimestampRef.current += entries.length;
+      setLogs((prev) => [
+        ...prev,
+        ...createTerminalLines(entries, channel, startTimestamp),
+      ]);
+    },
+    [],
+  );
 
   const { data: filesystemsData, isFetching: isFilesystemsLoading } =
     useGetApiFilesystemsQuery(undefined, { skip: !open });
@@ -148,6 +170,7 @@ export function FilesystemFormatDialog({
     lastMessageRef.current = "";
     lastErrorRef.current = "";
     lastResultMessageRef.current = "";
+    nextLogTimestampRef.current = 0;
 
     if (!partitionId) {
       return;
@@ -239,10 +262,10 @@ export function FilesystemFormatDialog({
       if (isCumulativeNotes) {
         const newNotes = taskNotes.slice(previousNotes.length);
         if (newNotes.length > 0) {
-          setLogs((prev) => [...prev, ...newNotes]);
+          appendLogs(newNotes, "stdout");
         }
       } else {
-        setLogs((prev) => [...prev, ...taskNotes]);
+        appendLogs(taskNotes, "stdout");
       }
 
       lastNotesRef.current = taskNotes;
@@ -260,24 +283,28 @@ export function FilesystemFormatDialog({
       setMessage(preferredMessage);
     }
 
-    const fallbackMessages = Array.from(
-      new Set(
-        [taskError, taskMessage, resultMessage].filter(
-          (line): line is string => line.length > 0,
-        ),
-      ),
-    ).filter((line) => !taskNotes.includes(line));
+    const newErrorMessages =
+      taskError &&
+      !taskNotes.includes(taskError) &&
+      taskError !== lastErrorRef.current
+        ? [taskError]
+        : [];
+    const newTaskMessages = taskMessage
+      ? [taskMessage].filter(
+          (line) =>
+            !taskNotes.includes(line) && line !== lastMessageRef.current,
+        )
+      : [];
+    const newResultMessages = resultMessage
+      ? [resultMessage].filter(
+          (line) =>
+            !taskNotes.includes(line) && line !== lastResultMessageRef.current,
+        )
+      : [];
 
-    const newFallbackMessages = fallbackMessages.filter(
-      (line) =>
-        line !== lastErrorRef.current &&
-        line !== lastMessageRef.current &&
-        line !== lastResultMessageRef.current,
-    );
-
-    if (newFallbackMessages.length > 0) {
-      setLogs((prev) => [...prev, ...newFallbackMessages]);
-    }
+    appendLogs(newTaskMessages, task.status === "failure" ? "stderr" : "info");
+    appendLogs(newResultMessages, "stdout");
+    appendLogs(newErrorMessages, "stderr");
 
     if (taskMessage) {
       lastMessageRef.current = taskMessage;
@@ -288,7 +315,7 @@ export function FilesystemFormatDialog({
     if (resultMessage) {
       lastResultMessageRef.current = resultMessage;
     }
-  }, [open, task]);
+  }, [appendLogs, open, task]);
 
   useEffect(() => {
     if (!open) {
@@ -340,9 +367,11 @@ export function FilesystemFormatDialog({
     }
 
     setLogs([]);
+    nextLogTimestampRef.current = 0;
     setProgress(0);
     setStatus("start");
     setMessage("Starting format operation...");
+    appendLogs(["Starting format operation..."], "info");
     lastNotesRef.current = [];
     lastMessageRef.current = "";
 
@@ -370,7 +399,7 @@ export function FilesystemFormatDialog({
       toast.error(errorMsg);
       setStatus("failure");
       setMessage(errorMsg);
-      setLogs((prev) => [...prev, errorMsg]);
+      appendLogs([errorMsg], "stderr");
     }
   };
 
@@ -525,15 +554,20 @@ export function FilesystemFormatDialog({
           </Stack>
 
           {verbose && (
-            <TextField
-              label="Logs"
-              value={logs.join("\n")}
-              multiline
-              minRows={6}
-              maxRows={12}
-              InputProps={{ readOnly: true }}
-              placeholder="No logs yet."
-            />
+            <Box>
+              <Typography
+                variant="subtitle2"
+                color="text.secondary"
+                sx={{ mb: 0.5 }}
+              >
+                Logs
+              </Typography>
+              <ReadonlyCommandTerminal
+                lines={logs}
+                maxHeight={240}
+                emptyText="No logs yet."
+              />
+            </Box>
           )}
         </Stack>
       </DialogContent>

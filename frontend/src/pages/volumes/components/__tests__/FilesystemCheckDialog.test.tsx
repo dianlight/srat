@@ -19,7 +19,7 @@ async function renderWithProviders(element: any, options?: { seedStore?: (store:
 }
 
 describe("FilesystemCheckDialog", () => {
-    it("shows switches and logs area when verbose is enabled", async () => {
+    it("shows switches and terminal logs area when verbose is enabled", async () => {
         const React = await import("react");
         const { screen } = await import("@testing-library/react");
         const { FilesystemCheckDialog } = await import("../FilesystemCheckDialog");
@@ -39,11 +39,10 @@ describe("FilesystemCheckDialog", () => {
             }),
         );
 
-        const logsField = await screen.findByRole("textbox");
-        expect(logsField).toBeTruthy();
+        expect(await screen.findByText("No logs yet.")).toBeTruthy();
     });
 
-    it("renders progress and logs from filesystem_task events", async () => {
+    it("renders stdout and stderr channel labels from filesystem_task notes", async () => {
         const React = await import("react");
         const { screen } = await import("@testing-library/react");
         const { FilesystemCheckDialog } = await import("../FilesystemCheckDialog");
@@ -64,14 +63,16 @@ describe("FilesystemCheckDialog", () => {
                     operation: "check",
                     status: "running",
                     progress: 42,
-                    notes: ["Checking filesystem"],
+                    notes: ["Checking filesystem", "ERROR: inode bitmap mismatch"],
                 },
                 onClose: () => { },
             }),
         );
 
-        const logsField = await screen.findByRole("textbox");
-        expect((logsField as HTMLInputElement).value).toContain("Checking filesystem");
+        expect(await screen.findByText("Checking filesystem")).toBeTruthy();
+        expect(await screen.findByText("inode bitmap mismatch")).toBeTruthy();
+        expect(await screen.findByText("[stdout]", { exact: false })).toBeTruthy();
+        expect(await screen.findByText("[stderr]", { exact: false })).toBeTruthy();
         const progressBar = await screen.findByRole("progressbar");
         expect(progressBar).toBeTruthy();
     });
@@ -103,10 +104,10 @@ describe("FilesystemCheckDialog", () => {
             }),
         );
 
-        const logsField = await screen.findByRole("textbox");
-        expect((logsField as HTMLInputElement).value).toContain(
-            "fsck.ext4: checking inode tables",
-        );
+        expect(
+            await screen.findByText("fsck.ext4: checking inode tables"),
+        ).toBeTruthy();
+        expect(await screen.findByText("[info]", { exact: false })).toBeTruthy();
     });
 
     it("shows completion details in logs when a check succeeds without notes", async () => {
@@ -139,13 +140,12 @@ describe("FilesystemCheckDialog", () => {
             }),
         );
 
-        const logsField = await screen.findByRole("textbox");
-        expect((logsField as HTMLInputElement).value).toContain(
-            "Filesystem check completed successfully for /dev/sdf1",
-        );
-        expect((logsField as HTMLInputElement).value).toContain(
-            "fsck.ext4: clean, 12/1024 files, 128/8192 blocks",
-        );
+        expect(
+            await screen.findByText("Filesystem check completed successfully for /dev/sdf1"),
+        ).toBeTruthy();
+        expect(
+            await screen.findByText("fsck.ext4: clean, 12/1024 files, 128/8192 blocks"),
+        ).toBeTruthy();
     });
 
     it("shows stderr details in logs when a check fails", async () => {
@@ -176,10 +176,9 @@ describe("FilesystemCheckDialog", () => {
             }),
         );
 
-        const logsField = await screen.findByRole("textbox");
-        expect((logsField as HTMLInputElement).value).toContain(
-            "fsck.ext4: Superblock invalid on /dev/sdz9",
-        );
+        expect(
+            await screen.findByText("fsck.ext4: Superblock invalid on /dev/sdz9"),
+        ).toBeTruthy();
     });
 
     it("keeps the reported success state when the selected partition object refreshes", async () => {
@@ -212,10 +211,9 @@ describe("FilesystemCheckDialog", () => {
             }),
         );
 
-        const initialLogsField = await screen.findByRole("textbox");
-        expect((initialLogsField as HTMLInputElement).value).toContain(
-            "Filesystem check completed successfully for /dev/sdg1",
-        );
+        expect(
+            await screen.findByText("Filesystem check completed successfully for /dev/sdg1"),
+        ).toBeTruthy();
 
         rerender(
             React.createElement(Provider, {
@@ -230,10 +228,9 @@ describe("FilesystemCheckDialog", () => {
             }),
         );
 
-        const refreshedLogsField = await screen.findByRole("textbox");
-        expect((refreshedLogsField as HTMLInputElement).value).toContain(
-            "Filesystem check completed successfully for /dev/sdg1",
-        );
+        expect(
+            await screen.findByText("Filesystem check completed successfully for /dev/sdg1"),
+        ).toBeTruthy();
         expect(await screen.findByText("SUCCESS")).toBeTruthy();
     });
 

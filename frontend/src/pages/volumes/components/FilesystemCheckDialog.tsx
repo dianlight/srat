@@ -11,12 +11,16 @@ import {
   LinearProgress,
   Stack,
   Switch,
-  TextField,
   Typography,
 } from "@mui/material";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import {
+  createTerminalLines,
+  ReadonlyCommandTerminal,
+} from "../../../components/ReadonlyCommandTerminal";
+import {
+  type CommandOutputLineSnapshot,
   type ErrorModel,
   type FilesystemTask,
   type Partition,
@@ -90,7 +94,7 @@ export function FilesystemCheckDialog({
   const [autoFix, setAutoFix] = useState(false);
   const [force, setForce] = useState(false);
   const [verbose, setVerbose] = useState(Boolean(initialVerbose));
-  const [logs, setLogs] = useState<string[]>([]);
+  const [logs, setLogs] = useState<CommandOutputLineSnapshot[]>([]);
   const [progress, setProgress] = useState<number>(0);
   const [status, setStatus] = useState<string>("idle");
   const [message, setMessage] = useState<string>("");
@@ -99,6 +103,23 @@ export function FilesystemCheckDialog({
   const lastMessageRef = useRef<string>("");
   const lastErrorRef = useRef<string>("");
   const lastResultMessageRef = useRef<string>("");
+  const nextLogTimestampRef = useRef(0);
+
+  const appendLogs = useCallback(
+    (entries: string[], channel: "stdout" | "stderr" | "info" = "info") => {
+      if (entries.length === 0) {
+        return;
+      }
+
+      const startTimestamp = Date.now() + nextLogTimestampRef.current;
+      nextLogTimestampRef.current += entries.length;
+      setLogs((prev) => [
+        ...prev,
+        ...createTerminalLines(entries, channel, startTimestamp),
+      ]);
+    },
+    [],
+  );
 
   const task = useMemo<FilesystemTask | null>(() => {
     if (taskOverride) {
@@ -166,6 +187,7 @@ export function FilesystemCheckDialog({
     lastMessageRef.current = "";
     lastErrorRef.current = "";
     lastResultMessageRef.current = "";
+    nextLogTimestampRef.current = 0;
   }, [open, partitionId, initialVerbose]);
 
   useEffect(() => {
@@ -186,12 +208,12 @@ export function FilesystemCheckDialog({
       if (isCumulativeNotes) {
         const newNotes = taskNotes.slice(previousNotes.length);
         if (newNotes.length > 0) {
-          setLogs((prev) => [...prev, ...newNotes]);
+          appendLogs(newNotes, "stdout");
         }
       }
 
       if (!isCumulativeNotes) {
-        setLogs((prev) => [...prev, ...taskNotes]);
+        appendLogs(taskNotes, "stdout");
       }
 
       lastNotesRef.current = taskNotes;
@@ -209,30 +231,28 @@ export function FilesystemCheckDialog({
       setMessage(preferredMessage);
     }
 
-    const fallbackMessages = Array.from(
-      new Set(
-        [taskError, taskMessage, resultMessage].filter(
-          (line): line is string => line.length > 0,
-        ),
-      ),
-    ).filter((line) => !taskNotes.includes(line));
+    const newErrorMessages =
+      taskError &&
+      !taskNotes.includes(taskError) &&
+      taskError !== lastErrorRef.current
+        ? [taskError]
+        : [];
+    const newTaskMessages = taskMessage
+      ? [taskMessage].filter(
+          (line) =>
+            !taskNotes.includes(line) && line !== lastMessageRef.current,
+        )
+      : [];
+    const newResultMessages = resultMessage
+      ? [resultMessage].filter(
+          (line) =>
+            !taskNotes.includes(line) && line !== lastResultMessageRef.current,
+        )
+      : [];
 
-    const newFallbackMessages = fallbackMessages.filter((line) => {
-      if (line === taskError) {
-        return line !== lastErrorRef.current;
-      }
-      if (line === taskMessage) {
-        return line !== lastMessageRef.current;
-      }
-      if (line === resultMessage) {
-        return line !== lastResultMessageRef.current;
-      }
-      return true;
-    });
-
-    if (newFallbackMessages.length > 0) {
-      setLogs((prev) => [...prev, ...newFallbackMessages]);
-    }
+    appendLogs(newTaskMessages, task.status === "failure" ? "stderr" : "info");
+    appendLogs(newResultMessages, "stdout");
+    appendLogs(newErrorMessages, "stderr");
 
     if (taskMessage) {
       lastMessageRef.current = taskMessage;
@@ -243,7 +263,7 @@ export function FilesystemCheckDialog({
     if (resultMessage) {
       lastResultMessageRef.current = resultMessage;
     }
-  }, [open, task]);
+  }, [appendLogs, open, task]);
 
   const handleStart = async () => {
     if (!partition?.id) {
@@ -251,9 +271,11 @@ export function FilesystemCheckDialog({
       return;
     }
     setLogs([]);
+    nextLogTimestampRef.current = 0;
     setProgress(0);
     setStatus("start");
     setMessage("Starting filesystem check...");
+    appendLogs(["Starting filesystem check..."], "info");
     try {
       await startCheck({
         checkPartitionInput: {
@@ -276,6 +298,7 @@ export function FilesystemCheckDialog({
         "Failed to start filesystem check";
       toast.error(errorMsg);
       setStatus("failure");
+      appendLogs([errorMsg], "stderr");
     }
   };
 
@@ -382,7 +405,7 @@ export function FilesystemCheckDialog({
             )}
           </Box>
 
-          {message && (
+          {message && !verbose && (
             <Typography variant="body2" color="text.secondary">
               {message}
             </Typography>
@@ -422,15 +445,20 @@ export function FilesystemCheckDialog({
           </Stack>
 
           {verbose && (
-            <TextField
-              label="Logs"
-              value={logs.join("\n")}
-              multiline
-              minRows={6}
-              maxRows={12}
-              InputProps={{ readOnly: true }}
-              placeholder="No logs yet."
-            />
+            <Box>
+              <Typography
+                variant="subtitle2"
+                color="text.secondary"
+                sx={{ mb: 0.5 }}
+              >
+                Logs
+              </Typography>
+              <ReadonlyCommandTerminal
+                lines={logs}
+                maxHeight={240}
+                emptyText="No logs yet."
+              />
+            </Box>
           )}
         </Stack>
       </DialogContent>

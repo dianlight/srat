@@ -262,44 +262,8 @@ checksum = "sha256:4932cfca5e75bf60fe1c576edf459e5e809e6644664a068185d64b84af3fa
 url = "https://github.com/golangci/golangci-lint/releases/download/v2.11.4/golangci-lint-2.11.4-windows-amd64.zip"
 
 [[tools.hk]]
-version = "1.40.0"
+version = "1.39.0"
 backend = "aqua:jdx/hk"
-
-[tools.hk."platforms.linux-arm64"]
-checksum = "sha256:f6f4a0f9a55a51d8b98ae9fc0e3dff704ec9b4b842d4978dd433e6158c7d5d9f"
-url = "https://github.com/jdx/hk/releases/download/v1.40.0/hk-aarch64-unknown-linux-gnu.tar.gz"
-
-[tools.hk."platforms.linux-arm64-musl"]
-checksum = "sha256:f6f4a0f9a55a51d8b98ae9fc0e3dff704ec9b4b842d4978dd433e6158c7d5d9f"
-url = "https://github.com/jdx/hk/releases/download/v1.40.0/hk-aarch64-unknown-linux-gnu.tar.gz"
-
-[tools.hk."platforms.linux-x64"]
-checksum = "sha256:5feb9eab6b8539aba09ed73eb49d4e01b3a56471172c14212d0b649ed2c16142"
-url = "https://github.com/jdx/hk/releases/download/v1.40.0/hk-x86_64-unknown-linux-gnu.tar.gz"
-
-[tools.hk."platforms.linux-x64-baseline"]
-checksum = "sha256:5feb9eab6b8539aba09ed73eb49d4e01b3a56471172c14212d0b649ed2c16142"
-url = "https://github.com/jdx/hk/releases/download/v1.40.0/hk-x86_64-unknown-linux-gnu.tar.gz"
-
-[tools.hk."platforms.linux-x64-musl"]
-checksum = "sha256:5feb9eab6b8539aba09ed73eb49d4e01b3a56471172c14212d0b649ed2c16142"
-url = "https://github.com/jdx/hk/releases/download/v1.40.0/hk-x86_64-unknown-linux-gnu.tar.gz"
-
-[tools.hk."platforms.linux-x64-musl-baseline"]
-checksum = "sha256:5feb9eab6b8539aba09ed73eb49d4e01b3a56471172c14212d0b649ed2c16142"
-url = "https://github.com/jdx/hk/releases/download/v1.40.0/hk-x86_64-unknown-linux-gnu.tar.gz"
-
-[tools.hk."platforms.macos-arm64"]
-checksum = "sha256:7a6d77e41868a01edc8511e13235d6b8a9017975dba1f5383b12b7c33ca4278e"
-url = "https://github.com/jdx/hk/releases/download/v1.40.0/hk-aarch64-apple-darwin.tar.gz"
-
-[tools.hk."platforms.windows-x64"]
-checksum = "sha256:2d177c1ac965a7c7843c2849c0eb5fe5c3bb2a560a3c1b67afdb8a62b416d27a"
-url = "https://github.com/jdx/hk/releases/download/v1.40.0/hk-x86_64-pc-windows-msvc.zip"
-
-[tools.hk."platforms.windows-x64-baseline"]
-checksum = "sha256:2d177c1ac965a7c7843c2849c0eb5fe5c3bb2a560a3c1b67afdb8a62b416d27a"
-url = "https://github.com/jdx/hk/releases/download/v1.40.0/hk-x86_64-pc-windows-msvc.zip"
 
 [[tools."http:lychee"]]
 version = "0.23.0"

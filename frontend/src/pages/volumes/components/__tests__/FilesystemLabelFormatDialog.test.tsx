@@ -512,12 +512,10 @@ describe("Filesystem label/format dialogs", () => {
         expect(
           await screen.findByRole("switch", { name: /verbose/i }),
         ).toBeTruthy();
-        const logsField = await screen.findByRole("textbox", {
-          name: /logs/i,
-        });
-        expect((logsField as HTMLInputElement).value).toContain(
-          "mkfs.ext4: writing inode tables",
-        );
+        expect(
+          await screen.findByText("mkfs.ext4: writing inode tables"),
+        ).toBeTruthy();
+        expect(await screen.findByText("[stdout]", { exact: false })).toBeTruthy();
         expect(await screen.findByRole("progressbar")).toBeTruthy();
         expect(await screen.findByText("RUNNING")).toBeTruthy();
       },
