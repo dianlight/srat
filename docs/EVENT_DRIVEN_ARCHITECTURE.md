@@ -413,11 +413,11 @@ type MountPointEvent struct {
 **Command Execution WebSocket Contract**
 
 - `command_started`
-    - Fields: `execution_id`, `command_id`, `label`, `command`, `args`, `started_at`
+  - Fields: `execution_id`, `command_id`, `label`, `command`, `args`, `started_at`
 - `command_output`
-    - Fields: `execution_id`, `command_id`, `channel` (`stdout|stderr`), `line`, `timestamp`
+  - Fields: `execution_id`, `command_id`, `channel` (`stdout|stderr`), `line`, `timestamp`
 - `command_terminated`
-    - Fields: `execution_id`, `command_id`, `success`, `exit_code`, `error`, `finished_at`
+  - Fields: `execution_id`, `command_id`, `success`, `exit_code`, `error`, `finished_at`
 
 Contract DTO definitions live in `backend/src/dto/command_execution.go` and are mapped to WebSocket event names in `backend/src/dto/webevent_map.go`.
 
