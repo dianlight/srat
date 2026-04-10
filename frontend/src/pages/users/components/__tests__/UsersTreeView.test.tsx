@@ -282,4 +282,26 @@ describe("UsersTreeView component", () => {
         const tooltipMessage = await screen.findByText("Missing Samba account");
         expect(tooltipMessage).toBeTruthy();
     });
+
+    it("ignores null user entries without crashing", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const { UsersTreeView } = await import("../UsersTreeView");
+
+        render(
+            React.createElement(UsersTreeView as any, {
+                users: [
+                    null,
+                    { username: "valid-user", is_admin: false, rw_shares: [], ro_shares: [] },
+                ],
+                selectedUserKey: undefined,
+                onUserSelect: () => { },
+                expandedItems: ["group-users"],
+                onExpandedItemsChange: () => { },
+            })
+        );
+
+        const validUser = await screen.findByText("valid-user");
+        expect(validUser).toBeTruthy();
+    });
 });
