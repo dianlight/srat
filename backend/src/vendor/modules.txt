@@ -68,6 +68,9 @@ github.com/bep/godartsass/v2/internal/godartsasstesting
 # github.com/bep/golibsass v1.2.0
 ## explicit; go 1.13
 github.com/bep/golibsass/libsass/libsasserrors
+# github.com/bits-and-blooms/bitset v1.24.4
+## explicit; go 1.16
+github.com/bits-and-blooms/bitset
 # github.com/briandowns/spinner v1.23.2
 ## explicit; go 1.17
 github.com/briandowns/spinner
@@ -102,7 +105,7 @@ github.com/danielgtaylor/shorthand/v2
 # github.com/dave/jennifer v1.6.0
 ## explicit; go 1.19
 github.com/dave/jennifer/jen
-# github.com/davecgh/go-spew v1.1.1
+# github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 ## explicit
 github.com/davecgh/go-spew/spew
 # github.com/dianlight/smartmontools-go v0.2.6
@@ -139,7 +142,7 @@ github.com/fsnotify/fsnotify/internal
 # github.com/fxamacker/cbor/v2 v2.9.0
 ## explicit; go 1.20
 github.com/fxamacker/cbor/v2
-# github.com/getkin/kin-openapi v0.133.0
+# github.com/getkin/kin-openapi v0.134.0
 ## explicit; go 1.22.5
 github.com/getkin/kin-openapi/openapi3
 # github.com/glebarez/go-sqlite v1.22.0
@@ -176,16 +179,24 @@ github.com/gobwas/glob/util/strings
 github.com/gofri/go-github-ratelimit/v2/github_ratelimit
 github.com/gofri/go-github-ratelimit/v2/github_ratelimit/github_primary_ratelimit
 github.com/gofri/go-github-ratelimit/v2/github_ratelimit/github_secondary_ratelimit
-# github.com/gohugoio/hugo v0.149.1
-## explicit; go 1.24.0
+# github.com/gohugoio/hashstructure v0.6.0
+## explicit; go 1.20
+github.com/gohugoio/hashstructure
+# github.com/gohugoio/hugo v0.159.2
+## explicit; go 1.25.0
+github.com/gohugoio/hugo/common/hashing
 github.com/gohugoio/hugo/common/herrors
+github.com/gohugoio/hugo/common/hmaps
+github.com/gohugoio/hugo/common/hugio
 github.com/gohugoio/hugo/common/paths
+github.com/gohugoio/hugo/common/predicate
 github.com/gohugoio/hugo/common/terminal
 github.com/gohugoio/hugo/common/text
 github.com/gohugoio/hugo/common/types
 github.com/gohugoio/hugo/compare
 github.com/gohugoio/hugo/hugofs/files
-github.com/gohugoio/hugo/hugofs/glob
+github.com/gohugoio/hugo/hugofs/hglob
+github.com/gohugoio/hugo/hugolib/sitesmatrix
 github.com/gohugoio/hugo/identity
 github.com/gohugoio/hugo/resources/kinds
 github.com/gohugoio/hugo/watcher/filenotify
@@ -300,10 +311,10 @@ github.com/oapi-codegen/oapi-codegen/v2/pkg/util
 ## explicit; go 1.24
 github.com/oapi-codegen/runtime
 github.com/oapi-codegen/runtime/types
-# github.com/oasdiff/yaml v0.0.0-20250309154309-f31be36b4037
+# github.com/oasdiff/yaml v0.0.0-20260313112342-a3ea61cb4d4c
 ## explicit; go 1.22.5
 github.com/oasdiff/yaml
-# github.com/oasdiff/yaml3 v0.0.0-20250309153720-d2182401db90
+# github.com/oasdiff/yaml3 v0.0.0-20260224194419-61cd415a242b
 ## explicit; go 1.22.5
 github.com/oasdiff/yaml3
 # github.com/oligot/go-mod-upgrade v0.12.0
@@ -350,7 +361,7 @@ github.com/pilebones/go-udev/netlink
 # github.com/pkg/errors v0.9.1
 ## explicit
 github.com/pkg/errors
-# github.com/pmezard/go-difflib v1.0.0
+# github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
 ## explicit
 github.com/pmezard/go-difflib/difflib
 # github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55
@@ -443,7 +454,7 @@ github.com/speakeasy-api/jsonpath/pkg/jsonpath/token
 ## explicit; go 1.22
 github.com/speakeasy-api/openapi-overlay/pkg/loader
 github.com/speakeasy-api/openapi-overlay/pkg/overlay
-# github.com/spf13/afero v1.14.0
+# github.com/spf13/afero v1.15.0
 ## explicit; go 1.23.0
 github.com/spf13/afero
 github.com/spf13/afero/internal/common
@@ -464,7 +475,7 @@ github.com/stretchr/testify/assert
 github.com/stretchr/testify/assert/yaml
 github.com/stretchr/testify/require
 github.com/stretchr/testify/suite
-# github.com/tdewolff/parse/v2 v2.8.3
+# github.com/tdewolff/parse/v2 v2.8.11
 ## explicit; go 1.11
 github.com/tdewolff/parse/v2
 # github.com/teivah/broadcast v0.1.0
@@ -565,8 +576,8 @@ go.uber.org/zap/internal/exit
 go.uber.org/zap/internal/pool
 go.uber.org/zap/internal/stacktrace
 go.uber.org/zap/zapcore
-# golang.org/x/crypto v0.48.0
-## explicit; go 1.24.0
+# golang.org/x/crypto v0.49.0
+## explicit; go 1.25.0
 golang.org/x/crypto/bcrypt
 golang.org/x/crypto/blake2b
 golang.org/x/crypto/blowfish
@@ -592,11 +603,11 @@ golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
-# golang.org/x/term v0.40.0
-## explicit; go 1.24.0
+# golang.org/x/term v0.41.0
+## explicit; go 1.25.0
 golang.org/x/term
-# golang.org/x/text v0.34.0
-## explicit; go 1.24.0
+# golang.org/x/text v0.35.0
+## explicit; go 1.25.0
 golang.org/x/text/cases
 golang.org/x/text/feature/plural
 golang.org/x/text/internal

@@ -14,23 +14,35 @@
 package paths
 
 import (
+	"fmt"
 	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
 
+	"github.com/gohugoio/hugo/common/hmaps"
 	"github.com/gohugoio/hugo/common/types"
 	"github.com/gohugoio/hugo/hugofs/files"
+	"github.com/gohugoio/hugo/hugolib/sitesmatrix"
 	"github.com/gohugoio/hugo/identity"
 	"github.com/gohugoio/hugo/resources/kinds"
 )
 
 const (
-	identifierBaseof = "baseof"
+	identifierBaseof        = "baseof"
+	identifierCustomWrapper = "_"
 )
 
-// PathParser parses a path into a Path.
+// isCustomWrapperIdentifier tells whether a supplied path is of the form _xyz_.
+// must have non-empty content between the identifierCustomWrapper's to pass.
+func isCustomWrapperIdentifier(s string) bool {
+	return len(s) > 2*len(identifierCustomWrapper) &&
+		strings.HasPrefix(s, identifierCustomWrapper) &&
+		strings.HasSuffix(s, identifierCustomWrapper)
+}
+
+// PathParser parses and manages paths.
 type PathParser struct {
 	// Maps the language code to its index in the languages/sites slice.
 	LanguageIndex map[string]int
@@ -44,6 +56,19 @@ type PathParser struct {
 
 	// Reports whether the given ext is a content file.
 	IsContentExt func(string) bool
+
+	// The configured sites matrix.
+	ConfiguredDimensions *sitesmatrix.ConfiguredDimensions
+
+	// Below gets created on demand.
+	initOnce         sync.Once
+	sitesMatrixCache *hmaps.Cache[string, sitesmatrix.VectorStore] // Maps language index to sites matrix vector store.
+}
+
+func (pp *PathParser) init() {
+	pp.initOnce.Do(func() {
+		pp.sitesMatrixCache = hmaps.NewCache[string, sitesmatrix.VectorStore]()
+	})
 }
 
 // NormalizePathString returns a normalized path string using the very basic Hugo rules.
@@ -55,6 +80,32 @@ func NormalizePathStringBasic(s string) string {
 	s = strings.ReplaceAll(s, " ", "-")
 
 	return s
+}
+
+func (pp *PathParser) SitesMatrixFromPath(p *Path) sitesmatrix.VectorStore {
+	pp.init()
+	lang := p.Lang()
+	v, _ := pp.sitesMatrixCache.GetOrCreate(lang, func() (sitesmatrix.VectorStore, error) {
+		builder := sitesmatrix.NewIntSetsBuilder(pp.ConfiguredDimensions)
+		if lang != "" {
+			if idx, ok := pp.LanguageIndex[lang]; ok {
+				builder.WithLanguageIndices(idx)
+			}
+		}
+
+		switch p.Component() {
+		case files.ComponentFolderContent:
+			builder.WithDefaultsIfNotSet()
+		case files.ComponentFolderLayouts:
+			builder.WithAllIfNotSet()
+		case files.ComponentFolderStatic:
+			builder.WithDefaultsAndAllLanguagesIfNotSet()
+		}
+
+		return builder.Build(), nil
+	})
+
+	return v
 }
 
 // ParseIdentity parses component c with path s into a StringIdentity.
@@ -145,6 +196,12 @@ func (pp *PathParser) parseIdentifier(component, s string, p *Path, i, lastDot, 
 	id := types.LowHigh[string]{Low: i + 1, High: high}
 	sid := p.s[id.Low:id.High]
 
+	if isCustomWrapperIdentifier(sid) {
+		p.identifiersKnown = append(p.identifiersKnown, id)
+		p.posIdentifierCustom = len(p.identifiersKnown) - 1
+		found = true
+	}
+
 	if len(p.identifiersKnown) == 0 {
 		// The first is always the extension.
 		p.identifiersKnown = append(p.identifiersKnown, id)
@@ -155,12 +212,12 @@ func (pp *PathParser) parseIdentifier(component, s string, p *Path, i, lastDot, 
 			p.posIdentifierOutputFormat = 0
 		}
 	} else {
-
 		var langFound bool
 
 		if mayHaveLang {
 			var disabled bool
 			_, langFound = pp.LanguageIndex[sid]
+
 			if !langFound {
 				disabled = pp.IsLangDisabled != nil && pp.IsLangDisabled(sid)
 				if disabled {
@@ -173,6 +230,7 @@ func (pp *PathParser) parseIdentifier(component, s string, p *Path, i, lastDot, 
 				p.identifiersKnown = append(p.identifiersKnown, id)
 				p.posIdentifierLanguage = len(p.identifiersKnown) - 1
 			}
+
 		}
 
 		if !found && mayHaveOutputFormat {
@@ -202,8 +260,14 @@ func (pp *PathParser) parseIdentifier(component, s string, p *Path, i, lastDot, 
 		}
 
 		if !found && mayHaveLayout {
-			p.identifiersKnown = append(p.identifiersKnown, id)
-			p.posIdentifierLayout = len(p.identifiersKnown) - 1
+			if p.posIdentifierLayout != -1 {
+				// Move it to identifiersUnknown.
+				p.identifiersUnknown = append(p.identifiersUnknown, p.identifiersKnown[p.posIdentifierLayout])
+				p.identifiersKnown[p.posIdentifierLayout] = id
+			} else {
+				p.identifiersKnown = append(p.identifiersKnown, id)
+				p.posIdentifierLayout = len(p.identifiersKnown) - 1
+			}
 			found = true
 		}
 
@@ -333,7 +397,7 @@ type Type int
 
 const (
 
-	// A generic resource, e.g. a JSON file.
+	// A generic file, e.g. a JSON file.
 	TypeFile Type = iota
 
 	// All below are content files.
@@ -380,6 +444,7 @@ type Path struct {
 	posIdentifierKind         int
 	posIdentifierLayout       int
 	posIdentifierBaseof       int
+	posIdentifierCustom       int
 	disabled                  bool
 
 	trimLeadingSlash bool
@@ -417,6 +482,7 @@ func (p *Path) reset() {
 	p.posIdentifierKind = -1
 	p.posIdentifierLayout = -1
 	p.posIdentifierBaseof = -1
+	p.posIdentifierCustom = -1
 	p.disabled = false
 	p.trimLeadingSlash = false
 	p.unnormalized = nil
@@ -580,6 +646,9 @@ func (p *Path) Unnormalized() *Path {
 
 // PathNoLang returns the Path but with any language identifier removed.
 func (p *Path) PathNoLang() string {
+	if p.identifierIndex(p.posIdentifierLanguage) == -1 {
+		return p.Path()
+	}
 	return p.base(true, false)
 }
 
@@ -633,7 +702,12 @@ func (p *Path) BaseRel(owner *Path) string {
 //
 // For other files (Resources), any extension is kept.
 func (p *Path) Base() string {
-	return p.base(!p.isContentPage(), p.IsBundle())
+	s := p.base(!p.isContentPage(), p.IsBundle())
+	if s == "/" && p.isContentPage() {
+		// The content home page is represented as "".
+		s = ""
+	}
+	return s
 }
 
 // Used in template lookups.
@@ -706,6 +780,10 @@ func (p *Path) Layout() string {
 
 func (p *Path) Lang() string {
 	return p.identifierAsString(p.posIdentifierLanguage)
+}
+
+func (p *Path) Custom() string {
+	return strings.TrimSuffix(strings.TrimPrefix(p.identifierAsString(p.posIdentifierCustom), identifierCustomWrapper), identifierCustomWrapper)
 }
 
 func (p *Path) Identifier(i int) string {
@@ -785,4 +863,13 @@ func HasExt(p string) bool {
 		}
 	}
 	return false
+}
+
+// ValidateIdentifier returns true if the given string is a valid identifier according
+// to Hugo's basic path normalization rules.
+func ValidateIdentifier(s string) error {
+	if s == NormalizePathStringBasic(s) {
+		return nil
+	}
+	return fmt.Errorf("must be all lower case and no spaces")
 }
