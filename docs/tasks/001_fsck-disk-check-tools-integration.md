@@ -140,6 +140,13 @@ The next goal is end-to-end coherence from adapter capability detection to user 
     - Support preflight now accepts Linux filesystem module aliases such as `ntfs3`/`fuseblk` instead of rejecting them as unsupported, fixing the browser-side `GET /api/filesystem/support?fstype=ntfs3 -> 400` error seen during manual validation.
     - Dialog launchers now blur the triggering action before opening, which avoids the dev-console `aria-hidden` accessibility warning observed while opening the filesystem dialogs.
     - Successful `Set Label` operations now immediately refresh the selected partition details and the volume tree label in the frontend, while also invalidating the cached `volume` query so the UI re-syncs with the backend state.
+- Final backend follow-up (2026-04-10):
+  - Confirmed branch-safe work is continuing on `feature/fsck-disk-check-tools-integration` rather than `main`.
+  - Updated `service/filesystem/base_adapter.go` to prefer the project command-execution architecture for filesystem tools while preserving a standalone fallback for direct adapter tests and non-Fx contexts.
+  - Fixed the `TestFilesystemUtilsWithoutMockedCommands/*_mount` regression (`filesystem command runner is not configured`) by restoring an isolated fallback runner when app wiring is not present.
+  - Fresh verification evidence:
+    - `cd /workspaces/srat/backend/src && go test ./service/filesystem` ✅
+    - `cd /workspaces/srat/backend/src && go test ./service -run 'TestCommandExecutionServiceTestSuite|TestFilesystemServiceTestSuite' && go test ./api -run 'TestFilesystemHandlerSuite'` ✅
 
 ## 🔗 Code References & TODOs
 
