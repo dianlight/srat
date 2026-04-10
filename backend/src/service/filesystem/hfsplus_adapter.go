@@ -248,7 +248,7 @@ func (a *HfsplusAdapter) GetState(ctx context.Context, device string) (dto.Files
 	}
 
 	// Run state command to get filesystem state
-	output, exitCode, _ := a.runCommandCached(ctx, a.stateCommand, device)
+	output, exitCode, _ := a.runCommandCachedQuiet(ctx, a.stateCommand, device)
 
 	// Parse the output to determine filesystem state
 	if exitCode == 0 {

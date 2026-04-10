@@ -290,7 +290,7 @@ func (a *VfatAdapter) GetState(ctx context.Context, device string) (dto.Filesyst
 	}
 
 	// For FAT filesystems, run state command in read-only mode to check state
-	output, exitCode, err := a.runCommandCached(ctx, a.stateCommand, "-n", device)
+	output, exitCode, err := a.runCommandCachedQuiet(ctx, a.stateCommand, "-n", device)
 	if err != nil {
 		return state, errors.WithDetails(err, "Device", device)
 	}

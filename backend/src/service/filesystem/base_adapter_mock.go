@@ -9,11 +9,14 @@ import (
 )
 
 type testFilesystemCommandExecutor struct {
-	lookPath         func(string) (string, error)
-	start            func(context.Context, string, string, string, ...string) (string, error)
-	execute          func(context.Context, string, string, string, ...string) (dto.CommandExecutionSnapshot, error)
-	executeWithInput func(context.Context, string, string, string, string, ...string) (dto.CommandExecutionSnapshot, error)
-	getSnapshot      func(string) (dto.CommandExecutionSnapshot, bool)
+	lookPath              func(string) (string, error)
+	start                 func(context.Context, string, string, string, ...string) (string, error)
+	startQuiet            func(context.Context, string, string, string, ...string) (string, error)
+	execute               func(context.Context, string, string, string, ...string) (dto.CommandExecutionSnapshot, error)
+	executeQuiet          func(context.Context, string, string, string, ...string) (dto.CommandExecutionSnapshot, error)
+	executeWithInput      func(context.Context, string, string, string, string, ...string) (dto.CommandExecutionSnapshot, error)
+	executeWithInputQuiet func(context.Context, string, string, string, string, ...string) (dto.CommandExecutionSnapshot, error)
+	getSnapshot           func(string) (dto.CommandExecutionSnapshot, bool)
 }
 
 func (t *testFilesystemCommandExecutor) LookPath(command string) (string, error) {
@@ -24,12 +27,30 @@ func (t *testFilesystemCommandExecutor) Start(ctx context.Context, commandID, la
 	return t.start(ctx, commandID, label, command, args...)
 }
 
+func (t *testFilesystemCommandExecutor) StartQuiet(ctx context.Context, commandID, label, command string, args ...string) (string, error) {
+	if t.startQuiet != nil {
+		return t.startQuiet(ctx, commandID, label, command, args...)
+	}
+	return t.Start(ctx, commandID, label, command, args...)
+}
+
 func (t *testFilesystemCommandExecutor) StartWithInput(ctx context.Context, commandID, label, _ string, command string, args ...string) (string, error) {
 	return t.Start(ctx, commandID, label, command, args...)
 }
 
+func (t *testFilesystemCommandExecutor) StartWithInputQuiet(ctx context.Context, commandID, label, _ string, command string, args ...string) (string, error) {
+	return t.StartQuiet(ctx, commandID, label, command, args...)
+}
+
 func (t *testFilesystemCommandExecutor) Execute(ctx context.Context, commandID, label, command string, args ...string) (dto.CommandExecutionSnapshot, error) {
 	return t.execute(ctx, commandID, label, command, args...)
+}
+
+func (t *testFilesystemCommandExecutor) ExecuteQuiet(ctx context.Context, commandID, label, command string, args ...string) (dto.CommandExecutionSnapshot, error) {
+	if t.executeQuiet != nil {
+		return t.executeQuiet(ctx, commandID, label, command, args...)
+	}
+	return t.Execute(ctx, commandID, label, command, args...)
 }
 
 func (t *testFilesystemCommandExecutor) ExecuteWithInput(ctx context.Context, commandID, label, stdinContent, command string, args ...string) (dto.CommandExecutionSnapshot, error) {
@@ -37,6 +58,13 @@ func (t *testFilesystemCommandExecutor) ExecuteWithInput(ctx context.Context, co
 		return t.executeWithInput(ctx, commandID, label, stdinContent, command, args...)
 	}
 	return t.Execute(ctx, commandID, label, command, args...)
+}
+
+func (t *testFilesystemCommandExecutor) ExecuteWithInputQuiet(ctx context.Context, commandID, label, stdinContent, command string, args ...string) (dto.CommandExecutionSnapshot, error) {
+	if t.executeWithInputQuiet != nil {
+		return t.executeWithInputQuiet(ctx, commandID, label, stdinContent, command, args...)
+	}
+	return t.ExecuteQuiet(ctx, commandID, label, command, args...)
 }
 
 func (t *testFilesystemCommandExecutor) GetSnapshot(executionID string) (dto.CommandExecutionSnapshot, bool) {
@@ -71,10 +99,12 @@ func (b *baseAdapter) SetExecOpsForTesting(lookPath func(string) (string, error)
 	current := b.resolveCommandExecutor()
 
 	testExecutor := &testFilesystemCommandExecutor{
-		lookPath:    current.LookPath,
-		start:       current.Start,
-		execute:     current.Execute,
-		getSnapshot: current.GetSnapshot,
+		lookPath:     current.LookPath,
+		start:        current.Start,
+		startQuiet:   current.StartQuiet,
+		execute:      current.Execute,
+		executeQuiet: current.ExecuteQuiet,
+		getSnapshot:  current.GetSnapshot,
 	}
 	if lookPath != nil {
 		testExecutor.lookPath = lookPath

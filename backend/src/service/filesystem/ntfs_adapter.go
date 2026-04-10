@@ -311,7 +311,7 @@ func (a *NtfsAdapter) GetState(ctx context.Context, device string) (dto.Filesyst
 	}
 
 	// Run state command in check-only mode to determine state
-	output, exitCode, err := a.runCommandCached(ctx, a.stateCommand, "-n", device)
+	output, exitCode, err := a.runCommandCachedQuiet(ctx, a.stateCommand, "-n", device)
 	if err != nil {
 		return state, errors.WithDetails(err, "Device", device)
 	}

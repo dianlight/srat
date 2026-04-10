@@ -22,10 +22,19 @@ const bufferSize = 500
 type Executor interface {
 	LookPath(command string) (string, error)
 	Start(ctx context.Context, commandID, label, command string, args ...string) (string, error)
+	StartQuiet(ctx context.Context, commandID, label, command string, args ...string) (string, error)
 	StartWithInput(ctx context.Context, commandID, label, stdinContent, command string, args ...string) (string, error)
+	StartWithInputQuiet(ctx context.Context, commandID, label, stdinContent, command string, args ...string) (string, error)
 	Execute(ctx context.Context, commandID, label, command string, args ...string) (dto.CommandExecutionSnapshot, error)
+	ExecuteQuiet(ctx context.Context, commandID, label, command string, args ...string) (dto.CommandExecutionSnapshot, error)
 	ExecuteWithInput(ctx context.Context, commandID, label, stdinContent, command string, args ...string) (dto.CommandExecutionSnapshot, error)
+	ExecuteWithInputQuiet(ctx context.Context, commandID, label, stdinContent, command string, args ...string) (dto.CommandExecutionSnapshot, error)
 	GetSnapshot(executionID string) (dto.CommandExecutionSnapshot, bool)
+}
+
+type executionState struct {
+	snapshot dto.CommandExecutionSnapshot
+	quiet    bool
 }
 
 // Service is the default in-memory implementation of `Executor`.
@@ -33,14 +42,14 @@ type Service struct {
 	eventBus events.EventBusInterface
 
 	mu        sync.RWMutex
-	snapshots map[string]dto.CommandExecutionSnapshot
+	snapshots map[string]executionState
 }
 
 // NewCommandExecutor is the FX-friendly constructor for the shared command executor.
 func NewCommandExecutor(eventBus events.EventBusInterface) Executor {
 	return &Service{
 		eventBus:  eventBus,
-		snapshots: make(map[string]dto.CommandExecutionSnapshot),
+		snapshots: make(map[string]executionState),
 	}
 }
 
@@ -53,10 +62,22 @@ func (s *Service) LookPath(command string) (string, error) {
 }
 
 func (s *Service) Start(ctx context.Context, commandID, label, command string, args ...string) (string, error) {
-	return s.StartWithInput(ctx, commandID, label, "", command, args...)
+	return s.startWithInput(ctx, false, commandID, label, "", command, args...)
+}
+
+func (s *Service) StartQuiet(ctx context.Context, commandID, label, command string, args ...string) (string, error) {
+	return s.startWithInput(ctx, true, commandID, label, "", command, args...)
 }
 
 func (s *Service) StartWithInput(ctx context.Context, commandID, label, stdinContent, command string, args ...string) (string, error) {
+	return s.startWithInput(ctx, false, commandID, label, stdinContent, command, args...)
+}
+
+func (s *Service) StartWithInputQuiet(ctx context.Context, commandID, label, stdinContent, command string, args ...string) (string, error) {
+	return s.startWithInput(ctx, true, commandID, label, stdinContent, command, args...)
+}
+
+func (s *Service) startWithInput(ctx context.Context, quiet bool, commandID, label, stdinContent, command string, args ...string) (string, error) {
 	executionID := uuid.NewString()
 	startedAt := time.Now().UnixMilli()
 
@@ -72,17 +93,19 @@ func (s *Service) StartWithInput(ctx context.Context, commandID, label, stdinCon
 	}
 
 	s.mu.Lock()
-	s.snapshots[executionID] = snapshot
+	s.snapshots[executionID] = executionState{snapshot: snapshot, quiet: quiet}
 	s.mu.Unlock()
 
-	s.emitCommandEvent(events.EventTypes.START, dto.CommandStartedNotification{
-		ExecutionID: executionID,
-		CommandID:   commandID,
-		Label:       label,
-		Command:     command,
-		Args:        append([]string(nil), args...),
-		StartedAt:   startedAt,
-	})
+	if !quiet {
+		s.emitCommandEvent(events.EventTypes.START, dto.CommandStartedNotification{
+			ExecutionID: executionID,
+			CommandID:   commandID,
+			Label:       label,
+			Command:     command,
+			Args:        append([]string(nil), args...),
+			StartedAt:   startedAt,
+		})
+	}
 
 	cmd := exec.CommandContext(ctx, command, args...)
 	if stdinContent != "" {
@@ -127,10 +150,13 @@ func (s *Service) StartWithInput(ctx context.Context, commandID, label, stdinCon
 		}
 		finishedAt := time.Now().UnixMilli()
 		var lastOutputLine *dto.CommandOutputLineSnapshot
+		shouldEmit := true
 
 		s.mu.Lock()
-		snapshot, ok := s.snapshots[executionID]
+		state, ok := s.snapshots[executionID]
 		if ok {
+			snapshot := state.snapshot
+			shouldEmit = !state.quiet
 			snapshot.Running = false
 			snapshot.FinishedAt = finishedAt
 			snapshot.ExitCode = exitCode
@@ -146,11 +172,12 @@ func (s *Service) StartWithInput(ctx context.Context, commandID, label, stdinCon
 					break
 				}
 			}
-			s.snapshots[executionID] = snapshot
+			state.snapshot = snapshot
+			s.snapshots[executionID] = state
 		}
 		s.mu.Unlock()
 
-		if lastOutputLine != nil {
+		if shouldEmit && lastOutputLine != nil {
 			s.emitCommandEvent(events.EventTypes.UPDATE, dto.CommandOutputNotification{
 				ExecutionID: executionID,
 				CommandID:   commandID,
@@ -161,29 +188,43 @@ func (s *Service) StartWithInput(ctx context.Context, commandID, label, stdinCon
 			})
 		}
 
-		eventType := events.EventTypes.STOP
-		if !success {
-			eventType = events.EventTypes.ERROR
+		if shouldEmit {
+			eventType := events.EventTypes.STOP
+			if !success {
+				eventType = events.EventTypes.ERROR
+			}
+			s.emitCommandEvent(eventType, dto.CommandTerminatedNotification{
+				ExecutionID: executionID,
+				CommandID:   commandID,
+				ExitCode:    exitCode,
+				Success:     success,
+				FinishedAt:  finishedAt,
+				Error:       errMsg,
+			})
 		}
-		s.emitCommandEvent(eventType, dto.CommandTerminatedNotification{
-			ExecutionID: executionID,
-			CommandID:   commandID,
-			ExitCode:    exitCode,
-			Success:     success,
-			FinishedAt:  finishedAt,
-			Error:       errMsg,
-		})
 	}()
 
 	return executionID, nil
 }
 
 func (s *Service) Execute(ctx context.Context, commandID, label, command string, args ...string) (dto.CommandExecutionSnapshot, error) {
-	return s.ExecuteWithInput(ctx, commandID, label, "", command, args...)
+	return s.executeWithInput(ctx, false, commandID, label, "", command, args...)
+}
+
+func (s *Service) ExecuteQuiet(ctx context.Context, commandID, label, command string, args ...string) (dto.CommandExecutionSnapshot, error) {
+	return s.executeWithInput(ctx, true, commandID, label, "", command, args...)
 }
 
 func (s *Service) ExecuteWithInput(ctx context.Context, commandID, label, stdinContent, command string, args ...string) (dto.CommandExecutionSnapshot, error) {
-	executionID, err := s.StartWithInput(ctx, commandID, label, stdinContent, command, args...)
+	return s.executeWithInput(ctx, false, commandID, label, stdinContent, command, args...)
+}
+
+func (s *Service) ExecuteWithInputQuiet(ctx context.Context, commandID, label, stdinContent, command string, args ...string) (dto.CommandExecutionSnapshot, error) {
+	return s.executeWithInput(ctx, true, commandID, label, stdinContent, command, args...)
+}
+
+func (s *Service) executeWithInput(ctx context.Context, quiet bool, commandID, label, stdinContent, command string, args ...string) (dto.CommandExecutionSnapshot, error) {
+	executionID, err := s.startWithInput(ctx, quiet, commandID, label, stdinContent, command, args...)
 	if err != nil {
 		return dto.CommandExecutionSnapshot{}, err
 	}
@@ -217,10 +258,11 @@ func (s *Service) GetSnapshot(executionID string) (dto.CommandExecutionSnapshot,
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	snapshot, ok := s.snapshots[executionID]
+	state, ok := s.snapshots[executionID]
 	if !ok {
 		return dto.CommandExecutionSnapshot{}, false
 	}
+	snapshot := state.snapshot
 	copySnapshot := snapshot
 	copySnapshot.Args = append([]string(nil), snapshot.Args...)
 	copySnapshot.Lines = append([]dto.CommandOutputLineSnapshot(nil), snapshot.Lines...)
@@ -245,9 +287,12 @@ func (s *Service) scanPipe(
 		line := scanner.Text()
 		ts := time.Now().UnixMilli()
 
+		shouldEmit := true
 		s.mu.Lock()
-		snapshot, ok := s.snapshots[executionID]
+		state, ok := s.snapshots[executionID]
 		if ok {
+			snapshot := state.snapshot
+			shouldEmit = !state.quiet
 			snapshot.Lines = append(snapshot.Lines, dto.CommandOutputLineSnapshot{
 				Channel:   channel,
 				Line:      line,
@@ -256,43 +301,52 @@ func (s *Service) scanPipe(
 			if len(snapshot.Lines) > bufferSize {
 				snapshot.Lines = append([]dto.CommandOutputLineSnapshot(nil), snapshot.Lines[len(snapshot.Lines)-bufferSize:]...)
 			}
-			s.snapshots[executionID] = snapshot
+			state.snapshot = snapshot
+			s.snapshots[executionID] = state
 		}
 		s.mu.Unlock()
 
-		s.emitCommandEvent(events.EventTypes.UPDATE, dto.CommandOutputNotification{
-			ExecutionID: executionID,
-			CommandID:   commandID,
-			Channel:     channel,
-			Line:        line,
-			Timestamp:   ts,
-		})
+		if shouldEmit {
+			s.emitCommandEvent(events.EventTypes.UPDATE, dto.CommandOutputNotification{
+				ExecutionID: executionID,
+				CommandID:   commandID,
+				Channel:     channel,
+				Line:        line,
+				Timestamp:   ts,
+			})
+		}
 	}
 }
 
 func (s *Service) terminateWithError(executionID, commandID string, exitCode int, errMsg string) {
 	finishedAt := time.Now().UnixMilli()
+	shouldEmit := true
 
 	s.mu.Lock()
-	snapshot, ok := s.snapshots[executionID]
+	state, ok := s.snapshots[executionID]
 	if ok {
+		snapshot := state.snapshot
+		shouldEmit = !state.quiet
 		snapshot.Running = false
 		snapshot.Success = false
 		snapshot.ExitCode = exitCode
 		snapshot.Error = errMsg
 		snapshot.FinishedAt = finishedAt
-		s.snapshots[executionID] = snapshot
+		state.snapshot = snapshot
+		s.snapshots[executionID] = state
 	}
 	s.mu.Unlock()
 
-	s.emitCommandEvent(events.EventTypes.ERROR, dto.CommandTerminatedNotification{
-		ExecutionID: executionID,
-		CommandID:   commandID,
-		ExitCode:    exitCode,
-		Success:     false,
-		FinishedAt:  finishedAt,
-		Error:       errMsg,
-	})
+	if shouldEmit {
+		s.emitCommandEvent(events.EventTypes.ERROR, dto.CommandTerminatedNotification{
+			ExecutionID: executionID,
+			CommandID:   commandID,
+			ExitCode:    exitCode,
+			Success:     false,
+			FinishedAt:  finishedAt,
+			Error:       errMsg,
+		})
+	}
 }
 
 // JoinChannelOutput joins buffered command output lines, optionally filtering by channel.

@@ -294,7 +294,7 @@ func (a *ReiserfsAdapter) GetState(ctx context.Context, device string) (dto.File
 	}
 
 	// Run state command in read-only mode to get filesystem state
-	output, exitCode, _ := a.runCommandCached(ctx, a.stateCommand, "--check", device)
+	output, exitCode, _ := a.runCommandCachedQuiet(ctx, a.stateCommand, "--check", device)
 
 	// Parse the output to determine filesystem state
 	switch exitCode {

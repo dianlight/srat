@@ -106,6 +106,24 @@ func (suite *CommandExecutorTestSuite) TestStart_StreamsStdoutAndStderrAndStores
 	suite.Require().Contains(outputChannels, dto.CommandOutputChannelStderr)
 }
 
+func (suite *CommandExecutorTestSuite) TestStartQuiet_SuppressesLifecycleEvents() {
+	executionID, err := suite.executor.StartQuiet(
+		context.Background(),
+		"quiet-command",
+		"Quiet Command",
+		"sh",
+		"-c",
+		"echo hidden-stdout; echo hidden-stderr 1>&2",
+	)
+	suite.Require().NoError(err)
+	suite.Require().NotEmpty(executionID)
+
+	snapshot := suite.waitForCompletion(executionID, 2*time.Second)
+	suite.Require().False(snapshot.Running)
+	suite.Require().Len(snapshot.Lines, 2)
+	suite.Require().Empty(suite.collector.Messages(), "quiet commands should not emit lifecycle events")
+}
+
 func (suite *CommandExecutorTestSuite) TestStart_PopulatesOutputExitCodeWhenAvailable() {
 	executionID, err := suite.executor.Start(
 		context.Background(),
@@ -190,6 +208,23 @@ func (suite *CommandExecutorTestSuite) TestExecute_ReturnsCompletedSnapshot() {
 	suite.Require().True(snapshot.Success)
 	suite.Require().NotEmpty(snapshot.ExecutionID)
 	suite.Require().NotEmpty(snapshot.Lines)
+}
+
+func (suite *CommandExecutorTestSuite) TestExecuteQuiet_ReturnsCompletedSnapshotWithoutEvents() {
+	snapshot, err := suite.executor.ExecuteQuiet(
+		context.Background(),
+		"execute-quiet",
+		"Execute Quiet",
+		"sh",
+		"-c",
+		"echo quiet-sync-line",
+	)
+	suite.Require().NoError(err)
+	suite.Require().False(snapshot.Running)
+	suite.Require().True(snapshot.Success)
+	suite.Require().NotEmpty(snapshot.ExecutionID)
+	suite.Require().NotEmpty(snapshot.Lines)
+	suite.Require().Empty(suite.collector.Messages(), "quiet Execute should not emit command events")
 }
 
 func (suite *CommandExecutorTestSuite) TestExecute_ReturnsErrorOnFailure() {

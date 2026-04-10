@@ -319,7 +319,7 @@ func (a *Ext4Adapter) GetState(ctx context.Context, device string) (dto.Filesyst
 	}
 
 	// Use state command to get filesystem state information
-	output, exitCode, err := a.runCommandCached(ctx, a.stateCommand, "-l", device)
+	output, exitCode, err := a.runCommandCachedQuiet(ctx, a.stateCommand, "-l", device)
 	if err != nil {
 		return state, errors.WithDetails(err, "Device", device)
 	}

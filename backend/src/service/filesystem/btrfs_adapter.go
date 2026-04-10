@@ -301,7 +301,7 @@ func (a *BtrfsAdapter) GetState(ctx context.Context, device string) (dto.Filesys
 	}
 
 	// Use state command device stats to get device statistics
-	output, exitCode, err := a.runCommandCached(ctx, a.stateCommand, "device", "stats", device)
+	output, exitCode, err := a.runCommandCachedQuiet(ctx, a.stateCommand, "device", "stats", device)
 	if err == nil && exitCode == 0 {
 		state.AdditionalInfo["deviceStats"] = output
 
@@ -315,7 +315,7 @@ func (a *BtrfsAdapter) GetState(ctx context.Context, device string) (dto.Filesys
 		}
 	} else {
 		// If we can't get stats, run a readonly check
-		checkOutput, checkExitCode, err := a.runCommandCached(ctx, a.stateCommand, "check", "--readonly", device)
+		checkOutput, checkExitCode, err := a.runCommandCachedQuiet(ctx, a.stateCommand, "check", "--readonly", device)
 		if err != nil {
 			return state, errors.WithDetails(err, "Device", device)
 		}

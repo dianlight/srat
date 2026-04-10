@@ -156,10 +156,22 @@ func (b *baseAdapter) commandExists(command string) bool {
 	return true
 }
 
-// runCommand executes a command and returns the output
+// runCommand executes a command and returns the output.
 func (b *baseAdapter) runCommand(ctx context.Context, name string, args ...string) (string, int, errors.E) {
+	return b.runCommandMode(ctx, false, name, args...)
+}
+
+func (b *baseAdapter) runCommandMode(ctx context.Context, quiet bool, name string, args ...string) (string, int, errors.E) {
 	executor := b.resolveCommandExecutor()
-	snapshot, err := executor.Execute(ctx, "filesystem:"+name, "Filesystem "+name, name, args...)
+	var (
+		snapshot dto.CommandExecutionSnapshot
+		err      error
+	)
+	if quiet {
+		snapshot, err = executor.ExecuteQuiet(ctx, "filesystem:"+name, "Filesystem "+name, name, args...)
+	} else {
+		snapshot, err = executor.Execute(ctx, "filesystem:"+name, "Filesystem "+name, name, args...)
+	}
 	output := commandexec.JoinChannelOutput(snapshot.Lines)
 	exitCode := snapshot.ExitCode
 
@@ -187,6 +199,15 @@ func (b *baseAdapter) runCommand(ctx context.Context, name string, args ...strin
 // runCommandCached executes a command and caches the result by command name and exact args.
 // This limits command execution to at most once per cache TTL for each unique command+args key.
 func (b *baseAdapter) runCommandCached(ctx context.Context, name string, args ...string) (string, int, errors.E) {
+	return b.runCommandCachedMode(ctx, false, name, args...)
+}
+
+// runCommandCachedQuiet executes a cached command without emitting command lifecycle events.
+func (b *baseAdapter) runCommandCachedQuiet(ctx context.Context, name string, args ...string) (string, int, errors.E) {
+	return b.runCommandCachedMode(ctx, true, name, args...)
+}
+
+func (b *baseAdapter) runCommandCachedMode(ctx context.Context, quiet bool, name string, args ...string) (string, int, errors.E) {
 	cacheKey := b.commandCacheKey(name, args...)
 
 	if cached, ok := commandResultCache.Get(cacheKey); ok {
@@ -197,7 +218,7 @@ func (b *baseAdapter) runCommandCached(ctx context.Context, name string, args ..
 		commandResultCache.Delete(cacheKey)
 	}
 
-	output, exitCode, err := b.runCommand(ctx, name, args...)
+	output, exitCode, err := b.runCommandMode(ctx, quiet, name, args...)
 	commandResultCache.Set(cacheKey, cachedCommandResult{
 		Output:   output,
 		ExitCode: exitCode,

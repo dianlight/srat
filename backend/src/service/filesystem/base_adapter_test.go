@@ -219,6 +219,38 @@ func (suite *BaseAdapterTestSuite) TestRunCommandCached() {
 		suite.Equal(1, runCount, "expected command to execute once with identical args")
 	})
 
+	suite.Run("quiet cached commands use the quiet executor path", func() {
+		suite.cleanExec()
+		normalCalls := 0
+		quietCalls := 0
+		suite.cleanExec = suite.adapter.SetCommandRunner(&fakeCommandRunner{
+			execute: func(_ context.Context, _ string, _ string, _ string, _ ...string) (dto.CommandExecutionSnapshot, error) {
+				normalCalls++
+				return dto.CommandExecutionSnapshot{}, nil
+			},
+			executeQuiet: func(_ context.Context, _ string, _ string, _ string, _ ...string) (dto.CommandExecutionSnapshot, error) {
+				quietCalls++
+				return dto.CommandExecutionSnapshot{
+					Success:  true,
+					ExitCode: 0,
+					Lines: []dto.CommandOutputLineSnapshot{{
+						Channel: dto.CommandOutputChannelStdout,
+						Line:    "quiet-run",
+					}},
+				}, nil
+			},
+		})
+
+		suite.adapter.invalidateCommandResultCache()
+
+		output, exitCode, err := suite.adapter.runCommandCachedQuiet(suite.ctx, "statecmd", "--readonly")
+		suite.NoError(err)
+		suite.Equal("quiet-run", output)
+		suite.Equal(0, exitCode)
+		suite.Equal(0, normalCalls)
+		suite.Equal(1, quietCalls)
+	})
+
 	suite.Run("different args use different cache entries", func() {
 		suite.cleanExec()
 		runCount := 0
@@ -473,10 +505,12 @@ func (suite *BaseAdapterTestSuite) TestOsutilMockFileSystems() {
 // Helper functions
 
 type fakeCommandRunner struct {
-	lookPath    func(string) (string, error)
-	start       func(context.Context, string, string, string, ...string) (string, error)
-	execute     func(context.Context, string, string, string, ...string) (dto.CommandExecutionSnapshot, error)
-	getSnapshot func(string) (dto.CommandExecutionSnapshot, bool)
+	lookPath     func(string) (string, error)
+	start        func(context.Context, string, string, string, ...string) (string, error)
+	startQuiet   func(context.Context, string, string, string, ...string) (string, error)
+	execute      func(context.Context, string, string, string, ...string) (dto.CommandExecutionSnapshot, error)
+	executeQuiet func(context.Context, string, string, string, ...string) (dto.CommandExecutionSnapshot, error)
+	getSnapshot  func(string) (dto.CommandExecutionSnapshot, bool)
 }
 
 func (f *fakeCommandRunner) LookPath(command string) (string, error) {
@@ -496,8 +530,19 @@ func (f *fakeCommandRunner) Start(ctx context.Context, commandID, label, command
 	return "", errors.New("not implemented")
 }
 
+func (f *fakeCommandRunner) StartQuiet(ctx context.Context, commandID, label, command string, args ...string) (string, error) {
+	if f.startQuiet != nil {
+		return f.startQuiet(ctx, commandID, label, command, args...)
+	}
+	return f.Start(ctx, commandID, label, command, args...)
+}
+
 func (f *fakeCommandRunner) StartWithInput(ctx context.Context, commandID, label, _ string, command string, args ...string) (string, error) {
 	return f.Start(ctx, commandID, label, command, args...)
+}
+
+func (f *fakeCommandRunner) StartWithInputQuiet(ctx context.Context, commandID, label, _ string, command string, args ...string) (string, error) {
+	return f.StartQuiet(ctx, commandID, label, command, args...)
 }
 
 func (f *fakeCommandRunner) Execute(ctx context.Context, commandID, label, command string, args ...string) (dto.CommandExecutionSnapshot, error) {
@@ -507,8 +552,19 @@ func (f *fakeCommandRunner) Execute(ctx context.Context, commandID, label, comma
 	return dto.CommandExecutionSnapshot{}, errors.New("not implemented")
 }
 
+func (f *fakeCommandRunner) ExecuteQuiet(ctx context.Context, commandID, label, command string, args ...string) (dto.CommandExecutionSnapshot, error) {
+	if f.executeQuiet != nil {
+		return f.executeQuiet(ctx, commandID, label, command, args...)
+	}
+	return f.Execute(ctx, commandID, label, command, args...)
+}
+
 func (f *fakeCommandRunner) ExecuteWithInput(ctx context.Context, commandID, label, _ string, command string, args ...string) (dto.CommandExecutionSnapshot, error) {
 	return f.Execute(ctx, commandID, label, command, args...)
+}
+
+func (f *fakeCommandRunner) ExecuteWithInputQuiet(ctx context.Context, commandID, label, _ string, command string, args ...string) (dto.CommandExecutionSnapshot, error) {
+	return f.ExecuteQuiet(ctx, commandID, label, command, args...)
 }
 
 func (f *fakeCommandRunner) GetSnapshot(executionID string) (dto.CommandExecutionSnapshot, bool) {

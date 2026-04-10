@@ -141,10 +141,13 @@ func TestIsSambaVersionSufficient(t *testing.T) {
 }
 
 type testCommandRunner struct {
-	start            func(context.Context, string, string, string, ...string) (string, error)
-	execute          func(context.Context, string, string, string, ...string) (dto.CommandExecutionSnapshot, error)
-	executeWithInput func(context.Context, string, string, string, string, ...string) (dto.CommandExecutionSnapshot, error)
-	getSnapshot      func(string) (dto.CommandExecutionSnapshot, bool)
+	start                 func(context.Context, string, string, string, ...string) (string, error)
+	startQuiet            func(context.Context, string, string, string, ...string) (string, error)
+	execute               func(context.Context, string, string, string, ...string) (dto.CommandExecutionSnapshot, error)
+	executeQuiet          func(context.Context, string, string, string, ...string) (dto.CommandExecutionSnapshot, error)
+	executeWithInput      func(context.Context, string, string, string, string, ...string) (dto.CommandExecutionSnapshot, error)
+	executeWithInputQuiet func(context.Context, string, string, string, string, ...string) (dto.CommandExecutionSnapshot, error)
+	getSnapshot           func(string) (dto.CommandExecutionSnapshot, bool)
 }
 
 func (t *testCommandRunner) LookPath(command string) (string, error) {
@@ -161,8 +164,19 @@ func (t *testCommandRunner) Start(ctx context.Context, commandID, label, command
 	return "", nil
 }
 
+func (t *testCommandRunner) StartQuiet(ctx context.Context, commandID, label, command string, args ...string) (string, error) {
+	if t.startQuiet != nil {
+		return t.startQuiet(ctx, commandID, label, command, args...)
+	}
+	return t.Start(ctx, commandID, label, command, args...)
+}
+
 func (t *testCommandRunner) StartWithInput(ctx context.Context, commandID, label, _ string, command string, args ...string) (string, error) {
 	return t.Start(ctx, commandID, label, command, args...)
+}
+
+func (t *testCommandRunner) StartWithInputQuiet(ctx context.Context, commandID, label, _ string, command string, args ...string) (string, error) {
+	return t.StartQuiet(ctx, commandID, label, command, args...)
 }
 
 func (t *testCommandRunner) Execute(ctx context.Context, commandID, label, command string, args ...string) (dto.CommandExecutionSnapshot, error) {
@@ -172,11 +186,25 @@ func (t *testCommandRunner) Execute(ctx context.Context, commandID, label, comma
 	return dto.CommandExecutionSnapshot{}, nil
 }
 
+func (t *testCommandRunner) ExecuteQuiet(ctx context.Context, commandID, label, command string, args ...string) (dto.CommandExecutionSnapshot, error) {
+	if t.executeQuiet != nil {
+		return t.executeQuiet(ctx, commandID, label, command, args...)
+	}
+	return t.Execute(ctx, commandID, label, command, args...)
+}
+
 func (t *testCommandRunner) ExecuteWithInput(ctx context.Context, commandID, label, stdinContent, command string, args ...string) (dto.CommandExecutionSnapshot, error) {
 	if t.executeWithInput != nil {
 		return t.executeWithInput(ctx, commandID, label, stdinContent, command, args...)
 	}
 	return t.Execute(ctx, commandID, label, command, args...)
+}
+
+func (t *testCommandRunner) ExecuteWithInputQuiet(ctx context.Context, commandID, label, stdinContent, command string, args ...string) (dto.CommandExecutionSnapshot, error) {
+	if t.executeWithInputQuiet != nil {
+		return t.executeWithInputQuiet(ctx, commandID, label, stdinContent, command, args...)
+	}
+	return t.ExecuteQuiet(ctx, commandID, label, command, args...)
 }
 
 func (t *testCommandRunner) GetSnapshot(executionID string) (dto.CommandExecutionSnapshot, bool) {
