@@ -13,7 +13,7 @@ compile = false
 
 [tools]
 go = "1.26.1"
-act = "0.2.86"
+act = "0.2.87"
 vale = "3.14.1"
 markdownlint-cli2 = "0.22.0"
 prettier = "3.8.1"
