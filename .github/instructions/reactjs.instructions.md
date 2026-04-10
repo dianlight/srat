@@ -129,6 +129,7 @@ Instructions for building high-quality ReactJS applications with modern patterns
 - Implement integration tests for complex component interactions
 - Mock external dependencies and API calls appropriately
 - Test accessibility features and keyboard navigation
+- Reuse `ReadonlyCommandTerminal` for read-only command/log views and preserve semantic channels (`stdout`, `stderr`, `info`) instead of rendering joined strings or labeling all filesystem task notes as info.
 
 ### Guided Tour & Overlay (SRAT)
 
