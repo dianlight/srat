@@ -28,6 +28,17 @@ lint = "ruff check srat tests"
 test = "python -m pytest tests -v -c pyproject.toml"
 typecheck = "mypy srat"
 
+[tasks."package-hacs"]
+usage = '''
+flag "--output [output]" help="Output zip path" default="/tmp/build_artifacts/srat.zip"
+'''
+run = [
+    "mkdir -p $(dirname \"${usage_output?}\")",
+    "zip -r \"${usage_output?}\" srat -x 'srat/__pycache__/*' 'srat/*.pyc'",
+    "echo \"HACS component zip created at ${usage_output?}\"",
+    "unzip -l \"${usage_output?}\"",
+]
+
 [tasks."install:remote"]
 depends = [
     { task = "lint" },
