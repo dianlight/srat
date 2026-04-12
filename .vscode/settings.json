@@ -258,7 +258,7 @@
 	"github.copilot.chat.backgroundCompaction": true,
 	"mise.configureExtensionsAutomatically": true,
 	"bun.runtime": "/root/.local/share/mise/shims/bun",
-	"go.goroot": "/root/.local/share/mise/installs/go/1.26.1",
+	"go.goroot": "/root/.local/share/mise/installs/go/1.26.2",
 	"go.alternateTools": {
 		"go": "/root/.local/share/mise/shims/go",
 		"gopls": "/root/.local/share/mise/shims/gopls",
