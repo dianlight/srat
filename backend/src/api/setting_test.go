@@ -30,6 +30,8 @@ type SettingsHandlerSuite struct {
 	dirtyService   service.DirtyDataServiceInterface
 	settingService service.SettingServiceInterface
 	addonsService  service.AddonsServiceInterface
+	haComponentSvc service.HomeAssistantComponentServiceInterface
+	issueService   service.IssueServiceInterface
 	repairService  service.RepairServiceInterface
 	haService      service.HomeAssistantServiceInterface
 	broadcaster    service.BroadcasterServiceInterface
@@ -72,6 +74,8 @@ func (suite *SettingsHandlerSuite) SetupTest() {
 			service.NewSettingService,
 			events.NewEventBus,
 			mock.Mock[service.AddonsServiceInterface],
+			mock.Mock[service.HomeAssistantComponentServiceInterface],
+			mock.Mock[service.IssueServiceInterface],
 			mock.Mock[service.RepairServiceInterface],
 			mock.Mock[service.HomeAssistantServiceInterface],
 			mock.Mock[service.BroadcasterServiceInterface],
@@ -111,6 +115,8 @@ func (suite *SettingsHandlerSuite) SetupTest() {
 		fx.Populate(&suite.dirtyService),
 		fx.Populate(&suite.settingService),
 		fx.Populate(&suite.addonsService),
+		fx.Populate(&suite.haComponentSvc),
+		fx.Populate(&suite.issueService),
 		fx.Populate(&suite.repairService),
 		fx.Populate(&suite.haService),
 		fx.Populate(&suite.broadcaster),
@@ -364,6 +370,90 @@ func (suite *SettingsHandlerSuite) TestGetAppConfigHandler() {
 	mock.Verify(suite.broadcaster, matchers.Times(0)).BroadcastMessage(mock.Any[any]())
 }
 
+func (suite *SettingsHandlerSuite) TestGetHomeAssistantCustomComponentStatusHandler() {
+	_, api := humatest.New(suite.T())
+	suite.api.RegisterSettings(api)
+
+	installedVersion := "2026.04.1"
+	connectedVersion := "2026.04.2"
+	status := &dto.HomeAssistantCustomComponentStatus{
+		Component:        dto.HomeAssistantComponentSRAT,
+		InstallPath:      "/config/custom_components/srat",
+		ManifestPath:     "/config/custom_components/srat/manifest.json",
+		Installed:        true,
+		InstalledVersion: &installedVersion,
+		Connected:        true,
+		ConnectedVersion: &connectedVersion,
+	}
+
+	mock.When(suite.haComponentSvc.GetStatus()).ThenReturn(status, nil)
+	mock.When(suite.issueService.ResolveByTitle(mock.Exact(dto.HomeAssistantComponentMissingIssueTitle))).ThenReturn(nil)
+
+	rr := api.Get("/settings/homeassistant/custom-component/status")
+	suite.Require().Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
+
+	var res dto.HomeAssistantCustomComponentStatus
+	err := json.Unmarshal(rr.Body.Bytes(), &res)
+	suite.Require().NoError(err)
+	suite.True(res.Installed)
+	suite.True(res.Connected)
+	suite.NotNil(res.InstalledVersion)
+	suite.Equal(installedVersion, *res.InstalledVersion)
+	_, _ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).GetStatus()
+	_ = mock.Verify(suite.issueService, matchers.Times(1)).ResolveByTitle(mock.Exact(dto.HomeAssistantComponentMissingIssueTitle))
+}
+
+func (suite *SettingsHandlerSuite) TestGetHomeAssistantCustomComponentStatusHandler_CreatesIssueOnceWhenMissingDisconnected() {
+	_, api := humatest.New(suite.T())
+	suite.api.RegisterSettings(api)
+
+	status := &dto.HomeAssistantCustomComponentStatus{
+		Component:    dto.HomeAssistantComponentSRAT,
+		InstallPath:  "/config/custom_components/srat",
+		ManifestPath: "/config/custom_components/srat/manifest.json",
+		Installed:    false,
+		Connected:    false,
+	}
+
+	mock.When(suite.haComponentSvc.GetStatus()).ThenReturn(status, nil)
+	mock.When(suite.issueService.FindByTitle(mock.Exact(dto.HomeAssistantComponentMissingIssueTitle))).ThenReturn(nil, nil)
+	mock.When(suite.issueService.Create(mock.Any[*dto.Issue]())).ThenReturn(nil)
+
+	rr := api.Get("/settings/homeassistant/custom-component/status")
+	suite.Require().Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
+
+	_, _ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).GetStatus()
+	_, _ = mock.Verify(suite.issueService, matchers.Times(1)).FindByTitle(mock.Exact(dto.HomeAssistantComponentMissingIssueTitle))
+	_ = mock.Verify(suite.issueService, matchers.Times(1)).Create(mock.Any[*dto.Issue]())
+	_ = mock.Verify(suite.issueService, matchers.Times(0)).ResolveByTitle(mock.Any[string]())
+}
+
+func (suite *SettingsHandlerSuite) TestUninstallHomeAssistantCustomComponentHandler() {
+	_, api := humatest.New(suite.T())
+	suite.api.RegisterSettings(api)
+
+	status := &dto.HomeAssistantCustomComponentStatus{
+		Component:    dto.HomeAssistantComponentSRAT,
+		InstallPath:  "/config/custom_components/srat",
+		ManifestPath: "/config/custom_components/srat/manifest.json",
+		Installed:    false,
+		Connected:    false,
+	}
+
+	mock.When(suite.haComponentSvc.Uninstall()).ThenReturn(nil)
+	mock.When(suite.haComponentSvc.GetStatus()).ThenReturn(status, nil)
+	mock.When(suite.issueService.FindByTitle(mock.Exact(dto.HomeAssistantComponentMissingIssueTitle))).ThenReturn(nil, nil)
+	mock.When(suite.issueService.Create(mock.Any[*dto.Issue]())).ThenReturn(nil)
+
+	rr := api.Delete("/settings/homeassistant/custom-component")
+	suite.Require().Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
+
+	_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).Uninstall()
+	_, _ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).GetStatus()
+	_, _ = mock.Verify(suite.issueService, matchers.Times(1)).FindByTitle(mock.Exact(dto.HomeAssistantComponentMissingIssueTitle))
+	_ = mock.Verify(suite.issueService, matchers.Times(1)).Create(mock.Any[*dto.Issue]())
+}
+
 func (suite *SettingsHandlerSuite) TestGetAppConfigHandler_AutoDismissesRepairWhenRestartNotRequired() {
 	_, humaAPI := humatest.New(suite.T())
 	suite.api.RegisterSettings(humaAPI)
@@ -456,7 +546,7 @@ func (suite *SettingsHandlerSuite) TestUpdateAppConfigHandler() {
 func (suite *SettingsHandlerSuite) TestUpdateAppConfigHandler_FallbackDismissPersistentNotificationWhenRepairServiceNil() {
 	_, humaAPI := humatest.New(suite.T())
 	eventBus := events.NewEventBus(suite.ctx)
-	handler := api.NewSettingsHanler(&dto.ContextState{}, suite.settingService, suite.addonsService, eventBus, nil, suite.haService, suite.broadcaster)
+	handler := api.NewSettingsHanler(&dto.ContextState{}, suite.settingService, suite.addonsService, suite.haComponentSvc, suite.issueService, eventBus, nil, suite.haService, suite.broadcaster)
 	handler.RegisterSettings(humaAPI)
 	autopatch.AutoPatch(humaAPI)
 

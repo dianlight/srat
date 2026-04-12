@@ -2,27 +2,24 @@ package service_test
 
 import (
 	"context"
-	"errors"
-	"sync"
+	"database/sql"
+	"strconv"
 	"testing"
+	"time"
 
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
-	"github.com/dianlight/srat/internal/ctxkeys"
-	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
-	"github.com/ovechkin-dm/mockio/v2/matchers"
-	"github.com/ovechkin-dm/mockio/v2/mock"
+	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/suite"
-	"go.uber.org/fx"
-	"go.uber.org/fx/fxtest"
+	"gorm.io/gorm"
 )
 
 type IssueServiceSuite struct {
 	suite.Suite
 	issueService service.IssueServiceInterface
-	issueRepo    repository.IssueRepositoryInterface
-	app          *fxtest.App
+	db           *gorm.DB
+	sqlDB        *sql.DB
 }
 
 func TestIssueServiceSuite(t *testing.T) {
@@ -30,191 +27,116 @@ func TestIssueServiceSuite(t *testing.T) {
 }
 
 func (suite *IssueServiceSuite) SetupTest() {
-	suite.app = fxtest.New(suite.T(),
-		fx.Provide(
-			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
-			func() (context.Context, context.CancelFunc) {
-				return context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, &sync.WaitGroup{}))
-			},
-			service.NewIssueService,
-			mock.Mock[repository.IssueRepositoryInterface],
-		),
-		fx.Populate(&suite.issueService, &suite.issueRepo),
-	)
-	suite.app.RequireStart()
+	gdb, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	suite.Require().NoError(err)
+	suite.Require().NoError(gdb.AutoMigrate(&dbom.Issue{}))
+
+	sqlDB, err := gdb.DB()
+	suite.Require().NoError(err)
+
+	suite.db = gdb
+	suite.sqlDB = sqlDB
+	suite.issueService = service.NewIssueService(gdb, context.Background())
 }
 
 func (suite *IssueServiceSuite) TearDownTest() {
-	suite.app.RequireStop()
+	if suite.sqlDB != nil {
+		_ = suite.sqlDB.Close()
+	}
 }
 
 func (suite *IssueServiceSuite) TestCreateExistingIncrementsRepeatingSuccess() {
-	// Arrange
 	existing := &dbom.Issue{
 		Title:     "test",
 		Repeating: 1,
 	}
-	mock.When(suite.issueRepo.FindByTitle(mock.Any[string]())).ThenReturn(existing, nil)
-	mock.When(suite.issueRepo.Update(existing)).ThenReturn(nil)
-	// Ensure Create is not called
-	mock.When(suite.issueRepo.Create(mock.Any[*dbom.Issue]())).ThenReturn(errors.New("should not be called"))
+	suite.Require().NoError(suite.db.Create(existing).Error)
 
-	// Act
 	err := suite.issueService.Create(&dto.Issue{Title: "test"})
-
-	// Assert
 	suite.NoError(err)
-	_, _ = mock.Verify(suite.issueRepo, matchers.Times(1)).FindByTitle(mock.Any[string]())
-	_ = mock.Verify(suite.issueRepo, matchers.Times(1)).Update(existing)
-	_ = mock.Verify(suite.issueRepo, matchers.Times(0)).Create(mock.Any[*dbom.Issue]())
+
+	var found dbom.Issue
+	suite.Require().NoError(suite.db.Where("title = ?", "test").First(&found).Error)
+	suite.Equal(uint(2), found.Repeating)
 }
 
 func (suite *IssueServiceSuite) TestCreateNewCreatesSuccess() {
-	// Arrange
-	mock.When(suite.issueRepo.FindByTitle(mock.Any[string]())).ThenReturn(nil, nil)
-	mock.When(suite.issueRepo.Create(mock.Any[*dbom.Issue]())).ThenReturn(nil)
-
-	// Act
 	err := suite.issueService.Create(&dto.Issue{Title: "new"})
-
-	// Assert
 	suite.NoError(err)
-	_, _ = mock.Verify(suite.issueRepo, matchers.Times(1)).FindByTitle(mock.Any[string]())
-	_ = mock.Verify(suite.issueRepo, matchers.Times(1)).Create(mock.Any[*dbom.Issue]())
-	_ = mock.Verify(suite.issueRepo, matchers.Times(0)).Update(mock.Any[*dbom.Issue]())
-}
 
-func (suite *IssueServiceSuite) TestCreateFindByTitleError() {
-	// Arrange
-	mockErr := errors.New("db find error")
-	mock.When(suite.issueRepo.FindByTitle(mock.Any[string]())).ThenReturn(nil, mockErr)
-
-	// Act
-	err := suite.issueService.Create(&dto.Issue{Title: "err"})
-
-	// Assert
-	suite.Error(err)
-	_, _ = mock.Verify(suite.issueRepo, matchers.Times(1)).FindByTitle(mock.Any[string]())
-	_ = mock.Verify(suite.issueRepo, matchers.Times(0)).Create(mock.Any[*dbom.Issue]())
-	_ = mock.Verify(suite.issueRepo, matchers.Times(0)).Update(mock.Any[*dbom.Issue]())
-}
-
-func (suite *IssueServiceSuite) TestCreateUpdateError() {
-	// Arrange
-	existing := &dbom.Issue{
-		Title:     "uerr",
-		Repeating: 2,
-	}
-	mock.When(suite.issueRepo.FindByTitle(mock.Any[string]())).ThenReturn(existing, nil)
-	mockErr := errors.New("update fail")
-	mock.When(suite.issueRepo.Update(existing)).ThenReturn(mockErr)
-
-	// Act
-	err := suite.issueService.Create(&dto.Issue{Title: "uerr"})
-
-	// Assert
-	suite.Error(err)
-	_, _ = mock.Verify(suite.issueRepo, matchers.Times(1)).FindByTitle(mock.Any[string]())
-	_ = mock.Verify(suite.issueRepo, matchers.Times(1)).Update(existing)
-}
-
-func (suite *IssueServiceSuite) TestCreateCreateError() {
-	// Arrange
-	mock.When(suite.issueRepo.FindByTitle(mock.Any[string]())).ThenReturn(nil, nil)
-	mockErr := errors.New("create fail")
-	mock.When(suite.issueRepo.Create(mock.Any[*dbom.Issue]())).ThenReturn(mockErr)
-
-	// Act
-	err := suite.issueService.Create(&dto.Issue{Title: "cerr"})
-
-	// Assert
-	suite.Error(err)
-	_, _ = mock.Verify(suite.issueRepo, matchers.Times(1)).FindByTitle(mock.Any[string]())
-	_ = mock.Verify(suite.issueRepo, matchers.Times(1)).Create(mock.Any[*dbom.Issue]())
+	var found dbom.Issue
+	suite.Require().NoError(suite.db.Where("title = ?", "new").First(&found).Error)
+	suite.Equal("new", found.Title)
 }
 
 func (suite *IssueServiceSuite) TestResolveSuccess() {
-	// Arrange
-	mock.When(suite.issueRepo.Delete(uint(1))).ThenReturn(nil)
+	issue := &dbom.Issue{Title: "to-resolve"}
+	suite.Require().NoError(suite.db.Create(issue).Error)
 
-	// Act
-	err := suite.issueService.Resolve(1)
-
-	// Assert
+	err := suite.issueService.Resolve(issue.ID)
 	suite.NoError(err)
-	_ = mock.Verify(suite.issueRepo, matchers.Times(1)).Delete(uint(1))
+
+	var found dbom.Issue
+	err = suite.db.First(&found, issue.ID).Error
+	suite.ErrorIs(err, gorm.ErrRecordNotFound)
 }
 
-func (suite *IssueServiceSuite) TestResolveError() {
-	// Arrange
-	mockErr := errors.New("delete failed")
-	mock.When(suite.issueRepo.Delete(uint(999))).ThenReturn(mockErr)
-
-	// Act
-	err := suite.issueService.Resolve(999)
-
-	// Assert
-	suite.Error(err)
-	_ = mock.Verify(suite.issueRepo, matchers.Times(1)).Delete(uint(999))
-}
-
-func (suite *IssueServiceSuite) TestFindOpenSuccess() {
-	// Arrange
-	openIssues := []*dbom.Issue{
-		{ID: 1, Title: "Issue 1"},
-		{ID: 2, Title: "Issue 2"},
+func (suite *IssueServiceSuite) TestFindOpenReturnsRecentFive() {
+	now := time.Now()
+	for i := 1; i <= 7; i++ {
+		issue := &dbom.Issue{
+			Title:     "issue-" + strconv.Itoa(i),
+			CreatedAt: now.Add(time.Duration(-(i - 1)) * time.Minute),
+		}
+		suite.Require().NoError(suite.db.Create(issue).Error)
 	}
-	mock.When(suite.issueRepo.FindOpen()).ThenReturn(openIssues, nil)
 
-	// Act
 	issues, err := suite.issueService.FindOpen()
-
-	// Assert
 	suite.NoError(err)
-	suite.NotNil(issues)
-	suite.Len(issues, 2)
-	_, _ = mock.Verify(suite.issueRepo, matchers.Times(1)).FindOpen()
+	suite.Len(issues, 5)
+	suite.Equal("issue-1", issues[0].Title)
+	suite.Equal("issue-5", issues[4].Title)
 }
 
-func (suite *IssueServiceSuite) TestFindOpenError() {
-	// Arrange
-	mockErr := errors.New("database error")
-	mock.When(suite.issueRepo.FindOpen()).ThenReturn(nil, mockErr)
+func (suite *IssueServiceSuite) TestFindByTitleSuccessAndNotFound() {
+	title := "lookup-title"
+	suite.Require().NoError(suite.db.Create(&dbom.Issue{Title: title}).Error)
 
-	// Act
-	issues, err := suite.issueService.FindOpen()
+	found, err := suite.issueService.FindByTitle(title)
+	suite.NoError(err)
+	suite.NotNil(found)
+	suite.Equal(title, found.Title)
 
-	// Assert
-	suite.Error(err)
-	suite.Nil(issues)
-	_, _ = mock.Verify(suite.issueRepo, matchers.Times(1)).FindOpen()
+	missing, err := suite.issueService.FindByTitle("missing-title")
+	suite.NoError(err)
+	suite.Nil(missing)
+}
+
+func (suite *IssueServiceSuite) TestResolveByTitle() {
+	title := "to-resolve"
+	suite.Require().NoError(suite.db.Create(&dbom.Issue{Title: title}).Error)
+
+	err := suite.issueService.ResolveByTitle(title)
+	suite.NoError(err)
+
+	var found dbom.Issue
+	err = suite.db.Where("title = ?", title).First(&found).Error
+	suite.ErrorIs(err, gorm.ErrRecordNotFound)
+
+	err = suite.issueService.ResolveByTitle("already-gone")
+	suite.ErrorIs(err, gorm.ErrRecordNotFound)
 }
 
 func (suite *IssueServiceSuite) TestUpdateSuccess() {
-	// Arrange
-	issue := &dto.Issue{Title: "Updated", Description: "Updated description"}
-	mock.When(suite.issueRepo.Update(mock.Any[*dbom.Issue]())).ThenReturn(nil)
+	issue := &dbom.Issue{Title: "old", Description: "old"}
+	suite.Require().NoError(suite.db.Create(issue).Error)
 
-	// Act
-	result, err := suite.issueService.Update(issue)
-
-	// Assert
+	updated, err := suite.issueService.Update(&dto.Issue{ID: issue.ID, Title: "Updated", Description: "Updated description"})
 	suite.NoError(err)
-	suite.NotNil(result)
-	_ = mock.Verify(suite.issueRepo, matchers.Times(1)).Update(mock.Any[*dbom.Issue]())
-}
+	suite.NotNil(updated)
 
-func (suite *IssueServiceSuite) TestUpdateError() {
-	// Arrange
-	issue := &dto.Issue{Title: "Updated", Description: "Updated description"}
-	mockErr := errors.New("update failed")
-	mock.When(suite.issueRepo.Update(mock.Any[*dbom.Issue]())).ThenReturn(mockErr)
-
-	// Act
-	result, err := suite.issueService.Update(issue)
-
-	// Assert
-	suite.Error(err)
-	suite.Nil(result)
-	_ = mock.Verify(suite.issueRepo, matchers.Times(1)).Update(mock.Any[*dbom.Issue]())
+	var found dbom.Issue
+	suite.Require().NoError(suite.db.First(&found, issue.ID).Error)
+	suite.Equal("Updated", found.Title)
+	suite.Equal("Updated description", found.Description)
 }

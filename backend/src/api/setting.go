@@ -10,12 +10,15 @@ import (
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/tlog"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type SettingsHanler struct {
 	apiContext     *dto.ContextState
 	settingService service.SettingServiceInterface
 	addonsService  service.AddonsServiceInterface
+	haComponentSvc service.HomeAssistantComponentServiceInterface
+	issueService   service.IssueServiceInterface
 	eventBus       events.EventBusInterface
 	repairService  service.RepairServiceInterface
 	haService      service.HomeAssistantServiceInterface
@@ -38,6 +41,8 @@ func NewSettingsHanler(
 	apiContext *dto.ContextState,
 	settingService service.SettingServiceInterface,
 	addonsService service.AddonsServiceInterface,
+	haComponentSvc service.HomeAssistantComponentServiceInterface,
+	issueService service.IssueServiceInterface,
 	eventBus events.EventBusInterface,
 	repairService service.RepairServiceInterface,
 	haService service.HomeAssistantServiceInterface,
@@ -47,6 +52,8 @@ func NewSettingsHanler(
 	p.apiContext = apiContext
 	p.settingService = settingService
 	p.addonsService = addonsService
+	p.haComponentSvc = haComponentSvc
+	p.issueService = issueService
 	p.eventBus = eventBus
 	p.repairService = repairService
 	p.haService = haService
@@ -66,9 +73,89 @@ func (self *SettingsHanler) RegisterSettings(api huma.API) {
 	huma.Get(api, "/settings", self.GetSettings, huma.OperationTags("system"))
 	huma.Put(api, "/settings", self.UpdateSettings, huma.OperationTags("system"))
 	huma.Put(api, "/restart", self.RestartAddon, huma.OperationTags("system"))
+	huma.Get(api, "/settings/homeassistant/custom-component/status", self.GetHomeAssistantCustomComponentStatus, huma.OperationTags("system"))
+	huma.Delete(api, "/settings/homeassistant/custom-component", self.UninstallHomeAssistantCustomComponent, huma.OperationTags("system"))
 	huma.Get(api, "/settings/app-config", self.GetAppConfig, huma.OperationTags("system"))
 	huma.Put(api, "/settings/app-config", self.UpdateAppConfig, huma.OperationTags("system"))
 	huma.Get(api, "/settings/app-config/schema", self.GetAppConfigSchema, huma.OperationTags("system"))
+}
+
+// GetHomeAssistantCustomComponentStatus reports install/version/connection state
+// for the SRAT Home Assistant custom component.
+func (self *SettingsHanler) GetHomeAssistantCustomComponentStatus(ctx context.Context, input *struct{}) (*struct {
+	Body dto.HomeAssistantCustomComponentStatus
+}, error) {
+	status, err := self.haComponentSvc.GetStatus()
+	if err != nil {
+		return nil, huma.Error500InternalServerError("Failed to inspect Home Assistant custom component status: %v", err)
+	}
+
+	if self.issueService != nil {
+		syncErr := self.syncHomeAssistantCustomComponentIssue(status)
+		if syncErr != nil {
+			return nil, huma.Error500InternalServerError("Failed to synchronize Home Assistant component issue state: %v", syncErr)
+		}
+	}
+
+	return &struct {
+		Body dto.HomeAssistantCustomComponentStatus
+	}{Body: *status}, nil
+}
+
+func (self *SettingsHanler) UninstallHomeAssistantCustomComponent(ctx context.Context, input *struct{}) (*struct {
+	Body dto.HomeAssistantCustomComponentStatus
+}, error) {
+	err := self.haComponentSvc.Uninstall()
+	if err != nil {
+		return nil, huma.Error500InternalServerError("Failed to uninstall Home Assistant custom component: %v", err)
+	}
+
+	status, err := self.haComponentSvc.GetStatus()
+	if err != nil {
+		return nil, huma.Error500InternalServerError("Failed to inspect Home Assistant custom component status after uninstall: %v", err)
+	}
+
+	if self.issueService != nil {
+		syncErr := self.syncHomeAssistantCustomComponentIssue(status)
+		if syncErr != nil {
+			return nil, huma.Error500InternalServerError("Failed to synchronize Home Assistant component issue state: %v", syncErr)
+		}
+	}
+
+	return &struct {
+		Body dto.HomeAssistantCustomComponentStatus
+	}{Body: *status}, nil
+}
+
+func (self *SettingsHanler) syncHomeAssistantCustomComponentIssue(status *dto.HomeAssistantCustomComponentStatus) error {
+	if status == nil || self.issueService == nil {
+		return nil
+	}
+
+	if !status.Installed && !status.Connected {
+		existing, err := self.issueService.FindByTitle(dto.HomeAssistantComponentMissingIssueTitle)
+		if err != nil {
+			return err
+		}
+		if existing == nil {
+			severity := dto.IssueSeverities.ISSUESEVERITYWARNING
+			return self.issueService.Create(&dto.Issue{
+				Title:          dto.HomeAssistantComponentMissingIssueTitle,
+				Description:    "SRAT custom component is not installed under /config/custom_components/srat and no active websocket connection from Home Assistant is present.",
+				ResolutionLink: dto.HomeAssistantComponentMissingIssueResolutionLink,
+				Severity:       &severity,
+			})
+		}
+
+		return nil
+	}
+
+	err := self.issueService.ResolveByTitle(dto.HomeAssistantComponentMissingIssueTitle)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return err
+	}
+
+	return nil
 }
 
 // RestartAddon triggers a Home Assistant Supervisor restart for the current addon.

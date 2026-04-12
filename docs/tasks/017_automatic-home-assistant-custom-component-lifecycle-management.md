@@ -1,6 +1,6 @@
 # [FEATURE]: Automatic Home Assistant Custom Component Lifecycle Management
 
-**Target Repo:** `srat` **Status:** 📅 Planned **Issue Link:** _TBD_
+**Target Repo:** `srat` **Status:** 🔄 In Progress **Issue Link:** https://github.com/dianlight/srat/issues/565
 
 ## 🎯 Objective
 
@@ -31,21 +31,43 @@ Implement end-to-end custom component lifecycle management for Home Assistant ad
 
 ## 📝 Task List
 
-- [ ] Task 1: Add backend status detection for custom component presence in `/config/custom_components` and installed version from `manifest.json`
-- [ ] Task 2: Add/update backend APIs to expose component status, latest available version, and lifecycle actions (install/upgrade/uninstall)
-- [ ] Task 3: Modify Makefile and release process to ensure `srat.zip` artifact is generated and contains the necessary files for installation (including `manifest.json` with version info)
-- [ ] Task 4: Embed at build time `srat.zip` for installation/upgrade flows
+- [x] Task 0: Design and define the backend logic for detecting custom component presence, version, and connectivity status. Define the issue type for missing+disconnected state with single-notification behavior.
+- [x] Task 1: Add backend status detection for custom component presence in `/config/custom_components` and installed version from `manifest.json`
+- [x] Task 1.5: Migrate issue persistence to the new backend standard by removing the dedicated issue repository layer and using direct `dbom` access from `IssueService`.
+- [ ] Task 2: Add/update backend APIs to expose component status, latest available version, and lifecycle actions (install/upgrade/uninstall) _(status + uninstall endpoints added: install/upgrade actions and latest-version exposure still pending)_
+- [ ] Task 3: Modify Mise and release process to ensure `srat.zip` artifact is generated and contains the necessary files for installation (including `manifest.json` with version info)
+- [ ] Task 4: Embed at build time `srat.zip` in backend for installation/upgrade flows
 - [ ] Task 5: Ensure install/upgrade use the embedded artifact or flow downloads `srat.zip` from configured channel (release/pre-release/develop) and extracts into target directory. Special case for "develop" channel where the source file are located in `/addon_configs/local_sambanas2/upgrade/srat.zip` and should be used directly without download if the version in the manifest is older or equal to the one in the develop channel (use the same rule of other updates).
 - [ ] Task 6: Ensure update flow also works when component is already installed (upgrade-in-place)
-- [ ] Task 7: Add uninstall flow that removes `custom_components/srat` safely and refreshes status
-- [ ] Task 8: Add single-notification issue in `backend/src/dto/issue.go` when component is missing and disconnected. Ensure it does not spam multiple notifications on repeated checks. The issue should include a `ResolutionLink` that opens the dialog flow for installation guidance. This issue should be automatically resolved when the component is detected as installed and connected again. Implement necessary logic to check for existing issues of this type before emitting new ones to prevent duplicates.
-- [ ] Task 9: After install/upgrade/uninstall actions, trigger home assistant core restart confirmation popup in frontend, and only call the restart API if user confirms. Ensure that the status is refreshed after restart to reflect any changes.
+- [x] Task 7: Add uninstall flow that removes `custom_components/srat` safely and refreshes status
+- [x] Task 8: Add single-notification issue in `backend/src/dto/issue.go` when component is missing and disconnected. Ensure it does not spam multiple notifications on repeated checks. The issue should include a `ResolutionLink` that opens the dialog flow for installation guidance. This issue should be automatically resolved when the component is detected as installed and connected again. Implement necessary logic to check for existing issues of this type before emitting new ones to prevent duplicates.
+- [ ] Task 9: After install/upgrade/uninstall actions, add an home assistant repair for required restart like what do HACS.
 - [ ] Task 10: Add frontend buttons in Settings → HomeAssistant for Install/Upgrade/Uninstall with enable/disable state based on current component status and action availability (e.g., disable Install if already installed, disable Upgrade if no newer version, etc.)
 - [ ] Task 11: Ensure all backend/frontend interactions are robust, with proper error handling and user feedback (e.g., show error messages if install/upgrade/uninstall fails, show loading states during operations, etc.)
 - [ ] Task 12: Unit testing (backend detection/actions, issue emission logic, frontend button-state logic)
 - [ ] Task 13: Integration and documentation
+- [ ] Task 14: Final review and testing in staging environment before release
 
 ## 🧠 Implementation Notes (Copilot Context)
+
+- Start-task workflow: linked issue `#565` and switched to branch `feature/automatic-home-assistant-custom-component-lifecycle-management`.
+- Implemented backend status primitives:
+  - Added `HomeAssistantCustomComponentStatus` DTO and custom-components path context support.
+  - Added `HomeAssistantComponentService` to detect install path, parse installed manifest version, and correlate active websocket component connection metadata.
+  - Added settings endpoint `GET /settings/homeassistant/custom-component/status`.
+  - Added targeted tests for service detection and endpoint response behavior.
+- Implemented backend missing+disconnected issue synchronization:
+  - Added canonical issue title + resolution-link constants for SRAT HA custom component missing/disconnected state.
+  - Added `IssueService.FindByTitle(...)` and `IssueService.ResolveByTitle(...)` to support idempotent issue lifecycle control.
+  - Status endpoint now creates the issue only when absent and auto-resolves it once installed or connected again.
+- Migrated issue persistence plumbing to direct DB access in service layer:
+  - `IssueService` now uses direct `dbom.Issue` persistence via the injected `*gorm.DB` + context.
+  - Removed the dedicated `repository/issue_repository.go` abstraction and related test file.
+  - Updated DI wiring and dependent tests to align with the new service-level DB standard.
+- Implemented backend uninstall lifecycle action:
+  - Added `HomeAssistantComponentService.Uninstall()` to remove `custom_components/srat` idempotently.
+  - Added settings endpoint `DELETE /settings/homeassistant/custom-component` that runs uninstall, refreshes status, and re-applies issue sync logic.
+  - Added/updated targeted backend tests covering uninstall service behavior and settings endpoint response.
 
 - The target add-on directory is fixed to `/config/custom_components`.
 - Presence check should validate whether `srat` exists in target directory.
@@ -67,9 +89,10 @@ Implement end-to-end custom component lifecycle management for Home Assistant ad
 ## 🔗 Code References & TODOs
 
 - [ ] `TODO: backend/src/dto/issue.go` - Add issue type/entry for missing+disconnected custom component with single-notification behavior
-- [ ] `TODO: backend/src/homeassistant/core_service.go` - Create and add service logic for filesystem presence/version checks and lifecycle operations
+- [x] `TODO: backend/src/service/homeassistant_component_service.go` - Added service logic for filesystem presence/version checks and websocket connection status correlation
+- [x] `TODO: backend/src/service/issue_service.go` - Added by-title lookup and idempotent resolve path for custom-component issue dedupe/cleanup
 - [ ] `TODO: backend/src/service/*` - Add channel-aware release/pre-release artifact resolution and `srat.zip` download/extract flow
-- [ ] `TODO: backend/src/api/*` - Expose status and install/upgrade/uninstall endpoints (or WebSocket commands) used by frontend
+- [ ] `TODO: backend/src/api/*` - Expose install/upgrade/uninstall endpoints (status + uninstall endpoints implemented in `backend/src/api/setting.go`; install/upgrade pending)
 - [ ] `TODO: frontend/src/pages/settings/*` - Add HomeAssistant section action buttons and state-driven enable/disable logic
 - [ ] `TODO: frontend/src/components/*` - Add resolution dialog and restart confirmation popup integration
 - [ ] `FIXME: frontend/backend contract` - Define explicit response model for installed version, latest version, connectivity, and action availability

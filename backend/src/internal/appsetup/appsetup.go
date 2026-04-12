@@ -22,7 +22,6 @@ import (
 	"github.com/dianlight/srat/homeassistant/websocket"
 	"github.com/dianlight/srat/internal"
 	"github.com/dianlight/srat/internal/commandexec"
-	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
 	servicefilesystem "github.com/dianlight/srat/service/filesystem"
 	"github.com/dianlight/srat/unixsamba"
@@ -90,6 +89,7 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 			*/
 			service.NewAddonsService,
 			service.NewHomeAssistantService,
+			service.NewHomeAssistantComponentService,
 			service.NewBroadcasterService,
 			commandexec.NewCommandExecutor,
 			service.NewVolumeMountManager,
@@ -118,7 +118,6 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 			service.NewHaDiscoveryService,
 			service.NewSettingService,
 			//repository.NewPropertyRepositoryRepository,
-			repository.NewIssueRepository,
 		),
 		fx.Invoke(func(service.AddonConfigWatcherServiceInterface) {}),
 		fx.Invoke(func(commandRunner commandexec.Executor) {
