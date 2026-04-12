@@ -52,6 +52,7 @@ These instructions are the concise, must-follow rules for working in SRAT. Keep 
 ## Testing rules (fast summary)
 
 - **Bug fixes require a failing test first**, then the fix, then re‑run tests.
+- For back-end test failures or new back-end functionality, verify in escalation order: run the specific suite/subtest first, then the full package tests, then `go test ./...` from `backend/src` before finalizing.
 - Frontend tests: use `mise run //frontend:test`, React Testing Library, and **`user-event` only** (no `fireEvent`).
 - Frontend test stability: run `mise run //frontend:test --rerun-each 10` for modified tests.
 
