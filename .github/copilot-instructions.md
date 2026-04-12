@@ -35,6 +35,7 @@ These instructions are the concise, must-follow rules for working in SRAT. Keep 
 
 - Use Bun toolchain (`frontend/`). Build outputs go to `backend/src/web/static`.
 - **Do not** edit `frontend/src/store/sratApi.ts` or `backend/docs/openapi.*` directly—update Go and run `cd frontend && bun run gen`.
+- **Never** manually add types to `frontend/src/store/wsApi.ts`. All types must come from `sratApi.ts`. WS-only event payload types that have no REST endpoint need a doc-stub handler in `backend/src/api/system.go` (tagged `"system","internal"`) referencing the DTO — see `HandleWelcome`/`HandleCommandEvents` for the pattern.
 - MUI Grid: use the `size` prop (Grid2 default).
 
 ## Custom component essentials (Home Assistant)
