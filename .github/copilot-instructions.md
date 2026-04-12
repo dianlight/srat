@@ -28,6 +28,7 @@ These instructions are the concise, must-follow rules for working in SRAT. Keep 
 
 - Use **context‑aware logging** (`slog.*Context`, `tlog.*Context`) when a real `context.Context` is already in scope. Never manufacture a context for logging.
 - Go 1.26 rules: use `new(expr)` for pointer values, use `any` (not `interface{}`), use `WaitGroup.Go`, prefer `errors.AsType[T]` (standard library).
+- Prefer direct persistence in services using `dbom` + GORM (and generated query helpers when available) over introducing new per-entity repository layers, unless a clear documented exception is required.
 - Do **not** edit vendored code unless using the patch workflow (`backend/patches/` + `mise run //backend:patch`).
 
 ## Frontend essentials
