@@ -39,7 +39,7 @@ github.com/Masterminds/sprig/v3
 github.com/adelolmo/hd-idle/diskstats
 github.com/adelolmo/hd-idle/io
 github.com/adelolmo/hd-idle/sgio
-# github.com/air-verse/air v1.65.0
+# github.com/air-verse/air v1.65.1
 ## explicit; go 1.25
 github.com/air-verse/air
 github.com/air-verse/air/runner
@@ -307,8 +307,8 @@ github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen
 github.com/oapi-codegen/oapi-codegen/v2/pkg/codegen
 github.com/oapi-codegen/oapi-codegen/v2/pkg/securityprovider
 github.com/oapi-codegen/oapi-codegen/v2/pkg/util
-# github.com/oapi-codegen/runtime v1.3.1
-## explicit; go 1.24
+# github.com/oapi-codegen/runtime v1.4.0
+## explicit; go 1.24.0
 github.com/oapi-codegen/runtime
 github.com/oapi-codegen/runtime/types
 # github.com/oasdiff/yaml v0.0.0-20260313112342-a3ea61cb4d4c
