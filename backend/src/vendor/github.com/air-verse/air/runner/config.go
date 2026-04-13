@@ -167,7 +167,8 @@ type cfgColor struct {
 }
 
 type cfgMisc struct {
-	CleanOnExit bool `toml:"clean_on_exit" usage:"Delete tmp directory on exit"`
+	CleanOnExit   bool    `toml:"clean_on_exit" usage:"Delete tmp directory on exit"`
+	StartupBanner *string `toml:"startup_banner" usage:"Custom startup banner text; set to empty string to hide banner"`
 }
 
 type cfgScreen struct {
@@ -197,7 +198,39 @@ func (t sliceTransformer) Transformer(typ reflect.Type) func(dst, src reflect.Va
 }
 
 // InitConfig initializes the configuration.
-func InitConfig(path string, cmdArgs map[string]TomlInfo) (cfg *Config, err error) {
+func InitConfig(path string, cmdArgs map[string]TomlInfo) (*Config, error) {
+	ret, err := initConfigWithoutPreprocess(path)
+	if err != nil {
+		return nil, err
+	}
+
+	err = ret.preprocess(cmdArgs)
+	if err != nil {
+		return nil, err
+	}
+	warnDeprecatedBin(ret)
+
+	return ret, nil
+}
+
+// InitConfigForDisplay initializes config without preprocess side effects.
+func InitConfigForDisplay(path string, cmdArgs map[string]TomlInfo) (*Config, error) {
+	ret, err := initConfigWithoutPreprocess(path)
+	if err != nil {
+		return nil, err
+	}
+	if cmdArgs != nil {
+		ret.withArgs(cmdArgs)
+	}
+	return ret, nil
+}
+
+func initConfigWithoutPreprocess(path string) (*Config, error) {
+	var (
+		cfg *Config
+		err error
+	)
+
 	if path == "" {
 		cfg, err = defaultPathConfig()
 		if err != nil {
@@ -226,11 +259,7 @@ func InitConfig(path string, cmdArgs map[string]TomlInfo) (cfg *Config, err erro
 	if err = applyPlatformOverrides(ret); err != nil {
 		return nil, err
 	}
-
-	warnDeprecatedBin(ret)
-
-	err = ret.preprocess(cmdArgs)
-	return ret, err
+	return ret, nil
 }
 
 func writeDefaultConfig() (string, error) {
@@ -281,6 +310,7 @@ func defaultPathConfig() (*Config, error) {
 	}
 
 	dftCfg := defaultConfig()
+	setEntrypointFromBin(&dftCfg)
 	return &dftCfg, nil
 }
 
@@ -587,7 +617,7 @@ func (c *Config) preprocess(args map[string]TomlInfo) error {
 		for idx, expr := range c.Build.ExcludeRegex {
 			re, err := regexp.Compile(expr)
 			if err != nil {
-				return fmt.Errorf("failed to compile regex %s", expr)
+				return fmt.Errorf("failed to compile regex %q: %w", expr, err)
 			}
 			regexCompiled[idx] = re
 		}
@@ -785,5 +815,10 @@ func warnDeprecatedBin(cfg *Config) {
 	if cfg.Build.Bin == "" || len(cfg.Build.Entrypoint) > 0 {
 		return
 	}
+
+	if cfg.Build.Bin != "" && len(cfg.Build.Entrypoint) > 0 {
+		return
+	}
+
 	fmt.Fprintln(os.Stderr, "[warning] build.bin is deprecated; set build.entrypoint instead")
 }
