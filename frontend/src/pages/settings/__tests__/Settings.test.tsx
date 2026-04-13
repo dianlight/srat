@@ -450,6 +450,163 @@ describe("Settings", () => {
         expect(screen.queryAllByRole('button').length).toBeGreaterThan(0);
     });
 
+    it("shows custom component actions with status-driven enablement", async () => {
+        const React = await import("react");
+        const { render, screen, within } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { getMswServer } = await import("../../../../test/bun-setup");
+        const { Settings } = await import("../Settings");
+        const { createTestStore } = await import("../../../../test/setup");
+
+        const server = await getMswServer();
+        server.use(
+            http.get(/.*\/api\/settings\/homeassistant\/custom-component\/status$/, () =>
+                HttpResponse.json({
+                    component: "srat",
+                    install_path: "/config/custom_components/srat",
+                    manifest_path: "/config/custom_components/srat/manifest.json",
+                    installed: true,
+                    connected: false,
+                    can_install: false,
+                    can_upgrade: true,
+                    can_uninstall: true,
+                    installed_version: "2026.04.1",
+                    latest_version: "2026.04.9",
+                })
+            )
+        );
+
+        const store = await createTestStore();
+        const theme = createTheme();
+
+        render(
+            React.createElement(
+                Provider,
+                {
+                    store, children:
+                        React.createElement(
+                            ThemeProvider,
+                            { theme },
+                            React.createElement(Settings as any)
+                        )
+                }
+            )
+        );
+
+        const user = userEvent.setup();
+        const homeAssistantTreeItem = await screen.findByRole("treeitem", { name: /homeassistant/i });
+        await user.click(within(homeAssistantTreeItem).getByText(/homeassistant/i));
+
+        const installButton = await screen.findByRole("button", { name: /^install$/i });
+        const upgradeButton = await screen.findByRole("button", { name: /^upgrade$/i });
+        const uninstallButton = await screen.findByRole("button", { name: /^uninstall$/i });
+
+        expect((installButton as HTMLButtonElement).disabled).toBe(true);
+        expect((upgradeButton as HTMLButtonElement).disabled).toBe(false);
+        expect((uninstallButton as HTMLButtonElement).disabled).toBe(false);
+    });
+
+    it("shows custom component status error feedback", async () => {
+        const React = await import("react");
+        const { render, screen, within } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { getMswServer } = await import("../../../../test/bun-setup");
+        const { Settings } = await import("../Settings");
+        const { createTestStore } = await import("../../../../test/setup");
+
+        const server = await getMswServer();
+        server.use(
+            http.get(/.*\/api\/settings\/homeassistant\/custom-component\/status$/, () =>
+                HttpResponse.json({ message: "status unavailable" }, { status: 500 })
+            )
+        );
+
+        const store = await createTestStore();
+        const theme = createTheme();
+
+        render(
+            React.createElement(
+                Provider,
+                {
+                    store, children:
+                        React.createElement(
+                            ThemeProvider,
+                            { theme },
+                            React.createElement(Settings as any)
+                        )
+                }
+            )
+        );
+
+        const user = userEvent.setup();
+        const homeAssistantTreeItem = await screen.findByRole("treeitem", { name: /homeassistant/i });
+        await user.click(within(homeAssistantTreeItem).getByText(/homeassistant/i));
+
+        expect(await screen.findByText(/status unavailable/i)).toBeTruthy();
+    });
+
+    it("shows custom component action failure feedback", async () => {
+        const React = await import("react");
+        const { render, screen, within } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { getMswServer } = await import("../../../../test/bun-setup");
+        const { Settings } = await import("../Settings");
+        const { createTestStore } = await import("../../../../test/setup");
+
+        const server = await getMswServer();
+        server.use(
+            http.get(/.*\/api\/settings\/homeassistant\/custom-component\/status$/, () =>
+                HttpResponse.json({
+                    component: "srat",
+                    install_path: "/config/custom_components/srat",
+                    manifest_path: "/config/custom_components/srat/manifest.json",
+                    installed: false,
+                    connected: false,
+                    can_install: true,
+                    can_upgrade: false,
+                    can_uninstall: false,
+                    installed_version: "",
+                    latest_version: "2026.04.9",
+                })
+            ),
+            http.post(/.*\/api\/settings\/homeassistant\/custom-component\/install$/, () =>
+                HttpResponse.json({ message: "install failed" }, { status: 500 })
+            )
+        );
+
+        const store = await createTestStore();
+        const theme = createTheme();
+
+        render(
+            React.createElement(
+                Provider,
+                {
+                    store, children:
+                        React.createElement(
+                            ThemeProvider,
+                            { theme },
+                            React.createElement(Settings as any)
+                        )
+                }
+            )
+        );
+
+        const user = userEvent.setup();
+        const homeAssistantTreeItem = await screen.findByRole("treeitem", { name: /homeassistant/i });
+        await user.click(within(homeAssistantTreeItem).getByText(/homeassistant/i));
+
+        const installButton = await screen.findByRole("button", { name: /^install$/i });
+        await user.click(installButton);
+
+        expect(await screen.findByText(/install failed/i)).toBeTruthy();
+    });
+
     it("renders disable smart toggle with default false", async () => {
         const React = await import("react");
         const { render, screen, within } = await import("@testing-library/react");

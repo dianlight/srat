@@ -10,6 +10,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import SecurityIcon from "@mui/icons-material/Security";
 import TuneIcon from "@mui/icons-material/Tune";
 import {
+  Alert,
   Box,
   CircularProgress,
   Drawer,
@@ -41,17 +42,24 @@ import { getCurrentEnv } from "../../macro/Environment" with { type: "macro" };
 import { TabIDs } from "../../store/locationState";
 import {
   type Settings as ApiSettings,
+  type HomeAssistantCustomComponentStatus,
   type InterfaceStat,
   type SystemCapabilities,
+  sratApi,
   Telemetry_mode,
+  useDeleteApiSettingsHomeassistantCustomComponentMutation,
   useGetApiCapabilitiesQuery,
   useGetApiHostnameQuery,
   useGetApiNicsQuery,
+  useGetApiSettingsHomeassistantCustomComponentStatusQuery,
   useGetApiSettingsQuery,
   useGetApiTelemetryInternetConnectionQuery,
   useGetApiTelemetryModesQuery,
+  usePostApiSettingsHomeassistantCustomComponentInstallMutation,
+  usePostApiSettingsHomeassistantCustomComponentUpgradeMutation,
   usePutApiSettingsMutation,
 } from "../../store/sratApi";
+import { useAppDispatch } from "../../store/store";
 import { useGetServerEventsQuery } from "../../store/wsApi";
 import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
 import { AppConfigurationPanel } from "./AppConfigurationPanel";
@@ -184,6 +192,211 @@ const buildSettingsTree = (): SettingTreeNode[] => {
 
   return tree;
 };
+
+function HomeAssistantCustomComponentPanel({
+  readOnly,
+}: {
+  readOnly: boolean;
+}) {
+  const dispatch = useAppDispatch();
+  const {
+    data: statusResponse,
+    isLoading,
+    isFetching,
+    refetch,
+    error: statusError,
+  } = useGetApiSettingsHomeassistantCustomComponentStatusQuery();
+  const [installComponent, installState] =
+    usePostApiSettingsHomeassistantCustomComponentInstallMutation();
+  const [upgradeComponent, upgradeState] =
+    usePostApiSettingsHomeassistantCustomComponentUpgradeMutation();
+  const [uninstallComponent, uninstallState] =
+    useDeleteApiSettingsHomeassistantCustomComponentMutation();
+  const [actionFeedback, setActionFeedback] = useState<{
+    severity: "success" | "error";
+    message: string;
+  } | null>(null);
+
+  const status =
+    statusResponse && "component" in statusResponse
+      ? (statusResponse as HomeAssistantCustomComponentStatus)
+      : undefined;
+
+  const isBusy =
+    installState.isLoading ||
+    upgradeState.isLoading ||
+    uninstallState.isLoading ||
+    isFetching;
+
+  const extractErrorMessage = (error: unknown, fallback: string): string => {
+    if (!error || typeof error !== "object") {
+      return fallback;
+    }
+
+    if ("error" in error && typeof error.error === "string") {
+      return error.error;
+    }
+
+    if ("data" in error && error.data && typeof error.data === "object") {
+      const data = error.data as { message?: string; error?: string };
+      if (typeof data.message === "string") {
+        return data.message;
+      }
+      if (typeof data.error === "string") {
+        return data.error;
+      }
+    }
+
+    if ("message" in error && typeof error.message === "string") {
+      return error.message;
+    }
+
+    return fallback;
+  };
+
+  const handleInstall = async () => {
+    setActionFeedback(null);
+    try {
+      await installComponent().unwrap();
+      await refetch();
+      dispatch(sratApi.util.invalidateTags(["Issues"]));
+      setActionFeedback({
+        severity: "success",
+        message: "Custom component installed successfully.",
+      });
+    } catch (error) {
+      setActionFeedback({
+        severity: "error",
+        message: extractErrorMessage(
+          error,
+          "Failed to install custom component.",
+        ),
+      });
+    }
+  };
+
+  const handleUpgrade = async () => {
+    setActionFeedback(null);
+    try {
+      await upgradeComponent().unwrap();
+      await refetch();
+      dispatch(sratApi.util.invalidateTags(["Issues"]));
+      setActionFeedback({
+        severity: "success",
+        message: "Custom component upgraded successfully.",
+      });
+    } catch (error) {
+      setActionFeedback({
+        severity: "error",
+        message: extractErrorMessage(
+          error,
+          "Failed to upgrade custom component.",
+        ),
+      });
+    }
+  };
+
+  const handleUninstall = async () => {
+    setActionFeedback(null);
+    try {
+      await uninstallComponent().unwrap();
+      await refetch();
+      dispatch(sratApi.util.invalidateTags(["Issues"]));
+      setActionFeedback({
+        severity: "success",
+        message: "Custom component uninstalled successfully.",
+      });
+    } catch (error) {
+      setActionFeedback({
+        severity: "error",
+        message: extractErrorMessage(
+          error,
+          "Failed to uninstall custom component.",
+        ),
+      });
+    }
+  };
+
+  return (
+    <Paper variant="outlined" sx={{ p: 2 }}>
+      <Stack spacing={1.5}>
+        <Typography variant="subtitle1">SRAT Custom Component</Typography>
+
+        {isLoading ? (
+          <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+            <CircularProgress size={16} />
+            <Typography variant="body2" color="text.secondary">
+              Loading custom component status…
+            </Typography>
+          </Stack>
+        ) : (
+          <Stack spacing={0.5}>
+            {statusError ? (
+              <Alert severity="error">
+                {extractErrorMessage(
+                  statusError,
+                  "Unable to load custom component status.",
+                )}
+              </Alert>
+            ) : null}
+            <Typography variant="body2">
+              Installed: <strong>{status?.installed ? "Yes" : "No"}</strong>
+            </Typography>
+            <Typography variant="body2">
+              Connected: <strong>{status?.connected ? "Yes" : "No"}</strong>
+            </Typography>
+            <Typography variant="body2">
+              Installed Version:{" "}
+              <strong>{status?.installed_version || "—"}</strong>
+            </Typography>
+            <Typography variant="body2">
+              Latest Version: <strong>{status?.latest_version || "—"}</strong>
+            </Typography>
+            {isBusy ? <Alert severity="info">Processing request…</Alert> : null}
+            {actionFeedback ? (
+              <Alert severity={actionFeedback.severity}>
+                {actionFeedback.message}
+              </Alert>
+            ) : null}
+          </Stack>
+        )}
+
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+          <Button
+            variant="outlined"
+            color="success"
+            disabled={readOnly || isBusy || !status?.can_install}
+            onClick={() => {
+              void handleInstall();
+            }}
+          >
+            {installState.isLoading ? "Installing…" : "Install"}
+          </Button>
+          <Button
+            variant="outlined"
+            color="warning"
+            disabled={readOnly || isBusy || !status?.can_upgrade}
+            onClick={() => {
+              void handleUpgrade();
+            }}
+          >
+            {upgradeState.isLoading ? "Upgrading…" : "Upgrade"}
+          </Button>
+          <Button
+            variant="outlined"
+            color="error"
+            disabled={readOnly || isBusy || !status?.can_uninstall}
+            onClick={() => {
+              void handleUninstall();
+            }}
+          >
+            {uninstallState.isLoading ? "Uninstalling…" : "Uninstall"}
+          </Button>
+        </Stack>
+      </Stack>
+    </Paper>
+  );
+}
 
 export function Settings() {
   const [selectedSetting, setSelectedSetting] = useState<string | null>(
@@ -376,6 +589,11 @@ export function Settings() {
               {subCategories.map((field) => (
                 <Box key={field}>{renderSettingField(field)}</Box>
               ))}
+              {settingName === "homeassistant" ? (
+                <HomeAssistantCustomComponentPanel
+                  readOnly={Boolean(evdata?.hello?.read_only)}
+                />
+              ) : null}
             </Stack>
           );
         }

@@ -21,7 +21,6 @@ clean = "find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true 
 fix = "ruff check --fix srat tests && ruff format srat tests"
 format = "ruff format srat tests"
 format-check = "ruff format --check srat tests"
-install = "pip install -r requirements_dev.txt"
 #install-remote = "rsync -rvuzP --del ./srat ${HOMEASSISTANT_IP}:/config/custom_components"
 lint = "ruff check srat tests"
 #mount-remote = "umount -l /mnt/remote2 > /dev/null 2>&1 || : && mkdir -p /mnt/remote2 > /dev/null 2>&1 || : && sshfs -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3 ${HOMEASSISTANT_IP}:/config/custom_components /mnt/remote2"
@@ -31,10 +30,30 @@ typecheck = "mypy srat"
 [tasks."package-hacs"]
 usage = '''
 flag "--output [output]" help="Output zip path" default="/tmp/build_artifacts/srat.zip"
+flag "--version [version]" help="Version to inject into manifest.json (e.g. 2026.4.0)" default=""
 '''
 run = [
     "mkdir -p $(dirname \"${usage_output?}\")",
-    "zip -r \"${usage_output?}\" srat -x 'srat/__pycache__/*' 'srat/*.pyc'",
+    '''
+      set -e
+      OUTPUT=$(cd "$(dirname "${usage_output?}")" && pwd)/$(basename "${usage_output?}")
+      TMPDIR=$(mktemp -d)
+      trap "rm -rf $TMPDIR" EXIT
+      cp -r srat "$TMPDIR/"
+      if [ -n "${usage_version:-}" ]; then
+        python3 -c "
+import json
+path = '$TMPDIR/srat/manifest.json'
+with open(path) as f:
+    d = json.load(f)
+d['version'] = '${usage_version}'
+with open(path, 'w') as f:
+    json.dump(d, f, indent=2)
+print('Injected manifest version: ${usage_version}')
+"
+      fi
+      (cd "$TMPDIR" && zip -r "$OUTPUT" srat -x "srat/__pycache__/*" "srat/*.pyc")
+    ''',
     "echo \"HACS component zip created at ${usage_output?}\"",
     "unzip -l \"${usage_output?}\"",
 ]
@@ -55,3 +74,7 @@ quiet = true
 [tasks."test:ci"]
 alias = "test-ci"
 run = "python -m pytest tests -v -c pyproject.toml --cov=srat --cov-report=xml:coverage.xml"
+
+[tasks.prepare]
+alias = "install-dev"
+run = "pip install -r requirements_dev.txt"

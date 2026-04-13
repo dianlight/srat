@@ -796,6 +796,7 @@ func (s *stubHAService) CreatePersistentNotification(id, title, msg string) erro
 	return nil
 }
 func (s *stubHAService) DismissPersistentNotification(_ string) error { return nil }
+func (s *stubHAService) RestartHomeAssistant(_ context.Context) error { return nil }
 
 // TestIntegration_EndToEnd_FileWriteEmitsAppConfigEvent verifies the full end-to-end flow:
 // 1. Write to options file on disk

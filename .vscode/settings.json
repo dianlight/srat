@@ -268,7 +268,7 @@
 	"vale.enableSpellcheck": true,
 	"vale.valeCLI.syncOnStartup": true,
 	"vale.readabilityProblemLocation": "both",
-	"go.lintTool": "golangci-lint",
+	"go.lintTool": "golangci-lint-v2",
 	"go.lintFlags": [
 		"--path-mode=abs",
 		"--fast-only"

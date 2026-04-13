@@ -30,6 +30,7 @@ func (self *SystemHanler) RegisterSystemHanler(api huma.API) {
 	huma.Get(api, "/welcome", self.HandleWelcome, huma.OperationTags("system", "internal"))
 	huma.Get(api, "/appconfig", self.HandleAppConfig, huma.OperationTags("system", "internal"))
 	huma.Get(api, "/command_output", self.HandleCommandOutput, huma.OperationTags("system", "internal"))
+	huma.Get(api, "/command_events", self.HandleCommandEvents, huma.OperationTags("system", "internal"))
 	huma.Get(api, "/nics", self.GetNICsHandler, huma.OperationTags("system"))
 	huma.Get(api, "/hostname", self.GetHostnameHandler, huma.OperationTags("system"))
 	huma.Get(api, "/capabilities", self.GetCapabilitiesHandler, huma.OperationTags("system"))
@@ -43,6 +44,20 @@ func (self *SystemHanler) HandleAppConfig(ctx context.Context, input *struct{}) 
 	Body dto.AppConfigChangedNotification
 }, error) {
 	return nil, huma.Error500InternalServerError("App configuration not available", nil)
+}
+
+// HandleCommandEvents is a documentation-only stub that anchors the WebSocket command event
+// schemas (CommandStartedNotification, CommandOutputNotification, CommandTerminatedNotification)
+// into the OpenAPI spec so they are code-generated into the frontend TypeScript types.
+// Actual command events are delivered over the WebSocket connection.
+func (self *SystemHanler) HandleCommandEvents(ctx context.Context, input *struct{}) (*struct {
+	Body struct {
+		Started    *dto.CommandStartedNotification    `json:"started,omitempty"`
+		Output     *dto.CommandOutputNotification     `json:"output,omitempty"`
+		Terminated *dto.CommandTerminatedNotification `json:"terminated,omitempty"`
+	}
+}, error) {
+	return nil, huma.Error500InternalServerError("Use WebSocket for command events", nil)
 }
 
 func (self *SystemHanler) HandleCommandOutput(ctx context.Context, input *struct {

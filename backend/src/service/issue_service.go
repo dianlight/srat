@@ -54,14 +54,16 @@ func (s *IssueService) Create(issue *dto.Issue) error {
 	return nil
 }
 
-// Resolve resolves an issue.
+// Resolve resolves an issue by hard-deleting it to avoid unique-index conflicts
+// when the same issue title may need to be re-created later.
 func (s *IssueService) Resolve(id uint) error {
-	return s.db.WithContext(s.ctx).Delete(&dbom.Issue{}, id).Error
+	return s.db.WithContext(s.ctx).Unscoped().Delete(&dbom.Issue{}, id).Error
 }
 
-// ResolveByTitle resolves an issue by title if present.
+// ResolveByTitle resolves an issue by title if present, using a hard delete to
+// avoid unique-index conflicts when re-creating the same issue title later.
 func (s *IssueService) ResolveByTitle(title string) error {
-	result := s.db.WithContext(s.ctx).Where("title = ?", title).Delete(&dbom.Issue{})
+	result := s.db.WithContext(s.ctx).Unscoped().Where("title = ?", title).Delete(&dbom.Issue{})
 	if result.Error != nil {
 		return result.Error
 	}

@@ -118,7 +118,7 @@ The next goal is end-to-end coherence from adapter capability detection to user 
   - Backend targeted test: `go test ./api -run 'TestFilesystemHandlerSuite/(TestGetFilesystemSupport_MultiFilesystemCapabilityProfiles|TestGetFilesystemSupport_Success|TestGetFilesystemSupport_UnsupportedFsType)'` ✅
   - Frontend targeted tests: `FilesystemCheckDialog.test.tsx` + `FilesystemLabelFormatDialog.test.tsx` => 10/10 passing ✅
 - Task 13 quality-gate run:
-  - Installed missing local toolchain dependencies for checks via `cd custom_components && mise install` (added `ruff` in this container).
+  - Installed missing local toolchain dependencies for checks via `cd custom_components && mise install-dev` (added `ruff` in this container).
   - `hk check --all --check` now runs but fails at repository-root `gomod-tidy` because Go module root is `backend/src` (no top-level `go.mod`).
   - Validated current modified file set with check-mode hook run: `HK_FIX=0 hk check docs/tasks/001_fsck-disk-check-tools-integration.md` ✅ (`lychee`, `markdownlint-cli2` passed).
 - Task 14 remote end-to-end validation (HA test environment):

@@ -32,13 +32,22 @@ const injectedRtkApi = api
         query: () => ({ url: `/api/capabilities` }),
         providesTags: ["system"],
       }),
+      getApiCommandEvents: build.query<
+        GetApiCommandEventsApiResponse,
+        GetApiCommandEventsApiArg
+      >({
+        query: () => ({ url: `/api/command_events` }),
+        providesTags: ["system", "internal"],
+      }),
       getApiCommandOutput: build.query<
         GetApiCommandOutputApiResponse,
         GetApiCommandOutputApiArg
       >({
         query: (queryArg) => ({
           url: `/api/command_output`,
-          body: queryArg.getCommandOutputRequest,
+          params: {
+            execution_id: queryArg.executionId,
+          },
         }),
         providesTags: ["system", "internal"],
       }),
@@ -453,6 +462,45 @@ const injectedRtkApi = api
         query: () => ({ url: `/api/settings/app-config/schema` }),
         providesTags: ["system"],
       }),
+      deleteApiSettingsHomeassistantCustomComponent: build.mutation<
+        DeleteApiSettingsHomeassistantCustomComponentApiResponse,
+        DeleteApiSettingsHomeassistantCustomComponentApiArg
+      >({
+        query: () => ({
+          url: `/api/settings/homeassistant/custom-component`,
+          method: "DELETE",
+        }),
+        invalidatesTags: ["system"],
+      }),
+      postApiSettingsHomeassistantCustomComponentInstall: build.mutation<
+        PostApiSettingsHomeassistantCustomComponentInstallApiResponse,
+        PostApiSettingsHomeassistantCustomComponentInstallApiArg
+      >({
+        query: () => ({
+          url: `/api/settings/homeassistant/custom-component/install`,
+          method: "POST",
+        }),
+        invalidatesTags: ["system"],
+      }),
+      getApiSettingsHomeassistantCustomComponentStatus: build.query<
+        GetApiSettingsHomeassistantCustomComponentStatusApiResponse,
+        GetApiSettingsHomeassistantCustomComponentStatusApiArg
+      >({
+        query: () => ({
+          url: `/api/settings/homeassistant/custom-component/status`,
+        }),
+        providesTags: ["system"],
+      }),
+      postApiSettingsHomeassistantCustomComponentUpgrade: build.mutation<
+        PostApiSettingsHomeassistantCustomComponentUpgradeApiResponse,
+        PostApiSettingsHomeassistantCustomComponentUpgradeApiArg
+      >({
+        query: () => ({
+          url: `/api/settings/homeassistant/custom-component/upgrade`,
+          method: "POST",
+        }),
+        invalidatesTags: ["system"],
+      }),
       postApiShare: build.mutation<PostApiShareApiResponse, PostApiShareApiArg>(
         {
           query: (queryArg) => ({
@@ -665,10 +713,16 @@ export type GetApiCapabilitiesApiResponse = /** status 200 OK */
   | SystemCapabilities
   | /** status default Error */ ErrorModel;
 export type GetApiCapabilitiesApiArg = void;
-export type GetApiCommandOutputApiResponse =
-  /** status default Error */ ErrorModel;
+export type GetApiCommandEventsApiResponse = /** status 200 OK */
+  | GetCommandEventsResponse
+  | /** status default Error */ ErrorModel;
+export type GetApiCommandEventsApiArg = void;
+export type GetApiCommandOutputApiResponse = /** status 200 OK */
+  | CommandExecutionSnapshot
+  | /** status default Error */ ErrorModel;
 export type GetApiCommandOutputApiArg = {
-  getCommandOutputRequest: GetCommandOutputRequest;
+  /** Command execution ID to inspect */
+  executionId?: string;
 };
 export type GetApiDiskByDiskIdHdidleConfigApiResponse = /** status 200 OK */
   | HdIdleDevice
@@ -930,6 +984,26 @@ export type GetApiSettingsAppConfigSchemaApiResponse = /** status 200 OK */
   | AppConfigSchema
   | /** status default Error */ ErrorModel;
 export type GetApiSettingsAppConfigSchemaApiArg = void;
+export type DeleteApiSettingsHomeassistantCustomComponentApiResponse =
+  /** status 200 OK */
+    | HomeAssistantCustomComponentStatus
+    | /** status default Error */ ErrorModel;
+export type DeleteApiSettingsHomeassistantCustomComponentApiArg = void;
+export type PostApiSettingsHomeassistantCustomComponentInstallApiResponse =
+  /** status 200 OK */
+    | HomeAssistantCustomComponentStatus
+    | /** status default Error */ ErrorModel;
+export type PostApiSettingsHomeassistantCustomComponentInstallApiArg = void;
+export type GetApiSettingsHomeassistantCustomComponentStatusApiResponse =
+  /** status 200 OK */
+    | HomeAssistantCustomComponentStatus
+    | /** status default Error */ ErrorModel;
+export type GetApiSettingsHomeassistantCustomComponentStatusApiArg = void;
+export type PostApiSettingsHomeassistantCustomComponentUpgradeApiResponse =
+  /** status 200 OK */
+    | HomeAssistantCustomComponentStatus
+    | /** status default Error */ ErrorModel;
+export type PostApiSettingsHomeassistantCustomComponentUpgradeApiArg = void;
 export type PostApiShareApiResponse = /** status 200 OK */
   | SharedResource
   | /** status default Error */ ErrorModel;
@@ -1117,25 +1191,6 @@ export type CommandOutputNotification = {
   line: string;
   timestamp: number;
 };
-export type CommandOutputLineSnapshot = {
-  channel: string;
-  line: string;
-  timestamp: number;
-};
-export type CommandExecutionSnapshot = {
-  args?: string[] | null;
-  command: string;
-  command_id: string;
-  error?: string;
-  execution_id: string;
-  exit_code?: number;
-  finished_at?: number;
-  label?: string;
-  lines: CommandOutputLineSnapshot[] | null;
-  running: boolean;
-  started_at: number;
-  success: boolean;
-};
 export type CommandStartedNotification = {
   args?: string[] | null;
   command: string;
@@ -1152,13 +1207,33 @@ export type CommandTerminatedNotification = {
   finished_at: number;
   success: boolean;
 };
-export type GetCommandOutputRequest = {
+export type GetCommandEventsResponse = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
-  CommandOutputEvent: CommandOutputNotification;
-  CommandSessionState: CommandExecutionSnapshot;
-  CommandStartedEvent: CommandStartedNotification;
-  CommandTerminatedEvent: CommandTerminatedNotification;
+  output?: CommandOutputNotification;
+  started?: CommandStartedNotification;
+  terminated?: CommandTerminatedNotification;
+};
+export type CommandOutputLineSnapshot = {
+  channel: string;
+  line: string;
+  timestamp: number;
+};
+export type CommandExecutionSnapshot = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  args?: string[] | null;
+  command: string;
+  command_id: string;
+  error?: string;
+  execution_id: string;
+  exit_code?: number;
+  finished_at?: number;
+  label?: string;
+  lines: CommandOutputLineSnapshot[] | null;
+  running: boolean;
+  started_at: number;
+  success: boolean;
 };
 export type HdIdleDevice = {
   /** A URL to the JSON Schema for this object. */
@@ -1739,6 +1814,24 @@ export type AppConfigSchema = {
   long_description?: string;
   requires_restart: boolean;
 };
+export type HomeAssistantCustomComponentStatus = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  can_install: boolean;
+  can_uninstall: boolean;
+  can_upgrade: boolean;
+  component: string;
+  connected: boolean;
+  connected_at?: string;
+  connected_version?: string;
+  entry_id?: string;
+  ha_version?: string;
+  install_path: string;
+  installed: boolean;
+  installed_version?: string;
+  latest_version?: string;
+  manifest_path: string;
+};
 export type MountPointData = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
@@ -2003,6 +2096,7 @@ export enum Update_channel {
 export const {
   useGetApiAppconfigQuery,
   useGetApiCapabilitiesQuery,
+  useGetApiCommandEventsQuery,
   useGetApiCommandOutputQuery,
   useGetApiDiskByDiskIdHdidleConfigQuery,
   usePatchApiDiskByDiskIdHdidleConfigMutation,
@@ -2050,6 +2144,10 @@ export const {
   usePatchApiSettingsAppConfigMutation,
   usePutApiSettingsAppConfigMutation,
   useGetApiSettingsAppConfigSchemaQuery,
+  useDeleteApiSettingsHomeassistantCustomComponentMutation,
+  usePostApiSettingsHomeassistantCustomComponentInstallMutation,
+  useGetApiSettingsHomeassistantCustomComponentStatusQuery,
+  usePostApiSettingsHomeassistantCustomComponentUpgradeMutation,
   usePostApiShareMutation,
   useDeleteApiShareByShareNameMutation,
   useGetApiShareByShareNameQuery,

@@ -23,8 +23,12 @@ type HomeAssistantCustomComponentStatus struct {
 	ManifestPath     string     `json:"manifest_path"`
 	Installed        bool       `json:"installed"`
 	InstalledVersion *string    `json:"installed_version,omitempty"`
+	LatestVersion    *string    `json:"latest_version,omitempty"`
 	Connected        bool       `json:"connected"`
 	ConnectedVersion *string    `json:"connected_version,omitempty"`
+	CanInstall       bool       `json:"can_install"`
+	CanUpgrade       bool       `json:"can_upgrade"`
+	CanUninstall     bool       `json:"can_uninstall"`
 	ConnectedAt      *time.Time `json:"connected_at,omitempty"`
 	HAVersion        *string    `json:"ha_version,omitempty"`
 	EntryID          *string    `json:"entry_id,omitempty"`

@@ -2,10 +2,12 @@ package server
 
 import (
 	"maps"
+	"reflect"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humamux"
 	"github.com/danielgtaylor/huma/v2/autopatch"
+	"github.com/dianlight/srat/dto"
 	"github.com/gorilla/mux"
 	"go.uber.org/fx"
 )
@@ -103,6 +105,26 @@ func NewHumaAPI(v struct {
 		huma.AutoRegister(apigroup, route)
 	}
 	autopatch.AutoPatch(apigroup)
+
+	// Register all WebSocket event payload types in the schema registry so they
+	// appear in the generated OpenAPI spec and are available as TypeScript types
+	// in the frontend (via sratApi.ts codegen).
+	registry := apigroup.OpenAPI().Components.Schemas
+	for _, v := range dto.WebEventMap {
+		t := reflect.TypeOf(v)
+		if t == nil {
+			continue
+		}
+		// Unwrap pointer and slice indirections to reach the element type.
+		for t.Kind() == reflect.Ptr || t.Kind() == reflect.Slice {
+			t = t.Elem()
+		}
+		if t.Kind() == reflect.Struct {
+			// registry.Schema with allowRef=true registers the type in the
+			// components/schemas map so it appears in the generated OpenAPI spec.
+			registry.Schema(t, true, "")
+		}
+	}
 
 	return apigroup
 }

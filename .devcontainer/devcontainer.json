@@ -76,9 +76,9 @@
 				"terminal.integrated.defaultProfile.linux": "zsh",
 				"go.toolsManagement.checkForUpdates": "local",
 				"go.useLanguageServer": true,
-				"go.lintTool": "golangci-lint",
+				"go.lintTool": "golangci-lint-v2",
 				"go.lintFlags": [
-					"--fast"
+					"--fast-only"
 				]
 			},
 			"terminal.integrated.defaultProfile.linux": "zsh",

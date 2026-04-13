@@ -28,12 +28,12 @@ func TestWsMessageSenderSuite(t *testing.T) {
 
 func (suite *WsMessageSenderSuite) SetupTest() {
 	mockController := mock.NewMockController(suite.T())
-	suite.hanlder = api.NewWebSocketBroker(
-		suite.T().Context(),
-		mock.Mock[service.BroadcasterServiceInterface](mockController),
-		service.NewRepairService(suite.T().Context(), &dto.ContextState{}),
-		&dto.ContextState{},
-	)
+	suite.hanlder = api.NewWebSocketBroker(api.WebSocketHandlerParams{
+		Ctx:           suite.T().Context(),
+		Broadcaster:   mock.Mock[service.BroadcasterServiceInterface](mockController),
+		RepairService: service.NewRepairService(suite.T().Context(), &dto.ContextState{}),
+		State:         &dto.ContextState{},
+	})
 	//suite.mockConn = mock.Mock[*websocket.Conn](mockController)
 	suite.wsMessageSender = &api.WsMessageSender{
 		//Connection: suite.mockConn,

@@ -179,7 +179,9 @@ export function DashboardActions() {
             {!is_inLoading &&
               issues &&
               Array.isArray(issues) &&
-              issues.map((issue) => (
+              (
+                issues.filter(Boolean) as NonNullable<(typeof issues)[number]>[]
+              ).map((issue) => (
                 <IssueCard
                   key={issue.id}
                   issue={issue}

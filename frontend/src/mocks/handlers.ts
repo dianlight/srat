@@ -1261,12 +1261,20 @@ export function getGetApiHostnamedefaultResponse() {
 }
 
 export function getGetIssues200Response() {
-	return faker.helpers.arrayElement([
-		[
-			...new Array(faker.number.int({ min: 1, max: MAX_ARRAY_LENGTH })).keys(),
-		].map((_) => null),
-		null,
-	]);
+	return [
+		...new Array(faker.number.int({ min: 0, max: MAX_ARRAY_LENGTH })).keys(),
+	].map((_) => ({
+		$schema: faker.internet.url(),
+		date: faker.date.past(),
+		description: faker.lorem.words(),
+		detailLink: faker.lorem.words(),
+		id: faker.number.int(),
+		ignored: faker.datatype.boolean(),
+		repeating: faker.number.int(),
+		resolutionLink: faker.lorem.words(),
+		severity: faker.helpers.arrayElement(["error", "warning", "info", "success"]),
+		title: faker.lorem.words(),
+	}));
 }
 
 export function getGetIssues4XxResponse() {

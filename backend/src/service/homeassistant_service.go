@@ -25,6 +25,7 @@ type HomeAssistantServiceInterface interface {
 	SendDiskHealthEntities(diskHealth *dto.DiskHealth) error
 	CreatePersistentNotification(notificationID, title, message string) error
 	DismissPersistentNotification(notificationID string) error
+	RestartHomeAssistant(ctx context.Context) error
 }
 
 type HomeAssistantService struct {
@@ -638,6 +639,26 @@ func (s *HomeAssistantService) DismissPersistentNotification(notificationID stri
 	s.notificationTrackerLock.Unlock()
 
 	slog.DebugContext(s.ctx, "Dismissed persistent notification in Home Assistant", "notification_id", notificationID)
+	return nil
+}
+
+// RestartHomeAssistant sends a homeassistant.restart service call via the HA core API.
+func (s *HomeAssistantService) RestartHomeAssistant(ctx context.Context) error {
+	if s.coreClient == nil {
+		slog.DebugContext(ctx, "Skipping Home Assistant restart - no core API client available")
+		return nil
+	}
+
+	resp, err := s.coreClient.CallServiceWithResponse(ctx, "homeassistant", "restart", core_api.ServiceData{})
+	if err != nil {
+		return errors.Wrap(err, "failed to call homeassistant.restart service")
+	}
+
+	if resp.HTTPResponse.StatusCode < 200 || resp.HTTPResponse.StatusCode >= 300 {
+		return errors.Errorf("homeassistant.restart returned HTTP %d", resp.HTTPResponse.StatusCode)
+	}
+
+	slog.InfoContext(ctx, "Home Assistant restart requested via core API")
 	return nil
 }
 

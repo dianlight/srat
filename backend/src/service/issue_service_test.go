@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"strconv"
 	"testing"
 	"time"
@@ -27,7 +28,8 @@ func TestIssueServiceSuite(t *testing.T) {
 }
 
 func (suite *IssueServiceSuite) SetupTest() {
-	gdb, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	dsn := fmt.Sprintf("file:issue-service-%d?mode=memory&cache=shared", time.Now().UnixNano())
+	gdb, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
 	suite.Require().NoError(err)
 	suite.Require().NoError(gdb.AutoMigrate(&dbom.Issue{}))
 

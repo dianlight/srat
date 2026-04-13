@@ -34,19 +34,20 @@ Implement end-to-end custom component lifecycle management for Home Assistant ad
 - [x] Task 0: Design and define the backend logic for detecting custom component presence, version, and connectivity status. Define the issue type for missing+disconnected state with single-notification behavior.
 - [x] Task 1: Add backend status detection for custom component presence in `/config/custom_components` and installed version from `manifest.json`
 - [x] Task 1.5: Migrate issue persistence to the new backend standard by removing the dedicated issue repository layer and using direct `dbom` access from `IssueService`.
-- [ ] Task 2: Add/update backend APIs to expose component status, latest available version, and lifecycle actions (install/upgrade/uninstall) _(status + uninstall endpoints added: install/upgrade actions and latest-version exposure still pending)_
-- [ ] Task 3: Modify Mise and release process to ensure `srat.zip` artifact is generated and contains the necessary files for installation (including `manifest.json` with version info)
-- [ ] Task 4: Embed at build time `srat.zip` in backend for installation/upgrade flows
-- [ ] Task 5: Ensure install/upgrade use the embedded artifact or flow downloads `srat.zip` from configured channel (release/pre-release/develop) and extracts into target directory. Special case for "develop" channel where the source file are located in `/addon_configs/local_sambanas2/upgrade/srat.zip` and should be used directly without download if the version in the manifest is older or equal to the one in the develop channel (use the same rule of other updates).
-- [ ] Task 6: Ensure update flow also works when component is already installed (upgrade-in-place)
+- [x] Task 2: Add/update backend APIs to expose component status, latest available version, and lifecycle actions (install/upgrade/uninstall)
+- [x] Task 3: Modify Mise and release process to ensure `srat.zip` artifact is generated and contains the necessary files for installation (including `manifest.json` with version info)
+- [x] Task 4: Embed at build time `srat.zip` in backend for installation/upgrade flows
+- [x] Task 5: Ensure install/upgrade use the embedded artifact or flow downloads `srat.zip` from configured channel (release/pre-release/develop) and extracts into target directory. Special case for "develop" channel where the source file are located in `/addon_configs/local_sambanas2/upgrade/srat.zip` and should be used directly without download if the version in the manifest is older or equal to the one in the develop channel (use the same rule of other updates).
+- [x] Task 6: Ensure update flow also works when component is already installed (upgrade-in-place)
 - [x] Task 7: Add uninstall flow that removes `custom_components/srat` safely and refreshes status
 - [x] Task 8: Add single-notification issue in `backend/src/dto/issue.go` when component is missing and disconnected. Ensure it does not spam multiple notifications on repeated checks. The issue should include a `ResolutionLink` that opens the dialog flow for installation guidance. This issue should be automatically resolved when the component is detected as installed and connected again. Implement necessary logic to check for existing issues of this type before emitting new ones to prevent duplicates.
-- [ ] Task 9: After install/upgrade/uninstall actions, add an home assistant repair for required restart like what do HACS.
-- [ ] Task 10: Add frontend buttons in Settings → HomeAssistant for Install/Upgrade/Uninstall with enable/disable state based on current component status and action availability (e.g., disable Install if already installed, disable Upgrade if no newer version, etc.)
-- [ ] Task 11: Ensure all backend/frontend interactions are robust, with proper error handling and user feedback (e.g., show error messages if install/upgrade/uninstall fails, show loading states during operations, etc.)
-- [ ] Task 12: Unit testing (backend detection/actions, issue emission logic, frontend button-state logic)
-- [ ] Task 13: Integration and documentation
-- [ ] Task 14: Final review and testing in staging environment before release
+- [x] Task 9: After install/upgrade/uninstall actions, add an home assistant repair for required restart like what do HACS.
+- [x] Task 10: Add frontend buttons in Settings → HomeAssistant for Install/Upgrade/Uninstall with enable/disable state based on current component status and action availability (e.g., disable Install if already installed, disable Upgrade if no newer version, etc.)
+- [x] Task 11: Ensure all backend/frontend interactions are robust, with proper error handling and user feedback (e.g., show error messages if install/upgrade/uninstall fails, show loading states during operations, etc.)
+- [x] Task 12: Unit testing (backend detection/actions, issue emission logic, frontend button-state logic)
+- [x] Task 13: Validate end-to-end behavior in a real Home Assistant environment using the `test-remote-environment` task/skill
+- [ ] Task 14: Integration and documentation
+- [ ] Task 15: Final review and testing in staging environment before release
 
 ## 🧠 Implementation Notes (Copilot Context)
 
@@ -68,6 +69,53 @@ Implement end-to-end custom component lifecycle management for Home Assistant ad
   - Added `HomeAssistantComponentService.Uninstall()` to remove `custom_components/srat` idempotently.
   - Added settings endpoint `DELETE /settings/homeassistant/custom-component` that runs uninstall, refreshes status, and re-applies issue sync logic.
   - Added/updated targeted backend tests covering uninstall service behavior and settings endpoint response.
+- Completed backend API exposure for custom component lifecycle status/actions:
+  - Extended status payload with `latest_version` and action availability flags (`can_install`, `can_upgrade`, `can_uninstall`).
+  - Added API routes for install/upgrade lifecycle actions in settings:
+    - `POST /settings/homeassistant/custom-component/install`
+    - `POST /settings/homeassistant/custom-component/upgrade`
+  - Integrated latest-version hint from upgrade service when available.
+- Completed release artifact packaging baseline for custom component distribution:
+  - Added `//custom_components:package-hacs` mise task to generate `srat.zip` with `srat/` top-level directory layout and include `srat/manifest.json`.
+  - Updated CI release workflow to call the mise packaging task instead of inline zip logic, keeping packaging behavior consistent between local and CI execution.
+- Completed backend build-time embedding plumbing for custom component artifact:
+  - Added backend accessor `internal.GetEmbeddedCustomComponentZip()` with `embedallowed` implementation reading from embedded `internal/assets/srat.zip` and non-embed fallback implementation reading from local file path.
+  - Updated backend build task to generate `src/internal/assets/srat.zip` before `go build`, so `embedallowed` binaries include the packaged custom component artifact.
+  - Added internal assets folder documentation and ignore rule for generated zip artifact.
+- Completed install/upgrade artifact usage and extraction flow for custom component lifecycle:
+  - Implemented `POST /settings/homeassistant/custom-component/install` and `POST /settings/homeassistant/custom-component/upgrade` handlers to execute real install/upgrade actions and return refreshed status payload.
+  - Added channel-aware archive source resolution in settings API:
+    - `develop` channel prefers `/addon_configs/local_sambanas2/upgrade/srat.zip` when available and its manifest version is newer or equal to installed version.
+    - Other channels (and fallback) use build-time embedded `internal/assets/srat.zip` via `internal.GetEmbeddedCustomComponentZip()`.
+  - Added service-level zip extraction/install primitive `HomeAssistantComponentService.InstallOrUpgradeFromZip(...)` with path-safety checks and manifest validation.
+  - Added targeted backend tests for service extraction behavior and settings install/upgrade endpoints.
+- Completed upgrade-in-place validation for already installed component:
+  - Added regression coverage proving `HomeAssistantComponentService.InstallOrUpgradeFromZip(...)` succeeds when `custom_components/srat` already exists and updates installed manifest version.
+  - Verified stale files from previous install are removed during upgrade and replaced with archive contents.
+  - Confirmed upgrade endpoint remains functional with focused settings API test execution.
+- Completed restart-required repair integration after lifecycle actions:
+  - Added restart repair upsert for `install`, `upgrade`, and `uninstall` lifecycle endpoints using `repair_id=custom_component_restart_required`.
+  - Reused existing repair-command broadcast pipeline so Home Assistant custom component receives repair upsert/delete events.
+  - Added restart endpoint dismissal for the same repair id, including fallback persistent-notification behavior when repair service is unavailable.
+  - Added focused API test assertions for repair create/broadcast after lifecycle actions and repair delete/broadcast after restart request.
+- Completed frontend Home Assistant lifecycle actions section in Settings:
+  - Added `HomeAssistantCustomComponentPanel` under Settings → HomeAssistant showing install/connection/version status for the SRAT custom component.
+  - Wired frontend action buttons (`Install`, `Upgrade`, `Uninstall`) to backend lifecycle endpoints and disabled them based on backend action flags (`can_install`, `can_upgrade`, `can_uninstall`) plus in-flight mutation state.
+  - Added focused frontend test coverage asserting status-driven button enable/disable behavior.
+- Completed robustness/error-feedback pass for lifecycle interactions (Task 11):
+  - Added explicit frontend action feedback in `HomeAssistantCustomComponentPanel` for install/upgrade/uninstall success and failure outcomes.
+  - Added defensive API error message extraction and surfaced status/action failures via inline alerts.
+  - Preserved loading feedback during in-flight operations and validated with focused frontend settings tests.
+- Completed unit testing pass for custom component lifecycle (Task 12):
+  - Added frontend unit tests for Home Assistant custom component panel status-error feedback and install-action failure feedback in `frontend/src/pages/settings/__tests__/Settings.test.tsx`.
+  - Re-validated existing frontend button-state logic test coverage for install/upgrade/uninstall enablement states.
+  - Verified backend service/API unit suites pass for lifecycle detection/actions and issue-related paths via `go test ./service ./api`.
+- Completed real-environment validation pass (Task 13) using `test-remote-environment` workflow:
+  - Ran remote backend deployment via `mise run //backend:build:remote` and verified deployed version `2026.4.0-dev.1` startup in add-on logs.
+  - Restarted add-on `local_sambanas2` successfully and confirmed configuration validity (`ha_check_config` passed).
+  - Started remote frontend dev mode (`mise run //frontend:dev:remote`) and validated live UI at `http://localhost:3080/`.
+  - Navigated to Settings → HomeAssistant and confirmed the SRAT custom component panel renders real status/action state (`Installed: No`, `Connected: Yes`, install action enabled).
+  - Post-interaction add-on logs showed no startup panic/fatal failures; only known environment warnings (SMART USB bridge/share-volume warnings).
 
 - The target add-on directory is fixed to `/config/custom_components`.
 - Presence check should validate whether `srat` exists in target directory.
@@ -92,7 +140,16 @@ Implement end-to-end custom component lifecycle management for Home Assistant ad
 - [x] `TODO: backend/src/service/homeassistant_component_service.go` - Added service logic for filesystem presence/version checks and websocket connection status correlation
 - [x] `TODO: backend/src/service/issue_service.go` - Added by-title lookup and idempotent resolve path for custom-component issue dedupe/cleanup
 - [ ] `TODO: backend/src/service/*` - Add channel-aware release/pre-release artifact resolution and `srat.zip` download/extract flow
-- [ ] `TODO: backend/src/api/*` - Expose install/upgrade/uninstall endpoints (status + uninstall endpoints implemented in `backend/src/api/setting.go`; install/upgrade pending)
-- [ ] `TODO: frontend/src/pages/settings/*` - Add HomeAssistant section action buttons and state-driven enable/disable logic
+- [x] `TODO: backend/src/api/*` - Expose install/upgrade/uninstall endpoints (implemented in `backend/src/api/setting.go`; install/upgrade handlers currently return explicit not-implemented response until artifact workflow tasks are completed)
+- [x] `TODO: custom_components/.mise.toml` - Added `package-hacs` task to generate `srat.zip` artifact with required integration files
+- [x] `TODO: .github/workflows/build.yaml` - Updated release pipeline to generate `srat.zip` through mise task
+- [x] `TODO: backend/src/internal/embed.go` - Added embedded custom component zip accessor for `embedallowed` builds
+- [x] `TODO: backend/src/internal/no_embed.go` - Added non-embed fallback custom component zip accessor
+- [x] `TODO: backend/.mise.toml` - Build task now generates `src/internal/assets/srat.zip` before compiling
+- [x] `TODO: backend/src/service/homeassistant_component_service.go` - Added install/upgrade zip extraction flow into `/config/custom_components`
+- [x] `TODO: backend/src/api/setting.go` - Install/upgrade endpoints now execute artifact resolution + extraction flow
+- [x] `TODO: backend/src/service/homeassistant_component_service_test.go` - Added upgrade-in-place regression test for already installed component path
+- [x] `TODO: backend/src/api/setting.go` - Added restart-required repair upsert/delete flow for custom component lifecycle + restart endpoint
+- [x] `TODO: frontend/src/pages/settings/*` - Added HomeAssistant section action buttons and status-driven enable/disable logic for custom component lifecycle
 - [ ] `TODO: frontend/src/components/*` - Add resolution dialog and restart confirmation popup integration
 - [ ] `FIXME: frontend/backend contract` - Define explicit response model for installed version, latest version, connectivity, and action availability

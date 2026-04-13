@@ -32,6 +32,7 @@ type SettingsHandlerSuite struct {
 	addonsService  service.AddonsServiceInterface
 	haComponentSvc service.HomeAssistantComponentServiceInterface
 	issueService   service.IssueServiceInterface
+	upgradeService service.UpgradeServiceInterface
 	repairService  service.RepairServiceInterface
 	haService      service.HomeAssistantServiceInterface
 	broadcaster    service.BroadcasterServiceInterface
@@ -76,6 +77,7 @@ func (suite *SettingsHandlerSuite) SetupTest() {
 			mock.Mock[service.AddonsServiceInterface],
 			mock.Mock[service.HomeAssistantComponentServiceInterface],
 			mock.Mock[service.IssueServiceInterface],
+			mock.Mock[service.UpgradeServiceInterface],
 			mock.Mock[service.RepairServiceInterface],
 			mock.Mock[service.HomeAssistantServiceInterface],
 			mock.Mock[service.BroadcasterServiceInterface],
@@ -117,6 +119,7 @@ func (suite *SettingsHandlerSuite) SetupTest() {
 		fx.Populate(&suite.addonsService),
 		fx.Populate(&suite.haComponentSvc),
 		fx.Populate(&suite.issueService),
+		fx.Populate(&suite.upgradeService),
 		fx.Populate(&suite.repairService),
 		fx.Populate(&suite.haService),
 		fx.Populate(&suite.broadcaster),
@@ -357,6 +360,7 @@ func (suite *SettingsHandlerSuite) TestGetAppConfigHandler() {
 			RuntimeConfig:   map[string]any{"rendered": true},
 			RequiresRestart: true,
 		}, nil)
+	mock.When(suite.haComponentSvc.DismissAddonConfigIssue(mock.AnyContext())).ThenReturn(nil)
 
 	rr := api.Get("/settings/app-config")
 	suite.Require().Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
@@ -366,8 +370,7 @@ func (suite *SettingsHandlerSuite) TestGetAppConfigHandler() {
 	suite.Require().NoError(err)
 	suite.Equal("info", res.Options["log_level"])
 	suite.True(res.RequiresRestart)
-	_ = mock.Verify(suite.repairService, matchers.Times(0)).Delete(mock.Any[string]())
-	mock.Verify(suite.broadcaster, matchers.Times(0)).BroadcastMessage(mock.Any[any]())
+	_ = mock.Verify(suite.haComponentSvc, matchers.Times(0)).DismissAddonConfigIssue(mock.AnyContext())
 }
 
 func (suite *SettingsHandlerSuite) TestGetHomeAssistantCustomComponentStatusHandler() {
@@ -381,13 +384,17 @@ func (suite *SettingsHandlerSuite) TestGetHomeAssistantCustomComponentStatusHand
 		InstallPath:      "/config/custom_components/srat",
 		ManifestPath:     "/config/custom_components/srat/manifest.json",
 		Installed:        true,
+		CanUpgrade:       true,
+		CanUninstall:     true,
 		InstalledVersion: &installedVersion,
 		Connected:        true,
 		ConnectedVersion: &connectedVersion,
 	}
 
+	ass := &dto.ReleaseAsset{LastRelease: "2026.04.9"}
 	mock.When(suite.haComponentSvc.GetStatus()).ThenReturn(status, nil)
-	mock.When(suite.issueService.ResolveByTitle(mock.Exact(dto.HomeAssistantComponentMissingIssueTitle))).ThenReturn(nil)
+	mock.When(suite.haComponentSvc.SyncIssueStatus(mock.Any[*dto.HomeAssistantCustomComponentStatus]())).ThenReturn(nil)
+	mock.When(suite.upgradeService.GetUpgradeReleaseAsset()).ThenReturn(ass, nil)
 
 	rr := api.Get("/settings/homeassistant/custom-component/status")
 	suite.Require().Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
@@ -397,10 +404,15 @@ func (suite *SettingsHandlerSuite) TestGetHomeAssistantCustomComponentStatusHand
 	suite.Require().NoError(err)
 	suite.True(res.Installed)
 	suite.True(res.Connected)
+	suite.True(res.CanUpgrade)
+	suite.True(res.CanUninstall)
 	suite.NotNil(res.InstalledVersion)
 	suite.Equal(installedVersion, *res.InstalledVersion)
+	suite.NotNil(res.LatestVersion)
+	suite.Equal("2026.04.9", *res.LatestVersion)
 	_, _ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).GetStatus()
-	_ = mock.Verify(suite.issueService, matchers.Times(1)).ResolveByTitle(mock.Exact(dto.HomeAssistantComponentMissingIssueTitle))
+	_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).SyncIssueStatus(mock.Any[*dto.HomeAssistantCustomComponentStatus]())
+	_, _ = mock.Verify(suite.upgradeService, matchers.Times(1)).GetUpgradeReleaseAsset()
 }
 
 func (suite *SettingsHandlerSuite) TestGetHomeAssistantCustomComponentStatusHandler_CreatesIssueOnceWhenMissingDisconnected() {
@@ -412,20 +424,78 @@ func (suite *SettingsHandlerSuite) TestGetHomeAssistantCustomComponentStatusHand
 		InstallPath:  "/config/custom_components/srat",
 		ManifestPath: "/config/custom_components/srat/manifest.json",
 		Installed:    false,
+		CanInstall:   true,
 		Connected:    false,
 	}
 
 	mock.When(suite.haComponentSvc.GetStatus()).ThenReturn(status, nil)
-	mock.When(suite.issueService.FindByTitle(mock.Exact(dto.HomeAssistantComponentMissingIssueTitle))).ThenReturn(nil, nil)
-	mock.When(suite.issueService.Create(mock.Any[*dto.Issue]())).ThenReturn(nil)
+	mock.When(suite.haComponentSvc.SyncIssueStatus(mock.Any[*dto.HomeAssistantCustomComponentStatus]())).ThenReturn(nil)
+	mock.When(suite.upgradeService.GetUpgradeReleaseAsset()).ThenReturn(nil, errors.WithStack(dto.ErrorNoUpdateAvailable))
 
 	rr := api.Get("/settings/homeassistant/custom-component/status")
 	suite.Require().Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
 
 	_, _ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).GetStatus()
-	_, _ = mock.Verify(suite.issueService, matchers.Times(1)).FindByTitle(mock.Exact(dto.HomeAssistantComponentMissingIssueTitle))
-	_ = mock.Verify(suite.issueService, matchers.Times(1)).Create(mock.Any[*dto.Issue]())
-	_ = mock.Verify(suite.issueService, matchers.Times(0)).ResolveByTitle(mock.Any[string]())
+	_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).SyncIssueStatus(mock.Any[*dto.HomeAssistantCustomComponentStatus]())
+	_, _ = mock.Verify(suite.upgradeService, matchers.Times(1)).GetUpgradeReleaseAsset()
+}
+
+func (suite *SettingsHandlerSuite) TestInstallHomeAssistantCustomComponentHandler() {
+	_, api := humatest.New(suite.T())
+	suite.api.RegisterSettings(api)
+
+	status := &dto.HomeAssistantCustomComponentStatus{
+		Component:        dto.HomeAssistantComponentSRAT,
+		InstallPath:      "/config/custom_components/srat",
+		ManifestPath:     "/config/custom_components/srat/manifest.json",
+		Installed:        true,
+		CanUpgrade:       true,
+		CanUninstall:     true,
+		InstalledVersion: new("2026.04.8"),
+	}
+
+	mock.When(suite.haComponentSvc.InstallOrUpgrade()).ThenReturn(nil)
+	mock.When(suite.haComponentSvc.GetStatus()).ThenReturn(status, nil)
+	mock.When(suite.haComponentSvc.SyncIssueStatus(mock.Any[*dto.HomeAssistantCustomComponentStatus]())).ThenReturn(nil)
+	mock.When(suite.haComponentSvc.UpsertRestartRequiredRepair(mock.AnyContext())).ThenReturn(nil)
+	mock.When(suite.upgradeService.GetUpgradeReleaseAsset()).ThenReturn(nil, errors.WithStack(dto.ErrorNoUpdateAvailable))
+
+	rr := api.Post("/settings/homeassistant/custom-component/install", map[string]any{})
+	suite.Require().Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
+
+	_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).InstallOrUpgrade()
+	_, _ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).GetStatus()
+	_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).SyncIssueStatus(mock.Any[*dto.HomeAssistantCustomComponentStatus]())
+	_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).UpsertRestartRequiredRepair(mock.AnyContext())
+}
+
+func (suite *SettingsHandlerSuite) TestUpgradeHomeAssistantCustomComponentHandler() {
+	_, api := humatest.New(suite.T())
+	suite.api.RegisterSettings(api)
+
+	status := &dto.HomeAssistantCustomComponentStatus{
+		Component:        dto.HomeAssistantComponentSRAT,
+		InstallPath:      "/config/custom_components/srat",
+		ManifestPath:     "/config/custom_components/srat/manifest.json",
+		Installed:        true,
+		CanUpgrade:       true,
+		CanUninstall:     true,
+		InstalledVersion: new("2026.04.9"),
+	}
+
+	mock.When(suite.haComponentSvc.InstallOrUpgrade()).ThenReturn(nil)
+	mock.When(suite.haComponentSvc.GetStatus()).ThenReturn(status, nil)
+	mock.When(suite.haComponentSvc.SyncIssueStatus(mock.Any[*dto.HomeAssistantCustomComponentStatus]())).ThenReturn(nil)
+	mock.When(suite.haComponentSvc.UpsertRestartRequiredRepair(mock.AnyContext())).ThenReturn(nil)
+	mock.When(suite.upgradeService.GetUpgradeReleaseAsset()).ThenReturn(nil, errors.WithStack(dto.ErrorNoUpdateAvailable))
+
+	rr := api.Post("/settings/homeassistant/custom-component/upgrade", map[string]any{})
+	suite.Require().Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
+
+	_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).InstallOrUpgrade()
+	_, _ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).GetStatus()
+	_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).SyncIssueStatus(mock.Any[*dto.HomeAssistantCustomComponentStatus]())
+	_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).UpsertRestartRequiredRepair(mock.AnyContext())
 }
 
 func (suite *SettingsHandlerSuite) TestUninstallHomeAssistantCustomComponentHandler() {
@@ -442,16 +512,16 @@ func (suite *SettingsHandlerSuite) TestUninstallHomeAssistantCustomComponentHand
 
 	mock.When(suite.haComponentSvc.Uninstall()).ThenReturn(nil)
 	mock.When(suite.haComponentSvc.GetStatus()).ThenReturn(status, nil)
-	mock.When(suite.issueService.FindByTitle(mock.Exact(dto.HomeAssistantComponentMissingIssueTitle))).ThenReturn(nil, nil)
-	mock.When(suite.issueService.Create(mock.Any[*dto.Issue]())).ThenReturn(nil)
+	mock.When(suite.haComponentSvc.SyncIssueStatus(mock.Any[*dto.HomeAssistantCustomComponentStatus]())).ThenReturn(nil)
+	mock.When(suite.haComponentSvc.UpsertRestartRequiredRepair(mock.AnyContext())).ThenReturn(nil)
 
 	rr := api.Delete("/settings/homeassistant/custom-component")
 	suite.Require().Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
 
 	_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).Uninstall()
 	_, _ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).GetStatus()
-	_, _ = mock.Verify(suite.issueService, matchers.Times(1)).FindByTitle(mock.Exact(dto.HomeAssistantComponentMissingIssueTitle))
-	_ = mock.Verify(suite.issueService, matchers.Times(1)).Create(mock.Any[*dto.Issue]())
+	_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).SyncIssueStatus(mock.Any[*dto.HomeAssistantCustomComponentStatus]())
+	_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).UpsertRestartRequiredRepair(mock.AnyContext())
 }
 
 func (suite *SettingsHandlerSuite) TestGetAppConfigHandler_AutoDismissesRepairWhenRestartNotRequired() {
@@ -464,16 +534,13 @@ func (suite *SettingsHandlerSuite) TestGetAppConfigHandler_AutoDismissesRepairWh
 			RuntimeConfig:   map[string]any{"log_level": "info"},
 			RequiresRestart: false,
 		}, nil)
-	mock.When(suite.repairService.Delete(mock.Exact("addon_config_changed"))).
-		ThenReturn(nil)
-	mock.When(suite.broadcaster.BroadcastMessage(mock.Any[dto.RepairCommandMessage]())).
+	mock.When(suite.haComponentSvc.DismissAddonConfigIssue(mock.AnyContext())).
 		ThenReturn(nil)
 
 	rr := humaAPI.Get("/settings/app-config")
 	suite.Require().Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
 
-	_ = mock.Verify(suite.repairService, matchers.Times(1)).Delete(mock.Exact("addon_config_changed"))
-	mock.Verify(suite.broadcaster, matchers.Times(1)).BroadcastMessage(mock.Any[dto.RepairCommandMessage]())
+	_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).DismissAddonConfigIssue(mock.AnyContext())
 }
 
 func (suite *SettingsHandlerSuite) TestGetAppConfigSchemaHandler() {
@@ -521,9 +588,7 @@ func (suite *SettingsHandlerSuite) TestUpdateAppConfigHandler() {
 			RuntimeConfig:   map[string]any{"rendered": true},
 			RequiresRestart: true,
 		}, nil)
-	mock.When(suite.repairService.Delete(mock.Exact("addon_config_changed"))).
-		ThenReturn(nil)
-	mock.When(suite.broadcaster.BroadcastMessage(mock.Any[dto.RepairCommandMessage]())).
+	mock.When(suite.haComponentSvc.DismissAddonConfigIssue(mock.AnyContext())).
 		ThenReturn(nil)
 
 	rr := api.Put("/settings/app-config", request)
@@ -538,15 +603,13 @@ func (suite *SettingsHandlerSuite) TestUpdateAppConfigHandler() {
 	suite.True(tracker.AppConfig)
 	suite.False(tracker.Settings)
 
-	_ = mock.Verify(suite.repairService, matchers.Times(1)).Delete(mock.Exact("addon_config_changed"))
-	mock.Verify(suite.broadcaster, matchers.Times(1)).BroadcastMessage(mock.Any[dto.RepairCommandMessage]())
-	_ = mock.Verify(suite.haService, matchers.Times(0)).DismissPersistentNotification(mock.Any[string]())
+	_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).DismissAddonConfigIssue(mock.AnyContext())
 }
 
 func (suite *SettingsHandlerSuite) TestUpdateAppConfigHandler_FallbackDismissPersistentNotificationWhenRepairServiceNil() {
 	_, humaAPI := humatest.New(suite.T())
 	eventBus := events.NewEventBus(suite.ctx)
-	handler := api.NewSettingsHanler(&dto.ContextState{}, suite.settingService, suite.addonsService, suite.haComponentSvc, suite.issueService, eventBus, nil, suite.haService, suite.broadcaster)
+	handler := api.NewSettingsHanler(&dto.ContextState{}, suite.settingService, suite.addonsService, suite.haComponentSvc, suite.upgradeService, eventBus, nil, suite.haService, suite.broadcaster)
 	handler.RegisterSettings(humaAPI)
 	autopatch.AutoPatch(humaAPI)
 
@@ -562,13 +625,13 @@ func (suite *SettingsHandlerSuite) TestUpdateAppConfigHandler_FallbackDismissPer
 			RuntimeConfig:   map[string]any{"rendered": true},
 			RequiresRestart: true,
 		}, nil)
-	mock.When(suite.haService.DismissPersistentNotification(mock.Exact("addon_config_changed"))).
+	mock.When(suite.haComponentSvc.DismissAddonConfigIssue(mock.AnyContext())).
 		ThenReturn(nil)
 
 	rr := humaAPI.Put("/settings/app-config", request)
 	suite.Require().Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
 
-	_ = mock.Verify(suite.haService, matchers.Times(1)).DismissPersistentNotification(mock.Exact("addon_config_changed"))
+	_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).DismissAddonConfigIssue(mock.AnyContext())
 }
 
 func (suite *SettingsHandlerSuite) TestRestartAddonHandler() {
@@ -577,10 +640,12 @@ func (suite *SettingsHandlerSuite) TestRestartAddonHandler() {
 
 	mock.When(suite.addonsService.RestartSelfApp(mock.AnyContext())).
 		ThenReturn(nil)
+	mock.When(suite.haComponentSvc.DismissRestartRequiredRepair(mock.AnyContext())).ThenReturn(nil)
 
 	rr := humaAPI.Put("/restart", map[string]any{})
 	suite.Require().Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
 	_ = mock.Verify(suite.addonsService, matchers.Times(1)).RestartSelfApp(mock.AnyContext())
+	_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).DismissRestartRequiredRepair(mock.AnyContext())
 }
 
 func (suite *SettingsHandlerSuite) TestRestartAddonHandler_FailsWhenServiceFails() {
