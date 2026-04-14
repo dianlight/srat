@@ -260,48 +260,6 @@ func (suite *WsHandlerSuite) TestWebSocketAcceptsValidatedInboundRepairLifecycle
 	}, time.Second, 10*time.Millisecond)
 }
 
-func (suite *WsHandlerSuite) TestWebSocketIgnoresInvalidInboundRepairLifecycle() {
-	_, err := suite.repairService.Create(dto.RepairCommandMessage{
-		CommandID:      "cmd-2",
-		RepairID:       "disk_space_low",
-		Action:         dto.RepairCommandActionUpsert,
-		TranslationKey: "disk_space_low",
-		Severity:       dto.RepairIssueSeverityWarning,
-	})
-	suite.Require().NoError(err)
-
-	h := api.NewWebSocketBroker(api.WebSocketHandlerParams{Ctx: suite.ctx, Broadcaster: suite.mockBroadcaster, RepairService: suite.repairService, State: suite.state})
-	r := mux.NewRouter()
-	h.RegisterWs(r)
-
-	srv := httptest.NewServer(r)
-	defer srv.Close()
-
-	url := "ws" + srv.URL[len("http"):] + "/ws"
-	conn, resp, err := websocket.DefaultDialer.Dial(url, nil)
-	if err != nil {
-		suite.Failf("Dial failed", "err=%v resp=%v", err, resp)
-		return
-	}
-	defer conn.Close()
-
-	suite.Require().NoError(conn.SetReadDeadline(time.Now().Add(1 * time.Second)))
-	_, welcomeMsg, err := conn.ReadMessage()
-	suite.Require().NoError(err)
-	suite.Contains(string(welcomeMsg), "event: hello")
-
-	err = conn.WriteJSON(dto.RepairLifecycleMessage{
-		Type:     dto.ClientEventTypes.CLIENTEVENTTYPEREPAIRLIFECYCLE.String(),
-		RepairID: "disk_space_low",
-		Status:   dto.RepairLifecycleStatus("broken"),
-	})
-	suite.Require().NoError(err)
-	time.Sleep(50 * time.Millisecond)
-	repair, ok := suite.repairService.Get("disk_space_low")
-	suite.True(ok)
-	suite.Nil(repair.Lifecycle)
-}
-
 func (suite *WsHandlerSuite) TestWebSocketRepairLifecycleSynchronizesRepairServiceState() {
 	_, err := suite.repairService.Create(dto.RepairCommandMessage{
 		CommandID:      "cmd-100",

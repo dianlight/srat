@@ -126,3 +126,8 @@ type CommandExecutionEvent struct {
 	Event
 	Message dto.CommandExecutionNotification
 }
+
+type RepairLifecycleEvent struct {
+	Event
+	Message dto.RepairLifecycleMessage
+}

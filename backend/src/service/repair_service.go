@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/tlog"
 	"github.com/google/uuid"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
@@ -81,6 +82,8 @@ func (s *RepairService) Create(command dto.RepairCommandMessage) (*dto.ManagedRe
 	s.state[command.RepairID] = record
 	if s.broadcaster != nil {
 		s.broadcaster.BroadcastMessage(command)
+	} else {
+		tlog.WarnContext(s.ctx, "No broadcaster available to broadcast repair command", "repair_id", command.RepairID)
 	}
 	if s.stateContext == nil || s.stateContext.HAWsComponent == nil {
 		s.enqueueLocked(command)
