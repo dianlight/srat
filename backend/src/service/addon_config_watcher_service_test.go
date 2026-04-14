@@ -677,7 +677,7 @@ func (s *AddonConfigWatcherServiceSuite) TestEmitChanged_NilEventBus() {
 // with repair_id="addon_config_changed", severity=warning, is_fixable=false, is_persistent=true.
 func (s *AddonConfigWatcherServiceSuite) TestEmitChanged_CreatesRepairIssue() {
 	ctx := context.Background()
-	rs := NewRepairService(ctx, &dto.ContextState{})
+	rs := NewRepairService(RepairServiceParams{Ctx: ctx, State: &dto.ContextState{}})
 	svc := &AddonConfigWatcherService{
 		ctx:           ctx,
 		repairService: rs,
@@ -696,12 +696,11 @@ func (s *AddonConfigWatcherServiceSuite) TestEmitChanged_CreatesRepairIssue() {
 // broadcasts the repair command when a broadcaster is available.
 func (s *AddonConfigWatcherServiceSuite) TestEmitChanged_BroadcastsRepairCommand() {
 	ctx := context.Background()
-	rs := NewRepairService(ctx, &dto.ContextState{})
 	b := &stubBroadcaster{}
+	rs := NewRepairService(RepairServiceParams{Ctx: ctx, State: &dto.ContextState{}, Broadcaster: b})
 	svc := &AddonConfigWatcherService{
 		ctx:           ctx,
 		repairService: rs,
-		broadcaster:   b,
 	}
 
 	svc.emitChanged("/data/options.json", "abc123")
@@ -717,12 +716,11 @@ func (s *AddonConfigWatcherServiceSuite) TestEmitChanged_BroadcastsRepairCommand
 // creation refreshes the repair state and still broadcasts the repair command.
 func (s *AddonConfigWatcherServiceSuite) TestEmitChanged_DuplicateRepairStillBroadcasts() {
 	ctx := context.Background()
-	rs := NewRepairService(ctx, &dto.ContextState{})
 	b := &stubBroadcaster{}
+	rs := NewRepairService(RepairServiceParams{Ctx: ctx, State: &dto.ContextState{}, Broadcaster: b})
 	svc := &AddonConfigWatcherService{
 		ctx:           ctx,
 		repairService: rs,
-		broadcaster:   b,
 	}
 
 	svc.emitChanged("/data/options.json", "abc123")
@@ -739,7 +737,7 @@ func (s *AddonConfigWatcherServiceSuite) TestEmitChanged_DuplicateRepairStillBro
 // (when the repair issue already exists) logs a warning but does not panic.
 func (s *AddonConfigWatcherServiceSuite) TestEmitChanged_RepairAlreadyExists_NoPanic() {
 	ctx := context.Background()
-	rs := NewRepairService(ctx, &dto.ContextState{})
+	rs := NewRepairService(RepairServiceParams{Ctx: ctx, State: &dto.ContextState{}})
 	svc := &AddonConfigWatcherService{
 		ctx:           ctx,
 		repairService: rs,

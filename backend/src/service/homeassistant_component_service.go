@@ -30,9 +30,9 @@ const customComponentRestartRepairID = "custom_component_restart_required"
 type HomeAssistantComponentServiceInterface interface {
 	GetStatus() (*dto.HomeAssistantCustomComponentStatus, error)
 	SyncIssueStatus(status *dto.HomeAssistantCustomComponentStatus) error
-	InstallOrUpgrade() error
-	InstallOrUpgradeFromZip(zipArchive []byte) error
-	Uninstall() error
+	InstallOrUpgrade(ctx context.Context) error
+	InstallOrUpgradeFromZip(ctx context.Context, zipArchive []byte) error
+	Uninstall(ctx context.Context) error
 	UpsertRestartRequiredRepair(ctx context.Context) error
 	DismissRestartRequiredRepair(ctx context.Context) error
 	DismissAddonConfigIssue(ctx context.Context) error
@@ -43,18 +43,14 @@ type HomeAssistantComponentService struct {
 	state         *dto.ContextState
 	issueService  IssueServiceInterface
 	repairService RepairServiceInterface
-	haService     HomeAssistantServiceInterface
-	broadcaster   BroadcasterServiceInterface
 }
 
 type HomeAssistantComponentServiceProps struct {
 	fx.In
 	Ctx           context.Context
 	State         *dto.ContextState
-	IssueService  IssueServiceInterface         `optional:"true"`
-	RepairService RepairServiceInterface        `optional:"true"`
-	HAService     HomeAssistantServiceInterface `optional:"true"`
-	Broadcaster   BroadcasterServiceInterface   `optional:"true"`
+	IssueService  IssueServiceInterface
+	RepairService RepairServiceInterface
 }
 
 // NewHomeAssistantComponentService builds a status service for SRAT custom component.
@@ -64,8 +60,6 @@ func NewHomeAssistantComponentService(in HomeAssistantComponentServiceProps) Hom
 		state:         in.State,
 		issueService:  in.IssueService,
 		repairService: in.RepairService,
-		haService:     in.HAService,
-		broadcaster:   in.Broadcaster,
 	}
 }
 
@@ -130,7 +124,7 @@ func (s *HomeAssistantComponentService) GetStatus() (*dto.HomeAssistantCustomCom
 	return status, nil
 }
 
-func (s *HomeAssistantComponentService) Uninstall() error {
+func (s *HomeAssistantComponentService) Uninstall(ctx context.Context) error {
 	root := dto.DefaultCustomComponentsPath
 	if s.state != nil && s.state.CustomComponentsPath != "" {
 		root = s.state.CustomComponentsPath
@@ -149,54 +143,30 @@ func (s *HomeAssistantComponentService) Uninstall() error {
 		return err
 	}
 
-	go func() {
-		err := s.UpsertRestartRequiredRepair(s.ctx)
-		if err != nil {
-			tlog.WarnContext(s.ctx, "Failed to upsert restart required repair after custom component uninstall", "error", err)
-		}
-	}()
+	err = s.UpsertRestartRequiredRepair(ctx)
+	if err != nil {
+		tlog.WarnContext(s.ctx, "Failed to upsert restart required repair after custom component uninstall", "error", err)
+	}
 
 	return nil
 }
 
 func (s *HomeAssistantComponentService) UpsertRestartRequiredRepair(ctx context.Context) error {
-	if s.repairService != nil {
-		cmd := dto.RepairCommandMessage{
-			CommandID:      uuid.NewString(),
-			RepairID:       customComponentRestartRepairID,
-			Action:         dto.RepairCommandActionUpsert,
-			TranslationKey: customComponentRestartRepairID,
-			Severity:       dto.RepairIssueSeverityWarning,
-			IsFixable:      true,
-			IsPersistent:   true,
-		}
-
-		_, createErr := s.repairService.Create(cmd)
-		if createErr != nil {
-			if _, updateErr := s.repairService.Update(cmd); updateErr != nil {
-				tlog.WarnContext(ctx, "Unable to create or refresh custom component restart repair", "repair_id", customComponentRestartRepairID, "error", createErr, "update_error", updateErr)
-				return updateErr
-			}
-		}
-
-		if s.broadcaster != nil {
-			s.broadcaster.BroadcastMessage(cmd)
-		} else {
-			tlog.WarnContext(ctx, "Broadcaster service not available to broadcast custom component restart repair update", "repair_id", customComponentRestartRepairID)
-		}
-
-		return nil
+	cmd := dto.RepairCommandMessage{
+		CommandID:      uuid.NewString(),
+		RepairID:       customComponentRestartRepairID,
+		Action:         dto.RepairCommandActionUpsert,
+		TranslationKey: customComponentRestartRepairID,
+		Severity:       dto.RepairIssueSeverityWarning,
+		IsFixable:      true,
+		IsPersistent:   true,
 	}
 
-	if s.haService != nil {
-		err := s.haService.CreatePersistentNotification(
-			customComponentRestartRepairID,
-			"Restart Home Assistant required",
-			"SRAT custom component changes require a Home Assistant restart to fully apply.",
-		)
-		if err != nil {
-			tlog.WarnContext(ctx, "Unable to create restart-required persistent notification", "notification_id", customComponentRestartRepairID, "error", err)
-			return err
+	_, createErr := s.repairService.Create(cmd)
+	if createErr != nil {
+		if _, updateErr := s.repairService.Update(cmd); updateErr != nil {
+			tlog.WarnContext(ctx, "Unable to create or refresh custom component restart repair", "repair_id", customComponentRestartRepairID, "error", createErr, "update_error", updateErr)
+			return updateErr
 		}
 	}
 
@@ -212,37 +182,17 @@ func (s *HomeAssistantComponentService) DismissAddonConfigIssue(ctx context.Cont
 }
 
 func (s *HomeAssistantComponentService) dismissRepairIssue(ctx context.Context, repairID string) error {
-	if s.repairService != nil {
-		dismissErr := s.repairService.Delete(repairID)
-		if dismissErr != nil && !errors.Is(dismissErr, dto.ErrorNotFound) {
-			tlog.WarnContext(ctx, "Unable to dismiss repair", "repair_id", repairID, "error", dismissErr)
-			return dismissErr
-		}
-
-		if s.broadcaster != nil {
-			s.broadcaster.BroadcastMessage(dto.RepairCommandMessage{
-				CommandID: uuid.NewString(),
-				RepairID:  repairID,
-				Action:    dto.RepairCommandActionDelete,
-			})
-		}
-
-		return nil
-	}
-
-	if s.haService != nil {
-		dismissErr := s.haService.DismissPersistentNotification(repairID)
-		if dismissErr != nil && !errors.Is(dismissErr, dto.ErrorNotFound) {
-			tlog.WarnContext(ctx, "Unable to dismiss persistent notification", "notification_id", repairID, "error", dismissErr)
-			return dismissErr
-		}
+	dismissErr := s.repairService.Delete(repairID)
+	if dismissErr != nil && !errors.Is(dismissErr, dto.ErrorNotFound) {
+		tlog.WarnContext(ctx, "Unable to dismiss repair", "repair_id", repairID, "error", dismissErr)
+		return dismissErr
 	}
 
 	return nil
 }
 
 func (s *HomeAssistantComponentService) SyncIssueStatus(status *dto.HomeAssistantCustomComponentStatus) error {
-	if status == nil || s.issueService == nil {
+	if status == nil {
 		return nil
 	}
 
@@ -272,16 +222,16 @@ func (s *HomeAssistantComponentService) SyncIssueStatus(status *dto.HomeAssistan
 	return nil
 }
 
-func (s *HomeAssistantComponentService) InstallOrUpgrade() error {
+func (s *HomeAssistantComponentService) InstallOrUpgrade(ctx context.Context) error {
 	zipArchive, err := s.resolveCustomComponentArchive()
 	if err != nil {
 		return err
 	}
 
-	return s.InstallOrUpgradeFromZip(zipArchive)
+	return s.InstallOrUpgradeFromZip(ctx, zipArchive)
 }
 
-func (s *HomeAssistantComponentService) InstallOrUpgradeFromZip(zipArchive []byte) error {
+func (s *HomeAssistantComponentService) InstallOrUpgradeFromZip(ctx context.Context, zipArchive []byte) error {
 	if len(zipArchive) == 0 {
 		return fmt.Errorf("custom component archive is empty")
 	}
@@ -366,12 +316,10 @@ func (s *HomeAssistantComponentService) InstallOrUpgradeFromZip(zipArchive []byt
 		return err
 	}
 
-	go func() {
-		err := s.UpsertRestartRequiredRepair(s.ctx)
-		if err != nil {
-			tlog.WarnContext(s.ctx, "Failed to upsert restart required repair after custom component install/upgrade", "error", err)
-		}
-	}()
+	err = s.UpsertRestartRequiredRepair(ctx)
+	if err != nil {
+		tlog.WarnContext(ctx, "Failed to upsert restart required repair after custom component install/upgrade", "error", err)
+	}
 
 	return nil
 }

@@ -454,19 +454,19 @@ func (suite *SettingsHandlerSuite) TestInstallHomeAssistantCustomComponentHandle
 		InstalledVersion: new("2026.04.8"),
 	}
 
-	mock.When(suite.haComponentSvc.InstallOrUpgrade()).ThenReturn(nil)
+	mock.When(suite.haComponentSvc.InstallOrUpgrade(mock.AnyContext())).ThenReturn(nil)
 	mock.When(suite.haComponentSvc.GetStatus()).ThenReturn(status, nil)
-	mock.When(suite.haComponentSvc.SyncIssueStatus(mock.Any[*dto.HomeAssistantCustomComponentStatus]())).ThenReturn(nil)
-	mock.When(suite.haComponentSvc.UpsertRestartRequiredRepair(mock.AnyContext())).ThenReturn(nil)
+	//mock.When(suite.haComponentSvc.SyncIssueStatus(mock.Any[*dto.HomeAssistantCustomComponentStatus]())).ThenReturn(nil)
+	//mock.When(suite.haComponentSvc.UpsertRestartRequiredRepair(mock.AnyContext())).ThenReturn(nil)
 	mock.When(suite.upgradeService.GetUpgradeReleaseAsset()).ThenReturn(nil, errors.WithStack(dto.ErrorNoUpdateAvailable))
 
 	rr := api.Post("/settings/homeassistant/custom-component/install", map[string]any{})
 	suite.Require().Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
 
-	_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).InstallOrUpgrade()
+	_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).InstallOrUpgrade(mock.AnyContext())
 	_, _ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).GetStatus()
-	_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).SyncIssueStatus(mock.Any[*dto.HomeAssistantCustomComponentStatus]())
-	_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).UpsertRestartRequiredRepair(mock.AnyContext())
+	//_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).SyncIssueStatus(mock.Any[*dto.HomeAssistantCustomComponentStatus]())
+	//_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).UpsertRestartRequiredRepair(mock.AnyContext())
 }
 
 func (suite *SettingsHandlerSuite) TestUpgradeHomeAssistantCustomComponentHandler() {
@@ -483,19 +483,19 @@ func (suite *SettingsHandlerSuite) TestUpgradeHomeAssistantCustomComponentHandle
 		InstalledVersion: new("2026.04.9"),
 	}
 
-	mock.When(suite.haComponentSvc.InstallOrUpgrade()).ThenReturn(nil)
+	mock.When(suite.haComponentSvc.InstallOrUpgrade(mock.AnyContext())).ThenReturn(nil)
 	mock.When(suite.haComponentSvc.GetStatus()).ThenReturn(status, nil)
-	mock.When(suite.haComponentSvc.SyncIssueStatus(mock.Any[*dto.HomeAssistantCustomComponentStatus]())).ThenReturn(nil)
-	mock.When(suite.haComponentSvc.UpsertRestartRequiredRepair(mock.AnyContext())).ThenReturn(nil)
+	//	mock.When(suite.haComponentSvc.SyncIssueStatus(mock.Any[*dto.HomeAssistantCustomComponentStatus]())).ThenReturn(nil)
+	//	mock.When(suite.haComponentSvc.UpsertRestartRequiredRepair(mock.AnyContext())).ThenReturn(nil)
 	mock.When(suite.upgradeService.GetUpgradeReleaseAsset()).ThenReturn(nil, errors.WithStack(dto.ErrorNoUpdateAvailable))
 
 	rr := api.Post("/settings/homeassistant/custom-component/upgrade", map[string]any{})
 	suite.Require().Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
 
-	_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).InstallOrUpgrade()
+	_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).InstallOrUpgrade(mock.AnyContext())
 	_, _ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).GetStatus()
-	_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).SyncIssueStatus(mock.Any[*dto.HomeAssistantCustomComponentStatus]())
-	_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).UpsertRestartRequiredRepair(mock.AnyContext())
+	// _ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).SyncIssueStatus(mock.Any[*dto.HomeAssistantCustomComponentStatus]())
+	// _ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).UpsertRestartRequiredRepair(mock.AnyContext())
 }
 
 func (suite *SettingsHandlerSuite) TestUninstallHomeAssistantCustomComponentHandler() {
@@ -510,18 +510,18 @@ func (suite *SettingsHandlerSuite) TestUninstallHomeAssistantCustomComponentHand
 		Connected:    false,
 	}
 
-	mock.When(suite.haComponentSvc.Uninstall()).ThenReturn(nil)
+	mock.When(suite.haComponentSvc.Uninstall(mock.AnyContext())).ThenReturn(nil)
 	mock.When(suite.haComponentSvc.GetStatus()).ThenReturn(status, nil)
-	mock.When(suite.haComponentSvc.SyncIssueStatus(mock.Any[*dto.HomeAssistantCustomComponentStatus]())).ThenReturn(nil)
-	mock.When(suite.haComponentSvc.UpsertRestartRequiredRepair(mock.AnyContext())).ThenReturn(nil)
+	//	mock.When(suite.haComponentSvc.SyncIssueStatus(mock.Any[*dto.HomeAssistantCustomComponentStatus]())).ThenReturn(nil)
+	//mock.When(suite.haComponentSvc.UpsertRestartRequiredRepair(mock.AnyContext())).ThenReturn(nil)
 
 	rr := api.Delete("/settings/homeassistant/custom-component")
 	suite.Require().Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
 
-	_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).Uninstall()
+	_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).Uninstall(mock.AnyContext())
 	_, _ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).GetStatus()
-	_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).SyncIssueStatus(mock.Any[*dto.HomeAssistantCustomComponentStatus]())
-	_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).UpsertRestartRequiredRepair(mock.AnyContext())
+	//	_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).SyncIssueStatus(mock.Any[*dto.HomeAssistantCustomComponentStatus]())
+	//_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).UpsertRestartRequiredRepair(mock.AnyContext())
 }
 
 func (suite *SettingsHandlerSuite) TestGetAppConfigHandler_AutoDismissesRepairWhenRestartNotRequired() {

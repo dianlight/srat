@@ -41,7 +41,6 @@ type AddonConfigWatcherService struct {
 	ctx             context.Context
 	addonsClient    addonInfoClient
 	wsClient        websocket.ClientInterface
-	broadcaster     BroadcasterServiceInterface
 	eventBus        events.EventBusInterface
 	repairService   RepairServiceInterface
 	haService       HomeAssistantServiceInterface
@@ -83,7 +82,6 @@ type AddonConfigWatcherServiceParams struct {
 	fx.In
 	Ctx           context.Context
 	AddonsClient  apps.ClientWithResponsesInterface `optional:"true"`
-	Broadcaster   BroadcasterServiceInterface       `optional:"true"`
 	EventBus      events.EventBusInterface
 	RepairService RepairServiceInterface        `optional:"true"`
 	HAService     HomeAssistantServiceInterface `optional:"true"`
@@ -102,7 +100,6 @@ func NewAddonConfigWatcherService(lc fx.Lifecycle, params AddonConfigWatcherServ
 		ctx:             params.Ctx,
 		addonsClient:    params.AddonsClient,
 		wsClient:        params.WsClient,
-		broadcaster:     params.Broadcaster,
 		eventBus:        params.EventBus,
 		repairService:   params.RepairService,
 		haService:       params.HAService,
@@ -443,10 +440,6 @@ func (s *AddonConfigWatcherService) emitChanged(path, hash string) {
 				slog.WarnContext(s.ctx, "addon_config_watcher: could not create or refresh repair issue", "err", err, "update_err", updateErr)
 				return
 			}
-		}
-
-		if s.broadcaster != nil {
-			s.broadcaster.BroadcastMessage(cmd)
 		}
 		return
 	}

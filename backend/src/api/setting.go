@@ -110,7 +110,7 @@ func (self *SettingsHanler) GetHomeAssistantCustomComponentStatus(ctx context.Co
 func (self *SettingsHanler) InstallHomeAssistantCustomComponent(ctx context.Context, input *struct{}) (*struct {
 	Body dto.HomeAssistantCustomComponentStatus
 }, error) {
-	err := self.haComponentSvc.InstallOrUpgrade()
+	err := self.haComponentSvc.InstallOrUpgrade(ctx)
 	if err != nil {
 		return nil, huma.Error500InternalServerError("Failed to install Home Assistant custom component: %v", err)
 	}
@@ -120,26 +120,29 @@ func (self *SettingsHanler) InstallHomeAssistantCustomComponent(ctx context.Cont
 		return nil, huma.Error500InternalServerError("Failed to inspect Home Assistant custom component status after install/upgrade: %v", err)
 	}
 
-	syncErr := self.haComponentSvc.SyncIssueStatus(status)
-	if syncErr != nil {
-		return nil, huma.Error500InternalServerError("Failed to synchronize Home Assistant component issue state: %v", syncErr)
-	}
-
-	if self.upgradeService != nil {
-		if ass, assErr := self.upgradeService.GetUpgradeReleaseAsset(); assErr == nil && ass != nil && ass.LastRelease != "" {
-			status.LatestVersion = &ass.LastRelease
+	/*
+		syncErr := self.haComponentSvc.SyncIssueStatus(status)
+		if syncErr != nil {
+			return nil, huma.Error500InternalServerError("Failed to synchronize Home Assistant component issue state: %v", syncErr)
 		}
-	}
 
-	status.CanInstall = !status.Installed
-	status.CanUpgrade = status.Installed
-	status.CanUninstall = status.Installed
-	repairErr := self.haComponentSvc.UpsertRestartRequiredRepair(ctx)
-	if repairErr != nil {
-		return nil, huma.Error500InternalServerError("Failed to create Home Assistant restart repair: %v", repairErr)
-	}
+		if self.upgradeService != nil {
+			if ass, assErr := self.upgradeService.GetUpgradeReleaseAsset(); assErr == nil && ass != nil && ass.LastRelease != "" {
+				status.LatestVersion = &ass.LastRelease
+			}
+		}
+	*/
 
-	_ = ctx
+	//status.CanInstall = !status.Installed
+	//	status.CanUpgrade = status.Installed
+	//	status.CanUninstall = status.Installed
+	/*
+		repairErr := self.haComponentSvc.UpsertRestartRequiredRepair(ctx)
+		if repairErr != nil {
+			return nil, huma.Error500InternalServerError("Failed to create Home Assistant restart repair: %v", repairErr)
+		}
+	*/
+	//	_ = ctx
 
 	return &struct {
 		Body dto.HomeAssistantCustomComponentStatus
@@ -149,7 +152,7 @@ func (self *SettingsHanler) InstallHomeAssistantCustomComponent(ctx context.Cont
 func (self *SettingsHanler) UpgradeHomeAssistantCustomComponent(ctx context.Context, input *struct{}) (*struct {
 	Body dto.HomeAssistantCustomComponentStatus
 }, error) {
-	err := self.haComponentSvc.InstallOrUpgrade()
+	err := self.haComponentSvc.InstallOrUpgrade(ctx)
 	if err != nil {
 		return nil, huma.Error500InternalServerError("Failed to install Home Assistant custom component: %v", err)
 	}
@@ -158,28 +161,29 @@ func (self *SettingsHanler) UpgradeHomeAssistantCustomComponent(ctx context.Cont
 	if err != nil {
 		return nil, huma.Error500InternalServerError("Failed to inspect Home Assistant custom component status after install/upgrade: %v", err)
 	}
+	/*
 
-	syncErr := self.haComponentSvc.SyncIssueStatus(status)
-	if syncErr != nil {
-		return nil, huma.Error500InternalServerError("Failed to synchronize Home Assistant component issue state: %v", syncErr)
-	}
-
-	if self.upgradeService != nil {
-		if ass, assErr := self.upgradeService.GetUpgradeReleaseAsset(); assErr == nil && ass != nil && ass.LastRelease != "" {
-			status.LatestVersion = &ass.LastRelease
+		syncErr := self.haComponentSvc.SyncIssueStatus(status)
+		if syncErr != nil {
+			return nil, huma.Error500InternalServerError("Failed to synchronize Home Assistant component issue state: %v", syncErr)
 		}
-	}
 
-	status.CanInstall = !status.Installed
-	status.CanUpgrade = status.Installed
-	status.CanUninstall = status.Installed
-	repairErr := self.haComponentSvc.UpsertRestartRequiredRepair(ctx)
-	if repairErr != nil {
-		return nil, huma.Error500InternalServerError("Failed to create Home Assistant restart repair: %v", repairErr)
-	}
+		if self.upgradeService != nil {
+			if ass, assErr := self.upgradeService.GetUpgradeReleaseAsset(); assErr == nil && ass != nil && ass.LastRelease != "" {
+				status.LatestVersion = &ass.LastRelease
+			}
+		}
 
-	_ = ctx
+		status.CanInstall = !status.Installed
+		status.CanUpgrade = status.Installed
+		status.CanUninstall = status.Installed
+		repairErr := self.haComponentSvc.UpsertRestartRequiredRepair(ctx)
+		if repairErr != nil {
+			return nil, huma.Error500InternalServerError("Failed to create Home Assistant restart repair: %v", repairErr)
+		}
 
+		_ = ctx
+	*/
 	return &struct {
 		Body dto.HomeAssistantCustomComponentStatus
 	}{Body: *status}, nil
@@ -188,7 +192,7 @@ func (self *SettingsHanler) UpgradeHomeAssistantCustomComponent(ctx context.Cont
 func (self *SettingsHanler) UninstallHomeAssistantCustomComponent(ctx context.Context, input *struct{}) (*struct {
 	Body dto.HomeAssistantCustomComponentStatus
 }, error) {
-	err := self.haComponentSvc.Uninstall()
+	err := self.haComponentSvc.Uninstall(ctx)
 	if err != nil {
 		return nil, huma.Error500InternalServerError("Failed to uninstall Home Assistant custom component: %v", err)
 	}
@@ -198,16 +202,17 @@ func (self *SettingsHanler) UninstallHomeAssistantCustomComponent(ctx context.Co
 		return nil, huma.Error500InternalServerError("Failed to inspect Home Assistant custom component status after uninstall: %v", err)
 	}
 
-	syncErr := self.haComponentSvc.SyncIssueStatus(status)
-	if syncErr != nil {
-		return nil, huma.Error500InternalServerError("Failed to synchronize Home Assistant component issue state: %v", syncErr)
-	}
+	/*
+		syncErr := self.haComponentSvc.SyncIssueStatus(status)
+		if syncErr != nil {
+			return nil, huma.Error500InternalServerError("Failed to synchronize Home Assistant component issue state: %v", syncErr)
+		}
 
-	repairErr := self.haComponentSvc.UpsertRestartRequiredRepair(ctx)
-	if repairErr != nil {
-		return nil, huma.Error500InternalServerError("Failed to create Home Assistant restart repair: %v", repairErr)
-	}
-
+		repairErr := self.haComponentSvc.UpsertRestartRequiredRepair(ctx)
+		if repairErr != nil {
+			return nil, huma.Error500InternalServerError("Failed to create Home Assistant restart repair: %v", repairErr)
+		}
+	*/
 	return &struct {
 		Body dto.HomeAssistantCustomComponentStatus
 	}{Body: *status}, nil

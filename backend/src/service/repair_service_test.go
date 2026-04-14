@@ -8,6 +8,8 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/dianlight/srat/service"
+	"github.com/ovechkin-dm/mockio/v2/matchers"
+	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
@@ -186,4 +188,30 @@ func (suite *RepairServiceSuite) TestQueueAndFlushCommands() {
 
 	queued = suite.repair.FlushQueuedCommands()
 	suite.Nil(queued)
+}
+
+func (suite *RepairServiceSuite) TestDelete_BroadcastsDeleteCommandWhenBroadcasterConfigured() {
+	ctrl := mock.NewMockController(suite.T())
+	broadcaster := mock.Mock[service.BroadcasterServiceInterface](ctrl)
+	mock.When(broadcaster.BroadcastMessage(mock.Any[dto.RepairCommandMessage]())).ThenReturn(nil)
+
+	repairSvc := service.NewRepairService(service.RepairServiceParams{
+		Ctx:         suite.T().Context(),
+		State:       &dto.ContextState{},
+		Broadcaster: broadcaster,
+	})
+
+	_, err := repairSvc.Create(dto.RepairCommandMessage{
+		CommandID:      "cmd-create",
+		RepairID:       "delete-me",
+		Action:         dto.RepairCommandActionUpsert,
+		TranslationKey: "delete_me",
+		Severity:       dto.RepairIssueSeverityWarning,
+	})
+	suite.Require().NoError(err)
+
+	err = repairSvc.Delete("delete-me")
+	suite.Require().NoError(err)
+
+	mock.Verify(broadcaster, matchers.Times(2)).BroadcastMessage(mock.Any[dto.RepairCommandMessage]())
 }

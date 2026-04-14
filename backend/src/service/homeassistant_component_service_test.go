@@ -27,8 +27,6 @@ type HomeAssistantComponentServiceSuite struct {
 	service   service.HomeAssistantComponentServiceInterface
 	issueSvc  service.IssueServiceInterface
 	repairSvc service.RepairServiceInterface
-	haSvc     service.HomeAssistantServiceInterface
-	broadcast service.BroadcasterServiceInterface
 	tempRoot  string
 }
 
@@ -51,15 +49,11 @@ func (suite *HomeAssistantComponentServiceSuite) SetupTest() {
 			func() *dto.ContextState { return suite.state },
 			mock.Mock[service.IssueServiceInterface],
 			mock.Mock[service.RepairServiceInterface],
-			mock.Mock[service.HomeAssistantServiceInterface],
-			mock.Mock[service.BroadcasterServiceInterface],
 			service.NewHomeAssistantComponentService,
 		),
 		fx.Populate(&suite.service),
 		fx.Populate(&suite.issueSvc),
 		fx.Populate(&suite.repairSvc),
-		fx.Populate(&suite.haSvc),
-		fx.Populate(&suite.broadcast),
 	)
 	suite.app.RequireStart()
 }
@@ -122,7 +116,7 @@ func (suite *HomeAssistantComponentServiceSuite) TestUninstall_RemovesComponentD
 	err = os.WriteFile(filepath.Join(componentDir, "manifest.json"), []byte(`{"version":"2026.04.1"}`), 0o644)
 	suite.Require().NoError(err)
 
-	err = suite.service.Uninstall()
+	err = suite.service.Uninstall(suite.T().Context())
 	suite.Require().NoError(err)
 
 	_, statErr := os.Stat(componentDir)
@@ -130,7 +124,7 @@ func (suite *HomeAssistantComponentServiceSuite) TestUninstall_RemovesComponentD
 }
 
 func (suite *HomeAssistantComponentServiceSuite) TestUninstall_MissingDirectoryIsNoop() {
-	err := suite.service.Uninstall()
+	err := suite.service.Uninstall(suite.T().Context())
 	suite.NoError(err)
 }
 
@@ -141,7 +135,7 @@ func (suite *HomeAssistantComponentServiceSuite) TestInstallOrUpgradeFromZip_Ins
 		"srat/sensor.py":     "# sensor",
 	})
 
-	err := suite.service.InstallOrUpgradeFromZip(zipContent)
+	err := suite.service.InstallOrUpgradeFromZip(suite.T().Context(), zipContent)
 	suite.Require().NoError(err)
 
 	status, err := suite.service.GetStatus()
@@ -160,7 +154,7 @@ func (suite *HomeAssistantComponentServiceSuite) TestInstallOrUpgradeFromZip_Rej
 		"../escape.txt": "owned",
 	})
 
-	err := suite.service.InstallOrUpgradeFromZip(zipContent)
+	err := suite.service.InstallOrUpgradeFromZip(suite.T().Context(), zipContent)
 	suite.Require().Error(err)
 	suite.Contains(err.Error(), "illegal file path")
 }
@@ -177,7 +171,7 @@ func (suite *HomeAssistantComponentServiceSuite) TestInstallOrUpgradeFromZip_Upg
 		"srat/new_sensor.py": "# new",
 	})
 
-	err := suite.service.InstallOrUpgradeFromZip(zipContent)
+	err := suite.service.InstallOrUpgradeFromZip(suite.T().Context(), zipContent)
 	suite.Require().NoError(err)
 
 	status, err := suite.service.GetStatus()
@@ -224,28 +218,22 @@ func (suite *HomeAssistantComponentServiceSuite) TestSyncIssueStatus_ResolvesIss
 	_ = mock.Verify(suite.issueSvc, matchers.Times(0)).Create(mock.Any[*dto.Issue]())
 }
 
-func (suite *HomeAssistantComponentServiceSuite) TestUpsertRestartRequiredRepair_UsesRepairServiceAndBroadcast() {
+func (suite *HomeAssistantComponentServiceSuite) TestUpsertRestartRequiredRepair_UsesRepairService() {
 	mock.When(suite.repairSvc.Create(mock.Any[dto.RepairCommandMessage]())).ThenReturn(nil, nil)
-	mock.When(suite.broadcast.BroadcastMessage(mock.Any[dto.RepairCommandMessage]())).ThenReturn(nil)
 
 	err := suite.service.UpsertRestartRequiredRepair(context.Background())
 	suite.Require().NoError(err)
 
 	_, _ = mock.Verify(suite.repairSvc, matchers.Times(1)).Create(mock.Any[dto.RepairCommandMessage]())
-	mock.Verify(suite.broadcast, matchers.Times(1)).BroadcastMessage(mock.Any[dto.RepairCommandMessage]())
-	_ = mock.Verify(suite.haSvc, matchers.Times(0)).CreatePersistentNotification(mock.Any[string](), mock.Any[string](), mock.Any[string]())
 }
 
-func (suite *HomeAssistantComponentServiceSuite) TestDismissRestartRequiredRepair_UsesRepairServiceAndBroadcast() {
+func (suite *HomeAssistantComponentServiceSuite) TestDismissRestartRequiredRepair_UsesRepairService() {
 	mock.When(suite.repairSvc.Delete(mock.Exact("custom_component_restart_required"))).ThenReturn(nil)
-	mock.When(suite.broadcast.BroadcastMessage(mock.Any[dto.RepairCommandMessage]())).ThenReturn(nil)
 
 	err := suite.service.DismissRestartRequiredRepair(context.Background())
 	suite.Require().NoError(err)
 
 	_ = mock.Verify(suite.repairSvc, matchers.Times(1)).Delete(mock.Exact("custom_component_restart_required"))
-	mock.Verify(suite.broadcast, matchers.Times(1)).BroadcastMessage(mock.Any[dto.RepairCommandMessage]())
-	_ = mock.Verify(suite.haSvc, matchers.Times(0)).DismissPersistentNotification(mock.Any[string]())
 }
 
 func createCustomComponentArchive(t *testing.T, files map[string]string) []byte {

@@ -8,7 +8,9 @@ import (
 	"time"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/google/uuid"
 	"gitlab.com/tozd/go/errors"
+	"go.uber.org/fx"
 )
 
 type RepairServiceInterface interface {
@@ -26,16 +28,25 @@ type RepairServiceInterface interface {
 type RepairService struct {
 	ctx          context.Context
 	stateContext *dto.ContextState
+	broadcaster  BroadcasterServiceInterface
 	mutex        sync.RWMutex
 	state        map[string]dto.ManagedRepair
 	queue        []dto.RepairCommandMessage
 	queuedIDs    map[string]struct{}
 }
 
-func NewRepairService(ctx context.Context, state *dto.ContextState) RepairServiceInterface {
+type RepairServiceParams struct {
+	fx.In
+	Ctx         context.Context
+	State       *dto.ContextState
+	Broadcaster BroadcasterServiceInterface `optional:"true"`
+}
+
+func NewRepairService(params RepairServiceParams) RepairServiceInterface {
 	return &RepairService{
-		ctx:          ctx,
-		stateContext: state,
+		ctx:          params.Ctx,
+		stateContext: params.State,
+		broadcaster:  params.Broadcaster,
 		state:        make(map[string]dto.ManagedRepair),
 		queue:        make([]dto.RepairCommandMessage, 0),
 		queuedIDs:    make(map[string]struct{}),
@@ -68,6 +79,9 @@ func (s *RepairService) Create(command dto.RepairCommandMessage) (*dto.ManagedRe
 	}
 
 	s.state[command.RepairID] = record
+	if s.broadcaster != nil {
+		s.broadcaster.BroadcastMessage(command)
+	}
 	if s.stateContext == nil || s.stateContext.HAWsComponent == nil {
 		s.enqueueLocked(command)
 	}
@@ -96,6 +110,9 @@ func (s *RepairService) Update(command dto.RepairCommandMessage) (*dto.ManagedRe
 	record.LastError = nil
 	record.UpdatedAt = time.Now()
 	s.state[command.RepairID] = record
+	if s.broadcaster != nil {
+		s.broadcaster.BroadcastMessage(command)
+	}
 	if s.stateContext == nil || s.stateContext.HAWsComponent == nil {
 		s.enqueueLocked(command)
 	}
@@ -117,6 +134,13 @@ func (s *RepairService) Delete(repairID string) error {
 	}
 
 	delete(s.state, repairID)
+	if s.broadcaster != nil {
+		s.broadcaster.BroadcastMessage(dto.RepairCommandMessage{
+			CommandID: uuid.NewString(),
+			RepairID:  repairID,
+			Action:    dto.RepairCommandActionDelete,
+		})
+	}
 	return nil
 }
 
