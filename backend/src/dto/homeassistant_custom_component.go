@@ -4,7 +4,7 @@ import "time"
 
 const (
 	// DefaultCustomComponentsPath is the default Home Assistant custom-components root.
-	DefaultCustomComponentsPath = "/config/custom_components"
+	DefaultCustomComponentsPath = "/homeassistant/custom_components/"
 	// CustomComponentSRATName is the folder name for SRAT custom component.
 	CustomComponentSRATName = "srat"
 	// HomeAssistantComponentMissingIssueTitle is emitted when the SRAT custom

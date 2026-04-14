@@ -39,6 +39,7 @@ type HomeAssistantComponentServiceInterface interface {
 }
 
 type HomeAssistantComponentService struct {
+	ctx           context.Context
 	state         *dto.ContextState
 	issueService  IssueServiceInterface
 	repairService RepairServiceInterface
@@ -48,6 +49,7 @@ type HomeAssistantComponentService struct {
 
 type HomeAssistantComponentServiceProps struct {
 	fx.In
+	Ctx           context.Context
 	State         *dto.ContextState
 	IssueService  IssueServiceInterface         `optional:"true"`
 	RepairService RepairServiceInterface        `optional:"true"`
@@ -58,6 +60,7 @@ type HomeAssistantComponentServiceProps struct {
 // NewHomeAssistantComponentService builds a status service for SRAT custom component.
 func NewHomeAssistantComponentService(in HomeAssistantComponentServiceProps) HomeAssistantComponentServiceInterface {
 	return &HomeAssistantComponentService{
+		ctx:           in.Ctx,
 		state:         in.State,
 		issueService:  in.IssueService,
 		repairService: in.RepairService,
@@ -141,7 +144,19 @@ func (s *HomeAssistantComponentService) Uninstall() error {
 		return err
 	}
 
-	return os.RemoveAll(installPath)
+	err := os.RemoveAll(installPath)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		err := s.UpsertRestartRequiredRepair(s.ctx)
+		if err != nil {
+			tlog.WarnContext(s.ctx, "Failed to upsert restart required repair after custom component uninstall", "error", err)
+		}
+	}()
+
+	return nil
 }
 
 func (s *HomeAssistantComponentService) UpsertRestartRequiredRepair(ctx context.Context) error {
@@ -166,6 +181,8 @@ func (s *HomeAssistantComponentService) UpsertRestartRequiredRepair(ctx context.
 
 		if s.broadcaster != nil {
 			s.broadcaster.BroadcastMessage(cmd)
+		} else {
+			tlog.WarnContext(ctx, "Broadcaster service not available to broadcast custom component restart repair update", "repair_id", customComponentRestartRepairID)
 		}
 
 		return nil
@@ -348,6 +365,13 @@ func (s *HomeAssistantComponentService) InstallOrUpgradeFromZip(zipArchive []byt
 		}
 		return err
 	}
+
+	go func() {
+		err := s.UpsertRestartRequiredRepair(s.ctx)
+		if err != nil {
+			tlog.WarnContext(s.ctx, "Failed to upsert restart required repair after custom component install/upgrade", "error", err)
+		}
+	}()
 
 	return nil
 }

@@ -195,6 +195,7 @@ func GetSambaVersion() (string, error) {
 	versionLine := strings.TrimSpace(string(output))
 	parts := strings.Fields(versionLine)
 	if len(parts) >= 2 && strings.ToLower(parts[0]) == "version" {
+		sambaVersionOverride = parts[1]
 		return parts[1], nil
 	}
 

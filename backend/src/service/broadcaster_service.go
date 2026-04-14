@@ -153,7 +153,7 @@ func (broker *BroadcasterService) setupEventListeners() []func() {
 		return nil
 	})
 	ret[7] = broker.eventBus.OnCommandExecution(func(ctx context.Context, event events.CommandExecutionEvent) errors.E {
-		slog.DebugContext(ctx, "BroadcasterService received CommandExecution event", "type", event.Type, "message_type", fmt.Sprintf("%T", event.Message))
+		tlog.DebugContext(ctx, "BroadcasterService received CommandExecution event", "type", event.Type, "message_type", fmt.Sprintf("%T", event.Message), "message", event.Message)
 		broker.BroadcastMessage(event.Message)
 		return nil
 	})
@@ -286,7 +286,7 @@ func (broker *BroadcasterService) ProcessWebSocketChannel(send ws.Sender) {
 					Data: event.Message,
 				})
 				if err != nil {
-					if !strings.Contains(err.Error(), ": broken pipe") {
+					if !strings.Contains(err.Error(), ": broken pipe") && !strings.Contains(err.Error(), "websocket: close sent") {
 						tlog.DebugContext(broker.ctx, "Error sending event to client", "event", event, "err", err, "active clients", broker.ConnectedClients.Load())
 					}
 					return

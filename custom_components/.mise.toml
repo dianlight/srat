@@ -52,11 +52,11 @@ with open(path, 'w') as f:
 print('Injected manifest version: ${usage_version}')
 "
       fi
-      (cd "$TMPDIR" && zip -r "$OUTPUT" srat -x "srat/__pycache__/*" "srat/*.pyc")
+      (cd "$TMPDIR" && zip -qr "$OUTPUT" srat -x "srat/__pycache__/*" "srat/*.pyc")
     ''',
     "echo \"HACS component zip created at ${usage_output?}\"",
-    "unzip -l \"${usage_output?}\"",
 ]
+quiet = true
 
 [tasks."install:remote"]
 depends = [
@@ -69,6 +69,14 @@ run = [
     "rsync -rvuzP --del ./srat ${HOMEASSISTANT_IP}:/config/custom_components",
     "ssh root@${HOMEASSISTANT_IP} -t 'ha core restart'",
     ]
+quiet = true
+
+[tasks."uninstall:remote"]
+alias = "uninstall-remote"
+run = [
+    "ssh root@${HOMEASSISTANT_IP} -t 'rm -rf /config/custom_components/srat'",
+    "ssh root@${HOMEASSISTANT_IP} -t 'ha core restart'",
+]
 quiet = true
 
 [tasks."test:ci"]
