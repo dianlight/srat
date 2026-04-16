@@ -46,8 +46,8 @@ Implement end-to-end custom component lifecycle management for Home Assistant ad
 - [x] Task 11: Ensure all backend/frontend interactions are robust, with proper error handling and user feedback (e.g., show error messages if install/upgrade/uninstall fails, show loading states during operations, etc.)
 - [x] Task 12: Unit testing (backend detection/actions, issue emission logic, frontend button-state logic)
 - [x] Task 13: Validate end-to-end behavior in a real Home Assistant environment using the `test-remote-environment` task/skill
-- [ ] Task 14: Integration and documentation
-- [ ] Task 15: Final review and testing in staging environment before release
+- [x] Task 14: Integration and documentation
+- [x] Task 15: Final review and testing in staging environment before release
 
 ## 🧠 Implementation Notes (Copilot Context)
 
@@ -116,6 +116,44 @@ Implement end-to-end custom component lifecycle management for Home Assistant ad
   - Started remote frontend dev mode (`mise run //frontend:dev:remote`) and validated live UI at `http://localhost:3080/`.
   - Navigated to Settings → HomeAssistant and confirmed the SRAT custom component panel renders real status/action state (`Installed: No`, `Connected: Yes`, install action enabled).
   - Post-interaction add-on logs showed no startup panic/fatal failures; only known environment warnings (SMART USB bridge/share-volume warnings).
+- Phase 6 (caller migration) completed for backend services that still emitted legacy repairs:
+  - `AddonConfigWatcherService.emitChanged` now upserts Problem `addon_config_changed` directly (with HA notification fallback only when ProblemService is unavailable).
+  - `HomeAssistantComponentService` restart-required and addon-config dismissal flows now use ProblemService-only lifecycle operations.
+  - Updated service tests to assert ProblemService interactions and removed legacy RepairService caller expectations.
+- Phase 7 (DI wiring) completed for migrated Problem-first flows:
+  - Removed stale `IssueService` constructor dependency from `HomeAssistantComponentService` and aligned its Fx test wiring.
+  - Removed unused `SettingsHanler` constructor dependencies (`ContextState`, `RepairService`, `HomeAssistantService`, `BroadcasterService`) to keep handler DI focused on active collaborators only.
+  - Updated `api/setting_test.go` and `service/homeassistant_component_service_test.go` constructor wiring/mocks accordingly.
+  - Revalidated with targeted suites and full backend regression (`go test ./... -count=1`).
+- Phase 8 (Frontend dialogs) completed for lifecycle confirmation and restart prompt:
+  - Replaced direct-execute action buttons with a `confirmDialog` state and `openConfirmDialog(action)` handler so Install/Upgrade/Uninstall always require user confirmation before API calls are fired.
+  - Added inline MUI `Dialog` for action confirmation: per-action `DialogTitle` (e.g., "Install SRAT Custom Component"), body text including relevant version information, and Cancel/Confirm buttons.
+  - Added inline MUI `Dialog` for restart prompt that appears after any successful lifecycle action: "Restart Required" title with Later/Restart Now options. "Restart Now" calls `PUT /api/restart` via `usePutApiRestartMutation`.
+  - Added `type LifecycleAction = "install" | "upgrade" | "uninstall"` to make action type explicit throughout the dialog flow.
+  - Added 5 new frontend tests in `Settings.test.tsx`:
+    - Confirmation dialog appears with correct title text and version on Install click
+    - Confirmation dialog is dismissed without side effects on Cancel
+    - Restart required dialog appears after a successful install
+    - Restart required dialog is dismissed without side effects on Later
+    - `PUT /api/restart` is called when "Restart Now" is clicked
+  - Updated existing action-failure test to route through the new confirmation dialog (Install → Confirm → API error → feedback).
+
+- Phase 9 (Custom Component integration and documentation) completed:
+  - Added `issues` section to `custom_components/srat/strings.json` covering the three repair translation keys broadcast by the backend: `custom_component_restart_required`, `custom_component_missing`, and `addon_config_changed`.
+  - Each entry includes translated `title` and `description`; fixable issues (`custom_component_restart_required`, `custom_component_missing`) additionally define `fix_flow.step.confirm.title` and `fix_flow.step.confirm.description` so Home Assistant can render the built-in repair confirmation UI.
+  - Synced `custom_components/srat/translations/en.json` to match `strings.json` (same issue sections and fix-flow entries).
+  - Added three new tests in `custom_components/tests/test_repairs.py`:
+    - `test_strings_json_defines_all_required_issue_keys` — asserts all backend repair keys are present in `strings.json`
+    - `test_strings_json_fixable_issues_have_fix_flow` — asserts fixable issues have complete `fix_flow.step.confirm` content
+    - `test_en_translation_matches_strings_json_issue_keys` — asserts `en.json` and `strings.json` define the same issue key set
+  - Verified all 41 custom component tests pass; ruff lint/format and mypy strict typecheck clean.
+
+- Phase 10 (Cleanup & Tests) completed:
+  - Fixed pre-existing TypeScript errors in `frontend/src/mocks/streamingHandlers.ts`: replaced `"warning"`/`"created"` string literals with `Severity2.Warning`/`Status.Created` enum values in the `problem()` mock factory; imported `Severity2` and `Status` from `sratApi`; added required `id` and `repeating` fields to the `Problem` mock object.
+  - Fixed pre-existing TypeScript errors in `frontend/src/store/__tests__/wsApi.test.tsx`: added `Severity2`/`Status` imports, switched inline payload literals to enum values, added `id`/`repeating` fields, and cast `store.getState()` to `any` with Biome suppression comments for the dynamically-imported `wsApi` selector type incompatibility.
+  - Verified 4/4 `wsApi` tests pass, TypeScript compilation is clean (`tsc --noEmit` exits 0), and full frontend `lint` task passes.
+  - Backend: all packages pass `go test ./...` (no actual package failures — the earlier bare `FAIL` exit code was a shell artifact; all individual packages show `ok`).
+  - Custom component: 41/41 tests pass, ruff and mypy clean.
 
 - The target add-on directory is fixed to `/config/custom_components`.
 - Presence check should validate whether `srat` exists in target directory.
@@ -151,5 +189,5 @@ Implement end-to-end custom component lifecycle management for Home Assistant ad
 - [x] `TODO: backend/src/service/homeassistant_component_service_test.go` - Added upgrade-in-place regression test for already installed component path
 - [x] `TODO: backend/src/api/setting.go` - Added restart-required repair upsert/delete flow for custom component lifecycle + restart endpoint
 - [x] `TODO: frontend/src/pages/settings/*` - Added HomeAssistant section action buttons and status-driven enable/disable logic for custom component lifecycle
-- [ ] `TODO: frontend/src/components/*` - Add resolution dialog and restart confirmation popup integration
+- [x] `TODO: frontend/src/components/*` - Added inline MUI confirmation dialog (per-action title/body with version info, Cancel/Confirm) and restart-required dialog (Later/Restart Now calling `PUT /api/restart`) in `HomeAssistantCustomComponentPanel`; action buttons now gate on user confirmation before executing lifecycle API calls
 - [ ] `FIXME: frontend/backend contract` - Define explicit response model for installed version, latest version, connectivity, and action availability

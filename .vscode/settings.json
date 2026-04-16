@@ -278,5 +278,8 @@
 		"fmt",
 		"--stdin"
 	],
-	"chat.tools.terminal.backgroundNotifications": true
+	"chat.tools.terminal.backgroundNotifications": true,
+	"chat.tools.confirmationCarousel.enabled": true,
+	"workbench.browser.openLocalhostLinks": true,
+	"jsts-chat-features.skills.enabled": true
 }

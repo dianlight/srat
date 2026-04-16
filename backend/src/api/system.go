@@ -55,6 +55,7 @@ func (self *SystemHanler) HandleCommandEvents(ctx context.Context, input *struct
 		Started    *dto.CommandStartedNotification    `json:"started,omitempty"`
 		Output     *dto.CommandOutputNotification     `json:"output,omitempty"`
 		Terminated *dto.CommandTerminatedNotification `json:"terminated,omitempty"`
+		Problem    *dto.Problem                       `json:"problem,omitempty"`
 	}
 }, error) {
 	return nil, huma.Error500InternalServerError("Use WebSocket for command events", nil)

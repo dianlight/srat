@@ -1,4 +1,4 @@
-FROM ghcr.io/hassio-addons/base:20.0.2@sha256:816de82b2a8bb9f8b33d49e95a86925a315fdf4b54101c9889f0197e1c2eefc9
+FROM ghcr.io/hassio-addons/base:20.0.4@sha256:4297a5fa89c107e01f627d93deb202c5070494cb22cdf869fc966391ed377453
 
 SHELL ["/bin/bash", "-lc"]
 
@@ -60,9 +60,10 @@ RUN apk add --no-cache \
 COPY .mise.toml /tmp/.mise.toml
 RUN \
     curl https://mise.run/zsh | MISE_INSTALL_PATH=/usr/bin/mise sh \
-    && echo 'eval "$(mise activate zsh --shims)"' >> /root/.zshrc \
-    && cd /tmp \
-    && MISE_EXPERIMENTAL=1 mise install --yes 
+    && echo 'eval "$(mise activate zsh --shims)"' >> /root/.zshrc 
+
+#    && cd /tmp \
+#    && MISE_EXPERIMENTAL=1 mise install --yes 
 
 RUN mkdir -p /home/vscode \ 
     && echo 'eval "$(mise activate zsh --shims)"'  >> /home/vscode/.zshrc

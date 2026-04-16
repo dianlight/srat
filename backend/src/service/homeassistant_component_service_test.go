@@ -22,12 +22,11 @@ import (
 
 type HomeAssistantComponentServiceSuite struct {
 	suite.Suite
-	app       *fxtest.App
-	state     *dto.ContextState
-	service   service.HomeAssistantComponentServiceInterface
-	issueSvc  service.IssueServiceInterface
-	repairSvc service.RepairServiceInterface
-	tempRoot  string
+	app        *fxtest.App
+	state      *dto.ContextState
+	service    service.HomeAssistantComponentServiceInterface
+	problemSvc service.ProblemServiceInterface
+	tempRoot   string
 }
 
 func TestHomeAssistantComponentServiceSuite(t *testing.T) {
@@ -47,13 +46,11 @@ func (suite *HomeAssistantComponentServiceSuite) SetupTest() {
 				return context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, &sync.WaitGroup{}))
 			},
 			func() *dto.ContextState { return suite.state },
-			mock.Mock[service.IssueServiceInterface],
-			mock.Mock[service.RepairServiceInterface],
+			mock.Mock[service.ProblemServiceInterface],
 			service.NewHomeAssistantComponentService,
 		),
 		fx.Populate(&suite.service),
-		fx.Populate(&suite.issueSvc),
-		fx.Populate(&suite.repairSvc),
+		fx.Populate(&suite.problemSvc),
 	)
 	suite.app.RequireStart()
 }
@@ -191,15 +188,12 @@ func (suite *HomeAssistantComponentServiceSuite) TestSyncIssueStatus_CreatesIssu
 		Connected: false,
 	}
 
-	mock.When(suite.issueSvc.FindByTitle(mock.Exact(dto.HomeAssistantComponentMissingIssueTitle))).ThenReturn(nil, nil)
-	mock.When(suite.issueSvc.Create(mock.Any[*dto.Issue]())).ThenReturn(nil)
+	mock.When(suite.problemSvc.Upsert(mock.Any[*dto.Problem]())).ThenReturn(new(dto.Problem{}), nil)
 
 	err := suite.service.SyncIssueStatus(status)
 	suite.Require().NoError(err)
 
-	_, _ = mock.Verify(suite.issueSvc, matchers.Times(1)).FindByTitle(mock.Exact(dto.HomeAssistantComponentMissingIssueTitle))
-	_ = mock.Verify(suite.issueSvc, matchers.Times(1)).Create(mock.Any[*dto.Issue]())
-	_ = mock.Verify(suite.issueSvc, matchers.Times(0)).ResolveByTitle(mock.Any[string]())
+	_, _ = mock.Verify(suite.problemSvc, matchers.Times(1)).Upsert(mock.Any[*dto.Problem]())
 }
 
 func (suite *HomeAssistantComponentServiceSuite) TestSyncIssueStatus_ResolvesIssueWhenInstalled() {
@@ -208,32 +202,30 @@ func (suite *HomeAssistantComponentServiceSuite) TestSyncIssueStatus_ResolvesIss
 		Connected: false,
 	}
 
-	mock.When(suite.issueSvc.ResolveByTitle(mock.Exact(dto.HomeAssistantComponentMissingIssueTitle))).ThenReturn(nil)
+	mock.When(suite.problemSvc.Dismiss(mock.Exact("custom_component_missing"))).ThenReturn(nil)
 
 	err := suite.service.SyncIssueStatus(status)
 	suite.Require().NoError(err)
 
-	_ = mock.Verify(suite.issueSvc, matchers.Times(1)).ResolveByTitle(mock.Exact(dto.HomeAssistantComponentMissingIssueTitle))
-	_, _ = mock.Verify(suite.issueSvc, matchers.Times(0)).FindByTitle(mock.Any[string]())
-	_ = mock.Verify(suite.issueSvc, matchers.Times(0)).Create(mock.Any[*dto.Issue]())
+	_ = mock.Verify(suite.problemSvc, matchers.Times(1)).Dismiss(mock.Exact("custom_component_missing"))
 }
 
-func (suite *HomeAssistantComponentServiceSuite) TestUpsertRestartRequiredRepair_UsesRepairService() {
-	mock.When(suite.repairSvc.Create(mock.Any[dto.RepairCommandMessage]())).ThenReturn(nil, nil)
+func (suite *HomeAssistantComponentServiceSuite) TestUpsertRestartRequiredRepair_UsesProblemService() {
+	mock.When(suite.problemSvc.Upsert(mock.Any[*dto.Problem]())).ThenReturn(new(dto.Problem{}), nil)
 
 	err := suite.service.UpsertRestartRequiredRepair(context.Background())
 	suite.Require().NoError(err)
 
-	_, _ = mock.Verify(suite.repairSvc, matchers.Times(1)).Create(mock.Any[dto.RepairCommandMessage]())
+	_, _ = mock.Verify(suite.problemSvc, matchers.Times(1)).Upsert(mock.Any[*dto.Problem]())
 }
 
-func (suite *HomeAssistantComponentServiceSuite) TestDismissRestartRequiredRepair_UsesRepairService() {
-	mock.When(suite.repairSvc.Delete(mock.Exact("custom_component_restart_required"))).ThenReturn(nil)
+func (suite *HomeAssistantComponentServiceSuite) TestDismissRestartRequiredRepair_UsesProblemService() {
+	mock.When(suite.problemSvc.Dismiss(mock.Exact("custom_component_restart_required"))).ThenReturn(nil)
 
 	err := suite.service.DismissRestartRequiredRepair(context.Background())
 	suite.Require().NoError(err)
 
-	_ = mock.Verify(suite.repairSvc, matchers.Times(1)).Delete(mock.Exact("custom_component_restart_required"))
+	_ = mock.Verify(suite.problemSvc, matchers.Times(1)).Dismiss(mock.Exact("custom_component_restart_required"))
 }
 
 func createCustomComponentArchive(t *testing.T, files map[string]string) []byte {

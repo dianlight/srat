@@ -113,52 +113,52 @@ checksum = "sha256:b33519e33e6807e37d57767f7c49fc8fe5205819d267924a8fe8a20d7ce29
 url = "https://github.com/biomejs/biome/releases/download/%40biomejs/biome%402.4.9/biome-win32-x64.exe"
 
 [[tools.bun]]
-version = "1.3.11"
+version = "1.3.12"
 backend = "core:bun"
 
 [tools.bun."platforms.linux-arm64"]
-checksum = "sha256:d13944da12a53ecc74bf6a720bd1d04c4555c038dfe422365356a7be47691fdf"
-url = "https://github.com/oven-sh/bun/releases/download/bun-v1.3.11/bun-linux-aarch64.zip"
+checksum = "sha256:c40bc0ebca11bde7d75af497a654a874d0c7fd8d6a8d6031c173c10c9064297b"
+url = "https://github.com/oven-sh/bun/releases/download/bun-v1.3.12/bun-linux-aarch64.zip"
 
 [tools.bun."platforms.linux-arm64-musl"]
-checksum = "sha256:0f5bf5dc3f276053196274bb84f90a44e2fa40c9432bd6757e3247a8d9476a3d"
-url = "https://github.com/oven-sh/bun/releases/download/bun-v1.3.11/bun-linux-aarch64-musl.zip"
+checksum = "sha256:731baab945bc471c17248ea375e66f71442879d2595c54045b3e861f4e8b9ab1"
+url = "https://github.com/oven-sh/bun/releases/download/bun-v1.3.12/bun-linux-aarch64-musl.zip"
 
 [tools.bun."platforms.linux-x64"]
-checksum = "sha256:8611ba935af886f05a6f38740a15160326c15e5d5d07adef966130b4493607ed"
-url = "https://github.com/oven-sh/bun/releases/download/bun-v1.3.11/bun-linux-x64.zip"
+checksum = "sha256:11dc3ee11bc1695e149737c6ca3d5619302cf4346e6b8a6ec7988967ef01ddc5"
+url = "https://github.com/oven-sh/bun/releases/download/bun-v1.3.12/bun-linux-x64.zip"
 
 [tools.bun."platforms.linux-x64-baseline"]
-checksum = "sha256:abe346f63414547cdf6b35b7a649a490c728b93d006226156923918a84c0e59b"
-url = "https://github.com/oven-sh/bun/releases/download/bun-v1.3.11/bun-linux-x64-baseline.zip"
+checksum = "sha256:f8bb377a9ae93d44697ff91a2611164d2aedc9263415d623b0c3af24a6f55dab"
+url = "https://github.com/oven-sh/bun/releases/download/bun-v1.3.12/bun-linux-x64-baseline.zip"
 
 [tools.bun."platforms.linux-x64-musl"]
-checksum = "sha256:b0fce3bc4fab52f26a1e0d8886dc07fd0c0eb2a274cb343b59c83a2d5997b5b1"
-url = "https://github.com/oven-sh/bun/releases/download/bun-v1.3.11/bun-linux-x64-musl.zip"
+checksum = "sha256:5a9f9a2102d4bd0d5210b4f6bd345151d2310623947085177c1b306e8587dce6"
+url = "https://github.com/oven-sh/bun/releases/download/bun-v1.3.12/bun-linux-x64-musl.zip"
 
 [tools.bun."platforms.linux-x64-musl-baseline"]
-checksum = "sha256:2fa2b697f14ada86a28df771d3876ca7606d7453b2339454893b1937aa9c0c7e"
-url = "https://github.com/oven-sh/bun/releases/download/bun-v1.3.11/bun-linux-x64-musl-baseline.zip"
+checksum = "sha256:a95e079aef96f1387b86e27b69f9a6babbd08154d9a59483f29d9de285b8e3ad"
+url = "https://github.com/oven-sh/bun/releases/download/bun-v1.3.12/bun-linux-x64-musl-baseline.zip"
 
 [tools.bun."platforms.macos-arm64"]
-checksum = "sha256:6f5a3467ed9caec4795bf78cd476507d9f870c7d57b86c945fcb338126772ffc"
-url = "https://github.com/oven-sh/bun/releases/download/bun-v1.3.11/bun-darwin-aarch64.zip"
+checksum = "sha256:6c4bb87dd013ed1a8d6a16e357a3d094959fd5530b4d7061f7f3680c3c7cea1c"
+url = "https://github.com/oven-sh/bun/releases/download/bun-v1.3.12/bun-darwin-aarch64.zip"
 
 [tools.bun."platforms.macos-x64"]
-checksum = "sha256:c4fe2b9247218b0295f24e895aaec8fee62e74452679a9026b67eacbd611a286"
-url = "https://github.com/oven-sh/bun/releases/download/bun-v1.3.11/bun-darwin-x64.zip"
+checksum = "sha256:0f58c53a3e7947f1e626d2f8d285f97c14b7cadcca9c09ebafc0ae9d35b58c3d"
+url = "https://github.com/oven-sh/bun/releases/download/bun-v1.3.12/bun-darwin-x64.zip"
 
 [tools.bun."platforms.macos-x64-baseline"]
-checksum = "sha256:fb6739b08bf54550edaa7c824cd5b2dca45b6a06afef408443087a63105f6f8d"
-url = "https://github.com/oven-sh/bun/releases/download/bun-v1.3.11/bun-darwin-x64-baseline.zip"
+checksum = "sha256:cc4e22130c2bc2d944d3a286de08f2ed37fa74136e59760f3a4661e610246474"
+url = "https://github.com/oven-sh/bun/releases/download/bun-v1.3.12/bun-darwin-x64-baseline.zip"
 
 [tools.bun."platforms.windows-x64"]
-checksum = "sha256:066f8694f8b7d8df592452746d18f01710d4053e93030922dbc6e8c34a8c4b9f"
-url = "https://github.com/oven-sh/bun/releases/download/bun-v1.3.11/bun-windows-x64.zip"
+checksum = "sha256:841ff9c5dffcaa3a2620d1e3f87ee500f32a4ca830b001cade7a3479609d4a89"
+url = "https://github.com/oven-sh/bun/releases/download/bun-v1.3.12/bun-windows-x64.zip"
 
 [tools.bun."platforms.windows-x64-baseline"]
-checksum = "sha256:9d0e0f923e9626f3bc6044fc32e0d3ab29039aea753f5678ef8801cf26f75288"
-url = "https://github.com/oven-sh/bun/releases/download/bun-v1.3.11/bun-windows-x64-baseline.zip"
+checksum = "sha256:2d3d5f88a95943563f56f3643c8f4e2422261018f6d915329bb2fb33f7256ba2"
+url = "https://github.com/oven-sh/bun/releases/download/bun-v1.3.12/bun-windows-x64-baseline.zip"
 
 [[tools.go]]
 version = "1.26.2"
@@ -262,12 +262,76 @@ checksum = "sha256:4932cfca5e75bf60fe1c576edf459e5e809e6644664a068185d64b84af3fa
 url = "https://github.com/golangci/golangci-lint/releases/download/v2.11.4/golangci-lint-2.11.4-windows-amd64.zip"
 
 [[tools.hk]]
-version = "1.39.0"
+version = "1.43.0"
 backend = "aqua:jdx/hk"
+
+[tools.hk."platforms.linux-arm64"]
+checksum = "sha256:f3efa8f95505178bf0ec807ce468b31ada5f7379b9089828487b0c9e67fd67b1"
+url = "https://github.com/jdx/hk/releases/download/v1.43.0/hk-aarch64-unknown-linux-gnu.tar.gz"
+
+[tools.hk."platforms.linux-arm64-musl"]
+checksum = "sha256:f3efa8f95505178bf0ec807ce468b31ada5f7379b9089828487b0c9e67fd67b1"
+url = "https://github.com/jdx/hk/releases/download/v1.43.0/hk-aarch64-unknown-linux-gnu.tar.gz"
+
+[tools.hk."platforms.linux-musl-arm64-musl"]
+checksum = "sha256:f3efa8f95505178bf0ec807ce468b31ada5f7379b9089828487b0c9e67fd67b1"
+url = "https://github.com/jdx/hk/releases/download/v1.43.0/hk-aarch64-unknown-linux-gnu.tar.gz"
+
+[tools.hk."platforms.linux-musl-linux-arm64-musl"]
+checksum = "sha256:f3efa8f95505178bf0ec807ce468b31ada5f7379b9089828487b0c9e67fd67b1"
+url = "https://github.com/jdx/hk/releases/download/v1.43.0/hk-aarch64-unknown-linux-gnu.tar.gz"
+
+[tools.hk."platforms.linux-x64"]
+checksum = "sha256:66ecbba59208e591101c83148708363e0b6dc4a5df1d41e0bcdbbdd27788f999"
+url = "https://github.com/jdx/hk/releases/download/v1.43.0/hk-x86_64-unknown-linux-gnu.tar.gz"
+
+[tools.hk."platforms.linux-x64-baseline"]
+checksum = "sha256:66ecbba59208e591101c83148708363e0b6dc4a5df1d41e0bcdbbdd27788f999"
+url = "https://github.com/jdx/hk/releases/download/v1.43.0/hk-x86_64-unknown-linux-gnu.tar.gz"
+
+[tools.hk."platforms.linux-x64-musl"]
+checksum = "sha256:66ecbba59208e591101c83148708363e0b6dc4a5df1d41e0bcdbbdd27788f999"
+url = "https://github.com/jdx/hk/releases/download/v1.43.0/hk-x86_64-unknown-linux-gnu.tar.gz"
+
+[tools.hk."platforms.linux-x64-musl-baseline"]
+checksum = "sha256:66ecbba59208e591101c83148708363e0b6dc4a5df1d41e0bcdbbdd27788f999"
+url = "https://github.com/jdx/hk/releases/download/v1.43.0/hk-x86_64-unknown-linux-gnu.tar.gz"
+
+[tools.hk."platforms.macos-arm64"]
+checksum = "sha256:7999590e3571b87db3b79b878afd45afc5b7a301c59ee6f28fde0056956e0aeb"
+url = "https://github.com/jdx/hk/releases/download/v1.43.0/hk-aarch64-apple-darwin.tar.gz"
+
+[tools.hk."platforms.windows-x64"]
+checksum = "sha256:cf053945bb446175fa4ce1f28fd9fcf0d24b4548cf7043cdd869249c1ff69d8d"
+url = "https://github.com/jdx/hk/releases/download/v1.43.0/hk-x86_64-pc-windows-msvc.zip"
+
+[tools.hk."platforms.windows-x64-baseline"]
+checksum = "sha256:cf053945bb446175fa4ce1f28fd9fcf0d24b4548cf7043cdd869249c1ff69d8d"
+url = "https://github.com/jdx/hk/releases/download/v1.43.0/hk-x86_64-pc-windows-msvc.zip"
+
+[[tools."http:hk"]]
+version = "1.43.0"
+backend = "http:hk"
+
+[tools."http:hk"."platforms.linux-arm64"]
+checksum = "blake3:0c29b367250a34e236ce4796017f0583928950f0cb80f8e4ade7c9be30840462"
+url = "https://github.com/jdx/hk/releases/download/v1.43.0/hk-aarch64-unknown-linux-musl.tar.gz"
+
+[tools."http:hk"."platforms.linux-musl-linux-arm64-musl"]
+checksum = "blake3:f879784bf255ded42ec2b1b697349d5aec747956779b72a6ba6a0d6e6658b596"
+url = "https://github.com/jdx/hk/releases/download/v1.43.0/hk-aarch64-unknown-linux-gnu.tar.gz"
+
+[tools."http:hk"."platforms.macos-arm64"]
+checksum = "blake3:facbea0e67c4c7abf782ab51f4cb92c6fe3f59ea7915bdcfe229b8e91043228c"
+url = "https://github.com/jdx/hk/releases/download/v1.43.0/hk-aarch64-apple-darwin.tar.gz"
 
 [[tools."http:lychee"]]
 version = "0.23.0"
 backend = "http:lychee"
+
+[tools."http:lychee"."platforms.linux-arm64"]
+checksum = "blake3:ddc6adff1245c3bdfcc74284238c100d86b31e76c4c016658d7eb57f7e085ab7"
+url = "https://github.com/lycheeverse/lychee/releases/download/lychee-v0.23.0/lychee-aarch64-unknown-linux-musl.tar.gz"
 
 [tools."http:lychee"."platforms.macos-arm64"]
 checksum = "blake3:3338398a17df55ef8d01bedcf2b42ae922ed608236e44be281004d40d41e9b61"
@@ -333,6 +397,50 @@ backend = "npm:doctoc"
 [[tools."npm:prettier"]]
 version = "3.8.1"
 backend = "npm:prettier"
+
+[[tools.pipx]]
+version = "1.11.1"
+backend = "aqua:pypa/pipx"
+
+[tools.pipx."platforms.linux-arm64"]
+checksum = "sha256:60c947d2449af642c17079a2119ef87e426ad83967b8bb223bb27c802fc29ccd"
+url = "https://github.com/pypa/pipx/releases/download/1.11.1/pipx.pyz"
+
+[tools.pipx."platforms.linux-arm64-musl"]
+checksum = "sha256:60c947d2449af642c17079a2119ef87e426ad83967b8bb223bb27c802fc29ccd"
+url = "https://github.com/pypa/pipx/releases/download/1.11.1/pipx.pyz"
+
+[tools.pipx."platforms.linux-x64"]
+checksum = "sha256:60c947d2449af642c17079a2119ef87e426ad83967b8bb223bb27c802fc29ccd"
+url = "https://github.com/pypa/pipx/releases/download/1.11.1/pipx.pyz"
+
+[tools.pipx."platforms.linux-x64-baseline"]
+checksum = "sha256:60c947d2449af642c17079a2119ef87e426ad83967b8bb223bb27c802fc29ccd"
+url = "https://github.com/pypa/pipx/releases/download/1.11.1/pipx.pyz"
+
+[tools.pipx."platforms.linux-x64-musl"]
+checksum = "sha256:60c947d2449af642c17079a2119ef87e426ad83967b8bb223bb27c802fc29ccd"
+url = "https://github.com/pypa/pipx/releases/download/1.11.1/pipx.pyz"
+
+[tools.pipx."platforms.linux-x64-musl-baseline"]
+checksum = "sha256:60c947d2449af642c17079a2119ef87e426ad83967b8bb223bb27c802fc29ccd"
+url = "https://github.com/pypa/pipx/releases/download/1.11.1/pipx.pyz"
+
+[tools.pipx."platforms.macos-arm64"]
+checksum = "sha256:60c947d2449af642c17079a2119ef87e426ad83967b8bb223bb27c802fc29ccd"
+url = "https://github.com/pypa/pipx/releases/download/1.11.1/pipx.pyz"
+
+[tools.pipx."platforms.macos-x64"]
+checksum = "sha256:60c947d2449af642c17079a2119ef87e426ad83967b8bb223bb27c802fc29ccd"
+url = "https://github.com/pypa/pipx/releases/download/1.11.1/pipx.pyz"
+
+[tools.pipx."platforms.macos-x64-baseline"]
+checksum = "sha256:60c947d2449af642c17079a2119ef87e426ad83967b8bb223bb27c802fc29ccd"
+url = "https://github.com/pypa/pipx/releases/download/1.11.1/pipx.pyz"
+
+[[tools."pipx:mypy"]]
+version = "1.20.1"
+backend = "pipx:mypy"
 
 [[tools.pkl]]
 version = "0.31.1"
@@ -432,7 +540,7 @@ checksum = "sha256:1da2735c31548dacd2751f90c15b5f643aa72f3053f366636f95153ee2c71
 url = "https://github.com/j178/prek/releases/download/v0.3.8/prek-x86_64-pc-windows-msvc.zip"
 
 [[tools.prettier]]
-version = "3.8.1"
+version = "3.8.2"
 backend = "npm:prettier"
 
 [[tools.python]]
@@ -484,53 +592,8 @@ checksum = "sha256:bbe19034b35b0267176a7442575ae7dc6343480fd4d35598cb7700173d431
 url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260324/cpython-3.14.3+20260324-x86_64-pc-windows-msvc-install_only_stripped.tar.gz"
 
 [[tools.ruff]]
-version = "0.15.8"
+version = "0.15.10"
 backend = "aqua:astral-sh/ruff"
-
-[tools.ruff."platforms.linux-arm64"]
-checksum = "sha256:15e6a6c21696bbe59c56d0f1c437452b960bcdfe81ecc3bc19fa89e6a7d70eb6"
-url = "https://github.com/astral-sh/ruff/releases/download/0.15.8/ruff-aarch64-unknown-linux-musl.tar.gz"
-provenance = "github-attestations"
-
-[tools.ruff."platforms.linux-arm64-musl"]
-checksum = "sha256:15e6a6c21696bbe59c56d0f1c437452b960bcdfe81ecc3bc19fa89e6a7d70eb6"
-url = "https://github.com/astral-sh/ruff/releases/download/0.15.8/ruff-aarch64-unknown-linux-musl.tar.gz"
-
-[tools.ruff."platforms.linux-x64"]
-checksum = "sha256:d541beae99d550ed4abb3a1d026b907886c7cdf44a533b24624871e3d8c81330"
-url = "https://github.com/astral-sh/ruff/releases/download/0.15.8/ruff-x86_64-unknown-linux-musl.tar.gz"
-
-[tools.ruff."platforms.linux-x64-baseline"]
-checksum = "sha256:d541beae99d550ed4abb3a1d026b907886c7cdf44a533b24624871e3d8c81330"
-url = "https://github.com/astral-sh/ruff/releases/download/0.15.8/ruff-x86_64-unknown-linux-musl.tar.gz"
-
-[tools.ruff."platforms.linux-x64-musl"]
-checksum = "sha256:d541beae99d550ed4abb3a1d026b907886c7cdf44a533b24624871e3d8c81330"
-url = "https://github.com/astral-sh/ruff/releases/download/0.15.8/ruff-x86_64-unknown-linux-musl.tar.gz"
-
-[tools.ruff."platforms.linux-x64-musl-baseline"]
-checksum = "sha256:d541beae99d550ed4abb3a1d026b907886c7cdf44a533b24624871e3d8c81330"
-url = "https://github.com/astral-sh/ruff/releases/download/0.15.8/ruff-x86_64-unknown-linux-musl.tar.gz"
-
-[tools.ruff."platforms.macos-arm64"]
-checksum = "sha256:94fc061f928c8f2b04c4b3a98aad2b1b04f38b4c808839bc5b33a2f0a63a47a3"
-url = "https://github.com/astral-sh/ruff/releases/download/0.15.8/ruff-aarch64-apple-darwin.tar.gz"
-
-[tools.ruff."platforms.macos-x64"]
-checksum = "sha256:153d1801068df606290e832058ce2e5601584ac302788a055d0390adf6c772ce"
-url = "https://github.com/astral-sh/ruff/releases/download/0.15.8/ruff-x86_64-apple-darwin.tar.gz"
-
-[tools.ruff."platforms.macos-x64-baseline"]
-checksum = "sha256:153d1801068df606290e832058ce2e5601584ac302788a055d0390adf6c772ce"
-url = "https://github.com/astral-sh/ruff/releases/download/0.15.8/ruff-x86_64-apple-darwin.tar.gz"
-
-[tools.ruff."platforms.windows-x64"]
-checksum = "sha256:1e6ebd021dc9cefa8b9f15b5d6500c275ec49a0f2da968824845c34f30060c78"
-url = "https://github.com/astral-sh/ruff/releases/download/0.15.8/ruff-x86_64-pc-windows-msvc.zip"
-
-[tools.ruff."platforms.windows-x64-baseline"]
-checksum = "sha256:1e6ebd021dc9cefa8b9f15b5d6500c275ec49a0f2da968824845c34f30060c78"
-url = "https://github.com/astral-sh/ruff/releases/download/0.15.8/ruff-x86_64-pc-windows-msvc.zip"
 
 [[tools.shellcheck]]
 version = "0.11.0"

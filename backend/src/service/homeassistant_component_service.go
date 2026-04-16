@@ -17,7 +17,6 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal"
 	"github.com/dianlight/tlog"
-	"github.com/google/uuid"
 	"go.uber.org/fx"
 	"gorm.io/gorm"
 )
@@ -39,27 +38,24 @@ type HomeAssistantComponentServiceInterface interface {
 }
 
 type HomeAssistantComponentService struct {
-	ctx           context.Context
-	state         *dto.ContextState
-	issueService  IssueServiceInterface
-	repairService RepairServiceInterface
+	ctx            context.Context
+	state          *dto.ContextState
+	problemService ProblemServiceInterface
 }
 
 type HomeAssistantComponentServiceProps struct {
 	fx.In
-	Ctx           context.Context
-	State         *dto.ContextState
-	IssueService  IssueServiceInterface
-	RepairService RepairServiceInterface
+	Ctx            context.Context
+	State          *dto.ContextState
+	ProblemService ProblemServiceInterface
 }
 
 // NewHomeAssistantComponentService builds a status service for SRAT custom component.
 func NewHomeAssistantComponentService(in HomeAssistantComponentServiceProps) HomeAssistantComponentServiceInterface {
 	return &HomeAssistantComponentService{
-		ctx:           in.Ctx,
-		state:         in.State,
-		issueService:  in.IssueService,
-		repairService: in.RepairService,
+		ctx:            in.Ctx,
+		state:          in.State,
+		problemService: in.ProblemService,
 	}
 }
 
@@ -152,22 +148,19 @@ func (s *HomeAssistantComponentService) Uninstall(ctx context.Context) error {
 }
 
 func (s *HomeAssistantComponentService) UpsertRestartRequiredRepair(ctx context.Context) error {
-	cmd := dto.RepairCommandMessage{
-		CommandID:      uuid.NewString(),
-		RepairID:       customComponentRestartRepairID,
-		Action:         dto.RepairCommandActionUpsert,
+	_, err := s.problemService.Upsert(&dto.Problem{
+		ProblemKey:     customComponentRestartRepairID,
+		Title:          "Home Assistant restart required",
+		Description:    "Home Assistant should be restarted to apply SRAT custom component changes.",
+		Severity:       dto.ProblemSeverities.PROBLEMSEVERITYWARNING,
+		Status:         dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSCREATED,
 		TranslationKey: customComponentRestartRepairID,
-		Severity:       dto.RepairIssueSeverityWarning,
 		IsFixable:      true,
 		IsPersistent:   true,
-	}
-
-	_, createErr := s.repairService.Create(cmd)
-	if createErr != nil {
-		if _, updateErr := s.repairService.Update(cmd); updateErr != nil {
-			tlog.WarnContext(ctx, "Unable to create or refresh custom component restart repair", "repair_id", customComponentRestartRepairID, "error", createErr, "update_error", updateErr)
-			return updateErr
-		}
+	})
+	if err != nil {
+		tlog.WarnContext(ctx, "Unable to upsert custom component restart problem", "problem_key", customComponentRestartRepairID, "error", err)
+		return err
 	}
 
 	return nil
@@ -182,9 +175,9 @@ func (s *HomeAssistantComponentService) DismissAddonConfigIssue(ctx context.Cont
 }
 
 func (s *HomeAssistantComponentService) dismissRepairIssue(ctx context.Context, repairID string) error {
-	dismissErr := s.repairService.Delete(repairID)
-	if dismissErr != nil && !errors.Is(dismissErr, dto.ErrorNotFound) {
-		tlog.WarnContext(ctx, "Unable to dismiss repair", "repair_id", repairID, "error", dismissErr)
+	dismissErr := s.problemService.Dismiss(repairID)
+	if dismissErr != nil && !errors.Is(dismissErr, gorm.ErrRecordNotFound) {
+		tlog.WarnContext(ctx, "Unable to dismiss problem", "problem_key", repairID, "error", dismissErr)
 		return dismissErr
 	}
 
@@ -197,24 +190,21 @@ func (s *HomeAssistantComponentService) SyncIssueStatus(status *dto.HomeAssistan
 	}
 
 	if !status.Installed && !status.Connected {
-		existing, err := s.issueService.FindByTitle(dto.HomeAssistantComponentMissingIssueTitle)
-		if err != nil {
-			return err
-		}
-		if existing == nil {
-			severity := dto.IssueSeverities.ISSUESEVERITYWARNING
-			return s.issueService.Create(&dto.Issue{
-				Title:          dto.HomeAssistantComponentMissingIssueTitle,
-				Description:    "SRAT custom component is not installed under /config/custom_components/srat and no active websocket connection from Home Assistant is present.",
-				ResolutionLink: dto.HomeAssistantComponentMissingIssueResolutionLink,
-				Severity:       &severity,
-			})
-		}
-
-		return nil
+		_, err := s.problemService.Upsert(&dto.Problem{
+			ProblemKey:     "custom_component_missing",
+			Title:          dto.HomeAssistantComponentMissingIssueTitle,
+			Description:    "SRAT custom component is not installed under /config/custom_components/srat and no active websocket connection from Home Assistant is present.",
+			ResolutionLink: dto.HomeAssistantComponentMissingIssueResolutionLink,
+			Severity:       dto.ProblemSeverities.PROBLEMSEVERITYWARNING,
+			Status:         dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSCREATED,
+			IsFixable:      true,
+			IsPersistent:   true,
+			TranslationKey: "custom_component_missing",
+		})
+		return err
 	}
 
-	err := s.issueService.ResolveByTitle(dto.HomeAssistantComponentMissingIssueTitle)
+	err := s.problemService.Dismiss("custom_component_missing")
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return err
 	}

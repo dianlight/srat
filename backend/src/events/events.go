@@ -127,7 +127,8 @@ type CommandExecutionEvent struct {
 	Message dto.CommandExecutionNotification
 }
 
-type RepairLifecycleEvent struct {
+// ProblemEvent represents a unified problem lifecycle event.
+type ProblemEvent struct {
 	Event
-	Message dto.RepairLifecycleMessage
+	Problem *dto.Problem
 }

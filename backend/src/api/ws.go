@@ -25,6 +25,7 @@ type WebSocketHandler struct {
 	ctx            context.Context
 	broadcaster    service.BroadcasterServiceInterface
 	repairService  service.RepairServiceInterface
+	problemService service.ProblemServiceInterface
 	haService      service.HomeAssistantServiceInterface
 	haComponentSvc service.HomeAssistantComponentServiceInterface
 	state          *dto.ContextState
@@ -38,6 +39,7 @@ type WebSocketHandlerParams struct {
 	Ctx            context.Context
 	Broadcaster    service.BroadcasterServiceInterface
 	RepairService  service.RepairServiceInterface
+	ProblemService service.ProblemServiceInterface                `optional:"true"`
 	HAService      service.HomeAssistantServiceInterface          `optional:"true"`
 	HAComponentSvc service.HomeAssistantComponentServiceInterface `optional:"true"`
 	State          *dto.ContextState
@@ -61,6 +63,7 @@ func NewWebSocketBroker(p WebSocketHandlerParams) *WebSocketHandler {
 		ctx:            p.Ctx,
 		broadcaster:    p.Broadcaster,
 		repairService:  p.RepairService,
+		problemService: p.ProblemService,
 		haService:      p.HAService,
 		haComponentSvc: p.HAComponentSvc,
 		state:          p.State,
@@ -210,6 +213,33 @@ func (self *WebSocketHandler) handleInboundMessage(messageType int, payload []by
 			if self.haService != nil {
 				if err := self.haService.RestartHomeAssistant(self.ctx); err != nil {
 					slog.WarnContext(self.ctx, "Failed to restart Home Assistant after repair fix", "error", err)
+				}
+			}
+		}
+	case dto.ClientEventTypes.CLIENTEVENTTYPEPROBLEMLIFECYCLE.String():
+		var message dto.ProblemLifecycleMessage
+		if err := json.Unmarshal(payload, &message); err != nil {
+			slog.WarnContext(self.ctx, "Ignoring malformed problem lifecycle message", "error", err)
+			return
+		}
+		if err := message.Validate(); err != nil {
+			slog.WarnContext(self.ctx, "Ignoring invalid problem lifecycle message", "error", err)
+			return
+		}
+		if self.problemService != nil {
+			if _, err := self.problemService.ApplyLifecycle(message.ProblemKey, message.Status, message.Error); err != nil && !errors.Is(err, dto.ErrorNotFound) {
+				slog.WarnContext(self.ctx, "Failed to apply problem lifecycle to problem service", "error", err, "problem_key", message.ProblemKey)
+			}
+		}
+		slog.DebugContext(self.ctx, "Accepted Home Assistant problem lifecycle message", "problem_key", message.ProblemKey, "status", message.Status)
+
+		if message.Status == dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSFIXED && message.ProblemKey == "custom_component_restart_required" && self.haComponentSvc != nil {
+			if err := self.haComponentSvc.DismissRestartRequiredRepair(self.ctx); err != nil {
+				slog.WarnContext(self.ctx, "Failed to dismiss restart-required problem after fix", "error", err)
+			}
+			if self.haService != nil {
+				if err := self.haService.RestartHomeAssistant(self.ctx); err != nil {
+					slog.WarnContext(self.ctx, "Failed to restart Home Assistant after problem fix", "error", err)
 				}
 			}
 		}

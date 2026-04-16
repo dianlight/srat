@@ -26,8 +26,9 @@ type ClientEventType struct {
 // clientEventTypesContainer is the container for all enum values.
 // It is private and should not be used directly use the public methods on the ClientEventType type.
 type clientEventTypesContainer struct {
-	CLIENTEVENTTYPEHELO            ClientEventType
-	CLIENTEVENTTYPEREPAIRLIFECYCLE ClientEventType
+	CLIENTEVENTTYPEHELO             ClientEventType
+	CLIENTEVENTTYPEREPAIRLIFECYCLE  ClientEventType
+	CLIENTEVENTTYPEPROBLEMLIFECYCLE ClientEventType
 }
 
 // ClientEventTypes is a main entry point using the ClientEventType type.
@@ -39,6 +40,9 @@ var ClientEventTypes = clientEventTypesContainer{
 	},
 	CLIENTEVENTTYPEREPAIRLIFECYCLE: ClientEventType{
 		clientEventType: clientEventTypeRepairLifecycle,
+	},
+	CLIENTEVENTTYPEPROBLEMLIFECYCLE: ClientEventType{
+		clientEventType: clientEventTypeProblemLifecycle,
 	},
 }
 
@@ -53,6 +57,7 @@ func (c clientEventTypesContainer) allSlice() []ClientEventType {
 	return []ClientEventType{
 		ClientEventTypes.CLIENTEVENTTYPEHELO,
 		ClientEventTypes.CLIENTEVENTTYPEREPAIRLIFECYCLE,
+		ClientEventTypes.CLIENTEVENTTYPEPROBLEMLIFECYCLE,
 	}
 }
 
@@ -139,8 +144,9 @@ func ParseClientEventType(input any) (ClientEventType, error) {
 // clientEventTypesNameMap is a map of enum values to their ClientEventType representation
 // It is used to convert string representations of enum values into their ClientEventType representation.
 var clientEventTypesNameMap = map[string]ClientEventType{
-	"helo":             ClientEventTypes.CLIENTEVENTTYPEHELO,
-	"repair_lifecycle": ClientEventTypes.CLIENTEVENTTYPEREPAIRLIFECYCLE,
+	"helo":              ClientEventTypes.CLIENTEVENTTYPEHELO,
+	"repair_lifecycle":  ClientEventTypes.CLIENTEVENTTYPEREPAIRLIFECYCLE,
+	"problem_lifecycle": ClientEventTypes.CLIENTEVENTTYPEPROBLEMLIFECYCLE,
 }
 
 // stringToClientEventType converts a string representation of an enum value into its ClientEventType representation
@@ -182,8 +188,9 @@ func ExhaustiveClientEventTypes(f func(ClientEventType)) {
 
 // validClientEventTypes is a map of enum values to their validity
 var validClientEventTypes = map[ClientEventType]bool{
-	ClientEventTypes.CLIENTEVENTTYPEHELO:            true,
-	ClientEventTypes.CLIENTEVENTTYPEREPAIRLIFECYCLE: true,
+	ClientEventTypes.CLIENTEVENTTYPEHELO:             true,
+	ClientEventTypes.CLIENTEVENTTYPEREPAIRLIFECYCLE:  true,
+	ClientEventTypes.CLIENTEVENTTYPEPROBLEMLIFECYCLE: true,
 }
 
 // IsValid checks whether the ClientEventTypes value is valid.
@@ -284,13 +291,14 @@ func (c *ClientEventType) UnmarshalYAML(by []byte) error {
 }
 
 // clienteventtypeNames is a constant string slice containing all enum values cononical absolute names
-const clienteventtypeNames = "helorepair_lifecycle"
+const clienteventtypeNames = "helorepair_lifecycleproblem_lifecycle"
 
 // clienteventtypeNamesMap is a map of enum values to their canonical absolute
 // name positions within the clienteventtypeNames string slice
 var clienteventtypeNamesMap = map[ClientEventType]string{
-	ClientEventTypes.CLIENTEVENTTYPEHELO:            clienteventtypeNames[0:4],
-	ClientEventTypes.CLIENTEVENTTYPEREPAIRLIFECYCLE: clienteventtypeNames[4:20],
+	ClientEventTypes.CLIENTEVENTTYPEHELO:             clienteventtypeNames[0:4],
+	ClientEventTypes.CLIENTEVENTTYPEREPAIRLIFECYCLE:  clienteventtypeNames[4:20],
+	ClientEventTypes.CLIENTEVENTTYPEPROBLEMLIFECYCLE: clienteventtypeNames[20:37],
 }
 
 // String implements the Stringer interface.
@@ -309,7 +317,8 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the goenums command to generate them again.
 	// Does not identify newly added constant values unless order changes
-	var x [2]struct{}
+	var x [3]struct{}
 	_ = x[clientEventTypeHelo]
 	_ = x[clientEventTypeRepairLifecycle-1]
+	_ = x[clientEventTypeProblemLifecycle-2]
 }

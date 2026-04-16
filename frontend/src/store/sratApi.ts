@@ -7,6 +7,7 @@ export const addTagTypes = [
   "filesystems",
   "hdidle",
   "Issues",
+  "Problems",
   "samba",
   "share",
   "user",
@@ -364,6 +365,41 @@ const injectedRtkApi = api
       getApiNics: build.query<GetApiNicsApiResponse, GetApiNicsApiArg>({
         query: () => ({ url: `/api/nics` }),
         providesTags: ["system"],
+      }),
+      getApiProblems: build.query<
+        GetApiProblemsApiResponse,
+        GetApiProblemsApiArg
+      >({
+        query: () => ({ url: `/api/problems` }),
+        providesTags: ["Problems"],
+      }),
+      postApiProblems: build.mutation<
+        PostApiProblemsApiResponse,
+        PostApiProblemsApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/problems`,
+          method: "POST",
+          body: queryArg.problem,
+        }),
+        invalidatesTags: ["Problems"],
+      }),
+      deleteApiProblemsByProblemKey: build.mutation<
+        DeleteApiProblemsByProblemKeyApiResponse,
+        DeleteApiProblemsByProblemKeyApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/problems/${queryArg.problemKey}`,
+          method: "DELETE",
+        }),
+        invalidatesTags: ["Problems"],
+      }),
+      getApiProblemsByProblemKey: build.query<
+        GetApiProblemsByProblemKeyApiResponse,
+        GetApiProblemsByProblemKeyApiArg
+      >({
+        query: (queryArg) => ({ url: `/api/problems/${queryArg.problemKey}` }),
+        providesTags: ["Problems"],
       }),
       repair: build.mutation<RepairApiResponse, RepairApiArg>({
         query: () => ({ url: `/api/repairMessage`, method: "TRACE" }),
@@ -929,6 +965,27 @@ export type GetApiNicsApiResponse =
   | /** status 200 OK */ (InterfaceStat[] | null)
   | /** status default Error */ ErrorModel;
 export type GetApiNicsApiArg = void;
+export type GetApiProblemsApiResponse =
+  | /** status 200 OK */ (Problem[] | null)
+  | /** status default Error */ ErrorModel;
+export type GetApiProblemsApiArg = void;
+export type PostApiProblemsApiResponse = /** status 200 OK */
+  | Problem
+  | /** status default Error */ ErrorModel;
+export type PostApiProblemsApiArg = {
+  problem: Problem;
+};
+export type DeleteApiProblemsByProblemKeyApiResponse =
+  /** status default Error */ ErrorModel;
+export type DeleteApiProblemsByProblemKeyApiArg = {
+  problemKey: string;
+};
+export type GetApiProblemsByProblemKeyApiResponse = /** status 200 OK */
+  | Problem
+  | /** status default Error */ ErrorModel;
+export type GetApiProblemsByProblemKeyApiArg = {
+  problemKey: string;
+};
 export type RepairApiResponse = /** status 200 OK */
   | RepairCommandMessage
   | /** status default Error */ ErrorModel;
@@ -1734,6 +1791,40 @@ export type InterfaceStat = {
   mtu: number;
   name: string;
 };
+export type ProblemAction = {
+  is_default?: boolean;
+  key: string;
+  label: string;
+  url?: string;
+};
+export type Problem = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  actions?: ProblemAction[] | null;
+  created_at: string;
+  data?: {
+    [key: string]: unknown;
+  };
+  description: string;
+  detail_link?: string;
+  id: number;
+  ignored: boolean;
+  is_fixable?: boolean;
+  is_persistent?: boolean;
+  last_error?: string;
+  learn_more_url?: string;
+  problem_key: string;
+  repeating: number;
+  resolution_link?: string;
+  severity: Severity2;
+  status: Status;
+  title: string;
+  translation_key?: string;
+  translation_placeholders?: {
+    [key: string]: string;
+  };
+  updated_at: string;
+};
 export type RepairCommandMessage = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
@@ -2031,6 +2122,21 @@ export enum Severity {
   Info = "info",
   Success = "success",
 }
+export enum Severity2 {
+  Info = "info",
+  Warning = "warning",
+  Error = "error",
+  Critical = "critical",
+}
+export enum Status {
+  Created = "created",
+  Updated = "updated",
+  Ignored = "ignored",
+  Fixed = "fixed",
+  Dismissed = "dismissed",
+  Deleted = "deleted",
+  Error = "error",
+}
 export enum Hdidle_default_command_type {
   Scsi = "scsi",
   Ata = "ata",
@@ -2082,6 +2188,7 @@ export enum Supported_events {
   FilesystemTask = "filesystem_task",
   Error = "error",
   RepairCommand = "repair_command",
+  Problem = "problem",
   AppConfigChanged = "app_config_changed",
   CommandStarted = "command_started",
   CommandOutput = "command_output",
@@ -2132,6 +2239,10 @@ export const {
   useDeleteApiIssuesByIdMutation,
   usePutApiIssuesByIdMutation,
   useGetApiNicsQuery,
+  useGetApiProblemsQuery,
+  usePostApiProblemsMutation,
+  useDeleteApiProblemsByProblemKeyMutation,
+  useGetApiProblemsByProblemKeyQuery,
   useRepairMutation,
   usePutApiRestartMutation,
   usePutApiSambaApplyMutation,

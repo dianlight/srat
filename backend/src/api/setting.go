@@ -12,50 +12,27 @@ import (
 )
 
 type SettingsHanler struct {
-	apiContext     *dto.ContextState
 	settingService service.SettingServiceInterface
 	addonsService  service.AddonsServiceInterface
 	haComponentSvc service.HomeAssistantComponentServiceInterface
 	upgradeService service.UpgradeServiceInterface
 	eventBus       events.EventBusInterface
-	repairService  service.RepairServiceInterface
-	haService      service.HomeAssistantServiceInterface
-	broadcaster    service.BroadcasterServiceInterface
 }
 
-// NewSettingsHanler creates a new instance of SettingsHanler with the provided
-// apiContext and dirtyService. It initializes the SettingsHanler with the given
-// context state and dirty data service interface.
-//
-// Parameters:
-//   - apiContext: A pointer to dto.ContextState which holds the context state for the API.
-//   - dirtyService: An implementation of the DirtyDataServiceInterface which handles dirty data operations.
-//   - props_repo: An implementation of the PropertyRepositoryInterface which handles property operations.
-//   - telemetryService: An implementation of the TelemetryServiceInterface which handles telemetry operations.
-//
-// Returns:
-//   - A pointer to the newly created SettingsHanler instance.
+// NewSettingsHanler creates a new settings handler.
 func NewSettingsHanler(
-	apiContext *dto.ContextState,
 	settingService service.SettingServiceInterface,
 	addonsService service.AddonsServiceInterface,
 	haComponentSvc service.HomeAssistantComponentServiceInterface,
 	upgradeService service.UpgradeServiceInterface,
 	eventBus events.EventBusInterface,
-	repairService service.RepairServiceInterface,
-	haService service.HomeAssistantServiceInterface,
-	broadcaster service.BroadcasterServiceInterface,
 ) *SettingsHanler {
 	p := new(SettingsHanler)
-	p.apiContext = apiContext
 	p.settingService = settingService
 	p.addonsService = addonsService
 	p.haComponentSvc = haComponentSvc
 	p.upgradeService = upgradeService
 	p.eventBus = eventBus
-	p.repairService = repairService
-	p.haService = haService
-	p.broadcaster = broadcaster
 
 	return p
 }

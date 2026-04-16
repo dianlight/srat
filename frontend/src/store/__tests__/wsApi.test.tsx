@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import "../../../test/setup";
 import { createTestStore } from "../../../test/setup";
+import { Severity2, Status, Supported_events } from "../sratApi";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -139,6 +140,57 @@ describe("wsApi reconnect behavior", () => {
         const socket = MockWebSocket.instances[0];
         expect(socket?.url).toContain("/ws");
         expect(socket?.url).not.toContain("//ws");
+
+        subscription.unsubscribe();
+    });
+
+    it("parses problem websocket events into cache data", async () => {
+        const store = await createTestStore();
+        const { wsApi } = await import("../../store/wsApi");
+
+        if (!wsApi?.endpoints?.getServerEvents) {
+            expect(true).toBe(true);
+            return;
+        }
+
+        const subscription = store.dispatch(
+            wsApi.endpoints.getServerEvents.initiate(),
+        );
+        await subscription;
+
+        expect(MockWebSocket.instances.length).toBe(1);
+        const socket = MockWebSocket.instances[0];
+        socket?.emit("open", {});
+
+        const payload = {
+            problem_key: "custom_component_restart_required",
+            id: 1,
+            repeating: 1,
+            title: "Restart required",
+            description: "Restart Home Assistant to apply changes.",
+            severity: Severity2.Warning,
+            status: Status.Created,
+            created_at: "2026-01-01T00:00:00Z",
+            updated_at: "2026-01-01T00:00:00Z",
+            ignored: false,
+        };
+
+        socket?.emit("message", {
+            data: `id: 101\nevent: ${Supported_events.Problem}\ndata: ${JSON.stringify(payload)}`,
+        });
+
+        const updated = await waitForCondition(() => {
+            // biome-ignore lint/suspicious/noExplicitAny: dynamic import incompatible with static RootState
+            const state = wsApi.endpoints.getServerEvents.select()(store.getState() as any);
+            return (
+                state?.data?.[Supported_events.Problem]?.problem_key === payload.problem_key
+            );
+        });
+
+        expect(updated).toBe(true);
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic import incompatible with static RootState
+        const finalState = wsApi.endpoints.getServerEvents.select()(store.getState() as any);
+        expect(finalState?.data?.[Supported_events.Problem]?.status).toBe(Status.Created);
 
         subscription.unsubscribe();
     });

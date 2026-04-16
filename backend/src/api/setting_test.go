@@ -31,11 +31,7 @@ type SettingsHandlerSuite struct {
 	settingService service.SettingServiceInterface
 	addonsService  service.AddonsServiceInterface
 	haComponentSvc service.HomeAssistantComponentServiceInterface
-	issueService   service.IssueServiceInterface
 	upgradeService service.UpgradeServiceInterface
-	repairService  service.RepairServiceInterface
-	haService      service.HomeAssistantServiceInterface
-	broadcaster    service.BroadcasterServiceInterface
 	//db           *gorm.DB
 	api *api.SettingsHanler
 	//config                 config.Config
@@ -76,11 +72,7 @@ func (suite *SettingsHandlerSuite) SetupTest() {
 			events.NewEventBus,
 			mock.Mock[service.AddonsServiceInterface],
 			mock.Mock[service.HomeAssistantComponentServiceInterface],
-			mock.Mock[service.IssueServiceInterface],
 			mock.Mock[service.UpgradeServiceInterface],
-			mock.Mock[service.RepairServiceInterface],
-			mock.Mock[service.HomeAssistantServiceInterface],
-			mock.Mock[service.BroadcasterServiceInterface],
 			//repository.NewPropertyRepositoryRepository,
 			mock.Mock[service.TelemetryServiceInterface],
 			//			mock.Mock[service.BroadcasterServiceInterface],
@@ -118,11 +110,7 @@ func (suite *SettingsHandlerSuite) SetupTest() {
 		fx.Populate(&suite.settingService),
 		fx.Populate(&suite.addonsService),
 		fx.Populate(&suite.haComponentSvc),
-		fx.Populate(&suite.issueService),
 		fx.Populate(&suite.upgradeService),
-		fx.Populate(&suite.repairService),
-		fx.Populate(&suite.haService),
-		fx.Populate(&suite.broadcaster),
 		//fx.Populate(&suite.config),
 		fx.Populate(&suite.ctx),
 		fx.Populate(&suite.cancel),
@@ -609,7 +597,7 @@ func (suite *SettingsHandlerSuite) TestUpdateAppConfigHandler() {
 func (suite *SettingsHandlerSuite) TestUpdateAppConfigHandler_FallbackDismissPersistentNotificationWhenRepairServiceNil() {
 	_, humaAPI := humatest.New(suite.T())
 	eventBus := events.NewEventBus(suite.ctx)
-	handler := api.NewSettingsHanler(&dto.ContextState{}, suite.settingService, suite.addonsService, suite.haComponentSvc, suite.upgradeService, eventBus, nil, suite.haService, suite.broadcaster)
+	handler := api.NewSettingsHanler(suite.settingService, suite.addonsService, suite.haComponentSvc, suite.upgradeService, eventBus)
 	handler.RegisterSettings(humaAPI)
 	autopatch.AutoPatch(humaAPI)
 

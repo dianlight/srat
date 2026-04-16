@@ -15,6 +15,7 @@ var WebEventMap = WebEventMapTypes{
 	WebEventTypes.EVENTERROR.String():             &ErrorDataModel{},
 	WebEventTypes.EVENTFILESYSTEMTASK.String():    FilesystemTask{},
 	WebEventTypes.EVENTREPAIRCOMMAND.String():     RepairCommandMessage{},
+	WebEventTypes.EVENTPROBLEM.String():           Problem{},
 	WebEventTypes.EVENTAPPCONFIGCHANGED.String():  AppConfigChangedNotification{},
 	WebEventTypes.EVENTCOMMANDSTARTED.String():    CommandStartedNotification{},
 	WebEventTypes.EVENTCOMMANDOUTPUT.String():     CommandOutputNotification{},

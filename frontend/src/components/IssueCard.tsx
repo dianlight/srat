@@ -19,13 +19,33 @@ import {
 import type { Theme } from "@mui/material/styles";
 import type React from "react";
 import { useIgnoredIssues } from "../hooks/issueHooks";
-import type { Issue } from "../store/sratApi";
+import type { Issue, Problem } from "../store/sratApi";
 
 interface IssueCardProps {
-  issue: Issue;
-  onResolve?: (id: number) => void;
+  issue: Issue | Problem;
+  onResolve?: (id: number | string) => void;
   showIgnored?: boolean;
 }
+
+const isProblem = (issue: Issue | Problem): issue is Problem => {
+  return "problem_key" in issue;
+};
+
+const getIssueDate = (issue: Issue | Problem): string | undefined => {
+  if ("date" in issue) {
+    return issue.date;
+  }
+
+  return issue.created_at;
+};
+
+const getIssueResolveKey = (issue: Issue | Problem): number | string => {
+  if (isProblem(issue)) {
+    return issue.problem_key;
+  }
+
+  return issue.id;
+};
 
 const getSeverityConfig = (severity: string, theme: Theme) => {
   const isDark = theme.palette.mode === "dark";
@@ -39,6 +59,15 @@ const getSeverityConfig = (severity: string, theme: Theme) => {
           : `${theme.palette.error.light}40`,
         icon: <ErrorIcon />,
         label: "Error",
+      };
+    case "critical":
+      return {
+        color: theme.palette.error.dark,
+        backgroundColor: isDark
+          ? `${theme.palette.error.dark}30`
+          : `${theme.palette.error.light}60`,
+        icon: <ErrorIcon />,
+        label: "Critical",
       };
     case "warning":
       return {
@@ -86,7 +115,8 @@ const IssueCard: React.FC<IssueCardProps> = ({
 }) => {
   const theme = useTheme();
   const { isIssueIgnored } = useIgnoredIssues();
-  const isIgnored = isIssueIgnored(issue.id);
+  const resolveKey = getIssueResolveKey(issue);
+  const isIgnored = isIssueIgnored(resolveKey);
   const severityConfig = getSeverityConfig(issue.severity || "info", theme);
 
   // When showIgnored is false, show only non-ignored items
@@ -133,13 +163,13 @@ const IssueCard: React.FC<IssueCardProps> = ({
         <Typography variant="body2" color="text.secondary">
           {issue.description}
         </Typography>
-        {issue.date && (
+        {getIssueDate(issue) && (
           <Typography
             variant="caption"
             color="text.secondary"
             sx={{ mt: 1, display: "block" }}
           >
-            {new Date(issue.date).toLocaleString()}
+            {new Date(getIssueDate(issue) ?? "").toLocaleString()}
           </Typography>
         )}
       </CardContent>
@@ -150,7 +180,7 @@ const IssueCard: React.FC<IssueCardProps> = ({
               size="small"
               variant="outlined"
               sx={{ backgroundColor: severityConfig.color }}
-              onClick={() => onResolve(issue.id)}
+              onClick={() => onResolve(resolveKey)}
             >
               Resolve
             </Button>
@@ -159,7 +189,7 @@ const IssueCard: React.FC<IssueCardProps> = ({
         {onResolve && (
           <IconButton
             size="small"
-            onClick={() => onResolve(issue.id)}
+            onClick={() => onResolve(resolveKey)}
             title="Dismiss"
           >
             <CloseIcon fontSize="small" />

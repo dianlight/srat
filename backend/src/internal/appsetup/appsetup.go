@@ -107,6 +107,8 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 			service.NewNetworkStatsService,
 			service.NewSmartService,
 			service.NewIssueService,
+			service.NewProblemService,
+			service.NewProblemHABridge,
 			service.NewRepairService,
 			service.NewAddonConfigWatcherService,
 			service.NewIssueReportService,
@@ -120,6 +122,7 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 			//repository.NewPropertyRepositoryRepository,
 		),
 		fx.Invoke(func(service.AddonConfigWatcherServiceInterface) {}),
+		fx.Invoke(func(service.ProblemHABridgeInterface) {}),
 		fx.Invoke(func(commandRunner commandexec.Executor) {
 			servicefilesystem.SetDefaultCommandRunner(commandRunner)
 			unixsamba.SetCommandRunner(commandRunner)

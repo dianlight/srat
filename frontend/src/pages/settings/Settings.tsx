@@ -13,6 +13,11 @@ import {
   Alert,
   Box,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   Drawer,
   IconButton,
   Paper,
@@ -57,6 +62,7 @@ import {
   useGetApiTelemetryModesQuery,
   usePostApiSettingsHomeassistantCustomComponentInstallMutation,
   usePostApiSettingsHomeassistantCustomComponentUpgradeMutation,
+  usePutApiRestartMutation,
   usePutApiSettingsMutation,
 } from "../../store/sratApi";
 import { useAppDispatch } from "../../store/store";
@@ -193,6 +199,8 @@ const buildSettingsTree = (): SettingTreeNode[] => {
   return tree;
 };
 
+type LifecycleAction = "install" | "upgrade" | "uninstall";
+
 function HomeAssistantCustomComponentPanel({
   readOnly,
 }: {
@@ -212,10 +220,16 @@ function HomeAssistantCustomComponentPanel({
     usePostApiSettingsHomeassistantCustomComponentUpgradeMutation();
   const [uninstallComponent, uninstallState] =
     useDeleteApiSettingsHomeassistantCustomComponentMutation();
+  const [restartAddon, restartState] = usePutApiRestartMutation();
   const [actionFeedback, setActionFeedback] = useState<{
     severity: "success" | "error";
     message: string;
   } | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    action: LifecycleAction | null;
+  }>({ open: false, action: null });
+  const [restartDialogOpen, setRestartDialogOpen] = useState(false);
 
   const status =
     statusResponse && "component" in statusResponse
@@ -254,68 +268,107 @@ function HomeAssistantCustomComponentPanel({
     return fallback;
   };
 
-  const handleInstall = async () => {
+  const openConfirmDialog = (action: LifecycleAction) => {
+    setConfirmDialog({ open: true, action });
+  };
+
+  const closeConfirmDialog = () => {
+    setConfirmDialog({ open: false, action: null });
+  };
+
+  const executeAction = async (action: LifecycleAction) => {
     setActionFeedback(null);
     try {
-      await installComponent().unwrap();
+      if (action === "install") {
+        await installComponent().unwrap();
+        setActionFeedback({
+          severity: "success",
+          message: "Custom component installed successfully.",
+        });
+      } else if (action === "upgrade") {
+        await upgradeComponent().unwrap();
+        setActionFeedback({
+          severity: "success",
+          message: "Custom component upgraded successfully.",
+        });
+      } else {
+        await uninstallComponent().unwrap();
+        setActionFeedback({
+          severity: "success",
+          message: "Custom component uninstalled successfully.",
+        });
+      }
       await refetch();
       dispatch(sratApi.util.invalidateTags(["Issues"]));
-      setActionFeedback({
-        severity: "success",
-        message: "Custom component installed successfully.",
-      });
+      setRestartDialogOpen(true);
     } catch (error) {
+      const labels: Record<LifecycleAction, string> = {
+        install: "install",
+        upgrade: "upgrade",
+        uninstall: "uninstall",
+      };
       setActionFeedback({
         severity: "error",
         message: extractErrorMessage(
           error,
-          "Failed to install custom component.",
+          `Failed to ${labels[action]} custom component.`,
         ),
       });
     }
   };
 
-  const handleUpgrade = async () => {
-    setActionFeedback(null);
+  const handleConfirmAction = async () => {
+    const action = confirmDialog.action;
+    closeConfirmDialog();
+    if (action) {
+      await executeAction(action);
+    }
+  };
+
+  const handleRestartNow = async () => {
+    setRestartDialogOpen(false);
     try {
-      await upgradeComponent().unwrap();
-      await refetch();
-      dispatch(sratApi.util.invalidateTags(["Issues"]));
-      setActionFeedback({
-        severity: "success",
-        message: "Custom component upgraded successfully.",
-      });
+      await restartAddon().unwrap();
     } catch (error) {
       setActionFeedback({
         severity: "error",
-        message: extractErrorMessage(
-          error,
-          "Failed to upgrade custom component.",
-        ),
+        message: extractErrorMessage(error, "Failed to restart the addon."),
       });
     }
   };
 
-  const handleUninstall = async () => {
-    setActionFeedback(null);
-    try {
-      await uninstallComponent().unwrap();
-      await refetch();
-      dispatch(sratApi.util.invalidateTags(["Issues"]));
-      setActionFeedback({
-        severity: "success",
-        message: "Custom component uninstalled successfully.",
-      });
-    } catch (error) {
-      setActionFeedback({
-        severity: "error",
-        message: extractErrorMessage(
-          error,
-          "Failed to uninstall custom component.",
-        ),
-      });
+  const confirmDialogContent = (): { title: string; body: string } => {
+    const latestVersion = status?.latest_version ?? "";
+    const installedVersion = status?.installed_version ?? "";
+    switch (confirmDialog.action) {
+      case "install":
+        return {
+          title: "Install SRAT Custom Component",
+          body: latestVersion
+            ? `Install the SRAT custom component (version ${latestVersion}) into your Home Assistant configuration?`
+            : "Install the SRAT custom component into your Home Assistant configuration?",
+        };
+      case "upgrade":
+        return {
+          title: "Upgrade SRAT Custom Component",
+          body:
+            installedVersion && latestVersion
+              ? `Upgrade the SRAT custom component from version ${installedVersion} to version ${latestVersion}?`
+              : "Upgrade the SRAT custom component to the latest version?",
+        };
+      case "uninstall":
+        return {
+          title: "Uninstall SRAT Custom Component",
+          body: installedVersion
+            ? `Uninstall the SRAT custom component (version ${installedVersion}) from your Home Assistant configuration?`
+            : "Uninstall the SRAT custom component from your Home Assistant configuration?",
+        };
+      default:
+        return { title: "", body: "" };
     }
   };
+
+  const { title: confirmTitle, body: confirmBody } = confirmDialogContent();
 
   return (
     <Paper variant="outlined" sx={{ p: 2 }}>
@@ -367,33 +420,102 @@ function HomeAssistantCustomComponentPanel({
             color="success"
             disabled={readOnly || isBusy || !status?.can_install}
             onClick={() => {
-              void handleInstall();
+              openConfirmDialog("install");
             }}
           >
-            {installState.isLoading ? "Installing…" : "Install"}
+            Install
           </Button>
           <Button
             variant="outlined"
             color="warning"
             disabled={readOnly || isBusy || !status?.can_upgrade}
             onClick={() => {
-              void handleUpgrade();
+              openConfirmDialog("upgrade");
             }}
           >
-            {upgradeState.isLoading ? "Upgrading…" : "Upgrade"}
+            Upgrade
           </Button>
           <Button
             variant="outlined"
             color="error"
             disabled={readOnly || isBusy || !status?.can_uninstall}
             onClick={() => {
-              void handleUninstall();
+              openConfirmDialog("uninstall");
             }}
           >
-            {uninstallState.isLoading ? "Uninstalling…" : "Uninstall"}
+            Uninstall
           </Button>
         </Stack>
       </Stack>
+
+      {/* Action confirmation dialog */}
+      <Dialog
+        open={confirmDialog.open}
+        onClose={closeConfirmDialog}
+        aria-labelledby="cc-confirm-dialog-title"
+      >
+        <DialogTitle id="cc-confirm-dialog-title">{confirmTitle}</DialogTitle>
+        <DialogContent>
+          <DialogContentText>{confirmBody}</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeConfirmDialog}>Cancel</Button>
+          <Button
+            onClick={() => {
+              void handleConfirmAction();
+            }}
+            autoFocus
+          >
+            Confirm
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Restart required dialog */}
+      <Dialog
+        open={restartDialogOpen}
+        onClose={() => {
+          setRestartDialogOpen(false);
+        }}
+        aria-labelledby="cc-restart-dialog-title"
+      >
+        <DialogTitle id="cc-restart-dialog-title">Restart Required</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            A restart of the SRAT addon is required to apply the changes. Would
+            you like to restart now?
+          </DialogContentText>
+          {restartState.isLoading ? (
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{ mt: 1, alignItems: "center" }}
+            >
+              <CircularProgress size={16} />
+              <Typography variant="body2">Restarting…</Typography>
+            </Stack>
+          ) : null}
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setRestartDialogOpen(false);
+            }}
+          >
+            Later
+          </Button>
+          <Button
+            onClick={() => {
+              void handleRestartNow();
+            }}
+            color="warning"
+            disabled={restartState.isLoading}
+            autoFocus
+          >
+            Restart Now
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Paper>
   );
 }

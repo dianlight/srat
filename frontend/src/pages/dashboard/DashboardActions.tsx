@@ -14,8 +14,10 @@ import { useVolume } from "../../hooks/volumeHook";
 import { TabIDs } from "../../store/locationState";
 import {
   type Partition,
-  Severity,
-  useGetApiIssuesQuery,
+  Severity2,
+  Status,
+  useDeleteApiProblemsByProblemKeyMutation,
+  useGetApiProblemsQuery,
 } from "../../store/sratApi";
 import { useGetServerEventsQuery } from "../../store/wsApi";
 import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
@@ -26,7 +28,43 @@ export function DashboardActions() {
   const [expanded, setExpanded] = useState(false);
   const [showIgnored, setShowIgnored] = useState(false);
   const { data: evdata } = useGetServerEventsQuery();
-  const { data: issues, isLoading: is_inLoading } = useGetApiIssuesQuery();
+  const { data: problems } = useGetApiProblemsQuery();
+  const [dismissProblem] = useDeleteApiProblemsByProblemKeyMutation();
+
+  const mergedProblems = useMemo(() => {
+    const baseProblems = Array.isArray(problems) ? problems : [];
+
+    const incomingProblem = evdata?.problem;
+    if (!incomingProblem) {
+      return baseProblems;
+    }
+
+    const existingIndex = baseProblems.findIndex(
+      (problem) => problem?.problem_key === incomingProblem.problem_key,
+    );
+
+    const isRemovedStatus =
+      incomingProblem.status === Status.Dismissed ||
+      incomingProblem.status === Status.Deleted;
+
+    if (isRemovedStatus) {
+      if (existingIndex < 0) {
+        return baseProblems;
+      }
+
+      return baseProblems.filter(
+        (problem) => problem?.problem_key !== incomingProblem.problem_key,
+      );
+    }
+
+    if (existingIndex < 0) {
+      return [incomingProblem, ...baseProblems];
+    }
+
+    return baseProblems.map((problem, index) =>
+      index === existingIndex ? incomingProblem : problem,
+    );
+  }, [problems, evdata?.problem]);
 
   useEffect(() => {
     const handleDashboardStep3 = () => {
@@ -87,8 +125,10 @@ export function DashboardActions() {
     return partitions;
   }, [disks, evdata?.hello?.read_only]);
 
-  function handleResolveIssue(_id: number): void {
-    throw new Error("Function not implemented.");
+  function handleResolveIssue(id: number | string): void {
+    if (typeof id === "string") {
+      void dismissProblem({ problemKey: id });
+    }
   }
 
   // Set initial expanded state based on content
@@ -96,13 +136,11 @@ export function DashboardActions() {
     if (
       !isLoading &&
       !error &&
-      actionablePartitions.length +
-        (Array.isArray(issues) ? issues.length : 0) >
-        0
+      actionablePartitions.length + mergedProblems.length > 0
     ) {
       setExpanded(true);
     }
-  }, [isLoading, error, actionablePartitions.length, issues]);
+  }, [isLoading, error, actionablePartitions.length, mergedProblems.length]);
 
   const handleAccordionChange = (
     _event: React.SyntheticEvent,
@@ -155,40 +193,42 @@ export function DashboardActions() {
             <IssueCard
               key="protected-mode"
               issue={{
-                id: -1, // Use a unique ID for the protected mode issue
+                id: -1,
+                problem_key: "protected_mode",
                 title: "Addon in Protected Mode",
                 description:
                   "The addon is currently in protected mode. In this mode, no disks can be mounted to prevent unauthorized access. To disable protected mode, navigate to the addon settings in your Home Assistant interface and toggle the protected mode option off. Ensure you understand the security implications before disabling.",
-                severity: Severity.Error, // Assuming IssueCard supports severity for red styling
-                ignored: false, // Add other required fields if needed, e.g., timestamp, etc.
+                severity: Severity2.Error,
+                status: Status.Created,
+                ignored: false,
                 repeating: 0,
-                date: new Date().toLocaleString(),
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
               }}
-              showIgnored={false} // Protection mode issue should always be shown
+              showIgnored={false}
             />
             <ActionableItemsList
               actionablePartitions={actionablePartitions}
               isLoading={isLoading}
               error={error}
               showIgnored={showIgnored}
-              disabled={true} // Assuming ActionableItemsList accepts a disabled prop to disable interactions
+              disabled={true}
             />
           </>
         ) : (
           <>
-            {!is_inLoading &&
-              issues &&
-              Array.isArray(issues) &&
-              (
-                issues.filter(Boolean) as NonNullable<(typeof issues)[number]>[]
-              ).map((issue) => (
-                <IssueCard
-                  key={issue.id}
-                  issue={issue}
-                  onResolve={handleResolveIssue}
-                  showIgnored={showIgnored}
-                />
-              ))}
+            {(
+              mergedProblems.filter(Boolean) as NonNullable<
+                (typeof mergedProblems)[number]
+              >[]
+            ).map((issue) => (
+              <IssueCard
+                key={issue.problem_key}
+                issue={issue}
+                onResolve={handleResolveIssue}
+                showIgnored={showIgnored}
+              />
+            ))}
             <ActionableItemsList
               actionablePartitions={actionablePartitions}
               isLoading={isLoading}

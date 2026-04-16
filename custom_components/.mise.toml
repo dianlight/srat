@@ -3,9 +3,7 @@ auto = true
 
 [tools]
 python = "3.14.4"
-ruff = "0.15.10"
-"pipx:mypy" = "1.20.1"
-pipx = "latest"
+
 
 [env]
 # Crea un venv nella cartella .venv e lo attiva automaticamente
