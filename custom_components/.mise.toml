@@ -2,7 +2,6 @@
 auto = true
 
 [tools]
-python = "3.14.4"
 
 
 [env]
