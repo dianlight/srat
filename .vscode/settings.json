@@ -190,7 +190,7 @@
 		"**/vendor/*/**"
 	],
 	"todo-tree.tree.showCountsInTree": true,
-	"biome.lsp.bin": "/root/.bun/install/global/node_modules/@biomejs/cli-linux-arm64-musl/biome",
+	"biome.lsp.bin": "/root/.local/share/mise/shims/biome",
 	"todo-tree.highlights.useColourScheme": true,
 	"chat.planAgent.defaultModel": "Auto (copilot)",
 	"chat.editing.explainChanges.enabled": true,
