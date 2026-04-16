@@ -60,10 +60,9 @@ RUN apk add --no-cache \
 COPY .mise.toml /tmp/.mise.toml
 RUN \
     curl https://mise.run/zsh | MISE_INSTALL_PATH=/usr/bin/mise sh \
-    && echo 'eval "$(mise activate zsh --shims)"' >> /root/.zshrc 
-
-#    && cd /tmp \
-#    && MISE_EXPERIMENTAL=1 mise install --yes 
+    && echo 'eval "$(mise activate zsh --shims)"' >> /root/.zshrc \
+    && cd /tmp \
+    && MISE_EXPERIMENTAL=1 mise install --yes 
 
 RUN mkdir -p /home/vscode \ 
     && echo 'eval "$(mise activate zsh --shims)"'  >> /home/vscode/.zshrc
