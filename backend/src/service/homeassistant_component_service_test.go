@@ -228,6 +228,53 @@ func (suite *HomeAssistantComponentServiceSuite) TestDismissRestartRequiredRepai
 	_ = mock.Verify(suite.problemSvc, matchers.Times(1)).Dismiss(mock.Exact("custom_component_restart_required"))
 }
 
+// TestGetStatus_CanUpgrade_NotInstalledIsFalse verifies CanUpgrade is false when not installed.
+func (suite *HomeAssistantComponentServiceSuite) TestGetStatus_CanUpgrade_NotInstalledIsFalse() {
+	status, err := suite.service.GetStatus()
+	suite.Require().NoError(err)
+	suite.False(status.Installed)
+	suite.False(status.CanUpgrade, "CanUpgrade must be false when component is not installed")
+}
+
+// TestGetStatus_CanUpgrade_InstalledVersionNewerThanLatestIsFalse verifies that CanUpgrade
+// is false when the installed version is newer than the embedded latest version.
+func (suite *HomeAssistantComponentServiceSuite) TestGetStatus_CanUpgrade_InstalledVersionNewerThanLatestIsFalse() {
+	componentDir := filepath.Join(suite.tempRoot, dto.CustomComponentSRATName)
+	suite.Require().NoError(os.MkdirAll(componentDir, 0o755))
+	suite.Require().NoError(os.WriteFile(
+		filepath.Join(componentDir, "manifest.json"),
+		[]byte(`{"version":"9999.99.99"}`), 0o644,
+	))
+
+	status, err := suite.service.GetStatus()
+	suite.Require().NoError(err)
+	suite.True(status.Installed)
+	suite.False(status.CanUpgrade, "CanUpgrade must be false when installed version is newer than latest")
+}
+
+// TestGetStatus_CanUpgrade_InstalledVersionSameAsLatestIsFalse verifies that CanUpgrade
+// is false when the installed version equals the embedded latest version.
+func (suite *HomeAssistantComponentServiceSuite) TestGetStatus_CanUpgrade_InstalledVersionSameAsLatestIsFalse() {
+	componentDir := filepath.Join(suite.tempRoot, dto.CustomComponentSRATName)
+	suite.Require().NoError(os.MkdirAll(componentDir, 0o755))
+
+	status, err := suite.service.GetStatus()
+	// Use the actual LatestVersion to create a matching InstalledVersion
+	suite.Require().NoError(err)
+	suite.Require().NotNil(status.LatestVersion)
+	latestVersion := *status.LatestVersion
+
+	suite.Require().NoError(os.WriteFile(
+		filepath.Join(componentDir, "manifest.json"),
+		[]byte(`{"version":"`+latestVersion+`"}`), 0o644,
+	))
+
+	status, err = suite.service.GetStatus()
+	suite.Require().NoError(err)
+	suite.True(status.Installed)
+	suite.False(status.CanUpgrade, "CanUpgrade must be false when installed version equals latest version")
+}
+
 func createCustomComponentArchive(t *testing.T, files map[string]string) []byte {
 	t.Helper()
 

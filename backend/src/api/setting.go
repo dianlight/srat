@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
@@ -79,7 +80,15 @@ func (self *SettingsHanler) GetHomeAssistantCustomComponentStatus(ctx context.Co
 	if self.upgradeService != nil {
 		if ass, assErr := self.upgradeService.GetUpgradeReleaseAsset(); assErr == nil && ass != nil && ass.LastRelease != "" {
 			status.LatestVersion = &ass.LastRelease
-			status.CanUpgrade = status.Installed
+			if status.InstalledVersion != nil {
+				if iv, err := semver.NewVersion(*status.InstalledVersion); err == nil {
+					if lv, err := semver.NewVersion(*status.LatestVersion); err == nil {
+						status.CanUpgrade = iv.LessThan(lv)
+					}
+				}
+			} else {
+				status.CanUpgrade = false
+			}
 		}
 	}
 

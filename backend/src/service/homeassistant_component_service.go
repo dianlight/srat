@@ -114,7 +114,7 @@ func (s *HomeAssistantComponentService) GetStatus() (*dto.HomeAssistantCustomCom
 	}
 
 	status.CanInstall = !status.Installed
-	status.CanUpgrade = status.Installed
+	status.CanUpgrade = canUpgrade(status.InstalledVersion, status.LatestVersion)
 	status.CanUninstall = status.Installed
 
 	return status, nil
@@ -364,6 +364,24 @@ func (s *HomeAssistantComponentService) resolveDevelopCustomComponentArchive(ins
 	}
 
 	return archive, true, nil
+}
+
+// canUpgrade returns true when installed is a valid semver version that is
+// strictly less than latest. Returns false if either pointer is nil or if
+// either string is not a valid semver.
+func canUpgrade(installed, latest *string) bool {
+	if installed == nil || latest == nil {
+		return false
+	}
+	iv, err := semver.NewVersion(*installed)
+	if err != nil {
+		return false
+	}
+	lv, err := semver.NewVersion(*latest)
+	if err != nil {
+		return false
+	}
+	return iv.LessThan(lv)
 }
 
 func readManifestVersionFromCustomComponentArchive(zipArchive []byte) (string, error) {
