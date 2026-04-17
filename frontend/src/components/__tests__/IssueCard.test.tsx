@@ -262,12 +262,14 @@ describe("IssueCard Component", () => {
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { default: IssueCard } = await import("../IssueCard");
 
-        // Set up localStorage to mark issue as ignored
-        localStorage.setItem("srat_ignored_issues", JSON.stringify([9]));
+        // Set up localStorage to mark issue as ignored by its problem_key (string)
+        const ignoredProblemKey = "test_ignored_issue_9";
+        localStorage.setItem("srat_ignored_issues", JSON.stringify([ignoredProblemKey]));
 
         const theme = createTheme();
         const ignoredIssue = {
             id: 9,
+            problem_key: ignoredProblemKey,
             title: "Ignored Issue",
             description: "This issue should be hidden",
             severity: "info" as const,
