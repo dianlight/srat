@@ -15,6 +15,7 @@ type SettingsHanler struct {
 	settingService service.SettingServiceInterface
 	addonsService  service.AddonsServiceInterface
 	haComponentSvc service.HomeAssistantComponentServiceInterface
+	haService      service.HomeAssistantServiceInterface
 	upgradeService service.UpgradeServiceInterface
 	eventBus       events.EventBusInterface
 }
@@ -24,6 +25,7 @@ func NewSettingsHanler(
 	settingService service.SettingServiceInterface,
 	addonsService service.AddonsServiceInterface,
 	haComponentSvc service.HomeAssistantComponentServiceInterface,
+	haService service.HomeAssistantServiceInterface,
 	upgradeService service.UpgradeServiceInterface,
 	eventBus events.EventBusInterface,
 ) *SettingsHanler {
@@ -31,6 +33,7 @@ func NewSettingsHanler(
 	p.settingService = settingService
 	p.addonsService = addonsService
 	p.haComponentSvc = haComponentSvc
+	p.haService = haService
 	p.upgradeService = upgradeService
 	p.eventBus = eventBus
 
@@ -52,6 +55,7 @@ func (self *SettingsHanler) RegisterSettings(api huma.API) {
 	huma.Post(api, "/settings/homeassistant/custom-component/install", self.InstallHomeAssistantCustomComponent, huma.OperationTags("system"))
 	huma.Post(api, "/settings/homeassistant/custom-component/upgrade", self.UpgradeHomeAssistantCustomComponent, huma.OperationTags("system"))
 	huma.Delete(api, "/settings/homeassistant/custom-component", self.UninstallHomeAssistantCustomComponent, huma.OperationTags("system"))
+	huma.Post(api, "/settings/homeassistant/restart-core", self.RestartHACore, huma.OperationTags("system"))
 	huma.Get(api, "/settings/app-config", self.GetAppConfig, huma.OperationTags("system"))
 	huma.Put(api, "/settings/app-config", self.UpdateAppConfig, huma.OperationTags("system"))
 	huma.Get(api, "/settings/app-config/schema", self.GetAppConfigSchema, huma.OperationTags("system"))
@@ -208,6 +212,18 @@ func (self *SettingsHanler) RestartAddon(ctx context.Context, input *struct{}) (
 	}
 
 	return &struct{ Body string }{Body: "addon restart requested"}, nil
+}
+
+// RestartHACore triggers a Home Assistant Core restart via the HA service call API.
+func (self *SettingsHanler) RestartHACore(ctx context.Context, input *struct{}) (*struct{ Body string }, error) {
+	if self.haService == nil {
+		return nil, huma.Error503ServiceUnavailable("Home Assistant service is not available")
+	}
+	err := self.haService.RestartHomeAssistant(ctx)
+	if err != nil {
+		return nil, huma.Error500InternalServerError("Failed to restart Home Assistant core: %v", err)
+	}
+	return &struct{ Body string }{Body: "Home Assistant core restart requested"}, nil
 }
 
 // UpdateSettings updates the settings based on the provided input.

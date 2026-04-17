@@ -11,7 +11,10 @@ import (
 // goverter:skipCopySameType
 type ProblemToDtoConverter interface {
 	ToDto(source *dbom.Problem) *dto.Problem
+
 	ToDtoList(source []*dbom.Problem) []*dto.Problem
+
+	// goverter:ignore DeletedAt
 	ToDbom(source *dto.Problem) *dbom.Problem
 }
 

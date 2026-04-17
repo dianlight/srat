@@ -62,7 +62,7 @@ import {
   useGetApiTelemetryModesQuery,
   usePostApiSettingsHomeassistantCustomComponentInstallMutation,
   usePostApiSettingsHomeassistantCustomComponentUpgradeMutation,
-  usePutApiRestartMutation,
+  usePostApiSettingsHomeassistantRestartCoreMutation,
   usePutApiSettingsMutation,
 } from "../../store/sratApi";
 import { useAppDispatch } from "../../store/store";
@@ -220,7 +220,8 @@ function HomeAssistantCustomComponentPanel({
     usePostApiSettingsHomeassistantCustomComponentUpgradeMutation();
   const [uninstallComponent, uninstallState] =
     useDeleteApiSettingsHomeassistantCustomComponentMutation();
-  const [restartAddon, restartState] = usePutApiRestartMutation();
+  const [restartHACore, restartHACoreState] =
+    usePostApiSettingsHomeassistantRestartCoreMutation();
   const [actionFeedback, setActionFeedback] = useState<{
     severity: "success" | "error";
     message: string;
@@ -328,11 +329,14 @@ function HomeAssistantCustomComponentPanel({
   const handleRestartNow = async () => {
     setRestartDialogOpen(false);
     try {
-      await restartAddon().unwrap();
+      await restartHACore().unwrap();
     } catch (error) {
       setActionFeedback({
         severity: "error",
-        message: extractErrorMessage(error, "Failed to restart the addon."),
+        message: extractErrorMessage(
+          error,
+          "Failed to restart Home Assistant core.",
+        ),
       });
     }
   };
@@ -482,10 +486,10 @@ function HomeAssistantCustomComponentPanel({
         <DialogTitle id="cc-restart-dialog-title">Restart Required</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            A restart of the SRAT addon is required to apply the changes. Would
-            you like to restart now?
+            A Home Assistant Core restart is required to apply the custom
+            component changes. Would you like to restart now?
           </DialogContentText>
-          {restartState.isLoading ? (
+          {restartHACoreState.isLoading ? (
             <Stack
               direction="row"
               spacing={1}
@@ -509,7 +513,7 @@ function HomeAssistantCustomComponentPanel({
               void handleRestartNow();
             }}
             color="warning"
-            disabled={restartState.isLoading}
+            disabled={restartHACoreState.isLoading}
             autoFocus
           >
             Restart Now

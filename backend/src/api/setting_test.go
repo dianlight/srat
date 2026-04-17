@@ -31,6 +31,7 @@ type SettingsHandlerSuite struct {
 	settingService service.SettingServiceInterface
 	addonsService  service.AddonsServiceInterface
 	haComponentSvc service.HomeAssistantComponentServiceInterface
+	haService      service.HomeAssistantServiceInterface
 	upgradeService service.UpgradeServiceInterface
 	//db           *gorm.DB
 	api *api.SettingsHanler
@@ -72,6 +73,7 @@ func (suite *SettingsHandlerSuite) SetupTest() {
 			events.NewEventBus,
 			mock.Mock[service.AddonsServiceInterface],
 			mock.Mock[service.HomeAssistantComponentServiceInterface],
+			mock.Mock[service.HomeAssistantServiceInterface],
 			mock.Mock[service.UpgradeServiceInterface],
 			//repository.NewPropertyRepositoryRepository,
 			mock.Mock[service.TelemetryServiceInterface],
@@ -110,6 +112,7 @@ func (suite *SettingsHandlerSuite) SetupTest() {
 		fx.Populate(&suite.settingService),
 		fx.Populate(&suite.addonsService),
 		fx.Populate(&suite.haComponentSvc),
+		fx.Populate(&suite.haService),
 		fx.Populate(&suite.upgradeService),
 		//fx.Populate(&suite.config),
 		fx.Populate(&suite.ctx),
@@ -369,8 +372,8 @@ func (suite *SettingsHandlerSuite) TestGetHomeAssistantCustomComponentStatusHand
 	connectedVersion := "2026.04.2"
 	status := &dto.HomeAssistantCustomComponentStatus{
 		Component:        dto.HomeAssistantComponentSRAT,
-		InstallPath:      "/config/custom_components/srat",
-		ManifestPath:     "/config/custom_components/srat/manifest.json",
+		InstallPath:      "/homeassistant/custom_components/srat",
+		ManifestPath:     "/homeassistant/custom_components/srat/manifest.json",
 		Installed:        true,
 		CanUpgrade:       true,
 		CanUninstall:     true,
@@ -409,8 +412,8 @@ func (suite *SettingsHandlerSuite) TestGetHomeAssistantCustomComponentStatusHand
 
 	status := &dto.HomeAssistantCustomComponentStatus{
 		Component:    dto.HomeAssistantComponentSRAT,
-		InstallPath:  "/config/custom_components/srat",
-		ManifestPath: "/config/custom_components/srat/manifest.json",
+		InstallPath:  "/homeassistant/custom_components/srat",
+		ManifestPath: "/homeassistant/custom_components/srat/manifest.json",
 		Installed:    false,
 		CanInstall:   true,
 		Connected:    false,
@@ -434,8 +437,8 @@ func (suite *SettingsHandlerSuite) TestInstallHomeAssistantCustomComponentHandle
 
 	status := &dto.HomeAssistantCustomComponentStatus{
 		Component:        dto.HomeAssistantComponentSRAT,
-		InstallPath:      "/config/custom_components/srat",
-		ManifestPath:     "/config/custom_components/srat/manifest.json",
+		InstallPath:      "/homeassistant/custom_components/srat",
+		ManifestPath:     "/homeassistant/custom_components/srat/manifest.json",
 		Installed:        true,
 		CanUpgrade:       true,
 		CanUninstall:     true,
@@ -463,8 +466,8 @@ func (suite *SettingsHandlerSuite) TestUpgradeHomeAssistantCustomComponentHandle
 
 	status := &dto.HomeAssistantCustomComponentStatus{
 		Component:        dto.HomeAssistantComponentSRAT,
-		InstallPath:      "/config/custom_components/srat",
-		ManifestPath:     "/config/custom_components/srat/manifest.json",
+		InstallPath:      "/homeassistant/custom_components/srat",
+		ManifestPath:     "/homeassistant/custom_components/srat/manifest.json",
 		Installed:        true,
 		CanUpgrade:       true,
 		CanUninstall:     true,
@@ -492,8 +495,8 @@ func (suite *SettingsHandlerSuite) TestUninstallHomeAssistantCustomComponentHand
 
 	status := &dto.HomeAssistantCustomComponentStatus{
 		Component:    dto.HomeAssistantComponentSRAT,
-		InstallPath:  "/config/custom_components/srat",
-		ManifestPath: "/config/custom_components/srat/manifest.json",
+		InstallPath:  "/homeassistant/custom_components/srat",
+		ManifestPath: "/homeassistant/custom_components/srat/manifest.json",
 		Installed:    false,
 		Connected:    false,
 	}
@@ -597,7 +600,7 @@ func (suite *SettingsHandlerSuite) TestUpdateAppConfigHandler() {
 func (suite *SettingsHandlerSuite) TestUpdateAppConfigHandler_FallbackDismissPersistentNotificationWhenRepairServiceNil() {
 	_, humaAPI := humatest.New(suite.T())
 	eventBus := events.NewEventBus(suite.ctx)
-	handler := api.NewSettingsHanler(suite.settingService, suite.addonsService, suite.haComponentSvc, suite.upgradeService, eventBus)
+	handler := api.NewSettingsHanler(suite.settingService, suite.addonsService, suite.haComponentSvc, suite.haService, suite.upgradeService, eventBus)
 	handler.RegisterSettings(humaAPI)
 	autopatch.AutoPatch(humaAPI)
 
@@ -646,4 +649,27 @@ func (suite *SettingsHandlerSuite) TestRestartAddonHandler_FailsWhenServiceFails
 	rr := humaAPI.Put("/restart", map[string]any{})
 	suite.Require().Equal(http.StatusInternalServerError, rr.Code, "Response body: %s", rr.Body.String())
 	_ = mock.Verify(suite.addonsService, matchers.Times(1)).RestartSelfApp(mock.AnyContext())
+}
+
+func (suite *SettingsHandlerSuite) TestRestartHACoreHandler() {
+	_, humaAPI := humatest.New(suite.T())
+	suite.api.RegisterSettings(humaAPI)
+
+	mock.When(suite.haService.RestartHomeAssistant(mock.AnyContext())).ThenReturn(nil)
+
+	rr := humaAPI.Post("/settings/homeassistant/restart-core", map[string]any{})
+	suite.Require().Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
+	_ = mock.Verify(suite.haService, matchers.Times(1)).RestartHomeAssistant(mock.AnyContext())
+}
+
+func (suite *SettingsHandlerSuite) TestRestartHACoreHandler_FailsWhenServiceFails() {
+	_, humaAPI := humatest.New(suite.T())
+	suite.api.RegisterSettings(humaAPI)
+
+	mock.When(suite.haService.RestartHomeAssistant(mock.AnyContext())).
+		ThenReturn(errors.New("ha restart failed"))
+
+	rr := humaAPI.Post("/settings/homeassistant/restart-core", map[string]any{})
+	suite.Require().Equal(http.StatusInternalServerError, rr.Code, "Response body: %s", rr.Body.String())
+	_ = mock.Verify(suite.haService, matchers.Times(1)).RestartHomeAssistant(mock.AnyContext())
 }

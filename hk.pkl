@@ -41,7 +41,10 @@ local linters = new Mapping<String, Step> {
         fix = "golangci-lint run --fix ./..."
     }
 
-    ["gomod-tidy"] = Builtins.gomod_tidy
+    ["gomod-tidy"] = (Builtins.gomod_tidy) {
+        glob = "go.mod"
+        dir = "backend/src"
+    }
 //    ["err-check"] = (Builtins.err_check) {
 //        glob = "**/*.go"
 //    }

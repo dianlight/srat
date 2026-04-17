@@ -19,33 +19,13 @@ import {
 import type { Theme } from "@mui/material/styles";
 import type React from "react";
 import { useIgnoredIssues } from "../hooks/issueHooks";
-import type { Issue, Problem } from "../store/sratApi";
+import type { Problem } from "../store/sratApi";
 
 interface IssueCardProps {
-  issue: Issue | Problem;
+  issue: Problem;
   onResolve?: (id: number | string) => void;
   showIgnored?: boolean;
 }
-
-const isProblem = (issue: Issue | Problem): issue is Problem => {
-  return "problem_key" in issue;
-};
-
-const getIssueDate = (issue: Issue | Problem): string | undefined => {
-  if ("date" in issue) {
-    return issue.date;
-  }
-
-  return issue.created_at;
-};
-
-const getIssueResolveKey = (issue: Issue | Problem): number | string => {
-  if (isProblem(issue)) {
-    return issue.problem_key;
-  }
-
-  return issue.id;
-};
 
 const getSeverityConfig = (severity: string, theme: Theme) => {
   const isDark = theme.palette.mode === "dark";
@@ -115,7 +95,7 @@ const IssueCard: React.FC<IssueCardProps> = ({
 }) => {
   const theme = useTheme();
   const { isIssueIgnored } = useIgnoredIssues();
-  const resolveKey = getIssueResolveKey(issue);
+  const resolveKey = issue.problem_key;
   const isIgnored = isIssueIgnored(resolveKey);
   const severityConfig = getSeverityConfig(issue.severity || "info", theme);
 
@@ -163,13 +143,13 @@ const IssueCard: React.FC<IssueCardProps> = ({
         <Typography variant="body2" color="text.secondary">
           {issue.description}
         </Typography>
-        {getIssueDate(issue) && (
+        {issue.created_at && (
           <Typography
             variant="caption"
             color="text.secondary"
             sx={{ mt: 1, display: "block" }}
           >
-            {new Date(getIssueDate(issue) ?? "").toLocaleString()}
+            {new Date(issue.created_at ?? "").toLocaleString()}
           </Typography>
         )}
       </CardContent>

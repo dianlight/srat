@@ -4,12 +4,12 @@
 
 ## 🎯 Objective
 
-Implement end-to-end custom component lifecycle management for Home Assistant add-on deployments, so SRAT can detect whether `custom_components/srat` is installed under `/config/custom_components`, surface actionable guidance when missing/disconnected, and provide guided install/upgrade/uninstall flows (including version checks and restart confirmation) directly from Settings → HomeAssistant.
+Implement end-to-end custom component lifecycle management for Home Assistant add-on deployments, so SRAT can detect whether `custom_components/srat` is installed under `/homeassistant/custom_components`, surface actionable guidance when missing/disconnected, and provide guided install/upgrade/uninstall flows (including version checks and restart confirmation) directly from Settings → HomeAssistant.
 
 ## 🛠️ Technical Specifications
 
 - **Inputs:**
-  - Home Assistant add-on runtime path `/config/custom_components`
+  - Home Assistant add-on runtime path `/homeassistant/custom_components`
   - `custom_components/srat/manifest.json` (installed version detection)
   - Connectivity status of SRAT custom component (WebSocket/session state)
   - Update channel configuration (stable release vs pre-release)
@@ -20,7 +20,7 @@ Implement end-to-end custom component lifecycle management for Home Assistant ad
   - Accurate install/connection/version status for SRAT custom component
   - Single backend issue notification when component is both missing and disconnected
   - Resolution dialog with latest-version info and confirm-to-download flow
-  - Install/upgrade/uninstall execution using `srat.zip` artifact extraction into `/config/custom_components`
+  - Install/upgrade/uninstall execution using `srat.zip` artifact extraction into `/homeassistant/custom_components`
   - Optional Home Assistant Core restart request (only after user confirmation)
 
 - **Dependencies:**
@@ -32,7 +32,7 @@ Implement end-to-end custom component lifecycle management for Home Assistant ad
 ## 📝 Task List
 
 - [x] Task 0: Design and define the backend logic for detecting custom component presence, version, and connectivity status. Define the issue type for missing+disconnected state with single-notification behavior.
-- [x] Task 1: Add backend status detection for custom component presence in `/config/custom_components` and installed version from `manifest.json`
+- [x] Task 1: Add backend status detection for custom component presence in `/homeassistant/custom_components` and installed version from `manifest.json`
 - [x] Task 1.5: Migrate issue persistence to the new backend standard by removing the dedicated issue repository layer and using direct `dbom` access from `IssueService`.
 - [x] Task 2: Add/update backend APIs to expose component status, latest available version, and lifecycle actions (install/upgrade/uninstall)
 - [x] Task 3: Modify Mise and release process to ensure `srat.zip` artifact is generated and contains the necessary files for installation (including `manifest.json` with version info)
@@ -155,7 +155,7 @@ Implement end-to-end custom component lifecycle management for Home Assistant ad
   - Backend: all packages pass `go test ./...` (no actual package failures — the earlier bare `FAIL` exit code was a shell artifact; all individual packages show `ok`).
   - Custom component: 41/41 tests pass, ruff and mypy clean.
 
-- The target add-on directory is fixed to `/config/custom_components`.
+- The target add-on directory is fixed to `/homeassistant/custom_components`.
 - Presence check should validate whether `srat` exists in target directory.
 - Installed version should be read from `<target>/srat/manifest.json`.
 - Missing+disconnected condition must raise only one issue notification (no duplicates/spam).
@@ -163,7 +163,7 @@ Implement end-to-end custom component lifecycle management for Home Assistant ad
 - Resolution dialog requirements:
   - Show latest available version information
   - Ask explicit user confirmation before any download/install action
-- Install and upgrade should share the same artifact path: download `srat.zip` from selected update channel and extract into `/config/custom_components`.
+- Install and upgrade should share the same artifact path: download `srat.zip` from selected update channel and extract into `/homeassistant/custom_components`.
 - Channel selection must honor configuration (release vs pre-release).
 - Upgrade must run even if component is already installed (overwrite/update existing files safely).
 - Frontend Settings → HomeAssistant section should expose three actions: Install, Upgrade, Uninstall.
@@ -184,7 +184,7 @@ Implement end-to-end custom component lifecycle management for Home Assistant ad
 - [x] `TODO: backend/src/internal/embed.go` - Added embedded custom component zip accessor for `embedallowed` builds
 - [x] `TODO: backend/src/internal/no_embed.go` - Added non-embed fallback custom component zip accessor
 - [x] `TODO: backend/.mise.toml` - Build task now generates `src/internal/assets/srat.zip` before compiling
-- [x] `TODO: backend/src/service/homeassistant_component_service.go` - Added install/upgrade zip extraction flow into `/config/custom_components`
+- [x] `TODO: backend/src/service/homeassistant_component_service.go` - Added install/upgrade zip extraction flow into `/homeassistant/custom_components`
 - [x] `TODO: backend/src/api/setting.go` - Install/upgrade endpoints now execute artifact resolution + extraction flow
 - [x] `TODO: backend/src/service/homeassistant_component_service_test.go` - Added upgrade-in-place regression test for already installed component path
 - [x] `TODO: backend/src/api/setting.go` - Added restart-required repair upsert/delete flow for custom component lifecycle + restart endpoint

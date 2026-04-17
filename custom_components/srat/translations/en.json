@@ -38,7 +38,7 @@
     },
     "custom_component_missing": {
       "title": "SRAT custom component not detected",
-      "description": "The SRAT custom component is not installed under `/config/custom_components/srat` and no active WebSocket connection from Home Assistant is present. The integration may not function correctly. Install the component from the SRAT add-on Settings → Home Assistant section.",
+      "description": "The SRAT custom component is not installed under `/homeassistant/custom_components/srat` and no active WebSocket connection from Home Assistant is present. The integration may not function correctly. Install the component from the SRAT add-on Settings → Home Assistant section.",
       "fix_flow": {
         "step": {
           "confirm": {

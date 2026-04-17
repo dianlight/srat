@@ -20,66 +20,81 @@ const (
 
 // CoreCheck defines model for CoreCheck.
 type CoreCheck struct {
-	// Errors Lista di errori.
+	// Errors List of errors.
 	Errors *[]string `json:"errors,omitempty"`
 
-	// Result Risultato del controllo della configurazione.
+	// Result Configuration check result.
 	Result *string `json:"result,omitempty"`
 }
 
 // CoreInfo defines model for CoreInfo.
 type CoreInfo struct {
-	// Arch L'architettura dell'host (armhf, aarch64, i386, amd64).
+	// Arch Host architecture (armhf, aarch64, i386, amd64).
 	Arch *string `json:"arch,omitempty"`
 
-	// AudioInput La descrizione del dispositivo di input audio.
+	// AudioInput Audio input device description.
 	AudioInput *string `json:"audio_input,omitempty"`
 
-	// AudioOutput La descrizione del dispositivo di output audio.
+	// AudioOutput Audio output device description.
 	AudioOutput *string `json:"audio_output,omitempty"`
 
-	// BackupsExcludeDatabase I backup escludono il file del database di Home Assistant per impostazione predefinita.
+	// BackupsExcludeDatabase Whether backups exclude the HA database file by default.
 	BackupsExcludeDatabase *bool `json:"backups_exclude_database,omitempty"`
 
-	// Boot True se deve avviarsi all'avvio.
+	// Boot True if set to start at boot.
 	Boot *bool `json:"boot,omitempty"`
 
-	// Image L'immagine del container che esegue il Core.
+	// Image Container image running the Core.
 	Image *string `json:"image,omitempty"`
 
-	// IpAddress L'indirizzo IP Docker interno del Supervisor.
+	// IpAddress Docker internal IP address of the Core container.
 	IpAddress *string `json:"ip_address,omitempty"`
 
-	// Machine Il tipo di macchina che esegue l'host.
+	// Machine Machine type running the host.
 	Machine *string `json:"machine,omitempty"`
 
-	// Port La porta su cui è in esecuzione Home Assistant.
+	// Port Port Home Assistant is running on.
 	Port *int `json:"port,omitempty"`
 
-	// Ssl True se Home Assistant utilizza SSL.
+	// Ssl True if Home Assistant uses SSL.
 	Ssl *bool `json:"ssl,omitempty"`
 
-	// UpdateAvailable True se è disponibile un aggiornamento.
+	// UpdateAvailable True if an update is available.
 	UpdateAvailable *bool `json:"update_available,omitempty"`
 
-	// Version La versione installata del Core.
+	// Version Installed Core version.
 	Version *string `json:"version,omitempty"`
 
-	// VersionLatest L'ultima versione pubblicata nel canale attivo.
+	// VersionLatest Latest published version in the active channel.
 	VersionLatest *string `json:"version_latest,omitempty"`
 
-	// WaitBoot Tempo massimo di attesa durante l'avvio.
+	// WaitBoot Maximum wait time during boot.
 	WaitBoot *int `json:"wait_boot,omitempty"`
 
-	// Watchdog True se il watchdog è abilitato.
+	// Watchdog True if watchdog is enabled.
+	Watchdog *bool `json:"watchdog,omitempty"`
+}
+
+// CoreOptions defines model for CoreOptions.
+type CoreOptions struct {
+	// Boot True if Core should start at boot.
+	Boot *bool `json:"boot,omitempty"`
+
+	// WaitBoot Maximum wait time during boot (seconds).
+	WaitBoot *int `json:"wait_boot,omitempty"`
+
+	// Watchdog True if watchdog should be enabled.
 	Watchdog *bool `json:"watchdog,omitempty"`
 }
 
 // CoreUpdate defines model for CoreUpdate.
 type CoreUpdate struct {
-	// Version La versione a cui aggiornare.
+	// Version Version to update to.
 	Version *string `json:"version,omitempty"`
 }
+
+// SetCoreOptionsJSONRequestBody defines body for SetCoreOptions for application/json ContentType.
+type SetCoreOptionsJSONRequestBody = CoreOptions
 
 // UpdateCoreJSONRequestBody defines body for UpdateCore for application/json ContentType.
 type UpdateCoreJSONRequestBody = CoreUpdate
@@ -166,14 +181,25 @@ type ClientInterface interface {
 	// GetCoreLogs request
 	GetCoreLogs(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// RebootCore request
-	RebootCore(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// SetCoreOptionsWithBody request with any body
+	SetCoreOptionsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// RepairCore request
-	RepairCore(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	SetCoreOptions(ctx context.Context, body SetCoreOptionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RebuildCore request
+	RebuildCore(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RestartCore request
 	RestartCore(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StartCore request
+	StartCore(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetCoreStats request
+	GetCoreStats(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StopCore request
+	StopCore(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateCoreWithBody request with any body
 	UpdateCoreWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -217,8 +243,8 @@ func (c *Client) GetCoreLogs(ctx context.Context, reqEditors ...RequestEditorFn)
 	return c.Client.Do(req)
 }
 
-func (c *Client) RebootCore(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewRebootCoreRequest(c.Server)
+func (c *Client) SetCoreOptionsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetCoreOptionsRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -229,8 +255,20 @@ func (c *Client) RebootCore(ctx context.Context, reqEditors ...RequestEditorFn) 
 	return c.Client.Do(req)
 }
 
-func (c *Client) RepairCore(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewRepairCoreRequest(c.Server)
+func (c *Client) SetCoreOptions(ctx context.Context, body SetCoreOptionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetCoreOptionsRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) RebuildCore(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRebuildCoreRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -243,6 +281,42 @@ func (c *Client) RepairCore(ctx context.Context, reqEditors ...RequestEditorFn) 
 
 func (c *Client) RestartCore(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRestartCoreRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) StartCore(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStartCoreRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetCoreStats(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetCoreStatsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) StopCore(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStopCoreRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -358,8 +432,19 @@ func NewGetCoreLogsRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
-// NewRebootCoreRequest generates requests for RebootCore
-func NewRebootCoreRequest(server string) (*http.Request, error) {
+// NewSetCoreOptionsRequest calls the generic SetCoreOptions builder with application/json body
+func NewSetCoreOptionsRequest(server string, body SetCoreOptionsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSetCoreOptionsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewSetCoreOptionsRequestWithBody generates requests for SetCoreOptions with any type of body
+func NewSetCoreOptionsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -367,7 +452,7 @@ func NewRebootCoreRequest(server string) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/core/reboot")
+	operationPath := fmt.Sprintf("/core/options")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -377,16 +462,18 @@ func NewRebootCoreRequest(server string) (*http.Request, error) {
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	req, err := http.NewRequest("POST", queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
 
+	req.Header.Add("Content-Type", contentType)
+
 	return req, nil
 }
 
-// NewRepairCoreRequest generates requests for RepairCore
-func NewRepairCoreRequest(server string) (*http.Request, error) {
+// NewRebuildCoreRequest generates requests for RebuildCore
+func NewRebuildCoreRequest(server string) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -394,7 +481,7 @@ func NewRepairCoreRequest(server string) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/core/repair")
+	operationPath := fmt.Sprintf("/core/rebuild")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -422,6 +509,87 @@ func NewRestartCoreRequest(server string) (*http.Request, error) {
 	}
 
 	operationPath := fmt.Sprintf("/core/restart")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewStartCoreRequest generates requests for StartCore
+func NewStartCoreRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/core/start")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetCoreStatsRequest generates requests for GetCoreStats
+func NewGetCoreStatsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/core/stats")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewStopCoreRequest generates requests for StopCore
+func NewStopCoreRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/core/stop")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -531,14 +699,25 @@ type ClientWithResponsesInterface interface {
 	// GetCoreLogsWithResponse request
 	GetCoreLogsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetCoreLogsResponse, error)
 
-	// RebootCoreWithResponse request
-	RebootCoreWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*RebootCoreResponse, error)
+	// SetCoreOptionsWithBodyWithResponse request with any body
+	SetCoreOptionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetCoreOptionsResponse, error)
 
-	// RepairCoreWithResponse request
-	RepairCoreWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*RepairCoreResponse, error)
+	SetCoreOptionsWithResponse(ctx context.Context, body SetCoreOptionsJSONRequestBody, reqEditors ...RequestEditorFn) (*SetCoreOptionsResponse, error)
+
+	// RebuildCoreWithResponse request
+	RebuildCoreWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*RebuildCoreResponse, error)
 
 	// RestartCoreWithResponse request
 	RestartCoreWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*RestartCoreResponse, error)
+
+	// StartCoreWithResponse request
+	StartCoreWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*StartCoreResponse, error)
+
+	// GetCoreStatsWithResponse request
+	GetCoreStatsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetCoreStatsResponse, error)
+
+	// StopCoreWithResponse request
+	StopCoreWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*StopCoreResponse, error)
 
 	// UpdateCoreWithBodyWithResponse request with any body
 	UpdateCoreWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCoreResponse, error)
@@ -619,13 +798,13 @@ func (r GetCoreLogsResponse) StatusCode() int {
 	return 0
 }
 
-type RebootCoreResponse struct {
+type SetCoreOptionsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 }
 
 // Status returns HTTPResponse.Status
-func (r RebootCoreResponse) Status() string {
+func (r SetCoreOptionsResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -633,20 +812,20 @@ func (r RebootCoreResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r RebootCoreResponse) StatusCode() int {
+func (r SetCoreOptionsResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type RepairCoreResponse struct {
+type RebuildCoreResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 }
 
 // Status returns HTTPResponse.Status
-func (r RepairCoreResponse) Status() string {
+func (r RebuildCoreResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -654,7 +833,7 @@ func (r RepairCoreResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r RepairCoreResponse) StatusCode() int {
+func (r RebuildCoreResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -676,6 +855,70 @@ func (r RestartCoreResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r RestartCoreResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type StartCoreResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r StartCoreResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StartCoreResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetCoreStatsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *map[string]interface{}
+}
+
+// Status returns HTTPResponse.Status
+func (r GetCoreStatsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetCoreStatsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type StopCoreResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r StopCoreResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StopCoreResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -730,22 +973,30 @@ func (c *ClientWithResponses) GetCoreLogsWithResponse(ctx context.Context, reqEd
 	return ParseGetCoreLogsResponse(rsp)
 }
 
-// RebootCoreWithResponse request returning *RebootCoreResponse
-func (c *ClientWithResponses) RebootCoreWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*RebootCoreResponse, error) {
-	rsp, err := c.RebootCore(ctx, reqEditors...)
+// SetCoreOptionsWithBodyWithResponse request with arbitrary body returning *SetCoreOptionsResponse
+func (c *ClientWithResponses) SetCoreOptionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetCoreOptionsResponse, error) {
+	rsp, err := c.SetCoreOptionsWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseRebootCoreResponse(rsp)
+	return ParseSetCoreOptionsResponse(rsp)
 }
 
-// RepairCoreWithResponse request returning *RepairCoreResponse
-func (c *ClientWithResponses) RepairCoreWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*RepairCoreResponse, error) {
-	rsp, err := c.RepairCore(ctx, reqEditors...)
+func (c *ClientWithResponses) SetCoreOptionsWithResponse(ctx context.Context, body SetCoreOptionsJSONRequestBody, reqEditors ...RequestEditorFn) (*SetCoreOptionsResponse, error) {
+	rsp, err := c.SetCoreOptions(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseRepairCoreResponse(rsp)
+	return ParseSetCoreOptionsResponse(rsp)
+}
+
+// RebuildCoreWithResponse request returning *RebuildCoreResponse
+func (c *ClientWithResponses) RebuildCoreWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*RebuildCoreResponse, error) {
+	rsp, err := c.RebuildCore(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRebuildCoreResponse(rsp)
 }
 
 // RestartCoreWithResponse request returning *RestartCoreResponse
@@ -755,6 +1006,33 @@ func (c *ClientWithResponses) RestartCoreWithResponse(ctx context.Context, reqEd
 		return nil, err
 	}
 	return ParseRestartCoreResponse(rsp)
+}
+
+// StartCoreWithResponse request returning *StartCoreResponse
+func (c *ClientWithResponses) StartCoreWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*StartCoreResponse, error) {
+	rsp, err := c.StartCore(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStartCoreResponse(rsp)
+}
+
+// GetCoreStatsWithResponse request returning *GetCoreStatsResponse
+func (c *ClientWithResponses) GetCoreStatsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetCoreStatsResponse, error) {
+	rsp, err := c.GetCoreStats(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetCoreStatsResponse(rsp)
+}
+
+// StopCoreWithResponse request returning *StopCoreResponse
+func (c *ClientWithResponses) StopCoreWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*StopCoreResponse, error) {
+	rsp, err := c.StopCore(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStopCoreResponse(rsp)
 }
 
 // UpdateCoreWithBodyWithResponse request with arbitrary body returning *UpdateCoreResponse
@@ -848,15 +1126,15 @@ func ParseGetCoreLogsResponse(rsp *http.Response) (*GetCoreLogsResponse, error) 
 	return response, nil
 }
 
-// ParseRebootCoreResponse parses an HTTP response from a RebootCoreWithResponse call
-func ParseRebootCoreResponse(rsp *http.Response) (*RebootCoreResponse, error) {
+// ParseSetCoreOptionsResponse parses an HTTP response from a SetCoreOptionsWithResponse call
+func ParseSetCoreOptionsResponse(rsp *http.Response) (*SetCoreOptionsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &RebootCoreResponse{
+	response := &SetCoreOptionsResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -864,15 +1142,15 @@ func ParseRebootCoreResponse(rsp *http.Response) (*RebootCoreResponse, error) {
 	return response, nil
 }
 
-// ParseRepairCoreResponse parses an HTTP response from a RepairCoreWithResponse call
-func ParseRepairCoreResponse(rsp *http.Response) (*RepairCoreResponse, error) {
+// ParseRebuildCoreResponse parses an HTTP response from a RebuildCoreWithResponse call
+func ParseRebuildCoreResponse(rsp *http.Response) (*RebuildCoreResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &RepairCoreResponse{
+	response := &RebuildCoreResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -889,6 +1167,64 @@ func ParseRestartCoreResponse(rsp *http.Response) (*RestartCoreResponse, error) 
 	}
 
 	response := &RestartCoreResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseStartCoreResponse parses an HTTP response from a StartCoreWithResponse call
+func ParseStartCoreResponse(rsp *http.Response) (*StartCoreResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StartCoreResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseGetCoreStatsResponse parses an HTTP response from a GetCoreStatsWithResponse call
+func ParseGetCoreStatsResponse(rsp *http.Response) (*GetCoreStatsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetCoreStatsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest map[string]interface{}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseStopCoreResponse parses an HTTP response from a StopCoreWithResponse call
+func ParseStopCoreResponse(rsp *http.Response) (*StopCoreResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StopCoreResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}

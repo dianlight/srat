@@ -308,21 +308,6 @@ const injectedRtkApi = api
         query: () => ({ url: `/api/hostname` }),
         providesTags: ["system"],
       }),
-      getApiIssues: build.query<GetApiIssuesApiResponse, GetApiIssuesApiArg>({
-        query: () => ({ url: `/api/issues` }),
-        providesTags: ["Issues"],
-      }),
-      postApiIssues: build.mutation<
-        PostApiIssuesApiResponse,
-        PostApiIssuesApiArg
-      >({
-        query: (queryArg) => ({
-          url: `/api/issues`,
-          method: "POST",
-          body: queryArg.issue,
-        }),
-        invalidatesTags: ["Issues"],
-      }),
       postApiIssuesReport: build.mutation<
         PostApiIssuesReportApiResponse,
         PostApiIssuesReportApiArg
@@ -340,27 +325,6 @@ const injectedRtkApi = api
       >({
         query: () => ({ url: `/api/issues/template` }),
         providesTags: ["Issues"],
-      }),
-      deleteApiIssuesById: build.mutation<
-        DeleteApiIssuesByIdApiResponse,
-        DeleteApiIssuesByIdApiArg
-      >({
-        query: (queryArg) => ({
-          url: `/api/issues/${queryArg.id}`,
-          method: "DELETE",
-        }),
-        invalidatesTags: ["Issues"],
-      }),
-      putApiIssuesById: build.mutation<
-        PutApiIssuesByIdApiResponse,
-        PutApiIssuesByIdApiArg
-      >({
-        query: (queryArg) => ({
-          url: `/api/issues/${queryArg.id}`,
-          method: "PUT",
-          body: queryArg.issue,
-        }),
-        invalidatesTags: ["Issues"],
       }),
       getApiNics: build.query<GetApiNicsApiResponse, GetApiNicsApiArg>({
         query: () => ({ url: `/api/nics` }),
@@ -400,6 +364,38 @@ const injectedRtkApi = api
       >({
         query: (queryArg) => ({ url: `/api/problems/${queryArg.problemKey}` }),
         providesTags: ["Problems"],
+      }),
+      patchApiProblemsByProblemKey: build.mutation<
+        PatchApiProblemsByProblemKeyApiResponse,
+        PatchApiProblemsByProblemKeyApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/problems/${queryArg.problemKey}`,
+          method: "PATCH",
+          body: queryArg.body,
+        }),
+        invalidatesTags: ["Problems"],
+      }),
+      putApiProblemsByProblemKey: build.mutation<
+        PutApiProblemsByProblemKeyApiResponse,
+        PutApiProblemsByProblemKeyApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/problems/${queryArg.problemKey}`,
+          method: "PUT",
+          body: queryArg.problem,
+        }),
+        invalidatesTags: ["Problems"],
+      }),
+      postApiProblemsByProblemKeyActionsAndActionKey: build.mutation<
+        PostApiProblemsByProblemKeyActionsAndActionKeyApiResponse,
+        PostApiProblemsByProblemKeyActionsAndActionKeyApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/problems/${queryArg.problemKey}/actions/${queryArg.actionKey}`,
+          method: "POST",
+        }),
+        invalidatesTags: ["Problems"],
       }),
       repair: build.mutation<RepairApiResponse, RepairApiArg>({
         query: () => ({ url: `/api/repairMessage`, method: "TRACE" }),
@@ -533,6 +529,16 @@ const injectedRtkApi = api
       >({
         query: () => ({
           url: `/api/settings/homeassistant/custom-component/upgrade`,
+          method: "POST",
+        }),
+        invalidatesTags: ["system"],
+      }),
+      postApiSettingsHomeassistantRestartCore: build.mutation<
+        PostApiSettingsHomeassistantRestartCoreApiResponse,
+        PostApiSettingsHomeassistantRestartCoreApiArg
+      >({
+        query: () => ({
+          url: `/api/settings/homeassistant/restart-core`,
           method: "POST",
         }),
         invalidatesTags: ["system"],
@@ -929,16 +935,6 @@ export type GetApiHostnameApiResponse = /** status 200 OK */
   | string
   | /** status default Error */ ErrorModel;
 export type GetApiHostnameApiArg = void;
-export type GetApiIssuesApiResponse =
-  | /** status 200 OK */ (Issue[] | null)
-  | /** status default Error */ ErrorModel;
-export type GetApiIssuesApiArg = void;
-export type PostApiIssuesApiResponse = /** status 200 OK */
-  | Issue
-  | /** status default Error */ ErrorModel;
-export type PostApiIssuesApiArg = {
-  issue: Issue;
-};
 export type PostApiIssuesReportApiResponse = /** status 200 OK */
   | IssueReportResponse
   | /** status default Error */ ErrorModel;
@@ -949,18 +945,6 @@ export type GetApiIssuesTemplateApiResponse = /** status 200 OK */
   | IssueTemplateResponse
   | /** status default Error */ ErrorModel;
 export type GetApiIssuesTemplateApiArg = void;
-export type DeleteApiIssuesByIdApiResponse =
-  /** status default Error */ ErrorModel;
-export type DeleteApiIssuesByIdApiArg = {
-  id: number;
-};
-export type PutApiIssuesByIdApiResponse = /** status 200 OK */
-  | Issue
-  | /** status default Error */ ErrorModel;
-export type PutApiIssuesByIdApiArg = {
-  id: number;
-  issue: Issue;
-};
 export type GetApiNicsApiResponse =
   | /** status 200 OK */ (InterfaceStat[] | null)
   | /** status default Error */ ErrorModel;
@@ -985,6 +969,26 @@ export type GetApiProblemsByProblemKeyApiResponse = /** status 200 OK */
   | /** status default Error */ ErrorModel;
 export type GetApiProblemsByProblemKeyApiArg = {
   problemKey: string;
+};
+export type PatchApiProblemsByProblemKeyApiResponse = /** status 200 OK */
+  | Problem
+  | /** status default Error */ ErrorModel;
+export type PatchApiProblemsByProblemKeyApiArg = {
+  problemKey: string;
+  body: JsonPatchOp[] | null;
+};
+export type PutApiProblemsByProblemKeyApiResponse = /** status 200 OK */
+  | Problem
+  | /** status default Error */ ErrorModel;
+export type PutApiProblemsByProblemKeyApiArg = {
+  problemKey: string;
+  problem: Problem;
+};
+export type PostApiProblemsByProblemKeyActionsAndActionKeyApiResponse =
+  /** status 200 OK */ Problem | /** status default Error */ ErrorModel;
+export type PostApiProblemsByProblemKeyActionsAndActionKeyApiArg = {
+  problemKey: string;
+  actionKey: string;
 };
 export type RepairApiResponse = /** status 200 OK */
   | RepairCommandMessage
@@ -1061,6 +1065,9 @@ export type PostApiSettingsHomeassistantCustomComponentUpgradeApiResponse =
     | HomeAssistantCustomComponentStatus
     | /** status default Error */ ErrorModel;
 export type PostApiSettingsHomeassistantCustomComponentUpgradeApiArg = void;
+export type PostApiSettingsHomeassistantRestartCoreApiResponse =
+  /** status 200 OK */ string | /** status default Error */ ErrorModel;
+export type PostApiSettingsHomeassistantRestartCoreApiArg = void;
 export type PostApiShareApiResponse = /** status 200 OK */
   | SharedResource
   | /** status default Error */ ErrorModel;
@@ -1248,6 +1255,40 @@ export type CommandOutputNotification = {
   line: string;
   timestamp: number;
 };
+export type ProblemAction = {
+  is_default?: boolean;
+  key: string;
+  label: string;
+  url?: string;
+};
+export type Problem = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  actions?: ProblemAction[] | null;
+  created_at: string;
+  data?: {
+    [key: string]: unknown;
+  };
+  description: string;
+  detail_link?: string;
+  id: number;
+  ignored: boolean;
+  is_fixable?: boolean;
+  is_persistent?: boolean;
+  last_error?: string;
+  learn_more_url?: string;
+  problem_key: string;
+  repeating: number;
+  resolution_link?: string;
+  severity: Severity;
+  status: Status;
+  title: string;
+  translation_key?: string;
+  translation_placeholders?: {
+    [key: string]: string;
+  };
+  updated_at: string;
+};
 export type CommandStartedNotification = {
   args?: string[] | null;
   command: string;
@@ -1268,6 +1309,7 @@ export type GetCommandEventsResponse = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
   output?: CommandOutputNotification;
+  problem?: Problem;
   started?: CommandStartedNotification;
   terminated?: CommandTerminatedNotification;
 };
@@ -1715,19 +1757,6 @@ export type HealthPing = {
   update_available: boolean;
   uptime: number;
 };
-export type Issue = {
-  /** A URL to the JSON Schema for this object. */
-  $schema?: string;
-  date: string;
-  description: string;
-  detailLink?: string;
-  id: number;
-  ignored: boolean;
-  repeating: number;
-  resolutionLink?: string;
-  severity?: Severity;
-  title: string;
-};
 export type IssueReportResponse = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
@@ -1790,40 +1819,6 @@ export type InterfaceStat = {
   index: number;
   mtu: number;
   name: string;
-};
-export type ProblemAction = {
-  is_default?: boolean;
-  key: string;
-  label: string;
-  url?: string;
-};
-export type Problem = {
-  /** A URL to the JSON Schema for this object. */
-  $schema?: string;
-  actions?: ProblemAction[] | null;
-  created_at: string;
-  data?: {
-    [key: string]: unknown;
-  };
-  description: string;
-  detail_link?: string;
-  id: number;
-  ignored: boolean;
-  is_fixable?: boolean;
-  is_persistent?: boolean;
-  last_error?: string;
-  learn_more_url?: string;
-  problem_key: string;
-  repeating: number;
-  resolution_link?: string;
-  severity: Severity2;
-  status: Status;
-  title: string;
-  translation_key?: string;
-  translation_placeholders?: {
-    [key: string]: string;
-  };
-  updated_at: string;
 };
 export type RepairCommandMessage = {
   /** A URL to the JSON Schema for this object. */
@@ -2093,6 +2088,21 @@ export type Welcome = {
   supported_events: Supported_events[] | null;
   update_channel: Update_channel;
 };
+export enum Severity {
+  Info = "info",
+  Warning = "warning",
+  Error = "error",
+  Critical = "critical",
+}
+export enum Status {
+  Created = "created",
+  Updated = "updated",
+  Ignored = "ignored",
+  Fixed = "fixed",
+  Dismissed = "dismissed",
+  Deleted = "deleted",
+  Error = "error",
+}
 export enum Command_type {
   Scsi = "scsi",
   Ata = "ata",
@@ -2115,27 +2125,6 @@ export enum Disk_type {
   NvMe = "NVMe",
   Scsi = "SCSI",
   Unknown = "Unknown",
-}
-export enum Severity {
-  Error = "error",
-  Warning = "warning",
-  Info = "info",
-  Success = "success",
-}
-export enum Severity2 {
-  Info = "info",
-  Warning = "warning",
-  Error = "error",
-  Critical = "critical",
-}
-export enum Status {
-  Created = "created",
-  Updated = "updated",
-  Ignored = "ignored",
-  Fixed = "fixed",
-  Dismissed = "dismissed",
-  Deleted = "deleted",
-  Error = "error",
 }
 export enum Hdidle_default_command_type {
   Scsi = "scsi",
@@ -2232,17 +2221,16 @@ export const {
   usePostApiHdidleStopMutation,
   useGetApiHealthQuery,
   useGetApiHostnameQuery,
-  useGetApiIssuesQuery,
-  usePostApiIssuesMutation,
   usePostApiIssuesReportMutation,
   useGetApiIssuesTemplateQuery,
-  useDeleteApiIssuesByIdMutation,
-  usePutApiIssuesByIdMutation,
   useGetApiNicsQuery,
   useGetApiProblemsQuery,
   usePostApiProblemsMutation,
   useDeleteApiProblemsByProblemKeyMutation,
   useGetApiProblemsByProblemKeyQuery,
+  usePatchApiProblemsByProblemKeyMutation,
+  usePutApiProblemsByProblemKeyMutation,
+  usePostApiProblemsByProblemKeyActionsAndActionKeyMutation,
   useRepairMutation,
   usePutApiRestartMutation,
   usePutApiSambaApplyMutation,
@@ -2259,6 +2247,7 @@ export const {
   usePostApiSettingsHomeassistantCustomComponentInstallMutation,
   useGetApiSettingsHomeassistantCustomComponentStatusQuery,
   usePostApiSettingsHomeassistantCustomComponentUpgradeMutation,
+  usePostApiSettingsHomeassistantRestartCoreMutation,
   usePostApiShareMutation,
   useDeleteApiShareByShareNameMutation,
   useGetApiShareByShareNameQuery,

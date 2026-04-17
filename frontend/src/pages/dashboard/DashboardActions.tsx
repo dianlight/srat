@@ -14,7 +14,7 @@ import { useVolume } from "../../hooks/volumeHook";
 import { TabIDs } from "../../store/locationState";
 import {
   type Partition,
-  Severity2,
+  Severity,
   Status,
   useDeleteApiProblemsByProblemKeyMutation,
   useGetApiProblemsQuery,
@@ -198,7 +198,7 @@ export function DashboardActions() {
                 title: "Addon in Protected Mode",
                 description:
                   "The addon is currently in protected mode. In this mode, no disks can be mounted to prevent unauthorized access. To disable protected mode, navigate to the addon settings in your Home Assistant interface and toggle the protected mode option off. Ensure you understand the security implications before disabling.",
-                severity: Severity2.Error,
+                severity: Severity.Error,
                 status: Status.Created,
                 ignored: false,
                 repeating: 0,

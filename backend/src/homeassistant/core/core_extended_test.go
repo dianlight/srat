@@ -176,20 +176,6 @@ func TestNewRestartCoreRequest(t *testing.T) {
 	assert.Equal(t, http.MethodPost, req.Method)
 }
 
-func TestNewRebootCoreRequest(t *testing.T) {
-	req, err := NewRebootCoreRequest("http://core.local")
-	assert.NoError(t, err)
-	assert.NotNil(t, req)
-	assert.Equal(t, http.MethodPost, req.Method)
-}
-
-func TestNewRepairCoreRequest(t *testing.T) {
-	req, err := NewRepairCoreRequest("http://core.local")
-	assert.NoError(t, err)
-	assert.NotNil(t, req)
-	assert.Equal(t, http.MethodPost, req.Method)
-}
-
 func TestCoreInfo_Architectures(t *testing.T) {
 	tests := []struct {
 		name string

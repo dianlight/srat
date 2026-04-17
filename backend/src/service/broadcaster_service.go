@@ -153,7 +153,7 @@ func (broker *BroadcasterService) setupEventListeners() []func() {
 		return nil
 	})
 	ret[7] = broker.eventBus.OnCommandExecution(func(ctx context.Context, event events.CommandExecutionEvent) errors.E {
-		tlog.DebugContext(ctx, "BroadcasterService received CommandExecution event", "type", event.Type, "message_type", fmt.Sprintf("%T", event.Message), "message", event.Message)
+		tlog.TraceContext(ctx, "BroadcasterService received CommandExecution event", "type", event.Type, "message_type", fmt.Sprintf("%T", event.Message), "message", event.Message)
 		broker.BroadcastMessage(event.Message)
 		return nil
 	})

@@ -465,8 +465,8 @@ describe("Settings", () => {
             http.get(/.*\/api\/settings\/homeassistant\/custom-component\/status$/, () =>
                 HttpResponse.json({
                     component: "srat",
-                    install_path: "/config/custom_components/srat",
-                    manifest_path: "/config/custom_components/srat/manifest.json",
+                    install_path: "/homeassistant/custom_components/srat",
+                    manifest_path: "/homeassistant/custom_components/srat/manifest.json",
                     installed: true,
                     connected: false,
                     can_install: false,
@@ -564,8 +564,8 @@ describe("Settings", () => {
             http.get(/.*\/api\/settings\/homeassistant\/custom-component\/status$/, () =>
                 HttpResponse.json({
                     component: "srat",
-                    install_path: "/config/custom_components/srat",
-                    manifest_path: "/config/custom_components/srat/manifest.json",
+                    install_path: "/homeassistant/custom_components/srat",
+                    manifest_path: "/homeassistant/custom_components/srat/manifest.json",
                     installed: false,
                     connected: false,
                     can_install: true,
@@ -873,8 +873,8 @@ describe("Settings", () => {
             http.get(/.*\/api\/settings\/homeassistant\/custom-component\/status$/, () =>
                 HttpResponse.json({
                     component: "srat",
-                    install_path: "/config/custom_components/srat",
-                    manifest_path: "/config/custom_components/srat/manifest.json",
+                    install_path: "/homeassistant/custom_components/srat",
+                    manifest_path: "/homeassistant/custom_components/srat/manifest.json",
                     installed: false,
                     connected: false,
                     can_install: true,
@@ -980,7 +980,7 @@ describe("Settings", () => {
             http.get(/.*\/api\/settings\/homeassistant\/custom-component\/status$/, () =>
                 HttpResponse.json({
                     component: "srat",
-                    install_path: "/config/custom_components/srat",
+                    install_path: "/homeassistant/custom_components/srat",
                     installed: false,
                     connected: false,
                     can_install: true,
@@ -1076,7 +1076,7 @@ describe("Settings", () => {
         expect(screen.queryByRole("button", { name: /restart now/i })).toBeNull();
     });
 
-    it("calls PUT /api/restart when Restart Now is clicked", async () => {
+    it("calls POST /api/settings/homeassistant/restart-core when Restart Now is clicked", async () => {
         const React = await import("react");
         const { render, screen, within } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
@@ -1104,9 +1104,9 @@ describe("Settings", () => {
             http.post(/.*\/api\/settings\/homeassistant\/custom-component\/install$/, () =>
                 HttpResponse.json({ installed: true })
             ),
-            http.put(/.*\/api\/restart$/, () => {
+            http.post(/.*\/api\/settings\/homeassistant\/restart-core$/, () => {
                 restartCalled = true;
-                return HttpResponse.json("addon restart requested");
+                return HttpResponse.json("Home Assistant core restart requested");
             })
         );
 

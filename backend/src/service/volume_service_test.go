@@ -88,7 +88,6 @@ func (suite *VolumeServiceTestSuite) SetupTest() {
 			//mock.Mock[repository.MountPointPathRepositoryInterface],
 			mock.Mock[service.HardwareServiceInterface],
 			mock.Mock[service.ShareServiceInterface],
-			mock.Mock[service.IssueServiceInterface],
 			//mock.Mock[events.EventBusInterface],
 		),
 		fx.Populate(&suite.volumeService),

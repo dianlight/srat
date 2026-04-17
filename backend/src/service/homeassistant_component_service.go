@@ -193,7 +193,7 @@ func (s *HomeAssistantComponentService) SyncIssueStatus(status *dto.HomeAssistan
 		_, err := s.problemService.Upsert(&dto.Problem{
 			ProblemKey:     "custom_component_missing",
 			Title:          dto.HomeAssistantComponentMissingIssueTitle,
-			Description:    "SRAT custom component is not installed under /config/custom_components/srat and no active websocket connection from Home Assistant is present.",
+			Description:    "SRAT custom component is not installed under /homeassistant/custom_components/srat and no active websocket connection from Home Assistant is present.",
 			ResolutionLink: dto.HomeAssistantComponentMissingIssueResolutionLink,
 			Severity:       dto.ProblemSeverities.PROBLEMSEVERITYWARNING,
 			Status:         dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSCREATED,

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import "../../../test/setup";
 import { createTestStore } from "../../../test/setup";
-import { Severity2, Status, Supported_events } from "../sratApi";
+import { Severity, Status, Supported_events } from "../sratApi";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -168,7 +168,7 @@ describe("wsApi reconnect behavior", () => {
             repeating: 1,
             title: "Restart required",
             description: "Restart Home Assistant to apply changes.",
-            severity: Severity2.Warning,
+            severity: Severity.Warning,
             status: Status.Created,
             created_at: "2026-01-01T00:00:00Z",
             updated_at: "2026-01-01T00:00:00Z",

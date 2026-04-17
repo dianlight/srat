@@ -194,7 +194,7 @@ This document provides detailed information about all SRAT settings available in
   - The issue is automatically resolved (closed) when the addon is reloaded or restarted
   - Users can also manually resolve the issue through Home Assistant's Repairs interface
 - **Technical Details**:
-  - The system monitors the `/config/custom_components/srat/manifest.json` file for changes
+  - The system monitors the `/homeassistant/custom_components/srat/manifest.json` file for changes
   - Configuration file changes trigger a `app_config_changed` WebSocket event sent to connected clients
   - Detection is event-driven and low-overhead, using efficient file watching and content hashing
 

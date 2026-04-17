@@ -566,49 +566,6 @@ func TestGitHubToDto_RepositoryReleaseToReleaseAsset(t *testing.T) {
 	// This converter currently doesn't populate any fields
 }
 
-// Issue converter tests
-func TestTimeToTime(t *testing.T) {
-	now := time.Now()
-	result := timeToTime(now)
-	assert.Equal(t, now, result)
-}
-
-func TestIssueToDtoConverter_ToDto(t *testing.T) {
-	conv := IssueToDtoConverterImpl{}
-
-	now := time.Now()
-	source := &dbom.Issue{
-		Title:       "Test Issue",
-		Description: "Test Description",
-		CreatedAt:   now,
-	}
-
-	result := conv.ToDto(source)
-
-	require.NotNil(t, result)
-	assert.Equal(t, "Test Issue", result.Title)
-	assert.Equal(t, "Test Description", result.Description)
-	assert.Equal(t, now, result.Date)
-}
-
-func TestIssueToDtoConverter_ToDbom(t *testing.T) {
-	conv := IssueToDtoConverterImpl{}
-
-	now := time.Now()
-	source := &dto.Issue{
-		Title:       "Test Issue",
-		Description: "Test Description",
-		Date:        now,
-	}
-
-	result := conv.ToDbom(source)
-
-	require.NotNil(t, result)
-	assert.Equal(t, "Test Issue", result.Title)
-	assert.Equal(t, "Test Description", result.Description)
-	assert.Equal(t, now, result.CreatedAt)
-}
-
 // ConfigToDto converter tests
 func TestStringToDtoUser_ExistingUser(t *testing.T) {
 	users := []dto.User{
