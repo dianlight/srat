@@ -7,6 +7,7 @@ export const addTagTypes = [
   "filesystems",
   "hdidle",
   "Issues",
+  "Problems",
   "samba",
   "share",
   "user",
@@ -32,13 +33,22 @@ const injectedRtkApi = api
         query: () => ({ url: `/api/capabilities` }),
         providesTags: ["system"],
       }),
+      getApiCommandEvents: build.query<
+        GetApiCommandEventsApiResponse,
+        GetApiCommandEventsApiArg
+      >({
+        query: () => ({ url: `/api/command_events` }),
+        providesTags: ["system", "internal"],
+      }),
       getApiCommandOutput: build.query<
         GetApiCommandOutputApiResponse,
         GetApiCommandOutputApiArg
       >({
         query: (queryArg) => ({
           url: `/api/command_output`,
-          body: queryArg.getCommandOutputRequest,
+          params: {
+            execution_id: queryArg.executionId,
+          },
         }),
         providesTags: ["system", "internal"],
       }),
@@ -298,21 +308,6 @@ const injectedRtkApi = api
         query: () => ({ url: `/api/hostname` }),
         providesTags: ["system"],
       }),
-      getApiIssues: build.query<GetApiIssuesApiResponse, GetApiIssuesApiArg>({
-        query: () => ({ url: `/api/issues` }),
-        providesTags: ["Issues"],
-      }),
-      postApiIssues: build.mutation<
-        PostApiIssuesApiResponse,
-        PostApiIssuesApiArg
-      >({
-        query: (queryArg) => ({
-          url: `/api/issues`,
-          method: "POST",
-          body: queryArg.issue,
-        }),
-        invalidatesTags: ["Issues"],
-      }),
       postApiIssuesReport: build.mutation<
         PostApiIssuesReportApiResponse,
         PostApiIssuesReportApiArg
@@ -331,30 +326,76 @@ const injectedRtkApi = api
         query: () => ({ url: `/api/issues/template` }),
         providesTags: ["Issues"],
       }),
-      deleteApiIssuesById: build.mutation<
-        DeleteApiIssuesByIdApiResponse,
-        DeleteApiIssuesByIdApiArg
-      >({
-        query: (queryArg) => ({
-          url: `/api/issues/${queryArg.id}`,
-          method: "DELETE",
-        }),
-        invalidatesTags: ["Issues"],
-      }),
-      putApiIssuesById: build.mutation<
-        PutApiIssuesByIdApiResponse,
-        PutApiIssuesByIdApiArg
-      >({
-        query: (queryArg) => ({
-          url: `/api/issues/${queryArg.id}`,
-          method: "PUT",
-          body: queryArg.issue,
-        }),
-        invalidatesTags: ["Issues"],
-      }),
       getApiNics: build.query<GetApiNicsApiResponse, GetApiNicsApiArg>({
         query: () => ({ url: `/api/nics` }),
         providesTags: ["system"],
+      }),
+      getApiProblems: build.query<
+        GetApiProblemsApiResponse,
+        GetApiProblemsApiArg
+      >({
+        query: () => ({ url: `/api/problems` }),
+        providesTags: ["Problems"],
+      }),
+      postApiProblems: build.mutation<
+        PostApiProblemsApiResponse,
+        PostApiProblemsApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/problems`,
+          method: "POST",
+          body: queryArg.problem,
+        }),
+        invalidatesTags: ["Problems"],
+      }),
+      deleteApiProblemsByProblemKey: build.mutation<
+        DeleteApiProblemsByProblemKeyApiResponse,
+        DeleteApiProblemsByProblemKeyApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/problems/${queryArg.problemKey}`,
+          method: "DELETE",
+        }),
+        invalidatesTags: ["Problems"],
+      }),
+      getApiProblemsByProblemKey: build.query<
+        GetApiProblemsByProblemKeyApiResponse,
+        GetApiProblemsByProblemKeyApiArg
+      >({
+        query: (queryArg) => ({ url: `/api/problems/${queryArg.problemKey}` }),
+        providesTags: ["Problems"],
+      }),
+      patchApiProblemsByProblemKey: build.mutation<
+        PatchApiProblemsByProblemKeyApiResponse,
+        PatchApiProblemsByProblemKeyApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/problems/${queryArg.problemKey}`,
+          method: "PATCH",
+          body: queryArg.body,
+        }),
+        invalidatesTags: ["Problems"],
+      }),
+      putApiProblemsByProblemKey: build.mutation<
+        PutApiProblemsByProblemKeyApiResponse,
+        PutApiProblemsByProblemKeyApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/problems/${queryArg.problemKey}`,
+          method: "PUT",
+          body: queryArg.problem,
+        }),
+        invalidatesTags: ["Problems"],
+      }),
+      postApiProblemsByProblemKeyActionsAndActionKey: build.mutation<
+        PostApiProblemsByProblemKeyActionsAndActionKeyApiResponse,
+        PostApiProblemsByProblemKeyActionsAndActionKeyApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/problems/${queryArg.problemKey}/actions/${queryArg.actionKey}`,
+          method: "POST",
+        }),
+        invalidatesTags: ["Problems"],
       }),
       repair: build.mutation<RepairApiResponse, RepairApiArg>({
         query: () => ({ url: `/api/repairMessage`, method: "TRACE" }),
@@ -452,6 +493,55 @@ const injectedRtkApi = api
       >({
         query: () => ({ url: `/api/settings/app-config/schema` }),
         providesTags: ["system"],
+      }),
+      deleteApiSettingsHomeassistantCustomComponent: build.mutation<
+        DeleteApiSettingsHomeassistantCustomComponentApiResponse,
+        DeleteApiSettingsHomeassistantCustomComponentApiArg
+      >({
+        query: () => ({
+          url: `/api/settings/homeassistant/custom-component`,
+          method: "DELETE",
+        }),
+        invalidatesTags: ["system"],
+      }),
+      postApiSettingsHomeassistantCustomComponentInstall: build.mutation<
+        PostApiSettingsHomeassistantCustomComponentInstallApiResponse,
+        PostApiSettingsHomeassistantCustomComponentInstallApiArg
+      >({
+        query: () => ({
+          url: `/api/settings/homeassistant/custom-component/install`,
+          method: "POST",
+        }),
+        invalidatesTags: ["system"],
+      }),
+      getApiSettingsHomeassistantCustomComponentStatus: build.query<
+        GetApiSettingsHomeassistantCustomComponentStatusApiResponse,
+        GetApiSettingsHomeassistantCustomComponentStatusApiArg
+      >({
+        query: () => ({
+          url: `/api/settings/homeassistant/custom-component/status`,
+        }),
+        providesTags: ["system"],
+      }),
+      postApiSettingsHomeassistantCustomComponentUpgrade: build.mutation<
+        PostApiSettingsHomeassistantCustomComponentUpgradeApiResponse,
+        PostApiSettingsHomeassistantCustomComponentUpgradeApiArg
+      >({
+        query: () => ({
+          url: `/api/settings/homeassistant/custom-component/upgrade`,
+          method: "POST",
+        }),
+        invalidatesTags: ["system"],
+      }),
+      postApiSettingsHomeassistantRestartCore: build.mutation<
+        PostApiSettingsHomeassistantRestartCoreApiResponse,
+        PostApiSettingsHomeassistantRestartCoreApiArg
+      >({
+        query: () => ({
+          url: `/api/settings/homeassistant/restart-core`,
+          method: "POST",
+        }),
+        invalidatesTags: ["system"],
       }),
       postApiShare: build.mutation<PostApiShareApiResponse, PostApiShareApiArg>(
         {
@@ -665,10 +755,16 @@ export type GetApiCapabilitiesApiResponse = /** status 200 OK */
   | SystemCapabilities
   | /** status default Error */ ErrorModel;
 export type GetApiCapabilitiesApiArg = void;
-export type GetApiCommandOutputApiResponse =
-  /** status default Error */ ErrorModel;
+export type GetApiCommandEventsApiResponse = /** status 200 OK */
+  | GetCommandEventsResponse
+  | /** status default Error */ ErrorModel;
+export type GetApiCommandEventsApiArg = void;
+export type GetApiCommandOutputApiResponse = /** status 200 OK */
+  | CommandExecutionSnapshot
+  | /** status default Error */ ErrorModel;
 export type GetApiCommandOutputApiArg = {
-  getCommandOutputRequest: GetCommandOutputRequest;
+  /** Command execution ID to inspect */
+  executionId?: string;
 };
 export type GetApiDiskByDiskIdHdidleConfigApiResponse = /** status 200 OK */
   | HdIdleDevice
@@ -839,16 +935,6 @@ export type GetApiHostnameApiResponse = /** status 200 OK */
   | string
   | /** status default Error */ ErrorModel;
 export type GetApiHostnameApiArg = void;
-export type GetApiIssuesApiResponse =
-  | /** status 200 OK */ (Issue[] | null)
-  | /** status default Error */ ErrorModel;
-export type GetApiIssuesApiArg = void;
-export type PostApiIssuesApiResponse = /** status 200 OK */
-  | Issue
-  | /** status default Error */ ErrorModel;
-export type PostApiIssuesApiArg = {
-  issue: Issue;
-};
 export type PostApiIssuesReportApiResponse = /** status 200 OK */
   | IssueReportResponse
   | /** status default Error */ ErrorModel;
@@ -859,22 +945,51 @@ export type GetApiIssuesTemplateApiResponse = /** status 200 OK */
   | IssueTemplateResponse
   | /** status default Error */ ErrorModel;
 export type GetApiIssuesTemplateApiArg = void;
-export type DeleteApiIssuesByIdApiResponse =
-  /** status default Error */ ErrorModel;
-export type DeleteApiIssuesByIdApiArg = {
-  id: number;
-};
-export type PutApiIssuesByIdApiResponse = /** status 200 OK */
-  | Issue
-  | /** status default Error */ ErrorModel;
-export type PutApiIssuesByIdApiArg = {
-  id: number;
-  issue: Issue;
-};
 export type GetApiNicsApiResponse =
   | /** status 200 OK */ (InterfaceStat[] | null)
   | /** status default Error */ ErrorModel;
 export type GetApiNicsApiArg = void;
+export type GetApiProblemsApiResponse =
+  | /** status 200 OK */ (Problem[] | null)
+  | /** status default Error */ ErrorModel;
+export type GetApiProblemsApiArg = void;
+export type PostApiProblemsApiResponse = /** status 200 OK */
+  | Problem
+  | /** status default Error */ ErrorModel;
+export type PostApiProblemsApiArg = {
+  problem: Problem;
+};
+export type DeleteApiProblemsByProblemKeyApiResponse =
+  /** status default Error */ ErrorModel;
+export type DeleteApiProblemsByProblemKeyApiArg = {
+  problemKey: string;
+};
+export type GetApiProblemsByProblemKeyApiResponse = /** status 200 OK */
+  | Problem
+  | /** status default Error */ ErrorModel;
+export type GetApiProblemsByProblemKeyApiArg = {
+  problemKey: string;
+};
+export type PatchApiProblemsByProblemKeyApiResponse = /** status 200 OK */
+  | Problem
+  | /** status default Error */ ErrorModel;
+export type PatchApiProblemsByProblemKeyApiArg = {
+  problemKey: string;
+  body: JsonPatchOp[] | null;
+};
+export type PutApiProblemsByProblemKeyApiResponse = /** status 200 OK */
+  | Problem
+  | /** status default Error */ ErrorModel;
+export type PutApiProblemsByProblemKeyApiArg = {
+  problemKey: string;
+  problem: Problem;
+};
+export type PostApiProblemsByProblemKeyActionsAndActionKeyApiResponse =
+  /** status 200 OK */ Problem | /** status default Error */ ErrorModel;
+export type PostApiProblemsByProblemKeyActionsAndActionKeyApiArg = {
+  problemKey: string;
+  actionKey: string;
+};
 export type RepairApiResponse = /** status 200 OK */
   | RepairCommandMessage
   | /** status default Error */ ErrorModel;
@@ -930,6 +1045,29 @@ export type GetApiSettingsAppConfigSchemaApiResponse = /** status 200 OK */
   | AppConfigSchema
   | /** status default Error */ ErrorModel;
 export type GetApiSettingsAppConfigSchemaApiArg = void;
+export type DeleteApiSettingsHomeassistantCustomComponentApiResponse =
+  /** status 200 OK */
+    | HomeAssistantCustomComponentStatus
+    | /** status default Error */ ErrorModel;
+export type DeleteApiSettingsHomeassistantCustomComponentApiArg = void;
+export type PostApiSettingsHomeassistantCustomComponentInstallApiResponse =
+  /** status 200 OK */
+    | HomeAssistantCustomComponentStatus
+    | /** status default Error */ ErrorModel;
+export type PostApiSettingsHomeassistantCustomComponentInstallApiArg = void;
+export type GetApiSettingsHomeassistantCustomComponentStatusApiResponse =
+  /** status 200 OK */
+    | HomeAssistantCustomComponentStatus
+    | /** status default Error */ ErrorModel;
+export type GetApiSettingsHomeassistantCustomComponentStatusApiArg = void;
+export type PostApiSettingsHomeassistantCustomComponentUpgradeApiResponse =
+  /** status 200 OK */
+    | HomeAssistantCustomComponentStatus
+    | /** status default Error */ ErrorModel;
+export type PostApiSettingsHomeassistantCustomComponentUpgradeApiArg = void;
+export type PostApiSettingsHomeassistantRestartCoreApiResponse =
+  /** status 200 OK */ string | /** status default Error */ ErrorModel;
+export type PostApiSettingsHomeassistantRestartCoreApiArg = void;
 export type PostApiShareApiResponse = /** status 200 OK */
   | SharedResource
   | /** status default Error */ ErrorModel;
@@ -1117,24 +1255,39 @@ export type CommandOutputNotification = {
   line: string;
   timestamp: number;
 };
-export type CommandOutputLineSnapshot = {
-  channel: string;
-  line: string;
-  timestamp: number;
+export type ProblemAction = {
+  is_default?: boolean;
+  key: string;
+  label: string;
+  url?: string;
 };
-export type CommandExecutionSnapshot = {
-  args?: string[] | null;
-  command: string;
-  command_id: string;
-  error?: string;
-  execution_id: string;
-  exit_code?: number;
-  finished_at?: number;
-  label?: string;
-  lines: CommandOutputLineSnapshot[] | null;
-  running: boolean;
-  started_at: number;
-  success: boolean;
+export type Problem = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  actions?: ProblemAction[] | null;
+  created_at: string;
+  data?: {
+    [key: string]: unknown;
+  };
+  description: string;
+  detail_link?: string;
+  id: number;
+  ignored: boolean;
+  is_fixable?: boolean;
+  is_persistent?: boolean;
+  last_error?: string;
+  learn_more_url?: string;
+  problem_key: string;
+  repeating: number;
+  resolution_link?: string;
+  severity: Severity;
+  status: Status;
+  title: string;
+  translation_key?: string;
+  translation_placeholders?: {
+    [key: string]: string;
+  };
+  updated_at: string;
 };
 export type CommandStartedNotification = {
   args?: string[] | null;
@@ -1152,13 +1305,34 @@ export type CommandTerminatedNotification = {
   finished_at: number;
   success: boolean;
 };
-export type GetCommandOutputRequest = {
+export type GetCommandEventsResponse = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
-  CommandOutputEvent: CommandOutputNotification;
-  CommandSessionState: CommandExecutionSnapshot;
-  CommandStartedEvent: CommandStartedNotification;
-  CommandTerminatedEvent: CommandTerminatedNotification;
+  output?: CommandOutputNotification;
+  problem?: Problem;
+  started?: CommandStartedNotification;
+  terminated?: CommandTerminatedNotification;
+};
+export type CommandOutputLineSnapshot = {
+  channel: string;
+  line: string;
+  timestamp: number;
+};
+export type CommandExecutionSnapshot = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  args?: string[] | null;
+  command: string;
+  command_id: string;
+  error?: string;
+  execution_id: string;
+  exit_code?: number;
+  finished_at?: number;
+  label?: string;
+  lines: CommandOutputLineSnapshot[] | null;
+  running: boolean;
+  started_at: number;
+  success: boolean;
 };
 export type HdIdleDevice = {
   /** A URL to the JSON Schema for this object. */
@@ -1583,19 +1757,6 @@ export type HealthPing = {
   update_available: boolean;
   uptime: number;
 };
-export type Issue = {
-  /** A URL to the JSON Schema for this object. */
-  $schema?: string;
-  date: string;
-  description: string;
-  detailLink?: string;
-  id: number;
-  ignored: boolean;
-  repeating: number;
-  resolutionLink?: string;
-  severity?: Severity;
-  title: string;
-};
 export type IssueReportResponse = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
@@ -1738,6 +1899,24 @@ export type AppConfigSchema = {
   fields: AppConfigSchemaField[] | null;
   long_description?: string;
   requires_restart: boolean;
+};
+export type HomeAssistantCustomComponentStatus = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  can_install: boolean;
+  can_uninstall: boolean;
+  can_upgrade: boolean;
+  component: string;
+  connected: boolean;
+  connected_at?: string;
+  connected_version?: string;
+  entry_id?: string;
+  ha_version?: string;
+  install_path: string;
+  installed: boolean;
+  installed_version?: string;
+  latest_version?: string;
+  manifest_path: string;
 };
 export type MountPointData = {
   /** A URL to the JSON Schema for this object. */
@@ -1909,6 +2088,21 @@ export type Welcome = {
   supported_events: Supported_events[] | null;
   update_channel: Update_channel;
 };
+export enum Severity {
+  Info = "info",
+  Warning = "warning",
+  Error = "error",
+  Critical = "critical",
+}
+export enum Status {
+  Created = "created",
+  Updated = "updated",
+  Ignored = "ignored",
+  Fixed = "fixed",
+  Dismissed = "dismissed",
+  Deleted = "deleted",
+  Error = "error",
+}
 export enum Command_type {
   Scsi = "scsi",
   Ata = "ata",
@@ -1931,12 +2125,6 @@ export enum Disk_type {
   NvMe = "NVMe",
   Scsi = "SCSI",
   Unknown = "Unknown",
-}
-export enum Severity {
-  Error = "error",
-  Warning = "warning",
-  Info = "info",
-  Success = "success",
 }
 export enum Hdidle_default_command_type {
   Scsi = "scsi",
@@ -1989,6 +2177,7 @@ export enum Supported_events {
   FilesystemTask = "filesystem_task",
   Error = "error",
   RepairCommand = "repair_command",
+  Problem = "problem",
   AppConfigChanged = "app_config_changed",
   CommandStarted = "command_started",
   CommandOutput = "command_output",
@@ -2003,6 +2192,7 @@ export enum Update_channel {
 export const {
   useGetApiAppconfigQuery,
   useGetApiCapabilitiesQuery,
+  useGetApiCommandEventsQuery,
   useGetApiCommandOutputQuery,
   useGetApiDiskByDiskIdHdidleConfigQuery,
   usePatchApiDiskByDiskIdHdidleConfigMutation,
@@ -2031,13 +2221,16 @@ export const {
   usePostApiHdidleStopMutation,
   useGetApiHealthQuery,
   useGetApiHostnameQuery,
-  useGetApiIssuesQuery,
-  usePostApiIssuesMutation,
   usePostApiIssuesReportMutation,
   useGetApiIssuesTemplateQuery,
-  useDeleteApiIssuesByIdMutation,
-  usePutApiIssuesByIdMutation,
   useGetApiNicsQuery,
+  useGetApiProblemsQuery,
+  usePostApiProblemsMutation,
+  useDeleteApiProblemsByProblemKeyMutation,
+  useGetApiProblemsByProblemKeyQuery,
+  usePatchApiProblemsByProblemKeyMutation,
+  usePutApiProblemsByProblemKeyMutation,
+  usePostApiProblemsByProblemKeyActionsAndActionKeyMutation,
   useRepairMutation,
   usePutApiRestartMutation,
   usePutApiSambaApplyMutation,
@@ -2050,6 +2243,11 @@ export const {
   usePatchApiSettingsAppConfigMutation,
   usePutApiSettingsAppConfigMutation,
   useGetApiSettingsAppConfigSchemaQuery,
+  useDeleteApiSettingsHomeassistantCustomComponentMutation,
+  usePostApiSettingsHomeassistantCustomComponentInstallMutation,
+  useGetApiSettingsHomeassistantCustomComponentStatusQuery,
+  usePostApiSettingsHomeassistantCustomComponentUpgradeMutation,
+  usePostApiSettingsHomeassistantRestartCoreMutation,
   usePostApiShareMutation,
   useDeleteApiShareByShareNameMutation,
   useGetApiShareByShareNameQuery,

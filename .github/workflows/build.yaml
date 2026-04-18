@@ -603,10 +603,7 @@ jobs:
       - name: Create HACS custom component zip
         if: github.event_name != 'pull_request'
         run: |
-          cd custom_components/srat
-          zip -r /tmp/build_artifacts/srat.zip . -x '__pycache__/*' '*.pyc'
-          echo "HACS component zip created:"
-          unzip -l /tmp/build_artifacts/srat.zip
+          mise run //custom_components:package-hacs -- --output /tmp/build_artifacts/srat.zip
 
       - name: Upload HACS component as artifact
         if: github.event_name != 'pull_request'

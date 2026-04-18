@@ -89,7 +89,7 @@ func NewBroadcasterService(
 }
 
 func (broker *BroadcasterService) setupEventListeners() []func() {
-	ret := make([]func(), 9)
+	ret := make([]func(), 10)
 	// Listen for disk events
 	ret[0] = broker.eventBus.OnDisk(func(ctx context.Context, event events.DiskEvent) errors.E {
 		diskID := "unknown"
@@ -153,7 +153,7 @@ func (broker *BroadcasterService) setupEventListeners() []func() {
 		return nil
 	})
 	ret[7] = broker.eventBus.OnCommandExecution(func(ctx context.Context, event events.CommandExecutionEvent) errors.E {
-		slog.DebugContext(ctx, "BroadcasterService received CommandExecution event", "type", event.Type, "message_type", fmt.Sprintf("%T", event.Message))
+		tlog.TraceContext(ctx, "BroadcasterService received CommandExecution event", "type", event.Type, "message_type", fmt.Sprintf("%T", event.Message), "message", event.Message)
 		broker.BroadcastMessage(event.Message)
 		return nil
 	})
@@ -163,6 +163,14 @@ func (broker *BroadcasterService) setupEventListeners() []func() {
 		}
 		slog.DebugContext(ctx, "BroadcasterService received FilesystemTask event", "operation", event.Task.Operation, "status", event.Task.Status, "device", event.Task.Device)
 		broker.BroadcastMessage(*event.Task)
+		return nil
+	})
+	ret[9] = broker.eventBus.OnProblem(func(ctx context.Context, event events.ProblemEvent) errors.E {
+		if event.Problem == nil {
+			return nil
+		}
+		slog.DebugContext(ctx, "BroadcasterService received Problem event", "problem_key", event.Problem.ProblemKey, "status", event.Problem.Status)
+		broker.BroadcastMessage(*event.Problem)
 		return nil
 	})
 
@@ -191,7 +199,7 @@ func (broker *BroadcasterService) BroadcastMessage(msg any) any {
 	broker.relay.Broadcast(broadcastEvent{ID: broker.SentCounter.Load(), Message: msg})
 
 	// Send to Home Assistant if in secure mode
-	go broker.sendToHomeAssistant(msg) // FiXME: put as broadcast listener
+	go broker.sendToHomeAssistant(msg) // FIXME: put as broadcast listener
 
 	return msg
 }
@@ -286,7 +294,7 @@ func (broker *BroadcasterService) ProcessWebSocketChannel(send ws.Sender) {
 					Data: event.Message,
 				})
 				if err != nil {
-					if !strings.Contains(err.Error(), ": broken pipe") {
+					if !strings.Contains(err.Error(), ": broken pipe") && !strings.Contains(err.Error(), "websocket: close sent") {
 						tlog.DebugContext(broker.ctx, "Error sending event to client", "event", event, "err", err, "active clients", broker.ConnectedClients.Load())
 					}
 					return

@@ -250,6 +250,10 @@ type EventBusInterface interface {
 	// Command execution lifecycle events
 	EmitCommandExecution(event CommandExecutionEvent)
 	OnCommandExecution(handler func(context.Context, CommandExecutionEvent) errors.E) func()
+
+	// Problem events
+	EmitProblem(event ProblemEvent)
+	OnProblem(handler func(context.Context, ProblemEvent) errors.E) func()
 }
 
 // EventBus implements EventBusInterface using maniartech/signals SyncSignal
@@ -272,6 +276,7 @@ type EventBus struct {
 	power            signals.SyncSignal[PowerEvent]
 	filesystemTask   signals.SyncSignal[FilesystemTaskEvent]
 	commandExecution signals.SyncSignal[CommandExecutionEvent]
+	problem          signals.SyncSignal[ProblemEvent]
 }
 
 // NewEventBus creates a new EventBus instance
@@ -293,6 +298,7 @@ func NewEventBus(ctx context.Context) EventBusInterface {
 		power:            *signals.NewSync[PowerEvent](),
 		filesystemTask:   *signals.NewSync[FilesystemTaskEvent](),
 		commandExecution: *signals.NewSync[CommandExecutionEvent](),
+		problem:          *signals.NewSync[ProblemEvent](),
 	}
 }
 
@@ -479,4 +485,13 @@ func (eb *EventBus) EmitCommandExecution(event CommandExecutionEvent) {
 
 func (eb *EventBus) OnCommandExecution(handler func(context.Context, CommandExecutionEvent) errors.E) func() {
 	return onEvent(eb.commandExecution, "CommandExecution", handler)
+}
+
+// Problem event methods
+func (eb *EventBus) EmitProblem(event ProblemEvent) {
+	_ = emitEvent(eb.problem, eb.ctx, event)
+}
+
+func (eb *EventBus) OnProblem(handler func(context.Context, ProblemEvent) errors.E) func() {
+	return onEvent(eb.problem, "Problem", handler)
 }

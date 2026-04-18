@@ -22,5 +22,35 @@
       "already_configured": "This SRAT instance is already configured.",
       "not_srat_addon": "The discovered add-on is not a recognized SRAT add-on."
     }
+  },
+  "issues": {
+    "custom_component_restart_required": {
+      "title": "SRAT: Home Assistant restart required",
+      "description": "The SRAT custom component was recently installed, upgraded, or uninstalled. A Home Assistant restart is required to apply the changes.",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Restart Home Assistant",
+            "description": "Confirm to restart Home Assistant and apply the SRAT custom component changes. All automations, integrations, and services will be temporarily unavailable during the restart."
+          }
+        }
+      }
+    },
+    "custom_component_missing": {
+      "title": "SRAT custom component not detected",
+      "description": "The SRAT custom component is not installed under `/homeassistant/custom_components/srat` and no active WebSocket connection from Home Assistant is present. The integration may not function correctly. Install the component from the SRAT add-on Settings → Home Assistant section.",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Acknowledge",
+            "description": "Go to the SRAT add-on Settings → Home Assistant section to install the custom component and then restart Home Assistant."
+          }
+        }
+      }
+    },
+    "addon_config_changed": {
+      "title": "SRAT add-on configuration changed externally",
+      "description": "The add-on options file was modified outside of SRAT. Reload the SRAT add-on configuration to apply the new settings."
+    }
   }
 }

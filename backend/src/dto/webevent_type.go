@@ -14,6 +14,7 @@ const (
 	eventFilesystemTask                        // "filesystem_task"
 	eventError                                 // "error"
 	eventRepairCommand                         // "repair_command"
+	eventProblem                               // "problem"
 	eventAppConfigChanged                      // "app_config_changed"
 	eventCommandStarted                        // "command_started"
 	eventCommandOutput                         // "command_output"

@@ -4,53 +4,39 @@ import (
 	"context"
 	"errors"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/tlog"
-	"github.com/google/uuid"
 )
 
 type SettingsHanler struct {
-	apiContext     *dto.ContextState
 	settingService service.SettingServiceInterface
 	addonsService  service.AddonsServiceInterface
-	eventBus       events.EventBusInterface
-	repairService  service.RepairServiceInterface
+	haComponentSvc service.HomeAssistantComponentServiceInterface
 	haService      service.HomeAssistantServiceInterface
-	broadcaster    service.BroadcasterServiceInterface
+	upgradeService service.UpgradeServiceInterface
+	eventBus       events.EventBusInterface
 }
 
-// NewSettingsHanler creates a new instance of SettingsHanler with the provided
-// apiContext and dirtyService. It initializes the SettingsHanler with the given
-// context state and dirty data service interface.
-//
-// Parameters:
-//   - apiContext: A pointer to dto.ContextState which holds the context state for the API.
-//   - dirtyService: An implementation of the DirtyDataServiceInterface which handles dirty data operations.
-//   - props_repo: An implementation of the PropertyRepositoryInterface which handles property operations.
-//   - telemetryService: An implementation of the TelemetryServiceInterface which handles telemetry operations.
-//
-// Returns:
-//   - A pointer to the newly created SettingsHanler instance.
+// NewSettingsHanler creates a new settings handler.
 func NewSettingsHanler(
-	apiContext *dto.ContextState,
 	settingService service.SettingServiceInterface,
 	addonsService service.AddonsServiceInterface,
-	eventBus events.EventBusInterface,
-	repairService service.RepairServiceInterface,
+	haComponentSvc service.HomeAssistantComponentServiceInterface,
 	haService service.HomeAssistantServiceInterface,
-	broadcaster service.BroadcasterServiceInterface,
+	upgradeService service.UpgradeServiceInterface,
+	eventBus events.EventBusInterface,
 ) *SettingsHanler {
 	p := new(SettingsHanler)
-	p.apiContext = apiContext
 	p.settingService = settingService
 	p.addonsService = addonsService
-	p.eventBus = eventBus
-	p.repairService = repairService
+	p.haComponentSvc = haComponentSvc
 	p.haService = haService
-	p.broadcaster = broadcaster
+	p.upgradeService = upgradeService
+	p.eventBus = eventBus
 
 	return p
 }
@@ -66,9 +52,160 @@ func (self *SettingsHanler) RegisterSettings(api huma.API) {
 	huma.Get(api, "/settings", self.GetSettings, huma.OperationTags("system"))
 	huma.Put(api, "/settings", self.UpdateSettings, huma.OperationTags("system"))
 	huma.Put(api, "/restart", self.RestartAddon, huma.OperationTags("system"))
+	huma.Get(api, "/settings/homeassistant/custom-component/status", self.GetHomeAssistantCustomComponentStatus, huma.OperationTags("system"))
+	huma.Post(api, "/settings/homeassistant/custom-component/install", self.InstallHomeAssistantCustomComponent, huma.OperationTags("system"))
+	huma.Post(api, "/settings/homeassistant/custom-component/upgrade", self.UpgradeHomeAssistantCustomComponent, huma.OperationTags("system"))
+	huma.Delete(api, "/settings/homeassistant/custom-component", self.UninstallHomeAssistantCustomComponent, huma.OperationTags("system"))
+	huma.Post(api, "/settings/homeassistant/restart-core", self.RestartHACore, huma.OperationTags("system"))
 	huma.Get(api, "/settings/app-config", self.GetAppConfig, huma.OperationTags("system"))
 	huma.Put(api, "/settings/app-config", self.UpdateAppConfig, huma.OperationTags("system"))
 	huma.Get(api, "/settings/app-config/schema", self.GetAppConfigSchema, huma.OperationTags("system"))
+}
+
+// GetHomeAssistantCustomComponentStatus reports install/version/connection state
+// for the SRAT Home Assistant custom component.
+func (self *SettingsHanler) GetHomeAssistantCustomComponentStatus(ctx context.Context, input *struct{}) (*struct {
+	Body dto.HomeAssistantCustomComponentStatus
+}, error) {
+	status, err := self.haComponentSvc.GetStatus()
+	if err != nil {
+		return nil, huma.Error500InternalServerError("Failed to inspect Home Assistant custom component status: %v", err)
+	}
+
+	syncErr := self.haComponentSvc.SyncIssueStatus(status)
+	if syncErr != nil {
+		return nil, huma.Error500InternalServerError("Failed to synchronize Home Assistant component issue state: %v", syncErr)
+	}
+
+	if self.upgradeService != nil {
+		if ass, assErr := self.upgradeService.GetUpgradeReleaseAsset(); assErr == nil && ass != nil && ass.LastRelease != "" {
+			status.LatestVersion = &ass.LastRelease
+			if status.InstalledVersion != nil {
+				if iv, err := semver.NewVersion(*status.InstalledVersion); err == nil {
+					if lv, err := semver.NewVersion(*status.LatestVersion); err == nil {
+						status.CanUpgrade = iv.LessThan(lv)
+					}
+				}
+			} else {
+				status.CanUpgrade = false
+			}
+		}
+	}
+
+	return &struct {
+		Body dto.HomeAssistantCustomComponentStatus
+	}{Body: *status}, nil
+}
+
+func (self *SettingsHanler) InstallHomeAssistantCustomComponent(ctx context.Context, input *struct{}) (*struct {
+	Body dto.HomeAssistantCustomComponentStatus
+}, error) {
+	err := self.haComponentSvc.InstallOrUpgrade(ctx)
+	if err != nil {
+		return nil, huma.Error500InternalServerError("Failed to install Home Assistant custom component: %v", err)
+	}
+
+	status, err := self.haComponentSvc.GetStatus()
+	if err != nil {
+		return nil, huma.Error500InternalServerError("Failed to inspect Home Assistant custom component status after install/upgrade: %v", err)
+	}
+
+	/*
+		syncErr := self.haComponentSvc.SyncIssueStatus(status)
+		if syncErr != nil {
+			return nil, huma.Error500InternalServerError("Failed to synchronize Home Assistant component issue state: %v", syncErr)
+		}
+
+		if self.upgradeService != nil {
+			if ass, assErr := self.upgradeService.GetUpgradeReleaseAsset(); assErr == nil && ass != nil && ass.LastRelease != "" {
+				status.LatestVersion = &ass.LastRelease
+			}
+		}
+	*/
+
+	//status.CanInstall = !status.Installed
+	//	status.CanUpgrade = status.Installed
+	//	status.CanUninstall = status.Installed
+	/*
+		repairErr := self.haComponentSvc.UpsertRestartRequiredRepair(ctx)
+		if repairErr != nil {
+			return nil, huma.Error500InternalServerError("Failed to create Home Assistant restart repair: %v", repairErr)
+		}
+	*/
+	//	_ = ctx
+
+	return &struct {
+		Body dto.HomeAssistantCustomComponentStatus
+	}{Body: *status}, nil
+}
+
+func (self *SettingsHanler) UpgradeHomeAssistantCustomComponent(ctx context.Context, input *struct{}) (*struct {
+	Body dto.HomeAssistantCustomComponentStatus
+}, error) {
+	err := self.haComponentSvc.InstallOrUpgrade(ctx)
+	if err != nil {
+		return nil, huma.Error500InternalServerError("Failed to install Home Assistant custom component: %v", err)
+	}
+
+	status, err := self.haComponentSvc.GetStatus()
+	if err != nil {
+		return nil, huma.Error500InternalServerError("Failed to inspect Home Assistant custom component status after install/upgrade: %v", err)
+	}
+	/*
+
+		syncErr := self.haComponentSvc.SyncIssueStatus(status)
+		if syncErr != nil {
+			return nil, huma.Error500InternalServerError("Failed to synchronize Home Assistant component issue state: %v", syncErr)
+		}
+
+		if self.upgradeService != nil {
+			if ass, assErr := self.upgradeService.GetUpgradeReleaseAsset(); assErr == nil && ass != nil && ass.LastRelease != "" {
+				status.LatestVersion = &ass.LastRelease
+			}
+		}
+
+		status.CanInstall = !status.Installed
+		status.CanUpgrade = status.Installed
+		status.CanUninstall = status.Installed
+		repairErr := self.haComponentSvc.UpsertRestartRequiredRepair(ctx)
+		if repairErr != nil {
+			return nil, huma.Error500InternalServerError("Failed to create Home Assistant restart repair: %v", repairErr)
+		}
+
+		_ = ctx
+	*/
+	return &struct {
+		Body dto.HomeAssistantCustomComponentStatus
+	}{Body: *status}, nil
+}
+
+func (self *SettingsHanler) UninstallHomeAssistantCustomComponent(ctx context.Context, input *struct{}) (*struct {
+	Body dto.HomeAssistantCustomComponentStatus
+}, error) {
+	err := self.haComponentSvc.Uninstall(ctx)
+	if err != nil {
+		return nil, huma.Error500InternalServerError("Failed to uninstall Home Assistant custom component: %v", err)
+	}
+
+	status, err := self.haComponentSvc.GetStatus()
+	if err != nil {
+		return nil, huma.Error500InternalServerError("Failed to inspect Home Assistant custom component status after uninstall: %v", err)
+	}
+
+	/*
+		syncErr := self.haComponentSvc.SyncIssueStatus(status)
+		if syncErr != nil {
+			return nil, huma.Error500InternalServerError("Failed to synchronize Home Assistant component issue state: %v", syncErr)
+		}
+
+		repairErr := self.haComponentSvc.UpsertRestartRequiredRepair(ctx)
+		if repairErr != nil {
+			return nil, huma.Error500InternalServerError("Failed to create Home Assistant restart repair: %v", repairErr)
+		}
+	*/
+	return &struct {
+		Body dto.HomeAssistantCustomComponentStatus
+	}{Body: *status}, nil
 }
 
 // RestartAddon triggers a Home Assistant Supervisor restart for the current addon.
@@ -78,7 +215,24 @@ func (self *SettingsHanler) RestartAddon(ctx context.Context, input *struct{}) (
 		return nil, huma.Error500InternalServerError("Failed to restart addon: %v", err)
 	}
 
+	repairErr := self.haComponentSvc.DismissRestartRequiredRepair(ctx)
+	if repairErr != nil {
+		return nil, huma.Error500InternalServerError("Failed to dismiss Home Assistant restart repair: %v", repairErr)
+	}
+
 	return &struct{ Body string }{Body: "addon restart requested"}, nil
+}
+
+// RestartHACore triggers a Home Assistant Core restart via the HA service call API.
+func (self *SettingsHanler) RestartHACore(ctx context.Context, input *struct{}) (*struct{ Body string }, error) {
+	if self.haService == nil {
+		return nil, huma.Error503ServiceUnavailable("Home Assistant service is not available")
+	}
+	err := self.haService.RestartHomeAssistant(ctx)
+	if err != nil {
+		return nil, huma.Error500InternalServerError("Failed to restart Home Assistant core: %v", err)
+	}
+	return &struct{ Body string }{Body: "Home Assistant core restart requested"}, nil
 }
 
 // UpdateSettings updates the settings based on the provided input.
@@ -130,8 +284,6 @@ func (self *SettingsHanler) GetSettings(ctx context.Context, input *struct{}) (*
 
 // GetAppConfig retrieves current app options and rendered runtime config.
 func (self *SettingsHanler) GetAppConfig(ctx context.Context, input *struct{}) (*struct{ Body dto.AppConfigData }, error) {
-	const repairID = "addon_config_changed"
-
 	config, err := self.addonsService.GetAppConfig(ctx)
 	if err != nil {
 		tlog.ErrorContext(ctx, "Failed to load app configuration", "error", errors.Unwrap(err))
@@ -139,7 +291,10 @@ func (self *SettingsHanler) GetAppConfig(ctx context.Context, input *struct{}) (
 	}
 
 	if !config.RequiresRestart {
-		self.dismissAddonConfigIssue(ctx, repairID)
+		dismissErr := self.haComponentSvc.DismissAddonConfigIssue(ctx)
+		if dismissErr != nil {
+			return nil, huma.Error500InternalServerError("Failed to dismiss app-config repair issue: %v", dismissErr)
+		}
 	}
 
 	return &struct{ Body dto.AppConfigData }{Body: *config}, nil
@@ -159,8 +314,6 @@ func (self *SettingsHanler) GetAppConfigSchema(ctx context.Context, input *struc
 func (self *SettingsHanler) UpdateAppConfig(ctx context.Context, input *struct {
 	Body dto.AppConfigUpdateRequest
 }) (*struct{ Body dto.AppConfigData }, error) {
-	const repairID = "addon_config_changed"
-
 	err := self.addonsService.SetAppConfig(ctx, input.Body.Options)
 	if err != nil {
 		return nil, huma.Error500InternalServerError("Failed to update app configuration: %v", err)
@@ -173,33 +326,10 @@ func (self *SettingsHanler) UpdateAppConfig(ctx context.Context, input *struct {
 		return nil, huma.Error500InternalServerError("App configuration updated but reload failed: %v", getErr)
 	}
 
-	self.dismissAddonConfigIssue(ctx, repairID)
+	dismissErr := self.haComponentSvc.DismissAddonConfigIssue(ctx)
+	if dismissErr != nil {
+		return nil, huma.Error500InternalServerError("Failed to dismiss app-config repair issue: %v", dismissErr)
+	}
 
 	return &struct{ Body dto.AppConfigData }{Body: *config}, nil
-}
-
-func (self *SettingsHanler) dismissAddonConfigIssue(ctx context.Context, repairID string) {
-	if self.repairService != nil {
-		dismissErr := self.repairService.Delete(repairID)
-		if dismissErr != nil && !errors.Is(dismissErr, dto.ErrorNotFound) {
-			tlog.WarnContext(ctx, "Unable to dismiss addon config repair issue", "repair_id", repairID, "error", dismissErr)
-		}
-
-		if self.broadcaster != nil {
-			self.broadcaster.BroadcastMessage(dto.RepairCommandMessage{
-				CommandID: uuid.NewString(),
-				RepairID:  repairID,
-				Action:    dto.RepairCommandActionDelete,
-			})
-		}
-
-		return
-	}
-
-	if self.haService != nil {
-		dismissErr := self.haService.DismissPersistentNotification(repairID)
-		if dismissErr != nil && !errors.Is(dismissErr, dto.ErrorNotFound) {
-			tlog.WarnContext(ctx, "Unable to dismiss addon config persistent notification", "notification_id", repairID, "error", dismissErr)
-		}
-	}
 }

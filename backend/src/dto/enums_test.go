@@ -262,6 +262,7 @@ func TestEventType_String(t *testing.T) {
 		{"Heartbeat", dto.WebEventTypes.EVENTHEARTBEAT, "heartbeat"},
 		{"Share", dto.WebEventTypes.EVENTSHARES, "shares"},
 		{"DirtyTracker", dto.WebEventTypes.EVENTDIRTYTRACKER, "dirty_data_tracker"},
+		{"Problem", dto.WebEventTypes.EVENTPROBLEM, "problem"},
 	}
 
 	for _, tt := range tests {
@@ -359,7 +360,7 @@ func TestEventType_All(t *testing.T) {
 	for range dto.WebEventTypes.All() {
 		count++
 	}
-	assert.Equal(t, 14, count)
+	assert.Equal(t, 15, count)
 }
 
 func TestEventType_MarshalYAML(t *testing.T) {

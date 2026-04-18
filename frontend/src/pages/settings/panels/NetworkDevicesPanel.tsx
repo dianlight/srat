@@ -1,0 +1,157 @@
+import { Box, Stack, Tooltip, Typography } from "@mui/material";
+import { useFormContext } from "react-hook-form";
+import {
+  AutocompleteElement,
+  CheckboxElement,
+  SwitchElement,
+} from "react-hook-form-mui";
+import { TabIDs } from "../../../store/locationState";
+import {
+  type Settings as ApiSettings,
+  type InterfaceStat,
+  type SystemCapabilities,
+  useGetApiCapabilitiesQuery,
+  useGetApiNicsQuery,
+} from "../../../store/sratApi";
+
+type NetworkDevicesPanelProps = {
+  readOnly: boolean;
+};
+
+export function NetworkDevicesPanel({ readOnly }: NetworkDevicesPanelProps) {
+  const { control, watch } = useFormContext<ApiSettings>();
+  const { data: nic, isLoading: isNicLoading } = useGetApiNicsQuery();
+  const { data: capabilities, isLoading: isCapabilitiesLoading } =
+    useGetApiCapabilitiesQuery();
+
+  const bindAllWatch = watch("bind_all_interfaces");
+  const commonProps = { control, disabled: readOnly };
+
+  return (
+    <Stack spacing={3}>
+      {/* Bind All Interfaces + Interfaces */}
+      <Box data-tutor={`reactour__tab${TabIDs.SETTINGS}__step8`}>
+        <CheckboxElement
+          size="small"
+          id="bind_all_interfaces"
+          label="Bind All Interfaces"
+          name="bind_all_interfaces"
+          {...commonProps}
+        />
+        <AutocompleteElement
+          multiple
+          label="Interfaces"
+          name="interfaces"
+          options={
+            (nic as InterfaceStat[])
+              ?.map((nc) => nc.name)
+              .filter((name) => name !== "lo" && name !== "hassio") || []
+          }
+          loading={isNicLoading}
+          autocompleteProps={{
+            size: "small",
+            disabled: bindAllWatch || readOnly,
+          }}
+          control={control}
+        />
+      </Box>
+
+      {/* Multi Channel */}
+      <Tooltip
+        title={
+          <>
+            <Typography variant="h6" component="div">
+              Enable Multi Channel Mode
+            </Typography>
+            <Typography variant="body2">
+              This boolean parameter controls whether smbd(8) will support SMB3
+              multi-channel.
+            </Typography>
+          </>
+        }
+      >
+        <span style={{ display: "inline-block", width: "100%" }}>
+          <SwitchElement
+            switchProps={{ "aria-label": "Multi Channel Mode", size: "small" }}
+            id="multi_channel"
+            label="Multi Channel Mode"
+            name="multi_channel"
+            labelPlacement="start"
+            {...commonProps}
+          />
+        </span>
+      </Tooltip>
+
+      {/* SMB over QUIC */}
+      <>
+        <Tooltip
+          title={
+            <>
+              <Typography variant="h6" component="div">
+                Enable SMB over QUIC
+              </Typography>
+              <Typography variant="body2">
+                This parameter enables SMB over QUIC transport protocol for
+                improved performance and security. Requires Samba 4.23+ and QUIC
+                kernel module support.
+              </Typography>
+              {capabilities &&
+                "supports_quic" in capabilities &&
+                !capabilities.supports_quic &&
+                "unsupported_reason" in capabilities &&
+                capabilities.unsupported_reason && (
+                  <Typography
+                    variant="body2"
+                    sx={{ mt: 1, color: "warning.light" }}
+                  >
+                    <strong>Not available:</strong>{" "}
+                    {capabilities.unsupported_reason}
+                  </Typography>
+                )}
+            </>
+          }
+        >
+          <span style={{ display: "inline-block", width: "100%" }}>
+            <SwitchElement
+              switchProps={{ "aria-label": "SMB over QUIC", size: "small" }}
+              id="smb_over_quic"
+              label="SMB over QUIC"
+              name="smb_over_quic"
+              labelPlacement="start"
+              disabled={
+                readOnly ||
+                isCapabilitiesLoading ||
+                !(
+                  capabilities &&
+                  "supports_quic" in capabilities &&
+                  capabilities.supports_quic
+                )
+              }
+              control={control}
+            />
+          </span>
+        </Tooltip>
+        {capabilities &&
+          "supports_quic" in capabilities &&
+          !capabilities.supports_quic &&
+          !isCapabilitiesLoading &&
+          "unsupported_reason" in capabilities &&
+          capabilities.unsupported_reason && (
+            <Typography
+              variant="caption"
+              color="warning.main"
+              sx={{ mt: 0.5, display: "block" }}
+            >
+              {
+                (
+                  capabilities as SystemCapabilities & {
+                    unsupported_reason: string;
+                  }
+                ).unsupported_reason
+              }
+            </Typography>
+          )}
+      </>
+    </Stack>
+  );
+}

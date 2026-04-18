@@ -12,6 +12,7 @@ import (
 
 var TemplateFile *string
 var Frontend *string
+var CustomComponentZipFile *string
 
 var Is_embed = false
 
@@ -40,4 +41,13 @@ func GetTemplateData() []byte {
 		slog.Error("Cant read template file", "File:", *TemplateFile, "Err", errors.WithStack(err))
 	}
 	return templateDatan
+}
+
+func GetEmbeddedCustomComponentZip() ([]byte, error) {
+	if CustomComponentZipFile == nil || *CustomComponentZipFile == "" {
+		CustomComponentZipFile = new(string)
+		*CustomComponentZipFile = "internal/assets/srat.zip"
+	}
+
+	return os.ReadFile(*CustomComponentZipFile)
 }

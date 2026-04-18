@@ -3,3 +3,5 @@
 docs/openapi.yaml:
   no-empty-servers:
     - '#/openapi'
+  no-unused-components:
+    - '#/components/schemas/ErrorDataModel'

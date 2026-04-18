@@ -39,4 +39,4 @@ if (missingFiles.length > 0) {
         process.exitCode = 2;
     }
 }
-console.log('Done.');
+console.log('Add test setup check complete. Total files missing setup import:', missingFiles.length);

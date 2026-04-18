@@ -180,8 +180,10 @@ func GetSambaVersion() (string, error) {
 	if sambaVersionOverride != "" {
 		defer sambaVersionMu.RUnlock()
 		return sambaVersionOverride, nil
+	} else {
+		sambaVersionMu.RUnlock()
+		slog.Debug("Samba version override not set, executing command to determine version") // Log when we're falling back to command execution
 	}
-	sambaVersionMu.RUnlock()
 
 	sambaVersionExecMu.RLock()
 	execFn := sambaVersionExec
@@ -195,6 +197,7 @@ func GetSambaVersion() (string, error) {
 	versionLine := strings.TrimSpace(string(output))
 	parts := strings.Fields(versionLine)
 	if len(parts) >= 2 && strings.ToLower(parts[0]) == "version" {
+		sambaVersionOverride = parts[1]
 		return parts[1], nil
 	}
 

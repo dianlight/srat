@@ -28,12 +28,15 @@ These instructions are the concise, must-follow rules for working in SRAT. Keep 
 
 - Use **context‑aware logging** (`slog.*Context`, `tlog.*Context`) when a real `context.Context` is already in scope. Never manufacture a context for logging.
 - Go 1.26 rules: use `new(expr)` for pointer values, use `any` (not `interface{}`), use `WaitGroup.Go`, prefer `errors.AsType[T]` (standard library).
+- Prefer direct persistence in services using `dbom` + GORM (and generated query helpers when available) over introducing new per-entity repository layers, unless a clear documented exception is required.
+- Use **generated converters** (`converter.<Type>ToDtoConverterImpl{}` from `converter/`) for all DTO↔DBOM mapping in services. Never write manual `toDTO`/`toDBOM` helper functions — they diverge silently from the generated impl.
 - Do **not** edit vendored code unless using the patch workflow (`backend/patches/` + `mise run //backend:patch`).
 
 ## Frontend essentials
 
 - Use Bun toolchain (`frontend/`). Build outputs go to `backend/src/web/static`.
 - **Do not** edit `frontend/src/store/sratApi.ts` or `backend/docs/openapi.*` directly—update Go and run `cd frontend && bun run gen`.
+- **Never** manually add types to `frontend/src/store/wsApi.ts`. All types must come from `sratApi.ts`. WS-only event payload types that have no REST endpoint need a doc-stub handler in `backend/src/api/system.go` (tagged `"system","internal"`) referencing the DTO — see `HandleWelcome`/`HandleCommandEvents` for the pattern.
 - MUI Grid: use the `size` prop (Grid2 default).
 
 ## Custom component essentials (Home Assistant)
@@ -51,8 +54,14 @@ These instructions are the concise, must-follow rules for working in SRAT. Keep 
 ## Testing rules (fast summary)
 
 - **Bug fixes require a failing test first**, then the fix, then re‑run tests.
+- For back-end test failures or new back-end functionality, verify in escalation order: run the specific suite/subtest first, then the full package tests, then `go test ./...` from `backend/src` before finalizing.
 - Frontend tests: use `mise run //frontend:test`, React Testing Library, and **`user-event` only** (no `fireEvent`).
 - Frontend test stability: run `mise run //frontend:test --rerun-each 10` for modified tests.
+
+## Refactoring
+
+- **Always invoke the `prepare-refactor` skill** when a task type is `[REFACTOR]` or when the work is described as a refactor. Ask the user whether to run a prepare check before starting.
+- Refactor tracking documents live in `docs/refactors/<slug>.md`; do not commit them to task docs.
 
 ## Docs & quality gates
 

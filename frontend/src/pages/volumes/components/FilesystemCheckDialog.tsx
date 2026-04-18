@@ -93,7 +93,9 @@ export function FilesystemCheckDialog({
 
   const [autoFix, setAutoFix] = useState(false);
   const [force, setForce] = useState(false);
-  const [verbose, setVerbose] = useState(Boolean(initialVerbose));
+  const [verbose, setVerbose] = useState(
+    initialVerbose !== undefined ? Boolean(initialVerbose) : true,
+  );
   const [logs, setLogs] = useState<CommandOutputLineSnapshot[]>([]);
   const [progress, setProgress] = useState<number>(0);
   const [status, setStatus] = useState<string>("idle");
@@ -182,7 +184,7 @@ export function FilesystemCheckDialog({
     setProgress(0);
     setStatus("idle");
     setMessage("");
-    setVerbose(Boolean(initialVerbose));
+    setVerbose(initialVerbose !== undefined ? Boolean(initialVerbose) : true);
     lastNotesRef.current = [];
     lastMessageRef.current = "";
     lastErrorRef.current = "";
@@ -205,18 +207,30 @@ export function FilesystemCheckDialog({
         taskNotes.length >= previousNotes.length &&
         previousNotes.every((note, index) => note === taskNotes[index]);
 
+      const routeNotes = (notes: string[]) => {
+        const stdoutNotes = notes.filter((n) => !n.startsWith("ERROR: "));
+        const stderrNotes = notes
+          .filter((n) => n.startsWith("ERROR: "))
+          .map((n) => n.slice("ERROR: ".length));
+        if (stdoutNotes.length > 0) appendLogs(stdoutNotes, "stdout");
+        if (stderrNotes.length > 0) appendLogs(stderrNotes, "stderr");
+      };
+
       if (isCumulativeNotes) {
         const newNotes = taskNotes.slice(previousNotes.length);
         if (newNotes.length > 0) {
-          appendLogs(newNotes, "stdout");
+          routeNotes(newNotes);
         }
-      }
-
-      if (!isCumulativeNotes) {
-        appendLogs(taskNotes, "stdout");
+      } else {
+        routeNotes(taskNotes);
       }
 
       lastNotesRef.current = taskNotes;
+
+      // Auto-enable verbose log when tool doesn't report incremental progress
+      if (taskNotes.some((n) => n === "Progress Status Not Supported")) {
+        setVerbose(true);
+      }
     }
 
     const taskMessage = task.message?.trim() ?? "";
@@ -237,18 +251,25 @@ export function FilesystemCheckDialog({
       taskError !== lastErrorRef.current
         ? [taskError]
         : [];
-    const newTaskMessages = taskMessage
-      ? [taskMessage].filter(
-          (line) =>
-            !taskNotes.includes(line) && line !== lastMessageRef.current,
-        )
-      : [];
-    const newResultMessages = resultMessage
-      ? [resultMessage].filter(
-          (line) =>
-            !taskNotes.includes(line) && line !== lastResultMessageRef.current,
-        )
-      : [];
+    // Only suppress running-status messages from the log when notes are present
+    // (the message is a compound echo of notes: "Check /dev/...: running - <line>").
+    // When there are no notes, the message is meaningful and should appear.
+    const newTaskMessages =
+      taskMessage && !(task.status === "running" && taskNotes.length > 0)
+        ? [taskMessage].filter(
+            (line) =>
+              !taskNotes.includes(line) && line !== lastMessageRef.current,
+          )
+        : [];
+    // Split multi-line result message so each line is checked/deduplicated individually.
+    // Skip entirely if notes are present — they already contain all output lines.
+    const newResultMessages =
+      resultMessage && taskNotes.length === 0
+        ? resultMessage
+            .split("\n")
+            .map((l) => l.trim())
+            .filter((l) => l !== "")
+        : [];
 
     appendLogs(newTaskMessages, task.status === "failure" ? "stderr" : "info");
     appendLogs(newResultMessages, "stdout");
@@ -285,7 +306,7 @@ export function FilesystemCheckDialog({
           verbose,
         },
       }).unwrap();
-      toast.info("Filesystem check started.");
+      // toast.info("Filesystem check started.");
     } catch (err: unknown) {
       const typedErr = err as {
         data?: { detail?: string; message?: string };

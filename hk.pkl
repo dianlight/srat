@@ -8,7 +8,11 @@ local linters = new Mapping<String, Step> {
 
     ["ruff"] = Builtins.ruff
     ["ruff-format"] = Builtins.ruff_format
-    ["mypy"] = Builtins.mypy
+    ["mypy"] = (Builtins.mypy) {
+        glob = "**/*.py"
+        exclude = List("**/venv/**", "**/.venv/**", "**/env/**", "**/.env/**")
+        dir = "custom_components"
+    }
 
     ["biome"] = (Builtins.biome)
 
@@ -37,7 +41,10 @@ local linters = new Mapping<String, Step> {
         fix = "golangci-lint run --fix ./..."
     }
 
-    ["gomod-tidy"] = Builtins.gomod_tidy
+    ["gomod-tidy"] = (Builtins.gomod_tidy) {
+        glob = "go.mod"
+        dir = "backend/src"
+    }
 //    ["err-check"] = (Builtins.err_check) {
 //        glob = "**/*.go"
 //    }

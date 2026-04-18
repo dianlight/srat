@@ -190,7 +190,7 @@
 		"**/vendor/*/**"
 	],
 	"todo-tree.tree.showCountsInTree": true,
-	"biome.lsp.bin": "/root/.bun/install/global/node_modules/@biomejs/cli-linux-arm64-musl/biome",
+	"biome.lsp.bin": "/root/.local/share/mise/shims/biome",
 	"todo-tree.highlights.useColourScheme": true,
 	"chat.planAgent.defaultModel": "Auto (copilot)",
 	"chat.editing.explainChanges.enabled": true,
@@ -258,7 +258,7 @@
 	"github.copilot.chat.backgroundCompaction": true,
 	"mise.configureExtensionsAutomatically": true,
 	"bun.runtime": "/root/.local/share/mise/shims/bun",
-	"go.goroot": "/root/.local/share/mise/installs/go/1.26.1",
+	"go.goroot": "/root/.local/share/mise/installs/go/1.26.2",
 	"go.alternateTools": {
 		"go": "/root/.local/share/mise/shims/go",
 		"gopls": "/root/.local/share/mise/shims/gopls",
@@ -268,7 +268,7 @@
 	"vale.enableSpellcheck": true,
 	"vale.valeCLI.syncOnStartup": true,
 	"vale.readabilityProblemLocation": "both",
-	"go.lintTool": "golangci-lint",
+	"go.lintTool": "golangci-lint-v2",
 	"go.lintFlags": [
 		"--path-mode=abs",
 		"--fast-only"
@@ -278,5 +278,9 @@
 		"fmt",
 		"--stdin"
 	],
-	"chat.tools.terminal.backgroundNotifications": true
+	"chat.tools.terminal.backgroundNotifications": true,
+	"chat.tools.confirmationCarousel.enabled": true,
+	"workbench.browser.openLocalhostLinks": true,
+	"jsts-chat-features.skills.enabled": true,
+	"chat.editing.autoAcceptDelay": 100
 }

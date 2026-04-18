@@ -8,6 +8,8 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/dianlight/srat/service"
+	"github.com/ovechkin-dm/mockio/v2/matchers"
+	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
@@ -186,4 +188,88 @@ func (suite *RepairServiceSuite) TestQueueAndFlushCommands() {
 
 	queued = suite.repair.FlushQueuedCommands()
 	suite.Nil(queued)
+}
+
+func (suite *RepairServiceSuite) TestDelete_BroadcastsDeleteCommandWhenBroadcasterConfigured() {
+	ctrl := mock.NewMockController(suite.T())
+	broadcaster := mock.Mock[service.BroadcasterServiceInterface](ctrl)
+	mock.When(broadcaster.BroadcastMessage(mock.Any[dto.RepairCommandMessage]())).ThenReturn(nil)
+
+	repairSvc := service.NewRepairService(service.RepairServiceParams{
+		Ctx:         suite.T().Context(),
+		State:       &dto.ContextState{},
+		Broadcaster: broadcaster,
+	})
+
+	_, err := repairSvc.Create(dto.RepairCommandMessage{
+		CommandID:      "cmd-create",
+		RepairID:       "delete-me",
+		Action:         dto.RepairCommandActionUpsert,
+		TranslationKey: "delete_me",
+		Severity:       dto.RepairIssueSeverityWarning,
+	})
+	suite.Require().NoError(err)
+
+	err = repairSvc.Delete("delete-me")
+	suite.Require().NoError(err)
+
+	mock.Verify(broadcaster, matchers.Times(2)).BroadcastMessage(mock.Any[dto.RepairCommandMessage]())
+}
+
+func (suite *RepairServiceSuite) TestMirrorsRepairOperationsIntoProblemService() {
+	ctrl := mock.NewMockController(suite.T())
+	problemSvc := mock.Mock[service.ProblemServiceInterface](ctrl)
+
+	mock.When(problemSvc.Upsert(mock.Any[*dto.Problem]())).ThenReturn(&dto.Problem{ProblemKey: "repair-mirror"}, nil)
+	mock.When(problemSvc.ApplyLifecycle(
+		mock.Exact("repair-mirror"),
+		mock.Exact(dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSFIXED),
+		mock.Any[*string](),
+	)).ThenReturn(&dto.Problem{ProblemKey: "repair-mirror"}, nil)
+	mock.When(problemSvc.Dismiss(mock.Exact("repair-mirror"))).ThenReturn(nil)
+
+	repairSvc := service.NewRepairService(service.RepairServiceParams{
+		Ctx:     suite.T().Context(),
+		State:   &dto.ContextState{},
+		Problem: problemSvc,
+	})
+
+	_, err := repairSvc.Create(dto.RepairCommandMessage{
+		CommandID:      "cmd-create",
+		RepairID:       "repair-mirror",
+		Action:         dto.RepairCommandActionUpsert,
+		TranslationKey: "repair_mirror",
+		Severity:       dto.RepairIssueSeverityWarning,
+		IsFixable:      true,
+		IsPersistent:   true,
+	})
+	suite.Require().NoError(err)
+
+	_, err = repairSvc.Update(dto.RepairCommandMessage{
+		CommandID:      "cmd-update",
+		RepairID:       "repair-mirror",
+		Action:         dto.RepairCommandActionReconcile,
+		TranslationKey: "repair_mirror",
+		Severity:       dto.RepairIssueSeverityError,
+	})
+	suite.Require().NoError(err)
+
+	_, err = repairSvc.ApplyLifecycle(dto.RepairLifecycleMessage{
+		Type:      dto.ClientEventTypes.CLIENTEVENTTYPEREPAIRLIFECYCLE.String(),
+		CommandID: "cmd-update",
+		RepairID:  "repair-mirror",
+		Status:    dto.RepairLifecycleStatusFixed,
+	})
+	suite.Require().NoError(err)
+
+	err = repairSvc.Delete("repair-mirror")
+	suite.Require().NoError(err)
+
+	mock.Verify(problemSvc, matchers.Times(2)).Upsert(mock.Any[*dto.Problem]())
+	mock.Verify(problemSvc, matchers.Times(1)).ApplyLifecycle(
+		mock.Exact("repair-mirror"),
+		mock.Exact(dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSFIXED),
+		mock.Any[*string](),
+	)
+	mock.Verify(problemSvc, matchers.Times(1)).Dismiss(mock.Exact("repair-mirror"))
 }

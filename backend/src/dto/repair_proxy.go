@@ -2,20 +2,16 @@ package dto
 
 import "fmt"
 
-type RepairCommandAction string
-
-const (
-	RepairCommandActionUpsert    RepairCommandAction = "upsert"
-	RepairCommandActionDelete    RepairCommandAction = "delete"
-	RepairCommandActionReconcile RepairCommandAction = "reconcile"
+var (
+	RepairCommandActionUpsert    = RepairCommandActions.REPAIRCOMMANDACTIONUPSERT
+	RepairCommandActionDelete    = RepairCommandActions.REPAIRCOMMANDACTIONDELETE
+	RepairCommandActionReconcile = RepairCommandActions.REPAIRCOMMANDACTIONRECONCILE
 )
 
-type RepairIssueSeverity string
-
-const (
-	RepairIssueSeverityWarning  RepairIssueSeverity = "warning"
-	RepairIssueSeverityError    RepairIssueSeverity = "error"
-	RepairIssueSeverityCritical RepairIssueSeverity = "critical"
+var (
+	RepairIssueSeverityWarning  = RepairIssueSeverities.REPAIRISSUESEVERITYWARNING
+	RepairIssueSeverityError    = RepairIssueSeverities.REPAIRISSUESEVERITYERROR
+	RepairIssueSeverityCritical = RepairIssueSeverities.REPAIRISSUESEVERITYCRITICAL
 )
 
 type RepairCommandMessage struct {
@@ -60,16 +56,14 @@ func (msg RepairCommandMessage) Validate() error {
 	return nil
 }
 
-type RepairLifecycleStatus string
-
-const (
-	RepairLifecycleStatusCreated   RepairLifecycleStatus = "created"
-	RepairLifecycleStatusUpdated   RepairLifecycleStatus = "updated"
-	RepairLifecycleStatusIgnored   RepairLifecycleStatus = "ignored"
-	RepairLifecycleStatusFixed     RepairLifecycleStatus = "fixed"
-	RepairLifecycleStatusDismissed RepairLifecycleStatus = "dismissed"
-	RepairLifecycleStatusDeleted   RepairLifecycleStatus = "deleted"
-	RepairLifecycleStatusError     RepairLifecycleStatus = "error"
+var (
+	RepairLifecycleStatusCreated   = RepairLifecycleStatuses.REPAIRLIFECYCLESTATUSCREATED
+	RepairLifecycleStatusUpdated   = RepairLifecycleStatuses.REPAIRLIFECYCLESTATUSUPDATED
+	RepairLifecycleStatusIgnored   = RepairLifecycleStatuses.REPAIRLIFECYCLESTATUSIGNORED
+	RepairLifecycleStatusFixed     = RepairLifecycleStatuses.REPAIRLIFECYCLESTATUSFIXED
+	RepairLifecycleStatusDismissed = RepairLifecycleStatuses.REPAIRLIFECYCLESTATUSDISMISSED
+	RepairLifecycleStatusDeleted   = RepairLifecycleStatuses.REPAIRLIFECYCLESTATUSDELETED
+	RepairLifecycleStatusError     = RepairLifecycleStatuses.REPAIRLIFECYCLESTATUSERROR
 )
 
 type RepairLifecycleMessage struct {

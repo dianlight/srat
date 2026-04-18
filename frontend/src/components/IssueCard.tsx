@@ -19,11 +19,11 @@ import {
 import type { Theme } from "@mui/material/styles";
 import type React from "react";
 import { useIgnoredIssues } from "../hooks/issueHooks";
-import type { Issue } from "../store/sratApi";
+import type { Problem } from "../store/sratApi";
 
 interface IssueCardProps {
-  issue: Issue;
-  onResolve?: (id: number) => void;
+  issue: Problem;
+  onResolve?: (id: number | string) => void;
   showIgnored?: boolean;
 }
 
@@ -39,6 +39,15 @@ const getSeverityConfig = (severity: string, theme: Theme) => {
           : `${theme.palette.error.light}40`,
         icon: <ErrorIcon />,
         label: "Error",
+      };
+    case "critical":
+      return {
+        color: theme.palette.error.dark,
+        backgroundColor: isDark
+          ? `${theme.palette.error.dark}30`
+          : `${theme.palette.error.light}60`,
+        icon: <ErrorIcon />,
+        label: "Critical",
       };
     case "warning":
       return {
@@ -86,7 +95,8 @@ const IssueCard: React.FC<IssueCardProps> = ({
 }) => {
   const theme = useTheme();
   const { isIssueIgnored } = useIgnoredIssues();
-  const isIgnored = isIssueIgnored(issue.id);
+  const resolveKey = issue.problem_key;
+  const isIgnored = isIssueIgnored(resolveKey);
   const severityConfig = getSeverityConfig(issue.severity || "info", theme);
 
   // When showIgnored is false, show only non-ignored items
@@ -133,13 +143,13 @@ const IssueCard: React.FC<IssueCardProps> = ({
         <Typography variant="body2" color="text.secondary">
           {issue.description}
         </Typography>
-        {issue.date && (
+        {issue.created_at && (
           <Typography
             variant="caption"
             color="text.secondary"
             sx={{ mt: 1, display: "block" }}
           >
-            {new Date(issue.date).toLocaleString()}
+            {new Date(issue.created_at ?? "").toLocaleString()}
           </Typography>
         )}
       </CardContent>
@@ -150,7 +160,7 @@ const IssueCard: React.FC<IssueCardProps> = ({
               size="small"
               variant="outlined"
               sx={{ backgroundColor: severityConfig.color }}
-              onClick={() => onResolve(issue.id)}
+              onClick={() => onResolve(resolveKey)}
             >
               Resolve
             </Button>
@@ -159,7 +169,7 @@ const IssueCard: React.FC<IssueCardProps> = ({
         {onResolve && (
           <IconButton
             size="small"
-            onClick={() => onResolve(issue.id)}
+            onClick={() => onResolve(resolveKey)}
             title="Dismiss"
           >
             <CloseIcon fontSize="small" />

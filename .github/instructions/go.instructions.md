@@ -392,6 +392,12 @@ if errors.As(err, &appErr) { ... }
 - `go mod`: Manage dependencies
 - `go generate`: Code generation
 
+### Enum code generation (goenums)
+
+- Follow the existing repository pattern used in `backend/src/dto`: keep each `goenums` source as a small, enum-focused file containing only the private base type, `iota` constants, and a `//go:generate go tool goenums <file>.go` directive.
+- Avoid mixing large DTO/business logic with enum definitions in the same generation source file; this can cause `goenums` parse failures (for example: "no valid enums found").
+- Consume the generated exported enum types in operational files and, when needed, expose compatibility variables there instead of redefining manual string enums.
+
 ### Development Practices
 
 - Run tests before committing

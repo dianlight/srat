@@ -18,19 +18,34 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"gitlab.com/tozd/go/errors"
+	"go.uber.org/fx"
 )
 
 type WebSocketHandler struct {
-	ctx           context.Context
-	broadcaster   service.BroadcasterServiceInterface
-	repairService service.RepairServiceInterface
-	state         *dto.ContextState
-	upgrader      websocket.Upgrader
-	eventMap      map[string]any
-	ObjectMap     map[string]string
+	ctx            context.Context
+	broadcaster    service.BroadcasterServiceInterface
+	repairService  service.RepairServiceInterface
+	problemService service.ProblemServiceInterface
+	haService      service.HomeAssistantServiceInterface
+	haComponentSvc service.HomeAssistantComponentServiceInterface
+	state          *dto.ContextState
+	upgrader       websocket.Upgrader
+	eventMap       map[string]any
+	ObjectMap      map[string]string
 }
 
-func NewWebSocketBroker(ctx context.Context, broadcaster service.BroadcasterServiceInterface, repairService service.RepairServiceInterface, state *dto.ContextState) *WebSocketHandler {
+type WebSocketHandlerParams struct {
+	fx.In
+	Ctx            context.Context
+	Broadcaster    service.BroadcasterServiceInterface
+	RepairService  service.RepairServiceInterface
+	ProblemService service.ProblemServiceInterface                `optional:"true"`
+	HAService      service.HomeAssistantServiceInterface          `optional:"true"`
+	HAComponentSvc service.HomeAssistantComponentServiceInterface `optional:"true"`
+	State          *dto.ContextState
+}
+
+func NewWebSocketBroker(p WebSocketHandlerParams) *WebSocketHandler {
 	// Instantiate a WebSocket broker
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
@@ -45,13 +60,16 @@ func NewWebSocketBroker(ctx context.Context, broadcaster service.BroadcasterServ
 	reverseMap := reverseMap(dto.WebEventMap)
 
 	return &WebSocketHandler{
-		ctx:           ctx,
-		broadcaster:   broadcaster,
-		repairService: repairService,
-		state:         state,
-		upgrader:      upgrader,
-		eventMap:      dto.WebEventMap,
-		ObjectMap:     reverseMap,
+		ctx:            p.Ctx,
+		broadcaster:    p.Broadcaster,
+		repairService:  p.RepairService,
+		problemService: p.ProblemService,
+		haService:      p.HAService,
+		haComponentSvc: p.HAComponentSvc,
+		state:          p.State,
+		upgrader:       upgrader,
+		eventMap:       dto.WebEventMap,
+		ObjectMap:      reverseMap,
 	}
 }
 
@@ -186,6 +204,45 @@ func (self *WebSocketHandler) handleInboundMessage(messageType int, payload []by
 			}
 		}
 		slog.DebugContext(self.ctx, "Accepted Home Assistant repair lifecycle message", "repair_id", message.RepairID, "status", message.Status, "command_id", message.CommandID)
+
+		// When the user confirms the "restart required" repair fix, restart Home Assistant.
+		if message.Status == dto.RepairLifecycleStatusFixed && self.haComponentSvc != nil {
+			if err := self.haComponentSvc.DismissRestartRequiredRepair(self.ctx); err != nil {
+				slog.WarnContext(self.ctx, "Failed to dismiss restart-required repair after fix", "error", err)
+			}
+			if self.haService != nil {
+				if err := self.haService.RestartHomeAssistant(self.ctx); err != nil {
+					slog.WarnContext(self.ctx, "Failed to restart Home Assistant after repair fix", "error", err)
+				}
+			}
+		}
+	case dto.ClientEventTypes.CLIENTEVENTTYPEPROBLEMLIFECYCLE.String():
+		var message dto.ProblemLifecycleMessage
+		if err := json.Unmarshal(payload, &message); err != nil {
+			slog.WarnContext(self.ctx, "Ignoring malformed problem lifecycle message", "error", err)
+			return
+		}
+		if err := message.Validate(); err != nil {
+			slog.WarnContext(self.ctx, "Ignoring invalid problem lifecycle message", "error", err)
+			return
+		}
+		if self.problemService != nil {
+			if _, err := self.problemService.ApplyLifecycle(message.ProblemKey, message.Status, message.Error); err != nil && !errors.Is(err, dto.ErrorNotFound) {
+				slog.WarnContext(self.ctx, "Failed to apply problem lifecycle to problem service", "error", err, "problem_key", message.ProblemKey)
+			}
+		}
+		slog.DebugContext(self.ctx, "Accepted Home Assistant problem lifecycle message", "problem_key", message.ProblemKey, "status", message.Status)
+
+		if message.Status == dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSFIXED && message.ProblemKey == "custom_component_restart_required" && self.haComponentSvc != nil {
+			if err := self.haComponentSvc.DismissRestartRequiredRepair(self.ctx); err != nil {
+				slog.WarnContext(self.ctx, "Failed to dismiss restart-required problem after fix", "error", err)
+			}
+			if self.haService != nil {
+				if err := self.haService.RestartHomeAssistant(self.ctx); err != nil {
+					slog.WarnContext(self.ctx, "Failed to restart Home Assistant after problem fix", "error", err)
+				}
+			}
+		}
 	default:
 		slog.WarnContext(self.ctx, "Ignoring unsupported inbound WebSocket message type", "type", envelope.Type)
 	}

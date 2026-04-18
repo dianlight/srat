@@ -9,6 +9,7 @@ import type {
   Disk,
   FilesystemTask,
   HealthPing,
+  Problem,
   RepairCommandMessage,
   SharedResource,
   SmartTestStatus,
@@ -28,6 +29,7 @@ export type EventData = {
   [Supported_events.SmartTestStatus]: SmartTestStatus;
   [Supported_events.FilesystemTask]: FilesystemTask;
   [Supported_events.RepairCommand]: RepairCommandMessage;
+  [Supported_events.Problem]: Problem;
   command_started?: CommandStartedNotification;
   command_output?: CommandOutputNotification;
   command_terminated?: CommandTerminatedNotification;

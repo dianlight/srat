@@ -51,6 +51,7 @@
 		"SUPERVISOR_URL": "http://${containerEnv:HOMEASSISTANT_IP}/",
 		"SUPERVISOR_TOKEN": "${containerEnv:SUPERVISOR_TOKEN}",
 		"GH_TOKEN": "${localEnv:GITHUB_TOKEN}",
+		"GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}",
 		"HOMEASSISTANT_IP": "${containerEnv:HOMEASSISTANT_IP}",
 		"ROLLBAR_MCP_ACCESS_TOKEN": "${localEnv:ROLLBAR_MCP_ACCESS_TOKEN}",
 		"ROLLBAR_CLIENT_ACCESS_TOKEN": "${localEnv:ROLLBAR_CLIENT_ACCESS_TOKEN}",
@@ -76,9 +77,9 @@
 				"terminal.integrated.defaultProfile.linux": "zsh",
 				"go.toolsManagement.checkForUpdates": "local",
 				"go.useLanguageServer": true,
-				"go.lintTool": "golangci-lint",
+				"go.lintTool": "golangci-lint-v2",
 				"go.lintFlags": [
-					"--fast"
+					"--fast-only"
 				]
 			},
 			"terminal.integrated.defaultProfile.linux": "zsh",

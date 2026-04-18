@@ -19,7 +19,6 @@ import (
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/homeassistant/apps"
 	"github.com/dianlight/srat/homeassistant/websocket"
-	"github.com/dianlight/srat/server/ws"
 	"github.com/fsnotify/fsnotify"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -673,86 +672,49 @@ func (s *AddonConfigWatcherServiceSuite) TestEmitChanged_NilEventBus() {
 	})
 }
 
-// TestEmitChanged_CreatesRepairIssue verifies that emitChanged calls RepairService.Create
-// with repair_id="addon_config_changed", severity=warning, is_fixable=false, is_persistent=true.
-func (s *AddonConfigWatcherServiceSuite) TestEmitChanged_CreatesRepairIssue() {
+// TestEmitChanged_UpsertsProblemIssue verifies that emitChanged upserts a Problem
+// with problem_key="addon_config_changed", warning severity, and persistent semantics.
+func (s *AddonConfigWatcherServiceSuite) TestEmitChanged_UpsertsProblemIssue() {
 	ctx := context.Background()
-	rs := NewRepairService(ctx, &dto.ContextState{})
+	problemSvc := &stubProblemService{}
 	svc := &AddonConfigWatcherService{
-		ctx:           ctx,
-		repairService: rs,
+		ctx:            ctx,
+		problemService: problemSvc,
 	}
 	svc.emitChanged("/data/options.json", "abc123")
-	repair, ok := rs.Get("addon_config_changed")
-	s.Require().True(ok, "repair issue should exist after emitChanged")
-	s.Equal("addon_config_changed", repair.RepairID)
-	s.Equal(dto.RepairIssueSeverityWarning, repair.Command.Severity)
-	s.Equal(dto.RepairCommandActionUpsert, repair.Command.Action)
-	s.False(repair.Command.IsFixable)
-	s.True(repair.Command.IsPersistent)
+
+	s.Require().Len(problemSvc.upserts, 1)
+	problem := problemSvc.upserts[0]
+	s.Equal("addon_config_changed", problem.ProblemKey)
+	s.Equal(dto.ProblemSeverities.PROBLEMSEVERITYWARNING, problem.Severity)
+	s.Equal(dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSCREATED, problem.Status)
+	s.Equal("addon_config_changed", problem.TranslationKey)
+	s.False(problem.IsFixable)
+	s.True(problem.IsPersistent)
 }
 
-// TestEmitChanged_BroadcastsRepairCommand verifies that emitChanged immediately
-// broadcasts the repair command when a broadcaster is available.
-func (s *AddonConfigWatcherServiceSuite) TestEmitChanged_BroadcastsRepairCommand() {
+// TestEmitChanged_DuplicateProblemUpsert_NoPanic verifies a repeated emitChanged call
+// remains safe and continues upserting the problem.
+func (s *AddonConfigWatcherServiceSuite) TestEmitChanged_DuplicateProblemUpsert_NoPanic() {
 	ctx := context.Background()
-	rs := NewRepairService(ctx, &dto.ContextState{})
-	b := &stubBroadcaster{}
+	problemSvc := &stubProblemService{}
 	svc := &AddonConfigWatcherService{
-		ctx:           ctx,
-		repairService: rs,
-		broadcaster:   b,
+		ctx:            ctx,
+		problemService: problemSvc,
 	}
 
 	svc.emitChanged("/data/options.json", "abc123")
+	s.Require().Len(problemSvc.upserts, 1)
 
-	s.Require().Len(b.messages, 1)
-	cmd, ok := b.messages[0].(dto.RepairCommandMessage)
-	s.Require().True(ok, "expected a repair command broadcast")
-	s.Equal("addon_config_changed", cmd.RepairID)
-	s.Equal(dto.RepairCommandActionUpsert, cmd.Action)
-}
-
-// TestEmitChanged_DuplicateRepairStillBroadcasts verifies that duplicate repair
-// creation refreshes the repair state and still broadcasts the repair command.
-func (s *AddonConfigWatcherServiceSuite) TestEmitChanged_DuplicateRepairStillBroadcasts() {
-	ctx := context.Background()
-	rs := NewRepairService(ctx, &dto.ContextState{})
-	b := &stubBroadcaster{}
-	svc := &AddonConfigWatcherService{
-		ctx:           ctx,
-		repairService: rs,
-		broadcaster:   b,
-	}
-
-	svc.emitChanged("/data/options.json", "abc123")
-	svc.emitChanged("/data/options.json", "xyz456")
-
-	s.Require().Len(b.messages, 2)
-	cmd, ok := b.messages[1].(dto.RepairCommandMessage)
-	s.Require().True(ok, "expected a repair command broadcast")
-	s.Equal("addon_config_changed", cmd.RepairID)
-	s.Equal(dto.RepairCommandActionUpsert, cmd.Action)
-}
-
-// TestEmitChanged_RepairAlreadyExists_NoPanic verifies that a second emitChanged call
-// (when the repair issue already exists) logs a warning but does not panic.
-func (s *AddonConfigWatcherServiceSuite) TestEmitChanged_RepairAlreadyExists_NoPanic() {
-	ctx := context.Background()
-	rs := NewRepairService(ctx, &dto.ContextState{})
-	svc := &AddonConfigWatcherService{
-		ctx:           ctx,
-		repairService: rs,
-	}
-	svc.emitChanged("/data/options.json", "abc123")
 	// Second call should not panic even though the repair already exists.
 	s.NotPanics(func() {
 		svc.emitChanged("/data/options.json", "xyz456")
 	})
+	s.Require().Len(problemSvc.upserts, 2)
 }
 
 // TestEmitChanged_FallsBackToNotification verifies that CreatePersistentNotification
-// is called with the correct arguments when repairService is nil.
+// is called with the correct arguments when problemService is nil.
 func (s *AddonConfigWatcherServiceSuite) TestEmitChanged_FallsBackToNotification() {
 	stub := &stubHAService{}
 	svc := &AddonConfigWatcherService{
@@ -772,16 +734,31 @@ type stubHAService struct {
 	notifMsg    string
 }
 
-type stubBroadcaster struct {
-	messages []any
+type stubProblemService struct {
+	upserts []*dto.Problem
 }
 
-func (s *stubBroadcaster) BroadcastMessage(msg any) any {
-	s.messages = append(s.messages, msg)
-	return msg
+func (s *stubProblemService) Upsert(problem *dto.Problem) (*dto.Problem, error) {
+	if problem != nil {
+		clone := *problem
+		s.upserts = append(s.upserts, &clone)
+	}
+	return problem, nil
 }
 
-func (s *stubBroadcaster) ProcessWebSocketChannel(_ ws.Sender) {}
+func (s *stubProblemService) Dismiss(problemKey string) error { return nil }
+
+func (s *stubProblemService) Get(problemKey string) (*dto.Problem, error) {
+	return nil, dto.ErrorNotFound
+}
+
+func (s *stubProblemService) List() ([]*dto.Problem, error) {
+	return nil, nil
+}
+
+func (s *stubProblemService) ApplyLifecycle(problemKey string, status dto.ProblemLifecycleStatus, lastError *string) (*dto.Problem, error) {
+	return nil, dto.ErrorNotFound
+}
 
 func (s *stubHAService) SendDiskEntities(_ *[]*dto.Disk) error                         { return nil }
 func (s *stubHAService) SendSambaStatusEntity(_ *dto.SambaStatus) error                { return nil }
@@ -796,12 +773,13 @@ func (s *stubHAService) CreatePersistentNotification(id, title, msg string) erro
 	return nil
 }
 func (s *stubHAService) DismissPersistentNotification(_ string) error { return nil }
+func (s *stubHAService) RestartHomeAssistant(_ context.Context) error { return nil }
 
 // TestIntegration_EndToEnd_FileWriteEmitsAppConfigEvent verifies the full end-to-end flow:
 // 1. Write to options file on disk
 // 2. fsnotify detects the change
 // 3. AppConfigEvent is emitted on the event bus with correct path and hash
-// 4. Repair issue is created with correct metadata
+// 4. Problem issue is upserted with the expected metadata
 func (s *AddonConfigWatcherServiceSuite) TestIntegration_EndToEnd_FileWriteEmitsAppConfigEvent() {
 	initialContent := []byte(`{"workgroup":"OLD","name":"test"}`)
 	path := s.writeOptionsFile(initialContent)

@@ -103,7 +103,7 @@ func TestGetSambaVersion_UsesConfiguredCommandRunner(t *testing.T) {
 		},
 	})
 	defer restore()
-
+	sambaVersionOverride = ""
 	version, err := GetSambaVersion()
 	require.NoError(t, err)
 	require.Equal(t, "4.24.1", version)
@@ -114,7 +114,7 @@ func TestGetSambaVersion_CommandError(t *testing.T) {
 		return nil, errors.New("command failed")
 	})
 	defer restoreExec()
-
+	sambaVersionOverride = ""
 	version, err := GetSambaVersion()
 	require.Error(t, err)
 	require.Empty(t, version)
@@ -125,7 +125,7 @@ func TestGetSambaVersion_InvalidOutput(t *testing.T) {
 		return []byte("not-a-version-line"), nil
 	})
 	defer restoreExec()
-
+	sambaVersionOverride = ""
 	version, err := GetSambaVersion()
 	require.NoError(t, err)
 	require.Empty(t, version)

@@ -44,3 +44,28 @@ func TestGetTemplateDataDefaultsToEmbeddedPath(t *testing.T) {
 	require.NotNil(t, TemplateFile)
 	assert.Equal(t, "templates/smb.gtpl", *TemplateFile)
 }
+
+func TestGetEmbeddedCustomComponentZipReadsCustomFile(t *testing.T) {
+	dir := t.TempDir()
+	filePath := filepath.Join(dir, "srat.zip")
+	require.NoError(t, os.WriteFile(filePath, []byte("zip-content"), 0o600))
+
+	original := CustomComponentZipFile
+	CustomComponentZipFile = &filePath
+	t.Cleanup(func() { CustomComponentZipFile = original })
+
+	data, err := GetEmbeddedCustomComponentZip()
+	require.NoError(t, err)
+	assert.Equal(t, "zip-content", string(data))
+}
+
+func TestGetEmbeddedCustomComponentZipDefaultsToInternalAssetPath(t *testing.T) {
+	original := CustomComponentZipFile
+	CustomComponentZipFile = nil
+	t.Cleanup(func() { CustomComponentZipFile = original })
+
+	_, err := GetEmbeddedCustomComponentZip()
+	require.Error(t, err)
+	require.NotNil(t, CustomComponentZipFile)
+	assert.Equal(t, "internal/assets/srat.zip", *CustomComponentZipFile)
+}

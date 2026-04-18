@@ -105,7 +105,6 @@ func (suite *EventPropagationTestSuite) SetupTest() {
 			NewFilesystemService,
 			NewSettingService,
 			//repository.NewPropertyRepositoryRepository,
-			mock.Mock[IssueServiceInterface],
 			mock.Mock[HardwareServiceInterface],
 			mock.Mock[TelemetryServiceInterface],
 		),

@@ -142,11 +142,12 @@ func prog(listener net.Listener, serverPort int) {
 	// apiCancel is called at the end of Run() by FX lifecycle or explicitly if Run errors
 
 	staticConfig := dto.ContextState{
-		AddonIpAddress: *addonIpAddress,
-		ServerPort:     serverPort,
-		ReadOnlyMode:   *roMode,
-		ProtectedMode:  *protectedMode,
-		SecureMode:     *secureMode,
+		AddonIpAddress:       *addonIpAddress,
+		ServerPort:           serverPort,
+		CustomComponentsPath: dto.DefaultCustomComponentsPath,
+		ReadOnlyMode:         *roMode,
+		ProtectedMode:        *protectedMode,
+		SecureMode:           *secureMode,
 		//UpdateFilePath:  *updateFilePath,
 		UpdateChannel:   upgrade_channel,
 		UpdateDataDir:   *upgradeDataDir,
@@ -195,6 +196,7 @@ func prog(listener net.Listener, serverPort int) {
 			server.AsHumaRoute(api.NewUpgradeHanler),
 			server.AsHumaRoute(api.NewSystemHanler),
 			server.AsHumaRoute(api.NewFilesystemHandler),
+			server.AsHumaRoute(api.NewProblemAPI),
 			server.AsHumaRoute(api.NewIssueAPI),
 			server.AsHumaRoute(api.NewTelemetryHandler),
 			server.AsHumaRoute(api.NewHDIdleHandler),

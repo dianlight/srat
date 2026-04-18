@@ -11,6 +11,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/homeassistant/core"
 	"github.com/dianlight/srat/homeassistant/core_api"
 	"github.com/dianlight/tlog"
 	"gitlab.com/tozd/go/errors"
@@ -25,13 +26,15 @@ type HomeAssistantServiceInterface interface {
 	SendDiskHealthEntities(diskHealth *dto.DiskHealth) error
 	CreatePersistentNotification(notificationID, title, message string) error
 	DismissPersistentNotification(notificationID string) error
+	RestartHomeAssistant(ctx context.Context) error
 }
 
 type HomeAssistantService struct {
-	ctx            context.Context
-	state          *dto.ContextState
-	coreClient     core_api.ClientWithResponsesInterface
-	settingService SettingServiceInterface
+	ctx                  context.Context
+	state                *dto.ContextState
+	coreClient           core_api.ClientWithResponsesInterface
+	supervisorCoreClient core.ClientWithResponsesInterface
+	settingService       SettingServiceInterface
 	//propRepo                repository.PropertyRepositoryInterface
 	notificationTracker     map[string]string // Maps notificationID to last sent date
 	notificationTrackerLock sync.RWMutex
@@ -39,19 +42,21 @@ type HomeAssistantService struct {
 
 type HomeAssistantServiceParams struct {
 	fx.In
-	Ctx        context.Context
-	State      *dto.ContextState
-	CoreClient core_api.ClientWithResponsesInterface `optional:"true"`
+	Ctx                  context.Context
+	State                *dto.ContextState
+	CoreClient           core_api.ClientWithResponsesInterface `optional:"true"`
+	SupervisorCoreClient core.ClientWithResponsesInterface     `optional:"true"`
 	//PropRepo   repository.PropertyRepositoryInterface
 	SettingService SettingServiceInterface
 }
 
 func NewHomeAssistantService(params HomeAssistantServiceParams) HomeAssistantServiceInterface {
 	return &HomeAssistantService{
-		ctx:            params.Ctx,
-		state:          params.State,
-		coreClient:     params.CoreClient,
-		settingService: params.SettingService,
+		ctx:                  params.Ctx,
+		state:                params.State,
+		coreClient:           params.CoreClient,
+		supervisorCoreClient: params.SupervisorCoreClient,
+		settingService:       params.SettingService,
 		//propRepo:            params.PropRepo,
 		notificationTracker: make(map[string]string),
 	}
@@ -638,6 +643,26 @@ func (s *HomeAssistantService) DismissPersistentNotification(notificationID stri
 	s.notificationTrackerLock.Unlock()
 
 	slog.DebugContext(s.ctx, "Dismissed persistent notification in Home Assistant", "notification_id", notificationID)
+	return nil
+}
+
+// RestartHomeAssistant restarts HA Core via the Supervisor's POST /core/restart endpoint.
+func (s *HomeAssistantService) RestartHomeAssistant(ctx context.Context) error {
+	if s.supervisorCoreClient == nil {
+		slog.DebugContext(ctx, "Skipping Home Assistant restart - no supervisor core client available")
+		return nil
+	}
+
+	resp, err := s.supervisorCoreClient.RestartCoreWithResponse(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to call supervisor core/restart")
+	}
+
+	if resp.HTTPResponse.StatusCode < 200 || resp.HTTPResponse.StatusCode >= 300 {
+		return errors.Errorf("supervisor core/restart returned HTTP %d", resp.HTTPResponse.StatusCode)
+	}
+
+	slog.InfoContext(ctx, "Home Assistant restart requested via supervisor core/restart")
 	return nil
 }
 

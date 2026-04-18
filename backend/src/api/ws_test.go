@@ -31,6 +31,8 @@ type WsHandlerSuite struct {
 	state           *dto.ContextState
 	mockBroadcaster service.BroadcasterServiceInterface
 	repairService   service.RepairServiceInterface
+	mockProblemSvc  service.ProblemServiceInterface
+	mockHAService   service.HomeAssistantServiceInterface
 }
 
 func TestWsHandlerSuite(t *testing.T) { suite.Run(t, new(WsHandlerSuite)) }
@@ -50,6 +52,7 @@ func (suite *WsHandlerSuite) SetupTest() {
 			service.NewRepairService,
 			service.NewBroadcasterService,
 			events.NewEventBus,
+			mock.Mock[service.ProblemServiceInterface],
 			mock.Mock[service.HomeAssistantServiceInterface],
 			mock.Mock[service.HaRootServiceInterface],
 			func() *dto.DiskMap { return &dto.DiskMap{} },
@@ -59,6 +62,8 @@ func (suite *WsHandlerSuite) SetupTest() {
 		fx.Populate(&suite.ctx, &suite.cancel, &suite.state),
 		fx.Populate(&suite.mockBroadcaster),
 		fx.Populate(&suite.repairService),
+		fx.Populate(&suite.mockProblemSvc),
+		fx.Populate(&suite.mockHAService),
 	)
 
 	suite.app.RequireStart()
@@ -67,7 +72,7 @@ func (suite *WsHandlerSuite) SetupTest() {
 func (suite *WsHandlerSuite) TestWebSocketUpgrade() {
 
 	// Create handler
-	h := api.NewWebSocketBroker(suite.ctx, suite.mockBroadcaster, suite.repairService, suite.state)
+	h := api.NewWebSocketBroker(api.WebSocketHandlerParams{Ctx: suite.ctx, Broadcaster: suite.mockBroadcaster, RepairService: suite.repairService, State: suite.state})
 
 	// Register on router
 	r := mux.NewRouter()
@@ -94,7 +99,7 @@ func (suite *WsHandlerSuite) TestWebSocketUpgrade() {
 func (suite *WsHandlerSuite) TestWebSocketReceivesMessagesFromBroadcaster() {
 	// Use a real BroadcasterService so we can broadcast messages into the WebSocket handler.
 
-	h := api.NewWebSocketBroker(suite.ctx, suite.mockBroadcaster, suite.repairService, suite.state)
+	h := api.NewWebSocketBroker(api.WebSocketHandlerParams{Ctx: suite.ctx, Broadcaster: suite.mockBroadcaster, RepairService: suite.repairService, State: suite.state})
 	r := mux.NewRouter()
 	h.RegisterWs(r)
 
@@ -134,7 +139,7 @@ func (suite *WsHandlerSuite) TestWebSocketReceivesMessagesFromBroadcaster() {
 }
 
 func (suite *WsHandlerSuite) TestWebSocketAcceptsValidatedInboundHelo() {
-	h := api.NewWebSocketBroker(suite.ctx, suite.mockBroadcaster, suite.repairService, suite.state)
+	h := api.NewWebSocketBroker(api.WebSocketHandlerParams{Ctx: suite.ctx, Broadcaster: suite.mockBroadcaster, RepairService: suite.repairService, State: suite.state})
 	r := mux.NewRouter()
 	h.RegisterWs(r)
 
@@ -180,7 +185,7 @@ func (suite *WsHandlerSuite) TestWebSocketAcceptsValidatedInboundHelo() {
 }
 
 func (suite *WsHandlerSuite) TestWebSocketIgnoresMalformedInboundPayload() {
-	h := api.NewWebSocketBroker(suite.ctx, suite.mockBroadcaster, suite.repairService, suite.state)
+	h := api.NewWebSocketBroker(api.WebSocketHandlerParams{Ctx: suite.ctx, Broadcaster: suite.mockBroadcaster, RepairService: suite.repairService, State: suite.state})
 	r := mux.NewRouter()
 	h.RegisterWs(r)
 
@@ -222,7 +227,7 @@ func (suite *WsHandlerSuite) TestWebSocketAcceptsValidatedInboundRepairLifecycle
 	})
 	suite.Require().NoError(err)
 
-	h := api.NewWebSocketBroker(suite.ctx, suite.mockBroadcaster, suite.repairService, suite.state)
+	h := api.NewWebSocketBroker(api.WebSocketHandlerParams{Ctx: suite.ctx, Broadcaster: suite.mockBroadcaster, RepairService: suite.repairService, State: suite.state})
 	r := mux.NewRouter()
 	h.RegisterWs(r)
 
@@ -258,49 +263,16 @@ func (suite *WsHandlerSuite) TestWebSocketAcceptsValidatedInboundRepairLifecycle
 	}, time.Second, 10*time.Millisecond)
 }
 
-func (suite *WsHandlerSuite) TestWebSocketIgnoresInvalidInboundRepairLifecycle() {
-	_, err := suite.repairService.Create(dto.RepairCommandMessage{
-		CommandID:      "cmd-2",
-		RepairID:       "disk_space_low",
-		Action:         dto.RepairCommandActionUpsert,
-		TranslationKey: "disk_space_low",
-		Severity:       dto.RepairIssueSeverityWarning,
-	})
-	suite.Require().NoError(err)
-
-	h := api.NewWebSocketBroker(suite.ctx, suite.mockBroadcaster, suite.repairService, suite.state)
-	r := mux.NewRouter()
-	h.RegisterWs(r)
-
-	srv := httptest.NewServer(r)
-	defer srv.Close()
-
-	url := "ws" + srv.URL[len("http"):] + "/ws"
-	conn, resp, err := websocket.DefaultDialer.Dial(url, nil)
-	if err != nil {
-		suite.Failf("Dial failed", "err=%v resp=%v", err, resp)
-		return
-	}
-	defer conn.Close()
-
-	suite.Require().NoError(conn.SetReadDeadline(time.Now().Add(1 * time.Second)))
-	_, welcomeMsg, err := conn.ReadMessage()
-	suite.Require().NoError(err)
-	suite.Contains(string(welcomeMsg), "event: hello")
-
-	err = conn.WriteJSON(dto.RepairLifecycleMessage{
-		Type:     dto.ClientEventTypes.CLIENTEVENTTYPEREPAIRLIFECYCLE.String(),
-		RepairID: "disk_space_low",
-		Status:   dto.RepairLifecycleStatus("broken"),
-	})
-	suite.Require().NoError(err)
-	time.Sleep(50 * time.Millisecond)
-	repair, ok := suite.repairService.Get("disk_space_low")
-	suite.True(ok)
-	suite.Nil(repair.Lifecycle)
-}
-
 func (suite *WsHandlerSuite) TestWebSocketRepairLifecycleSynchronizesRepairServiceState() {
+	var noProblemError *string
+	mock.When(
+		suite.mockProblemSvc.ApplyLifecycle(
+			mock.Exact("disk_space_low"),
+			mock.Exact(dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSIGNORED),
+			mock.Exact(noProblemError),
+		),
+	).ThenReturn(&dto.Problem{ProblemKey: "disk_space_low"}, nil)
+
 	_, err := suite.repairService.Create(dto.RepairCommandMessage{
 		CommandID:      "cmd-100",
 		RepairID:       "disk_space_low",
@@ -310,7 +282,7 @@ func (suite *WsHandlerSuite) TestWebSocketRepairLifecycleSynchronizesRepairServi
 	})
 	suite.Require().NoError(err)
 
-	h := api.NewWebSocketBroker(suite.ctx, suite.mockBroadcaster, suite.repairService, suite.state)
+	h := api.NewWebSocketBroker(api.WebSocketHandlerParams{Ctx: suite.ctx, Broadcaster: suite.mockBroadcaster, RepairService: suite.repairService, State: suite.state})
 	r := mux.NewRouter()
 	h.RegisterWs(r)
 
@@ -342,6 +314,82 @@ func (suite *WsHandlerSuite) TestWebSocketRepairLifecycleSynchronizesRepairServi
 		repair, ok := suite.repairService.Get("disk_space_low")
 		return ok && repair != nil && repair.Status == dto.RepairLifecycleStatusIgnored
 	}, time.Second, 10*time.Millisecond)
+
+	_, _ = mock.Verify(suite.mockProblemSvc, matchers.Times(1)).ApplyLifecycle(
+		mock.Exact("disk_space_low"),
+		mock.Exact(dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSIGNORED),
+		mock.Exact(noProblemError),
+	)
+}
+
+func (suite *WsHandlerSuite) TestWebSocketRepairLifecycleErrorSynchronizesProblemServiceState() {
+	problemErr := "ha_apply_failed"
+	problemLifecycleCalled := make(chan *string, 1)
+	mock.When(
+		suite.mockProblemSvc.ApplyLifecycle(
+			mock.Exact("disk_space_low"),
+			mock.Exact(dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSERROR),
+			mock.Any[*string](),
+		),
+	).ThenAnswer(func(args []any) []any {
+		errValue, _ := args[2].(*string)
+		problemLifecycleCalled <- errValue
+		return []any{&dto.Problem{ProblemKey: "disk_space_low"}, nil}
+	})
+
+	_, err := suite.repairService.Create(dto.RepairCommandMessage{
+		CommandID:      "cmd-101",
+		RepairID:       "disk_space_low",
+		Action:         dto.RepairCommandActionUpsert,
+		TranslationKey: "disk_space_low",
+		Severity:       dto.RepairIssueSeverityWarning,
+	})
+	suite.Require().NoError(err)
+
+	h := api.NewWebSocketBroker(api.WebSocketHandlerParams{Ctx: suite.ctx, Broadcaster: suite.mockBroadcaster, RepairService: suite.repairService, State: suite.state})
+	r := mux.NewRouter()
+	h.RegisterWs(r)
+
+	srv := httptest.NewServer(r)
+	defer srv.Close()
+
+	url := "ws" + srv.URL[len("http"):] + "/ws"
+	conn, resp, err := websocket.DefaultDialer.Dial(url, nil)
+	if err != nil {
+		suite.Failf("Dial failed", "err=%v resp=%v", err, resp)
+		return
+	}
+	defer conn.Close()
+
+	suite.Require().NoError(conn.SetReadDeadline(time.Now().Add(1 * time.Second)))
+	_, welcomeMsg, err := conn.ReadMessage()
+	suite.Require().NoError(err)
+	suite.Contains(string(welcomeMsg), "event: hello")
+
+	err = conn.WriteJSON(dto.RepairLifecycleMessage{
+		Type:      dto.ClientEventTypes.CLIENTEVENTTYPEREPAIRLIFECYCLE.String(),
+		CommandID: "cmd-101",
+		RepairID:  "disk_space_low",
+		Status:    dto.RepairLifecycleStatusError,
+		Error:     &problemErr,
+	})
+	suite.Require().NoError(err)
+
+	suite.Eventually(func() bool {
+		repair, ok := suite.repairService.Get("disk_space_low")
+		return ok && repair != nil &&
+			repair.Status == dto.RepairLifecycleStatusError &&
+			repair.LastError != nil &&
+			*repair.LastError == problemErr
+	}, time.Second, 10*time.Millisecond)
+
+	select {
+	case errValue := <-problemLifecycleCalled:
+		suite.Require().NotNil(errValue)
+		suite.Equal(problemErr, *errValue)
+	case <-time.After(time.Second):
+		suite.Fail("timed out waiting for mirrored problem lifecycle call")
+	}
 }
 
 func (suite *WsHandlerSuite) TestWebSocketFlushesQueuedRepairCommandsAfterHelo() {
@@ -355,7 +403,7 @@ func (suite *WsHandlerSuite) TestWebSocketFlushesQueuedRepairCommandsAfterHelo()
 	})
 	suite.Require().NoError(err)
 
-	h := api.NewWebSocketBroker(suite.ctx, suite.mockBroadcaster, suite.repairService, suite.state)
+	h := api.NewWebSocketBroker(api.WebSocketHandlerParams{Ctx: suite.ctx, Broadcaster: suite.mockBroadcaster, RepairService: suite.repairService, State: suite.state})
 	r := mux.NewRouter()
 	h.RegisterWs(r)
 
@@ -387,4 +435,131 @@ func (suite *WsHandlerSuite) TestWebSocketFlushesQueuedRepairCommandsAfterHelo()
 	suite.Contains(string(flushedMsg), "event: repair_command")
 	suite.Contains(string(flushedMsg), "\"repair_id\":\"disk_space_low\"")
 	suite.Equal(0, suite.repairService.QueueSize())
+}
+
+// TestWebSocketRepairLifecycleFixedCallsHARestart verifies that when a "fixed" repair
+// lifecycle message arrives for the custom_component_restart_required repair, the
+// backend calls RestartHomeAssistant on the HA service.
+func (suite *WsHandlerSuite) TestWebSocketRepairLifecycleFixedCallsHARestart() {
+	ctrl := mock.NewMockController(suite.T())
+
+	restartCalled := make(chan struct{}, 1)
+	dismissCalled := make(chan struct{}, 1)
+
+	mockHASrv := mock.Mock[service.HomeAssistantServiceInterface](ctrl)
+	mock.When(mockHASrv.RestartHomeAssistant(mock.AnyContext())).
+		ThenAnswer(func(_ []any) []any {
+			restartCalled <- struct{}{}
+			return []any{nil}
+		})
+
+	mockHAComponentSvc := mock.Mock[service.HomeAssistantComponentServiceInterface](ctrl)
+	mock.When(mockHAComponentSvc.DismissRestartRequiredRepair(mock.AnyContext())).
+		ThenAnswer(func(_ []any) []any {
+			dismissCalled <- struct{}{}
+			return []any{nil}
+		})
+
+	h := api.NewWebSocketBroker(api.WebSocketHandlerParams{
+		Ctx:            suite.ctx,
+		Broadcaster:    suite.mockBroadcaster,
+		RepairService:  suite.repairService,
+		HAService:      mockHASrv,
+		HAComponentSvc: mockHAComponentSvc,
+		State:          suite.state,
+	})
+	r := mux.NewRouter()
+	h.RegisterWs(r)
+
+	srv := httptest.NewServer(r)
+	defer srv.Close()
+
+	url := "ws" + srv.URL[len("http"):] + "/ws"
+	conn, resp, err := websocket.DefaultDialer.Dial(url, nil)
+	if err != nil {
+		suite.Failf("Dial failed", "err=%v resp=%v", err, resp)
+		return
+	}
+	defer conn.Close()
+
+	suite.Require().NoError(conn.SetReadDeadline(time.Now().Add(1 * time.Second)))
+	_, welcomeMsg, err := conn.ReadMessage()
+	suite.Require().NoError(err)
+	suite.Contains(string(welcomeMsg), "event: hello")
+
+	err = conn.WriteJSON(dto.RepairLifecycleMessage{
+		Type:     dto.ClientEventTypes.CLIENTEVENTTYPEREPAIRLIFECYCLE.String(),
+		RepairID: "custom_component_restart_required",
+		Status:   dto.RepairLifecycleStatusFixed,
+	})
+	suite.Require().NoError(err)
+
+	select {
+	case <-dismissCalled:
+	case <-time.After(time.Second):
+		suite.Fail("timed out waiting for DismissRestartRequiredRepair to be called")
+	}
+
+	select {
+	case <-restartCalled:
+	case <-time.After(time.Second):
+		suite.Fail("timed out waiting for RestartHomeAssistant to be called")
+	}
+}
+
+func (suite *WsHandlerSuite) TestWebSocketAcceptsValidatedInboundProblemLifecycle() {
+	updated := &dto.Problem{
+		ProblemKey: "custom_component_restart_required",
+		Title:      "Restart Home Assistant",
+		Severity:   dto.ProblemSeverities.PROBLEMSEVERITYERROR,
+		Status:     dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSFIXED,
+	}
+	var noProblemError *string
+	mock.When(
+		suite.mockProblemSvc.ApplyLifecycle(
+			mock.Exact("custom_component_restart_required"),
+			mock.Exact(dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSFIXED),
+			mock.Exact(noProblemError),
+		),
+	).ThenReturn(updated, nil)
+
+	h := api.NewWebSocketBroker(api.WebSocketHandlerParams{
+		Ctx:            suite.ctx,
+		Broadcaster:    suite.mockBroadcaster,
+		RepairService:  suite.repairService,
+		ProblemService: suite.mockProblemSvc,
+		State:          suite.state,
+	})
+	r := mux.NewRouter()
+	h.RegisterWs(r)
+
+	srv := httptest.NewServer(r)
+	defer srv.Close()
+
+	url := "ws" + srv.URL[len("http"):] + "/ws"
+	conn, resp, err := websocket.DefaultDialer.Dial(url, nil)
+	if err != nil {
+		suite.Failf("Dial failed", "err=%v resp=%v", err, resp)
+		return
+	}
+	defer conn.Close()
+
+	suite.Require().NoError(conn.SetReadDeadline(time.Now().Add(1 * time.Second)))
+	_, welcomeMsg, err := conn.ReadMessage()
+	suite.Require().NoError(err)
+	suite.Contains(string(welcomeMsg), "event: hello")
+
+	err = conn.WriteJSON(dto.ProblemLifecycleMessage{
+		Type:       dto.ClientEventTypes.CLIENTEVENTTYPEPROBLEMLIFECYCLE.String(),
+		ProblemKey: "custom_component_restart_required",
+		Status:     dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSFIXED,
+	})
+	suite.Require().NoError(err)
+
+	time.Sleep(100 * time.Millisecond)
+	_, _ = mock.Verify(suite.mockProblemSvc, matchers.Times(1)).ApplyLifecycle(
+		mock.Exact("custom_component_restart_required"),
+		mock.Exact(dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSFIXED),
+		mock.Exact(noProblemError),
+	)
 }

@@ -22,6 +22,7 @@ func TestWebEventType_String(t *testing.T) {
 		{"Smart Test Status", dto.WebEventTypes.EVENTSMARTTESTSTATUS, "smart_test_status"},
 		{"Error", dto.WebEventTypes.EVENTERROR, "error"},
 		{"Repair Command", dto.WebEventTypes.EVENTREPAIRCOMMAND, "repair_command"},
+		{"Problem", dto.WebEventTypes.EVENTPROBLEM, "problem"},
 		{"App Config Changed", dto.WebEventTypes.EVENTAPPCONFIGCHANGED, "app_config_changed"},
 		{"Command Started", dto.WebEventTypes.EVENTCOMMANDSTARTED, "command_started"},
 		{"Command Output", dto.WebEventTypes.EVENTCOMMANDOUTPUT, "command_output"},
@@ -49,6 +50,7 @@ func TestWebEventType_IsValidEvent_ValidTypes(t *testing.T) {
 		{"Valid SmartTestStatus", dto.SmartTestStatus{}},
 		{"Valid ErrorModel", &dto.ErrorDataModel{}},
 		{"Valid RepairCommandMessage", dto.RepairCommandMessage{}},
+		{"Valid Problem", dto.Problem{}},
 		{"Valid AppConfigChangedNotification", dto.AppConfigChangedNotification{}},
 		{"Valid CommandStartedNotification", dto.CommandStartedNotification{}},
 		{"Valid CommandOutputNotification", dto.CommandOutputNotification{}},
@@ -93,6 +95,7 @@ func TestWebEventMap_ContainsAllEventTypes(t *testing.T) {
 		"smart_test_status",
 		"error",
 		"repair_command",
+		"problem",
 		"app_config_changed",
 		"command_started",
 		"command_output",
@@ -105,7 +108,7 @@ func TestWebEventMap_ContainsAllEventTypes(t *testing.T) {
 }
 
 func TestWebEventMap_Size(t *testing.T) {
-	assert.Len(t, dto.WebEventMap, 14, "WebEventMap should contain exactly 14 event types")
+	assert.Len(t, dto.WebEventMap, 15, "WebEventMap should contain exactly 15 event types")
 }
 
 func TestWebEventType_IsValidEvent_WithConcreteTypes(t *testing.T) {

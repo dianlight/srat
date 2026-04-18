@@ -11,6 +11,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/homeassistant/apps"
+	ha_core "github.com/dianlight/srat/homeassistant/core"
 	"github.com/dianlight/srat/homeassistant/core_api"
 	"github.com/dianlight/srat/homeassistant/discovery"
 	"github.com/dianlight/srat/homeassistant/hardware"
@@ -22,7 +23,6 @@ import (
 	"github.com/dianlight/srat/homeassistant/websocket"
 	"github.com/dianlight/srat/internal"
 	"github.com/dianlight/srat/internal/commandexec"
-	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
 	servicefilesystem "github.com/dianlight/srat/service/filesystem"
 	"github.com/dianlight/srat/unixsamba"
@@ -90,6 +90,7 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 			*/
 			service.NewAddonsService,
 			service.NewHomeAssistantService,
+			service.NewHomeAssistantComponentService,
 			service.NewBroadcasterService,
 			commandexec.NewCommandExecutor,
 			service.NewVolumeMountManager,
@@ -106,7 +107,8 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 			service.NewDiskStatsService,
 			service.NewNetworkStatsService,
 			service.NewSmartService,
-			service.NewIssueService,
+			service.NewProblemService,
+			service.NewProblemHABridge,
 			service.NewRepairService,
 			service.NewAddonConfigWatcherService,
 			service.NewIssueReportService,
@@ -118,9 +120,9 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 			service.NewHaDiscoveryService,
 			service.NewSettingService,
 			//repository.NewPropertyRepositoryRepository,
-			repository.NewIssueRepository,
 		),
 		fx.Invoke(func(service.AddonConfigWatcherServiceInterface) {}),
+		fx.Invoke(func(service.ProblemHABridgeInterface) {}),
 		fx.Invoke(func(commandRunner commandexec.Executor) {
 			servicefilesystem.SetDefaultCommandRunner(commandRunner)
 			unixsamba.SetCommandRunner(commandRunner)
@@ -164,8 +166,9 @@ func ProvideHAClientDependencies(params BaseAppParams) fx.Option {
 		},
 		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (core_api.ClientWithResponsesInterface, error) {
 			return core_api.NewClientWithResponses(params.StaticConfig.SupervisorURL, core_api.WithRequestEditorFn(bearerAuth.Intercept))
-		},
-		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (root.ClientWithResponsesInterface, error) {
+		}, func(bearerAuth *securityprovider.SecurityProviderBearerToken) (ha_core.ClientWithResponsesInterface, error) {
+			return ha_core.NewClientWithResponses(params.StaticConfig.SupervisorURL, ha_core.WithRequestEditorFn(bearerAuth.Intercept))
+		}, func(bearerAuth *securityprovider.SecurityProviderBearerToken) (root.ClientWithResponsesInterface, error) {
 			return root.NewClientWithResponses(params.StaticConfig.SupervisorURL, root.WithRequestEditorFn(bearerAuth.Intercept))
 		},
 		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (discovery.ClientWithResponsesInterface, error) {
@@ -203,6 +206,9 @@ func ProvideHAClientDependenciesWithoutWebSocket(params BaseAppParams) fx.Option
 		},
 		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (core_api.ClientWithResponsesInterface, error) {
 			return core_api.NewClientWithResponses(params.StaticConfig.SupervisorURL, core_api.WithRequestEditorFn(bearerAuth.Intercept))
+		},
+		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (ha_core.ClientWithResponsesInterface, error) {
+			return ha_core.NewClientWithResponses(params.StaticConfig.SupervisorURL, ha_core.WithRequestEditorFn(bearerAuth.Intercept))
 		},
 		func(bearerAuth *securityprovider.SecurityProviderBearerToken) (root.ClientWithResponsesInterface, error) {
 			return root.NewClientWithResponses(params.StaticConfig.SupervisorURL, root.WithRequestEditorFn(bearerAuth.Intercept))

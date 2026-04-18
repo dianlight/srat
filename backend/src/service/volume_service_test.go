@@ -16,7 +16,6 @@ import (
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/dianlight/srat/internal/osutil"
-	"github.com/dianlight/srat/repository"
 	"github.com/dianlight/srat/service"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
@@ -79,10 +78,6 @@ func (suite *VolumeServiceTestSuite) SetupTest() {
 					DatabasePath: "file::memory:?cache=shared&_pragma=foreign_keys(1)",
 				}
 			},
-			func() repository.IssueRepositoryInterface {
-				// Provide a nil repository since it's only used in error cases in tests
-				return nil
-			},
 			func() *dto.DiskMap { return &dto.DiskMap{} },
 			dbom.NewDB,
 			service.NewVolumeMountManager,
@@ -93,7 +88,6 @@ func (suite *VolumeServiceTestSuite) SetupTest() {
 			//mock.Mock[repository.MountPointPathRepositoryInterface],
 			mock.Mock[service.HardwareServiceInterface],
 			mock.Mock[service.ShareServiceInterface],
-			mock.Mock[service.IssueServiceInterface],
 			//mock.Mock[events.EventBusInterface],
 		),
 		fx.Populate(&suite.volumeService),

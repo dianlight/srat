@@ -2,7 +2,6 @@
 
 [tools]
 "npm:@rtk-query/codegen-openapi" = "2.2.0"
-"npm:@typescript/native-preview" = "7.0.0-dev.20260413.1"
 
 [hooks]
 enter = "mise run prepare"

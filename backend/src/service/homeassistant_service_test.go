@@ -9,6 +9,7 @@ import (
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
+	ha_core "github.com/dianlight/srat/homeassistant/core"
 	"github.com/dianlight/srat/homeassistant/core_api"
 	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/dianlight/srat/service"
@@ -22,12 +23,13 @@ import (
 
 type HomeAssistantServiceTestSuite struct {
 	suite.Suite
-	ctx            context.Context
-	config         *dto.ContextState
-	haService      service.HomeAssistantServiceInterface
-	client         core_api.ClientWithResponsesInterface
-	settingService service.SettingServiceInterface
-	db             *gorm.DB
+	ctx                  context.Context
+	config               *dto.ContextState
+	haService            service.HomeAssistantServiceInterface
+	client               core_api.ClientWithResponsesInterface
+	supervisorCoreClient ha_core.ClientWithResponsesInterface
+	settingService       service.SettingServiceInterface
+	db                   *gorm.DB
 	//propRepo  repository.PropertyRepositoryInterface
 	app *fxtest.App
 }
@@ -58,13 +60,15 @@ func (suite *HomeAssistantServiceTestSuite) SetupTest() {
 			service.NewSettingService,
 			//mock.Mock[repository.PropertyRepositoryInterface],
 			mock.Mock[core_api.ClientWithResponsesInterface],
+			mock.Mock[ha_core.ClientWithResponsesInterface],
 		),
 		fx.Populate(&suite.haService,
 			//&suite.propRepo,
 			&suite.settingService,
 			&suite.db,
 			&suite.ctx,
-			&suite.client),
+			&suite.client,
+			&suite.supervisorCoreClient),
 	)
 	mock.When(suite.client.PostEntityStateWithResponse(mock.AnyContext(), mock.Any[string](), mock.Any[core_api.EntityState]())).ThenReturn(
 		&core_api.PostEntityStateResponse{
@@ -611,4 +615,51 @@ func (suite *HomeAssistantServiceTestSuite) TestCreatePersistentNotification_NoC
 		mock.Any[string](),
 		mock.Any[core_api.ServiceData](),
 	)
+}
+
+func (suite *HomeAssistantServiceTestSuite) TestRestartHomeAssistant_Success() {
+	// Arrange - supervisor returns 200
+	mock.When(suite.supervisorCoreClient.RestartCoreWithResponse(
+		mock.AnyContext(),
+	)).ThenReturn(&ha_core.RestartCoreResponse{
+		HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+	}, nil)
+
+	// Act
+	err := suite.haService.RestartHomeAssistant(suite.ctx)
+
+	// Assert
+	suite.NoError(err)
+}
+
+func (suite *HomeAssistantServiceTestSuite) TestRestartHomeAssistant_504IsSuccess() {
+	// Arrange - supervisor returns 504 (connection drops mid-restart, should not happen with correct endpoint but kept for safety)
+	mock.When(suite.supervisorCoreClient.RestartCoreWithResponse(
+		mock.AnyContext(),
+	)).ThenReturn(&ha_core.RestartCoreResponse{
+		HTTPResponse: &http.Response{StatusCode: http.StatusGatewayTimeout},
+	}, nil)
+
+	// Act
+	err := suite.haService.RestartHomeAssistant(suite.ctx)
+
+	// Assert - 504 is an error from the supervisor core endpoint
+	suite.Error(err)
+	suite.Contains(err.Error(), "504")
+}
+
+func (suite *HomeAssistantServiceTestSuite) TestRestartHomeAssistant_ErrorStatus() {
+	// Arrange - supervisor returns an actual error status
+	mock.When(suite.supervisorCoreClient.RestartCoreWithResponse(
+		mock.AnyContext(),
+	)).ThenReturn(&ha_core.RestartCoreResponse{
+		HTTPResponse: &http.Response{StatusCode: http.StatusUnauthorized},
+	}, nil)
+
+	// Act
+	err := suite.haService.RestartHomeAssistant(suite.ctx)
+
+	// Assert
+	suite.Error(err)
+	suite.Contains(err.Error(), "401")
 }

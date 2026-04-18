@@ -159,13 +159,6 @@ describe("Settings", () => {
         expect(InView).toBeTruthy();
     });
 
-    it("has validation regex patterns defined", async () => {
-        // These are internal to the module, so we can't test them directly
-        // But we can verify the module imports without errors
-        const settingsModule = await import("../Settings");
-        expect(settingsModule.Settings).toBeTruthy();
-    });
-
     it("Settings component has proper function signature", async () => {
         const { Settings } = await import("../Settings");
 
@@ -696,4 +689,5 @@ describe("Settings", () => {
         expect(await screen.findByRole("heading", { name: /app configuration/i })).toBeTruthy();
         expect(screen.queryByText(/rendered runtime configuration/i)).toBeNull();
     });
+
 });

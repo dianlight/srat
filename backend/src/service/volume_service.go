@@ -55,7 +55,6 @@ type VolumeService struct {
 	hardwareClient  HardwareServiceInterface
 	fs_service      FilesystemServiceInterface
 	shareService    ShareServiceInterface
-	issueService    IssueServiceInterface
 	state           *dto.ContextState
 	sfGroup         singleflight.Group
 	haService       HomeAssistantServiceInterface
@@ -76,7 +75,6 @@ type VolumeServiceProps struct {
 	HardwareClient    HardwareServiceInterface `optional:"true"`
 	FilesystemService FilesystemServiceInterface
 	ShareService      ShareServiceInterface
-	IssueService      IssueServiceInterface
 	State             *dto.ContextState
 	HAService         HomeAssistantServiceInterface `optional:"true"`
 	HDIdleService     HDIdleServiceInterface        `optional:"true"`
@@ -96,7 +94,6 @@ func NewVolumeService(
 		fs_service:      in.FilesystemService,
 		state:           in.State,
 		shareService:    in.ShareService,
-		issueService:    in.IssueService,
 		haService:       in.HAService,
 		hdidleService:   in.HDIdleService,
 		eventBus:        in.EventBus,

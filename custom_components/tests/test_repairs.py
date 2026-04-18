@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from homeassistant.core import HomeAssistant
@@ -91,3 +93,64 @@ def test_repair_proxy_register_and_unregister(hass: HomeAssistant) -> None:
 
     proxy.unregister()
     remove_listener.assert_called_once()
+
+
+# --- Translation key coverage tests ---
+
+_STRINGS_PATH = Path(__file__).parent.parent / "srat" / "strings.json"
+_EN_TRANSLATION_PATH = (
+    Path(__file__).parent.parent / "srat" / "translations" / "en.json"
+)
+
+# All repair translation keys broadcast by the backend that the custom component must define.
+_REQUIRED_ISSUE_KEYS = frozenset(
+    {
+        "custom_component_restart_required",
+        "custom_component_missing",
+        "addon_config_changed",
+    }
+)
+
+# Repair keys that are fixable and therefore require a fix_flow.confirm step in translations.
+_FIXABLE_ISSUE_KEYS = frozenset(
+    {
+        "custom_component_restart_required",
+        "custom_component_missing",
+    }
+)
+
+
+def test_strings_json_defines_all_required_issue_keys() -> None:
+    """strings.json must define every repair translation key sent by the backend."""
+    data = json.loads(_STRINGS_PATH.read_text(encoding="utf-8"))
+    issues = data.get("issues", {})
+    missing = _REQUIRED_ISSUE_KEYS - issues.keys()
+    assert not missing, f"strings.json is missing issue translation keys: {missing}"
+
+
+def test_strings_json_fixable_issues_have_fix_flow() -> None:
+    """Fixable repair keys in strings.json must declare a fix_flow.step.confirm section."""
+    data = json.loads(_STRINGS_PATH.read_text(encoding="utf-8"))
+    issues = data.get("issues", {})
+    for key in _FIXABLE_ISSUE_KEYS:
+        assert key in issues, f"strings.json missing issue key: {key}"
+        fix_flow = issues[key].get("fix_flow", {})
+        confirm = fix_flow.get("step", {}).get("confirm", {})
+        assert confirm.get("title"), (
+            f"strings.json issue '{key}' fix_flow.step.confirm.title is missing"
+        )
+        assert confirm.get("description"), (
+            f"strings.json issue '{key}' fix_flow.step.confirm.description is missing"
+        )
+
+
+def test_en_translation_matches_strings_json_issue_keys() -> None:
+    """translations/en.json must define the same issue keys as strings.json."""
+    strings = json.loads(_STRINGS_PATH.read_text(encoding="utf-8"))
+    en = json.loads(_EN_TRANSLATION_PATH.read_text(encoding="utf-8"))
+    strings_keys = set(strings.get("issues", {}).keys())
+    en_keys = set(en.get("issues", {}).keys())
+    assert strings_keys == en_keys, (
+        f"Issue key mismatch between strings.json and en.json: "
+        f"only in strings.json={strings_keys - en_keys}, only in en.json={en_keys - strings_keys}"
+    )

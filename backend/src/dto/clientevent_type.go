@@ -4,6 +4,7 @@ package dto
 type clientEventType int
 
 const (
-	clientEventTypeHelo            clientEventType = iota // "helo"
-	clientEventTypeRepairLifecycle                        // "repair_lifecycle"
+	clientEventTypeHelo             clientEventType = iota // "helo"
+	clientEventTypeRepairLifecycle                         // "repair_lifecycle"
+	clientEventTypeProblemLifecycle                        // "problem_lifecycle"
 )

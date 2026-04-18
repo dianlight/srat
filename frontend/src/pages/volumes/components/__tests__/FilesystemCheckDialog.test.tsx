@@ -104,10 +104,11 @@ describe("FilesystemCheckDialog", () => {
             }),
         );
 
+        // Running-status messages are shown in the status area, not as [info] log entries
+        // (they are noisy duplicates of streamed notes)
         expect(
             await screen.findByText("fsck.ext4: checking inode tables"),
         ).toBeTruthy();
-        expect(await screen.findByText("[info]", { exact: false })).toBeTruthy();
     });
 
     it("shows completion details in logs when a check succeeds without notes", async () => {

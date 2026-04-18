@@ -15,11 +15,14 @@ type HomeAssistantComponentConnection struct {
 type ContextState struct {
 	AddonIpAddress string // IP address of the addon interface
 	ServerPort     int    // Port on which the HTTP server is listening
-	ReadOnlyMode   bool   // Whether the application is running in read-only mode
-	ProtectedMode  bool   // Whether the application is running in an Addon started in protected mode
-	SecureMode     bool   // Whether the application is running in secure mode and need authentication for all operations
-	HACoreReady    bool   // Whether the Home Assistant Core is ready
-	UpdateDataDir  string // Directory where update files are stored
+	// CustomComponentsPath is the absolute directory containing Home Assistant
+	// custom components (defaults to /homeassistant/custom_components when empty).
+	CustomComponentsPath string
+	ReadOnlyMode         bool   // Whether the application is running in read-only mode
+	ProtectedMode        bool   // Whether the application is running in an Addon started in protected mode
+	SecureMode           bool   // Whether the application is running in secure mode and need authentication for all operations
+	HACoreReady          bool   // Whether the Home Assistant Core is ready
+	UpdateDataDir        string // Directory where update files are stored
 	//UpdateFilePath  string        // Full path to the update file for current update operation. Useful for onplace_update.
 	UpdateChannel   UpdateChannel                     // Current Update Channel
 	UpdateAvailable bool                              // Whether an update is available

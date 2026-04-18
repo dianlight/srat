@@ -36,6 +36,7 @@ type webEventTypesContainer struct {
 	EVENTFILESYSTEMTASK    WebEventType
 	EVENTERROR             WebEventType
 	EVENTREPAIRCOMMAND     WebEventType
+	EVENTPROBLEM           WebEventType
 	EVENTAPPCONFIGCHANGED  WebEventType
 	EVENTCOMMANDSTARTED    WebEventType
 	EVENTCOMMANDOUTPUT     WebEventType
@@ -76,6 +77,9 @@ var WebEventTypes = webEventTypesContainer{
 	EVENTREPAIRCOMMAND: WebEventType{
 		webEventType: eventRepairCommand,
 	},
+	EVENTPROBLEM: WebEventType{
+		webEventType: eventProblem,
+	},
 	EVENTAPPCONFIGCHANGED: WebEventType{
 		webEventType: eventAppConfigChanged,
 	},
@@ -109,6 +113,7 @@ func (w webEventTypesContainer) allSlice() []WebEventType {
 		WebEventTypes.EVENTFILESYSTEMTASK,
 		WebEventTypes.EVENTERROR,
 		WebEventTypes.EVENTREPAIRCOMMAND,
+		WebEventTypes.EVENTPROBLEM,
 		WebEventTypes.EVENTAPPCONFIGCHANGED,
 		WebEventTypes.EVENTCOMMANDSTARTED,
 		WebEventTypes.EVENTCOMMANDOUTPUT,
@@ -209,6 +214,7 @@ var webEventTypesNameMap = map[string]WebEventType{
 	"filesystem_task":    WebEventTypes.EVENTFILESYSTEMTASK,
 	"error":              WebEventTypes.EVENTERROR,
 	"repair_command":     WebEventTypes.EVENTREPAIRCOMMAND,
+	"problem":            WebEventTypes.EVENTPROBLEM,
 	"app_config_changed": WebEventTypes.EVENTAPPCONFIGCHANGED,
 	"command_started":    WebEventTypes.EVENTCOMMANDSTARTED,
 	"command_output":     WebEventTypes.EVENTCOMMANDOUTPUT,
@@ -264,6 +270,7 @@ var validWebEventTypes = map[WebEventType]bool{
 	WebEventTypes.EVENTFILESYSTEMTASK:    true,
 	WebEventTypes.EVENTERROR:             true,
 	WebEventTypes.EVENTREPAIRCOMMAND:     true,
+	WebEventTypes.EVENTPROBLEM:           true,
 	WebEventTypes.EVENTAPPCONFIGCHANGED:  true,
 	WebEventTypes.EVENTCOMMANDSTARTED:    true,
 	WebEventTypes.EVENTCOMMANDOUTPUT:     true,
@@ -368,7 +375,7 @@ func (w *WebEventType) UnmarshalYAML(by []byte) error {
 }
 
 // webeventtypeNames is a constant string slice containing all enum values cononical absolute names
-const webeventtypeNames = "helloupdatingvolumesheartbeatsharesdirty_data_trackersmart_test_statusfilesystem_taskerrorrepair_commandapp_config_changedcommand_startedcommand_outputcommand_terminated"
+const webeventtypeNames = "helloupdatingvolumesheartbeatsharesdirty_data_trackersmart_test_statusfilesystem_taskerrorrepair_commandproblemapp_config_changedcommand_startedcommand_outputcommand_terminated"
 
 // webeventtypeNamesMap is a map of enum values to their canonical absolute
 // name positions within the webeventtypeNames string slice
@@ -383,10 +390,11 @@ var webeventtypeNamesMap = map[WebEventType]string{
 	WebEventTypes.EVENTFILESYSTEMTASK:    webeventtypeNames[70:85],
 	WebEventTypes.EVENTERROR:             webeventtypeNames[85:90],
 	WebEventTypes.EVENTREPAIRCOMMAND:     webeventtypeNames[90:104],
-	WebEventTypes.EVENTAPPCONFIGCHANGED:  webeventtypeNames[104:122],
-	WebEventTypes.EVENTCOMMANDSTARTED:    webeventtypeNames[122:137],
-	WebEventTypes.EVENTCOMMANDOUTPUT:     webeventtypeNames[137:151],
-	WebEventTypes.EVENTCOMMANDTERMINATED: webeventtypeNames[151:169],
+	WebEventTypes.EVENTPROBLEM:           webeventtypeNames[104:111],
+	WebEventTypes.EVENTAPPCONFIGCHANGED:  webeventtypeNames[111:129],
+	WebEventTypes.EVENTCOMMANDSTARTED:    webeventtypeNames[129:144],
+	WebEventTypes.EVENTCOMMANDOUTPUT:     webeventtypeNames[144:158],
+	WebEventTypes.EVENTCOMMANDTERMINATED: webeventtypeNames[158:176],
 }
 
 // String implements the Stringer interface.
@@ -405,7 +413,7 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the goenums command to generate them again.
 	// Does not identify newly added constant values unless order changes
-	var x [14]struct{}
+	var x [15]struct{}
 	_ = x[eventHello]
 	_ = x[eventUpdating-1]
 	_ = x[eventVolumes-2]
@@ -416,8 +424,9 @@ func _() {
 	_ = x[eventFilesystemTask-7]
 	_ = x[eventError-8]
 	_ = x[eventRepairCommand-9]
-	_ = x[eventAppConfigChanged-10]
-	_ = x[eventCommandStarted-11]
-	_ = x[eventCommandOutput-12]
-	_ = x[eventCommandTerminated-13]
+	_ = x[eventProblem-10]
+	_ = x[eventAppConfigChanged-11]
+	_ = x[eventCommandStarted-12]
+	_ = x[eventCommandOutput-13]
+	_ = x[eventCommandTerminated-14]
 }
