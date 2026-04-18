@@ -58,6 +58,11 @@ These instructions are the concise, must-follow rules for working in SRAT. Keep 
 - Frontend tests: use `mise run //frontend:test`, React Testing Library, and **`user-event` only** (no `fireEvent`).
 - Frontend test stability: run `mise run //frontend:test --rerun-each 10` for modified tests.
 
+## Refactoring
+
+- **Always invoke the `prepare-refactor` skill** when a task type is `[REFACTOR]` or when the work is described as a refactor. Ask the user whether to run a prepare check before starting.
+- Refactor tracking documents live in `docs/refactors/<slug>.md`; do not commit them to task docs.
+
 ## Docs & quality gates
 
 - Docs: `mise run docs-validate` (and `mise run docs-fix` when needed).
