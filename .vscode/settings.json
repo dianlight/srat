@@ -281,5 +281,6 @@
 	"chat.tools.terminal.backgroundNotifications": true,
 	"chat.tools.confirmationCarousel.enabled": true,
 	"workbench.browser.openLocalhostLinks": true,
-	"jsts-chat-features.skills.enabled": true
+	"jsts-chat-features.skills.enabled": true,
+	"chat.editing.autoAcceptDelay": 100
 }

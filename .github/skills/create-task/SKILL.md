@@ -12,6 +12,7 @@ Produces a structured task document in `docs/tasks/` using the [project task tem
 
 - Planning a new feature, bug fix, refactor, or documentation item
 - Capturing implementation notes and acceptance criteria before starting work
+- If you need to ask questions to clarify the task details before creating the document, do so in the chat first, then use this skill once you have the necessary information.
 - Converting a GitHub issue or request into a tracked work item
 - Any time the user says "create task", "new task", "plan this", or "add a TODO"
 
@@ -82,7 +83,8 @@ Use [task-template.md](../../../docs/task-template.md) as the base. Fill in:
 - [ ] Task 5: Accessibility (if applicable)
 - [ ] Task 6: Code review and cleanup
 - [ ] Task 7: Final testing and validation
-- [ ] Task 8: Ask to create a PR with the task implementation and link it here for tracking
+- [ ] Task 8: Capture the lessons learned and update documentation
+- [ ] Task 9: Ask to create a PR with the task implementation and link it here for tracking
 
 ## 🧠 Implementation Notes (Copilot Context)
 ...
