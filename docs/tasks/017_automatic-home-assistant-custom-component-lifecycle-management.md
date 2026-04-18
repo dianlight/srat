@@ -1,6 +1,6 @@
 # [FEATURE]: Automatic Home Assistant Custom Component Lifecycle Management
 
-**Target Repo:** `srat` **Status:** 🔄 In Progress **Issue Link:** https://github.com/dianlight/srat/issues/565
+**Target Repo:** `srat` **Status:** ✅ Complete **Issue Link:** https://github.com/dianlight/srat/issues/565
 
 ## 🎯 Objective
 
