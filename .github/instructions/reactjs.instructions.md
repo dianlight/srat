@@ -93,6 +93,7 @@ Instructions for building high-quality ReactJS applications with modern patterns
 - Use optimistic updates for better user experience
 - Implement proper caching strategies
 - Handle offline scenarios and network errors gracefully
+- **Never use raw `fetch()` for internal API calls** — always use RTK Query via `sratApi`. For imperative/callback use (e.g. inside `useCallback`), lazy hooks are not exported by the codegen; use `sratApi.endpoints.<endpointName>.useLazyQuery()` instead. When the endpoint response is a union type (e.g. `SuccessType | ErrorModel`), add a type guard before using the success branch.
 
 ### Error Handling
 
