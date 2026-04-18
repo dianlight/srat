@@ -524,17 +524,23 @@ function HomeAssistantCustomComponentPanel({
   );
 }
 
+const SETTINGS_STORAGE_KEY = "srat_settings_selected";
+const SETTINGS_EXPANDED_KEY = "srat_settings_expanded";
+const DEFAULT_EXPANDED = ["network", "update", "telemetry", "hdidle"];
+
 export function Settings() {
-  const [selectedSetting, setSelectedSetting] = useState<string | null>(
-    "general",
-  );
+  const [selectedSetting, setSelectedSetting] = useState<string | null>(() => {
+    return localStorage.getItem(SETTINGS_STORAGE_KEY) || "general";
+  });
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [expandedNodes, setExpandedNodes] = useState<string[]>([
-    "network",
-    "update",
-    "telemetry",
-    "hdidle",
-  ]);
+  const [expandedNodes, setExpandedNodes] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem(SETTINGS_EXPANDED_KEY);
+      return stored ? (JSON.parse(stored) as string[]) : DEFAULT_EXPANDED;
+    } catch {
+      return DEFAULT_EXPANDED;
+    }
+  });
   const [mobileTreeOpen, setMobileTreeOpen] = useState<boolean>(false);
 
   const settingsTree = useMemo(() => buildSettingsTree(), []);
@@ -630,6 +636,7 @@ export function Settings() {
   const handleSelectSetting = (settingName?: string) => {
     if (!settingName) return;
     setSelectedSetting(settingName);
+    localStorage.setItem(SETTINGS_STORAGE_KEY, settingName);
     setMobileTreeOpen(false);
   };
 
@@ -1529,9 +1536,13 @@ export function Settings() {
             <Box sx={{ flex: 1, overflow: "auto" }}>
               <SimpleTreeView
                 expandedItems={expandedNodes}
-                onExpandedItemsChange={(_event, nodeIds) =>
-                  setExpandedNodes(nodeIds)
-                }
+                onExpandedItemsChange={(_event, nodeIds) => {
+                  setExpandedNodes(nodeIds);
+                  localStorage.setItem(
+                    SETTINGS_EXPANDED_KEY,
+                    JSON.stringify(nodeIds),
+                  );
+                }}
                 sx={{ p: 1 }}
               >
                 {filteredTree.map(renderTree)}
@@ -1563,9 +1574,13 @@ export function Settings() {
           >
             <SimpleTreeView
               expandedItems={expandedNodes}
-              onExpandedItemsChange={(_event, nodeIds) =>
-                setExpandedNodes(nodeIds)
-              }
+              onExpandedItemsChange={(_event, nodeIds) => {
+                setExpandedNodes(nodeIds);
+                localStorage.setItem(
+                  SETTINGS_EXPANDED_KEY,
+                  JSON.stringify(nodeIds),
+                );
+              }}
               sx={{ p: 1 }}
             >
               {filteredTree.map(renderTree)}
