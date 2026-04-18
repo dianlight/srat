@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -66,7 +67,7 @@ func (a *IssueAPI) RegisterIssueHandler(api huma.API) {
 	}, func(ctx context.Context, input *struct{}) (*struct{ Body dto.IssueTemplateResponse }, error) {
 		template, err := a.templateService.GetTemplate()
 		if err != nil {
-			tlog.WarnContext(ctx, "failed to fetch issue template", "error", err)
+			tlog.WarnContext(ctx, "failed to fetch issue template", "error", errors.Unwrap(err))
 			errMsg := err.Error()
 			return &struct{ Body dto.IssueTemplateResponse }{
 				Body: dto.IssueTemplateResponse{

@@ -19,6 +19,7 @@ import (
 	"github.com/dianlight/srat/homeassistant/apps"
 	"github.com/dianlight/srat/homeassistant/websocket"
 	"github.com/dianlight/srat/internal/ctxkeys"
+	"github.com/dianlight/tlog"
 	"github.com/fsnotify/fsnotify"
 	"go.uber.org/fx"
 )
@@ -396,11 +397,11 @@ func (s *AddonConfigWatcherService) maybeNotify(path, hash string) {
 	s.hashMu.Lock()
 	defer s.hashMu.Unlock()
 	if hash == s.lastHash {
-		slog.DebugContext(s.ctx, "addon_config_watcher: unchanged options hash; skipping notification", "path", path, "hash", hash)
+		tlog.TraceContext(s.ctx, "addon_config_watcher: unchanged options hash; skipping notification", "path", path, "hash", hash)
 		return
 	}
 	s.lastHash = hash
-	slog.DebugContext(s.ctx, "addon_config_watcher: options hash changed", "path", path, "hash", hash)
+	tlog.DebugContext(s.ctx, "addon_config_watcher: options hash changed", "path", path, "hash", hash)
 	s.onChanged(path, hash)
 }
 
@@ -408,7 +409,7 @@ func (s *AddonConfigWatcherService) maybeNotify(path, hash string) {
 // It logs the detection, emits an AppConfigEvent on the event bus, and upserts a Problem
 // (or falls back to a HA persistent notification when ProblemService is unavailable).
 func (s *AddonConfigWatcherService) emitChanged(path, hash string) {
-	slog.InfoContext(s.ctx, "addon_config_watcher: external addon config change detected",
+	tlog.InfoContext(s.ctx, "addon_config_watcher: external addon config change detected",
 		"path", path, "hash", hash)
 
 	if s.eventBus != nil {
@@ -433,7 +434,7 @@ func (s *AddonConfigWatcherService) emitChanged(path, hash string) {
 			IsPersistent:   true,
 		})
 		if err != nil {
-			slog.WarnContext(s.ctx, "addon_config_watcher: could not upsert addon-config problem", "err", err)
+			tlog.WarnContext(s.ctx, "addon_config_watcher: could not upsert addon-config problem", "err", err)
 			return
 		}
 		return
@@ -447,7 +448,7 @@ func (s *AddonConfigWatcherService) emitChanged(path, hash string) {
 			"The addon options file was modified outside of SRAT. Reload the configuration to apply the new settings.",
 		)
 		if err != nil {
-			slog.WarnContext(s.ctx, "addon_config_watcher: could not create persistent notification", "err", err)
+			tlog.WarnContext(s.ctx, "addon_config_watcher: could not create persistent notification", "err", err)
 		}
 	}
 }
