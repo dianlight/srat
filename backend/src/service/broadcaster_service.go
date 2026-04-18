@@ -161,7 +161,7 @@ func (broker *BroadcasterService) setupEventListeners() []func() {
 		if event.Task == nil {
 			return nil
 		}
-		slog.DebugContext(ctx, "BroadcasterService received FilesystemTask event", "operation", event.Task.Operation, "status", event.Task.Status, "device", event.Task.Device)
+		tlog.TraceContext(ctx, "BroadcasterService received FilesystemTask event", "operation", event.Task.Operation, "status", event.Task.Status, "device", event.Task.Device)
 		broker.BroadcastMessage(*event.Task)
 		return nil
 	})
