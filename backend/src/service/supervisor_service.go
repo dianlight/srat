@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 
@@ -264,6 +265,8 @@ func (self *SupervisorService) networkMountShareWithRetry(ctx context.Context, s
 			if nfsPath == "" {
 				nfsPath = share.Name
 			}
+			// strip /mnt prefix if exists to avoid issues with ha_supervisor path handling
+			nfsPath = strings.TrimPrefix(nfsPath, "/mnt/")
 			rmount.Type = new(mount.MountType("nfs"))
 			rmount.Path = &nfsPath
 			rmount.Username = nil
