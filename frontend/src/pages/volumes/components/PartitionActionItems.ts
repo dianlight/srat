@@ -1,6 +1,3 @@
-import { getCurrentEnv } from "../../../macro/Environment" with {
-  type: "macro",
-};
 import type { MountPointData, Partition } from "../../../store/sratApi";
 
 export type PartitionActionKey =
@@ -139,8 +136,7 @@ export function getPartitionActionItems({
   if (
     onCheckFilesystem &&
     partition.filesystem_info?.support?.canCheck &&
-    !isMounted &&
-    getCurrentEnv() === "remote"
+    !isMounted
   ) {
     actionItems.push({
       key: "check-filesystem",
@@ -152,8 +148,7 @@ export function getPartitionActionItems({
   if (
     onSetFilesystemLabel &&
     partition.filesystem_info?.support?.canSetLabel &&
-    !isMounted &&
-    getCurrentEnv() === "remote"
+    !isMounted
   ) {
     actionItems.push({
       key: "set-label",
@@ -165,8 +160,7 @@ export function getPartitionActionItems({
   if (
     onFormatPartition &&
     partition.filesystem_info?.support?.canFormat &&
-    !isMounted &&
-    getCurrentEnv() === "remote"
+    !isMounted
   ) {
     actionItems.push({
       key: "format",

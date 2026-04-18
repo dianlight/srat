@@ -25,6 +25,7 @@ import {
   type CommandOutputLineSnapshot,
   type CommandStartedNotification,
   type CommandTerminatedNotification,
+  sratApi,
   useGetApiSettingsAppConfigQuery,
   usePutApiRestartMutation,
 } from "./store/sratApi";
@@ -90,6 +91,8 @@ export function App() {
     string | null
   >(null);
   const [commandDialogOpen, setCommandDialogOpen] = useState(false);
+  const [fetchCommandOutput] =
+    sratApi.endpoints.getApiCommandOutput.useLazyQuery();
   const commandEventDedupRef = useRef<string>("");
   const commandToastDedupRef = useRef<Set<string>>(new Set());
   // Compute Backdrop open state
@@ -204,24 +207,26 @@ export function App() {
     [],
   );
 
-  const backfillCommandSession = useCallback(async (executionId: string) => {
-    try {
-      const response = await fetch(
-        `/api/command_output?execution_id=${encodeURIComponent(executionId)}`,
-      );
-      if (!response.ok) {
-        return;
+  const backfillCommandSession = useCallback(
+    async (executionId: string) => {
+      try {
+        const snapshot = await fetchCommandOutput({ executionId }).unwrap();
+        if (!("execution_id" in snapshot)) {
+          return;
+        }
+        setCommandSessions((previous) => ({
+          ...previous,
+          [executionId]: mergeCommandSession(
+            previous[executionId],
+            snapshot as CommandExecutionSnapshot,
+          ),
+        }));
+      } catch {
+        // Best-effort backfill only; keep the live websocket output if the snapshot is unavailable.
       }
-
-      const snapshot = (await response.json()) as CommandExecutionSnapshot;
-      setCommandSessions((previous) => ({
-        ...previous,
-        [executionId]: mergeCommandSession(previous[executionId], snapshot),
-      }));
-    } catch {
-      // Best-effort backfill only; keep the live websocket output if the snapshot is unavailable.
-    }
-  }, []);
+    },
+    [fetchCommandOutput],
+  );
 
   const openCommandDialog = useCallback(
     (executionId: string) => {

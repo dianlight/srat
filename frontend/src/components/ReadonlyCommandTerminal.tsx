@@ -1,4 +1,5 @@
 import { Box, Typography } from "@mui/material";
+import { useEffect, useRef } from "react";
 import type { CommandOutputLineSnapshot } from "../store/sratApi";
 
 type TerminalChannel = "stdout" | "stderr" | "info";
@@ -93,6 +94,17 @@ export function ReadonlyCommandTerminal({
   emptyText = "No output available.",
 }: ReadonlyCommandTerminalProps) {
   const outputLines = lines ?? [];
+  const outputLinesLength = outputLines.length;
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (outputLinesLength > 0) {
+      bottomRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    }
+  }, [outputLinesLength]);
 
   return (
     <Box
@@ -150,6 +162,7 @@ export function ReadonlyCommandTerminal({
           );
         })
       )}
+      <div ref={bottomRef} />
     </Box>
   );
 }

@@ -593,9 +593,19 @@ func (s *FilesystemService) FormatPartition(ctx context.Context, devicePath, fsT
 		// Log start of operation
 		slog.InfoContext(s.ctx, "Starting format operation", "device", devicePath, "fsType", fsType)
 
+		// Track accumulated notes for cumulative progress reporting
+		var formatNoteMu sync.Mutex
+		var formatAccumulatedNotes []string
+
 		// Create progress callback that emits events
 		progressCallback := func(status string, percentual int, notes []string) {
 			if s.eventBus != nil {
+				formatNoteMu.Lock()
+				formatAccumulatedNotes = append(formatAccumulatedNotes, notes...)
+				currentNotes := make([]string, len(formatAccumulatedNotes))
+				copy(currentNotes, formatAccumulatedNotes)
+				formatNoteMu.Unlock()
+
 				message := fmt.Sprintf("Format %s: %s", devicePath, status)
 				if len(notes) > 0 {
 					message += " - " + strings.Join(notes, ", ")
@@ -622,7 +632,7 @@ func (s *FilesystemService) FormatPartition(ctx context.Context, devicePath, fsT
 						Status:         status,
 						Message:        message,
 						Progress:       percentual,
-						Notes:          notes,
+						Notes:          currentNotes,
 					},
 				})
 			}
@@ -655,6 +665,11 @@ func (s *FilesystemService) FormatPartition(ctx context.Context, devicePath, fsT
 			slog.ErrorContext(s.ctx, "Format operation failed", "device", devicePath, "fsType", fsType, "error", formatErr)
 		} else {
 			// Emit success event
+			formatNoteMu.Lock()
+			formatFinalNotes := make([]string, len(formatAccumulatedNotes))
+			copy(formatFinalNotes, formatAccumulatedNotes)
+			formatNoteMu.Unlock()
+
 			if s.eventBus != nil {
 				s.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
 					Event: events.Event{Type: events.EventTypes.STOP},
@@ -665,6 +680,7 @@ func (s *FilesystemService) FormatPartition(ctx context.Context, devicePath, fsT
 						Status:         "success",
 						Message:        fmt.Sprintf("Format operation completed successfully for %s", devicePath),
 						Progress:       100,
+						Notes:          formatFinalNotes,
 					},
 				})
 			}
@@ -731,9 +747,19 @@ func (s *FilesystemService) CheckPartition(ctx context.Context, devicePath, fsTy
 		// Log start of operation
 		slog.InfoContext(s.ctx, "Starting check operation", "device", devicePath, "fsType", fsType)
 
+		// Track accumulated notes for cumulative progress reporting
+		var checkNoteMu sync.Mutex
+		var checkAccumulatedNotes []string
+
 		// Create progress callback that emits events
 		progressCallback := func(status string, percentual int, notes []string) {
 			if s.eventBus != nil {
+				checkNoteMu.Lock()
+				checkAccumulatedNotes = append(checkAccumulatedNotes, notes...)
+				currentNotes := make([]string, len(checkAccumulatedNotes))
+				copy(currentNotes, checkAccumulatedNotes)
+				checkNoteMu.Unlock()
+
 				message := fmt.Sprintf("Check %s: %s", devicePath, status)
 				if len(notes) > 0 {
 					message += " - " + strings.Join(notes, ", ")
@@ -760,7 +786,7 @@ func (s *FilesystemService) CheckPartition(ctx context.Context, devicePath, fsTy
 						Status:         status,
 						Message:        message,
 						Progress:       percentual,
-						Notes:          notes,
+						Notes:          currentNotes,
 					},
 				})
 			}
@@ -786,7 +812,10 @@ func (s *FilesystemService) CheckPartition(ctx context.Context, devicePath, fsTy
 				slog.InfoContext(s.ctx, "Check operation canceled", "device", devicePath, "fsType", fsType)
 				return
 			}
-			failureNotes := make([]string, 0, 1)
+			checkNoteMu.Lock()
+			failureNotes := make([]string, len(checkAccumulatedNotes))
+			copy(failureNotes, checkAccumulatedNotes)
+			checkNoteMu.Unlock()
 			if errorMessage := strings.TrimSpace(checkErr.Error()); errorMessage != "" {
 				failureNotes = append(failureNotes, errorMessage)
 			}
@@ -808,10 +837,10 @@ func (s *FilesystemService) CheckPartition(ctx context.Context, devicePath, fsTy
 			// Log failure
 			slog.ErrorContext(s.ctx, "Check operation failed", "device", devicePath, "fsType", fsType, "error", checkErr)
 		} else {
-			completionNotes := make([]string, 0, 1)
-			if message := strings.TrimSpace(result.Message); message != "" {
-				completionNotes = append(completionNotes, message)
-			}
+			checkNoteMu.Lock()
+			checkFinalNotes := make([]string, len(checkAccumulatedNotes))
+			copy(checkFinalNotes, checkAccumulatedNotes)
+			checkNoteMu.Unlock()
 
 			// Emit success event
 			if s.eventBus != nil {
@@ -824,7 +853,7 @@ func (s *FilesystemService) CheckPartition(ctx context.Context, devicePath, fsTy
 						Status:         "success",
 						Message:        fmt.Sprintf("Check operation completed successfully for %s", devicePath),
 						Progress:       100,
-						Notes:          completionNotes,
+						Notes:          checkFinalNotes,
 						Result:         result,
 					},
 				})

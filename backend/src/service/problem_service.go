@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
@@ -39,6 +40,8 @@ type ProblemService struct {
 	cache map[string]dto.Problem
 }
 
+var problemConv = converter.ProblemToDtoConverterImpl{}
+
 func NewProblemService(params ProblemServiceParams) ProblemServiceInterface {
 	svc := &ProblemService{
 		ctx:      params.Ctx,
@@ -59,7 +62,7 @@ func (s *ProblemService) loadCache() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, row := range rows {
-		item := toDTO(&row)
+		item := problemConv.ToDto(&row)
 		s.cache[s.cacheKey(item.ProblemKey, item.Title)] = *item
 	}
 }
@@ -112,7 +115,7 @@ func (s *ProblemService) Upsert(problem *dto.Problem) (*dto.Problem, error) {
 			return nil, saveErr
 		}
 
-		item := toDTO(&existing)
+		item := problemConv.ToDto(&existing)
 		s.mu.Lock()
 		s.cache[s.cacheKey(item.ProblemKey, item.Title)] = *item
 		s.mu.Unlock()
@@ -124,7 +127,7 @@ func (s *ProblemService) Upsert(problem *dto.Problem) (*dto.Problem, error) {
 		return nil, err
 	}
 
-	row := toDBOM(problem)
+	row := problemConv.ToDbom(problem)
 	if row.Repeating == 0 {
 		row.Repeating = 1
 	}
@@ -133,7 +136,7 @@ func (s *ProblemService) Upsert(problem *dto.Problem) (*dto.Problem, error) {
 		return nil, createErr
 	}
 
-	item := toDTO(row)
+	item := problemConv.ToDto(row)
 	s.mu.Lock()
 	s.cache[s.cacheKey(item.ProblemKey, item.Title)] = *item
 	s.mu.Unlock()
@@ -155,7 +158,7 @@ func (s *ProblemService) Dismiss(problemKey string) error {
 		return err
 	}
 
-	item := toDTO(&row)
+	item := problemConv.ToDto(&row)
 	s.mu.Lock()
 	delete(s.cache, s.cacheKey(item.ProblemKey, item.Title))
 	s.mu.Unlock()
@@ -181,7 +184,7 @@ func (s *ProblemService) Get(problemKey string) (*dto.Problem, error) {
 		return nil, err
 	}
 
-	item := toDTO(&row)
+	item := problemConv.ToDto(&row)
 	s.mu.Lock()
 	s.cache[s.cacheKey(item.ProblemKey, item.Title)] = *item
 	s.mu.Unlock()
@@ -211,7 +214,7 @@ func (s *ProblemService) List() ([]*dto.Problem, error) {
 
 	ret := make([]*dto.Problem, 0, len(rows))
 	for _, row := range rows {
-		ret = append(ret, toDTO(&row))
+		ret = append(ret, problemConv.ToDto(&row))
 	}
 	return ret, nil
 }
@@ -237,7 +240,7 @@ func (s *ProblemService) ApplyLifecycle(problemKey string, status dto.ProblemLif
 		return nil, err
 	}
 
-	item := toDTO(&row)
+	item := problemConv.ToDto(&row)
 	s.mu.Lock()
 	s.cache[s.cacheKey(item.ProblemKey, item.Title)] = *item
 	s.mu.Unlock()
@@ -250,75 +253,4 @@ func (s *ProblemService) cacheKey(problemKey, title string) string {
 		return "key:" + strings.TrimSpace(problemKey)
 	}
 	return "title:" + strings.TrimSpace(title)
-}
-
-func toDTO(source *dbom.Problem) *dto.Problem {
-	if source == nil {
-		return nil
-	}
-	var learnMoreURL *string
-	if source.LearnMoreURL != "" {
-		learnMoreURL = new(source.LearnMoreURL)
-	}
-	var lastError *string
-	if source.LastError != "" {
-		lastError = new(source.LastError)
-	}
-	return &dto.Problem{
-		ID:                      source.ID,
-		ProblemKey:              source.ProblemKey,
-		Title:                   source.Title,
-		Description:             source.Description,
-		Severity:                source.Severity,
-		Status:                  source.Status,
-		Repeating:               source.Repeating,
-		Ignored:                 source.Ignored,
-		Actions:                 source.Actions,
-		TranslationKey:          source.TranslationKey,
-		TranslationPlaceholders: source.TranslationPlaceholders,
-		Data:                    source.Data,
-		LearnMoreURL:            learnMoreURL,
-		DetailLink:              source.DetailLink,
-		ResolutionLink:          source.ResolutionLink,
-		IsFixable:               source.IsFixable,
-		IsPersistent:            source.IsPersistent,
-		LastError:               lastError,
-		CreatedAt:               source.CreatedAt,
-		UpdatedAt:               source.UpdatedAt,
-	}
-}
-
-func toDBOM(source *dto.Problem) *dbom.Problem {
-	if source == nil {
-		return nil
-	}
-	learnMoreURL := ""
-	if source.LearnMoreURL != nil {
-		learnMoreURL = *source.LearnMoreURL
-	}
-	lastError := ""
-	if source.LastError != nil {
-		lastError = *source.LastError
-	}
-
-	return &dbom.Problem{
-		ID:                      source.ID,
-		ProblemKey:              strings.TrimSpace(source.ProblemKey),
-		Title:                   source.Title,
-		Description:             source.Description,
-		Severity:                source.Severity,
-		Status:                  source.Status,
-		Repeating:               source.Repeating,
-		Ignored:                 source.Ignored,
-		Actions:                 source.Actions,
-		TranslationKey:          source.TranslationKey,
-		TranslationPlaceholders: source.TranslationPlaceholders,
-		Data:                    source.Data,
-		LearnMoreURL:            learnMoreURL,
-		DetailLink:              source.DetailLink,
-		ResolutionLink:          source.ResolutionLink,
-		IsFixable:               source.IsFixable,
-		IsPersistent:            source.IsPersistent,
-		LastError:               lastError,
-	}
 }
