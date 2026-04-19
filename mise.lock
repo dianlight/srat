@@ -412,7 +412,7 @@ version = "0.22.0"
 backend = "npm:markdownlint-cli2"
 
 [[tools."npm:@typescript/native-preview"]]
-version = "7.0.0-dev.20260413.1"
+version = "7.0.0-dev.20260416.2"
 backend = "npm:@typescript/native-preview"
 
 [[tools."npm:doctoc"]]
