@@ -87,7 +87,7 @@ depends = [
 run = [
   "biome check --no-errors-on-unmatched --write"
 ]
-#quiet = true
+quiet = true
 
 [tasks.test]
 run = [

@@ -394,6 +394,10 @@ jobs:
           install: true
           experimental: true
 
+      - name: Prepare frontend for ${{ needs.setversion.outputs.version }}
+        run: |       
+          mise run //frontend:prepare
+
       - name: Set custom component version
         run: |
           VERSION="${{ needs.setversion.outputs.version }}"
