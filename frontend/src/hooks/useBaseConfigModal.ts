@@ -29,12 +29,12 @@ export const useBaseConfigModal = () => {
 
     // Type guard to ensure settings is a Settings object and not an error
     const isValidSettings = (data: unknown): data is Settings => {
-      return data !== null && typeof data === "object" && "hostname" in data;
+      return data !== null && typeof data === "object" && !("detail" in data);
     };
 
     // Type guard to ensure users is an array and not an error
     const isValidUsers = (data: unknown): data is User[] => {
-      return Array.isArray(data);
+      return Array.isArray(data) && data.every((u) => "password" in u);
     };
 
     // Find the admin user
@@ -48,8 +48,9 @@ export const useBaseConfigModal = () => {
     // 3. Hostname or workgroup are not set (indicating first-time setup)
     if (
       isValidSettings(settings) &&
-      adminUser &&
-      adminUser.password === "changeme!"
+      ((adminUser && adminUser.password === "changeme!") ||
+        !settings.hostname ||
+        !settings.workgroup)
     ) {
       setShouldShow(true);
     }

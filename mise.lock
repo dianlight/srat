@@ -416,7 +416,7 @@ version = "7.0.0-dev.20260413.1"
 backend = "npm:@typescript/native-preview"
 
 [[tools."npm:doctoc"]]
-version = "2.4.0"
+version = "2.4.1"
 backend = "npm:doctoc"
 
 [[tools."npm:prettier"]]

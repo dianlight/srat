@@ -3,8 +3,8 @@ package dto
 import "github.com/angusgmorrison/logfusc"
 
 type Settings struct {
-	Hostname                      string                 `json:"hostname,omitempty" default:"homeassistant"`
-	Workgroup                     string                 `json:"workgroup,omitempty" default:"WORKGROUP"`
+	Hostname                      string                 `json:"hostname,omitempty"`
+	Workgroup                     string                 `json:"workgroup,omitempty"`
 	AllowHost                     []string               `json:"allow_hosts,omitempty" nullable:"false" default:"[\"10.0.0.0/8\",\"100.0.0.0/8\",\"172.16.0.0/12\",\"192.168.0.0/16\",\"169.254.0.0/16\",\"fe80::/10\",\"fc00::/7\"]"`
 	CompatibilityMode             bool                   `json:"compatibility_mode,omitempty" default:"false"`
 	Interfaces                    []string               `json:"interfaces,omitempty" nullable:"false" default:"[]"`

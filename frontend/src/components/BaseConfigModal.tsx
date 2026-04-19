@@ -1,6 +1,4 @@
 import AutorenewIcon from "@mui/icons-material/Autorenew";
-import VisibilityIcon from "@mui/icons-material/Visibility";
-import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import {
   Alert,
   Box,
@@ -13,12 +11,17 @@ import {
   IconButton,
   InputAdornment,
   Stack,
-  TextField,
   Tooltip,
   Typography,
 } from "@mui/material";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { use, useEffect } from "react";
+import {
+  FormContainer,
+  PasswordElement,
+  TextFieldElement,
+  useForm,
+} from "react-hook-form-mui";
 import {
   type Settings,
   type User,
@@ -34,6 +37,13 @@ interface BaseConfigModalProps {
   onClose: () => void;
 }
 
+interface BaseConfigFormData {
+  newPassword: string;
+  confirmPassword: string;
+  hostname: string;
+  workgroup: string;
+}
+
 // Type guard to ensure settings is a Settings object and not an error
 const isValidSettings = (data: unknown): data is Settings => {
   return data !== null && typeof data === "object" && "hostname" in data;
@@ -45,104 +55,83 @@ const isValidUsers = (data: unknown): data is User[] => {
 };
 
 const BaseConfigModal: React.FC<BaseConfigModalProps> = ({ open, onClose }) => {
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [hostname, setHostname] = useState("");
-  const [workgroup, setWorkgroup] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [passwordError, setPasswordError] = useState("");
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
   const { data: settings } = useGetApiSettingsQuery();
   const { data: users } = useGetApiUsersQuery();
-  const {
-    data: systemHostname,
-    isLoading: isHostnameFetching,
-    //  refetch: triggerGetSystemHostname,
-  } = useGetApiHostnameQuery();
+  const { data: systemHostname, isLoading: isHostnameFetching } =
+    useGetApiHostnameQuery();
   const [updateSettings] = usePutApiSettingsMutation();
   const [updateAdminUser] = usePutApiUseradminMutation();
 
+  const formContext = useForm<BaseConfigFormData>({
+    defaultValues: {
+      newPassword: "",
+      confirmPassword: "",
+      hostname: "",
+      workgroup: "WORKGROUP",
+    },
+  });
+
+  const {
+    setValue,
+    setError,
+    formState: { isSubmitting },
+  } = formContext;
+
   useEffect(() => {
     if (isValidSettings(settings)) {
-      setHostname(settings.hostname || "");
-      setWorkgroup(settings.workgroup || "");
+      setValue("hostname", settings.hostname || "");
+      setValue("workgroup", settings.workgroup || "");
     }
-  }, [settings]);
+  }, [settings, setValue]);
 
-  /*
-    const handleFetchHostname = async () => {
-        try {
-            const result = await triggerGetSystemHostname();
-            if (result.data && typeof result.data === "string") {
-                setHostname(result.data);
-            }
-        } catch (error) {
-            console.error("Failed to fetch hostname:", error);
-        }
-    };
-    */
+  useEffect(() => {
+    if (!isHostnameFetching && systemHostname) {
+      setValue("hostname", systemHostname as string);
+    }
+  }, [systemHostname, isHostnameFetching, setValue]);
 
-  const handleClickShowNewPassword = () => {
-    setShowNewPassword(!showNewPassword);
-  };
-
-  const handleClickShowConfirmPassword = () => {
-    setShowConfirmPassword(!showConfirmPassword);
-  };
-
-  const handleSubmit = async () => {
-    // Validate passwords match
-    if (newPassword !== confirmPassword) {
-      setPasswordError("Passwords do not match");
+  const handleSubmit = async (data: BaseConfigFormData) => {
+    console.log("Form submitted with data:", data);
+    const completeSettings = {
+      ...settings,
+      hostname: data.hostname || undefined,
+      workgroup: data.workgroup || undefined,
+    } as Settings;
+    console.log("Complete settings to be saved:", completeSettings);
+    if (!isValidUsers(users) || !isValidSettings(completeSettings)) {
+      console.error("Invalid data for users or settings:", {
+        users,
+        settings: completeSettings,
+      });
       return;
     }
-
-    // Validate password is not empty and not the default
-    if (!newPassword || newPassword === "changeme!") {
-      setPasswordError("Password cannot be empty or the default password");
-      return;
-    }
-
-    // Validate password length
-    if (newPassword.length < 6) {
-      setPasswordError("Password must be at least 6 characters long");
-      return;
-    }
-
-    if (!isValidUsers(users) || !isValidSettings(settings) || isSubmitting)
-      return;
 
     const adminUser = users.find((u) => u.is_admin);
-    if (!adminUser) return;
+    if (!adminUser) {
+      console.error("No admin user found:", { users });
+      return;
+    }
 
-    setIsSubmitting(true);
-    setPasswordError("");
     try {
-      // Update admin user password
+      console.log("Updating admin user with data:", {
+        ...adminUser,
+        password: data.newPassword,
+      });
+
       await updateAdminUser({
-        user: {
-          ...adminUser,
-          password: newPassword,
-        },
+        user: { ...adminUser, password: data.newPassword },
       }).unwrap();
 
-      // Update settings with general config fields
       await updateSettings({
-        settings: {
-          ...settings,
-          hostname: hostname || undefined,
-          workgroup: workgroup || undefined,
-        } as Settings,
+        settings: completeSettings,
       }).unwrap();
 
       onClose();
     } catch (error) {
       console.error("Failed to update settings:", error);
-      setPasswordError("Failed to save changes. Please try again.");
-    } finally {
-      setIsSubmitting(false);
+      setError("root", {
+        message: "Failed to save changes. Please try again.",
+      });
     }
   };
 
@@ -154,189 +143,152 @@ const BaseConfigModal: React.FC<BaseConfigModalProps> = ({ open, onClose }) => {
       fullWidth
       disableEscapeKeyDown // Prevent closing with Escape key
     >
-      <DialogTitle>Secure Your System</DialogTitle>
-      <DialogContent>
-        <Typography variant="body1" paragraph sx={{ mt: 2 }}>
-          Welcome to SRAT (Samba Rest Administration Tool)! Your system is using
-          the default administrator password. For security, you must change it
-          now and configure basic system settings to proceed.
-        </Typography>
-
-        <Alert severity="warning" sx={{ mb: 3 }}>
-          <Typography variant="body2">
-            The current default password is <strong>changeme!</strong>. You must
-            change this immediately for security reasons.
+      <FormContainer formContext={formContext} onSuccess={handleSubmit}>
+        <DialogTitle>Secure Your System</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" paragraph sx={{ mt: 2 }}>
+            Welcome to SRAT (Samba Rest Administration Tool)! Your system is
+            using the default administrator password. For security, you must
+            change it now and configure basic system settings to proceed.
           </Typography>
-        </Alert>
 
-        <Stack spacing={2}>
-          <Box>
-            <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
-              Change Administrator Password
+          <Alert severity="warning" sx={{ mb: 3 }}>
+            <Typography variant="body2">
+              The current default password is <strong>changeme!</strong>. You
+              must change this immediately for security reasons.
             </Typography>
-            <Typography variant="body2" color="text.secondary" paragraph>
-              Create a strong new password for your administrator account.
-            </Typography>
-          </Box>
+          </Alert>
 
-          <TextField
-            type={showNewPassword ? "text" : "password"}
-            label="New Administrator Password"
-            value={newPassword}
-            onChange={(e) => {
-              setNewPassword(e.target.value);
-              setPasswordError("");
-            }}
+          <Stack spacing={2}>
+            <Box>
+              <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
+                Change Administrator Password
+              </Typography>
+              <Typography variant="body2" color="text.secondary" paragraph>
+                Create a strong new password for your administrator account.
+              </Typography>
+            </Box>
+
+            <PasswordElement
+              name="newPassword"
+              label="New Administrator Password"
+              autoComplete="new-password"
+              fullWidth
+              helperText="Must be at least 6 characters"
+              rules={{
+                required: "Password is required",
+                minLength: {
+                  value: 6,
+                  message: "Password must be at least 6 characters long",
+                },
+                validate: (value) =>
+                  value !== "changeme!" ||
+                  "Password cannot be the default password",
+              }}
+            />
+
+            <PasswordElement
+              name="confirmPassword"
+              label="Confirm Password"
+              autoComplete="new-password"
+              fullWidth
+              rules={{
+                required: "Please confirm your password",
+                validate: (value, formValues) =>
+                  value === formValues.newPassword || "Passwords do not match",
+              }}
+            />
+
+            {formContext.formState.errors.root && (
+              <Alert severity="error">
+                <Typography variant="body2">
+                  {formContext.formState.errors.root.message}
+                </Typography>
+              </Alert>
+            )}
+
+            <Box>
+              <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
+                General Configuration
+              </Typography>
+              <Typography variant="body2" color="text.secondary" paragraph>
+                Configure basic system settings for your Samba server.
+              </Typography>
+            </Box>
+
+            <TextFieldElement
+              name="hostname"
+              label="Hostname"
+              fullWidth
+              placeholder="e.g., samba-nas"
+              helperText="The name of your Samba server on the network"
+              rules={{
+                required: "Hostname is required",
+                minLength: {
+                  value: 2,
+                  message: "Hostname must be at least 2 characters long",
+                },
+              }}
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <Tooltip title="Fetch current system hostname">
+                        <span>
+                          <IconButton
+                            aria-label="fetch system hostname"
+                            onClick={() =>
+                              setValue("hostname", systemHostname as string)
+                            }
+                            edge="end"
+                            disabled={isHostnameFetching}
+                            size="small"
+                          >
+                            {isHostnameFetching ? (
+                              <CircularProgress size={20} />
+                            ) : (
+                              <AutorenewIcon />
+                            )}
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
+
+            <TextFieldElement
+              name="workgroup"
+              label="Workgroup"
+              fullWidth
+              placeholder="e.g., WORKGROUP"
+              helperText="The workgroup name for your Samba server"
+              rules={{
+                required: "Workgroup is required",
+                minLength: {
+                  value: 2,
+                  message: "Workgroup must be at least 2 characters long",
+                },
+              }}
+            />
+          </Stack>
+
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 3 }}>
+            You can change these settings later in the Settings page.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={isSubmitting}
             fullWidth
-            placeholder="Enter new password"
-            helperText="Must be at least 6 characters"
-            slotProps={{
-              input: {
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <Tooltip
-                      title={
-                        showNewPassword ? "Hide password" : "Show password"
-                      }
-                    >
-                      <span>
-                        <IconButton
-                          onClick={handleClickShowNewPassword}
-                          edge="end"
-                          size="small"
-                        >
-                          {showNewPassword ? (
-                            <VisibilityOffIcon />
-                          ) : (
-                            <VisibilityIcon />
-                          )}
-                        </IconButton>
-                      </span>
-                    </Tooltip>
-                  </InputAdornment>
-                ),
-              },
-            }}
-          />
-
-          <TextField
-            type={showConfirmPassword ? "text" : "password"}
-            label="Confirm Password"
-            value={confirmPassword}
-            onChange={(e) => {
-              setConfirmPassword(e.target.value);
-              setPasswordError("");
-            }}
-            fullWidth
-            placeholder="Confirm new password"
-            error={passwordError.length > 0 && newPassword !== confirmPassword}
-            slotProps={{
-              input: {
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <Tooltip
-                      title={
-                        showConfirmPassword ? "Hide password" : "Show password"
-                      }
-                    >
-                      <span>
-                        <IconButton
-                          onClick={handleClickShowConfirmPassword}
-                          edge="end"
-                          size="small"
-                        >
-                          {showConfirmPassword ? (
-                            <VisibilityOffIcon />
-                          ) : (
-                            <VisibilityIcon />
-                          )}
-                        </IconButton>
-                      </span>
-                    </Tooltip>
-                  </InputAdornment>
-                ),
-              },
-            }}
-          />
-
-          {passwordError && (
-            <Alert severity="error">
-              <Typography variant="body2">{passwordError}</Typography>
-            </Alert>
-          )}
-
-          <Box>
-            <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
-              General Configuration
-            </Typography>
-            <Typography variant="body2" color="text.secondary" paragraph>
-              Configure basic system settings for your Samba server.
-            </Typography>
-          </Box>
-
-          <TextField
-            label="Hostname"
-            value={hostname}
-            onChange={(e) => setHostname(e.target.value)}
-            fullWidth
-            placeholder="e.g., samba-nas"
-            helperText="The name of your Samba server on the network"
-            slotProps={{
-              input: {
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <Tooltip title="Fetch current system hostname">
-                      <span>
-                        <IconButton
-                          aria-label="fetch system hostname"
-                          onClick={() => setHostname(systemHostname as string)}
-                          edge="end"
-                          disabled={isHostnameFetching}
-                          size="small"
-                        >
-                          {isHostnameFetching ? (
-                            <CircularProgress size={20} />
-                          ) : (
-                            <AutorenewIcon />
-                          )}
-                        </IconButton>
-                      </span>
-                    </Tooltip>
-                  </InputAdornment>
-                ),
-              },
-            }}
-          />
-
-          <TextField
-            label="Workgroup"
-            value={workgroup}
-            onChange={(e) => setWorkgroup(e.target.value)}
-            fullWidth
-            placeholder="e.g., WORKGROUP"
-            helperText="The workgroup name for your Samba server"
-          />
-        </Stack>
-
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 3 }}>
-          You can change these settings later in the Settings page.
-        </Typography>
-      </DialogContent>
-      <DialogActions sx={{ p: 2 }}>
-        <Button
-          onClick={handleSubmit}
-          variant="contained"
-          disabled={
-            isSubmitting ||
-            !newPassword ||
-            !confirmPassword ||
-            newPassword !== confirmPassword
-          }
-          fullWidth
-        >
-          {isSubmitting ? "Saving..." : "Secure System"}
-        </Button>
-      </DialogActions>
+          >
+            {isSubmitting ? "Saving..." : "Secure System"}
+          </Button>
+        </DialogActions>
+      </FormContainer>
     </Dialog>
   );
 };

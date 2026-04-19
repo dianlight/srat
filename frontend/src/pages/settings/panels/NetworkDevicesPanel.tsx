@@ -83,75 +83,74 @@ export function NetworkDevicesPanel({ readOnly }: NetworkDevicesPanelProps) {
       </Tooltip>
 
       {/* SMB over QUIC */}
-      <>
-        <Tooltip
-          title={
-            <>
-              <Typography variant="h6" component="div">
-                Enable SMB over QUIC
-              </Typography>
-              <Typography variant="body2">
-                This parameter enables SMB over QUIC transport protocol for
-                improved performance and security. Requires Samba 4.23+ and QUIC
-                kernel module support.
-              </Typography>
-              {capabilities &&
-                "supports_quic" in capabilities &&
-                !capabilities.supports_quic &&
-                "unsupported_reason" in capabilities &&
-                capabilities.unsupported_reason && (
-                  <Typography
-                    variant="body2"
-                    sx={{ mt: 1, color: "warning.light" }}
-                  >
-                    <strong>Not available:</strong>{" "}
-                    {capabilities.unsupported_reason}
-                  </Typography>
-                )}
-            </>
-          }
-        >
-          <span style={{ display: "inline-block", width: "100%" }}>
-            <SwitchElement
-              switchProps={{ "aria-label": "SMB over QUIC", size: "small" }}
-              id="smb_over_quic"
-              label="SMB over QUIC"
-              name="smb_over_quic"
-              labelPlacement="start"
-              disabled={
-                readOnly ||
-                isCapabilitiesLoading ||
-                !(
-                  capabilities &&
-                  "supports_quic" in capabilities &&
-                  capabilities.supports_quic
-                )
-              }
-              control={control}
-            />
-          </span>
-        </Tooltip>
-        {capabilities &&
-          "supports_quic" in capabilities &&
-          !capabilities.supports_quic &&
-          !isCapabilitiesLoading &&
-          "unsupported_reason" in capabilities &&
-          capabilities.unsupported_reason && (
-            <Typography
-              variant="caption"
-              color="warning.main"
-              sx={{ mt: 0.5, display: "block" }}
-            >
-              {
-                (
-                  capabilities as SystemCapabilities & {
-                    unsupported_reason: string;
-                  }
-                ).unsupported_reason
-              }
+
+      <Tooltip
+        title={
+          <>
+            <Typography variant="h6" component="div">
+              Enable SMB over QUIC
             </Typography>
-          )}
-      </>
+            <Typography variant="body2">
+              This parameter enables SMB over QUIC transport protocol for
+              improved performance and security. Requires Samba 4.23+ and QUIC
+              kernel module support.
+            </Typography>
+            {capabilities &&
+              "supports_quic" in capabilities &&
+              !capabilities.supports_quic &&
+              "unsupported_reason" in capabilities &&
+              capabilities.unsupported_reason && (
+                <Typography
+                  variant="body2"
+                  sx={{ mt: 1, color: "warning.light" }}
+                >
+                  <strong>Not available:</strong>{" "}
+                  {capabilities.unsupported_reason}
+                </Typography>
+              )}
+          </>
+        }
+      >
+        <span style={{ display: "inline-block", width: "100%" }}>
+          <SwitchElement
+            switchProps={{ "aria-label": "SMB over QUIC", size: "small" }}
+            id="smb_over_quic"
+            label="SMB over QUIC"
+            name="smb_over_quic"
+            labelPlacement="start"
+            disabled={
+              readOnly ||
+              isCapabilitiesLoading ||
+              !(
+                capabilities &&
+                "supports_quic" in capabilities &&
+                capabilities.supports_quic
+              )
+            }
+            control={control}
+          />
+        </span>
+      </Tooltip>
+      {capabilities &&
+        "supports_quic" in capabilities &&
+        !capabilities.supports_quic &&
+        !isCapabilitiesLoading &&
+        "unsupported_reason" in capabilities &&
+        capabilities.unsupported_reason && (
+          <Typography
+            variant="caption"
+            color="warning.main"
+            sx={{ mt: 0.5, display: "block" }}
+          >
+            {
+              (
+                capabilities as SystemCapabilities & {
+                  unsupported_reason: string;
+                }
+              ).unsupported_reason
+            }
+          </Typography>
+        )}
     </Stack>
   );
 }

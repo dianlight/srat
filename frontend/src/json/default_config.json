@@ -1,6 +1,4 @@
 {
-	"workgroup": "WORKGROUP",
-	"username": "homeassistant",
 	"password": "changeme!",
 	"allow_hosts": [
 		"10.0.0.0/8",
@@ -12,12 +10,22 @@
 		"fc00::/7"
 	],
 	"automount": true,
-	"mountoptions": ["nosuid", "relatime", "noexec"],
+	"mountoptions": [
+		"nosuid",
+		"relatime",
+		"noexec"
+	],
 	"available_disks_log": true,
 	"medialibrary": {
 		"enable": true
 	},
-	"veto_files": ["._*", ".DS_Store", "Thumbs.db", "icon?", ".Trashes"],
+	"veto_files": [
+		"._*",
+		".DS_Store",
+		"Thumbs.db",
+		"icon?",
+		".Trashes"
+	],
 	"compatibility_mode": false,
 	"recyle_bin_enabled": false,
 	"wsdd": false,

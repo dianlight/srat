@@ -243,16 +243,6 @@ func (suite *SettingServiceSuite) TestUpdateSettings_SaveAndLoad_AllFieldTypes()
 			},
 		},
 		{
-			name: "Workgroup_NotEmpty",
-			settingsFactory: func() dto.Settings {
-				return dto.Settings{Workgroup: ""}
-			},
-			verifyFunc: func(loaded *dto.Settings, err error) {
-				suite.Require().NoError(err)
-				suite.NotEmpty(loaded.Workgroup)
-			},
-		},
-		{
 			name: "HAUseNFS_Nil",
 			settingsFactory: func() dto.Settings {
 				return dto.Settings{HAUseNFS: nil}

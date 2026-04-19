@@ -137,8 +137,8 @@ func TestSettings_DefaultValues(t *testing.T) {
 	err := defaults.Set(&settings)
 	require.NoError(t, err)
 
-	assert.Equal(t, "homeassistant", settings.Hostname)
-	assert.Equal(t, "WORKGROUP", settings.Workgroup)
+	assert.Equal(t, "", settings.Hostname)
+	assert.Equal(t, "", settings.Workgroup)
 	//	assert.Nil(t, settings.Mountoptions) // No default
 	assert.NotNil(t, settings.AllowHost)
 	assert.Equal(t, []string{"10.0.0.0/8", "100.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "169.254.0.0/16", "fe80::/10", "fc00::/7"}, settings.AllowHost)
