@@ -2,8 +2,8 @@
 
 # \[FEATURE/FIX\]: Feature Name
 
-**Target Repo:** `repo-name` 
-**Status:** 🏗️ In Progress / 📅 Planned / ✅ Completed 
+**Target Repo:** `repo-name`
+**Status:** 🏗️ In Progress / 📅 Planned / ✅ Completed
 **Issue Link:** \[Optional GH Issue URL\]
 
 ## 🎯 Objective
