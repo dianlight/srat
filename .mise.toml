@@ -121,7 +121,7 @@ flag "--version <version>" help="Build version" env="VERSION"
 env = { _.file = "/tmp/.env.tmp" }
 run = [
   'echo "Running full build with version: ${usage_version:-not provided}"',
-  '[[ "${usage_version:-not provided}" = "not provided" ]] || echo "VERSION=${usage_version?}" > /tmp/.env.tmp',
+  'if [ "${usage_version:-not provided}" != "not provided" ]; then echo "VERSION=${usage_version?}" > /tmp/.env.tmp; fi',
   { task = "version" },
   { task = "//backend:build", args = [
     "--arch=x86_64",

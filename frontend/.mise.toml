@@ -89,7 +89,7 @@ run = [
   "tsgo --noEmit",
   "bun ./scripts/add-test-setup.js",
 ]
-quiet = true
+#quiet = true
 
 [tasks.test]
 run = [
