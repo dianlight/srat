@@ -393,12 +393,6 @@ jobs:
           install: true
           experimental: true
 
-#      - name: Prepare env for ${{ needs.setversion.outputs.version }}
-#        run: |
-#          mise run //backend:patch
-#          mise run //backend:format
-#          cd frontend && bun install && cd ..
-
       - name: Set custom component version
         run: |
           VERSION="${{ needs.setversion.outputs.version }}"
@@ -456,8 +450,7 @@ jobs:
         env:
           CGO_ENABLED: 0  # Explicitly disable CGO for static builds
         run: |
-          mise run version -- --version=${{ needs.setversion.outputs.version }}
-          mise run all
+          mise run all -- --version=${{ needs.setversion.outputs.version }}
 
       - name: Sign binaries with Minisign
         if: github.event_name != 'pull_request'
