@@ -457,7 +457,7 @@ jobs:
           CGO_ENABLED: 0  # Explicitly disable CGO for static builds
         run: |
           mise run version -- --version=${{ needs.setversion.outputs.version }}
-          sudo -E PATH="$PATH" mise run all
+          mise run all
 
       - name: Sign binaries with Minisign
         if: github.event_name != 'pull_request'
