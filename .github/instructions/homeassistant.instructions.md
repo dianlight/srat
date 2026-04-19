@@ -215,7 +215,10 @@ For each platform (sensor.py, switch.py, etc.):
 - Add `DeviceInfo` to group entities under one device
 - Set `unique_id` for each entity
 
-**Step 7: Test and Iterate**
+**Step7: Use hassfest for Validation**
+Run `mise run //custom_components:hassfest` to validate the integration structure and manifest before testing.
+
+**Step 8: Test and Iterate**
 - Copy to HomeAssistant's `custom_components/` directory
 - Restart HomeAssistant
 - Add integration via UI (Settings → Devices & Services)
@@ -316,6 +319,27 @@ logger:
   logs:
     custom_components.my_integration: debug
 ```
+
+### Repair Issues in strings.json / translations/en.json
+
+When defining entries under `"issues"` in `strings.json` and `translations/en.json`, each issue entry may contain **either** a top-level `"description"` **or** a `"fix_flow"` block — never both. They belong to the `"fixable"` `vol.Exclusive` group enforced by hassfest:
+
+```json
+// WRONG — hassfest error: "two or more values in the same group of exclusion 'fixable'"
+"my_issue": {
+  "title": "Something went wrong",
+  "description": "Explanation text here.",
+  "fix_flow": { "step": { "confirm": { ... } } }
+}
+
+// CORRECT — move the explanation into the fix_flow step description
+"my_issue": {
+  "title": "Something went wrong",
+  "fix_flow": { "step": { "confirm": { "title": "Fix it", "description": "Explanation text here." } } }
+}
+```
+
+Use `mise run //custom_components:hassfest` to validate before committing.
 
 ### Version Compatibility
 Always check HomeAssistant version compatibility:
