@@ -101,6 +101,7 @@ run = """
     scripts/next_version.sh
   fi
 """
+env = { _.file = "/tmp/.env.tmp" }
 depends_post = [{ task = "rollbar_env" }]
 quiet = true
 
@@ -112,6 +113,25 @@ run = [
     "//custom_components:test",
   ] },
 ]
+
+[tasks.all]
+usage = '''
+flag "--version <version>" help="Build version" env="VERSION" 
+'''
+env = { _.file = "/tmp/.env.tmp" }
+run = [
+  'echo "Running full build with version: ${usage_version:-not provided}"',
+  'if [ "${usage_version:-not provided}" != "not provided" ]; then echo "VERSION=${usage_version?}" > /tmp/.env.tmp; fi',
+  { task = "version" },
+  { task = "//backend:build", args = [
+    "--arch=x86_64",
+  ], env = { GOARCH = "amd64" } },
+  { task = "//backend:build", args = [
+    "--arch=aarch64",
+  ], env = { GOARCH = "arm64" } },
+]
+#quiet = true
+
 
 [tasks.rollbar_env]
 usage = '''
@@ -130,12 +150,3 @@ run = """
 """
 quiet = true
 
-[tasks.all]
-depends = [
-  { task = "//backend:build", args = [
-    "--arch=x86_64",
-  ], env = { GOARCH = "amd64" } },
-  { task = "//backend:build", args = [
-    "--arch=aarch64",
-  ], env = { GOARCH = "arm64" } },
-]

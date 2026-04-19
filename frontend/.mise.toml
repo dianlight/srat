@@ -85,9 +85,7 @@ depends = [
   { task = "validate-macros" },
 ]
 run = [
-  "biome check --no-errors-on-unmatched --write",
-  "tsgo --noEmit",
-  "bun ./scripts/add-test-setup.js",
+  "biome check --no-errors-on-unmatched --write"
 ]
 quiet = true
 

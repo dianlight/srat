@@ -15,6 +15,7 @@ on:
       - '**.ts'
       - '**.tsx'
       - '**.py'
+      - '**.toml'
       - '**/go.mod'
       - '**/go.sum'
       - '**/package.json'
@@ -393,11 +394,9 @@ jobs:
           install: true
           experimental: true
 
-#      - name: Prepare env for ${{ needs.setversion.outputs.version }}
-#        run: |
-#          mise run //backend:patch
-#          mise run //backend:format
-#          cd frontend && bun install && cd ..
+      - name: Prepare frontend for ${{ needs.setversion.outputs.version }}
+        run: |       
+          mise run //frontend:prepare
 
       - name: Set custom component version
         run: |
@@ -456,8 +455,7 @@ jobs:
         env:
           CGO_ENABLED: 0  # Explicitly disable CGO for static builds
         run: |
-          mise run version -- --version=${{ needs.setversion.outputs.version }}
-          sudo -E PATH="$PATH" mise run all
+          mise run all -- --version=${{ needs.setversion.outputs.version }}
 
       - name: Sign binaries with Minisign
         if: github.event_name != 'pull_request'
