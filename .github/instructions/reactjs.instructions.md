@@ -106,12 +106,15 @@ Instructions for building high-quality ReactJS applications with modern patterns
 
 ### Forms and Validation
 
-- Use controlled components for form inputs
-- Implement proper form validation with libraries like Formik, React Hook Form
-- Handle form submission and error states appropriately
-- Implement accessibility features for forms (labels, ARIA attributes)
-- Use debounced validation for better user experience
-- Handle file uploads and complex form scenarios
+- **`react-hook-form` + `react-hook-form-mui` is the mandatory standard** for all user input in this project — dialogs, modals, and full pages alike. Never use raw `useState` to manage form field values, validation errors, or submit-loading state.
+- Wrap all form fields in `<FormContainer>` from `react-hook-form-mui`, passing `formContext` (from `useForm`) and `onSuccess`. The `onSuccess` handler receives validated data and runs async API calls.
+- In a MUI `Dialog`, wrap both `DialogContent` **and** `DialogActions` inside `<FormContainer>` so that `type="submit"` buttons inside `DialogActions` correctly trigger form validation and submission.
+- Use `PasswordElement` from `react-hook-form-mui` for password fields — it includes a built-in show/hide toggle. Do not re-implement visibility toggle with `useState`.
+- Use `TextFieldElement`, `SelectElement`, `AutocompleteElement`, `SwitchElement`, etc. from `react-hook-form-mui` for all inputs. Pass validation via the `rules` prop.
+- Cross-field validation (e.g., confirm password) uses `rules={{ validate: (value, formValues) => value === formValues.otherField || "error message" }}`.
+- API/server-level errors belong in `setError("root", { message: "..." })` from `formContext`; render via `formState.errors.root?.message`. No manual error `useState` needed.
+- `formState.isSubmitting` is automatically `true` while the async `onSuccess` handler runs — never add a manual `isSubmitting` `useState`.
+- See `.github/instructions/react-hook-form-mui.instructions.md` for the complete canonical patterns and examples.
 
 ### Routing
 
