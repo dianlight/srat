@@ -15,6 +15,7 @@ on:
       - '**.ts'
       - '**.tsx'
       - '**.py'
+      - '**.toml'
       - '**/go.mod'
       - '**/go.sum'
       - '**/package.json'
