@@ -83,3 +83,13 @@ run = "python -m pytest tests -v -c pyproject.toml --cov=srat --cov-report=xml:c
 [tasks.prepare]
 alias = "install-dev"
 run = "pip install -r requirements_dev.txt"
+
+[tasks.hassfest]
+usage = '''
+arg "<root_path>" help="Root project path" env="HOST_PROJECT_PATH"
+'''
+run = [
+    'echo Running hassfest against ${usage_root_path?}/custom_components ...',
+    'docker run --rm -v ${usage_root_path?}/custom_components://github/workspace ghcr.io/home-assistant/hassfest --core-path=/github/workspace --integration-path=/github/workspace/srat' 
+]
+quiet = true

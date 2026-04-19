@@ -153,7 +153,7 @@
 			"installOhMyZshConfig": true
 		},
 		"ghcr.io/cirolosapio/devcontainers-features/alpine-docker-outside-of-docker:0": {
-			"installDockerCompose": true
+			"installDockerCompose": false
 		},
 		"ghcr.io/cirolosapio/devcontainers-features/alpine-gh-cli:0": {},
 		"ghcr.io/cirolosapio/devcontainers-features/alpine-jq:0": {}
