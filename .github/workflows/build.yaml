@@ -289,7 +289,7 @@ jobs:
           experimental: true
 
       - name: Install dev dependencies
-        run: mise run //custom_components:install
+        run: mise run //custom_components:install-dev
 
       - name: Ruff format check
         run: mise run //custom_components:format-check
