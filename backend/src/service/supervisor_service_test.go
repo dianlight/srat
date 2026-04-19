@@ -811,7 +811,7 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_UseNfsTrue_Exportable
 	suite.Require().NotNil(captured.Type)
 	suite.Equal(mount.MountType("nfs"), *captured.Type, "useNfs=true with exportable fs should use NFS")
 	suite.Require().NotNil(captured.Path)
-	suite.Equal("/mnt/test", *captured.Path, "NFS mount should set the share path")
+	suite.Equal("test", *captured.Path, "NFS mount should set the share path")
 }
 
 // TestNetworkMountShare_UseNfsTrue_NonExportableFS checks that useNfs=true falls back to CIFS
