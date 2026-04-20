@@ -6,110 +6,94 @@
 **Status:** 📅 Planned
 **Issue Link:**
 
+## ⚠️ Compliance & Pre-reqs
+
+- This task is a `[REFACTOR]`. Per `.github/copilot-instructions.md` you MUST ask whether to run the `prepare-refactor` check before editing source files. If the user opts in, create `docs/refactors/<slug>.md` and follow the prepare-refactor phases (identify impacted functions, ensure tests exist, record baseline, run post-refactor verification).
+- Read the header of any file you modify before changing it.
+- Do NOT run git add/commit/push unless explicitly asked.
+- Follow the rules in `.github/instructions/` (notably `reactjs.instructions.md`, `react-hook-form-mui.instructions.md` and `frontend_test.instructions.md`).
+- Do NOT edit generated files: `frontend/src/store/sratApi.ts`, `frontend/src/store/wsApi.ts`, or `backend/docs/openapi.*`. If new DTOs/types are required, update Go DTOs and run `cd frontend && bun run gen`.
+- Bugfix rule: always add a failing test reproducing the bug first, then implement the fix, then re-run tests.
+- Frontend tests: use `@testing-library/user-event` only, await all interactions, prefer semantic queries (`getByRole`, `getByLabelText`) — use `getByTestId` only as a last resort.
+- Branch naming: use `refactor/<kebab-case-slug>` (see Copilot instructions for examples).
+
 ## 🎯 Objective
 
-Fix a set of recurring code-quality violations in the frontend codebase: deprecated testing practices (`fireEvent`, missing `await` on user-event calls, overuse of `getByTestId`), a leftover deprecated TypeScript 5.x HMR cast, raw `console.*` calls in production code paths, and a raw `fetch()` call bypassing the RTK Query layer in a custom hook.
+Fix recurring frontend code-quality anti-patterns: deprecated testing practices (`fireEvent`, missing `await`), excessive `getByTestId` usage, TS5 HMR casts, raw `console.*` in production code, and raw `fetch()` calls bypassing RTK Query.
+Remove also use of inputs without the use of `react-hook-form`'s form state management and validation, such as `useState` for field values, validation errors, submit loading, password show/hide, and manual form submission handling.
 
 ## 🛠️ Technical Specifications
 
-- **Inputs:** Existing frontend source files in `frontend/src/`
-- **Outputs:** Cleaner, instruction-compliant code with no regressions in existing tests
-- **Dependencies:** `@testing-library/user-event`, `sratApi` RTK Query, TypeScript 6.0+ native `import.meta.hot`
+- **Inputs:** Files under `frontend/src/`
+- **Outputs:** Instruction-compliant source with passing tests and lint
+- **Dependencies:** `@testing-library/user-event`, existing RTK Query slices (`githubApi`, `sratApi`), TypeScript 6+, Bun toolchain
+- **Acceptance criteria:**
+  - All changed tests pass locally with `mise run //frontend:test --rerun-each 10` for touched tests
+  - Full frontend test suite (`mise run //frontend:test`) and lint (`mise run //frontend:lint`) pass with zero new errors
+  - `docs/refactors/<slug>.md` exists if prepare-check was chosen
+  - No edits to generated files (`sratApi.ts`, `wsApi.ts`, `backend/docs/openapi.*`)
 
-## 📝 Task List
+## 📝 Task List (detailed)
 
-- [ ] Task 1: Fix `fireEvent` usage in `FilesystemLabelFormatDialog.test.tsx` — replace with `userEvent` (via `userEvent.setup()` + `await`)
-- [ ] Task 2: Fix non-awaited `userEvent.click/type/hover` calls in `NavBar.test.tsx` — add `await` and ensure `userEvent.setup()` result is used consistently
-- [ ] Task 3: Remove `getByTestId` overuse in `DonationButton.test.tsx` — replace with semantic queries (`getByRole`, `getByLabelText`) wherever possible
-- [ ] Task 4: Fix deprecated HMR pattern in `DiskHealthMetrics.tsx` — replace `if (import.meta && (import.meta as any).hot)` with native `if (import.meta.hot)` (TS 6.0+)
-- [ ] Task 5: Migrate raw `fetch()` in `githubNewsHook.ts` to use the existing `githubApi` RTK Query slice instead of calling `fetch` directly
-- [ ] Task 6: Audit and clean up `console.log` / `console.error` / `console.warn` calls in production source files (non-test, non-MSW mock files) — remove debug logs or replace with structured error handling
-- [ ] Task 7: Unit testing — verify all modified tests still pass with `mise run //frontend:test --rerun-each 10` for any touched test file
-- [ ] Task 8: Integration — run full frontend test suite (`mise run //frontend:test`) and lint (`mise run //frontend:lint`) with zero new errors
-- [ ] Task 9: Capture lessons learned and update documentation
-- [ ] Task 10: Ask to create a PR with the task implementation and link it here for tracking
+Preflight:
+- [ ] PREP: Ask user whether to run a prepare-refactor check (recommended). If Yes — create `docs/refactors/<slug>.md` and complete Phases 1–4 before changing production code.
 
-## 🧠 Implementation Notes (Copilot Context)
+Main tasks:
+- [ ] Task 1 — Tests: Replace `fireEvent` with `userEvent` (use `const user = userEvent.setup()` and await all interaction calls). File: `frontend/src/pages/volumes/components/__tests__/FilesystemLabelFormatDialog.test.tsx`.
+- [ ] Task 2 - Search & fix any use of `useState` for form field values, validation errors, submit loading state, password show/hide toggles, or manual form submission handling. Replace with `react-hook-form` and `react-hook-form-mui` patterns as per `.github/instructions/react-hook-form-mui.instructions.md`.
+- [ ] Task 3 — Tests: Fix non-awaited `userEvent` usages in `frontend/src/components/__tests__/NavBar.test.tsx` — consistently use `user = userEvent.setup()` and `await user.click/type/hover`.
+- [ ] Task 4 — Tests: Replace `getByTestId` in `frontend/src/components/__tests__/DonationButton.test.tsx` with semantic queries (`getByRole`, `getByLabelText`). If the component lacks an accessible name, prefer adding an `aria-label` or visible accessible text (document the change and update tests) rather than `data-testid`.
+- [ ] Task 5 — HMR: Update `frontend/src/pages/dashboard/metrics/DiskHealthMetrics.tsx` to use TS6 native HMR: `if (import.meta.hot) { import.meta.hot.accept(...) }` (remove `as any` casts).
+- [ ] Task 6 — Data fetching: Replace raw `fetch()` in `frontend/src/hooks/githubNewsHook.ts` with the `githubApi` RTK Query endpoint (or use `sratApi.endpoints.<endpoint>.useLazyQuery()` for imperative usage). Do not add a new raw fetch wrapper.
+- [ ] Task 7 — Production logs: Audit and remove/replace `console.log/error/warn` in production source files. For errors, route to the app's notification/problem-handling system; do not silently swallow errors.
+- [ ] Task 8 — Unit verification: For each modified test file, run `mise run //frontend:test --rerun-each 10` and resolve flaky or failing tests.
+- [ ] Task 9 — Integration verification: Run `mise run //frontend:test`, `mise run //frontend:lint`, and `mise run docs-validate`. Fix any issues.
+- [ ] Task 10 — Docs & lessons: Capture lessons in this task file and (if prepare-check used) finalise `docs/refactors/<slug>.md`. Run `mise run docs-validate`.
+- [ ] Task 11 — PR: Prepare a PR on branch `refactor/frontend-code-quality-anti-patterns` (kebab-case if title changes). Include the prepare-check summary, test commands run, and verification steps in the PR body.
 
-### Task 1 — `fireEvent` → `userEvent`
+## 🧠 Implementation Notes (guidance to implementer)
 
-File: `frontend/src/pages/volumes/components/__tests__/FilesystemLabelFormatDialog.test.tsx`
+- Follow `.github/instructions/reactjs.instructions.md` and `.github/instructions/fontend_test.instructions.md`.
+- Tests: always initialize `const user = userEvent.setup()` and `await` every interaction.
+- Semantic queries: prefer `screen.getByRole('button', { name: /donate/i })` over `getByTestId`.
+- RTK Query migration: prefer existing endpoints in `frontend/src/store/githubApi.ts`. For imperative usage, call `sratApi.endpoints.<endpoint>.useLazyQuery()`.
+- HMR: remove `as any` cast and use `import.meta.hot`.
+- Logging: replace `console.log` debug lines; for errors, use the app's notification or error handling pattern rather than quiet logging.
+- Generated files: do not modify `sratApi.ts` or `wsApi.ts`. If new DTOs are required, update backend DTOs and re-run `bun run gen`.
 
-Lines ~804 and ~928 import `fireEvent` from `@testing-library/react` and call `fireEvent.mouseDown(fsTypeDropdown)`. Per project instructions, **only `@testing-library/user-event` is allowed** for interactions.
+## 🔧 How to run & verify locally
 
-Replace with:
-```tsx
-const user = userEvent.setup();
-// ...
-await user.click(fsTypeDropdown);
-// or pointer-down sequence if needed
+- Install / prepare frontend dev environment (Bun) and deps via the repo's standard commands.
+
+Run changed tests (with retry for flakiness):
+```bash
+cd frontend
+mise run //frontend:test --rerun-each 10 --filter "FilesystemLabelFormatDialog"
 ```
 
-### Task 2 — Non-awaited `userEvent` calls in NavBar tests
-
-File: `frontend/src/components/__tests__/NavBar.test.tsx`
-
-Multiple lines call `userEvent.click(element)` without `await` (lines 174, 264, 359, 599, 609, 656, 792, 841, 842). Only `userEvent.setup()` is called once at line 96, but the returned `user` object is not consistently used for subsequent calls. All interaction calls **must be awaited**:
-
-```tsx
-const user = userEvent.setup();
-// ...
-await user.click(element); // NOT userEvent.click(element)
+Run full verification:
+```bash
+mise run //frontend:test
+mise run //frontend:lint
+mise run docs-validate
 ```
 
-### Task 3 — `getByTestId` in DonationButton tests
+## ✅ Acceptance Criteria
 
-File: `frontend/src/components/__tests__/DonationButton.test.tsx`
+- All modified tests pass locally (use `--rerun-each 10` when re-running touched tests)
+- Full frontend tests and lint pass with zero new errors
+- Prepare-refactor tracking doc present if prepare-check was used
+- No direct edits to generated files (`sratApi.ts`, `wsApi.ts`, `backend/docs/openapi.*`)
+- PR created with branch name following convention and CI green
 
-`getByTestId("donation-button")` is used on lines 88, 112, 139, 180, 214, 246, 277, 304. Per instructions, `getByTestId` is a last resort. Prefer:
-- `getByRole('button', { name: /donate/i })` — if the button has an accessible name
-- `getByLabelText(...)` — if it has a label
-Check `DonationButton.tsx` component to see if an `aria-label` or visible text label can be used instead of `data-testid`.
+## 🔗 References
 
-### Task 4 — Deprecated HMR cast in DiskHealthMetrics
+- `.github/copilot-instructions.md` (must-follow project rules)
+- `.github/instructions/reactjs.instructions.md`
+- `.github/instructions/fontend_test.instructions.md`
+- `.github/instructions/react-hook-form-mui.instructions.md`
+- `.github/skills/prepare-refactor/SKILL.md`
 
-File: `frontend/src/pages/dashboard/metrics/DiskHealthMetrics.tsx`, lines 431–432
+---
 
-Current (deprecated, TS 5.x):
-```ts
-if (import.meta && (import.meta as any).hot) {
-  (import.meta as any).hot.accept(() => { ... });
-}
-```
-
-Correct (TS 6.0+ native):
-```ts
-if (import.meta.hot) {
-  import.meta.hot.accept(() => { ... });
-}
-```
-
-### Task 5 — Raw `fetch()` in `githubNewsHook.ts`
-
-File: `frontend/src/hooks/githubNewsHook.ts`, line 33
-
-The hook calls `fetch(GITHUB_API_URL)` directly. The `githubApi` RTK Query slice (`frontend/src/store/githubApi.ts`) already handles the GitHub Discussions endpoint with proper caching and error handling. Migrate the hook to consume the `githubApi` endpoint, or at minimum wrap the raw fetch in the `githubApi` baseQuery so it benefits from RTK Query lifecycle management.
-
-### Task 6 — Console.* cleanup in production code
-
-Key files with stale/debug console calls:
-- `App.tsx:125` — `console.log("Error auto-reset timer triggered")`
-- `App.tsx:178` — `console.error("Addon restart failed", error)` (should surface error to UI, not just log)
-- `NavBar.tsx:421,435` — `console.log("Doing update")`, `console.error("DoUpdate error:", err)`
-- `components/BaseConfigModal.tsx:82,142`
-- `hooks/useSmartOperations.ts:90,109`
-- `hooks/smartTestStatusHook.ts:52`
-- `components/TelemetryModal.tsx:64`
-- `components/ReportIssueDialog.tsx:113,124,151`
-
-Remove pure debug `console.log` calls. For error paths, propagate errors to the existing notification / error boundary pattern rather than logging silently.
-
-## 🔗 Code References & TODOs
-
-- [ ] `frontend/src/pages/volumes/components/__tests__/FilesystemLabelFormatDialog.test.tsx:804,928` — `fireEvent` usage
-- [ ] `frontend/src/components/__tests__/NavBar.test.tsx:174,264,359,599,609,656,792,841,842` — non-awaited `userEvent`
-- [ ] `frontend/src/components/__tests__/DonationButton.test.tsx:88,112,139,180,214,246,277,304` — `getByTestId` overuse
-- [ ] `frontend/src/pages/dashboard/metrics/DiskHealthMetrics.tsx:431-432` — deprecated HMR `as any` cast
-- [ ] `frontend/src/hooks/githubNewsHook.ts:33` — raw `fetch()` call
-- [ ] `frontend/src/App.tsx:125,178` — debug/bare `console.*` in production paths
-- [ ] `frontend/src/components/NavBar.tsx:421,435` — debug `console.*`
+Make sure to run the prepare-check prompt before starting since this task is a `[REFACTOR]`. If you want, I can proceed and run the prepare-check now.

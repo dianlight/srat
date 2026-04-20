@@ -233,7 +233,7 @@ export function Shares() {
   };
 
   function onSubmitDeleteShare(shareName: string, shareData: SharedResource) {
-    console.log("Delete", shareName, shareData);
+    console.debug("Delete", shareName, shareData);
     if (!shareName || !shareData) return;
     confirm({
       title: `Delete ${shareData?.name}?`,
@@ -257,13 +257,13 @@ export function Shares() {
             dispatch(addMessage(JSON.stringify(err)));
           });
       } else if (reason === "cancel") {
-        console.log("cancel");
+        console.debug("cancel");
       }
     });
   }
 
   function onSubmitEditShare(data: ShareEditProps) {
-    console.log("Edit Share", data, selectedShare);
+    console.debug("Edit Share", data, selectedShare);
     if (!data) return;
     if (data.disabled) {
       disableShare({ shareName: data.org_name || data.name || "" })

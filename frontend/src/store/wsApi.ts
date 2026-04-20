@@ -1,3 +1,4 @@
+import { type SkipToken, skipToken } from "@reduxjs/toolkit/query";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { apiUrl } from "./emptyApi";
 import type {
@@ -96,6 +97,22 @@ export const wsApi = createApi({
               }
             });
           };
+
+          // In test environments we avoid opening a real WebSocket by default
+          // to reduce test resource usage. Tests that require real streaming can
+          // opt-in by setting MSW_ENABLE_STREAMING=1 in their environment.
+          const isTestEnv =
+            (globalThis as unknown as { __TEST__?: boolean }).__TEST__ === true;
+          const envAllowStreaming =
+            typeof process !== "undefined" &&
+            (process.env as Record<string, string | undefined>)
+              ?.MSW_ENABLE_STREAMING === "1";
+          if (isTestEnv && !envAllowStreaming) {
+            // Do not connect; leave __wsConnected false and wait until cache removal
+            setWsConnected(false);
+            await cacheEntryRemoved;
+            return;
+          }
 
           setWsConnected(false);
 
@@ -219,11 +236,29 @@ export const wsApi = createApi({
 });
 
 const useWsServerEventsQuery = () => {
-  const result = wsApi.endpoints.getServerEvents.useQuery();
+  const isTestEnv =
+    (globalThis as unknown as { __TEST__?: boolean }).__TEST__ === true;
+  const mockWsInTests =
+    typeof process !== "undefined" &&
+    (process.env as Record<string, string | undefined>)?.MOCK_WS_IN_TESTS ===
+      "1";
+  const disableStreaming =
+    typeof process !== "undefined" &&
+    (process.env as Record<string, string | undefined>)
+      ?.MSW_DISABLE_STREAMING === "1";
+
+  // When running tests that use the lightweight wsApi stub or explicitly
+  // disable streaming, instruct RTK Query to skip running the query hook.
+  // This avoids middleware-checking behavior that can produce warnings in
+  // test environments and simplifies test isolation.
+  const shouldSkip = isTestEnv && (mockWsInTests || disableStreaming);
+
+  const arg = shouldSkip ? (skipToken as unknown) : undefined;
+  const result = wsApi.endpoints.getServerEvents.useQuery(arg as SkipToken);
   const isConnected = Boolean(result.data?.__wsConnected);
   return {
     ...result,
-    isLoading: result.isLoading || !isConnected,
+    isLoading: result.isLoading || (!isConnected && !shouldSkip),
   };
 };
 

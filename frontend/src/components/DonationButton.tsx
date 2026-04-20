@@ -77,6 +77,7 @@ export function DonationButton() {
         aria-controls={open ? "donation-menu" : undefined}
         aria-haspopup="true"
         aria-expanded={open ? "true" : undefined}
+        aria-label="Support this project"
         data-testid="donation-button"
       >
         <Tooltip title="Support this project" arrow>

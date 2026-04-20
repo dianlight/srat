@@ -1,9 +1,9 @@
-import { Download } from "@mui/icons-material";
 import AutoModeIcon from "@mui/icons-material/AutoMode";
 import BugReportIcon from "@mui/icons-material/BugReport"; // Import the BugReportIcon
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import DataObjectIcon from "@mui/icons-material/DataObject";
+import Download from "@mui/icons-material/Download";
 import GitHubIcon from "@mui/icons-material/GitHub";
 import HelpIcon from "@mui/icons-material/Help";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
@@ -35,7 +35,6 @@ import {
   useMediaQuery,
   useTheme,
 } from "@mui/material";
-//import { DirtyDataContext, ModeContext } from "../Contexts"
 import AppBar from "@mui/material/AppBar";
 import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
@@ -418,7 +417,7 @@ export function NavBar(props: {
   };
 
   function handleDoUpdate() {
-    console.log("Doing update");
+    console.debug("Doing update");
     confirm({
       title: `Update to ${update?.Progress.release_asset?.last_release}?`,
       description:

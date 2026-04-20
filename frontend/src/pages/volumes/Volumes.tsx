@@ -444,7 +444,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
   }
 
   function onSubmitUmountVolume(partition: Partition, force = false) {
-    console.log("Umount Request", partition, "Force:", force);
+    console.debug("Umount Request", partition, "Force:", force);
     // Ensure mount_point_data exists and has at least one entry with a path
     const mountData = Object.values(partition.mount_point_data || {})[0];
     if (!mountData?.path) {
@@ -466,7 +466,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
     }).then(({ reason }) => {
       // Only proceed if confirmed
       if (reason === "confirm") {
-        console.log(
+        console.debug(
           `Proceeding with ${force ? "forced " : ""}unmount for:`,
           mountData.path,
         );
@@ -500,7 +500,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
   function handleToggleAutomount(partition: Partition) {
     if (evdata?.hello?.read_only) return;
 
-    console.log("Toggling automount for partition:", partition);
+    console.debug("Toggling automount for partition:", partition);
 
     for (const [path, mountData] of Object.entries(
       partition.mount_point_data || {},
@@ -517,7 +517,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
         partition.name || "this volume",
       );
 
-      console.log(
+      console.debug(
         partition,
         mountData,
         "Toggling automount to",

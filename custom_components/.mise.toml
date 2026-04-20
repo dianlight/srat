@@ -1,4 +1,4 @@
-[prepare.pip]
+[deps.pip]
 auto = true
 
 [tools]

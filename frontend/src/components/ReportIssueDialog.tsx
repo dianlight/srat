@@ -110,7 +110,7 @@ export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
           const data = res as IssueReportResponse;
           try {
             const url = new URL(data.github_url);
-            console.log(
+            console.debug(
               "GitHub URL for issue creation:",
               url,
               data.github_url.length,

@@ -150,12 +150,6 @@ export const wsHandler = wsLink.addEventListener("connection", ({ client }) => {
 	const helloMessage = `id: 1\nevent: ${Supported_events.Hello}\ndata: ${JSON.stringify(mockEventData.hello())}`;
 	client.send(helloMessage);
 
-	// Set up periodic heartbeat
-	const heartbeatInterval = setInterval(() => {
-		const heartbeatMessage = `id: ${Date.now()}\nevent: ${Supported_events.Heartbeat}\ndata: ${JSON.stringify(mockEventData.heartbeat())}`;
-		client.send(heartbeatMessage);
-	}, 500);
-
 	// Listen for SUBSCRIBE messages
 	client.addEventListener("message", (event) => {
 		try {
@@ -177,10 +171,8 @@ export const wsHandler = wsLink.addEventListener("connection", ({ client }) => {
 		}
 	});
 
-	// Clean up on disconnect
-	client.addEventListener("close", () => {
-		clearInterval(heartbeatInterval);
-	});
+	// No periodic heartbeats in test streaming handler to avoid creating
+	// many intervals across tests which can increase resource usage.
 });
 
 /**

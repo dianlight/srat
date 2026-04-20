@@ -32,6 +32,15 @@ mock.module("../../../../store/sratApi", () => {
         Type: { System: "system", Data: "data" },
         Usage: { None: "None", General: "general", TimeMachine: "timemachine" },
         Time_machine_support: { Disabled: "disabled", Enabled: "enabled" },
+        // Common enums expected by other modules (shallow stubs)
+        Severity: { Error: "Error", Warning: "Warning", Info: "Info", Success: "Success" },
+        Status: { Ok: "Ok", Error: "Error", Unknown: "Unknown" },
+        Command_type: { Shell: "Shell", Internal: "Internal" },
+        Enabled: { True: true, False: false },
+        Op: { Add: "Add", Remove: "Remove" },
+        Disk_type: { HDD: "HDD", SSD: "SSD" },
+        Hdidle_default_command_type: { None: "None" },
+        Telemetry_mode: { Disabled: "Disabled", Enabled: "Enabled" },
         Supported_events: {
             Hello: "hello",
             Heartbeat: "heartbeat",

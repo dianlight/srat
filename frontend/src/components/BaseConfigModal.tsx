@@ -91,13 +91,13 @@ const BaseConfigModal: React.FC<BaseConfigModalProps> = ({ open, onClose }) => {
   }, [systemHostname, isHostnameFetching, setValue]);
 
   const handleSubmit = async (data: BaseConfigFormData) => {
-    console.log("Form submitted with data:", data);
+    console.debug("Form submitted with data:", data);
     const completeSettings = {
       ...settings,
       hostname: data.hostname || undefined,
       workgroup: data.workgroup || undefined,
     } as Settings;
-    console.log("Complete settings to be saved:", completeSettings);
+    console.debug("Complete settings to be saved:", completeSettings);
     if (!isValidUsers(users) || !isValidSettings(completeSettings)) {
       console.error("Invalid data for users or settings:", {
         users,
@@ -113,7 +113,7 @@ const BaseConfigModal: React.FC<BaseConfigModalProps> = ({ open, onClose }) => {
     }
 
     try {
-      console.log("Updating admin user with data:", {
+      console.debug("Updating admin user with data:", {
         ...adminUser,
         password: data.newPassword,
       });

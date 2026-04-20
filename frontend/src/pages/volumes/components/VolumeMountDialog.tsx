@@ -115,7 +115,7 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 
       if (existingMountData?.fstype) {
         // If existing fstype is set, ensure it's in the filesystems list
-        console.log(
+        console.debug(
           "Existing mount data found:",
           existingMountData,
           (filesystems as FilesystemsInfo)?.filesystems,
@@ -131,7 +131,7 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
           setUnsupportedCustomFlags([]); // Reset before checking
           // Check existing flags against supported flags for this FS
           existingMountData?.flags?.forEach((flag) => {
-            console.log(
+            console.debug(
               "Checking flag:",
               flag,
               (filesystems as FilesystemsInfo)?.mount_flags,
@@ -146,7 +146,7 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
             }
           });
           existingMountData?.custom_flags?.forEach((flag) => {
-            console.log(
+            console.debug(
               "Checking custom flag:",
               flag,
               fsCurrent.custom_mount_flags,
@@ -364,7 +364,7 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
                     size: "small",
                     onChange: (_event, value) => {
                       if (props.readOnlyView) return;
-                      console.log("FS Type changed:", value);
+                      console.debug("FS Type changed:", value);
                       setValue("custom_flags", []); // Clear custom flags when FS type changes
                       setValue("custom_flags_values", []); // Clear custom flags values when FS type changes
                       replace([]); // Clear field array for custom flag values

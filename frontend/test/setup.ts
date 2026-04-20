@@ -239,6 +239,7 @@ if (typeof process !== "undefined") {
 let cachedApiModules: {
     sratApi: any;
     wsApi: any;
+    githubRestApi: any;
     errorSlice: any;
     mdcSlice: any;
     mdcMiddleware: any;
@@ -257,12 +258,14 @@ export async function createTestStore() {
         const [
             { wsApi },
             { sratApi },
+            { githubRestApi },
             { errorSlice },
             { mdcSlice },
             mdcMiddlewareModule,
         ] = await Promise.all([
             import("../src/store/wsApi"),
             import("../src/store/sratApi"),
+            import("../src/store/githubRestApi"),
             import("../src/store/errorSlice"),
             import("../src/store/mdcSlice"),
             import("../src/store/mdcMiddleware"),
@@ -271,13 +274,14 @@ export async function createTestStore() {
         cachedApiModules = {
             sratApi,
             wsApi,
+            githubRestApi,
             errorSlice,
             mdcSlice,
             mdcMiddleware: mdcMiddlewareModule.default,
         };
     }
 
-    const { sratApi, wsApi, errorSlice, mdcSlice, mdcMiddleware } = cachedApiModules;
+    const { sratApi, wsApi, githubRestApi, errorSlice, mdcSlice, mdcMiddleware } = cachedApiModules;
     const { setupListeners } = await import("@reduxjs/toolkit/query");
 
     // CRITICAL: Create a fresh store with RTK Query middleware
@@ -290,12 +294,14 @@ export async function createTestStore() {
             //  [api.reducerPath]: api.reducer,
             [sratApi.reducerPath]: sratApi.reducer,
             [wsApi.reducerPath]: wsApi.reducer,
+            [githubRestApi.reducerPath]: githubRestApi.reducer,
         },
         middleware: (getDefaultMiddleware) =>
             getDefaultMiddleware()
                 .concat(mdcMiddleware)
                 .concat(sratApi.middleware)
-                .concat(wsApi.middleware),
+                .concat(wsApi.middleware)
+                .concat(githubRestApi.middleware),
     });
 
     // Setup listeners - CRITICAL for RTK Query to work properly!
@@ -308,6 +314,7 @@ export async function createTestStore() {
         // Reset all API state to ensure clean slate for cache
         store.dispatch(sratApi.util.resetApiState());
         store.dispatch(wsApi.util.resetApiState());
+        store.dispatch(githubRestApi.util.resetApiState());
     } catch {
         // Silently ignore errors in case dispatch is not fully ready
     }

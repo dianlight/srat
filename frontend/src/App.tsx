@@ -122,7 +122,7 @@ export function App() {
     if (herror) {
       timer = setTimeout(() => {
         // With the new error boundary, we don't need to manually reset errors
-        console.log("Error auto-reset timer triggered");
+        console.debug("Error auto-reset timer triggered");
       }, 5000);
     }
     return () => {

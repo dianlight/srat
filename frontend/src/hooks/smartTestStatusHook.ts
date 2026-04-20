@@ -49,7 +49,7 @@ export function useSmartTestStatus(diskId: string) {
     } else if (!evloading && everror) {
       console.error("Error receiving smart test status via SSE:", everror);
     } else if (!evloading && evdata?.smart_test_status) {
-      console.log(
+      console.debug(
         "Received smart test status for different disk:",
         evdata.smart_test_status,
       );

@@ -32,7 +32,7 @@ export function Swagger() {
       window.customElements
         .whenDefined("openapi-explorer")
         .then(() => {
-          console.log("openapi-explorer custom element is ready");
+          console.debug("openapi-explorer custom element is ready");
           setLoaded(true);
         })
         .catch((err) => {
@@ -42,7 +42,7 @@ export function Swagger() {
 
       // Fallback timeout in case whenDefined doesn't resolve
       const timeout = setTimeout(() => {
-        console.log("openapi-explorer timeout, marking as loaded anyway");
+        console.debug("openapi-explorer timeout, marking as loaded anyway");
         setLoaded(true);
       }, 2000);
 

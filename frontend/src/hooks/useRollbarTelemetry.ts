@@ -21,7 +21,20 @@ type RollbarConfigWithReplay = Rollbar.Configuration & { replay?: unknown };
  * This hook ensures that errors and events are only reported based on the current telemetry mode
  */
 export const useRollbarTelemetry = () => {
-  const rollbar = useRollbar();
+  let rollbar: ReturnType<typeof useRollbar>;
+  try {
+    // biome-ignore lint/correctness/useHookAtTopLevel: This hook is conditionally called inside a try-catch block to provide a fallback when no Rollbar Provider is present.
+    rollbar = useRollbar();
+  } catch (_e) {
+    // No Rollbar Provider in this render context (e.g. unit tests).
+    // Provide a no-op fallback so the hook remains safe to call.
+    rollbar = {
+      error: () => {},
+      info: () => {},
+      debug: () => {},
+    } as unknown as ReturnType<typeof useRollbar>;
+  }
+
   const {
     data: apiSettings,
     isLoading: apiLoading,
@@ -62,7 +75,12 @@ export const useRollbarTelemetry = () => {
     },
     enabled: false,
   });
-  useRollbarConfiguration(rollbarConfig as Rollbar.Configuration);
+  try {
+    // biome-ignore lint/correctness/useHookAtTopLevel: This hook is conditionally called inside a try-catch block to provide a fallback when no Rollbar Provider is present.
+    useRollbarConfiguration(rollbarConfig as Rollbar.Configuration);
+  } catch (_e) {
+    // Ignore when no Rollbar Provider is present (e.g. tests)
+  }
 
   useEffect(() => {
     setTelemetryMode(

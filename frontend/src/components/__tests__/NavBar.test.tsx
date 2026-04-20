@@ -134,7 +134,8 @@ describe("NavBar Component", () => {
     it("handles tab switching and localStorage persistence", async () => {
         const React = await import("react");
         const { render, screen } = await import("@testing-library/react");
-        const { userEvent } = await import("@testing-library/user-event");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const user = userEvent.setup();
 
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
@@ -171,7 +172,7 @@ describe("NavBar Component", () => {
         const tabs = screen.queryAllByRole("tab");
         const secondTab = tabs[1];
         if (tabs.length > 1 && secondTab) {
-            userEvent.click(secondTab);
+            await user.click(secondTab);
 
             // Check that localStorage is updated
             const storedTab = localStorage.getItem("srat_tab");
@@ -221,7 +222,8 @@ describe("NavBar Component", () => {
     it("renders theme switch button and handles mode switching", async () => {
         const React = await import("react");
         const { render, screen } = await import("@testing-library/react");
-        const { userEvent } = await import("@testing-library/user-event");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const user = userEvent.setup();
 
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
@@ -261,7 +263,7 @@ describe("NavBar Component", () => {
         );
 
         if (themeButton) {
-            userEvent.click(themeButton);
+            await user.click(themeButton);
         }
 
         expect(true).toBeTruthy(); // Test that no errors occurred
@@ -308,7 +310,8 @@ describe("NavBar Component", () => {
     it("renders GitHub support button", async () => {
         const React = await import("react");
         const { render } = await import("@testing-library/react");
-        const { userEvent } = await import("@testing-library/user-event");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const user = userEvent.setup();
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
         const { NavBar } = await import("../NavBar");
@@ -356,7 +359,7 @@ describe("NavBar Component", () => {
         );
 
         if (githubButton && githubButton.parentElement) {
-            userEvent.click(githubButton.parentElement);
+            await user.click(githubButton.parentElement);
         }
     });
 
@@ -559,7 +562,8 @@ describe("NavBar Component", () => {
     it("handles mobile menu open and close", async () => {
         const React = await import("react");
         const { render, screen } = await import("@testing-library/react");
-        const { userEvent } = await import("@testing-library/user-event");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const user = userEvent.setup();
 
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
@@ -596,7 +600,7 @@ describe("NavBar Component", () => {
         // Find menu button
         const menuButton = screen.queryByRole("button", { name: /navigation menu/i });
         if (menuButton) {
-            userEvent.click(menuButton);
+            await user.click(menuButton);
 
             // Menu should be open, look for menu items
             const menu = document.getElementById('menu-appbar');
@@ -606,7 +610,7 @@ describe("NavBar Component", () => {
             const menuItems = screen.queryAllByRole("menuitem");
             const firstMenuItem = menuItems[0];
             if (menuItems.length > 0 && firstMenuItem) {
-                userEvent.click(firstMenuItem);
+                await user.click(firstMenuItem);
             }
         }
 
@@ -616,7 +620,8 @@ describe("NavBar Component", () => {
     it("handles menu item click and updates tab", async () => {
         const React = await import("react");
         const { render, screen } = await import("@testing-library/react");
-        const { userEvent } = await import("@testing-library/user-event");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const user = userEvent.setup();
 
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
@@ -653,13 +658,13 @@ describe("NavBar Component", () => {
         // Find menu button and open menu
         const menuButton = screen.queryByRole("button", { name: /navigation menu/i });
         if (menuButton) {
-            userEvent.click(menuButton);
+            await user.click(menuButton);
 
             // Find menu items and click one
             const menuItems = screen.queryAllByRole("menuitem");
             const secondMenuItem = menuItems[1];
             if (menuItems.length > 1 && secondMenuItem) {
-                userEvent.click(secondMenuItem);
+                await user.click(secondMenuItem);
 
                 // Check localStorage was updated
                 const storedTab = localStorage.getItem("srat_tab");
@@ -749,7 +754,8 @@ describe("NavBar Component", () => {
     it("toggles tour open/close state", async () => {
         const React = await import("react");
         const { render, screen } = await import("@testing-library/react");
-        const { userEvent } = await import("@testing-library/user-event");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const user = userEvent.setup();
 
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
@@ -789,7 +795,7 @@ describe("NavBar Component", () => {
         );
 
         if (helpButton) {
-            userEvent.click(helpButton);
+            await user.click(helpButton);
             expect(true).toBeTruthy();
         }
     });
@@ -797,7 +803,8 @@ describe("NavBar Component", () => {
     it("cycles through theme modes: light -> dark -> system -> light", async () => {
         const React = await import("react");
         const { render, screen } = await import("@testing-library/react");
-        const { userEvent } = await import("@testing-library/user-event");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const user = userEvent.setup();
 
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { BrowserRouter } = await import("react-router-dom");
@@ -838,9 +845,9 @@ describe("NavBar Component", () => {
 
         if (themeButton) {
             // Click multiple times to cycle through modes
-            userEvent.click(themeButton);
-            userEvent.click(themeButton);
-            userEvent.click(themeButton);
+            await user.click(themeButton);
+            await user.click(themeButton);
+            await user.click(themeButton);
         }
 
         expect(true).toBeTruthy();

@@ -1,10 +1,11 @@
-[prepare.bun]
+[deps.bun]
+auto = true
 
 [tools]
 "npm:@rtk-query/codegen-openapi" = "2.2.0"
 
 [hooks]
-enter = "mise run prepare"
+enter = "mise run deps"
 
 [tasks]
 clean = "rm -rf out"
@@ -94,6 +95,14 @@ run = [
   "bun ./scripts/add-test-setup.js",
   "tsgo --noEmit",
   "AGENT=1 BUN_TEST_NO_COVERAGE_THRESHOLD=1 bun test --preload ./test/setup.ts --bail --timeout 10000 --max-concurrency=1 --reporter=dot",
+]
+quiet = true
+
+[tasks."test:new"]
+run = [
+  "bun ./scripts/add-test-setup.js",
+  "tsgo --noEmit",
+  "AGENT=1 BUN_TEST_NO_COVERAGE_THRESHOLD=1 bun test --preload ./test/setup.ts --bail --timeout 10000 --max-concurrency=1 --changed --reporter=dot",
 ]
 quiet = true
 

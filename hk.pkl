@@ -60,7 +60,7 @@ local linters = new Mapping<String, Step> {
     }
     ["vale"] = (Builtins.vale) {
         glob = "**/*.md"
-        exclude = List("CHANGELOG.md", "docs/tasks/*.md",".github/**/*.md")
+        exclude = List("CHANGELOG.md", "docs/tasks/*.md","docs/refactors/*.md",".github/**/*.md")
     }
 
     ["mise"] = (Builtins.mise) {

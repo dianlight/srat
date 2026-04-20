@@ -1,5 +1,5 @@
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import "../../../test/setup";
-import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
 
 // Mock the GitHub API to avoid actual network requests
 mock.module("../../store/githubApi", () => ({
@@ -74,9 +74,13 @@ describe("DonationButton Component", () => {
 
 		const result = render(
 			React.createElement(
-				ThemeProvider,
-				{ theme },
-				React.createElement(DonationButton as any, {})
+				(await import("@rollbar/react")).Provider,
+				{ children: {} as any, config: {} },
+				React.createElement(
+					ThemeProvider,
+					{ theme },
+					React.createElement(DonationButton as any, {})
+				)
 			)
 		);
 		cleanup = result.unmount;
@@ -84,8 +88,8 @@ describe("DonationButton Component", () => {
 		// Component should render successfully - use getByTestId for icon buttons
 		expect(result.container).toBeTruthy();
 
-		// Find button by data-testid (acceptable for icon buttons without text)
-		const button = screen.getByTestId("donation-button");
+		// Find button by accessible role and name
+		const button = screen.getByRole("button", { name: /support this project/i });
 		expect(button).toBeTruthy();
 	});
 
@@ -101,15 +105,19 @@ describe("DonationButton Component", () => {
 
 		const result = render(
 			React.createElement(
-				ThemeProvider,
-				{ theme },
-				React.createElement(DonationButton as any, {})
+				(await import("@rollbar/react")).Provider,
+				{ children: {} as any, config: {} },
+				React.createElement(
+					ThemeProvider,
+					{ theme },
+					React.createElement(DonationButton as any, {})
+				)
 			)
 		);
 		cleanup = result.unmount;
 
-		// Find and click the donation button
-		const button = screen.getByTestId("donation-button");
+		// Find and click the donation button by role/name
+		const button = screen.getByRole("button", { name: /support this project/i });
 		await user.click(button);
 
 		// Menu should be open - verify aria-expanded attribute
@@ -128,15 +136,19 @@ describe("DonationButton Component", () => {
 
 		const result = render(
 			React.createElement(
-				ThemeProvider,
-				{ theme },
-				React.createElement(DonationButton as any, {})
+				(await import("@rollbar/react")).Provider,
+				{ children: {} as any, config: {} },
+				React.createElement(
+					ThemeProvider,
+					{ theme },
+					React.createElement(DonationButton as any, {})
+				)
 			)
 		);
 		cleanup = result.unmount;
 
-		// Click to open menu
-		const button = screen.getByTestId("donation-button");
+		// Click to open menu by role/name
+		const button = screen.getByRole("button", { name: /support this project/i });
 		await user.click(button);
 
 		// Look for menu items - should have GitHub Sponsors and Buy Me a Coffee
@@ -169,15 +181,19 @@ describe("DonationButton Component", () => {
 
 		const result = render(
 			React.createElement(
-				ThemeProvider,
-				{ theme },
-				React.createElement(DonationButton as any, {})
+				(await import("@rollbar/react")).Provider,
+				{ children: {} as any, config: {} },
+				React.createElement(
+					ThemeProvider,
+					{ theme },
+					React.createElement(DonationButton as any, {})
+				)
 			)
 		);
 		cleanup = result.unmount;
 
-		// Click to open menu
-		const button = screen.getByTestId("donation-button");
+		// Click to open menu by role/name
+		const button = screen.getByRole("button", { name: /support this project/i });
 		await user.click(button);
 
 		// Click on GitHub Sponsors
@@ -203,15 +219,19 @@ describe("DonationButton Component", () => {
 
 		const result = render(
 			React.createElement(
-				ThemeProvider,
-				{ theme },
-				React.createElement(DonationButton as any, {})
+				(await import("@rollbar/react")).Provider,
+				{ children: {} as any, config: {} },
+				React.createElement(
+					ThemeProvider,
+					{ theme },
+					React.createElement(DonationButton as any, {})
+				)
 			)
 		);
 		cleanup = result.unmount;
 
-		// Open menu
-		const button = screen.getByTestId("donation-button");
+		// Open menu by role/name
+		const button = screen.getByRole("button", { name: /support this project/i });
 		expect(button).toBeTruthy();
 		await user.click(button);
 
@@ -235,15 +255,19 @@ describe("DonationButton Component", () => {
 
 		const result = render(
 			React.createElement(
-				ThemeProvider,
-				{ theme },
-				React.createElement(DonationButton as any, {})
+				(await import("@rollbar/react")).Provider,
+				{ children: {} as any, config: {} },
+				React.createElement(
+					ThemeProvider,
+					{ theme },
+					React.createElement(DonationButton as any, {})
+				)
 			)
 		);
 		cleanup = result.unmount;
 
-		// Open menu
-		const button = screen.getByTestId("donation-button");
+		// Open menu by role/name
+		const button = screen.getByRole("button", { name: /support this project/i });
 		await user.click(button);
 
 		// Menu items should have icons (ListItemIcon)
@@ -266,15 +290,19 @@ describe("DonationButton Component", () => {
 
 		const result = render(
 			React.createElement(
-				ThemeProvider,
-				{ theme },
-				React.createElement(DonationButton as any, {})
+				(await import("@rollbar/react")).Provider,
+				{ children: {} as any, config: {} },
+				React.createElement(
+					ThemeProvider,
+					{ theme },
+					React.createElement(DonationButton as any, {})
+				)
 			)
 		);
 		cleanup = result.unmount;
 
-		// Component renders with button
-		const button = screen.getByTestId("donation-button");
+		// Component renders with button (accessible)
+		const button = screen.getByRole("button", { name: /support this project/i });
 		expect(button).toBeTruthy();
 
 		// Tooltip text is set (may not be visible until hover)
@@ -300,8 +328,8 @@ describe("DonationButton Component", () => {
 		);
 		cleanup = result.unmount;
 
-		// Open menu
-		const button = screen.getByTestId("donation-button");
+		// Open menu by role/name
+		const button = screen.getByRole("button", { name: /support this project/i });
 		await user.click(button);
 
 		// Verify menu is open

@@ -149,7 +149,7 @@ export function Users() {
 
   function onSubmitEditUser(data?: UsersProps) {
     if (!data?.username || (!data.password && data.doCreate)) {
-      console.log("Data is invalid", data);
+      console.debug("Data is invalid", data);
       return;
     }
 
