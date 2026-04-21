@@ -48,7 +48,7 @@ dependencies for compatibility and optimization opportunities.
 - [x] Task 18: Run lint: `mise run //frontend:lint` — fix all warnings/errors
 - [x] Task 19: Run frontend build: `mise run //frontend:build` — verify no build errors
 - [x] Task 20: Update `frontend/TYPESCRIPT_MIGRATION.md` and any docs that reference MUI version
-- [ ] Task 21: Ask to create a PR with the task implementation and link it here for tracking
+- [x] Task 21: Ask to create a PR with the task implementation and link it here for tracking
 
 ## 🧠 Implementation Notes (Copilot Context)
 
@@ -131,6 +131,10 @@ dependencies for compatibility and optimization opportunities.
 12. **Task 21** — Create PR.
 
 **Branch:** `refactor/upgrade-mui-v9-frontend-deps`
+
+### PR tracking
+
+- PR: https://github.com/dianlight/srat/pull/591
 
 ### Codemods available
 
