@@ -212,7 +212,7 @@
 		"STUB",
 		"📅 Planned",
 		"🔄 In Progress",
-		"✅ Completeletelete"
+		"✅ Complete"
 	],
 	"todo-tree.highlights.defaultHighlight": {
 		"type": "text",
@@ -232,7 +232,7 @@
 			"icon": "flame",
 			"type": "text"
 		},
-		"**Status:** ✅ Completelete": {
+		"**Status:** ✅ Complete": {
 			"foreground": "#2ecc71", // Verde
 			"icon": "check-circle",
 			"type": "text"

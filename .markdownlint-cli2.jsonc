@@ -75,7 +75,8 @@
         ".git/**",
         ".vale/**",
         ".github/**",
-        "docs/tasks/**"
+        "docs/tasks/**",
+        "docs/refactors/**"
     ],
     "gitignore": true
 }

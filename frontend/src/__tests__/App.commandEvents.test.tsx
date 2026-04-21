@@ -88,10 +88,6 @@ const registerModuleMocks = () => {
   mock.module("../components/BaseConfigModal", () => ({
     default: () => null,
   }));
-
-  mock.module("../components/TelemetryModal", () => ({
-    default: () => null,
-  }));
 };
 
 describe("App command events", () => {

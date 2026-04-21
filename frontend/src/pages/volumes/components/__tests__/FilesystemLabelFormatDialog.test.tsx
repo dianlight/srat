@@ -801,7 +801,8 @@ describe("Filesystem label/format dialogs", () => {
 
   it("shows only format-capable filesystems in format type dropdown", async () => {
     const React = await import("react");
-    const { fireEvent, screen } = await import("@testing-library/react");
+    const { screen } = await import("@testing-library/react");
+    const userEvent = (await import("@testing-library/user-event")).default;
     const { sratApi } = await import("../../../../store/sratApi");
     const { FilesystemFormatDialog } = await import("../FilesystemFormatDialog");
 
@@ -925,7 +926,8 @@ describe("Filesystem label/format dialogs", () => {
     const fsTypeDropdown = await screen.findByRole("combobox", {
       name: /filesystem type/i,
     });
-    fireEvent.mouseDown(fsTypeDropdown);
+    const user = userEvent.setup();
+    await user.click(fsTypeDropdown);
 
     const ext4Option = await screen.findByRole("option", {
       name: /EXT4 Filesystem \(ext4\)/i,
