@@ -66,6 +66,7 @@ Instructions for building high-quality ReactJS applications with modern patterns
 - Create custom hooks for reusable stateful logic
 - Follow the rules of hooks (only call at the top level)
 - Use `useRef` for accessing DOM elements and storing mutable values
+- **Guard-before-hooks rule:** If a component has an early-return guard (e.g. `if (!props.supported) return null`), never declare hooks above it. Export a thin public wrapper that performs only the guard, and put all hooks in a named inner component (e.g. `SmartStatusPanelInner`). Hooks declared above a guard still mount even when the component renders nothing — causing RTK Query fetches and WebSocket subscriptions to fire in tests, which leads to `act()` timeouts.
 
 ### Styling
 

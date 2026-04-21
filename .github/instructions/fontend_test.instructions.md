@@ -20,7 +20,8 @@ applyTo: **/frontend/**/\*.test.{js,jsx,ts,tsx}
 - **Test Git Changes:** When modifying a component, run only the tests related to that component using `--test-name-pattern` to quickly verify changes without running the entire suite. Also use `--changed` to run tests related to changed files in the current branch.
 - **Test Stability:** For flaky tests, use `--rerun-each 10` to automatically rerun failed tests up to 10 times before marking them as failed.
 - **Test Isolation:** Use beforeEach and afterEach hooks to set up and clean up test environments, ensuring no shared state between tests.
-- **Mocking:** Use `msw` (Mock Service Worker) and `msw-auto-mock`  for API mocking when testing components that make network requests, ensuring tests are fast and reliable without hitting real endpoints. 
+- **Mocking:** Use `msw` (Mock Service Worker) and `msw-auto-mock`  for API mocking when testing components that make network requests, ensuring tests are fast and reliable without hitting real endpoints.
+- **`IS_REACT_ACT_ENVIRONMENT`:** Set `(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true` **after** `GlobalRegistrator.register()` in `test/setup.ts`. Placing it before registration has no effect — GlobalRegistrator overwrites the global context, leaving `@testing-library/react` unaware of the act() environment and printing "not configured to support act(...)" for every render. 
 
 ## **2\. Core Philosophy**
 
