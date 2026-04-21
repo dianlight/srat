@@ -2,7 +2,7 @@ import "../../../../test/setup";
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 
 describe("ShareActions component", () => {
-    const createMatchMedia = (matches: boolean) => () => ({
+    const createMatchMedia = (matches: boolean) => () => (({
         matches,
         addListener: () => { },
         removeListener: () => { },
@@ -10,8 +10,8 @@ describe("ShareActions component", () => {
         removeEventListener: () => { },
         dispatchEvent: () => false,
         onchange: null,
-        media: "",
-    }) as any;
+        media: ""
+    }) as any);
 
     beforeEach(() => {
         (window as any).matchMedia = createMatchMedia(false);

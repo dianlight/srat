@@ -73,13 +73,28 @@ export function ProcessMetricsAccordion({
           <Typography variant="h6">Process Metrics</Typography>
           {!expanded && (
             <Box sx={{ display: "flex", gap: 2 }}>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 CPU: {aggregate.cpu.toFixed(1)}%
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 Mem: {aggregate.memory.toFixed(1)}%
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 Conns: {aggregate.connections}
               </Typography>
             </Box>

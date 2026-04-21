@@ -23,14 +23,14 @@ const baseDisk = {
     partitions: {},
 };
 
-const createPartition = (overrides: Record<string, unknown> = {}): Partition => ({
+const createPartition = (overrides: Record<string, unknown> = {}): Partition => (({
     id: "part-1",
     name: "data-1",
     fs_type: "ext4",
     size: 500_000_000,
     mount_point_data: {},
-    ...overrides,
-}) as Partition;
+    ...overrides
+}) as Partition);
 
 const renderPanel = async (
     props: ComponentProps<typeof VolumeDetailsPanel>,

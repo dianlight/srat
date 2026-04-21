@@ -651,7 +651,6 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
           setShowPreview(false);
         }}
       />
-
       {/* Main Layout Grid */}
       <Grid
         container
@@ -667,18 +666,24 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
           >
             <Stack
               direction="row"
-              justifyContent="space-between"
-              alignItems="center"
-              sx={{ mb: 2, px: 2 }}
+              sx={{
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 2,
+                px: 2,
+              }}
             >
               <Typography variant="h6">Volumes</Typography>
             </Stack>
 
             <Stack
               direction="row"
-              justifyContent="flex-start"
-              sx={{ pl: 2, mb: 1 }}
               data-tutor={`reactour__tab${TabIDs.VOLUMES}__step2`}
+              sx={{
+                justifyContent: "flex-start",
+                pl: 2,
+                mb: 1,
+              }}
             >
               <FormControlLabel
                 control={

@@ -44,8 +44,11 @@ export function TelemetryPanel({ readOnly }: TelemetryPanelProps) {
       {!internetConnection && !isInternetLoading && (
         <Typography
           variant="caption"
-          color="text.secondary"
-          sx={{ mt: 0.5, display: "block" }}
+          sx={{
+            color: "text.secondary",
+            mt: 0.5,
+            display: "block",
+          }}
         >
           Internet connection required for telemetry settings
         </Typography>

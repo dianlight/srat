@@ -1,6 +1,6 @@
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
-import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
-import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
+import ErrorOutlinedIcon from "@mui/icons-material/ErrorOutlined";
+import HelpOutlinedIcon from "@mui/icons-material/HelpOutlined";
 import { Box, Typography } from "@mui/material";
 import { type ReactNode, useMemo } from "react";
 import {
@@ -55,12 +55,12 @@ export function useFilesystemState(
 
   const filesystemStatusIcon = useMemo(() => {
     if (filesystemStatus === "clean") {
-      return <CheckCircleOutlineIcon color="success" fontSize="small" />;
+      return <CheckCircleOutlinedIcon color="success" fontSize="small" />;
     }
     if (filesystemStatus === "has_error") {
-      return <ErrorOutlineIcon color="error" fontSize="small" />;
+      return <ErrorOutlinedIcon color="error" fontSize="small" />;
     }
-    return <HelpOutlineIcon color="disabled" fontSize="small" />;
+    return <HelpOutlinedIcon color="disabled" fontSize="small" />;
   }, [filesystemStatus]);
 
   const filesystemStatusTooltip = useMemo(() => {

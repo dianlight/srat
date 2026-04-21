@@ -76,6 +76,10 @@ if (!(win as any).SyntaxError) {
 (globalThis as any).WebSocket = nativeGlobals.WebSocket;
 // Mark environment as test for components that conditionally load heavy browser-only modules
 ; (globalThis as any).__TEST__ = true;
+// Signal to React that act() is supported in this test environment.
+// Must be set after GlobalRegistrator.register() so it is not overwritten.
+// Prevents "not configured to support act(...)" warnings from @testing-library/react.
+; (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
 // happy-dom often returns zero-sized rectangles, which causes MUI Popover/Menu
 // to warn that anchorEl is not part of the document layout. Provide a stable,

@@ -30,7 +30,7 @@ mock.module("../../../../store/sratApi", () => {
         }),
         // Export enums that might be needed by other components
         Type: { System: "system", Data: "data" },
-        Usage: { None: "None", General: "general", TimeMachine: "timemachine" },
+        Usage: { None: "none", General: "general", TimeMachine: "timemachine", Internal: "internal", Backup: "backup", Media: "media", Share: "share" },
         Time_machine_support: { Disabled: "disabled", Enabled: "enabled" },
         // Common enums expected by other modules (shallow stubs)
         Severity: { Error: "Error", Warning: "Warning", Info: "Info", Success: "Success" },

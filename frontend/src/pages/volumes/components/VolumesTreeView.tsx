@@ -1,8 +1,8 @@
 import ComputerIcon from "@mui/icons-material/Computer";
 import CreditScoreIcon from "@mui/icons-material/CreditScore";
 import EjectIcon from "@mui/icons-material/Eject";
-import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
-import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import ErrorOutlinedIcon from "@mui/icons-material/ErrorOutlined";
+import HelpOutlinedIcon from "@mui/icons-material/HelpOutlined";
 import SdStorageIcon from "@mui/icons-material/SdStorage";
 import SettingsSuggestIcon from "@mui/icons-material/SettingsSuggest";
 import StorageIcon from "@mui/icons-material/Storage";
@@ -146,9 +146,9 @@ export function VolumesTreeView({
     );
     const alertLabel = `Filesystem status alert for ${partitionLabel}`;
     const icon = hasErrors ? (
-      <ErrorOutlineIcon color="error" fontSize="small" />
+      <ErrorOutlinedIcon color="error" fontSize="small" />
     ) : (
-      <HelpOutlineIcon color="disabled" fontSize="small" />
+      <HelpOutlinedIcon color="disabled" fontSize="small" />
     );
 
     return (
@@ -209,8 +209,8 @@ export function VolumesTreeView({
               <Tooltip title={mountpointPath} placement="top">
                 <Typography
                   variant="body2"
-                  fontWeight={isSelected ? 600 : 400}
                   sx={{
+                    fontWeight: isSelected ? 600 : 400,
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
@@ -321,8 +321,8 @@ export function VolumesTreeView({
                 <Tooltip title={partitionNameDecoded} placement="top">
                   <Typography
                     variant="body2"
-                    fontWeight={isSelected ? 600 : 400}
                     sx={{
+                      fontWeight: isSelected ? 600 : 400,
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       whiteSpace: "nowrap",
@@ -409,8 +409,8 @@ export function VolumesTreeView({
               <Tooltip title={partitionNameDecoded} placement="top">
                 <Typography
                   variant="body2"
-                  fontWeight={isSelected ? 600 : 400}
                   sx={{
+                    fontWeight: isSelected ? 600 : 400,
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
@@ -534,7 +534,12 @@ export function VolumesTreeView({
             {renderDiskIcon(disk)}
 
             <Box sx={{ flexGrow: 1, ml: 1 }}>
-              <Typography variant="subtitle2" fontWeight={600}>
+              <Typography
+                variant="subtitle2"
+                sx={{
+                  fontWeight: 600,
+                }}
+              >
                 {disk.model?.toUpperCase() || `Disk ${diskIdx + 1}`}
               </Typography>
               <Box

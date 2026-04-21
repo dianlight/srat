@@ -140,14 +140,22 @@ const IssueCard: React.FC<IssueCardProps> = ({
             />
           )}
         </Box>
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           {issue.description}
         </Typography>
         {issue.created_at && (
           <Typography
             variant="caption"
-            color="text.secondary"
-            sx={{ mt: 1, display: "block" }}
+            sx={{
+              color: "text.secondary",
+              mt: 1,
+              display: "block",
+            }}
           >
             {new Date(issue.created_at ?? "").toLocaleString()}
           </Typography>

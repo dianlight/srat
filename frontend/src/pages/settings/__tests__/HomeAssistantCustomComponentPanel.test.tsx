@@ -42,7 +42,7 @@ describe("HomeAssistantCustomComponentPanel", () => {
         );
 
         const store = await createTestStore();
-        const theme = createTheme({ components: { MuiDialog: { defaultProps: { TransitionProps: { timeout: 0 } } } } });
+        const theme = createTheme({ components: { MuiDialog: { defaultProps: { slotProps: { transition: { timeout: 0 } } } } } });
 
         render(
             React.createElement(
@@ -84,7 +84,7 @@ describe("HomeAssistantCustomComponentPanel", () => {
         );
 
         const store = await createTestStore();
-        const theme = createTheme({ components: { MuiDialog: { defaultProps: { TransitionProps: { timeout: 0 } } } } });
+        const theme = createTheme({ components: { MuiDialog: { defaultProps: { slotProps: { transition: { timeout: 0 } } } } } });
 
         render(
             React.createElement(
@@ -135,7 +135,7 @@ describe("HomeAssistantCustomComponentPanel", () => {
         );
 
         const store = await createTestStore();
-        const theme = createTheme({ components: { MuiDialog: { defaultProps: { TransitionProps: { timeout: 0 } } } } });
+        const theme = createTheme({ components: { MuiDialog: { defaultProps: { slotProps: { transition: { timeout: 0 } } } } } });
 
         render(
             React.createElement(
@@ -191,7 +191,7 @@ describe("HomeAssistantCustomComponentPanel", () => {
         );
 
         const store = await createTestStore();
-        const theme = createTheme({ components: { MuiDialog: { defaultProps: { TransitionProps: { timeout: 0 } } } } });
+        const theme = createTheme({ components: { MuiDialog: { defaultProps: { slotProps: { transition: { timeout: 0 } } } } } });
 
         render(
             React.createElement(
@@ -241,7 +241,7 @@ describe("HomeAssistantCustomComponentPanel", () => {
         );
 
         const store = await createTestStore();
-        const theme = createTheme({ components: { MuiDialog: { defaultProps: { TransitionProps: { timeout: 0 } } } } });
+        const theme = createTheme({ components: { MuiDialog: { defaultProps: { slotProps: { transition: { timeout: 0 } } } } } });
 
         render(
             React.createElement(
@@ -297,7 +297,7 @@ describe("HomeAssistantCustomComponentPanel", () => {
         );
 
         const store = await createTestStore();
-        const theme = createTheme({ components: { MuiDialog: { defaultProps: { TransitionProps: { timeout: 0 } } } } });
+        const theme = createTheme({ components: { MuiDialog: { defaultProps: { slotProps: { transition: { timeout: 0 } } } } } });
 
         render(
             React.createElement(
@@ -350,7 +350,7 @@ describe("HomeAssistantCustomComponentPanel", () => {
         );
 
         const store = await createTestStore();
-        const theme = createTheme({ components: { MuiDialog: { defaultProps: { TransitionProps: { timeout: 0 } } } } });
+        const theme = createTheme({ components: { MuiDialog: { defaultProps: { slotProps: { transition: { timeout: 0 } } } } } });
 
         render(
             React.createElement(
@@ -406,7 +406,7 @@ describe("HomeAssistantCustomComponentPanel", () => {
         );
 
         const store = await createTestStore();
-        const theme = createTheme({ components: { MuiDialog: { defaultProps: { TransitionProps: { timeout: 0 } } } } });
+        const theme = createTheme({ components: { MuiDialog: { defaultProps: { slotProps: { transition: { timeout: 0 } } } } } });
 
         render(
             React.createElement(

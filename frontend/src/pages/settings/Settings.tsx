@@ -284,7 +284,12 @@ export function Settings() {
             >
               <Box sx={{ p: 2, borderBottom: 1, borderColor: "divider" }}>
                 <Typography variant="h6">Settings</Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   Choose a category
                 </Typography>
               </Box>
@@ -349,7 +354,12 @@ export function Settings() {
                   </Box>
                 ) : (
                   <Box sx={{ textAlign: "center", py: 8 }}>
-                    <Typography variant="h6" color="text.secondary">
+                    <Typography
+                      variant="h6"
+                      sx={{
+                        color: "text.secondary",
+                      }}
+                    >
                       Select a setting from the tree to configure
                     </Typography>
                   </Box>

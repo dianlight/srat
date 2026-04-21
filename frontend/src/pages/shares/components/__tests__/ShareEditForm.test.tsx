@@ -160,7 +160,8 @@ describe("ShareEditForm component", () => {
         const React = await import("react");
         const { render, within } = await import("@testing-library/react");
         const { Usage } = await import("../../../../store/sratApi");
-        const { ShareEditForm } = await import("../ShareEditForm");
+        // @ts-expect-error - Query param fetches isolated module instance
+        const { ShareEditForm } = await import("../ShareEditForm?share-edit-form-internal");
 
         const { container } = render(
             React.createElement(ShareEditForm as any, {

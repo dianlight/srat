@@ -45,7 +45,13 @@ export function PreviewDialog(props: PreviewDialogProps) {
       aria-describedby="alert-dialog-description"
     >
       <DialogTitle id="alert-dialog-title">
-        <Box display="flex" alignItems="center" justifyContent="space-between">
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
           <span>{props.title ?? "Preview"}</span>
           <CopyButtonBar
             compact
@@ -275,7 +281,15 @@ function ObjectTreeNode(props: {
 
 export function ObjectTree(props: { object: unknown }) {
   if (!props.object) {
-    return <Box p={2}>No data to display</Box>;
+    return (
+      <Box
+        sx={{
+          p: 2,
+        }}
+      >
+        No data to display
+      </Box>
+    );
   }
 
   return (

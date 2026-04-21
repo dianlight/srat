@@ -236,7 +236,13 @@ export function HDIdleDiskSettings({
           <CardContent>
             <Grid container spacing={2}>
               <Grid size={12}>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
+                <Typography
+                  variant="body2"
+                  gutterBottom
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   Configure specific spin-down settings for{" "}
                   <strong>{disk.model || diskName}</strong>. Leave fields at 0
                   or empty to use default settings.
@@ -252,7 +258,12 @@ export function HDIdleDiskSettings({
                       borderRadius: 1,
                     }}
                   >
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "text.secondary",
+                      }}
+                    >
                       Current config: idle time
                       <strong> {hdidleStatus.idle_time ?? 0}s</strong>, command
                       <strong> {hdidleStatus.command_type || "default"}</strong>
@@ -343,7 +354,7 @@ export function HDIdleDiskSettings({
                       type="number"
                       control={control}
                       disabled={fieldsDisabled}
-                      inputProps={{ min: 0, max: 15 }}
+                      slotProps={{ htmlInput: { min: 0, max: 15 } }}
                       size="small"
                       helperText="0 = default"
                     />
@@ -360,7 +371,12 @@ export function HDIdleDiskSettings({
                     borderRadius: 1,
                   }}
                 >
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     <strong>Note:</strong> Device-specific settings override
                     global defaults. Changes take effect after the next service
                     restart or configuration update.

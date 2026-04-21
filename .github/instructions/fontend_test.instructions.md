@@ -16,6 +16,8 @@ applyTo: **/frontend/**/\*.test.{js,jsx,ts,tsx}
 - **Language:** TypeScript (ensure strict typing for props and mocks).
 - **Matchings:** Use @testing-library/jest-dom matchers (manually imported or configured via setup file).
 - **Timeout:** Use a default test timeout of 5000ms on every test (configurable in bun:test options `--timeout 5000`).
+- **Speedup:** To speed up test runs, use `--test-name-pattern <pattern>` to run specific tests.
+- **Test Git Changes:** When modifying a component, run only the tests related to that component using `--test-name-pattern` to quickly verify changes without running the entire suite. Also use `--changed` to run tests related to changed files in the current branch.
 - **Test Stability:** For flaky tests, use `--rerun-each 10` to automatically rerun failed tests up to 10 times before marking them as failed.
 - **Test Isolation:** Use beforeEach and afterEach hooks to set up and clean up test environments, ensuring no shared state between tests.
 - **Mocking:** Use `msw` (Mock Service Worker) and `msw-auto-mock`  for API mocking when testing components that make network requests, ensuring tests are fast and reliable without hitting real endpoints. 

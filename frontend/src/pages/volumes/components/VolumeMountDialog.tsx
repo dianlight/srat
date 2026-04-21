@@ -1,5 +1,4 @@
 import {
-  type AutocompleteRenderGetTagProps,
   Button,
   Chip,
   Dialog,
@@ -115,12 +114,6 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 
       if (existingMountData?.fstype) {
         // If existing fstype is set, ensure it's in the filesystems list
-        console.debug(
-          "Existing mount data found:",
-          existingMountData,
-          (filesystems as FilesystemsInfo)?.filesystems,
-        );
-
         const fsCurrent = fsLoading
           ? undefined
           : (filesystems as FilesystemsInfo)?.filesystems?.find(
@@ -131,11 +124,6 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
           setUnsupportedCustomFlags([]); // Reset before checking
           // Check existing flags against supported flags for this FS
           existingMountData?.flags?.forEach((flag) => {
-            console.debug(
-              "Checking flag:",
-              flag,
-              (filesystems as FilesystemsInfo)?.mount_flags,
-            );
             if (flag.name === "rw") return; // "rw" is a common default flag that may not be listed but should not be considered unsupported
             if (
               !(filesystems as FilesystemsInfo)?.mount_flags?.find(
@@ -146,11 +134,6 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
             }
           });
           existingMountData?.custom_flags?.forEach((flag) => {
-            console.debug(
-              "Checking custom flag:",
-              flag,
-              fsCurrent.custom_mount_flags,
-            );
             if (flag.name === "rw") return; // "rw" is a common default flag that may not be listed but should not be considered unsupported
 
             if (
@@ -302,7 +285,7 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
 
   const renderMountFlagTags = (
     values: MountFlag[],
-    getTagProps: AutocompleteRenderGetTagProps,
+    getTagProps: (params: { index: number }) => Record<string, unknown>,
     withNeedsValueColor = false,
   ) =>
     values
@@ -316,7 +299,7 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
             color={
               withNeedsValueColor && option.needsValue ? "warning" : "default"
             }
-            key={key}
+            key={key as React.Key}
             variant="filled"
             label={option?.name || "error"}
             size="small"
@@ -378,7 +361,7 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
                         ? "Loading..."
                         : "Leave blank to auto-detect",
                     error: !!fsError,
-                    InputLabelProps: { shrink: true },
+                    slotProps: { inputLabel: { shrink: true } },
                   }}
                 />
               </Grid>
@@ -409,17 +392,22 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
                     renderOption: renderMountFlagOption,
                     isOptionEqualToValue: (option, value) =>
                       option?.name === value?.name,
-                    renderTags: (values, getTagProps) =>
+                    renderValue: (values, getTagProps) =>
                       renderMountFlagTags(values as MountFlag[], getTagProps),
                   }}
                   textFieldProps={{
                     disabled: props.readOnlyView,
-                    InputLabelProps: { shrink: true },
+                    slotProps: { inputLabel: { shrink: true } },
                   }}
                 />
 
                 {unsupported_flags.length > 0 && (
-                  <Typography fontSize="0.8em" color="error">
+                  <Typography
+                    color="error"
+                    sx={{
+                      fontSize: "0.8em",
+                    }}
+                  >
                     Unknown Flags:{" "}
                     {unsupported_flags?.map((flag) => flag.name).join(", ")}
                   </Typography>
@@ -449,7 +437,7 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
                       renderOption: renderMountFlagOption,
                       isOptionEqualToValue: (option, value) =>
                         option.name === value.name,
-                      renderTags: (values, getTagProps) =>
+                      renderValue: (values, getTagProps) =>
                         renderMountFlagTags(
                           values as MountFlag[],
                           getTagProps,
@@ -494,12 +482,17 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
                     }}
                     textFieldProps={{
                       disabled: props.readOnlyView,
-                      InputLabelProps: { shrink: true },
+                      slotProps: { inputLabel: { shrink: true } },
                     }}
                   />
                 )}
                 {unsupported_custom_flags.length > 0 && (
-                  <Typography fontSize="0.8em" color="error">
+                  <Typography
+                    color="error"
+                    sx={{
+                      fontSize: "0.8em",
+                    }}
+                  >
                     Unknown Flags:{" "}
                     {unsupported_custom_flags
                       ?.map((flag) => flag.name)
@@ -528,7 +521,7 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
                         message: `Invalid value for ${field.name}. ${field.value_description}`,
                       },
                     }}
-                    InputLabelProps={{ shrink: true }}
+                    slotProps={{ inputLabel: { shrink: true } }}
                     helperText={field.value_description}
                   />
                 </Grid>
@@ -540,7 +533,7 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
                   }}
                   slotProps={{
                     typography: {
-                      fontSize: "0.875rem",
+                      sx: { fontSize: "0.875rem" },
                     },
                   }}
                   name="is_to_mount_at_startup"
