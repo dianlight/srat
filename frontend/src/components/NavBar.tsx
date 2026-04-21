@@ -417,24 +417,19 @@ export function NavBar(props: {
   };
 
   function handleDoUpdate() {
-    console.debug("Doing update");
     confirm({
       title: `Update to ${update?.Progress.release_asset?.last_release}?`,
       description:
         "If you proceed the new version is downloaded and installed.",
-    }).then(({ confirmed, reason }) => {
+    }).then(({ confirmed }) => {
       if (confirmed) {
         doUpdate()
           .unwrap()
-          .then((_res) => {
-            //updateStatus.update_status = (res as UpdateProgress).update_status;
-            //users.mutate();
-          })
           .catch((err) => {
-            console.error("DoUpdate error:", err);
+            toast.error(
+              `Update failed: ${err?.data?.message ?? err?.message ?? "unknown error"}`,
+            );
           });
-      } else if (reason === "cancel") {
-        console.debug("Update cancelled");
       }
     });
   }

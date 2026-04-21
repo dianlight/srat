@@ -91,33 +91,28 @@ const BaseConfigModal: React.FC<BaseConfigModalProps> = ({ open, onClose }) => {
   }, [systemHostname, isHostnameFetching, setValue]);
 
   const handleSubmit = async (data: BaseConfigFormData) => {
-    console.debug("Form submitted with data:", data);
     const completeSettings = {
       ...settings,
       hostname: data.hostname || undefined,
       workgroup: data.workgroup || undefined,
     } as Settings;
-    console.debug("Complete settings to be saved:", completeSettings);
     if (!isValidUsers(users) || !isValidSettings(completeSettings)) {
-      console.error("Invalid data for users or settings:", {
-        users,
-        settings: completeSettings,
+      setError("root", {
+        message:
+          "Invalid configuration data. Please check the form and try again.",
       });
       return;
     }
 
     const adminUser = users.find((u) => u.is_admin);
     if (!adminUser) {
-      console.error("No admin user found:", { users });
+      setError("root", {
+        message: "No admin user found. Please contact support.",
+      });
       return;
     }
 
     try {
-      console.debug("Updating admin user with data:", {
-        ...adminUser,
-        password: data.newPassword,
-      });
-
       await updateAdminUser({
         user: { ...adminUser, password: data.newPassword },
       }).unwrap();
@@ -127,8 +122,7 @@ const BaseConfigModal: React.FC<BaseConfigModalProps> = ({ open, onClose }) => {
       }).unwrap();
 
       onClose();
-    } catch (error) {
-      console.error("Failed to update settings:", error);
+    } catch {
       setError("root", {
         message: "Failed to save changes. Please try again.",
       });

@@ -14,7 +14,8 @@ import {
   Typography,
 } from "@mui/material";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { Controller, useForm } from "react-hook-form";
 import {
   type Settings,
   Telemetry_mode,
@@ -28,11 +29,20 @@ interface TelemetryModalProps {
   onClose: () => void;
 }
 
+interface TelemetryFormData {
+  telemetry_mode: Telemetry_mode;
+}
+
 const TelemetryModal: React.FC<TelemetryModalProps> = ({ open, onClose }) => {
-  const [selectedMode, setSelectedMode] = useState<Telemetry_mode>(
-    Telemetry_mode.All,
-  );
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const formContext = useForm<TelemetryFormData>({
+    defaultValues: { telemetry_mode: Telemetry_mode.All },
+  });
+  const {
+    control,
+    handleSubmit,
+    setError,
+    formState: { isSubmitting, errors },
+  } = formContext;
 
   const { data: internetConnection, isLoading: isCheckingConnection } =
     useGetApiTelemetryInternetConnectionQuery();
@@ -41,35 +51,26 @@ const TelemetryModal: React.FC<TelemetryModalProps> = ({ open, onClose }) => {
 
   // Don't show modal if no internet connection
   useEffect(() => {
-    if (!isCheckingConnection && !internetConnection) {
+    if (!isCheckingConnection && internetConnection === false) {
       onClose();
     }
   }, [internetConnection, isCheckingConnection, onClose]);
 
-  const handleSubmit = async () => {
-    if (!settings || isSubmitting) return;
-
-    setIsSubmitting(true);
+  const onSuccess = async (data: TelemetryFormData) => {
+    if (!settings) return;
     try {
-      // Update settings with selected telemetry mode
       await updateSettings({
         settings: {
           ...settings,
-          telemetry_mode: selectedMode,
+          telemetry_mode: data.telemetry_mode,
         } as Settings,
       }).unwrap();
-
       onClose();
-    } catch (error) {
-      console.error("Failed to update telemetry settings:", error);
-      // Handle error - maybe show toast
-    } finally {
-      setIsSubmitting(false);
+    } catch {
+      setError("root", {
+        message: "Failed to update telemetry settings. Please try again.",
+      });
     }
-  };
-
-  const handleModeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setSelectedMode(event.target.value as Telemetry_mode);
   };
 
   // Show loading if checking connection
@@ -84,7 +85,7 @@ const TelemetryModal: React.FC<TelemetryModalProps> = ({ open, onClose }) => {
   }
 
   // Don't show modal if no internet connection
-  if (!internetConnection) {
+  if (internetConnection === false) {
     return null;
   }
 
@@ -96,97 +97,111 @@ const TelemetryModal: React.FC<TelemetryModalProps> = ({ open, onClose }) => {
       fullWidth
       disableEscapeKeyDown // Prevent closing with Escape key
     >
-      <DialogTitle>Help Improve SRAT</DialogTitle>
-      <DialogContent>
-        <Typography variant="body1" paragraph>
-          Help us improve SRAT by sharing anonymous usage data and error
-          reports. This helps us identify issues and improve the software for
-          everyone.
-        </Typography>
-
-        <Alert severity="info" sx={{ mb: 2 }}>
-          <Typography variant="body2">
-            All data is sent securely to Rollbar servers and is used solely for
-            improving the software. No personal information or file contents are
-            transmitted.
-          </Typography>
-        </Alert>
-
-        <Box sx={{ mt: 2 }}>
-          <Typography variant="h6" gutterBottom>
-            Choose your preference:
+      <form onSubmit={handleSubmit(onSuccess)}>
+        <DialogTitle>Help Improve SRAT</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" paragraph>
+            Help us improve SRAT by sharing anonymous usage data and error
+            reports. This helps us identify issues and improve the software for
+            everyone.
           </Typography>
 
-          <RadioGroup value={selectedMode} onChange={handleModeChange}>
-            <FormControlLabel
-              value={Telemetry_mode.All}
-              control={<Radio />}
-              label={
-                <Box>
-                  <Typography variant="body1" fontWeight="medium">
-                    Send usage data and error reports
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Help us improve SRAT by sharing anonymous usage statistics
-                    and error reports
-                  </Typography>
-                </Box>
-              }
-            />
-            <FormControlLabel
-              value={Telemetry_mode.Errors}
-              control={<Radio />}
-              label={
-                <Box>
-                  <Typography variant="body1" fontWeight="medium">
-                    Send only error reports
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Share only error reports to help us fix bugs and improve
-                    stability
-                  </Typography>
-                </Box>
-              }
-            />
-            <FormControlLabel
-              value={Telemetry_mode.Disabled}
-              control={<Radio />}
-              label={
-                <Box>
-                  <Typography variant="body1" fontWeight="medium">
-                    Don't send any data
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    No data will be sent to external servers
-                  </Typography>
-                </Box>
-              }
-            />
-          </RadioGroup>
-        </Box>
+          <Alert severity="info" sx={{ mb: 2 }}>
+            <Typography variant="body2">
+              All data is sent securely to Rollbar servers and is used solely
+              for improving the software. No personal information or file
+              contents are transmitted.
+            </Typography>
+          </Alert>
 
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-          You can change this setting at any time in the Settings page. For more
-          information about data collection, visit our{" "}
-          <Link
-            href="https://github.com/dianlight/srat/blob/main/PRIVACY.md"
-            target="_blank"
+          {errors.root && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {errors.root.message}
+            </Alert>
+          )}
+
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              Choose your preference:
+            </Typography>
+
+            <Controller
+              name="telemetry_mode"
+              control={control}
+              render={({ field }) => (
+                <RadioGroup {...field}>
+                  <FormControlLabel
+                    value={Telemetry_mode.All}
+                    control={<Radio />}
+                    label={
+                      <Box>
+                        <Typography variant="body1" fontWeight="medium">
+                          Send usage data and error reports
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Help us improve SRAT by sharing anonymous usage
+                          statistics and error reports
+                        </Typography>
+                      </Box>
+                    }
+                  />
+                  <FormControlLabel
+                    value={Telemetry_mode.Errors}
+                    control={<Radio />}
+                    label={
+                      <Box>
+                        <Typography variant="body1" fontWeight="medium">
+                          Send only error reports
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Share only error reports to help us fix bugs and
+                          improve stability
+                        </Typography>
+                      </Box>
+                    }
+                  />
+                  <FormControlLabel
+                    value={Telemetry_mode.Disabled}
+                    control={<Radio />}
+                    label={
+                      <Box>
+                        <Typography variant="body1" fontWeight="medium">
+                          Don't send any data
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          No data will be sent to external servers
+                        </Typography>
+                      </Box>
+                    }
+                  />
+                </RadioGroup>
+              )}
+            />
+          </Box>
+
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+            You can change this setting at any time in the Settings page. For
+            more information about data collection, visit our{" "}
+            <Link
+              href="https://github.com/dianlight/srat/blob/main/PRIVACY.md"
+              target="_blank"
+            >
+              privacy policy
+            </Link>
+            .
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button
+            type="submit"
+            variant="outlined"
+            disabled={isSubmitting}
+            fullWidth
           >
-            privacy policy
-          </Link>
-          .
-        </Typography>
-      </DialogContent>
-      <DialogActions sx={{ p: 2 }}>
-        <Button
-          onClick={handleSubmit}
-          variant="outlined"
-          disabled={isSubmitting}
-          fullWidth
-        >
-          {isSubmitting ? "Saving..." : "Continue"}
-        </Button>
-      </DialogActions>
+            {isSubmitting ? "Saving..." : "Continue"}
+          </Button>
+        </DialogActions>
+      </form>
     </Dialog>
   );
 };
