@@ -44,6 +44,9 @@ interface VolumesTreeViewProps {
   onUnmount: (partition: Partition, force: boolean) => void;
   onCreateShare: (partition: Partition) => void;
   onGoToShare: (partition: Partition) => void;
+  onCheckFilesystem?: (partition: Partition) => void;
+  onSetFilesystemLabel?: (partition: Partition) => void;
+  onFormatPartition?: (partition: Partition) => void;
   protectedMode?: boolean;
   readOnly?: boolean;
   filesystemStateByPartitionId?: Record<string, FilesystemState>;
@@ -63,6 +66,7 @@ export function VolumesTreeView({
   onUnmount,
   onCreateShare,
   onGoToShare,
+  onCheckFilesystem,
   protectedMode = false,
   readOnly = false,
   filesystemStateByPartitionId,
@@ -256,6 +260,9 @@ export function VolumesTreeView({
                   onUnmount={onUnmount}
                   onCreateShare={onCreateShare}
                   onGoToShare={onGoToShare}
+                  onCheckFilesystem={onCheckFilesystem}
+                  //onSetFilesystemLabel={onSetFilesystemLabel}
+                  //onFormatPartition={onFormatPartition}
                 />
               </Box>
             )}
@@ -474,6 +481,9 @@ export function VolumesTreeView({
                   onUnmount={onUnmount}
                   onCreateShare={onCreateShare}
                   onGoToShare={onGoToShare}
+                  onCheckFilesystem={onCheckFilesystem}
+                  //onSetFilesystemLabel={onSetFilesystemLabel}
+                  //onFormatPartition={onFormatPartition}
                 />
               </Box>
             )}

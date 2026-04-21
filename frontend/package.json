@@ -1,6 +1,6 @@
 {
   "name": "srat-frontend",
-  "version": "2026.4.0-rc2",
+  "version": "2026.4.0-dev.1",
   "description": "Samba Rest Adminitration Tool",
   "module": "index.ts",
   "type": "module",
@@ -56,7 +56,7 @@
     "filesize": "^11.0.16",
     "humanize-duration": "^3.33.2",
     "js-yaml": "^4.1.1",
-    "maskify-ts": "^3.5.0",
+    "maskify-ts": "^4.0.0",
     "material-ui-confirm": "^4.0.0",
     "mui-chips-input": "^8.0.0",
     "normalize-url": "^9.0.0",
@@ -64,18 +64,18 @@
     "prismjs": "^1.30.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-hook-form": "^7.72.1",
+    "react-hook-form": "^7.73.1",
     "react-hook-form-mui": "^9.0.0",
     "react-intersection-observer": "^10.0.3",
     "react-redux": "^9.2.0",
-    "react-router-dom": "^7.14.1",
+    "react-router-dom": "^7.14.2",
     "react-syntax-highlighter": "^16.1.1",
     "react-toastify": "^11.1.0",
     "refractor": "^5.0.0",
     "rollbar": "3.1.0",
     "semver": "^7.7.4",
     "toposort": "^2.0.2",
-    "uuid": "^13.0.0"
+    "uuid": "^14.0.0"
   },
   "scripts": {
     "_nextversion": "bun run version.ts -i alpha",
