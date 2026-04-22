@@ -60,7 +60,15 @@ describe("HDIdleDiskSettings Apply/Cancel & Unsupported", () => {
 
         const store = await createTestStore();
         const user = userEvent.setup();
-        const mockDisk = createMockDisk();
+        const mockDisk = createMockDisk({
+            hdidle_device: {
+                supported: true,
+                enabled: "custom",
+                idle_time: 0,
+                command_type: "",
+                power_condition: 0,
+            },
+        });
 
         render(
             React.createElement(Provider as any, {
@@ -69,12 +77,22 @@ describe("HDIdleDiskSettings Apply/Cancel & Unsupported", () => {
             })
         );
 
-        // Select No and verify expand disabled
+        const expandBtn = await screen.findByRole("button", { name: /show more/i });
+
+        // Initial state should be Custom => accordion toggle enabled.
+        await waitFor(() => {
+            expect((expandBtn as HTMLButtonElement).disabled).toBe(false);
+        });
+
+        // Select No and verify expand is disabled.
         const toggleButtons = await getOverrideToggleButtons(screen);
         const noBtn = toggleButtons[2];
         await user.click(noBtn);
 
-        const expandBtn = await screen.findByRole("button", { name: /show more/i });
+        await waitFor(() => {
+            expect(noBtn.getAttribute("aria-pressed")).toBe("true");
+        });
+
         await waitFor(() => {
             expect((expandBtn as HTMLButtonElement).disabled).toBe(true);
         });
