@@ -307,7 +307,9 @@ describe("HDIdleDiskSettings Component", () => {
         await user.click(yesBtn);
 
         // Expand button should be disabled again
-        expect((expandBtn as HTMLButtonElement).disabled).toBe(true);
+        await waitFor(() => {
+            expect((expandBtn as HTMLButtonElement).disabled).toBe(true);
+        });
 
         // Accordion should be collapsed
         expect(() => screen.getByLabelText(/Idle Time/i)).toThrow();

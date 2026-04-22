@@ -52,7 +52,7 @@ describe("HDIdleDiskSettings Apply/Cancel & Unsupported", () => {
 
     it("disables expand and actions when Enabled.No is selected", async () => {
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
+        const { render, screen, waitFor } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { createTestStore } = await import("../../../../../test/setup");
         const userEvent = (await import("@testing-library/user-event")).default;
@@ -75,7 +75,9 @@ describe("HDIdleDiskSettings Apply/Cancel & Unsupported", () => {
         await user.click(noBtn);
 
         const expandBtn = await screen.findByRole("button", { name: /show more/i });
-        expect((expandBtn as HTMLButtonElement).disabled).toBe(true);
+        await waitFor(() => {
+            expect((expandBtn as HTMLButtonElement).disabled).toBe(true);
+        });
 
         // Apply button is not rendered when accordion is collapsed; nothing else to assert here
     });
