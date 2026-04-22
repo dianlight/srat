@@ -272,7 +272,6 @@ describe("Filesystem label/format dialogs", () => {
   it("shows the accepted format hint for the optional format label and keeps empty values allowed", async () => {
     const React = await import("react");
     const { screen } = await import("@testing-library/react");
-    const { sratApi } = await import("../../../../store/sratApi");
     const { FilesystemFormatDialog } = await import("../FilesystemFormatDialog");
 
     const partition = {
@@ -309,6 +308,21 @@ describe("Filesystem label/format dialogs", () => {
             mount_flags: [],
           }),
         ),
+        http.get("/api/filesystem/support", () =>
+          HttpResponse.json({
+            canMount: true,
+            canFormat: true,
+            canCheck: true,
+            canSetLabel: true,
+            canGetState: true,
+            labelRule: "^[A-Z0-9]{1,5}$",
+            alpinePackage: "e2fsprogs",
+            missingTools: [],
+            isExportable: false,
+            isCheckReportProgress: false,
+            isFormatReportProgress: false,
+          }),
+        ),
       ],
       async () => {
         await renderWithProviders(
@@ -317,29 +331,6 @@ describe("Filesystem label/format dialogs", () => {
             partition,
             onClose: () => {},
           }),
-          {
-            seedStore: (store) => {
-              store.dispatch(
-                sratApi.util.upsertQueryData(
-                  "getApiFilesystemSupport",
-                  { fstype: "ext4" },
-                  {
-                    canMount: true,
-                    canFormat: true,
-                    canCheck: true,
-                    canSetLabel: true,
-                    canGetState: true,
-                    labelRule: "^[A-Z0-9]{1,5}$",
-                    alpinePackage: "e2fsprogs",
-                    missingTools: [],
-                    isExportable: false,
-                    isCheckReportProgress: false,
-                    isFormatReportProgress: false,
-                  },
-                ),
-              );
-            },
-          },
         );
 
         const input = await screen.findByRole("textbox", {
