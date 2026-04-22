@@ -1,7 +1,7 @@
 import { cleanup } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "bun:test";
 import { http, HttpResponse } from "msw";
-import { withTestHandlers } from "../../../../../test/bun-setup";
+import { getMswServer, withTestHandlers } from "../../../../../test/bun-setup";
 import "../../../../../test/setup";
 
 const filesystemsUrl = /.*\/api\/filesystems(?:\?.*)?$/;
@@ -163,8 +163,26 @@ describe("Filesystem label/format dialogs", () => {
   it("shows Set Label missing-tools install hint from support preflight", async () => {
     const React = await import("react");
     const { screen } = await import("@testing-library/react");
-    const { sratApi } = await import("../../../../store/sratApi");
     const { FilesystemLabelDialog } = await import("../FilesystemLabelDialog");
+
+    const server = await getMswServer();
+    server.use(
+      http.get("/api/filesystem/support", () =>
+        HttpResponse.json({
+          canMount: true,
+          canFormat: true,
+          canCheck: true,
+          canSetLabel: false,
+          canGetState: true,
+          alpinePackage: "e2fsprogs",
+          missingTools: ["e2label"],
+          isExportable: false,
+          isCheckReportProgress: false,
+          isFormatReportProgress: false,
+          labelRule: "",
+        }),
+      ),
+    );
 
     const partition = {
       id: "part-label-2",
@@ -184,29 +202,6 @@ describe("Filesystem label/format dialogs", () => {
         partition,
         onClose: () => {},
       }),
-      {
-        seedStore: (store) => {
-          store.dispatch(
-            sratApi.util.upsertQueryData(
-              "getApiFilesystemSupport",
-              { fstype: "ext4" },
-              {
-                canMount: true,
-                canFormat: true,
-                canCheck: true,
-                canSetLabel: false,
-                canGetState: true,
-                alpinePackage: "e2fsprogs",
-                missingTools: ["e2label"],
-                isExportable: false,
-                isCheckReportProgress: false,
-                isFormatReportProgress: false,
-                labelRule: "",
-              },
-            ),
-          );
-        },
-      },
     );
 
     const missingTools = await screen.findAllByText(/Missing tools: e2label/i);

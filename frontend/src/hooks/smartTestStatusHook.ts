@@ -12,7 +12,7 @@ export function useSmartTestStatus(diskId: string) {
     data: evdata,
     error: everror,
     isLoading: evloading,
-  } = useGetServerEventsQuery();
+  } = useGetServerEventsQuery({ skip: !diskId });
 
   const [smartTestStatus, setSmartTestStatus] = useState<SmartTestStatus>({
     disk_id: diskId,

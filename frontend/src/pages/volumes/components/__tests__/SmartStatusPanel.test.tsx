@@ -483,7 +483,7 @@ describe("SmartStatusPanel Component", () => {
 
     it("should call onStartTest when Start Test button is clicked", async () => {
         const React = await import("react");
-        const { render, screen, act, within } = await import("@testing-library/react");
+          const { render, screen, within } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const userEvent = (await import("@testing-library/user-event")).default;
         const { SmartStatusPanel } = await import("../SmartStatusPanel");
@@ -516,18 +516,14 @@ describe("SmartStatusPanel Component", () => {
         const expandBtn = expandButtons.find((btn) => btn.getAttribute("aria-expanded") === "false");
         if (expandBtn) {
             const user = userEvent.setup();
-            await act(async () => {
-                await user.click(expandBtn as any);
-            });
+            await user.click(expandBtn as any);
         }
 
         // Click Start Test button
         const startButtons = await within(container).findAllByText("Start Test");
         expect(startButtons).toHaveLength(1);
         const user = userEvent.setup();
-        await act(async () => {
-            await user.click(startButtons[0]! as any);
-        });
+        await user.click(startButtons[0]! as any);
 
         // Dialog should open
         const dialogTitle = await screen.findByText("Start SMART Self-Test");
