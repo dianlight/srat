@@ -217,7 +217,6 @@ describe("Filesystem label/format dialogs", () => {
     const React = await import("react");
     const { screen } = await import("@testing-library/react");
     const userEvent = (await import("@testing-library/user-event")).default;
-    const { sratApi } = await import("../../../../store/sratApi");
     const { FilesystemLabelDialog } = await import("../FilesystemLabelDialog");
 
     const partition = {
@@ -227,35 +226,31 @@ describe("Filesystem label/format dialogs", () => {
       fs_type: "vfat",
     };
 
+    const server = await getMswServer();
+    server.use(
+      http.get("/api/filesystem/support", () =>
+        HttpResponse.json({
+          canMount: true,
+          canFormat: true,
+          canCheck: true,
+          canSetLabel: true,
+          canGetState: true,
+          labelRule: "^[A-Z0-9]{1,5}$",
+          alpinePackage: "dosfstools",
+          missingTools: [],
+          isExportable: false,
+          isCheckReportProgress: false,
+          isFormatReportProgress: false,
+        }),
+      ),
+    );
+
     await renderWithProviders(
       React.createElement(FilesystemLabelDialog as any, {
         open: true,
         partition,
         onClose: () => {},
       }),
-      {
-        seedStore: (store) => {
-          store.dispatch(
-            sratApi.util.upsertQueryData(
-              "getApiFilesystemSupport",
-              { fstype: "vfat" },
-              {
-                canMount: true,
-                canFormat: true,
-                canCheck: true,
-                canSetLabel: true,
-                canGetState: true,
-                labelRule: "^[A-Z0-9]{1,5}$",
-                alpinePackage: "dosfstools",
-                missingTools: [],
-                isExportable: false,
-                isCheckReportProgress: false,
-                isFormatReportProgress: false,
-              },
-            ),
-          );
-        },
-      },
     );
 
     const input = await screen.findByRole("textbox", { name: /label/i });
