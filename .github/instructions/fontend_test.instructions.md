@@ -23,7 +23,10 @@ applyTo: **/frontend/**/\*.test.{js,jsx,ts,tsx}
 - **Test Isolation:** Use beforeEach and afterEach hooks to set up and clean up test environments, ensuring no shared state between tests.
 - **Mocking:** Use `msw` (Mock Service Worker) and `msw-auto-mock`  for API mocking when testing components that make network requests, ensuring tests are fast and reliable without hitting real endpoints.
 - **`IS_REACT_ACT_ENVIRONMENT`:** Set `(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true` **after** `GlobalRegistrator.register()` in `test/setup.ts`. Placing it before registration has no effect — GlobalRegistrator overwrites the global context, leaving `@testing-library/react` unaware of the act() environment and printing "not configured to support act(...)" for every render. 
-- **Test Noise Policy:** Never hide test noise by muting `console` output or swallowing errors; always fix the underlying cause (for example: hook skip conditions, cross-realm `Event`/`EventTarget` mismatches in test setup, or brittle async interaction patterns).
+- **Test Noise Policy:** Never hide test noise by muting `console` output or swallowing errors; always fix the underlying cause. Triage in this order:
+  1. **Cross-realm mismatches** — if `dispatchEvent` or `CustomEvent` errors appear, check `test/setup.ts` for Bun-native constructors overriding happy-dom's `Event`/`EventTarget`/`MessageEvent`; remove them from the `nativeGlobals` capture and restore block.
+  2. **`act()` warnings** — gate hooks with `skip: !<requiredProp>` so background subscriptions (e.g. WebSocket) do not fire when no data is available; replace manual `act(async () => { await user.event(...) })` wrappers with direct `await user.event(...)`.
+  3. **Brittle async / race conditions** — prefer MSW endpoint overrides (`getMswServer().use(http.get(...))`) over RTK `upsertQueryData` cache seeding; cache seeds can be overwritten by live queries before the assertion runs.
 
 ## **2\. Core Philosophy**
 
