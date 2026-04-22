@@ -359,8 +359,7 @@ func GetByUsername(ctx context.Context, username string) (*UserInfo, error) {
 			}
 		}
 	} else {
-		var e errors.E
-		if errors.As(err, &e) {
+		if e, ok := errors.AsType[errors.E](err); ok {
 			details := e.Details()
 			if stderr, ok := details["stderr"].(string); ok {
 				lwrStderr := strings.ToLower(stderr)
@@ -412,9 +411,8 @@ func CreateSambaUser(ctx context.Context, username string, password string, opti
 	_, err := cmdExec.RunCommand(ctx, "useradd", useraddArgs...)
 	if err != nil {
 		// Check if the error is because the user already exists
-		var e errors.E
 		userExists := false
-		if errors.As(err, &e) {
+		if e, ok := errors.AsType[errors.E](err); ok {
 			details := e.Details()
 			if stderr, ok := details["stderr"].(string); ok && strings.Contains(strings.ToLower(stderr), "useradd: user "+strings.ToLower(NormalizeUsernameForUnixSamba(username))+" already exists") {
 				userExists = true
@@ -456,8 +454,7 @@ func DeleteSambaUser(ctx context.Context, username string) error {
 	if err != nil {
 		// Check if the error is "user not found" which is not fatal if we also want to delete system user
 		isUserNotFoundErr := false
-		var e errors.E
-		if errors.As(err, &e) {
+		if e, ok := errors.AsType[errors.E](err); ok {
 			details := e.Details()
 			if stderr, ok := details["stderr"].(string); ok {
 				lwrStderr := strings.ToLower(stderr)
@@ -534,8 +531,8 @@ func RenameUsername(ctx context.Context, oldUsername string, newUsername string,
 	}
 
 	// Ignore "user not found" errors from pdbedit and only fail on real command issues.
-	var e errors.E
-	if !errors.As(sambaErr, &e) {
+	e, ok := errors.AsType[errors.E](sambaErr)
+	if !ok {
 		return errors.Wrapf(sambaErr, "failed to verify Samba status for new username '%s' due to pdbedit execution issue", newUsername)
 	}
 
@@ -600,8 +597,7 @@ func CheckSambaUser(ctx context.Context, username, password string) error {
 	// Step 1: Confirm the user exists in the Samba database and is active.
 	pdbeditOutput, err := cmdExec.RunCommand(ctx, "pdbedit", "-L", "-v", "-u", username)
 	if err != nil {
-		var e errors.E
-		if errors.As(err, &e) {
+		if e, ok := errors.AsType[errors.E](err); ok {
 			if stderr, ok := e.Details()["stderr"].(string); ok {
 				lwr := strings.ToLower(stderr)
 				if strings.Contains(lwr, "no such user") ||
