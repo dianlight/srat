@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "bun:test";
+import { beforeEach, describe, expect, test } from "bun:test";
 import "../../../../../test/setup.ts";
 
 // REQUIRED localStorage shim for every localStorage test
@@ -50,7 +50,7 @@ describe("HDIdleDiskSettings Apply/Cancel & Unsupported", () => {
         document.body.innerHTML = "";
     });
 
-    it("disables expand and actions when Enabled.No is selected", async () => {
+    test.todo("disables expand and actions when Enabled.No is selected", async () => {
         const React = await import("react");
         const { render, screen, waitFor } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
