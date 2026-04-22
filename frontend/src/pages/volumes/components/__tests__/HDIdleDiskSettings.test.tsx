@@ -29,6 +29,15 @@ const createMockDisk = (overrides: any = {}) => ({
     ...overrides,
 });
 
+async function getOverrideToggleButtons(screen: any) {
+    const { within } = await import("@testing-library/react");
+    const toggleGroup = await screen.findByRole("group", {
+        name: /toggle disk override/i,
+    });
+
+    return within(toggleGroup).getAllByRole("button");
+}
+
 describe("HDIdleDiskSettings Component", () => {
     let originalFetch: any;
 
@@ -106,7 +115,8 @@ describe("HDIdleDiskSettings Component", () => {
         );
 
         // Click Custom to enable the expand button
-        const customBtn = await screen.findByRole("button", { name: /Custom/i });
+        const toggleButtons = await getOverrideToggleButtons(screen);
+        const customBtn = toggleButtons[1];
         await user.click(customBtn);
 
         const expandBtn = await screen.findByRole("button", { name: /show more/i });
@@ -144,7 +154,8 @@ describe("HDIdleDiskSettings Component", () => {
         );
 
         // Click Custom to enable the expand button
-        const customBtn = await screen.findByRole("button", { name: /Custom/i });
+        const toggleButtons = await getOverrideToggleButtons(screen);
+        const customBtn = toggleButtons[1];
         await user.click(customBtn);
 
         const expandBtn = await screen.findByRole("button", { name: /show more/i });
@@ -232,7 +243,8 @@ describe("HDIdleDiskSettings Component", () => {
             })
         );
 
-        const customBtn = await screen.findByRole("button", { name: /Custom/i });
+        const toggleButtons = await getOverrideToggleButtons(screen);
+        const customBtn = toggleButtons[1];
         await user.click(customBtn);
 
         const expandBtn = await screen.findByRole("button", { name: /show more/i });
@@ -273,7 +285,8 @@ describe("HDIdleDiskSettings Component", () => {
         expect((expandBtn as HTMLButtonElement).disabled).toBe(true);
 
         // Click Custom to enable the expand button
-        const customBtn = await screen.findByRole("button", { name: /Custom/i });
+        const toggleButtons = await getOverrideToggleButtons(screen);
+        const customBtn = toggleButtons[1];
         await user.click(customBtn);
 
         // Now the expand button should be enabled
@@ -289,7 +302,8 @@ describe("HDIdleDiskSettings Component", () => {
         expect(idleField).toBeTruthy();
 
         // Switch back to Enabled.Yes
-        const yesBtn = await screen.findByRole("button", { name: /Yes/i });
+        const yesButtons = await getOverrideToggleButtons(screen);
+        const yesBtn = yesButtons[0];
         await user.click(yesBtn);
 
         // Expand button should be disabled again
@@ -318,7 +332,8 @@ describe("HDIdleDiskSettings Component", () => {
         );
 
         // The Yes button should be selected by default (success color)
-        const yesBtn = await screen.findByRole("button", { name: /Yes/i });
+        const toggleButtons = await getOverrideToggleButtons(screen);
+        const yesBtn = toggleButtons[0];
         expect(yesBtn).toBeTruthy();
     });
 });

@@ -35,6 +35,15 @@ const createMockDisk = (overrides: any = {}) => ({
     ...overrides,
 });
 
+async function getOverrideToggleButtons(screen: any) {
+    const { within } = await import("@testing-library/react");
+    const toggleGroup = await screen.findByRole("group", {
+        name: /toggle disk override/i,
+    });
+
+    return within(toggleGroup).getAllByRole("button");
+}
+
 describe("HDIdleDiskSettings Apply/Cancel & Unsupported", () => {
     beforeEach(() => {
         localStorage.clear();
@@ -61,7 +70,8 @@ describe("HDIdleDiskSettings Apply/Cancel & Unsupported", () => {
         );
 
         // Select No and verify expand disabled
-        const noBtn = await screen.findByRole("button", { name: /No/i });
+        const toggleButtons = await getOverrideToggleButtons(screen);
+        const noBtn = toggleButtons[2];
         await user.click(noBtn);
 
         const expandBtn = await screen.findByRole("button", { name: /show more/i });
