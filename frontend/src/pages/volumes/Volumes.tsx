@@ -654,22 +654,28 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
           }
         }}
       />
-      <FilesystemCheckDialog
-        open={showFilesystemCheckDialog}
-        partition={selectedPartition}
-        onClose={() => setShowFilesystemCheckDialog(false)}
-      />
-      <FilesystemLabelDialog
-        open={showFilesystemLabelDialog}
-        partition={selectedPartition}
-        onClose={() => setShowFilesystemLabelDialog(false)}
-        onLabelUpdated={handlePartitionLabelUpdated}
-      />
-      <FilesystemFormatDialog
-        open={showFilesystemFormatDialog}
-        partition={selectedPartition}
-        onClose={() => setShowFilesystemFormatDialog(false)}
-      />
+      {showFilesystemCheckDialog && (
+        <FilesystemCheckDialog
+          open={showFilesystemCheckDialog}
+          partition={selectedPartition}
+          onClose={() => setShowFilesystemCheckDialog(false)}
+        />
+      )}
+      {showFilesystemLabelDialog && (
+        <FilesystemLabelDialog
+          open={showFilesystemLabelDialog}
+          partition={selectedPartition}
+          onClose={() => setShowFilesystemLabelDialog(false)}
+          onLabelUpdated={handlePartitionLabelUpdated}
+        />
+      )}
+      {showFilesystemFormatDialog && (
+        <FilesystemFormatDialog
+          open={showFilesystemFormatDialog}
+          partition={selectedPartition}
+          onClose={() => setShowFilesystemFormatDialog(false)}
+        />
+      )}
       {/* PreviewDialog can show details for both disks and partitions */}
       <PreviewDialog
         title={
