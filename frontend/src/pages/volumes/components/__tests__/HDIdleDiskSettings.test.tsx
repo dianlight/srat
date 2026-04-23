@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import "../../../../../test/setup.ts";
 
 // Required localStorage shim for testing environment
