@@ -137,7 +137,7 @@ describe("SharesTreeView component", () => {
 
         await waitFor(() => expect(tracking.disableCalls.length).toBeGreaterThanOrEqual(1));
         await waitFor(() => expect(tracking.enableCalls.length).toBeGreaterThanOrEqual(1));
-    }, 10000);
+    });
 
     it("hides non-internal shares while in protected mode", async () => {
         const { overrides } = setupOverrides();
