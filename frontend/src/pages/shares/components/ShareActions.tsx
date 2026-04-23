@@ -129,8 +129,10 @@ export function ShareActions({
     <Stack
       direction="row"
       spacing={0}
-      alignItems="center"
       data-tutor={`reactour__tab${TabIDs.SHARES}__step4`}
+      sx={{
+        alignItems: "center",
+      }}
     >
       {actionItems.map((action) => (
         <Tooltip title={action.title} key={action.key}>

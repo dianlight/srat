@@ -92,15 +92,16 @@ const TelemetryModal: React.FC<TelemetryModalProps> = ({ open, onClose }) => {
   return (
     <Dialog
       open={open}
-      onClose={() => {}} // Prevent closing by clicking outside
+      onClose={(_e, reason) => {
+        if (reason !== "backdropClick" && reason !== "escapeKeyDown") onClose();
+      }}
       maxWidth="md"
       fullWidth
-      disableEscapeKeyDown // Prevent closing with Escape key
     >
       <form onSubmit={handleSubmit(onSuccess)}>
         <DialogTitle>Help Improve SRAT</DialogTitle>
         <DialogContent>
-          <Typography variant="body1" paragraph>
+          <Typography variant="body1">
             Help us improve SRAT by sharing anonymous usage data and error
             reports. This helps us identify issues and improve the software for
             everyone.
@@ -135,10 +136,20 @@ const TelemetryModal: React.FC<TelemetryModalProps> = ({ open, onClose }) => {
                     control={<Radio />}
                     label={
                       <Box>
-                        <Typography variant="body1" fontWeight="medium">
+                        <Typography
+                          variant="body1"
+                          sx={{
+                            fontWeight: "medium",
+                          }}
+                        >
                           Send usage data and error reports
                         </Typography>
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            color: "text.secondary",
+                          }}
+                        >
                           Help us improve SRAT by sharing anonymous usage
                           statistics and error reports
                         </Typography>
@@ -150,10 +161,20 @@ const TelemetryModal: React.FC<TelemetryModalProps> = ({ open, onClose }) => {
                     control={<Radio />}
                     label={
                       <Box>
-                        <Typography variant="body1" fontWeight="medium">
+                        <Typography
+                          variant="body1"
+                          sx={{
+                            fontWeight: "medium",
+                          }}
+                        >
                           Send only error reports
                         </Typography>
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            color: "text.secondary",
+                          }}
+                        >
                           Share only error reports to help us fix bugs and
                           improve stability
                         </Typography>
@@ -165,10 +186,20 @@ const TelemetryModal: React.FC<TelemetryModalProps> = ({ open, onClose }) => {
                     control={<Radio />}
                     label={
                       <Box>
-                        <Typography variant="body1" fontWeight="medium">
+                        <Typography
+                          variant="body1"
+                          sx={{
+                            fontWeight: "medium",
+                          }}
+                        >
                           Don't send any data
                         </Typography>
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            color: "text.secondary",
+                          }}
+                        >
                           No data will be sent to external servers
                         </Typography>
                       </Box>
@@ -179,7 +210,13 @@ const TelemetryModal: React.FC<TelemetryModalProps> = ({ open, onClose }) => {
             />
           </Box>
 
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+              mt: 2,
+            }}
+          >
             You can change this setting at any time in the Settings page. For
             more information about data collection, visit our{" "}
             <Link

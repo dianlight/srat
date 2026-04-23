@@ -11,11 +11,11 @@ export const DashboardSteps: StepType[] = [
           Welcome to Your New Dashboard!
         </Typography>
         <Divider sx={{ mb: 2 }} />
-        <Typography variant="body1" paragraph>
+        <Typography variant="body1">
           Welcome to this tutorial! We're excited to give you a tour of your new
           dashboard and show you how to make the most of its features.
         </Typography>
-        <Typography variant="body1" paragraph>
+        <Typography variant="body1">
           In the following steps, we will walk you through the specific
           components and functionalities you'll find. We'll cover everything you
           need to know to get started and use the dashboard effectively.
@@ -108,20 +108,20 @@ export const DashboardSteps: StepType[] = [
           Process Metrics
         </Typography>
 
-        <Typography variant="body1" paragraph>
+        <Typography variant="body1">
           Here you can view detailed metrics for important system processes:
         </Typography>
-        <Typography variant="body2" paragraph>
+        <Typography variant="body2">
           <strong>smbd</strong>: Handles file sharing and network access for
           SMB/CIFS clients. It enables Windows and other devices to access
           shared folders and files on your system.
         </Typography>
-        <Typography variant="body2" paragraph>
+        <Typography variant="body2">
           <strong>nmbd</strong>: Manages NetBIOS name resolution and browsing.
           It helps devices discover your server on the local network and
           supports legacy Windows networking.
         </Typography>
-        <Typography variant="body2" paragraph>
+        <Typography variant="body2">
           <strong>wsddn</strong>: Provides Web Service Discovery, allowing
           Windows 10+ clients to find your shares automatically using modern
           protocols.
@@ -144,13 +144,13 @@ export const DashboardSteps: StepType[] = [
           Disk Health
         </Typography>
 
-        <Typography variant="body1" paragraph>
+        <Typography variant="body1">
           Here you can monitor your disk health, including key metrics such as
           IOPS (input/output operations per second), latency, and temperature
           (if available). These indicators help you assess disk performance and
           detect potential issues early.
         </Typography>
-        <Typography variant="body1" paragraph>
+        <Typography variant="body1">
           You can also view partition occupation, which shows how much space is
           used and available on each disk partition. Keeping an eye on these
           metrics helps ensure your system runs smoothly and prevents unexpected
@@ -170,13 +170,13 @@ export const DashboardSteps: StepType[] = [
           Network Health
         </Typography>
 
-        <Typography variant="body1" paragraph>
+        <Typography variant="body1">
           Here you can monitor key network health metrics such as IOPS
           (input/output operations per second) and latency. IOPS indicates how
           many network operations are being processed, helping you understand
           the throughput and responsiveness of your network connections.
         </Typography>
-        <Typography variant="body1" paragraph>
+        <Typography variant="body1">
           Latency measures the time it takes for data to travel across the
           network. Lower latency means faster communication between devices,
           which is important for smooth file sharing and remote access.

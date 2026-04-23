@@ -45,6 +45,8 @@ This document tracks the migration from TypeScript 5.x to TypeScript 6.0 final a
 
 > **Update March 2026**: TypeScript 6.0 final released on March 23, 2026, with significant improvements in type inference, control flow analysis, and performance optimizations. This is the final JavaScript-based version before the Go-native TypeScript 7.0 compiler. See [TypeScript 6.0 Announcement](https://devblogs.microsoft.com/typescript/announcing-typescript-6-0/).
 
+> **MUI v9 Migration (2026)**: All MUI packages have been upgraded to v9 (`@mui/material`, `@mui/icons-material`, `@mui/x-charts`, `@mui/x-tree-view`, `react-hook-form-mui`). All deprecated APIs migrated: `InputProps`/`inputProps`/`InputLabelProps` → `slotProps`, `renderTags` → `renderValue`, deprecated icon `*Outline` → `*Outlined` suffixes, `disableEscapeKeyDown` → `onClose` reason check, `paragraph` prop removed from `Typography`. See [issue #589](https://github.com/dianlight/srat/issues/589).
+
 ### ✅ Completed Changes
 
 #### 1. **Removed Deprecated Compiler Options**

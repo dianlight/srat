@@ -46,9 +46,9 @@ export function usePartitionActions({
       onUnmount,
       onCreateShare,
       onGoToShare,
-      onCheckFilesystem: onCheckFilesystem || (() => {}),
-      onSetFilesystemLabel: onSetFilesystemLabel || (() => {}),
-      onFormatPartition: onFormatPartition || (() => {}),
+      onCheckFilesystem,
+      onSetFilesystemLabel,
+      onFormatPartition,
     });
   }, [
     partition,

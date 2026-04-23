@@ -198,7 +198,12 @@ export function HomeAssistantCustomComponentPanel({
         {isLoading ? (
           <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
             <CircularProgress size={16} />
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               Loading custom component status…
             </Typography>
           </Stack>
@@ -267,7 +272,6 @@ export function HomeAssistantCustomComponentPanel({
           </Button>
         </Stack>
       </Stack>
-
       {/* Action confirmation dialog */}
       <Dialog
         open={confirmDialog.open}
@@ -290,7 +294,6 @@ export function HomeAssistantCustomComponentPanel({
           </Button>
         </DialogActions>
       </Dialog>
-
       {/* Restart required dialog */}
       <Dialog
         open={restartDialogOpen}

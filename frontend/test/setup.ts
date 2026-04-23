@@ -28,9 +28,6 @@ configure({
 const nativeGlobals = {
     AbortController: (globalThis as any).AbortController,
     AbortSignal: (globalThis as any).AbortSignal,
-    Event: (globalThis as any).Event,
-    EventTarget: (globalThis as any).EventTarget,
-    MessageEvent: (globalThis as any).MessageEvent,
     BroadcastChannel: (globalThis as any).BroadcastChannel,
     WebSocket: (globalThis as any).WebSocket,
 };
@@ -69,13 +66,16 @@ if (!(win as any).SyntaxError) {
 // Keep Bun-native runtime/event constructors for MSW WebSocket/BroadcastChannel internals.
 (globalThis as any).AbortController = nativeGlobals.AbortController;
 (globalThis as any).AbortSignal = nativeGlobals.AbortSignal;
-(globalThis as any).Event = nativeGlobals.Event;
-(globalThis as any).EventTarget = nativeGlobals.EventTarget;
-(globalThis as any).MessageEvent = nativeGlobals.MessageEvent;
+// NOTE: Keep happy-dom Event/EventTarget/MessageEvent to avoid cross-realm
+// dispatchEvent TypeError noise in @testing-library/user-event under Bun.
 (globalThis as any).BroadcastChannel = nativeGlobals.BroadcastChannel;
 (globalThis as any).WebSocket = nativeGlobals.WebSocket;
 // Mark environment as test for components that conditionally load heavy browser-only modules
 ; (globalThis as any).__TEST__ = true;
+// Signal to React that act() is supported in this test environment.
+// Must be set after GlobalRegistrator.register() so it is not overwritten.
+// Prevents "not configured to support act(...)" warnings from @testing-library/react.
+; (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
 // happy-dom often returns zero-sized rectangles, which causes MUI Popover/Menu
 // to warn that anchorEl is not part of the document layout. Provide a stable,

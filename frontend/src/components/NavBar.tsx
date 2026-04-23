@@ -6,7 +6,7 @@ import DataObjectIcon from "@mui/icons-material/DataObject";
 import Download from "@mui/icons-material/Download";
 import GitHubIcon from "@mui/icons-material/GitHub";
 import HelpIcon from "@mui/icons-material/Help";
-import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import HelpOutlinedIcon from "@mui/icons-material/HelpOutlined";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import LockIcon from "@mui/icons-material/Lock";
 import LockOpenIcon from "@mui/icons-material/LockOpen";
@@ -508,7 +508,13 @@ export function NavBar(props: {
                         handleMenuItemClick(tab.actualIndex as number)
                       }
                     >
-                      <Typography textAlign="center">{tab.label}</Typography>
+                      <Typography
+                        sx={{
+                          textAlign: "center",
+                        }}
+                      >
+                        {tab.label}
+                      </Typography>
                     </MenuItem>
                   ))}
                 </Menu>
@@ -700,7 +706,7 @@ export function NavBar(props: {
                   {isTourOpen ? (
                     <HelpIcon sx={{ color: "white" }} />
                   ) : (
-                    <HelpOutlineIcon sx={{ color: "white" }} />
+                    <HelpOutlinedIcon sx={{ color: "white" }} />
                   )}
                 </Tooltip>
               </IconButton>

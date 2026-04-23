@@ -156,8 +156,8 @@ export function UserDetailsPanel({
                 <Grid size={{ xs: 12, md: 6 }}>
                   <Typography
                     variant="subtitle2"
-                    color="text.secondary"
                     sx={{
+                      color: "text.secondary",
                       mb: 1,
                       display: "flex",
                       alignItems: "center",
@@ -171,8 +171,10 @@ export function UserDetailsPanel({
                     <Stack
                       direction="row"
                       spacing={1}
-                      flexWrap="wrap"
-                      sx={{ gap: 1 }}
+                      sx={{
+                        flexWrap: "wrap",
+                        gap: 1,
+                      }}
                     >
                       {userRwShares.map((share) => (
                         <Chip
@@ -187,8 +189,10 @@ export function UserDetailsPanel({
                   ) : (
                     <Typography
                       variant="body2"
-                      color="text.secondary"
-                      sx={{ fontStyle: "italic" }}
+                      sx={{
+                        color: "text.secondary",
+                        fontStyle: "italic",
+                      }}
                     >
                       No read/write shares assigned
                     </Typography>
@@ -199,8 +203,8 @@ export function UserDetailsPanel({
                 <Grid size={{ xs: 12, md: 6 }}>
                   <Typography
                     variant="subtitle2"
-                    color="text.secondary"
                     sx={{
+                      color: "text.secondary",
                       mb: 1,
                       display: "flex",
                       alignItems: "center",
@@ -214,8 +218,10 @@ export function UserDetailsPanel({
                     <Stack
                       direction="row"
                       spacing={1}
-                      flexWrap="wrap"
-                      sx={{ gap: 1 }}
+                      sx={{
+                        flexWrap: "wrap",
+                        gap: 1,
+                      }}
                     >
                       {userRoShares.map((share) => (
                         <Chip
@@ -231,8 +237,10 @@ export function UserDetailsPanel({
                   ) : (
                     <Typography
                       variant="body2"
-                      color="text.secondary"
-                      sx={{ fontStyle: "italic" }}
+                      sx={{
+                        color: "text.secondary",
+                        fontStyle: "italic",
+                      }}
                     >
                       No read-only shares assigned
                     </Typography>
@@ -244,8 +252,10 @@ export function UserDetailsPanel({
                   <Divider sx={{ my: 2 }} />
                   <Typography
                     variant="subtitle2"
-                    color="text.secondary"
-                    sx={{ mb: 1 }}
+                    sx={{
+                      color: "text.secondary",
+                      mb: 1,
+                    }}
                   >
                     User Type
                   </Typography>
@@ -260,7 +270,6 @@ export function UserDetailsPanel({
           )}
         </Card>
       </Stack>
-
       {/* User Preview Dialog */}
       <PreviewDialog
         title={`User: ${user?.username || "N/A"}`}

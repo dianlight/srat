@@ -394,7 +394,11 @@ export function AppConfigurationPanel({
     return (
       <Stack spacing={2} sx={{ alignItems: "center", py: 6 }}>
         <CircularProgress size={28} />
-        <Typography color="text.secondary">
+        <Typography
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           Loading app configuration…
         </Typography>
       </Stack>
@@ -406,7 +410,6 @@ export function AppConfigurationPanel({
       <Alert severity="warning" variant="outlined">
         Changes require an app restart before they fully take effect.
       </Alert>
-
       {fields.length === 0 ? (
         <Alert severity="info" variant="outlined">
           This app does not expose configurable options.
@@ -437,7 +440,12 @@ export function AppConfigurationPanel({
                       }}
                     />
                     {helperText ? (
-                      <Typography color="text.secondary" variant="caption">
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: "text.secondary",
+                        }}
+                      >
                         {helperText}
                       </Typography>
                     ) : null}
@@ -576,7 +584,6 @@ export function AppConfigurationPanel({
           </Stack>
         </Box>
       )}
-
       {showRuntimeConfiguration ? (
         <>
           <Divider />
@@ -594,24 +601,27 @@ export function AppConfigurationPanel({
                   null,
                   2,
                 )}
-                InputProps={{ readOnly: true }}
+                slotProps={{ input: { readOnly: true } }}
               />
             </Paper>
           </Box>
         </>
       ) : null}
-
       {updateState.error ? (
         <Alert severity="error" variant="outlined">
           Unable to save app configuration. Please review the values and try
           again.
         </Alert>
       ) : null}
-
       {(isConfigFetching || isSchemaFetching) &&
       !isConfigLoading &&
       !isSchemaLoading ? (
-        <Typography color="text.secondary" variant="caption">
+        <Typography
+          variant="caption"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           Refreshing app configuration…
         </Typography>
       ) : null}

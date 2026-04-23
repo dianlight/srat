@@ -1,7 +1,7 @@
 import { cleanup } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "bun:test";
 import { http, HttpResponse } from "msw";
-import { withTestHandlers } from "../../../../../test/bun-setup";
+import { getMswServer, withTestHandlers } from "../../../../../test/bun-setup";
 import "../../../../../test/setup";
 
 const filesystemsUrl = /.*\/api\/filesystems(?:\?.*)?$/;
@@ -59,7 +59,6 @@ describe("Filesystem label/format dialogs", () => {
     const React = await import("react");
     const { screen, waitFor } = await import("@testing-library/react");
     const userEvent = (await import("@testing-library/user-event")).default;
-    const { sratApi } = await import("../../../../store/sratApi");
     const { FilesystemLabelDialog } = await import("../FilesystemLabelDialog");
 
     const initialPartition = {
@@ -90,29 +89,28 @@ describe("Filesystem label/format dialogs", () => {
       );
     };
 
-    await renderWithProviders(React.createElement(Wrapper), {
-      seedStore: (store) => {
-        (store as any).dispatch(
-          sratApi.util.upsertQueryData(
-            "getApiFilesystemSupport",
-            { fstype: "ext4" },
-            {
-              canMount: true,
-              canFormat: true,
-              canCheck: true,
-              canSetLabel: true,
-              canGetState: true,
-              labelRule: "^.{1,16}$",
-              alpinePackage: "e2fsprogs",
-              missingTools: [],
-              isExportable: false,
-              isCheckReportProgress: false,
-              isFormatReportProgress: false,
-            },
-          ),
-        );
+    await withTestHandlers(
+      [
+        http.get("/api/filesystem/support", () =>
+          HttpResponse.json({
+            canMount: true,
+            canFormat: true,
+            canCheck: true,
+            canSetLabel: true,
+            canGetState: true,
+            labelRule: "^.{1,16}$",
+            alpinePackage: "e2fsprogs",
+            missingTools: [],
+            isExportable: false,
+            isCheckReportProgress: false,
+            isFormatReportProgress: false,
+          }),
+        ),
+      ],
+      async () => {
+        await renderWithProviders(React.createElement(Wrapper));
       },
-    });
+    );
 
     expect(await screen.findByText("Tree label: old-label")).toBeTruthy();
     expect(screen.getByText("Detail label: old-label")).toBeTruthy();
@@ -163,8 +161,26 @@ describe("Filesystem label/format dialogs", () => {
   it("shows Set Label missing-tools install hint from support preflight", async () => {
     const React = await import("react");
     const { screen } = await import("@testing-library/react");
-    const { sratApi } = await import("../../../../store/sratApi");
     const { FilesystemLabelDialog } = await import("../FilesystemLabelDialog");
+
+    const server = await getMswServer();
+    server.use(
+      http.get("/api/filesystem/support", () =>
+        HttpResponse.json({
+          canMount: true,
+          canFormat: true,
+          canCheck: true,
+          canSetLabel: false,
+          canGetState: true,
+          alpinePackage: "e2fsprogs",
+          missingTools: ["e2label"],
+          isExportable: false,
+          isCheckReportProgress: false,
+          isFormatReportProgress: false,
+          labelRule: "",
+        }),
+      ),
+    );
 
     const partition = {
       id: "part-label-2",
@@ -184,29 +200,6 @@ describe("Filesystem label/format dialogs", () => {
         partition,
         onClose: () => {},
       }),
-      {
-        seedStore: (store) => {
-          store.dispatch(
-            sratApi.util.upsertQueryData(
-              "getApiFilesystemSupport",
-              { fstype: "ext4" },
-              {
-                canMount: true,
-                canFormat: true,
-                canCheck: true,
-                canSetLabel: false,
-                canGetState: true,
-                alpinePackage: "e2fsprogs",
-                missingTools: ["e2label"],
-                isExportable: false,
-                isCheckReportProgress: false,
-                isFormatReportProgress: false,
-                labelRule: "",
-              },
-            ),
-          );
-        },
-      },
     );
 
     const missingTools = await screen.findAllByText(/Missing tools: e2label/i);
@@ -222,7 +215,6 @@ describe("Filesystem label/format dialogs", () => {
     const React = await import("react");
     const { screen } = await import("@testing-library/react");
     const userEvent = (await import("@testing-library/user-event")).default;
-    const { sratApi } = await import("../../../../store/sratApi");
     const { FilesystemLabelDialog } = await import("../FilesystemLabelDialog");
 
     const partition = {
@@ -232,35 +224,31 @@ describe("Filesystem label/format dialogs", () => {
       fs_type: "vfat",
     };
 
+    const server = await getMswServer();
+    server.use(
+      http.get("/api/filesystem/support", () =>
+        HttpResponse.json({
+          canMount: true,
+          canFormat: true,
+          canCheck: true,
+          canSetLabel: true,
+          canGetState: true,
+          labelRule: "^[A-Z0-9]{1,5}$",
+          alpinePackage: "dosfstools",
+          missingTools: [],
+          isExportable: false,
+          isCheckReportProgress: false,
+          isFormatReportProgress: false,
+        }),
+      ),
+    );
+
     await renderWithProviders(
       React.createElement(FilesystemLabelDialog as any, {
         open: true,
         partition,
         onClose: () => {},
       }),
-      {
-        seedStore: (store) => {
-          store.dispatch(
-            sratApi.util.upsertQueryData(
-              "getApiFilesystemSupport",
-              { fstype: "vfat" },
-              {
-                canMount: true,
-                canFormat: true,
-                canCheck: true,
-                canSetLabel: true,
-                canGetState: true,
-                labelRule: "^[A-Z0-9]{1,5}$",
-                alpinePackage: "dosfstools",
-                missingTools: [],
-                isExportable: false,
-                isCheckReportProgress: false,
-                isFormatReportProgress: false,
-              },
-            ),
-          );
-        },
-      },
     );
 
     const input = await screen.findByRole("textbox", { name: /label/i });
@@ -282,7 +270,6 @@ describe("Filesystem label/format dialogs", () => {
   it("shows the accepted format hint for the optional format label and keeps empty values allowed", async () => {
     const React = await import("react");
     const { screen } = await import("@testing-library/react");
-    const { sratApi } = await import("../../../../store/sratApi");
     const { FilesystemFormatDialog } = await import("../FilesystemFormatDialog");
 
     const partition = {
@@ -319,6 +306,21 @@ describe("Filesystem label/format dialogs", () => {
             mount_flags: [],
           }),
         ),
+        http.get("/api/filesystem/support", () =>
+          HttpResponse.json({
+            canMount: true,
+            canFormat: true,
+            canCheck: true,
+            canSetLabel: true,
+            canGetState: true,
+            labelRule: "^[A-Z0-9]{1,5}$",
+            alpinePackage: "e2fsprogs",
+            missingTools: [],
+            isExportable: false,
+            isCheckReportProgress: false,
+            isFormatReportProgress: false,
+          }),
+        ),
       ],
       async () => {
         await renderWithProviders(
@@ -327,29 +329,6 @@ describe("Filesystem label/format dialogs", () => {
             partition,
             onClose: () => {},
           }),
-          {
-            seedStore: (store) => {
-              store.dispatch(
-                sratApi.util.upsertQueryData(
-                  "getApiFilesystemSupport",
-                  { fstype: "ext4" },
-                  {
-                    canMount: true,
-                    canFormat: true,
-                    canCheck: true,
-                    canSetLabel: true,
-                    canGetState: true,
-                    labelRule: "^[A-Z0-9]{1,5}$",
-                    alpinePackage: "e2fsprogs",
-                    missingTools: [],
-                    isExportable: false,
-                    isCheckReportProgress: false,
-                    isFormatReportProgress: false,
-                  },
-                ),
-              );
-            },
-          },
         );
 
         const input = await screen.findByRole("textbox", {
@@ -368,7 +347,6 @@ describe("Filesystem label/format dialogs", () => {
   it("disables Format when format tools are unavailable", async () => {
     const React = await import("react");
     const { screen } = await import("@testing-library/react");
-    const { sratApi } = await import("../../../../store/sratApi");
     const { FilesystemFormatDialog } = await import("../FilesystemFormatDialog");
 
     const partition = {
@@ -383,34 +361,32 @@ describe("Filesystem label/format dialogs", () => {
       },
     };
 
-    await renderWithProviders(
-      React.createElement(FilesystemFormatDialog as any, {
-        open: true,
-        partition,
-        onClose: () => {},
-      }),
-      {
-        seedStore: (store) => {
-          store.dispatch(
-            sratApi.util.upsertQueryData(
-              "getApiFilesystemSupport",
-              { fstype: "ext4" },
-              {
-                canMount: true,
-                canFormat: false,
-                canCheck: true,
-                canSetLabel: true,
-                canGetState: true,
-                alpinePackage: "e2fsprogs",
-                missingTools: ["mkfs.ext4"],
-                isExportable: false,
-                isCheckReportProgress: false,
-                isFormatReportProgress: false,
-                labelRule: "",
-              },
-            ),
-          );
-        },
+    await withTestHandlers(
+      [
+        http.get("/api/filesystem/support", () =>
+          HttpResponse.json({
+            canMount: true,
+            canFormat: false,
+            canCheck: true,
+            canSetLabel: true,
+            canGetState: true,
+            alpinePackage: "e2fsprogs",
+            missingTools: ["mkfs.ext4"],
+            isExportable: false,
+            isCheckReportProgress: false,
+            isFormatReportProgress: false,
+            labelRule: "",
+          }),
+        ),
+      ],
+      async () => {
+        await renderWithProviders(
+          React.createElement(FilesystemFormatDialog as any, {
+            open: true,
+            partition,
+            onClose: () => {},
+          }),
+        );
       },
     );
 
@@ -429,7 +405,6 @@ describe("Filesystem label/format dialogs", () => {
   it("renders format progress and logs when verbose mode is enabled", async () => {
     const React = await import("react");
     const { screen } = await import("@testing-library/react");
-    const { sratApi } = await import("../../../../store/sratApi");
     const { FilesystemFormatDialog } = await import("../FilesystemFormatDialog");
 
     const partition = {
@@ -468,6 +443,21 @@ describe("Filesystem label/format dialogs", () => {
             mount_flags: [],
           }),
         ),
+        http.get("/api/filesystem/support", () =>
+          HttpResponse.json({
+            canMount: true,
+            canFormat: true,
+            canCheck: true,
+            canSetLabel: true,
+            canGetState: true,
+            labelRule: "^[^\\x00/]{1,16}$",
+            alpinePackage: "e2fsprogs",
+            missingTools: [],
+            isExportable: false,
+            isCheckReportProgress: false,
+            isFormatReportProgress: false,
+          }),
+        ),
       ],
       async () => {
         await renderWithProviders(
@@ -484,29 +474,6 @@ describe("Filesystem label/format dialogs", () => {
             },
             onClose: () => {},
           }),
-          {
-            seedStore: (store) => {
-              store.dispatch(
-                sratApi.util.upsertQueryData(
-                  "getApiFilesystemSupport",
-                  { fstype: "ext4" },
-                  {
-                    canMount: true,
-                    canFormat: true,
-                    canCheck: true,
-                    canSetLabel: true,
-                    canGetState: true,
-                    labelRule: "^[^\\x00/]{1,16}$",
-                    alpinePackage: "e2fsprogs",
-                    missingTools: [],
-                    isExportable: false,
-                    isCheckReportProgress: false,
-                    isFormatReportProgress: false,
-                  },
-                ),
-              );
-            },
-          },
         );
 
         expect(
@@ -526,7 +493,6 @@ describe("Filesystem label/format dialogs", () => {
     const React = await import("react");
     const { screen, waitFor } = await import("@testing-library/react");
     const userEvent = (await import("@testing-library/user-event")).default;
-    const { sratApi } = await import("../../../../store/sratApi");
     const { FilesystemFormatDialog } = await import("../FilesystemFormatDialog");
 
     const partition = {
@@ -568,7 +534,7 @@ describe("Filesystem label/format dialogs", () => {
           }),
         ),
         http.post(formatUrl, async ({ request }) => {
-          requestBody = (await request.json()) as Record<string, unknown>;
+          requestBody = (await request.clone().json()) as Record<string, unknown>;
           return HttpResponse.json({
             success: true,
             errorsFound: false,
@@ -577,6 +543,21 @@ describe("Filesystem label/format dialogs", () => {
             message: "Format operation started for /dev/sdi1 as ext4",
           });
         }),
+        http.get("/api/filesystem/support", () =>
+          HttpResponse.json({
+            canMount: true,
+            canFormat: true,
+            canCheck: true,
+            canSetLabel: true,
+            canGetState: true,
+            labelRule: "^[^\\x00/]{1,16}$",
+            alpinePackage: "e2fsprogs",
+            missingTools: [],
+            isExportable: false,
+            isCheckReportProgress: false,
+            isFormatReportProgress: false,
+          }),
+        ),
       ],
       async () => {
         await renderWithProviders(
@@ -585,29 +566,6 @@ describe("Filesystem label/format dialogs", () => {
             partition,
             onClose: () => {},
           }),
-          {
-            seedStore: (store) => {
-              store.dispatch(
-                sratApi.util.upsertQueryData(
-                  "getApiFilesystemSupport",
-                  { fstype: "ext4" },
-                  {
-                    canMount: true,
-                    canFormat: true,
-                    canCheck: true,
-                    canSetLabel: true,
-                    canGetState: true,
-                    labelRule: "^[^\\x00/]{1,16}$",
-                    alpinePackage: "e2fsprogs",
-                    missingTools: [],
-                    isExportable: false,
-                    isCheckReportProgress: false,
-                    isFormatReportProgress: false,
-                  },
-                ),
-              );
-            },
-          },
         );
 
         const user = userEvent.setup();
@@ -625,7 +583,6 @@ describe("Filesystem label/format dialogs", () => {
   it("hides the Format action after a successful format", async () => {
     const React = await import("react");
     const { screen } = await import("@testing-library/react");
-    const { sratApi } = await import("../../../../store/sratApi");
     const { FilesystemFormatDialog } = await import("../FilesystemFormatDialog");
 
     const partition = {
@@ -664,6 +621,21 @@ describe("Filesystem label/format dialogs", () => {
             mount_flags: [],
           }),
         ),
+        http.get("/api/filesystem/support", () =>
+          HttpResponse.json({
+            canMount: true,
+            canFormat: true,
+            canCheck: true,
+            canSetLabel: true,
+            canGetState: true,
+            labelRule: "^[^\\x00/]{1,16}$",
+            alpinePackage: "e2fsprogs",
+            missingTools: [],
+            isExportable: false,
+            isCheckReportProgress: false,
+            isFormatReportProgress: false,
+          }),
+        ),
       ],
       async () => {
         await renderWithProviders(
@@ -679,29 +651,6 @@ describe("Filesystem label/format dialogs", () => {
               message: "Format completed successfully.",
             },
           }),
-          {
-            seedStore: (store) => {
-              store.dispatch(
-                sratApi.util.upsertQueryData(
-                  "getApiFilesystemSupport",
-                  { fstype: "ext4" },
-                  {
-                    canMount: true,
-                    canFormat: true,
-                    canCheck: true,
-                    canSetLabel: true,
-                    canGetState: true,
-                    labelRule: "^[^\\x00/]{1,16}$",
-                    alpinePackage: "e2fsprogs",
-                    missingTools: [],
-                    isExportable: false,
-                    isCheckReportProgress: false,
-                    isFormatReportProgress: false,
-                  },
-                ),
-              );
-            },
-          },
         );
 
         expect(await screen.findByText(/Format completed successfully\./i)).toBeTruthy();
@@ -714,7 +663,6 @@ describe("Filesystem label/format dialogs", () => {
   it("shows the formatter error after a failed format", async () => {
     const React = await import("react");
     const { screen } = await import("@testing-library/react");
-    const { sratApi } = await import("../../../../store/sratApi");
     const { FilesystemFormatDialog } = await import("../FilesystemFormatDialog");
 
     const partition = {
@@ -753,6 +701,21 @@ describe("Filesystem label/format dialogs", () => {
             mount_flags: [],
           }),
         ),
+        http.get("/api/filesystem/support", () =>
+          HttpResponse.json({
+            canMount: true,
+            canFormat: true,
+            canCheck: true,
+            canSetLabel: true,
+            canGetState: true,
+            labelRule: "^[^\\x00/]{1,16}$",
+            alpinePackage: "e2fsprogs",
+            missingTools: [],
+            isExportable: false,
+            isCheckReportProgress: false,
+            isFormatReportProgress: false,
+          }),
+        ),
       ],
       async () => {
         await renderWithProviders(
@@ -768,29 +731,6 @@ describe("Filesystem label/format dialogs", () => {
               error: "mkfs.ext4: /dev/sdk1 is busy",
             },
           }),
-          {
-            seedStore: (store) => {
-              store.dispatch(
-                sratApi.util.upsertQueryData(
-                  "getApiFilesystemSupport",
-                  { fstype: "ext4" },
-                  {
-                    canMount: true,
-                    canFormat: true,
-                    canCheck: true,
-                    canSetLabel: true,
-                    canGetState: true,
-                    labelRule: "^[^\\x00/]{1,16}$",
-                    alpinePackage: "e2fsprogs",
-                    missingTools: [],
-                    isExportable: false,
-                    isCheckReportProgress: false,
-                    isFormatReportProgress: false,
-                  },
-                ),
-              );
-            },
-          },
         );
 
         expect(await screen.findByText(/mkfs\.ext4: \/dev\/sdk1 is busy/i)).toBeTruthy();
@@ -817,6 +757,60 @@ describe("Filesystem label/format dialogs", () => {
         },
       },
     };
+
+    const server = await getMswServer();
+    server.use(
+      http.get("/api/filesystem/support", ({ request }) => {
+        const fsType =
+          new URL(request.url).searchParams.get("fstype")?.toLowerCase() ?? "";
+
+        if (fsType === "f2fs") {
+          return HttpResponse.json({
+            canMount: true,
+            canFormat: true,
+            canCheck: true,
+            canSetLabel: false,
+            canGetState: true,
+            isExportable: false,
+            isCheckReportProgress: false,
+            isFormatReportProgress: false,
+            labelRule: "",
+            alpinePackage: "f2fs-tools",
+            missingTools: [],
+          });
+        }
+
+        if (fsType === "ext4") {
+          return HttpResponse.json({
+            canMount: true,
+            canFormat: true,
+            canCheck: true,
+            canSetLabel: true,
+            canGetState: true,
+            isExportable: false,
+            isCheckReportProgress: false,
+            isFormatReportProgress: false,
+            labelRule: "",
+            alpinePackage: "e2fsprogs",
+            missingTools: [],
+          });
+        }
+
+        return HttpResponse.json({
+          canMount: true,
+          canFormat: false,
+          canCheck: false,
+          canSetLabel: false,
+          canGetState: true,
+          isExportable: false,
+          isCheckReportProgress: false,
+          isFormatReportProgress: false,
+          labelRule: "",
+          alpinePackage: "",
+          missingTools: [],
+        });
+      }),
+    );
 
     await renderWithProviders(
       React.createElement(FilesystemFormatDialog as any, {
@@ -880,44 +874,6 @@ describe("Filesystem label/format dialogs", () => {
               ],
               mount_flags: [],
             }),
-          );
-          store.dispatch(
-            sratApi.util.upsertQueryData(
-              "getApiFilesystemSupport",
-              { fstype: "f2fs" },
-              {
-                canMount: true,
-                canFormat: true,
-                canCheck: true,
-                canSetLabel: false,
-                canGetState: true,
-                isExportable: false,
-                isCheckReportProgress: false,
-                isFormatReportProgress: false,
-                labelRule: "",
-                alpinePackage: "f2fs-tools",
-                missingTools: [],
-              },
-            ),
-          );
-          store.dispatch(
-            sratApi.util.upsertQueryData(
-              "getApiFilesystemSupport",
-              { fstype: "ext4" },
-              {
-                canMount: true,
-                canFormat: true,
-                canCheck: true,
-                canSetLabel: true,
-                canGetState: true,
-                isExportable: false,
-                isCheckReportProgress: false,
-                isFormatReportProgress: false,
-                labelRule: "",
-                alpinePackage: "e2fsprogs",
-                missingTools: [],
-              },
-            ),
           );
         },
       },

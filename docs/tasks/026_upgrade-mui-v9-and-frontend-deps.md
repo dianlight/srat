@@ -1,8 +1,8 @@
 # [REFACTOR]: Upgrade MUI to v9 and Optimize Frontend Dependencies
 
 **Target Repo:** `srat`
-**Status:** 📅 Planned
-**Issue Link:** _TBD_
+**Status:** ✅ Complete
+**Issue Link:** https://github.com/dianlight/srat/issues/589
 
 ## 🎯 Objective
 
@@ -28,27 +28,27 @@ dependencies for compatibility and optimization opportunities.
 
 ## 📝 Task List
 
-- [ ] Task 1: Research all package compatibility for MUI v9 peers (`mui-chips-input`, `material-ui-confirm`, `react-hook-form-mui`, `@uiw/react-md-editor`, `openapi-explorer`)
-- [ ] Task 2: Run MUI v9 codemod for Material UI: `npx @mui/codemod@latest v9.0.0/preset-safe ./src`
-- [ ] Task 3: Run MUI X Charts v9 codemod: `npx @mui/x-codemod@latest v9.0.0/charts/rename-classes ./src`
-- [ ] Task 4: Bump `@mui/material`, `@mui/icons-material` to `^9.0.0` and install
-- [ ] Task 5: Bump `@mui/x-charts` to `^9.0.0` and `@mui/x-tree-view` to `^9.0.0` and install
-- [ ] Task 6: Fix breaking change – `disableEscapeKeyDown` removed from Dialog/Modal (found in `TelemetryModal.tsx`, `BaseConfigModal.tsx`) → use `onClose` reason check instead
-- [ ] Task 7: Fix breaking change – `GridLegacy` removed, migrate all usages to `Grid` with `size` prop
-- [ ] Task 8: Fix breaking change – deprecated `InfoOutline`/`OutlineXxx` icon exports removed → use `Outlined` suffix equivalents
-- [ ] Task 9: Fix breaking change – `TreeViewBaseItem` removed → use `TreeViewDefaultItemModelProperties`
-- [ ] Task 10: Fix breaking change – `useTreeViewApiRef` removed → use component-specific hooks
-- [ ] Task 11: Fix breaking change – Charts `ChartContainer` → `ChartsContainer` rename (if used)
-- [ ] Task 12: Fix breaking change – Charts CSS highlighted/faded classes → `data-highlighted`/`data-faded` attribute selectors
-- [ ] Task 13: Bump and verify compatibility of `mui-chips-input`, `material-ui-confirm`, `react-hook-form-mui` (upgrade or replace if no v9 support)
-- [ ] Task 14: Audit and update remaining frontend dependencies for latest stable versions (`react-toastify`, `@reduxjs/toolkit`, `react-router-dom`, etc.)
-- [ ] Task 15: Apply any v9 optimization opportunities (new `slot`/`slotProps` API patterns, `nativeButton` prop on button-like components)
-- [ ] Task 16: Run TypeScript check: `bun tsgo --noEmit` — fix all type errors
-- [ ] Task 17: Run full frontend test suite: `mise run //frontend:test` — fix all regressions
-- [ ] Task 18: Run lint: `mise run //frontend:lint` — fix all warnings/errors
-- [ ] Task 19: Run frontend build: `mise run //frontend:build` — verify no build errors
-- [ ] Task 20: Update `frontend/TYPESCRIPT_MIGRATION.md` and any docs that reference MUI version
-- [ ] Task 21: Ask to create a PR with the task implementation and link it here for tracking
+- [x] Task 1: Research all package compatibility for MUI v9 peers (`mui-chips-input`, `material-ui-confirm`, `react-hook-form-mui`, `@uiw/react-md-editor`, `openapi-explorer`)
+- [x] Task 2: Run MUI v9 codemod for Material UI: `npx @mui/codemod@latest v9.0.0/preset-safe ./src`
+- [x] Task 3: Run MUI X Charts v9 codemod: `npx @mui/x-codemod@latest v9.0.0/charts/rename-classes ./src`
+- [x] Task 4: Bump `@mui/material`, `@mui/icons-material` to `^9.0.0` and install
+- [x] Task 5: Bump `@mui/x-charts` to `^9.0.0` and `@mui/x-tree-view` to `^9.0.0` and install
+- [x] Task 6: Fix breaking change – `disableEscapeKeyDown` removed from Dialog/Modal (found in `TelemetryModal.tsx`, `BaseConfigModal.tsx`) → use `onClose` reason check instead
+- [x] Task 7: Fix breaking change – `GridLegacy` removed, migrate all usages to `Grid` with `size` prop
+- [x] Task 8: Fix breaking change – deprecated `InfoOutline`/`OutlineXxx` icon exports removed → use `Outlined` suffix equivalents
+- [x] Task 9: Fix breaking change – `TreeViewBaseItem` removed → use `TreeViewDefaultItemModelProperties`
+- [x] Task 10: Fix breaking change – `useTreeViewApiRef` removed → use component-specific hooks
+- [x] Task 11: Fix breaking change – Charts `ChartContainer` → `ChartsContainer` rename (if used)
+- [x] Task 12: Fix breaking change – Charts CSS highlighted/faded classes → `data-highlighted`/`data-faded` attribute selectors
+- [x] Task 13: Bump and verify compatibility of `mui-chips-input`, `material-ui-confirm`, `react-hook-form-mui` (upgrade or replace if no v9 support)
+- [x] Task 14: Audit and update remaining frontend dependencies for latest stable versions (`react-toastify`, `@reduxjs/toolkit`, `react-router-dom`, etc.)
+- [x] Task 15: Apply any v9 optimization opportunities (new `slot`/`slotProps` API patterns, `nativeButton` prop on button-like components)
+- [x] Task 16: Run TypeScript check: `bun tsgo --noEmit` — fix all type errors
+- [x] Task 17: Run full frontend test suite: `mise run //frontend:test` — fix all regressions
+- [x] Task 18: Run lint: `mise run //frontend:lint` — fix all warnings/errors
+- [x] Task 19: Run frontend build: `mise run //frontend:build` — verify no build errors
+- [x] Task 20: Update `frontend/TYPESCRIPT_MIGRATION.md` and any docs that reference MUI version
+- [x] Task 21: Ask to create a PR with the task implementation and link it here for tracking
 
 ## 🧠 Implementation Notes (Copilot Context)
 
@@ -114,6 +114,27 @@ dependencies for compatibility and optimization opportunities.
 2. **`TreeViewBaseItem` removed**: Use `TreeViewDefaultItemModelProperties` or define own type.
 3. **Item virtualization** added to `RichTreeViewPro` (requires container with fixed height).
 4. **New `domStructure` and `itemHeight` props** for `RichTreeViewPro`.
+
+### Agreed Implementation Plan
+
+1. **Task 1** — Verify npm compatibility of `mui-chips-input`, `material-ui-confirm`, `react-hook-form-mui` for MUI v9 peer deps.
+2. **Task 2–3** — Run MUI v9 preset-safe codemod and MUI X Charts rename-classes codemod against `frontend/src`.
+3. **Task 4–5** — Bump `@mui/material`, `@mui/icons-material`, `@mui/x-charts`, `@mui/x-tree-view` to `^9.0.0` and run `bun install`.
+4. **Task 6** — Fix `disableEscapeKeyDown` in `TelemetryModal.tsx` and `BaseConfigModal.tsx`.
+5. **Task 7** — Grep and fix any remaining `GridLegacy` or `xs/sm/md/lg/xl` shorthand Grid props.
+6. **Task 8–11** — Fix any remaining icon/TreeView/Charts breaking changes surfaced after install.
+7. **Task 13** — Bump/replace `mui-chips-input`, `material-ui-confirm`, `react-hook-form-mui` if v9-compatible versions exist.
+8. **Task 14** — Audit and update remaining deps (`react-toastify`, `@reduxjs/toolkit`, etc.).
+9. **Task 15** — Apply MUI v9 optimization opportunities (slot/slotProps, nativeButton).
+10. **Tasks 16–19** — TypeScript check → tests → lint → build (fix all failures).
+11. **Task 20** — Update `frontend/TYPESCRIPT_MIGRATION.md` references.
+12. **Task 21** — Create PR.
+
+**Branch:** `refactor/upgrade-mui-v9-frontend-deps`
+
+### PR tracking
+
+- PR: https://github.com/dianlight/srat/pull/591
 
 ### Codemods available
 
