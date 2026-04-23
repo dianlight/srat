@@ -1,6 +1,6 @@
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
-import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
+import ErrorOutlinedIcon from "@mui/icons-material/ErrorOutlined";
 import GroupIcon from "@mui/icons-material/Group";
 import { Box, Chip, Tooltip, Typography, useTheme } from "@mui/material";
 import { SimpleTreeView } from "@mui/x-tree-view/SimpleTreeView";
@@ -127,7 +127,12 @@ export function UsersTreeView({
             )}
 
             <Box sx={{ flexGrow: 1, mr: 1 }}>
-              <Typography variant="body2" fontWeight={isSelected ? 600 : 400}>
+              <Typography
+                variant="body2"
+                sx={{
+                  fontWeight: isSelected ? 600 : 400,
+                }}
+              >
                 {user.username}
               </Typography>
               <Box
@@ -139,7 +144,7 @@ export function UsersTreeView({
                       size="small"
                       variant="outlined"
                       color="error"
-                      icon={<ErrorOutlineIcon />}
+                      icon={<ErrorOutlinedIcon />}
                       label="Invalid"
                       sx={{ fontSize: "0.7rem", height: 16 }}
                     />

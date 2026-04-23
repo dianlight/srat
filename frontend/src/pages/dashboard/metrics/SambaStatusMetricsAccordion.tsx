@@ -47,10 +47,20 @@ export function SambaStatusMetricsAccordion({
           </Typography>
           {!expanded && sambaStatus && (
             <Box sx={{ display: "flex", gap: 2 }}>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 Sessions: {Object.keys(sambaStatus.sessions || {}).length}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 Tcons: {Object.keys(sambaStatus.tcons || {}).length}
               </Typography>
             </Box>

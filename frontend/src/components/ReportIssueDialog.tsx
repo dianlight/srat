@@ -157,7 +157,13 @@ export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
     <>
       <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
         <DialogTitle>
-          <Box display="flex" alignItems="center" gap={1}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+            }}
+          >
             <BugReportIcon />
             <Typography variant="h6">
               {template?.name || "Report Issue on GitHub"}
@@ -282,7 +288,12 @@ export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
 									/> */}
                 </Box>
 
-                <Typography variant="caption" color="text.secondary">
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   Note: When you click "Create Issue", diagnostic requested
                   files will be uploaded to gist, and a new GitHub issue page
                   will open with pre-filled information.
@@ -304,7 +315,6 @@ export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
           </Button>
         </DialogActions>
       </Dialog>
-
       <Dialog
         open={Boolean(popupBlockedUrl)}
         onClose={() => setPopupBlockedUrl(null)}

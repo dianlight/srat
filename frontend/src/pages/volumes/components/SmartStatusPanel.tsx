@@ -61,7 +61,19 @@ interface SmartStatusPanelProps {
   onSetExpanded?: (expanded: boolean) => void;
 }
 
-export function SmartStatusPanel({
+/**
+ * SmartStatusPanel: renders nothing when smartInfo is not supported.
+ * The inner component (with all hooks) is only mounted when supported is true,
+ * avoiding long-lived subscriptions (RTK Query, WebSocket) for unsupported disks.
+ */
+export function SmartStatusPanel(props: SmartStatusPanelProps) {
+  if (!props.smartInfo?.supported) {
+    return null;
+  }
+  return <SmartStatusPanelInner {...props} />;
+}
+
+function SmartStatusPanelInner({
   smartInfo,
   diskId,
   bus,
@@ -133,11 +145,6 @@ export function SmartStatusPanel({
     }
   }, [smartOperationSuccess, smartOperationLoading, refetchSmartStatus]);
 
-  // Don't render if SMART is not supported based on backend data.
-  if (!smartInfo?.supported) {
-    return null;
-  }
-
   const getTestStatusColor = () => {
     if (smartTestStatusLoading || !smartTestStatus) return "default";
     if (
@@ -195,19 +202,23 @@ export function SmartStatusPanel({
             <Box>
               <Typography
                 variant="subtitle2"
-                color="text.secondary"
-                sx={{ mb: 1 }}
+                sx={{
+                  color: "text.secondary",
+                  mb: 1,
+                }}
               >
                 Device Information
               </Typography>
               <Stack
                 direction="row"
                 spacing={2}
-                alignItems="center"
-                flexWrap="wrap"
-                sx={{ gap: 1 }}
+                sx={{
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  gap: 1,
+                }}
               >
-                {smartInfo.disk_type && (
+                {smartInfo?.disk_type && (
                   <Chip
                     label={smartInfo.disk_type}
                     color="primary"
@@ -215,7 +226,7 @@ export function SmartStatusPanel({
                     variant="outlined"
                   />
                 )}
-                {smartInfo.model_name && (
+                {smartInfo?.model_name && (
                   <Chip
                     label={smartInfo.model_name}
                     color="secondary"
@@ -223,7 +234,7 @@ export function SmartStatusPanel({
                     variant="outlined"
                   />
                 )}
-                {smartInfo.model_family && (
+                {smartInfo?.model_family && (
                   <Chip
                     label={smartInfo.model_family}
                     color="default"
@@ -231,7 +242,7 @@ export function SmartStatusPanel({
                     variant="outlined"
                   />
                 )}
-                {smartInfo.firmware_version && (
+                {smartInfo?.firmware_version && (
                   <Chip
                     label={`FW ${smartInfo.firmware_version}`}
                     color="default"
@@ -239,7 +250,7 @@ export function SmartStatusPanel({
                     variant="outlined"
                   />
                 )}
-                {smartInfo.serial_number && (
+                {smartInfo?.serial_number && (
                   <Chip
                     label={`SN ${smartInfo.serial_number}`}
                     color="default"
@@ -247,7 +258,7 @@ export function SmartStatusPanel({
                     variant="outlined"
                   />
                 )}
-                {smartInfo.rotation_rate && smartInfo.rotation_rate > 0 && (
+                {smartInfo?.rotation_rate && smartInfo.rotation_rate > 0 && (
                   <Chip
                     label={`${smartInfo.rotation_rate} RPM`}
                     color="info"
@@ -266,21 +277,39 @@ export function SmartStatusPanel({
                   <Stack
                     direction="row"
                     spacing={1}
-                    alignItems="center"
-                    sx={{ mb: 1 }}
+                    sx={{
+                      alignItems: "center",
+                      mb: 1,
+                    }}
                   >
                     <ThermostatIcon fontSize="small" color="primary" />
-                    <Typography variant="subtitle2" color="text.secondary">
+                    <Typography
+                      variant="subtitle2"
+                      sx={{
+                        color: "text.secondary",
+                      }}
+                    >
                       Temperature
                     </Typography>
                   </Stack>
-                  <Stack direction="row" spacing={2} alignItems="center">
+                  <Stack
+                    direction="row"
+                    spacing={2}
+                    sx={{
+                      alignItems: "center",
+                    }}
+                  >
                     <Typography variant="h6">
                       {(smartStatus as SmartStatus).temperature.value}°C
                     </Typography>
                     {(smartStatus as SmartStatus).temperature.min ||
                     (smartStatus as SmartStatus).temperature.max ? (
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: "text.secondary",
+                        }}
+                      >
                         {(smartStatus as SmartStatus).temperature.min &&
                           `Min: ${(smartStatus as SmartStatus).temperature.min}°C`}
                         {(smartStatus as SmartStatus).temperature.min &&
@@ -299,13 +328,23 @@ export function SmartStatusPanel({
               smartStatus &&
               (smartStatus as SmartStatus)?.power_on_hours && (
                 <Stack spacing={1}>
-                  <Typography variant="subtitle2" color="text.secondary">
+                  <Typography
+                    variant="subtitle2"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     Power Statistics
                   </Typography>
                   <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
                     {(smartStatus as SmartStatus).power_on_hours && (
                       <Box sx={{ flex: 1 }}>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "text.secondary",
+                          }}
+                        >
                           Power-On Hours
                         </Typography>
                         <Typography variant="body2">
@@ -318,7 +357,12 @@ export function SmartStatusPanel({
                     )}
                     {(smartStatus as SmartStatus).power_cycle_count && (
                       <Box sx={{ flex: 1 }}>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "text.secondary",
+                          }}
+                        >
                           Power Cycles
                         </Typography>
                         <Typography variant="body2">
@@ -338,8 +382,10 @@ export function SmartStatusPanel({
               <Box>
                 <Typography
                   variant="subtitle2"
-                  color="text.secondary"
-                  sx={{ mb: 1 }}
+                  sx={{
+                    color: "text.secondary",
+                    mb: 1,
+                  }}
                 >
                   Health Check
                 </Typography>
@@ -364,16 +410,21 @@ export function SmartStatusPanel({
                       <Box>
                         <Typography
                           variant="caption"
-                          color="error.main"
-                          sx={{ display: "block", mb: 0.5 }}
+                          sx={{
+                            color: "error.main",
+                            display: "block",
+                            mb: 0.5,
+                          }}
                         >
                           Failing Attributes:
                         </Typography>
                         <Stack
                           direction="row"
                           spacing={0.5}
-                          flexWrap="wrap"
-                          sx={{ gap: 0.5 }}
+                          sx={{
+                            flexWrap: "wrap",
+                            gap: 0.5,
+                          }}
                         >
                           {(smartStatus as SmartStatus).others &&
                             Object.entries(
@@ -399,8 +450,10 @@ export function SmartStatusPanel({
               <Box>
                 <Typography
                   variant="subtitle2"
-                  color="text.secondary"
-                  sx={{ mb: 1 }}
+                  sx={{
+                    color: "text.secondary",
+                    mb: 1,
+                  }}
                 >
                   Self-Test Status
                 </Typography>
@@ -408,14 +461,18 @@ export function SmartStatusPanel({
                   <Stack
                     direction="row"
                     spacing={2}
-                    alignItems="center"
-                    justifyContent="space-between"
+                    sx={{
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
                   >
                     <Stack
                       direction="row"
                       spacing={1}
-                      alignItems="center"
-                      sx={{ flex: 1 }}
+                      sx={{
+                        alignItems: "center",
+                        flex: 1,
+                      }}
                     >
                       <Chip
                         label={smartTestStatus?.status}
@@ -423,7 +480,12 @@ export function SmartStatusPanel({
                         size="small"
                       />
                       {smartTestStatus?.test_type && (
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "text.secondary",
+                          }}
+                        >
                           ({smartTestStatus.test_type})
                         </Typography>
                       )}
@@ -453,7 +515,9 @@ export function SmartStatusPanel({
                             <Typography
                               variant="caption"
                               component="div"
-                              color="text.secondary"
+                              sx={{
+                                color: "text.secondary",
+                              }}
                             >
                               {`${Math.round(smartTestStatus.percent_complete)}%`}
                             </Typography>
@@ -475,8 +539,10 @@ export function SmartStatusPanel({
             <Box>
               <Typography
                 variant="subtitle2"
-                color="text.secondary"
-                sx={{ mb: 1 }}
+                sx={{
+                  color: "text.secondary",
+                  mb: 1,
+                }}
               >
                 Actions
               </Typography>
@@ -570,7 +636,6 @@ export function SmartStatusPanel({
           </Stack>
         </CardContent>
       </Collapse>
-
       {/* Start Test Dialog */}
       <Dialog
         open={showStartTestDialog}
@@ -598,8 +663,11 @@ export function SmartStatusPanel({
           </FormControl>
           <Typography
             variant="caption"
-            color="text.secondary"
-            sx={{ display: "block", mt: 2 }}
+            sx={{
+              color: "text.secondary",
+              display: "block",
+              mt: 2,
+            }}
           >
             The selected test type will be executed on the disk. Running tests
             may impact disk performance.
@@ -629,7 +697,6 @@ export function SmartStatusPanel({
           </Button>
         </DialogActions>
       </Dialog>
-
       {/* Preview Dialog */}
       <PreviewDialog
         open={showPreviewDialog}

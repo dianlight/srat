@@ -426,7 +426,7 @@ export function ShareEditForm({
                     label="Support Timemachine Backups"
                     slotProps={{
                       typography: {
-                        fontSize: "0.875rem",
+                        sx: { fontSize: "0.875rem" },
                         color:
                           watch("mount_point_data")?.time_machine_support !==
                           Time_machine_support.Supported
@@ -475,7 +475,7 @@ export function ShareEditForm({
                 }}
                 slotProps={{
                   typography: {
-                    fontSize: "0.875rem",
+                    sx: { fontSize: "0.875rem" },
                   },
                 }}
                 label="Support Recycle Bin"
@@ -493,7 +493,7 @@ export function ShareEditForm({
               }}
               slotProps={{
                 typography: {
-                  fontSize: "0.875rem",
+                  sx: { fontSize: "0.875rem" },
                 },
               }}
               label="Guest Access"
@@ -564,7 +564,7 @@ export function ShareEditForm({
                       }),
                   }}
                   textFieldProps={{
-                    InputLabelProps: { shrink: true },
+                    slotProps: { inputLabel: { shrink: true } },
                   }}
                 />
               )}
@@ -630,7 +630,7 @@ export function ShareEditForm({
                       }),
                   }}
                   textFieldProps={{
-                    InputLabelProps: { shrink: true },
+                    slotProps: { inputLabel: { shrink: true } },
                   }}
                 />
               )}
@@ -674,8 +674,10 @@ export function ShareEditForm({
     <Stack
       direction="row"
       spacing={2}
-      alignItems="center"
-      sx={{ flex: "auto" }}
+      sx={{
+        alignItems: "center",
+        flex: "auto",
+      }}
     >
       {!(editName || shareData?.org_name === undefined) && (
         <Box
@@ -751,7 +753,7 @@ export function ShareEditForm({
           }}
           slotProps={{
             typography: {
-              fontSize: "0.875rem",
+              sx: { fontSize: "0.875rem" },
             },
           }}
           control={control}

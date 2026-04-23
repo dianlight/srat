@@ -451,8 +451,10 @@ export function FilesystemFormatDialog({
           <Box>
             <Typography
               variant="subtitle2"
-              color="text.secondary"
-              sx={{ mb: 0.5 }}
+              sx={{
+                color: "text.secondary",
+                mb: 0.5,
+              }}
             >
               Progress
             </Typography>
@@ -462,20 +464,37 @@ export function FilesystemFormatDialog({
             />
             <Stack
               direction="row"
-              justifyContent="space-between"
-              sx={{ mt: 0.5 }}
+              sx={{
+                justifyContent: "space-between",
+                mt: 0.5,
+              }}
             >
-              <Typography variant="caption" color="text.secondary">
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 {status ? status.toUpperCase() : "IDLE"}
               </Typography>
-              <Typography variant="caption" color="text.secondary">
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 {showIndeterminate
                   ? "Working..."
                   : `${Math.round(clampedProgressValue)}%`}
               </Typography>
             </Stack>
             {progressValue === 999 && (
-              <Typography variant="caption" color="text.secondary">
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 This tool does not report incremental progress. Live output is
                 shown in logs.
               </Typography>
@@ -493,7 +512,12 @@ export function FilesystemFormatDialog({
           {statusMessage &&
             currentStatus !== "failure" &&
             currentStatus !== "success" && (
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 {statusMessage}
               </Typography>
             )}
@@ -557,8 +581,10 @@ export function FilesystemFormatDialog({
             <Box>
               <Typography
                 variant="subtitle2"
-                color="text.secondary"
-                sx={{ mb: 0.5 }}
+                sx={{
+                  color: "text.secondary",
+                  mb: 0.5,
+                }}
               >
                 Logs
               </Typography>

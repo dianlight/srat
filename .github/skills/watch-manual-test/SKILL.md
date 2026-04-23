@@ -141,6 +141,12 @@ At any time, the user may send messages like:
 - `That felt slow`
 - `The UI flickered`
 - `I saw a strange effect`
+- `Something looked wrong after I clicked save`
+- `I think I found a bug`
+Treat these as valid signals that should trigger an immediate check of the browser and logs, even if you haven't yet detected an issue on your own. Ask for clarification if needed:
+- `Can you describe exactly what you saw and what you clicked just before it happened?`
+- `Did it happen every time or just once?`
+- `What do you see in the browser console or network tab around that moment?`
 
 Treat these as first-class inputs. Do not wait for the browser tools or logs to complain first.
 
@@ -160,7 +166,14 @@ After a fix or after choosing to ignore an issue:
 - keep watching the same signals
 - confirm whether the symptom is gone, changed, or still present
 
-### 9. Wrap Up the Session
+### 9. Wait for Session Completion 
+
+The session may end when the user completes the flow, reproduces the bug, or decides to stop testing. At that point, summarize the findings and any remaining follow-ups.
+If you need to ask the user whether they want to continue testing or start a new session, return to step 1.
+Command like `stop testing`, `I think I'm done testing for now`, or `let's stop here` can be treated as signals that the session is nearing completion, but confirm with the user before finalizing.
+
+
+### 10. Wrap Up the Session
 
 At the end, provide a short summary grouped by:
 

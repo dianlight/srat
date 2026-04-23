@@ -1,8 +1,8 @@
+import { beforeEach, describe, expect, it } from "bun:test";
 import "../../../../../test/setup";
-import { describe, it, expect, beforeEach } from "bun:test";
 
 describe("PartitionActions component", () => {
-    const createMatchMedia = (matches: boolean) => () => ({
+    const createMatchMedia = (matches: boolean) => () => (({
         matches,
         addListener: () => { },
         removeListener: () => { },
@@ -10,8 +10,8 @@ describe("PartitionActions component", () => {
         removeEventListener: () => { },
         dispatchEvent: () => false,
         onchange: null,
-        media: "",
-    }) as any;
+        media: ""
+    }) as any);
 
     beforeEach(() => {
         (window as any).matchMedia = createMatchMedia(false); // Force desktop mode
@@ -59,6 +59,48 @@ describe("PartitionActions component", () => {
         );
 
         expect(container).toBeTruthy();
+    });
+
+    it("does not render Check Filesystem menu item when callback is missing", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { PartitionActions } = await import("../PartitionActions");
+
+        (window as any).matchMedia = createMatchMedia(true); // Force menu mode
+        const user = userEvent.setup();
+        const partition = buildPartition({
+            filesystem_info: {
+                support: {
+                    canCheck: true,
+                },
+            },
+            mount_point_data: [
+                {
+                    path: "/mnt/test",
+                    is_mounted: false,
+                    is_to_mount_at_startup: false,
+                },
+            ],
+        });
+
+        render(
+            React.createElement(PartitionActions as any, {
+                partition,
+                protected_mode: false,
+                onToggleAutomount: () => { },
+                onMount: () => { },
+                onUnmount: () => { },
+                onCreateShare: () => { },
+                onGoToShare: () => { },
+                // onCheckFilesystem intentionally omitted
+            })
+        );
+
+        const menuButton = await screen.findByLabelText(/more actions/i);
+        await user.click(menuButton);
+
+        expect(screen.queryByText(/check filesystem/i)).toBeNull();
     });
 
     it("returns null for protected mode partitions", async () => {

@@ -235,7 +235,7 @@ export const wsApi = createApi({
   }),
 });
 
-const useWsServerEventsQuery = () => {
+const useWsServerEventsQuery = (options?: { skip?: boolean }) => {
   const isTestEnv =
     (globalThis as unknown as { __TEST__?: boolean }).__TEST__ === true;
   const mockWsInTests =
@@ -251,7 +251,9 @@ const useWsServerEventsQuery = () => {
   // disable streaming, instruct RTK Query to skip running the query hook.
   // This avoids middleware-checking behavior that can produce warnings in
   // test environments and simplifies test isolation.
-  const shouldSkip = isTestEnv && (mockWsInTests || disableStreaming);
+  const shouldSkip =
+    Boolean(options?.skip) ||
+    (isTestEnv && (mockWsInTests || disableStreaming));
 
   const arg = shouldSkip ? (skipToken as unknown) : undefined;
   const result = wsApi.endpoints.getServerEvents.useQuery(arg as SkipToken);

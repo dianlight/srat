@@ -247,19 +247,34 @@ export function DiskHealthMetrics({
                                 SMART Enabled
                               </Typography>
                               {diskInfo.smart_info.disk_type && (
-                                <Typography variant="caption" display="block">
+                                <Typography
+                                  variant="caption"
+                                  sx={{
+                                    display: "block",
+                                  }}
+                                >
                                   Type: {diskInfo.smart_info.disk_type}
                                 </Typography>
                               )}
                               {diskInfo.smart_info.rotation_rate !==
                                 undefined &&
                                 diskInfo.smart_info.rotation_rate > 0 && (
-                                  <Typography variant="caption" display="block">
+                                  <Typography
+                                    variant="caption"
+                                    sx={{
+                                      display: "block",
+                                    }}
+                                  >
                                     RPM: {diskInfo.smart_info.rotation_rate}
                                   </Typography>
                                 )}
                               {diskInfo.smart_info.rotation_rate === 0 && (
-                                <Typography variant="caption" display="block">
+                                <Typography
+                                  variant="caption"
+                                  sx={{
+                                    display: "block",
+                                  }}
+                                >
                                   Type: SSD
                                 </Typography>
                               )}
@@ -301,7 +316,12 @@ export function DiskHealthMetrics({
                           </Typography>
                         </Tooltip>
                       ) : (
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            color: "text.secondary",
+                          }}
+                        >
                           N/A
                         </Typography>
                       )}
@@ -350,7 +370,6 @@ export function DiskHealthMetrics({
           </TableBody>
         </Table>
       </TableContainer>
-
       <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
         Disk Partitions
       </Typography>
@@ -368,8 +387,10 @@ export function DiskHealthMetrics({
                 </Typography>
                 <Typography
                   variant="body2"
-                  color="text.secondary"
                   component="div"
+                  sx={{
+                    color: "text.secondary",
+                  }}
                 >
                   {diskName}
                 </Typography>
@@ -405,7 +426,12 @@ export function DiskHealthMetrics({
                               : "inherit"
                           }
                         />
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            color: "text.secondary",
+                          }}
+                        >
                           {freeSpace > 0 && `${filesize(freeSpace)} free of `}
                           {filesize(totalSpace)}
                         </Typography>

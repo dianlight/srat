@@ -159,7 +159,9 @@ export function SambaStatusMetrics({
                             ) : (
                               <Typography
                                 variant="caption"
-                                color="text.secondary"
+                                sx={{
+                                  color: "text.secondary",
+                                }}
                               >
                                 No Tcons for this session.
                               </Typography>

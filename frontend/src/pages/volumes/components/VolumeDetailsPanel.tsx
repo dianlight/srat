@@ -1,9 +1,9 @@
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import ComputerIcon from "@mui/icons-material/Computer";
 import EjectIcon from "@mui/icons-material/Eject";
-import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
+import ErrorOutlinedIcon from "@mui/icons-material/ErrorOutlined";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import HelpOutlinedIcon from "@mui/icons-material/HelpOutlined";
 import SdStorageIcon from "@mui/icons-material/SdStorage";
 import SettingsIcon from "@mui/icons-material/Settings";
 import StorageIcon from "@mui/icons-material/Storage";
@@ -164,12 +164,12 @@ export function VolumeDetailsPanel({
 
   const filesystemStatusIcon = useMemo(() => {
     if (filesystemStatus === "clean") {
-      return <CheckCircleOutlineIcon color="success" fontSize="small" />;
+      return <CheckCircleOutlinedIcon color="success" fontSize="small" />;
     }
     if (filesystemStatus === "has_error") {
-      return <ErrorOutlineIcon color="error" fontSize="small" />;
+      return <ErrorOutlinedIcon color="error" fontSize="small" />;
     }
-    return <HelpOutlineIcon color="disabled" fontSize="small" />;
+    return <HelpOutlinedIcon color="disabled" fontSize="small" />;
   }, [filesystemStatus]);
 
   const filesystemStatusTooltip = useMemo(() => {
@@ -256,16 +256,31 @@ export function VolumeDetailsPanel({
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                   {!diskInfoExpanded && (
                     <Stack direction="row" spacing={1} sx={{ mr: 1 }}>
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: "text.secondary",
+                        }}
+                      >
                         {disk.model || "Unknown"}
                       </Typography>
                       {disk.size != null && (
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "text.secondary",
+                          }}
+                        >
                           • {filesize(disk.size, { round: 1 })}
                         </Typography>
                       )}
                       {disk.connection_bus && (
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "text.secondary",
+                          }}
+                        >
                           • {disk.connection_bus}
                         </Typography>
                       )}
@@ -292,7 +307,12 @@ export function VolumeDetailsPanel({
               <CardContent>
                 <Grid container spacing={2}>
                   <Grid size={{ xs: 12, sm: 6 }}>
-                    <Typography variant="subtitle2" color="text.secondary">
+                    <Typography
+                      variant="subtitle2"
+                      sx={{
+                        color: "text.secondary",
+                      }}
+                    >
                       Model
                     </Typography>
                     <Typography variant="body2">
@@ -300,7 +320,12 @@ export function VolumeDetailsPanel({
                     </Typography>
                   </Grid>
                   <Grid size={{ xs: 12, sm: 6 }}>
-                    <Typography variant="subtitle2" color="text.secondary">
+                    <Typography
+                      variant="subtitle2"
+                      sx={{
+                        color: "text.secondary",
+                      }}
+                    >
                       Vendor
                     </Typography>
                     <Typography variant="body2">
@@ -309,7 +334,12 @@ export function VolumeDetailsPanel({
                   </Grid>
                   {disk.size != null && (
                     <Grid size={{ xs: 12, sm: 6 }}>
-                      <Typography variant="subtitle2" color="text.secondary">
+                      <Typography
+                        variant="subtitle2"
+                        sx={{
+                          color: "text.secondary",
+                        }}
+                      >
                         Size
                       </Typography>
                       <Typography variant="body2">
@@ -318,7 +348,12 @@ export function VolumeDetailsPanel({
                     </Grid>
                   )}
                   <Grid size={{ xs: 12, sm: 6 }}>
-                    <Typography variant="subtitle2" color="text.secondary">
+                    <Typography
+                      variant="subtitle2"
+                      sx={{
+                        color: "text.secondary",
+                      }}
+                    >
                       Connection
                     </Typography>
                     <Typography variant="body2">
@@ -326,14 +361,22 @@ export function VolumeDetailsPanel({
                     </Typography>
                   </Grid>
                   <Grid size={{ xs: 12 }}>
-                    <Typography variant="subtitle2" color="text.secondary">
+                    <Typography
+                      variant="subtitle2"
+                      sx={{
+                        color: "text.secondary",
+                      }}
+                    >
                       Properties
                     </Typography>
                     <Stack
                       direction="row"
                       spacing={1}
-                      flexWrap="wrap"
-                      sx={{ gap: 1, mt: 0.5 }}
+                      sx={{
+                        flexWrap: "wrap",
+                        gap: 1,
+                        mt: 0.5,
+                      }}
                     >
                       {disk.removable && (
                         <Chip
@@ -398,7 +441,12 @@ export function VolumeDetailsPanel({
             <CardContent>
               <Grid container spacing={2}>
                 <Grid size={{ xs: 12 }}>
-                  <Typography variant="subtitle2" color="text.secondary">
+                  <Typography
+                    variant="subtitle2"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     Name
                   </Typography>
                   <Typography variant="h6">
@@ -409,7 +457,12 @@ export function VolumeDetailsPanel({
                 </Grid>
                 {partition.size != null && (
                   <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                    <Typography variant="subtitle2" color="text.secondary">
+                    <Typography
+                      variant="subtitle2"
+                      sx={{
+                        color: "text.secondary",
+                      }}
+                    >
                       Size
                     </Typography>
                     <Typography variant="body2">
@@ -420,7 +473,12 @@ export function VolumeDetailsPanel({
                 {partition.fs_type && (
                   <>
                     <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                      <Typography variant="subtitle2" color="text.secondary">
+                      <Typography
+                        variant="subtitle2"
+                        sx={{
+                          color: "text.secondary",
+                        }}
+                      >
                         File System
                       </Typography>
                       <Typography variant="body2">
@@ -432,16 +490,20 @@ export function VolumeDetailsPanel({
                     <Grid size={{ xs: 12 }}>
                       <Typography
                         variant="subtitle2"
-                        color="text.secondary"
-                        sx={{ mb: 1 }}
+                        sx={{
+                          color: "text.secondary",
+                          mb: 1,
+                        }}
                       >
                         Filesystem Status
                       </Typography>
                       <Stack
                         direction="row"
                         spacing={1}
-                        flexWrap="wrap"
-                        sx={{ gap: 1 }}
+                        sx={{
+                          flexWrap: "wrap",
+                          gap: 1,
+                        }}
                       >
                         {isMounted && (
                           <Chip
@@ -477,7 +539,12 @@ export function VolumeDetailsPanel({
                 )}
                 {partition.legacy_device_name && (
                   <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                    <Typography variant="subtitle2" color="text.secondary">
+                    <Typography
+                      variant="subtitle2"
+                      sx={{
+                        color: "text.secondary",
+                      }}
+                    >
                       Device
                     </Typography>
                     <Typography
@@ -490,7 +557,12 @@ export function VolumeDetailsPanel({
                 )}
                 {partition.id && (
                   <Grid size={{ xs: 12 }}>
-                    <Typography variant="subtitle2" color="text.secondary">
+                    <Typography
+                      variant="subtitle2"
+                      sx={{
+                        color: "text.secondary",
+                      }}
+                    >
                       Partition ID
                     </Typography>
                     <Typography
@@ -506,16 +578,20 @@ export function VolumeDetailsPanel({
                 <Grid size={{ xs: 12 }}>
                   <Typography
                     variant="subtitle2"
-                    color="text.secondary"
-                    sx={{ mb: 1 }}
+                    sx={{
+                      color: "text.secondary",
+                      mb: 1,
+                    }}
                   >
                     Status
                   </Typography>
                   <Stack
                     direction="row"
                     spacing={1}
-                    flexWrap="wrap"
-                    sx={{ gap: 1 }}
+                    sx={{
+                      flexWrap: "wrap",
+                      gap: 1,
+                    }}
                   >
                     <Chip
                       label={isMounted ? "Mounted" : "Not Mounted"}
@@ -533,7 +609,12 @@ export function VolumeDetailsPanel({
                   <>
                     {mpds.some((mpd) => mpd.disk_label) && (
                       <Grid size={{ xs: 12, sm: 6 }}>
-                        <Typography variant="subtitle2" color="text.secondary">
+                        <Typography
+                          variant="subtitle2"
+                          sx={{
+                            color: "text.secondary",
+                          }}
+                        >
                           Disk Label
                         </Typography>
                         <Typography variant="body2">
@@ -543,7 +624,12 @@ export function VolumeDetailsPanel({
                     )}
                     {mpds.some((mpd) => mpd.time_machine_support) && (
                       <Grid size={{ xs: 12, sm: 6 }}>
-                        <Typography variant="subtitle2" color="text.secondary">
+                        <Typography
+                          variant="subtitle2"
+                          sx={{
+                            color: "text.secondary",
+                          }}
+                        >
                           Time Machine Support
                         </Typography>
                         <Chip
@@ -568,7 +654,12 @@ export function VolumeDetailsPanel({
                     )}
                     {mpds.some((mpd) => mpd.warnings) && (
                       <Grid size={{ xs: 12 }}>
-                        <Typography variant="subtitle2" color="warning.main">
+                        <Typography
+                          variant="subtitle2"
+                          sx={{
+                            color: "warning.main",
+                          }}
+                        >
                           Warnings
                         </Typography>
                         {mpds
@@ -577,7 +668,9 @@ export function VolumeDetailsPanel({
                             <Typography
                               key={mpd.path}
                               variant="body2"
-                              color="warning.main"
+                              sx={{
+                                color: "warning.main",
+                              }}
                             >
                               {mpd.warnings}
                             </Typography>
@@ -586,10 +679,20 @@ export function VolumeDetailsPanel({
                     )}
                     {mpds.some((mpd) => mpd.invalid && mpd.invalid_error) && (
                       <Grid size={{ xs: 12 }}>
-                        <Typography variant="subtitle2" color="error.main">
+                        <Typography
+                          variant="subtitle2"
+                          sx={{
+                            color: "error.main",
+                          }}
+                        >
                           Errors
                         </Typography>
-                        <Typography variant="body2" color="error.main">
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            color: "error.main",
+                          }}
+                        >
                           {
                             mpds.find((mpd) => mpd.invalid && mpd.invalid_error)
                               ?.invalid_error
@@ -600,14 +703,22 @@ export function VolumeDetailsPanel({
                     {/* Host Mount Information */}
                     {mpds.length > 0 && (
                       <Grid size={{ xs: 12 }}>
-                        <Typography variant="subtitle2" color="text.secondary">
+                        <Typography
+                          variant="subtitle2"
+                          sx={{
+                            color: "text.secondary",
+                          }}
+                        >
                           Mount Point{mpds.length > 1 ? "s" : ""}
                         </Typography>
                         <Stack
                           direction="row"
                           spacing={1}
-                          flexWrap="wrap"
-                          sx={{ gap: 1, mt: 0.5 }}
+                          sx={{
+                            flexWrap: "wrap",
+                            gap: 1,
+                            mt: 0.5,
+                          }}
                         >
                           {mpds.map((mpd) => {
                             const badges: string[] = [];
@@ -649,7 +760,12 @@ export function VolumeDetailsPanel({
                 {Object.values(partition.host_mount_point_data || {}).length >
                   0 && (
                   <Grid size={{ xs: 12 }}>
-                    <Typography variant="subtitle2" color="text.secondary">
+                    <Typography
+                      variant="subtitle2"
+                      sx={{
+                        color: "text.secondary",
+                      }}
+                    >
                       Host Mount Point
                       {Object.values(partition.host_mount_point_data || {})
                         .length > 1
@@ -659,8 +775,11 @@ export function VolumeDetailsPanel({
                     <Stack
                       direction="row"
                       spacing={1}
-                      flexWrap="wrap"
-                      sx={{ gap: 1, mt: 0.5 }}
+                      sx={{
+                        flexWrap: "wrap",
+                        gap: 1,
+                        mt: 0.5,
+                      }}
                     >
                       {Object.values(partition.host_mount_point_data || {}).map(
                         (hmpd) => (
@@ -681,8 +800,10 @@ export function VolumeDetailsPanel({
                   <Grid size={{ xs: 12 }}>
                     <Typography
                       variant="subtitle2"
-                      color="text.secondary"
-                      sx={{ mb: 1 }}
+                      sx={{
+                        color: "text.secondary",
+                        mb: 1,
+                      }}
                     >
                       Actions
                     </Typography>
@@ -772,7 +893,12 @@ export function VolumeDetailsPanel({
                   {/* File System Type */}
                   {(mountData.fstype || partition.fs_type) && (
                     <Grid size={{ xs: 12, sm: 6 }}>
-                      <Typography variant="subtitle2" color="text.secondary">
+                      <Typography
+                        variant="subtitle2"
+                        sx={{
+                          color: "text.secondary",
+                        }}
+                      >
                         File System Type
                       </Typography>
                       <Typography variant="body2">
@@ -783,7 +909,12 @@ export function VolumeDetailsPanel({
 
                   {/* Automatic Mount */}
                   <Grid size={{ xs: 12, sm: 6 }}>
-                    <Typography variant="subtitle2" color="text.secondary">
+                    <Typography
+                      variant="subtitle2"
+                      sx={{
+                        color: "text.secondary",
+                      }}
+                    >
                       Automatic Mount
                     </Typography>
                     <Chip
@@ -804,16 +935,20 @@ export function VolumeDetailsPanel({
                     <Grid size={{ xs: 12 }}>
                       <Typography
                         variant="subtitle2"
-                        color="text.secondary"
-                        sx={{ mb: 1 }}
+                        sx={{
+                          color: "text.secondary",
+                          mb: 1,
+                        }}
                       >
                         Mount Flags
                       </Typography>
                       <Stack
                         direction="row"
                         spacing={1}
-                        flexWrap="wrap"
-                        sx={{ gap: 1 }}
+                        sx={{
+                          flexWrap: "wrap",
+                          gap: 1,
+                        }}
                       >
                         {mountData.flags.map((flag) => (
                           <Chip
@@ -838,16 +973,20 @@ export function VolumeDetailsPanel({
                       <Grid size={{ xs: 12 }}>
                         <Typography
                           variant="subtitle2"
-                          color="text.secondary"
-                          sx={{ mb: 1 }}
+                          sx={{
+                            color: "text.secondary",
+                            mb: 1,
+                          }}
                         >
                           Filesystem-specific Mount Flags
                         </Typography>
                         <Stack
                           direction="row"
                           spacing={1}
-                          flexWrap="wrap"
-                          sx={{ gap: 1 }}
+                          sx={{
+                            flexWrap: "wrap",
+                            gap: 1,
+                          }}
                         >
                           {mountData.custom_flags.map((flag) => (
                             <Chip
@@ -868,7 +1007,12 @@ export function VolumeDetailsPanel({
 
                   {/* Write Support Status */}
                   <Grid size={{ xs: 12, sm: 6 }}>
-                    <Typography variant="subtitle2" color="text.secondary">
+                    <Typography
+                      variant="subtitle2"
+                      sx={{
+                        color: "text.secondary",
+                      }}
+                    >
                       Write Support
                     </Typography>
                     <Chip
@@ -1040,7 +1184,6 @@ export function VolumeDetailsPanel({
                 ) : null}
                 {/* Preview Button for Partition or Disk */}
       </Stack>
-
       {/* Preview dialog for disk object */}
       <PreviewDialog
         open={previewOpen}

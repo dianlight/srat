@@ -279,7 +279,6 @@ export function Users() {
           }
         }}
       />
-
       {/* Main Layout Grid */}
       <Grid
         container
@@ -295,9 +294,12 @@ export function Users() {
           >
             <Stack
               direction="row"
-              justifyContent="space-between"
-              alignItems="center"
-              sx={{ mb: 2, px: 2 }}
+              sx={{
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 2,
+                px: 2,
+              }}
             >
               <Typography variant="h6">Users</Typography>
               {!isReadOnly && (

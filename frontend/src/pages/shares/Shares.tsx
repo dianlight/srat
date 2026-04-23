@@ -380,7 +380,6 @@ export function Shares() {
         }}
         onDeleteSubmit={onSubmitDeleteShare}
       />
-
       {/* Main Layout Grid */}
       <Grid
         container
@@ -396,9 +395,12 @@ export function Shares() {
           >
             <Stack
               direction="row"
-              justifyContent="space-between"
-              alignItems="center"
-              sx={{ mb: 2, px: 2 }}
+              sx={{
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 2,
+                px: 2,
+              }}
             >
               <Typography variant="h6">Shares</Typography>
               <Tooltip

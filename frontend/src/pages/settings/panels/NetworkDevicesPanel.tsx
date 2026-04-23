@@ -55,7 +55,6 @@ export function NetworkDevicesPanel({ readOnly }: NetworkDevicesPanelProps) {
           control={control}
         />
       </Box>
-
       {/* Multi Channel */}
       <Tooltip
         title={
@@ -81,9 +80,7 @@ export function NetworkDevicesPanel({ readOnly }: NetworkDevicesPanelProps) {
           />
         </span>
       </Tooltip>
-
       {/* SMB over QUIC */}
-
       <Tooltip
         title={
           <>
@@ -139,8 +136,11 @@ export function NetworkDevicesPanel({ readOnly }: NetworkDevicesPanelProps) {
         capabilities.unsupported_reason && (
           <Typography
             variant="caption"
-            color="warning.main"
-            sx={{ mt: 0.5, display: "block" }}
+            sx={{
+              color: "warning.main",
+              mt: 0.5,
+              display: "block",
+            }}
           >
             {
               (

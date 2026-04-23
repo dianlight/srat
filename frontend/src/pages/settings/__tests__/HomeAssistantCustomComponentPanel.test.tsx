@@ -42,7 +42,7 @@ describe("HomeAssistantCustomComponentPanel", () => {
         );
 
         const store = await createTestStore();
-        const theme = createTheme({ components: { MuiDialog: { defaultProps: { TransitionProps: { timeout: 0 } } } } });
+        const theme = createTheme({ components: { MuiDialog: { defaultProps: { transitionDuration: 0 } } } });
 
         render(
             React.createElement(
@@ -84,7 +84,7 @@ describe("HomeAssistantCustomComponentPanel", () => {
         );
 
         const store = await createTestStore();
-        const theme = createTheme({ components: { MuiDialog: { defaultProps: { TransitionProps: { timeout: 0 } } } } });
+        const theme = createTheme({ components: { MuiDialog: { defaultProps: { transitionDuration: 0 } } } });
 
         render(
             React.createElement(
@@ -135,7 +135,7 @@ describe("HomeAssistantCustomComponentPanel", () => {
         );
 
         const store = await createTestStore();
-        const theme = createTheme({ components: { MuiDialog: { defaultProps: { TransitionProps: { timeout: 0 } } } } });
+        const theme = createTheme({ components: { MuiDialog: { defaultProps: { transitionDuration: 0 } } } });
 
         render(
             React.createElement(
@@ -191,7 +191,7 @@ describe("HomeAssistantCustomComponentPanel", () => {
         );
 
         const store = await createTestStore();
-        const theme = createTheme({ components: { MuiDialog: { defaultProps: { TransitionProps: { timeout: 0 } } } } });
+        const theme = createTheme({ components: { MuiDialog: { defaultProps: { transitionDuration: 0 } } } });
 
         render(
             React.createElement(
@@ -216,7 +216,7 @@ describe("HomeAssistantCustomComponentPanel", () => {
 
     it("dismisses confirmation dialog when Cancel is clicked", async () => {
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
+        const { render, screen, waitFor } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const userEvent = (await import("@testing-library/user-event")).default;
@@ -241,7 +241,7 @@ describe("HomeAssistantCustomComponentPanel", () => {
         );
 
         const store = await createTestStore();
-        const theme = createTheme({ components: { MuiDialog: { defaultProps: { TransitionProps: { timeout: 0 } } } } });
+        const theme = createTheme({ components: { MuiDialog: { defaultProps: { transitionDuration: 0 } } } });
 
         render(
             React.createElement(
@@ -262,8 +262,10 @@ describe("HomeAssistantCustomComponentPanel", () => {
         await user.click(cancelButton);
 
         // Dialog should be dismissed - confirm button gone, no success message
-        expect(screen.queryByRole("button", { name: /^confirm$/i })).toBeNull();
-        expect(screen.queryByText(/installed successfully/i)).toBeNull();
+        await waitFor(() => {
+            expect(screen.queryByRole("button", { name: /^confirm$/i })).toBeNull();
+            expect(screen.queryByText(/installed successfully/i)).toBeNull();
+        });
     });
 
     it("shows restart dialog after successful install", async () => {
@@ -297,7 +299,7 @@ describe("HomeAssistantCustomComponentPanel", () => {
         );
 
         const store = await createTestStore();
-        const theme = createTheme({ components: { MuiDialog: { defaultProps: { TransitionProps: { timeout: 0 } } } } });
+        const theme = createTheme({ components: { MuiDialog: { defaultProps: { transitionDuration: 0 } } } });
 
         render(
             React.createElement(
@@ -322,7 +324,7 @@ describe("HomeAssistantCustomComponentPanel", () => {
 
     it("dismisses restart dialog when Later is clicked", async () => {
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
+        const { render, screen, waitFor } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const userEvent = (await import("@testing-library/user-event")).default;
@@ -350,7 +352,7 @@ describe("HomeAssistantCustomComponentPanel", () => {
         );
 
         const store = await createTestStore();
-        const theme = createTheme({ components: { MuiDialog: { defaultProps: { TransitionProps: { timeout: 0 } } } } });
+        const theme = createTheme({ components: { MuiDialog: { defaultProps: { transitionDuration: 0 } } } });
 
         render(
             React.createElement(
@@ -368,7 +370,9 @@ describe("HomeAssistantCustomComponentPanel", () => {
         await user.click(laterButton);
 
         // Dialog should be dismissed
-        expect(screen.queryByRole("button", { name: /restart now/i })).toBeNull();
+        await waitFor(() => {
+            expect(screen.queryByRole("button", { name: /restart now/i })).toBeNull();
+        });
     });
 
     it("calls POST /api/settings/homeassistant/restart-core when Restart Now is clicked", async () => {
@@ -406,7 +410,7 @@ describe("HomeAssistantCustomComponentPanel", () => {
         );
 
         const store = await createTestStore();
-        const theme = createTheme({ components: { MuiDialog: { defaultProps: { TransitionProps: { timeout: 0 } } } } });
+        const theme = createTheme({ components: { MuiDialog: { defaultProps: { transitionDuration: 0 } } } });
 
         render(
             React.createElement(
