@@ -324,3 +324,4 @@ stderr
 Teardown
 subtests
 gofmt
+semver

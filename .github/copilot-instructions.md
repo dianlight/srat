@@ -63,6 +63,7 @@ These instructions are the concise, must-follow rules for working in SRAT. Keep 
 - Runtime data lives in `entry.runtime_data` (not `hass.data`).
 - WebSocket‑only coordinator: `update_interval=None`.
 - Sensors return `None` when unavailable.
+- **Lifecycle operations (restart, start, stop)**: Use the Supervisor API via `supervisorCoreClient.RestartCoreWithResponse(ctx)` from the `homeassistant/core` package, **not** the HA Core REST proxy (`coreClient.CallServiceWithResponse(...)`). The REST proxy is for entity states and service calls only; using it for lifecycle management causes silent 504 timeouts (HA drops the connection while restarting itself).
 
 ## Build, generate, test (short list)
 
@@ -84,12 +85,26 @@ These instructions are the concise, must-follow rules for working in SRAT. Keep 
 
 ## Shared References (DRY Consolidation)
 
-These documents consolidate principles and patterns repeated across language-specific instructions, reducing duplication:
+These documents consolidate principles, patterns, and facts repeated across language-specific instructions, reducing duplication:
 
 - **`docs/shared-principles.md`**: Core principles shared across Go, TypeScript, Python, and Markdown. Covers "Respect existing code", "Error handling", "Testing lifecycle", "Code quality", and "Security". Referenced by all language-specific instruction files.
 - **`docs/test-setup-patterns.md`**: Unified test infrastructure patterns for Go (testify/suite + fx), TypeScript (bun:test + RTL), and Python (pytest). Includes critical ordering rules (e.g., cancel context BEFORE waiting on WaitGroup), anti-patterns, and a verification checklist. Referenced by backend, frontend, and custom component test instructions.
+- **`docs/memory-index.md`** (NEW): Maps all 19 stored memory facts to their current locations in instruction files. Shows integration status (8 integrated, 6 already covered, 3 pending, 2 archived), cross-references by file, and recommendations for future rounds. Use to understand what patterns are documented and why some facts weren't integrated.
+- **`docs/quick-reference.md`** (NEW): Fast lookup for 8 highest-impact patterns with copy-paste code snippets. Covers MSW body clone, DTO type safety, semver comparison, service architecture, HA Supervisor API, test cleanup, RTK lazy hooks, and IssueCard ignored-state. Use when implementing these patterns.
+- **`.github/prompts/optimize-instructions.prompt.md`**: Reusable Copilot prompt file for running future optimization rounds. Includes 5 optimization goals (A–E), standard workflow template (5 phases), key files to update, constraints, and success criteria. Start with this when the user requests instruction optimization. Registered in `.github/prompts/` per GitHub's Copilot prompt file specification.
 
-When writing or updating language-specific instructions, link to these shared references instead of duplicating guidance.
+When writing or updating language-specific instructions, link to these shared references instead of duplicating guidance. After optimization rounds, scan `memory-index.md` to identify high-value facts for future integration. For optimization requests, reference `.github/prompts/optimize-instructions.prompt.md` to ensure systematic, repeatable workflows.
+
+## Core Service Architecture Patterns
+
+The SRAT back-end uses several linked services for lifecycle and state management:
+
+- **ProblemService**: Centralized issue/problem tracking with lifecycle states. New service features (addon config changes, component restart requirements, repairs) call `ProblemService` directly.
+- **RepairService**: Legacy compatibility layer that mirrors repair operations into `ProblemService` with best-effort semantics (failures are non-fatal; primary operation success is determined by legacy API only).
+- **HomeAssistantComponentService**: Manages SRAT addon lifecycle and custom component tracking. Calls `ProblemService` for `custom_component_restart_required` repairs when actions (install/upgrade/uninstall) complete.
+- **AddonConfigWatcherService**: Monitors Home Assistant addon config changes and calls `ProblemService` for `addon_config_changed` problems when mismatches are detected.
+
+**Key principle**: When migrating features from legacy (Repair API) to modern (Problem Service), new service mirrors legacy operations but failures are best-effort. The legacy operation semantics (success/failure) remain unchanged.
 
 ## Docs & quality gates
 

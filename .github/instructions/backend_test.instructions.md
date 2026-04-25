@@ -706,6 +706,17 @@ func TestConvertToDTO_TableDriven(t *testing.T) {
 - ❌ No: Never use
 - ⚠️ Maybe: Use if needed
 
+## DTO and Type Safety in Tests
+
+When testing services that use domain types (Problem, Issue, Repair, etc.), use the correct DTO enum types:
+
+- **Problem Severity**: Use `dto.ProblemSeverities` (e.g., `dto.ProblemSeverities.PROBLEMSEVERITYWARNING`), not `IssueSeverity`
+- **Repair Command Action**: Use `dto.RepairCommandActions` for command payloads
+- **CanUpgrade Fields**: When testing upgrade status, use semver comparison (e.g., `github.com/Masterminds/semver/v3`) for `CanUpgrade` calculation, not simple boolean checks. See `canUpgrade(installed, latest *string) bool` in `service/homeassistant_component_service.go` for canonical implementation.
+- **Repair Lifecycle**: When testing repair flows, verify that `RepairService` mirrors legacy repair operations into `ProblemService` with best-effort semantics (failures are non-fatal, warn-log only).
+
+Mixing type families (e.g., using `IssueSeverity` where `ProblemSeverity` is expected) causes silent type mismatches in tests and may fail in production.
+
 ## Migration Guide
 
 If you encounter tests not following these patterns:
