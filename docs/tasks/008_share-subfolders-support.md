@@ -1,6 +1,8 @@
 # [FEATURE]: Allow Share Subfolders
 
-**Target Repo:** `srat`  **Status:** 📅 Planned  **Issue Link:** [srat#184](https://github.com/dianlight/srat/issues/184)
+**Target Repo:** `srat`  
+**Status:** 📅 Planned  
+**Issue Link:** [srat#184](https://github.com/dianlight/srat/issues/184)
 
 ## 🎯 Objective
 

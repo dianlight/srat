@@ -1,6 +1,8 @@
 # [FEATURE]: Samba Service Health Monitoring
 
-**Target Repo:** `srat` **Status:** 📅 Planned **Issue Link:** _TBD_
+**Target Repo:** `srat` 
+**Status:** 📅 Planned 
+**Issue Link:** _TBD_
 
 ## 🎯 Objective
 

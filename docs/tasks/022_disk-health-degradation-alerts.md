@@ -1,6 +1,8 @@
 # [FEATURE]: Disk Health Degradation Alerts
 
-**Target Repo:** `srat` **Status:** 📅 Planned **Issue Link:** _TBD_
+**Target Repo:** `srat` 
+**Status:** 📅 Planned 
+**Issue Link:** _TBD_
 
 ## 🎯 Objective
 
