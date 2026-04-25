@@ -36,7 +36,26 @@ These instructions are the concise, must-follow rules for working in SRAT. Keep 
 
 - Use Bun toolchain (`frontend/`). Build outputs go to `backend/src/web/static`.
 - **Do not** edit `frontend/src/store/sratApi.ts` or `backend/docs/openapi.*` directly—update Go and run `cd frontend && bun run gen`.
-- **Never** manually add types to `frontend/src/store/wsApi.ts`. All types must come from `sratApi.ts`. WS-only event payload types that have no REST endpoint need a doc-stub handler in `backend/src/api/system.go` (tagged `"system","internal"`) referencing the DTO — see `HandleWelcome`/`HandleCommandEvents` for the pattern.
+- **Never** manually add types to `frontend/src/store/wsApi.ts`. All types must come from `sratApi.ts`. WS-only event payload types that have no REST endpoint need a doc-stub handler in `backend/src/api/system.go` (tagged `"system","internal"`). 
+
+  **Doc-Stub Pattern:** A handler that always returns an error but declares the DTO(s) in its response type signature. This anchors the types into the OpenAPI schema, which code-generates them into frontend TypeScript. Example:
+  
+  ```go
+  // HandleCommandEvents is a documentation-only stub that anchors command event schemas
+  // into the OpenAPI spec so they code-generate into TypeScript types.
+  // Actual command events are delivered over WebSocket.
+  func (s *SystemHandler) HandleCommandEvents(ctx context.Context, input *struct{}) (*struct {
+    Body struct {
+      Started    *dto.CommandStartedNotification    `json:"started,omitempty"`
+      Output     *dto.CommandOutputNotification     `json:"output,omitempty"`
+      Terminated *dto.CommandTerminatedNotification `json:"terminated,omitempty"`
+    }
+  }, error) {
+    return nil, huma.Error500InternalServerError("Use WebSocket for events", nil)
+  }
+  ```
+  
+  After adding a doc-stub, run `cd frontend && bun run gen` to code-generate the types into `sratApi.ts`, then import and use them in `wsApi.ts` or other files.
 - MUI Grid: use the `size` prop (Grid2 default).
 
 ## Custom component essentials (Home Assistant)
@@ -62,6 +81,15 @@ These instructions are the concise, must-follow rules for working in SRAT. Keep 
 
 - **Always invoke the `prepare-refactor` skill** when a task type is `[REFACTOR]` or when the work is described as a refactor. Ask the user whether to run a prepare check before starting.
 - Refactor tracking documents live in `docs/refactors/<slug>.md`; do not commit them to task docs.
+
+## Shared References (DRY Consolidation)
+
+These documents consolidate principles and patterns repeated across language-specific instructions, reducing duplication:
+
+- **`docs/shared-principles.md`**: Core principles shared across Go, TypeScript, Python, and Markdown. Covers "Respect existing code", "Error handling", "Testing lifecycle", "Code quality", and "Security". Referenced by all language-specific instruction files.
+- **`docs/test-setup-patterns.md`**: Unified test infrastructure patterns for Go (testify/suite + fx), TypeScript (bun:test + RTL), and Python (pytest). Includes critical ordering rules (e.g., cancel context BEFORE waiting on WaitGroup), anti-patterns, and a verification checklist. Referenced by backend, frontend, and custom component test instructions.
+
+When writing or updating language-specific instructions, link to these shared references instead of duplicating guidance.
 
 ## Docs & quality gates
 

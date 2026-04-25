@@ -9,6 +9,8 @@ applyTo: "\**/*.py"
 
 # Python Development Instructions
 
+**📖 See also**: `docs/shared-principles.md` for core principles shared across all languages (error handling, code quality, testing lifecycle, security).
+
 ## Python Version & Imports
 
 - **Target**: Python 3.12+ (as required by Home Assistant 2025.x)

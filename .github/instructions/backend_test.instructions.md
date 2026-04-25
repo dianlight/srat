@@ -9,6 +9,8 @@ applyTo: "`backend/src/**/*_test.go`"
 
 # back-end Testing Instructions
 
+**📖 See also**: `docs/test-setup-patterns.md` for unified test lifecycle patterns (Go, TypeScript, Python) and critical ordering rules.
+
 ## Overview
 
 All back-end tests in the SRAT project follow consistent patterns using testify/suite, mockio/v2 for mocking, and uber-go/fx for dependency injection in tests. These instructions ensure uniform, maintainable, and comprehensive test coverage.
@@ -189,9 +191,24 @@ fx.Populate(&suite.cancel),
 
 ## Mocking with Mockio
 
-Always use mockio for type-safe mocks instead of manual mock implementations. This ensures compile-time safety and reduces boilerplate.
+**Version Requirement: mockio v2 or later is MANDATORY.** Mockio v1 is not compatible with this project. If you are using v1, upgrade immediately:
+
+```go
+// go.mod
+require github.com/ovechkin-dm/mockio/v2 v2.1.0  // or later
+```
+
+**Why v2?**
+- Generic type support for type-safe mock generation
+- No unchecked type assertions in mock setup and verification
+- Compile-time safety instead of runtime failures
+- Import paths changed from `github.com/ovechkin-dm/mockio/mock` → `github.com/ovechkin-dm/mockio/v2/mock`
+
+If you see import errors like `package mockio/mock not found`, you're using v1. Upgrade to v2.
 
 ### General Role of Mocks
+
+Always use mockio for type-safe mocks instead of manual mock implementations. This ensures compile-time safety and reduces boilerplate.
 
 - Mocks should be used for external dependencies (e.g., databases, external services) **do always** mock dependencies, never the service under test itself.
 - Use mocks to simulate various scenarios (success, errors, edge cases)

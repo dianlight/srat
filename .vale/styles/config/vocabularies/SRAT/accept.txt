@@ -321,3 +321,6 @@ allowlist
 Scrollable
 monospace
 stderr
+Teardown
+subtests
+gofmt

@@ -9,6 +9,8 @@ applyTo: **/frontend/**/\*.test.{js,jsx,ts,tsx}
 
 # **Copilot Rule: Robust React Testing with Bun & TypeScript**
 
+**📖 See also**: `docs/test-setup-patterns.md` for unified test lifecycle patterns across languages and critical anti-patterns.
+
 ## **1\. Environment & Tools**
 
 - **Test Runner:** Use bun:test (import { test, expect, describe, it, beforeEach, afterEach } from "bun:test").
@@ -23,10 +25,21 @@ applyTo: **/frontend/**/\*.test.{js,jsx,ts,tsx}
 - **Test Isolation:** Use beforeEach and afterEach hooks to set up and clean up test environments, ensuring no shared state between tests.
 - **Mocking:** Use `msw` (Mock Service Worker) and `msw-auto-mock`  for API mocking when testing components that make network requests, ensuring tests are fast and reliable without hitting real endpoints.
 - **`IS_REACT_ACT_ENVIRONMENT`:** Set `(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true` **after** `GlobalRegistrator.register()` in `test/setup.ts`. Placing it before registration has no effect — GlobalRegistrator overwrites the global context, leaving `@testing-library/react` unaware of the act() environment and printing "not configured to support act(...)" for every render. 
-- **Test Noise Policy:** Never hide test noise by muting `console` output or swallowing errors; always fix the underlying cause. Triage in this order:
-  1. **Cross-realm mismatches** — if `dispatchEvent` or `CustomEvent` errors appear, check `test/setup.ts` for Bun-native constructors overriding happy-dom's `Event`/`EventTarget`/`MessageEvent`; remove them from the `nativeGlobals` capture and restore block.
-  2. **`act()` warnings** — gate hooks with `skip: !<requiredProp>` so background subscriptions (e.g. WebSocket) do not fire when no data is available; replace manual `act(async () => { await user.event(...) })` wrappers with direct `await user.event(...)`.
-  3. **Brittle async / race conditions** — prefer MSW endpoint overrides (`getMswServer().use(http.get(...))`) over RTK `upsertQueryData` cache seeding; cache seeds can be overwritten by live queries before the assertion runs.
+
+- **Test Noise Policy:** Never hide test noise by muting `console` output or swallowing errors. Always fix the underlying cause. Use this **triage decision tree**:
+
+  1. **See "not configured to support act(...)" or `dispatchEvent` errors?**
+     → **Fix:** Event constructor mismatch in `test/setup.ts`. Check for Bun-native constructors overriding happy-dom's `Event`/`EventTarget`/`MessageEvent` in the `nativeGlobals` capture block. Remove them and restore happy-dom versions.
+
+  2. **See "not wrapped in act(...)" warnings during `fireEvent` or user interactions?**
+     → **Fix:** Stop using `fireEvent` immediately—it doesn't use the act() environment. Replace with `@testing-library/user-event` via `await user.event(...)` (no manual act wrapper needed). Also gate hooks with `skip: !<requiredProp>` so background subscriptions (WebSocket, RTK Query fetches) don't fire when component props aren't available.
+
+  3. **See "Failed to fetch" or RTK Query cache mismatches after seeding with `upsertQueryData`?**
+     → **Fix:** Use MSW endpoint overrides (`getMswServer().use(http.get(...))`) instead of cache seeding. Live queries can overwrite seeded values before assertions run, causing CI flakes.
+
+  4. **Intermittent `act(...)` warnings or MUI Dialog content still visible after close?**
+     → **Fix:** Remove manual `cleanup()` or `document.body.innerHTML = ""` in test files—`frontend/test/bun-setup.ts` already does this in `afterEach`. Duplicate teardown races with MUI Transition unmount timing. For Dialog assertion, wrap in `waitFor` to let async unmount complete.
+
 - **Avoid duplicate teardown:** When shared test setup already performs cleanup (for example `frontend/test/bun-setup.ts` calling `cleanup()` in `afterEach`), do not add extra per-test-file `cleanup()` calls or manual `document.body.innerHTML = ""` resets. Duplicate teardown can race with MUI `Transition` unmount timing and cause intermittent `act(...)` warnings.
 
 ## **2\. Core Philosophy**

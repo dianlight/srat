@@ -1,105 +1,50 @@
 <!-- DOCTOC SKIP -->
 
-# Agents
+# SRAT Project Agents & Tools Reference
 
-This document provides an overview of the agents and automated systems used in the SRAT project development and operation.
+**This is a reference overview of key agents and tools used in SRAT development.**
 
-> **Important**: All coding agents must read and follow the instructions in [`.github/copilot-instructions.md`](.github/copilot-instructions.md) before making any changes to the codebase. Additionally, agents should consult the specialized instruction files in [`.github/instructions/`](.github/instructions/) for language-specific and task-specific guidance.
+For actionable guidance, use these resources instead:
 
-## Reading Copilot Instructions
+- **Agent Instructions**: [`.github/copilot-instructions.md`](.github/copilot-instructions.md) (primary - read first)
+- **Language-Specific Rules**: [`.github/instructions/`](.github/instructions/) (Go, TypeScript, Python, etc.)
+- **Specialized Guidance**: Instruction files for testing, command execution, form handling, etc.
 
-Before any code modification task, agents **must**:
+---
 
-1. Read [`.github/copilot-instructions.md`](.github/copilot-instructions.md) for the complete set of non-negotiable rules
-2. Read the relevant specialized instruction files from [`.github/instructions/`](.github/instructions/):
-   - [`go.instructions.md`](.github/instructions/go.instructions.md) - Go back-end development
-   - [`backend-command-execution.instructions.md`](.github/instructions/backend-command-execution.instructions.md) - Mandatory rules for back-end command execution and migration
-   - [`reactjs.instructions.md`](.github/instructions/reactjs.instructions.md) - React frontend development
-   - [`python.instructions.md`](.github/instructions/python.instructions.md) - Python/Home Assistant integration
-   - [`backend_test.instructions.md`](.github/instructions/backend_test.instructions.md) - back-end testing
-   - [`fontend_test.instructions.md`](.github/instructions/fontend_test.instructions.md) - Frontend testing
-   - [`markdown.instructions.md`](.github/instructions/markdown.instructions.md) - Markdown documentation
+## Quick Reference: Key Tools & Services
 
-## Coding Agents
+### Testing Stack
 
-The SRAT project utilizes various coding agents and tools to assist with development, testing, and maintenance:
+- **back-end**: testify/suite + mockio/v2 + humatest
+- **Frontend**: bun:test + React Testing Library + MSW
+- **Custom Component**: pytest + Home Assistant test helpers
 
-### GitHub Copilot
+### Core Services
 
-- **Purpose**: AI-powered code generation and assistance
-- **Usage**: Integrated into VS Code for real-time code suggestions, refactoring, and documentation
-- **Configuration**: See [`.github/copilot-instructions.md`](.github/copilot-instructions.md) for project-specific guidelines
-- **Languages Supported**: Go (back-end), TypeScript/React (frontend), Python (Home Assistant)
-- **Required Reading**: All agents must read and follow the copilot instructions before any code changes
+- **back-end**: Share, User, System, Telemetry, Dirty State
+- **Frontend**: RTK Query, Material-UI, WebSocket client
+- **HA Integration**: Coordinator + sensor platform + WebSocket
 
-### Pre-commit Hooks
+### Build & Deployment
 
-- **Purpose**: Automated code quality checks before commits
-- **Tools Included**:
-  - `gosec`: Security scanning for Go code
-  - Formatters: `gofmt`, `biome` for frontend
-  - Linters: `govet`, `testifylint`
-- **Configuration**: `.pre-commit-config.yaml`
-- **Installation**: Run `prek install` in the repository root
+- **back-end**: Go 1.26 + GORM + SQLite
+- **Frontend**: Bun + MUI + TypeScript 6.0
+- **Custom Component**: Python 3.12+ + Home Assistant 2025.x
 
-### Build Agents
+### Quality Gates
 
-- **Purpose**: Automated building and testing
-- **back-end**: Uses `make` targets in `backend/Makefile` with Air for hot reload
-- **Frontend**: Bun-based build system with watch mode
-- **CI/CD**: Integrated with GitHub Actions for multi-arch builds (amd64, aarch64)
+- Pre-commit: gosec, gofmt, biome, linters
+- CI/CD: GitHub Actions (amd64, aarch64)
+- Docs: markdownlint, Vale, link checking
 
-## Service Agents
+---
 
-### back-end Services
+## For More Details
 
-The Go back-end implements several service agents for Samba administration:
+Refer to:
 
-- **Share Service**: Manages Samba shares configuration
-- **User Service**: Handles user management and authentication
-- **System Service**: Provides system information and control
-- **Telemetry Service**: Optional Rollbar integration for error reporting
-- **Dirty State Service**: Tracks data changes for real-time updates
-
-### Frontend Agents
-
-- **RTK Query**: Manages API state and caching
-- **Material-UI**: Component library for consistent UI
-- **SSE Client**: Handles Server-Sent Events for real-time notifications
-
-## Development Workflow Agents
-
-### Testing Agents
-
-- **back-end**: `testify/suite` with `mockio/v2` for unit and integration tests
-- **Frontend**: bun:test + React Testing Library for component tests
-- **HTTP Testing**: `humatest` for API endpoint validation
-- **Manual remote test observation**: Use [`.github/skills/watch-manual-test/SKILL.md`](.github/skills/watch-manual-test/SKILL.md) when the user manually drives the UI and Copilot should watch browser activity plus frontend, back-end, addon, and Home Assistant logs, then ask whether to ignore or fix detected issues.
-
-### Documentation Agents
-
-- **OpenAPI Generation**: Autogenerated from Go code using Huma framework
-- **Markdown Validation**: `markdownlint` and link checking
-- **Changelog**: Automated CHANGELOG.md updates
-
-## Deployment Agents
-
-### Home Assistant Integration
-
-- **Addon Configuration**: JSON-based configuration for Home Assistant supervisor
-- **Database**: Embedded SQLite with GORM ORM
-- **Service Management**: Oversees Samba service lifecycle
-
-## Security Agents
-
-- **Dependency Scanning**: `gosec` for Go dependencies
-- **Vulnerability Checks**: Integrated into pre-commit and CI pipelines
-- **Access Control**: Repository permissions and branch protection
-
-## Monitoring and Telemetry
-
-- **Logging Agent**: Custom `tlog` package with structured logging and sensitive data masking
-- **Error Reporting**: Optional Rollbar integration with user consent
-- **Performance Monitoring**: Built-in profiling support (see `PPROF.md`)
-
-For more details on specific agents, refer to the relevant documentation files in the `docs/` directory or the main `README.md`.
+- `README.md` - Project overview
+- `CONTRIBUTING.md` - Development workflow
+- `docs/` directory - Architecture and guides
+- `.github/instructions/` - Language and task-specific rules
