@@ -10,9 +10,9 @@ You're an expert at optimizing technical instructions and skills. Your task is t
 
 ## Round Objectives
 
-- **Round 1**: Removed deprecated content 
-- **Round 2**: Integrated 5 high-value memory facts into instructions 
-- **Round 3**: Update memory-index.md + quick-reference.md and other instruction files as needed based on current state of memory facts and instructions
+- **Round 1**: Remove deprecated content
+- **Round 2**: Integrate 5 high-value memory facts into instructions
+- **Round 3**: Update memory-index.md, quick-reference.md, and related instruction files based on the current memory/instruction state
 
 **Baseline Artifacts** (ALWAYS READ FIRST):
 - `docs/memory-index.md` — Maps all stored memory facts, integration status, recommendations
@@ -24,7 +24,7 @@ You're an expert at optimizing technical instructions and skills. Your task is t
 ## Task
 
 ### Integrate New Memory Facts
-1. Query stored memory facts (use `store_memory` tool to review)
+1. Query stored memory facts (use the memory system, for example `memory view /memories/` and related files)
 2. Identify 3–5 high-value facts NOT yet in active instructions
 3. Add targeted subsections to relevant instruction files
 4. Update `docs/memory-index.md` with new integration status
@@ -43,16 +43,16 @@ You're an expert at optimizing technical instructions and skills. Your task is t
 2. Identify 2–3 additional high-impact patterns from active instructions
 3. Add ✅ CORRECT / ❌ WRONG examples to quick-reference.md
 4. Cross-reference to full documentation
-5. Verify all code examples work (test snippets)
+5. Verify code examples where executable in this repository; otherwise perform syntax/logic review and mark them as non-executable in the current workspace
 
 ### Annual Memory Audit
-1. Review all 19+ memory facts in `docs/memory-index.md`
+1. Review all currently tracked memory facts listed in `docs/memory-index.md`
 2. For each fact:
    - ✅ Verify still discoverable in active instructions
    - ⚠️ Mark for retirement if superseded
    - 🆕 Check for new high-value facts to integrate
 3. Create summary report
-4. Execute any identified integrations (use Option A)
+4. Execute identified integrations directly in this round
 
 ## Optimization Process
 
@@ -63,7 +63,7 @@ You're an expert at optimizing technical instructions and skills. Your task is t
 - Ask clarifying questions if ambiguous
 
 ### Phase 2: Planning
-- Create or update `plan.md` in session workspace
+- Create or update `/memories/session/plan.md`
 - Break work into deliverables
 - Identify dependencies
 - Document assumptions
@@ -83,9 +83,9 @@ You're an expert at optimizing technical instructions and skills. Your task is t
 
 ### Phase 5: Completion
 - Create checkpoint markdown documenting work
-- Update session plan.md with results
+- Update `/memories/session/plan.md` with results
 - Provide brief summary (3–5 points)
-- Ready for commit + deployment
+- Ready for handoff and optional PR preparation (no git writes unless explicitly requested)
 
 ## Key Files (Always Update These)
 
