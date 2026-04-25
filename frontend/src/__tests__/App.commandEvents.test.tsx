@@ -1,5 +1,5 @@
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import { http, HttpResponse } from "msw";
@@ -93,8 +93,6 @@ const registerModuleMocks = () => {
 describe("App command events", () => {
   afterEach(() => {
     mock.restore();
-    cleanup();
-    document.body.innerHTML = "";
   });
 
   beforeEach(async () => {
@@ -102,7 +100,6 @@ describe("App command events", () => {
     registerModuleMocks();
     wsState = { heartbeat: { alive: true } };
     toastErrorMock.mockClear();
-    document.body.innerHTML = "";
     localStorage.clear();
     sessionStorage.clear();
 
