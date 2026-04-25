@@ -27,6 +27,7 @@ applyTo: **/frontend/**/\*.test.{js,jsx,ts,tsx}
   1. **Cross-realm mismatches** — if `dispatchEvent` or `CustomEvent` errors appear, check `test/setup.ts` for Bun-native constructors overriding happy-dom's `Event`/`EventTarget`/`MessageEvent`; remove them from the `nativeGlobals` capture and restore block.
   2. **`act()` warnings** — gate hooks with `skip: !<requiredProp>` so background subscriptions (e.g. WebSocket) do not fire when no data is available; replace manual `act(async () => { await user.event(...) })` wrappers with direct `await user.event(...)`.
   3. **Brittle async / race conditions** — prefer MSW endpoint overrides (`getMswServer().use(http.get(...))`) over RTK `upsertQueryData` cache seeding; cache seeds can be overwritten by live queries before the assertion runs.
+- **Avoid duplicate teardown:** When shared test setup already performs cleanup (for example `frontend/test/bun-setup.ts` calling `cleanup()` in `afterEach`), do not add extra per-test-file `cleanup()` calls or manual `document.body.innerHTML = ""` resets. Duplicate teardown can race with MUI `Transition` unmount timing and cause intermittent `act(...)` warnings.
 
 ## **2\. Core Philosophy**
 
