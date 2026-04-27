@@ -9,6 +9,8 @@ applyTo: **/frontend/**/\*.test.{js,jsx,ts,tsx}
 
 # **Copilot Rule: Robust React Testing with Bun & TypeScript**
 
+**📖 See also**: `docs/test-setup-patterns.md` for unified test lifecycle patterns across languages and critical anti-patterns.
+
 ## **1\. Environment & Tools**
 
 - **Test Runner:** Use bun:test (import { test, expect, describe, it, beforeEach, afterEach } from "bun:test").
@@ -23,10 +25,22 @@ applyTo: **/frontend/**/\*.test.{js,jsx,ts,tsx}
 - **Test Isolation:** Use beforeEach and afterEach hooks to set up and clean up test environments, ensuring no shared state between tests.
 - **Mocking:** Use `msw` (Mock Service Worker) and `msw-auto-mock`  for API mocking when testing components that make network requests, ensuring tests are fast and reliable without hitting real endpoints.
 - **`IS_REACT_ACT_ENVIRONMENT`:** Set `(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true` **after** `GlobalRegistrator.register()` in `test/setup.ts`. Placing it before registration has no effect — GlobalRegistrator overwrites the global context, leaving `@testing-library/react` unaware of the act() environment and printing "not configured to support act(...)" for every render. 
-- **Test Noise Policy:** Never hide test noise by muting `console` output or swallowing errors; always fix the underlying cause. Triage in this order:
-  1. **Cross-realm mismatches** — if `dispatchEvent` or `CustomEvent` errors appear, check `test/setup.ts` for Bun-native constructors overriding happy-dom's `Event`/`EventTarget`/`MessageEvent`; remove them from the `nativeGlobals` capture and restore block.
-  2. **`act()` warnings** — gate hooks with `skip: !<requiredProp>` so background subscriptions (e.g. WebSocket) do not fire when no data is available; replace manual `act(async () => { await user.event(...) })` wrappers with direct `await user.event(...)`.
-  3. **Brittle async / race conditions** — prefer MSW endpoint overrides (`getMswServer().use(http.get(...))`) over RTK `upsertQueryData` cache seeding; cache seeds can be overwritten by live queries before the assertion runs.
+
+- **Test Noise Policy:** Never hide test noise by muting `console` output or swallowing errors. Always fix the underlying cause. Use this **triage decision tree**:
+
+  1. **See "not configured to support act(...)" or `dispatchEvent` errors?**
+     → **Fix:** Event constructor mismatch in `test/setup.ts`. Check for Bun-native constructors overriding happy-dom's `Event`/`EventTarget`/`MessageEvent` in the `nativeGlobals` capture block. Remove them and restore happy-dom versions.
+
+  2. **See "not wrapped in act(...)" warnings during `fireEvent` or user interactions?**
+     → **Fix:** Stop using `fireEvent` immediately—it doesn't use the act() environment. Replace with `@testing-library/user-event` via `await user.event(...)` (no manual act wrapper needed). Also gate hooks with `skip: !<requiredProp>` so background subscriptions (WebSocket, RTK Query fetches) don't fire when component props aren't available.
+
+  3. **See "Failed to fetch" or RTK Query cache mismatches after seeding with `upsertQueryData`?**
+     → **Fix:** Use MSW endpoint overrides (`getMswServer().use(http.get(...))`) instead of cache seeding. Live queries can overwrite seeded values before assertions run, causing CI flakes.
+
+  4. **Intermittent `act(...)` warnings or MUI Dialog content still visible after close?**
+     → **Fix:** Remove manual `cleanup()` or `document.body.innerHTML = ""` in test files—`frontend/test/bun-setup.ts` already does this in `afterEach`. Duplicate teardown races with MUI Transition unmount timing. For Dialog assertion, wrap in `waitFor` to let async unmount complete.
+
+- **Avoid duplicate teardown:** When shared test setup already performs cleanup (for example `frontend/test/bun-setup.ts` calling `cleanup()` in `afterEach`), do not add extra per-test-file `cleanup()` calls or manual `document.body.innerHTML = ""` resets. Duplicate teardown can race with MUI `Transition` unmount timing and cause intermittent `act(...)` warnings.
 
 ## **2\. Core Philosophy**
 
@@ -92,10 +106,19 @@ describe("MyComponent", () \=\> {
 ## **7\. Additional Guidelines**
 - **Test Coverage:** Aim for comprehensive test coverage of critical components and user flows, but prioritize quality and maintainability over quantity.
 - **Connection to Backend:** When testing components that rely on backend data, use `msw` to mock API responses, ensuring tests are fast and do not depend on the availability of the backend. If you see errors like "Failed to fetch" or "Network error" in your tests, check your `msw` setup and ensure that all expected API calls are properly mocked. Also an message like `[MSW] Warning: intercepted a request without a matching request handler: GET http://localhost:3000/api/data` indicates that your component is making a request that `msw` does not have a handler for. To fix this, add a request handler in your `msw` setup file that matches the endpoint being called by your component.
+
+### MSW-Specific Patterns
+
+- **Request body consumption:** When MSW handlers inspect request bodies (e.g., POST body parsing), use `await request.clone().json()` instead of `await request.json()` to avoid `InvalidStateError: Body has already been used` during test reruns with `--rerun-each 10`.
+- **Prefer MSW handlers over cache seeding:** For components with multiple data sources, use explicit MSW endpoint overrides (`getMswServer().use(http.get(...))`) instead of seeding RTK Query cache with `upsertQueryData`. Cache seeding can be overwritten by live queries before assertions run, causing flakes.
 - **Shared external mocks:** For recurring external requests in this repo, prefer adding a shared handler in `frontend/src/mocks/customHandlers.ts` instead of repeating one-off test-local handlers. This is especially important for `/api/filesystem/support` and the GitHub announcements discussions endpoint used by dashboard widgets.
 - **Restore global fetch mocks:** If a test directly overrides `globalThis.fetch`, always restore the original value in `afterEach` to prevent cross-test leaks that surface later as unexpected `Network error` failures.
 - **Mock the real source of truth:** Before adding MSW handlers, verify where the component state actually comes from. If behavior is driven by props/local state (for example `disk.hdidle_device` in `HDIdleDiskSettings`), set deterministic fixture props in the test and assert transitions with `waitFor`; do not rely on mocking unrelated endpoints like `/api/disk/:diskId/hdidle/config`.
+
+### MUI & Component-Specific Patterns
+
 - **MUI v9 Dialog in tests:** To disable dialog animation in a test theme, use `createTheme({ components: { MuiDialog: { defaultProps: { transitionDuration: 0 } } } })` — the MUI v5/v6 pattern `slotProps: { transition: { timeout: 0 } }` has no effect in v9. Even with `transitionDuration: 0`, MUI's default `closeAfterTransition={true}` unmounts dialog content asynchronously after `onExited` fires; always wrap assertions that check for the *absence* of dialog content in `waitFor`.
+- **Avoid test output noise:** Never hide test noise by muting `console` output; always fix the underlying cause. Never add manual `cleanup()` or `document.body.innerHTML = ""` teardown inside test files when shared teardown in `frontend/test/bun-setup.ts` already runs cleanup after each test — duplicate cleanup can trigger MUI Transition updates outside React act() timing.
 - **Test Naming:** Use descriptive test names that clearly indicate the expected behavior being tested (for example, "should display error message when API call fails").
 - **Test Organization:** Group related tests together using describe blocks to improve readability and maintainability of the test suite.
 - **Test Data:** Use realistic test data that closely mimics actual user input and API responses to ensure tests are meaningful and effective at catching potential issues.

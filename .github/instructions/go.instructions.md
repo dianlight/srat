@@ -9,6 +9,8 @@ applyTo: "**/\*.go,**/go.mod,\*\*/go.sum"
 
 # Go Development Instructions
 
+**📖 See also**: `docs/shared-principles.md` for core principles shared across all languages (error handling, code quality, testing lifecycle, security).
+
 Follow idiomatic Go practices and community standards when writing Go code. These instructions are based on [Effective Go](https://go.dev/doc/effective_go), [Go Code Review Comments](https://go.dev/wiki/CodeReviewComments), and [Google's Go Style Guide](https://google.github.io/styleguide/go/).
 
 ## General Instructions
@@ -139,23 +141,14 @@ Follow idiomatic Go practices and community standards when writing Go code. Thes
 
 ### Pointer Creation (Go 1.26)
 
-- Use Go 1.26's built-in `new(expr)` to create pointers to values in a single expression
-- `new(expr)` allocates a variable, sets it to the value of the expression, and returns a pointer
-- This replaces helper libraries like `xorcare/pointer` and avoids `&[]T{v}[0]` hacks
-- Particularly useful for optional pointer fields in JSON/protobuf structs
+Use Go 1.26's built-in `new(expr)` for pointers to values. It allocates, assigns the value, and returns a pointer in one expression—replacing helper libraries like `xorcare/pointer` and avoiding `&[]T{v}[0]` hacks.
 
 ```go
-// ✅ Go 1.26: new(expr) for pointer creation
-type Person struct {
-    Name string `json:"name"`
-    Age  *int   `json:"age"` // optional
-}
-p := Person{Name: "Alice", Age: new(42)}
-
-// Also works with function calls and complex expressions
-cfg.Timeout = new(time.Second * 30)
-opts.Verbose = new(true)
+// ✅ Go 1.26: new(expr)
+p := Person{Name: "Alice", Age: new(42), Timeout: new(time.Second * 30)}
 ```
+
+Particularly useful for optional pointer fields in JSON/protobuf.
 
 ### Pointers vs Values
 
@@ -175,6 +168,16 @@ opts.Verbose = new(true)
 - Don't export interfaces unless necessary
 - In `backend/src/service/filesystem`, declare filesystem aliases on the adapter via `GetAliasNames()` / `baseAdapter.aliasNames` rather than hardcoding alias switches in `Registry`; keep the registry generic so new filesystem variants are added by updating the adapter only
 - When backend handlers or services mutate partition or disk metadata without forcing a hardware refresh, also update the shared `*dto.DiskMap` and emit the matching disk/partition event so `/api/volumes` and live UI subscribers do not serve stale cached data
+
+### Service Compatibility Bridges
+
+When a new service must coexist with legacy command/operation APIs (e.g., `RepairService` alongside `RepairCommandAPI`):
+
+- **Best-effort mirroring**: New service mirrors legacy operations but failures are non-fatal (log with `warn`, do not fail the primary operation)
+- **Semantics unchanged**: Success/failure of the primary operation is unaffected by mirroring; only the legacy API behavior matters to the caller
+- **Example**: `RepairService.Create()` upserts a mirrored Problem entry but returns success to caller regardless of Problem sync result
+
+This pattern allows gradual migration to new services without breaking legacy callers.
 
 ## Concurrency
 

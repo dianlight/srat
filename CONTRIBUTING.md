@@ -26,7 +26,10 @@
   - [12. Documentation](#12-documentation)
   - [13. Security](#13-security)
   - [14. Performance](#14-performance)
-  - [15. Pull Request Checklist](#15-pull-request-checklist)
+  - [15. Optimization & Maintenance](#15-optimization--maintenance)
+    - [Running an Optimization Round](#running-an-optimization-round)
+    - [Reference Documents (Always Maintained)](#reference-documents-always-maintained)
+  - [16. Pull Request Checklist](#16-pull-request-checklist)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -211,7 +214,31 @@ Run `mise run security` locally before opening a PR touching sensitive areas (au
 
 Profile hotspots using provided `PPROF.md` guidance for significant performance-related changes.
 
-## 15. Pull Request Checklist
+## 15. Optimization & Maintenance
+
+The SRAT instruction and skills framework is systematically optimized to maintain clarity, reduce duplication, and integrate high-value knowledge from stored memory facts.
+
+### Running an Optimization Round
+
+If tasked with optimizing instructions/skills:
+
+1. **Read the baseline**: See `docs/memory-index.md` (all 19 memory facts), `docs/quick-reference.md` (code patterns)
+2. **Use the prompt**: See `.github/prompts/optimize-instructions.prompt.md` for structured guidance (Copilot prompt file format)
+3. **Follow the workflow**: Assessment → Planning → Execution → Verification → Completion
+4. **Update the index**: Add new facts to `docs/memory-index.md` with integration status
+5. **Create a checkpoint**: Document what was done in `session/checkpoints/`
+
+### Reference Documents (Always Maintained)
+
+- `docs/memory-index.md` — Maps all stored memory facts + integration status
+- `docs/quick-reference.md` — Copy-paste code patterns with ✅/❌ examples
+- `docs/shared-principles.md` — Core principles (Go, TypeScript, Python, Markdown)
+- `docs/test-setup-patterns.md` — Unified test patterns across languages
+- `.github/prompts/optimize-instructions.prompt.md` — Copilot prompt file for future optimization rounds
+
+**Last optimization round**: 2026-04-25 (Rounds 1–3 complete, ~22% token efficiency gain)
+
+## 16. Pull Request Checklist
 
 - [ ] Tests added / updated
 - [ ] Lint & format pass (`prek run --all-files`)

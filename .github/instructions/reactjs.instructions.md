@@ -9,6 +9,8 @@ applyTo: '**/\*.jsx,**/*.tsx, \*\*/*.js, **/\*.ts,**/*.css, \*\*/*.scss'
 
 # ReactJS Development Instructions
 
+**📖 See also**: `docs/shared-principles.md` for core principles shared across all languages (error handling, code quality, testing lifecycle, security).
+
 Instructions for building high-quality ReactJS applications with modern patterns, hooks, and best practices following the official React documentation at https://react.dev.
 
 ## Project Context
@@ -66,7 +68,45 @@ Instructions for building high-quality ReactJS applications with modern patterns
 - Create custom hooks for reusable stateful logic
 - Follow the rules of hooks (only call at the top level)
 - Use `useRef` for accessing DOM elements and storing mutable values
-- **Guard-before-hooks rule:** If a component has an early-return guard (e.g. `if (!props.supported) return null`), never declare hooks above it. Export a thin public wrapper that performs only the guard, and put all hooks in a named inner component (e.g. `SmartStatusPanelInner`). Hooks declared above a guard still mount even when the component renders nothing — causing RTK Query fetches and WebSocket subscriptions to fire in tests, which leads to `act()` timeouts.
+
+#### Guard-Before-Hooks Rule (Critical for Testing)
+
+**When to apply:** A component has an early-return guard that conditionally renders `null` or a fallback based on props/state.
+
+**Problem:** Hooks declared *above* a guard still mount and execute, even when the component later returns `null`. This causes RTK Query fetches, WebSocket subscriptions, and timers to fire unnecessarily, leading to `act()` warnings and timeouts in tests.
+
+**Solution:** Split the component into two:
+1. **Thin public wrapper** (`SmartStatusPanel`) — performs the guard only, no hooks
+2. **Inner implementation** (`SmartStatusPanelInner`) — declares all hooks, no guards
+
+**Example:**
+```tsx
+// ❌ WRONG - Hook fires even if component returns null
+function SmartStatusPanel({ deviceId }: Props) {
+  const { data } = useGetDeviceQuery(deviceId); // Fires even if guard returns null!
+  
+  if (!deviceId) {
+    return null; // Guard returns, but hook already executed
+  }
+  
+  return <div>{data}</div>;
+}
+
+// ✅ CORRECT - Guard in wrapper, hooks in inner
+function SmartStatusPanel({ deviceId }: Props) {
+  if (!deviceId) {
+    return null; // Guard returns, no hooks fire
+  }
+  return <SmartStatusPanelInner deviceId={deviceId} />;
+}
+
+function SmartStatusPanelInner({ deviceId }: Props) {
+  const { data } = useGetDeviceQuery(deviceId); // Only fires when inner component mounts
+  return <div>{data}</div>;
+}
+```
+
+**When NOT needed:** If your only guard is for optional rendering without early return (e.g., `return props.supported ? <Inner /> : null`), the guard is in the render path and hooks are safe.
 
 ### Styling
 

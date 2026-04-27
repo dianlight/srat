@@ -1,4 +1,4 @@
-FROM ghcr.io/hassio-addons/base:20.1.0@sha256:8a209c64ff626691b8123dda8702d556363aca494c9c0ad7f5efcf77e902bf62
+FROM ghcr.io/hassio-addons/base:20.1.0@sha256:ba1c56462d6228463e561419c2b9878b77e54e34fac4f73d384346a771084703
 
 SHELL ["/bin/bash", "-lc"]
 
@@ -58,11 +58,11 @@ RUN apk add --no-cache \
 
 # Install Developer Tools (Mise)
 COPY .mise.toml /tmp/.mise.toml
-RUN \
+RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN \
     curl https://mise.run/zsh | MISE_INSTALL_PATH=/usr/bin/mise sh \
     && echo 'eval "$(mise activate zsh --shims)"' >> /root/.zshrc \
     && cd /tmp \
-    && MISE_EXPERIMENTAL=1 mise install --yes 
+    && MISE_EXPERIMENTAL=1 MISE_PYTHON_PRECOMPILED_OS="unknown-linux-musl" mise install --yes --verbose
 
 RUN mkdir -p /home/vscode \ 
     && echo 'eval "$(mise activate zsh --shims)"'  >> /home/vscode/.zshrc

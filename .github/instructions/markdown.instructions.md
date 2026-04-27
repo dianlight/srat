@@ -9,6 +9,8 @@ applyTo: "\**/*.md"
 
 # Markdown Documentation Instructions
 
+**📖 See also**: `docs/shared-principles.md` for core principles shared across all languages (error handling, code quality, testing lifecycle, security).
+
 Use GitHub Flavored Markdown (GFM) and follow SRAT documentation standards. Keep guidance clear, consistent, and easy to scan.
 
 ## Structure
