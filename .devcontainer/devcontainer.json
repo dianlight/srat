@@ -2,6 +2,10 @@
   "name": "SRAT",
   "build": {
     "dockerfile": "Dockerfile",
+    "options": [
+      "--secret",
+      "id=github_token,env=GITHUB_TOKEN"
+    ],
     "context": ".."
   },
   //"image": "ghcr.io/hassio-addons/base:edge",
