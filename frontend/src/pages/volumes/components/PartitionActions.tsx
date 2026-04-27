@@ -129,7 +129,14 @@ export function PartitionActions({
   }
 
   return (
-    <Stack direction="row" spacing={0} alignItems="center" sx={{ pr: 1 }}>
+    <Stack
+      direction="row"
+      spacing={0}
+      sx={{
+        alignItems: "center",
+        pr: 1,
+      }}
+    >
       {actionItems
         .filter((action) => actionIcons[action.key])
         .map((action) => (

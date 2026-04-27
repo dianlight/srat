@@ -1,6 +1,8 @@
 # [FEATURE]: HA SRAT Connectivity Loss Detection
 
-**Target Repo:** `srat` **Status:** 📅 Planned **Issue Link:** _TBD_
+**Target Repo:** `srat` 
+**Status:** 📅 Planned 
+**Issue Link:** _TBD_
 
 ## 🎯 Objective
 

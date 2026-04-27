@@ -132,15 +132,16 @@ const BaseConfigModal: React.FC<BaseConfigModalProps> = ({ open, onClose }) => {
   return (
     <Dialog
       open={open}
-      onClose={() => {}} // Prevent closing by clicking outside
+      onClose={(_e, reason) => {
+        if (reason !== "backdropClick" && reason !== "escapeKeyDown") onClose();
+      }}
       maxWidth="md"
       fullWidth
-      disableEscapeKeyDown // Prevent closing with Escape key
     >
       <FormContainer formContext={formContext} onSuccess={handleSubmit}>
         <DialogTitle>Secure Your System</DialogTitle>
         <DialogContent>
-          <Typography variant="body1" paragraph sx={{ mt: 2 }}>
+          <Typography variant="body1" sx={{ mt: 2 }}>
             Welcome to SRAT (Samba Rest Administration Tool)! Your system is
             using the default administrator password. For security, you must
             change it now and configure basic system settings to proceed.
@@ -158,7 +159,12 @@ const BaseConfigModal: React.FC<BaseConfigModalProps> = ({ open, onClose }) => {
               <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
                 Change Administrator Password
               </Typography>
-              <Typography variant="body2" color="text.secondary" paragraph>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 Create a strong new password for your administrator account.
               </Typography>
             </Box>
@@ -205,7 +211,12 @@ const BaseConfigModal: React.FC<BaseConfigModalProps> = ({ open, onClose }) => {
               <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
                 General Configuration
               </Typography>
-              <Typography variant="body2" color="text.secondary" paragraph>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 Configure basic system settings for your Samba server.
               </Typography>
             </Box>
@@ -268,7 +279,13 @@ const BaseConfigModal: React.FC<BaseConfigModalProps> = ({ open, onClose }) => {
             />
           </Stack>
 
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 3 }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+              mt: 3,
+            }}
+          >
             You can change these settings later in the Settings page.
           </Typography>
         </DialogContent>

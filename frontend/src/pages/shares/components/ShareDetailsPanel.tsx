@@ -171,7 +171,12 @@ export function ShareDetailsPanel({
             <CardContent>
               <Grid container spacing={2}>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant="subtitle2" color="text.secondary">
+                  <Typography
+                    variant="subtitle2"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     Path
                   </Typography>
                   <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
@@ -179,7 +184,12 @@ export function ShareDetailsPanel({
                   </Typography>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant="subtitle2" color="text.secondary">
+                  <Typography
+                    variant="subtitle2"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     Device
                   </Typography>
                   <Typography variant="body2">
@@ -187,7 +197,12 @@ export function ShareDetailsPanel({
                   </Typography>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant="subtitle2" color="text.secondary">
+                  <Typography
+                    variant="subtitle2"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     Disk Label
                   </Typography>
                   <Typography variant="body2">
@@ -195,7 +210,12 @@ export function ShareDetailsPanel({
                   </Typography>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant="subtitle2" color="text.secondary">
+                  <Typography
+                    variant="subtitle2"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     File System
                   </Typography>
                   <Typography variant="body2">
@@ -204,7 +224,12 @@ export function ShareDetailsPanel({
                 </Grid>
                 {mountData?.disk_size && (
                   <Grid size={{ xs: 12, sm: 6 }}>
-                    <Typography variant="subtitle2" color="text.secondary">
+                    <Typography
+                      variant="subtitle2"
+                      sx={{
+                        color: "text.secondary",
+                      }}
+                    >
                       Size
                     </Typography>
                     <Typography variant="body2">
@@ -213,7 +238,12 @@ export function ShareDetailsPanel({
                   </Grid>
                 )}
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant="subtitle2" color="text.secondary">
+                  <Typography
+                    variant="subtitle2"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     Write Support
                   </Typography>
                   <Chip
@@ -225,7 +255,12 @@ export function ShareDetailsPanel({
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <Typography variant="subtitle2" color="text.secondary">
+                  <Typography
+                    variant="subtitle2"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     Mounted
                   </Typography>
                   <Chip
@@ -236,7 +271,12 @@ export function ShareDetailsPanel({
                 </Grid>
                 {mountData?.time_machine_support && (
                   <Grid size={{ xs: 12, sm: 6 }}>
-                    <Typography variant="subtitle2" color="text.secondary">
+                    <Typography
+                      variant="subtitle2"
+                      sx={{
+                        color: "text.secondary",
+                      }}
+                    >
                       Time Machine Support
                     </Typography>
                     <Chip
@@ -259,10 +299,20 @@ export function ShareDetailsPanel({
               {/* Warnings and Errors */}
               {mountData?.warnings && share.usage !== Usage.Internal && (
                 <Box sx={{ mt: 2 }}>
-                  <Typography variant="subtitle2" color="warning.main">
+                  <Typography
+                    variant="subtitle2"
+                    sx={{
+                      color: "warning.main",
+                    }}
+                  >
                     Warnings
                   </Typography>
-                  <Typography variant="body2" color="warning.main">
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "warning.main",
+                    }}
+                  >
                     {mountData.warnings}
                   </Typography>
                 </Box>
@@ -270,10 +320,20 @@ export function ShareDetailsPanel({
 
               {mountData?.invalid && mountData?.invalid_error && (
                 <Box sx={{ mt: 2 }}>
-                  <Typography variant="subtitle2" color="error.main">
+                  <Typography
+                    variant="subtitle2"
+                    sx={{
+                      color: "error.main",
+                    }}
+                  >
                     Error
                   </Typography>
-                  <Typography variant="body2" color="error.main">
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "error.main",
+                    }}
+                  >
                     {mountData.invalid_error}
                   </Typography>
                 </Box>
@@ -322,7 +382,12 @@ export function ShareDetailsPanel({
             <CardContent>
               <Grid container spacing={2}>
                 <Grid size={{ md: 6, sm: 12 }}>
-                  <Typography variant="subtitle2" color="text.secondary">
+                  <Typography
+                    variant="subtitle2"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     Share Name
                   </Typography>
                   <Tooltip title={shareName} arrow>
@@ -346,8 +411,10 @@ export function ShareDetailsPanel({
                   <Stack
                     direction="row"
                     spacing={1}
-                    flexWrap="wrap"
-                    sx={{ gap: 1 }}
+                    sx={{
+                      flexWrap: "wrap",
+                      gap: 1,
+                    }}
                   >
                     {share.usage && share.usage !== Usage.Internal && (
                       <Chip
@@ -390,16 +457,20 @@ export function ShareDetailsPanel({
                   <Grid size={{ md: 6, sm: 12 }}>
                     <Typography
                       variant="subtitle2"
-                      color="text.secondary"
-                      sx={{ mb: 1 }}
+                      sx={{
+                        color: "text.secondary",
+                        mb: 1,
+                      }}
                     >
                       Read/Write Users
                     </Typography>
                     <Stack
                       direction="row"
                       spacing={1}
-                      flexWrap="wrap"
-                      sx={{ gap: 1 }}
+                      sx={{
+                        flexWrap: "wrap",
+                        gap: 1,
+                      }}
                     >
                       {share.users.map((user) => (
                         <Chip
@@ -420,16 +491,20 @@ export function ShareDetailsPanel({
                   <Grid size={{ md: 6, sm: 12 }}>
                     <Typography
                       variant="subtitle2"
-                      color="text.secondary"
-                      sx={{ mb: 1 }}
+                      sx={{
+                        color: "text.secondary",
+                        mb: 1,
+                      }}
                     >
                       Read-Only Users
                     </Typography>
                     <Stack
                       direction="row"
                       spacing={1}
-                      flexWrap="wrap"
-                      sx={{ gap: 1 }}
+                      sx={{
+                        flexWrap: "wrap",
+                        gap: 1,
+                      }}
                     >
                       {share.ro_users.map((user) => (
                         <Chip
@@ -450,16 +525,20 @@ export function ShareDetailsPanel({
                   <Grid size={{ md: 6, sm: 12 }}>
                     <Typography
                       variant="subtitle2"
-                      color="text.secondary"
-                      sx={{ mb: 1 }}
+                      sx={{
+                        color: "text.secondary",
+                        mb: 1,
+                      }}
                     >
                       Veto Files
                     </Typography>
                     <Stack
                       direction="row"
                       spacing={1}
-                      flexWrap="wrap"
-                      sx={{ gap: 1 }}
+                      sx={{
+                        flexWrap: "wrap",
+                        gap: 1,
+                      }}
                     >
                       {share.veto_files.map((vetoFile) => (
                         <Chip
@@ -476,7 +555,12 @@ export function ShareDetailsPanel({
                 {/* Time Machine Settings */}
                 {share.timemachine && share.timemachine_max_size && (
                   <Grid size={{ md: 6, sm: 12 }}>
-                    <Typography variant="subtitle2" color="text.secondary">
+                    <Typography
+                      variant="subtitle2"
+                      sx={{
+                        color: "text.secondary",
+                      }}
+                    >
                       Time Machine Max Size
                     </Typography>
                     <Typography variant="body2">
@@ -489,7 +573,6 @@ export function ShareDetailsPanel({
           )}
         </Card>
       </Stack>
-
       {/* Mount Point Preview Dialog */}
       <PreviewDialog
         title={`Mount Point: ${mountData?.path || "N/A"}`}

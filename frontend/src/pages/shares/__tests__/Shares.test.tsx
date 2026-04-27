@@ -224,7 +224,7 @@ describe.skip("Shares page", () => {
             // Debug to verify the sratApi mock for Shares component is used
             // console.debug("Using mocked ../../store/sratApi for Shares test");
             return {
-                Usage: { None: "None" },
+                Usage: { None: "none", Backup: "backup", Media: "media", Share: "share", Internal: "internal" },
                 // Provide the users query hook used by ShareEditForm to avoid hitting real RTKQ
                 useGetApiUsersQuery: () => ({ data: [], isLoading: false, error: null }),
                 usePutApiShareByShareNameMutation: () => [

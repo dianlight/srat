@@ -1,6 +1,8 @@
 # [FEATURE]: Server mDNS Registration via WebSocket to Custom Component
 
-**Target Repo:** `srat` **Status:** 📅 Planned **Issue Link:** _TBD_
+**Target Repo:** `srat` 
+**Status:** 📅 Planned 
+**Issue Link:** _TBD_
 
 ## 🎯 Objective
 

@@ -27,6 +27,9 @@ import {
 import { useGetServerEventsQuery } from "../../store/wsApi";
 import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
 import {
+  FilesystemCheckDialog,
+  FilesystemFormatDialog,
+  FilesystemLabelDialog,
   VolumeDetailsPanel,
   VolumeMountDialog,
   VolumesTreeView,
@@ -110,6 +113,12 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
   const { data: evdata } = useGetServerEventsQuery();
   const [showPreview, setShowPreview] = useState<boolean>(false);
   const [showMount, setShowMount] = useState<boolean>(false);
+  const [showFilesystemCheckDialog, setShowFilesystemCheckDialog] =
+    useState(false);
+  const [showFilesystemLabelDialog, setShowFilesystemLabelDialog] =
+    useState(false);
+  const [showFilesystemFormatDialog, setShowFilesystemFormatDialog] =
+    useState(false);
   const location = useLocation();
 
   const navigate = useNavigate();
@@ -227,6 +236,18 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
         }
         return { ...currentPartition, name: label };
       });
+    },
+    [],
+  );
+
+  const openDialogForPartition = useCallback(
+    (partition: Partition, setDialogOpen: (open: boolean) => void) => {
+      const activeElement = document.activeElement;
+      if (activeElement instanceof HTMLElement) {
+        activeElement.blur();
+      }
+      setSelectedPartition(partition);
+      setDialogOpen(true);
     },
     [],
   );
@@ -633,6 +654,28 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
           }
         }}
       />
+      {showFilesystemCheckDialog && (
+        <FilesystemCheckDialog
+          open={showFilesystemCheckDialog}
+          partition={selectedPartition}
+          onClose={() => setShowFilesystemCheckDialog(false)}
+        />
+      )}
+      {showFilesystemLabelDialog && (
+        <FilesystemLabelDialog
+          open={showFilesystemLabelDialog}
+          partition={selectedPartition}
+          onClose={() => setShowFilesystemLabelDialog(false)}
+          onLabelUpdated={handlePartitionLabelUpdated}
+        />
+      )}
+      {showFilesystemFormatDialog && (
+        <FilesystemFormatDialog
+          open={showFilesystemFormatDialog}
+          partition={selectedPartition}
+          onClose={() => setShowFilesystemFormatDialog(false)}
+        />
+      )}
       {/* PreviewDialog can show details for both disks and partitions */}
       <PreviewDialog
         title={
@@ -651,7 +694,6 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
           setShowPreview(false);
         }}
       />
-
       {/* Main Layout Grid */}
       <Grid
         container
@@ -667,18 +709,24 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
           >
             <Stack
               direction="row"
-              justifyContent="space-between"
-              alignItems="center"
-              sx={{ mb: 2, px: 2 }}
+              sx={{
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 2,
+                px: 2,
+              }}
             >
               <Typography variant="h6">Volumes</Typography>
             </Stack>
 
             <Stack
               direction="row"
-              justifyContent="flex-start"
-              sx={{ pl: 2, mb: 1 }}
               data-tutor={`reactour__tab${TabIDs.VOLUMES}__step2`}
+              sx={{
+                justifyContent: "flex-start",
+                pl: 2,
+                mb: 1,
+              }}
             >
               <FormControlLabel
                 control={
@@ -721,6 +769,24 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
                 onUnmount={onSubmitUmountVolume}
                 onCreateShare={handleCreateShare}
                 onGoToShare={handleGoToShare}
+                onCheckFilesystem={(partition) =>
+                  openDialogForPartition(
+                    partition,
+                    setShowFilesystemCheckDialog,
+                  )
+                }
+                onSetFilesystemLabel={(partition) =>
+                  openDialogForPartition(
+                    partition,
+                    setShowFilesystemLabelDialog,
+                  )
+                }
+                onFormatPartition={(partition) =>
+                  openDialogForPartition(
+                    partition,
+                    setShowFilesystemFormatDialog,
+                  )
+                }
                 protectedMode={evdata?.hello?.protected_mode === true}
                 readOnly={evdata?.hello?.read_only === true}
               />

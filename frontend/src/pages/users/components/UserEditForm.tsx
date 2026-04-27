@@ -1,5 +1,4 @@
 import {
-  type AutocompleteRenderGetTagProps,
   Box,
   Button,
   CardContent,
@@ -61,7 +60,7 @@ export function UserEditForm({
 
   const renderShareTags = (
     values: string[],
-    getTagProps: AutocompleteRenderGetTagProps,
+    getTagProps: (params: { index: number }) => Record<string, unknown>,
     color: "success" | "secondary",
   ) =>
     values
@@ -70,7 +69,7 @@ export function UserEditForm({
         const { key, ...tagProps } = getTagProps({ index });
         return (
           <Chip
-            key={key}
+            key={key as React.Key}
             label={share}
             size="small"
             color={color}
@@ -218,13 +217,13 @@ export function UserEditForm({
                 limitTags: 5,
                 getOptionDisabled: (option) =>
                   selectedRoShares.includes(option),
-                renderTags: (values, getTagProps) =>
+                renderValue: (values, getTagProps) =>
                   renderShareTags(values as string[], getTagProps, "success"),
               }}
               textFieldProps={{
                 disabled,
                 helperText: "Choose shares with read/write access",
-                InputLabelProps: { shrink: true },
+                slotProps: { inputLabel: { shrink: true } },
               }}
             />
           </Grid>
@@ -250,20 +249,25 @@ export function UserEditForm({
                 limitTags: 5,
                 getOptionDisabled: (option) =>
                   selectedRwShares.includes(option),
-                renderTags: (values, getTagProps) =>
+                renderValue: (values, getTagProps) =>
                   renderShareTags(values as string[], getTagProps, "secondary"),
               }}
               textFieldProps={{
                 disabled,
                 helperText: "Choose shares with read-only access",
-                InputLabelProps: { shrink: true },
+                slotProps: { inputLabel: { shrink: true } },
               }}
             />
           </Grid>
 
           <Grid size={12}>
             <Box sx={{ bgcolor: "action.hover", p: 2, borderRadius: 1 }}>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 {isAdmin ? (
                   <>
                     <strong>Administrator Account:</strong> You can change the
@@ -289,7 +293,13 @@ export function UserEditForm({
 
           {/* Form Actions */}
           <Grid size={12}>
-            <Stack direction="row" spacing={2} justifyContent="flex-end">
+            <Stack
+              direction="row"
+              spacing={2}
+              sx={{
+                justifyContent: "flex-end",
+              }}
+            >
               {onCancel && (
                 <Button
                   variant="outlined"

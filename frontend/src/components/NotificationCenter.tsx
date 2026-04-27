@@ -180,7 +180,13 @@ export function NotificationCenter() {
           <CardContent>
             <Toolbar variant="dense">
               <Box sx={{ flexGrow: 1, display: { xs: "none", md: "flex" } }}>
-                <Typography variant="subtitle1" color="inherit" component="div">
+                <Typography
+                  variant="subtitle1"
+                  component="div"
+                  sx={{
+                    color: "inherit",
+                  }}
+                >
                   Notifications
                 </Typography>
               </Box>

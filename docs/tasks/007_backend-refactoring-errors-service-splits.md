@@ -1,6 +1,8 @@
 # [REFACTOR]: Backend Code Quality — errors.AsType Migration and Service Splits
 
-**Target Repo:** `srat`  **Status:** 📅 Planned  **Issue Link:** _TBD_
+**Target Repo:** `srat`  
+**Status:** 📅 Planned  
+**Issue Link:** _TBD_
 
 ## 🎯 Objective
 

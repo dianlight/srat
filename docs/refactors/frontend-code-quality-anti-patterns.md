@@ -21,11 +21,12 @@
 | 5   | githubNewsHook / GitHub discussions fetch       | frontend/src/hooks/githubNewsHook.ts                                  | Raw fetch bypassing RTK Query (`githubApi`). Caller: `frontend/src/pages/dashboard/Dashboard.tsx` (displays news) | Yes (hook tests exist) | frontend/src/hooks/**tests**/githubNewsHook.test.ts                                  |
 | 6   | App-level error paths                           | frontend/src/App.tsx                                                  | console.error/log usages to replace with notifications                                                            | Partial                | frontend/src/**tests** (tbd)                                                         |
 
-| 7   | `TelemetryModal` — `isSubmitting`, `selectedMode` | `frontend/src/components/TelemetryModal.tsx` | Direct — uses `useState` for form submit loading and selected radio value; should use react-hook-form | ❌ No | *(missing — need to create)* |
-| 8   | `githubNewsHook.ts` | `frontend/src/hooks/githubNewsHook.ts` | Already migrated to RTK Query (`useGetDiscussionsQuery`) — compliant | ✅ Yes | hook consumer tests |
-| 9   | `githubApi.ts` — `textBaseQuery` raw `fetch()` | `frontend/src/store/githubApi.ts` | Intentional RTK custom base query — NOT an anti-pattern; no change needed | N/A | N/A |
+| 7 | `TelemetryModal` — `isSubmitting`, `selectedMode` | `frontend/src/components/TelemetryModal.tsx` | Direct — uses `useState` for form submit loading and selected radio value; should use react-hook-form | ❌ No | _(missing — need to create)_ |
+| 8 | `githubNewsHook.ts` | `frontend/src/hooks/githubNewsHook.ts` | Already migrated to RTK Query (`useGetDiscussionsQuery`) — compliant | ✅ Yes | hook consumer tests |
+| 9 | `githubApi.ts` — `textBaseQuery` raw `fetch()` | `frontend/src/store/githubApi.ts` | Intentional RTK custom base query — NOT an anti-pattern; no change needed | N/A | N/A |
 
 **Phase 2 (2026-04-20) findings:**
+
 - Task 3 (NavBar): All `userEvent` calls already use `user = userEvent.setup()` and `await user.*` — compliant.
 - Task 4 (DonationButton): Tests already use `getByRole` with accessible names — compliant.
 - Task 6 (githubNewsHook): Already uses RTK Query; no raw `fetch()` present in hook. The `fetch()` in `githubApi.ts` is an RTK custom base query — legitimate.
@@ -36,12 +37,12 @@
 
 ## Pre-Refactor Test Baseline
 
-| Test Name                                | File                                                                                 | Status Before                       | Notes                                                                                                                                   |
-| ---------------------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Test Name                                | File                                                                                 | Status Before             | Notes                                                                                                                                 |
+| ---------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | FilesystemLabelFormatDialog interactions | frontend/src/pages/volumes/components/**tests**/FilesystemLabelFormatDialog.test.tsx | ✅ Pass (12 pass, 0 fail) | Replace fireEvent with userEvent and re-run. Note: a happy-dom dispatchEvent TypeError is printed during run but tests complete PASS. |
-| NavBar interaction flows                 | frontend/src/components/**tests**/NavBar.test.tsx                                    | ✅ Pass (23 pass, 0 fail) | All userEvent calls already awaited — compliant. |
-| DonationButton accessibility             | frontend/src/components/**tests**/DonationButton.test.tsx                            | ✅ Pass (8 pass, 0 fail)  | Already uses semantic `getByRole` — compliant. |
-| TelemetryModal form state               | *(to be created: TelemetryModal.test.tsx)*                                            | N/A (no test yet)         | Must create before refactoring `isSubmitting` / `selectedMode` state. |
+| NavBar interaction flows                 | frontend/src/components/**tests**/NavBar.test.tsx                                    | ✅ Pass (23 pass, 0 fail) | All userEvent calls already awaited — compliant.                                                                                      |
+| DonationButton accessibility             | frontend/src/components/**tests**/DonationButton.test.tsx                            | ✅ Pass (8 pass, 0 fail)  | Already uses semantic `getByRole` — compliant.                                                                                        |
+| TelemetryModal form state                | _(to be created: TelemetryModal.test.tsx)_                                           | N/A (no test yet)         | Must create before refactoring `isSubmitting` / `selectedMode` state.                                                                 |
 
 Run `mise run //frontend:test --rerun-each 10` for the above tests and record results here.
 
@@ -49,14 +50,14 @@ Run `mise run //frontend:test --rerun-each 10` for the above tests and record re
 
 ## Post-Refactor Test Results
 
-| Test Name | File | Status Before | Status After | Result | Notes |
-| --------- | ---- | ------------- | ------------ | ------ | ----- |
-| FilesystemLabelFormatDialog interactions | `frontend/src/.../FilesystemLabelFormatDialog.test.tsx` | ✅ Pass (12 pass) | ✅ Pass (12 pass) | ✅ | fireEvent → userEvent |
-| TelemetryModal form state | `frontend/src/components/.../TelemetryModal.test.tsx` | N/A (new test) | ✅ Pass (4 pass) | ✅ | New test created for react-hook-form migration |
-| App command events | `frontend/src/__tests__/App.commandEvents.test.tsx` | ❌ Contaminating TelemetryModal tests | ✅ Pass (8 pass) | ✅ | Removed redundant `mock.module(TelemetryModal)` |
-| Full suite | All 84 test files | N/A | ✅ Pass (689 pass, 1 skip, 0 fail) | ✅ | `mise run //frontend:test` |
-| Lint | frontend/ | N/A | ✅ Pass | ✅ | `mise run //frontend:lint` |
-| Docs validate | / | N/A | ✅ Pass (0 errors) | ✅ | `mise run //:docs-validate` |
+| Test Name                                | File                                                    | Status Before                         | Status After                       | Result | Notes                                           |
+| ---------------------------------------- | ------------------------------------------------------- | ------------------------------------- | ---------------------------------- | ------ | ----------------------------------------------- |
+| FilesystemLabelFormatDialog interactions | `frontend/src/.../FilesystemLabelFormatDialog.test.tsx` | ✅ Pass (12 pass)                     | ✅ Pass (12 pass)                  | ✅     | fireEvent → userEvent                           |
+| TelemetryModal form state                | `frontend/src/components/.../TelemetryModal.test.tsx`   | N/A (new test)                        | ✅ Pass (4 pass)                   | ✅     | New test created for react-hook-form migration  |
+| App command events                       | `frontend/src/__tests__/App.commandEvents.test.tsx`     | ❌ Contaminating TelemetryModal tests | ✅ Pass (8 pass)                   | ✅     | Removed redundant `mock.module(TelemetryModal)` |
+| Full suite                               | All 84 test files                                       | N/A                                   | ✅ Pass (689 pass, 1 skip, 0 fail) | ✅     | `mise run //frontend:test`                      |
+| Lint                                     | frontend/                                               | N/A                                   | ✅ Pass                            | ✅     | `mise run //frontend:lint`                      |
+| Docs validate                            | /                                                       | N/A                                   | ✅ Pass (0 errors)                 | ✅     | `mise run //:docs-validate`                     |
 
 ---
 

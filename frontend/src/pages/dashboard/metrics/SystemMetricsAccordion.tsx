@@ -356,7 +356,13 @@ export function SystemMetricsAccordion({
         detailMetricId="processMetrics"
         onDetailClick={onDetailClick}
       >
-        <Typography variant="body2" color="text.secondary" align="center">
+        <Typography
+          variant="body2"
+          align="center"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           {`${filesize(memory_usage ?? 0)} / ${filesize(memory_limit ?? 0)}`}
         </Typography>
       </MetricCard>
@@ -448,7 +454,13 @@ export function SystemMetricsAccordion({
         detailMetricId="diskHealthMetrics"
         onDetailClick={onDetailClick}
       >
-        <Typography variant="body2" color="text.secondary" align="center">
+        <Typography
+          variant="body2"
+          align="center"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           Latency (r/w): {(total_read_latency_ms ?? 0).toFixed(2)}ms /{" "}
           {(total_write_latency_ms ?? 0).toFixed(2)}ms
         </Typography>
@@ -474,7 +486,13 @@ export function SystemMetricsAccordion({
         detailMetricId="networkHealthMetrics"
         onDetailClick={onDetailClick}
       >
-        <Typography variant="body2" color="text.secondary" align="center">
+        <Typography
+          variant="body2"
+          align="center"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           In: {filesize(totalInboundTraffic ?? 0)}/s | Out:{" "}
           {filesize(totalOutboundTraffic ?? 0)}/s
         </Typography>

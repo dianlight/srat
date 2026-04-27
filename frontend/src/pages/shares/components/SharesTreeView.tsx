@@ -192,9 +192,9 @@ export function SharesTreeView({
               <Tooltip title={shareName} arrow>
                 <Typography
                   variant="body2"
-                  fontWeight={isSelected ? 600 : 400}
                   noWrap
                   sx={{
+                    fontWeight: isSelected ? 600 : 400,
                     display: "block",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
@@ -298,8 +298,8 @@ export function SharesTreeView({
             label={
               <Typography
                 variant="subtitle2"
-                color="text.primary"
                 sx={{
+                  color: "text.primary",
                   textTransform: "capitalize",
                   py: 1,
                   fontWeight: 600,
