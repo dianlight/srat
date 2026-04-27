@@ -24,8 +24,9 @@ import (
 	"go.uber.org/fx"
 )
 
-// AddonConfigWatcherServiceInterface is the public interface for the addon config watcher service.
-// Lifecycle is managed via FX hooks; no additional public methods are required for this task.
+// AddonConfigWatcherServiceInterface is a nominal marker type used by the FX dependency injection container.
+// It has no methods; callers never interact with it directly — FX resolves the concrete *AddonConfigWatcherService
+// via fx.Invoke so the service lifecycle hooks are registered at startup.
 type AddonConfigWatcherServiceInterface interface{}
 
 // AddonConfigWatcherService watches for externally-initiated changes to the addon options file.

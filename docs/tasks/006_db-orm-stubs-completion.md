@@ -1,6 +1,8 @@
-# [FIX]: Database and ORM Stubs Completion
+# [REFACTOR]: Database and ORM Stubs Completion
 
-**Target Repo:** `srat`  **Status:** 📅 Planned  **Issue Link:** [hassio-addons#573](https://github.com/dianlight/hassio-addons/issues/573)
+**Target Repo:** `srat`  
+**Status:** 📅 Planned  
+**Issue Link:** [hassio-addons#573](https://github.com/dianlight/hassio-addons/issues/573)
 
 ## 🎯 Objective
 

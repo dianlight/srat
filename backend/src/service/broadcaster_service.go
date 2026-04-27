@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+	"sync"
 	"sync/atomic"
 
 	"github.com/dianlight/srat/config"
@@ -39,6 +40,7 @@ type BroadcasterService struct {
 	disks            *dto.DiskMap
 	shareService     ShareServiceInterface
 	lastDirtyHash    atomic.Value
+	haWg             sync.WaitGroup
 }
 
 type broadcastEvent struct {
@@ -81,6 +83,7 @@ func NewBroadcasterService(
 			for _, unsub := range unsubscribe {
 				unsub()
 			}
+			b.haWg.Wait()
 			return nil
 		},
 	})
@@ -199,7 +202,7 @@ func (broker *BroadcasterService) BroadcastMessage(msg any) any {
 	broker.relay.Broadcast(broadcastEvent{ID: broker.SentCounter.Load(), Message: msg})
 
 	// Send to Home Assistant if in secure mode
-	go broker.sendToHomeAssistant(msg) // FIXME: put as broadcast listener
+	broker.haWg.Go(func() { broker.sendToHomeAssistant(msg) })
 
 	return msg
 }

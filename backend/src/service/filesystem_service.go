@@ -331,7 +331,7 @@ func (s *FilesystemService) ResolveLinuxFsModule(fsType string) string {
 
 	adapter, err := s.registry.Get(fsType)
 	if err != nil {
-		slog.Debug("ResolveLinuxFsModule: adapter not found, using filesystem type", "fsType", fsType, "error", err)
+		slog.DebugContext(s.ctx, "ResolveLinuxFsModule: adapter not found, using filesystem type", "fsType", fsType, "error", err)
 		return fsType
 	}
 
@@ -374,7 +374,7 @@ func (s *FilesystemService) MountFlagsToSyscallFlagAndData(inputFlags []dto.Moun
 				compiledRegex, err := regexp.Compile(mf.ValueValidationRegex)
 				if err != nil {
 					// This is a configuration error in the predefined regex
-					slog.Error("Invalid validation regex configured for flag", "flag", mf.Name, "regex", mf.ValueValidationRegex, "error", err)
+					slog.ErrorContext(s.ctx, "Invalid validation regex configured for flag", "flag", mf.Name, "regex", mf.ValueValidationRegex, "error", err)
 					// Potentially return an internal server error, or log and proceed without validation for this flag
 					// For now, let's return an error to make it explicit
 					return 0, "", errors.WithDetails(err, "Message", "Invalid validation regex", "flag", mf.Name)
@@ -386,18 +386,18 @@ func (s *FilesystemService) MountFlagsToSyscallFlagAndData(inputFlags []dto.Moun
 				}
 			}
 			formattedFlag := fmt.Sprintf("%s=%s", rawFlagName, mf.FlagValue)
-			slog.Debug("MountFlagsToSyscallFlagAndData: Collecting data flag with explicit value", "flag", formattedFlag)
+			slog.DebugContext(s.ctx, "MountFlagsToSyscallFlagAndData: Collecting data flag with explicit value", "flag", formattedFlag)
 			dataFlags = append(dataFlags, formattedFlag)
 			continue
 		}
 
 		if val, ok := syscallFlagMap[lowerFlagName]; ok {
-			slog.Debug("MountFlagsToSyscallFlagAndData: Adding syscall flag to bitmask", "flag", rawFlagName, "value", val)
+			slog.DebugContext(s.ctx, "MountFlagsToSyscallFlagAndData: Adding syscall flag to bitmask", "flag", rawFlagName, "value", val)
 			syscallFlagValue |= val
 		} else if ignoredSyscallFlags[lowerFlagName] {
-			slog.Debug("MountFlagsToSyscallFlagAndData: Ignoring known descriptive/default flag", "flag", rawFlagName)
+			slog.DebugContext(s.ctx, "MountFlagsToSyscallFlagAndData: Ignoring known descriptive/default flag", "flag", rawFlagName)
 		} else if rawFlagName != "" {
-			slog.Warn("MountFlagsToSyscallFlagAndData: Unknown or unhandled mount flag for bitmask generation", "flag", mf.Name)
+			slog.WarnContext(s.ctx, "MountFlagsToSyscallFlagAndData: Unknown or unhandled mount flag for bitmask generation", "flag", mf.Name)
 		}
 	}
 
@@ -430,7 +430,7 @@ func (s *FilesystemService) SyscallFlagToMountFlag(syscallFlag uintptr) ([]dto.M
 				mountFlag.Name = detail.Name // Use original casing
 				mountFlag.Description = detail.Description
 			} else {
-				slog.Debug("SyscallFlagToMountFlag: No detailed description in standardMountFlags for syscall flag", "flagName", nameInMap)
+				slog.DebugContext(s.ctx, "SyscallFlagToMountFlag: No detailed description in standardMountFlags for syscall flag", "flagName", nameInMap)
 			}
 			result = append(result, mountFlag)
 		}
@@ -471,7 +471,7 @@ func (s *FilesystemService) SyscallDataToMountFlag(data string) ([]dto.MountFlag
 			mountFlag.ValueDescription = descFlag.ValueDescription
 			mountFlag.ValueValidationRegex = descFlag.ValueValidationRegex
 		} else {
-			slog.Debug("SyscallDataToMountFlag: No description found for data flag", "flagName", name)
+			slog.DebugContext(s.ctx, "SyscallDataToMountFlag: No description found for data flag", "flagName", name)
 		}
 		result = append(result, mountFlag)
 	}
@@ -487,11 +487,11 @@ func (s *FilesystemService) FsTypeFromDevice(devicePath string) (string, errors.
 	for _, adapter := range adapters {
 		matches, err := adapter.IsDeviceSupported(s.ctx, devicePath)
 		if err != nil {
-			slog.Warn("Error checking device against adapter signatures", "device", devicePath, "adapter", adapter.GetName(), "error", err)
+			slog.WarnContext(s.ctx, "Error checking device against adapter signatures", "device", devicePath, "adapter", adapter.GetName(), "error", err)
 			continue
 		}
 		if matches {
-			slog.Debug("FsTypeFromDevice: Matched signature with adapter's IsDeviceSupported method", "device", devicePath, "adapter", adapter.GetName())
+			slog.DebugContext(s.ctx, "FsTypeFromDevice: Matched signature with adapter's IsDeviceSupported method", "device", devicePath, "adapter", adapter.GetName())
 			return adapter.GetName(), nil
 		}
 	}

@@ -550,3 +550,44 @@ func (b *baseAdapter) executeCommandWithProgress(
 
 	return stdoutChan, stderrChan, resultChan
 }
+
+// drainCommandOutput reads stdoutChan and stderrChan concurrently, collecting
+// output lines and invoking progress on each. If notes is non-nil, lines are
+// appended to *notes and the accumulated slice is passed to progress (cumulative
+// pattern). If notes is nil, a fresh single-element slice is used per line.
+func drainCommandOutput(
+	stdoutChan, stderrChan <-chan string,
+	progress dto.ProgressCallback,
+	pct int,
+	notes *[]string,
+) (outputLines, errorLines []string) {
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		for line := range stdoutChan {
+			outputLines = append(outputLines, line)
+			if progress != nil {
+				if notes != nil {
+					*notes = append(*notes, line)
+					progress("running", pct, *notes)
+				} else {
+					progress("running", pct, []string{line})
+				}
+			}
+		}
+	})
+	wg.Go(func() {
+		for line := range stderrChan {
+			errorLines = append(errorLines, line)
+			if progress != nil {
+				if notes != nil {
+					*notes = append(*notes, "ERROR: "+line)
+					progress("running", pct, *notes)
+				} else {
+					progress("running", pct, []string{"ERROR: " + line})
+				}
+			}
+		}
+	})
+	wg.Wait()
+	return
+}
