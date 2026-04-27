@@ -5,6 +5,7 @@
 **Target Repo:** `srat`
 **Status:** 📅 Planned
 **Issue Link:**
+**PR Link:** https://github.com/dianlight/srat/pull/600
 
 ## 🎯 Objective
 
@@ -28,7 +29,7 @@ Eliminate a cluster of recurring Go anti-patterns in the backend: `interface{}` 
 - [ ] Task 8: Unit testing — run affected package tests first, then `go test ./...` from `backend/src` with zero new failures
 - [ ] Task 9: Integration — run `mise run //backend:build` and `mise run //backend:test` to confirm no regressions
 - [ ] Task 10: Capture lessons learned and update documentation
-- [ ] Task 11: Ask to create a PR with the task implementation and link it here for tracking
+- [x] Task 11: Ask to create a PR with the task implementation and link it here for tracking
 
 ## 🧠 Implementation Notes (Copilot Context)
 
