@@ -3,7 +3,6 @@ package filesystem
 import (
 	"context"
 	"strings"
-	"sync"
 
 	"github.com/dianlight/srat/dto"
 	"gitlab.com/tozd/go/errors"
@@ -83,36 +82,7 @@ func (a *Ext4Adapter) Format(ctx context.Context, device string, options dto.For
 	}
 
 	stdoutChan, stderrChan, resultChan := a.executeCommandWithProgress(ctx, a.mkfsCommand, args)
-
-	// Consume output channels
-	var outputLines []string
-	var errorLines []string
-	var wg sync.WaitGroup
-
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
-		for line := range stdoutChan {
-			outputLines = append(outputLines, line)
-			if progress != nil {
-				notes = append(notes, line)
-				progress("running", 999, notes)
-			}
-		}
-	}()
-
-	go func() {
-		defer wg.Done()
-		for line := range stderrChan {
-			errorLines = append(errorLines, line)
-			if progress != nil {
-				notes = append(notes, "ERROR: "+line)
-				progress("running", 999, notes)
-			}
-		}
-	}()
-
-	wg.Wait()
+	outputLines, _ := drainCommandOutput(stdoutChan, stderrChan, progress, 999, &notes)
 
 	// Wait for command result
 	result := <-resultChan
@@ -177,36 +147,7 @@ func (a *Ext4Adapter) Check(ctx context.Context, device string, options dto.Chec
 	}
 
 	stdoutChan, stderrChan, resultChan := a.executeCommandWithProgress(ctx, a.fsckCommand, args)
-
-	// Consume output channels
-	var outputLines []string
-	var errorLines []string
-	var wg sync.WaitGroup
-
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
-		for line := range stdoutChan {
-			outputLines = append(outputLines, line)
-			if progress != nil {
-				notes = append(notes, line)
-				progress("running", 999, notes)
-			}
-		}
-	}()
-
-	go func() {
-		defer wg.Done()
-		for line := range stderrChan {
-			errorLines = append(errorLines, line)
-			if progress != nil {
-				notes = append(notes, "ERROR: "+line)
-				progress("running", 999, notes)
-			}
-		}
-	}()
-
-	wg.Wait()
+	outputLines, _ := drainCommandOutput(stdoutChan, stderrChan, progress, 999, &notes)
 
 	// Wait for command result
 	cmdResult := <-resultChan

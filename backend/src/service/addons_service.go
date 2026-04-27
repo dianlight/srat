@@ -274,7 +274,7 @@ func (s *AddonsService) GetAppConfigSchema(ctx context.Context) (*dto.AppConfigS
 	}, nil
 }
 
-func extractAppSchemaFields(rawSchema *[]*map[string]interface{}, translations *map[string]interface{}) []dto.AppConfigSchemaField {
+func extractAppSchemaFields(rawSchema *[]*map[string]any, translations *map[string]any) []dto.AppConfigSchemaField {
 	if rawSchema == nil {
 		return []dto.AppConfigSchemaField{}
 	}
@@ -334,7 +334,7 @@ func extractAppSchemaFields(rawSchema *[]*map[string]interface{}, translations *
 	return fields
 }
 
-func extractSchemaFieldFromNamedItem(name string, item map[string]interface{}, translatedDescription string) dto.AppConfigSchemaField {
+func extractSchemaFieldFromNamedItem(name string, item map[string]any, translatedDescription string) dto.AppConfigSchemaField {
 	normalized := make(map[string]any)
 	for key, value := range item {
 		if key == "name" {
@@ -390,7 +390,7 @@ func extractSchemaFieldFromValue(name string, value any, translatedDescription s
 	}
 }
 
-func extractAppOptionDescriptions(translations *map[string]interface{}, optionNames []string) map[string]string {
+func extractAppOptionDescriptions(translations *map[string]any, optionNames []string) map[string]string {
 	if translations == nil || len(*translations) == 0 || len(optionNames) == 0 {
 		return map[string]string{}
 	}

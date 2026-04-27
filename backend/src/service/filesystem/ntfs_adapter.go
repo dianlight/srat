@@ -92,33 +92,7 @@ func (a *NtfsAdapter) Format(ctx context.Context, device string, options dto.For
 
 	stdoutChan, stderrChan, resultChan := a.executeCommandWithProgress(ctx, a.mkfsCommand, args)
 
-	// Consume output channels
-	var outputLines []string
-	var errorLines []string
-	var wg sync.WaitGroup
-
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
-		for line := range stdoutChan {
-			outputLines = append(outputLines, line)
-			if progress != nil {
-				progress("running", 999, []string{line})
-			}
-		}
-	}()
-
-	go func() {
-		defer wg.Done()
-		for line := range stderrChan {
-			errorLines = append(errorLines, line)
-			if progress != nil {
-				progress("running", 999, []string{"ERROR: " + line})
-			}
-		}
-	}()
-
-	wg.Wait()
+	outputLines, _ := drainCommandOutput(stdoutChan, stderrChan, progress, 999, nil)
 
 	// Wait for command result
 	result := <-resultChan
@@ -169,33 +143,7 @@ func (a *NtfsAdapter) Check(ctx context.Context, device string, options dto.Chec
 
 	stdoutChan, stderrChan, resultChan := a.executeCommandWithProgress(ctx, a.fsckCommand, args)
 
-	// Consume output channels
-	var outputLines []string
-	var errorLines []string
-	var wg sync.WaitGroup
-
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
-		for line := range stdoutChan {
-			outputLines = append(outputLines, line)
-			if progress != nil {
-				progress("running", 999, []string{line})
-			}
-		}
-	}()
-
-	go func() {
-		defer wg.Done()
-		for line := range stderrChan {
-			errorLines = append(errorLines, line)
-			if progress != nil {
-				progress("running", 999, []string{"ERROR: " + line})
-			}
-		}
-	}()
-
-	wg.Wait()
+	outputLines, _ := drainCommandOutput(stdoutChan, stderrChan, progress, 999, nil)
 
 	// Wait for command result
 	cmdResult := <-resultChan
@@ -343,9 +291,9 @@ func (a *NtfsAdapter) getLastUnmountedState(device string) (dto.FilesystemState,
 
 	copiedState := state
 	if copiedState.AdditionalInfo == nil {
-		copiedState.AdditionalInfo = make(map[string]interface{})
+		copiedState.AdditionalInfo = make(map[string]any)
 	} else {
-		copiedInfo := make(map[string]interface{}, len(copiedState.AdditionalInfo))
+		copiedInfo := make(map[string]any, len(copiedState.AdditionalInfo))
 		for key, value := range copiedState.AdditionalInfo {
 			copiedInfo[key] = value
 		}
@@ -362,9 +310,9 @@ func (a *NtfsAdapter) setLastUnmountedState(device string, state dto.FilesystemS
 	stateToStore := state
 	stateToStore.IsMounted = false
 	if stateToStore.AdditionalInfo == nil {
-		stateToStore.AdditionalInfo = make(map[string]interface{})
+		stateToStore.AdditionalInfo = make(map[string]any)
 	} else {
-		copiedInfo := make(map[string]interface{}, len(stateToStore.AdditionalInfo))
+		copiedInfo := make(map[string]any, len(stateToStore.AdditionalInfo))
 		for key, value := range stateToStore.AdditionalInfo {
 			copiedInfo[key] = value
 		}
