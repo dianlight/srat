@@ -4,5 +4,18 @@
       "Bash(gh issue *)",
       "Bash(go build *)"
     ]
-  }
+  },
+  "enabledMcpjsonServers": [
+    "gopls-mcp",
+    "bun",
+    "mise"
+  ],
+  "disabledMcpjsonServers": [
+    "mui-mcp",
+    "awesome-copilot",
+    "chrome-devtools",
+    "sqlite",
+    "act-testing",
+    "vale-mcp"
+  ]
 }

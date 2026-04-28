@@ -258,10 +258,10 @@
 	"github.copilot.chat.backgroundCompaction": true,
 	"mise.configureExtensionsAutomatically": true,
 	"bun.runtime": "/root/.local/share/mise/shims/bun",
-	"go.goroot": "/root/.local/share/mise/installs/go/1.26.2",
+	"go.goroot": "C:\\Users\\uga06422\\AppData\\Local\\mise\\installs\\go\\1.26.2",
 	"go.alternateTools": {
-		"go": "/root/.local/share/mise/shims/go",
-		"gopls": "/root/.local/share/mise/shims/gopls",
+		"go": "c:\\users\\uga06422\\appdata\\local\\mise\\shims\\go",
+		"gopls": "c:\\users\\uga06422\\appdata\\local\\mise\\shims\\gopls.exe",
 		"customFormatter": "golangci-lint"
 	},
 	"editor.fontSize": 13,
@@ -282,5 +282,6 @@
 	"chat.tools.confirmationCarousel.enabled": true,
 	"workbench.browser.openLocalhostLinks": true,
 	"jsts-chat-features.skills.enabled": true,
-	"chat.editing.autoAcceptDelay": 100
+	"chat.editing.autoAcceptDelay": 100,
+	"python.defaultInterpreterPath": "C:\\Users\\uga06422\\AppData\\Local\\mise\\installs\\python\\3.14.4\\python.exe"
 }

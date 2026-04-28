@@ -1,13 +1,13 @@
 # 📊 SRAT Task Status Report
-_Generated: 2026-04-02_
+_Generated: 2026-04-28_
 
 ## Summary
 | Status | Count | Progress |
 |--------|-------|----------|
-| ✅ Complete | 9 | 9/24 tasks |
-| 🔄 In Progress | 1 | 1/24 tasks |
-| 📅 Planned | 14 | 14/24 tasks |
-| **Total** | **24** | **38%** |
+| ✅ Complete | 9 | 9/32 tasks |
+| 🔄 In Progress | 1 | 1/32 tasks |
+| 📅 Planned | 22 | 22/32 tasks |
+| **Total** | **32** | **28%** |
 
 ---
 
@@ -118,6 +118,42 @@ _Generated: 2026-04-02_
 - **Type:** FEATURE | **Issues:** None
 - **Progress:** 0 / 10 tasks
 
+### [029] WebSocket Origin Validation and pprof Route Isolation
+- **Type:** FIX | **Issues:** None (security review 2026-04-28)
+- **Progress:** 0 / 6 tasks
+
+### [030] commandexec Snapshot Memory Leak and Busy-Wait Elimination
+- **Type:** FIX | **Issues:** None (performance review 2026-04-28)
+- **Progress:** 0 / 7 tasks
+
+### [031] Production Logging Safety — Body Logging and Secret Sanitization
+- **Type:** FIX | **Issues:** None (security review 2026-04-28)
+- **Progress:** 0 / 6 tasks
+
+### [032] WebSocket Reconnect Resilience and Frontend Safety Guards
+- **Type:** FIX | **Issues:** None (security/performance review 2026-04-28)
+- **Progress:** 0 / 9 tasks
+
+### [033] Database Recovery Safety, HTTP Request Size Limits, and Goroutine Leak
+- **Type:** FIX | **Issues:** None (reliability review 2026-04-28)
+- **Progress:** 0 / 8 tasks
+
+### [034] CRITICAL: Migration 14 Wrong Function Registration
+- **Type:** FIX | **Issues:** None (reliability review 2026-04-28) ⚠️ CRITICAL — fix immediately
+- **Progress:** 0 / 5 tasks
+
+### [035] Upgrade & HDIdle Path Traversal, Timer Race, and Data Race
+- **Type:** FIX | **Issues:** None (security/reliability review 2026-04-28)
+- **Progress:** 0 / 8 tasks
+
+### [036] Frontend Performance — NavBar Lazy Loading and Metrics Rendering
+- **Type:** REFACTOR | **Issues:** None (performance review 2026-04-28)
+- **Progress:** 0 / 10 tasks
+
+### [037] Frontend Data Correctness — isLoading Bug, Hook Rules, Password Exposure
+- **Type:** FIX | **Issues:** None (reliability/security review 2026-04-28)
+- **Progress:** 0 / 10 tasks
+
 ---
 
-*Report generated per SKILL.md instructions. Every task file in tasks is represented, with status inferred where missing. Progress percentages are rounded. "Next:" is shown for in-progress tasks. Issue links are clickable. Generation date: 2026-03-28.*
+*Report generated per SKILL.md instructions. Every task file in tasks is represented, with status inferred where missing. Progress percentages are rounded. "Next:" is shown for in-progress tasks. Issue links are clickable. Generation date: 2026-04-28.*
