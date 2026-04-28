@@ -1,3 +1,31 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+**Table of Contents** *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [CLAUDE.md](#claudemd)
+  - [Project Overview](#project-overview)
+  - [Instruction and Skill Files](#instruction-and-skill-files)
+  - [Build, Test, and Lint Commands](#build-test-and-lint-commands)
+    - [Running a single backend test](#running-a-single-backend-test)
+    - [Running frontend tests with stability check](#running-frontend-tests-with-stability-check)
+  - [Architecture](#architecture)
+    - [Backend (Go 1.26)](#backend-go-126)
+    - [Frontend (TypeScript 6 / React 19 / Bun)](#frontend-typescript-6--react-19--bun)
+    - [Custom Component (Python / Home Assistant)](#custom-component-python--home-assistant)
+  - [Testing Conventions](#testing-conventions)
+    - [Backend tests](#backend-tests)
+    - [Frontend tests](#frontend-tests)
+  - [Task and Workflow Conventions](#task-and-workflow-conventions)
+    - [Tasks live in `docs/tasks/NNN_<slug>.md`](#tasks-live-in-docstasksnnn_slugmd)
+    - [Refactors](#refactors)
+    - [Pull Requests](#pull-requests)
+    - [Changelog](#changelog)
+  - [Code Generation](#code-generation)
+  - [Security and Quality Gates](#security-and-quality-gates)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
@@ -79,6 +107,7 @@ cd frontend && bun run test
 **Request flow**: API handler (Huma v2) → Service → GORM + generated query helpers (`dbom/g/`) → SQLite
 
 Key packages under `backend/src/`:
+
 - `cmd/` — three binaries: `srat-server`, `srat-cli`, `srat-openapi`
 - `api/` — Huma HTTP handlers; each file has paired `*_test.go`
 - `service/` — business logic; injected via `go.uber.org/fx`
@@ -90,6 +119,7 @@ Key packages under `backend/src/`:
 - `internal/commandexec/` — shared command execution abstraction (mandatory for all shell commands)
 
 **Non-negotiable patterns**:
+
 - Use `converter.<Type>ToDtoConverterImpl{}` for all DTO↔DBOM mapping — never write manual `toDTO`/`toDBOM` helpers.
 - Backend command execution must use `commandexec.Executor`; emit lifecycle events (`command_started` → `command_output` → `command_terminated`) via `EventBusInterface`. See `.github/instructions/backend-command-execution.instructions.md`.
 - Use `slog.*Context` / `tlog.*Context` for logging when a real `context.Context` is in scope.
@@ -101,6 +131,7 @@ Key packages under `backend/src/`:
 **Data flow**: Components → RTK Query via `sratApi` (codegen) → REST API; real-time events via `wsApi` WebSocket.
 
 Key rules:
+
 - **Never** edit `frontend/src/store/sratApi.ts` or `backend/docs/openapi.*` directly — update Go source then run `cd frontend && bun run gen`.
 - **Never** manually add types to `frontend/src/store/wsApi.ts` — all types come from `sratApi.ts`. WS-only payload types need a doc-stub handler in `backend/src/api/system.go` (tagged `"system","internal"`); see `HandleWelcome`/`HandleCommandEvents` for the pattern.
 - **Never** use raw `fetch()` for internal API calls — always use RTK Query via `sratApi`.
