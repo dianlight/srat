@@ -63,19 +63,18 @@ jobs:
           fi
 
           # Get the repository ID
-          REPO_ID=$(gh api repos/$GH_REPO --jq '.id')
-          
+          REPO_NODE_ID=$(gh api repos/$GH_REPO --jq '.node_id')
+
           # Get the Announcements category ID (adjust if your category has a different name)
           CATEGORY_ID=$(gh api repos/$GH_REPO/discussion-categories --jq '.[] | select(.name=="Announcements") | .id')
 
           # Create discussion via GraphQL API
-          gh api graphql -f owner="${GH_REPO%/*}" -f repo="${GH_REPO#*/}" -f title="$TITLE" -f body="$BODY" -f categoryId="$CATEGORY_ID" << 'EOF'
-          mutation($owner: String!, $repo: String!, $title: String!, $body: String!, $categoryId: String!) {
-            createDiscussion(input: {repositoryId: "R_$repo", title: $title, body: $body, categoryId: $categoryId}) {
+          gh api graphql -f query='
+          mutation($repoId: ID!, $title: String!, $body: String!, $categoryId: ID!) {
+            createDiscussion(input: {repositoryId: $repoId, title: $title, body: $body, categoryId: $categoryId}) {
               discussion {
                 id
                 url
               }
             }
-          }
-          EOF
+          }' -f repoId="$REPO_NODE_ID" -f title="$TITLE" -f body="$BODY" -f categoryId="$CATEGORY_ID"

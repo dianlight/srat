@@ -1,12 +1,8 @@
-name: RollBar Create Release Announcement
+name: RollBar Create Release Tag
 
 on:
   release:
     types: [published]
-
-permissions:
-  # Required to create a discussion
-  discussions: write
 
 jobs:
   set-environment:
@@ -25,7 +21,7 @@ jobs:
           else
             echo "environment=production" >> $GITHUB_OUTPUT
           fi
-  create_discussion:
+  create-rollbar-deploy:
     name: Rollbar Deploy Tracking
     runs-on: ubuntu-latest
     needs: set-environment
