@@ -2,7 +2,17 @@
 
 # Changelog
 
+
 ## [ 🚧 Unreleased ]
+
+### ✨ Features
+
+### 🐛 Bug Fixes
+
+### 🏗 Chore
+
+
+## 2026.4.0-rc3
 
 > **Note**: This section tracks development progress and changes planned for the first Release Candidate (RC). The final release notes will be organized and consolidated once the RC is ready for public testing.
 
