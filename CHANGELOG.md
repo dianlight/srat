@@ -12,6 +12,7 @@ We would like to thank all supporters for their contributions and donations.
 With your donations, we are able to continue developing and improving this project. Your support is greatly appreciated.
 
 ### 🔧 Maintenance
+
 - **Backend Code Quality Refactor**: We are undertaking a comprehensive refactor to eliminate recurring Go anti-patterns across the codebase. This includes replacing `interface{}` with `any`, updating error handling to use `errors.AsType[T]`, modernizing goroutine management with `wg.Go`, extracting common helper functions, and improving context-aware logging. This refactor will enhance code readability, maintainability, and performance while adhering to modern Go best practices.
 - **TypeScript 6.0 Migration**: The frontend codebase is being updated for compatibility with TypeScript 6.0 final, including removal of deprecated compiler flags, updating ECMAScript target, enabling new strict flags, and optimizing code for improved type inference. A comprehensive migration guide is being created to document the changes and prepare for the upcoming TypeScript 7.0 Go-based compiler.
 
