@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   process-release:
@@ -114,28 +115,85 @@ jobs:
               console.log('Unreleased section not found in CHANGELOG.md');
             }
 
-      - name: Commit and Push Changes
+      - name: Commit and Push to Branch
         if: steps.process_work.outputs.updated == 'true'
+        id: commit_step
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
+          BRANCH_NAME="chore/changelog-update-${TARGET_TAG_NAME}"
+          git checkout -b "$BRANCH_NAME"
           git add CHANGELOG.md
           git commit -m "chore: update CHANGELOG.md for release $TARGET_TAG_NAME"
-          git push origin main
+          git push origin "$BRANCH_NAME" --force
           
+          echo "BRANCH_NAME=$BRANCH_NAME" >> "$GITHUB_OUTPUT"
           echo "COMMIT_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
 
-      - name: Move release tag to CHANGELOG commit
+      - name: Create and Merge Pull Request
+        if: steps.process_work.outputs.updated == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ steps.generate_token.outputs.token }}
+          script: |
+            const branchName = '${{ steps.commit_step.outputs.BRANCH_NAME }}';
+            const tagName = process.env.TARGET_TAG_NAME;
+
+            console.log(`Creating Pull Request for ${branchName}`);
+            
+            try {
+              const { data: pr } = await github.rest.pulls.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `chore: update CHANGELOG for ${tagName}`,
+                head: branchName,
+                base: 'main',
+                body: `Automated CHANGELOG update for release ${tagName}.`,
+              });
+
+              console.log(`PR created: ${pr.html_url}. Attempting to merge...`);
+
+              // Note: This requires the GitHub App to have permissions to merge 
+              // or bypass protections if checks haven't finished.
+              await github.rest.pulls.merge({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+                merge_method: 'squash'
+              });
+
+              console.log('PR merged successfully.');
+              
+              // Clean up branch
+              await github.rest.git.deleteRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `heads/${branchName}`
+              });
+            } catch (error) {
+              console.error(`Merge process failed: ${error.message}`);
+              core.setFailed('Could not complete PR merge. Manual intervention may be required due to branch protections.');
+            }
+
+      - name: Move release tag to Merge Commit
         if: steps.process_work.outputs.updated == 'true'
         uses: actions/github-script@v7
         with:
           github-token: ${{ steps.generate_token.outputs.token }}
           script: |
             const tagName = process.env.TARGET_TAG_NAME;
-            const commitSha = process.env.COMMIT_SHA;
+            
+            // Fetch the latest commit on main (the merge commit)
+            const { data: ref } = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: 'heads/main'
+            });
+            
+            const commitSha = ref.object.sha;
 
-            console.log(`Moving tag ${tagName} to commit ${commitSha}`);
+            console.log(`Moving tag ${tagName} to merge commit ${commitSha}`);
 
             try {
               await github.rest.git.updateRef({
