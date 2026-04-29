@@ -1,30 +1,4 @@
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-
-**Table of Contents** *generated with [DocToc](https://github.com/thlorenz/doctoc)*
-
-- [CLAUDE.md](#claudemd)
-  - [Project Overview](#project-overview)
-  - [Instruction and Skill Files](#instruction-and-skill-files)
-  - [Build, Test, and Lint Commands](#build-test-and-lint-commands)
-    - [Running a single backend test](#running-a-single-backend-test)
-    - [Running frontend tests with stability check](#running-frontend-tests-with-stability-check)
-  - [Architecture](#architecture)
-    - [Backend (Go 1.26)](#backend-go-126)
-    - [Frontend (TypeScript 6 / React 19 / Bun)](#frontend-typescript-6--react-19--bun)
-    - [Custom Component (Python / Home Assistant)](#custom-component-python--home-assistant)
-  - [Testing Conventions](#testing-conventions)
-    - [Backend tests](#backend-tests)
-    - [Frontend tests](#frontend-tests)
-  - [Task and Workflow Conventions](#task-and-workflow-conventions)
-    - [Tasks live in `docs/tasks/NNN_<slug>.md`](#tasks-live-in-docstasksnnn_slugmd)
-    - [Refactors](#refactors)
-    - [Pull Requests](#pull-requests)
-    - [Changelog](#changelog)
-  - [Code Generation](#code-generation)
-  - [Security and Quality Gates](#security-and-quality-gates)
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DOCTOC SKIP -->
 
 # CLAUDE.md
 
@@ -34,19 +8,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 SRAT (SambaNAS REST Administration Tool) simplifies SAMBA configuration with a REST API and React UI, designed primarily for Home Assistant addons. It is a monorepo with three workspaces managed by [mise](https://mise.jdx.dev):
 
-- **`backend/`** — Go 1.26 REST API server + CLI
-- **`frontend/`** — TypeScript React UI (Bun toolchain)
-- **`custom_components/`** — Python 3.14 Home Assistant integration
+- **`backend/`** - Go 1.26 REST API server + CLI
+- **`frontend/`** - TypeScript React UI (Bun toolchain)
+- **`custom_components/`** - Python 3.14 Home Assistant integration
 
 ## Instruction and Skill Files
 
 Always consult the specialized files before modifying code:
 
-- **`.github/copilot-instructions.md`** — top-level non-negotiable rules
-- **`.github/instructions/*.instructions.md`** — per-language/scenario rules (Go, TypeScript, React, testing, backend command execution, HA)
-- **`.github/skills/*.SKILL.md`** — task workflows (start-task, create-pr, prepare-refactor, update-changelog, etc.)
+- **`.github/copilot-instructions.md`** - top-level non-negotiable rules
+- **`.github/instructions/*.instructions.md`** - per-language/scenario rules (Go, TypeScript, React, testing, back end command execution, HA)
+- **`.github/skills/*.SKILL.md`** - task workflows (start-task, create-pr, prepare-refactor, update-changelog, etc.)
 
-**Critical rule**: Read the top comment/header of any file you modify first — file-specific overrides everything else.
+**Critical rule**: Read the top comment/header of any file you modify first - file-specific overrides everything else.
 
 ## Build, Test, and Lint Commands
 
@@ -108,23 +82,23 @@ cd frontend && bun run test
 
 Key packages under `backend/src/`:
 
-- `cmd/` — three binaries: `srat-server`, `srat-cli`, `srat-openapi`
-- `api/` — Huma HTTP handlers; each file has paired `*_test.go`
-- `service/` — business logic; injected via `go.uber.org/fx`
-- `dto/` — data transfer objects shared between API and services
-- `dbom/` — GORM database models + migrations (`dbom/migrations/`)
-- `dbom/g/` — generated GORM query helpers (do not hand-edit)
-- `converter/` — generated DTO↔DBOM converters via `jmattheis/goverter`
-- `events/` — `EventBusInterface` for internal pub/sub
-- `internal/commandexec/` — shared command execution abstraction (mandatory for all shell commands)
+- `cmd/` - three binaries: `srat-server`, `srat-cli`, `srat-openapi`
+- `api/` - Huma HTTP handlers; each file has paired `*_test.go`
+- `service/` - business logic; injected via `go.uber.org/fx`
+- `dto/` - data transfer objects shared between API and services
+- `dbom/` - GORM database models + migrations (`dbom/migrations/`)
+- `dbom/g/` - generated GORM query helpers (do not hand-edit)
+- `converter/` - generated DTO↔DBOM converters via `jmattheis/goverter`
+- `events/` - `EventBusInterface` for internal pub/sub
+- `internal/commandexec/` - shared command execution abstraction (mandatory for all shell commands)
 
 **Non-negotiable patterns**:
 
-- Use `converter.<Type>ToDtoConverterImpl{}` for all DTO↔DBOM mapping — never write manual `toDTO`/`toDBOM` helpers.
+- Use `converter.<Type>ToDtoConverterImpl{}` for all DTO↔DBOM mapping - never write manual `toDTO`/`toDBOM` helpers.
 - Backend command execution must use `commandexec.Executor`; emit lifecycle events (`command_started` → `command_output` → `command_terminated`) via `EventBusInterface`. See `.github/instructions/backend-command-execution.instructions.md`.
 - Use `slog.*Context` / `tlog.*Context` for logging when a real `context.Context` is in scope.
 - Go 1.26 idioms: `new(expr)` for pointer values, `any` not `interface{}`, `WaitGroup.Go`, `errors.AsType[T]`.
-- Do not edit `backend/src/vendor/` directly — use patch workflow (`backend/patches/` + `mise run //backend:patch`).
+- Do not edit `backend/src/vendor/` directly - use patch workflow (`backend/patches/` + `mise run //backend:patch`).
 
 ### Frontend (TypeScript 6 / React 19 / Bun)
 
@@ -132,9 +106,9 @@ Key packages under `backend/src/`:
 
 Key rules:
 
-- **Never** edit `frontend/src/store/sratApi.ts` or `backend/docs/openapi.*` directly — update Go source then run `cd frontend && bun run gen`.
-- **Never** manually add types to `frontend/src/store/wsApi.ts` — all types come from `sratApi.ts`. WS-only payload types need a doc-stub handler in `backend/src/api/system.go` (tagged `"system","internal"`); see `HandleWelcome`/`HandleCommandEvents` for the pattern.
-- **Never** use raw `fetch()` for internal API calls — always use RTK Query via `sratApi`.
+- **Never** edit `frontend/src/store/sratApi.ts` or `backend/docs/openapi.*` directly - update Go source then run `cd frontend && bun run gen`.
+- **Never** manually add types to `frontend/src/store/wsApi.ts` - all types come from `sratApi.ts`. WS-only payload types need a doc-stub handler in `backend/src/api/system.go` (tagged `"system","internal"`); see `HandleWelcome`/`HandleCommandEvents` for the pattern.
+- **Never** use raw `fetch()` for internal API calls - always use RTK Query via `sratApi`.
 - Forms **must** use `react-hook-form` + `react-hook-form-mui` (`<FormContainer>`, typed field elements). No raw `useState` for form field values, validation errors, or submit-loading state.
 - MUI Grid: use the `size` prop (Grid2 default).
 - Frontend test isolation: use `msw` for API mocking; shared recurring handlers go in `frontend/src/mocks/customHandlers.ts`.
@@ -144,7 +118,7 @@ Key rules:
 - Runtime data in `entry.runtime_data` (not `hass.data`).
 - WebSocket-only coordinator: `update_interval=None`.
 - Sensors return `None` when unavailable.
-- `strings.json` / `translations/en.json` issue entries use **either** `"description"` **or** `"fix_flow"` — never both (hassfest enforces this).
+- `strings.json` / `translations/en.json` issue entries use **either** `"description"` **or** `"fix_flow"` - never both (hassfest enforces this).
 
 ## Testing Conventions
 
@@ -190,11 +164,11 @@ Use the `update-changelog` skill after completing tasks. Entries go under `[ �
 
 ## Code Generation
 
-- `backend/src/converter/*_conv_gen.go` — generated by `goverter`; run `mise run //backend:gen`
-- `backend/src/dbom/g/` — generated GORM helpers; run `mise run //backend:gen`
-- `backend/docs/openapi.*` — generated from Go source annotations; run `mise run //backend:gen`
-- `frontend/src/store/sratApi.ts` — generated from OpenAPI; run `mise run //frontend:gen`
-- Enum types in `backend/src/dto/` — generated by `goenums`; keep enum source files small (type + iota + `//go:generate` only)
+- `backend/src/converter/*_conv_gen.go` - generated by `goverter`; run `mise run //backend:gen`
+- `backend/src/dbom/g/` - generated GORM helpers; run `mise run //backend:gen`
+- `backend/docs/openapi.*` - generated from Go source annotations; run `mise run //backend:gen`
+- `frontend/src/store/sratApi.ts` - generated from OpenAPI; run `mise run //frontend:gen`
+- Enum types in `backend/src/dto/` - generated by `goenums`; keep enum source files small (type + iota + `//go:generate` only)
 
 ## Security and Quality Gates
 
@@ -203,4 +177,4 @@ mise run //backend:gosec      # high-severity issues only (CI gate)
 mise run //backend:gosec_all  # all severities
 ```
 
-File permission defaults: `0750` for directories, `0600` for sensitive files. Never use shell interpolation for untrusted input — pass command args as explicit argv.
+File permission defaults: `0750` for directories, `0600` for sensitive files. Never use shell interpolation for untrusted input - pass command args as explicit argv.

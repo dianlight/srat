@@ -106,7 +106,7 @@ The route exists regardless of the `pprof` build tag. Any accidental import of `
 
 ---
 
-#### [B-SEC-06] Request and response body logging in all modes — password leakage
+#### [B-SEC-06] Request and response body logging in all modes - password leakage
 
 **Severity:** High  
 **File:** `backend/src/server/http_server.go:35-40`
@@ -135,7 +135,7 @@ const defaultAdminPassword = "changeme!"
 If `GenerateSecurePassword` fails (silently), the well-known string `"changeme!"` (or `"changeme"`) is committed to the Samba database. The fallback should be fatal rather than silently setting a predictable credential.
 
 **Fix:** Make password-generation failure fatal in migrations and in the service bootstrap.  
-**Task:** [004] Security Hardening (planned) — add to scope.
+**Task:** [004] Security Hardening (planned) - add to scope.
 
 ---
 
@@ -173,7 +173,7 @@ A caller can supply `DiskID = "../../sda"` to reach `/dev/sda` or any arbitrary 
 
 ---
 
-#### [B-SEC-10] `http.DefaultClient` used for update downloads — no timeout
+#### [B-SEC-10] `http.DefaultClient` used for update downloads - no timeout
 
 **Severity:** Medium  
 **File:** `backend/src/service/upgrade_service.go:553`
@@ -216,7 +216,7 @@ Any process with access to the SQLite file can extract all user passwords.
 The global `var commandResultCache` is shared by all filesystem adapters. A `invalidateCommandResultCache()` call (e.g., after a format operation) flushes valid entries from all other adapters. Error results (e.g., `mkfs.ext4` not installed) are also cached for 30 minutes, surfacing stale errors after package installation.
 
 **Fix:** Move the cache into `FilesystemService`, keyed per adapter type. Cache only successful results, or use a short TTL for errors (30 seconds).  
-**Task:** [036] Frontend Performance — NavBar Lazy Loading and Metrics Render (see also frontend).
+**Task:** [036] Frontend Performance - NavBar Lazy Loading and Metrics Render (see also frontend).
 
 ---
 
@@ -260,7 +260,7 @@ No `http.MaxBytesReader` wrapper. A caller can submit an arbitrarily large JSON 
 
 ---
 
-#### [B-REL-01] **CRITICAL** — Migration 14 registers wrong function names
+#### [B-REL-01] **CRITICAL** - Migration 14 registers wrong function names
 
 **Severity:** Critical  
 **File:** `backend/src/dbom/migrations/00014_sanitize_empty_HASmbPassword.go:15`
@@ -274,7 +274,7 @@ func init() {
 Migration 14's `init()` registers `Up00008` and `Down00008` instead of `Up00014` and `Down00014`. When goose runs migration 14, it executes migration 8's password-seeding `INSERT OR IGNORE` logic again, and migration 14's `UPDATE` logic (sanitising empty passwords) is **never run**. Any database that has empty `HASmbPassword` values will not be repaired by this migration.
 
 **Fix:** Change the `init()` call to `goose.AddMigrationNoTxContext(Up00014, Down00014)`.  
-**Task:** [034] Critical Migration Fix (new — immediate).
+**Task:** [034] Critical Migration Fix (new - immediate).
 
 ---
 
@@ -381,7 +381,7 @@ Ignores the application shutdown context. The request blocks indefinitely on slo
 
 ---
 
-#### [F-SEC-01] Hooks called inside `try/catch` in `useRollbarTelemetry` — Rules of Hooks violation
+#### [F-SEC-01] Hooks called inside `try/catch` in `useRollbarTelemetry` - Rules of Hooks violation
 
 **Severity:** High  
 **File:** `frontend/src/hooks/useRollbarTelemetry.ts:24-32, 78-83`
@@ -457,7 +457,7 @@ The API returns `password` in user objects; the frontend receives and compares c
 `ALL_TAB_CONFIGS` is a module-level constant holding constructed JSX elements for every page. All hooks, RTK Query subscriptions, and `useEffect` calls fire at module load regardless of which tab is active. The Swagger page eagerly imports `openapi-explorer` (a large Web Component).
 
 **Fix:** Use `React.lazy()` for each tab component; wrap `TabPanel` in `<Suspense>`.  
-**Task:** [036] Frontend Performance — NavBar and Metrics Rendering (new).
+**Task:** [036] Frontend Performance - NavBar and Metrics Rendering (new).
 
 ---
 
@@ -469,7 +469,7 @@ The API returns `password` in user objects; the frontend receives and compares c
 15+ state variables, 6 `useEffect` blocks, and 8+ plain function expressions in a 848-line component. `evdata` updates every few seconds on heartbeat, causing the entire navigation chrome to re-render at that frequency. All child components receive new function references.
 
 **Fix:** Wrap all handlers in `useCallback`; extract SSE debug overlay, UpdateButton, and ThemeToggle as separate memoized components.  
-**Task:** [036] Frontend Performance — NavBar and Metrics Rendering (new).
+**Task:** [036] Frontend Performance - NavBar and Metrics Rendering (new).
 
 ---
 
@@ -481,7 +481,7 @@ The API returns `password` in user objects; the frontend receives and compares c
 Each history array is updated in its own `useEffect`, causing multiple sequential state updates and re-renders per heartbeat. `DashboardMetrics.tsx` triggers 3 re-renders per heartbeat.
 
 **Fix:** Consolidate all history state into a single `useReducer` or one `setState` call with an object per component.  
-**Task:** [036] Frontend Performance — NavBar and Metrics Rendering (new).
+**Task:** [036] Frontend Performance - NavBar and Metrics Rendering (new).
 
 ---
 
@@ -522,7 +522,7 @@ Fixed 1-second reconnect delay. All connected browser tabs synchronize reconnect
 isLoading: isLoading && evloading,
 ```
 
-This returns `false` (loaded) when either source finishes, even if the other is still in-flight or has errored. A REST API error makes `isLoading: false && true = false`, so consumers see "loaded" while `health` is an empty object and `error` is set — causing charts to render silently empty rather than showing an error state.
+This returns `false` (loaded) when either source finishes, even if the other is still in-flight or has errored. A REST API error makes `isLoading: false && true = false`, so consumers see "loaded" while `health` is an empty object and `error` is set - causing charts to render silently empty rather than showing an error state.
 
 **Fix:** Change `&&` to `||`: `isLoading: isLoading || evloading`.  
 **Task:** [037] Frontend Data Correctness Fixes (new).
@@ -577,7 +577,7 @@ The explicit `"noImplicitAny": false` override defeats `"strict": true`, silentl
 Tab routing, SSE debug display, update flow, tour control, report-issue dialog, dark-mode toggle, notifications, and the entire page layout are in one component. It re-renders at WebSocket heartbeat frequency.
 
 **Fix:** Extract `SSEDebugOverlay`, `UpdateButton`, `TabPanelRenderer`, and `ThemeToggle` as separate components. Move tab-routing state to a `useTabNavigation` hook.  
-**Task:** [036] Frontend Performance — NavBar and Metrics Rendering (new).
+**Task:** [036] Frontend Performance - NavBar and Metrics Rendering (new).
 
 ---
 
@@ -600,7 +600,7 @@ Tab routing, SSE debug display, update flow, tour control, report-issue dialog, 
 
 **Severity:** Medium  
 No per-client rate limiting on `POST /user`, `PUT /user`, `PUT /settings`. Low-risk in the HA addon context (trusted IPs only), but defense-in-depth suggests a token-bucket limiter on mutation endpoints.  
-**Task:** [004] Security Hardening (planned) — add to scope.
+**Task:** [004] Security Hardening (planned) - add to scope.
 
 ---
 
@@ -625,10 +625,10 @@ No per-client rate limiting on `POST /user`, `PUT /user`, `PUT /settings`. Low-r
 | ----- | ------------------------------------------------------------------- | -------- | -------- |
 | [029] | WebSocket Origin Validation and pprof Route Isolation               | FIX      | High     |
 | [030] | commandexec Snapshot Memory Leak and Busy-Wait Elimination          | FIX      | High     |
-| [031] | Production Logging Safety — Body Logging and Secret Sanitization    | FIX      | High     |
+| [031] | Production Logging Safety - Body Logging and Secret Sanitization    | FIX      | High     |
 | [032] | WebSocket Reconnect Resilience and Frontend Safety Guards           | FIX      | Medium   |
 | [033] | Database Recovery Safety, HTTP Size Limits, and Goroutine Leak      | FIX      | Medium   |
 | [034] | CRITICAL: Migration 14 Wrong Function Registration                  | FIX      | Critical |
 | [035] | Upgrade & HDIdle Path Traversal, Timer Race, and Data Race          | FIX      | High     |
-| [036] | Frontend Performance — NavBar Lazy Loading and Metrics Render       | REFACTOR | High     |
-| [037] | Frontend Data Correctness — isLoading Bug, Hook Rules, localStorage | FIX      | High     |
+| [036] | Frontend Performance - NavBar Lazy Loading and Metrics Render       | REFACTOR | High     |
+| [037] | Frontend Data Correctness - isLoading Bug, Hook Rules, localStorage | FIX      | High     |
