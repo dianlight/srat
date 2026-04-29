@@ -104,7 +104,20 @@ run = [
 ]
 quiet = true
 
+[tasks."vendor:check"]
+description = "Check if vendored dependencies are up to date. This task ensures that the vendored dependencies in the src/vendor directory are up to date with the go.mod file. It runs 'go mod vendor' to update the vendor directory and then checks if there are any changes. If there are changes, it outputs an error message indicating that the vendored dependencies are not up to date and exits with a non-zero status. If there are no changes, it confirms that the vendored dependencies are up to date."
+run = '''
+  set +x +e;
+  go -C src list -mod=mod -m all >/dev/null || go -C src mod vendor;
+
+'''
+quiet = true
+
 [tasks.patch]
+description = "Apply necessary patches to vendored dependencies. This task ensures that any required fixes or modifications are applied to the vendored dependencies before building or testing the project. It checks for the presence of the 'patch' utility and applies patches defined in the 'patches' directory to the corresponding vendored dependencies. If any patch fails to apply, it will output an error message and exit. After applying patches, it cleans up any leftover .rej files and confirms that patches were applied successfully."
+depends = [
+    { task = "vendor:check" },
+]
 run = """
 	set +x +e; 
 	echo "Applying patches to vendored dependencies..."; 
