@@ -315,8 +315,8 @@ export async function createTestStore() {
         store.dispatch(sratApi.util.resetApiState());
         store.dispatch(wsApi.util.resetApiState());
         store.dispatch(githubRestApi.util.resetApiState());
-    } catch {
-        // Silently ignore errors in case dispatch is not fully ready
+    } catch (e) {
+        console.warn("[createTestStore] RTK Query resetApiState failed:", e);
     }
 
     return store;

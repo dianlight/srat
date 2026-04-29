@@ -21,6 +21,7 @@ type SetupServerHandler = Parameters<typeof setupServer>[number];
 let server: ReturnType<typeof setupServer> | null = null;
 let defaultHandlers: SetupServerHandler[] = [];
 let clearFilesystemSupportOverrides: () => void = () => {};
+let resetApiCounters: () => void = () => {};
 
 /**
  * Start MSW server before all tests.
@@ -28,7 +29,7 @@ let clearFilesystemSupportOverrides: () => void = () => {};
  */
 beforeAll(async () => {
 	const [
-		{ handlers: generatedHandlers },
+		{ handlers: generatedHandlers, resetApiCounters: resetFn },
 		{ customHandlers, clearFilesystemSupportOverrides: clearFn },
 		{ streamingHandlers },
 	] = await Promise.all([
@@ -38,6 +39,7 @@ beforeAll(async () => {
 	]);
 
 	clearFilesystemSupportOverrides = clearFn;
+	resetApiCounters = resetFn;
 	defaultHandlers = [...customHandlers, ...streamingHandlers, ...generatedHandlers];
 	server = setupServer(...defaultHandlers);
 	server.listen({ onUnhandledRequest: "warn" });
@@ -53,6 +55,7 @@ afterEach(async () => {
 	const { cleanup } = await import("@testing-library/react");
 	cleanup();
 	clearFilesystemSupportOverrides();
+	resetApiCounters();
 	if (server) {
 		server.resetHandlers(...defaultHandlers);
 	}
