@@ -2,7 +2,20 @@
   "permissions": {
     "allow": [
       "Bash(gh issue *)",
-      "Bash(go build *)"
+      "Bash(go build *)",
+      "Bash(git checkout *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(gh pr create --title 'refactor\\(fe/test\\): frontend test stability fixes + Vitest migration plan' --body ' *)",
+      "PowerShell(Get-Command *)",
+      "PowerShell(Get-ChildItem *)",
+      "Bash(hk check *)",
+      "Bash(JAVA_TOOL_OPTIONS=\"-Djavax.net.ssl.trustStoreType=Windows-ROOT\" hk check)",
+      "Bash(pkl --help)",
+      "Bash(hk --help)",
+      "Bash(pkl eval *)",
+      "Bash(pkl download-package *)"
     ]
   },
   "enabledMcpjsonServers": [
