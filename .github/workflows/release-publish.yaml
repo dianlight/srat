@@ -139,6 +139,10 @@ jobs:
           script: |
             const branchName = '${{ steps.commit_step.outputs.BRANCH_NAME }}';
             const tagName = process.env.TARGET_TAG_NAME;
+            const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+            console.log(`Waiting for branch ${branchName} to be indexed...`);
+            await delay(3000); // 3 second delay to prevent "Resource not accessible" on PR creation
 
             console.log(`Creating Pull Request for ${branchName}`);
             
@@ -155,13 +159,12 @@ jobs:
               pr = response.data;
               console.log(`PR created: ${pr.html_url}`);
             } catch (err) {
-              core.setFailed(`Failed to create PR: ${err.message}`);
+              core.setFailed(`Failed to create PR: ${err.message}. Ensure the GitHub App has "Pull Requests: Write" permissions.`);
               return;
             }
 
             // Retry logic for merging (exponential backoff)
             const maxRetries = 5;
-            const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
             for (let i = 0; i < maxRetries; i++) {
               try {
@@ -186,7 +189,7 @@ jobs:
                 if (i === maxRetries - 1) {
                   core.setFailed('Could not complete PR merge after multiple attempts. Manual intervention may be required.');
                 } else {
-                  const waitTime = Math.pow(2, i) * 1000;
+                  const waitTime = Math.pow(2, i) * 2000;
                   console.log(`Retrying in ${waitTime}ms...`);
                   await delay(waitTime);
                 }
