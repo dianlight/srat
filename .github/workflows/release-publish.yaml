@@ -142,8 +142,9 @@ jobs:
 
             console.log(`Creating Pull Request for ${branchName}`);
             
+            let pr;
             try {
-              const { data: pr } = await github.rest.pulls.create({
+              const response = await github.rest.pulls.create({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 title: `chore: update CHANGELOG for ${tagName}`,
@@ -151,29 +152,45 @@ jobs:
                 base: 'main',
                 body: `Automated CHANGELOG update for release ${tagName}.`,
               });
+              pr = response.data;
+              console.log(`PR created: ${pr.html_url}`);
+            } catch (err) {
+              core.setFailed(`Failed to create PR: ${err.message}`);
+              return;
+            }
 
-              console.log(`PR created: ${pr.html_url}. Attempting to merge...`);
+            // Retry logic for merging (exponential backoff)
+            const maxRetries = 5;
+            const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-              // Note: This requires the GitHub App to have permissions to merge 
-              // or bypass protections if checks haven't finished.
-              await github.rest.pulls.merge({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: pr.number,
-                merge_method: 'squash'
-              });
-
-              console.log('PR merged successfully.');
-              
-              // Clean up branch
-              await github.rest.git.deleteRef({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                ref: `heads/${branchName}`
-              });
-            } catch (error) {
-              console.error(`Merge process failed: ${error.message}`);
-              core.setFailed('Could not complete PR merge. Manual intervention may be required due to branch protections.');
+            for (let i = 0; i < maxRetries; i++) {
+              try {
+                console.log(`Attempt ${i + 1} to merge PR #${pr.number}...`);
+                await github.rest.pulls.merge({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: pr.number,
+                  merge_method: 'squash'
+                });
+                console.log('PR merged successfully.');
+                
+                // Clean up branch
+                await github.rest.git.deleteRef({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  ref: `heads/${branchName}`
+                });
+                return;
+              } catch (error) {
+                console.error(`Attempt ${i + 1} failed: ${error.message}`);
+                if (i === maxRetries - 1) {
+                  core.setFailed('Could not complete PR merge after multiple attempts. Manual intervention may be required.');
+                } else {
+                  const waitTime = Math.pow(2, i) * 1000;
+                  console.log(`Retrying in ${waitTime}ms...`);
+                  await delay(waitTime);
+                }
+              }
             }
 
       - name: Move release tag to Merge Commit
