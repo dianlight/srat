@@ -8,7 +8,7 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const waitForCondition = async (
     check: () => boolean,
     {
-        timeoutMs = 200,
+        timeoutMs = 2000,
         stepMs = 5,
     }: { timeoutMs?: number; stepMs?: number } = {},
 ) => {

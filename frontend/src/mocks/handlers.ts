@@ -26,6 +26,10 @@ const next = (apiKey: string) => {
 	return currentCount;
 };
 
+export function resetApiCounters() {
+	apiCounters.clear();
+}
+
 export const handlers = [
 	http.get(`${baseURL}/api/capabilities`, async () => {
 		const resultArray = [
