@@ -13,11 +13,19 @@ jobs:
     # Don't run this on pre-releases, only on full releases
     if: github.event.release.prerelease == false
     steps:
+      - name: Generate Token
+        id: generate_token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.AUTH_APP_ID }}
+          private-key: ${{ secrets.AUTH_PRIVATE_KEY }}
+
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: main
           fetch-depth: 0
+          token: ${{ steps.generate_token.outputs.token }} # Fondamentale: usa il token della App
 
       - name: Get release information
         id: release_info
