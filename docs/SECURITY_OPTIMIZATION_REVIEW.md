@@ -14,12 +14,12 @@ SRAT is a well-structured monorepo with solid architectural choices (Huma v2, FX
 
 **Severity distribution:**
 
-| Severity  | Backend | Frontend | Total |
-|-----------|---------|----------|-------|
-| Critical  | 1       | 0        | 1     |
-| High      | 9       | 5        | 14    |
-| Medium    | 8       | 6        | 14    |
-| Low       | 6       | 5        | 11    |
+| Severity | Backend | Frontend | Total |
+| -------- | ------- | -------- | ----- |
+| Critical | 1       | 0        | 1     |
+| High     | 9       | 5        | 14    |
+| Medium   | 8       | 6        | 14    |
+| Low      | 6       | 5        | 11    |
 
 ---
 
@@ -30,6 +30,7 @@ SRAT is a well-structured monorepo with solid architectural choices (Huma v2, FX
 ---
 
 #### [B-SEC-01] CORS wildcard origin with `AllowCredentials: true`
+
 **Severity:** High  
 **File:** `backend/src/server/http_server.go:44-54`
 
@@ -47,6 +48,7 @@ The CORS spec prohibits wildcard origins when `Access-Control-Allow-Credentials:
 ---
 
 #### [B-SEC-02] WebSocket upgrader accepts any origin
+
 **Severity:** High  
 **File:** `backend/src/api/ws.go:52-57`
 
@@ -65,6 +67,7 @@ Any page can open a WebSocket and receive all broadcast events (disk events, sha
 ---
 
 #### [B-SEC-03] Ingress session validation commented out
+
 **Severity:** High  
 **File:** `backend/src/server/ha_middleware.go:43-73`
 
@@ -76,6 +79,7 @@ The entire `ingress_session` cookie validation block is disabled. The middleware
 ---
 
 #### [B-SEC-04] Hardcoded trusted IP prefixes, naive IPv6 splitting
+
 **Severity:** High  
 **File:** `backend/src/server/ha_middleware.go:31-34, 75-78`
 
@@ -87,6 +91,7 @@ IP prefixes are hardcoded to a single Docker network. Additionally, `strings.Spl
 ---
 
 #### [B-SEC-05] pprof route registered unconditionally in production router
+
 **Severity:** Medium  
 **File:** `backend/src/server/http_server.go:97`
 
@@ -101,7 +106,8 @@ The route exists regardless of the `pprof` build tag. Any accidental import of `
 
 ---
 
-#### [B-SEC-06] Request and response body logging in all modes — password leakage
+#### [B-SEC-06] Request and response body logging in all modes - password leakage
+
 **Severity:** High  
 **File:** `backend/src/server/http_server.go:35-40`
 
@@ -118,6 +124,7 @@ Raw JSON request bodies are logged before Huma deserializes them. `dto.User.Pass
 ---
 
 #### [B-SEC-07] Hardcoded fallback credential used when password generation fails
+
 **Severity:** High  
 **File:** `backend/src/service/user_service.go:24`, `backend/src/dbom/migrations/00008*.go:23`, `backend/src/dbom/migrations/00014*.go:23`
 
@@ -128,11 +135,12 @@ const defaultAdminPassword = "changeme!"
 If `GenerateSecurePassword` fails (silently), the well-known string `"changeme!"` (or `"changeme"`) is committed to the Samba database. The fallback should be fatal rather than silently setting a predictable credential.
 
 **Fix:** Make password-generation failure fatal in migrations and in the service bootstrap.  
-**Task:** [004] Security Hardening (planned) — add to scope.
+**Task:** [004] Security Hardening (planned) - add to scope.
 
 ---
 
 #### [B-SEC-08] ZipSlip bypass via `dest != "."` escape in upgrade handler
+
 **Severity:** High  
 **File:** `backend/src/service/upgrade_service.go:467-470`
 
@@ -150,6 +158,7 @@ When `dest` is `"."`, the guard is skipped entirely, allowing zip entries to tra
 ---
 
 #### [B-SEC-09] Unsanitized `disk_id` path component in HDIdle handler
+
 **Severity:** High  
 **File:** `backend/src/api/hdidle_handler.go:60,80,116,220`
 
@@ -164,7 +173,8 @@ A caller can supply `DiskID = "../../sda"` to reach `/dev/sda` or any arbitrary 
 
 ---
 
-#### [B-SEC-10] `http.DefaultClient` used for update downloads — no timeout
+#### [B-SEC-10] `http.DefaultClient` used for update downloads - no timeout
+
 **Severity:** Medium  
 **File:** `backend/src/service/upgrade_service.go:553`
 
@@ -180,6 +190,7 @@ resp, err := http.DefaultClient.Do(req) // #nosec G704
 ---
 
 #### [B-SEC-11] Samba passwords stored in cleartext in SQLite
+
 **Severity:** Low  
 **File:** `backend/src/dbom/samba_user.go:16`
 
@@ -198,17 +209,19 @@ Any process with access to the SQLite file can extract all user passwords.
 ---
 
 #### [B-PERF-01] Package-level `commandResultCache` is shared across all adapter instances
+
 **Severity:** High  
 **File:** `backend/src/service/filesystem/base_adapter.go:27-29`
 
 The global `var commandResultCache` is shared by all filesystem adapters. A `invalidateCommandResultCache()` call (e.g., after a format operation) flushes valid entries from all other adapters. Error results (e.g., `mkfs.ext4` not installed) are also cached for 30 minutes, surfacing stale errors after package installation.
 
 **Fix:** Move the cache into `FilesystemService`, keyed per adapter type. Cache only successful results, or use a short TTL for errors (30 seconds).  
-**Task:** [036] Frontend Performance — NavBar Lazy Loading and Metrics Render (see also frontend).
+**Task:** [036] Frontend Performance - NavBar Lazy Loading and Metrics Render (see also frontend).
 
 ---
 
 #### [B-PERF-02] Busy-wait poll in `executeWithInput` (10ms ticker)
+
 **Severity:** Medium  
 **File:** `backend/src/internal/commandexec/runner.go:232-254`
 
@@ -220,6 +233,7 @@ Polls the snapshots map every 10ms under lock. For 60-second operations this is 
 ---
 
 #### [B-PERF-03] `commandexec.Service.snapshots` map grows unbounded
+
 **Severity:** High  
 **File:** `backend/src/internal/commandexec/runner.go:41-97`
 
@@ -231,6 +245,7 @@ Completed snapshots (up to 500 lines each) are never evicted. A long-running ser
 ---
 
 #### [B-PERF-04] No HTTP request body size limit
+
 **Severity:** Medium  
 **File:** `backend/src/server/http_server.go`
 
@@ -245,7 +260,8 @@ No `http.MaxBytesReader` wrapper. A caller can submit an arbitrarily large JSON 
 
 ---
 
-#### [B-REL-01] **CRITICAL** — Migration 14 registers wrong function names
+#### [B-REL-01] **CRITICAL** - Migration 14 registers wrong function names
+
 **Severity:** Critical  
 **File:** `backend/src/dbom/migrations/00014_sanitize_empty_HASmbPassword.go:15`
 
@@ -258,11 +274,12 @@ func init() {
 Migration 14's `init()` registers `Up00008` and `Down00008` instead of `Up00014` and `Down00014`. When goose runs migration 14, it executes migration 8's password-seeding `INSERT OR IGNORE` logic again, and migration 14's `UPDATE` logic (sanitising empty passwords) is **never run**. Any database that has empty `HASmbPassword` values will not be repaired by this migration.
 
 **Fix:** Change the `init()` call to `goose.AddMigrationNoTxContext(Up00014, Down00014)`.  
-**Task:** [034] Critical Migration Fix (new — immediate).
+**Task:** [034] Critical Migration Fix (new - immediate).
 
 ---
 
 #### [B-REL-02] Goroutine leak in `ProcessWebSocketChannel`
+
 **Severity:** High  
 **File:** `backend/src/api/ws.go:318`
 
@@ -278,6 +295,7 @@ A new goroutine is spawned per WebSocket connection with no mechanism to stop it
 ---
 
 #### [B-REL-03] Unchecked nil-pointer assertion in `main-server.go`
+
 **Severity:** High  
 **File:** `backend/src/cmd/srat-server/main-server.go:288`
 
@@ -293,6 +311,7 @@ Every other call site uses the safe `if wg, ok := ...; ok && wg != nil` form. Th
 ---
 
 #### [B-REL-04] `replaceDatabase` infinite recursion
+
 **Severity:** Medium  
 **File:** `backend/src/dbom/db_config.go:220-232`
 
@@ -304,6 +323,7 @@ Every other call site uses the safe `if wg, ok := ...; ok && wg != nil` form. Th
 ---
 
 #### [B-REL-05] `NewDB` returns `nil` silently when `os.Remove` fails
+
 **Severity:** Medium  
 **File:** `backend/src/dbom/db_config.go:225-228`
 
@@ -315,6 +335,7 @@ Every other call site uses the safe `if wg, ok := ...; ok && wg != nil` form. Th
 ---
 
 #### [B-REL-06] Debounce timer race in `watchForDevelopUpdates`
+
 **Severity:** Medium  
 **File:** `backend/src/service/upgrade_service.go:251-256`
 
@@ -326,6 +347,7 @@ Every other call site uses the safe `if wg, ok := ...; ok && wg != nil` form. Th
 ---
 
 #### [B-REL-07] Data race in `HDIdleService.IsRunning()`
+
 **Severity:** Medium  
 **File:** `backend/src/service/hdidle_service.go`
 
@@ -337,6 +359,7 @@ Every other call site uses the safe `if wg, ok := ...; ok && wg != nil` form. Th
 ---
 
 #### [B-REL-08] `context.Background()` in GitHub release API call
+
 **Severity:** Low  
 **File:** `backend/src/service/upgrade_service.go:361`
 
@@ -358,7 +381,8 @@ Ignores the application shutdown context. The request blocks indefinitely on slo
 
 ---
 
-#### [F-SEC-01] Hooks called inside `try/catch` in `useRollbarTelemetry` — Rules of Hooks violation
+#### [F-SEC-01] Hooks called inside `try/catch` in `useRollbarTelemetry` - Rules of Hooks violation
+
 **Severity:** High  
 **File:** `frontend/src/hooks/useRollbarTelemetry.ts:24-32, 78-83`
 
@@ -370,11 +394,12 @@ Ignores the application shutdown context. The request blocks indefinitely on slo
 ---
 
 #### [F-SEC-02] Plaintext password comparison in frontend
+
 **Severity:** Medium  
 **File:** `frontend/src/hooks/useBaseConfigModal.ts:50-52`
 
 ```typescript
-adminUser.password === "changeme!"
+adminUser.password === "changeme!";
 ```
 
 The API returns `password` in user objects; the frontend receives and compares credential material. Any XSS, Redux devtools extension, or network log captures the password value.
@@ -385,6 +410,7 @@ The API returns `password` in user objects; the frontend receives and compares c
 ---
 
 #### [F-SEC-03] `localStorage.getItem` deserialized without `try/catch`
+
 **Severity:** Medium  
 **Files:** `frontend/src/hooks/issueHooks.ts:8-10`, `frontend/src/pages/dashboard/metrics/SystemMetricsAccordion.tsx:83`
 
@@ -396,6 +422,7 @@ The API returns `password` in user objects; the frontend receives and compares c
 ---
 
 #### [F-SEC-04] `globalThis` used as a runtime configuration channel
+
 **Severity:** Medium  
 **File:** `frontend/src/store/wsApi.ts:44-46, 77-83`
 
@@ -407,6 +434,7 @@ The API returns `password` in user objects; the frontend receives and compares c
 ---
 
 #### [F-SEC-05] WebSocket message parsing without error handling
+
 **Severity:** Medium  
 **File:** `frontend/src/store/wsApi.ts:181-200`
 
@@ -422,39 +450,43 @@ The API returns `password` in user objects; the frontend receives and compares c
 ---
 
 #### [F-PERF-01] All page components instantiated eagerly in `NavBar.tsx`
+
 **Severity:** High  
 **File:** `frontend/src/components/NavBar.tsx:100-145`
 
 `ALL_TAB_CONFIGS` is a module-level constant holding constructed JSX elements for every page. All hooks, RTK Query subscriptions, and `useEffect` calls fire at module load regardless of which tab is active. The Swagger page eagerly imports `openapi-explorer` (a large Web Component).
 
 **Fix:** Use `React.lazy()` for each tab component; wrap `TabPanel` in `<Suspense>`.  
-**Task:** [036] Frontend Performance — NavBar and Metrics Rendering (new).
+**Task:** [036] Frontend Performance - NavBar and Metrics Rendering (new).
 
 ---
 
 #### [F-PERF-02] `NavBar` event handlers re-created on every heartbeat
+
 **Severity:** High  
 **File:** `frontend/src/components/NavBar.tsx:400-435`
 
 15+ state variables, 6 `useEffect` blocks, and 8+ plain function expressions in a 848-line component. `evdata` updates every few seconds on heartbeat, causing the entire navigation chrome to re-render at that frequency. All child components receive new function references.
 
 **Fix:** Wrap all handlers in `useCallback`; extract SSE debug overlay, UpdateButton, and ThemeToggle as separate memoized components.  
-**Task:** [036] Frontend Performance — NavBar and Metrics Rendering (new).
+**Task:** [036] Frontend Performance - NavBar and Metrics Rendering (new).
 
 ---
 
 #### [F-PERF-03] Metrics history uses 3 separate `useEffect`/`useState` pairs per component
+
 **Severity:** High  
 **Files:** `frontend/src/pages/dashboard/DashboardMetrics.tsx:47-101`, `NetworkHealthMetrics.tsx:31-63`, `DiskHealthMetrics.tsx:63-113`, `SystemMetricsAccordion.tsx`
 
 Each history array is updated in its own `useEffect`, causing multiple sequential state updates and re-renders per heartbeat. `DashboardMetrics.tsx` triggers 3 re-renders per heartbeat.
 
 **Fix:** Consolidate all history state into a single `useReducer` or one `setState` call with an object per component.  
-**Task:** [036] Frontend Performance — NavBar and Metrics Rendering (new).
+**Task:** [036] Frontend Performance - NavBar and Metrics Rendering (new).
 
 ---
 
 #### [F-PERF-04] `mergeCommandLines` allocates new `Set` and arrays on every WebSocket event
+
 **Severity:** Medium  
 **File:** `frontend/src/App.tsx:34-57`
 
@@ -466,6 +498,7 @@ Called inside `setCommandSessions` on every `command_output` event. For commands
 ---
 
 #### [F-PERF-05] WebSocket reconnect has no exponential backoff
+
 **Severity:** Medium  
 **File:** `frontend/src/store/wsApi.ts:142-150`
 
@@ -481,6 +514,7 @@ Fixed 1-second reconnect delay. All connected browser tabs synchronize reconnect
 ---
 
 #### [F-REL-01] `isLoading` uses `&&` (AND) instead of `||` (OR) in hook combiners
+
 **Severity:** High  
 **Files:** `frontend/src/hooks/healthHook.ts:48`, `frontend/src/hooks/volumeHook.ts:29`, `frontend/src/hooks/shareHook.ts:30`
 
@@ -488,7 +522,7 @@ Fixed 1-second reconnect delay. All connected browser tabs synchronize reconnect
 isLoading: isLoading && evloading,
 ```
 
-This returns `false` (loaded) when either source finishes, even if the other is still in-flight or has errored. A REST API error makes `isLoading: false && true = false`, so consumers see "loaded" while `health` is an empty object and `error` is set — causing charts to render silently empty rather than showing an error state.
+This returns `false` (loaded) when either source finishes, even if the other is still in-flight or has errored. A REST API error makes `isLoading: false && true = false`, so consumers see "loaded" while `health` is an empty object and `error` is set - causing charts to render silently empty rather than showing an error state.
 
 **Fix:** Change `&&` to `||`: `isLoading: isLoading || evloading`.  
 **Task:** [037] Frontend Data Correctness Fixes (new).
@@ -496,6 +530,7 @@ This returns `false` (loaded) when either source finishes, even if the other is 
 ---
 
 #### [F-REL-02] WebSocket reconnect race: `setWsConnected(true)` after cache removal
+
 **Severity:** Medium  
 **File:** `frontend/src/store/wsApi.ts:140-156`
 
@@ -507,6 +542,7 @@ If `cacheEntryRemoved` resolves between timer firing and `connect()` returning, 
 ---
 
 #### [F-REL-03] `useIgnoredIssues` crashes tab on corrupted localStorage
+
 **Severity:** Medium  
 **File:** `frontend/src/hooks/issueHooks.ts:8-10`
 
@@ -522,6 +558,7 @@ If `cacheEntryRemoved` resolves between timer firing and `connect()` returning, 
 ---
 
 #### [F-QUAL-01] `noImplicitAny: false` overrides `strict: true`
+
 **Severity:** High  
 **File:** `frontend/tsconfig.json:33`
 
@@ -533,17 +570,19 @@ The explicit `"noImplicitAny": false` override defeats `"strict": true`, silentl
 ---
 
 #### [F-QUAL-02] `NavBar.tsx` is an 848-line monolith mixing 8+ concerns
+
 **Severity:** High  
 **File:** `frontend/src/components/NavBar.tsx`
 
 Tab routing, SSE debug display, update flow, tour control, report-issue dialog, dark-mode toggle, notifications, and the entire page layout are in one component. It re-renders at WebSocket heartbeat frequency.
 
 **Fix:** Extract `SSEDebugOverlay`, `UpdateButton`, `TabPanelRenderer`, and `ThemeToggle` as separate components. Move tab-routing state to a `useTabNavigation` hook.  
-**Task:** [036] Frontend Performance — NavBar and Metrics Rendering (new).
+**Task:** [036] Frontend Performance - NavBar and Metrics Rendering (new).
 
 ---
 
 #### [F-QUAL-03] `SmbConfPage` refetches on every IntersectionObserver event including exit
+
 **Severity:** Low  
 **File:** `frontend/src/pages/SmbConf.tsx:23-28`
 
@@ -558,37 +597,38 @@ Tab routing, SSE debug display, update flow, tour control, report-issue dialog, 
 ## Cross-Cutting Concerns
 
 ### No API-level rate limiting on user/settings mutations
+
 **Severity:** Medium  
 No per-client rate limiting on `POST /user`, `PUT /user`, `PUT /settings`. Low-risk in the HA addon context (trusted IPs only), but defense-in-depth suggests a token-bucket limiter on mutation endpoints.  
-**Task:** [004] Security Hardening (planned) — add to scope.
+**Task:** [004] Security Hardening (planned) - add to scope.
 
 ---
 
 ## Already-Planned Work (Do Not Duplicate)
 
-| Finding | Planned Task |
-|---------|--------------|
-| CORS wildcard + credentials | [004] Security Hardening |
-| Ingress session validation disabled | [004] Security Hardening |
-| Hardcoded IP allowlist | [004] Security Hardening |
-| `errors.As` → `errors.AsType` migration | [007] Backend Code Quality |
-| Large service file splits | [007] Backend Code Quality |
-| HDIdle missing endpoints | [003] HDIdle Service Completion |
-| Converter interface gap | [006] DB and ORM Stubs |
-| Migration 00009 no-op | [006] DB and ORM Stubs |
+| Finding                                 | Planned Task                    |
+| --------------------------------------- | ------------------------------- |
+| CORS wildcard + credentials             | [004] Security Hardening        |
+| Ingress session validation disabled     | [004] Security Hardening        |
+| Hardcoded IP allowlist                  | [004] Security Hardening        |
+| `errors.As` → `errors.AsType` migration | [007] Backend Code Quality      |
+| Large service file splits               | [007] Backend Code Quality      |
+| HDIdle missing endpoints                | [003] HDIdle Service Completion |
+| Converter interface gap                 | [006] DB and ORM Stubs          |
+| Migration 00009 no-op                   | [006] DB and ORM Stubs          |
 
 ---
 
 ## New Tasks Generated
 
-| # | Task | Type | Severity |
-|---|------|------|----------|
-| [029] | WebSocket Origin Validation and pprof Route Isolation | FIX | High |
-| [030] | commandexec Snapshot Memory Leak and Busy-Wait Elimination | FIX | High |
-| [031] | Production Logging Safety — Body Logging and Secret Sanitization | FIX | High |
-| [032] | WebSocket Reconnect Resilience and Frontend Safety Guards | FIX | Medium |
-| [033] | Database Recovery Safety, HTTP Size Limits, and Goroutine Leak | FIX | Medium |
-| [034] | CRITICAL: Migration 14 Wrong Function Registration | FIX | Critical |
-| [035] | Upgrade & HDIdle Path Traversal, Timer Race, and Data Race | FIX | High |
-| [036] | Frontend Performance — NavBar Lazy Loading and Metrics Render | REFACTOR | High |
-| [037] | Frontend Data Correctness — isLoading Bug, Hook Rules, localStorage | FIX | High |
+| #     | Task                                                                | Type     | Severity |
+| ----- | ------------------------------------------------------------------- | -------- | -------- |
+| [029] | WebSocket Origin Validation and pprof Route Isolation               | FIX      | High     |
+| [030] | commandexec Snapshot Memory Leak and Busy-Wait Elimination          | FIX      | High     |
+| [031] | Production Logging Safety - Body Logging and Secret Sanitization    | FIX      | High     |
+| [032] | WebSocket Reconnect Resilience and Frontend Safety Guards           | FIX      | Medium   |
+| [033] | Database Recovery Safety, HTTP Size Limits, and Goroutine Leak      | FIX      | Medium   |
+| [034] | CRITICAL: Migration 14 Wrong Function Registration                  | FIX      | Critical |
+| [035] | Upgrade & HDIdle Path Traversal, Timer Race, and Data Race          | FIX      | High     |
+| [036] | Frontend Performance - NavBar Lazy Loading and Metrics Render       | REFACTOR | High     |
+| [037] | Frontend Data Correctness - isLoading Bug, Hook Rules, localStorage | FIX      | High     |

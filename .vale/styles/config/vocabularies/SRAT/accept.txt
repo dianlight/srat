@@ -325,3 +325,8 @@ Teardown
 subtests
 gofmt
 semver
+commandexec
+hk
+CAs
+argv
+isLoading
