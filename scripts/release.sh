@@ -44,6 +44,22 @@ confirm() {
 	fi
 }
 
+show_spinner() {
+	local pid=$1
+	local delay=0.1
+	# shellcheck disable=SC1003
+	local spinstr='|/-\'
+	# SC2143: Use grep -q instead of checking for non-empty string output
+	while ps a | awk '{print $1}' | grep -q "$pid"; do
+		local temp=${spinstr#?}
+		printf " [%c]  " "$spinstr"
+		spinstr=$temp${spinstr%"$temp"}
+		sleep "$delay"
+		printf "\b\b\b\b\b\b"
+	done
+	printf "    \b\b\b\b"
+}
+
 # Parse arguments
 while [[ "$#" -gt 0 ]]; do
 	case $1 in
@@ -125,6 +141,37 @@ log "Ensuring main is synced with remote..."
 confirm "Push existing commits to origin main?"
 git push origin main
 
+# 8. Update CHANGELOG.md (Version only)
+log "Checking CHANGELOG.md status..."
+SKIP_CHANGELOG_COMMIT=false
+if [[ -f "CHANGELOG.md" ]]; then
+	if grep -q "## \[ 🚧 Unreleased \]" CHANGELOG.md; then
+		log "Updating CHANGELOG.md with $NEXT_VERSION..."
+		sed -i "s/## \[ 🚧 Unreleased \]/## $NEXT_VERSION/" CHANGELOG.md
+	elif grep -q "## $NEXT_VERSION" CHANGELOG.md; then
+		log "Version $NEXT_VERSION already found in CHANGELOG.md."
+		read -p ">> Continue without updating CHANGELOG? [y/N]: " -n 1 -r
+		echo
+		if [[ ! $REPLY =~ ^[Yy]$ ]]; then error "Aborted by user."; fi
+		SKIP_CHANGELOG_COMMIT=true
+	else
+		error "No 'Unreleased' section found and version $NEXT_VERSION is missing from CHANGELOG.md."
+	fi
+else
+	error "CHANGELOG.md not found."
+fi
+
+# 9. Commit, Push and wait for CI to create assets
+if [[ "$SKIP_CHANGELOG_COMMIT" == "false" ]]; then
+	log "Committing version update to trigger build..."
+	confirm "Commit and push CHANGELOG update for $NEXT_VERSION?"
+	git add CHANGELOG.md
+	git commit -m "chore: release $NEXT_VERSION"
+	git push origin main
+else
+	log "Skipping CHANGELOG commit as version is already present."
+fi
+
 # 6. Check for Draft Release after last push
 LAST_PUSH_DATE=$(git log -1 --format=%cI)
 check_draft_release() {
@@ -140,53 +187,51 @@ while true; do
 		break
 	fi
 	if [[ "$NO_WAIT" == "true" ]]; then error "No draft release found and --no-wait is set."; fi
-	log "Draft not found yet. Polling in 30s..."
-	sleep 30
+
+	printf "  Draft not found yet. Waiting... "
+	(sleep 30) &
+	show_spinner $!
+	echo ""
 done
 
-# 7. Check for running GitHub Actions
-log "Checking for active workflow runs..."
+# 7. Check for running GitHub Actions on main
+log "Checking for active workflow runs on main..."
 while true; do
-	RUNNING_ACTIONS=$(gh run list --status in_progress --status queued --limit 5 --json databaseId --jq '.[].databaseId')
+	RUNNING_ACTIONS=$(gh run list --branch main --status in_progress --status queued --limit 5 --json databaseId --jq '.[].databaseId')
 	if [[ -z "$RUNNING_ACTIONS" ]]; then
-		log "No active actions. Proceeding..."
+		log "No active actions on main. Proceeding..."
 		break
 	fi
-	if [[ "$NO_WAIT" == "true" ]]; then error "GitHub Actions are still running and --no-wait is set."; fi
-	log "Workflows are still running. Waiting 30s..."
-	sleep 30
+	if [[ "$NO_WAIT" == "true" ]]; then error "GitHub Actions are still running on main and --no-wait is set."; fi
+
+	printf "  Workflows are still running. Waiting... "
+	(sleep 30) &
+	show_spinner $!
+	echo ""
 done
 
-# 8. Update CHANGELOG.md (Version only)
-log "Updating CHANGELOG.md with $NEXT_VERSION..."
-if [[ -f "CHANGELOG.md" ]]; then
-	sed -i "s/## \[ 🚧 Unreleased \]/## $NEXT_VERSION/" CHANGELOG.md
-else
-	error "CHANGELOG.md not found."
-fi
+log "Waiting for CI build on main to update draft assets..."
+(sleep 15) &
+show_spinner $!
+echo ""
 
-# 9. Commit, Push and wait for CI to create assets
-log "Committing version update to trigger build..."
-confirm "Commit and push CHANGELOG update for $NEXT_VERSION?"
-git add CHANGELOG.md
-git commit -m "chore: release $NEXT_VERSION"
-git push origin main
-
-log "Waiting for CI build to update draft assets..."
-sleep 15
 while true; do
-	STATUS=$(gh run list --limit 1 --json status,conclusion --jq '.[0]')
+	STATUS=$(gh run list --branch main --limit 1 --json status,conclusion --jq '.[0]')
 	RUN_STATUS=$(echo "$STATUS" | jq -r '.status')
 	RUN_CONCLUSION=$(echo "$STATUS" | jq -r '.conclusion')
 
 	if [[ "$RUN_STATUS" == "completed" ]]; then
 		if [[ "$RUN_CONCLUSION" != "success" ]]; then
-			error "CI Build failed with conclusion: $RUN_CONCLUSION"
+			error "CI Build on main failed with conclusion: $RUN_CONCLUSION"
 		fi
 		break
 	fi
-	log "Waiting for CI to finish build ($RUN_STATUS)..."
-	sleep 30
+
+	# SC2059: Pass variables as arguments to printf format string
+	printf "  Waiting for CI build (%s)... " "$RUN_STATUS"
+	(sleep 30) &
+	show_spinner $!
+	echo ""
 done
 
 # 10. Finalize Draft Release
