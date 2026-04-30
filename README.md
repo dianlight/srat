@@ -114,6 +114,12 @@ You can use this section to highlight how people can contribute to your project.
 
 You can add information on how they can open issues or how they can sponsor the project.
 
+### Release process
+
+We use a helper script to streamline releases; see the release documentation for details:
+
+- [Release process - using scripts/release.sh via mise](docs/RELEASE_PROCESS.md)
+
 ## License
 
 <!-- [(Back to top)](#table-of-contents) -->
