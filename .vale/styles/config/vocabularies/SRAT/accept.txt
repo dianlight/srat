@@ -325,3 +325,17 @@ Teardown
 subtests
 gofmt
 semver
+hk
+PKL
+GraalVM
+Nexus
+ENOENT
+mise
+bunfig
+TOML
+toml
+postinstall
+commandexec
+isLoading
+NavBar
+pprof

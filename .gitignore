@@ -27,6 +27,9 @@ backend/src/service/filesystem/example/example
 backend/src/internal/updatekey/update-private-key.key
 backend/src/internal/assets/srat.zip
 
+# Machine-local mise config (never commit — contains machine-specific paths)
+.mise.local.toml
+
 # Python
 __pycache__/
 *.py[cod]

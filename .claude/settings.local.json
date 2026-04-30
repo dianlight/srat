@@ -15,7 +15,18 @@
       "Bash(pkl --help)",
       "Bash(hk --help)",
       "Bash(pkl eval *)",
-      "Bash(pkl download-package *)"
+      "Bash(pkl download-package *)",
+      "Bash(mise install *)",
+      "Bash(grep -v \"^$\")",
+      "Bash(bun pm *)",
+      "Bash(npm --version)",
+      "Bash(bun --print \"JSON.stringify\\(Bun.argv\\)\")",
+      "Bash(MISE_VERBOSE=1 mise install npm:markdownlint-cli2)",
+      "Bash(mise ls *)",
+      "Bash(vale sync *)",
+      "Bash(vale \"docs/CORPORATE_PROXY_PKL_FIX.md\")",
+      "Bash(markdownlint-cli2 \"docs/SECURITY_OPTIMIZATION_REVIEW.md\")",
+      "Bash(vale \"docs/SECURITY_OPTIMIZATION_REVIEW.md\" \"docs/CORPORATE_PROXY_PKL_FIX.md\")"
     ]
   },
   "enabledMcpjsonServers": [

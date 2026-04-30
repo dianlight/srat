@@ -567,7 +567,7 @@ No per-client rate limiting on `POST /user`, `PUT /user`, `PUT /settings`. Low-r
 ## Already-Planned Work (Do Not Duplicate)
 
 | Finding | Planned Task |
-|---------|--------------|
+| ------- | ------------ |
 | CORS wildcard + credentials | [004] Security Hardening |
 | Ingress session validation disabled | [004] Security Hardening |
 | Hardcoded IP allowlist | [004] Security Hardening |
@@ -582,13 +582,13 @@ No per-client rate limiting on `POST /user`, `PUT /user`, `PUT /settings`. Low-r
 ## New Tasks Generated
 
 | # | Task | Type | Severity |
-|---|------|------|----------|
+| - | ---- | ---- | -------- |
 | [029] | WebSocket Origin Validation and pprof Route Isolation | FIX | High |
 | [030] | commandexec Snapshot Memory Leak and Busy-Wait Elimination | FIX | High |
-| [031] | Production Logging Safety — Body Logging and Secret Sanitization | FIX | High |
+| [031] | Production Logging Safety: Body Logging and Secret Sanitization | FIX | High |
 | [032] | WebSocket Reconnect Resilience and Frontend Safety Guards | FIX | Medium |
 | [033] | Database Recovery Safety, HTTP Size Limits, and Goroutine Leak | FIX | Medium |
 | [034] | CRITICAL: Migration 14 Wrong Function Registration | FIX | Critical |
 | [035] | Upgrade & HDIdle Path Traversal, Timer Race, and Data Race | FIX | High |
-| [036] | Frontend Performance — NavBar Lazy Loading and Metrics Render | REFACTOR | High |
-| [037] | Frontend Data Correctness — isLoading Bug, Hook Rules, localStorage | FIX | High |
+| [036] | Frontend Performance: NavBar Lazy Loading and Metrics Render | REFACTOR | High |
+| [037] | Frontend Data Correctness: isLoading Bug, Hook Rules, localStorage | FIX | High |
