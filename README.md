@@ -18,8 +18,20 @@ Currently under development and in an alpha state, SRAT is set to become the pre
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
+- [Installation](#installation)
+  - [Local Development](#local-development)
+- [Home Assistant Custom Component](#home-assistant-custom-component)
+  - [Install via HACS (recommended)](#install-via-hacs-recommended)
+  - [Manual Install](#manual-install)
+- [Usage](#usage)
+  - [Feature Documentation](#feature-documentation)
+- [Database](#database)
+- [Sponsor](#sponsor)
+- [Contribute](#contribute)
+- [License](#license)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 :construction_worker: This is a part for new SambaNas2 Home Assistant Addon. :construction_worker:
 
