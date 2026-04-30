@@ -132,9 +132,9 @@ flag "--version <version>" help="Release version"
 env = { _.file = "/tmp/.env.tmp" }
 run = [
   'echo "Running release process with version: ${usage_version:-not provided}"',
-  './scripts/release.sh --interactive "${usage_version:+--version ${usage_version?}}"',
+  './scripts/release.sh --interactive ${usage_version:+--version ${usage_version?}}',
 ]
-quiet = true
+#quiet = true
 
 [tasks.rollbar_env]
 usage = '''
