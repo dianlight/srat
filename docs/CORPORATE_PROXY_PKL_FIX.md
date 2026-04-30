@@ -1,18 +1,19 @@
 # Corporate Proxy SSL Fix for hk / PKL / bun
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-
 **Table of Contents** *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
-- [Corporate Proxy SSL Fix for hk / PKL](#corporate-proxy-ssl-fix-for-hk--pkl)
-  - [Problem](#problem)
-    - [Root cause](#root-cause)
-  - [Fix (one-time setup per machine)](#fix-one-time-setup-per-machine)
-    - [1 - Export the Windows trusted root CAs to a PEM bundle](#1---export-the-windows-trusted-root-cas-to-a-pem-bundle)
-    - [2 - Pre-download the hk PKL package](#2---pre-download-the-hk-pkl-package)
-    - [3 - Verify](#3---verify)
-  - [Re-running after a hk version upgrade](#re-running-after-a-hk-version-upgrade)
-  - [Why `JAVA_TOOL_OPTIONS` does not work](#why-java_tool_options-does-not-work)
+- [Problem](#problem)
+  - [PKL error](#pkl-error)
+  - [Root cause](#root-cause)
+- [Fix (one-time setup per machine)](#fix-one-time-setup-per-machine)
+  - [1 - Export the Windows trusted root CAs to a PEM bundle](#1---export-the-windows-trusted-root-cas-to-a-pem-bundle)
+  - [2 - Pre-download the hk PKL package](#2---pre-download-the-hk-pkl-package)
+  - [3 - Verify PKL / hk](#3--verify-pkl--hk)
+  - [4 - Fix `mise install` (npm tool downloads)](#4--fix-mise-install-npm-tool-downloads)
+  - [5 - Verify full install](#5--verify-full-install)
+- [Re-running after a hk version upgrade](#re-running-after-a-hk-version-upgrade)
+- [Why `JAVA_TOOL_OPTIONS` does not work for PKL](#why-java_tool_options-does-not-work-for-pkl)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 

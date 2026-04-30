@@ -29,6 +29,7 @@ Currently under development and in an alpha state, SRAT is set to become the pre
 - [Database](#database)
 - [Sponsor](#sponsor)
 - [Contribute](#contribute)
+  - [Release process](#release-process)
 - [License](#license)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
