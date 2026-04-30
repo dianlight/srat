@@ -237,6 +237,11 @@ done
 # 10. Finalize Draft Release
 log "Publishing release $NEXT_VERSION..."
 confirm "Publish draft release $DRAFT_ID as $NEXT_VERSION?"
+
+# Ensure the tag created by the CI is available locally/on remote metadata
+log "Syncing tags before publishing..."
+git fetch --tags --force
+
 gh release edit "$DRAFT_ID" --tag "$NEXT_VERSION" --title "$NEXT_VERSION" --draft=false
 
 # 11. Prepend Unreleased and move Thanks/Notes
