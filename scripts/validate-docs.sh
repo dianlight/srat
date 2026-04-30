@@ -76,7 +76,8 @@ check_dependencies() {
 # Run markdownlint
 run_markdownlint() {
 	print_status "info" "Running markdownlint (GitHub Flavored Markdown)..."
-	if $RUNNER markdownlint-cli2 "**/*.md" "#frontend/node_modules" "#backend/src/vendor" "#.vale" "#.github" "#docs/tasks" "#docs/refactors"; then
+	# canonical excludes: node_modules, vendor, vale dir, github metadata, task/refactor docs, virtualenvs
+	if $RUNNER markdownlint-cli2 "**/*.md" "#frontend/node_modules/**" "#backend/src/vendor/**" "#.vale/**" "#.github/**" "#docs/tasks/**" "#docs/refactors/**" "#custom_components/.venv/**"; then
 		print_status "success" "Markdownlint passed"
 		return 0
 	else
@@ -85,23 +86,9 @@ run_markdownlint() {
 	fi
 }
 
-# Run Lychee link checker
-run_lychee() {
-	if ! command -v lychee &>/dev/null; then
-		print_status "warning" "Lychee not installed - skipping link check"
-		return 0
-	fi
-
-	print_status "info" "Running Lychee link checker..."
-
-	if lychee --config .lychee.toml .; then
-		print_status "success" "Lychee link check passed"
-		return 0
-	else
-		print_status "error" "Lychee link check failed"
-		return 1
-	fi
-}
+# Link checking is performed in CI (lycheeverse/lychee-action). Local link checks are optional and
+# intentionally skipped here to avoid slow pre-commit hooks. If you want to run lychee locally,
+# install lychee and run it separately: lychee --config .lychee.toml .
 
 # Run Vale prose linter
 run_vale() {
@@ -119,13 +106,22 @@ run_vale() {
 		print_status "warning" "Could not sync Vale styles - continuing anyway"
 	fi
 
-	# Run Vale on all markdown files
-	if find . -name "*.md" -not -path "./frontend/node_modules/*" -not -path "./.git/*" -not -path "./backend/src/vendor/*" -not -path "./.vale/*" -not -path "./.github/*" -not -path "./docs/tasks/*" -not -path "./docs/refactors/*" -not -path "./custom_components/.venv/*" -not -name "CHANGELOG.md" -exec vale {} +; then
+	# Run Vale on all markdown files (respect canonical excludes)
+	if find . -name "*.md" \
+		-not -path "./frontend/node_modules/*" \
+		-not -path "./.git/*" \
+		-not -path "./backend/src/vendor/*" \
+		-not -path "./.vale/*" \
+		-not -path "./.github/*" \
+		-not -path "./docs/tasks/*" \
+		-not -path "./docs/refactors/*" \
+		-not -path "./custom_components/.venv/*" \
+		-not -name "CHANGELOG.md" -exec vale {} +; then
 		print_status "success" "Vale prose linting passed"
 		return 0
 	else
-		print_status "warning" "Vale found style issues (not blocking)"
-		return 0 # Vale warnings are non-blocking
+		print_status "error" "Vale found style issues"
+		return 1
 	fi
 }
 
@@ -140,9 +136,8 @@ main() {
 
 	check_dependencies
 
-	# Run all checks
+	# Run all checks (link checking is CI-only)
 	run_markdownlint || exit_code=1
-	run_lychee || exit_code=1
 	run_vale || exit_code=1
 
 	echo
