@@ -1,26 +1,36 @@
+# Corporate Proxy SSL Fix for hk / PKL / bun
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-
 **Table of Contents** *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
-- [Corporate Proxy SSL Fix for hk / PKL](#corporate-proxy-ssl-fix-for-hk--pkl)
-  - [Problem](#problem)
-    - [Root cause](#root-cause)
-  - [Fix (one-time setup per machine)](#fix-one-time-setup-per-machine)
-    - [1 - Export the Windows trusted root CAs to a PEM bundle](#1---export-the-windows-trusted-root-cas-to-a-pem-bundle)
-    - [2 - Pre-download the hk PKL package](#2---pre-download-the-hk-pkl-package)
-    - [3 - Verify](#3---verify)
-  - [Re-running after a hk version upgrade](#re-running-after-a-hk-version-upgrade)
-  - [Why `JAVA_TOOL_OPTIONS` does not work](#why-java_tool_options-does-not-work)
+- [Problem](#problem)
+  - [PKL error](#pkl-error)
+  - [Root cause](#root-cause)
+- [Fix (one-time setup per machine)](#fix-one-time-setup-per-machine)
+  - [1 - Export the Windows trusted root CAs to a PEM bundle](#1---export-the-windows-trusted-root-cas-to-a-pem-bundle)
+  - [2 - Pre-download the hk PKL package](#2---pre-download-the-hk-pkl-package)
+  - [3 - Verify PKL / hk](#3--verify-pkl--hk)
+  - [4 - Fix `mise install` (npm tool downloads)](#4--fix-mise-install-npm-tool-downloads)
+  - [5 - Verify full install](#5--verify-full-install)
+- [Re-running after a hk version upgrade](#re-running-after-a-hk-version-upgrade)
+- [Why `JAVA_TOOL_OPTIONS` does not work for PKL](#why-java_tool_options-does-not-work-for-pkl)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-# Corporate Proxy SSL Fix for hk / PKL
-
 ## Problem
 
-Running `hk check` (or any `hk` command) fails on corporate networks that perform SSL
-inspection (MITM proxy), with the following error:
+On corporate networks with SSL inspection (MITM proxy), two separate issues appear:
+
+1. **`hk check` / PKL**: fails with a certificate error (see below).
+2. **`mise install`**: fails with `SELF_SIGNED_CERT_IN_CHAIN` when bun downloads npm packages.
+
+Both are fixed by the same CA bundle; only the configuration target differs.
+
+---
+
+### PKL error
+
+Running `hk check` (or any `hk` command) fails with the following error:
 
 ```text
 –– Pkl Error ––
@@ -36,6 +46,8 @@ GraalVM native image with a **bundled trust store** - it does not use the Window
 certificate store or respect `JAVA_TOOL_OPTIONS`. When the corporate proxy rewrites
 TLS certificates using a corporate root CA that is not in PKL's bundled store, all
 outbound HTTPS requests from PKL fail.
+
+---
 
 ## Fix (one-time setup per machine)
 
@@ -69,7 +81,7 @@ pkl download-package \
 
 The package is stored at `%USERPROFILE%\.pkl\cache\`.
 
-### 3 - Verify
+### 3 — Verify PKL / hk
 
 ```bash
 hk check
@@ -77,10 +89,51 @@ hk check
 
 Should now load the PKL config from cache without any network access.
 
+### 4 — Fix `mise install` (npm tool downloads)
+
+`mise install` uses bun to download npm tools, but bun has three issues on Windows corporate
+networks:
+- Does not trust the proxy CA → `SELF_SIGNED_CERT_IN_CHAIN`
+- Misparses Nexus-style registry paths (drops the repo-name segment) → 400/404 on the
+  corporate proxy
+- Fails to enqueue lifecycle scripts with ENOENT on paths that contain spaces
+
+Create a **machine-local** mise config file (never committed — already in `.gitignore`):
+
+```bash
+# create/edit .mise.local.toml at the repo root
+cat > .mise.local.toml << 'EOF'
+# Machine-local mise overrides — NOT committed to git.
+
+# Switch mise npm-tool installs from bun to system npm.
+# Bun has known ENOENT lifecycle-script failures on Windows paths with spaces.
+[settings]
+npm.package_manager = "npm"
+npm.bun = false
+
+[env]
+# Trust the corporate CA bundle (created in step 1) for Node/npm HTTPS requests.
+NODE_EXTRA_CA_CERTS = "C:/Users/<your-username>/.pkl/windows-ca-bundle.pem"
+
+# Use the official npm registry (corporate Nexus misses preview/nightly packages).
+npm_config_registry = "https://registry.npmjs.org"
+EOF
+```
+
+Replace `<your-username>` with your Windows username.
+
+### 5 — Verify full install
+
+```bash
+mise install
+```
+
+Should complete without errors.
+
 ## Re-running after a hk version upgrade
 
-When `hk.pkl` is updated to a new version (e.g. `v1.44.0`), repeat step 2 with the new
-package URL:
+When `hk.pkl` is updated to a new version (e.g. `v1.44.0`), repeat the PKL download step
+with the new package URL:
 
 ```bash
 pkl download-package \
@@ -88,10 +141,10 @@ pkl download-package \
   "package://github.com/jdx/hk/releases/download/v1.44.0/hk@1.44.0"
 ```
 
-The `windows-ca-bundle.pem` from step 1 does not need to be regenerated unless the
+The `windows-ca-bundle.pem` and `.mise.local.toml` do not need updating unless the
 corporate root CA changes.
 
-## Why `JAVA_TOOL_OPTIONS` does not work
+## Why `JAVA_TOOL_OPTIONS` does not work for PKL
 
 PKL is a GraalVM native image. Standard JVM system properties
 (`-Djavax.net.ssl.trustStoreType=Windows-ROOT`) and environment variables such as

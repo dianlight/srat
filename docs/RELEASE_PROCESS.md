@@ -1,3 +1,19 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Release process - using scripts/release.sh via mise](#release-process---using-scriptsreleasesh-via-mise)
+  - [Purpose](#purpose)
+  - [Location](#location)
+  - [Prerequisites](#prerequisites)
+  - [Usage (run via mise)](#usage-run-via-mise)
+  - [Common flags](#common-flags)
+  - [Notes & best practices](#notes--best-practices)
+  - [Troubleshooting](#troubleshooting)
+  - [Where to look in the repo](#where-to-look-in-the-repo)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Release process - using scripts/release.sh via mise
 
 This document explains how to run the repository release helper script (scripts/release.sh) using the project's task runner (`mise`). It summarizes prerequisites, common flags, and an example invocation.
