@@ -3,13 +3,12 @@
 # Changelog
 
 
-## [ 🚧 Unreleased ]
+## 2026.04.0-rc4
 
-### ✨ Features
 
-### 🐛 Bug Fixes
 
 ### 🏗 Chore
+- Correct release process.
 
 
 ## 2026.4.0-rc3
