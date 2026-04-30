@@ -19,3 +19,91 @@ Currently under development and in an alpha state, SRAT is set to become the pre
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+
+:construction_worker: This is a part for new SambaNas2 Home Assistant Addon. :construction_worker:
+
+## Installation
+
+The installation of this add-on is straightforward and similar to any other Home Assistant add-on.
+
+[Add our Home Assistant add-ons repository][repository] to your Home Assistant instance:
+
+[![Add-on repository badge](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fdianlight%2Fhassio-addons)
+
+or
+
+[Add our Home Assistant BETA add-ons repository][beta-repository] to your Home Assistant instance:
+
+[![Beta repository badge](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fdianlight%2Fhassio-addons-beta)
+
+[repository]: https://github.com/dianlight/hassio-addons
+[beta-repository]: https://github.com/dianlight/hassio-addons-beta
+
+### Local Development
+
+For local development setup, follow the instructions below for back-end and frontend development.
+
+## Home Assistant Custom Component
+
+SRAT includes a [HACS](https://hacs.xyz/)-compatible Home Assistant custom component at `custom_components/srat/`. It communicates with the SRAT back-end exclusively via WebSocket, supporting Supervisor autodiscovery and a UI configuration wizard.
+
+For full details, see [Home Assistant Integration](docs/HOME_ASSISTANT_INTEGRATION.md).
+
+### Install via HACS (recommended)
+
+1. Open HACS in Home Assistant.
+2. Go to **Integrations** → three-dot menu → **Custom repositories**.
+3. Add `https://github.com/dianlight/srat` as an **Integration**.
+4. Search for "SRAT" and install it.
+5. Restart Home Assistant.
+
+### Manual Install
+
+1. Download `srat.zip` from the [latest release](https://github.com/dianlight/srat/releases).
+2. Extract the contents into `config/custom_components/srat/`.
+3. Restart Home Assistant.
+
+## Usage
+
+SRAT can be used to manage Samba shares, users, and configurations via a modern web UI or REST API. For detailed feature usage, see the documentation in the `docs/` folder or access the API docs at `/docs` when running the back-end server.
+
+### Feature Documentation
+
+- [Settings Documentation](docs/SETTINGS_DOCUMENTATION.md) - Complete reference for all SRAT settings
+- [SMB over QUIC](docs/SMB_OVER_QUIC.md) - Enhanced performance and security with QUIC transport protocol
+- [Telemetry Configuration](docs/TELEMETRY_CONFIGURATION.md) - Configure error reporting and monitoring
+- [Home Assistant Integration](docs/HOME_ASSISTANT_INTEGRATION.md) - Integration with Home Assistant
+
+## Database
+
+SRAT uses SQLite for persistence via the GORM ORM. The back-end initializes the database with resilience-focused defaults:
+
+- journal_mode=WAL for safe readers during writes
+- busy_timeout=5000 ms to reduce transient SQLITE_BUSY
+- synchronous=NORMAL tuned for WAL
+- foreign_keys=ON
+- cache=shared
+- connection pool limited to 1 open/idle connection (embedded DB best practice)
+
+You can set the database path via the `--db` flag when running the server or CLI. For example:
+
+- File on disk (recommended for production): `--db /data/srat.db`
+- In-memory for tests/dev: `--db "file::memory:?cache=shared&_pragma=foreign_keys(1)"`
+
+## Sponsor
+
+<a href="https://github.com/sponsors/dianlight"><img src="https://img.shields.io/github/sponsors/dianlight?style=flat-square&logo=githubsponsors&logoColor=%23EA4AAA" alt="Github Sponsor"></a>
+<a href="https://www.buymeacoffee.com/ypKZ2I0"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=&slug=ypKZ2I0" alt="Buy Me a Coffee"/></a>
+
+## Contribute
+
+You can use this section to highlight how people can contribute to your project.
+
+You can add information on how they can open issues or how they can sponsor the project.
+
+## License
+
+<!-- [(Back to top)](#table-of-contents) -->
+
+[Apache 2.0 license](./LICENSE)
