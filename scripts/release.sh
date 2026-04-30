@@ -242,7 +242,28 @@ confirm "Publish draft release $DRAFT_ID as $NEXT_VERSION?"
 log "Syncing tags before publishing..."
 git fetch --tags --force
 
-gh release edit "$DRAFT_ID" --tag "$NEXT_VERSION" --title "$NEXT_VERSION" --draft=false
+# Retry loop for publishing to handle GitHub API propagation delays
+MAX_RETRIES=5
+RETRY_COUNT=0
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+	if gh release edit "$DRAFT_ID" --tag "$NEXT_VERSION" --title "$NEXT_VERSION" --draft=false 2>/tmp/gh_error; then
+		log "Successfully published release."
+		break
+	else
+		RETRY_COUNT=$((RETRY_COUNT + 1))
+		ERROR_MSG=$(cat /tmp/gh_error)
+		if [[ $RETRY_COUNT -eq $MAX_RETRIES ]]; then
+			error "Failed to publish release after $MAX_RETRIES attempts: $ERROR_MSG"
+		fi
+		log "Warning: GitHub API returned error: $ERROR_MSG"
+		printf "  Retrying publish (%d/%d)... " "$RETRY_COUNT" "$MAX_RETRIES"
+		(sleep 5) &
+		show_spinner $!
+		echo ""
+		# Force a re-fetch of tags in case that's the missing link
+		git fetch --tags --force
+	fi
+done
 
 # 11. Prepend Unreleased and move Thanks/Notes
 log "Resetting CHANGELOG.md for next cycle..."
