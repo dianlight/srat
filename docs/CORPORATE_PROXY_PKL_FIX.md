@@ -1,4 +1,20 @@
 # Corporate Proxy SSL Fix for hk / PKL / bun
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+**Table of Contents** *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Corporate Proxy SSL Fix for hk / PKL](#corporate-proxy-ssl-fix-for-hk--pkl)
+  - [Problem](#problem)
+    - [Root cause](#root-cause)
+  - [Fix (one-time setup per machine)](#fix-one-time-setup-per-machine)
+    - [1 - Export the Windows trusted root CAs to a PEM bundle](#1---export-the-windows-trusted-root-cas-to-a-pem-bundle)
+    - [2 - Pre-download the hk PKL package](#2---pre-download-the-hk-pkl-package)
+    - [3 - Verify](#3---verify)
+  - [Re-running after a hk version upgrade](#re-running-after-a-hk-version-upgrade)
+  - [Why `JAVA_TOOL_OPTIONS` does not work](#why-java_tool_options-does-not-work)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## Problem
 
@@ -25,7 +41,7 @@ unable to find valid certification path to requested target
 ### Root cause
 
 `hk` uses **PKL** (Apple's Pkl language) to evaluate `hk.pkl`. PKL is distributed as a
-GraalVM native image with a **bundled trust store** — it does not use the Windows
+GraalVM native image with a **bundled trust store** - it does not use the Windows
 certificate store or respect `JAVA_TOOL_OPTIONS`. When the corporate proxy rewrites
 TLS certificates using a corporate root CA that is not in PKL's bundled store, all
 outbound HTTPS requests from PKL fail.
@@ -34,7 +50,7 @@ outbound HTTPS requests from PKL fail.
 
 ## Fix (one-time setup per machine)
 
-### 1 — Export the Windows trusted root CAs to a PEM bundle
+### 1 - Export the Windows trusted root CAs to a PEM bundle
 
 Open **PowerShell** and run:
 
@@ -51,7 +67,7 @@ Set-Content -Path "$env:USERPROFILE\.pkl\windows-ca-bundle.pem" -Value $pem -Enc
 This exports all trusted root CAs (including the corporate CA) into
 `~/.pkl/windows-ca-bundle.pem`.
 
-### 2 — Pre-download the hk PKL package
+### 2 - Pre-download the hk PKL package
 
 PKL caches downloaded packages locally. Once cached, it never re-downloads them
 (no more SSL checks needed for that package version). Run this once from a bash shell:

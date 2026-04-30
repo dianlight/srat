@@ -331,4 +331,4 @@ If you need to rotate the signing keys:
 
 - [minio/selfupdate](https://github.com/minio/selfupdate) - Update library
 - [minisign](https://jedisct1.github.io/minisign/) - Signature tool
-- [s6](https://skarnet.org/software/s6/) - Process supervision
+- [s6](https://github.com/just-containers/s6-overlay) - Process supervision
