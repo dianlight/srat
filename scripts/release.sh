@@ -238,7 +238,7 @@ done
 log "Publishing release $NEXT_VERSION..."
 confirm "Publish draft release $DRAFT_ID as $NEXT_VERSION?"
 
-# Ensure the tag created by the CI is available locally/on remote metadata
+# Ensure the tag created by the CI (if any) is available
 log "Syncing tags before publishing..."
 git fetch --tags --force
 
@@ -246,8 +246,13 @@ git fetch --tags --force
 MAX_RETRIES=5
 RETRY_COUNT=0
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-	if gh release edit "$DRAFT_ID" --tag "$NEXT_VERSION" --title "$NEXT_VERSION" --draft=false 2>/tmp/gh_error; then
-		log "Successfully published release."
+	# We use the raw PATCH API to ensure we are targeting the specific ID
+	# and assigning the new tag_name and name while setting draft to false.
+	if gh api -X PATCH "repos/:owner/:repo/releases/$DRAFT_ID" \
+		-f tag_name="$NEXT_VERSION" \
+		-f name="$NEXT_VERSION" \
+		-F draft=false >/dev/null 2>/tmp/gh_error; then
+		log "Successfully published release $NEXT_VERSION (ID: $DRAFT_ID)."
 		break
 	else
 		RETRY_COUNT=$((RETRY_COUNT + 1))
@@ -260,7 +265,6 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
 		(sleep 5) &
 		show_spinner $!
 		echo ""
-		# Force a re-fetch of tags in case that's the missing link
 		git fetch --tags --force
 	fi
 done
