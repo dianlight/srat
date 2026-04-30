@@ -2,14 +2,11 @@
 
 # Changelog
 
-
 ## 2026.04.0-rc4
 
-
-
 ### 🏗 Chore
-- Correct release process.
 
+- Correct release process.
 
 ## 2026.4.0-rc3
 
