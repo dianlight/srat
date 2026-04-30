@@ -1,6 +1,8 @@
 # Corporate Proxy SSL Fix for hk / PKL / bun
+
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
 **Table of Contents** *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
 - [Problem](#problem)
@@ -9,9 +11,9 @@
 - [Fix (one-time setup per machine)](#fix-one-time-setup-per-machine)
   - [1 - Export the Windows trusted root CAs to a PEM bundle](#1---export-the-windows-trusted-root-cas-to-a-pem-bundle)
   - [2 - Pre-download the hk PKL package](#2---pre-download-the-hk-pkl-package)
-  - [3 - Verify PKL / hk](#3--verify-pkl--hk)
-  - [4 - Fix `mise install` (npm tool downloads)](#4--fix-mise-install-npm-tool-downloads)
-  - [5 - Verify full install](#5--verify-full-install)
+  - [3 - Verify PKL / hk](#3---verify-pkl--hk)
+  - [4 - Fix `mise install` (npm tool downloads)](#4---fix-mise-install-npm-tool-downloads)
+  - [5 - Verify full install](#5---verify-full-install)
 - [Re-running after a hk version upgrade](#re-running-after-a-hk-version-upgrade)
 - [Why `JAVA_TOOL_OPTIONS` does not work for PKL](#why-java_tool_options-does-not-work-for-pkl)
 
@@ -81,7 +83,7 @@ pkl download-package \
 
 The package is stored at `%USERPROFILE%\.pkl\cache\`.
 
-### 3 — Verify PKL / hk
+### 3 - Verify PKL / hk
 
 ```bash
 hk check
@@ -89,10 +91,11 @@ hk check
 
 Should now load the PKL config from cache without any network access.
 
-### 4 — Fix `mise install` (npm tool downloads)
+### 4 - Fix `mise install` (npm tool downloads)
 
 `mise install` uses bun to download npm tools, but bun has three issues on Windows corporate
 networks:
+
 - Does not trust the proxy CA → `SELF_SIGNED_CERT_IN_CHAIN`
 - Misparses Nexus-style registry paths (drops the repo-name segment) → 400/404 on the
   corporate proxy
@@ -122,7 +125,7 @@ EOF
 
 Replace `<your-username>` with your Windows username.
 
-### 5 — Verify full install
+### 5 - Verify full install
 
 ```bash
 mise install
