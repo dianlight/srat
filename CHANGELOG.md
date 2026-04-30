@@ -1,3 +1,7 @@
+<!-- DOCTOC SKIP -->
+
+# Changelog
+
 ## [ 🚧 Unreleased ]
 
 ### ✨ Features
@@ -5,10 +9,6 @@
 ### 🐛 Bug Fixes
 
 ### 🏗 Chore
-
-<!-- DOCTOC SKIP -->
-
-# Changelog
 
 ## 2026.04.0-rc4
 

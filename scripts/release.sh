@@ -49,7 +49,6 @@ show_spinner() {
 	local delay=0.1
 	# shellcheck disable=SC1003
 	local spinstr='|/-\'
-	# SC2143: Use grep -q instead of checking for non-empty string output
 	while ps a | awk '{print $1}' | grep -q "$pid"; do
 		local temp=${spinstr#?}
 		printf " [%c]  " "$spinstr"
@@ -83,7 +82,7 @@ done
 log "Refreshing tags from remote..."
 git fetch --tags --force
 
-# 2. Calculate next version (YYYY.MM.Patch)
+# 2. Calculate next version
 log "Calculating next version..."
 CURRENT_YEAR_MONTH=$(date +"%Y.%m")
 LATEST_TAG=$(git tag --sort=-v:refname | head -n 1)
@@ -91,7 +90,6 @@ LATEST_TAG=$(git tag --sort=-v:refname | head -n 1)
 if [[ -z "$LATEST_TAG" ]]; then
 	CALCULATED_VERSION="${CURRENT_YEAR_MONTH}.0"
 else
-	# Handle versions with suffixes like 2026.03.1-rc3
 	TAG_WITHOUT_SUFFIX="${LATEST_TAG%-*}"
 	TAG_YM="${TAG_WITHOUT_SUFFIX%.*}"
 	TAG_PATCH="${TAG_WITHOUT_SUFFIX##*.}"
@@ -107,26 +105,12 @@ else
 	fi
 fi
 
-if [[ -n "$VERSION" ]]; then
-	VERSION_BASE="${VERSION%-*}"
-	CALC_BASE="${CALCULATED_VERSION%-*}"
-
-	if [[ "$(printf '%s\n%s' "$VERSION_BASE" "$CALC_BASE" | sort -V | head -n1)" == "$VERSION_BASE" && "$VERSION_BASE" != "$CALC_BASE" ]]; then
-		read -p "Warning: Provided version ($VERSION) is lower than suggested ($CALCULATED_VERSION). Proceed? (y/n) " -n 1 -r
-		echo
-		if [[ ! $REPLY =~ ^[Yy]$ ]]; then error "Aborted by user."; fi
-	fi
-	NEXT_VERSION=$VERSION
-else
-	NEXT_VERSION=$CALCULATED_VERSION
-fi
+NEXT_VERSION=${VERSION:-$CALCULATED_VERSION}
 log "Target version set to: $NEXT_VERSION"
 
 # 3. Check for uncommitted files
-if [[ "$IGNORE_UNCOMMITTED" == "false" ]]; then
-	if [[ -n "$(git status --porcelain)" ]]; then
-		error "Uncommitted changes found. Use --ignore-uncommitted to skip check."
-	fi
+if [[ "$IGNORE_UNCOMMITTED" == "false" && -n "$(git status --porcelain)" ]]; then
+	error "Uncommitted changes found. Use --ignore-uncommitted to skip check."
 fi
 
 # 4. Switch to main
@@ -141,7 +125,7 @@ log "Ensuring main is synced with remote..."
 confirm "Push existing commits to origin main?"
 git push origin main
 
-# 8. Update CHANGELOG.md (Version only)
+# 6. Update CHANGELOG.md (initial version header)
 log "Checking CHANGELOG.md status..."
 SKIP_CHANGELOG_COMMIT=false
 if [[ -f "CHANGELOG.md" ]]; then
@@ -150,138 +134,105 @@ if [[ -f "CHANGELOG.md" ]]; then
 		sed -i "s/## \[ 🚧 Unreleased \]/## $NEXT_VERSION/" CHANGELOG.md
 	elif grep -q "## $NEXT_VERSION" CHANGELOG.md; then
 		log "Version $NEXT_VERSION already found in CHANGELOG.md."
-		read -p ">> Continue without updating CHANGELOG? [y/N]: " -n 1 -r
-		echo
-		if [[ ! $REPLY =~ ^[Yy]$ ]]; then error "Aborted by user."; fi
+		confirm "Continue without updating CHANGELOG?"
 		SKIP_CHANGELOG_COMMIT=true
 	else
-		error "No 'Unreleased' section found and version $NEXT_VERSION is missing from CHANGELOG.md."
+		error "No 'Unreleased' section found and version $NEXT_VERSION is missing."
 	fi
 else
 	error "CHANGELOG.md not found."
 fi
 
-# 9. Commit, Push and wait for CI to create assets
+# 7. Commit and Push to trigger CI
 if [[ "$SKIP_CHANGELOG_COMMIT" == "false" ]]; then
-	log "Committing version update to trigger build..."
+	log "Committing version update..."
 	confirm "Commit and push CHANGELOG update for $NEXT_VERSION?"
 	git add CHANGELOG.md
 	git commit -m "chore: release $NEXT_VERSION"
 	git push origin main
-else
-	log "Skipping CHANGELOG commit as version is already present."
 fi
 
-# 6. Check for Draft Release after last push
+# 8. Find Draft Release
 LAST_PUSH_DATE=$(git log -1 --format=%cI)
-check_draft_release() {
-	gh api repos/:owner/:repo/releases --jq ".[] | select(.draft == true and .updated_at > \"$LAST_PUSH_DATE\")"
-}
-
 log "Waiting for a draft release updated after $LAST_PUSH_DATE..."
 while true; do
-	DRAFT=$(check_draft_release)
+	DRAFT=$(gh api repos/:owner/:repo/releases --jq ".[] | select(.draft == true and .updated_at > \"$LAST_PUSH_DATE\")")
 	if [[ -n "$DRAFT" ]]; then
 		DRAFT_ID=$(echo "$DRAFT" | jq -r '.id')
 		log "Found Draft Release ID: $DRAFT_ID"
 		break
 	fi
-	if [[ "$NO_WAIT" == "true" ]]; then error "No draft release found and --no-wait is set."; fi
-
-	printf "  Draft not found yet. Waiting... "
-	(sleep 30) &
+	if [[ "$NO_WAIT" == "true" ]]; then error "No draft release found."; fi
+	printf "  Waiting for draft... "
+	(sleep 15) &
 	show_spinner $!
 	echo ""
 done
 
-# 7. Check for running GitHub Actions on main
-log "Checking for active workflow runs on main..."
+# --- 10. PUBLISHING PROCESS (3-STEP API APPROACH) ---
+
+# STEP 1: Update metadata (tag/title) but keep as draft
+log "[PUBLISH STEP 1] Updating draft metadata for $NEXT_VERSION..."
+gh api -X PATCH "repos/:owner/:repo/releases/$DRAFT_ID" \
+	-f tag_name="$NEXT_VERSION" \
+	-f name="$NEXT_VERSION" \
+	-F draft=true >/dev/null
+
+# STEP 2: Delete existing assets to ensure clean CI upload
+log "[PUBLISH STEP 2] Clearing existing assets from release..."
+ASSET_IDS=$(gh api "repos/:owner/:repo/releases/$DRAFT_ID/assets" --jq '.[].id')
+for asset_id in $ASSET_IDS; do
+	gh api -X DELETE "repos/:owner/:repo/releases/assets/$asset_id"
+done
+
+# INTERMEDIATE: Wait for CI and Check Workflows
+log "Checking for active workflow runs on main before final publish..."
 while true; do
 	RUNNING_ACTIONS=$(gh run list --branch main --status in_progress --status queued --limit 5 --json databaseId --jq '.[].databaseId')
 	if [[ -z "$RUNNING_ACTIONS" ]]; then
-		log "No active actions on main. Proceeding..."
+		log "No active actions on main."
 		break
 	fi
-	if [[ "$NO_WAIT" == "true" ]]; then error "GitHub Actions are still running on main and --no-wait is set."; fi
-
-	printf "  Workflows are still running. Waiting... "
+	if [[ "$NO_WAIT" == "true" ]]; then error "GitHub Actions are still running."; fi
+	printf "  Workflows running. Waiting... "
 	(sleep 30) &
 	show_spinner $!
 	echo ""
 done
 
-log "Waiting for CI build on main to update draft assets..."
-(sleep 15) &
-show_spinner $!
-echo ""
+confirm "Proceed to STEP 3: Finalize and Publish release $NEXT_VERSION?"
 
-while true; do
-	STATUS=$(gh run list --branch main --limit 1 --json status,conclusion --jq '.[0]')
-	RUN_STATUS=$(echo "$STATUS" | jq -r '.status')
-	RUN_CONCLUSION=$(echo "$STATUS" | jq -r '.conclusion')
-
-	if [[ "$RUN_STATUS" == "completed" ]]; then
-		if [[ "$RUN_CONCLUSION" != "success" ]]; then
-			error "CI Build on main failed with conclusion: $RUN_CONCLUSION"
-		fi
-		break
-	fi
-
-	# SC2059: Pass variables as arguments to printf format string
-	printf "  Waiting for CI build (%s)... " "$RUN_STATUS"
-	(sleep 30) &
-	show_spinner $!
-	echo ""
-done
-
-# 10. Finalize Draft Release
-log "Publishing release $NEXT_VERSION..."
-confirm "Publish draft release $DRAFT_ID as $NEXT_VERSION?"
-
-# Ensure the tag created by the CI (if any) is available
-log "Syncing tags before publishing..."
-git fetch --tags --force
-
-# Retry loop for publishing to handle GitHub API propagation delays
+# STEP 3: Remove draft state and publish
+log "[PUBLISH STEP 3] Publishing release..."
 MAX_RETRIES=5
 RETRY_COUNT=0
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-	# We use the raw PATCH API to ensure we are targeting the specific ID
-	# and assigning the new tag_name and name while setting draft to false.
-	if gh api -X PATCH "repos/:owner/:repo/releases/$DRAFT_ID" \
-		-f tag_name="$NEXT_VERSION" \
-		-f name="$NEXT_VERSION" \
-		-F draft=false >/dev/null 2>/tmp/gh_error; then
-		log "Successfully published release $NEXT_VERSION (ID: $DRAFT_ID)."
+	if gh api -X PATCH "repos/:owner/:repo/releases/$DRAFT_ID" -F draft=false >/dev/null 2>/tmp/gh_error; then
+		log "Successfully published release $NEXT_VERSION."
 		break
 	else
 		RETRY_COUNT=$((RETRY_COUNT + 1))
 		ERROR_MSG=$(cat /tmp/gh_error)
-		if [[ $RETRY_COUNT -eq $MAX_RETRIES ]]; then
-			error "Failed to publish release after $MAX_RETRIES attempts: $ERROR_MSG"
-		fi
-		log "Warning: GitHub API returned error: $ERROR_MSG"
-		printf "  Retrying publish (%d/%d)... " "$RETRY_COUNT" "$MAX_RETRIES"
-		(sleep 5) &
-		show_spinner $!
-		echo ""
-		git fetch --tags --force
+		log "Warning: API Error: $ERROR_MSG. Retrying ($RETRY_COUNT/$MAX_RETRIES)..."
+		sleep 5
 	fi
 done
 
-# 11. Prepend Unreleased and move Thanks/Notes
+# 11. Reset CHANGELOG.md for next cycle
 log "Resetting CHANGELOG.md for next cycle..."
-
-# Use native Bash parameter expansion to escape dots for the awk pattern (Fixes SC2001)
 ESCAPED_VERSION="${NEXT_VERSION//./\\.}"
-THANKS_NOTES=$(awk "/## $ESCAPED_VERSION/{flag=1;next}/##/{flag=0}flag" CHANGELOG.md | grep -E "### (🙏 Thanks|🚨 Notes)" -A 10 || true)
 
-if [[ -n "$THANKS_NOTES" ]]; then
-	sed -i "/### 🙏 Thanks/d" CHANGELOG.md
-	sed -i "/### 🚨 Notes/d" CHANGELOG.md
-fi
+# Capture Thanks/Notes from the version we just released
+THANKS_NOTES=$(awk "/## $ESCAPED_VERSION/{flag=1;next}/##/{flag=0}flag" CHANGELOG.md | awk '/### (🙏 Thanks|🚨 Notes)/{flag=1}flag' || true)
 
-NEW_UNRELEASED_HEADER=$(
+TEMP_CHANGELOG="CHANGELOG.md.tmp"
+
+# Reconstruction logic with grouped redirects for style/efficiency (SC2129)
+{
+	# 1. Header
+	head -n 1 CHANGELOG.md
+	echo ""
+	# 2. New Unreleased section with migrated Thanks/Notes
 	cat <<EOF
 ## [ 🚧 Unreleased ]
 
@@ -293,12 +244,18 @@ NEW_UNRELEASED_HEADER=$(
 
 $THANKS_NOTES
 EOF
-)
+	echo ""
+} >"$TEMP_CHANGELOG"
 
-echo "$NEW_UNRELEASED_HEADER" >CHANGELOG.md.tmp
-echo "" >>CHANGELOG.md.tmp
-cat CHANGELOG.md >>CHANGELOG.md.tmp
-mv CHANGELOG.md.tmp CHANGELOG.md
+# 3. Rest of the file, stripping migrated sections from the old version block
+awk "
+  /## $ESCAPED_VERSION/ { in_ver=1; print; next }
+  in_ver && /### (🙏 Thanks|🚨 Notes)/ { skip=1; next }
+  in_ver && /^## / { in_ver=0; skip=0 }
+  !skip { if (NR > 1) print }
+" CHANGELOG.md >>"$TEMP_CHANGELOG"
+
+mv "$TEMP_CHANGELOG" CHANGELOG.md
 
 # 12. Final commit
 log "Finalizing release cycle..."
