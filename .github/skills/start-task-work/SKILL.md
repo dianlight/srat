@@ -83,15 +83,17 @@ Use strict mode when users want deterministic automation and no accidental task 
 ### 4. Plan Before Coding (No Implementation Yet)
 
 1. Inspect referenced code areas from `## 🔗 Code References & TODOs`.
-2. Expand search to dependent files that can be impacted.
-3. Produce a concise pre-implementation summary that includes:
+2. Inspect the current codebase to assess what's already implemented and what needs to be done.
+3. Identify any additional impacted files/components based on the task description and technical specifications.
+4. Check for existing TODOs or FIXMEs in the code that relate to the task.
+5. Produce a concise pre-implementation summary that includes:
   - Root objective and acceptance criteria
   - Impacted files/components
   - Proposed step-by-step plan
   - Test/validation strategy
   - Risks and edge cases
-4. Present this summary to the user and wait for approval before writing code.
-5. Update `## 🧠 Implementation Notes` with the agreed plan and any constraints or blockers.
+6. Present this summary to the user and wait for approval before writing code.
+7. Update `## 🧠 Implementation Notes` with the agreed plan and any constraints or blockers.
 
 ### 5. Update the Task Document at Every Phase
 
