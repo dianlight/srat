@@ -52,6 +52,15 @@
             "request": "attach",
             "mode": "local",
             "processId": 0
+        },
+        {
+            "type": "chrome",
+            "request": "launch",
+            "name": "Debug React (Host Chrome)",
+            "url": "http://localhost:3080",
+            "webRoot": "${workspaceFolder}/frontend/src",
+            "sourceMaps": true,
+            "smartStep": true
         }
     ]
 }

@@ -94,7 +94,7 @@ run = """
     scripts/next_version.sh
   fi
 """
-env = { _.file = "/tmp/.env.tmp" }
+#env = { _.file = "/tmp/.env.tmp" }
 depends_post = [{ task = "rollbar_env" }]
 quiet = true
 
