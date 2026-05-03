@@ -2,7 +2,7 @@
 
 # Changelog
 
-## [ 🚧 Unreleased ]
+## 2026.5.0-rc5
 
 ### 🙏 Thanks
 
