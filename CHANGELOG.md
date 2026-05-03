@@ -2,7 +2,7 @@
 
 # Changelog
 
-## 2026.5.0-rc5
+## [ 🚧 Unreleased ]
 
 ### 🙏 Thanks
 
@@ -10,6 +10,14 @@ We would like to thank all supporters for their contributions and donations.
 With your donations, we are able to continue developing and improving this project. Your support is greatly appreciated.
 
 > **Note**: This section tracks development progress and changes planned for the Release Candidate (RC). The final release notes will be organized and consolidated once the RC is ready for public testing.
+
+### ✨ Features
+
+### 🐛 Bug Fixes
+
+### 🏗 Chore
+
+## 2026.5.0-rc5
 
 ### ✨ Features
 
