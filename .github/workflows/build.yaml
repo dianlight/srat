@@ -4,10 +4,13 @@
 # 2. CLEANER PERMISSIONS: Removed the unused "discussions: write" permission.
 # 3. ROBUST DEV VERSIONING: The .devN suffix is now calculated by incrementing the last dev tag for the current version base.
 # 4. MINOR CLEANUP: Added comments and removed redundant steps for clarity.
+# 5. MANUAL DISPATCH VERSION SOURCE: workflow_dispatch now uses the latest draft release title/tag.
 
 name: build
 
 on:
+  workflow_dispatch:
+    # Allows manual triggering of the workflow
   push:
     branches: ["main"]
     paths:
@@ -50,7 +53,30 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [[ "${{ github.event_name }}" == "release" && "${{ github.event.action }}" == "published" ]]; then
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "Manual trigger detected. Reading latest draft release..."
+
+            LATEST_DRAFT_TITLE=$(gh api /repos/${{ github.repository }}/releases -q '[.[] | select(.draft == true)] | sort_by(.created_at) | last | .name // ""' || echo "")
+            LATEST_DRAFT_TAG=$(gh api /repos/${{ github.repository }}/releases -q '[.[] | select(.draft == true)] | sort_by(.created_at) | last | .tag_name // ""' || echo "")
+
+            if [[ -z "$LATEST_DRAFT_TITLE" && -z "$LATEST_DRAFT_TAG" ]]; then
+              echo "No draft release found. Manual runs require an existing draft release title/tag to derive the version."
+              exit 1
+            fi
+
+            # Prefer extracting version from draft release title, e.g. "Release 2026.5.0-dev.3".
+            # Fall back to draft tag name when the title does not contain a parseable version.
+            if [[ "$LATEST_DRAFT_TITLE" =~ ([0-9]{4}\.[0-9]{1,2}\.[0-9]+([-][A-Za-z0-9.]+)?) ]]; then
+              VERSION="${BASH_REMATCH[1]}"
+              echo "Using version from latest draft release title: $VERSION"
+            elif [[ -n "$LATEST_DRAFT_TAG" ]]; then
+              VERSION="$LATEST_DRAFT_TAG"
+              echo "Draft title did not contain a parseable version. Falling back to draft tag: $VERSION"
+            else
+              echo "Latest draft release title does not contain a parseable version and draft tag is empty."
+              exit 1
+            fi
+          elif [[ "${{ github.event_name }}" == "release" && "${{ github.event.action }}" == "published" ]]; then
             VERSION="${{ github.event.release.tag_name }}"
             echo "Using release tag as version: $VERSION"
           else
