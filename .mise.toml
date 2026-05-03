@@ -95,7 +95,7 @@ run = """
     scripts/next_version.sh
   fi
 """
-#env = { _.file = "/tmp/.env.tmp" }
+env = { _.file = "/tmp/.env.tmp" }
 depends_post = [{ task = "rollbar_env" }]
 quiet = true
 
@@ -124,7 +124,7 @@ run = [
     "--arch=aarch64",
   ], env = { GOARCH = "arm64" } },
 ]
-#quiet = true
+quiet = true
 
 [tasks.release]
 description = "Run the release process, which includes building the project and performing any necessary release steps. Optionally accepts a version flag to specify the release version."

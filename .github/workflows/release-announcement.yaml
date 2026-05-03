@@ -6,6 +6,7 @@ on:
 
 permissions:
   # Required to create a discussion
+  contents: read
   discussions: write
 
 jobs:

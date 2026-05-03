@@ -118,6 +118,9 @@ description = "Apply necessary patches to vendored dependencies. This task ensur
 depends = [
     { task = "vendor:check" },
 ]
+depends_post = [
+    { task = "format:tidy" },
+]
 run = """
 	set +x +e; 
 	echo "Applying patches to vendored dependencies..."; 
@@ -144,6 +147,11 @@ sources = ["patches/*.patch"]
 outputs = ["src/vendor/**/*.pdone"]
 quiet = true
 
+[tasks."format:tidy"]
+description = "Run 'go mod tidy' to clean up go.mod and go.sum files."
+run = "go -C src mod tidy"
+quiet = true
+
 [tasks.format]
 alias = ["fmt","lint"]
 depends = [
@@ -153,7 +161,7 @@ depends_post = [
     { task = "security" },
 ]
 run = [
-	"go mod -C src tidy",
+	{ task = "format:tidy" },
 	"go -C src vet ./... ",
 	"go tool -C src  testifylint --fix ./... ",
 	"go -C src fmt ./..."
