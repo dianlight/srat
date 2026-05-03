@@ -106,6 +106,7 @@ run = [
 quiet = true
 
 [tasks.test]
+env = { API_URL = "http://localhost:3000" }
 run = [
   "bun ./scripts/add-test-setup.js",
   "tsgo --noEmit",
@@ -114,6 +115,7 @@ run = [
 quiet = true
 
 [tasks."test:new"]
+env = { API_URL = "http://localhost:3000" }
 run = [
   "bun ./scripts/add-test-setup.js",
   "tsgo --noEmit",
@@ -122,6 +124,7 @@ run = [
 quiet = true
 
 [tasks."test:ci"]
+env = { API_URL = "http://localhost:3000" }
 run = [
   "bun ./scripts/add-test-setup.js",
   "bun test --preload ./test/setup.ts --only-failures --timeout 60000 --bail --max-concurrency=1 --coverage",

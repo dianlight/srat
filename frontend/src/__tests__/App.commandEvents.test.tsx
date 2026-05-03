@@ -45,6 +45,17 @@ const registerModuleMocks = () => {
     wsApi: {
       reducerPath: "wsApi",
       reducer: () => ({}),
+      // Minimal util shim so createTestStore can call wsApi.util.resetApiState().
+      // Why: the test store setup calls `wsApi.util.resetApiState()` to clear
+      // RTK Query caches between tests. In this test we mock the module, so
+      // provide a tiny action-creator stub to avoid a noisy TypeError during
+      // setup. This does NOT alter application logic or assertions — it's
+      // purely to make the mocked module compatible with the shared test
+      // harness. If a test needs to validate RTK Query internals, replace
+      // this stub with a more complete mock supplying the real utils.
+      util: {
+        resetApiState: () => ({ type: "wsApi/resetApiState" }),
+      },
       middleware: () => (next: (action: unknown) => unknown) => (action: unknown) =>
         next(action),
     },
@@ -108,7 +119,16 @@ describe("App command events", () => {
     sessionStorage.clear();
 
     const server = getMswServer();
-    // Use regex patterns so handlers match any host:port (API_URL may differ from localhost)
+    // NOTE: Use origin-agnostic (regex) handlers here on purpose. Tests run
+    // with API_URL set to an explicit origin (e.g. http://192.168.0.68:3000/),
+    // while many test handlers were originally registered using relative
+    // paths ("/api/...") which MSW resolves against the test runtime
+    // origin. That mismatch produced noisy "no matching request handler"
+    // warnings even though the handlers themselves were correct. Using
+    // regexes like /\/api\/.../ ensures handlers match requests regardless
+    // of host/port. This intentionally avoids false-positive noise — it does
+    // not hide real test failures. Tests that require a specific response
+    // should still explicitly override these defaults with `server.use()`.
     server.use(
       http.get(/\/api\/settings\/app-config/, () =>
         HttpResponse.json({ requires_restart: false }),
