@@ -45,6 +45,13 @@ func (handler *UserHandler) ListUsers(ctx context.Context, input *struct{}) (*st
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to list users")
 	}
+	// Search for the admin user and if password is the default, set it to "changeme!" for the response
+	for i, user := range users {
+		if user.IsAdmin && user.Password.Expose() == "changeme!" {
+			users[i].Password = nil
+			break
+		}
+	}
 	return &struct{ Body []dto.User }{Body: users}, nil
 }
 

@@ -24,6 +24,7 @@ import { TreeItem } from "@mui/x-tree-view/TreeItem";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { InView } from "react-intersection-observer";
+import { useOpenWizard } from "../../components/wizard/SetupWizard";
 import { TabIDs } from "../../store/locationState";
 import {
   type Settings as ApiSettings,
@@ -45,6 +46,7 @@ const SETTINGS_EXPANDED_KEY = "srat_settings_expanded";
 const DEFAULT_EXPANDED = ["network", "update", "telemetry", "hdidle"];
 
 export function Settings() {
+  const openWizard = useOpenWizard();
   const [selectedSetting, setSelectedSetting] = useState<string | null>(() => {
     return localStorage.getItem(SETTINGS_STORAGE_KEY) || "general";
   });
@@ -262,6 +264,14 @@ export function Settings() {
                   },
                 }}
               />
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={openWizard}
+                sx={{ whiteSpace: "nowrap", flexShrink: 0 }}
+              >
+                Setup Wizard
+              </Button>
             </Stack>
           </Paper>
 

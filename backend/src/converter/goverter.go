@@ -135,3 +135,7 @@ func secretToString(secret dto.Secret[string]) string {
 func stringToSecret(str string) dto.Secret[string] {
 	return dto.NewSecret(str)
 }
+
+//func stringToSecretPtr(str string) *dto.Secret[string] {
+//	return new(dto.NewSecret(str))
+//}

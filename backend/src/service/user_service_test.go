@@ -192,7 +192,7 @@ func (suite *UserServiceSuite) TestCreateUser_Success() {
 	// Arrange
 	userDto := dto.User{
 		Username: "newuser" + fmt.Sprintf("%d", time.Now().UnixNano()),
-		Password: dto.NewSecret("newpassword"),
+		Password: new(dto.NewSecret("newpassword")),
 		IsAdmin:  false,
 	}
 
@@ -216,7 +216,7 @@ func (suite *UserServiceSuite) TestCreateUser_NoSuccess() {
 	// Arrange
 	userDto := dto.User{
 		Username: "newuser" + fmt.Sprintf("%d", time.Now().UnixNano()),
-		Password: dto.NewSecret("newpassword"),
+		Password: new(dto.NewSecret("newpassword")),
 		IsAdmin:  false,
 	}
 
@@ -239,7 +239,7 @@ func (suite *UserServiceSuite) TestCreateUser_DeletedSuccess() {
 	// Arrange
 	userDto := dto.User{
 		Username: username,
-		Password: dto.NewSecret("newpassword"),
+		Password: new(dto.NewSecret("newpassword")),
 		IsAdmin:  false,
 	}
 
@@ -264,7 +264,7 @@ func (suite *UserServiceSuite) TestCreateUser_DuplicateUsername() {
 	username := fmt.Sprintf("existinguser%d", time.Now().Unix())
 	userDto := dto.User{
 		Username: username,
-		Password: dto.NewSecret("password"),
+		Password: new(dto.NewSecret("password")),
 		IsAdmin:  false,
 	}
 
@@ -308,13 +308,13 @@ func (suite *UserServiceSuite) TestUpdateUser_Success() {
 	currentUsername := "oldusername" + fmt.Sprintf("%d", time.Now().UnixNano())
 	userDto := dto.User{
 		Username: currentUsername,
-		Password: dto.NewSecret("newpassword"),
+		Password: new(dto.NewSecret("newpassword")),
 		IsAdmin:  false,
 	}
 
 	existingDbUser := dto.User{
 		Username: currentUsername,
-		Password: dto.NewSecret("oldpassword"),
+		Password: new(dto.NewSecret("oldpassword")),
 		IsAdmin:  false,
 	}
 
@@ -346,7 +346,7 @@ func (suite *UserServiceSuite) TestUpdateUser_ChangePassword() {
 
 	existingDbUser := dto.User{
 		Username: username,
-		Password: dto.NewSecret(oldPassword),
+		Password: new(dto.NewSecret(oldPassword)),
 		IsAdmin:  false,
 	}
 	_, err := suite.userService.CreateUser(existingDbUser)
@@ -354,7 +354,7 @@ func (suite *UserServiceSuite) TestUpdateUser_ChangePassword() {
 
 	userDto := dto.User{
 		Username: username,
-		Password: dto.NewSecret(newPassword),
+		Password: new(dto.NewSecret(newPassword)),
 		IsAdmin:  false,
 	}
 
@@ -378,7 +378,7 @@ func (suite *UserServiceSuite) TestUpdateUser_UserNotFound() {
 	currentUsername := "nonexistent"
 	userDto := dto.User{
 		Username: "nonexistent",
-		Password: dto.NewSecret("password"),
+		Password: new(dto.NewSecret("password")),
 		IsAdmin:  false,
 	}
 
@@ -400,13 +400,13 @@ func (suite *UserServiceSuite) TestUpdateUser_RenameSuccess() {
 	newUsername := fmt.Sprintf("newname%s", rand.Text()[0:3])
 	userDto := dto.User{
 		Username: newUsername,
-		Password: dto.NewSecret("password"),
+		Password: new(dto.NewSecret("password")),
 		IsAdmin:  false,
 	}
 
 	existingDbUser := dto.User{
 		Username: currentUsername,
-		Password: dto.NewSecret("oldpassword"),
+		Password: new(dto.NewSecret("oldpassword")),
 		IsAdmin:  false,
 	}
 
@@ -440,7 +440,7 @@ func (suite *UserServiceSuite) TestUpdateUser_RenameWithShares_Success() {
 	// Create user via service so the mock system registers it for samba operations
 	_, err := suite.userService.CreateUser(dto.User{
 		Username: currentUsername,
-		Password: dto.NewSecret("password"),
+		Password: new(dto.NewSecret("password")),
 		IsAdmin:  false,
 	})
 	suite.Require().NoError(err)
@@ -455,7 +455,7 @@ func (suite *UserServiceSuite) TestUpdateUser_RenameWithShares_Success() {
 
 	userDto := dto.User{
 		Username: newUsername,
-		Password: dto.NewSecret("password"),
+		Password: new(dto.NewSecret("password")),
 		IsAdmin:  false,
 	}
 
@@ -487,7 +487,7 @@ func (suite *UserServiceSuite) TestUpdateUser_RenameToExistingUser() {
 	newUsername := fmt.Sprintf("rexistinguser%d", time.Now().Unix())
 	userDto := dto.User{
 		Username: newUsername,
-		Password: dto.NewSecret("password"),
+		Password: new(dto.NewSecret("password")),
 		IsAdmin:  false,
 	}
 
@@ -526,7 +526,7 @@ func (suite *UserServiceSuite) TestUpdateUser_SaveError() {
 	currentUsername := "user1"
 	userDto := dto.User{
 		Username: "user1",
-		Password: dto.NewSecret("newpassword"),
+		Password: new(dto.NewSecret("newpassword")),
 		IsAdmin:  false,
 	}
 	/*
@@ -558,13 +558,13 @@ func (suite *UserServiceSuite) TestUpdateAdminUser_Success() {
 	// Arrange
 	adminDto := dto.User{
 		Username: username,
-		Password: dto.NewSecret("newadminpass"),
+		Password: new(dto.NewSecret("newadminpass")),
 		IsAdmin:  true,
 	}
 
 	existingAdmin := dto.User{
 		Username: username,
-		Password: dto.NewSecret("oldadminpass"),
+		Password: new(dto.NewSecret("oldadminpass")),
 		IsAdmin:  true,
 	}
 
@@ -596,13 +596,13 @@ func (suite *UserServiceSuite) TestUpdateAdminUser_RenameSuccess() {
 	oldAdminName := fmt.Sprintf("oldadmin%d", time.Now().Unix())
 	adminDto := dto.User{
 		Username: newAdminName,
-		Password: dto.NewSecret("password"),
+		Password: new(dto.NewSecret("password")),
 		IsAdmin:  true,
 	}
 
 	existingAdmin := dto.User{
 		Username: oldAdminName,
-		Password: dto.NewSecret("oldpassword"),
+		Password: new(dto.NewSecret("oldpassword")),
 		IsAdmin:  true,
 	}
 
@@ -635,19 +635,19 @@ func (suite *UserServiceSuite) TestUpdateAdminUser_RenameToExistingUser() {
 	newAdminName := "existinguser"
 	adminDto := dto.User{
 		Username: newAdminName,
-		Password: dto.NewSecret("password"),
+		Password: new(dto.NewSecret("password")),
 		IsAdmin:  true,
 	}
 
 	existingAdmin := dto.User{
 		Username: "admin",
-		Password: dto.NewSecret("password"),
+		Password: new(dto.NewSecret("password")),
 		IsAdmin:  true,
 	}
 
 	conflictingUser := dto.User{
 		Username: newAdminName,
-		Password: dto.NewSecret("password"),
+		Password: new(dto.NewSecret("password")),
 		IsAdmin:  false,
 	}
 
@@ -677,7 +677,7 @@ func (suite *UserServiceSuite) TestDeleteUser_Success() {
 	// Arrange
 	username := "userToDelete"
 
-	_, err := suite.userService.CreateUser(dto.User{Username: username, Password: dto.NewSecret("password")})
+	_, err := suite.userService.CreateUser(dto.User{Username: username, Password: new(dto.NewSecret("password"))})
 	suite.Require().NoError(err)
 
 	// Act
@@ -693,7 +693,7 @@ func (suite *UserServiceSuite) TestDeleteUser_Success_Reget() {
 	// Arrange
 	username := "userToDeleteRg"
 
-	_, err := suite.userService.CreateUser(dto.User{Username: username, Password: dto.NewSecret("password")})
+	_, err := suite.userService.CreateUser(dto.User{Username: username, Password: new(dto.NewSecret("password"))})
 	suite.Require().NoError(err)
 
 	// Act
@@ -718,7 +718,7 @@ func (suite *UserServiceSuite) TestDeleteUser_WithShares_Success() {
 	// Create user via service so the mock system registers it for samba operations
 	_, err := suite.userService.CreateUser(dto.User{
 		Username: username,
-		Password: dto.NewSecret("password"),
+		Password: new(dto.NewSecret("password")),
 		IsAdmin:  false,
 	})
 	suite.Require().NoError(err)

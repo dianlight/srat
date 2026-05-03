@@ -10,7 +10,7 @@
  * import './test/bun-setup'; // or import from 'path/to/bun-setup.ts'
  */
 
-import { afterAll, afterEach, beforeAll } from "bun:test";
+import { afterEach, beforeAll } from "bun:test";
 import { setupServer } from "msw/node";
 
 type SetupServerHandler = Parameters<typeof setupServer>[number];
@@ -20,8 +20,8 @@ type SetupServerHandler = Parameters<typeof setupServer>[number];
 // statically imported at parse time.
 let server: ReturnType<typeof setupServer> | null = null;
 let defaultHandlers: SetupServerHandler[] = [];
-let clearFilesystemSupportOverrides: () => void = () => {};
-let resetApiCounters: () => void = () => {};
+let clearFilesystemSupportOverrides: () => void = () => { };
+let resetApiCounters: () => void = () => { };
 
 /**
  * Start MSW server before all tests.
@@ -59,15 +59,11 @@ afterEach(async () => {
 	if (server) {
 		server.resetHandlers(...defaultHandlers);
 	}
-});
-
-/**
- * Stop MSW server after all tests.
- */
-afterAll(() => {
-	if (server) {
-		server.close();
-	}
+	// Remove any MUI Modal portal containers (e.g., Dialog, Drawer) left over by
+	// in-progress CSS exit transitions that happy-dom does not automatically
+	// complete. The React tree is already unmounted by cleanup() above, so these
+	// are orphaned DOM nodes and safe to remove.
+	document.querySelectorAll(".MuiModal-root").forEach((el) => el.parentNode?.removeChild(el));
 });
 
 /**

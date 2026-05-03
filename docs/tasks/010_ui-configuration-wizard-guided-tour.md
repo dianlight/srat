@@ -1,6 +1,8 @@
 # [FEATURE]: Configuration Wizard and Guided Help Tour
 
-**Target Repo:** `srat`  **Status:** 📅 Planned  **Issue Link:** [srat#116](https://github.com/dianlight/srat/issues/116) · [srat#82](https://github.com/dianlight/srat/issues/82)
+**Target Repo:** `srat`  
+**Status:** 🔄 In Progress  
+**Issue Link:** [srat#116](https://github.com/dianlight/srat/issues/116) · [srat#82](https://github.com/dianlight/srat/issues/82)
 
 ## 🎯 Objective
 
@@ -14,7 +16,6 @@ Improve the onboarding experience for new users by adding two complementary UI f
 ## 🛠️ Technical Specifications
 
 - **Inputs:**
-  - First-launch detection: `localStorage` flag `srat_wizard_seen` or backend setting
   - User explicit trigger: "Run Setup Wizard" button in Settings or an empty-state screen
   - Existing API: `GET /settings`, `PUT /settings`, `POST /shares`, `GET /volumes`
 
@@ -32,23 +33,37 @@ Improve the onboarding experience for new users by adding two complementary UI f
 
 ## 📝 Task List
 
-- [ ] Task 1: Create `frontend/src/components/wizard/SetupWizard.tsx` — multi-step dialog using MUI `Stepper` + `Dialog`; steps: Network → First Share → User Account. Each step is a separate component with its own form and validation using `react-hook-form`. Also merging actual startup dialigs like `frontend/src/components/TelemetryModal.tsx` and `frontend/src/components/BaseConfigModal.tsx` into this new `SetupWizard` component.
-- [ ] Task 1.1: Essential Samba configuration step like in `frontend/src/components/BaseConfigModal.tsx`
-- [ ] Task 1.2: Network step — fetch available network interfaces from `GET /settings`, allow user to select one (dropdown or list)
-- [ ] Task 1.3: First Share step — fetch volumes from `GET /volumes`, allow user to select a volume and enter a share name; validate share name is not empty
-- [ ] Task 1.4: User Account step — form for username and password (with confirm); validate non-empty and matching passwords
-- [ ] Task 1.5: Telemetry opt-in step (optional) — simple yes/no choice with explanation of what telemetry is and how it helps
-- [ ] Task 2: Implement first-launch detection logic — check `localStorage.getItem('srat_wizard_seen')`; if absent, auto-open wizard after initial data load
-- [ ] Task 3: Wire wizard steps to existing RTK Query mutations: `useUpdateSettingsMutation`, `useCreateShareMutation`
-- [ ] Task 4: Add "Run Setup Wizard" button to the Settings page (`frontend/src/pages/settings/Settings.tsx`)
-- [ ] Task 5: Create `frontend/src/components/tour/AppTour.tsx` — `@reactour/tour` integration with step definitions for Dashboard, Shares list, Settings sections
-- [ ] Task 6: Add a "?" / Help button (or floating action) to trigger the tour from any page; persist tour-seen state in `localStorage`
-- [ ] Task 7: Unit tests — wizard renders correct steps, "Skip" dismisses without mutation, "Finish" submits mutations in order
-- [ ] Task 8: Unit tests — tour step definitions render target selectors, "Close Tour" sets `localStorage` flag
-- [ ] Task 9: Accessibility — ensure wizard and tour are keyboard-navigable and screen-reader-friendly (ARIA labels)
-- [ ] Task 10: Documentation — add a "Getting Started" section to frontend `README.md` describing the wizard and tour
+- [x] Task 1: Create `frontend/src/components/wizard/SetupWizard.tsx` — 4-step dialog using MUI `Stepper` + `Dialog`; replaces both `BaseConfigModal.tsx` and `TelemetryModal.tsx`. Wired into App.tsx via `WizardOpenContext`.
+- [x] Task 1.1: Security step (hostname, workgroup, admin password) — replaces `BaseConfigModal.tsx`
+- [x] Task 1.2: Network step — fetch available network interfaces via `GET /nics`, bind_all_interfaces checkbox, interfaces autocomplete
+- [x] Task 1.3: First Share step — enter share name (optional); if provided, calls `POST /share`
+- [x] Task 1.4: Security step handles admin password change with validation (no "changeme!", min 6 chars, confirm match)
+- [x] Task 1.5: Telemetry step — RadioGroup with `Telemetry_mode.All/Errors/Disabled`; handles no-internet state
+- [x] Task 2: Implement first-launch detection logic —  auto-opens wizard when default password / missing hostname / telemetry=Ask+internet
+- [x] Task 3: Wire wizard steps to existing RTK Query mutations: `usePutApiSettingsMutation`, `usePutApiUseradminMutation`, `usePostApiShareMutation`
+- [x] Task 4: Add "Run Setup Wizard" button to the Settings page (`frontend/src/pages/settings/Settings.tsx`) — placed in search bar row
+- [x] Task 5: Create `@reactour/tour` integration — tour steps already implemented per-page in `*TourStep.tsx` files and wired into `NavBar.tsx` via `useTour` + `setSteps`. `TourProvider` is set up in `index.tsx`. Tour utility events in `frontend/src/utils/TourEvents.ts`.
+- [x] Task 6: Add a "?" / Help button — already implemented in `NavBar.tsx` (`HelpIcon`/`HelpOutlinedIcon` toggle button wired to `setTourOpen`).
+- [x] Task 7: Unit tests — `frontend/src/components/wizard/__tests__/SetupWizard.test.tsx` — wizard renders all 4 step labels, "Skip" closes without mutations, open=false hides content, 5 tests all pass
+- [x] Task 8: Unit tests — tour step definitions render target selectors, "Close Tour" sets `localStorage` flag (step-definition coverage exists for Dashboard/Shares/Volumes/Settings; `NavBar.test.tsx` asserts `srat_tour_seen` is written when tour closes)
+- [x] Task 9: Accessibility — wizard dialog now has explicit ARIA labeling (`aria-labelledby`, `aria-describedby`) and stepper has `aria-label`; tour toggle button has explicit accessible label
+- [x] Task 10: Documentation — added a "Getting Started" section to frontend `README.md` describing wizard and guided tour behavior
 
 ## 🧠 Implementation Notes (Copilot Context)
+
+### Current State (as of review)
+
+**Already implemented:**
+- `@reactour/tour` `TourProvider` is set up in `frontend/src/index.tsx`
+- Tour steps exist as per-page files: `DashboardTourStep.tsx`, `SharesTourStep.tsx`, `VolumesTourStep.tsx`, `UsersSteps.tsx`, `SettingsTourStep.tsx`
+- The `NavBar.tsx` wires all tour steps together via `useTour` + `setSteps` when tab changes, and has a `?` help button (`HelpIcon`/`HelpOutlinedIcon`) using `setTourOpen`
+- Tour target selectors use `data-tutor` attribute (NOT `data-tour` as originally documented)
+- `frontend/src/utils/TourEvents.ts` provides tour event utilities
+- `DashboardTourStep.test.tsx` provides a test for one set of tour steps
+- `BaseConfigModal.tsx` — handles essential samba config (hostname, workgroup, admin password)
+- `TelemetryModal.tsx` + `useTelemetryModal` hook — handles telemetry opt-in, already shown on first run
+
+**Remaining work** is focused on the Setup Wizard (Tasks 1–4, 7, 9, 10).
 
 ### Wizard step structure
 
@@ -62,30 +77,20 @@ const STEPS = [
 
 Use MUI `Stepper` (horizontal for desktop, vertical for mobile) inside a `Dialog` with `fullWidth maxWidth="sm"`.
 
-### First-launch detection
+### Tour integration (IMPLEMENTED — do not re-implement)
 
-```ts
-const hasSeenWizard = localStorage.getItem('srat_wizard_seen') === 'true';
-if (!hasSeenWizard) {
-  // dispatch open wizard action
-}
-```
-
-Set `localStorage.setItem('srat_wizard_seen', 'true')` on wizard close (skip or finish).
-
-### Tour integration
+Tour is already live. Target selectors use `data-tutor` (not `data-tour`):
 
 ```tsx
-import { TourProvider, useTour } from '@reactour/tour';
-
-const steps = [
-  { selector: '[data-tour="dashboard"]', content: 'This is the Dashboard...' },
-  { selector: '[data-tour="shares"]', content: 'Manage your Samba shares here.' },
-  // ...
-];
+// Already implemented in NavBar.tsx
+const { setIsOpen: setTourOpen, isOpen: isTourOpen } = useTour();
+// Help button:
+<IconButton onClick={() => setTourOpen(!isTourOpen)}>
+  {isTourOpen ? <HelpIcon /> : <HelpOutlinedIcon />}
+</IconButton>
 ```
 
-Add `data-tour="..."` attributes to target elements in existing page components.
+Add `data-tutor="reactour__tab<TabID>__step<N>"` attributes to new UI elements.
 
 ### References
 
@@ -97,6 +102,15 @@ Add `data-tour="..."` attributes to target elements in existing page components.
 
 - [ ] [srat#116](https://github.com/dianlight/srat/issues/116) — Configuration Wizards (RoadMap)
 - [ ] [srat#82](https://github.com/dianlight/srat/issues/82) — Help screen or overlay help/tour (RoadMap)
-- [ ] `frontend/package.json` — `@reactour/tour` already installed
-- [ ] `frontend/src/pages/settings/Settings.tsx` — add "Run Setup Wizard" entry point
-- [ ] `frontend/src/pages/` — add `data-tour` attributes to key UI landmarks
+- [x] `frontend/package.json` — `@reactour/tour` already installed
+- [x] `frontend/src/pages/settings/Settings.tsx` — "Setup Wizard" button added to search bar row
+- [x] `frontend/src/pages/` — `data-tutor` attributes already on key UI landmarks (Shares, Volumes, Dashboard, Settings, Users)
+- [x] `frontend/src/components/wizard/SetupWizard.tsx` — created (4 steps: Security, Network, First Share, Telemetry)
+- [x] `frontend/src/hooks/useSetupWizard.ts` — created (replaces useBaseConfigModal + useTelemetryModal)
+- [x] `frontend/src/components/wizard/__tests__/SetupWizard.test.tsx` — created (5 tests)
+- [x] `frontend/src/App.tsx` — `SetupWizard` fully replaces `BaseConfigModal` and `TelemetryModal`
+- [x] `frontend/src/components/BaseConfigModal.tsx` — existing essential samba config modal (to be merged as wizard step 1.1)
+- [x] `frontend/src/components/TelemetryModal.tsx` — existing telemetry modal (to be merged as wizard step 1.5)
+- [x] `frontend/src/components/NavBar.tsx` — tour help button implemented with explicit aria-label; sets `srat_tour_seen` when tour is closed
+- [x] `frontend/src/utils/TourEvents.ts` — tour event utilities
+- [x] `frontend/src/index.tsx` — `TourProvider` already set up

@@ -297,6 +297,14 @@ export function NavBar(props: {
   const [selectedMessageJson, setSelectedMessageJson] = useState<string>("");
   const [ignoreHeartbeat, setIgnoreHeartbeat] = useState(true);
 
+  const handleTourToggle = () => {
+    const nextIsOpen = !isTourOpen;
+    setTourOpen(nextIsOpen);
+    if (!nextIsOpen) {
+      localStorage.setItem("srat_tour_seen", "true");
+    }
+  };
+
   // Filtered messages based on ignoreHeartbeat setting
   const filteredMessages = useMemo(() => {
     const filtered = ignoreHeartbeat
@@ -522,26 +530,6 @@ export function NavBar(props: {
             )}
 
             <Box sx={{ flexGrow: 0, display: "flex", alignItems: "center" }}>
-              {/*
-							{Object.values(evdata.health.dirty_tracking || {}).reduce(
-								(acc, value) => acc + (value ? 1 : 0),
-								0,
-							) > 0 && (
-									<Tooltip title="Restart Samba demon now!" arrow>
-										<IconButton onClick={handleRestartNow} size="small">
-											<RestartAltIcon sx={{ color: "white" }} />
-											<CircularProgress
-												size={32}
-												sx={{
-													color: "blueviolet",
-													position: "absolute",
-													zIndex: 1,
-												}}
-											/>
-										</IconButton>
-									</Tooltip>
-								)}
-								*/}
               {getCurrentEnv() !== "production" && (
                 <IconButton size="small">
                   <Tooltip
@@ -698,7 +686,13 @@ export function NavBar(props: {
                   />
                 </Tooltip>
               ) : null}
-              <IconButton size="small" onClick={() => setTourOpen(!isTourOpen)}>
+              <IconButton
+                size="small"
+                onClick={handleTourToggle}
+                aria-label={
+                  isTourOpen ? "Close Guided Tour" : "Start Guided Tour"
+                }
+              >
                 <Tooltip
                   title={isTourOpen ? "Close Guided Tour" : "Start Guided Tour"}
                   arrow

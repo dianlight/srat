@@ -400,7 +400,7 @@ func TestSystemCapabilities_NotSupported(t *testing.T) {
 func TestUser_AllFields(t *testing.T) {
 	user := dto.User{
 		Username: "testuser",
-		Password: dto.NewSecret("secret123"),
+		Password: new(dto.NewSecret("secret123")),
 		IsAdmin:  true,
 		RwShares: []string{"share1", "share2"},
 		RoShares: []string{"share3"},
@@ -419,7 +419,7 @@ func TestUser_MinimalFields(t *testing.T) {
 	}
 
 	assert.Equal(t, "guest", user.Username)
-	assert.Empty(t, user.Password)
+	assert.Nil(t, user.Password)
 	assert.False(t, user.IsAdmin)
 	assert.Nil(t, user.RwShares)
 	assert.Nil(t, user.RoShares)

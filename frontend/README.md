@@ -51,6 +51,31 @@ Note: This project uses Bun as the JavaScript runtime and package manager. See `
 
 **Bun 1.3 Compatibility:** This project is fully compatible with Bun 1.3.0. The project has been tested with Bun 1.3.0 and all breaking changes have been reviewed. The project does not use any of the affected APIs (SQL client, YAML parser) that changed in Bun 1.3.
 
+## Getting Started
+
+SRAT includes two onboarding helpers to make first-time setup faster:
+
+- **Setup Wizard** (first run + manual trigger)
+- **Guided Tour** (contextual in-app help)
+
+### Setup Wizard
+
+- The wizard opens automatically on first run when core setup is still required (for example default admin password, missing hostname/workgroup, or telemetry decision pending with internet available).
+- You can reopen it anytime from **Settings → Setup Wizard**.
+- Wizard flow:
+  1. **Security** — hostname, workgroup, optional admin password update
+  2. **Network** — bind all interfaces or select specific interfaces
+  3. **First Share** — optional first share name
+  4. **Telemetry** — choose usage/error reporting mode
+- Selecting **Skip Setup** closes the wizard and marks onboarding as seen.
+
+### Guided Tour
+
+- Use the **Help (?)** button in the top bar to start or stop the tour.
+- Tour steps adapt to the current tab (Dashboard, Volumes, Shares, Users, Settings).
+- Tour anchors are implemented via `data-tutor="reactour__tab...__step..."` attributes in UI components.
+
+
 ## Console Error Callback Registry
 
 The frontend provides a small utility to register callbacks executed asynchronously whenever `console.error` is called, and a React hook for ergonomic usage.

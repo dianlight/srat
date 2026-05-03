@@ -8,7 +8,6 @@ import {
 import Container from "@mui/material/Container";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
-import BaseConfigModal from "./components/BaseConfigModal";
 import {
   CommandOutputDialog,
   CommandOutputToastContent,
@@ -17,9 +16,11 @@ import {
 import { Footer } from "./components/Footer";
 import GlobalEventMonitor from "./components/GlobalEventTracker";
 import { NavBar } from "./components/NavBar";
-import TelemetryModal from "./components/TelemetryModal";
-import { useBaseConfigModal } from "./hooks/useBaseConfigModal";
-import { useTelemetryModal } from "./hooks/useTelemetryModal";
+import {
+  SetupWizard,
+  WizardOpenContext,
+} from "./components/wizard/SetupWizard";
+import { useSetupWizard } from "./hooks/useSetupWizard";
 import {
   type CommandExecutionSnapshot,
   type CommandOutputLineSnapshot,
@@ -78,10 +79,16 @@ export function App() {
   const { data: evdata, isLoading, error: herror } = useGetServerEventsQuery();
   const { data: appConfigResponse } = useGetApiSettingsAppConfigQuery();
   const [restartAddon] = usePutApiRestartMutation();
-  const { shouldShow: showTelemetryModal, dismiss: dismissTelemetryModal } =
-    useTelemetryModal();
-  const { shouldShow: showBaseConfigModal, dismiss: dismissBaseConfigModal } =
-    useBaseConfigModal();
+  const { shouldShow: shouldShowWizard, dismiss: dismissWizard } =
+    useSetupWizard();
+  const [wizardOpen, setWizardOpen] = useState(false);
+  useEffect(() => {
+    if (shouldShowWizard) setWizardOpen(true);
+  }, [shouldShowWizard]);
+  const handleWizardClose = useCallback(() => {
+    setWizardOpen(false);
+    dismissWizard();
+  }, [dismissWizard]);
   const [backdropOpen, setBackdropOpen] = useState(true);
   const backdropPrevOpen = useRef(undefined as boolean | undefined);
   const [commandSessions, setCommandSessions] = useState<
@@ -382,7 +389,7 @@ export function App() {
   };
 
   return (
-    <>
+    <WizardOpenContext.Provider value={() => setWizardOpen(true)}>
       <GlobalEventMonitor />
       <Container
         maxWidth={false}
@@ -404,13 +411,10 @@ export function App() {
       >
         <CircularProgress color="inherit" />
       </Backdrop>
-      <BaseConfigModal
-        open={showBaseConfigModal}
-        onClose={dismissBaseConfigModal}
-      />
-      <TelemetryModal
-        open={showTelemetryModal}
-        onClose={dismissTelemetryModal}
+      <SetupWizard
+        open={wizardOpen}
+        onClose={handleWizardClose}
+        allowSkip={!shouldShowWizard}
       />
       <Snackbar
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
@@ -456,6 +460,6 @@ export function App() {
         onClose={() => setCommandDialogOpen(false)}
         onDownload={downloadCommandOutput}
       />
-    </>
+    </WizardOpenContext.Provider>
   );
 }

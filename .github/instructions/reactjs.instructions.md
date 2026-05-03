@@ -116,6 +116,7 @@ function SmartStatusPanelInner({ deviceId }: Props) {
 - Use CSS custom properties (variables) for theming
 - Implement consistent spacing, typography, and color systems
 - Ensure accessibility with proper ARIA attributes and semantic HTML
+- **MUI v9: CSS layout utilities are not valid direct component props.** `alignItems`, `justifyContent`, `flexDirection`, `textAlign`, and similar CSS helpers must be passed through `sx={{ alignItems: "center" }}` — not as direct component props. Passing them directly causes TS2769 "No overload matches this call" under `tsgo`. Affected components include `Stack`, `Typography`, `Box`, and any MUI layout primitive.
 
 ### Performance Optimization
 

@@ -15,7 +15,7 @@ func TestUserCreation(t *testing.T) {
 			name: "Basic user",
 			user: User{
 				Username: "testuser",
-				Password: NewSecret("password123"),
+				Password: new(NewSecret("password123")),
 				IsAdmin:  false,
 			},
 		},
@@ -23,7 +23,7 @@ func TestUserCreation(t *testing.T) {
 			name: "Admin user",
 			user: User{
 				Username: "admin",
-				Password: NewSecret("adminpass"),
+				Password: new(NewSecret("adminpass")),
 				IsAdmin:  true,
 			},
 		},
@@ -31,7 +31,7 @@ func TestUserCreation(t *testing.T) {
 			name: "User with shares",
 			user: User{
 				Username: "shareuser",
-				Password: NewSecret("pass"),
+				Password: new(NewSecret("pass")),
 				RwShares: []string{"share1", "share2"},
 				RoShares: []string{"share3"},
 			},
@@ -119,7 +119,7 @@ func TestUserAdminFlag(t *testing.T) {
 func TestUserPasswordHandling(t *testing.T) {
 	user := User{
 		Username: "testuser",
-		Password: NewSecret("securepassword123"),
+		Password: new(NewSecret("securepassword123")),
 	}
 
 	assert.NotEmpty(t, user.Password)

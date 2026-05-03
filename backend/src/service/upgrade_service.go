@@ -741,7 +741,7 @@ func (self *UpgradeService) InstallUpdatePackage(updatePkg *UpdatePackage) error
 					ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSNOUPGRADE,
 					ErrorMessage:   fmt.Sprintf("Binary version %s is already installed", newVersion.String()),
 				})
-				return errors.New("binary version is same as current version")
+				return errors.Errorf("binary version is same as current version %s", currentVersion.String())
 			}
 			slog.InfoContext(self.ctx, "Installing new version", "current", currentVersion.String(), "new", newVersion.String())
 		}

@@ -75,6 +75,10 @@ const registerModuleMocks = () => {
     useBaseConfigModal: () => ({ shouldShow: false, dismiss: () => undefined }),
   }));
 
+  mock.module("../hooks/useSetupWizard", () => ({
+    useSetupWizard: () => ({ shouldShow: false, dismiss: () => undefined }),
+  }));
+
   mock.module("../components/NavBar", () => ({
     NavBar: () => <div data-testid="mock-navbar">NavBar</div>,
   }));

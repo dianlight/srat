@@ -2062,7 +2062,6 @@ components:
           default: false
           type: boolean
         hostname:
-          default: homeassistant
           type: string
         interfaces:
           default: []
@@ -2086,7 +2085,6 @@ components:
             - Disabled
           type: string
         workgroup:
-          default: WORKGROUP
           type: string
       type: object
     SharedResource:
@@ -3919,8 +3917,8 @@ paths:
           schema:
             description: Unique partition identifier
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -4012,8 +4010,8 @@ paths:
     get:
       operationId: get-api-filesystem-task
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -4056,8 +4054,8 @@ paths:
     get:
       operationId: get-api-filesystems
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -5236,7 +5234,6 @@ paths:
                   default: false
                   type: boolean
                 hostname:
-                  default: homeassistant
                   type: string
                 interfaces:
                   default: []
@@ -5260,7 +5257,6 @@ paths:
                     - Disabled
                   type: string
                 workgroup:
-                  default: WORKGROUP
                   type: string
               type: object
           application/merge-patch+shorthand:
@@ -5323,7 +5319,6 @@ paths:
                   default: false
                   type: boolean
                 hostname:
-                  default: homeassistant
                   type: string
                 interfaces:
                   default: []
@@ -5347,7 +5342,6 @@ paths:
                     - Disabled
                   type: string
                 workgroup:
-                  default: WORKGROUP
                   type: string
               type: object
         required: true
@@ -5979,8 +5973,8 @@ paths:
               - world
             maxLength: 30
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -6511,8 +6505,8 @@ paths:
     get:
       operationId: get-api-update
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -6553,8 +6547,8 @@ paths:
     put:
       operationId: put-api-update
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -7048,8 +7042,8 @@ paths:
     get:
       operationId: list-api-volumes
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:

@@ -93,6 +93,7 @@ applyTo: '**/\*.ts,**/\*.tsx'
 - Centralize shared contracts instead of duplicating shapes.
 - Express intent with TypeScript utility types (e.g., `Readonly`, `Partial`, `Record`).
 - With `noImplicitOverride` enabled, use `override` keyword for methods that override parent class methods.
+- **`tsgo` enforces `import type` for type-only positions.** Any symbol from an import that is only used in a type position (e.g. `mode: Telemetry_mode`) **must** be declared with `import type { Telemetry_mode }`. Plain `import` compiles under `tsc` but is rejected by `tsgo`. This applies to all generated enums and types from `sratApi` (e.g. `Telemetry_mode`, `Usage`, `Type`). Guard to use: always run `bun tsgo --noEmit` on every file in a changed module, not only the directly edited file.
 
 ## Class Inheritance and Override Keyword
 
