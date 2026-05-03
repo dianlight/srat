@@ -4,7 +4,15 @@
 
 ## [ 🚧 Unreleased ]
 
+### 🙏 Thanks
+
+We would like to thank all supporters for their contributions and donations.
+With your donations, we are able to continue developing and improving this project. Your support is greatly appreciated.
+
+> **Note**: This section tracks development progress and changes planned for the Release Candidate (RC). The final release notes will be organized and consolidated once the RC is ready for public testing.
+
 ### ✨ Features
+- New startup wizard for first-run configuration of essential Samba settings (hostname, workgroup, admin password) and optional telemetry opt-in. The wizard is implemented as a multi-step dialog with a progress stepper and integrated with the existing guided tour system for contextual help. It is accessible from the Settings page and automatically shown on first run.
 
 ### 🐛 Bug Fixes
 
@@ -17,13 +25,6 @@
 - Correct release process.
 
 ## 2026.4.0-rc3
-
-> **Note**: This section tracks development progress and changes planned for the first Release Candidate (RC). The final release notes will be organized and consolidated once the RC is ready for public testing.
-
-### 🙏 Thanks
-
-We would like to thank all supporters for their contributions and donations.
-With your donations, we are able to continue developing and improving this project. Your support is greatly appreciated.
 
 ### 🔧 Maintenance
 

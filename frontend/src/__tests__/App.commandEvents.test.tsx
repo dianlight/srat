@@ -107,23 +107,32 @@ describe("App command events", () => {
     localStorage.clear();
     sessionStorage.clear();
 
-    const server = await getMswServer();
+    const server = getMswServer();
+    // Use regex patterns so handlers match any host:port (API_URL may differ from localhost)
     server.use(
-      http.get("/api/command_output", () => {
-        return HttpResponse.json({ message: "not found" }, { status: 404 });
-      }),
+      http.get(/\/api\/settings\/app-config/, () =>
+        HttpResponse.json({ requires_restart: false }),
+      ),
+      http.get(/\/api\/command_output/, () =>
+        HttpResponse.json({ message: "not found" }, { status: 404 }),
+      ),
+      http.get(/\/api\/settings$/, () => HttpResponse.json({})),
+      http.get(/\/api\/users$/, () => HttpResponse.json([])),
+      http.get(/\/api\/volumes$/, () => HttpResponse.json([])),
+      http.get(/\/api\/hostname$/, () => HttpResponse.json({ hostname: "localhost" })),
+      http.get(/\/api\/nics$/, () => HttpResponse.json([])),
+      http.get(/\/api\/telemetry\/internet-connection$/, () =>
+        HttpResponse.json({ connected: false }),
+      ),
+      http.get(/\/api\/health$/, () =>
+        HttpResponse.json({ status: "ok", dirty_tracking: {} }),
+      ),
     );
   });
 
   it("does not show stderr toast while exit code is unavailable", async () => {
     const { App } = await import("../App");
     const store = await createTestStore();
-    const server = await getMswServer();
-    server.use(
-      http.get("/api/settings/app-config", () => {
-        return HttpResponse.json({ requires_restart: false });
-      }),
-    );
 
     wsState = {
       heartbeat: { alive: true },
@@ -150,12 +159,6 @@ describe("App command events", () => {
   it("shows failure toast after command termination with a non-zero exit code", async () => {
     const { App } = await import("../App");
     const store = await createTestStore();
-    const server = await getMswServer();
-    server.use(
-      http.get("/api/settings/app-config", () => {
-        return HttpResponse.json({ requires_restart: false });
-      }),
-    );
 
     const { rerender } = render(
       <Provider store={store}>
@@ -210,12 +213,6 @@ describe("App command events", () => {
   it("shows stderr toast when stderr output arrives with a non-zero exit code", async () => {
     const { App } = await import("../App");
     const store = await createTestStore();
-    const server = await getMswServer();
-    server.use(
-      http.get("/api/settings/app-config", () => {
-        return HttpResponse.json({ requires_restart: false });
-      }),
-    );
 
     wsState = {
       heartbeat: { alive: true },
@@ -243,12 +240,6 @@ describe("App command events", () => {
   it("opens popup from stderr toast action and displays command output", async () => {
     const { App } = await import("../App");
     const store = await createTestStore();
-    const server = await getMswServer();
-    server.use(
-      http.get("/api/settings/app-config", () => {
-        return HttpResponse.json({ requires_restart: false });
-      }),
-    );
     const user = userEvent.setup();
 
     const { rerender } = render(
@@ -372,12 +363,10 @@ describe("App command events", () => {
   it("backfills the full command output history when the dialog opens", async () => {
     const { App } = await import("../App");
     const store = await createTestStore();
-    const server = await getMswServer();
+    const server = getMswServer();
+    // Override command_output handler to return full history for exec-backfill
     server.use(
-      http.get("/api/settings/app-config", () => {
-        return HttpResponse.json({ requires_restart: false });
-      }),
-      http.get("/api/command_output", ({ request }) => {
+      http.get(/\/api\/command_output/, ({ request }) => {
         const url = new URL(request.url);
         if (url.searchParams.get("execution_id") !== "exec-backfill") {
           return HttpResponse.json({ message: "not found" }, { status: 404 });
@@ -459,12 +448,6 @@ describe("App command events", () => {
   it("does not leak react-toastify helper props into DOM when rendering stderr toast content", async () => {
     const { App } = await import("../App");
     const store = await createTestStore();
-    const server = await getMswServer();
-    server.use(
-      http.get("/api/settings/app-config", () => {
-        return HttpResponse.json({ requires_restart: false });
-      }),
-    );
 
     const originalConsoleError = console.error;
     const consoleErrorMock = mock((..._args: unknown[]) => undefined);
