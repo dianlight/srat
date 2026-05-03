@@ -4,6 +4,9 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Mise-based Frontend Workflows](#mise-based-frontend-workflows)
+- [Getting Started](#getting-started)
+  - [Setup Wizard](#setup-wizard)
+  - [Guided Tour](#guided-tour)
 - [Console Error Callback Registry](#console-error-callback-registry)
   - [API](#api)
   - [Behavior](#behavior)
@@ -74,7 +77,6 @@ SRAT includes two onboarding helpers to make first-time setup faster:
 - Use the **Help (?)** button in the top bar to start or stop the tour.
 - Tour steps adapt to the current tab (Dashboard, Volumes, Shares, Users, Settings).
 - Tour anchors are implemented via `data-tutor="reactour__tab...__step..."` attributes in UI components.
-
 
 ## Console Error Callback Registry
 
