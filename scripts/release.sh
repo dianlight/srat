@@ -185,6 +185,11 @@ for asset_id in $ASSET_IDS; do
 	gh api -X DELETE "repos/:owner/:repo/releases/assets/$asset_id"
 done
 
+# STEP 3: Trigger CI manual execution for build.yaml to produce release assets
+log "Triggering CI workflow for release assets..."
+gh workflow run build.yaml --ref main -f release=true
+sleep 5 # Short delay to ensure workflow is registered
+
 # INTERMEDIATE: Wait for CI and Check Workflows
 log "Checking for active workflow runs on main before final publish..."
 while true; do
