@@ -127,6 +127,7 @@ run = [
 #quiet = true
 
 [tasks.release]
+description = "Run the release process, which includes building the project and performing any necessary release steps. Optionally accepts a version flag to specify the release version."
 usage = '''
 flag "--version <version>" help="Release version"
 '''
