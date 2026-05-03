@@ -12,9 +12,9 @@ oapi-codegen = "2.6.0"
 clean = "go -C src clean && rm -rf dist"
 dev = "SRAT_DEVMODE=true go tool -C src air -c .air.toml"
 mount-remote = "umount -l /mnt/remote > /dev/null 2>&1 || : && mkdir -p /mnt/remote > /dev/null 2>&1 || : && sshfs -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3 ${HOMEASSISTANT_IP}:/addon_configs/local_sambanas2 /mnt/remote"
-#test-ci = "go test ./... -coverprofile=coverage.out && go tool cover -func=coverage.out | grep total:"
 
 [tasks.update]
+raw = true
 run = [
   "go run -C src github.com/oligot/go-mod-upgrade",
 ]

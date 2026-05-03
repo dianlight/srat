@@ -28,7 +28,7 @@ github.com/DATA-DOG/go-sqlmock
 # github.com/Masterminds/goutils v1.1.1
 ## explicit
 github.com/Masterminds/goutils
-# github.com/Masterminds/semver/v3 v3.4.0
+# github.com/Masterminds/semver/v3 v3.5.0
 ## explicit; go 1.21
 github.com/Masterminds/semver/v3
 # github.com/Masterminds/sprig/v3 v3.3.0
@@ -113,8 +113,8 @@ github.com/evanphx/json-patch/v5/internal/json
 # github.com/fatih/color v1.19.0
 ## explicit; go 1.25.0
 github.com/fatih/color
-# github.com/fsnotify/fsnotify v1.9.0
-## explicit; go 1.17
+# github.com/fsnotify/fsnotify v1.10.0
+## explicit; go 1.23
 github.com/fsnotify/fsnotify
 github.com/fsnotify/fsnotify/internal
 # github.com/fxamacker/cbor/v2 v2.9.0
@@ -225,8 +225,8 @@ github.com/mitchellh/reflectwalk
 # github.com/ncruces/go-strftime v1.0.0
 ## explicit; go 1.17
 github.com/ncruces/go-strftime
-# github.com/oapi-codegen/oapi-codegen/v2 v2.6.0
-## explicit; go 1.22.5
+# github.com/oapi-codegen/oapi-codegen/v2 v2.7.0
+## explicit; go 1.24.3
 github.com/oapi-codegen/oapi-codegen/v2/pkg/securityprovider
 # github.com/oapi-codegen/runtime v1.4.0
 ## explicit; go 1.24.0
@@ -320,7 +320,7 @@ github.com/samber/slog-common
 # github.com/samber/slog-formatter v1.2.2
 ## explicit; go 1.21
 github.com/samber/slog-formatter
-# github.com/samber/slog-http v1.12.0
+# github.com/samber/slog-http v1.12.1
 ## explicit; go 1.21
 github.com/samber/slog-http
 # github.com/samber/slog-multi v1.7.1
@@ -332,7 +332,7 @@ github.com/sergi/go-diff/diffmatchpatch
 # github.com/sethvargo/go-retry v0.3.0
 ## explicit; go 1.21
 github.com/sethvargo/go-retry
-# github.com/shirou/gopsutil/v4 v4.26.3
+# github.com/shirou/gopsutil/v4 v4.26.4
 ## explicit; go 1.24.0
 github.com/shirou/gopsutil/v4/common
 github.com/shirou/gopsutil/v4/cpu

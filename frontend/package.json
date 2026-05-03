@@ -15,7 +15,7 @@
     "url": "https://github.com/dianlight/srat"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.13",
+    "@biomejs/biome": "2.4.14",
     "@happy-dom/global-registrator": "20.9.0",
     "@hookform/devtools": "4.4.0",
     "@testing-library/dom": "10.4.1",
@@ -30,7 +30,7 @@
     "@types/react-syntax-highlighter": "15.5.13",
     "@types/semver": "7.7.1",
     "fastify-plugin": "5.1.0",
-    "msw": "2.13.6",
+    "msw": "2.14.2",
     "msw-auto-mock": "0.32.1"
   },
   "peerDependencies": {
@@ -59,13 +59,13 @@
     "js-yaml": "^4.1.1",
     "maskify-ts": "^4.0.0",
     "material-ui-confirm": "^4.0.0",
-    "mui-chips-input": "^8.0.0",
+    "mui-chips-input": "^9.0.0",
     "normalize-url": "^9.0.0",
     "openapi-explorer": "^2.4.793",
     "prismjs": "^1.30.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-hook-form": "^7.74.0",
+    "react-hook-form": "^7.75.0",
     "react-hook-form-mui": "^9.0.1",
     "react-intersection-observer": "^10.0.3",
     "react-redux": "^9.2.0",

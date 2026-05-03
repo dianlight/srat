@@ -9,7 +9,7 @@ require (
 	github.com/mattn/go-isatty v0.0.21 // indirect
 	github.com/oapi-codegen/runtime v1.4.0
 	github.com/pilebones/go-udev v0.9.1
-	github.com/shirou/gopsutil/v4 v4.26.3
+	github.com/shirou/gopsutil/v4 v4.26.4
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/sys v0.43.0
 )
@@ -24,7 +24,7 @@ require (
 	github.com/dianlight/smartmontools-go v0.2.6
 	github.com/dianlight/tlog v0.2.2
 	github.com/fatih/color v1.19.0
-	github.com/fsnotify/fsnotify v1.9.0
+	github.com/fsnotify/fsnotify v1.10.0
 	github.com/gofri/go-github-ratelimit/v2 v2.0.2
 	github.com/google/go-github/v85 v85.0.0
 	github.com/gorilla/websocket v1.5.3
@@ -34,7 +34,7 @@ require (
 	github.com/pressly/goose/v3 v3.27.1
 	github.com/prometheus/procfs v0.20.1
 	github.com/rollbar/rollbar-go v1.4.8
-	github.com/samber/slog-http v1.12.0
+	github.com/samber/slog-http v1.12.1
 	github.com/sergi/go-diff v1.4.0
 	github.com/shomali11/util v0.0.0-20220717175126-f0771b70947f
 	github.com/teivah/broadcast v0.1.0
@@ -85,7 +85,7 @@ require (
 require (
 	dario.cat/mergo v1.0.2 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
-	github.com/Masterminds/semver/v3 v3.4.0
+	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/danielgtaylor/mexpr v1.9.1 // indirect
 	github.com/danielgtaylor/shorthand/v2 v2.2.0 // indirect
@@ -105,7 +105,7 @@ require (
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
-	github.com/oapi-codegen/oapi-codegen/v2 v2.6.0
+	github.com/oapi-codegen/oapi-codegen/v2 v2.7.0
 	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
