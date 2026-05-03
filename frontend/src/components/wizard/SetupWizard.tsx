@@ -302,14 +302,7 @@ export function SetupWizard({
         setIsWaitingForClean(true);
         return;
       }
-
-      console.debug("Dirty tracking already clean, closing wizard");
-      setIsFinishing(false);
-      requestClose();
-      return;
-    }
-
-    if (dirtyTrackingClean) {
+    } else if (dirtyTrackingClean) {
       console.debug("All dirty tracking flags are clean, closing wizard");
       setIsWaitingForClean(false);
       setIsFinishing(false);

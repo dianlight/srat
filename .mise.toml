@@ -53,6 +53,7 @@ version = "0.23.0"
 
 [env]
 HK_MISE = 1
+_.source = { path = "scripts/env.sh", tools = true }
 
 [hooks]
 # Automatically install/update hooks when tools are installed

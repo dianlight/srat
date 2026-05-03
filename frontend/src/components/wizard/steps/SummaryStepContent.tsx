@@ -56,7 +56,7 @@ export function SummaryStepContent({
 
         <Stack spacing={1}>
           <Typography variant="subtitle2">Security</Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="text.secondary" component="div">
             {isProcessing && (
               <IconProgress
                 icons={[HourglassEmptyIcon]}
@@ -69,7 +69,7 @@ export function SummaryStepContent({
             )}
             Hostname: {data.security?.hostname || "Not set"}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="text.secondary" component="div">
             {isProcessing && (
               <IconProgress
                 icons={[HourglassEmptyIcon]}
@@ -82,7 +82,7 @@ export function SummaryStepContent({
             )}
             Workgroup: {data.security?.workgroup || "Not set"}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="text.secondary" component="div">
             {isProcessing && (
               <IconProgress
                 icons={[HourglassEmptyIcon]}
@@ -104,7 +104,7 @@ export function SummaryStepContent({
 
         <Stack spacing={1}>
           <Typography variant="subtitle2">Network</Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="text.secondary" component="div">
             {isProcessing && (
               <IconProgress
                 icons={[HourglassEmptyIcon]}
@@ -127,7 +127,11 @@ export function SummaryStepContent({
           <Typography variant="subtitle2">First Share</Typography>
           {data.firstShare?.partitionId && selectedPartition ? (
             <>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                component="div"
+              >
                 {isProcessing && (
                   <IconProgress
                     icons={[HourglassEmptyIcon]}
@@ -140,7 +144,11 @@ export function SummaryStepContent({
                 )}
                 Partition: {selectedPartition.displayName}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                component="div"
+              >
                 {isProcessing && (
                   <IconProgress
                     icons={[HourglassEmptyIcon]}
@@ -153,7 +161,11 @@ export function SummaryStepContent({
                 )}
                 Share name: {data.firstShare.shareName || "Not set"}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                component="div"
+              >
                 {isProcessing && (
                   <IconProgress
                     icons={[HourglassEmptyIcon]}
@@ -178,7 +190,7 @@ export function SummaryStepContent({
 
         <Stack spacing={1}>
           <Typography variant="subtitle2">Telemetry</Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="text.secondary" component="div">
             {isProcessing && (
               <IconProgress
                 icons={[HourglassEmptyIcon]}

@@ -61,7 +61,7 @@ outputs = [
 
 [tasks."dev:remote"]
 usage = '''
-arg "<url>" help="API URL" env="SUPERVISOR_URL"
+arg "<url>" help="API URL" env="API_URL"
 '''
 env = { NODE_ENV = "remote" }
 depends = [
@@ -71,6 +71,21 @@ run = [
   "tsgo --noEmit",
   "echo API_URL=${usage_url%/}:3000/",
   "API_URL=${usage_url%/}:3000/ bun --hot run bun.build.ts -w -s ./out",
+]
+quiet = true
+
+[tasks."debug:remote"]
+usage = '''
+arg "<url>" help="API URL" env="API_URL"
+'''
+env = { NODE_ENV = "remote"}
+depends = [
+  { task = "generate" },
+]
+run = [
+  "tsgo --noEmit",
+  'echo "Using $API_URL"',
+  "copilot-debug bun --hot run bun.build.ts -w -s ./out",
 ]
 quiet = true
 
