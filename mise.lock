@@ -393,52 +393,52 @@ url = "https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-h534d264_6.conda
 checksum = "sha256:368d8628424966fd8f9c8018326a9c779e06913dd39e646cf331226acc90e5b2"
 
 [[tools.act]]
-version = "0.2.87"
+version = "0.2.88"
 backend = "aqua:nektos/act"
 
 [tools.act."platforms.linux-arm64"]
-checksum = "sha256:c17a9fe2428a4824f61248ceb8e93db8de95d9163b0f2651ec5ccea0e6f4edc8"
-url = "https://github.com/nektos/act/releases/download/v0.2.87/act_Linux_arm64.tar.gz"
+checksum = "sha256:94d87738f7ea6650782c8505366c758c99db54cc67bd8c711583478c93305d78"
+url = "https://github.com/nektos/act/releases/download/v0.2.88/act_Linux_arm64.tar.gz"
 
 [tools.act."platforms.linux-arm64-musl"]
-checksum = "sha256:c17a9fe2428a4824f61248ceb8e93db8de95d9163b0f2651ec5ccea0e6f4edc8"
-url = "https://github.com/nektos/act/releases/download/v0.2.87/act_Linux_arm64.tar.gz"
+checksum = "sha256:94d87738f7ea6650782c8505366c758c99db54cc67bd8c711583478c93305d78"
+url = "https://github.com/nektos/act/releases/download/v0.2.88/act_Linux_arm64.tar.gz"
 
 [tools.act."platforms.linux-x64"]
-checksum = "sha256:9bbfca7d779f71746233ec65e47fdcb12c4c976c1c97ec085956976fcabee866"
-url = "https://github.com/nektos/act/releases/download/v0.2.87/act_Linux_x86_64.tar.gz"
+checksum = "sha256:1eb9996682dfcc053ac8f3f90f2ec50376f0cdfc229712d82da03d673c63a2b3"
+url = "https://github.com/nektos/act/releases/download/v0.2.88/act_Linux_x86_64.tar.gz"
 
 [tools.act."platforms.linux-x64-baseline"]
-checksum = "sha256:9bbfca7d779f71746233ec65e47fdcb12c4c976c1c97ec085956976fcabee866"
-url = "https://github.com/nektos/act/releases/download/v0.2.87/act_Linux_x86_64.tar.gz"
+checksum = "sha256:1eb9996682dfcc053ac8f3f90f2ec50376f0cdfc229712d82da03d673c63a2b3"
+url = "https://github.com/nektos/act/releases/download/v0.2.88/act_Linux_x86_64.tar.gz"
 
 [tools.act."platforms.linux-x64-musl"]
-checksum = "sha256:9bbfca7d779f71746233ec65e47fdcb12c4c976c1c97ec085956976fcabee866"
-url = "https://github.com/nektos/act/releases/download/v0.2.87/act_Linux_x86_64.tar.gz"
+checksum = "sha256:1eb9996682dfcc053ac8f3f90f2ec50376f0cdfc229712d82da03d673c63a2b3"
+url = "https://github.com/nektos/act/releases/download/v0.2.88/act_Linux_x86_64.tar.gz"
 
 [tools.act."platforms.linux-x64-musl-baseline"]
-checksum = "sha256:9bbfca7d779f71746233ec65e47fdcb12c4c976c1c97ec085956976fcabee866"
-url = "https://github.com/nektos/act/releases/download/v0.2.87/act_Linux_x86_64.tar.gz"
+checksum = "sha256:1eb9996682dfcc053ac8f3f90f2ec50376f0cdfc229712d82da03d673c63a2b3"
+url = "https://github.com/nektos/act/releases/download/v0.2.88/act_Linux_x86_64.tar.gz"
 
 [tools.act."platforms.macos-arm64"]
-checksum = "sha256:dab0091c6f8229f955b83e3822aa24375f7a2852279d5a262446361cc3559d88"
-url = "https://github.com/nektos/act/releases/download/v0.2.87/act_Darwin_arm64.tar.gz"
+checksum = "sha256:5f52aa4151c1cc762b246534a7f5633ae2b4b89aa036fbba7d9ccf04ca37acd9"
+url = "https://github.com/nektos/act/releases/download/v0.2.88/act_Darwin_arm64.tar.gz"
 
 [tools.act."platforms.macos-x64"]
-checksum = "sha256:41077f98142b02e0bb45b181f57a068f6af86ce887d578a4da1a901b1d8f240a"
-url = "https://github.com/nektos/act/releases/download/v0.2.87/act_Darwin_x86_64.tar.gz"
+checksum = "sha256:887cd13013fdd866f80872ef2b473b7d34af6c2e366cc77542c9b75dceea7a82"
+url = "https://github.com/nektos/act/releases/download/v0.2.88/act_Darwin_x86_64.tar.gz"
 
 [tools.act."platforms.macos-x64-baseline"]
-checksum = "sha256:41077f98142b02e0bb45b181f57a068f6af86ce887d578a4da1a901b1d8f240a"
-url = "https://github.com/nektos/act/releases/download/v0.2.87/act_Darwin_x86_64.tar.gz"
+checksum = "sha256:887cd13013fdd866f80872ef2b473b7d34af6c2e366cc77542c9b75dceea7a82"
+url = "https://github.com/nektos/act/releases/download/v0.2.88/act_Darwin_x86_64.tar.gz"
 
 [tools.act."platforms.windows-x64"]
-checksum = "sha256:bb7c654b27d79fb98947e22ff846408ef8f93aab90dba6af3656b503b8811966"
-url = "https://github.com/nektos/act/releases/download/v0.2.87/act_Windows_x86_64.zip"
+checksum = "sha256:fb501a109f40193dbccf7124d3098e0802276ace86948507eedd5aee2b3bc18b"
+url = "https://github.com/nektos/act/releases/download/v0.2.88/act_Windows_x86_64.zip"
 
 [tools.act."platforms.windows-x64-baseline"]
-checksum = "sha256:bb7c654b27d79fb98947e22ff846408ef8f93aab90dba6af3656b503b8811966"
-url = "https://github.com/nektos/act/releases/download/v0.2.87/act_Windows_x86_64.zip"
+checksum = "sha256:fb501a109f40193dbccf7124d3098e0802276ace86948507eedd5aee2b3bc18b"
+url = "https://github.com/nektos/act/releases/download/v0.2.88/act_Windows_x86_64.zip"
 
 [[tools.air]]
 version = "1.64.5"
@@ -989,7 +989,7 @@ version = "0.22.1"
 backend = "npm:markdownlint-cli2"
 
 [[tools."npm:@typescript/native-preview"]]
-version = "7.0.0-dev.20260426.1"
+version = "7.0.0-dev.20260501.1"
 backend = "npm:@typescript/native-preview"
 
 [[tools."npm:doctoc"]]

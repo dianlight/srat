@@ -1,10 +1,9 @@
 //import copy from 'bun-copy-plugin';
 
-import { watch } from "node:fs";
-import { parseArgs } from "node:util";
 import type { BuildConfig, BuildOutput } from "bun";
 import { Glob } from "bun";
-//import path from "node:path";
+import { watch } from "node:fs";
+import { parseArgs } from "node:util";
 import App from "./src/index.html";
 
 const { values } = parseArgs({
@@ -26,6 +25,16 @@ const { values } = parseArgs({
 			short: "o",
 			default: "./out",
 			description: "Specify the output directory (default: ./out)",
+		},
+		version: {
+			type: "string",
+			short: "v",
+			description: "Build version (e.g. 1.0.0)",
+		},
+		apiUrl: {
+			type: "string",
+			short: "a",
+			description: "API URL to use in the frontend (overrides API_URL env variable)",
 		},
 	},
 	strict: true,
@@ -68,8 +77,15 @@ const buildConfig: BuildConfig = {
 };
 
 async function build(): Promise<BuildOutput | undefined> {
+	process.env.VERSION = values.version || process.env.VERSION || "dev";
+	process.env.API_URL = values.apiUrl || process.env.API_URL || "";
+	console.log("Build Frontend with:");
+	console.log("\tVersion: ", process.env.VERSION || "not provided");
+	console.log("\tNode Environment: ", process.env.NODE_ENV || "not provided");
+	console.log("\tAPI URL: ", process.env.API_URL || "not provided");
+	//console.log("\tRollbar Environment: ", process.env.ROLLBAR_ENVIRONMENT || "not provided");
 	if (!values.serve && !values.watch) {
-		console.log(`Build ${import.meta.dir}/src -> ${values.outDir}`);
+		console.log(`\tMode: Build ${import.meta.dir}/src -> ${values.outDir}`);
 		return Bun.build(buildConfig).then((result) => {
 			if (!result.success) {
 				console.error("Build failed");
@@ -81,7 +97,7 @@ async function build(): Promise<BuildOutput | undefined> {
 			return result;
 		});
 	} else if (values.serve) {
-		console.log(`Serving ${values.outDir}`);
+		console.log(`\tMode: Serve ${values.outDir}`);
 		Bun.serve({
 			routes: {
 				"/*": App,
@@ -96,7 +112,7 @@ async function build(): Promise<BuildOutput | undefined> {
 		});
 		console.log("Serving http://localhost:3080/index.html");
 	} else if (values.watch) {
-		console.log(`Build Watch ${import.meta.dir}/src -> ${values.outDir}`);
+		console.log(`\tMode: Watch ${import.meta.dir}/src -> ${values.outDir}`);
 		async function rebuild(event: string, filename: string | null) {
 			console.log(`Detected ${event} in ${filename}`);
 
@@ -107,7 +123,7 @@ async function build(): Promise<BuildOutput | undefined> {
 					console.log(`D ${values.outDir}/${file}`);
 					Bun.file(`${values.outDir}/${file}`)
 						.delete()
-						.catch((_err) => {});
+						.catch((_err) => { });
 				}
 			} catch (err) {
 				// Directory might not exist yet on first build
@@ -123,7 +139,7 @@ async function build(): Promise<BuildOutput | undefined> {
 				}
 				return result;
 			});
-			console.log("ReBuild complete ✅");
+			console.log("\tReBuild complete ✅");
 		}
 		const srcwatch = watch(
 			`${import.meta.dir}/src`,

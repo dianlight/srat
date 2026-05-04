@@ -60,19 +60,10 @@ _.source = { path = "scripts/env.sh", tools = true }
 postinstall = "hk install --mise"
 
 [tasks]
-# all = "mise run backend:build && mise run backend:build -- --AARGS=GOARCH=arm64"
-# prepare = "prek install && prek install --hook-type post-commit && prek install --hook-type pre-push && mise run backend:prerequisite && mise run frontend:install"
 docs = "mise run docs-toc && mise run docs-fix && mise run docs-validate"
 docs-toc = "find . -name '*.md' -not -path './node_modules/*' -not -path './frontend/node_modules/*' -not -path './backend/src/vendor/*' -not -path './.vale/*' -not -path './.github/*' -not -path './docs/tasks/*' | xargs bunx doctoc --github"
 docs-validate = "./scripts/validate-docs.sh"
 docs-fix = "./scripts/validate-docs.sh --fix"
-# docs-check = "bash -c 'NODE_RUNTIME=; PACKAGE_MANAGER=; if command -v node >/dev/null 2>&1; then NODE_RUNTIME=node; elif command -v bun >/dev/null 2>&1; then NODE_RUNTIME=bun; fi; if command -v bun >/dev/null 2>&1; then PACKAGE_MANAGER=bun; elif command -v npm >/dev/null 2>&1; then PACKAGE_MANAGER=npm; fi; if command -v prek >/dev/null 2>&1; then echo \"✅ prek found\"; else echo \"⚠️  prek not found (optional for git hooks)\"; fi; if command -v lychee >/dev/null 2>&1; then echo \"✅ Lychee found (link checker)\"; else echo \"⚠️  Lychee not found (optional but recommended)\"; fi; if command -v vale >/dev/null 2>&1; then echo \"✅ Vale found (prose linter)\"; else echo \"⚠️  Vale not found (optional but recommended)\"; fi; echo \"✅ Documentation validation dependencies check complete\"; echo \"JavaScript runtime: $NODE_RUNTIME, Package manager: $PACKAGE_MANAGER\"'"
-# docs-help = "cat docs/DOCUMENTATION_GUIDELINES.md"
-# docs-install = "bun add -g markdownlint-cli2 prettier doctoc"
-# clean = "mise run frontend:clean && mise run backend:clean"
-# gemini = "bun --bun $(which gemini)"
-# check = "mise run docs-check && mise run security && prek run --files $(find . -name '*.md' | grep -v 'node_modules')"
-# security = "mise run backend:security"
 brand-images = "python3 scripts/generate-brand-images.py"
 clean-local-branches = "scripts/cleanup-old-local-branches.sh"
 clean-local-branches-dry = "scripts/cleanup-old-local-branches.sh --dry"
@@ -81,22 +72,6 @@ clean-local-tags-dry = "scripts/cleanup-old-local-tags.sh --dry"
 
 [tasks.pre-commit]
 run = "hk run pre-commit"
-
-[tasks.version]
-usage = '''
-flag "--version [version]" help="Build version" env="VERSION" 
-'''
-run = """
-  if [ -n "${usage_version}" ]; then
-    echo "Using provided version: ${usage_version?}"
-    echo "VERSION=${usage_version?}" > /tmp/.env.tmp
-  else
-    echo "No version provided, running next_version.sh to determine the next version..."
-    scripts/next_version.sh
-  fi
-"""
-env = { _.file = "/tmp/.env.tmp" }
-depends_post = [{ task = "rollbar_env" }]
 quiet = true
 
 [tasks.test]
@@ -107,23 +82,19 @@ run = [
     "//custom_components:test",
   ] },
 ]
+quiet = true
 
 [tasks.all]
+alias = ["build:all", "build:release"]
 usage = '''
-flag "--version <version>" help="Build version" env="VERSION" 
+flag "--version <version>" help="Build version"
 '''
-env = { _.file = "/tmp/.env.tmp" }
-run = [
-  'echo "Running full build with version: ${usage_version:-not provided}"',
-  'if [ "${usage_version:-not provided}" != "not provided" ]; then echo "VERSION=${usage_version?}" > /tmp/.env.tmp; fi',
-  { task = "version" },
-  { task = "//backend:build", args = [
-    "--arch=x86_64",
-  ], env = { GOARCH = "amd64" } },
-  { task = "//backend:build", args = [
-    "--arch=aarch64",
-  ], env = { GOARCH = "arm64" } },
-]
+run = """
+   echo "Running full build with version: ${usage_version:-not provided}"
+   ROLLBAR_ENVIRONMENT=$(mise rollbar_env --version ${usage_version?})
+   mise run //backend:build --arch=x86_64 --version={{usage.version}} --rollbar_env=${ROLLBAR_ENVIRONMENT?}
+   mise run //backend:build --arch=aarch64 --version={{usage.version}} --rollbar_env=${ROLLBAR_ENVIRONMENT?}
+  """
 quiet = true
 
 [tasks.release]
@@ -131,27 +102,27 @@ description = "Run the release process, which includes building the project and 
 usage = '''
 flag "--version <version>" help="Release version"
 '''
-env = { _.file = "/tmp/.env.tmp" }
 run = [
   'echo "Running release process with version: ${usage_version:-not provided}"',
   './scripts/release.sh --interactive ${usage_version:+--version ${usage_version?}}',
 ]
-#quiet = true
+quiet = true
+
 
 [tasks.rollbar_env]
 usage = '''
-flag "--version [version]" help="Build version" env="VERSION" 
+flag "--version [version]" help="Build version" 
 '''
-env = { _.file = "/tmp/.env.tmp" }
 run = """
 	if echo "${usage_version?}" | grep -q -- "-dev"; then
-		echo 'ROLLBAR_ENVIRONMENT=development' >> /tmp/.env.tmp;
+		ROLLBAR_ENVIRONMENT=development
 	elif echo "${usage_version?}" | grep -vq -- "-"; then
-		echo 'ROLLBAR_ENVIRONMENT=production' >> /tmp/.env.tmp;
+		ROLLBAR_ENVIRONMENT=production
 	else
-		echo 'ROLLBAR_ENVIRONMENT=prerelease' >> /tmp/.env.tmp;
-	fi
-    echo "Set ROLLBAR_ENVIRONMENT based on version: $(grep ROLLBAR_ENVIRONMENT /tmp/.env.tmp | cut -d= -f2)"
+		ROLLBAR_ENVIRONMENT=prerelease
+	fi >&2 >/dev/null
+  echo "Set ROLLBAR_ENVIRONMENT based on version: ${usage_version?} --> $ROLLBAR_ENVIRONMENT" >&2
+  echo -n "$ROLLBAR_ENVIRONMENT"
 """
+hide = true
 quiet = true
-

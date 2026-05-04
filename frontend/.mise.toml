@@ -12,39 +12,45 @@ clean = "rm -rf out"
 dev = "tsgo --noEmit && NODE_ENV=development bun --hot run bun.build.ts -w -s ./out"
 gowatch = "bun run gowatch"
 watch = "bun run watch"
-validate-macros = "bun ../scripts/validate-macro-imports.js"
+
 prepare = "bun install"
+
+[tasks.validate-macros]
+run = "bun ../scripts/validate-macro-imports.js"
+quiet = true
 
 [tasks."build:static"]
 usage = '''
-arg "<dir>" help="Target Directory to build" default="src/web/static" env="TARGET_DIR"
-flag "--version [version]" help="Build version" env="VERSION" 
+arg "<dir>" help="Target Directory to build" default="src/web/static"
+flag "--version <version>" help="Build version"
 '''
 alias = ["build-static"]
 run = [
-  "echo ${usage_version?} ${usage_dir:?}",
+  "echo Building Frontend version ${usage_version?} in directory ${usage_dir:?}",
   "rm -rf ../backend/${usage_dir:?}/* || :",
   "mkdir -p ../backend/${usage_dir:?} || :",
   "touch ../backend/${usage_dir:?}/.keep",
   "mise run version ${usage_version?}",
-  "mise run build ../backend/${usage_dir:?}"
+  "mise run build ../backend/${usage_dir:?} --version ${usage_version?}",
 ]
-sources = [
-  "src/**/*",
-]
+#sources = [
+#  "src/**/*",
+#]
+hide = true
 quiet = true
 
 [tasks.build]
 usage = '''
-arg "<dir>" help="Target Directory to build" env="TARGET_DIR"
+arg "<dir>" help="Target Directory to build"
+flag "--version <version>" help="Build version" env="VERSION"
 '''
 depends = [
   { task = "lint" },
 ]
-env = { NODE_ENV = "production" }
+env = { NODE_ENV = "production",API_URL = "", VERSION = "" }
 run = [
   "tsgo --project tsconfig.prod.json --noEmit ",
-  "bun run bun.build.ts -o ${usage_dir?}",
+  "bun run bun.build.ts -o ${usage_dir?} -v ${usage_version?}",
 ]
 quiet = true
 
@@ -69,8 +75,7 @@ depends = [
 ]
 run = [
   "tsgo --noEmit",
-  "echo API_URL=${usage_url%/}:3000/",
-  "API_URL=${usage_url%/}:3000/ bun --hot run bun.build.ts -w -s ./out",
+  "bun --hot run bun.build.ts -w -s ./out -a ${usage_url?}",
 ]
 quiet = true
 
@@ -78,14 +83,13 @@ quiet = true
 usage = '''
 arg "<url>" help="API URL" env="API_URL"
 '''
-env = { NODE_ENV = "remote"}
+env = { NODE_ENV = "remote" }
 depends = [
   { task = "generate" },
 ]
 run = [
   "tsgo --noEmit",
-  'echo "Using $API_URL"',
-  "copilot-debug bun --hot run bun.build.ts -w -s ./out",
+  "copilot-debug bun --hot run bun.build.ts -w -s ./out -a ${usage_url?}",
 ]
 quiet = true
 
@@ -133,9 +137,8 @@ quiet = true
 
 [tasks.version]
 usage = '''
-arg "[version]" help="Build version" env="VERSION" 
+arg "[version]" help="Build version"
 '''
-run = '''
-   bun run version.ts ${usage_version:+-o ${usage_version?}}
-   '''
+run = 'bun run version.ts ${usage_version:+-o ${usage_version?}}'
 quiet = true
+hide = true
