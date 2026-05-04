@@ -9,6 +9,8 @@ applyTo: **/frontend/**/\*.test.{js,jsx,ts,tsx}
 
 # **Copilot Rule: Robust React Testing with Bun & TypeScript**
 
+> Self-Evolving Instruction: This instruction improves through use. If instructions are wrong, parameters drifted, or a workaround was needed — fix this file immediately, don't defer. Only update for real, reproducible issues.
+
 **📖 See also**: `docs/test-setup-patterns.md` for unified test lifecycle patterns across languages and critical anti-patterns.
 
 ## **1\. Environment & Tools**
@@ -122,3 +124,13 @@ describe("MyComponent", () \=\> {
 - **Test Naming:** Use descriptive test names that clearly indicate the expected behavior being tested (for example, "should display error message when API call fails").
 - **Test Organization:** Group related tests together using describe blocks to improve readability and maintainability of the test suite.
 - **Test Data:** Use realistic test data that closely mimics actual user input and API responses to ensure tests are meaningful and effective at catching potential issues.
+
+# Post-Execution Reflection
+
+After use of this instruction, check before closing:
+
+- Did the command succeed? — If not, fix the instruction or error table that caused the failure.
+- Did parameters or output change? — If the underlying tool's interface drifted, update Usage examples and Parameters table to match.
+- Was a workaround needed? — If you had to improvise (different flags, extra steps), update this SKILL.md so the next invocation doesn't need the same workaround.
+
+Only update if the issue is real and reproducible — not speculative.

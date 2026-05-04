@@ -8,6 +8,8 @@ argument-hint: 'Optional scope or recent work summary (for example: "review curr
 
 Turn a one-off implementation or test discovery into reusable project guidance.
 
+> Self-Evolving Skill: This skill improves through use. If instructions are wrong, parameters drifted, or a workaround was needed — fix this file immediately, don't defer. Only update for real, reproducible issues.
+
 ## When to Use
 
 Use this skill when:
@@ -145,3 +147,13 @@ Before finalizing, make sure the lesson:
 - `review this fix and tell me if we should update github instructions`
 - `document the test stabilization pattern we just found`
 - `check whether today's implementation produced a reusable repo rule`
+
+# Post-Execution Reflection
+
+After this skill completes, check before closing:
+
+- Did the command succeed? — If not, fix the instruction or error table that caused the failure.
+- Did parameters or output change? — If the underlying tool's interface drifted, update Usage examples and Parameters table to match.
+- Was a workaround needed? — If you had to improvise (different flags, extra steps), update this SKILL.md so the next invocation doesn't need the same workaround.
+
+Only update if the issue is real and reproducible — not speculative.
