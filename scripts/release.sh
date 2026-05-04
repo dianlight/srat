@@ -179,15 +179,16 @@ gh api -X PATCH "repos/:owner/:repo/releases/$DRAFT_ID" \
 	-F draft=true >/dev/null
 
 # STEP 2: Delete existing assets to ensure clean CI upload
-log "[PUBLISH STEP 2] Clearing existing assets from release..."
-ASSET_IDS=$(gh api "repos/:owner/:repo/releases/$DRAFT_ID/assets" --jq '.[].id')
-for asset_id in $ASSET_IDS; do
-	gh api -X DELETE "repos/:owner/:repo/releases/assets/$asset_id"
-done
+#log "[PUBLISH STEP 2] Clearing existing assets from release..."
+#ASSET_IDS=$(gh api "repos/:owner/:repo/releases/$DRAFT_ID/assets" --jq '.[].id')
+#for asset_id in $ASSET_IDS; do
+#    log "  Deleting asset ID: $asset_id"
+#	gh api -X DELETE "repos/:owner/:repo/releases/assets/$asset_id"
+#done
 
 # STEP 3: Trigger CI manual execution for build.yaml to produce release assets
 log "Triggering CI workflow for release assets..."
-gh workflow run build.yaml --ref main -f release=true
+gh workflow run build.yaml --ref main
 sleep 5 # Short delay to ensure workflow is registered
 
 # INTERMEDIATE: Wait for CI and Check Workflows
@@ -212,7 +213,7 @@ log "[PUBLISH STEP 3] Publishing release..."
 MAX_RETRIES=5
 RETRY_COUNT=0
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-	if gh api -X PATCH "repos/:owner/:repo/releases/$DRAFT_ID" -F draft=false >/dev/null 2>/tmp/gh_error; then
+	if gh api -X PATCH "repos/:owner/:repo/releases/$DRAFT_ID" -F draft=false -F prerelease=false >/dev/null 2>/tmp/gh_error; then
 		log "Successfully published release $NEXT_VERSION."
 		break
 	else
