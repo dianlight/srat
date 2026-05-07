@@ -2,6 +2,7 @@
 auto = true
 
 [tools]
+"go:github.com/playwright-community/playwright-go/cmd/playwright" = "latest"
 "npm:@rtk-query/codegen-openapi" = "2.2.0"
 
 [hooks]
@@ -112,26 +113,31 @@ quiet = true
 [tasks.test]
 env = { API_URL = "http://localhost:3000" }
 run = [
-  "bun ./scripts/add-test-setup.js",
   "tsgo --noEmit",
-  "AGENT=1 BUN_TEST_NO_COVERAGE_THRESHOLD=1 bun test --preload ./test/setup.ts --bail --timeout 10000 --max-concurrency=1 --reporter=dot",
+  "AGENT=1 bunx vitest run --reporter=verbose",
 ]
 quiet = true
 
 [tasks."test:new"]
 env = { API_URL = "http://localhost:3000" }
 run = [
-  "bun ./scripts/add-test-setup.js",
   "tsgo --noEmit",
-  "AGENT=1 BUN_TEST_NO_COVERAGE_THRESHOLD=1 bun test --preload ./test/setup.ts --bail --timeout 10000 --max-concurrency=1 --changed --reporter=dot",
+  "AGENT=1 bunx vitest run --reporter=verbose --changed",
+]
+quiet = true
+
+[tasks."test:browser"]
+env = { API_URL = "http://localhost:3000" }
+run = [
+  "tsgo --noEmit",
+  "AGENT=1 bunx vitest run --config=vitest.browser.config.ts",
 ]
 quiet = true
 
 [tasks."test:ci"]
 env = { API_URL = "http://localhost:3000" }
 run = [
-  "bun ./scripts/add-test-setup.js",
-  "bun test --preload ./test/setup.ts --only-failures --timeout 60000 --bail --max-concurrency=1 --coverage",
+  "bunx vitest run --coverage --bail=1",
 ]
 quiet = true
 

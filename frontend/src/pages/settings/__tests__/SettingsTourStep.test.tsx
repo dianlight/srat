@@ -1,5 +1,4 @@
-import "../../../../test/setup";
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect } from "vitest";
 
 describe("Settings tour steps", () => {
     it("provides consistent selectors and emits actions", async () => {

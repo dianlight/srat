@@ -1,5 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import "../../../../../test/setup.ts";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 // Required localStorage shim for testing environment
 if (!(globalThis as any).localStorage) {
@@ -76,7 +75,7 @@ describe("HDIdleDiskSettings Component", () => {
         const React = await import("react");
         const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
-        const { createTestStore } = await import("../../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
         const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
 
         const mockDisk = createMockDisk();
@@ -97,7 +96,7 @@ describe("HDIdleDiskSettings Component", () => {
         const React = await import("react");
         const { render, screen, waitFor } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
-        const { createTestStore } = await import("../../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
         const userEvent = (await import("@testing-library/user-event")).default;
         const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
 
@@ -135,7 +134,7 @@ describe("HDIdleDiskSettings Component", () => {
         const React = await import("react");
         const { render, screen, waitFor } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
-        const { createTestStore } = await import("../../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
         const userEvent = (await import("@testing-library/user-event")).default;
         const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
 
@@ -174,7 +173,7 @@ describe("HDIdleDiskSettings Component", () => {
         const React = await import("react");
         const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
-        const { createTestStore } = await import("../../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
         const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
 
         const mockDisk = createMockDisk({
@@ -201,7 +200,7 @@ describe("HDIdleDiskSettings Component", () => {
         const React = await import("react");
         const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
-        const { createTestStore } = await import("../../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
         const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
 
         const mockDisk = createMockDisk();
@@ -223,7 +222,7 @@ describe("HDIdleDiskSettings Component", () => {
         const React = await import("react");
         const { render, screen, waitFor } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
-        const { createTestStore } = await import("../../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
         const userEvent = (await import("@testing-library/user-event")).default;
         const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
 
@@ -263,7 +262,7 @@ describe("HDIdleDiskSettings Component", () => {
         const React = await import("react");
         const { render, screen, waitFor } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
-        const { createTestStore } = await import("../../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
         const userEvent = (await import("@testing-library/user-event")).default;
         const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
 
@@ -319,7 +318,7 @@ describe("HDIdleDiskSettings Component", () => {
         const React = await import("react");
         const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
-        const { createTestStore } = await import("../../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
         const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
 
         const mockDisk = createMockDisk();

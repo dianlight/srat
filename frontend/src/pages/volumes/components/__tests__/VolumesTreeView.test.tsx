@@ -1,5 +1,4 @@
-import { beforeEach, describe, expect, it } from "bun:test";
-import "../../../../../test/setup";
+import { beforeEach, describe, expect, it } from "vitest";
 
 const createBaseProps = (overrides: Record<string, unknown> = {}) => ({
     expandedItems: [],
@@ -25,7 +24,7 @@ describe("VolumesTreeView Component", () => {
         const { Provider } = await import("react-redux");
         const { VolumesTreeView } = await import("../VolumesTreeView");
         const { getDiskIdentifier } = await import("../../utils");
-        const { createTestStore } = await import("../../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
         const disks = [
@@ -85,7 +84,7 @@ describe("VolumesTreeView Component", () => {
         const { Provider } = await import("react-redux");
         const { VolumesTreeView } = await import("../VolumesTreeView");
         const { getDiskIdentifier } = await import("../../utils");
-        const { createTestStore } = await import("../../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
         const disks = [
@@ -150,7 +149,7 @@ describe("VolumesTreeView Component", () => {
         const { Provider } = await import("react-redux");
         const { VolumesTreeView } = await import("../VolumesTreeView");
         const { getDiskIdentifier } = await import("../../utils");
-        const { createTestStore } = await import("../../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
         const disks = [
@@ -211,7 +210,7 @@ describe("VolumesTreeView Component", () => {
         const { Provider } = await import("react-redux");
         const { VolumesTreeView } = await import("../VolumesTreeView");
         const { getDiskIdentifier } = await import("../../utils");
-        const { createTestStore } = await import("../../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
         const disks = [
@@ -276,7 +275,7 @@ describe("VolumesTreeView Component", () => {
         const { Provider } = await import("react-redux");
         const { VolumesTreeView } = await import("../VolumesTreeView");
         const { getDiskIdentifier } = await import("../../utils");
-        const { createTestStore } = await import("../../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
         const user = userEvent.setup();
@@ -339,7 +338,7 @@ describe("VolumesTreeView Component", () => {
         const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { VolumesTreeView } = await import("../VolumesTreeView");
-        const { createTestStore } = await import("../../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
         const disks = [

@@ -1,6 +1,5 @@
-import { beforeEach, describe, expect, it } from "bun:test";
+import { beforeEach, describe, expect, it } from "vitest";
 import { http, HttpResponse } from "msw";
-import "../../../../test/setup";
 
 // LocalStorage mock for the tests
 if (!(globalThis as any).localStorage) {
@@ -183,7 +182,7 @@ describe("Settings", () => {
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Settings } = await import("../Settings");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
         const theme = createTheme();
@@ -213,7 +212,7 @@ describe("Settings", () => {
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Settings } = await import("../Settings");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
         const theme = createTheme();
@@ -243,7 +242,7 @@ describe("Settings", () => {
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Settings } = await import("../Settings");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
         const theme = createTheme();
@@ -274,7 +273,7 @@ describe("Settings", () => {
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Settings } = await import("../Settings");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
         const theme = createTheme();
@@ -304,7 +303,7 @@ describe("Settings", () => {
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Settings } = await import("../Settings");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
         const theme = createTheme();
@@ -335,7 +334,7 @@ describe("Settings", () => {
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const userEvent = (await import("@testing-library/user-event")).default;
         const { Settings } = await import("../Settings");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
         const theme = createTheme();
@@ -378,7 +377,7 @@ describe("Settings", () => {
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Settings } = await import("../Settings");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
         const theme = createTheme();
@@ -416,7 +415,7 @@ describe("Settings", () => {
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Settings } = await import("../Settings");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
         const theme = createTheme();
@@ -450,9 +449,9 @@ describe("Settings", () => {
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const userEvent = (await import("@testing-library/user-event")).default;
         const { http, HttpResponse } = await import("msw");
-        const { getMswServer } = await import("../../../../test/bun-setup");
+        const { getMswServer } = await import("/test/testing");
         const { Settings } = await import("../Settings");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const server = await getMswServer();
         server.use(
@@ -508,9 +507,9 @@ describe("Settings", () => {
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const userEvent = (await import("@testing-library/user-event")).default;
-        const { getMswServer } = await import("../../../../test/bun-setup");
+        const { getMswServer } = await import("/test/testing");
         const { Settings } = await import("../Settings");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const server = await getMswServer();
         server.use(
@@ -577,9 +576,9 @@ describe("Settings", () => {
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const userEvent = (await import("@testing-library/user-event")).default;
-        const { getMswServer } = await import("../../../../test/bun-setup");
+        const { getMswServer } = await import("/test/testing");
         const { Settings } = await import("../Settings");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const server = await getMswServer();
         server.use(
@@ -637,9 +636,9 @@ describe("Settings", () => {
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const userEvent = (await import("@testing-library/user-event")).default;
-        const { getMswServer } = await import("../../../../test/bun-setup");
+        const { getMswServer } = await import("/test/testing");
         const { Settings } = await import("../Settings");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const sameConfig = {
             auto_update: true,

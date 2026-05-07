@@ -1,5 +1,4 @@
-import { describe, expect, it } from "bun:test";
-import '../../../../../test/setup';
+import { describe, expect, it } from "vitest";
 import type { SambaStatus } from "../../../../store/sratApi";
 
 describe("SambaStatusMetrics", () => {

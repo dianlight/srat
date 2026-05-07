@@ -2,8 +2,7 @@ import AutorenewIcon from "@mui/icons-material/Autorenew";
 import BuildIcon from "@mui/icons-material/Build";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it } from "bun:test";
-import "../../../test/setup";
+import { describe, expect, it } from "vitest";
 import { IconProgress } from "../IconProgress";
 
 describe("IconProgress", () => {

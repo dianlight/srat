@@ -1,13 +1,10 @@
-import { describe, expect, it } from "bun:test";
-import '../../../../../test/setup';
+import { render, screen, within } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import type { DiskHealth } from "../../../../store/sratApi";
+import { DiskHealthMetrics } from "../DiskHealthMetrics";
 
 describe("DiskHealthMetrics", () => {
     it("orders disks by device name", async () => {
-        const React = await import("react");
-        const { render, screen, within } = await import("@testing-library/react");
-        const { DiskHealthMetrics } = await import("../DiskHealthMetrics");
-
         const diskHealth: DiskHealth = {
             global: {
                 total_iops: 0,
@@ -36,7 +33,7 @@ describe("DiskHealthMetrics", () => {
             per_partition_info: {},
         };
 
-        render(React.createElement(DiskHealthMetrics, { diskHealth }));
+        render(<DiskHealthMetrics diskHealth={diskHealth} />);
 
         const tables = await screen.findAllByRole("table", { name: "disk health table" });
         expect(tables.length).toBeGreaterThan(0);
@@ -58,10 +55,6 @@ describe("DiskHealthMetrics", () => {
     });
 
     it("shows hdidle spin status column when hdidle is running", async () => {
-        const React = await import("react");
-        const { render, screen, within, cleanup } = await import("@testing-library/react");
-        const { DiskHealthMetrics } = await import("../DiskHealthMetrics");
-
         const diskHealth: DiskHealth = {
             global: {
                 total_iops: 0,
@@ -91,7 +84,7 @@ describe("DiskHealthMetrics", () => {
             per_partition_info: {},
         };
 
-        render(React.createElement(DiskHealthMetrics, { diskHealth }));
+        render(<DiskHealthMetrics diskHealth={diskHealth} />);
 
         const tables = await screen.findAllByRole("table", { name: "disk health table" });
         const table = tables[tables.length - 1]!; // Get the most recent table
@@ -111,14 +104,9 @@ describe("DiskHealthMetrics", () => {
         const spinStatusCell = cells.find(cell => cell.textContent === "⏸");
         expect(spinStatusCell).toBeTruthy();
 
-        cleanup();
     });
 
     it("hides hdidle spin status column when hdidle is not running", async () => {
-        const React = await import("react");
-        const { render, screen, within, cleanup } = await import("@testing-library/react");
-        const { DiskHealthMetrics } = await import("../DiskHealthMetrics");
-
         const diskHealth: DiskHealth = {
             global: {
                 total_iops: 0,
@@ -139,7 +127,7 @@ describe("DiskHealthMetrics", () => {
             per_partition_info: {},
         };
 
-        render(React.createElement(DiskHealthMetrics, { diskHealth }));
+        render(<DiskHealthMetrics diskHealth={diskHealth} />);
 
         const tables = await screen.findAllByRole("table", { name: "disk health table" });
         const table = tables[tables.length - 1]!; // Get the most recent table
@@ -148,14 +136,9 @@ describe("DiskHealthMetrics", () => {
 
         expect(headerTexts).not.toContain("Spin Status");
 
-        cleanup();
     });
 
     it("shows active spin status for disks that are not spun down", async () => {
-        const React = await import("react");
-        const { render, screen, within, cleanup } = await import("@testing-library/react");
-        const { DiskHealthMetrics } = await import("../DiskHealthMetrics");
-
         const diskHealth: DiskHealth = {
             global: {
                 total_iops: 0,
@@ -185,7 +168,7 @@ describe("DiskHealthMetrics", () => {
             per_partition_info: {},
         };
 
-        render(React.createElement(DiskHealthMetrics, { diskHealth }));
+        render(<DiskHealthMetrics diskHealth={diskHealth} />);
 
         const tables = await screen.findAllByRole("table", { name: "disk health table" });
         const table = tables[tables.length - 1]!; // Get the most recent table
@@ -199,14 +182,9 @@ describe("DiskHealthMetrics", () => {
         const spinStatusCell = cells.find(cell => cell.textContent === "▶");
         expect(spinStatusCell).toBeTruthy();
 
-        cleanup();
     });
 
     it("shows N/A for disks without hdidle status", async () => {
-        const React = await import("react");
-        const { render, screen, within, cleanup } = await import("@testing-library/react");
-        const { DiskHealthMetrics } = await import("../DiskHealthMetrics");
-
         const diskHealth: DiskHealth = {
             global: {
                 total_iops: 0,
@@ -233,7 +211,7 @@ describe("DiskHealthMetrics", () => {
             per_partition_info: {},
         };
 
-        render(React.createElement(DiskHealthMetrics, { diskHealth }));
+        render(<DiskHealthMetrics diskHealth={diskHealth} />);
 
         const tables = await screen.findAllByRole("table", { name: "disk health table" });
         const table = tables[tables.length - 1]!; // Get the most recent table
@@ -247,14 +225,9 @@ describe("DiskHealthMetrics", () => {
         const spinStatusCell = cells[0]; // First cell after row headers
         expect(spinStatusCell?.textContent).toBe("N/A");
 
-        cleanup();
     });
 
     it("shows SMART icon when SMART is supported", async () => {
-        const React = await import("react");
-        const { render, screen, within, cleanup } = await import("@testing-library/react");
-        const { DiskHealthMetrics } = await import("../DiskHealthMetrics");
-
         const diskHealth: DiskHealth = {
             global: {
                 total_iops: 0,
@@ -286,7 +259,7 @@ describe("DiskHealthMetrics", () => {
             per_partition_info: {},
         };
 
-        render(React.createElement(DiskHealthMetrics, { diskHealth }));
+        render(<DiskHealthMetrics diskHealth={diskHealth} />);
 
         const tables = await screen.findAllByRole("table", { name: "disk health table" });
         const table = tables[tables.length - 1]!;
@@ -299,14 +272,9 @@ describe("DiskHealthMetrics", () => {
         // Check that SMART icon is present
         expect(deviceCell?.getElementsByTagName('svg').length).toBeGreaterThan(0);
 
-        cleanup();
     });
 
     it("shows SSD type for SMART devices with 0 RPM", async () => {
-        const React = await import("react");
-        const { render, screen, within, cleanup } = await import("@testing-library/react");
-        const { DiskHealthMetrics } = await import("../DiskHealthMetrics");
-
         const diskHealth: DiskHealth = {
             global: {
                 total_iops: 0,
@@ -338,7 +306,7 @@ describe("DiskHealthMetrics", () => {
             per_partition_info: {},
         };
 
-        render(React.createElement(DiskHealthMetrics, { diskHealth }));
+        render(<DiskHealthMetrics diskHealth={diskHealth} />);
 
         const tables = await screen.findAllByRole("table", { name: "disk health table" });
         const table = tables[tables.length - 1]!;
@@ -351,14 +319,9 @@ describe("DiskHealthMetrics", () => {
         // Check that SMART icon is present for SSD
         expect(deviceCell?.getElementsByTagName('svg').length).toBeGreaterThan(0);
 
-        cleanup();
     });
 
     it("hides SMART icon when SMART is not supported", async () => {
-        const React = await import("react");
-        const { render, screen, within, cleanup } = await import("@testing-library/react");
-        const { DiskHealthMetrics } = await import("../DiskHealthMetrics");
-
         const diskHealth: DiskHealth = {
             global: {
                 total_iops: 0,
@@ -388,7 +351,7 @@ describe("DiskHealthMetrics", () => {
             per_partition_info: {},
         };
 
-        render(React.createElement(DiskHealthMetrics, { diskHealth }));
+        render(<DiskHealthMetrics diskHealth={diskHealth} />);
 
         const tables = await screen.findAllByRole("table", { name: "disk health table" });
         const table = tables[tables.length - 1]!;
@@ -401,6 +364,5 @@ describe("DiskHealthMetrics", () => {
         // Check that SMART icon is NOT present
         expect(deviceCell?.getElementsByTagName('svg').length).toBe(0);
 
-        cleanup();
     });
 });

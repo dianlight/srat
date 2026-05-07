@@ -1,5 +1,4 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test";
-import "../../../test/setup";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockNotificationCenterState = {
     notifications: [] as Array<any>,
@@ -10,7 +9,7 @@ const mockNotificationCenterState = {
     markAsRead: () => { },
 };
 
-mock.module("react-toastify/addons/use-notification-center", () => ({
+vi.mock("react-toastify/addons/use-notification-center", () => ({
     useNotificationCenter: () => mockNotificationCenterState,
 }));
 

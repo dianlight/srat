@@ -1,6 +1,5 @@
-import "../../../../test/setup";
 // Shared test setup (DOM globals, APIURL, and store helper)
-import { beforeEach, describe, expect, it } from "bun:test";
+import { beforeEach, describe, expect, it } from "vitest";
 
 // Minimal localStorage shim for bun:test
 if (!(globalThis as any).localStorage) {

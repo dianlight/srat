@@ -1,8 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
-import "../../../test/setup";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock the GitHub API to avoid actual network requests
-mock.module("../../store/githubApi", () => ({
+vi.mock("../../store/githubApi", () => ({
 	useGetFundingConfigQuery: () => ({
 		data: [
 			{

@@ -1,6 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import "../../../test/setup";
-import { createTestStore } from "../../../test/setup";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { createTestStore } from "/test/testing";
 import { Severity, Status, Supported_events } from "../sratApi";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -54,17 +53,24 @@ class MockWebSocket {
 
 describe("wsApi reconnect behavior", () => {
     const originalWebSocket = (globalThis as Record<string, unknown>).WebSocket;
+    const originalStreaming = process.env.MSW_ENABLE_STREAMING;
 
     beforeEach(() => {
         MockWebSocket.instances = [];
         (globalThis as Record<string, unknown>).WebSocket = MockWebSocket;
         (globalThis as Record<string, unknown>).__SRAT_WS_RECONNECT_MS = 0;
+        process.env.MSW_ENABLE_STREAMING = "1";
     });
 
     afterEach(() => {
         (globalThis as Record<string, unknown>).WebSocket = originalWebSocket;
         delete (globalThis as Record<string, unknown>).__SRAT_WS_INACTIVITY_MS;
         delete (globalThis as Record<string, unknown>).__SRAT_WS_RECONNECT_MS;
+        if (originalStreaming === undefined) {
+            delete process.env.MSW_ENABLE_STREAMING;
+        } else {
+            process.env.MSW_ENABLE_STREAMING = originalStreaming;
+        }
     });
 
     it("reconnects WebSocket on close", async () => {

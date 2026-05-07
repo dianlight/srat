@@ -12,6 +12,7 @@ With your donations, we are able to continue developing and improving this proje
 > **Note**: This section tracks development progress and changes planned for the Release Candidate (RC). The final release notes will be organized and consolidated once the RC is ready for public testing.
 
 ### 🐛 Bug Fixes
+
 - Fix compile issue in github actions that was cause of freezed UI in some cases.
 
 ## 2026.5.0-rc5

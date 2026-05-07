@@ -1,5 +1,10 @@
-import "../../../../test/setup";
-import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { render, screen, within } from "@testing-library/react";
+import React from "react";
+import { Provider } from "react-redux";
+import { MemoryRouter } from "react-router-dom";
+import { beforeEach, describe, expect, it } from "vitest";
+import { createTestStore } from "/test/testing";
+import { ActionableItemsList } from "../components/ActionableItemsList";
 
 // Minimal localStorage shim for bun:test
 if (!(globalThis as any).localStorage) {
@@ -12,26 +17,30 @@ if (!(globalThis as any).localStorage) {
     };
 }
 
+const renderActionableItems = async (props: Record<string, unknown>) => {
+    const store = await createTestStore();
+
+    return render(
+        React.createElement(
+            Provider,
+            {
+                store,
+                children: React.createElement(
+                    MemoryRouter,
+                    null,
+                    React.createElement(ActionableItemsList as any, props)
+                ),
+            },
+        )
+    );
+};
+
 describe("Dashboard Actionable Items", () => {
     beforeEach(() => {
         localStorage.clear();
     });
 
-    afterEach(async () => {
-        const { cleanup } = await import("@testing-library/react");
-        cleanup();
-    });
-
     it("renders actionable items list with mount action", async () => {
-        const React = await import("react");
-        const { render, within } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { MemoryRouter } = await import("react-router");
-        const { ActionableItemsList } = await import("../components/ActionableItemsList");
-        const { createTestStore } = await import("../../../../test/setup");
-
-        const store = await createTestStore();
-
         const mockPartitions = [
             {
                 partition: {
@@ -45,24 +54,12 @@ describe("Dashboard Actionable Items", () => {
             },
         ];
 
-        const { container } = render(
-            React.createElement(
-                Provider,
-                {
-                    store,
-                    children: React.createElement(
-                        MemoryRouter,
-                        null,
-                        React.createElement(ActionableItemsList as any, {
-                            actionablePartitions: mockPartitions,
-                            isLoading: false,
-                            error: null,
-                            showIgnored: false,
-                        })
-                    ),
-                },
-            )
-        );
+        const { container } = await renderActionableItems({
+            actionablePartitions: mockPartitions,
+            isLoading: false,
+            error: null,
+            showIgnored: false,
+        });
 
         // Check that partition name appears
         const partitionName = await within(container).findByText("by-uuid-0560-3E7B");
@@ -74,15 +71,6 @@ describe("Dashboard Actionable Items", () => {
     });
 
     it("renders actionable items list with share action", async () => {
-        const React = await import("react");
-        const { render, within } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { MemoryRouter } = await import("react-router");
-        const { ActionableItemsList } = await import("../components/ActionableItemsList");
-        const { createTestStore } = await import("../../../../test/setup");
-
-        const store = await createTestStore();
-
         const mockPartitions = [
             {
                 partition: {
@@ -96,24 +84,12 @@ describe("Dashboard Actionable Items", () => {
             },
         ];
 
-        const { container } = render(
-            React.createElement(
-                Provider,
-                {
-                    store,
-                    children: React.createElement(
-                        MemoryRouter,
-                        null,
-                        React.createElement(ActionableItemsList as any, {
-                            actionablePartitions: mockPartitions,
-                            isLoading: false,
-                            error: null,
-                            showIgnored: false,
-                        })
-                    ),
-                },
-            )
-        );
+        const { container } = await renderActionableItems({
+            actionablePartitions: mockPartitions,
+            isLoading: false,
+            error: null,
+            showIgnored: false,
+        });
 
         // Check that partition name appears
         const partitionName = await within(container).findByText("EFI");
@@ -125,15 +101,6 @@ describe("Dashboard Actionable Items", () => {
     });
 
     it("shows hide buttons for actionable items", async () => {
-        const React = await import("react");
-        const { render, within } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { MemoryRouter } = await import("react-router");
-        const { ActionableItemsList } = await import("../components/ActionableItemsList");
-        const { createTestStore } = await import("../../../../test/setup");
-
-        const store = await createTestStore();
-
         const mockPartitions = [
             {
                 partition: {
@@ -147,24 +114,12 @@ describe("Dashboard Actionable Items", () => {
             },
         ];
 
-        const { container } = render(
-            React.createElement(
-                Provider,
-                {
-                    store,
-                    children: React.createElement(
-                        MemoryRouter,
-                        null,
-                        React.createElement(ActionableItemsList as any, {
-                            actionablePartitions: mockPartitions,
-                            isLoading: false,
-                            error: null,
-                            showIgnored: false,
-                        })
-                    ),
-                },
-            )
-        );
+        const { container } = await renderActionableItems({
+            actionablePartitions: mockPartitions,
+            isLoading: false,
+            error: null,
+            showIgnored: false,
+        });
 
         // Check that Hide button appears
         const hideButtons = within(container).getAllByText("Hide");
@@ -172,33 +127,12 @@ describe("Dashboard Actionable Items", () => {
     });
 
     it("shows loading state", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { MemoryRouter } = await import("react-router");
-        const { ActionableItemsList } = await import("../components/ActionableItemsList");
-        const { createTestStore } = await import("../../../../test/setup");
-
-        const store = await createTestStore();
-
-        render(
-            React.createElement(
-                Provider,
-                {
-                    store,
-                    children: React.createElement(
-                        MemoryRouter,
-                        null,
-                        React.createElement(ActionableItemsList as any, {
-                            actionablePartitions: [],
-                            isLoading: true,
-                            error: null,
-                            showIgnored: false,
-                        })
-                    ),
-                },
-            )
-        );
+        await renderActionableItems({
+            actionablePartitions: [],
+            isLoading: true,
+            error: null,
+            showIgnored: false,
+        });
 
         // Check that loading indicator appears using semantic query
         const loadingElement = screen.getByRole("progressbar");
@@ -206,35 +140,14 @@ describe("Dashboard Actionable Items", () => {
     });
 
     it("shows error state", async () => {
-        const React = await import("react");
-        const { render, within } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { MemoryRouter } = await import("react-router");
-        const { ActionableItemsList } = await import("../components/ActionableItemsList");
-        const { createTestStore } = await import("../../../../test/setup");
-
-        const store = await createTestStore();
-
         const mockError = new Error("Failed to load volumes");
 
-        const { container } = render(
-            React.createElement(
-                Provider,
-                {
-                    store,
-                    children: React.createElement(
-                        MemoryRouter,
-                        null,
-                        React.createElement(ActionableItemsList as any, {
-                            actionablePartitions: [],
-                            isLoading: false,
-                            error: mockError,
-                            showIgnored: false,
-                        })
-                    ),
-                },
-            )
-        );
+        const { container } = await renderActionableItems({
+            actionablePartitions: [],
+            isLoading: false,
+            error: mockError,
+            showIgnored: false,
+        });
 
         // Check that error message appears - use getAllByText since there may be multiple instances
         const errorMessages = within(container).getAllByText("Could not load volume information.");
@@ -242,33 +155,12 @@ describe("Dashboard Actionable Items", () => {
     });
 
     it("shows empty state when no actionable items", async () => {
-        const React = await import("react");
-        const { render, within } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { MemoryRouter } = await import("react-router");
-        const { ActionableItemsList } = await import("../components/ActionableItemsList");
-        const { createTestStore } = await import("../../../../test/setup");
-
-        const store = await createTestStore();
-
-        const { container } = render(
-            React.createElement(
-                Provider,
-                {
-                    store,
-                    children: React.createElement(
-                        MemoryRouter,
-                        null,
-                        React.createElement(ActionableItemsList as any, {
-                            actionablePartitions: [],
-                            isLoading: false,
-                            error: null,
-                            showIgnored: false,
-                        })
-                    ),
-                },
-            )
-        );
+        const { container } = await renderActionableItems({
+            actionablePartitions: [],
+            isLoading: false,
+            error: null,
+            showIgnored: false,
+        });
 
         // Check that empty message appears
         const emptyMessage = await within(container).findByText("No actionable items at the moment.");

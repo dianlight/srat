@@ -1,11 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import path from "path";
-import "../../../../test/setup";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// TEMPORARILY SKIPPED: This test uses mock.module() which corrupts the global module cache
-// and causes all subsequent RTK Query tests to fail. See /memories/frontend_test_failures_root_cause.md
-// TODO: Refactor to use proper React Testing Library patterns without module mocking
-describe.skip("Shares page", () => {
+describe("Shares page", () => {
     const sampleShare: any = {
         name: "Documents",
         usage: "general",
@@ -22,13 +18,11 @@ describe.skip("Shares page", () => {
         if ((globalThis as any).localStorage) {
             localStorage.clear();
         }
-        mock.restore();
+        vi.restoreAllMocks();
     });
 
     afterEach(async () => {
-        mock.restore();
-        const { cleanup } = await import("@testing-library/react");
-        cleanup();
+        vi.restoreAllMocks();
         // CRITICAL: Reset RTK Query state after tests to prevent pollution
         // Without this, module-mocked tests can corrupt the global API instances
         try {
@@ -52,7 +46,7 @@ describe.skip("Shares page", () => {
             remove: 0,
         };
 
-        mock.module("../ShareEditDialog", () => ({
+        vi.doMock("../ShareEditDialog", () => ({
             ShareEditDialog: (props: any) =>
                 props.open
                     ? ReactModule.createElement(
@@ -117,21 +111,21 @@ describe.skip("Shares page", () => {
                 "select share"
             );
 
-        mock.module("../components/ShareDetailsPanel", () => ({
+        vi.doMock("../components/ShareDetailsPanel", () => ({
             ShareDetailsPanel: ShareDetailsPanelStub,
         }));
 
-        mock.module("../components/SharesTreeView", () => ({
+        vi.doMock("../components/SharesTreeView", () => ({
             SharesTreeView: SharesTreeViewStub,
         }));
 
-        mock.module("../components", () => ({
+        vi.doMock("../components", () => ({
             ShareDetailsPanel: ShareDetailsPanelStub,
             SharesTreeView: SharesTreeViewStub,
             ShareEditForm: () => ReactModule.createElement("div"),
         }));
 
-        mock.module("../../../hooks/shareHook", () => ({
+        vi.doMock("../../../hooks/shareHook", () => ({
             useShare: () => ({
                 shares: { docKey: sampleShare },
                 isLoading: false,
@@ -139,7 +133,7 @@ describe.skip("Shares page", () => {
             }),
         }));
 
-        mock.module("../../../hooks/volumeHook", () => ({
+        vi.doMock("../../../hooks/volumeHook", () => ({
             useVolume: () => ({
                 disks: [
                     {
@@ -163,33 +157,51 @@ describe.skip("Shares page", () => {
         }));
 
         // Mock wsApi hook as imported by Shares component (../../store/wsApi)
-        mock.module("../../store/wsApi", () => ({
+        vi.doMock("../../store/wsApi", () => ({
+            wsApi: {
+                reducerPath: "wsApi",
+                reducer: fakeReducer,
+                middleware: makeMiddleware(),
+                util: {
+                    resetApiState: () => ({ type: "wsApi/resetApiState" }),
+                },
+            },
             useGetServerEventsQuery: () => ({
                 data: { hello: { read_only: false, protected_mode: false } },
                 isLoading: false,
             }),
         }));
 
-        // Minimal API shapes for store creation dynamic imports from test/setup.ts
+        // Minimal API shapes for store creation dynamic imports from test helper module.
         const fakeReducer = (state: any = {}, _action: any) => state;
         const makeMiddleware = () => () => (next: any) => (action: any) => next(action);
-        mock.module("../src/store/wsApi", () => ({
-            wsApi: { reducerPath: "wsApi", reducer: fakeReducer, middleware: makeMiddleware() },
+        vi.doMock("../src/store/wsApi", () => ({
+            wsApi: {
+                reducerPath: "wsApi",
+                reducer: fakeReducer,
+                middleware: makeMiddleware(),
+                util: {
+                    resetApiState: () => ({ type: "wsApi/resetApiState" }),
+                },
+            },
         }));
 
-        mock.module("material-ui-confirm", () => ({
+        vi.doMock("material-ui-confirm", () => ({
             useConfirm: () => () => Promise.resolve({ confirmed: true }),
         }));
 
-        mock.module("react-toastify", () => ({
+        vi.doMock("react-toastify", () => ({
             toast: { info: () => { }, error: () => { } },
         }));
 
-        mock.module("../../../store/errorSlice", () => ({
+        vi.doMock("../../../store/errorSlice", () => ({
+            errorSlice: {
+                reducer: (state: { messages: string[] } = { messages: [] }) => state,
+            },
             addMessage: (payload: string) => ({ type: "error/add", payload }),
         }));
 
-        mock.module("../../../store/store", () => ({
+        vi.doMock("../../../store/store", () => ({
             useAppDispatch: () => () => { },
         }));
 
@@ -211,7 +223,7 @@ describe.skip("Shares page", () => {
             }
         };
 
-        mock.module("react-router", () => ({
+        vi.doMock("react-router", () => ({
             useLocation: () => ({
                 pathname: "/shares",
                 state: locationState,
@@ -220,10 +232,18 @@ describe.skip("Shares page", () => {
         }));
 
         // Mock sratApi hooks as imported by Shares component (../../store/sratApi)
-        mock.module("../../store/sratApi", () => {
+        vi.doMock("../../store/sratApi", () => {
             // Debug to verify the sratApi mock for Shares component is used
             // console.debug("Using mocked ../../store/sratApi for Shares test");
             return {
+                sratApi: {
+                    reducerPath: "api",
+                    reducer: fakeReducer,
+                    middleware: makeMiddleware(),
+                    util: {
+                        resetApiState: () => ({ type: "api/resetApiState" }),
+                    },
+                },
                 Usage: { None: "none", Backup: "backup", Media: "media", Share: "share", Internal: "internal" },
                 // Provide the users query hook used by ShareEditForm to avoid hitting real RTKQ
                 useGetApiUsersQuery: () => ({ data: [], isLoading: false, error: null }),
@@ -233,6 +253,12 @@ describe.skip("Shares page", () => {
                             mutationSpies.update += 1;
                             return Promise.resolve(sampleShare);
                         },
+                    }),
+                    {},
+                ],
+                usePutApiShareByShareNameDisableMutation: () => [
+                    () => ({
+                        unwrap: () => Promise.resolve(sampleShare),
                     }),
                     {},
                 ],
@@ -258,9 +284,16 @@ describe.skip("Shares page", () => {
         });
 
         // Defensive: also mock by absolute path in case Bun resolves to absolute module IDs
-        mock.module(path.resolve(__dirname, "../../../store/sratApi.ts"), () => ({
+        vi.doMock(path.resolve(__dirname, "../../../store/sratApi.ts"), () => ({
             // Minimal RTK Query API object for store creation expectations, align reducerPath with default 'api'
-            sratApi: { reducerPath: "api", reducer: fakeReducer, middleware: makeMiddleware() },
+            sratApi: {
+                reducerPath: "api",
+                reducer: fakeReducer,
+                middleware: makeMiddleware(),
+                util: {
+                    resetApiState: () => ({ type: "api/resetApiState" }),
+                },
+            },
             // Hooks + enums used by component
             Usage: { None: "None" },
             useGetApiUsersQuery: () => ({ data: [], isLoading: false, error: null }),
@@ -270,6 +303,12 @@ describe.skip("Shares page", () => {
                         mutationSpies.update += 1;
                         return Promise.resolve(sampleShare);
                     },
+                }),
+                {},
+            ],
+            usePutApiShareByShareNameDisableMutation: () => [
+                () => ({
+                    unwrap: () => Promise.resolve(sampleShare),
                 }),
                 {},
             ],
@@ -293,8 +332,15 @@ describe.skip("Shares page", () => {
             ],
         }));
 
-        mock.module(path.resolve(__dirname, "../../../store/wsApi.ts"), () => ({
-            wsApi: { reducerPath: "wsApi", reducer: fakeReducer, middleware: makeMiddleware() },
+        vi.doMock(path.resolve(__dirname, "../../../store/wsApi.ts"), () => ({
+            wsApi: {
+                reducerPath: "wsApi",
+                reducer: fakeReducer,
+                middleware: makeMiddleware(),
+                util: {
+                    resetApiState: () => ({ type: "wsApi/resetApiState" }),
+                },
+            },
             useGetServerEventsQuery: () => ({
                 data: { hello: { read_only: false, protected_mode: false } },
                 isLoading: false,
@@ -302,9 +348,16 @@ describe.skip("Shares page", () => {
         }));
 
         // Provide minimal RTK Query API object for store creation dynamic import (../src/store/sratApi)
-        mock.module("../src/store/sratApi", () => ({
+        vi.doMock("../src/store/sratApi", () => ({
             // Align with default 'api' reducerPath so createTestStore wires middleware correctly
-            sratApi: { reducerPath: "api", reducer: fakeReducer, middleware: makeMiddleware() },
+            sratApi: {
+                reducerPath: "api",
+                reducer: fakeReducer,
+                middleware: makeMiddleware(),
+                util: {
+                    resetApiState: () => ({ type: "api/resetApiState" }),
+                },
+            },
         }));
 
         return mutationSpies;
@@ -317,7 +370,7 @@ describe.skip("Shares page", () => {
         const React = await import("react");
         const { render, screen, waitFor } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
         // @ts-expect-error - Query param ensures fresh module instance for mocks
         const { Shares } = await import("../Shares?shares-test");
 

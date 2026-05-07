@@ -1,7 +1,6 @@
 import { cleanup } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { http, HttpResponse } from "msw";
-import "../../../../test/setup";
 
 describe("HomeAssistantCustomComponentPanel", () => {
     beforeEach(() => {
@@ -19,9 +18,9 @@ describe("HomeAssistantCustomComponentPanel", () => {
         const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { getMswServer } = await import("../../../../test/bun-setup");
+        const { getMswServer } = await import("/test/testing");
         const { HomeAssistantCustomComponentPanel } = await import("../HomeAssistantCustomComponentPanel");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const server = await getMswServer();
         server.use(
@@ -72,9 +71,9 @@ describe("HomeAssistantCustomComponentPanel", () => {
         const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { getMswServer } = await import("../../../../test/bun-setup");
+        const { getMswServer } = await import("/test/testing");
         const { HomeAssistantCustomComponentPanel } = await import("../HomeAssistantCustomComponentPanel");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const server = await getMswServer();
         server.use(
@@ -109,9 +108,9 @@ describe("HomeAssistantCustomComponentPanel", () => {
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const userEvent = (await import("@testing-library/user-event")).default;
-        const { getMswServer } = await import("../../../../test/bun-setup");
+        const { getMswServer } = await import("/test/testing");
         const { HomeAssistantCustomComponentPanel } = await import("../HomeAssistantCustomComponentPanel");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const server = await getMswServer();
         server.use(
@@ -168,9 +167,9 @@ describe("HomeAssistantCustomComponentPanel", () => {
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const userEvent = (await import("@testing-library/user-event")).default;
-        const { getMswServer } = await import("../../../../test/bun-setup");
+        const { getMswServer } = await import("/test/testing");
         const { HomeAssistantCustomComponentPanel } = await import("../HomeAssistantCustomComponentPanel");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const server = await getMswServer();
         server.use(
@@ -220,9 +219,9 @@ describe("HomeAssistantCustomComponentPanel", () => {
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const userEvent = (await import("@testing-library/user-event")).default;
-        const { getMswServer } = await import("../../../../test/bun-setup");
+        const { getMswServer } = await import("/test/testing");
         const { HomeAssistantCustomComponentPanel } = await import("../HomeAssistantCustomComponentPanel");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const server = await getMswServer();
         server.use(
@@ -274,9 +273,9 @@ describe("HomeAssistantCustomComponentPanel", () => {
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const userEvent = (await import("@testing-library/user-event")).default;
-        const { getMswServer } = await import("../../../../test/bun-setup");
+        const { getMswServer } = await import("/test/testing");
         const { HomeAssistantCustomComponentPanel } = await import("../HomeAssistantCustomComponentPanel");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const server = await getMswServer();
         server.use(
@@ -328,9 +327,9 @@ describe("HomeAssistantCustomComponentPanel", () => {
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const userEvent = (await import("@testing-library/user-event")).default;
-        const { getMswServer } = await import("../../../../test/bun-setup");
+        const { getMswServer } = await import("/test/testing");
         const { HomeAssistantCustomComponentPanel } = await import("../HomeAssistantCustomComponentPanel");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const server = await getMswServer();
         server.use(
@@ -381,9 +380,9 @@ describe("HomeAssistantCustomComponentPanel", () => {
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const userEvent = (await import("@testing-library/user-event")).default;
-        const { getMswServer } = await import("../../../../test/bun-setup");
+        const { getMswServer } = await import("/test/testing");
         const { HomeAssistantCustomComponentPanel } = await import("../HomeAssistantCustomComponentPanel");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         let restartCalled = false;
         const server = await getMswServer();

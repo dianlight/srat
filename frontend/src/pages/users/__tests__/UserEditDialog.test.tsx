@@ -1,5 +1,4 @@
-import { afterEach, describe, expect, it, mock } from "bun:test";
-import "../../../../test/setup";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 describe("UserEditDialog component", () => {
     afterEach(async () => {
@@ -13,7 +12,7 @@ describe("UserEditDialog component", () => {
         const userEvent = (await import("@testing-library/user-event")).default;
         const { UserEditDialog } = await import("../UserEditDialog");
 
-        const onClose = mock(() => { });
+        const onClose = vi.fn(() => { });
 
         render(
             React.createElement(UserEditDialog as any, {
@@ -61,7 +60,7 @@ describe("UserEditDialog component", () => {
         const userEvent = (await import("@testing-library/user-event")).default;
         const { UserEditDialog } = await import("../UserEditDialog");
 
-        const onClose = mock(() => { });
+        const onClose = vi.fn(() => { });
 
         render(
             React.createElement(UserEditDialog as any, {
@@ -97,7 +96,7 @@ describe("UserEditDialog component", () => {
         const userEvent = (await import("@testing-library/user-event")).default;
         const { UserEditDialog } = await import("../UserEditDialog");
 
-        const onClose = mock(() => { });
+        const onClose = vi.fn(() => { });
 
         render(
             React.createElement(UserEditDialog as any, {

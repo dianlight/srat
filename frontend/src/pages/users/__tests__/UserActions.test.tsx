@@ -1,5 +1,4 @@
-import "../../../../test/setup";
-import { describe, it, expect, beforeEach } from "bun:test";
+import { describe, it, expect, beforeEach } from "vitest";
 
 describe("UserActions component", () => {
     beforeEach(() => {

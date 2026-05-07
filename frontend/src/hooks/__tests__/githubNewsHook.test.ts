@@ -1,5 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
-import "../../../test/setup";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const originalFetch = globalThis.fetch;
 // Helper to create a minimal Response-like object usable by fetchBaseQuery
@@ -23,12 +22,12 @@ function makeMockResponse(body: any, status = 200) {
 
 describe("useGithubNews hook", () => {
 	beforeEach(() => {
-		mock.restore();
+		vi.restoreAllMocks();
 		globalThis.fetch = originalFetch;
 	});
 
 	afterEach(() => {
-		mock.restore();
+		vi.restoreAllMocks();
 		globalThis.fetch = originalFetch;
 	});
 
@@ -37,12 +36,12 @@ describe("useGithubNews hook", () => {
 		const { renderHook } = await import("@testing-library/react");
 		const { Provider } = await import("react-redux");
 		const { useGithubNews } = await import("../githubNewsHook");
-		const { createTestStore } = await import("../../../test/setup");
+		const { createTestStore } = await import("/test/testing");
 		// MSW not used in this test; use fetch mocking instead
 
 		// Keep the MSW handler pending so the initial loading state is deterministic
 		// Keep fetch pending so the initial loading state is deterministic.
-		globalThis.fetch = mock(() =>
+		globalThis.fetch = vi.fn(() =>
 			new Promise<Response>(() => {
 				// Intentionally unresolved for this test case.
 			}),
@@ -64,7 +63,7 @@ describe("useGithubNews hook", () => {
 		const { renderHook, waitFor } = await import("@testing-library/react");
 		const { Provider } = await import("react-redux");
 		const { useGithubNews } = await import("../githubNewsHook");
-		const { createTestStore } = await import("../../../test/setup");
+		const { createTestStore } = await import("/test/testing");
 		// MSW not used in this test; use fetch mocking instead
 
 		const mockDiscussions = [
@@ -77,7 +76,7 @@ describe("useGithubNews hook", () => {
 		];
 
 		// Mock fetch to return the discussions payload
-		globalThis.fetch = mock(() =>
+		globalThis.fetch = vi.fn(() =>
 			Promise.resolve(
 				new Response(JSON.stringify(mockDiscussions), {
 					status: 200,
@@ -105,11 +104,11 @@ describe("useGithubNews hook", () => {
 		const { renderHook, waitFor } = await import("@testing-library/react");
 		const { Provider } = await import("react-redux");
 		const { useGithubNews } = await import("../githubNewsHook");
-		const { createTestStore } = await import("../../../test/setup");
+		const { createTestStore } = await import("/test/testing");
 		// MSW not used in this test; use fetch mocking instead
 
 		// Mock fetch to return a 404 response
-		globalThis.fetch = mock(() =>
+		globalThis.fetch = vi.fn(() =>
 			Promise.resolve(
 				new Response(null, { status: 404, statusText: "Not Found" }),
 			),
@@ -134,7 +133,7 @@ describe("useGithubNews hook", () => {
 		const { renderHook, waitFor } = await import("@testing-library/react");
 		const { Provider } = await import("react-redux");
 		const { useGithubNews } = await import("../githubNewsHook");
-		const { createTestStore } = await import("../../../test/setup");
+		const { createTestStore } = await import("/test/testing");
 		// MSW not used in this test; use fetch mocking instead
 
 		const oldDate = new Date();
@@ -156,7 +155,7 @@ describe("useGithubNews hook", () => {
 		];
 
 		// Mock fetch to return mixed recent/old discussions
-		globalThis.fetch = mock(() =>
+		globalThis.fetch = vi.fn(() =>
 			Promise.resolve(
 				new Response(JSON.stringify(mockDiscussions), {
 					status: 200,
@@ -186,7 +185,7 @@ describe("useGithubNews hook", () => {
 		const { renderHook, waitFor } = await import("@testing-library/react");
 		const { Provider } = await import("react-redux");
 		const { useGithubNews } = await import("../githubNewsHook");
-		const { createTestStore } = await import("../../../test/setup");
+		const { createTestStore } = await import("/test/testing");
 		// MSW not used in this test; use fetch mocking instead
 
 		const mockDiscussions = Array.from({ length: 10 }, (_, i) => ({
@@ -197,7 +196,7 @@ describe("useGithubNews hook", () => {
 		}));
 
 		// Mock fetch to return many discussions
-		globalThis.fetch = mock(() =>
+		globalThis.fetch = vi.fn(() =>
 			Promise.resolve(
 				new Response(JSON.stringify(mockDiscussions), {
 					status: 200,
@@ -225,11 +224,11 @@ describe("useGithubNews hook", () => {
 		const { renderHook, waitFor } = await import("@testing-library/react");
 		const { Provider } = await import("react-redux");
 		const { useGithubNews } = await import("../githubNewsHook");
-		const { createTestStore } = await import("../../../test/setup");
+		const { createTestStore } = await import("/test/testing");
 		// MSW not used in this test; use fetch mocking instead
 
 		// Mock fetch to reject with network error
-		globalThis.fetch = mock(() => Promise.reject(new Error("Network error"))) as unknown as typeof fetch;
+		globalThis.fetch = vi.fn(() => Promise.reject(new Error("Network error"))) as unknown as typeof fetch;
 
 		const store = await createTestStore();
 		const wrapper = ({ children }: { children: React.ReactNode }) =>

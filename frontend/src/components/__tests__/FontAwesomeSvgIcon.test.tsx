@@ -1,5 +1,4 @@
-import { beforeEach, describe, expect, it } from "bun:test";
-import "../../../test/setup";
+import { beforeEach, describe, expect, it } from "vitest";
 
 type FaIcon = {
     icon: [number, number, unknown, unknown, string | string[]];

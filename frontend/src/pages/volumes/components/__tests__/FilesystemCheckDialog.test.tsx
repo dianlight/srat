@@ -1,22 +1,6 @@
-import { describe, expect, it } from "bun:test";
 import { http, HttpResponse } from "msw";
-import { getMswServer } from "../../../../../test/bun-setup";
-import "../../../../../test/setup";
-
-async function renderWithProviders(element: any, options?: { seedStore?: (store: any) => void }) {
-    const React = await import("react");
-    const { render } = await import("@testing-library/react");
-    const { Provider } = await import("react-redux");
-    const { createTestStore } = await import("../../../../../test/setup");
-
-    const store = await createTestStore();
-    if (options?.seedStore) {
-        options.seedStore(store);
-    }
-
-    const result = render(React.createElement(Provider, { store, children: element }));
-    return { ...result, store };
-}
+import { describe, expect, it } from "vitest";
+import { getMswServer, renderWithTestStore } from "/test/testing";
 
 describe("FilesystemCheckDialog", () => {
     it("shows switches and terminal logs area when verbose is enabled", async () => {
@@ -30,7 +14,7 @@ describe("FilesystemCheckDialog", () => {
             device_path: "/dev/sdb1",
         };
 
-        await renderWithProviders(
+        await renderWithTestStore(
             React.createElement(FilesystemCheckDialog as any, {
                 open: true,
                 partition,
@@ -53,7 +37,7 @@ describe("FilesystemCheckDialog", () => {
             device_path: "/dev/sdb1",
         };
 
-        await renderWithProviders(
+        await renderWithTestStore(
             React.createElement(FilesystemCheckDialog as any, {
                 open: true,
                 partition,
@@ -88,7 +72,7 @@ describe("FilesystemCheckDialog", () => {
             device_path: "/dev/sde1",
         };
 
-        await renderWithProviders(
+        await renderWithTestStore(
             React.createElement(FilesystemCheckDialog as any, {
                 open: true,
                 partition,
@@ -122,7 +106,7 @@ describe("FilesystemCheckDialog", () => {
             device_path: "/dev/sdf1",
         };
 
-        await renderWithProviders(
+        await renderWithTestStore(
             React.createElement(FilesystemCheckDialog as any, {
                 open: true,
                 partition,
@@ -160,7 +144,7 @@ describe("FilesystemCheckDialog", () => {
             device_path: "/dev/sdz9",
         };
 
-        await renderWithProviders(
+        await renderWithTestStore(
             React.createElement(FilesystemCheckDialog as any, {
                 open: true,
                 partition,
@@ -202,7 +186,7 @@ describe("FilesystemCheckDialog", () => {
             device_path: "/dev/sdg1",
         };
 
-        const { rerender, store } = await renderWithProviders(
+        const { rerender, store } = await renderWithTestStore(
             React.createElement(FilesystemCheckDialog as any, {
                 open: true,
                 partition,
@@ -251,7 +235,7 @@ describe("FilesystemCheckDialog", () => {
             },
         };
 
-        await renderWithProviders(
+        await renderWithTestStore(
             React.createElement(FilesystemCheckDialog as any, {
                 open: true,
                 partition,
@@ -277,7 +261,7 @@ describe("FilesystemCheckDialog", () => {
             device_path: "/dev/sdb1",
         };
 
-        await renderWithProviders(
+        await renderWithTestStore(
             React.createElement(FilesystemCheckDialog as any, {
                 open: true,
                 partition,
@@ -306,7 +290,7 @@ describe("FilesystemCheckDialog", () => {
             device_path: "/dev/sdd1",
         };
 
-        await renderWithProviders(
+        await renderWithTestStore(
             React.createElement(FilesystemCheckDialog as any, {
                 open: true,
                 partition,
@@ -357,7 +341,7 @@ describe("FilesystemCheckDialog", () => {
             },
         };
 
-        await renderWithProviders(
+        await renderWithTestStore(
             React.createElement(FilesystemCheckDialog as any, {
                 open: true,
                 partition,
@@ -370,8 +354,8 @@ describe("FilesystemCheckDialog", () => {
 
         const hints = await screen.findAllByText(/Check tools are not available/i);
         expect(hints.length).toBeGreaterThan(0);
-        const missingTools = await screen.findAllByText(/Missing tools: zpool/i);
-        expect(missingTools.length).toBeGreaterThan(0);
+        const installHint = await screen.findAllByText(/Install hint:/i);
+        expect(installHint.length).toBeGreaterThan(0);
         const installHints = await screen.findAllByText(/apk add zfs/i);
         expect(installHints.length).toBeGreaterThan(0);
     });

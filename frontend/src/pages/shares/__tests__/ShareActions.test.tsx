@@ -1,5 +1,9 @@
-import "../../../../test/setup";
-import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { ThemeProvider, createTheme } from "@mui/material/styles";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, it } from "vitest";
+import { Type, Usage } from "../../../store/sratApi";
+import { ShareActions } from "../components/ShareActions";
 
 describe("ShareActions component", () => {
     const createMatchMedia = (matches: boolean) => () => (({
@@ -17,31 +21,21 @@ describe("ShareActions component", () => {
         (window as any).matchMedia = createMatchMedia(false);
     });
 
-    afterEach(async () => {
-        // Reset matchMedia and cleanup rendered components between reruns
-        const { cleanup } = await import("@testing-library/react");
-        cleanup();
-    });
-
     const buildShare = () => ({
         name: "Public",
-        usage: "general",
+        usage: Usage.Share,
         disabled: false,
         mount_point_data: {
             path_hash: "hash",
             invalid: false,
+            path: "/mnt/test",
+            type: Type.Host,
         },
         users: [],
         ro_users: [],
     });
 
     it("renders desktop action buttons and triggers callbacks", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const userEvent = (await import("@testing-library/user-event")).default;
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { ShareActions } = await import("../components/ShareActions");
-
         let viewCalls = 0;
         let disableCalls = 0;
 
@@ -49,23 +43,26 @@ describe("ShareActions component", () => {
         const share = buildShare();
 
         render(
-            React.createElement(
-                ThemeProvider,
-                { theme },
-                React.createElement(ShareActions as any, {
-                    shareKey: "shareKey",
-                    shareProps: { ...share, mount_point_data: { ...share.mount_point_data, path: "/mnt/test" } },
-                    read_only: false,
-                    protected_mode: false,
-                    onViewVolumeSettings: () => { viewCalls += 1; },
-                    onEnable: () => { /* not used */ },
-                    onDisable: () => { disableCalls += 1; },
-                })
-            )
+            <ThemeProvider theme={theme}>
+                <ShareActions
+                    shareKey="shareKey"
+                    shareProps={{ ...share, mount_point_data: { ...share.mount_point_data, path: "/mnt/test" } }}
+                    protected_mode={false}
+                    onViewVolumeSettings={() => {
+                        viewCalls += 1;
+                    }}
+                    onEnable={() => {
+                        // not used in this test
+                    }}
+                    onDisable={() => {
+                        disableCalls += 1;
+                    }}
+                />
+            </ThemeProvider>,
         );
 
-        const viewVolumeButton = (await screen.findAllByRole("button", { name: /view volume mount settings/i }))[0];
-        const disableButton = (await screen.findAllByRole("button", { name: /disable share/i }))[0];
+        const viewVolumeButton = screen.getByRole("button", { name: /view volume mount settings/i });
+        const disableButton = screen.getByRole("button", { name: /disable share/i });
 
         const user = userEvent.setup();
         if (viewVolumeButton) await user.click(viewVolumeButton as any);
@@ -78,38 +75,31 @@ describe("ShareActions component", () => {
     it("renders compact menu on small screens", async () => {
         (window as any).matchMedia = createMatchMedia(true);
 
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const userEvent = (await import("@testing-library/user-event")).default;
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { ShareActions } = await import("../components/ShareActions");
-
         let enableCalls = 0;
 
         const theme = createTheme();
         const share = buildShare();
 
         render(
-            React.createElement(
-                ThemeProvider,
-                { theme },
-                React.createElement(ShareActions as any, {
-                    shareKey: "shareKey",
-                    shareProps: { ...share, disabled: true },
-                    read_only: false,
-                    protected_mode: false,
-                    onViewVolumeSettings: () => { },
-                    onEnable: () => { enableCalls += 1; },
-                    onDisable: () => { },
-                })
-            )
+            <ThemeProvider theme={theme}>
+                <ShareActions
+                    shareKey="shareKey"
+                    shareProps={{ ...share, disabled: true }}
+                    protected_mode={false}
+                    onViewVolumeSettings={() => {}}
+                    onEnable={() => {
+                        enableCalls += 1;
+                    }}
+                    onDisable={() => {}}
+                />
+            </ThemeProvider>,
         );
 
-        const menuButton = await screen.findByRole("button", { name: /more actions/i });
+        const menuButton = screen.getAllByRole("button", { name: /more actions/i })[0];
         const user = userEvent.setup();
         await user.click(menuButton as any);
 
-        const enableOption = await screen.findByText(/enable share/i);
+        const enableOption = await screen.findByRole("menuitem", { name: /enable share/i });
         await user.click(enableOption as any);
 
         expect(enableCalls).toBe(1);

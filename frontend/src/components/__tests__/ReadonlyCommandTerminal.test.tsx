@@ -1,6 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "bun:test";
-import "../../../test/setup";
+import { describe, expect, it } from "vitest";
 import {
     createTerminalLines,
     ReadonlyCommandTerminal,

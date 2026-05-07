@@ -1,21 +1,13 @@
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import "../../../../../test/setup.ts";
+import { beforeEach, describe, expect, it } from "vitest";
+import { renderWithTestStore } from "/test/testing";
 
-// localStorage shim for testing
-if (!(globalThis as any).localStorage) {
-    const _store: Record<string, string> = {};
-    (globalThis as any).localStorage = {
-        getItem: (k: string) => (_store.hasOwnProperty(k) ? _store[k] : null),
-        setItem: (k: string, v: string) => {
-            _store[k] = String(v);
-        },
-        removeItem: (k: string) => {
-            delete _store[k];
-        },
-        clear: () => {
-            for (const k of Object.keys(_store)) delete _store[k];
-        },
-    };
+async function renderSmartStatusPanel(props: Record<string, unknown>) {
+    const React = await import("react");
+    const { SmartStatusPanel } = await import("../SmartStatusPanel");
+
+    return renderWithTestStore(
+        React.createElement(SmartStatusPanel, props),
+    );
 }
 
 describe("SmartStatusPanel Component", () => {
@@ -23,42 +15,17 @@ describe("SmartStatusPanel Component", () => {
         localStorage.clear();
     });
 
-    afterEach(async () => {
-        // Ensure DOM is cleaned between reruns to avoid duplicate elements
-        const { cleanup } = await import("@testing-library/react");
-        cleanup();
-    });
-
     it("should not render when smartInfo is undefined", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { SmartStatusPanel } = await import("../SmartStatusPanel");
-        const { createTestStore } = await import("../../../../../test/setup");
-
-        const store = await createTestStore();
-        const { container } = render(
-            React.createElement(Provider, {
-                store,
-                children: React.createElement(SmartStatusPanel, {
-                    smartInfo: undefined,
-                    isSmartSupported: false,
-                }),
-            }),
-        );
+        const { container } = await renderSmartStatusPanel({
+            smartInfo: undefined,
+            isSmartSupported: false,
+        });
 
         // Component should return null, so container should be empty
         expect(container.firstChild).toBeFalsy();
     });
 
     it("should not render when smartInfo.supported is false", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { SmartStatusPanel } = await import("../SmartStatusPanel");
-        const { createTestStore } = await import("../../../../../test/setup");
-
-        const store = await createTestStore();
         const mockSmartInfo = {
             disk_type: "SATA",
             temperature: { value: 45 },
@@ -68,29 +35,18 @@ describe("SmartStatusPanel Component", () => {
             supported: false,
         } as any;
 
-        const { container } = render(
-            React.createElement(Provider, {
-                store,
-                children: React.createElement(SmartStatusPanel, {
-                    smartInfo: mockSmartInfo,
-                    isSmartSupported: true,
-                }),
-            }),
-        );
+        const { container } = await renderSmartStatusPanel({
+            smartInfo: mockSmartInfo,
+            isSmartSupported: true,
+        });
 
         // Component should return null when supported is false
         expect(container.firstChild).toBeFalsy();
     });
 
     it("should render SMART status when data is available", async () => {
-        const React = await import("react");
-        const { render, screen, act } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
+        const { screen, act } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
-        const { SmartStatusPanel } = await import("../SmartStatusPanel");
-        const { createTestStore } = await import("../../../../../test/setup");
-
-        const store = await createTestStore();
         const mockSmartInfo = {
             disk_type: "SATA",
             temperature: { value: 45, min: 20, max: 80 },
@@ -100,17 +56,12 @@ describe("SmartStatusPanel Component", () => {
             supported: true,
         } as any;
 
-        render(
-            React.createElement(Provider, {
-                store,
-                children: React.createElement(SmartStatusPanel, {
-                    smartInfo: mockSmartInfo,
-                    diskId: "disk-001",
-                    isSmartSupported: true,
-                    isReadOnlyMode: false,
-                }),
-            }),
-        );
+        await renderSmartStatusPanel({
+            smartInfo: mockSmartInfo,
+            diskId: "disk-001",
+            isSmartSupported: true,
+            isReadOnlyMode: false,
+        });
 
         // Should display SMART status header
         const header = await screen.findByText(/S\.M\.A\.R\.T\. Status/);
@@ -132,14 +83,8 @@ describe("SmartStatusPanel Component", () => {
     });
 
     it("should display health status as healthy", async () => {
-        const React = await import("react");
-        const { render, screen, act, waitFor } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
+        const { screen, act, waitFor } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
-        const { SmartStatusPanel } = await import("../SmartStatusPanel");
-        const { createTestStore } = await import("../../../../../test/setup");
-
-        const store = await createTestStore();
         const mockSmartInfo = {
             disk_type: "SATA",
             temperature: { value: 45, min: 20, max: 80 },
@@ -154,17 +99,12 @@ describe("SmartStatusPanel Component", () => {
             overall_status: "healthy",
         } as any;
 
-        render(
-            React.createElement(Provider, {
-                store,
-                children: React.createElement(SmartStatusPanel, {
-                    smartInfo: mockSmartInfo,
-                    healthStatus: mockHealthStatus,
-                    isSmartSupported: true,
-                    isReadOnlyMode: false,
-                }),
-            }),
-        );
+        await renderSmartStatusPanel({
+            smartInfo: mockSmartInfo,
+            healthStatus: mockHealthStatus,
+            isSmartSupported: true,
+            isReadOnlyMode: false,
+        });
 
         // Expand the panel to see content
         const expandButtons = await screen.findAllByRole("button");
@@ -186,14 +126,8 @@ describe("SmartStatusPanel Component", () => {
     });
 
     it("should display failing attributes when health check fails", async () => {
-        const React = await import("react");
-        const { render, screen, act, waitFor } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
+        const { screen, act, waitFor } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
-        const { SmartStatusPanel } = await import("../SmartStatusPanel");
-        const { createTestStore } = await import("../../../../../test/setup");
-
-        const store = await createTestStore();
         const mockSmartInfo = {
             disk_type: "SATA",
             temperature: { value: 45, min: 20, max: 80 },
@@ -209,17 +143,12 @@ describe("SmartStatusPanel Component", () => {
             overall_status: "failing",
         } as any;
 
-        render(
-            React.createElement(Provider, {
-                store,
-                children: React.createElement(SmartStatusPanel, {
-                    smartInfo: mockSmartInfo,
-                    healthStatus: mockHealthStatus,
-                    isSmartSupported: true,
-                    isReadOnlyMode: false,
-                }),
-            }),
-        );
+        await renderSmartStatusPanel({
+            smartInfo: mockSmartInfo,
+            healthStatus: mockHealthStatus,
+            isSmartSupported: true,
+            isReadOnlyMode: false,
+        });
 
         // Expand the panel to see content
         const expandButtons = await screen.findAllByRole("button");
@@ -240,14 +169,8 @@ describe("SmartStatusPanel Component", () => {
     });
 
     it("should display test status when running", async () => {
-        const React = await import("react");
-        const { render, screen, act, waitFor } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
+        const { screen, act, waitFor } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
-        const { SmartStatusPanel } = await import("../SmartStatusPanel");
-        const { createTestStore } = await import("../../../../../test/setup");
-
-        const store = await createTestStore();
         const mockSmartInfo = {
             disk_type: "SATA",
             temperature: { value: 45, min: 20, max: 80 },
@@ -264,17 +187,12 @@ describe("SmartStatusPanel Component", () => {
             percent_complete: 50,
         } as any;
 
-        render(
-            React.createElement(Provider, {
-                store,
-                children: React.createElement(SmartStatusPanel, {
-                    smartInfo: mockSmartInfo,
-                    testStatus: mockTestStatus,
-                    isSmartSupported: true,
-                    isReadOnlyMode: false,
-                }),
-            }),
-        );
+        await renderSmartStatusPanel({
+            smartInfo: mockSmartInfo,
+            testStatus: mockTestStatus,
+            isSmartSupported: true,
+            isReadOnlyMode: false,
+        });
 
         // Expand the panel to see content
         const expandButtons = await screen.findAllByRole("button");
@@ -295,14 +213,8 @@ describe("SmartStatusPanel Component", () => {
     });
 
     it("should disable test actions when test is running", async () => {
-        const React = await import("react");
-        const { render, screen, act, waitFor } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
+        const { screen, act, waitFor } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
-        const { SmartStatusPanel } = await import("../SmartStatusPanel");
-        const { createTestStore } = await import("../../../../../test/setup");
-
-        const store = await createTestStore();
         const mockSmartInfo = {
             disk_type: "SATA",
             temperature: { value: 45, min: 20, max: 80 },
@@ -319,17 +231,12 @@ describe("SmartStatusPanel Component", () => {
             percent_complete: 50,
         } as any;
 
-        render(
-            React.createElement(Provider, {
-                store,
-                children: React.createElement(SmartStatusPanel, {
-                    smartInfo: mockSmartInfo,
-                    testStatus: mockTestStatus,
-                    isSmartSupported: true,
-                    isReadOnlyMode: false,
-                }),
-            }),
-        );
+        await renderSmartStatusPanel({
+            smartInfo: mockSmartInfo,
+            testStatus: mockTestStatus,
+            isSmartSupported: true,
+            isReadOnlyMode: false,
+        });
 
         // Expand the panel to see content
         const expandButtons = await screen.findAllByRole("button");
@@ -350,14 +257,8 @@ describe("SmartStatusPanel Component", () => {
     });
 
     it("should disable all actions in read-only mode", async () => {
-        const React = await import("react");
-        const { render, screen, act, within } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
+        const { screen, act, within } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
-        const { SmartStatusPanel } = await import("../SmartStatusPanel");
-        const { createTestStore } = await import("../../../../../test/setup");
-
-        const store = await createTestStore();
         const mockSmartInfo = {
             disk_type: "SATA",
             temperature: { value: 45, min: 20, max: 80 },
@@ -367,16 +268,11 @@ describe("SmartStatusPanel Component", () => {
             supported: true,
         } as any;
 
-        const { container } = render(
-            React.createElement(Provider, {
-                store,
-                children: React.createElement(SmartStatusPanel, {
-                    smartInfo: mockSmartInfo,
-                    isSmartSupported: true,
-                    isReadOnlyMode: true,
-                }),
-            }),
-        );
+        const { container } = await renderSmartStatusPanel({
+            smartInfo: mockSmartInfo,
+            isSmartSupported: true,
+            isReadOnlyMode: true,
+        });
 
         // Expand the panel to see content
         const expandButtons = await screen.findAllByRole("button");
@@ -403,14 +299,8 @@ describe("SmartStatusPanel Component", () => {
     });
 
     it("should disable SMART enable/disable for NVMe disks", async () => {
-        const React = await import("react");
-        const { render, screen, act } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
+        const { screen, act } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
-        const { SmartStatusPanel } = await import("../SmartStatusPanel");
-        const { createTestStore } = await import("../../../../../test/setup");
-
-        const store = await createTestStore();
         const mockSmartInfo = {
             disk_type: "NVMe",
             temperature: { value: 35 },
@@ -420,16 +310,11 @@ describe("SmartStatusPanel Component", () => {
             supported: true,
         } as any;
 
-        render(
-            React.createElement(Provider, {
-                store,
-                children: React.createElement(SmartStatusPanel, {
-                    smartInfo: mockSmartInfo,
-                    isSmartSupported: true,
-                    isReadOnlyMode: false,
-                }),
-            }),
-        );
+        await renderSmartStatusPanel({
+            smartInfo: mockSmartInfo,
+            isSmartSupported: true,
+            isReadOnlyMode: false,
+        });
 
         const expandButtons = await screen.findAllByRole("button");
         const expandBtn = expandButtons.find((btn) => btn.getAttribute("aria-expanded") === "false");
@@ -450,13 +335,6 @@ describe("SmartStatusPanel Component", () => {
     });
 
     it("should not render when smartInfo has supported false", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { SmartStatusPanel } = await import("../SmartStatusPanel");
-        const { createTestStore } = await import("../../../../../test/setup");
-
-        const store = await createTestStore();
         const mockSmartInfo = {
             disk_type: "SATA",
             temperature: { value: 45, min: 20, max: 80 },
@@ -466,30 +344,19 @@ describe("SmartStatusPanel Component", () => {
             supported: false,
         } as any;
 
-        const { container } = render(
-            React.createElement(Provider, {
-                store,
-                children: React.createElement(SmartStatusPanel, {
-                    smartInfo: mockSmartInfo,
-                    isSmartSupported: true,
-                    isReadOnlyMode: false,
-                }),
-            }),
-        );
+        const { container } = await renderSmartStatusPanel({
+            smartInfo: mockSmartInfo,
+            isSmartSupported: true,
+            isReadOnlyMode: false,
+        });
 
         // Component should not render when smartInfo.supported is false
         expect(container.firstChild).toBeNull();
     });
 
     it("should call onStartTest when Start Test button is clicked", async () => {
-        const React = await import("react");
-          const { render, screen, within } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
+                    const { screen, within } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
-        const { SmartStatusPanel } = await import("../SmartStatusPanel");
-        const { createTestStore } = await import("../../../../../test/setup");
-
-        const store = await createTestStore();
         const mockSmartInfo = {
             disk_type: "SATA",
             temperature: { value: 45, min: 20, max: 80 },
@@ -501,15 +368,10 @@ describe("SmartStatusPanel Component", () => {
 
         let startTestCalled = false;
 
-        const { container } = render(
-            React.createElement(Provider, {
-                store,
-                children: React.createElement(SmartStatusPanel, {
-                    smartInfo: mockSmartInfo,
-                    isSmartSupported: true,
-                }),
-            }),
-        );
+        const { container } = await renderSmartStatusPanel({
+            smartInfo: mockSmartInfo,
+            isSmartSupported: true,
+        });
 
         // Expand the panel to see content
         const expandButtons = await screen.findAllByRole("button");
@@ -534,14 +396,8 @@ describe("SmartStatusPanel Component", () => {
     });
 
     it("should display temperature range information", async () => {
-        const React = await import("react");
-        const { render, screen, act } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
+        const { screen, act } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
-        const { SmartStatusPanel } = await import("../SmartStatusPanel");
-        const { createTestStore } = await import("../../../../../test/setup");
-
-        const store = await createTestStore();
         const mockSmartInfo = {
             disk_type: "SATA",
             temperature: { value: 45, min: 20, max: 80, overtemp_counter: 0 },
@@ -551,17 +407,12 @@ describe("SmartStatusPanel Component", () => {
             supported: true,
         } as any;
 
-        render(
-            React.createElement(Provider, {
-                store,
-                children: React.createElement(SmartStatusPanel, {
-                    smartInfo: mockSmartInfo,
-                    diskId: "disk-001",
-                    isSmartSupported: true,
-                    isReadOnlyMode: false,
-                }),
-            }),
-        );
+        await renderSmartStatusPanel({
+            smartInfo: mockSmartInfo,
+            diskId: "disk-001",
+            isSmartSupported: true,
+            isReadOnlyMode: false,
+        });
 
         // Expand the panel to see content
         const expandButtons = await screen.findAllByRole("button");
@@ -579,14 +430,8 @@ describe("SmartStatusPanel Component", () => {
     });
 
     it("should display disk type when available", async () => {
-        const React = await import("react");
-        const { render, screen, act, within } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
+        const { screen, act, within } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
-        const { SmartStatusPanel } = await import("../SmartStatusPanel");
-        const { createTestStore } = await import("../../../../../test/setup");
-
-        const store = await createTestStore();
         const mockSmartInfo = {
             disk_type: "SATA",
             temperature: { value: 45 },
@@ -596,16 +441,11 @@ describe("SmartStatusPanel Component", () => {
             supported: true,
         } as any;
 
-        const { container } = render(
-            React.createElement(Provider, {
-                store,
-                children: React.createElement(SmartStatusPanel, {
-                    smartInfo: mockSmartInfo,
-                    isSmartSupported: true,
-                    isReadOnlyMode: false,
-                }),
-            }),
-        );
+        const { container } = await renderSmartStatusPanel({
+            smartInfo: mockSmartInfo,
+            isSmartSupported: true,
+            isReadOnlyMode: false,
+        });
 
         // Expand the panel to see content
         const expandButtons = await screen.findAllByRole("button");
@@ -623,14 +463,8 @@ describe("SmartStatusPanel Component", () => {
     });
 
     it("should display RPM when rotation_rate > 0", async () => {
-        const React = await import("react");
-        const { render, screen, act, within } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
+        const { screen, act, within } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
-        const { SmartStatusPanel } = await import("../SmartStatusPanel");
-        const { createTestStore } = await import("../../../../../test/setup");
-
-        const store = await createTestStore();
         const mockSmartInfo = {
             disk_type: "SATA",
             rotation_rate: 7200,
@@ -641,16 +475,11 @@ describe("SmartStatusPanel Component", () => {
             supported: true,
         } as any;
 
-        const { container } = render(
-            React.createElement(Provider, {
-                store,
-                children: React.createElement(SmartStatusPanel, {
-                    smartInfo: mockSmartInfo,
-                    isSmartSupported: true,
-                    isReadOnlyMode: false,
-                }),
-            }),
-        );
+        const { container } = await renderSmartStatusPanel({
+            smartInfo: mockSmartInfo,
+            isSmartSupported: true,
+            isReadOnlyMode: false,
+        });
 
         // Expand the panel to see content
         const expandButtons = await screen.findAllByRole("button");
@@ -668,14 +497,8 @@ describe("SmartStatusPanel Component", () => {
     });
 
     it("should not display RPM when rotation_rate is 0", async () => {
-        const React = await import("react");
-        const { render, screen, act, within } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
+        const { screen, act, within } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
-        const { SmartStatusPanel } = await import("../SmartStatusPanel");
-        const { createTestStore } = await import("../../../../../test/setup");
-
-        const store = await createTestStore();
         const mockSmartInfo = {
             disk_type: "SATA",
             rotation_rate: 0,
@@ -686,16 +509,11 @@ describe("SmartStatusPanel Component", () => {
             supported: true,
         } as any;
 
-        const { container } = render(
-            React.createElement(Provider, {
-                store,
-                children: React.createElement(SmartStatusPanel, {
-                    smartInfo: mockSmartInfo,
-                    isSmartSupported: true,
-                    isReadOnlyMode: false,
-                }),
-            }),
-        );
+        const { container } = await renderSmartStatusPanel({
+            smartInfo: mockSmartInfo,
+            isSmartSupported: true,
+            isReadOnlyMode: false,
+        });
 
         // Expand the panel to see content
         const expandButtons = await screen.findAllByRole("button");
@@ -713,14 +531,8 @@ describe("SmartStatusPanel Component", () => {
     });
 
     it("should display both disk type and RPM for HDDs", async () => {
-        const React = await import("react");
-        const { render, screen, act, within } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
+        const { screen, act, within } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
-        const { SmartStatusPanel } = await import("../SmartStatusPanel");
-        const { createTestStore } = await import("../../../../../test/setup");
-
-        const store = await createTestStore();
         const mockSmartInfo = {
             disk_type: "SATA",
             rotation_rate: 5400,
@@ -731,16 +543,11 @@ describe("SmartStatusPanel Component", () => {
             supported: true,
         } as any;
 
-        const { container } = render(
-            React.createElement(Provider, {
-                store,
-                children: React.createElement(SmartStatusPanel, {
-                    smartInfo: mockSmartInfo,
-                    isSmartSupported: true,
-                    isReadOnlyMode: false,
-                }),
-            }),
-        );
+        const { container } = await renderSmartStatusPanel({
+            smartInfo: mockSmartInfo,
+            isSmartSupported: true,
+            isReadOnlyMode: false,
+        });
 
         // Expand the panel to see content
         const expandButtons = await screen.findAllByRole("button");
@@ -765,14 +572,8 @@ describe("SmartStatusPanel Component", () => {
     });
 
     it("should display model, family, firmware, and serial when available", async () => {
-        const React = await import("react");
-        const { render, screen, act, within } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
+        const { screen, act, within } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
-        const { SmartStatusPanel } = await import("../SmartStatusPanel");
-        const { createTestStore } = await import("../../../../../test/setup");
-
-        const store = await createTestStore();
         const mockSmartInfo = {
             disk_type: "NVMe",
             model_name: "Samsung SSD 980",
@@ -783,16 +584,11 @@ describe("SmartStatusPanel Component", () => {
             supported: true,
         } as any;
 
-        const { container } = render(
-            React.createElement(Provider, {
-                store,
-                children: React.createElement(SmartStatusPanel, {
-                    smartInfo: mockSmartInfo,
-                    isSmartSupported: true,
-                    isReadOnlyMode: false,
-                }),
-            }),
-        );
+        const { container } = await renderSmartStatusPanel({
+            smartInfo: mockSmartInfo,
+            isSmartSupported: true,
+            isReadOnlyMode: false,
+        });
 
         // Expand the panel to see content
         const expandButtons = await screen.findAllByRole("button");

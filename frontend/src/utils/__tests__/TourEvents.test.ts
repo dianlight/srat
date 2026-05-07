@@ -1,5 +1,4 @@
-import { beforeEach, describe, expect, it, spyOn } from "bun:test";
-import "../../../test/setup";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TourEvents, TourEventTypes } from "../TourEvents";
 
 describe("TourEvents", () => {
@@ -70,7 +69,7 @@ describe("TourEvents", () => {
     });
 
     it("does not throw when a listener errors", async () => {
-        const warnSpy = spyOn(console, "warn").mockImplementation(() => undefined);
+        const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
 
         TourEvents.on(TourEventTypes.VOLUMES_STEP_3, () => {
             throw new Error("boom");

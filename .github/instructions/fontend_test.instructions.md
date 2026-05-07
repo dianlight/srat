@@ -7,7 +7,7 @@ applyTo: **/frontend/**/\*.test.{js,jsx,ts,tsx}
 
 ---
 
-# **Copilot Rule: Robust React Testing with Bun & TypeScript**
+# **Copilot Rule: Robust React Testing with Vitest & TypeScript**
 
 > Self-Evolving Instruction: This instruction improves through use. If instructions are wrong, parameters drifted, or a workaround was needed — fix this file immediately, don't defer. Only update for real, reproducible issues.
 
@@ -15,15 +15,15 @@ applyTo: **/frontend/**/\*.test.{js,jsx,ts,tsx}
 
 ## **1\. Environment & Tools**
 
-- **Test Runner:** Use bun:test (import { test, expect, describe, it, beforeEach, afterEach } from "bun:test").
+- **Test Runner:** Use Vitest (import { test, expect, describe, it, beforeEach, afterEach, vi } from "vitest"). Bun remains the package manager/runtime for scripts, but the frontend test runner is `bunx vitest`.
 - **Library:** Use @testing-library/react.
 - **Language:** TypeScript (ensure strict typing for props and mocks).
 - **Matchings:** Use @testing-library/jest-dom matchers (manually imported or configured via setup file).
-- **Timeout:** Use a default test timeout of 5000ms on every test (configurable in bun:test options `--timeout 5000`).
-- **Speedup:** To speed up test runs, use `--test-name-pattern <pattern>` to run specific tests.
-- **Test Git Changes:** When modifying a component, run only the tests related to that component using `--test-name-pattern` to quickly verify changes without running the entire suite. Also use `--changed` to run tests related to changed files in the current branch.
+- **Timeout:** The shared default timeout lives in `frontend/vitest.config.ts`. Prefer updating config or per-test timeouts there instead of scattering CLI timeout flags.
+- **Speedup:** To speed up test runs, run a specific file and optionally filter by test name with `bunx vitest run path/to/file.test.tsx -t "pattern"`.
+- **Test Git Changes:** When modifying a component, run only the related test files first, then use `bunx vitest run --changed` for branch-local regression checks.
 - **Pre-handoff Verification (Required):** Before finalizing frontend changes, always run `tsgo --noEmit` (or a task that includes it) and `mise run //frontend:test:new` to catch TypeScript and changed-file regressions early.
-- **Test Stability:** For flaky tests, use `--rerun-each 10` to automatically rerun failed tests up to 10 times before marking them as failed.
+- **Test Stability:** For flaky tests, use Vitest retries (`--retry 10`) only as a temporary diagnostic aid; fix the root cause before finalizing.
 - **Test Isolation:** Use beforeEach and afterEach hooks to set up and clean up test environments, ensuring no shared state between tests.
 - **Mocking:** Use `msw` (Mock Service Worker) and `msw-auto-mock`  for API mocking when testing components that make network requests, ensuring tests are fast and reliable without hitting real endpoints.
 - **`IS_REACT_ACT_ENVIRONMENT`:** Set `(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true` **after** `GlobalRegistrator.register()` in `test/setup.ts`. Placing it before registration has no effect — GlobalRegistrator overwrites the global context, leaving `@testing-library/react` unaware of the act() environment and printing "not configured to support act(...)" for every render. 
@@ -40,7 +40,7 @@ applyTo: **/frontend/**/\*.test.{js,jsx,ts,tsx}
      → **Fix:** Use MSW endpoint overrides (`getMswServer().use(http.get(...))`) instead of cache seeding. Live queries can overwrite seeded values before assertions run, causing CI flakes.
 
   4. **Intermittent `act(...)` warnings or MUI Dialog content still visible after close?**
-     → **Fix:** Remove manual `cleanup()` or `document.body.innerHTML = ""` in test files—`frontend/test/bun-setup.ts` already does this in `afterEach`. Duplicate teardown races with MUI Transition unmount timing. For Dialog assertion, wrap in `waitFor` to let async unmount complete.
+   → **Fix:** Remove manual `cleanup()` or `document.body.innerHTML = ""` in test files—`frontend/test/bun-setup.ts` already does this in `afterEach`. Duplicate teardown races with MUI Transition unmount timing. For dialog absence assertions, wrap them in `waitFor` to let async unmount complete.
 
 - **Avoid duplicate teardown:** When shared test setup already performs cleanup (for example `frontend/test/bun-setup.ts` calling `cleanup()` in `afterEach`), do not add extra per-test-file `cleanup()` calls or manual `document.body.innerHTML = ""` resets. Duplicate teardown can race with MUI `Transition` unmount timing and cause intermittent `act(...)` warnings.
 
@@ -80,10 +80,10 @@ Always use screen from @testing-library/react. Use queries in this order:
 - Use as casting only when absolutely necessary (for example, for mocked functions: const mockFn \= myFunc as Mock;).
 - Ensure all screen queries are properly typed (RTL does this automatically, but avoid any).
 
-## **6\. Code Standard (Bun \+ TS)**
+## **6\. Code Standard (Vitest \+ TS)**
 
 ```typescript
-import { test, expect, describe } from "bun:test";
+import { test, expect, describe } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MyComponent } from "./MyComponent";
@@ -111,7 +111,7 @@ describe("MyComponent", () \=\> {
 
 ### MSW-Specific Patterns
 
-- **Request body consumption:** When MSW handlers inspect request bodies (e.g., POST body parsing), use `await request.clone().json()` instead of `await request.json()` to avoid `InvalidStateError: Body has already been used` during test reruns with `--rerun-each 10`.
+- **Request body consumption:** When MSW handlers inspect request bodies (e.g., POST body parsing), use `await request.clone().json()` instead of `await request.json()` to avoid `InvalidStateError: Body has already been used` during Vitest reruns/retries.
 - **Prefer MSW handlers over cache seeding:** For components with multiple data sources, use explicit MSW endpoint overrides (`getMswServer().use(http.get(...))`) instead of seeding RTK Query cache with `upsertQueryData`. Cache seeding can be overwritten by live queries before assertions run, causing flakes.
 - **Shared external mocks:** For recurring external requests in this repo, prefer adding a shared handler in `frontend/src/mocks/customHandlers.ts` instead of repeating one-off test-local handlers. This is especially important for `/api/filesystem/support` and the GitHub announcements discussions endpoint used by dashboard widgets.
 - **Restore global fetch mocks:** If a test directly overrides `globalThis.fetch`, always restore the original value in `afterEach` to prevent cross-test leaks that surface later as unexpected `Network error` failures.

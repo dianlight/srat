@@ -1,343 +1,290 @@
-import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
-import "../../../../../test/setup";
+import { render, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { Provider } from "react-redux";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createTestStore } from "/test/testing";
+import { Type, Usage } from "../../../../store/sratApi";
+import { SharesTreeView } from "../SharesTreeView";
 
 describe("SharesTreeView component", () => {
-    beforeEach(() => {
-        mock.restore();
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const setupOverrides = (options?: { confirmResult?: unknown }) => {
+    const disableCalls: Array<string> = [];
+    const enableCalls: Array<string> = [];
+    const confirmCalls: Array<unknown> = [];
+
+    return {
+      tracking: {
+        disableCalls,
+        enableCalls,
+        confirmCalls,
+      },
+      overrides: {
+        disableShare: async ({ shareName }: { shareName: string }) => {
+          disableCalls.push(shareName);
+        },
+        enableShare: async ({ shareName }: { shareName: string }) => {
+          enableCalls.push(shareName);
+        },
+        confirm: async (confirmOptions: unknown) => {
+          confirmCalls.push(confirmOptions);
+          const result = options?.confirmResult ?? { confirmed: true };
+          if ((result as { confirmed?: boolean })?.confirmed === false) {
+            throw result;
+          }
+          return result;
+        },
+      },
+    } as const;
+  };
+
+  const mountPointData = (overrides: Record<string, unknown> = {}) => ({
+    path: "/mnt/test",
+    type: Type.Host,
+    ...overrides,
+  });
+
+  it("allows selecting and toggling shares", async () => {
+    const { overrides, tracking } = setupOverrides();
+    const onSelect = vi.fn(() => {});
+    const store = await createTestStore();
+
+    const { getByLabelText } = render(
+      <Provider store={store}>
+        <SharesTreeView
+          shares={{
+            doc: {
+              name: "Documents",
+              usage: Usage.None,
+              mount_point_data: mountPointData({ warnings: undefined }),
+              disabled: false,
+            },
+            arc: {
+              name: "Archive",
+              usage: Usage.Internal,
+              mount_point_data: mountPointData(),
+              disabled: true,
+            },
+          }}
+          expandedItems={["group-none", "group-internal"]}
+          onExpandedItemsChange={() => {}}
+          selectedShareKey="doc"
+          onShareSelect={onSelect}
+          testOverrides={overrides}
+        />
+      </Provider>,
+    );
+
+    const user = userEvent.setup();
+    await waitFor(() => {
+      expect(getByLabelText("Documents")).toBeTruthy();
     });
 
-    afterEach(async () => {
-        mock.restore();
-        const { cleanup } = await import("@testing-library/react");
-        cleanup();
-    });
+    const documentsNode = getByLabelText("Documents");
+    await user.click(documentsNode);
+    expect(onSelect).toHaveBeenCalledWith(
+      "doc",
+      expect.objectContaining({ name: "Documents" }),
+    );
 
-    const setupOverrides = (options?: { confirmResult?: unknown }) => {
-        const disableCalls: Array<string> = [];
-        const enableCalls: Array<string> = [];
-        const confirmCalls: Array<any> = [];
+    const clickShareAction = async (actionName: RegExp, shareText: string) => {
+      const shareNode = getByLabelText(shareText);
+      const shareContainer = shareNode.closest('[role="treeitem"]');
+      if (!shareContainer) return;
 
-        return {
-            tracking: {
-                disableCalls,
-                enableCalls,
-                confirmCalls,
-            },
-            overrides: {
-                disableShare: async ({ shareName }: { shareName: string }) => {
-                    disableCalls.push(shareName);
-                },
-                enableShare: async ({ shareName }: { shareName: string }) => {
-                    enableCalls.push(shareName);
-                },
-                confirm: async (confirmOptions: unknown) => {
-                    confirmCalls.push(confirmOptions);
-                    const result = options?.confirmResult ?? { confirmed: true };
-                    // Simulate material-ui-confirm behavior: reject when user cancels
-                    if ((result as any)?.confirmed === false) {
-                        throw result;
-                    }
-                    return result;
-                },
-            },
-        } as const;
+      const shareScope = within(shareContainer as HTMLElement);
+      const directButtons = shareScope.queryAllByRole("button", {
+        name: actionName,
+      });
+      if (directButtons.length > 0) {
+        await user.click(directButtons[0]!);
+        return;
+      }
+
+      const menuButtons = shareScope.queryAllByRole("button", {
+        name: /more actions/i,
+      });
+      if (menuButtons.length > 0) {
+        await user.click(menuButtons[0]!);
+        const portalQueries = within(document.body);
+        const menuItem = await waitFor(() =>
+          portalQueries.getByRole("menuitem", { name: actionName }),
+        );
+        await user.click(menuItem);
+      }
     };
 
-    it("allows selecting and toggling shares", async () => {
-        const { overrides, tracking } = setupOverrides();
+    await clickShareAction(/disable share/i, "Documents");
+    await clickShareAction(/enable share/i, "Archive");
 
-        const React = await import("react");
-        const { render, waitFor, within } = await import("@testing-library/react");
-        const userEvent = (await import("@testing-library/user-event")).default;
-        const { Provider } = await import("react-redux");
-        const { createTestStore } = await import("../../../../../test/setup");
-        // @ts-expect-error - Query param loads isolated module instance
-        const { SharesTreeView } = await import("../SharesTreeView?shares-tree-test");
+    await waitFor(() => {
+      expect(tracking.disableCalls.length).toBeGreaterThanOrEqual(1);
+    });
+    await waitFor(() => {
+      expect(tracking.enableCalls.length).toBeGreaterThanOrEqual(1);
+    });
+  });
 
-        const onSelect = mock(() => { });
-        const store = await createTestStore();
+  it("hides non-internal shares while in protected mode", async () => {
+    const { overrides } = setupOverrides();
+    const store = await createTestStore();
 
-        const { getByLabelText } = render(
-            React.createElement(
-                Provider as any,
-                { store },
-                React.createElement(SharesTreeView as any, {
-                    shares: {
-                        doc: {
-                            name: "Documents",
-                            usage: "none",
-                            mount_point_data: { warnings: undefined },
-                            disabled: false,
-                        },
-                        arc: {
-                            name: "Archive",
-                            usage: "internal",
-                            mount_point_data: {},
-                            disabled: true,
-                        },
-                    },
-                    expandedItems: ["group-none", "group-internal"],
-                    onExpandedItemsChange: () => { },
-                    selectedShareKey: "doc",
-                    onShareSelect: onSelect,
-                    testOverrides: overrides,
-                })
-            )
-        );
+    const { container } = render(
+      <Provider store={store}>
+        <SharesTreeView
+          shares={{
+            doc: {
+              name: "Documents",
+              usage: Usage.None,
+              mount_point_data: mountPointData(),
+              disabled: false,
+            },
+            sys: {
+              name: "System",
+              usage: Usage.Internal,
+              mount_point_data: mountPointData({ path: "/mnt/system" }),
+              disabled: false,
+            },
+          }}
+          expandedItems={["group-internal"]}
+          onExpandedItemsChange={() => {}}
+          selectedShareKey={undefined}
+          onShareSelect={() => {}}
+          protectedMode
+          testOverrides={overrides}
+        />
+      </Provider>,
+    );
 
-        const user = userEvent.setup();
-        await waitFor(() => {
-            expect(getByLabelText("Documents")).toBeTruthy();
-        });
-        const documentsNode = getByLabelText("Documents");
-        await user.click(documentsNode);
-        expect(onSelect).toHaveBeenCalledWith("doc", expect.objectContaining({ name: "Documents" }));
+    const trees = within(container).queryAllByRole("tree");
+    expect(trees).toHaveLength(1);
+    expect(within(container).queryByText("Documents")).toBeNull();
+  });
 
-        // Helper function to click an action (handles both desktop buttons and mobile menu)
-        const clickShareAction = async (actionName: RegExp, shareText: string) => {
-            // Find the share node first to ensure we're targeting the right share
-            await waitFor(() => {
-                expect(getByLabelText(shareText)).toBeTruthy();
-            });
-            const shareNode = getByLabelText(shareText);
-            const shareContainer = shareNode.closest('[role="treeitem"]');
-            if (!shareContainer) return;
+  it("does not disable share when confirmation is declined", async () => {
+    const { overrides, tracking } = setupOverrides({
+      confirmResult: { confirmed: false },
+    });
+    const store = await createTestStore();
 
-            const shareScope = within(shareContainer as HTMLElement);
+    const { container } = render(
+      <Provider store={store}>
+        <SharesTreeView
+          shares={{
+            doc: {
+              name: "Documents",
+              usage: Usage.None,
+              mount_point_data: mountPointData(),
+              disabled: false,
+            },
+          }}
+          expandedItems={["group-none"]}
+          onExpandedItemsChange={() => {}}
+          selectedShareKey="doc"
+          onShareSelect={() => {}}
+          testOverrides={overrides}
+        />
+      </Provider>,
+    );
 
-            // First try to find direct action buttons (desktop view) within this share
-            const directButtons = shareScope.queryAllByRole("button", { name: actionName });
-            if (directButtons.length > 0) {
-                await user.click(directButtons[0]!);
-                return;
-            }
-            // If no direct buttons, try to find the menu button within this share
-            const menuButtons = shareScope.queryAllByRole("button", { name: /more actions/i });
-            if (menuButtons.length > 0) {
-                await user.click(menuButtons[0]!);
-                // Wait for menu to open - search in document.body since Menu uses Portal
-                const portalQueries = within(document.body);
-                await waitFor(() => {
-                    expect(
-                        portalQueries.getByRole("menuitem", { name: actionName }),
-                    ).toBeTruthy();
-                });
-                const menuItem = portalQueries.getByRole("menuitem", {
-                    name: actionName,
-                });
-                await user.click(menuItem);
-            }
-        };
-
-        // Disable the Documents share (which is enabled)
-        await clickShareAction(/disable share/i, "Documents");
-
-        // Enable the Archive share (which is disabled)
-        await clickShareAction(/enable share/i, "Archive");
-
-        await waitFor(() => expect(tracking.disableCalls.length).toBeGreaterThanOrEqual(1));
-        await waitFor(() => expect(tracking.enableCalls.length).toBeGreaterThanOrEqual(1));
+    const user = userEvent.setup();
+    const directButtons = within(container).queryAllByRole("button", {
+      name: /disable share/i,
     });
 
-    it("hides non-internal shares while in protected mode", async () => {
-        const { overrides } = setupOverrides();
+    if (directButtons.length > 0) {
+      await user.click(directButtons[0]!);
+    } else {
+      const menuButton = within(container).getByRole("button", {
+        name: /more actions/i,
+      });
+      await user.click(menuButton);
+      const menuItem = await within(document.body).findByRole("menuitem", {
+        name: /disable share/i,
+      });
+      await user.click(menuItem);
+    }
 
-        const React = await import("react");
-        const { render, within } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { createTestStore } = await import("../../../../../test/setup");
-        // @ts-expect-error - Query param loads isolated module instance
-        const { SharesTreeView } = await import("../SharesTreeView?shares-tree-protected");
-        const store = await createTestStore();
+    expect(tracking.disableCalls.length).toBe(0);
+  });
 
-        const { container } = render(
-            React.createElement(
-                Provider as any,
-                { store },
-                React.createElement(SharesTreeView as any, {
-                    shares: {
-                        doc: {
-                            name: "Documents",
-                            usage: "none",
-                            mount_point_data: {},
-                            disabled: false,
-                        },
-                        sys: {
-                            name: "System",
-                            usage: "internal",
-                            mount_point_data: {},
-                            disabled: false,
-                        },
-                    },
-                    expandedItems: ["group-internal"],
-                    onExpandedItemsChange: () => { },
-                    selectedShareKey: undefined,
-                    onShareSelect: () => { },
-                    protectedMode: true,
-                    testOverrides: overrides,
-                })
-            )
-        );
+  it("hides toggle controls when readOnly is enabled", async () => {
+    const { overrides } = setupOverrides();
+    const store = await createTestStore();
 
-        const trees = within(container).queryAllByRole("tree");
-        expect(trees).toHaveLength(1);
-        expect(trees[0]).toBeTruthy();
-        expect(within(container).queryByText("Documents")).toBeNull();
-    });
+    const { container } = render(
+      <Provider store={store}>
+        <SharesTreeView
+          shares={{
+            doc: {
+              name: "Documents",
+              usage: Usage.None,
+              mount_point_data: mountPointData({
+                invalid: true,
+                invalid_error: "bad",
+              }),
+              disabled: false,
+            },
+          }}
+          expandedItems={["group-none"]}
+          onExpandedItemsChange={() => {}}
+          selectedShareKey={undefined}
+          onShareSelect={() => {}}
+          readOnly
+          testOverrides={overrides}
+        />
+      </Provider>,
+    );
 
-    it("does not disable share when confirmation is declined", async () => {
-        const { overrides, tracking } = setupOverrides({ confirmResult: { confirmed: false } });
+    expect(await within(container).findAllByLabelText("Documents")).toHaveLength(
+      1,
+    );
+    expect(
+      within(container).queryByRole("button", { name: /disable share/i }),
+    ).toBeNull();
+    expect(
+      within(container).queryByRole("button", { name: /enable share/i }),
+    ).toBeNull();
+  });
 
-        const React = await import("react");
-        const { render, waitFor, within } = await import(
-            "@testing-library/react",
-        );
-        const userEvent = (await import("@testing-library/user-event")).default;
-        const { Provider } = await import("react-redux");
-        const { createTestStore } = await import("../../../../../test/setup");
-        // @ts-expect-error - Query param loads isolated module instance
-        const { SharesTreeView } = await import("../SharesTreeView?shares-tree-cancel-toggle");
-        const store = await createTestStore();
+  it("shows full share name in tooltip on hover", async () => {
+    const { overrides } = setupOverrides();
+    const store = await createTestStore();
 
-        const { container } = render(
-            React.createElement(
-                Provider as any,
-                { store },
-                React.createElement(SharesTreeView as any, {
-                    shares: {
-                        doc: {
-                            name: "Documents",
-                            usage: "none",
-                            mount_point_data: {},
-                            disabled: false,
-                        },
-                    },
-                    expandedItems: ["group-none"],
-                    onExpandedItemsChange: () => { },
-                    selectedShareKey: "doc",
-                    onShareSelect: () => { },
-                    testOverrides: overrides,
-                })
-            )
-        );
+    const longShareName =
+      "This is a very long share name to verify tooltip shows the complete value";
 
-        const user = userEvent.setup();
+    render(
+      <Provider store={store}>
+        <SharesTreeView
+          shares={{
+            long: {
+              name: longShareName,
+              usage: Usage.None,
+              mount_point_data: mountPointData({ path: "/mnt/long" }),
+              disabled: false,
+            },
+          }}
+          expandedItems={["group-none"]}
+          onExpandedItemsChange={() => {}}
+          selectedShareKey={undefined}
+          onShareSelect={() => {}}
+          testOverrides={overrides}
+        />
+      </Provider>,
+    );
 
-        // Helper function to click an action (handles both desktop buttons and mobile menu)
-        const clickShareAction = async (actionName: RegExp) => {
-            // First try to find direct action buttons (desktop view)
-            const directButtons = within(container).queryAllByRole("button", { name: actionName });
-            if (directButtons.length > 0) {
-                await user.click(directButtons[0]!);
-                return;
-            }
-            // If no direct buttons, try to find the menu button and click the menu item
-            const menuButtons = within(container).queryAllByRole("button", { name: /more actions/i });
-            if (menuButtons.length > 0) {
-                await user.click(menuButtons[0]!);
-                // Wait for menu to open - search in document.body since Menu uses Portal
-                const portalQueries = within(document.body);
-                await waitFor(() => {
-                    expect(
-                        portalQueries.getByRole("menuitem", { name: actionName }),
-                    ).toBeTruthy();
-                });
-                const menuItem = portalQueries.getByRole("menuitem", {
-                    name: actionName,
-                });
-                await user.click(menuItem);
-            }
-        };
+    const user = userEvent.setup();
+    await user.hover(within(document.body).getByText(longShareName));
 
-        await clickShareAction(/disable share/i);
-
-        expect(tracking.disableCalls.length).toBe(0);
-    });
-
-    it("hides toggle controls when readOnly is enabled", async () => {
-        const { overrides } = setupOverrides();
-
-        const React = await import("react");
-        const { render, within } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { createTestStore } = await import("../../../../../test/setup");
-        // @ts-expect-error - Query param loads isolated module instance
-        const { SharesTreeView } = await import("../SharesTreeView?shares-tree-readonly");
-        const store = await createTestStore();
-
-        const { container } = render(
-            React.createElement(
-                Provider as any,
-                { store },
-                React.createElement(SharesTreeView as any, {
-                    shares: {
-                        doc: {
-                            name: "Documents",
-                            usage: "none",
-                            mount_point_data: { invalid: true, invalid_error: "bad" },
-                            disabled: false,
-                        },
-                    },
-                    expandedItems: ["group-none"],
-                    onExpandedItemsChange: () => { },
-                    selectedShareKey: undefined,
-                    onShareSelect: () => { },
-                    readOnly: true,
-                    testOverrides: overrides,
-                })
-            )
-        );
-
-        const documents = await within(container).findAllByLabelText("Documents");
-        expect(documents).toHaveLength(1);
-        expect(documents[0]).toBeTruthy();
-        // In readOnly mode, ShareActions component should not be rendered
-        expect(within(container).queryByRole("button", { name: /disable share/i })).toBeNull();
-        expect(within(container).queryByRole("button", { name: /enable share/i })).toBeNull();
-    });
-
-    it("shows full share name in tooltip on hover", async () => {
-        const { overrides } = setupOverrides();
-
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const userEvent = (await import("@testing-library/user-event")).default;
-        const { Provider } = await import("react-redux");
-        const { createTestStore } = await import("../../../../../test/setup");
-        // @ts-expect-error - Query param loads isolated module instance
-        const { SharesTreeView } = await import("../SharesTreeView?shares-tree-tooltip");
-        const store = await createTestStore();
-
-        const longShareName =
-            "This is a very long share name to verify tooltip shows the complete value";
-
-        render(
-            React.createElement(
-                Provider as any,
-                { store },
-                React.createElement(SharesTreeView as any, {
-                    shares: {
-                        long: {
-                            name: longShareName,
-                            usage: "none",
-                            mount_point_data: {},
-                            disabled: false,
-                        },
-                    },
-                    expandedItems: ["group-none"],
-                    onExpandedItemsChange: () => { },
-                    selectedShareKey: undefined,
-                    onShareSelect: () => { },
-                    testOverrides: overrides,
-                })
-            )
-        );
-
-        const user = userEvent.setup();
-        const shareNameNode = screen.getByText(longShareName);
-        await user.hover(shareNameNode);
-
-        const tooltip = await screen.findByRole("tooltip");
-        expect(tooltip.textContent).toBe(longShareName);
-    });
+    const tooltip = await within(document.body).findByRole("tooltip");
+    expect(tooltip.textContent).toBe(longShareName);
+  });
 });

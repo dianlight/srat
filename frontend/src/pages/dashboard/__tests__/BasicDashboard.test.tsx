@@ -1,25 +1,21 @@
-import "../../../../test/setup";
-import { describe, it, expect, beforeEach } from "bun:test";
+import { render, screen } from "@testing-library/react";
+import React from "react";
+import { Provider } from "react-redux";
+import { MemoryRouter } from "react-router-dom";
+import { beforeEach, describe, expect, it } from "vitest";
+import { createTestStore } from "/test/testing";
+import { Dashboard } from "../Dashboard";
 
 describe("Dashboard Basic Functionality", () => {
     beforeEach(() => {
-        // Clear DOM between tests
-        document.body.innerHTML = "";
+        // Shared setup handles cleanup.
     });
 
     it("dashboard component can be imported", async () => {
-        const { Dashboard } = await import("../Dashboard");
         expect(Dashboard).toBeTruthy();
     });
 
     it("dashboard renders with proper store", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { MemoryRouter } = await import("react-router-dom");
-        const { createTestStore } = await import("../../../../test/setup");
-        const { Dashboard } = await import("../Dashboard");
-
         const store = await createTestStore();
 
         // Should render without throwing errors
@@ -41,13 +37,6 @@ describe("Dashboard Basic Functionality", () => {
     });
 
     it("welcome text appears in dashboard", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { MemoryRouter } = await import("react-router-dom");
-        const { createTestStore } = await import("../../../../test/setup");
-        const { Dashboard } = await import("../Dashboard");
-
         const store = await createTestStore();
 
         render(

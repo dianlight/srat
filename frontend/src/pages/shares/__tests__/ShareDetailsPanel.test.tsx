@@ -1,12 +1,6 @@
-import { act } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "bun:test";
-import "../../../../test/setup";
+import { describe, expect, it } from "vitest";
 
 describe("ShareDetailsPanel", () => {
-    afterEach(async () => {
-        const { cleanup } = await import("@testing-library/react");
-        cleanup();
-    });
     const buildShare = async () => {
         const { Time_machine_support, Usage } = await import("../../../store/sratApi");
         return {
@@ -46,15 +40,13 @@ describe("ShareDetailsPanel", () => {
         let editClicks = 0;
         const onEditClick = () => { editClicks += 1; };
 
-        const { container } = await act(async () => {
-            return render(
-                React.createElement(ShareDetailsPanel as any, {
-                    share,
-                    shareKey: "documents",
-                    onEditClick,
-                })
-            );
-        });
+        const { container } = render(
+            React.createElement(ShareDetailsPanel as any, {
+                share,
+                shareKey: "documents",
+                onEditClick,
+            })
+        );
 
         expect(await within(container).findByText("Documents")).toBeTruthy();
         expect(within(container).getByText(/Mount Point Information/)).toBeTruthy();
@@ -83,17 +75,15 @@ describe("ShareDetailsPanel", () => {
         const { ShareDetailsPanel } = await import("../components/ShareDetailsPanel?share-details-test");
         const share = await buildShare();
 
-        const { container } = await act(async () => {
-            return render(
-                React.createElement(ShareDetailsPanel as any, {
-                    share,
-                    shareKey: "documents",
-                    isEditing: true,
-                    onCancelEdit: () => { },
-                    children: React.createElement("div", { role: "form" }, "embedded form"),
-                })
-            );
-        });
+        const { container } = render(
+            React.createElement(ShareDetailsPanel as any, {
+                share,
+                shareKey: "documents",
+                isEditing: true,
+                onCancelEdit: () => { },
+                children: React.createElement("div", { role: "form" }, "embedded form"),
+            })
+        );
 
         expect(await within(container).findByRole("form")).toBeTruthy();
     });
@@ -107,24 +97,20 @@ describe("ShareDetailsPanel", () => {
 
         const share = await buildShare();
 
-        await act(async () => {
-            return render(
-                React.createElement(ShareDetailsPanel as any, {
-                    share,
-                    shareKey: "documents",
-                })
-            );
-        });
+        render(
+            React.createElement(ShareDetailsPanel as any, {
+                share,
+                shareKey: "documents",
+            })
+        );
 
         // Find the StorageIcon button using getByRole with aria-label
         const storageIconButton = screen.getByRole('button', { name: /view mount point details/i });
         expect(storageIconButton).toBeTruthy();
 
         // Click on the StorageIcon to open PreviewDialog
-        await act(async () => {
-            const user = userEvent.setup();
-            await user.click(storageIconButton as any);
-        });
+        const user = userEvent.setup();
+        await user.click(storageIconButton as any);
 
         // PreviewDialog is rendered in a portal, so we need to search document
         const { screen: globalScreen } = await import("@testing-library/react");
@@ -132,10 +118,7 @@ describe("ShareDetailsPanel", () => {
 
         // Find and click the Close button in the dialog
         const closeButton = globalScreen.getByRole("button", { name: /close/i });
-        await act(async () => {
-            const user = userEvent.setup();
-            await user.click(closeButton as any);
-        });
+        await user.click(closeButton as any);
     });
 
     it("shows disabled visual effect when share is disabled", async () => {
@@ -147,14 +130,12 @@ describe("ShareDetailsPanel", () => {
         const share = await buildShare();
         share.disabled = true;
 
-        await act(async () => {
-            return render(
-                React.createElement(ShareDetailsPanel as any, {
-                    share,
-                    shareKey: "documents",
-                })
-            );
-        });
+        render(
+            React.createElement(ShareDetailsPanel as any, {
+                share,
+                shareKey: "documents",
+            })
+        );
 
         // Check that a Disabled badge is visible
         const disabledChip = await screen.findByText(/Disabled/i);
@@ -177,14 +158,12 @@ describe("ShareDetailsPanel", () => {
             "This is a very long share name to verify tooltip shows the complete value";
         share.name = longShareName;
 
-        await act(async () => {
-            return render(
-                React.createElement(ShareDetailsPanel as any, {
-                    share,
-                    shareKey: "documents",
-                })
-            );
-        });
+        render(
+            React.createElement(ShareDetailsPanel as any, {
+                share,
+                shareKey: "documents",
+            })
+        );
 
         const user = userEvent.setup();
         const shareNameNode = screen.getByText(longShareName);

@@ -1,10 +1,9 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test";
-import "../../../test/setup";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("useConsoleErrorCallback hook", () => {
 	beforeEach(() => {
 		// Clean up any mocks
-		mock.restore();
+		vi.restoreAllMocks();
 	});
 
 	it("exports useConsoleErrorCallback function", async () => {

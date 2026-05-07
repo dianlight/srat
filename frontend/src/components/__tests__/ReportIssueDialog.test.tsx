@@ -1,6 +1,5 @@
-import "../../../test/setup";
-import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { createTestStore } from "../../../test/setup";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { createTestStore } from "/test/testing";
 
 describe("ReportIssueDialog", () => {
 	beforeEach(() => {

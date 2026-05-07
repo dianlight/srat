@@ -13,7 +13,7 @@
   - [Usage (Imperative)](#usage-imperative)
   - [Usage (React Hook)](#usage-react-hook)
   - [Frontend Component Organization Rules](#frontend-component-organization-rules)
-- [Test Setup Enforcement](#test-setup-enforcement)
+- [Test Setup](#test-setup)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -137,9 +137,9 @@ export function ErrorTelemetryBinder() {
     - Specific components: `src/pages/dashboard/DashboardWidget.tsx`, `src/pages/dashboard/ChartPanel.tsx`, etc.
     - Do **not** place dashboard-specific components in `src/components/`.
 
-## Test Setup Enforcement
+## Test Setup
 
-All test files must import the shared test setup (`import '../../../../test/setup'`). This is enforced by the `bun ./scripts/add-test-setup.js` script, which runs automatically before linting and testing. If the setup import is missing, the script will add it to the top of the file.
+Shared test setup is loaded globally through Vitest config (`setupFiles: ["./test/setup.ts"]`) for both regular and browser runs. Test files should not import `test/setup` directly.
 
 Run tests locally:
 

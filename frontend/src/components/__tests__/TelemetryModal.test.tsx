@@ -1,8 +1,7 @@
 import { cleanup } from "@testing-library/react";
-import { afterEach, describe, expect, it, mock } from "bun:test";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { http, HttpResponse } from "msw";
-import { withTestHandlers } from "../../../test/bun-setup";
-import "../../../test/setup";
+import { withTestHandlers } from "/test/testing";
 
 const putSettingsUrl = /.*\/api\/settings(?:\?.*)?$/;
 
@@ -20,7 +19,7 @@ async function renderTelemetryModal(
 	const React = await import("react");
 	const { render } = await import("@testing-library/react");
 	const { Provider } = await import("react-redux");
-	const { createTestStore } = await import("../../../test/setup");
+	const { createTestStore } = await import("/test/testing");
 	const { sratApi } = await import("../../store/sratApi");
 	const TelemetryModal = (await import("../TelemetryModal")).default;
 
@@ -86,7 +85,7 @@ describe("TelemetryModal Component", () => {
 		const { screen } = await import("@testing-library/react");
 		const userEvent = (await import("@testing-library/user-event")).default;
 		const user = userEvent.setup();
-		const onClose = mock(() => {});
+		const onClose = vi.fn(() => {});
 
 		await withTestHandlers(
 			[

@@ -1,15 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
-import "../../../../../test/setup";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("ShareEditForm component", () => {
     beforeEach(() => {
-        mock.restore();
+        vi.restoreAllMocks();
     });
 
-    afterEach(async () => {
-        mock.restore();
-        const { cleanup } = await import("@testing-library/react");
-        cleanup();
+    afterEach(() => {
+        vi.restoreAllMocks();
     });
 
     const setupCommonOverrides = () => {
@@ -64,7 +61,7 @@ describe("ShareEditForm component", () => {
         // @ts-expect-error - Query param fetches isolated module instance
         const { ShareEditForm } = await import("../ShareEditForm?share-edit-form-test");
 
-        const handleSubmit = mock(() => { });
+        const handleSubmit = vi.fn(() => { });
 
         render(
             React.createElement(ShareEditForm as any, {
@@ -125,7 +122,7 @@ describe("ShareEditForm component", () => {
         // @ts-expect-error - Query param fetches isolated module instance
         const { ShareEditForm } = await import("../ShareEditForm?share-edit-form-existing");
 
-        const handleDelete = mock(() => { });
+        const handleDelete = vi.fn(() => { });
 
         render(
             React.createElement(ShareEditForm as any, {

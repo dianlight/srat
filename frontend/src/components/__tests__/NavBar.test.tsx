@@ -1,8 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
-import "../../../test/setup";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock react-syntax-highlighter to avoid refractor/lib/core dependency issues
-mock.module("react-syntax-highlighter", () => ({
+vi.mock("react-syntax-highlighter", () => ({
     default: ({ children, ...props }: any) => {
         const React = require("react");
         return React.createElement("pre", { "data-testid": "syntax-highlighter", ...props },
@@ -11,9 +10,47 @@ mock.module("react-syntax-highlighter", () => ({
     }
 }));
 
-mock.module("react-syntax-highlighter/dist/esm/styles/hljs", () => ({
+vi.mock("react-syntax-highlighter/dist/esm/styles/hljs", () => ({
     a11yDark: {},
     a11yLight: {}
+}));
+
+vi.mock("../../pages/dashboard/Dashboard", () => ({
+    Dashboard: () => <div data-testid="mock-dashboard">Dashboard</div>,
+}));
+vi.mock("../../pages/volumes/Volumes", () => ({
+    Volumes: () => <div data-testid="mock-volumes">Volumes</div>,
+}));
+vi.mock("../../pages/shares/Shares", () => ({
+    Shares: () => <div data-testid="mock-shares">Shares</div>,
+}));
+vi.mock("../../pages/users/Users", () => ({
+    Users: () => <div data-testid="mock-users">Users</div>,
+}));
+vi.mock("../../pages/settings/Settings", () => ({
+    Settings: () => <div data-testid="mock-settings">Settings</div>,
+}));
+vi.mock("../../pages/SmbConf", () => ({
+    SmbConfPage: () => <div data-testid="mock-smbconf">smb.conf</div>,
+}));
+vi.mock("../../pages/Swagger", () => ({
+    Swagger: () => <div data-testid="mock-swagger">Swagger</div>,
+}));
+vi.mock("../DonationButton", () => ({
+    DonationButton: () => <button type="button">Donate</button>,
+}));
+vi.mock("../NotificationCenter", () => ({
+    NotificationCenter: () => <div data-testid="mock-notification-center">Notifications</div>,
+}));
+vi.mock("../ReportIssueDialog", () => ({
+    ReportIssueDialog: ({ open }: { open: boolean }) =>
+        open ? <div data-testid="mock-report-issue-dialog">Report Issue</div> : null,
+}));
+vi.mock("../../hooks/updateHook", () => ({
+    useUpdate: () => ({ update: null, isLoading: false }),
+}));
+vi.mock("../../hooks/useIssueTemplate", () => ({
+    useIssueTemplate: () => ({ isAvailable: true }),
 }));
 
 // Required localStorage shim for testing environment
@@ -30,22 +67,22 @@ if (!(globalThis as any).localStorage) {
 describe("NavBar Component", () => {
     beforeEach(() => {
         localStorage.clear();
-        mock.restore();
+        vi.restoreAllMocks();
         // Reset any mocks
         (window as any).open = () => null;
     });
 
     afterEach(() => {
-        mock.restore();
+        vi.restoreAllMocks();
     });
 
     it("renders NavBar with AppBar and basic elements", async () => {
         const React = await import("react");
         const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { BrowserRouter } = await import("react-router-dom");
+        const { MemoryRouter } = await import("react-router");
         const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
         const { Provider } = await import("react-redux");
 
         const theme = createTheme();
@@ -54,7 +91,7 @@ describe("NavBar Component", () => {
 
         const { container } = render(
             React.createElement(
-                BrowserRouter,
+                MemoryRouter,
                 null,
                 React.createElement(
                     Provider,
@@ -85,9 +122,9 @@ describe("NavBar Component", () => {
         const { render } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { BrowserRouter } = await import("react-router-dom");
+        const { MemoryRouter } = await import("react-router");
         const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
         const { Provider } = await import("react-redux");
 
         const theme = createTheme();
@@ -97,7 +134,7 @@ describe("NavBar Component", () => {
 
         const { container } = render(
             React.createElement(
-                BrowserRouter,
+                MemoryRouter,
                 null,
                 React.createElement(
                     Provider,
@@ -138,9 +175,9 @@ describe("NavBar Component", () => {
         const user = userEvent.setup();
 
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { BrowserRouter } = await import("react-router-dom");
+        const { MemoryRouter } = await import("react-router");
         const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
         const { Provider } = await import("react-redux");
 
         const theme = createTheme();
@@ -149,7 +186,7 @@ describe("NavBar Component", () => {
 
         /*const { container } =*/ render(
             React.createElement(
-                BrowserRouter,
+                MemoryRouter,
                 null,
                 React.createElement(
                     Provider,
@@ -184,9 +221,9 @@ describe("NavBar Component", () => {
         const React = await import("react");
         const { render, screen } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { BrowserRouter } = await import("react-router-dom");
+        const { MemoryRouter } = await import("react-router");
         const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
         const { Provider } = await import("react-redux");
 
         const theme = createTheme();
@@ -195,7 +232,7 @@ describe("NavBar Component", () => {
 
         /*const { container } =*/ render(
             React.createElement(
-                BrowserRouter,
+                MemoryRouter,
                 null,
                 React.createElement(
                     Provider,
@@ -226,9 +263,9 @@ describe("NavBar Component", () => {
         const user = userEvent.setup();
 
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { BrowserRouter } = await import("react-router-dom");
+        const { MemoryRouter } = await import("react-router");
         const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
         const { Provider } = await import("react-redux");
 
         const theme = createTheme();
@@ -237,7 +274,7 @@ describe("NavBar Component", () => {
 
         /*const { container } =*/ render(
             React.createElement(
-                BrowserRouter,
+                MemoryRouter,
                 null,
                 React.createElement(
                     Provider,
@@ -273,9 +310,9 @@ describe("NavBar Component", () => {
         const React = await import("react");
         const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { BrowserRouter } = await import("react-router-dom");
+        const { MemoryRouter } = await import("react-router");
         const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
         const { Provider } = await import("react-redux");
 
         const theme = createTheme();
@@ -284,7 +321,7 @@ describe("NavBar Component", () => {
 
         const { container } = render(
             React.createElement(
-                BrowserRouter,
+                MemoryRouter,
                 null,
                 React.createElement(
                     Provider,
@@ -313,9 +350,9 @@ describe("NavBar Component", () => {
         const userEvent = (await import("@testing-library/user-event")).default;
         const user = userEvent.setup();
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { BrowserRouter } = await import("react-router-dom");
+        const { MemoryRouter } = await import("react-router");
         const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
         const { Provider } = await import("react-redux");
 
         // Mock window.open
@@ -333,7 +370,7 @@ describe("NavBar Component", () => {
 
         const { container } = render(
             React.createElement(
-                BrowserRouter,
+                MemoryRouter,
                 null,
                 React.createElement(
                     Provider,
@@ -367,9 +404,9 @@ describe("NavBar Component", () => {
         const React = await import("react");
         const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { BrowserRouter } = await import("react-router-dom");
+        const { MemoryRouter } = await import("react-router");
         const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
         const { Provider } = await import("react-redux");
 
         // Set a stored tab index
@@ -381,7 +418,7 @@ describe("NavBar Component", () => {
 
         const { container } = render(
             React.createElement(
-                BrowserRouter,
+                MemoryRouter,
                 null,
                 React.createElement(
                     Provider,
@@ -411,9 +448,9 @@ describe("NavBar Component", () => {
         const React = await import("react");
         const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { BrowserRouter } = await import("react-router-dom");
+        const { MemoryRouter } = await import("react-router");
         const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
         const { Provider } = await import("react-redux");
 
         const theme = createTheme();
@@ -422,7 +459,7 @@ describe("NavBar Component", () => {
 
         const { container } = render(
             React.createElement(
-                BrowserRouter,
+                MemoryRouter,
                 null,
                 React.createElement(
                     Provider,
@@ -448,9 +485,9 @@ describe("NavBar Component", () => {
         const React = await import("react");
         const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { BrowserRouter } = await import("react-router-dom");
+        const { MemoryRouter } = await import("react-router");
         const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
         const { Provider } = await import("react-redux");
 
         const theme = createTheme();
@@ -459,7 +496,7 @@ describe("NavBar Component", () => {
 
         const { container } = render(
             React.createElement(
-                BrowserRouter,
+                MemoryRouter,
                 null,
                 React.createElement(
                     Provider,
@@ -487,9 +524,9 @@ describe("NavBar Component", () => {
         const React = await import("react");
         const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { BrowserRouter } = await import("react-router-dom");
+        const { MemoryRouter } = await import("react-router");
         const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
         const { Provider } = await import("react-redux");
 
         const theme = createTheme();
@@ -498,7 +535,7 @@ describe("NavBar Component", () => {
 
         const { container } = render(
             React.createElement(
-                BrowserRouter,
+                MemoryRouter,
                 null,
                 React.createElement(
                     Provider,
@@ -525,9 +562,9 @@ describe("NavBar Component", () => {
         const React = await import("react");
         const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { BrowserRouter } = await import("react-router-dom");
+        const { MemoryRouter } = await import("react-router");
         const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
         const { Provider } = await import("react-redux");
 
         const theme = createTheme();
@@ -536,7 +573,7 @@ describe("NavBar Component", () => {
 
         const { container } = render(
             React.createElement(
-                BrowserRouter,
+                MemoryRouter,
                 null,
                 React.createElement(
                     Provider,
@@ -566,9 +603,9 @@ describe("NavBar Component", () => {
         const user = userEvent.setup();
 
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { BrowserRouter } = await import("react-router-dom");
+        const { MemoryRouter } = await import("react-router");
         const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
         const { Provider } = await import("react-redux");
 
         const theme = createTheme();
@@ -577,7 +614,7 @@ describe("NavBar Component", () => {
 
         const { container } = render(
             React.createElement(
-                BrowserRouter,
+                MemoryRouter,
                 null,
                 React.createElement(
                     Provider,
@@ -624,9 +661,9 @@ describe("NavBar Component", () => {
         const user = userEvent.setup();
 
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { BrowserRouter } = await import("react-router-dom");
+        const { MemoryRouter } = await import("react-router");
         const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
         const { Provider } = await import("react-redux");
 
         const theme = createTheme();
@@ -635,7 +672,7 @@ describe("NavBar Component", () => {
 
         const { container } = render(
             React.createElement(
-                BrowserRouter,
+                MemoryRouter,
                 null,
                 React.createElement(
                     Provider,
@@ -679,9 +716,9 @@ describe("NavBar Component", () => {
         const React = await import("react");
         const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { BrowserRouter } = await import("react-router-dom");
+        const { MemoryRouter } = await import("react-router");
         const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
         const { Provider } = await import("react-redux");
 
         const theme = createTheme();
@@ -690,7 +727,7 @@ describe("NavBar Component", () => {
 
         const { container } = render(
             React.createElement(
-                BrowserRouter,
+                MemoryRouter,
                 null,
                 React.createElement(
                     Provider,
@@ -717,9 +754,9 @@ describe("NavBar Component", () => {
         const React = await import("react");
         const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { BrowserRouter } = await import("react-router-dom");
+        const { MemoryRouter } = await import("react-router");
         const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
         const { Provider } = await import("react-redux");
 
         const theme = createTheme();
@@ -728,7 +765,7 @@ describe("NavBar Component", () => {
 
         const { container } = render(
             React.createElement(
-                BrowserRouter,
+                MemoryRouter,
                 null,
                 React.createElement(
                     Provider,
@@ -758,9 +795,9 @@ describe("NavBar Component", () => {
         const user = userEvent.setup();
 
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { BrowserRouter } = await import("react-router-dom");
+        const { MemoryRouter } = await import("react-router");
         const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
         const { Provider } = await import("react-redux");
 
         const theme = createTheme();
@@ -769,7 +806,7 @@ describe("NavBar Component", () => {
 
         /*const { container } = */render(
             React.createElement(
-                BrowserRouter,
+                MemoryRouter,
                 null,
                 React.createElement(
                     Provider,
@@ -807,9 +844,9 @@ describe("NavBar Component", () => {
         const user = userEvent.setup();
 
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { BrowserRouter } = await import("react-router-dom");
+        const { MemoryRouter } = await import("react-router");
         const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
         const { Provider } = await import("react-redux");
 
         const theme = createTheme();
@@ -818,7 +855,7 @@ describe("NavBar Component", () => {
 
         /*const { container } = */render(
             React.createElement(
-                BrowserRouter,
+                MemoryRouter,
                 null,
                 React.createElement(
                     Provider,
@@ -857,9 +894,9 @@ describe("NavBar Component", () => {
         const React = await import("react");
         const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { MemoryRouter } = await import("react-router-dom");
+        const { MemoryRouter } = await import("react-router");
         const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
         const { Provider } = await import("react-redux");
         const { TabIDs } = await import("../../store/locationState");
 
@@ -895,9 +932,9 @@ describe("NavBar Component", () => {
         const React = await import("react");
         const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { BrowserRouter } = await import("react-router-dom");
+        const { MemoryRouter } = await import("react-router");
         const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
         const { Provider } = await import("react-redux");
 
         // Set an invalid tab index
@@ -909,7 +946,7 @@ describe("NavBar Component", () => {
 
         const { container } = render(
             React.createElement(
-                BrowserRouter,
+                MemoryRouter,
                 null,
                 React.createElement(
                     Provider,
@@ -938,9 +975,9 @@ describe("NavBar Component", () => {
         const React = await import("react");
         const { render, screen } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { BrowserRouter } = await import("react-router-dom");
+        const { MemoryRouter } = await import("react-router");
         const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
         const { Provider } = await import("react-redux");
 
         const theme = createTheme();
@@ -949,7 +986,7 @@ describe("NavBar Component", () => {
 
         const { container } = render(
             React.createElement(
-                BrowserRouter,
+                MemoryRouter,
                 null,
                 React.createElement(
                     Provider,
@@ -978,9 +1015,9 @@ describe("NavBar Component", () => {
         const React = await import("react");
         const { render, screen } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { BrowserRouter } = await import("react-router-dom");
+        const { MemoryRouter } = await import("react-router");
         const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
         const { Provider } = await import("react-redux");
 
         const theme = createTheme();
@@ -989,7 +1026,7 @@ describe("NavBar Component", () => {
 
         const { container } = render(
             React.createElement(
-                BrowserRouter,
+                MemoryRouter,
                 null,
                 React.createElement(
                     Provider,
@@ -1020,9 +1057,9 @@ describe("NavBar Component", () => {
         const React = await import("react");
         const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { BrowserRouter } = await import("react-router-dom");
+        const { MemoryRouter } = await import("react-router");
         const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
         const { Provider } = await import("react-redux");
 
         const theme = createTheme();
@@ -1031,7 +1068,7 @@ describe("NavBar Component", () => {
 
         const { container } = render(
             React.createElement(
-                BrowserRouter,
+                MemoryRouter,
                 null,
                 React.createElement(
                     Provider,

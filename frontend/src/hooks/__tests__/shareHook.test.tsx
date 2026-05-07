@@ -1,5 +1,4 @@
-import "../../../test/setup";
-import { describe, it, expect, beforeEach } from "bun:test";
+import { describe, it, expect, beforeEach } from "vitest";
 
 // Required localStorage shim for testing environment
 if (!(globalThis as any).localStorage) {
@@ -29,7 +28,7 @@ describe("useShare Hook", () => {
         const { renderHook } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { useShare } = await import("../shareHook");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
 
@@ -53,7 +52,7 @@ describe("useShare Hook", () => {
         const { renderHook } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { useShare } = await import("../shareHook");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
 
@@ -71,7 +70,7 @@ describe("useShare Hook", () => {
         const { renderHook } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { useShare } = await import("../shareHook");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
 
@@ -89,7 +88,7 @@ describe("useShare Hook", () => {
         const { renderHook } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { useShare } = await import("../shareHook");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
 
@@ -107,7 +106,7 @@ describe("useShare Hook", () => {
         const { renderHook } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { useShare } = await import("../shareHook");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
 
@@ -126,7 +125,7 @@ describe("useShare Hook", () => {
         const { renderHook } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { useShare } = await import("../shareHook");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
 
@@ -145,7 +144,7 @@ describe("useShare Hook", () => {
         const { renderHook } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { useShare } = await import("../shareHook");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
 
@@ -164,7 +163,7 @@ describe("useShare Hook", () => {
         const { renderHook } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { useShare } = await import("../shareHook");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
 
@@ -182,7 +181,7 @@ describe("useShare Hook", () => {
         const { renderHook } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { useShare } = await import("../shareHook");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
 

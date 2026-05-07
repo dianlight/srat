@@ -1,20 +1,17 @@
-import "../../../../test/setup";
-import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("ShareEditDialog", () => {
     beforeEach(() => {
-        mock.restore();
+        vi.restoreAllMocks();
     });
 
-    afterEach(async () => {
-        mock.restore();
-        const { cleanup } = await import("@testing-library/react");
-        cleanup();
+    afterEach(() => {
+        vi.restoreAllMocks();
     });
 
     const setupMockForm = async (submitCallback?: (data: any) => void, testId = "mock-share-form") => {
         const React = await import("react");
-        mock.module("../components/ShareEditForm", () => {
+        vi.doMock("../components/ShareEditForm", () => {
             return {
                 ShareEditForm: (props: any) =>
                     React.createElement(
@@ -40,7 +37,7 @@ describe("ShareEditDialog", () => {
         const { render, screen } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         // @ts-expect-error - Query param ensures unmocked module instance
-        const { ShareEditDialog } = await import("../ShareEditDialog?share-edit-dialog-test");
+        const { ShareEditDialog } = await import("../ShareEditDialog?share-edit-dialog-test-cancel");
 
         const user = userEvent.setup();
         let closeCalls = 0;
@@ -66,7 +63,7 @@ describe("ShareEditDialog", () => {
         const { render, screen } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         // @ts-expect-error - Query param ensures unmocked module instance
-        const { ShareEditDialog } = await import("../ShareEditDialog?share-edit-dialog-test");
+        const { ShareEditDialog } = await import("../ShareEditDialog?share-edit-dialog-test-delete");
 
         const user = userEvent.setup();
         render(
@@ -93,7 +90,7 @@ describe("ShareEditDialog", () => {
         const { render, screen } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         // @ts-expect-error - Query param ensures unmocked module instance
-        const { ShareEditDialog } = await import("../ShareEditDialog?share-edit-dialog-test");
+        const { ShareEditDialog } = await import("../ShareEditDialog?share-edit-dialog-test-submit");
 
         const user = userEvent.setup();
         let closePayload: any = null;

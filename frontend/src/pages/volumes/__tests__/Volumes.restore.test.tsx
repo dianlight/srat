@@ -1,7 +1,6 @@
 // Shared test setup (DOM globals, APIURL, and store helper)
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import "../../../../test/setup";
-import { createTestStore } from "../../../../test/setup";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { createTestStore } from "/test/testing";
 import { getDiskIdentifier, getPartitionIdentifier } from "../utils";
 
 // Minimal localStorage shim for bun:test

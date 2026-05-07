@@ -1,5 +1,4 @@
-import { beforeEach, describe, expect, test } from "bun:test";
-import "../../../../../test/setup.ts";
+import { beforeEach, describe, expect, test } from "vitest";
 
 // REQUIRED localStorage shim for every localStorage test
 if (!(globalThis as any).localStorage) {
@@ -54,7 +53,7 @@ describe("HDIdleDiskSettings Apply/Cancel & Unsupported", () => {
         const React = await import("react");
         const { render, screen, waitFor } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
-        const { createTestStore } = await import("../../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
         const userEvent = (await import("@testing-library/user-event")).default;
         const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
 

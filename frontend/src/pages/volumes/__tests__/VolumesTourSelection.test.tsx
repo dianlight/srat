@@ -1,5 +1,4 @@
-import { describe, expect, it } from "bun:test";
-import "../../../../test/setup";
+import { describe, expect, it } from "vitest";
 
 describe("Volumes tour selection", () => {
     it("prefers the first visible partition for guided tour selection", async () => {

@@ -1,5 +1,4 @@
-import "../../../test/setup";
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it } from "vitest";
 
 describe("mdcMiddleware", () => {
 	it("exports mdcMiddleware as a function", async () => {

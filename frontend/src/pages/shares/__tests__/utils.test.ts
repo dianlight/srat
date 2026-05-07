@@ -1,5 +1,4 @@
-import "../../../../test/setup";
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it } from "vitest";
 import type { CasingStyle } from "../types";
 
 describe("shares utils", () => {

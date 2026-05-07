@@ -3,8 +3,8 @@
 # [REFACTOR]: Migrate Frontend Test Runner from bun:test to Vitest
 
 **Target Repo:** `srat`
-**Status:** 📅 Planned
-**Issue Link:** _None — identified in frontend test stability/speed audit 2026-04-29_
+**Status:** 🔄 In Progress
+**Issue Link:** https://github.com/dianlight/srat/issues/614
 
 ## ⚠️ Compliance & Pre-reqs
 
@@ -54,42 +54,42 @@ Replace `bun test` with Vitest as the frontend test runner while keeping Bun as 
 ## 📝 Task List
 
 Preflight:
-- [ ] PREP: Ask user whether to run a prepare-refactor check (recommended). If yes, create `docs/refactors/migrate-frontend-test-runner-vitest.md`, record baseline test count and timing before any changes.
+- [x] PREP: Ask user whether to run a prepare-refactor check (recommended). If yes, create `docs/refactors/migrate-frontend-test-runner-vitest.md`, record baseline test count and timing before any changes.
 
 Installation and config:
-- [ ] Task 1: Install Vitest — `cd frontend && bun add -d vitest @vitest/coverage-v8`
-- [ ] Task 2: Create `frontend/vitest.config.ts` (see Implementation Notes §A)
-- [ ] Task 3: Update `frontend/package.json` scripts — replace `bun test ...` with `bunx vitest run ...`, remove `--max-concurrency=1` and `--preload` flags (see Implementation Notes §B)
-- [ ] Task 4: Update `frontend/.mise.toml` tasks `test`, `test:new`, `test:ci` to invoke Vitest (see Implementation Notes §B)
+- [x] Task 1: Install Vitest — `cd frontend && bun add -d vitest @vitest/coverage-v8`
+- [x] Task 2: Create `frontend/vitest.config.ts` (see Implementation Notes §A)
+- [x] Task 3: Update `frontend/package.json` scripts — replace `bun test ...` with `bunx vitest run ...`, remove `--max-concurrency=1` and `--preload` flags (see Implementation Notes §B)
+- [x] Task 4: Update `frontend/.mise.toml` tasks `test`, `test:new`, `test:ci` to invoke Vitest (see Implementation Notes §B)
 
 Setup file adaptation:
-- [ ] Task 5: In `frontend/test/bun-setup.ts`, replace `import { afterAll, afterEach, beforeAll } from "bun:test"` with `from "vitest"`
-- [ ] Task 6: Verify `frontend/test/setup.ts` has no `"bun:test"` imports (it currently imports from `"./bun-setup"` only — confirm no direct runner imports)
-- [ ] Task 7: Confirm `IS_REACT_ACT_ENVIRONMENT` is set after `GlobalRegistrator.register()` in `setup.ts` — Vitest with `environment: "happy-dom"` installs `window`/`document` before `setupFiles` runs, so the guard in `setup.ts` short-circuits safely; no change needed
+- [x] Task 5: In `frontend/test/bun-setup.ts`, replace `import { afterAll, afterEach, beforeAll } from "bun:test"` with `from "vitest"`
+- [x] Task 6: Verify `frontend/test/setup.ts` has no `"bun:test"` imports (it currently imports from `"./bun-setup"` only — confirm no direct runner imports)
+- [x] Task 7: Confirm `IS_REACT_ACT_ENVIRONMENT` is set after `GlobalRegistrator.register()` in `setup.ts` — Vitest with `environment: "happy-dom"` installs `window`/`document` before `setupFiles` runs, so the guard in `setup.ts` short-circuits safely; no change needed
 
 Import migration (mechanical find-replace):
-- [ ] Task 8: In all test files under `frontend/src/` and `frontend/test/`, replace `from "bun:test"` with `from "vitest"` — run: `find frontend/src frontend/test -name "*.test.*" | xargs sed -i 's|from "bun:test"|from "vitest"|g'` — verify with `grep -r '"bun:test"' frontend/src frontend/test` returning nothing
+- [x] Task 8: In all test files under `frontend/src/` and `frontend/test/`, replace `from "bun:test"` with `from "vitest"` — run: `find frontend/src frontend/test -name "*.test.*" | xargs sed -i 's|from "bun:test"|from "vitest"|g'` — verify with `grep -r '"bun:test"' frontend/src frontend/test` returning nothing
 
 Mock API migration (9 files using `mock.*`):
-- [ ] Task 9: `src/__tests__/App.commandEvents.test.tsx` — replace `mock` import + usages with `vi` (see Implementation Notes §C for the mapping table); `vi.mock()` calls at file top level are hoisted automatically
-- [ ] Task 10: `src/components/__tests__/DonationButton.test.tsx` — same `mock` → `vi` migration
-- [ ] Task 11: `src/components/__tests__/NavBar.test.tsx` — same
-- [ ] Task 12: `src/components/__tests__/NotificationCenter.test.tsx` — same
-- [ ] Task 13: `src/pages/shares/__tests__/ShareEditDialog.test.tsx` — same
-- [ ] Task 14: `src/pages/shares/__tests__/Shares.test.tsx` — same **and remove `describe.skip`**; with Vitest worker isolation the contamination is gone
-- [ ] Task 15: `src/pages/volumes/components/__tests__/VolumeMountDialog.test.tsx` — same
-- [ ] Task 16: `src/pages/volumes/__tests__/Volumes.test.tsx` — same
-- [ ] Task 17: `src/pages/__tests__/SmbConf.test.tsx` — same
+- [x] Task 9: `src/__tests__/App.commandEvents.test.tsx` — replace `mock` import + usages with `vi` (see Implementation Notes §C for the mapping table); `vi.mock()` calls at file top level are hoisted automatically
+- [x] Task 10: `src/components/__tests__/DonationButton.test.tsx` — same `mock` → `vi` migration
+- [x] Task 11: `src/components/__tests__/NavBar.test.tsx` — same
+- [x] Task 12: `src/components/__tests__/NotificationCenter.test.tsx` — same
+- [x] Task 13: `src/pages/shares/__tests__/ShareEditDialog.test.tsx` — same
+- [x] Task 14: `src/pages/shares/__tests__/Shares.test.tsx` — same **and remove `describe.skip`**; with Vitest worker isolation the contamination is gone
+- [x] Task 15: `src/pages/volumes/components/__tests__/VolumeMountDialog.test.tsx` — same
+- [x] Task 16: `src/pages/volumes/__tests__/Volumes.test.tsx` — same
+- [x] Task 17: `src/pages/__tests__/SmbConf.test.tsx` — same
 
 `bunfig.toml` cleanup:
-- [ ] Task 18: Remove or comment out the `[test]` section in `frontend/bunfig.toml` — it is read only by `bun test` and is dead config after migration; the Vitest equivalents live in `vitest.config.ts`
+- [x] Task 18: Remove or comment out the `[test]` section in `frontend/bunfig.toml` — it is read only by `bun test` and is dead config after migration; the Vitest equivalents live in `vitest.config.ts`
 
 Documentation updates:
-- [ ] Task 19: Update `.github/instructions/fontend_test.instructions.md` — change all references from `bun:test` to `vitest`; update the Code Standard example in §6; update §1 to list Vitest as the runner
-- [ ] Task 20: Update `docs/test-setup-patterns.md` — replace `bun:test` runner references with Vitest; update any lifecycle hook examples that import from `"bun:test"`
+- [x] Task 19: Update `.github/instructions/fontend_test.instructions.md` — change all references from `bun:test` to `vitest`; update the Code Standard example in §6; update §1 to list Vitest as the runner
+- [x] Task 20: Update `docs/test-setup-patterns.md` — replace `bun:test` runner references with Vitest; update any lifecycle hook examples that import from `"bun:test"`
 
 Verification:
-- [ ] Task 21: Run `bunx vitest run --reporter=verbose 2>&1 | tail -40` — confirm all files pass, `Shares.test.tsx` is no longer skipped
+- [x] Task 21: Run `bunx vitest run --reporter=verbose 2>&1 | tail -40` — confirm all files pass, `Shares.test.tsx` is no longer skipped
 - [ ] Task 22: Run `bunx vitest run --coverage` — confirm `frontend/coverage/lcov.info` is generated
 - [ ] Task 23: Run `mise run //frontend:lint` — confirm zero new errors
 - [ ] Task 24: Run `tsgo --noEmit` — confirm no TypeScript errors introduced
@@ -105,7 +105,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     environment: "happy-dom",
-    globals: false,
+    globals: true,
     setupFiles: ["./test/setup.ts"],
     include: [
       "src/**/*.test.{ts,tsx}",
@@ -114,11 +114,8 @@ export default defineConfig({
     exclude: ["**/node_modules/**", "**/dist/**", "**/build/**"],
     // "forks" = one subprocess per file → isolated module registry per file
     pool: "forks",
-    poolOptions: {
-      forks: { singleFork: false },
-    },
-    testTimeout: 10000,
-    hookTimeout: 10000,
+    testTimeout: 60000,
+    hookTimeout: 60000,
     bail: 0,
     reporter: ["dot"],
     coverage: {
@@ -143,6 +140,7 @@ export default defineConfig({
 Key choices:
 - `pool: "forks"` — each file in a subprocess. Module mocks are subprocess-scoped; no shared registry.
 - `environment: "happy-dom"` — Vitest installs happy-dom per worker. The `GlobalRegistrator.register()` guard in `setup.ts` short-circuits (`if (!window || !document)`) because Vitest pre-installs the DOM.
+- `globals: true` — required so `@testing-library/jest-dom` can extend the global `expect` during setup-file execution.
 - `setupFiles: ["./test/setup.ts"]` — replaces `--preload ./test/setup.ts`. Runs once per worker before the first test file in that worker.
 - `bail: 0` — show all failures; CI adds `--bail=1` via the script.
 

@@ -1,22 +1,11 @@
-import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import { http, HttpResponse } from "msw";
 import React from "react";
 import { Provider } from "react-redux";
-import { getMswServer } from "../../test/bun-setup";
-import { createTestStore } from "../../test/setup";
-
-if (!(globalThis as any).window || !(globalThis as any).document) {
-  GlobalRegistrator.register({
-    settings: {
-      enableJavaScriptEvaluation: true,
-      suppressCodeGenerationFromStringsWarning: true,
-    },
-    url: "http://localhost:3000/",
-  });
-}
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { getMswServer } from "/test/testing";
+import { createTestStore } from "/test/testing";
 
 if (!(globalThis as any).localStorage) {
   const store: Record<string, string> = {};
@@ -34,14 +23,13 @@ if (!(globalThis as any).localStorage) {
   };
 }
 
-const toastErrorMock = mock((..._args: unknown[]) => undefined);
+const toastErrorMock = vi.fn((..._args: unknown[]) => undefined);
 
 let wsState: Record<string, unknown> = {
   heartbeat: { alive: true },
 };
 
-const registerModuleMocks = () => {
-  mock.module("../store/wsApi", () => ({
+vi.mock("../store/wsApi", () => ({
     wsApi: {
       reducerPath: "wsApi",
       reducer: () => ({}),
@@ -66,7 +54,7 @@ const registerModuleMocks = () => {
     }),
   }));
 
-  mock.module("react-toastify", () => ({
+vi.mock("react-toastify", () => ({
     Slide: undefined,
     ToastContainer: () => null,
     toast: {
@@ -78,41 +66,48 @@ const registerModuleMocks = () => {
     },
   }));
 
-  mock.module("../hooks/useTelemetryModal", () => ({
+vi.mock("../hooks/useTelemetryModal", () => ({
     useTelemetryModal: () => ({ shouldShow: false, dismiss: () => undefined }),
   }));
 
-  mock.module("../hooks/useBaseConfigModal", () => ({
+vi.mock("../hooks/useBaseConfigModal", () => ({
     useBaseConfigModal: () => ({ shouldShow: false, dismiss: () => undefined }),
   }));
 
-  mock.module("../hooks/useSetupWizard", () => ({
+vi.mock("../hooks/useSetupWizard", () => ({
     useSetupWizard: () => ({ shouldShow: false, dismiss: () => undefined }),
   }));
 
-  mock.module("../components/NavBar", () => ({
+vi.mock("../components/NavBar", () => ({
     NavBar: () => <div data-testid="mock-navbar">NavBar</div>,
   }));
 
-  mock.module("../components/GlobalEventTracker", () => ({
+vi.mock("../components/GlobalEventTracker", () => ({
     __esModule: true,
     default: () => <div data-testid="mock-event-monitor">EventMonitor</div>,
     useSystemLogs: () => ({ logs: [], clearLogs: () => undefined }),
   }));
 
-  mock.module("../components/BaseConfigModal", () => ({
+vi.mock("../components/BaseConfigModal", () => ({
     default: () => null,
   }));
-};
+
+vi.mock("../components/Footer", () => ({
+    Footer: () => <div data-testid="mock-footer">Footer</div>,
+  }));
+
+vi.mock("../components/wizard/SetupWizard", () => ({
+    SetupWizard: () => null,
+    WizardOpenContext: React.createContext<() => void>(() => undefined),
+  }));
 
 describe("App command events", () => {
   afterEach(() => {
-    mock.restore();
+    vi.restoreAllMocks();
   });
 
   beforeEach(async () => {
-    mock.restore();
-    registerModuleMocks();
+    vi.restoreAllMocks();
     wsState = { heartbeat: { alive: true } };
     toastErrorMock.mockClear();
     localStorage.clear();
@@ -470,7 +465,7 @@ describe("App command events", () => {
     const store = await createTestStore();
 
     const originalConsoleError = console.error;
-    const consoleErrorMock = mock((..._args: unknown[]) => undefined);
+    const consoleErrorMock = vi.fn((..._args: unknown[]) => undefined);
     console.error = consoleErrorMock as typeof console.error;
 
     try {
@@ -525,8 +520,8 @@ describe("App command events", () => {
 
   it("still opens output when a stale closeToast callback throws", async () => {
     const { CommandOutputToastContent } = await import("../components/CommandOutputDialog");
-    const onOpenOutputMock = mock(() => undefined);
-    const closeToastMock = mock(() => {
+    const onOpenOutputMock = vi.fn(() => undefined);
+    const closeToastMock = vi.fn(() => {
       throw new TypeError("stale closeToast");
     });
     const user = userEvent.setup();

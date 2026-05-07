@@ -1,5 +1,4 @@
-import "../../../test/setup";
-import { describe, it, expect, beforeEach } from "bun:test";
+import { describe, it, expect, beforeEach } from "vitest";
 
 // REQUIRED localStorage shim for every localStorage test
 if (!(globalThis as any).localStorage) {
@@ -26,7 +25,7 @@ describe("Footer Component", () => {
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Footer } = await import("../Footer");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const theme = createTheme();
         const store = await createTestStore();
@@ -60,7 +59,7 @@ describe("Footer Component", () => {
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Footer } = await import("../Footer");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const theme = createTheme();
         const store = await createTestStore();
@@ -91,7 +90,7 @@ describe("Footer Component", () => {
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Footer } = await import("../Footer");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const theme = createTheme();
         const store = await createTestStore();
@@ -120,7 +119,7 @@ describe("Footer Component", () => {
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Footer } = await import("../Footer");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const theme = createTheme();
         const store = await createTestStore();
@@ -149,7 +148,7 @@ describe("Footer Component", () => {
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Footer } = await import("../Footer");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const theme = createTheme();
         const store = await createTestStore();
@@ -182,7 +181,7 @@ describe("Footer Component", () => {
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Footer } = await import("../Footer");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         // Create a theme that simulates small screen
         const theme = createTheme({
@@ -223,7 +222,7 @@ describe("Footer Component", () => {
         const { Provider } = await import("react-redux");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Footer } = await import("../Footer");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const theme = createTheme();
         const store = await createTestStore();

@@ -75,12 +75,12 @@ func (suite *ServiceTestSuite) TearDownTest() {
 
 **Critical ordering:** Cancel context BEFORE waiting on WaitGroup. Otherwise, goroutines won't receive the cancel signal and will deadlock.
 
-## TypeScript/JavaScript Frontend Tests (bun:test + React Testing Library)
+## TypeScript/JavaScript Frontend Tests (Vitest + React Testing Library)
 
 ### Setup Pattern
 
 ```typescript
-import { beforeEach, afterEach, describe, test, expect } from "bun:test";
+import { beforeEach, afterEach, describe, test, expect } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -96,7 +96,7 @@ describe("MyComponent", () => {
   });
 
   afterEach(() => {
-    // Shared cleanup in frontend/test/bun-setup.ts handles cleanup()
+        // Shared cleanup in frontend/test/bun-setup.ts handles cleanup()
     // DO NOT add manual cleanup() calls here—it causes race conditions
   });
 
@@ -112,18 +112,18 @@ describe("MyComponent", () => {
 
 - Initialize `userEvent.setup()` in `beforeEach` BEFORE rendering
 - Shared setup in `frontend/test/bun-setup.ts` calls `cleanup()` after each test—do NOT duplicate
-- Never use manual `fireEvent`; always use `user.event`
+- Never use manual `fireEvent`; always use `userEvent`
 
 ### Setup File (Reusable)
 
-Located at `frontend/test/bun-setup.ts`:
+Lifecycle hooks live in `frontend/test/bun-setup.ts` and are loaded by `frontend/test/setup.ts`:
 
 ```typescript
-import { afterEach } from "bun:test";
+import { afterEach } from "vitest";
 import { cleanup } from "@testing-library/react";
-import { GlobalRegistrator } from "@react-native-async-storage/async-storage/lib/index.js";
+import { GlobalRegistrator } from "@happy-dom/global-registrator";
 
-// Register async storage and other globals
+// Register DOM globals when the runner has not already done so
 GlobalRegistrator.register();
 
 // CRITICAL: Set act() environment AFTER registration (not before)

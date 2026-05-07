@@ -1,5 +1,4 @@
-import "../../../test/setup";
-import { beforeEach, describe, expect, it } from "bun:test";
+import { beforeEach, describe, expect, it } from "vitest";
 
 describe("useTelemetryModal hook", () => {
 	beforeEach(() => {
@@ -15,7 +14,7 @@ describe("useTelemetryModal hook", () => {
 		const React = await import("react");
 		const { renderHook } = await import("@testing-library/react");
 		const { Provider } = await import("react-redux");
-		const { createTestStore } = await import("../../../test/setup");
+		const { createTestStore } = await import("/test/testing");
 		const { useTelemetryModal } = await import("../useTelemetryModal");
 
 		const store = await createTestStore();
@@ -31,7 +30,7 @@ describe("useTelemetryModal hook", () => {
 		const React = await import("react");
 		const { renderHook } = await import("@testing-library/react");
 		const { Provider } = await import("react-redux");
-		const { createTestStore } = await import("../../../test/setup");
+		const { createTestStore } = await import("/test/testing");
 		const { useTelemetryModal } = await import("../useTelemetryModal");
 
 		const store = await createTestStore();
@@ -47,7 +46,7 @@ describe("useTelemetryModal hook", () => {
 		const React = await import("react");
 		const { renderHook, act } = await import("@testing-library/react");
 		const { Provider } = await import("react-redux");
-		const { createTestStore } = await import("../../../test/setup");
+		const { createTestStore } = await import("/test/testing");
 		const { useTelemetryModal } = await import("../useTelemetryModal");
 
 		const store = await createTestStore();
@@ -67,7 +66,7 @@ describe("useTelemetryModal hook", () => {
 		const React = await import("react");
 		const { renderHook } = await import("@testing-library/react");
 		const { Provider } = await import("react-redux");
-		const { createTestStore } = await import("../../../test/setup");
+		const { createTestStore } = await import("/test/testing");
 		const { useTelemetryModal } = await import("../useTelemetryModal");
 
 		const store = await createTestStore();
@@ -85,7 +84,7 @@ describe("useTelemetryModal hook", () => {
 		const React = await import("react");
 		const { renderHook } = await import("@testing-library/react");
 		const { Provider } = await import("react-redux");
-		const { createTestStore } = await import("../../../test/setup");
+		const { createTestStore } = await import("/test/testing");
 		const { useTelemetryModal } = await import("../useTelemetryModal");
 
 		const store = await createTestStore();
@@ -102,7 +101,7 @@ describe("useTelemetryModal hook", () => {
 		const React = await import("react");
 		const { renderHook } = await import("@testing-library/react");
 		const { Provider } = await import("react-redux");
-		const { createTestStore } = await import("../../../test/setup");
+		const { createTestStore } = await import("/test/testing");
 		const { useTelemetryModal } = await import("../useTelemetryModal");
 
 		const store = await createTestStore();
@@ -119,7 +118,7 @@ describe("useTelemetryModal hook", () => {
 		const React = await import("react");
 		const { renderHook } = await import("@testing-library/react");
 		const { Provider } = await import("react-redux");
-		const { createTestStore } = await import("../../../test/setup");
+		const { createTestStore } = await import("/test/testing");
 		const { useTelemetryModal } = await import("../useTelemetryModal");
 
 		const store = await createTestStore();
