@@ -342,3 +342,4 @@ pprof
 CAs
 argv
 isLoading
+Vitest

@@ -70,8 +70,8 @@ cd backend/src && go test ./path/to/package -run TestFunctionName
 ### Running frontend tests with stability check
 
 ```sh
-cd frontend && bun run test
-# For flaky tests: bun run test --rerun-each 10
+cd frontend && bunx vitest run
+# For flaky tests: bunx vitest run --rerun-each 10
 ```
 
 ## Architecture
@@ -140,7 +140,7 @@ func TestMyServiceTestSuite(t *testing.T) { suite.Run(t, new(MyServiceTestSuite)
 
 ### Frontend tests
 
-- `bun:test` + `@testing-library/react` + `user-event` (never `fireEvent`).
+- `vitest` + `@testing-library/react` + `user-event` (never `fireEvent`).
 - Query priority: `getByRole` → `getByLabelText` → `getByPlaceholderText` → `getByText` → `getByTestId` (last resort).
 - No `container.querySelector()` or CSS class selectors.
 

@@ -29,7 +29,7 @@ For actionable guidance, use these resources instead:
 ### Testing Stack
 
 - **back-end**: testify/suite + mockio/v2 + humatest
-- **Frontend**: bun:test + React Testing Library + MSW
+- **Frontend**: Vitest + React Testing Library + MSW
 - **Custom Component**: pytest + Home Assistant test helpers
 
 ### Core Services
