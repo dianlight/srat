@@ -105,6 +105,62 @@ describe("MyComponent", () \=\> {
 });
 ```
 
+## **6.5. Vitest `vi.mock()` Hoisting and External Variables**
+
+**Critical Rule**: `vi.mock()` calls are statically hoisted to the top of test files before any code executes, making them unable to reference regular module-scope variables. 
+
+**Problem:**
+```typescript
+// ❌ WRONG - External variable not visible to vi.mock during hoisting
+let externalState = { count: 0 };
+
+vi.mock("./myModule", () => ({
+  useMyState: () => externalState  // ❌ undefined at hoisting time
+}));
+```
+
+**Solution: Use `vi.hoisted()`:**
+```typescript
+// ✅ CORRECT - vi.hoisted() executes before hoisting, its return can be referenced in mocks
+const { externalState } = vi.hoisted(() => {
+  return {
+    externalState: { count: 0 }
+  };
+});
+
+vi.mock("./myModule", () => ({
+  useMyState: () => externalState  // ✅ defined before mock hoisting
+}));
+```
+
+**Key Pattern: For state that must be mutated in hooks:**
+```typescript
+// ✅ Use ref pattern for mutable external state
+const { stateRef } = vi.hoisted(() => ({
+  stateRef: { current: { data: null } }
+}));
+
+vi.mock("./myModule", () => ({
+  useMyState: () => stateRef.current
+}));
+
+describe("MyComponent", () => {
+  beforeEach(() => {
+    stateRef.current = { data: "updated" };  // Mutate via .current
+  });
+});
+```
+
+**localStorage in Tests:**
+- `frontend/test/common-setup.ts` provides a global localStorage shim that works across all tests
+- The shim automatically initializes on both `globalThis` and `window` (for happy-dom compatibility)
+- In tests, localStorage methods are always available—no need to guard them
+- Use localStorage directly: `localStorage.getItem()`, `localStorage.setItem()`, `localStorage.clear()`
+
+**References:**
+- [Vitest `vi.mock()` Documentation](https://vitest.dev/api/vi.html#vi-mock)
+- [Vitest `vi.hoisted()` Documentation](https://vitest.dev/api/vi.html#vi-hoisted)
+
 ## **7\. Additional Guidelines**
 - **Test Coverage:** Aim for comprehensive test coverage of critical components and user flows, but prioritize quality and maintainability over quantity.
 - **Connection to Backend:** When testing components that rely on backend data, use `msw` to mock API responses, ensuring tests are fast and do not depend on the availability of the backend. If you see errors like "Failed to fetch" or "Network error" in your tests, check your `msw` setup and ensure that all expected API calls are properly mocked. Also an message like `[MSW] Warning: intercepted a request without a matching request handler: GET http://localhost:3000/api/data` indicates that your component is making a request that `msw` does not have a handler for. To fix this, add a request handler in your `msw` setup file that matches the endpoint being called by your component.

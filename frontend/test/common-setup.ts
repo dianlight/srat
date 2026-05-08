@@ -144,9 +144,12 @@ if (!document.body) {
 	document.body = document.createElement("body");
 }
 
-if (!(globalThis as any).localStorage) {
+// Ensure localStorage is properly set up with all required methods
+// happy-dom creates localStorage, but we need to ensure all methods exist
+const localStorage = (globalThis as any).localStorage || {};
+if (!localStorage.getItem || typeof localStorage.getItem !== 'function') {
 	const store: Record<string, string> = {};
-	(globalThis as any).localStorage = {
+	const localStorageImpl = {
 		getItem: (key: string) => (key in store ? store[key] : null),
 		setItem: (key: string, value: string) => {
 			store[key] = String(value);
@@ -158,6 +161,10 @@ if (!(globalThis as any).localStorage) {
 			for (const key of Object.keys(store)) delete store[key];
 		},
 	};
+	(globalThis as any).localStorage = localStorageImpl;
+	if (typeof window !== "undefined") {
+		(window as any).localStorage = localStorageImpl;
+	}
 }
 
 if (typeof process !== "undefined") {

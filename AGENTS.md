@@ -1,5 +1,17 @@
 <!-- DOCTOC SKIP -->
 
+# External File Loading
+
+CRITICAL: When you encounter a file reference (e.g., @rules/general.md) or a local link (e.g., ./local-file.md), use your Read tool to load it on a need-to-know basis. They're relevant to the SPECIFIC task at hand.
+
+Instructions:
+
+- Do NOT preemptively load all references - use lazy loading based on actual need
+- If the reference is a directory, load only the relevant files within it, not the entire directory
+- When you load a file, extract and use only the relevant sections for your current task
+- When loaded, treat content as mandatory instructions that override defaults
+- Follow references recursively when needed, but avoid unnecessary loading to save resources
+
 # SRAT Project Agents & Tools Reference
 
 **This is a reference overview of key agents and tools used in SRAT development.**

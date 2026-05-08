@@ -7,27 +7,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getMswServer } from "/test/testing";
 import { createTestStore } from "/test/testing";
 
-if (!(globalThis as any).localStorage) {
-  const store: Record<string, string> = {};
-  (globalThis as any).localStorage = {
-    getItem: (key: string) => (key in store ? store[key] : null),
-    setItem: (key: string, value: string) => {
-      store[key] = String(value);
-    },
-    removeItem: (key: string) => {
-      delete store[key];
-    },
-    clear: () => {
-      for (const key of Object.keys(store)) delete store[key];
-    },
+const { toastErrorMock, wsStateRef } = vi.hoisted(() => {
+  const toastErrorMock = vi.fn((..._args: unknown[]) => undefined);
+  const wsStateRef = {
+    current: {
+      heartbeat: { alive: true },
+    } as Record<string, unknown>,
   };
-}
-
-const toastErrorMock = vi.fn((..._args: unknown[]) => undefined);
-
-let wsState: Record<string, unknown> = {
-  heartbeat: { alive: true },
-};
+  return { toastErrorMock, wsStateRef };
+});
 
 vi.mock("../store/wsApi", () => ({
     wsApi: {
@@ -48,7 +36,7 @@ vi.mock("../store/wsApi", () => ({
         next(action),
     },
     useGetServerEventsQuery: () => ({
-      data: wsState,
+      data: wsStateRef.current,
       isLoading: false,
       error: undefined,
     }),
@@ -108,10 +96,14 @@ describe("App command events", () => {
 
   beforeEach(async () => {
     vi.restoreAllMocks();
-    wsState = { heartbeat: { alive: true } };
+    wsStateRef.current = { heartbeat: { alive: true } };
     toastErrorMock.mockClear();
-    localStorage.clear();
-    sessionStorage.clear();
+    if (localStorage && typeof localStorage.clear === 'function') {
+      localStorage.clear();
+    }
+    if (sessionStorage && typeof sessionStorage.clear === 'function') {
+      sessionStorage.clear();
+    }
 
     const server = getMswServer();
     // NOTE: Use origin-agnostic (regex) handlers here on purpose. Tests run
@@ -149,7 +141,7 @@ describe("App command events", () => {
     const { App } = await import("../App");
     const store = await createTestStore();
 
-    wsState = {
+    wsStateRef.current = {
       heartbeat: { alive: true },
       command_output: {
         execution_id: "exec-1",
@@ -181,7 +173,7 @@ describe("App command events", () => {
       </Provider>,
     );
 
-    wsState = {
+    wsStateRef.current = {
       heartbeat: { alive: true },
       command_output: {
         execution_id: "exec-1c",
@@ -202,7 +194,7 @@ describe("App command events", () => {
       expect(toastErrorMock.mock.calls.length).toBe(0);
     });
 
-    wsState = {
+    wsStateRef.current = {
       heartbeat: { alive: true },
       command_terminated: {
         execution_id: "exec-1c",
@@ -229,7 +221,7 @@ describe("App command events", () => {
     const { App } = await import("../App");
     const store = await createTestStore();
 
-    wsState = {
+    wsStateRef.current = {
       heartbeat: { alive: true },
       command_output: {
         execution_id: "exec-1b",
@@ -263,7 +255,7 @@ describe("App command events", () => {
       </Provider>,
     );
 
-    wsState = {
+    wsStateRef.current = {
       heartbeat: { alive: true },
       command_started: {
         execution_id: "exec-2",
@@ -281,7 +273,7 @@ describe("App command events", () => {
       </Provider>,
     );
 
-    wsState = {
+    wsStateRef.current = {
       heartbeat: { alive: true },
       command_output: {
         execution_id: "exec-2",
@@ -310,7 +302,7 @@ describe("App command events", () => {
 
     await user.click(screen.getByRole("button", { name: "Open Output" }));
 
-    wsState = {
+    wsStateRef.current = {
       heartbeat: { alive: true },
       command_terminated: {
         execution_id: "exec-2",
@@ -422,7 +414,7 @@ describe("App command events", () => {
       </Provider>,
     );
 
-    wsState = {
+    wsStateRef.current = {
       heartbeat: { alive: true },
       command_output: {
         execution_id: "exec-backfill",
@@ -469,7 +461,7 @@ describe("App command events", () => {
     console.error = consoleErrorMock as typeof console.error;
 
     try {
-      wsState = {
+      wsStateRef.current = {
         heartbeat: { alive: true },
         command_output: {
           execution_id: "exec-3",

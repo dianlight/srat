@@ -2,6 +2,15 @@ import { delay, http, HttpResponse } from "msw";
 import { beforeEach, describe, expect, it } from "vitest";
 import { getMswServer } from "/test/testing";
 
+// Helper to safely access localStorage methods
+const safeLocalStorage = {
+    clear: () => {
+        if (localStorage && typeof localStorage.clear === 'function') {
+            localStorage.clear();
+        }
+    }
+};
+
 async function renderWizard(SetupWizardComponent: any, props: Record<string, unknown>) {
     const React = await import("react");
     const { renderWithTestStore } = await import("/test/testing");
@@ -10,20 +19,9 @@ async function renderWizard(SetupWizardComponent: any, props: Record<string, unk
     );
 }
 
-// LocalStorage mock for tests
-if (!(globalThis as any).localStorage) {
-    const _store: Record<string, string> = {};
-    (globalThis as any).localStorage = {
-        getItem: (k: string) => (_store.hasOwnProperty(k) ? _store[k] : null),
-        setItem: (k: string, v: string) => { _store[k] = String(v); },
-        removeItem: (k: string) => { delete _store[k]; },
-        clear: () => { for (const k of Object.keys(_store)) delete _store[k]; },
-    };
-}
-
 describe("SetupWizard", () => {
     beforeEach(() => {
-        localStorage.clear();
+        safeLocalStorage.clear();
     });
 
     it("can import the SetupWizard component and context utilities", async () => {

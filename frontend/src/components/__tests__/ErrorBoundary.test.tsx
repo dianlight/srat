@@ -1,21 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-// Required localStorage shim for testing environment
-if (!(globalThis as any).localStorage) {
-    const _store: Record<string, string> = {};
-    (globalThis as any).localStorage = {
-        getItem: (k: string) => (_store.hasOwnProperty(k) ? _store[k] : null),
-        setItem: (k: string, v: string) => { _store[k] = String(v); },
-        removeItem: (k: string) => { delete _store[k]; },
-        clear: () => { for (const k of Object.keys(_store)) delete _store[k]; },
-    };
-}
-
 describe("ErrorBoundary Component", () => {
     let cleanup: (() => void) | null = null;
 
     beforeEach(() => {
-        localStorage.clear();
+        if (localStorage && typeof localStorage.clear === 'function') {
+            localStorage.clear();
+        }
         // Reset any global state or mocks
         console.error = () => { };
     });

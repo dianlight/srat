@@ -3,7 +3,7 @@
 # [REFACTOR]: Migrate Frontend Test Runner from bun:test to Vitest
 
 **Target Repo:** `srat`
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 **Issue Link:** https://github.com/dianlight/srat/issues/614
 
 ## ⚠️ Compliance & Pre-reqs
@@ -90,10 +90,10 @@ Documentation updates:
 
 Verification:
 - [x] Task 21: Run `bunx vitest run --reporter=verbose 2>&1 | tail -40` — confirm all files pass, `Shares.test.tsx` is no longer skipped
-- [ ] Task 22: Run `bunx vitest run --coverage` — confirm `frontend/coverage/lcov.info` is generated
+- [x] Task 22: Run `bunx vitest run --coverage` — confirm `frontend/coverage/lcov.info` is generated
 - [x] Task 23: Run `mise run //frontend:lint` — confirm zero new errors
 - [x] Task 24: Run `tsgo --noEmit` — confirm no TypeScript errors introduced
-- [ ] Task 25: If prepare-refactor was run, complete the post-refactor verification phase in `docs/refactors/migrate-frontend-test-runner-vitest.md`
+- [x] Task 25: If prepare-refactor was run, complete the post-refactor verification phase in `docs/refactors/migrate-frontend-test-runner-vitest.md`
 
 ## 🧠 Implementation Notes
 

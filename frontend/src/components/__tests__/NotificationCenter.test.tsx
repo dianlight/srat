@@ -5,33 +5,27 @@ import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithTestStore } from "/test/testing";
 
-const mockNotificationCenterState = {
-    notifications: [] as Array<any>,
-    unreadCount: 0,
-    clear: () => { },
-    markAllAsRead: () => { },
-    remove: () => { },
-    markAsRead: () => { },
-};
+const { mockNotificationCenterState } = vi.hoisted(() => {
+    const mockNotificationCenterState = {
+        notifications: [] as Array<any>,
+        unreadCount: 0,
+        clear: () => { },
+        markAllAsRead: () => { },
+        remove: () => { },
+        markAsRead: () => { },
+    };
+    return { mockNotificationCenterState };
+});
 
 vi.mock("react-toastify/addons/use-notification-center", () => ({
     useNotificationCenter: () => mockNotificationCenterState,
 }));
 
-// Required localStorage shim for testing environment
-if (!(globalThis as any).localStorage) {
-    const _store: Record<string, string> = {};
-    (globalThis as any).localStorage = {
-        getItem: (k: string) => (_store.hasOwnProperty(k) ? _store[k] : null),
-        setItem: (k: string, v: string) => { _store[k] = String(v); },
-        removeItem: (k: string) => { delete _store[k]; },
-        clear: () => { for (const k of Object.keys(_store)) delete _store[k]; },
-    };
-}
-
 describe("NotificationCenter Component", () => {
     beforeEach(() => {
-        localStorage.clear();
+        if (localStorage && typeof localStorage.clear === 'function') {
+            localStorage.clear();
+        }
         mockNotificationCenterState.notifications = [];
         mockNotificationCenterState.unreadCount = 0;
         // Clear DOM before each test

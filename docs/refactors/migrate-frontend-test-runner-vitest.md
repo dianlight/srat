@@ -46,15 +46,15 @@ These 8 failures exist on `main` before any migration changes. They must remain 
 
 | Metric                         | Expected                | Actual |
 | ------------------------------ | ----------------------- | ------ |
-| Test files                     | ≥ 84                    | 86 passed, 1 skipped |
-| Tests passed                   | ≥ 674                   | 673 passed, 8 todo |
+| Test files                     | ≥ 84                    | 85 passed, 1 skipped |
+| Tests passed                   | ≥ 674                   | 662 passed, 8 todo (after intentional removal of obsolete `App.test.tsx`) |
 | Tests failed                   | ≤ 8 (same pre-existing) | 0 |
 | `Shares.test.tsx` skip         | removed                 | removed |
 | `"bun:test"` imports remaining | 0                       | 0 verified in `frontend/src` and `frontend/test` imports |
-| Wall-clock time                | < 84 s                  | ~641 s (`bunx vitest run`, forks pool, Alpine dev container) |
-| Coverage lcov generated        | yes                     | not yet run |
-| Lint errors                    | 0 new                   | pending; targeted Biome paths are ignored by config |
-| TypeScript errors              | 0 new                   | blocked by pre-existing unrelated errors in `src/pages/shares/__tests__/ShareActions.test.tsx` and `src/pages/shares/components/__tests__/SharesTreeView.test.tsx` |
+| Wall-clock time                | < 84 s                  | ~1090 s with `--coverage` in Alpine dev container (`~641 s` without coverage) |
+| Coverage lcov generated        | yes                     | yes (`frontend/coverage/lcov.info`) |
+| Lint errors                    | 0 new                   | 0 new (`mise run //frontend:lint`) |
+| TypeScript errors              | 0 new                   | 0 new (`bun tsgo --noEmit`) |
 
 ### Targeted verification completed
 
@@ -90,6 +90,4 @@ Observed result:
 
 Remaining verification still required:
 
-- `bunx vitest run --coverage`
-- frontend lint confirmation (targeted Biome invocation reported the touched test files are ignored by config)
-- `tsgo --noEmit` after fixing the pre-existing `shares` test type errors noted above
+- none

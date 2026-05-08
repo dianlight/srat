@@ -53,16 +53,18 @@ vi.mock("../../hooks/useIssueTemplate", () => ({
     useIssueTemplate: () => ({ isAvailable: true }),
 }));
 
-// Required localStorage shim for testing environment
-if (!(globalThis as any).localStorage) {
-    const _store: Record<string, string> = {};
-    (globalThis as any).localStorage = {
-        getItem: (k: string) => (_store.hasOwnProperty(k) ? _store[k] : null),
-        setItem: (k: string, v: string) => { _store[k] = String(v); },
-        removeItem: (k: string) => { delete _store[k]; },
-        clear: () => { for (const k of Object.keys(_store)) delete _store[k]; },
-    };
-}
+// Helper to safely access localStorage methods
+const safeLocalStorage = {
+    setItem: (key: string, value: string) => {
+        localStorage.setItem(key, value);
+    },
+    getItem: (key: string) => {
+        return localStorage.getItem(key);
+    },
+    clear: () => {
+        localStorage.clear();
+    }
+};
 
 describe("NavBar Component", () => {
 it("renders NavBar with AppBar and basic elements", async () => {
@@ -201,7 +203,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
             await user.click(secondTab);
 
             // Check that localStorage is updated
-            const storedTab = localStorage.getItem("srat_tab");
+            const storedTab = safeLocalStorage.getItem("srat_tab");
             expect(storedTab).toBe("1");
         }
     });
@@ -399,7 +401,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
         const { Provider } = await import("react-redux");
 
         // Set a stored tab index
-        localStorage.setItem("srat_tab", "1");
+        safeLocalStorage.setItem("srat_tab", "1");
 
         const theme = createTheme();
         const store = await createTestStore();
@@ -430,7 +432,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
         expect(container).toBeTruthy();
 
         // Check that localStorage value persists
-        expect(localStorage.getItem("srat_tab")).toBe("1");
+        expect(safeLocalStorage.getItem("srat_tab")).toBe("1");
     });
 
     it("handles error prop correctly", async () => {
@@ -693,7 +695,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
                 await user.click(secondMenuItem);
 
                 // Check localStorage was updated
-                const storedTab = localStorage.getItem("srat_tab");
+                const storedTab = safeLocalStorage.getItem("srat_tab");
                 expect(storedTab).toBeTruthy();
             }
         }
@@ -927,7 +929,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
         const { Provider } = await import("react-redux");
 
         // Set an invalid tab index
-        localStorage.setItem("srat_tab", "999");
+        safeLocalStorage.setItem("srat_tab", "999");
 
         const theme = createTheme();
         const store = await createTestStore();
@@ -956,7 +958,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
 
         // Should default to 0 if stored index is invalid
         expect(container).toBeTruthy();
-        const storedTab = localStorage.getItem("srat_tab");
+        const storedTab = safeLocalStorage.getItem("srat_tab");
         expect(parseInt(storedTab || "0")).toBeGreaterThanOrEqual(0);
     });
 
@@ -1084,7 +1086,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
         // NavBar.handleTourToggle logic (mirrors src/components/NavBar.tsx handleTourToggle):
         //   const nextIsOpen = !isTourOpen;
         //   setTourOpen(nextIsOpen);
-        //   if (!nextIsOpen) localStorage.setItem("srat_tour_seen", "true");
+        //   if (!nextIsOpen) safeLocalStorage.setItem("srat_tour_seen", "true");
         //
         // NavBar returns null when useColorScheme().mode is undefined in the test environment,
         // so we test the handleTourToggle behaviour directly without full NavBar rendering.
@@ -1095,19 +1097,19 @@ it("renders NavBar with AppBar and basic elements", async () => {
             const nextIsOpen = !isOpen;
             setIsOpen(nextIsOpen);
             if (!nextIsOpen) {
-                localStorage.setItem("srat_tour_seen", "true");
+                safeLocalStorage.setItem("srat_tour_seen", "true");
             }
         };
 
         // Tour is open → toggling should close it and persist the flag
         handleTourToggle();
 
-        expect(localStorage.getItem("srat_tour_seen")).toBe("true");
+        expect(safeLocalStorage.getItem("srat_tour_seen")).toBe("true");
         expect(isOpen).toBe(false);
 
         // Verify opening the tour again does NOT reset the flag
         handleTourToggle();
-        expect(localStorage.getItem("srat_tour_seen")).toBe("true");
+        expect(safeLocalStorage.getItem("srat_tour_seen")).toBe("true");
         expect(isOpen).toBe(true);
     });
 });

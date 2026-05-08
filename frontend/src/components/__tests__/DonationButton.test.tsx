@@ -2,7 +2,6 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// Mock the GitHub API to avoid actual network requests
 vi.mock("../../store/githubApi", () => ({
 	useGetFundingConfigQuery: () => ({
 		data: [
@@ -29,23 +28,6 @@ vi.mock("../../store/githubApi", () => ({
 	},
 }));
 
-// Required localStorage shim for testing environment
-if (!(globalThis as any).localStorage) {
-	const _store: Record<string, string> = {};
-	(globalThis as any).localStorage = {
-		getItem: (k: string) => (_store.hasOwnProperty(k) ? _store[k] : null),
-		setItem: (k: string, v: string) => {
-			_store[k] = String(v);
-		},
-		removeItem: (k: string) => {
-			delete _store[k];
-		},
-		clear: () => {
-			for (const k of Object.keys(_store)) delete _store[k];
-		},
-	};
-}
-
 describe("DonationButton Component", () => {
 	async function renderDonationButton() {
 		const React = await import("react");
@@ -69,7 +51,9 @@ describe("DonationButton Component", () => {
 	}
 
 	beforeEach(() => {
-		localStorage.clear();
+		if (localStorage && typeof localStorage.clear === 'function') {
+			localStorage.clear();
+		}
 		// Reset window.open mock
 		(window as any).open = () => null;
 	});
