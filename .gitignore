@@ -37,3 +37,4 @@ __pycache__/
 .ruff_cache/
 .pytest_cache/
 custom_components/.coverage
+.opencode

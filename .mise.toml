@@ -34,6 +34,7 @@ shfmt = "3.13.1"
 "npm:@typescript/native-preview" = "7.0.0-dev.20260501.1"
 gh = "latest"
 hk = "1.43.0"
+opencode = "latest"
 #lychee = "0.23.0"
 
 

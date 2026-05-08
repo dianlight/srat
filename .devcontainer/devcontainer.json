@@ -120,7 +120,8 @@
         "chrischinchilla.vale-vscode",
         "HidenobuNagai.nvidia-nim-provider",
         "vitest.explorer",
-        "ms-vscode.vscode-chat-customizations-evaluations"
+        "ms-vscode.vscode-chat-customizations-evaluations",
+        "sst-dev.opencode"
       ],
       "mcp": {
         "servers": {
