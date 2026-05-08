@@ -76,7 +76,8 @@
         ".vale/**",
         ".github/**",
         "docs/tasks/**",
-        "docs/refactors/**"
+        "docs/refactors/**",
+        "custom_components/.venv/**"
     ],
     "gitignore": true
 }

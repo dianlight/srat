@@ -118,7 +118,9 @@
         "hverlin.mise-vscode",
         "tamasfe.even-better-toml",
         "chrischinchilla.vale-vscode",
-        "HidenobuNagai.nvidia-nim-provider"
+        "HidenobuNagai.nvidia-nim-provider",
+        "vitest.explorer",
+        "ms-vscode.vscode-chat-customizations-evaluations"
       ],
       "mcp": {
         "servers": {

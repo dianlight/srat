@@ -7,6 +7,7 @@ config_roots = ["frontend", "backend", "custom_components"]
 npm.package_manager = "bun"
 npm.bun = true
 env_shell_expand = true
+libc = "musl"
 
 [settings.python]
 compile = false
@@ -32,23 +33,25 @@ shfmt = "3.13.1"
 "go:golang.org/x/tools/gopls" = "latest"
 "npm:@typescript/native-preview" = "7.0.0-dev.20260501.1"
 gh = "latest"
+hk = "1.43.0"
+#lychee = "0.23.0"
 
 
-[tools."http:hk"]
-version = "1.43.0"
-platforms.linux-arm64.url = "https://github.com/jdx/hk/releases/download/v{{version}}/hk-aarch64-unknown-linux-musl.tar.gz"
-platforms.linux-arm64.checksum = "sha256:23fc837d20d42cac85b9575669fd65f0153c4ee3519c4c3715a65c92721009cb"
-platforms.linux-x64.url = "https://github.com/jdx/hk/releases/download/v{{version}}/hk-x86_64-unknown-linux-musl.tar.gz"
-platforms.macos-arm64.url = "https://github.com/jdx/hk/releases/download/v{{version}}/hk-aarch64-apple-darwin.tar.gz"
-platforms.windows-x64.url = "https://github.com/jdx/hk/releases/download/v{{version}}/hk-x86_64-pc-windows-msvc.zip"
-install_path = "hk"
+#[tools."http:hk"]
+#version = "1.43.0"
+#platforms.linux-arm64.url = "https://github.com/jdx/hk/releases/download/v{{version}}/hk-aarch64-unknown-linux-musl.tar.gz"
+#platforms.linux-arm64.checksum = "sha256:23fc837d20d42cac85b9575669fd65f0153c4ee3519c4c3715a65c92721009cb"
+#platforms.linux-x64.url = "https://github.com/jdx/hk/releases/download/v{{version}}/hk-x86_64-unknown-linux-musl.tar.gz"
+#platforms.macos-arm64.url = "https://github.com/jdx/hk/releases/download/v{{version}}/hk-aarch64-apple-darwin.tar.gz"
+#platforms.windows-x64.url = "https://github.com/jdx/hk/releases/download/v{{version}}/hk-x86_64-pc-windows-msvc.zip"
+#install_path = "hk"
 
-[tools."http:lychee"]
-platforms.linux-x64.url = "https://github.com/lycheeverse/lychee/releases/download/lychee-v{{version}}/lychee-x86_64-unknown-linux-gnu.tar.gz"
-platforms.linux-arm64.url = "https://github.com/lycheeverse/lychee/releases/download/lychee-v{{version}}/lychee-aarch64-unknown-linux-musl.tar.gz"
-platforms.macos-arm64.url = "https://github.com/lycheeverse/lychee/releases/download/lychee-v{{version}}/lychee-arm64-macos.tar.gz"
-platforms.windows-x64.url = "https://github.com/lycheeverse/lychee/releases/download/lychee-v{{version}}/lychee-x86_64-windows.exe"
-version = "0.23.0"
+#[tools."http:lychee"]
+#platforms.linux-x64.url = "https://github.com/lycheeverse/lychee/releases/download/lychee-v{{version}}/lychee-x86_64-unknown-linux-gnu.tar.gz"
+#platforms.linux-arm64.url = "https://github.com/lycheeverse/lychee/releases/download/lychee-v{{version}}/lychee-aarch64-unknown-linux-musl.tar.gz"
+#platforms.macos-arm64.url = "https://github.com/lycheeverse/lychee/releases/download/lychee-v{{version}}/lychee-arm64-macos.tar.gz"
+#platforms.windows-x64.url = "https://github.com/lycheeverse/lychee/releases/download/lychee-v{{version}}/lychee-x86_64-windows.exe"
+#version = "0.23.0"
 
 
 [env]
