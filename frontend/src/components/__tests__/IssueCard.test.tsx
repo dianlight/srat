@@ -1,20 +1,26 @@
 import { ThemeProvider, createTheme } from "@mui/material/styles";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
 import { beforeEach, describe, expect, it } from "vitest";
 import IssueCard from "../IssueCard";
+import { renderWithTestStore } from "/test/testing";
 
-const renderIssueCard = (issue: Record<string, unknown>, props: Record<string, unknown> = {}) => {
+const renderIssueCard = async (
+    issue: Record<string, unknown>,
+    props: Record<string, unknown> = {}
+) => {
     const theme = createTheme();
 
-    return render(
+    const result = await renderWithTestStore(
         React.createElement(
             ThemeProvider,
             { theme },
             React.createElement(IssueCard as any, { issue, ...props })
         )
     );
+
+    return { ...result, screen };
 };
 
 describe("IssueCard Component", () => {
@@ -22,8 +28,8 @@ describe("IssueCard Component", () => {
         localStorage.clear();
     });
 
-    it("renders issue card with basic information", () => {
-        renderIssueCard({
+    it("renders issue card with basic information", async () => {
+        await renderIssueCard({
             id: 1,
             title: "Test Issue Title",
             description: "This is a test issue description",
@@ -37,8 +43,8 @@ describe("IssueCard Component", () => {
         expect(screen.getByText("Error")).toBeTruthy();
     });
 
-    it("renders other severity labels", () => {
-        renderIssueCard({
+    it("renders other severity labels", async () => {
+        await renderIssueCard({
             id: 2,
             title: "Warning Issue",
             description: "This is a warning",
@@ -49,8 +55,8 @@ describe("IssueCard Component", () => {
         expect(screen.getByText("Warning")).toBeTruthy();
     });
 
-    it("shows resolve button when handler is provided", () => {
-        renderIssueCard(
+    it("shows resolve button when handler is provided", async () => {
+        await renderIssueCard(
             {
                 id: 3,
                 title: "Issue with Resolve",
@@ -64,8 +70,8 @@ describe("IssueCard Component", () => {
         expect(screen.getByRole("button", { name: /resolve/i })).toBeTruthy();
     });
 
-    it("shows ignored state when requested", () => {
-        renderIssueCard(
+    it("shows ignored state when requested", async () => {
+        await renderIssueCard(
             {
                 id: 4,
                 title: "Ignored Issue Visible",
@@ -80,10 +86,10 @@ describe("IssueCard Component", () => {
         expect(screen.getByText("Ignored")).toBeTruthy();
     });
 
-    it("hides ignored issues when showIgnored is false", () => {
+    it("hides ignored issues when showIgnored is false", async () => {
         localStorage.setItem("srat_ignored_issues", JSON.stringify(["test_ignored_issue_9"]));
 
-        const { container } = renderIssueCard(
+        const { container } = await renderIssueCard(
             {
                 id: 9,
                 problem_key: "test_ignored_issue_9",
@@ -103,7 +109,7 @@ describe("IssueCard Component", () => {
         const user = userEvent.setup();
         let resolved = false;
 
-        renderIssueCard(
+        await renderIssueCard(
             {
                 id: 7,
                 title: "Resolvable Issue",

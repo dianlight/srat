@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 // Mock react-syntax-highlighter to avoid refractor/lib/core dependency issues
 vi.mock("react-syntax-highlighter", () => ({
@@ -65,18 +65,7 @@ if (!(globalThis as any).localStorage) {
 }
 
 describe("NavBar Component", () => {
-    beforeEach(() => {
-        localStorage.clear();
-        vi.restoreAllMocks();
-        // Reset any mocks
-        (window as any).open = () => null;
-    });
-
-    afterEach(() => {
-        vi.restoreAllMocks();
-    });
-
-    it("renders NavBar with AppBar and basic elements", async () => {
+it("renders NavBar with AppBar and basic elements", async () => {
         const React = await import("react");
         const { render } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");

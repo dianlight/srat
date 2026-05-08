@@ -2,6 +2,14 @@ import { delay, http, HttpResponse } from "msw";
 import { beforeEach, describe, expect, it } from "vitest";
 import { getMswServer } from "/test/testing";
 
+async function renderWizard(SetupWizardComponent: any, props: Record<string, unknown>) {
+    const React = await import("react");
+    const { renderWithTestStore } = await import("/test/testing");
+    return renderWithTestStore(
+        React.createElement(SetupWizardComponent as any, props as any)
+    );
+}
+
 // LocalStorage mock for tests
 if (!(globalThis as any).localStorage) {
     const _store: Record<string, string> = {};
@@ -117,20 +125,11 @@ describe("SetupWizard", () => {
             ),
         );
 
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { store } = await import("../../../store/store");
+        const { screen } = await import("@testing-library/react");
         // @ts-expect-error - query suffix ensures isolated module instance for test
         const { SetupWizard } = await import("../SetupWizard?wizard-test-labels");
 
-        render(
-            React.createElement(
-                Provider as any,
-                { store },
-                React.createElement(SetupWizard as any, { open: true, onClose: () => {} })
-            )
-        );
+        await renderWizard(SetupWizard, { open: true, onClose: () => {} });
 
         expect(await screen.findByText("Security")).toBeTruthy();
         expect(screen.getByText("Network")).toBeTruthy();
@@ -177,23 +176,14 @@ describe("SetupWizard", () => {
             }),
         );
 
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { store } = await import("../../../store/store");
+        const { screen } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         // @ts-expect-error - query suffix ensures isolated module instance for test
         const { SetupWizard } = await import("../SetupWizard?wizard-test-skip");
 
         const user = userEvent.setup();
         let closeCalled = 0;
-        render(
-            React.createElement(
-                Provider as any,
-                { store },
-                React.createElement(SetupWizard as any, { open: true, onClose: () => { closeCalled += 1; } })
-            )
-        );
+        await renderWizard(SetupWizard, { open: true, onClose: () => { closeCalled += 1; } });
 
         const skipBtn = await screen.findByRole("button", { name: /skip setup/i });
         await user.click(skipBtn);
@@ -205,20 +195,11 @@ describe("SetupWizard", () => {
     });
 
     it("accepts open=false and does not render step labels", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { store } = await import("../../../store/store");
+        const { screen } = await import("@testing-library/react");
         // @ts-expect-error - query suffix ensures isolated module instance for test
         const { SetupWizard } = await import("../SetupWizard?wizard-test-closed");
 
-        render(
-            React.createElement(
-                Provider as any,
-                { store },
-                React.createElement(SetupWizard as any, { open: false, onClose: () => {} })
-            )
-        );
+        await renderWizard(SetupWizard, { open: false, onClose: () => {} });
 
         // With open=false the dialog content is not mounted
         expect(screen.queryByText("First Share")).toBeNull();
@@ -241,24 +222,15 @@ describe("SetupWizard", () => {
             http.get("/api/telemetry/internet/connection", () => HttpResponse.json(false)),
         );
 
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { store } = await import("../../../store/store");
+        const { screen } = await import("@testing-library/react");
         // @ts-expect-error - query suffix ensures isolated module instance for test
         const { SetupWizard } = await import("../SetupWizard?wizard-test-force-open");
 
-        render(
-            React.createElement(
-                Provider as any,
-                { store },
-                React.createElement(SetupWizard as any, {
-                    open: true,
-                    onClose: () => {},
-                    allowSkip: false,
-                })
-            )
-        );
+        await renderWizard(SetupWizard, {
+            open: true,
+            onClose: () => {},
+            allowSkip: false,
+        });
 
         expect(await screen.findByText("Security")).toBeTruthy();
         expect(screen.queryByRole("button", { name: /skip setup/i })).toBeNull();
@@ -334,10 +306,7 @@ describe("SetupWizard", () => {
             }),
         );
 
-        const React = await import("react");
-        const { render, screen, waitFor } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { store } = await import("../../../store/store");
+        const { screen, waitFor } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         // @ts-expect-error - query suffix ensures isolated module instance for test
         const { SetupWizard } = await import("../SetupWizard?wizard-test-summary-clean");
@@ -345,18 +314,12 @@ describe("SetupWizard", () => {
         const user = userEvent.setup();
         let closeCalled = 0;
 
-        render(
-            React.createElement(
-                Provider as any,
-                { store },
-                React.createElement(SetupWizard as any, {
-                    open: true,
-                    onClose: () => {
-                        closeCalled += 1;
-                    },
-                })
-            )
-        );
+        await renderWizard(SetupWizard, {
+            open: true,
+            onClose: () => {
+                closeCalled += 1;
+            },
+        });
 
         // Wait for API data to populate the Security form before clicking Next.
         // The form resets asynchronously via useEffect after RTK Query loads.

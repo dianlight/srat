@@ -1,13 +1,9 @@
-import { cleanup } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { screen } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
-import { withTestHandlers } from "/test/testing";
+import { describe, expect, it, vi } from "vitest";
+import { renderWithTestStore, withTestHandlers } from "/test/testing";
 
 const putSettingsUrl = /.*\/api\/settings(?:\?.*)?$/;
-
-afterEach(() => {
-	cleanup();
-});
 
 async function renderTelemetryModal(
 	props: {
@@ -17,44 +13,38 @@ async function renderTelemetryModal(
 	} = {},
 ) {
 	const React = await import("react");
-	const { render } = await import("@testing-library/react");
-	const { Provider } = await import("react-redux");
-	const { createTestStore } = await import("/test/testing");
 	const { sratApi } = await import("../../store/sratApi");
 	const TelemetryModal = (await import("../TelemetryModal")).default;
 
-	const store = await createTestStore();
-
-	// Seed RTK Query cache for GET endpoints so tests don't depend on MSW timing
-	(store.dispatch as any)(
-		sratApi.util.upsertQueryData(
-			"getApiTelemetryInternetConnection",
-			undefined,
-			props.hasInternet ?? true,
-		),
-	);
-	(store.dispatch as any)(
-		sratApi.util.upsertQueryData("getApiSettings", undefined, {
-			telemetry_mode: props.telemetryMode ?? "all",
-			hostname: "test-host",
-		} as any),
-	);
-
-	return render(
-		React.createElement(Provider, {
-			store,
-			children: React.createElement(TelemetryModal as any, {
-				open: true,
-				onClose: props.onClose ?? (() => {}),
-			}),
+	const result = await renderWithTestStore(
+		React.createElement(TelemetryModal as any, {
+			open: true,
+			onClose: props.onClose ?? (() => {}),
 		}),
+		{
+			seedStore: (store) => {
+				(store.dispatch as any)(
+					sratApi.util.upsertQueryData(
+						"getApiTelemetryInternetConnection",
+						undefined,
+						props.hasInternet ?? true,
+					),
+				);
+				(store.dispatch as any)(
+					sratApi.util.upsertQueryData("getApiSettings", undefined, {
+						telemetry_mode: props.telemetryMode ?? "all",
+						hostname: "test-host",
+					} as any),
+				);
+			},
+		},
 	);
+
+	return { ...result, screen };
 }
 
 describe("TelemetryModal Component", () => {
 	it("renders dialog when internet connection is available", async () => {
-		const { screen } = await import("@testing-library/react");
-
 		await renderTelemetryModal();
 		expect(
 			await screen.findByRole("heading", {
@@ -64,16 +54,12 @@ describe("TelemetryModal Component", () => {
 	});
 
 	it("renders all three radio options", async () => {
-		const { screen } = await import("@testing-library/react");
-
 		await renderTelemetryModal();
 		const radios = await screen.findAllByRole("radio");
 		expect(radios.length).toBe(3);
 	});
 
 	it("renders Continue button", async () => {
-		const { screen } = await import("@testing-library/react");
-
 		await renderTelemetryModal();
 		const button = await screen.findByRole("button", {
 			name: /continue/i,
@@ -82,7 +68,6 @@ describe("TelemetryModal Component", () => {
 	});
 
 	it("calls onClose after successful submission", async () => {
-		const { screen } = await import("@testing-library/react");
 		const userEvent = (await import("@testing-library/user-event")).default;
 		const user = userEvent.setup();
 		const onClose = vi.fn(() => {});
