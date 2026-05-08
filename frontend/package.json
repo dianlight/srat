@@ -33,7 +33,7 @@
     "@vitest/browser-playwright": "^4.1.5",
     "@vitest/coverage-v8": "^4.1.5",
     "fastify-plugin": "5.1.0",
-    "msw": "2.14.2",
+    "msw": "2.14.3",
     "msw-auto-mock": "0.32.1",
     "vitest": "^4.1.5",
     "vitest-browser-react": "^2.2.0"
