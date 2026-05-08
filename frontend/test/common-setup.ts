@@ -15,7 +15,7 @@ if (!(globalThis as any).__TEST__) {
 
 if (!(globalThis as any).Bun) {
 	(globalThis as any).Bun = {
-		spawnSync: () => ({ stdout: Buffer.from("test-commit-hash") }),
+		spawnSync: () => ({ stdout: "test-commit-hash" }),
 	};
 }
 

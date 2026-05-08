@@ -1,11 +1,11 @@
+import React from "react";
+import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { TourEvents, TourEventTypes } from "../../../utils/TourEvents";
+import { UsersSteps } from "../UsersSteps";
 
 describe("Users tour steps", () => {
-    it("lists user onboarding steps and keeps step 3 aligned with edit actions", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { UsersSteps } = await import("../UsersSteps");
-        const { TourEvents, TourEventTypes } = await import("../../../utils/TourEvents");
+    it("lists user onboarding steps and keeps step 3 aligned with edit actions", () => {
 
         expect(Array.isArray(UsersSteps)).toBe(true);
         expect(UsersSteps.length).toBeGreaterThan(0);

@@ -249,5 +249,8 @@
 	"chat.editing.autoAcceptDelay": 100,
 	"todo-tree.general.automaticGitRefreshInterval": 60,
 	"todo-tree.general.debug": false,
-	"todo-tree.general.tagGroups": {}
+	"todo-tree.general.tagGroups": {},
+	"json.schemaDownload.trustedDomains": {
+		"https://opencode.ai/": true
+	}
 }

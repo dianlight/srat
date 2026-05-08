@@ -62,7 +62,6 @@
     "filesize": "^11.0.17",
     "humanize-duration": "^3.33.2",
     "js-yaml": "^4.1.1",
-    "maskify-ts": "^4.0.0",
     "material-ui-confirm": "^4.0.0",
     "mui-chips-input": "^9.0.0",
     "normalize-url": "^9.0.0",

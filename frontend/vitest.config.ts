@@ -14,8 +14,8 @@ export default defineConfig({
         // "forks" = one subprocess per file → strongest isolation for flaky
         // module/global state in the dev container. Slower, but more reliable
         // than thread workers for the migrated suite.
-        pool: "forks",
-        fileParallelism: false,
+        pool: "threads",
+        fileParallelism: true,
         testTimeout: 20000,
         hookTimeout: 20000,
         bail: 0,

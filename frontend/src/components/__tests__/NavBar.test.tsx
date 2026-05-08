@@ -1,4 +1,13 @@
+import { ThemeProvider, createTheme } from "@mui/material/styles";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import React from "react";
+import { Provider } from "react-redux";
+import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
+import { TabIDs } from "../../store/locationState";
+import { NavBar } from "../NavBar";
+import { createTestStore } from "/test/testing";
 
 // Mock react-syntax-highlighter to avoid refractor/lib/core dependency issues
 vi.mock("react-syntax-highlighter", () => ({
@@ -68,13 +77,9 @@ const safeLocalStorage = {
 
 describe("NavBar Component", () => {
 it("renders NavBar with AppBar and basic elements", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { MemoryRouter } = await import("react-router");
-        const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("/test/testing");
-        const { Provider } = await import("react-redux");
+
+
+
 
         const theme = createTheme();
         const store = await createTestStore();
@@ -109,14 +114,10 @@ it("renders NavBar with AppBar and basic elements", async () => {
     });
 
     it("renders logo with hover functionality", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const userEvent = (await import("@testing-library/user-event")).default;
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { MemoryRouter } = await import("react-router");
-        const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("/test/testing");
-        const { Provider } = await import("react-redux");
+
+
+
+
 
         const theme = createTheme();
         const store = await createTestStore();
@@ -160,16 +161,12 @@ it("renders NavBar with AppBar and basic elements", async () => {
     });
 
     it("handles tab switching and localStorage persistence", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const userEvent = (await import("@testing-library/user-event")).default;
+
+
+
         const user = userEvent.setup();
 
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { MemoryRouter } = await import("react-router");
-        const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("/test/testing");
-        const { Provider } = await import("react-redux");
+
 
         const theme = createTheme();
         const store = await createTestStore();
@@ -209,13 +206,9 @@ it("renders NavBar with AppBar and basic elements", async () => {
     });
 
     it("renders mobile menu when screen is small", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { MemoryRouter } = await import("react-router");
-        const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("/test/testing");
-        const { Provider } = await import("react-redux");
+
+
+
 
         const theme = createTheme();
         const store = await createTestStore();
@@ -248,16 +241,12 @@ it("renders NavBar with AppBar and basic elements", async () => {
     });
 
     it("renders theme switch button and handles mode switching", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const userEvent = (await import("@testing-library/user-event")).default;
+
+
+
         const user = userEvent.setup();
 
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { MemoryRouter } = await import("react-router");
-        const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("/test/testing");
-        const { Provider } = await import("react-redux");
+
 
         const theme = createTheme();
         const store = await createTestStore();
@@ -298,13 +287,9 @@ it("renders NavBar with AppBar and basic elements", async () => {
     });
 
     it("renders help/tour button", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { MemoryRouter } = await import("react-router");
-        const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("/test/testing");
-        const { Provider } = await import("react-redux");
+
+
+
 
         const theme = createTheme();
         const store = await createTestStore();
@@ -336,15 +321,11 @@ it("renders NavBar with AppBar and basic elements", async () => {
     });
 
     it("renders GitHub support button", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const userEvent = (await import("@testing-library/user-event")).default;
+
+
+
         const user = userEvent.setup();
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { MemoryRouter } = await import("react-router");
-        const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("/test/testing");
-        const { Provider } = await import("react-redux");
+
 
         // Mock window.open
         /*
@@ -392,13 +373,9 @@ it("renders NavBar with AppBar and basic elements", async () => {
     });
 
     it("handles localStorage tab restoration", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { MemoryRouter } = await import("react-router");
-        const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("/test/testing");
-        const { Provider } = await import("react-redux");
+
+
+
 
         // Set a stored tab index
         safeLocalStorage.setItem("srat_tab", "1");
@@ -436,13 +413,9 @@ it("renders NavBar with AppBar and basic elements", async () => {
     });
 
     it("handles error prop correctly", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { MemoryRouter } = await import("react-router");
-        const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("/test/testing");
-        const { Provider } = await import("react-redux");
+
+
+
 
         const theme = createTheme();
         const store = await createTestStore();
@@ -473,13 +446,9 @@ it("renders NavBar with AppBar and basic elements", async () => {
     });
 
     it("renders tab panels with ErrorBoundary wrapping", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { MemoryRouter } = await import("react-router");
-        const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("/test/testing");
-        const { Provider } = await import("react-redux");
+
+
+
 
         const theme = createTheme();
         const store = await createTestStore();
@@ -512,13 +481,9 @@ it("renders NavBar with AppBar and basic elements", async () => {
     });
 
     it("handles development environment indicators", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { MemoryRouter } = await import("react-router");
-        const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("/test/testing");
-        const { Provider } = await import("react-redux");
+
+
+
 
         const theme = createTheme();
         const store = await createTestStore();
@@ -550,13 +515,9 @@ it("renders NavBar with AppBar and basic elements", async () => {
     });
 
     it("handles NotificationCenter rendering", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { MemoryRouter } = await import("react-router");
-        const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("/test/testing");
-        const { Provider } = await import("react-redux");
+
+
+
 
         const theme = createTheme();
         const store = await createTestStore();
@@ -588,16 +549,12 @@ it("renders NavBar with AppBar and basic elements", async () => {
     });
 
     it("handles mobile menu open and close", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const userEvent = (await import("@testing-library/user-event")).default;
+
+
+
         const user = userEvent.setup();
 
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { MemoryRouter } = await import("react-router");
-        const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("/test/testing");
-        const { Provider } = await import("react-redux");
+
 
         const theme = createTheme();
         const store = await createTestStore();
@@ -646,16 +603,12 @@ it("renders NavBar with AppBar and basic elements", async () => {
     });
 
     it("handles menu item click and updates tab", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const userEvent = (await import("@testing-library/user-event")).default;
+
+
+
         const user = userEvent.setup();
 
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { MemoryRouter } = await import("react-router");
-        const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("/test/testing");
-        const { Provider } = await import("react-redux");
+
 
         const theme = createTheme();
         const store = await createTestStore();
@@ -704,13 +657,9 @@ it("renders NavBar with AppBar and basic elements", async () => {
     });
 
     it("renders secure mode icons correctly", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { MemoryRouter } = await import("react-router");
-        const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("/test/testing");
-        const { Provider } = await import("react-redux");
+
+
+
 
         const theme = createTheme();
         const store = await createTestStore();
@@ -742,13 +691,9 @@ it("renders NavBar with AppBar and basic elements", async () => {
     });
 
     it("renders read-only mode icon when applicable", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { MemoryRouter } = await import("react-router");
-        const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("/test/testing");
-        const { Provider } = await import("react-redux");
+
+
+
 
         const theme = createTheme();
         const store = await createTestStore();
@@ -780,16 +725,12 @@ it("renders NavBar with AppBar and basic elements", async () => {
     });
 
     it("toggles tour open/close state", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const userEvent = (await import("@testing-library/user-event")).default;
+
+
+
         const user = userEvent.setup();
 
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { MemoryRouter } = await import("react-router");
-        const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("/test/testing");
-        const { Provider } = await import("react-redux");
+
 
         const theme = createTheme();
         const store = await createTestStore();
@@ -829,16 +770,12 @@ it("renders NavBar with AppBar and basic elements", async () => {
     });
 
     it("cycles through theme modes: light -> dark -> system -> light", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const userEvent = (await import("@testing-library/user-event")).default;
+
+
+
         const user = userEvent.setup();
 
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { MemoryRouter } = await import("react-router");
-        const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("/test/testing");
-        const { Provider } = await import("react-redux");
+
 
         const theme = createTheme();
         const store = await createTestStore();
@@ -882,14 +819,10 @@ it("renders NavBar with AppBar and basic elements", async () => {
     });
 
     it("handles location state with tabId", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { MemoryRouter } = await import("react-router");
-        const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("/test/testing");
-        const { Provider } = await import("react-redux");
-        const { TabIDs } = await import("../../store/locationState");
+
+
+
+
 
         const theme = createTheme();
         const store = await createTestStore();
@@ -920,13 +853,9 @@ it("renders NavBar with AppBar and basic elements", async () => {
     });
 
     it("handles invalid stored tab index", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { MemoryRouter } = await import("react-router");
-        const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("/test/testing");
-        const { Provider } = await import("react-redux");
+
+
+
 
         // Set an invalid tab index
         safeLocalStorage.setItem("srat_tab", "999");
@@ -963,13 +892,9 @@ it("renders NavBar with AppBar and basic elements", async () => {
     });
 
     it("renders circular progress with label correctly", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { MemoryRouter } = await import("react-router");
-        const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("/test/testing");
-        const { Provider } = await import("react-redux");
+
+
+
 
         const theme = createTheme();
         const store = await createTestStore();
@@ -1003,13 +928,9 @@ it("renders NavBar with AppBar and basic elements", async () => {
     });
 
     it("filters development-only tabs in production", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { MemoryRouter } = await import("react-router");
-        const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("/test/testing");
-        const { Provider } = await import("react-redux");
+
+
+
 
         const theme = createTheme();
         const store = await createTestStore();
@@ -1045,13 +966,9 @@ it("renders NavBar with AppBar and basic elements", async () => {
     });
 
     it("renders tab icons for dirty state", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { MemoryRouter } = await import("react-router");
-        const { NavBar } = await import("../NavBar");
-        const { createTestStore } = await import("/test/testing");
-        const { Provider } = await import("react-redux");
+
+
+
 
         const theme = createTheme();
         const store = await createTestStore();

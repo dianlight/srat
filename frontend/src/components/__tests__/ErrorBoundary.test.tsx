@@ -1,7 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import React from "react";
+import { cleanup, render } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { ThemeProvider, createTheme } from "@mui/material/styles";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ErrorBoundary } from "../ErrorBoundary";
 
 describe("ErrorBoundary Component", () => {
-    let cleanup: (() => void) | null = null;
+    let localCleanup: (() => void) | null = null;
 
     beforeEach(() => {
         if (localStorage && typeof localStorage.clear === 'function') {
@@ -11,21 +16,15 @@ describe("ErrorBoundary Component", () => {
         console.error = () => { };
     });
 
-    afterEach(async () => {
-        if (cleanup) {
-            cleanup();
-            cleanup = null;
+    afterEach(() => {
+        if (localCleanup) {
+            localCleanup();
+            localCleanup = null;
         }
-        const { cleanup: rtlCleanup } = await import("@testing-library/react");
-        rtlCleanup();
+        cleanup();
     });
 
     it("renders children when there is no error", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { ErrorBoundary } = await import("../ErrorBoundary");
-
         const theme = createTheme();
         const testContent = "Test child content that should render normally";
 
@@ -45,12 +44,7 @@ describe("ErrorBoundary Component", () => {
         expect(element).toBeTruthy();
     });
 
-    it("renders error UI when child component throws", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { ErrorBoundary } = await import("../ErrorBoundary");
-
+    it("renders error UI when child component throws", () => {
         const theme = createTheme();
 
         // Component that always throws an error
@@ -76,12 +70,7 @@ describe("ErrorBoundary Component", () => {
         expect(getByText("Error Details")).toBeTruthy();
     });
 
-    it("displays error details in accordion", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { ErrorBoundary } = await import("../ErrorBoundary");
-
+    it("displays error details in accordion", () => {
         const theme = createTheme();
 
         // Component that throws a specific error
@@ -105,12 +94,7 @@ describe("ErrorBoundary Component", () => {
         expect(getByText(/Specific test error/)).toBeTruthy();
     });
 
-    it("shows alert with proper error message", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { ErrorBoundary } = await import("../ErrorBoundary");
-
+    it("shows alert with proper error message", () => {
         const theme = createTheme();
 
         const ThrowError = () => {
@@ -133,21 +117,13 @@ describe("ErrorBoundary Component", () => {
     });
 
     it("handles reload button click functionality", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const userEvent = (await import("@testing-library/user-event")).default;
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { ErrorBoundary } = await import("../ErrorBoundary");
-
         const theme = createTheme();
         const user = userEvent.setup();
 
-        // Mock window.location.reload
-        const originalReload = window.location.reload;
         let reloadCalled = false;
-        window.location.reload = () => {
+        const reloadSpy = vi.spyOn(window.location, "reload").mockImplementation(() => {
             reloadCalled = true;
-        };
+        });
 
         const ThrowError = () => {
             throw new Error("Test error");
@@ -170,16 +146,10 @@ describe("ErrorBoundary Component", () => {
 
         expect(reloadCalled).toBe(true);
 
-        // Restore original reload function
-        window.location.reload = originalReload;
+        reloadSpy.mockRestore();
     });
 
-    it("logs error to console when error boundary catches error", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { ErrorBoundary } = await import("../ErrorBoundary");
-
+    it("logs error to console when error boundary catches error", () => {
         const theme = createTheme();
 
         // Mock console.error to track calls
@@ -208,12 +178,7 @@ describe("ErrorBoundary Component", () => {
         expect(consoleLogs.length).toBeGreaterThan(0);
     });
 
-    it("displays bug report icon in error alert", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { ErrorBoundary } = await import("../ErrorBoundary");
-
+    it("displays bug report icon in error alert", () => {
         const theme = createTheme();
 
         const ThrowError = () => {

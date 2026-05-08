@@ -1,37 +1,44 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const shareEditFormMockState = vi.hoisted(() => ({
+    submitCallback: undefined as ((data: any) => void) | undefined,
+    testId: "mock-share-form",
+}));
+
+vi.mock("../components/ShareEditForm", async () => {
+    const React = await import("react");
+    return {
+        ShareEditForm: (props: any) =>
+            React.createElement(
+                "button",
+                {
+                    type: "button",
+                    "data-testid": shareEditFormMockState.testId,
+                    onClick: () => {
+                        shareEditFormMockState.submitCallback?.({ name: "Submitted" });
+                        props.onSubmit({ name: "Submitted" });
+                    },
+                },
+                "submit"
+            ),
+    };
+});
+
 describe("ShareEditDialog", () => {
     beforeEach(() => {
+        vi.resetModules();
         vi.restoreAllMocks();
+        shareEditFormMockState.submitCallback = undefined;
+        shareEditFormMockState.testId = "mock-share-form";
     });
 
     afterEach(() => {
         vi.restoreAllMocks();
     });
 
-    const setupMockForm = async (submitCallback?: (data: any) => void, testId = "mock-share-form") => {
-        const React = await import("react");
-        vi.doMock("../components/ShareEditForm", () => {
-            return {
-                ShareEditForm: (props: any) =>
-                    React.createElement(
-                        "button",
-                        {
-                            type: "button",
-                            "data-testid": testId,
-                            onClick: () => {
-                                submitCallback?.({ name: "Submitted" });
-                                props.onSubmit({ name: "Submitted" });
-                            },
-                        },
-                        "submit"
-                    ),
-            };
-        });
-    };
-
     it("renders dialog and handles cancel", async () => {
-        await setupMockForm();
+        shareEditFormMockState.submitCallback = undefined;
+        shareEditFormMockState.testId = "mock-share-form";
 
         const React = await import("react");
         const { render, screen } = await import("@testing-library/react");
@@ -57,7 +64,8 @@ describe("ShareEditDialog", () => {
 
     it("calls delete handler when delete button clicked", async () => {
         let deleteCalls = 0;
-        await setupMockForm();
+        shareEditFormMockState.submitCallback = undefined;
+        shareEditFormMockState.testId = "mock-share-form";
 
         const React = await import("react");
         const { render, screen } = await import("@testing-library/react");
@@ -82,9 +90,10 @@ describe("ShareEditDialog", () => {
 
     it("submits form result via ShareEditForm", async () => {
         let received: any = null;
-        await setupMockForm((data) => {
+        shareEditFormMockState.submitCallback = (data) => {
             received = data;
-        }, "submit-form-test");
+        };
+        shareEditFormMockState.testId = "submit-form-test";
 
         const React = await import("react");
         const { render, screen } = await import("@testing-library/react");

@@ -1,12 +1,12 @@
+import React from "react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import type { SambaStatus } from "../../../../store/sratApi";
+import { SambaStatusMetrics } from "../SambaStatusMetrics";
 
 describe("SambaStatusMetrics", () => {
     it("renders tcons as sub-rows of matching sessions by session_id", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const userEvent = (await import("@testing-library/user-event")).default;
-        const { SambaStatusMetrics } = await import("../SambaStatusMetrics");
 
         const sambaStatus: SambaStatus = {
             smb_conf: "",
@@ -72,9 +72,6 @@ describe("SambaStatusMetrics", () => {
     });
 
     it("shows unavailable message when samba status is missing", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { SambaStatusMetrics } = await import("../SambaStatusMetrics");
 
         render(React.createElement(SambaStatusMetrics, { sambaStatus: undefined }));
 

@@ -1,7 +1,11 @@
-import { screen } from "@testing-library/react";
+import React from "react";
+import { screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithTestStore, withTestHandlers } from "/test/testing";
+import { sratApi } from "../../store/sratApi";
+import TelemetryModal from "../TelemetryModal";
 
 const putSettingsUrl = /.*\/api\/settings(?:\?.*)?$/;
 
@@ -12,10 +16,6 @@ async function renderTelemetryModal(
 		telemetryMode?: string;
 	} = {},
 ) {
-	const React = await import("react");
-	const { sratApi } = await import("../../store/sratApi");
-	const TelemetryModal = (await import("../TelemetryModal")).default;
-
 	const result = await renderWithTestStore(
 		React.createElement(TelemetryModal as any, {
 			open: true,
@@ -68,7 +68,6 @@ describe("TelemetryModal Component", () => {
 	});
 
 	it("calls onClose after successful submission", async () => {
-		const userEvent = (await import("@testing-library/user-event")).default;
 		const user = userEvent.setup();
 		const onClose = vi.fn(() => {});
 
@@ -84,7 +83,7 @@ describe("TelemetryModal Component", () => {
 					name: /continue/i,
 				});
 				await user.click(button);
-				expect(onClose).toHaveBeenCalled();
+				await waitFor(() => expect(onClose).toHaveBeenCalled());
 			},
 		);
 	});
