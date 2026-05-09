@@ -1,6 +1,6 @@
-import { defineConfig } from 'vitest/config'
-import { playwright } from '@vitest/browser-playwright'
-import react from '@vitejs/plugin-react'
+import react from '@vitejs/plugin-react';
+import { playwright } from '@vitest/browser-playwright';
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   plugins: [react()],
@@ -8,6 +8,7 @@ export default defineConfig({
     setupFiles: ["./test/browser-setup.ts"],
     browser: {
       enabled: true,
+      headless: true,
       provider: playwright(),
       // https://vitest.dev/config/browser/playwright
       instances: [{ browser: 'chromium' }],

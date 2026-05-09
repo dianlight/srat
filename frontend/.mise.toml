@@ -127,10 +127,14 @@ run = [
 quiet = true
 
 [tasks."test:browser"]
+usage = '''
+flag "--ui" help="Run tests in interactive UI mode" negatable
+arg "[files]" var=#true double_dash="optional" help="Specific test files or test name patterns to run (optional)"
+'''
 env = { API_URL = "http://localhost:3000" }
 run = [
   "tsgo --noEmit",
-  "AGENT=1 bunx vitest run --config=vitest.browser.config.ts",
+  "AGENT=1 bunx vitest run --config=vitest.browser.config.ts ${usage_ui:+--browser.headless=false} ${usage_files}",
 ]
 quiet = true
 
