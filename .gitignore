@@ -38,3 +38,5 @@ __pycache__/
 .pytest_cache/
 custom_components/.coverage
 .opencode
+.vitest-attachments/
+__screenshots__/
