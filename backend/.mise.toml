@@ -132,11 +132,11 @@ run = """
 	fi; 
 	go -C src mod vendor; 
 	find src/vendor -name "*.rej" -delete 2>/dev/null
-	if [ -f "patches/goenums.patch" ] && [ -d "src/vendor/github.com/zarldev/goenums" ]; then 
-		echo "Applying goenums.patch..."; 
-		patch -d src/vendor/github.com/zarldev/goenums -p1 < $(pwd)/patches/goenums.patch || (echo "ERROR: Failed to apply goenums.patch"; exit 1); 
-    touch src/vendor/github.com/zarldev/goenums/.pdone
-	fi
+	#if [ -f "patches/goenums.patch" ] && [ -d "src/vendor/github.com/zarldev/goenums" ]; then 
+	#	echo "Applying goenums.patch..."; 
+	#	patch -d src/vendor/github.com/zarldev/goenums -p1 < $(pwd)/patches/goenums.patch || (echo "ERROR: Failed to apply goenums.patch"; exit 1); 
+    #touch src/vendor/github.com/zarldev/goenums/.pdone
+	#fi
 	if [ -f "patches/gorm-generics.patch" ] && [ -d "src/vendor/gorm.io/gorm" ]; then 
 		echo "Applying gorm-generics.patch..."; 
 		patch -d src/vendor/gorm.io/gorm -p1 < $(pwd)/patches/gorm-generics.patch || (echo "ERROR: Failed to apply gorm-generics.patch"; exit 1); 
