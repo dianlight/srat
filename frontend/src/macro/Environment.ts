@@ -1,7 +1,7 @@
 import packageJson from "../../package.json";
 
 export function getApiUrl(): string {
-  return process.env.API_URL || "dynamic";
+  return readEnv("API_URL") || "dynamic";
 }
 
 /*
@@ -11,20 +11,21 @@ export function getServerEventBackend(): string {
 */
 
 export function getRollbarClientAccessToken(): string {
-  return process.env.ROLLBAR_CLIENT_ACCESS_TOKEN || "disabled";
+  return readEnv("ROLLBAR_CLIENT_ACCESS_TOKEN") || "disabled";
+}
+
+function readEnv(key: string): string | undefined {
+  return (typeof process !== "undefined" ? process.env : {})[key];
 }
 
 export function getCurrentEnv(): string {
-  const nodeEnv = process.env.NODE_ENV || "development";
+  const nodeEnv = readEnv("NODE_ENV") || "development";
 
   if (nodeEnv !== "production") {
     return nodeEnv;
   }
 
-  const version =
-    (process.env.npm_package_version as string | undefined) ||
-    packageJson.version ||
-    "";
+  const version = readEnv("npm_package_version") || packageJson.version || "";
 
   if (version.includes("-dev.")) {
     return "development";

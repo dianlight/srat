@@ -2,12 +2,23 @@ import React from "react";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { renderWithTestStore } from "/test/testing";
+import { http, HttpResponse } from "msw";
+import { getMswServer, renderWithTestStore } from "/test/testing";
 import { ReportIssueDialog } from "../ReportIssueDialog";
 
 describe("ReportIssueDialog", () => {
 
 async function renderReportIssueDialog(props: any) {
+    const server = getMswServer();
+    server.use(
+        http.get(/.*\/api\/issues\/template(?:\?.*)?$/, () =>
+            HttpResponse.json({
+                title: "Bug Report",
+                description: "Describe the bug",
+                problem_type: "bug",
+            })
+        ),
+    );
     return renderWithTestStore(
         React.createElement(ReportIssueDialog as any, props)
     );

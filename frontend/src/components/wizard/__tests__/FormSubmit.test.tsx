@@ -14,11 +14,11 @@ it("submits form with MUI Button type=submit inside Dialog + multiple watches", 
     
     const server = getMswServer();
     server.use(
-        http.get("/api/settings", () => HttpResponse.json({ hostname: "mynas", workgroup: "WORKGROUP", telemetry_mode: "Disabled" })),
-        http.get("/api/hostname", () => HttpResponse.json("mynas")),
-        http.get("/api/users", () => HttpResponse.json([{ is_admin: true, password: "safepassword", name: "admin" }])),
-        http.get("/api/nics", () => HttpResponse.json([{ name: "eth0", addrs: [], flags: [], hardwareAddr: "", index: 0, mtu: 1500 }])),
-        http.get("/api/volumes", () => HttpResponse.json([]))
+        http.get(/.*\/api\/settings(?:\?.*)?$/, () => HttpResponse.json({ hostname: "mynas", workgroup: "WORKGROUP", telemetry_mode: "Disabled" })),
+        http.get(/.*\/api\/hostname(?:\?.*)?$/, () => HttpResponse.json("mynas")),
+        http.get(/.*\/api\/users(?:\?.*)?$/, () => HttpResponse.json([{ is_admin: true, password: "safepassword", name: "admin" }])),
+        http.get(/.*\/api\/nics(?:\?.*)?$/, () => HttpResponse.json([{ name: "eth0", addrs: [], flags: [], hardwareAddr: "", index: 0, mtu: 1500 }])),
+        http.get(/.*\/api\/volumes(?:\?.*)?$/, () => HttpResponse.json([]))
     );
     
     let submitted = false;

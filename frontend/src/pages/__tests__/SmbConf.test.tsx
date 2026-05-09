@@ -1,9 +1,9 @@
+import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock react-syntax-highlighter to avoid refractor/lib/core dependency issues
 vi.mock("react-syntax-highlighter", () => ({
     default: ({ children, ...props }: any) => {
-        const React = require("react");
         return React.createElement("pre", { "data-testid": "syntax-highlighter", ...props },
             React.createElement("code", null, children)
         );

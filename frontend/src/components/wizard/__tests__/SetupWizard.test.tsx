@@ -233,20 +233,20 @@ describe("SetupWizard", () => {
         // use fake timers to control health check intervals and make test deterministic
 
         server.use(
-            http.get("/api/settings", () =>
+            http.get(/.*\/api\/settings(?:\?.*)?$/, () =>
                 HttpResponse.json({ hostname: "mynas", workgroup: "WORKGROUP", telemetry_mode: "Disabled" })
             ),
-            http.get("/api/users", () =>
+            http.get(/.*\/api\/users(?:\?.*)?$/, () =>
                 HttpResponse.json([{ is_admin: true, password: "safepassword", name: "admin" }])
             ),
-            http.get("/api/hostname", () => HttpResponse.json("mynas")),
-            http.get("/api/nics", () =>
+            http.get(/.*\/api\/hostname(?:\?.*)?$/, () => HttpResponse.json("mynas")),
+            http.get(/.*\/api\/nics(?:\?.*)?$/, () =>
                 HttpResponse.json([{ name: "eth0", addrs: [], flags: [], hardwareAddr: "", index: 0, mtu: 1500 }])
             ),
-            http.get("/api/volumes", () => HttpResponse.json([])),
-            http.get("/api/telemetry/internet/connection", () => HttpResponse.json(false)),
-            http.put("/api/settings", () => HttpResponse.json({})),
-            http.get("/api/health", async () => {
+            http.get(/.*\/api\/volumes(?:\?.*)?$/, () => HttpResponse.json([])),
+            http.get(/.*\/api\/telemetry\/internet-connection(?:\?.*)?$/, () => HttpResponse.json(false)),
+            http.put(/.*\/api\/settings(?:\?.*)?$/, () => HttpResponse.json({})),
+            http.get(/.*\/api\/health(?:\?.*)?$/, async () => {
                 if (finishTriggered) {
                     postFinishHealthCalls += 1;
                     await delay(150);

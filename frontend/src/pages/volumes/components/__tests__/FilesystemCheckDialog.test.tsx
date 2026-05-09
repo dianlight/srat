@@ -316,7 +316,7 @@ describe("FilesystemCheckDialog", () => {
 
         const server = await getMswServer();
         server.use(
-            http.get("/api/filesystem/support", () =>
+            http.get(/.*\/api\/filesystem\/support(?:\?.*)?$/, () =>
                 HttpResponse.json({
                     canMount: true,
                     canFormat: false,
