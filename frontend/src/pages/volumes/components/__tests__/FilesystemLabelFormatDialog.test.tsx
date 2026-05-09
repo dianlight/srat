@@ -160,13 +160,13 @@ describe("Filesystem label/format dialogs", () => {
             onClose: () => {},
           }),
         );
+
+        const button = await screen.findByRole("button", { name: /set label/i });
+        expect((button as HTMLButtonElement).disabled).toBe(true);
+        expect((await screen.findAllByText(/Install hint:/i)).length).toBeGreaterThan(0);
+        expect((await screen.findAllByText(/apk add e2fsprogs/i)).length).toBeGreaterThan(0);
       },
     );
-
-    const button = await screen.findByRole("button", { name: /set label/i });
-    expect((button as HTMLButtonElement).disabled).toBe(true);
-    expect((await screen.findAllByText(/Install hint:/i)).length).toBeGreaterThan(0);
-    expect((await screen.findAllByText(/apk add e2fsprogs/i)).length).toBeGreaterThan(0);
   });
 
   it("validates the label dialog input against LabelRule and shows the accepted format hint", async () => {
@@ -209,23 +209,23 @@ describe("Filesystem label/format dialogs", () => {
             onClose: () => {},
           }),
         );
+
+        const input = await screen.findByRole("textbox", { name: /label/i });
+        const button = await screen.findByRole("button", { name: /set label/i });
+        const user = userEvent.setup();
+
+        expect(await screen.findByText(/Accepted format:/i)).toBeTruthy();
+        expect((button as HTMLButtonElement).disabled).toBe(true);
+
+        await user.type(input, "bad-label");
+        expect(await screen.findByText(/Invalid label\./i)).toBeTruthy();
+        expect((button as HTMLButtonElement).disabled).toBe(true);
+
+        await user.clear(input);
+        await user.type(input, "DATA");
+        expect((button as HTMLButtonElement).disabled).toBe(false);
       },
     );
-
-    const input = await screen.findByRole("textbox", { name: /label/i });
-    const button = await screen.findByRole("button", { name: /set label/i });
-    const user = userEvent.setup();
-
-    expect(await screen.findByText(/Accepted format:/i)).toBeTruthy();
-    expect((button as HTMLButtonElement).disabled).toBe(true);
-
-    await user.type(input, "bad-label");
-    expect(await screen.findByText(/Invalid label\./i)).toBeTruthy();
-    expect((button as HTMLButtonElement).disabled).toBe(true);
-
-    await user.clear(input);
-    await user.type(input, "DATA");
-    expect((button as HTMLButtonElement).disabled).toBe(false);
   });
 
   it("shows the accepted format hint for the optional format label and keeps empty values allowed", async () => {
@@ -348,15 +348,15 @@ describe("Filesystem label/format dialogs", () => {
             onClose: () => {},
           }),
         );
+
+        const button = await screen.findByRole("button", { name: /format/i });
+        expect((button as HTMLButtonElement).disabled).toBe(true);
+
+        expect((await screen.findAllByText(/Install hint:/i)).length).toBeGreaterThan(0);
+        const installHints = await screen.findAllByText(/apk add e2fsprogs/i);
+        expect(installHints.length).toBeGreaterThan(0);
       },
     );
-
-    const button = await screen.findByRole("button", { name: /format/i });
-    expect((button as HTMLButtonElement).disabled).toBe(true);
-
-    expect((await screen.findAllByText(/Install hint:/i)).length).toBeGreaterThan(0);
-    const installHints = await screen.findAllByText(/apk add e2fsprogs/i);
-    expect(installHints.length).toBeGreaterThan(0);
   });
 
   it("renders format progress and logs when verbose mode is enabled", async () => {
@@ -528,8 +528,14 @@ describe("Filesystem label/format dialogs", () => {
           }),
         );
 
-        const user = userEvent.setup();
+        const user = userEvent.setup({ pointerEventsCheck: 0 });
         await user.click(await screen.findByRole("switch", { name: /verbose/i }));
+
+        await waitFor(async () => {
+          const formatButton = await screen.findByRole("button", { name: /^format$/i });
+          expect((formatButton as HTMLButtonElement).disabled).toBe(false);
+        });
+
         await user.click(await screen.findByRole("button", { name: /^format$/i }));
 
         await waitFor(() => {
