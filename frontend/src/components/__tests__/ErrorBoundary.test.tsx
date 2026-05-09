@@ -116,7 +116,10 @@ describe("ErrorBoundary Component", () => {
         expect(getByText(/An unexpected error occurred in this section/)).toBeTruthy();
     });
 
-    it("handles reload button click functionality", async () => {
+    const isLocationMockable =
+        Object.getOwnPropertyDescriptor(window, "location")?.configurable ?? false;
+
+    it.skipIf(!isLocationMockable)("handles reload button click functionality", async () => {
         const theme = createTheme();
         const user = userEvent.setup();
 
