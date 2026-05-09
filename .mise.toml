@@ -12,7 +12,7 @@ env_shell_expand = true
 compile = false
 
 [tools]
-go = "1.26.2"
+go = "1.26.3"
 act = "0.2.88"
 vale = "3.14.1"
 markdownlint-cli2 = "0.22.1"
