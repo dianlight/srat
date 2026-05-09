@@ -59,4 +59,4 @@ export async function withTestHandlers<T>(
 	}
 }
 
-export const mswServer = server;
+export { server as mswServer };
