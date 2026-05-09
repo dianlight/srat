@@ -2,5 +2,10 @@
     "$schema": "https://opencode.ai/config.json",
     "plugin": [
         "@ekroon/opencode-copilot-instructions"
+    ],
+    "instructions": [
+        ".ai/rules.md",
+        ".ai/commit-rules.md",
+        ".ai/instructions/*.md"
     ]
 }

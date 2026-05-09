@@ -51,13 +51,13 @@ local linters = new Mapping<String, Step> {
 
     ["markdownlint-cli2"] {
         glob = "**/*.md"
-        exclude = List("frontend/node_modules/**", "backend/src/vendor/**", ".vale/**", ".github/**", "docs/tasks/**", "docs/refactors/**", "custom_components/.venv/**")
+        exclude = List("frontend/node_modules/**", "backend/src/vendor/**", ".vale/**", ".github/**", "docs/tasks/**", "docs/refactors/**", "custom_components/.venv/**", ".ai/**")
         check = "markdownlint-cli2 {{ files }}"
         fix = "markdownlint-cli2 --fix {{ files }}"
     }
     ["vale"] = (Builtins.vale) {
         glob = "**/*.md"
-        exclude = List("CHANGELOG.md", "docs/tasks/**", "docs/refactors/**", ".github/**", "backend/src/vendor/**", "frontend/node_modules/**", "custom_components/.venv/**")
+        exclude = List("CHANGELOG.md", "docs/tasks/**", "docs/refactors/**", ".github/**", "backend/src/vendor/**", "frontend/node_modules/**", "custom_components/.venv/**", ".ai/**")
     }
 
     ["mise"] = (Builtins.mise) {
