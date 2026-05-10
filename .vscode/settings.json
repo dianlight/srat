@@ -24,7 +24,7 @@
 	},
 	"chat.agent.maxRequests": 1000,
 	"github.copilot.chat.codesearch.enabled": true,
-	"githubLocalActions.actCommand": "act",
+	"githubLocalActions.actCommand": "/root/.local/share/mise/shims/act",
 	"chat.mcp.gallery.enabled": true,
 	"problems.showCurrentInStatus": true,
 	"better-comments.highlightPlainText": true,

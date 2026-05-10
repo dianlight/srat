@@ -139,7 +139,7 @@ export function ErrorTelemetryBinder() {
 
 ## Test Setup
 
-Shared test setup is loaded globally through Vitest config (`setupFiles: ["./test/setup.ts"]`) for both regular and browser runs. Test files should not import `test/setup` directly.
+Shared test setup is loaded globally through Vitest config (`setupFiles: ["./test/happy-dom-setup.ts"]`) for both regular and browser runs. Test files should not import `test/setup` directly.
 
 Run tests locally:
 
@@ -155,7 +155,7 @@ mise run //frontend:test
 - Always await interactions: `await user.click(button)`, `await user.type(input, "text")`
 - See `.github/copilot-instructions.md` for complete testing patterns
 
-> **Note**: Bun 1.2.23 rejects registering lifecycle hooks from inside a running test. We preload `@testing-library/react` in `test/setup.ts` so its automatic cleanup attaches to `afterEach` before any spec runs. If you reorganize the shared setup, keep that top-level import in place or the suite will fail with "Cannot call afterEach() inside a test" errors.
+> **Note**: Bun 1.2.23 rejects registering lifecycle hooks from inside a running test. We preload `@testing-library/react` in `test/happy-dom-setup.ts` so its automatic cleanup attaches to `afterEach` before any spec runs. If you reorganize the shared setup, keep that top-level import in place or the suite will fail with "Cannot call afterEach() inside a test" errors.
 
 Run linter and typecheck:
 

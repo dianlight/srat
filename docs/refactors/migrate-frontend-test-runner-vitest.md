@@ -22,7 +22,7 @@
 
 ## Pre-Refactor Baseline
 
-Recorded before any source changes. Runner: `bun test --preload ./test/setup.ts --timeout 10000 --max-concurrency=1`.
+Recorded before any source changes. Runner: `bun test --preload ./test/happy-dom-setup.ts --timeout 10000 --max-concurrency=1`.
 
 | Metric           | Value                                   |
 | ---------------- | --------------------------------------- |

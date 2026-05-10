@@ -139,9 +139,13 @@ run = [
 quiet = true
 
 [tasks."test:ci"]
-env = { API_URL = "http://localhost:3000" }
+env = { 
+  API_URL = false,
+  GITHUB_ACTIONS = true, 
+  }
 run = [
-  "bunx vitest run --coverage --bail=1",
+  "tsgo --noEmit",
+  "bunx vitest run --coverage --bail=1 --reporter=dot --reporter=github-actions",
 ]
 quiet = true
 

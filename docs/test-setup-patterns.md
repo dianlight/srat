@@ -116,7 +116,7 @@ describe("MyComponent", () => {
 
 ### Setup File (Reusable)
 
-Lifecycle hooks live in `frontend/test/bun-setup.ts` and are loaded by `frontend/test/setup.ts`:
+Lifecycle hooks live in `frontend/test/bun-setup.ts` and are loaded by `frontend/test/happy-dom-setup.ts`:
 
 ```typescript
 import { afterEach } from "vitest";

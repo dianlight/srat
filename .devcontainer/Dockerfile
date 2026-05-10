@@ -65,7 +65,8 @@ RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN \
     && MISE_EXPERIMENTAL=1 MISE_PYTHON_PRECOMPILED_OS="unknown-linux-musl" mise install --yes --verbose
 
 RUN mkdir -p /home/vscode \ 
-    && echo 'eval "$(mise activate zsh --shims)"'  >> /home/vscode/.zshrc
+    && echo 'eval "$(mise activate zsh --shims)"'  >> /home/vscode/.zshrc \
+    && echo 'eval "$(mise activate bash --shims)"'  >> /home/vscode/.bashrc
 
 # Documentation validation tools (from edge repositories).
 #RUN apk add --no-cache --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community vale \
@@ -95,6 +96,7 @@ RUN mkdir -p /home/vscode \
 #RUN BUN_VERSION="$(jq -r '.packageManager' /tmp/srat-package.json | sed 's/bun@/bun-v/')" \
 #    && curl -fsSL https://bun.sh/install | bash -s "$BUN_VERSION" \
 #    && ln -sf /root/.bun/bin/bun /root/.bun/bin/bunx 
+RUN curl -fsSL https://bun.sh/install | bash
 
 # Optional global tooling used by contributor workflows.
 #RUN PATH=/root/.bun/bin:${PATH} \

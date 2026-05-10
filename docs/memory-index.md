@@ -67,7 +67,7 @@ These facts may still be relevant but weren't integrated due to time constraints
 | --- | ----------------------------------------- | :---------------: | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 6   | HDIdleDiskSettings test determinism       |  Not integrated   | ✋ **Specific to one component**; may not be general enough for instruction docs. Keep in stored memory for future HDIdle work.                                       |
 | 7   | Filesystem support preflight pattern      |  Not integrated   | ✋ **Specific to dialog tests**; generalization to "Don't over-seed RTK cache" covered under MSW handlers fact #2. Consider retiring or marking as super-specialized. |
-| 8   | Happy-dom/Bun event constructor mismatch  |  Not integrated   | ✋ **Very specific setup issue**; mostly resolved by current `test/setup.ts`. Review whether this is still a problem in current Bun version.                          |
+| 8   | Happy-dom/Bun event constructor mismatch  |  Not integrated   | ✋ **Very specific setup issue**; mostly resolved by current `test/happy-dom-setup.ts`. Review whether this is still a problem in current Bun version.                          |
 | 17  | RepairService compatibility bridge        | Partially covered | ✋ **Covered in service architecture**; consider adding explicit "compatibility bridge pattern" subsection for future API migrations.                                 |
 | 18  | Custom component lifecycle restart repair | Partially covered | ✋ **Covered in settings API section**; generalization: "Lifecycle events via service delegation" could be a pattern.                                                 |
 

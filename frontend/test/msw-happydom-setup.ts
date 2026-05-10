@@ -2,7 +2,7 @@
  * Happy-dom MSW setup for Bun/Vitest runs.
  */
 
-import { afterEach, beforeAll } from "vitest";
+import { afterAll, afterEach, beforeAll } from "vitest";
 import { setupServer } from "msw/node";
 import { loadMswRuntime } from "./msw-setup";
 
@@ -35,6 +35,12 @@ afterEach(() => {
 	resetApiCounters();
 	if (server) {
 		server.resetHandlers(...defaultHandlers);
+	}
+});
+
+afterAll(() => {
+	if (server) {
+		server.close();
 	}
 });
 
