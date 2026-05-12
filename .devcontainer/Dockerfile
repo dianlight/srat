@@ -1,106 +1,50 @@
-FROM ghcr.io/hassio-addons/base:20.1.1@sha256:adeb91a5aa677b28df404951bf49b9939cce155232452e12a079b54b3ebd7aec
+FROM mcr.microsoft.com/devcontainers/go:1-bookworm
 
-SHELL ["/bin/bash", "-lc"]
-
-# Core tools and filesystem/test dependencies used by SRAT development workflows.
-RUN apk add --no-cache \
-    gcompat \
-    # bash \
+# Filesystem, SAMBA, and block-device tools needed for SRAT development/testing.
+RUN apt-get update && apt-get install -y --no-install-recommends \
     btrfs-progs \
-    curl \
     dosfstools \
     e2fsprogs \
-    e2fsprogs-extra \
     ethtool \
-    eudev \
     exfatprogs \
     f2fs-tools \
     fuse3 \
-    #    gcc \
-    git \
-    git-bash-completion \
-    git-prompt \
     graphviz \
     hfsprogs \
-    # jq \
-    linux-headers \
-    lsblk \
-    #    make \
+    linux-libc-dev \
     minisign \
-    musl-dev \
-    #    nix \
-    ntfs-3g-progs \
-    openssh-client \
+    ntfs-3g \
     patch \
-    #    py3-mypy \
-    #    py3-pip \
-    #    py3-pytest \
-    #    py3-ruff \
-    #    python3 \
-    #    ruff \
     samba \
-    shadow \
     smartmontools \
     sshfs \
-    wget \
-    xfsprogs-extra \
-    #   zig \
-    apfs-fuse \
-    npm \
-    # act \
-    # mise \
-    && apk add --no-cache  --repository=https://dl-cdn.alpinelinux.org/alpine/edge/main  --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community  \
-    zfs 
-# \
-# vale \
-# && apk add --no-cache --repository=https://dl-cdn.alpinelinux.org/alpine/edge/testing \
-# lychee
+    xfsprogs \
+    zfsutils-linux \
+    libfuse3-dev \
+    libbz2-dev \
+    libattr1-dev \
+    zlib1g-dev \
+    cmake \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install Developer Tools (Mise)
+# Build apfs-fuse from source (not packaged in Debian/Ubuntu).
+RUN git clone --depth 1 https://github.com/sber-devops/apfs-fuse.git /tmp/apfs-fuse \
+    && cd /tmp/apfs-fuse && git submodule update --init --recursive \
+    && mkdir build && cd build \
+    && cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local \
+    && make -j"$(nproc)" && make install \
+    && rm -rf /tmp/apfs-fuse
+
+# Remove build-only deps to keep image lean.
+RUN apt-get purge -y cmake g++ libfuse3-dev libbz2-dev libattr1-dev zlib1g-dev \
+    && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
+
+# Install mise (manages Go, Bun, Python, and all other pinned tool versions).
 COPY .mise.toml /tmp/.mise.toml
 RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN \
-    curl https://mise.run/zsh | MISE_INSTALL_PATH=/usr/bin/mise sh \
-    && echo 'eval "$(mise activate zsh --shims)"' >> /root/.zshrc \
+    curl -fsSL https://mise.run | MISE_INSTALL_PATH=/usr/local/bin/mise sh \
+    && echo 'eval "$(mise activate zsh --shims)"' >> /home/vscode/.zshrc \
+    && echo 'eval "$(mise activate bash --shims)"' >> /home/vscode/.bashrc \
     && cd /tmp \
-    && MISE_EXPERIMENTAL=1 MISE_PYTHON_PRECOMPILED_OS="unknown-linux-musl" mise install --yes --verbose
-
-RUN mkdir -p /home/vscode \ 
-    && echo 'eval "$(mise activate zsh --shims)"'  >> /home/vscode/.zshrc \
-    && echo 'eval "$(mise activate bash --shims)"'  >> /home/vscode/.bashrc
-
-# Documentation validation tools (from edge repositories).
-#RUN apk add --no-cache --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community vale \
-#    && apk add --no-cache --repository=https://dl-cdn.alpinelinux.org/alpine/edge/testing lychee
-
-# Install Go from go.dev/dl based on backend/src/go.mod.
-#COPY backend/src/go.mod /tmp/srat-go.mod
-#RUN GO_VERSION="$(awk '/^go / {print $2}' /tmp/srat-go.mod)" \
-#    && ARCH_RAW="$(uname -m)" \
-#    && case "$ARCH_RAW" in \
-#    x86_64) GO_ARCH="amd64" ;; \
-#    aarch64) GO_ARCH="arm64" ;; \
-#    *) echo "Unsupported architecture: ${ARCH_RAW}"; exit 1 ;; \
-#    esac \
-#    && curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz" -o /tmp/go.tar.gz \
-#    && rm -rf /usr/local/go \
-#    && tar -C /usr/local -xzf /tmp/go.tar.gz \
-#    && rm -f /tmp/go.tar.gz \
-#    && ln -sf /usr/local/go/bin/go /usr/local/bin/go \
-#    && ln -sf /usr/local/go/bin/gofmt /usr/local/bin/gofmt \
-#    && curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b /usr/local/go/bin v2.11.4
-
-# Install Bun based on frontend/package.json packageManager.
-#COPY frontend/package.json /tmp/srat-package.json
-#ENV BUN_INSTALL=/root/.bun
-#ENV PATH=/root/.bun/bin:${PATH}
-#RUN BUN_VERSION="$(jq -r '.packageManager' /tmp/srat-package.json | sed 's/bun@/bun-v/')" \
-#    && curl -fsSL https://bun.sh/install | bash -s "$BUN_VERSION" \
-#    && ln -sf /root/.bun/bin/bun /root/.bun/bin/bunx 
-RUN curl -fsSL https://bun.sh/install | bash
-
-# Optional global tooling used by contributor workflows.
-#RUN PATH=/root/.bun/bin:${PATH} \
-#    && bun install -g @j178/prek \
-#    && bun add -g biome @biomejs/cli-linux-arm64-musl \
-#    && bun --bun install -g @github/copilot \
-#    && bun pm -g trust --all
+    && MISE_EXPERIMENTAL=1 mise install --yes --verbose
