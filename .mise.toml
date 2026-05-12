@@ -26,7 +26,7 @@ biome = "2.4.9"
 taplo = "0.10.0"
 golangci-lint = "2.12.2"
 ruff = "0.15.12"
-python = "3.14.4"
+python = "3.14.5"
 "conda:mypy" = { version = "1.19.1" }
 shellcheck = "0.11.0"
 shfmt = "3.13.1"
