@@ -1,11 +1,10 @@
-<!-- DOCTOC SKIP -->
-
 ---
 
 description: Repository Information Overview
 alwaysApply: true
 
 ---
+<!-- DOCTOC SKIP -->
 
 # Repository Information Overview
 

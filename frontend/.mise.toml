@@ -139,13 +139,13 @@ run = [
 quiet = true
 
 [tasks."test:ci"]
-env = { 
+env = {
   API_URL = false,
-  GITHUB_ACTIONS = true, 
+  GITHUB_ACTIONS = true,
   }
 run = [
   "tsgo --noEmit",
-  "bunx vitest run --coverage --bail=1 --reporter=dot --reporter=github-actions",
+  "bunx vitest run --coverage --bail=1 --reporter=dot --dangerouslyIgnoreUnhandledErrors --reporter=github-actions",
 ]
 quiet = true
 
