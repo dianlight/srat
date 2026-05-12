@@ -5,7 +5,7 @@
         "opencode-froggy",
         "opencode-handoff",
         "@ramarivera/opencode-model-announcer",
-        "@slkiser/opencode-quota",
+        "@slkiser/opencode-quota"
     ],
     "instructions": [
         ".ai/rules.md",
@@ -18,8 +18,7 @@
             "url": "https://mcp.context7.com/mcp",
             "enabled": false,
             "headers": {
-                "CONTEXT7_API_KEY": "ctx7sk-bd9a2019-8d7d-4f11-96eb-e196afdd2f1e",
-                "_CONTEXT7_API_KEY": "{env:CONTEXT7_API_KEY}"
+                "CONTEXT7_API_KEY": "{env:CONTEXT7_API_KEY}"
             }
         },
         "github": {
@@ -32,28 +31,16 @@
         },
         "mui-mcp": {
             "type": "local",
-            "command": [
-                "bunx",
-                "-y",
-                "@mui/mcp@latest"
-            ],
+            "command": ["bunx", "-y", "@mui/mcp@latest"],
             "enabled": true
         },
         "bun-mcp": {
             "type": "local",
-            "command": [
-                "bunx",
-                "-y",
-                "mcp-bun@latest"
-            ],
+            "command": ["bunx", "-y", "mcp-bun@latest"],
             "enabled": true
         },
         "act-testing": {
-            "command": [
-                "bunx",
-                "-y",
-                "act-testing-mcp"
-            ],
+            "command": ["bunx", "-y", "act-testing-mcp"],
             "environment": {
                 "_PROJECT_ROOT": "/workspaces/srat"
             },
@@ -61,18 +48,11 @@
         },
         "vale-mcp": {
             "type": "local",
-            "command": [
-                "bunx",
-                "-y",
-                "@iflow-mcp/chrischinchilla-vale-mcp"
-            ]
+            "command": ["bunx", "-y", "@iflow-mcp/chrischinchilla-vale-mcp"]
         },
         "mise": {
             "type": "local",
-            "command": [
-                "mise",
-                "mcp"
-            ],
+            "command": ["mise", "mcp"],
             "environment": {
                 "MISE_EXPERIMENTAL": "1"
             }
