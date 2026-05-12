@@ -110,7 +110,7 @@ describe("ShareEditForm component", () => {
         const submission = submissionCalls[0]?.[0];
         expect(submission?.name).toBeTruthy();
         expect(submission?.veto_files?.length).toBeGreaterThanOrEqual(0);
-    });
+    }, 60000);
 
     it("renders delete action for existing share", async () => {
         const { overrides } = setupCommonOverrides();

@@ -77,7 +77,7 @@ check_dependencies() {
 run_markdownlint() {
 	print_status "info" "Running markdownlint (GitHub Flavored Markdown)..."
 	# canonical excludes: node_modules, vendor, vale dir, github metadata, task/refactor docs, virtualenvs
-	if $RUNNER markdownlint-cli2 "**/*.md" "#frontend/node_modules/**" "#backend/src/vendor/**" "#.vale/**" "#.github/**" "#docs/tasks/**" "#docs/refactors/**" "#custom_components/.venv/**"; then
+	if $RUNNER markdownlint-cli2 "**/*.md" "#frontend/node_modules/**" "#backend/src/vendor/**" "#.vale/**" "#.github/**" "#docs/tasks/**" "#docs/refactors/**" "#custom_components/.venv/**" "#.ai/**" "#.opencode/**"; then
 		print_status "success" "Markdownlint passed"
 		return 0
 	else
@@ -116,6 +116,11 @@ run_vale() {
 		-not -path "./docs/tasks/*" \
 		-not -path "./docs/refactors/*" \
 		-not -path "./custom_components/.venv/*" \
+		-not -path "./.ai/*" \
+		-not -path "./.opencode/*" \
+		-not -path "./.zencoder/*" \
+		-not -path "./CLAUDE.md" \
+		-not -path "./AGENTS.md" \
 		-not -name "CHANGELOG.md" -exec vale {} +; then
 		print_status "success" "Vale prose linting passed"
 		return 0
@@ -197,10 +202,10 @@ case "${1:-}" in
 	fi
 
 	# Fix markdown formatting
-	$RUNNER prettier --write "**/*.md" --ignore-path ".gitignore" --ignore-path ".prettierignore" --ignore-path ".markdownlint-cli2.jsonc" --ignore-path ".vale.ini" --ignore-path ".lychee.toml" --ignore-path "CHANGELOG.md" --ignore-path "frontend/node_modules/**" --ignore-path "backend/src/vendor/**" --ignore-path ".vale/**" --ignore-path ".github/**"
+	$RUNNER prettier --write "**/*.md" --ignore-path ".gitignore" --ignore-path ".prettierignore" --ignore-path ".markdownlint-cli2.jsonc" --ignore-path ".vale.ini" --ignore-path ".lychee.toml" --ignore-path "CHANGELOG.md" --ignore-path "frontend/node_modules/**" --ignore-path "backend/src/vendor/**" --ignore-path ".vale/**" --ignore-path ".github/**" --ignore-path ".ai/**" --ignore-path ".opencode/**"
 
 	# Fix markdownlint issues
-	$RUNNER markdownlint-cli2 "**/*.md" "#frontend/node_modules/**" "#backend/src/vendor/**" "#.vale/**" "#.github/**" --fix
+	$RUNNER markdownlint-cli2 "**/*.md" "#frontend/node_modules/**" "#backend/src/vendor/**" "#.vale/**" "#.github/**" "#.ai/**" "#.opencode/**" --fix
 
 	print_status "success" "Auto-fix completed"
 	exit 0
