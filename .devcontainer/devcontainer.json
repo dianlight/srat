@@ -17,7 +17,7 @@
     "updateContentCommand": {
         "mainScript": ".devcontainer/updateContentCommand.sh"
     },
-    "remoteUser": "vscode",
+    "remoteUser": "root",
     "postCreateCommand": ".devcontainer/postCreateCommand.sh",
     "postStartCommand": "chmod +x .devcontainer/postStartCommand.sh && CONTAINER_WORKSPACE_FOLDER=${containerWorkspaceFolder} ./.devcontainer/postStartCommand.sh",
     "portsAttributes": {
