@@ -1,6 +1,23 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+**Table of Contents** _generated with [DocToc](https://github.com/thlorenz/doctoc)_
+
+- [When to Use This Skill](#when-to-use-this-skill)
+- [How to Fetch Documentation](#how-to-fetch-documentation)
+  - [Step 1: Resolve the Library ID](#step-1-resolve-the-library-id)
+  - [Step 2: Select the Best Match](#step-2-select-the-best-match)
+  - [Step 3: Fetch the Documentation](#step-3-fetch-the-documentation)
+  - [Step 4: Use the Documentation](#step-4-use-the-documentation)
+- [Guidelines](#guidelines)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ---
+
 name: context7-mcp
 description: This skill should be used when the user asks about libraries, frameworks, API references, or needs code examples. Activates for setup questions, code generation involving libraries, or mentions of specific frameworks like React, Vue, Next.js, Prisma, Supabase, etc.
+
 ---
 
 When the user asks about libraries, frameworks, or needs code examples, use Context7 to fetch current documentation instead of relying on training data.

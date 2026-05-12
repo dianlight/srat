@@ -1,7 +1,29 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+**Table of Contents** _generated with [DocToc](https://github.com/thlorenz/doctoc)_
+
+- [Close a Task Workstream](#close-a-task-workstream)
+  - [When to Use](#when-to-use)
+  - [Outcome](#outcome)
+  - [Procedure](#procedure)
+    - [1. Resolve and Validate Task Readiness](#1-resolve-and-validate-task-readiness)
+    - [2. Final Task Document Updates](#2-final-task-document-updates)
+    - [3. Sync GitHub Issue](#3-sync-github-issue)
+    - [4. Optional PR Summary Generation](#4-optional-pr-summary-generation)
+    - [5. Final Report Back to User](#5-final-report-back-to-user)
+  - [Guardrails](#guardrails)
+  - [Completion Checks](#completion-checks)
+  - [Example Prompts](#example-prompts)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ---
+
 name: close-task-work
-description: 'Close out a completed docs/tasks/*.md task by validating checklist completion, syncing GitHub issue status/comments, and preparing optional PR summary notes. Triggers on: "close task", "finalize task", "wrap up task 012", "complete docs task".'
+description: 'Close out a completed docs/tasks/\*.md task by validating checklist completion, syncing GitHub issue status/comments, and preparing optional PR summary notes. Triggers on: "close task", "finalize task", "wrap up task 012", "complete docs task".'
 argument-hint: 'Task identifier (required) + optional publish mode ("issue-only", "issue-and-pr")'
+
 ---
 
 # Close a Task Workstream
@@ -29,11 +51,14 @@ Finalizes a task from `docs/tasks/` after implementation is complete.
 
 1. Resolve exactly one task file by ID/filename.
 2. Verify checklist state in `## 📝 Task List`:
-  - If any unchecked items remain, do not close task.
-  - Report remaining items and keep status in progress.
+
+- If any unchecked items remain, do not close task.
+- Report remaining items and keep status in progress.
+
 3. Verify `**Issue Link:**`:
-  - Must point to `https://github.com/dianlight/srat/issues/<number>`
-  - If missing, ask whether to create/link issue before closing flow
+
+- Must point to `https://github.com/dianlight/srat/issues/<number>`
+- If missing, ask whether to create/link issue before closing flow
 
 ### 2. Final Task Document Updates
 
@@ -41,17 +66,21 @@ If all checklist items are complete:
 
 1. Set `**Status:**` to `✅ Complete`
 2. Ensure `## 🧠 Implementation Notes` contains a concise completion summary:
-  - what changed
-  - what was validated
-  - notable follow-ups (if any)
+
+- what changed
+- what was validated
+- notable follow-ups (if any)
+
 3. Ensure `## 🔗 Code References & TODOs` reflects final touched scope
 
 ### 3. Sync GitHub Issue
 
 1. Post completion comment on linked issue with:
-  - task file reference
-  - summary of completed work
-  - validation/tests summary
+
+- task file reference
+- summary of completed work
+- validation/tests summary
+
 2. If user confirms closure (or mode is explicitly close-enabled), close the issue.
 3. If issue cannot be closed (policy/review constraints), leave it open and post status note.
 

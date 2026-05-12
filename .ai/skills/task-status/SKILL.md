@@ -1,7 +1,25 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+**Table of Contents** _generated with [DocToc](https://github.com/thlorenz/doctoc)_
+
+- [Task Status Report](#task-status-report)
+  - [When to Use](#when-to-use)
+  - [Procedure](#procedure)
+    - [1. Scan Task Files](#1-scan-task-files)
+    - [2. Apply Filter](#2-apply-filter)
+    - [3. Build the Report](#3-build-the-report)
+    - [4. Output](#4-output)
+  - [Quality Checklist](#quality-checklist)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ---
+
 name: task-status
 description: 'Generate a Markdown progress report of all tasks in docs/tasks/ grouped by status (📅 Planned / 🔄 In Progress / ✅ Complete). Optionally filter by type (FEATURE/FIX/DOCS/REFACTOR) or linked repo. Output is suitable for a weekly standup, GitHub comment, or PR description. Triggers on: "task status", "show task progress", "what tasks are done", "weekly standup", "task report", "progress report", "list tasks".'
 argument-hint: 'Optional filter: "all" (default), "done", "in-progress", "planned", "features", "fixes", or a GitHub repo name ("srat" / "hassio-addons")'
+
 ---
 
 # Task Status Report
@@ -26,31 +44,32 @@ Read all files in `docs/tasks/` matching `NNN_*.md` (exclude `README.md`).
 
 For each file, extract:
 
-| Field | Where to find it |
-|-------|-----------------|
-| **TaskID** | Leading digits of the filename (`001`, `002`, …) |
-| **Type** | First heading: `# [FEATURE]`, `# [FIX]`, `# [DOCS]`, `# [REFACTOR]` |
-| **Title** | Text after the `[TYPE]:` prefix in the first heading |
-| **Status** | `**Status:**` field in the header line (must match one of: `📅 Planned`, `🔄 In Progress`, `✅ Complete`) |
-| **Issue Links** | All `[repo#NNN](url)` patterns in the file |
-| **Progress** | Count `- [x]` vs `- [ ]` items under `## 📝 Task List` |
+| Field           | Where to find it                                                                                          |
+| --------------- | --------------------------------------------------------------------------------------------------------- |
+| **TaskID**      | Leading digits of the filename (`001`, `002`, …)                                                          |
+| **Type**        | First heading: `# [FEATURE]`, `# [FIX]`, `# [DOCS]`, `# [REFACTOR]`                                       |
+| **Title**       | Text after the `[TYPE]:` prefix in the first heading                                                      |
+| **Status**      | `**Status:**` field in the header line (must match one of: `📅 Planned`, `🔄 In Progress`, `✅ Complete`) |
+| **Issue Links** | All `[repo#NNN](url)` patterns in the file                                                                |
+| **Progress**    | Count `- [x]` vs `- [ ]` items under `## 📝 Task List`                                                    |
 
 If `**Status:**` is missing or unrecognised, infer from task list:
+
 - 0 checked → `📅 Planned`
 - 1+ checked, not all → `🔄 In Progress`
 - All checked → `✅ Complete`
 
 ### 2. Apply Filter
 
-| Argument | Behaviour |
-|----------|-----------|
-| `all` (default) | Include all tasks regardless of status or type |
-| `done` | Only `✅ Complete` tasks |
-| `in-progress` | Only `🔄 In Progress` tasks |
-| `planned` | Only `📅 Planned` tasks |
-| `features` | Only `[FEATURE]` type |
-| `fixes` | Only `[FIX]` type |
-| `srat` | Only tasks with an issue link containing `dianlight/srat` |
+| Argument        | Behaviour                                                          |
+| --------------- | ------------------------------------------------------------------ |
+| `all` (default) | Include all tasks regardless of status or type                     |
+| `done`          | Only `✅ Complete` tasks                                           |
+| `in-progress`   | Only `🔄 In Progress` tasks                                        |
+| `planned`       | Only `📅 Planned` tasks                                            |
+| `features`      | Only `[FEATURE]` type                                              |
+| `fixes`         | Only `[FIX]` type                                                  |
+| `srat`          | Only tasks with an issue link containing `dianlight/srat`          |
 | `hassio-addons` | Only tasks with an issue link containing `dianlight/hassio-addons` |
 
 ### 3. Build the Report
@@ -59,21 +78,24 @@ Output a Markdown document with the following structure:
 
 ```markdown
 # 📊 SRAT Task Status Report
+
 _Generated: <date>_
 
 ## Summary
-| Status | Count | Progress |
-|--------|-------|----------|
-| ✅ Complete | N | N/T tasks |
-| 🔄 In Progress | N | N/T tasks |
-| 📅 Planned | N | N/T tasks |
-| **Total** | **T** | **overall %** |
+
+| Status         | Count | Progress      |
+| -------------- | ----- | ------------- |
+| ✅ Complete    | N     | N/T tasks     |
+| 🔄 In Progress | N     | N/T tasks     |
+| 📅 Planned     | N     | N/T tasks     |
+| **Total**      | **T** | **overall %** |
 
 ---
 
 ## ✅ - Done
 
 ### [001] Title
+
 - **Type:** FEATURE | **Issues:** [srat#185](url)
 - **Progress:** 5 / 5 tasks ✓
 
@@ -82,15 +104,17 @@ _Generated: <date>_
 ## 🔄 - In Progress
 
 ### [003] Title
+
 - **Type:** FIX | **Issues:** [hassio-addons#596](url)
 - **Progress:** 2 / 12 tasks (17%)
-- **Next:** Task 3: ...  _(first unchecked item)_
+- **Next:** Task 3: ... _(first unchecked item)_
 
 ---
 
 ## 📅 - Planned
 
 ### [008] Title
+
 - **Type:** FEATURE | **Issues:** [srat#184](url)
 - **Progress:** 0 / 10 tasks
 
@@ -104,6 +128,7 @@ For each in-progress task, include the **first unchecked task item** as "Next:".
 ### 4. Output
 
 Print the report as a code block in Markdown so the user can copy-paste it directly into:
+
 - A GitHub issue comment
 - A PR description
 - A team standup note

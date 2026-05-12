@@ -3,7 +3,7 @@
 ---
 
 description: This file describes the frontend testing guidelines for the project. If test environments or tools change, update this document to reflect the new best practices. If you encounter a test failure or warning that isn't covered here, add a new section with the issue and its resolution to help future contributors.
-applyTo: **/frontend/**/*.test.{js,jsx,ts,tsx}
+applyTo: **/frontend/**/\*.test.{js,jsx,ts,tsx}
 
 ---
 
@@ -29,7 +29,6 @@ applyTo: **/frontend/**/*.test.{js,jsx,ts,tsx}
 - **`IS_REACT_ACT_ENVIRONMENT`:** Set `(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true` **after** `GlobalRegistrator.register()` in `test/happy-dom-setup.ts`. Placing it before registration has no effect — GlobalRegistrator replaces the global context, leaving `@testing-library/react` unaware of the act() environment and producing "not configured to support act(...)" warnings on render.
 
 - **Test Noise Policy:** Never hide test noise by muting `console` output or swallowing errors. Always fix the underlying cause. Use this **triage decision tree**:
-
   1. **See "not configured to support act(...)" or `dispatchEvent` errors?**  
      → **Fix:** Event constructor mismatch in `test/happy-dom-setup.ts`. Check for Bun-native constructors overriding happy-dom's `Event`/`EventTarget`/`MessageEvent` in any `nativeGlobals` capture block. Restore happy-dom versions.
 
@@ -98,7 +97,8 @@ describe("MyComponent", () => {
     expect(screen.getByText(/data saved/i)).toBeInTheDocument();
   });
 });
-````
+```
+
 <userPrompt>
 Provide the fully rewritten file, incorporating the suggested code change. You must produce the complete file.
 </userPrompt>

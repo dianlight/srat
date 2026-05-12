@@ -3,7 +3,7 @@
 ---
 
 description: "Python coding conventions for the SRAT Home Assistant custom component"
-applyTo: "\**/*.py"
+applyTo: "\*_/_.py"
 
 ---
 
@@ -61,6 +61,7 @@ custom_components/srat/
 ```
 
 #### Key Notes:
+
 - No `services.yaml` or `binary_sensor.py` (sensors only).
 - All runtime data is attached to `entry.runtime_data` (see `SRATData` in `__init__.py`).
 - `repairs.py` implements both the proxy and the custom repair flow.
@@ -68,29 +69,29 @@ custom_components/srat/
 
 ### Doc Base (Responsibilities)
 
-- **`__init__.py`**:  
-    - Handles `async_setup_entry` and `async_unload_entry`.
-    - Defines `SRATData` for runtime state (coordinator, ws_client, repair_proxy).
-    - Registers the sensor platform.
-- **`config_flow.py`**:  
-    - Implements `SRATConfigFlow` for both manual and Supervisor-based setup.
-    - Validates backend connectivity before entry creation.
-- **`connection.py`**:  
-    - Provides `homeassistant_auth_headers()` and `iter_connection_hosts()` for connection logic.
-- **`const.py`**:  
-    - Centralizes all config keys, defaults, and domain constants.
-- **`coordinator.py`**:  
-    - `SRATDataCoordinator` receives all data via WebSocket events (`volumes`, `heartbeat`).
-    - No REST polling; sensors are unavailable until first event.
-- **`repairs.py`**:  
-    - `SRATRepairProxy` listens for backend repair commands and syncs with HA issue registry.
-    - `SRATIssueRepairFlow` reports fix status back to backend.
-- **`sensor.py`**:  
-    - Defines all sensor entities: status, process, volume, disk, partition, health.
-    - Uses dynamic entity creation for disks/partitions.
-- **`websocket_client.py`**:  
-    - Manages the WebSocket connection, event parsing, listener registration, and repair lifecycle events.
-    - Handles reconnects, authentication, and SSE-style event parsing.
+- **`__init__.py`**:
+  - Handles `async_setup_entry` and `async_unload_entry`.
+  - Defines `SRATData` for runtime state (coordinator, ws_client, repair_proxy).
+  - Registers the sensor platform.
+- **`config_flow.py`**:
+  - Implements `SRATConfigFlow` for both manual and Supervisor-based setup.
+  - Validates backend connectivity before entry creation.
+- **`connection.py`**:
+  - Provides `homeassistant_auth_headers()` and `iter_connection_hosts()` for connection logic.
+- **`const.py`**:
+  - Centralizes all config keys, defaults, and domain constants.
+- **`coordinator.py`**:
+  - `SRATDataCoordinator` receives all data via WebSocket events (`volumes`, `heartbeat`).
+  - No REST polling; sensors are unavailable until first event.
+- **`repairs.py`**:
+  - `SRATRepairProxy` listens for backend repair commands and syncs with HA issue registry.
+  - `SRATIssueRepairFlow` reports fix status back to backend.
+- **`sensor.py`**:
+  - Defines all sensor entities: status, process, volume, disk, partition, health.
+  - Uses dynamic entity creation for disks/partitions.
+- **`websocket_client.py`**:
+  - Manages the WebSocket connection, event parsing, listener registration, and repair lifecycle events.
+  - Handles reconnects, authentication, and SSE-style event parsing.
 
 ### Config Flow (`config_flow.py`)
 
@@ -109,7 +110,7 @@ custom_components/srat/
 - Register WebSocket event listeners for data channels
 - Use `@callback` decorator for synchronous event handlers
 - Call `self.async_set_updated_data(self.data)` to push updates to entities
-- Initialize data keys to `None` — sensors report *unavailable* until first event
+- Initialize data keys to `None` — sensors report _unavailable_ until first event
 
 ### Sensor Entities (`sensor.py`)
 
@@ -207,7 +208,7 @@ mise run check         # Full check: format + lint + typecheck + test
 - Class docstrings describe responsibility and data flow
 - Method docstrings use Google style with `Args:` / `Returns:` / `Raises:` sections when non-trivial
 - Use reStructuredText in docstrings for code references: ` `event_type` `
-- In-line comments explain *why*, not *what*
+- In-line comments explain _why_, not _what_
 - Reference back-end source files when relevant: `# See backend/src/api/ws.go`
 
 ## Security
@@ -230,14 +231,14 @@ mise run check         # Full check: format + lint + typecheck + test
 
 All custom component tooling runs via `custom_components/.mise.toml`:
 
-| Task             | Description                                |
-| ---------------- | ------------------------------------------ |
-| `mise run check` | Run format-check + lint + typecheck + test |
-| `mise run lint`  | Run `ruff check`                           |
-| `mise run format`| Run `ruff format` (autofix)                |
-| `mise run typecheck` | Run `mypy`                            |
-| `mise run test`  | Run `pytest`                               |
-| `mise run test-ci` | Run `pytest` with coverage (generates XML) |
-| `mise run fix`   | Run `ruff check --fix` + `ruff format`     |
-| `mise run install` | Install dev dependencies                 |
-| `mise run clean` | Remove caches and build artifacts          |
+| Task                 | Description                                |
+| -------------------- | ------------------------------------------ |
+| `mise run check`     | Run format-check + lint + typecheck + test |
+| `mise run lint`      | Run `ruff check`                           |
+| `mise run format`    | Run `ruff format` (autofix)                |
+| `mise run typecheck` | Run `mypy`                                 |
+| `mise run test`      | Run `pytest`                               |
+| `mise run test-ci`   | Run `pytest` with coverage (generates XML) |
+| `mise run fix`       | Run `ruff check --fix` + `ruff format`     |
+| `mise run install`   | Install dev dependencies                   |
+| `mise run clean`     | Remove caches and build artifacts          |

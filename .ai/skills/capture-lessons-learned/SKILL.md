@@ -1,7 +1,31 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+**Table of Contents** _generated with [DocToc](https://github.com/thlorenz/doctoc)_
+
+- [Capture Lessons Learned](#capture-lessons-learned)
+  - [When to Use](#when-to-use)
+  - [Outcome](#outcome)
+  - [Procedure](#procedure)
+    - [1. Re-read the Current Session for Evidence](#1-re-read-the-current-session-for-evidence)
+    - [2. Check Whether It Is Already Documented](#2-check-whether-it-is-already-documented)
+    - [3. Decide the Best Home](#3-decide-the-best-home)
+    - [4. Prefer Repo Memory Until the User Approves Documentation Changes](#4-prefer-repo-memory-until-the-user-approves-documentation-changes)
+    - [5. Draft the Proposed Guidance](#5-draft-the-proposed-guidance)
+    - [6. Ask the User Before Any Instruction Edit](#6-ask-the-user-before-any-instruction-edit)
+    - [7. If Confirmed, Apply the Smallest Documentation Change](#7-if-confirmed-apply-the-smallest-documentation-change)
+  - [Quality Checks](#quality-checks)
+  - [Example Prompts](#example-prompts)
+- [Post-Execution Reflection](#post-execution-reflection)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ---
+
 name: capture-lessons-learned
 description: 'Review the current chat session or recently completed task for reusable implementation or testing lessons, then decide whether to update an existing GitHub instruction and skills, create a new instruction/skill, or store the guidance as repo memory. Use when: finishing a fix, stabilizing a test, capturing a lesson learned, or asking "should we document this for future Copilot sessions?" Triggers on: "lesson learned", "capture lessons learned", "review session for reusable pattern", "update github instruction", "document this fix for future".'
 argument-hint: 'Optional scope or recent work summary (for example: "review current session" or "frontend MSW test fix")'
+
 ---
 
 # Capture Lessons Learned
@@ -63,13 +87,13 @@ If the lesson already exists, stop and report that no new instruction is needed.
 
 Use this decision table:
 
-| If the lesson is... | Best home |
-|---|---|
-| Broad, always applicable across the repo | `.github/copilot-instructions.md` after user approval |
-| Language- or folder-specific | matching `.github/instructions/*.instructions.md` after user approval |
-| A multi-step repeatable workflow | `.github/skills/<name>/SKILL.md` after user approval |
-| Useful but narrow, recent, or still evolving | `/memories/repo/` by default |
-| One-off or unlikely to repeat | no documentation update |
+| If the lesson is...                          | Best home                                                             |
+| -------------------------------------------- | --------------------------------------------------------------------- |
+| Broad, always applicable across the repo     | `.github/copilot-instructions.md` after user approval                 |
+| Language- or folder-specific                 | matching `.github/instructions/*.instructions.md` after user approval |
+| A multi-step repeatable workflow             | `.github/skills/<name>/SKILL.md` after user approval                  |
+| Useful but narrow, recent, or still evolving | `/memories/repo/` by default                                          |
+| One-off or unlikely to repeat                | no documentation update                                               |
 
 ### 4. Prefer Repo Memory Until the User Approves Documentation Changes
 

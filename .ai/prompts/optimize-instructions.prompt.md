@@ -1,7 +1,34 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+**Table of Contents** _generated with [DocToc](https://github.com/thlorenz/doctoc)_
+
+- [Role](#role)
+- [Round Objectives](#round-objectives)
+- [Task](#task)
+  - [Integrate New Memory Facts](#integrate-new-memory-facts)
+  - [Retire Obsolete Patterns](#retire-obsolete-patterns)
+  - [Expand Quick Reference](#expand-quick-reference)
+  - [Annual Memory Audit](#annual-memory-audit)
+- [Optimization Process](#optimization-process)
+  - [Phase 1: Assessment](#phase-1-assessment)
+  - [Phase 2: Planning](#phase-2-planning)
+  - [Phase 3: Execution](#phase-3-execution)
+  - [Phase 4: Verification](#phase-4-verification)
+  - [Phase 5: Completion](#phase-5-completion)
+- [Key Files (Always Update These)](#key-files-always-update-these)
+- [Important Constraints](#important-constraints)
+- [Success Criteria](#success-criteria)
+- [Emergencies / Common Issues](#emergencies--common-issues)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ---
+
 agent: 'agent'
 description: 'Systematically optimize SRAT instructions and skills: integrate memory facts, retire patterns, add languages, expand quick-reference, conduct audits'
 model: Auto (copilot)
+
 ---
 
 ## Role
@@ -15,6 +42,7 @@ You're an expert at optimizing technical instructions and skills. Your task is t
 - **Round 3**: Update memory-index.md, quick-reference.md, and related instruction files based on the current memory/instruction state
 
 **Baseline Artifacts** (ALWAYS READ FIRST):
+
 - `docs/memory-index.md` — Maps all stored memory facts, integration status, recommendations
 - `docs/quick-reference.md` — Copy-paste code snippets for critical patterns
 - `docs/shared-principles.md` — Core principles shared across languages
@@ -24,6 +52,7 @@ You're an expert at optimizing technical instructions and skills. Your task is t
 ## Task
 
 ### Integrate New Memory Facts
+
 1. Query stored memory facts (use the memory system, for example `memory view /memories/` and related files)
 2. Identify 3–5 high-value facts NOT yet in active instructions
 3. Add targeted subsections to relevant instruction files
@@ -32,6 +61,7 @@ You're an expert at optimizing technical instructions and skills. Your task is t
 6. Run linting on modified files
 
 ### Retire Obsolete Patterns
+
 1. Identify 2–3 patterns in `docs/memory-index.md` marked as "archived" or "pending review"
 2. Verify they're truly obsolete (check git history + project requirements)
 3. Archive instruction sections (reduce to 3-5 line redirect stubs)
@@ -39,6 +69,7 @@ You're an expert at optimizing technical instructions and skills. Your task is t
 5. Document why in a comment for future developers
 
 ### Expand Quick Reference
+
 1. Review `docs/quick-reference.md` current patterns
 2. Identify 2–3 additional high-impact patterns from active instructions
 3. Add ✅ CORRECT / ❌ WRONG examples to quick-reference.md
@@ -46,6 +77,7 @@ You're an expert at optimizing technical instructions and skills. Your task is t
 5. Verify code examples where executable in this repository; otherwise perform syntax/logic review and mark them as non-executable in the current workspace
 
 ### Annual Memory Audit
+
 1. Review all currently tracked memory facts listed in `docs/memory-index.md`
 2. For each fact:
    - ✅ Verify still discoverable in active instructions
@@ -57,24 +89,28 @@ You're an expert at optimizing technical instructions and skills. Your task is t
 ## Optimization Process
 
 ### Phase 1: Assessment
+
 - Read baseline artifacts (memory-index.md, quick-reference.md)
 - Understand current state (what's integrated, what's pending)
 - Identify scope of work
 - Ask clarifying questions if ambiguous
 
 ### Phase 2: Planning
+
 - Create or update `/memories/session/plan.md`
 - Break work into deliverables
 - Identify dependencies
 - Document assumptions
 
 ### Phase 3: Execution
+
 - Make targeted, surgical changes
 - Update `docs/memory-index.md` if integrating facts
 - Verify all links work (use grep/glob to confirm)
 - Run linters: `mise run docs-validate`
 
 ### Phase 4: Verification
+
 - ✅ No contradictions between files
 - ✅ All cross-references correct
 - ✅ Code examples validated
@@ -82,6 +118,7 @@ You're an expert at optimizing technical instructions and skills. Your task is t
 - ✅ Metrics improved (token efficiency, clarity, coverage)
 
 ### Phase 5: Completion
+
 - Create checkpoint markdown documenting work
 - Update `/memories/session/plan.md` with results
 - Provide brief summary (3–5 points)
@@ -89,13 +126,12 @@ You're an expert at optimizing technical instructions and skills. Your task is t
 
 ## Key Files (Always Update These)
 
-| File | Action |
-|------|--------|
-| `docs/memory-index.md` | Update integration status when facts are integrated or archived |
-| `docs/quick-reference.md` | Add new patterns with ✅/❌ examples |
-| `.github/copilot-instructions.md` | Link new languages, sections, or reference docs |
-| `<instruction-file>.md` | Add subsections, clarifications, examples as needed |
-
+| File                              | Action                                                          |
+| --------------------------------- | --------------------------------------------------------------- |
+| `docs/memory-index.md`            | Update integration status when facts are integrated or archived |
+| `docs/quick-reference.md`         | Add new patterns with ✅/❌ examples                            |
+| `.github/copilot-instructions.md` | Link new languages, sections, or reference docs                 |
+| `<instruction-file>.md`           | Add subsections, clarifications, examples as needed             |
 
 ## Important Constraints
 
@@ -117,7 +153,6 @@ Each optimization round is successful if:
 4. ✅ Token efficiency improved (or neutral)
 5. ✅ Code examples validated
 6. ✅ Checkpoint documentation complete
-
 
 ## Emergencies / Common Issues
 

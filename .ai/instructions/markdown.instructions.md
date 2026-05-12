@@ -3,7 +3,7 @@
 ---
 
 description: "Markdown documentation standards for the SRAT project"
-applyTo: "\**/*.md"
+applyTo: "\*_/_.md"
 
 ---
 

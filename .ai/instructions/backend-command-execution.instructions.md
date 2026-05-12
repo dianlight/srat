@@ -3,7 +3,7 @@
 ---
 
 description: "Mandatory guidance for backend command execution implementation and migration"
-applyTo: "backend/src/**/*.go"
+applyTo: "backend/src/\*_/_.go"
 
 ---
 

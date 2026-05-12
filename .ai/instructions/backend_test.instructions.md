@@ -199,6 +199,7 @@ require github.com/ovechkin-dm/mockio/v2 v2.1.0  // or later
 ```
 
 **Why v2?**
+
 - Generic type support for type-safe mock generation
 - No unchecked type assertions in mock setup and verification
 - Compile-time safety instead of runtime failures

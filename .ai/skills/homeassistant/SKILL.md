@@ -1,6 +1,45 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+**Table of Contents** _generated with [DocToc](https://github.com/thlorenz/doctoc)_
+
+- [HomeAssistant Development](#homeassistant-development)
+  - [Overview](#overview)
+  - [When to Use This Skill](#when-to-use-this-skill)
+  - [Core Capabilities](#core-capabilities)
+    - [1. Custom Sensors](#1-custom-sensors)
+      - [Template Sensors](#template-sensors)
+      - [RESTful Sensors](#restful-sensors)
+      - [Command Line Sensors](#command-line-sensors)
+      - [Python Custom Component Sensors](#python-custom-component-sensors)
+    - [2. Lovelace Dashboards](#2-lovelace-dashboards)
+      - [Planning a Dashboard](#planning-a-dashboard)
+      - [Core Card Types](#core-card-types)
+      - [Layout Strategies](#layout-strategies)
+      - [Custom Cards (HACS)](#custom-cards-hacs)
+    - [3. Custom Integrations](#3-custom-integrations)
+      - [When to Create a Custom Integration](#when-to-create-a-custom-integration)
+      - [Integration Structure](#integration-structure)
+      - [Development Workflow](#development-workflow)
+      - [Best Practices](#best-practices)
+  - [Resources](#resources)
+    - [references/](#references)
+    - [assets/](#assets)
+  - [Development Tips](#development-tips)
+    - [Testing Templates](#testing-templates)
+    - [Checking Configuration](#checking-configuration)
+    - [Viewing Logs](#viewing-logs)
+    - [Reloading Without Restart](#reloading-without-restart)
+    - [Debugging Custom Integrations](#debugging-custom-integrations)
+    - [Version Compatibility](#version-compatibility)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ---
+
 name: homeassistant
 description: Expert HomeAssistant development skill for creating custom sensors (template, REST, command line, Python components), building Lovelace dashboards with custom cards and layouts, and developing custom integrations with config flows, coordinators, and multiple platforms. Use this skill when working with HomeAssistant YAML configuration, Python integration development, or dashboard customization.
+
 ---
 
 # HomeAssistant Development
@@ -12,6 +51,7 @@ This skill provides comprehensive guidance for HomeAssistant development across 
 ## When to Use This Skill
 
 Activate this skill when:
+
 - Creating or modifying sensors (template, REST, command line, or Python-based)
 - Building or customizing Lovelace dashboards and cards
 - Developing custom integrations with Python
@@ -24,15 +64,18 @@ Activate this skill when:
 ### 1. Custom Sensors
 
 #### Template Sensors
+
 Use template sensors for calculations, unit conversions, or combining multiple sensor values. Templates use Jinja2 syntax and are defined in YAML configuration.
 
 **When to use:**
+
 - Converting units (e.g., Celsius to Fahrenheit)
 - Combining multiple sensor values (e.g., total power consumption)
 - Creating derived values (e.g., "feels like" temperature)
 - Status indicators based on other entity states
 
 **Implementation approach:**
+
 1. Determine the source entities needed
 2. Write the Jinja2 template with proper fallback values using `| float(0)` or `| default()`
 3. Set appropriate `device_class`, `state_class`, and `unit_of_measurement`
@@ -42,14 +85,17 @@ Use template sensors for calculations, unit conversions, or combining multiple s
 **Reference:** See `references/sensors.md` for comprehensive template sensor examples and patterns.
 
 #### RESTful Sensors
+
 Use REST sensors to pull data from external APIs or web services.
 
 **When to use:**
+
 - Fetching data from external APIs
 - Integrating web services without custom components
 - Polling HTTP endpoints for status updates
 
 **Implementation approach:**
+
 1. Identify the API endpoint and authentication method
 2. Configure the REST sensor with proper headers and authentication
 3. Use `value_template` to extract the desired value from JSON responses
@@ -59,9 +105,11 @@ Use REST sensors to pull data from external APIs or web services.
 **Reference:** See `references/sensors.md` for REST sensor configuration patterns.
 
 #### Command Line Sensors
+
 Use command line sensors to execute shell commands and use their output as sensor values.
 
 **When to use:**
+
 - Reading system information not available through standard integrations
 - Executing custom scripts or binaries
 - Processing file contents or system resources
@@ -69,15 +117,18 @@ Use command line sensors to execute shell commands and use their output as senso
 **Reference:** See `references/sensors.md` for command line sensor examples.
 
 #### Python Custom Component Sensors
+
 Use custom Python components when sensor logic is too complex for templates or requires external libraries.
 
 **When to use:**
+
 - Complex calculations or data processing
 - Integration with Python libraries
 - Stateful sensors that need to maintain data between updates
 - Performance-critical operations
 
 **Implementation approach:**
+
 1. Create directory structure: `custom_components/<domain>/`
 2. Start with the integration template in `assets/integration_template/`
 3. Implement `sensor.py` with proper entity classes
@@ -91,7 +142,9 @@ Use custom Python components when sensor logic is too complex for templates or r
 Create intuitive, responsive user interfaces using Lovelace cards and custom layouts.
 
 #### Planning a Dashboard
+
 **Approach:**
+
 1. Identify the entities to display (lights, sensors, switches, etc.)
 2. Group related entities by room or function
 3. Choose appropriate card types for each entity type
@@ -101,26 +154,31 @@ Create intuitive, responsive user interfaces using Lovelace cards and custom lay
 #### Core Card Types
 
 **Entities Card** - List multiple entities with controls:
+
 - Best for control panels and grouped controls
 - Supports sections, dividers, and custom icons
 - Can show secondary information (last-changed, entity-id)
 
 **Button Card** - Single entity with large tap target:
+
 - Best for frequently-used controls
 - Customizable icons and colors
 - Supports tap, hold, and double-tap actions
 
 **Gauge Card** - Visual representation of numeric values:
+
 - Best for monitoring metrics (CPU, temperature, battery)
 - Configure min/max and severity thresholds
 - Visual feedback at a glance
 
 **Picture Elements Card** - Interactive image with overlays:
+
 - Best for floor plans or device diagrams
 - Position controls and labels on images
 - Create custom visual interfaces
 
 **Conditional Card** - Show/hide based on conditions:
+
 - Display cards only when relevant
 - Reduce clutter by hiding inactive elements
 - Stack multiple conditions for complex logic
@@ -128,23 +186,28 @@ Create intuitive, responsive user interfaces using Lovelace cards and custom lay
 #### Layout Strategies
 
 **Grid Layout** - Responsive grid of cards:
+
 - Automatically adjusts columns based on screen width
 - Consistent sizing with `square: false` for flexible heights
 - Best for collections of similar items
 
 **Vertical/Horizontal Stack** - Group cards together:
+
 - Stack cards to create logical groupings
 - Combine with conditional cards for dynamic layouts
 - Control card order and spacing
 
 #### Custom Cards (HACS)
+
 Install custom cards via HACS for enhanced functionality:
+
 - **Mini Graph Card** - Compact sensor history graphs
 - **Button Card (Custom)** - Advanced button customization
 - **Mushroom Cards** - Modern, minimalist card designs
 - **ApexCharts Card** - Powerful charting and graphing
 
 **Installation steps:**
+
 1. Install HACS if not already installed
 2. Go to HACS → Frontend
 3. Search for the desired card
@@ -158,6 +221,7 @@ Install custom cards via HACS for enhanced functionality:
 Develop full-featured integrations with Python for complex device or service integrations.
 
 #### When to Create a Custom Integration
+
 - Integrating a device or service not supported by existing integrations
 - Complex logic that can't be handled by REST sensors or templates
 - Multiple related entities (sensors, switches, lights) from one source
@@ -167,12 +231,14 @@ Develop full-featured integrations with Python for complex device or service int
 #### Integration Structure
 
 **Required files:**
+
 - `manifest.json` - Integration metadata, dependencies, and requirements
 - `__init__.py` - Integration setup and platform loading
 - `config_flow.py` - UI-based configuration (recommended)
 - Platform files (`sensor.py`, `switch.py`, etc.) - Entity implementations
 
 **Optional but recommended:**
+
 - `coordinator.py` - Centralized data fetching
 - `const.py` - Constants and configuration keys
 - `strings.json` - UI text and translations
@@ -180,6 +246,7 @@ Develop full-featured integrations with Python for complex device or service int
 #### Development Workflow
 
 **Step 1: Plan the Integration**
+
 - Identify the device/service API or protocol
 - List the entity types needed (sensors, switches, lights, etc.)
 - Determine authentication and connection requirements
@@ -187,12 +254,14 @@ Develop full-featured integrations with Python for complex device or service int
 
 **Step 2: Start with Template**
 Copy the integration template from `assets/integration_template/` to `custom_components/<your_domain>/`:
+
 ```bash
 cp -r assets/integration_template custom_components/my_device
 ```
 
 **Step 3: Customize Manifest**
 Update `manifest.json`:
+
 - Set unique `domain` (lowercase, underscores)
 - Update `name`, `documentation`, `codeowners`
 - Add Python package dependencies to `requirements`
@@ -200,6 +269,7 @@ Update `manifest.json`:
 
 **Step 4: Implement Config Flow**
 In `config_flow.py`:
+
 - Define configuration schema (host, port, API key, etc.)
 - Implement connection validation in `_test_connection`
 - Handle errors appropriately (cannot_connect, invalid_auth, etc.)
@@ -207,6 +277,7 @@ In `config_flow.py`:
 
 **Step 5: Implement Coordinator**
 In `coordinator.py`:
+
 - Create API client or device communication class
 - Implement `_async_update_data` to fetch device data
 - Handle errors and raise `UpdateFailed` on failures
@@ -214,6 +285,7 @@ In `coordinator.py`:
 
 **Step 6: Implement Platforms**
 For each platform (sensor.py, switch.py, etc.):
+
 - Create entity classes inheriting from `CoordinatorEntity` and platform base
 - Set proper device classes, state classes, and units
 - Implement `native_value` property to return current state
@@ -221,6 +293,7 @@ For each platform (sensor.py, switch.py, etc.):
 - Set `unique_id` for each entity
 
 **Step 7: Test and Iterate**
+
 - Copy to HomeAssistant's `custom_components/` directory
 - Restart HomeAssistant
 - Add integration via UI (Settings → Devices & Services)
@@ -231,29 +304,34 @@ For each platform (sensor.py, switch.py, etc.):
 #### Best Practices
 
 **Data Fetching:**
+
 - Always use `DataUpdateCoordinator` to centralize API calls
 - This prevents multiple entities from making duplicate requests
 - Coordinator automatically handles retries and error states
 
 **Error Handling:**
+
 - Use try/except blocks around all I/O operations
 - Log errors with appropriate severity levels
 - Raise `UpdateFailed` in coordinator when data fetch fails
 - Return `None` or fallback values for unavailable data
 
 **Entity Design:**
+
 - Always set `unique_id` to enable UI customization
 - Use appropriate `device_class` for proper icon and unit handling
 - Set `state_class` for sensors that should appear in statistics
 - Group related entities using `DeviceInfo`
 
 **Code Quality:**
+
 - Use type hints throughout (`-> bool`, `: str`, etc.)
 - Follow HomeAssistant code style (use pylint)
 - Use async/await for all I/O operations
 - Import only necessary modules
 
 **Configuration:**
+
 - Prefer `config_flow.py` over YAML configuration
 - Validate user input before accepting
 - Provide clear error messages
@@ -264,6 +342,7 @@ For each platform (sensor.py, switch.py, etc.):
 ## Resources
 
 ### references/
+
 Detailed documentation loaded into context as needed:
 
 - `sensors.md` - Comprehensive sensor implementation guide covering all sensor types, device classes, state classes, and best practices
@@ -271,11 +350,13 @@ Detailed documentation loaded into context as needed:
 - `integrations.md` - In-depth custom integration development guide with file structure, coordinator patterns, and platform implementation
 
 **When to read references:**
+
 - Read `sensors.md` when implementing any type of sensor
 - Read `dashboards.md` when building or modifying dashboards
 - Read `integrations.md` when developing custom Python integrations
 
 ### assets/
+
 Template files used in development output:
 
 - `integration_template/` - Complete, working integration boilerplate with:
@@ -289,6 +370,7 @@ Template files used in development output:
   - `README.md` - Customization guide
 
 **When to use assets:**
+
 - Copy `integration_template/` as starting point for new integrations
 - Customize the template by replacing "my_integration" with actual domain
 - Follow the README.md for step-by-step customization instructions
@@ -296,25 +378,33 @@ Template files used in development output:
 ## Development Tips
 
 ### Testing Templates
+
 Use Developer Tools → Template in HomeAssistant to test Jinja2 templates before adding to configuration.
 
 ### Checking Configuration
+
 Run Configuration → Check Configuration before restarting HomeAssistant to catch YAML errors.
 
 ### Viewing Logs
+
 Monitor logs at Settings → System → Logs or via command line:
+
 ```bash
 tail -f /config/home-assistant.log
 ```
 
 ### Reloading Without Restart
+
 Many components support reload without full restart:
+
 - Developer Tools → YAML → Reload Template Entities
 - Developer Tools → YAML → Reload Automations
 - Developer Tools → YAML → Reload Scripts
 
 ### Debugging Custom Integrations
+
 Add debug logging to `configuration.yaml`:
+
 ```yaml
 logger:
   default: info
@@ -323,7 +413,9 @@ logger:
 ```
 
 ### Version Compatibility
+
 Always check HomeAssistant version compatibility:
+
 - Template syntax may change between versions
 - Entity platform APIs evolve with releases
 - Test integrations on target HomeAssistant version

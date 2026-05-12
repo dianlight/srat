@@ -1,7 +1,35 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+**Table of Contents** _generated with [DocToc](https://github.com/thlorenz/doctoc)_
+
+- [Watch Manual Test](#watch-manual-test)
+  - [When to Use](#when-to-use)
+  - [Outcome](#outcome)
+  - [Core Behavior Rules](#core-behavior-rules)
+  - [Procedure](#procedure)
+    - [1. Confirm Session Scope](#1-confirm-session-scope)
+    - [2. Open server log streams for live monitoring](#2-open-server-log-streams-for-live-monitoring)
+    - [3. Open or Reuse the Frontend, Then Hand Control to the User](#3-open-or-reuse-the-frontend-then-hand-control-to-the-user)
+    - [4. Live Observation Loop](#4-live-observation-loop)
+    - [5. Error Handling Decision Point](#5-error-handling-decision-point)
+    - [6. Autonomous Fix Cycle for Approved Issues](#6-autonomous-fix-cycle-for-approved-issues)
+    - [7. User-Initiated Reports During the Session](#7-user-initiated-reports-during-the-session)
+    - [8. Retry and Continue Watching](#8-retry-and-continue-watching)
+    - [9. Wait for Session Completion](#9-wait-for-session-completion)
+    - [10. Wrap Up the Session](#10-wrap-up-the-session)
+  - [Decision Tree](#decision-tree)
+  - [Quality Checks](#quality-checks)
+  - [Example Prompts](#example-prompts)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ---
+
 name: watch-manual-test
 description: "Observe a human-driven SRAT remote test session without taking over the UI. Reuses or opens the frontend at `http://localhost:3080/`, waits while the user manually navigates and clicks, records the user's actions, and concurrently monitors browser console/network plus frontend/backend/Home Assistant logs. If an error or strange effect appears, asks whether to ignore it or attempt a fix, then can start a focused autonomous subtask to investigate, implement a fix, verify it, and ask the user to retry. Triggers on: 'watch my testing', 'watch manual test', 'manual remote test', 'observe while I click around', 'monitor browser and backend logs', 'I will test manually, watch for errors'."
 argument-hint: "Describe what you will test manually and whether the remote environment is already running (example: 'observe share creation flow; frontend and backend already up')."
+
 ---
 
 # Watch Manual Test
@@ -65,8 +93,9 @@ If the environment is not ready:
 ### 2. Open server log streams for live monitoring
 
 Before handing control to the user, open live log streams for:
+
 - supervisor logs with the command ` ssh root@192.168.0.68 -t ha supervisor log -f` that shows real-time logs from the supervisor, which may include relevant output from Home Assistant and addons
-- backend and addon logs with the command `ssh root@192.168.0.68 -t ha app log  local_sambanas2 -f` that shows real-time logs from the `local_sambanas2` addon, which is the main addon for SRAT and will include relevant output from the backend and any custom components. Adjust the addon name if needed to match your setup. 
+- backend and addon logs with the command `ssh root@192.168.0.68 -t ha app log  local_sambanas2 -f` that shows real-time logs from the `local_sambanas2` addon, which is the main addon for SRAT and will include relevant output from the backend and any custom components. Adjust the addon name if needed to match your setup.
 
 ### 3. Open or Reuse the Frontend, Then Hand Control to the User
 
@@ -143,7 +172,7 @@ At any time, the user may send messages like:
 - `I saw a strange effect`
 - `Something looked wrong after I clicked save`
 - `I think I found a bug`
-Treat these as valid signals that should trigger an immediate check of the browser and logs, even if you haven't yet detected an issue on your own. Ask for clarification if needed:
+  Treat these as valid signals that should trigger an immediate check of the browser and logs, even if you haven't yet detected an issue on your own. Ask for clarification if needed:
 - `Can you describe exactly what you saw and what you clicked just before it happened?`
 - `Did it happen every time or just once?`
 - `What do you see in the browser console or network tab around that moment?`
@@ -166,12 +195,11 @@ After a fix or after choosing to ignore an issue:
 - keep watching the same signals
 - confirm whether the symptom is gone, changed, or still present
 
-### 9. Wait for Session Completion 
+### 9. Wait for Session Completion
 
 The session may end when the user completes the flow, reproduces the bug, or decides to stop testing. At that point, summarize the findings and any remaining follow-ups.
 If you need to ask the user whether they want to continue testing or start a new session, return to step 1.
 Command like `stop testing`, `I think I'm done testing for now`, or `let's stop here` can be treated as signals that the session is nearing completion, but confirm with the user before finalizing.
-
 
 ### 10. Wrap Up the Session
 

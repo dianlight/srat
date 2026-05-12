@@ -1,5 +1,6 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
 **Table of Contents** _generated with [DocToc](https://github.com/thlorenz/doctoc)_
 
 - [Refactor: Migrate Frontend Test Runner from bun:test to Vitest](#refactor-migrate-frontend-test-runner-from-buntest-to-vitest)
@@ -44,17 +45,17 @@ These 8 failures exist on `main` before any migration changes. They must remain 
 
 ## Post-Refactor Verification
 
-| Metric                         | Expected                | Actual |
-| ------------------------------ | ----------------------- | ------ |
-| Test files                     | ≥ 84                    | 85 passed, 1 skipped |
-| Tests passed                   | ≥ 674                   | 662 passed, 8 todo (after intentional removal of obsolete `App.test.tsx`) |
-| Tests failed                   | ≤ 8 (same pre-existing) | 0 |
-| `Shares.test.tsx` skip         | removed                 | removed |
-| `"bun:test"` imports remaining | 0                       | 0 verified in `frontend/src` and `frontend/test` imports |
+| Metric                         | Expected                | Actual                                                                        |
+| ------------------------------ | ----------------------- | ----------------------------------------------------------------------------- |
+| Test files                     | ≥ 84                    | 85 passed, 1 skipped                                                          |
+| Tests passed                   | ≥ 674                   | 662 passed, 8 todo (after intentional removal of obsolete `App.test.tsx`)     |
+| Tests failed                   | ≤ 8 (same pre-existing) | 0                                                                             |
+| `Shares.test.tsx` skip         | removed                 | removed                                                                       |
+| `"bun:test"` imports remaining | 0                       | 0 verified in `frontend/src` and `frontend/test` imports                      |
 | Wall-clock time                | < 84 s                  | ~1090 s with `--coverage` in Alpine dev container (`~641 s` without coverage) |
-| Coverage lcov generated        | yes                     | yes (`frontend/coverage/lcov.info`) |
-| Lint errors                    | 0 new                   | 0 new (`mise run //frontend:lint`) |
-| TypeScript errors              | 0 new                   | 0 new (`bun tsgo --noEmit`) |
+| Coverage lcov generated        | yes                     | yes (`frontend/coverage/lcov.info`)                                           |
+| Lint errors                    | 0 new                   | 0 new (`mise run //frontend:lint`)                                            |
+| TypeScript errors              | 0 new                   | 0 new (`bun tsgo --noEmit`)                                                   |
 
 ### Targeted verification completed
 
@@ -81,12 +82,12 @@ Full suite command run from `frontend/`:
 
 Observed result:
 
-| Check | Result |
-| ----- | ------ |
+| Check      | Result               |
+| ---------- | -------------------- |
 | Test files | 86 passed, 1 skipped |
-| Tests | 673 passed, 8 todo |
-| Failures | 0 |
-| Duration | 641.04 s |
+| Tests      | 673 passed, 8 todo   |
+| Failures   | 0                    |
+| Duration   | 641.04 s             |
 
 Remaining verification still required:
 

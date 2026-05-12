@@ -1,7 +1,29 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+**Table of Contents** _generated with [DocToc](https://github.com/thlorenz/doctoc)_
+
+- [Implement a Single Task Phase](#implement-a-single-task-phase)
+  - [When to Use](#when-to-use)
+  - [Outcome](#outcome)
+  - [Procedure](#procedure)
+    - [1. Resolve Task and Select Exactly One Item](#1-resolve-task-and-select-exactly-one-item)
+    - [2. Inspect Scope Before Editing](#2-inspect-scope-before-editing)
+    - [3. Implement Only the Selected Item](#3-implement-only-the-selected-item)
+    - [4. Run Targeted Validation Gate](#4-run-targeted-validation-gate)
+    - [5. Update Task Document Immediately](#5-update-task-document-immediately)
+    - [6. Report and Wait for Next Phase Instruction](#6-report-and-wait-for-next-phase-instruction)
+  - [Completion Checks](#completion-checks)
+  - [Example Prompts](#example-prompts)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ---
+
 name: implement-task-phase
-description: 'Execute one checklist phase from a docs/tasks/*.md task with strict sequencing: pick exactly one unchecked item, implement only that scope, run targeted validation, and update task progress immediately. Triggers on: "implement next task item", "do task phase", "work on next checklist item", "execute phase 3 of task 012".'
+description: 'Execute one checklist phase from a docs/tasks/\*.md task with strict sequencing: pick exactly one unchecked item, implement only that scope, run targeted validation, and update task progress immediately. Triggers on: "implement next task item", "do task phase", "work on next checklist item", "execute phase 3 of task 012".'
 argument-hint: 'Task identifier + optional phase selector (item number, exact checklist text, or "next")'
+
 ---
 
 # Implement a Single Task Phase
@@ -30,9 +52,11 @@ Implements one checklist item at a time from `docs/tasks/*.md` with verification
 1. Resolve task file in `docs/tasks/` by ID or filename.
 2. Read `## 📝 Task List` and find unchecked items.
 3. Selection rules:
-  - If user names an item, use it.
-  - If user says `next`, pick the first unchecked item.
-  - If ambiguous, ask user to choose one item.
+
+- If user names an item, use it.
+- If user says `next`, pick the first unchecked item.
+- If ambiguous, ask user to choose one item.
+
 4. Confirm item boundaries (what is included/excluded) before editing code.
 
 ### 2. Inspect Scope Before Editing

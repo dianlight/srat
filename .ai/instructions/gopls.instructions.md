@@ -23,7 +23,7 @@ The goal of the read workflow is to understand the codebase.
 2. **Find relevant symbols**: If you're looking for a specific type, function, or variable, use `go_search`. This is a fuzzy search that will help you locate symbols even if you don't know the exact name or location.
    EXAMPLE: search for the 'Server' type: `go_search({"query":"server"})`
 
-3. **Understand a file and its intra-package dependencies**: When you have a file path and want to understand its contents and how it connects to other files *in the same package*, use `go_file_context`. This tool will show you a summary of the declarations from other files in the same package that are used by the current file. `go_file_context` MUST be used immediately after reading any Go file for the first time, and MAY be re-used if dependencies have changed.
+3. **Understand a file and its intra-package dependencies**: When you have a file path and want to understand its contents and how it connects to other files _in the same package_, use `go_file_context`. This tool will show you a summary of the declarations from other files in the same package that are used by the current file. `go_file_context` MUST be used immediately after reading any Go file for the first time, and MAY be re-used if dependencies have changed.
    EXAMPLE: to understand `server.go`'s dependencies on other files in its package: `go_file_context({"file":"/path/to/server.go"})`
 
 4. **Understand a package's public API**: When you need to understand what a package provides to external code (that is, its public API), use `go_package_api`. This is especially useful for understanding third-party dependencies or other packages in the same monorepo.

@@ -3,7 +3,7 @@
 ---
 
 description: 'Mandatory form handling standard using react-hook-form and react-hook-form-mui'
-applyTo: '**/frontend/**/*.{tsx,jsx}'
+applyTo: '**/frontend/**/\*.{tsx,jsx}'
 
 ---
 
@@ -69,7 +69,8 @@ Use `PasswordElement` from `react-hook-form-mui` — it includes a built-in show
   rules={{
     required: "Password is required",
     minLength: { value: 6, message: "At least 6 characters" },
-    validate: (value) => value !== "changeme!" || "Cannot use the default password",
+    validate: (value) =>
+      value !== "changeme!" || "Cannot use the default password",
   }}
 />
 ```
@@ -109,16 +110,16 @@ useEffect(() => {
 
 Use the appropriate `react-hook-form-mui` element for each input type:
 
-| Input type | Element |
-|---|---|
-| Text / number | `TextFieldElement` |
-| Password | `PasswordElement` |
-| Select / dropdown | `SelectElement` |
-| Autocomplete / multi-select | `AutocompleteElement` |
-| Toggle / boolean | `SwitchElement` |
-| Checkbox | `CheckboxElement` |
-| Textarea | `TextareaAutosizeElement` |
-| Custom/complex | `Controller` (last resort) |
+| Input type                  | Element                    |
+| --------------------------- | -------------------------- |
+| Text / number               | `TextFieldElement`         |
+| Password                    | `PasswordElement`          |
+| Select / dropdown           | `SelectElement`            |
+| Autocomplete / multi-select | `AutocompleteElement`      |
+| Toggle / boolean            | `SwitchElement`            |
+| Checkbox                    | `CheckboxElement`          |
+| Textarea                    | `TextareaAutosizeElement`  |
+| Custom/complex              | `Controller` (last resort) |
 
 ## What NOT to Do
 

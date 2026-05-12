@@ -22,6 +22,7 @@ applyTo: '**/\*.ts,**/\*.tsx'
 ### TypeScript 6.0 Key Changes
 
 **Removed Deprecated Flags** (Do not use):
+
 - ❌ `experimentalDecorators` - Use native decorators instead
 - ❌ `useDefineForClassFields: false` - ES2022+ requires default `true`
 - ❌ `target: es5` - ES2015+ is the minimum
@@ -32,17 +33,20 @@ applyTo: '**/\*.ts,**/\*.tsx'
 - ❌ Import assertion syntax - Use import attributes instead
 
 **Enabled Strict Flags**:
+
 - ✅ `noImplicitOverride: true` - Requires explicit `override` keyword on class methods
 - ✅ `strict: true` - Now default for new projects
 - 🚧 `noUncheckedIndexedAccess: true` - TODO: See migration guide for implementation plan
 
 **Performance Benefits**:
+
 - 40-60% faster incremental builds with parallelized type-checking (TS 6.0)
 - 20-50% faster builds with `types: []` configuration
 - Multi-threaded AST caching and smarter inference
 - Better type inference and consistency
 
 **New Features in 6.0**:
+
 - Improved type inference for context-sensitive functions (React hooks, Redux actions)
 - Const type parameters for more precise generic inference
 - Advanced control flow analysis - better type narrowing
@@ -212,7 +216,7 @@ When modifying `tsconfig.json`:
 ```typescript
 // ✅ CORRECT - Native decorators (TypeScript 6.0+)
 function logged(target: any, context: ClassMethodDecoratorContext) {
-  return function(...args: any[]) {
+  return function (...args: any[]) {
     console.log(`Calling ${String(context.name)}`);
     return target.apply(this, args);
   };
@@ -220,7 +224,7 @@ function logged(target: any, context: ClassMethodDecoratorContext) {
 
 class MyClass {
   @logged
-  myMethod() { }
+  myMethod() {}
 }
 ```
 
@@ -231,7 +235,7 @@ class MyClass {
 class MyComponent {
   // Field initializers run after super() call
   public state = { count: 0 };
-  
+
   constructor() {
     // super() called first (if extending)
     // then field initializers run
@@ -245,6 +249,7 @@ class MyComponent {
 ### Leveraging Improved Type Inference
 
 **Avoid Unnecessary Type Assertions:**
+
 ```typescript
 // ❌ Before (TS 5.x) - unnecessary cast
 const diskInfo = (diskHealth as any)?.per_disk_info?.[key];
@@ -254,6 +259,7 @@ const diskInfo = diskHealth?.per_disk_info?.[key]; // Type correctly inferred
 ```
 
 **Simplify Type Guards:**
+
 ```typescript
 // ❌ Before - redundant casts after guard
 const h = headers as Record<string, string>;
@@ -265,17 +271,16 @@ const v = h[key] ?? h[key.toLowerCase()]; // Type properly narrowed
 ```
 
 **Use Const Type Parameters:**
+
 ```typescript
 // ✅ Better generic type specificity
-function getProperty<K extends string>(
-  obj: Record<K, unknown>, 
-  key: K
-) {
+function getProperty<K extends string>(obj: Record<K, unknown>, key: K) {
   return obj[key]; // More precise inference
 }
 ```
 
 **Leverage HMR Type Support:**
+
 ```typescript
 // ❌ Before - unsafe any cast
 if (import.meta && (import.meta as any).hot) {
@@ -289,13 +294,14 @@ if (import.meta.hot) {
 ```
 
 **Avoid Deprecated Import Assertions:**
+
 ```typescript
 // ❌ Deprecated in TS 6.0
-import data from './data.json' assert { type: 'json' };
-const module = await import('./module.js', { assert: { type: 'module' } });
+import data from "./data.json" assert { type: "json" };
+const module = await import("./module.js", { assert: { type: "module" } });
 
 // ✅ Use import attributes instead (when supported by runtime)
-import data from './data.json' with { type: 'json' };
+import data from "./data.json" with { type: "json" };
 ```
 
 ### Indexed Access Safety (Future Enhancement)
@@ -304,12 +310,12 @@ When `noUncheckedIndexedAccess` is enabled:
 
 ```typescript
 // Future pattern (after migration)
-const items = ['a', 'b', 'c'];
+const items = ["a", "b", "c"];
 const item = items[0]; // Type: string | undefined
 
 // Use optional chaining or null checks
 const length = items[0]?.length;
-const value = items[0] ?? 'default';
+const value = items[0] ?? "default";
 
 // Or explicit type guards
 if (items[0] !== undefined) {

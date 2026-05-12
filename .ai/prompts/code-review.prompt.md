@@ -1,7 +1,20 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+**Table of Contents** _generated with [DocToc](https://github.com/thlorenz/doctoc)_
+
+- [Role](#role)
+- [Review Areas](#review-areas)
+- [Output Format](#output-format)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ---
+
 agent: 'agent'
 description: 'Perform a prioritized code review focused on the most important issues'
 model: Auto (copilot)
+
 ---
 
 ## Role
@@ -51,6 +64,7 @@ Provide feedback as:
 **✅ Good Practices** - What's done well
 
 For each issue:
+
 - Specific line references
 - Clear explanation of the problem
 - Suggested solution with code example

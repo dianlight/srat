@@ -75,23 +75,23 @@ Record the user's choice in the tracking document.
 **Date:** YYYY-MM-DD  
 **Status:** 🔍 Analysis  
 **Prepare Check:** Yes | No (skipped by user)  
-**Linked Task:** docs/tasks/NNN_<title>.md (if applicable)  
+**Linked Task:** docs/tasks/NNN\_<title>.md (if applicable)  
 **Scope:** <Brief description of what is being changed>
 
 ---
 
 ## Impacted Functions
 
-| # | Function / Symbol | File | Caller / Reason Impacted | Has Test? | Test File |
-|---|-------------------|------|--------------------------|-----------|-----------|
-|   |                   |      |                          |           |           |
+| #   | Function / Symbol | File | Caller / Reason Impacted | Has Test? | Test File |
+| --- | ----------------- | ---- | ------------------------ | --------- | --------- |
+|     |                   |      |                          |           |           |
 
 ---
 
 ## Pre-Refactor Test Baseline
 
 | Test Name | File | Status Before | Notes |
-|-----------|------|---------------|-------|
+| --------- | ---- | ------------- | ----- |
 |           |      |               |       |
 
 ---
@@ -99,7 +99,7 @@ Record the user's choice in the tracking document.
 ## Post-Refactor Test Results
 
 | Test Name | File | Status Before | Status After | Result | Notes |
-|-----------|------|---------------|--------------|--------|-------|
+| --------- | ---- | ------------- | ------------ | ------ | ----- |
 |           |      |               |              |        |       |
 
 ---
@@ -179,22 +179,26 @@ For every function in the impacted list:
 Run all tests identified in Phase 3 and record their result in the **Pre-Refactor Test Baseline** table.
 
 For the backend:
+
 ```bash
 cd backend/src && go test ./... 2>&1 | grep -E "^(ok|FAIL|---)"
 # or targeted: go test ./service/... ./api/...
 ```
 
 For the frontend:
+
 ```bash
 cd frontend && bun run test 2>&1 | grep -E "(PASS|FAIL|✓|✗)"
 ```
 
 For the custom component:
+
 ```bash
 cd custom_components && mise run test
 ```
 
 For every test:
+
 - `PASS` → record `✅ Pass`
 - `FAIL` → record `❌ Fail` and ask the user:
 
@@ -228,11 +232,11 @@ Re-run **all** tests recorded in the baseline (excluding those the user chose to
 
 For each test, compare against the baseline:
 
-| Scenario | Action |
-|----------|--------|
-| Was `Pass`, now `Pass` | ✅ OK — record in post column |
-| Was `Fail` (fix-after), now `Pass` | ✅ Fixed — record and note |
-| Was `Pass`, now `Fail` | 🔴 Regression — investigate |
+| Scenario                             | Action                        |
+| ------------------------------------ | ----------------------------- |
+| Was `Pass`, now `Pass`               | ✅ OK — record in post column |
+| Was `Fail` (fix-after), now `Pass`   | ✅ Fixed — record and note    |
+| Was `Pass`, now `Fail`               | 🔴 Regression — investigate   |
 | Was `Fail` (fix-after), still `Fail` | 🔴 Still broken — investigate |
 
 #### When a Post-Refactor Test Fails
@@ -246,6 +250,7 @@ For each test, compare against the baseline:
      > `<reason>`
      >
      > Should I:
+     >
      > 1. Fix the test to match the new structure (recommended)
      > 2. Fix the code so the old test passes (revert the structural change)
      > 3. Accept this failure and note it as a known test debt"

@@ -1,7 +1,41 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+**Table of Contents** _generated with [DocToc](https://github.com/thlorenz/doctoc)_
+
+- [Sync Tasks ↔ GitHub Issues](#sync-tasks--github-issues)
+  - [When to Use](#when-to-use)
+  - [Mode A — IMPORT (GitHub Issues → Task Docs)](#mode-a--import-github-issues-%E2%86%92-task-docs)
+    - [A-1. Fetch Open Issues](#a-1-fetch-open-issues)
+    - [A-2. Read Existing Tasks](#a-2-read-existing-tasks)
+    - [A-3. Classify Each Issue](#a-3-classify-each-issue)
+    - [A-4. Update Existing Task](#a-4-update-existing-task)
+    - [A-5. Create New Task](#a-5-create-new-task)
+  - [Mode T — CODE-SCAN (TODO/FIXME → Task Docs)](#mode-t--code-scan-todofixme-%E2%86%92-task-docs)
+    - [T-1. Scan Repository for TODO/FIXME](#t-1-scan-repository-for-todofixme)
+    - [T-2. Classify and Match Comment to Tasks](#t-2-classify-and-match-comment-to-tasks)
+    - [T-3. Enrich Existing Task](#t-3-enrich-existing-task)
+    - [T-4. Create New Task from Annotation](#t-4-create-new-task-from-annotation)
+    - [T-5. De-duplication Rules](#t-5-de-duplication-rules)
+  - [Mode B — EXPORT (Task Docs → GitHub Issues)](#mode-b--export-task-docs-%E2%86%92-github-issues)
+    - [B-1. Read All Tasks with Issue Links](#b-1-read-all-tasks-with-issue-links)
+    - [B-2. Determine What to Push](#b-2-determine-what-to-push)
+    - [B-3. Post Progress Comment](#b-3-post-progress-comment)
+    - [B-4. Close Issue with Summary](#b-4-close-issue-with-summary)
+    - [B-5. Create Missing Issue](#b-5-create-missing-issue)
+  - [Mode C — BOTH (default)](#mode-c--both-default)
+  - [Repos Reference](#repos-reference)
+  - [Code Annotation Scope (Mode T)](#code-annotation-scope-mode-t)
+  - [Quality Checklist](#quality-checklist)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ---
+
 name: sync-tasks
-description: 'Sync docs/tasks/*.md planning documents with GitHub issues and in-code TODO/FIXME annotations. THREE modes: (1) IMPORT — pull open issues from dianlight/srat and dianlight/hassio-addons (SambaNAS2 only) into task files; (2) EXPORT — push task progress to GitHub (comment/close/create); (3) CODE-SCAN — read TODO/FIXME comments from code to enrich matching tasks or create new ones. Triggers on: "sync tasks", "sync github", "import issues", "export task status", "update tasks from issues", "push task progress", "close issue from task", "sync todos", "import fixme".'
+description: 'Sync docs/tasks/\*.md planning documents with GitHub issues and in-code TODO/FIXME annotations. THREE modes: (1) IMPORT — pull open issues from dianlight/srat and dianlight/hassio-addons (SambaNAS2 only) into task files; (2) EXPORT — push task progress to GitHub (comment/close/create); (3) CODE-SCAN — read TODO/FIXME comments from code to enrich matching tasks or create new ones. Triggers on: "sync tasks", "sync github", "import issues", "export task status", "update tasks from issues", "push task progress", "close issue from task", "sync todos", "import fixme".'
 argument-hint: 'Mode and optional scope: "import [from srat|hassio-addons]", "scan [todos|fixmes|all]", "export [all|done]", or "both" (default)'
+
 ---
 
 # Sync Tasks ↔ GitHub Issues
@@ -38,6 +72,7 @@ Skip bot/automation issues: filter out issues authored by `renovate` or `github-
 ### A-2. Read Existing Tasks
 
 Scan `docs/tasks/*.md` (excluding `README.md`). For each file, extract:
+
 - **TaskID** (the leading `NNN` from the filename)
 - **Title** (first `# [TYPE]:` heading line)
 - **Linked issues** (all `[repo#NNN]` patterns in the document)
@@ -49,11 +84,11 @@ Build an index: `Set<"repo#number">` of already-linked issues.
 
 For every fetched issue, determine:
 
-| Condition | Action |
-|-----------|--------|
-| Issue number already in the index | Skip (already tracked) |
+| Condition                                                                    | Action                       |
+| ---------------------------------------------------------------------------- | ---------------------------- |
+| Issue number already in the index                                            | Skip (already tracked)       |
 | Issue topic clearly matches an existing task (keyword overlap in title/body) | **UPDATE** the matching task |
-| No matching task | **CREATE** a new task |
+| No matching task                                                             | **CREATE** a new task        |
 
 **Keyword matching heuristic**: compare issue title words against existing task titles + objective paragraphs. A match requires ≥ 2 significant words in common (ignore stop-words: a, an, the, is, to, in, for, of, and, or, not).
 
@@ -144,9 +179,10 @@ If no task matches, create a new task in `docs/tasks/`:
 4. Seed `## 📝 Task List` with the normalized comment summary.
 5. Seed `## 🔗 Code References & TODOs` with the exact `path:LNN` entry.
 6. Classify task type:
-  - `FIX` for `FIXME`, `BUG`, `XXX`
-  - `FEATURE` for `TODO`/`HACK` that imply implementation work
-  - `DOCS` when file extension indicates docs-only work (`.md`, docs folder)
+
+- `FIX` for `FIXME`, `BUG`, `XXX`
+- `FEATURE` for `TODO`/`HACK` that imply implementation work
+- `DOCS` when file extension indicates docs-only work (`.md`, docs folder)
 
 ### T-5. De-duplication Rules
 
@@ -163,18 +199,19 @@ Push local task progress back to GitHub.
 ### B-1. Read All Tasks with Issue Links
 
 Scan `docs/tasks/*.md`. For each task, extract:
+
 - All linked issue references (`[repo#NNN]` patterns)
 - The **completion ratio**: `checked_items / total_items` from `## 📝 Task List`
 - The **status** header field
 
 ### B-2. Determine What to Push
 
-| Condition | Action |
-|-----------|--------|
-| All task items checked  AND  status is `✅ Complete` | **Close** the linked GitHub issue(s) with a summary comment |
-| ≥ 1 task item checked  AND  status is `🔄 In Progress` | **Post a progress comment** on linked issue(s) |
-| Task has no issue link  AND  status is NOT `✅ Complete` | **Create a new GitHub issue** for the task |
-| Task already closed on GitHub | Skip |
+| Condition                                              | Action                                                      |
+| ------------------------------------------------------ | ----------------------------------------------------------- |
+| All task items checked AND status is `✅ Complete`     | **Close** the linked GitHub issue(s) with a summary comment |
+| ≥ 1 task item checked AND status is `🔄 In Progress`   | **Post a progress comment** on linked issue(s)              |
+| Task has no issue link AND status is NOT `✅ Complete` | **Create a new GitHub issue** for the task                  |
+| Task already closed on GitHub                          | Skip                                                        |
 
 ### B-3. Post Progress Comment
 
@@ -234,10 +271,10 @@ Run Mode A first, then Mode T, then Mode B. This ensures GitHub issues are impor
 
 ## Repos Reference
 
-| Repo | Issues scope | Label filter |
-|------|-------------|-------------|
-| `dianlight/srat` | All open issues | _(none — all labels)_ |
-| `dianlight/hassio-addons` | SambaNAS2 only | Title/label contains `SambaNas2` or `SambaNAS` |
+| Repo                      | Issues scope    | Label filter                                   |
+| ------------------------- | --------------- | ---------------------------------------------- |
+| `dianlight/srat`          | All open issues | _(none — all labels)_                          |
+| `dianlight/hassio-addons` | SambaNAS2 only  | Title/label contains `SambaNas2` or `SambaNAS` |
 
 Skip: `renovate`-authored issues, `Dependency Dashboard` title, closed issues.
 
@@ -245,9 +282,9 @@ Skip: `renovate`-authored issues, `Dependency Dashboard` title, closed issues.
 
 ## Code Annotation Scope (Mode T)
 
-| Source | Included | Excluded |
-|------|-------------|-------------|
-| `backend/`, `frontend/`, `custom_components/`, `docs/`, `scripts/` | Yes | `vendor`, `node_modules`, build outputs, generated/minified files |
+| Source                                                             | Included | Excluded                                                          |
+| ------------------------------------------------------------------ | -------- | ----------------------------------------------------------------- |
+| `backend/`, `frontend/`, `custom_components/`, `docs/`, `scripts/` | Yes      | `vendor`, `node_modules`, build outputs, generated/minified files |
 
 Annotation markers are case-insensitive and include `TODO`, `FIXME`, `BUG`, `HACK`, `XXX`.
 

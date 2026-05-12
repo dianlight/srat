@@ -3,7 +3,7 @@
 ---
 
 description: 'ReactJS development standards and best practices'
-applyTo: '**/\*.jsx,**/*.tsx, \*\*/*.js, **/\*.ts,**/*.css, \*\*/*.scss'
+applyTo: '**/\*.jsx,**/_.tsx, \*\*/_.js, **/\*.ts,**/_.css, \*\*/_.scss'
 
 ---
 
@@ -73,22 +73,24 @@ Instructions for building high-quality ReactJS applications with modern patterns
 
 **When to apply:** A component has an early-return guard that conditionally renders `null` or a fallback based on props/state.
 
-**Problem:** Hooks declared *above* a guard still mount and execute, even when the component later returns `null`. This causes RTK Query fetches, WebSocket subscriptions, and timers to fire unnecessarily, leading to `act()` warnings and timeouts in tests.
+**Problem:** Hooks declared _above_ a guard still mount and execute, even when the component later returns `null`. This causes RTK Query fetches, WebSocket subscriptions, and timers to fire unnecessarily, leading to `act()` warnings and timeouts in tests.
 
 **Solution:** Split the component into two:
+
 1. **Thin public wrapper** (`SmartStatusPanel`) — performs the guard only, no hooks
 2. **Inner implementation** (`SmartStatusPanelInner`) — declares all hooks, no guards
 
 **Example:**
+
 ```tsx
 // ❌ WRONG - Hook fires even if component returns null
 function SmartStatusPanel({ deviceId }: Props) {
   const { data } = useGetDeviceQuery(deviceId); // Fires even if guard returns null!
-  
+
   if (!deviceId) {
     return null; // Guard returns, but hook already executed
   }
-  
+
   return <div>{data}</div>;
 }
 

@@ -1,7 +1,30 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+**Table of Contents** _generated with [DocToc](https://github.com/thlorenz/doctoc)_
+
+- [Update Changelog](#update-changelog)
+  - [When to Use](#when-to-use)
+  - [Procedure](#procedure)
+    - [1. Read CHANGELOG.md Format](#1-read-changelogmd-format)
+    - [2. Determine Which Tasks to Process](#2-determine-which-tasks-to-process)
+    - [3. Map Task Type → Changelog Section](#3-map-task-type-%E2%86%92-changelog-section)
+    - [4. Draft the Changelog Entry](#4-draft-the-changelog-entry)
+    - [5. Check for Duplicates](#5-check-for-duplicates)
+    - [6. Insert into CHANGELOG.md](#6-insert-into-changelogmd)
+    - [7. Confirm](#7-confirm)
+  - [Entry Style Guide](#entry-style-guide)
+    - [Subsection creation template](#subsection-creation-template)
+  - [Quality Checklist](#quality-checklist)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ---
+
 name: update-changelog
 description: 'Read completed or updated tasks from docs/tasks/ and append structured entries to CHANGELOG.md under the [ 🚧 Unreleased ] section, following the existing changelog format. Triggers on: "update changelog", "add to changelog", "changelog from tasks", "generate release notes", "write changelog entry".'
 argument-hint: 'Optional scope: "all done" (tasks marked ✅ Complete), "since <TaskID>" (tasks from NNN onwards), or a specific task filename/ID to add just one entry'
+
 ---
 
 # Update Changelog
@@ -21,6 +44,7 @@ Reads completed or in-progress task documents from `docs/tasks/` and appends wel
 ### 1. Read CHANGELOG.md Format
 
 Read `CHANGELOG.md` and extract:
+
 - The `[ 🚧 Unreleased ]` section header and its subsections (`### ✨ Features`, `### 🐛 Bug Fixes`, `### 🔧 Maintenance`, `### 🧑‍🏫 Documentation`, `### 🔄 Breaking Changes`)
 - The line immediately before the first versioned release heading (e.g., `## [ 2026.x.y ]`) — this is the **insertion point**
 
@@ -32,23 +56,23 @@ The format of each entry is a single bullet in the matching subsection:
 
 ### 2. Determine Which Tasks to Process
 
-| Argument | Tasks to include |
-|----------|-----------------|
-| `all done` (default) | All task files where **Status = ✅ Complete** |
-| `since NNN` | All task files with TaskID ≥ NNN, regardless of status |
-| `NNN` or filename | Only the specified task file |
-| _(none)_ | All task files with **Status = ✅ Complete** |
+| Argument             | Tasks to include                                       |
+| -------------------- | ------------------------------------------------------ |
+| `all done` (default) | All task files where **Status = ✅ Complete**          |
+| `since NNN`          | All task files with TaskID ≥ NNN, regardless of status |
+| `NNN` or filename    | Only the specified task file                           |
+| _(none)_             | All task files with **Status = ✅ Complete**           |
 
 For tasks that are `🔄 In Progress`, only include if the user explicitly passes the task ID or `since NNN` scope.
 
 ### 3. Map Task Type → Changelog Section
 
-| Task type | Changelog subsection |
-|-----------|---------------------|
-| `[FEATURE]` | `### ✨ Features` |
-| `[FIX]` | `### 🐛 Bug Fixes` |
-| `[DOCS]` | `### 🧑‍🏫 Documentation` |
-| `[REFACTOR]` | `### 🔧 Maintenance` |
+| Task type    | Changelog subsection   |
+| ------------ | ---------------------- |
+| `[FEATURE]`  | `### ✨ Features`      |
+| `[FIX]`      | `### 🐛 Bug Fixes`     |
+| `[DOCS]`     | `### 🧑‍🏫 Documentation` |
+| `[REFACTOR]` | `### 🔧 Maintenance`   |
 
 ### 4. Draft the Changelog Entry
 
@@ -59,6 +83,7 @@ For each task, generate a changelog bullet using this structure:
 ```
 
 Rules for the description:
+
 - Write for an **end user**, not a developer — avoid internal implementation details (adapter names, function signatures, struct fields)
 - Focus on **what changed and what benefit it brings**
 - If the task has a GitHub issue link, append `([#NNN](url))` at the end
@@ -88,6 +113,7 @@ Handle the case where `[ 🚧 Unreleased ]` does not exist: insert the full sect
 ### 7. Confirm
 
 After all insertions, report:
+
 - How many entries were added
 - Which subsections were updated
 - Any tasks skipped due to duplicates or unrecognised type
@@ -98,13 +124,13 @@ After all insertions, report:
 
 Reference the existing CHANGELOG.md entries as style anchors:
 
-| ✅ Good | ❌ Avoid |
-|--------|---------|
-| User-facing benefit language | Internal implementation details |
+| ✅ Good                                     | ❌ Avoid                                 |
+| ------------------------------------------- | ---------------------------------------- |
+| User-facing benefit language                | Internal implementation details          |
 | Present tense ("Adds", "Fixes", "Improves") | Past tense imperative ("Added", "Fixed") |
-| Bold short title followed by colon | Unformatted or all-lowercase bullet |
-| Issue link in parentheses at end | Issue link mid-sentence |
-| ≤ 2 sentences | Paragraph-length bullets |
+| Bold short title followed by colon          | Unformatted or all-lowercase bullet      |
+| Issue link in parentheses at end            | Issue link mid-sentence                  |
+| ≤ 2 sentences                               | Paragraph-length bullets                 |
 
 ### Subsection creation template
 
