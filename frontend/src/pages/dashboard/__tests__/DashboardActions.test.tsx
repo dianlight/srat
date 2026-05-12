@@ -1,27 +1,20 @@
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import "../../../../test/setup";
+import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import React from "react";
+import { MemoryRouter } from "react-router-dom";
+import { beforeEach, describe, expect, it } from "vitest";
+import { DashboardActions } from "../DashboardActions";
+import { renderWithTestStore } from "/test/testing";
 
 // Helper function to render DashboardActions with required wrappers
 async function renderDashboardActions() {
-    const React = await import("react");
-    const { render, screen } = await import("@testing-library/react");
-    const userEvent = (await import("@testing-library/user-event")).default;
-    const { Provider } = await import("react-redux");
-    const { BrowserRouter } = await import("react-router-dom");
-    const { DashboardActions } = await import("../DashboardActions");
-    const { createTestStore } = await import("../../../../test/setup");
-
-    const store = await createTestStore();
     const user = userEvent.setup();
 
-    const result = render(
+    const result = await renderWithTestStore(
         React.createElement(
-            BrowserRouter,
+            MemoryRouter,
             null,
-            React.createElement(Provider, {
-                store,
-                children: React.createElement(DashboardActions as any),
-            })
+            React.createElement(DashboardActions as any)
         )
     );
 
@@ -30,13 +23,7 @@ async function renderDashboardActions() {
 
 describe("DashboardActions component", () => {
     beforeEach(() => {
-        // Clear DOM between tests
-        document.body.innerHTML = "";
-    });
-
-    afterEach(async () => {
-        const { cleanup } = await import("@testing-library/react");
-        cleanup();
+        // Shared setup handles cleanup.
     });
 
     it("renders DashboardActions accordion without crashing", async () => {
@@ -44,10 +31,11 @@ describe("DashboardActions component", () => {
         expect(container).toBeTruthy();
     });
 
-    it("renders accordion with correct title", async () => {
+    it("renders actionable items accordion header", async () => {
         const { screen } = await renderDashboardActions();
-        const title = await screen.findByText("Actionable Items");
-        expect(title).toBeTruthy();
+        const accordionButtons = await screen.findAllByRole("button", { name: /actionable items/i });
+        const accordionButton = accordionButtons[0];
+        expect(accordionButton).toBeTruthy();
     });
 
     it("renders show ignored switch", async () => {
@@ -69,7 +57,7 @@ describe("DashboardActions component", () => {
     it("handles accordion expansion", async () => {
         const { screen, user } = await renderDashboardActions();
         // Find accordion button by role and accessible name
-        const accordionButton = screen.getByRole("button", { name: /actionable items/i });
+        const accordionButton = screen.getAllByRole("button", { name: /actionable items/i })[0];
         await user.click(accordionButton);
         expect(accordionButton).toBeTruthy();
     });
@@ -118,7 +106,7 @@ describe("DashboardActions component", () => {
     it("renders expand icon", async () => {
         const { screen } = await renderDashboardActions();
         // Find the accordion button which contains the expand icon
-        const accordionButton = screen.getByRole("button", { name: /actionable items/i });
+        const accordionButton = screen.getAllByRole("button", { name: /actionable items/i })[0];
         expect(accordionButton).toBeTruthy();
     });
 

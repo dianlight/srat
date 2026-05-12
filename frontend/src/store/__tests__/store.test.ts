@@ -1,5 +1,4 @@
-import { describe, expect, it } from "bun:test";
-import "../../../test/setup.ts";
+import { describe, expect, it } from "vitest";
 
 describe("Redux Store Configuration", () => {
 	it("exports a configured store instance", async () => {

@@ -1,179 +1,185 @@
 {
-  "name": "SRAT",
-  "build": {
-    "dockerfile": "Dockerfile",
-    "options": [
-      "--secret",
-      "id=github_token,env=GITHUB_TOKEN"
+    "name": "SRAT",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "options": ["--secret", "id=github_token,env=GITHUB_TOKEN"],
+        "context": ".."
+    },
+    "runArgs": [
+        "--cap-add=SYS_PTRACE",
+        "--security-opt",
+        "seccomp=unconfined",
+        "--privileged",
+        "--env-file",
+        "${localWorkspaceFolder}/.devcontainer/.env"
     ],
-    "context": ".."
-  },
-  "runArgs": [
-    "--cap-add=SYS_PTRACE",
-    "--security-opt",
-    "seccomp=unconfined",
-    "--privileged",
-    "--env-file",
-    ".devcontainer/.env"
-  ],
-  "initializeCommand": "mkdir -p .devcontainer && touch .devcontainer/.env",
-  "updateContentCommand": {
-    "mainScript": ".devcontainer/updateContentCommand.sh"
-  },
-  "remoteUser": "vscode",
-  "postCreateCommand": ".devcontainer/postCreateCommand.sh",
-  "postStartCommand": "chmod +x .devcontainer/postStartCommand.sh && CONTAINER_WORKSPACE_FOLDER=${containerWorkspaceFolder} ./.devcontainer/postStartCommand.sh",
-  "portsAttributes": {
-    "8080": {
-      "label": "Backend",
-      "onAutoForward": "silent",
-      "protocol": "http",
-      "requireLocalPort": true
+    "initializeCommand": "mkdir -p .devcontainer && touch .devcontainer/.env",
+    "updateContentCommand": {
+        "mainScript": ".devcontainer/updateContentCommand.sh"
     },
-    "3000": {
-      "label": "Frontend",
-      "onAutoForward": "silent",
-      "protocol": "http",
-      "requireLocalPort": true
-    },
-    "8090": {
-      "label": "Dev Autoreload",
-      "onAutoForward": "silent",
-      "protocol": "http",
-      "requireLocalPort": true
-    }
-  },
-  "remoteEnv": {
-    "BUN_INSTALL": "${containerEnv:HOME}/.bun",
-    "PATH": "${containerEnv:HOME}/.bun/bin:${containerEnv:PATH}",
-    "SUPERVISOR_URL": "http://${containerEnv:HOMEASSISTANT_IP}/",
-    "SUPERVISOR_TOKEN": "${containerEnv:SUPERVISOR_TOKEN}",
-    "GH_TOKEN": "${localEnv:GITHUB_TOKEN}",
-    "GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}",
-    "HOMEASSISTANT_IP": "${containerEnv:HOMEASSISTANT_IP}",
-    "ROLLBAR_MCP_ACCESS_TOKEN": "${localEnv:ROLLBAR_MCP_ACCESS_TOKEN}",
-    "ROLLBAR_CLIENT_ACCESS_TOKEN": "${localEnv:ROLLBAR_CLIENT_ACCESS_TOKEN}",
-    "GIST_TOKEN": "${localEnv:GIST_TOKEN}",
-    "HOST_PROJECT_PATH": "${localWorkspaceFolder}"
-  },
-  "containerEnv": {
-    "MISE_EXPERIMENTAL": "1"
-  },
-  "userEnvProbe": "loginInteractiveShell",
-  "features": {
-    "ghcr.io/devcontainers/features/common-utils:2": {
-      "installZsh": true,
-      "installOhMyZsh": true,
-      "configureZshAsDefaultShell": true,
-      "installOhMyZshConfig": true
-    },
-    "ghcr.io/devcontainers/features/github-cli:1": {},
-    "ghcr.io/eitsupi/devcontainer-features/jq-likes:2": {
-      "jqVersion": "latest",
-      "yqVersion": "latest"
-    },
-    "ghcr.io/dhoeric/features/act:1": {},
-    "ghcr.io/rchaganti/vsc-devcontainer-features/cosign:1": {},
-    "ghcr.io/shyim/devcontainers-features/bun:0": {},
-    "ghcr.io/devcontainers/features/python:1": {
-      "version": "3.14"
-    },
-    "ghcr.io/devcontainer-community/devcontainer-features/biomejs.dev:1": {},
-    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
-      "installDockerComposeV2": true
-    }
-  },
-  "customizations": {
-    "vscode": {
-      "settings": {
-        "terminal.integrated.profiles.linux": {
-          "zsh": {
-            "path": "/bin/zsh"
-          }
+    "remoteUser": "vscode",
+    "postCreateCommand": ".devcontainer/postCreateCommand.sh",
+    "postStartCommand": "chmod +x .devcontainer/postStartCommand.sh && CONTAINER_WORKSPACE_FOLDER=${containerWorkspaceFolder} ./.devcontainer/postStartCommand.sh",
+    "portsAttributes": {
+        "8080": {
+            "label": "Backend",
+            "onAutoForward": "silent",
+            "protocol": "http",
+            "requireLocalPort": true
         },
-        "terminal.integrated.defaultProfile.linux": "zsh",
-        "go.toolsManagement.checkForUpdates": "local",
-        "go.useLanguageServer": true,
-        "go.lintTool": "golangci-lint-v2",
-        "go.lintFlags": ["--fast-only"]
-      },
-      "extensions": [
-        "golang.go",
-        "biomejs.biome",
-        "esbenp.prettier-vscode",
-        "oven.bun-vscode",
-        "hverlin.mise-vscode",
-        "github.vscode-github-actions",
-        "SanjulaGanepola.github-local-actions",
-        "GitHub.remotehub",
-        "YoavBls.pretty-ts-errors",
-        "TypeScriptTeam.native-preview",
-        "zoellner.openapi-preview",
-        "yy0931.vscode-sqlite3-editor",
-        "mortenson.go-template-transpiler-extension",
-        "svvashishtha.go-interface-navigator",
-        "DavidAnson.vscode-markdownlint",
-        "bierner.markdown-mermaid",
-        "tamasfe.even-better-toml",
-        "chrischinchilla.vale-vscode",
-        "codezombiech.gitignore",
-        "Gruntfuggly.todo-tree",
-        "nguyenngoclong.terminal-keeper"
-      ],
-      "mcp": {
-        "servers": {
-          "playwright": {
-            "command": "bunx",
-            "args": ["-y", "@microsoft/mcp-server-playwright"]
-          },
-          "deepwiki": {
-            "type": "http",
-            "url": "https://mcp.deepwiki.com/sse"
-          },
-          "browsermcp": {
-            "command": "bunx",
-            "args": ["@browsermcp/mcp@latest"]
-          },
-          "context7": {
-            "type": "stdio",
-            "command": "bunx",
-            "args": ["-y", "@upstash/context7-mcp@latest"]
-          },
-          "github": {
-            "url": "https://api.githubcopilot.com/mcp/"
-          }
-        }
-      }
-    },
-    "zed": {
-      "settings": {
-        "languages": {
-          "Go": {
-            "language_servers": ["gopls"]
-          },
-          "TypeScript": {
-            "language_servers": ["typescript-language-server"]
-          }
+        "3000": {
+            "label": "Frontend",
+            "onAutoForward": "silent",
+            "protocol": "http",
+            "requireLocalPort": true
         },
-        "terminal": {
-          "shell": {
-            "program": "/bin/zsh"
-          }
+        "8090": {
+            "label": "Dev Autoreload",
+            "onAutoForward": "silent",
+            "protocol": "http",
+            "requireLocalPort": true
         }
-      },
-      "extensions": [
-        "toml",
-        "biome",
-        "docker-compose",
-        "git-firefly",
-        "mermaid",
-        "sql",
-        "gotmpl",
-        "golangci-lint"
-      ]
-    }
-  },
-  "mounts": [
-    "type=bind,source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,readonly"
-  ]
+    },
+    "remoteEnv": {
+        "BUN_INSTALL": "${containerEnv:HOME}/.bun",
+        "PATH": "${containerEnv:HOME}/.bun/bin:${containerEnv:PATH}",
+        "SUPERVISOR_URL": "http://${containerEnv:HOMEASSISTANT_IP}/",
+        "SUPERVISOR_TOKEN": "${containerEnv:SUPERVISOR_TOKEN}",
+        "GH_TOKEN": "${localEnv:GITHUB_TOKEN}",
+        "GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}",
+        "CONTEXT7_API_KEY": "${localEnv:CONTEXT7_API_KEY}",
+        "HOMEASSISTANT_IP": "${containerEnv:HOMEASSISTANT_IP}",
+        "ROLLBAR_MCP_ACCESS_TOKEN": "${localEnv:ROLLBAR_MCP_ACCESS_TOKEN}",
+        "ROLLBAR_CLIENT_ACCESS_TOKEN": "${localEnv:ROLLBAR_CLIENT_ACCESS_TOKEN}",
+        "GIST_TOKEN": "${localEnv:GIST_TOKEN}",
+        "HOST_PROJECT_PATH": "${localWorkspaceFolder}"
+    },
+    "containerEnv": {
+        "MISE_EXPERIMENTAL": "1",
+        "ZSH_DISABLE_COMPFIX": "1"
+    },
+    "userEnvProbe": "loginInteractiveShell",
+    "features": {
+        "ghcr.io/devcontainers/features/common-utils:2": {
+            "installZsh": true,
+            "installOhMyZsh": true,
+            "configureZshAsDefaultShell": true,
+            "installOhMyZshConfig": true
+        },
+        "ghcr.io/devcontainers/features/github-cli:1": {},
+        "ghcr.io/eitsupi/devcontainer-features/jq-likes:2": {
+            "jqVersion": "latest",
+            "yqVersion": "latest"
+        },
+        "ghcr.io/dhoeric/features/act:1": {},
+        "ghcr.io/rchaganti/vsc-devcontainer-features/cosign:1": {},
+        "ghcr.io/shyim/devcontainers-features/bun:0": {},
+        "ghcr.io/devcontainers/features/python:1": {
+            "version": "3.14"
+        },
+        "ghcr.io/devcontainer-community/devcontainer-features/biomejs.dev:1": {},
+        "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+            "installDockerComposeV2": true
+        },
+        "ghcr.io/devcontainers-extra/features/mise:1": {},
+        "ghcr.io/devcontainers-extra/features/zsh-plugins:0": {},
+        "ghcr.io/devcontainers/features/node:2": {}
+    },
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "terminal.integrated.profiles.linux": {
+                    "zsh": {
+                        "path": "/bin/zsh"
+                    }
+                },
+                "terminal.integrated.defaultProfile.linux": "zsh",
+                "go.toolsManagement.checkForUpdates": "local",
+                "go.useLanguageServer": true,
+                "go.lintTool": "golangci-lint-v2",
+                "go.lintFlags": ["--fast-only"]
+            },
+            "extensions": [
+                "golang.go",
+                "biomejs.biome",
+                "esbenp.prettier-vscode",
+                "oven.bun-vscode",
+                "hverlin.mise-vscode",
+                "github.vscode-github-actions",
+                "SanjulaGanepola.github-local-actions",
+                "GitHub.remotehub",
+                "YoavBls.pretty-ts-errors",
+                "TypeScriptTeam.native-preview",
+                "zoellner.openapi-preview",
+                "yy0931.vscode-sqlite3-editor",
+                "mortenson.go-template-transpiler-extension",
+                "svvashishtha.go-interface-navigator",
+                "DavidAnson.vscode-markdownlint",
+                "bierner.markdown-mermaid",
+                "tamasfe.even-better-toml",
+                "chrischinchilla.vale-vscode",
+                "HidenobuNagai.nvidia-nim-provider",
+                "vitest.explorer",
+                "ms-vscode.vscode-chat-customizations-evaluations",
+                "sst-dev.opencode",
+                "codezombiech.gitignore",
+                "Gruntfuggly.todo-tree",
+                "nguyenngoclong.terminal-keeper"
+            ],
+            "mcp": {
+                "servers": {
+                    "playwright": {
+                        "command": "bunx",
+                        "args": ["-y", "@microsoft/mcp-server-playwright"]
+                    },
+                    "deepwiki": {
+                        "type": "http",
+                        "url": "https://mcp.deepwiki.com/sse"
+                    },
+                    "browsermcp": {
+                        "command": "bunx",
+                        "args": ["@browsermcp/mcp@latest"]
+                    },
+                    "context7": {
+                        "type": "stdio",
+                        "command": "bunx",
+                        "args": ["-y", "@upstash/context7-mcp@latest"]
+                    },
+                    "github": {
+                        "url": "https://api.githubcopilot.com/mcp/"
+                    }
+                }
+            }
+        },
+        "zed": {
+            "settings": {
+                "languages": {
+                    "Go": {
+                        "language_servers": ["gopls"]
+                    },
+                    "TypeScript": {
+                        "language_servers": ["typescript-language-server"]
+                    }
+                },
+                "terminal": {
+                    "shell": {
+                        "program": "/bin/zsh"
+                    }
+                }
+            },
+            "extensions": [
+                "toml",
+                "biome",
+                "docker-compose",
+                "git-firefly",
+                "mermaid",
+                "sql",
+                "gotmpl",
+                "golangci-lint"
+            ]
+        }
+    },
+    "mounts": [
+        "type=bind,source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,readonly"
+    ]
 }

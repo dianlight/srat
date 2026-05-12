@@ -219,7 +219,7 @@ export function HDIdleDiskSettings({
 
               <IconButton
                 onClick={handleExpandChange}
-                disabled={enabled !== Enabled.Custom}
+                disabled={readOnly || enabled !== Enabled.Custom}
                 aria-expanded={expanded}
                 aria-label="show more"
                 sx={{

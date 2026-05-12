@@ -1,11 +1,9 @@
 /**
  * Utility functions for censoring sensitive data in various formats
- * Uses maskify-ts for advanced data masking and auto-detection
+ * TODO: Condier to use https://github.com/slippyex/data-guardian for more robust and configurable data masking
  */
 
-import { Maskify } from "maskify-ts";
-
-// Keywords that indicate sensitive data (used by maskify-ts sensitiveKeys)
+// Keywords that indicate sensitive data
 export const SENSITIVE_KEYWORDS = [
   "password",
   "pass",
@@ -38,14 +36,11 @@ export function isSensitiveField(label: string): boolean {
 }
 
 /**
- * Censor a value with lock emoji using maskify-ts transform function
+ * Censor a value with lock emoji (replace entire value with lock icons)
  */
 export function censorValue(value: unknown): string {
-  const strValue = String(value);
-  // Use maskify-ts with custom transform to replace with lock emoji
-  return Maskify.mask(strValue, {
-    transform: (val: string) => "🔒".repeat(Math.min(val.length, 8)),
-  });
+  const strValue = String(value).trim();
+  return "🔒".repeat(Math.min(strValue.length, 8));
 }
 
 /**

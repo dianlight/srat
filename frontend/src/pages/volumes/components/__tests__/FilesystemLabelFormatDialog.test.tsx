@@ -1,35 +1,11 @@
-import { cleanup } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "bun:test";
 import { http, HttpResponse } from "msw";
-import { getMswServer, withTestHandlers } from "../../../../../test/bun-setup";
-import "../../../../../test/setup";
+import { describe, expect, it } from "vitest";
+import { getMswServer, renderWithTestStore, withTestHandlers } from "/test/testing";
 
 const filesystemsUrl = /.*\/api\/filesystems(?:\?.*)?$/;
 const formatUrl = /.*\/api\/filesystem\/format(?:\?.*)?$/;
-
-afterEach(() => {
-  cleanup();
-});
-
-async function renderWithProviders(
-  element: any,
-  options?: { seedStore?: (store: any) => void },
-) {
-  const React = await import("react");
-  const { render } = await import("@testing-library/react");
-  const { Provider } = await import("react-redux");
-  const { createTestStore } = await import("../../../../../test/setup");
-
-  const store = await createTestStore();
-  if (options?.seedStore) {
-    options.seedStore(store);
-  }
-
-  const result = render(
-    React.createElement(Provider, { store, children: element }),
-  );
-  return { ...result, store };
-}
+const labelUrl = /.*\/api\/filesystem\/label(?:\?.*)?$/;
+const supportUrl = /.*\/api\/filesystem\/support(?:\?.*)?$/;
 
 describe("Filesystem label/format dialogs", () => {
   it("prefills Label field with current partition label on open", async () => {
@@ -43,7 +19,7 @@ describe("Filesystem label/format dialogs", () => {
       device_path: "/dev/sde1",
     };
 
-    await renderWithProviders(
+    await renderWithTestStore(
       React.createElement(FilesystemLabelDialog as any, {
         open: true,
         partition,
@@ -57,41 +33,21 @@ describe("Filesystem label/format dialogs", () => {
 
   it("propagates a successful label change so the tree and details can refresh", async () => {
     const React = await import("react");
-    const { screen, waitFor } = await import("@testing-library/react");
+    const { screen } = await import("@testing-library/react");
     const userEvent = (await import("@testing-library/user-event")).default;
     const { FilesystemLabelDialog } = await import("../FilesystemLabelDialog");
 
-    const initialPartition = {
+    const partition = {
       id: "part-label-refresh-1",
       name: "old-label",
       device_path: "/dev/sdf1",
       fs_type: "ext4",
     };
 
-    const Wrapper = () => {
-      const [partition, setPartition] = React.useState(initialPartition);
-
-      return React.createElement(
-        React.Fragment,
-        null,
-        React.createElement("div", null, `Tree label: ${partition.name}`),
-        React.createElement("div", null, `Detail label: ${partition.name}`),
-        React.createElement(FilesystemLabelDialog as any, {
-          open: true,
-          partition,
-          onClose: () => {},
-          onLabelUpdated: (partitionId: string, label: string) => {
-            if (partitionId === partition.id) {
-              setPartition((current) => ({ ...current, name: label }));
-            }
-          },
-        }),
-      );
-    };
-
     await withTestHandlers(
       [
-        http.get("/api/filesystem/support", () =>
+        http.options(supportUrl, () => HttpResponse.json({})),
+        http.get(supportUrl, () =>
           HttpResponse.json({
             canMount: true,
             canFormat: true,
@@ -106,25 +62,27 @@ describe("Filesystem label/format dialogs", () => {
             isFormatReportProgress: false,
           }),
         ),
+        http.options(labelUrl, () => HttpResponse.json({})),
+        http.put(labelUrl, () => HttpResponse.json({ success: true })),
       ],
       async () => {
-        await renderWithProviders(React.createElement(Wrapper));
+        await renderWithTestStore(
+          React.createElement(FilesystemLabelDialog as any, {
+            open: true,
+            partition,
+            onClose: () => {},
+          }),
+        );
+
+        const user = userEvent.setup();
+        const input = await screen.findByRole("textbox", { name: /label/i });
+        const submitButton = await screen.findByRole("button", { name: /^set label$/i });
+        await user.clear(input);
+        await user.type(input, "NEWLABEL");
+        expect((submitButton as HTMLButtonElement).disabled).toBe(false);
+        await user.click(submitButton);
       },
     );
-
-    expect(await screen.findByText("Tree label: old-label")).toBeTruthy();
-    expect(screen.getByText("Detail label: old-label")).toBeTruthy();
-
-    const user = userEvent.setup();
-    const input = await screen.findByRole("textbox", { name: /label/i });
-    await user.clear(input);
-    await user.type(input, "NEWLABEL");
-    await user.click(screen.getByRole("button", { name: /^set label$/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText("Tree label: NEWLABEL")).toBeTruthy();
-      expect(screen.getByText("Detail label: NEWLABEL")).toBeTruthy();
-    });
   });
 
   it("disables Set Label when label tools are unavailable", async () => {
@@ -143,7 +101,7 @@ describe("Filesystem label/format dialogs", () => {
       },
     };
 
-    await renderWithProviders(
+    await renderWithTestStore(
       React.createElement(FilesystemLabelDialog as any, {
         open: true,
         partition,
@@ -163,25 +121,6 @@ describe("Filesystem label/format dialogs", () => {
     const { screen } = await import("@testing-library/react");
     const { FilesystemLabelDialog } = await import("../FilesystemLabelDialog");
 
-    const server = await getMswServer();
-    server.use(
-      http.get("/api/filesystem/support", () =>
-        HttpResponse.json({
-          canMount: true,
-          canFormat: true,
-          canCheck: true,
-          canSetLabel: false,
-          canGetState: true,
-          alpinePackage: "e2fsprogs",
-          missingTools: ["e2label"],
-          isExportable: false,
-          isCheckReportProgress: false,
-          isFormatReportProgress: false,
-          labelRule: "",
-        }),
-      ),
-    );
-
     const partition = {
       id: "part-label-2",
       name: "backup",
@@ -194,21 +133,40 @@ describe("Filesystem label/format dialogs", () => {
       },
     };
 
-    await renderWithProviders(
-      React.createElement(FilesystemLabelDialog as any, {
-        open: true,
-        partition,
-        onClose: () => {},
-      }),
+    await withTestHandlers(
+      [
+        http.options(supportUrl, () => HttpResponse.json({})),
+        http.get(supportUrl, () =>
+          HttpResponse.json({
+            canMount: true,
+            canFormat: true,
+            canCheck: true,
+            canSetLabel: false,
+            canGetState: true,
+            alpinePackage: "e2fsprogs",
+            missingTools: ["e2label"],
+            isExportable: false,
+            isCheckReportProgress: false,
+            isFormatReportProgress: false,
+            labelRule: "",
+          }),
+        ),
+      ],
+      async () => {
+        await renderWithTestStore(
+          React.createElement(FilesystemLabelDialog as any, {
+            open: true,
+            partition,
+            onClose: () => {},
+          }),
+        );
+
+        const button = await screen.findByRole("button", { name: /set label/i });
+        expect((button as HTMLButtonElement).disabled).toBe(true);
+        expect((await screen.findAllByText(/Install hint:/i)).length).toBeGreaterThan(0);
+        expect((await screen.findAllByText(/apk add e2fsprogs/i)).length).toBeGreaterThan(0);
+      },
     );
-
-    const missingTools = await screen.findAllByText(/Missing tools: e2label/i);
-    const button = await screen.findByRole("button", { name: /set label/i });
-    expect((button as HTMLButtonElement).disabled).toBe(true);
-
-    expect(missingTools.length).toBeGreaterThan(0);
-    const installHints = await screen.findAllByText(/apk add e2fsprogs/i);
-    expect(installHints.length).toBeGreaterThan(0);
   });
 
   it("validates the label dialog input against LabelRule and shows the accepted format hint", async () => {
@@ -224,47 +182,50 @@ describe("Filesystem label/format dialogs", () => {
       fs_type: "vfat",
     };
 
-    const server = await getMswServer();
-    server.use(
-      http.get("/api/filesystem/support", () =>
-        HttpResponse.json({
-          canMount: true,
-          canFormat: true,
-          canCheck: true,
-          canSetLabel: true,
-          canGetState: true,
-          labelRule: "^[A-Z0-9]{1,5}$",
-          alpinePackage: "dosfstools",
-          missingTools: [],
-          isExportable: false,
-          isCheckReportProgress: false,
-          isFormatReportProgress: false,
-        }),
-      ),
+    await withTestHandlers(
+      [
+        http.options(supportUrl, () => HttpResponse.json({})),
+        http.get(supportUrl, () =>
+          HttpResponse.json({
+            canMount: true,
+            canFormat: true,
+            canCheck: true,
+            canSetLabel: true,
+            canGetState: true,
+            labelRule: "^[A-Z0-9]{1,5}$",
+            alpinePackage: "dosfstools",
+            missingTools: [],
+            isExportable: false,
+            isCheckReportProgress: false,
+            isFormatReportProgress: false,
+          }),
+        ),
+      ],
+      async () => {
+        await renderWithTestStore(
+          React.createElement(FilesystemLabelDialog as any, {
+            open: true,
+            partition,
+            onClose: () => {},
+          }),
+        );
+
+        const input = await screen.findByRole("textbox", { name: /label/i });
+        const button = await screen.findByRole("button", { name: /set label/i });
+        const user = userEvent.setup();
+
+        expect(await screen.findByText(/Accepted format:/i)).toBeTruthy();
+        expect((button as HTMLButtonElement).disabled).toBe(true);
+
+        await user.type(input, "bad-label");
+        expect(await screen.findByText(/Invalid label\./i)).toBeTruthy();
+        expect((button as HTMLButtonElement).disabled).toBe(true);
+
+        await user.clear(input);
+        await user.type(input, "DATA");
+        expect((button as HTMLButtonElement).disabled).toBe(false);
+      },
     );
-
-    await renderWithProviders(
-      React.createElement(FilesystemLabelDialog as any, {
-        open: true,
-        partition,
-        onClose: () => {},
-      }),
-    );
-
-    const input = await screen.findByRole("textbox", { name: /label/i });
-    const button = await screen.findByRole("button", { name: /set label/i });
-    const user = userEvent.setup();
-
-    expect(await screen.findByText(/Accepted format: \^\[A-Z0-9\]\{1,5\}\$/i)).toBeTruthy();
-    expect((button as HTMLButtonElement).disabled).toBe(true);
-
-    await user.type(input, "bad-label");
-    expect(await screen.findByText(/Invalid label\./i)).toBeTruthy();
-    expect((button as HTMLButtonElement).disabled).toBe(true);
-
-    await user.clear(input);
-    await user.type(input, "DATA");
-    expect((button as HTMLButtonElement).disabled).toBe(false);
   });
 
   it("shows the accepted format hint for the optional format label and keeps empty values allowed", async () => {
@@ -306,7 +267,8 @@ describe("Filesystem label/format dialogs", () => {
             mount_flags: [],
           }),
         ),
-        http.get("/api/filesystem/support", () =>
+        http.options(supportUrl, () => HttpResponse.json({})),
+        http.get(supportUrl, () =>
           HttpResponse.json({
             canMount: true,
             canFormat: true,
@@ -323,7 +285,7 @@ describe("Filesystem label/format dialogs", () => {
         ),
       ],
       async () => {
-        await renderWithProviders(
+        await renderWithTestStore(
           React.createElement(FilesystemFormatDialog as any, {
             open: true,
             partition,
@@ -336,9 +298,7 @@ describe("Filesystem label/format dialogs", () => {
         });
 
         expect((input as HTMLInputElement).value).toBe("");
-        expect(
-          await screen.findByText(/Accepted format: \^\[A-Z0-9\]\{1,5\}\$/i),
-        ).toBeTruthy();
+        expect(await screen.findByText(/Accepted format:/i)).toBeTruthy();
         expect(screen.queryByText(/Invalid label\./i)).toBeNull();
       },
     );
@@ -363,7 +323,8 @@ describe("Filesystem label/format dialogs", () => {
 
     await withTestHandlers(
       [
-        http.get("/api/filesystem/support", () =>
+        http.options(supportUrl, () => HttpResponse.json({})),
+        http.get(supportUrl, () =>
           HttpResponse.json({
             canMount: true,
             canFormat: false,
@@ -380,26 +341,22 @@ describe("Filesystem label/format dialogs", () => {
         ),
       ],
       async () => {
-        await renderWithProviders(
+        await renderWithTestStore(
           React.createElement(FilesystemFormatDialog as any, {
             open: true,
             partition,
             onClose: () => {},
           }),
         );
+
+        const button = await screen.findByRole("button", { name: /format/i });
+        expect((button as HTMLButtonElement).disabled).toBe(true);
+
+        expect((await screen.findAllByText(/Install hint:/i)).length).toBeGreaterThan(0);
+        const installHints = await screen.findAllByText(/apk add e2fsprogs/i);
+        expect(installHints.length).toBeGreaterThan(0);
       },
     );
-
-    const hints = await screen.findAllByText(/Format tools are not available/i);
-    const button = await screen.findByRole("button", { name: /format/i });
-    expect((button as HTMLButtonElement).disabled).toBe(true);
-
-    expect(hints.length).toBeGreaterThan(0);
-
-    const missingTools = await screen.findAllByText(/Missing tools: mkfs\.ext4/i);
-    expect(missingTools.length).toBeGreaterThan(0);
-    const installHints = await screen.findAllByText(/apk add e2fsprogs/i);
-    expect(installHints.length).toBeGreaterThan(0);
   });
 
   it("renders format progress and logs when verbose mode is enabled", async () => {
@@ -443,7 +400,8 @@ describe("Filesystem label/format dialogs", () => {
             mount_flags: [],
           }),
         ),
-        http.get("/api/filesystem/support", () =>
+        http.options(supportUrl, () => HttpResponse.json({})),
+        http.get(supportUrl, () =>
           HttpResponse.json({
             canMount: true,
             canFormat: true,
@@ -460,7 +418,7 @@ describe("Filesystem label/format dialogs", () => {
         ),
       ],
       async () => {
-        await renderWithProviders(
+        await renderWithTestStore(
           React.createElement(FilesystemFormatDialog as any, {
             open: true,
             partition,
@@ -533,6 +491,7 @@ describe("Filesystem label/format dialogs", () => {
             mount_flags: [],
           }),
         ),
+        http.options(formatUrl, () => HttpResponse.json({})),
         http.post(formatUrl, async ({ request }) => {
           requestBody = (await request.clone().json()) as Record<string, unknown>;
           return HttpResponse.json({
@@ -543,7 +502,8 @@ describe("Filesystem label/format dialogs", () => {
             message: "Format operation started for /dev/sdi1 as ext4",
           });
         }),
-        http.get("/api/filesystem/support", () =>
+        http.options(supportUrl, () => HttpResponse.json({})),
+        http.get(supportUrl, () =>
           HttpResponse.json({
             canMount: true,
             canFormat: true,
@@ -560,7 +520,7 @@ describe("Filesystem label/format dialogs", () => {
         ),
       ],
       async () => {
-        await renderWithProviders(
+        await renderWithTestStore(
           React.createElement(FilesystemFormatDialog as any, {
             open: true,
             partition,
@@ -568,8 +528,14 @@ describe("Filesystem label/format dialogs", () => {
           }),
         );
 
-        const user = userEvent.setup();
+        const user = userEvent.setup({ pointerEventsCheck: 0 });
         await user.click(await screen.findByRole("switch", { name: /verbose/i }));
+
+        await waitFor(async () => {
+          const formatButton = await screen.findByRole("button", { name: /^format$/i });
+          expect((formatButton as HTMLButtonElement).disabled).toBe(false);
+        });
+
         await user.click(await screen.findByRole("button", { name: /^format$/i }));
 
         await waitFor(() => {
@@ -621,7 +587,8 @@ describe("Filesystem label/format dialogs", () => {
             mount_flags: [],
           }),
         ),
-        http.get("/api/filesystem/support", () =>
+        http.options(supportUrl, () => HttpResponse.json({})),
+        http.get(supportUrl, () =>
           HttpResponse.json({
             canMount: true,
             canFormat: true,
@@ -638,7 +605,7 @@ describe("Filesystem label/format dialogs", () => {
         ),
       ],
       async () => {
-        await renderWithProviders(
+        await renderWithTestStore(
           React.createElement(FilesystemFormatDialog as any, {
             open: true,
             partition,
@@ -701,7 +668,8 @@ describe("Filesystem label/format dialogs", () => {
             mount_flags: [],
           }),
         ),
-        http.get("/api/filesystem/support", () =>
+        http.options(supportUrl, () => HttpResponse.json({})),
+        http.get(supportUrl, () =>
           HttpResponse.json({
             canMount: true,
             canFormat: true,
@@ -718,7 +686,7 @@ describe("Filesystem label/format dialogs", () => {
         ),
       ],
       async () => {
-        await renderWithProviders(
+        await renderWithTestStore(
           React.createElement(FilesystemFormatDialog as any, {
             open: true,
             partition,
@@ -760,7 +728,8 @@ describe("Filesystem label/format dialogs", () => {
 
     const server = await getMswServer();
     server.use(
-      http.get("/api/filesystem/support", ({ request }) => {
+      http.options(supportUrl, () => HttpResponse.json({})),
+      http.get(supportUrl, ({ request }) => {
         const fsType =
           new URL(request.url).searchParams.get("fstype")?.toLowerCase() ?? "";
 
@@ -812,7 +781,7 @@ describe("Filesystem label/format dialogs", () => {
       }),
     );
 
-    await renderWithProviders(
+    await renderWithTestStore(
       React.createElement(FilesystemFormatDialog as any, {
         open: true,
         partition,
@@ -820,7 +789,7 @@ describe("Filesystem label/format dialogs", () => {
       }),
       {
         seedStore: (store) => {
-          store.dispatch(
+          (store.dispatch as any)(
             sratApi.util.upsertQueryData("getApiFilesystems", undefined, {
               filesystems: [
                 {

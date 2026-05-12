@@ -1,8 +1,11 @@
-// Shared test setup (DOM globals, APIURL, and store helper)
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import "../../../../test/setup";
-import { createTestStore } from "../../../../test/setup";
+import React from "react";
+import { cleanup, render, within } from "@testing-library/react";
+import { Provider } from "react-redux";
+import { MemoryRouter } from "react-router";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { createTestStore } from "/test/testing";
 import { getDiskIdentifier, getPartitionIdentifier } from "../utils";
+import { Volumes } from "../Volumes";
 
 // Minimal localStorage shim for bun:test
 if (!(globalThis as any).localStorage) {
@@ -26,18 +29,11 @@ describe("Volumes restored selection", () => {
         localStorage.clear();
     });
 
-    afterEach(async () => {
-        const { cleanup } = await import("@testing-library/react");
+    afterEach(() => {
         cleanup();
     });
 
     it("restores selected partition and shows details", async () => {
-        // Dynamically import React/testing utilities and the component after globals are set
-        const React = await import("react");
-        const { render, within } = await import("@testing-library/react");
-        const { MemoryRouter } = await import("react-router");
-        const { Volumes } = await import("../Volumes");
-        const { Provider } = await import("react-redux");
         const store = await createTestStore();
 
         const initialDisks = [

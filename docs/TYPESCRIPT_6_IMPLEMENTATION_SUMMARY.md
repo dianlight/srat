@@ -163,7 +163,7 @@ cd frontend
 bun tsgo --noEmit
 
 # Run tests
-bun test
+bunx vitest run
 
 # Production build
 bun run build

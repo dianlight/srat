@@ -47,6 +47,11 @@
 		"allowJs": true,
 		// Bundler mode (not from HA)
 		"moduleResolution": "bundler",
+		"paths": {
+			"/test/*": [
+				"./test/*"
+			]
+		},
 		"allowImportingTsExtensions": true,
 		"allowArbitraryExtensions": true,
 		"verbatimModuleSyntax": true,

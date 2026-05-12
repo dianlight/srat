@@ -13,7 +13,7 @@
   - [Usage (Imperative)](#usage-imperative)
   - [Usage (React Hook)](#usage-react-hook)
   - [Frontend Component Organization Rules](#frontend-component-organization-rules)
-- [Test Setup Enforcement](#test-setup-enforcement)
+- [Test Setup](#test-setup)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -137,9 +137,9 @@ export function ErrorTelemetryBinder() {
     - Specific components: `src/pages/dashboard/DashboardWidget.tsx`, `src/pages/dashboard/ChartPanel.tsx`, etc.
     - Do **not** place dashboard-specific components in `src/components/`.
 
-## Test Setup Enforcement
+## Test Setup
 
-All test files must import the shared test setup (`import '../../../../test/setup'`). This is enforced by the `bun ./scripts/add-test-setup.js` script, which runs automatically before linting and testing. If the setup import is missing, the script will add it to the top of the file.
+Shared test setup is loaded globally through Vitest config (`setupFiles: ["./test/happy-dom-setup.ts"]`) for both regular and browser runs. Test files should not import `test/setup` directly.
 
 Run tests locally:
 
@@ -155,7 +155,7 @@ mise run //frontend:test
 - Always await interactions: `await user.click(button)`, `await user.type(input, "text")`
 - See `.github/copilot-instructions.md` for complete testing patterns
 
-> **Note**: Bun 1.2.23 rejects registering lifecycle hooks from inside a running test. We preload `@testing-library/react` in `test/setup.ts` so its automatic cleanup attaches to `afterEach` before any spec runs. If you reorganize the shared setup, keep that top-level import in place or the suite will fail with "Cannot call afterEach() inside a test" errors.
+> **Note**: Bun 1.2.23 rejects registering lifecycle hooks from inside a running test. We preload `@testing-library/react` in `test/happy-dom-setup.ts` so its automatic cleanup attaches to `afterEach` before any spec runs. If you reorganize the shared setup, keep that top-level import in place or the suite will fail with "Cannot call afterEach() inside a test" errors.
 
 Run linter and typecheck:
 

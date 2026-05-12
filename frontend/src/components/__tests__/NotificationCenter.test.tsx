@@ -1,54 +1,54 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test";
-import "../../../test/setup";
+import { ThemeProvider, createTheme } from "@mui/material/styles";
+import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import React from "react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { renderWithTestStore } from "/test/testing";
 
-const mockNotificationCenterState = {
-    notifications: [] as Array<any>,
-    unreadCount: 0,
-    clear: () => { },
-    markAllAsRead: () => { },
-    remove: () => { },
-    markAsRead: () => { },
-};
+const { mockNotificationCenterState } = vi.hoisted(() => {
+    const mockNotificationCenterState = {
+        notifications: [] as Array<any>,
+        unreadCount: 0,
+        clear: () => { },
+        markAllAsRead: () => { },
+        remove: () => { },
+        markAsRead: () => { },
+    };
+    return { mockNotificationCenterState };
+});
 
-mock.module("react-toastify/addons/use-notification-center", () => ({
+vi.mock("react-toastify/addons/use-notification-center", () => ({
     useNotificationCenter: () => mockNotificationCenterState,
 }));
 
-// Required localStorage shim for testing environment
-if (!(globalThis as any).localStorage) {
-    const _store: Record<string, string> = {};
-    (globalThis as any).localStorage = {
-        getItem: (k: string) => (_store.hasOwnProperty(k) ? _store[k] : null),
-        setItem: (k: string, v: string) => { _store[k] = String(v); },
-        removeItem: (k: string) => { delete _store[k]; },
-        clear: () => { for (const k of Object.keys(_store)) delete _store[k]; },
-    };
-}
-
 describe("NotificationCenter Component", () => {
     beforeEach(() => {
-        localStorage.clear();
+        if (localStorage && typeof localStorage.clear === 'function') {
+            localStorage.clear();
+        }
         mockNotificationCenterState.notifications = [];
         mockNotificationCenterState.unreadCount = 0;
         // Clear DOM before each test
         document.body.innerHTML = '';
     });
 
-    it("renders notification center icon button", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
+    async function renderNotificationCenter() {
         const { NotificationCenter } = await import("../NotificationCenter");
-
         const theme = createTheme();
 
-        const { container } = render(
+        const result = await renderWithTestStore(
             React.createElement(
                 ThemeProvider,
                 { theme },
                 React.createElement(NotificationCenter as any)
             )
         );
+
+        return { ...result, screen };
+    }
+
+    it("renders notification center icon button", async () => {
+        const { container } = await renderNotificationCenter();
 
         // Check that the notification button is rendered
         const notificationButtons = screen.queryAllByRole("button");
@@ -59,22 +59,8 @@ describe("NotificationCenter Component", () => {
     });
 
     it("opens popover when notification button is clicked", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const userEvent = (await import("@testing-library/user-event")).default;
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { NotificationCenter } = await import("../NotificationCenter");
-
-        const theme = createTheme();
         const user = userEvent.setup();
-
-        const { container } = render(
-            React.createElement(
-                ThemeProvider,
-                { theme },
-                React.createElement(NotificationCenter as any)
-            )
-        );
+        const { container } = await renderNotificationCenter();
 
         // Find and click the notification button
         const notificationButton = screen.queryByRole("button");
@@ -87,42 +73,15 @@ describe("NotificationCenter Component", () => {
     });
 
     it("displays notification count badge", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { NotificationCenter } = await import("../NotificationCenter");
-
-        const theme = createTheme();
-
-        const { container } = render(
-            React.createElement(
-                ThemeProvider,
-                { theme },
-                React.createElement(NotificationCenter as any)
-            )
-        );
+        const { container } = await renderNotificationCenter();
 
         // Look for badge element - check component renders without errors
         expect(container).toBeTruthy();
     });
 
     it("handles show read notifications toggle", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const userEvent = (await import("@testing-library/user-event")).default;
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { NotificationCenter } = await import("../NotificationCenter");
-
-        const theme = createTheme();
         const user = userEvent.setup();
-
-        const { container } = render(
-            React.createElement(
-                ThemeProvider,
-                { theme },
-                React.createElement(NotificationCenter as any)
-            )
-        );
+        const { container } = await renderNotificationCenter();
 
         // Open the popover first
         const notificationButton = screen.queryByRole("button");
@@ -141,22 +100,8 @@ describe("NotificationCenter Component", () => {
     });
 
     it("renders notification list when popover is open", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const userEvent = (await import("@testing-library/user-event")).default;
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { NotificationCenter } = await import("../NotificationCenter");
-
-        const theme = createTheme();
         const user = userEvent.setup();
-
-        const { container } = render(
-            React.createElement(
-                ThemeProvider,
-                { theme },
-                React.createElement(NotificationCenter as any)
-            )
-        );
+        const { container } = await renderNotificationCenter();
 
         // Open the popover
         const notificationButton = screen.queryByRole("button");
@@ -169,12 +114,6 @@ describe("NotificationCenter Component", () => {
     });
 
     it("shows React notification content instead of object placeholders", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const userEvent = (await import("@testing-library/user-event")).default;
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { NotificationCenter } = await import("../NotificationCenter");
-
         mockNotificationCenterState.notifications = [
             {
                 id: "toast-1",
@@ -187,16 +126,8 @@ describe("NotificationCenter Component", () => {
         ];
         mockNotificationCenterState.unreadCount = 1;
 
-        const theme = createTheme();
         const user = userEvent.setup();
-
-        render(
-            React.createElement(
-                ThemeProvider,
-                { theme },
-                React.createElement(NotificationCenter as any)
-            )
-        );
+        await renderNotificationCenter();
 
         const notificationButton = screen.getAllByRole("button")[0];
         await user.click(notificationButton!);
@@ -206,22 +137,8 @@ describe("NotificationCenter Component", () => {
     });
 
     it("handles notification actions (clear, mark as read)", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const userEvent = (await import("@testing-library/user-event")).default;
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { NotificationCenter } = await import("../NotificationCenter");
-
-        const theme = createTheme();
         const user = userEvent.setup();
-
-        render(
-            React.createElement(
-                ThemeProvider,
-                { theme },
-                React.createElement(NotificationCenter as any)
-            )
-        );
+        await renderNotificationCenter();
 
         // Open the popover
         const notificationButton = screen.queryByRole("button");
@@ -241,22 +158,8 @@ describe("NotificationCenter Component", () => {
     });
 
     it("displays tooltips on hover", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const userEvent = (await import("@testing-library/user-event")).default;
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { NotificationCenter } = await import("../NotificationCenter");
-
-        const theme = createTheme();
         const user = userEvent.setup();
-
-        const { container } = render(
-            React.createElement(
-                ThemeProvider,
-                { theme },
-                React.createElement(NotificationCenter as any)
-            )
-        );
+        const { container } = await renderNotificationCenter();
 
         // Test tooltip on main notification button
         const notificationButton = screen.queryByRole("button");
@@ -269,82 +172,29 @@ describe("NotificationCenter Component", () => {
     });
 
     it("handles color scheme changes", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { NotificationCenter } = await import("../NotificationCenter");
-
-        const theme = createTheme();
-
-        const { container } = render(
-            React.createElement(
-                ThemeProvider,
-                { theme },
-                React.createElement(NotificationCenter as any)
-            )
-        );
+        const { container } = await renderNotificationCenter();
 
         // The component should render without errors regardless of color scheme
         expect(container).toBeTruthy();
     });
 
     it("converts severity levels correctly", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { NotificationCenter } = await import("../NotificationCenter");
-
-        const theme = createTheme();
-
-        const { container } = render(
-            React.createElement(
-                ThemeProvider,
-                { theme },
-                React.createElement(NotificationCenter as any)
-            )
-        );
+        const { container } = await renderNotificationCenter();
 
         // Test that the component renders (severity conversion is internal)
         expect(container).toBeTruthy();
     });
 
     it("renders ToastContainer with correct configuration", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { NotificationCenter } = await import("../NotificationCenter");
-
-        const theme = createTheme();
-
-        const { container } = render(
-            React.createElement(
-                ThemeProvider,
-                { theme },
-                React.createElement(NotificationCenter as any)
-            )
-        );
+        const { container } = await renderNotificationCenter();
 
         // Look for toast container elements - check component renders without errors
         expect(container).toBeTruthy();
     });
 
     it("handles popover close correctly", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const userEvent = (await import("@testing-library/user-event")).default;
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { NotificationCenter } = await import("../NotificationCenter");
-
-        const theme = createTheme();
         const user = userEvent.setup();
-
-        const { container } = render(
-            React.createElement(
-                ThemeProvider,
-                { theme },
-                React.createElement(NotificationCenter as any)
-            )
-        );
+        const { container } = await renderNotificationCenter();
 
         // Open and close the popover
         const notificationButton = screen.queryByRole("button");
@@ -358,22 +208,8 @@ describe("NotificationCenter Component", () => {
     });
 
     it("handles disabled action buttons correctly", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const userEvent = (await import("@testing-library/user-event")).default;
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { NotificationCenter } = await import("../NotificationCenter");
-
-        const theme = createTheme();
         const user = userEvent.setup();
-
-        render(
-            React.createElement(
-                ThemeProvider,
-                { theme },
-                React.createElement(NotificationCenter as any)
-            )
-        );
+        await renderNotificationCenter();
 
         // Open the popover
         const notificationButton = screen.queryByRole("button");

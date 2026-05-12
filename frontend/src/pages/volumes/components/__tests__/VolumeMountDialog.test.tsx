@@ -1,8 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
-import "../../../../../test/setup";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock the sratApi hooks and types used by VolumeMountDialog and related components
-mock.module("../../../../store/sratApi", () => {
+vi.mock("../../../../store/sratApi", () => {
     const fakeReducer = (state: any = {}, _action: any) => state;
     const makeMiddleware = () => () => (next: any) => (action: any) => next(action);
     const makeUtil = () => ({
@@ -76,11 +75,11 @@ if (!(globalThis as any).localStorage) {
 describe("VolumeMountDialog Component", () => {
     beforeEach(() => {
         localStorage.clear();
-        mock.restore();
+        vi.restoreAllMocks();
     });
 
     afterEach(() => {
-        mock.restore();
+        vi.restoreAllMocks();
     });
 
     it("renders dialog when open prop is true", async () => {
@@ -88,7 +87,7 @@ describe("VolumeMountDialog Component", () => {
         const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { VolumeMountDialog } = await import("../VolumeMountDialog");
-        const { createTestStore } = await import("../../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
         const mockClose = () => { };
@@ -115,7 +114,7 @@ describe("VolumeMountDialog Component", () => {
         const { render } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { VolumeMountDialog } = await import("../VolumeMountDialog");
-        const { createTestStore } = await import("../../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
         const mockClose = () => { };
@@ -140,7 +139,7 @@ describe("VolumeMountDialog Component", () => {
         const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { VolumeMountDialog } = await import("../VolumeMountDialog");
-        const { createTestStore } = await import("../../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
         const mockClose = () => { };
@@ -167,7 +166,7 @@ describe("VolumeMountDialog Component", () => {
         const { render } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { VolumeMountDialog } = await import("../VolumeMountDialog");
-        const { createTestStore } = await import("../../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
         const mockClose = () => { };
@@ -204,7 +203,7 @@ describe("VolumeMountDialog Component", () => {
         const { render } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { VolumeMountDialog } = await import("../VolumeMountDialog");
-        const { createTestStore } = await import("../../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
         const mockClose = () => { };
@@ -230,7 +229,7 @@ describe("VolumeMountDialog Component", () => {
         const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { VolumeMountDialog } = await import("../VolumeMountDialog");
-        const { createTestStore } = await import("../../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
         const mockClose = () => { };
@@ -257,7 +256,7 @@ describe("VolumeMountDialog Component", () => {
         const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { VolumeMountDialog } = await import("../VolumeMountDialog");
-        const { createTestStore } = await import("../../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
         const mockClose = () => { };
@@ -284,7 +283,7 @@ describe("VolumeMountDialog Component", () => {
         const { render } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { VolumeMountDialog } = await import("../VolumeMountDialog");
-        const { createTestStore } = await import("../../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
         const mockClose = () => { };
@@ -310,7 +309,7 @@ describe("VolumeMountDialog Component", () => {
         const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { VolumeMountDialog } = await import("../VolumeMountDialog");
-        const { createTestStore } = await import("../../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
         const mockClose = () => { };
@@ -337,7 +336,7 @@ describe("VolumeMountDialog Component", () => {
         const { render } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { VolumeMountDialog } = await import("../VolumeMountDialog");
-        const { createTestStore } = await import("../../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
         const mockClose = () => { };

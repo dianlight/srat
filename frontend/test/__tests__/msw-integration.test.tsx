@@ -9,8 +9,8 @@
  * Note: SSE is deprecated for this project. Use WebSocket for real-time streaming.
  */
 
-import "../setup";
-import { describe, it, expect, beforeEach } from "bun:test";
+import "../testing";
+import { describe, it, expect, beforeEach } from "vitest";
 
 describe("MSW Integration Example Tests", () => {
 	beforeEach(() => {
@@ -23,7 +23,7 @@ describe("MSW Integration Example Tests", () => {
 		const React = await import("react");
 		const { render, screen } = await import("@testing-library/react");
 		const { Provider } = await import("react-redux");
-		const { createTestStore } = await import("../setup");
+		const { createTestStore } = await import("../testing");
 
 		// Simple component to test MSW is working
 		const TestComponent = () => {

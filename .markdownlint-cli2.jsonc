@@ -72,11 +72,15 @@
     "ignores": [
         "frontend/node_modules/**",
         "backend/src/vendor/**",
+        ".ai/**",
+        ".opencode/**",
         ".git/**",
         ".vale/**",
         ".github/**",
         "docs/tasks/**",
-        "docs/refactors/**"
+        "docs/refactors/**",
+        "custom_components/.venv/**",
+        "docs/memory-index.md"
     ],
     "gitignore": true
 }

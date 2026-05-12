@@ -1,11 +1,10 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ComponentProps } from "react";
 import { Provider } from "react-redux";
 import { BrowserRouter } from "react-router-dom";
-import "../../../../../test/setup";
-import { createTestStore } from "../../../../../test/setup";
+import { createTestStore } from "/test/testing";
 import { type Partition } from "../../../../store/sratApi";
 import { VolumeDetailsPanel } from "../VolumeDetailsPanel";
 
@@ -262,16 +261,16 @@ describe("VolumeDetailsPanel", () => {
 
     it("renders mount action and triggers callback", async () => {
         const user = userEvent.setup();
-        const onMount = mock(() => undefined);
+        const onMount = vi.fn(() => undefined);
 
         await renderPanel({
             disk: baseDisk as any,
             partition: createPartition({ mount_point_data: {} }),
-            onToggleAutomount: mock(() => undefined),
+            onToggleAutomount: vi.fn(() => undefined),
             onMount,
-            onUnmount: mock(() => undefined),
-            onCreateShare: mock(() => undefined),
-            onGoToShare: mock(() => undefined),
+            onUnmount: vi.fn(() => undefined),
+            onCreateShare: vi.fn(() => undefined),
+            onGoToShare: vi.fn(() => undefined),
         });
 
         const mountButton = await screen.findByRole("button", {
@@ -295,11 +294,11 @@ describe("VolumeDetailsPanel", () => {
                     },
                 },
             }),
-            onToggleAutomount: mock(() => undefined),
-            onMount: mock(() => undefined),
-            onUnmount: mock(() => undefined),
-            onCreateShare: mock(() => undefined),
-            onGoToShare: mock(() => undefined),
+            onToggleAutomount: vi.fn(() => undefined),
+            onMount: vi.fn(() => undefined),
+            onUnmount: vi.fn(() => undefined),
+            onCreateShare: vi.fn(() => undefined),
+            onGoToShare: vi.fn(() => undefined),
         });
 
         const actionsHeading = await screen.findByText(/^Actions$/);
@@ -316,11 +315,11 @@ describe("VolumeDetailsPanel", () => {
             disk: baseDisk as any,
             partition: createPartition({ mount_point_data: {} }),
             readOnly: true,
-            onToggleAutomount: mock(() => undefined),
-            onMount: mock(() => undefined),
-            onUnmount: mock(() => undefined),
-            onCreateShare: mock(() => undefined),
-            onGoToShare: mock(() => undefined),
+            onToggleAutomount: vi.fn(() => undefined),
+            onMount: vi.fn(() => undefined),
+            onUnmount: vi.fn(() => undefined),
+            onCreateShare: vi.fn(() => undefined),
+            onGoToShare: vi.fn(() => undefined),
         });
 
         const mountButton = await screen.findByRole("button", {
@@ -338,11 +337,11 @@ describe("VolumeDetailsPanel", () => {
         await renderPanel({
             disk: baseDisk as any,
             partition: createPartition({ name: "hassos-data" }),
-            onToggleAutomount: mock(() => undefined),
-            onMount: mock(() => undefined),
-            onUnmount: mock(() => undefined),
-            onCreateShare: mock(() => undefined),
-            onGoToShare: mock(() => undefined),
+            onToggleAutomount: vi.fn(() => undefined),
+            onMount: vi.fn(() => undefined),
+            onUnmount: vi.fn(() => undefined),
+            onCreateShare: vi.fn(() => undefined),
+            onGoToShare: vi.fn(() => undefined),
         });
 
         expect(screen.queryByText(/^Actions$/)).toBeNull();

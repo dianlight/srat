@@ -1,5 +1,4 @@
-import "../../../test/setup";
-import { beforeEach, describe, expect, it } from "bun:test";
+import { beforeEach, describe, expect, it } from "vitest";
 
 describe("useVolume hook", () => {
 	beforeEach(() => {
@@ -10,7 +9,7 @@ describe("useVolume hook", () => {
 		const React = await import("react");
 		const { renderHook } = await import("@testing-library/react");
 		const { Provider } = await import("react-redux");
-		const { createTestStore } = await import("../../../test/setup");
+		const { createTestStore } = await import("/test/testing");
 		const { useVolume } = await import("../volumeHook");
 
 		const store = await createTestStore();
@@ -27,7 +26,7 @@ describe("useVolume hook", () => {
 		const React = await import("react");
 		const { renderHook } = await import("@testing-library/react");
 		const { Provider } = await import("react-redux");
-		const { createTestStore } = await import("../../../test/setup");
+		const { createTestStore } = await import("/test/testing");
 		const { useVolume } = await import("../volumeHook");
 
 		const store = await createTestStore();
@@ -44,7 +43,7 @@ describe("useVolume hook", () => {
 		const React = await import("react");
 		const { renderHook } = await import("@testing-library/react");
 		const { Provider } = await import("react-redux");
-		const { createTestStore } = await import("../../../test/setup");
+		const { createTestStore } = await import("/test/testing");
 		const { useVolume } = await import("../volumeHook");
 
 		const store = await createTestStore();
@@ -61,7 +60,7 @@ describe("useVolume hook", () => {
 		const React = await import("react");
 		const { renderHook, waitFor } = await import("@testing-library/react");
 		const { Provider } = await import("react-redux");
-		const { createTestStore } = await import("../../../test/setup");
+		const { createTestStore } = await import("/test/testing");
 		const { useVolume } = await import("../volumeHook");
 
 		const store = await createTestStore();
@@ -82,7 +81,7 @@ describe("useVolume hook", () => {
 		const React = await import("react");
 		const { renderHook } = await import("@testing-library/react");
 		const { Provider } = await import("react-redux");
-		const { createTestStore } = await import("../../../test/setup");
+		const { createTestStore } = await import("/test/testing");
 		const { useVolume } = await import("../volumeHook");
 
 		const store = await createTestStore();
@@ -99,7 +98,7 @@ describe("useVolume hook", () => {
 		const React = await import("react");
 		const { renderHook } = await import("@testing-library/react");
 		const { Provider } = await import("react-redux");
-		const { createTestStore } = await import("../../../test/setup");
+		const { createTestStore } = await import("/test/testing");
 		const { useVolume } = await import("../volumeHook");
 
 		const store = await createTestStore();

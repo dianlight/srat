@@ -1,21 +1,53 @@
-import "../../../../test/setup";
-import { describe, it, expect, beforeEach } from "bun:test";
+import { render, screen } from "@testing-library/react";
+import React from "react";
+import { Provider } from "react-redux";
+import { MemoryRouter } from "react-router-dom";
+import { beforeEach, describe, expect, it } from "vitest";
+import { Dashboard } from "../Dashboard";
+import { createTestStore } from "/test/testing";
 
 describe("Dashboard Component Basic Tests", () => {
     beforeEach(() => {
-        // Clear DOM between tests
-        document.body.innerHTML = "";
+        // Shared setup handles cleanup.
     });
 
-    it("renders welcome text", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { MemoryRouter } = await import("react-router-dom");
-        const { Dashboard } = await import("../Dashboard");
-        const { createTestStore } = await import("../../../../test/setup");
+    async function renderDashboard() {
+        const store = await createTestStore();
+        return render(
+            <Provider store={store}>
+                <MemoryRouter>
+                    <Dashboard />
+                </MemoryRouter>
+            </Provider>,
+        );
+    }
 
-        // Use proper test store with RTK Query middleware
+    it("dashboard component can be imported", async () => {
+        expect(Dashboard).toBeTruthy();
+    });
+
+    it("dashboard renders with proper store", async () => {
+        const store = await createTestStore();
+
+        // Should render without throwing errors
+        const container = render(
+            React.createElement(
+                Provider,
+                {
+                    store,
+                    children: React.createElement(
+                        MemoryRouter,
+                        {},
+                        React.createElement(Dashboard as any)
+                    )
+                }
+            )
+        );
+
+        expect(container).toBeTruthy();
+    });
+
+    it("welcome text appears in dashboard", async () => {
         const store = await createTestStore();
 
         render(
@@ -37,64 +69,23 @@ describe("Dashboard Component Basic Tests", () => {
         expect(welcomeElement).toBeTruthy();
     });
 
+    it("renders dashboard container", async () => {
+        const { container } = await renderDashboard();
+        expect(container.firstChild).toBeTruthy();
+    });
+
     it("shows expand button", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { MemoryRouter } = await import("react-router-dom");
-        const { Dashboard } = await import("../Dashboard");
-        const { createTestStore } = await import("../../../../test/setup");
-
-        // Use proper test store with RTK Query middleware
-        const store = await createTestStore();
-
-        render(
-            React.createElement(
-                Provider,
-                {
-                    store,
-                    children: React.createElement(
-                        MemoryRouter,
-                        {},
-                        React.createElement(Dashboard as any)
-                    )
-                }
-            )
-        );
+        await renderDashboard();
 
         // Find expand button by aria-label
-        const expandButton = screen.getByLabelText("expand");
+        const expandButton = screen.getAllByLabelText("expand")[0];
         expect(expandButton).toBeTruthy();
     });
 
     it("has grid layout structure", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { MemoryRouter } = await import("react-router-dom");
-        const { Dashboard } = await import("../Dashboard");
-        const { createTestStore } = await import("../../../../test/setup");
-
-        // Use proper test store with RTK Query middleware
-        const store = await createTestStore();
-
-        const { container } = render(
-            React.createElement(
-                Provider,
-                {
-                    store,
-                    children: React.createElement(
-                        MemoryRouter,
-                        {},
-                        React.createElement(Dashboard as any)
-                    )
-                }
-            )
-        );
+        const { container } = await renderDashboard();
 
         // Check that Dashboard renders with content (test behavior, not implementation)
-        const welcomeElement = await screen.findByText("Welcome to SRAT");
-        expect(welcomeElement).toBeTruthy();
         expect(container.firstChild).toBeTruthy();
     });
 });

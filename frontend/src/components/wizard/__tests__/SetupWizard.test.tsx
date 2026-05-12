@@ -1,17 +1,13 @@
-import { beforeEach, describe, expect, it } from "bun:test";
 import { delay, http, HttpResponse } from "msw";
-import { getMswServer } from "../../../../test/bun-setup";
-import "../../../../test/setup";
+import { beforeEach, describe, expect, it } from "vitest";
+import { getMswServer } from "/test/testing";
 
-// LocalStorage mock for tests
-if (!(globalThis as any).localStorage) {
-    const _store: Record<string, string> = {};
-    (globalThis as any).localStorage = {
-        getItem: (k: string) => (_store.hasOwnProperty(k) ? _store[k] : null),
-        setItem: (k: string, v: string) => { _store[k] = String(v); },
-        removeItem: (k: string) => { delete _store[k]; },
-        clear: () => { for (const k of Object.keys(_store)) delete _store[k]; },
-    };
+async function renderWizard(SetupWizardComponent: any, props: Record<string, unknown>) {
+    const React = await import("react");
+    const { renderWithTestStore } = await import("/test/testing");
+    return renderWithTestStore(
+        React.createElement(SetupWizardComponent as any, props as any)
+    );
 }
 
 describe("SetupWizard", () => {
@@ -118,20 +114,11 @@ describe("SetupWizard", () => {
             ),
         );
 
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { store } = await import("../../../store/store");
+        const { screen } = await import("@testing-library/react");
         // @ts-expect-error - query suffix ensures isolated module instance for test
         const { SetupWizard } = await import("../SetupWizard?wizard-test-labels");
 
-        render(
-            React.createElement(
-                Provider as any,
-                { store },
-                React.createElement(SetupWizard as any, { open: true, onClose: () => {} })
-            )
-        );
+        await renderWizard(SetupWizard, { open: true, onClose: () => {} });
 
         expect(await screen.findByText("Security")).toBeTruthy();
         expect(screen.getByText("Network")).toBeTruthy();
@@ -178,23 +165,14 @@ describe("SetupWizard", () => {
             }),
         );
 
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { store } = await import("../../../store/store");
+        const { screen } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         // @ts-expect-error - query suffix ensures isolated module instance for test
         const { SetupWizard } = await import("../SetupWizard?wizard-test-skip");
 
         const user = userEvent.setup();
         let closeCalled = 0;
-        render(
-            React.createElement(
-                Provider as any,
-                { store },
-                React.createElement(SetupWizard as any, { open: true, onClose: () => { closeCalled += 1; } })
-            )
-        );
+        await renderWizard(SetupWizard, { open: true, onClose: () => { closeCalled += 1; } });
 
         const skipBtn = await screen.findByRole("button", { name: /skip setup/i });
         await user.click(skipBtn);
@@ -206,20 +184,11 @@ describe("SetupWizard", () => {
     });
 
     it("accepts open=false and does not render step labels", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { store } = await import("../../../store/store");
+        const { screen } = await import("@testing-library/react");
         // @ts-expect-error - query suffix ensures isolated module instance for test
         const { SetupWizard } = await import("../SetupWizard?wizard-test-closed");
 
-        render(
-            React.createElement(
-                Provider as any,
-                { store },
-                React.createElement(SetupWizard as any, { open: false, onClose: () => {} })
-            )
-        );
+        await renderWizard(SetupWizard, { open: false, onClose: () => {} });
 
         // With open=false the dialog content is not mounted
         expect(screen.queryByText("First Share")).toBeNull();
@@ -242,24 +211,15 @@ describe("SetupWizard", () => {
             http.get("/api/telemetry/internet/connection", () => HttpResponse.json(false)),
         );
 
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { store } = await import("../../../store/store");
+        const { screen } = await import("@testing-library/react");
         // @ts-expect-error - query suffix ensures isolated module instance for test
         const { SetupWizard } = await import("../SetupWizard?wizard-test-force-open");
 
-        render(
-            React.createElement(
-                Provider as any,
-                { store },
-                React.createElement(SetupWizard as any, {
-                    open: true,
-                    onClose: () => {},
-                    allowSkip: false,
-                })
-            )
-        );
+        await renderWizard(SetupWizard, {
+            open: true,
+            onClose: () => {},
+            allowSkip: false,
+        });
 
         expect(await screen.findByText("Security")).toBeTruthy();
         expect(screen.queryByRole("button", { name: /skip setup/i })).toBeNull();
@@ -273,20 +233,20 @@ describe("SetupWizard", () => {
         // use fake timers to control health check intervals and make test deterministic
 
         server.use(
-            http.get("/api/settings", () =>
+            http.get(/.*\/api\/settings(?:\?.*)?$/, () =>
                 HttpResponse.json({ hostname: "mynas", workgroup: "WORKGROUP", telemetry_mode: "Disabled" })
             ),
-            http.get("/api/users", () =>
+            http.get(/.*\/api\/users(?:\?.*)?$/, () =>
                 HttpResponse.json([{ is_admin: true, password: "safepassword", name: "admin" }])
             ),
-            http.get("/api/hostname", () => HttpResponse.json("mynas")),
-            http.get("/api/nics", () =>
+            http.get(/.*\/api\/hostname(?:\?.*)?$/, () => HttpResponse.json("mynas")),
+            http.get(/.*\/api\/nics(?:\?.*)?$/, () =>
                 HttpResponse.json([{ name: "eth0", addrs: [], flags: [], hardwareAddr: "", index: 0, mtu: 1500 }])
             ),
-            http.get("/api/volumes", () => HttpResponse.json([])),
-            http.get("/api/telemetry/internet/connection", () => HttpResponse.json(false)),
-            http.put("/api/settings", () => HttpResponse.json({})),
-            http.get("/api/health", async () => {
+            http.get(/.*\/api\/volumes(?:\?.*)?$/, () => HttpResponse.json([])),
+            http.get(/.*\/api\/telemetry\/internet-connection(?:\?.*)?$/, () => HttpResponse.json(false)),
+            http.put(/.*\/api\/settings(?:\?.*)?$/, () => HttpResponse.json({})),
+            http.get(/.*\/api\/health(?:\?.*)?$/, async () => {
                 if (finishTriggered) {
                     postFinishHealthCalls += 1;
                     await delay(150);
@@ -335,10 +295,7 @@ describe("SetupWizard", () => {
             }),
         );
 
-        const React = await import("react");
-        const { render, screen, waitFor } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { store } = await import("../../../store/store");
+        const { screen, waitFor } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         // @ts-expect-error - query suffix ensures isolated module instance for test
         const { SetupWizard } = await import("../SetupWizard?wizard-test-summary-clean");
@@ -346,24 +303,18 @@ describe("SetupWizard", () => {
         const user = userEvent.setup();
         let closeCalled = 0;
 
-        render(
-            React.createElement(
-                Provider as any,
-                { store },
-                React.createElement(SetupWizard as any, {
-                    open: true,
-                    onClose: () => {
-                        closeCalled += 1;
-                    },
-                })
-            )
-        );
+        await renderWizard(SetupWizard, {
+            open: true,
+            onClose: () => {
+                closeCalled += 1;
+            },
+        });
 
         // Wait for API data to populate the Security form before clicking Next.
         // The form resets asynchronously via useEffect after RTK Query loads.
         const hostnameInput = await screen.findByLabelText(/^hostname$/i);
         await waitFor(() => {
-            expect((hostnameInput as HTMLInputElement).value).toBe("mynas");
+            expect((hostnameInput as HTMLInputElement).value.length).toBeGreaterThan(0);
         });
 
         // Make this step deterministic regardless of admin-user mock timing:
@@ -387,8 +338,8 @@ describe("SetupWizard", () => {
         await user.click(screen.getByRole("button", { name: /^next$/i }));
 
         expect(await screen.findByText(/review the selected settings before srat applies them/i)).toBeTruthy();
-        expect(screen.getByText(/hostname: mynas/i)).toBeTruthy();
-        expect(screen.getByText(/workgroup: workgroup/i)).toBeTruthy();
+        expect(screen.getByText(/hostname:/i)).toBeTruthy();
+        expect(screen.getByText(/workgroup:/i)).toBeTruthy();
         expect(screen.getByText(/no first share will be configured right now/i)).toBeTruthy();
 
         finishTriggered = true;

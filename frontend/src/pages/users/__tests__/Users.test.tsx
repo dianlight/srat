@@ -1,5 +1,4 @@
-import { beforeEach, describe, expect, it } from "bun:test";
-import "../../../../test/setup";
+import { beforeEach, describe, expect, it } from "vitest";
 
 // localStorage shim for testing
 if (!(globalThis as any).localStorage) {
@@ -30,7 +29,7 @@ describe("Users component", () => {
         const { render } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { Users } = await import("../Users");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
 
@@ -50,7 +49,7 @@ describe("Users component", () => {
         const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { Users } = await import("../Users");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
 
@@ -71,7 +70,7 @@ describe("Users component", () => {
         const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { Users } = await import("../Users");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
 
@@ -92,7 +91,7 @@ describe("Users component", () => {
         const { render } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { Users } = await import("../Users");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
 
@@ -112,7 +111,7 @@ describe("Users component", () => {
         const { render } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { Users } = await import("../Users");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
 
@@ -132,7 +131,7 @@ describe("Users component", () => {
         const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { Users } = await import("../Users");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
 
@@ -153,7 +152,7 @@ describe("Users component", () => {
         const { render } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { Users } = await import("../Users");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
 
@@ -173,7 +172,7 @@ describe("Users component", () => {
         const { render } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { Users } = await import("../Users");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
 
@@ -194,7 +193,7 @@ describe("Users component", () => {
         const userEvent = (await import("@testing-library/user-event")).default;
         const { Provider } = await import("react-redux");
         const { Users } = await import("../Users");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
 
@@ -221,7 +220,7 @@ describe("Users component", () => {
         const userEvent = (await import("@testing-library/user-event")).default;
         const { Provider } = await import("react-redux");
         const { Users } = await import("../Users");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
 
@@ -250,7 +249,7 @@ describe("Users component", () => {
         const { render } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { Users } = await import("../Users");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
 
@@ -273,7 +272,7 @@ describe("Users component", () => {
         const { render } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { Users } = await import("../Users");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
 
@@ -293,7 +292,7 @@ describe("Users component", () => {
         const { render } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { Users } = await import("../Users");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
 
@@ -313,7 +312,7 @@ describe("Users component", () => {
         const { render } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { Users } = await import("../Users");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
 
@@ -333,7 +332,7 @@ describe("Users component", () => {
         const { render } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { Users } = await import("../Users");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
 
@@ -356,7 +355,7 @@ describe("Users component", () => {
         const { render } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { Users } = await import("../Users");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
 
         const store = await createTestStore();
 

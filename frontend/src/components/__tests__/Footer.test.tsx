@@ -1,5 +1,5 @@
-import "../../../test/setup";
-import { describe, it, expect, beforeEach } from "bun:test";
+import { screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 
 // REQUIRED localStorage shim for every localStorage test
 if (!(globalThis as any).localStorage) {
@@ -13,38 +13,25 @@ if (!(globalThis as any).localStorage) {
 }
 
 describe("Footer Component", () => {
-    beforeEach(() => {
-        // Clear the DOM before each test
-        document.body.innerHTML = '';
-        localStorage.clear();
-    });
+
+async function renderFooter() {
+    const React = await import("react");
+    const { renderWithTestStore } = await import("/test/testing");
+    const { ThemeProvider, createTheme } = await import("@mui/material/styles");
+    const { Footer } = await import("../Footer");
+    
+    const theme = createTheme();
+    const result = await renderWithTestStore(
+        React.createElement(ThemeProvider, { theme, children: React.createElement(Footer as any) })
+    );
+    return { ...result, screen };
+}
+
+    
 
     it("renders footer with basic information", async () => {
-        // REQUIRED: Dynamic imports after globals are set
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { Footer } = await import("../Footer");
-        const { createTestStore } = await import("../../../test/setup");
-
-        const theme = createTheme();
-        const store = await createTestStore();
         const currentYear = new Date().getFullYear();
-
-        // REQUIRED: Use React.createElement, not JSX
-        render(
-            React.createElement(
-                Provider,
-                {
-                    store,
-                    children: React.createElement(
-                        ThemeProvider,
-                        { theme, children: React.createElement(Footer as any) }
-                    )
-                }
-            )
-        );
+        const { screen } = await renderFooter();
 
         // REQUIRED: Use findByText for async, toBeTruthy() for assertions
         const versionElement = await screen.findByText(/Version/);
@@ -55,28 +42,7 @@ describe("Footer Component", () => {
     });
 
     it("displays version information with link", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { Footer } = await import("../Footer");
-        const { createTestStore } = await import("../../../test/setup");
-
-        const theme = createTheme();
-        const store = await createTestStore();
-
-        render(
-            React.createElement(
-                Provider,
-                {
-                    store,
-                    children: React.createElement(
-                        ThemeProvider,
-                        { theme, children: React.createElement(Footer as any) }
-                    )
-                }
-            )
-        );
+        await renderFooter();
 
         // Check that version link is present using semantic query
         const versionLink = screen.getByRole('link', { name: /version/i });
@@ -86,57 +52,15 @@ describe("Footer Component", () => {
     });
 
     it("renders copyright information", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { Footer } = await import("../Footer");
-        const { createTestStore } = await import("../../../test/setup");
-
-        const theme = createTheme();
-        const store = await createTestStore();
         const currentYear = new Date().getFullYear();
-
-        render(
-            React.createElement(
-                Provider,
-                {
-                    store,
-                    children: React.createElement(
-                        ThemeProvider,
-                        { theme, children: React.createElement(Footer as any) }
-                    )
-                }
-            )
-        );
+        const { screen } = await renderFooter();
 
         expect(screen.getByText(/Copyright/)).toBeTruthy();
         expect(screen.getByText(new RegExp(`2024-${currentYear}`))).toBeTruthy();
     });
 
     it("renders as a footer element with proper styling", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { Footer } = await import("../Footer");
-        const { createTestStore } = await import("../../../test/setup");
-
-        const theme = createTheme();
-        const store = await createTestStore();
-
-        const { container } = render(
-            React.createElement(
-                Provider,
-                {
-                    store,
-                    children: React.createElement(
-                        ThemeProvider,
-                        { theme, children: React.createElement(Footer as any) }
-                    )
-                }
-            )
-        );
+        const { container } = await renderFooter();
 
         // Check that footer element exists (footer is a valid HTML5 semantic element)
         const footerElement = container.getElementsByTagName('footer')[0];
@@ -144,28 +68,7 @@ describe("Footer Component", () => {
     });
 
     it("renders footer structure correctly", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { Footer } = await import("../Footer");
-        const { createTestStore } = await import("../../../test/setup");
-
-        const theme = createTheme();
-        const store = await createTestStore();
-
-        const { container } = render(
-            React.createElement(
-                Provider,
-                {
-                    store,
-                    children: React.createElement(
-                        ThemeProvider,
-                        { theme, children: React.createElement(Footer as any) }
-                    )
-                }
-            )
-        );
+        const { container } = await renderFooter();
 
         // Check that footer renders with all essential content using semantic queries
         expect(screen.getByText(/Version/)).toBeTruthy();
@@ -177,40 +80,7 @@ describe("Footer Component", () => {
     });
 
     it("handles responsive layout on small screens", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { Footer } = await import("../Footer");
-        const { createTestStore } = await import("../../../test/setup");
-
-        // Create a theme that simulates small screen
-        const theme = createTheme({
-            breakpoints: {
-                values: {
-                    xs: 0,
-                    sm: 600,
-                    md: 900,
-                    lg: 1200,
-                    xl: 1536,
-                },
-            },
-        });
-
-        const store = await createTestStore();
-
-        render(
-            React.createElement(
-                Provider,
-                {
-                    store,
-                    children: React.createElement(
-                        ThemeProvider,
-                        { theme, children: React.createElement(Footer as any) }
-                    )
-                }
-            )
-        );
+        const { screen } = await renderFooter();
 
         // Footer should still render with basic content
         expect(screen.getByText(/Version/)).toBeTruthy();
@@ -218,28 +88,7 @@ describe("Footer Component", () => {
     });
 
     it("shows loading state when server events are loading", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { Footer } = await import("../Footer");
-        const { createTestStore } = await import("../../../test/setup");
-
-        const theme = createTheme();
-        const store = await createTestStore();
-
-        render(
-            React.createElement(
-                Provider,
-                {
-                    store,
-                    children: React.createElement(
-                        ThemeProvider,
-                        { theme, children: React.createElement(Footer as any) }
-                    )
-                }
-            )
-        );
+        const { screen } = await renderFooter();
 
         // Component should render even when loading
         expect(screen.getByText(/Version/)).toBeTruthy();

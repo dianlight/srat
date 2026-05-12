@@ -1,5 +1,10 @@
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import "../../../test/setup";
+import { ThemeProvider, createTheme } from "@mui/material/styles";
+import { render, screen } from "@testing-library/react";
+import React from "react";
+import { Provider } from "react-redux";
+import { beforeEach, describe, expect, it } from "vitest";
+import { createTestStore } from "/test/testing";
+import { Swagger } from "../Swagger";
 
 // Minimal localStorage shim for bun:test
 if (!(globalThis as any).localStorage) {
@@ -23,19 +28,7 @@ describe("Swagger page", () => {
         localStorage.clear();
     });
 
-    afterEach(async () => {
-        const { cleanup } = await import("@testing-library/react");
-        cleanup();
-    });
-
     it("renders overview content and links", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { Swagger } = await import("../Swagger");
-        const { createTestStore } = await import("../../../test/setup");
-
         const theme = createTheme();
         const store = await createTestStore();
 
@@ -61,13 +54,6 @@ describe("Swagger page", () => {
     });
 
     it("includes openapi-explorer with normalized spec-url", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-        const { Swagger } = await import("../Swagger");
-        const { createTestStore } = await import("../../../test/setup");
-
         const theme = createTheme();
         const store = await createTestStore();
 
@@ -88,7 +74,7 @@ describe("Swagger page", () => {
         expect(explorer).toBeTruthy();
         const specUrl = explorer?.getAttribute("spec-url") || "";
         expect(specUrl).toContain("openapi.yaml");
-        // happy-dom default origin is http://localhost:3000
-        expect(specUrl.startsWith("http://localhost:3000")).toBeTruthy();
+        // apiUrl is environment-dependent; assert normalized absolute URL instead of fixed host
+        expect(specUrl.startsWith("http://") || specUrl.startsWith("https://")).toBeTruthy();
     });
 });

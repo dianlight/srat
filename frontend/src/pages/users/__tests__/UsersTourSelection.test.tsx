@@ -1,5 +1,4 @@
-import { describe, expect, it } from "bun:test";
-import "../../../../test/setup";
+import { describe, expect, it } from "vitest";
 
 describe("Users tour selection", () => {
     it("prefers a non-admin user for guided tour selection", async () => {

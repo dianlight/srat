@@ -1,47 +1,23 @@
-import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import { http, HttpResponse } from "msw";
 import React from "react";
 import { Provider } from "react-redux";
-import { getMswServer } from "../../test/bun-setup";
-import { createTestStore } from "../../test/setup";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { getMswServer } from "/test/testing";
+import { createTestStore } from "/test/testing";
 
-if (!(globalThis as any).window || !(globalThis as any).document) {
-  GlobalRegistrator.register({
-    settings: {
-      enableJavaScriptEvaluation: true,
-      suppressCodeGenerationFromStringsWarning: true,
-    },
-    url: "http://localhost:3000/",
-  });
-}
-
-if (!(globalThis as any).localStorage) {
-  const store: Record<string, string> = {};
-  (globalThis as any).localStorage = {
-    getItem: (key: string) => (key in store ? store[key] : null),
-    setItem: (key: string, value: string) => {
-      store[key] = String(value);
-    },
-    removeItem: (key: string) => {
-      delete store[key];
-    },
-    clear: () => {
-      for (const key of Object.keys(store)) delete store[key];
-    },
+const { toastErrorMock, wsStateRef } = vi.hoisted(() => {
+  const toastErrorMock = vi.fn((..._args: unknown[]) => undefined);
+  const wsStateRef = {
+    current: {
+      heartbeat: { alive: true },
+    } as Record<string, unknown>,
   };
-}
+  return { toastErrorMock, wsStateRef };
+});
 
-const toastErrorMock = mock((..._args: unknown[]) => undefined);
-
-let wsState: Record<string, unknown> = {
-  heartbeat: { alive: true },
-};
-
-const registerModuleMocks = () => {
-  mock.module("../store/wsApi", () => ({
+vi.mock("../store/wsApi", () => ({
     wsApi: {
       reducerPath: "wsApi",
       reducer: () => ({}),
@@ -60,13 +36,13 @@ const registerModuleMocks = () => {
         next(action),
     },
     useGetServerEventsQuery: () => ({
-      data: wsState,
+      data: wsStateRef.current,
       isLoading: false,
       error: undefined,
     }),
   }));
 
-  mock.module("react-toastify", () => ({
+vi.mock("react-toastify", () => ({
     Slide: undefined,
     ToastContainer: () => null,
     toast: {
@@ -78,45 +54,56 @@ const registerModuleMocks = () => {
     },
   }));
 
-  mock.module("../hooks/useTelemetryModal", () => ({
+vi.mock("../hooks/useTelemetryModal", () => ({
     useTelemetryModal: () => ({ shouldShow: false, dismiss: () => undefined }),
   }));
 
-  mock.module("../hooks/useBaseConfigModal", () => ({
+vi.mock("../hooks/useBaseConfigModal", () => ({
     useBaseConfigModal: () => ({ shouldShow: false, dismiss: () => undefined }),
   }));
 
-  mock.module("../hooks/useSetupWizard", () => ({
+vi.mock("../hooks/useSetupWizard", () => ({
     useSetupWizard: () => ({ shouldShow: false, dismiss: () => undefined }),
   }));
 
-  mock.module("../components/NavBar", () => ({
+vi.mock("../components/NavBar", () => ({
     NavBar: () => <div data-testid="mock-navbar">NavBar</div>,
   }));
 
-  mock.module("../components/GlobalEventTracker", () => ({
+vi.mock("../components/GlobalEventTracker", () => ({
     __esModule: true,
     default: () => <div data-testid="mock-event-monitor">EventMonitor</div>,
     useSystemLogs: () => ({ logs: [], clearLogs: () => undefined }),
   }));
 
-  mock.module("../components/BaseConfigModal", () => ({
+vi.mock("../components/BaseConfigModal", () => ({
     default: () => null,
   }));
-};
+
+vi.mock("../components/Footer", () => ({
+    Footer: () => <div data-testid="mock-footer">Footer</div>,
+  }));
+
+vi.mock("../components/wizard/SetupWizard", () => ({
+    SetupWizard: () => null,
+    WizardOpenContext: React.createContext<() => void>(() => undefined),
+  }));
 
 describe("App command events", () => {
   afterEach(() => {
-    mock.restore();
+    vi.restoreAllMocks();
   });
 
   beforeEach(async () => {
-    mock.restore();
-    registerModuleMocks();
-    wsState = { heartbeat: { alive: true } };
+    vi.restoreAllMocks();
+    wsStateRef.current = { heartbeat: { alive: true } };
     toastErrorMock.mockClear();
-    localStorage.clear();
-    sessionStorage.clear();
+    if (localStorage && typeof localStorage.clear === 'function') {
+      localStorage.clear();
+    }
+    if (sessionStorage && typeof sessionStorage.clear === 'function') {
+      sessionStorage.clear();
+    }
 
     const server = getMswServer();
     // NOTE: Use origin-agnostic (regex) handlers here on purpose. Tests run
@@ -154,7 +141,7 @@ describe("App command events", () => {
     const { App } = await import("../App");
     const store = await createTestStore();
 
-    wsState = {
+    wsStateRef.current = {
       heartbeat: { alive: true },
       command_output: {
         execution_id: "exec-1",
@@ -186,7 +173,7 @@ describe("App command events", () => {
       </Provider>,
     );
 
-    wsState = {
+    wsStateRef.current = {
       heartbeat: { alive: true },
       command_output: {
         execution_id: "exec-1c",
@@ -207,7 +194,7 @@ describe("App command events", () => {
       expect(toastErrorMock.mock.calls.length).toBe(0);
     });
 
-    wsState = {
+    wsStateRef.current = {
       heartbeat: { alive: true },
       command_terminated: {
         execution_id: "exec-1c",
@@ -234,7 +221,7 @@ describe("App command events", () => {
     const { App } = await import("../App");
     const store = await createTestStore();
 
-    wsState = {
+    wsStateRef.current = {
       heartbeat: { alive: true },
       command_output: {
         execution_id: "exec-1b",
@@ -268,7 +255,7 @@ describe("App command events", () => {
       </Provider>,
     );
 
-    wsState = {
+    wsStateRef.current = {
       heartbeat: { alive: true },
       command_started: {
         execution_id: "exec-2",
@@ -286,7 +273,7 @@ describe("App command events", () => {
       </Provider>,
     );
 
-    wsState = {
+    wsStateRef.current = {
       heartbeat: { alive: true },
       command_output: {
         execution_id: "exec-2",
@@ -315,7 +302,7 @@ describe("App command events", () => {
 
     await user.click(screen.getByRole("button", { name: "Open Output" }));
 
-    wsState = {
+    wsStateRef.current = {
       heartbeat: { alive: true },
       command_terminated: {
         execution_id: "exec-2",
@@ -427,7 +414,7 @@ describe("App command events", () => {
       </Provider>,
     );
 
-    wsState = {
+    wsStateRef.current = {
       heartbeat: { alive: true },
       command_output: {
         execution_id: "exec-backfill",
@@ -470,11 +457,11 @@ describe("App command events", () => {
     const store = await createTestStore();
 
     const originalConsoleError = console.error;
-    const consoleErrorMock = mock((..._args: unknown[]) => undefined);
+    const consoleErrorMock = vi.fn((..._args: unknown[]) => undefined);
     console.error = consoleErrorMock as typeof console.error;
 
     try {
-      wsState = {
+      wsStateRef.current = {
         heartbeat: { alive: true },
         command_output: {
           execution_id: "exec-3",
@@ -525,8 +512,8 @@ describe("App command events", () => {
 
   it("still opens output when a stale closeToast callback throws", async () => {
     const { CommandOutputToastContent } = await import("../components/CommandOutputDialog");
-    const onOpenOutputMock = mock(() => undefined);
-    const closeToastMock = mock(() => {
+    const onOpenOutputMock = vi.fn(() => undefined);
+    const closeToastMock = vi.fn(() => {
       throw new TypeError("stale closeToast");
     });
     const user = userEvent.setup();

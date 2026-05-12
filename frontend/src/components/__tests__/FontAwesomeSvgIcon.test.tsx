@@ -1,29 +1,26 @@
-import { beforeEach, describe, expect, it } from "bun:test";
-import "../../../test/setup";
+import React from "react";
+import { describe, expect, it } from "vitest";
+import { renderWithTestStore } from "/test/testing";
 
 type FaIcon = {
     icon: [number, number, unknown, unknown, string | string[]];
 };
 
 describe("FontAwesomeSvgIcon Component", () => {
-    beforeEach(() => {
-        // Clear the DOM before each test
-        document.body.innerHTML = '';
-    });
+    async function renderIcon(icon: FaIcon, ref?: React.Ref<SVGSVGElement>) {
+        const { FontAwesomeSvgIcon } = await import("../FontAwesomeSvgIcon");
+        return renderWithTestStore(
+            React.createElement(FontAwesomeSvgIcon, { icon, ref })
+        );
+    }
 
     it("renders with single path icon data", async () => {
         // Dynamic imports for React components
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { FontAwesomeSvgIcon } = await import("../FontAwesomeSvgIcon");
-
         const singlePathIcon: FaIcon = {
             icon: [16, 16, [], "f000", "M8 0C3.58 0 0 3.58 0 8s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8z"]
         };
 
-        const { container } = render(
-            React.createElement(FontAwesomeSvgIcon, { icon: singlePathIcon })
-        );
+        const { container } = await renderIcon(singlePathIcon);
 
         // Check that an SVG element is rendered (SVG has no semantic role, must use container)
         const svgElement = container.firstChild as SVGSVGElement;
@@ -40,10 +37,6 @@ describe("FontAwesomeSvgIcon Component", () => {
     });
 
     it("renders with multi-path icon data (duotone)", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { FontAwesomeSvgIcon } = await import("../FontAwesomeSvgIcon");
-
         const multiPathIcon: FaIcon = {
             icon: [
                 24,
@@ -57,9 +50,7 @@ describe("FontAwesomeSvgIcon Component", () => {
             ]
         };
 
-        const { container } = render(
-            React.createElement(FontAwesomeSvgIcon, { icon: multiPathIcon })
-        );
+        const { container } = await renderIcon(multiPathIcon);
 
         const svgElement = container.firstChild as SVGSVGElement;
         expect(svgElement).toBeTruthy();
@@ -82,17 +73,11 @@ describe("FontAwesomeSvgIcon Component", () => {
     });
 
     it("handles different icon dimensions correctly", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { FontAwesomeSvgIcon } = await import("../FontAwesomeSvgIcon");
-
         const customSizeIcon: FaIcon = {
             icon: [32, 20, [], "f002", "M0 0h32v20H0z"]
         };
 
-        const { container } = render(
-            React.createElement(FontAwesomeSvgIcon, { icon: customSizeIcon })
-        );
+        const { container } = await renderIcon(customSizeIcon);
 
         const svgElement = container.firstChild as SVGSVGElement;
         expect(svgElement).toBeTruthy();
@@ -103,19 +88,13 @@ describe("FontAwesomeSvgIcon Component", () => {
     });
 
     it("forwards ref correctly", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { FontAwesomeSvgIcon } = await import("../FontAwesomeSvgIcon");
-
         const singlePathIcon: FaIcon = {
             icon: [16, 16, [], "f000", "M8 0C3.58 0 0 3.58 0 8s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8z"]
         };
 
         const ref = React.createRef<SVGSVGElement>();
 
-        render(
-            React.createElement(FontAwesomeSvgIcon, { icon: singlePathIcon, ref })
-        );
+        await renderIcon(singlePathIcon, ref);
 
         // Check that the ref is properly forwarded to the SVG element
         expect(ref.current).toBeTruthy();
@@ -123,17 +102,11 @@ describe("FontAwesomeSvgIcon Component", () => {
     });
 
     it("handles empty multi-path array", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { FontAwesomeSvgIcon } = await import("../FontAwesomeSvgIcon");
-
         const emptyMultiPathIcon: FaIcon = {
             icon: [16, 16, [], "f003", []]
         };
 
-        const { container } = render(
-            React.createElement(FontAwesomeSvgIcon, { icon: emptyMultiPathIcon })
-        );
+        const { container } = await renderIcon(emptyMultiPathIcon);
 
         const svgElement = container.firstChild as SVGSVGElement;
         expect(svgElement).toBeTruthy();
@@ -145,10 +118,6 @@ describe("FontAwesomeSvgIcon Component", () => {
     });
 
     it("handles complex multi-path duotone with more than 2 paths", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { FontAwesomeSvgIcon } = await import("../FontAwesomeSvgIcon");
-
         const complexMultiPathIcon: FaIcon = {
             icon: [
                 16,
@@ -163,9 +132,7 @@ describe("FontAwesomeSvgIcon Component", () => {
             ]
         };
 
-        const { container } = render(
-            React.createElement(FontAwesomeSvgIcon, { icon: complexMultiPathIcon })
-        );
+        const { container } = await renderIcon(complexMultiPathIcon);
 
         const svgElement = container.firstChild as SVGSVGElement;
         const pathElements = svgElement?.getElementsByTagName('path');

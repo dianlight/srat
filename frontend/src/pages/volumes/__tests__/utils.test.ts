@@ -1,5 +1,4 @@
-import { describe, expect, it } from "bun:test";
-import "../../../../test/setup";
+import { describe, expect, it } from "vitest";
 
 describe("volumes utils", () => {
 	it("decodeEscapeSequence decodes hex sequences", async () => {

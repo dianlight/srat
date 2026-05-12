@@ -1,8 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
-import "../../../test/setup";
+import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// Mock the GitHub API to avoid actual network requests
-mock.module("../../store/githubApi", () => ({
+vi.mock("../../store/githubApi", () => ({
 	useGetFundingConfigQuery: () => ({
 		data: [
 			{
@@ -28,53 +28,18 @@ mock.module("../../store/githubApi", () => ({
 	},
 }));
 
-// Required localStorage shim for testing environment
-if (!(globalThis as any).localStorage) {
-	const _store: Record<string, string> = {};
-	(globalThis as any).localStorage = {
-		getItem: (k: string) => (_store.hasOwnProperty(k) ? _store[k] : null),
-		setItem: (k: string, v: string) => {
-			_store[k] = String(v);
-		},
-		removeItem: (k: string) => {
-			delete _store[k];
-		},
-		clear: () => {
-			for (const k of Object.keys(_store)) delete _store[k];
-		},
-	};
-}
-
 describe("DonationButton Component", () => {
-	let cleanup: (() => void) | undefined;
-
-	beforeEach(() => {
-		localStorage.clear();
-		// Reset window.open mock
-		(window as any).open = () => null;
-	});
-
-	afterEach(() => {
-		// Clean up rendered components after each test
-		if (cleanup) {
-			cleanup();
-			cleanup = undefined;
-		}
-		// Clear the document body to prevent DOM pollution
-		document.body.innerHTML = "";
-	});
-
-	it("renders DonationButton with icon", async () => {
+	async function renderDonationButton() {
 		const React = await import("react");
-		const { render, screen } = await import("@testing-library/react");
+		const { renderWithTestStore } = await import("/test/testing");
 		const { ThemeProvider, createTheme } = await import("@mui/material/styles");
+		const { Provider: RollbarProvider } = await import("@rollbar/react");
 		const { DonationButton } = await import("../DonationButton");
 
 		const theme = createTheme();
-
-		const result = render(
+		return renderWithTestStore(
 			React.createElement(
-				(await import("@rollbar/react")).Provider,
+				RollbarProvider,
 				{ children: {} as any, config: {} },
 				React.createElement(
 					ThemeProvider,
@@ -83,7 +48,18 @@ describe("DonationButton Component", () => {
 				)
 			)
 		);
-		cleanup = result.unmount;
+	}
+
+	beforeEach(() => {
+		if (localStorage && typeof localStorage.clear === 'function') {
+			localStorage.clear();
+		}
+		// Reset window.open mock
+		(window as any).open = () => null;
+	});
+
+	it("renders DonationButton with icon", async () => {
+		const result = await renderDonationButton();
 
 		// Component should render successfully - use getByTestId for icon buttons
 		expect(result.container).toBeTruthy();
@@ -94,27 +70,8 @@ describe("DonationButton Component", () => {
 	});
 
 	it("opens dropdown menu when clicked", async () => {
-		const React = await import("react");
-		const { render, screen } = await import("@testing-library/react");
-		const userEvent = (await import("@testing-library/user-event")).default;
-		const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-		const { DonationButton } = await import("../DonationButton");
-
-		const theme = createTheme();
 		const user = userEvent.setup();
-
-		const result = render(
-			React.createElement(
-				(await import("@rollbar/react")).Provider,
-				{ children: {} as any, config: {} },
-				React.createElement(
-					ThemeProvider,
-					{ theme },
-					React.createElement(DonationButton as any, {})
-				)
-			)
-		);
-		cleanup = result.unmount;
+		await renderDonationButton();
 
 		// Find and click the donation button by role/name
 		const button = screen.getByRole("button", { name: /support this project/i });
@@ -125,27 +82,8 @@ describe("DonationButton Component", () => {
 	});
 
 	it("displays funding platforms in menu", async () => {
-		const React = await import("react");
-		const { render, screen } = await import("@testing-library/react");
-		const userEvent = (await import("@testing-library/user-event")).default;
-		const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-		const { DonationButton } = await import("../DonationButton");
-
-		const theme = createTheme();
 		const user = userEvent.setup();
-
-		const result = render(
-			React.createElement(
-				(await import("@rollbar/react")).Provider,
-				{ children: {} as any, config: {} },
-				React.createElement(
-					ThemeProvider,
-					{ theme },
-					React.createElement(DonationButton as any, {})
-				)
-			)
-		);
-		cleanup = result.unmount;
+		await renderDonationButton();
 
 		// Click to open menu by role/name
 		const button = screen.getByRole("button", { name: /support this project/i });
@@ -163,13 +101,6 @@ describe("DonationButton Component", () => {
 	});
 
 	it("opens correct URL when platform is clicked", async () => {
-		const React = await import("react");
-		const { render, screen } = await import("@testing-library/react");
-		const userEvent = (await import("@testing-library/user-event")).default;
-		const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-		const { DonationButton } = await import("../DonationButton");
-
-		const theme = createTheme();
 		const user = userEvent.setup();
 
 		// Mock window.open to track calls
@@ -179,18 +110,7 @@ describe("DonationButton Component", () => {
 			return null;
 		};
 
-		const result = render(
-			React.createElement(
-				(await import("@rollbar/react")).Provider,
-				{ children: {} as any, config: {} },
-				React.createElement(
-					ThemeProvider,
-					{ theme },
-					React.createElement(DonationButton as any, {})
-				)
-			)
-		);
-		cleanup = result.unmount;
+		await renderDonationButton();
 
 		// Click to open menu by role/name
 		const button = screen.getByRole("button", { name: /support this project/i });
@@ -205,30 +125,12 @@ describe("DonationButton Component", () => {
 	});
 
 	it("closes menu after clicking a platform", async () => {
-		const React = await import("react");
-		const { render, screen } = await import("@testing-library/react");
-		const userEvent = (await import("@testing-library/user-event")).default;
-		const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-		const { DonationButton } = await import("../DonationButton");
-
-		const theme = createTheme();
 		const user = userEvent.setup();
 
 		// Mock window.open
 		(window as any).open = () => null;
 
-		const result = render(
-			React.createElement(
-				(await import("@rollbar/react")).Provider,
-				{ children: {} as any, config: {} },
-				React.createElement(
-					ThemeProvider,
-					{ theme },
-					React.createElement(DonationButton as any, {})
-				)
-			)
-		);
-		cleanup = result.unmount;
+		await renderDonationButton();
 
 		// Open menu by role/name
 		const button = screen.getByRole("button", { name: /support this project/i });
@@ -244,27 +146,8 @@ describe("DonationButton Component", () => {
 	});
 
 	it("renders platform icons correctly", async () => {
-		const React = await import("react");
-		const { render, screen } = await import("@testing-library/react");
-		const userEvent = (await import("@testing-library/user-event")).default;
-		const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-		const { DonationButton } = await import("../DonationButton");
-
-		const theme = createTheme();
 		const user = userEvent.setup();
-
-		const result = render(
-			React.createElement(
-				(await import("@rollbar/react")).Provider,
-				{ children: {} as any, config: {} },
-				React.createElement(
-					ThemeProvider,
-					{ theme },
-					React.createElement(DonationButton as any, {})
-				)
-			)
-		);
-		cleanup = result.unmount;
+		await renderDonationButton();
 
 		// Open menu by role/name
 		const button = screen.getByRole("button", { name: /support this project/i });
@@ -281,25 +164,7 @@ describe("DonationButton Component", () => {
 	});
 
 	it("has correct tooltip", async () => {
-		const React = await import("react");
-		const { render, screen } = await import("@testing-library/react");
-		const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-		const { DonationButton } = await import("../DonationButton");
-
-		const theme = createTheme();
-
-		const result = render(
-			React.createElement(
-				(await import("@rollbar/react")).Provider,
-				{ children: {} as any, config: {} },
-				React.createElement(
-					ThemeProvider,
-					{ theme },
-					React.createElement(DonationButton as any, {})
-				)
-			)
-		);
-		cleanup = result.unmount;
+		await renderDonationButton();
 
 		// Component renders with button (accessible)
 		const button = screen.getByRole("button", { name: /support this project/i });
@@ -310,23 +175,8 @@ describe("DonationButton Component", () => {
 	});
 
 	it("handles menu close correctly", async () => {
-		const React = await import("react");
-		const { render, screen } = await import("@testing-library/react");
-		const userEvent = (await import("@testing-library/user-event")).default;
-		const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-		const { DonationButton } = await import("../DonationButton");
-
-		const theme = createTheme();
 		const user = userEvent.setup();
-
-		const result = render(
-			React.createElement(
-				ThemeProvider,
-				{ theme },
-				React.createElement(DonationButton as any, {})
-			)
-		);
-		cleanup = result.unmount;
+		await renderDonationButton();
 
 		// Open menu by role/name
 		const button = screen.getByRole("button", { name: /support this project/i });

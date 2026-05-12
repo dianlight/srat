@@ -2,6 +2,7 @@
 auto = true
 
 [tools]
+"go:github.com/playwright-community/playwright-go/cmd/playwright" = "latest"
 "npm:@rtk-query/codegen-openapi" = "2.2.0"
 
 [hooks]
@@ -112,26 +113,39 @@ quiet = true
 [tasks.test]
 env = { API_URL = "http://localhost:3000" }
 run = [
-  "bun ./scripts/add-test-setup.js",
   "tsgo --noEmit",
-  "AGENT=1 BUN_TEST_NO_COVERAGE_THRESHOLD=1 bun test --preload ./test/setup.ts --bail --timeout 10000 --max-concurrency=1 --reporter=dot",
+  "AGENT=1 bunx vitest run --reporter=verbose",
 ]
 quiet = true
 
 [tasks."test:new"]
 env = { API_URL = "http://localhost:3000" }
 run = [
-  "bun ./scripts/add-test-setup.js",
   "tsgo --noEmit",
-  "AGENT=1 BUN_TEST_NO_COVERAGE_THRESHOLD=1 bun test --preload ./test/setup.ts --bail --timeout 10000 --max-concurrency=1 --changed --reporter=dot",
+  "AGENT=1 bunx vitest run --reporter=verbose --changed",
+]
+quiet = true
+
+[tasks."test:browser"]
+usage = '''
+flag "--ui" help="Run tests in interactive UI mode" negatable
+arg "[files]" var=#true double_dash="optional" help="Specific test files or test name patterns to run (optional)"
+'''
+env = { API_URL = "http://localhost:3000" }
+run = [
+  "tsgo --noEmit",
+  "AGENT=1 bunx vitest run --config=vitest.browser.config.ts ${usage_ui:+--browser.headless=false} ${usage_files}",
 ]
 quiet = true
 
 [tasks."test:ci"]
-env = { API_URL = "http://localhost:3000" }
+env = {
+  API_URL = false,
+  GITHUB_ACTIONS = true,
+  }
 run = [
-  "bun ./scripts/add-test-setup.js",
-  "bun test --preload ./test/setup.ts --only-failures --timeout 60000 --bail --max-concurrency=1 --coverage",
+  "tsgo --noEmit",
+  "bunx vitest run --coverage --bail=1 --reporter=dot --dangerouslyIgnoreUnhandledErrors --reporter=github-actions",
 ]
 quiet = true
 

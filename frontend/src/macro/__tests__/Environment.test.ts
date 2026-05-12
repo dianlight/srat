@@ -1,6 +1,5 @@
-import '../../../test/setup';
 
-import { describe, it, expect, afterEach } from "bun:test";
+import { describe, it, expect, afterEach } from "vitest";
 import { getCurrentEnv } from "../Environment";
 
 const getEnv = () => {

@@ -33,7 +33,7 @@ export function clearFilesystemSupportOverrides() {
 // To generate, run: npm run gen:mocks
 export const customHandlers: RequestHandler[] = [
 	// Deterministic filesystem state endpoint mock used by volume detail tests
-	http.get("/api/filesystem/state", ({ request }) => {
+	http.get(/.*\/api\/filesystem\/state(?:\?.*)?$/, ({ request }) => {
 		const url = new URL(request.url);
 		const partitionId = url.searchParams.get("partition_id");
 
@@ -69,7 +69,7 @@ export const customHandlers: RequestHandler[] = [
 	}),
 
 	// Deterministic filesystem support endpoint mock used by volume dialog tests.
-	http.get("/api/filesystem/support", ({ request }) => {
+	http.get(/.*\/api\/filesystem\/support(?:\?.*)?$/, ({ request }) => {
 		const url = new URL(request.url);
 		const fsType = (url.searchParams.get("fstype") ?? "").toLowerCase();
 		const override = filesystemSupportOverrides.get(fsType);
@@ -161,7 +161,7 @@ export const customHandlers: RequestHandler[] = [
 	}),
 
 	// Deterministic filesystem label update endpoint used by volume relabel tests.
-	http.put("/api/filesystem/label", async ({ request }) => {
+	http.put(/.*\/api\/filesystem\/label(?:\?.*)?$/, async ({ request }) => {
 		const body = (await request.json().catch(() => ({}))) as {
 			partitionId?: string;
 			label?: string;
@@ -214,7 +214,7 @@ export const customHandlers: RequestHandler[] = [
 	}),
 
 	// Example: Health endpoint mock
-	http.get("/api/health", () => {
+	http.get(/.*\/api\/health(?:\?.*)?$/, () => {
 		return new Response(
 			JSON.stringify({
 				alive: true,
@@ -273,7 +273,7 @@ export const customHandlers: RequestHandler[] = [
 	}),
 
 	// Example: Shares list endpoint mock
-	http.get("/api/shares", () => {
+	http.get(/.*\/api\/shares(?:\?.*)?$/, () => {
 		return new Response(
 			JSON.stringify([
 				{
@@ -303,7 +303,7 @@ export const customHandlers: RequestHandler[] = [
 	}),
 
 	// Example: Volumes list endpoint mock
-	http.get("/api/volumes", () => {
+	http.get(/.*\/api\/volumes(?:\?.*)?$/, () => {
 		return new Response(JSON.stringify([]), {
 			status: 200,
 			headers: {
@@ -313,7 +313,7 @@ export const customHandlers: RequestHandler[] = [
 	}),
 
 	// Example: Settings endpoint mock
-	http.get("/api/settings", () => {
+	http.get(/.*\/api\/settings(?:\?.*)?$/, () => {
 		return new Response(
 			JSON.stringify({
 				workgroup: "WORKGROUP",

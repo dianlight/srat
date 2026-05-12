@@ -1,5 +1,4 @@
-import { beforeEach, describe, expect, it } from "bun:test";
-import "../../../../../test/setup";
+import { beforeEach, describe, expect, it } from "vitest";
 
 describe("PartitionActions component", () => {
     const createMatchMedia = (matches: boolean) => () => (({

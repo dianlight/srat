@@ -34,7 +34,7 @@ else
 	echo "WARN: ARCH not set - defaulting to host architecture"
 	if [[ "$(uname -m)" == "x86_64" ]]; then
 		export ARCH="x86_64"
-	elif [[ "$(uname -m)" == "aarch64" ]]; then
+	elif [[ "$(uname -m)" == "aarch64" || "$(uname -m)" == "arm64" ]]; then
 		export ARCH="aarch64"
 	else
 		echo "ERROR: Unsupported architecture $(uname -m). Please set ARCH manually." >&2

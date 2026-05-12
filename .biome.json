@@ -13,7 +13,7 @@
 			"!frontend/src/store/sratApi.ts",
 			"!frontend/src/mocks",
 			"!frontend/src/**/*.test.*",
-			"!frontend/test/setup.ts"
+			"!frontend/test/*.ts"
 		]
 	},
 	"formatter": {

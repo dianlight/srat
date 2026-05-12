@@ -1,5 +1,4 @@
-import "../../../test/setup.ts";
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it } from "vitest";
 
 describe("mdcSlice", () => {
 	it("imports and exports mdcSlice correctly", async () => {

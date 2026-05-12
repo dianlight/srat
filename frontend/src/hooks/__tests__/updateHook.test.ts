@@ -1,5 +1,4 @@
-import { beforeEach, describe, expect, it } from "bun:test";
-import "../../../test/setup";
+import { beforeEach, describe, expect, it } from "vitest";
 
 describe("useUpdate hook", () => {
     beforeEach(() => {
@@ -10,7 +9,7 @@ describe("useUpdate hook", () => {
         const React = await import("react");
         const { renderHook } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
         const { useUpdate } = await import("../updateHook");
 
         const store = await createTestStore();
@@ -30,7 +29,7 @@ describe("useUpdate hook", () => {
         const React = await import("react");
         const { renderHook } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
-        const { createTestStore } = await import("../../../test/setup");
+        const { createTestStore } = await import("/test/testing");
         const { useUpdate } = await import("../updateHook");
 
         const store = await createTestStore();

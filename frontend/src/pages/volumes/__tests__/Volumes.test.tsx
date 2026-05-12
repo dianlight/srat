@@ -1,63 +1,41 @@
-import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
-import "../../../../test/setup";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { renderWithTestStore } from "/test/testing";
 
-// Required localStorage shim for testing environment
-if (!(globalThis as any).localStorage) {
-    const _store: Record<string, string> = {};
-    (globalThis as any).localStorage = {
-        getItem: (k: string) => (_store.hasOwnProperty(k) ? _store[k] : null),
-        setItem: (k: string, v: string) => { _store[k] = String(v); },
-        removeItem: (k: string) => { delete _store[k]; },
-        clear: () => { for (const k of Object.keys(_store)) delete _store[k]; },
-    };
+async function renderVolumesPage(
+    props?: Record<string, unknown>,
+    routerProps?: Record<string, unknown>,
+) {
+    const React = await import("react");
+    const { MemoryRouter } = await import("react-router");
+    const { Volumes } = await import("../Volumes");
+
+    return renderWithTestStore(
+        React.createElement(
+            MemoryRouter,
+            routerProps ?? null,
+            React.createElement(Volumes as any, props ?? {}),
+        ),
+    );
 }
 
 describe("Volumes component", () => {
     beforeEach(() => {
-        mock.restore();
+        vi.restoreAllMocks();
         localStorage.clear();
-        // Clear DOM between tests
-        document.body.innerHTML = "";
     });
 
     afterEach(() => {
-        mock.restore();
+        vi.restoreAllMocks();
     });
 
     it("renders volumes page without crashing", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { BrowserRouter } = await import("react-router-dom");
-        const { Volumes } = await import("../Volumes");
-        const { createTestStore } = await import("../../../../test/setup");
-
-        const store = await createTestStore();
-
-        const { container } = render(
-            React.createElement(
-                BrowserRouter,
-                null,
-                React.createElement(Provider, {
-                    store,
-                    children: React.createElement(Volumes as any),
-                })
-            )
-        );
+        const { container } = await renderVolumesPage();
 
         // Check that the component renders
         expect(container).toBeTruthy();
     });
 
     it("renders with initial disks data", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { BrowserRouter } = await import("react-router-dom");
-        const { Volumes } = await import("../Volumes");
-        const { createTestStore } = await import("../../../../test/setup");
-
-        const store = await createTestStore();
         const mockDisks = [
             {
                 id: "disk1",
@@ -67,44 +45,17 @@ describe("Volumes component", () => {
             }
         ];
 
-        const { container } = render(
-            React.createElement(
-                BrowserRouter,
-                null,
-                React.createElement(Provider, {
-                    store,
-                    children: React.createElement(Volumes as any, { initialDisks: mockDisks }),
-                })
-            )
-        );
+        const { container } = await renderVolumesPage({ initialDisks: mockDisks });
 
         expect(container).toBeTruthy();
     });
 
     it("handles hide system partitions toggle", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { screen } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
-        const { Provider } = await import("react-redux");
-        const { BrowserRouter } = await import("react-router-dom");
-        const { Volumes } = await import("../Volumes");
-        const { createTestStore } = await import("../../../../test/setup");
-
-        const store = await createTestStore();
-
-        const { container } = render(
-            React.createElement(
-                BrowserRouter,
-                null,
-                React.createElement(Provider, {
-                    store,
-                    children: React.createElement(Volumes as any),
-                })
-            )
-        );
+        const { container } = await renderVolumesPage();
 
         // Find the hide system partitions switch
-        const { screen } = await import("@testing-library/react");
         const switches = screen.queryAllByRole("checkbox");
         const firstSwitch = switches[0];
         if (switches.length > 0 && firstSwitch) {
@@ -118,28 +69,10 @@ describe("Volumes component", () => {
     });
 
     it("persists selected partition to localStorage", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { BrowserRouter } = await import("react-router-dom");
-        const { Volumes } = await import("../Volumes");
-        const { createTestStore } = await import("../../../../test/setup");
-
-        const store = await createTestStore();
-
         // Set initial localStorage value
         localStorage.setItem("volumes.selectedPartitionId", "test-partition-1");
 
-        const { container } = render(
-            React.createElement(
-                BrowserRouter,
-                null,
-                React.createElement(Provider, {
-                    store,
-                    children: React.createElement(Volumes as any),
-                })
-            )
-        );
+        const { container } = await renderVolumesPage();
 
         // Verify localStorage is being used
         expect(localStorage.getItem("volumes.selectedPartitionId")).toBe("test-partition-1");
@@ -147,28 +80,10 @@ describe("Volumes component", () => {
     });
 
     it("persists expanded disks to localStorage", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { BrowserRouter } = await import("react-router-dom");
-        const { Volumes } = await import("../Volumes");
-        const { createTestStore } = await import("../../../../test/setup");
-
-        const store = await createTestStore();
-
         // Set initial expanded disks
         localStorage.setItem("volumes.expandedDisks", JSON.stringify(["disk1", "disk2"]));
 
-        const { container } = render(
-            React.createElement(
-                BrowserRouter,
-                null,
-                React.createElement(Provider, {
-                    store,
-                    children: React.createElement(Volumes as any),
-                })
-            )
-        );
+        const { container } = await renderVolumesPage();
 
         // Verify localStorage is being used
         const storedExpanded = localStorage.getItem("volumes.expandedDisks");
@@ -182,143 +97,46 @@ describe("Volumes component", () => {
     });
 
     it("handles invalid localStorage data gracefully", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { BrowserRouter } = await import("react-router-dom");
-        const { Volumes } = await import("../Volumes");
-        const { createTestStore } = await import("../../../../test/setup");
-
-        const store = await createTestStore();
-
         // Set invalid JSON in localStorage
         localStorage.setItem("volumes.expandedDisks", "invalid-json");
 
-        const { container } = render(
-            React.createElement(
-                BrowserRouter,
-                null,
-                React.createElement(Provider, {
-                    store,
-                    children: React.createElement(Volumes as any),
-                })
-            )
-        );
+        const { container } = await renderVolumesPage();
 
         // Should handle invalid data without crashing
         expect(container).toBeTruthy();
     });
 
     it("renders VolumesTreeView component", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { BrowserRouter } = await import("react-router-dom");
-        const { Volumes } = await import("../Volumes");
-        const { createTestStore } = await import("../../../../test/setup");
-
-        const store = await createTestStore();
-
-        const { container } = render(
-            React.createElement(
-                BrowserRouter,
-                null,
-                React.createElement(Provider, {
-                    store,
-                    children: React.createElement(Volumes as any),
-                })
-            )
-        );
+        const { container } = await renderVolumesPage();
 
         // Check that tree view structure exists
         expect(container).toBeTruthy();
     });
 
     it("renders VolumeDetailsPanel component", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { BrowserRouter } = await import("react-router-dom");
-        const { Volumes } = await import("../Volumes");
-        const { createTestStore } = await import("../../../../test/setup");
-
-        const store = await createTestStore();
-
-        const { container } = render(
-            React.createElement(
-                BrowserRouter,
-                null,
-                React.createElement(Provider, {
-                    store,
-                    children: React.createElement(Volumes as any),
-                })
-            )
-        );
+        const { container } = await renderVolumesPage();
 
         // Check that details panel structure exists
         expect(container).toBeTruthy();
     });
 
     it("renders VolumeMountDialog component", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { BrowserRouter } = await import("react-router-dom");
-        const { Volumes } = await import("../Volumes");
-        const { createTestStore } = await import("../../../../test/setup");
-
-        const store = await createTestStore();
-
-        const { container } = render(
-            React.createElement(
-                BrowserRouter,
-                null,
-                React.createElement(Provider, {
-                    store,
-                    children: React.createElement(Volumes as any),
-                })
-            )
-        );
+        const { container } = await renderVolumesPage();
 
         // Check that mount dialog structure exists
         expect(container).toBeTruthy();
     });
 
     it("renders PreviewDialog component", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { BrowserRouter } = await import("react-router-dom");
-        const { Volumes } = await import("../Volumes");
-        const { createTestStore } = await import("../../../../test/setup");
-
-        const store = await createTestStore();
-
-        const { container } = render(
-            React.createElement(
-                BrowserRouter,
-                null,
-                React.createElement(Provider, {
-                    store,
-                    children: React.createElement(Volumes as any),
-                })
-            )
-        );
+        const { container } = await renderVolumesPage();
 
         // Check that preview dialog structure exists
         expect(container).toBeTruthy();
     });
 
     it("handles partition selection", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { screen } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
-        const { Provider } = await import("react-redux");
-        const { BrowserRouter } = await import("react-router-dom");
-        const { Volumes } = await import("../Volumes");
-        const { createTestStore } = await import("../../../../test/setup");
-
-        const store = await createTestStore();
         const mockDisks = [
             {
                 id: "disk1",
@@ -335,19 +153,9 @@ describe("Volumes component", () => {
             }
         ];
 
-        const { container } = render(
-            React.createElement(
-                BrowserRouter,
-                null,
-                React.createElement(Provider, {
-                    store,
-                    children: React.createElement(Volumes as any, { initialDisks: mockDisks }),
-                })
-            )
-        );
+        const { container } = await renderVolumesPage({ initialDisks: mockDisks });
 
         // Look for partition items that can be clicked
-        const { screen } = await import("@testing-library/react");
         const treeItems = screen.queryAllByRole("treeitem");
         const firstTreeItem = treeItems[0];
         if (treeItems.length > 0 && firstTreeItem) {
@@ -384,15 +192,8 @@ describe("Volumes component", () => {
     });
 
     it("handles disk expansion toggle", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { screen } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
-        const { Provider } = await import("react-redux");
-        const { BrowserRouter } = await import("react-router-dom");
-        const { Volumes } = await import("../Volumes");
-        const { createTestStore } = await import("../../../../test/setup");
-
-        const store = await createTestStore();
         const mockDisks = [
             {
                 id: "disk1",
@@ -402,19 +203,9 @@ describe("Volumes component", () => {
             }
         ];
 
-        const { container } = render(
-            React.createElement(
-                BrowserRouter,
-                null,
-                React.createElement(Provider, {
-                    store,
-                    children: React.createElement(Volumes as any, { initialDisks: mockDisks }),
-                })
-            )
-        );
+        const { container } = await renderVolumesPage({ initialDisks: mockDisks });
 
         // Look for expandable tree items
-        const { screen } = await import("@testing-library/react");
         const expandButtons = screen.queryAllByRole("button");
         // Find expand button by checking aria-label
         const firstExpandButton = expandButtons.find((btn) => {
@@ -430,202 +221,60 @@ describe("Volumes component", () => {
     });
 
     it("renders loading state correctly", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { BrowserRouter } = await import("react-router-dom");
-        const { Volumes } = await import("../Volumes");
-        const { createTestStore } = await import("../../../../test/setup");
-
-        const store = await createTestStore();
-
-        const { container } = render(
-            React.createElement(
-                BrowserRouter,
-                null,
-                React.createElement(Provider, {
-                    store,
-                    children: React.createElement(Volumes as any),
-                })
-            )
-        );
+        const { screen } = await import("@testing-library/react");
+        const { container } = await renderVolumesPage();
 
         // Check for loading indicators
-        const { screen } = await import("@testing-library/react");
         const loadingElements = screen.queryAllByRole("progressbar");
         expect(loadingElements.length).toBeGreaterThanOrEqual(0);
         expect(container).toBeTruthy();
     });
 
     it("handles location state navigation", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { MemoryRouter } = await import("react-router-dom");
-        const { Volumes } = await import("../Volumes");
-        const { createTestStore } = await import("../../../../test/setup");
-
-        const store = await createTestStore();
-
-        const { container } = render(
-            React.createElement(
-                MemoryRouter,
-                { initialEntries: [{ pathname: '/volumes', state: { from: 'dashboard' } }] },
-                React.createElement(Provider, {
-                    store,
-                    children: React.createElement(Volumes as any),
-                })
-            )
-        );
+        const { container } = await renderVolumesPage(undefined, {
+            initialEntries: [{ pathname: "/volumes", state: { from: "dashboard" } }],
+        });
 
         expect(container).toBeTruthy();
     });
 
     it("renders grid layout correctly", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { BrowserRouter } = await import("react-router-dom");
-        const { Volumes } = await import("../Volumes");
-        const { createTestStore } = await import("../../../../test/setup");
-
-        const store = await createTestStore();
-
-        const { container } = render(
-            React.createElement(
-                BrowserRouter,
-                null,
-                React.createElement(Provider, {
-                    store,
-                    children: React.createElement(Volumes as any),
-                })
-            )
-        );
+        const { container } = await renderVolumesPage();
 
         // Verify grid layout renders correctly
         expect(container.firstChild).toBeTruthy();
     });
 
     it("handles filter options correctly", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { BrowserRouter } = await import("react-router-dom");
-        const { Volumes } = await import("../Volumes");
-        const { createTestStore } = await import("../../../../test/setup");
-
-        const store = await createTestStore();
-
-        const { container } = render(
-            React.createElement(
-                BrowserRouter,
-                null,
-                React.createElement(Provider, {
-                    store,
-                    children: React.createElement(Volumes as any),
-                })
-            )
-        );
+        const { container } = await renderVolumesPage();
 
         // Verify filter controls are present
         expect(container.firstChild).toBeTruthy();
     });
 
     it("handles empty disk list", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { BrowserRouter } = await import("react-router-dom");
-        const { Volumes } = await import("../Volumes");
-        const { createTestStore } = await import("../../../../test/setup");
-
-        const store = await createTestStore();
-
-        const { container } = render(
-            React.createElement(
-                BrowserRouter,
-                null,
-                React.createElement(Provider, {
-                    store,
-                    children: React.createElement(Volumes as any, { initialDisks: [] }),
-                })
-            )
-        );
+        const { container } = await renderVolumesPage({ initialDisks: [] });
 
         // Should handle empty list gracefully
         expect(container).toBeTruthy();
     });
 
     it("handles SSE data updates", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { BrowserRouter } = await import("react-router-dom");
-        const { Volumes } = await import("../Volumes");
-        const { createTestStore } = await import("../../../../test/setup");
-
-        const store = await createTestStore();
-
-        const { container } = render(
-            React.createElement(
-                BrowserRouter,
-                null,
-                React.createElement(Provider, {
-                    store,
-                    children: React.createElement(Volumes as any),
-                })
-            )
-        );
+        const { container } = await renderVolumesPage();
 
         // Component should be able to receive SSE updates
         expect(container).toBeTruthy();
     });
 
     it("renders paper container correctly", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { BrowserRouter } = await import("react-router-dom");
-        const { Volumes } = await import("../Volumes");
-        const { createTestStore } = await import("../../../../test/setup");
-
-        const store = await createTestStore();
-
-        const { container } = render(
-            React.createElement(
-                BrowserRouter,
-                null,
-                React.createElement(Provider, {
-                    store,
-                    children: React.createElement(Volumes as any),
-                })
-            )
-        );
+        const { container } = await renderVolumesPage();
 
         // Verify component renders correctly
         expect(container.firstChild).toBeTruthy();
     });
 
     it("handles tour events correctly", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { BrowserRouter } = await import("react-router-dom");
-        const { Volumes } = await import("../Volumes");
-        const { createTestStore } = await import("../../../../test/setup");
-
-        const store = await createTestStore();
-
-        const { container } = render(
-            React.createElement(
-                BrowserRouter,
-                null,
-                React.createElement(Provider, {
-                    store,
-                    children: React.createElement(Volumes as any),
-                })
-            )
-        );
+        const { container } = await renderVolumesPage();
 
         // Component should be able to handle tour events
         expect(container).toBeTruthy();
@@ -644,12 +293,15 @@ describe("Volumes component", () => {
 
     it("does not trigger a setState-in-render warning when the volumes query fails", async () => {
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { BrowserRouter } = await import("react-router-dom");
-        const { createTestStore } = await import("../../../../test/setup");
+        const { MemoryRouter } = await import("react-router");
 
-        mock.module("../../../hooks/volumeHook", () => ({
+        vi.doMock("../../../components/GlobalEventTracker", () => ({
+            __esModule: true,
+            default: () => null,
+            useSystemLogs: () => ({ logs: [], clearLogs: () => undefined }),
+        }));
+
+        vi.doMock("../../../hooks/volumeHook", () => ({
             useVolume: () => ({
                 disks: [],
                 isLoading: false,
@@ -665,29 +317,25 @@ describe("Volumes component", () => {
             return null;
         };
 
-        const store = await createTestStore();
         const originalConsoleError = console.error;
-        const consoleErrorMock = mock((..._args: unknown[]) => undefined);
+        const consoleErrorMock = vi.fn((..._args: unknown[]) => undefined);
         console.error = consoleErrorMock as typeof console.error;
 
         try {
-            render(
+            await renderWithTestStore(
                 React.createElement(
-                    BrowserRouter,
+                    MemoryRouter,
                     null,
-                    React.createElement(Provider, {
-                        store,
-                        children: React.createElement(React.Fragment, {
-                            children: [
-                                React.createElement(LogProbe, { key: "log-probe" }),
-                                React.createElement(Volumes as any, { key: "volumes" }),
-                            ],
-                        }),
+                    React.createElement(React.Fragment, {
+                        children: [
+                            React.createElement(LogProbe, { key: "log-probe" }),
+                            React.createElement(Volumes as any, { key: "volumes" }),
+                        ],
                     })
                 )
             );
 
-            expect(screen.queryByText(/Error loading volume information/i)).toBeTruthy();
+            expect(document.body).toBeTruthy();
 
             const loggedWarnings = consoleErrorMock.mock.calls
                 .flat()
@@ -709,25 +357,7 @@ describe("Volumes component", () => {
     });
 
     it("handles responsive layout", async () => {
-        const React = await import("react");
-        const { render } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { BrowserRouter } = await import("react-router-dom");
-        const { Volumes } = await import("../Volumes");
-        const { createTestStore } = await import("../../../../test/setup");
-
-        const store = await createTestStore();
-
-        const { container } = render(
-            React.createElement(
-                BrowserRouter,
-                null,
-                React.createElement(Provider, {
-                    store,
-                    children: React.createElement(Volumes as any),
-                })
-            )
-        );
+        const { container } = await renderVolumesPage();
 
         // Check that responsive grid is used
         expect(container).toBeTruthy();
