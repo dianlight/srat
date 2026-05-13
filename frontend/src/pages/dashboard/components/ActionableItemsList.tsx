@@ -11,11 +11,13 @@ import {
   ListItemText,
   Typography,
 } from "@mui/material";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useIgnoredIssues } from "../../../hooks/issueHooks";
 import { type LocationState, TabIDs } from "../../../store/locationState";
 import type { Partition } from "../../../store/sratApi";
 import { decodeEscapeSequence } from "../metrics/utils";
+import { MountShareWizard } from "./MountShareWizard";
 
 interface ActionableItemsListProps {
   actionablePartitions: {
@@ -37,6 +39,10 @@ export function ActionableItemsList({
 }: ActionableItemsListProps) {
   const navigate = useNavigate();
   const { isIssueIgnored, ignoreIssue, unignoreIssue } = useIgnoredIssues();
+  const [wizardState, setWizardState] = useState<{
+    partition: Partition;
+    action: "mount" | "share";
+  } | null>(null);
 
   const itemsWithIds = actionablePartitions.map(({ partition, action }) => ({
     partition,
@@ -44,24 +50,14 @@ export function ActionableItemsList({
     id: `partition-${partition.id}-${action}`,
   }));
 
-  const handleMount = (_partition: Partition) => {
+  const handleMount = (partition: Partition) => {
     if (disabled) return;
-    navigate("/", { state: { tabId: TabIDs.VOLUMES } as LocationState });
+    setWizardState({ partition, action: "mount" });
   };
 
   const handleCreateShare = (partition: Partition) => {
     if (disabled) return;
-    const firstMountPointData = Object.values(
-      partition.mount_point_data || {},
-    )[0];
-    if (firstMountPointData) {
-      navigate("/", {
-        state: {
-          tabId: TabIDs.SHARES,
-          newShareData: firstMountPointData,
-        } as LocationState,
-      });
-    }
+    setWizardState({ partition, action: "share" });
   };
 
   const handleEnableShare = (partition: Partition) => {
@@ -188,6 +184,14 @@ export function ActionableItemsList({
           );
         })}
       </List>
+      {wizardState && (
+        <MountShareWizard
+          open={true}
+          onClose={() => setWizardState(null)}
+          partition={wizardState.partition}
+          action={wizardState.action}
+        />
+      )}
     </>
   );
 }

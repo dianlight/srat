@@ -13,7 +13,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/tlog"
 	"github.com/dianlight/tlog/sanitizer"
-	"github.com/google/go-github/v85/github"
+	"github.com/google/go-github/v86/github"
 	"gitlab.com/tozd/go/errors"
 )
 

@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/devcontainers/go:2-bookworm@sha256:80694b9e519d41822772c5e4b2f7903343f7591ca5db064613ec7e53b855dc31
+FROM mcr.microsoft.com/devcontainers/go:2-1.26-bookworm
 
 # Filesystem, SAMBA, and block-device tools needed for SRAT development/testing.
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fuse3 \
     graphviz \
 #    hfsprogs \
-    linux-libc-dev \
+#    linux-libc-dev \
     minisign \
     ntfs-3g \
     patch \
@@ -42,9 +42,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install mise (manages Go, Bun, Python, and all other pinned tool versions).
 # COPY .mise.toml /tmp/.mise.toml
-# RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN \
+RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN \
 #     curl -fsSL https://mise.run | MISE_INSTALL_PATH=/usr/local/bin/mise sh \
-#     && echo 'eval "$(mise activate zsh --shims)"' >> /home/vscode/.zshrc \
-#     && echo 'eval "$(mise activate bash --shims)"' >> /home/vscode/.bashrc \
+     && echo 'eval "$(mise activate zsh --shims)"' >> /root/.zshrc \
+     && echo 'eval "$(mise activate bash --shims)"' >> /root/.bashrc
 #     && cd /tmp \
 #     && MISE_EXPERIMENTAL=1 mise install --yes --verbose

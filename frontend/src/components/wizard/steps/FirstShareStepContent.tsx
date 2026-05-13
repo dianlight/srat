@@ -12,6 +12,8 @@ interface FirstShareStepContentProps {
   hasAvailablePartitions: boolean;
   isVolumesLoading: boolean;
   selectedPartitionId: string;
+  /** When true, the partition autocomplete is disabled (selection is pre-locked). */
+  lockPartition?: boolean;
 }
 
 export function FirstShareStepContent({
@@ -19,6 +21,7 @@ export function FirstShareStepContent({
   hasAvailablePartitions,
   isVolumesLoading,
   selectedPartitionId,
+  lockPartition = false,
 }: FirstShareStepContentProps) {
   return (
     <DialogContent>
@@ -42,7 +45,7 @@ export function FirstShareStepContent({
         loading={isVolumesLoading}
         matchId
         autocompleteProps={{
-          disabled: !hasAvailablePartitions,
+          disabled: !hasAvailablePartitions || lockPartition,
           size: "small",
         }}
         textFieldProps={{
