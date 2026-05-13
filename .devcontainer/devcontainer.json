@@ -52,7 +52,8 @@
         "ROLLBAR_MCP_ACCESS_TOKEN": "${localEnv:ROLLBAR_MCP_ACCESS_TOKEN}",
         "ROLLBAR_CLIENT_ACCESS_TOKEN": "${localEnv:ROLLBAR_CLIENT_ACCESS_TOKEN}",
         "GIST_TOKEN": "${localEnv:GIST_TOKEN}",
-        "HOST_PROJECT_PATH": "${localWorkspaceFolder}"
+        "HOST_PROJECT_PATH": "${localWorkspaceFolder}",
+        "MISE_EXPERIMENTAL": "1"
     },
     "containerEnv": {
         "MISE_EXPERIMENTAL": "1",
