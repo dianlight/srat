@@ -24,7 +24,8 @@ Three low-risk, high-value code-quality improvements to the Go backend: (1) migr
 
 ## 📝 Task List
 
-- [ ] Task 1: Check whether `gitlab.com/tozd/go/errors` exposes `AsType[T]`; if yes, migrate the four `errors.As` call sites in `unixsamba/unixsamba.go`; if no, import stdlib `errors` with an alias and use `stderrors.AsType[T]`
+- [x] Task 1: Check whether `gitlab.com/tozd/go/errors` exposes `AsType[T]`; if yes, migrate the four `errors.As` call sites in `unixsamba/unixsamba.go`; if no, import stdlib `errors` with an alias and use `stderrors.AsType[T]`
+  > ✅ **Done** — `tozd/go/errors` exposes `AsType` (via `stdlib_go18.go`). All 5 call sites in `unixsamba.go` already use `errors.AsType[errors.E](err)`. `FUTURE_IMPROVEMENTS.md` "errors.As → errors.AsType Migration" section is now stale and should be removed.
 - [ ] Task 2: Extract `filesystemOperationRunner` struct from `filesystem_service.go` — move `startOperation`, `finishOperation`, `wg`, `operationMu`, and operation-context tracking to `service/filesystem_operation_runner.go`
 - [ ] Task 3: Update `FilesystemService` to embed or hold a `*filesystemOperationRunner`; ensure all callers compile without change
 - [ ] Task 4: Extract `hdIdleDiskState` struct from `hdidle_service.go` — move per-disk state tracking fields and their methods to `service/hdidle_disk_state.go`
@@ -32,6 +33,7 @@ Three low-risk, high-value code-quality improvements to the Go backend: (1) migr
 - [ ] Task 6: Run `go build ./...` and `go vet ./...` to confirm no regressions after each split
 - [ ] Task 7: Run existing tests: `cd backend/src && go test ./service ./unixsamba` — all must pass
 - [ ] Task 8: Run `go_diagnostics` (gopls) on modified files and fix any reported issues
+- [ ] Task 9: Remove stale "errors.As → errors.AsType Migration" section from `docs/FUTURE_IMPROVEMENTS.md`
 
 ## 🧠 Implementation Notes (Copilot Context)
 
@@ -90,7 +92,7 @@ Both splits move internal helper types and functions only. Public `FilesystemSer
 
 ## 🔗 Code References & TODOs
 
-- [ ] `backend/src/unixsamba/unixsamba.go` — 4× `var e errors.E; errors.As(err, &e)` pattern
-- [ ] `backend/src/service/filesystem_service.go` — ~944 lines; extract operation runner
-- [ ] `backend/src/service/hdidle_service.go` — ~823 lines; extract disk-state tracker
-- [ ] `docs/FUTURE_IMPROVEMENTS.md` — "Large Service Files — Splitting Candidates" and "errors.As → errors.AsType Migration" sections (remove once done)
+- [x] `backend/src/unixsamba/unixsamba.go` — ~~4× `var e errors.E; errors.As(err, &e)` pattern~~ → already migrated to `errors.AsType[errors.E]` (5 sites)
+- [ ] `backend/src/service/filesystem_service.go` — **993 lines** (was ~944); extract operation runner
+- [ ] `backend/src/service/hdidle_service.go` — **827 lines** (was ~823); extract disk-state tracker
+- [ ] `docs/FUTURE_IMPROVEMENTS.md` — remove stale "errors.As → errors.AsType Migration" section (already done in code); also remove "Large Service Files — Splitting Candidates" section once splits are complete
