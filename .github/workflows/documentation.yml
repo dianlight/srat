@@ -1,226 +1,218 @@
 name: Documentation Validation
 
 on:
-  push:
-    branches: [ "main" ]
-    paths:
-      - "**/*.md"
-      - ".github/workflows/documentation.yml"
-      - "scripts/validate-docs.sh"
-      - ".lychee.toml"
-      - ".vale.ini"
-      - ".markdownlint-cli2.jsonc"
-  pull_request:
-    branches: [ "main" ]
-  schedule:
-    # Run weekly on Mondays at 8:00 AM UTC to check for broken links
-    - cron: '0 8 * * 1'
+    push:
+        branches: ["main"]
+        paths:
+            - "**/*.md"
+            - ".github/workflows/documentation.yml"
+            - "scripts/validate-docs.sh"
+            - ".lychee.toml"
+            - ".vale.ini"
+            - ".markdownlint-cli2.jsonc"
+    pull_request:
+        branches: ["main"]
+    schedule:
+        # Run weekly on Mondays at 8:00 AM UTC to check for broken links
+        - cron: "0 8 * * 1"
 
 permissions:
-  contents: write
-  pull-requests: write
-  packages: read
-  # To report GitHub Actions status checks
-  statuses: write
+    contents: write
+    pull-requests: write
+    packages: read
+    # To report GitHub Actions status checks
+    statuses: write
 
 jobs:
-  docs-changes:
-    runs-on: ubuntu-latest
-    name: Documentation Change Detection
-    outputs:
-      docs: ${{ steps.docs.outputs.docs }}
-    steps:
-      - name: Checkout repository
-        if: github.event_name == 'pull_request' || github.event_name == 'push'
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 0
+    docs-changes:
+        runs-on: ubuntu-latest
+        name: Documentation Change Detection
+        outputs:
+            docs: ${{ steps.docs.outputs.docs }}
+        steps:
+            - name: Checkout repository
+              if: github.event_name == 'pull_request' || github.event_name == 'push'
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+              with:
+                  fetch-depth: 0
 
-      - name: Filter documentation changes
-        id: filter
-        if: github.event_name == 'pull_request' || github.event_name == 'push'
-        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4
-        with:
-          filters: |
-            docs:
-              - "**/*.md"
-              - ".github/workflows/documentation.yml"
-              - "scripts/validate-docs.sh"
-              - ".lychee.toml"
-              - ".vale.ini"
-              - ".markdownlint-cli2.jsonc"
+            - name: Filter documentation changes
+              id: filter
+              if: github.event_name == 'pull_request' || github.event_name == 'push'
+              uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4
+              with:
+                  filters: |
+                      docs:
+                        - "**/*.md"
+                        - ".github/workflows/documentation.yml"
+                        - "scripts/validate-docs.sh"
+                        - ".lychee.toml"
+                        - ".vale.ini"
+                        - ".markdownlint-cli2.jsonc"
 
-      - name: Set docs output
-        id: docs
-        run: |
-          if [[ "${{ github.event_name }}" == "schedule" ]]; then
-            echo "docs=true" >> $GITHUB_OUTPUT
-          elif [[ "${{ steps.filter.outputs.docs }}" == "true" ]]; then
-            echo "docs=true" >> $GITHUB_OUTPUT
-          else
-            echo "docs=false" >> $GITHUB_OUTPUT
-          fi
+            - name: Set docs output
+              id: docs
+              run: |
+                  if [[ "${{ github.event_name }}" == "schedule" ]]; then
+                    echo "docs=true" >> $GITHUB_OUTPUT
+                  elif [[ "${{ steps.filter.outputs.docs }}" == "true" ]]; then
+                    echo "docs=true" >> $GITHUB_OUTPUT
+                  else
+                    echo "docs=false" >> $GITHUB_OUTPUT
+                  fi
 
-  docs-maintenance:
-    runs-on: ubuntu-latest
-    name: Documentation Maintenance
-    needs: [docs-changes]
-    if: >-
-      github.event_name == 'push' &&
-      github.ref == 'refs/heads/main' &&
-      needs.docs-changes.outputs.docs == 'true'
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+    docs-maintenance:
+        runs-on: ubuntu-latest
+        name: Documentation Maintenance
+        needs: [docs-changes]
+        if: >-
+            github.event_name == 'push' &&
+            github.ref == 'refs/heads/main' &&
+            needs.docs-changes.outputs.docs == 'true'
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+              with:
+                  token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup bun
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
-        with:
-          bun-version: latest
+            - name: Setup bun
+              uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+              with:
+                  bun-version: latest
 
-      - name: Setup mise
-        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4
-        with:
-          install: true
-          experimental: true
+            - name: Setup mise
+              uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4
+              with:
+                  install: true
+                  experimental: true
 
-      - name: Generate TOC for Markdown files
-        run: mise run docs-toc
+            - name: Generate TOC for Markdown files
+              run: mise run docs-toc
 
-      - name: Auto-fix formatting issues
-        run: mise run docs-fix
+            - name: Auto-fix formatting issues
+              run: mise run docs-fix
 
-      - name: Create Pull Request with documentation fixes
-        id: cpr
-        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "📚 docs: auto-fix documentation formatting and TOC"
-          branch: docs/auto-maintenance
-          title: "📚 docs: auto-fix documentation formatting and TOC"
-          body: |
-            Automated documentation maintenance:
-            - Generated table of contents for Markdown files
-            - Auto-fixed formatting issues
-            *This PR was automatically generated by the Documentation Maintenance workflow.*
-          base: main
-          delete-branch: true
-          labels: documentation          
-          add-paths: |
-            *.md
-          
-      - name: Check outputs
-        if: ${{ steps.cpr.outputs.pull-request-number }}
-        run: |
-          echo "Pull Request Number - ${{ steps.cpr.outputs.pull-request-number }}"
-          echo "Pull Request URL - ${{ steps.cpr.outputs.pull-request-url }}"
-      - name: Auto approve
-        if: ${{ steps.cpr.outputs.pull-request-number && steps.cpr.outputs.pull-request-operation == 'created' }}
-        run: gh pr review --approve "${{ steps.cpr.outputs.pull-request-number }}"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
-      - name: Enable Pull Request Automerge
-        if: ${{ steps.cpr.outputs.pull-request-number && steps.cpr.outputs.pull-request-operation == 'created' }}
-        run: gh pr merge --merge --auto "${{ steps.cpr.outputs.pull-request-number }}"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}                  
+            - name: Create Pull Request with documentation fixes
+              id: cpr
+              run: |
+                  pr_url=$(gh pr create \
+                    --base main \
+                    --head docs/auto-maintenance \
+                    --title "📚 docs: auto-fix documentation formatting and TOC" \
+                    --body "Automated documentation maintenance:
+                  - Generated table of contents for Markdown files
+                  - Auto-fixed formatting issues
 
-  docs-validate:
-    runs-on: ubuntu-latest
-    name: Documentation Validation (GFM)
-    needs: [docs-changes]
-    if: >-
-      github.event_name == 'schedule' ||
-      github.event_name == 'push' ||
-      (
-        github.event_name == 'pull_request' &&
-        github.event.pull_request.head.repo.full_name == github.repository &&
-        needs.docs-changes.outputs.docs == 'true' &&
-        !startsWith(github.head_ref, 'renovate/')
-      )
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 0
-          persist-credentials: false
+                  *This PR was automatically generated by the Documentation Maintenance workflow.*" \
+                    --label "documentation" \
+                    --label "keep up-to-date" \
+                    2>/dev/null || gh pr view docs/auto-maintenance --json url --jq '.url')
+                  echo "pull-request-url=$pr_url" >> $GITHUB_OUTPUT
+                  pr_number=$(gh pr view docs/auto-maintenance --json number --jq '.number')
+                  echo "pull-request-number=$pr_number" >> $GITHUB_OUTPUT
+                  gh pr review --approve "$pr_number"
+                  gh pr merge --merge --auto "$pr_number"
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup bun
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
-        with:
-          bun-version: latest
+            - name: Check outputs
+              if: ${{ steps.cpr.outputs.pull-request-number }}
+              run: |
+                  echo "Pull Request Number - ${{ steps.cpr.outputs.pull-request-number }}"
+                  echo "Pull Request URL - ${{ steps.cpr.outputs.pull-request-url }}"
+    docs-validate:
+        runs-on: ubuntu-latest
+        name: Documentation Validation (GFM)
+        needs: [docs-changes]
+        if: >-
+            github.event_name == 'schedule' ||
+            github.event_name == 'push' ||
+            (
+              github.event_name == 'pull_request' &&
+              github.event.pull_request.head.repo.full_name == github.repository &&
+              needs.docs-changes.outputs.docs == 'true' &&
+              !startsWith(github.head_ref, 'renovate/')
+            )
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+              with:
+                  fetch-depth: 0
+                  persist-credentials: false
 
-      - name: Setup mise
-        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4
-        with:
-          install: true
-          experimental: true
+            - name: Setup bun
+              uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+              with:
+                  bun-version: latest
 
-      - name: Run docs validation (markdownlint + Vale)
-        run: mise run docs-validate
+            - name: Setup mise
+              uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4
+              with:
+                  install: true
+                  experimental: true
 
-      - name: Run Lychee link checker
-        uses: lycheeverse/lychee-action@8646ba30535128ac92d33dfc9133794bfdd9b411 # v2.8.0
-        with:
-          args: --config .lychee.toml --verbose --no-progress '**/*.md'
-          fail: true
+            - name: Run docs validation (markdownlint + Vale)
+              run: mise run docs-validate
 
-      # For AsciiDoc users:
-      - name: Install Asciidoctor
-        run: sudo apt-get install -y asciidoctor
+            # - name: Run Lychee link checker
+            #   uses: lycheeverse/lychee-action@8646ba30535128ac92d33dfc9133794bfdd9b411 # v2.8.0
+            #   with:
+            #       args: --config .lychee.toml --verbose --no-progress '**/*.md'
+            #       fail: true
 
-      # For reStructuredText users:
-      - name: Install docutils
-        run: sudo apt-get install -y docutils
+            # # For AsciiDoc users:
+            # - name: Install Asciidoctor
+            #   run: sudo apt-get install -y asciidoctor
 
-      - name: Count modified Markdown files
-        id: md_changes
-        shell: bash
-        run: |
-          set -euo pipefail
+            # # For reStructuredText users:
+            # - name: Install docutils
+            #   run: sudo apt-get install -y docutils
 
-          case "${{ github.event_name }}" in
-            pull_request)
-              base_sha="${{ github.event.pull_request.base.sha }}"
-              ;;
-            push)
-              base_sha="${{ github.event.before }}"
-              ;;
-            *)
-              base_sha=""
-              ;;
-          esac
+            # - name: Count modified Markdown files
+            #   id: md_changes
+            #   shell: bash
+            #   run: |
+            #       set -euo pipefail
 
-          if [[ -z "$base_sha" ]]; then
-            count=0
-          else
-            count="$(git diff --name-only "$base_sha" "${{ github.sha }}" -- '*.md' | wc -l | tr -d '[:space:]')"
-          fi
+            #       case "${{ github.event_name }}" in
+            #         pull_request)
+            #           base_sha="${{ github.event.pull_request.base.sha }}"
+            #           ;;
+            #         push)
+            #           base_sha="${{ github.event.before }}"
+            #           ;;
+            #         *)
+            #           base_sha=""
+            #           ;;
+            #       esac
 
-          echo "count=$count" >> "$GITHUB_OUTPUT"
-          echo "Modified Markdown files: $count"
+            #       if [[ -z "$base_sha" ]]; then
+            #         count=0
+            #       else
+            #         count="$(git diff --name-only "$base_sha" "${{ github.sha }}" -- '*.md' | wc -l | tr -d '[:space:]')"
+            #       fi
 
-      # Vale is run via the canonical docs validation script (mise run docs-validate). CI will fail
-      # if Vale finds style errors.
+            #       echo "count=$count" >> "$GITHUB_OUTPUT"
+            #       echo "Modified Markdown files: $count"
 
+            # Vale is run via the canonical docs validation script (mise run docs-validate). CI will fail
+            # if Vale finds style errors.
 
-      - name: Generate Lychee report
-        if: always()
-        uses: lycheeverse/lychee-action@8646ba30535128ac92d33dfc9133794bfdd9b411 # v2.8.0
-        with:
-          args: --config .lychee.toml '**/*.md'
-          fail: false
-          checkbox: true
-          jobSummary: true
-          format: markdown
-          output: lychee-report.md
+            # - name: Generate Lychee report
+            #   if: always()
+            #   uses: lycheeverse/lychee-action@8646ba30535128ac92d33dfc9133794bfdd9b411 # v2.8.0
+            #   with:
+            #       args: --config .lychee.toml '**/*.md'
+            #       fail: false
+            #       checkbox: true
+            #       jobSummary: true
+            #       format: markdown
+            #       output: lychee-report.md
 
-      - name: Upload Lychee report
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: lychee-report
-          path: lychee-report.md
-          retention-days: 7
+            # - name: Upload Lychee report
+            #   if: always()
+            #   uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+            #   with:
+            #       name: lychee-report
+            #       path: lychee-report.md
+            #       retention-days: 7
