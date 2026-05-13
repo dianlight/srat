@@ -34,7 +34,8 @@ shfmt = "3.13.1"
 "npm:@typescript/native-preview" = "7.0.0-dev.20260509.2"
 gh = "latest"
 hk = "1.45.0"
-opencode = "latest"
+#opencode = "latest"
+#copilot-cli = "latest"
 #lychee = "0.23.0"
 
 
