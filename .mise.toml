@@ -65,7 +65,7 @@ postinstall = "hk install --mise"
 
 [tasks]
 docs = "mise run docs-toc && mise run docs-fix && mise run docs-validate"
-docs-toc = "find . -name '*.md' -not -path './node_modules/*' -not -path './frontend/node_modules/*' -not -path './backend/src/vendor/*' -not -path './.vale/*' -not -path './.github/*' -not -path './docs/tasks/*' | xargs bunx doctoc --github"
+docs-toc = "find . -name '*.md' -not -path './node_modules/*' -not -path './frontend/node_modules/*' -not -path './backend/src/vendor/*' -not -path './.vale/*' -not -path './.github/*' -not -path './docs/tasks/*' -not -path './.ai/*' -not -path './.zencoder/*' | xargs bunx doctoc --github"
 docs-validate = "./scripts/validate-docs.sh"
 docs-fix = "./scripts/validate-docs.sh --fix"
 brand-images = "python3 scripts/generate-brand-images.py"

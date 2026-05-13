@@ -42,9 +42,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install mise (manages Go, Bun, Python, and all other pinned tool versions).
 # COPY .mise.toml /tmp/.mise.toml
-RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN
+RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN \
 #     curl -fsSL https://mise.run | MISE_INSTALL_PATH=/usr/local/bin/mise sh \
-#     && echo 'eval "$(mise activate zsh --shims)"' >> /home/vscode/.zshrc \
-#     && echo 'eval "$(mise activate bash --shims)"' >> /home/vscode/.bashrc \
+     && echo 'eval "$(mise activate zsh --shims)"' >> /root/.zshrc \
+     && echo 'eval "$(mise activate bash --shims)"' >> /root/.bashrc
 #     && cd /tmp \
 #     && MISE_EXPERIMENTAL=1 mise install --yes --verbose
