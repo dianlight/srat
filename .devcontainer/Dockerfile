@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/devcontainers/go:2-1.26-bookworm
+FROM mcr.microsoft.com/devcontainers/go:2-1.26-bookworm@sha256:fe5d30ee051db0b5bd7818f3861a4d60a8a5f1b937a8a0c0fe14f6dd656f962f
 
 # Filesystem, SAMBA, and block-device tools needed for SRAT development/testing.
 RUN apt-get update && apt-get install -y --no-install-recommends \
