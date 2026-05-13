@@ -5,6 +5,7 @@
 **Target Repo:** `srat`
 **Status:** ✅ Complete
 **Issue Link:** https://github.com/dianlight/srat/issues/633
+**PR:** https://github.com/dianlight/srat/pull/634
 
 ## 🎯 Objective
 
