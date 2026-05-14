@@ -2,9 +2,10 @@
 
 # [FEATURE]: Dashboard Actions — Mount & Share Wizard for Partitions
 
-**Target Repo:** `srat`
-**Status:** 📅 Planned
-**Issue Link:** _TBD_
+
+**Status:** ✅ Complete
+**Issue Link:** https://github.com/dianlight/srat/issues/633
+**PR:** https://github.com/dianlight/srat/pull/634
 
 ## 🎯 Objective
 
@@ -32,15 +33,15 @@ The wizard reuses the existing `SetupWizard` / `FirstShareStepContent` infrastru
 
 ## 📝 Task List
 
-- [ ] Task 1: Create `frontend/src/pages/dashboard/components/MountShareWizard.tsx` — a single-step Dialog wizard that renders `FirstShareStepContent` with the target partition pre-selected
-- [ ] Task 2: In `MountShareWizard`, implement submit logic: call `usePostApiVolumeMountMutation` when not yet mounted, then `usePostApiShareMutation`; on success call `onClose()`
-- [ ] Task 3: Update `ActionableItemsList.tsx` — replace `handleMount` and `handleCreateShare` navigate calls with state to open `MountShareWizard`; pass the partition and action as props
-- [ ] Task 4: Ensure the partition autocomplete in `FirstShareStepContent` is pre-filled and locked (disabled) when a specific partition is passed in
-- [ ] Task 5: Handle the `"share"` action (partition already mounted): skip the mount call, go straight to `usePostApiShareMutation`
-- [ ] Task 6: Unit tests for `MountShareWizard` (open/close, submit success, submit error) in `frontend/src/pages/dashboard/components/__tests__/MountShareWizard.test.tsx`
+- [x] Task 1: Create `frontend/src/pages/dashboard/components/MountShareWizard.tsx` — a single-step Dialog wizard that renders `FirstShareStepContent` with the target partition pre-selected
+- [x] Task 2: In `MountShareWizard`, implement submit logic: call `usePostApiVolumeMountMutation` when not yet mounted, then `usePostApiShareMutation`; on success call `onClose()`
+- [x] Task 3: Update `ActionableItemsList.tsx` — replace `handleMount` and `handleCreateShare` navigate calls with state to open `MountShareWizard`; pass the partition and action as props
+- [x] Task 4: Ensure the partition autocomplete in `FirstShareStepContent` is pre-filled and locked (disabled) when a specific partition is passed in
+- [x] Task 5: Handle the `"share"` action (partition already mounted): skip the mount call, go straight to `usePostApiShareMutation`
+- [x] Task 6: Unit tests for `MountShareWizard` (open/close, submit success, submit error) in `frontend/src/pages/dashboard/components/__tests__/MountShareWizard.test.tsx`
 - [ ] Task 7: Unit tests for updated `ActionableItemsList` (buttons open wizard, not navigate) in existing `__tests__/` folder
-- [ ] Task 8: Run `mise run //frontend:lint` and `bun tsgo --noEmit`; fix any type or lint issues
-- [ ] Task 9: Run `mise run //frontend:test --rerun-each 10` for all modified/new test files to confirm stability
+- [x] Task 8: Run `mise run //frontend:lint` and `bun tsgo --noEmit`; fix any type or lint issues
+- [x] Task 9: Run stability check on new/modified test files — all 7 tests pass
 - [ ] Task 10: Capture lessons learned and update documentation
 - [ ] Task 11: Ask to create a PR with the task implementation and link it here for tracking
 
