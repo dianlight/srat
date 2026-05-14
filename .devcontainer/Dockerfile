@@ -10,6 +10,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     f2fs-tools \
     fuse3 \
     graphviz \
+#    hfsprogs \
+#    linux-libc-dev \
     minisign \
     ntfs-3g \
     patch \
