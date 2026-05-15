@@ -52,6 +52,7 @@ func WithTLogHandler(logger *tlog.Logger) ClientOption {
 func WithCommander(commander Commander) ClientOption {
 	return func(c *Client) {
 		c.commander = commander
+		c.defaultCommander = false
 	}
 }
 
@@ -85,6 +86,7 @@ type SmartClient interface {
 	RunSelfTest(ctx context.Context, devicePath string, testType string) error
 	RunSelfTestWithProgress(ctx context.Context, devicePath string, testType string, callback ProgressCallback) error
 	GetAvailableSelfTests(ctx context.Context, devicePath string) (*SelfTestInfo, error)
+	GetAvailableSelfTestsFromInfo(smartInfo *SMARTInfo) *SelfTestInfo
 	IsSMARTSupported(ctx context.Context, devicePath string) (*SmartSupport, error)
 	GetSMARTSupportFromInfo(smartInfo *SMARTInfo) *SmartSupport
 	EnableSMART(ctx context.Context, devicePath string) error
@@ -96,6 +98,7 @@ type SmartClient interface {
 type Client struct {
 	smartctlPath       string
 	commander          Commander
+	defaultCommander   bool              // true when using the built-in exec commander
 	deviceTypeCache    map[string]string // Maps device path to device type (e.g., "sat")
 	deviceTypeCacheMux sync.RWMutex      // Protects deviceTypeCache
 	logHandler         logAdapter        // Logger for the client
@@ -111,25 +114,18 @@ func NewClient(opts ...ClientOption) (SmartClient, error) {
 	// Create client with defaults
 	// Pre-loaded drivedb cache is populated at package init time
 	client := &Client{
-		commander:       execCommander{},
-		deviceTypeCache: cloneDeviceTypeCache(),
+		commander:        execCommander{},
+		defaultCommander: true,
+		deviceTypeCache:  cloneDeviceTypeCache(),
 		// Use a debug-level logger by default so library emits diagnostic output.
 		// Use NewLoggerWithLevel to obtain a *tlog.Logger (tlog.WithLevel returns *slog.Logger).
 		logHandler: tlog.NewLoggerWithLevel(tlog.LevelDebug),
 		defaultCtx: context.Background(),
 	}
 
-	// Track if commander was set via options (for testing)
-	defaultCommander := true
-
 	// Apply options
 	for _, opt := range opts {
-		// Check if commander is being set
-		beforeCommander := client.commander
 		opt(client)
-		if client.commander != beforeCommander {
-			defaultCommander = false
-		}
 	}
 
 	// If no smartctl path was provided, try to find it in PATH
@@ -141,9 +137,9 @@ func NewClient(opts ...ClientOption) (SmartClient, error) {
 		client.smartctlPath = path
 	}
 
-	// Only ensure smartctl is compatible if using the default commander
+	// Only ensure smartctl is compatible if using the built-in exec commander
 	// (skip validation for mock/test commanders)
-	if defaultCommander {
+	if client.defaultCommander {
 		if err := ensureCompatibleSmartctl(client.smartctlPath); err != nil {
 			return nil, err
 		}
@@ -154,9 +150,7 @@ func NewClient(opts ...ClientOption) (SmartClient, error) {
 
 // ScanDevices scans for available storage devices
 func (c *Client) ScanDevices(ctx context.Context) ([]Device, error) {
-	if ctx == nil {
-		ctx = c.defaultCtx
-	}
+	ctx = c.resolveCtx(ctx)
 	cmd := c.commander.Command(ctx, c.logHandler, c.smartctlPath, "--scan-open", "--json")
 	output, err := cmd.Output()
 	if err != nil {
@@ -181,6 +175,14 @@ func (c *Client) ScanDevices(ctx context.Context) ([]Device, error) {
 			Name: d.Name,
 			Type: d.Type,
 		}
+		// Cache device type discovered by --scan-open so all subsequent methods
+		// can use --nocheck=standby and the correct -d <type> argument without
+		// needing an extra disk query.
+		if d.Name != "" && d.Type != "" {
+			if _, cached := c.getCachedDeviceType(d.Name); !cached {
+				c.setCachedDeviceType(d.Name, d.Type)
+			}
+		}
 	}
 
 	return devices, nil
@@ -202,28 +204,59 @@ func (c *Client) setCachedDeviceType(devicePath, deviceType string) {
 	c.logHandler.Debug("Cached device type", "devicePath", devicePath, "deviceType", deviceType)
 }
 
-// GetSMARTInfo retrieves SMART information for a device
-func (c *Client) GetSMARTInfo(ctx context.Context, devicePath string) (*SMARTInfo, error) {
+// resolveCtx returns ctx if non-nil, otherwise returns the client's default context.
+func (c *Client) resolveCtx(ctx context.Context) context.Context {
 	if ctx == nil {
-		ctx = c.defaultCtx
+		return c.defaultCtx
 	}
-	// Check if we have a cached device type for this device
-	var args []string
-	var isATA bool
+	return ctx
+}
+
+// buildArgs assembles smartctl arguments for devicePath, prepending flags and
+// inserting --nocheck=standby (ATA only) plus -d <type> when the device type
+// is already known from the cache. Falls back to the ATA-safe default when the
+// cache is cold.
+func (c *Client) buildArgs(devicePath string, flags ...string) []string {
 	if cachedType, ok := c.getCachedDeviceType(devicePath); ok {
-		isATA = isATADevice(cachedType)
-		args = []string{"-a", "-j"}
-		if isATA {
+		args := append([]string(nil), flags...)
+		if isATADevice(cachedType) {
 			args = append(args, "--nocheck=standby")
 		}
-		args = append(args, "-d", cachedType, devicePath)
-	} else {
-		// Assume ATA by default for --nocheck=standby
-		args = []string{"-a", "-j", "--nocheck=standby", devicePath}
-		isATA = true
+		return append(args, "-d", cachedType, devicePath)
 	}
+	// Unknown device type — assume ATA and add --nocheck=standby.
+	return append(append([]string(nil), flags...), "--nocheck=standby", devicePath)
+}
 
-	cmd := c.commander.Command(ctx, c.logHandler, c.smartctlPath, args...)
+// logSmartctlMessages logs messages from a smartctl response, deduplicating via
+// the global TTL cache so the same message is not repeated on every poll cycle.
+func (c *Client) logSmartctlMessages(ctx context.Context, info *SMARTInfo) {
+	if info.Smartctl == nil {
+		return
+	}
+	for _, msg := range info.Smartctl.Messages {
+		severity := msg.Severity
+		if severity == "" {
+			severity = "default"
+		}
+		if !globalMessageCache.shouldLog(msg.String, severity) {
+			continue
+		}
+		switch severity {
+		case "error":
+			c.logHandler.ErrorContext(ctx, msg.String)
+		case "warning":
+			c.logHandler.WarnContext(ctx, msg.String)
+		default:
+			c.logHandler.InfoContext(ctx, msg.String)
+		}
+	}
+}
+
+// GetSMARTInfo retrieves SMART information for a device
+func (c *Client) GetSMARTInfo(ctx context.Context, devicePath string) (*SMARTInfo, error) {
+	ctx = c.resolveCtx(ctx)
+	cmd := c.commander.Command(ctx, c.logHandler, c.smartctlPath, c.buildArgs(devicePath, "-a", "-j")...)
 	output, err := cmd.Output()
 	if err != nil {
 		// smartctl returns non-zero exit codes for various conditions
@@ -238,9 +271,14 @@ func (c *Client) GetSMARTInfo(ctx context.Context, devicePath string) (*SMARTInf
 					var smartInfo SMARTInfo
 					if jsonErr := json.Unmarshal(output, &smartInfo); jsonErr == nil {
 						smartInfo.InStandby = true
-						// Cache device type if not cached yet
-						if smartInfo.Device.Type != "" && !isATA {
-							c.setCachedDeviceType(devicePath, smartInfo.Device.Type)
+						// Cache the device type returned by the standby response.
+						// The previous !isATA guard was wrong: isATA defaults to true
+						// when no type is cached yet (the common first-contact case),
+						// which silently prevented ATA/SAT devices from being cached.
+						if smartInfo.Device.Type != "" {
+							if _, cached := c.getCachedDeviceType(devicePath); !cached {
+								c.setCachedDeviceType(devicePath, smartInfo.Device.Type)
+							}
 						}
 						smartInfo.DiskType = determineDiskType(&smartInfo)
 						smartInfo.SmartStatus = checkSmartStatus(&smartInfo)
@@ -264,28 +302,7 @@ func (c *Client) GetSMARTInfo(ctx context.Context, devicePath string) (*SMARTInf
 					}
 				}
 
-				// Cache messages from the output to avoid duplicate logging
-				// Messages are cached with TTL based on severity:
-				// - information: 1h, warning: 30min, error: 5min, default: 2h
-				if smartInfo.Smartctl != nil && len(smartInfo.Smartctl.Messages) > 0 {
-					for _, msg := range smartInfo.Smartctl.Messages {
-						severity := msg.Severity
-						if severity == "" {
-							severity = "default"
-						}
-						// Cache the message; skip if already cached and not expired
-						if globalMessageCache.shouldLog(msg.String, severity) {
-							switch severity {
-							case "error":
-								c.logHandler.ErrorContext(ctx, msg.String)
-							case "warning":
-								c.logHandler.WarnContext(ctx, msg.String)
-							default:
-								c.logHandler.InfoContext(ctx, msg.String)
-							}
-						}
-					}
-				}
+				c.logSmartctlMessages(ctx, &smartInfo)
 
 				// Check if this is an unknown USB bridge error and we haven't cached a type yet
 				if isUnknownUSBBridge(&smartInfo) {
@@ -367,101 +384,51 @@ func (c *Client) GetSMARTInfo(ctx context.Context, devicePath string) (*SMARTInf
 		return nil, fmt.Errorf("failed to parse SMART info: %w", err)
 	}
 
-	// Cache messages from the output to avoid duplicate logging
-	// Messages are cached with TTL based on severity:
-	// - information: 1h, warning: 30min, error: 5min, default: 2h
-	if smartInfo.Smartctl != nil && len(smartInfo.Smartctl.Messages) > 0 {
-		for _, msg := range smartInfo.Smartctl.Messages {
-			severity := msg.Severity
-			if severity == "" {
-				severity = "default"
-			}
-			// Cache the message; skip if already cached and not expired
-			if globalMessageCache.shouldLog(msg.String, severity) {
-				switch severity {
-				case "error":
-					c.logHandler.ErrorContext(ctx, msg.String)
-				case "warning":
-					c.logHandler.WarnContext(ctx, msg.String)
-				default:
-					c.logHandler.InfoContext(ctx, msg.String)
-				}
-			}
-		}
-	}
+	c.logSmartctlMessages(ctx, &smartInfo)
 
 	// Determine disk type based on rotation rate and device type
 	smartInfo.DiskType = determineDiskType(&smartInfo)
 	// Populate SmartStatus.Running field based on test status
 	smartInfo.SmartStatus = checkSmartStatus(&smartInfo)
 
+	// Cache the device type from the successful response so all subsequent
+	// methods can use --nocheck=standby and the correct -d <type> argument
+	// without issuing another disk query.
+	if smartInfo.Device.Type != "" {
+		if _, cached := c.getCachedDeviceType(devicePath); !cached {
+			c.setCachedDeviceType(devicePath, smartInfo.Device.Type)
+		}
+	}
+
 	return &smartInfo, nil
 }
 
 func checkSmartStatus(sMARTInfo *SMARTInfo) *SmartStatus {
-
 	if sMARTInfo.SmartStatus == nil {
 		sMARTInfo.SmartStatus = &SmartStatus{}
 	}
 
-	damaged := false
-	critical := false
-	// Populate SmartStatus Damaged and Critical
+	var damaged, critical bool
 	if sMARTInfo.Smartctl != nil {
-		damaged = (sMARTInfo.Smartctl.ExitStatus & 0x00000100) != 0
-		critical = (sMARTInfo.Smartctl.ExitStatus & 0x00001000) != 0
+		damaged = sMARTInfo.Smartctl.ExitStatus&0x00000100 != 0
+		critical = sMARTInfo.Smartctl.ExitStatus&0x00001000 != 0
 	}
-	// Popolate SmartStatus Running
-	if sMARTInfo.AtaSmartData != nil && sMARTInfo.AtaSmartData.SelfTest != nil {
-		return &SmartStatus{
-			Running:  sMARTInfo.AtaSmartData.SelfTest.Status.Value >= 240 && sMARTInfo.AtaSmartData.SelfTest.Status.Value <= 253,
-			Passed:   sMARTInfo.SmartStatus.Passed,
-			Damaged:  damaged,
-			Critical: critical,
-		}
-	} else if sMARTInfo.NvmeSmartTestLog != nil {
-		return &SmartStatus{
-			Running:  sMARTInfo.NvmeSmartTestLog.CurrentOpeation != nil && *sMARTInfo.NvmeSmartTestLog.CurrentOpeation != 0,
-			Passed:   sMARTInfo.SmartStatus.Passed,
-			Damaged:  damaged,
-			Critical: critical,
-		}
-	} else if sMARTInfo.SmartStatus != nil {
-		return &SmartStatus{
-			Running:  false,
-			Passed:   sMARTInfo.SmartStatus.Passed,
-			Damaged:  damaged,
-			Critical: critical,
-		}
-	} else {
-		return &SmartStatus{
-			Running:  false,
-			Passed:   false,
-			Damaged:  damaged,
-			Critical: critical,
-		}
+
+	s := &SmartStatus{Passed: sMARTInfo.SmartStatus.Passed, Damaged: damaged, Critical: critical}
+	switch {
+	case sMARTInfo.AtaSmartData != nil && sMARTInfo.AtaSmartData.SelfTest != nil && sMARTInfo.AtaSmartData.SelfTest.Status != nil:
+		v := sMARTInfo.AtaSmartData.SelfTest.Status.Value
+		s.Running = v >= 240 && v <= 253
+	case sMARTInfo.NvmeSmartTestLog != nil:
+		s.Running = sMARTInfo.NvmeSmartTestLog.CurrentOpeation != nil && *sMARTInfo.NvmeSmartTestLog.CurrentOpeation != 0
 	}
+	return s
 }
 
 // CheckHealth checks if a device is healthy according to SMART
 func (c *Client) CheckHealth(ctx context.Context, devicePath string) (bool, error) {
-	if ctx == nil {
-		ctx = c.defaultCtx
-	}
-	// Check if we have a cached device type and add --nocheck=standby for ATA devices
-	var args []string
-	if cachedType, ok := c.getCachedDeviceType(devicePath); ok {
-		args = []string{"-H"}
-		if isATADevice(cachedType) {
-			args = append(args, "--nocheck=standby")
-		}
-		args = append(args, "-d", cachedType, devicePath)
-	} else {
-		// Assume ATA by default for --nocheck=standby
-		args = []string{"-H", "--nocheck=standby", devicePath}
-	}
-
-	cmd := c.commander.Command(ctx, c.logHandler, c.smartctlPath, args...)
+	ctx = c.resolveCtx(ctx)
+	cmd := c.commander.Command(ctx, c.logHandler, c.smartctlPath, c.buildArgs(devicePath, "-H")...)
 	output, err := cmd.Output()
 	if err != nil {
 		// Exit code 2: device in standby
@@ -490,23 +457,8 @@ func (c *Client) CheckHealth(ctx context.Context, devicePath string) (bool, erro
 
 // GetDeviceInfo retrieves basic device information
 func (c *Client) GetDeviceInfo(ctx context.Context, devicePath string) (map[string]interface{}, error) {
-	if ctx == nil {
-		ctx = c.defaultCtx
-	}
-	// Check if we have a cached device type and add --nocheck=standby for ATA devices
-	var args []string
-	if cachedType, ok := c.getCachedDeviceType(devicePath); ok {
-		args = []string{"-i", "-j"}
-		if isATADevice(cachedType) {
-			args = append(args, "--nocheck=standby")
-		}
-		args = append(args, "-d", cachedType, devicePath)
-	} else {
-		// Assume ATA by default for --nocheck=standby
-		args = []string{"-i", "-j", "--nocheck=standby", devicePath}
-	}
-
-	cmd := c.commander.Command(ctx, c.logHandler, c.smartctlPath, args...)
+	ctx = c.resolveCtx(ctx)
+	cmd := c.commander.Command(ctx, c.logHandler, c.smartctlPath, c.buildArgs(devicePath, "-i", "-j")...)
 	output, err := cmd.Output()
 	if err != nil {
 		// Exit code 2: device in standby
@@ -526,9 +478,7 @@ func (c *Client) GetDeviceInfo(ctx context.Context, devicePath string) (map[stri
 
 // RunSelfTest initiates a SMART self-test
 func (c *Client) RunSelfTest(ctx context.Context, devicePath string, testType string) error {
-	if ctx == nil {
-		ctx = c.defaultCtx
-	}
+	ctx = c.resolveCtx(ctx)
 	// Valid test types: short, long, conveyance, offline
 	if !slices.Contains(validSelfTestTypes, testType) {
 		return fmt.Errorf("invalid test type: %s (must be one of: short, long, conveyance, offline)", testType)
@@ -545,9 +495,7 @@ func (c *Client) RunSelfTest(ctx context.Context, devicePath string, testType st
 
 // RunSelfTestWithProgress starts a SMART self-test and reports progress
 func (c *Client) RunSelfTestWithProgress(ctx context.Context, devicePath string, testType string, callback ProgressCallback) error {
-	if ctx == nil {
-		ctx = c.defaultCtx
-	}
+	ctx = c.resolveCtx(ctx)
 	// Valid test types: short, long, conveyance, offline
 	if !slices.Contains(validSelfTestTypes, testType) {
 		return fmt.Errorf("invalid test type: %s (must be one of: short, long, conveyance, offline)", testType)
@@ -591,15 +539,18 @@ func (c *Client) RunSelfTestWithProgress(ctx context.Context, devicePath string,
 			expectedMinutes = duration
 		}
 
-		// Poll for completion
-		ticker := time.NewTicker(5 * time.Second)
+		// Poll for completion using an adaptive interval: at most 24 samples over
+		// the expected duration, clamped between 5 s and 60 s. This avoids waking
+		// the disk 1 440 times for a 2-hour long test.
+		pollIntervalSecs := max(5, min(60, expectedMinutes*60/24))
+		ticker := time.NewTicker(time.Duration(pollIntervalSecs) * time.Second)
 		defer ticker.Stop()
 
 		elapsed := 0
 		for {
 			select {
 			case <-ticker.C:
-				elapsed += 5
+				elapsed += pollIntervalSecs
 				progress := (elapsed * 100) / (expectedMinutes * 60)
 				if progress > 100 {
 					progress = 100
@@ -615,7 +566,7 @@ func (c *Client) RunSelfTestWithProgress(ctx context.Context, devicePath string,
 				}
 
 				// Using SMART infor remaining_percent if available
-				if info.AtaSmartData.SelfTest != nil && info.AtaSmartData.SelfTest.Status.RemainingPercent != nil {
+				if info.AtaSmartData != nil && info.AtaSmartData.SelfTest != nil && info.AtaSmartData.SelfTest.Status != nil && info.AtaSmartData.SelfTest.Status.RemainingPercent != nil {
 					remaining := *info.AtaSmartData.SelfTest.Status.RemainingPercent
 					calculatedProgress := 100 - remaining
 					if calculatedProgress > progress {
@@ -684,25 +635,44 @@ func (c *Client) RunSelfTestWithProgress(ctx context.Context, devicePath string,
 	return nil
 }
 
+// populateSelfTestInfo fills dst with available test types and durations extracted
+// from ATA and NVMe capability data. It is shared by GetAvailableSelfTests and
+// GetAvailableSelfTestsFromInfo to avoid duplicating the extraction logic.
+func populateSelfTestInfo(info *SelfTestInfo, ata *AtaSmartData, nvmeCaps *NvmeControllerCapabilities, nvmeOptional *NvmeOptionalAdminCommands) {
+	if ata != nil && ata.Capabilities != nil {
+		caps := ata.Capabilities
+		if caps.SelfTestsSupported {
+			info.Available = append(info.Available, "short", "long")
+		}
+		if caps.ConveyanceSelfTestSupported {
+			info.Available = append(info.Available, "conveyance")
+		}
+		if caps.ExecOfflineImmediate {
+			info.Available = append(info.Available, "offline")
+		}
+		if ata.SelfTest != nil && ata.SelfTest.PollingMinutes != nil {
+			pm := ata.SelfTest.PollingMinutes
+			if pm.Short > 0 {
+				info.Durations["short"] = pm.Short
+			}
+			if pm.Extended > 0 {
+				info.Durations["long"] = pm.Extended
+			}
+			if pm.Conveyance > 0 {
+				info.Durations["conveyance"] = pm.Conveyance
+			}
+		}
+	}
+	// NVMe — combine both capability fields to avoid appending "short" twice.
+	if (nvmeCaps != nil && nvmeCaps.SelfTest) || (nvmeOptional != nil && nvmeOptional.SelfTest) {
+		info.Available = append(info.Available, "short")
+	}
+}
+
 // GetAvailableSelfTests returns the list of available self-test types and their durations for a device
 func (c *Client) GetAvailableSelfTests(ctx context.Context, devicePath string) (*SelfTestInfo, error) {
-	if ctx == nil {
-		ctx = c.defaultCtx
-	}
-	// Check if we have a cached device type and add --nocheck=standby for ATA devices
-	var args []string
-	if cachedType, ok := c.getCachedDeviceType(devicePath); ok {
-		args = []string{"-c", "-j"}
-		if isATADevice(cachedType) {
-			args = append(args, "--nocheck=standby")
-		}
-		args = append(args, "-d", cachedType, devicePath)
-	} else {
-		// Assume ATA by default for --nocheck=standby
-		args = []string{"-c", "-j", "--nocheck=standby", devicePath}
-	}
-
-	cmd := c.commander.Command(ctx, c.logHandler, c.smartctlPath, args...)
+	ctx = c.resolveCtx(ctx)
+	cmd := c.commander.Command(ctx, c.logHandler, c.smartctlPath, c.buildArgs(devicePath, "-c", "-j")...)
 	output, err := cmd.Output()
 	if err != nil {
 		// Exit code 2: device in standby
@@ -721,45 +691,42 @@ func (c *Client) GetAvailableSelfTests(ctx context.Context, devicePath string) (
 		Available: []string{},
 		Durations: make(map[string]int),
 	}
-
-	// ATA
-	if caps.AtaSmartData != nil {
-		if caps.AtaSmartData.Capabilities != nil {
-			if caps.AtaSmartData.Capabilities.SelfTestsSupported {
-				info.Available = append(info.Available, "short", "long")
-			}
-			if caps.AtaSmartData.Capabilities.ConveyanceSelfTestSupported {
-				info.Available = append(info.Available, "conveyance")
-			}
-			if caps.AtaSmartData.Capabilities.ExecOfflineImmediate {
-				info.Available = append(info.Available, "offline")
-			}
-		}
-		if caps.AtaSmartData.SelfTest != nil && caps.AtaSmartData.SelfTest.PollingMinutes != nil {
-			pm := caps.AtaSmartData.SelfTest.PollingMinutes
-			if pm.Short > 0 {
-				info.Durations["short"] = pm.Short
-			}
-			if pm.Extended > 0 {
-				info.Durations["long"] = pm.Extended
-			}
-			if pm.Conveyance > 0 {
-				info.Durations["conveyance"] = pm.Conveyance
-			}
-		}
-	}
-
-	// NVMe
-	if caps.NvmeControllerCapabilities != nil && caps.NvmeControllerCapabilities.SelfTest {
-		info.Available = append(info.Available, "short")
-		// Durations not specified for NVMe in -c output
-	}
-	if caps.NvmeOptionalAdminCommands != nil && caps.NvmeOptionalAdminCommands.SelfTest {
-		info.Available = append(info.Available, "short")
-		// Durations not specified for NVMe in -c output
-	}
-
+	populateSelfTestInfo(info, caps.AtaSmartData, caps.NvmeControllerCapabilities, caps.NvmeOptionalAdminCommands)
 	return info, nil
+}
+
+// GetAvailableSelfTestsFromInfo extracts available self-test types and their durations
+// from a SMARTInfo struct without performing additional disk I/O. Applications that
+// already hold a cached SMARTInfo (from GetSMARTInfo) should use this method instead of
+// GetAvailableSelfTests to avoid an extra smartctl -c disk query.
+//
+// Note: NVMe detection uses NvmeControllerCapabilities, which is present in -a output.
+// The NvmeOptionalAdminCommands field (available only via -c) is not stored in SMARTInfo,
+// so NVMe self-test capability detection may be incomplete for some controllers.
+//
+// Example usage:
+//
+//	// Get and cache SMART info once
+//	info, err := client.GetSMARTInfo(ctx, devicePath)
+//	if err != nil {
+//	    return err
+//	}
+//
+//	// Extract self-test types without another disk query
+//	selfTests := client.GetAvailableSelfTestsFromInfo(info)
+//	for _, testType := range selfTests.Available {
+//	    fmt.Printf("Test: %s (%d min)\n", testType, selfTests.Durations[testType])
+//	}
+func (c *Client) GetAvailableSelfTestsFromInfo(smartInfo *SMARTInfo) *SelfTestInfo {
+	info := &SelfTestInfo{
+		Available: []string{},
+		Durations: make(map[string]int),
+	}
+	if smartInfo == nil {
+		return info
+	}
+	populateSelfTestInfo(info, smartInfo.AtaSmartData, smartInfo.NvmeControllerCapabilities, nil)
+	return info
 }
 
 // GetSMARTSupportFromInfo extracts SMART support status from a SMARTInfo struct.
@@ -793,45 +760,22 @@ func (c *Client) GetAvailableSelfTests(ctx context.Context, devicePath string) (
 //	    return err
 //	}
 func (c *Client) GetSMARTSupportFromInfo(smartInfo *SMARTInfo) *SmartSupport {
-	return c.isSMARTSupported(smartInfo)
-}
-
-// isSMARTSupported checks if SMART is supported on a device and if it's enabled.
-// This is an internal helper that extracts SMART support status from SMARTInfo.
-func (c *Client) isSMARTSupported(smartInfo *SMARTInfo) *SmartSupport {
-
-	supportInfo := &SmartSupport{
-		Available: false,
-		Enabled:   false,
-	}
-
-	// Check if smartctl provided smart_support field (both ATA and NVMe devices)
+	supportInfo := &SmartSupport{}
 	if smartInfo.SmartSupport != nil {
 		supportInfo.Available = smartInfo.SmartSupport.Available
 		supportInfo.Enabled = smartInfo.SmartSupport.Enabled
 		return supportInfo
 	}
-
-	// Fallback: Check ATA SMART data presence for support
-	// This handles older smartctl versions that don't provide smart_support field
 	if smartInfo.AtaSmartData != nil {
 		supportInfo.Available = true
-		// If ATA SMART data is present, SMART is likely enabled
-		// (older smartctl versions don't report disabled state in JSON)
 		supportInfo.Enabled = true
 		return supportInfo
 	}
-
-	// Fallback: Check NVMe SMART health information
 	if smartInfo.NvmeSmartHealth != nil {
 		supportInfo.Available = true
 		supportInfo.Enabled = true
 		return supportInfo
 	}
-
-	// Not supported
-	supportInfo.Available = false
-	supportInfo.Enabled = false
 	return supportInfo
 }
 
@@ -860,22 +804,17 @@ func (c *Client) isSMARTSupported(smartInfo *SMARTInfo) *SmartSupport {
 //
 // Only use IsSMARTSupported for one-off checks where disk access is acceptable.
 func (c *Client) IsSMARTSupported(ctx context.Context, devicePath string) (*SmartSupport, error) {
-	if ctx == nil {
-		ctx = c.defaultCtx
-	}
+	ctx = c.resolveCtx(ctx)
 	smartInfo, err := c.GetSMARTInfo(ctx, devicePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get SMART info: %w", err)
 	}
-
-	return c.isSMARTSupported(smartInfo), nil
+	return c.GetSMARTSupportFromInfo(smartInfo), nil
 }
 
 // EnableSMART enables SMART monitoring on a device
 func (c *Client) EnableSMART(ctx context.Context, devicePath string) error {
-	if ctx == nil {
-		ctx = c.defaultCtx
-	}
+	ctx = c.resolveCtx(ctx)
 	cmd := c.commander.Command(ctx, c.logHandler, c.smartctlPath, "-s", "on", devicePath)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to enable SMART: %w", err)
@@ -886,18 +825,24 @@ func (c *Client) EnableSMART(ctx context.Context, devicePath string) error {
 // DisableSMART disables SMART monitoring on a device
 // Note: NVMe devices do not support disabling SMART, an error will be returned
 func (c *Client) DisableSMART(ctx context.Context, devicePath string) error {
-	if ctx == nil {
-		ctx = c.defaultCtx
-	}
+	ctx = c.resolveCtx(ctx)
 
-	// Check if device is NVMe - SMART cannot be disabled on NVMe devices
-	info, err := c.GetSMARTInfo(ctx, devicePath)
-	if err != nil {
-		return fmt.Errorf("failed to check device type: %w", err)
-	}
-
-	if determineDiskType(info) == "NVMe" {
-		return fmt.Errorf("cannot disable SMART: NVMe devices do not support SMART disable operation")
+	// Check the cached device type first to avoid an unnecessary full disk query.
+	// GetSMARTInfo populates the cache on its first successful call, so this path
+	// is taken on every call after the initial scan or info query.
+	if cachedType, ok := c.getCachedDeviceType(devicePath); ok {
+		if strings.ToLower(cachedType) == "nvme" {
+			return fmt.Errorf("cannot disable SMART: NVMe devices do not support SMART disable operation")
+		}
+	} else {
+		// Cache is cold: query device info to determine the disk family.
+		info, err := c.GetSMARTInfo(ctx, devicePath)
+		if err != nil {
+			return fmt.Errorf("failed to check device type: %w", err)
+		}
+		if determineDiskType(info) == "NVMe" {
+			return fmt.Errorf("cannot disable SMART: NVMe devices do not support SMART disable operation")
+		}
 	}
 
 	cmd := c.commander.Command(ctx, c.logHandler, c.smartctlPath, "-s", "off", devicePath)
@@ -909,9 +854,7 @@ func (c *Client) DisableSMART(ctx context.Context, devicePath string) error {
 
 // AbortSelfTest aborts a running self-test on a device
 func (c *Client) AbortSelfTest(ctx context.Context, devicePath string) error {
-	if ctx == nil {
-		ctx = c.defaultCtx
-	}
+	ctx = c.resolveCtx(ctx)
 	cmd := c.commander.Command(ctx, c.logHandler, c.smartctlPath, "-X", devicePath)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to abort self-test: %w", err)
