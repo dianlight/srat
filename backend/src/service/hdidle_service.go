@@ -79,6 +79,10 @@ type internalDiskState struct {
 	IdleTime        time.Duration     `json:"-"` // Internal: idle threshold for this disk
 	InternalCmdType dto.HdidleCommand `json:"-"` // Internal: command type for spindown
 	PowerCondition  uint8             `json:"-"` // Internal: power condition for spindown
+
+	// Cache fields
+	LastEmittedSpunDown bool `json:"-"` // Internal: track emitted state to avoid spam
+	IsInitialized       bool `json:"-"` // Internal: force first emit
 }
 
 type internalConfig struct {
@@ -437,7 +441,7 @@ func (s *HDIdleService) CheckDeviceSupport(blockPath string) (*dto.HDIdleDeviceS
 func (s *HDIdleService) CheckSGSupport(devicePath string) bool {
 	f, err := sg.OpenScsiDevice(devicePath)
 	if err != nil {
-		slog.DebugContext(s.ctx, "Failed to open device as SG device", "device", devicePath, "error", err)
+		tlog.TraceContext(s.ctx, "Failed to open device as SG device", "device", devicePath, "error", err)
 		return false
 	}
 	defer f.Close()
@@ -696,7 +700,7 @@ func (s *HDIdleService) updateDiskState(name string, reads, writes uint64, now t
 
 	if dv, ok := s.config.Devices[name]; !ok {
 		// Device not configured for HDIdle, skip processing
-		slog.DebugContext(s.ctx, "Disk not configured for HDIdle, skipping", "disk", name, "devices", s.config.Devices)
+		tlog.TraceContext(s.ctx, "Disk not configured for HDIdle, skipping", "disk", name, "devices", s.config.Devices)
 		return
 	} else {
 		if dv.Enabled == dto.HdidleEnableds.NOENABLED || !dv.Supported {
@@ -723,6 +727,8 @@ func (s *HDIdleService) updateDiskState(name string, reads, writes uint64, now t
 		ds.SpunDown = false
 	}
 
+	stateChanged := !ds.IsInitialized
+
 	// Check if disk had activity
 	if ds.Writes == writes && ds.Reads == reads {
 		// No activity
@@ -743,7 +749,6 @@ func (s *HDIdleService) updateDiskState(name string, reads, writes uint64, now t
 					tlog.ErrorContext(s.ctx, "Failed to spindown disk", "disk", ds.Name, "error", err)
 				}
 
-				//		ds.LastSpunDownAt = now
 				ds.SpinDownAt = now
 				ds.SpunDown = true
 			}
@@ -752,7 +757,6 @@ func (s *HDIdleService) updateDiskState(name string, reads, writes uint64, now t
 		// Disk had activity
 		if ds.SpunDown {
 			// Disk just spun up
-			//givenName := s.resolveDeviceGivenName(ds.Name)
 			tlog.InfoContext(s.ctx, "Spinup", "disk", ds.Name)
 			ds.SpinUpAt = now
 		}
@@ -763,12 +767,22 @@ func (s *HDIdleService) updateDiskState(name string, reads, writes uint64, now t
 		ds.SpunDown = false
 	}
 
-	s.eventBus.EmitPower(events.PowerEvent{
-		Event: events.Event{
-			Type: events.EventTypes.UPDATE,
-		},
-		PowerStatus: ds.HDIdleDeviceStatus,
-	})
+	// Always trigger state update on transition
+	if ds.SpunDown != ds.LastEmittedSpunDown {
+		stateChanged = true
+	}
+
+	if stateChanged {
+		ds.LastEmittedSpunDown = ds.SpunDown
+		ds.IsInitialized = true
+
+		s.eventBus.EmitPower(events.PowerEvent{
+			Event: events.Event{
+				Type: events.EventTypes.UPDATE,
+			},
+			PowerStatus: ds.HDIdleDeviceStatus,
+		})
+	}
 }
 
 // findDiskStateIndex finds the index of a disk in the state array

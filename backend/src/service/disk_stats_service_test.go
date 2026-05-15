@@ -97,7 +97,7 @@ func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_NoVolumes() {
 	mock.When(suite.hdidleMock.IsRunning()).ThenReturn(false)
 
 	// Act
-	err := suite.ds.updateDiskStats()
+	err := suite.ds.updateDiskStats(true)
 
 	// Assert
 	suite.NoError(err)
@@ -135,7 +135,7 @@ func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_SkipsDiskWithNilDevice()
 	mock.When(suite.hdidleMock.IsRunning()).ThenReturn(false)
 
 	// Act
-	err := suite.ds.updateDiskStats()
+	err := suite.ds.updateDiskStats(true)
 
 	// Assert
 	suite.NoError(err)
@@ -191,7 +191,7 @@ func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_FsckStateFromFilesystemS
 	mock.When(suite.fsMock.GetPartitionState(mock.Any[context.Context](), mock.Any[string](), mock.Any[string]())).
 		ThenReturn(state, nil)
 
-	err := suite.ds.updateDiskStats()
+	err := suite.ds.updateDiskStats(true)
 	suite.NoError(err)
 	suite.NotNil(suite.ds.currentDiskHealth)
 
@@ -392,7 +392,7 @@ func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_DisableSmartSkipsBackgro
 	mock.When(suite.fsMock.GetSupportAndInfo(mock.Any[context.Context](), mock.Any[string]())).ThenReturn(support, nil)
 	mock.When(suite.fsMock.GetPartitionState(mock.Any[context.Context](), mock.Any[string](), mock.Any[string]())).ThenReturn(&dto.FilesystemState{}, nil)
 
-	err := suite.ds.updateDiskStats()
+	err := suite.ds.updateDiskStats(true)
 
 	suite.NoError(err)
 	suite.NotNil(suite.ds.currentDiskHealth)

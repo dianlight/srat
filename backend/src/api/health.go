@@ -68,11 +68,11 @@ func isExpectedStartupHealthError(component string, err error) bool {
 
 func logHealthFetchError(ctx context.Context, component string, err error) {
 	if isExpectedStartupHealthError(component, err) {
-		slog.DebugContext(ctx, "Health subsystem still warming up", "component", component, "err", err)
+		tlog.TraceContext(ctx, "Health subsystem still warming up", "component", component, "err", err)
 		return
 	}
 
-	slog.WarnContext(ctx, "Warning getting "+component+" for health ping", "err", err)
+	tlog.DebugContext(ctx, "Warning getting "+component+" for health ping", "err", err)
 }
 
 func NewHealthHandler(lc fx.Lifecycle, param HealthHandlerParams) *HealthHanler {
@@ -169,6 +169,7 @@ func (self *HealthHanler) checkSamba() {
 // 5. Emits a health message using the EventEmitter and logs any errors.
 // 6. Sleeps for the duration specified by OutputEventsInterleave before repeating.
 func (self *HealthHanler) run() error {
+	var ticks int
 	for {
 		select {
 		case <-self.ctx.Done():
@@ -181,6 +182,11 @@ func (self *HealthHanler) run() error {
 
 			self.UpdateAvailable = self.state.UpdateAvailable
 
+			// Only run expensive process and samba status checks every 12 ticks (~60s)
+			// to avoid blocking the high-frequency health loop and to reduce disk access.
+			isHeavyTick := (ticks == 0)
+			ticks = (ticks + 1) % 12
+
 			stats, err := self.addonsService.GetStats()
 			if err != nil {
 				slog.WarnContext(self.ctx, "Warning getting addon stats for health ping", "err", err)
@@ -188,7 +194,9 @@ func (self *HealthHanler) run() error {
 			} else {
 				self.AddonStats = stats
 			}
-			self.checkSamba()
+			if isHeavyTick {
+				self.checkSamba()
+			}
 			diskStats, err := self.diskStatsService.GetDiskStats()
 			if err != nil {
 				logHealthFetchError(self.ctx, "disk stats", err)
@@ -205,18 +213,22 @@ func (self *HealthHanler) run() error {
 			} else {
 				self.NetworkHealth = netStats
 			}
-			sambaStatus, err := self.sambaService.GetSambaStatus()
-			if err != nil {
-				logHealthFetchError(self.ctx, "samba status", err)
-				self.SambaStatus = nil
-			} else {
-				self.SambaStatus = sambaStatus
-				// Also broadcast the samba status separately for Home Assistant integration
-				self.broadcaster.BroadcastMessage(*sambaStatus)
-			}
+			if isHeavyTick {
+				sambaStatus, err := self.sambaService.GetSambaStatus()
+				if err != nil {
+					logHealthFetchError(self.ctx, "samba status", err)
+					self.SambaStatus = nil
+				} else {
+					self.SambaStatus = sambaStatus
+					// Also broadcast the samba status separately for Home Assistant integration
+					self.broadcaster.BroadcastMessage(*sambaStatus)
+				}
 
-			// Also broadcast the samba process status separately for Home Assistant integration
-			self.broadcaster.BroadcastMessage(self.SambaProcessStatus)
+				// Also broadcast the samba process status separately for Home Assistant integration
+
+				// Also broadcast the samba process status separately for Home Assistant integration
+				self.broadcaster.BroadcastMessage(self.SambaProcessStatus)
+			}
 
 			self.Dirty = self.dirtyService.GetDirtyDataTracker()
 			self.AliveTime = time.Now().UnixMilli()
