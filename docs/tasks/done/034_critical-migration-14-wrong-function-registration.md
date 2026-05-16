@@ -3,7 +3,7 @@
 # [FIX]: CRITICAL — Migration 14 Wrong Function Registration
 
 **Target Repo:** `srat`
-**Status:** � In Progress
+**Status:** ✅ Complete
 **Issue Link:** https://github.com/dianlight/srat/issues/644
 
 ## 🎯 Objective
@@ -58,6 +58,6 @@ To detect which databases need the compensating migration: query `goose_db_versi
 
 ## 🔗 Code References & TODOs
 
-- [ ] `FIXME: backend/src/dbom/migrations/00014_sanitize_empty_HASmbPassword.go:15` — wrong function registration
-- [ ] Related: B-REL-01 (Critical) in `docs/SECURITY_OPTIMIZATION_REVIEW.md`
-- [ ] Related: B-SEC-07 (hardcoded fallback password in same migration)
+- [x] `FIXME: backend/src/dbom/migrations/00014_sanitize_empty_HASmbPassword.go:15` — wrong function registration — **fixed**
+- [x] Related: B-REL-01 (Critical) in `docs/SECURITY_OPTIMIZATION_REVIEW.md` — **marked resolved**
+- [ ] Related: B-SEC-07 (hardcoded fallback password in same migration) — out of scope for this task; tracked separately
