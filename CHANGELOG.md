@@ -2,7 +2,7 @@
 
 # Changelog
 
-## 2026.5.0-rc7 [ Unreleased ]
+## 2026.5.0-rc7
 
 ### 🙏 Thanks
 
@@ -10,6 +10,7 @@ We would like to thank all supporters for their contributions and donations.
 With your donations, we are able to continue developing and improving this project. Your support is greatly appreciated.
 
 > **Note**: This section tracks development progress and changes planned for the Release Candidate (RC). The final release notes will be organized and consolidated once the RC is ready for public testing.
+
 ### 🏗 Chore
 - Change the frontend testing engine to vitest to be more stable and realistic.
 - Add a new test on browser directly.
