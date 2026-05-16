@@ -334,11 +334,26 @@ func (s *AddonConfigWatcherService) watchViaFsnotify() {
 func (s *AddonConfigWatcherService) watchViaTicker() {
 	ticker := time.NewTicker(s.pollInterval)
 	defer ticker.Stop()
+
+	var lastMtime time.Time
+
 	for {
 		select {
 		case <-s.watchCtx.Done():
 			return
 		case <-ticker.C:
+			// fast path: if we are watching a file locally, only read the file if mtime changed.
+			if s.addonsClient == nil {
+				if st, err := os.Stat(s.optionsFilePath); err == nil {
+					currMtime := st.ModTime()
+					if !lastMtime.IsZero() && currMtime.Equal(lastMtime) {
+						// File hasn't changed, skip full read and hash
+						continue
+					}
+					lastMtime = currMtime
+				}
+			}
+
 			hash, err := s.hashObservedConfig()
 			if err != nil {
 				// Missing observed config is expected in dev / test environments without Supervisor.

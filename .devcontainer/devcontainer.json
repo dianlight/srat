@@ -2,7 +2,10 @@
     "name": "SRAT",
     "build": {
         "dockerfile": "Dockerfile",
-        "options": ["--secret", "id=github_token,env=GITHUB_TOKEN"],
+        "options": [
+            "--secret",
+            "id=github_token,env=GITHUB_TOKEN"
+        ],
         "context": ".."
     },
     "runArgs": [
@@ -20,6 +23,12 @@
     "remoteUser": "root",
     "postCreateCommand": ".devcontainer/postCreateCommand.sh",
     "postStartCommand": "chmod +x .devcontainer/postStartCommand.sh && CONTAINER_WORKSPACE_FOLDER=${containerWorkspaceFolder} ./.devcontainer/postStartCommand.sh",
+    "appPort": [
+        8080,
+        3000,
+        3080,
+        8090
+    ],
     "portsAttributes": {
         "8080": {
             "label": "Backend",
@@ -29,6 +38,12 @@
         },
         "3000": {
             "label": "Frontend",
+            "onAutoForward": "silent",
+            "protocol": "http",
+            "requireLocalPort": true
+        },
+        "3080": {
+            "label": "Frontend (Dev:remote)",
             "onAutoForward": "silent",
             "protocol": "http",
             "requireLocalPort": true
@@ -84,7 +99,9 @@
         },
         "ghcr.io/devcontainers-extra/features/mise:1": {},
         "ghcr.io/devcontainers-extra/features/zsh-plugins:0": {},
-        "ghcr.io/devcontainers/features/node:2": {}
+        "ghcr.io/devcontainers/features/node:2": {},
+        "ghcr.io/devcontainers/features/copilot-cli:1.1.2": {},
+        "ghcr.io/devcontainer-community/devcontainer-features/opencode.ai:1": {}
     },
     "customizations": {
         "vscode": {
@@ -98,7 +115,9 @@
                 "go.toolsManagement.checkForUpdates": "local",
                 "go.useLanguageServer": true,
                 "go.lintTool": "golangci-lint-v2",
-                "go.lintFlags": ["--fast-only"]
+                "go.lintFlags": [
+                    "--fast-only"
+                ]
             },
             "extensions": [
                 "golang.go",
@@ -131,7 +150,10 @@
                 "servers": {
                     "playwright": {
                         "command": "bunx",
-                        "args": ["-y", "@microsoft/mcp-server-playwright"]
+                        "args": [
+                            "-y",
+                            "@microsoft/mcp-server-playwright"
+                        ]
                     },
                     "deepwiki": {
                         "type": "http",
@@ -139,12 +161,17 @@
                     },
                     "browsermcp": {
                         "command": "bunx",
-                        "args": ["@browsermcp/mcp@latest"]
+                        "args": [
+                            "@browsermcp/mcp@latest"
+                        ]
                     },
                     "context7": {
                         "type": "stdio",
                         "command": "bunx",
-                        "args": ["-y", "@upstash/context7-mcp@latest"]
+                        "args": [
+                            "-y",
+                            "@upstash/context7-mcp@latest"
+                        ]
                     },
                     "github": {
                         "url": "https://api.githubcopilot.com/mcp/"
@@ -156,10 +183,14 @@
             "settings": {
                 "languages": {
                     "Go": {
-                        "language_servers": ["gopls"]
+                        "language_servers": [
+                            "gopls"
+                        ]
                     },
                     "TypeScript": {
-                        "language_servers": ["typescript-language-server"]
+                        "language_servers": [
+                            "typescript-language-server"
+                        ]
                     }
                 },
                 "terminal": {
@@ -181,6 +212,9 @@
         }
     },
     "mounts": [
-        "type=bind,source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,readonly"
+        "type=bind,source=${localEnv:HOME}/.ssh,target=/root/.ssh,readonly",
+        "type=bind,source=${localEnv:HOME}/.gitconfig,target=/root/.gitconfig,readonly",
+        "type=bind,source=${localEnv:HOME}/.config/github-copilot,target=/root/.config/github-copilot,readonly",
+        "type=bind,source=${localEnv:HOME}/.config/opencode,target=/root/.config/opencode"
     ]
 }

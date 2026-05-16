@@ -36,6 +36,7 @@ type VolumeServiceTestSuite struct {
 	filesystemService  service.FilesystemServiceInterface
 	hardwareService    service.HardwareServiceInterface
 	eventBus           events.EventBusInterface
+	disks              *dto.DiskMap
 	ctx                context.Context
 	cancel             context.CancelFunc
 	app                *fxtest.App
@@ -96,6 +97,7 @@ func (suite *VolumeServiceTestSuite) SetupTest() {
 		fx.Populate(&suite.filesystemService),
 		fx.Populate(&suite.hardwareService),
 		fx.Populate(&suite.eventBus),
+		fx.Populate(&suite.disks),
 		fx.Populate(&suite.ctx),
 		fx.Populate(&suite.cancel),
 		fx.Populate(&suite.db),
@@ -797,4 +799,61 @@ func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_UpdatesStartupF
 	suite.Require().True(ok, "expected mount point to still be present after patch")
 	suite.Require().NotNil(mpdAfter.IsToMountAtStartup)
 	suite.True(*mpdAfter.IsToMountAtStartup, "expected IsToMountAtStartup to be true after patch and refresh")
+}
+
+// TestOnSmartEvent_EmptyDiskId_DoesNotUpdateDiskCache verifies that when a SmartEvent
+// carrying an empty DiskId (e.g. a self-test progress event) is emitted, the volume
+// service's OnSmart handler does NOT call AddSmartInfo on the disk map. This prevents
+// spurious WARN logs every 5 s while a self-test is in progress.
+func (suite *VolumeServiceTestSuite) TestOnSmartEvent_EmptyDiskId_DoesNotUpdateDiskCache() {
+	diskID := "ata-DISK-SMART-GUARD-TEST"
+	devicePath := "/dev/sda"
+	(*suite.disks)[diskID] = &dto.Disk{
+		Id:         &diskID,
+		DevicePath: &devicePath,
+	}
+
+	// Capture SmartInfo state before the event
+	diskBefore := (*suite.disks)[diskID]
+	suite.Nil(diskBefore.SmartInfo, "SmartInfo should be nil before any event")
+
+	// Emit a SmartEvent with empty DiskId (self-test progress event)
+	suite.eventBus.EmitSmart(events.SmartEvent{
+		SmartInfo:       dto.SmartInfo{DiskId: ""},
+		SmartTestStatus: dto.SmartTestStatus{DiskId: diskID, Running: true},
+	})
+
+	// Disk cache should be unchanged
+	diskAfter := (*suite.disks)[diskID]
+	suite.Nil(diskAfter.SmartInfo,
+		"OnSmart with empty DiskId must not call AddSmartInfo on the disk cache")
+}
+
+// TestOnSmartEvent_ValidDiskId_UpdatesDiskCache verifies that when a SmartEvent with a
+// non-empty DiskId is emitted, the volume service's OnSmart handler calls AddSmartInfo
+// and the disk cache is updated with the new SMART data.
+func (suite *VolumeServiceTestSuite) TestOnSmartEvent_ValidDiskId_UpdatesDiskCache() {
+	diskID := "ata-DISK-SMART-UPDATE-TEST"
+	devicePath := "/dev/sda"
+	(*suite.disks)[diskID] = &dto.Disk{
+		Id:         &diskID,
+		DevicePath: &devicePath,
+	}
+
+	smartInfo := dto.SmartInfo{
+		DiskId:    diskID,
+		Supported: true,
+		Enabled:   true,
+	}
+
+	// Emit a SmartEvent with a valid DiskId
+	suite.eventBus.EmitSmart(events.SmartEvent{
+		SmartInfo: smartInfo,
+	})
+
+	// Disk cache should be updated
+	diskAfter := (*suite.disks)[diskID]
+	suite.Require().NotNil(diskAfter.SmartInfo,
+		"OnSmart with valid DiskId should call AddSmartInfo and update the disk cache")
+	suite.Equal(diskID, diskAfter.SmartInfo.DiskId)
 }

@@ -64,7 +64,7 @@ github.com/cpuguy83/go-md2man/v2/md2man
 # github.com/creasty/defaults v1.8.0
 ## explicit; go 1.14
 github.com/creasty/defaults
-# github.com/danielgtaylor/huma/v2 v2.37.3
+# github.com/danielgtaylor/huma/v2 v2.38.0
 ## explicit; go 1.25.0
 github.com/danielgtaylor/huma/v2
 github.com/danielgtaylor/huma/v2/adapters/humaflow
@@ -89,7 +89,7 @@ github.com/dave/jennifer/jen
 # github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 ## explicit
 github.com/davecgh/go-spew/spew
-# github.com/dianlight/smartmontools-go v0.2.6
+# github.com/dianlight/smartmontools-go v0.3.1
 ## explicit; go 1.26
 github.com/dianlight/smartmontools-go
 # github.com/dianlight/tlog v0.2.2
@@ -117,7 +117,7 @@ github.com/fatih/color
 ## explicit; go 1.23
 github.com/fsnotify/fsnotify
 github.com/fsnotify/fsnotify/internal
-# github.com/fxamacker/cbor/v2 v2.9.0
+# github.com/fxamacker/cbor/v2 v2.9.1
 ## explicit; go 1.20
 github.com/fxamacker/cbor/v2
 # github.com/glebarez/go-sqlite v1.22.0

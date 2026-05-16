@@ -150,8 +150,12 @@ func NewVolumeService(
 		return nil
 	})
 	unsubscribe[4] = p.eventBus.OnSmart(func(ctx context.Context, se events.SmartEvent) errors.E {
-		if err := p.disks.AddSmartInfo(&se.SmartInfo); err != nil {
-			slog.WarnContext(ctx, "Failed to add SMART info to disk cache", "error", err)
+		// Only update disk cache when the event carries SmartInfo (non-empty DiskId).
+		// Self-test progress events carry SmartTestStatus with an empty SmartInfo.
+		if se.SmartInfo.DiskId != "" {
+			if err := p.disks.AddSmartInfo(&se.SmartInfo); err != nil {
+				slog.WarnContext(ctx, "Failed to add SMART info to disk cache", "error", err)
+			}
 		}
 		return nil
 	})
