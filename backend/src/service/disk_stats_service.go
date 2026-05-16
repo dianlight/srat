@@ -274,8 +274,8 @@ func (s *diskStatsService) updateDiskStats(isHeavyTick bool) errors.E {
 				// --- Smart data population ---
 				// Only query SMART data if SMART is enabled to avoid unnecessary disk access
 				var previousSmartData *dto.SmartStatus
-				if !isHeavyTick && s.currentDiskHealth != nil {
-					for _, previous := range s.currentDiskHealth.PerDiskIO {
+				if !isHeavyTick && lastDiskHealth != nil {
+					for _, previous := range lastDiskHealth.PerDiskIO {
 						if previous.DeviceDescription == *disk.Id {
 							previousSmartData = previous.SmartData
 							break

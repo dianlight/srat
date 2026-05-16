@@ -487,6 +487,9 @@ func (s *smartService) EnableSMART(ctx context.Context, deviceId string) errors.
 	if errE != nil {
 		return errE
 	}
+	// Override DiskId: smartInfoFromSMARTInfo sets it to the raw device path,
+	// but the DiskMap is indexed by the canonical deviceId.
+	smartInfoDto.DiskId = deviceId
 
 	s.eventBus.EmitSmart(events.SmartEvent{
 		Event: events.Event{
@@ -537,6 +540,9 @@ func (s *smartService) DisableSMART(ctx context.Context, deviceId string) errors
 	if errE != nil {
 		return errE
 	}
+	// Override DiskId: smartInfoFromSMARTInfo sets it to the raw device path,
+	// but the DiskMap is indexed by the canonical deviceId.
+	smartInfoDto.DiskId = deviceId
 
 	s.eventBus.EmitSmart(events.SmartEvent{
 		Event: events.Event{

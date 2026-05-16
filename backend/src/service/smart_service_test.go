@@ -23,6 +23,7 @@ type SmartServiceSuite struct {
 	suite.Suite
 	service     service.SmartServiceInterface
 	smartClient smartmontools.SmartClient
+	eventBus    events.EventBusInterface
 	app         *fxtest.App
 }
 
@@ -41,6 +42,7 @@ func (suite *SmartServiceSuite) SetupTest() {
 		),
 		fx.Populate(&suite.service),
 		fx.Populate(&suite.smartClient),
+		fx.Populate(&suite.eventBus),
 	)
 	suite.app.RequireStart()
 }
@@ -416,6 +418,68 @@ func (suite *SmartServiceSuite) TestDisableSMARTSuccess() {
 
 	// Assert
 	suite.NoError(err)
+}
+
+// TestEnableSMART_EventDiskIdMatchesDeviceId verifies that the SmartEvent emitted by
+// EnableSMART carries the canonical deviceId (as passed to the function), not the raw
+// device path returned by the device-to-device mapper.
+func (suite *SmartServiceSuite) TestEnableSMART_EventDiskIdMatchesDeviceId() {
+	canonicalID := "ata-TEST_DEVICE_12345"
+	tempFile, _ := os.CreateTemp("", "testdevice")
+	defer os.Remove(tempFile.Name())
+
+	mock.When(suite.smartClient.EnableSMART(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).ThenReturn(nil)
+	mock.When(suite.smartClient.IsSMARTSupported(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).ThenReturn(&smartmontools.SmartSupport{Available: true, Enabled: true}, nil)
+	mock.When(suite.smartClient.GetSMARTInfo(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).
+		ThenReturn(&smartmontools.SMARTInfo{SmartSupport: &smartmontools.SmartSupport{Available: true, Enabled: true}}, nil)
+
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return tempFile.Name(), nil
+	})
+
+	var capturedDiskId string
+	unsubscribe := suite.eventBus.OnSmart(func(_ context.Context, se events.SmartEvent) goerrors.E {
+		capturedDiskId = se.SmartInfo.DiskId
+		return nil
+	})
+	defer unsubscribe()
+
+	err := suite.service.EnableSMART(context.Background(), canonicalID)
+
+	suite.NoError(err)
+	suite.Equal(canonicalID, capturedDiskId,
+		"EmitSmart must use the canonical deviceId, not the raw device path")
+}
+
+// TestDisableSMART_EventDiskIdMatchesDeviceId verifies that the SmartEvent emitted by
+// DisableSMART carries the canonical deviceId (as passed to the function), not the raw
+// device path returned by the device-to-device mapper.
+func (suite *SmartServiceSuite) TestDisableSMART_EventDiskIdMatchesDeviceId() {
+	canonicalID := "ata-TEST_DEVICE_67890"
+	tempFile, _ := os.CreateTemp("", "testdevice")
+	defer os.Remove(tempFile.Name())
+
+	mock.When(suite.smartClient.DisableSMART(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).ThenReturn(nil)
+	mock.When(suite.smartClient.IsSMARTSupported(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).ThenReturn(&smartmontools.SmartSupport{Available: true, Enabled: false}, nil)
+	mock.When(suite.smartClient.GetSMARTInfo(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).
+		ThenReturn(&smartmontools.SMARTInfo{SmartSupport: &smartmontools.SmartSupport{Available: true, Enabled: false}}, nil)
+
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return tempFile.Name(), nil
+	})
+
+	var capturedDiskId string
+	unsubscribe := suite.eventBus.OnSmart(func(_ context.Context, se events.SmartEvent) goerrors.E {
+		capturedDiskId = se.SmartInfo.DiskId
+		return nil
+	})
+	defer unsubscribe()
+
+	err := suite.service.DisableSMART(context.Background(), canonicalID)
+
+	suite.NoError(err)
+	suite.Equal(canonicalID, capturedDiskId,
+		"EmitSmart must use the canonical deviceId, not the raw device path")
 }
 
 func (suite *SmartServiceSuite) TestGetTestStatusDeviceNotExist() {

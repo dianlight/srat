@@ -225,8 +225,6 @@ func (self *HealthHanler) run() error {
 				}
 
 				// Also broadcast the samba process status separately for Home Assistant integration
-
-				// Also broadcast the samba process status separately for Home Assistant integration
 				self.broadcaster.BroadcastMessage(self.SambaProcessStatus)
 			}
 

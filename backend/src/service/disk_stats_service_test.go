@@ -405,3 +405,84 @@ func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_DisableSmartSkipsBackgro
 	_, _ = mock.Verify(suite.smartMock, matchers.Times(0)).GetSmartStatus(mock.AnyContext(), mock.Any[string]())
 	_, _ = mock.Verify(suite.smartMock, matchers.Times(0)).GetHealthStatus(mock.AnyContext(), mock.Any[string]())
 }
+
+// TestUpdateDiskStats_LightweightTick_ReusesPreviousSmartData verifies that on a lightweight
+// tick (isHeavyTick=false), previously cached SMART data from the last tick is reused
+// without calling GetSmartStatus, reducing disk access.
+func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_LightweightTick_ReusesPreviousSmartData() {
+	diskID := "disk-smart-cache"
+	deviceName := "sda"
+	devicePath := "/dev/sda"
+
+	(*suite.testDisks)[diskID] = &dto.Disk{
+		Id:               &diskID,
+		LegacyDeviceName: &deviceName,
+		DevicePath:       &devicePath,
+	}
+
+	// Pre-populate lastStats so the disk appears in PerDiskIO
+	suite.ds.lastStats[diskID] = &blockdevice.IOStats{}
+
+	// Build the previous tick's health with SMART data for this disk
+	prevSmartData := &dto.SmartStatus{
+		Enabled:      true,
+		Temperature:  dto.SmartTempValue{Value: 36},
+		PowerOnHours: dto.SmartRangeValue{Value: 12345},
+	}
+	suite.ds.currentDiskHealth = &dto.DiskHealth{
+		PerDiskIO: []dto.DiskIOStats{
+			{DeviceDescription: diskID, SmartData: prevSmartData},
+		},
+		PerPartitionInfo: make(map[string][]dto.PerPartitionInfo),
+		PerDiskInfo:      make(map[string]dto.PerDiskInfo),
+	}
+
+	// SMART enabled in cache — but GetSmartStatus should NOT be called
+	suite.ds.smartEnabledCache.Set(diskID, true, cache.DefaultExpiration)
+
+	mock.When(suite.hdidleMock.IsRunning()).ThenReturn(false)
+
+	err := suite.ds.updateDiskStats(false)
+
+	suite.NoError(err)
+	suite.Require().NotNil(suite.ds.currentDiskHealth)
+	suite.Require().Len(suite.ds.currentDiskHealth.PerDiskIO, 1)
+	suite.Equal(prevSmartData, suite.ds.currentDiskHealth.PerDiskIO[0].SmartData,
+		"lightweight tick should reuse previous SMART data, not fetch new")
+	_, _ = mock.Verify(suite.smartMock, matchers.Times(0)).GetSmartStatus(mock.AnyContext(), mock.Any[string]())
+}
+
+// TestUpdateDiskStats_LightweightTick_FetchesSmartWhenNoPreviousData verifies that on a
+// lightweight tick (isHeavyTick=false) with no prior health snapshot, SMART data is
+// still fetched fresh (there is nothing to reuse).
+func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_LightweightTick_FetchesSmartWhenNoPreviousData() {
+	diskID := "disk-no-prev"
+	deviceName := "sda"
+	devicePath := "/dev/sda"
+
+	(*suite.testDisks)[diskID] = &dto.Disk{
+		Id:               &diskID,
+		LegacyDeviceName: &deviceName,
+		DevicePath:       &devicePath,
+	}
+
+	// Pre-populate lastStats so the disk appears in PerDiskIO
+	suite.ds.lastStats[diskID] = &blockdevice.IOStats{}
+
+	// No previous health snapshot (first call ever)
+	suite.ds.currentDiskHealth = nil
+
+	suite.ds.smartEnabledCache.Set(diskID, true, cache.DefaultExpiration)
+	freshSmartData := &dto.SmartStatus{Enabled: true, Temperature: dto.SmartTempValue{Value: 40}}
+	mock.When(suite.smartMock.GetSmartStatus(mock.AnyContext(), mock.Exact(diskID))).ThenReturn(freshSmartData, nil)
+	mock.When(suite.hdidleMock.IsRunning()).ThenReturn(false)
+
+	err := suite.ds.updateDiskStats(false)
+
+	suite.NoError(err)
+	suite.Require().NotNil(suite.ds.currentDiskHealth)
+	suite.Require().Len(suite.ds.currentDiskHealth.PerDiskIO, 1)
+	suite.Equal(freshSmartData, suite.ds.currentDiskHealth.PerDiskIO[0].SmartData,
+		"should fetch fresh SMART data when no previous snapshot exists")
+	_, _ = mock.Verify(suite.smartMock, matchers.Times(1)).GetSmartStatus(mock.AnyContext(), mock.Exact(diskID))
+}
