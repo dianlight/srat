@@ -17,6 +17,8 @@ mount-remote = "umount -l /mnt/remote > /dev/null 2>&1 || : && mkdir -p /mnt/rem
 raw = true
 run = [
   "go run -C src github.com/oligot/go-mod-upgrade",
+  "go -C src mod vendor",
+  "go -C src mod tidy",
 ]
 depends_post = [
     { task = "patch" },

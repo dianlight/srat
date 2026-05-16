@@ -2,6 +2,7 @@
 go = "1.26"
 "go:honnef.co/go/tools/cmd/staticcheck" = "latest"
 "go:github.com/princjef/gomarkdoc/cmd/gomarkdoc" = "latest"
+github-cli = "latest"
 
 [tasks.test]
 description = "Run unit tests for all packages"
