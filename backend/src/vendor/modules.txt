@@ -64,7 +64,7 @@ github.com/cpuguy83/go-md2man/v2/md2man
 # github.com/creasty/defaults v1.8.0
 ## explicit; go 1.14
 github.com/creasty/defaults
-# github.com/danielgtaylor/huma/v2 v2.37.3
+# github.com/danielgtaylor/huma/v2 v2.38.0
 ## explicit; go 1.25.0
 github.com/danielgtaylor/huma/v2
 github.com/danielgtaylor/huma/v2/adapters/humaflow
@@ -89,7 +89,7 @@ github.com/dave/jennifer/jen
 # github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 ## explicit
 github.com/davecgh/go-spew/spew
-# github.com/dianlight/smartmontools-go v0.2.6
+# github.com/dianlight/smartmontools-go v0.3.1
 ## explicit; go 1.26
 github.com/dianlight/smartmontools-go
 # github.com/dianlight/tlog v0.2.2
@@ -117,7 +117,7 @@ github.com/fatih/color
 ## explicit; go 1.23
 github.com/fsnotify/fsnotify
 github.com/fsnotify/fsnotify/internal
-# github.com/fxamacker/cbor/v2 v2.9.0
+# github.com/fxamacker/cbor/v2 v2.9.1
 ## explicit; go 1.20
 github.com/fxamacker/cbor/v2
 # github.com/glebarez/go-sqlite v1.22.0
@@ -138,9 +138,9 @@ github.com/go-sql-driver/mysql
 github.com/gofri/go-github-ratelimit/v2/github_ratelimit
 github.com/gofri/go-github-ratelimit/v2/github_ratelimit/github_primary_ratelimit
 github.com/gofri/go-github-ratelimit/v2/github_ratelimit/github_secondary_ratelimit
-# github.com/google/go-github/v85 v85.0.0
+# github.com/google/go-github/v86 v86.0.0
 ## explicit; go 1.25.0
-github.com/google/go-github/v85/github
+github.com/google/go-github/v86/github
 # github.com/google/go-querystring v1.2.0
 ## explicit; go 1.13
 github.com/google/go-querystring/query
@@ -462,10 +462,10 @@ golang.org/x/crypto/blake2b
 golang.org/x/crypto/blowfish
 golang.org/x/crypto/pbkdf2
 golang.org/x/crypto/scrypt
-# golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f
+# golang.org/x/exp v0.0.0-20260508232706-74f9aab9d74a
 ## explicit; go 1.25.0
 golang.org/x/exp/constraints
-# golang.org/x/mod v0.35.0
+# golang.org/x/mod v0.36.0
 ## explicit; go 1.25.0
 golang.org/x/mod/internal/lazyregexp
 golang.org/x/mod/modfile
@@ -506,7 +506,7 @@ golang.org/x/text/width
 # golang.org/x/time v0.15.0
 ## explicit; go 1.25.0
 golang.org/x/time/rate
-# golang.org/x/tools v0.44.0
+# golang.org/x/tools v0.45.0
 ## explicit; go 1.25.0
 golang.org/x/tools/go/analysis
 golang.org/x/tools/go/analysis/checker

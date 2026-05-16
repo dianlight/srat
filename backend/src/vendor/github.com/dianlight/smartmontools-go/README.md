@@ -14,9 +14,13 @@ A Go library that interfaces with smartmontools to monitor and manage storage de
 ## Features
 
 - 🔍 **Device Scanning**: Automatically detect available storage devices
+- 👀 **Drive Discovery**: `DiscoverDevices` probes each drive's optimal protocol and reports SMART readability
+- 💻 **NAS Platform Support**: Automatic `smartctl` discovery across Synology DSM, QNAP, FreeBSD/TrueNAS, macOS, and standard Linux
 - 💚 **Health Monitoring**: Check device health status using SMART data
+- 🏥 **SMART Health Flags**: Full exit code bit decomposition (`ExecBits` / `HealthBits`) via `ExitCodeInfo`
 - 📊 **SMART Attributes**: Read and parse detailed SMART attributes
-- 🌡️ **Temperature Monitoring**: Track device temperature
+  - 🔋 **Wear Level**: Normalized wear-level percentage for SSDs and NVMe drives via `WearLevelPercent()`
+  - 🌡️ **Temperature Monitoring**: Track device temperature
 - ⚙️ **Self-Tests**: Initiate and monitor SMART self-tests
 - 🔧 **Device Information**: Retrieve model, serial number, firmware version, and more
 - 🔌 **USB Bridge Support**: Automatic fallback for unknown USB bridges with embedded device database
@@ -142,6 +146,92 @@ if err != nil {
     log.Fatalf("Failed to create client: %v", err)
 }
 ```
+
+> **NAS / embedded platforms**: `NewClient` automatically searches 11 platform-specific
+> locations (Synology DSM, QNAP Entware/QPKG, FreeBSD/TrueNAS, macOS Homebrew, NixOS, …)
+> when `smartctl` is not found in `PATH`. `WithSmartctlPath` always takes precedence.
+
+### Drive Discovery
+
+`DiscoverDevices` scans all available drives, probes each with its auto-detected
+protocol, and transparently attempts an SAT fallback for drives that cannot be read
+with their native protocol (common with USB-to-SATA bridges).
+
+```go
+results, err := client.DiscoverDevices(context.Background())
+if err != nil {
+    log.Fatalf("Discovery failed: %v", err)
+}
+
+for _, r := range results {
+    fmt.Printf("Device:   %s\n", r.DevicePath)
+    fmt.Printf("Protocol: %s\n", r.DetectedProtocol)
+    fmt.Printf("Readable: %v\n", r.SMARTReadable)
+    if r.SATFallbackRequired {
+        fmt.Println("  (SAT fallback was required)")
+    }
+    if r.SMARTReadable {
+        fmt.Printf("  Model:  %s\n", r.Model)
+        fmt.Printf("  Serial: %s\n", r.Serial)
+    }
+}
+```
+
+### Exit Code Information
+
+When `smartctl` exits with a non-zero status, `SMARTInfo.ExitCodeInfo` is populated
+with a breakdown of the exit bits:
+
+```go
+info, err := client.GetSMARTInfo(ctx, "/dev/sda")
+if err != nil {
+    log.Fatalf("Failed to get SMART info: %v", err)
+}
+
+if info.ExitCodeInfo != nil {
+    // Bits 0–2: execution failures (device open failed, SMART command failed, …)
+    if info.ExitCodeInfo.ExecBits != 0 {
+        fmt.Printf("Execution failure bits: 0x%02x\n", info.ExitCodeInfo.ExecBits)
+    }
+    // Bits 3–7: SMART health flags (disk failing, pre-failure attributes, …)
+    if info.ExitCodeInfo.HealthBits != 0 {
+        hb := info.ExitCodeInfo.HealthBits
+        fmt.Printf("SMART health bits: 0x%02x\n", hb)
+        fmt.Printf("  Disk failing:        %v\n", hb&0x08 != 0)
+        fmt.Printf("  Pre-failure attrs:   %v\n", hb&0x10 != 0)
+        fmt.Printf("  Past prefail:        %v\n", hb&0x20 != 0)
+        fmt.Printf("  Error log entries:   %v\n", hb&0x40 != 0)
+        fmt.Printf("  Self-test failures:  %v\n", hb&0x80 != 0)
+    }
+}
+```
+
+### Wear Level
+
+`SMARTInfo.WearLevelPercent()` returns a normalized 0–100 value representing the
+percentage of drive life *used* (0 = new, 100 = worn out), or `nil` for HDDs and
+drives where no wear data is available:
+
+```go
+info, err := client.GetSMARTInfo(ctx, "/dev/sda")
+if err != nil {
+    log.Fatalf("Failed to get SMART info: %v", err)
+}
+
+if wear := info.WearLevelPercent(); wear != nil {
+    fmt.Printf("Wear level: %d%%\n", *wear)
+} else {
+    fmt.Println("Wear level: N/A (HDD or unsupported drive)")
+}
+```
+
+The source used depends on the drive type:
+
+| Drive type | Source                                                                     |
+| ---------- | -------------------------------------------------------------------------- |
+| NVMe       | `nvme_smart_health_information_log.percentage_used`                        |
+| SSD (ATA)  | Attr 231 (SSD Life Left) → 177 (Wear Leveling Count) → 173 (SSD Life Used) |
+| HDD        | `nil`                                                                      |
 
 ### Logging
 
@@ -459,18 +549,32 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 
 ## Acknowledgments
 
-- [smartmontools](https://www.smartmontools.org/) - The underlying tool that makes this library possible
-- [libgoffi](https://github.com/noctarius/libgoffi) - FFI adapter library for Go (for future enhancements)
+- [smartmontools](https://www.smartmontools.org/) — the underlying tool that makes this library possible
+- [DAB-LABS/smart-sniffer](https://github.com/DAB-LABS/smart-sniffer) — several reliability improvements in this library (multi-path binary resolution, SAT fallback, `--scan-open` → `--scan` fallback, `DiscoverDevices`, and exit code bit decomposition) were inspired by the patterns used in the smart-sniffer agent
+- [libgoffi](https://github.com/noctarius/libgoffi) — FFI adapter library for Go (for future enhancements)
 
-## CI and Makefile
+## CI and mise
 
-This repository includes a `Makefile` with common targets and a GitHub Actions workflow that runs CI on `push` and `pull_request` to `main`.
+This repository uses [`mise`](https://mise.jdx.dev/) for task running and a GitHub Actions workflow that runs CI on `push` and `pull_request` to `main`.
 
-Quick Makefile usage:
+Common tasks:
 
-- Run tests: `make test`
-- Run full CI locally (formats, vet, staticcheck, tests): `make ci`
-- Format code: `make fmt`
-- Build binary: `make build`
+| Command                                  | Description                                                                                      |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `mise run test`                          | Run unit tests for all packages                                                                  |
+| `mise run ci`                            | Run all CI checks (tidy, download, lint, test)                                                   |
+| `mise run lint`                          | Run staticcheck                                                                                  |
+| `mise run fmt`                           | Run gofmt on the project                                                                         |
+| `mise run coverage`                      | Run tests and show coverage summary                                                              |
+| `mise run apidoc`                        | Generate API documentation (`APIDOC.md`)                                                         |
+| `mise run clean`                         | Remove build artifacts                                                                           |
+| `mise run release [major\|minor\|patch]` | Create and push a tag — stable on `main`, prerelease on a branch with an open PR (requires `gh`) |
 
-Staticcheck will be installed into your Go bin (GOBIN or GOPATH/bin) if not already present when you run `make ci`.
+`release` accepts a `--dry-run` flag to preview without pushing:
+
+```sh
+mise run release         # patch bump (default)
+mise run release minor --dry-run
+```
+
+To list all available tasks run `mise tasks`.

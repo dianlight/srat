@@ -165,6 +165,7 @@ func NewDiskStatsService(
 }
 
 func (self *diskStatsService) run() error {
+	var ticks int
 	for {
 		select {
 		case cmd := <-self.pauseResumeCommandChan:
@@ -187,16 +188,17 @@ func (self *diskStatsService) run() error {
 			slog.DebugContext(self.ctx, "Run process closed", "err", self.ctx.Err())
 			return errors.WithStack(self.ctx.Err())
 		case <-time.After(time.Second * 10):
-			err := self.updateDiskStats()
+			err := self.updateDiskStats(ticks == 0)
+			ticks = (ticks + 1) % 6
 			if err != nil && !errors.Is(err, dto.ErrorNotFound) {
-				slog.WarnContext(self.ctx, "Failed to update disk stats", "error", err)
+				tlog.DebugContext(self.ctx, "Failed to update disk stats", "error", err)
 				continue
 			}
 		}
 	}
 }
 
-func (s *diskStatsService) updateDiskStats() errors.E {
+func (s *diskStatsService) updateDiskStats(isHeavyTick bool) errors.E {
 	s.updateMutex.Lock()
 	defer s.updateMutex.Unlock()
 
@@ -208,6 +210,7 @@ func (s *diskStatsService) updateDiskStats() errors.E {
 		hdidleRunning = s.hdidleService.IsRunning()
 	}
 
+	lastDiskHealth := s.currentDiskHealth
 	s.currentDiskHealth = &dto.DiskHealth{
 		PerDiskIO: make([]dto.DiskIOStats, 0),
 		Global: dto.GlobalDiskStats{
@@ -223,7 +226,7 @@ func (s *diskStatsService) updateDiskStats() errors.E {
 	if len(disks) != 0 {
 		for _, disk := range disks {
 			if disk.DevicePath == nil {
-				slog.DebugContext(s.ctx, "Skipping disk with nil device", "diskID", *disk.Id)
+				tlog.TraceContext(s.ctx, "Skipping disk with nil device", "diskID", *disk.Id)
 				continue
 			}
 			stats, err := s.fetchDiskStats(*disk.LegacyDeviceName)
@@ -270,10 +273,22 @@ func (s *diskStatsService) updateDiskStats() errors.E {
 
 				// --- Smart data population ---
 				// Only query SMART data if SMART is enabled to avoid unnecessary disk access
-				if !s.isSmartIntegrationDisabled() && disk.DevicePath != nil && s.isSmartEnabled(*disk.Id) {
+				var previousSmartData *dto.SmartStatus
+				if !isHeavyTick && lastDiskHealth != nil {
+					for _, previous := range lastDiskHealth.PerDiskIO {
+						if previous.DeviceDescription == *disk.Id {
+							previousSmartData = previous.SmartData
+							break
+						}
+					}
+				}
+
+				if previousSmartData != nil {
+					s.currentDiskHealth.PerDiskIO[len(s.currentDiskHealth.PerDiskIO)-1].SmartData = previousSmartData
+				} else if !s.isSmartIntegrationDisabled() && disk.DevicePath != nil && s.isSmartEnabled(*disk.Id) {
 					smartStatus, err := s.smartService.GetSmartStatus(s.ctx, *disk.Id)
 					if err != nil && !errors.Is(err, dto.ErrorSMARTNotSupported) {
-						slog.WarnContext(s.ctx, "Error getting SMART status", "disk", *disk.Id, "err", err)
+						tlog.DebugContext(s.ctx, "Error getting SMART status", "disk", *disk.Id, "err", err)
 					} else if smartStatus != nil {
 						// Update cache with current enabled state using Set method
 						s.smartEnabledCache.Set(*disk.Id, smartStatus.Enabled, cache.DefaultExpiration)
@@ -284,75 +299,96 @@ func (s *diskStatsService) updateDiskStats() errors.E {
 				s.lastStats[*disk.Id] = &stats
 			} // --- PerPartitionInfo population ---
 			if disk.Partitions != nil {
-				for _, part := range *disk.Partitions {
+				cachedParts, hasCache := []dto.PerPartitionInfo(nil), false
+				if !isHeavyTick && lastDiskHealth != nil {
+					cachedParts, hasCache = lastDiskHealth.PerPartitionInfo[*disk.Id]
+				}
 
-					// Fill PerPartitionInfo
-					var fstype, name string
-					if part.FsType != nil {
-						fstype = *part.FsType
-					}
-					if part.Name != nil {
-						name = *part.Name
-					} else if part.LegacyDeviceName != nil {
-						name = *part.LegacyDeviceName
-					} else if part.Id != nil {
-						name = *part.Id
-					} else {
-						name = "unknown"
-					}
-					filesystemState := s.getFilesystemState(&part, fstype)
-					// Use partition size if available
-					// Get free space using syscall.Statfs
-					var totalSpace, freeSpace uint64
-					mountPoint := ""
-					if part.Size != nil {
-						// Prevent integer overflow/underflow converting int -> uint64
-						if *part.Size > 0 {
-							totalSpace = uint64(*part.Size)
-						} else {
-							totalSpace = 0
-						}
-					}
-					if part.MountPointData != nil && len(*part.MountPointData) > 0 {
-						// Use first mount point if multiple (shouldn't normally happen)
-						var mp dto.MountPointData
-						for _, m := range *part.MountPointData {
-							mp = m
-							break
-						}
-						if mp.Path != "" {
-							mountPoint = mp.Path
-
-							var stat syscall.Statfs_t
-							if err := syscall.Statfs(mp.Path, &stat); err == nil {
-								// Guard against negative block size before converting to uint64
-								if stat.Bsize > 0 {
-									bsize := uint64(stat.Bsize)
-									freeSpace = stat.Bfree * bsize
-									totalSpace = stat.Blocks * bsize
-								}
-							}
-						}
-					}
-					info := dto.PerPartitionInfo{
-						Name:            name,
-						MountPoint:      mountPoint,
-						Device:          *part.Id,
-						FSType:          fstype,
-						FreeSpace:       freeSpace,
-						TotalSpace:      totalSpace,
-						FilesystemState: filesystemState,
-					}
+				if hasCache {
 					if s.currentDiskHealth.PerPartitionInfo[*disk.Id] == nil {
 						s.currentDiskHealth.PerPartitionInfo[*disk.Id] = make([]dto.PerPartitionInfo, 0)
 					}
-					s.currentDiskHealth.PerPartitionInfo[*disk.Id] = append(s.currentDiskHealth.PerPartitionInfo[*disk.Id], info)
+					s.currentDiskHealth.PerPartitionInfo[*disk.Id] = cachedParts
+				} else {
+					for _, part := range *disk.Partitions {
+
+						// Fill PerPartitionInfo
+						var fstype, name string
+						if part.FsType != nil {
+							fstype = *part.FsType
+						}
+						if part.Name != nil {
+							name = *part.Name
+						} else if part.LegacyDeviceName != nil {
+							name = *part.LegacyDeviceName
+						} else if part.Id != nil {
+							name = *part.Id
+						} else {
+							name = "unknown"
+						}
+						filesystemState := s.getFilesystemState(&part, fstype)
+						// Use partition size if available
+						// Get free space using syscall.Statfs
+						var totalSpace, freeSpace uint64
+						mountPoint := ""
+						if part.Size != nil {
+							// Prevent integer overflow/underflow converting int -> uint64
+							if *part.Size > 0 {
+								totalSpace = uint64(*part.Size)
+							} else {
+								totalSpace = 0
+							}
+						}
+						if part.MountPointData != nil && len(*part.MountPointData) > 0 {
+							// Use first mount point if multiple (shouldn't normally happen)
+							var mp dto.MountPointData
+							for _, m := range *part.MountPointData {
+								mp = m
+								break
+							}
+							if mp.Path != "" {
+								mountPoint = mp.Path
+
+								var stat syscall.Statfs_t
+								if err := syscall.Statfs(mp.Path, &stat); err == nil {
+									// Guard against negative block size before converting to uint64
+									if stat.Bsize > 0 {
+										bsize := uint64(stat.Bsize)
+										freeSpace = stat.Bfree * bsize
+										totalSpace = stat.Blocks * bsize
+									}
+								}
+							}
+						}
+						info := dto.PerPartitionInfo{
+							Name:            name,
+							MountPoint:      mountPoint,
+							Device:          *part.Id,
+							FSType:          fstype,
+							FreeSpace:       freeSpace,
+							TotalSpace:      totalSpace,
+							FilesystemState: filesystemState,
+						}
+						if s.currentDiskHealth.PerPartitionInfo[*disk.Id] == nil {
+							s.currentDiskHealth.PerPartitionInfo[*disk.Id] = make([]dto.PerPartitionInfo, 0)
+						}
+						s.currentDiskHealth.PerPartitionInfo[*disk.Id] = append(s.currentDiskHealth.PerPartitionInfo[*disk.Id], info)
+					}
 				}
 
 			}
 
 			// --- PerDiskInfo population (SMART info, health, HDIdle status) ---
-			s.populatePerDiskInfo(disk)
+			var skippedDiskInfo bool
+			if !isHeavyTick && lastDiskHealth != nil {
+				if cachedDiskInfo, ok := lastDiskHealth.PerDiskInfo[*disk.Id]; ok {
+					s.currentDiskHealth.PerDiskInfo[*disk.Id] = cachedDiskInfo
+					skippedDiskInfo = true
+				}
+			}
+			if !skippedDiskInfo {
+				s.populatePerDiskInfo(disk)
+			}
 		}
 	}
 
@@ -378,7 +414,7 @@ func (s *diskStatsService) populatePerDiskInfo(disk *dto.Disk) {
 			// Get SMART info (static capabilities)
 			smartInfo, err := s.smartService.GetSmartInfo(s.ctx, *disk.Id)
 			if err != nil && !errors.Is(err, dto.ErrorSMARTNotSupported) {
-				tlog.WarnContext(s.ctx, "Error getting SMART info", "disk", *disk.Id, "err", err)
+				tlog.DebugContext(s.ctx, "Error getting SMART info", "disk", *disk.Id, "err", err)
 			} else if smartInfo != nil {
 				diskInfo.SmartInfo = smartInfo
 			}
@@ -387,7 +423,7 @@ func (s *diskStatsService) populatePerDiskInfo(disk *dto.Disk) {
 				// Get SMART health status
 				smartHealth, err := s.smartService.GetHealthStatus(s.ctx, *disk.Id)
 				if err != nil && !errors.Is(err, dto.ErrorSMARTNotSupported) {
-					tlog.WarnContext(s.ctx, "Error getting SMART health status", "disk", *disk.Id, "err", err)
+					tlog.DebugContext(s.ctx, "Error getting SMART health status", "disk", *disk.Id, "err", err)
 				} else if smartHealth != nil {
 					diskInfo.SmartHealth = smartHealth
 				}

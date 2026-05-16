@@ -2,11 +2,72 @@ package smartmontools
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
 )
+
+// smartctlSearchPaths contains platform-specific locations tried in order when
+// smartctl is not found in PATH. Ordered from most-common to most-specific to
+// minimise stat calls on standard Linux installs.
+var smartctlSearchPaths = []string{
+	// Standard Linux (Debian, Ubuntu, RHEL, Fedora, Arch, Alpine, Proxmox, OMV)
+	"/usr/sbin/smartctl",
+	// FreeBSD / TrueNAS CORE / OpenBSD
+	"/usr/local/sbin/smartctl",
+	// macOS Homebrew (Intel)
+	"/usr/local/bin/smartctl",
+	// macOS Homebrew (Apple Silicon)
+	"/opt/homebrew/bin/smartctl",
+	// MacPorts
+	"/opt/local/sbin/smartctl",
+	// Synology DSM native package
+	"/usr/syno/bin/smartctl",
+	// Synology SynoCommunity QPKG
+	"/volume1/@appstore/smartmontools/usr/sbin/smartctl",
+	// QNAP Entware
+	"/opt/sbin/smartctl",
+	// QNAP QPKG
+	"/share/CACHEDEV1_DATA/.qpkg/smartmontools/bin/smartctl",
+	// NixOS system profile
+	"/run/current-system/sw/sbin/smartctl",
+}
+
+// resolveSmartctlPath searches PATH and then platform-specific fallback
+// locations for a usable smartctl binary. The WithSmartctlPath option always
+// takes precedence and bypasses this function entirely.
+func resolveSmartctlPath() (string, error) {
+	// 1. Prefer PATH so that user-installed or version-managed binaries win.
+	if path, err := exec.LookPath("smartctl"); err == nil {
+		return path, nil
+	}
+
+	// 2. Search known platform-specific paths.
+	for _, candidate := range smartctlSearchPaths {
+		info, err := os.Stat(candidate)
+		if err != nil || info.IsDir() {
+			continue
+		}
+		if info.Mode()&0o111 == 0 {
+			continue // not executable
+		}
+		return candidate, nil
+	}
+
+	return "", fmt.Errorf(
+		"smartctl not found in PATH or known locations.\n" +
+			"Install smartmontools for your platform:\n" +
+			"  Linux (Debian/Ubuntu): sudo apt install smartmontools\n" +
+			"  Linux (RHEL/Fedora):   sudo dnf install smartmontools\n" +
+			"  macOS (Homebrew):      brew install smartmontools\n" +
+			"  Synology:              Install SynoCli Disk Tools from SynoCommunity\n" +
+			"  QNAP:                  Install smartmontools via Entware (opkg install smartmontools)\n" +
+			"  FreeBSD/TrueNAS:       pkg install smartmontools\n" +
+			"More info: https://www.smartmontools.org/wiki/Download",
+	)
+}
 
 // isATADevice checks if a device type is ATA-based (ata, sat, sata, etc.)
 func isATADevice(deviceType string) bool {

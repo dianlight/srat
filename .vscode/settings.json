@@ -252,5 +252,6 @@
 	"todo-tree.general.tagGroups": {},
 	"json.schemaDownload.trustedDomains": {
 		"https://opencode.ai/": true
-	}
+	},
+	"python.defaultInterpreterPath": "/root/.local/share/mise/installs/python/3.14.5/bin/python"
 }

@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/devcontainers/go:1-bookworm
+FROM mcr.microsoft.com/devcontainers/go:2-1.26-bookworm@sha256:fe5d30ee051db0b5bd7818f3861a4d60a8a5f1b937a8a0c0fe14f6dd656f962f
 
 # Filesystem, SAMBA, and block-device tools needed for SRAT development/testing.
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fuse3 \
     graphviz \
 #    hfsprogs \
-    linux-libc-dev \
+#    linux-libc-dev \
     minisign \
     ntfs-3g \
     patch \
@@ -19,13 +19,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     smartmontools \
     sshfs \
     xfsprogs \
-#    zfsutils-linux \
-#    libfuse3-dev \
-#    libbz2-dev \
-#    libattr1-dev \
-#    zlib1g-dev \
-#    cmake \
-#    g++ \
+    #    zfsutils-linux \
+    #    libfuse3-dev \
+    #    libbz2-dev \
+    #    libattr1-dev \
+    #    zlib1g-dev \
+    #    cmake \
+    #    g++ \
     && rm -rf /var/lib/apt/lists/*
 
 # Build apfs-fuse from source (not packaged in Debian/Ubuntu).
@@ -42,9 +42,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install mise (manages Go, Bun, Python, and all other pinned tool versions).
 # COPY .mise.toml /tmp/.mise.toml
-# RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN \
-#     curl -fsSL https://mise.run | MISE_INSTALL_PATH=/usr/local/bin/mise sh \
-#     && echo 'eval "$(mise activate zsh --shims)"' >> /home/vscode/.zshrc \
-#     && echo 'eval "$(mise activate bash --shims)"' >> /home/vscode/.bashrc \
-#     && cd /tmp \
-#     && MISE_EXPERIMENTAL=1 mise install --yes --verbose
+RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN \
+    echo 'eval "$(mise activate zsh --shims)"' >> /root/.zshrc \
+    && echo 'eval "$(mise activate bash --shims)"' >> /root/.bashrc

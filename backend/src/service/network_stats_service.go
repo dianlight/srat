@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"github.com/dianlight/tlog"
 	"log/slog"
 	"net"
 	"strings"
@@ -31,6 +32,7 @@ type networkStatsService struct {
 	currentNetHealth *dto.NetworkStats
 	updateMutex      *sync.Mutex
 	settingService   SettingServiceInterface
+	cachedSetting    *dto.Settings
 }
 
 // NewNetworkStatsService creates a new NetworkStatsService.
@@ -61,13 +63,13 @@ func NewNetworkStatsService(lc fx.Lifecycle,
 	}
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			err := ns.updateNetworkStats()
+			err := ns.updateNetworkStats(true)
 			if err != nil {
 				// Ignore NotFound error, log others
 				if errors.Is(err, dto.ErrorNotFound) {
 					// ignore
 				} else {
-					slog.ErrorContext(ctx, "Failed to update network stats", "error", err)
+					tlog.DebugContext(ctx, "Failed to update network stats", "error", err)
 				}
 			}
 			if wg, ok := Ctx.Value(ctxkeys.WaitGroup).(*sync.WaitGroup); ok && wg != nil {
@@ -84,22 +86,24 @@ func NewNetworkStatsService(lc fx.Lifecycle,
 }
 
 func (self *networkStatsService) run() error {
+	var ticks int
 	for {
 		select {
 		case <-self.ctx.Done():
 			slog.InfoContext(self.ctx, "Run process closed", "err", self.ctx.Err())
 			return errors.WithStack(self.ctx.Err())
 		case <-time.After(time.Second * 10):
-			err := self.updateNetworkStats()
+			err := self.updateNetworkStats(ticks == 0)
+			ticks = (ticks + 1) % 6
 			if err != nil {
-				slog.ErrorContext(self.ctx, "Failed to update network stats", "error", err)
+				tlog.DebugContext(self.ctx, "Failed to update network stats", "error", err)
 				continue
 			}
 		}
 	}
 }
 
-func (s *networkStatsService) updateNetworkStats() error {
+func (s *networkStatsService) updateNetworkStats(reloadSettings bool) error {
 	s.updateMutex.Lock()
 	defer s.updateMutex.Unlock()
 
@@ -109,12 +113,20 @@ func (s *networkStatsService) updateNetworkStats() error {
 	}
 	var nicSlice []string
 
-	setting, err := s.settingService.Load()
-	if setting == nil || err != nil {
-		slog.WarnContext(s.ctx, "Errore getting setting", "error", err, "setting_nil", setting == nil)
-		s.lastUpdateTime = time.Now()
-		return nil
+	var setting *dto.Settings
+	if reloadSettings || s.cachedSetting == nil {
+		var err error
+		setting, err = s.settingService.Load()
+		if setting == nil || err != nil {
+			slog.WarnContext(s.ctx, "Errore getting setting", "error", err, "setting_nil", setting == nil)
+			s.lastUpdateTime = time.Now()
+			return nil
+		}
+		s.cachedSetting = setting
+	} else {
+		setting = s.cachedSetting
 	}
+
 	if setting.BindAllInterfaces {
 		for nicName := range stats {
 			if nicName == "lo" {
@@ -142,7 +154,7 @@ func (s *networkStatsService) updateNetworkStats() error {
 
 		// Skip virtual ethernet (veth) interfaces used by containers
 		if strings.HasPrefix(nicName, "veth") {
-			slog.DebugContext(s.ctx, "Skipping veth interface", "interface", nicName)
+			tlog.TraceContext(s.ctx, "Skipping veth interface", "interface", nicName)
 			continue
 		}
 
@@ -153,7 +165,7 @@ func (s *networkStatsService) updateNetworkStats() error {
 				if err != nil {
 					// Interface may have been removed between /proc/net/dev read and sysfs access
 					// This is common with virtual interfaces (veth). Skip silently.
-					slog.DebugContext(s.ctx, "Network interface no longer accessible, skipping", "interface", nicName, "error", err)
+					tlog.TraceContext(s.ctx, "Network interface no longer accessible, skipping", "interface", nicName, "error", err)
 					delete(s.lastStats, nicName) // Clean up old stats for removed interface
 					continue
 				}
