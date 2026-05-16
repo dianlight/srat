@@ -110,7 +110,7 @@ jobs:
                   echo "pull-request-url=$pr_url" >> $GITHUB_OUTPUT
                   pr_number=$(gh pr view docs/auto-maintenance --json number --jq '.number')
                   echo "pull-request-number=$pr_number" >> $GITHUB_OUTPUT
-                  gh pr review --approve "$pr_number"
+                  #gh pr review --approve "$pr_number"
                   gh pr merge --merge --auto "$pr_number"
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
