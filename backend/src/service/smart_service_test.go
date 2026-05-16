@@ -537,6 +537,68 @@ func (suite *SmartServiceSuite) TestGetTestStatusSuccess() {
 	suite.NotNil(status)
 	suite.Equal("short test completed without error", status.Status)
 	suite.Equal("short", status.TestType)
+	suite.False(status.Running)
+}
+
+func (suite *SmartServiceSuite) TestGetTestStatusInProgress() {
+	tempFile, _ := os.CreateTemp("", "testdevice")
+	defer os.Remove(tempFile.Name())
+
+	mockSMARTInfo := &smartmontools.SMARTInfo{
+		AtaSmartData: &smartmontools.AtaSmartData{
+			SelfTest: &smartmontools.SelfTest{
+				Status: &smartmontools.StatusField{String: "in progress, 30% remaining"},
+			},
+		},
+	}
+
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return tempFile.Name(), nil
+	})
+	mock.When(suite.smartClient.GetSMARTInfo(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).ThenReturn(mockSMARTInfo, nil)
+
+	status, err := suite.service.GetTestStatus(context.Background(), tempFile.Name())
+
+	suite.NoError(err)
+	suite.Require().NotNil(status)
+	suite.True(status.Running, "GetTestStatus must set Running=true when test is in progress")
+	suite.Equal(70, status.PercentComplete, "PercentComplete must be 100 - remaining")
+}
+
+// TestStartSelfTest_CompletionEventEmitted verifies that StartSelfTest emits a
+// final SmartEvent with Running=false and the canonical deviceId after the test
+// completes, so the frontend always receives a definitive completion signal.
+func (suite *SmartServiceSuite) TestStartSelfTest_CompletionEventEmitted() {
+	canonicalID := "ata-TEST_DEVICE_COMPLETION"
+	tempFile, _ := os.CreateTemp("", "testdevice")
+	defer os.Remove(tempFile.Name())
+
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return tempFile.Name(), nil
+	})
+	// RunSelfTestWithProgress is not explicitly mocked — returns nil with no
+	// progress callbacks invoked. The only event emitted is the completion one.
+
+	var capturedEvents []events.SmartEvent
+	unsubscribe := suite.eventBus.OnSmart(func(_ context.Context, se events.SmartEvent) goerrors.E {
+		capturedEvents = append(capturedEvents, se)
+		return nil
+	})
+	defer unsubscribe()
+
+	err := suite.service.StartSelfTest(context.Background(), canonicalID, dto.SmartTestTypes.SMARTTESTTYPESHORT)
+
+	suite.NoError(err)
+	suite.Require().NotEmpty(capturedEvents, "StartSelfTest must emit at least one SmartEvent")
+
+	// The last event must be the completion event
+	last := capturedEvents[len(capturedEvents)-1]
+	suite.False(last.SmartTestStatus.Running,
+		"last SmartEvent from StartSelfTest must have Running=false")
+	suite.Equal(canonicalID, last.SmartTestStatus.DiskId,
+		"completion event must carry the canonical deviceId, not the raw device path")
+	suite.EqualValues(100, last.SmartTestStatus.PercentComplete,
+		"completion event must have PercentComplete=100")
 }
 
 func (suite *SmartServiceSuite) TestAbortSelfTestDeviceNotExist() {

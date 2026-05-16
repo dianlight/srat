@@ -42,8 +42,15 @@ export function useSmartTestStatus(diskId: string) {
     ) {
       setSmartTestStatus(evdata.smart_test_status);
       if (evdata.smart_test_status.percent_complete === 100) {
-        setTimeout(() => {
-          refetch();
+        setTimeout(async () => {
+          try {
+            const result = await refetch();
+            if (result.data) {
+              setSmartTestStatus(result.data as SmartTestStatus);
+            }
+          } catch {
+            // Query may have been unmounted or skipped before the timer fired
+          }
         }, 5000);
       }
     } else if (!evloading && everror) {

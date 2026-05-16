@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"strings"
@@ -367,6 +368,21 @@ func (s *smartService) StartSelfTest(ctx context.Context, deviceId string, testT
 		return errors.Wrapf(err, "failed to start SMART self-test")
 	}
 
+	// Emit a final completion event so the frontend always receives Running=false
+	// after the test finishes (RunSelfTestWithProgress only emits Running=true events).
+	s.eventBus.EmitSmart(events.SmartEvent{
+		Event: events.Event{
+			Type: events.EventTypes.UPDATE,
+		},
+		SmartTestStatus: dto.SmartTestStatus{
+			TestType:        testType.String(),
+			Running:         false,
+			DiskId:          deviceId,
+			Status:          "completed without error",
+			PercentComplete: 100,
+		},
+	})
+
 	slog.DebugContext(ctx, "SMART self-test started", "device", devicePath, "type", testType)
 	return nil
 }
@@ -431,6 +447,26 @@ func (s *smartService) GetTestStatus(ctx context.Context, deviceId string) (*dto
 		if st != nil {
 			status.Status = st.String
 			ls := strings.ToLower(st.String)
+			// Detect a test currently in progress and parse the remaining percentage.
+			// smartctl reports: "Self test routine in progress; N% remaining." or
+			// similar; the smartmontools-go library normalises this to a lowercase
+			// "in progress, N% remaining" form.
+			if strings.Contains(ls, "in progress") {
+				status.Running = true
+				// Parse "N% remaining" → PercentComplete = 100 - N
+				if idx := strings.Index(ls, "%"); idx > 0 {
+					start := idx - 1
+					for start > 0 && ls[start-1] >= '0' && ls[start-1] <= '9' {
+						start--
+					}
+					if remaining := ls[start:idx]; remaining != "" {
+						var pct int
+						if _, scanErr := fmt.Sscanf(remaining, "%d", &pct); scanErr == nil {
+							status.PercentComplete = 100 - pct
+						}
+					}
+				}
+			}
 			// Determine test type if available from status string
 			if strings.Contains(ls, "short") {
 				status.TestType = "short"
