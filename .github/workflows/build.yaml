@@ -673,7 +673,7 @@ jobs:
           # Save to output using multiline string
           {
             echo "changelog_content<<EOF"
-            echo "## What's Changed"
+            echo "## Changelog"
             echo ""
             echo "$CHANGELOG_CONTENT"
             echo "EOF"
