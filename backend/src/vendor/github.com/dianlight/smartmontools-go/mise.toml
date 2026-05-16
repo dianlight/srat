@@ -1,0 +1,123 @@
+[tools]
+go = "1.26"
+"go:honnef.co/go/tools/cmd/staticcheck" = "latest"
+"go:github.com/princjef/gomarkdoc/cmd/gomarkdoc" = "latest"
+
+[tasks.test]
+description = "Run unit tests for all packages"
+run = "go test -failfast ./..."
+
+[tasks.coverage]
+description = "Run tests and show coverage summary"
+run = '''
+go test -failfast -coverprofile=coverage.txt ./... -covermode=atomic || true
+echo "Summary:"
+if [ -f coverage.txt ]; then go tool cover -func=coverage.txt | tail -n 1; fi
+'''
+
+[tasks.fmt]
+description = "Run gofmt on the project"
+run = "gofmt -s -w ."
+
+[tasks.fmt-check]
+description = "Check code format (gofmt)"
+run = '''
+UNFORMATTED=$(gofmt -l .)
+if [ -n "$UNFORMATTED" ]; then
+  echo "gofmt needs to be applied to: $UNFORMATTED"
+  exit 1
+fi
+'''
+
+[tasks.vet]
+description = "Run go vet on the project"
+run = "go vet ./..."
+
+[tasks.lint]
+description = "Run staticcheck"
+run = "staticcheck ./..."
+
+[tasks.ci-lint]
+description = "Run CI linting: fmt-check, vet, staticcheck"
+depends = ["fmt-check", "vet", "lint"]
+
+[tasks.ci]
+description = "Run all CI checks (tidy, mod-download, ci-lint, test)"
+depends = ["tidy", "mod-download", "ci-lint", "test"]
+run = "echo 'CI: all checks passed'"
+
+[tasks.tidy]
+description = "Run go mod tidy"
+run = "go mod tidy"
+
+[tasks.mod-download]
+description = "Download modules (go mod download)"
+run = "go mod download"
+
+[tasks.run-example]
+description = "Run the example in examples/basic"
+dir = "examples/basic"
+run = "go run ./"
+
+[tasks.apidoc]
+description = "Generate API documentation (APIDOC.md)"
+run = "gomarkdoc -o APIDOC.md ."
+
+[tasks.release]
+description = "Create and push a tag. On main: stable release. On a branch with open PR: prerelease. No PR: error."
+usage = '''
+arg "[version_type]" help="Version bump type" default="patch" {
+  choices "major" "minor" "patch"
+}
+flag "--dry-run" help="Print what would happen without creating or pushing the tag"
+'''
+run = '''
+VERSION_TYPE="${usage_version_type?}"
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+CURRENT_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+
+if [ "$BRANCH" = "main" ]; then
+  MODE="release"
+else
+  PR_URL=$(gh pr list --head "$BRANCH" --state open --json url --jq '.[0].url // ""')
+  if [ -z "$PR_URL" ]; then
+    echo "Error: no open PR found for branch '$BRANCH'." >&2
+    echo "Create one with: gh pr create --fill" >&2
+    exit 1
+  fi
+  echo "PR: $PR_URL"
+  MODE="prerelease"
+fi
+
+if [ "$MODE" = "prerelease" ] && [[ "$CURRENT_TAG" == *-* ]]; then
+  PRERELEASE_PART=$(echo "$CURRENT_TAG" | sed 's/.*-//')
+  N=$(echo "$PRERELEASE_PART" | cut -d. -f2)
+  NEW_N=$((N + 1))
+  NEW_TAG=$(echo "$CURRENT_TAG" | sed "s/\.[0-9]*$/.$NEW_N/")
+else
+  CURRENT_VERSION=$(echo "$CURRENT_TAG" | sed 's/^v//' | sed 's/-.*//')
+  MAJOR=$(echo "$CURRENT_VERSION" | cut -d. -f1)
+  MINOR=$(echo "$CURRENT_VERSION" | cut -d. -f2)
+  PATCH=$(echo "$CURRENT_VERSION" | cut -d. -f3)
+  case $VERSION_TYPE in
+    major) NEW_MAJOR=$((MAJOR + 1)); NEW_MINOR=0; NEW_PATCH=0 ;;
+    minor) NEW_MAJOR=$MAJOR; NEW_MINOR=$((MINOR + 1)); NEW_PATCH=0 ;;
+    patch) NEW_MAJOR=$MAJOR; NEW_MINOR=$MINOR; NEW_PATCH=$((PATCH + 1)) ;;
+  esac
+  BASE="v$NEW_MAJOR.$NEW_MINOR.$NEW_PATCH"
+  if [ "$MODE" = "prerelease" ]; then NEW_TAG="$BASE-beta.0"; else NEW_TAG="$BASE"; fi
+fi
+
+echo "Mode: $MODE | Branch: $BRANCH | Tag: $NEW_TAG"
+if [ "${usage_dry_run:-false}" = "true" ]; then
+  echo "[dry-run] git tag $NEW_TAG && git push origin $NEW_TAG"
+  echo "[dry-run] GOPROXY=proxy.golang.org go list -m github.com/dianlight/smartmontools-go@$NEW_TAG"
+else
+  git tag "$NEW_TAG" && git push origin "$NEW_TAG"
+  GOPROXY=proxy.golang.org go list -m "github.com/dianlight/smartmontools-go@$NEW_TAG"
+fi
+'''
+
+[tasks.clean]
+description = "Remove build artifacts"
+run = "rm -f smartmontools-go coverage.txt coverage.out APIDOC.md"

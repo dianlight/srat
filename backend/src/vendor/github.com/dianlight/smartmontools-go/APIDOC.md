@@ -10,17 +10,30 @@ Package smartmontools provides Go bindings for interfacing with smartmontools to
 
 The library wraps the smartctl command\-line utility and provides a clean, idiomatic Go API for accessing SMART information from storage devices.
 
+### Go 1.26 Optimizations
+
+This library is optimized for Go 1.26\+ and includes:
+
+- Efficient string operations using strings.Builder
+- Optimized hash\-based message caching with minimal allocations
+- Better error handling with strconv for version parsing
+- Optimized slice operations and range patterns
+
 ### Features
 
 - Device scanning and discovery
 - SMART health status checking
 - Detailed SMART attribute reading
+- Disk type detection \(SSD, HDD, NVMe, Unknown\)
+- Rotation rate \(RPM\) information for HDDs
 - Temperature monitoring
 - Power\-on time tracking
 - Self\-test execution and progress monitoring
 - Device information retrieval
 - SMART support detection and management
 - Self\-test availability checking
+- Standby mode detection \(ATA devices only\)
+- Efficient SMART monitoring with minimal disk I/O
 
 ### Prerequisites
 
@@ -81,6 +94,46 @@ func main() {
 }
 ```
 
+### Standby Mode Handling
+
+For ATA devices \(ata, sat, sata, scsi\), the library automatically adds the \-\-nocheck=standby flag to smartctl commands. This prevents waking up devices that are in standby/sleep mode, which is especially useful for power\-saving scenarios.
+
+When a device is in standby mode:
+
+- GetSMARTInfo will return a SMARTInfo with InStandby set to true
+- CheckHealth will return an error indicating the device is in standby
+- GetDeviceInfo will return an error indicating the device is in standby
+- GetAvailableSelfTests will return an error indicating the device is in standby
+
+NVMe devices do not support standby mode detection and do not receive the \-\-nocheck=standby flag.
+
+### Efficient SMART Monitoring
+
+When building monitoring applications that periodically check SMART status, avoid unnecessary disk I/O that can wake disks from standby mode. This is critical for:
+
+- Home NAS systems with idle disk spindown
+- Battery\-powered devices
+- Systems where periodic disk access causes audible noise
+
+Use GetSMARTSupportFromInfo to check SMART status from cached SMARTInfo data without disk I/O:
+
+```
+// Query once, cache the result
+info, err := client.GetSMARTInfo(ctx, devicePath)
+if err != nil {
+    return err
+}
+
+// Check SMART status from cache - no disk access!
+support := client.GetSMARTSupportFromInfo(info)
+if !support.Enabled {
+    // Skip monitoring when SMART is disabled
+    return
+}
+```
+
+This pattern eliminates periodic disk access and prevents waking disks from standby mode. See the README for a complete monitoring example.
+
 ### Permissions
 
 Many operations require elevated privileges \(root/administrator\) to access disk devices. The library will return errors if permissions are insufficient.
@@ -89,57 +142,98 @@ Many operations require elevated privileges \(root/administrator\) to access dis
 
 The Client type is safe for concurrent use by multiple goroutines.
 
+### Performance Considerations
+
+The library uses several optimization techniques:
+
+- Device type caching to avoid repeated lookups
+- Message caching with TTL to prevent duplicate logging
+- Efficient string building for USB device ID construction
+- Connection pooling and context\-aware command execution
+
+Package smartmontools provides Go bindings for interfacing with smartmontools to monitor and manage storage device health using S.M.A.R.T. data.
+
+This file contains functions for parsing and managing the embedded drivedb.h database from smartmontools, which includes USB bridge device mappings.
+
 Package smartmontools provides Go bindings for interfacing with smartmontools to monitor and manage storage device health using S.M.A.R.T. data.
 
 The library wraps the smartctl command\-line utility and provides a clean, idiomatic Go API for accessing SMART information from storage devices.
 
 ## Index
 
+- [Constants](<#constants>)
 - [type AtaSmartData](<#AtaSmartData>)
 - [type Capabilities](<#Capabilities>)
 - [type CapabilitiesOutput](<#CapabilitiesOutput>)
 - [type Client](<#Client>)
-  - [func \(c \*Client\) AbortSelfTest\(devicePath string\) error](<#Client.AbortSelfTest>)
-  - [func \(c \*Client\) CheckHealth\(devicePath string\) \(bool, error\)](<#Client.CheckHealth>)
-  - [func \(c \*Client\) DisableSMART\(devicePath string\) error](<#Client.DisableSMART>)
-  - [func \(c \*Client\) EnableSMART\(devicePath string\) error](<#Client.EnableSMART>)
-  - [func \(c \*Client\) GetAvailableSelfTests\(devicePath string\) \(\*SelfTestInfo, error\)](<#Client.GetAvailableSelfTests>)
-  - [func \(c \*Client\) GetDeviceInfo\(devicePath string\) \(map\[string\]interface\{\}, error\)](<#Client.GetDeviceInfo>)
-  - [func \(c \*Client\) GetSMARTInfo\(devicePath string\) \(\*SMARTInfo, error\)](<#Client.GetSMARTInfo>)
-  - [func \(c \*Client\) IsSMARTSupported\(devicePath string\) \(\*SMARTSupportInfo, error\)](<#Client.IsSMARTSupported>)
-  - [func \(c \*Client\) RunSelfTest\(devicePath string, testType string\) error](<#Client.RunSelfTest>)
+  - [func \(c \*Client\) AbortSelfTest\(ctx context.Context, devicePath string\) error](<#Client.AbortSelfTest>)
+  - [func \(c \*Client\) CheckHealth\(ctx context.Context, devicePath string\) \(bool, error\)](<#Client.CheckHealth>)
+  - [func \(c \*Client\) DisableSMART\(ctx context.Context, devicePath string\) error](<#Client.DisableSMART>)
+  - [func \(c \*Client\) DiscoverDevices\(ctx context.Context\) \(\[\]DiscoveryResult, error\)](<#Client.DiscoverDevices>)
+  - [func \(c \*Client\) EnableSMART\(ctx context.Context, devicePath string\) error](<#Client.EnableSMART>)
+  - [func \(c \*Client\) GetAvailableSelfTests\(ctx context.Context, devicePath string\) \(\*SelfTestInfo, error\)](<#Client.GetAvailableSelfTests>)
+  - [func \(c \*Client\) GetAvailableSelfTestsFromInfo\(smartInfo \*SMARTInfo\) \*SelfTestInfo](<#Client.GetAvailableSelfTestsFromInfo>)
+  - [func \(c \*Client\) GetDeviceInfo\(ctx context.Context, devicePath string\) \(map\[string\]interface\{\}, error\)](<#Client.GetDeviceInfo>)
+  - [func \(c \*Client\) GetSMARTInfo\(ctx context.Context, devicePath string\) \(\*SMARTInfo, error\)](<#Client.GetSMARTInfo>)
+  - [func \(c \*Client\) GetSMARTSupportFromInfo\(smartInfo \*SMARTInfo\) \*SmartSupport](<#Client.GetSMARTSupportFromInfo>)
+  - [func \(c \*Client\) IsSMARTSupported\(ctx context.Context, devicePath string\) \(\*SmartSupport, error\)](<#Client.IsSMARTSupported>)
+  - [func \(c \*Client\) RunSelfTest\(ctx context.Context, devicePath string, testType string\) error](<#Client.RunSelfTest>)
   - [func \(c \*Client\) RunSelfTestWithProgress\(ctx context.Context, devicePath string, testType string, callback ProgressCallback\) error](<#Client.RunSelfTestWithProgress>)
-  - [func \(c \*Client\) ScanDevices\(\) \(\[\]Device, error\)](<#Client.ScanDevices>)
+  - [func \(c \*Client\) ScanDevices\(ctx context.Context\) \(\[\]Device, error\)](<#Client.ScanDevices>)
+- [type ClientOption](<#ClientOption>)
+  - [func WithCommander\(commander Commander\) ClientOption](<#WithCommander>)
+  - [func WithContext\(ctx context.Context\) ClientOption](<#WithContext>)
+  - [func WithLogHandler\(logger \*slog.Logger\) ClientOption](<#WithLogHandler>)
+  - [func WithSmartctlPath\(path string\) ClientOption](<#WithSmartctlPath>)
+  - [func WithTLogHandler\(logger \*tlog.Logger\) ClientOption](<#WithTLogHandler>)
 - [type Cmd](<#Cmd>)
 - [type Commander](<#Commander>)
 - [type Device](<#Device>)
+- [type DiscoveryResult](<#DiscoveryResult>)
+- [type ExitCodeInfo](<#ExitCodeInfo>)
 - [type Flags](<#Flags>)
 - [type Message](<#Message>)
 - [type NvmeControllerCapabilities](<#NvmeControllerCapabilities>)
 - [type NvmeOptionalAdminCommands](<#NvmeOptionalAdminCommands>)
 - [type NvmeSmartHealth](<#NvmeSmartHealth>)
+- [type NvmeSmartTestLog](<#NvmeSmartTestLog>)
 - [type OfflineDataCollection](<#OfflineDataCollection>)
 - [type PollingMinutes](<#PollingMinutes>)
 - [type PowerOnTime](<#PowerOnTime>)
 - [type ProgressCallback](<#ProgressCallback>)
 - [type Raw](<#Raw>)
 - [type SMARTInfo](<#SMARTInfo>)
-- [type SMARTSupportInfo](<#SMARTSupportInfo>)
+  - [func \(s \*SMARTInfo\) WearLevelPercent\(\) \*int](<#SMARTInfo.WearLevelPercent>)
 - [type SelfTest](<#SelfTest>)
 - [type SelfTestInfo](<#SelfTestInfo>)
 - [type SmartAttribute](<#SmartAttribute>)
 - [type SmartClient](<#SmartClient>)
-  - [func NewClient\(\) \(SmartClient, error\)](<#NewClient>)
-  - [func NewClientWithCommander\(smartctlPath string, commander Commander\) SmartClient](<#NewClientWithCommander>)
-  - [func NewClientWithPath\(smartctlPath string\) SmartClient](<#NewClientWithPath>)
+  - [func NewClient\(opts ...ClientOption\) \(SmartClient, error\)](<#NewClient>)
 - [type SmartStatus](<#SmartStatus>)
 - [type SmartSupport](<#SmartSupport>)
 - [type SmartctlInfo](<#SmartctlInfo>)
+- [type StatusField](<#StatusField>)
+  - [func \(s \*StatusField\) UnmarshalJSON\(data \[\]byte\) error](<#StatusField.UnmarshalJSON>)
 - [type Temperature](<#Temperature>)
+- [type UserCapacity](<#UserCapacity>)
 
+
+## Constants
+
+<a name="SmartAttrSSDLifeUsed"></a>SMART attribute IDs for SSD detection and wear\-level computation
+
+```go
+const (
+    SmartAttrSSDLifeUsed       = 173 // SSD Life Used — raw value is percent used (0 = new)
+    SmartAttrWearLevelingCount = 177 // Wear Leveling Count — normalized value is remaining life (100 = new)
+    SmartAttrSSDLifeLeft       = 231 // SSD Life Left — normalized value is remaining life (100 = new)
+    SmartAttrSandForceInternal = 233 // SandForce Internal (SSD-specific, used for drive-type detection)
+    SmartAttrTotalLBAsWritten  = 234 // Total LBAs Written (SSD-specific, used for drive-type detection)
+)
+```
 
 <a name="AtaSmartData"></a>
-## type [AtaSmartData](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L107-L112>)
+## type [AtaSmartData](<https://github.com/dianlight/smartmontools-go/blob/main/types.go#L90-L95>)
 
 AtaSmartData represents ATA SMART attributes
 
@@ -153,7 +247,7 @@ type AtaSmartData struct {
 ```
 
 <a name="Capabilities"></a>
-## type [Capabilities](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L134-L139>)
+## type [Capabilities](<https://github.com/dianlight/smartmontools-go/blob/main/types.go#L152-L157>)
 
 Capabilities represents SMART capabilities
 
@@ -167,7 +261,7 @@ type Capabilities struct {
 ```
 
 <a name="CapabilitiesOutput"></a>
-## type [CapabilitiesOutput](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L153-L157>)
+## type [CapabilitiesOutput](<https://github.com/dianlight/smartmontools-go/blob/main/types.go#L171-L175>)
 
 CapabilitiesOutput represents the output of smartctl \-c \-j
 
@@ -180,7 +274,7 @@ type CapabilitiesOutput struct {
 ```
 
 <a name="Client"></a>
-## type [Client](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L228-L231>)
+## type [Client](<https://github.com/dianlight/smartmontools-go/blob/main/client.go#L101-L111>)
 
 Client represents a smartmontools client
 
@@ -191,88 +285,201 @@ type Client struct {
 ```
 
 <a name="Client.AbortSelfTest"></a>
-### func \(\*Client\) [AbortSelfTest](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L639>)
+### func \(\*Client\) [AbortSelfTest](<https://github.com/dianlight/smartmontools-go/blob/main/client.go#L965>)
 
 ```go
-func (c *Client) AbortSelfTest(devicePath string) error
+func (c *Client) AbortSelfTest(ctx context.Context, devicePath string) error
 ```
 
 AbortSelfTest aborts a running self\-test on a device
 
 <a name="Client.CheckHealth"></a>
-### func \(\*Client\) [CheckHealth](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L333>)
+### func \(\*Client\) [CheckHealth](<https://github.com/dianlight/smartmontools-go/blob/main/client.go#L538>)
 
 ```go
-func (c *Client) CheckHealth(devicePath string) (bool, error)
+func (c *Client) CheckHealth(ctx context.Context, devicePath string) (bool, error)
 ```
 
 CheckHealth checks if a device is healthy according to SMART
 
 <a name="Client.DisableSMART"></a>
-### func \(\*Client\) [DisableSMART](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L630>)
+### func \(\*Client\) [DisableSMART](<https://github.com/dianlight/smartmontools-go/blob/main/client.go#L936>)
 
 ```go
-func (c *Client) DisableSMART(devicePath string) error
+func (c *Client) DisableSMART(ctx context.Context, devicePath string) error
 ```
 
-DisableSMART disables SMART monitoring on a device
+DisableSMART disables SMART monitoring on a device Note: NVMe devices do not support disabling SMART, an error will be returned
 
-<a name="Client.EnableSMART"></a>
-### func \(\*Client\) [EnableSMART](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L621>)
+<a name="Client.DiscoverDevices"></a>
+### func \(\*Client\) [DiscoverDevices](<https://github.com/dianlight/smartmontools-go/blob/main/client.go#L997>)
 
 ```go
-func (c *Client) EnableSMART(devicePath string) error
+func (c *Client) DiscoverDevices(ctx context.Context) ([]DiscoveryResult, error)
+```
+
+DiscoverDevices scans all available storage devices and probes each one to determine SMART readability and protocol compatibility.
+
+For each device found by ScanDevices, DiscoverDevices attempts to read SMART data using the auto\-detected protocol. If that fails, it retries with an explicit \-d sat flag and records whether the fallback was required. This gives callers a guided diagnostic path for devices that need manual WithSmartctlPath or protocol configuration.
+
+Example usage:
+
+```
+results, err := client.DiscoverDevices(ctx)
+if err != nil {
+    return err
+}
+for _, r := range results {
+    if !r.SMARTReadable {
+        log.Printf("device %s is not SMART readable", r.DevicePath)
+    }
+    if r.SATFallbackRequired {
+        log.Printf("device %s needs -d sat override", r.DevicePath)
+    }
+}
+```
+
+<a name="Client.EnableSMART"></a>
+### func \(\*Client\) [EnableSMART](<https://github.com/dianlight/smartmontools-go/blob/main/client.go#L925>)
+
+```go
+func (c *Client) EnableSMART(ctx context.Context, devicePath string) error
 ```
 
 EnableSMART enables SMART monitoring on a device
 
 <a name="Client.GetAvailableSelfTests"></a>
-### func \(\*Client\) [GetAvailableSelfTests](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L524>)
+### func \(\*Client\) [GetAvailableSelfTests](<https://github.com/dianlight/smartmontools-go/blob/main/client.go#L782>)
 
 ```go
-func (c *Client) GetAvailableSelfTests(devicePath string) (*SelfTestInfo, error)
+func (c *Client) GetAvailableSelfTests(ctx context.Context, devicePath string) (*SelfTestInfo, error)
 ```
 
 GetAvailableSelfTests returns the list of available self\-test types and their durations for a device
 
-<a name="Client.GetDeviceInfo"></a>
-### func \(\*Client\) [GetDeviceInfo](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L354>)
+<a name="Client.GetAvailableSelfTestsFromInfo"></a>
+### func \(\*Client\) [GetAvailableSelfTestsFromInfo](<https://github.com/dianlight/smartmontools-go/blob/main/client.go#L829>)
 
 ```go
-func (c *Client) GetDeviceInfo(devicePath string) (map[string]interface{}, error)
+func (c *Client) GetAvailableSelfTestsFromInfo(smartInfo *SMARTInfo) *SelfTestInfo
+```
+
+GetAvailableSelfTestsFromInfo extracts available self\-test types and their durations from a SMARTInfo struct without performing additional disk I/O. Applications that already hold a cached SMARTInfo \(from GetSMARTInfo\) should use this method instead of GetAvailableSelfTests to avoid an extra smartctl \-c disk query.
+
+Note: NVMe detection uses NvmeControllerCapabilities, which is present in \-a output. The NvmeOptionalAdminCommands field \(available only via \-c\) is not stored in SMARTInfo, so NVMe self\-test capability detection may be incomplete for some controllers.
+
+Example usage:
+
+```
+// Get and cache SMART info once
+info, err := client.GetSMARTInfo(ctx, devicePath)
+if err != nil {
+    return err
+}
+
+// Extract self-test types without another disk query
+selfTests := client.GetAvailableSelfTestsFromInfo(info)
+for _, testType := range selfTests.Available {
+    fmt.Printf("Test: %s (%d min)\n", testType, selfTests.Durations[testType])
+}
+```
+
+<a name="Client.GetDeviceInfo"></a>
+### func \(\*Client\) [GetDeviceInfo](<https://github.com/dianlight/smartmontools-go/blob/main/client.go#L568>)
+
+```go
+func (c *Client) GetDeviceInfo(ctx context.Context, devicePath string) (map[string]interface{}, error)
 ```
 
 GetDeviceInfo retrieves basic device information
 
 <a name="Client.GetSMARTInfo"></a>
-### func \(\*Client\) [GetSMARTInfo](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L294>)
+### func \(\*Client\) [GetSMARTInfo](<https://github.com/dianlight/smartmontools-go/blob/main/client.go#L357>)
 
 ```go
-func (c *Client) GetSMARTInfo(devicePath string) (*SMARTInfo, error)
+func (c *Client) GetSMARTInfo(ctx context.Context, devicePath string) (*SMARTInfo, error)
 ```
 
 GetSMARTInfo retrieves SMART information for a device
 
-<a name="Client.IsSMARTSupported"></a>
-### func \(\*Client\) [IsSMARTSupported](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L583>)
+<a name="Client.GetSMARTSupportFromInfo"></a>
+### func \(\*Client\) [GetSMARTSupportFromInfo](<https://github.com/dianlight/smartmontools-go/blob/main/client.go#L871>)
 
 ```go
-func (c *Client) IsSMARTSupported(devicePath string) (*SMARTSupportInfo, error)
+func (c *Client) GetSMARTSupportFromInfo(smartInfo *SMARTInfo) *SmartSupport
 ```
 
-IsSMARTSupported checks if SMART is supported on a device and if it's enabled
+GetSMARTSupportFromInfo extracts SMART support status from a SMARTInfo struct. This is a helper method that allows checking SMART availability and enablement status without performing additional disk I/O. Applications should call GetSMARTInfo once, cache the result, and use this method to check the SMART status from the cache.
 
-<a name="Client.RunSelfTest"></a>
-### func \(\*Client\) [RunSelfTest](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L370>)
+This pattern avoids periodic disk access and prevents waking disks from standby mode.
+
+Example usage:
+
+```
+// Get and cache SMART info once
+info, err := client.GetSMARTInfo(ctx, devicePath)
+if err != nil {
+    return err
+}
+
+// Check SMART status from cached info (no disk access)
+support := client.GetSMARTSupportFromInfo(info)
+if support.Available && support.Enabled {
+    // SMART is available and enabled
+}
+
+// After EnableSMART/DisableSMART, refresh the cache:
+if err := client.EnableSMART(ctx, devicePath); err != nil {
+    return err
+}
+// Refresh cache after state change
+info, err = client.GetSMARTInfo(ctx, devicePath)
+if err != nil {
+    return err
+}
+```
+
+<a name="Client.IsSMARTSupported"></a>
+### func \(\*Client\) [IsSMARTSupported](<https://github.com/dianlight/smartmontools-go/blob/main/client.go#L915>)
 
 ```go
-func (c *Client) RunSelfTest(devicePath string, testType string) error
+func (c *Client) IsSMARTSupported(ctx context.Context, devicePath string) (*SmartSupport, error)
+```
+
+IsSMARTSupported checks if SMART is supported on a device and if it's enabled.
+
+WARNING: This method performs disk I/O by calling GetSMARTInfo internally. For applications that need to check SMART status frequently \(e.g., monitoring daemons\), it's recommended to call GetSMARTInfo once, cache the result, and use GetSMARTSupportFromInfo to extract SMART support status from the cached data. This avoids periodic disk access and prevents waking disks from standby mode.
+
+Preferred usage pattern for periodic monitoring:
+
+```
+// Initial query (performed once or when SMART status changes)
+info, err := client.GetSMARTInfo(ctx, devicePath)
+if err != nil {
+    return err
+}
+
+// Cache the info and check SMART status without disk I/O
+support := client.GetSMARTSupportFromInfo(info)
+if !support.Enabled {
+    // Skip SMART monitoring when disabled
+    return
+}
+```
+
+Only use IsSMARTSupported for one\-off checks where disk access is acceptable.
+
+<a name="Client.RunSelfTest"></a>
+### func \(\*Client\) [RunSelfTest](<https://github.com/dianlight/smartmontools-go/blob/main/client.go#L589>)
+
+```go
+func (c *Client) RunSelfTest(ctx context.Context, devicePath string, testType string) error
 ```
 
 RunSelfTest initiates a SMART self\-test
 
 <a name="Client.RunSelfTestWithProgress"></a>
-### func \(\*Client\) [RunSelfTestWithProgress](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L395>)
+### func \(\*Client\) [RunSelfTestWithProgress](<https://github.com/dianlight/smartmontools-go/blob/main/client.go#L606>)
 
 ```go
 func (c *Client) RunSelfTestWithProgress(ctx context.Context, devicePath string, testType string, callback ProgressCallback) error
@@ -281,16 +488,70 @@ func (c *Client) RunSelfTestWithProgress(ctx context.Context, devicePath string,
 RunSelfTestWithProgress starts a SMART self\-test and reports progress
 
 <a name="Client.ScanDevices"></a>
-### func \(\*Client\) [ScanDevices](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L264>)
+### func \(\*Client\) [ScanDevices](<https://github.com/dianlight/smartmontools-go/blob/main/client.go#L162>)
 
 ```go
-func (c *Client) ScanDevices() ([]Device, error)
+func (c *Client) ScanDevices(ctx context.Context) ([]Device, error)
 ```
 
-ScanDevices scans for available storage devices
+ScanDevices scans for available storage devices. It first attempts \-\-scan\-open \(which performs an open on each drive to verify accessibility\) and falls back to \-\-scan on failure. \-\-scan\-open may fail in container sandboxes, on older kernels, or when the caller lacks the required permissions; \-\-scan still returns the device list without the open step.
+
+<a name="ClientOption"></a>
+## type [ClientOption](<https://github.com/dianlight/smartmontools-go/blob/main/client.go#L30>)
+
+ClientOption is a function that configures a Client
+
+```go
+type ClientOption func(*Client)
+```
+
+<a name="WithCommander"></a>
+### func [WithCommander](<https://github.com/dianlight/smartmontools-go/blob/main/client.go#L54>)
+
+```go
+func WithCommander(commander Commander) ClientOption
+```
+
+WithCommander sets a custom commander for testing purposes
+
+<a name="WithContext"></a>
+### func [WithContext](<https://github.com/dianlight/smartmontools-go/blob/main/client.go#L62>)
+
+```go
+func WithContext(ctx context.Context) ClientOption
+```
+
+WithContext sets a default context to use when methods are called with nil context
+
+<a name="WithLogHandler"></a>
+### func [WithLogHandler](<https://github.com/dianlight/smartmontools-go/blob/main/client.go#L40>)
+
+```go
+func WithLogHandler(logger *slog.Logger) ClientOption
+```
+
+WithLogHandler sets a custom slog.Logger for the client.
+
+<a name="WithSmartctlPath"></a>
+### func [WithSmartctlPath](<https://github.com/dianlight/smartmontools-go/blob/main/client.go#L33>)
+
+```go
+func WithSmartctlPath(path string) ClientOption
+```
+
+WithSmartctlPath sets a custom path to the smartctl binary
+
+<a name="WithTLogHandler"></a>
+### func [WithTLogHandler](<https://github.com/dianlight/smartmontools-go/blob/main/client.go#L47>)
+
+```go
+func WithTLogHandler(logger *tlog.Logger) ClientOption
+```
+
+WithTLogHandler sets a custom tlog.Logger for the client.
 
 <a name="Cmd"></a>
-## type [Cmd](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L24-L27>)
+## type [Cmd](<https://github.com/dianlight/smartmontools-go/blob/main/commander.go#L14-L18>)
 
 Cmd interface for command execution
 
@@ -298,22 +559,23 @@ Cmd interface for command execution
 type Cmd interface {
     Output() ([]byte, error)
     Run() error
+    CombinedOutput() ([]byte, error)
 }
 ```
 
 <a name="Commander"></a>
-## type [Commander](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L19-L21>)
+## type [Commander](<https://github.com/dianlight/smartmontools-go/blob/main/commander.go#L9-L11>)
 
 Commander interface for executing commands
 
 ```go
 type Commander interface {
-    Command(name string, arg ...string) Cmd
+    Command(ctx context.Context, logger logAdapter, name string, arg ...string) Cmd
 }
 ```
 
 <a name="Device"></a>
-## type [Device](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L38-L41>)
+## type [Device](<https://github.com/dianlight/smartmontools-go/blob/main/types.go#L8-L11>)
 
 Device represents a storage device
 
@@ -324,8 +586,74 @@ type Device struct {
 }
 ```
 
+<a name="DiscoveryResult"></a>
+## type [DiscoveryResult](<https://github.com/dianlight/smartmontools-go/blob/main/types.go#L264-L285>)
+
+DiscoveryResult holds the outcome of probing a single device during DiscoverDevices. It reports whether SMART data was readable with the auto\-detected protocol and whether a SAT fallback was required.
+
+```go
+type DiscoveryResult struct {
+    // DevicePath is the path of the storage device (e.g., "/dev/sda").
+    DevicePath string `json:"device_path"`
+
+    // DetectedProtocol is the device type string used for the successful read
+    // (e.g., "ata", "sat", "nvme"). Empty if the device was not readable.
+    DetectedProtocol string `json:"detected_protocol,omitempty"`
+
+    // SMARTReadable is true when at least one SMART read attempt (native
+    // protocol or SAT fallback) produced a valid response.
+    SMARTReadable bool `json:"smart_readable"`
+
+    // SATFallbackRequired is true when the auto-detected protocol failed but
+    // a retry with the explicit -d sat flag succeeded.
+    SATFallbackRequired bool `json:"sat_fallback_required,omitempty"`
+
+    // Model is the drive model name or model family string from the SMART data.
+    Model string `json:"model,omitempty"`
+
+    // Serial is the drive serial number from the SMART data.
+    Serial string `json:"serial,omitempty"`
+}
+```
+
+<a name="ExitCodeInfo"></a>
+## type [ExitCodeInfo](<https://github.com/dianlight/smartmontools-go/blob/main/types.go#L248-L259>)
+
+ExitCodeInfo breaks down the smartctl exit status into semantic groups.
+
+Bit assignments \(from the smartctl man page, and the JSON exit\_status field\):
+
+```
+ExecBits (mask 0x07, bits 0–2):
+  0x01  command line did not parse
+  0x02  device open failed
+  0x04  SMART or ATA command to the disk failed
+
+HealthBits (mask 0xF8, bits 3–7):
+  0x08  SMART status check returned "DISK FAILING"
+  0x10  pre-failure attributes found at or below threshold
+  0x20  attributes were at or below threshold in the past
+  0x40  device error log contains records of errors
+  0x80  self-test log contains records of errors
+```
+
+```go
+type ExitCodeInfo struct {
+    // ExecBits holds bits 0–2 (mask 0x07) of the smartctl exit status.
+    // Non-zero values indicate execution failures such as a missing binary,
+    // permission denied, or a device that could not be opened.
+    ExecBits int `json:"exec_bits"`
+
+    // HealthBits holds bits 3–7 (mask 0xF8) of the smartctl exit status.
+    // Non-zero values indicate drive health events. Each bit maps directly to
+    // the corresponding bit in the exit status (bit 3 → 0x08, bit 4 → 0x10,
+    // etc.), preserving the original semantics described in the smartctl man page.
+    HealthBits int `json:"health_bits"`
+}
+```
+
 <a name="Flags"></a>
-## type [Flags](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L172-L181>)
+## type [Flags](<https://github.com/dianlight/smartmontools-go/blob/main/types.go#L190-L199>)
 
 Flags represents attribute flags
 
@@ -343,7 +671,7 @@ type Flags struct {
 ```
 
 <a name="Message"></a>
-## type [Message](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L200-L203>)
+## type [Message](<https://github.com/dianlight/smartmontools-go/blob/main/types.go#L218-L221>)
 
 Message represents a message from smartctl
 
@@ -355,7 +683,7 @@ type Message struct {
 ```
 
 <a name="NvmeControllerCapabilities"></a>
-## type [NvmeControllerCapabilities](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L44-L46>)
+## type [NvmeControllerCapabilities](<https://github.com/dianlight/smartmontools-go/blob/main/types.go#L14-L16>)
 
 NvmeControllerCapabilities represents NVMe controller capabilities
 
@@ -366,7 +694,7 @@ type NvmeControllerCapabilities struct {
 ```
 
 <a name="NvmeOptionalAdminCommands"></a>
-## type [NvmeOptionalAdminCommands](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L148-L150>)
+## type [NvmeOptionalAdminCommands](<https://github.com/dianlight/smartmontools-go/blob/main/types.go#L166-L168>)
 
 NvmeOptionalAdminCommands represents NVMe optional admin commands
 
@@ -377,7 +705,7 @@ type NvmeOptionalAdminCommands struct {
 ```
 
 <a name="NvmeSmartHealth"></a>
-## type [NvmeSmartHealth](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L49-L68>)
+## type [NvmeSmartHealth](<https://github.com/dianlight/smartmontools-go/blob/main/types.go#L19-L38>)
 
 NvmeSmartHealth represents NVMe SMART health information
 
@@ -404,20 +732,32 @@ type NvmeSmartHealth struct {
 }
 ```
 
+<a name="NvmeSmartTestLog"></a>
+## type [NvmeSmartTestLog](<https://github.com/dianlight/smartmontools-go/blob/main/types.go#L40-L43>)
+
+
+
+```go
+type NvmeSmartTestLog struct {
+    CurrentOpeation   *int `json:"current_operation,omitempty"`
+    CurrentCompletion *int `json:"current_completion,omitempty"`
+}
+```
+
 <a name="OfflineDataCollection"></a>
-## type [OfflineDataCollection](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L115-L118>)
+## type [OfflineDataCollection](<https://github.com/dianlight/smartmontools-go/blob/main/types.go#L133-L136>)
 
 OfflineDataCollection represents offline data collection status
 
 ```go
 type OfflineDataCollection struct {
-    Status            string `json:"status,omitempty"`
-    CompletionSeconds int    `json:"completion_seconds,omitempty"`
+    Status            *StatusField `json:"status,omitempty"`
+    CompletionSeconds int          `json:"completion_seconds,omitempty"`
 }
 ```
 
 <a name="PollingMinutes"></a>
-## type [PollingMinutes](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L121-L125>)
+## type [PollingMinutes](<https://github.com/dianlight/smartmontools-go/blob/main/types.go#L139-L143>)
 
 PollingMinutes represents polling minutes for different test types
 
@@ -430,7 +770,7 @@ type PollingMinutes struct {
 ```
 
 <a name="PowerOnTime"></a>
-## type [PowerOnTime](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L195-L197>)
+## type [PowerOnTime](<https://github.com/dianlight/smartmontools-go/blob/main/types.go#L213-L215>)
 
 PowerOnTime represents power on time
 
@@ -441,7 +781,7 @@ type PowerOnTime struct {
 ```
 
 <a name="ProgressCallback"></a>
-## type [ProgressCallback](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L392>)
+## type [ProgressCallback](<https://github.com/dianlight/smartmontools-go/blob/main/types.go#L231>)
 
 ProgressCallback is a function type for reporting progress
 
@@ -450,7 +790,7 @@ type ProgressCallback func(progress int, status string)
 ```
 
 <a name="Raw"></a>
-## type [Raw](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L184-L187>)
+## type [Raw](<https://github.com/dianlight/smartmontools-go/blob/main/types.go#L202-L205>)
 
 Raw represents raw attribute value
 
@@ -462,9 +802,9 @@ type Raw struct {
 ```
 
 <a name="SMARTInfo"></a>
-## type [SMARTInfo](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L71-L87>)
+## type [SMARTInfo](<https://github.com/dianlight/smartmontools-go/blob/main/types.go#L52-L73>)
 
-SMARTInfo represents SMART information for a device
+SMARTInfo represents comprehensive SMART information for a storage device
 
 ```go
 type SMARTInfo struct {
@@ -473,11 +813,16 @@ type SMARTInfo struct {
     ModelName                  string                      `json:"model_name,omitempty"`
     SerialNumber               string                      `json:"serial_number,omitempty"`
     Firmware                   string                      `json:"firmware_version,omitempty"`
-    UserCapacity               int64                       `json:"user_capacity,omitempty"`
-    SmartStatus                SmartStatus                 `json:"smart_status,omitempty"`
+    UserCapacity               *UserCapacity               `json:"user_capacity,omitempty"`
+    RotationRate               *int                        `json:"rotation_rate,omitempty"` // Rotation rate in RPM (0 for SSDs, >0 for HDDs, nil if not available or not applicable)
+    DiskType                   string                      `json:"-"`                       // Computed disk type: "SSD", "HDD", "NVMe", or "Unknown"
+    InStandby                  bool                        `json:"in_standby,omitempty"`    // True if device is in standby/sleep mode (ATA only)
+    ExitCodeInfo               *ExitCodeInfo               `json:"-"`                       // Computed from Smartctl.ExitStatus; nil when exit status is zero
+    SmartStatus                *SmartStatus                `json:"smart_status,omitempty"`
     SmartSupport               *SmartSupport               `json:"smart_support,omitempty"`
     AtaSmartData               *AtaSmartData               `json:"ata_smart_data,omitempty"`
     NvmeSmartHealth            *NvmeSmartHealth            `json:"nvme_smart_health_information_log,omitempty"`
+    NvmeSmartTestLog           *NvmeSmartTestLog           `json:"nvme_smart_test_log,omitempty"`
     NvmeControllerCapabilities *NvmeControllerCapabilities `json:"nvme_controller_capabilities,omitempty"`
     Temperature                *Temperature                `json:"temperature,omitempty"`
     PowerOnTime                *PowerOnTime                `json:"power_on_time,omitempty"`
@@ -486,32 +831,37 @@ type SMARTInfo struct {
 }
 ```
 
-<a name="SMARTSupportInfo"></a>
-## type [SMARTSupportInfo](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L101-L104>)
-
-SMARTSupportInfo represents SMART support and enablement information
+<a name="SMARTInfo.WearLevelPercent"></a>
+### func \(\*SMARTInfo\) [WearLevelPercent](<https://github.com/dianlight/smartmontools-go/blob/main/types.go#L300>)
 
 ```go
-type SMARTSupportInfo struct {
-    Supported bool
-    Enabled   bool
-}
+func (s *SMARTInfo) WearLevelPercent() *int
 ```
 
+WearLevelPercent returns the percentage of drive life used \(0 = new, 100 = worn out\), or nil when the value cannot be determined \(HDDs, unknown types, or missing data\).
+
+The source depends on the drive type \(SMARTInfo.DiskType\):
+
+- NVMe: nvme\_smart\_health\_information\_log.percentage\_used
+- SSD: ATA SMART attributes, tried in priority order: 1. Attribute 231 \(SSD Life Left\) — used = 100 − normalized value 2. Attribute 177 \(Wear Leveling Count\) — used = 100 − normalized value 3. Attribute 173 \(SSD Life Used\) — used = raw value
+- HDD / Unknown: nil
+
+The returned value is always clamped to \[0, 100\].
+
 <a name="SelfTest"></a>
-## type [SelfTest](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L128-L131>)
+## type [SelfTest](<https://github.com/dianlight/smartmontools-go/blob/main/types.go#L146-L149>)
 
 SelfTest represents self\-test information
 
 ```go
 type SelfTest struct {
-    Status         string          `json:"status,omitempty"`
+    Status         *StatusField    `json:"status,omitempty"`
     PollingMinutes *PollingMinutes `json:"polling_minutes,omitempty"`
 }
 ```
 
 <a name="SelfTestInfo"></a>
-## type [SelfTestInfo](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L142-L145>)
+## type [SelfTestInfo](<https://github.com/dianlight/smartmontools-go/blob/main/types.go#L160-L163>)
 
 SelfTestInfo represents available self\-tests and their durations
 
@@ -523,7 +873,7 @@ type SelfTestInfo struct {
 ```
 
 <a name="SmartAttribute"></a>
-## type [SmartAttribute](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L160-L169>)
+## type [SmartAttribute](<https://github.com/dianlight/smartmontools-go/blob/main/types.go#L178-L187>)
 
 SmartAttribute represents a single SMART attribute
 
@@ -541,68 +891,56 @@ type SmartAttribute struct {
 ```
 
 <a name="SmartClient"></a>
-## type [SmartClient](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L213-L225>)
+## type [SmartClient](<https://github.com/dianlight/smartmontools-go/blob/main/client.go#L83-L98>)
 
 SmartClient interface defines the methods for interacting with smartmontools
 
 ```go
 type SmartClient interface {
-    ScanDevices() ([]Device, error)
-    GetSMARTInfo(devicePath string) (*SMARTInfo, error)
-    CheckHealth(devicePath string) (bool, error)
-    GetDeviceInfo(devicePath string) (map[string]interface{}, error)
-    RunSelfTest(devicePath string, testType string) error
+    ScanDevices(ctx context.Context) ([]Device, error)
+    GetSMARTInfo(ctx context.Context, devicePath string) (*SMARTInfo, error)
+    CheckHealth(ctx context.Context, devicePath string) (bool, error)
+    GetDeviceInfo(ctx context.Context, devicePath string) (map[string]interface{}, error)
+    RunSelfTest(ctx context.Context, devicePath string, testType string) error
     RunSelfTestWithProgress(ctx context.Context, devicePath string, testType string, callback ProgressCallback) error
-    GetAvailableSelfTests(devicePath string) (*SelfTestInfo, error)
-    IsSMARTSupported(devicePath string) (*SMARTSupportInfo, error)
-    EnableSMART(devicePath string) error
-    DisableSMART(devicePath string) error
-    AbortSelfTest(devicePath string) error
+    GetAvailableSelfTests(ctx context.Context, devicePath string) (*SelfTestInfo, error)
+    GetAvailableSelfTestsFromInfo(smartInfo *SMARTInfo) *SelfTestInfo
+    IsSMARTSupported(ctx context.Context, devicePath string) (*SmartSupport, error)
+    GetSMARTSupportFromInfo(smartInfo *SMARTInfo) *SmartSupport
+    EnableSMART(ctx context.Context, devicePath string) error
+    DisableSMART(ctx context.Context, devicePath string) error
+    AbortSelfTest(ctx context.Context, devicePath string) error
+    DiscoverDevices(ctx context.Context) ([]DiscoveryResult, error)
 }
 ```
 
 <a name="NewClient"></a>
-### func [NewClient](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L234>)
+### func [NewClient](<https://github.com/dianlight/smartmontools-go/blob/main/client.go#L118>)
 
 ```go
-func NewClient() (SmartClient, error)
+func NewClient(opts ...ClientOption) (SmartClient, error)
 ```
 
-NewClient creates a new smartmontools client
-
-<a name="NewClientWithCommander"></a>
-### func [NewClientWithCommander](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L256>)
-
-```go
-func NewClientWithCommander(smartctlPath string, commander Commander) SmartClient
-```
-
-NewClientWithCommander creates a new client with a custom commander \(for testing\)
-
-<a name="NewClientWithPath"></a>
-### func [NewClientWithPath](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L248>)
-
-```go
-func NewClientWithPath(smartctlPath string) SmartClient
-```
-
-NewClientWithPath creates a new smartmontools client with a specific smartctl path
+NewClient creates a new smartmontools client with optional configuration. If no smartctl path is provided, it will search for smartctl in PATH. If no log handler is provided, it will use a tlog debug\-level logger for diagnostic output. If no context is provided, context.Background\(\) will be used as the default. The device type cache is pre\-populated with drivedb entries on initialization.
 
 <a name="SmartStatus"></a>
-## type [SmartStatus](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L90-L92>)
+## type [SmartStatus](<https://github.com/dianlight/smartmontools-go/blob/main/types.go#L76-L81>)
 
 SmartStatus represents the overall SMART health status
 
 ```go
 type SmartStatus struct {
-    Passed bool `json:"passed"`
+    Running  bool `json:"running"`
+    Passed   bool `json:"passed"`
+    Damaged  bool `json:"damaged,omitempty"`
+    Critical bool `json:"critical,omitempty"`
 }
 ```
 
 <a name="SmartSupport"></a>
-## type [SmartSupport](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L95-L98>)
+## type [SmartSupport](<https://github.com/dianlight/smartmontools-go/blob/main/types.go#L84-L87>)
 
-SmartSupport represents SMART availability and enablement status
+SmartSupport represents SMART availability and enablement status.
 
 ```go
 type SmartSupport struct {
@@ -612,7 +950,7 @@ type SmartSupport struct {
 ```
 
 <a name="SmartctlInfo"></a>
-## type [SmartctlInfo](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L206-L210>)
+## type [SmartctlInfo](<https://github.com/dianlight/smartmontools-go/blob/main/types.go#L224-L228>)
 
 SmartctlInfo represents smartctl metadata and messages
 
@@ -624,14 +962,49 @@ type SmartctlInfo struct {
 }
 ```
 
+<a name="StatusField"></a>
+## type [StatusField](<https://github.com/dianlight/smartmontools-go/blob/main/types.go#L98-L103>)
+
+StatusField represents a status field that can be either a simple string or a complex object
+
+```go
+type StatusField struct {
+    Value            int    `json:"value"`
+    String           string `json:"string"`
+    Passed           *bool  `json:"passed,omitempty"`
+    RemainingPercent *int   `json:"remaining_percent,omitempty"`
+}
+```
+
+<a name="StatusField.UnmarshalJSON"></a>
+### func \(\*StatusField\) [UnmarshalJSON](<https://github.com/dianlight/smartmontools-go/blob/main/types.go#L107>)
+
+```go
+func (s *StatusField) UnmarshalJSON(data []byte) error
+```
+
+UnmarshalJSON allows StatusField to be parsed from either a JSON string \(e.g., "completed"\) or a structured object with fields \{value, string, passed, remaining\_percent\}.
+
 <a name="Temperature"></a>
-## type [Temperature](<https://github.com/dianlight/smartmontools-go/blob/main/smartmontools.go#L190-L192>)
+## type [Temperature](<https://github.com/dianlight/smartmontools-go/blob/main/types.go#L208-L210>)
 
 Temperature represents device temperature
 
 ```go
 type Temperature struct {
     Current int `json:"current"`
+}
+```
+
+<a name="UserCapacity"></a>
+## type [UserCapacity](<https://github.com/dianlight/smartmontools-go/blob/main/types.go#L46-L49>)
+
+UserCapacity represents storage device capacity information
+
+```go
+type UserCapacity struct {
+    Blocks int64 `json:"blocks"`
+    Bytes  int64 `json:"bytes"`
 }
 ```
 

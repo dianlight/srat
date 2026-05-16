@@ -91,16 +91,20 @@ quiet = true
 
 [tasks."build:remote"]
 description = "Build the project for remote deployment (e.g., ARM64) and prepare the dist directory for deployment. This task ensures that the dist directory is clean and ready for the new build artifacts. It checks for the HOMEASSISTANT_IP environment variable to ensure that the build is intended for remote deployment. If the variable is not set, it will output an error message and exit. If the variable is set, it will proceed to remove any existing x86_64 build artifacts from the dist directory, ensuring that only the new build artifacts for the target architecture will be present after the build process."
+usage = '''
+flag "--version <version>" help="Build version"  env="VERSION"
+'''
 depends = [
    { task = "clean" },
-   { task = "build",
-    args = [
-      "--arch=x86_64",
-      "--pprof"
-    ]
-  },
 ]
 run = [
+  { task = "build",
+    args = [
+      '--arch=x86_64',
+      '--pprof',
+      '--version={{usage.version | default(value=env.VERSION)}}'
+    ]
+  },
 	'[ -n "${HOMEASSISTANT_IP}" ] || (echo "HOMEASSISTANT_IP is not set" && exit 1)',
   'rsync -avz --progress ./dist/x86_64/srat-cli ./dist/x86_64/srat-server ${HOMEASSISTANT_IP}:/addon_configs/local_sambanas2/upgrade/'
 ]

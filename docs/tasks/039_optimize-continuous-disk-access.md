@@ -19,9 +19,9 @@ Optimize backend services and handlers to reduce continuous and redundant disk a
 - [x] **Task 4:** Improve `DiskStatsService` and `NetworkStatsService` to cache results effectively and not stress disk or db reads on 10-second intervals.
 - [x] Task 5: Investigate excessive context logging calls (`slog.*Context()`) and ensure logging is properly level-gated and not excessively flushing.
 - [x] Task 6: Analyze and optimize the logic for managed drives and partitions scanning, ensuring disk/partition metadata isn't unnecessarily re-read.
-- [ ] Task 7: Unit testing to ensure logic remains intact with the new optimizations
-- [ ] Task 8: Integration and documentation
-- [ ] Task 9: Code review and cleanup
+- [x] Task 7: Unit testing to ensure logic remains intact with the new optimizations
+- [x] Task 8: Integration and documentation
+- [x] Task 9: Code review and cleanup
 - [ ] Task 10: Final testing and validation
 - [ ] Task 11: Capture the lessons learned and update documentation
 - [ ] Task 12: Ask to create a PR with the task implementation and link it here for tracking

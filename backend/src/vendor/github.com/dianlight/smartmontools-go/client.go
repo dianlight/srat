@@ -14,11 +14,13 @@ import (
 	"github.com/dianlight/tlog"
 )
 
-// SMART attribute IDs for SSD detection
+// SMART attribute IDs for SSD detection and wear-level computation
 const (
-	SmartAttrSSDLifeLeft       = 231 // SSD Life Left attribute
-	SmartAttrSandForceInternal = 233 // SandForce Internal (SSD-specific)
-	SmartAttrTotalLBAsWritten  = 234 // Total LBAs Written (SSD-specific)
+	SmartAttrSSDLifeUsed       = 173 // SSD Life Used — raw value is percent used (0 = new)
+	SmartAttrWearLevelingCount = 177 // Wear Leveling Count — normalized value is remaining life (100 = new)
+	SmartAttrSSDLifeLeft       = 231 // SSD Life Left — normalized value is remaining life (100 = new)
+	SmartAttrSandForceInternal = 233 // SandForce Internal (SSD-specific, used for drive-type detection)
+	SmartAttrTotalLBAsWritten  = 234 // Total LBAs Written (SSD-specific, used for drive-type detection)
 )
 
 // Valid self-test types for SMART testing
@@ -92,6 +94,7 @@ type SmartClient interface {
 	EnableSMART(ctx context.Context, devicePath string) error
 	DisableSMART(ctx context.Context, devicePath string) error
 	AbortSelfTest(ctx context.Context, devicePath string) error
+	DiscoverDevices(ctx context.Context) ([]DiscoveryResult, error)
 }
 
 // Client represents a smartmontools client
@@ -101,6 +104,8 @@ type Client struct {
 	defaultCommander   bool              // true when using the built-in exec commander
 	deviceTypeCache    map[string]string // Maps device path to device type (e.g., "sat")
 	deviceTypeCacheMux sync.RWMutex      // Protects deviceTypeCache
+	healthBitsCache    map[string]int    // Maps device path to last-seen health bits (bits 3–7)
+	healthBitsCacheMux sync.RWMutex      // Protects healthBitsCache
 	logHandler         logAdapter        // Logger for the client
 	defaultCtx         context.Context   // Default context to use when nil is passed
 }
@@ -117,6 +122,7 @@ func NewClient(opts ...ClientOption) (SmartClient, error) {
 		commander:        execCommander{},
 		defaultCommander: true,
 		deviceTypeCache:  cloneDeviceTypeCache(),
+		healthBitsCache:  make(map[string]int),
 		// Use a debug-level logger by default so library emits diagnostic output.
 		// Use NewLoggerWithLevel to obtain a *tlog.Logger (tlog.WithLevel returns *slog.Logger).
 		logHandler: tlog.NewLoggerWithLevel(tlog.LevelDebug),
@@ -128,11 +134,11 @@ func NewClient(opts ...ClientOption) (SmartClient, error) {
 		opt(client)
 	}
 
-	// If no smartctl path was provided, try to find it in PATH
+	// If no smartctl path was provided, search PATH then platform-specific locations.
 	if client.smartctlPath == "" {
-		path, err := exec.LookPath("smartctl")
+		path, err := resolveSmartctlPath()
 		if err != nil {
-			return nil, fmt.Errorf("smartctl not found in PATH: %w", err)
+			return nil, err
 		}
 		client.smartctlPath = path
 	}
@@ -148,13 +154,23 @@ func NewClient(opts ...ClientOption) (SmartClient, error) {
 	return client, nil
 }
 
-// ScanDevices scans for available storage devices
+// ScanDevices scans for available storage devices.
+// It first attempts --scan-open (which performs an open on each drive to verify
+// accessibility) and falls back to --scan on failure. --scan-open may fail in
+// container sandboxes, on older kernels, or when the caller lacks the required
+// permissions; --scan still returns the device list without the open step.
 func (c *Client) ScanDevices(ctx context.Context) ([]Device, error) {
 	ctx = c.resolveCtx(ctx)
 	cmd := c.commander.Command(ctx, c.logHandler, c.smartctlPath, "--scan-open", "--json")
 	output, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("failed to scan devices: %w", err)
+		// Fall back to --scan when --scan-open is unsupported or fails.
+		c.logHandler.WarnContext(ctx, "--scan-open failed, retrying with --scan", "err", err)
+		fallbackCmd := c.commander.Command(ctx, c.logHandler, c.smartctlPath, "--scan", "--json")
+		output, err = fallbackCmd.Output()
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan devices: %w", err)
+		}
 	}
 
 	var result struct {
@@ -253,16 +269,116 @@ func (c *Client) logSmartctlMessages(ctx context.Context, info *SMARTInfo) {
 	}
 }
 
-// GetSMARTInfo retrieves SMART information for a device
-func (c *Client) GetSMARTInfo(ctx context.Context, devicePath string) (*SMARTInfo, error) {
+// retryWithDeviceType retries the SMART query for devicePath using an explicit
+// -d <deviceType> flag and --nocheck=standby. It is the common implementation
+// behind both the execution-failure SAT-probe path and the USB bridge
+// protocol-selection path.
+//
+// On success the device type is written to the device type cache so subsequent
+// calls use buildArgs directly without re-probing.
+//
+// Returns (info, true) when the attempt produces a usable result (including
+// standby). Returns (nil, false) when the device cannot be opened with this
+// type, the output cannot be parsed, or the response has an empty device name
+// indicating the protocol did not produce valid SMART data.
+func (c *Client) retryWithDeviceType(ctx context.Context, devicePath, deviceType string) (*SMARTInfo, bool) {
+	args := []string{"-a", "-j", "--nocheck=standby", "-d", deviceType, devicePath}
+	cmd := c.commander.Command(ctx, c.logHandler, c.smartctlPath, args...)
+	output, err := cmd.Output()
+
+	if err != nil {
+		exitErr, isExit := err.(*exec.ExitError)
+		if !isExit {
+			return nil, false
+		}
+		code := exitErr.ExitCode()
+		// Execution failure bits 0 or 2: device still cannot be read with this type.
+		if code&0x05 != 0 {
+			return nil, false
+		}
+		// Bit 1: device is in standby but responds to this protocol — cache the
+		// type so future buildArgs invocations use the correct -d flag.
+		if code&0x02 != 0 {
+			c.setCachedDeviceType(devicePath, deviceType)
+			if len(output) > 0 {
+				var info SMARTInfo
+				if json.Unmarshal(output, &info) == nil {
+					info.InStandby = true
+					info.DiskType = determineDiskType(&info)
+					info.SmartStatus = checkSmartStatus(&info)
+					return &info, true
+				}
+			}
+			return &SMARTInfo{
+				Device:       Device{Name: devicePath, Type: deviceType},
+				InStandby:    true,
+				SmartSupport: &SmartSupport{Available: true, Enabled: true},
+			}, true
+		}
+	}
+
+	if len(output) == 0 {
+		return nil, false
+	}
+	var info SMARTInfo
+	if jsonErr := json.Unmarshal(output, &info); jsonErr != nil {
+		return nil, false
+	}
+	// An empty device name indicates the protocol couldn't read SMART data.
+	if info.Device.Name == "" {
+		return nil, false
+	}
+	c.setCachedDeviceType(devicePath, deviceType)
+	c.logHandler.InfoContext(ctx, "Device type retry succeeded", "devicePath", devicePath, "deviceType", deviceType)
+	info.DiskType = determineDiskType(&info)
+	info.SmartStatus = checkSmartStatus(&info)
+	c.logHealthBits(ctx, devicePath, &info)
+	c.logSmartctlMessages(ctx, &info)
+	return &info, true
+}
+
+// retrySATFallback is called when the initial smartctl query failed with
+// execution-failure bits (bits 0–2 of the smartctl exit code), indicating a
+// protocol mismatch — common on Synology /dev/sata* paths, USB-to-SATA
+// bridges, and RAID passthrough devices.
+//
+// On success the "sat" protocol is written to the device type cache so that
+// all subsequent calls use it directly without re-probing.
+//
+// Returns (info, true) when the SAT attempt produces a usable result
+// (including standby). Returns (nil, false) when the SAT attempt also fails
+// with execution failure bits or produces unparseable output.
+func (c *Client) retrySATFallback(ctx context.Context, devicePath string) (*SMARTInfo, bool) {
+	c.logHandler.InfoContext(ctx, "execution failure with default protocol, retrying with -d sat", "devicePath", devicePath)
+	return c.retryWithDeviceType(ctx, devicePath, "sat")
+}
+
+// getSMARTInfoInternal is the implementation behind GetSMARTInfo. The second
+// return value is true when the internal SAT fallback (retrySATFallback) was
+// invoked and succeeded, allowing DiscoverDevices to surface SATFallbackRequired
+// without changing the public GetSMARTInfo signature.
+func (c *Client) getSMARTInfoInternal(ctx context.Context, devicePath string) (*SMARTInfo, bool, error) {
 	ctx = c.resolveCtx(ctx)
 	cmd := c.commander.Command(ctx, c.logHandler, c.smartctlPath, c.buildArgs(devicePath, "-a", "-j")...)
 	output, err := cmd.Output()
 	if err != nil {
 		// smartctl returns non-zero exit codes for various conditions
-		// Bit 1 (exit code 2) indicates device is in standby mode
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			exitCode := exitErr.ExitCode()
+
+			// Bits 0, 2 (mask 0x05): execution failures — retry with -d sat on
+			// first contact. Handles Synology /dev/sata* paths, USB bridges, and
+			// RAID passthrough devices that fail with the auto-detected protocol.
+			// Bit 1 (standby) is excluded: --nocheck=standby is always passed, so
+			// bit 1 means the device is in standby mode, not a protocol mismatch.
+			// The standby check below handles it without triggering a SAT probe.
+			if exitCode&0x05 != 0 {
+				if _, hasCached := c.getCachedDeviceType(devicePath); !hasCached {
+					if info, satOK := c.retrySATFallback(ctx, devicePath); satOK {
+						return info, true, nil
+					}
+				}
+			}
 
 			// Bit 1 (value 2): Device is in standby/sleep mode
 			if exitCode&2 != 0 {
@@ -282,11 +398,11 @@ func (c *Client) GetSMARTInfo(ctx context.Context, devicePath string) (*SMARTInf
 						}
 						smartInfo.DiskType = determineDiskType(&smartInfo)
 						smartInfo.SmartStatus = checkSmartStatus(&smartInfo)
-						return &smartInfo, nil
+						return &smartInfo, false, nil
 					}
 				}
 				// If parsing fails, return a minimal SMARTInfo indicating standby
-				return &SMARTInfo{InStandby: true}, nil
+				return &SMARTInfo{InStandby: true}, false, nil
 			}
 		}
 
@@ -306,64 +422,22 @@ func (c *Client) GetSMARTInfo(ctx context.Context, devicePath string) (*SMARTInf
 
 				// Check if this is an unknown USB bridge error and we haven't cached a type yet
 				if isUnknownUSBBridge(&smartInfo) {
-					_, hasCached := c.getCachedDeviceType(devicePath)
-					if !hasCached {
-						// First, check if this USB bridge is in our standard drivedb
-						usbBridgeID := extractUSBBridgeID(&smartInfo)
-						var deviceType string
-						if usbBridgeID != "" {
+					if _, hasCached := c.getCachedDeviceType(devicePath); !hasCached {
+						// Prefer a type from drivedb for known bridges; fall back to sat.
+						deviceType := "sat"
+						if usbBridgeID := extractUSBBridgeID(&smartInfo); usbBridgeID != "" {
 							if knownType, ok := c.getCachedDeviceType(usbBridgeID); ok {
 								deviceType = knownType
 								c.logHandler.InfoContext(ctx, "Found USB bridge in drivedb", "usbBridgeID", usbBridgeID, "deviceType", deviceType)
 							}
 						}
-						// If not in drivedb, default to sat
-						if deviceType == "" {
-							deviceType = "sat"
+						if deviceType == "sat" {
 							c.logHandler.InfoContext(ctx, "Unknown USB bridge detected, retrying with -d sat", "devicePath", devicePath)
 						}
-
-						// Retry with the determined device type and --nocheck=standby
-						retryArgs := []string{"-a", "-j", "--nocheck=standby", "-d", deviceType, devicePath}
-						retryCmd := c.commander.Command(ctx, c.logHandler, c.smartctlPath, retryArgs...)
-						retryOutput, retryErr := retryCmd.Output()
-
-						// Check for standby mode on retry
-						if retryErr != nil {
-							if exitErr, ok := retryErr.(*exec.ExitError); ok && exitErr.ExitCode()&2 != 0 {
-								var retrySmartInfo SMARTInfo
-								if len(retryOutput) > 0 && json.Unmarshal(retryOutput, &retrySmartInfo) == nil {
-									c.setCachedDeviceType(devicePath, deviceType)
-									retrySmartInfo.InStandby = true
-									retrySmartInfo.DiskType = determineDiskType(&retrySmartInfo)
-									return &retrySmartInfo, nil
-								}
-								return &SMARTInfo{
-									Device:    Device{Name: devicePath, Type: deviceType},
-									InStandby: true,
-									SmartSupport: &SmartSupport{
-										Available: true,
-										Enabled:   true,
-									},
-								}, nil
-							}
+						if info, ok := c.retryWithDeviceType(ctx, devicePath, deviceType); ok {
+							return info, false, nil
 						}
-
-						if retryErr == nil || len(retryOutput) > 0 {
-							var retrySmartInfo SMARTInfo
-							if json.Unmarshal(retryOutput, &retrySmartInfo) == nil {
-								// Check if SMART is supported with the device type
-								if retrySmartInfo.Device.Name != "" {
-									// Success! Cache the device type for this device path
-									c.setCachedDeviceType(devicePath, deviceType)
-									c.logHandler.InfoContext(ctx, "Successfully accessed device", "devicePath", devicePath, "deviceType", deviceType)
-									retrySmartInfo.DiskType = determineDiskType(&retrySmartInfo)
-									return &retrySmartInfo, nil
-								}
-							}
-						}
-						// If retry didn't work, log the failure
-						c.logHandler.ErrorContext(ctx, "Retry with device type failed", "devicePath", devicePath, "deviceType", deviceType, "error", retryErr)
+						c.logHandler.ErrorContext(ctx, "Retry with device type failed", "devicePath", devicePath, "deviceType", deviceType)
 					}
 				}
 
@@ -371,17 +445,17 @@ func (c *Client) GetSMARTInfo(ctx context.Context, devicePath string) (*SMARTInf
 				smartInfo.SmartStatus = checkSmartStatus(&smartInfo)
 				// If device name is empty after USB bridge fallback, SMART is likely not supported
 				if smartInfo.Device.Name == "" {
-					return &smartInfo, fmt.Errorf("SMART Not Supported")
+					return &smartInfo, false, fmt.Errorf("SMART Not Supported")
 				}
-				return &smartInfo, nil
+				return &smartInfo, false, nil
 			}
 		}
-		return nil, fmt.Errorf("failed to get SMART info: %w", err)
+		return nil, false, fmt.Errorf("failed to get SMART info: %w", err)
 	}
 
 	var smartInfo SMARTInfo
 	if err := json.Unmarshal(output, &smartInfo); err != nil {
-		return nil, fmt.Errorf("failed to parse SMART info: %w", err)
+		return nil, false, fmt.Errorf("failed to parse SMART info: %w", err)
 	}
 
 	c.logSmartctlMessages(ctx, &smartInfo)
@@ -390,6 +464,7 @@ func (c *Client) GetSMARTInfo(ctx context.Context, devicePath string) (*SMARTInf
 	smartInfo.DiskType = determineDiskType(&smartInfo)
 	// Populate SmartStatus.Running field based on test status
 	smartInfo.SmartStatus = checkSmartStatus(&smartInfo)
+	c.logHealthBits(ctx, devicePath, &smartInfo)
 
 	// Cache the device type from the successful response so all subsequent
 	// methods can use --nocheck=standby and the correct -d <type> argument
@@ -400,7 +475,13 @@ func (c *Client) GetSMARTInfo(ctx context.Context, devicePath string) (*SMARTInf
 		}
 	}
 
-	return &smartInfo, nil
+	return &smartInfo, false, nil
+}
+
+// GetSMARTInfo retrieves SMART information for a device
+func (c *Client) GetSMARTInfo(ctx context.Context, devicePath string) (*SMARTInfo, error) {
+	info, _, err := c.getSMARTInfoInternal(ctx, devicePath)
+	return info, err
 }
 
 func checkSmartStatus(sMARTInfo *SMARTInfo) *SmartStatus {
@@ -410,8 +491,18 @@ func checkSmartStatus(sMARTInfo *SMARTInfo) *SmartStatus {
 
 	var damaged, critical bool
 	if sMARTInfo.Smartctl != nil {
-		damaged = sMARTInfo.Smartctl.ExitStatus&0x00000100 != 0
-		critical = sMARTInfo.Smartctl.ExitStatus&0x00001000 != 0
+		exitStatus := sMARTInfo.Smartctl.ExitStatus
+		damaged = exitStatus&0x08 != 0
+		critical = exitStatus&0x10 != 0
+
+		// Populate ExitCodeInfo so consumers can inspect exit status bits
+		// programmatically without parsing error strings.
+		if exitStatus != 0 {
+			sMARTInfo.ExitCodeInfo = &ExitCodeInfo{
+				ExecBits:   exitStatus & 0x07,
+				HealthBits: exitStatus & 0xF8,
+			}
+		}
 	}
 
 	s := &SmartStatus{Passed: sMARTInfo.SmartStatus.Passed, Damaged: damaged, Critical: critical}
@@ -423,6 +514,36 @@ func checkSmartStatus(sMARTInfo *SMARTInfo) *SmartStatus {
 		s.Running = sMARTInfo.NvmeSmartTestLog.CurrentOpeation != nil && *sMARTInfo.NvmeSmartTestLog.CurrentOpeation != 0
 	}
 	return s
+}
+
+// logHealthBits emits a single WARNING per device per unique health-bit pattern.
+// When a drive enters a stable-but-degraded state (e.g., pre-failure attributes
+// below threshold), subsequent polls produce the same bits and are suppressed to
+// avoid flooding the caller's log.
+func (c *Client) logHealthBits(ctx context.Context, devicePath string, info *SMARTInfo) {
+	if info == nil || info.ExitCodeInfo == nil || info.ExitCodeInfo.HealthBits == 0 {
+		return
+	}
+	bits := info.ExitCodeInfo.HealthBits
+
+	c.healthBitsCacheMux.Lock()
+	prev, seen := c.healthBitsCache[devicePath]
+	if seen && prev == bits {
+		c.healthBitsCacheMux.Unlock()
+		return
+	}
+	c.healthBitsCache[devicePath] = bits
+	c.healthBitsCacheMux.Unlock()
+
+	c.logHandler.WarnContext(ctx, "SMART health flags detected",
+		"devicePath", devicePath,
+		"healthBits", bits,
+		"diskFailing", bits&0x08 != 0,
+		"prefailAttr", bits&0x10 != 0,
+		"pastPrefail", bits&0x20 != 0,
+		"errorLog", bits&0x40 != 0,
+		"selfTestLog", bits&0x80 != 0,
+	)
 }
 
 // CheckHealth checks if a device is healthy according to SMART
@@ -860,4 +981,71 @@ func (c *Client) AbortSelfTest(ctx context.Context, devicePath string) error {
 		return fmt.Errorf("failed to abort self-test: %w", err)
 	}
 	return nil
+}
+
+// DiscoverDevices scans all available storage devices and probes each one to
+// determine SMART readability and protocol compatibility.
+//
+// For each device found by ScanDevices, DiscoverDevices attempts to read SMART
+// data using the auto-detected protocol. If that fails, it retries with an
+// explicit -d sat flag and records whether the fallback was required. This
+// gives callers a guided diagnostic path for devices that need manual
+// WithSmartctlPath or protocol configuration.
+//
+// Example usage:
+//
+//	results, err := client.DiscoverDevices(ctx)
+//	if err != nil {
+//	    return err
+//	}
+//	for _, r := range results {
+//	    if !r.SMARTReadable {
+//	        log.Printf("device %s is not SMART readable", r.DevicePath)
+//	    }
+//	    if r.SATFallbackRequired {
+//	        log.Printf("device %s needs -d sat override", r.DevicePath)
+//	    }
+//	}
+func (c *Client) DiscoverDevices(ctx context.Context) ([]DiscoveryResult, error) {
+	ctx = c.resolveCtx(ctx)
+
+	devices, err := c.ScanDevices(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to scan devices for discovery: %w", err)
+	}
+
+	results := make([]DiscoveryResult, 0, len(devices))
+	for _, dev := range devices {
+		result := DiscoveryResult{
+			DevicePath:       dev.Name,
+			DetectedProtocol: dev.Type,
+		}
+
+		info, usedSATFallback, infoErr := c.getSMARTInfoInternal(ctx, dev.Name)
+		if infoErr == nil && info != nil {
+			result.SMARTReadable = true
+			result.SATFallbackRequired = usedSATFallback
+			result.DetectedProtocol = info.Device.Type
+			result.Model = info.ModelName
+			if result.Model == "" {
+				result.Model = info.ModelFamily
+			}
+			result.Serial = info.SerialNumber
+		} else {
+			// The auto-detected protocol failed; try SAT explicitly.
+			if satInfo, ok := c.retryWithDeviceType(ctx, dev.Name, "sat"); ok && satInfo != nil {
+				result.SMARTReadable = true
+				result.SATFallbackRequired = true
+				result.DetectedProtocol = "sat"
+				result.Model = satInfo.ModelName
+				if result.Model == "" {
+					result.Model = satInfo.ModelFamily
+				}
+				result.Serial = satInfo.SerialNumber
+			}
+		}
+
+		results = append(results, result)
+	}
+	return results, nil
 }
