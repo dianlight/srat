@@ -21,7 +21,7 @@ With your donations, we are able to continue developing and improving this proje
   - `HealthHandler`: Expensive `smbstatus` subprocess and samba process status broadcasts are gated to heavy ticks (~every 60s) instead of every 5s.
   - `HDIdleService`: Disk power state (spun-up/spun-down) is tracked in memory; DB writes only occur on state transitions rather than on every polling cycle.
   - `AddonConfigWatcherService`: File modification timestamp (`mtime`) is checked before reading and hashing `options.json`, skipping the full read when the file has not changed.
-  - Fixed `EnableSMART`/`DisableSMART` emitting `SmartEvent` with the raw device path (`/dev/sda`) as `DiskId` instead of the canonical device ID used to index the `DiskMap`. This caused SMART info to be silently lost after toggling SMART.
+  - Fixed `EnableSMART`/`DisableSMART` and `GetSmartInfo` emitting/returning `DiskId` set to the raw device path (`/dev/sda`) instead of the canonical device ID used to index the `DiskMap`. This caused SMART info to be silently lost after toggling SMART and caused the health API `per_disk_info[id].smart_info.disk_id` to show the raw path.
   - Fixed `volume_service` `OnSmart` handler calling `AddSmartInfo` for self-test progress events (which carry an empty `SmartInfo.DiskId`), producing hundreds of spurious `WARN` log entries every 5s during a running self-test.
 
 ## 2026.5.0-rc6
