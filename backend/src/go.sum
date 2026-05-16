@@ -62,8 +62,8 @@ github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSs
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/dianlight/smartmontools-go v0.3.0-beta.0 h1:Qr0RdBPHo3qLwkh1AugSeauKtJU4iMVWE1orBvTpeEI=
-github.com/dianlight/smartmontools-go v0.3.0-beta.0/go.mod h1:qqo1hLgdHnLFLeGJMOrCEqL1u5PdVoW+z3PTo4kSQ1I=
+github.com/dianlight/smartmontools-go v0.3.1 h1:ECfQwNItV1Jj1/xnOnlbKua3SbXT3cQiMFWJt5bKNNw=
+github.com/dianlight/smartmontools-go v0.3.1/go.mod h1:qqo1hLgdHnLFLeGJMOrCEqL1u5PdVoW+z3PTo4kSQ1I=
 github.com/dianlight/tlog v0.2.2 h1:SBXWqsIr2MLcTTMJtZvh5j5xYksYn5ZRjRudvtcCiPk=
 github.com/dianlight/tlog v0.2.2/go.mod h1:oX7P84OwzOWRKQGVtMCFq3NP8OVYRZosmt5WmDT9SyE=
 github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=

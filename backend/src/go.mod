@@ -21,7 +21,7 @@ require (
 	github.com/angusgmorrison/logfusc v0.1.0
 	github.com/benmcclelland/sgio v0.0.0-20250710154739-45e823ff1f46
 	github.com/danielgtaylor/huma/v2 v2.38.0
-	github.com/dianlight/smartmontools-go v0.3.0-beta.0
+	github.com/dianlight/smartmontools-go v0.3.1
 	github.com/dianlight/tlog v0.2.2
 	github.com/fatih/color v1.19.0
 	github.com/fsnotify/fsnotify v1.10.1

@@ -597,7 +597,7 @@ func (suite *SmartServiceSuite) TestStartSelfTest_CompletionEventEmitted() {
 		"last SmartEvent from StartSelfTest must have Running=false")
 	suite.Equal(canonicalID, last.SmartTestStatus.DiskId,
 		"completion event must carry the canonical deviceId, not the raw device path")
-	suite.EqualValues(100, last.SmartTestStatus.PercentComplete,
+	suite.Equal(100, last.SmartTestStatus.PercentComplete,
 		"completion event must have PercentComplete=100")
 }
 
