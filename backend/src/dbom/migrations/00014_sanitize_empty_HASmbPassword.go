@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	goose.AddMigrationNoTxContext(Up00008, Down00008)
+	goose.AddMigrationNoTxContext(Up00014, Down00014)
 }
 
 func Up00014(ctx context.Context, db *sql.DB) error {

@@ -260,21 +260,19 @@ No `http.MaxBytesReader` wrapper. A caller can submit an arbitrarily large JSON 
 
 ---
 
-#### [B-REL-01] **CRITICAL** - Migration 14 registers wrong function names
+#### [B-REL-01] ~~**CRITICAL** - Migration 14 registers wrong function names~~ ✅ RESOLVED
 
-**Severity:** Critical  
+**Severity:** ~~Critical~~ Resolved — fixed in Task [034]  
 **File:** `backend/src/dbom/migrations/00014_sanitize_empty_HASmbPassword.go:15`
 
-```go
-func init() {
-    goose.AddMigrationNoTxContext(Up00008, Down00008) // BUG: should be Up00014, Down00014
-}
-```
+Migration 14's `init()` was registering `Up00008` and `Down00008` instead of `Up00014` and `Down00014`. This has been corrected.
 
-Migration 14's `init()` registers `Up00008` and `Down00008` instead of `Up00014` and `Down00014`. When goose runs migration 14, it executes migration 8's password-seeding `INSERT OR IGNORE` logic again, and migration 14's `UPDATE` logic (sanitising empty passwords) is **never run**. Any database that has empty `HASmbPassword` values will not be repaired by this migration.
+**Compensating migration:** `00015_repair_empty_ha_password.go` repairs any deployed databases where migration 14 ran the wrong function.
 
-**Fix:** Change the `init()` call to `goose.AddMigrationNoTxContext(Up00014, Down00014)`.  
-**Task:** [034] Critical Migration Fix (new - immediate).
+**Guard test:** `migrations_guard_test.go` — `TestMigrationInitFunctionsMatchNumber` now asserts that every Go migration's Up/Down function names contain the migration's zero-padded number.
+
+**Fix:** `goose.AddMigrationNoTxContext(Up00014, Down00014)` — applied.  
+**Task:** [034] Critical Migration Fix — **complete**.
 
 ---
 
