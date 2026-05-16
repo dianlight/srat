@@ -2,7 +2,7 @@
 
 # Changelog
 
-## 2026.5.0-rc7 [ Unreleased ]
+## 2026.5.0-rc7
 
 ### 🙏 Thanks
 
@@ -17,6 +17,7 @@ With your donations, we are able to continue developing and improving this proje
 - Add a new test on browser directly.
 
 ### 🐛 Bug Fixes
+
 - **Reduce continuous disk access (#636)**: Optimized backend services to significantly reduce redundant disk I/O:
   - `DiskStatsService`: Heavy tick (every 60s) fetches SMART data and partition metadata via `syscall.Statfs`; lightweight ticks (5 of every 6) reuse cached data from the previous tick, eliminating `smartctl` invocations and VFS probes on every 10s poll.
   - `NetworkStatsService`: Settings are loaded from disk only on heavy ticks (every 60s); lightweight ticks reuse the in-memory cached settings.
