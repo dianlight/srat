@@ -228,18 +228,23 @@ done
 log "Resetting CHANGELOG.md for next cycle..."
 ESCAPED_VERSION="${NEXT_VERSION//./\\.}"
 
-# Capture Thanks/Notes from the version we just released
-THANKS_NOTES=$(awk "/## $ESCAPED_VERSION/{flag=1;next}/##/{flag=0}flag" CHANGELOG.md | awk '/### (🙏 Thanks|🚨 Notes)/{flag=1}flag' || true)
-
 TEMP_CHANGELOG="CHANGELOG.md.tmp"
+THANKS_FILE=$(mktemp)
+UNRELEASED_FILE=$(mktemp)
 
-# Reconstruction logic with grouped redirects for style/efficiency (SC2129)
+# Step A: Extract Thanks/Notes sections from the just-released version (to migrate to Unreleased).
+# Uses ESCAPED_VERSION for the awk regex pattern (dots escaped to literals).
+awk "
+  /^## $ESCAPED_VERSION/{ in_ver=1; next }
+  in_ver && /^## /{ exit }
+  in_ver && /^### .*(Thanks|Notes)/{ in_sec=1; print; next }
+  in_ver && in_sec && /^### /{ in_sec=0 }
+  in_ver && in_sec{ print }
+" CHANGELOG.md >"$THANKS_FILE"
+
+# Step B: Build the Unreleased section header, appending the migrated Thanks/Notes if present.
 {
-	# 1. Header
-	head -n 1 CHANGELOG.md
-	echo ""
-	# 2. New Unreleased section with migrated Thanks/Notes
-	cat <<EOF
+	cat <<'UNRELEASED'
 ## [ 🚧 Unreleased ]
 
 ### ✨ Features
@@ -248,19 +253,48 @@ TEMP_CHANGELOG="CHANGELOG.md.tmp"
 
 ### 🏗 Chore
 
-$THANKS_NOTES
-EOF
-	echo ""
-} >"$TEMP_CHANGELOG"
+UNRELEASED
+	[[ -s "$THANKS_FILE" ]] && cat "$THANKS_FILE"
+} >"$UNRELEASED_FILE"
 
-# 3. Rest of the file, stripping migrated sections from the old version block
-awk "
-  /## $ESCAPED_VERSION/ { in_ver=1; print; next }
-  in_ver && /### (🙏 Thanks|🚨 Notes)/ { skip=1; next }
-  in_ver && /^## / { in_ver=0; skip=0 }
-  !skip { if (NR > 1) print }
-" CHANGELOG.md >>"$TEMP_CHANGELOG"
+# Step C: Rebuild CHANGELOG in a single awk pass:
+#   1. Preserve all file-header lines (everything before the first ## version header).
+#   2. Inject the new Unreleased section immediately before the first ## version header.
+#   3. Print all version blocks intact; strip Thanks/Notes ONLY from the just-released version.
+#      Other sections (Features, Bug Fixes, Chore…) in the released version are kept.
+awk -v nv="$NEXT_VERSION" -v uf="$UNRELEASED_FILE" '
+BEGIN { hdr=1; tver=0; skip=0 }
 
+# --- File-header phase: print lines verbatim until the first ## version header ---
+hdr {
+    if (/^## /) {
+        hdr = 0
+        # Inject Unreleased section before this first ## line
+        while ((getline line < uf) > 0) print line
+        close(uf)
+        # Fall through so this ## line is processed by subsequent rules
+    } else {
+        print; next
+    }
+}
+
+# --- Entering the just-released version block ---
+/^## / && index($0, nv) > 0 { tver=1; skip=0; print; next }
+
+# --- Inside the just-released version: skip Thanks/Notes section only ---
+tver && /^### / {
+    if (/Thanks|Notes/) { skip=1; next }   # start skipping this section
+    skip=0; print; next                    # any other ### resets skip and is printed
+}
+
+# --- Leaving the just-released version (next ## header) ---
+tver && /^## / && index($0, nv) == 0 { tver=0; skip=0 }
+
+# --- Default: print unless inside a skipped section ---
+!skip { print }
+' CHANGELOG.md >"$TEMP_CHANGELOG"
+
+rm -f "$THANKS_FILE" "$UNRELEASED_FILE"
 mv "$TEMP_CHANGELOG" CHANGELOG.md
 
 # 12. Final commit
