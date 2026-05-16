@@ -100,7 +100,14 @@ func (s *smartService) GetSmartInfo(ctx context.Context, deviceId string) (*dto.
 		return nil, errors.Errorf("failed to get SMART info for device %s %w", devicePath, err)
 	}
 
-	return s.smartInfoFromSMARTInfo(devicePath, smartInfo)
+	smartInfoDto, errE := s.smartInfoFromSMARTInfo(devicePath, smartInfo)
+	if errE != nil {
+		return nil, errE
+	}
+	// Override DiskId: smartInfoFromSMARTInfo sets it to the raw device path,
+	// but callers expect it to be the canonical deviceId.
+	smartInfoDto.DiskId = deviceId
+	return smartInfoDto, nil
 }
 
 // GetSmartStatus returns dynamic SMART status data for a device

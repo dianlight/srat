@@ -482,6 +482,25 @@ func (suite *SmartServiceSuite) TestDisableSMART_EventDiskIdMatchesDeviceId() {
 		"EmitSmart must use the canonical deviceId, not the raw device path")
 }
 
+func (suite *SmartServiceSuite) TestGetSmartInfo_DiskIdMatchesDeviceId() {
+	canonicalID := "ata-TEST_DEVICE_GETINFO"
+	tempFile, _ := os.CreateTemp("", "testdevice")
+	defer os.Remove(tempFile.Name())
+
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return tempFile.Name(), nil
+	})
+	mock.When(suite.smartClient.GetSMARTInfo(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).
+		ThenReturn(&smartmontools.SMARTInfo{SmartSupport: &smartmontools.SmartSupport{Available: true, Enabled: true}}, nil)
+
+	result, err := suite.service.GetSmartInfo(context.Background(), canonicalID)
+
+	suite.NoError(err)
+	suite.Require().NotNil(result)
+	suite.Equal(canonicalID, result.DiskId,
+		"GetSmartInfo must return the canonical deviceId, not the raw device path")
+}
+
 func (suite *SmartServiceSuite) TestGetTestStatusDeviceNotExist() {
 
 	status, err := suite.service.GetTestStatus(context.Background(), "/dev/nonexistent")
