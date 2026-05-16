@@ -3,3 +3,8 @@ backend/src/vendor/**
 .github/**
 .vale/**
 docs/tasks/**
+docs/refactors/**
+custom_components/.venv/**
+.ai/**
+.opencode/**
+.zencoder/**
