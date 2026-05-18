@@ -96,9 +96,8 @@ flag "--version <version>" help="Build version"
 '''
 run = """
    echo "Running full build with version: ${usage_version:-not provided}"
-   ROLLBAR_ENVIRONMENT=$(mise rollbar_env --version ${usage_version?})
-   mise run //backend:build --arch=x86_64 --version={{usage.version}} --rollbar_env=${ROLLBAR_ENVIRONMENT?}
-   mise run //backend:build --arch=aarch64 --version={{usage.version}} --rollbar_env=${ROLLBAR_ENVIRONMENT?}
+  mise run //backend:build --arch=x86_64 --version={{usage.version}} --sentry_dsn=${SENTRY_DSN:-disabled}
+  mise run //backend:build --arch=aarch64 --version={{usage.version}} --sentry_dsn=${SENTRY_DSN:-disabled}
   """
 quiet = true
 
@@ -114,20 +113,3 @@ run = [
 quiet = true
 
 
-[tasks.rollbar_env]
-usage = '''
-flag "--version [version]" help="Build version"
-'''
-run = """
-	if echo "${usage_version?}" | grep -q -- "-dev"; then
-		ROLLBAR_ENVIRONMENT=development
-	elif echo "${usage_version?}" | grep -vq -- "-"; then
-		ROLLBAR_ENVIRONMENT=production
-	else
-		ROLLBAR_ENVIRONMENT=prerelease
-	fi >&2 >/dev/null
-  echo "Set ROLLBAR_ENVIRONMENT based on version: ${usage_version?} --> $ROLLBAR_ENVIRONMENT" >&2
-  echo -n "$ROLLBAR_ENVIRONMENT"
-"""
-hide = true
-quiet = true

@@ -13,14 +13,16 @@ import "./css/style.css";
 import "./img/favicon.ico";
 //import { type Listener, type Source, SSEProvider } from "react-hooks-sse";
 import { TourProvider } from "@reactour/tour";
-import { Provider as RollbarProvider } from "@rollbar/react";
+import * as Sentry from "@sentry/react";
 import { Provider } from "react-redux";
 import { BrowserRouter } from "react-router";
-import { ConsoleErrorToRollbar } from "./components/ConsoleErrorToRollbar";
+import { ConsoleErrorToSentry } from "./components/ConsoleErrorToSentry";
 import { ErrorBoundaryWrapper } from "./components/ErrorBoundaryWrapper";
-import { getApiUrl, getCurrentEnv } from "./macro/Environment.ts" with {
-  type: "macro",
-};
+import {
+  getApiUrl,
+  getCurrentEnv,
+  getSentryDsn,
+} from "./macro/Environment.ts" with { type: "macro" };
 import { store } from "./store/store.ts";
 
 declare module "@mui/material/styles" {
@@ -69,6 +71,20 @@ if (import.meta.hot) {
   console.debug("✅ Hot Module Replacement (HMR) is enabled!");
 }
 
+const sentryDsn = getSentryDsn();
+const sentryRelease =
+  (
+    import.meta as ImportMeta & {
+      env?: { npm_package_version?: string };
+    }
+  ).env?.npm_package_version ?? "dev";
+Sentry.init({
+  dsn: sentryDsn === "disabled" ? "" : sentryDsn,
+  environment: getCurrentEnv(),
+  release: sentryRelease,
+  enabled: false,
+});
+
 if (getCurrentEnv() === "development") {
   console.debug("👷‍♂️ Running in development mode");
 } else if (getCurrentEnv() === "remote") {
@@ -101,52 +117,49 @@ if (import.meta.hot) {
   root = ReactDOM.createRoot(rootEl);
 }
 root.render(
-  <RollbarProvider config={{}}>
-    <CssBaseline />
-    <ErrorBoundaryWrapper>
-      <ThemeProvider theme={theme} noSsr>
-        <CssBaseline />
-        <Provider store={store}>
-          <ConsoleErrorToRollbar />
-          <ConfirmProvider>
-            <StrictMode>
-              <BrowserRouter>
-                <TourProvider
-                  afterOpen={disableBody}
-                  beforeClose={enableBody}
-                  steps={[]}
-                  styles={{
-                    popover: (base) => ({
-                      ...base,
-                      color: theme.palette.text.primary,
-                      backgroundColor: theme.palette.background.paper,
-                      borderRadius: 10,
-                      opacity: 0.9,
-                    }),
-                    maskArea: (base) => ({ ...base, rx: 5 }),
-                    //maskWrapper: (base) => ({ ...base, color: '#ef5a3d' }),
-                    badge: (base) => ({
-                      ...base,
-                      left: "auto",
-                      right: "-0.8125em",
-                    }),
-                    //controls: (base) => ({ ...base, marginTop: 100 }),
-                    close: (base) => ({
-                      ...base,
-                      right: "auto",
-                      color: theme.palette.text.primary,
-                      left: 8,
-                      top: 8,
-                    }),
-                  }}
-                >
-                  <App />
-                </TourProvider>
-              </BrowserRouter>
-            </StrictMode>
-          </ConfirmProvider>
-        </Provider>
-      </ThemeProvider>
-    </ErrorBoundaryWrapper>
-  </RollbarProvider>,
+  <ErrorBoundaryWrapper>
+    <ThemeProvider theme={theme} noSsr>
+      <CssBaseline />
+      <Provider store={store}>
+        <ConsoleErrorToSentry />
+        <ConfirmProvider>
+          <StrictMode>
+            <BrowserRouter>
+              <TourProvider
+                afterOpen={disableBody}
+                beforeClose={enableBody}
+                steps={[]}
+                styles={{
+                  popover: (base) => ({
+                    ...base,
+                    color: theme.palette.text.primary,
+                    backgroundColor: theme.palette.background.paper,
+                    borderRadius: 10,
+                    opacity: 0.9,
+                  }),
+                  maskArea: (base) => ({ ...base, rx: 5 }),
+                  //maskWrapper: (base) => ({ ...base, color: '#ef5a3d' }),
+                  badge: (base) => ({
+                    ...base,
+                    left: "auto",
+                    right: "-0.8125em",
+                  }),
+                  //controls: (base) => ({ ...base, marginTop: 100 }),
+                  close: (base) => ({
+                    ...base,
+                    right: "auto",
+                    color: theme.palette.text.primary,
+                    left: 8,
+                    top: 8,
+                  }),
+                }}
+              >
+                <App />
+              </TourProvider>
+            </BrowserRouter>
+          </StrictMode>
+        </ConfirmProvider>
+      </Provider>
+    </ThemeProvider>
+  </ErrorBoundaryWrapper>,
 );

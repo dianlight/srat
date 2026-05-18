@@ -174,7 +174,7 @@ func (self *HealthHanler) run() error {
 		select {
 		case <-self.ctx.Done():
 			slog.InfoContext(self.ctx, "Run process closed", "err", self.ctx.Err())
-			self.OutputEventsInterleave = time.Duration(math.MaxInt64) // FIX rollbar#32
+			self.OutputEventsInterleave = time.Duration(math.MaxInt64) // FIX legacy issue #32
 			return errors.WithStack(self.ctx.Err())
 		case <-time.After(self.OutputEventsInterleave): // Use a timer to control loop frequency
 			// Get Addon Stats

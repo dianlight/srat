@@ -379,14 +379,14 @@ Ignores the application shutdown context. The request blocks indefinitely on slo
 
 ---
 
-#### [F-SEC-01] Hooks called inside `try/catch` in `useRollbarTelemetry` - Rules of Hooks violation
+#### [F-SEC-01] Historical hook-order issue in the telemetry hook - Rules of Hooks violation
 
 **Severity:** High  
-**File:** `frontend/src/hooks/useRollbarTelemetry.ts:24-32, 78-83`
+**File:** `frontend/src/hooks/useSentryTelemetry.ts` (resolved during the telemetry migration)
 
-`useRollbar()` and `useRollbarConfiguration()` are called inside `try {}` blocks (acknowledged with a `biome-ignore` suppression). Conditional hook calls corrupt React's hook order on any render where the catch path is taken, causing wrong state for all subsequent hooks in the same component and potentially across re-mounts after error boundary resets.
+The old telemetry hook called React hooks conditionally inside a `try {}` block, which could corrupt hook ordering on renders that took the catch path. This was corrected during the Sentry migration.
 
-**Fix:** Move both hook calls unconditionally to the top level. Use null-check on the returned Rollbar instance. Provide a no-op stub context when Rollbar is unavailable.  
+**Fix:** Keep the hook calls unconditional and use null-checks on the telemetry client when reporting.  
 **Task:** [037] Frontend Data Correctness Fixes (new).
 
 ---

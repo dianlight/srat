@@ -10,11 +10,30 @@ enter = "mise run deps"
 
 [tasks]
 clean = "rm -rf out"
-dev = "tsgo --noEmit && NODE_ENV=development bun --hot run bun.build.ts -w -s ./out"
+dev = "mise run ensure-dev-port && tsgo --noEmit && NODE_ENV=development bun --hot run bun.build.ts -w -s ./out"
 gowatch = "bun run gowatch"
 watch = "bun run watch"
 
 prepare = "bun install"
+
+[tasks."ensure-dev-port"]
+run = '''
+if command -v lsof >/dev/null 2>&1 && lsof -nPiTCP:3080 -sTCP:LISTEN >/dev/null 2>&1; then
+  stale_pid=$(lsof -t -nPiTCP:3080 -sTCP:LISTEN 2>/dev/null | head -n1)
+  if [ -n "${stale_pid:-}" ]; then
+    stale_cmd=$(ps -p "$stale_pid" -o args= 2>/dev/null || true)
+    if printf "%s" "$stale_cmd" | grep -E "python(3)? -m http\.server( |$).*3080" >/dev/null 2>&1; then
+      echo "Port 3080 is occupied by stale local static server (pid=$stale_pid), stopping it..."
+      kill "$stale_pid"
+    else
+      echo "Port 3080 is already in use by another process: ${stale_cmd:-unknown}"
+      echo "Please stop that process or use a different frontend port."
+      exit 1
+    fi
+  fi
+fi
+'''
+quiet = true
 
 [tasks.validate-macros]
 run = "bun ../scripts/validate-macro-imports.js"
@@ -72,6 +91,7 @@ arg "<url>" help="API URL" env="API_URL"
 '''
 env = { NODE_ENV = "remote" }
 depends = [
+  { task = "ensure-dev-port" },
   { task = "generate" },
 ]
 run = [
@@ -86,6 +106,7 @@ arg "<url>" help="API URL" env="API_URL"
 '''
 env = { NODE_ENV = "remote" }
 depends = [
+  { task = "ensure-dev-port" },
   { task = "generate" },
 ]
 run = [

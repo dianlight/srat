@@ -2,6 +2,16 @@
 
 # Changelog
 
+## [ 🚧 Unreleased ]
+
+### 🔧 Maintenance
+
+- **Telemetry migration to Sentry**: Replaced Rollbar integration across backend and frontend while preserving the existing consent-mode behavior (`ask`, `all`, `errors`, `disabled`).
+  - Backend now uses `sentry-go` with runtime environment detection and Sentry flush on shutdown.
+  - Frontend now uses `@sentry/react` (`ErrorBoundary`, telemetry hook, and console error bridge).
+  - Build/CI variables updated to `SENTRY_DSN` and `VITE_SENTRY_DSN`.
+  - Rollbar dependencies and direct references removed from active source paths.
+
 ## 2026.5.0-rc7
 
 ### 🙏 Thanks

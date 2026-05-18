@@ -16,7 +16,7 @@
   - [Telemetry Configuration](#telemetry-configuration)
   - [Data Subject Rights](#data-subject-rights)
 - [Third-Party Services](#third-party-services)
-  - [Rollbar](#rollbar)
+  - [Sentry](#sentry)
 - [Technical Implementation](#technical-implementation)
   - [Data Security](#data-security)
   - [Internet Connectivity](#internet-connectivity)
@@ -31,7 +31,7 @@
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 **Effective Date:** August 6, 2025
-**Last Updated:** August 6, 2025
+**Last Updated:** May 17, 2026
 
 ## Overview
 
@@ -41,7 +41,7 @@ SRAT (Samba Resource Administration Tool) respects your privacy and is committed
 
 ### Telemetry and Error Reporting
 
-SRAT includes optional telemetry and error reporting functionality powered by [Rollbar](https://rollbar.com). This system operates under user control with four distinct modes:
+SRAT includes optional telemetry and error reporting functionality powered by [Sentry](https://sentry.io). This system operates under user control with four distinct modes:
 
 - **Ask** (Default): No data is collected until you make a choice
 - **All**: Error reports and usage analytics are collected
@@ -57,7 +57,7 @@ When telemetry is enabled, we may collect the following information:
 - Error messages and stack traces
 - Application version and environment (development/production)
 - Timestamp when the error occurred
-- Browser user agent string (frontend errors only)
+- Browser UA string (frontend errors only)
 - Current page URL when error occurred (frontend errors only)
 - Component stack traces (React component errors)
 
@@ -82,7 +82,7 @@ SRAT never collects:
 
 ## How We Use Your Data
 
-Data collected through Rollbar telemetry is used exclusively to:
+Data collected through Sentry telemetry is used exclusively to:
 
 - Identify and fix software bugs
 - Improve application stability and performance
@@ -93,7 +93,7 @@ Data collected through Rollbar telemetry is used exclusively to:
 ## Data Transmission and Storage
 
 - All telemetry data is transmitted securely over HTTPS
-- Data is stored and processed by Rollbar in accordance with their [Privacy Policy](https://rollbar.com/privacy/)
+- Data is stored and processed by Sentry in accordance with their [Privacy Policy](https://sentry.io/privacy/)
 - No data is transmitted when internet connectivity is unavailable
 - No data is transmitted in "Ask" or "Disabled" modes
 
@@ -111,19 +111,19 @@ Data collected through Rollbar telemetry is used exclusively to:
 You have the right to:
 
 - Enable or disable telemetry collection at any time
-- Access information about what data has been collected (via Rollbar's systems)
-- Request deletion of your data (contact Rollbar directly)
+- Access information about what data has been collected (via Sentry systems)
+- Request deletion of your data (contact Sentry directly)
 - Withdraw consent for data processing
 
 ## Third-Party Services
 
-### Rollbar
+### Sentry
 
-SRAT uses Rollbar for error tracking and telemetry. When telemetry is enabled:
+SRAT uses Sentry for error tracking and telemetry. When telemetry is enabled:
 
-- Data is transmitted to and processed by Rollbar's servers
-- Rollbar's [Privacy Policy](https://rollbar.com/privacy/) and [Terms of Service](https://docs.rollbar.com/docs/terms-of-service) apply
-- Rollbar may process data in accordance with applicable privacy laws (GDPR, CCPA, etc.)
+- Data is transmitted to and processed by Sentry servers
+- Sentry's [Privacy Policy](https://sentry.io/privacy/) and [Terms of Service](https://sentry.io/terms/) apply
+- Sentry may process data in accordance with applicable privacy laws (GDPR, CCPA, etc.)
 
 ## Technical Implementation
 
@@ -131,19 +131,19 @@ SRAT uses Rollbar for error tracking and telemetry. When telemetry is enabled:
 
 - All telemetry data is transmitted over encrypted HTTPS connections
 - No sensitive application data (passwords, file contents) is ever included in reports
-- Rollbar access tokens are embedded at build time and not user-configurable
+- Sentry DSN values are embedded at build time and not user-configurable
 - Error context is limited to technical debugging information only
 
 ### Internet Connectivity
 
 - Telemetry functionality requires active internet connection
-- Connection checks are performed against `https://api.rollbar.com`
+- Connection checks are performed against `https://sentry.io`
 - No data is transmitted when offline
 - Internet requirement prevents accidental data transmission
 
 ## Children's Privacy
 
-SRAT is not designed for or directed at children under the age of 13. We do not knowingly collect personal information from children under 13.
+SRAT is not designed for or directed at children under the age of 13. We do not collect personal information from children under 13.
 
 ## Changes to This Privacy Policy
 
@@ -151,13 +151,13 @@ We may update this privacy policy from time to time. Any changes will be reflect
 
 ## Data Retention
 
-- Error data is retained according to Rollbar's data retention policies
+- Error data is retained according to Sentry data retention policies
 - Users can disable telemetry at any time to stop future data collection
-- Historical data previously collected remains subject to Rollbar's retention policies
+- Historical data previously collected remains subject to Sentry retention policies
 
 ## Geographic Considerations
 
-SRAT is distributed globally and telemetry data may be processed in various jurisdictions where Rollbar operates. By enabling telemetry, you consent to this international data transfer.
+SRAT is distributed globally and telemetry data may be processed in various jurisdictions where Sentry operates. By enabling telemetry, you consent to this international data transfer.
 
 ## Contact Information
 
@@ -165,7 +165,7 @@ For privacy-related questions or concerns about SRAT:
 
 - **Project Repository**: [https://github.com/dianlight/srat](https://github.com/dianlight/srat)
 - **Issues**: Report privacy concerns via GitHub Issues
-- **Rollbar Privacy**: For data subject requests, contact Rollbar directly at [https://rollbar.com/privacy/](https://rollbar.com/privacy/)
+- **Sentry Privacy**: For data subject requests, contact Sentry directly at [https://sentry.io/privacy/](https://sentry.io/privacy/)
 
 ## Compliance
 

@@ -19,14 +19,6 @@ else
 	echo "WARN: VERSION not set - defaulting to ${VERSION}"
 fi
 
-# ROLLBAR_ENVIRONMENT
-if [ -n "${ROLLBAR_ENVIRONMENT}" ]; then
-	export ROLLBAR_ENVIRONMENT="${ROLLBAR_ENVIRONMENT}"
-else
-	echo "WARN: ROLLBAR_ENVIRONMENT not set - defaulting to 'development'"
-	export ROLLBAR_ENVIRONMENT="development"
-fi
-
 # ARCH
 if [ -n "${ARCH}" ]; then
 	export ARCH="${ARCH}"

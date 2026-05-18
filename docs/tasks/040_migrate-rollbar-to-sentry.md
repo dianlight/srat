@@ -1,8 +1,8 @@
 # [REFACTOR]: Migrate Rollbar to Sentry
 
 **Target Repo:** `srat`
-**Status:** 📅 Planned
-**Issue Link:** _TBD_
+**Status:** � In Progress
+**Issue Link:** https://github.com/dianlight/srat/issues/647
 
 ## 🎯 Objective
 
@@ -31,31 +31,31 @@ Replace the current Rollbar error-tracking integration (backend Go + React front
 ## 📝 Task List
 
 ### Setup & Configuration
-- [ ] Task 1: Add Sentry MCP server (`@sentry/mcp-server`) to `.vscode/mcp.json` (or workspace MCP config) so Copilot can use Sentry tooling during development
+- [x] Task 1: Add Sentry MCP server (`@sentry/mcp-server`) to `.vscode/mcp.json` (or workspace MCP config) so Copilot can use Sentry tooling during development
 - [ ] Task 2: Create Sentry organisation project(s) (`srat-backend`, `srat-frontend`), obtain DSNs for `development`, `prerelease`, and `production` environments; store them as repository secrets (`SENTRY_DSN`, `VITE_SENTRY_DSN`)
 
 ### Backend Migration
-- [ ] Task 3: Add `github.com/getsentry/sentry-go` to `backend/src/go.mod`; vendor it; remove `github.com/rollbar/rollbar-go`
-- [ ] Task 4: Rename `config.RollbarToken` / `config.RollbarEnvironment` → `config.SentryDSN` in `backend/src/config/version.go`; update all consumers
-- [ ] Task 5: Rewrite `backend/src/service/telemetry_service.go` — replace `rollbar.*` calls with `sentry.CaptureException`, `sentry.CaptureEvent`, `sentry.Flush`; keep the four-mode consent logic intact
-- [ ] Task 6: Update `backend/.mise.toml` build flags — replace `--rollbar_env` / `--rollbar_token` args and `-X …RollbarToken` / `-X …RollbarEnvironment` linker vars with `--sentry_dsn` / `-X …SentryDSN`
-- [ ] Task 7: Update root `.mise.toml` `rollbar_env` task → `sentry_env` or remove if no longer needed; update the `//backend:build` calls
+- [x] Task 3: Add `github.com/getsentry/sentry-go` to `backend/src/go.mod`; vendor it; remove `github.com/rollbar/rollbar-go`
+- [x] Task 4: Rename `config.RollbarToken` / `config.RollbarEnvironment` → `config.SentryDSN` in `backend/src/config/version.go`; update all consumers
+- [x] Task 5: Rewrite `backend/src/service/telemetry_service.go` — replace `rollbar.*` calls with `sentry.CaptureException`, `sentry.CaptureEvent`, `sentry.Flush`; keep the four-mode consent logic intact
+- [x] Task 6: Update `backend/.mise.toml` build flags — replace `--rollbar_env` / `--rollbar_token` args and `-X …RollbarToken` / `-X …RollbarEnvironment` linker vars with `--sentry_dsn` / `-X …SentryDSN`
+- [x] Task 7: Update root `.mise.toml` `rollbar_env` task → `sentry_env` or remove if no longer needed; update the `//backend:build` calls
 
 ### Frontend Migration
-- [ ] Task 8: Remove `@rollbar/react` and `rollbar` packages; install `@sentry/react` and `@sentry/vite-plugin`; update `frontend/package.json`
-- [ ] Task 9: Rename / rewrite `frontend/src/macro/Environment.ts` — replace `getRollbarClientAccessToken()` with `getSentryDsn()`; read `VITE_SENTRY_DSN` env var
-- [ ] Task 10: Rewrite `frontend/src/hooks/useRollbarTelemetry.ts` → `useSentryTelemetry.ts` — use Sentry `captureException`, `captureEvent`, `addBreadcrumb`; preserve the telemetry-mode guard logic
-- [ ] Task 11: Rename `frontend/src/components/ConsoleErrorToRollbar.tsx` → `ConsoleErrorToSentry.tsx`; update internals to use the new hook
-- [ ] Task 12: Update `frontend/src/components/ErrorBoundaryWrapper.tsx` — replace `@rollbar/react`'s `ErrorBoundary` with `@sentry/react`'s `ErrorBoundary`
-- [ ] Task 13: Update `frontend/src/index.tsx` — remove `RollbarProvider`; initialise Sentry with `Sentry.init(...)` before `ReactDOM.render`; remove `<ConsoleErrorToRollbar />`; add `<ConsoleErrorToSentry />`
-- [ ] Task 14: Update `frontend/src/components/TelemetryModal.tsx` — replace UI text that references Rollbar with Sentry; update privacy links
+- [x] Task 8: Remove `@rollbar/react` and `rollbar` packages; install `@sentry/react` and `@sentry/vite-plugin`; update `frontend/package.json`
+- [x] Task 9: Rename / rewrite `frontend/src/macro/Environment.ts` — replace `getRollbarClientAccessToken()` with `getSentryDsn()`; read `VITE_SENTRY_DSN` env var
+- [x] Task 10: Rewrite `frontend/src/hooks/useRollbarTelemetry.ts` → `useSentryTelemetry.ts` — use Sentry `captureException`, `captureEvent`, `addBreadcrumb`; preserve the telemetry-mode guard logic
+- [x] Task 11: Rename `frontend/src/components/ConsoleErrorToRollbar.tsx` → `ConsoleErrorToSentry.tsx`; update internals to use the new hook
+- [x] Task 12: Update `frontend/src/components/ErrorBoundaryWrapper.tsx` — replace `@rollbar/react`'s `ErrorBoundary` with `@sentry/react`'s `ErrorBoundary`
+- [x] Task 13: Update `frontend/src/index.tsx` — remove `RollbarProvider`; initialise Sentry with `Sentry.init(...)` before `ReactDOM.render`; remove `<ConsoleErrorToRollbar />`; add `<ConsoleErrorToSentry />`
+- [x] Task 14: Update `frontend/src/components/TelemetryModal.tsx` — replace UI text that references Rollbar with Sentry; update privacy links
 
 ### CI / GitHub Actions
 - [ ] Task 15: Update `.github/workflows/build.yaml` — replace `ROLLBAR_CLIENT_ACCESS_TOKEN` env var with `SENTRY_DSN` (backend build) and `VITE_SENTRY_DSN` (frontend build); wire Sentry release/version tagging with `@sentry/cli` or the Vite plugin
 
 ### Testing
-- [ ] Task 16: Add / update backend unit tests in `service/telemetry_service_test.go` to cover Sentry integration (mock `sentry-go` transport to assert events are captured)
-- [ ] Task 17: Update `frontend/src/components/__tests__/DonationButton.test.tsx` and any other test that imports `@rollbar/react` or mocks Rollbar — replace with Sentry mocks
+- [x] Task 16: Add / update backend unit tests in `service/telemetry_service_test.go` to cover Sentry integration (mock `sentry-go` transport to assert events are captured)
+- [x] Task 17: Update `frontend/src/components/__tests__/DonationButton.test.tsx` and any other test that imports `@rollbar/react` or mocks Rollbar — replace with Sentry mocks
 - [ ] Task 18: Run full backend test suite (`mise run //backend:test`) and full frontend test suite (`mise run //frontend:test`) — all must pass
 
 ### Documentation
@@ -69,6 +69,21 @@ Replace the current Rollbar error-tracking integration (backend Go + React front
 - [ ] Task 24: Run pre-commit checks (`hk check`) — all linters and security scanners must pass
 - [ ] Task 25: Capture the lessons learned and update documentation / GitHub instructions as appropriate
 - [ ] Task 26: Ask to create a PR with the task implementation and link it here for tracking
+
+## 🧠 Agreed Implementation Plan
+
+### Phases
+1. **Backend Go** — swap `sentry-go` for `rollbar-go`; rewrite `TelemetryService`; single `SentryDSN` config var; environment inferred at runtime from version string; custom `sentry.EventProcessor` for `tozd/go/errors` stack traces; remove global mutex (Sentry re-init is safe).
+2. **Backend tests** — replace `httpmock`+`rollbar.*` with a channel-based custom `sentry.Transport` mock; rename test helpers.
+3. **Frontend** — `bun remove rollbar @rollbar/react`; `bun add @sentry/react @sentry/vite-plugin`; `Sentry.init()` at module level (no React Provider); rewrite hook/components/entry.
+4. **Build / CI** — `--sentry_dsn` linker flag (single var, no env flag); remove `rollbar_env` task; update CI secret names.
+5. **Docs + cleanup** — PRIVACY.md, telemetry docs, CHANGELOG; docs-validate; hk check; grep audit.
+
+### Key Decisions
+- Environment **not** injected at build time — inferred at runtime from `config.Version` (already present).
+- Sentry Session Replay **deferred** — not included in this migration scope.
+- `VITE_SENTRY_DSN` env var (Vite convention) for frontend; `SENTRY_DSN` for backend build.
+- DSN placeholder `"disabled"` (empty string disables Sentry natively).
 
 ## 🧠 Implementation Notes (Copilot Context)
 

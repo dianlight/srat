@@ -25,6 +25,7 @@ require (
 	github.com/dianlight/tlog v0.2.2
 	github.com/fatih/color v1.19.0
 	github.com/fsnotify/fsnotify v1.10.1
+	github.com/getsentry/sentry-go v0.46.2
 	github.com/gofri/go-github-ratelimit/v2 v2.0.2
 	github.com/google/go-github/v86 v86.0.0
 	github.com/gorilla/websocket v1.5.3
@@ -33,7 +34,6 @@ require (
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pressly/goose/v3 v3.27.1
 	github.com/prometheus/procfs v0.20.1
-	github.com/rollbar/rollbar-go v1.4.8
 	github.com/samber/slog-http v1.12.1
 	github.com/sergi/go-diff v1.4.0
 	github.com/shomali11/util v0.0.0-20220717175126-f0771b70947f
