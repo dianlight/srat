@@ -1,3 +1,22 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+**Table of Contents** *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Sentry Telemetry Implementation](#sentry-telemetry-implementation)
+  - [Consent Model (unchanged)](#consent-model-unchanged)
+  - [Backend (Go)](#backend-go)
+    - [Key behaviors](#key-behaviors)
+    - [Stack trace handling](#stack-trace-handling)
+    - [Tests](#tests)
+  - [Frontend (React/TypeScript)](#frontend-reacttypescript)
+    - [Key modules](#key-modules)
+    - [Key behaviors](#key-behaviors-1)
+  - [Build and Continuous Integration](#build-and-continuous-integration)
+  - [Privacy Notes](#privacy-notes)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Sentry Telemetry Implementation
 
 This document summarizes SRAT telemetry/error reporting after migration from the previous telemetry provider to Sentry.

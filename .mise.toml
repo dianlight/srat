@@ -36,7 +36,6 @@ gh = "latest"
 hk = "1.45.0"
 #opencode = "latest"
 #copilot-cli = "latest"
-#lychee = "0.23.0"
 
 
 #[tools."http:hk"]
@@ -48,14 +47,6 @@ hk = "1.45.0"
 #platforms.windows-x64.url = "https://github.com/jdx/hk/releases/download/v{{version}}/hk-x86_64-pc-windows-msvc.zip"
 #install_path = "hk"
 
-#[tools."http:lychee"]
-#platforms.linux-x64.url = "https://github.com/lycheeverse/lychee/releases/download/lychee-v{{version}}/lychee-x86_64-unknown-linux-gnu.tar.gz"
-#platforms.linux-arm64.url = "https://github.com/lycheeverse/lychee/releases/download/lychee-v{{version}}/lychee-aarch64-unknown-linux-musl.tar.gz"
-#platforms.macos-arm64.url = "https://github.com/lycheeverse/lychee/releases/download/lychee-v{{version}}/lychee-arm64-macos.tar.gz"
-#platforms.windows-x64.url = "https://github.com/lycheeverse/lychee/releases/download/lychee-v{{version}}/lychee-x86_64-windows.exe"
-#version = "0.23.0"
-
-
 [env]
 HK_MISE = 1
 _.source = { path = "scripts/env.sh", tools = true }
@@ -66,7 +57,7 @@ postinstall = "hk install --mise"
 
 [tasks]
 docs = "mise run docs-toc && mise run docs-fix && mise run docs-validate"
-docs-toc = "find . -name '*.md' -not -path './node_modules/*' -not -path './frontend/node_modules/*' -not -path './backend/src/vendor/*' -not -path './.vale/*' -not -path './.github/*' -not -path './docs/tasks/*' -not -path './.ai/*' -not -path './.zencoder/*' | xargs bunx doctoc --github"
+docs-toc = "./scripts/docs-ignore.sh list-md-files toc | xargs -r bunx doctoc --github"
 docs-validate = "./scripts/validate-docs.sh"
 docs-fix = "./scripts/validate-docs.sh --fix"
 brand-images = "python3 scripts/generate-brand-images.py"

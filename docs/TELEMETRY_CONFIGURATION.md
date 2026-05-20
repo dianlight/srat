@@ -1,3 +1,24 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+**Table of Contents** *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Telemetry Configuration Guide](#telemetry-configuration-guide)
+  - [Overview](#overview)
+  - [Environment Variables](#environment-variables)
+    - [Server (Go)](#server-go)
+    - [Frontend (TypeScript)](#frontend-typescript)
+  - [Build-Time Configuration](#build-time-configuration)
+    - [Server linker flags](#server-linker-flags)
+    - [Frontend build injection](#frontend-build-injection)
+  - [Environment Detection](#environment-detection)
+  - [Local Development](#local-development)
+  - [Continuous Integration and Delivery (GitHub Actions)](#continuous-integration-and-delivery-github-actions)
+  - [Fallback Behavior](#fallback-behavior)
+  - [Troubleshooting](#troubleshooting)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Telemetry Configuration Guide
 
 Telemetry in SRAT is powered by **Sentry** and remains controlled by the existing four consent modes (`ask`, `all`, `errors`, `disabled`).
@@ -15,15 +36,15 @@ Environment (`development`, `prerelease`, `production`) is detected at runtime f
 
 ### Server (Go)
 
-| Variable | Required | Description | Default |
-| --- | --- | --- | --- |
-| `SENTRY_DSN` | No | Server Sentry DSN (embedded at build time) | `disabled` |
+| Variable     | Required | Description                                | Default    |
+| ------------ | -------- | ------------------------------------------ | ---------- |
+| `SENTRY_DSN` | No       | Server Sentry DSN (embedded at build time) | `disabled` |
 
 ### Frontend (TypeScript)
 
-| Variable | Required | Description | Default |
-| --- | --- | --- | --- |
-| `VITE_SENTRY_DSN` | No | Frontend Sentry DSN (injected at build time) | `disabled` |
+| Variable          | Required | Description                                  | Default    |
+| ----------------- | -------- | -------------------------------------------- | ---------- |
+| `VITE_SENTRY_DSN` | No       | Frontend Sentry DSN (injected at build time) | `disabled` |
 
 ## Build-Time Configuration
 

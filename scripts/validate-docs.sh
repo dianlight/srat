@@ -2,7 +2,7 @@
 
 # Documentation validation script for SRAT project
 # This script runs all documentation validation checks locally
-# Supports: markdownlint, Lychee (link checker), and Vale (prose linter)
+# Supports: markdownlint and Vale (prose linter)
 
 set -e
 
@@ -51,12 +51,6 @@ check_dependencies() {
 		missing_deps+=("bunx or npx (JS CLI runner)")
 	fi
 
-	# Check for Lychee (link checker)
-	if ! command -v lychee &>/dev/null; then
-		print_status "warning" "Lychee not found - link checking will be skipped"
-		print_status "info" "Install Lychee: https://lychee.cli.rs/#/installation"
-	fi
-
 	# Check for Vale (prose linter)
 	if ! command -v vale &>/dev/null; then
 		print_status "warning" "Vale not found - prose linting will be skipped"
@@ -73,11 +67,28 @@ check_dependencies() {
 	print_status "info" "JS CLI runner: $RUNNER"
 }
 
+DOCS_IGNORE_HELPER="./scripts/docs-ignore.sh"
+
+get_markdown_files() {
+	local tool_scope="${1:-markdownlint}"
+	if [ ! -x "$DOCS_IGNORE_HELPER" ]; then
+		print_status "error" "Missing executable helper: $DOCS_IGNORE_HELPER"
+		exit 1
+	fi
+	"$DOCS_IGNORE_HELPER" list-md-files "$tool_scope"
+}
+
 # Run markdownlint
 run_markdownlint() {
 	print_status "info" "Running markdownlint (GitHub Flavored Markdown)..."
-	# canonical excludes: node_modules, vendor, vale dir, github metadata, task/refactor docs, virtualenvs
-	if $RUNNER markdownlint-cli2 "**/*.md" "#frontend/node_modules/**" "#backend/src/vendor/**" "#.vale/**" "#.github/**" "#docs/tasks/**" "#docs/refactors/**" "#custom_components/.venv/**" "#.ai/**" "#.opencode/**"; then
+	mapfile -t md_files < <(get_markdown_files markdownlint)
+
+	if [ ${#md_files[@]} -eq 0 ]; then
+		print_status "warning" "No markdown files selected after .docsignore filtering"
+		return 0
+	fi
+
+	if $RUNNER markdownlint-cli2 "${md_files[@]}"; then
 		print_status "success" "Markdownlint passed"
 		return 0
 	else
@@ -85,10 +96,6 @@ run_markdownlint() {
 		return 1
 	fi
 }
-
-# Link checking is performed in CI (lycheeverse/lychee-action). Local link checks are optional and
-# intentionally skipped here to avoid slow pre-commit hooks. If you want to run lychee locally,
-# install lychee and run it separately: lychee --config .lychee.toml .
 
 # Run Vale prose linter
 run_vale() {
@@ -106,22 +113,14 @@ run_vale() {
 		print_status "warning" "Could not sync Vale styles - continuing anyway"
 	fi
 
-	# Run Vale on all markdown files (respect canonical excludes)
-	if find . -name "*.md" \
-		-not -path "./frontend/node_modules/*" \
-		-not -path "./.git/*" \
-		-not -path "./backend/src/vendor/*" \
-		-not -path "./.vale/*" \
-		-not -path "./.github/*" \
-		-not -path "./docs/tasks/*" \
-		-not -path "./docs/refactors/*" \
-		-not -path "./custom_components/.venv/*" \
-		-not -path "./.ai/*" \
-		-not -path "./.opencode/*" \
-		-not -path "./.zencoder/*" \
-		-not -path "./CLAUDE.md" \
-		-not -path "./AGENTS.md" \
-		-not -name "CHANGELOG.md" -exec vale {} +; then
+	mapfile -t md_files < <(get_markdown_files vale)
+
+	if [ ${#md_files[@]} -eq 0 ]; then
+		print_status "warning" "No markdown files selected for Vale after .docsignore filtering"
+		return 0
+	fi
+
+	if vale "${md_files[@]}"; then
 		print_status "success" "Vale prose linting passed"
 		return 0
 	else
@@ -154,7 +153,7 @@ main() {
 		echo "💡 Tips:"
 		echo "   - Run '$0 --fix' to auto-fix formatting issues"
 		echo "   - Run 'vale sync' to update Vale styles"
-		echo "   - Check .lychee.toml for link checker configuration"
+		echo "   - Check .docsignore for shared docs exclude configuration"
 		echo "   - Check .vale.ini for prose linting configuration"
 		echo "   - Check .markdownlint-cli2.jsonc for markdown linting rules"
 	fi
@@ -173,17 +172,18 @@ case "${1:-}" in
 	echo "Options:"
 	echo "  --help, -h     Show this help message"
 	echo "  --fix          Run auto-fix for formatting issues"
+	echo "  --markdownlint-only       Run markdownlint checks only"
+	echo "  --markdownlint-fix-only   Run markdownlint --fix only"
+	echo "  --vale-only               Run Vale checks only"
 	echo
 	echo "Dependencies:"
 	echo "  Required:"
 	echo "    - bunx or npx (JavaScript CLI runner)"
 	echo "  Optional:"
-	echo "    - Lychee (link and image checker)"
 	echo "    - Vale (prose linter)"
 	echo
 	echo "Tools:"
 	echo "  - markdownlint-cli2: Markdown syntax and formatting (GFM)"
-	echo "  - Lychee: Link and image validation"
 	echo "  - Vale: Prose linting and style checking (GFM)"
 	echo
 	exit 0
@@ -201,14 +201,49 @@ case "${1:-}" in
 		exit 1
 	fi
 
-	# Fix markdown formatting
-	$RUNNER prettier --write "**/*.md" --ignore-path ".gitignore" --ignore-path ".prettierignore" --ignore-path ".markdownlint-cli2.jsonc" --ignore-path ".vale.ini" --ignore-path ".lychee.toml" --ignore-path "CHANGELOG.md" --ignore-path "frontend/node_modules/**" --ignore-path "backend/src/vendor/**" --ignore-path ".vale/**" --ignore-path ".github/**" --ignore-path ".ai/**" --ignore-path ".opencode/**"
+	mapfile -t md_files < <(get_markdown_files markdownlint)
 
-	# Fix markdownlint issues
-	$RUNNER markdownlint-cli2 "**/*.md" "#frontend/node_modules/**" "#backend/src/vendor/**" "#.vale/**" "#.github/**" "#.ai/**" "#.opencode/**" --fix
+	if [ ${#md_files[@]} -gt 0 ]; then
+		# Fix markdown formatting on the centralized file set
+		$RUNNER prettier --write "${md_files[@]}"
+
+		# Fix markdownlint issues on the same file set
+		$RUNNER markdownlint-cli2 "${md_files[@]}" --fix
+	else
+		print_status "warning" "No markdown files selected after .docsignore filtering"
+	fi
 
 	print_status "success" "Auto-fix completed"
 	exit 0
+	;;
+"--markdownlint-only")
+	check_dependencies
+	run_markdownlint
+	exit $?
+	;;
+"--markdownlint-fix-only")
+	check_dependencies
+	if command -v bunx &>/dev/null; then
+		RUNNER="bunx"
+	elif command -v npx &>/dev/null; then
+		RUNNER="npx"
+	else
+		print_status "error" "No JS CLI runner found (bunx or npx required)"
+		exit 1
+	fi
+	mapfile -t md_files < <(get_markdown_files markdownlint)
+	if [ ${#md_files[@]} -eq 0 ]; then
+		print_status "warning" "No markdown files selected after .docsignore filtering"
+		exit 0
+	fi
+	$RUNNER markdownlint-cli2 "${md_files[@]}" --fix
+	print_status "success" "markdownlint fix completed"
+	exit 0
+	;;
+"--vale-only")
+	check_dependencies
+	run_vale
+	exit $?
 	;;
 *)
 	main

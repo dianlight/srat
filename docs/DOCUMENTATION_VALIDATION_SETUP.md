@@ -57,10 +57,9 @@ This document summarizes the comprehensive documentation validation system imple
 - **Triggers**:
   - Push to main branch (for documentation files)
   - Pull requests (for documentation files)
-  - Weekly schedule (for link checking)
+  - Weekly schedule (for routine documentation maintenance)
 - **Validation Steps**:
   - **Markdownlint**: Markdown syntax and formatting (GFM-compatible)
-  - **Lychee**: Advanced link and image validation
   - **cspell**: Spell checking with project vocabulary
   - **Vale**: Prose linting and style checking (GFM-aware)
   - Format checking (prettier)
@@ -83,7 +82,9 @@ This document summarizes the comprehensive documentation validation system imple
 
 **GitHub Flavored Markdown Configurations:**
 
-- **`.markdownlint-cli2.jsonc`**: Markdownlint configuration for GFM compatibility
+- **`.docsignore`**: Single source of truth for documentation exclude/file-set patterns across markdownlint, Vale, hk, and docs TOC generation
+
+- **`.markdownlint-cli2.jsonc`**: Markdownlint rule configuration for GFM compatibility (exclude file-set is sourced from `.docsignore`)
   - Supports GFM tables, task lists, strikethrough
   - Allows HTML elements commonly used in GFM
   - Flexible heading and list formatting
@@ -91,13 +92,7 @@ This document summarizes the comprehensive documentation validation system imple
   - GFM-specific rule adjustments
   - Ignores vendor and node_modules directories
 
-- **`.lychee.toml`**: Link and image checker configuration
-  - Native GFM support (tables, task lists, emoji, autolinks)
-  - Configurable timeout and retry logic
-  - Smart exclusion patterns
-  - Caching for better performance
-
-- **`.vale.ini`**: Prose linting configuration
+- **`.vale.ini`**: Prose linting configuration (exclude file-set is sourced from `.docsignore`)
   - Microsoft and write-good styles
   - GFM-aware parsing
   - YAML front matter support
@@ -112,9 +107,8 @@ This document summarizes the comprehensive documentation validation system imple
 
 - **Purpose**: Run all documentation checks locally with GFM support
 - **Features**:
-  - Dependency checking (bunx/npx, Lychee, Vale)
+  - Dependency checking (bunx/npx, Vale)
   - Markdownlint with GFM configuration
-  - Lychee link and image validation
   - cspell spell checking
   - Vale prose linting (non-blocking warnings)
   - Autofix capabilities
@@ -123,11 +117,11 @@ This document summarizes the comprehensive documentation validation system imple
 
 ### 6. Mise Tasks
 
-- **`mise run docs-check`**: Check if all dependencies are installed (includes Lychee and Vale checks)
+- **`mise run docs-check`**: Check if all dependencies are installed (includes Vale checks)
 - **`mise run docs-validate`**: Run documentation validation with all tools (GFM-aware)
 - **`mise run docs-fix`**: Autofix documentation formatting
 - **`mise run docs-install`**: Install JS-based documentation tools (markdownlint, cspell, prettier)
-- **`mise run docs-toc`**: Generate table of contents for markdown files
+- **`mise run docs-toc`**: Generate table of contents for markdown files selected via `.docsignore`
 - **`mise run docs-help`**: Show all available documentation commands with tool status
 
 ### 7. GitHub Templates
@@ -152,14 +146,13 @@ This document summarizes the comprehensive documentation validation system imple
 1. **Initial Setup**:
 
 ```bash
-mise run docs-check      # Check dependencies (including Lychee and Vale)
+mise run docs-check      # Check dependencies (including Vale)
 mise run //root:prepare  # Install pre-commit hooks
 mise run docs-install    # Install JS-based documentation tools
 ```
 
 **Optional but recommended:**
 
-- Install Lychee: [https://lychee.cli.rs/#/installation](https://lychee.cli.rs/#/installation)
 - Install Vale: [https://vale.sh/docs/vale-cli/installation/](https://vale.sh/docs/vale-cli/installation/)
 
 2. **Before Committing**:
@@ -188,17 +181,16 @@ mise run docs-help  # Show all documentation commands and tool status
 
 ### For Maintainers
 
-1. **GitHub Actions automatically**:
-   - Validate all documentation on PRs (GFM-aware)
-   - Run Lychee link checking weekly
-   - Generate link validation reports
-   - Autofix issues when possible
-   - Run Vale prose linting (warnings are non-blocking)
+2. **GitHub Actions automatically**:
+
+- Validate all documentation on PRs (GFM-aware)
+- Run canonical docs validation (`mise run docs-validate`)
+- Autofix issues when possible
+- Run Vale prose linting (warnings are non-blocking)
 
 2. **Review Process**:
    - Documentation checklist in PR template
    - Automated validation results
-   - Lychee reports available as artifacts
    - Manual review for content accuracy
 
 ### For GitHub Copilot
@@ -244,8 +236,8 @@ mise run docs-help  # Show all documentation commands and tool status
 ### Automated Checks
 
 - ✅ **Markdown syntax and formatting** (markdownlint, GFM-compatible)
-- ✅ **Link accessibility and validity** (Lychee with GFM support)
-- ✅ **Image validation** (Lychee)
+- ✅ **Markdown syntax/format consistency** (markdownlint)
+- ✅ **Prose style checks** (Vale, when available)
 - ✅ **Spelling and grammar** (cspell with project vocabulary)
 - ✅ **Prose style and consistency** (Vale with Microsoft and write-good styles)
 - ✅ **Code block language specification** (markdownlint)
@@ -277,10 +269,6 @@ mise run docs-help  # Show all documentation commands and tool status
 - **Markdownlint**: Edit `.markdownlint-cli2.jsonc`
   - Adjust GFM-specific rules
   - Add/remove allowed HTML elements
-- **Lychee**: Edit `.lychee.toml`
-  - Modify exclusion patterns
-  - Adjust timeout and retry settings
-  - Configure caching behavior
 - **Vale**: Edit `.vale.ini`
   - Add/remove style packages
   - Configure alert levels
@@ -295,7 +283,7 @@ mise run docs-help  # Show all documentation commands and tool status
 - **File patterns**: Update workflow triggers
 - **Required sections**: Modify validation scripts
 - **Terminology**: Add to spell check dictionaries and Vale vocabulary
-- **Link patterns**: Update ignore lists in `.lychee.toml`
+- **Canonical exclude patterns**: Update `.docsignore`
 
 ## 🎯 Next Steps
 
@@ -330,7 +318,6 @@ mise run docs-help  # Show all documentation commands and tool status
 ### Tool Documentation
 
 - **Markdownlint**: [https://github.com/DavidAnson/markdownlint](https://github.com/DavidAnson/markdownlint)
-- **Lychee**: [https://lychee.cli.rs](https://lychee.cli.rs)
 - **Vale**: [https://vale.sh](https://vale.sh)
 - **cspell**: [https://cspell.org](https://cspell.org)
 - **GitHub Flavored Markdown**: [https://github.github.com/gfm/](https://github.github.com/gfm/)
@@ -347,6 +334,6 @@ To contribute to the documentation validation system:
 ---
 
 **Created**: August 5, 2025  
-**Updated**: January 12, 2026 - Enhanced with Lychee and Vale, GFM support  
+**Updated**: May 20, 2026 - Centralized docs exclude/file-set management via `.docsignore`  
 **Purpose**: Comprehensive documentation validation for SRAT project  
 **Maintainer**: SRAT Development Team

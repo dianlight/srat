@@ -1,0 +1,31 @@
+# Unified documentation exclude patterns for SRAT docs tooling.
+#
+# Rules:
+# - One pattern per line (gitignore-style path patterns)
+# - Empty lines and lines starting with # are ignored
+# - Optional tool scoping can be added with inline metadata:
+#   pattern # tools:comma-separated-tool-names
+# - Supported tool names in scripts/docs-ignore.sh: markdownlint, vale, hk, toc
+
+# Common excludes (all documentation tooling)
+.ai/
+.github/
+.opencode/
+.vale/
+.git/
+.vscode/
+.zed/
+.zencoder/
+.kilocode/
+backend/src/vendor/
+custom_components/.venv/
+docs/refactors/
+docs/tasks/
+frontend/node_modules/
+node_modules/
+
+# Tool-specific file exclusions
+CHANGELOG.md # tools:vale
+CLAUDE.md # tools:vale
+AGENTS.md # tools:vale
+docs/memory-index.md # tools:markdownlint

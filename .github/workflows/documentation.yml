@@ -7,13 +7,14 @@ on:
             - "**/*.md"
             - ".github/workflows/documentation.yml"
             - "scripts/validate-docs.sh"
-            - ".lychee.toml"
+            - "scripts/docs-ignore.sh"
+            - ".docsignore"
             - ".vale.ini"
             - ".markdownlint-cli2.jsonc"
     pull_request:
         branches: ["main"]
     schedule:
-        # Run weekly on Mondays at 8:00 AM UTC to check for broken links
+      # Run weekly on Mondays at 8:00 AM UTC for routine docs validation/maintenance
         - cron: "0 8 * * 1"
 
 permissions:
@@ -46,7 +47,8 @@ jobs:
                         - "**/*.md"
                         - ".github/workflows/documentation.yml"
                         - "scripts/validate-docs.sh"
-                        - ".lychee.toml"
+                        - "scripts/docs-ignore.sh"
+                        - ".docsignore"
                         - ".vale.ini"
                         - ".markdownlint-cli2.jsonc"
 
@@ -154,12 +156,6 @@ jobs:
             - name: Run docs validation (markdownlint + Vale)
               run: mise run docs-validate
 
-            # - name: Run Lychee link checker
-            #   uses: lycheeverse/lychee-action@8646ba30535128ac92d33dfc9133794bfdd9b411 # v2.8.0
-            #   with:
-            #       args: --config .lychee.toml --verbose --no-progress '**/*.md'
-            #       fail: true
-
             # # For AsciiDoc users:
             # - name: Install Asciidoctor
             #   run: sudo apt-get install -y asciidoctor
@@ -198,21 +194,3 @@ jobs:
             # Vale is run via the canonical docs validation script (mise run docs-validate). CI will fail
             # if Vale finds style errors.
 
-            # - name: Generate Lychee report
-            #   if: always()
-            #   uses: lycheeverse/lychee-action@8646ba30535128ac92d33dfc9133794bfdd9b411 # v2.8.0
-            #   with:
-            #       args: --config .lychee.toml '**/*.md'
-            #       fail: false
-            #       checkbox: true
-            #       jobSummary: true
-            #       format: markdown
-            #       output: lychee-report.md
-
-            # - name: Upload Lychee report
-            #   if: always()
-            #   uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-            #   with:
-            #       name: lychee-report
-            #       path: lychee-report.md
-            #       retention-days: 7

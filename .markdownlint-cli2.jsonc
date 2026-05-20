@@ -66,21 +66,11 @@
         }
     },
     "customRules": [],
-    "globs": [
-        "**/*.md"
-    ],
-    "ignores": [
-        "frontend/node_modules/**",
-        "backend/src/vendor/**",
-        ".ai/**",
-        ".opencode/**",
-        ".git/**",
-        ".vale/**",
-        ".github/**",
-        "docs/tasks/**",
-        "docs/refactors/**",
-        "custom_components/.venv/**",
-        "docs/memory-index.md"
-    ],
+    // File selection is provided by callers (scripts/validate-docs.sh, hk, etc.)
+    // using `.docsignore`.
+    "globs": [],
+    // Ignore patterns are sourced from `.docsignore` via scripts/docs-ignore.sh
+    // and consumed by scripts/validate-docs.sh / hk tasks.
+    "ignores": [],
     "gitignore": true
 }

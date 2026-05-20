@@ -84,14 +84,11 @@ SRAT documentation fully supports GitHub Flavored Markdown (GFM) features:
 
 The project uses several tools to validate documentation with full **GitHub Flavored Markdown** support:
 
+- **`.docsignore`** - Single source of truth for documentation file-set excludes across markdownlint, Vale, hk, and docs TOC generation
+
 - **markdownlint-cli2** - Checks Markdown formatting and style (GFM-compatible)
   - Configuration: `.markdownlint-cli2.jsonc`
   - Supports GFM tables, task lists, HTML elements
-- **Lychee** - Advanced link and image validation
-  - Configuration: `.lychee.toml`
-  - Fast, concurrent link checking
-  - Smart caching and retry logic
-  - Native GFM support
 - **cspell** - Spell checking with project vocabulary
   - Configuration: `.cspell.json`
   - Custom word list for technical terms
@@ -109,14 +106,13 @@ The project uses several tools to validate documentation with full **GitHub Flav
 ### Running Validation Locally
 
 ```bash
-# Check dependencies (including Lychee and Vale)
+# Check dependencies (Vale optional)
 mise run docs-check
 
 # Install JS-based documentation tools
 mise run docs-install
 
-# Note: Lychee and Vale need separate installation
-# Lychee: https://lychee.cli.rs/#/installation
+# Note: Vale needs separate installation
 # Vale: https://vale.sh/docs/vale-cli/installation/
 
 # Run all documentation validation checks (GFM-aware)
@@ -143,7 +139,9 @@ vale sync
 
 **Package Manager Support**: The validation tools support both `bun` and `npm`. The scripts will automatically detect and use `bun` if available, otherwise fall back to `npm` + `npx`.
 
-**Optional Tools**: Lychee and Vale are optional but highly recommended. The validation script will gracefully skip them if not installed while still running other checks.
+**Optional Tools**: Vale is optional but recommended. The validation script will gracefully skip Vale if not installed while still running markdown checks.
+
+**Exclude Source of Truth**: Keep all documentation exclude/file-set patterns in `.docsignore`. Tool configs (`.markdownlint-cli2.jsonc`, `.vale.ini`, `hk.pkl`, and `docs-toc`) should not duplicate directory/file exclude lists.
 
 ## Pre-commit Hooks
 
@@ -169,7 +167,7 @@ The `.github/workflows/documentation.yml` workflow runs on:
 
 - Push to main branch (for documentation files)
 - Pull requests (for documentation files)
-- Weekly schedule (to check for broken links)
+- Weekly schedule (for routine documentation maintenance)
 
 #### Validation Steps
 
@@ -293,8 +291,8 @@ When making breaking changes:
 
 ### Validation Tool Configuration
 
+- **`.docsignore`** - Canonical documentation exclude/file-set patterns
 - **`.markdownlint-cli2.jsonc`** - Markdownlint rules and configuration (GFM-compatible)
-- **`.lychee.toml`** - Lychee link and image checker configuration
 - **`.vale.ini`** - Vale prose linting configuration
 - **`.vale/styles/Vocab/SRAT/`** - Project-specific vocabulary (accept.txt, reject.txt)
 - **`.cspell.json`** - Spell check dictionary and rules
@@ -303,7 +301,7 @@ When making breaking changes:
 
 ### GitHub Configuration
 
-- **`.github/workflows/documentation.yml`** - CI validation workflow with Lychee and Vale
+- **`.github/workflows/documentation.yml`** - CI validation workflow (docs-validate path uses markdownlint + Vale)
 - **`.github/copilot-instructions.md`** - Instructions for GitHub Copilot
 - **`.github/ISSUE_TEMPLATE/documentation.md`** - Documentation issue template
 - **`.github/pull_request_template.md`** - PR template with documentation checklist
