@@ -1354,3 +1354,112 @@ func boolPtr(b bool) *bool {
 func stringPtr(s string) *string {
 	return &s
 }
+
+type ShareServiceStartupSeedingSuite struct {
+	suite.Suite
+}
+
+func TestShareServiceStartupSeedingSuite(t *testing.T) {
+	suite.Run(t, new(ShareServiceStartupSeedingSuite))
+}
+
+func (suite *ShareServiceStartupSeedingSuite) buildShareServiceApp(dbPath string) (*fxtest.App, service.ShareServiceInterface) {
+	var shareService service.ShareServiceInterface
+	var userService service.UserServiceInterface
+
+	app := fxtest.New(suite.T(),
+		fx.Provide(
+			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
+			func() (context.Context, context.CancelFunc) {
+				return context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, &sync.WaitGroup{}))
+			},
+			func() *dto.ContextState {
+				sharedResources := dto.ContextState{}
+				sharedResources.DockerInterface = "hassio"
+				sharedResources.DockerNet = "172.30.32.0/23"
+				var err error
+				sharedResources.Template, err = os.ReadFile("../templates/smb.gtpl")
+				if err != nil {
+					suite.T().Errorf("Cant read template file %s", err)
+				}
+				sharedResources.DatabasePath = dbPath
+				return &sharedResources
+			},
+			dbom.NewDB,
+			service.NewShareService,
+			events.NewEventBus,
+			mock.Mock[service.UserServiceInterface],
+		),
+		fx.Populate(&shareService),
+		fx.Populate(&userService),
+	)
+
+	mock.When(userService.GetAdmin()).ThenReturn(&dto.User{Username: "homeassistant"}, nil)
+
+	app.RequireStart()
+
+	return app, shareService
+}
+
+func (suite *ShareServiceStartupSeedingSuite) TestStartupSeedsAllInternalShares() {
+	originalMock := os.Getenv("SRAT_MOCK")
+	suite.T().Cleanup(func() {
+		if originalMock == "" {
+			os.Unsetenv("SRAT_MOCK")
+			return
+		}
+		os.Setenv("SRAT_MOCK", originalMock)
+	})
+	os.Unsetenv("SRAT_MOCK")
+
+	dbPath := suite.T().TempDir() + "/share_startup_seed.db?_pragma=foreign_keys(1)"
+	app, shareService := suite.buildShareServiceApp(dbPath)
+	suite.T().Cleanup(func() {
+		app.RequireStop()
+	})
+
+	shares, err := shareService.ListShares()
+	suite.Require().NoError(err)
+	suite.Len(shares, 7)
+
+	byName := map[string]dto.SharedResource{}
+	for _, share := range shares {
+		byName[share.Name] = share
+	}
+
+	expectedNames := []string{"config", "addons", "ssl", "share", "backup", "media", "addon_configs"}
+	for _, name := range expectedNames {
+		share, ok := byName[name]
+		suite.True(ok, "expected startup seeded internal share %s", name)
+		suite.Equal(dto.UsageAsInternal, share.Usage)
+	}
+}
+
+func (suite *ShareServiceStartupSeedingSuite) TestStartupSeedingIsIdempotentAcrossRestarts() {
+	originalMock := os.Getenv("SRAT_MOCK")
+	suite.T().Cleanup(func() {
+		if originalMock == "" {
+			os.Unsetenv("SRAT_MOCK")
+			return
+		}
+		os.Setenv("SRAT_MOCK", originalMock)
+	})
+	os.Unsetenv("SRAT_MOCK")
+
+	dbPath := suite.T().TempDir() + "/share_startup_seed_idempotent.db?_pragma=foreign_keys(1)"
+
+	firstApp, firstShareService := suite.buildShareServiceApp(dbPath)
+	firstShares, err := firstShareService.ListShares()
+	suite.Require().NoError(err)
+	suite.Len(firstShares, 7)
+	firstApp.RequireStop()
+
+	secondApp, secondShareService := suite.buildShareServiceApp(dbPath)
+	suite.T().Cleanup(func() {
+		secondApp.RequireStop()
+	})
+
+	secondShares, err := secondShareService.ListShares()
+	suite.Require().NoError(err)
+	suite.Len(secondShares, 7)
+}

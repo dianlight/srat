@@ -115,20 +115,8 @@ func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterfa
 		share, err := s.GetShareFromPath(event.MountPoint.Path)
 		if err != nil {
 			if errors.Is(err, dto.ErrorShareNotFound) {
-				if share, ok := internalShares[event.MountPoint.Path]; ok {
-					slog.Debug("Creating default share", "name", share.Name)
-					share.MountPointData = event.MountPoint
-					admin, err := s.user_service.GetAdmin()
-					if err != nil {
-						slog.Error("Error getting admin user for default share creation", "name", share.Name, "err", err)
-						return errors.WithStack(err)
-					}
-					share.Users = []dto.User{*admin}
-					_, createErr := s.CreateShare(share)
-					if createErr != nil {
-						slog.Error("Error creating default share", "name", share.Name, "err", createErr)
-						return createErr
-					}
+				if ensureErr := s.ensureInternalShare(ctx, event.MountPoint.Path, event.MountPoint); ensureErr != nil {
+					return ensureErr
 				}
 				tlog.TraceContext(ctx, "No share found for mount point", "path", event.MountPoint.Path)
 				return nil
@@ -147,9 +135,14 @@ func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterfa
 	})
 
 	lc.Append(fx.Hook{
-		OnStart: func(_ context.Context) error {
+		OnStart: func(ctx context.Context) error {
 			if os.Getenv("SRAT_MOCK") == "true" {
 				return nil
+			}
+			for path := range internalShares {
+				if err := s.ensureInternalShare(ctx, path, nil); err != nil {
+					return err
+				}
 			}
 			return nil
 		},
@@ -161,6 +154,48 @@ func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterfa
 		},
 	})
 	return s
+}
+
+func (s *ShareService) ensureInternalShare(ctx context.Context, path string, mountPoint *dto.MountPointData) errors.E {
+	share, ok := internalShares[path]
+	if !ok {
+		return nil
+	}
+
+	_, err := s.GetShareFromPath(path)
+	if err == nil {
+		return nil
+	}
+	if !errors.Is(err, dto.ErrorShareNotFound) {
+		return err
+	}
+
+	if mountPoint != nil {
+		share.MountPointData = mountPoint
+	} else {
+		share.MountPointData = &dto.MountPointData{
+			Path:      path,
+			Type:      "ADDON",
+			DeviceId:  "internal:" + share.Name,
+			IsMounted: true,
+		}
+	}
+
+	admin, adminErr := s.user_service.GetAdmin()
+	if adminErr != nil {
+		slog.ErrorContext(ctx, "Error getting admin user for default share creation", "name", share.Name, "err", adminErr)
+		return errors.WithStack(adminErr)
+	}
+
+	share.Users = []dto.User{*admin}
+	slog.DebugContext(ctx, "Creating default share", "name", share.Name, "path", path)
+	_, createErr := s.CreateShare(share)
+	if createErr != nil {
+		slog.ErrorContext(ctx, "Error creating default share", "name", share.Name, "path", path, "err", createErr)
+		return createErr
+	}
+
+	return nil
 }
 
 func (s *ShareService) ListShares() ([]dto.SharedResource, errors.E) {
