@@ -1,7 +1,7 @@
 # [REFACTOR]: Migrate Rollbar to Sentry
 
 **Target Repo:** `srat`
-**Status:** � In Progress
+**Status:** ✅ Complete  
 **Issue Link:** https://github.com/dianlight/srat/issues/647
 
 ## 🎯 Objective
