@@ -56,17 +56,17 @@ Replace the current Rollbar error-tracking integration (backend Go + React front
 ### Testing
 - [x] Task 16: Add / update backend unit tests in `service/telemetry_service_test.go` to cover Sentry integration (mock `sentry-go` transport to assert events are captured)
 - [x] Task 17: Update `frontend/src/components/__tests__/DonationButton.test.tsx` and any other test that imports `@rollbar/react` or mocks Rollbar — replace with Sentry mocks
-- [ ] Task 18: Run full backend test suite (`mise run //backend:test`) and full frontend test suite (`mise run //frontend:test`) — all must pass
+- [x] Task 18: Run full backend test suite (`mise run //backend:test`) and full frontend test suite (`mise run //frontend:test`) — all must pass
 
 ### Documentation
-- [ ] Task 19: Update `PRIVACY.md` — replace all Rollbar references with Sentry; update data-retention and privacy-policy links
-- [ ] Task 20: Update `docs/TELEMETRY_CONFIGURATION.md` and `docs/TELEMETRY_IMPLEMENTATION.md` — describe Sentry DSN configuration, environments, and release tracking
-- [ ] Task 21: Update `CHANGELOG.md` — add entry under `[🚧 Unreleased]` describing the migration
-- [ ] Task 22: Run `mise run docs-validate` (and `mise run docs-fix` if needed) to ensure all documentation passes validation
+- [x] Task 19: Update `PRIVACY.md` — replace all Rollbar references with Sentry; update data-retention and privacy-policy links
+- [x] Task 20: Update `docs/TELEMETRY_CONFIGURATION.md` and `docs/TELEMETRY_IMPLEMENTATION.md` — describe Sentry DSN configuration, environments, and release tracking
+- [x] Task 21: Update `CHANGELOG.md` — add entry under `[🚧 Unreleased]` describing the migration
+- [x] Task 22: Run `mise run docs-validate` (and `mise run docs-fix` if needed) to ensure all documentation passes validation
 
 ### Cleanup & Close
-- [ ] Task 23: Remove any residual Rollbar references (`grep -r rollbar .` should return zero matches outside `CHANGELOG.md` historical entries and this task file)
-- [ ] Task 24: Run pre-commit checks (`hk check`) — all linters and security scanners must pass
+- [x] Task 23: Remove any residual Rollbar references (`grep -r rollbar .` should return zero matches outside `CHANGELOG.md` historical entries and this task file)
+- [x] Task 24: Run pre-commit checks (`hk check`) — all linters and security scanners must pass
 - [ ] Task 25: Capture the lessons learned and update documentation / GitHub instructions as appropriate
 - [ ] Task 26: Ask to create a PR with the task implementation and link it here for tracking
 
