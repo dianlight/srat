@@ -67,8 +67,8 @@ Replace the current Rollbar error-tracking integration (backend Go + React front
 ### Cleanup & Close
 - [x] Task 23: Remove any residual Rollbar references (`grep -r rollbar .` should return zero matches outside `CHANGELOG.md` historical entries and this task file)
 - [x] Task 24: Run pre-commit checks (`hk check`) — all linters and security scanners must pass
-- [ ] Task 25: Capture the lessons learned and update documentation / GitHub instructions as appropriate
-- [ ] Task 26: Ask to create a PR with the task implementation and link it here for tracking
+- [x] Task 25: Capture the lessons learned and update documentation / GitHub instructions as appropriate
+- [ ] Task 26: Ask to create a PR with the task implementation and link it here for tracking (PR form submitted, awaiting user confirmation)
 
 ## 🧠 Agreed Implementation Plan
 
