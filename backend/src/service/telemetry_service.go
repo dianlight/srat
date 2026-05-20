@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	oerrors "github.com/pkg/errors"
+	sentry "github.com/getsentry/sentry-go"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 	"golang.org/x/time/rate"
@@ -21,15 +21,10 @@ import (
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/internal/urlutil"
 	"github.com/dianlight/tlog"
-	"github.com/rollbar/rollbar-go"
 )
 
-// Global state to track if rollbar has been closed to prevent double-close panics
-var (
-	rollbarGlobalMu         sync.Mutex
-	rollbarGlobalClosed     bool
-	skipRollbarCloseForTest bool // Set to true in tests to prevent closing rollbar
-)
+// skipSentryFlushForTest disables sentry.Flush() in tests to avoid blocking.
+var skipSentryFlushForTest bool
 
 // TelemetryServiceInterface defines the interface for telemetry services
 type TelemetryServiceInterface interface {
@@ -46,14 +41,13 @@ type TelemetryServiceInterface interface {
 }
 
 type TelemetryService struct {
-	ctx               context.Context
-	mode              dto.TelemetryMode
-	rollbarConfigured bool
-	rollbarClosed     bool       // Track if rollbar has been explicitly closed
-	rollbarMu         sync.Mutex // Protect rollbar close operations
-	accessToken       string
-	environment       string
-	version           string
+	ctx              context.Context
+	mode             dto.TelemetryMode
+	sentryConfigured bool
+	sentryMu         sync.Mutex // Protect Configure re-entrance
+	accessToken      string     // Sentry DSN
+	environment      string
+	version          string
 
 	settingService SettingServiceInterface
 	haroot         HaRootServiceInterface
@@ -64,6 +58,14 @@ type TelemetryService struct {
 
 	// Limiter
 	errorSessionLimiter *rate.Sometimes
+
+	// testTransport is injected by tests to capture Sentry events without real HTTP calls.
+	testTransport sentry.Transport
+}
+
+// SetTestTransport injects a custom Sentry transport for unit tests. FOR TESTING ONLY.
+func (ts *TelemetryService) SetTestTransport(t sentry.Transport) {
+	ts.testTransport = t
 }
 
 // NewTelemetryService creates a new telemetry service instance
@@ -72,24 +74,20 @@ func NewTelemetryService(lc fx.Lifecycle, Ctx context.Context,
 	haroot HaRootServiceInterface,
 	eventBus events.EventBusInterface,
 ) (TelemetryServiceInterface, errors.E) {
-	accessToken := config.RollbarToken
+	accessToken := config.SentryDSN
 	if accessToken == "" {
 		accessToken = "disabled" // Use placeholder if not set at build time
 	}
 
-	// Determine environment: use build-time setting or auto-detect from version
-	environment := config.RollbarEnvironment
+	// Determine environment: auto-detect from version
+	environment := "production"
 	errorSessionLimiter := rate.Sometimes{First: 10}
-	if environment == "" {
-		if config.Version == "0.0.0-dev.0" || strings.Contains(config.Version, "-dev.") {
-			environment = "development"
-			errorSessionLimiter = rate.Sometimes{First: 2}
-		} else if strings.Contains(config.Version, "-rc.") {
-			environment = "prerelease"
-			errorSessionLimiter = rate.Sometimes{First: 5}
-		} else {
-			environment = "production"
-		}
+	if config.Version == "0.0.0-dev.0" || strings.Contains(config.Version, "-dev.") {
+		environment = "development"
+		errorSessionLimiter = rate.Sometimes{First: 2}
+	} else if strings.Contains(config.Version, "-rc.") {
+		environment = "prerelease"
+		errorSessionLimiter = rate.Sometimes{First: 5}
 	}
 
 	setting, err := settingService.Load()
@@ -142,115 +140,81 @@ func NewTelemetryService(lc fx.Lifecycle, Ctx context.Context,
 
 // Configure configures the telemetry service with the given mode
 func (ts *TelemetryService) Configure(mode dto.TelemetryMode) errors.E {
+	ts.sentryMu.Lock()
+	defer ts.sentryMu.Unlock()
+
 	ts.mode = mode
+
+	// Always clear callbacks before (re)configuring
+	ts.unregisterTlogCallbacks()
+
 	if mode == dto.TelemetryModes.TELEMETRYMODEDISABLED || mode == dto.TelemetryModes.TELEMETRYMODEASK {
+		if ts.sentryConfigured {
+			// Disable Sentry by re-initialising with an empty DSN
+			_ = sentry.Init(sentry.ClientOptions{Dsn: ""})
+			ts.sentryConfigured = false
+		}
+		slog.InfoContext(ts.ctx, "Sentry telemetry disabled", "mode", mode.String())
 		return nil
 	}
-
-	// Shutdown existing configuration only if we're reconfiguring
-	ts.rollbarMu.Lock()
-	if ts.rollbarConfigured && !ts.rollbarClosed {
-		// Check global state before closing
-		rollbarGlobalMu.Lock()
-		if !rollbarGlobalClosed {
-			// Wrap in recover to handle potential panic from rollbar library
-			func() {
-				defer func() {
-					if r := recover(); r != nil {
-						slog.WarnContext(ts.ctx, "Recovered from rollbar.Close() panic during reconfiguration", "panic", r)
-					}
-				}()
-				rollbar.Close()
-			}()
-			rollbarGlobalClosed = true
-		}
-		rollbarGlobalMu.Unlock()
-		ts.rollbarConfigured = false
-		ts.rollbarClosed = true
-	}
-	ts.rollbarMu.Unlock()
-
-	// Always ensure callbacks are cleared before (re)configuring
-	ts.unregisterTlogCallbacks()
 
 	sysinfo, err := ts.haroot.GetSystemInfo()
 	if err != nil {
 		slog.WarnContext(ts.ctx, "Error getting system info", "error", errors.WithStack(err))
 	}
 
-	// Only initialize Rollbar if mode is All or Errors and internet is available
+	// Only initialise Sentry if mode is All or Errors and internet is available
 	if (mode == dto.TelemetryModes.TELEMETRYMODEALL || mode == dto.TelemetryModes.TELEMETRYMODEERRORS) && ts.IsConnectedToInternet() {
-		rollbar.SetToken(ts.accessToken)
-		rollbar.SetEnvironment(ts.environment)
-		rollbar.SetCaptureIp(rollbar.CaptureIpAnonymize)
-		rollbar.SetCodeVersion(ts.version)
-		rollbar.SetPlatform("client")
-		rollbar.SetServerRoot("github.com/" + config.Repository)
-		rollbar.SetCustom(map[string]any{
-			"version":     ts.version,
-			"environment": ts.environment,
-			"arch":        runtime.GOARCH,
-			"os":          runtime.GOOS,
-			"cpu":         runtime.NumCPU(),
-			"sysinfo":     sysinfo,
-		})
-		if sysinfo != nil && sysinfo.MachineId != nil {
-			rollbar.SetPerson(*sysinfo.MachineId, "", "")
+		dsn := ts.accessToken
+		if dsn == "disabled" {
+			dsn = ""
 		}
-		rollbar.SetStackTracer(func(err error) ([]runtime.Frame, bool) {
-			// preserve the default behavior for other types of errors
-			if trace, ok := rollbar.DefaultStackTracer(err); ok {
-				return trace, ok
-			}
 
-			type stackTracer interface {
-				StackTrace() oerrors.StackTrace
-			}
-
-			if nerr, ok := oerrors.Cause(err).(stackTracer); ok && nerr != nil {
-				// Convert github.com/pkg/errors StackTrace -> []uintptr -> []runtime.Frame
-				st := nerr.StackTrace()
-				pcs := make([]uintptr, 0, len(st))
-				for _, f := range st {
-					pcs = append(pcs, uintptr(f))
-				}
-				frames := runtime.CallersFrames(pcs)
-				var out []runtime.Frame
-				for {
-					f, more := frames.Next()
-					out = append(out, f)
-					if !more {
-						break
+		opts := sentry.ClientOptions{
+			Dsn:              dsn,
+			Environment:      ts.environment,
+			Release:          ts.version,
+			ServerName:       "github.com/" + config.Repository,
+			AttachStacktrace: true,
+			BeforeSend: func(event *sentry.Event, hint *sentry.EventHint) *sentry.Event {
+				// Anonymise IP address
+				event.User.IPAddress = ""
+				// Enhance stack traces for tozd/go/errors and pkg/errors when sentry-go
+				// hasn't already extracted one.
+				if hint != nil && hint.OriginalException != nil && len(event.Exception) > 0 {
+					ex := &event.Exception[0]
+					if ex.Stacktrace == nil {
+						ex.Stacktrace = extractSentryStacktrace(hint.OriginalException)
 					}
 				}
-				return out, true
-			}
+				return event
+			},
+		}
+		if ts.testTransport != nil {
+			opts.Transport = ts.testTransport
+		}
+		if initErr := sentry.Init(opts); initErr != nil {
+			return errors.WithStack(fmt.Errorf("sentry.Init: %w", initErr))
+		}
 
-			if cerr, ok := err.(errors.E); ok {
-				frames := runtime.CallersFrames(cerr.StackTrace())
-				var out []runtime.Frame
-				for {
-					f, more := frames.Next()
-					out = append(out, f)
-					if !more {
-						break
-					}
+		// Set global scope tags/user once
+		sentry.ConfigureScope(func(scope *sentry.Scope) {
+			scope.SetTag("arch", runtime.GOARCH)
+			scope.SetTag("os", runtime.GOOS)
+			scope.SetTag("version", ts.version)
+			scope.SetContext("app", sentry.Context{
+				"cpu": runtime.NumCPU(),
+			})
+			if sysinfo != nil {
+				scope.SetContext("sysinfo", sentry.Context{"data": sysinfo})
+				if sysinfo.MachineId != nil {
+					scope.SetUser(sentry.User{ID: *sysinfo.MachineId})
 				}
-				return out, true
 			}
-
-			return nil, false
 		})
 
-		ts.rollbarMu.Lock()
-		ts.rollbarConfigured = true
-		ts.rollbarClosed = false // Reset the closed flag since we've reconfigured
-		// Reset global closed flag since we've reconfigured
-		rollbarGlobalMu.Lock()
-		rollbarGlobalClosed = false
-		rollbarGlobalMu.Unlock()
-		ts.rollbarMu.Unlock()
-		slog.InfoContext(ts.ctx, "Rollbar telemetry configured", "mode", mode.String(), "platform", rollbar.Platform(), "environment", ts.environment, "version", ts.version)
+		ts.sentryConfigured = true
+		slog.InfoContext(ts.ctx, "Sentry telemetry configured", "mode", mode.String(), "environment", ts.environment, "version", ts.version)
 
 		// Register tlog callbacks for Error and Fatal levels
 		ts.registerTlogCallbacks()
@@ -265,8 +229,7 @@ func (ts *TelemetryService) Configure(mode dto.TelemetryMode) errors.E {
 			}
 		}
 	} else {
-		slog.InfoContext(ts.ctx, "Rollbar telemetry disabled", "mode", mode.String(), "internet", ts.IsConnectedToInternet())
-		// Ensure callbacks are not registered when disabled
+		slog.InfoContext(ts.ctx, "Sentry telemetry disabled", "mode", mode.String(), "internet", ts.IsConnectedToInternet())
 		ts.unregisterTlogCallbacks()
 	}
 
@@ -276,31 +239,61 @@ func (ts *TelemetryService) Configure(mode dto.TelemetryMode) errors.E {
 /*
 ReportError reports an error to the telemetry service.
 
-	Error reports an item with level `error`. This function recognizes arguments with the following types:
+Accepts variadic arguments matching the legacy telemetry convention:
 
-*http.Request
-error
-string
-map[string]any
-int
-The string and error types are mutually exclusive. If an error is present then a stack trace is captured. If an int is also present then we skip that number of stack frames. If the map is present it is used as extra custom data in the item. If a string is present without an error, then we log a message without a stack trace. If a request is present we extract as much relevant information from it as we can.
+	*http.Request — attached as request context
+	error         — captured as exception
+	string        — captured as message (when no error present)
+	map[string]any — attached as extra data
+	int           — ignored (legacy skip-frames hint)
 */
 func (ts *TelemetryService) ReportError(interfaces ...any) errors.E {
-	if !ts.rollbarConfigured {
+	if !ts.sentryConfigured {
 		return nil // Silently ignore if not configured
 	}
 
 	if ts.mode == dto.TelemetryModes.TELEMETRYMODEDISABLED || ts.mode == dto.TelemetryModes.TELEMETRYMODEASK {
-		return nil // Don't report if disabled or asking
+		return nil
 	}
-
-	//interfaces = append(interfaces, 3)
 
 	// Report errors for both All and Errors modes
 	if ts.mode == dto.TelemetryModes.TELEMETRYMODEALL || ts.mode == dto.TelemetryModes.TELEMETRYMODEERRORS {
 		ts.errorSessionLimiter.Do(func() {
-			rollbar.Error(interfaces...)
-			slog.DebugContext(ts.ctx, "Error reported to Rollbar", "error", interfaces)
+			var captureErr error
+			var captureMsg string
+			var req *http.Request
+			extras := make(map[string]any)
+
+			for _, iface := range interfaces {
+				switch v := iface.(type) {
+				case error:
+					captureErr = v
+				case string:
+					captureMsg = v
+				case *http.Request:
+					req = v
+				case map[string]any:
+					for k, val := range v {
+						extras[k] = val
+					}
+				}
+			}
+
+			hub := sentry.CurrentHub().Clone()
+			if len(extras) > 0 {
+				hub.Scope().SetContext("extra", sentry.Context(extras))
+			}
+			if req != nil {
+				hub.Scope().SetRequest(req)
+			}
+
+			if captureErr != nil {
+				hub.CaptureException(captureErr)
+				slog.DebugContext(ts.ctx, "Error reported to Sentry", "error", captureErr)
+			} else if captureMsg != "" {
+				hub.CaptureMessage(captureMsg)
+				slog.DebugContext(ts.ctx, "Message reported to Sentry", "message", captureMsg)
+			}
 		})
 	}
 
@@ -309,7 +302,7 @@ func (ts *TelemetryService) ReportError(interfaces ...any) errors.E {
 
 // ReportEvent reports a telemetry event to the service
 func (ts *TelemetryService) ReportEvent(event string, data map[string]any) errors.E {
-	if !ts.rollbarConfigured {
+	if !ts.sentryConfigured {
 		return nil // Silently ignore if not configured
 	}
 
@@ -325,8 +318,13 @@ func (ts *TelemetryService) ReportEvent(event string, data map[string]any) error
 	data["event_type"] = event
 	data["timestamp"] = time.Now().UTC().Format(time.RFC3339)
 
-	rollbar.Info(fmt.Sprintf("Event: %s", event), data)
-	slog.DebugContext(ts.ctx, "Event reported to Rollbar", "event", event, "data", data)
+	sentryEvent := &sentry.Event{
+		Level:    sentry.LevelInfo,
+		Message:  fmt.Sprintf("Event: %s", event),
+		Contexts: map[string]sentry.Context{"data": sentry.Context(data)},
+	}
+	sentry.CaptureEvent(sentryEvent)
+	slog.DebugContext(ts.ctx, "Event reported to Sentry", "event", event, "data", data)
 
 	return nil
 }
@@ -343,13 +341,13 @@ func (ts *TelemetryService) IsConnectedToInternet() bool {
 	}
 
 	// Create request to test connectivity
-	const rollbarURL = "https://api.rollbar.com"
-	if err := urlutil.ValidateURL(rollbarURL, []string{"api.rollbar.com"}); err != nil {
-		slog.DebugContext(ctx, "Untrusted connectivity URL", "url", rollbarURL, "error", err)
+	const sentryURL = "https://sentry.io"
+	if err := urlutil.ValidateURL(sentryURL, []string{"sentry.io"}); err != nil {
+		slog.DebugContext(ctx, "Untrusted connectivity URL", "url", sentryURL, "error", err)
 		return false
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "HEAD", rollbarURL, nil)
+	req, err := http.NewRequestWithContext(ctx, "HEAD", sentryURL, nil)
 	if err != nil {
 		slog.DebugContext(ctx, "Failed to create internet connectivity request", "error", err)
 		return false
@@ -372,62 +370,63 @@ func (ts *TelemetryService) IsConnectedToInternet() bool {
 
 // Shutdown shuts down the telemetry service
 func (ts *TelemetryService) Shutdown() {
-	// Unregister any tlog callbacks first to prevent them from trying to use Rollbar
+	// Unregister any tlog callbacks first to prevent them from trying to use Sentry
 	ts.unregisterTlogCallbacks()
 
-	// Close Rollbar only if it's configured and not already closed
-	ts.rollbarMu.Lock()
-	defer ts.rollbarMu.Unlock()
+	ts.sentryMu.Lock()
+	defer ts.sentryMu.Unlock()
 
-	if ts.rollbarConfigured && !ts.rollbarClosed {
-		// Wait for any pending rollbar messages to be sent before closing
-		rollbar.Wait()
-
-		// Check global state before closing
-		rollbarGlobalMu.Lock()
-		defer rollbarGlobalMu.Unlock()
-
-		// Skip closing if we're in test mode (to avoid "channel closed" errors across tests)
-		if !skipRollbarCloseForTest && !rollbarGlobalClosed {
-			// Wrap in recover to handle potential panic from rollbar library
-			func() {
-				defer func() {
-					if r := recover(); r != nil {
-						slog.WarnContext(ts.ctx, "Recovered from rollbar.Close() panic", "panic", r)
-					}
-				}()
-				rollbar.Close()
-			}()
-			rollbarGlobalClosed = true
-			slog.InfoContext(ts.ctx, "Rollbar telemetry service shutdown")
+	if ts.sentryConfigured {
+		if !skipSentryFlushForTest {
+			sentry.Flush(2 * time.Second)
 		}
-		ts.rollbarConfigured = false
-		ts.rollbarClosed = true
+		ts.sentryConfigured = false
+		slog.InfoContext(ts.ctx, "Sentry telemetry service shutdown")
 	}
 }
 
-// ResetRollbarGlobalState resets the global rollbar state - FOR TESTING ONLY
-func ResetRollbarGlobalState() {
-	rollbarGlobalMu.Lock()
-	defer rollbarGlobalMu.Unlock()
-	rollbarGlobalClosed = false
+// SetSkipSentryFlushForTest sets whether to skip sentry.Flush() in tests - FOR TESTING ONLY
+func SetSkipSentryFlushForTest(skip bool) {
+	skipSentryFlushForTest = skip
 }
 
-// SetSkipRollbarCloseForTest sets whether to skip rollbar close in tests - FOR TESTING ONLY
-func SetSkipRollbarCloseForTest(skip bool) {
-	rollbarGlobalMu.Lock()
-	defer rollbarGlobalMu.Unlock()
-	skipRollbarCloseForTest = skip
+// extractSentryStacktrace builds a sentry.Stacktrace from pkg/errors or tozd/go/errors
+// when sentry-go hasn't extracted one automatically.
+func extractSentryStacktrace(err error) *sentry.Stacktrace {
+	type uintptrStackTracer interface {
+		StackTrace() []uintptr
+	}
+
+	// sentry-go handles pkg/errors natively; only handle tozd/go/errors ([]uintptr) here.
+	if cerr, ok := err.(uintptrStackTracer); ok {
+		pcs := cerr.StackTrace()
+		callersFrames := runtime.CallersFrames(pcs)
+		frames := make([]sentry.Frame, 0, len(pcs))
+		for {
+			f, more := callersFrames.Next()
+			frames = append(frames, sentry.NewFrame(f))
+			if !more {
+				break
+			}
+		}
+		// Sentry expects frames innermost-last; reverse from innermost-first
+		for i, j := 0, len(frames)-1; i < j; i, j = i+1, j-1 {
+			frames[i], frames[j] = frames[j], frames[i]
+		}
+		return &sentry.Stacktrace{Frames: frames}
+	}
+
+	return nil
 }
 
-// registerTlogCallbacks registers callbacks to forward tlog Error/Fatal to Rollbar
+// registerTlogCallbacks registers callbacks to forward tlog Error/Fatal to Sentry
 func (ts *TelemetryService) registerTlogCallbacks() {
 	// Safety: avoid duplicate registrations
 	ts.unregisterTlogCallbacks()
 
 	callback := func(event tlog.LogEvent) {
 		// Only forward when configured and mode allows
-		if !ts.rollbarConfigured {
+		if !ts.sentryConfigured {
 			return
 		}
 		if ts.mode != dto.TelemetryModes.TELEMETRYMODEALL && ts.mode != dto.TelemetryModes.TELEMETRYMODEERRORS {

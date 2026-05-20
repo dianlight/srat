@@ -33,19 +33,14 @@ describe("DonationButton Component", () => {
 		const React = await import("react");
 		const { renderWithTestStore } = await import("/test/testing");
 		const { ThemeProvider, createTheme } = await import("@mui/material/styles");
-		const { Provider: RollbarProvider } = await import("@rollbar/react");
 		const { DonationButton } = await import("../DonationButton");
 
 		const theme = createTheme();
 		return renderWithTestStore(
 			React.createElement(
-				RollbarProvider,
-				{ children: {} as any, config: {} },
-				React.createElement(
-					ThemeProvider,
-					{ theme },
-					React.createElement(DonationButton as any, {})
-				)
+				ThemeProvider,
+				{ theme },
+				React.createElement(DonationButton as any, {})
 			)
 		);
 	}

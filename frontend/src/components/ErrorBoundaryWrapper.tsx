@@ -1,6 +1,6 @@
-import { ErrorBoundary } from "@rollbar/react";
+import * as Sentry from "@sentry/react";
 import type React from "react";
-import { useRollbarTelemetry } from "../hooks/useRollbarTelemetry";
+import { useSentryTelemetry } from "../hooks/useSentryTelemetry";
 import { getCurrentEnv } from "../macro/Environment" with { type: "macro" };
 
 interface ErrorBoundaryWrapperProps {
@@ -33,23 +33,37 @@ export const ErrorBoundaryWrapper: React.FC<ErrorBoundaryWrapperProps> = ({
   children,
 }) => {
   return (
-    <ErrorBoundary
-      fallbackUI={ErrorFallback}
-      extra={(_error, errorInfo) => ({
-        timestamp: new Date().toISOString(),
-        userAgent: navigator.userAgent,
-        url: window.location.href,
-        ...errorInfo,
-      })}
+    <Sentry.ErrorBoundary
+      fallback={({ error, resetError }) => (
+        <ErrorFallback
+          error={
+            error instanceof Error
+              ? error
+              : error
+                ? new Error(String(error))
+                : null
+          }
+          resetError={resetError}
+        />
+      )}
+      beforeCapture={(scope, error, componentStack) => {
+        scope.setContext("boundary", {
+          timestamp: new Date().toISOString(),
+          userAgent: navigator.userAgent,
+          url: window.location.href,
+          error: String(error),
+          componentStack,
+        });
+      }}
     >
       {children}
-    </ErrorBoundary>
+    </Sentry.ErrorBoundary>
   );
 };
 
 // Hook to manually report errors from components (updated to use new telemetry system)
 export const useErrorReporting = () => {
-  const { reportError, reportEvent } = useRollbarTelemetry();
+  const { reportError, reportEvent } = useSentryTelemetry();
 
   return {
     reportError,

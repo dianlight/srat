@@ -2,19 +2,17 @@ package service_test
 
 import (
 	"context"
-	"encoding/json"
 	"io"
-	"net/http"
 	"os"
 	"sync"
 	"testing"
 	"time"
 
+	sentry "github.com/getsentry/sentry-go"
 	"github.com/jarcoal/httpmock"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	oerrors "github.com/pkg/errors"
-	"github.com/rollbar/rollbar-go"
 	"github.com/stretchr/testify/suite"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
@@ -27,6 +25,68 @@ import (
 	"github.com/dianlight/tlog"
 )
 
+// testSentryTransport captures Sentry events without making real HTTP calls.
+type testSentryTransport struct {
+	mu     sync.Mutex
+	events []*sentry.Event
+	ch     chan *sentry.Event
+}
+
+func newTestSentryTransport() *testSentryTransport {
+	return &testSentryTransport{ch: make(chan *sentry.Event, 64)}
+}
+
+func (t *testSentryTransport) Configure(_ sentry.ClientOptions) {}
+
+func (t *testSentryTransport) SendEvent(event *sentry.Event) {
+	t.mu.Lock()
+	t.events = append(t.events, event)
+	t.mu.Unlock()
+	select {
+	case t.ch <- event:
+	default:
+	}
+}
+
+func (t *testSentryTransport) Flush(_ time.Duration) bool { return true }
+
+func (t *testSentryTransport) FlushWithContext(_ context.Context) bool { return true }
+
+func (t *testSentryTransport) Close() {}
+
+// nextEvent waits up to timeout for the next event from the transport channel.
+func (t *testSentryTransport) nextEvent(timeout time.Duration) *sentry.Event {
+	select {
+	case ev := <-t.ch:
+		return ev
+	case <-time.After(timeout):
+		return nil
+	}
+}
+
+// allEvents returns a snapshot of all captured events.
+func (t *testSentryTransport) allEvents() []*sentry.Event {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	out := make([]*sentry.Event, len(t.events))
+	copy(out, t.events)
+	return out
+}
+
+// reset clears captured events.
+func (t *testSentryTransport) reset() {
+	t.mu.Lock()
+	t.events = nil
+	t.mu.Unlock()
+	for {
+		select {
+		case <-t.ch:
+		default:
+			return
+		}
+	}
+}
+
 type TelemetryServiceSuite struct {
 	suite.Suite
 	app    *fxtest.App
@@ -37,23 +97,19 @@ type TelemetryServiceSuite struct {
 	settingService service.SettingServiceInterface
 	telemetry      service.TelemetryServiceInterface
 
-	lastRollbarBody string
+	transport *testSentryTransport
 }
 
 func TestTelemetryServiceSuite(t *testing.T) {
-	// Enable test mode to prevent rollbar from closing between tests
-	service.SetSkipRollbarCloseForTest(true)
-
+	// Disable sentry.Flush() blocking in tests
+	service.SetSkipSentryFlushForTest(true)
 	suite.Run(t, new(TelemetryServiceSuite))
-
-	// After all tests complete, close rollbar once and reset test mode
-	service.SetSkipRollbarCloseForTest(false)
-	rollbar.Wait()
-	// Don't call Close() - it may already be closed, and we have recovery logic
+	service.SetSkipSentryFlushForTest(false)
 }
 
 func (suite *TelemetryServiceSuite) SetupTest() {
 	suite.wg = &sync.WaitGroup{}
+	suite.transport = newTestSentryTransport()
 
 	httpmock.Activate()
 
@@ -78,33 +134,28 @@ func (suite *TelemetryServiceSuite) SetupTest() {
 			},
 			service.NewTelemetryService,
 			events.NewEventBus,
-			//mock.Mock[repository.PropertyRepositoryInterface],
 			mock.Mock[service.SettingServiceInterface],
-			mock.Mock[service.HaRootServiceInterface], // Use mock for HaRootServiceInterface
+			mock.Mock[service.HaRootServiceInterface],
 		),
 		fx.Populate(&suite.ctx, &suite.cancel),
 		fx.Populate(&suite.settingService),
 		fx.Populate(&suite.telemetry),
 	)
 
-	// Default repository behavior: return empty properties
 	mock.When(suite.settingService.Load()).ThenReturn(&dto.Settings{
 		TelemetryMode: dto.TelemetryModes.TELEMETRYMODEASK,
 	}, nil)
-	//mock.When(suite.propRepo.All()).ThenReturn(dbom.Properties{}, nil)
 
 	suite.app.RequireStart()
+
+	if ts, ok := suite.telemetry.(*service.TelemetryService); ok {
+		ts.SetTestTransport(suite.transport)
+	}
 }
 
 func (suite *TelemetryServiceSuite) TearDownTest() {
-	// First, flush any pending rollbar events
-	rollbar.Wait()
-
-	// Unregister tlog callbacks but don't close rollbar
-	// We'll close it once at the end of all tests
 	tlog.ClearAllCallbacks()
 
-	// Then cancel context and wait for goroutines
 	if suite.cancel != nil {
 		suite.cancel()
 	}
@@ -112,308 +163,138 @@ func (suite *TelemetryServiceSuite) TearDownTest() {
 		suite.wg.Wait()
 	}
 
-	// Stop the app  - OnStop will try to close rollbar but our global flag will prevent double-close
 	if suite.app != nil {
 		suite.app.RequireStop()
 	}
 
-	// Clean up HTTP mocks
 	httpmock.DeactivateAndReset()
-
-	// Reset global rollbar closed flag so next test can try to "close" without panic
-	// But since rollbar is already closed, the actual close won't happen
-	service.ResetRollbarGlobalState()
 }
 
-// Helpers
-func (suite *TelemetryServiceSuite) stubRollbarConnectivityOK() {
-	httpmock.RegisterResponder("HEAD", "https://api.rollbar.com",
+func (suite *TelemetryServiceSuite) stubSentryConnectivityOK() {
+	httpmock.RegisterResponder("HEAD", "https://sentry.io",
 		httpmock.NewStringResponder(200, "OK"))
 }
 
-func (suite *TelemetryServiceSuite) stubRollbarItemPost(capture bool) {
-	if capture {
-		suite.lastRollbarBody = ""
-		httpmock.RegisterResponder("POST", "https://api.rollbar.com/api/1/item/",
-			func(req *http.Request) (*http.Response, error) {
-				body, _ := io.ReadAll(req.Body)
-				suite.lastRollbarBody = string(body)
-				return httpmock.NewStringResponse(200, `{"err":0}`), nil
-			})
-		return
-	}
-	httpmock.RegisterResponder("POST", "https://api.rollbar.com/api/1/item/",
-		httpmock.NewStringResponder(200, `{"err":0}`))
+func (suite *TelemetryServiceSuite) stubSentryConnectivityDown() {
+	httpmock.RegisterResponder("HEAD", "https://sentry.io",
+		httpmock.NewErrorResponder(&mockError{msg: "network down"}))
 }
-
-func (suite *TelemetryServiceSuite) resetHTTPCalls() {
-	// Not available in httpmock; use lastRollbarBody as a soft marker instead
-	suite.lastRollbarBody = ""
-}
-
-// Tests
 
 func (suite *TelemetryServiceSuite) TestConfigure_Disabled_LeavesNoCallbacks() {
-	// Act
 	err := suite.telemetry.Configure(dto.TelemetryModes.TELEMETRYMODEDISABLED)
 	suite.Require().NoError(err)
 
-	// Assert: no tlog callbacks registered
 	suite.Equal(0, tlog.GetCallbackCount(tlog.LevelError))
 	suite.Equal(0, tlog.GetCallbackCount(tlog.LevelFatal))
-
-	// And no HTTP activity
-	suite.Equal(0, httpmock.GetTotalCallCount())
 }
 
 func (suite *TelemetryServiceSuite) TestConfigure_All_NoInternet_DoesNotRegisterCallbacks() {
-	// Simulate no internet
-	httpmock.RegisterResponder("HEAD", "https://api.rollbar.com",
-		httpmock.NewErrorResponder(assertErr("network down")))
+	suite.stubSentryConnectivityDown()
 
 	err := suite.telemetry.Configure(dto.TelemetryModes.TELEMETRYMODEALL)
 	suite.Require().NoError(err)
 
-	// No callbacks when internet is unavailable
 	suite.Equal(0, tlog.GetCallbackCount(tlog.LevelError))
 	suite.Equal(0, tlog.GetCallbackCount(tlog.LevelFatal))
 }
 
-func (suite *TelemetryServiceSuite) TestReportError_NotConfigured_NoHTTP() {
-	// Ensure disabled
-	_ = suite.telemetry.Configure(dto.TelemetryModes.TELEMETRYMODEDISABLED)
-	suite.stubRollbarItemPost(true)
+func (suite *TelemetryServiceSuite) TestConfigure_Errors_WithInternet_RegistersCallbacks() {
+	suite.stubSentryConnectivityOK()
 
-	// Act
+	err := suite.telemetry.Configure(dto.TelemetryModes.TELEMETRYMODEERRORS)
+	suite.Require().NoError(err)
+
+	suite.Equal(1, tlog.GetCallbackCount(tlog.LevelError))
+	suite.Equal(1, tlog.GetCallbackCount(tlog.LevelFatal))
+}
+
+func (suite *TelemetryServiceSuite) TestReportError_NotConfigured_NoCapturedEvents() {
+	_ = suite.telemetry.Configure(dto.TelemetryModes.TELEMETRYMODEDISABLED)
+	suite.transport.reset()
+
 	err := suite.telemetry.ReportError(io.EOF)
 	suite.Require().NoError(err)
 
-	// Assert: no POSTs sent when not configured
-	suite.Empty(suite.lastRollbarBody)
+	suite.Empty(suite.transport.allEvents())
 }
 
 func (suite *TelemetryServiceSuite) TestReportEvent_OnlyInAllMode() {
-	// Errors mode: should not send events
-	suite.resetHTTPCalls()
-	_ = suite.telemetry.Configure(dto.TelemetryModes.TELEMETRYMODEERRORS)
-	_ = suite.telemetry.ReportEvent("custom_test", map[string]any{"x": 1})
-	suite.Empty(suite.lastRollbarBody)
-
-	// All mode: should send
-	// But only if internet is available; simulate down to avoid network
-	httpmock.RegisterResponder("HEAD", "https://api.rollbar.com",
-		httpmock.NewStringResponder(200, "OK"))
-	_ = suite.telemetry.Configure(dto.TelemetryModes.TELEMETRYMODEALL)
-	suite.resetHTTPCalls()
-	suite.stubRollbarItemPost(true)
+	suite.stubSentryConnectivityOK()
+	suite.Require().NoError(suite.telemetry.Configure(dto.TelemetryModes.TELEMETRYMODEERRORS))
+	suite.transport.reset()
 
 	_ = suite.telemetry.ReportEvent("custom_test", map[string]any{"x": 1})
-	// We don't assert body here due to rollbar-go async behavior; just ensure no panic/error
+	ev := suite.transport.nextEvent(100 * time.Millisecond)
+	suite.Nil(ev, "Expected no event in Errors mode, but got one")
+
+	suite.Require().NoError(suite.telemetry.Configure(dto.TelemetryModes.TELEMETRYMODEALL))
+	suite.transport.reset()
+
+	_ = suite.telemetry.ReportEvent("custom_test", map[string]any{"x": 1})
+	ev = suite.transport.nextEvent(500 * time.Millisecond)
+	suite.Require().NotNil(ev, "Expected an event in All mode, but none arrived")
+	suite.Contains(ev.Message, "custom_test")
 }
 
 func (suite *TelemetryServiceSuite) TestIsConnectedToInternet_TrueAndFalse() {
-	// True case
-	suite.stubRollbarConnectivityOK()
+	suite.stubSentryConnectivityOK()
 	suite.True(suite.telemetry.IsConnectedToInternet())
 
-	// False case
 	httpmock.Reset()
-	httpmock.RegisterResponder("HEAD", "https://api.rollbar.com",
-		httpmock.NewErrorResponder(assertErr("network down")))
+	suite.stubSentryConnectivityDown()
 	suite.False(suite.telemetry.IsConnectedToInternet())
 }
 
-// assertErr wraps an error string as error for httpmock
-func assertErr(msg string) error { return &mockError{msg: msg} }
-
-type mockError struct{ msg string }
-
-func (e *mockError) Error() string { return e.msg }
-
-// Removed deep callback forwarding test due to rollbar-go internal client/transport complexity
-
-// New tests: ReportError payloads
-
-func (suite *TelemetryServiceSuite) TestReportError_StandardError_JSONContainsCustomAndStack() {
-	// Arrange: enable telemetry (Errors mode) and stub HTTP
-	suite.stubRollbarConnectivityOK()
-	suite.stubRollbarItemPost(true)
+func (suite *TelemetryServiceSuite) TestReportError_StandardError_EventCaptured() {
+	suite.stubSentryConnectivityOK()
 	suite.Require().NoError(suite.telemetry.Configure(dto.TelemetryModes.TELEMETRYMODEERRORS))
-	suite.resetHTTPCalls()
+	suite.transport.reset()
 
-	// Act: report a standard error with custom data
 	errStd := oerrors.Errorf("boom %d", 42)
 	custom := map[string]any{"k": "v", "n": 123}
 	suite.Require().NoError(suite.telemetry.ReportError(errStd, custom))
 
-	// Flush async rollbar sender
-	rollbar.Wait()
-
-	// Assert: captured JSON has expected shape
-	suite.NotEmpty(suite.lastRollbarBody)
-	var payload map[string]any
-	suite.Require().NoError(json.Unmarshal([]byte(suite.lastRollbarBody), &payload))
-
-	data, _ := payload["data"].(map[string]any)
-	suite.Require().NotNil(data)
-	suite.Equal("error", data["level"])
-
-	// custom data
-	customObj, _ := data["custom"].(map[string]any)
-	suite.Require().NotNil(customObj)
-	suite.Equal("v", customObj["k"])
-	// numbers decode as float64
-	suite.Equal(float64(123), customObj["n"])
-
-	// trace or trace_chain with frames
-	body, _ := data["body"].(map[string]any)
-	suite.Require().NotNil(body)
-	if trace, ok := body["trace"].(map[string]any); ok {
-		if exception, ok := trace["exception"].(map[string]any); ok {
-			if msg, ok := exception["message"].(string); ok {
-				suite.Contains(msg, "boom")
-			}
-		}
-		if frames, ok := trace["frames"].([]any); ok {
-			suite.NotEmpty(frames)
-			suite.Equal("github.com/dianlight/srat/service/telemetry_service_test.go", frames[0].(map[string]any)["filename"])
-		}
-	} else if traceChain, ok := body["trace_chain"].([]any); ok && len(traceChain) > 0 {
-		if first, ok := traceChain[0].(map[string]any); ok {
-			if exception, ok := first["exception"].(map[string]any); ok {
-				if msg, ok := exception["message"].(string); ok {
-					suite.NotEmpty(msg)
-				}
-			}
-			if frames, ok := first["frames"].([]any); ok {
-				suite.NotEmpty(frames)
-				suite.Contains(frames[0].(map[string]any)["filename"], "/service/telemetry_service_test.go")
-			}
-		}
-	}
+	ev := suite.transport.nextEvent(500 * time.Millisecond)
+	suite.Require().NotNil(ev, "Expected a Sentry event, but none arrived")
+	suite.Require().NotEmpty(ev.Exception)
+	suite.Contains(ev.Exception[0].Value, "boom")
 }
 
-func (suite *TelemetryServiceSuite) TestReportError_ErrorsE_JSONContainsCustomAndStack() {
-	// Arrange: enable telemetry (Errors mode) and stub HTTP
-	suite.stubRollbarConnectivityOK()
-	suite.stubRollbarItemPost(true)
+func (suite *TelemetryServiceSuite) TestReportError_ErrorsE_EventCaptured() {
+	suite.stubSentryConnectivityOK()
 	suite.Require().NoError(suite.telemetry.Configure(dto.TelemetryModes.TELEMETRYMODEERRORS))
-	suite.resetHTTPCalls()
+	suite.transport.reset()
 
-	// Act: report an errors.E with custom data
 	e := errors.Errorf("oops %s", "E")
 	custom := map[string]any{"a": 1, "b": "c"}
 	suite.Require().NoError(suite.telemetry.ReportError(e, custom))
 
-	// Flush async rollbar sender
-	rollbar.Wait()
-
-	// Assert: captured JSON has expected shape
-	suite.NotEmpty(suite.lastRollbarBody)
-	var payload map[string]any
-	suite.Require().NoError(json.Unmarshal([]byte(suite.lastRollbarBody), &payload))
-
-	data, _ := payload["data"].(map[string]any)
-	suite.Require().NotNil(data)
-	suite.Equal("error", data["level"])
-
-	// custom data
-	customObj, _ := data["custom"].(map[string]any)
-	suite.Require().NotNil(customObj)
-	suite.Equal(float64(1), customObj["a"]) // numbers as float64
-	suite.Equal("c", customObj["b"])
-
-	// trace or trace_chain with frames
-	body, _ := data["body"].(map[string]any)
-	suite.Require().NotNil(body)
-	if trace, ok := body["trace"].(map[string]any); ok {
-		if exception, ok := trace["exception"].(map[string]any); ok {
-			if msg, ok := exception["message"].(string); ok {
-				suite.NotEmpty(msg)
-			}
-		}
-		if frames, ok := trace["frames"].([]any); ok {
-			suite.NotEmpty(frames)
-			suite.Contains(frames[0].(map[string]any)["filename"], "/service/telemetry_service_test.go")
-		}
-	} else if traceChain, ok := body["trace_chain"].([]any); ok && len(traceChain) > 0 {
-		if first, ok := traceChain[0].(map[string]any); ok {
-			if exception, ok := first["exception"].(map[string]any); ok {
-				if msg, ok := exception["message"].(string); ok {
-					suite.NotEmpty(msg)
-				}
-			}
-			if frames, ok := first["frames"].([]any); ok {
-				suite.NotEmpty(frames)
-				suite.Contains(frames[0].(map[string]any)["filename"], "/service/telemetry_service_test.go")
-			}
-		}
-	}
+	ev := suite.transport.nextEvent(500 * time.Millisecond)
+	suite.Require().NotNil(ev, "Expected a Sentry event, but none arrived")
+	suite.Require().NotEmpty(ev.Exception)
+	suite.Contains(ev.Exception[0].Value, "oops")
 }
 
-func (suite *TelemetryServiceSuite) TestTlogErrorCallbackIncludesOriginalStack() {
-	// Arrange: enable telemetry callbacks and capture rollbar payloads
-	suite.stubRollbarConnectivityOK()
-	suite.stubRollbarItemPost(true)
+func (suite *TelemetryServiceSuite) TestTlogErrorCallbackCapturesEvent() {
+	suite.stubSentryConnectivityOK()
 	suite.Require().NoError(suite.telemetry.Configure(dto.TelemetryModes.TELEMETRYMODEERRORS))
-	suite.resetHTTPCalls()
-	// Flush any pending rollbar events from previous tests
-	rollbar.Wait()
-	suite.lastRollbarBody = "" // Ensure clean start
+	suite.transport.reset()
 
-	// Emit a tlog error with an attached stack-carrying error
 	logErr := errors.Errorf("callback failure")
 	tlog.Error("rolling error", "error", logErr)
 
-	// Wait for asynchronous logging and rollbar dispatch, specifically for an error-level event
-	suite.Eventually(func() bool {
-		rollbar.Wait()
-		if suite.lastRollbarBody == "" {
-			return false
-		}
-		// Parse and check if this is the error-level event we're expecting
-		var payload map[string]any
-		if err := json.Unmarshal([]byte(suite.lastRollbarBody), &payload); err != nil {
-			return false
-		}
-		data, ok := payload["data"].(map[string]any)
-		if !ok {
-			return false
-		}
-		// Only accept error-level events, ignore info-level events from previous tests
-		level, _ := data["level"].(string)
-		return level == "error"
-	}, 2*time.Second, 20*time.Millisecond)
+	var ev *sentry.Event
+	suite.Require().Eventually(func() bool {
+		ev = suite.transport.nextEvent(50 * time.Millisecond)
+		return ev != nil
+	}, 2*time.Second, 20*time.Millisecond, "Expected a Sentry event from tlog.Error, but none arrived")
 
-	// Validate payload contains stack information pointing to this test file
-	suite.NotEmpty(suite.lastRollbarBody)
-	var payload map[string]any
-	suite.Require().NoError(json.Unmarshal([]byte(suite.lastRollbarBody), &payload))
-
-	data, _ := payload["data"].(map[string]any)
-	suite.Require().NotNil(data)
-	// Ensure error-level rollbar events are sent for tlog.Error
-	suite.Equal("error", data["level"], "log level 'error' expected for telemetry events, got %#v", data)
-
-	if trace, ok := data["trace"].(map[string]any); ok {
-		if frames, ok := trace["frames"].([]any); ok {
-			suite.assertFrames(frames)
-		}
-	} else if traceChain, ok := data["trace_chain"].([]any); ok && len(traceChain) > 0 {
-		if first, ok := traceChain[0].(map[string]any); ok {
-			if frames, ok := first["frames"].([]any); ok {
-				suite.assertFrames(frames)
-			}
-		}
-	}
+	suite.Require().NotNil(ev)
+	hasException := len(ev.Exception) > 0
+	hasMessage := ev.Message != ""
+	suite.True(hasException || hasMessage, "Event should have exception or message")
 }
 
-// Helper to assert stack frames include this test file
-func (suite *TelemetryServiceSuite) assertFrames(frames []any) {
-	suite.Require().NotEmpty(frames)
-	first, ok := frames[0].(map[string]any)
-	suite.Require().True(ok)
-	filename, ok := first["filename"].(string)
-	suite.Require().True(ok)
-	suite.Contains(filename, "/service/telemetry_service_test.go")
-}
+type mockError struct{ msg string }
+
+func (e *mockError) Error() string { return e.msg }

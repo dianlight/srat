@@ -49,7 +49,7 @@ SRAT (SambaNAS REST Administration Tool) is a system designed to provide a simpl
 - github.com/glebarez/sqlite v1.11.0 (SQLite database)
 - gorm.io/gorm v1.30.1 (ORM)
 - github.com/danielgtaylor/huma/v2 v2.34.1 (API framework)
-- github.com/rollbar/rollbar-go v1.4.8 (Error reporting)
+- github.com/getsentry/sentry-go v0.46.2 (Error reporting)
 
 #### Build & Installation
 
@@ -87,7 +87,7 @@ cd backend/src && go test ./...
 - @reduxjs/toolkit v2.8.2 (State management)
 - react-router-dom v7.6.2 (Routing)
 - react-hook-form v7.57.0 (Form handling)
-- rollbar v2.26.4 (Error reporting)
+- @sentry/react (Error reporting)
 
 **Development Dependencies**:
 

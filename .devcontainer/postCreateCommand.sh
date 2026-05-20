@@ -57,7 +57,8 @@ prompt_for_var() {
 prompt_for_var HOMEASSISTANT_IP "Enter the IP address of your Home Assistant instance" "192.168.0.68" 10
 prompt_for_var HOMEASSISTANT_SSH_USER "Enter the SSH username for your Home Assistant instance" "root" 10
 prompt_for_var SUPERVISOR_TOKEN "Enter your Home Assistant Supervisor Token" "" 60
-prompt_for_var ROLLBAR_CLIENT_ACCESS_TOKEN "Enter your Rollbar Client Access Token" "" 60
+prompt_for_var SENTRY_DSN "Enter your Sentry DSN (backend)" "" 60
+prompt_for_var VITE_SENTRY_DSN "Enter your Sentry DSN (frontend)" "" 60
 prompt_for_var GIST_TOKEN "Enter your GitHub Gist Token (with 'gist' scope)" "" 60
 
 echo "Environment variables processed. Check ${ENV_FILE}"

@@ -30,13 +30,10 @@ flag "--version <version>" help="Build version"  env="VERSION"
 flag "--arch <arch>" help="Target architecture" env="ARCH" {
   choices "x86_64" "aarch64"
 }
-flag "--rollbar_env <rollbar_env>" help="Rollbar environment" env="ROLLBAR_ENVIRONMENT" {
-  choices "development" "prerelease" "production"
-}
+flag "--sentry_dsn <sentry_dsn>" help="Sentry DSN" env="SENTRY_DSN"
 flag "--pprof" help="Include pprof profiling support" 
 flag "--zig" help="Use Zig as the C compiler for musl builds (Linux)"
 flag "--cgo" help="Enable CGO for the build (default: disabled)"
-arg "<rollbar_token>" help="Rollbar client access token" env="ROLLBAR_CLIENT_ACCESS_TOKEN"
 arg "<gist_token>" help="GitHub Gist token" env="GIST_TOKEN"
 '''
 depends = [
@@ -47,7 +44,7 @@ depends = [
 run = [
     'mise //frontend:build:static --version ${usage_version?} src/web/static',
     'mise //custom_components:package-hacs -- --output ../backend/src/internal/assets/srat.zip --version ${usage_version?}',
-    'echo Building ${usage_version?} for architecture ${usage_arch?} [tags=p${usage_pprof:+prof},embedallowed] [rollbar_env=${usage_rollbar_env?}]...',
+    'echo Building ${usage_version?} for architecture ${usage_arch?} [tags=p${usage_pprof:+prof},embedallowed]...',
     'mkdir -p dist/${usage_arch?} || :',
     'touch dist/${usage_arch?}/.keep',
     '''
@@ -67,8 +64,7 @@ run = [
            -X github.com/dianlight/srat/config.Version="${usage_version?}" \
            -X github.com/dianlight/srat/config.CommitHash=$(git rev-parse --short HEAD) \
            -X github.com/dianlight/srat/config.BuildTimestamp=$(date +%Y-%m-%dT%H:%M:%S) \
-           -X github.com/dianlight/srat/config.RollbarToken=${usage_rollbar_token?} \
-           -X github.com/dianlight/srat/config.RollbarEnvironment=${usage_rollbar_env?} \
+              -X github.com/dianlight/srat/config.SentryDSN=${usage_sentry_dsn:-disabled} \
            -X github.com/dianlight/srat/config.GistToken=${usage_gist_token?}" -o ../dist/${usage_arch?}/ ./...
     ''',
     'echo Verifying embedded version in dist/${usage_arch?}/srat-server...',

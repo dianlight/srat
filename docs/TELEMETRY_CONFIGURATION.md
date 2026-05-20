@@ -1,273 +1,80 @@
 # Telemetry Configuration Guide
 
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-
-- [Overview](#overview)
-- [Environment Variables](#environment-variables)
-  - [back-end (Go)](#back-end-go)
-  - [Frontend (TypeScript)](#frontend-typescript)
-- [Version Management](#version-management)
-  - [back-end](#back-end)
-  - [Frontend](#frontend)
-- [Environment Detection](#environment-detection)
-  - [Automatic Environment Detection](#automatic-environment-detection)
-  - [Manual Override](#manual-override)
-- [Build-time Configuration](#build-time-configuration)
-  - [Local Development](#local-development)
-  - [CI/CD (GitHub Actions)](#cicd-github-actions)
-  - [Docker Builds](#docker-builds)
-- [Token Types](#token-types)
-  - [Unified Rollbar Token](#unified-rollbar-token)
-- [Security Considerations](#security-considerations)
-- [Fallback Behavior](#fallback-behavior)
-- [Testing Configuration](#testing-configuration)
-- [Example Configurations](#example-configurations)
-  - [Development Setup](#development-setup)
-  - [Production CI/CD](#production-cicd)
-  - [Prerelease Environment](#prerelease-environment)
-  - [Staging Environment](#staging-environment)
-- [Troubleshooting](#troubleshooting)
-  - [Common Issues](#common-issues)
-  - [Debug Steps](#debug-steps)
-  - [Version-based Environment Examples](#version-based-environment-examples)
-- [Frontend integration notes](#frontend-integration-notes)
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-
-This document explains how to configure Rollbar telemetry tokens, environment, and version information for the SRAT project at build time.
+Telemetry in SRAT is powered by **Sentry** and remains controlled by the existing four consent modes (`ask`, `all`, `errors`, `disabled`).
 
 ## Overview
 
-The SRAT telemetry system uses Rollbar for error reporting and analytics. Configuration values are set at build time through environment variables and automatically determined from the build context.
+SRAT uses build-time configuration for telemetry DSN values:
+
+- **Server**: `SENTRY_DSN` is embedded via Go linker flags into `config.SentryDSN`
+- **Frontend**: `VITE_SENTRY_DSN` is injected at build time and read by the frontend macro layer
+
+Environment (`development`, `prerelease`, `production`) is detected at runtime from the version string.
 
 ## Environment Variables
 
-### back-end (Go)
+### Server (Go)
 
-| Variable                      | Required | Description                                  | Default                                                                  |
-| ----------------------------- | -------- | -------------------------------------------- | ------------------------------------------------------------------------ |
-| `ROLLBAR_CLIENT_ACCESS_TOKEN` | No       | Rollbar access token (set at build time)     | `""` (disabled)                                                          |
-| `ROLLBAR_ENVIRONMENT`         | No       | Rollbar environment name (set at build time) | Autodetected from version (`development`, `prerelease`, or `production`) |
-
-**Note**: back-end telemetry configuration is set at **build time** via ldflags, not runtime environment variables.
+| Variable | Required | Description | Default |
+| --- | --- | --- | --- |
+| `SENTRY_DSN` | No | Server Sentry DSN (embedded at build time) | `disabled` |
 
 ### Frontend (TypeScript)
 
-| Variable                      | Required | Description                                                              | Default    |
-| ----------------------------- | -------- | ------------------------------------------------------------------------ | ---------- |
-| `ROLLBAR_CLIENT_ACCESS_TOKEN` | No       | Client-side Rollbar access token (injected at build time via Bun define) | `disabled` |
+| Variable | Required | Description | Default |
+| --- | --- | --- | --- |
+| `VITE_SENTRY_DSN` | No | Frontend Sentry DSN (injected at build time) | `disabled` |
 
-## Version Management
+## Build-Time Configuration
 
-### back-end
+### Server linker flags
 
-The back-end version and telemetry configuration are automatically set at build time using Go ldflags:
+The server build task sets:
 
-```bash
--ldflags="-X github.com/dianlight/srat/config.Version=$(VERSION) \
-          -X github.com/dianlight/srat/config.RollbarToken=$(ROLLBAR_CLIENT_ACCESS_TOKEN) \
-          -X github.com/dianlight/srat/config.RollbarEnvironment=$(ROLLBAR_ENVIRONMENT)"
-```
+- `-X github.com/dianlight/srat/config.SentryDSN=${SENTRY_DSN:-disabled}`
 
-The version is sourced from:
+Version metadata is also embedded at build time and used for environment detection.
 
-1. `VERSION` environment variable (for CI/CD)
-2. Git tags via `git describe --tags --always --abbrev=0 --match='[0-9]*.[0-9]*.[0-9]*'`
+### Frontend build injection
 
-The telemetry tokens are read from environment variables at **build time** and embedded into the binary.
-
-### Frontend
-
-The frontend version comes from `package.json` and can be updated by the `scripts/update-frontend-version.sh` script based on Git tags.
+Set `VITE_SENTRY_DSN` in your environment before frontend build.
 
 ## Environment Detection
 
-### Automatic Environment Detection
+Environment is determined from version automatically:
 
-If `ROLLBAR_ENVIRONMENT` is not set at build time, the environment is automatically determined based on semantic versioning:
+- `*-dev.*` or `0.0.0-dev.0` → `development`
+- `*-rc.*` → `prerelease`
+- otherwise → `production`
 
-- **Development**: Version contains `-dev.` suffix or equals `0.0.0-dev.0`
-- **Prerelease**: Version contains `-rc.` suffix (release candidates)
-- **Production**: All other versions
+## Local Development
 
-### Manual Override
+Optional `.env` example:
 
-Set `ROLLBAR_ENVIRONMENT` at build time to override automatic detection:
+- `SENTRY_DSN=disabled`
+- `VITE_SENTRY_DSN=disabled`
 
-```bash
-export ROLLBAR_ENVIRONMENT="staging"
-mise run //backend:build
-```
+Then run normal build/test tasks.
 
-## Build-time Configuration
+## Continuous Integration and Delivery (GitHub Actions)
 
-### Local Development
+Recommended secrets:
 
-1. **Create `.env` file** (optional):
+- `SENTRY_DSN`
+- `VITE_SENTRY_DSN`
 
-   ```bash
-   # Unified Rollbar token (used for both backend and frontend)
-   ROLLBAR_CLIENT_ACCESS_TOKEN=your_rollbar_token_here
-
-   # Override environment (embedded at build time)
-   ROLLBAR_ENVIRONMENT=development
-   ```
-
-2. **Source environment and build**:
-
-   ```bash
-   source .env
-   mise run //backend:build
-   ```
-
-   Or set variables inline:
-
-   ```bash
-   ROLLBAR_CLIENT_ACCESS_TOKEN=token mise run //backend:build
-   ```
-
-### CI/CD (GitHub Actions)
-
-Add secrets to your GitHub repository:
-
-1. Go to **Settings** → **Secrets and variables** → **Actions**
-2. Add the following secrets:
-   - `ROLLBAR_CLIENT_ACCESS_TOKEN` (unified Rollbar token)
-
-The build workflow will automatically use these tokens.
-
-### Docker Builds
-
-Pass environment variables to the Docker build:
-
-```bash
-docker build \
-  --build-arg ROLLBAR_CLIENT_ACCESS_TOKEN="your_rollbar_token" \
-  .
-```
-
-## Token Types
-
-### Unified Rollbar Token
-
-- Single token can be used by both back-end and frontend
-- Simplifies configuration and deployment
-- Can be either server-side or client-side token depending on your Rollbar setup
-- Required for error reporting from both components
-
-Note: Using a single token simplifies configuration but consider security implications in your specific deployment. If preferred, you can supply different tokens for back-end and frontend by customizing your build pipelines.
-
-## Security Considerations
-
-1. **Never commit tokens** to the repository
-2. **Use different tokens** for development and production environments
-3. **Token will be visible** in both server logs and client JavaScript
-4. **Consider token scope** when choosing between server-side and client-side tokens
+These are consumed by the build workflow environment.
 
 ## Fallback Behavior
 
-When tokens are not configured at build time:
+When DSN values are `disabled` or empty:
 
-- back-end telemetry service initializes with empty token (disabled)
-- Frontend telemetry service initializes with `accessToken: "disabled"`
-- No data is sent to Rollbar
-- Application functions normally
-- Users can still configure telemetry mode in settings (but it won't work without valid tokens)
-
-## Testing Configuration
-
-1. **Check token presence** (before building):
-
-   ```bash
-   # Unified token for both backend and frontend
-   echo $ROLLBAR_CLIENT_ACCESS_TOKEN
-   ```
-
-2. **Build with tokens**:
-
-   ```bash
-   ROLLBAR_CLIENT_ACCESS_TOKEN=your_token mise run //backend:build
-   ```
-
-3. **Verify version detection**:
-   - Check back-end logs for "Rollbar telemetry configured" message
-   - Check frontend console for telemetry configuration message
-
-4. **Test error reporting**:
-   - Enable telemetry in settings
-   - Trigger an error
-   - Check Rollbar dashboard for received events
-
-## Example Configurations
-
-### Development Setup
-
-```bash
-export ROLLBAR_CLIENT_ACCESS_TOKEN="dev_rollbar_token_abc123"
-export ROLLBAR_ENVIRONMENT="development"
-```
-
-### Production CI/CD
-
-```yaml
-env:
-  ROLLBAR_CLIENT_ACCESS_TOKEN: ${{ secrets.ROLLBAR_CLIENT_ACCESS_TOKEN }}
-  ROLLBAR_ENVIRONMENT: "production"
-```
-
-### Prerelease Environment
-
-```bash
-export ROLLBAR_CLIENT_ACCESS_TOKEN="prerelease_rollbar_token_def456"
-export ROLLBAR_ENVIRONMENT="prerelease"
-```
-
-### Staging Environment
-
-```bash
-export ROLLBAR_CLIENT_ACCESS_TOKEN="staging_rollbar_token_def456"
-export ROLLBAR_ENVIRONMENT="staging"
-```
+- no telemetry is sent
+- consent UI and telemetry modes still function normally
+- app behavior remains unchanged
 
 ## Troubleshooting
 
-### Common Issues
-
-1. **"Rollbar telemetry disabled"**: Token not set at build time or set to empty string
-2. **Version shows as "0.0.0-dev.0"**: Build ldflags not properly configured
-3. **Frontend telemetry not working**: `ROLLBAR_CLIENT_ACCESS_TOKEN` not defined at build time
-4. **Wrong environment detected**: Set `ROLLBAR_ENVIRONMENT` explicitly at build time
-
-### Debug Steps
-
-1. Check environment variables are set before building
-2. Verify tokens are valid in Rollbar dashboard
-3. Rebuild with proper environment variables set
-4. Check browser network tab for Rollbar API calls
-5. Review server logs for telemetry service messages
-6. Ensure internet connectivity for Rollbar API
-
-### Version-based Environment Examples
-
-| Version Example    | Detected Environment | Description                  |
-| ------------------ | -------------------- | ---------------------------- |
-| `1.0.0`            | `production`         | Standard release             |
-| `1.0.0-dev.1`      | `development`        | Development build            |
-| `1.0.0-rc.1`       | `prerelease`         | Release candidate            |
-| `2.1.3-dev.abc123` | `development`        | Development with commit hash |
-| `2.1.3-rc.2`       | `prerelease`         | Second release candidate     |
-| `0.0.0-dev.0`      | `development`        | Default development version  |
-
-## Frontend integration notes
-
-- Rollbar is provided via `@rollbar/react` provider using `createRollbarConfig()`
-- Use `useRollbarTelemetry` hook to send errors/events respecting user-selected mode
-- Events are sent only in `All` mode; errors in `All` and `Errors`; no data is sent in `Ask` or `Disabled`
-
-1. Check environment variables are set before building
-2. Verify tokens are valid in Rollbar dashboard
-3. Rebuild with proper environment variables set
-4. Check browser network tab for Rollbar API calls
-5. Review server logs for telemetry service messages
-6. Ensure internet connectivity for Rollbar API
+- **Telemetry disabled**: confirm `SENTRY_DSN` / `VITE_SENTRY_DSN` values at build time
+- **Wrong environment in Sentry**: verify version naming (`-dev`, `-rc`, release)
+- **No frontend events**: ensure `VITE_SENTRY_DSN` is present during frontend build

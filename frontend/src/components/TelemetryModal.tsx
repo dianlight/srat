@@ -109,9 +109,9 @@ const TelemetryModal: React.FC<TelemetryModalProps> = ({ open, onClose }) => {
 
           <Alert severity="info" sx={{ mb: 2 }}>
             <Typography variant="body2">
-              All data is sent securely to Rollbar servers and is used solely
-              for improving the software. No personal information or file
-              contents are transmitted.
+              All data is sent securely to Sentry servers and is used solely for
+              improving the software. No personal information or file contents
+              are transmitted.
             </Typography>
           </Alert>
 

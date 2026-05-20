@@ -1,0 +1,42 @@
+name: Sentry Create Release Tag
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  set-environment:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.setenv.outputs.environment }}
+    steps:
+      - name: Set environment variable based on version
+        id: setenv
+        run: |
+          VERSION="${{ github.event.release.tag_name }}"
+          if [[ "$VERSION" == *"-dev."* ]]; then
+            echo "environment=development" >> $GITHUB_OUTPUT
+          elif [[ "$VERSION" == *"-rc."* ]]; then
+            echo "environment=prerelease" >> $GITHUB_OUTPUT
+          else
+            echo "environment=production" >> $GITHUB_OUTPUT
+          fi
+  create-sentry-release:
+    name: Sentry Release Tracking
+    runs-on: ubuntu-latest
+    needs: set-environment
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Create Sentry release
+        if: secrets.SENTRY_AUTH_TOKEN != '' && secrets.SENTRY_ORG != '' && secrets.SENTRY_PROJECT != ''
+        uses: getsentry/action-release@v3
+        id: sentry_release
+        with:
+          environment: ${{ needs.set-environment.outputs.environment }}
+          release: ${{ github.event.release.tag_name || github.sha }}
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}

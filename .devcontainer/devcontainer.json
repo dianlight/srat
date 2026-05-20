@@ -64,8 +64,8 @@
         "GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}",
         "CONTEXT7_API_KEY": "${localEnv:CONTEXT7_API_KEY}",
         "HOMEASSISTANT_IP": "${containerEnv:HOMEASSISTANT_IP}",
-        "ROLLBAR_MCP_ACCESS_TOKEN": "${localEnv:ROLLBAR_MCP_ACCESS_TOKEN}",
-        "ROLLBAR_CLIENT_ACCESS_TOKEN": "${localEnv:ROLLBAR_CLIENT_ACCESS_TOKEN}",
+        "SENTRY_DSN": "${localEnv:SENTRY_DSN}",
+        "VITE_SENTRY_DSN": "${localEnv:VITE_SENTRY_DSN}",
         "GIST_TOKEN": "${localEnv:GIST_TOKEN}",
         "HOST_PROJECT_PATH": "${localWorkspaceFolder}",
         "MISE_EXPERIMENTAL": "1"

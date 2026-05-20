@@ -40,6 +40,8 @@ To start the dev server with hot reload:
 mise run //frontend:dev
 ```
 
+`//frontend:dev`, `//frontend:dev:remote`, and `//frontend:debug:remote` now run a preflight port check. If port `3080` is occupied by a stale local `python3 -m http.server` process, SRAT automatically stops it and continues startup. If port `3080` is used by any other process, the task fails fast with a clear message so you can resolve the conflict safely.
+
 To build the production bundle (outputs to `../backend/src/web/static`):
 
 ```sh

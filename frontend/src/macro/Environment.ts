@@ -6,12 +6,12 @@ export function getApiUrl(): string {
 
 /*
 export function getServerEventBackend(): string {
-	return process.env.SERVER_EVENT_BACKEND || "ws";
+  return process.env.SERVER_EVENT_BACKEND || "ws";
 }
 */
 
-export function getRollbarClientAccessToken(): string {
-  return readEnv("ROLLBAR_CLIENT_ACCESS_TOKEN") || "disabled";
+export function getSentryDsn(): string {
+  return readEnv("VITE_SENTRY_DSN") || "disabled";
 }
 
 function readEnv(key: string): string | undefined {

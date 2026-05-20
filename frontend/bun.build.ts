@@ -70,7 +70,7 @@ const buildConfig: BuildConfig = {
 	define: {
 		"process.env.APIURL": APIURL,
 		"process.env.NODE_ENV": values.watch || values.serve ? "'development'" : "'production'",
-		"process.env.ROLLBAR_CLIENT_ACCESS_TOKEN": `"${process.env.ROLLBAR_CLIENT_ACCESS_TOKEN || 'disabled'}"`,
+		"process.env.VITE_SENTRY_DSN": `"${process.env.VITE_SENTRY_DSN || 'disabled'}"`,
 		"process.env.SERVER_EVENT_BACKEND": "'WS'", // SSE or WS
 	},
 	*/
@@ -83,7 +83,7 @@ async function build(): Promise<BuildOutput | undefined> {
 	console.log("\tVersion: ", process.env.VERSION || "not provided");
 	console.log("\tNode Environment: ", process.env.NODE_ENV || "not provided");
 	console.log("\tAPI URL: ", process.env.API_URL || "not provided");
-	//console.log("\tRollbar Environment: ", process.env.ROLLBAR_ENVIRONMENT || "not provided");
+	//console.log("\tSentry DSN: ", process.env.VITE_SENTRY_DSN || "not provided");
 	if (!values.serve && !values.watch) {
 		console.log(`\tMode: Build ${import.meta.dir}/src -> ${values.outDir}`);
 		return Bun.build(buildConfig).then((result) => {
