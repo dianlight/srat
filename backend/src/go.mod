@@ -27,7 +27,7 @@ require (
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/getsentry/sentry-go v0.46.2
 	github.com/gofri/go-github-ratelimit/v2 v2.0.2
-	github.com/google/go-github/v86 v86.0.0
+	github.com/google/go-github/v88 v88.0.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/jarcoal/httpmock v1.4.1
 	github.com/lonegunmanb/go-defaults v1.4.0
