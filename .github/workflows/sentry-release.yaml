@@ -27,7 +27,7 @@ jobs:
     needs: set-environment
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Create Sentry release
         if: secrets.SENTRY_AUTH_TOKEN != '' && secrets.SENTRY_ORG != '' && secrets.SENTRY_PROJECT != ''
