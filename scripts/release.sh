@@ -208,6 +208,16 @@ done
 
 confirm "Proceed to STEP 3: Finalize and Publish release $NEXT_VERSION?"
 
+# Re-fetch the draft release ID by tag name in case CI recreated it
+log "[PUBLISH STEP 3] Re-fetching draft release for tag $NEXT_VERSION..."
+FRESH_DRAFT_ID=$(gh api repos/:owner/:repo/releases --jq ".[] | select(.draft == true and .tag_name == \"$NEXT_VERSION\") | .id" | head -n 1)
+if [[ -n "$FRESH_DRAFT_ID" ]]; then
+	log "Using fresh draft release ID: $FRESH_DRAFT_ID"
+	DRAFT_ID="$FRESH_DRAFT_ID"
+else
+	log "No draft found by tag; falling back to previously captured ID: $DRAFT_ID"
+fi
+
 # STEP 3: Remove draft state and publish
 log "[PUBLISH STEP 3] Publishing release..."
 MAX_RETRIES=5
