@@ -31,7 +31,7 @@ jobs:
 
       - name: Create Sentry release
         if: secrets.SENTRY_AUTH_TOKEN != '' && secrets.SENTRY_ORG != '' && secrets.SENTRY_PROJECT != ''
-        uses: getsentry/action-release@v3
+        uses: getsentry/action-release@5657c9e888b4e2cc85f4d29143ea4131fde4a73a # v3
         id: sentry_release
         with:
           environment: ${{ needs.set-environment.outputs.environment }}
