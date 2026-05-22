@@ -215,6 +215,7 @@
         "type=bind,source=${localEnv:HOME}/.ssh,target=/root/.ssh,readonly",
         "type=bind,source=${localEnv:HOME}/.gitconfig,target=/root/.gitconfig,readonly",
         "type=bind,source=${localEnv:HOME}/.config/github-copilot,target=/root/.config/github-copilot,readonly",
-        "type=bind,source=${localEnv:HOME}/.config/opencode,target=/root/.config/opencode"
+        "type=bind,source=${localEnv:HOME}/.config/opencode,target=/root/.config/opencode",
+        "type=bind,source=${localEnv:HOME}/.local/share/opencode,target=/root/.local/share/opencode"
     ]
 }
