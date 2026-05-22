@@ -7,7 +7,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/maniartech/signals v1.3.1
 	github.com/mattn/go-isatty v0.0.21 // indirect
-	github.com/oapi-codegen/runtime v1.4.0
+	github.com/oapi-codegen/runtime v1.4.1
 	github.com/pilebones/go-udev v0.9.1
 	github.com/shirou/gopsutil/v4 v4.26.4
 	github.com/stretchr/testify v1.11.1
