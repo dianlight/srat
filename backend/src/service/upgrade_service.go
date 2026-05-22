@@ -25,7 +25,7 @@ import (
 	"github.com/dianlight/srat/internal/urlutil"
 	"github.com/dianlight/tlog"
 	"github.com/fsnotify/fsnotify"
-	"github.com/google/go-github/v86/github"
+	"github.com/google/go-github/v88/github"
 	"github.com/vvair/selfupdate"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"

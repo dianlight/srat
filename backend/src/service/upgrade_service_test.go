@@ -19,7 +19,7 @@ import (
 
 	"aead.dev/minisign"
 	"github.com/gofri/go-github-ratelimit/v2/github_ratelimit"
-	"github.com/google/go-github/v86/github"
+	"github.com/google/go-github/v88/github"
 	"github.com/jarcoal/httpmock"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
@@ -109,7 +109,9 @@ func (suite *UpgradeServiceTestSuite) SetupTest() {
 			//mock.Mock[repository.PropertyRepositoryInterface],
 			func() *github.Client {
 				rateLimiter := github_ratelimit.New(nil)
-				return github.NewClient(&http.Client{Transport: rateLimiter})
+				client, err := github.NewClient(github.WithHTTPClient(&http.Client{Transport: rateLimiter}))
+				suite.Require().NoError(err, "failed to create GitHub client")
+				return client
 			},
 		),
 		fx.Populate(&suite.ctx, &suite.cancel),

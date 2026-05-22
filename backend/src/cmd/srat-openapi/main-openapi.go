@@ -12,6 +12,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 
 	"github.com/dianlight/srat/api"
+	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal"
 	"github.com/dianlight/srat/internal/appsetup"
@@ -38,6 +39,12 @@ func applyMockEnv(enabled bool) {
 	}
 }
 
+func applyOpenAPIGenerationDefaults() {
+	if config.GistToken == "" {
+		config.GistToken = "srat-openapi"
+	}
+}
+
 func main() {
 	// set global logger with custom options
 	logLevelString := flag.String("loglevel", "info", "Log level string (debug, info, warn, error)")
@@ -50,6 +57,7 @@ func main() {
 
 	flag.Parse()
 	applyMockEnv(*mockMode)
+	applyOpenAPIGenerationDefaults()
 
 	yamlPath, jsonPath := openAPIFilenames(*output)
 

@@ -12,7 +12,7 @@ import (
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service"
-	"github.com/google/go-github/v86/github"
+	"github.com/google/go-github/v88/github"
 	"github.com/jarcoal/httpmock"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
@@ -60,7 +60,9 @@ func (suite *IssueReportServiceSuite) SetupTest() {
 			mock.Mock[service.AddonsServiceInterface],
 			mock.Mock[service.SettingServiceInterface],
 			func() *github.Client {
-				return github.NewClient(githubHTTPClient)
+				client, err := github.NewClient(github.WithHTTPClient(githubHTTPClient))
+				suite.Require().NoError(err)
+				return client
 			},
 		),
 		fx.Populate(&suite.issueReportService),

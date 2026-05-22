@@ -2,6 +2,7 @@ package appsetup
 
 import (
 	"context"
+	"log"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -28,7 +29,7 @@ import (
 	"github.com/dianlight/srat/unixsamba"
 	"github.com/dianlight/tlog"
 	"github.com/gofri/go-github-ratelimit/v2/github_ratelimit"
-	"github.com/google/go-github/v86/github"
+	"github.com/google/go-github/v88/github"
 	"github.com/oapi-codegen/oapi-codegen/v2/pkg/securityprovider"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxevent"
@@ -66,11 +67,13 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 			func(ctx context.Context) events.EventBusInterface { return events.NewEventBus(ctx) },
 			func() *github.Client {
 				rateLimiter := github_ratelimit.New(nil)
-				client := github.NewClient(&http.Client{
-					Transport: rateLimiter,
-				})
-				if config.GistToken != "" {
-					client = client.WithAuthToken(config.GistToken)
+				client, err := github.NewClient(
+					github.WithAuthToken(config.GistToken),
+					github.WithUserAgent("SRAT/"+config.Version),                // Set a custom User-Agent
+					github.WithHTTPClient(&http.Client{Transport: rateLimiter}), // Use the rate limiter in the HTTP client
+				)
+				if err != nil {
+					log.Fatalf("Failed to create GitHub client: %v", err)
 				}
 				return client
 			},

@@ -10,7 +10,7 @@ import (
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
-	"github.com/google/go-github/v86/github"
+	"github.com/google/go-github/v88/github"
 	"github.com/shirou/gopsutil/v4/net"
 	"github.com/shirou/gopsutil/v4/process"
 	"github.com/stretchr/testify/assert"

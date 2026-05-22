@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/dianlight/srat/config"
 )
 
 func TestOpenAPIGenerationCreatesFiles(t *testing.T) {
@@ -104,5 +106,24 @@ func TestApplyMockEnv(t *testing.T) {
 	applyMockEnv(true)
 	if value := os.Getenv("SRAT_MOCK"); value != "true" {
 		t.Fatalf("expected SRAT_MOCK to be true, got %q", value)
+	}
+}
+
+func TestApplyOpenAPIGenerationDefaults(t *testing.T) {
+	original := config.GistToken
+	t.Cleanup(func() {
+		config.GistToken = original
+	})
+
+	config.GistToken = ""
+	applyOpenAPIGenerationDefaults()
+	if config.GistToken == "" {
+		t.Fatalf("expected applyOpenAPIGenerationDefaults to set a non-empty GistToken")
+	}
+
+	config.GistToken = "keep-me"
+	applyOpenAPIGenerationDefaults()
+	if config.GistToken != "keep-me" {
+		t.Fatalf("expected existing GistToken to be preserved, got %q", config.GistToken)
 	}
 }

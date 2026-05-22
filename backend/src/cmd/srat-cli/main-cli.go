@@ -22,7 +22,7 @@ import (
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/tlog"
 	"github.com/gofri/go-github-ratelimit/v2/github_ratelimit"
-	"github.com/google/go-github/v86/github"
+	"github.com/google/go-github/v88/github"
 
 	"go.uber.org/fx"
 )
@@ -247,9 +247,15 @@ func main() {
 				fx.Provide(
 					func() *github.Client {
 						rateLimiter := github_ratelimit.New(nil)
-						return github.NewClient(&http.Client{
-							Transport: rateLimiter,
-						})
+						client, err := github.NewClient(
+							github.WithHTTPClient(
+								&http.Client{
+									Transport: rateLimiter,
+								}))
+						if err != nil {
+							log.Fatalf("Failed to create GitHub client: %v", err)
+						}
+						return client
 					},
 					service.NewUpgradeService,
 				),
