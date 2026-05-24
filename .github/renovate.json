@@ -33,6 +33,15 @@
   ],
   "abandonmentThreshold": "8 years",
   "dependencyDashboardAutoclose": true,
+  "mise": {
+    "managerFilePatterns": [
+      "**/{,.}mise{,.*}.toml",
+      "**/{,.}mise/config{,.*}.toml",
+      "**/.config/mise{,.*}.toml",
+      "**/.config/mise/{mise,config}{,.*}.toml",
+      "**/.config/mise/conf.d/*.toml"
+    ]
+  },
   "customManagers": [
     {
       "customType": "regex",
