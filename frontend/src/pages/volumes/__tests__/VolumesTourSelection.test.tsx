@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 describe("Volumes tour selection", () => {
     it("prefers the first visible partition for guided tour selection", async () => {
-        const { getTourVolumeSelection } = await import("../Volumes");
+        const { getTourVolumeSelection } = await import("../tourSelection");
 
         const selection = getTourVolumeSelection([
             {
@@ -19,7 +19,7 @@ describe("Volumes tour selection", () => {
     });
 
     it("falls back to the first disk when no partitions are visible", async () => {
-        const { getTourVolumeSelection } = await import("../Volumes");
+        const { getTourVolumeSelection } = await import("../tourSelection");
 
         const selection = getTourVolumeSelection([
             {
