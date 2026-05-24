@@ -9,6 +9,34 @@ import { TabIDs } from "../../store/locationState";
 import { NavBar } from "../NavBar";
 import { createTestStore } from "/test/testing";
 
+const { mockUseUpdateState, confirmMock } = vi.hoisted(() => ({
+    mockUseUpdateState: {
+        current: {
+            update: {
+                Available: false,
+                Progress: {
+                    update_process_state: "Idle",
+                },
+            },
+            isLoading: false,
+        },
+    },
+    confirmMock: vi.fn(() => Promise.resolve({ confirmed: false })),
+}));
+
+vi.mock("@mui/material/styles", async () => {
+    const actual = await vi.importActual<typeof import("@mui/material/styles")>(
+        "@mui/material/styles",
+    );
+    return {
+        ...actual,
+        useColorScheme: () => ({
+            mode: "light",
+            setMode: vi.fn(),
+        }),
+    };
+});
+
 // Mock react-syntax-highlighter to avoid refractor/lib/core dependency issues
 vi.mock("react-syntax-highlighter", () => ({
     default: ({ children, ...props }: any) => {
@@ -56,15 +84,28 @@ vi.mock("../ReportIssueDialog", () => ({
         open ? <div data-testid="mock-report-issue-dialog">Report Issue</div> : null,
 }));
 vi.mock("../../hooks/updateHook", () => ({
-    useUpdate: () => ({ update: null, isLoading: false }),
+    useUpdate: () => mockUseUpdateState.current,
 }));
 vi.mock("../../hooks/useIssueTemplate", () => ({
     useIssueTemplate: () => ({ isAvailable: true }),
+}));
+vi.mock("material-ui-confirm", () => ({
+    useConfirm: () => confirmMock,
 }));
 
 describe("NavBar Component", () => {
     beforeEach(() => {
         localStorage.clear();
+        confirmMock.mockClear();
+        mockUseUpdateState.current = {
+            update: {
+                Available: false,
+                Progress: {
+                    update_process_state: "Idle",
+                },
+            },
+            isLoading: false,
+        };
     });
 
 it("renders NavBar with AppBar and basic elements", async () => {
@@ -1019,5 +1060,58 @@ it("renders NavBar with AppBar and basic elements", async () => {
         handleTourToggle();
         expect(localStorage.getItem("srat_tour_seen")).toBe("true");
         expect(isOpen).toBe(true);
+    });
+
+    it("uses fallback update tooltip and confirm title when release version is missing", async () => {
+        const user = userEvent.setup();
+
+        mockUseUpdateState.current = {
+            update: {
+                Available: true,
+                Progress: {
+                    update_process_state: "Idle",
+                },
+            },
+            isLoading: false,
+        };
+
+        const theme = createTheme();
+        const store = await createTestStore();
+        const mockBodyRef = { current: document.createElement("div") };
+
+        render(
+            React.createElement(
+                MemoryRouter,
+                null,
+                React.createElement(
+                    Provider,
+                    {
+                        store, children:
+                            React.createElement(
+                                ThemeProvider,
+                                { theme },
+                                React.createElement(NavBar as any, {
+                                    error: "",
+                                    bodyRef: mockBodyRef,
+                                }),
+                            ),
+                    },
+                ),
+            ),
+        );
+
+        const updateIcon = screen.getByTestId("DownloadIcon");
+        const updateButton = updateIcon.closest("button");
+        expect(updateButton).toBeTruthy();
+        if (!updateButton) {
+            return;
+        }
+
+        await user.click(updateButton);
+        expect(confirmMock).toHaveBeenCalled();
+        const calls = confirmMock.mock.calls as unknown[][];
+        const firstCall = calls[0];
+        expect(firstCall).toBeTruthy();
+        expect(firstCall?.[0]).toMatchObject({ title: "Update available?" });
     });
 });

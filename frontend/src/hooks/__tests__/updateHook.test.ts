@@ -1,4 +1,9 @@
+import { renderHook, waitFor } from "@testing-library/react";
+import { http, HttpResponse } from "msw";
+import React from "react";
+import { Provider } from "react-redux";
 import { beforeEach, describe, expect, it } from "vitest";
+import { createTestStore, getMswServer } from "/test/testing";
 
 describe("useUpdate hook", () => {
     beforeEach(() => {
@@ -40,5 +45,30 @@ describe("useUpdate hook", () => {
 
         expect(typeof result.current.isLoading).toBe("boolean");
         expect("error" in result.current).toBe(true);
+    });
+
+    it("maps update release asset into progress state", async () => {
+        const { useUpdate } = await import("../updateHook");
+        const store = await createTestStore();
+        const server = getMswServer();
+
+        server.use(
+            http.get(/\/api\/update$/, () =>
+                HttpResponse.json({
+                    last_release: "v9.9.9",
+                }),
+            ),
+        );
+
+        const wrapper = ({ children }: React.PropsWithChildren) =>
+            React.createElement(Provider, { store, children });
+
+        const { result } = renderHook(() => useUpdate(), { wrapper });
+
+        await waitFor(() => {
+            expect(result.current.update.Available).toBe(true);
+            expect(result.current.update.Progress.release_asset?.last_release).toBe("v9.9.9");
+            expect(result.current.update.Progress.update_process_state).toBe("UpgradeAvailable");
+        });
     });
 });

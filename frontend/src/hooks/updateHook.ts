@@ -1,10 +1,19 @@
 import { useEffect, useState } from "react";
 import {
+  type ReleaseAsset,
   Update_process_state,
   type UpdateProgress,
   useGetApiUpdateQuery,
 } from "../store/sratApi";
 import { useGetServerEventsQuery } from "../store/wsApi";
+
+const isReleaseAsset = (value: unknown): value is ReleaseAsset => {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  return "last_release" in value || "arch_asset" in value;
+};
 
 export function useUpdate() {
   const { data, error, isLoading, isSuccess, refetch } = useGetApiUpdateQuery();
@@ -27,8 +36,16 @@ export function useUpdate() {
 
   useEffect(() => {
     if (!isLoading && isSuccess && data) {
-      //console.log("Update data:", data);
-      setUpdate({ Available: true, Progress: data as UpdateProgress });
+      if (isReleaseAsset(data)) {
+        setUpdate({
+          Available: true,
+          Progress: {
+            progress: 0,
+            update_process_state: Update_process_state.UpgradeAvailable,
+            release_asset: data,
+          },
+        });
+      }
     }
   }, [data, isLoading, isSuccess]);
 

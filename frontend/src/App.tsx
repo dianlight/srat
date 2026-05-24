@@ -27,6 +27,7 @@ import {
   type CommandStartedNotification,
   type CommandTerminatedNotification,
   sratApi,
+  Update_process_state,
   useGetApiSettingsAppConfigQuery,
   usePutApiRestartMutation,
 } from "./store/sratApi";
@@ -91,6 +92,8 @@ export function App() {
   }, [dismissWizard]);
   const [backdropOpen, setBackdropOpen] = useState(true);
   const backdropPrevOpen = useRef(undefined as boolean | undefined);
+  const [awaitingUpdateReconnect, setAwaitingUpdateReconnect] = useState(false);
+  const [sawUpdateDisconnect, setSawUpdateDisconnect] = useState(false);
   const [commandSessions, setCommandSessions] = useState<
     Record<string, CommandExecutionSnapshot>
   >({});
@@ -152,6 +155,35 @@ export function App() {
       setShowAddonConfigChangedBanner(true);
     }
   }, [evdata?.app_config_changed]);
+
+  useEffect(() => {
+    const updateState = evdata?.updating?.update_process_state;
+    if (updateState === Update_process_state.NeedRestart) {
+      setAwaitingUpdateReconnect(true);
+      setSawUpdateDisconnect(false);
+    }
+  }, [evdata?.updating?.update_process_state]);
+
+  useEffect(() => {
+    if (!awaitingUpdateReconnect) {
+      return;
+    }
+
+    const isWsConnected = evdata?.__wsConnected === true;
+
+    if (!isWsConnected) {
+      if (!sawUpdateDisconnect) {
+        setSawUpdateDisconnect(true);
+      }
+      return;
+    }
+
+    if (sawUpdateDisconnect) {
+      setAwaitingUpdateReconnect(false);
+      setSawUpdateDisconnect(false);
+      window.location.reload();
+    }
+  }, [awaitingUpdateReconnect, evdata?.__wsConnected, sawUpdateDisconnect]);
 
   useEffect(() => {
     function onBeforeUnload(ev: BeforeUnloadEvent) {

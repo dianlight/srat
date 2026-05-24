@@ -424,9 +424,17 @@ export function NavBar(props: {
     localStorage.setItem("srat_tab", newValue.toString());
   };
 
+  const releaseVersion = update?.Progress.release_asset?.last_release?.trim();
+  const updateDialogTitle = releaseVersion
+    ? `Update to ${releaseVersion}?`
+    : "Update available?";
+  const updateTooltipTitle = releaseVersion
+    ? `Update ${releaseVersion} available`
+    : "Update available";
+
   function handleDoUpdate() {
     confirm({
-      title: `Update to ${update?.Progress.release_asset?.last_release}?`,
+      title: updateDialogTitle,
       description:
         "If you proceed the new version is downloaded and installed.",
     }).then(({ confirmed }) => {
@@ -649,10 +657,7 @@ export function NavBar(props: {
               )}
               {!isUpdateLoading && update.Available && (
                 <IconButton onClick={handleDoUpdate} size="small">
-                  <Tooltip
-                    title={`Update ${update.Progress.release_asset?.last_release || ""} available`}
-                    arrow
-                  >
+                  <Tooltip title={updateTooltipTitle} arrow>
                     {((update_status) => {
                       switch (update_status.update_process_state) {
                         case Update_process_state.Checking:

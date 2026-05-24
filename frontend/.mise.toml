@@ -179,3 +179,8 @@ arg "[version]" help="Build version"
 run = 'bun run version.ts ${usage_version:+-o ${usage_version?}}'
 quiet = true
 hide = true
+
+[tasks.format]
+alias = ["fmt"]
+run = "biome check --write"
+quiet = true

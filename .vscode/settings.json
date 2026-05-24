@@ -18,6 +18,7 @@
 		}
 	],
 	"editor.codeActionsOnSave": {
+		"source.organizeImports.biome": "explicit",
 		"source.sortImports": "explicit",
 		"source.action.useSortedKeys.biome": "explicit",
 		"source.fixAll.biome": "explicit"
@@ -253,5 +254,6 @@
 	"json.schemaDownload.trustedDomains": {
 		"https://opencode.ai/": true
 	},
-	"python.defaultInterpreterPath": "/root/.local/share/mise/installs/python/3.14.5/bin/python"
+	"python.defaultInterpreterPath": "/root/.local/share/mise/installs/python/3.14.5/bin/python",
+	"bun.test.enable": false
 }

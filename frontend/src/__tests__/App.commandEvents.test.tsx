@@ -4,8 +4,7 @@ import { http, HttpResponse } from "msw";
 import React from "react";
 import { Provider } from "react-redux";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getMswServer } from "/test/testing";
-import { createTestStore } from "/test/testing";
+import { createTestStore, getMswServer } from "/test/testing";
 
 const { toastErrorMock, wsStateRef } = vi.hoisted(() => {
   const toastErrorMock = vi.fn((..._args: unknown[]) => undefined);
@@ -530,5 +529,120 @@ describe("App command events", () => {
 
     expect(onOpenOutputMock.mock.calls.length).toBe(1);
     expect(closeToastMock.mock.calls.length).toBe(1);
+  });
+
+  it("reloads after update restart when websocket disconnects then reconnects", async () => {
+    const { App } = await import("../App");
+    const store = await createTestStore();
+    const reloadMock = vi
+      .spyOn(window.location, "reload")
+      .mockImplementation(() => undefined);
+
+    const { rerender } = render(
+      <Provider store={store}>
+        <App />
+      </Provider>,
+    );
+
+    wsStateRef.current = {
+      heartbeat: { alive: true },
+      __wsConnected: true,
+      updating: {
+        update_process_state: "NeedRestart",
+        progress: 100,
+      },
+    };
+
+    rerender(
+      <Provider store={store}>
+        <App />
+      </Provider>,
+    );
+
+    await waitFor(() => {
+      expect(reloadMock).toHaveBeenCalledTimes(0);
+    });
+
+    wsStateRef.current = {
+      heartbeat: { alive: true },
+      __wsConnected: false,
+      updating: {
+        update_process_state: "NeedRestart",
+        progress: 100,
+      },
+    };
+
+    rerender(
+      <Provider store={store}>
+        <App />
+      </Provider>,
+    );
+
+    wsStateRef.current = {
+      heartbeat: { alive: true },
+      __wsConnected: true,
+      updating: {
+        update_process_state: "NeedRestart",
+        progress: 100,
+      },
+    };
+
+    rerender(
+      <Provider store={store}>
+        <App />
+      </Provider>,
+    );
+
+    await waitFor(() => {
+      expect(reloadMock).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("does not reload if websocket never disconnects after NeedRestart", async () => {
+    const { App } = await import("../App");
+    const store = await createTestStore();
+    const reloadMock = vi
+      .spyOn(window.location, "reload")
+      .mockImplementation(() => undefined);
+
+    const { rerender } = render(
+      <Provider store={store}>
+        <App />
+      </Provider>,
+    );
+
+    wsStateRef.current = {
+      heartbeat: { alive: true },
+      __wsConnected: true,
+      updating: {
+        update_process_state: "NeedRestart",
+        progress: 100,
+      },
+    };
+
+    rerender(
+      <Provider store={store}>
+        <App />
+      </Provider>,
+    );
+
+    wsStateRef.current = {
+      heartbeat: { alive: true },
+      __wsConnected: true,
+      updating: {
+        update_process_state: "NeedRestart",
+        progress: 100,
+      },
+    };
+
+    rerender(
+      <Provider store={store}>
+        <App />
+      </Provider>,
+    );
+
+    await waitFor(() => {
+      expect(reloadMock).toHaveBeenCalledTimes(0);
+    });
   });
 });
