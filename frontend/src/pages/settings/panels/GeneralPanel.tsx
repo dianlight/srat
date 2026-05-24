@@ -9,12 +9,13 @@ import {
 import IconButton from "@mui/material/IconButton";
 import InputAdornment from "@mui/material/InputAdornment";
 import { useFormContext } from "react-hook-form";
-import { SwitchElement, TextFieldElement } from "react-hook-form-mui";
+import { TextFieldElement } from "react-hook-form-mui";
 import { TabIDs } from "../../../store/locationState";
 import {
   type Settings as ApiSettings,
   useGetApiHostnameQuery,
 } from "../../../store/sratApi";
+import { SettingSwitchRow } from "../components/SettingSwitchRow";
 import { HOSTNAME_REGEX, WORKGROUP_REGEX } from "../settingsConfig";
 
 type GeneralPanelProps = {
@@ -140,36 +141,30 @@ export function GeneralPanel({ readOnly }: GeneralPanelProps) {
           </>
         }
       >
-        <span style={{ display: "inline-block", width: "100%" }}>
-          <SwitchElement
-            switchProps={{ "aria-label": "Local Master", size: "small" }}
-            sx={{ display: "flex" }}
-            name="local_master"
-            label="Local Master"
-            labelPlacement="start"
-            {...commonProps}
-          />
-        </span>
+        <SettingSwitchRow
+          ariaLabel="Local Master"
+          label="Local Master"
+          name="local_master"
+          {...commonProps}
+        />
       </Tooltip>
 
       {/* Compatibility Mode */}
       <Box data-tutor={`reactour__tab${TabIDs.SETTINGS}__step7`}>
-        <SwitchElement
-          switchProps={{ "aria-label": "Compatibility Mode", size: "small" }}
+        <SettingSwitchRow
+          ariaLabel="Compatibility Mode"
           id="compatibility_mode"
           label="Compatibility Mode"
-          labelPlacement="start"
           name="compatibility_mode"
           {...commonProps}
         />
       </Box>
 
       {/* Allow Guest */}
-      <SwitchElement
-        switchProps={{ "aria-label": "Allow Guest", size: "small" }}
+      <SettingSwitchRow
+        ariaLabel="Allow Guest"
         id="allow_guest"
         label="Allow Guest"
-        labelPlacement="start"
         name="allow_guest"
         {...commonProps}
       />
@@ -192,19 +187,13 @@ export function GeneralPanel({ readOnly }: GeneralPanelProps) {
           </>
         }
       >
-        <span style={{ display: "inline-block", width: "100%" }}>
-          <SwitchElement
-            switchProps={{
-              "aria-label": "Disable SMART Integration",
-              size: "small",
-            }}
-            id="disable_smart"
-            label="Disable SMART Integration"
-            labelPlacement="start"
-            name="disable_smart"
-            {...commonProps}
-          />
-        </span>
+        <SettingSwitchRow
+          ariaLabel="Disable SMART Integration"
+          id="disable_smart"
+          label="Disable SMART Integration"
+          name="disable_smart"
+          {...commonProps}
+        />
       </Tooltip>
     </Stack>
   );

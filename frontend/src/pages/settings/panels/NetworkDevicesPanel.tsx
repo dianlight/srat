@@ -1,10 +1,6 @@
 import { Box, Stack, Tooltip, Typography } from "@mui/material";
 import { useFormContext } from "react-hook-form";
-import {
-  AutocompleteElement,
-  CheckboxElement,
-  SwitchElement,
-} from "react-hook-form-mui";
+import { AutocompleteElement, CheckboxElement } from "react-hook-form-mui";
 import { TabIDs } from "../../../store/locationState";
 import {
   type Settings as ApiSettings,
@@ -13,6 +9,7 @@ import {
   useGetApiCapabilitiesQuery,
   useGetApiNicsQuery,
 } from "../../../store/sratApi";
+import { SettingSwitchRow } from "../components/SettingSwitchRow";
 
 type NetworkDevicesPanelProps = {
   readOnly: boolean;
@@ -69,16 +66,13 @@ export function NetworkDevicesPanel({ readOnly }: NetworkDevicesPanelProps) {
           </>
         }
       >
-        <span style={{ display: "inline-block", width: "100%" }}>
-          <SwitchElement
-            switchProps={{ "aria-label": "Multi Channel Mode", size: "small" }}
-            id="multi_channel"
-            label="Multi Channel Mode"
-            name="multi_channel"
-            labelPlacement="start"
-            {...commonProps}
-          />
-        </span>
+        <SettingSwitchRow
+          ariaLabel="Multi Channel Mode"
+          id="multi_channel"
+          label="Multi Channel Mode"
+          name="multi_channel"
+          {...commonProps}
+        />
       </Tooltip>
       {/* SMB over QUIC */}
       <Tooltip
@@ -108,25 +102,22 @@ export function NetworkDevicesPanel({ readOnly }: NetworkDevicesPanelProps) {
           </>
         }
       >
-        <span style={{ display: "inline-block", width: "100%" }}>
-          <SwitchElement
-            switchProps={{ "aria-label": "SMB over QUIC", size: "small" }}
-            id="smb_over_quic"
-            label="SMB over QUIC"
-            name="smb_over_quic"
-            labelPlacement="start"
-            disabled={
-              readOnly ||
-              isCapabilitiesLoading ||
-              !(
-                capabilities &&
-                "supports_quic" in capabilities &&
-                capabilities.supports_quic
-              )
-            }
-            control={control}
-          />
-        </span>
+        <SettingSwitchRow
+          ariaLabel="SMB over QUIC"
+          control={control}
+          disabled={
+            readOnly ||
+            isCapabilitiesLoading ||
+            !(
+              capabilities &&
+              "supports_quic" in capabilities &&
+              capabilities.supports_quic
+            )
+          }
+          id="smb_over_quic"
+          label="SMB over QUIC"
+          name="smb_over_quic"
+        />
       </Tooltip>
       {capabilities &&
         "supports_quic" in capabilities &&

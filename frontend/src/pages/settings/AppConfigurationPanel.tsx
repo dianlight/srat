@@ -10,12 +10,7 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { MuiChipsInput } from "mui-chips-input";
 import { useEffect, useMemo } from "react";
-import {
-  Controller,
-  SwitchElement,
-  TextFieldElement,
-  useForm,
-} from "react-hook-form-mui";
+import { Controller, TextFieldElement, useForm } from "react-hook-form-mui";
 import {
   type AppConfigData,
   type AppConfigSchema,
@@ -25,6 +20,7 @@ import {
   useGetApiSettingsAppConfigSchemaQuery,
   usePutApiSettingsAppConfigMutation,
 } from "../../store/sratApi";
+import { SettingSwitchRow } from "./components/SettingSwitchRow";
 
 type AppConfigFormValues = Record<string, unknown>;
 
@@ -427,29 +423,15 @@ export function AppConfigurationPanel({
 
               if (kind === "boolean") {
                 return (
-                  <Stack key={field.name} spacing={0.5}>
-                    <SwitchElement
-                      control={control}
-                      disabled={readOnly}
-                      label={label}
-                      labelPlacement="start"
-                      name={field.name}
-                      switchProps={{
-                        "aria-label": label,
-                        size: "small",
-                      }}
-                    />
-                    {helperText ? (
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          color: "text.secondary",
-                        }}
-                      >
-                        {helperText}
-                      </Typography>
-                    ) : null}
-                  </Stack>
+                  <SettingSwitchRow
+                    key={field.name}
+                    ariaLabel={label}
+                    control={control}
+                    disabled={readOnly}
+                    helperText={helperText || undefined}
+                    label={label}
+                    name={field.name}
+                  />
                 );
               }
 

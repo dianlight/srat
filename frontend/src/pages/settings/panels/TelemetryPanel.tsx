@@ -20,7 +20,7 @@ export function TelemetryPanel({ readOnly }: TelemetryPanelProps) {
     useGetApiTelemetryInternetConnectionQuery();
 
   return (
-    <Stack spacing={1}>
+    <Stack spacing={2}>
       <AutocompleteElement
         label="Telemetry Mode"
         name="telemetry_mode"
@@ -46,7 +46,7 @@ export function TelemetryPanel({ readOnly }: TelemetryPanelProps) {
           variant="caption"
           sx={{
             color: "text.secondary",
-            mt: 0.5,
+            mt: -0.5,
             display: "block",
           }}
         >

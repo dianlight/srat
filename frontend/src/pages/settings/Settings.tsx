@@ -348,7 +348,7 @@ export function Settings() {
               >
                 {selectedSetting ? (
                   <Box>
-                    <Typography variant="h5" gutterBottom>
+                    <Typography variant="h5" sx={{ mb: 0.5 }}>
                       {selectedSetting
                         .split("_")
                         .map(
@@ -357,8 +357,14 @@ export function Settings() {
                         )
                         .join(" ")}
                     </Typography>
-                    <Divider sx={{ mb: 3 }} />
-                    <Box sx={{ maxWidth: { xs: "100%", md: 600 } }}>
+                    <Typography
+                      variant="body2"
+                      sx={{ color: "text.secondary", mb: 2 }}
+                    >
+                      Update settings below and apply your changes.
+                    </Typography>
+                    <Divider sx={{ mb: 2.5 }} />
+                    <Box sx={{ maxWidth: { xs: "100%", md: 720 } }}>
                       {renderSettingPanel(selectedSetting)}
                     </Box>
                   </Box>
@@ -399,6 +405,7 @@ export function Settings() {
                 <Button
                   onClick={() => reset()}
                   disabled={!formState.isDirty}
+                  variant="outlined"
                   fullWidth={true}
                 >
                   Reset
@@ -407,7 +414,7 @@ export function Settings() {
                   type="submit"
                   form="settingsform"
                   disabled={!formState.isDirty}
-                  variant="outlined"
+                  variant="contained"
                   color="success"
                   fullWidth={true}
                 >

@@ -1,6 +1,5 @@
 import { Stack, Tooltip, Typography } from "@mui/material";
 import { useFormContext } from "react-hook-form";
-import { SwitchElement } from "react-hook-form-mui";
 import { getCurrentEnv } from "../../../macro/Environment" with {
   type: "macro",
 };
@@ -9,6 +8,7 @@ import {
   type SystemCapabilities,
   useGetApiCapabilitiesQuery,
 } from "../../../store/sratApi";
+import { SettingSwitchRow } from "../components/SettingSwitchRow";
 import { HomeAssistantCustomComponentPanel } from "../HomeAssistantCustomComponentPanel";
 
 type HomeAssistantPanelProps = {
@@ -36,16 +36,12 @@ export function HomeAssistantPanel({ readOnly }: HomeAssistantPanelProps) {
           </>
         }
       >
-        <span style={{ display: "inline-block", width: "100%" }}>
-          <SwitchElement
-            switchProps={{ "aria-label": "Export Stats to HA", size: "small" }}
-            sx={{ display: "flex" }}
-            name="export_stats_to_ha"
-            label="Export Stats to HA"
-            labelPlacement="start"
-            {...commonProps}
-          />
-        </span>
+        <SettingSwitchRow
+          ariaLabel="Export Stats to HA"
+          label="Export Stats to HA"
+          name="export_stats_to_ha"
+          {...commonProps}
+        />
       </Tooltip>
 
       {/* Use NFS (remote env only) */}
@@ -75,28 +71,24 @@ export function HomeAssistantPanel({ readOnly }: HomeAssistantPanelProps) {
             </>
           }
         >
-          <span style={{ display: "inline-block", width: "100%" }}>
-            <SwitchElement
-              disabled={!(capabilities as SystemCapabilities)?.support_nfs}
-              switchProps={{ "aria-label": "Use NFS for HA", size: "small" }}
-              sx={{ display: "flex" }}
-              name="ha_use_nfs"
-              label={
-                <>
-                  Use NFS for HA{" "}
-                  <Typography
-                    component="span"
-                    variant="caption"
-                    sx={{ color: "warning.main", ml: 1 }}
-                  >
-                    (Experimental)
-                  </Typography>
-                </>
-              }
-              labelPlacement="start"
-              control={control}
-            />
-          </span>
+          <SettingSwitchRow
+            ariaLabel="Use NFS for HA"
+            control={control}
+            disabled={!(capabilities as SystemCapabilities)?.support_nfs}
+            label={
+              <>
+                Use NFS for HA{" "}
+                <Typography
+                  component="span"
+                  variant="caption"
+                  sx={{ color: "warning.main", ml: 1 }}
+                >
+                  (Experimental)
+                </Typography>
+              </>
+            }
+            name="ha_use_nfs"
+          />
         </Tooltip>
       ) : null}
 
