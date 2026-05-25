@@ -265,6 +265,7 @@ if errors.As(err, &appErr) { ... }
 - Use pointers for optional fields
 - Consider using `json.RawMessage` for delayed parsing
 - Handle JSON errors appropriately
+- **Never use `omitempty` on `bool` DTO fields that participate in API round-trips.** Go's `encoding/json` treats `false` as the zero value and silently omits it. This breaks form state: the PUT/PATCH response lacks the field, the client resets it to `undefined`, and React Hook Form's `values:` prop re-syncs the stale cached value — causing the UI to visually revert even though the DB was updated correctly. Fix: remove `omitempty`; add a serialization test that asserts `"field":false` is present in the marshaled output.
 
 ### HTTP Clients
 

@@ -58,6 +58,7 @@ These instructions are the concise, must-follow rules for working in SRAT. Keep 
   After adding a doc-stub, run `cd frontend && bun run gen` to code-generate the types into `sratApi.ts`, then import and use them in `wsApi.ts` or other files.
 - MUI Grid: use the `size` prop (Grid2 default).
 - Frontend test isolation: use `msw` for API mocking; shared recurring handlers go in `frontend/src/mocks/customHandlers.ts`.
+- **Lab feature gating pattern**: to hide a settings control behind `experimental_lab_mode`, follow `HomeAssistantPanel.tsx` — add `const experimentalLabMode = Boolean(watch("experimental_lab_mode"));`, a `labLabel(text)` helper that appends `<ScienceOutlinedIcon color="warning" fontSize="small" />`, and wrap the feature in `{experimentalLabMode ? (<Feature label={labLabel("Name")} />) : null}`.
 
 ## Custom component essentials (Home Assistant)
 
