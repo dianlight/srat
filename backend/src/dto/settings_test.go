@@ -1,6 +1,7 @@
 package dto_test
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/creasty/defaults"
@@ -164,4 +165,19 @@ func TestSettings_DefaultValues(t *testing.T) {
 	assert.False(t, *settings.SMBoverQUIC)
 	assert.False(t, settings.DisableSmart)
 	assert.False(t, settings.ExperimentalLabMode)
+}
+
+func TestSettings_ExperimentalLabMode_FalseIsSerializedToJSON(t *testing.T) {
+	settings := dto.Settings{ExperimentalLabMode: false}
+	data, err := json.Marshal(settings)
+	require.NoError(t, err)
+	assert.Contains(t, string(data), `"experimental_lab_mode":false`,
+		"experimental_lab_mode:false must be present in JSON (no omitempty)")
+}
+
+func TestSettings_ExperimentalLabMode_TrueIsSerializedToJSON(t *testing.T) {
+	settings := dto.Settings{ExperimentalLabMode: true}
+	data, err := json.Marshal(settings)
+	require.NoError(t, err)
+	assert.Contains(t, string(data), `"experimental_lab_mode":true`)
 }

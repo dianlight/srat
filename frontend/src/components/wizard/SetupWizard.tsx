@@ -358,9 +358,9 @@ export function SetupWizard({
         ...(allData.telemetry?.telemetry_mode !== undefined && {
           telemetry_mode: allData.telemetry.telemetry_mode,
         }),
-        ...(allData.labMode?.experimental_lab_mode !== undefined && {
-          experimental_lab_mode: allData.labMode.experimental_lab_mode,
-        }),
+        experimental_lab_mode:
+          allData.labMode?.experimental_lab_mode ??
+          (isValidSettings(settings) ? settings.experimental_lab_mode : false),
       };
       allCommitted.push(updateSettings({ settings: updatedSettings }).unwrap());
 
