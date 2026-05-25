@@ -1,8 +1,6 @@
+import ScienceOutlinedIcon from "@mui/icons-material/ScienceOutlined";
 import { Stack, Tooltip, Typography } from "@mui/material";
 import { useFormContext } from "react-hook-form";
-import { getCurrentEnv } from "../../../macro/Environment" with {
-  type: "macro",
-};
 import {
   type Settings as ApiSettings,
   type SystemCapabilities,
@@ -16,9 +14,17 @@ type HomeAssistantPanelProps = {
 };
 
 export function HomeAssistantPanel({ readOnly }: HomeAssistantPanelProps) {
-  const { control } = useFormContext<ApiSettings>();
+  const { control, watch } = useFormContext<ApiSettings>();
   const { data: capabilities } = useGetApiCapabilitiesQuery();
   const commonProps = { control, disabled: readOnly };
+  const experimentalLabMode = Boolean(watch("experimental_lab_mode"));
+
+  const labLabel = (text: string) => (
+    <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+      <Typography component="span">{text}</Typography>
+      <ScienceOutlinedIcon color="warning" fontSize="small" />
+    </Stack>
+  );
 
   return (
     <Stack spacing={3}>
@@ -45,17 +51,17 @@ export function HomeAssistantPanel({ readOnly }: HomeAssistantPanelProps) {
       </Tooltip>
 
       {/* Use NFS (remote env only) */}
-      {getCurrentEnv() === "remote" ? (
+      {experimentalLabMode ? (
         <Tooltip
           title={
             <>
               <Typography variant="h6" component="div">
-                Use NFS for Home Assistant Integration (Experimental)
+                Use NFS for Home Assistant Integration (Lab)
               </Typography>
               <Typography variant="body2">
                 If enabled, Home Assistant will mount shares using NFS instead
                 of SMB/CIFS. This can be more efficient but is currently
-                experimental.
+                considered a lab feature.
               </Typography>
               {!(
                 (capabilities as SystemCapabilities)?.support_nfs ?? false
@@ -75,25 +81,14 @@ export function HomeAssistantPanel({ readOnly }: HomeAssistantPanelProps) {
             ariaLabel="Use NFS for HA"
             control={control}
             disabled={!(capabilities as SystemCapabilities)?.support_nfs}
-            label={
-              <>
-                Use NFS for HA{" "}
-                <Typography
-                  component="span"
-                  variant="caption"
-                  sx={{ color: "warning.main", ml: 1 }}
-                >
-                  (Experimental)
-                </Typography>
-              </>
-            }
+            label={labLabel("Use NFS for HA")}
             name="ha_use_nfs"
           />
         </Tooltip>
       ) : null}
 
       {/* Custom Component Panel (remote env only) */}
-      {getCurrentEnv() === "remote" ? (
+      {experimentalLabMode ? (
         <HomeAssistantCustomComponentPanel readOnly={readOnly} />
       ) : null}
     </Stack>

@@ -209,5 +209,53 @@ describe("Settings", () => {
     expect(
       screen.getByRole("switch", { name: /disable smart integration/i }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("switch", { name: /experimental lab mode/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows Home Assistant lab features only when experimental lab mode is enabled", async () => {
+    const server = getMswServer();
+    server.use(
+      http.get(/.*\/api\/settings$/, () =>
+        HttpResponse.json({
+          hostname: "homeassistant",
+          workgroup: "WORKGROUP",
+          telemetry_mode: "Disabled",
+          bind_all_interfaces: true,
+          interfaces: [],
+          experimental_lab_mode: false,
+        }),
+      ),
+      http.get(/.*\/api\/capabilities$/, () =>
+        HttpResponse.json({
+          support_nfs: true,
+        }),
+      ),
+    );
+
+    const { user } = await renderSettings();
+    await clickTreeItemByLabel(user, "HomeAssistant");
+
+    expect(screen.queryByRole("switch", { name: /use nfs for ha/i })).toBeNull();
+    expect(screen.queryByText(/srat custom component/i)).toBeNull();
+
+    server.use(
+      http.get(/.*\/api\/settings\/homeassistant\/custom-component\/status$/, () =>
+        HttpResponse.json({
+          installed: false,
+          latest_version: "1.2.3",
+          restart_required: false,
+        }),
+      ),
+    );
+
+    await clickTreeItemByLabel(user, "General");
+    await user.click(screen.getByRole("switch", { name: /experimental lab mode/i }));
+
+    await clickTreeItemByLabel(user, "HomeAssistant");
+
+    expect(screen.getByRole("switch", { name: /use nfs for ha/i })).toBeInTheDocument();
+    expect(screen.getByText(/srat custom component/i)).toBeInTheDocument();
   });
 });

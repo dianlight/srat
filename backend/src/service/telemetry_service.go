@@ -79,14 +79,13 @@ func NewTelemetryService(lc fx.Lifecycle, Ctx context.Context,
 		accessToken = "disabled" // Use placeholder if not set at build time
 	}
 
-	// Determine environment: auto-detect from version
-	environment := "production"
+	// Determine environment from build version.
+	environment := config.Environment()
 	errorSessionLimiter := rate.Sometimes{First: 10}
-	if config.Version == "0.0.0-dev.0" || strings.Contains(config.Version, "-dev.") {
-		environment = "development"
+	switch environment {
+	case "development":
 		errorSessionLimiter = rate.Sometimes{First: 2}
-	} else if strings.Contains(config.Version, "-rc.") {
-		environment = "prerelease"
+	case "prerelease":
 		errorSessionLimiter = rate.Sometimes{First: 5}
 	}
 

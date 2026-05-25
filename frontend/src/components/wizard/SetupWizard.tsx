@@ -42,12 +42,14 @@ import {
 } from "../../store/sratApi";
 import { SetupWizardActions } from "./SetupWizardActions";
 import { FirstShareStepContent } from "./steps/FirstShareStepContent";
+import { LabModeStepContent } from "./steps/LabModeStepContent";
 import { NetworkStepContent } from "./steps/NetworkStepContent";
 import { SecurityStepContent } from "./steps/SecurityStepContent";
 import { SummaryStepContent } from "./steps/SummaryStepContent";
 import { TelemetryStepContent } from "./steps/TelemetryStepContent";
 import type {
   FirstShareFormData,
+  LabModeFormData,
   NetworkFormData,
   SecurityFormData,
   TelemetryFormData,
@@ -71,6 +73,7 @@ const STEP_LABELS = [
   "Network",
   "First Share",
   "Telemetry",
+  "Lab",
   "Summary",
 ];
 
@@ -160,6 +163,9 @@ export function SetupWizard({
   const telemetryFormContext = useForm<TelemetryFormData>({
     defaultValues: { telemetry_mode: Telemetry_mode.Errors },
   });
+  const labModeFormContext = useForm<LabModeFormData>({
+    defaultValues: { experimental_lab_mode: false },
+  });
 
   const bindAllInterfaces = networkFormContext.watch("bind_all_interfaces");
   const selectedPartitionId = firstShareFormContext.watch("partitionId");
@@ -227,6 +233,14 @@ export function SetupWizard({
           ? settings.telemetry_mode
           : Telemetry_mode.Errors,
     });
+
+    labModeFormContext.reset({
+      experimental_lab_mode:
+        isValidSettings(settings) &&
+        settings.experimental_lab_mode !== undefined
+          ? settings.experimental_lab_mode
+          : false,
+    });
   }, [
     open,
     settings,
@@ -236,6 +250,7 @@ export function SetupWizard({
     networkFormContext,
     firstShareFormContext,
     telemetryFormContext,
+    labModeFormContext,
     // wasOpenRef is a stable ref — intentionally omitted from deps
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ]);
@@ -342,6 +357,9 @@ export function SetupWizard({
         }),
         ...(allData.telemetry?.telemetry_mode !== undefined && {
           telemetry_mode: allData.telemetry.telemetry_mode,
+        }),
+        ...(allData.labMode?.experimental_lab_mode !== undefined && {
+          experimental_lab_mode: allData.labMode.experimental_lab_mode,
         }),
       };
       allCommitted.push(updateSettings({ settings: updatedSettings }).unwrap());
@@ -562,6 +580,23 @@ export function SetupWizard({
       )}
 
       {activeStep === 4 && (
+        <FormContainer
+          formContext={labModeFormContext}
+          onSuccess={(data) => handleStepComplete("labMode", data)}
+        >
+          <LabModeStepContent control={labModeFormContext.control} />
+          <SetupWizardActions
+            allowSkip={allowSkip}
+            showBack
+            onBack={handleBack}
+            onSkip={handleSkip}
+            submitLabel="Next"
+            submitDisabled={labModeFormContext.formState.isSubmitting}
+          />
+        </FormContainer>
+      )}
+
+      {activeStep === 5 && (
         <>
           <SummaryStepContent
             data={collectedData}

@@ -1,3 +1,4 @@
+import ScienceOutlinedIcon from "@mui/icons-material/ScienceOutlined";
 import {
   Alert,
   Button,
@@ -193,7 +194,10 @@ export function HomeAssistantCustomComponentPanel({
   return (
     <Paper variant="outlined" sx={{ p: 2 }}>
       <Stack spacing={1.5}>
-        <Typography variant="subtitle1">SRAT Custom Component</Typography>
+        <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+          <Typography variant="subtitle1">SRAT Custom Component</Typography>
+          <ScienceOutlinedIcon color="warning" fontSize="small" />
+        </Stack>
 
         {isLoading ? (
           <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/creasty/defaults"
+	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
@@ -104,9 +105,17 @@ func (s *settingService) Load() (setting *dto.Settings, err errors.E) {
 			return errors.WithStack(errS)
 		}
 
+		if _, ok := props["ExperimentalLabMode"]; !ok {
+			setting.ExperimentalLabMode = defaultExperimentalLabMode()
+		}
+
 		return nil
 	})
 	return setting, errors.WithStack(errS)
+}
+
+func defaultExperimentalLabMode() bool {
+	return config.Environment() != "production"
 }
 
 // ValidateSettings validates and potentially modifies settings based on system capabilities and constraints.

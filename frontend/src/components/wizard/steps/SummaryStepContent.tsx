@@ -27,6 +27,12 @@ function formatTelemetryMode(mode: Telemetry_mode | undefined): string {
   }
 }
 
+function formatLabMode(enabled: boolean | undefined): string {
+  return enabled
+    ? "Enabled — experimental lab features will be visible"
+    : "Disabled — only stable features will be shown";
+}
+
 const isDirtyTrackingClean = (dirtyTracking: DataDirtyTracker | undefined) => {
   if (!dirtyTracking) {
     return false;
@@ -202,6 +208,25 @@ export function SummaryStepContent({
               />
             )}
             {formatTelemetryMode(data.telemetry?.telemetry_mode)}
+          </Typography>
+        </Stack>
+
+        <Divider />
+
+        <Stack spacing={1}>
+          <Typography variant="subtitle2">Experimental Lab</Typography>
+          <Typography variant="body2" color="text.secondary" component="div">
+            {isProcessing && (
+              <IconProgress
+                icons={[HourglassEmptyIcon]}
+                animationSpeed={700}
+                completeIcon={DoneIcon}
+                completeIconColor="success"
+                variant="determinate"
+                value={dirtyTracking?.settings ? 50 : processingFinalStatus}
+              />
+            )}
+            {formatLabMode(data.labMode?.experimental_lab_mode)}
           </Typography>
         </Stack>
       </Stack>

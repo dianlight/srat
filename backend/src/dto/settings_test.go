@@ -24,13 +24,14 @@ func TestSettings_AllFields(t *testing.T) {
 		Interfaces:        []string{"eth0", "wlan0"},
 		BindAllInterfaces: false,
 		//	LogLevel:          "info",
-		MultiChannel:    true,
-		TelemetryMode:   dto.TelemetryModes.TELEMETRYMODEERRORS,
-		LocalMaster:     &localMaster,
-		ExportStatsToHA: &exportStats,
-		HAUseNFS:        &haUseNFS,
-		SMBoverQUIC:     &smbOverQUIC,
-		DisableSmart:    true,
+		MultiChannel:        true,
+		TelemetryMode:       dto.TelemetryModes.TELEMETRYMODEERRORS,
+		LocalMaster:         &localMaster,
+		ExportStatsToHA:     &exportStats,
+		HAUseNFS:            &haUseNFS,
+		SMBoverQUIC:         &smbOverQUIC,
+		DisableSmart:        true,
+		ExperimentalLabMode: true,
 	}
 
 	assert.Equal(t, "test-host", settings.Hostname)
@@ -55,6 +56,7 @@ func TestSettings_AllFields(t *testing.T) {
 	assert.NotNil(t, settings.SMBoverQUIC)
 	assert.False(t, *settings.SMBoverQUIC)
 	assert.True(t, settings.DisableSmart)
+	assert.True(t, settings.ExperimentalLabMode)
 }
 
 func TestSettings_ZeroValues(t *testing.T) {
@@ -74,6 +76,7 @@ func TestSettings_ZeroValues(t *testing.T) {
 	assert.Nil(t, settings.HAUseNFS)
 	assert.Nil(t, settings.SMBoverQUIC)
 	assert.False(t, settings.DisableSmart)
+	assert.False(t, settings.ExperimentalLabMode)
 }
 
 func TestSettings_TelemetryModes(t *testing.T) {
@@ -117,11 +120,12 @@ func TestSettings_BooleanPointers(t *testing.T) {
 	falseVal := false
 
 	settings := dto.Settings{
-		LocalMaster:     &trueVal,
-		ExportStatsToHA: &falseVal,
-		HAUseNFS:        &trueVal,
-		SMBoverQUIC:     &trueVal,
-		DisableSmart:    true,
+		LocalMaster:         &trueVal,
+		ExportStatsToHA:     &falseVal,
+		HAUseNFS:            &trueVal,
+		SMBoverQUIC:         &trueVal,
+		DisableSmart:        true,
+		ExperimentalLabMode: true,
 	}
 
 	assert.True(t, *settings.LocalMaster)
@@ -129,6 +133,7 @@ func TestSettings_BooleanPointers(t *testing.T) {
 	assert.True(t, *settings.HAUseNFS)
 	assert.True(t, *settings.SMBoverQUIC)
 	assert.True(t, settings.DisableSmart)
+	assert.True(t, settings.ExperimentalLabMode)
 }
 
 func TestSettings_DefaultValues(t *testing.T) {
@@ -158,4 +163,5 @@ func TestSettings_DefaultValues(t *testing.T) {
 	assert.NotNil(t, settings.SMBoverQUIC)
 	assert.False(t, *settings.SMBoverQUIC)
 	assert.False(t, settings.DisableSmart)
+	assert.False(t, settings.ExperimentalLabMode)
 }

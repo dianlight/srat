@@ -195,6 +195,33 @@ export function GeneralPanel({ readOnly }: GeneralPanelProps) {
           {...commonProps}
         />
       </Tooltip>
+
+      <Tooltip
+        title={
+          <>
+            <Typography variant="h6" component="div">
+              Experimental Lab Mode
+            </Typography>
+            <Typography variant="body2">
+              Reveals unstable and advanced SRAT features that are still being
+              tested, such as the `smb.conf` view and selected Home Assistant
+              integration tools.
+            </Typography>
+            <Typography variant="body2" sx={{ mt: 1 }}>
+              Production builds default this off. Non-production builds default
+              it on once, and you can change it any time afterwards.
+            </Typography>
+          </>
+        }
+      >
+        <SettingSwitchRow
+          ariaLabel="Experimental Lab Mode"
+          id="experimental_lab_mode"
+          label="Experimental Lab Mode"
+          name="experimental_lab_mode"
+          {...commonProps}
+        />
+      </Tooltip>
     </Stack>
   );
 }

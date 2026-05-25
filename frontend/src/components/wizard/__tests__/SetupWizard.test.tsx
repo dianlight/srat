@@ -124,6 +124,7 @@ describe("SetupWizard", () => {
         expect(screen.getByText("Network")).toBeTruthy();
         expect(screen.getByText("First Share")).toBeTruthy();
         expect(screen.getByText("Telemetry")).toBeTruthy();
+        expect(screen.getByText("Lab")).toBeTruthy();
         expect(screen.getByText("Summary")).toBeTruthy();
 
         const dialog = await screen.findByRole("dialog", { name: /setup wizard/i });
@@ -336,11 +337,14 @@ describe("SetupWizard", () => {
         await user.click(screen.getByRole("button", { name: /^next$/i }));
         await user.click(screen.getByRole("button", { name: /^next$/i }));
         await user.click(screen.getByRole("button", { name: /^next$/i }));
+        await user.click(screen.getByRole("button", { name: /^next$/i }));
 
         expect(await screen.findByText(/review the selected settings before srat applies them/i)).toBeTruthy();
         expect(screen.getByText(/hostname:/i)).toBeTruthy();
         expect(screen.getByText(/workgroup:/i)).toBeTruthy();
         expect(screen.getByText(/no first share will be configured right now/i)).toBeTruthy();
+        expect(screen.getByText(/experimental lab/i)).toBeTruthy();
+        expect(screen.getByText(/only stable features will be shown/i)).toBeTruthy();
 
         finishTriggered = true;
         await user.click(screen.getByRole("button", { name: /^finish$/i }));

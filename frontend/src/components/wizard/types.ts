@@ -27,11 +27,16 @@ export interface TelemetryFormData {
   telemetry_mode: Telemetry_mode;
 }
 
+export interface LabModeFormData {
+  experimental_lab_mode: boolean;
+}
+
 export interface WizardCollectedData {
   security?: SecurityFormData;
   network?: NetworkFormData;
   firstShare?: FirstShareFormData;
   telemetry?: TelemetryFormData;
+  labMode?: LabModeFormData;
 }
 
 export type SettingsGuard = Settings;

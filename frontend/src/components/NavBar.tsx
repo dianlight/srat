@@ -14,6 +14,7 @@ import MenuIcon from "@mui/icons-material/Menu";
 import PreviewIcon from "@mui/icons-material/Preview";
 import ReportProblemIcon from "@mui/icons-material/ReportProblem";
 import SaveIcon from "@mui/icons-material/Save";
+import ScienceOutlinedIcon from "@mui/icons-material/ScienceOutlined";
 import SystemSecurityUpdateIcon from "@mui/icons-material/SystemSecurityUpdate";
 import UndoIcon from "@mui/icons-material/Undo";
 import {
@@ -72,6 +73,7 @@ import {
   type DataDirtyTracker,
   type HealthPing,
   Update_process_state,
+  useGetApiSettingsQuery,
   usePutApiUpdateMutation,
 } from "../store/sratApi";
 import { useGetServerEventsQuery } from "../store/wsApi";
@@ -86,6 +88,7 @@ interface TabConfig {
   label: string;
   component: React.ReactNode;
   isDevelopmentOnly?: boolean;
+  isLabOnly?: boolean;
   actualIndex?: number; // Will be populated after filtering
   tutorialSteps?: StepType[]; // Optional tutorial steps for this tab
 }
@@ -132,7 +135,7 @@ const ALL_TAB_CONFIGS: TabConfig[] = [
     id: TabIDs.SMB_FILE_CONFIG,
     label: "smb.conf",
     component: <SmbConfPage />,
-    isDevelopmentOnly: true,
+    isLabOnly: true,
     tutorialSteps: NoTutorialSteps,
   },
   {
@@ -171,6 +174,15 @@ const getTabIcon = (tab: TabConfig, healthData: HealthPing | undefined) => {
       </Tooltip>
     );
   }
+
+  if (tab.isLabOnly) {
+    return (
+      <Tooltip title="Lab Feature">
+        <ScienceOutlinedIcon sx={{ color: "orange" }} />
+      </Tooltip>
+    );
+  }
+
   return undefined;
 };
 function a11yProps(index: number) {
@@ -252,16 +264,24 @@ export function NavBar(props: {
   const location = useLocation();
   const { setIsOpen: setTourOpen, isOpen: isTourOpen } = useTour();
   const { update, isLoading: isUpdateLoading } = useUpdate();
+  const { data: settings } = useGetApiSettingsQuery();
   //const _navigate = useNavigate();
+  const experimentalLabMode = Boolean(
+    settings &&
+      "experimental_lab_mode" in settings &&
+      settings.experimental_lab_mode,
+  );
 
   const visibleTabs = useMemo(() => {
     return ALL_TAB_CONFIGS.filter(
-      (tab) => !(tab.isDevelopmentOnly && getCurrentEnv() === "production"),
+      (tab) =>
+        !(tab.isDevelopmentOnly && getCurrentEnv() === "production") &&
+        !(tab.isLabOnly && !experimentalLabMode),
     ).map((tab, index) => ({
       ...tab,
       actualIndex: index,
     }));
-  }, []);
+  }, [experimentalLabMode]);
 
   const { data: evdata } = useGetServerEventsQuery();
 

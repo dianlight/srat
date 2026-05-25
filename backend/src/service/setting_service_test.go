@@ -4,11 +4,14 @@ import (
 	"context"
 	"log"
 	"os"
+	"path/filepath"
 	"runtime/debug"
+	"strings"
 	"sync"
 	"testing"
 
 	"github.com/angusgmorrison/logfusc"
+	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
@@ -24,8 +27,9 @@ type SettingServiceSuite struct {
 	suite.Suite
 	settingService service.SettingServiceInterface
 	//propertyRepo   repository.PropertyRepositoryInterface
-	app       *fxtest.App
-	testMutex sync.Mutex
+	app          *fxtest.App
+	testMutex    sync.Mutex
+	databasePath string
 }
 
 func TestSettingServiceSuite(t *testing.T) {
@@ -53,7 +57,11 @@ func (suite *SettingServiceSuite) SetupTest() {
 				if err != nil {
 					suite.T().Errorf("Cant read template file %s", err)
 				}
-				sharedResources.DatabasePath = "file::memory:?cache=shared&_pragma=foreign_keys(1)"
+				if suite.databasePath != "" {
+					sharedResources.DatabasePath = suite.databasePath
+				} else {
+					sharedResources.DatabasePath = "file::memory:?cache=shared&_pragma=foreign_keys(1)"
+				}
 				return &sharedResources
 			},
 			/*
@@ -90,6 +98,10 @@ func (suite *SettingServiceSuite) TearDownTest() {
 	suite.settingService.SetCommandExists(nil)
 
 	suite.app.RequireStop()
+}
+
+func (suite *SettingServiceSuite) useIsolatedDatabasePath(testName string) {
+	suite.databasePath = filepath.Join(suite.T().TempDir(), strings.ReplaceAll(testName, "/", "-")+".sqlite")
 }
 
 func (suite *SettingServiceSuite) TestUpdateSettings_HAUseNFS() {
@@ -295,6 +307,26 @@ func (suite *SettingServiceSuite) TestUpdateSettings_SaveAndLoad_AllFieldTypes()
 			},
 		},
 		{
+			name: "ExperimentalLabMode_True",
+			settingsFactory: func() dto.Settings {
+				return dto.Settings{ExperimentalLabMode: true}
+			},
+			verifyFunc: func(loaded *dto.Settings, err error) {
+				suite.Require().NoError(err)
+				suite.True(loaded.ExperimentalLabMode)
+			},
+		},
+		{
+			name: "ExperimentalLabMode_False",
+			settingsFactory: func() dto.Settings {
+				return dto.Settings{ExperimentalLabMode: false}
+			},
+			verifyFunc: func(loaded *dto.Settings, err error) {
+				suite.Require().NoError(err)
+				suite.False(loaded.ExperimentalLabMode)
+			},
+		},
+		{
 			name: "Interfaces_Array",
 			settingsFactory: func() dto.Settings {
 				return dto.Settings{Interfaces: []string{"eth0", "eth1"}}
@@ -395,6 +427,60 @@ func (suite *SettingServiceSuite) TestUpdateSettings_PreservesHASmbPasswordWhenE
 	suite.Require().NoError(loadErr)
 	suite.Equal("UPDATED", loaded.Workgroup)
 	suite.Equal("super-secret", loaded.HASmbPassword.Expose())
+}
+
+func (suite *SettingServiceSuite) TestLoad_DefaultExperimentalLabMode_Production() {
+	originalVersion := config.Version
+	config.Version = "2026.5.0"
+	defer func() {
+		config.Version = originalVersion
+		suite.databasePath = ""
+	}()
+
+	suite.useIsolatedDatabasePath(suite.T().Name())
+	suite.TearDownTest()
+	suite.SetupTest()
+
+	loaded, err := suite.settingService.Load()
+	suite.Require().NoError(err)
+	suite.False(loaded.ExperimentalLabMode)
+}
+
+func (suite *SettingServiceSuite) TestLoad_DefaultExperimentalLabMode_NonProduction() {
+	originalVersion := config.Version
+	config.Version = "2026.5.0-rc.1"
+	defer func() {
+		config.Version = originalVersion
+		suite.databasePath = ""
+	}()
+
+	suite.useIsolatedDatabasePath(suite.T().Name())
+	suite.TearDownTest()
+	suite.SetupTest()
+
+	loaded, err := suite.settingService.Load()
+	suite.Require().NoError(err)
+	suite.True(loaded.ExperimentalLabMode)
+}
+
+func (suite *SettingServiceSuite) TestLoad_ExperimentalLabMode_PreservesExplicitFalseInNonProduction() {
+	originalVersion := config.Version
+	config.Version = "2026.5.0-dev.3"
+	defer func() {
+		config.Version = originalVersion
+		suite.databasePath = ""
+	}()
+
+	suite.useIsolatedDatabasePath(suite.T().Name())
+	suite.TearDownTest()
+	suite.SetupTest()
+
+	err := suite.settingService.UpdateSettings(&dto.Settings{ExperimentalLabMode: false})
+	suite.Require().NoError(err)
+
+	loaded, loadErr := suite.settingService.Load()
+	suite.Require().NoError(loadErr)
+	suite.False(loaded.ExperimentalLabMode)
 }
 
 // TestUpdateSettings_NilPointerFields tests handling of nil pointer fields

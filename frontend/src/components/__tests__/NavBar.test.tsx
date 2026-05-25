@@ -1,13 +1,14 @@
-import { ThemeProvider, createTheme } from "@mui/material/styles";
-import { render, screen } from "@testing-library/react";
+import { createTheme, ThemeProvider } from "@mui/material/styles";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { http, HttpResponse } from "msw";
 import React from "react";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TabIDs } from "../../store/locationState";
 import { NavBar } from "../NavBar";
-import { createTestStore } from "/test/testing";
+import { createTestStore, getMswServer } from "/test/testing";
 
 const { mockUseUpdateState, confirmMock } = vi.hoisted(() => ({
     mockUseUpdateState: {
@@ -995,6 +996,90 @@ it("renders NavBar with AppBar and basic elements", async () => {
         // Tabs may or may not be visible depending on media queries and environment
         const tabs = screen.queryAllByRole("tab");
         expect(tabs.length).toBeGreaterThanOrEqual(0);
+    });
+
+    it("hides the smb.conf tab when experimental lab mode is disabled", async () => {
+        const server = getMswServer();
+        server.use(
+            http.get(/.*\/api\/settings(?:\?.*)?$/, () =>
+                HttpResponse.json({
+                    hostname: "mynas",
+                    workgroup: "WORKGROUP",
+                    telemetry_mode: "Disabled",
+                    experimental_lab_mode: false,
+                })
+            )
+        );
+
+        const theme = createTheme();
+        const store = await createTestStore();
+        const mockBodyRef = { current: document.createElement("div") };
+
+        render(
+            React.createElement(
+                MemoryRouter,
+                null,
+                React.createElement(
+                    Provider,
+                    {
+                        store, children:
+                            React.createElement(
+                                ThemeProvider,
+                                { theme },
+                                React.createElement(NavBar as any, {
+                                    error: "",
+                                    bodyRef: mockBodyRef,
+                                })
+                            )
+                    }
+                )
+            )
+        );
+
+        await waitFor(() => {
+            expect(screen.queryByRole("tab", { name: /smb\.conf/i })).toBeNull();
+        });
+    });
+
+    it("shows the smb.conf tab when experimental lab mode is enabled", async () => {
+        const server = getMswServer();
+        server.use(
+            http.get(/.*\/api\/settings(?:\?.*)?$/, () =>
+                HttpResponse.json({
+                    hostname: "mynas",
+                    workgroup: "WORKGROUP",
+                    telemetry_mode: "Disabled",
+                    experimental_lab_mode: true,
+                })
+            )
+        );
+
+        const theme = createTheme();
+        const store = await createTestStore();
+        const mockBodyRef = { current: document.createElement("div") };
+
+        render(
+            React.createElement(
+                MemoryRouter,
+                null,
+                React.createElement(
+                    Provider,
+                    {
+                        store, children:
+                            React.createElement(
+                                ThemeProvider,
+                                { theme },
+                                React.createElement(NavBar as any, {
+                                    error: "",
+                                    bodyRef: mockBodyRef,
+                                })
+                            )
+                    }
+                )
+            )
+        );
+
+        expect(await screen.findByRole("tab", { name: /smb\.conf/i })).toBeInTheDocument();
     });
 
     it("renders tab icons for dirty state", async () => {

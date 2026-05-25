@@ -336,10 +336,11 @@ func TestDtoToDbomConverter_SettingsToProperties(t *testing.T) {
 	workgroup := "WORKGROUP"
 	secret := "supersecret"
 	source := dto.Settings{
-		Hostname:      hostname,
-		Workgroup:     workgroup,
-		HASmbPassword: logfusc.NewSecret(secret),
-		TelemetryMode: dto.TelemetryModes.TELEMETRYMODEASK,
+		Hostname:            hostname,
+		Workgroup:           workgroup,
+		HASmbPassword:       logfusc.NewSecret(secret),
+		TelemetryMode:       dto.TelemetryModes.TELEMETRYMODEASK,
+		ExperimentalLabMode: true,
 	}
 
 	target := make(dbom.Properties)
@@ -350,20 +351,23 @@ func TestDtoToDbomConverter_SettingsToProperties(t *testing.T) {
 	assert.Contains(t, target, "Workgroup")
 	assert.Contains(t, target, "HASmbPassword")
 	assert.Contains(t, target, "TelemetryMode")
+	assert.Contains(t, target, "ExperimentalLabMode")
 	assert.Equal(t, "TESTSERVER", target["Hostname"].Value)
 	assert.Equal(t, "WORKGROUP", target["Workgroup"].Value)
 	assert.Equal(t, secret, target["HASmbPassword"].Value)
 	assert.Equal(t, "Ask", target["TelemetryMode"].Value)
+	assert.Equal(t, true, target["ExperimentalLabMode"].Value)
 }
 
 func TestDtoToDbomConverter_PropertiesToSettings(t *testing.T) {
 	conv := DtoToDbomConverterImpl{}
 
 	source := dbom.Properties{
-		"Hostname":      {Key: "Hostname", Value: "TESTSERVER"},
-		"Workgroup":     {Key: "Workgroup", Value: "WORKGROUP"},
-		"HASmbPassword": {Key: "HASmbPassword", Value: "supersecret"},
-		"TelemetryMode": {Key: "TelemetryMode", Value: "Ask"},
+		"Hostname":            {Key: "Hostname", Value: "TESTSERVER"},
+		"Workgroup":           {Key: "Workgroup", Value: "WORKGROUP"},
+		"HASmbPassword":       {Key: "HASmbPassword", Value: "supersecret"},
+		"TelemetryMode":       {Key: "TelemetryMode", Value: "Ask"},
+		"ExperimentalLabMode": {Key: "ExperimentalLabMode", Value: true},
 	}
 
 	var target dto.Settings
@@ -374,6 +378,7 @@ func TestDtoToDbomConverter_PropertiesToSettings(t *testing.T) {
 	assert.Equal(t, "WORKGROUP", target.Workgroup)
 	assert.Equal(t, "supersecret", target.HASmbPassword.Expose())
 	assert.Equal(t, "Ask", target.TelemetryMode.String())
+	assert.True(t, target.ExperimentalLabMode)
 }
 
 func TestDtoToDbomConverter_PropertiesToSettings_WithNilValue(t *testing.T) {

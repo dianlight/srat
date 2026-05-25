@@ -207,7 +207,8 @@ func (suite *SettingsHandlerSuite) TestUpdateSettingsHandler() {
 	autopatch.AutoPatch(api)
 
 	glc := dto.Settings{
-		Workgroup: "pluto&admin",
+		Workgroup:           "pluto&admin",
+		ExperimentalLabMode: true,
 	}
 
 	rr := api.Patch("/settings", glc)
@@ -218,6 +219,7 @@ func (suite *SettingsHandlerSuite) TestUpdateSettingsHandler() {
 	suite.Require().NoError(err, "Body %#v", rr.Body.String())
 
 	suite.Equal(glc.Workgroup, res.Workgroup)
+	suite.True(res.ExperimentalLabMode)
 	suite.Equal([]string{"10.0.0.0/8", "100.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "169.254.0.0/16", "fe80::/10", "fc00::/7"}, res.AllowHost)
 	suite.True(suite.dirtyService.GetDirtyDataTracker().Settings)
 

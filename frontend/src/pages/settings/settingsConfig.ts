@@ -63,6 +63,7 @@ export const categories: {
     "compatibility_mode",
     "allow_guest",
     "disable_smart",
+    "experimental_lab_mode",
   ],
   Network: {
     Devices: [
