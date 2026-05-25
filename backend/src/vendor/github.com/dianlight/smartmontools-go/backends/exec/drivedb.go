@@ -3,7 +3,7 @@
 //
 // This file contains functions for parsing and managing the embedded drivedb.h
 // database from smartmontools, which includes USB bridge device mappings.
-package smartmontools
+package exec
 
 import (
 	_ "embed"

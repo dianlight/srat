@@ -5,7 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.4.0] - [Unreleased]
+
+### Breaking Changes
+- `ExecBackend`, `ExecBackendOption`, `NewExecBackend`, and related `WithExec*` options are now implemented by the `backends/exec` package. The root package keeps backward-compatible aliases and wrappers.
+- `Commander.Command()` now accepts the exported `LogAdapter` type, making the interface implementable outside this module.
+
+### Added
+- `backends/exec/` package containing the `ExecBackend` implementation
+- `internal/types/` shared type hub for domain types, interfaces, constants, and helpers
+- `ExecBackend.SmartctlPath()` accessor
+- `ExecBackend.SetDeviceTypeHint(path, deviceType string)` cache seeding helper
+- `ExecBackend.DeviceTypeHint(path string) (string, bool)` cache inspection helper
+- `backends/exec.WithLogHandler(logger LogAdapter) Option`
+- Exported `LogAdapter` type in the root package
+- `backends/exec/drivedb_version.go`: generated file exposing `DrivedbUpstreamCommit` and `DrivedbUpstreamDate` constants tracking the embedded `drivedb.h` upstream provenance
+- Root-package re-exports `DrivedbUpstreamCommit` and `DrivedbUpstreamDate` for easy access
+- `.github/workflows/drivedb-update.yml`: daily GitHub Actions workflow that detects upstream `drivedb.h` changes and opens automated PRs
+- `.github/workflows/drivedb-fetch.yml`: companion workflow that downloads `drivedb.h` when Renovate updates `drivedb_version.go` in a PR
+- `.github/renovate.json` custom datasource and regex manager for Renovate-based drivedb tracking
+
+### Changed
+- The root package is now a thin facade over `internal/types` and `backends/exec`
+- Exec-specific helpers and drivedb parsing moved out of the root package
+
+##  [v0.3.1] — 2025-05-16
 
 ### Added
 

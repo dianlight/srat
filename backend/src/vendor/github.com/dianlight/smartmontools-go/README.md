@@ -8,6 +8,7 @@ A Go library that interfaces with smartmontools to monitor and manage storage de
 
 ![CI](https://github.com/dianlight/smartmontools-go/actions/workflows/ci.yml/badge.svg)
 [![Coverage Status](https://codecov.io/github/dianlight/smartmontools-go/graph/badge.svg?token=1J2VP3FEZ4)](https://codecov.io/github/dianlight/smartmontools-go)
+[![CodeFactor](https://www.codefactor.io/repository/github/dianlight/smartmontools-go/badge)](https://www.codefactor.io/repository/github/dianlight/smartmontools-go)
 ![Stable Release](https://img.shields.io/github/v/release/dianlight/smartmontools-go)
 ![Prerelease](https://img.shields.io/github/v/release/dianlight/smartmontools-go?include_prereleases)
 
@@ -490,27 +491,40 @@ go run main.go
 
 ## Architecture
 
-This library uses a command-line wrapper approach, executing `smartctl` commands and parsing their JSON output. The library leverages smartmontools' built-in JSON output format for reliable and structured data extraction.
+This library provides two backend implementations:
 
-While the project references libgoffi in its description, the current implementation uses the command-line interface for maximum compatibility and reliability. Future versions may incorporate direct library bindings using libgoffi for enhanced performance.
+### ExecBackend (default)
+
+Shells out to the `smartctl` binary and parses its JSON output. Maximum compatibility, zero extra dependencies beyond smartmontools itself.
+
+### LibBackend (purego FFI — Linux/macOS)
+
+Loads a pre-built smartmon wrapper shared library (`libsmartmon_go.so` /
+`libsmartmon_go.dylib`) at runtime using [ebitengine/purego](https://github.com/ebitengine/purego) — **no CGO required**.
+
+```go
+// Automatic resolution (reads SMARTMON_LIB_PATH or searches system paths):
+lib, err := lib.New()
+
+// Explicit path:
+lib, err := lib.New(lib.WithLibraryPath("/usr/local/lib/libsmartmon_go.so"))
+```
 
 📚 **For a comprehensive analysis of different SMART access approaches**, see our [Architecture Decision Record (ADR-001)](./docs/architecture/ADR-001-smart-access-approaches.md), which covers:
-- Command wrapper (current approach)
+- Command wrapper (current default approach)
 - Direct ioctl access
-- Shared library with FFI
+- Shared library with FFI (implemented as LibBackend)
 - Hybrid approaches
-
-The ADR includes detailed comparisons, code examples, performance benchmarks, and recommendations for different use cases.
 
 ## Implementation details
 
-- Execution model: the library locates (or is given) a `smartctl` binary and executes it (os/exec). Commands use `--json` where available and the library parses the resulting JSON output.
-- Configurable path: you can pass a custom path with `NewClientWithPath(path string)` if `smartctl` is not on PATH or you want to use a specific binary.
+- **ExecBackend**: locates (or is given) a `smartctl` binary and executes it (`os/exec`). Commands use `--json` where available and the library parses the resulting JSON output.
+- **LibBackend**: `dlopen`s `libsmartmon_go.so`/`.dylib` via purego and calls functions exported by the C++ wrapper. No child process is spawned.
+- Configurable path: you can pass a custom path with `NewClientWithPath(path string)` if `smartctl` is not on PATH or you want to use a specific binary (ExecBackend only).
 - Permissions: many SMART operations require root/administrator privileges or appropriate device access. Expect `permission denied` errors when running without sufficient rights.
-- Error handling: the library returns errors when `smartctl` exits non-zero, when JSON parsing fails, or when required fields are missing. Consumers should inspect errors and possibly the wrapped `*exec.ExitError` for diagnostics.
-- Limitations: because this approach shells out to an external binary, it has higher process overhead and depends on the installed smartmontools version and platform support. It does not (yet) provide direct ioctl access or in-process bindings.
+- Error handling: the library returns errors when `smartctl` exits non-zero (ExecBackend), when JSON parsing fails, or when required fields are missing. Consumers should inspect errors and possibly the wrapped `*exec.ExitError` for diagnostics.
 
-Example command run by the library (illustrative):
+Example command run by ExecBackend (illustrative):
 
 ```text
 smartctl --json -a /dev/sda
@@ -528,20 +542,21 @@ Short-term (current):
 - Stabilize the exec-based API surface (ScanDevices, GetSMARTInfo, CheckHealth, RunSelfTest).
 - Improve error messages and diagnostics when `smartctl` is missing, incompatible, or returns non-JSON output.
 - Add more unit tests that mock `smartctl` JSON output.
+- Add integration tests for LibBackend against real devices in CI.
 
 Mid-term:
-- Add optional libgoffi-based bindings to call smartmontools in-process where supported.
 - Implement ioctl-based device access for platforms where direct calls are preferable and safe.
 - Provide clearer compatibility matrix and CI jobs for Linux/macOS/Windows.
+- Publish pre-built `libsmartmon_go` binaries as release assets for common platforms.
 
 Long-term:
-- Offer a native Go implementation/path that does not require an external `smartctl` binary for common operations.
 - Optimize performance and reduce process creation overhead for large-scale monitoring setups.
+- Full native Go backend (v1.0) with zero runtime dependencies.
 
 How to help:
-- If you'd like to work on native bindings, start by opening an issue describing the platform and approach (libgoffi vs ioctl-first).
 - Add tests that include representative `smartctl --json` outputs (captured from different smartmontools versions/devices).
 - Document platform-specific permission and packaging notes (e.g., macOS notarization, Windows admin requirements).
+- Test LibBackend on additional Linux distributions and architectures.
 
 ## License
 
@@ -551,7 +566,6 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 
 - [smartmontools](https://www.smartmontools.org/) — the underlying tool that makes this library possible
 - [DAB-LABS/smart-sniffer](https://github.com/DAB-LABS/smart-sniffer) — several reliability improvements in this library (multi-path binary resolution, SAT fallback, `--scan-open` → `--scan` fallback, `DiscoverDevices`, and exit code bit decomposition) were inspired by the patterns used in the smart-sniffer agent
-- [libgoffi](https://github.com/noctarius/libgoffi) — FFI adapter library for Go (for future enhancements)
 
 ## CI and mise
 
