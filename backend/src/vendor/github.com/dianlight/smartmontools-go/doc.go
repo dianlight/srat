@@ -1,17 +1,12 @@
 /*
-Package smartmontools provides Go bindings for interfacing with smartmontools
-to monitor and manage storage device health using S.M.A.R.T. data.
+Package smartmontools provides Go bindings for interacting with smartmontools
+and collecting S.M.A.R.T. data from storage devices.
 
-The library wraps the smartctl command-line utility and provides a clean,
-idiomatic Go API for accessing SMART information from storage devices.
-
-# Go 1.26 Optimizations
-
-This library is optimized for Go 1.26+ and includes:
-  - Efficient string operations using strings.Builder
-  - Optimized hash-based message caching with minimal allocations
-  - Better error handling with strconv for version parsing
-  - Optimized slice operations and range patterns
+The root package is a thin facade over the shared domain model in internal/types
+and the default exec backend in backends/exec. NewClient creates a Client that
+delegates SMART operations to a pluggable Backend implementation. By default it
+uses ExecBackend, which shells out to the smartctl binary. Alternative backends
+can be supplied with WithBackend.
 
 # Features
 
@@ -26,119 +21,65 @@ This library is optimized for Go 1.26+ and includes:
   - Device information retrieval
   - SMART support detection and management
   - Self-test availability checking
-  - Standby mode detection (ATA devices only)
+  - Standby mode detection for ATA-family devices
   - Efficient SMART monitoring with minimal disk I/O
 
-# Prerequisites
+# Backend Layout
 
-This library requires smartctl (part of smartmontools) to be installed:
+The default smartctl-backed implementation lives in
+github.com/dianlight/smartmontools-go/backends/exec. Shared types and
+interfaces are hosted in an internal package to avoid circular imports while
+keeping the public API backward compatible through type aliases in the root
+package.
 
-Linux:
+An alternative purego FFI backend lives in
+github.com/dianlight/smartmontools-go/backends/lib (LibBackend). It loads
+a pre-built smartmon wrapper shared library at runtime using ebitengine/purego,
+avoiding process-spawn overhead and the smartctl binary dependency.
 
-	sudo apt-get install smartmontools  # Debian/Ubuntu
-	sudo yum install smartmontools       # RHEL/CentOS/Fedora
-	sudo pacman -S smartmontools         # Arch Linux
+# LibBackend (D1 — SDK wrapper via purego)
 
-macOS:
+LibBackend loads libsmartmon_go.so (Linux) or libsmartmon_go.dylib (macOS) at
+runtime. The shared library is a thin C++ wrapper that links against the
+pre-built libsmartmon.a static library published in
+github.com/dianlight/smartmontools-sdk releases.
 
-	brew install smartmontools
+Build the wrapper library once with the provided setup script:
 
-Windows:
+	scripts/setup-lib-backend.sh
 
-	Download from https://www.smartmontools.org/
+The script downloads the correct SDK archive for the current platform, installs
+the missing smartmon_config.h, and compiles the wrapper into
+backends/lib/sdk/libsmartmon_go.{so,dylib}.
 
-# Basic Usage
+# Library Resolution Order
 
-	package main
+New() resolves the library path in the following order:
 
-	import (
-	    "fmt"
-	    "log"
+ 1. The path provided by [libbackend.WithLibraryPath].
+ 2. SMARTMON_LIB_PATH environment variable — if the file exists at that path it
+    is used directly.  If SMARTMON_LIB_PATH is set but the file is absent a
+    warning is logged and the search continues to step 3.  If the file exists
+    but a library is also found in a different standard system directory a
+    warning is logged (the configured path is still used).
+ 3. Standard system library paths: dynamic-linker names first
+    (respects LD_LIBRARY_PATH / DYLD_LIBRARY_PATH / rpath), then a list of
+    well-known absolute paths such as /usr/local/lib and /opt/homebrew/lib.
 
-	    "github.com/dianlight/smartmontools-go"
+Use the LibBackend with WithBackend:
+
+	lib, err := libbackend.New(
+	    libbackend.WithLibraryPath("/usr/local/lib/libsmartmon_go.so"),
 	)
-
-	func main() {
-	    // Create a new client
-	    client, err := smartmontools.NewClient()
-	    if err != nil {
-	        log.Fatal(err)
-	    }
-
-	    // Scan for devices
-	    devices, err := client.ScanDevices()
-	    if err != nil {
-	        log.Fatal(err)
-	    }
-
-	    // Check health of first device
-	    if len(devices) > 0 {
-	        healthy, _ := client.CheckHealth(devices[0].Name)
-	        if healthy {
-	            fmt.Println("Device is healthy")
-	        }
-	    }
-	}
-
-# Standby Mode Handling
-
-For ATA devices (ata, sat, sata, scsi), the library automatically adds the
---nocheck=standby flag to smartctl commands. This prevents waking up devices
-that are in standby/sleep mode, which is especially useful for power-saving
-scenarios.
-
-When a device is in standby mode:
-  - GetSMARTInfo will return a SMARTInfo with InStandby set to true
-  - CheckHealth will return an error indicating the device is in standby
-  - GetDeviceInfo will return an error indicating the device is in standby
-  - GetAvailableSelfTests will return an error indicating the device is in standby
-
-NVMe devices do not support standby mode detection and do not receive the
---nocheck=standby flag.
-
-# Efficient SMART Monitoring
-
-When building monitoring applications that periodically check SMART status, avoid
-unnecessary disk I/O that can wake disks from standby mode. This is critical for:
-
-  - Home NAS systems with idle disk spindown
-  - Battery-powered devices
-  - Systems where periodic disk access causes audible noise
-
-Use GetSMARTSupportFromInfo to check SMART status from cached SMARTInfo data
-without disk I/O:
-
-	// Query once, cache the result
-	info, err := client.GetSMARTInfo(ctx, devicePath)
 	if err != nil {
-	    return err
+	    log.Fatal(err)
 	}
+	defer lib.Close()
+	client, err := smartmontools.NewClient(smartmontools.WithBackend(lib))
 
-	// Check SMART status from cache - no disk access!
-	support := client.GetSMARTSupportFromInfo(info)
-	if !support.Enabled {
-	    // Skip monitoring when SMART is disabled
-	    return
-	}
+Or rely on automatic resolution via the environment variable:
 
-This pattern eliminates periodic disk access and prevents waking disks from
-standby mode. See the README for a complete monitoring example.
-
-# Permissions
-
-Many operations require elevated privileges (root/administrator) to access
-disk devices. The library will return errors if permissions are insufficient.
-
-# Thread Safety
-
-The Client type is safe for concurrent use by multiple goroutines.
-
-# Performance Considerations
-
-The library uses several optimization techniques:
-  - Device type caching to avoid repeated lookups
-  - Message caching with TTL to prevent duplicate logging
-  - Efficient string building for USB device ID construction
-  - Connection pooling and context-aware command execution
+	// export SMARTMON_LIB_PATH=/path/to/libsmartmon_go.dylib
+	lib, err := libbackend.New()
 */
 package smartmontools

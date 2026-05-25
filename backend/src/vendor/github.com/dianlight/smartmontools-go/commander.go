@@ -1,27 +1,9 @@
 package smartmontools
 
-import (
-	"context"
-	"os/exec"
-)
+import smtypes "github.com/dianlight/smartmontools-go/internal/types"
 
-// Commander interface for executing commands
-type Commander interface {
-	Command(ctx context.Context, logger logAdapter, name string, arg ...string) Cmd
-}
+// Commander is the interface for executing OS commands.
+type Commander = smtypes.Commander
 
-// Cmd interface for command execution
-type Cmd interface {
-	Output() ([]byte, error)
-	Run() error
-	CombinedOutput() ([]byte, error)
-}
-
-// execCommander implements Commander using os/exec
-type execCommander struct{}
-
-func (e execCommander) Command(ctx context.Context, logger logAdapter, name string, arg ...string) Cmd {
-	logger.DebugContext(ctx, "Executing command", "name", name, "args", arg)
-	cmd := exec.CommandContext(ctx, name, arg...)
-	return cmd
-}
+// Cmd is the interface for a running command.
+type Cmd = smtypes.Cmd
