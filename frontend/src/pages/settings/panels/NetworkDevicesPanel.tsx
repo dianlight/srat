@@ -1,3 +1,4 @@
+import ScienceOutlinedIcon from "@mui/icons-material/ScienceOutlined";
 import { Box, Stack, Tooltip, Typography } from "@mui/material";
 import { useFormContext } from "react-hook-form";
 import { AutocompleteElement, CheckboxElement } from "react-hook-form-mui";
@@ -22,7 +23,15 @@ export function NetworkDevicesPanel({ readOnly }: NetworkDevicesPanelProps) {
     useGetApiCapabilitiesQuery();
 
   const bindAllWatch = watch("bind_all_interfaces");
+  const experimentalLabMode = Boolean(watch("experimental_lab_mode"));
   const commonProps = { control, disabled: readOnly };
+
+  const labLabel = (text: string) => (
+    <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+      <Typography component="span">{text}</Typography>
+      <ScienceOutlinedIcon color="warning" fontSize="small" />
+    </Stack>
+  );
 
   return (
     <Stack spacing={3}>
@@ -74,52 +83,55 @@ export function NetworkDevicesPanel({ readOnly }: NetworkDevicesPanelProps) {
           {...commonProps}
         />
       </Tooltip>
-      {/* SMB over QUIC */}
-      <Tooltip
-        title={
-          <>
-            <Typography variant="h6" component="div">
-              Enable SMB over QUIC
-            </Typography>
-            <Typography variant="body2">
-              This parameter enables SMB over QUIC transport protocol for
-              improved performance and security. Requires Samba 4.23+ and QUIC
-              kernel module support.
-            </Typography>
-            {capabilities &&
-              "supports_quic" in capabilities &&
-              !capabilities.supports_quic &&
-              "unsupported_reason" in capabilities &&
-              capabilities.unsupported_reason && (
-                <Typography
-                  variant="body2"
-                  sx={{ mt: 1, color: "warning.light" }}
-                >
-                  <strong>Not available:</strong>{" "}
-                  {capabilities.unsupported_reason}
-                </Typography>
-              )}
-          </>
-        }
-      >
-        <SettingSwitchRow
-          ariaLabel="SMB over QUIC"
-          control={control}
-          disabled={
-            readOnly ||
-            isCapabilitiesLoading ||
-            !(
-              capabilities &&
-              "supports_quic" in capabilities &&
-              capabilities.supports_quic
-            )
+      {/* SMB over QUIC (lab feature) */}
+      {experimentalLabMode ? (
+        <Tooltip
+          title={
+            <>
+              <Typography variant="h6" component="div">
+                Enable SMB over QUIC (Lab)
+              </Typography>
+              <Typography variant="body2">
+                This parameter enables SMB over QUIC transport protocol for
+                improved performance and security. Requires Samba 4.23+ and QUIC
+                kernel module support.
+              </Typography>
+              {capabilities &&
+                "supports_quic" in capabilities &&
+                !capabilities.supports_quic &&
+                "unsupported_reason" in capabilities &&
+                capabilities.unsupported_reason && (
+                  <Typography
+                    variant="body2"
+                    sx={{ mt: 1, color: "warning.light" }}
+                  >
+                    <strong>Not available:</strong>{" "}
+                    {capabilities.unsupported_reason}
+                  </Typography>
+                )}
+            </>
           }
-          id="smb_over_quic"
-          label="SMB over QUIC"
-          name="smb_over_quic"
-        />
-      </Tooltip>
-      {capabilities &&
+        >
+          <SettingSwitchRow
+            ariaLabel="SMB over QUIC"
+            control={control}
+            disabled={
+              readOnly ||
+              isCapabilitiesLoading ||
+              !(
+                capabilities &&
+                "supports_quic" in capabilities &&
+                capabilities.supports_quic
+              )
+            }
+            id="smb_over_quic"
+            label={labLabel("SMB over QUIC")}
+            name="smb_over_quic"
+          />
+        </Tooltip>
+      ) : null}
+      {experimentalLabMode &&
+        capabilities &&
         "supports_quic" in capabilities &&
         !capabilities.supports_quic &&
         !isCapabilitiesLoading &&
