@@ -29,6 +29,7 @@ import {
   type Disk,
   type FilesystemState,
   type Partition,
+  type Settings,
   Time_machine_support,
   useGetApiFilesystemStateQuery,
   useGetApiSettingsQuery,
@@ -402,12 +403,12 @@ export function VolumeDetailsPanel({
         {disk && !partition && disk.hdidle_device?.supported && (
           <HDIdleDiskSettings disk={disk} readOnly={false} />
         )}
-        {/* Only render SmartStatusPanel if settings are loaded and disable_smart is not true */}
+        {/* Only render SmartStatusPanel if settings are loaded and smart_mode is not "none" */}
         {disk &&
           !partition &&
           !settingsLoading &&
           settings &&
-          (!("disable_smart" in settings) || !settings.disable_smart) &&
+          (settings as Settings).smart_mode !== "none" &&
           disk.smart_info?.supported && (
             <SmartStatusPanel
               smartInfo={disk.smart_info}

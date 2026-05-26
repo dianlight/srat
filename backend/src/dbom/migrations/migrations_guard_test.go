@@ -28,6 +28,7 @@ var allGoMigrations = []goMigrationEntry{
 	{9, Up00009, Down00009},
 	{14, Up00014, Down00014},
 	{15, Up00015, Down00015},
+	{16, Up00016, Down00016},
 }
 
 // funcName returns the short function name for any function value via reflection.

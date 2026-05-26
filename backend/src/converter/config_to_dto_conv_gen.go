@@ -46,7 +46,7 @@ func (c *ConfigToDtoConverterImpl) ConfigToSettings(source config.Config, target
 	}
 	pBool4 := source.SMBoverQUIC
 	target.SMBoverQUIC = &pBool4
-	target.DisableSmart = configDisableSmartToSetting(source)
+	target.SmartMode = configSmartModeFromConfig(source)
 	pBool5 := source.HDIdleEnabled
 	target.HDIdleEnabled = &pBool5
 	target.HDIdleDefaultIdleTime = source.HDIdleDefaultIdleTime

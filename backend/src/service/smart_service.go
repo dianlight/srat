@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/dianlight/smartmontools-go"
+	libbackend "github.com/dianlight/smartmontools-go/backends/lib"
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
@@ -40,13 +41,35 @@ type smartService struct {
 
 type SmartServiceParams struct {
 	fx.In
+	// Client is optional: when provided (e.g. in tests via mock injection) it is
+	// used as-is. When nil (production), NewSmartService initialises the client
+	// internally by probing the lib backend first, then falling back to exec.
 	Client   smartmontools.SmartClient `optional:"true"`
+	ApiCtx   *dto.ContextState         `optional:"true"`
 	EventBus events.EventBusInterface
 }
 
 func NewSmartService(in SmartServiceParams) SmartServiceInterface {
+	client := in.Client
+	if client == nil {
+		// Try the lib backend (requires libsmartmon_go.so at runtime).
+		libBe, libErr := libbackend.New(libbackend.WithTLogHandler(tlog.NewLoggerWithLevel(tlog.LevelInfo)))
+		if libErr == nil {
+			if in.ApiCtx != nil {
+				in.ApiCtx.LibSmartAvailable = true
+			}
+			slog.Info("SMART lib backend loaded (direct mode available)")
+			client, _ = smartmontools.NewClient(
+				smartmontools.WithBackend(libBe),
+				smartmontools.WithTLogHandler(tlog.NewLoggerWithLevel(tlog.LevelInfo)),
+			)
+		} else {
+			slog.Info("SMART lib backend not available, using exec backend", "reason", libErr.Error())
+			client, _ = smartmontools.NewClient(smartmontools.WithTLogHandler(tlog.NewLoggerWithLevel(tlog.LevelInfo)))
+		}
+	}
 	return &smartService{
-		client:           in.Client,
+		client:           client,
 		eventBus:         in.EventBus,
 		conv:             converter.SmartMonToolsToDtoImpl{},
 		deviceIdToDevice: converter.DeviceIdToDevice,

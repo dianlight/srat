@@ -109,6 +109,10 @@ func (s *settingService) Load() (setting *dto.Settings, err errors.E) {
 			setting.ExperimentalLabMode = defaultExperimentalLabMode()
 		}
 
+		if _, ok := props["SmartMode"]; !ok {
+			setting.SmartMode = dto.SmartModes.SMARTMODELEGACY
+		}
+
 		return nil
 	})
 	return setting, errors.WithStack(errS)

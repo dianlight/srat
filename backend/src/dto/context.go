@@ -24,18 +24,19 @@ type ContextState struct {
 	HACoreReady          bool   // Whether the Home Assistant Core is ready
 	UpdateDataDir        string // Directory where update files are stored
 	//UpdateFilePath  string        // Full path to the update file for current update operation. Useful for onplace_update.
-	UpdateChannel   UpdateChannel                     // Current Update Channel
-	UpdateAvailable bool                              // Whether an update is available
-	AutoUpdate      bool                              // Whether automatic updates are enabled
-	DisableIPv6     bool                              // Whether IPv6 should be disabled for interface resolution
-	SambaConfigFile string                            // Path to the Samba configuration file
-	Template        []byte                            // Template data for generating configuration files
-	DockerInterface string                            // Name of the Docker network interface
-	DockerNet       string                            // Docker network subnet
-	Heartbeat       int                               // Heartbeat interval in seconds
-	SupervisorURL   string                            // URL of the Supervisor
-	SupervisorToken string                            // Authentication token for the Supervisor
-	DatabasePath    string                            // Path to the database file
-	StartTime       time.Time                         // Time when the application started
-	HAWsComponent   *HomeAssistantComponentConnection // Connected Home Assistant custom component metadata for the active /ws session
+	UpdateChannel     UpdateChannel                     // Current Update Channel
+	UpdateAvailable   bool                              // Whether an update is available
+	AutoUpdate        bool                              // Whether automatic updates are enabled
+	DisableIPv6       bool                              // Whether IPv6 should be disabled for interface resolution
+	SambaConfigFile   string                            // Path to the Samba configuration file
+	Template          []byte                            // Template data for generating configuration files
+	DockerInterface   string                            // Name of the Docker network interface
+	DockerNet         string                            // Docker network subnet
+	Heartbeat         int                               // Heartbeat interval in seconds
+	SupervisorURL     string                            // URL of the Supervisor
+	SupervisorToken   string                            // Authentication token for the Supervisor
+	DatabasePath      string                            // Path to the database file
+	StartTime         time.Time                         // Time when the application started
+	HAWsComponent     *HomeAssistantComponentConnection // Connected Home Assistant custom component metadata for the active /ws session
+	LibSmartAvailable bool                              // Whether the lib SMART backend (libsmartmon_go.so) is available at runtime
 }

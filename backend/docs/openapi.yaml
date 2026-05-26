@@ -2034,9 +2034,6 @@ components:
         compatibility_mode:
           default: false
           type: boolean
-        disable_smart:
-          default: false
-          type: boolean
         experimental_lab_mode:
           type: boolean
         export_stats_to_ha:
@@ -2076,6 +2073,12 @@ components:
         multi_channel:
           default: true
           type: boolean
+        smart_mode:
+          enum:
+            - none
+            - legacy
+            - direct
+          type: string
         smb_over_quic:
           default: false
           type: boolean
@@ -2438,6 +2441,9 @@ components:
         has_kernel_module:
           description: Whether QUIC kernel module is loaded
           type: boolean
+        lib_smart_available:
+          description: Whether the lib SMART backend (libsmartmon_go.so) is available at runtime
+          type: boolean
         samba_version:
           description: Installed Samba version
           type: string
@@ -2459,6 +2465,7 @@ components:
         - samba_version
         - samba_version_sufficient
         - support_nfs
+        - lib_smart_available
       type: object
     UpdateProgress:
       additionalProperties: false
@@ -2639,8 +2646,8 @@ paths:
     get:
       operationId: get-api-appconfig
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3131,8 +3138,8 @@ paths:
           schema:
             description: The disk ID (not the device path)
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3331,8 +3338,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -3481,8 +3488,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3971,8 +3978,8 @@ paths:
           schema:
             description: Filesystem type identifier
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -4144,8 +4151,8 @@ paths:
     post:
       operationId: post-api-hdidle-stop
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -4273,8 +4280,8 @@ paths:
     post:
       operationId: generate-issue-report
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
@@ -4412,8 +4419,8 @@ paths:
     get:
       operationId: get-problems
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -4869,8 +4876,8 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -5210,9 +5217,6 @@ paths:
                 compatibility_mode:
                   default: false
                   type: boolean
-                disable_smart:
-                  default: false
-                  type: boolean
                 experimental_lab_mode:
                   type: boolean
                 export_stats_to_ha:
@@ -5252,6 +5256,12 @@ paths:
                 multi_channel:
                   default: true
                   type: boolean
+                smart_mode:
+                  enum:
+                    - none
+                    - legacy
+                    - direct
+                  type: string
                 smb_over_quic:
                   default: false
                   type: boolean
@@ -5297,9 +5307,6 @@ paths:
                 compatibility_mode:
                   default: false
                   type: boolean
-                disable_smart:
-                  default: false
-                  type: boolean
                 experimental_lab_mode:
                   type: boolean
                 export_stats_to_ha:
@@ -5339,6 +5346,12 @@ paths:
                 multi_channel:
                   default: true
                   type: boolean
+                smart_mode:
+                  enum:
+                    - none
+                    - legacy
+                    - direct
+                  type: string
                 smb_over_quic:
                   default: false
                   type: boolean
@@ -5442,8 +5455,8 @@ paths:
     get:
       operationId: get-api-settings-app-config
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -5485,8 +5498,8 @@ paths:
       description: Partial update operation supporting both JSON Merge Patch & JSON Patch updates.
       operationId: patch-api-settings-app-config
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json-patch+json:
@@ -5567,8 +5580,8 @@ paths:
     put:
       operationId: put-api-settings-app-config
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
@@ -5659,8 +5672,8 @@ paths:
     delete:
       operationId: delete-api-settings-homeassistant-custom-component
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -5702,8 +5715,8 @@ paths:
     post:
       operationId: post-api-settings-homeassistant-custom-component-install
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -5831,8 +5844,8 @@ paths:
     post:
       operationId: post-api-settings-homeassistant-restart-core
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -5874,8 +5887,8 @@ paths:
     post:
       operationId: post-api-share
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
@@ -6513,8 +6526,8 @@ paths:
     get:
       operationId: get-api-update
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -6555,8 +6568,8 @@ paths:
     put:
       operationId: put-api-update
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -7050,8 +7063,8 @@ paths:
     get:
       operationId: list-api-volumes
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:

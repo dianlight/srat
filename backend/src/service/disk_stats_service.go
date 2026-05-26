@@ -93,7 +93,7 @@ func NewDiskStatsService(
 		if err != nil {
 			slog.WarnContext(Ctx, "Failed to load settings for SMART integration state", "error", err)
 		} else if settings != nil {
-			ds.smartIntegrationDisabled.Store(settings.DisableSmart)
+			ds.smartIntegrationDisabled.Store(settings.SmartMode == dto.SmartModes.SMARTMODENONE)
 		}
 	}
 
@@ -131,7 +131,7 @@ func NewDiskStatsService(
 		return nil
 	})
 	unsubscribe[2] = EventBus.OnSetting(func(ctx context.Context, event events.SettingEvent) errors.E {
-		disabled := event.Setting != nil && event.Setting.DisableSmart
+		disabled := event.Setting != nil && event.Setting.SmartMode == dto.SmartModes.SMARTMODENONE
 		if previous := ds.smartIntegrationDisabled.Swap(disabled); previous != disabled {
 			ds.smartEnabledCache.Flush()
 			slog.DebugContext(ctx, "Updated SMART integration runtime state", "disabled", disabled)

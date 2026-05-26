@@ -42,7 +42,7 @@ func (h *SmartHandler) ensureSmartIntegrationEnabled(ctx context.Context) error 
 		return huma.Error500InternalServerError("Failed to load settings", err)
 	}
 
-	if settings != nil && settings.DisableSmart {
+	if settings != nil && settings.SmartMode == dto.SmartModes.SMARTMODENONE {
 		return huma.Error409Conflict("SMART integration is disabled in settings")
 	}
 

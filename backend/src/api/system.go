@@ -12,17 +12,27 @@ import (
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/srat/unixsamba"
 	"github.com/shirou/gopsutil/v4/net"
+	"go.uber.org/fx"
 )
+
+type SystemHanlerParams struct {
+	fx.In
+	HostService     service.HostServiceInterface
+	CommandExecutor commandexec.Executor
+	ApiCtx          *dto.ContextState `optional:"true"`
+}
 
 type SystemHanler struct {
 	host_service     service.HostServiceInterface
 	command_executor commandexec.Executor
+	apiCtx           *dto.ContextState
 }
 
-func NewSystemHanler(host_service service.HostServiceInterface, command_executor commandexec.Executor) *SystemHanler {
+func NewSystemHanler(in SystemHanlerParams) *SystemHanler {
 	p := new(SystemHanler)
-	p.host_service = host_service
-	p.command_executor = command_executor
+	p.host_service = in.HostService
+	p.command_executor = in.CommandExecutor
+	p.apiCtx = in.ApiCtx
 	return p
 }
 
@@ -196,6 +206,11 @@ func (handler *SystemHanler) GetCapabilitiesHandler(ctx context.Context, input *
 	// Check NFS support
 	supportNFS := osutil.CommandExists([]string{"exportfs"})
 	capabilities.SupportNFS = supportNFS
+
+	// Report lib SMART backend availability from runtime context
+	if handler.apiCtx != nil {
+		capabilities.LibSmartAvailable = handler.apiCtx.LibSmartAvailable
+	}
 
 	return &struct{ Body dto.SystemCapabilities }{Body: capabilities}, nil
 }

@@ -78,7 +78,7 @@ func (suite *SmartHandlerSuite) SetupTest() {
 		fx.Populate(&suite.cancel),
 	)
 	suite.app.RequireStart()
-	mock.When(suite.mockSettingSvc.Load()).ThenReturn(&dto.Settings{DisableSmart: false}, nil)
+	mock.When(suite.mockSettingSvc.Load()).ThenReturn(&dto.Settings{SmartMode: dto.SmartModes.SMARTMODELEGACY}, nil)
 }
 
 func (suite *SmartHandlerSuite) TearDownTest() {
@@ -366,7 +366,7 @@ func (suite *SmartHandlerSuite) TestGetSmartInfoDisabledBySettings() {
 		suite.ctx,
 		suite.mockSmartSvc,
 		&dto.ContextState{},
-		fixedSettingService{settings: &dto.Settings{DisableSmart: true}},
+		fixedSettingService{settings: &dto.Settings{SmartMode: dto.SmartModes.SMARTMODENONE}},
 		suite.mockBroadSvc,
 	)
 

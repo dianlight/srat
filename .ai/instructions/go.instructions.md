@@ -426,3 +426,24 @@ if errors.As(err, &appErr) { ... }
 - Using pointer helper libraries instead of Go 1.26's built-in `new(expr)` for pointer creation
 - Using `wg.Add(1)` + `go func() { defer wg.Done() }()` instead of `wg.Go(func() { ... })` (Go 1.25+)
 - Using `errors.As(err, &target)` when `errors.AsType[T](err)` would be clearer and type-safe (Go 1.26)
+
+## Service Ownership Rules
+
+### SmartService is the sole `smartmontools-go` contact point
+
+- **`service.SmartService` is the only place** that may import or use `github.com/dianlight/smartmontools-go` or `github.com/dianlight/smartmontools-go/backends/lib`.
+- `smartmontools.SmartClient` must **never** be created, wired, or provided outside `smart_service.go`. In particular:
+  - Do **not** add an `fx.Provide` for `smartmontools.SmartClient` in `main-server.go` or any `appsetup` helper.
+  - Do **not** inject `smartmontools.SmartClient` into any handler, other service, or `cmd` package.
+- Client initialisation logic (lib backend probe → exec fallback, `LibSmartAvailable` flag) lives exclusively in `NewSmartService`. When `SmartServiceParams.Client` is non-nil (test mock injected via FX), that client is used as-is; otherwise `NewSmartService` initialises one internally.
+- If a new smartmontools-go feature is needed elsewhere in the codebase, extend `SmartServiceInterface` instead of leaking the library type.
+
+### DTO Separation: Settings vs SystemCapabilities
+
+- **`dto.Settings`** must contain **only user-configurable fields** that are persisted to the database. Never add computed, detected, or runtime-only fields to `Settings`.
+- **Runtime status and capability detection results** (e.g., library availability, kernel modules, Samba version, NFS support) belong in `dto.SystemCapabilities`, served by `GET /api/capabilities` (`api/system.go`).
+- Examples of what goes where:
+  - ✅ `Settings`: `SmartMode`, `ExperimentalLabMode`, `Workgroup`, share configs, …
+  - ✅ `SystemCapabilities`: `LibSmartAvailable`, `SupportsQUIC`, `HasKernelModule`, `SambaVersion`, …
+  - ❌ Never: `LibSmartAvailable` in `Settings`, or user-preference fields in `SystemCapabilities`.
+- `SettingsHanler` must never receive or hold a `*dto.ContextState` reference; if you find yourself injecting it there, the field belongs in `SystemCapabilities` instead.

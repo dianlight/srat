@@ -62,7 +62,7 @@ export const categories: {
     "local_master",
     "compatibility_mode",
     "allow_guest",
-    "disable_smart",
+    "smart_mode",
     "experimental_lab_mode",
   ],
   Network: {

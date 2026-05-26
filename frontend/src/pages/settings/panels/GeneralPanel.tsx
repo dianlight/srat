@@ -1,4 +1,5 @@
 import AutorenewIcon from "@mui/icons-material/Autorenew";
+import ScienceOutlinedIcon from "@mui/icons-material/ScienceOutlined";
 import {
   Box,
   CircularProgress,
@@ -9,10 +10,13 @@ import {
 import IconButton from "@mui/material/IconButton";
 import InputAdornment from "@mui/material/InputAdornment";
 import { useFormContext } from "react-hook-form";
-import { TextFieldElement } from "react-hook-form-mui";
+import { SelectElement, TextFieldElement } from "react-hook-form-mui";
 import { TabIDs } from "../../../store/locationState";
 import {
   type Settings as ApiSettings,
+  Smart_mode,
+  type SystemCapabilities,
+  useGetApiCapabilitiesQuery,
   useGetApiHostnameQuery,
 } from "../../../store/sratApi";
 import { SettingSwitchRow } from "../components/SettingSwitchRow";
@@ -23,7 +27,12 @@ type GeneralPanelProps = {
 };
 
 export function GeneralPanel({ readOnly }: GeneralPanelProps) {
-  const { control, setValue } = useFormContext<ApiSettings>();
+  const { control, setValue, watch } = useFormContext<ApiSettings>();
+  const experimentalLabMode = Boolean(watch("experimental_lab_mode"));
+  const { data: capabilities } = useGetApiCapabilitiesQuery();
+  const libSmartAvailable = Boolean(
+    (capabilities as SystemCapabilities)?.lib_smart_available,
+  );
   const {
     data: hostname,
     isLoading: isHostnameFetching,
@@ -169,29 +178,56 @@ export function GeneralPanel({ readOnly }: GeneralPanelProps) {
         {...commonProps}
       />
 
-      {/* Disable SMART */}
+      {/* SMART Mode */}
       <Tooltip
         title={
           <>
             <Typography variant="h6" component="div">
-              Disable SMART Integration
+              SMART Integration Mode
             </Typography>
             <Typography variant="body2">
-              Stops SRAT-side SMART polling and hides SMART-related UI so
-              sleeping disks are less likely to spin up in the background.
+              Controls how SRAT collects SMART data from disks.
             </Typography>
             <Typography variant="body2" sx={{ mt: 1 }}>
-              Leave this off unless you specifically need to reduce wake-ups on
-              idle disks.
+              <strong>None</strong>: Disables SMART polling and hides
+              SMART-related UI. Use this to prevent idle disks from spinning up.
+            </Typography>
+            <Typography variant="body2" sx={{ mt: 0.5 }}>
+              <strong>Legacy</strong>: Uses the smartctl executable (default).
+            </Typography>
+            <Typography variant="body2" sx={{ mt: 0.5 }}>
+              <strong>Direct</strong>: Uses the libsmartmon_go.so library
+              backend (lab feature, requires lib availability).
             </Typography>
           </>
         }
       >
-        <SettingSwitchRow
-          ariaLabel="Disable SMART Integration"
-          id="disable_smart"
-          label="Disable SMART Integration"
-          name="disable_smart"
+        <SelectElement
+          label="SMART Mode"
+          name="smart_mode"
+          size="small"
+          fullWidth
+          options={[
+            { id: Smart_mode.None, label: "None (disabled)" },
+            { id: Smart_mode.Legacy, label: "Legacy (smartctl exec)" },
+            ...(experimentalLabMode && libSmartAvailable
+              ? [
+                  {
+                    id: Smart_mode.Direct,
+                    label: (
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        sx={{ alignItems: "center" }}
+                      >
+                        <span>Direct (lib backend)</span>
+                        <ScienceOutlinedIcon color="warning" fontSize="small" />
+                      </Stack>
+                    ),
+                  },
+                ]
+              : []),
+          ]}
           {...commonProps}
         />
       </Tooltip>

@@ -297,13 +297,13 @@ func (suite *SettingServiceSuite) TestUpdateSettings_SaveAndLoad_AllFieldTypes()
 			},
 		},
 		{
-			name: "DisableSmart_True",
+			name: "SmartMode_None",
 			settingsFactory: func() dto.Settings {
-				return dto.Settings{DisableSmart: true}
+				return dto.Settings{SmartMode: dto.SmartModes.SMARTMODENONE}
 			},
 			verifyFunc: func(loaded *dto.Settings, err error) {
 				suite.Require().NoError(err)
-				suite.True(loaded.DisableSmart)
+				suite.Equal(dto.SmartModes.SMARTMODENONE, loaded.SmartMode)
 			},
 		},
 		{

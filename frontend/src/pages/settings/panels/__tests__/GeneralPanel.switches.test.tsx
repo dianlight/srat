@@ -18,6 +18,10 @@ vi.mock("../../../../store/sratApi", async () => {
         unwrap: async () => "srat-host",
       }),
     }),
+    useGetApiCapabilitiesQuery: () => ({
+      data: { lib_smart_available: false },
+      isLoading: false,
+    }),
   };
 });
 
@@ -29,7 +33,8 @@ function TestHarness() {
       local_master: false,
       compatibility_mode: false,
       allow_guest: false,
-      disable_smart: false,
+      smart_mode: "legacy",
+      experimental_lab_mode: false,
     } as ApiSettings,
   });
 
@@ -63,9 +68,7 @@ describe("GeneralPanel switch accessibility", () => {
     ).toBeInTheDocument();
 
     expect(
-      screen.getByRole("switch", {
-        name: /disable smart integration/i,
-      }),
+      screen.getByLabelText(/smart mode/i),
     ).toBeInTheDocument();
   });
 });

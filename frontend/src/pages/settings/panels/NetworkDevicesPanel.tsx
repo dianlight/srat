@@ -50,8 +50,11 @@ export function NetworkDevicesPanel({ readOnly }: NetworkDevicesPanelProps) {
           name="interfaces"
           options={
             (nic as InterfaceStat[])
-              ?.map((nc) => nc.name)
-              .filter((name) => name !== "lo" && name !== "hassio") || []
+              ?.map((nc) => nc?.name)
+              .filter(
+                (name): name is string =>
+                  Boolean(name) && name !== "lo" && name !== "hassio",
+              ) || []
           }
           loading={isNicLoading}
           autocompleteProps={{

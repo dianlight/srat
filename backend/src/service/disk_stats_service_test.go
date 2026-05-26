@@ -219,7 +219,7 @@ func (suite *DiskStatsServiceSuite) TestIsSmartEnabled_CacheHit() {
 	_, _ = mock.Verify(suite.smartMock, matchers.Times(0)).GetSmartInfo(mock.AnyContext(), mock.Any[string]())
 }
 
-func (suite *DiskStatsServiceSuite) TestIsSmartEnabled_DisableSmartSetting() {
+func (suite *DiskStatsServiceSuite) TestIsSmartEnabled_SmartModeNoneSetting() {
 	diskID := "disk-disabled-by-setting"
 	suite.ds.smartIntegrationDisabled.Store(true)
 
@@ -358,7 +358,7 @@ func (suite *DiskStatsServiceSuite) TestInvalidateSmartCache_AllDisks() {
 	suite.False(disk2Exists, "disk2 should be removed from cache")
 }
 
-func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_DisableSmartSkipsBackgroundPolling() {
+func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_SmartModeNoneSkipsBackgroundPolling() {
 	diskID := "disk-1"
 	deviceName := "sda"
 	devicePath := "/dev/sda"

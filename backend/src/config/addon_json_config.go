@@ -56,6 +56,8 @@ type Config struct {
 	// DisableSmart supersedes the legacy enable_smart flag. When unset, callers
 	// should continue to interpret Smart for backward compatibility.
 	DisableSmart *bool `json:"disable_smart,omitempty"`
+	// SmartMode supersedes both Smart and DisableSmart. Values: "none", "legacy", "direct".
+	SmartMode string `json:"smart_mode,omitempty"`
 	//MQTTNextGen   bool   `json:"mqtt_nexgen_entities"`
 	//MQTTEnable    bool   `json:"mqtt_enable"`
 	//MQTTHost      string `json:"mqtt_host"`

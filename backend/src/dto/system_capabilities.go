@@ -8,4 +8,5 @@ type SystemCapabilities struct {
 	SambaVersionSufficient bool   `json:"samba_version_sufficient" doc:"Whether Samba version >= 4.23.0"`
 	UnsupportedReason      string `json:"unsupported_reason,omitempty" doc:"Reason why QUIC is not supported"`
 	SupportNFS             bool   `json:"support_nfs" doc:"Whether NFS is supported"`
+	LibSmartAvailable      bool   `json:"lib_smart_available" doc:"Whether the lib SMART backend (libsmartmon_go.so) is available at runtime"`
 }

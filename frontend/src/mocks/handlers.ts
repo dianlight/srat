@@ -728,6 +728,8 @@ export function getGetApiCapabilities200Response() {
 		samba_version_sufficient: faker.datatype.boolean(),
 		supports_quic: faker.datatype.boolean(),
 		unsupported_reason: faker.lorem.words(),
+		lib_smart_available: false,
+		support_nfs: faker.datatype.boolean(),
 	};
 }
 
@@ -1589,7 +1591,7 @@ export function getGetApiSettings200Response() {
 		].map((_) => faker.lorem.words()),
 		bind_all_interfaces: faker.datatype.boolean(),
 		compatibility_mode: faker.datatype.boolean(),
-		disable_smart: false,
+		smart_mode: "legacy",
 		experimental_lab_mode: false,
 		export_stats_to_ha: faker.datatype.boolean(),
 		hdidle_default_command_type: faker.helpers.arrayElement(["scsi", "ata"]),
@@ -1640,7 +1642,7 @@ export function getPatchApiSettings200Response() {
 		].map((_) => faker.lorem.words()),
 		bind_all_interfaces: faker.datatype.boolean(),
 		compatibility_mode: faker.datatype.boolean(),
-		disable_smart: false,
+		smart_mode: "legacy",
 		experimental_lab_mode: false,
 		export_stats_to_ha: faker.datatype.boolean(),
 		hdidle_default_command_type: faker.helpers.arrayElement(["scsi", "ata"]),
@@ -1691,7 +1693,7 @@ export function getPutApiSettings200Response() {
 		].map((_) => faker.lorem.words()),
 		bind_all_interfaces: faker.datatype.boolean(),
 		compatibility_mode: faker.datatype.boolean(),
-		disable_smart: false,
+		smart_mode: "legacy",
 		experimental_lab_mode: false,
 		export_stats_to_ha: faker.datatype.boolean(),
 		hdidle_default_command_type: faker.helpers.arrayElement(["scsi", "ata"]),

@@ -1236,6 +1236,8 @@ export type SystemCapabilities = {
   $schema?: string;
   /** Whether QUIC kernel module is loaded */
   has_kernel_module: boolean;
+  /** Whether the lib SMART backend (libsmartmon_go.so) is available at runtime */
+  lib_smart_available: boolean;
   /** Installed Samba version */
   samba_version: string;
   /** Whether Samba version >= 4.23.0 */
@@ -1851,7 +1853,6 @@ export type Settings = {
   allow_hosts?: string[];
   bind_all_interfaces?: boolean;
   compatibility_mode?: boolean;
-  disable_smart?: boolean;
   experimental_lab_mode: boolean;
   export_stats_to_ha?: boolean;
   ha_use_nfs?: boolean;
@@ -1864,6 +1865,7 @@ export type Settings = {
   interfaces?: string[];
   local_master?: boolean;
   multi_channel?: boolean;
+  smart_mode?: Smart_mode;
   smb_over_quic?: boolean;
   telemetry_mode?: Telemetry_mode;
   workgroup?: string;
@@ -2130,6 +2132,11 @@ export enum Disk_type {
 export enum Hdidle_default_command_type {
   Scsi = "scsi",
   Ata = "ata",
+}
+export enum Smart_mode {
+  None = "none",
+  Legacy = "legacy",
+  Direct = "direct",
 }
 export enum Telemetry_mode {
   Ask = "Ask",

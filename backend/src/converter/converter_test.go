@@ -497,18 +497,26 @@ func TestConfigToDto_TimeMachineSupportFromFS_AllTypes(t *testing.T) {
 	}
 }
 
-func TestConfigDisableSmartToSetting_ExplicitDisableSmartWins(t *testing.T) {
-	disabled := true
-
-	assert.True(t, configDisableSmartToSetting(config.Config{
-		Smart:        true,
-		DisableSmart: &disabled,
-	}))
+func TestConfigSmartModeFromConfig_ExplicitSmartModeWins(t *testing.T) {
+	result := configSmartModeFromConfig(config.Config{
+		SmartMode: "none",
+		Smart:     true,
+	})
+	assert.Equal(t, dto.SmartModes.SMARTMODENONE, result)
 }
 
-func TestConfigDisableSmartToSetting_FallsBackToLegacySmartFlag(t *testing.T) {
-	assert.False(t, configDisableSmartToSetting(config.Config{Smart: true}))
-	assert.True(t, configDisableSmartToSetting(config.Config{Smart: false}))
+func TestConfigSmartModeFromConfig_DisableSmartBackcompat(t *testing.T) {
+	disabled := true
+	result := configSmartModeFromConfig(config.Config{
+		Smart:        true,
+		DisableSmart: &disabled,
+	})
+	assert.Equal(t, dto.SmartModes.SMARTMODENONE, result)
+}
+
+func TestConfigSmartModeFromConfig_FallsBackToLegacySmartFlag(t *testing.T) {
+	assert.Equal(t, dto.SmartModes.SMARTMODELEGACY, configSmartModeFromConfig(config.Config{Smart: true}))
+	assert.Equal(t, dto.SmartModes.SMARTMODENONE, configSmartModeFromConfig(config.Config{Smart: false}))
 }
 
 func TestConfigToDto_FSTypeIsWriteSupported(t *testing.T) {

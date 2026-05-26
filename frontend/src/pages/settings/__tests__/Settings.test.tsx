@@ -207,7 +207,7 @@ describe("Settings", () => {
       screen.getByRole("switch", { name: /allow guest/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("switch", { name: /disable smart integration/i }),
+      screen.getByLabelText(/smart mode/i),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("switch", { name: /experimental lab mode/i }),

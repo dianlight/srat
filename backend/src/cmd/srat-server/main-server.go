@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
-	"github.com/dianlight/smartmontools-go"
 	"github.com/dianlight/srat/internal/appsetup"
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/tlog"
@@ -182,9 +181,6 @@ func prog(listener net.Listener, serverPort int) {
 		appsetup.ProvideCyclicDependencyWorkaroundOption(),
 		fx.Provide(
 			func() net.Listener { return listener },
-			func() (smartmontools.SmartClient, error) {
-				return smartmontools.NewClient(smartmontools.WithTLogHandler(tlog.NewLoggerWithLevel(tlog.LevelInfo)))
-			},
 			api.NewWebSocketBroker,
 			server.AsHumaRoute(api.NewHealthHandler),
 			server.AsHumaRoute(api.NewShareHandler),

@@ -5,6 +5,14 @@
 ## [ 🚧 Unreleased ]
 
 ### ✨ Features
+- **Lab Mode**: Added a new "Lab Mode" section in Settings → Advanced with experimental features that can be enabled for testing and feedback. 
+- **SMART Integration Mode**: Replaced the `disable_smart` boolean toggle with a 3-option `smart_mode` enum (`none`, `legacy`, `direct`).
+  - `none`: SMART integration disabled.
+  - `legacy`: Uses the `smartctl` executable (previous default behavior).
+  - `direct`: Uses the `libsmartmon_go.so` library back end (lab feature, requires lib availability at startup).
+  - The `direct` option is only shown in the UI when experimental lab mode is enabled and `libsmartmon_go.so` is detected at runtime.
+  - Backend detects `libsmartmon_go.so` availability at startup and exposes `lib_smart_available` in the settings API response.
+  - DB migration 00016 converts existing `DisableSmart` boolean properties to the new `smart_mode` string value.
 
 ### 🐛 Bug Fixes
 

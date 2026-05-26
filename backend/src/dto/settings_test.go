@@ -31,7 +31,7 @@ func TestSettings_AllFields(t *testing.T) {
 		ExportStatsToHA:     &exportStats,
 		HAUseNFS:            &haUseNFS,
 		SMBoverQUIC:         &smbOverQUIC,
-		DisableSmart:        true,
+		SmartMode:           dto.SmartModes.SMARTMODENONE,
 		ExperimentalLabMode: true,
 	}
 
@@ -56,7 +56,7 @@ func TestSettings_AllFields(t *testing.T) {
 	assert.False(t, *settings.HAUseNFS)
 	assert.NotNil(t, settings.SMBoverQUIC)
 	assert.False(t, *settings.SMBoverQUIC)
-	assert.True(t, settings.DisableSmart)
+	assert.Equal(t, dto.SmartModes.SMARTMODENONE, settings.SmartMode)
 	assert.True(t, settings.ExperimentalLabMode)
 }
 
@@ -76,7 +76,7 @@ func TestSettings_ZeroValues(t *testing.T) {
 	assert.Nil(t, settings.ExportStatsToHA)
 	assert.Nil(t, settings.HAUseNFS)
 	assert.Nil(t, settings.SMBoverQUIC)
-	assert.False(t, settings.DisableSmart)
+	assert.Equal(t, dto.SmartModes.SMARTMODENONE, settings.SmartMode)
 	assert.False(t, settings.ExperimentalLabMode)
 }
 
@@ -125,7 +125,7 @@ func TestSettings_BooleanPointers(t *testing.T) {
 		ExportStatsToHA:     &falseVal,
 		HAUseNFS:            &trueVal,
 		SMBoverQUIC:         &trueVal,
-		DisableSmart:        true,
+		SmartMode:           dto.SmartModes.SMARTMODENONE,
 		ExperimentalLabMode: true,
 	}
 
@@ -133,7 +133,7 @@ func TestSettings_BooleanPointers(t *testing.T) {
 	assert.False(t, *settings.ExportStatsToHA)
 	assert.True(t, *settings.HAUseNFS)
 	assert.True(t, *settings.SMBoverQUIC)
-	assert.True(t, settings.DisableSmart)
+	assert.Equal(t, dto.SmartModes.SMARTMODENONE, settings.SmartMode)
 	assert.True(t, settings.ExperimentalLabMode)
 }
 
@@ -163,7 +163,7 @@ func TestSettings_DefaultValues(t *testing.T) {
 	assert.False(t, *settings.HAUseNFS)
 	assert.NotNil(t, settings.SMBoverQUIC)
 	assert.False(t, *settings.SMBoverQUIC)
-	assert.False(t, settings.DisableSmart)
+	assert.Equal(t, dto.SmartModes.SMARTMODENONE, settings.SmartMode)
 	assert.False(t, settings.ExperimentalLabMode)
 }
 
