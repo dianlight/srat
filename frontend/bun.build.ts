@@ -83,6 +83,7 @@ async function build(): Promise<BuildOutput | undefined> {
 	console.log("\tVersion: ", process.env.VERSION || "not provided");
 	console.log("\tNode Environment: ", process.env.NODE_ENV || "not provided");
 	console.log("\tAPI URL: ", process.env.API_URL || "not provided");
+	console.log("\tSentry DSN: ", process.env.VITE_SENTRY_DSN || "not provided");
 	//console.log("\tSentry DSN: ", process.env.VITE_SENTRY_DSN || "not provided");
 	if (!values.serve && !values.watch) {
 		console.log(`\tMode: Build ${import.meta.dir}/src -> ${values.outDir}`);

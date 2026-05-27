@@ -122,8 +122,15 @@ fi
 
 # 5. Push unpushed commits
 log "Ensuring main is synced with remote..."
-confirm "Push existing commits to origin main?"
-git push origin main
+UNPUSHED=$(git log origin/main..HEAD --oneline 2>/dev/null)
+if [[ -n "$UNPUSHED" ]]; then
+	log "Found unpushed commits:"
+	echo "$UNPUSHED"
+	confirm "Push existing commits to origin main?"
+	git push origin main
+else
+	log "No unpushed commits. Skipping push."
+fi
 
 # 6. Update CHANGELOG.md (initial version header)
 log "Checking CHANGELOG.md status..."
@@ -179,17 +186,17 @@ gh api -X PATCH "repos/:owner/:repo/releases/$DRAFT_ID" \
 	-F draft=true >/dev/null
 
 # STEP 2: Delete existing assets to ensure clean CI upload
-#log "[PUBLISH STEP 2] Clearing existing assets from release..."
-#ASSET_IDS=$(gh api "repos/:owner/:repo/releases/$DRAFT_ID/assets" --jq '.[].id')
-#for asset_id in $ASSET_IDS; do
-#    log "  Deleting asset ID: $asset_id"
-#	gh api -X DELETE "repos/:owner/:repo/releases/assets/$asset_id"
-#done
+log "[PUBLISH STEP 2] Clearing existing assets from release..."
+ASSET_IDS=$(gh api "repos/:owner/:repo/releases/$DRAFT_ID/assets" --jq '.[].id')
+for asset_id in $ASSET_IDS; do
+	log "  Deleting asset ID: $asset_id"
+	gh api -X DELETE "repos/:owner/:repo/releases/assets/$asset_id"
+done
 
 # STEP 3: Trigger CI manual execution for build.yaml to produce release assets
 log "Triggering CI workflow for release assets..."
 gh workflow run build.yaml --ref main
-sleep 5 # Short delay to ensure workflow is registered
+sleep 15 # Short delay to ensure workflow is registered
 
 # INTERMEDIATE: Wait for CI and Check Workflows
 log "Checking for active workflow runs on main before final publish..."

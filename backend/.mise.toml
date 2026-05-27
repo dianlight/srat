@@ -148,8 +148,18 @@ flag "--pprof" help="Include pprof profiling support"
 arg "<gist_token>" help="GitHub Gist token" env="GIST_TOKEN"
 '''
 run = [
-  { task = "build", args = ['--arch=x86_64', '--version={{usage.version | default(value=env.VERSION)}}', '${usage_sentry_dsn:+--sentry_dsn=${usage_sentry_dsn}}', '${usage_pprof:+--pprof}'] },
-  { task = "build", args = ['--arch=aarch64', '--version={{usage.version | default(value=env.VERSION)}}', '${usage_sentry_dsn:+--sentry_dsn=${usage_sentry_dsn}}', '${usage_pprof:+--pprof}'] },
+  '''
+    EXTRA="--arch=x86_64 --version={{ usage.version | default(value=env.VERSION) }}"
+    [ -n "$usage_sentry_dsn" ] && EXTRA="$EXTRA --sentry_dsn=$usage_sentry_dsn"
+    [ -n "$usage_pprof" ] && EXTRA="$EXTRA --pprof"
+    mise //backend:build -- $EXTRA
+  ''',
+  '''
+    EXTRA="--arch=aarch64 --version={{ usage.version | default(value=env.VERSION) }}"
+    [ -n "$usage_sentry_dsn" ] && EXTRA="$EXTRA --sentry_dsn=$usage_sentry_dsn"
+    [ -n "$usage_pprof" ] && EXTRA="$EXTRA --pprof"
+    mise //backend:build -- $EXTRA
+  ''',
 ]
 quiet = true
 
