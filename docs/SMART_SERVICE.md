@@ -44,6 +44,49 @@ When `disable_smart` is enabled from the SRAT settings page, SRAT stops backgrou
 
 **Implementation Note**: This service uses a **patched version** of `github.com/anatol/smart.go` that exposes file descriptors for direct device control. The patch is managed via `gohack` and applied automatically during the build process (`mise run //backend:patch`). See [Platform Support](#platform-support) and [Limitations](#limitations) sections for details.
 
+## Build Modes
+
+The SMART service supports two build-time modes, controlled by the `smartlib` Go build tag.
+
+### Default Exec Mode (no `smartlib` tag)
+
+All production release binaries are built **without** the `smartlib` tag (`CGO_ENABLED=0`):
+
+```bash
+mise run //backend:build --arch=aarch64 --version=...
+```
+
+This mode runs `smartctl` as a child process to collect SMART data. The resulting binary is
+fully statically linked with zero shared-library dependencies, and runs unchanged on
+GNU/Linux systems using either glibc (Debian, Ubuntu) or musl (Alpine).
+
+### Lib mode (`smartlib` tag)
+
+When built with `-tags smartlib`, SRAT loads `libsmartmon_go.so` at runtime via
+`ebitengine/purego`, which enables direct SMART access without spawning child processes.
+Because `purego` uses `//go:cgo_import_dynamic` directives to wire `dlopen`/`dlsym`
+from `libdl.so.2`, this build path forces dynamic linking.
+
+To build with lib mode enabled:
+
+```bash
+mise run //backend:build --arch=aarch64 --version=... --cgo
+```
+
+**Runtime requirement**: `libsmartmon_go.so` must be present at a known path (for example,
+`/usr/local/lib/libsmartmon_go.so`). Build it from the vendored source:
+
+```bash
+cd backend/src/vendor/github.com/dianlight/smartmontools-go
+bash backends/lib/scripts/setup-lib-backend.sh
+```
+
+The Direct SMART mode is visible in the UI only when all three conditions are met:
+
+1. The binary was compiled with `-tags smartlib`, **and**
+2. `libsmartmon_go.so` is detected at startup (`ApiCtx.LibSmartAvailable == true`), **and**
+3. Experimental Lab Mode is enabled in Settings.
+
 ## Service Methods
 
 ### GetHealthStatus(devicePath string)

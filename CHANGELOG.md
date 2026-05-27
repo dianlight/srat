@@ -18,6 +18,8 @@
 
 ### 🏗 Chore
 
+- **Static binary portability**: Default production builds (`CGO_ENABLED=0`) are now fully statically linked with zero shared-library dependencies, running unchanged on GNU/Linux systems using either glibc (Debian, Ubuntu) or musl (Alpine). The `libsmartmon_go.so` lib integration is now gated behind a new `smartlib` build tag so it no longer forces `libdl.so.2` dynamic linking in release binaries. Build with `--cgo` (which adds `-tags smartlib`) to opt in to the lib mode.
+
 ## 2026.5.0-rc8
 
 ### ✨ Features

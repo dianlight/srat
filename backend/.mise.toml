@@ -56,15 +56,47 @@ run = [
       else
         GOARCH=amd64
       fi
-      export CGO_CFLAGS GOARCH
-      ${usage_cgo:+CGO_ENABLED=1} \
-      ${usage_zig:+CC="zig cc -target ${usage_arch?}-linux-musl"} \
-      go build -C src -tags=p${usage_pprof:+prof},embedallowed -ldflags="-s -w \
+      # Default to static builds; only enable CGO when --cgo flag is explicitly passed.
+      # When CGO is enabled, also include the 'smartlib' tag so the purego-based
+      # lib backend is compiled in (it requires a dynamically linked binary anyway).
+      if [ -n "$usage_cgo" ]; then
+        CGO_ENABLED=1
+        GOTAGS="p${usage_pprof:+prof},embedallowed,smartlib"
+      else
+        CGO_ENABLED=0
+        GOTAGS="p${usage_pprof:+prof},embedallowed"
+      fi
+      if [ -n "$usage_zig" ]; then
+        CC="zig cc -target ${usage_arch?}-linux-musl"
+        export CC
+      fi
+      export CGO_CFLAGS GOARCH CGO_ENABLED GOTAGS
+      go build -C src -tags="$GOTAGS" -ldflags="-s -w \
            -X github.com/dianlight/srat/config.Version="${usage_version?}" \
            -X github.com/dianlight/srat/config.CommitHash=$(git rev-parse --short HEAD) \
            -X github.com/dianlight/srat/config.BuildTimestamp=$(date +%Y-%m-%dT%H:%M:%S) \
               -X github.com/dianlight/srat/config.SentryDSN=${usage_sentry_dsn:-disabled} \
            -X github.com/dianlight/srat/config.GistToken=${usage_gist_token?}" -o ../dist/${usage_arch?}/ ./...
+    ''',
+    '''
+      set +x
+      if [ -n "$usage_cgo" ]; then
+        echo "⚠ Static-linkage check skipped for CGO build (--cgo flag set — binary will be dynamically linked)"
+      else
+        echo "Verifying static linkage (musl/glibc portability) of dist/${usage_arch?}/..."
+        all_static=true
+        for bin in dist/${usage_arch?}/srat-server dist/${usage_arch?}/srat-cli dist/${usage_arch?}/srat-openapi; do
+          [ -f "$bin" ] || continue
+          if file "$bin" | grep -q "dynamically linked"; then
+            echo "✗ PORTABILITY FAIL: $bin is dynamically linked — will not run on all libc environments"
+            echo "  Hint: remove --cgo flag or ensure a fully static build (CGO_ENABLED=0)"
+            all_static=false
+          else
+            echo "✓ Static: $bin"
+          fi
+        done
+        if [ "$all_static" = "false" ]; then exit 1; fi
+      fi
     ''',
     'echo Verifying embedded version in dist/${usage_arch?}/srat-server...',
     '''
@@ -104,6 +136,20 @@ run = [
   },
 	'[ -n "${HOMEASSISTANT_IP}" ] || (echo "HOMEASSISTANT_IP is not set" && exit 1)',
   'rsync -avz --progress ./dist/x86_64/srat-cli ./dist/x86_64/srat-server ${HOMEASSISTANT_IP}:/addon_configs/local_sambanas2/upgrade/'
+]
+quiet = true
+
+[tasks."build:all"]
+description = "Build statically-linked binaries for all supported architectures (x86_64 and aarch64). Both artifacts run on glibc and musl systems without modification (CGO_ENABLED=0). Accepts the same flags as 'build' except --arch."
+usage = '''
+flag "--version <version>" help="Build version"  env="VERSION"
+flag "--sentry_dsn <sentry_dsn>" help="Sentry DSN" env="SENTRY_DSN"
+flag "--pprof" help="Include pprof profiling support"
+arg "<gist_token>" help="GitHub Gist token" env="GIST_TOKEN"
+'''
+run = [
+  { task = "build", args = ['--arch=x86_64', '--version={{usage.version | default(value=env.VERSION)}}', '${usage_sentry_dsn:+--sentry_dsn=${usage_sentry_dsn}}', '${usage_pprof:+--pprof}'] },
+  { task = "build", args = ['--arch=aarch64', '--version={{usage.version | default(value=env.VERSION)}}', '${usage_sentry_dsn:+--sentry_dsn=${usage_sentry_dsn}}', '${usage_pprof:+--pprof}'] },
 ]
 quiet = true
 

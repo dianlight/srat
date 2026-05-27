@@ -196,8 +196,10 @@ export function GeneralPanel({ readOnly }: GeneralPanelProps) {
               <strong>Legacy</strong>: Uses the smartctl executable (default).
             </Typography>
             <Typography variant="body2" sx={{ mt: 0.5 }}>
-              <strong>Direct</strong>: Uses the libsmartmon_go.so library
-              backend (lab feature, requires lib availability).
+              <strong>Direct</strong>: Uses the <code>libsmartmon_go.so</code>{" "}
+              library backend (lab feature). Requires the binary built with{" "}
+              <code>-tags smartlib</code> and <code>libsmartmon_go.so</code>{" "}
+              present at runtime.
             </Typography>
           </>
         }

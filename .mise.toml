@@ -77,8 +77,7 @@ flag "--version <version>" help="Build version"
 '''
 run = """
    echo "Running full build with version: ${usage_version:-not provided}"
-  mise run //backend:build --arch=x86_64 --version={{usage.version}} --sentry_dsn=${SENTRY_DSN:-disabled}
-  mise run //backend:build --arch=aarch64 --version={{usage.version}} --sentry_dsn=${SENTRY_DSN:-disabled}
+  mise run //backend:build:all --version={{usage.version}} --sentry_dsn=${SENTRY_DSN:-disabled}
   """
 quiet = true
 

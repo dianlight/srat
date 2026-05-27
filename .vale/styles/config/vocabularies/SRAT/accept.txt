@@ -343,3 +343,12 @@ CAs
 argv
 isLoading
 Vitest
+glibc
+musl
+purego
+smartlib
+dlopen
+dlsym
+libdl
+subprocess
+
