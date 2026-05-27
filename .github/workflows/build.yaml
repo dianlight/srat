@@ -27,6 +27,7 @@ on:
       - 'custom_components/**'
       - 'hacs.json'
       - '.github/workflows/build.yaml'
+      - 'CHANGELOG.md'
   release:
     types: ["published"]
   pull_request:
