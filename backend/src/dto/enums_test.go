@@ -135,9 +135,9 @@ func TestUpdateChannel_String(t *testing.T) {
 		channel  dto.UpdateChannel
 		expected string
 	}{
-		{"None", dto.UpdateChannels.NONE, "Release"},
+		{"None", dto.UpdateChannels.NONE, "None"},
 		{"Develop", dto.UpdateChannels.DEVELOP, "Develop"},
-		{"Release", dto.UpdateChannels.RELEASE, "None"},
+		{"Release", dto.UpdateChannels.RELEASE, "Release"},
 		{"Prerelease", dto.UpdateChannels.PRERELEASE, "Prerelease"},
 	}
 
@@ -159,7 +159,7 @@ func TestUpdateChannel_MarshalJSON(t *testing.T) {
 	channel := dto.UpdateChannels.RELEASE
 	data, err := json.Marshal(channel)
 	assert.NoError(t, err)
-	assert.Equal(t, `"None"`, string(data))
+	assert.Equal(t, `"Release"`, string(data))
 }
 
 func TestUpdateChannel_UnmarshalJSON(t *testing.T) {
@@ -167,6 +167,27 @@ func TestUpdateChannel_UnmarshalJSON(t *testing.T) {
 	err := json.Unmarshal([]byte(`"Develop"`), &channel)
 	assert.NoError(t, err)
 	assert.Equal(t, dto.UpdateChannels.DEVELOP, channel)
+}
+
+func TestUpdateChannel_ParseUpdateChannel(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected dto.UpdateChannel
+	}{
+		{"release maps to RELEASE", "release", dto.UpdateChannels.RELEASE},
+		{"none maps to NONE", "none", dto.UpdateChannels.NONE},
+		{"develop maps to DEVELOP", "develop", dto.UpdateChannels.DEVELOP},
+		{"prerelease maps to PRERELEASE", "prerelease", dto.UpdateChannels.PRERELEASE},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			channel, err := dto.ParseUpdateChannel(tt.input)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected, channel)
+		})
+	}
 }
 
 func TestTelemetryMode_String(t *testing.T) {

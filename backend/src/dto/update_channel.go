@@ -4,8 +4,8 @@ package dto
 type updateChannel int8
 
 const (
-	None       updateChannel = iota // "Release"
+	None       updateChannel = iota // "None"
 	Develop                         // "Develop"
-	Release                         // "None"
+	Release                         // "Release"
 	Prerelease                      // "Prerelease"
 )

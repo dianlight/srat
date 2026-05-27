@@ -149,12 +149,12 @@ func ParseUpdateChannel(input any) (UpdateChannel, error) {
 // updateChannelsNameMap is a map of enum values to their UpdateChannel representation
 // It is used to convert string representations of enum values into their UpdateChannel representation.
 var updateChannelsNameMap = map[string]UpdateChannel{
-	"Release":    UpdateChannels.NONE,
-	"release":    UpdateChannels.NONE,
+	"None":       UpdateChannels.NONE,
+	"none":       UpdateChannels.NONE,
 	"Develop":    UpdateChannels.DEVELOP,
 	"develop":    UpdateChannels.DEVELOP,
-	"None":       UpdateChannels.RELEASE,
-	"none":       UpdateChannels.RELEASE,
+	"Release":    UpdateChannels.RELEASE,
+	"release":    UpdateChannels.RELEASE,
 	"Prerelease": UpdateChannels.PRERELEASE,
 	"prerelease": UpdateChannels.PRERELEASE,
 }
@@ -302,14 +302,14 @@ func (u *UpdateChannel) UnmarshalYAML(by []byte) error {
 }
 
 // updatechannelNames is a constant string slice containing all enum values cononical absolute names
-const updatechannelNames = "ReleaseDevelopNonePrerelease"
+const updatechannelNames = "NoneDevelopReleasePrerelease"
 
 // updatechannelNamesMap is a map of enum values to their canonical absolute
 // name positions within the updatechannelNames string slice
 var updatechannelNamesMap = map[UpdateChannel]string{
-	UpdateChannels.NONE:       updatechannelNames[0:7],
-	UpdateChannels.DEVELOP:    updatechannelNames[7:14],
-	UpdateChannels.RELEASE:    updatechannelNames[14:18],
+	UpdateChannels.NONE:       updatechannelNames[0:4],
+	UpdateChannels.DEVELOP:    updatechannelNames[4:11],
+	UpdateChannels.RELEASE:    updatechannelNames[11:18],
 	UpdateChannels.PRERELEASE: updatechannelNames[18:28],
 }
 
