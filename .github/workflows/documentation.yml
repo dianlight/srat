@@ -106,6 +106,7 @@ jobs:
                     echo "has_changes=false" >> $GITHUB_OUTPUT
                     echo "No changes to commit."
                   else
+                    git fetch origin docs/auto-maintenance 2>/dev/null || true
                     git checkout -b docs/auto-maintenance 2>/dev/null || git checkout docs/auto-maintenance
                     git add -A
                     git commit -m "docs: auto-fix documentation formatting and TOC"
