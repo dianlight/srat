@@ -88,14 +88,34 @@ jobs:
                   install: true
                   experimental: true
 
+            - name: Configure git
+              run: |
+                  git config user.name "github-actions[bot]"
+                  git config user.email "github-actions[bot]@users.noreply.github.com"
+
             - name: Generate TOC for Markdown files
               run: mise run docs-toc
 
             - name: Auto-fix formatting issues
               run: mise run docs-fix
 
+            - name: Commit and push changes to maintenance branch
+              id: commit
+              run: |
+                  if git diff --quiet; then
+                    echo "has_changes=false" >> $GITHUB_OUTPUT
+                    echo "No changes to commit."
+                  else
+                    git checkout -b docs/auto-maintenance 2>/dev/null || git checkout docs/auto-maintenance
+                    git add -A
+                    git commit -m "docs: auto-fix documentation formatting and TOC"
+                    git push --force-with-lease origin docs/auto-maintenance
+                    echo "has_changes=true" >> $GITHUB_OUTPUT
+                  fi
+
             - name: Create Pull Request with documentation fixes
               id: cpr
+              if: steps.commit.outputs.has_changes == 'true'
               run: |
                   pr_url=$(gh pr create \
                     --base main \
@@ -112,8 +132,12 @@ jobs:
                   echo "pull-request-url=$pr_url" >> $GITHUB_OUTPUT
                   pr_number=$(gh pr view docs/auto-maintenance --json number --jq '.number')
                   echo "pull-request-number=$pr_number" >> $GITHUB_OUTPUT
-                  #gh pr review --approve "$pr_number"
-                  gh pr merge --merge --auto "$pr_number"
+                  pr_state=$(gh pr view docs/auto-maintenance --json state --jq '.state')
+                  if [[ "$pr_state" == "OPEN" ]]; then
+                    gh pr merge --merge --auto "$pr_number"
+                  else
+                    echo "PR #$pr_number is $pr_state, skipping auto-merge."
+                  fi
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
