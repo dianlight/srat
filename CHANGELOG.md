@@ -1,6 +1,8 @@
 <!-- DOCTOC SKIP -->
 
-## 2026.5.0-rc9
+# Changelog
+
+## [ 🚧 Unreleased ]
 
 ### ✨ Features
 - **Lab Mode**: Added a new "Lab Mode" section in Settings → Advanced with experimental features that can be enabled for testing and feedback. 
