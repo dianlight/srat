@@ -50,8 +50,7 @@ run = [
     '''
       set +x +e
       #METADATA_C_STRING="version=${usage_version?};commit=$(git rev-parse --short HEAD);build_at=$(date +%Y-%m-%dT%H:%M:%S);format=elf-json"
-      METADATA_C_JSON="{\"version\":\"v${usage_version?}\"}"
-      CGO_CFLAGS="-DELF_METADATA=$METADATA_C_JSON"
+      CGO_CFLAGS='-DELF_METADATA="{\"version\":\"v'"${usage_version?}"'\"}"'
       if [ "$usage_arch" = "aarch64" ]; then
         GOARCH=arm64
       else

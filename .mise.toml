@@ -37,16 +37,6 @@ hk = "1.45.0"
 #opencode = "latest"
 #copilot-cli = "latest"
 
-
-#[tools."http:hk"]
-#version = "1.43.0"
-#platforms.linux-arm64.url = "https://github.com/jdx/hk/releases/download/v{{version}}/hk-aarch64-unknown-linux-musl.tar.gz"
-#platforms.linux-arm64.checksum = "sha256:23fc837d20d42cac85b9575669fd65f0153c4ee3519c4c3715a65c92721009cb"
-#platforms.linux-x64.url = "https://github.com/jdx/hk/releases/download/v{{version}}/hk-x86_64-unknown-linux-musl.tar.gz"
-#platforms.macos-arm64.url = "https://github.com/jdx/hk/releases/download/v{{version}}/hk-aarch64-apple-darwin.tar.gz"
-#platforms.windows-x64.url = "https://github.com/jdx/hk/releases/download/v{{version}}/hk-x86_64-pc-windows-msvc.zip"
-#install_path = "hk"
-
 [env]
 HK_MISE = 1
 _.source = { path = "scripts/env.sh", tools = true }
