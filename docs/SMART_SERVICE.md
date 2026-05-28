@@ -3,6 +3,9 @@
 
 - [SMART Service Enhancement](#smart-service-enhancement)
   - [Overview](#overview)
+  - [Build Modes](#build-modes)
+    - [Default Exec Mode (no `smartlib` tag)](#default-exec-mode-no-smartlib-tag)
+    - [Lib mode (`smartlib` tag)](#lib-mode-smartlib-tag)
   - [Service Methods](#service-methods)
     - [GetHealthStatus(devicePath string)](#gethealthstatusdevicepath-string)
     - [StartSelfTest(devicePath string, testType SmartTestType)](#startselftestdevicepath-string-testtype-smarttesttype)
