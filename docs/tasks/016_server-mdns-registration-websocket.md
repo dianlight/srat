@@ -1,8 +1,8 @@
 # [FEATURE]: Server mDNS Registration via WebSocket to Custom Component
 
 **Target Repo:** `srat` 
-**Status:** 📅 Planned 
-**Issue Link:** _TBD_
+**Status:** ✅ Complete 
+**Issue Link:** *TBD*
 
 ## 🎯 Objective
 
@@ -31,17 +31,17 @@ Enable automatic mDNS (Bonjour/Avahi) registration of the Samba server when the 
 
 ## 📝 Task List
 
-- [ ] Task 1: Add mDNS registration Setting to backend + database migration
-- [ ] Task 2: Add new WebSocket message type `mDnsRegister` to dto/events with payload schema
-- [ ] Task 3: Update WebSocket handler to send `mDnsRegister` message on valid `helo` handshake and on server process CLEAN event
-- [ ] Task 4: Implement disconnection timeout logic (30-sec goroutine) and send disable message
-- [ ] Task 5: Emit mDNS events to eventBus for logging/diagnostics
-- [ ] Task 6: Add "Enable mDNS Registration" toggle to Frontend HomeAssistant settings panel
-- [ ] Task 7: Implement conditional disable + tooltip when component is not connected
-- [ ] Task 8: Update custom component `websocket_client.py` to parse `mDnsRegister` messages
-- [ ] Task 9: Implement zeroconf registration in custom component `__init__.py` (enable/disable)
-- [ ] Task 10: Unit testing (WebSocket message handler, backend logic, settings)
-- [ ] Task 11: Integration testing (custom component registration, timeout behavior, disconnection recovery)
+- [x] Task 1: Add mDNS registration Setting to backend + database migration
+- [x] Task 2: Add new WebSocket message type `mDnsRegister` to dto/events with payload schema
+- [x] Task 3: Update WebSocket handler to send `mDnsRegister` message on valid `helo` handshake and on server process CLEAN event
+- [x] Task 4: Implement disconnection timeout logic (30-sec goroutine) and send disable message
+- [x] Task 5: Emit mDNS events to eventBus for logging/diagnostics
+- [x] Task 6: Add "Enable mDNS Registration" toggle to Frontend HomeAssistant settings panel
+- [x] Task 7: Implement conditional disable + tooltip when component is not connected
+- [x] Task 8: Update custom component `websocket_client.py` to parse `mDnsRegister` messages
+- [x] Task 9: Implement zeroconf registration in custom component `__init__.py` (enable/disable)
+- [x] Task 10: Unit testing (WebSocket message handler, backend logic, settings)
+- [x] Task 11: Integration testing (custom component registration, timeout behavior, disconnection recovery)
 - [ ] Task 12: Documentation (mDNS feature overview, HA zeroconf integration, troubleshooting)
 - [ ] Task 13: Code review and QA
 

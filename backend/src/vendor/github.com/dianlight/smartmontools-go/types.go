@@ -1,6 +1,6 @@
 package smartmontools
 
-import smtypes "github.com/dianlight/smartmontools-go/internal/types"
+import smtypes "github.com/dianlight/smartmontools-go/types"
 
 // Device represents a storage device.
 type Device = smtypes.Device

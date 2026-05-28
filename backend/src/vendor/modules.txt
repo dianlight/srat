@@ -89,13 +89,13 @@ github.com/dave/jennifer/jen
 # github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 ## explicit
 github.com/davecgh/go-spew/spew
-# github.com/dianlight/smartmontools-go v0.4.0
+# github.com/dianlight/smartmontools-go v0.4.1
 ## explicit; go 1.26
 github.com/dianlight/smartmontools-go
 github.com/dianlight/smartmontools-go/backends/compare
 github.com/dianlight/smartmontools-go/backends/exec
 github.com/dianlight/smartmontools-go/backends/lib
-github.com/dianlight/smartmontools-go/internal/types
+github.com/dianlight/smartmontools-go/types
 # github.com/dianlight/tlog v0.2.2
 ## explicit; go 1.25.0
 github.com/dianlight/tlog
@@ -477,7 +477,7 @@ golang.org/x/crypto/blake2b
 golang.org/x/crypto/blowfish
 golang.org/x/crypto/pbkdf2
 golang.org/x/crypto/scrypt
-# golang.org/x/exp v0.0.0-20260508232706-74f9aab9d74a
+# golang.org/x/exp v0.0.0-20260527015227-08cc5374adb3
 ## explicit; go 1.25.0
 golang.org/x/exp/constraints
 # golang.org/x/mod v0.36.0

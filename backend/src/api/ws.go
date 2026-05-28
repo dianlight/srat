@@ -28,6 +28,7 @@ type WebSocketHandler struct {
 	problemService service.ProblemServiceInterface
 	haService      service.HomeAssistantServiceInterface
 	haComponentSvc service.HomeAssistantComponentServiceInterface
+	mdnsService    service.MDNSServiceInterface
 	state          *dto.ContextState
 	upgrader       websocket.Upgrader
 	eventMap       map[string]any
@@ -42,6 +43,7 @@ type WebSocketHandlerParams struct {
 	ProblemService service.ProblemServiceInterface                `optional:"true"`
 	HAService      service.HomeAssistantServiceInterface          `optional:"true"`
 	HAComponentSvc service.HomeAssistantComponentServiceInterface `optional:"true"`
+	MDNSService    service.MDNSServiceInterface                   `optional:"true"`
 	State          *dto.ContextState
 }
 
@@ -66,6 +68,7 @@ func NewWebSocketBroker(p WebSocketHandlerParams) *WebSocketHandler {
 		problemService: p.ProblemService,
 		haService:      p.HAService,
 		haComponentSvc: p.HAComponentSvc,
+		mdnsService:    p.MDNSService,
 		state:          p.State,
 		upgrader:       upgrader,
 		eventMap:       dto.WebEventMap,
@@ -142,6 +145,9 @@ func (self *WebSocketHandler) clearHomeAssistantComponentConnection() {
 	}
 
 	self.state.HAWsComponent = nil
+	if self.mdnsService != nil {
+		self.mdnsService.OnComponentDisconnected()
+	}
 }
 
 func (self *WebSocketHandler) setHomeAssistantComponentConnection(message dto.HeloMessage) {
@@ -161,6 +167,9 @@ func (self *WebSocketHandler) setHomeAssistantComponentConnection(message dto.He
 		for _, queued := range self.repairService.FlushQueuedCommands() {
 			self.broadcaster.BroadcastMessage(queued)
 		}
+	}
+	if self.mdnsService != nil {
+		self.mdnsService.OnComponentConnected(message)
 	}
 }
 

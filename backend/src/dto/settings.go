@@ -24,4 +24,5 @@ type Settings struct {
 	HDIdleDefaultCommandType      HdidleCommand          `json:"hdidle_default_command_type,omitempty" enum:"scsi,ata"`
 	HDIdleDefaultPowerCondition   uint8                  `json:"hdidle_default_power_condition,omitempty"` // 0-15
 	HDIdleIgnoreSpinDownDetection bool                   `json:"hdidle_ignore_spin_down_detection,omitempty" default:"false"`
+	MDNSRegistration              *bool                  `json:"mdns_registration,omitempty" default:"false"`
 }
