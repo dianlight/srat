@@ -6,7 +6,7 @@ air = '1.64.5'
 "go:github.com/securego/gosec/v2/cmd/gosec" = "v2.25.0"
 "npm:@redocly/cli" = "2.28.1"
 oapi-codegen = "2.6.0"
-
+"github:home-assistant/cli" = "v5.1.0"
 
 [tasks]
 clean = "go -C src clean && rm -rf dist"
@@ -119,25 +119,64 @@ outputs = ["dist/*/srat-server", "dist/*/srat-cli", "dist/*/srat-openapi"]
 quiet = true
 
 [tasks."build:remote"]
-description = "Build the project for remote deployment (e.g., ARM64) and prepare the dist directory for deployment. This task ensures that the dist directory is clean and ready for the new build artifacts. It checks for the HOMEASSISTANT_IP environment variable to ensure that the build is intended for remote deployment. If the variable is not set, it will output an error message and exit. If the variable is set, it will proceed to remove any existing x86_64 build artifacts from the dist directory, ensuring that only the new build artifacts for the target architecture will be present after the build process."
+description = "Build the project for remote deployment (e.g., ARM64) and prepare the dist directory for deployment. Version resolution order: explicit --version, then remote Home Assistant addon version (ha info + ha apps info local_sambanas2), then VERSION env fallback."
 usage = '''
-flag "--version <version>" help="Build version"  env="VERSION"
+flag "--version [version]" help="Build version (optional: precedence is --version > HA remote > VERSION env fallback)"
 '''
 depends = [
    { task = "clean" },
 ]
 run = [
-  { task = "build",
-    args = [
-      '--arch=x86_64',
-      '--pprof',
-      '--version={{usage.version | default(value=env.VERSION)}}'
-    ]
-  },
-	'[ -n "${HOMEASSISTANT_IP}" ] || (echo "HOMEASSISTANT_IP is not set" && exit 1)',
-  'rsync -avz --progress ./dist/x86_64/srat-cli ./dist/x86_64/srat-server ${HOMEASSISTANT_IP}:/addon_configs/local_sambanas2/upgrade/'
+  '''
+    set +x +e
+
+    RESOLVED_VERSION="{{ usage.version | default(value='') }}"
+    case "$RESOLVED_VERSION" in
+      false|true|null|none)
+        RESOLVED_VERSION=""
+        ;;
+    esac
+
+    if [ -z "$RESOLVED_VERSION" ]; then
+      if command -v ha >/dev/null 2>&1; then
+        echo "Attempting to resolve version from Home Assistant CLI..."
+        if ha info >/dev/null 2>&1; then
+          REMOTE_VERSION=$(ha apps info local_sambanas2 2>/dev/null \
+            | sed -nE 's/^[[:space:]]*version:[[:space:]]*v?([^[:space:]]+).*/\1/p' \
+            | head -n1)
+
+          if [ -n "$REMOTE_VERSION" ]; then
+            RESOLVED_VERSION="$REMOTE_VERSION"
+            echo "Using remote addon version from Home Assistant: $RESOLVED_VERSION"
+          fi
+        fi
+      fi
+    fi
+
+    if [ -z "$RESOLVED_VERSION" ]; then
+      RESOLVED_VERSION="${VERSION:-}"
+      case "$RESOLVED_VERSION" in
+        false|true|null|none)
+          RESOLVED_VERSION=""
+          ;;
+      esac
+      if [ -n "$RESOLVED_VERSION" ]; then
+        echo "Using VERSION env fallback: $RESOLVED_VERSION"
+      fi
+    fi
+
+    if [ -z "$RESOLVED_VERSION" ]; then
+      echo "ERROR: Could not resolve build version. Provide --version, or ensure ha can connect using HA_ENDPOINT/HOMEASSISTANT_ENDPOINT and HA_TOKEN/HOMEASSISTANT_TOKEN, or set VERSION env as fallback."
+      exit 1
+    fi
+
+    mise //backend:build -- --arch=x86_64 --pprof --version="$RESOLVED_VERSION"
+
+    [ -n "${HOMEASSISTANT_IP}" ] || (echo "HOMEASSISTANT_IP is not set" && exit 1)
+    rsync -avz --progress ./dist/x86_64/srat-cli ./dist/x86_64/srat-server ${HOMEASSISTANT_IP}:/addon_configs/local_sambanas2/upgrade/
+  '''
 ]
-quiet = true
+#quiet = true
 
 [tasks."build:all"]
 description = "Build statically-linked binaries for all supported architectures (x86_64 and aarch64). Both artifacts run on glibc and musl systems without modification (CGO_ENABLED=0). Accepts the same flags as 'build' except --arch."
