@@ -202,7 +202,7 @@ The GitHub Actions workflow automatically:
 
 ### Release Archive Contents
 
-```
+```text
 srat_x86_64.zip (or srat_aarch64.zip)
 ├── srat-cli                # Static binary (always CGO_ENABLED=0)
 ├── srat-cli.minisig        # Signature
