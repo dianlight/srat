@@ -173,8 +173,20 @@ func (self *UpgradeService) updater() error {
 	}
 }
 
-// watchForDevelopUpdates watches the UpdateDataDir for new binary files in develop channel using fsnotify
-// When a new binary is detected, it applies the update and restarts if running under s6
+// developWatchNames is the fixed set of binary names watched in develop channel.
+// All three server variants plus srat-cli are watched so that any build:remote
+// deployment (regardless of --variant) triggers an update.
+var developWatchNames = map[string]struct{}{
+	"srat-cli":           {},
+	"srat-server-static": {},
+	"srat-server-musl":   {},
+	"srat-server-glib":   {},
+}
+
+// watchForDevelopUpdates watches UpdateDataDir for any of the known binary variant
+// files and installs them when changed. All three server variants (static, musl,
+// glib) and srat-cli are watched so every build:remote --variant=* deployment
+// triggers the update regardless of which variant is currently running.
 func (self *UpgradeService) watchForDevelopUpdates() {
 	if self.state.UpdateDataDir == "" {
 		slog.WarnContext(self.ctx, "UpdateDataDir not set, file watcher for develop updates disabled")
@@ -182,15 +194,6 @@ func (self *UpgradeService) watchForDevelopUpdates() {
 	}
 
 	slog.InfoContext(self.ctx, "Starting file watcher for develop channel updates using fsnotify", "watch_dir", self.state.UpdateDataDir)
-
-	// Get the current executable name to watch for
-	exePath, err := os.Executable()
-	if err != nil {
-		slog.ErrorContext(self.ctx, "Failed to get current executable path", "err", err)
-		return
-	}
-	exeName := filepath.Base(exePath)
-	watchPath := filepath.Join(self.state.UpdateDataDir, exeName)
 
 	// Create fsnotify watcher
 	watcher, err := fsnotify.NewWatcher()
@@ -207,13 +210,24 @@ func (self *UpgradeService) watchForDevelopUpdates() {
 		return
 	}
 
-	// Track the last modification time to avoid processing the same event multiple times
-	var lastModTime time.Time
-	if info, err := os.Stat(watchPath); err == nil {
-		lastModTime = info.ModTime()
+	// Seed last-seen modification times for all watched files so we don't
+	// re-install binaries that were already present when the watcher starts.
+	seenModTimes := make(map[string]time.Time)
+	for name := range developWatchNames {
+		p := filepath.Join(self.state.UpdateDataDir, name)
+		if info, statErr := os.Stat(p); statErr == nil {
+			seenModTimes[name] = info.ModTime()
+		}
 	}
 
-	// Debounce timer to handle multiple events for the same file write
+	// pendingMu protects pendingFiles, which accumulates names of files that
+	// arrived since the last debounce install. The event loop writes it;
+	// the AfterFunc callback reads+clears it — both under the mutex.
+	var pendingMu sync.Mutex
+	pendingFiles := make(map[string]struct{})
+
+	// Debounce timer: a single timer is reset for every incoming event so that
+	// a rapid burst (e.g. rsync of srat-cli + srat-server-musl) is batched.
 	var debounceTimer *time.Timer
 	const debounceDelay = 500 * time.Millisecond
 
@@ -229,114 +243,108 @@ func (self *UpgradeService) watchForDevelopUpdates() {
 				return
 			}
 
-			// Only process events for our target binary
-			if filepath.Base(event.Name) != exeName {
+			baseName := filepath.Base(event.Name)
+			if _, watched := developWatchNames[baseName]; !watched {
 				continue
 			}
 
-			// We're interested in Write and Create events
-			if event.Op&fsnotify.Write == fsnotify.Write || event.Op&fsnotify.Create == fsnotify.Create {
-				// Check if file has been modified since last check
-				info, err := os.Stat(watchPath)
-				if err != nil {
-					// File might have been deleted or moved
-					slog.ErrorContext(self.ctx, "Failed to stat watched file", "file", watchPath, "err", err)
-					continue
-				}
-
-				if info.ModTime().After(lastModTime) && info.Size() > 0 {
-					//slog.DebugContext(self.ctx, "File modification detected", "file", event.Name, "op", event.Op.String())
-
-					// Cancel any existing debounce timer
-					if debounceTimer != nil {
-						debounceTimer.Stop()
-					}
-
-					// Create a new debounce timer
-					debounceTimer = time.AfterFunc(debounceDelay, func() {
-						// Re-check modification time after debounce
-						currentInfo, err := os.Stat(watchPath)
-						if err != nil {
-							slog.ErrorContext(self.ctx, "Failed to stat file after debounce", "err", err)
-							return
-						}
-
-						if currentInfo.ModTime().Equal(lastModTime) {
-							slog.DebugContext(self.ctx, "No change in modification time after debounce, skipping update", "file", watchPath)
-							// File hasn't changed since we first saw the event
-							return
-						}
-
-						lastModTime = currentInfo.ModTime()
-						slog.InfoContext(self.ctx, "Detected new update file in develop channel", "file", watchPath, "size", currentInfo.Size())
-
-						// Create update package
-						updatePkg := &UpdatePackage{
-							FilesPaths: []UpdateFile{{
-								Path:      watchPath,
-								Size:      currentInfo.Size(),
-								Signature: nil,
-							}},
-						}
-
-						// Notify that update is available
-						self.notifyClient(dto.UpdateProgress{
-							ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE,
-							Progress:       0,
-							ReleaseAsset: &dto.ReleaseAsset{
-								ArchAsset: dto.BinaryAsset{
-									Name: filepath.Base(watchPath),
-									Size: int(currentInfo.Size()),
-								},
-							},
-						})
-
-						// Apply the update (this will copy to the running location)
-						slog.InfoContext(self.ctx, "Installing develop channel update", "source", watchPath)
-						if err = self.InstallUpdatePackage(updatePkg); err != nil {
-							slog.ErrorContext(self.ctx, "Failed to install develop update", "err", err)
-							return
-						}
-
-						// We're in develop mode, restart
-
-						slog.InfoContext(self.ctx, "Triggering restart after develop update install")
-						self.notifyClient(dto.UpdateProgress{
-							ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSINSTALLCOMPLETE,
-							Progress:       100,
-							ErrorMessage:   "Update installed, restarting...",
-						})
-
-						// Give time for the message to be sent
-						time.Sleep(500 * time.Millisecond)
-
-						// Check if running under s6 and restart
-						if self.isRunningUnderS6() {
-							slog.InfoContext(self.ctx, "Running under s6, initiating graceful shutdown for restart")
-							if err := self.shutdowner.Shutdown(); err != nil {
-								slog.ErrorContext(self.ctx, "Failed to trigger graceful shutdown", "err", err)
-								// Fallback to os.Exit if shutdowner fails
-								os.Exit(0)
-							}
-						} else {
-							slog.InfoContext(self.ctx, "Not running under s6, manual restart required")
-							self.notifyClient(dto.UpdateProgress{
-								ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSINSTALLCOMPLETE,
-								Progress:       100,
-								ErrorMessage:   "Update installed, please restart the service manually",
-							})
-						}
-
-					})
-				}
+			if event.Op&fsnotify.Write == 0 && event.Op&fsnotify.Create == 0 {
+				continue
 			}
 
-		case err, ok := <-watcher.Errors:
+			filePath := filepath.Join(self.state.UpdateDataDir, baseName)
+			info, statErr := os.Stat(filePath)
+			if statErr != nil {
+				slog.ErrorContext(self.ctx, "Failed to stat watched file", "file", filePath, "err", statErr)
+				continue
+			}
+
+			if !info.ModTime().After(seenModTimes[baseName]) || info.Size() == 0 {
+				continue
+			}
+
+			// Mark this file as pending and (re)set the debounce timer.
+			pendingMu.Lock()
+			pendingFiles[baseName] = struct{}{}
+			if debounceTimer != nil {
+				debounceTimer.Stop()
+			}
+			debounceTimer = time.AfterFunc(debounceDelay, func() {
+				// Drain the pending set under lock.
+				pendingMu.Lock()
+				toInstall := make([]string, 0, len(pendingFiles))
+				for name := range pendingFiles {
+					toInstall = append(toInstall, name)
+				}
+				pendingFiles = make(map[string]struct{})
+				pendingMu.Unlock()
+
+				if len(toInstall) == 0 {
+					return
+				}
+
+				// Build UpdatePackage from all changed files, updating seenModTimes.
+				var files []UpdateFile
+				for _, name := range toInstall {
+					p := filepath.Join(self.state.UpdateDataDir, name)
+					fi, statErr := os.Stat(p)
+					if statErr != nil {
+						slog.WarnContext(self.ctx, "File gone after debounce, skipping", "file", p, "err", statErr)
+						continue
+					}
+					seenModTimes[name] = fi.ModTime()
+					files = append(files, UpdateFile{Path: p, Size: fi.Size()})
+				}
+				if len(files) == 0 {
+					return
+				}
+
+				slog.InfoContext(self.ctx, "Detected updated files in develop channel", "files", toInstall)
+				self.notifyClient(dto.UpdateProgress{
+					ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSUPGRADEAVAILABLE,
+					Progress:       0,
+					ReleaseAsset: &dto.ReleaseAsset{
+						ArchAsset: dto.BinaryAsset{Name: toInstall[0], Size: int(files[0].Size)},
+					},
+				})
+
+				if err := self.InstallUpdatePackage(&UpdatePackage{FilesPaths: files}); err != nil {
+					slog.ErrorContext(self.ctx, "Failed to install develop update", "err", err)
+					return
+				}
+
+				slog.InfoContext(self.ctx, "Triggering restart after develop update install")
+				self.notifyClient(dto.UpdateProgress{
+					ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSINSTALLCOMPLETE,
+					Progress:       100,
+					ErrorMessage:   "Update installed, restarting...",
+				})
+
+				time.Sleep(500 * time.Millisecond)
+
+				if self.isRunningUnderS6() {
+					slog.InfoContext(self.ctx, "Running under s6, initiating graceful shutdown for restart")
+					if shutErr := self.shutdowner.Shutdown(); shutErr != nil {
+						slog.ErrorContext(self.ctx, "Failed to trigger graceful shutdown", "err", shutErr)
+						os.Exit(0)
+					}
+				} else {
+					slog.InfoContext(self.ctx, "Not running under s6, manual restart required")
+					self.notifyClient(dto.UpdateProgress{
+						ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSINSTALLCOMPLETE,
+						Progress:       100,
+						ErrorMessage:   "Update installed, please restart the service manually",
+					})
+				}
+			})
+			pendingMu.Unlock()
+
+		case watchErr, ok := <-watcher.Errors:
 			if !ok {
 				slog.WarnContext(self.ctx, "File watcher errors channel closed")
 				return
 			}
-			slog.ErrorContext(self.ctx, "File watcher error", "err", err)
+			slog.ErrorContext(self.ctx, "File watcher error", "err", watchErr)
 		}
 	}
 }
@@ -458,6 +466,50 @@ func (self *UpgradeService) extractFile(f *zip.File, dest string) (*UpdateFile, 
 	if f.FileInfo().IsDir() {
 		return nil, errors.Errorf("directories are not supported in update package: %s", f.Name)
 	}
+
+	// Handle symlinks: extract them without requiring a signature comment.
+	// Zip symlinks (stored with zip -y) have ModeSymlink set; their content is the link target.
+	if f.FileInfo().Mode()&os.ModeSymlink != 0 {
+		path := filepath.Join(dest, f.Name)
+
+		// Check for ZipSlip vulnerability
+		if !strings.HasPrefix(path, filepath.Clean(dest)+string(os.PathSeparator)) && dest != "." {
+			return nil, errors.Errorf("illegal file path: %s", path)
+		}
+
+		if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
+			return nil, errors.WithStack(err)
+		}
+
+		rc, err := f.Open()
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		defer rc.Close()
+
+		targetBytes, err := io.ReadAll(rc)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		target := strings.TrimSpace(string(targetBytes))
+
+		// Remove any existing file or symlink at this path before creating the new one
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			return nil, errors.Wrapf(err, "failed to remove existing path for symlink: %s", path)
+		}
+
+		if err := os.Symlink(target, path); err != nil {
+			return nil, errors.Wrapf(err, "failed to create symlink %s -> %s", path, target)
+		}
+
+		slog.DebugContext(self.ctx, "Extracted symlink", "path", path, "target", target)
+		return &UpdateFile{
+			Path:      path,
+			Signature: nil, // Symlinks are not signed
+			Size:      0,
+		}, nil
+	}
+
 	if f.Comment == "" {
 		return nil, errors.Errorf("file has no signature in comment: %s", f.Name)
 	}
@@ -697,7 +749,7 @@ func (self *UpgradeService) InstallUpdatePackage(updatePkg *UpdatePackage) error
 
 	// chrach all FilesPaths for existence
 	for _, path := range updatePkg.FilesPaths {
-		if _, err := os.Stat(path.Path); os.IsNotExist(err) {
+		if _, err := os.Lstat(path.Path); os.IsNotExist(err) {
 			return errors.Errorf("update package file does not exist: %s", path.Path)
 		}
 	}
@@ -708,6 +760,16 @@ func (self *UpgradeService) InstallUpdatePackage(updatePkg *UpdatePackage) error
 	}
 	slog.InfoContext(self.ctx, "Installing update package", "target_directory", *targetDir)
 	for _, path := range updatePkg.FilesPaths {
+		// Skip symlink entries — they are recreated by updateServerSymlink after all binaries install.
+		info, statErr := os.Lstat(path.Path)
+		if statErr != nil {
+			return errors.Wrapf(statErr, "failed to stat update file: %s", path.Path)
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			slog.DebugContext(self.ctx, "Skipping symlink in install loop; will be updated after binary installation", "path", path.Path)
+			continue
+		}
+
 		targetPath := filepath.Join(*targetDir, filepath.Base(path.Path))
 		tracker := &progressTracker{
 			Total:  uint64(path.Size),
@@ -789,7 +851,73 @@ func (self *UpgradeService) InstallUpdatePackage(updatePkg *UpdatePackage) error
 		slog.InfoContext(self.ctx, "Update package installed successfully")
 
 	}
+
+	// After all binaries are installed, update the srat-server symlink to the best variant
+	// for the current system (musl, glibc, or static fallback).
+	if err := self.updateServerSymlink(*targetDir); err != nil {
+		slog.WarnContext(self.ctx, "Failed to update srat-server symlink; falling back to static variant", "err", err)
+	}
+
 	return nil
+}
+
+// updateServerSymlink detects the best srat-server variant for the current system
+// and atomically updates the srat-server symlink in targetDir to point to it.
+func (self *UpgradeService) updateServerSymlink(targetDir string) error {
+	variant := detectBestServerVariant(targetDir)
+	symlinkPath := filepath.Join(targetDir, "srat-server")
+
+	// Remove any existing file or symlink before creating the new one
+	if err := os.Remove(symlinkPath); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("failed to remove existing srat-server entry: %w", err)
+	}
+
+	if err := os.Symlink(variant, symlinkPath); err != nil {
+		return fmt.Errorf("failed to create srat-server symlink -> %s: %w", variant, err)
+	}
+
+	slog.InfoContext(self.ctx, "Updated srat-server symlink", "variant", variant, "path", symlinkPath)
+	return nil
+}
+
+// detectBestServerVariant returns the filename of the best available srat-server variant
+// for the current system: musl dynamic, glibc dynamic, or static (always safe fallback).
+func detectBestServerVariant(targetDir string) string {
+	arch := runtime.GOARCH
+
+	// Prefer musl dynamic variant if the system has a musl dynamic linker
+	if _, err := os.Stat(filepath.Join(targetDir, "srat-server-musl")); err == nil {
+		var muslLinker string
+		switch arch {
+		case "amd64":
+			muslLinker = "/lib/ld-musl-x86_64.so.1"
+		case "arm64":
+			muslLinker = "/lib/ld-musl-aarch64.so.1"
+		}
+		if muslLinker != "" {
+			if _, err := os.Stat(muslLinker); err == nil {
+				return "srat-server-musl"
+			}
+		}
+	}
+
+	// Prefer glibc dynamic variant if the system has a glibc dynamic linker
+	if _, err := os.Stat(filepath.Join(targetDir, "srat-server-glib")); err == nil {
+		glibcIndicators := []string{
+			"/lib64/ld-linux-x86-64.so.2",     // x86_64 glibc dynamic linker
+			"/lib/ld-linux-aarch64.so.1",       // aarch64 glibc dynamic linker
+			"/lib/x86_64-linux-gnu/libc.so.6",  // Debian/Ubuntu x86_64
+			"/lib/aarch64-linux-gnu/libc.so.6", // Debian/Ubuntu aarch64
+		}
+		for _, indicator := range glibcIndicators {
+			if _, err := os.Stat(indicator); err == nil {
+				return "srat-server-glib"
+			}
+		}
+	}
+
+	// Static binary always works regardless of libc availability
+	return "srat-server-static"
 }
 
 // ApplyUpdateAndRestart applies the update using selfupdate with signature verification

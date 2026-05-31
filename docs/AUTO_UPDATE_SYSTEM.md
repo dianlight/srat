@@ -68,17 +68,21 @@ SRAT uses a secure autoupdate mechanism based on `minio/selfupdate` with cryptog
 
 ### Update Application Process
 
-1. **Download**: Downloads the appropriate architecture-specific binary package (.zip file)
+1. **Download**: Downloads the appropriate architecture-specific binary package (e.g., `srat_x86_64.zip`)
 2. **Extract**: Extracts the package to a temporary directory
-3. **Verify**: Verifies the binary signature using the embedded public key (if signature file present)
-4. **Apply**: Uses `selfupdate.Apply()` to atomically replace the current binary
-5. **Restart**: If running under s6, exits with code 0 to trigger s6 restart; otherwise requires manual restart
+3. **Verify**: Verifies each signed binary's signature using the embedded public key (symlinks such as `srat-server` are not signed and are skipped in verification)
+4. **Detect variant**: Inspects the running system's dynamic linker to select the best `srat-server` variant: `srat-server-musl` (musl libc present) → `srat-server-glib` (glibc present) → `srat-server-static` (fallback, always safe)
+5. **Update symlink**: Atomically updates the `srat-server` symlink to point to the selected variant
+6. **Apply**: Uses `selfupdate.Apply()` to atomically replace the current binary
+7. **Restart**: If running under s6, exits with code 0 to trigger s6 restart; otherwise requires manual restart
 
 ### Signature Verification
 
 - All release binaries are signed during the build process using minisign
+- **Signed**: `srat-cli`, `srat-server-static`, `srat-server-musl`, `srat-server-glib`
+- **Not signed**: `srat-server` (it is a symlink pointing to one of the above variants)
 - The public key is embedded in the SRAT binary at build time
-- Signature files (`.minisig`) are included in the release archives
+- Signature files (`.minisig`) are included in the release archives alongside each signed binary
 - If signature verification fails, the update is rejected and rolled back
 - Development builds without signatures will proceed without verification (with a warning)
 
@@ -183,12 +187,43 @@ Returns available update channels.
 
 The GitHub Actions workflow automatically:
 
-1. Builds binaries for all supported architectures (amd64, aarch64)
-2. Installs minisign
-3. Signs each binary using the private key from secrets
-4. Creates `.minisig` signature files
-5. Packages binaries and signatures into architecture-specific ZIP files
-6. Uploads as release assets
+1. Builds three server variants for each supported architecture (x86_64, aarch64):
+   - `srat-server-static` — fully static (`CGO_ENABLED=0`), zero shared-library dependencies
+   - `srat-server-musl` — dynamic, musl libc via Zig cross-compiler (`CGO_ENABLED=1`)
+   - `srat-server-glib` — dynamic, glibc via GCC cross-compiler (`CGO_ENABLED=1`)
+2. Builds `srat-cli` as static-only (same as `srat-server-static`)
+3. Installs minisign
+4. Signs each binary (`srat-cli`, `srat-server-static`, `srat-server-musl`, `srat-server-glib`) using the private key from secrets
+5. Creates `.minisig` signature files for each signed binary
+6. Creates a `srat-server` symlink pointing to `srat-server-static` as the default
+7. Packages all binaries, symlinks, and signatures into architecture-specific ZIP files (`srat_x86_64.zip`, `srat_aarch64.zip`) using `zip -y` to preserve symlinks natively
+8. Note: `srat-openapi` is **not** included in release archives (internal tooling only)
+9. Uploads as release assets
+
+### Release Archive Contents
+
+```
+srat_x86_64.zip (or srat_aarch64.zip)
+├── srat-cli                # Static binary (always CGO_ENABLED=0)
+├── srat-cli.minisig        # Signature
+├── srat-server             # Symlink → srat-server-static (default)
+├── srat-server-static      # Fully static binary
+├── srat-server-static.minisig
+├── srat-server-musl        # Dynamic binary linked against musl libc
+├── srat-server-musl.minisig
+├── srat-server-glib        # Dynamic binary linked against glibc
+└── srat-server-glib.minisig
+```
+
+### Variant Selection Logic (post-upgrade)
+
+After extracting the archive, `srat-server` symlink is updated to the best variant for the running system:
+
+| System libc | Selected variant |
+| --- | --- |
+| musl (`/lib/ld-musl-*.so.1` present) | `srat-server-musl` |
+| glibc (`/lib64/ld-linux-*.so.2` or `/lib/*-linux-gnu/libc.so.6` present) | `srat-server-glib` |
+| unknown / fallback | `srat-server-static` |
 
 ### Build Workflow Steps
 
@@ -235,10 +270,10 @@ In develop mode, SRAT implements a file watcher for local binary updates:
 # Start SRAT in develop mode
 srat-server --update-channel=develop --update-data-dir=/config/updates
 
-# Copy a new binary to the watched directory
-cp srat-server-new /config/updates/srat-server
+# Copy a new static binary to the watched directory
+cp srat-server-static-new /config/updates/srat-server-static
 
-# SRAT automatically detects, installs, and restarts (if under s6)
+# SRAT automatically detects, updates the srat-server symlink, installs, and restarts (if under s6)
 ```
 
 ### File Watcher Lifecycle

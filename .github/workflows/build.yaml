@@ -465,15 +465,18 @@ jobs:
               sha: context.sha
             })
 
-      #- uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
-      #  with:
-      #    version: '0.14.1'
-            
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
+        with:
+          version: '0.14.1'
+
+      - name: Install aarch64 cross-compiler for glibc builds
+        run: sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
+
       - name: BuildAll
         id: built_all
         if: github.event_name != 'pull_request'
         env:
-          CGO_ENABLED: 0  # Explicitly disable CGO for static builds
+          CGO_ENABLED: 0  # Default for static variant; overridden per-variant in mise build tasks
         run: |
           mise run all -- --version=${{ needs.setversion.outputs.version }}
 
@@ -507,9 +510,9 @@ jobs:
           }
           trap cleanup EXIT
           
-          # Sign each binary
+          # Sign each binary (static, musl, and glibc variants; srat-server symlink is not signed)
           echo "Signing binaries with minisign..."
-          for binary_path in backend/dist/*/srat-{cli,server,openapi}; do
+          for binary_path in backend/dist/*/srat-{cli,server-static,server-musl,server-glib}; do
             if [ -f "$binary_path" ]; then
               echo "Signing binary: $binary_path"
               
@@ -553,9 +556,11 @@ jobs:
             files_to_zip=()
             tmp_note_file=$(mktemp)
 
-            # Collect binaries that have a matching minisig and prepare comments
+            # Collect binaries that have a matching minisig and prepare comments.
+            # Symlinks (srat-server -> srat-server-static) are included without a signature.
+            # srat-openapi is excluded from release zips (not needed by end users).
             for bin_path in "$arch_dir"*; do
-              [ -e "$bin_path" ] || continue
+              [ -e "$bin_path" ] || [ -L "$bin_path" ] || continue
 
               # Skip directories
               if [ -d "$bin_path" ]; then
@@ -566,6 +571,19 @@ jobs:
 
               # Skip minisig files on this pass
               if [[ "$base_name" == *.minisig ]]; then
+                continue
+              fi
+
+              # Exclude srat-openapi from release zips (internal tooling only)
+              if [[ "$base_name" == "srat-openapi" ]]; then
+                echo "Skipping srat-openapi (not included in release archives)"
+                continue
+              fi
+
+              # Include symlinks directly — they are not signed; zip -y preserves the symlink
+              if [ -L "$bin_path" ]; then
+                files_to_zip+=("$base_name")
+                echo "Including symlink: $base_name -> $(readlink "$bin_path")"
                 continue
               fi
 
@@ -597,7 +615,7 @@ jobs:
               continue
             fi
 
-            (cd "$arch_dir" && zip -q "$zip_file_path" "${files_to_zip[@]}")
+            (cd "$arch_dir" && zip -y -q "$zip_file_path" "${files_to_zip[@]}")
 
             if [ -s "$tmp_note_file" ]; then
               zipnote -w "$zip_file_path" < "$tmp_note_file" >/dev/null
