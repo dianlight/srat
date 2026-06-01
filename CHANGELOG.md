@@ -5,7 +5,8 @@
 ## 2026.5.0-rc9
 
 ### ✨ Features
-- **Lab Mode**: Added a new "Lab Mode" section in Settings → Advanced with experimental features that can be enabled for testing and feedback. 
+
+- **Lab Mode**: Added a new "Lab Mode" section in Settings → Advanced with experimental features that can be enabled for testing and feedback.
 - **SMART Integration Mode**: Replaced the `disable_smart` boolean toggle with a 3-option `smart_mode` enum (`none`, `legacy`, `direct`).
   - `none`: SMART integration disabled.
   - `legacy`: Uses the `smartctl` executable (previous default behavior).
