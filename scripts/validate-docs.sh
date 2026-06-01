@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Documentation validation script for SRAT project
 # This script runs all documentation validation checks locally
