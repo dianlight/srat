@@ -71,7 +71,7 @@ SRAT uses a secure autoupdate mechanism based on `minio/selfupdate` with cryptog
 1. **Download**: Downloads the appropriate architecture-specific binary package (e.g., `srat_x86_64.zip`)
 2. **Extract**: Extracts the package to a temporary directory
 3. **Verify**: Verifies each signed binary's signature using the embedded public key (symlinks such as `srat-server` are not signed and are skipped in verification)
-4. **Detect variant**: Inspects the running system's dynamic linker to select the best `srat-server` variant: `srat-server-musl` (musl libc present) → `srat-server-glib` (glibc present) → `srat-server-static` (fallback, always safe)
+4. **Detect variant**: Inspects the running system's dynamic linker to select the best `srat-server` variant: `srat-server-musl` (`musl` present) → `srat-server-glib` (`glibc` present) → `srat-server-static` (fallback, always safe)
 5. **Update symlink**: Atomically updates the `srat-server` symlink to point to the selected variant
 6. **Apply**: Uses `selfupdate.Apply()` to atomically replace the current binary
 7. **Restart**: If running under s6, exits with code 0 to trigger s6 restart; otherwise requires manual restart

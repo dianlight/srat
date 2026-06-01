@@ -854,8 +854,8 @@ func (self *UpgradeService) InstallUpdatePackage(updatePkg *UpdatePackage) error
 
 	// After all binaries are installed, update the srat-server symlink to the best variant
 	// for the current system (musl, glibc, or static fallback).
-	if err := self.updateServerSymlink(*targetDir); err != nil {
-		slog.WarnContext(self.ctx, "Failed to update srat-server symlink; falling back to static variant", "err", err)
+	if err := self.updateServerSymlink(*targetDir, updatePkg); err != nil {
+		return errors.Wrap(err, "failed to update srat-server symlink")
 	}
 
 	return nil
@@ -863,8 +863,8 @@ func (self *UpgradeService) InstallUpdatePackage(updatePkg *UpdatePackage) error
 
 // updateServerSymlink detects the best srat-server variant for the current system
 // and atomically updates the srat-server symlink in targetDir to point to it.
-func (self *UpgradeService) updateServerSymlink(targetDir string) error {
-	variant := detectBestServerVariant(targetDir)
+func (self *UpgradeService) updateServerSymlink(targetDir string, updatePkg *UpdatePackage) error {
+	variant := detectBestServerVariant(targetDir, updatePkg)
 	symlinkPath := filepath.Join(targetDir, "srat-server")
 
 	// Atomically replace the existing symlink via a temp path + os.Rename.
@@ -887,36 +887,53 @@ func (self *UpgradeService) updateServerSymlink(targetDir string) error {
 
 // detectBestServerVariant returns the filename of the best available srat-server variant
 // for the current system: musl dynamic, glibc dynamic, or static (always safe fallback).
-func detectBestServerVariant(targetDir string) string {
+// It only considers variants that are present in the UpdatePackage to avoid selecting
+// stale binaries from previous installations.
+func detectBestServerVariant(targetDir string, updatePkg *UpdatePackage) string {
 	arch := runtime.GOARCH
 
-	// Prefer musl dynamic variant if the system has a musl dynamic linker
-	if _, err := os.Stat(filepath.Join(targetDir, "srat-server-musl")); err == nil {
-		var muslLinker string
-		switch arch {
-		case "amd64":
-			muslLinker = "/lib/ld-musl-x86_64.so.1"
-		case "arm64":
-			muslLinker = "/lib/ld-musl-aarch64.so.1"
-		}
-		if muslLinker != "" {
-			if _, err := os.Stat(muslLinker); err == nil {
-				return "srat-server-musl"
+	// Build a set of variant names present in the update package
+	packagedVariants := make(map[string]bool)
+	if updatePkg != nil {
+		for _, file := range updatePkg.FilesPaths {
+			baseName := filepath.Base(file.Path)
+			if baseName == "srat-server-musl" || baseName == "srat-server-glib" || baseName == "srat-server-static" {
+				packagedVariants[baseName] = true
 			}
 		}
 	}
 
-	// Prefer glibc dynamic variant if the system has a glibc dynamic linker
-	if _, err := os.Stat(filepath.Join(targetDir, "srat-server-glib")); err == nil {
-		glibcIndicators := []string{
-			"/lib64/ld-linux-x86-64.so.2",     // x86_64 glibc dynamic linker
-			"/lib/ld-linux-aarch64.so.1",       // aarch64 glibc dynamic linker
-			"/lib/x86_64-linux-gnu/libc.so.6",  // Debian/Ubuntu x86_64
-			"/lib/aarch64-linux-gnu/libc.so.6", // Debian/Ubuntu aarch64
+	// Prefer musl dynamic variant if present in package and system has a musl dynamic linker
+	if packagedVariants["srat-server-musl"] {
+		if _, err := os.Stat(filepath.Join(targetDir, "srat-server-musl")); err == nil {
+			var muslLinker string
+			switch arch {
+			case "amd64":
+				muslLinker = "/lib/ld-musl-x86_64.so.1"
+			case "arm64":
+				muslLinker = "/lib/ld-musl-aarch64.so.1"
+			}
+			if muslLinker != "" {
+				if _, err := os.Stat(muslLinker); err == nil {
+					return "srat-server-musl"
+				}
+			}
 		}
-		for _, indicator := range glibcIndicators {
-			if _, err := os.Stat(indicator); err == nil {
-				return "srat-server-glib"
+	}
+
+	// Prefer glibc dynamic variant if present in package and system has a glibc dynamic linker
+	if packagedVariants["srat-server-glib"] {
+		if _, err := os.Stat(filepath.Join(targetDir, "srat-server-glib")); err == nil {
+			glibcIndicators := []string{
+				"/lib64/ld-linux-x86-64.so.2",     // x86_64 glibc dynamic linker
+				"/lib/ld-linux-aarch64.so.1",       // aarch64 glibc dynamic linker
+				"/lib/x86_64-linux-gnu/libc.so.6",  // Debian/Ubuntu x86_64
+				"/lib/aarch64-linux-gnu/libc.so.6", // Debian/Ubuntu aarch64
+			}
+			for _, indicator := range glibcIndicators {
+				if _, err := os.Stat(indicator); err == nil {
+					return "srat-server-glib"
+				}
 			}
 		}
 	}
