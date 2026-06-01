@@ -82,7 +82,7 @@ SRAT uses a secure autoupdate mechanism based on `minio/selfupdate` with cryptog
 - **Signed**: `srat-cli`, `srat-server-static`, `srat-server-musl`, `srat-server-glib`
 - **Not signed**: `srat-server` (it is a symlink pointing to one of the above variants)
 - The public key is embedded in the SRAT binary at build time
-- Signature files (`.minisig`) are included in the release archives alongside each signed binary
+- Signature files (`.minisig`) are created during the build, but are **not** included in the release archives. Instead, each signed binary's minisig content is embedded as the ZIP entry comment using `zipnote`. The released ZIPs contain only the binaries and the `srat-server` symlink; signatures travel inside each entry's comment field.
 - If signature verification fails, the update is rejected and rolled back
 - Development builds without signatures will proceed without verification (with a warning)
 
@@ -123,7 +123,7 @@ srat-server --update-channel=develop      # Development builds (not recommended 
 
 ### Signature Verification Process
 
-1. During update, SRAT looks for a `.minisig` file alongside the binary
+1. During update, SRAT reads the minisig content from the ZIP entry comment of each signed binary (written there by `zipnote` during the release build)
 2. Loads the embedded public key
 3. Uses minio/selfupdate's Verifier to check the signature
 4. Only proceeds if signature is valid or if running in development mode without signatures
@@ -194,26 +194,32 @@ The GitHub Actions workflow automatically:
 2. Builds `srat-cli` as static-only (same as `srat-server-static`)
 3. Installs minisign
 4. Signs each binary (`srat-cli`, `srat-server-static`, `srat-server-musl`, `srat-server-glib`) using the private key from secrets
-5. Creates `.minisig` signature files for each signed binary
+5. Creates intermediate `.minisig` signature files (not included in the final ZIP)
 6. Creates a `srat-server` symlink pointing to `srat-server-static` as the default
-7. Packages all binaries, symlinks, and signatures into architecture-specific ZIP files (`srat_x86_64.zip`, `srat_aarch64.zip`) using `zip -y` to preserve symlinks natively
-8. Note: `srat-openapi` is **not** included in release archives (internal tooling only)
-9. Uploads as release assets
+7. Packages only the binaries and symlink into architecture-specific ZIP files (`srat_x86_64.zip`, `srat_aarch64.zip`) using `zip -y` to preserve symlinks natively
+8. Embeds each binary's minisig content as the ZIP entry comment via `zipnote -w` — signatures travel inside the ZIP, not as separate files
+9. Note: `srat-openapi` is **not** included in release archives (internal tooling only)
+10. Uploads as release assets
 
 ### Release Archive Contents
 
 ```text
 srat_x86_64.zip (or srat_aarch64.zip)
-├── srat-cli                # Static binary (always CGO_ENABLED=0)
-├── srat-cli.minisig        # Signature
-├── srat-server             # Symlink → srat-server-static (default)
-├── srat-server-static      # Fully static binary
-├── srat-server-static.minisig
-├── srat-server-musl        # Dynamic binary linked against musl libc
-├── srat-server-musl.minisig
-├── srat-server-glib        # Dynamic binary linked against glibc
-└── srat-server-glib.minisig
+├── srat-cli                # Static binary (always CGO_ENABLED=0) [entry comment: minisig]
+├── srat-server             # Symlink → srat-server-static (default, no signature)
+├── srat-server-static      # Fully static binary                 [entry comment: minisig]
+├── srat-server-musl        # Dynamic binary linked against musl libc [entry comment: minisig]
+└── srat-server-glib        # Dynamic binary linked against glibc  [entry comment: minisig]
 ```
+
+> **Note:** `.minisig` files are **not** present in the ZIP. Each signed binary's minisig
+> content is stored in the ZIP entry comment field (set by `zipnote -w` during the build).
+> To inspect a signature, run:
+>
+> ```bash
+> unzip -z srat_x86_64.zip srat-cli
+> # or: zipnote srat_x86_64.zip | grep -A20 '@ srat-cli'
+> ```
 
 ### Variant Selection Logic (post-upgrade)
 
@@ -233,8 +239,19 @@ After extracting the archive, `srat-server` symlink is updated to the best varia
     UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
   run: |
     # Install minisign
-    # Sign each binary
-    minisign -S -s $PRIVATE_KEY_FILE -m $binary_path -x ${binary_path}.minisig
+    # Sign each binary; produces an intermediate .minisig file per binary
+    minisign -SW \
+      -s $PRIVATE_KEY_FILE \
+      -m $binary_path \
+      -x "${binary_path}.minisig"
+
+- name: Create ZIP archives with embedded signatures
+  run: |
+    # Zip only binaries + symlink (no .minisig files); embed each signature
+    # as the ZIP entry comment using zipnote -w
+    zip -y -q "$zip_file_path" "${files_to_zip[@]}"
+    zipnote -w "$zip_file_path" < "$tmp_note_file"
+    # tmp_note_file format: "@ <filename>\n<minisig content>\n@\n"
 ```
 
 ## S6 Integration
