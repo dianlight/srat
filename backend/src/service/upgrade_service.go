@@ -867,13 +867,18 @@ func (self *UpgradeService) updateServerSymlink(targetDir string) error {
 	variant := detectBestServerVariant(targetDir)
 	symlinkPath := filepath.Join(targetDir, "srat-server")
 
-	// Remove any existing file or symlink before creating the new one
-	if err := os.Remove(symlinkPath); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("failed to remove existing srat-server entry: %w", err)
+	// Atomically replace the existing symlink via a temp path + os.Rename.
+	// This avoids any window where srat-server is absent or points to the wrong target.
+	tempPath := symlinkPath + ".tmp"
+	if err := os.Remove(tempPath); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("failed to clean up temp symlink %s: %w", tempPath, err)
 	}
-
-	if err := os.Symlink(variant, symlinkPath); err != nil {
-		return fmt.Errorf("failed to create srat-server symlink -> %s: %w", variant, err)
+	if err := os.Symlink(variant, tempPath); err != nil {
+		return fmt.Errorf("failed to create temp symlink -> %s: %w", variant, err)
+	}
+	if err := os.Rename(tempPath, symlinkPath); err != nil {
+		_ = os.Remove(tempPath) // best-effort cleanup on rename failure
+		return fmt.Errorf("failed to atomically replace srat-server symlink: %w", err)
 	}
 
 	slog.InfoContext(self.ctx, "Updated srat-server symlink", "variant", variant, "path", symlinkPath)
