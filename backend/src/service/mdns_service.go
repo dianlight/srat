@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"log/slog"
+	"sync"
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
@@ -44,7 +45,9 @@ type MDNSService struct {
 	eventBus       events.EventBusInterface
 
 	// connected tracks whether a HA component is currently connected.
+	// Access is protected by mu.
 	connected bool
+	mu        sync.RWMutex
 }
 
 // NewMDNSService constructs the MDNSService and wires lifecycle / event hooks.
@@ -75,8 +78,13 @@ func NewMDNSService(lc fx.Lifecycle, params mdnsServiceParams) MDNSServiceInterf
 func (svc *MDNSService) setupEventListeners() []func() {
 	ret := make([]func(), 1)
 	ret[0] = svc.eventBus.OnServerProccess(func(ctx context.Context, event events.ServerProcessEvent) errors.E {
-		if event.Type == events.EventTypes.CLEAN && svc.connected {
-			svc.broadcast(ctx)
+		if event.Type == events.EventTypes.CLEAN {
+			svc.mu.RLock()
+			connected := svc.connected
+			svc.mu.RUnlock()
+			if connected {
+				svc.broadcast(ctx)
+			}
 		}
 		return nil
 	})
@@ -86,7 +94,9 @@ func (svc *MDNSService) setupEventListeners() []func() {
 // OnComponentConnected is called by the WebSocket broker after a successful HELO
 // handshake. It immediately broadcasts the current mDNS registration state.
 func (svc *MDNSService) OnComponentConnected(message dto.HeloMessage) {
+	svc.mu.Lock()
 	svc.connected = true
+	svc.mu.Unlock()
 	svc.broadcast(svc.ctx)
 }
 
@@ -94,7 +104,9 @@ func (svc *MDNSService) OnComponentConnected(message dto.HeloMessage) {
 // Per Option B timeout semantics, no disable message is sent — the component
 // will re-sync when it reconnects.
 func (svc *MDNSService) OnComponentDisconnected() {
+	svc.mu.Lock()
 	svc.connected = false
+	svc.mu.Unlock()
 }
 
 // broadcast reads the current settings and emits a MdnsRegisterNotification.
