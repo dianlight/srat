@@ -2,11 +2,11 @@
 Package smartmontools provides Go bindings for interacting with smartmontools
 and collecting S.M.A.R.T. data from storage devices.
 
-The root package is a thin facade over the shared domain model in internal/types
-and the default exec backend in backends/exec. NewClient creates a Client that
-delegates SMART operations to a pluggable Backend implementation. By default it
-uses ExecBackend, which shells out to the smartctl binary. Alternative backends
-can be supplied with WithBackend.
+The root package is a thin facade over the shared domain model in the types
+sub-package and the default exec backend in backends/exec. NewClient creates a
+Client that delegates SMART operations to a pluggable Backend implementation. By
+default it uses ExecBackend, which shells out to the smartctl binary. Alternative
+backends can be supplied with WithBackend.
 
 # Features
 
@@ -28,9 +28,8 @@ can be supplied with WithBackend.
 
 The default smartctl-backed implementation lives in
 github.com/dianlight/smartmontools-go/backends/exec. Shared types and
-interfaces are hosted in an internal package to avoid circular imports while
-keeping the public API backward compatible through type aliases in the root
-package.
+interfaces live in github.com/dianlight/smartmontools-go/types; the root
+package re-exports them as type aliases for a flat, ergonomic API surface.
 
 An alternative purego FFI backend lives in
 github.com/dianlight/smartmontools-go/backends/lib (LibBackend). It loads

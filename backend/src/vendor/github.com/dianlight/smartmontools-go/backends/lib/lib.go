@@ -29,7 +29,7 @@ import (
 	"github.com/dianlight/tlog"
 	"github.com/ebitengine/purego"
 
-	smtypes "github.com/dianlight/smartmontools-go/internal/types"
+	smtypes "github.com/dianlight/smartmontools-go/types"
 )
 
 // defaultLibNames are tried first using the dynamic linker (respects
