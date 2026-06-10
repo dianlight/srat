@@ -7,7 +7,7 @@ import (
 	"slices"
 	"time"
 
-	smtypes "github.com/dianlight/smartmontools-go/internal/types"
+	smtypes "github.com/dianlight/smartmontools-go/types"
 	"github.com/dianlight/tlog"
 )
 

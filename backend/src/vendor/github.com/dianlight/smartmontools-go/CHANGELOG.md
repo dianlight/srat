@@ -5,7 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.4.0] - [Unreleased]
+## [0.4.1] — 2025-05-28
+- **Hotfix release**: Moved `internal/types` to `types` for public access. This was an oversight in the v0.4.0 refactor and the `internal` package prevented access to key types like `SMARTInfo` and `DiscoveryResult`. The v0.4.0 release is unaffected and remains available for users who don't need the new features.
+
+## [0.4.0] — 2025-05-21
 
 ### Breaking Changes
 - `ExecBackend`, `ExecBackendOption`, `NewExecBackend`, and related `WithExec*` options are now implemented by the `backends/exec` package. The root package keeps backward-compatible aliases and wrappers.
