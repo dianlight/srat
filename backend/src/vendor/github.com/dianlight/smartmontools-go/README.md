@@ -1,7 +1,3 @@
-> ⚠️ IMPORTANT — Very early development
-
-> This project is in very early development. The current implementation executes the external `smartctl` binary (via exec) and parses its output. It does NOT currently provide native Go bindings, direct ioctl integration, or libgoffi-based integration. Those integrations are planned for future releases. Use this library for experimentation only.
-
 # smartmontools-go
 
 A Go library that interfaces with smartmontools to monitor and manage storage device health using S.M.A.R.T. (Self-Monitoring, Analysis, and Reporting Technology) data.
@@ -52,10 +48,42 @@ brew install smartmontools
 ### Windows
 Download and install from [smartmontools.org](https://www.smartmontools.org/)
 
+### LibBackend prerequisites (optional, Linux/macOS only)
+
+[LibBackend](#libbackend-purego-ffi--linuxmacos) does **not** require `smartctl`. Instead
+it loads a pre-built smartmon wrapper shared library at runtime. The library is available for:
+
+- **macOS (Apple silicon)**: ships pre-built with the module at `backends/lib/sdk/libsmartmon_go.dylib`
+- **Linux / other platforms**: build the wrapper once from the repository root:
+
+```bash
+scripts/setup-lib-backend.sh
+```
+
+The script downloads the correct `libsmartmon.a` static library from
+[dianlight/smartmontools-sdk](https://github.com/dianlight/smartmontools-sdk) releases and
+compiles the thin C++ wrapper in `backends/lib/csrc/` into
+`backends/lib/sdk/libsmartmon_go.so`.
+
+Point the backend at the compiled library via the `SMARTMON_LIB_PATH` environment variable or
+`libbackend.WithLibraryPath(...)`. See [Library Resolution Order](#library-resolution-order) below.
+
 ## Installation
 
 ```bash
 go get github.com/dianlight/smartmontools-go
+```
+
+To use **LibBackend** also import the backend sub-package in your code:
+
+```go
+import libbackend "github.com/dianlight/smartmontools-go/backends/lib"
+```
+
+To use **CompareBackend**:
+
+```go
+import comparebackend "github.com/dianlight/smartmontools-go/backends/compare"
 ```
 
 ## Usage
@@ -324,6 +352,91 @@ if err != nil {
 }
 ```
 
+### LibBackend (Linux/macOS — no subprocess)
+
+`LibBackend` loads `libsmartmon_go.so` (Linux) or `libsmartmon_go.dylib` (macOS) at runtime
+via [purego](https://github.com/ebitengine/purego) — **no CGO, no child process spawned**.
+It exposes the same `Client` API as `ExecBackend`.
+
+Build the wrapper library first (see [LibBackend prerequisites](#libbackend-prerequisites-optional-linuxmacos-only)), then wire it in with `WithBackend`:
+
+```go
+import (
+    smartmontools "github.com/dianlight/smartmontools-go"
+    libbackend "github.com/dianlight/smartmontools-go/backends/lib"
+)
+
+lib, err := libbackend.New(
+    libbackend.WithLibraryPath("backends/lib/sdk/libsmartmon_go.dylib"), // or .so on Linux
+)
+if err != nil {
+    log.Fatalf("Failed to load lib backend: %v", err)
+}
+defer lib.Close()
+
+client, err := smartmontools.NewClient(smartmontools.WithBackend(lib))
+```
+
+#### Library Resolution Order
+
+When `WithLibraryPath` is not set, `libbackend.New()` resolves the library in this order:
+
+1. `SMARTMON_LIB_PATH` environment variable (falls back to step 3 if the file is missing)
+2. Dynamic linker (`LD_LIBRARY_PATH` / `DYLD_LIBRARY_PATH` / rpath)
+3. Well-known absolute paths: `/usr/local/lib`, `/opt/homebrew/lib`, …
+
+```bash
+# macOS — using the pre-built library shipped with the module
+SMARTMON_LIB_PATH=backends/lib/sdk/libsmartmon_go.dylib go run .
+
+# Linux — after running scripts/setup-lib-backend.sh
+SMARTMON_LIB_PATH=backends/lib/sdk/libsmartmon_go.so go run .
+```
+
+### CompareBackend
+
+`CompareBackend` runs two (or more) backends **in parallel** for every request. The first
+backend is the master — its result is always returned to the caller. Additional backends run in
+shadow mode; any discrepancy or error they produce is written to the logger.
+
+Intended use: validate a new backend implementation against the battle-tested `ExecBackend`
+before switching.
+
+```go
+import (
+    smartmontools "github.com/dianlight/smartmontools-go"
+    comparebackend "github.com/dianlight/smartmontools-go/backends/compare"
+    execbackend "github.com/dianlight/smartmontools-go/backends/exec"
+    libbackend "github.com/dianlight/smartmontools-go/backends/lib"
+)
+
+exec, err := execbackend.New()
+if err != nil {
+    log.Fatalf("Failed to create exec backend: %v", err)
+}
+
+lib, err := libbackend.New() // requires SMARTMON_LIB_PATH or system library
+if err != nil {
+    log.Fatalf("Failed to load lib backend: %v", err)
+}
+defer lib.Close()
+
+compare, err := comparebackend.NewCompareBackend(
+    []smartmontools.Backend{exec, lib}, // exec = master, lib = shadow
+)
+if err != nil {
+    log.Fatalf("Failed to create compare backend: %v", err)
+}
+defer compare.Close()
+
+client, err := smartmontools.NewClient(smartmontools.WithBackend(compare))
+// All calls go to exec (master). lib runs in parallel silently.
+// Discrepancies → "compare: result mismatch" warning in the logger.
+```
+
+> **Note**: Do not pair two identical `ExecBackend` instances. Both would hit the same
+> physical device simultaneously, causing device contention and spurious errors.
+
 ### USB Bridge Support
 
 The library includes automatic support for USB storage devices that use unknown USB bridges. When smartctl reports an "Unknown USB bridge" error, the library:
@@ -478,20 +591,40 @@ See [APIDOC.md](APIDOC.md) for detailed API documentation.
 
 See the [examples](./examples) directory for more detailed usage examples:
 
-- [Basic Usage](./examples/basic/main.go) - Demonstrates device scanning, health checking, and SMART info retrieval
+| Example | Description |
+|---|---|
+| [basic](./examples/basic/main.go) | Device scanning, health checking, and SMART info retrieval with the default ExecBackend |
+| [lib](./examples/lib/main.go) | LibBackend via purego — same API, no subprocess spawned (Linux/macOS) |
+| [compare](./examples/compare/main.go) | CompareBackend with a snapshot secondary — safe to run without two physical backends |
+| [compare-exec-lib](./examples/compare-exec-lib/main.go) | CompareBackend with ExecBackend as master and LibBackend as shadow (Linux/macOS) |
 
-To run the basic example:
+To run an example (root privileges may be required):
 
 ```bash
-cd examples/basic
-go run main.go
-```
+# ExecBackend (default)
+cd examples/basic && go run .
 
-**Note**: Some operations require root/administrator privileges to access disk devices.
+# LibBackend (macOS arm64, pre-built library)
+SMARTMON_LIB_PATH=../../backends/lib/sdk/libsmartmon_go.dylib \
+  cd examples/lib && go run .
+
+# CompareBackend: ExecBackend master + LibBackend shadow (macOS arm64)
+SMARTMON_LIB_PATH=../../backends/lib/sdk/libsmartmon_go.dylib \
+  cd examples/compare-exec-lib && go run .
+```
 
 ## Architecture
 
-This library provides two backend implementations:
+This library provides two backend implementations and one meta-backend:
+
+| | ExecBackend | LibBackend | CompareBackend |
+|---|---|---|---|
+| **Platform** | All | Linux, macOS | Any (wraps other backends) |
+| **Prerequisite** | `smartctl` binary | `libsmartmon_go.{so,dylib}` | Depends on wrapped backends |
+| **Child process** | ✅ (per call) | ❌ | Depends on wrapped backends |
+| **CGO** | ❌ | ❌ (uses purego) | ❌ |
+| **USB bridge support** | ✅ | ✅ | ✅ |
+| **Default** | ✅ | — | — |
 
 ### ExecBackend (default)
 
@@ -508,6 +641,18 @@ lib, err := lib.New()
 
 // Explicit path:
 lib, err := lib.New(lib.WithLibraryPath("/usr/local/lib/libsmartmon_go.so"))
+```
+
+### CompareBackend
+
+Runs two or more backends in parallel and logs discrepancies between their results. The first
+backend is always the master (its output is returned); secondary backends run as shadows.
+
+```go
+compare, err := comparebackend.NewCompareBackend(
+    []smartmontools.Backend{exec, lib},
+    comparebackend.WithTLogHandler(logger),
+)
 ```
 
 📚 **For a comprehensive analysis of different SMART access approaches**, see our [Architecture Decision Record (ADR-001)](./docs/architecture/ADR-001-smart-access-approaches.md), which covers:

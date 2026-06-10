@@ -89,13 +89,13 @@ github.com/dave/jennifer/jen
 # github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 ## explicit
 github.com/davecgh/go-spew/spew
-# github.com/dianlight/smartmontools-go v0.4.0
+# github.com/dianlight/smartmontools-go v0.4.1
 ## explicit; go 1.26
 github.com/dianlight/smartmontools-go
 github.com/dianlight/smartmontools-go/backends/compare
 github.com/dianlight/smartmontools-go/backends/exec
 github.com/dianlight/smartmontools-go/backends/lib
-github.com/dianlight/smartmontools-go/internal/types
+github.com/dianlight/smartmontools-go/types
 # github.com/dianlight/tlog v0.2.2
 ## explicit; go 1.25.0
 github.com/dianlight/tlog
@@ -243,7 +243,7 @@ github.com/mitchellh/reflectwalk
 # github.com/ncruces/go-strftime v1.0.0
 ## explicit; go 1.17
 github.com/ncruces/go-strftime
-# github.com/oapi-codegen/oapi-codegen/v2 v2.7.0
+# github.com/oapi-codegen/oapi-codegen/v2 v2.7.1
 ## explicit; go 1.24.3
 github.com/oapi-codegen/oapi-codegen/v2/pkg/securityprovider
 # github.com/oapi-codegen/runtime v1.4.1
@@ -347,7 +347,7 @@ github.com/sergi/go-diff/diffmatchpatch
 # github.com/sethvargo/go-retry v0.3.0
 ## explicit; go 1.21
 github.com/sethvargo/go-retry
-# github.com/shirou/gopsutil/v4 v4.26.4
+# github.com/shirou/gopsutil/v4 v4.26.5
 ## explicit; go 1.24.0
 github.com/shirou/gopsutil/v4/common
 github.com/shirou/gopsutil/v4/cpu
@@ -411,7 +411,7 @@ github.com/xrash/smetrics
 # github.com/yusufpapurcu/wmi v1.2.4
 ## explicit; go 1.16
 github.com/yusufpapurcu/wmi
-# github.com/zarldev/goenums v0.4.5
+# github.com/zarldev/goenums v0.4.6
 ## explicit; go 1.24
 github.com/zarldev/goenums
 github.com/zarldev/goenums/enum
@@ -477,7 +477,7 @@ golang.org/x/crypto/blake2b
 golang.org/x/crypto/blowfish
 golang.org/x/crypto/pbkdf2
 golang.org/x/crypto/scrypt
-# golang.org/x/exp v0.0.0-20260508232706-74f9aab9d74a
+# golang.org/x/exp v0.0.0-20260603202125-055de637280b
 ## explicit; go 1.25.0
 golang.org/x/exp/constraints
 # golang.org/x/mod v0.36.0
@@ -486,11 +486,11 @@ golang.org/x/mod/internal/lazyregexp
 golang.org/x/mod/modfile
 golang.org/x/mod/module
 golang.org/x/mod/semver
-# golang.org/x/sync v0.20.0
+# golang.org/x/sync v0.21.0
 ## explicit; go 1.25.0
 golang.org/x/sync/errgroup
 golang.org/x/sync/singleflight
-# golang.org/x/sys v0.45.0
+# golang.org/x/sys v0.46.0
 ## explicit; go 1.25.0
 golang.org/x/sys/cpu
 golang.org/x/sys/execabs

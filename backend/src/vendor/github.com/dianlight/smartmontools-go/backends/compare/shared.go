@@ -1,6 +1,6 @@
 package compare
 
-import smtypes "github.com/dianlight/smartmontools-go/internal/types"
+import smtypes "github.com/dianlight/smartmontools-go/types"
 
 // Shared interface aliases keep the compare backend decoupled from the root package.
 type (
