@@ -82,8 +82,9 @@ export const categories: {
 export const beta_categories: {
   [key: string]: { [key: string]: string[] } | string[];
 } = {
-  // TODO: Enable when HDIdle feature is ready
-  // 'Power ( 🚧 WIP )': ['hdidle_enabled', 'hdidle_default_idle_time', 'hdidle_default_command_type', 'hdidle_ignore_spin_down_detection'],
+  // HDIdle was previously a global setting; the feature is now configured
+  // per-disk via the volumes page (gated behind Lab Mode). No global tunables
+  // exist — the dashboard suggestion badge surfaces it for HDDs.
 };
 
 export function buildSettingsTree(): SettingTreeNode[] {

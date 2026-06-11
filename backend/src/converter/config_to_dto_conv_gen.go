@@ -47,16 +47,6 @@ func (c *ConfigToDtoConverterImpl) ConfigToSettings(source config.Config, target
 	pBool4 := source.SMBoverQUIC
 	target.SMBoverQUIC = &pBool4
 	target.SmartMode = configSmartModeFromConfig(source)
-	pBool5 := source.HDIdleEnabled
-	target.HDIdleEnabled = &pBool5
-	target.HDIdleDefaultIdleTime = source.HDIdleDefaultIdleTime
-	dtoHdidleCommand, err := dto.ParseHdidleCommand(source.HDIdleDefaultCommandType)
-	if err != nil {
-		return err
-	}
-	target.HDIdleDefaultCommandType = dtoHdidleCommand
-	target.HDIdleDefaultPowerCondition = source.HDIdleDefaultPowerCondition
-	target.HDIdleIgnoreSpinDownDetection = source.HDIdleIgnoreSpinDownDetection
 	return nil
 }
 func (c *ConfigToDtoConverterImpl) ShareToMountPointData(source config.Share) (*dto.MountPointData, error) {

@@ -54,6 +54,12 @@ type Disk struct {
 	// HDIdleDevice contains current HDIdle configuration snapshot for this disk, if available.
 	HDIdleDevice *HDIdleDevice `json:"hdidle_device,omitempty" readonly:"true"`
 
+	// IsRotational reports whether the underlying medium spins (HDD) or not (SSD/NVMe).
+	// Tri-state: true=HDD, false=non-rotational (SSD/NVMe), nil=unknown (e.g. USB enclosure
+	// hides the rotational flag and SMART is unavailable). The frontend treats nil as
+	// "do not suggest HDIdle" but allows force-enable via the per-disk dialog.
+	IsRotational *bool `json:"is_rotational,omitempty" readonly:"true"`
+
 	// Refresh version counter to indicate when the disk info was last refreshed.
 	RefreshVersion uint32 `json:"refresh_version,omitempty" readonly:"true"`
 }

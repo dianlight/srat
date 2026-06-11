@@ -20,14 +20,17 @@ import {
   useTheme,
 } from "@mui/material";
 import { filesize } from "filesize";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SafeSparkLineChart as SparkLineChart } from "../../../components/charts/SafeSparkLineChart";
 import { PreviewDialog } from "../../../components/PreviewDialog";
-import type {
-  DiskHealth,
-  DiskIoStats,
-  PerPartitionInfo,
+import {
+  type Disk,
+  type DiskHealth,
+  type DiskIoStats,
+  type PerPartitionInfo,
+  useGetApiVolumesQuery,
 } from "../../../store/sratApi";
+import { HDIdleSuggestionBadge } from "../components/HDIdleSuggestionBadge";
 
 const MAX_HISTORY_LENGTH = 10;
 type DiskIoHistoryKey =
@@ -46,6 +49,19 @@ export function DiskHealthMetrics({
   const [selectedIoStats, setSelectedIoStats] = useState<
     DiskIoStats | PerPartitionInfo | null
   >(null);
+
+  // Map kernel device name (e.g. "sda") → Disk DTO so the per-row badge can
+  // read is_rotational and hdidle_device.suggestion_ignored. The volumes
+  // endpoint already powers the volumes page; reusing it here avoids a new
+  // dedicated endpoint for "list disks for the dashboard".
+  const { data: volumes } = useGetApiVolumesQuery();
+  const disksByDeviceName = useMemo(() => {
+    const map: Record<string, Disk> = {};
+    (volumes ?? []).forEach((d) => {
+      if (d.legacy_device_name) map[d.legacy_device_name] = d;
+    });
+    return map;
+  }, [volumes]);
 
   const [diskIoHistory, setDiskIoHistory] = useState<
     Record<
@@ -290,6 +306,9 @@ export function DiskHealthMetrics({
                         </Tooltip>
                       )}
                       {io.device_name}
+                      <HDIdleSuggestionBadge
+                        disk={disksByDeviceName[io.device_name]}
+                      />
                     </Box>
                   </TableCell>
                   {diskHealth?.hdidle_running && (

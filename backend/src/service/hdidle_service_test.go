@@ -23,10 +23,9 @@ import (
 
 type HDIdleServiceSuite struct {
 	suite.Suite
-	db             *gorm.DB
-	app            *fxtest.App
-	service        service.HDIdleServiceInterface
-	settingService service.SettingServiceInterface
+	db      *gorm.DB
+	app     *fxtest.App
+	service service.HDIdleServiceInterface
 }
 
 func TestHDIdleServiceSuite(t *testing.T) {
@@ -41,10 +40,6 @@ func (suite *HDIdleServiceSuite) TestCheckDeviceSupport_EmptyPath() {
 }
 
 func (suite *HDIdleServiceSuite) TestCheckDeviceSupport_InvalidPath() {
-	mock.When(suite.settingService.Load()).ThenReturn(&dto.Settings{
-		HDIdleEnabled: new(true),
-	}, nil)
-
 	support, err := suite.service.CheckDeviceSupport("/invalid/path")
 	suite.NoError(err)
 	suite.False(support.Supported)
@@ -78,65 +73,16 @@ func (suite *HDIdleServiceSuite) SetupTest() {
 			dbom.NewDB,
 			mock.Mock[events.EventBusInterface],
 			service.NewHDIdleService,
-			mock.Mock[service.SettingServiceInterface],
 			mock.Mock[hardware.ClientWithResponsesInterface],
 		),
 		fx.Populate(&suite.db),
 		fx.Populate(&suite.service),
-		fx.Populate(&suite.settingService),
 	)
 
-	// Default to global disabled to avoid auto-start via OnStart hook.
-	// Individual tests will override this as needed.
-	mock.When(suite.settingService.Load()).ThenReturn(&dto.Settings{
-		HDIdleEnabled:                 boolPtr(false),
-		HDIdleDefaultIdleTime:         600,
-		HDIdleDefaultCommandType:      dto.HdidleCommands.SCSICOMMAND,
-		HDIdleDefaultPowerCondition:   0,
-		HDIdleIgnoreSpinDownDetection: false,
-	}, nil)
-
-	suite.app.RequireStart()
-
-	// Service won't auto-start (global disabled by default)
-}
-
-// SetupTestWithServiceEnabled provides a setup for tests that need the service to be enabled
-func (suite *HDIdleServiceSuite) setupWithServiceEnabled() {
-	suite.TearDownTest() // Clean up previous setup if any
-
-	suite.app = fxtest.New(suite.T(),
-		fx.Provide(
-			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
-			func() (context.Context, context.CancelFunc) {
-				return context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, &sync.WaitGroup{}))
-			},
-			func() *dto.ContextState {
-				return &dto.ContextState{
-					HACoreReady:  true,
-					DatabasePath: "file::memory:?cache=shared&_pragma=foreign_keys(1)",
-				}
-			},
-			dbom.NewDB,
-			mock.Mock[events.EventBusInterface],
-			service.NewHDIdleService,
-			mock.Mock[service.SettingServiceInterface],
-			mock.Mock[hardware.ClientWithResponsesInterface],
-		),
-		fx.Populate(&suite.db),
-		fx.Populate(&suite.service),
-		fx.Populate(&suite.settingService),
-	)
-
-	// Enable the service for this setup
-	mock.When(suite.settingService.Load()).ThenReturn(&dto.Settings{
-		HDIdleEnabled:                 boolPtr(true),
-		HDIdleDefaultIdleTime:         600,
-		HDIdleDefaultCommandType:      dto.HdidleCommands.SCSICOMMAND,
-		HDIdleDefaultPowerCondition:   0,
-		HDIdleIgnoreSpinDownDetection: false,
-	}, nil)
-
+	// No per-disk records present in this in-memory DB by default, so
+	// convertConfig() reports Enabled=false and OnStart will not start the
+	// monitor goroutine. Individual tests can insert HDIdleDevice rows to
+	// flip the service into the enabled state.
 	suite.app.RequireStart()
 }
 
@@ -161,8 +107,6 @@ func (suite *HDIdleServiceSuite) TestStopWhenNotRunning() {
 }
 
 func (suite *HDIdleServiceSuite) TestGetDeviceConfig() {
-	suite.setupWithServiceEnabled()
-
 	expectedDevice := &dbom.HDIdleDevice{
 		DevicePath:     "sda",
 		IdleTime:       300,
@@ -180,8 +124,6 @@ func (suite *HDIdleServiceSuite) TestGetDeviceConfig() {
 }
 
 func (suite *HDIdleServiceSuite) TestGetDeviceUnsupported() {
-	suite.setupWithServiceEnabled()
-
 	config, err := suite.service.GetDeviceConfig("nonexistent")
 	suite.Require().Error(err)
 	suite.ErrorIs(err, dto.ErrorHDIdleNotSupported)
@@ -190,8 +132,6 @@ func (suite *HDIdleServiceSuite) TestGetDeviceUnsupported() {
 }
 
 func (suite *HDIdleServiceSuite) TestSaveDeviceConfig() {
-	suite.setupWithServiceEnabled()
-
 	device := dto.HDIdleDevice{
 		DiskId:         "ssssa",
 		IdleTime:       300,
