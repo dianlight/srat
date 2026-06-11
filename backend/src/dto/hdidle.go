@@ -12,6 +12,14 @@ type HDIdleDevice struct {
 	CommandType    HdidleCommand `json:"command_type,omitempty" enum:"scsi,ata"` // empty = use default
 	PowerCondition uint8         `json:"power_condition"`
 	Enabled        HdidleEnabled `json:"enabled,omitempty" enum:"yes,custom,no"`
+	// SuggestionIgnored is true when the user has dismissed the dashboard's
+	// "Enable HDIdle" suggestion for this disk; the badge will not appear again
+	// until cleared. Read/write via the per-disk endpoints.
+	SuggestionIgnored bool `json:"suggestion_ignored,omitempty"`
+	// ForceEnabled is true when HDIdle was enabled on a non-rotational disk
+	// (SSD/NVMe) via the per-disk confirm dialog. Future loads of the per-disk
+	// settings card skip the warning when this flag is set.
+	ForceEnabled bool `json:"force_enabled,omitempty"`
 }
 
 // HDIdleDeviceStatus represents the HD idle status for a single disk.

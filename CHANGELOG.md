@@ -2,6 +2,85 @@
 
 # Changelog
 
+## Unreleased — feat/hdidle-per-disk-rework
+
+### ✨ Features
+
+- **HDIdle per-disk model** (Lab Mode feature): Replaced the global HDIdle
+  enable/disable toggle with a fully per-disk configuration model gated behind
+  Lab Mode (`experimental_lab_mode=true`). Key changes:
+  - **Per-disk enable/disable**: each physical disk has its own HDIdle record
+    (`enabled: yes|custom|no`); the service runs automatically when ≥1 disk is
+    enabled. The five global `Settings.hdidle_*` fields have been removed.
+  - **Dashboard suggestion badge**: HDDs that have not yet been configured show
+    an inline "Enable HDIdle?" badge in the disk I/O table (visible only in Lab
+    Mode). The badge provides **Ignore** (persists `suggestion_ignored=true`)
+    and **Enable** (navigates to the per-disk card in the Volumes page).
+  - **Non-rotational guard**: enabling HDIdle on an SSD/NVMe or a device with
+    unknown rotational type opens a confirm dialog; accepting persists
+    `force_enabled=true` so the warning does not repeat. The backend returns
+    HTTP 409 if the flag is missing, preventing accidental spindowns of SSDs.
+  - **Rotational detection**: `Disk.is_rotational` tri-state (HDD/SSD/unknown)
+    is now derived from `/sys/block/<dev>/queue/rotational` (sysfs primary) with
+    SMART `rotation_rate` as fallback. Unknown (e.g. USB enclosures) returns
+    `nil` — treated as non-rotational for safety.
+  - **Ignore-suggestion endpoint**: `POST /api/disk/{id}/hdidle/ignore-suggestion`
+    persists the badge dismissal per disk.
+  - **Adaptive polling**: the monitor goroutine polls every 60s when ≥1 disk is
+    spun-up and slows to 5min when all monitored disks are already spun-down.
+    The goroutine is never started when zero disks are enabled.
+  - **readOnly threading**: the per-disk settings card now correctly propagates
+    the `readOnly` flag from `VolumeDetailsPanel`.
+
+### 🐛 Bug Fixes
+
+- **HDIdle service permanently broken after first Stop()**: `Stop()` no longer
+  leaves `stopChan` non-nil after close. Subsequent `Start()` calls now succeed
+  (idempotent). Fixes a latent bug where the service refused to restart after
+  any config PUT.
+- **Nested mutex deadlock** in `GetDeviceStatus`, `GetProcessStatus`, and
+  `observeDiskActivity`: calls to `IsRunning()` under an existing lock now read
+  `stopChan` directly to avoid the deadlock inherent in re-acquiring an
+  `RWMutex` that is not guaranteed reentrant.
+- **`GetDeviceConfig` returned HTTP 500 when service disabled**: the guard
+  `!s.config.Enabled → ErrorHDIdleNotSupported` has been removed. The config
+  endpoint is now always available for inspection/configuration regardless of
+  whether the monitor goroutine is running.
+- **`disk_id` injected unsanitised into file path**: `hdidle_handler.go` was
+  naïvely prefixing every `disk_id` with `/dev/disk/by-id/` without validation.
+  Replaced by `HDIdleServiceInterface.ResolveDevicePath()` which probes three
+  candidate paths (absolute `/dev/…`, by-id, kernel name) and rejects inputs
+  containing path-traversal characters.
+
+### 🔄 Breaking Changes
+
+- `Settings.hdidle_enabled`, `hdidle_default_idle_time`, `hdidle_default_command_type`,
+  `hdidle_default_power_condition`, and `hdidle_ignore_spin_down_detection` have
+  been **removed** from the API and the DB (migration 00017 drops the
+  corresponding rows from the `properties` table).
+- `POST /api/hdidle/start` and `POST /api/hdidle/stop` have been **removed**.
+  The service lifecycle is now fully automatic (driven by the per-disk records).
+- `PATCH /api/disk/{id}/hdidle/config` has been **removed** (it was a dead spec
+  entry with no handler).
+
+### 🏗 Chore
+
+- DB migration `00017` (`drop_global_hdidle_properties`): deletes the five
+  obsolete global HDIdle property rows. Down migration re-seeds them with their
+  original defaults for dev/test rollback.
+- `events.PowerEvent` now carries a `Kind PowerEventKind` discriminant field
+  (`config` or `status`) so subscribers can branch without comparing zero-values.
+- Two new `dto.HDIdleDevice` fields (`SuggestionIgnored`, `ForceEnabled`) and
+  matching GORM/generated-layer/converter updates. Schema columns are added by
+  GORM `AutoMigrate` on the next startup — no manual migration needed.
+- `openapi.json` is **not regenerated** in this branch — it requires a working
+  Go toolchain and `go run ./cmd/srat-openapi`. **CI must run**
+  `go run ./cmd/srat-openapi -dir=backend/docs` and
+  `cd frontend && bun run gen:api` before merging to keep generated artifacts in
+  sync. Three hand-edited generated files (`config_to_dto_conv_gen.go`,
+  `dto_to_dbom_conv_gen.go`, `g/hdidle_device_config.go`) are aligned with their
+  source directives — a `go generate ./...` run will produce the same output.
+
 ## 2026.5.0-rc9
 
 ### ✨ Features

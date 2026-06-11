@@ -415,6 +415,13 @@ components:
           $ref: "#/components/schemas/HDIdleDevice"
         id:
           type: string
+        is_rotational:
+          description: |-
+            Whether the underlying medium spins (HDD) or not (SSD/NVMe).
+            true=HDD, false=SSD/NVMe, omitted=unknown (e.g. USB enclosure
+            hides the rotational flag and SMART is unavailable).
+          readOnly: true
+          type: boolean
         legacy_device_name:
           type: string
         legacy_device_path:
@@ -888,6 +895,12 @@ components:
           type: string
         error_message:
           type: string
+        force_enabled:
+          description: |-
+            true when HDIdle was enabled on a non-rotational disk via the
+            per-disk confirm dialog. Future loads of the per-disk settings
+            card skip the warning when this flag is set.
+          type: boolean
         idle_time:
           format: int64
           type: integer
@@ -897,6 +910,12 @@ components:
           type: integer
         recommended_command:
           type: string
+        suggestion_ignored:
+          description: |-
+            true when the user has dismissed the dashboard's "Enable HDIdle"
+            suggestion for this disk; the badge will not appear again until
+            cleared.
+          type: boolean
         supported:
           type: boolean
         supports_ata:
@@ -2042,24 +2061,6 @@ components:
         ha_use_nfs:
           default: false
           type: boolean
-        hdidle_default_command_type:
-          enum:
-            - scsi
-            - ata
-          type: string
-        hdidle_default_idle_time:
-          format: int64
-          type: integer
-        hdidle_default_power_condition:
-          format: int32
-          minimum: 0
-          type: integer
-        hdidle_enabled:
-          default: false
-          type: boolean
-        hdidle_ignore_spin_down_detection:
-          default: false
-          type: boolean
         hostname:
           type: string
         interfaces:
@@ -2391,42 +2392,6 @@ components:
           type: string
       required:
         - data
-      type: object
-    StartHDIdleServiceOutputBody:
-      additionalProperties: false
-      properties:
-        $schema:
-          description: A URL to the JSON Schema for this object.
-          examples:
-            - https://example.com/schemas/StartHDIdleServiceOutputBody.json
-          format: uri
-          readOnly: true
-          type: string
-        message:
-          type: string
-        running:
-          type: boolean
-      required:
-        - message
-        - running
-      type: object
-    StopHDIdleServiceOutputBody:
-      additionalProperties: false
-      properties:
-        $schema:
-          description: A URL to the JSON Schema for this object.
-          examples:
-            - https://example.com/schemas/StopHDIdleServiceOutputBody.json
-          format: uri
-          readOnly: true
-          type: string
-        message:
-          type: string
-        running:
-          type: boolean
-      required:
-        - message
-        - running
       type: object
     SystemCapabilities:
       additionalProperties: false
@@ -2874,154 +2839,6 @@ paths:
       summary: Get API disk by disk ID hdidle config
       tags:
         - disk
-    patch:
-      description: Partial update operation supporting both JSON Merge Patch & JSON Patch updates.
-      operationId: patch-api-disk-by-disk-id-hdidle-config
-      parameters:
-        - description: The disk ID or device path
-          in: path
-          name: disk_id
-          required: true
-          schema:
-            description: The disk ID or device path
-            type: string
-        - $ref: "#/components/parameters/X-Span-Id"
-        - $ref: "#/components/parameters/X-Trace-Id"
-      requestBody:
-        content:
-          application/json-patch+json:
-            schema:
-              items:
-                $ref: "#/components/schemas/JsonPatchOp"
-              type:
-                - array
-                - "null"
-          application/merge-patch+json:
-            schema:
-              additionalProperties: false
-              properties:
-                $schema:
-                  description: A URL to the JSON Schema for this object.
-                  examples:
-                    - https://example.com/schemas/HDIdleDevice.json
-                  format: uri
-                  readOnly: true
-                  type: string
-                command_type:
-                  enum:
-                    - scsi
-                    - ata
-                  type: string
-                device_path:
-                  type: string
-                disk_id:
-                  type: string
-                enabled:
-                  enum:
-                    - "yes"
-                    - custom
-                    - "no"
-                  type: string
-                error_message:
-                  type: string
-                idle_time:
-                  format: int64
-                  type: integer
-                power_condition:
-                  format: int32
-                  minimum: 0
-                  type: integer
-                recommended_command:
-                  type: string
-                supported:
-                  type: boolean
-                supports_ata:
-                  type: boolean
-                supports_scsi:
-                  type: boolean
-              type: object
-          application/merge-patch+shorthand:
-            schema:
-              additionalProperties: false
-              properties:
-                $schema:
-                  description: A URL to the JSON Schema for this object.
-                  examples:
-                    - https://example.com/schemas/HDIdleDevice.json
-                  format: uri
-                  readOnly: true
-                  type: string
-                command_type:
-                  enum:
-                    - scsi
-                    - ata
-                  type: string
-                device_path:
-                  type: string
-                disk_id:
-                  type: string
-                enabled:
-                  enum:
-                    - "yes"
-                    - custom
-                    - "no"
-                  type: string
-                error_message:
-                  type: string
-                idle_time:
-                  format: int64
-                  type: integer
-                power_condition:
-                  format: int32
-                  minimum: 0
-                  type: integer
-                recommended_command:
-                  type: string
-                supported:
-                  type: boolean
-                supports_ata:
-                  type: boolean
-                supports_scsi:
-                  type: boolean
-              type: object
-        required: true
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/HDIdleDevice"
-          description: OK
-          headers:
-            X-Span-Id:
-              $ref: "#/components/headers/X-Span-Id"
-            X-Trace-Id:
-              $ref: "#/components/headers/X-Trace-Id"
-        4xx:
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ErrorModel"
-          description: Error
-          headers:
-            X-Span-Id:
-              $ref: "#/components/headers/X-Span-Id"
-            X-Trace-Id:
-              $ref: "#/components/headers/X-Trace-Id"
-        default:
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ErrorModel"
-          description: Error
-          headers:
-            X-Span-Id:
-              $ref: "#/components/headers/X-Span-Id"
-            X-Trace-Id:
-              $ref: "#/components/headers/X-Trace-Id"
-      summary: Patch api-disk-by-disk-id-hdidle-config
-      tags:
-        - disk
     put:
       operationId: put-api-disk-by-disk-id-hdidle-config
       parameters:
@@ -3075,6 +2892,57 @@ paths:
             X-Trace-Id:
               $ref: "#/components/headers/X-Trace-Id"
       summary: Put API disk by disk ID hdidle config
+      tags:
+        - disk
+  /api/disk/{disk_id}/hdidle/ignore-suggestion:
+    post:
+      description: |-
+        Dismiss the dashboard's "Enable HDIdle" suggestion for this disk by
+        setting suggestion_ignored=true on its per-disk record. Idempotent:
+        if no record exists yet, a minimal one is created solely to remember
+        the dismissal. Requires Lab Mode.
+      operationId: post-api-disk-by-disk-id-hdidle-ignore-suggestion
+      parameters:
+        - description: The disk ID
+          in: path
+          name: disk_id
+          required: true
+          schema:
+            description: The disk ID
+            type: string
+        - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
+      responses:
+        "200":
+          description: OK
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: Dismiss HDIdle dashboard suggestion for a disk
       tags:
         - disk
   /api/disk/{disk_id}/hdidle/info:
@@ -4104,92 +3972,6 @@ paths:
       summary: Get API filesystems
       tags:
         - filesystems
-  /api/hdidle/start:
-    post:
-      operationId: post-api-hdidle-start
-      parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
-        - $ref: "#/components/parameters/X-Trace-Id"
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/StartHDIdleServiceOutputBody"
-          description: OK
-          headers:
-            X-Span-Id:
-              $ref: "#/components/headers/X-Span-Id"
-            X-Trace-Id:
-              $ref: "#/components/headers/X-Trace-Id"
-        4xx:
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ErrorModel"
-          description: Error
-          headers:
-            X-Span-Id:
-              $ref: "#/components/headers/X-Span-Id"
-            X-Trace-Id:
-              $ref: "#/components/headers/X-Trace-Id"
-        default:
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ErrorModel"
-          description: Error
-          headers:
-            X-Span-Id:
-              $ref: "#/components/headers/X-Span-Id"
-            X-Trace-Id:
-              $ref: "#/components/headers/X-Trace-Id"
-      summary: Post API hdidle start
-      tags:
-        - hdidle
-  /api/hdidle/stop:
-    post:
-      operationId: post-api-hdidle-stop
-      parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
-        - $ref: "#/components/parameters/X-Trace-Id"
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/StopHDIdleServiceOutputBody"
-          description: OK
-          headers:
-            X-Span-Id:
-              $ref: "#/components/headers/X-Span-Id"
-            X-Trace-Id:
-              $ref: "#/components/headers/X-Trace-Id"
-        4xx:
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ErrorModel"
-          description: Error
-          headers:
-            X-Span-Id:
-              $ref: "#/components/headers/X-Span-Id"
-            X-Trace-Id:
-              $ref: "#/components/headers/X-Trace-Id"
-        default:
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ErrorModel"
-          description: Error
-          headers:
-            X-Span-Id:
-              $ref: "#/components/headers/X-Span-Id"
-            X-Trace-Id:
-              $ref: "#/components/headers/X-Trace-Id"
-      summary: Post API hdidle stop
-      tags:
-        - hdidle
   /api/health:
     get:
       operationId: get-api-health

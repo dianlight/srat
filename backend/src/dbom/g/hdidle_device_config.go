@@ -9,23 +9,27 @@ import (
 )
 
 var HDIdleDevice = struct {
-	DiskId         field.String
-	DevicePath     field.String
-	IdleTime       field.Number[int]
-	CommandType    field.Field[dto.HdidleCommand]
-	PowerCondition field.Number[uint8]
-	Enabled        field.Field[dto.HdidleEnabled]
-	CreatedAt      field.Time
-	UpdatedAt      field.Time
-	DeletedAt      field.Field[gorm.DeletedAt]
+	DiskId            field.String
+	DevicePath        field.String
+	IdleTime          field.Number[int]
+	CommandType       field.Field[dto.HdidleCommand]
+	PowerCondition    field.Number[uint8]
+	Enabled           field.Field[dto.HdidleEnabled]
+	SuggestionIgnored field.Bool
+	ForceEnabled      field.Bool
+	CreatedAt         field.Time
+	UpdatedAt         field.Time
+	DeletedAt         field.Field[gorm.DeletedAt]
 }{
-	DiskId:         field.String{}.WithColumn("disk_id"),
-	DevicePath:     field.String{}.WithColumn("device_path"),
-	IdleTime:       field.Number[int]{}.WithColumn("idle_time"),
-	CommandType:    field.Field[dto.HdidleCommand]{}.WithColumn("command_type"),
-	PowerCondition: field.Number[uint8]{}.WithColumn("power_condition"),
-	Enabled:        field.Field[dto.HdidleEnabled]{}.WithColumn("enabled"),
-	CreatedAt:      field.Time{}.WithColumn("created_at"),
-	UpdatedAt:      field.Time{}.WithColumn("updated_at"),
-	DeletedAt:      field.Field[gorm.DeletedAt]{}.WithColumn("deleted_at"),
+	DiskId:            field.String{}.WithColumn("disk_id"),
+	DevicePath:        field.String{}.WithColumn("device_path"),
+	IdleTime:          field.Number[int]{}.WithColumn("idle_time"),
+	CommandType:       field.Field[dto.HdidleCommand]{}.WithColumn("command_type"),
+	PowerCondition:    field.Number[uint8]{}.WithColumn("power_condition"),
+	Enabled:           field.Field[dto.HdidleEnabled]{}.WithColumn("enabled"),
+	SuggestionIgnored: field.Bool{}.WithColumn("suggestion_ignored"),
+	ForceEnabled:      field.Bool{}.WithColumn("force_enabled"),
+	CreatedAt:         field.Time{}.WithColumn("created_at"),
+	UpdatedAt:         field.Time{}.WithColumn("updated_at"),
+	DeletedAt:         field.Field[gorm.DeletedAt]{}.WithColumn("deleted_at"),
 }

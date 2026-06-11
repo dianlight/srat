@@ -44,7 +44,7 @@ import { buildSettingsTree, type SettingTreeNode } from "./settingsConfig";
 
 const SETTINGS_STORAGE_KEY = "srat_settings_selected";
 const SETTINGS_EXPANDED_KEY = "srat_settings_expanded";
-const DEFAULT_EXPANDED = ["network", "update", "telemetry", "hdidle"];
+const DEFAULT_EXPANDED = ["network", "update", "telemetry"];
 
 export function Settings() {
   const openWizard = useOpenWizard();

@@ -222,28 +222,14 @@ export const handlers = [
 			...resultArray[next(`get /api/filesystems`) % resultArray.length],
 		);
 	}),
-	http.post(`${baseURL}/api/hdidle/start`, async () => {
-		const resultArray = [
-			[getPostApiHdidleStart200Response(), { status: 200 }],
-			[getPostApiHdidleStart4XxResponse(), { status: 4 }],
-			[getPostApiHdidleStartdefaultResponse(), { status: NaN }],
-		] as [any, { status: number }][];
-
-		return HttpResponse.json(
-			...resultArray[next(`post /api/hdidle/start`) % resultArray.length],
-		);
-	}),
-	http.post(`${baseURL}/api/hdidle/stop`, async () => {
-		const resultArray = [
-			[getPostApiHdidleStop200Response(), { status: 200 }],
-			[getPostApiHdidleStop4XxResponse(), { status: 4 }],
-			[getPostApiHdidleStopdefaultResponse(), { status: NaN }],
-		] as [any, { status: number }][];
-
-		return HttpResponse.json(
-			...resultArray[next(`post /api/hdidle/stop`) % resultArray.length],
-		);
-	}),
+	http.post(
+		`${baseURL}/api/disk/:diskId/hdidle/ignore-suggestion`,
+		async () => {
+			// Generated stub for the new ignore-suggestion endpoint. Returns 204
+			// No Content on the happy path; tests that need 4xx can override.
+			return new HttpResponse(null, { status: 204 });
+		},
+	),
 	http.get(`${baseURL}/api/health`, async () => {
 		const resultArray = [
 			[getGetApiHealth200Response(), { status: 200 }],
@@ -1037,38 +1023,6 @@ export function getListApiFilesystemsdefaultResponse() {
 	return null;
 }
 
-export function getPostApiHdidleStart200Response() {
-	return {
-		$schema: faker.internet.url(),
-		message: faker.lorem.words(),
-		running: faker.datatype.boolean(),
-	};
-}
-
-export function getPostApiHdidleStart4XxResponse() {
-	return null;
-}
-
-export function getPostApiHdidleStartdefaultResponse() {
-	return null;
-}
-
-export function getPostApiHdidleStop200Response() {
-	return {
-		$schema: faker.internet.url(),
-		message: faker.lorem.words(),
-		running: faker.datatype.boolean(),
-	};
-}
-
-export function getPostApiHdidleStop4XxResponse() {
-	return null;
-}
-
-export function getPostApiHdidleStopdefaultResponse() {
-	return null;
-}
-
 export function getGetApiHealth200Response() {
 	return {
 		$schema: faker.internet.url(),
@@ -1594,11 +1548,6 @@ export function getGetApiSettings200Response() {
 		smart_mode: "legacy",
 		experimental_lab_mode: false,
 		export_stats_to_ha: faker.datatype.boolean(),
-		hdidle_default_command_type: faker.helpers.arrayElement(["scsi", "ata"]),
-		hdidle_default_idle_time: faker.number.int(),
-		hdidle_default_power_condition: faker.number.int(),
-		hdidle_enabled: faker.datatype.boolean(),
-		hdidle_ignore_spin_down_detection: faker.datatype.boolean(),
 		hostname: faker.person.fullName(),
 		interfaces: [
 			...new Array(faker.number.int({ min: 1, max: MAX_ARRAY_LENGTH })).keys(),
@@ -1645,11 +1594,6 @@ export function getPatchApiSettings200Response() {
 		smart_mode: "legacy",
 		experimental_lab_mode: false,
 		export_stats_to_ha: faker.datatype.boolean(),
-		hdidle_default_command_type: faker.helpers.arrayElement(["scsi", "ata"]),
-		hdidle_default_idle_time: faker.number.int(),
-		hdidle_default_power_condition: faker.number.int(),
-		hdidle_enabled: faker.datatype.boolean(),
-		hdidle_ignore_spin_down_detection: faker.datatype.boolean(),
 		hostname: faker.person.fullName(),
 		interfaces: [
 			...new Array(faker.number.int({ min: 1, max: MAX_ARRAY_LENGTH })).keys(),
@@ -1696,11 +1640,6 @@ export function getPutApiSettings200Response() {
 		smart_mode: "legacy",
 		experimental_lab_mode: false,
 		export_stats_to_ha: faker.datatype.boolean(),
-		hdidle_default_command_type: faker.helpers.arrayElement(["scsi", "ata"]),
-		hdidle_default_idle_time: faker.number.int(),
-		hdidle_default_power_condition: faker.number.int(),
-		hdidle_enabled: faker.datatype.boolean(),
-		hdidle_ignore_spin_down_detection: faker.datatype.boolean(),
 		hostname: faker.person.fullName(),
 		interfaces: [
 			...new Array(faker.number.int({ min: 1, max: MAX_ARRAY_LENGTH })).keys(),

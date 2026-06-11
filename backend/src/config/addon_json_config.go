@@ -85,14 +85,9 @@ type Config struct {
 	UpdateChannel   string `json:"update_channel"`
 	TelemetryMode   string `json:"telemetry_mode"`
 	// Only For Default management
-	HAUseNFS                      *bool  `json:"ha_use_nfs,omitempty" default:"false"`
-	ExportStatsToHA               bool   `json:"export_stats_to_ha,omitempty" default:"false"`
-	SMBoverQUIC                   bool   `json:"smb_over_quic,omitempty" default:"false"`
-	HDIdleEnabled                 bool   `json:"hdd_idle_enabled,omitempty" default:"false"`
-	HDIdleDefaultIdleTime         int    `json:"hdd_idle_default_idle_time,omitempty" default:"10"`
-	HDIdleDefaultCommandType      string `json:"hdd_idle_default_command_type,omitempty" default:"spindown"`
-	HDIdleDefaultPowerCondition   uint8  `json:"hdd_idle_default_power_condition,omitempty" default:"15"`
-	HDIdleIgnoreSpinDownDetection bool   `json:"hdd_idle_ignore_spin_down_detection,omitempty" default:"false"`
+	HAUseNFS        *bool `json:"ha_use_nfs,omitempty" default:"false"`
+	ExportStatsToHA bool  `json:"export_stats_to_ha,omitempty" default:"false"`
+	SMBoverQUIC     bool  `json:"smb_over_quic,omitempty" default:"false"`
 }
 
 // ReadConfigBuffer reads and parses a configuration file.

@@ -68,7 +68,6 @@ type ConfigToDtoConverter interface {
 	// goverter:update target
 	// goverter:update:ignoreZeroValueField no
 	// goverter:map TelemetryMode TelemetryMode | github.com/dianlight/srat/dto:ParseTelemetryMode
-	// goverter:map HDIdleDefaultCommandType HDIdleDefaultCommandType | github.com/dianlight/srat/dto:ParseHdidleCommand
 	// goverter:map . SmartMode | configSmartModeFromConfig
 	// goverter:ignore HASmbPassword
 	ConfigToSettings(source config.Config, target *dto.Settings) error

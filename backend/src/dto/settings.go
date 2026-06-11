@@ -19,9 +19,4 @@ type Settings struct {
 	SMBoverQUIC                   *bool                  `json:"smb_over_quic,omitempty" default:"false"`
 	SmartMode                     SmartMode              `json:"smart_mode,omitempty" enum:"none,legacy,direct"`
 	ExperimentalLabMode           bool                   `json:"experimental_lab_mode"`
-	HDIdleEnabled                 *bool                  `json:"hdidle_enabled,omitempty" default:"false"`
-	HDIdleDefaultIdleTime         int                    `json:"hdidle_default_idle_time,omitempty"` // seconds
-	HDIdleDefaultCommandType      HdidleCommand          `json:"hdidle_default_command_type,omitempty" enum:"scsi,ata"`
-	HDIdleDefaultPowerCondition   uint8                  `json:"hdidle_default_power_condition,omitempty"` // 0-15
-	HDIdleIgnoreSpinDownDetection bool                   `json:"hdidle_ignore_spin_down_detection,omitempty" default:"false"`
 }
