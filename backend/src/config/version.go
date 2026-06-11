@@ -12,6 +12,7 @@ var (
 	Repository     = "dianlight/srat"
 	SentryDSN      = ""
 	GistToken      = ""
+	MetadataJSON   = ""
 )
 
 func BuildVersion() string {

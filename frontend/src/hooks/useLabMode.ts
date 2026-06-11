@@ -16,7 +16,10 @@ import { useGetApiSettingsQuery } from "../store/sratApi";
 export function useLabMode(): { labMode: boolean; isLoading: boolean } {
   const { data, isLoading } = useGetApiSettingsQuery();
   return {
-    labMode: Boolean(data?.experimental_lab_mode),
+    labMode:
+      data != null && "experimental_lab_mode" in data
+        ? Boolean(data.experimental_lab_mode)
+        : false,
     isLoading,
   };
 }

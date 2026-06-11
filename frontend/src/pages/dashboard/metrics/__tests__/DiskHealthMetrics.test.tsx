@@ -1,7 +1,13 @@
-import { render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { screen, within } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { renderWithTestStore } from "/test/testing";
 import type { DiskHealth } from "../../../../store/sratApi";
 import { DiskHealthMetrics } from "../DiskHealthMetrics";
+
+vi.mock("react-router", () => ({ useNavigate: () => vi.fn() }));
+vi.mock("../../../../hooks/useLabMode", () => ({
+    useLabMode: () => ({ labMode: false, isLoading: false }),
+}));
 
 describe("DiskHealthMetrics", () => {
     it("orders disks by device name", async () => {
@@ -33,7 +39,7 @@ describe("DiskHealthMetrics", () => {
             per_partition_info: {},
         };
 
-        render(<DiskHealthMetrics diskHealth={diskHealth} />);
+        await renderWithTestStore(<DiskHealthMetrics diskHealth={diskHealth} />);
 
         const tables = await screen.findAllByRole("table", { name: "disk health table" });
         expect(tables.length).toBeGreaterThan(0);
@@ -84,7 +90,7 @@ describe("DiskHealthMetrics", () => {
             per_partition_info: {},
         };
 
-        render(<DiskHealthMetrics diskHealth={diskHealth} />);
+        await renderWithTestStore(<DiskHealthMetrics diskHealth={diskHealth} />);
 
         const tables = await screen.findAllByRole("table", { name: "disk health table" });
         const table = tables[tables.length - 1]!; // Get the most recent table
@@ -127,7 +133,7 @@ describe("DiskHealthMetrics", () => {
             per_partition_info: {},
         };
 
-        render(<DiskHealthMetrics diskHealth={diskHealth} />);
+        await renderWithTestStore(<DiskHealthMetrics diskHealth={diskHealth} />);
 
         const tables = await screen.findAllByRole("table", { name: "disk health table" });
         const table = tables[tables.length - 1]!; // Get the most recent table
@@ -168,7 +174,7 @@ describe("DiskHealthMetrics", () => {
             per_partition_info: {},
         };
 
-        render(<DiskHealthMetrics diskHealth={diskHealth} />);
+        await renderWithTestStore(<DiskHealthMetrics diskHealth={diskHealth} />);
 
         const tables = await screen.findAllByRole("table", { name: "disk health table" });
         const table = tables[tables.length - 1]!; // Get the most recent table
@@ -211,7 +217,7 @@ describe("DiskHealthMetrics", () => {
             per_partition_info: {},
         };
 
-        render(<DiskHealthMetrics diskHealth={diskHealth} />);
+        await renderWithTestStore(<DiskHealthMetrics diskHealth={diskHealth} />);
 
         const tables = await screen.findAllByRole("table", { name: "disk health table" });
         const table = tables[tables.length - 1]!; // Get the most recent table
@@ -259,7 +265,7 @@ describe("DiskHealthMetrics", () => {
             per_partition_info: {},
         };
 
-        render(<DiskHealthMetrics diskHealth={diskHealth} />);
+        await renderWithTestStore(<DiskHealthMetrics diskHealth={diskHealth} />);
 
         const tables = await screen.findAllByRole("table", { name: "disk health table" });
         const table = tables[tables.length - 1]!;
@@ -306,7 +312,7 @@ describe("DiskHealthMetrics", () => {
             per_partition_info: {},
         };
 
-        render(<DiskHealthMetrics diskHealth={diskHealth} />);
+        await renderWithTestStore(<DiskHealthMetrics diskHealth={diskHealth} />);
 
         const tables = await screen.findAllByRole("table", { name: "disk health table" });
         const table = tables[tables.length - 1]!;
@@ -351,7 +357,7 @@ describe("DiskHealthMetrics", () => {
             per_partition_info: {},
         };
 
-        render(<DiskHealthMetrics diskHealth={diskHealth} />);
+        await renderWithTestStore(<DiskHealthMetrics diskHealth={diskHealth} />);
 
         const tables = await screen.findAllByRole("table", { name: "disk health table" });
         const table = tables[tables.length - 1]!;

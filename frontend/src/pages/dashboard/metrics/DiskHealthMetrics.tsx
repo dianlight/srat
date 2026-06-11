@@ -57,7 +57,7 @@ export function DiskHealthMetrics({
   const { data: volumes } = useGetApiVolumesQuery();
   const disksByDeviceName = useMemo(() => {
     const map: Record<string, Disk> = {};
-    (volumes ?? []).forEach((d) => {
+    (Array.isArray(volumes) ? volumes : []).forEach((d) => {
       if (d.legacy_device_name) map[d.legacy_device_name] = d;
     });
     return map;
