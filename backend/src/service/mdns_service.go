@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"sync"
 
@@ -82,6 +83,9 @@ func (svc *MDNSService) setupEventListeners() []func() {
 			svc.mu.RLock()
 			connected := svc.connected
 			svc.mu.RUnlock()
+			slog.InfoContext(ctx, "mdns_service: CLEAN event received",
+				"connected", connected,
+				"broadcasting", connected)
 			if connected {
 				svc.broadcast(ctx)
 			}
@@ -128,5 +132,10 @@ func (svc *MDNSService) broadcast(ctx context.Context) {
 		Enabled:  enabled,
 	}
 
-	svc.broadcaster.BroadcastMessage(notification)
+	slog.InfoContext(ctx, "mdns_service: broadcasting registration notification",
+		"enabled", enabled, "hostname", settings.Hostname)
+
+	result := svc.broadcaster.BroadcastGuaranteedMessage(notification)
+	slog.InfoContext(ctx, "mdns_service: broadcast result",
+		"type", fmt.Sprintf("%T", result), "returned_nil", result == nil)
 }

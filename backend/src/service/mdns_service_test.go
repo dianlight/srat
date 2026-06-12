@@ -87,7 +87,7 @@ func (suite *MDNSServiceTestSuite) TestOnComponentConnected_BroadcastsEnabledNot
 	mock.When(suite.mockSettings.Load()).ThenReturn(defaultSettings("myserver", true), nil)
 
 	captured := make(chan any, 1)
-	mock.When(suite.mockBroadcaster.BroadcastMessage(mock.Any[any]())).
+	mock.When(suite.mockBroadcaster.BroadcastGuaranteedMessage(mock.Any[any]())).
 		ThenAnswer(func(args []any) []any {
 			captured <- args[0]
 			return []any{nil}
@@ -103,7 +103,7 @@ func (suite *MDNSServiceTestSuite) TestOnComponentConnected_BroadcastsEnabledNot
 		suite.Equal("myserver", n.Hostname)
 		suite.Equal(445, n.Port)
 	case <-time.After(2 * time.Second):
-		suite.Fail("BroadcastMessage was not called within timeout")
+		suite.Fail("BroadcastGuaranteedMessage was not called within timeout")
 	}
 }
 
@@ -113,7 +113,7 @@ func (suite *MDNSServiceTestSuite) TestOnComponentConnected_BroadcastsDisabledNo
 	mock.When(suite.mockSettings.Load()).ThenReturn(defaultSettings("myserver", false), nil)
 
 	captured := make(chan any, 1)
-	mock.When(suite.mockBroadcaster.BroadcastMessage(mock.Any[any]())).
+	mock.When(suite.mockBroadcaster.BroadcastGuaranteedMessage(mock.Any[any]())).
 		ThenAnswer(func(args []any) []any {
 			captured <- args[0]
 			return []any{nil}
@@ -127,7 +127,7 @@ func (suite *MDNSServiceTestSuite) TestOnComponentConnected_BroadcastsDisabledNo
 		suite.Require().True(ok, "expected MdnsRegisterNotification")
 		suite.False(n.Enabled)
 	case <-time.After(2 * time.Second):
-		suite.Fail("BroadcastMessage was not called within timeout")
+		suite.Fail("BroadcastGuaranteedMessage was not called within timeout")
 	}
 }
 
@@ -137,7 +137,7 @@ func (suite *MDNSServiceTestSuite) TestOnComponentDisconnected_NoBroadcast() {
 	// First connect so state is "connected"
 	mock.When(suite.mockSettings.Load()).ThenReturn(defaultSettings("myserver", true), nil)
 	broadcastCalled := false
-	mock.When(suite.mockBroadcaster.BroadcastMessage(mock.Any[any]())).
+	mock.When(suite.mockBroadcaster.BroadcastGuaranteedMessage(mock.Any[any]())).
 		ThenAnswer(func(args []any) []any {
 			broadcastCalled = true
 			return []any{nil}
@@ -162,7 +162,7 @@ func (suite *MDNSServiceTestSuite) TestCleanEvent_ReBroadcastsWhenConnected() {
 
 	broadcastCount := 0
 	mu := sync.Mutex{}
-	mock.When(suite.mockBroadcaster.BroadcastMessage(mock.Any[any]())).
+	mock.When(suite.mockBroadcaster.BroadcastGuaranteedMessage(mock.Any[any]())).
 		ThenAnswer(func(args []any) []any {
 			mu.Lock()
 			broadcastCount++

@@ -141,10 +141,11 @@
                 "HidenobuNagai.nvidia-nim-provider",
                 "vitest.explorer",
                 "ms-vscode.vscode-chat-customizations-evaluations",
-                "sst-dev.opencode",
                 "codezombiech.gitignore",
                 "Gruntfuggly.todo-tree",
-                "nguyenngoclong.terminal-keeper"
+                "nguyenngoclong.terminal-keeper",
+                "sst-dev.opencode-v2",
+                "ltmoerdani.opencode-copilot-chat"
             ],
             "mcp": {
                 "servers": {

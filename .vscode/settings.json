@@ -168,7 +168,7 @@
 	"todo-tree.tree.showCountsInTree": true,
 	"biome.lsp.bin": "/root/.local/share/mise/shims/biome",
 	"todo-tree.highlights.useColourScheme": true,
-	"chat.planAgent.defaultModel": "Auto (copilot)",
+	"chat.planAgent.defaultModel": "",
 	"chat.editing.explainChanges.enabled": true,
 	"chat.unifiedAgentsBar.enabled": true,
 	"chat.restoreLastPanelSession": true,

@@ -53,7 +53,6 @@ func NewDirtyDataService(lc fx.Lifecycle, ctx context.Context, eventBus events.E
 			return nil
 		})
 		unsubscribe[2] = eventBus.OnSetting(func(ctx context.Context, event events.SettingEvent) errors.E {
-			slog.DebugContext(ctx, "DirtyDataService received Setting event", "setting", event.Setting)
 			p.setDirtySettings()
 			return nil
 		})

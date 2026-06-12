@@ -25,6 +25,12 @@ func (f *fakeBroadcaster) BroadcastMessage(msg any) any {
 	f.mu.Unlock()
 	return msg
 }
+func (f *fakeBroadcaster) BroadcastGuaranteedMessage(msg any) any {
+	f.mu.Lock()
+	f.msgs = append(f.msgs, msg)
+	f.mu.Unlock()
+	return msg
+}
 func (f *fakeBroadcaster) ProcessWebSocketChannel(send ws.Sender) {}
 
 // minimal fakes for other services

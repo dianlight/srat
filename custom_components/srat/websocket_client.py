@@ -84,6 +84,7 @@ class SRATWebSocketClient:
         self._ws: aiohttp.ClientWebSocketResponse | None = None
         self._send_lock = asyncio.Lock()
         self._endpoint_resolver = endpoint_resolver
+        self._connection_start_time: float | None = None
 
     async def _refresh_connection_endpoint(self) -> None:
         """Refresh host/port when a dynamic endpoint resolver is configured."""
@@ -203,9 +204,11 @@ class SRATWebSocketClient:
                         self._connected = True
                         was_connected = True
                         self._ws = ws
+                        self._connection_start_time = self._hass.loop.time()
                         _LOGGER.info("Connected to SRAT WebSocket at %s", url)
                         await self._send_helo(ws)
 
+                        clean_close = False
                         async for msg in ws:
                             if msg.type == aiohttp.WSMsgType.TEXT:
                                 self._parse_ws_message(msg.data)
@@ -221,13 +224,14 @@ class SRATWebSocketClient:
                                 aiohttp.WSMsgType.CLOSED,
                             ):
                                 _LOGGER.debug("SRAT WebSocket closed")
+                                clean_close = True
                                 break
-
-                    break
-                except asyncio.CancelledError:
-                    _LOGGER.debug("SRAT WebSocket listener cancelled")
-                    self._should_reconnect = False
-                    break
+                        else:
+                            # The WebSocket connection was closed cleanly
+                            # but we didn't receive a close message in the iteration
+                            # (e.g., connection closed immediately after helo)
+                            clean_close = True
+                        break  # Successfully connected, break out of host loop
                 except (
                     aiohttp.ClientError,
                     ConnectionError,
@@ -243,19 +247,43 @@ class SRATWebSocketClient:
                         url,
                         err,
                     )
-                    continue
-                finally:
-                    self._ws = None
+                    continue  # Try next host
+                except asyncio.CancelledError:
+                    _LOGGER.debug("SRAT WebSocket listener cancelled")
+                    self._should_reconnect = False
+                    break
 
             self._connected = False
             if not self._should_reconnect:
                 break
 
             if was_connected:
-                _LOGGER.warning(
-                    "SRAT WebSocket connection lost (%s), reconnecting immediately",
-                    reconnect_reason,
-                )
+                # Flap detection: if previous connection was short-lived, apply backoff
+                now = self._hass.loop.time()
+                if self._connection_start_time is not None:
+                    connection_duration = now - self._connection_start_time
+                    # If connection lasted less than 5 seconds, treat as a flap
+                    if connection_duration < 5.0 and not clean_close:
+                        _LOGGER.warning(
+                            "SRAT WebSocket connection lost (%s) after %.1fs (flap detected), "
+                            "reconnecting in %ss",
+                            reconnect_reason,
+                            connection_duration,
+                            self._reconnect_interval,
+                        )
+                        await asyncio.sleep(self._reconnect_interval)
+                    else:
+                        _LOGGER.warning(
+                            "SRAT WebSocket connection lost (%s) after %.1fs, reconnecting immediately",
+                            reconnect_reason,
+                            connection_duration,
+                        )
+                else:
+                    # Fallback if we didn't track start time
+                    _LOGGER.warning(
+                        "SRAT WebSocket connection lost (%s), reconnecting immediately",
+                        reconnect_reason,
+                    )
             else:
                 _LOGGER.warning(
                     "SRAT WebSocket connection failed (%s), reconnecting in %ss",
@@ -264,7 +292,58 @@ class SRATWebSocketClient:
                 )
                 await asyncio.sleep(self._reconnect_interval)
 
-        self._connected = False
+    async def _send_helo(self, ws: aiohttp.ClientWebSocketResponse) -> None:
+        """Send HELO message to the SRAT backend."""
+        payload: dict[str, Any] = {
+            "type": "helo",
+            "component": "srat",
+            "version": self._integration_version,
+            "ha_version": None,
+            "entry_id": None,
+            "capabilities": [],
+        }
+        if self._addon_slug:
+            payload["addon_slug"] = self._addon_slug
+        await self._ws_send_json(ws, payload)
+
+    async def _ws_send_json(
+        self, ws: aiohttp.ClientWebSocketResponse, message: dict[str, Any]
+    ) -> None:
+        """Send a JSON message over the WebSocket."""
+        async with self._send_lock:
+            await ws.send_json(message)
+
+    def _parse_ws_message(self, data: str) -> None:
+        """Parse a WebSocket message."""
+        try:
+            # Parse SSE-like format: id: <seq>\nevent: <type>\ndata: <json>\n\n
+            lines = data.strip().split("\n")
+            if (
+                len(lines) < 3
+                or not lines[0].startswith("id:")
+                or not lines[1].startswith("event:")
+            ):
+                _LOGGER.debug("Malformed WS message: %s", data[:100])
+                return
+
+            event_line = lines[1]
+            data_line = lines[2] if len(lines) > 2 else ""
+            if not event_line.startswith("event:") or not data_line.startswith("data:"):
+                _LOGGER.debug("Malformed WS message: %s", data[:100])
+                return
+
+            event = event_line[6:].strip()
+            data_str = data_line[5:].strip()
+
+            # Parse JSON data
+            payload = json.loads(data_str) if data_str else {}
+
+            # Call listeners
+            listeners = self._listeners.get(event, [])
+            for listener in listeners:
+                listener(payload)
+        except (json.JSONDecodeError, IndexError) as err:
+            _LOGGER.debug("Failed to parse WS message: %s", err)
 
     async def async_send_repair_lifecycle_event(
         self,
@@ -285,72 +364,16 @@ class SRATWebSocketClient:
             return
 
         payload: dict[str, Any] = {
-            "type": "repair_lifecycle",
             "repair_id": repair_id,
             "status": status,
         }
-        if command_id:
+        if command_id is not None:
             payload["command_id"] = command_id
-        if error:
+        if error is not None:
             payload["error"] = error
-        if details:
+        if details is not None:
             payload["details"] = details
 
-        async with self._send_lock:
-            try:
-                await self._ws.send_json(payload)
-            except (RuntimeError, ConnectionError, aiohttp.ClientError):
-                _LOGGER.exception(
-                    "Failed to send repair lifecycle event for %s", repair_id
-                )
-
-    async def _send_helo(self, ws: aiohttp.ClientWebSocketResponse) -> None:
-        """Send the initial client-to-server handshake message."""
-        payload = {
-            "type": "helo",
-            "component": "srat",
-            "version": self._integration_version,
-        }
-        _LOGGER.info(
-            "Sending SRAT WebSocket helo with integration version %s",
-            self._integration_version,
+        await self._ws_send_json(
+            self._ws, {"event": "repair_lifecycle", "data": payload}
         )
-        await ws.send_json(payload)
-
-    def _parse_ws_message(self, raw: str) -> None:
-        """Parse an SSE-formatted WebSocket text frame.
-
-        The backend sends text frames formatted as::
-
-            id: 42
-            event: volumes
-            data: { ... }
-
-        """
-        event_type = ""
-        data_lines: list[str] = []
-
-        for line in raw.split("\n"):
-            line = line.rstrip("\r")
-            if line.startswith("event:"):
-                event_type = line[6:].strip()
-            elif line.startswith("data:"):
-                data_lines.append(line[5:].strip())
-
-        if event_type and data_lines:
-            self._dispatch_event(event_type, "\n".join(data_lines))
-
-    def _dispatch_event(self, event_type: str, data: str) -> None:
-        """Dispatch a parsed event to registered listeners."""
-        try:
-            parsed: Any = json.loads(data) if data else {}
-        except json.JSONDecodeError:
-            _LOGGER.warning("Failed to parse data for event %s", event_type)
-            return
-
-        listeners = self._listeners.get(event_type, [])
-        for listener in listeners:
-            try:
-                listener(parsed)
-            except Exception:
-                _LOGGER.exception("Error in listener for event %s", event_type)
