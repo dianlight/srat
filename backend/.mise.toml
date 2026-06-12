@@ -2,10 +2,10 @@
 auto = true
 
 [tools]
-air = '1.64.5'
-"go:github.com/securego/gosec/v2/cmd/gosec" = "v2.25.0"
-"npm:@redocly/cli" = "2.28.1"
-oapi-codegen = "2.6.0"
+air = '1.65.3'
+"go:github.com/securego/gosec/v2/cmd/gosec" = "v2.27.1"
+"npm:@redocly/cli" = "2.31.6"
+oapi-codegen = "2.7.1"
 
 
 [tasks]
@@ -25,7 +25,7 @@ depends_post = [
 ]
 
 [tasks.build]
-tools = { zig = "0.14.1" }
+tools = { zig = "0.15.2" }
 usage = '''
 flag "--version <version>" help="Build version"  env="VERSION"
 flag "--arch <arch>" help="Target architecture" env="ARCH" {

@@ -332,8 +332,8 @@ github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1/go.mod h1:Ohn+xnUBi
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
 github.com/yusufpapurcu/wmi v1.2.4 h1:zFUKzehAFReQwLys1b/iSMl+JQGSCSjtVqQn9bBrPo0=
 github.com/yusufpapurcu/wmi v1.2.4/go.mod h1:SBZ9tNy3G9/m5Oi98Zks0QjeHVDvuK0qfxQmPyzfmi0=
-github.com/zarldev/goenums v0.4.6 h1:oy1qJfWjhLOzqaryvhG+eMHwqUTeiIbdr/VFzvNcDNI=
-github.com/zarldev/goenums v0.4.6/go.mod h1:b1eaKd0nTXZkDulke5iuDrkXUub/XbWMzT+50UimZFc=
+github.com/zarldev/goenums v0.4.7 h1:azSQlVsK/nQp4nsif7et1ndJH5B85p18pl8Ycpsy2OU=
+github.com/zarldev/goenums v0.4.7/go.mod h1:b1eaKd0nTXZkDulke5iuDrkXUub/XbWMzT+50UimZFc=
 gitlab.com/tozd/go/errors v0.11.1 h1:xMPBH+ecV0+8q60QtAGZ1E62FMuOOwpMP0hD4JZfjVo=
 gitlab.com/tozd/go/errors v0.11.1/go.mod h1:9oQ31+x7iUOEVsrXLDR+iMD8794G5uqLp6eEnYtvD8M=
 go.opentelemetry.io/otel v1.43.0 h1:mYIM03dnh5zfN7HautFE4ieIig9amkNANT+xcVxAj9I=
