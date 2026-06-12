@@ -13,7 +13,7 @@ env_shell_expand = true
 compile = false
 
 [tools]
-go = "1.26.3"
+go = "1.26.4"
 act = "0.2.89"
 vale = "3.14.2"
 markdownlint-cli2 = "0.22.1"
@@ -25,13 +25,13 @@ pkl = "0.31.1"
 biome = "2.4.15"
 taplo = "0.10.0"
 golangci-lint = "2.12.2"
-ruff = "0.15.15"
+ruff = "0.15.16"
 python = "3.14.5"
 "conda:mypy" = { version = "1.19.1" }
 shellcheck = "0.11.0"
 shfmt = "3.13.1"
 "go:golang.org/x/tools/gopls" = "latest"
-"npm:@typescript/native-preview" = "7.0.0-dev.20260607.1"
+"npm:@typescript/native-preview" = "7.0.0-dev.20260609.1"
 gh = "latest"
 hk = "1.46.0"
 #opencode = "latest"

@@ -24,6 +24,7 @@ WSDD2
 avahi
 nmbd
 minisign
+minisig
 goverter
 microtask
 Automount
@@ -345,6 +346,7 @@ isLoading
 Vitest
 glibc
 musl
+libc
 purego
 smartlib
 dlopen

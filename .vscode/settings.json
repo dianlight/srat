@@ -224,7 +224,7 @@
 	"github.copilot.chat.rateLimitAutoSwitchToAuto": true,
 	"mise.configureExtensionsAutomatically": true,
 	"bun.runtime": "/root/.local/share/mise/shims/bun",
-	"go.goroot": "/root/.local/share/mise/installs/go/1.26.3",
+	"go.goroot": "/root/.local/share/mise/installs/go/1.26.4",
 	"go.alternateTools": {
 		"go": "/root/.local/share/mise/shims/go",
 		"gopls": "/root/.local/share/mise/shims/gopls",
