@@ -51,15 +51,23 @@ export function DiskHealthMetrics({
   >(null);
 
   // Map kernel device name (e.g. "sda") → Disk DTO so the per-row badge can
-  // read is_rotational and hdidle_device.suggestion_ignored. The volumes
-  // endpoint already powers the volumes page; reusing it here avoids a new
-  // dedicated endpoint for "list disks for the dashboard".
+  // read is_rotational and hdidle_device.{enabled,suggestion_ignored}. The
+  // volumes endpoint already powers the volumes page; reusing it here avoids
+  // a dedicated endpoint. When the query is loading or errors, the map is
+  // empty and badges silently render nothing — acceptable graceful degradation
+  // since the badge is advisory only.
   const { data: volumes } = useGetApiVolumesQuery();
   const disksByDeviceName = useMemo(() => {
     const map: Record<string, Disk> = {};
-    (Array.isArray(volumes) ? volumes : []).forEach((d) => {
-      if (d.legacy_device_name) map[d.legacy_device_name] = d;
-    });
+    // device_name in DiskIoStats is set from LegacyDeviceName (bare, e.g.
+    // "sda") — no "/dev/" prefix. Keying by legacy_device_name matches.
+    // `volumes` is Disk[] | null | ErrorModel; RTK Query sets data=undefined
+    // on error, so guard with Array.isArray before iterating.
+    if (Array.isArray(volumes)) {
+      volumes.forEach((d) => {
+        if (d.legacy_device_name) map[d.legacy_device_name] = d;
+      });
+    }
     return map;
   }, [volumes]);
 

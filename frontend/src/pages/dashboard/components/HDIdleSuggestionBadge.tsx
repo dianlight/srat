@@ -1,4 +1,7 @@
-import { Block as BlockIcon, PowerSettingsNew as PowerIcon } from "@mui/icons-material";
+import {
+  Block as BlockIcon,
+  PowerSettingsNew as PowerIcon,
+} from "@mui/icons-material";
 import { Box, IconButton, Tooltip, Typography } from "@mui/material";
 import type React from "react";
 import { useNavigate } from "react-router";
@@ -46,7 +49,8 @@ export const HDIdleSuggestionBadge: React.FC<HDIdleSuggestionBadgeProps> = ({
   // Visible when:
   //   - no per-disk record yet (cfg=undefined, or cfg with no enabled set), OR
   //   - record exists but disk is disabled AND user hasn't ignored the badge
-  const alreadyEnabled = cfg?.enabled === Enabled.Yes || cfg?.enabled === Enabled.Custom;
+  const alreadyEnabled =
+    cfg?.enabled === Enabled.Yes || cfg?.enabled === Enabled.Custom;
   const suggestionIgnored = cfg?.suggestion_ignored === true;
   if (alreadyEnabled || suggestionIgnored) return null;
 

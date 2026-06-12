@@ -69,7 +69,9 @@ const injectedRtkApi = api
           method: "PUT",
           body: queryArg.hdIdleDevice,
         }),
-        invalidatesTags: ["disk"],
+        // Invalidate both "disk" (per-disk config query) and "volume" (volumes
+        // list used by DiskHealthMetrics to power the HDIdleSuggestionBadge).
+        invalidatesTags: ["disk", "volume"],
       }),
       getApiDiskByDiskIdHdidleInfo: build.query<
         GetApiDiskByDiskIdHdidleInfoApiResponse,
@@ -97,7 +99,9 @@ const injectedRtkApi = api
           url: `/api/disk/${queryArg.diskId}/hdidle/ignore-suggestion`,
           method: "POST",
         }),
-        invalidatesTags: ["disk"],
+        // Invalidate "volume" so the HDIdleSuggestionBadge in DiskHealthMetrics
+        // disappears immediately after the user dismisses it.
+        invalidatesTags: ["disk", "volume"],
       }),
       postApiDiskByDiskIdSmartDisable: build.mutation<
         PostApiDiskByDiskIdSmartDisableApiResponse,
