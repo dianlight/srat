@@ -20,6 +20,8 @@
     - [Apply Update](#apply-update)
     - [Get Update Channels](#get-update-channels)
   - [Build Process Integration](#build-process-integration)
+    - [Release Archive Contents](#release-archive-contents)
+    - [Variant Selection Logic (post-upgrade)](#variant-selection-logic-post-upgrade)
     - [Build Workflow Steps](#build-workflow-steps)
   - [S6 Integration](#s6-integration)
   - [Develop Channel File Watcher](#develop-channel-file-watcher)
@@ -225,11 +227,11 @@ srat_x86_64.zip (or srat_aarch64.zip)
 
 After extracting the archive, `srat-server` symlink is updated to the best variant for the running system:
 
-| System libc | Selected variant |
-| --- | --- |
-| musl (`/lib/ld-musl-*.so.1` present) | `srat-server-musl` |
-| glibc (`/lib64/ld-linux-*.so.2` or `/lib/*-linux-gnu/libc.so.6` present) | `srat-server-glib` |
-| unknown / fallback | `srat-server-static` |
+| System libc                                                              | Selected variant     |
+| ------------------------------------------------------------------------ | -------------------- |
+| musl (`/lib/ld-musl-*.so.1` present)                                     | `srat-server-musl`   |
+| glibc (`/lib64/ld-linux-*.so.2` or `/lib/*-linux-gnu/libc.so.6` present) | `srat-server-glib`   |
+| unknown / fallback                                                       | `srat-server-static` |
 
 ### Build Workflow Steps
 
