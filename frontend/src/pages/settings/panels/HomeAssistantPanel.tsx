@@ -5,6 +5,7 @@ import {
   type Settings as ApiSettings,
   type SystemCapabilities,
   useGetApiCapabilitiesQuery,
+  useGetApiSettingsHomeassistantCustomComponentStatusQuery,
 } from "../../../store/sratApi";
 import { SettingSwitchRow } from "../components/SettingSwitchRow";
 import { HomeAssistantCustomComponentPanel } from "../HomeAssistantCustomComponentPanel";
@@ -16,8 +17,15 @@ type HomeAssistantPanelProps = {
 export function HomeAssistantPanel({ readOnly }: HomeAssistantPanelProps) {
   const { control, watch } = useFormContext<ApiSettings>();
   const { data: capabilities } = useGetApiCapabilitiesQuery();
+  const { data: componentStatus } =
+    useGetApiSettingsHomeassistantCustomComponentStatusQuery();
   const commonProps = { control, disabled: readOnly };
   const experimentalLabMode = Boolean(watch("experimental_lab_mode"));
+  const isComponentConnected = Boolean(
+    componentStatus &&
+      "connected" in componentStatus &&
+      componentStatus.connected,
+  );
 
   const labLabel = (text: string) => (
     <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
@@ -91,6 +99,40 @@ export function HomeAssistantPanel({ readOnly }: HomeAssistantPanelProps) {
       {experimentalLabMode ? (
         <HomeAssistantCustomComponentPanel readOnly={readOnly} />
       ) : null}
+
+      {/* mDNS / Zeroconf Registration */}
+      <Tooltip
+        title={
+          <>
+            <Typography variant="h6" component="div">
+              mDNS / Zeroconf Registration
+            </Typography>
+            <Typography variant="body2">
+              Announce this Samba server on the local network via Home Assistant
+              using mDNS (Zeroconf). When enabled, other devices can discover
+              the server automatically. Requires an active Home Assistant add-on
+              connection.
+            </Typography>
+            {!isComponentConnected && (
+              <Typography
+                variant="body2"
+                sx={{ mt: 1, color: "warning.light" }}
+              >
+                <strong>Not available:</strong> Home Assistant custom component
+                is not connected.
+              </Typography>
+            )}
+          </>
+        }
+      >
+        <SettingSwitchRow
+          ariaLabel="mDNS Registration"
+          label="mDNS Registration"
+          name="mdns_registration"
+          control={control}
+          disabled={readOnly || !isComponentConnected}
+        />
+      </Tooltip>
     </Stack>
   );
 }

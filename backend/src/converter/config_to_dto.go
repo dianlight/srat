@@ -70,7 +70,7 @@ type ConfigToDtoConverter interface {
 	// goverter:map TelemetryMode TelemetryMode | github.com/dianlight/srat/dto:ParseTelemetryMode
 	// goverter:map HDIdleDefaultCommandType HDIdleDefaultCommandType | github.com/dianlight/srat/dto:ParseHdidleCommand
 	// goverter:map . SmartMode | configSmartModeFromConfig
-	// goverter:ignore HASmbPassword
+	// goverter:ignore HASmbPassword ExperimentalLabMode
 	ConfigToSettings(source config.Config, target *dto.Settings) error
 
 	// g.overter:update target

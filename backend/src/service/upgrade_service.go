@@ -925,7 +925,7 @@ func detectBestServerVariant(targetDir string, updatePkg *UpdatePackage) string 
 	if packagedVariants["srat-server-glib"] {
 		if _, err := os.Stat(filepath.Join(targetDir, "srat-server-glib")); err == nil {
 			glibcIndicators := []string{
-				"/lib64/ld-linux-x86-64.so.2",     // x86_64 glibc dynamic linker
+				"/lib64/ld-linux-x86-64.so.2",      // x86_64 glibc dynamic linker
 				"/lib/ld-linux-aarch64.so.1",       // aarch64 glibc dynamic linker
 				"/lib/x86_64-linux-gnu/libc.so.6",  // Debian/Ubuntu x86_64
 				"/lib/aarch64-linux-gnu/libc.so.6", // Debian/Ubuntu aarch64
