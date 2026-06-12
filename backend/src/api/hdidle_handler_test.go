@@ -39,7 +39,6 @@ type HDIdleHandlerSuite struct {
 	mockSettingService  service.SettingServiceInterface
 	ctx                 context.Context
 	cancel              context.CancelFunc
-	labModeEnabled      bool
 }
 
 func TestHDIdleHandlerSuite(t *testing.T) { suite.Run(t, new(HDIdleHandlerSuite)) }
@@ -65,13 +64,10 @@ func (suite *HDIdleHandlerSuite) SetupTest() {
 	)
 	suite.app.RequireStart()
 
-	// Lab mode defaults to on. TestEndpointsRequireLabMode sets labModeEnabled=false
-	// before calling any endpoint. A single ThenAnswer reads the field at call time,
-	// so there is only one methodMatch registered — no first-registered-wins ambiguity.
-	suite.labModeEnabled = true
-	mock.WhenDouble(suite.mockSettingService.Load()).ThenAnswer(func(_ []any) (*dto.Settings, errors.E) {
-		return &dto.Settings{ExperimentalLabMode: suite.labModeEnabled}, nil
-	})
+	// Default to Lab Mode = on; individual tests override for the 403 case.
+	mock.When(suite.mockSettingService.Load()).ThenReturn(&dto.Settings{
+		ExperimentalLabMode: true,
+	}, nil)
 }
 
 func (suite *HDIdleHandlerSuite) TearDownTest() {
@@ -101,7 +97,10 @@ func rotationalDisk(diskID string) map[string]dto.Disk {
 // =============================================================================
 
 func (suite *HDIdleHandlerSuite) TestEndpointsRequireLabMode() {
-	suite.labModeEnabled = false
+	// Override the default "lab mode on" with off
+	mock.When(suite.mockSettingService.Load()).ThenReturn(&dto.Settings{
+		ExperimentalLabMode: false,
+	}, nil)
 
 	_, apiInst := humatest.New(suite.T())
 	suite.handler.RegisterHDIdleHandler(apiInst)

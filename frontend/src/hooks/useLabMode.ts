@@ -1,4 +1,4 @@
-import { useGetApiSettingsQuery } from "../store/sratApi";
+import { type Settings, useGetApiSettingsQuery } from "../store/sratApi";
 
 /**
  * useLabMode reads `experimental_lab_mode` from /api/settings.
@@ -15,11 +15,12 @@ import { useGetApiSettingsQuery } from "../store/sratApi";
  */
 export function useLabMode(): { labMode: boolean; isLoading: boolean } {
   const { data, isLoading } = useGetApiSettingsQuery();
+  // GetApiSettingsApiResponse is Settings | ErrorModel. RTK Query sets `data`
+  // to undefined on error (never to ErrorModel), but the union type requires
+  // narrowing before accessing Settings fields.
+  const settings = data as Settings | undefined;
   return {
-    labMode:
-      data != null && "experimental_lab_mode" in data
-        ? Boolean(data.experimental_lab_mode)
-        : false,
+    labMode: Boolean(settings?.experimental_lab_mode),
     isLoading,
   };
 }

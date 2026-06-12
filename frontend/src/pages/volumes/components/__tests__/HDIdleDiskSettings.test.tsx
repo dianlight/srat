@@ -11,11 +11,11 @@ if (!(globalThis as any).localStorage) {
     };
 }
 
-// Mock useLabMode globally for this suite — every test runs with Lab Mode on.
-// The component bypasses the gate when __TEST__ is set anyway, but the mock
-// lets us assert "labMode off → hidden" explicitly when needed.
+// Mutable ref so individual tests can override labMode without a new vi.mock.
+const labModeRef = { value: true };
+
 vi.mock("../../../../hooks/useLabMode", () => ({
-    useLabMode: () => ({ labMode: true, isLoading: false }),
+    useLabMode: () => ({ labMode: labModeRef.value, isLoading: false }),
 }));
 
 // Helper: rotational HDD by default. Tests opt-out by overriding is_rotational.
@@ -49,6 +49,7 @@ describe("HDIdleDiskSettings Component", () => {
     let originalFetch: any;
 
     beforeEach(async () => {
+        labModeRef.value = true;
         localStorage.clear();
         document.body.innerHTML = "";
         // RTK Query still calls fetch when stores are not pre-seeded — provide
@@ -103,6 +104,29 @@ describe("HDIdleDiskSettings Component", () => {
                 store,
                 children: React.createElement(HDIdleDiskSettings as any, {
                     disk,
+                    readOnly: false,
+                }),
+            }),
+        );
+        expect(screen.queryByText(/Power Settings/i)).toBeNull();
+    });
+
+    test("returns null when Lab Mode is off", async () => {
+        // Verifies the labMode gate works now that the __TEST__ escape hatch
+        // has been removed. The vi.mock ref is set to false for this test only.
+        labModeRef.value = false;
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { createTestStore } = await import("/test/testing");
+        const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
+
+        const store = await createTestStore();
+        render(
+            React.createElement(Provider as any, {
+                store,
+                children: React.createElement(HDIdleDiskSettings as any, {
+                    disk: createMockDisk(),
                     readOnly: false,
                 }),
             }),
