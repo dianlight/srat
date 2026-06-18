@@ -169,6 +169,9 @@ func (suite *IssueReportServiceSuite) TestGenerateIssueReport_SambaProblem() {
 }
 
 func (suite *IssueReportServiceSuite) TestGenerateIssueReport_SambaProblem_WithLargeDiagnostics() {
+	if os.Geteuid() != 0 {
+		suite.T().Skip("Requires root to create /data (HA Supervisor environment)")
+	}
 	// Arrange
 	settings := &dto.Settings{}
 	mock.When(suite.mockSettingService.Load()).ThenReturn(settings, nil)
@@ -224,6 +227,9 @@ func (suite *IssueReportServiceSuite) TestGenerateIssueReport_SambaProblem_WithL
 }
 
 func (suite *IssueReportServiceSuite) TestGenerateIssueReport_SambaProblem_WithSensitiveDiagnosticsSmall() {
+	if os.Geteuid() != 0 {
+		suite.T().Skip("Requires root to create /data (HA Supervisor environment)")
+	}
 	// Arrange
 	settings := &dto.Settings{
 		Hostname:  "user@example.com",
@@ -291,6 +297,9 @@ func (suite *IssueReportServiceSuite) TestGenerateIssueReport_SambaProblem_WithS
 }
 
 func (suite *IssueReportServiceSuite) TestGenerateIssueReport_SambaProblem_WithSensitiveDiagnosticsLarge() {
+	if os.Geteuid() != 0 {
+		suite.T().Skip("Requires root to create /data (HA Supervisor environment)")
+	}
 	// Arrange
 	settings := &dto.Settings{
 		Hostname:  "user@example.com",

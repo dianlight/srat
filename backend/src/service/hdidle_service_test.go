@@ -145,6 +145,26 @@ func (suite *HDIdleServiceSuite) TestSaveDeviceConfig() {
 	suite.NoError(err)
 }
 
+// TestStartWithEmptyDevicePath verifies that Start() does not panic when a
+// device row has an empty DevicePath (e.g. saved before the device is
+// identified).
+//
+// Note: DevicePath has a UNIQUE constraint; the shared in-memory DB (cache=shared)
+// may already contain a "" row from TestSaveDeviceConfig. We use a non-empty but
+// non-existent path that would previously have triggered the io.RealPath panic
+// (empty string → index-out-of-range in the vendor library).
+func (suite *HDIdleServiceSuite) TestStartWithEmptyDevicePath() {
+	suite.NoError(suite.db.Create(&dbom.HDIdleDevice{
+		DiskId:     "test-empty-path-device",
+		DevicePath: "/dev/nonexistent-test-empty-guard",
+		Enabled:    dto.HdidleEnableds.YESENABLED,
+		IdleTime:   60,
+	}).Error)
+
+	err := suite.service.Start()
+	suite.NoError(err, "Start() must not panic on enabled device with non-existent DevicePath")
+}
+
 // --- Tri-state enabled behavior tests ---
 
 // --- CheckDeviceSupport tests ---

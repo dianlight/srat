@@ -632,6 +632,12 @@ func (s *HDIdleService) convertConfig() (*internalConfig, errors.E) {
 		}
 
 		if includeDevice {
+			// Skip devices with no path — they cannot be monitored and
+			// getRealPathNotSimlink("") panics inside the hd-idle library.
+			if dev.DevicePath == "" {
+				slog.WarnContext(s.ctx, "HDIdle device has empty DevicePath, skipping", "device", dev)
+				continue
+			}
 			devConfig, err := s.converter.HDIdleDeviceToHDIdleDeviceDTO(*dev)
 			if err != nil {
 				return nil, errors.Wrap(err, "error converting HDIdle device to DTO")

@@ -149,6 +149,9 @@ func (suite *ServerProcessServiceSuite) SetupTest() {
 				}
 				sharedResources.DatabasePath = "file::memory:?cache=shared&_pragma=foreign_keys(1)"
 				sharedResources.DisableIPv6 = false
+				// ProtectedMode skips privileged OnStart operations (e.g. mkdir /etc/samba)
+				// that require root. Tests run as non-root in WSL/CI.
+				sharedResources.ProtectedMode = true
 				return &sharedResources
 			},
 			/*
