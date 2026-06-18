@@ -356,9 +356,7 @@ export function HDIdleDiskSettings({
                     <span>
                       <ToggleButton
                         value="apply"
-                        disabled={
-                          fieldsDisabled || !formState.isDirty || isSaving
-                        }
+                        disabled={readOnly || !formState.isDirty || isSaving}
                         onClick={handleApply}
                         color="success"
                         size="small"

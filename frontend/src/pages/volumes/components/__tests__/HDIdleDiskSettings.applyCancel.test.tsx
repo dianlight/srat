@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 // localStorage shim
 if (!(globalThis as any).localStorage) {
@@ -51,12 +51,19 @@ async function getOverrideToggleButtons(screen: any) {
 }
 
 describe("HDIdleDiskSettings Apply/Cancel", () => {
+    let originalFetch: any;
+
     beforeEach(() => {
         localStorage.clear();
         document.body.innerHTML = "";
+        originalFetch = (globalThis as any).fetch;
         // Minimal fetch stub so any background RTK Query call returns sane JSON.
         (globalThis as any).fetch = async () =>
             new Response(JSON.stringify({}), { status: 200 });
+    });
+
+    afterEach(() => {
+        if (originalFetch !== undefined) (globalThis as any).fetch = originalFetch;
     });
 
     test("disables the expand button when Enabled.No is selected", async () => {
@@ -107,6 +114,63 @@ describe("HDIdleDiskSettings Apply/Cancel", () => {
         });
         await waitFor(() => {
             expect((expandBtn as HTMLButtonElement).disabled).toBe(true);
+        });
+    });
+
+    test("Apply button is enabled when switching to Enabled.No (form is dirty)", async () => {
+        const React = await import("react");
+        const { render, screen, waitFor } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { createTestStore } = await import("/test/testing");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
+
+        const store = await createTestStore();
+        const user = userEvent.setup();
+        // Start with Custom so the expand button is enabled and the Collapse section
+        // (which contains Apply) can be opened before we switch to No.
+        const disk = createMockDisk({
+            hdidle_device: {
+                supported: true,
+                enabled: "custom",
+                idle_time: 0,
+                command_type: "",
+                power_condition: 0,
+                force_enabled: false,
+            },
+        });
+
+        render(
+            React.createElement(Provider as any, {
+                store,
+                children: React.createElement(HDIdleDiskSettings as any, {
+                    disk,
+                    readOnly: false,
+                }),
+            }),
+        );
+
+        // Expand the collapse section to make Apply visible.
+        const expandBtn = await screen.findByRole("button", { name: /show more/i });
+        await user.click(expandBtn);
+
+        // Wait for Apply to appear inside the expanded collapse, then capture it
+        // before switching to No (which auto-collapses the section).
+        const applyBtn = await screen.findByRole("button", { name: /apply/i });
+
+        // Switch to No — form becomes dirty.
+        const toggleButtons = await getOverrideToggleButtons(screen);
+        const noBtn = toggleButtons[2];
+        await user.click(noBtn);
+
+        await waitFor(() => {
+            expect(noBtn.getAttribute("aria-pressed")).toBe("true");
+        });
+
+        // Apply must be enabled so the user can persist the "disable" change.
+        // (Prior to the fix, fieldsDisabled included Enabled.No and blocked Apply.)
+        await waitFor(() => {
+            expect((applyBtn as HTMLButtonElement).disabled).toBe(false);
         });
     });
 });

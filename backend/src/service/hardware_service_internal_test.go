@@ -23,11 +23,12 @@ func boolPtr(v bool) *bool { return &v }
 
 func TestDetectRotational(t *testing.T) {
 	tests := []struct {
-		name      string
-		devName   string
-		sysFiles  map[string]string
-		smartInfo *dto.SmartInfo
-		want      *bool
+		name             string
+		devName          string
+		sysFiles         map[string]string
+		smartInfo        *dto.SmartInfo
+		want             *bool
+		expectNoReadFile bool
 	}{
 		{
 			name:     "sysfs rotational=1 → HDD",
@@ -96,27 +97,38 @@ func TestDetectRotational(t *testing.T) {
 			// Sanitization must reject slashes before any filepath.Join call,
 			// otherwise a malicious devName could read arbitrary files. Verify
 			// by ensuring readFile is not invoked at all (smartInfo nil ⇒ nil).
-			name:      "devName with slash (path traversal attempt) → SMART fallback",
-			devName:   "../../../etc/passwd",
-			sysFiles:  nil,
-			smartInfo: nil,
-			want:      nil,
+			name:             "devName with slash (path traversal attempt) → SMART fallback",
+			devName:          "../../../etc/passwd",
+			sysFiles:         nil,
+			smartInfo:        nil,
+			want:             nil,
+			expectNoReadFile: true,
 		},
 		{
-			name:      "devName containing .. → SMART fallback",
-			devName:   "sd..a",
-			smartInfo: nil,
-			want:      nil,
+			name:             "devName containing .. → SMART fallback",
+			devName:          "sd..a",
+			smartInfo:        nil,
+			want:             nil,
+			expectNoReadFile: true,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			var readFileCalls int
+			base := fakeReadFile(tc.sysFiles)
+			spy := func(p string) ([]byte, error) {
+				readFileCalls++
+				return base(p)
+			}
 			h := &hardwareService{
-				readFile:         fakeReadFile(tc.sysFiles),
+				readFile:         spy,
 				sysBlockBasePath: "/sys/block",
 			}
 			got := h.detectRotational(tc.devName, tc.smartInfo)
+			if tc.expectNoReadFile {
+				assert.Zero(t, readFileCalls, "readFile must not be called for traversal input")
+			}
 			if tc.want == nil {
 				assert.Nil(t, got)
 				return

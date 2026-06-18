@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -187,6 +188,11 @@ func (s *HDIdleService) Start() errors.E {
 		return err
 	}
 
+	// Reset per-disk activity state so each run starts with a clean slate.
+	// Without this, a Stop → (DB change) → Start cycle would carry stale
+	// SpunDown/LastIOAt values and miss devices removed from the config.
+	s.diskStats = nil
+
 	// No enabled devices ⇒ config refreshed but no goroutine launched.
 	// The lifecycle hook on PUT /hdidle/config will call Start() again
 	// once the user enables a device.
@@ -284,17 +290,29 @@ func (s *HDIdleService) ResolveDevicePath(diskID string) (string, errors.E) {
 		return "", errors.Wrap(dto.ErrorNotFound, "empty disk identifier")
 	}
 
-	// Allow already-absolute /dev paths through verbatim, but only after
-	// a stat — defends against typos and removed devices producing 500s.
+	// Reject path-traversal/injection attempts before any path operation.
+	// This guard must come before the /dev/ fast-path: an input like
+	// /dev/../proc/self/fd/0 starts with /dev/ but escapes it after cleaning.
+	if strings.ContainsAny(diskID, "\\\x00") || strings.Contains(diskID, "..") {
+		return "", errors.Wrap(dto.ErrorNotFound, "invalid disk identifier: "+diskID)
+	}
+
+	// Allow already-absolute /dev paths, but only after cleaning and re-checking
+	// that the canonical path still lives under /dev/ — defends against traversal
+	// sequences that survived the string checks above.
 	if strings.HasPrefix(diskID, "/dev/") {
-		if _, err := os.Stat(diskID); err == nil {
-			return diskID, nil
+		clean := filepath.Clean(diskID)
+		if !strings.HasPrefix(clean, "/dev/") {
+			return "", errors.Wrap(dto.ErrorNotFound, "invalid disk identifier: "+diskID)
+		}
+		if _, err := os.Stat(clean); err == nil {
+			return clean, nil
 		}
 		return "", errors.Wrap(dto.ErrorNotFound, "device path does not exist: "+diskID)
 	}
 
-	// Reject path-traversal/injection attempts before joining.
-	if strings.ContainsAny(diskID, "/\\\x00") || strings.Contains(diskID, "..") {
+	// Reject bare identifiers that still contain slashes (e.g. "disk/by-id/../foo").
+	if strings.ContainsAny(diskID, "/") {
 		return "", errors.Wrap(dto.ErrorNotFound, "invalid disk identifier: "+diskID)
 	}
 
@@ -641,11 +659,10 @@ func (s *HDIdleService) convertConfig() (*internalConfig, errors.E) {
 
 	// SkewTime is the threshold for detecting OS suspend/sleep events: when
 	// the gap between two ticks exceeds it, updateDiskState resets the disk's
-	// idle counters. After the move to adaptive polling (active=60s, dormant=5min)
-	// the polling interval is no longer derived per-call, so the skew threshold
-	// is computed independently from the smallest configured idle time.
-	interval := s.calculateSkewBaseInterval()
-	intConfig.SkewTime = interval * 3
+	// idle counters. It must be strictly greater than hdidleActiveInterval (60s)
+	// so that normal poll ticks are never misidentified as a suspend/wake event.
+	// We use 3× the active interval (180s) as a comfortable margin.
+	intConfig.SkewTime = hdidleActiveInterval * 3
 
 	return intConfig, nil
 }
@@ -683,10 +700,13 @@ func (s *HDIdleService) calculateSkewBaseInterval() time.Duration {
 
 // Adaptive polling intervals (goal #4: minimal resource use).
 // active: at least one monitored disk is currently spun-up — poll often
-//         enough to catch the next idle window precisely.
+//
+//	enough to catch the next idle window precisely.
+//
 // dormant: every monitored disk is spun-down — nothing to do, slow the
-//          tick by an order of magnitude. The OS still wakes the disk on
-//          real I/O; we just stop checking until the disk wakes itself.
+//
+//	tick by an order of magnitude. The OS still wakes the disk on
+//	real I/O; we just stop checking until the disk wakes itself.
 const (
 	hdidleActiveInterval  = 60 * time.Second
 	hdidleDormantInterval = 5 * time.Minute
