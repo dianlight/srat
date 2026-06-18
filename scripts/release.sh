@@ -196,12 +196,17 @@ done
 # STEP 3: Trigger CI manual execution for build.yaml to produce release assets
 log "Triggering CI workflow for release assets..."
 gh workflow run build.yaml --ref main
-sleep 15 # Short delay to ensure workflow is registered
+sleep 5 # Short delay to ensure workflow is registered
 
 # INTERMEDIATE: Wait for CI and Check Workflows
 log "Checking for active workflow runs on main before final publish..."
 while true; do
-	RUNNING_ACTIONS=$(gh run list --branch main --status in_progress --status queued --limit 5 --json databaseId --jq '.[].databaseId')
+	RUNNING_ACTIONS=$(
+		{
+			gh run list --branch main --status in_progress --limit 5 --json databaseId --jq '.[].databaseId'
+			gh run list --branch main --status queued --limit 5 --json databaseId --jq '.[].databaseId'
+		} | sort -u
+	)
 	if [[ -z "$RUNNING_ACTIONS" ]]; then
 		log "No active actions on main."
 		break

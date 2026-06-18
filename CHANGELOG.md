@@ -2,7 +2,7 @@
 
 # Changelog
 
-## Unreleased — feat/hdidle-per-disk-rework
+## [ 🚧 Unreleased ]
 
 ### ✨ Features
 
@@ -80,6 +80,10 @@
   sync. Three hand-edited generated files (`config_to_dto_conv_gen.go`,
   `dto_to_dbom_conv_gen.go`, `g/hdidle_device_config.go`) are aligned with their
   source directives — a `go generate ./...` run will produce the same output.
+
+### 🔧 Maintenance
+
+- **Multi-variant server release**: Release archives now ship three `srat-server` variants — `srat-server-static` (fully static, zero shared-library dependencies), `srat-server-musl` (dynamic linked against musl libc, built via Zig), and `srat-server-glib` (dynamic linked against glibc, built via CGO). The `srat-server` entry in the archive is a symlink that defaults to `srat-server-static`; the upgrade process automatically updates it to the best available variant for the running system (musl → glibc → static). `srat-openapi` is no longer included in release archives. `srat-cli` is always statically linked.
 
 ## 2026.5.0-rc9
 

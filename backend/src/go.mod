@@ -9,9 +9,9 @@ require (
 	github.com/mattn/go-isatty v0.0.21 // indirect
 	github.com/oapi-codegen/runtime v1.4.1
 	github.com/pilebones/go-udev v0.9.1
-	github.com/shirou/gopsutil/v4 v4.26.4
+	github.com/shirou/gopsutil/v4 v4.26.5
 	github.com/stretchr/testify v1.11.1
-	golang.org/x/sys v0.45.0
+	golang.org/x/sys v0.46.0
 )
 
 require (
@@ -21,7 +21,7 @@ require (
 	github.com/angusgmorrison/logfusc v0.1.0
 	github.com/benmcclelland/sgio v0.0.0-20250710154739-45e823ff1f46
 	github.com/danielgtaylor/huma/v2 v2.38.0
-	github.com/dianlight/smartmontools-go v0.4.0
+	github.com/dianlight/smartmontools-go v0.4.1
 	github.com/dianlight/tlog v0.2.2
 	github.com/fatih/color v1.19.0
 	github.com/fsnotify/fsnotify v1.10.1
@@ -75,7 +75,7 @@ require (
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/urfave/cli/v2 v2.27.7 // indirect
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
-	github.com/zarldev/goenums v0.4.5 // indirect
+	github.com/zarldev/goenums v0.4.7 // indirect
 	go.opentelemetry.io/otel v1.43.0 // indirect
 	go.opentelemetry.io/otel/trace v1.43.0 // indirect
 	golang.org/x/term v0.42.0 // indirect
@@ -105,7 +105,7 @@ require (
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
-	github.com/oapi-codegen/oapi-codegen/v2 v2.7.0
+	github.com/oapi-codegen/oapi-codegen/v2 v2.7.1
 	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
@@ -121,9 +121,9 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.1 // indirect
 	golang.org/x/crypto v0.50.0 // indirect
-	golang.org/x/exp v0.0.0-20260508232706-74f9aab9d74a
+	golang.org/x/exp v0.0.0-20260603202125-055de637280b
 	golang.org/x/mod v0.36.0 // indirect
-	golang.org/x/sync v0.20.0
+	golang.org/x/sync v0.21.0
 	golang.org/x/text v0.36.0 // indirect
 	golang.org/x/tools v0.45.0 // indirect
 	modernc.org/libc v1.72.1 // indirect

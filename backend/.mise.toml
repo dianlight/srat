@@ -2,10 +2,10 @@
 auto = true
 
 [tools]
-air = '1.64.5'
-"go:github.com/securego/gosec/v2/cmd/gosec" = "v2.25.0"
-"npm:@redocly/cli" = "2.28.1"
-oapi-codegen = "2.6.0"
+air = '1.65.3'
+"go:github.com/securego/gosec/v2/cmd/gosec" = "v2.27.1"
+"npm:@redocly/cli" = "2.31.6"
+oapi-codegen = "2.7.1"
 
 
 [tasks]
@@ -25,6 +25,7 @@ depends_post = [
 ]
 
 [tasks.build]
+tools = { zig = "0.15.2" }
 usage = '''
 flag "--version <version>" help="Build version"  env="VERSION"
 flag "--arch <arch>" help="Target architecture" env="ARCH" {
@@ -32,8 +33,8 @@ flag "--arch <arch>" help="Target architecture" env="ARCH" {
 }
 flag "--sentry_dsn <sentry_dsn>" help="Sentry DSN" env="SENTRY_DSN"
 flag "--pprof" help="Include pprof profiling support" 
-flag "--zig" help="Use Zig as the C compiler for musl builds (Linux)"
-flag "--cgo" help="Enable CGO for the build (default: disabled)"
+flag "--zig" help="Use Zig as the C compiler for musl dynamic build (produces srat-server-musl)"
+flag "--cgo" help="Enable CGO for glibc dynamic build (produces srat-server-glib)"
 arg "<gist_token>" help="GitHub Gist token" env="GIST_TOKEN"
 '''
 depends = [
@@ -42,54 +43,81 @@ depends = [
 ]
 #env = { _.file = "/tmp/.env.tmp" }
 run = [
-    'mise //frontend:build:static --version ${usage_version?} src/web/static',
-    'mise //custom_components:package-hacs -- --output ../backend/src/internal/assets/srat.zip --version ${usage_version?}',
-    'echo Building ${usage_version?} for architecture ${usage_arch?} [tags=p${usage_pprof:+prof},embedallowed]...',
+    '''
+      # Frontend and custom component builds only run for the static (default) variant.
+      if [ -z "$usage_zig" ] && [ -z "$usage_cgo" ]; then
+        mise //frontend:build:static --version ${usage_version?} src/web/static
+        mise //custom_components:package-hacs -- --output ../backend/src/internal/assets/srat.zip --version ${usage_version?}
+      fi
+    ''',
+    'echo "Building ${usage_version?} for architecture ${usage_arch?}..."',
     'mkdir -p dist/${usage_arch?} || :',
     'touch dist/${usage_arch?}/.keep',
     '''
       set +x +e
-      #METADATA_C_STRING="version=${usage_version?};commit=$(git rev-parse --short HEAD);build_at=$(date +%Y-%m-%dT%H:%M:%S);format=elf-json"
       CGO_CFLAGS='-DELF_METADATA="{\"version\":\"v'"${usage_version?}"'\"}"'
       if [ "$usage_arch" = "aarch64" ]; then
         GOARCH=arm64
       else
         GOARCH=amd64
       fi
-      # Default to static builds; only enable CGO when --cgo flag is explicitly passed.
-      # When CGO is enabled, also include the 'smartlib' tag so the purego-based
-      # lib backend is compiled in (it requires a dynamically linked binary anyway).
-      if [ -n "$usage_cgo" ]; then
-        CGO_ENABLED=1
-        GOTAGS="p${usage_pprof:+prof},embedallowed,smartlib"
-      else
-        CGO_ENABLED=0
-        GOTAGS="p${usage_pprof:+prof},embedallowed"
-      fi
-      if [ -n "$usage_zig" ]; then
-        CC="zig cc -target ${usage_arch?}-linux-musl"
-        export CC
-      fi
-      export CGO_CFLAGS GOARCH CGO_ENABLED GOTAGS
-      go build -C src -tags="$GOTAGS" -ldflags="-s -w \
-           -X github.com/dianlight/srat/config.Version="${usage_version?}" \
+
+      LDFLAGS="-s -w \
+           -X github.com/dianlight/srat/config.Version=${usage_version?} \
            -X github.com/dianlight/srat/config.CommitHash=$(git rev-parse --short HEAD) \
            -X github.com/dianlight/srat/config.BuildTimestamp=$(date +%Y-%m-%dT%H:%M:%S) \
-              -X github.com/dianlight/srat/config.SentryDSN=${usage_sentry_dsn:-disabled} \
-           -X github.com/dianlight/srat/config.GistToken=${usage_gist_token?}" -o ../dist/${usage_arch?}/ ./...
+           -X github.com/dianlight/srat/config.SentryDSN=${usage_sentry_dsn:-disabled} \
+           -X github.com/dianlight/srat/config.GistToken=${usage_gist_token?}"
+
+      if [ -n "$usage_zig" ]; then
+        # Musl dynamic build: srat-server-musl (CGO + zig musl cross-compiler)
+        CGO_ENABLED=1
+        GOTAGS="p${usage_pprof:+prof},embedallowed,smartlib"
+        CC="zig cc -target ${usage_arch?}-linux-musl"
+        export CC CGO_CFLAGS GOARCH CGO_ENABLED GOTAGS
+        echo "Building srat-server-musl (CGO + zig-musl)..."
+        go build -C src -tags="$GOTAGS" -ldflags="$LDFLAGS" -o ../dist/${usage_arch?}/srat-server-musl ./cmd/srat-server
+      elif [ -n "$usage_cgo" ]; then
+        # Glibc dynamic build: ensure aarch64 cross-compiler is available when needed
+        if [ "$usage_arch" = "aarch64" ] && ! command -v aarch64-linux-gnu-gcc >/dev/null 2>&1; then
+          echo "aarch64-linux-gnu-gcc not found; installing..."
+          sudo apt-get update -qq && sudo apt-get install -y gcc-aarch64-linux-gnu
+        fi
+        # Glibc dynamic build: srat-server-glib (CGO + system glibc)
+        CGO_ENABLED=1
+        GOTAGS="p${usage_pprof:+prof},embedallowed,smartlib"
+        if [ "$usage_arch" = "aarch64" ]; then
+          CC="aarch64-linux-gnu-gcc"
+          export CC
+        fi
+        export CGO_CFLAGS GOARCH CGO_ENABLED GOTAGS
+        echo "Building srat-server-glib (CGO + glibc)..."
+        go build -C src -tags="$GOTAGS" -ldflags="$LDFLAGS" -o ../dist/${usage_arch?}/srat-server-glib ./cmd/srat-server
+      else
+        # Static build (default): srat-cli + srat-server-static + srat-server symlink
+        CGO_ENABLED=0
+        GOTAGS="p${usage_pprof:+prof},embedallowed"
+        export CGO_CFLAGS GOARCH CGO_ENABLED GOTAGS
+        echo "Building srat-cli (static)..."
+        go build -C src -tags="$GOTAGS" -ldflags="$LDFLAGS" -o ../dist/${usage_arch?}/srat-cli ./cmd/srat-cli
+        echo "Building srat-server-static (static)..."
+        go build -C src -tags="$GOTAGS" -ldflags="$LDFLAGS" -o ../dist/${usage_arch?}/srat-server-static ./cmd/srat-server
+        echo "Creating srat-server symlink -> srat-server-static..."
+        ln -sf srat-server-static dist/${usage_arch?}/srat-server
+      fi
     ''',
     '''
       set +x
-      if [ -n "$usage_cgo" ]; then
-        echo "⚠ Static-linkage check skipped for CGO build (--cgo flag set — binary will be dynamically linked)"
+      if [ -n "$usage_zig" ] || [ -n "$usage_cgo" ]; then
+        echo "⚠ Static-linkage check skipped for dynamic variant build (--zig or --cgo flag set)"
       else
         echo "Verifying static linkage (musl/glibc portability) of dist/${usage_arch?}/..."
         all_static=true
-        for bin in dist/${usage_arch?}/srat-server dist/${usage_arch?}/srat-cli dist/${usage_arch?}/srat-openapi; do
+        for bin in dist/${usage_arch?}/srat-server-static dist/${usage_arch?}/srat-cli; do
           [ -f "$bin" ] || continue
           if file "$bin" | grep -q "dynamically linked"; then
             echo "✗ PORTABILITY FAIL: $bin is dynamically linked — will not run on all libc environments"
-            echo "  Hint: remove --cgo flag or ensure a fully static build (CGO_ENABLED=0)"
+            echo "  Hint: remove --cgo/--zig flag or ensure a fully static build (CGO_ENABLED=0)"
             all_static=false
           else
             echo "✓ Static: $bin"
@@ -98,49 +126,76 @@ run = [
         if [ "$all_static" = "false" ]; then exit 1; fi
       fi
     ''',
-    'echo Verifying embedded version in dist/${usage_arch?}/srat-server...',
     '''
-      set +x +e
-      EMBEDDED_VERSION=$(../scripts/extract-binary-version.sh dist/${usage_arch?}/srat-server 2>&1)
-      if [ $? -eq 0 ]; then
-        if [ "$EMBEDDED_VERSION" = "v${usage_version?}" ]; then
-          echo "✓ Version verified: $EMBEDDED_VERSION"
+      # Version verification only for static builds (uses srat-server-static)
+      if [ -z "$usage_zig" ] && [ -z "$usage_cgo" ]; then
+        echo "Verifying embedded version in dist/${usage_arch?}/srat-server-static..."
+        set +x +e
+        EMBEDDED_VERSION=$(../scripts/extract-binary-version.sh dist/${usage_arch?}/srat-server-static 2>&1)
+        if [ $? -eq 0 ]; then
+          if [ "$EMBEDDED_VERSION" = "v${usage_version?}" ]; then
+            echo "✓ Version verified: $EMBEDDED_VERSION"
+          else
+            echo "✗ Version mismatch! Expected: v${usage_version?}, Got: $EMBEDDED_VERSION"
+            exit 1
+          fi
         else
-          echo "✗ Version mismatch! Expected: v${usage_version?}, Got: $EMBEDDED_VERSION"
-          exit 1
+          echo "⚠ Warning: Could not extract version from binary: $EMBEDDED_VERSION"
         fi
-      else
-        echo "⚠ Warning: Could not extract version from binary: $EMBEDDED_VERSION"
       fi
     '''
 ]
 sources = ["src/**/*.go"]
-outputs = ["dist/*/srat-server", "dist/*/srat-cli", "dist/*/srat-openapi"]
+outputs = ["dist/*/srat-server", "dist/*/srat-server-static", "dist/*/srat-server-musl", "dist/*/srat-server-glib", "dist/*/srat-cli"]
 quiet = true
 
 [tasks."build:remote"]
-description = "Build the project for remote deployment (e.g., ARM64) and prepare the dist directory for deployment. This task ensures that the dist directory is clean and ready for the new build artifacts. It checks for the HOMEASSISTANT_IP environment variable to ensure that the build is intended for remote deployment. If the variable is not set, it will output an error message and exit. If the variable is set, it will proceed to remove any existing x86_64 build artifacts from the dist directory, ensuring that only the new build artifacts for the target architecture will be present after the build process."
+description = "Build the project for remote deployment and rsync binaries to HOMEASSISTANT_IP. Supports three server variants: static (default, CGO disabled), musl (dynamic via zig), and glib (dynamic via CGO+gcc). For static, both srat-cli and srat-server-static are deployed. For musl/glib, only the server variant binary is deployed (srat-cli is always static and does not need redeployment for dynamic-only updates)."
 usage = '''
 flag "--version <version>" help="Build version"  env="VERSION"
+flag "--variant <variant>" help="Server variant to build and deploy: static (default), musl, or glib" default="static"
 '''
 depends = [
    { task = "clean" },
 ]
 run = [
-  { task = "build",
-    args = [
-      '--arch=x86_64',
-      '--pprof',
-      '--version={{usage.version | default(value=env.VERSION)}}'
-    ]
-  },
-	'[ -n "${HOMEASSISTANT_IP}" ] || (echo "HOMEASSISTANT_IP is not set" && exit 1)',
-  'rsync -avz --progress ./dist/x86_64/srat-cli ./dist/x86_64/srat-server ${HOMEASSISTANT_IP}:/addon_configs/local_sambanas2/upgrade/'
+  '[ -n "${HOMEASSISTANT_IP}" ] || (echo "HOMEASSISTANT_IP is not set" && exit 1)',
+  '''
+  variant="{{usage.variant}}"
+  version="{{usage.version | default(value=env.VERSION)}}"
+
+  # srat-cli (static binary) is always deployed regardless of variant
+  build_static_cli() {
+    mise run build -- --arch=x86_64 --pprof "--version=$version"
+  }
+
+  case "$variant" in
+    musl)
+      # Build static first (for srat-cli), then musl variant
+      build_static_cli
+      mise run build -- --arch=x86_64 --pprof "--version=$version" --zig
+      rsync -avz --progress "./dist/x86_64/srat-cli" "./dist/x86_64/srat-server-musl" "${HOMEASSISTANT_IP}:/addon_configs/local_sambanas2/upgrade/"
+      ;;
+    glib)
+      # Build static first (for srat-cli), then glibc variant
+      build_static_cli
+      mise run build -- --arch=x86_64 --pprof "--version=$version" --cgo
+      rsync -avz --progress "./dist/x86_64/srat-cli" "./dist/x86_64/srat-server-glib" "${HOMEASSISTANT_IP}:/addon_configs/local_sambanas2/upgrade/"
+      ;;
+    static)
+      build_static_cli
+      rsync -avz --progress "./dist/x86_64/srat-cli" "./dist/x86_64/srat-server-static" "${HOMEASSISTANT_IP}:/addon_configs/local_sambanas2/upgrade/"
+      ;;
+    *)
+      echo "Unknown variant '$variant'. Valid options: static, musl, glib" && exit 1
+      ;;
+  esac
+  '''
 ]
 quiet = true
 
 [tasks."build:all"]
-description = "Build statically-linked binaries for all supported architectures (x86_64 and aarch64). Both artifacts run on glibc and musl systems without modification (CGO_ENABLED=0). Accepts the same flags as 'build' except --arch."
+description = "Build binaries for all supported architectures (x86_64 and aarch64) in three variants: static (srat-server-static, srat-cli), musl dynamic (srat-server-musl via zig), and glibc dynamic (srat-server-glib via CGO). The srat-server symlink points to srat-server-static by default; the upgrade process updates it to the best variant for the running system."
 usage = '''
 flag "--version <version>" help="Build version"  env="VERSION"
 flag "--sentry_dsn <sentry_dsn>" help="Sentry DSN" env="SENTRY_DSN"
@@ -148,14 +203,44 @@ flag "--pprof" help="Include pprof profiling support"
 arg "<gist_token>" help="GitHub Gist token" env="GIST_TOKEN"
 '''
 run = [
+  # x86_64: static (srat-cli + srat-server-static + srat-server symlink)
   '''
     EXTRA="--arch=x86_64 --version={{ usage.version | default(value=env.VERSION) }}"
     [ -n "$usage_sentry_dsn" ] && EXTRA="$EXTRA --sentry_dsn=$usage_sentry_dsn"
     [ -n "$usage_pprof" ] && EXTRA="$EXTRA --pprof"
     mise //backend:build -- $EXTRA
   ''',
+  # x86_64: musl dynamic (srat-server-musl via zig)
+  '''
+    EXTRA="--arch=x86_64 --version={{ usage.version | default(value=env.VERSION) }} --zig"
+    [ -n "$usage_sentry_dsn" ] && EXTRA="$EXTRA --sentry_dsn=$usage_sentry_dsn"
+    [ -n "$usage_pprof" ] && EXTRA="$EXTRA --pprof"
+    mise //backend:build -- $EXTRA
+  ''',
+  # x86_64: glibc dynamic (srat-server-glib via CGO)
+  '''
+    EXTRA="--arch=x86_64 --version={{ usage.version | default(value=env.VERSION) }} --cgo"
+    [ -n "$usage_sentry_dsn" ] && EXTRA="$EXTRA --sentry_dsn=$usage_sentry_dsn"
+    [ -n "$usage_pprof" ] && EXTRA="$EXTRA --pprof"
+    mise //backend:build -- $EXTRA
+  ''',
+  # aarch64: static (srat-cli + srat-server-static + srat-server symlink)
   '''
     EXTRA="--arch=aarch64 --version={{ usage.version | default(value=env.VERSION) }}"
+    [ -n "$usage_sentry_dsn" ] && EXTRA="$EXTRA --sentry_dsn=$usage_sentry_dsn"
+    [ -n "$usage_pprof" ] && EXTRA="$EXTRA --pprof"
+    mise //backend:build -- $EXTRA
+  ''',
+  # aarch64: musl dynamic (srat-server-musl via zig)
+  '''
+    EXTRA="--arch=aarch64 --version={{ usage.version | default(value=env.VERSION) }} --zig"
+    [ -n "$usage_sentry_dsn" ] && EXTRA="$EXTRA --sentry_dsn=$usage_sentry_dsn"
+    [ -n "$usage_pprof" ] && EXTRA="$EXTRA --pprof"
+    mise //backend:build -- $EXTRA
+  ''',
+  # aarch64: glibc dynamic (srat-server-glib via CGO + aarch64-linux-gnu-gcc)
+  '''
+    EXTRA="--arch=aarch64 --version={{ usage.version | default(value=env.VERSION) }} --cgo"
     [ -n "$usage_sentry_dsn" ] && EXTRA="$EXTRA --sentry_dsn=$usage_sentry_dsn"
     [ -n "$usage_pprof" ] && EXTRA="$EXTRA --pprof"
     mise //backend:build -- $EXTRA
