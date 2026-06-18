@@ -63,8 +63,12 @@ func (suite *HDIdleHandlerSuite) SetupTest() {
 		fx.Populate(&suite.cancel),
 	)
 	suite.app.RequireStart()
+}
 
-	// Default to Lab Mode = on; individual tests override for the 403 case.
+// labModeOn registers the "lab mode enabled" stub for tests that require it.
+// Called explicitly in every test that exercises a lab-mode-gated endpoint.
+// NOT called in TestEndpointsRequireLabMode, which tests the 403 path.
+func (suite *HDIdleHandlerSuite) labModeOn() {
 	mock.When(suite.mockSettingService.Load()).ThenReturn(&dto.Settings{
 		ExperimentalLabMode: true,
 	}, nil)
@@ -97,7 +101,9 @@ func rotationalDisk(diskID string) map[string]dto.Disk {
 // =============================================================================
 
 func (suite *HDIdleHandlerSuite) TestEndpointsRequireLabMode() {
-	// Override the default "lab mode on" with off
+	// labModeOn() is intentionally NOT called here.
+	// The SetupTest default was removed, so Load() has no registered answer.
+	// We register lab mode = off; mockio sticks on this answer for all calls.
 	mock.When(suite.mockSettingService.Load()).ThenReturn(&dto.Settings{
 		ExperimentalLabMode: false,
 	}, nil)
@@ -126,6 +132,7 @@ func (suite *HDIdleHandlerSuite) TestEndpointsRequireLabMode() {
 // =============================================================================
 
 func (suite *HDIdleHandlerSuite) TestGetConfigSuccess() {
+	suite.labModeOn()
 	diskID := "sda"
 	expected := &dto.HDIdleDevice{
 		HDIdleDeviceSupport: dto.HDIdleDeviceSupport{DevicePath: "/dev/" + diskID},
@@ -149,6 +156,7 @@ func (suite *HDIdleHandlerSuite) TestGetConfigSuccess() {
 }
 
 func (suite *HDIdleHandlerSuite) TestGetConfigUnknownDiskReturns404() {
+	suite.labModeOn()
 	mock.When(suite.mockHDIdleService.ResolveDevicePath("unknownid")).
 		ThenReturn("", errors.Wrap(dto.ErrorNotFound, "no device"))
 
@@ -164,6 +172,7 @@ func (suite *HDIdleHandlerSuite) TestGetConfigUnknownDiskReturns404() {
 // =============================================================================
 
 func (suite *HDIdleHandlerSuite) TestPutConfigSuccess() {
+	suite.labModeOn()
 	diskID := "sda"
 	mock.When(suite.mockHDIdleService.ResolveDevicePath(diskID)).ThenReturn("/dev/"+diskID, nil)
 	mock.When(suite.mockHardwareService.GetHardwareInfo()).ThenReturn(rotationalDisk(diskID), nil)
@@ -187,6 +196,7 @@ func (suite *HDIdleHandlerSuite) TestPutConfigSuccess() {
 }
 
 func (suite *HDIdleHandlerSuite) TestPutConfigUnknownDiskReturns404() {
+	suite.labModeOn()
 	mock.When(suite.mockHDIdleService.ResolveDevicePath("ghost")).
 		ThenReturn("", errors.Wrap(dto.ErrorNotFound, "no device"))
 
@@ -198,6 +208,7 @@ func (suite *HDIdleHandlerSuite) TestPutConfigUnknownDiskReturns404() {
 }
 
 func (suite *HDIdleHandlerSuite) TestPutConfigNonRotationalRequiresForce() {
+	suite.labModeOn()
 	diskID := "ssd0"
 	f := false
 	mock.When(suite.mockHDIdleService.ResolveDevicePath(diskID)).ThenReturn("/dev/"+diskID, nil)
@@ -220,6 +231,7 @@ func (suite *HDIdleHandlerSuite) TestPutConfigNonRotationalRequiresForce() {
 }
 
 func (suite *HDIdleHandlerSuite) TestPutConfigNonRotationalForcedSucceeds() {
+	suite.labModeOn()
 	diskID := "ssd0"
 	f := false
 	mock.When(suite.mockHDIdleService.ResolveDevicePath(diskID)).ThenReturn("/dev/"+diskID, nil)
@@ -244,6 +256,7 @@ func (suite *HDIdleHandlerSuite) TestPutConfigNonRotationalForcedSucceeds() {
 }
 
 func (suite *HDIdleHandlerSuite) TestPutConfigDisableUnconditionallyAccepted() {
+	suite.labModeOn()
 	// Setting enabled=NOENABLED must succeed even on a non-rotational disk
 	// without force_enabled — disabling is always allowed.
 	diskID := "ssd0"
@@ -269,6 +282,7 @@ func (suite *HDIdleHandlerSuite) TestPutConfigDisableUnconditionallyAccepted() {
 // =============================================================================
 
 func (suite *HDIdleHandlerSuite) TestGetStatusSuccess() {
+	suite.labModeOn()
 	diskID := "sda"
 	expected := &dto.HDIdleDeviceStatus{Name: diskID, SpunDown: false}
 	mock.When(suite.mockHDIdleService.ResolveDevicePath(diskID)).ThenReturn("/dev/"+diskID, nil)
@@ -286,6 +300,7 @@ func (suite *HDIdleHandlerSuite) TestGetStatusSuccess() {
 // =============================================================================
 
 func (suite *HDIdleHandlerSuite) TestCheckSupportSuccess() {
+	suite.labModeOn()
 	diskID := "sda"
 	expected := &dto.HDIdleDeviceSupport{Supported: true, DevicePath: "/dev/" + diskID}
 	mock.When(suite.mockHDIdleService.ResolveDevicePath(diskID)).ThenReturn("/dev/"+diskID, nil)
@@ -307,6 +322,7 @@ func (suite *HDIdleHandlerSuite) TestCheckSupportSuccess() {
 // =============================================================================
 
 func (suite *HDIdleHandlerSuite) TestIgnoreSuggestionPersists() {
+	suite.labModeOn()
 	diskID := "sda"
 	mock.When(suite.mockHDIdleService.ResolveDevicePath(diskID)).ThenReturn("/dev/"+diskID, nil)
 	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Any[string]())).ThenReturn(&dto.HDIdleDevice{
@@ -326,6 +342,7 @@ func (suite *HDIdleHandlerSuite) TestIgnoreSuggestionPersists() {
 }
 
 func (suite *HDIdleHandlerSuite) TestIgnoreSuggestionUnknownDiskReturns404() {
+	suite.labModeOn()
 	mock.When(suite.mockHDIdleService.ResolveDevicePath("ghost")).
 		ThenReturn("", errors.Wrap(dto.ErrorNotFound, "no device"))
 

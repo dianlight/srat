@@ -11,17 +11,17 @@ import (
 )
 
 type HDIdleHandler struct {
-	hdidleService    service.HDIdleServiceInterface
-	hardwareService  service.HardwareServiceInterface
-	settingService   service.SettingServiceInterface
-	converter        converter.DtoToDbomConverter
+	hdidleService   service.HDIdleServiceInterface
+	hardwareService service.HardwareServiceInterface
+	settingService  service.SettingServiceInterface
+	converter       converter.DtoToDbomConverter
 }
 
 type HDIdleHandlerParams struct {
 	fx.In
-	HDIdleService    service.HDIdleServiceInterface
-	HardwareService  service.HardwareServiceInterface
-	SettingService   service.SettingServiceInterface
+	HDIdleService   service.HDIdleServiceInterface
+	HardwareService service.HardwareServiceInterface
+	SettingService  service.SettingServiceInterface
 }
 
 func NewHDIdleHandler(params HDIdleHandlerParams) *HDIdleHandler {
@@ -44,8 +44,8 @@ func NewHDIdleHandler(params HDIdleHandlerParams) *HDIdleHandler {
 //   - GET    /disk/{disk_id}/hdidle/info               — current spin status
 //   - GET    /disk/{disk_id}/hdidle/config             — per-disk config
 //   - PUT    /disk/{disk_id}/hdidle/config             — update config; 409 on
-//                                                         non-rotational without
-//                                                         force_enabled=true
+//     non-rotational without
+//     force_enabled=true
 //   - GET    /disk/{disk_id}/hdidle/support            — SCSI/ATA capability probe
 //   - POST   /disk/{disk_id}/hdidle/ignore-suggestion  — dismiss dashboard badge
 func (h *HDIdleHandler) RegisterHDIdleHandler(api huma.API) {
@@ -111,6 +111,9 @@ func (h *HDIdleHandler) getConfig(ctx context.Context, input *struct {
 			return &GetHDIdleConfigOutput{Body: *config}, nil
 		}
 		return nil, huma.Error500InternalServerError("Failed to retrieve HDIdle configuration", err)
+	}
+	if config == nil {
+		return nil, huma.Error404NotFound("HDIdle configuration not found for disk: "+input.DiskID, nil)
 	}
 
 	return &GetHDIdleConfigOutput{Body: *config}, nil
@@ -224,9 +227,12 @@ func (h *HDIdleHandler) checkSupport(ctx context.Context, input *struct {
 	return &GetHDIdleSupportOutput{Body: support}, nil
 }
 
-// IgnoreSuggestionOutput is intentionally empty: the action returns 204 No
-// Content semantically, modelled here as an empty body for huma.
-type IgnoreSuggestionOutput struct{}
+// IgnoreSuggestionOutput carries the updated device config so callers can
+// refresh their state without a second round-trip. Using a non-empty Body
+// causes huma to emit 200 OK (an empty struct would yield 204 No Content).
+type IgnoreSuggestionOutput struct {
+	Body dto.HDIdleDevice
+}
 
 // ignoreSuggestion sets HDIdleDevice.SuggestionIgnored=true so the dashboard
 // stops showing the "Enable HDIdle" badge for this disk. Idempotent: calling
@@ -260,5 +266,5 @@ func (h *HDIdleHandler) ignoreSuggestion(ctx context.Context, input *struct {
 		return nil, huma.Error500InternalServerError("Failed to persist suggestion dismissal", err)
 	}
 
-	return &IgnoreSuggestionOutput{}, nil
+	return &IgnoreSuggestionOutput{Body: *cfg}, nil
 }
