@@ -60,6 +60,17 @@ const injectedRtkApi = api
         }),
         providesTags: ["disk"],
       }),
+      patchApiDiskByDiskIdHdidleConfig: build.mutation<
+        PatchApiDiskByDiskIdHdidleConfigApiResponse,
+        PatchApiDiskByDiskIdHdidleConfigApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/disk/${queryArg.diskId}/hdidle/config`,
+          method: "PATCH",
+          body: queryArg.body,
+        }),
+        invalidatesTags: ["disk"],
+      }),
       putApiDiskByDiskIdHdidleConfig: build.mutation<
         PutApiDiskByDiskIdHdidleConfigApiResponse,
         PutApiDiskByDiskIdHdidleConfigApiArg
@@ -69,9 +80,17 @@ const injectedRtkApi = api
           method: "PUT",
           body: queryArg.hdIdleDevice,
         }),
-        // Invalidate both "disk" (per-disk config query) and "volume" (volumes
-        // list used by DiskHealthMetrics to power the HDIdleSuggestionBadge).
-        invalidatesTags: ["disk", "volume"],
+        invalidatesTags: ["disk"],
+      }),
+      postApiDiskByDiskIdHdidleIgnoreSuggestion: build.mutation<
+        PostApiDiskByDiskIdHdidleIgnoreSuggestionApiResponse,
+        PostApiDiskByDiskIdHdidleIgnoreSuggestionApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/disk/${queryArg.diskId}/hdidle/ignore-suggestion`,
+          method: "POST",
+        }),
+        invalidatesTags: ["disk"],
       }),
       getApiDiskByDiskIdHdidleInfo: build.query<
         GetApiDiskByDiskIdHdidleInfoApiResponse,
@@ -90,18 +109,6 @@ const injectedRtkApi = api
           url: `/api/disk/${queryArg.diskId}/hdidle/support`,
         }),
         providesTags: ["disk"],
-      }),
-      postApiDiskByDiskIdHdidleIgnoreSuggestion: build.mutation<
-        PostApiDiskByDiskIdHdidleIgnoreSuggestionApiResponse,
-        PostApiDiskByDiskIdHdidleIgnoreSuggestionApiArg
-      >({
-        query: (queryArg) => ({
-          url: `/api/disk/${queryArg.diskId}/hdidle/ignore-suggestion`,
-          method: "POST",
-        }),
-        // Invalidate "volume" so the HDIdleSuggestionBadge in DiskHealthMetrics
-        // disappears immediately after the user dismisses it.
-        invalidatesTags: ["disk", "volume"],
       }),
       postApiDiskByDiskIdSmartDisable: build.mutation<
         PostApiDiskByDiskIdSmartDisableApiResponse,
@@ -761,13 +768,27 @@ export type GetApiDiskByDiskIdHdidleConfigApiArg = {
   /** The disk ID (not the device path) */
   diskId: string;
 };
+export type PatchApiDiskByDiskIdHdidleConfigApiResponse = /** status 200 OK */
+  | HdIdleDevice
+  | /** status default Error */ ErrorModel;
+export type PatchApiDiskByDiskIdHdidleConfigApiArg = {
+  /** The disk ID (not the device path) */
+  diskId: string;
+  body: JsonPatchOp[] | null;
+};
 export type PutApiDiskByDiskIdHdidleConfigApiResponse = /** status 200 OK */
   | HdIdleDevice
   | /** status default Error */ ErrorModel;
 export type PutApiDiskByDiskIdHdidleConfigApiArg = {
-  /** The disk ID or device path */
+  /** The disk ID (not the device path) */
   diskId: string;
   hdIdleDevice: HdIdleDevice;
+};
+export type PostApiDiskByDiskIdHdidleIgnoreSuggestionApiResponse =
+  /** status 200 OK */ HdIdleDevice | /** status default Error */ ErrorModel;
+export type PostApiDiskByDiskIdHdidleIgnoreSuggestionApiArg = {
+  /** The disk ID */
+  diskId: string;
 };
 export type GetApiDiskByDiskIdHdidleInfoApiResponse = /** status 200 OK */
   | HdIdleDeviceStatus
@@ -781,12 +802,6 @@ export type GetApiDiskByDiskIdHdidleSupportApiResponse = /** status 200 OK */
   | /** status default Error */ ErrorModel;
 export type GetApiDiskByDiskIdHdidleSupportApiArg = {
   /** The disk ID (not the device path) */
-  diskId: string;
-};
-export type PostApiDiskByDiskIdHdidleIgnoreSuggestionApiResponse =
-  /** status 200 OK */ void | /** status default Error */ ErrorModel;
-export type PostApiDiskByDiskIdHdidleIgnoreSuggestionApiArg = {
-  /** The disk ID */
   diskId: string;
 };
 export type PostApiDiskByDiskIdSmartDisableApiResponse = /** status 200 OK */
@@ -1322,15 +1337,10 @@ export type HdIdleDevice = {
   disk_id?: string;
   enabled?: Enabled;
   error_message?: string;
-  /** true when HDIdle was enabled on a non-rotational disk via the per-disk
-   * confirm dialog. Future loads of the per-disk settings card skip the
-   * warning when this flag is set. */
   force_enabled?: boolean;
   idle_time: number;
   power_condition: number;
   recommended_command?: string;
-  /** true when the user has dismissed the dashboard's "Enable HDIdle"
-   * suggestion for this disk; the badge will not appear again until cleared. */
   suggestion_ignored?: boolean;
   supported?: boolean;
   supports_ata?: boolean;
@@ -2030,9 +2040,6 @@ export type Disk = {
   ejectable?: boolean;
   hdidle_device?: HdIdleDevice;
   id?: string;
-  /** Whether the underlying medium spins (HDD) or not (SSD/NVMe).
-   * true=HDD, false=SSD/NVMe, omitted=unknown (e.g. USB enclosure
-   * hides the rotational flag and SMART is unavailable). */
   is_rotational?: boolean;
   legacy_device_name?: string;
   legacy_device_path?: string;
@@ -2171,10 +2178,11 @@ export const {
   useGetApiCommandEventsQuery,
   useGetApiCommandOutputQuery,
   useGetApiDiskByDiskIdHdidleConfigQuery,
+  usePatchApiDiskByDiskIdHdidleConfigMutation,
   usePutApiDiskByDiskIdHdidleConfigMutation,
+  usePostApiDiskByDiskIdHdidleIgnoreSuggestionMutation,
   useGetApiDiskByDiskIdHdidleInfoQuery,
   useGetApiDiskByDiskIdHdidleSupportQuery,
-  usePostApiDiskByDiskIdHdidleIgnoreSuggestionMutation,
   usePostApiDiskByDiskIdSmartDisableMutation,
   usePostApiDiskByDiskIdSmartEnableMutation,
   useGetApiDiskByDiskIdSmartHealthQuery,

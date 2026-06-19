@@ -1,7 +1,6 @@
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import React from "react";
 import { MemoryRouter } from "react-router";
-import { Provider } from "react-redux";
 import { describe, expect, it, vi } from "vitest";
 import type { DiskHealth } from "../../../../store/sratApi";
 import { DiskHealthMetrics } from "../DiskHealthMetrics";
@@ -15,14 +14,8 @@ vi.mock("../../../../hooks/useLabMode", () => ({
 }));
 
 async function renderWithWrappers(ui: React.ReactElement) {
-    const { createTestStore } = await import("/test/testing");
-    const store = await createTestStore();
-    return render(
-        React.createElement(Provider as any, {
-            store,
-            children: React.createElement(MemoryRouter, null, ui),
-        }),
-    );
+    const { renderWithTestStore } = await import("/test/testing");
+    return renderWithTestStore(<MemoryRouter>{ui}</MemoryRouter>);
 }
 
 describe("DiskHealthMetrics", () => {

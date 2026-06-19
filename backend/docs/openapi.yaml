@@ -416,11 +416,6 @@ components:
         id:
           type: string
         is_rotational:
-          description: |-
-            Whether the underlying medium spins (HDD) or not (SSD/NVMe).
-            true=HDD, false=SSD/NVMe, omitted=unknown (e.g. USB enclosure
-            hides the rotational flag and SMART is unavailable).
-          readOnly: true
           type: boolean
         legacy_device_name:
           type: string
@@ -896,10 +891,6 @@ components:
         error_message:
           type: string
         force_enabled:
-          description: |-
-            true when HDIdle was enabled on a non-rotational disk via the
-            per-disk confirm dialog. Future loads of the per-disk settings
-            card skip the warning when this flag is set.
           type: boolean
         idle_time:
           format: int64
@@ -911,10 +902,6 @@ components:
         recommended_command:
           type: string
         suggestion_ignored:
-          description: |-
-            true when the user has dismissed the dashboard's "Enable HDIdle"
-            suggestion for this disk; the badge will not appear again until
-            cleared.
           type: boolean
         supported:
           type: boolean
@@ -2611,8 +2598,8 @@ paths:
     get:
       operationId: get-api-appconfig
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2839,15 +2826,171 @@ paths:
       summary: Get API disk by disk ID hdidle config
       tags:
         - disk
-    put:
-      operationId: put-api-disk-by-disk-id-hdidle-config
+    patch:
+      description: Partial update operation supporting both JSON Merge Patch & JSON Patch updates.
+      operationId: patch-api-disk-by-disk-id-hdidle-config
       parameters:
-        - description: The disk ID or device path
+        - description: The disk ID (not the device path)
           in: path
           name: disk_id
           required: true
           schema:
-            description: The disk ID or device path
+            description: The disk ID (not the device path)
+            type: string
+        - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
+      requestBody:
+        content:
+          application/json-patch+json:
+            schema:
+              items:
+                $ref: "#/components/schemas/JsonPatchOp"
+              type:
+                - array
+                - "null"
+          application/merge-patch+json:
+            schema:
+              additionalProperties: false
+              properties:
+                $schema:
+                  description: A URL to the JSON Schema for this object.
+                  examples:
+                    - https://example.com/schemas/HDIdleDevice.json
+                  format: uri
+                  readOnly: true
+                  type: string
+                command_type:
+                  enum:
+                    - scsi
+                    - ata
+                  type: string
+                device_path:
+                  type: string
+                disk_id:
+                  type: string
+                enabled:
+                  enum:
+                    - "yes"
+                    - custom
+                    - "no"
+                  type: string
+                error_message:
+                  type: string
+                force_enabled:
+                  type: boolean
+                idle_time:
+                  format: int64
+                  type: integer
+                power_condition:
+                  format: int32
+                  minimum: 0
+                  type: integer
+                recommended_command:
+                  type: string
+                suggestion_ignored:
+                  type: boolean
+                supported:
+                  type: boolean
+                supports_ata:
+                  type: boolean
+                supports_scsi:
+                  type: boolean
+              type: object
+          application/merge-patch+shorthand:
+            schema:
+              additionalProperties: false
+              properties:
+                $schema:
+                  description: A URL to the JSON Schema for this object.
+                  examples:
+                    - https://example.com/schemas/HDIdleDevice.json
+                  format: uri
+                  readOnly: true
+                  type: string
+                command_type:
+                  enum:
+                    - scsi
+                    - ata
+                  type: string
+                device_path:
+                  type: string
+                disk_id:
+                  type: string
+                enabled:
+                  enum:
+                    - "yes"
+                    - custom
+                    - "no"
+                  type: string
+                error_message:
+                  type: string
+                force_enabled:
+                  type: boolean
+                idle_time:
+                  format: int64
+                  type: integer
+                power_condition:
+                  format: int32
+                  minimum: 0
+                  type: integer
+                recommended_command:
+                  type: string
+                suggestion_ignored:
+                  type: boolean
+                supported:
+                  type: boolean
+                supports_ata:
+                  type: boolean
+                supports_scsi:
+                  type: boolean
+              type: object
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HDIdleDevice"
+          description: OK
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: Patch api-disk-by-disk-id-hdidle-config
+      tags:
+        - disk
+    put:
+      operationId: put-api-disk-by-disk-id-hdidle-config
+      parameters:
+        - description: The disk ID (not the device path)
+          in: path
+          name: disk_id
+          required: true
+          schema:
+            description: The disk ID (not the device path)
             type: string
         - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
@@ -2896,11 +3039,6 @@ paths:
         - disk
   /api/disk/{disk_id}/hdidle/ignore-suggestion:
     post:
-      description: |-
-        Dismiss the dashboard's "Enable HDIdle" suggestion for this disk by
-        setting suggestion_ignored=true on its per-disk record. Idempotent:
-        if no record exists yet, a minimal one is created solely to remember
-        the dismissal. Requires Lab Mode.
       operationId: post-api-disk-by-disk-id-hdidle-ignore-suggestion
       parameters:
         - description: The disk ID
@@ -2914,6 +3052,10 @@ paths:
         - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HDIdleDevice"
           description: OK
           headers:
             X-Span-Id:
@@ -2942,7 +3084,7 @@ paths:
               $ref: "#/components/headers/X-Span-Id"
             X-Trace-Id:
               $ref: "#/components/headers/X-Trace-Id"
-      summary: Dismiss HDIdle dashboard suggestion for a disk
+      summary: Post API disk by disk ID hdidle ignore suggestion
       tags:
         - disk
   /api/disk/{disk_id}/hdidle/info:
@@ -3006,8 +3148,8 @@ paths:
           schema:
             description: The disk ID (not the device path)
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -3356,8 +3498,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -3652,8 +3794,8 @@ paths:
       description: Partial update operation supporting both JSON Merge Patch & JSON Patch updates.
       operationId: patch-api-filesystem-label
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json-patch+json:
@@ -3740,8 +3882,8 @@ paths:
     put:
       operationId: put-api-filesystem-label
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -3846,8 +3988,8 @@ paths:
           schema:
             description: Filesystem type identifier
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -3933,8 +4075,8 @@ paths:
     get:
       operationId: get-api-filesystems
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3976,8 +4118,8 @@ paths:
     get:
       operationId: get-api-health
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -4111,8 +4253,8 @@ paths:
     get:
       operationId: get-issue-template
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -4201,8 +4343,8 @@ paths:
     get:
       operationId: get-problems
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -4247,8 +4389,8 @@ paths:
     post:
       operationId: upsert-problem
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -4658,8 +4800,8 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -4745,8 +4887,8 @@ paths:
     put:
       operationId: put-api-restart
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -5007,24 +5149,6 @@ paths:
                 ha_use_nfs:
                   default: false
                   type: boolean
-                hdidle_default_command_type:
-                  enum:
-                    - scsi
-                    - ata
-                  type: string
-                hdidle_default_idle_time:
-                  format: int64
-                  type: integer
-                hdidle_default_power_condition:
-                  format: int32
-                  minimum: 0
-                  type: integer
-                hdidle_enabled:
-                  default: false
-                  type: boolean
-                hdidle_ignore_spin_down_detection:
-                  default: false
-                  type: boolean
                 hostname:
                   type: string
                 interfaces:
@@ -5095,24 +5219,6 @@ paths:
                   default: false
                   type: boolean
                 ha_use_nfs:
-                  default: false
-                  type: boolean
-                hdidle_default_command_type:
-                  enum:
-                    - scsi
-                    - ata
-                  type: string
-                hdidle_default_idle_time:
-                  format: int64
-                  type: integer
-                hdidle_default_power_condition:
-                  format: int32
-                  minimum: 0
-                  type: integer
-                hdidle_enabled:
-                  default: false
-                  type: boolean
-                hdidle_ignore_spin_down_detection:
                   default: false
                   type: boolean
                 hostname:
@@ -5237,8 +5343,8 @@ paths:
     get:
       operationId: get-api-settings-app-config
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -5497,8 +5603,8 @@ paths:
     post:
       operationId: post-api-settings-homeassistant-custom-component-install
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -5626,8 +5732,8 @@ paths:
     post:
       operationId: post-api-settings-homeassistant-restart-core
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -5728,8 +5834,8 @@ paths:
               - world
             maxLength: 128
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "204":
           description: No Content
@@ -6218,8 +6324,8 @@ paths:
     get:
       operationId: get-api-telemetry-internet-connection
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -6350,8 +6456,8 @@ paths:
     put:
       operationId: put-api-update
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -6440,8 +6546,8 @@ paths:
     post:
       operationId: post-api-user
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -6708,8 +6814,8 @@ paths:
             default: false
             description: Force umount operation
             type: boolean
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "204":
           description: No Content
@@ -6796,8 +6902,8 @@ paths:
     patch:
       operationId: patch-api-volume-settings
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -6845,8 +6951,8 @@ paths:
     get:
       operationId: list-api-volumes
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:

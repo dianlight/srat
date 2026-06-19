@@ -373,8 +373,6 @@ func (s *HDIdleService) GetDeviceConfig(path string) (*dto.HDIdleDevice, errors.
 					return nil, errors.Wrap(errE, "error saving default HDIdle config for device")
 				}
 			*/
-			name := s.getRealPathNotSimlink(path)
-			s.config.Devices[name] = *result
 			return result, nil
 		}
 		return nil, errors.WithStack(err)
@@ -671,37 +669,6 @@ func (s *HDIdleService) convertConfig() (*internalConfig, errors.E) {
 	intConfig.SkewTime = hdidleActiveInterval * 3
 
 	return intConfig, nil
-}
-
-// calculateSkewBaseInterval returns the base interval used to size SkewTime
-// (the suspend-detection threshold). It is intentionally derived from the
-// smallest configured per-device IdleTime so a system with very-aggressive
-// spin-down still gets a tight skew threshold.
-func (s *HDIdleService) calculateSkewBaseInterval() time.Duration {
-	if s.config == nil {
-		slog.WarnContext(s.ctx, "Null config while calculating pool interval, using default 10s")
-		return time.Second * 10
-	}
-	defaultIdleTime := s.config.DefaultIdle
-	if len(s.config.Devices) == 0 {
-		return defaultIdleTime / defaultPoolMultiplier
-	}
-
-	interval := defaultIdleTime
-	for _, dev := range s.config.Devices {
-		if dev.IdleTime == 0 {
-			continue
-		}
-		if dev.IdleTime < interval {
-			interval = dev.IdleTime
-		}
-	}
-
-	sleepTime := interval / defaultPoolMultiplier
-	if sleepTime == 0 {
-		return time.Second
-	}
-	return sleepTime
 }
 
 // Adaptive polling intervals (goal #4: minimal resource use).

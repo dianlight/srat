@@ -23,6 +23,7 @@ import { filesize } from "filesize";
 import { useEffect, useMemo, useState } from "react";
 import { SafeSparkLineChart as SparkLineChart } from "../../../components/charts/SafeSparkLineChart";
 import { PreviewDialog } from "../../../components/PreviewDialog";
+import { useLabMode } from "../../../hooks/useLabMode";
 import {
   type Disk,
   type DiskHealth,
@@ -50,13 +51,18 @@ export function DiskHealthMetrics({
     DiskIoStats | PerPartitionInfo | null
   >(null);
 
+  const { labMode } = useLabMode();
+
   // Map kernel device name (e.g. "sda") → Disk DTO so the per-row badge can
   // read is_rotational and hdidle_device.{enabled,suggestion_ignored}. The
   // volumes endpoint already powers the volumes page; reusing it here avoids
   // a dedicated endpoint. When the query is loading or errors, the map is
   // empty and badges silently render nothing — acceptable graceful degradation
   // since the badge is advisory only.
-  const { data: volumes } = useGetApiVolumesQuery();
+  // Skip the query entirely when Lab Mode is off — the badge is never shown.
+  const { data: volumes } = useGetApiVolumesQuery(undefined, {
+    skip: !labMode,
+  });
   const disksByDeviceName = useMemo(() => {
     const map: Record<string, Disk> = {};
     // device_name in DiskIoStats is set from LegacyDeviceName (bare, e.g.

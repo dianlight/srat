@@ -120,7 +120,7 @@ func (h *HDIdleHandler) getConfig(ctx context.Context, input *struct {
 }
 
 type PutHDIdleConfigInput struct {
-	DiskID string `path:"disk_id" required:"true" doc:"The disk ID or device path"`
+	DiskID string `path:"disk_id" required:"true" doc:"The disk ID (not the device path)"`
 	Body   dto.HDIdleDevice
 }
 
