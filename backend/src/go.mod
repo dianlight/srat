@@ -75,7 +75,7 @@ require (
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/urfave/cli/v2 v2.27.7 // indirect
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
-	github.com/zarldev/goenums v0.4.7 // indirect
+	github.com/zarldev/goenums v0.4.9 // indirect
 	go.opentelemetry.io/otel v1.43.0 // indirect
 	go.opentelemetry.io/otel/trace v1.43.0 // indirect
 	golang.org/x/term v0.42.0 // indirect
@@ -121,11 +121,11 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.1 // indirect
 	golang.org/x/crypto v0.50.0 // indirect
-	golang.org/x/exp v0.0.0-20260603202125-055de637280b
-	golang.org/x/mod v0.36.0 // indirect
+	golang.org/x/exp v0.0.0-20260611194520-c48552f49976
+	golang.org/x/mod v0.37.0 // indirect
 	golang.org/x/sync v0.21.0
 	golang.org/x/text v0.36.0 // indirect
-	golang.org/x/tools v0.45.0 // indirect
+	golang.org/x/tools v0.46.0 // indirect
 	modernc.org/libc v1.72.1 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
