@@ -25,7 +25,7 @@ require (
 	github.com/dianlight/tlog v0.2.2
 	github.com/fatih/color v1.19.0
 	github.com/fsnotify/fsnotify v1.10.1
-	github.com/getsentry/sentry-go v0.46.2
+	github.com/getsentry/sentry-go v0.47.0
 	github.com/gofri/go-github-ratelimit/v2 v2.0.2
 	github.com/google/go-github/v88 v88.0.0
 	github.com/gorilla/websocket v1.5.3
@@ -75,7 +75,7 @@ require (
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/urfave/cli/v2 v2.27.7 // indirect
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
-	github.com/zarldev/goenums v0.4.9 // indirect
+	github.com/zarldev/goenums v0.5.0 // indirect
 	go.opentelemetry.io/otel v1.43.0 // indirect
 	go.opentelemetry.io/otel/trace v1.43.0 // indirect
 	golang.org/x/term v0.42.0 // indirect
@@ -124,7 +124,7 @@ require (
 	golang.org/x/exp v0.0.0-20260611194520-c48552f49976
 	golang.org/x/mod v0.37.0 // indirect
 	golang.org/x/sync v0.21.0
-	golang.org/x/text v0.36.0 // indirect
+	golang.org/x/text v0.37.0 // indirect
 	golang.org/x/tools v0.46.0 // indirect
 	modernc.org/libc v1.72.1 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
