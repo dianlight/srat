@@ -6,6 +6,9 @@ on:
 
 jobs:
   review:
+    if: |
+      !contains(github.event.pull_request.user.login, 'renovate') &&
+      !contains(github.event.pull_request.user.login, 'dependabot')
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -26,7 +29,18 @@ jobs:
           share: true
           use_github_token: true
           prompt: |
-            Review this pull request:
-            - Check for code quality issues
-            - Look for potential bugs
-            - Suggest improvements
+            Act as an expert Senior Software Engineer and Code Reviewer. Review this pull request thoroughly based strictly on the provided diff and its immediate context.
+
+            Follow these strict directives:
+
+            1. **Targeted Comments & Suggestions:** Apply your feedback directly to the specific changed files and lines. When proposing a concrete code change, do not just leave a plain text comment; instead, open a formal change request using GitHub's suggestion blocks (```suggestion ... ```) to initiate a focused discussion that the author can easily review or commit.
+
+            2. **Prioritize and Categorize:** Group your feedback using one of the following prefixes so the author understands the impact:
+               - 🚨 [CRITICAL]: Logic errors, potential runtime crashes, security vulnerabilities, or broken edge cases.
+               - ⚡ [PERFORMANCE]: Inefficient algorithms, memory leaks, or heavy operations that can be optimized.
+               - 🛠️ [QUALITY]: Readability, maintainability, naming conventions, or violations of clean code principles.
+               - 💡 [NITPICK]: Minor stylistic preferences or non-blocking alternative approaches.
+
+            3. **Be Actionable:** Do not just point out a problem. Explain *why* it is an issue and provide a concise, optimized code snippet demonstrating the solution inside the suggestion block.
+
+            4. **Tone and Noise Control:** Be direct, objective, and constructive. Avoid generic praise (e.g., "Good job here") or conversational fluff. If a file looks great, do not leave empty or redundant comments.
