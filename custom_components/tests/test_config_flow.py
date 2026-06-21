@@ -9,13 +9,19 @@ import aiohttp
 try:
     from homeassistant.components.hassio.discovery import HassioServiceInfo
 except ImportError:  # pragma: no cover - fallback for older HA versions
-    from homeassistant.components.hassio import HassioServiceInfo
+    from homeassistant.components.hassio import (  # type: ignore[attr-defined,no-redef]
+        HassioServiceInfo,
+    )
 from homeassistant.config_entries import SOURCE_HASSIO, SOURCE_USER
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 
 from custom_components.srat.connection import homeassistant_auth_headers
-from custom_components.srat.const import DOMAIN, SUPERVISOR_GATEWAY_HOST
+from custom_components.srat.const import (
+    CONF_HOST_AUTO,
+    CONF_PORT_AUTO,
+    DOMAIN,
+)
 
 
 def _mock_session(status: int = 200) -> MagicMock:
@@ -170,8 +176,8 @@ async def test_hassio_discovery(
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["title"] == "SRAT"
-    assert result["data"]["host"] == SUPERVISOR_GATEWAY_HOST
-    assert result["data"]["port"] == 8099
+    assert result["data"]["host"] == CONF_HOST_AUTO
+    assert result["data"]["port"] == CONF_PORT_AUTO
     assert result["data"]["addon_slug"] == "1a32f091_sambanas2"
 
 

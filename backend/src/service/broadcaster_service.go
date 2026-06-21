@@ -25,22 +25,25 @@ import (
 
 type BroadcasterServiceInterface interface {
 	BroadcastMessage(msg any) any
+	BroadcastGuaranteedMessage(msg any) any
 	ProcessWebSocketChannel(send ws.Sender)
 }
 
 type BroadcasterService struct {
-	ctx              context.Context
-	state            *dto.ContextState
-	SentCounter      atomic.Uint64
-	ConnectedClients atomic.Int32
-	relay            *broadcast.Relay[broadcastEvent]
-	haService        HomeAssistantServiceInterface
-	haRootService    HaRootServiceInterface
-	eventBus         events.EventBusInterface
-	disks            *dto.DiskMap
-	shareService     ShareServiceInterface
-	lastDirtyHash    atomic.Value
-	haWg             sync.WaitGroup
+	ctx                   context.Context
+	state                 *dto.ContextState
+	SentCounter           atomic.Uint64
+	GuaranteedSentCounter atomic.Uint64
+	ConnectedClients      atomic.Int32
+	relay                 *broadcast.Relay[broadcastEvent]
+	guaranteedRelay       *broadcast.Relay[broadcastEvent]
+	haService             HomeAssistantServiceInterface
+	haRootService         HaRootServiceInterface
+	eventBus              events.EventBusInterface
+	disks                 *dto.DiskMap
+	shareService          ShareServiceInterface
+	lastDirtyHash         atomic.Value
+	haWg                  sync.WaitGroup
 }
 
 type broadcastEvent struct {
@@ -60,15 +63,17 @@ func NewBroadcasterService(
 ) (broker BroadcasterServiceInterface) {
 	// Instantiate a broker
 	b := &BroadcasterService{
-		ctx:           ctx,
-		relay:         broadcast.NewRelay[broadcastEvent](),
-		haService:     haService,
-		state:         state,
-		SentCounter:   atomic.Uint64{},
-		haRootService: haRootService,
-		eventBus:      eventBus,
-		disks:         disks,
-		shareService:  shareService,
+		ctx:                   ctx,
+		relay:                 broadcast.NewRelay[broadcastEvent](),
+		guaranteedRelay:       broadcast.NewRelay[broadcastEvent](),
+		haService:             haService,
+		state:                 state,
+		SentCounter:           atomic.Uint64{},
+		GuaranteedSentCounter: atomic.Uint64{},
+		haRootService:         haRootService,
+		eventBus:              eventBus,
+		disks:                 disks,
+		shareService:          shareService,
 	}
 
 	unsubscribe := b.setupEventListeners()
@@ -207,6 +212,32 @@ func (broker *BroadcasterService) BroadcastMessage(msg any) any {
 	return msg
 }
 
+// BroadcastGuaranteedMessage broadcasts a message over the guaranteed-delivery relay.
+// The dedicated relay has a larger listener buffer (100 vs 5), making it resistant to
+// overflow during bursty event sequences such as Samba restarts.
+// This should be used for critical messages that must not be silently dropped
+// (e.g., mDNS register/unregister notifications).
+func (broker *BroadcasterService) BroadcastGuaranteedMessage(msg any) any {
+	if msg == nil {
+		tlog.WarnContext(broker.ctx, "Attempted to broadcast nil guaranteed message")
+		return nil
+	}
+
+	if reflect.ValueOf(msg).Kind() == reflect.Ptr {
+		if reflect.ValueOf(msg).IsNil() {
+			tlog.WarnContext(broker.ctx, "Attempted to broadcast nil pointer guaranteed message", "type", fmt.Sprintf("%T", msg))
+			return msg
+		}
+	}
+
+	msg = dto.SanitizeWebEventData(msg)
+
+	tlog.TraceContext(broker.ctx, "Queued Guaranteed Message", "type", fmt.Sprintf("%T", msg), "msg", msg)
+	defer broker.GuaranteedSentCounter.Add(1)
+	broker.guaranteedRelay.Broadcast(broadcastEvent{ID: broker.GuaranteedSentCounter.Load(), Message: msg})
+	return msg
+}
+
 func (broker *BroadcasterService) sendToHomeAssistant(msg any) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -271,7 +302,11 @@ func (broker *BroadcasterService) ProcessWebSocketChannel(send ws.Sender) {
 	defer broker.ConnectedClients.Add(-1)
 
 	listener := broker.relay.Listener(5)
-	defer listener.Close() // Close the listener when done
+	defer listener.Close()
+
+	// Create a second listener on the guaranteed-delivery relay with a much larger buffer
+	guaranteedListener := broker.guaranteedRelay.Listener(100)
+	defer guaranteedListener.Close()
 
 	slog.DebugContext(broker.ctx, "WebSocket Connected client", "actual clients", broker.ConnectedClients.Load())
 
@@ -290,20 +325,42 @@ func (broker *BroadcasterService) ProcessWebSocketChannel(send ws.Sender) {
 			slog.InfoContext(broker.ctx, "WebSocket Process Closed", "err", broker.ctx.Err(), "active clients", broker.ConnectedClients.Load())
 			return
 		case event := <-listener.Ch():
-			// Filter out Home Assistant-specific events that shouldn't go to WebSocket clients
-			if dto.WebEventMap.IsValidEvent(event.Message) {
-				err := send(ws.Message{
-					ID:   int(event.ID),
-					Data: event.Message,
-				})
-				if err != nil {
-					if !strings.Contains(err.Error(), ": broken pipe") && !strings.Contains(err.Error(), "websocket: close sent") {
-						tlog.DebugContext(broker.ctx, "Error sending event to client", "event", event, "err", err, "active clients", broker.ConnectedClients.Load())
-					}
-					return
-				}
-			}
+			broker.dispatchEvent(send, event)
+		case event := <-guaranteedListener.Ch():
+			slog.InfoContext(broker.ctx, "DEBUG: Guaranteed relay received event",
+				"event_id", event.ID,
+				"event_type", fmt.Sprintf("%T", event.Message),
+				"msg", fmt.Sprintf("%+v", event.Message))
+			broker.dispatchEvent(send, event)
 		}
+	}
+}
+
+// dispatchEvent sends a single broadcast event to the WebSocket client if it is
+// a valid WebSocket-visible event type.
+func (broker *BroadcasterService) dispatchEvent(send ws.Sender, event broadcastEvent) {
+	if dto.WebEventMap.IsValidEvent(event.Message) {
+		err := send(ws.Message{
+			ID:   int(event.ID),
+			Data: event.Message,
+		})
+		if err != nil {
+			if !strings.Contains(err.Error(), ": broken pipe") && !strings.Contains(err.Error(), "websocket: close sent") {
+				slog.InfoContext(broker.ctx, "DEBUG: Error sending event to client",
+					"event_id", event.ID,
+					"event_type", fmt.Sprintf("%T", event.Message),
+					"err", err,
+					"active_clients", broker.ConnectedClients.Load())
+			}
+			return
+		}
+		slog.InfoContext(broker.ctx, "DEBUG: Successfully dispatched event to WS client",
+			"event_id", event.ID,
+			"event_type", fmt.Sprintf("%T", event.Message))
+	} else {
+		slog.InfoContext(broker.ctx, "DEBUG: Event filtered out (not valid WS event)",
+			"event_id", event.ID,
+			"event_type", fmt.Sprintf("%T", event.Message))
 	}
 }
 

@@ -57,6 +57,8 @@ func (c *ConfigToDtoConverterImpl) ConfigToSettings(source config.Config, target
 	target.HDIdleDefaultCommandType = dtoHdidleCommand
 	target.HDIdleDefaultPowerCondition = source.HDIdleDefaultPowerCondition
 	target.HDIdleIgnoreSpinDownDetection = source.HDIdleIgnoreSpinDownDetection
+	pBool6 := source.MDNSRegistration
+	target.MDNSRegistration = &pBool6
 	return nil
 }
 func (c *ConfigToDtoConverterImpl) ShareToMountPointData(source config.Share) (*dto.MountPointData, error) {

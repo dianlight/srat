@@ -93,6 +93,7 @@ type Config struct {
 	HDIdleDefaultCommandType      string `json:"hdd_idle_default_command_type,omitempty" default:"spindown"`
 	HDIdleDefaultPowerCondition   uint8  `json:"hdd_idle_default_power_condition,omitempty" default:"15"`
 	HDIdleIgnoreSpinDownDetection bool   `json:"hdd_idle_ignore_spin_down_detection,omitempty" default:"false"`
+	MDNSRegistration              bool   `json:"mdns_registration,omitempty" default:"false"`
 }
 
 // ReadConfigBuffer reads and parses a configuration file.

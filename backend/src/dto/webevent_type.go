@@ -16,6 +16,7 @@ const (
 	eventRepairCommand                         // "repair_command"
 	eventProblem                               // "problem"
 	eventAppConfigChanged                      // "app_config_changed"
+	eventMdnsRegister                          // "mdns_register"
 	eventCommandStarted                        // "command_started"
 	eventCommandOutput                         // "command_output"
 	eventCommandTerminated                     // "command_terminated"

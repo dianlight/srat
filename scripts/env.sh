@@ -2,9 +2,10 @@
 # Environment setup for SRAT build and test scripts
 # Sets common environment variables and functions
 
-#  API_URL
+#  API_URL and SUPERVISOR_ENDPOINT
 if [ -n "${SUPERVISOR_URL}" ]; then
 	export API_URL="${SUPERVISOR_URL%/}:3000/"
+	export SUPERVISOR_ENDPOINT="${SUPERVISOR_URL%/}"
 else
 	echo "WARN: Defaulting API_URL to http://localhost:3000/ - ensure this is correct for your environment"
 	export API_URL="http://localhost:3000/"
@@ -32,4 +33,11 @@ else
 		echo "ERROR: Unsupported architecture $(uname -m). Please set ARCH manually." >&2
 		exit 1
 	fi
+fi
+
+# SUPERVISOR_API_TOKEN
+if [ -n "${SUPERVISOR_TOKEN}" ]; then
+	export SUPERVISOR_API_TOKEN="${SUPERVISOR_TOKEN}"
+else
+	echo "WARN: SUPERVISOR_API_TOKEN not set - API calls may fail if authentication is required"
 fi

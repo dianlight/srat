@@ -101,6 +101,7 @@ custom_components/srat/
 - Use `self.async_set_unique_id(...)` + `self._abort_if_unique_id_configured()`
 - Define form schemas with `voluptuous` (`vol.Schema`)
 - Use `after_dependencies: ["hassio"]` in manifest (NOT `dependencies`) to avoid forcing hassio setup
+- For SRAT zeroconf ordering, prefer `after_dependencies: ["hassio", "zeroconf"]`; avoid `dependencies: ["zeroconf"]` because tests run with socket blocking and HA zeroconf setup will fail.
 
 ### Data Coordinator (`coordinator.py`)
 
@@ -223,6 +224,7 @@ mise run check         # Full check: format + lint + typecheck + test
 - `manifest.json` version: `0.0.0` in source, injected as `YYYY.MM.PATCH` at build time
 - HACS distribution: `hacs.json` at repo root with `zip_release: true`, `filename: srat.zip`
 - Use `after_dependencies: ["hassio"]` — never `dependencies: ["hassio"]`
+- For zeroconf integration ordering, use `after_dependencies` (e.g., `"zeroconf"`) and avoid `dependencies: ["zeroconf"]` to keep tests deterministic under blocked sockets.
 - `iot_class: local_push` (WebSocket push, no polling)
 - `integration_type: hub` (single integration managing multiple entities)
 

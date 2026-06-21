@@ -38,6 +38,7 @@ type webEventTypesContainer struct {
 	EVENTREPAIRCOMMAND     WebEventType
 	EVENTPROBLEM           WebEventType
 	EVENTAPPCONFIGCHANGED  WebEventType
+	EVENTMDNSREGISTER      WebEventType
 	EVENTCOMMANDSTARTED    WebEventType
 	EVENTCOMMANDOUTPUT     WebEventType
 	EVENTCOMMANDTERMINATED WebEventType
@@ -83,6 +84,9 @@ var WebEventTypes = webEventTypesContainer{
 	EVENTAPPCONFIGCHANGED: WebEventType{
 		webEventType: eventAppConfigChanged,
 	},
+	EVENTMDNSREGISTER: WebEventType{
+		webEventType: eventMdnsRegister,
+	},
 	EVENTCOMMANDSTARTED: WebEventType{
 		webEventType: eventCommandStarted,
 	},
@@ -115,6 +119,7 @@ func (w webEventTypesContainer) allSlice() []WebEventType {
 		WebEventTypes.EVENTREPAIRCOMMAND,
 		WebEventTypes.EVENTPROBLEM,
 		WebEventTypes.EVENTAPPCONFIGCHANGED,
+		WebEventTypes.EVENTMDNSREGISTER,
 		WebEventTypes.EVENTCOMMANDSTARTED,
 		WebEventTypes.EVENTCOMMANDOUTPUT,
 		WebEventTypes.EVENTCOMMANDTERMINATED,
@@ -216,6 +221,7 @@ var webEventTypesNameMap = map[string]WebEventType{
 	"repair_command":     WebEventTypes.EVENTREPAIRCOMMAND,
 	"problem":            WebEventTypes.EVENTPROBLEM,
 	"app_config_changed": WebEventTypes.EVENTAPPCONFIGCHANGED,
+	"mdns_register":      WebEventTypes.EVENTMDNSREGISTER,
 	"command_started":    WebEventTypes.EVENTCOMMANDSTARTED,
 	"command_output":     WebEventTypes.EVENTCOMMANDOUTPUT,
 	"command_terminated": WebEventTypes.EVENTCOMMANDTERMINATED,
@@ -272,6 +278,7 @@ var validWebEventTypes = map[WebEventType]bool{
 	WebEventTypes.EVENTREPAIRCOMMAND:     true,
 	WebEventTypes.EVENTPROBLEM:           true,
 	WebEventTypes.EVENTAPPCONFIGCHANGED:  true,
+	WebEventTypes.EVENTMDNSREGISTER:      true,
 	WebEventTypes.EVENTCOMMANDSTARTED:    true,
 	WebEventTypes.EVENTCOMMANDOUTPUT:     true,
 	WebEventTypes.EVENTCOMMANDTERMINATED: true,
@@ -375,7 +382,7 @@ func (w *WebEventType) UnmarshalYAML(by []byte) error {
 }
 
 // webeventtypeNames is a constant string slice containing all enum values cononical absolute names
-const webeventtypeNames = "helloupdatingvolumesheartbeatsharesdirty_data_trackersmart_test_statusfilesystem_taskerrorrepair_commandproblemapp_config_changedcommand_startedcommand_outputcommand_terminated"
+const webeventtypeNames = "helloupdatingvolumesheartbeatsharesdirty_data_trackersmart_test_statusfilesystem_taskerrorrepair_commandproblemapp_config_changedmdns_registercommand_startedcommand_outputcommand_terminated"
 
 // webeventtypeNamesMap is a map of enum values to their canonical absolute
 // name positions within the webeventtypeNames string slice
@@ -392,9 +399,10 @@ var webeventtypeNamesMap = map[WebEventType]string{
 	WebEventTypes.EVENTREPAIRCOMMAND:     webeventtypeNames[90:104],
 	WebEventTypes.EVENTPROBLEM:           webeventtypeNames[104:111],
 	WebEventTypes.EVENTAPPCONFIGCHANGED:  webeventtypeNames[111:129],
-	WebEventTypes.EVENTCOMMANDSTARTED:    webeventtypeNames[129:144],
-	WebEventTypes.EVENTCOMMANDOUTPUT:     webeventtypeNames[144:158],
-	WebEventTypes.EVENTCOMMANDTERMINATED: webeventtypeNames[158:176],
+	WebEventTypes.EVENTMDNSREGISTER:      webeventtypeNames[129:142],
+	WebEventTypes.EVENTCOMMANDSTARTED:    webeventtypeNames[142:157],
+	WebEventTypes.EVENTCOMMANDOUTPUT:     webeventtypeNames[157:171],
+	WebEventTypes.EVENTCOMMANDTERMINATED: webeventtypeNames[171:189],
 }
 
 // String implements the Stringer interface.
@@ -413,7 +421,7 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the goenums command to generate them again.
 	// Does not identify newly added constant values unless order changes
-	var x [15]struct{}
+	var x [16]struct{}
 	_ = x[eventHello]
 	_ = x[eventUpdating-1]
 	_ = x[eventVolumes-2]
@@ -426,7 +434,8 @@ func _() {
 	_ = x[eventRepairCommand-9]
 	_ = x[eventProblem-10]
 	_ = x[eventAppConfigChanged-11]
-	_ = x[eventCommandStarted-12]
-	_ = x[eventCommandOutput-13]
-	_ = x[eventCommandTerminated-14]
+	_ = x[eventMdnsRegister-12]
+	_ = x[eventCommandStarted-13]
+	_ = x[eventCommandOutput-14]
+	_ = x[eventCommandTerminated-15]
 }

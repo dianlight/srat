@@ -17,6 +17,7 @@ var WebEventMap = WebEventMapTypes{
 	WebEventTypes.EVENTREPAIRCOMMAND.String():     RepairCommandMessage{},
 	WebEventTypes.EVENTPROBLEM.String():           Problem{},
 	WebEventTypes.EVENTAPPCONFIGCHANGED.String():  AppConfigChangedNotification{},
+	WebEventTypes.EVENTMDNSREGISTER.String():      MdnsRegisterNotification{},
 	WebEventTypes.EVENTCOMMANDSTARTED.String():    CommandStartedNotification{},
 	WebEventTypes.EVENTCOMMANDOUTPUT.String():     CommandOutputNotification{},
 	WebEventTypes.EVENTCOMMANDTERMINATED.String(): CommandTerminatedNotification{},

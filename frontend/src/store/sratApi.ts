@@ -326,6 +326,13 @@ const injectedRtkApi = api
         query: () => ({ url: `/api/issues/template` }),
         providesTags: ["Issues"],
       }),
+      getApiMdnsEvents: build.query<
+        GetApiMdnsEventsApiResponse,
+        GetApiMdnsEventsApiArg
+      >({
+        query: () => ({ url: `/api/mdns_events` }),
+        providesTags: ["system", "internal"],
+      }),
       getApiNics: build.query<GetApiNicsApiResponse, GetApiNicsApiArg>({
         query: () => ({ url: `/api/nics` }),
         providesTags: ["system"],
@@ -945,6 +952,10 @@ export type GetApiIssuesTemplateApiResponse = /** status 200 OK */
   | IssueTemplateResponse
   | /** status default Error */ ErrorModel;
 export type GetApiIssuesTemplateApiArg = void;
+export type GetApiMdnsEventsApiResponse = /** status 200 OK */
+  | MdnsRegisterNotification
+  | /** status default Error */ ErrorModel;
+export type GetApiMdnsEventsApiArg = void;
 export type GetApiNicsApiResponse =
   | /** status 200 OK */ (InterfaceStat[] | null)
   | /** status default Error */ ErrorModel;
@@ -1811,6 +1822,13 @@ export type IssueTemplateResponse = {
   error?: string;
   template: IssueTemplate;
 };
+export type MdnsRegisterNotification = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  enabled: boolean;
+  hostname: string;
+  port: number;
+};
 export type InterfaceAddr = {
   addr: string;
 };
@@ -1864,6 +1882,7 @@ export type Settings = {
   hostname?: string;
   interfaces?: string[];
   local_master?: boolean;
+  mdns_registration?: boolean;
   multi_channel?: boolean;
   smart_mode?: Smart_mode;
   smb_over_quic?: boolean;
@@ -2231,6 +2250,7 @@ export const {
   useGetApiHostnameQuery,
   usePostApiIssuesReportMutation,
   useGetApiIssuesTemplateQuery,
+  useGetApiMdnsEventsQuery,
   useGetApiNicsQuery,
   useGetApiProblemsQuery,
   usePostApiProblemsMutation,

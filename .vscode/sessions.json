@@ -3,7 +3,7 @@
     "theme": "tribe",
     "active": "default",
     "activateOnStartup": true,
-    "keepExistingTerminals": false,
+    "keepExistingTerminals": true,
     "sessions": {
         "default": [
             {
@@ -11,7 +11,9 @@
                 "shellPath": "/bin/zsh",
                 "icon": "root-folder",
                 "autoExecuteCommands": true,
-                "commands": []
+                "commands": [
+                    "eval \"$(mise activate zsh --shims)\""
+                ]
             },
             {
                 "name": "backend",
@@ -19,6 +21,7 @@
                 "icon": "server-environment",
                 "autoExecuteCommands": true,
                 "commands": [
+                    "eval \"$(mise activate zsh --shims)\"",
                     "cd backend"
                 ]
             },
@@ -28,6 +31,7 @@
                 "icon": "browser",
                 "autoExecuteCommands": true,
                 "commands": [
+                    "eval \"$(mise activate zsh --shims)\"",
                     "cd frontend"
                 ]
             },
@@ -37,6 +41,7 @@
                 "icon": "extensions",
                 "autoExecuteCommands": true,
                 "commands": [
+                    "eval \"$(mise activate zsh --shims)\"",
                     "cd custom_components"
                 ]
             }

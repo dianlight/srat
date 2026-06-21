@@ -41,6 +41,7 @@ func (self *SystemHanler) RegisterSystemHanler(api huma.API) {
 	huma.Get(api, "/appconfig", self.HandleAppConfig, huma.OperationTags("system", "internal"))
 	huma.Get(api, "/command_output", self.HandleCommandOutput, huma.OperationTags("system", "internal"))
 	huma.Get(api, "/command_events", self.HandleCommandEvents, huma.OperationTags("system", "internal"))
+	huma.Get(api, "/mdns_events", self.HandleMdnsEvents, huma.OperationTags("system", "internal"))
 	huma.Get(api, "/nics", self.GetNICsHandler, huma.OperationTags("system"))
 	huma.Get(api, "/hostname", self.GetHostnameHandler, huma.OperationTags("system"))
 	huma.Get(api, "/capabilities", self.GetCapabilitiesHandler, huma.OperationTags("system"))
@@ -69,6 +70,15 @@ func (self *SystemHanler) HandleCommandEvents(ctx context.Context, input *struct
 	}
 }, error) {
 	return nil, huma.Error500InternalServerError("Use WebSocket for command events", nil)
+}
+
+// HandleMdnsEvents is a documentation-only stub that anchors the MdnsRegisterNotification
+// WebSocket event schema into the OpenAPI spec so it is code-generated into frontend TypeScript types.
+// Actual mDNS events are delivered over the WebSocket connection.
+func (self *SystemHanler) HandleMdnsEvents(ctx context.Context, input *struct{}) (*struct {
+	Body dto.MdnsRegisterNotification
+}, error) {
+	return nil, huma.Error500InternalServerError("Use WebSocket for mDNS events", nil)
 }
 
 func (self *SystemHanler) HandleCommandOutput(ctx context.Context, input *struct {
