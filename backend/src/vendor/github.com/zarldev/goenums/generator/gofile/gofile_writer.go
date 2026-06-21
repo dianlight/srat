@@ -110,6 +110,9 @@ func (g *Writer) writeEnumGenerationRequest(req enum.GenerationRequest) {
 	g.writeStringParsingMethod(req)
 	g.writeNumberParsingMethods(req)
 	g.writeExhaustiveFunction(req)
+	if !req.Configuration.Legacy {
+		g.writeMatchFunction(req)
+	}
 	g.writeIsValidFunction(req)
 	if req.Configuration.Handlers.JSON {
 		g.writeJSONMarshalMethod(req)
@@ -131,31 +134,8 @@ func (g *Writer) writeEnumGenerationRequest(req enum.GenerationRequest) {
 		g.writeYAMLMarshalMethod(req)
 		g.writeYAMLUnmarshalMethod(req)
 	}
-	if req.Configuration.Constraints {
-		g.writeConstraints(req)
-	}
 	g.writeStringMethod(req)
 	g.writeCompileCheck(req)
-}
-
-var (
-	constraintsStr = `
-	 
-	type float interface {
-		float32 | float64
-	}
-	type integer interface {
-		int | int8 | int16 | int32 | int64 | uint | uint8 | uint16 | uint32 | uint64 | uintptr
-	}
-	type number interface {
-		integer | float
-	}
-`
-	constraintsTemplate = template.Must(template.New("constraints").Parse(constraintsStr))
-)
-
-func (g *Writer) writeConstraints(rep enum.GenerationRequest) {
-	g.writeTemplate(constraintsTemplate, rep)
 }
 
 var (
@@ -818,9 +798,6 @@ func validEnumDefinitions(rep enum.GenerationRequest) []enumDefinition {
 		if len(aliases) == 0 {
 			aliases = append(aliases, e.Name)
 		}
-		if rep.Configuration.Insensitive {
-			aliases = lowercaseAliases(aliases)
-		}
 		edefs = append(edefs, enumDefinition{
 			EnumName:           e.Name,
 			EnumNameIdentifier: strings.ToUpper(e.Name),
@@ -863,9 +840,6 @@ func allEnumDefinitions(rep enum.GenerationRequest) []enumDefinition {
 		aliases := e.Aliases
 		if len(aliases) == 0 {
 			aliases = append(aliases, e.Name)
-		}
-		if rep.Configuration.Insensitive {
-			aliases = lowercaseAliases(aliases)
 		}
 		edefs = append(edefs, enumDefinition{
 			EnumName:           e.Name,
@@ -933,6 +907,81 @@ func (g *Writer) writeAllFunction(rep enum.GenerationRequest) {
 		Legacy:        rep.Configuration.Legacy,
 	}
 	g.writeTemplate(allFunctionTemplate, allData)
+}
+
+type matchFunctionData struct {
+	EnumType    string
+	MatcherName string
+	WrapperName string
+	Enums       []matchHandlerDefinition
+}
+
+type matchHandlerDefinition struct {
+	EnumNameIdentifier string
+	MethodName         string
+}
+
+var (
+	matchFunctionStr = `
+type {{ .MatcherName }} interface {
+    {{- range .Enums }}
+    {{ .MethodName }}()
+    {{- end }}
+}
+
+// Match{{.WrapperName}} dispatches to the matcher method for the given enum value.
+// The {{ .MatcherName }} interface provides compile-time exhaustiveness: when enum
+// values are added, removed, or renamed, existing matcher implementations stop
+// satisfying this interface until they are updated.
+func Match{{.WrapperName}}(en {{.WrapperName}}, matcher {{ .MatcherName }}) error {
+    if matcher == nil {
+        return fmt.Errorf("nil {{ .MatcherName }}")
+    }
+    switch en {
+    {{- range .Enums }}
+    case {{ $.EnumType }}.{{ .EnumNameIdentifier }}:
+        matcher.{{ .MethodName }}()
+    {{- end }}
+    default:
+        return fmt.Errorf("unhandled {{ .WrapperName }}: %v", en)
+    }
+    return nil
+}
+`
+	mustMatchFunctionStr = `
+// MustMatch{{.WrapperName}} dispatches to the matcher method for the given enum value.
+// It panics if matcher is nil or the enum value is not handled.
+func MustMatch{{.WrapperName}}(en {{.WrapperName}}, matcher {{ .MatcherName }}) {
+    if err := Match{{.WrapperName}}(en, matcher); err != nil {
+        panic(err)
+    }
+}
+`
+	matchFunctionTemplate     = template.Must(template.New("matchFunction").Parse(matchFunctionStr))
+	mustMatchFunctionTemplate = template.Must(template.New("mustMatchFunction").Parse(mustMatchFunctionStr))
+)
+
+func (g *Writer) writeMatchFunction(rep enum.GenerationRequest) {
+	enums := validEnumDefinitions(rep)
+	handlers := make([]matchHandlerDefinition, len(enums))
+	for i, e := range enums {
+		handlers[i] = matchHandlerDefinition{
+			EnumNameIdentifier: e.EnumNameIdentifier,
+			MethodName:         strings.Camel(e.EnumName),
+		}
+	}
+	d := matchFunctionData{
+		EnumType:    enumType(rep),
+		MatcherName: matcherName(rep.EnumIota.Type),
+		WrapperName: wrapperName(rep.EnumIota.Type),
+		Enums:       handlers,
+	}
+	g.writeTemplate(matchFunctionTemplate, d)
+	g.writeTemplate(mustMatchFunctionTemplate, d)
+}
+
+func matcherName(enumType string) string {
+	return wrapperName(enumType) + "Matcher"
 }
 
 type parseFunctionData struct {
@@ -1083,11 +1132,17 @@ func stringTo{{.WrapperName}}(s string) *{{.WrapperName}} {
 )
 
 func (g *Writer) writeStringParsingMethod(rep enum.GenerationRequest) {
+	enums := allEnumDefinitions(rep)
+	if rep.Configuration.Insensitive {
+		for i := range enums {
+			enums[i].Aliases = lowercaseAliases(enums[i].Aliases)
+		}
+	}
 	g.writeTemplate(parseStringFunctionTemplate, parseStringFunctionData{
 		WrapperName:     wrapperName(rep.EnumIota.Type),
 		EnumNameMap:     enumNameMap(rep.EnumIota.Type),
 		EnumType:        enumType(rep),
-		Enums:           allEnumDefinitions(rep),
+		Enums:           enums,
 		CaseInsensitive: rep.Configuration.Insensitive,
 	})
 }
@@ -1108,7 +1163,9 @@ var (
 // It returns a pointer to the {{.WrapperName}} representation of the enum value if the numeric value is valid
 // Otherwise, it returns nil
 {{- if .Constraints }}
-func numberTo{{.WrapperName}}[T number](num T) *{{.WrapperName}} {
+func numberTo{{.WrapperName}}[T interface {
+	int | int8 | int16 | int32 | int64 | uint | uint8 | uint16 | uint32 | uint64 | uintptr | float32 | float64
+}](num T) *{{.WrapperName}} {
 {{- else }}
 func numberTo{{.WrapperName}}[T constraints.Integer | constraints.Float](num T) *{{.WrapperName}} {
 {{- end }}
