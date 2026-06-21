@@ -161,6 +161,12 @@ export function HDIdleDiskSettings({
           : undefined,
       power_condition: Number(values.power_condition ?? 0),
       force_enabled: values.force_enabled,
+      // Server-managed fields — included to satisfy the required TypeScript
+      // type after omitempty removal. The PUT handler ignores these.
+      suggestion_ignored: false,
+      supported: false,
+      supports_ata: false,
+      supports_scsi: false,
     };
     try {
       await saveConfig({ diskId, hdIdleDevice: payload }).unwrap();

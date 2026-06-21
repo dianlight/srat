@@ -35,6 +35,14 @@ const (
 	//sgGetVersionNum = 0x2282
 )
 
+// ataProbeFn is used by CheckATASupport to probe whether a device supports
+// ATA PASS-THROUGH. It defaults to sgio.CheckAtaDevice which issues a
+// read-only CHECK POWER MODE command (0xE5) instead of sgio.StopAtaDevice
+// which issues STANDBY IMMEDIATE (0xE0) and physically spins down the disk.
+// The spindownDisk path (spindownDisk) still uses sgio.StopAtaDevice directly
+// because an intentional spindown is required there.
+var ataProbeFn = sgio.CheckAtaDevice
+
 // HDIdleServiceInterface provides methods for managing hard disk idle monitoring
 type HDIdleServiceInterface interface {
 	// Start begins monitoring disk activity and spinning down idle disks
@@ -516,7 +524,7 @@ func (s *HDIdleService) CheckATASupport(device string) bool {
 	// it likely supports ATA commands. Most modern SATA drives support both
 	// SCSI (via SAT - SCSI/ATA Translation) and native ATA commands.
 	device = fmt.Sprintf("/dev/%s", deviceName)
-	if err := sgio.StopAtaDevice(device, tlog.GetLevel() <= slog.LevelDebug); err != nil {
+	if err := ataProbeFn(device, tlog.GetLevel() <= slog.LevelDebug); err != nil {
 		if strings.Contains(err.Error(), "INVALID COMMAND OPERATION CODE") {
 			return false
 		}

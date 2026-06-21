@@ -53,7 +53,7 @@ func (h *HDIdleHandler) RegisterHDIdleHandler(api huma.API) {
 	huma.Get(api, "/disk/{disk_id}/hdidle/config", h.getConfig, huma.OperationTags("disk"))
 	huma.Put(api, "/disk/{disk_id}/hdidle/config", h.putConfig, huma.OperationTags("disk"))
 	huma.Get(api, "/disk/{disk_id}/hdidle/support", h.checkSupport, huma.OperationTags("disk"))
-	huma.Post(api, "/disk/{disk_id}/hdidle/ignore-suggestion", h.ignoreSuggestion, huma.OperationTags("disk"))
+	huma.Post(api, "/disk/{disk_id}/hdidle/ignore-suggestion", h.ignoreSuggestion, huma.OperationTags("disk", "volume"))
 }
 
 // requireLabMode returns 403 unless settings.experimental_lab_mode is true.

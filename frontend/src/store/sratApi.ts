@@ -3,6 +3,7 @@ export const addTagTypes = [
   "system",
   "internal",
   "disk",
+  "volume",
   "smart",
   "filesystems",
   "Issues",
@@ -10,7 +11,6 @@ export const addTagTypes = [
   "samba",
   "share",
   "user",
-  "volume",
 ] as const;
 const injectedRtkApi = api
   .enhanceEndpoints({
@@ -90,7 +90,7 @@ const injectedRtkApi = api
           url: `/api/disk/${queryArg.diskId}/hdidle/ignore-suggestion`,
           method: "POST",
         }),
-        invalidatesTags: ["disk"],
+        invalidatesTags: ["disk", "volume"],
       }),
       getApiDiskByDiskIdHdidleInfo: build.query<
         GetApiDiskByDiskIdHdidleInfoApiResponse,
@@ -1348,14 +1348,14 @@ export type HdIdleDevice = {
   disk_id?: string;
   enabled?: Enabled;
   error_message?: string;
-  force_enabled?: boolean;
+  force_enabled: boolean;
   idle_time: number;
   power_condition: number;
   recommended_command?: string;
-  suggestion_ignored?: boolean;
-  supported?: boolean;
-  supports_ata?: boolean;
-  supports_scsi?: boolean;
+  suggestion_ignored: boolean;
+  supported: boolean;
+  supports_ata: boolean;
+  supports_scsi: boolean;
 };
 export type JsonPatchOp = {
   /** JSON Pointer for the source of a move or copy */
@@ -1382,9 +1382,9 @@ export type HdIdleDeviceSupport = {
   device_path?: string;
   error_message?: string;
   recommended_command?: string;
-  supported?: boolean;
-  supports_ata?: boolean;
-  supports_scsi?: boolean;
+  supported: boolean;
+  supports_ata: boolean;
+  supports_scsi: boolean;
 };
 export type SmartHealthStatus = {
   /** A URL to the JSON Schema for this object. */

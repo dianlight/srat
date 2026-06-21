@@ -37,6 +37,18 @@ vi.mock("../../../../store/sratApi", async () => {
 
 // ---- Fixtures -------------------------------------------------------------
 
+const hdidleDevice = (overrides: Partial<import("../../../../store/sratApi").HdIdleDevice> = {}) => ({
+  idle_time: 0,
+  power_condition: 0,
+  enabled: Enabled.No,
+  force_enabled: false,
+  suggestion_ignored: false,
+  supported: false,
+  supports_ata: false,
+  supports_scsi: false,
+  ...overrides,
+});
+
 const rotationalDisk = (overrides: Partial<Disk> = {}): Disk => ({
   id: "ata-Some_HDD_1234",
   legacy_device_name: "sda",
@@ -86,11 +98,7 @@ describe("HDIdleSuggestionBadge", () => {
     render(
       <HDIdleSuggestionBadge
         disk={rotationalDisk({
-          hdidle_device: {
-            idle_time: 60,
-            power_condition: 0,
-            enabled: Enabled.Yes,
-          },
+          hdidle_device: hdidleDevice({ idle_time: 60, enabled: Enabled.Yes }),
         })}
       />,
     );
@@ -101,11 +109,7 @@ describe("HDIdleSuggestionBadge", () => {
     render(
       <HDIdleSuggestionBadge
         disk={rotationalDisk({
-          hdidle_device: {
-            idle_time: 120,
-            power_condition: 0,
-            enabled: Enabled.Custom,
-          },
+          hdidle_device: hdidleDevice({ idle_time: 120, enabled: Enabled.Custom }),
         })}
       />,
     );
@@ -116,12 +120,7 @@ describe("HDIdleSuggestionBadge", () => {
     render(
       <HDIdleSuggestionBadge
         disk={rotationalDisk({
-          hdidle_device: {
-            idle_time: 0,
-            power_condition: 0,
-            enabled: Enabled.No,
-            suggestion_ignored: true,
-          },
+          hdidle_device: hdidleDevice({ suggestion_ignored: true }),
         })}
       />,
     );
@@ -132,12 +131,7 @@ describe("HDIdleSuggestionBadge", () => {
     render(
       <HDIdleSuggestionBadge
         disk={rotationalDisk({
-          hdidle_device: {
-            idle_time: 0,
-            power_condition: 0,
-            enabled: Enabled.No,
-            suggestion_ignored: false,
-          },
+          hdidle_device: hdidleDevice({ suggestion_ignored: false }),
         })}
       />,
     );

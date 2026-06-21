@@ -15,11 +15,11 @@ type HDIdleDevice struct {
 	// SuggestionIgnored is true when the user has dismissed the dashboard's
 	// "Enable HDIdle" suggestion for this disk; the badge will not appear again
 	// until cleared. Read/write via the per-disk endpoints.
-	SuggestionIgnored bool `json:"suggestion_ignored,omitempty"`
+	SuggestionIgnored bool `json:"suggestion_ignored"`
 	// ForceEnabled is true when HDIdle was enabled on a non-rotational disk
 	// (SSD/NVMe) via the per-disk confirm dialog. Future loads of the per-disk
 	// settings card skip the warning when this flag is set.
-	ForceEnabled bool `json:"force_enabled,omitempty"`
+	ForceEnabled bool `json:"force_enabled"`
 }
 
 // HDIdleDeviceStatus represents the HD idle status for a single disk.
@@ -33,9 +33,9 @@ type HDIdleDeviceStatus struct {
 
 // HDIdleDeviceSupport represents the HD idle support status for a device
 type HDIdleDeviceSupport struct {
-	Supported          bool           `json:"supported,omitempty" readonly:"true"`           // Supported indicates if the device supports HD idle spindown commands
-	SupportsSCSI       bool           `json:"supports_scsi,omitempty" readonly:"true"`       // SupportsSCSI indicates if the device supports SCSI spindown commands
-	SupportsATA        bool           `json:"supports_ata,omitempty" readonly:"true"`        // SupportsATA indicates if the device supports ATA spindown commands
+	Supported          bool           `json:"supported" readonly:"true"`                     // Supported indicates if the device supports HD idle spindown commands
+	SupportsSCSI       bool           `json:"supports_scsi" readonly:"true"`                 // SupportsSCSI indicates if the device supports SCSI spindown commands
+	SupportsATA        bool           `json:"supports_ata" readonly:"true"`                  // SupportsATA indicates if the device supports ATA spindown commands
 	RecommendedCommand *HdidleCommand `json:"recommended_command,omitempty" readonly:"true"` // RecommendedCommand is the recommended command type for this device
 	DevicePath         string         `json:"device_path,omitempty" readonly:"true"`         // DevicePath is the resolved real path of the device
 	ErrorMessage       string         `json:"error_message,omitempty" readonly:"true"`       // ErrorMessage contains any error message if the device is not supported
