@@ -19,4 +19,5 @@ type Settings struct {
 	SMBoverQUIC                   *bool                  `json:"smb_over_quic,omitempty" default:"false"`
 	SmartMode                     SmartMode              `json:"smart_mode,omitempty" enum:"none,legacy,direct"`
 	ExperimentalLabMode           bool                   `json:"experimental_lab_mode"`
+	MDNSRegistration              *bool                  `json:"mdns_registration,omitempty" default:"false"`
 }

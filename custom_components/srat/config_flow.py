@@ -7,20 +7,21 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 import aiohttp
-
-if TYPE_CHECKING:
-    from homeassistant.components.hassio.discovery import HassioServiceInfo
-
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import voluptuous as vol
 
-from .connection import homeassistant_auth_headers, iter_connection_hosts
+if TYPE_CHECKING:
+    from homeassistant.components.hassio.discovery import HassioServiceInfo
+
+from .connection import homeassistant_auth_headers
 from .const import (
     ADDON_SLUG_WHITELIST,
     CONF_ADDON_SLUG,
     CONF_HOST,
+    CONF_HOST_AUTO,
     CONF_PORT,
+    CONF_PORT_AUTO,
     DEFAULT_HOST,
     DEFAULT_PORT,
     DOMAIN,
@@ -83,10 +84,10 @@ class SRATConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore[call-arg]
         if not slug or slug not in ADDON_SLUG_WHITELIST:
             return self.async_abort(reason="not_srat_addon")
 
-        config = discovery_info.config or {}
-        discovered_host = config.get("host", DEFAULT_HOST)
-        host = iter_connection_hosts(discovered_host, slug)[0]
-        port = config.get("port", DEFAULT_PORT)
+        # Store explicit "auto" markers so runtime setup resolves the active
+        # addon endpoint from Supervisor API (host+port can be dynamic).
+        host = CONF_HOST_AUTO
+        port = CONF_PORT_AUTO
 
         await self.async_set_unique_id(f"srat_{slug or host}")
         self._abort_if_unique_id_configured(updates={CONF_HOST: host, CONF_PORT: port})

@@ -63,7 +63,7 @@ depends = [
 ]
 alias = "install-remote"
 run = [
-    "rsync -rvuzP --del ./srat ${HOMEASSISTANT_IP}:/config/custom_components",
+    "rsync -rvzP --del ./srat ${HOMEASSISTANT_IP}:/config/custom_components",
     "ssh root@${HOMEASSISTANT_IP} -t 'ha core restart'",
     ]
 quiet = true

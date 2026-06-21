@@ -7,10 +7,13 @@ DOMAIN = "srat"
 CONF_HOST = "host"
 CONF_PORT = "port"
 CONF_ADDON_SLUG = "addon_slug"
+CONF_HOST_AUTO = "supervisor_auto"
+CONF_PORT_AUTO = 0
 
 DEFAULT_PORT = 8099
 DEFAULT_HOST = "localhost"
 SUPERVISOR_GATEWAY_HOST = "172.30.32.1"
+ADDON_API_PORT = 3000
 
 # Addon slugs that can be auto-discovered via the Supervisor API.
 # HA slug format: first 8 chars of SHA1(repo_url) + "_" + addon_name.

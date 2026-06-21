@@ -4,13 +4,13 @@
 package converter
 
 import (
-	smartmontoolsgo "github.com/dianlight/smartmontools-go"
+	types "github.com/dianlight/smartmontools-go/types"
 	dto "github.com/dianlight/srat/dto"
 )
 
 type SmartMonToolsToDtoImpl struct{}
 
-func (c *SmartMonToolsToDtoImpl) SmartMonToolsSmartInfoToSmartInfo(source *smartmontoolsgo.SMARTInfo) (*dto.SmartInfo, error) {
+func (c *SmartMonToolsToDtoImpl) SmartMonToolsSmartInfoToSmartInfo(source *types.SMARTInfo) (*dto.SmartInfo, error) {
 	var pDtoSmartInfo *dto.SmartInfo
 	if source != nil {
 		var dtoSmartInfo dto.SmartInfo
@@ -40,7 +40,7 @@ func (c *SmartMonToolsToDtoImpl) SmartMonToolsSmartInfoToSmartInfo(source *smart
 	}
 	return pDtoSmartInfo, nil
 }
-func (c *SmartMonToolsToDtoImpl) SmartMonToolsSmartInfoToSmartStatus(source *smartmontoolsgo.SMARTInfo) (*dto.SmartStatus, error) {
+func (c *SmartMonToolsToDtoImpl) SmartMonToolsSmartInfoToSmartStatus(source *types.SMARTInfo) (*dto.SmartStatus, error) {
 	var pDtoSmartStatus *dto.SmartStatus
 	if source != nil {
 		var dtoSmartStatus dto.SmartStatus
@@ -99,14 +99,14 @@ func (c *SmartMonToolsToDtoImpl) SmartMonToolsSmartInfoToSmartStatus(source *sma
 	}
 	return pDtoSmartStatus, nil
 }
-func (c *SmartMonToolsToDtoImpl) smartMonToolsPowerOnTimeToSmartRangeValue(source *smartmontoolsgo.PowerOnTime) (dto.SmartRangeValue, error) {
+func (c *SmartMonToolsToDtoImpl) smartMonToolsPowerOnTimeToSmartRangeValue(source *types.PowerOnTime) (dto.SmartRangeValue, error) {
 	var dtoSmartRangeValue dto.SmartRangeValue
 	if source != nil {
 		dtoSmartRangeValue.Value = (*source).Hours
 	}
 	return dtoSmartRangeValue, nil
 }
-func (c *SmartMonToolsToDtoImpl) smartMonToolsTemperatureToSmartTempValue(source *smartmontoolsgo.Temperature) (dto.SmartTempValue, error) {
+func (c *SmartMonToolsToDtoImpl) smartMonToolsTemperatureToSmartTempValue(source *types.Temperature) (dto.SmartTempValue, error) {
 	var dtoSmartTempValue dto.SmartTempValue
 	if source != nil {
 		dtoSmartTempValue.Value = (*source).Current

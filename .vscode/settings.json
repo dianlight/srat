@@ -168,7 +168,7 @@
 	"todo-tree.tree.showCountsInTree": true,
 	"biome.lsp.bin": "/root/.local/share/mise/shims/biome",
 	"todo-tree.highlights.useColourScheme": true,
-	"chat.planAgent.defaultModel": "Auto (copilot)",
+	"chat.planAgent.defaultModel": "",
 	"chat.editing.explainChanges.enabled": true,
 	"chat.unifiedAgentsBar.enabled": true,
 	"chat.restoreLastPanelSession": true,
@@ -224,7 +224,7 @@
 	"github.copilot.chat.rateLimitAutoSwitchToAuto": true,
 	"mise.configureExtensionsAutomatically": true,
 	"bun.runtime": "/root/.local/share/mise/shims/bun",
-	"go.goroot": "/root/.local/share/mise/installs/go/1.26.3",
+	"go.goroot": "/root/.local/share/mise/installs/go/1.26.4",
 	"go.alternateTools": {
 		"go": "/root/.local/share/mise/shims/go",
 		"gopls": "/root/.local/share/mise/shims/gopls",
@@ -255,5 +255,6 @@
 		"https://opencode.ai/": true
 	},
 	"python.defaultInterpreterPath": "/root/.local/share/mise/installs/python/3.14.5/bin/python",
-	"bun.test.enable": false
+	"bun.test.enable": false,
+	"vale.vocabPath": ".vale/styles/config/vocabularies/SRAT"
 }

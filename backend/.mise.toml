@@ -7,7 +7,6 @@ air = '1.65.3'
 "npm:@redocly/cli" = "2.34.0"
 oapi-codegen = "2.7.1"
 
-
 [tasks]
 clean = "go -C src clean && rm -rf dist"
 dev = "SRAT_DEVMODE=true go tool -C src air -c .air.toml"
@@ -159,6 +158,54 @@ depends = [
    { task = "clean" },
 ]
 run = [
+  '''
+    set +x +e
+
+    RESOLVED_VERSION="{{ usage.version | default(value='') }}"
+    case "$RESOLVED_VERSION" in
+      false|true|null|none)
+        RESOLVED_VERSION=""
+        ;;
+    esac
+
+    if [ -z "$RESOLVED_VERSION" ]; then
+      if command -v ha >/dev/null 2>&1; then
+        echo "Attempting to resolve version from Home Assistant CLI..."
+        if ha info >/dev/null 2>&1; then
+          REMOTE_VERSION=$(ha apps info local_sambanas2 2>/dev/null \
+            | sed -nE 's/^[[:space:]]*version:[[:space:]]*v?([^[:space:]]+).*/\1/p' \
+            | head -n1)
+
+          if [ -n "$REMOTE_VERSION" ]; then
+            RESOLVED_VERSION="$REMOTE_VERSION"
+            echo "Using remote addon version from Home Assistant: $RESOLVED_VERSION"
+          fi
+        fi
+      fi
+    fi
+
+    if [ -z "$RESOLVED_VERSION" ]; then
+      RESOLVED_VERSION="${VERSION:-}"
+      case "$RESOLVED_VERSION" in
+        false|true|null|none)
+          RESOLVED_VERSION=""
+          ;;
+      esac
+      if [ -n "$RESOLVED_VERSION" ]; then
+        echo "Using VERSION env fallback: $RESOLVED_VERSION"
+      fi
+    fi
+
+    if [ -z "$RESOLVED_VERSION" ]; then
+      echo "ERROR: Could not resolve build version. Provide --version, or ensure ha can connect using HA_ENDPOINT/HOMEASSISTANT_ENDPOINT and HA_TOKEN/HOMEASSISTANT_TOKEN, or set VERSION env as fallback."
+      exit 1
+    fi
+
+    mise //backend:build -- --arch=x86_64 --pprof --version="$RESOLVED_VERSION"
+
+    [ -n "${HOMEASSISTANT_IP}" ] || (echo "HOMEASSISTANT_IP is not set" && exit 1)
+    rsync -avz --progress ./dist/x86_64/srat-cli ./dist/x86_64/srat-server ${HOMEASSISTANT_IP}:/addon_configs/local_sambanas2/upgrade/
+  ''',
   '[ -n "${HOMEASSISTANT_IP}" ] || (echo "HOMEASSISTANT_IP is not set" && exit 1)',
   '''
   variant="{{usage.variant}}"
@@ -192,7 +239,7 @@ run = [
   esac
   '''
 ]
-quiet = true
+#quiet = true
 
 [tasks."build:all"]
 description = "Build binaries for all supported architectures (x86_64 and aarch64) in three variants: static (srat-server-static, srat-cli), musl dynamic (srat-server-musl via zig), and glibc dynamic (srat-server-glib via CGO). The srat-server symlink points to srat-server-static by default; the upgrade process updates it to the best variant for the running system."

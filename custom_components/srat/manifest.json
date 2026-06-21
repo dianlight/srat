@@ -1,14 +1,21 @@
 {
   "domain": "srat",
   "name": "SRAT - SambaNAS REST Administration Tool",
-  "after_dependencies": ["hassio"],
-  "codeowners": ["@dianlight"],
+  "after_dependencies": [
+    "hassio",
+    "zeroconf"
+  ],
+  "codeowners": [
+    "@dianlight"
+  ],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/dianlight/srat/blob/main/docs/HOME_ASSISTANT_INTEGRATION.md",
   "integration_type": "hub",
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/dianlight/srat/issues",
-  "requirements": ["aiohttp>=3.9.0"],
+  "requirements": [
+    "aiohttp>=3.9.0"
+  ],
   "version": "0.0.0"
 }
