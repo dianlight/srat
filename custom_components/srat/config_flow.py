@@ -14,7 +14,7 @@ import voluptuous as vol
 if TYPE_CHECKING:
     from homeassistant.components.hassio.discovery import HassioServiceInfo
 
-from .connection import homeassistant_auth_headers, iter_connection_hosts
+from .connection import homeassistant_auth_headers
 from .const import (
     ADDON_SLUG_WHITELIST,
     CONF_ADDON_SLUG,
@@ -83,10 +83,6 @@ class SRATConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore[call-arg]
         slug = discovery_info.slug
         if not slug or slug not in ADDON_SLUG_WHITELIST:
             return self.async_abort(reason="not_srat_addon")
-
-        config = discovery_info.config or {}
-        discovered_host = config.get("host", DEFAULT_HOST)
-        host = iter_connection_hosts(discovered_host, slug)[0]
 
         # Store explicit "auto" markers so runtime setup resolves the active
         # addon endpoint from Supervisor API (host+port can be dynamic).

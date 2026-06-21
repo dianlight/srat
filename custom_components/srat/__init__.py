@@ -198,6 +198,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: SRATConfigEntry) -> bool
 
     # mDNS / Zeroconf registration state — tracks the currently registered ServiceInfo
     _mdns_registered_info: ServiceInfo | None = None
+    _mdns_lock = asyncio.Lock()
 
     async def _register_mdns(info: ServiceInfo) -> None:
         """Register a Zeroconf ServiceInfo with Home Assistant's shared zeroconf."""
@@ -229,38 +230,39 @@ async def async_setup_entry(hass: HomeAssistant, entry: SRATConfigEntry) -> bool
         async def _apply() -> None:
             nonlocal _mdns_registered_info
 
-            # Unregister any previously registered service
-            if _mdns_registered_info is not None:
+            async with _mdns_lock:
+                # Unregister any previously registered service
+                if _mdns_registered_info is not None:
+                    try:
+                        await _unregister_mdns(_mdns_registered_info)
+                    except Exception:
+                        _LOGGER.debug("mDNS: unregister failed (may already be gone)")
+                    _mdns_registered_info = None
+
+                if not enabled or not hostname:
+                    return
+
+                # Resolve an IPv4 address for the service advertisement.
+                # Prefer the HA API local IP; fall back to the resolved SRAT host.
+                raw_ip = getattr(hass.config.api, "local_ip", None) or resolved_host
                 try:
-                    await _unregister_mdns(_mdns_registered_info)
+                    packed_ip = socket.inet_aton(str(raw_ip))
+                except OSError:
+                    _LOGGER.warning("mDNS: cannot convert IP %r to packed form", raw_ip)
+                    return
+
+                info = ServiceInfo(
+                    type_=service_type,
+                    name=service_name,
+                    addresses=[packed_ip],
+                    port=port,
+                    properties={"path": "/"},
+                )
+                try:
+                    await _register_mdns(info)
+                    _mdns_registered_info = info
                 except Exception:
-                    _LOGGER.debug("mDNS: unregister failed (may already be gone)")
-                _mdns_registered_info = None
-
-            if not enabled or not hostname:
-                return
-
-            # Resolve an IPv4 address for the service advertisement.
-            # Prefer the HA API local IP; fall back to the resolved SRAT host.
-            raw_ip = getattr(hass.config.api, "local_ip", None) or resolved_host
-            try:
-                packed_ip = socket.inet_aton(str(raw_ip))
-            except OSError:
-                _LOGGER.warning("mDNS: cannot convert IP %r to packed form", raw_ip)
-                return
-
-            info = ServiceInfo(
-                type_=service_type,
-                name=service_name,
-                addresses=[packed_ip],
-                port=port,
-                properties={"path": "/"},
-            )
-            try:
-                await _register_mdns(info)
-                _mdns_registered_info = info
-            except Exception:
-                _LOGGER.exception("mDNS: failed to register %s", service_name)
+                    _LOGGER.exception("mDNS: failed to register %s", service_name)
 
         hass.async_create_task(_apply())
 

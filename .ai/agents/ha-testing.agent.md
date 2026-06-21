@@ -10,7 +10,7 @@ tools:
   agent: true
   todo: true
   github/*: true
-argument-hint: "Command: 'full suite' | 'resume' | 'status' | 'skip <test-id>' | 'test <category>' | 'report issue <description>'"
+argument-hint: "Command: 'full suite' | 'resume' | 'status' | 'stop' | 'skip <test-id>' | 'test <category>' | 'rerun <test-id>' | 'mark known <test-id> #<issue>' | 'report issue <description>'"
 temperature: 0.8
 ---
 

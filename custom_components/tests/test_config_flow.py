@@ -9,8 +9,9 @@ import aiohttp
 try:
     from homeassistant.components.hassio.discovery import HassioServiceInfo
 except ImportError:  # pragma: no cover - fallback for older HA versions
-    # type: ignore[attr-defined,no-redef]
-    from homeassistant.components.hassio import HassioServiceInfo
+    from homeassistant.components.hassio import (  # type: ignore[attr-defined,no-redef]
+        HassioServiceInfo,
+    )
 from homeassistant.config_entries import SOURCE_HASSIO, SOURCE_USER
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
