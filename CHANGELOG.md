@@ -31,6 +31,7 @@
     The goroutine is never started when zero disks are enabled.
   - **readOnly threading**: the per-disk settings card now correctly propagates
     the `readOnly` flag from `VolumeDetailsPanel`.
+- **mDNS Registration**: Added optional mDNS registration of the SRAT service for local network discovery. When enabled, the backend registers a `_srat._tcp` service with the system mDNS responder, advertising the service name, port, and metadata. This allows compatible clients to discover the SRAT service on the local network without manual configuration. The feature is controlled by a new `MDNSRegistration` boolean setting in the advanced settings section.
 
 ### 🐛 Bug Fixes
 
@@ -80,7 +81,6 @@
   sync. Three hand-edited generated files (`config_to_dto_conv_gen.go`,
   `dto_to_dbom_conv_gen.go`, `g/hdidle_device_config.go`) are aligned with their
   source directives — a `go generate ./...` run will produce the same output.
-- **mDNS Registration**: Added optional mDNS registration of the SRAT service for local network discovery. When enabled, the backend registers a `_srat._tcp` service with the system mDNS responder, advertising the service name, port, and metadata. This allows compatible clients to discover the SRAT service on the local network without manual configuration. The feature is controlled by a new `MDNSRegistration` boolean setting in the advanced settings section.
 
 ### 🔧 Maintenance
 
