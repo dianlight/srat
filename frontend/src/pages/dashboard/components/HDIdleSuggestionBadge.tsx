@@ -69,9 +69,9 @@ export const HDIdleSuggestionBadge: React.FC<HDIdleSuggestionBadgeProps> = ({
     if (!disk.id) return;
     try {
       await ignoreSuggestion({ diskId: disk.id }).unwrap();
-    } catch {
-      // Errors are non-fatal: if the dismissal fails, the badge will simply
-      // reappear on next load. Logging is left to the global error boundary.
+    } catch (err) {
+      // Non-fatal: if the dismissal fails the badge reappears on next load.
+      console.warn("[HDIdleSuggestionBadge] ignore-suggestion failed:", err);
     }
   };
 

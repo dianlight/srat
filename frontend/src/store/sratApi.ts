@@ -2181,6 +2181,7 @@ export enum Supported_events {
   RepairCommand = "repair_command",
   Problem = "problem",
   AppConfigChanged = "app_config_changed",
+  MdnsRegister = "mdns_register",
   CommandStarted = "command_started",
   CommandOutput = "command_output",
   CommandTerminated = "command_terminated",

@@ -75,7 +75,6 @@
     "react-intersection-observer": "^10.0.3",
     "react-redux": "^9.3.0",
     "react-router": "^7.15.1",
-    "react-router-dom": "^7.15.1",
     "react-syntax-highlighter": "^16.1.1",
     "react-toastify": "^11.1.0",
     "refractor": "^5.0.0",

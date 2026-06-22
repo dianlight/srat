@@ -47,7 +47,17 @@
       "Bash(echo \"exit: $?\")",
       "Bash(xargs grep -l \"AutoMigrate\\\\|goose\\\\|migration\")",
       "Bash(echo \"exit:$?\")",
-      "PowerShell(wsl -d Ubuntu-26.04 bash -c \"echo 'USERPROFILE=['\"'\"'$USERPROFILE'\"'\"']' ; echo 'HOME=['\"'\"'$HOME'\"'\"']' ; echo 'HTTPS_PROXY=['\"'\"'${HTTPS_PROXY:-}'\"'\"']' ; echo 'https_proxy=['\"'\"'${https_proxy:-}'\"'\"']' ; which pkl 2>/dev/null || echo 'pkl: not on PATH' ; ls ~/.pkl/cache/ 2>/dev/null ; ls ~/.pkl/cache/tmp/ 2>/dev/null | head -10\")"
+      "PowerShell(wsl -d Ubuntu-26.04 bash -c \"echo 'USERPROFILE=['\"'\"'$USERPROFILE'\"'\"']' ; echo 'HOME=['\"'\"'$HOME'\"'\"']' ; echo 'HTTPS_PROXY=['\"'\"'${HTTPS_PROXY:-}'\"'\"']' ; echo 'https_proxy=['\"'\"'${https_proxy:-}'\"'\"']' ; which pkl 2>/dev/null || echo 'pkl: not on PATH' ; ls ~/.pkl/cache/ 2>/dev/null ; ls ~/.pkl/cache/tmp/ 2>/dev/null | head -10\")",
+      "Bash(gh pr *)",
+      "Bash(gh run *)",
+      "Bash(python3 -c \"import json,sys; jobs=json.load\\(sys.stdin\\)['jobs']; [print\\(j['name'], j['conclusion'], j.get\\('url',''\\)\\) for j in jobs]\")",
+      "Bash(gh api *)",
+      "Bash(git -C /home/uga06422/Sources/srat log --oneline feat/hdidle-per-disk-rework...origin/feat/hdidle-per-disk-rework)",
+      "Bash(python3 -c \"import json,sys; comments=json.load\\(sys.stdin\\); [print\\(f'File: {c[\\\\\"path\\\\\"]}\\\\nLine: {c.get\\(\\\\\"line\\\\\",\\\\\"?\\\\\"\\)} \\({c.get\\(\\\\\"side\\\\\",\\\\\"?\\\\\"\\)}\\)\\\\nAuthor: {c[\\\\\"user\\\\\"][\\\\\"login\\\\\"]}\\\\nBody: {c[\\\\\"body\\\\\"]}\\\\n---'\\) for c in comments]\")",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('BODY:\\\\n', d['body'][:3000]\\)\")",
+      "Bash(python3 -c ' *)",
+      "mcp__plugin_github_github__search_pull_requests",
+      "Bash(git fetch *)"
     ]
   },
   "enabledMcpjsonServers": [
