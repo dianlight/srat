@@ -27,7 +27,7 @@ jobs:
         with:
           model: opencode/deepseek-v4-flash-free
           share: true
-          use_github_token: true
+          #use_github_token: true
           prompt: |
             Act as an expert Senior Software Engineer and Code Reviewer. Review this pull request thoroughly based strictly on the provided diff and its immediate context.
 
