@@ -32,7 +32,7 @@
     "@vitejs/plugin-react": "6.0.2",
     "@vitest/browser-playwright": "4.1.9",
     "@vitest/coverage-v8": "4.1.9",
-    "fastify-plugin": "5.1.0",
+    "fastify-plugin": "6.0.0",
     "msw": "2.14.6",
     "msw-auto-mock": "0.32.1",
     "vitest": "4.1.9",
