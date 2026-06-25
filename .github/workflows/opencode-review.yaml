@@ -34,7 +34,10 @@ jobs:
 
             Follow these strict directives:
 
-            1. **Targeted Comments & Suggestions:** Apply your feedback directly to the specific changed files and lines. When proposing a concrete code change, do not just leave a plain text comment; instead, open a formal change request using GitHub's suggestion blocks (```suggestion ... ```) to initiate a focused discussion that the author can easily review or commit.
+            0. **Self-assign as Reviewer:** Before leaving any comments, request yourself as a reviewer on this PR using the GitHub API:
+               `gh api repos/{owner}/{repo}/pulls/{pr_number}/requested_reviewers -X POST -f "reviewers[]=opencode[bot]"` (replace placeholders with actual values from the PR context). If the self-assignment fails, proceed with the review anyway.
+
+            1. **Targeted Comments & Suggestions — use GitHub inline review comments only:** Apply all feedback as inline review comments on the specific diff lines, using the GitHub pull request review API (create a pending review, add inline comments, then submit it). Do NOT post top-level PR comments. When proposing a concrete code change, use GitHub suggestion blocks (```suggestion ... ```) inside the inline comment so the author can commit the fix directly.
 
             2. **Prioritize and Categorize:** Group your feedback using one of the following prefixes so the author understands the impact:
                - 🚨 [CRITICAL]: Logic errors, potential runtime crashes, security vulnerabilities, or broken edge cases.
