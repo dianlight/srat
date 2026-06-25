@@ -8,7 +8,8 @@ jobs:
   review:
     if: |
       !contains(github.event.pull_request.user.login, 'renovate') &&
-      !contains(github.event.pull_request.user.login, 'dependabot')
+      !contains(github.event.pull_request.user.login, 'dependabot') &&
+      !contains(github.actor, '[bot]')
     runs-on: ubuntu-latest
     permissions:
       id-token: write

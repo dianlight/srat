@@ -219,7 +219,7 @@ ensure_pkl_cache() {
 
 	# 2. Package zip (URL taken from the metadata to stay in sync with PKL's own logic).
 	local zip_url
-	zip_url="$(python3 -c "import sys,json; print(json.load(open('${meta_file}'))['packageZipUrl'])" 2>/dev/null ||
+	zip_url="$(python3 -c "import sys,json; print(json.load(sys.stdin)['packageZipUrl'])" <"${meta_file}" 2>/dev/null ||
 		echo "${base_url}/${pkg_name}.zip")"
 	print_status "info" "Downloading PKL package zip..."
 	local zip_file="${pkg_dir}/${pkg_name}.zip"
