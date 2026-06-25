@@ -671,10 +671,10 @@ func (s *HDIdleService) convertConfig() (*internalConfig, errors.E) {
 
 	// SkewTime is the threshold for detecting OS suspend/sleep events: when
 	// the gap between two ticks exceeds it, updateDiskState resets the disk's
-	// idle counters. It must be strictly greater than hdidleActiveInterval (60s)
-	// so that normal poll ticks are never misidentified as a suspend/wake event.
-	// We use 3× the active interval (180s) as a comfortable margin.
-	intConfig.SkewTime = hdidleActiveInterval * 3
+	// idle counters. It must exceed hdidleDormantInterval (300s) so that normal
+	// dormant-mode ticks are never misidentified as a suspend/wake event and
+	// do not wastefully trigger an active-poll cycle.
+	intConfig.SkewTime = hdidleDormantInterval * 2
 
 	return intConfig, nil
 }

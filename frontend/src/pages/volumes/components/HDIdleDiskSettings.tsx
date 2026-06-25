@@ -170,8 +170,8 @@ export function HDIdleDiskSettings({
     };
     try {
       await saveConfig({ diskId, hdIdleDevice: payload }).unwrap();
-    } catch {
-      // Errors surface through the global error boundary.
+    } catch (err) {
+      console.warn("[HDIdleDiskSettings] save failed:", err);
     }
   };
 
