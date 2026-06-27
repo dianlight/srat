@@ -42,8 +42,9 @@ HK_MISE = 1
 _.source = { path = "scripts/env.sh", tools = true }
 
 [hooks]
-# Automatically install/update hooks when tools are installed
-postinstall = "hk install --mise"
+# Pre-cache the hk PKL package (best-effort) then wire the git hook.
+# setup-pkl-proxy.sh must never fail postinstall, hence `|| true`.
+postinstall = "./scripts/setup-pkl-proxy.sh || true; hk install --mise"
 
 [tasks]
 docs = "mise run docs-toc && mise run docs-fix && mise run docs-validate"
@@ -55,6 +56,10 @@ clean-local-branches = "scripts/cleanup-old-local-branches.sh"
 clean-local-branches-dry = "scripts/cleanup-old-local-branches.sh --dry"
 clean-local-tags = "scripts/cleanup-old-local-tags.sh"
 clean-local-tags-dry = "scripts/cleanup-old-local-tags.sh --dry"
+
+[tasks.setup-pkl-proxy]
+description = "Pre-cache the hk PKL package so `hk install --mise` works behind a corporate proxy."
+run = "./scripts/setup-pkl-proxy.sh"
 
 [tasks.pre-commit]
 run = "hk run pre-commit"

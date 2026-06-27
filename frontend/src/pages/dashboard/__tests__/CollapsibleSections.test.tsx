@@ -1,7 +1,7 @@
 import { render, within } from "@testing-library/react";
 import React from "react";
 import { Provider } from "react-redux";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createTestStore } from "/test/testing";
 import { DashboardMetrics } from "../DashboardMetrics";

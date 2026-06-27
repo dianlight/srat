@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service/filesystem"
 	"github.com/stretchr/testify/suite"
 )
@@ -113,23 +114,29 @@ func (suite *NtfsAdapterTestSuite) TestGetState_MountedWithoutCachedState_Assume
 
 func (suite *NtfsAdapterTestSuite) TestGetState_MountedWithCachedState_ReturnsLastUnmountedState() {
 	device := "/dev/sdb1"
-	mounted := false
+
+	// Pre-populate the cache with a known unmounted state. We do this via
+	// the test-injection helper rather than by running the real ntfsfix
+	// command, which requires root and may not be present in CI.
+	injectedState := dto.FilesystemState{
+		IsMounted:        false,
+		IsClean:          true,
+		HasErrors:        false,
+		StateDescription: "Clean",
+		AdditionalInfo:   map[string]any{"stateSource": "injected_for_test"},
+	}
+	suite.ntfsAdapter.SetLastUnmountedStateForTesting(device, injectedState)
 
 	suite.cleanMount = suite.ntfsAdapter.SetIsDeviceMountedForTesting(func(mountedDevice string) bool {
-		return mounted && mountedDevice == device
+		return mountedDevice == device
 	})
 
-	stateWhenUnmounted, err := suite.adapter.GetState(suite.ctx, device)
-	suite.NoError(err)
-	suite.False(stateWhenUnmounted.IsMounted)
-
-	mounted = true
 	stateWhenMounted, err := suite.adapter.GetState(suite.ctx, device)
 	suite.NoError(err)
 
 	suite.True(stateWhenMounted.IsMounted)
-	suite.Equal(stateWhenUnmounted.IsClean, stateWhenMounted.IsClean)
-	suite.Equal(stateWhenUnmounted.HasErrors, stateWhenMounted.HasErrors)
+	suite.Equal(injectedState.IsClean, stateWhenMounted.IsClean)
+	suite.Equal(injectedState.HasErrors, stateWhenMounted.HasErrors)
 	suite.Equal("cached_unmounted_state", stateWhenMounted.AdditionalInfo["stateSource"])
 	suite.Contains(stateWhenMounted.StateDescription, "Mounted (last known:")
 }

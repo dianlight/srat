@@ -11,43 +11,83 @@ import (
 )
 
 type HDIdleHandler struct {
-	hdidleService service.HDIdleServiceInterface
-	converter     converter.DtoToDbomConverter
+	hdidleService   service.HDIdleServiceInterface
+	hardwareService service.HardwareServiceInterface
+	settingService  service.SettingServiceInterface
+	converter       converter.DtoToDbomConverter
 }
 
 type HDIdleHandlerParams struct {
 	fx.In
-	HDIdleService service.HDIdleServiceInterface
+	HDIdleService   service.HDIdleServiceInterface
+	HardwareService service.HardwareServiceInterface
+	SettingService  service.SettingServiceInterface
 }
 
 func NewHDIdleHandler(params HDIdleHandlerParams) *HDIdleHandler {
 	return &HDIdleHandler{
-		hdidleService: params.HDIdleService,
-		converter:     &converter.DtoToDbomConverterImpl{},
+		hdidleService:   params.HDIdleService,
+		hardwareService: params.HardwareService,
+		settingService:  params.SettingService,
+		converter:       &converter.DtoToDbomConverterImpl{},
 	}
 }
 
 // RegisterHDIdleHandler registers the HTTP handlers for HDIdle-related operations.
-// It sets up the following routes:
-// - POST /hdidle/start: Start the HDIdle monitoring service.
-// - POST /hdidle/stop: Stop the HDIdle monitoring service.
-// - GET /disk/{disk_id}/hdidle/info: Get HDIdle status for a specific disk.
-// - GET /disk/{disk_id}/hdidle/config: Get HDIdle configuration for a specific disk.
-// - PUT /disk/{disk_id}/hdidle/config: Update HDIdle configuration for a specific disk.
-// - GET /disk/{disk_id}/hdidle/support: Check if a disk supports HDIdle spindown commands.
 //
-// Parameters:
-// - api: The huma.API instance to register the handlers with.
+// All routes are gated by Lab Mode (settings.experimental_lab_mode): when
+// disabled, every endpoint returns 403 Forbidden. The previous global
+// /hdidle/start and /hdidle/stop endpoints have been removed — the service
+// is now driven exclusively by per-disk records.
+//
+// Routes (all require Lab Mode):
+//   - GET    /disk/{disk_id}/hdidle/info               — current spin status
+//   - GET    /disk/{disk_id}/hdidle/config             — per-disk config
+//   - PUT    /disk/{disk_id}/hdidle/config             — update config; 409 on
+//     non-rotational without
+//     force_enabled=true
+//   - GET    /disk/{disk_id}/hdidle/support            — SCSI/ATA capability probe
+//   - POST   /disk/{disk_id}/hdidle/ignore-suggestion  — dismiss dashboard badge
 func (h *HDIdleHandler) RegisterHDIdleHandler(api huma.API) {
-	huma.Post(api, "/hdidle/start", h.startService, huma.OperationTags("hdidle"))
-	huma.Post(api, "/hdidle/stop", h.stopService, huma.OperationTags("hdidle"))
-
-	// Per-disk HDIdle endpoints
 	huma.Get(api, "/disk/{disk_id}/hdidle/info", h.getStatus, huma.OperationTags("disk"))
 	huma.Get(api, "/disk/{disk_id}/hdidle/config", h.getConfig, huma.OperationTags("disk"))
 	huma.Put(api, "/disk/{disk_id}/hdidle/config", h.putConfig, huma.OperationTags("disk"))
 	huma.Get(api, "/disk/{disk_id}/hdidle/support", h.checkSupport, huma.OperationTags("disk"))
+	huma.Post(api, "/disk/{disk_id}/hdidle/ignore-suggestion", h.ignoreSuggestion, huma.OperationTags("disk", "volume"))
 }
+
+// requireLabMode returns 403 unless settings.experimental_lab_mode is true.
+// Called at the top of every public hdidle handler.
+func (h *HDIdleHandler) requireLabMode() error {
+	settings, err := h.settingService.Load()
+	if err != nil {
+		return huma.Error500InternalServerError("Failed to read settings", err)
+	}
+	if settings == nil || !settings.ExperimentalLabMode {
+		return huma.Error403Forbidden(
+			"HDIdle endpoints require Lab Mode (set experimental_lab_mode=true in settings)",
+			dto.ErrorLabModeRequired,
+		)
+	}
+	return nil
+}
+
+// findDiskRotational returns the IsRotational tri-state for the given disk_id
+// by consulting the hardware service. nil means "unknown" — caller decides
+// how to interpret it (we treat unknown the same as non-rotational so users
+// must explicitly force-enable on USB enclosures that hide the flag).
+func (h *HDIdleHandler) findDiskRotational(diskID string) *bool {
+	disks, err := h.hardwareService.GetHardwareInfo()
+	if err != nil || disks == nil {
+		return nil
+	}
+	if d, ok := disks[diskID]; ok {
+		return d.IsRotational
+	}
+	return nil
+}
+
+// ---------- handlers ----------
 
 type GetHDIdleConfigOutput struct {
 	Body dto.HDIdleDevice
@@ -56,18 +96,31 @@ type GetHDIdleConfigOutput struct {
 func (h *HDIdleHandler) getConfig(ctx context.Context, input *struct {
 	DiskID string `path:"disk_id" required:"true" doc:"The disk ID (not the device path)"`
 }) (*GetHDIdleConfigOutput, error) {
-	// disk_id represents the stable disk identifier. Convert it to the device path.
-	devicePath := "/dev/disk/by-id/" + input.DiskID
+	if err := h.requireLabMode(); err != nil {
+		return nil, err
+	}
+	devicePath, errR := h.hdidleService.ResolveDevicePath(input.DiskID)
+	if errR != nil {
+		return nil, huma.Error404NotFound("Disk not found: "+input.DiskID, errR)
+	}
 	config, err := h.hdidleService.GetDeviceConfig(devicePath)
 	if err != nil {
+		// ErrorHDIdleNotSupported is an expected outcome (NVMe / unsupported
+		// USB bridge), not a 500. The body still carries the support info.
+		if config != nil {
+			return &GetHDIdleConfigOutput{Body: *config}, nil
+		}
 		return nil, huma.Error500InternalServerError("Failed to retrieve HDIdle configuration", err)
+	}
+	if config == nil {
+		return nil, huma.Error404NotFound("HDIdle configuration not found for disk: "+input.DiskID, nil)
 	}
 
 	return &GetHDIdleConfigOutput{Body: *config}, nil
 }
 
 type PutHDIdleConfigInput struct {
-	DiskID string `path:"disk_id" required:"true" doc:"The disk ID or device path"`
+	DiskID string `path:"disk_id" required:"true" doc:"The disk ID (not the device path)"`
 	Body   dto.HDIdleDevice
 }
 
@@ -76,29 +129,46 @@ type PutHDIdleConfigOutput struct {
 }
 
 func (h *HDIdleHandler) putConfig(ctx context.Context, input *PutHDIdleConfigInput) (*PutHDIdleConfigOutput, error) {
-	// disk_id represents the stable disk identifier. Convert it to the device path.
-	devicePath := "/dev/disk/by-id/" + input.DiskID
-	config, err := h.hdidleService.GetDeviceConfig(devicePath)
-	if err != nil {
-		return nil, huma.Error500InternalServerError("Failed to retrieve HDIdle configuration", err)
+	if err := h.requireLabMode(); err != nil {
+		return nil, err
+	}
+	devicePath, errR := h.hdidleService.ResolveDevicePath(input.DiskID)
+	if errR != nil {
+		return nil, huma.Error404NotFound("Disk not found: "+input.DiskID, errR)
 	}
 
-	if input.Body.DevicePath != config.DevicePath {
-		return nil, huma.Error400BadRequest("Device path in body does not match path in URL", nil)
-	}
-
-	err = h.hdidleService.SaveDeviceConfig(input.Body)
-	if err != nil {
-		return nil, huma.Error500InternalServerError("Failed to save HDIdle device configuration", err)
-	}
-	if h.hdidleService.IsRunning() {
-		if stopErr := h.hdidleService.Stop(); stopErr != nil {
-			return nil, huma.Error500InternalServerError("Failed to stop HDIdle service", stopErr)
+	// Goal #6: enabling on a non-rotational disk requires explicit force.
+	// is_rotational is nil for unknown (USB enclosures hiding the flag) — we
+	// treat unknown as non-rotational so the user has to opt in via the
+	// confirm dialog. Accepting NOENABLED unconditionally means the user can
+	// always disable a previously-force-enabled disk.
+	enabling := input.Body.Enabled != dto.HdidleEnableds.NOENABLED
+	if enabling && !input.Body.ForceEnabled {
+		rot := h.findDiskRotational(input.DiskID)
+		if rot == nil || !*rot {
+			return nil, huma.Error409Conflict(
+				"Cannot enable HDIdle on a non-rotational (SSD/NVMe) disk without force_enabled=true",
+				dto.ErrorHDIdleNonRotational,
+			)
 		}
 	}
 
-	err = h.hdidleService.Start()
-	if err != nil {
+	// Stamp the resolved path onto the body so the caller does not have to
+	// echo it back. Anything they sent in DevicePath is overwritten —
+	// it was a fragile contract anyway (server resolves symlinks, client
+	// often guesses).
+	input.Body.HDIdleDeviceSupport.DevicePath = devicePath
+
+	if err := h.hdidleService.SaveDeviceConfig(input.Body); err != nil {
+		return nil, huma.Error500InternalServerError("Failed to save HDIdle device configuration", err)
+	}
+
+	// Restart the monitor so it picks up the new per-disk config. Start()
+	// is now idempotent and safe to call after a no-op Stop().
+	if stopErr := h.hdidleService.Stop(); stopErr != nil {
+		return nil, huma.Error500InternalServerError("Failed to stop HDIdle service", stopErr)
+	}
+	if err := h.hdidleService.Start(); err != nil {
 		return nil, huma.Error500InternalServerError("Failed to start HDIdle service", err)
 	}
 
@@ -112,8 +182,13 @@ type GetHDIdleStatusOutput struct {
 func (h *HDIdleHandler) getStatus(ctx context.Context, input *struct {
 	DiskID string `path:"disk_id" required:"true" doc:"The disk ID (not the device path)"`
 }) (*GetHDIdleStatusOutput, error) {
-	// disk_id represents the stable disk identifier. Convert it to the device path.
-	devicePath := "/dev/disk/by-id/" + input.DiskID
+	if err := h.requireLabMode(); err != nil {
+		return nil, err
+	}
+	devicePath, errR := h.hdidleService.ResolveDevicePath(input.DiskID)
+	if errR != nil {
+		return nil, huma.Error404NotFound("Disk not found: "+input.DiskID, errR)
+	}
 	status, err := h.hdidleService.GetDeviceStatus(devicePath)
 	if err != nil {
 		return nil, huma.Error500InternalServerError("Failed to get HDIdle service status", err)
@@ -123,86 +198,7 @@ func (h *HDIdleHandler) getStatus(ctx context.Context, input *struct {
 		return nil, huma.Error404NotFound("HDIdle status not found for the specified disk", nil)
 	}
 
-	output := &GetHDIdleStatusOutput{
-		Body: status,
-	}
-	return output, nil
-}
-
-// StartHDIdleServiceOutput represents the response for starting the HDIdle service.
-type StartHDIdleServiceOutput struct {
-	Body struct {
-		Message string `json:"message"`
-		Running bool   `json:"running"`
-	}
-}
-
-// startService starts the HDIdle monitoring service.
-func (h *HDIdleHandler) startService(ctx context.Context, input *struct{}) (*StartHDIdleServiceOutput, error) {
-	if h.hdidleService.IsRunning() {
-		return &StartHDIdleServiceOutput{
-			Body: struct {
-				Message string `json:"message"`
-				Running bool   `json:"running"`
-			}{
-				Message: "HDIdle service is already running",
-				Running: true,
-			},
-		}, nil
-	}
-
-	err := h.hdidleService.Start()
-	if err != nil {
-		return nil, huma.Error500InternalServerError("Failed to start HDIdle service", err)
-	}
-
-	return &StartHDIdleServiceOutput{
-		Body: struct {
-			Message string `json:"message"`
-			Running bool   `json:"running"`
-		}{
-			Message: "HDIdle service started successfully",
-			Running: true,
-		},
-	}, nil
-}
-
-// StopHDIdleServiceOutput represents the response for stopping the HDIdle service.
-type StopHDIdleServiceOutput struct {
-	Body struct {
-		Message string `json:"message"`
-		Running bool   `json:"running"`
-	}
-}
-
-// stopService stops the HDIdle monitoring service.
-func (h *HDIdleHandler) stopService(ctx context.Context, input *struct{}) (*StopHDIdleServiceOutput, error) {
-	if !h.hdidleService.IsRunning() {
-		return &StopHDIdleServiceOutput{
-			Body: struct {
-				Message string `json:"message"`
-				Running bool   `json:"running"`
-			}{
-				Message: "HDIdle service is not running",
-				Running: false,
-			},
-		}, nil
-	}
-
-	err := h.hdidleService.Stop()
-	if err != nil {
-		return nil, huma.Error500InternalServerError("Failed to stop HDIdle service", err)
-	}
-
-	return &StopHDIdleServiceOutput{
-		Body: struct {
-			Message string `json:"message"`
-			Running bool   `json:"running"`
-		}{
-			Message: "HDIdle service stopped successfully",
-			Running: false,
-		},
-	}, nil
+	return &GetHDIdleStatusOutput{Body: status}, nil
 }
 
 // GetHDIdleSupportOutput represents the response for checking HDIdle device support.
@@ -216,12 +212,72 @@ type GetHDIdleSupportOutput struct {
 func (h *HDIdleHandler) checkSupport(ctx context.Context, input *struct {
 	DiskID string `path:"disk_id" required:"true" doc:"The disk ID (not the device path)"`
 }) (*GetHDIdleSupportOutput, error) {
-	// disk_id represents the stable disk identifier. Convert it to the device path.
-	devicePath := "/dev/disk/by-id/" + input.DiskID
+	if err := h.requireLabMode(); err != nil {
+		return nil, err
+	}
+	devicePath, errR := h.hdidleService.ResolveDevicePath(input.DiskID)
+	if errR != nil {
+		return nil, huma.Error404NotFound("Disk not found: "+input.DiskID, errR)
+	}
 	support, err := h.hdidleService.CheckDeviceSupport(devicePath)
 	if err != nil {
 		return nil, huma.Error500InternalServerError("Failed to check HDIdle device support", err)
 	}
 
 	return &GetHDIdleSupportOutput{Body: support}, nil
+}
+
+// IgnoreSuggestionOutput carries the updated device config so callers can
+// refresh their state without a second round-trip. Using a non-empty Body
+// causes huma to emit 200 OK (an empty struct would yield 204 No Content).
+type IgnoreSuggestionOutput struct {
+	Body dto.HDIdleDevice
+}
+
+// ignoreSuggestion sets HDIdleDevice.SuggestionIgnored=true so the dashboard
+// stops showing the "Enable HDIdle" badge for this disk. Idempotent: calling
+// it on a row that does not yet exist creates a no-op row whose only purpose
+// is to remember the dismissal.
+func (h *HDIdleHandler) ignoreSuggestion(ctx context.Context, input *struct {
+	DiskID string `path:"disk_id" required:"true" doc:"The disk ID"`
+}) (*IgnoreSuggestionOutput, error) {
+	if err := h.requireLabMode(); err != nil {
+		return nil, err
+	}
+	devicePath, errR := h.hdidleService.ResolveDevicePath(input.DiskID)
+	if errR != nil {
+		return nil, huma.Error404NotFound("Disk not found: "+input.DiskID, errR)
+	}
+
+	// Build a minimal config row with only SuggestionIgnored=true; the rest
+	// stays at zero-value/default. SaveDeviceConfig handles upsert.
+	cfg, err := h.hdidleService.GetDeviceConfig(devicePath)
+	if err != nil {
+		if cfg == nil {
+			cfg = &dto.HDIdleDevice{
+				DiskId:  input.DiskID,
+				Enabled: dto.HdidleEnableds.NOENABLED,
+			}
+			cfg.HDIdleDeviceSupport.DevicePath = devicePath
+		} else {
+			cfg.SuggestionIgnored = true
+			return &IgnoreSuggestionOutput{Body: *cfg}, nil
+		}
+	}
+	cfg.SuggestionIgnored = true
+	if err != nil && cfg == nil {
+		// Even if the device is not yet known, we still want to persist the
+		// dismissal — synthesize a minimal record.
+		cfg = &dto.HDIdleDevice{
+			DiskId:  input.DiskID,
+			Enabled: dto.HdidleEnableds.NOENABLED,
+		}
+		cfg.HDIdleDeviceSupport.DevicePath = devicePath
+	}
+	cfg.SuggestionIgnored = true
+	if err := h.hdidleService.SaveDeviceConfig(*cfg); err != nil {
+		return nil, huma.Error500InternalServerError("Failed to persist suggestion dismissal", err)
+	}
+
+	return &IgnoreSuggestionOutput{Body: *cfg}, nil
 }
