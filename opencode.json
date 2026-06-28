@@ -14,13 +14,8 @@
     ],
     "permission": {
         "bash": {
-            "gh issue *": "allow",
-            "gh pr create *": "allow",
             "go build *": "allow",
-            "git checkout *": "allow",
-            "git add *": "allow",
-            "git commit -m *": "allow",
-            "git push *": "allow",
+            "hk check *": "allow",
             "hk check *": "allow",
             "hk --help": "allow",
             "pkl *": "allow",
