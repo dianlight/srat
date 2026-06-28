@@ -3,7 +3,6 @@ package dto
 import (
 	"fmt"
 	"strings"
-	"syscall"
 )
 
 type FilesystemType struct {
@@ -26,34 +25,6 @@ type MountFlag struct {
 }
 
 type MountFlags []MountFlag
-
-func MountFlagsMap() map[string]uintptr {
-	flagMap := map[string]uintptr{
-		"ro":          syscall.MS_RDONLY,
-		"nosuid":      syscall.MS_NOSUID,
-		"nodev":       syscall.MS_NODEV,
-		"noexec":      syscall.MS_NOEXEC,
-		"sync":        syscall.MS_SYNCHRONOUS,
-		"remount":     syscall.MS_REMOUNT,
-		"mand":        syscall.MS_MANDLOCK,
-		"dirsync":     syscall.MS_DIRSYNC,
-		"noatime":     syscall.MS_NOATIME,
-		"nodiratime":  syscall.MS_NODIRATIME,
-		"bind":        syscall.MS_BIND,
-		"rec":         syscall.MS_REC,
-		"silent":      syscall.MS_SILENT,
-		"posixacl":    syscall.MS_POSIXACL,
-		"acl":         syscall.MS_POSIXACL, // Common alias
-		"unbindable":  syscall.MS_UNBINDABLE,
-		"private":     syscall.MS_PRIVATE,
-		"slave":       syscall.MS_SLAVE,
-		"shared":      syscall.MS_SHARED,
-		"relatime":    syscall.MS_RELATIME,
-		"strictatime": syscall.MS_STRICTATIME,
-		// "lazytime":    syscall.MS_LAZYTIME, // Consistent with MountFlagsToSyscallFlagAndData
-	}
-	return flagMap
-}
 
 func (self *MountFlags) Scan(value any) error {
 	switch value := value.(type) {

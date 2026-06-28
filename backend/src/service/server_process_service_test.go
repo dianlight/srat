@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"regexp"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -48,6 +49,9 @@ type ServerProcessServiceSuite struct {
 }
 
 func TestSambaServiceSuite(t *testing.T) {
+	if runtime.GOOS == "darwin" {
+		t.Skip("requires /etc/samba directory (HA addon environment)")
+	}
 	suite.Run(t, new(ServerProcessServiceSuite))
 }
 
@@ -168,7 +172,7 @@ func (suite *ServerProcessServiceSuite) SetupTest() {
 			dbom.NewDB,
 			service.NewServerProcessesService,
 			mock.Mock[service.ShareServiceInterface],
-			service.NewUserService,
+			mock.Mock[service.UserServiceInterface],
 			mock.Mock[service.BroadcasterServiceInterface],
 			mock.Mock[commandexec.Executor],
 			mock.Mock[service.DirtyDataServiceInterface],

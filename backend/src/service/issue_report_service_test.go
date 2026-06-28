@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -169,6 +170,9 @@ func (suite *IssueReportServiceSuite) TestGenerateIssueReport_SambaProblem() {
 }
 
 func (suite *IssueReportServiceSuite) TestGenerateIssueReport_SambaProblem_WithLargeDiagnostics() {
+	if runtime.GOOS == "darwin" {
+		suite.T().Skip("requires /data directory (HA addon environment)")
+	}
 	// Arrange
 	settings := &dto.Settings{}
 	mock.When(suite.mockSettingService.Load()).ThenReturn(settings, nil)
@@ -224,6 +228,9 @@ func (suite *IssueReportServiceSuite) TestGenerateIssueReport_SambaProblem_WithL
 }
 
 func (suite *IssueReportServiceSuite) TestGenerateIssueReport_SambaProblem_WithSensitiveDiagnosticsSmall() {
+	if runtime.GOOS == "darwin" {
+		suite.T().Skip("requires /data directory (HA addon environment)")
+	}
 	// Arrange
 	settings := &dto.Settings{
 		Hostname:  "user@example.com",
@@ -291,6 +298,9 @@ func (suite *IssueReportServiceSuite) TestGenerateIssueReport_SambaProblem_WithS
 }
 
 func (suite *IssueReportServiceSuite) TestGenerateIssueReport_SambaProblem_WithSensitiveDiagnosticsLarge() {
+	if runtime.GOOS == "darwin" {
+		suite.T().Skip("requires /data directory (HA addon environment)")
+	}
 	// Arrange
 	settings := &dto.Settings{
 		Hostname:  "user@example.com",
