@@ -328,10 +328,8 @@ run = """
 		exit 1; 
 	fi; 
 	go -C src mod vendor;
-	# Regenerate Darwin vendor stubs (deleted by go mod vendor) for macOS dev
-	if [ "$(uname -s)" = "Darwin" ]; then
-		sh patches/create_darwin_stubs.sh src;
-	fi
+	# Regenerate Darwin vendor stubs deleted by `go mod vendor`.
+	sh patches/create_darwin_stubs.sh src;
 	find src/vendor -name "*.rej" -delete 2>/dev/null
 	#if [ -f "patches/goenums.patch" ] && [ -d "src/vendor/github.com/zarldev/goenums" ]; then 
 	#	echo "Applying goenums.patch..."; 
