@@ -267,7 +267,8 @@ func (h *HDIdleHandler) ignoreSuggestion(ctx context.Context, input *struct {
 		}
 	}
 	cfg.SuggestionIgnored = true
-	if err != nil && cfg == nil {
+	cfg.SuggestionIgnored = true
+	if err := h.hdidleService.SaveDeviceConfig(*cfg); err != nil {
 		// Even if the device is not yet known, we still want to persist the
 		// dismissal — synthesize a minimal record.
 		cfg = &dto.HDIdleDevice{
