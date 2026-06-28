@@ -1,13 +1,13 @@
-experimental_monorepo_root = true
+# experimental_monorepo_root = true
 
 [monorepo]
 config_roots = ["frontend", "backend", "custom_components"]
 
 [settings]
 npm.package_manager = "bun"
-npm.bun = true
+# npm.bun = true
 env_shell_expand = true
-#libc = "musl"
+# libc = "musl"
 
 [settings.python]
 compile = false
@@ -34,8 +34,8 @@ shfmt = "3.13.1"
 "npm:@typescript/native-preview" = "7.0.0-dev.20260622.1"
 gh = "latest"
 hk = "1.48.0"
-#opencode = "latest"
-#copilot-cli = "latest"
+# opencode = "latest"
+# copilot-cli = "latest"
 
 [env]
 HK_MISE = 1
@@ -88,8 +88,6 @@ flag "--version <version>" help="Release version"
 '''
 run = [
   'echo "Running release process with version: ${usage_version:-not provided}"',
-  './scripts/release.sh --interactive ${usage_version:+--version ${usage_version?}}',
+  "./scripts/release.sh --interactive ${usage_version:+--version ${usage_version?}}",
 ]
 quiet = true
-
-

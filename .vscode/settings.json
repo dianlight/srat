@@ -223,11 +223,11 @@
 	"editor.fontFamily": "JetBrains Mono,FiraCode-Retina,Fira Code,Menlo, Monaco, 'Courier New', monospace",
 	"github.copilot.chat.rateLimitAutoSwitchToAuto": true,
 	"mise.configureExtensionsAutomatically": true,
-	"bun.runtime": "/root/.local/share/mise/shims/bun",
-	"go.goroot": "/root/.local/share/mise/installs/go/1.26.4",
+	"bun.runtime": "/Users/ltarantino/.local/share/mise/shims/bun",
+	"go.goroot": "/Users/ltarantino/.local/share/mise/installs/go/1.26.4",
 	"go.alternateTools": {
-		"go": "/root/.local/share/mise/shims/go",
-		"gopls": "/root/.local/share/mise/shims/gopls",
+		"go": "/Users/ltarantino/.local/share/mise/shims/go",
+		"gopls": "/Users/ltarantino/.local/share/mise/shims/gopls",
 		"customFormatter": "golangci-lint"
 	},
 	"editor.fontSize": 13,
