@@ -33,7 +33,7 @@ require (
 	github.com/lonegunmanb/go-defaults v1.4.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pressly/goose/v3 v3.27.1
-	github.com/prometheus/procfs v0.20.1
+	github.com/prometheus/procfs v0.21.0
 	github.com/samber/slog-http v1.12.1
 	github.com/sergi/go-diff v1.4.0
 	github.com/shomali11/util v0.0.0-20220717175126-f0771b70947f
