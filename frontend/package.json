@@ -88,7 +88,9 @@
     "gen:mocks": "bunx msw-auto-mock ../backend/docs/openapi.json --typescript -o src/mocks",
     "test:browser": "vitest --config=vitest.browser.config.ts"
   },
-  "patchedDependencies": {},
+  "patchedDependencies": {
+    "@mui/x-internals@9.7.0": "patches/@mui-x-internals.patch"
+  },
   "scarfSettings": {
     "enabled": false
   },
