@@ -14,7 +14,9 @@ type HDIdleHandler struct {
 	hdidleService   service.HDIdleServiceInterface
 	hardwareService service.HardwareServiceInterface
 	settingService  service.SettingServiceInterface
-	converter       converter.DtoToDbomConverter
+	hdidleService   service.HDIdleServiceInterface
+	hardwareService service.HardwareServiceInterface
+	settingService  service.SettingServiceInterface
 }
 
 type HDIdleHandlerParams struct {
