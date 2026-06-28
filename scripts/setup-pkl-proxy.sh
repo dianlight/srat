@@ -10,6 +10,10 @@
 # Run with --force to clear the sentinel and re-download.
 # Honors HTTP_PROXY / HTTPS_PROXY from the calling environment; if unset,
 # auto-detects the Windows proxy from the registry.
+#
+# This script runs ONLY on Windows or WSL with a proxy configured (HTTP_PROXY/
+# HTTPS_PROXY env vars or Windows registry proxy). On other platforms or without
+# a proxy, it does nothing.
 
 set -e
 
@@ -60,7 +64,7 @@ parse_pkl_version() {
 
 # Read the Windows proxy server from the registry and echo "host:port", or
 # echo nothing if not configured / not detectable.
-# Writes a temporary .ps1 file to avoid bash → PowerShell escaping issues.
+# Writes a temporary .ps1 file to avoid bash -> PowerShell escaping issues.
 resolve_windows_proxy() {
 	if ! is_windows_host; then
 		return 0
@@ -90,12 +94,12 @@ PSEOF
 
 # Export Windows trusted root CAs to a PEM bundle understood by the Linux pkl binary.
 # Writes the bundle to $HOME/.pkl/windows-ca-bundle.pem (Linux filesystem) by
-# piping powershell.exe stdout — never using Set-Content, which would write to the
+# piping powershell.exe stdout - never using Set-Content, which would write to the
 # Windows FS and be invisible to the Linux pkl process.
 # Skips if the bundle is fresh (< CA_BUNDLE_MAX_AGE_DAYS days old).
 ensure_ca_bundle() {
 	if ! is_windows_host; then
-		print_status "info" "Not a Windows host — skipping CA bundle export"
+		print_status "info" "Not a Windows host - skipping CA bundle export"
 		return 0
 	fi
 
@@ -105,10 +109,10 @@ ensure_ca_bundle() {
 
 	if [ -f "$bundle" ]; then
 		if find "$bundle" -mtime -"${CA_BUNDLE_MAX_AGE_DAYS}" -print -quit 2>/dev/null | grep -q .; then
-			print_status "info" "CA bundle is fresh (< ${CA_BUNDLE_MAX_AGE_DAYS} days) — skipping export"
+			print_status "info" "CA bundle is fresh (< ${CA_BUNDLE_MAX_AGE_DAYS} days) - skipping export"
 			return 0
 		fi
-		print_status "info" "CA bundle is stale — re-exporting..."
+		print_status "info" "CA bundle is stale - re-exporting..."
 	else
 		print_status "info" "Exporting Windows trusted root CAs to PEM bundle..."
 	fi
@@ -156,8 +160,8 @@ PSEOF
 # OpenSSL and accepts --cacert, so it always works through the corporate proxy.
 #
 # PKL cache layout (from PackageResolvers.java):
-#   ~/.pkl/cache/package-2/<authority>/<path>/<name>.json  ← metadata
-#   ~/.pkl/cache/package-2/<authority>/<path>/<name>.zip   ← package zip
+#   ~/.pkl/cache/package-2/<authority>/<path>/<name>.json  <- metadata
+#   ~/.pkl/cache/package-2/<authority>/<path>/<name>.zip   <- package zip
 # For package://github.com/jdx/hk/releases/download/v1.43.0/hk@1.43.0 :
 #   authority = github.com
 #   path      = jdx/hk/releases/download/v1.43.0/hk@1.43.0
@@ -207,7 +211,7 @@ ensure_pkl_cache() {
 	local base_url="https://github.com/jdx/hk/releases/download/v${version}"
 	mkdir -p "$pkg_dir"
 
-	# 1. Metadata JSON (bare package URL — no fragment).
+	# 1. Metadata JSON (bare package URL - no fragment).
 	print_status "info" "Downloading PKL package metadata for ${pkg_name}..."
 	local meta_file="${pkg_dir}/${pkg_name}.json"
 	if ! curl "${curl_args[@]}" "${base_url}/${pkg_name}" -o "${meta_file}.tmp"; then
@@ -240,12 +244,12 @@ ensure_pkl_cache() {
 # Why bun breaks:
 #   bun constructs NPM URLs by appending the package name directly to the last
 #   path segment of the registry URL, stripping intermediate path segments.
-#   e.g. https://nexus.host/repository/npm-all → bun sends requests to
-#        https://nexus.host/repository/<package>         (400 — wrong path)
+#   e.g. https://nexus.host/repository/npm-all -> bun sends requests to
+#        https://nexus.host/repository/<package>         (400 - wrong path)
 #   instead of:
 #        https://nexus.host/repository/npm-all/<package> (correct)
 #
-# Fix: switch mise npm tool installs from bun → system npm, point it at the
+# Fix: switch mise npm tool installs from bun -> system npm, point it at the
 # official registry (corporate Nexus often lacks preview/nightly packages),
 # and supply NODE_EXTRA_CA_CERTS so Node trusts the corporate CA.
 #
@@ -271,7 +275,7 @@ ensure_mise_local_toml() {
 
 		if [ $need_pkg_mgr -eq 0 ] && [ $need_bun -eq 0 ] &&
 			[ $need_ca_certs -eq 0 ] && [ $need_registry -eq 0 ] && [ $need_node -eq 0 ]; then
-			print_status "info" ".mise.local.toml already configured — skipping"
+			print_status "info" ".mise.local.toml already configured - skipping"
 			return 0
 		fi
 		print_status "info" "Updating existing .mise.local.toml with missing keys..."
@@ -283,7 +287,7 @@ ensure_mise_local_toml() {
 	# shellcheck disable=SC2094
 	{
 		if [ ! -f "$toml" ]; then
-			echo "# Machine-local mise overrides — NOT committed to git."
+			echo "# Machine-local mise overrides - NOT committed to git."
 			echo ""
 		fi
 
@@ -314,7 +318,7 @@ ensure_mise_local_toml() {
 		fi
 	} >>"$toml"
 
-	print_status "success" ".mise.local.toml written — bun/Nexus issues resolved"
+	print_status "success" ".mise.local.toml written - bun/Nexus issues resolved"
 	print_status "info" "  npm.package_manager = npm          (bun bypassed)"
 	print_status "info" "  NODE_EXTRA_CA_CERTS  = \$HOME/.pkl/windows-ca-bundle.pem"
 	print_status "info" "  npm_config_registry  = https://registry.npmjs.org"
@@ -327,6 +331,26 @@ main() {
 	echo "🔑 SRAT PKL proxy / CA cache setup"
 	echo "==================================="
 	echo ""
+
+	# Exit early if not on Windows or WSL
+	if ! is_windows_host; then
+		print_status "info" "Not running on Windows or WSL - skipping PKL proxy setup"
+		exit 0
+	fi
+
+	# Check if we have a proxy (explicit env vars or auto-detectable from Windows)
+	local proxy_url="${HTTPS_PROXY:-${https_proxy:-${HTTP_PROXY:-${http_proxy:-}}}}"
+	if [ -z "$proxy_url" ]; then
+		local win_proxy
+		win_proxy="$(resolve_windows_proxy)"
+		if [ -n "$win_proxy" ]; then
+			proxy_url="http://${win_proxy}"
+		fi
+	fi
+	if [ -z "$proxy_url" ]; then
+		print_status "info" "No proxy configured (HTTP_PROXY/HTTPS_PROXY not set, no Windows proxy detected) - skipping PKL proxy setup"
+		exit 0
+	fi
 
 	local version
 	version="$(parse_pkl_version)" || true
@@ -347,7 +371,7 @@ main() {
 	ensure_mise_local_toml
 
 	echo ""
-	print_status "success" "Setup complete — \`mise install\` should now work"
+	print_status "success" "Setup complete - \`mise install\` should now work"
 }
 
 # --- argument parsing --------------------------------------------------------

@@ -39,7 +39,10 @@ hk = "1.48.0"
 
 [env]
 HK_MISE = 1
-_.source = { path = "scripts/env.sh", tools = true }
+_.source = [
+  { path = "scripts/env.sh", tools = true },
+  { path = "scripts/setup-windows-proxy.sh", tools = true },
+]
 
 [hooks]
 # Pre-cache the hk PKL package (best-effort) then wire the git hook.
@@ -96,5 +99,3 @@ run = [
   './scripts/release.sh --interactive ${usage_version:+--version ${usage_version?}}',
 ]
 quiet = true
-
-
