@@ -15,7 +15,10 @@ backend/src/srat-cli
 backend/src/srat-server
 backend/src/srat-openapi
 backend/src/repository/dao/gen_test.db
+backend/src/vendor/**/*.orig
 docs/TEST_COVERAGE.md.bak
+
+.Trash-0
 
 # Vale cache
 .vale-cache/
