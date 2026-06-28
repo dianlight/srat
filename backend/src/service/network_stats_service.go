@@ -11,8 +11,8 @@ import (
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal/ctxkeys"
+	"github.com/dianlight/srat/internal/darwinstubs/sysfs"
 	"github.com/prometheus/procfs"
-	"github.com/prometheus/procfs/sysfs"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 )

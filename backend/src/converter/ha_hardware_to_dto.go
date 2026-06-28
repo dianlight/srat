@@ -9,7 +9,7 @@ import (
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/hardware"
-	"github.com/u-root/u-root/pkg/mount"
+	"github.com/dianlight/srat/internal/darwinstubs/mount"
 )
 
 // goverter:converter

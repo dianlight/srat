@@ -1,6 +1,7 @@
 #!/bin/sh
 # Regenerate Darwin vendor stubs after `go mod vendor` deletes them.
 # These stubs allow the SRAT backend to compile and run tests on macOS.
+# Canonical stubs live in backend/src/internal/darwinstubs/.
 # Called by the `patch` mise task after `go -C src mod vendor`.
 set -e
 

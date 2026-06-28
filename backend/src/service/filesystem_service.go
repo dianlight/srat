@@ -12,9 +12,9 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/internal/ctxkeys"
+	"github.com/dianlight/srat/internal/darwinstubs/mount"
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/srat/service/filesystem"
-	"github.com/u-root/u-root/pkg/mount"
 	"gitlab.com/tozd/go/errors"
 )
 

@@ -5,7 +5,7 @@ package converter
 
 import (
 	dbom "github.com/dianlight/srat/dbom"
-	mount "github.com/u-root/u-root/pkg/mount"
+	mount "github.com/dianlight/srat/internal/darwinstubs/mount"
 )
 
 type MountToDbomImpl struct{}
