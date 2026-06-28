@@ -324,9 +324,9 @@
     }
   },
   "instructions": [
-    ".ai/rules.md",
-    ".ai/commit-rules.md",
-    ".ai/instructions/*.md"
+    ".opencode/rules.md",
+    ".opencode/commit-rules.md",
+    ".opencode/instructions/*.md"
   ],
   "permission": {
     "compress": "allow"

@@ -25,7 +25,7 @@ Use this skill when:
 By the end of this workflow, you should produce **one** of these outcomes:
 
 1. **No new guidance needed** — the lesson is too narrow, temporary, or already documented
-2. **Propose an instruction update** — preferred when the new lesson fits an existing `.github/instructions/*.md`, `.github/copilot-instructions.md`, or `AGENTS.md`
+2. **Propose an instruction update** — preferred when the new lesson fits an existing `.opencode/instructions/*.md`, `.opencode/rules.md`, or `AGENTS.md`
 3. **Propose a new instruction** — only when the lesson is stable, reusable, and has no good existing home
 4. **Propose a new skill** — when the lesson is best expressed as a multi-step workflow rather than a single rule
 5. **Store as repo memory only** — when the lesson is useful but still too task-specific or newly verified
@@ -51,9 +51,9 @@ Review the current chat session, changed files, and validation results. Start fr
 
 Before proposing a new rule, inspect:
 
-- `.github/copilot-instructions.md`
-- relevant files in `.github/instructions/`
-- relevant skills in `.github/skills/`
+- `.opencode/rules.md`
+- relevant files in `.opencode/instructions/`
+- relevant skills in `.opencode/skills/`
 - `AGENTS.md`
 - relevant repo memories under `/memories/repo/` if available
 
@@ -65,9 +65,9 @@ Use this decision table:
 
 | If the lesson is... | Best home |
 |---|---|
-| Broad, always applicable across the repo | `.github/copilot-instructions.md` after user approval |
-| Language- or folder-specific | matching `.github/instructions/*.instructions.md` after user approval |
-| A multi-step repeatable workflow | `.github/skills/<name>/SKILL.md` after user approval |
+| Broad, always applicable across the repo | `.opencode/rules.md` after user approval |
+| Language- or folder-specific | matching `.opencode/instructions/*.instructions.md` after user approval |
+| A multi-step repeatable workflow | `.opencode/skills/<name>/SKILL.md` after user approval |
 | Useful but narrow, recent, or still evolving | `/memories/repo/` by default |
 | One-off or unlikely to repeat | no documentation update |
 
@@ -111,7 +111,7 @@ Use a focused follow-up such as:
 - Do you want me to **update the existing instruction/skill now** or only **propose the wording**?
 - Should this live under a **language-specific instruction** or a broader repo rule?
 
-> Approval is required before changing `.github/instructions/*.md`, `.github/copilot-instructions.md`, `.github/skills/*.md` or `AGENTS.md`.
+> Approval is required before changing `.opencode/instructions/*.md`, `.opencode/rules.md`, `.opencode/skills/*.md` or `AGENTS.md`.
 
 ### 7. If Confirmed, Apply the Smallest Documentation Change
 

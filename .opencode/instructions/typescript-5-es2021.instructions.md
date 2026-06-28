@@ -13,7 +13,7 @@ applyTo: ''
 
 ## Redirects
 
-- **Current TypeScript Instructions**: `.github/instructions/typescript-6-es2022.instructions.md`
+- **Current TypeScript Instructions**: `.opencode/instructions/typescript-6-es2022.instructions.md`
 - **Migration Guide**: `frontend/TYPESCRIPT_MIGRATION.md`
 - **Implementation Summary**: `TYPESCRIPT_6_IMPLEMENTATION_SUMMARY.md`
 

@@ -165,7 +165,7 @@ For every function in the impacted list:
 2. Mark `Has Test?` as `Yes` or `No` in the tracking table.
 3. For every `No`:
    - **Create a focused test** that covers the specific behaviour at risk from the refactor.
-   - Follow the project's testing conventions (see `.github/instructions/backend_test.instructions.md` or `fontend_test.instructions.md`).
+   - Follow the project's testing conventions (see `.opencode/instructions/backend_test.instructions.md` or `fontend_test.instructions.md`).
    - Name the test after the function and scenario: `TestFunctionName_ImpactedBehaviour`.
    - Update the tracking table with the new test file.
 4. Run the newly created tests immediately to confirm they pass before the refactor baseline is taken.
@@ -216,7 +216,7 @@ Implement the refactor following normal project coding conventions:
 
 - Apply changes to directly impacted symbols first
 - Update all indirect callers/dependants found in Phase 2b
-- Follow instructions in `.github/copilot-instructions.md` and relevant instruction files
+- Follow instructions in `.opencode/rules.md` and relevant instruction files
 - Do **not** add new features or fix unrelated bugs in the same change set
 - Update the tracking document checklist item `Refactor implemented` when done
 

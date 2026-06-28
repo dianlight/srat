@@ -8,10 +8,35 @@
         "@slkiser/opencode-quota"
     ],
     "instructions": [
-        ".ai/rules.md",
-        ".ai/commit-rules.md",
-        ".ai/instructions/*.md"
+        ".opencode/rules.md",
+        ".opencode/commit-rules.md",
+        ".opencode/instructions/*.md"
     ],
+    "permission": {
+        "bash": {
+            "gh issue *": "allow",
+            "gh pr create *": "allow",
+            "go build *": "allow",
+            "git checkout *": "allow",
+            "git add *": "allow",
+            "git commit -m *": "allow",
+            "git push *": "allow",
+            "hk check *": "allow",
+            "hk --help": "allow",
+            "pkl *": "allow",
+            "mise install *": "allow",
+            "mise ls *": "allow",
+            "MISE_VERBOSE=1 mise install *": "allow",
+            "bun pm *": "allow",
+            "bun --print *": "allow",
+            "npm --version": "allow",
+            "vale sync *": "allow",
+            "vale *": "allow",
+            "markdownlint-cli2 *": "allow",
+            "grep *": "allow",
+            "JAVA_TOOL_OPTIONS=* hk check": "allow"
+        }
+    },
     "mcp": {
         "context7": {
             "type": "remote",

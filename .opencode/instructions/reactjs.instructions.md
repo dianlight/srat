@@ -156,7 +156,7 @@ function SmartStatusPanelInner({ deviceId }: Props) {
 - Cross-field validation (e.g., confirm password) uses `rules={{ validate: (value, formValues) => value === formValues.otherField || "error message" }}`.
 - API/server-level errors belong in `setError("root", { message: "..." })` from `formContext`; render via `formState.errors.root?.message`. No manual error `useState` needed.
 - `formState.isSubmitting` is automatically `true` while the async `onSuccess` handler runs — never add a manual `isSubmitting` `useState`.
-- See `.github/instructions/react-hook-form-mui.instructions.md` for the complete canonical patterns and examples.
+- See `.opencode/instructions/react-hook-form-mui.instructions.md` for the complete canonical patterns and examples.
 
 ### Routing
 

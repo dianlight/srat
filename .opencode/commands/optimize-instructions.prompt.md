@@ -19,7 +19,7 @@ You're an expert at optimizing technical instructions and skills. Your task is t
 - `docs/quick-reference.md` — Copy-paste code snippets for critical patterns
 - `docs/shared-principles.md` — Core principles shared across languages
 - `docs/test-setup-patterns.md` — Unified test infrastructure patterns
-- `.github/copilot-instructions.md` — Central hub with Shared References section
+- `.opencode/rules.md` — Central hub with Shared References section
 
 ## Task
 
@@ -93,7 +93,7 @@ You're an expert at optimizing technical instructions and skills. Your task is t
 |------|--------|
 | `docs/memory-index.md` | Update integration status when facts are integrated or archived |
 | `docs/quick-reference.md` | Add new patterns with ✅/❌ examples |
-| `.github/copilot-instructions.md` | Link new languages, sections, or reference docs |
+| `.opencode/rules.md` | Link new languages, sections, or reference docs |
 | `<instruction-file>.md` | Add subsections, clarifications, examples as needed |
 
 
@@ -122,7 +122,7 @@ Each optimization round is successful if:
 ## Emergencies / Common Issues
 
 **Issue**: "Found orphaned reference docs"  
-**Fix**: Add links from `.github/copilot-instructions.md` Shared References section
+**Fix**: Add links from `.opencode/rules.md` Shared References section
 
 **Issue**: "Memory fact already partially documented"  
 **Fix**: Check memory-index.md "Already Covered" section; don't duplicate

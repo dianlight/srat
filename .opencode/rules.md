@@ -8,8 +8,8 @@ These instructions are the concise, must-follow rules for working in SRAT. Keep 
 
 - **Read the file header first**: Always read the top comment/header of any file you modify; file‑specific rules override everything else.
 - **No git writes**: Never run `git add/commit/push` unless the user explicitly asks.
-- **Follow instruction files**: Use the specialized guidance in `.github/instructions/` for Go, Python, React, Markdown, frontend tests, and backend command execution.
-- **Mandatory for backend execution**: When implementing or migrating backend command execution, always follow `.github/instructions/backend-command-execution.instructions.md`.
+- **Follow instruction files**: Use the specialized guidance in `.opencode/instructions/` for Go, Python, React, Markdown, frontend tests, and backend command execution.
+- **Mandatory for backend execution**: When implementing or migrating backend command execution, always follow `.opencode/instructions/backend-command-execution.instructions.md`.
 - **Ask for clarification**: If a user request is ambiguous or could lead to unintended consequences, ask for clarification before proceeding.
 - **Respect existing code**: Follow the established architecture, style, and patterns of the codebase. Avoid introducing new abstractions or styles unless necessary.
 - **Prioritize maintainability**: Write clear, readable code that other developers can easily understand and maintain. Avoid clever or complex solutions when a straightforward approach will do.
@@ -94,9 +94,9 @@ These documents consolidate principles, patterns, and facts repeated across lang
 - **`docs/test-setup-patterns.md`**: Unified test infrastructure patterns for Go (testify/suite + fx), TypeScript (Vitest + RTL), and Python (pytest). Includes critical ordering rules (e.g., cancel context BEFORE waiting on WaitGroup), anti-patterns, and a verification checklist. Referenced by backend, frontend, and custom component test instructions.
 - **`docs/memory-index.md`** (NEW): Maps all 19 stored memory facts to their current locations in instruction files. Shows integration status (8 integrated, 6 already covered, 3 pending, 2 archived), cross-references by file, and recommendations for future rounds. Use to understand what patterns are documented and why some facts weren't integrated.
 - **`docs/quick-reference.md`** (NEW): Fast lookup for 8 highest-impact patterns with copy-paste code snippets. Covers MSW body clone, DTO type safety, semver comparison, service architecture, HA Supervisor API, test cleanup, RTK lazy hooks, and IssueCard ignored-state. Use when implementing these patterns.
-- **`.github/prompts/optimize-instructions.prompt.md`**: Reusable Copilot prompt file for running future optimization rounds. Includes 5 optimization goals (A–E), standard workflow template (5 phases), key files to update, constraints, and success criteria. Start with this when the user requests instruction optimization. Registered in `.github/prompts/` per GitHub's Copilot prompt file specification.
+- **`.opencode/commands/optimize-instructions.prompt.md`**: Reusable prompt file for running future optimization rounds. Includes 5 optimization goals (A–E), standard workflow template (5 phases), key files to update, constraints, and success criteria. Start with this when the user requests instruction optimization.
 
-When writing or updating language-specific instructions, link to these shared references instead of duplicating guidance. After optimization rounds, scan `memory-index.md` to identify high-value facts for future integration. For optimization requests, reference `.github/prompts/optimize-instructions.prompt.md` to ensure systematic, repeatable workflows.
+When writing or updating language-specific instructions, link to these shared references instead of duplicating guidance. After optimization rounds, scan `memory-index.md` to identify high-value facts for future integration. For optimization requests, reference `.opencode/commands/optimize-instructions.prompt.md` to ensure systematic, repeatable workflows.
 
 ## Core Service Architecture Patterns
 
@@ -134,7 +134,7 @@ When asked to generate a Git command or branch name from a Markdown task:
     
 ## Git Commit Message Convention
 
-When asked to generate a Git commit use instructions from `.ai/commit-rules.md`:
+When asked to generate a Git commit use instructions from `.opencode/commit-rules.md`:
 
 ## Context7
 Use Context7 MCP to fetch current documentation whenever the user asks about a library, framework, SDK, API, CLI tool, or cloud service -- even well-known ones like React, Next.js, Prisma, Express, Tailwind, Django, or Spring Boot. This includes API syntax, configuration, version migration, library-specific debugging, setup instructions, and CLI tool usage. Use even when you think you know the answer -- your training data may not reflect recent changes. Prefer this over web search for library docs.
@@ -158,7 +158,7 @@ Do not use for: refactoring, writing scripts from scratch, debugging business lo
 -   **Task Scanning**: When a user mentions a task by name, look for the corresponding checkbox in open Markdown files to understand the requirements.
 
 ## Instruction Files
--   **Purpose**: Instruction files in `.github/instructions/` provide specific guidelines for different file types and scenarios. Always check for an applicable instruction file before making changes.
+-   **Purpose**: Instruction files in `.opencode/instructions/` provide specific guidelines for different file types and scenarios. Always check for an applicable instruction file before making changes.
 -   **Format**: These files use YAML front matter to specify which files they apply to and contain concise instructions for code style, testing, or other practices.
 -   **Learning**: Familiarize yourself with the existing instruction files to ensure your contributions align with the project's standards and practices.
 -   **Updating Instructions**: If you notice a gap in the existing instructions or have suggestions for improvement, you can propose changes to the instruction files themselves, but always ensure that any modifications are clear, concise, and maintainable.
