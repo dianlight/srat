@@ -5,8 +5,8 @@ package converter
 
 import (
 	dto "github.com/dianlight/srat/dto"
+	mount "github.com/dianlight/srat/internal/darwinstubs/mount"
 	osutil "github.com/dianlight/srat/internal/osutil"
-	mount "github.com/u-root/u-root/pkg/mount"
 )
 
 type MountToDtoImpl struct{}

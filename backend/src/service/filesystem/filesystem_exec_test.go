@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/internal/darwinstubs/mount/loop"
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/srat/service/filesystem"
 	"github.com/stretchr/testify/require"
-	"github.com/u-root/u-root/pkg/mount/loop"
 )
 
 func TestFilesystemUtilsWithoutMockedCommands(t *testing.T) {

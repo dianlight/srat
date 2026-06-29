@@ -4,16 +4,12 @@ import (
 	"context"
 
 	"github.com/danielgtaylor/huma/v2"
-	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service"
 	"go.uber.org/fx"
 )
 
 type HDIdleHandler struct {
-	hdidleService   service.HDIdleServiceInterface
-	hardwareService service.HardwareServiceInterface
-	settingService  service.SettingServiceInterface
 	hdidleService   service.HDIdleServiceInterface
 	hardwareService service.HardwareServiceInterface
 	settingService  service.SettingServiceInterface
@@ -31,7 +27,6 @@ func NewHDIdleHandler(params HDIdleHandlerParams) *HDIdleHandler {
 		hdidleService:   params.HDIdleService,
 		hardwareService: params.HardwareService,
 		settingService:  params.SettingService,
-		converter:       &converter.DtoToDbomConverterImpl{},
 	}
 }
 

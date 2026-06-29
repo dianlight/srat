@@ -7,9 +7,9 @@ import (
 
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/internal/darwinstubs/mount"
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/shirou/gopsutil/v4/disk"
-	"github.com/u-root/u-root/pkg/mount"
 )
 
 // goverter:converter

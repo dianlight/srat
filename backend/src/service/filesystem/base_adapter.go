@@ -10,11 +10,11 @@ import (
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal/commandexec"
+	"github.com/dianlight/srat/internal/darwinstubs/mount"
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/tlog"
 	gocache "github.com/patrickmn/go-cache"
 	"github.com/prometheus/procfs"
-	"github.com/u-root/u-root/pkg/mount"
 	"gitlab.com/tozd/go/errors"
 )
 

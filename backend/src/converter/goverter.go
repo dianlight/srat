@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 
 	dto "github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/internal/darwinstubs/mount"
 	"github.com/dianlight/srat/internal/osutil"
-	"github.com/u-root/u-root/pkg/mount"
 )
 
 //go:generate go tool goverter gen ./...

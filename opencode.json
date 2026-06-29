@@ -1,61 +1,80 @@
 {
-    "$schema": "https://opencode.ai/config.json",
-    "plugin": [
-        "@ekroon/opencode-copilot-instructions",
-        "opencode-froggy",
-        "opencode-handoff",
-        "@ramarivera/opencode-model-announcer",
-        "@slkiser/opencode-quota"
-    ],
-    "instructions": [
-        ".ai/rules.md",
-        ".ai/commit-rules.md",
-        ".ai/instructions/*.md"
-    ],
-    "mcp": {
-        "context7": {
-            "type": "remote",
-            "url": "https://mcp.context7.com/mcp",
-            "enabled": false,
-            "headers": {
-                "CONTEXT7_API_KEY": "{env:CONTEXT7_API_KEY}"
-            }
-        },
-        "github": {
-            "type": "remote",
-            "url": "https://api.githubcopilot.com/mcp/",
-            "headers": {
-                "Authorization": "Bearer {env:GITHUB_TOKEN}",
-                "X-MCP-Toolsets": "default,actions,discussions,git,github_support_docs_search"
-            }
-        },
-        "mui-mcp": {
-            "type": "local",
-            "command": ["bunx", "-y", "@mui/mcp@latest"],
-            "enabled": true
-        },
-        "bun-mcp": {
-            "type": "local",
-            "command": ["bunx", "-y", "mcp-bun@latest"],
-            "enabled": true
-        },
-        "act-testing": {
-            "command": ["bunx", "-y", "act-testing-mcp"],
-            "environment": {
-                "_PROJECT_ROOT": "/workspaces/srat"
-            },
-            "type": "local"
-        },
-        "vale-mcp": {
-            "type": "local",
-            "command": ["bunx", "-y", "@iflow-mcp/chrischinchilla-vale-mcp"]
-        },
-        "mise": {
-            "type": "local",
-            "command": ["mise", "mcp"],
-            "environment": {
-                "MISE_EXPERIMENTAL": "1"
-            }
-        }
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": [
+    "@ekroon/opencode-copilot-instructions",
+    "opencode-froggy",
+    "opencode-handoff",
+    "@ramarivera/opencode-model-announcer",
+    "@slkiser/opencode-quota"
+  ],
+  "instructions": [
+    ".opencode/rules.md",
+    ".opencode/commit-rules.md",
+    ".opencode/instructions/*.md"
+  ],
+  "permission": {
+    "bash": {
+      "go build *": "allow",
+      "hk check *": "allow",
+      "hk --help": "allow",
+      "pkl *": "allow",
+      "mise install *": "allow",
+      "mise ls *": "allow",
+      "MISE_VERBOSE=1 mise install *": "allow",
+      "bun pm *": "allow",
+      "bun --print *": "allow",
+      "npm --version": "allow",
+      "vale sync *": "allow",
+      "vale *": "allow",
+      "markdownlint-cli2 *": "allow",
+      "grep *": "allow",
+      "JAVA_TOOL_OPTIONS=* hk check": "allow"
     }
+  },
+  "mcp": {
+    "context7": {
+      "type": "remote",
+      "url": "https://mcp.context7.com/mcp",
+      "enabled": false,
+      "headers": {
+        "CONTEXT7_API_KEY": "{env:CONTEXT7_API_KEY}"
+      }
+    },
+    "github": {
+      "type": "remote",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "headers": {
+        "Authorization": "Bearer {env:GITHUB_TOKEN}",
+        "X-MCP-Toolsets": "default,actions,discussions,git,github_support_docs_search"
+      }
+    },
+    "mui-mcp": {
+      "type": "local",
+      "command": ["bunx", "-y", "@mui/mcp@latest"],
+      "enabled": true
+    },
+    "bun-mcp": {
+      "type": "local",
+      "command": ["bunx", "-y", "mcp-bun@latest"],
+      "enabled": true
+    },
+    "act-testing": {
+      "command": ["bunx", "-y", "act-testing-mcp"],
+      "environment": {
+        "_PROJECT_ROOT": "/workspaces/srat"
+      },
+      "type": "local"
+    },
+    "vale-mcp": {
+      "type": "local",
+      "command": ["bunx", "-y", "@iflow-mcp/chrischinchilla-vale-mcp"]
+    },
+    "mise": {
+      "type": "local",
+      "command": ["mise", "mcp"],
+      "environment": {
+        "MISE_EXPERIMENTAL": "1"
+      }
+    }
+  }
 }

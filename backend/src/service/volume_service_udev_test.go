@@ -8,9 +8,9 @@ import (
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
+	"github.com/dianlight/srat/internal/darwinstubs/mount/loop"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/u-root/u-root/pkg/mount/loop"
 	"gitlab.com/tozd/go/errors"
 )
 

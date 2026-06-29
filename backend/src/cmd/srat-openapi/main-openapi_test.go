@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -17,6 +18,9 @@ import (
 func TestOpenAPIGenerationCreatesFiles(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping openapi generation test in short mode")
+	}
+	if runtime.GOOS == "darwin" {
+		t.Skip("requires Linux environment (HA addon: /proc, /etc/samba)")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)

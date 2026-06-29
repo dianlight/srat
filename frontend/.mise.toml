@@ -2,7 +2,7 @@
 auto = true
 
 [tools]
-#"go:github.com/playwright-community/playwright-go/cmd/playwright" = "latest"
+# "go:github.com/playwright-community/playwright-go/cmd/playwright" = "latest"
 "npm:@rtk-query/codegen-openapi" = "2.2.0"
 
 [hooks]
@@ -53,9 +53,9 @@ run = [
   "mise run version ${usage_version?}",
   "mise run build ../backend/${usage_dir:?} --version ${usage_version?}",
 ]
-#sources = [
+# sources = [
 #  "src/**/*",
-#]
+# ]
 hide = true
 quiet = true
 
@@ -67,7 +67,7 @@ flag "--version <version>" help="Build version" env="VERSION"
 depends = [
   { task = "lint" },
 ]
-env = { NODE_ENV = "production",API_URL = "", VERSION = "" }
+env = { NODE_ENV = "production", API_URL = "", VERSION = "" }
 run = [
   "tsgo --project tsconfig.prod.json --noEmit ",
   "bun run bun.build.ts -o ${usage_dir?} -v ${usage_version?}",
@@ -126,9 +126,7 @@ run = [
 depends = [
   { task = "validate-macros" },
 ]
-run = [
-  "biome check --no-errors-on-unmatched --write"
-]
+run = ["biome check --no-errors-on-unmatched --write"]
 quiet = true
 
 [tasks.test]
@@ -162,10 +160,7 @@ run = [
 quiet = true
 
 [tasks."test:ci"]
-env = {
-  API_URL = false,
-  GITHUB_ACTIONS = true,
-  }
+env = { API_URL = "", GITHUB_ACTIONS = true }
 run = [
   "tsgo --noEmit",
   "bunx vitest run --coverage --bail=1 --reporter=dot --dangerouslyIgnoreUnhandledErrors --reporter=github-actions",
@@ -176,7 +171,7 @@ quiet = true
 usage = '''
 arg "[version]" help="Build version"
 '''
-run = 'bun run version.ts ${usage_version:+-o ${usage_version?}}'
+run = "bun run version.ts ${usage_version:+-o ${usage_version?}}"
 quiet = true
 hide = true
 

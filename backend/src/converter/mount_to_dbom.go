@@ -4,7 +4,7 @@ import (
 	"log/slog"
 
 	"github.com/dianlight/srat/dbom"
-	"github.com/u-root/u-root/pkg/mount"
+	"github.com/dianlight/srat/internal/darwinstubs/mount"
 )
 
 // goverter:converter

@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"regexp"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -40,6 +41,7 @@ type ServerProcessServiceSuite struct {
 	serverService   service.ServerServiceInterface
 	share_service   service.ShareServiceInterface
 	setting_service service.SettingServiceInterface
+	user_service    service.UserServiceInterface
 	ctx             context.Context
 	cancel          context.CancelFunc
 	app             *fxtest.App
@@ -48,6 +50,9 @@ type ServerProcessServiceSuite struct {
 }
 
 func TestSambaServiceSuite(t *testing.T) {
+	if runtime.GOOS == "darwin" {
+		t.Skip("requires /etc/samba directory (HA addon environment)")
+	}
 	suite.Run(t, new(ServerProcessServiceSuite))
 }
 
@@ -171,7 +176,7 @@ func (suite *ServerProcessServiceSuite) SetupTest() {
 			dbom.NewDB,
 			service.NewServerProcessesService,
 			mock.Mock[service.ShareServiceInterface],
-			service.NewUserService,
+			mock.Mock[service.UserServiceInterface],
 			mock.Mock[service.BroadcasterServiceInterface],
 			mock.Mock[commandexec.Executor],
 			mock.Mock[service.DirtyDataServiceInterface],
@@ -190,6 +195,7 @@ func (suite *ServerProcessServiceSuite) SetupTest() {
 		fx.Populate(&suite.serverService),
 		fx.Populate(&suite.setting_service),
 		fx.Populate(&suite.share_service),
+		fx.Populate(&suite.user_service),
 		//fx.Populate(&suite.samba_user_repo),
 		//fx.Populate(&suite.shareRepo),
 		fx.Populate(&suite.ctx),
@@ -887,6 +893,11 @@ func (suite *ServerProcessServiceSuite) TestCreateSambaUsersMapStream_WithSpaceU
 	suite.Require().NoError(suite.db.Create(&dbom.SambaUser{Username: "john doe", Password: "secret1"}).Error)
 	suite.Require().NoError(suite.db.Create(&dbom.SambaUser{Username: "janedoe", Password: "secret2"}).Error)
 
+	mock.When(suite.user_service.ListUsers()).ThenReturn([]dto.User{
+		{Username: "john doe"},
+		{Username: "janedoe"},
+	}, nil)
+
 	stream, errE := suite.serverService.CreateSambaUsersMapStream()
 	suite.Require().NoError(errE)
 	suite.Require().NotNil(stream)
@@ -901,6 +912,11 @@ func (suite *ServerProcessServiceSuite) TestCreateSambaUsersMapStream_GroupsAlia
 
 	suite.Require().NoError(suite.db.Create(&dbom.SambaUser{Username: "john doe", Password: "secret1"}).Error)
 	suite.Require().NoError(suite.db.Create(&dbom.SambaUser{Username: "john  doe", Password: "secret2"}).Error)
+
+	mock.When(suite.user_service.ListUsers()).ThenReturn([]dto.User{
+		{Username: "john doe"},
+		{Username: "john  doe"},
+	}, nil)
 
 	stream, errE := suite.serverService.CreateSambaUsersMapStream()
 	suite.Require().NoError(errE)

@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/internal/darwinstubs/mount"
 	"github.com/dianlight/srat/internal/osutil"
-	"github.com/u-root/u-root/pkg/mount"
 )
 
 type testFilesystemCommandExecutor struct {
