@@ -44,3 +44,4 @@ custom_components/.coverage
 .vitest-attachments/
 __screenshots__/
 .opencode/server.lock.json
+frontend_test_output.txt
