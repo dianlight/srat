@@ -40,3 +40,4 @@ custom_components/.coverage
 .vitest-attachments/
 __screenshots__/
 .opencode/server.lock.json
+.playwright-mcp/
