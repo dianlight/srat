@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/dianlight/tlog"
 	"github.com/pilebones/go-udev/netlink"
 )
@@ -56,7 +55,9 @@ func (self *VolumeService) udevEventHandler() {
 				} else if devType == "disk" && action == "add" {
 					slog.InfoContext(self.ctx, "Processing block device event", "action", action, "devname", devName)
 
-					self.hardwareClient.InvalidateHardwareInfo()
+					if self.hardwareClient != nil {
+						self.hardwareClient.InvalidateHardwareInfo()
+					}
 					err := self.getVolumesData()
 					if err != nil {
 						slog.ErrorContext(self.ctx, "Failed to get volumes data after udev event", "err", err)

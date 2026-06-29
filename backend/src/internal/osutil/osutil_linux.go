@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+
+	"golang.org/x/sys/unix"
 )
 
 // IsKernelModuleLoaded checks if a kernel module is currently loaded.
@@ -44,9 +46,11 @@ func IsKernelModuleLoaded(moduleName string) (bool, error) {
 // Returns nil if the device already exists.
 func CreateBlockDevice(ctx context.Context, device string) error {
 	// Check if the device already exists
-	if _, err := os.Stat(device); !os.IsNotExist(err) {
+	if _, err := os.Stat(device); err == nil {
 		slog.DebugContext(ctx, "Loop device already exists", "device", device)
 		return nil
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("failed to stat block device %q: %w", device, err)
 	}
 
 	// Extract major and minor numbers from device name
@@ -56,7 +60,7 @@ func CreateBlockDevice(ctx context.Context, device string) error {
 	}
 
 	// Create the block device using mknod syscall
-	dev := (major << 8) | minor
+	dev := int(unix.Mkdev(uint32(major), uint32(minor)))
 	if err := syscall.Mknod(device, syscall.S_IFBLK|0660, dev); err != nil {
 		return fmt.Errorf("failed to create block device: %w", err)
 	}

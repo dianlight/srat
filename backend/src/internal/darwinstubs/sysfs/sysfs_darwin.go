@@ -2,6 +2,10 @@
 
 package sysfs
 
+import "errors"
+
+var errSysfsUnsupported = errors.New("sysfs is unavailable on darwin")
+
 type FS struct{}
 
 func NewFS(mountPoint string) (FS, error) {
@@ -41,13 +45,13 @@ type NetClassIface struct {
 type NetClass map[string]NetClassIface
 
 func (fs FS) NetClassByIface(devicePath string) (*NetClassIface, error) {
-	return nil, nil
+	return nil, errSysfsUnsupported
 }
 
 func (fs FS) NetClassDevices() ([]string, error) {
-	return nil, nil
+	return []string{}, nil
 }
 
 func (fs FS) NetClass() (NetClass, error) {
-	return nil, nil
+	return NetClass{}, nil
 }
