@@ -42,6 +42,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install mise (manages Go, Bun, Python, and all other pinned tool versions).
 # COPY .mise.toml /tmp/.mise.toml
-RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN \
+RUN #--mount=type=secret,id=github_token,env=GITHUB_TOKEN \
     echo 'eval "$(mise activate zsh --shims)"' >> /root/.zshrc \
     && echo 'eval "$(mise activate bash --shims)"' >> /root/.bashrc

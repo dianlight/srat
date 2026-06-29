@@ -3,6 +3,7 @@ package filesystem_test
 import (
 	"context"
 	"errors"
+	"runtime"
 	"testing"
 
 	"github.com/dianlight/srat/service/filesystem"
@@ -112,6 +113,9 @@ func (suite *NtfsAdapterTestSuite) TestGetState_MountedWithoutCachedState_Assume
 }
 
 func (suite *NtfsAdapterTestSuite) TestGetState_MountedWithCachedState_ReturnsLastUnmountedState() {
+	if runtime.GOOS == "darwin" {
+		suite.T().Skip("requires ntfsfix binary (Linux only)")
+	}
 	device := "/dev/sdb1"
 	mounted := false
 

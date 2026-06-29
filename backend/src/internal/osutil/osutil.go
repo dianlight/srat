@@ -2,20 +2,15 @@ package osutil
 
 import (
 	"bufio"
-	"context"
 	"crypto/rand"
 	"encoding/base64"
-	"fmt"
 	"io"
-	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 
 	"github.com/prometheus/procfs"
 	"golang.org/x/sys/unix"
@@ -234,26 +229,9 @@ func setMountsOverride(fn func() ([]*procfs.MountInfo, error)) (restore func()) 
 	}
 }
 
-// LoadMountInfo loads the current mount information for the running process.
-func LoadMountInfo() ([]*MountInfoEntry, error) {
-	overrideMu.RLock()
-	override := mountsOverride
-	overrideMu.RUnlock()
-
-	if override != nil {
-		mounts, err := override()
-		if err != nil {
-			return nil, err
-		}
-		return convertFromProcs(mounts), nil
-	}
-
-	mounts, err := procfs.GetMounts()
-	if err != nil {
-		return nil, err
-	}
-	return convertFromProcs(mounts), nil
-}
+// LoadMountInfo is implemented in platform-specific files:
+//   - loadmountinfo_linux.go: reads /proc/self/mountinfo via procfs
+//   - osutil_darwin.go: returns empty list (no /proc on macOS)
 
 // convertFromProcs converts procfs.MountInfo slice to MountInfoEntry slice.
 func convertFromProcs(mounts []*procfs.MountInfo) []*MountInfoEntry {
@@ -321,32 +299,6 @@ func IsWritable(path string) bool {
 	return unix.Access(path, unix.W_OK) == nil
 }
 
-// IsKernelModuleLoaded checks if a kernel module is currently loaded.
-// It reads /proc/modules to determine if the module exists.
-func IsKernelModuleLoaded(moduleName string) (bool, error) {
-	file, err := os.Open("/proc/modules")
-	if err != nil {
-		return false, err
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-		// Module format: modulename size refcount dependencies state offset
-		fields := strings.Fields(line)
-		if len(fields) > 0 && fields[0] == moduleName {
-			return true, nil
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		return false, err
-	}
-
-	return false, nil
-}
-
 // GenerateSecurePassword generates a cryptographically secure random password.
 // It uses crypto/rand to generate random bytes and encodes them in base64.
 // The resulting password will be approximately 22 characters long (16 bytes * 4/3).
@@ -389,49 +341,6 @@ func CommandExists(cmd []string) bool {
 	return err == nil
 }
 
-// CreateBlockDevice creates a loop block device node using mknod.
-// Returns nil if the device already exists.
-func CreateBlockDevice(ctx context.Context, device string) error {
-	// Check if the device already exists
-	if _, err := os.Stat(device); !os.IsNotExist(err) {
-		slog.DebugContext(ctx, "Loop device already exists", "device", device)
-		return nil
-	}
-
-	// Extract major and minor numbers from device name
-	major, minor, err := extractMajorMinor(device)
-	if err != nil {
-		return fmt.Errorf("failed to extract major and minor numbers: %w", err)
-	}
-
-	// Create the block device using mknod syscall
-	dev := (major << 8) | minor
-	if err := syscall.Mknod(device, syscall.S_IFBLK|0660, dev); err != nil {
-		return fmt.Errorf("failed to create block device: %w", err)
-	}
-
-	return nil
-}
-
-// extractMajorMinor parses a loop device path (e.g. /dev/loop0) to extract major and minor numbers.
-// The major number for loop devices is always 7.
-func extractMajorMinor(device string) (int, int, error) {
-	re := regexp.MustCompile(`/dev/loop(\d+)`)
-	matches := re.FindStringSubmatch(device)
-	if len(matches) != 2 {
-		return 0, 0, fmt.Errorf("invalid device format: %s", device)
-	}
-
-	minor, err := strconv.Atoi(matches[1])
-	if err != nil {
-		return 0, 0, fmt.Errorf("failed to convert minor number: %w", err)
-	}
-
-	// The major number for loop devices is 7
-	major := 7
-	return major, minor, nil
-}
-
 // ReadLinesOffsetN reads contents from file and splits them by new line.
 // The offset tells at which line number to start.
 // The count determines the number of lines to read (starting from offset):
@@ -460,57 +369,6 @@ func readLinesOffsetN(filename string, offset uint, n int) ([]string, error) {
 			continue
 		}
 		ret = append(ret, strings.Trim(line, "\n"))
-	}
-
-	return ret, nil
-}
-
-// Source: https://github.com/shirou/gopsutil
-func GetFileSystems() ([]string, error) {
-	filesystemsOverrideMu.RLock()
-	override := filesystemsOverride
-	filesystemsOverrideMu.RUnlock()
-
-	if override != nil {
-		return override()
-	}
-
-	filename := "/proc/filesystems"
-	lines, err := readLinesOffsetN(filename, 0, -1)
-	if err != nil {
-		return nil, err
-	}
-	var ret []string
-	seen := make(map[string]struct{})
-	allowedNodev := map[string]struct{}{
-		"zfs":     {},
-		"fuse":    {},
-		"fuse3":   {},
-		"fuseblk": {},
-	}
-	for _, line := range lines {
-		cleaned := strings.TrimSpace(line)
-		if cleaned == "" {
-			continue
-		}
-		if !strings.HasPrefix(cleaned, "nodev") {
-			if _, exists := seen[cleaned]; !exists {
-				ret = append(ret, cleaned)
-				seen[cleaned] = struct{}{}
-			}
-			continue
-		}
-		fields := strings.Fields(cleaned)
-		if len(fields) != 2 {
-			continue
-		}
-		fsType := strings.TrimSpace(fields[1])
-		if _, ok := allowedNodev[fsType]; ok {
-			if _, exists := seen[fsType]; !exists {
-				ret = append(ret, fsType)
-				seen[fsType] = struct{}{}
-			}
-		}
 	}
 
 	return ret, nil

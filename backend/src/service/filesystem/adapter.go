@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/dianlight/srat/dto"
-	"github.com/u-root/u-root/pkg/mount"
+	"github.com/dianlight/srat/internal/darwinstubs/mount"
 	"gitlab.com/tozd/go/errors"
 )
 

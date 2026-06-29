@@ -11,8 +11,8 @@ import (
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal/ctxkeys"
+	"github.com/dianlight/srat/internal/darwinstubs/sysfs"
 	"github.com/prometheus/procfs"
-	"github.com/prometheus/procfs/sysfs"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 )
@@ -60,6 +60,13 @@ func NewNetworkStatsService(lc fx.Lifecycle,
 		lastUpdateTime: time.Now(),
 		updateMutex:    &sync.Mutex{},
 		lastStats:      make(map[string]procfs.NetDevLine),
+		currentNetHealth: &dto.NetworkStats{
+			PerNicIO: make([]dto.NicIOStats, 0),
+			Global: dto.GlobalNicStats{
+				TotalInboundTraffic:  0,
+				TotalOutboundTraffic: 0,
+			},
+		},
 	}
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {

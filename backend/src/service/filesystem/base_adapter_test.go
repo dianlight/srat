@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/internal/darwinstubs/mount"
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/stretchr/testify/suite"
-	"github.com/u-root/u-root/pkg/mount"
 )
 
 // BaseAdapterTestSuite tests the baseAdapter implementation
