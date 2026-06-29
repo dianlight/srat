@@ -7,6 +7,7 @@ backend/src/web/static/*
 backend/tmp/
 .devcontainer/.env
 .env
+.playwright-mcp
 !backend/src/config/
 .env.example
 backend/src/coverage*.out
