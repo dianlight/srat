@@ -262,7 +262,6 @@ func (h *HDIdleHandler) ignoreSuggestion(ctx context.Context, input *struct {
 		}
 	}
 	cfg.SuggestionIgnored = true
-	cfg.SuggestionIgnored = true
 	if err := h.hdidleService.SaveDeviceConfig(*cfg); err != nil {
 		// Even if the device is not yet known, we still want to persist the
 		// dismissal — synthesize a minimal record.
@@ -271,10 +270,10 @@ func (h *HDIdleHandler) ignoreSuggestion(ctx context.Context, input *struct {
 			Enabled: dto.HdidleEnableds.NOENABLED,
 		}
 		cfg.HDIdleDeviceSupport.DevicePath = devicePath
-	}
-	cfg.SuggestionIgnored = true
-	if err := h.hdidleService.SaveDeviceConfig(*cfg); err != nil {
-		return nil, huma.Error500InternalServerError("Failed to persist suggestion dismissal", err)
+		cfg.SuggestionIgnored = true
+		if err := h.hdidleService.SaveDeviceConfig(*cfg); err != nil {
+			return nil, huma.Error500InternalServerError("Failed to persist suggestion dismissal", err)
+		}
 	}
 
 	return &IgnoreSuggestionOutput{Body: *cfg}, nil
