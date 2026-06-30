@@ -36,10 +36,10 @@ These instructions are the concise, must-follow rules for working in SRAT. Keep 
 
 - Use Bun toolchain (`frontend/`). Build outputs go to `backend/src/web/static`.
 - **Do not** edit `frontend/src/store/sratApi.ts` or `backend/docs/openapi.*` directly—update Go and run `cd frontend && bun run gen`.
-- **Never** manually add types to `frontend/src/store/wsApi.ts`. All types must come from `sratApi.ts`. WS-only event payload types that have no REST endpoint need a doc-stub handler in `backend/src/api/system.go` (tagged `"system","internal"`). 
+- **Never** manually add types to `frontend/src/store/wsApi.ts`. All types must come from `sratApi.ts`. WS-only event payload types that have no REST endpoint need a doc-stub handler in `backend/src/api/system.go` (tagged `"system","internal"`).
 
   **Doc-Stub Pattern:** A handler that always returns an error but declares the DTO(s) in its response type signature. This anchors the types into the OpenAPI schema, which code-generates them into frontend TypeScript. Example:
-  
+
   ```go
   // HandleCommandEvents is a documentation-only stub that anchors command event schemas
   // into the OpenAPI spec so they code-generate into TypeScript types.
@@ -54,8 +54,9 @@ These instructions are the concise, must-follow rules for working in SRAT. Keep 
     return nil, huma.Error500InternalServerError("Use WebSocket for events", nil)
   }
   ```
-  
+
   After adding a doc-stub, run `cd frontend && bun run gen` to code-generate the types into `sratApi.ts`, then import and use them in `wsApi.ts` or other files.
+
 - MUI Grid: use the `size` prop (Grid2 default).
 - Frontend test isolation: use `msw` for API mocking; shared recurring handlers go in `frontend/src/mocks/customHandlers.ts`.
 - **Lab feature gating pattern**: to hide a settings control behind `experimental_lab_mode`, follow `HomeAssistantPanel.tsx` — add `const experimentalLabMode = Boolean(watch("experimental_lab_mode"));`, a `labLabel(text)` helper that appends `<ScienceOutlinedIcon color="warning" fontSize="small" />`, and wrap the feature in `{experimentalLabMode ? (<Feature label={labLabel("Name")} />) : null}`.
@@ -125,18 +126,16 @@ The SRAT back-end uses several linked services for lifecycle and state managemen
 When asked to generate a Git command or branch name from a Markdown task:
 
 1.  Use prefixes: `feature/` for new items, `fix/` for bugs, `docs/` for documentation, and `refactor/` for code improvements.
-    
 2.  Convert the task title to "kebab-case" (lowercase, replace spaces/underscores with hyphens).
-    
 3.  Strip emojis, special characters, and common stop-words (a, the, of, for, with).
-    
 4.  Example: "Task: \[ \] Implement user login validation" -> `feature/implement-user-login-validation`.
-    
+
 ## Git Commit Message Convention
 
 When asked to generate a Git commit use instructions from `.opencode/commit-rules.md`:
 
 ## Context7
+
 Use Context7 MCP to fetch current documentation whenever the user asks about a library, framework, SDK, API, CLI tool, or cloud service -- even well-known ones like React, Next.js, Prisma, Express, Tailwind, Django, or Spring Boot. This includes API syntax, configuration, version migration, library-specific debugging, setup instructions, and CLI tool usage. Use even when you think you know the answer -- your training data may not reflect recent changes. Prefer this over web search for library docs.
 
 Do not use for: refactoring, writing scripts from scratch, debugging business logic, code review, or general programming concepts.
@@ -148,21 +147,19 @@ Do not use for: refactoring, writing scripts from scratch, debugging business lo
 3. `query-docs` with the selected library ID and the user's full question (not single words)
 4. Answer using the fetched docs
 
-
 ## Contextual Awareness
 
--   **Markdown Authority**: Always treat "Implementation Notes" in `.md` files as the primary source of truth for business logic.
-    
--   **Cross-Repo Logic**: If "Target Repo" is specified in the Markdown header, assume all code generation or terminal commands apply to that specific directory.
-    
--   **Task Scanning**: When a user mentions a task by name, look for the corresponding checkbox in open Markdown files to understand the requirements.
+- **Markdown Authority**: Always treat "Implementation Notes" in `.md` files as the primary source of truth for business logic.
+- **Cross-Repo Logic**: If "Target Repo" is specified in the Markdown header, assume all code generation or terminal commands apply to that specific directory.
+- **Task Scanning**: When a user mentions a task by name, look for the corresponding checkbox in open Markdown files to understand the requirements.
 
 ## Instruction Files
--   **Purpose**: Instruction files in `.opencode/instructions/` provide specific guidelines for different file types and scenarios. Always check for an applicable instruction file before making changes.
--   **Format**: These files use YAML front matter to specify which files they apply to and contain concise instructions for code style, testing, or other practices.
--   **Learning**: Familiarize yourself with the existing instruction files to ensure your contributions align with the project's standards and practices.
--   **Updating Instructions**: If you notice a gap in the existing instructions or have suggestions for improvement, you can propose changes to the instruction files themselves, but always ensure that any modifications are clear, concise, and maintainable.
--  **Examples**: Refer to the existing instruction files for examples of how to format and structure your own instructions if you need to create new ones.
+
+- **Purpose**: Instruction files in `.opencode/instructions/` provide specific guidelines for different file types and scenarios. Always check for an applicable instruction file before making changes.
+- **Format**: These files use YAML front matter to specify which files they apply to and contain concise instructions for code style, testing, or other practices.
+- **Learning**: Familiarize yourself with the existing instruction files to ensure your contributions align with the project's standards and practices.
+- **Updating Instructions**: If you notice a gap in the existing instructions or have suggestions for improvement, you can propose changes to the instruction files themselves, but always ensure that any modifications are clear, concise, and maintainable.
+- **Examples**: Refer to the existing instruction files for examples of how to format and structure your own instructions if you need to create new ones.
 - **Adherence**: Always adhere to the guidelines specified in the instruction files when working on relevant code sections to maintain consistency and quality across the project.
 - **Feedback**: If you have questions about the instructions or need clarification, don't hesitate to ask for feedback from human developers to ensure you're on the right track.
 - **Continuous Improvement**: The instruction files are living documents. As the project evolves, these instructions may need to be updated to reflect new best practices or changes in the codebase. Always be open to improving the instructions as needed. But always ask for feedback before making changes to the instruction files to ensure that any updates are beneficial and align with the project's goals.
