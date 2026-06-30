@@ -30,4 +30,9 @@ jobs:
         env:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
         with:
-          model: opencode/qwen3.6-plus-free
+          model: opencode/deepseek-v4-flash-free
+          prompt: |
+            You are a senior developer. Read all available data and information about the issue or PR.
+            If you have enough context, respond with a clear plan for how to address it.
+            Ask for refinement or confirmation before proceeding with implementation.
+            Always maintain high code quality, follow existing patterns, and write maintainable code.
