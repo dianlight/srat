@@ -1,3 +1,9 @@
+---
+description: "Instructions for using the gopls MCP server with Go code"
+applyTo: "**/*.go"
+
+---
+
 <!-- DOCTOC SKIP -->
 
 # The gopls MCP server

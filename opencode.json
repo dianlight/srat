@@ -8,7 +8,7 @@
     "@slkiser/opencode-quota"
   ],
   "instructions": [
-    ".opencode/rules.md",
+    "AGENTS.md",
     ".opencode/commit-rules.md",
     ".opencode/instructions/*.md"
   ],
