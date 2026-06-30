@@ -1988,6 +1988,7 @@ export type SharedResource = {
   recycle_bin_enabled?: boolean;
   ro_users?: User[] | null;
   status?: SharedResourceStatus;
+  subfolder?: string;
   timemachine?: boolean;
   timemachine_max_size?: string;
   usage?: Usage;
@@ -2004,6 +2005,7 @@ export type SharedResourcePostData = {
   recycle_bin_enabled?: boolean;
   ro_users?: User[] | null;
   status?: SharedResourceStatus;
+  subfolder?: string;
   timemachine?: boolean;
   timemachine_max_size?: string;
   usage?: Usage;

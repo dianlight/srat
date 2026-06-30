@@ -1,7 +1,7 @@
 # [FEATURE]: Allow Share Subfolders
 
 **Target Repo:** `srat`  
-**Status:** 📅 Planned  
+**Status:** 🔄 In Progress  
 **Issue Link:** [srat#184](https://github.com/dianlight/srat/issues/184)
 
 ## 🎯 Objective
@@ -31,11 +31,11 @@ Allow users to configure a Samba share that exposes a specific subdirectory of a
 
 ## 📝 Task List
 
-- [ ] Task 1: Add `Subfolder string` (optional) field to `dto.SharedResource` and `dbom.ExportedShare`; add DB migration for the new column
-- [ ] Task 2: Validate `Subfolder` in the API layer: reject empty segments, absolute paths, and any path containing `..`
-- [ ] Task 3: In `share_service.go`, resolve the final share path as `filepath.Join(mountRoot, subfolder)` and create the directory if it does not exist
-- [ ] Task 4: Update `smb.gtpl` to emit `path = {{ .ResolvedPath }}` where `ResolvedPath` accounts for subfolder
-- [ ] Task 5: Update the frontend share form to add an optional "Subfolder" text input field with helper text
+- [x] Task 1: Add `Subfolder string` (optional) field to `dto.SharedResource`, `dbom.ExportedShare`, and `config.Share`; update generated converters
+- [x] Task 2: Validate `Subfolder` in `share_service.go`: reject absolute paths and any path containing `..`
+- [x] Task 3: In `share_service.go`, create subfolder directory on disk; resolve subfolder path in `jSONFromDatabase()` for template rendering
+- [x] Task 4: Samba template unaffected — subfolder resolved into `config.Share.Path` before template runs, so `path = {{ .data.path }}` already emits the correct resolved path
+- [x] Task 5: Add optional "Subfolder" `TextFieldElement` to `ShareEditForm.tsx` with helper text, shown for non-internal shares
 - [ ] Task 6: Unit tests — `share_service.go`: path resolution, directory creation, traversal rejection
 - [ ] Task 7: API handler tests — valid subfolder, missing subfolder (defaults to root), traversal attempt returns 422
 - [ ] Task 8: Frontend component test — subfolder input renders, submits correct value
