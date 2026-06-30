@@ -216,6 +216,8 @@ Build successful?
 | Playwright blank page | Frontend not yet ready | Wait for `Bun.serve listening on :3080` in terminal |
 | WebSocket not connecting | Proxy / CORS | Check `mise run //frontend:dev:remote` stdout for proxy errors |
 | Browser console CORS errors | API_URL mismatch | Verify `HOMEASSISTANT_IP` matches `API_URL` in `.mise.toml` `dev:remote` |
+| Direct API access needed | Cannot reach backend API externally | Use `docker exec addon_local_sambanas2 curl -sL http://localhost:64289/api/...` from the HA host (no auth required — internal-only API) |
+| `smbpasswd -L` fails / shows help | `smbpasswd -L` is broken in the addon container | Use `pdbedit -a -u <username>` instead to set Samba passwords; `pdbedit -L` to list existing users |
 
 ## Increase Custom Component Verbosity
 
