@@ -12,6 +12,7 @@ type SharedResource struct {
 	TimeMachineMaxSize *string               `json:"timemachine_max_size,omitempty"`
 	Usage              HAMountUsage          `json:"usage,omitempty" enum:"none,backup,media,share,internal"`
 	VetoFiles          []string              `json:"veto_files,omitempty"  nullable:"false"`
+	Subfolder          string                `json:"subfolder,omitempty"`
 	MountPointData     *MountPointData       `json:"mount_point_data,omitempty"`
 	Status             *SharedResourceStatus `json:"status,omitempty" read-only:"true"`
 }
