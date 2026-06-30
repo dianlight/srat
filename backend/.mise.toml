@@ -4,7 +4,6 @@ auto = true
 [tools]
 air = '1.65.3'
 "go:github.com/securego/gosec/v2/cmd/gosec" = "v2.27.1"
-"npm:@redocly/cli" = "2.34.0"
 oapi-codegen = "2.7.1"
 
 [tasks]
@@ -336,6 +335,11 @@ run = """
 	#	patch -d src/vendor/github.com/zarldev/goenums -p1 < $(pwd)/patches/goenums.patch || (echo "ERROR: Failed to apply goenums.patch"; exit 1); 
     #touch src/vendor/github.com/zarldev/goenums/.pdone
 	#fi
+	if [ -f "patches/hd-idle-check-power-mode.patch" ] && [ -d "src/vendor/github.com/adelolmo/hd-idle/sgio" ]; then 
+		echo "Applying hd-idle-check-power-mode.patch..."; 
+		patch -d src/vendor/github.com/adelolmo/hd-idle/sgio -p1 < $(pwd)/patches/hd-idle-check-power-mode.patch || (echo "ERROR: Failed to apply hd-idle-check-power-mode.patch"; exit 1); 
+    touch src/vendor/github.com/adelolmo/hd-idle/sgio/.pdone
+	fi
 	if [ -f "patches/gorm-generics.patch" ] && [ -d "src/vendor/gorm.io/gorm" ]; then 
 		echo "Applying gorm-generics.patch..."; 
 		patch -d src/vendor/gorm.io/gorm -p1 < $(pwd)/patches/gorm-generics.patch || (echo "ERROR: Failed to apply gorm-generics.patch"; exit 1); 
@@ -406,7 +410,7 @@ run = [
 alias = ["gen:openapi"]
 run = [
    "go run -C src ./cmd/srat-openapi -out ../docs",
-   "redocly lint ./docs/openapi.yaml"
+   "mise x npm:@redocly/cli@2.34.0 -- redocly lint ./docs/openapi.yaml"
 ]
 sources = ["src/**/*.go"]
 outputs = ["docs/openapi.yaml"]

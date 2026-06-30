@@ -1,7 +1,22 @@
-import { render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { screen, within } from "@testing-library/react";
+import React from "react";
+import { MemoryRouter } from "react-router";
+import { describe, expect, it, vi } from "vitest";
 import type { DiskHealth } from "../../../../store/sratApi";
 import { DiskHealthMetrics } from "../DiskHealthMetrics";
+
+// HDIdleSuggestionBadge (rendered by DiskHealthMetrics) calls useNavigate()
+// unconditionally before its early-returns, so every render needs a Router
+// context. It also calls useLabMode → useGetApiSettingsQuery which needs a
+// Redux store. Mock both to keep these tests focused on DiskHealthMetrics.
+vi.mock("../../../../hooks/useLabMode", () => ({
+    useLabMode: () => ({ labMode: false, isLoading: false }),
+}));
+
+async function renderWithWrappers(ui: React.ReactElement) {
+    const { renderWithTestStore } = await import("/test/testing");
+    return renderWithTestStore(<MemoryRouter>{ui}</MemoryRouter>);
+}
 
 describe("DiskHealthMetrics", () => {
     it("orders disks by device name", async () => {
@@ -15,7 +30,7 @@ describe("DiskHealthMetrics", () => {
             per_disk_io: [
                 {
                     device_description: "Second Disk",
-                    device_name: "/dev/sdb",
+                    device_name: "sdb",
                     read_iops: 2,
                     read_latency_ms: 1,
                     write_iops: 3,
@@ -23,7 +38,7 @@ describe("DiskHealthMetrics", () => {
                 },
                 {
                     device_description: "First Disk",
-                    device_name: "/dev/sda",
+                    device_name: "sda",
                     read_iops: 5,
                     read_latency_ms: 2,
                     write_iops: 4,
@@ -33,7 +48,7 @@ describe("DiskHealthMetrics", () => {
             per_partition_info: {},
         };
 
-        render(<DiskHealthMetrics diskHealth={diskHealth} />);
+        await renderWithWrappers(<DiskHealthMetrics diskHealth={diskHealth} />);
 
         const tables = await screen.findAllByRole("table", { name: "disk health table" });
         expect(tables.length).toBeGreaterThan(0);
@@ -51,7 +66,7 @@ describe("DiskHealthMetrics", () => {
             return headers[1]?.textContent;
         });
 
-        expect(deviceOrder).toEqual(["/dev/sda", "/dev/sdb"]);
+        expect(deviceOrder).toEqual(["sda", "sdb"]);
     });
 
     it("shows hdidle spin status column when hdidle is running", async () => {
@@ -74,7 +89,7 @@ describe("DiskHealthMetrics", () => {
             per_disk_io: [
                 {
                     device_description: "Test Disk",
-                    device_name: "/dev/sda",
+                    device_name: "sda",
                     read_iops: 5,
                     read_latency_ms: 2,
                     write_iops: 4,
@@ -84,7 +99,7 @@ describe("DiskHealthMetrics", () => {
             per_partition_info: {},
         };
 
-        render(<DiskHealthMetrics diskHealth={diskHealth} />);
+        await renderWithWrappers(<DiskHealthMetrics diskHealth={diskHealth} />);
 
         const tables = await screen.findAllByRole("table", { name: "disk health table" });
         const table = tables[tables.length - 1]!; // Get the most recent table
@@ -117,7 +132,7 @@ describe("DiskHealthMetrics", () => {
             per_disk_io: [
                 {
                     device_description: "Test Disk",
-                    device_name: "/dev/sda",
+                    device_name: "sda",
                     read_iops: 5,
                     read_latency_ms: 2,
                     write_iops: 4,
@@ -127,7 +142,7 @@ describe("DiskHealthMetrics", () => {
             per_partition_info: {},
         };
 
-        render(<DiskHealthMetrics diskHealth={diskHealth} />);
+        await renderWithWrappers(<DiskHealthMetrics diskHealth={diskHealth} />);
 
         const tables = await screen.findAllByRole("table", { name: "disk health table" });
         const table = tables[tables.length - 1]!; // Get the most recent table
@@ -158,7 +173,7 @@ describe("DiskHealthMetrics", () => {
             per_disk_io: [
                 {
                     device_description: "Active Disk",
-                    device_name: "/dev/sda",
+                    device_name: "sda",
                     read_iops: 5,
                     read_latency_ms: 2,
                     write_iops: 4,
@@ -168,7 +183,7 @@ describe("DiskHealthMetrics", () => {
             per_partition_info: {},
         };
 
-        render(<DiskHealthMetrics diskHealth={diskHealth} />);
+        await renderWithWrappers(<DiskHealthMetrics diskHealth={diskHealth} />);
 
         const tables = await screen.findAllByRole("table", { name: "disk health table" });
         const table = tables[tables.length - 1]!; // Get the most recent table
@@ -201,7 +216,7 @@ describe("DiskHealthMetrics", () => {
             per_disk_io: [
                 {
                     device_description: "Test Disk",
-                    device_name: "/dev/sda",
+                    device_name: "sda",
                     read_iops: 5,
                     read_latency_ms: 2,
                     write_iops: 4,
@@ -211,7 +226,7 @@ describe("DiskHealthMetrics", () => {
             per_partition_info: {},
         };
 
-        render(<DiskHealthMetrics diskHealth={diskHealth} />);
+        await renderWithWrappers(<DiskHealthMetrics diskHealth={diskHealth} />);
 
         const tables = await screen.findAllByRole("table", { name: "disk health table" });
         const table = tables[tables.length - 1]!; // Get the most recent table
@@ -249,7 +264,7 @@ describe("DiskHealthMetrics", () => {
             per_disk_io: [
                 {
                     device_description: "Test Disk",
-                    device_name: "/dev/sda",
+                    device_name: "sda",
                     read_iops: 5,
                     read_latency_ms: 2,
                     write_iops: 4,
@@ -259,7 +274,7 @@ describe("DiskHealthMetrics", () => {
             per_partition_info: {},
         };
 
-        render(<DiskHealthMetrics diskHealth={diskHealth} />);
+        await renderWithWrappers(<DiskHealthMetrics diskHealth={diskHealth} />);
 
         const tables = await screen.findAllByRole("table", { name: "disk health table" });
         const table = tables[tables.length - 1]!;
@@ -296,7 +311,7 @@ describe("DiskHealthMetrics", () => {
             per_disk_io: [
                 {
                     device_description: "SSD Disk",
-                    device_name: "/dev/nvme0n1",
+                    device_name: "nvme0n1",
                     read_iops: 50,
                     read_latency_ms: 0.5,
                     write_iops: 40,
@@ -306,7 +321,7 @@ describe("DiskHealthMetrics", () => {
             per_partition_info: {},
         };
 
-        render(<DiskHealthMetrics diskHealth={diskHealth} />);
+        await renderWithWrappers(<DiskHealthMetrics diskHealth={diskHealth} />);
 
         const tables = await screen.findAllByRole("table", { name: "disk health table" });
         const table = tables[tables.length - 1]!;
@@ -341,7 +356,7 @@ describe("DiskHealthMetrics", () => {
             per_disk_io: [
                 {
                     device_description: "Test Disk",
-                    device_name: "/dev/sda",
+                    device_name: "sda",
                     read_iops: 5,
                     read_latency_ms: 2,
                     write_iops: 4,
@@ -351,7 +366,7 @@ describe("DiskHealthMetrics", () => {
             per_partition_info: {},
         };
 
-        render(<DiskHealthMetrics diskHealth={diskHealth} />);
+        await renderWithWrappers(<DiskHealthMetrics diskHealth={diskHealth} />);
 
         const tables = await screen.findAllByRole("table", { name: "disk health table" });
         const table = tables[tables.length - 1]!;

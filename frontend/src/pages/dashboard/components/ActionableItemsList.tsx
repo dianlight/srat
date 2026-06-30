@@ -12,7 +12,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { useIgnoredIssues } from "../../../hooks/issueHooks";
 import { type LocationState, TabIDs } from "../../../store/locationState";
 import type { Partition } from "../../../store/sratApi";

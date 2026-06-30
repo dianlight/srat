@@ -1,11 +1,18 @@
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import PowerIcon from "@mui/icons-material/Power";
 import {
+  Alert,
   Box,
+  Button,
   Card,
   CardContent,
   CardHeader,
   Collapse,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   Grid,
   IconButton,
   ToggleButton,
@@ -13,164 +20,174 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useWatch } from "react-hook-form";
 import {
   AutocompleteElement,
   TextFieldElement,
   useForm,
 } from "react-hook-form-mui";
-import { getCurrentEnv } from "../../../macro/Environment" with {
-  type: "macro",
-};
-import type {
-  Command_type,
-  Disk,
-  HdIdleDevice,
-  Settings,
-} from "../../../store/sratApi";
+import { useLabMode } from "../../../hooks/useLabMode";
+import type { Disk, HdIdleDevice } from "../../../store/sratApi";
 import {
+  Command_type,
   Enabled,
-  useGetApiSettingsQuery,
   usePutApiDiskByDiskIdHdidleConfigMutation,
 } from "../../../store/sratApi";
+
+const VALID_COMMAND_TYPES = new Set<string>(Object.values(Command_type));
 
 interface HDIdleDiskSettingsProps {
   disk: Disk;
   readOnly?: boolean;
 }
 
-type DiskExtended = Disk & {
-  hdidle_status?: {
-    idle_time?: number;
-    command_type?: Command_type;
-    power_condition?: number;
-    enabled?: Enabled;
-  };
-};
+interface FormShape {
+  enabled: Enabled;
+  idle_time: number;
+  command_type?: string;
+  power_condition: number;
+  force_enabled: boolean;
+}
 
+/** Single source of truth for form defaults derived from the disk prop. */
+function getDiskFormDefaults(disk: Disk): FormShape {
+  return {
+    enabled: (disk?.hdidle_device?.enabled as Enabled) ?? Enabled.Yes,
+    idle_time: disk?.hdidle_device?.idle_time ?? 0,
+    command_type: disk?.hdidle_device?.command_type ?? undefined,
+    power_condition: disk?.hdidle_device?.power_condition ?? 0,
+    force_enabled: disk?.hdidle_device?.force_enabled ?? false,
+  };
+}
+
+/**
+ * Per-disk HDIdle settings card.
+ *
+ * Visibility rules (post per-disk-only refactor):
+ *   - Lab Mode must be on (otherwise the entire HDIdle subsystem is hidden)
+ *   - The disk must report HDIdle support (disk.hdidle_device.supported)
+ *
+ * Force-enable behaviour: when the user toggles Yes/Custom on a non-rotational
+ * disk (is_rotational !== true — covers SSD, NVMe, and unknown), a confirm
+ * dialog opens. Confirming sets `force_enabled=true` in the PUT body so the
+ * backend's 409-on-non-rotational guard accepts the request.
+ */
 export function HDIdleDiskSettings({
   disk,
   readOnly = false,
 }: HDIdleDiskSettingsProps) {
-  const { control, reset, formState, getValues } = useForm({
-    defaultValues: {
-      ...disk?.hdidle_device,
+  const { control, reset, formState, getValues, setValue } = useForm<FormShape>(
+    {
+      defaultValues: getDiskFormDefaults(disk),
     },
-  });
-  const { data: settings, isLoading: isLoadingSettings } =
-    useGetApiSettingsQuery();
+  );
+  const { labMode, isLoading: isLoadingLabMode } = useLabMode();
   const diskId = disk?.id || "";
   const [saveConfig, { isLoading: isSaving }] =
     usePutApiDiskByDiskIdHdidleConfigMutation();
   const [expanded, setExpanded] = useState(false);
-  const isTestEnv = (globalThis as Record<string, unknown>).__TEST__ === true;
-  const [visible, setVisible] = useState(isTestEnv);
+  const [forceDialogOpen, setForceDialogOpen] = useState(false);
+  // pending toggle target while the force-confirm dialog is open
+  const [pendingEnabled, setPendingEnabled] = useState<Enabled | null>(null);
   const diskName = disk.model || disk.id || "Unknown";
+  const isRotational = disk.is_rotational === true; // strict — null/undefined = unknown = treat as non-rotational
 
-  // Watch the local enabled toggle to disable/enable the rest of the form
   const enabled = useWatch({ control, name: "enabled" }) as Enabled | undefined;
+  // Reactive subscription so the force-enable warning Alert re-renders
+  // immediately after handleForceConfirm fires (fix #8: getValues is a
+  // snapshot and does not subscribe).
+  const forceEnabled = useWatch({ control, name: "force_enabled" }) as boolean;
   const fieldsDisabled = enabled === Enabled.No || readOnly;
 
+  // Refresh form when the parent disk prop changes (e.g. cache invalidation).
   useEffect(() => {
-    if (isLoadingSettings) return;
-    // In tests, keep the card visible for deterministic rendering
-    if (isTestEnv) {
-      setVisible(true);
-    } else {
-      // Visibility rules: show when hdidle globally enabled and not production
-      const globallyEnabled = (settings as Settings)?.hdidle_enabled ?? false;
-      setVisible(globallyEnabled && getCurrentEnv() !== "production");
-    }
+    reset(getDiskFormDefaults(disk));
+  }, [disk, reset]);
 
-    // When disk prop or API config changes, update form values
-    const apiValues = disk?.hdidle_device as HdIdleDevice | undefined;
-    reset({
-      enabled: (apiValues?.enabled as Enabled | undefined) ?? Enabled.Yes,
-      idle_time:
-        apiValues?.idle_time ??
-        (disk as DiskExtended)?.hdidle_status?.idle_time ??
-        0,
-      command_type:
-        apiValues?.command_type ??
-        (disk as DiskExtended)?.hdidle_status?.command_type ??
-        undefined,
-      power_condition:
-        apiValues?.power_condition ??
-        (disk as DiskExtended)?.hdidle_status?.power_condition ??
-        0,
-    });
-  }, [disk, reset, settings, isTestEnv, isLoadingSettings]);
-
-  // Close accordion if enabled is not Custom
+  // Auto-collapse the accordion when leaving Custom mode.
   useEffect(() => {
     if (enabled !== Enabled.Custom) {
       setExpanded(false);
     }
   }, [enabled]);
 
-  // Read HDIdle config snapshot from disk dto when available
-  const hdidleStatus = useMemo(() => {
-    const s = (disk as DiskExtended)?.hdidle_status as
-      | {
-          idle_time?: number;
-          command_type?: Command_type;
-          power_condition?: number;
-          enabled?: Enabled;
-        }
-      | undefined;
-    return s;
-  }, [disk]);
+  const handleExpandChange = () => setExpanded((prev) => !prev);
 
-  const handleExpandChange = () => {
-    setExpanded(!expanded);
+  /** Intercept the toggle change. On a non-rotational disk, opening Yes/Custom
+   * requires explicit force confirmation. The toggle change is committed only
+   * after the dialog resolves. */
+  const handleToggleChange = (newValue: Enabled | null) => {
+    if (newValue === null) return;
+    const turningOn = newValue === Enabled.Yes || newValue === Enabled.Custom;
+    const alreadyForced = getValues("force_enabled") === true;
+    if (turningOn && !isRotational && !alreadyForced) {
+      setPendingEnabled(newValue);
+      setForceDialogOpen(true);
+      return;
+    }
+    setValue("enabled", newValue, { shouldDirty: true });
+  };
+
+  const handleForceConfirm = () => {
+    if (pendingEnabled !== null) {
+      setValue("force_enabled", true, { shouldDirty: true });
+      setValue("enabled", pendingEnabled, { shouldDirty: true });
+    }
+    setPendingEnabled(null);
+    setForceDialogOpen(false);
+  };
+
+  const handleForceCancel = () => {
+    setPendingEnabled(null);
+    setForceDialogOpen(false);
   };
 
   const handleApply = async () => {
     if (!diskId) return;
     const values = getValues();
     const payload: HdIdleDevice = {
-      // The backend expects the full by-id device path in the payload
+      // disk_id is the only routing key. The backend resolves device_path
+      // itself (Phase 2.3 ResolveDevicePath) and stamps it into the response.
       disk_id: diskId,
-      device_path: `/dev/disk/by-id/${diskId}`,
-      enabled: values.enabled as Enabled,
+      enabled: values.enabled,
       idle_time: Number(values.idle_time ?? 0),
-      command_type: values.command_type || undefined,
+      // Only pass command_type when it is a known enum value; discard anything
+      // else (empty string from clearing the autocomplete, or a future value
+      // the enum hasn't defined yet).
+      command_type:
+        values.command_type && VALID_COMMAND_TYPES.has(values.command_type)
+          ? (values.command_type as HdIdleDevice["command_type"])
+          : undefined,
       power_condition: Number(values.power_condition ?? 0),
+      force_enabled: values.force_enabled,
+      // Server-managed fields — included to satisfy the required TypeScript
+      // type after omitempty removal. The PUT handler ignores these.
+      suggestion_ignored: false,
+      supported: false,
+      supports_ata: false,
+      supports_scsi: false,
     };
     try {
       await saveConfig({ diskId, hdIdleDevice: payload }).unwrap();
-    } catch {
-      // No-op; errors should be surfaced by global error UI
+    } catch (err) {
+      console.warn("[HDIdleDiskSettings] save failed:", err);
     }
   };
 
   const handleCancel = () => {
-    // Restore last loaded API values
-    const apiValues = disk?.hdidle_device as HdIdleDevice | undefined;
-    reset({
-      enabled: (apiValues?.enabled as Enabled | undefined) ?? Enabled.Yes,
-      idle_time: apiValues?.idle_time ?? disk?.hdidle_device?.idle_time ?? 0,
-      command_type:
-        apiValues?.command_type ??
-        disk?.hdidle_device?.command_type ??
-        undefined,
-      power_condition:
-        apiValues?.power_condition ?? disk?.hdidle_device?.power_condition ?? 0,
-    });
+    reset(getDiskFormDefaults(disk));
   };
-  if (!disk.hdidle_device?.supported) {
-    console.warn("HDIdle not supported on this disk");
-    return null;
-  }
 
-  const effectiveLoading = isTestEnv ? false : isLoadingSettings;
+  if (!disk.hdidle_device?.supported) return null;
+  if (isLoadingLabMode) return null;
+  if (!labMode) return null;
+
   return (
-    visible &&
-    !effectiveLoading && (
+    <>
       <Card>
         <CardHeader
-          title="Power Settings ( 🚧 Work In Progress )"
+          title="Power Settings"
           avatar={
             <IconButton size="small" sx={{ pointerEvents: "none" }}>
               <PowerIcon color="primary" />
@@ -181,8 +198,8 @@ export function HDIdleDiskSettings({
               <Tooltip
                 title={
                   <Typography variant="body2">
-                    Enable disk-specific override. When Off, fields are
-                    read-only.
+                    Enable HDIdle for this disk. "Custom" exposes per-disk idle
+                    time and command overrides. "No" disables monitoring.
                   </Typography>
                 }
               >
@@ -190,16 +207,16 @@ export function HDIdleDiskSettings({
                   <Controller
                     name="enabled"
                     control={control}
-                    render={({ field: { value, onChange } }) => (
+                    render={({ field: { value } }) => (
                       <ToggleButtonGroup
                         value={value}
                         exclusive
                         size="small"
                         color={value === Enabled.Yes ? "success" : "standard"}
-                        onChange={(_, newValue) => {
-                          if (newValue === null) return;
-                          onChange(newValue as Enabled);
-                        }}
+                        onChange={(_, newValue) =>
+                          handleToggleChange(newValue as Enabled | null)
+                        }
+                        disabled={readOnly}
                         aria-label="toggle disk override"
                       >
                         <ToggleButton value={Enabled.Yes}>
@@ -239,59 +256,26 @@ export function HDIdleDiskSettings({
                 <Typography
                   variant="body2"
                   gutterBottom
-                  sx={{
-                    color: "text.secondary",
-                  }}
+                  sx={{ color: "text.secondary" }}
                 >
-                  Configure specific spin-down settings for{" "}
-                  <strong>{disk.model || diskName}</strong>. Leave fields at 0
-                  or empty to use default settings.
+                  Configure spin-down for <strong>{diskName}</strong>. Leave
+                  fields at 0 or empty to use sensible defaults (60s idle, SCSI
+                  command, power condition 0).
                 </Typography>
-
-                {hdidleStatus && (
-                  <Box
-                    sx={{
-                      mt: 1,
-                      mb: 1,
-                      p: 1,
-                      backgroundColor: "info.lighter",
-                      borderRadius: 1,
-                    }}
-                  >
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        color: "text.secondary",
-                      }}
-                    >
-                      Current config: idle time
-                      <strong> {hdidleStatus.idle_time ?? 0}s</strong>, command
-                      <strong> {hdidleStatus.command_type || "default"}</strong>
-                      , power condition
-                      <strong> {hdidleStatus.power_condition ?? 0}</strong>
-                      {hdidleStatus.enabled && (
-                        <span>
-                          {" "}
-                          — enabled: <strong>{hdidleStatus.enabled}</strong>
-                        </span>
-                      )}
-                    </Typography>
-                  </Box>
-                )}
               </Grid>
 
               <Grid size={{ xs: 12, md: 4 }}>
                 <Tooltip
                   title={
                     <Typography variant="body2">
-                      Idle time before spinning down this specific disk. Set to
-                      0 to use the default timeout.
+                      Idle time before spinning down this disk (seconds). 0 uses
+                      the default timeout.
                     </Typography>
                   }
                 >
                   <span style={{ display: "inline-block", width: "100%" }}>
                     <TextFieldElement
-                      name={`idle_time`}
+                      name="idle_time"
                       label="Idle Time (seconds)"
                       type="number"
                       control={control}
@@ -309,20 +293,20 @@ export function HDIdleDiskSettings({
                   title={
                     <>
                       <Typography variant="body2">
-                        Command type for this disk. Leave empty to use default.
+                        Command type. Leave empty to use the recommended one.
                       </Typography>
                       <Typography variant="body2" sx={{ mt: 1 }}>
-                        <strong>SCSI:</strong> For most modern SATA/SAS drives
+                        <strong>SCSI:</strong> most modern SATA/SAS drives
                       </Typography>
                       <Typography variant="body2">
-                        <strong>ATA:</strong> For legacy ATA/IDE drives
+                        <strong>ATA:</strong> legacy ATA/IDE drives
                       </Typography>
                     </>
                   }
                 >
                   <span style={{ display: "inline-block", width: "100%" }}>
                     <AutocompleteElement
-                      name={`command_type`}
+                      name="command_type"
                       label="Command Type"
                       control={control}
                       options={["scsi", "ata"]}
@@ -330,9 +314,7 @@ export function HDIdleDiskSettings({
                         size: "small",
                         disabled: fieldsDisabled,
                       }}
-                      textFieldProps={{
-                        helperText: "Empty = use default",
-                      }}
+                      textFieldProps={{ helperText: "Empty = use default" }}
                     />
                   </span>
                 </Tooltip>
@@ -342,14 +324,13 @@ export function HDIdleDiskSettings({
                 <Tooltip
                   title={
                     <Typography variant="body2">
-                      SCSI power condition for this disk (0-15). Set to 0 for
-                      default behavior.
+                      SCSI power condition (0-15). 0 is the default.
                     </Typography>
                   }
                 >
                   <span style={{ display: "inline-block", width: "100%" }}>
                     <TextFieldElement
-                      name={`power_condition`}
+                      name="power_condition"
                       label="Power Condition"
                       type="number"
                       control={control}
@@ -360,28 +341,6 @@ export function HDIdleDiskSettings({
                     />
                   </span>
                 </Tooltip>
-              </Grid>
-
-              <Grid size={12}>
-                <Box
-                  sx={{
-                    mt: 1,
-                    p: 1,
-                    backgroundColor: "info.lighter",
-                    borderRadius: 1,
-                  }}
-                >
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color: "text.secondary",
-                    }}
-                  >
-                    <strong>Note:</strong> Device-specific settings override
-                    global defaults. Changes take effect after the next service
-                    restart or configuration update.
-                  </Typography>
-                </Box>
               </Grid>
 
               <Grid size={12}>
@@ -403,9 +362,7 @@ export function HDIdleDiskSettings({
                     <span>
                       <ToggleButton
                         value="apply"
-                        disabled={
-                          fieldsDisabled || !formState.isDirty || isSaving
-                        }
+                        disabled={readOnly || !formState.isDirty || isSaving}
                         onClick={handleApply}
                         color="success"
                         size="small"
@@ -431,7 +388,45 @@ export function HDIdleDiskSettings({
             </Grid>
           </CardContent>
         </Collapse>
+        {/* Force-enable warning rendered outside the Collapse so it stays
+            visible on the Enabled.Yes path (which auto-collapses the accordion,
+            hiding anything inside Collapse). Uses the reactive forceEnabled
+            watch instead of getValues() snapshot. */}
+        {!isRotational && forceEnabled && (
+          <Alert severity="warning" sx={{ mx: 2, mb: 2 }}>
+            HDIdle is force-enabled on a non-rotational disk. Spin-down commands
+            have no effect on SSD/NVMe and may cause wear or errors on some
+            controllers.
+          </Alert>
+        )}
       </Card>
-    )
+
+      <Dialog open={forceDialogOpen} onClose={handleForceCancel}>
+        <DialogTitle>Enable HDIdle on a non-rotational disk?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            This disk does not appear to be a rotational HDD (SSD/NVMe or USB
+            enclosure that hides the rotational flag). Spin-down commands are
+            <strong> meaningless on solid-state media</strong> and may cause
+            controller errors on some bridges.
+          </DialogContentText>
+          <DialogContentText sx={{ mt: 2 }}>
+            If you proceed, the per-disk record will be persisted with{" "}
+            <code>force_enabled=true</code> so future loads of this card skip
+            this warning.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleForceCancel}>Cancel</Button>
+          <Button
+            onClick={handleForceConfirm}
+            color="warning"
+            variant="contained"
+          >
+            Force enable
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 }

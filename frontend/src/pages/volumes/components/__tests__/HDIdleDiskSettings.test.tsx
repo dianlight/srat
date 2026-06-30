@@ -1,6 +1,6 @@
-import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-// Required localStorage shim for testing environment
+// localStorage shim for jsdom environments that lack one.
 if (!(globalThis as any).localStorage) {
     const _store: Record<string, string> = {};
     (globalThis as any).localStorage = {
@@ -11,19 +11,28 @@ if (!(globalThis as any).localStorage) {
     };
 }
 
-// Helper to create a mock disk with required hdidle properties
+// Mutable ref so individual tests can override labMode without a new vi.mock.
+const labModeRef = { value: true };
+
+vi.mock("../../../../hooks/useLabMode", () => ({
+    useLabMode: () => ({ labMode: labModeRef.value, isLoading: false }),
+}));
+
+// Helper: rotational HDD by default. Tests opt-out by overriding is_rotational.
 const createMockDisk = (overrides: any = {}) => ({
     id: "disk-1",
-    name: "sda",
+    legacy_device_name: "sda",
     model: "Test Disk Model",
     size: 1000000000,
     removable: false,
+    is_rotational: true,
     hdidle_device: {
         supported: true,
-        enabled: "yes",
+        enabled: "yes", // lowercase — matches the Enabled enum value
         idle_time: 0,
         command_type: "",
         power_condition: 0,
+        force_enabled: false,
     },
     ...overrides,
 });
@@ -33,7 +42,6 @@ async function getOverrideToggleButtons(screen: any) {
     const toggleGroup = await screen.findByRole("group", {
         name: /toggle disk override/i,
     });
-
     return within(toggleGroup).getAllByRole("button");
 }
 
@@ -41,58 +49,121 @@ describe("HDIdleDiskSettings Component", () => {
     let originalFetch: any;
 
     beforeEach(async () => {
+        labModeRef.value = true;
         localStorage.clear();
-        document.body.innerHTML = '';
-        // Override fetch to provide expected API responses for RTK Query hooks
+        document.body.innerHTML = "";
+        // RTK Query still calls fetch when stores are not pre-seeded — provide
+        // minimal stubs for any settings/disk endpoint the component may
+        // accidentally trigger (it shouldn't with our mock, but be safe).
         originalFetch = (globalThis as any).fetch;
-
-        (globalThis as any).fetch = async (url: string, init?: RequestInit) => {
-            void init;
-            let body: any = {};
-            if (typeof url === "string" && url.includes("/api/settings")) {
-                body = { hdidle_enabled: true };
-            } else if (typeof url === "string" && url.includes("/api/disk/") && url.includes("/hdidle/support")) {
-                body = { supported: true };
-            } else if (typeof url === "string" && url.includes("/api/disk/") && url.includes("/hdidle/config")) {
-                body = { enabled: "yes", idle_time: 0, command_type: "", power_condition: 0 };
-            }
-            const jsonString = JSON.stringify(body);
-            return new Response(jsonString, {
+        (globalThis as any).fetch = async () =>
+            new Response(JSON.stringify({}), {
                 status: 200,
-                statusText: "OK",
                 headers: { "Content-Type": "application/json" },
             });
-        };
     });
 
     afterEach(() => {
-        if (originalFetch) {
-            (globalThis as any).fetch = originalFetch;
+        if (originalFetch) (globalThis as any).fetch = originalFetch;
+    });
+
+    test("renders the Power Settings card", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { createTestStore } = await import("/test/testing");
+        const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
+
+        const store = await createTestStore();
+        render(
+            React.createElement(Provider as any, {
+                store,
+                children: React.createElement(HDIdleDiskSettings as any, {
+                    disk: createMockDisk(),
+                    readOnly: false,
+                }),
+            }),
+        );
+
+        expect(await screen.findByText(/Power Settings/i)).toBeTruthy();
+    });
+
+    test("returns null when hdidle_device.supported is false", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { createTestStore } = await import("/test/testing");
+        const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
+
+        const store = await createTestStore();
+        const disk = createMockDisk({
+            hdidle_device: { ...createMockDisk().hdidle_device, supported: false },
+        });
+        render(
+            React.createElement(Provider as any, {
+                store,
+                children: React.createElement(HDIdleDiskSettings as any, {
+                    disk,
+                    readOnly: false,
+                }),
+            }),
+        );
+        expect(screen.queryByText(/Power Settings/i)).toBeNull();
+    });
+
+    test("returns null when Lab Mode is off", async () => {
+        // Verifies the labMode gate works now that the __TEST__ escape hatch
+        // has been removed. The vi.mock ref is set to false for this test only.
+        labModeRef.value = false;
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { createTestStore } = await import("/test/testing");
+        const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
+
+        const store = await createTestStore();
+        render(
+            React.createElement(Provider as any, {
+                store,
+                children: React.createElement(HDIdleDiskSettings as any, {
+                    disk: createMockDisk(),
+                    readOnly: false,
+                }),
+            }),
+        );
+        expect(screen.queryByText(/Power Settings/i)).toBeNull();
+    });
+
+    test("readOnly disables the toggle group", async () => {
+        const React = await import("react");
+        const { render, screen, within } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { createTestStore } = await import("/test/testing");
+        const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
+
+        const store = await createTestStore();
+        render(
+            React.createElement(Provider as any, {
+                store,
+                children: React.createElement(HDIdleDiskSettings as any, {
+                    disk: createMockDisk(),
+                    readOnly: true,
+                }),
+            }),
+        );
+
+        const toggleGroup = await screen.findByRole("group", {
+            name: /toggle disk override/i,
+        });
+        const buttons = within(toggleGroup).getAllByRole("button");
+        // MUI ToggleButton sets `disabled` attribute on each button when the
+        // group's `disabled` prop is true.
+        for (const b of buttons) {
+            expect((b as HTMLButtonElement).disabled).toBe(true);
         }
     });
 
-    test("renders accordion with disk settings title", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { createTestStore } = await import("/test/testing");
-        const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
-
-        const mockDisk = createMockDisk();
-
-        const store = await createTestStore();
-        render(
-            React.createElement(Provider, {
-                store,
-                children: React.createElement(HDIdleDiskSettings as any, { disk: mockDisk, readOnly: false }),
-            })
-        );
-
-        const title = await screen.findByText(/Power Settings/i);
-        expect(title).toBeTruthy();
-    });
-
-    test.todo("displays disk model in description", async () => {
+    test("expand button is disabled until Enabled.Custom is selected", async () => {
         const React = await import("react");
         const { render, screen, waitFor } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
@@ -100,241 +171,184 @@ describe("HDIdleDiskSettings Component", () => {
         const userEvent = (await import("@testing-library/user-event")).default;
         const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
 
-        const mockDisk = createMockDisk({
-            model: "Samsung SSD 870",
-        });
-
         const store = await createTestStore();
         const user = userEvent.setup();
         render(
-            React.createElement(Provider, {
+            React.createElement(Provider as any, {
                 store,
-                children: React.createElement(HDIdleDiskSettings as any, { disk: mockDisk, readOnly: false }),
-            })
-        );
-
-        // Click Custom to enable the expand button
-        const toggleButtons = await getOverrideToggleButtons(screen);
-        const customBtn = toggleButtons[1];
-        await user.click(customBtn);
-
-        const expandBtn = await screen.findByRole("button", { name: /show more/i });
-
-        await waitFor(() => {
-            expect((expandBtn as HTMLButtonElement).disabled).toBe(false);
-        });
-
-        await user.click(expandBtn as any);
-
-        const model = await screen.findByText(/Samsung SSD 870/i);
-        expect(model).toBeTruthy();
-    });
-
-    test.todo("renders idle time configuration field", async () => {
-        const React = await import("react");
-        const { render, screen, waitFor } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { createTestStore } = await import("/test/testing");
-        const userEvent = (await import("@testing-library/user-event")).default;
-        const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
-
-        const mockDisk = createMockDisk({
-            name: "sdb",
-            size: 2000000000,
-        });
-
-        const store = await createTestStore();
-        const user = userEvent.setup();
-        render(
-            React.createElement(Provider, {
-                store,
-                children: React.createElement(HDIdleDiskSettings as any, { disk: mockDisk, readOnly: false }),
-            })
-        );
-
-        // Click Custom to enable the expand button
-        const toggleButtons = await getOverrideToggleButtons(screen);
-        const customBtn = toggleButtons[1];
-        await user.click(customBtn);
-
-        const expandBtn = await screen.findByRole("button", { name: /show more/i });
-
-        await waitFor(() => {
-            expect((expandBtn as HTMLButtonElement).disabled).toBe(false);
-        });
-
-        await user.click(expandBtn as any);
-
-        const idleField = await screen.findByLabelText(/Idle Time/i);
-        expect(idleField).toBeTruthy();
-    });
-
-    test.todo("renders command type configuration field", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { createTestStore } = await import("/test/testing");
-        const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
-
-        const mockDisk = createMockDisk({
-            name: "sdc",
-            model: "Another Disk",
-            size: 500000000,
-            removable: true,
-        });
-
-        const store = await createTestStore();
-
-        render(
-            React.createElement(Provider, {
-                store,
-                children: React.createElement(HDIdleDiskSettings as any, { disk: mockDisk, readOnly: false }),
-            })
-        );
-
-        const title = await screen.findByText(/Power Settings/i);
-        expect(title).toBeTruthy();
-    });
-
-    test.todo("respects readOnly mode", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { createTestStore } = await import("/test/testing");
-        const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
-
-        const mockDisk = createMockDisk();
-
-        const store = await createTestStore();
-
-        render(
-            React.createElement(Provider, {
-                store,
-                children: React.createElement(HDIdleDiskSettings as any, { disk: mockDisk, readOnly: true }),
-            })
-        );
-
-        const title = await screen.findByText(/Power Settings/i);
-        expect(title).toBeTruthy();
-    });
-
-    test.todo("handles disk without name using ID", async () => {
-        const React = await import("react");
-        const { render, screen, waitFor } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { createTestStore } = await import("/test/testing");
-        const userEvent = (await import("@testing-library/user-event")).default;
-        const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
-
-        const mockDisk = createMockDisk({
-            id: "disk-unknown",
-            name: undefined,
-            model: "Mystery Disk",
-        });
-
-        const store = await createTestStore();
-        const user = userEvent.setup();
-
-        render(
-            React.createElement(Provider, {
-                store,
-                children: React.createElement(HDIdleDiskSettings as any, { disk: mockDisk, readOnly: false }),
-            })
-        );
-
-        const toggleButtons = await getOverrideToggleButtons(screen);
-        const customBtn = toggleButtons[1];
-        await user.click(customBtn);
-
-        const expandBtn = await screen.findByRole("button", { name: /show more/i });
-
-        await waitFor(() => {
-            expect((expandBtn as HTMLButtonElement)?.disabled).toBe(false);
-        });
-
-        await user.click(expandBtn as any);
-
-        const model = await screen.findByText(/Mystery Disk|disk-unknown/i);
-        expect(model).toBeTruthy();
-    });
-
-    test.todo("expands accordion only when Enabled.Custom is selected", async () => {
-        const React = await import("react");
-        const { render, screen, waitFor } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { createTestStore } = await import("/test/testing");
-        const userEvent = (await import("@testing-library/user-event")).default;
-        const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
-
-        const mockDisk = createMockDisk();
-
-        const store = await createTestStore();
-        const user = userEvent.setup();
-
-        render(
-            React.createElement(Provider, {
-                store,
-                children: React.createElement(HDIdleDiskSettings as any, { disk: mockDisk, readOnly: false }),
-            })
+                children: React.createElement(HDIdleDiskSettings as any, {
+                    disk: createMockDisk(),
+                    readOnly: false,
+                }),
+            }),
         );
 
         const expandBtn = await screen.findByRole("button", { name: /show more/i });
-
-        // Initially, expand button should be disabled (default is Enabled.Yes)
+        // Default is Yes → expand disabled.
         expect((expandBtn as HTMLButtonElement).disabled).toBe(true);
 
-        // Click Custom to enable the expand button
-        const toggleButtons = await getOverrideToggleButtons(screen);
-        const customBtn = toggleButtons[1];
+        const [, customBtn] = await getOverrideToggleButtons(screen);
         await user.click(customBtn);
 
-        // Now the expand button should be enabled
         await waitFor(() => {
             expect((expandBtn as HTMLButtonElement).disabled).toBe(false);
         });
-
-        // Click to expand
-        await user.click(expandBtn);
-
-        // Verify accordion content is visible
-        const idleField = await screen.findByLabelText(/Idle Time/i);
-        expect(idleField).toBeTruthy();
-
-        // Switch back to Enabled.Yes
-        const yesButtons = await getOverrideToggleButtons(screen);
-        const yesBtn = yesButtons[0];
-        await user.click(yesBtn);
-
-        // Expand button should be disabled again
-        await waitFor(() => {
-            expect((expandBtn as HTMLButtonElement).disabled).toBe(true);
-        });
-
-        // Accordion should be collapsed
-        expect(() => screen.getByLabelText(/Idle Time/i)).toThrow();
     });
 
-    test.todo("defaults to Enabled.Yes", async () => {
+    test("does not show force dialog on rotational disk", async () => {
         const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
+        const { render, screen, waitFor } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { createTestStore } = await import("/test/testing");
+        const userEvent = (await import("@testing-library/user-event")).default;
         const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
 
-        const mockDisk = createMockDisk();
-
         const store = await createTestStore();
-
+        const user = userEvent.setup();
+        // Rotational HDD with current state No — clicking Yes must not show
+        // the force-enable dialog.
         render(
-            React.createElement(Provider, {
+            React.createElement(Provider as any, {
                 store,
-                children: React.createElement(HDIdleDiskSettings as any, { disk: mockDisk, readOnly: false }),
-            })
+                children: React.createElement(HDIdleDiskSettings as any, {
+                    disk: createMockDisk({
+                        is_rotational: true,
+                        hdidle_device: {
+                            ...createMockDisk().hdidle_device,
+                            enabled: "no",
+                        },
+                    }),
+                    readOnly: false,
+                }),
+            }),
         );
 
-        // The Yes button should be selected by default (success color)
-        const toggleButtons = await getOverrideToggleButtons(screen);
-        const yesBtn = toggleButtons[0];
-        expect(yesBtn).toBeTruthy();
+        const [yesBtn] = await getOverrideToggleButtons(screen);
+        await user.click(yesBtn);
+
+        // No dialog appears.
+        await waitFor(() => {
+            expect(
+                screen.queryByText(/Enable HDIdle on a non-rotational disk/i),
+            ).toBeNull();
+        });
+    });
+
+    test("opens force dialog when enabling on a non-rotational disk", async () => {
+        const React = await import("react");
+        const { render, screen, findByRole } = await import(
+            "@testing-library/react"
+        );
+        const { Provider } = await import("react-redux");
+        const { createTestStore } = await import("/test/testing");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
+
+        const store = await createTestStore();
+        const user = userEvent.setup();
+        render(
+            React.createElement(Provider as any, {
+                store,
+                children: React.createElement(HDIdleDiskSettings as any, {
+                    disk: createMockDisk({
+                        is_rotational: false,
+                        hdidle_device: {
+                            ...createMockDisk().hdidle_device,
+                            enabled: "no",
+                            force_enabled: false,
+                        },
+                    }),
+                    readOnly: false,
+                }),
+            }),
+        );
+
+        const [yesBtn] = await getOverrideToggleButtons(screen);
+        await user.click(yesBtn);
+
+        // The dialog appears.
+        const dialog = await findByRole(document.body, "dialog");
+        expect(dialog).toBeTruthy();
+        expect(
+            await screen.findByText(/Enable HDIdle on a non-rotational disk/i),
+        ).toBeTruthy();
+    });
+
+    test("Cancel in force dialog leaves toggle unchanged", async () => {
+        const React = await import("react");
+        const { render, screen, waitFor } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { createTestStore } = await import("/test/testing");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
+
+        const store = await createTestStore();
+        const user = userEvent.setup();
+        render(
+            React.createElement(Provider as any, {
+                store,
+                children: React.createElement(HDIdleDiskSettings as any, {
+                    disk: createMockDisk({
+                        is_rotational: false,
+                        hdidle_device: {
+                            ...createMockDisk().hdidle_device,
+                            enabled: "no",
+                        },
+                    }),
+                    readOnly: false,
+                }),
+            }),
+        );
+
+        const [yesBtn] = await getOverrideToggleButtons(screen);
+        await user.click(yesBtn);
+
+        const cancelBtn = await screen.findByRole("button", { name: /^cancel$/i });
+        await user.click(cancelBtn);
+
+        // The "No" button (third) should still be aria-pressed=true.
+        await waitFor(async () => {
+            const buttons = await getOverrideToggleButtons(screen);
+            expect(buttons[2].getAttribute("aria-pressed")).toBe("true");
+        });
+    });
+
+    test("Force enable in dialog flips toggle and sets the warning", async () => {
+        const React = await import("react");
+        const { render, screen, waitFor } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { createTestStore } = await import("/test/testing");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { HDIdleDiskSettings } = await import("../HDIdleDiskSettings");
+
+        const store = await createTestStore();
+        const user = userEvent.setup();
+        render(
+            React.createElement(Provider as any, {
+                store,
+                children: React.createElement(HDIdleDiskSettings as any, {
+                    disk: createMockDisk({
+                        is_rotational: false,
+                        hdidle_device: {
+                            ...createMockDisk().hdidle_device,
+                            enabled: "no",
+                        },
+                    }),
+                    readOnly: false,
+                }),
+            }),
+        );
+
+        const [, customBtn] = await getOverrideToggleButtons(screen);
+        await user.click(customBtn);
+
+        const forceBtn = await screen.findByRole("button", { name: /force enable/i });
+        await user.click(forceBtn);
+
+        // After confirmation: Custom is selected.
+        await waitFor(async () => {
+            const buttons = await getOverrideToggleButtons(screen);
+            expect(buttons[1].getAttribute("aria-pressed")).toBe("true");
+        });
     });
 });

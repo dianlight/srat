@@ -4,6 +4,7 @@ package service_test
 
 import (
 	"context"
+	"os"
 	"strings"
 	"sync"
 	"syscall"
@@ -590,6 +591,9 @@ func (suite *FilesystemServiceTestSuite) TearDownTest() {
 	}
 }
 func (suite *FilesystemServiceTestSuite) TestCreateBlockDevice_Success() {
+	if os.Geteuid() != 0 {
+		suite.T().Skip("TestCreateBlockDevice_Success requires root (mknod)")
+	}
 	device := "/dev/loop99"
 	defer func() {
 		// Clean up after test
@@ -610,6 +614,9 @@ func (suite *FilesystemServiceTestSuite) TestCreateBlockDevice_Success() {
 }
 
 func (suite *FilesystemServiceTestSuite) TestCreateBlockDevice_AlreadyExists() {
+	if os.Geteuid() != 0 {
+		suite.T().Skip("TestCreateBlockDevice_AlreadyExists requires root (mknod)")
+	}
 	device := "/dev/loop88"
 	defer func() {
 		// Clean up after test

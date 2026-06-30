@@ -401,7 +401,7 @@ export function VolumeDetailsPanel({
 
         {/* Disk-only panels: visible only when a disk is selected without a partition */}
         {disk && !partition && disk.hdidle_device?.supported && (
-          <HDIdleDiskSettings disk={disk} readOnly={false} />
+          <HDIdleDiskSettings disk={disk} readOnly={readOnly} />
         )}
         {/* Only render SmartStatusPanel if settings are loaded and smart_mode is not "none" */}
         {disk &&
