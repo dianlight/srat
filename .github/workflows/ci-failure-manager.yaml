@@ -1,0 +1,136 @@
+name: CI Failure Issue Manager
+
+on:
+  workflow_run:
+    types:
+      - completed
+
+permissions:
+  issues: write
+  actions: read
+
+jobs:
+  manage:
+    if: github.event.workflow_run.name != 'CI Failure Issue Manager'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ensure ci-failure label exists
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            try {
+              await github.rest.issues.getLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'ci-failure',
+              });
+            } catch {
+              await github.rest.issues.createLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'ci-failure',
+                color: 'd73a4a',
+                description: 'A CI workflow run has failed',
+              });
+              core.info('Created ci-failure label.');
+            }
+
+      - name: Manage CI failure issues
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const workflow = context.payload.workflow_run;
+            const { conclusion, name, head_branch, html_url, run_id, head_commit, created_at, run_number } = workflow;
+
+            const label = 'ci-failure';
+            const branchLabel = head_branch || '(unknown branch)';
+            const issueTitle = `🚨 CI Failure: ${name} (${branchLabel})`;
+
+            core.info(`Workflow "${name}" (#${run_number}) completed with conclusion: ${conclusion} on branch: ${branchLabel}`);
+
+            // Gather all open issues with the ci-failure label
+            const { data: openIssues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: label,
+              state: 'open',
+              per_page: 100,
+            });
+
+            const existingIssue = openIssues.find(issue => issue.title === issueTitle);
+
+            if (conclusion === 'success') {
+              if (existingIssue) {
+                core.info(`Closing issue #${existingIssue.number} — workflow succeeded.`);
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: existingIssue.number,
+                  body: `✅ The **${name}** workflow run [#${run_number}](${html_url}) succeeded on \`${branchLabel}\`. Closing this issue.`,
+                });
+                await github.rest.issues.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: existingIssue.number,
+                  state: 'closed',
+                });
+              } else {
+                core.info('No open issue to close — workflow succeeded.');
+              }
+              return;
+            }
+
+            // For non-success conclusions, only act on explicit failures
+            if (conclusion !== 'failure') {
+              core.info(`Conclusion is "${conclusion}" — skipping.`);
+              return;
+            }
+
+            // Build the issue body
+            const sha = head_commit ? head_commit.id : null;
+            const shortSha = sha ? sha.slice(0, 7) : null;
+
+            let body = `**Workflow:** ${name}
+            **Branch:** \`${branchLabel}\`
+            **Run:** [#${run_number}](${html_url})
+            **Failed at:** ${created_at}
+            `;
+
+            if (shortSha) {
+              const shaUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/commit/${sha}`;
+              body += `**Commit:** [${shortSha}](${shaUrl})\n`;
+            }
+
+            body += `
+
+            This issue was automatically opened because the **${name}** workflow failed on \`${branchLabel}\`.
+
+            [🔍 View workflow run](${html_url})`;
+
+            if (existingIssue) {
+              core.info(`Updating existing issue #${existingIssue.number}.`);
+              body += `\n\n---\n*Updated at ${new Date().toISOString()}*`;
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number,
+                body,
+              });
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number,
+                body: `🔁 Failed again on run [#${run_number}](${html_url}). Issue updated with latest failure details.`,
+              });
+            } else {
+              core.info('Creating new issue for the failure.');
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: issueTitle,
+                body,
+                labels: [label],
+              });
+            }
