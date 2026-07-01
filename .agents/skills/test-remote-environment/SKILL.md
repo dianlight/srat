@@ -1,12 +1,12 @@
 ---
 name: test-remote-environment
-description: "Test the SRAT project against the live Home Assistant test environment. Deploys the backend binary via 'mise //backend:build:remote', starts the frontend dev server with 'mise run //frontend:dev:remote', controls the local_sambanas2 addon (start/stop/restart) via the Home Assistant MCP, reads addon logs, and browses/validates the UI with Playwright at http://localhost:3080/. Triggers on: 'test remote', 'test in HA', 'deploy to test', 'check test environment', 'test on addon', 'run integration test'."
+description: Test on the Homeassitant Dev envoronment
 argument-hint: "Describe what to test and whether custom component interaction is needed (e.g., 'test share creation flow, include custom component: yes')."
 ---
 
 # Test Remote Environment
 
-Deploys SRAT to the live Home Assistant test environment, controls the addon lifecycle, and validates behaviour via logs, the backend API, and the UI using Playwright.
+Test the SRAT project against the live Home Assistant test environment. Deploys the backend binary via `mise //backend:build:remote`, starts the frontend dev server with `mise run //frontend:dev:remote`, controls the `local_sambanas2` addon (start/stop/restart) via the Home Assistant MCP, reads addon logs, and browses/validates the UI with Playwright at `http://localhost:3080/`.
 
 ## When to Use
 
@@ -20,11 +20,11 @@ Deploys SRAT to the live Home Assistant test environment, controls the addon lif
 
 | Requirement | How to verify |
 |---|---|
-| `HOMEASSISTANT_IP` env var set | `echo $HOMEASSISTANT_IP` — must return an IP address |
-| `SUPERVISOR_URL` env var set | `echo $SUPERVISOR_URL` — must return e.g. `http://192.168.0.68/`; used to derive `API_URL` for the frontend dev server |
-| SSH access to HA | `ssh root@$HOMEASSISTANT_IP echo ok` |
+| `HOMEASSISTANT_IP` env var (default 192.168.0.68) | `echo ${HOMEASSISTANT_IP:-192.168.0.68}` — must return an IP address |
+| `SUPERVISOR_URL` env var set | `echo ${SUPERVISOR_URL:-http://192.168.0.68/` — must return e.g. `http://192.168.0.68/`; used to derive `API_URL` for the frontend dev server |
+| SSH access to HA | `ssh root@${HOMEASSISTANT_IP:-192.168.0.68} echo ok` |
 | `sshfs` available for remote mount | `which sshfs` |
-| HA MCP server connected | MCP tools `mcp_home-assistan_ha_*` must be available |
+| HA MCP server connected | MCP tools `mcp_home-assistan_ha_*` or `home-assistant-dev` must be available |
 | Frontend dependencies installed | `cd frontend && bun install` |
 
 ## Argument Handling (Custom Component Scope)
@@ -32,10 +32,10 @@ Deploys SRAT to the live Home Assistant test environment, controls the addon lif
 Before running the procedure, decide whether custom component deployment is in scope.
 
 1. Parse the user argument for explicit intent:
-    - Include custom component flow when argument contains intent like `include custom component: yes`, `with custom component`, or similar.
-    - Skip custom component flow when argument explicitly says `include custom component: no`, `backend-only`, or similar.
+   - Include custom component flow when argument contains intent like `include custom component: yes`, `with custom component`, or similar.
+   - Skip custom component flow when argument explicitly says `include custom component: no`, `backend-only`, or similar.
 2. If the argument is ambiguous **and** the requested test could interact with Home Assistant integration behavior, ask:
-    - `Should I include custom component remote deployment/reload in this test? (yes/no)`
+   - `Should I include custom component remote deployment/reload in this test? (yes/no)`
 3. Run the optional custom component steps only when the answer is `yes`.
 
 ## Procedure
@@ -252,7 +252,7 @@ mcp_home-assistan_ha_addon_logs  →  slug: "local_sambanas2"
 
 5. After debugging, revert logger entries to `info` (or remove them) to avoid noisy logs.
 
-Notes:
+**Notes:**
 - Custom component Python logs are emitted in **Home Assistant core logs**, not addon logs.
 - Prefer temporary debug enablement only during active investigation.
 
@@ -269,3 +269,49 @@ Update addon options before restart:
 ```
 mcp_home-assistan_ha_set_addon_options  →  slug: "local_sambanas2", options: { ... }
 ```
+
+## Usage Examples
+
+### Example 1: Test backend changes only
+```
+Test: "Validate backend API changes for share creation"
+Custom component: "include custom component: no"
+```
+
+### Example 2: Test UI changes with custom component
+```
+Test: "Test share creation UI flow with custom component"
+Custom component: "include custom component: yes"
+```
+
+### Example 3: Quick validation after build
+```
+Test: "Quick validation of addon after build"
+Custom component: "include custom component: no"  (will ask if unsure)
+```
+
+## Return Values
+
+This skill returns a comprehensive test report including:
+
+- **Build status**: Success/failure and any errors encountered
+- **Addon health**: Start status, logs analysis, and any runtime issues
+- **Custom component status** (if deployed): Deployment success, runtime errors
+- **UI test results** (if frontend started): Page load status, WebSocket connectivity, console errors
+- **Network validation**: API endpoint responses and data integrity
+- **Cleanup status**: Proper browser and server termination
+
+## Error Handling
+
+This skill gracefully handles:
+
+- Missing environment variables
+- SSH connection failures
+- Build compilation errors
+- Addon startup failures
+- Custom component deployment issues
+- Frontend server startup problems
+- Playwright browser errors
+- Network connectivity issues
+
+All errors are logged with actionable guidance, and the skill provides clear next steps for resolution.

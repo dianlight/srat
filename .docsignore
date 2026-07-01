@@ -17,6 +17,7 @@
 .zed/
 .zencoder/
 .kilocode/
+.agents/
 backend/src/vendor/
 custom_components/.venv/
 docs/refactors/
