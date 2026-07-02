@@ -169,6 +169,10 @@ func (s *UserService) GetAdmin() (*dto.User, error) {
 }
 
 func (s *UserService) CreateUser(userDto dto.User) (*dto.User, error) {
+	if userDto.Password == nil || userDto.Password.Expose() == "" {
+		return nil, dto.ErrorPasswordRequired
+	}
+
 	var dbUser dbom.SambaUser
 	var conv converter.DtoToDbomConverterImpl
 	if err := conv.UserToSambaUser(userDto, &dbUser); err != nil {
@@ -230,6 +234,10 @@ func (s *UserService) CreateUser(userDto dto.User) (*dto.User, error) {
 }
 
 func (s *UserService) UpdateUser(currentUsername string, userDto dto.User) (*dto.User, error) {
+	if userDto.Password != nil && userDto.Password.Expose() == "" {
+		return nil, dto.ErrorPasswordRequired
+	}
+
 	dbUser, err := gorm.G[dbom.SambaUser](s.db).Where(g.SambaUser.Username.Eq(currentUsername)).First(s.ctx)
 
 	if err != nil {
@@ -310,9 +318,10 @@ func (s *UserService) updateUser(currentUsername string, currentPassword string,
 }
 
 func (s *UserService) UpdateAdminUser(userDto dto.User) (*dto.User, error) {
-	// This method is more complex due to potential admin username change.
-	// The existing logic in api.UserHandler for UpdateAdminUser can be moved here.
-	// For brevity, I'll sketch it out; the full detail is in your existing UserHandler.
+	if userDto.Password != nil && userDto.Password.Expose() == "" {
+		return nil, dto.ErrorPasswordRequired
+	}
+
 	dbUser, err := query.SambaUserQuery[dbom.SambaUser](s.db).GetAdmin(s.ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get admin user")
