@@ -81,6 +81,9 @@ func (handler *UserHandler) CreateUser(ctx context.Context, input *struct {
 		if errors.Is(err, dto.ErrorUserAlreadyExists) {
 			return nil, huma.Error409Conflict(err.Error())
 		}
+		if errors.Is(err, dto.ErrorPasswordRequired) {
+			return nil, huma.Error422UnprocessableEntity(err.Error())
+		}
 		return nil, errors.Wrapf(err, "failed to create user %s", input.Body.Username)
 	}
 
@@ -115,6 +118,9 @@ func (handler *UserHandler) UpdateUser(ctx context.Context, input *struct {
 		if errors.Is(err, dto.ErrorUserAlreadyExists) {
 			return nil, huma.Error409Conflict(err.Error())
 		}
+		if errors.Is(err, dto.ErrorPasswordRequired) {
+			return nil, huma.Error422UnprocessableEntity(err.Error())
+		}
 		return nil, errors.Wrapf(err, "failed to update user %s", input.UserName)
 	}
 	return &struct{ Body dto.User }{Body: *updatedUser}, nil
@@ -142,6 +148,9 @@ func (handler *UserHandler) UpdateAdminUser(ctx context.Context, input *struct {
 		}
 		if errors.Is(err, dto.ErrorUserAlreadyExists) {
 			return nil, huma.Error409Conflict(err.Error())
+		}
+		if errors.Is(err, dto.ErrorPasswordRequired) {
+			return nil, huma.Error422UnprocessableEntity(err.Error())
 		}
 		return nil, errors.Wrap(err, "failed to update admin user")
 	}
