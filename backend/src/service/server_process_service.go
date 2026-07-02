@@ -526,10 +526,13 @@ func (self *ServerService) jSONFromDatabase() (tconfig config.Config, err errors
 	if err != nil {
 		return tconfig, errors.WithStack(err)
 	}
-	for _, cshare := range tconfig.Shares {
+	for name, cshare := range tconfig.Shares {
+		if cshare.Subfolder != "" {
+			cshare.Path = filepath.Join(cshare.Path, cshare.Subfolder)
+			tconfig.Shares[name] = cshare
+		}
 		if cshare.Usage == "media" {
 			tconfig.Medialibrary.Enable = true
-			break
 		}
 	}
 

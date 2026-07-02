@@ -4,6 +4,8 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/dianlight/srat/converter"
@@ -253,7 +255,36 @@ func (s *ShareService) GetShare(name string) (*dto.SharedResource, errors.E) {
 	return &dtoShare, nil
 }
 
+func validateSubfolder(subfolder string) error {
+	if subfolder == "" {
+		return nil
+	}
+	if filepath.IsAbs(subfolder) {
+		return errors.New("subfolder must be a relative path")
+	}
+	cleaned := filepath.Clean(subfolder)
+	if strings.HasPrefix(cleaned, "..") {
+		return errors.New("subfolder must not traverse above mount root")
+	}
+	return nil
+}
+
+func ensureSubfolder(root string, subfolder string) errors.E {
+	if subfolder == "" {
+		return nil
+	}
+	fullPath := filepath.Join(root, subfolder)
+	if err := os.MkdirAll(fullPath, 0o755); err != nil {
+		return errors.Wrapf(err, "failed to create subfolder %s", fullPath)
+	}
+	return nil
+}
+
 func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResource, errors.E) {
+	if err := validateSubfolder(share.Subfolder); err != nil {
+		return nil, errors.Wrap(err, "invalid subfolder")
+	}
+
 	check, err := gorm.G[dbom.ExportedShare](s.db).Scopes(dbom.IncludeSoftDeleted).Where("name = ? and deleted_at IS NOT NULL", share.Name).Update(s.ctx, "deleted_at", nil)
 	if err != nil {
 		slog.Error("Failed to check for existing share", "share_name", share.Name, "error", err)
@@ -293,6 +324,13 @@ func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResourc
 		return nil, errors.Wrap(errS, "failed to convert share")
 	}
 
+	// Ensure subfolder exists on disk
+	if share.Subfolder != "" && dtoShare.MountPointData != nil {
+		if err := ensureSubfolder(dtoShare.MountPointData.Path, share.Subfolder); err != nil {
+			slog.Warn("Failed to create subfolder", "share", dtoShare.Name, "subfolder", share.Subfolder, "err", err)
+		}
+	}
+
 	if err := s.VerifyShare(&dtoShare); err != nil {
 		slog.Warn("Share verification failed", "share", dtoShare.Name, "err", err)
 	}
@@ -306,6 +344,10 @@ func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResourc
 }
 
 func (s *ShareService) UpdateShare(name string, share dto.SharedResource) (*dto.SharedResource, errors.E) {
+	if err := validateSubfolder(share.Subfolder); err != nil {
+		return nil, errors.Wrap(err, "invalid subfolder")
+	}
+
 	dbShare, err := gorm.G[dbom.ExportedShare](s.db).
 		Preload("MountPointData", nil).
 		Preload("Users", nil).

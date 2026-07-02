@@ -34,6 +34,7 @@ func (c *DtoToDbomConverterImpl) ExportedShareToSharedResource(source dbom.Expor
 	dtoSharedResource.GuestOk = &pBool3
 	pString := source.TimeMachineMaxSize
 	dtoSharedResource.TimeMachineMaxSize = &pString
+	dtoSharedResource.Subfolder = source.Subfolder
 	dtoSharedResource.Usage = source.Usage
 	dtoSharedResource.VetoFiles = c.datatypesJSONSliceToStringList(source.VetoFiles)
 	pDtoMountPointData, err := c.dbomMountPointPathToPDtoMountPointData(source.MountPointData)
@@ -270,6 +271,9 @@ func (c *DtoToDbomConverterImpl) SharedResourceToExportedShareNoUsersNoMountPoin
 	}
 	if source.Usage != "" {
 		target.Usage = source.Usage
+	}
+	if source.Subfolder != "" {
+		target.Subfolder = source.Subfolder
 	}
 	var pString *string
 	if source.MountPointData != nil {
@@ -560,6 +564,7 @@ func (c *DtoToDbomConverterImpl) sharedResourceToExportedShare(source dto.Shared
 		dbomExportedShare.TimeMachineMaxSize = *source.TimeMachineMaxSize
 	}
 	dbomExportedShare.Usage = source.Usage
+	dbomExportedShare.Subfolder = source.Subfolder
 	var pString *string
 	if source.MountPointData != nil {
 		pString = &source.MountPointData.Path
