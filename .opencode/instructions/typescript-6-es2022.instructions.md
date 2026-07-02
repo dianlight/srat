@@ -2,54 +2,50 @@
 
 ---
 
-description: 'Guidelines for TypeScript Development targeting TypeScript 6.0+ and ES2022 output'
+description: 'Guidelines for TypeScript Development targeting TypeScript 7.0+ and ES2022 output'
 applyTo: '**/\*.ts,**/\*.tsx'
 
 ---
 
 # TypeScript Development
 
-> These instructions assume projects are built with TypeScript 6.0+ (or newer) compiling to an ES2022 JavaScript baseline. The project uses `@typescript/native-preview` (tsgo) which is the TypeScript 7.0 (Go-based) preview compiler.
+> These instructions assume projects are built with TypeScript 7.0 (Go-based `tsgo` compiler) compiling to an ES2022 JavaScript baseline. The project uses `@typescript/native-preview` (tsgo) which is the TypeScript 7.0 (Go-based) compiler.
 
 ## TypeScript Version and Tooling
 
-- **TypeScript Version**: 6.0 final / 7.0 Preview (tsgo)
+- **TypeScript Version**: 7.0 RC (tsgo Go-based compiler)
 - **Target**: ES2022 with modern ECMAScript features
 - **Type Checking**: Uses `bun tsgo --noEmit` command (not regular `tsc`)
 - **Migration Guide**: See `frontend/TYPESCRIPT_MIGRATION.md` for upgrade details
-- **Release**: TypeScript 6.0 final (March 23, 2026) - [Official Announcement](https://devblogs.microsoft.com/typescript/announcing-typescript-6-0/)
+- **Release**: TypeScript 7.0 RC - [Official Announcement](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0-rc/)
 
-### TypeScript 6.0 Key Changes
+### TypeScript 7.0 Key Changes
 
-**Removed Deprecated Flags** (Do not use):
+**Removed Features** (No longer supported - do not use):
 - ❌ `experimentalDecorators` - Use native decorators instead
 - ❌ `useDefineForClassFields: false` - ES2022+ requires default `true`
 - ❌ `target: es5` - ES2015+ is the minimum
 - ❌ Classic module resolution - Use `bundler` or `node`
 - ❌ AMD/UMD module emit - ESM and CommonJS only
-- ❌ `baseUrl` - No longer required for path mappings (deprecated in 6.0)
+- ❌ `baseUrl` - Removed in TS 7.0, use path mappings without it
 - ❌ `outFile` - No longer supported
-- ❌ Import assertion syntax - Use import attributes instead
+- ❌ `--downlevelIteration` - No longer needed with ES2015+
+- ❌ Import assertion syntax (`import ... assert { ... }`) - Use import attributes (`import ... with { ... }`)
 
-**Enabled Strict Flags**:
+**Enabled by Default** (was opt-in in TS 6.0):
+- ✅ `esModuleInterop: true` - Now the default in TS 7.0
+- ✅ `noUncheckedSideEffectImports: true` - Carried forward from TS 6.0
+
+**Strict Flags** (keep enabled):
 - ✅ `noImplicitOverride: true` - Requires explicit `override` keyword on class methods
-- ✅ `strict: true` - Now default for new projects
+- ✅ `strict: true` - Default for all projects
 - 🚧 `noUncheckedIndexedAccess: true` - TODO: See migration guide for implementation plan
 
 **Performance Benefits**:
-- 40-60% faster incremental builds with parallelized type-checking (TS 6.0)
-- 20-50% faster builds with `types: []` configuration
-- Multi-threaded AST caching and smarter inference
-- Better type inference and consistency
-
-**New Features in 6.0**:
-- Improved type inference for context-sensitive functions (React hooks, Redux actions)
-- Const type parameters for more precise generic inference
-- Advanced control flow analysis - better type narrowing
-- Subpath imports with `#/` (Node.js 20-style)
-- No mandatory `baseUrl` for import aliases
-- Updated DOM types including Temporal API support
-- Function expression type-checking aligned with TS 7.0
+- 7-10x faster cold builds with native (Go) compiler
+- Multi-threaded type-checking by default
+- Smarter incremental builds with improved caching
+- Reduced memory usage compared to JavaScript-based compiler
 
 ## Core Intent
 
@@ -60,11 +56,11 @@ applyTo: '**/\*.ts,**/\*.tsx'
 
 ## General Guardrails
 
-- Target TypeScript 6.0+ / ES2022 and prefer native features over polyfills.
+- Target TypeScript 7.0+ / ES2022 and prefer native features over polyfills.
 - Use pure ES modules; never emit `require`, `module.exports`, or CommonJS helpers.
 - Rely on the project's build, lint, and test scripts unless asked otherwise.
 - Note design trade-offs when intent is not obvious.
-- Follow the TypeScript 6.0/7.0 migration guide when making config changes.
+- Follow the TypeScript 7.0 migration guide when making config changes.
 
 ## Project Organization
 
@@ -185,11 +181,13 @@ export class MyComponent extends Component<Props, State> {
 
 When modifying `tsconfig.json`:
 
-1. **Do not re-introduce deprecated flags**:
+1. **Do not re-introduce removed features**:
    - No `experimentalDecorators`
    - No `useDefineForClassFields: false`
    - No `target: es5` or older
    - No classic module resolution
+   - No `baseUrl`
+   - No `outFile`
 
 2. **Maintain strict type checking**:
    - Keep `strict: true`
@@ -205,12 +203,12 @@ When modifying `tsconfig.json`:
    - See `frontend/TYPESCRIPT_MIGRATION.md` for detailed upgrade information
    - Check TODO items before enabling additional strict flags
 
-## Common Patterns for TypeScript 6.0+
+## Common Patterns for TypeScript 7.0+
 
 ### Using Native Decorators (Not Experimental)
 
 ```typescript
-// ✅ CORRECT - Native decorators (TypeScript 6.0+)
+// ✅ CORRECT - Native decorators (TypeScript 7.0+)
 function logged(target: any, context: ClassMethodDecoratorContext) {
   return function(...args: any[]) {
     console.log(`Calling ${String(context.name)}`);
@@ -231,7 +229,7 @@ class MyClass {
 class MyComponent {
   // Field initializers run after super() call
   public state = { count: 0 };
-  
+
   constructor() {
     // super() called first (if extending)
     // then field initializers run
@@ -240,16 +238,16 @@ class MyComponent {
 }
 ```
 
-## TypeScript 6.0 Code Optimization Patterns
+## TypeScript 7.0 Code Optimization Patterns
 
 ### Leveraging Improved Type Inference
 
 **Avoid Unnecessary Type Assertions:**
 ```typescript
-// ❌ Before (TS 5.x) - unnecessary cast
+// ❌ Before - unnecessary cast
 const diskInfo = (diskHealth as any)?.per_disk_info?.[key];
 
-// ✅ After (TS 6.0) - properly typed
+// ✅ After (TS 7.0) - properly typed
 const diskInfo = diskHealth?.per_disk_info?.[key]; // Type correctly inferred
 ```
 
@@ -259,7 +257,7 @@ const diskInfo = diskHealth?.per_disk_info?.[key]; // Type correctly inferred
 const h = headers as Record<string, string>;
 const v = h[key] ?? (h as Record<string, string>)[key.toLowerCase()];
 
-// ✅ After (TS 6.0) - single cast, improved control flow
+// ✅ After (TS 7.0) - single cast, improved control flow
 const h = headers as Record<string, string>;
 const v = h[key] ?? h[key.toLowerCase()]; // Type properly narrowed
 ```
@@ -268,7 +266,7 @@ const v = h[key] ?? h[key.toLowerCase()]; // Type properly narrowed
 ```typescript
 // ✅ Better generic type specificity
 function getProperty<K extends string>(
-  obj: Record<K, unknown>, 
+  obj: Record<K, unknown>,
   key: K
 ) {
   return obj[key]; // More precise inference
@@ -282,7 +280,7 @@ if (import.meta && (import.meta as any).hot) {
   (import.meta as any).hot.accept(() => reload());
 }
 
-// ✅ After (TS 6.0) - native support
+// ✅ After (TS 7.0) - native support
 if (import.meta.hot) {
   import.meta.hot.accept(() => reload());
 }
@@ -290,20 +288,19 @@ if (import.meta.hot) {
 
 **Avoid Deprecated Import Assertions:**
 ```typescript
-// ❌ Deprecated in TS 6.0
+// ❌ Deprecated (removed in TS 7.0)
 import data from './data.json' assert { type: 'json' };
 const module = await import('./module.js', { assert: { type: 'module' } });
 
-// ✅ Use import attributes instead (when supported by runtime)
+// ✅ Use import attributes instead
 import data from './data.json' with { type: 'json' };
 ```
 
-### Indexed Access Safety (Future Enhancement)
+### Indexed Access Safety (Planned Enhancement)
 
 When `noUncheckedIndexedAccess` is enabled:
 
 ```typescript
-// Future pattern (after migration)
 const items = ['a', 'b', 'c'];
 const item = items[0]; // Type: string | undefined
 
@@ -320,7 +317,6 @@ if (items[0] !== undefined) {
 ## Migration Resources
 
 - **Migration Guide**: `frontend/TYPESCRIPT_MIGRATION.md`
-- **Implementation Summary**: `TYPESCRIPT_6_IMPLEMENTATION_SUMMARY.md`
-- **Official Release Notes**: [TypeScript 6.0](https://devblogs.microsoft.com/typescript/announcing-typescript-6-0/)
-- **TypeScript 6.0 Documentation**: [Release Notes](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-6-0.html)
+- **Implementation Summary**: `docs/TYPESCRIPT_6_IMPLEMENTATION_SUMMARY.md`
+- **Official Release Notes**: [TypeScript 7.0 RC](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0-rc/)
 - **TypeScript 7.0 Discussion**: [microsoft/typescript-go](https://github.com/microsoft/typescript-go/discussions/825)
