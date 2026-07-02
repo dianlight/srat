@@ -179,22 +179,35 @@ func NewHDIdleService(lc fx.Lifecycle, in HDIdleServiceParams) HDIdleServiceOut 
 // To restart with a fresh configuration after a DB change, call Stop then
 // Start, or use the helper Reconfigure (added in a later phase).
 func (s *HDIdleService) Start() errors.E {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	// Idempotent: already running ⇒ nothing to do. Previously this returned
 	// an error, which combined with the stopChan-not-nilled bug to permanently
 	// break the service after the first Stop(). Both are now fixed.
+	s.mu.RLock()
+	alreadyRunning := s.stopChan != nil
+	s.mu.RUnlock()
+	if alreadyRunning {
+		return nil
+	}
+
+	// Refresh internal config from the DB (per-disk-only model). This does
+	// DB reads and per-device support probes (CheckDeviceSupport), which can
+	// take a while — run it without holding s.mu so it doesn't block readers
+	// and writers of s.config, s.diskStats, and s.stopChan for the duration.
+	newConfig, err := s.convertConfig()
+	if err != nil {
+		return err
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Re-check idempotency: another goroutine may have started the service
+	// while convertConfig() was running unlocked above.
 	if s.stopChan != nil {
 		return nil
 	}
 
-	// Refresh internal config from the DB (per-disk-only model).
-	var err errors.E
-	s.config, err = s.convertConfig()
-	if err != nil {
-		return err
-	}
+	s.config = newConfig
 
 	// Reset per-disk activity state so each run starts with a clean slate.
 	// Without this, a Stop → (DB change) → Start cycle would carry stale
