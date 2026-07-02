@@ -4,6 +4,14 @@
 
 ## [ 🚧 Unreleased ]
 
+### 🔧 Chore
+
+- **Migrate to TypeScript 7.0 RC** (Go-based `tsgo` compiler):
+  - Updated peer dependency to `typescript: ^7.0.1-rc`
+  - Updated `@typescript/native-preview` to `7.0.0-dev.20260701.1`
+  - Updated `tsconfig.json`, migration docs, and instruction files
+  - Patches `esModuleInterop` default and other TS 7.0 defaults
+
 ### ✨ Features
 
 - **HDIdle per-disk model** (Lab Mode feature): Replaced the global HDIdle

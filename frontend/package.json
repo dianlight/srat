@@ -39,7 +39,7 @@
     "vitest-browser-react": "2.2.0"
   },
   "peerDependencies": {
-    "typescript": "^6.0.2"
+    "typescript": "^7.0.1-rc"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

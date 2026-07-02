@@ -2,6 +2,8 @@ name: CI Failure Issue Manager
 
 on:
   workflow_run:
+    workflows:
+      - "build"
     types:
       - completed
 

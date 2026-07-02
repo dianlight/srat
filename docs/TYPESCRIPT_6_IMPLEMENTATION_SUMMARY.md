@@ -1,165 +1,79 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [TypeScript 6.0/7.0 Preparation - Implementation Summary](#typescript-6070-preparation---implementation-summary)
+- [TypeScript 7.0 Migration - Implementation Summary](#typescript-70-migration---implementation-summary)
   - [Overview](#overview)
   - [What Was Changed](#what-was-changed)
     - [1. TypeScript Configuration (`frontend/tsconfig.json`)](#1-typescript-configuration-frontendtsconfigjson)
     - [2. Package Configuration (`frontend/package.json`)](#2-package-configuration-frontendpackagejson)
-    - [3. Code Cleanup](#3-code-cleanup)
+    - [3. Tooling (`root .mise.toml`)](#3-tooling-root-misetoml)
     - [4. Documentation](#4-documentation)
   - [Benefits](#benefits)
-    - [Immediate Benefits](#immediate-benefits)
-    - [Future Benefits](#future-benefits)
-  - [What's Left for TypeScript 7.0](#whats-left-for-typescript-70)
+  - [What's Left](#whats-left)
     - [Enable `noUncheckedIndexedAccess: true`](#enable-nouncheckedindexedaccess-true)
   - [Current Status](#current-status)
   - [Testing](#testing)
   - [References](#references)
-  - [Questions?](#questions)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-# TypeScript 6.0/7.0 Preparation - Implementation Summary
+# TypeScript 7.0 Migration - Implementation Summary
 
 ## Overview
 
-This document summarizes the work completed to prepare the SRAT frontend for TypeScript 6.0 Beta and the upcoming TypeScript 7.0 (Go-based) release. The project already uses `@typescript/native-preview` (tsgo) for type checking, which is the preview version of TypeScript 7.0.
+This document summarizes the work completed to migrate the SRAT frontend from TypeScript 6.0 final to TypeScript 7.0 RC (Go-based compiler via `@typescript/native-preview` / tsgo).
+
+**Supersedes**: `docs/TYPESCRIPT_6_IMPLEMENTATION_SUMMARY.md` (February 2026)
 
 ## What Was Changed
 
 ### 1. TypeScript Configuration (`frontend/tsconfig.json`)
 
-**Removed Deprecated Flags:**
-
-- ❌ `experimentalDecorators: true` - Deprecated in TypeScript 6.0
-  - **Reason**: TypeScript 6.0 promotes native decorators; the experimental flag is no longer needed
-  - **Impact**: No code changes required (not using legacy decorators)
-
-- ❌ `useDefineForClassFields: false` - Deprecated in TypeScript 6.0
-  - **Reason**: Should use the default `true` value for ES2022+ class field semantics
-  - **Impact**: Aligns with modern ECMAScript class field behavior
-
-**Updated Language Target:**
-
-- 📈 Changed `target` from `ES2021` to `ES2022`
-- 📈 Changed `lib` from `ES2021` to `ES2022`
-  - **Reason**: Better alignment with modern ECMAScript features
-  - **Impact**: Access to newer JavaScript APIs while maintaining browser compatibility
-
-**Enabled New Strict Flags:**
-
-- ✅ `noImplicitOverride: true` - New TypeScript 6.0+ strict flag
-  - **Reason**: Requires explicit `override` keyword on class methods that override parent methods
-  - **Impact**: Code was already compliant (see `ErrorBoundary.tsx`)
-
-**Documented Future Work:**
-
-- 📝 Added TODO comment for `noUncheckedIndexedAccess`
-  - **Reason**: Enabling this requires refactoring ~6 files with indexed access patterns
-  - **Status**: Documented in migration guide, left commented out for now
+- Updated header to "TypeScript 7.0 RC Configuration"
+- Updated all version references from "TS 6.0" to "TS 7.0"
+- Updated deprecated flags comment to reflect TS 7.0 removals
+- Updated `esModuleInterop` comment (now default true in TS 7.0)
 
 ### 2. Package Configuration (`frontend/package.json`)
 
-**Updated Peer Dependencies:**
+- Updated peer dependency from `"typescript": "^6.0.2"` to `"typescript": "^7.0.1-rc"`
 
-```json
-"peerDependencies": {
-  "typescript": "^6.0.0-beta || ^5.9.3"
-}
-```
+### 3. Tooling (`root .mise.toml`)
 
-- **Reason**: Support both TypeScript 6.0 beta and current 5.9.3
-- **Impact**: Allows using either version without peer dependency warnings
-
-### 3. Code Cleanup
-
-**Removed Legacy Reference Directive:**
-
-- File: `frontend/src/macro/__tests__/Environment.test.ts`
-- Removed: `/// <reference types="bun-types" />`
-- **Reason**: Legacy triple-slash reference directives are discouraged in modern TypeScript
-- **Impact**: Cleaner, more maintainable code
+- Updated `@typescript/native-preview` from `7.0.0-dev.20260626.1` to `7.0.0-dev.20260701.1`
 
 ### 4. Documentation
 
-**Created Comprehensive Migration Guide:**
-
-- File: `frontend/TYPESCRIPT_MIGRATION.md`
-- **Contents**:
-  - Complete list of changes made
-  - Detailed explanation of TypeScript 6.0 Beta changes
-  - TODO list for full TypeScript 7.0 readiness
-  - Specific files and patterns that need refactoring for `noUncheckedIndexedAccess`
-  - Testing instructions
-  - Reference links to official documentation
-
-**Updated CHANGELOG:**
-
-- File: `CHANGELOG.md`
-- Added comprehensive entry in the "Maintenance" section
-- Documents all TypeScript 6.0/7.0 preparation work
+- Updated `frontend/TYPESCRIPT_MIGRATION.md` to reflect TS 7.0 RC status
+- Updated `.opencode/instructions/typescript-6-es2022.instructions.md` to TypeScript 7.0
+- Updated this summary document
 
 ## Benefits
 
-### Immediate Benefits
+1. ✅ **7-10x faster type-checking** with the Go-based native compiler
+2. 🚀 **Multi-threaded compilation** out of the box
+3. 🎯 **Latest TypeScript features** from the RC release
+4. 🔒 **`esModuleInterop` default true** in TS 7.0
+5. 📚 **Updated documentation** for future contributors
 
-1. ✅ **TypeScript 6.0 Compatible**: No deprecation warnings
-2. 🚀 **Build Performance**: Using `types: []` provides 20-50% faster builds
-3. 🎯 **Modern Standards**: ES2022 target enables latest ECMAScript features
-4. 🔒 **Enhanced Type Safety**: `noImplicitOverride` flag enabled
-5. 📚 **Well Documented**: Clear migration path for future work
-
-### Future Benefits
-
-1. 🔮 **TypeScript 7.0 Ready**: When TS 7.0 releases, only minor refactoring needed
-2. 🛡️ **Better Type Safety**: Path to enable `noUncheckedIndexedAccess` is documented
-3. 🏗️ **Maintainable**: Clear documentation helps future developers
-
-## What's Left for TypeScript 7.0
-
-The following work is **optional** and would enable the strictest TypeScript settings. It's documented in `frontend/TYPESCRIPT_MIGRATION.md`:
+## What's Left
 
 ### Enable `noUncheckedIndexedAccess: true`
 
-This flag makes TypeScript treat all indexed accesses as potentially undefined, improving type safety but requiring explicit null checks.
-
-**Files requiring changes (~6 files, ~13 locations):**
-
-1. **Dashboard Metrics** (2 files, ~6 locations)
-   - `src/pages/DashBoard/DiskHealthMetrics.tsx`
-   - `src/pages/DashBoard/NetworkHealthMetrics.tsx`
-   - **Pattern**: Object property access without null guards
-   - **Fix**: Add null checks or optional chaining
-
-2. **Tree View Components** (2 files, ~4 locations)
-   - `src/components/SharesTreeView.tsx`
-   - `src/components/VolumesTreeView.tsx`
-   - **Pattern**: Array tuple indexing in sort callbacks
-   - **Fix**: Add default values with nullish coalescing
-
-3. **Store Utilities** (2 files, ~3 locations)
-   - `src/store/sseApi.ts`
-   - `src/store/mdcSlice.ts`
-   - **Pattern**: Dynamic object keys and typed array indexing
-   - **Fix**: Add explicit null checks
-
-**Estimated effort**: 2-3 hours
+This optional strict flag requires refactoring indexed access patterns in ~6 files (~13 locations). Documented in `frontend/TYPESCRIPT_MIGRATION.md`.
 
 ## Current Status
 
-✅ **TypeScript 6.0 Compatible**: All deprecated flags removed, modern configuration in place
+✅ **TypeScript 7.0 RC**: Config, tooling, and documentation migrated. Type-checking passes with `tsgo --noEmit`.
 
-🚧 **TypeScript 7.0 Ready**: Core configuration complete, optional strict flag refactoring documented
+🚧 **Code Refactoring**: `noUncheckedIndexedAccess` still disabled pending refactoring of indexed access patterns.
 
 ## Testing
-
-The changes maintain full backward compatibility. To test:
 
 ```bash
 cd frontend
 
-# Type check (requires bun + tsgo)
+# Type check
 bun tsgo --noEmit
 
 # Run tests
@@ -168,30 +82,19 @@ bunx vitest run
 # Production build
 bun run build
 
-# Development server
-bun run dev
-
 # Linting
 bun run lint
 ```
 
 ## References
 
-- [TypeScript 6.0 Beta Announcement](https://devblogs.microsoft.com/typescript/announcing-typescript-6-0-beta/)
+- [TypeScript 7.0 RC Announcement](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0-rc/)
 - [TypeScript 7.0 (Go-based) Discussion](https://github.com/microsoft/typescript-go/discussions/825)
 - [Migration Guide](../frontend/TYPESCRIPT_MIGRATION.md)
 - [CHANGELOG](../CHANGELOG.md)
 
-## Questions?
-
-For questions or issues related to this migration:
-
-1. Check `frontend/TYPESCRIPT_MIGRATION.md` for detailed information
-2. Review the code changes in this PR
-3. Open a GitHub issue if you encounter problems
-
 ---
 
-**Implementation Date**: February 13, 2026
-**TypeScript Version**: @typescript/native-preview 7.0.0-dev.20260212.1 (tsgo)
+**Implementation Date**: July 2, 2026
+**TypeScript Version**: v7.0.1-rc / @typescript/native-preview 7.0.0-dev.20260701.1 (tsgo)
 **Status**: Complete ✅

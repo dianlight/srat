@@ -33,13 +33,13 @@ main() {
 	# Exit early if not on Windows or WSL
 	if ! is_windows_or_wsl; then
 		echo "Not running on Windows or WSL - skipping proxy setup"
-		exit 0
+		return 0
 	fi
 
 	# Exit early if no proxy is configured
 	if ! has_proxy; then
 		echo "HTTP_PROXY/HTTPS_PROXY not set - skipping proxy setup"
-		exit 0
+		return 0
 	fi
 
 	echo "Running on Windows/WSL with HTTP_PROXY configured"
@@ -65,4 +65,10 @@ main() {
 	export HTTP_PROXY HTTPS_PROXY NO_PROXY
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+	# Script is being sourced — return instead of exit
+	main "$@"
+else
+	# Script is being executed directly
+	main "$@"
+fi
