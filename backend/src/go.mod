@@ -9,7 +9,7 @@ require (
 	github.com/mattn/go-isatty v0.0.21 // indirect
 	github.com/oapi-codegen/runtime v1.4.2
 	github.com/pilebones/go-udev v0.9.1
-	github.com/shirou/gopsutil/v4 v4.26.5
+	github.com/shirou/gopsutil/v4 v4.26.6
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/sys v0.46.0
 )
@@ -17,7 +17,7 @@ require (
 require (
 	aead.dev/minisign v0.3.0
 	github.com/DATA-DOG/go-sqlmock v1.5.2
-	github.com/adelolmo/hd-idle v0.0.0-20260125082707-310727a56de0
+	github.com/adelolmo/hd-idle v0.0.0-20260628105713-0c42d8cca82f
 	github.com/angusgmorrison/logfusc v0.1.0
 	github.com/benmcclelland/sgio v0.0.0-20250710154739-45e823ff1f46
 	github.com/danielgtaylor/huma/v2 v2.38.0
