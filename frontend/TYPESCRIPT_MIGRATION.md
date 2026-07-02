@@ -137,7 +137,7 @@ This strict flag requires refactoring indexed access patterns in several files b
 
 - `esModuleInterop: true` is now the **default** in TS 7.0
 - `noUncheckedSideEffectImports: true` (enabled by default in TS 6.0, carried forward)
-- `types: []` continues to provide 20-50% build speed improvement
+- `types: ["bun", "react", "react-dom"]` (explicit allowlist, not `[]`) continues to provide 20-50% build speed improvement by avoiding implicit inclusion of every `@types/*` package
 - All TS 6.0 deprecated flags have been **removed** (not just deprecated)
 
 ### Removed Features (No Longer Supported)
