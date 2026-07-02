@@ -67,8 +67,8 @@ This strict flag requires refactoring indexed access patterns in several files b
 **Files requiring changes:**
 
 1. **Dashboard Metrics** (~6 locations)
-   - `src/pages/DashBoard/DiskHealthMetrics.tsx` - Object property access without guards
-   - `src/pages/DashBoard/NetworkHealthMetrics.tsx` - Similar pattern
+   - `src/pages/dashboard/DiskHealthMetrics.tsx` - Object property access without guards
+   - `src/pages/dashboard/NetworkHealthMetrics.tsx` - Similar pattern
 
    **Pattern to fix:**
 
