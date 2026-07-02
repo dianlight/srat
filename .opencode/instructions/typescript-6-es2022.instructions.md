@@ -195,7 +195,7 @@ When modifying `tsconfig.json`:
    - Consider enabling `noUncheckedIndexedAccess` after reviewing migration guide
 
 3. **Performance optimizations**:
-   - Keep `types: []` for faster builds
+   - Keep `types` limited to an explicit allowlist (e.g. `["bun", "react", "react-dom"]`, not `[]`) for faster builds
    - Use `incremental: true` for caching
    - Target ES2022 or newer for modern features
 
