@@ -298,6 +298,17 @@ func (s *HDIdleService) GetDeviceConfig(path string) (*dto.HDIdleDevice, errors.
 		First(s.ctx)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// Exact path match failed. Try resolving both sides to real kernel device
+			// name, because a disk has multiple /dev/disk/by-id/ symlinks (ata-, wwn-)
+			// and the caller may use a different variant than what is stored in the DB.
+			if matchedDevice := s.findDeviceByRealPath(path); matchedDevice != nil {
+				dtoDevice, errN := s.converter.HDIdleDeviceToHDIdleDeviceDTO(*matchedDevice)
+				if errN != nil {
+					return nil, errors.WithStack(errN)
+				}
+				return &dtoDevice, nil
+			}
+
 			// Device not in database, return config based on device support check with default
 			support, checkErr := s.CheckDeviceSupport(path)
 			if checkErr != nil {
@@ -342,6 +353,33 @@ func (s *HDIdleService) GetDeviceConfig(path string) (*dto.HDIdleDevice, errors.
 		return nil, errors.WithStack(errN)
 	}
 	return &dtoDevice, nil
+}
+
+// findDeviceByRealPath resolves the input path to a real kernel device name and
+// searches all DB records for one whose DevicePath resolves to the same kernel name.
+// This handles the case where the same physical disk has multiple /dev/disk/by-id/
+// symlinks (e.g., ata- vs wwn-) and the caller uses a different variant.
+// Returns nil if no match is found.
+func (s *HDIdleService) findDeviceByRealPath(path string) *dbom.HDIdleDevice {
+	realInputPath := s.getRealPathNotSimlink(path)
+	if realInputPath == path {
+		// Resolution had no effect; exact path already failed, so no point retrying.
+		return nil
+	}
+
+	allDevices, err := query.HDIdleDeviceQuery[dbom.HDIdleDevice](s.db).All(s.ctx)
+	if err != nil {
+		tlog.WarnContext(s.ctx, "Failed to query all HDIdle devices for real-path fallback", "error", err)
+		return nil
+	}
+
+	for _, dev := range allDevices {
+		realDbPath := s.getRealPathNotSimlink(dev.DevicePath)
+		if realDbPath == realInputPath {
+			return dev
+		}
+	}
+	return nil
 }
 
 func (s *HDIdleService) SaveDeviceConfig(device dto.HDIdleDevice) errors.E {
