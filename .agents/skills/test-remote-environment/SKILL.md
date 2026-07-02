@@ -164,21 +164,51 @@ Then use Playwright tools as needed to interact with the UI:
 - Browser console has no uncaught errors
 - Network requests return 2xx status codes
 
+**MUI TreeView / ToggleButtonGroup interaction note:**
+- `browser_snapshot` may return only `RootWebArea` for MUI components that use virtual trees or custom rendering (e.g., `SimpleTreeView`, `ToggleButtonGroup`)
+- Use `browser_eval` with JavaScript DOM queries as a fallback: `document.querySelector(...)` or React fiber access via `__reactFiber$<hash>`
+- For `ToggleButtonGroup` clicks, React fiber handler invocation is often the only reliable method (MUI resists synthetic `PointerEvent`/`MouseEvent` dispatch)
+
 ### Step 7 — Read logs again after UI interaction (core first, then addon)
 
 After triggering actions in the UI, re-read logs to catch backend and integration errors:
 
 ```
-mcp_home-assistan_ha_core_logs
+mcp_home-assistant_ha_core_logs
 ```
 
 Then:
 
 ```
-mcp_home-assistan_ha_addon_logs  →  slug: "local_sambanas2"
+mcp_home-assistant_ha_addon_logs  →  slug: "local_sambanas2"
 ```
 
 Look for new `ERROR` or `WARN` lines correlating with the UI actions taken.
+
+### Step 7a — Verify cache-sensitive data freshness (recommended)
+
+When testing features that modify backend state (config saves, DB writes) and then read it back via a different API endpoint, stale caches can produce misleading test results. After any state-mutating action (save, create, delete), verify the data is consistent across all read paths.
+
+**Known pattern — HardwareService cache (30-min TTL):**
+- `SaveDeviceConfig` writes to DB but may not invalidate `HardwareService` cache
+- `/api/disk/{id}/hdidle/config` reads DB directly (fresh)
+- `/api/volumes` reads from `HardwareService` cache (may be stale)
+- Result: individual endpoint shows correct data, volumes endpoint shows stale `supported=false`
+
+**Verification approach:**
+1. After a state-mutating action, restart the addon to clear all in-memory caches:
+   ```
+   mcp_home-assistant_ha_stop_addon   →  slug: "local_sambanas2"
+   Wait 5 seconds
+   mcp_home-assistant_ha_start_addon  →  slug: "local_sambanas2"
+   ```
+2. Re-read the data from the affected endpoint after restart
+3. Compare with the direct-read endpoint to confirm consistency
+
+**When to apply this step:**
+- Testing config save flows (HDIdle, shares, users, settings)
+- Testing any feature where a POST/PUT is followed by a GET on a different endpoint
+- Investigating data inconsistencies between individual and list endpoints
 
 ### Step 8 — Clean up
 
@@ -210,12 +240,15 @@ Build successful?
 | `rsync: connection refused` | SSH not running / wrong IP | Verify SSH access manually |
 | Custom component errors are missing in addon logs | Looking at wrong log source | Check `mcp_home-assistan_ha_core_logs` first; custom component Python errors are logged in Home Assistant core logs |
 | Addon fails to start, `signal: killed` | OOM or binary mismatch | Check if PPROF port conflicts; rebuild without `PPROF=1` |
+| Addon fails to start, Mach-O format error | Cross-compilation produced macOS binary | Ensure `GOOS=linux` is set in all build export sections of `backend/.mise.toml` (zig-musl, glibc, static) |
 | Addon starts but API 404s | Old binary still running | Stop, wait 5 s, start again |
 | Custom component fails after deploy | Reload/setup error in HA | Run `mcp_home-assistan_ha_check_config`, then inspect addon/core logs for traceback and fix component imports/schema |
 | Frontend build loop / TS errors | Type error in changed file | Fix the error shown in frontend terminal stdout |
 | Playwright blank page | Frontend not yet ready | Wait for `Bun.serve listening on :3080` in terminal |
 | WebSocket not connecting | Proxy / CORS | Check `mise run //frontend:dev:remote` stdout for proxy errors |
 | Browser console CORS errors | API_URL mismatch | Verify `HOMEASSISTANT_IP` matches `API_URL` in `.mise.toml` `dev:remote` |
+| Individual API returns correct data but list API returns stale/defaults | In-memory cache stale (e.g., HardwareService 30-min cache) | Restart addon to clear cache, re-read from list endpoint; file bug if `Save*` methods don't call `Invalidate*` |
+| UI panel hidden despite correct DB data | Backend cache stale → `supported=false` → frontend visibility gate blocks rendering | Restart addon, verify panel appears; report as cache invalidation bug |
 
 ## Increase Custom Component Verbosity
 
@@ -299,6 +332,7 @@ This skill returns a comprehensive test report including:
 - **Custom component status** (if deployed): Deployment success, runtime errors
 - **UI test results** (if frontend started): Page load status, WebSocket connectivity, console errors
 - **Network validation**: API endpoint responses and data integrity
+- **Cache consistency** (if state-mutating tests ran): Verified data freshness across endpoints after cache-sensitive operations
 - **Cleanup status**: Proper browser and server termination
 
 ## Error Handling
