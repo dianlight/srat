@@ -341,6 +341,27 @@ func (suite *HDIdleHandlerSuite) TestIgnoreSuggestionPersists() {
 	_ = mock.Verify(suite.mockHDIdleService, matchers.Times(1)).SaveDeviceConfig(mock.Any[dto.HDIdleDevice]())
 }
 
+func (suite *HDIdleHandlerSuite) TestIgnoreSuggestionPersistsWhenDeviceUnsupported() {
+	suite.labModeOn()
+	diskID := "sda"
+	mock.When(suite.mockHDIdleService.ResolveDevicePath(diskID)).ThenReturn("/dev/"+diskID, nil)
+	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Any[string]())).ThenReturn(&dto.HDIdleDevice{
+		HDIdleDeviceSupport: dto.HDIdleDeviceSupport{DevicePath: "/dev/" + diskID},
+		Enabled:             dto.HdidleEnableds.NOENABLED,
+	}, errors.WithStack(dto.ErrorHDIdleNotSupported))
+	mock.When(suite.mockHDIdleService.SaveDeviceConfig(mock.Any[dto.HDIdleDevice]())).ThenReturn(nil)
+
+	_, apiInst := humatest.New(suite.T())
+	suite.handler.RegisterHDIdleHandler(apiInst)
+
+	resp := apiInst.Post("/disk/sda/hdidle/ignore-suggestion", struct{}{})
+	suite.Equal(http.StatusOK, resp.Code)
+
+	// Even when the device is reported as unsupported, the dismissal must
+	// still be persisted exactly once.
+	_ = mock.Verify(suite.mockHDIdleService, matchers.Times(1)).SaveDeviceConfig(mock.Any[dto.HDIdleDevice]())
+}
+
 func (suite *HDIdleHandlerSuite) TestIgnoreSuggestionUnknownDiskReturns404() {
 	suite.labModeOn()
 	mock.When(suite.mockHDIdleService.ResolveDevicePath("ghost")).

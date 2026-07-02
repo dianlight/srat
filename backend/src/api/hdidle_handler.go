@@ -249,17 +249,12 @@ func (h *HDIdleHandler) ignoreSuggestion(ctx context.Context, input *struct {
 	// Build a minimal config row with only SuggestionIgnored=true; the rest
 	// stays at zero-value/default. SaveDeviceConfig handles upsert.
 	cfg, err := h.hdidleService.GetDeviceConfig(devicePath)
-	if err != nil {
-		if cfg == nil {
-			cfg = &dto.HDIdleDevice{
-				DiskId:  input.DiskID,
-				Enabled: dto.HdidleEnableds.NOENABLED,
-			}
-			cfg.HDIdleDeviceSupport.DevicePath = devicePath
-		} else {
-			cfg.SuggestionIgnored = true
-			return &IgnoreSuggestionOutput{Body: *cfg}, nil
+	if err != nil && cfg == nil {
+		cfg = &dto.HDIdleDevice{
+			DiskId:  input.DiskID,
+			Enabled: dto.HdidleEnableds.NOENABLED,
 		}
+		cfg.HDIdleDeviceSupport.DevicePath = devicePath
 	}
 	cfg.SuggestionIgnored = true
 	if err := h.hdidleService.SaveDeviceConfig(*cfg); err != nil {
