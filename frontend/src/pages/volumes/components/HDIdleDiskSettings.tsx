@@ -342,52 +342,56 @@ export function HDIdleDiskSettings({
                   </span>
                 </Tooltip>
               </Grid>
-
-              <Grid size={12}>
-                <Box
-                  sx={{
-                    display: "flex",
-                    gap: 1,
-                    justifyContent: "flex-end",
-                    mt: 2,
-                  }}
-                >
-                  <Tooltip
-                    title={
-                      formState.isDirty
-                        ? "Apply changes"
-                        : "No changes to apply"
-                    }
-                  >
-                    <span>
-                      <ToggleButton
-                        value="apply"
-                        disabled={readOnly || !formState.isDirty || isSaving}
-                        onClick={handleApply}
-                        color="success"
-                        size="small"
-                      >
-                        Apply
-                      </ToggleButton>
-                    </span>
-                  </Tooltip>
-                  <Tooltip title="Restore last loaded values">
-                    <span>
-                      <ToggleButton
-                        value="cancel"
-                        disabled={isSaving}
-                        onClick={handleCancel}
-                        size="small"
-                      >
-                        Cancel
-                      </ToggleButton>
-                    </span>
-                  </Tooltip>
-                </Box>
-              </Grid>
             </Grid>
           </CardContent>
         </Collapse>
+        {/* Apply/Cancel live outside the Collapse so they stay reachable
+            after a Yes/No toggle auto-collapses the accordion. The accordion
+            only hides the Custom-only idle/command/power fields — it must
+            not hide the only controls that can persist or discard a pending
+            enabled-state change. Visible whenever there are pending changes
+            or while the accordion is manually expanded. */}
+        {(formState.isDirty || expanded) && (
+          <CardContent sx={{ pt: 0 }}>
+            <Box
+              sx={{
+                display: "flex",
+                gap: 1,
+                justifyContent: "flex-end",
+              }}
+            >
+              <Tooltip
+                title={
+                  formState.isDirty ? "Apply changes" : "No changes to apply"
+                }
+              >
+                <span>
+                  <ToggleButton
+                    value="apply"
+                    disabled={readOnly || !formState.isDirty || isSaving}
+                    onClick={handleApply}
+                    color="success"
+                    size="small"
+                  >
+                    Apply
+                  </ToggleButton>
+                </span>
+              </Tooltip>
+              <Tooltip title="Restore last loaded values">
+                <span>
+                  <ToggleButton
+                    value="cancel"
+                    disabled={isSaving}
+                    onClick={handleCancel}
+                    size="small"
+                  >
+                    Cancel
+                  </ToggleButton>
+                </span>
+              </Tooltip>
+            </Box>
+          </CardContent>
+        )}
         {/* Force-enable warning rendered outside the Collapse so it stays
             visible on the Enabled.Yes path (which auto-collapses the accordion,
             hiding anything inside Collapse). Uses the reactive forceEnabled
