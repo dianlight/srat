@@ -199,6 +199,9 @@ export function HDIdleDiskSettings({
                         onChange={(_, newValue) => {
                           if (newValue === null) return;
                           onChange(newValue as Enabled);
+                          if (newValue !== Enabled.Custom) {
+                            handleApply();
+                          }
                         }}
                         aria-label="toggle disk override"
                       >
