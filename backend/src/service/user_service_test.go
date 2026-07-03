@@ -303,6 +303,90 @@ func (suite *UserServiceSuite) TestCreateUser_RepositoryError() {
 }
 */
 
+func (suite *UserServiceSuite) TestCreateUser_EmptyPassword() {
+	// Arrange
+	userDto := dto.User{
+		Username: "emptypwd" + fmt.Sprintf("%d", time.Now().UnixNano()),
+		Password: new(dto.NewSecret("")),
+		IsAdmin:  false,
+	}
+
+	// Act
+	createdUser, err := suite.userService.CreateUser(userDto)
+
+	// Assert
+	suite.Require().Error(err)
+	suite.Require().Nil(createdUser)
+	suite.True(errors.Is(err, dto.ErrorPasswordRequired))
+}
+
+func (suite *UserServiceSuite) TestCreateUser_NilPassword() {
+	// Arrange
+	userDto := dto.User{
+		Username: "nilpwd" + fmt.Sprintf("%d", time.Now().UnixNano()),
+		IsAdmin:  false,
+	}
+
+	// Act
+	createdUser, err := suite.userService.CreateUser(userDto)
+
+	// Assert
+	suite.Require().Error(err)
+	suite.Require().Nil(createdUser)
+	suite.True(errors.Is(err, dto.ErrorPasswordRequired))
+}
+
+func (suite *UserServiceSuite) TestUpdateUser_EmptyPassword() {
+	// Arrange
+	username := fmt.Sprintf("updemptypwd%d", time.Now().UnixNano())
+	_, err := suite.userService.CreateUser(dto.User{
+		Username: username,
+		Password: new(dto.NewSecret("validpassword")),
+		IsAdmin:  false,
+	})
+	suite.Require().NoError(err)
+
+	userDto := dto.User{
+		Username: username,
+		Password: new(dto.NewSecret("")),
+		IsAdmin:  false,
+	}
+
+	// Act
+	updatedUser, err := suite.userService.UpdateUser(username, userDto)
+
+	// Assert
+	suite.Require().Error(err)
+	suite.Require().Nil(updatedUser)
+	suite.True(errors.Is(err, dto.ErrorPasswordRequired))
+}
+
+func (suite *UserServiceSuite) TestUpdateAdminUser_EmptyPassword() {
+	// Arrange
+	username := fmt.Sprintf("adminemptypwd%d", time.Now().Unix())
+	suite.Require().NoError(suite.db.Delete(&dbom.SambaUser{}, "is_admin = ?", true).Error)
+	_, err := suite.userService.CreateUser(dto.User{
+		Username: username,
+		Password: new(dto.NewSecret("validpassword")),
+		IsAdmin:  true,
+	})
+	suite.Require().NoError(err)
+
+	adminDto := dto.User{
+		Username: username,
+		Password: new(dto.NewSecret("")),
+		IsAdmin:  true,
+	}
+
+	// Act
+	updatedAdmin, err := suite.userService.UpdateAdminUser(adminDto)
+
+	// Assert
+	suite.Require().Error(err)
+	suite.Require().Nil(updatedAdmin)
+	suite.True(errors.Is(err, dto.ErrorPasswordRequired))
+}
+
 func (suite *UserServiceSuite) TestUpdateUser_Success() {
 	// Arrange
 	currentUsername := "oldusername" + fmt.Sprintf("%d", time.Now().UnixNano())

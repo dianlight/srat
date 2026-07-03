@@ -249,6 +249,8 @@ Build successful?
 | Browser console CORS errors | API_URL mismatch | Verify `HOMEASSISTANT_IP` matches `API_URL` in `.mise.toml` `dev:remote` |
 | Individual API returns correct data but list API returns stale/defaults | In-memory cache stale (e.g., HardwareService 30-min cache) | Restart addon to clear cache, re-read from list endpoint; file bug if `Save*` methods don't call `Invalidate*` |
 | UI panel hidden despite correct DB data | Backend cache stale → `supported=false` → frontend visibility gate blocks rendering | Restart addon, verify panel appears; report as cache invalidation bug |
+| Direct API access needed | Cannot reach backend API externally | Use `docker exec addon_local_sambanas2 curl -sL http://localhost:64289/api/...` from the HA host (no auth required — internal-only API) |
+| `smbpasswd -L` fails / shows help | `smbpasswd -L` is broken in the addon container | Use `pdbedit -a -u <username>` instead to set Samba passwords; `pdbedit -L` to list existing users |
 
 ## Increase Custom Component Verbosity
 

@@ -143,6 +143,52 @@ func (suite *UserHandlerSuite) TestCreateUserAlreadyExists() {
 	suite.Require().Equal(http.StatusConflict, resp.Code)
 }
 
+func (suite *UserHandlerSuite) TestCreateUser_PasswordRequired() {
+	input := dto.User{Username: "nopassuser", Password: new(dto.NewSecret(""))}
+
+	// Configure mock expectations
+	mock.When(suite.mockUserService.CreateUser(mock.Any[dto.User]())).ThenReturn(nil, errors.WithStack(dto.ErrorPasswordRequired))
+
+	// Setup humatest
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterUserHandler(api)
+
+	// Make HTTP request
+	resp := api.Post("/user", input)
+	suite.Require().Equal(http.StatusUnprocessableEntity, resp.Code)
+}
+
+func (suite *UserHandlerSuite) TestUpdateUser_PasswordRequired() {
+	username := "nopassupdate"
+	input := dto.User{Username: username, Password: new(dto.NewSecret(""))}
+
+	// Configure mock expectations
+	mock.When(suite.mockUserService.UpdateUser(mock.Equal(username), mock.Any[dto.User]())).ThenReturn(nil, errors.WithStack(dto.ErrorPasswordRequired))
+
+	// Setup humatest
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterUserHandler(api)
+
+	// Make HTTP request
+	resp := api.Put("/user/"+username, input)
+	suite.Require().Equal(http.StatusUnprocessableEntity, resp.Code)
+}
+
+func (suite *UserHandlerSuite) TestUpdateAdminUser_PasswordRequired() {
+	input := dto.User{Username: "admin", Password: new(dto.NewSecret(""))}
+
+	// Configure mock expectations
+	mock.When(suite.mockUserService.UpdateAdminUser(mock.Any[dto.User]())).ThenReturn(nil, errors.WithStack(dto.ErrorPasswordRequired))
+
+	// Setup humatest
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterUserHandler(api)
+
+	// Make HTTP request
+	resp := api.Put("/useradmin", input)
+	suite.Require().Equal(http.StatusUnprocessableEntity, resp.Code)
+}
+
 func (suite *UserHandlerSuite) TestCreateUserError() {
 	input := dto.User{Username: "erroruser", Password: new(dto.NewSecret("password123")), IsAdmin: false}
 	expectedErr := errors.New("database connection failed")

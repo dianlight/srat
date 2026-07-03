@@ -2,7 +2,7 @@ package dto
 
 type SharedResource struct {
 	_                  struct{}              `json:"-" additionalProperties:"true"`
-	Name               string                `json:"name,omitempty"  mapper:"mapkey"`
+	Name               string                `json:"name,omitempty"  mapper:"mapkey" maxLength:"128"`
 	Disabled           *bool                 `json:"disabled,omitempty"`
 	Users              []User                `json:"users,omitempty"`
 	RoUsers            []User                `json:"ro_users,omitempty"`

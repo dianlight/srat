@@ -6,10 +6,7 @@ on:
 
 jobs:
   review:
-    if: |
-      !contains(github.event.pull_request.user.login, 'renovate') &&
-      !contains(github.event.pull_request.user.login, 'dependabot') &&
-      !contains(github.actor, '[bot]')
+    if: contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -24,21 +21,17 @@ jobs:
         env:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          #TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           model: opencode/deepseek-v4-flash-free
           share: true
-          #use_github_token: true
+          use_github_token: true
           prompt: |
             Act as an expert Senior Software Engineer and Code Reviewer. Review this pull request thoroughly based strictly on the provided diff and its immediate context.
 
             Follow these strict directives:
 
-            0. **Self-assign as Reviewer:** Before leaving any comments, request yourself as a reviewer on this PR using the GitHub API:
-               `gh api repos/{owner}/{repo}/pulls/{pr_number}/requested_reviewers -X POST -f "reviewers[]=opencode[bot]"` (replace placeholders with actual values from the PR context). If the self-assignment fails, proceed with the review anyway.
-
-            1. **Targeted Comments & Suggestions — use GitHub inline review comments only:** Apply all feedback as inline review comments on the specific diff lines, using the GitHub pull request review API (create a pending review, add inline comments, then submit it). Do NOT post top-level PR comments. When proposing a concrete code change, use GitHub suggestion blocks (```suggestion ... ```) inside the inline comment so the author can commit the fix directly.
-
+            1. **Targeted Comments & Suggestions:** Apply your feedback directly to the specific changed files and lines. When proposing a concrete code change, do not just leave a plain text comment; instead, open a formal change request using GitHub's suggestion blocks (```suggestion ... ```) to initiate a focused discussion that the author can easily review or commit.
             2. **Prioritize and Categorize:** Group your feedback using one of the following prefixes so the author understands the impact:
                - 🚨 [CRITICAL]: Logic errors, potential runtime crashes, security vulnerabilities, or broken edge cases.
                - ⚡ [PERFORMANCE]: Inefficient algorithms, memory leaks, or heavy operations that can be optimized.
