@@ -33,7 +33,7 @@ shfmt = "3.13.1"
 "go:golang.org/x/tools/gopls" = "latest"
 "npm:@typescript/native-preview" = "7.0.0-dev.20260703.1"
 gh = "latest"
-hk = "1.48.0"
+hk = "1.49.0"
 # opencode = "latest"
 # copilot-cli = "latest"
 
