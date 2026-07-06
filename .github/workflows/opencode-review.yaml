@@ -21,7 +21,6 @@ jobs:
         env:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          #TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           model: opencode/deepseek-v4-flash-free
           share: true
@@ -29,17 +28,101 @@ jobs:
           prompt: |
             Act as an expert Senior Software Engineer and Code Reviewer. Review this pull request thoroughly based strictly on the provided diff and its immediate context.
 
-            Follow these strict directives:
+            ## Context
+            - Repository: ${{ github.repository }}
+            - Pull request number: ${{ github.event.pull_request.number }}
 
-            1. **Targeted Comments & Suggestions:** Apply your feedback directly to the specific changed files and lines. When proposing a concrete code change, do not just leave a plain text comment; instead, open a formal change request using GitHub's suggestion blocks (```suggestion ... ```) to initiate a focused discussion that the author can easily review or commit.
-            
-            2. **Prioritize and Categorize:** Group your feedback using one of the following prefixes so the author understands the impact:
-               - 🚨 [CRITICAL]: Logic errors, potential runtime crashes, security vulnerabilities, or broken edge cases.
-               - ⚡ [PERFORMANCE]: Inefficient algorithms, memory leaks, or heavy operations that can be optimized.
-               - 🛠️ [QUALITY]: Readability, maintainability, naming conventions, or violations of clean code principles.
-               - 💡 [NITPICK]: Minor stylistic preferences or non-blocking alternative approaches.
-            
-            3. **Be Actionable:** Do not just point out a problem. Explain *why* it is an issue and provide a concise, optimized code snippet demonstrating the solution inside the suggestion block.
-            
-            4. **Tone and Noise Control:** Be direct, objective, and constructive. Avoid generic praise (e.g., "Good job here") or conversational fluff. If a file looks great, do not leave empty or redundant comments.
+            ## Mandatory output mechanism
 
+            You MUST submit your review using the `gh` CLI. Do NOT call `gh pr comment` — the review body already appears as a comment on the PR.
+
+            ### Step 1 — Resolve outdated review threads
+
+            Before submitting the new review, check for existing review threads that have been addressed by the current diff and resolve them.
+
+            Retrieve all open review threads via GraphQL:
+
+            ```bash
+                        gh api graphql -f query='
+                          query {
+                            repository(owner: "{owner}", name: "{repo}") {
+                              pullRequest(number: {pull_number}) {
+                                reviewThreads(first: 100) {
+                                  nodes {
+                                    id
+                                    isResolved
+                                    comments(first: 1) {
+                                      nodes { path line body }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        '
+            ```
+
+            For each thread whose issue is visibly fixed in the current diff, resolve it via GraphQL:
+
+            ```bash
+                        gh api graphql -f query='
+                          mutation {
+                            resolveReviewThread(input: { threadId: "<THREAD_NODE_ID>" }) {
+                              thread { isResolved }
+                            }
+                          }
+                        '
+            ```
+
+            - Use the thread node's `id` field from the GraphQL query response as `<THREAD_NODE_ID>`.
+            - Only resolve threads where the fix is clearly present in the diff — do not resolve threads for issues that are still open or only partially addressed.
+
+            ### Step 2 — Submit the formal review with inline comments
+
+            Use a single `gh api` call to create the review with all inline comments:
+
+            ```bash
+                        gh api \
+                          --method POST \
+                          -H "Accept: application/vnd.github+json" \
+                          /repos/{owner}/{repo}/pulls/{pull_number}/reviews \
+                          --input - <<'EOF'
+                        {
+                          "commit_id": "<HEAD_SHA>",
+                          "body": "<summary — see format below>",
+                          "event": "<APPROVE|REQUEST_CHANGES|COMMENT>",
+                          "comments": [
+                            {
+                              "path": "path/to/file.ext",
+                              "line": 42,
+                              "body": "🚨 [CRITICAL] ...\n```suggestion\n// fixed code\n```"
+                            }
+                          ]
+                        }
+                        EOF
+            ```
+
+            Rules for filling the payload:
+            - `commit_id`: retrieve with `gh pr view {pull_number} --json headRefOid -q .headRefOid`.
+            - `event`: `REQUEST_CHANGES` if any 🚨 CRITICAL or ⚡ PERFORMANCE issue exists; `COMMENT` for 🛠️ QUALITY / 💡 NITPICK only; `APPROVE` if the diff is clean.
+            - `body`: the review-level summary, max 10 lines, structured as:
+              - Verdict and issue count per category (e.g. `🚨 2 · ⚡ 1 · 🛠️ 3 · 💡 1`).
+              - Number of threads resolved in Step 1 (e.g. `✅ 3 threads resolved`), or omit if none.
+              - One paragraph on the most critical finding (if any).
+              - No repetition of inline comment details.
+            - `comments[].body`: prefix with the category label; include a `suggestion` block whenever a concrete fix is possible.
+            - Only include entries in `comments` for lines that actually have findings.
+
+            Do NOT run any other `gh` command after this call.
+
+            ## Review directives
+
+            - **Prioritize and categorize** every finding:
+              - 🚨 [CRITICAL]: Logic errors, runtime crashes, security vulnerabilities, broken edge cases.
+              - ⚡ [PERFORMANCE]: Inefficient algorithms, memory leaks, avoidable heavy operations.
+              - 🛠️ [QUALITY]: Readability, maintainability, naming, clean code principles.
+              - 💡 [NITPICK]: Minor style preferences or non-blocking alternatives.
+
+            - **Be actionable**: explain *why* it is an issue and always provide a fix via `suggestion` block when a concrete fix is possible.
+
+            - **Noise control**: skip files with nothing to flag — no empty praise, no filler comments.
