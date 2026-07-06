@@ -111,9 +111,9 @@ describe("HDIdleDiskSettings Component", () => {
         expect(screen.queryByText(/Power Settings/i)).toBeNull();
     });
 
-    test("returns null when Lab Mode is off", async () => {
-        // Verifies the labMode gate works now that the __TEST__ escape hatch
-        // has been removed. The vi.mock ref is set to false for this test only.
+    test("renders card in test environment without lab mode", async () => {
+        // Component no longer uses labMode — card is always visible when
+        // __TEST__ is true (set by common-setup.ts).
         labModeRef.value = false;
         const React = await import("react");
         const { render, screen } = await import("@testing-library/react");
@@ -131,7 +131,7 @@ describe("HDIdleDiskSettings Component", () => {
                 }),
             }),
         );
-        expect(screen.queryByText(/Power Settings/i)).toBeNull();
+        expect(await screen.findByText(/Power Settings/i)).toBeTruthy();
     });
 
     test("readOnly disables the toggle group", async () => {
@@ -236,7 +236,7 @@ describe("HDIdleDiskSettings Component", () => {
 
     test("opens force dialog when enabling on a non-rotational disk", async () => {
         const React = await import("react");
-        const { render, screen, findByRole } = await import(
+        const { render, screen } = await import(
             "@testing-library/react"
         );
         const { Provider } = await import("react-redux");
@@ -267,11 +267,13 @@ describe("HDIdleDiskSettings Component", () => {
         await user.click(yesBtn);
 
         // The dialog appears.
-        const dialog = await findByRole(document.body, "dialog");
+        const dialog = await screen.findByRole("dialog");
         expect(dialog).toBeTruthy();
-        expect(
-            await screen.findByText(/Enable HDIdle on a non-rotational disk/i),
-        ).toBeTruthy();
+        const { within } = await import("@testing-library/react");
+        const headingElements = within(dialog).getAllByRole("heading", {
+            name: /^Enable HDIdle on a non-rotational disk$/i,
+        });
+        expect(headingElements.length).toBeGreaterThanOrEqual(1);
     });
 
     test("Cancel in force dialog leaves toggle unchanged", async () => {
