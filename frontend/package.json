@@ -30,12 +30,12 @@
     "@types/react-syntax-highlighter": "15.5.13",
     "@types/semver": "7.7.1",
     "@vitejs/plugin-react": "6.0.3",
-    "@vitest/browser-playwright": "4.1.9",
-    "@vitest/coverage-v8": "4.1.9",
+    "@vitest/browser-playwright": "4.1.10",
+    "@vitest/coverage-v8": "4.1.10",
     "fastify-plugin": "6.0.0",
     "msw": "2.14.6",
     "msw-auto-mock": "0.32.1",
-    "vitest": "4.1.9",
+    "vitest": "4.1.10",
     "vitest-browser-react": "2.2.0"
   },
   "peerDependencies": {
