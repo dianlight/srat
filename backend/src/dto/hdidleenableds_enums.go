@@ -3,7 +3,7 @@
 // github.com/zarldev/goenums
 //
 // using the command:
-// goenums hdidle_enabled.go
+// goenums dto/hdidle_enabled.go
 
 package dto
 
@@ -26,7 +26,6 @@ type HdidleEnabled struct {
 // hdidleEnabledsContainer is the container for all enum values.
 // It is private and should not be used directly use the public methods on the HdidleEnabled type.
 type hdidleEnabledsContainer struct {
-	YESENABLED    HdidleEnabled
 	CUSTOMENABLED HdidleEnabled
 	NOENABLED     HdidleEnabled
 }
@@ -35,9 +34,6 @@ type hdidleEnabledsContainer struct {
 // It it a container for all enum values and provides a convenient way to access all enum values and perform
 // operations, with convenience methods for common use cases.
 var HdidleEnableds = hdidleEnabledsContainer{
-	YESENABLED: HdidleEnabled{
-		hdidleEnabled: yesEnabled,
-	},
 	CUSTOMENABLED: HdidleEnabled{
 		hdidleEnabled: customEnabled,
 	},
@@ -55,7 +51,6 @@ var invalidHdidleEnabled = HdidleEnabled{
 // This method is useful for iterating over all enum values in a loop.
 func (h hdidleEnabledsContainer) allSlice() []HdidleEnabled {
 	return []HdidleEnabled{
-		HdidleEnableds.YESENABLED,
 		HdidleEnableds.CUSTOMENABLED,
 		HdidleEnableds.NOENABLED,
 	}
@@ -150,7 +145,6 @@ func ParseHdidleEnabled(input any) (HdidleEnabled, error) {
 // hdidleEnabledsNameMap is a map of enum values to their HdidleEnabled representation
 // It is used to convert string representations of enum values into their HdidleEnabled representation.
 var hdidleEnabledsNameMap = map[string]HdidleEnabled{
-	"yes":    HdidleEnableds.YESENABLED,
 	"custom": HdidleEnableds.CUSTOMENABLED,
 	"no":     HdidleEnableds.NOENABLED,
 }
@@ -193,7 +187,6 @@ func ExhaustiveHdidleEnableds(f func(HdidleEnabled)) {
 }
 
 type HdidleEnabledMatcher interface {
-	YesEnabled()
 	CustomEnabled()
 	NoEnabled()
 }
@@ -207,8 +200,6 @@ func MatchHdidleEnabled(en HdidleEnabled, matcher HdidleEnabledMatcher) error {
 		return fmt.Errorf("nil HdidleEnabledMatcher")
 	}
 	switch en {
-	case HdidleEnableds.YESENABLED:
-		matcher.YesEnabled()
 	case HdidleEnableds.CUSTOMENABLED:
 		matcher.CustomEnabled()
 	case HdidleEnableds.NOENABLED:
@@ -229,7 +220,6 @@ func MustMatchHdidleEnabled(en HdidleEnabled, matcher HdidleEnabledMatcher) {
 
 // validHdidleEnableds is a map of enum values to their validity
 var validHdidleEnableds = map[HdidleEnabled]bool{
-	HdidleEnableds.YESENABLED:    true,
 	HdidleEnableds.CUSTOMENABLED: true,
 	HdidleEnableds.NOENABLED:     true,
 }
@@ -332,14 +322,13 @@ func (h *HdidleEnabled) UnmarshalYAML(by []byte) error {
 }
 
 // hdidleenabledNames is a constant string slice containing all enum values cononical absolute names
-const hdidleenabledNames = "yescustomno"
+const hdidleenabledNames = "customno"
 
 // hdidleenabledNamesMap is a map of enum values to their canonical absolute
 // name positions within the hdidleenabledNames string slice
 var hdidleenabledNamesMap = map[HdidleEnabled]string{
-	HdidleEnableds.YESENABLED:    hdidleenabledNames[0:3],
-	HdidleEnableds.CUSTOMENABLED: hdidleenabledNames[3:9],
-	HdidleEnableds.NOENABLED:     hdidleenabledNames[9:11],
+	HdidleEnableds.CUSTOMENABLED: hdidleenabledNames[0:6],
+	HdidleEnableds.NOENABLED:     hdidleenabledNames[6:8],
 }
 
 // String implements the Stringer interface.
@@ -358,8 +347,7 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the goenums command to generate them again.
 	// Does not identify newly added constant values unless order changes
-	var x [3]struct{}
-	_ = x[yesEnabled]
-	_ = x[customEnabled-1]
-	_ = x[noEnabled-2]
+	var x [2]struct{}
+	_ = x[customEnabled]
+	_ = x[noEnabled-1]
 }

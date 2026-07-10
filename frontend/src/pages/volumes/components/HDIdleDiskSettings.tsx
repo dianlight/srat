@@ -1,5 +1,6 @@
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import PowerIcon from "@mui/icons-material/Power";
+import ScienceOutlinedIcon from "@mui/icons-material/ScienceOutlined";
 import WarningIcon from "@mui/icons-material/Warning";
 import {
   Box,
@@ -50,6 +51,13 @@ type DiskExtended = Disk & {
   };
 };
 
+// Backend stores idle_time as time.Duration (nanoseconds in JSON).
+// The UI works in seconds, so convert at the boundaries.
+const nanosToSeconds = (nanos: number | undefined): number =>
+  nanos ? Math.round(nanos / 1e9) : 0;
+const secondsToNanos = (seconds: number | undefined): number =>
+  seconds ? seconds * 1e9 : 0;
+
 export function HDIdleDiskSettings({
   disk,
   readOnly = false,
@@ -84,11 +92,12 @@ export function HDIdleDiskSettings({
     // When disk prop or API config changes, update form values
     const apiValues = disk?.hdidle_device as HdIdleDevice | undefined;
     reset({
-      enabled: (apiValues?.enabled as Enabled | undefined) ?? Enabled.Yes,
-      idle_time:
+      enabled: (apiValues?.enabled as Enabled | undefined) ?? Enabled.No,
+      idle_time: nanosToSeconds(
         apiValues?.idle_time ??
-        (disk as DiskExtended)?.hdidle_status?.idle_time ??
-        0,
+          (disk as DiskExtended)?.hdidle_status?.idle_time ??
+          0,
+      ),
       command_type:
         apiValues?.command_type ??
         (disk as DiskExtended)?.hdidle_status?.command_type ??
@@ -100,11 +109,9 @@ export function HDIdleDiskSettings({
     });
   }, [disk, reset, isTestEnv]);
 
-  // Close accordion if enabled is not Custom
+  // Auto-open accordion when Custom is selected; collapse when No
   useEffect(() => {
-    if (enabled !== Enabled.Custom) {
-      setExpanded(false);
-    }
+    setExpanded(enabled === Enabled.Custom);
   }, [enabled]);
 
   // Read HDIdle config snapshot from disk dto when available
@@ -132,7 +139,7 @@ export function HDIdleDiskSettings({
       disk_id: diskId,
       device_path: `/dev/disk/by-id/${diskId}`,
       enabled: values.enabled as Enabled,
-      idle_time: Number(values.idle_time ?? 0),
+      idle_time: secondsToNanos(Number(values.idle_time ?? 0)),
       command_type: values.command_type || undefined,
       power_condition: Number(values.power_condition ?? 0),
       force_enabled: disk.hdidle_device?.force_enabled ?? false,
@@ -152,8 +159,10 @@ export function HDIdleDiskSettings({
     // Restore last loaded API values
     const apiValues = disk?.hdidle_device as HdIdleDevice | undefined;
     reset({
-      enabled: (apiValues?.enabled as Enabled | undefined) ?? Enabled.Yes,
-      idle_time: apiValues?.idle_time ?? disk?.hdidle_device?.idle_time ?? 0,
+      enabled: (apiValues?.enabled as Enabled | undefined) ?? Enabled.No,
+      idle_time: nanosToSeconds(
+        apiValues?.idle_time ?? disk?.hdidle_device?.idle_time ?? 0,
+      ),
       command_type:
         apiValues?.command_type ??
         disk?.hdidle_device?.command_type ??
@@ -194,7 +203,12 @@ export function HDIdleDiskSettings({
       <>
         <Card>
           <CardHeader
-            title="Power Settings ( 🚧 Work In Progress )"
+            title={
+              <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+                <Typography component="span">Power Settings</Typography>
+                <ScienceOutlinedIcon color="warning" fontSize="small" />
+              </Stack>
+            }
             avatar={
               <IconButton size="small" sx={{ pointerEvents: "none" }}>
                 <PowerIcon color="primary" />
@@ -219,7 +233,9 @@ export function HDIdleDiskSettings({
                           value={value}
                           exclusive
                           size="small"
-                          color={value === Enabled.Yes ? "success" : "standard"}
+                          color={
+                            value === Enabled.Custom ? "success" : "standard"
+                          }
                           disabled={readOnly}
                           onChange={(_, newValue) => {
                             if (newValue === null) return;
@@ -228,9 +244,7 @@ export function HDIdleDiskSettings({
                               disk.is_rotational === false;
                             const wasForceEnabled =
                               disk.hdidle_device?.force_enabled === true;
-                            const isEnabling =
-                              newValue === Enabled.Yes ||
-                              newValue === Enabled.Custom;
+                            const isEnabling = newValue === Enabled.Custom;
                             const wasDisabled = value === Enabled.No;
 
                             if (
@@ -250,9 +264,6 @@ export function HDIdleDiskSettings({
                           }}
                           aria-label="toggle disk override"
                         >
-                          <ToggleButton value={Enabled.Yes}>
-                            {Enabled.Yes}
-                          </ToggleButton>
                           <ToggleButton value={Enabled.Custom}>
                             {Enabled.Custom}
                           </ToggleButton>
@@ -313,8 +324,11 @@ export function HDIdleDiskSettings({
                         }}
                       >
                         Current config: idle time
-                        <strong> {hdidleStatus.idle_time ?? 0}s</strong>,
-                        command
+                        <strong>
+                          {" "}
+                          {nanosToSeconds(hdidleStatus.idle_time)}s
+                        </strong>
+                        , command
                         <strong>
                           {" "}
                           {hdidleStatus.command_type || "default"}

@@ -98,6 +98,7 @@ export function DashboardIntro({
         height: "100%", // Auto height when collapsed, 100% when expanded
         display: "flex",
         flexDirection: "column",
+        width: "100%",
       }}
     >
       {isCollapsed ? (

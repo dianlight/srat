@@ -30,10 +30,9 @@ const createMockDisk = (overrides: any = {}) => ({
     is_rotational: true,
     hdidle_device: {
         supported: true,
-        // lowercase — matches the Enabled enum value (was "Yes" before; the
-        // capitalised string did not match Enabled.Yes="yes" and broke
-        // togglegroup selection).
-        enabled: "yes",
+        // lowercase — matches the Enabled enum value. Use the "custom" sentinel
+        // so the mock stays a valid Enabled value; tests override as needed.
+        enabled: "custom",
         idle_time: 0,
         command_type: "",
         power_condition: 0,
@@ -106,7 +105,7 @@ describe("HDIdleDiskSettings Apply/Cancel", () => {
 
         // Switch to No.
         const toggleButtons = await getOverrideToggleButtons(screen);
-        const noBtn = toggleButtons[2];
+        const noBtn = toggleButtons[1];
         await user.click(noBtn);
 
         await waitFor(() => {
@@ -150,17 +149,12 @@ describe("HDIdleDiskSettings Apply/Cancel", () => {
             }),
         );
 
-        // Expand the collapse section to make Apply visible.
-        const expandBtn = await screen.findByRole("button", { name: /show more/i });
-        await user.click(expandBtn);
-
-        // Wait for Apply to appear inside the expanded collapse, then capture it
-        // before switching to No (which auto-collapses the section).
+        // Custom auto-opens the Collapse section, so Apply is already visible.
         const applyBtn = await screen.findByRole("button", { name: /apply/i });
 
         // Switch to No — form becomes dirty.
         const toggleButtons = await getOverrideToggleButtons(screen);
-        const noBtn = toggleButtons[2];
+        const noBtn = toggleButtons[1];
         await user.click(noBtn);
 
         await waitFor(() => {

@@ -11,7 +11,7 @@ type HDIdleDevice struct {
 	IdleTime       time.Duration `json:"idle_time"`                              // 0 = use default
 	CommandType    HdidleCommand `json:"command_type,omitempty" enum:"scsi,ata"` // empty = use default
 	PowerCondition uint8         `json:"power_condition"`
-	Enabled        HdidleEnabled `json:"enabled,omitempty" enum:"yes,custom,no"`
+	Enabled        HdidleEnabled `json:"enabled,omitempty" enum:"custom,no"`
 	// SuggestionIgnored is true when the user has dismissed the dashboard's
 	// "Enable HDIdle" suggestion for this disk; the badge will not appear again
 	// until cleared. Read/write via the per-disk endpoints.

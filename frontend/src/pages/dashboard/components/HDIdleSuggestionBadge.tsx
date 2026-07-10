@@ -49,8 +49,7 @@ export const HDIdleSuggestionBadge: React.FC<HDIdleSuggestionBadgeProps> = ({
   // Visible when:
   //   - no per-disk record yet (cfg=undefined, or cfg with no enabled set), OR
   //   - record exists but disk is disabled AND user hasn't ignored the badge
-  const alreadyEnabled =
-    cfg?.enabled === Enabled.Yes || cfg?.enabled === Enabled.Custom;
+  const alreadyEnabled = cfg?.enabled === Enabled.Custom;
   const suggestionIgnored = cfg?.suggestion_ignored === true;
   if (alreadyEnabled || suggestionIgnored) return null;
 

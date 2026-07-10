@@ -28,7 +28,7 @@ const createMockDisk = (overrides: any = {}) => ({
     is_rotational: true,
     hdidle_device: {
         supported: true,
-        enabled: "yes", // lowercase — matches the Enabled enum value
+        enabled: "custom", // lowercase — matches the Enabled enum value
         idle_time: 0,
         command_type: "",
         power_condition: 0,
@@ -177,17 +177,22 @@ describe("HDIdleDiskSettings Component", () => {
             React.createElement(Provider as any, {
                 store,
                 children: React.createElement(HDIdleDiskSettings as any, {
-                    disk: createMockDisk(),
+                    disk: createMockDisk({
+                        hdidle_device: {
+                            ...createMockDisk().hdidle_device,
+                            enabled: "no",
+                        },
+                    }),
                     readOnly: false,
                 }),
             }),
         );
 
         const expandBtn = await screen.findByRole("button", { name: /show more/i });
-        // Default is Yes → expand disabled.
+        // Default is No → expand disabled.
         expect((expandBtn as HTMLButtonElement).disabled).toBe(true);
 
-        const [, customBtn] = await getOverrideToggleButtons(screen);
+        const [customBtn] = await getOverrideToggleButtons(screen);
         await user.click(customBtn);
 
         await waitFor(() => {
@@ -308,10 +313,10 @@ describe("HDIdleDiskSettings Component", () => {
         const cancelBtn = await screen.findByRole("button", { name: /^cancel$/i });
         await user.click(cancelBtn);
 
-        // The "No" button (third) should still be aria-pressed=true.
+        // The "No" button (second) should still be aria-pressed=true.
         await waitFor(async () => {
             const buttons = await getOverrideToggleButtons(screen);
-            expect(buttons[2].getAttribute("aria-pressed")).toBe("true");
+            expect(buttons[1].getAttribute("aria-pressed")).toBe("true");
         });
     });
 
@@ -341,7 +346,7 @@ describe("HDIdleDiskSettings Component", () => {
             }),
         );
 
-        const [, customBtn] = await getOverrideToggleButtons(screen);
+        const [customBtn] = await getOverrideToggleButtons(screen);
         await user.click(customBtn);
 
         const forceBtn = await screen.findByRole("button", { name: /force enable/i });
@@ -350,7 +355,7 @@ describe("HDIdleDiskSettings Component", () => {
         // After confirmation: Custom is selected.
         await waitFor(async () => {
             const buttons = await getOverrideToggleButtons(screen);
-            expect(buttons[1].getAttribute("aria-pressed")).toBe("true");
+            expect(buttons[0].getAttribute("aria-pressed")).toBe("true");
         });
     });
 });

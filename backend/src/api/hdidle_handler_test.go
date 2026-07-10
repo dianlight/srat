@@ -138,7 +138,7 @@ func (suite *HDIdleHandlerSuite) TestGetConfigSuccess() {
 		HDIdleDeviceSupport: dto.HDIdleDeviceSupport{DevicePath: "/dev/" + diskID},
 		IdleTime:            time.Duration(300),
 		CommandType:         dto.HdidleCommands.SCSICOMMAND,
-		Enabled:             dto.HdidleEnableds.YESENABLED,
+		Enabled:             dto.HdidleEnableds.CUSTOMENABLED,
 	}
 	mock.When(suite.mockHDIdleService.ResolveDevicePath(diskID)).ThenReturn("/dev/"+diskID, nil)
 	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Any[string]())).ThenReturn(expected, nil)
@@ -152,7 +152,7 @@ func (suite *HDIdleHandlerSuite) TestGetConfigSuccess() {
 	var out dto.HDIdleDevice
 	suite.NoError(json.Unmarshal(resp.Body.Bytes(), &out))
 	suite.Equal("/dev/"+diskID, out.DevicePath)
-	suite.Equal(dto.HdidleEnableds.YESENABLED, out.Enabled)
+	suite.Equal(dto.HdidleEnableds.CUSTOMENABLED, out.Enabled)
 }
 
 func (suite *HDIdleHandlerSuite) TestGetConfigUnknownDiskReturns404() {
@@ -182,7 +182,7 @@ func (suite *HDIdleHandlerSuite) TestPutConfigSuccess() {
 
 	body := dto.HDIdleDevice{
 		IdleTime: time.Duration(600),
-		Enabled:  dto.HdidleEnableds.YESENABLED,
+		Enabled:  dto.HdidleEnableds.CUSTOMENABLED,
 	}
 	_, apiInst := humatest.New(suite.T())
 	suite.handler.RegisterHDIdleHandler(apiInst)
@@ -217,7 +217,7 @@ func (suite *HDIdleHandlerSuite) TestPutConfigNonRotationalRequiresForce() {
 	}, nil)
 
 	body := dto.HDIdleDevice{
-		Enabled:      dto.HdidleEnableds.YESENABLED,
+		Enabled:      dto.HdidleEnableds.CUSTOMENABLED,
 		ForceEnabled: false,
 	}
 	_, apiInst := humatest.New(suite.T())
@@ -243,7 +243,7 @@ func (suite *HDIdleHandlerSuite) TestPutConfigNonRotationalForcedSucceeds() {
 	mock.When(suite.mockHDIdleService.Start()).ThenReturn(nil)
 
 	body := dto.HDIdleDevice{
-		Enabled:      dto.HdidleEnableds.YESENABLED,
+		Enabled:      dto.HdidleEnableds.CUSTOMENABLED,
 		ForceEnabled: true,
 	}
 	_, apiInst := humatest.New(suite.T())

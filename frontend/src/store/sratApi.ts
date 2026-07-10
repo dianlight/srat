@@ -2109,7 +2109,6 @@ export enum Command_type {
   Ata = "ata",
 }
 export enum Enabled {
-  Yes = "yes",
   Custom = "custom",
   No = "no",
 }

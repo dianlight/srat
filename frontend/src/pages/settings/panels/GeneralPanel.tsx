@@ -255,7 +255,12 @@ export function GeneralPanel({ readOnly }: GeneralPanelProps) {
         <SettingSwitchRow
           ariaLabel="Experimental Lab Mode"
           id="experimental_lab_mode"
-          label="Experimental Lab Mode"
+          label={
+            <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+              <Typography component="span">Experimental Lab Mode</Typography>
+              <ScienceOutlinedIcon color="warning" fontSize="small" />
+            </Stack>
+          }
           name="experimental_lab_mode"
           {...commonProps}
         />

@@ -157,7 +157,7 @@ func (suite *HDIdleServiceSuite) TestStartWithEmptyDevicePath() {
 	suite.NoError(suite.db.Create(&dbom.HDIdleDevice{
 		DiskId:     "test-empty-path-device",
 		DevicePath: "/dev/nonexistent-test-empty-guard",
-		Enabled:    dto.HdidleEnableds.YESENABLED,
+		Enabled:    dto.HdidleEnableds.CUSTOMENABLED,
 		IdleTime:   60,
 	}).Error)
 

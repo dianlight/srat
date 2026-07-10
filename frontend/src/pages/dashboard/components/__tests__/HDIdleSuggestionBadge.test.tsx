@@ -94,17 +94,6 @@ describe("HDIdleSuggestionBadge", () => {
     expect(screen.queryByTestId("hdidle-suggestion-badge")).toBeNull();
   });
 
-  it("hides when HDIdle is already enabled (Yes)", () => {
-    render(
-      <HDIdleSuggestionBadge
-        disk={rotationalDisk({
-          hdidle_device: hdidleDevice({ idle_time: 60, enabled: Enabled.Yes }),
-        })}
-      />,
-    );
-    expect(screen.queryByTestId("hdidle-suggestion-badge")).toBeNull();
-  });
-
   it("hides when HDIdle is already enabled (Custom)", () => {
     render(
       <HDIdleSuggestionBadge

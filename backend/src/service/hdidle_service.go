@@ -389,7 +389,7 @@ func (s *HDIdleService) GetDeviceConfig(path string) (*dto.HDIdleDevice, errors.
 			result := &dto.HDIdleDevice{
 				HDIdleDeviceSupport: *support,
 				//		DevicePath: support.DevicePath,
-				Enabled: dto.HdidleEnableds.YESENABLED,
+				Enabled: dto.HdidleEnableds.NOENABLED,
 			}
 			if support.RecommendedCommand != nil {
 				result.CommandType = *support.RecommendedCommand
@@ -676,8 +676,6 @@ func (s *HDIdleService) convertConfig() (*internalConfig, errors.E) {
 		switch dev.Enabled {
 		case dto.HdidleEnableds.NOENABLED:
 			includeDevice = false
-		case dto.HdidleEnableds.YESENABLED:
-			includeDevice = true
 		case dto.HdidleEnableds.CUSTOMENABLED:
 			includeDevice = true
 			if dev.IdleTime != 0 {
