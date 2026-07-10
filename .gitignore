@@ -46,3 +46,4 @@ __screenshots__/
 .opencode/server.lock.json
 frontend_test_output.txt
 .playwright-mcp/
+.cursor/
