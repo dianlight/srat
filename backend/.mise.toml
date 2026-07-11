@@ -31,7 +31,7 @@ flag "--arch <arch>" help="Target architecture" env="ARCH" {
   choices "x86_64" "aarch64"
 }
 flag "--sentry_dsn <sentry_dsn>" help="Sentry DSN" env="SENTRY_DSN"
-flag "--pprof" help="Include pprof profiling support" 
+flag "--pprof" help="Include pprof profiling support"
 flag "--zig" help="Use Zig as the C compiler for musl dynamic build (produces srat-server-musl)"
 flag "--cgo" help="Enable CGO for glibc dynamic build (produces srat-server-glib)"
 arg "<gist_token>" help="GitHub Gist token" env="GIST_TOKEN"
@@ -55,6 +55,7 @@ run = [
     '''
       set +x +e
       CGO_CFLAGS='-DELF_METADATA="{\"version\":\"v'"${usage_version?}"'\"}"'
+      GOOS=linux
       if [ "$usage_arch" = "aarch64" ]; then
         GOARCH=arm64
       else
@@ -73,7 +74,7 @@ run = [
         CGO_ENABLED=1
         GOTAGS="p${usage_pprof:+prof},embedallowed,smartlib"
         CC="zig cc -target ${usage_arch?}-linux-musl"
-        export CC CGO_CFLAGS GOARCH CGO_ENABLED GOTAGS
+        export CC CGO_CFLAGS GOOS GOARCH CGO_ENABLED GOTAGS
         echo "Building srat-server-musl (CGO + zig-musl)..."
         go build -C src -tags="$GOTAGS" -ldflags="$LDFLAGS" -o ../dist/${usage_arch?}/srat-server-musl ./cmd/srat-server
       elif [ -n "$usage_cgo" ]; then
@@ -89,14 +90,14 @@ run = [
           CC="aarch64-linux-gnu-gcc"
           export CC
         fi
-        export CGO_CFLAGS GOARCH CGO_ENABLED GOTAGS
+        export CGO_CFLAGS GOOS GOARCH CGO_ENABLED GOTAGS
         echo "Building srat-server-glib (CGO + glibc)..."
         go build -C src -tags="$GOTAGS" -ldflags="$LDFLAGS" -o ../dist/${usage_arch?}/srat-server-glib ./cmd/srat-server
       else
         # Static build (default): srat-cli + srat-server-static + srat-server symlink
         CGO_ENABLED=0
         GOTAGS="p${usage_pprof:+prof},embedallowed"
-        export CGO_CFLAGS GOARCH CGO_ENABLED GOTAGS
+        export CGO_CFLAGS GOOS GOARCH CGO_ENABLED GOTAGS
         echo "Building srat-cli (static)..."
         go build -C src -tags="$GOTAGS" -ldflags="$LDFLAGS" -o ../dist/${usage_arch?}/srat-cli ./cmd/srat-cli
         echo "Building srat-server-static (static)..."
@@ -321,26 +322,31 @@ depends_post = [
     { task = "format:tidy" },
 ]
 run = """
-	set +x +e; 
-	echo "Applying patches to vendored dependencies..."; 
-	if ! command -v patch >/dev/null 2>&1; then 
-		echo "ERROR: 'patch' command not found. Please install patch utility."; 
-		exit 1; 
-	fi; 
+	set +x +e;
+	echo "Applying patches to vendored dependencies...";
+	if ! command -v patch >/dev/null 2>&1; then
+		echo "ERROR: 'patch' command not found. Please install patch utility.";
+		exit 1;
+	fi;
 	go -C src mod vendor;
 	# Regenerate Darwin vendor stubs deleted by `go mod vendor`.
 	sh patches/create_darwin_stubs.sh src;
 	find src/vendor -name "*.rej" -delete 2>/dev/null
-	#if [ -f "patches/goenums.patch" ] && [ -d "src/vendor/github.com/zarldev/goenums" ]; then 
-	#	echo "Applying goenums.patch..."; 
-	#	patch -d src/vendor/github.com/zarldev/goenums -p1 < $(pwd)/patches/goenums.patch || (echo "ERROR: Failed to apply goenums.patch"; exit 1); 
+	#if [ -f "patches/goenums.patch" ] && [ -d "src/vendor/github.com/zarldev/goenums" ]; then
+	#	echo "Applying goenums.patch...";
+	#	patch -d src/vendor/github.com/zarldev/goenums -p1 < $(pwd)/patches/goenums.patch || (echo "ERROR: Failed to apply goenums.patch"; exit 1);
     #touch src/vendor/github.com/zarldev/goenums/.pdone
 	#fi
-	if [ -f "patches/gorm-generics.patch" ] && [ -d "src/vendor/gorm.io/gorm" ]; then 
-		echo "Applying gorm-generics.patch..."; 
-		patch -d src/vendor/gorm.io/gorm -p1 < $(pwd)/patches/gorm-generics.patch || (echo "ERROR: Failed to apply gorm-generics.patch"; exit 1); 
+	if [ -f "patches/hd-idle-check-power-mode.patch" ] && [ -d "src/vendor/github.com/adelolmo/hd-idle/sgio" ]; then
+		echo "Applying hd-idle-check-power-mode.patch...";
+		patch -d src/vendor/github.com/adelolmo/hd-idle/sgio -p1 < $(pwd)/patches/hd-idle-check-power-mode.patch || (echo "ERROR: Failed to apply hd-idle-check-power-mode.patch"; exit 1);
+    touch src/vendor/github.com/adelolmo/hd-idle/sgio/.pdone
+	fi
+	if [ -f "patches/gorm-generics.patch" ] && [ -d "src/vendor/gorm.io/gorm" ]; then
+		echo "Applying gorm-generics.patch...";
+		patch -d src/vendor/gorm.io/gorm -p1 < $(pwd)/patches/gorm-generics.patch || (echo "ERROR: Failed to apply gorm-generics.patch"; exit 1);
     touch src/vendor/gorm.io/gorm/.pdone
-	fi 
+	fi
   find $(pwd)/src/vendor -name "*.rej" -delete || (echo "WARNING: Some patches could not be applied"; exit 0);
 	echo "Patches applied successfully"
 """
@@ -406,7 +412,7 @@ run = [
 alias = ["gen:openapi"]
 run = [
    "go run -C src ./cmd/srat-openapi -out ../docs",
-   "redocly lint ./docs/openapi.yaml"
+   "mise x npm:@redocly/cli@2.34.0 -- redocly lint ./docs/openapi.yaml"
 ]
 sources = ["src/**/*.go"]
 outputs = ["docs/openapi.yaml"]
@@ -449,4 +455,3 @@ outputs = [
 
 [tasks.golangci-lint]
 run = "cd src && golangci-lint run --fix"
-

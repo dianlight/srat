@@ -6,14 +6,18 @@
 **Table of Contents** *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
 - [Problem](#problem)
-  - [PKL error](#pkl-error)
-  - [Root cause](#root-cause)
-- [Fix (one-time setup per machine)](#fix-one-time-setup-per-machine)
+  - [PKL / hk error](#pkl--hk-error)
+  - [bun / Nexus error](#bun--nexus-error)
+  - [Root causes](#root-causes)
+- [Recommended: automated setup](#recommended-automated-setup)
+  - [What the script does](#what-the-script-does)
+  - [Run it](#run-it)
+- [Manual fallback (if the script does not work)](#manual-fallback-if-the-script-does-not-work)
   - [1 - Export the Windows trusted root CAs to a PEM bundle](#1---export-the-windows-trusted-root-cas-to-a-pem-bundle)
   - [2 - Pre-download the hk PKL package](#2---pre-download-the-hk-pkl-package)
   - [3 - Verify PKL / hk](#3---verify-pkl--hk)
-  - [4 - Fix `mise install` (npm tool downloads)](#4---fix-mise-install-npm-tool-downloads)
-  - [5 - Verify full install](#5---verify-full-install)
+  - [4 - Fix bun / Nexus issues manually](#4---fix-bun--nexus-issues-manually)
+- [Verify full install](#verify-full-install)
 - [Re-running after a hk version upgrade](#re-running-after-a-hk-version-upgrade)
 - [Why `JAVA_TOOL_OPTIONS` does not work for PKL](#why-java_tool_options-does-not-work-for-pkl)
 
@@ -21,18 +25,19 @@
 
 ## Problem
 
-On corporate networks with SSL inspection (MITM proxy), two separate issues appear:
+On corporate networks with SSL inspection (MITM proxy), two separate issues appear when
+running `mise install`:
 
-1. **`hk check` / PKL**: fails with a certificate error (see below).
-2. **`mise install`**: fails with `SELF_SIGNED_CERT_IN_CHAIN` when bun downloads npm packages.
+1. **`hk install --mise` / PKL**: fails with a certificate error (see below).
+2. **npm tool installs (bun)**: fails with `400 Bad Request` against the Nexus registry.
 
-Both are fixed by the same CA bundle; only the configuration target differs.
+Both are fixed automatically by `scripts/setup-pkl-proxy.sh`.
 
 ---
 
-### PKL error
+### PKL / hk error
 
-Running `hk check` (or any `hk` command) fails with the following error:
+Running `hk install --mise` (or any `hk` command) fails with:
 
 ```text
 –– Pkl Error ––
@@ -41,19 +46,90 @@ Error during SSL handshake with host `github.com`:
 unable to find valid certification path to requested target
 ```
 
-### Root cause
+### bun / Nexus error
 
-`hk` uses **PKL** (Apple's Pkl language) to evaluate `hk.pkl`. PKL is distributed as a
-GraalVM native image with a **bundled trust store** - it does not use the Windows
-certificate store or respect `JAVA_TOOL_OPTIONS`. When the corporate proxy rewrites
-TLS certificates using a corporate root CA that is not in PKL's bundled store, all
-outbound HTTPS requests from PKL fail.
+`mise install` fails installing npm tools (`prettier`, `markdownlint-cli2`, etc.):
+
+```text
+error: GET https://reponexus.servizi.gr-u.it/repository/prettier - 400
+mise ERROR bun failed
+```
+
+### Root causes
+
+**PKL**: `hk` evaluates `hk.pkl` via **PKL** (Apple's Pkl language), which is a
+GraalVM native image with a **bundled trust store**. It does not use the Windows
+certificate store or respect `JAVA_TOOL_OPTIONS`. The corporate MITM proxy rewrites
+TLS certificates using a CA not in PKL's bundled store, so all outbound HTTPS from PKL
+fails. The fix is to pre-populate `~/.pkl/cache/` via `curl` (which uses system OpenSSL
+and accepts `--cacert`) so PKL never needs to make a network call.
+
+**bun / Nexus**: bun constructs npm registry URLs by appending the package name directly
+to the last path segment of the registry URL, **stripping intermediate segments**. For a
+Nexus registry like `https://nexus.host/repository/npm-all`, bun sends requests to
+`https://nexus.host/repository/<package>` (400) instead of
+`https://nexus.host/repository/npm-all/<package>`. Additionally, bun does not trust the
+corporate CA. The fix is to switch mise npm tool installs to system npm and install a
+Linux Node.js (so the Windows npm on the WSL PATH is not used).
 
 ---
 
-## Fix (one-time setup per machine)
+## Recommended: automated setup
+
+`scripts/setup-pkl-proxy.sh` handles everything in one shot. It is also wired into the
+mise `postinstall` hook, so `mise install` will attempt it automatically on first run.
+
+### What the script does
+
+1. Reads the hk PKL package version from `hk.pkl` (no hardcoding — survives upgrades).
+2. On Windows / WSL: exports trusted root CAs to `~/.pkl/windows-ca-bundle.pem` via
+   `powershell.exe`. Skipped when the bundle is fresh (< 30 days old).
+3. Downloads the PKL package metadata JSON + zip via `curl` (not `pkl download-package`,
+   which hangs on the corporate CA) into `~/.pkl/cache/` using the correct PKL cache
+   layout, so `hk install --mise` never needs network access.
+4. Creates or updates `.mise.local.toml` (gitignored) with:
+   - `npm.package_manager = "npm"` / `npm.bun = false` — bypasses bun
+   - `node = "22"` — installs a Linux Node.js so the Linux `npm` binary shadows the
+     Windows `npm` on the WSL PATH (Windows npm cannot install to Linux paths)
+   - `NODE_EXTRA_CA_CERTS = "$HOME/.pkl/windows-ca-bundle.pem"` — corporate CA trust
+   - `npm_config_registry = "https://registry.npmjs.org"` — bypasses broken Nexus
+5. Writes a sentinel file per PKL package version so subsequent runs are instant.
+6. Degrades gracefully on CI / Linux (skips CA export and Windows-specific steps).
+
+### Run it
+
+```bash
+# Run once manually (or let `mise install` invoke it automatically via postinstall hook)
+mise run setup-pkl-proxy
+
+# Or call directly from the repo root
+./scripts/setup-pkl-proxy.sh
+
+# Force a re-download (e.g., after a corporate CA rotation)
+./scripts/setup-pkl-proxy.sh --force
+
+# Show which PKL package version will be downloaded
+./scripts/setup-pkl-proxy.sh --version-only
+
+# Help
+./scripts/setup-pkl-proxy.sh --help
+```
+
+After the script runs, `mise install` should complete cleanly. The git pre-commit hook
+is installed and `hk check` works from cache without any network access.
+
+---
+
+## Manual fallback (if the script does not work)
+
+Use these steps only when `scripts/setup-pkl-proxy.sh` is not available or when you
+need more control (e.g., a restricted environment where `powershell.exe` cannot be
+called from WSL).
 
 ### 1 - Export the Windows trusted root CAs to a PEM bundle
+
+The PEM file must be written to the **Linux filesystem** (not Windows) because `pkl`
+and `curl` run as Linux processes inside WSL.
 
 Open **PowerShell** and run:
 
@@ -63,89 +139,96 @@ Get-ChildItem Cert:\LocalMachine\Root | ForEach-Object {
     $b64 = [System.Convert]::ToBase64String($_.RawData, 'InsertLineBreaks')
     $pem += "-----BEGIN CERTIFICATE-----`n$b64`n-----END CERTIFICATE-----`n"
 }
-New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.pkl" | Out-Null
-Set-Content -Path "$env:USERPROFILE\.pkl\windows-ca-bundle.pem" -Value $pem -Encoding utf8
 ```
 
-This exports all trusted root CAs (including the corporate CA) into
-`~/.pkl/windows-ca-bundle.pem`.
+Then from a bash shell, redirect the output to the Linux filesystem:
+
+```bash
+# From a WSL bash shell (not PowerShell):
+mkdir -p ~/.pkl
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "
+  [Console]::OutputEncoding = [System.Text.Encoding]::ASCII
+  Get-ChildItem Cert:\LocalMachine\Root | ForEach-Object {
+    \$b64 = [System.Convert]::ToBase64String(\$_.RawData, 'InsertLineBreaks')
+    Write-Output '-----BEGIN CERTIFICATE-----'
+    Write-Output \$b64
+    Write-Output '-----END CERTIFICATE-----'
+  }
+" | tr -d '\r' > ~/.pkl/windows-ca-bundle.pem
+```
 
 ### 2 - Pre-download the hk PKL package
 
-PKL caches downloaded packages locally. Once cached, it never re-downloads them
-(no more SSL checks needed for that package version). Run this once from a bash shell:
+Download the metadata JSON and zip via `curl` into the exact PKL cache directory:
 
 ```bash
-pkl download-package \
-  --ca-certificates "$USERPROFILE/.pkl/windows-ca-bundle.pem" \
-  "package://github.com/jdx/hk/releases/download/v1.43.0/hk@1.43.0"
+VERSION=$(grep -oE 'hk@[0-9]+\.[0-9]+\.[0-9]+' hk.pkl | head -1 | sed 's/hk@//')
+PKG_DIR="$HOME/.pkl/cache/package-2/github.com/jdx/hk/releases/download/v${VERSION}/hk@${VERSION}"
+mkdir -p "$PKG_DIR"
+BASE="https://github.com/jdx/hk/releases/download/v${VERSION}"
+curl -sL --cacert ~/.pkl/windows-ca-bundle.pem --proxy "${HTTPS_PROXY:-}" \
+  "${BASE}/hk@${VERSION}" -o "${PKG_DIR}/hk@${VERSION}.json"
+curl -sL --cacert ~/.pkl/windows-ca-bundle.pem --proxy "${HTTPS_PROXY:-}" \
+  "${BASE}/hk@${VERSION}.zip" -o "${PKG_DIR}/hk@${VERSION}.zip"
 ```
-
-The package is stored at `%USERPROFILE%\.pkl\cache\`.
 
 ### 3 - Verify PKL / hk
 
 ```bash
+hk install --mise
 hk check
 ```
 
-Should now load the PKL config from cache without any network access.
+Should complete without any network access (PKL reads from cache).
 
-### 4 - Fix `mise install` (npm tool downloads)
-
-`mise install` uses bun to download npm tools, but bun has three issues on Windows corporate
-networks:
-
-- Does not trust the proxy CA → `SELF_SIGNED_CERT_IN_CHAIN`
-- Misparses Nexus-style registry paths (drops the repo-name segment) → 400/404 on the
-  corporate proxy
-- Fails to enqueue lifecycle scripts with ENOENT on paths that contain spaces
+### 4 - Fix bun / Nexus issues manually
 
 Create a **machine-local** mise config file (never committed — already in `.gitignore`):
 
-```bash
-# create/edit .mise.local.toml at the repo root
-cat > .mise.local.toml << 'EOF'
-# Machine-local mise overrides — NOT committed to git.
-
-# Switch mise npm-tool installs from bun to system npm.
-# Bun has known ENOENT lifecycle-script failures on Windows paths with spaces.
+```toml
+# .mise.local.toml — machine-local, never commit
 [settings]
 npm.package_manager = "npm"
 npm.bun = false
 
 [env]
-# Trust the corporate CA bundle (created in step 1) for Node/npm HTTPS requests.
-NODE_EXTRA_CA_CERTS = "C:/Users/<your-username>/.pkl/windows-ca-bundle.pem"
-
-# Use the official npm registry (corporate Nexus misses preview/nightly packages).
+NODE_EXTRA_CA_CERTS = "$HOME/.pkl/windows-ca-bundle.pem"
 npm_config_registry = "https://registry.npmjs.org"
-EOF
+
+[tools]
+# Install a Linux Node.js so its npm shadows the Windows npm on the WSL PATH.
+# Without this, mise runs the Windows npm which cannot install to Linux paths.
+node = "22"
 ```
 
-Replace `<your-username>` with your Windows username.
+Then run `mise install` to install node and all npm tools.
 
-### 5 - Verify full install
+---
+
+## Verify full install
 
 ```bash
 mise install
 ```
 
-Should complete without errors.
+Should complete without errors. All npm tools (`prettier`, `markdownlint-cli2`, etc.)
+install via Linux npm from `registry.npmjs.org`.
+
+---
 
 ## Re-running after a hk version upgrade
 
-When `hk.pkl` is updated to a new version (e.g. `v1.44.0`), repeat the PKL download step
-with the new package URL:
+No action needed when using `scripts/setup-pkl-proxy.sh` — it reads the PKL package
+version from `hk.pkl` automatically and the `postinstall` hook reruns it on every
+`mise install`.
+
+To force a refresh after a corporate CA rotation:
 
 ```bash
-pkl download-package \
-  --ca-certificates "$USERPROFILE/.pkl/windows-ca-bundle.pem" \
-  "package://github.com/jdx/hk/releases/download/v1.44.0/hk@1.44.0"
+./scripts/setup-pkl-proxy.sh --force
 ```
 
-The `windows-ca-bundle.pem` and `.mise.local.toml` do not need updating unless the
-corporate root CA changes.
+---
 
 ## Why `JAVA_TOOL_OPTIONS` does not work for PKL
 

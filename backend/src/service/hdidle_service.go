@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -34,6 +35,14 @@ const (
 	//sgGetVersionNum = 0x2282
 )
 
+// ataProbeFn is used by CheckATASupport to probe whether a device supports
+// ATA PASS-THROUGH. It defaults to sgio.CheckAtaDevice which issues a
+// read-only CHECK POWER MODE command (0xE5) instead of sgio.StopAtaDevice
+// which issues STANDBY IMMEDIATE (0xE0) and physically spins down the disk.
+// The spindownDisk path (spindownDisk) still uses sgio.StopAtaDevice directly
+// because an intentional spindown is required there.
+var ataProbeFn = sgio.CheckAtaDevice
+
 // HDIdleServiceInterface provides methods for managing hard disk idle monitoring
 type HDIdleServiceInterface interface {
 	// Start begins monitoring disk activity and spinning down idle disks
@@ -54,6 +63,11 @@ type HDIdleServiceInterface interface {
 	CheckDeviceSupport(blockPath string) (*dto.HDIdleDeviceSupport, errors.E)
 	CheckSGSupport(devicePath string) bool
 	CheckATASupport(device string) bool
+	// ResolveDevicePath converts an API-side disk identifier (raw kernel name
+	// like "sda", a by-id symlink like "ata-WDC...", or an already-absolute
+	// /dev path) to an absolute device path that exists on this system.
+	// Returns dto.ErrorNotFound if no candidate resolves.
+	ResolveDevicePath(diskID string) (string, errors.E)
 }
 
 // HDIdleService implements HDIdleServiceInterface
@@ -62,7 +76,6 @@ type HDIdleService struct {
 	ctx              context.Context
 	apiContextCancel context.CancelFunc
 	state            *dto.ContextState
-	settingService   SettingServiceInterface
 	eventBus         events.EventBusInterface
 	mu               sync.RWMutex
 	stopChan         chan struct{}
@@ -103,7 +116,6 @@ type HDIdleServiceParams struct {
 	Ctx              context.Context
 	ApiContextCancel context.CancelFunc
 	State            *dto.ContextState
-	SettingService   SettingServiceInterface
 	EventBus         events.EventBusInterface
 }
 
@@ -121,7 +133,6 @@ func NewHDIdleService(lc fx.Lifecycle, in HDIdleServiceParams) HDIdleServiceOut 
 		apiContextCancel: in.ApiContextCancel,
 		state:            in.State,
 		db:               in.DB,
-		settingService:   in.SettingService,
 		eventBus:         in.EventBus,
 		converter:        converter.DtoToDbomConverterImpl{},
 		config: &internalConfig{
@@ -135,42 +146,19 @@ func NewHDIdleService(lc fx.Lifecycle, in HDIdleServiceParams) HDIdleServiceOut 
 			//NameMap:               map[string]string{},
 		},
 	}
-	hdidle_service.config, _ = hdidle_service.convertConfig()
-	unsubscribe := make([]func(), 1)
-	unsubscribe[0] = in.EventBus.OnSetting(func(ctx context.Context, se events.SettingEvent) errors.E {
-		if se.Setting.HDIdleEnabled != nil && *se.Setting.HDIdleEnabled {
-			_ = hdidle_service.Stop()
-			err := hdidle_service.Start()
-			if err != nil {
-				tlog.ErrorContext(ctx, "Failed to start HDIdle service after settings change", "error", err)
-			}
-			return nil
-		} else {
-			err := hdidle_service.Stop()
-			if err != nil {
-				tlog.ErrorContext(ctx, "Failed to stop HDIdle service after settings change", "error", err)
-			}
-			return nil
-		}
-	})
-
+	// Lifecycle is fully delegated to Start()/Stop():
+	//   - Start() calls convertConfig() once and only launches the monitor
+	//     goroutine when at least one device has Enabled ≠ NOENABLED;
+	//   - Stop() is idempotent.
+	// We avoid eagerly calling convertConfig() at construction time — the
+	// service struct's zero-value `config` is good enough until OnStart fires.
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			settings, err := in.SettingService.Load()
-			if err != nil {
-				return err
-			}
-			if settings.HDIdleEnabled != nil && *settings.HDIdleEnabled {
-				return hdidle_service.Start()
-			}
-			return nil
+			return hdidle_service.Start()
 		},
 		OnStop: func(ctx context.Context) error {
-			_ = hdidle_service.Stop()
-			for _, unsub := range unsubscribe {
-				if unsub != nil {
-					unsub()
-				}
+			if err := hdidle_service.Stop(); err != nil {
+				return err
 			}
 			return nil
 		},
@@ -182,70 +170,90 @@ func NewHDIdleService(lc fx.Lifecycle, in HDIdleServiceParams) HDIdleServiceOut 
 	}
 }
 
-// Start begins monitoring disk activity
+// Start begins monitoring disk activity. It is idempotent: calling Start on
+// an already-running service is a no-op (returns nil). The service runs only
+// when at least one device row has Enabled ≠ NOENABLED — when no enabled
+// devices exist, Start refreshes config but does not launch the monitor
+// goroutine.
+//
+// To restart with a fresh configuration after a DB change, call Stop then
+// Start, or use the helper Reconfigure (added in a later phase).
 func (s *HDIdleService) Start() errors.E {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if s.IsRunning() {
-		return errors.New("HDIdle service is already running")
+	// Idempotent: already running ⇒ nothing to do. Previously this returned
+	// an error, which combined with the stopChan-not-nilled bug to permanently
+	// break the service after the first Stop(). Both are now fixed.
+	s.mu.RLock()
+	alreadyRunning := s.stopChan != nil
+	s.mu.RUnlock()
+	if alreadyRunning {
+		return nil
 	}
 
-	// Convert to internal config
-	var err errors.E
-	s.config, err = s.convertConfig()
+	// Refresh internal config from the DB (per-disk-only model). This does
+	// DB reads and per-device support probes (CheckDeviceSupport), which can
+	// take a while — run it without holding s.mu so it doesn't block readers
+	// and writers of s.config, s.diskStats, and s.stopChan for the duration.
+	newConfig, err := s.convertConfig()
 	if err != nil {
 		return err
 	}
 
-	// Start monitoring in background
-	if s.config.Enabled {
-		s.stopChan = make(chan struct{})
-		s.lastNow = time.Now()
-		go func() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-			//s.running = true
-			defer func() {
-				if err := s.Stop(); err != nil {
-					tlog.WarnContext(s.ctx, "Error while stopping HDIdle service", "error", err)
-				}
-			}()
-			s.monitorLoop()
-		}()
+	// Re-check idempotency: another goroutine may have started the service
+	// while convertConfig() was running unlocked above.
+	if s.stopChan != nil {
+		return nil
 	}
+
+	s.config = newConfig
+
+	// Reset per-disk activity state so each run starts with a clean slate.
+	// Without this, a Stop → (DB change) → Start cycle would carry stale
+	// SpunDown/LastIOAt values and miss devices removed from the config.
+	s.diskStats = nil
+
+	// No enabled devices ⇒ config refreshed but no goroutine launched.
+	// The lifecycle hook on PUT /hdidle/config will call Start() again
+	// once the user enables a device.
+	if !s.config.Enabled {
+		return nil
+	}
+
+	stop := make(chan struct{})
+	s.stopChan = stop
+	s.lastNow = time.Now()
+	go s.monitorLoop(stop)
 
 	return nil
 }
 
-// Stop halts the monitoring process
+// Stop halts the monitoring process. Idempotent: stopping an already-stopped
+// service is a no-op. After Stop returns, the service can be Start()ed again.
 func (s *HDIdleService) Stop() errors.E {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if !s.IsRunning() {
-		// Stopping an already-stopped service is a no-op and not an error
+	if s.stopChan == nil {
 		tlog.DebugContext(s.ctx, "HDIdle service is not running, no action needed")
 		return nil
 	}
 
 	tlog.DebugContext(s.ctx, "Stopping HDIdle service")
-	if s.stopChan != nil {
-		func() {
-			defer func() {
-				if r := recover(); r != nil {
-					tlog.WarnContext(s.ctx, "Panic while closing stop channel", "panic", r)
-				}
-			}()
-			close(s.stopChan)
-		}()
-	}
-	//s.stopChan = nil
+	close(s.stopChan)
+	s.stopChan = nil // critical: allows future Start() calls to succeed.
 
 	return nil
 }
 
-// IsRunning returns true if the service is currently monitoring
+// IsRunning returns true if the service is currently monitoring.
+//
+// Note: callers must not hold s.mu when invoking this function — the read is
+// guarded by RLock to remain safe under concurrent Start/Stop.
 func (s *HDIdleService) IsRunning() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return s.stopChan != nil
 }
 
@@ -253,11 +261,13 @@ func (s *HDIdleService) GetDeviceStatus(path string) (*dto.HDIdleDeviceStatus, e
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	if !s.IsRunning() {
+	// Read stopChan directly: nested IsRunning() under RLock can deadlock
+	// when a concurrent writer is parked between the two RLock calls.
+	if s.stopChan == nil {
 		return nil, nil
 	}
 
-	name := s.getRealPathNotSimlink(path)
+	name := s.getRealPathNotSymlink(path)
 
 	if len(s.diskStats) == 0 {
 		return nil, nil
@@ -275,8 +285,8 @@ func (s *HDIdleService) GetDeviceStatus(path string) (*dto.HDIdleDeviceStatus, e
 	return nil, errors.Errorf("disk %s (%s) not found from %#v", name, path, s.diskStats)
 }
 
-// getRealPathNotSimlink resolves symlinks to get the real device name (filename only)
-func (s *HDIdleService) getRealPathNotSimlink(path string) string {
+// getRealPathNotSymlink resolves symlinks to get the real device name (filename only)
+func (s *HDIdleService) getRealPathNotSymlink(path string) string {
 	realPath, err := io.RealPath(path)
 	if err != nil {
 		// If resolution fails, extract filename from original path
@@ -287,11 +297,65 @@ func (s *HDIdleService) getRealPathNotSimlink(path string) string {
 	return realPath
 }
 
+// ResolveDevicePath maps a caller-supplied disk identifier to a /dev path
+// that exists on this system. Tried, in order:
+//  1. Already an absolute path under /dev — used as-is after stat.
+//  2. /dev/disk/by-id/<diskID> — the canonical stable identifier.
+//  3. /dev/<diskID> — bare kernel name (e.g. "sda", "nvme0n1").
+//
+// Returns dto.ErrorNotFound when no candidate exists. The diskID is
+// rejected outright if it contains slashes, ".." segments, or NUL — these
+// are signs of injection rather than a valid kernel/by-id name.
+func (s *HDIdleService) ResolveDevicePath(diskID string) (string, errors.E) {
+	if diskID == "" {
+		return "", errors.Wrap(dto.ErrorNotFound, "empty disk identifier")
+	}
+
+	// Reject path-traversal/injection attempts before any path operation.
+	// This guard must come before the /dev/ fast-path: an input like
+	// /dev/../proc/self/fd/0 starts with /dev/ but escapes it after cleaning.
+	if strings.ContainsAny(diskID, "\\\x00") || strings.Contains(diskID, "..") {
+		return "", errors.Wrap(dto.ErrorNotFound, "invalid disk identifier: "+diskID)
+	}
+
+	// Allow already-absolute /dev paths, but only after cleaning and re-checking
+	// that the canonical path still lives under /dev/ — defends against traversal
+	// sequences that survived the string checks above.
+	if strings.HasPrefix(diskID, "/dev/") {
+		clean := filepath.Clean(diskID)
+		if !strings.HasPrefix(clean, "/dev/") {
+			return "", errors.Wrap(dto.ErrorNotFound, "invalid disk identifier: "+diskID)
+		}
+		if _, err := os.Stat(clean); err == nil {
+			return clean, nil
+		}
+		return "", errors.Wrap(dto.ErrorNotFound, "device path does not exist: "+diskID)
+	}
+
+	// Reject bare identifiers that still contain slashes (e.g. "disk/by-id/../foo").
+	if strings.ContainsAny(diskID, "/") {
+		return "", errors.Wrap(dto.ErrorNotFound, "invalid disk identifier: "+diskID)
+	}
+
+	candidates := []string{
+		"/dev/disk/by-id/" + diskID,
+		"/dev/" + diskID,
+	}
+	for _, p := range candidates {
+		if _, err := os.Stat(p); err == nil {
+			return p, nil
+		}
+	}
+	return "", errors.Wrap(dto.ErrorNotFound, "no device found for: "+diskID)
+}
+
 func (s *HDIdleService) GetDeviceConfig(path string) (*dto.HDIdleDevice, errors.E) {
 
-	if !s.config.Enabled {
-		return nil, errors.Wrap(dto.ErrorHDIdleNotSupported, "HDIdle service is disabled")
-	}
+	// GetDeviceConfig is a configuration-inspection endpoint and remains
+	// available regardless of whether the monitor goroutine is running.
+	// In the per-disk-only model the monitor only runs when ≥1 disk is
+	// enabled — but the UI must still be able to read/write disabled-disk
+	// records. The previous "service disabled → 503" guard has been removed.
 
 	device, err := gorm.G[dbom.HDIdleDevice](s.db).
 		Where(g.HDIdleDevice.DevicePath.Eq(path)).
@@ -322,27 +386,33 @@ func (s *HDIdleService) GetDeviceConfig(path string) (*dto.HDIdleDevice, errors.
 					HDIdleDeviceSupport: *support,
 				}, errors.Wrap(dto.ErrorHDIdleNotSupported, "HDIdle not supported for this device")
 			}
+
+			// Snapshot defaults under RLock to avoid data race with convertConfig()
+			s.mu.RLock()
+			defaultCmd := s.config.DefaultCommandType
+			defaultIdle := s.config.DefaultIdle
+			defaultPc := s.config.DefaultPowerCondition
+			s.mu.RUnlock()
+
 			result := &dto.HDIdleDevice{
 				HDIdleDeviceSupport: *support,
 				//		DevicePath: support.DevicePath,
-				Enabled: dto.HdidleEnableds.YESENABLED,
+				Enabled: dto.HdidleEnableds.NOENABLED,
 			}
 			if support.RecommendedCommand != nil {
 				result.CommandType = *support.RecommendedCommand
 			} else {
-				result.CommandType = s.config.DefaultCommandType
+				result.CommandType = defaultCmd
 			}
 
-			result.IdleTime = s.config.DefaultIdle
-			result.PowerCondition = s.config.DefaultPowerCondition
+			result.IdleTime = defaultIdle
+			result.PowerCondition = defaultPc
 			/*
 				errE := s.createDeviceConfig(*result)
 				if errE != nil {
 					return nil, errors.Wrap(errE, "error saving default HDIdle config for device")
 				}
 			*/
-			name := s.getRealPathNotSimlink(path)
-			s.config.Devices[name] = *result
 			return result, nil
 		}
 		return nil, errors.WithStack(err)
@@ -361,7 +431,7 @@ func (s *HDIdleService) GetDeviceConfig(path string) (*dto.HDIdleDevice, errors.
 // symlinks (e.g., ata- vs wwn-) and the caller uses a different variant.
 // Returns nil if no match is found.
 func (s *HDIdleService) findDeviceByRealPath(path string) *dbom.HDIdleDevice {
-	realInputPath := s.getRealPathNotSimlink(path)
+	realInputPath := s.getRealPathNotSymlink(path)
 	if realInputPath == path {
 		// Resolution had no effect; exact path already failed, so no point retrying.
 		return nil
@@ -374,7 +444,7 @@ func (s *HDIdleService) findDeviceByRealPath(path string) *dbom.HDIdleDevice {
 	}
 
 	for _, dev := range allDevices {
-		realDbPath := s.getRealPathNotSimlink(dev.DevicePath)
+		realDbPath := s.getRealPathNotSymlink(dev.DevicePath)
 		if realDbPath == realInputPath {
 			return dev
 		}
@@ -397,6 +467,7 @@ func (s *HDIdleService) SaveDeviceConfig(device dto.HDIdleDevice) errors.E {
 		Event: events.Event{
 			Type: events.EventTypes.UPDATE,
 		},
+		Kind:      events.PowerEventKindConfig,
 		PowerInfo: device,
 	})
 
@@ -444,7 +515,7 @@ func (s *HDIdleService) CheckDeviceSupport(blockPath string) (*dto.HDIdleDeviceS
 		return support, nil
 	}
 
-	name := s.getRealPathNotSimlink(blockPath)
+	name := s.getRealPathNotSymlink(blockPath)
 
 	// Try to open the device as an SG device to check basic support
 	support.SupportsSCSI = s.CheckSGSupport(blockPath)
@@ -512,7 +583,7 @@ func (s *HDIdleService) CheckATASupport(device string) bool {
 	// it likely supports ATA commands. Most modern SATA drives support both
 	// SCSI (via SAT - SCSI/ATA Translation) and native ATA commands.
 	device = fmt.Sprintf("/dev/%s", deviceName)
-	if err := sgio.StopAtaDevice(device, tlog.GetLevel() <= slog.LevelDebug); err != nil {
+	if err := ataProbeFn(device, tlog.GetLevel() <= slog.LevelDebug); err != nil {
 		if strings.Contains(err.Error(), "INVALID COMMAND OPERATION CODE") {
 			return false
 		}
@@ -546,6 +617,10 @@ func (s *HDIdleService) GetProcessStatus(parentPid int32) *dto.ProcessStatus {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
+	// Read stopChan once under the held lock instead of calling IsRunning()
+	// twice (which would re-acquire the RLock — not guaranteed reentrant).
+	running := s.stopChan != nil
+
 	status := &dto.ProcessStatus{
 		Pid:           -parentPid, // Negative PID indicates this is a subprocess
 		Name:          "powersave-monitor",
@@ -555,11 +630,10 @@ func (s *HDIdleService) GetProcessStatus(parentPid int32) *dto.ProcessStatus {
 		OpenFiles:     0,
 		Connections:   0,
 		Status:        []string{"idle"},
-		IsRunning:     s.IsRunning(),
+		IsRunning:     running,
 	}
 
-	// If running, populate with monitored disk count
-	if s.IsRunning() {
+	if running {
 		status.Connections = len(s.diskStats)
 		status.Status = []string{"running"}
 	}
@@ -567,33 +641,25 @@ func (s *HDIdleService) GetProcessStatus(parentPid int32) *dto.ProcessStatus {
 	return status
 }
 
+// Per-disk default tunables. The global Settings.HDIdle* fields were removed
+// when HDIdle moved to a per-disk-only model; these constants replace them
+// until Phase 2 introduces per-device override of every field.
+const (
+	hdidleDefaultIdleSeconds   = 60
+	hdidleDefaultPowerCond     = uint8(0)
+	hdidleDefaultIgnoreSpinDwn = false
+)
+
 // convertConfig converts external config to internal config
 func (s *HDIdleService) convertConfig() (*internalConfig, errors.E) {
 
-	settings, err := s.settingService.Load()
-	if err != nil {
-		return nil, err
-	}
-	if settings == nil {
-		slog.WarnContext(s.ctx, "Settings are nil while converting HDIdle config, using existing config if any")
-		return s.config, nil
-	}
-
-	// Global enabled flag from settings (defaults to false when nil)
-	globalEnabled := false
-	if settings.HDIdleEnabled != nil {
-		globalEnabled = *settings.HDIdleEnabled
-	}
-
 	intConfig := &internalConfig{
-		// Effective enabled: global switch OR at least one per-device forced enabled
-		Enabled:               globalEnabled, // may be updated below after loading devices
+		Enabled:               false,
 		Devices:               make(map[string]dto.HDIdleDevice),
-		DefaultIdle:           time.Duration((*settings).HDIdleDefaultIdleTime) * time.Second,
-		DefaultCommandType:    (*settings).HDIdleDefaultCommandType,
-		DefaultPowerCondition: (*settings).HDIdleDefaultPowerCondition,
-		IgnoreSpinDown:        (*settings).HDIdleIgnoreSpinDownDetection,
-		//NameMap:               make(map[string]string),
+		DefaultIdle:           time.Duration(hdidleDefaultIdleSeconds) * time.Second,
+		DefaultCommandType:    dto.HdidleCommands.SCSICOMMAND,
+		DefaultPowerCondition: hdidleDefaultPowerCond,
+		IgnoreSpinDown:        hdidleDefaultIgnoreSpinDwn,
 	}
 
 	devices, errS := query.HDIdleDeviceQuery[dbom.HDIdleDevice](s.db).All(s.ctx)
@@ -618,8 +684,6 @@ func (s *HDIdleService) convertConfig() (*internalConfig, errors.E) {
 		switch dev.Enabled {
 		case dto.HdidleEnableds.NOENABLED:
 			includeDevice = false
-		case dto.HdidleEnableds.YESENABLED:
-			includeDevice = true
 		case dto.HdidleEnableds.CUSTOMENABLED:
 			includeDevice = true
 			if dev.IdleTime != 0 {
@@ -631,6 +695,12 @@ func (s *HDIdleService) convertConfig() (*internalConfig, errors.E) {
 		}
 
 		if includeDevice {
+			// Skip devices with no path — they cannot be monitored and
+			// getRealPathNotSymlink("") panics inside the hd-idle library.
+			if dev.DevicePath == "" {
+				slog.WarnContext(s.ctx, "HDIdle device has empty DevicePath, skipping", "device", dev)
+				continue
+			}
 			devConfig, err := s.converter.HDIdleDeviceToHDIdleDeviceDTO(*dev)
 			if err != nil {
 				return nil, errors.Wrap(err, "error converting HDIdle device to DTO")
@@ -643,7 +713,7 @@ func (s *HDIdleService) convertConfig() (*internalConfig, errors.E) {
 			devConfig.IdleTime = idle
 			devConfig.CommandType = *cmdType
 
-			name := s.getRealPathNotSimlink(dev.DevicePath)
+			name := s.getRealPathNotSymlink(dev.DevicePath)
 			intConfig.Devices[name] = devConfig
 			/*
 				if deviceRealPath != "" {
@@ -653,64 +723,77 @@ func (s *HDIdleService) convertConfig() (*internalConfig, errors.E) {
 		}
 	}
 
-	// Update effective enabled state: global switch OR at least one device explicitly enabled
-	if !globalEnabled && len(intConfig.Devices) > 0 {
-		// When global is off but devices were explicitly enabled, enable service for those devices
-		intConfig.Enabled = true
-	}
+	// Per-disk-only model: service runs iff at least one device is enabled.
+	intConfig.Enabled = len(intConfig.Devices) > 0
 
-	// Calculate skew time and pool interval
-	interval := s.calculatePoolInterval()
-	intConfig.SkewTime = interval * 3
+	// SkewTime is the threshold for detecting OS suspend/sleep events: when
+	// the gap between two ticks exceeds it, updateDiskState resets the disk's
+	// idle counters. It must exceed hdidleDormantInterval (300s) so that normal
+	// dormant-mode ticks are never misidentified as a suspend/wake event and
+	// do not wastefully trigger an active-poll cycle.
+	intConfig.SkewTime = hdidleDormantInterval * 2
 
 	return intConfig, nil
 }
 
-// calculatePoolInterval determines the polling interval
-func (s *HDIdleService) calculatePoolInterval() time.Duration {
-	if s.config == nil {
-		slog.WarnContext(s.ctx, "Null config while calculating pool interval, using default 10s")
-		return time.Second * 10
-	}
-	defaultIdleTime := s.config.DefaultIdle
-	if len(s.config.Devices) == 0 {
-		return defaultIdleTime / defaultPoolMultiplier
-	}
+// Adaptive polling intervals (goal #4: minimal resource use).
+// active: at least one monitored disk is currently spun-up — poll often
+//
+//	enough to catch the next idle window precisely.
+//
+// dormant: every monitored disk is spun-down — nothing to do, slow the
+//
+//	tick by an order of magnitude. The OS still wakes the disk on
+//	real I/O; we just stop checking until the disk wakes itself.
+const (
+	hdidleActiveInterval  = 60 * time.Second
+	hdidleDormantInterval = 5 * time.Minute
+)
 
-	interval := defaultIdleTime
-	for _, dev := range s.config.Devices {
-		if dev.IdleTime == 0 {
-			continue
-		}
-		if dev.IdleTime < interval {
-			interval = dev.IdleTime
-		}
-	}
-
-	sleepTime := interval / defaultPoolMultiplier
-	if sleepTime == 0 {
-		return time.Second
-	}
-	return sleepTime
-}
-
-// monitorLoop is the main monitoring loop
-func (s *HDIdleService) monitorLoop() {
-	interval := s.calculatePoolInterval()
-
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
+// monitorLoop is the main monitoring loop. The stop channel is passed in
+// rather than read from s.stopChan to avoid a race with Stop(): when Stop
+// nils s.stopChan, this goroutine still selects on the original channel.
+//
+// The loop uses a dynamically-reset timer instead of a fixed Ticker so the
+// poll cadence can shift between active and dormant intervals based on
+// whether any monitored disk is currently spun-up.
+func (s *HDIdleService) monitorLoop(stop <-chan struct{}) {
+	timer := time.NewTimer(s.nextPollInterval())
+	defer timer.Stop()
 
 	for {
 		select {
-		case <-s.stopChan:
+		case <-stop:
 			return
 		case <-s.ctx.Done():
 			return
-		case <-ticker.C:
+		case <-timer.C:
 			s.observeDiskActivity()
+			// Re-arm with the interval appropriate for the current state.
+			timer.Reset(s.nextPollInterval())
 		}
 	}
+}
+
+// nextPollInterval returns the polling cadence for the next tick:
+//   - dormant interval (5min) when every monitored disk is spun-down;
+//   - active interval (60s) otherwise.
+//
+// Reads s.diskStats under RLock — must not be called while holding mu.Lock.
+func (s *HDIdleService) nextPollInterval() time.Duration {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if len(s.diskStats) == 0 {
+		// No disks observed yet — stay in active so we discover them quickly.
+		return hdidleActiveInterval
+	}
+	for _, ds := range s.diskStats {
+		if !ds.SpunDown {
+			return hdidleActiveInterval
+		}
+	}
+	return hdidleDormantInterval
 }
 
 // observeDiskActivity observes disk activity and spins down idle disks
@@ -718,7 +801,9 @@ func (s *HDIdleService) observeDiskActivity() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if !s.IsRunning() {
+	// Read stopChan directly under the held write lock — calling IsRunning()
+	// here would deadlock because IsRunning() takes an RLock on the same mutex.
+	if s.stopChan == nil {
 		return
 	}
 
@@ -818,6 +903,7 @@ func (s *HDIdleService) updateDiskState(name string, reads, writes uint64, now t
 			Event: events.Event{
 				Type: events.EventTypes.UPDATE,
 			},
+			Kind:        events.PowerEventKindStatus,
 			PowerStatus: ds.HDIdleDeviceStatus,
 		})
 	}

@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ComponentProps } from "react";
 import { Provider } from "react-redux";
-import { BrowserRouter } from "react-router-dom";
+import { BrowserRouter } from "react-router";
 import { createTestStore } from "/test/testing";
 import { type Partition } from "../../../../store/sratApi";
 import { VolumeDetailsPanel } from "../VolumeDetailsPanel";

@@ -1,76 +1,63 @@
 {
-	"compilerOptions": {
-		// TypeScript 6.0 Final / 7.0 Ready Configuration
-		// https://github.com/home-assistant/frontend/blob/dev/tsconfig.json
-		// Language Options - Updated for TS 6.0+ (ES2022+ recommended)
-		"target": "ES2022",
-		"lib": [
-			"ES2022",
-			"DOM",
-			"DOM.Iterable",
-			"WebWorker"
-		],
-		// Removed deprecated flags for TS 6.0 final / 7.0 compatibility:
-		// - experimentalDecorators: true (removed in TS 6.0, use native decorators)
-		// - useDefineForClassFields: false (removed, now defaults to true for ES2022+ class fields)
-		// - baseUrl (deprecated in TS 6.0, no longer required for path mappings)
-		// - outFile (removed in TS 6.0, not supported)
-		// Modules
-		"module": "ESNext",
-		"resolveJsonModule": true,
-		"moduleDetection": "force",
-		// Babel handles transpiling and no need for declaration files
-		"noEmit": true,
-		// Caching
-		"incremental": true,
-		"tsBuildInfoFile": "node_modules/.cache/typescript/.tsbuildinfo",
-		// Type checking options - Enhanced for TS 6.0 final / 7.0
-		"noUnusedLocals": true,
-		"noUnusedParameters": true,
-		"noImplicitReturns": true,
-		"noFallthroughCasesInSwitch": true,
-		"strict": true,
-		"noImplicitAny": false,
-		// TS 6.0+ strict options - enabled where code is ready
-		"noImplicitOverride": true,
-		// TODO for TS 7.0: Enable noUncheckedIndexedAccess after refactoring indexed access patterns in:
-		// - DiskHealthMetrics.tsx, NetworkHealthMetrics.tsx (object property access)
-		// - SharesTreeView.tsx, VolumesTreeView.tsx (array indexing in sort)
-		// - sseApi.ts, mdcSlice.ts (dynamic object keys)
-		// "noUncheckedIndexedAccess": true,
-		// Interop with CommonJS and other tools
-		// esModuleInterop will be default true in TS 7.0
-		"esModuleInterop": true,
-		"isolatedModules": true,
-		// Other ( not form HA)				
-		"jsx": "react-jsx",
-		"allowJs": true,
-		// Bundler mode (not from HA)
-		"moduleResolution": "bundler",
-		"paths": {
-			"/test/*": [
-				"./test/*"
-			]
-		},
-		"allowImportingTsExtensions": true,
-		"allowArbitraryExtensions": true,
-		"verbatimModuleSyntax": true,
-		// Best practices (not from HA)
-		"skipLibCheck": true,
-		// Prevent implicit inclusion of Node.js types
-		// Default in TS 6.0+ for better build performance (20-50% faster)
-		"types": [
-			"bun",
-			"react",
-			"react-dom"
-		]
-	},
-	"exclude": [
-		"node_modules",
-		"out",
-		"tmp",
-		"vendor",
-		".git",
-		"dist"
-	]
+  "compilerOptions": {
+    // TypeScript 7.0 RC Configuration (Go-based)
+    // https://github.com/home-assistant/frontend/blob/dev/tsconfig.json
+    // Language Options - TypeScript 7.0 (ES2022+ recommended)
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable", "WebWorker"],
+    // Removed deprecated flags (no longer supported in TS 7.0):
+    // - experimentalDecorators: true (use native decorators)
+    // - useDefineForClassFields: false (now defaults to true for ES2022+ class fields)
+    // - baseUrl (deprecated, no longer required for path mappings)
+    // - outFile (no longer supported)
+    // Modules
+    "module": "ESNext",
+    "resolveJsonModule": true,
+    "moduleDetection": "force",
+    // Babel handles transpiling and no need for declaration files
+    "noEmit": true,
+    // Caching
+    "incremental": true,
+    "tsBuildInfoFile": "node_modules/.cache/typescript/.tsbuildinfo",
+    // Type checking options - TypeScript 7.0
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "strict": true,
+    "noImplicitAny": false,
+    // TS 7.0 strict options - enabled where code is ready
+    "noImplicitOverride": true,
+    // TODO: Enable noUncheckedIndexedAccess after refactoring indexed access patterns in:
+    // - DiskHealthMetrics.tsx, NetworkHealthMetrics.tsx (object property access)
+    // - SharesTreeView.tsx, VolumesTreeView.tsx (array indexing in sort)
+    // - sseApi.ts, mdcSlice.ts (dynamic object keys)
+    // "noUncheckedIndexedAccess": true,
+    // Interop with CommonJS and other tools
+    // esModuleInterop is default true in TS 7.0
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    // Other ( not form HA)
+    "jsx": "react-jsx",
+    "allowJs": true,
+    // Bundler mode (not from HA)
+    "moduleResolution": "bundler",
+    "paths": {
+      "/test/*": ["./test/*"],
+    },
+    "allowImportingTsExtensions": true,
+    "allowArbitraryExtensions": true,
+    "verbatimModuleSyntax": true,
+    // Best practices (not from HA)
+    "skipLibCheck": true,
+    // Prevent implicit inclusion of Node.js types
+    // Default in TS 7.0 for better build performance (20-50% faster)
+    "types": [
+      "bun",
+      "react",
+      "react-dom",
+      "@mcpc-tech/unplugin-dev-inspector-mcp/client",
+    ],
+  },
+  "exclude": ["node_modules", "out", "tmp", "vendor", ".git", "dist"],
 }

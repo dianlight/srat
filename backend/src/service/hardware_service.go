@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -36,6 +38,11 @@ type hardwareService struct {
 	smartService  SmartServiceInterface
 	hdidleService HDIdleServiceInterface
 	cache         *cache.Cache
+	// readFile is os.ReadFile by default; tests override it to mock sysfs.
+	readFile func(string) ([]byte, error)
+	// sysBlockBasePath is "/sys/block" in production; tests override it
+	// to point at a temp dir containing fake rotational files.
+	sysBlockBasePath string
 }
 
 func NewHardwareService(
@@ -48,13 +55,15 @@ func NewHardwareService(
 	eventBus events.EventBusInterface,
 ) HardwareServiceInterface {
 	hs := &hardwareService{
-		ctx:           ctx,
-		haClient:      haClient,
-		conv:          converter.HaHardwareToDtoImpl{},
-		smartService:  smartServiceInstance,
-		hdidleService: hdidleServiceInstance,
-		state:         state,
-		cache:         cache.New(30*time.Minute, 10*time.Minute),
+		ctx:              ctx,
+		haClient:         haClient,
+		conv:             converter.HaHardwareToDtoImpl{},
+		smartService:     smartServiceInstance,
+		hdidleService:    hdidleServiceInstance,
+		state:            state,
+		cache:            cache.New(30*time.Minute, 10*time.Minute),
+		readFile:         os.ReadFile,
+		sysBlockBasePath: "/sys/block",
 	}
 	unsubscribe := eventBus.OnHomeAssistant(func(ctx context.Context, hae events.HomeAssistantEvent) errors.E {
 		if hae.Type == events.EventTypes.START {
@@ -167,6 +176,13 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 						diskDto.HDIdleDevice = hdidleDevice
 					}
 
+					// Detect rotational medium (HDD vs SSD/NVMe). Used by the
+					// dashboard to decide whether to suggest HDIdle and by the
+					// per-disk card to warn before force-enabling on an SSD.
+					if diskDto.LegacyDeviceName != nil {
+						diskDto.IsRotational = h.detectRotational(*diskDto.LegacyDeviceName, diskDto.SmartInfo)
+					}
+
 					continue
 				}
 				// Match Partitions
@@ -232,4 +248,54 @@ func (h *hardwareService) InvalidateHardwareInfo() {
 	}
 	h.cache.Delete(hwCacheKey)
 	tlog.TraceContext(h.ctx, "Invalidated hardware info cache")
+}
+
+// detectRotational reports whether a block device is a rotational HDD.
+// Tri-state return:
+//   - *true  → rotational (HDD)
+//   - *false → non-rotational (SSD/NVMe)
+//   - nil    → unknown (sysfs missing AND SMART unavailable)
+//
+// Strategy: read /sys/block/<dev>/queue/rotational first (kernel-authoritative,
+// 1=HDD / 0=SSD); if that file is missing or unparseable, fall back to
+// smartInfo.RotationRate when SMART is supported (>0=HDD, 0=SSD).
+//
+// devName must be the bare kernel name (e.g. "sda", "nvme0n1") with no slashes
+// or path traversal — we sanitize defensively before joining.
+func (h *hardwareService) detectRotational(devName string, smartInfo *dto.SmartInfo) *bool {
+	// Defensive sanitization: reject empty, anything with separators or "..".
+	if devName == "" || strings.ContainsAny(devName, "/\\") || strings.Contains(devName, "..") {
+		return rotationalFromSmart(smartInfo)
+	}
+
+	path := filepath.Join(h.sysBlockBasePath, devName, "queue", "rotational")
+	data, err := h.readFile(path)
+	if err == nil {
+		switch strings.TrimSpace(string(data)) {
+		case "1":
+			t := true
+			return &t
+		case "0":
+			f := false
+			return &f
+		}
+		// File exists but content is unexpected — fall through to SMART.
+	}
+
+	return rotationalFromSmart(smartInfo)
+}
+
+// rotationalFromSmart derives rotational state from a SmartInfo payload.
+// Only trustworthy when SMART is reported supported by the device — when
+// Supported=false, RotationRate=0 means "unknown" rather than "SSD".
+func rotationalFromSmart(smartInfo *dto.SmartInfo) *bool {
+	if smartInfo == nil || !smartInfo.Supported {
+		return nil
+	}
+	if smartInfo.RotationRate > 0 {
+		t := true
+		return &t
+	}
+	f := false
+	return &f
 }

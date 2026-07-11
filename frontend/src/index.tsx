@@ -11,6 +11,10 @@ import * as ReactDOM from "react-dom/client";
 import { App } from "./App.tsx";
 import "./css/style.css";
 import "./img/favicon.ico";
+// DevInspector from the `/next` export is a plain `useEffect`-based React component
+// that works in any React 19 app regardless of bundler. Only loaded in dev/remote
+// modes to avoid any runtime cost in production bundles.
+import { DevInspector } from "@mcpc-tech/unplugin-dev-inspector-mcp/next";
 //import { type Listener, type Source, SSEProvider } from "react-hooks-sse";
 import { TourProvider } from "@reactour/tour";
 import * as Sentry from "@sentry/react";
@@ -66,6 +70,17 @@ const theme = createTheme({
     },
   },
 });
+
+/*
+if (
+  process.env.NODE_ENV === "development" ||
+  process.env.NODE_ENV === "remote"
+) {
+  import("virtual:dev-inspector-mcp")
+    .then(() => console.log("🕵️‍♀️ DevInspector Client ready"))
+    .catch((err) => console.error("🤦🏻‍♀️ DevInspector:", err));
+}
+*/
 
 if (import.meta.hot) {
   console.debug("✅ Hot Module Replacement (HMR) is enabled!");
@@ -155,6 +170,17 @@ root.render(
                 }}
               >
                 <App />
+                {/* DevInspector connects to the standalone MCP server spawned by
+                    `bun run dev-inspector-mcp server` (port 6137). Only mounted in
+                    dev/remote modes to guarantee zero overhead in production. */}
+                {(getCurrentEnv() === "development" ||
+                  getCurrentEnv() === "remote") && (
+                  <DevInspector
+                    host="localhost"
+                    port={6137}
+                    disableChrome={false}
+                  />
+                )}
               </TourProvider>
             </BrowserRouter>
           </StrictMode>

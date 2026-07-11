@@ -1,12 +1,12 @@
 ---
 name: test-remote-environment
-description: "Test the SRAT project against the live Home Assistant test environment. Deploys the backend binary via 'mise //backend:build:remote', starts the frontend dev server with 'mise run //frontend:dev:remote', controls the local_sambanas2 addon (start/stop/restart) via the Home Assistant MCP, reads addon logs, and browses/validates the UI with Playwright at http://localhost:3080/. Triggers on: 'test remote', 'test in HA', 'deploy to test', 'check test environment', 'test on addon', 'run integration test'."
+description: Test on the Homeassitant Dev envoronment
 argument-hint: "Describe what to test and whether custom component interaction is needed (e.g., 'test share creation flow, include custom component: yes')."
 ---
 
 # Test Remote Environment
 
-Deploys SRAT to the live Home Assistant test environment, controls the addon lifecycle, and validates behaviour via logs, the backend API, and the UI using Playwright.
+Test the SRAT project against the live Home Assistant test environment. Deploys the backend binary via `mise //backend:build:remote`, starts the frontend dev server with `mise run //frontend:dev:remote`, controls the `local_sambanas2` addon (start/stop/restart) via the Home Assistant MCP, reads addon logs, and browses/validates the UI with Playwright at `http://localhost:3080/`.
 
 ## When to Use
 
@@ -20,11 +20,11 @@ Deploys SRAT to the live Home Assistant test environment, controls the addon lif
 
 | Requirement | How to verify |
 |---|---|
-| `HOMEASSISTANT_IP` env var set | `echo $HOMEASSISTANT_IP` — must return an IP address |
-| `SUPERVISOR_URL` env var set | `echo $SUPERVISOR_URL` — must return e.g. `http://192.168.0.68/`; used to derive `API_URL` for the frontend dev server |
-| SSH access to HA | `ssh root@$HOMEASSISTANT_IP echo ok` |
+| `HOMEASSISTANT_IP` env var (default 192.168.0.68) | `echo ${HOMEASSISTANT_IP:-192.168.0.68}` — must return an IP address |
+| `SUPERVISOR_URL` env var set | `echo ${SUPERVISOR_URL:-http://192.168.0.68/` — must return e.g. `http://192.168.0.68/`; used to derive `API_URL` for the frontend dev server |
+| SSH access to HA | `ssh root@${HOMEASSISTANT_IP:-192.168.0.68} echo ok` |
 | `sshfs` available for remote mount | `which sshfs` |
-| HA MCP server connected | MCP tools `mcp_home-assistan_ha_*` must be available |
+| HA MCP server connected | MCP tools `mcp_home-assistan_ha_*` or `home-assistant-dev` must be available |
 | Frontend dependencies installed | `cd frontend && bun install` |
 
 ## Argument Handling (Custom Component Scope)
@@ -32,10 +32,10 @@ Deploys SRAT to the live Home Assistant test environment, controls the addon lif
 Before running the procedure, decide whether custom component deployment is in scope.
 
 1. Parse the user argument for explicit intent:
-    - Include custom component flow when argument contains intent like `include custom component: yes`, `with custom component`, or similar.
-    - Skip custom component flow when argument explicitly says `include custom component: no`, `backend-only`, or similar.
+   - Include custom component flow when argument contains intent like `include custom component: yes`, `with custom component`, or similar.
+   - Skip custom component flow when argument explicitly says `include custom component: no`, `backend-only`, or similar.
 2. If the argument is ambiguous **and** the requested test could interact with Home Assistant integration behavior, ask:
-    - `Should I include custom component remote deployment/reload in this test? (yes/no)`
+   - `Should I include custom component remote deployment/reload in this test? (yes/no)`
 3. Run the optional custom component steps only when the answer is `yes`.
 
 ## Procedure
@@ -164,21 +164,51 @@ Then use Playwright tools as needed to interact with the UI:
 - Browser console has no uncaught errors
 - Network requests return 2xx status codes
 
+**MUI TreeView / ToggleButtonGroup interaction note:**
+- `browser_snapshot` may return only `RootWebArea` for MUI components that use virtual trees or custom rendering (e.g., `SimpleTreeView`, `ToggleButtonGroup`)
+- Use `browser_eval` with JavaScript DOM queries as a fallback: `document.querySelector(...)` or React fiber access via `__reactFiber$<hash>`
+- For `ToggleButtonGroup` clicks, React fiber handler invocation is often the only reliable method (MUI resists synthetic `PointerEvent`/`MouseEvent` dispatch)
+
 ### Step 7 — Read logs again after UI interaction (core first, then addon)
 
 After triggering actions in the UI, re-read logs to catch backend and integration errors:
 
 ```
-mcp_home-assistan_ha_core_logs
+mcp_home-assistant_ha_core_logs
 ```
 
 Then:
 
 ```
-mcp_home-assistan_ha_addon_logs  →  slug: "local_sambanas2"
+mcp_home-assistant_ha_addon_logs  →  slug: "local_sambanas2"
 ```
 
 Look for new `ERROR` or `WARN` lines correlating with the UI actions taken.
+
+### Step 7a — Verify cache-sensitive data freshness (recommended)
+
+When testing features that modify backend state (config saves, DB writes) and then read it back via a different API endpoint, stale caches can produce misleading test results. After any state-mutating action (save, create, delete), verify the data is consistent across all read paths.
+
+**Known pattern — HardwareService cache (30-min TTL):**
+- `SaveDeviceConfig` writes to DB but may not invalidate `HardwareService` cache
+- `/api/disk/{id}/hdidle/config` reads DB directly (fresh)
+- `/api/volumes` reads from `HardwareService` cache (may be stale)
+- Result: individual endpoint shows correct data, volumes endpoint shows stale `supported=false`
+
+**Verification approach:**
+1. After a state-mutating action, restart the addon to clear all in-memory caches:
+   ```
+   mcp_home-assistant_ha_stop_addon   →  slug: "local_sambanas2"
+   Wait 5 seconds
+   mcp_home-assistant_ha_start_addon  →  slug: "local_sambanas2"
+   ```
+2. Re-read the data from the affected endpoint after restart
+3. Compare with the direct-read endpoint to confirm consistency
+
+**When to apply this step:**
+- Testing config save flows (HDIdle, shares, users, settings)
+- Testing any feature where a POST/PUT is followed by a GET on a different endpoint
+- Investigating data inconsistencies between individual and list endpoints
 
 ### Step 8 — Clean up
 
@@ -210,12 +240,15 @@ Build successful?
 | `rsync: connection refused` | SSH not running / wrong IP | Verify SSH access manually |
 | Custom component errors are missing in addon logs | Looking at wrong log source | Check `mcp_home-assistan_ha_core_logs` first; custom component Python errors are logged in Home Assistant core logs |
 | Addon fails to start, `signal: killed` | OOM or binary mismatch | Check if PPROF port conflicts; rebuild without `PPROF=1` |
+| Addon fails to start, Mach-O format error | Cross-compilation produced macOS binary | Ensure `GOOS=linux` is set in all build export sections of `backend/.mise.toml` (zig-musl, glibc, static) |
 | Addon starts but API 404s | Old binary still running | Stop, wait 5 s, start again |
 | Custom component fails after deploy | Reload/setup error in HA | Run `mcp_home-assistan_ha_check_config`, then inspect addon/core logs for traceback and fix component imports/schema |
 | Frontend build loop / TS errors | Type error in changed file | Fix the error shown in frontend terminal stdout |
 | Playwright blank page | Frontend not yet ready | Wait for `Bun.serve listening on :3080` in terminal |
 | WebSocket not connecting | Proxy / CORS | Check `mise run //frontend:dev:remote` stdout for proxy errors |
 | Browser console CORS errors | API_URL mismatch | Verify `HOMEASSISTANT_IP` matches `API_URL` in `.mise.toml` `dev:remote` |
+| Individual API returns correct data but list API returns stale/defaults | In-memory cache stale (e.g., HardwareService 30-min cache) | Restart addon to clear cache, re-read from list endpoint; file bug if `Save*` methods don't call `Invalidate*` |
+| UI panel hidden despite correct DB data | Backend cache stale → `supported=false` → frontend visibility gate blocks rendering | Restart addon, verify panel appears; report as cache invalidation bug |
 | Direct API access needed | Cannot reach backend API externally | Use `docker exec addon_local_sambanas2 curl -sL http://localhost:64289/api/...` from the HA host (no auth required — internal-only API) |
 | `smbpasswd -L` fails / shows help | `smbpasswd -L` is broken in the addon container | Use `pdbedit -a -u <username>` instead to set Samba passwords; `pdbedit -L` to list existing users |
 
@@ -254,7 +287,7 @@ mcp_home-assistan_ha_addon_logs  →  slug: "local_sambanas2"
 
 5. After debugging, revert logger entries to `info` (or remove them) to avoid noisy logs.
 
-Notes:
+**Notes:**
 - Custom component Python logs are emitted in **Home Assistant core logs**, not addon logs.
 - Prefer temporary debug enablement only during active investigation.
 
@@ -271,3 +304,50 @@ Update addon options before restart:
 ```
 mcp_home-assistan_ha_set_addon_options  →  slug: "local_sambanas2", options: { ... }
 ```
+
+## Usage Examples
+
+### Example 1: Test backend changes only
+```
+Test: "Validate backend API changes for share creation"
+Custom component: "include custom component: no"
+```
+
+### Example 2: Test UI changes with custom component
+```
+Test: "Test share creation UI flow with custom component"
+Custom component: "include custom component: yes"
+```
+
+### Example 3: Quick validation after build
+```
+Test: "Quick validation of addon after build"
+Custom component: "include custom component: no"  (will ask if unsure)
+```
+
+## Return Values
+
+This skill returns a comprehensive test report including:
+
+- **Build status**: Success/failure and any errors encountered
+- **Addon health**: Start status, logs analysis, and any runtime issues
+- **Custom component status** (if deployed): Deployment success, runtime errors
+- **UI test results** (if frontend started): Page load status, WebSocket connectivity, console errors
+- **Network validation**: API endpoint responses and data integrity
+- **Cache consistency** (if state-mutating tests ran): Verified data freshness across endpoints after cache-sensitive operations
+- **Cleanup status**: Proper browser and server termination
+
+## Error Handling
+
+This skill gracefully handles:
+
+- Missing environment variables
+- SSH connection failures
+- Build compilation errors
+- Addon startup failures
+- Custom component deployment issues
+- Frontend server startup problems
+- Playwright browser errors
+- Network connectivity issues
+
+All errors are logged with actionable guidance, and the skill provides clear next steps for resolution.

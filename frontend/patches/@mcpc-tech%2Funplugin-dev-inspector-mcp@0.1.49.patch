@@ -1,0 +1,47 @@
+diff --git a/dist/cli.js b/dist/cli.js
+index 52ffc087ee1195094c9bc0d7afc625f8fff614a3..28c5a192200af0d7616de2efc18e4b8f564fa96e 100755
+--- a/dist/cli.js
++++ b/dist/cli.js
+@@ -857,6 +857,9 @@ async function runServerCommand() {
+ 	let port = getDefaultPort();
+ 	let host = "localhost";
+ 	const allowedHosts = [];
++	let defaultAgent;
++	let visibleAgents;
++	const inspectorConfig = {};
+ 	for (let i = 0; i < args.length; i++) if (args[i] === "--port" && args[i + 1]) {
+ 		port = parseInt(args[i + 1], 10);
+ 		i++;
+@@ -867,6 +870,14 @@ async function runServerCommand() {
+ 		const hosts = args[i + 1].split(",").map((h) => h.trim()).filter(Boolean);
+ 		allowedHosts.push(...hosts);
+ 		i++;
++	} else if (args[i] === "--default-agent" && args[i + 1]) {
++		defaultAgent = args[i + 1];
++		inspectorConfig.defaultAgent = defaultAgent;
++		i++;
++	} else if (args[i] === "--visible-agents" && args[i + 1]) {
++		visibleAgents = args[i + 1].split(",").map((a) => a.trim()).filter(Boolean);
++		inspectorConfig.visibleAgents = visibleAgents;
++		i++;
+ 	} else if (args[i] === "--help" || args[i] === "-h") {
+ 		console.log(`
+ ╔════════════════════════════════════════════════════════════╗
+@@ -885,6 +896,8 @@ Options:
+   --port <number>   Port to run the server on (default: 6137)
+   --host <string>   Host to bind to (default: localhost)
+   --allowed-hosts <string>  Comma-separated list of allowed hosts (e.g. "example.com,.my-ide.com")
++  --default-agent <name>  Set default agent name
++  --visible-agents <list> Comma-separated list of visible agents
+   --help, -h        Show this help message
+
+ Example:
+@@ -912,7 +925,7 @@ Example:
+ 		console.log(`[ev-inspector] 📡 MCP (Standalone): ${baseUrl}\nj);
+ 		setupMcpMiddleware(server, serverContext);
+ 		setupAcpMiddleware(server, serverContext, {});
+-		setupInspectorMiddleware(server, {});
++		setupInspectorMiddleware(server, inspectorConfig);
+ 		await updateMcpConfigs(process.cwd(), baseUrl, {});
+ 	} catch (error) {
+ 		console.error("Failed to start dev-inspector server:", error);
