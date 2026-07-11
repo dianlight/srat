@@ -346,7 +346,7 @@ func (broker *BroadcasterService) dispatchEvent(send ws.Sender, event broadcastE
 		})
 		if err != nil {
 			if !strings.Contains(err.Error(), ": broken pipe") && !strings.Contains(err.Error(), "websocket: close sent") {
-				slog.InfoContext(broker.ctx, "DEBUG: Error sending event to client",
+				slog.DebugContext(broker.ctx, "DEBUG: Error sending event to client",
 					"event_id", event.ID,
 					"event_type", fmt.Sprintf("%T", event.Message),
 					"err", err,
