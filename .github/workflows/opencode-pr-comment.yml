@@ -1,0 +1,431 @@
+name: opencode-pr-comment
+
+# Processes 2, 3 & 6 — PR Thread Discussions and Targeted Task Execution
+# Process 2: Auto-reply in threads opened by Opencode (no /oc required)
+# Process 3: Take over user-owned threads when /oc is used
+# Process 6: Execute /oc task against PR checklist
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+concurrency:
+  group: opencode-pr-comment-${{ github.event.issue.number || github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  route:
+    if: >-
+      (github.event_name != 'issue_comment' || github.event.issue.pull_request) &&
+      github.event.comment.user.login != 'github-actions[bot]' &&
+      github.event.comment.user.login != 'opencode-agent[bot]' &&
+      github.event.comment.user.login != 'coderabbitai[bot]' &&
+      github.event.comment.user.login != 'opencode-maintenance[bot]' &&
+      (github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'MEMBER' || github.event.comment.author_association == 'COLLABORATOR')
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+      issues: write
+    outputs:
+      process: ${{ steps.route.outputs.process }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          persist-credentials: false
+
+      - name: Parse command
+        id: parse
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        run: |
+          chmod +x .github/scripts/auth.sh 2>/dev/null || true
+          .github/scripts/auth.sh "$COMMENT_BODY"
+
+      - name: Determine process
+        id: route
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          IS_OC: ${{ steps.parse.outputs.IS_OC_COMMAND }}
+          SUBCOMMAND: ${{ steps.parse.outputs.SUBCOMMAND }}
+        run: |
+          PROCESS="skip"
+
+          if [[ "$EVENT_NAME" == "pull_request_review_comment" ]]; then
+            # Inline review comment on a code line
+            if [[ "$IS_OC" == "true" ]]; then
+              PROCESS="process-3"
+            else
+              # Could be a reply in a bot thread — handled by Process 2
+              PROCESS="process-2"
+            fi
+          elif [[ "$EVENT_NAME" == "issue_comment" ]]; then
+            # Top-level PR comment
+            if [[ "$SUBCOMMAND" == "task" ]]; then
+              PROCESS="process-6"
+            elif [[ "$IS_OC" == "true" ]]; then
+              # Bare /oc on PR without subcommand — Process 2 if in bot thread
+              PROCESS="process-2"
+            else
+              # Non-/oc comment — only Process 2 if replying to bot thread
+              PROCESS="process-2"
+            fi
+          fi
+
+          echo "process=$PROCESS" >> "$GITHUB_OUTPUT"
+
+  process-2:
+    if: needs.route.outputs.process == 'process-2'
+    needs: route
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Check if this is a reply to an Opencode thread
+        id: thread-check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          IS_BOT_THREAD="false"
+
+          if [[ "$EVENT_NAME" == "pull_request_review_comment" ]]; then
+            # Get the parent comment's author
+            PARENT_AUTHOR=$(gh api \
+              "${{ github.event.comment.pull_request_review_url }}" \
+              --jq '.user.login' 2>/dev/null || echo "")
+
+            # Also check via the in_reply_to field
+            if [[ "${{ github.event.comment.in_reply_to_id }}" != "null" ]] && \
+               [[ -n "${{ github.event.comment.in_reply_to_id }}" ]]; then
+              PARENT_AUTHOR=$(gh api \
+                "/repos/${{ github.repository }}/pulls/comments/${{ github.event.comment.in_reply_to_id }}" \
+                --jq '.user.login' 2>/dev/null || echo "$PARENT_AUTHOR")
+            fi
+
+            if [[ "$PARENT_AUTHOR" == "opencode-agent[bot]" ]] || \
+               [[ "$PARENT_AUTHOR" == "github-actions[bot]" ]]; then
+              IS_BOT_THREAD="true"
+            fi
+          elif [[ "$EVENT_NAME" == "issue_comment" ]]; then
+            # Check if the most recent comment before this one was from the bot
+            # Check if the comment immediately before this one was from the bot
+            LAST_COMMENT_AUTHOR=$(gh api \
+              "/repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments" \
+              --jq '.[-2].user.login' 2>/dev/null || echo "")
+
+            if [[ "$LAST_COMMENT_AUTHOR" == "opencode-agent[bot]" ]] || \
+               [[ "$LAST_COMMENT_AUTHOR" == "github-actions[bot]" ]]; then
+              IS_BOT_THREAD="true"
+            fi
+          fi
+
+          if [[ "$IS_BOT_THREAD" == "true" ]]; then
+            echo "is_bot_thread=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_bot_thread=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Not a bot thread — skipping Process 2"
+          fi
+
+      - name: Run opencode (Process 2 — Bot thread reply)
+        id: opencode
+        if: steps.thread-check.outputs.is_bot_thread == 'true'
+        continue-on-error: true
+        uses: anomalyco/opencode/github@77fc88c8ade8e5a620ebbe1197f3a572d29ae91a # latest
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENCODE_TRIGGER_BODY: ${{ github.event.comment.body }}
+        with:
+          model: opencode/deepseek-v4-flash-free
+          use_github_token: true
+          prompt: |
+            You are the Opencode Automated Git Agent. You are executing
+            Process 2: PR Discussion (Opencode-Owned Thread Reply).
+
+            ## Rules of Engagement
+            1. You are replying to a human inside a review thread you
+               previously opened.
+            2. If the human asks for clarifications, answer directly.
+            3. If the human instructs you to fix the problem ("fix this",
+               "apply change"), generate the exact line diff replacements
+               and push a commit to the active feature branch.
+            4. You MUST NOT auto-commit unless explicitly asked.
+
+            ## Context
+            - Repository: ${{ github.repository }}
+            - Pull request: #${{ github.event.issue.number || github.event.pull_request.number }}
+            - Trigger text is in env var `OPENCODE_TRIGGER_BODY`.
+
+            ## Workflow
+            1. Read the thread history and the current diff.
+            2. Understand the human's intent from their reply.
+            3. If clarification: respond inline in the thread.
+            4. If fix request: checkout the PR branch, make the change,
+               commit with a conventional commit message, push, and
+               respond in the thread linking the commit.
+            5. If the request is ambiguous, ask for clarification.
+
+            ## Output
+            Reply to the thread via `gh api`:
+            ```bash
+            gh api --method POST \
+              /repos/${{ github.repository }}/pulls/comments/${{ github.event.comment.id }}/replies \
+              -f body="Your response here"
+            ```
+
+      - name: React ✅ on success
+        if: steps.opencode.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api --method POST \
+            "/repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions" \
+            -f content='hooray' 2>/dev/null || \
+          gh api --method POST \
+            "/repos/${{ github.repository }}/pulls/comments/${{ github.event.comment.id }}/reactions" \
+            -f content='hooray' 2>/dev/null || true
+
+      - name: React ❌ on failure
+        if: steps.opencode.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api --method POST \
+            "/repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions" \
+            -f content='-1' 2>/dev/null || \
+          gh api --method POST \
+            "/repos/${{ github.repository }}/pulls/comments/${{ github.event.comment.id }}/reactions" \
+            -f content='-1' 2>/dev/null || true
+
+      - name: Propagate failure
+        if: steps.opencode.outcome == 'failure'
+        run: exit 1
+
+  process-3:
+    if: needs.route.outputs.process == 'process-3'
+    needs: route
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Run opencode (Process 3 — User-owned thread takeover)
+        id: opencode
+        continue-on-error: true
+        uses: anomalyco/opencode/github@77fc88c8ade8e5a620ebbe1197f3a572d29ae91a # latest
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENCODE_TRIGGER_BODY: ${{ github.event.comment.body }}
+        with:
+          model: opencode/deepseek-v4-flash-free
+          use_github_token: true
+          prompt: |
+            You are the Opencode Automated Git Agent. You are executing
+            Process 3: PR Discussion (User-Owned Thread Takeover).
+
+            ## Rules of Engagement
+            1. An authorized user invoked `/oc` in a code review thread
+               that was NOT opened by you.
+            2. You are now assuming responsibility for this thread.
+            3. If the user asks for a fix, you may push code changes.
+            4. Otherwise, you provide analysis, suggestions, or
+               clarifications inline.
+
+            ## Context
+            - Repository: ${{ github.repository }}
+            - Pull request: #${{ github.event.pull_request.number }}
+            - Trigger text is in env var `OPENCODE_TRIGGER_BODY`.
+
+            ## Workflow
+            1. Read the full thread history up to this point.
+            2. Understand the context and the user's request.
+            3. If a fix is requested:
+               a. Checkout the PR branch: `gh pr checkout ${{ github.event.pull_request.number }}`
+               b. Implement the fix.
+               c. Commit with a conventional commit message.
+               d. Push to the branch.
+               e. Reply in the thread with a summary and commit ref.
+            4. If analysis or clarification:
+               a. Reply inline in the thread.
+               b. From this point on, further interactions follow
+                  Process 2 logic.
+
+            ## Output
+            Reply to the thread via `gh api`:
+            ```bash
+            gh api --method POST \
+              /repos/${{ github.repository }}/pulls/comments/${{ github.event.comment.id }}/replies \
+              -f body="Your response here"
+            ```
+
+      - name: React ✅ on success
+        if: steps.opencode.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api --method POST \
+            "/repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions" \
+            -f content='hooray' 2>/dev/null || \
+          gh api --method POST \
+            "/repos/${{ github.repository }}/pulls/comments/${{ github.event.comment.id }}/reactions" \
+            -f content='hooray' 2>/dev/null || true
+
+      - name: React ❌ on failure
+        if: steps.opencode.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api --method POST \
+            "/repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions" \
+            -f content='-1' 2>/dev/null || \
+          gh api --method POST \
+            "/repos/${{ github.repository }}/pulls/comments/${{ github.event.comment.id }}/reactions" \
+            -f content='-1' 2>/dev/null || true
+
+      - name: Propagate failure
+        if: steps.opencode.outcome == 'failure'
+        run: exit 1
+
+  process-6:
+    if: needs.route.outputs.process == 'process-6'
+    needs: route
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Parse task arguments
+        id: parse
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        run: |
+          chmod +x .github/scripts/auth.sh 2>/dev/null || true
+          .github/scripts/auth.sh "$COMMENT_BODY"
+
+      - name: Run opencode (Process 6 — PR Task Execution)
+        id: opencode
+        continue-on-error: true
+        uses: anomalyco/opencode/github@77fc88c8ade8e5a620ebbe1197f3a572d29ae91a # latest
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENCODE_TASK_ARGS: ${{ steps.parse.outputs.TASK_ARGS }}
+        with:
+          model: opencode/north-mini-code-free
+          use_github_token: true
+          prompt: |
+            You are the Opencode Automated Git Agent. You are executing
+            Process 6: PR Task (Targeted Coding Execution).
+
+            ## Rules of Engagement
+            1. You are implementing a specific task on an active PR branch.
+            2. Write atomic, cleanly scoped commits using conventional
+               commit headers.
+            3. Verify syntax and test boundaries before pushing.
+
+            ## Context
+            - Repository: ${{ github.repository }}
+            - Pull request: #${{ github.event.pull_request.number }}
+            - Task arguments from the user: env var `OPENCODE_TASK_ARGS`
+
+            ## Workflow
+
+            ### 1. Determine the task
+            - If `OPENCODE_TASK_ARGS` is non-empty, use that as the
+              task description.
+            - If `OPENCODE_TASK_ARGS` is empty, parse the PR body
+              markdown. Extract the first uncompleted task matching
+              `- [ ]` and treat it as the execution objective.
+
+            ### 2. Checkout the PR branch
+            ```bash
+            gh pr checkout ${{ github.event.pull_request.number }}
+            ```
+
+            ### 3. Implement the task
+            - Read relevant files and understand the codebase context.
+            - Implement the requested feature or fix.
+            - Verify your code compiles / passes linting.
+            - Commit with a conventional commit message (e.g.
+              `feat(scope): implement task description`).
+
+            ### 4. Push
+            ```bash
+            git push origin HEAD
+            ```
+
+            ### 5. Update the PR checklist
+            Update the PR body to flip the completed task checkbox:
+            - Change `- [ ] task description` to `- [x] task description`
+              for the task you just completed.
+
+            ```bash
+            gh pr edit ${{ github.event.pull_request.number }} \
+              --body "<updated PR body with checked checkbox>"
+            ```
+
+            ### 6. Post summary comment
+            ```bash
+            gh pr comment ${{ github.event.pull_request.number }} \
+              --body "✅ Task completed: <description>\nCommit: <sha>"
+            ```
+
+            ## Hard Constraints
+            - Never expand scope beyond the stated task.
+            - Never remove or modify unrelated code.
+            - If the task is ambiguous, stop and comment asking for
+              clarification instead of guessing.
+
+      - name: React ✅ on success
+        if: steps.opencode.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api --method POST \
+            "/repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions" \
+            -f content='hooray' 2>/dev/null || \
+          gh api --method POST \
+            "/repos/${{ github.repository }}/pulls/comments/${{ github.event.comment.id }}/reactions" \
+            -f content='hooray' 2>/dev/null || true
+
+      - name: React ❌ on failure
+        if: steps.opencode.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api --method POST \
+            "/repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions" \
+            -f content='-1' 2>/dev/null || \
+          gh api --method POST \
+            "/repos/${{ github.repository }}/pulls/comments/${{ github.event.comment.id }}/reactions" \
+            -f content='-1' 2>/dev/null || true
+
+      - name: Propagate failure
+        if: steps.opencode.outcome == 'failure'
+        run: exit 1
