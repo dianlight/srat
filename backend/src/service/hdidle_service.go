@@ -267,7 +267,7 @@ func (s *HDIdleService) GetDeviceStatus(path string) (*dto.HDIdleDeviceStatus, e
 		return nil, nil
 	}
 
-	name := s.getRealPathNotSimlink(path)
+	name := s.getRealPathNotSymlink(path)
 
 	if len(s.diskStats) == 0 {
 		return nil, nil
@@ -285,8 +285,8 @@ func (s *HDIdleService) GetDeviceStatus(path string) (*dto.HDIdleDeviceStatus, e
 	return nil, errors.Errorf("disk %s (%s) not found from %#v", name, path, s.diskStats)
 }
 
-// getRealPathNotSimlink resolves symlinks to get the real device name (filename only)
-func (s *HDIdleService) getRealPathNotSimlink(path string) string {
+// getRealPathNotSymlink resolves symlinks to get the real device name (filename only)
+func (s *HDIdleService) getRealPathNotSymlink(path string) string {
 	realPath, err := io.RealPath(path)
 	if err != nil {
 		// If resolution fails, extract filename from original path
@@ -386,6 +386,14 @@ func (s *HDIdleService) GetDeviceConfig(path string) (*dto.HDIdleDevice, errors.
 					HDIdleDeviceSupport: *support,
 				}, errors.Wrap(dto.ErrorHDIdleNotSupported, "HDIdle not supported for this device")
 			}
+
+			// Snapshot defaults under RLock to avoid data race with convertConfig()
+			s.mu.RLock()
+			defaultCmd := s.config.DefaultCommandType
+			defaultIdle := s.config.DefaultIdle
+			defaultPc := s.config.DefaultPowerCondition
+			s.mu.RUnlock()
+
 			result := &dto.HDIdleDevice{
 				HDIdleDeviceSupport: *support,
 				//		DevicePath: support.DevicePath,
@@ -394,11 +402,11 @@ func (s *HDIdleService) GetDeviceConfig(path string) (*dto.HDIdleDevice, errors.
 			if support.RecommendedCommand != nil {
 				result.CommandType = *support.RecommendedCommand
 			} else {
-				result.CommandType = s.config.DefaultCommandType
+				result.CommandType = defaultCmd
 			}
 
-			result.IdleTime = s.config.DefaultIdle
-			result.PowerCondition = s.config.DefaultPowerCondition
+			result.IdleTime = defaultIdle
+			result.PowerCondition = defaultPc
 			/*
 				errE := s.createDeviceConfig(*result)
 				if errE != nil {
@@ -423,7 +431,7 @@ func (s *HDIdleService) GetDeviceConfig(path string) (*dto.HDIdleDevice, errors.
 // symlinks (e.g., ata- vs wwn-) and the caller uses a different variant.
 // Returns nil if no match is found.
 func (s *HDIdleService) findDeviceByRealPath(path string) *dbom.HDIdleDevice {
-	realInputPath := s.getRealPathNotSimlink(path)
+	realInputPath := s.getRealPathNotSymlink(path)
 	if realInputPath == path {
 		// Resolution had no effect; exact path already failed, so no point retrying.
 		return nil
@@ -436,7 +444,7 @@ func (s *HDIdleService) findDeviceByRealPath(path string) *dbom.HDIdleDevice {
 	}
 
 	for _, dev := range allDevices {
-		realDbPath := s.getRealPathNotSimlink(dev.DevicePath)
+		realDbPath := s.getRealPathNotSymlink(dev.DevicePath)
 		if realDbPath == realInputPath {
 			return dev
 		}
@@ -507,7 +515,7 @@ func (s *HDIdleService) CheckDeviceSupport(blockPath string) (*dto.HDIdleDeviceS
 		return support, nil
 	}
 
-	name := s.getRealPathNotSimlink(blockPath)
+	name := s.getRealPathNotSymlink(blockPath)
 
 	// Try to open the device as an SG device to check basic support
 	support.SupportsSCSI = s.CheckSGSupport(blockPath)
@@ -688,7 +696,7 @@ func (s *HDIdleService) convertConfig() (*internalConfig, errors.E) {
 
 		if includeDevice {
 			// Skip devices with no path — they cannot be monitored and
-			// getRealPathNotSimlink("") panics inside the hd-idle library.
+			// getRealPathNotSymlink("") panics inside the hd-idle library.
 			if dev.DevicePath == "" {
 				slog.WarnContext(s.ctx, "HDIdle device has empty DevicePath, skipping", "device", dev)
 				continue
@@ -705,7 +713,7 @@ func (s *HDIdleService) convertConfig() (*internalConfig, errors.E) {
 			devConfig.IdleTime = idle
 			devConfig.CommandType = *cmdType
 
-			name := s.getRealPathNotSimlink(dev.DevicePath)
+			name := s.getRealPathNotSymlink(dev.DevicePath)
 			intConfig.Devices[name] = devConfig
 			/*
 				if deviceRealPath != "" {

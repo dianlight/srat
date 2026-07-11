@@ -109,9 +109,11 @@ export function HDIdleDiskSettings({
     });
   }, [disk, reset, isTestEnv]);
 
-  // Auto-open accordion when Custom is selected; collapse when No
+  // Auto-open accordion when Custom is selected (but don't auto-collapse)
   useEffect(() => {
-    setExpanded(enabled === Enabled.Custom);
+    if (enabled === Enabled.Custom) {
+      setExpanded(true);
+    }
   }, [enabled]);
 
   // Read HDIdle config snapshot from disk dto when available
@@ -150,8 +152,8 @@ export function HDIdleDiskSettings({
     };
     try {
       await saveConfig({ diskId, hdIdleDevice: payload }).unwrap();
-    } catch {
-      // No-op; errors should be surfaced by global error UI
+    } catch (err) {
+      console.warn("[HDIdleDiskSettings] save failed:", err);
     }
   };
 
