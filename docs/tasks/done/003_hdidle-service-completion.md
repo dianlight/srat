@@ -1,6 +1,6 @@
 # [FEATURE]: HDIdle Service Completion
 
-**Target Repo:** `srat`  **Status:** 📅 Planned  **Issue Link:** [hassio-addons#596](https://github.com/dianlight/hassio-addons/issues/596)
+**Target Repo:** `srat`  **Status:** ✅ Complete   **Issue Link:** [hassio-addons#596](https://github.com/dianlight/hassio-addons/issues/596)
 
 ## 🎯 Objective
 

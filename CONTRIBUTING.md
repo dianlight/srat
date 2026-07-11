@@ -141,10 +141,10 @@ Strictly follow testing & import patterns from `/.github/copilot-instructions.md
 
 ### TypeScript 6.0/7.0 Compatibility
 
-The frontend uses **TypeScript 6.0 Beta / 7.0 Preview (tsgo)** with ES2022 target:
+The frontend uses **TypeScript 6.0 final / 7.0 stable (Go-based compiler)** with ES2022 target:
 
-- **Type checking**: Use `bun tsgo --noEmit` (not `tsc`)
-- **Compiler**: `@typescript/native-preview` (TypeScript 7.0 Go-based preview)
+- **Type checking**: Use `bun tsc --noEmit`
+- **Compiler**: `typescript` (TypeScript 7.0 Go-based stable release; `tsc` is the Go compiler)
 - **Configuration**: See `frontend/tsconfig.json`
 - **Migration Guide**: See `frontend/TYPESCRIPT_MIGRATION.md`
 
@@ -169,9 +169,10 @@ The frontend uses **TypeScript 6.0 Beta / 7.0 Preview (tsgo)** with ES2022 targe
    - See migration guide before enabling `noUncheckedIndexedAccess`
 
 4. **Resources**:
-   - Development guidelines: `.github/instructions/typescript-6-es2022.instructions.md`
-   - Migration status: `frontend/TYPESCRIPT_MIGRATION.md`
-   - Summary: `TYPESCRIPT_6_IMPLEMENTATION_SUMMARY.md`
+    - Development guidelines: `.opencode/instructions/typescript-7-es2022.instructions.md`
+    - Migration status: `frontend/TYPESCRIPT_MIGRATION.md`
+    - Summary: `docs/TYPESCRIPT_7_IMPLEMENTATION_SUMMARY.md`
+    - Documentation update summary: `docs/TYPESCRIPT_7_DOCUMENTATION_UPDATE_SUMMARY.md`
 
 ## 11. Custom Component (Home Assistant)
 

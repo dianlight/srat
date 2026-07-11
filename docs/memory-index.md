@@ -80,7 +80,7 @@ These facts have been superseded by newer patterns or are no longer applicable.
 | #   | Fact                                | Why Archived | Alternative                                                                                         |
 | --- | ----------------------------------- | :----------: | --------------------------------------------------------------------------------------------------- |
 | 2   | Go 1.25 WaitGroup.Go vs Add/Done    |  Superseded  | Go 1.26+ requires `WaitGroup.Go`; Add/Done is legacy, see `.github/instructions/go.instructions.md` |
-| 3   | TypeScript 5 unions vs type aliases |  Superseded  | TypeScript 6.0+ standard; see `.github/instructions/typescript-6-es2022.instructions.md`            |
+| 3   | TypeScript 5 unions vs type aliases |  Superseded  | TypeScript 7.0+ standard; see `.opencode/instructions/typescript-7-es2022.instructions.md`            |
 
 ---
 

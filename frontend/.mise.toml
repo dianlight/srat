@@ -10,7 +10,7 @@ enter = "mise run deps"
 
 [tasks]
 clean = "rm -rf out"
-dev = "mise run ensure-dev-port && tsgo --noEmit && NODE_ENV=development bun --hot run bun.build.ts -w -s ./out"
+dev = "mise run ensure-dev-port && bun tsc --noEmit && NODE_ENV=development bun --hot run bun.build.ts -w -s ./out"
 gowatch = "bun run gowatch"
 watch = "bun run watch"
 
@@ -69,14 +69,14 @@ depends = [
 ]
 env = { NODE_ENV = "production", API_URL = "", VERSION = "" }
 run = [
-  "tsgo --project tsconfig.prod.json --noEmit ",
+  "bun tsc --project tsconfig.prod.json --noEmit ",
   "bun run bun.build.ts -o ${usage_dir?} -v ${usage_version?}",
 ]
 quiet = true
 
 [tasks.generate]
 alias = ["gen", "gen:openapi", "gen:types"]
-run = ["rtk-query-codegen-openapi api.config.js", "tsgo --noEmit"]
+run = ["rtk-query-codegen-openapi api.config.js", "bun tsc --noEmit"]
 sources = [
   "api.config.js",
   "../backend/docs/openapi.json",
@@ -95,7 +95,7 @@ depends = [
   { task = "generate" },
 ]
 run = [
-  "tsgo --noEmit",
+  "bun tsc --noEmit",
   "bun --hot run bun.build.ts -w -s ./out -a ${usage_url?}",
 ]
 quiet = true
@@ -110,7 +110,7 @@ depends = [
   { task = "generate" },
 ]
 run = [
-  "tsgo --noEmit",
+  "bun tsc --noEmit",
   "copilot-debug bun --hot run bun.build.ts -w -s ./out -a ${usage_url?}",
 ]
 quiet = true
@@ -132,7 +132,7 @@ quiet = true
 [tasks.test]
 env = { API_URL = "http://localhost:3000" }
 run = [
-  "tsgo --noEmit",
+  "bun tsc --noEmit",
   "AGENT=1 bunx vitest run --reporter=verbose --maxWorkers=2",
 ]
 quiet = true
@@ -140,7 +140,7 @@ quiet = true
 [tasks."test:new"]
 env = { API_URL = "http://localhost:3000" }
 run = [
-  "tsgo --noEmit",
+  "bun tsc --noEmit",
   "AGENT=1 bunx vitest run --reporter=verbose --changed --maxWorkers=1",
 ]
 quiet = true
@@ -154,7 +154,7 @@ arg "[files]" var=#true double_dash="optional" help="Specific test files or test
 env = { API_URL = "http://localhost:3000" }
 run = [
   "bunx playwright install --with-deps --only-shell chromium",
-  "tsgo --noEmit",
+  "bun tsc --noEmit",
   "AGENT=1 bunx vitest run --config=vitest.browser.config.ts ${usage_ui:+--browser.headless=false} ${usage_files}",
 ]
 quiet = true
@@ -162,7 +162,7 @@ quiet = true
 [tasks."test:ci"]
 env = { API_URL = "", GITHUB_ACTIONS = true }
 run = [
-  "tsgo --noEmit",
+  "bun tsc --noEmit",
   "bunx vitest run --coverage --bail=1 --reporter=dot --dangerouslyIgnoreUnhandledErrors --reporter=github-actions",
 ]
 quiet = true

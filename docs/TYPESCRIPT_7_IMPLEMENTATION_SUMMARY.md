@@ -21,9 +21,9 @@
 
 ## Overview
 
-This document summarizes the work completed to migrate the SRAT frontend from TypeScript 6.0 final to TypeScript 7.0 RC (Go-based compiler via `@typescript/native-preview` / tsgo).
+This document summarizes the work completed to migrate the SRAT frontend from TypeScript 6.0 final to TypeScript 7.0 stable (Go-based compiler via the official `typescript` package / `tsc`).
 
-**Supersedes**: `docs/TYPESCRIPT_6_IMPLEMENTATION_SUMMARY.md` (February 2026)
+**Supersedes**: `docs/TYPESCRIPT_7_DOCUMENTATION_UPDATE_SUMMARY.md` and earlier TypeScript 6.0 migration notes
 
 ## What Was Changed
 
@@ -36,16 +36,16 @@ This document summarizes the work completed to migrate the SRAT frontend from Ty
 
 ### 2. Package Configuration (`frontend/package.json`)
 
-- Updated peer dependency from `"typescript": "^6.0.2"` to `"typescript": "^7.0.1-rc"`
+- Updated peer dependency from `"typescript": "^6.0.2"` to `"typescript": "^7.0.2"`
 
 ### 3. Tooling (`root .mise.toml`)
 
-- Updated `@typescript/native-preview` from `7.0.0-dev.20260626.1` to `7.0.0-dev.20260701.1`
+- Upgraded `typescript` from the RC/preview build to stable `7.0.2` (Go-based `tsc`); removed the preview compiler package
 
 ### 4. Documentation
 
 - Updated `frontend/TYPESCRIPT_MIGRATION.md` to reflect TS 7.0 RC status
-- Updated `.opencode/instructions/typescript-6-es2022.instructions.md` to TypeScript 7.0
+- Renamed `.opencode/instructions/typescript-6-es2022.instructions.md` to `typescript-7-es2022.instructions.md` (TypeScript 7.0)
 - Updated this summary document
 
 ## Benefits
@@ -64,7 +64,7 @@ This optional strict flag requires refactoring indexed access patterns in ~6 fil
 
 ## Current Status
 
-✅ **TypeScript 7.0 RC**: Config, tooling, and documentation migrated. Type-checking passes with `tsgo --noEmit`.
+✅ **TypeScript 7.0 Stable**: Config, tooling, and documentation migrated. Type-checking passes with `bun tsc --noEmit`.
 
 🚧 **Code Refactoring**: `noUncheckedIndexedAccess` still disabled pending refactoring of indexed access patterns.
 
@@ -74,7 +74,7 @@ This optional strict flag requires refactoring indexed access patterns in ~6 fil
 cd frontend
 
 # Type check
-bun tsgo --noEmit
+bun tsc --noEmit
 
 # Run tests
 bunx vitest run
@@ -88,7 +88,7 @@ bun run lint
 
 ## References
 
-- [TypeScript 7.0 RC Announcement](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0-rc/)
+- [TypeScript 7.0 Announcement](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/)
 - [TypeScript 7.0 (Go-based) Discussion](https://github.com/microsoft/typescript-go/discussions/825)
 - [Migration Guide](../frontend/TYPESCRIPT_MIGRATION.md)
 - [CHANGELOG](../CHANGELOG.md)
@@ -96,5 +96,5 @@ bun run lint
 ---
 
 **Implementation Date**: July 2, 2026
-**TypeScript Version**: v7.0.1-rc / @typescript/native-preview 7.0.0-dev.20260701.1 (tsgo)
+**TypeScript Version**: v7.0.2 (stable Go-based `tsc`)
 **Status**: Complete ✅
