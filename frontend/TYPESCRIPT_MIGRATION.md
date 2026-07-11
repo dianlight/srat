@@ -2,16 +2,16 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [TypeScript 7.0 Migration Guide](#typescript-70-migration-guide)
-  - [Current Status: ✅ TypeScript 7.0 RC](#current-status--typescript-70-rc)
+  - [Current Status: ✅ TypeScript 7.0 Stable](#current-status--typescript-70-stable)
     - [✅ Completed Changes](#-completed-changes)
-      - [1. **TypeScript 7.0 RC Peer Dependency**](#1-typescript-70-rc-peer-dependency)
-      - [2. **Updated tsgo (Native Preview)**](#2-updated-tsgo-native-preview)
+      - [1. **TypeScript 7.0 Stable Peer Dependency**](#1-typescript-70-stable-peer-dependency)
+      - [2. **Updated to Stable TypeScript (tsc Go compiler)**](#2-updated-to-stable-typescript-tsc-go-compiler)
       - [3. **Configuration Cleanup**](#3-configuration-cleanup)
       - [4. **Documentation**](#4-documentation)
     - [🚧 Still TODO](#-still-todo)
       - [Enable `noUncheckedIndexedAccess: true`](#enable-nouncheckedindexedaccess-true)
   - [TypeScript 7.0 Key Changes](#typescript-70-key-changes)
-    - [Go-Based Compiler (tsgo)](#go-based-compiler-tsgo)
+    - [Go-Based Compiler (tsc)](#go-based-compiler-tsc)
     - [Performance Improvements](#performance-improvements)
     - [Configuration & Defaults](#configuration--defaults)
     - [Removed Features (No Longer Supported)](#removed-features-no-longer-supported)
@@ -27,25 +27,26 @@
 
 # TypeScript 7.0 Migration Guide
 
-This document tracks the migration from TypeScript 6.0 final to TypeScript 7.0 RC (Go-based).
+This document tracks the migration from TypeScript 6.0 final to TypeScript 7.0 stable (Go-based).
 
-## Current Status: ✅ TypeScript 7.0 RC
+## Current Status: ✅ TypeScript 7.0 Stable
 
-> **Update July 2026**: TypeScript 7.0 RC (`7.0.1-rc`) released with the Go-based `tsgo` compiler (`@typescript/native-preview`). The project has been upgraded to use the RC version.
+> **Update July 2026**: TypeScript 7.0 stable released with the Go-based `tsc` compiler (official `typescript` package). The project has been upgraded to use the stable `7.0.2` release.
 
 > **MUI v9 Migration (2026)**: All MUI packages have been upgraded to v9 (`@mui/material`, `@mui/icons-material`, `@mui/x-charts`, `@mui/x-tree-view`, `react-hook-form-mui`). All deprecated APIs migrated: `InputProps`/`inputProps`/`InputLabelProps` → `slotProps`, `renderTags` → `renderValue`, deprecated icon `*Outline` → `*Outlined` suffixes, `disableEscapeKeyDown` → `onClose` reason check, `paragraph` prop removed from `Typography`. See [issue #589](https://github.com/dianlight/srat/issues/589).
 
 ### ✅ Completed Changes
 
-#### 1. **TypeScript 7.0 RC Peer Dependency**
+#### 1. **TypeScript 7.0 Stable Peer Dependency**
 
-- ✅ Updated `peerDependencies` from `"typescript": "^6.0.2"` to `"typescript": "^7.0.1-rc"`
-- ✅ All type-checking passes with `tsgo --noEmit`
+- ✅ Updated `peerDependencies` from `"typescript": "^6.0.2"` to `"typescript": "^7.0.2"`
+- ✅ All type-checking passes with `bun tsc --noEmit`
 
-#### 2. **Updated tsgo (Native Preview)**
+#### 2. **Updated to Stable TypeScript (tsc Go compiler)**
 
-- ✅ Updated `@typescript/native-preview` (tsgo) to `7.0.0-dev.20260701.1` (latest dev build)
-- ✅ All `.mise.toml` build/test tasks run `tsgo --noEmit` before executing
+- ✅ Upgraded `typescript` to `7.0.2` (official stable release; `tsc` is the Go-based compiler)
+- ✅ Removed the preview-only TypeScript compiler package
+- ✅ All `.mise.toml` build/test tasks run `bun tsc --noEmit` before executing
 
 #### 3. **Configuration Cleanup**
 
@@ -119,11 +120,11 @@ This strict flag requires refactoring indexed access patterns in several files b
 
 ## TypeScript 7.0 Key Changes
 
-### Go-Based Compiler (tsgo)
+### Go-Based Compiler (tsc)
 
 - **7-10x faster type-checking** using the Go-based native compiler
 - Full API compatibility with TypeScript 6.0+ codebase
-- `bun tsgo --noEmit` used for type-checking (replaces `tsc`)
+- `bun tsc --noEmit` used for type-checking (the stable Go-based `tsc`)
 - **Stricter `import type` enforcement**: any symbol used only in type positions must use `import type`
 
 ### Performance Improvements
@@ -156,10 +157,10 @@ This strict flag requires refactoring indexed access patterns in several files b
 
 ### Phase 1: TS 7.0 RC Upgrade (✅ Complete)
 
-- [x] Update peer dependency to `typescript: ^7.0.1-rc`
-- [x] Update `@typescript/native-preview` (tsgo) to latest dev build
+- [x] Update peer dependency to `typescript: ^7.0.2`
+- [x] Upgrade `typescript` to stable `7.0.2` and remove the preview compiler package
 - [x] Update `tsconfig.json` comments and documentation
-- [x] Verify type-checking passes with `tsgo --noEmit`
+- [x] Verify type-checking passes with `bun tsc --noEmit`
 - [x] Update instruction files
 
 ### Phase 2: Code Refactoring (📋 Planned)
@@ -173,7 +174,7 @@ This strict flag requires refactoring indexed access patterns in several files b
 
 ### Phase 3: Testing & Validation
 
-- [ ] Run `bun tsgo --noEmit` to verify type checking
+- [ ] Run `bun tsc --noEmit` to verify type checking
 - [ ] Run frontend tests
 - [ ] Run production build
 - [ ] Measure build time improvements
@@ -183,7 +184,7 @@ This strict flag requires refactoring indexed access patterns in several files b
 ```bash
 # Type check
 cd frontend
-bun tsgo --noEmit
+bun tsc --noEmit
 
 # Run tests
 bun test
@@ -197,14 +198,14 @@ bun run dev
 
 ## References
 
-- [TypeScript 7.0 RC Release](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0-rc/)
+- [TypeScript 7.0 Release](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/)
 - [TypeScript 7.0 (Go-based) Discussion](https://github.com/microsoft/typescript-go/discussions/825)
 - [TypeScript 6.0 Final Release](https://devblogs.microsoft.com/typescript/announcing-typescript-6-0/)
 - [TypeScript 6.0 Documentation](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-6-0.html)
 
 ## Notes
 
-- This project uses `@typescript/native-preview` (tsgo) as the TypeScript 7.0 Go-based compiler
-- The `bun tsgo` command is used for type checking (not regular `tsc`)
-- All build scripts use `tsgo --noEmit`
+- This project uses the official `typescript` package; its `tsc` binary is the TypeScript 7.0 Go-based compiler
+- The `bun tsc --noEmit` command is used for type checking (the stable Go-based `tsc`)
+- All build scripts use `bun tsc --noEmit`
 - TypeScript 7.0 is the first Go-native TypeScript compiler, offering 7-10x faster type-checking

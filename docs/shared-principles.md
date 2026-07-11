@@ -11,7 +11,7 @@ The established architecture, style, and patterns of the codebase define your ap
 **Application:**
 
 - Go: Follow go.instructions.md patterns (services, interfaces, error handling)
-- TypeScript: Follow typescript-6-es2022.instructions.md (strict types, async patterns)
+- TypeScript: Follow typescript-7-es2022.instructions.md (strict types, async patterns)
 - ReactJS: Follow reactjs.instructions.md (hooks, testing, composition)
 - Python: Follow python.instructions.md (type hints, Home Assistant patterns)
 
@@ -110,7 +110,7 @@ The established architecture, style, and patterns of the codebase define your ap
 For language-specific instantiations of these principles, refer to:
 
 - **Go:** `.github/instructions/go.instructions.md`
-- **TypeScript:** `.github/instructions/typescript-6-es2022.instructions.md`
+- **TypeScript:** `.opencode/instructions/typescript-7-es2022.instructions.md`
 - **ReactJS:** `.github/instructions/reactjs.instructions.md`
 - **Python:** `.github/instructions/python.instructions.md`
 - **Testing (Go):** `.github/instructions/backend_test.instructions.md`

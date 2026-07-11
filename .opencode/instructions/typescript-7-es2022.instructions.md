@@ -9,15 +9,15 @@ applyTo: '**/\*.ts,**/\*.tsx'
 
 # TypeScript Development
 
-> These instructions assume projects are built with TypeScript 7.0 (Go-based `tsgo` compiler) compiling to an ES2022 JavaScript baseline. The project uses `@typescript/native-preview` (tsgo) which is the TypeScript 7.0 (Go-based) compiler.
+> These instructions assume projects are built with TypeScript 7.0 (Go-based `tsc` compiler from the official `typescript` package) compiling to an ES2022 JavaScript baseline. The project uses `typescript` whose `tsc` binary is the TypeScript 7.0 (Go-based) compiler.
 
 ## TypeScript Version and Tooling
 
-- **TypeScript Version**: 7.0 RC (tsgo Go-based compiler)
+- **TypeScript Version**: 7.0 stable (Go-based `tsc` compiler)
 - **Target**: ES2022 with modern ECMAScript features
-- **Type Checking**: Uses `bun tsgo --noEmit` command (not regular `tsc`)
+- **Type Checking**: Uses `bun tsc --noEmit` command (the stable Go-based `tsc`)
 - **Migration Guide**: See `frontend/TYPESCRIPT_MIGRATION.md` for upgrade details
-- **Release**: TypeScript 7.0 RC - [Official Announcement](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0-rc/)
+- **Release**: TypeScript 7.0 - [Official Announcement](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/)
 
 ### TypeScript 7.0 Key Changes
 
@@ -89,7 +89,7 @@ applyTo: '**/\*.ts,**/\*.tsx'
 - Centralize shared contracts instead of duplicating shapes.
 - Express intent with TypeScript utility types (e.g., `Readonly`, `Partial`, `Record`).
 - With `noImplicitOverride` enabled, use `override` keyword for methods that override parent class methods.
-- **`tsgo` enforces `import type` for type-only positions.** Any symbol from an import that is only used in a type position (e.g. `mode: Telemetry_mode`) **must** be declared with `import type { Telemetry_mode }`. Plain `import` compiles under `tsc` but is rejected by `tsgo`. This applies to all generated enums and types from `sratApi` (e.g. `Telemetry_mode`, `Usage`, `Type`). Guard to use: always run `bun tsgo --noEmit` on every file in a changed module, not only the directly edited file.
+- **`tsc` (Go-based) enforces `import type` for type-only positions.** Any symbol from an import that is only used in a type position (e.g. `mode: Telemetry_mode`) **must** be declared with `import type { Telemetry_mode }`. Plain `import` is rejected by the strict `import type` checking. This applies to all generated enums and types from `sratApi` (e.g. `Telemetry_mode`, `Usage`, `Type`). Guard to use: always run `bun tsc --noEmit` on every file in a changed module, not only the directly edited file.
 
 ## Class Inheritance and Override Keyword
 
@@ -314,9 +314,64 @@ if (items[0] !== undefined) {
 }
 ```
 
+## Migration Status (TypeScript 7.0)
+
+This section consolidates status from `docs/TYPESCRIPT_7_IMPLEMENTATION_SUMMARY.md` and `docs/TYPESCRIPT_7_DOCUMENTATION_UPDATE_SUMMARY.md`.
+
+### What Was Changed
+
+- **`frontend/tsconfig.json`**: Version references updated to TS 7.0; deprecated-flags and `esModuleInterop` comments reflect TS 7.0 removals/defaults.
+- **`frontend/package.json`**: Peer dependency `"typescript": "^7.0.2"` (stable Go-based `tsc`); `tsgo`/native-preview tooling removed.
+- **Tooling (`root .mise.toml`, `frontend/.mise.toml`)**: Upgraded to stable `typescript@7.0.2`; all `tsgo --noEmit` invocations replaced with `bun tsc --noEmit`.
+- **Documentation**: This instruction file, `frontend/TYPESCRIPT_MIGRATION.md`, and the two summary docs below were migrated to TypeScript 7.0.
+
+### Current Status
+
+✅ **TypeScript 7.0 Stable**: Config, tooling, and documentation migrated. Verified green:
+- `bun tsc --noEmit` (plain) — clean
+- `mise run //frontend:lint` — passes
+- `mise run //frontend:build ../backend/src/web/static --version 0.0.0` — production `tsc` + bundle
+- `bunx vitest run` — 92 test files / 684 tests passing
+
+🚧 **Code Refactoring**: `noUncheckedIndexedAccess` still disabled pending refactoring of ~6 files (~13 indexed-access locations). Documented in `frontend/TYPESCRIPT_MIGRATION.md`.
+
+### Verification Commands
+
+```bash
+cd frontend
+
+# Type check
+bun tsc --noEmit
+
+# Run tests
+bunx vitest run
+
+# Production build
+bun run build
+
+# Linting
+bun run lint
+```
+
+### Forbidden Flags (Never Re-Introduce)
+
+- ❌ `experimentalDecorators` — use native decorators
+- ❌ `useDefineForClassFields: false` — ES2022+ requires `true`
+- ❌ `target: es5` or older — minimum ES2022
+- ❌ Classic module resolution — use `bundler` or `node`
+- ❌ `baseUrl` / `outFile` — removed in TS 7.0
+
+### Required Patterns
+
+- ✅ Use `override` keyword for class method overrides
+- ✅ Target ES2022 or newer
+- ✅ Use `bun tsc --noEmit` for type checking
+- ✅ Keep `types` limited to an explicit allowlist for faster builds
+
 ## Migration Resources
 
 - **Migration Guide**: `frontend/TYPESCRIPT_MIGRATION.md`
-- **Implementation Summary**: `docs/TYPESCRIPT_6_IMPLEMENTATION_SUMMARY.md`
-- **Official Release Notes**: [TypeScript 7.0 RC](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0-rc/)
-- **TypeScript 7.0 Discussion**: [microsoft/typescript-go](https://github.com/microsoft/typescript-go/discussions/825)
+- **Implementation Summary**: `docs/TYPESCRIPT_7_IMPLEMENTATION_SUMMARY.md`
+- **Documentation Update Summary**: `docs/TYPESCRIPT_7_DOCUMENTATION_UPDATE_SUMMARY.md`
+- **Official Release Notes**: [TypeScript 7.0](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/)
+- **TypeScript 7.0 (Go-based) Discussion**: [microsoft/typescript-go](https://github.com/microsoft/typescript-go/discussions/825)
