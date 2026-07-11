@@ -57,6 +57,7 @@ describe("ShareActions component", () => {
                     onDisable={() => {
                         disableCalls += 1;
                     }}
+                    onDelete={() => {}}
                 />
             </ThemeProvider>,
         );
@@ -91,6 +92,7 @@ describe("ShareActions component", () => {
                         enableCalls += 1;
                     }}
                     onDisable={() => {}}
+                    onDelete={() => {}}
                 />
             </ThemeProvider>,
         );

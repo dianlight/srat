@@ -12,6 +12,7 @@ import { addMessage } from "../../../store/errorSlice";
 import {
   type SharedResource,
   Usage,
+  useDeleteApiShareByShareNameMutation,
   usePutApiShareByShareNameDisableMutation,
   usePutApiShareByShareNameEnableMutation,
 } from "../../../store/sratApi";
@@ -25,6 +26,7 @@ interface SharesTreeViewTestOverrides {
   ) => Promise<unknown>;
   enableShare?: (params: { shareName: string }) => Promise<unknown>;
   disableShare?: (params: { shareName: string }) => Promise<unknown>;
+  deleteShare?: (params: { shareName: string }) => Promise<unknown>;
 }
 
 interface SharesTreeViewProps {
@@ -58,12 +60,16 @@ export function SharesTreeView({
   const confirm = testOverrides?.confirm ?? appConfirm;
   const [enableShareMutation] = usePutApiShareByShareNameEnableMutation();
   const [disableShareMutation] = usePutApiShareByShareNameDisableMutation();
+  const [deleteShareMutation] = useDeleteApiShareByShareNameMutation();
   const enableShare =
     testOverrides?.enableShare ??
     ((params: { shareName: string }) => enableShareMutation(params).unwrap());
   const disableShare =
     testOverrides?.disableShare ??
     ((params: { shareName: string }) => disableShareMutation(params).unwrap());
+  const deleteShare =
+    testOverrides?.deleteShare ??
+    ((params: { shareName: string }) => deleteShareMutation(params).unwrap());
 
   const groupedAndSortedShares = useMemo(() => {
     if (!shares) {
@@ -125,6 +131,26 @@ export function SharesTreeView({
       });
 
       await disableShare({ shareName });
+    } catch (error: unknown) {
+      if ((error as { confirmed?: boolean })?.confirmed === false) {
+        return; // User cancelled
+      }
+      dispatch(addMessage(JSON.stringify(error)));
+    }
+  };
+
+  const handleDelete = async (shareKey: string, shareProps: SharedResource) => {
+    const shareName = shareProps.name || shareKey;
+    try {
+      await confirm({
+        title: `Delete ${shareName}?`,
+        description:
+          "This share has an invalid configuration. Deleting it will permanently remove the share and its settings.",
+        acknowledgement:
+          "I understand that deleting this share will permanently remove it and all associated settings.",
+      });
+
+      await deleteShare({ shareName });
     } catch (error: unknown) {
       if ((error as { confirmed?: boolean })?.confirmed === false) {
         return; // User cancelled
@@ -263,6 +289,7 @@ export function SharesTreeView({
                 onViewVolumeSettings={(share) => onViewVolumeSettings?.(share)}
                 onEnable={handleEnable}
                 onDisable={handleDisable}
+                onDelete={handleDelete}
               />
             )}
           </Box>

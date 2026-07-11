@@ -163,9 +163,9 @@ describe("HDIdleDiskSettings Component", () => {
         }
     });
 
-    test("expand button is disabled until Enabled.Custom is selected", async () => {
+    test("expand button is always enabled even when No is selected", async () => {
         const React = await import("react");
-        const { render, screen, waitFor } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
         const { createTestStore } = await import("/test/testing");
         const userEvent = (await import("@testing-library/user-event")).default;
@@ -189,15 +189,13 @@ describe("HDIdleDiskSettings Component", () => {
         );
 
         const expandBtn = await screen.findByRole("button", { name: /show more/i });
-        // Default is No → expand disabled.
-        expect((expandBtn as HTMLButtonElement).disabled).toBe(true);
+        // Expand button is always enabled so the user can inspect settings
+        // even when HDIdle is set to No.
+        expect((expandBtn as HTMLButtonElement).disabled).toBe(false);
 
-        const [customBtn] = await getOverrideToggleButtons(screen);
-        await user.click(customBtn);
-
-        await waitFor(() => {
-            expect((expandBtn as HTMLButtonElement).disabled).toBe(false);
-        });
+        // Clicking expand toggles the accordion open
+        await user.click(expandBtn);
+        expect((expandBtn as HTMLButtonElement).getAttribute("aria-expanded")).toBe("true");
     });
 
     test("does not show force dialog on rotational disk", async () => {

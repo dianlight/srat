@@ -1,4 +1,4 @@
-import { DriveFileMove } from "@mui/icons-material";
+import { Delete, DriveFileMove } from "@mui/icons-material";
 import BlockIcon from "@mui/icons-material/Block";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
@@ -25,6 +25,7 @@ interface ShareActionsProps {
   onViewVolumeSettings: (shareProps: SharedResource) => void;
   onEnable: (shareKey: string, shareProps: SharedResource) => void;
   onDisable: (shareKey: string, shareProps: SharedResource) => void;
+  onDelete: (shareKey: string, shareProps: SharedResource) => void;
 }
 
 export function ShareActions({
@@ -33,6 +34,7 @@ export function ShareActions({
   onViewVolumeSettings,
   onEnable,
   onDisable,
+  onDelete,
 }: ShareActionsProps) {
   const theme = useTheme();
   const isSmallScreen = useMediaQuery(theme.breakpoints.between("sm", "md"));
@@ -71,7 +73,14 @@ export function ShareActions({
     });
   }
 
-  if (shareProps.disabled) {
+  if (shareProps.mount_point_data?.invalid) {
+    actionItems.push({
+      key: "delete",
+      title: "Delete share",
+      icon: <Delete />,
+      onClick: () => onDelete(shareKey, shareProps),
+    });
+  } else if (shareProps.disabled) {
     actionItems.push({
       key: "enable",
       title: "Enable share",

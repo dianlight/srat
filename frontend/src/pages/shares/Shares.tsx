@@ -243,7 +243,7 @@ export function Shares() {
         "I understand that deleting the share will remove it permanently.",
     }).then(({ confirmed, reason }) => {
       if (confirmed) {
-        deleteShare({ shareName: shareData?.name || "" })
+        deleteShare({ shareName })
           .unwrap()
           .then(() => {
             // Clear selection if deleted share was selected

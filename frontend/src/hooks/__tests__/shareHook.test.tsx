@@ -42,9 +42,10 @@ describe("useShare Hook", () => {
         expect(result.current).toHaveProperty('isLoading');
         expect(result.current).toHaveProperty('error');
 
-        // Initial state should have empty shares array
-        expect(Array.isArray(result.current.shares)).toBe(true);
-        expect(result.current.shares.length).toBe(0);
+        // Initial state should have empty shares record
+        expect(typeof result.current.shares).toBe("object");
+        expect(result.current.shares).not.toBe(null);
+        expect(Object.keys(result.current.shares).length).toBe(0);
     });
 
     it("handles shares data array correctly", async () => {
@@ -61,8 +62,9 @@ describe("useShare Hook", () => {
 
         const { result } = renderHook(() => useShare(), { wrapper });
 
-        // Should return shares as array
-        expect(Array.isArray(result.current.shares)).toBe(true);
+        // Should return shares as record object
+        expect(typeof result.current.shares).toBe("object");
+        expect(result.current.shares).not.toBe(null);
     });
 
     it("returns loading state correctly", async () => {
@@ -153,9 +155,10 @@ describe("useShare Hook", () => {
 
         const { result } = renderHook(() => useShare(), { wrapper });
 
-        // Should manage shares state
+        // Should manage shares state as a record by name
         expect(result.current.shares).toBeDefined();
-        expect(Array.isArray(result.current.shares)).toBe(true);
+        expect(typeof result.current.shares).toBe("object");
+        expect(result.current.shares).not.toBe(null);
     });
 
     it("implements useEffect for data updates correctly", async () => {
