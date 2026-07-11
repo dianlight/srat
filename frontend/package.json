@@ -39,7 +39,7 @@
     "msw-auto-mock": "0.32.1",
     "vitest": "4.1.10",
     "vitest-browser-react": "2.2.0",
-    "typescript": "^7.0.2"
+    "typescript": "7.0.2"
   },
   "peerDependencies": {
     "typescript": "^7.0.2"
