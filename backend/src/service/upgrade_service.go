@@ -787,14 +787,29 @@ func (self *UpgradeService) InstallUpdatePackage(updatePkg *UpdatePackage) error
 		}
 		var currentVersion *semver.Version
 		newVersion := config.GetBinaryVersion(path.Path)
+		// For srat-server variants, the actual running binary is the symlink target (/usr/local/bin/srat-server)
+		// not the variant-specific file. Check the symlink's target for current version.
+		baseName := filepath.Base(path.Path)
 		if targetPath == *currentFile {
 			currentVersion = config.GetCurrentBinaryVersion()
+		} else if strings.HasPrefix(baseName, "srat-server") {
+			// srat-server-* variants: current version is from the symlink target
+			symlinkPath := filepath.Join(*targetDir, "srat-server")
+			if resolved, err := os.Readlink(symlinkPath); err == nil {
+				currentVersion = config.GetBinaryVersion(filepath.Join(*targetDir, resolved))
+			} else {
+				currentVersion = config.GetBinaryVersion(targetPath)
+			}
 		} else {
 			currentVersion = config.GetBinaryVersion(targetPath)
 		}
 
 		if currentVersion == nil && newVersion == nil {
 			slog.DebugContext(self.ctx, "No version info found, proceeding with installation assuming not exe file", "target_path", targetPath)
+		} else if newVersion == nil {
+			slog.DebugContext(self.ctx, "New binary has no version info, proceeding with installation", "target_path", targetPath)
+		} else if currentVersion == nil {
+			slog.InfoContext(self.ctx, "Current binary has no version info, installing new version", "new", newVersion.String())
 		} else {
 			if newVersion.LessThan(currentVersion) ||
 				(newVersion.Equal(currentVersion) && self.state.UpdateChannel != dto.UpdateChannels.DEVELOP) {

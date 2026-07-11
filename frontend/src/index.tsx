@@ -170,15 +170,14 @@ root.render(
                 }}
               >
                 <App />
-                {/* DevInspector connects to the standalone MCP server spawned by
-                    `bun run dev-inspector-mcp server` (port 6137). Only mounted in
-                    dev/remote modes to guarantee zero overhead in production. */}
+                {/* DevInspector connects to the in-process MCP server (port 6137 by default).
+                    Only mounted in dev/remote modes to guarantee zero overhead in production. */}
                 {(getCurrentEnv() === "development" ||
                   getCurrentEnv() === "remote") && (
                   <DevInspector
                     host="localhost"
                     port={6137}
-                    disableChrome={false}
+                    disableChrome={true}
                   />
                 )}
               </TourProvider>

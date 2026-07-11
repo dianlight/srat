@@ -13,6 +13,7 @@ clean = "rm -rf out"
 dev = "mise run ensure-dev-port && bun tsc --noEmit && NODE_ENV=development bun --hot run bun.build.ts -w -s ./out"
 gowatch = "bun run gowatch"
 watch = "bun run watch"
+deps = "bun install"
 
 prepare = "bun install"
 

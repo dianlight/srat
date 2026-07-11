@@ -181,6 +181,21 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 					// per-disk card to warn before force-enabling on an SSD.
 					if diskDto.LegacyDeviceName != nil {
 						diskDto.IsRotational = h.detectRotational(*diskDto.LegacyDeviceName, diskDto.SmartInfo)
+
+						// USB bridge passthrough of the sysfs rotational flag is
+						// unreliable: many enclosures report rotational=1 for
+						// flash drives. When SMART is unavailable (typical for
+						// USB flash drives) or reports no rotation rate, demote
+						// to unknown instead of trusting the sysfs flag alone.
+						if diskDto.IsRotational != nil && *diskDto.IsRotational {
+							if diskDto.ConnectionBus != nil && strings.EqualFold(*diskDto.ConnectionBus, "usb") {
+								if diskDto.SmartInfo == nil || !diskDto.SmartInfo.Supported || diskDto.SmartInfo.RotationRate == 0 {
+									diskDto.IsRotational = nil
+									tlog.DebugContext(h.ctx, "USB device with unreliable rotational flag – demoting to unknown",
+										"disk_id", *diskDto.Id, "legacy_device_name", *diskDto.LegacyDeviceName)
+								}
+							}
+						}
 					}
 
 					continue

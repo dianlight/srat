@@ -346,7 +346,7 @@ func (broker *BroadcasterService) dispatchEvent(send ws.Sender, event broadcastE
 		})
 		if err != nil {
 			if !strings.Contains(err.Error(), ": broken pipe") && !strings.Contains(err.Error(), "websocket: close sent") {
-				slog.InfoContext(broker.ctx, "DEBUG: Error sending event to client",
+				slog.DebugContext(broker.ctx, "DEBUG: Error sending event to client",
 					"event_id", event.ID,
 					"event_type", fmt.Sprintf("%T", event.Message),
 					"err", err,
@@ -354,11 +354,11 @@ func (broker *BroadcasterService) dispatchEvent(send ws.Sender, event broadcastE
 			}
 			return
 		}
-		slog.InfoContext(broker.ctx, "DEBUG: Successfully dispatched event to WS client",
+		tlog.TraceContext(broker.ctx, "DEBUG: Successfully dispatched event to WS client",
 			"event_id", event.ID,
 			"event_type", fmt.Sprintf("%T", event.Message))
 	} else {
-		slog.InfoContext(broker.ctx, "DEBUG: Event filtered out (not valid WS event)",
+		slog.DebugContext(broker.ctx, "DEBUG: Event filtered out (not valid WS event)",
 			"event_id", event.ID,
 			"event_type", fmt.Sprintf("%T", event.Message))
 	}
