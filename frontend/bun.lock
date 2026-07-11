@@ -68,7 +68,7 @@
         "fastify-plugin": "6.0.0",
         "msw": "2.15.0",
         "msw-auto-mock": "0.32.1",
-        "typescript": "^7.0.2",
+        "typescript": "7.0.2",
         "vitest": "4.1.10",
         "vitest-browser-react": "2.2.0",
       },
