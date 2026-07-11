@@ -243,7 +243,7 @@ export function Shares() {
         "I understand that deleting the share will remove it permanently.",
     }).then(({ confirmed, reason }) => {
       if (confirmed) {
-        deleteShare({ shareName })
+        deleteShare({ shareName: encodeURIComponent(shareName) })
           .unwrap()
           .then(() => {
             // Clear selection if deleted share was selected
@@ -266,7 +266,9 @@ export function Shares() {
     console.debug("Edit Share", data, selectedShare);
     if (!data) return;
     if (data.disabled) {
-      disableShare({ shareName: data.org_name || data.name || "" })
+      disableShare({
+        shareName: encodeURIComponent(data.org_name || data.name || ""),
+      })
         .unwrap()
         .then(() => {
           toast.info(`Share ${data.name} disabled successfully.`);
@@ -292,7 +294,10 @@ export function Shares() {
     //console.log(data);
     if (data.org_name !== "" && data.org_name !== undefined) {
       // Existing share being updated
-      updateShare({ shareName: data.org_name, sharedResourcePostData: data })
+      updateShare({
+        shareName: encodeURIComponent(data.org_name),
+        sharedResourcePostData: data,
+      })
         .unwrap()
         .then((res) => {
           toast.info(
