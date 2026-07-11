@@ -554,7 +554,7 @@ func TestDiskMap_AddHDIdleDevice(t *testing.T) {
 	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID})
 
 	// Create an HDIdleDevice
-	hdIdle := &dto.HDIdleDevice{DiskId: diskID, Enabled: dto.HdidleEnableds.YESENABLED}
+	hdIdle := &dto.HDIdleDevice{DiskId: diskID, Enabled: dto.HdidleEnableds.CUSTOMENABLED}
 
 	// Add HDIdleDevice
 	err := (&m).AddHDIdleDevice(hdIdle)
@@ -566,7 +566,7 @@ func TestDiskMap_AddHDIdleDevice(t *testing.T) {
 	assert.NotNil(t, d.HDIdleDevice)
 	// Device field is not present on HDIdleDevice; verify DiskId and Enabled instead
 	assert.Equal(t, diskID, d.HDIdleDevice.DiskId)
-	assert.Equal(t, dto.HdidleEnableds.YESENABLED, d.HDIdleDevice.Enabled)
+	assert.Equal(t, dto.HdidleEnableds.CUSTOMENABLED, d.HDIdleDevice.Enabled)
 }
 
 func TestDiskMap_AddHDIdleDevice_Update(t *testing.T) {
@@ -575,7 +575,7 @@ func TestDiskMap_AddHDIdleDevice_Update(t *testing.T) {
 	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID})
 
 	// Add initial HDIdleDevice
-	hdIdle1 := &dto.HDIdleDevice{DiskId: diskID, Enabled: dto.HdidleEnableds.YESENABLED}
+	hdIdle1 := &dto.HDIdleDevice{DiskId: diskID, Enabled: dto.HdidleEnableds.CUSTOMENABLED}
 	err := (&m).AddHDIdleDevice(hdIdle1)
 	assert.NoError(t, err)
 

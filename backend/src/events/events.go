@@ -107,8 +107,25 @@ type SmartEvent struct {
 	SmartTestStatus dto.SmartTestStatus
 }
 
+// PowerEventKind discriminates the two payload variants of PowerEvent.
+//
+// Subscribers should branch on Kind rather than comparing zero-values of
+// PowerInfo/PowerStatus, which used to be ambiguous because both fields
+// were always present (each defaulted to its struct zero value).
+type PowerEventKind string
+
+const (
+	// PowerEventKindConfig signals that PowerInfo carries a per-disk
+	// configuration update (Save/PUT); PowerStatus is unset.
+	PowerEventKindConfig PowerEventKind = "config"
+	// PowerEventKindStatus signals that PowerStatus carries a spin-state
+	// transition (spun_up / spun_down); PowerInfo is unset.
+	PowerEventKindStatus PowerEventKind = "status"
+)
+
 type PowerEvent struct {
 	Event
+	Kind        PowerEventKind
 	PowerInfo   dto.HDIdleDevice
 	PowerStatus dto.HDIdleDeviceStatus
 }

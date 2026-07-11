@@ -1,0 +1,2 @@
+[serve.static]
+plugins = ["./inspector-plugin-default.ts"]

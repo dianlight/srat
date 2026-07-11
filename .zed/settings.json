@@ -1,6 +1,5 @@
 {
   "terminal": {
-    "shell": "system"
+    "shell": "system",
   },
-  "project_name": "SRAT"
 }

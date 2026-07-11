@@ -4,7 +4,6 @@ package dto
 type hdidleEnabled int
 
 const (
-	yesEnabled    hdidleEnabled = iota // "yes"
-	customEnabled                      // "custom"
+	customEnabled hdidleEnabled = iota // "custom"
 	noEnabled                          // "no"
 )

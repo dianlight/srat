@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -170,8 +169,8 @@ func (suite *IssueReportServiceSuite) TestGenerateIssueReport_SambaProblem() {
 }
 
 func (suite *IssueReportServiceSuite) TestGenerateIssueReport_SambaProblem_WithLargeDiagnostics() {
-	if runtime.GOOS == "darwin" {
-		suite.T().Skip("requires /data directory (HA addon environment)")
+	if os.Geteuid() != 0 {
+		suite.T().Skip("Requires root to create /data (HA Supervisor environment)")
 	}
 	// Arrange
 	settings := &dto.Settings{}
@@ -228,8 +227,8 @@ func (suite *IssueReportServiceSuite) TestGenerateIssueReport_SambaProblem_WithL
 }
 
 func (suite *IssueReportServiceSuite) TestGenerateIssueReport_SambaProblem_WithSensitiveDiagnosticsSmall() {
-	if runtime.GOOS == "darwin" {
-		suite.T().Skip("requires /data directory (HA addon environment)")
+	if os.Geteuid() != 0 {
+		suite.T().Skip("Requires root to create /data (HA Supervisor environment)")
 	}
 	// Arrange
 	settings := &dto.Settings{
@@ -298,8 +297,8 @@ func (suite *IssueReportServiceSuite) TestGenerateIssueReport_SambaProblem_WithS
 }
 
 func (suite *IssueReportServiceSuite) TestGenerateIssueReport_SambaProblem_WithSensitiveDiagnosticsLarge() {
-	if runtime.GOOS == "darwin" {
-		suite.T().Skip("requires /data directory (HA addon environment)")
+	if os.Geteuid() != 0 {
+		suite.T().Skip("Requires root to create /data (HA Supervisor environment)")
 	}
 	// Arrange
 	settings := &dto.Settings{

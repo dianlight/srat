@@ -333,6 +333,51 @@ export function VolumeDetailsPanel({
                       {disk.vendor || "N/A"}
                     </Typography>
                   </Grid>
+                  {disk.serial && (
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <Typography
+                        variant="subtitle2"
+                        sx={{
+                          color: "text.secondary",
+                        }}
+                      >
+                        Serial
+                      </Typography>
+                      <Typography variant="body2">{disk.serial}</Typography>
+                    </Grid>
+                  )}
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <Typography
+                      variant="subtitle2"
+                      sx={{
+                        color: "text.secondary",
+                      }}
+                    >
+                      Disk Type
+                    </Typography>
+                    <Typography variant="body2">
+                      {disk.is_rotational == null
+                        ? "Unknown"
+                        : disk.is_rotational
+                          ? "HDD (Rotational)"
+                          : "SSD (Solid State)"}
+                    </Typography>
+                  </Grid>
+                  {disk.smart_info?.rotation_rate != null && (
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <Typography
+                        variant="subtitle2"
+                        sx={{
+                          color: "text.secondary",
+                        }}
+                      >
+                        Rotation Rate
+                      </Typography>
+                      <Typography variant="body2">
+                        {disk.smart_info.rotation_rate} RPM
+                      </Typography>
+                    </Grid>
+                  )}
                   {disk.size != null && (
                     <Grid size={{ xs: 12, sm: 6 }}>
                       <Typography
@@ -401,7 +446,7 @@ export function VolumeDetailsPanel({
 
         {/* Disk-only panels: visible only when a disk is selected without a partition */}
         {disk && !partition && disk.hdidle_device?.supported && (
-          <HDIdleDiskSettings disk={disk} readOnly={false} />
+          <HDIdleDiskSettings disk={disk} readOnly={readOnly} />
         )}
         {/* Only render SmartStatusPanel if settings are loaded and smart_mode is not "none" */}
         {disk &&

@@ -20,14 +20,18 @@ import {
   useTheme,
 } from "@mui/material";
 import { filesize } from "filesize";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SafeSparkLineChart as SparkLineChart } from "../../../components/charts/SafeSparkLineChart";
 import { PreviewDialog } from "../../../components/PreviewDialog";
-import type {
-  DiskHealth,
-  DiskIoStats,
-  PerPartitionInfo,
+import { useLabMode } from "../../../hooks/useLabMode";
+import {
+  type Disk,
+  type DiskHealth,
+  type DiskIoStats,
+  type PerPartitionInfo,
+  useGetApiVolumesQuery,
 } from "../../../store/sratApi";
+import { HDIdleSuggestionBadge } from "../components/HDIdleSuggestionBadge";
 
 const MAX_HISTORY_LENGTH = 10;
 type DiskIoHistoryKey =
@@ -46,6 +50,32 @@ export function DiskHealthMetrics({
   const [selectedIoStats, setSelectedIoStats] = useState<
     DiskIoStats | PerPartitionInfo | null
   >(null);
+
+  const { labMode } = useLabMode();
+
+  // Map kernel device name (e.g. "sda") → Disk DTO so the per-row badge can
+  // read is_rotational and hdidle_device.{enabled,suggestion_ignored}. The
+  // volumes endpoint already powers the volumes page; reusing it here avoids
+  // a dedicated endpoint. When the query is loading or errors, the map is
+  // empty and badges silently render nothing — acceptable graceful degradation
+  // since the badge is advisory only.
+  // Skip the query entirely when Lab Mode is off — the badge is never shown.
+  const { data: volumes } = useGetApiVolumesQuery(undefined, {
+    skip: !labMode,
+  });
+  const disksByDeviceName = useMemo(() => {
+    const map: Record<string, Disk> = {};
+    // device_name in DiskIoStats is set from LegacyDeviceName (bare, e.g.
+    // "sda") — no "/dev/" prefix. Keying by legacy_device_name matches.
+    // `volumes` is Disk[] | null | ErrorModel; RTK Query sets data=undefined
+    // on error, so guard with Array.isArray before iterating.
+    if (Array.isArray(volumes)) {
+      volumes.forEach((d) => {
+        if (d.legacy_device_name) map[d.legacy_device_name] = d;
+      });
+    }
+    return map;
+  }, [volumes]);
 
   const [diskIoHistory, setDiskIoHistory] = useState<
     Record<
@@ -290,6 +320,9 @@ export function DiskHealthMetrics({
                         </Tooltip>
                       )}
                       {io.device_name}
+                      <HDIdleSuggestionBadge
+                        disk={disksByDeviceName[io.device_name]}
+                      />
                     </Box>
                   </TableCell>
                   {diskHealth?.hdidle_running && (

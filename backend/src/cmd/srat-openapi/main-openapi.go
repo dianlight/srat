@@ -87,6 +87,7 @@ func main() {
 	app := fx.New(
 		appsetup.NewFXLoggerOption(),
 		appsetup.ProvideCoreDependencies(appParams),
+		appsetup.ProvideHAClientDependenciesWithoutWebSocket(appParams),
 		appsetup.ProvideCyclicDependencyWorkaroundOption(),
 		fx.Provide(
 			server.AsHumaRoute(api.NewHealthHandler),

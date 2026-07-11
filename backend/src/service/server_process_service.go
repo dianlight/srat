@@ -622,6 +622,12 @@ func (self *ServerService) writeSambaConfig(ctx context.Context) errors.E {
 }
 
 func (self *ServerService) writeSambaUsersMapConfig(ctx context.Context) errors.E {
+	// Skip samba config write in mock/openapi-generation mode; the directory
+	// /etc/samba does not exist and requires root to create.
+	if self.state != nil && self.state.ProtectedMode {
+		tlog.DebugContext(ctx, "Skipping Samba username map write in protected mode")
+		return nil
+	}
 	tlog.TraceContext(ctx, "Writing Samba username map file", "file", sambaUsersMapFile)
 
 	// Create directory if it doesn't exist

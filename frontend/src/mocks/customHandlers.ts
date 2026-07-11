@@ -329,11 +329,7 @@ export const customHandlers: RequestHandler[] = [
 				smb_over_quic: true,
 				export_stats_to_ha: true,
 				telemetry_mode: "Disabled",
-				hdidle_enabled: false,
-				hdidle_default_idle_time: 600,
-				hdidle_default_power_condition: 0,
-				hdidle_default_command_type: "scsi",
-				hdidle_ignore_spin_down_detection: false,
+				experimental_lab_mode: true,
 				mountoptions: [],
 			}),
 			{

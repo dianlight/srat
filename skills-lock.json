@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "dev-inspector": {
+      "source": "mcpc-tech/dev-inspector-mcp",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/dev-inspector/SKILL.md",
+      "computedHash": "2dcb73bca7158636ae167f6c1a07feaff55a03741540ddc68b7f4f74f9a3243b"
+    }
+  }
+}

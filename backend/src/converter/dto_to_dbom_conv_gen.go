@@ -70,6 +70,8 @@ func (c *DtoToDbomConverterImpl) HDIdleDeviceDTOToHDIdleDevice(source dto.HDIdle
 	dbomHDIdleDevice.CommandType = c.dtoHdidleCommandToPDtoHdidleCommand(source.CommandType)
 	dbomHDIdleDevice.PowerCondition = source.PowerCondition
 	dbomHDIdleDevice.Enabled = source.Enabled
+	dbomHDIdleDevice.SuggestionIgnored = source.SuggestionIgnored
+	dbomHDIdleDevice.ForceEnabled = source.ForceEnabled
 	return dbomHDIdleDevice, nil
 }
 func (c *DtoToDbomConverterImpl) HDIdleDeviceToHDIdleDeviceDTO(source dbom.HDIdleDevice) (dto.HDIdleDevice, error) {
@@ -84,6 +86,8 @@ func (c *DtoToDbomConverterImpl) HDIdleDeviceToHDIdleDeviceDTO(source dbom.HDIdl
 	dtoHDIdleDevice.CommandType = c.pDtoHdidleCommandToDtoHdidleCommand(source.CommandType)
 	dtoHDIdleDevice.PowerCondition = source.PowerCondition
 	dtoHDIdleDevice.Enabled = source.Enabled
+	dtoHDIdleDevice.SuggestionIgnored = source.SuggestionIgnored
+	dtoHDIdleDevice.ForceEnabled = source.ForceEnabled
 	return dtoHDIdleDevice, nil
 }
 func (c *DtoToDbomConverterImpl) HDIdleDeviceToHDIdleDeviceSupportDTO(source dbom.HDIdleDevice) (dto.HDIdleDeviceSupport, error) {
