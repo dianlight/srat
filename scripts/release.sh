@@ -138,7 +138,7 @@ SKIP_CHANGELOG_COMMIT=false
 if [[ -f "CHANGELOG.md" ]]; then
 	if grep -q "## \[ 🚧 Unreleased \]" CHANGELOG.md; then
 		log "Updating CHANGELOG.md with $NEXT_VERSION..."
-		sed -i "s/## \[ 🚧 Unreleased \]/## $NEXT_VERSION/" CHANGELOG.md
+		sed -i '' "s/## \[ 🚧 Unreleased \]/## $NEXT_VERSION/" CHANGELOG.md 2>/dev/null || sed -i "s/## \[ 🚧 Unreleased \]/## $NEXT_VERSION/" CHANGELOG.md
 	elif grep -q "## $NEXT_VERSION" CHANGELOG.md; then
 		log "Version $NEXT_VERSION already found in CHANGELOG.md."
 		confirm "Continue without updating CHANGELOG?"
