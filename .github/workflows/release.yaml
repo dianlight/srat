@@ -65,8 +65,7 @@ jobs:
           if grep -q "## \[ 🚧 Unreleased \]" CHANGELOG.md; then
             echo "CHANGELOG has Unreleased section — will be replaced with version."
           elif grep -q "## ${{ steps.version.outputs.version }}" CHANGELOG.md; then
-            echo "Version ${{ steps.version.outputs.version }} already in CHANGELOG — touching file for commit."
-            touch CHANGELOG.md
+            echo "Version ${{ steps.version.outputs.version }} already in CHANGELOG — updating timestamp."
           else
             echo "::error::No '## [ 🚧 Unreleased ]' section and version ${{ steps.version.outputs.version }} not found in CHANGELOG.md"
             exit 1
@@ -75,11 +74,19 @@ jobs:
       - name: Update CHANGELOG
         run: |
           VERSION="${{ steps.version.outputs.version }}"
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           if grep -q "## \[ 🚧 Unreleased \]" CHANGELOG.md; then
             sed -i.bak "s/## \[ 🚧 Unreleased \]/## $VERSION/" CHANGELOG.md
             rm -f CHANGELOG.md.bak
           else
             echo "Version $VERSION already in CHANGELOG — skipping replacement."
+          fi
+          # Update or insert release timestamp at the bottom
+          if grep -q '^<!-- release-timestamp:' CHANGELOG.md; then
+            sed -i.bak "s|^<!-- release-timestamp:.*|<!-- release-timestamp: $TIMESTAMP -->|" CHANGELOG.md
+            rm -f CHANGELOG.md.bak
+          else
+            echo "<!-- release-timestamp: $TIMESTAMP -->" >> CHANGELOG.md
           fi
 
       - name: Commit and push
