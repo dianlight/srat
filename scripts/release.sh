@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# DEPRECATED: This script is superseded by GitHub Actions workflows:
+#   - .github/workflows/release.yaml       (replaces this script's logic)
+#   - .github/workflows/release-publish.yaml (publishes draft after build)
+#   - .github/workflows/build.yaml          (detects release commits)
+# Use: mise run release  or  gh workflow run release.yaml --ref main
+
 # release.sh - Script for automated release process
 # Usage: ./release.sh [--version 2026.03.1-rc3] [--ignore-uncommitted] [--no-wait] [--interactive]
 

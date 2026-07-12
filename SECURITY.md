@@ -20,7 +20,7 @@ currently being supported with security updates.
 
 ## Reporting a Vulnerability
 
-We take security seriously. If you discover a vulnerability, please follow these steps:
+If you discover a vulnerability, please follow these steps:
 
 1. Do not open a public issue. Instead, report privately via GitHub Security Advisories:
    - Navigate to the repository Security tab → Report a vulnerability
