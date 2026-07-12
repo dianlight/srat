@@ -1,16 +1,20 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-**Table of Contents** *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+**Table of Contents** _generated with [DocToc](https://github.com/thlorenz/doctoc)_
 
 - [Release process (GitHub Actions)](#release-process-github-actions)
   - [Purpose](#purpose)
   - [How it works](#how-it-works)
   - [Usage](#usage)
+    - [From the command line (via mise)](#from-the-command-line-via-mise)
+    - [From GitHub CLI](#from-github-cli)
   - [Manual trigger from GitHub UI](#manual-trigger-from-github-ui)
   - [What happens behind the scenes](#what-happens-behind-the-scenes)
   - [Prerequisites](#prerequisites)
   - [Troubleshooting](#troubleshooting)
+    - [Build failed after CHANGELOG was updated](#build-failed-after-changelog-was-updated)
+    - [Re-running a failed release](#re-running-a-failed-release)
   - [Where to look in the repo](#where-to-look-in-the-repo)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -71,17 +75,17 @@ The workflow will handle everything automatically. You can monitor progress in t
 
 ## What happens behind the scenes
 
-| Step | Workflow | What it does |
-| ------ | ---------- | ------------- |
-| 1 | `release.yaml` | Calculates version (or uses input) |
-| 2 | `release.yaml` | Replaces `## [ 🚧 Unreleased ]` with `## <version>` in CHANGELOG.md |
-| 3 | `release.yaml` | Creates release branch and PR with auto-merge |
-| 4 | GitHub | PR is auto-merged after CI passes |
-| 5 | `build.yaml` | Detects release commit from merge commit message |
-| 6 | `build.yaml` | Runs backend, frontend, and custom component tests |
-| 7 | `build.yaml` | Builds all binaries and HACS component |
-| 8 | `build.yaml` | Creates a **published** GitHub release (not draft) with all assets |
-| 9 | `build.yaml` | Resets CHANGELOG.md for next development cycle |
+| Step | Workflow       | What it does                                                        |
+| ---- | -------------- | ------------------------------------------------------------------- |
+| 1    | `release.yaml` | Calculates version (or uses input)                                  |
+| 2    | `release.yaml` | Replaces `## [ 🚧 Unreleased ]` with `## <version>` in CHANGELOG.md |
+| 3    | `release.yaml` | Creates release branch and PR with auto-merge                       |
+| 4    | GitHub         | PR is auto-merged after CI passes                                   |
+| 5    | `build.yaml`   | Detects release commit from merge commit message                    |
+| 6    | `build.yaml`   | Runs backend, frontend, and custom component tests                  |
+| 7    | `build.yaml`   | Builds all binaries and HACS component                              |
+| 8    | `build.yaml`   | Creates a **published** GitHub release (not draft) with all assets  |
+| 9    | `build.yaml`   | Resets CHANGELOG.md for next development cycle                      |
 
 ## Prerequisites
 
@@ -94,6 +98,7 @@ The workflow will handle everything automatically. You can monitor progress in t
 ### Build failed after CHANGELOG was updated
 
 The CHANGELOG commit was pushed but `build.yaml` failed. To recover:
+
 - Check the build failure in Actions → build
 - Fix the issue and push to `main`
 - The build will re-trigger and detect the release commit
@@ -101,6 +106,7 @@ The CHANGELOG commit was pushed but `build.yaml` failed. To recover:
 ### Re-running a failed release
 
 If the release commit is already on `main` but the workflow failed:
+
 ```sh
 # Re-trigger just the build
 gh workflow run build.yaml --ref main
