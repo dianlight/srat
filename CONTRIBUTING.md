@@ -169,10 +169,10 @@ The frontend uses **TypeScript 6.0 final / 7.0 stable (Go-based compiler)** with
    - See migration guide before enabling `noUncheckedIndexedAccess`
 
 4. **Resources**:
-    - Development guidelines: `.opencode/instructions/typescript-7-es2022.instructions.md`
-    - Migration status: `frontend/TYPESCRIPT_MIGRATION.md`
-    - Summary: `docs/TYPESCRIPT_7_IMPLEMENTATION_SUMMARY.md`
-    - Documentation update summary: `docs/TYPESCRIPT_7_DOCUMENTATION_UPDATE_SUMMARY.md`
+   - Development guidelines: `.opencode/instructions/typescript-7-es2022.instructions.md`
+   - Migration status: `frontend/TYPESCRIPT_MIGRATION.md`
+   - Summary: `docs/TYPESCRIPT_7_IMPLEMENTATION_SUMMARY.md`
+   - Documentation update summary: `docs/TYPESCRIPT_7_DOCUMENTATION_UPDATE_SUMMARY.md`
 
 ## 11. Custom Component (Home Assistant)
 
