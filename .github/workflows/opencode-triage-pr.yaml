@@ -1,4 +1,4 @@
-name: opencode-implement (deprecated)
+name: opencode-triage-pr (deprecated)
 
 on:
   workflow_dispatch:
@@ -19,6 +19,6 @@ jobs:
       - name: Deprecation notice
         run: |
           echo "This workflow is deprecated and performs no operations."
-          echo "Use opencode-issue-handler.yml (Process 5) or opencode-pr-comment.yml (Process 6) instead."
+          echo "Use opencode-pr-review.yml or opencode-pr-comment.yml instead."
       - name: Exit successfully (no-op)
         run: exit 0
