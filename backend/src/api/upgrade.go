@@ -110,11 +110,19 @@ func (handler *UpgradeHanler) UpdateHandler(ctx context.Context, input *struct{}
 		wg.Go(func() {
 			updatePkg, err := handler.upgader.DownloadAndExtractBinaryAsset(assets.ArchAsset)
 			if err != nil {
+				handler.broadcaster.BroadcastMessage(dto.UpdateProgress{
+					ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR,
+					ErrorMessage:   err.Error(),
+				})
 				slog.ErrorContext(handler.ctx, "Error downloading and extracting binary asset", "err", err)
 				return
 			}
 			err = handler.upgader.ApplyUpdateAndRestart(updatePkg)
 			if err != nil {
+				handler.broadcaster.BroadcastMessage(dto.UpdateProgress{
+					ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR,
+					ErrorMessage:   err.Error(),
+				})
 				slog.ErrorContext(handler.ctx, "Error applying update", "err", err)
 				return
 			}
