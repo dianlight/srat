@@ -62,16 +62,25 @@ jobs:
             echo "::error::CHANGELOG.md not found"
             exit 1
           fi
-          if ! grep -q "## \[ 🚧 Unreleased \]" CHANGELOG.md; then
-            echo "::error::No '## [ 🚧 Unreleased ]' section found in CHANGELOG.md"
+          if grep -q "## \[ 🚧 Unreleased \]" CHANGELOG.md; then
+            echo "CHANGELOG has Unreleased section — will be replaced with version."
+          elif grep -q "## ${{ steps.version.outputs.version }}" CHANGELOG.md; then
+            echo "Version ${{ steps.version.outputs.version }} already in CHANGELOG — touching file for commit."
+            touch CHANGELOG.md
+          else
+            echo "::error::No '## [ 🚧 Unreleased ]' section and version ${{ steps.version.outputs.version }} not found in CHANGELOG.md"
             exit 1
           fi
 
       - name: Update CHANGELOG
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          sed -i.bak "s/## \[ 🚧 Unreleased \]/## $VERSION/" CHANGELOG.md
-          rm -f CHANGELOG.md.bak
+          if grep -q "## \[ 🚧 Unreleased \]" CHANGELOG.md; then
+            sed -i.bak "s/## \[ 🚧 Unreleased \]/## $VERSION/" CHANGELOG.md
+            rm -f CHANGELOG.md.bak
+          else
+            echo "Version $VERSION already in CHANGELOG — skipping replacement."
+          fi
 
       - name: Commit and push
         run: |
