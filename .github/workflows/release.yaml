@@ -23,6 +23,11 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
       - name: Calculate version
         id: version
         run: |
@@ -97,11 +102,12 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           BRANCH="release/${VERSION}"
 
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
           git checkout -b "$BRANCH"
           git add CHANGELOG.md
+          if git diff --cached --quiet; then
+            echo "::error::No CHANGELOG changes to commit for version $VERSION"
+            exit 1
+          fi
           git commit -m "chore(release): $VERSION"
           git push origin "$BRANCH"
 
