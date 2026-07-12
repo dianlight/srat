@@ -1,0 +1,85 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (e.g. 2026.07.1). Leave empty to auto-calculate."
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Prepare release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Calculate version
+        id: version
+        run: |
+          set -euo pipefail
+
+          if [[ -n "${{ inputs.version }}" ]]; then
+            echo "version=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+            echo "Using provided version: ${{ inputs.version }}"
+            exit 0
+          fi
+
+          # Auto-calculate: YEAR.MONTH.PATCH
+          CURRENT_YM=$(date -u +"%Y.%-m")
+          LATEST_TAG=$(git tag --sort=-v:refname | head -n 1)
+
+          if [[ -z "$LATEST_TAG" ]]; then
+            VERSION="${CURRENT_YM}.0"
+          else
+            # Strip any pre-release suffix (e.g. -beta.1)
+            TAG_WITHOUT_SUFFIX="${LATEST_TAG%-*}"
+            TAG_YM="${TAG_WITHOUT_SUFFIX%.*}"
+            TAG_PATCH="${TAG_WITHOUT_SUFFIX##*.}"
+
+            if [[ "$TAG_YM" == "$CURRENT_YM" && "$TAG_PATCH" =~ ^[0-9]+$ ]]; then
+              VERSION="${TAG_YM}.$((TAG_PATCH + 1))"
+            else
+              VERSION="${CURRENT_YM}.0"
+            fi
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Calculated version: $VERSION"
+
+      - name: Validate CHANGELOG
+        run: |
+          set -euo pipefail
+          if [[ ! -f "CHANGELOG.md" ]]; then
+            echo "::error::CHANGELOG.md not found"
+            exit 1
+          fi
+          if ! grep -q "## \[ 🚧 Unreleased \]" CHANGELOG.md; then
+            echo "::error::No '## [ 🚧 Unreleased ]' section found in CHANGELOG.md"
+            exit 1
+          fi
+
+      - name: Update CHANGELOG
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          sed -i.bak "s/## \[ 🚧 Unreleased \]/## $VERSION/" CHANGELOG.md
+          rm -f CHANGELOG.md.bak
+
+      - name: Commit and push
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          git add CHANGELOG.md
+          git commit -m "chore(release): $VERSION"
+          git push origin main
+          echo "### Release prepared" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Version: **$VERSION**" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Commit pushed to main — build.yaml will create a draft release." >> "$GITHUB_STEP_SUMMARY"
+          echo "- release-publish.yaml will publish it automatically when the build completes." >> "$GITHUB_STEP_SUMMARY"

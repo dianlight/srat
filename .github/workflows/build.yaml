@@ -10,7 +10,7 @@ name: build
 
 on:
   workflow_dispatch:
-    # Allows manual triggering of the workflow
+  # Allows manual triggering of the workflow
   push:
     branches: ["main"]
     paths:
@@ -54,6 +54,17 @@ jobs:
         id: calculate_version
         run: |
           set -euo pipefail
+
+          # Check if this is a release commit (pushed by release.yaml)
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            COMMIT_MSG=$(git log -1 --format=%s HEAD)
+            if [[ "$COMMIT_MSG" =~ ^chore\(release\):\ (.+)$ ]]; then
+              VERSION="${BASH_REMATCH[1]}"
+              echo "Release commit detected. Using version from commit: $VERSION"
+              echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
 
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             echo "Manual trigger detected. Reading latest draft release..."

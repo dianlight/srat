@@ -2,7 +2,7 @@
 # Documentation: https://docs.codecov.io/docs/codecov-yaml
 
 codecov:
-  require_ci_to_pass: no
+  require_ci_to_pass: false
   notify:
     after_n_builds: 2  # Wait for both backend and frontend coverage
 

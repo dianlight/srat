@@ -117,9 +117,15 @@ You can add information on how they can open issues or how they can sponsor the 
 
 ### Release process
 
-We use a helper script to streamline releases; see the release documentation for details:
+Releases are fully automated via GitHub Actions. Trigger from the command line or GitHub UI. No local polling needed:
 
-- [Release process - using scripts/release.sh via mise](docs/RELEASE_PROCESS.md)
+```sh
+mise run release                                    # auto-calculate version
+mise run release -- --version 2026.07.1             # specify version
+gh workflow run release.yaml --ref main             # via GitHub CLI
+```
+
+See [Release process](docs/RELEASE_PROCESS.md) for full details.
 
 ## License
 

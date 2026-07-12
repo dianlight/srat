@@ -138,7 +138,7 @@ jobs:
               // 1. Merged branches: delete if last commit is older than 1 week
               // 2. Unmerged branches: delete if not associated with open/draft PR (already checked above)
               //    For unmerged branches, we also check if they're older than 1 week for safety
-              
+
               const isOlderThanOneWeek = commitDate < oneWeekAgo;
 
               if (isMerged && isOlderThanOneWeek) {

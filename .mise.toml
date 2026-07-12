@@ -33,6 +33,7 @@ shfmt = "3.13.1"
 "go:golang.org/x/tools/gopls" = "latest"
 gh = "latest"
 hk = "1.50.0"
+yamllint = "latest"
 # opencode = "latest"
 # copilot-cli = "latest"
 
@@ -89,12 +90,9 @@ run = """
 quiet = true
 
 [tasks.release]
-description = "Run the release process, which includes building the project and performing any necessary release steps. Optionally accepts a version flag to specify the release version."
+description = "Trigger the release workflow on GitHub. Optionally accepts a version flag."
 usage = '''
 flag "--version <version>" help="Release version"
 '''
-run = [
-  'echo "Running release process with version: ${usage_version:-not provided}"',
-  "./scripts/release.sh --interactive ${usage_version:+--version ${usage_version?}}",
-]
+run = 'gh workflow run release.yaml --ref main ${usage_version:+-f version=${usage_version?}}'
 quiet = true
