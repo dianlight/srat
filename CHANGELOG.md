@@ -2,7 +2,7 @@
 
 # Changelog
 
-## [ 🚧 Unreleased ]
+## 2026.7.0-rc11
 
 ### 🔧 Chore
 
