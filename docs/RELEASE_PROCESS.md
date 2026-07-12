@@ -105,14 +105,18 @@ The CHANGELOG commit was pushed but `build.yaml` failed. To recover:
 
 ### Re-running a failed release
 
-If the release commit is already on `main` but the workflow failed:
+The release workflow is **idempotent** — it is safe to re-run:
+
+- If the release branch already exists remotely, it is deleted and recreated.
+- If the CHANGELOG already has the version (from a previous partial run), the timestamp is updated to force a commit.
+- If the PR already exists, auto-merge is re-enabled.
 
 ```sh
-# Re-trigger just the build
-gh workflow run build.yaml --ref main
+# Re-trigger the full release process (safe to run multiple times)
+gh workflow run release.yaml --ref main
 
-# Or re-trigger the full release process
-gh workflow run release.yaml --ref main -f version=2026.07.1
+# Or re-trigger just the build if the release commit is already on main
+gh workflow run build.yaml --ref main
 ```
 
 ## Where to look in the repo

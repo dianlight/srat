@@ -102,11 +102,18 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           BRANCH="release/${VERSION}"
 
+          # Delete remote branch if it exists from a previous failed run
+          git push origin --delete "$BRANCH" 2>/dev/null || true
+
           git checkout -b "$BRANCH"
           git add CHANGELOG.md
           if git diff --cached --quiet; then
-            echo "::error::No CHANGELOG changes to commit for version $VERSION"
-            exit 1
+            echo "No CHANGELOG changes to commit for version $VERSION — branch may already be up to date."
+            echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+            echo "### Release branch" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Branch: **$BRANCH** (unchanged)" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Version: **$VERSION**" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
           fi
           git commit -m "chore(release): $VERSION"
           git push origin "$BRANCH"
@@ -127,7 +134,9 @@ jobs:
           # Try to find existing PR first
           PR_URL=$(gh pr list --head "$BRANCH" --json url --jq '.[0].url // empty')
 
-          if [[ -z "$PR_URL" ]]; then
+          if [[ -n "$PR_URL" ]]; then
+            echo "Existing PR found: $PR_URL — re-enabling auto-merge."
+          else
             PR_URL=$(gh pr create \
               --base main \
               --head "$BRANCH" \
@@ -141,7 +150,7 @@ jobs:
 
           PR_NUMBER=$(gh pr view "$PR_URL" --json number --jq '.number')
 
-          # Enable auto-merge (squash)
+          # Enable auto-merge (squash) — idempotent, safe on re-runs
           gh pr merge "$PR_NUMBER" --auto --squash
 
           echo "### Pull request" >> "$GITHUB_STEP_SUMMARY"
