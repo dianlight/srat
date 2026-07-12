@@ -10,7 +10,6 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   release:
@@ -21,7 +20,7 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.DEPLOY_TOKEN }}
 
       - name: Configure git
         run: |
@@ -76,7 +75,7 @@ jobs:
             exit 1
           fi
 
-      - name: Update CHANGELOG
+      - name: Update CHANGELOG and commit to main
         run: |
           set -euo pipefail
           VERSION="${{ steps.version.outputs.version }}"
@@ -95,64 +94,16 @@ jobs:
             echo "<!-- release-timestamp: $TIMESTAMP -->" >> CHANGELOG.md
           fi
 
-      - name: Create release branch, commit and push
-        id: branch
-        run: |
-          set -euo pipefail
-          VERSION="${{ steps.version.outputs.version }}"
-          BRANCH="release/${VERSION}"
-
-          # Delete remote branch if it exists from a previous failed run
-          git push origin --delete "$BRANCH" 2>/dev/null || true
-
-          git checkout -b "$BRANCH"
           git add CHANGELOG.md
           if git diff --cached --quiet; then
-            echo "No CHANGELOG changes to commit for version $VERSION — branch may already be up to date."
-            echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
-            echo "### Release branch" >> "$GITHUB_STEP_SUMMARY"
-            echo "- Branch: **$BRANCH** (unchanged)" >> "$GITHUB_STEP_SUMMARY"
-            echo "- Version: **$VERSION**" >> "$GITHUB_STEP_SUMMARY"
+            echo "No CHANGELOG changes to commit for version $VERSION."
+            echo "### Release prepared" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Version: **$VERSION** (no CHANGELOG changes)" >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
           git commit -m "chore(release): $VERSION"
-          git push origin "$BRANCH"
+          git push origin main
 
-          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
-          echo "### Release branch created" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Branch: **$BRANCH**" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Release prepared" >> "$GITHUB_STEP_SUMMARY"
           echo "- Version: **$VERSION**" >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Create pull request
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          VERSION="${{ steps.version.outputs.version }}"
-          BRANCH="${{ steps.branch.outputs.branch }}"
-
-          # Try to find existing PR first
-          PR_URL=$(gh pr list --head "$BRANCH" --json url --jq '.[0].url // empty')
-
-          if [[ -n "$PR_URL" ]]; then
-            echo "Existing PR found: $PR_URL — re-enabling auto-merge."
-          else
-            PR_URL=$(gh pr create \
-              --base main \
-              --head "$BRANCH" \
-              --title "chore(release): $VERSION" \
-              --body "Automated release preparation for **$VERSION**.
-
-          This PR updates CHANGELOG.md and triggers the build + release pipeline on merge.
-
-          **Do not edit CHANGELOG.md manually in this PR.**")
-          fi
-
-          PR_NUMBER=$(gh pr view "$PR_URL" --json number --jq '.number')
-
-          # Enable auto-merge (squash) — idempotent, safe on re-runs
-          gh pr merge "$PR_NUMBER" --auto --squash
-
-          echo "### Pull request" >> "$GITHUB_STEP_SUMMARY"
-          echo "- PR: $PR_URL" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Auto-merge enabled — will merge after CI passes." >> "$GITHUB_STEP_SUMMARY"
+          echo "- Committed and pushed to main — build.yaml will create the release." >> "$GITHUB_STEP_SUMMARY"

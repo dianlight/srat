@@ -31,16 +31,15 @@ The release process automates version tagging, changelog management, building, a
 
 The release is orchestrated by two GitHub Actions workflows:
 
-1. **`release.yaml`** — Triggered manually. Calculates the version (or uses a provided one), updates `CHANGELOG.md`, creates a release branch and PR with automerge.
-2. **`build.yaml`** — Triggered by the PR merge push to `main`. Detects the release commit via its message, builds all artifacts, creates a **published** GitHub release (not draft), and resets `CHANGELOG.md` for the next development cycle.
+1. **`release.yaml`** — Triggered manually. Calculates the version (or uses a provided one), updates `CHANGELOG.md`, commits and pushes directly to `main`.
+2. **`build.yaml`** — Triggered by the push to `main`. Detects the release commit via its message, builds all artifacts, creates a **published** GitHub release (not draft), and resets `CHANGELOG.md` for the next development cycle.
 
 ```mermaid
 flowchart TD
     A[Developer triggers release] --> B[release.yaml]
-    B -->|Creates PR with CHANGELOG| C[PR auto-merged]
-    C -->|Push to main| D[build.yaml]
-    D -->|Tests + Build + Published release| E[✅ Release live]
-    D -->|Resets CHANGELOG| F[Next dev cycle]
+    B -->|Commits CHANGELOG to main| C[build.yaml triggers]
+    C -->|Tests + Build + Published release| D[✅ Release live]
+    C -->|Resets CHANGELOG| E[Next dev cycle]
 ```
 
 ## Usage
@@ -79,13 +78,12 @@ The workflow will handle everything automatically. You can monitor progress in t
 | ---- | -------------- | ------------------------------------------------------------------- |
 | 1    | `release.yaml` | Calculates version (or uses input)                                  |
 | 2    | `release.yaml` | Replaces `## [ 🚧 Unreleased ]` with `## <version>` in CHANGELOG.md |
-| 3    | `release.yaml` | Creates release branch and PR with auto-merge                       |
-| 4    | GitHub         | PR is auto-merged after CI passes                                   |
-| 5    | `build.yaml`   | Detects release commit from merge commit message                    |
-| 6    | `build.yaml`   | Runs backend, frontend, and custom component tests                  |
-| 7    | `build.yaml`   | Builds all binaries and HACS component                              |
-| 8    | `build.yaml`   | Creates a **published** GitHub release (not draft) with all assets  |
-| 9    | `build.yaml`   | Resets CHANGELOG.md for next development cycle                      |
+| 3    | `release.yaml` | Commits and pushes CHANGELOG.md directly to `main`                  |
+| 4    | `build.yaml`   | Detects release commit from commit message                          |
+| 5    | `build.yaml`   | Runs backend, frontend, and custom component tests                  |
+| 6    | `build.yaml`   | Builds all binaries and HACS component                              |
+| 7    | `build.yaml`   | Creates a **published** GitHub release (not draft) with all assets  |
+| 8    | `build.yaml`   | Resets CHANGELOG.md for next development cycle                      |
 
 ## Prerequisites
 
@@ -107,9 +105,7 @@ The CHANGELOG commit was pushed but `build.yaml` failed. To recover:
 
 The release workflow is **idempotent** — it is safe to re-run:
 
-- If the release branch already exists remotely, it is deleted and recreated.
 - If the CHANGELOG already has the version (from a previous partial run), the timestamp is updated to force a commit.
-- If the PR already exists, auto-merge is re-enabled.
 
 ```sh
 # Re-trigger the full release process (safe to run multiple times)
