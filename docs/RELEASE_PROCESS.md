@@ -25,18 +25,17 @@ The release process automates version tagging, changelog management, building, a
 
 ## How it works
 
-The release is orchestrated by three GitHub Actions workflows:
+The release is orchestrated by two GitHub Actions workflows:
 
-1. **`release.yaml`** — Triggered manually. Calculates the version (or uses a provided one), updates `CHANGELOG.md`, and pushes a release commit to `main`.
-2. **`build.yaml`** — Triggered by the push. Detects the release commit via its message, builds all artifacts, and creates a **draft** GitHub release with the correct version and assets.
-3. **`release-publish.yaml`** — Triggered automatically when `build.yaml` completes. Finds the draft release, publishes it, and resets `CHANGELOG.md` for the next development cycle.
+1. **`release.yaml`** — Triggered manually. Calculates the version (or uses a provided one), updates `CHANGELOG.md`, creates a release branch and PR with automerge.
+2. **`build.yaml`** — Triggered by the PR merge push to `main`. Detects the release commit via its message, builds all artifacts, creates a **published** GitHub release (not draft), and resets `CHANGELOG.md` for the next development cycle.
 
 ```mermaid
 flowchart TD
     A[Developer triggers release] --> B[release.yaml]
-    B -->|Updates CHANGELOG, pushes| C[build.yaml]
-    C -->|Tests + Build + Draft release| D[release-publish.yaml]
-    D -->|Publishes release| E[✅ Release live]
+    B -->|Creates PR with CHANGELOG| C[PR auto-merged]
+    C -->|Push to main| D[build.yaml]
+    D -->|Tests + Build + Published release| E[✅ Release live]
     D -->|Resets CHANGELOG| F[Next dev cycle]
 ```
 
@@ -76,14 +75,13 @@ The workflow will handle everything automatically. You can monitor progress in t
 | ------ | ---------- | ------------- |
 | 1 | `release.yaml` | Calculates version (or uses input) |
 | 2 | `release.yaml` | Replaces `## [ 🚧 Unreleased ]` with `## <version>` in CHANGELOG.md |
-| 3 | `release.yaml` | Commits `chore(release): <version>` and pushes to `main` |
-| 4 | `build.yaml` | Detects release commit, uses version from commit message |
-| 5 | `build.yaml` | Runs backend, frontend, and custom component tests |
-| 6 | `build.yaml` | Builds all binaries and HACS component |
-| 7 | `build.yaml` | Creates a **draft** GitHub release with all assets |
-| 8 | `release-publish.yaml` | Detects release commit from workflow_run event |
-| 9 | `release-publish.yaml` | Publishes the draft release (sets `draft=false`) |
-| 10 | `release-publish.yaml` | Resets CHANGELOG.md for next development cycle |
+| 3 | `release.yaml` | Creates release branch and PR with auto-merge |
+| 4 | GitHub | PR is auto-merged after CI passes |
+| 5 | `build.yaml` | Detects release commit from merge commit message |
+| 6 | `build.yaml` | Runs backend, frontend, and custom component tests |
+| 7 | `build.yaml` | Builds all binaries and HACS component |
+| 8 | `build.yaml` | Creates a **published** GitHub release (not draft) with all assets |
+| 9 | `build.yaml` | Resets CHANGELOG.md for next development cycle |
 
 ## Prerequisites
 
@@ -98,13 +96,7 @@ The workflow will handle everything automatically. You can monitor progress in t
 The CHANGELOG commit was pushed but `build.yaml` failed. To recover:
 - Check the build failure in Actions → build
 - Fix the issue and push to `main`
-- The build will re-trigger and `release-publish.yaml` will pick up the release
-
-### No draft release found after build succeeded
-
-If `release-publish.yaml` reports "No draft release found", check:
-- The build.yaml `create-release` job logs
-- Whether a draft with the expected tag exists in GitHub Releases
+- The build will re-trigger and detect the release commit
 
 ### Re-running a failed release
 
@@ -120,7 +112,6 @@ gh workflow run release.yaml --ref main -f version=2026.07.1
 ## Where to look in the repo
 
 - Release workflow: `.github/workflows/release.yaml`
-- Publish workflow: `.github/workflows/release-publish.yaml`
-- Build workflow (creates draft): `.github/workflows/build.yaml`
+- Build workflow (creates release + resets CHANGELOG): `.github/workflows/build.yaml`
 - CHANGELOG: `CHANGELOG.md`
 - Legacy script (deprecated): `scripts/release.sh`

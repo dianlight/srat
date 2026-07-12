@@ -2,7 +2,7 @@
 # Documentation: https://docs.codecov.io/docs/codecov-yaml
 
 codecov:
-  require_ci_to_pass: false
+  require_ci_to_pass: false # yamllint-disable-line truthy
   notify:
     after_n_builds: 2  # Wait for both backend and frontend coverage
 
