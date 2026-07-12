@@ -65,7 +65,7 @@ describe("HDIdleDiskSettings Apply/Cancel", () => {
         if (originalFetch !== undefined) (globalThis as any).fetch = originalFetch;
     });
 
-    test("disables the expand button when Enabled.No is selected", async () => {
+    test("expand button stays enabled when Enabled.No is selected", async () => {
         const React = await import("react");
         const { render, screen, waitFor } = await import("@testing-library/react");
         const { Provider } = await import("react-redux");
@@ -111,8 +111,10 @@ describe("HDIdleDiskSettings Apply/Cancel", () => {
         await waitFor(() => {
             expect(noBtn.getAttribute("aria-pressed")).toBe("true");
         });
+        // Expand button stays enabled even when No is selected,
+        // so the user can still inspect the settings.
         await waitFor(() => {
-            expect((expandBtn as HTMLButtonElement).disabled).toBe(true);
+            expect((expandBtn as HTMLButtonElement).disabled).toBe(false);
         });
     });
 

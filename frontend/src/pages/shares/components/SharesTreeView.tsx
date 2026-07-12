@@ -12,11 +12,45 @@ import { addMessage } from "../../../store/errorSlice";
 import {
   type SharedResource,
   Usage,
+  useDeleteApiShareByShareNameMutation,
   usePutApiShareByShareNameDisableMutation,
   usePutApiShareByShareNameEnableMutation,
 } from "../../../store/sratApi";
 import { useAppDispatch } from "../../../store/store";
 import { ShareActions } from "./ShareActions";
+
+const MAX_SHARE_NAME_LENGTH = 128;
+
+function extractErrorMessage(error: unknown): string {
+  if (typeof error === "string") {
+    return error;
+  }
+  if (!error || typeof error !== "object") {
+    return "An unexpected error occurred.";
+  }
+  const err = error as Record<string, unknown>;
+
+  if (
+    err.data &&
+    typeof err.data === "object" &&
+    typeof (err.data as Record<string, unknown>).detail === "string"
+  ) {
+    return (err.data as Record<string, string>).detail;
+  }
+
+  if (typeof err.message === "string") {
+    return err.message;
+  }
+
+  if (typeof err.status === "number") {
+    if (err.status === 422) {
+      return "Invalid share name or configuration. The share name may be too long.";
+    }
+    return `Request failed (HTTP ${err.status}).`;
+  }
+
+  return "An unexpected error occurred.";
+}
 
 interface SharesTreeViewTestOverrides {
   dispatch?: (action: unknown) => void;
@@ -25,6 +59,7 @@ interface SharesTreeViewTestOverrides {
   ) => Promise<unknown>;
   enableShare?: (params: { shareName: string }) => Promise<unknown>;
   disableShare?: (params: { shareName: string }) => Promise<unknown>;
+  deleteShare?: (params: { shareName: string }) => Promise<unknown>;
 }
 
 interface SharesTreeViewProps {
@@ -34,7 +69,6 @@ interface SharesTreeViewProps {
   onViewVolumeSettings?: (share: SharedResource) => void;
   protectedMode?: boolean;
   readOnly?: boolean;
-  // Controlled expanded items and change callback (required)
   expandedItems: string[];
   onExpandedItemsChange: (items: string[]) => void;
   testOverrides?: SharesTreeViewTestOverrides;
@@ -58,12 +92,16 @@ export function SharesTreeView({
   const confirm = testOverrides?.confirm ?? appConfirm;
   const [enableShareMutation] = usePutApiShareByShareNameEnableMutation();
   const [disableShareMutation] = usePutApiShareByShareNameDisableMutation();
+  const [deleteShareMutation] = useDeleteApiShareByShareNameMutation();
   const enableShare =
     testOverrides?.enableShare ??
     ((params: { shareName: string }) => enableShareMutation(params).unwrap());
   const disableShare =
     testOverrides?.disableShare ??
     ((params: { shareName: string }) => disableShareMutation(params).unwrap());
+  const deleteShare =
+    testOverrides?.deleteShare ??
+    ((params: { shareName: string }) => deleteShareMutation(params).unwrap());
 
   const groupedAndSortedShares = useMemo(() => {
     if (!shares) {
@@ -75,7 +113,6 @@ export function SharesTreeView({
     Object.entries(shares).forEach(([shareKey, shareProps]) => {
       const usageGroup = shareProps.usage || Usage.None;
 
-      // In protected mode, only show internal shares
       if (protectedMode && usageGroup !== Usage.Internal) {
         return;
       }
@@ -86,7 +123,6 @@ export function SharesTreeView({
       groups[usageGroup].push([shareKey, shareProps]);
     });
 
-    // Sort shares within each group by name
     for (const usageGroup in groups) {
       const group = groups[usageGroup];
       if (group) {
@@ -94,19 +130,29 @@ export function SharesTreeView({
       }
     }
 
-    // Sort the groups by usage type (key)
     return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
   }, [shares, protectedMode]);
+
+  const safeShareName = (name: string): string =>
+    name ? encodeURIComponent(name) : name;
 
   const handleEnable = async (
     _shareKey: string,
     shareProps: SharedResource,
   ) => {
-    const shareName = shareProps.name || "";
+    const shareName = safeShareName(shareProps.name || "");
+    if (shareName && shareName.length > MAX_SHARE_NAME_LENGTH) {
+      dispatch(
+        addMessage(
+          "Unable to enable share: share name exceeds maximum length.",
+        ),
+      );
+      return;
+    }
     try {
       await enableShare({ shareName });
     } catch (error) {
-      dispatch(addMessage(JSON.stringify(error)));
+      dispatch(addMessage(extractErrorMessage(error)));
     }
   };
 
@@ -114,10 +160,18 @@ export function SharesTreeView({
     _shareKey: string,
     shareProps: SharedResource,
   ) => {
-    const shareName = shareProps.name || "";
+    const shareName = safeShareName(shareProps.name || "");
+    if (shareName && shareName.length > MAX_SHARE_NAME_LENGTH) {
+      dispatch(
+        addMessage(
+          "Unable to disable share: share name exceeds maximum length.",
+        ),
+      );
+      return;
+    }
     try {
       await confirm({
-        title: `Disable ${shareName}?`,
+        title: `Disable ${shareProps.name || shareProps._key || ""}?`,
         description:
           "If you disable this share, all of its configurations will be retained.",
         acknowledgement:
@@ -127,27 +181,40 @@ export function SharesTreeView({
       await disableShare({ shareName });
     } catch (error: unknown) {
       if ((error as { confirmed?: boolean })?.confirmed === false) {
-        return; // User cancelled
+        return;
       }
-      dispatch(addMessage(JSON.stringify(error)));
+      dispatch(addMessage(extractErrorMessage(error)));
     }
   };
-  /*
-        const handleToggleShare = async (
-            event: React.MouseEvent<HTMLButtonElement>,
-            shareKey: string,
-            shareProps: SharedResource,
-        ) => {
-            event.stopPropagation();
-            const isEnabled = !shareProps.disabled;
-    
-            if (isEnabled) {
-                await handleDisable(shareKey, shareProps);
-            } else {
-                await handleEnable(shareKey, shareProps);
-            }
-        };
-    */
+
+  const handleDelete = async (shareKey: string, shareProps: SharedResource) => {
+    const shareName = safeShareName(shareProps.name || "");
+    if (shareName && shareName.length > MAX_SHARE_NAME_LENGTH) {
+      dispatch(
+        addMessage(
+          "Unable to delete share: share name exceeds maximum length.",
+        ),
+      );
+      return;
+    }
+    try {
+      await confirm({
+        title: `Delete ${shareProps.name || shareKey}?`,
+        description:
+          "This share has an invalid configuration. Deleting it will permanently remove the share and its settings.",
+        acknowledgement:
+          "I understand that deleting this share will permanently remove it and all associated settings.",
+      });
+
+      await deleteShare({ shareName });
+    } catch (error: unknown) {
+      if ((error as { confirmed?: boolean })?.confirmed === false) {
+        return;
+      }
+      dispatch(addMessage(extractErrorMessage(error)));
+    }
+  };
+
   const renderShareItem = (shareKey: string, shareProps: SharedResource) => {
     const isSelected = selectedShareKey === shareKey;
     const isDisabled = shareProps.disabled;
@@ -263,6 +330,7 @@ export function SharesTreeView({
                 onViewVolumeSettings={(share) => onViewVolumeSettings?.(share)}
                 onEnable={handleEnable}
                 onDisable={handleDisable}
+                onDelete={handleDelete}
               />
             )}
           </Box>
@@ -277,7 +345,6 @@ export function SharesTreeView({
         selectedItems={selectedShareKey || ""}
         expandedItems={expandedItems}
         onExpandedItemsChange={(_, items) => {
-          // SimpleTreeView may emit different shapes; normalize to string[] when possible
           if (!items) return;
           if (Array.isArray(items)) {
             onExpandedItemsChange(items as string[]);

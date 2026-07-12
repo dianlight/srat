@@ -1,7 +1,8 @@
 //import copy from 'bun-copy-plugin';
 
-import type { BuildConfig, BuildOutput, Subprocess } from "bun";
+import type { BuildConfig, BuildOutput } from "bun";
 import { Glob } from "bun";
+import path from "node:path";
 import { watch } from "node:fs";
 import { parseArgs } from "node:util";
 import App from "./src/index.html";
@@ -54,6 +55,22 @@ const inspectorEnabled =
   process.env.DEV_INSPECTOR_DISABLED !== "1" &&
   (values.watch || values.serve);
 
+// Eagerly import the config-updater BEFORE registering the global Bun plugin so
+// the runtime import() isn't intercepted by the plugin's onLoad callback (which
+// would cause "onLoad() expects an object returned" errors for module graph imports).
+// @ts-ignore — internal dist imports (no public API for these)
+const configUpdaterModule = inspectorEnabled
+  ? await import(
+      path.join(
+        import.meta.dir,
+        "node_modules/@mcpc-tech/unplugin-dev-inspector-mcp/dist/config-updater.js",
+      ),
+    ).catch((err: unknown) => {
+      console.warn("[dev-inspector] configUpdater not available:", err);
+      return undefined;
+    })
+  : undefined;
+
 // Register the DevInspector JSX transform as a global Bun plugin so both
 // Bun.serve() (static serve) and Bun.build() (watch mode) apply it.
 // The plugin is a no-op outside .tsx/.jsx files and skips node_modules.
@@ -100,19 +117,27 @@ const buildConfig: BuildConfig = {
 	*/
 };
 
-// ─── DevInspector MCP server (standalone) ───────────────────────────────────
-// Spawned in serve/watch mode so AI agents can connect to the MCP endpoint
-// at http://localhost:6137/__mcp__/sse and the inspector UI/sidebar at
-// http://localhost:6137/__inspector__/*.
-// Requires the patched CLI to support --default-agent / --visible-agents.
+// ─── DevInspector MCP server (in-process) ────────────────────────────────────
+// Instead of spawning the CLI server (which can't intercept stdio properly),
+// we import the internal config-updater and run the server in-process, hooking
+// console methods to capture output into the stdioLogs store for the inspector
+// UI (GET /__inspector__/stdio).
+//
+// In Bun, console.log does NOT go through process.stdout.write (unlike Node.js),
+// so we hook console methods directly rather than stream writes.
+
 const DEFAULT_AGENT = process.env.DEV_INSPECTOR_DEFAULT_AGENT ?? "Opencode";
 const VISIBLE_AGENTS =
   process.env.DEV_INSPECTOR_VISIBLE_AGENTS ?? "Opencode,Claude Code";
 
-function spawnInspectorServer(): Subprocess | undefined {
-  if (!inspectorEnabled) return undefined;
-  console.log("\n[dev-inspector] Starting standalone MCP server...");
-  const server = Bun.spawn(
+let inspectorServerCtx: {
+  host: string;
+  port: number;
+  server: any;
+} | undefined;
+
+function spawnFallback() {
+  const fallbackServer = Bun.spawn(
     [
       process.execPath,
       "x",
@@ -128,10 +153,113 @@ function spawnInspectorServer(): Subprocess | undefined {
       stdin: "inherit",
       stdout: "inherit",
       stderr: "inherit",
-      env: process.env,
+      env: { ...process.env, DEV_INSPECTOR_DISABLE_CHROME: "1" },
     },
   );
-  return server;
+  inspectorServerCtx = {
+    host: "localhost",
+    port: 6137,
+    server: fallbackServer,
+  };
+}
+
+async function startInspectorServer() {
+  if (!inspectorEnabled) return;
+
+  const configUpdater = configUpdaterModule;
+  if (!configUpdater) {
+    console.warn(
+      "[dev-inspector] configUpdater not loaded, falling back to spawned server",
+    );
+    spawnFallback();
+    return;
+  }
+
+  try {
+    const {
+      a: addStdioLog,
+      i: setupMcpMiddleware,
+      n: setupAcpMiddleware,
+      o: getDefaultPort,
+      r: setupInspectorMiddleware,
+      s: startStandaloneServer,
+      t: updateMcpConfigs,
+    } = configUpdater;
+
+    // ─── Stdio interceptor ──────────────────────────────────────────────────────
+    // In Bun, console.log does NOT go through process.stdout.write (unlike Node.js),
+    // so we hook console methods directly to capture output into the stdioLogs store.
+
+    const origLog = console.log;
+    const origWarn = console.warn;
+    const origError = console.error;
+    const origInfo = console.info;
+    const origDebug = console.debug;
+
+    const capture = (
+      stream: "stdout" | "stderr",
+      original: typeof console.log,
+    ) =>
+      (...args: unknown[]) => {
+        try {
+          const text = args
+            .map((a) => (typeof a === "string" ? a : JSON.stringify(a)))
+            .join(" ");
+          addStdioLog(stream, text);
+        } catch {
+          // swallow – never break the user's console
+        }
+        return original.apply(console, args);
+      };
+
+    console.log = capture("stdout", origLog) as typeof console.log;
+    console.info = capture("stdout", origInfo) as typeof console.info;
+    console.debug = capture("stdout", origDebug) as typeof console.debug;
+    console.warn = capture("stderr", origWarn) as typeof console.warn;
+    console.error = capture("stderr", origError) as typeof console.error;
+
+    // ─── Start server in-process ────────────────────────────────────────────────
+
+    const { server, host: inspectorHost, port: inspectorPort } =
+      await startStandaloneServer({
+        port: getDefaultPort(),
+        host: "localhost",
+      });
+
+    const serverContext = {
+      host: inspectorHost,
+      port: inspectorPort,
+      disableChrome: true,
+    };
+
+    await setupMcpMiddleware(server, serverContext);
+    setupAcpMiddleware(server, serverContext, {});
+    setupInspectorMiddleware(server, {
+      disableChrome: true,
+      defaultAgent: DEFAULT_AGENT,
+      visibleAgents: VISIBLE_AGENTS.split(",")
+        .map((a) => a.trim())
+        .filter(Boolean),
+    });
+
+    const displayHost =
+      inspectorHost === "0.0.0.0" ? "localhost" : inspectorHost;
+    const mcpUrl = `http://${displayHost}:${inspectorPort}/__mcp__/sse`;
+
+    await updateMcpConfigs(process.cwd(), mcpUrl, {});
+
+    inspectorServerCtx = { host: displayHost, port: inspectorPort, server };
+
+    console.log(`  MCP       → ${mcpUrl}`);
+    console.log(`  Inspector → http://${displayHost}:${inspectorPort}/__inspector__/sidebar`);
+    console.log(`  Agents    → ${VISIBLE_AGENTS} (default: ${DEFAULT_AGENT})`);
+  } catch (err) {
+    console.warn(
+      "[dev-inspector] Failed to start in-process server:",
+      err,
+    );
+    spawnFallback();
+  }
 }
 
 async function build(): Promise<BuildOutput | undefined> {
@@ -143,7 +271,6 @@ async function build(): Promise<BuildOutput | undefined> {
   console.log("\tAPI URL: ", process.env.API_URL || "not provided");
   console.log("\tSentry DSN: ", process.env.VITE_SENTRY_DSN || "not provided");
   console.log("\tDevInspector: ", inspectorEnabled ? "enabled" : "disabled");
-  let mcpServer: Subprocess | undefined = undefined;
   //console.log("\tSentry DSN: ", process.env.VITE_SENTRY_DSN || "not provided");
   if (!values.serve && !values.watch) {
     console.log(`\tMode: Build ${import.meta.dir}/src -> ${values.outDir}`);
@@ -158,8 +285,8 @@ async function build(): Promise<BuildOutput | undefined> {
       return result;
     });
   } else if (values.serve) {
-    mcpServer = spawnInspectorServer();
-    // Give the MCP server a moment to bind before the browser connects.
+    await startInspectorServer();
+    // Give the server a moment to bind before the browser connects.
     await Bun.sleep(1500);
     console.log(`\tMode: Serve ${values.outDir}`);
     const app = Bun.serve({
@@ -174,11 +301,14 @@ async function build(): Promise<BuildOutput | undefined> {
         hmr: true,
       },
     });
+    const inspCtx = inspectorServerCtx;
+    const inspHost = inspCtx?.host ?? "localhost";
+    const inspPort = inspCtx?.port ?? 6137;
     console.log(`\n${"─".repeat(54)}`);
     console.log(`  App       → http://localhost:${app.port}`);
     console.log(`  HMR       → native (via Bun dev server)`);
-    console.log(`  MCP       → http://localhost:6137/__mcp__/sse`);
-    console.log(`  Inspector → http://localhost:6137/__inspector__/sidebar`);
+    console.log(`  MCP       → http://${inspHost}:${inspPort}/__mcp__/sse`);
+    console.log(`  Inspector → http://${inspHost}:${inspPort}/__inspector__/sidebar`);
     if (inspectorEnabled) {
       console.log(
         `  Agents    → ${VISIBLE_AGENTS} (default: ${DEFAULT_AGENT})`,
@@ -188,17 +318,15 @@ async function build(): Promise<BuildOutput | undefined> {
     console.log("  Ctrl+C to stop.\n");
     process.on("SIGINT", () => {
       console.log("\n[dev] Shutting down...");
-      mcpServer?.kill();
       app.stop(true);
       process.exit(0);
     });
     process.on("SIGTERM", () => {
-      mcpServer?.kill();
       app.stop(true);
       process.exit(0);
     });
   } else if (values.watch) {
-    mcpServer = spawnInspectorServer();
+    await startInspectorServer();
     await Bun.sleep(1500);
     console.log(`\tMode: Watch ${import.meta.dir}/src -> ${values.outDir}`);
     async function rebuild(event: string, filename: string | null) {
@@ -248,12 +376,10 @@ async function build(): Promise<BuildOutput | undefined> {
     process.on("SIGINT", () => {
       console.log("\n[dev] Shutting down...");
       srcwatch.close();
-      mcpServer?.kill();
       process.exit(0);
     });
     process.on("SIGTERM", () => {
       srcwatch.close();
-      mcpServer?.kill();
       process.exit(0);
     });
     rebuild("initial build", null);

@@ -160,7 +160,7 @@ depends = [
 ]
 run = [
   '''
-    set +x +e
+    set -euo pipefail
 
     RESOLVED_VERSION="{{ usage.version | default(value='') }}"
     case "$RESOLVED_VERSION" in
@@ -202,42 +202,44 @@ run = [
       exit 1
     fi
 
-    mise //backend:build -- --arch=x86_64 --pprof --version="$RESOLVED_VERSION"
-
     [ -n "${HOMEASSISTANT_IP}" ] || (echo "HOMEASSISTANT_IP is not set" && exit 1)
-    rsync -avz --progress ./dist/x86_64/srat-cli ./dist/x86_64/srat-server ${HOMEASSISTANT_IP}:/addon_configs/local_sambanas2/upgrade/
-  ''',
-  '[ -n "${HOMEASSISTANT_IP}" ] || (echo "HOMEASSISTANT_IP is not set" && exit 1)',
-  '''
-  variant="{{usage.variant}}"
-  version="{{usage.version | default(value=env.VERSION)}}"
 
-  # srat-cli (static binary) is always deployed regardless of variant
-  build_static_cli() {
-    mise run build -- --arch=x86_64 --pprof "--version=$version"
-  }
+    variant="{{usage.variant}}"
+    version="$RESOLVED_VERSION"
 
-  case "$variant" in
-    musl)
-      # Build static first (for srat-cli), then musl variant
-      build_static_cli
-      mise run build -- --arch=x86_64 --pprof "--version=$version" --zig
-      rsync -avz --progress "./dist/x86_64/srat-cli" "./dist/x86_64/srat-server-musl" "${HOMEASSISTANT_IP}:/addon_configs/local_sambanas2/upgrade/"
-      ;;
-    glib)
-      # Build static first (for srat-cli), then glibc variant
-      build_static_cli
-      mise run build -- --arch=x86_64 --pprof "--version=$version" --cgo
-      rsync -avz --progress "./dist/x86_64/srat-cli" "./dist/x86_64/srat-server-glib" "${HOMEASSISTANT_IP}:/addon_configs/local_sambanas2/upgrade/"
-      ;;
-    static)
-      build_static_cli
-      rsync -avz --progress "./dist/x86_64/srat-cli" "./dist/x86_64/srat-server-static" "${HOMEASSISTANT_IP}:/addon_configs/local_sambanas2/upgrade/"
-      ;;
-    *)
-      echo "Unknown variant '$variant'. Valid options: static, musl, glib" && exit 1
-      ;;
-  esac
+    # srat-cli (static binary) is always deployed regardless of variant
+    build_static_cli() {
+      mise run build -- --arch=x86_64 --pprof "--version=$version"
+    }
+
+    # Use rsync without preserving timestamps (-t) so the file watcher detects new files
+    # -r = recursive, -v = verbose, -z = compress, -l = copy symlinks as symlinks
+    # (omitting -a which includes -t for timestamps)
+    RSYNC_OPTS="-rlvz --progress"
+
+    case "$variant" in
+      musl)
+        # Build static first (for srat-cli), then musl variant
+        build_static_cli
+        mise run build -- --arch=x86_64 --pprof "--version=$version" --zig
+        rsync $RSYNC_OPTS "./dist/x86_64/srat-cli" "./dist/x86_64/srat-server-musl" "${HOMEASSISTANT_IP}:/addon_configs/local_sambanas2/upgrade/"
+        ;;
+      glib)
+        # Build static first (for srat-cli), then glibc variant
+        build_static_cli
+        mise run build -- --arch=x86_64 --pprof "--version=$version" --cgo
+        rsync $RSYNC_OPTS "./dist/x86_64/srat-cli" "./dist/x86_64/srat-server-glib" "${HOMEASSISTANT_IP}:/addon_configs/local_sambanas2/upgrade/"
+        ;;
+      static)
+        build_static_cli
+        rsync $RSYNC_OPTS "./dist/x86_64/srat-cli" "./dist/x86_64/srat-server-static" "${HOMEASSISTANT_IP}:/addon_configs/local_sambanas2/upgrade/"
+        ;;
+      *)
+        echo "Unknown variant '$variant'. Valid options: static, musl, glib" && exit 1
+        ;;
+    esac
+
+    echo "Binaries deployed to upgrade directory. File watcher will detect and apply update automatically."
   '''
 ]
 #quiet = true

@@ -18,12 +18,14 @@ describe("SharesTreeView component", () => {
   const setupOverrides = (options?: { confirmResult?: unknown }) => {
     const disableCalls: Array<string> = [];
     const enableCalls: Array<string> = [];
+    const deleteCalls: Array<string> = [];
     const confirmCalls: Array<unknown> = [];
 
     return {
       tracking: {
         disableCalls,
         enableCalls,
+        deleteCalls,
         confirmCalls,
       },
       overrides: {
@@ -32,6 +34,9 @@ describe("SharesTreeView component", () => {
         },
         enableShare: async ({ shareName }: { shareName: string }) => {
           enableCalls.push(shareName);
+        },
+        deleteShare: async ({ shareName }: { shareName: string }) => {
+          deleteCalls.push(shareName);
         },
         confirm: async (confirmOptions: unknown) => {
           confirmCalls.push(confirmOptions);
