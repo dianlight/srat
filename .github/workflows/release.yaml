@@ -118,18 +118,20 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           BRANCH="${{ steps.branch.outputs.branch }}"
 
-          # Create PR (skip if one already exists)
-          PR_URL=$(gh pr create \
-            --base main \
-            --head "$BRANCH" \
-            --title "chore(release): $VERSION" \
-            --body "Automated release preparation for **$VERSION**.
+          # Try to find existing PR first
+          PR_URL=$(gh pr list --head "$BRANCH" --json url --jq '.[0].url // empty')
+
+          if [[ -z "$PR_URL" ]]; then
+            PR_URL=$(gh pr create \
+              --base main \
+              --head "$BRANCH" \
+              --title "chore(release): $VERSION" \
+              --body "Automated release preparation for **$VERSION**.
 
           This PR updates CHANGELOG.md and triggers the build + release pipeline on merge.
 
-          **Do not edit CHANGELOG.md manually in this PR.**" \
-            --label "release" \
-            2>/dev/null || gh pr list --head "$BRANCH" --json url --jq '.[0].url')
+          **Do not edit CHANGELOG.md manually in this PR.**")
+          fi
 
           PR_NUMBER=$(gh pr view "$PR_URL" --json number --jq '.number')
 
