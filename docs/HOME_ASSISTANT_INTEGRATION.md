@@ -91,7 +91,7 @@ Two WebSocket events carry all sensor data:
 - **`volumes`** - disk and partition information (`[]*Disk`)
 - **`heartbeat`** - periodic health snapshot containing samba status, process status, disk health, network health, and addon stats (`HealthPing`)
 
-Until the first event of each type arrives, the corresponding sensors report as *unavailable*.
+Until the first event of each type arrives, the corresponding sensors report as _unavailable_.
 
 For details on data not yet exposed as entities, see [MISSING_HA_INTEGRATION_DATA.md](MISSING_HA_INTEGRATION_DATA.md).
 

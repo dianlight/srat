@@ -10,7 +10,7 @@
 
 Briefly describe the purpose of this feature or fix.
 
-> *Context for Copilot: High-level goal of the implementation.*
+> _Context for Copilot: High-level goal of the implementation._
 
 ## 🛠️ Technical Specifications
 
