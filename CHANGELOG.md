@@ -273,4 +273,5 @@ With your donations, we are able to continue developing and improving this proje
 ### ✨ Features
 
 - First Fully functional version ready for first merge.
+
 <!-- release-timestamp: 2026-07-12T09:33:29Z -->
