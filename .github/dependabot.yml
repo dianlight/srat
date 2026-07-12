@@ -12,7 +12,11 @@ multi-ecosystem-groups:
 updates:
   - package-ecosystem: "gomod"
     directory: "/backend/src/"
+    schedule:
+      interval: "weekly"
     ignore:
-    - dependency-name: "github.com/snapcore/snapd"
+      - dependency-name: "github.com/snapcore/snapd"
   - package-ecosystem: "bun"
     directory: "/frontend/"
+    schedule:
+      interval: "weekly"

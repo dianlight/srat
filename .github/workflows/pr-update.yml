@@ -1,22 +1,22 @@
 name: Pull request update
 
 on:
-    push:
-        branches:
-            - main
+  push:
+    branches:
+      - main
 
 jobs:
-    autoupdate:
-        runs-on: ubuntu-latest
-        permissions:
-            pull-requests: write
-            contents: write
-        steps:
-          - name: Update pull requests
-            uses: docker://chinthakagodawita/autoupdate-action:v1@sha256:53d7013ad4689b703d2715d4b17d4901bb0a385e495e0b481f37adbe9b3cc3fc
-            env:
-              GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              PR_FILTER: "labelled"
-              PR_LABELS: "autoupdate,keep up-to-date,integration,ready to merge"
-              EXCLUDED_LABELS: "dependencies,wontfix"
-              MERGE_METHOD: "merge"
+  autoupdate:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: write
+    steps:
+      - name: Update pull requests
+        uses: docker://chinthakagodawita/autoupdate-action:v1@sha256:53d7013ad4689b703d2715d4b17d4901bb0a385e495e0b481f37adbe9b3cc3fc
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_FILTER: "labelled"
+          PR_LABELS: "autoupdate,keep up-to-date,integration,ready to merge"
+          EXCLUDED_LABELS: "dependencies,wontfix"
+          MERGE_METHOD: "merge"

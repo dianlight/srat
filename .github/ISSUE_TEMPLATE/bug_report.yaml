@@ -49,7 +49,7 @@ body:
       description: What is the impacted environment ?
       placeholder: "HasOS VM ..."
     validations:
-      required: true      
+      required: true
   - type: textarea
     id: description
     attributes:
@@ -65,7 +65,7 @@ body:
       description: "Describe the steps to reproduce the behavior:"
       placeholder: "1. Go to '...'\n2. Click on '....'\n3. Scroll down to '....'\n4. See error"
     validations:
-      required: true 
+      required: true
   - type: textarea
     id: srat_config
     attributes:
@@ -73,7 +73,7 @@ body:
       description: Please paste the full (remove only password and ssh keys) SRAT config. This will be automatically formatted into code, so no need for backticks.
       render: json
     validations:
-      required: false      
+      required: false
   - type: textarea
     id: addon_config
     attributes:
