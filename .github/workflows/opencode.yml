@@ -18,20 +18,7 @@ jobs:
     steps:
       - name: Deprecation notice
         run: |
-          echo "╔══════════════════════════════════════════════════════════╗"
-          echo "║                                                       ║"
-          echo "║   This workflow is deprecated.                        ║"
-          echo "║                                                       ║"
-          echo "║   The 'opencode' action has been replaced by the      ║"
-          echo "║   dedicated workflows in this repository:             ║"
-          echo "║                                                       ║"
-          echo "║     • opencode-implement.yaml                         ║"
-          echo "║     • opencode-review.yaml                            ║"
-          echo "║     • opencode-triage.yaml                            ║"
-          echo "║                                                       ║"
-          echo "║   Please migrate to the appropriate workflow.         ║"
-          echo "║   This workflow performs no operations.               ║"
-          echo "║                                                       ║"
-          echo "╚══════════════════════════════════════════════════════════╝"
+          echo "This workflow is deprecated and performs no operations."
+          echo "Use opencode-pr-review.yml, opencode-pr-comment.yml, or opencode-issue-handler.yml instead."
       - name: Exit successfully (no-op)
         run: exit 0
