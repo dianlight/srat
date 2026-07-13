@@ -134,6 +134,25 @@ func (self *settingService) ValidateSettings(setting *dto.Settings) {
 			setting.HAUseNFS = &falseVal
 		}
 	}
+
+	// Validate addon-side direct mDNS settings.
+	// Addon direct mDNS is a lab feature and requires experimental_lab_mode to be enabled.
+	if setting.AddonMDNSRegistration != nil && *setting.AddonMDNSRegistration {
+		if !setting.ExperimentalLabMode {
+			slog.Warn("Addon-side direct mDNS requires experimental_lab_mode. Setting addon_mdns_registration to false.")
+			falseVal := false
+			setting.AddonMDNSRegistration = &falseVal
+		}
+	}
+
+	// Addon-side direct mDNS and HA-managed mDNS are mutually exclusive.
+	if setting.AddonMDNSRegistration != nil && *setting.AddonMDNSRegistration {
+		if setting.MDNSRegistration != nil && *setting.MDNSRegistration {
+			slog.Warn("Addon-side direct mDNS is mutually exclusive with HA mDNS registration. Setting mdns_registration to false.")
+			falseVal := false
+			setting.MDNSRegistration = &falseVal
+		}
+	}
 }
 
 func (self *settingService) UpdateSettings(setting *dto.Settings) errors.E {

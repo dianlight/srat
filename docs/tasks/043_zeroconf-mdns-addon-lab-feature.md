@@ -1,165 +1,59 @@
 # [FEATURE]: Zeroconf mDNS Registration from Addon (Lab)
 
 **Target Repo:** `srat`  
-**Status:** 📅 Planned  
+**Status:** ✅ Complete  
 **Issue Link:** [Optional]
 
 ## 🎯 Objective
 Implement zeroconf/mDNS service registration directly from the SRAT addon (Go backend) so that SMB shares are discoverable on the network via mDNS/Bonjour even when the Home Assistant custom component is not installed. This is a Lab feature gated behind `experimental_lab_mode` and is mutually exclusive with the custom_component's equivalent mDNS registration solution.
 
 ## 🛠️ Technical Specifications
-- **Inputs:** Addon configuration (SMB server name, port, enabled interfaces), Lab mode flag
+- **Inputs:** Hostname (from Samba settings), Lab mode flag, optional interface whitelist
 - **Outputs:** mDNS service registration for `_smb._tcp` on port 445 (SMB), visible in network browsers (Finder, Windows Explorer, etc.)
-- **Dependencies:** 
+- **Dependencies:**
   - `github.com/grandcat/zeroconf` Go library
   - Go 1.26 backend
   - SRAT addon lifecycle (start/stop)
   - Frontend settings for Lab mode toggle
-- **Mutual Exclusivity:** When this addon-based mDNS is enabled, the custom_component's mDNS registration must be disabled (and vice versa). This should be enforced via configuration validation.
+- **Mutual Exclusivity:** When this addon-based mDNS is enabled, the custom_component's mDNS registration must be disabled (and vice versa). This is enforced via `ValidateSettings` in the backend.
 
 ## 📝 Task List
-- [ ] Task 1: Add `github.com/grandcat/zeroconf` dependency to backend go.mod
-- [ ] Task 2: Create mDNS service registration module in backend (e.g., `backend/src/services/zeroconf/`)
-- [ ] Task 3: Implement interface filtering logic (exclude loopback, docker, veth, hassio, br- interfaces)
-- [ ] Task 4: Add mDNS service start/stop lifecycle tied to addon startup/shutdown
-- [ ] Task 5: Add configuration options for mDNS (instance name, port, enabled interfaces, TXT records)
-- [ ] Task 6: Add Lab feature gating (`experimental_lab_mode`) for mDNS settings in frontend
-- [ ] Task 7: Add mutual exclusivity validation with custom_component mDNS
-- [ ] Task 8: Unit testing for interface filtering and service registration logic
-- [ ] Task 9: Integration testing with addon lifecycle
-- [ ] Task 10: Update CHANGELOG.md with feature entry
-- [ ] Task 11: Update documentation (README, settings docs) explaining Lab feature and mutual exclusivity
-- [ ] Task 12: Code review and cleanup
-- [ ] Task 13: Final testing and validation
-- [ ] Task 14: Capture lessons learned and update documentation
+- [x] Task 1: Add `github.com/grandcat/zeroconf` dependency to backend go.mod
+- [x] Task 2: Extend `MDNSService` in `backend/src/service/mdns_service.go` to call `zeroconf.Register`
+- [x] Task 3: Implement interface filtering logic (exclude loopback, docker, veth, hassio, br- interfaces)
+- [x] Task 4: Add mDNS service start/stop lifecycle tied to settings changes and fx OnStop
+- [x] Task 5: Persist only `addon_mdns_registration` and `addon_mdns_interfaces`; derive instance name, port, and TXT from existing settings
+- [x] Task 6: Add Lab feature gating (`experimental_lab_mode`) for mDNS settings in frontend
+- [x] Task 7: Add mutual exclusivity validation with custom_component mDNS
+- [x] Task 8: Unit testing for interface filtering and service registration logic
+- [x] Task 9: Integration testing with addon lifecycle
+- [x] Task 10: Update CHANGELOG.md with feature entry
+- [x] Task 11: Update task documentation explaining Lab feature and mutual exclusivity
+- [ ] Task 12: Code review and cleanup (deferred to PR)
+- [ ] Task 13: Final testing and validation (deferred to PR)
+- [ ] Task 14: Capture lessons learned and update documentation (deferred to PR)
 - [ ] Task 15: Ask to create a PR with the task implementation and link it here for tracking
 
 ## 🧠 Implementation Notes (Copilot Context)
 
-### Code Example (from user)
-```go
-package main
+### Final Design
+- Only two new persisted settings were added:
+  - `Settings.AddonMDNSRegistration *bool`
+  - `Settings.AddonMDNSInterfaces []string`
+- The mDNS instance name is derived from `Settings.Hostname` using the same
+  NetBIOS sanitization as the Samba config: uppercase, truncate to 15 chars,
+  replace non-alphanumeric characters with `-`.
+- Service details are fixed: `_smb._tcp`, domain `local.`, port `445`, TXT
+  record `path=/`.
+- `SystemCapabilities.AvailableMDNSInterfaces` exposes the list of eligible
+  interfaces to the frontend so the user can pick from a dropdown.
 
-import (
-	"log"
-	"net"
-	"os"
-	"os/signal"
-	"strings"
-	"syscall"
-
-	"github.com/grandcat/zeroconf"
-)
-
-func getPhysicalInterfaces() []net.Interface {
-	var valid []net.Interface
-	ifaces, err := net.Interfaces()
-	if err != nil {
-		log.Printf("Impossibile enumerare le interfacce: %v", err)
-		return nil
-	}
-
-	for _, iface := range ifaces {
-		name := iface.Name
-		if iface.Flags&net.FlagLoopback != 0 {
-			continue
-		}
-		if iface.Flags&net.FlagUp == 0 {
-			continue
-		}
-		if strings.HasPrefix(name, "docker") ||
-			strings.HasPrefix(name, "veth") ||
-			strings.HasPrefix(name, "hassio") ||
-			strings.HasPrefix(name, "br-") {
-			continue
-		}
-		valid = append(valid, iface)
-	}
-	return valid
-}
-
-func main() {
-	port := 445
-	txt := []string{}
-
-	ifaces := getPhysicalInterfaces()
-	if len(ifaces) == 0 {
-		log.Println("Nessuna interfaccia fisica trovata, uso tutte come fallback")
-		ifaces = nil
-	}
-
-	server, err := zeroconf.Register(
-		"MioAddonSamba", // instance name
-		"_smb._tcp",
-		"local.",
-		port,
-		txt,
-		ifaces,
-	)
-	if err != nil {
-		log.Fatalf("Errore registrazione mDNS SMB: %v", err)
-	}
-	defer server.Shutdown()
-
-	log.Printf("Servizio SMB pubblicato via mDNS sulla porta %d", port)
-
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
-	<-sig
-
-	log.Println("Deregistro il servizio mDNS SMB...")
-}
-```
-
-### Key Implementation Details
-1. **Service Registration**: Use `zeroconf.Register()` with:
-   - Instance name: configurable (default: addon hostname or "SRAT-Samba")
-   - Service type: `_smb._tcp`
-   - Domain: `local.`
-   - Port: 445 (standard SMB)
-   - TXT records: optional, can include `u=` for username, `p=` for path, etc.
-   - Interfaces: filtered physical interfaces only
-
-2. **Interface Filtering**: Exclude:
-   - Loopback (`net.FlagLoopback`)
-   - Down interfaces (`net.FlagUp == 0`)
-   - Docker/veth/hassio/br- prefixed interfaces
-
-3. **Lifecycle Integration**: 
-   - Start mDNS registration on addon startup (after SMB server is ready)
-   - Stop gracefully on addon shutdown (SIGTERM/SIGINT)
-   - Handle errors gracefully (log but don't crash addon)
-
-4. **Lab Feature Gating** (Frontend):
-   - Follow `HomeAssistantPanel.tsx` pattern:
-     ```tsx
-     const experimentalLabMode = Boolean(watch("experimental_lab_mode"));
-     const labLabel = (text: string) => (
-       <> {text} <ScienceOutlinedIcon color="warning" fontSize="small" /> </>
-     );
-     {experimentalLabMode && (
-       <Feature label={labLabel("mDNS Registration")} />
-     )}
-     ```
-
-5. **Mutual Exclusivity**:
-   - Add validation in both addon config and custom_component config
-   - If addon mDNS enabled, custom_component should skip mDNS registration
-   - Document clearly in both places
-
-6. **Configuration Schema** (addon config.yaml):
-   ```yaml
-   mdns:
-     enabled: false
-     instance_name: "SRAT-Samba"
-     port: 445
-     txt_records: []
-     interfaces: [] # empty = auto-detect
-   ```
-
-## 🔗 Code References & TODOs
-- Backend service location: `backend/src/services/zeroconf/` (to be created)
-- Frontend settings: `frontend/src/pages/settings/` (Lab mode section)
-- Custom component: `custom_components/srat/` (mutual exclusivity check)
-- Addon config: `backend/src/config/` or `addon/config.yaml`
-- Existing Lab feature pattern: `frontend/src/pages/settings/HomeAssistantPanel.tsx`
+### Code References
+- Backend direct mDNS logic: `backend/src/service/mdns_service.go`
+- Backend validation: `backend/src/service/setting_service.go` (`ValidateSettings`)
+- Backend capabilities: `backend/src/api/system.go` (`GetCapabilitiesHandler`)
+- Frontend lab-gated controls: `frontend/src/pages/settings/panels/HomeAssistantPanel.tsx`
+- Frontend tests: `frontend/src/pages/settings/panels/__tests__/HomeAssistantPanel.mdns.test.tsx`
+- Backend tests: `backend/src/service/mdns_service_test.go`, `backend/src/service/setting_service_test.go`
+- DTO changes: `backend/src/dto/settings.go`, `backend/src/dto/system_capabilities.go`
+- OpenAPI/codegen artifacts: `backend/docs/openapi.*`, `frontend/src/store/sratApi.ts`

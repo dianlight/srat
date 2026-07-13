@@ -3,7 +3,7 @@
 // github.com/zarldev/goenums
 //
 // using the command:
-// goenums dto/hdidle_enabled.go
+// goenums hdidle_enabled.go
 
 package dto
 

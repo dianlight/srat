@@ -20,6 +20,8 @@
     - [Telemetry Mode](#telemetry-mode)
   - [Home Assistant Settings](#home-assistant-settings)
     - [Export Stats to Home Assistant](#export-stats-to-home-assistant)
+    - [mDNS Registration](#mdns-registration)
+    - [Addon-side Direct mDNS (Experimental)](#addon-side-direct-mdns-experimental)
     - [Use Network File System for Home Assistant Integration (Experimental)](#use-network-file-system-for-home-assistant-integration-experimental)
     - [Configuration Change Detection](#configuration-change-detection)
   - [Implementation Details](#implementation-details)
@@ -144,6 +146,48 @@ This document provides detailed information about all SRAT settings available in
 - **Type**: Boolean
 - **Default**: `true`
 - **Description**: When enabled, exports share statistics and Samba server statistics to Home Assistant as entities
+
+### mDNS Registration
+
+- **Type**: Boolean
+- **Default**: `false`
+- **Description**: When enabled, the Home Assistant custom component registers the Samba server as an `_smb._tcp` mDNS/Zeroconf service on the Home Assistant instance. This allows network clients to discover the SRAT SMB shares when the custom component is connected.
+- **Requirements**:
+  - The Home Assistant custom component must be installed and connected
+  - Home Assistant must have a working Zeroconf/mDNS stack
+- **Availability**:
+  - This toggle is disabled when the custom component is not connected
+  - It is also disabled when addon-side direct mDNS is enabled, because the two modes are mutually exclusive
+- **UI Location**: Settings → HomeAssistant → mDNS Registration
+- **API Field**: `mdns_registration` (boolean)
+
+### Addon-side Direct mDNS (Experimental)
+
+- **Type**: Boolean
+- **Default**: `false`
+- **Status**: ⚠️ **Experimental Feature** (Lab Mode)
+- **Description**: When enabled, the SRAT addon registers the Samba server directly as an `_smb._tcp` mDNS/Zeroconf service on the local network, without relying on the Home Assistant custom component. This is useful when the custom component is not installed or when you want the addon itself to advertise the service.
+- **Requirements**:
+  - Lab Mode must be enabled (`experimental_lab_mode=true`)
+  - At least one eligible network interface must be available
+- **Service Details**:
+  - Service type: `_smb._tcp`
+  - Domain: `local.`
+  - Port: `445`
+  - TXT record: `path=/`
+  - Instance name: derived from the Samba hostname using NetBIOS sanitization (uppercase, truncate to 15 characters, replace non-alphanumeric characters with `-`)
+- **Interface Filtering**:
+  - Loopback interfaces are excluded
+  - Down interfaces are excluded
+  - Container/virtual interfaces (`docker*`, `veth*`, `hassio*`, `br-*`) are excluded
+  - An optional whitelist (`addon_mdns_interfaces`) can restrict registration to specific interfaces
+- **Mutual Exclusivity**:
+  - Addon-side direct mDNS and Home Assistant mDNS registration cannot be enabled at the same time
+  - Enabling addon-side direct mDNS automatically disables `mdns_registration`
+- **UI Location**: Settings → HomeAssistant → Addon-side Direct mDNS
+- **API Fields**:
+  - `addon_mdns_registration` (boolean)
+  - `addon_mdns_interfaces` (array of interface names)
 
 ### Use Network File System for Home Assistant Integration (Experimental)
 

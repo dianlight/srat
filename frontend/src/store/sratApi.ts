@@ -1238,6 +1238,8 @@ export type ErrorModel = {
 export type SystemCapabilities = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
+  /** Network interfaces eligible for addon-side direct mDNS registration */
+  available_mdns_interfaces?: string[] | null;
   /** Whether QUIC kernel module is loaded */
   has_kernel_module: boolean;
   /** Whether the lib SMART backend (libsmartmon_go.so) is available at runtime */
@@ -1850,6 +1852,8 @@ export type SmbConf = {
 export type Settings = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
+  addon_mdns_interfaces?: string[];
+  addon_mdns_registration?: boolean;
   allow_guest?: boolean;
   allow_hosts?: string[];
   bind_all_interfaces?: boolean;

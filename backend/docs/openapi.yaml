@@ -2049,6 +2049,14 @@ components:
           format: uri
           readOnly: true
           type: string
+        addon_mdns_interfaces:
+          default: []
+          items:
+            type: string
+          type: array
+        addon_mdns_registration:
+          default: false
+          type: boolean
         allow_guest:
           default: false
           type: boolean
@@ -2425,6 +2433,13 @@ components:
           format: uri
           readOnly: true
           type: string
+        available_mdns_interfaces:
+          description: Network interfaces eligible for addon-side direct mDNS registration
+          items:
+            type: string
+          type:
+            - array
+            - "null"
         has_kernel_module:
           description: Whether QUIC kernel module is loaded
           type: boolean
@@ -3283,8 +3298,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3681,8 +3696,8 @@ paths:
     post:
       operationId: post-api-filesystem-check-abort
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
@@ -4153,8 +4168,8 @@ paths:
     get:
       operationId: get-api-health
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -4239,8 +4254,8 @@ paths:
     post:
       operationId: generate-issue-report
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
@@ -4375,8 +4390,8 @@ paths:
     get:
       operationId: list-api-nics
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -4565,8 +4580,8 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -4879,8 +4894,8 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -5048,8 +5063,8 @@ paths:
     get:
       operationId: get-api-samba-config
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -5134,8 +5149,8 @@ paths:
     get:
       operationId: get-api-settings
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -5199,6 +5214,14 @@ paths:
                   format: uri
                   readOnly: true
                   type: string
+                addon_mdns_interfaces:
+                  default: []
+                  items:
+                    type: string
+                  type: array
+                addon_mdns_registration:
+                  default: false
+                  type: boolean
                 allow_guest:
                   default: false
                   type: boolean
@@ -5274,6 +5297,14 @@ paths:
                   format: uri
                   readOnly: true
                   type: string
+                addon_mdns_interfaces:
+                  default: []
+                  items:
+                    type: string
+                  type: array
+                addon_mdns_registration:
+                  default: false
+                  type: boolean
                 allow_guest:
                   default: false
                   type: boolean
@@ -5645,8 +5676,8 @@ paths:
     delete:
       operationId: delete-api-settings-homeassistant-custom-component
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -5731,8 +5762,8 @@ paths:
     get:
       operationId: get-api-settings-homeassistant-custom-component-status
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -5774,8 +5805,8 @@ paths:
     post:
       operationId: post-api-settings-homeassistant-custom-component-upgrade
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -5817,8 +5848,8 @@ paths:
     post:
       operationId: post-api-settings-homeassistant-restart-core
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -6278,8 +6309,8 @@ paths:
             description: Name of the share to enable
             maxLength: 128
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -6901,8 +6932,8 @@ paths:
             default: false
             description: Force umount operation
             type: boolean
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "204":
           description: No Content

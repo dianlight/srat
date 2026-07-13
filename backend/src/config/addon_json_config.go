@@ -85,10 +85,10 @@ type Config struct {
 	UpdateChannel   string `json:"update_channel"`
 	TelemetryMode   string `json:"telemetry_mode"`
 	// Only For Default management
-	HAUseNFS        *bool `json:"ha_use_nfs,omitempty" default:"false"`
-	ExportStatsToHA bool  `json:"export_stats_to_ha,omitempty" default:"false"`
-	SMBoverQUIC     bool  `json:"smb_over_quic,omitempty" default:"false"`
-	MDNSRegistration              bool   `json:"mdns_registration,omitempty" default:"false"`
+	HAUseNFS         *bool `json:"ha_use_nfs,omitempty" default:"false"`
+	ExportStatsToHA  bool  `json:"export_stats_to_ha,omitempty" default:"false"`
+	SMBoverQUIC      bool  `json:"smb_over_quic,omitempty" default:"false"`
+	MDNSRegistration bool  `json:"mdns_registration,omitempty" default:"false"`
 }
 
 // ReadConfigBuffer reads and parses a configuration file.

@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"log/slog"
+	stdnet "net"
 	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -222,5 +223,39 @@ func (handler *SystemHanler) GetCapabilitiesHandler(ctx context.Context, input *
 		capabilities.LibSmartAvailable = handler.apiCtx.LibSmartAvailable
 	}
 
+	// Report network interfaces eligible for addon-side direct mDNS registration.
+	capabilities.AvailableMDNSInterfaces = availableMDNSInterfaces()
+
 	return &struct{ Body dto.SystemCapabilities }{Body: capabilities}, nil
+}
+
+// availableMDNSInterfaces returns the names of network interfaces that are
+// eligible for addon-side direct mDNS registration. Loopback, down, and
+// container/virtual interfaces (docker*, veth*, hassio*, br-*) are excluded.
+func availableMDNSInterfaces() []string {
+	ifaces, err := stdnet.Interfaces()
+	if err != nil {
+		slog.Warn("Failed to list network interfaces for mDNS capabilities", "error", err)
+		return nil
+	}
+
+	var names []string
+	for _, iface := range ifaces {
+		if iface.Flags&stdnet.FlagUp == 0 {
+			continue
+		}
+		if iface.Flags&stdnet.FlagLoopback != 0 {
+			continue
+		}
+		name := iface.Name
+		if strings.HasPrefix(name, "lo") ||
+			strings.HasPrefix(name, "docker") ||
+			strings.HasPrefix(name, "veth") ||
+			strings.HasPrefix(name, "hassio") ||
+			strings.HasPrefix(name, "br-") {
+			continue
+		}
+		names = append(names, name)
+	}
+	return names
 }
