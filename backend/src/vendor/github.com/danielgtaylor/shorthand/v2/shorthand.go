@@ -1,12 +1,14 @@
 package shorthand
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 )
@@ -60,12 +62,7 @@ func getInput(mode fs.FileMode, stdinFile io.Reader, args []string, options Pars
 			return nil, false, ErrInvalidFile
 		}
 
-		result, err := Unmarshal(string(d), ParseOptions{
-			EnableFileInput:     options.EnableFileInput,
-			ForceStringKeys:     options.ForceStringKeys,
-			ForceFloat64Numbers: options.ForceFloat64Numbers,
-			DebugLogger:         options.DebugLogger,
-		}, nil)
+		result, err := Unmarshal(string(d), options, nil)
 		if err != nil {
 			return nil, false, err
 		}
@@ -95,11 +92,7 @@ func (o MarshalOptions) GetIndent(level int) string {
 	if o.Indent == "" {
 		return ""
 	}
-	result := "\n"
-	for i := 0; i < level; i++ {
-		result += o.Indent
-	}
-	return result
+	return "\n" + strings.Repeat(o.Indent, level)
 }
 
 func (o MarshalOptions) GetSeparator(level int) string {
@@ -108,6 +101,53 @@ func (o MarshalOptions) GetSeparator(level int) string {
 	}
 
 	return "," + o.Spacer
+}
+
+var marshalString = json.Marshal
+
+func quoteString(s string) string {
+	b, err := marshalString(s)
+	if err == nil {
+		return string(b)
+	}
+	return strconv.Quote(strings.ToValidUTF8(s, "\ufffd"))
+}
+
+func containsAnyRune(s string, chars string) bool {
+	return strings.IndexAny(s, chars) >= 0
+}
+
+func shouldQuoteKey(s string) bool {
+	return s == "" ||
+		canCoerce(s) ||
+		strings.TrimSpace(s) != s ||
+		strings.Contains(s, "//") ||
+		containsAnyRune(s, "\".[]{}:^,\\")
+}
+
+func shouldQuoteStringValue(s string) bool {
+	return s == "" ||
+		s == "undefined" ||
+		canCoerce(s) ||
+		strings.TrimSpace(s) != s ||
+		strings.HasPrefix(s, "@") ||
+		strings.HasPrefix(s, "%") ||
+		strings.Contains(s, "//") ||
+		containsAnyRune(s, "\"[],{}\n\r\t\\")
+}
+
+func renderStringKey(s string) string {
+	if shouldQuoteKey(s) {
+		return quoteString(s)
+	}
+	return s
+}
+
+func renderMapKey(k any) string {
+	if s, ok := k.(string); ok {
+		return renderStringKey(s)
+	}
+	return fmt.Sprintf("%v", k)
 }
 
 func Marshal(input any, options ...MarshalOptions) string {
@@ -119,7 +159,7 @@ func Marshal(input any, options ...MarshalOptions) string {
 
 func MarshalCLI(input any) string {
 	result := Marshal(input, MarshalOptions{Spacer: " ", UseFile: true})
-	if strings.HasPrefix(result, "{") {
+	if strings.HasPrefix(result, "{") && result != "{}" {
 		result = result[1 : len(result)-1]
 	}
 	return result
@@ -149,12 +189,12 @@ func renderValue(options MarshalOptions, level int, fromKey bool, value any) str
 				dot = "."
 			}
 			for k := range v {
-				return dot + fmt.Sprintf("%v", k) + renderValue(options, level, true, v[k])
+				return dot + renderMapKey(k) + renderValue(options, level, true, v[k])
 			}
 		}
 
 		// Normal case: foo{a: 1, b: 2}
-		var keys []any
+		keys := make([]any, 0, len(v))
 
 		for k := range v {
 			keys = append(keys, k)
@@ -164,9 +204,9 @@ func renderValue(options MarshalOptions, level int, fromKey bool, value any) str
 			return fmt.Sprintf("%v", keys[i]) < fmt.Sprintf("%v", keys[j])
 		})
 
-		var fields []string
+		fields := make([]string, 0, len(v))
 		for _, k := range keys {
-			fields = append(fields, fmt.Sprintf("%v", k)+renderValue(options, level+1, true, v[k]))
+			fields = append(fields, renderMapKey(k)+renderValue(options, level+1, true, v[k]))
 		}
 
 		return "{" + options.GetIndent(level+1) + strings.Join(fields, options.GetSeparator(level+1)) + options.GetIndent(level) + "}"
@@ -178,12 +218,12 @@ func renderValue(options MarshalOptions, level int, fromKey bool, value any) str
 				dot = "."
 			}
 			for k := range v {
-				return dot + k + renderValue(options, level, true, v[k])
+				return dot + renderStringKey(k) + renderValue(options, level, true, v[k])
 			}
 		}
 
 		// Normal case: foo{a: 1, b: 2}
-		var keys []string
+		keys := make([]string, 0, len(v))
 
 		for k := range v {
 			keys = append(keys, k)
@@ -191,18 +231,14 @@ func renderValue(options MarshalOptions, level int, fromKey bool, value any) str
 
 		sort.Strings(keys)
 
-		var fields []string
+		fields := make([]string, 0, len(v))
 		for _, k := range keys {
-			kStr := k
-			if canCoerce(k) {
-				kStr = `"` + k + `"`
-			}
-			fields = append(fields, kStr+renderValue(options, level+1, true, v[k]))
+			fields = append(fields, renderStringKey(k)+renderValue(options, level+1, true, v[k]))
 		}
 
 		return "{" + options.GetIndent(level+1) + strings.Join(fields, options.GetSeparator(level+1)) + options.GetIndent(level) + "}"
 	case []any:
-		var items []string
+		items := make([]string, 0, len(v))
 
 		// Normal case: foo: [1, true, {id: 1, count: 2}]
 		for _, item := range v {
@@ -212,15 +248,11 @@ func renderValue(options MarshalOptions, level int, fromKey bool, value any) str
 		return prefix + "[" + options.GetIndent(level+1) + strings.Join(items, options.GetSeparator(level+1)) + options.GetIndent(level) + "]"
 	default:
 		if s, ok := v.(string); ok {
-			if canCoerce(s) {
-				// This is a string but needs to be quoted so it doesn't get coerced
-				// into some other type when parsed.
-				v = `"` + strings.Replace(s, `"`, `\"`, -1) + `"`
-			}
-
 			if options.UseFile && (len(s) > 50 || strings.Contains(s, "\n")) {
 				// Long strings are represented as being loaded from files.
 				v = "@file"
+			} else if shouldQuoteStringValue(s) {
+				v = quoteString(s)
 			}
 		}
 

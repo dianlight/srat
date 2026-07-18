@@ -11,6 +11,7 @@ Features:
 - Fast, low-allocation parser and runtime
   - Many simple expressions are zero-allocation
 - Type checking during parsing
+- Typed scalar functions and lazy `func()` values
 - Simple
   - Easy to learn
   - Easy to read
@@ -32,7 +33,7 @@ Try it out on the [Go Playground](https://play.golang.org/p/Z0UcEBgfxu_r)! You c
 import "github.com/danielgtaylor/mexpr"
 
 // Convenience for lexing/parsing/running in one step:
-result, err := mexpr.Eval("a > b", map[string]interface{}{
+result, err := mexpr.Eval("a > b", map[string]any{
 	"a": 2,
 	"b": 1,
 })
@@ -41,24 +42,26 @@ result, err := mexpr.Eval("a > b", map[string]interface{}{
 // omitted for brevity.
 l := mexpr.NewLexer("a > b")
 p := mexpr.NewParser(l)
-ast, err := mexpr.Parse()
-typeExamples = map[string]interface{}{
+ast, err := p.Parse()
+typeExamples := map[string]any{
 	"a": 2,
 	"b": 1,
 }
-err := mexpr.TypeCheck(ast, typeExamples)
+err = mexpr.TypeCheck(ast, typeExamples)
 interpreter := mexpr.NewInterpreter(ast)
-result1, err := interpreter.Run(map[string]interface{}{
+result1, err := interpreter.Run(map[string]any{
 	"a": 1,
 	"b": 2,
 })
-result2, err := interpreter.Run(map[string]interfae{}{
+result2, err := interpreter.Run(map[string]any{
 	"a": 150,
 	"b": 30,
 })
 ```
 
 Pretty errors use the passed-in input along with the error's offset to display an arrow of where within the expression the error occurs.
+
+Offsets and lengths are rune-based, so caret placement stays correct for Unicode input.
 
 ```go
 inputStr := "2 * foo"
@@ -79,10 +82,11 @@ When running the interpreter a set of options can be passed in to change behavio
 
 ```go
 // Using the top-level eval
-mexpr.Eval(expression, inputObj, StrictMode)
+result, err := mexpr.Eval(expression, inputObj, mexpr.StrictMode)
 
 // Using an interpreter instance
-interpreter.Run(inputObj, StrictMode)
+interpreter := mexpr.NewInterpreter(ast, mexpr.StrictMode)
+result, err = interpreter.Run(inputObj)
 ```
 
 ## Syntax
@@ -137,6 +141,8 @@ Math operations between constants are precomputed when possible, so it is effici
 - `and`
 - `or`
 
+Both `and` and `or` are short-circuited.
+
 ```py
 1 < 2 and 3 < 4
 ```
@@ -147,6 +153,29 @@ Non-boolean values are converted to booleans. The following result in `true`:
 - non-empty string
 - array with at least one item
 - map with at least one key/value pair
+
+### Functions
+
+- `identifier(...)`
+
+Functions can be called by providing them in the variables map.
+
+```go
+result, err := mexpr.Eval("myFunc(a, b)", map[string]interface{}{
+	"myFunc": func(a, b int) int { return a + b },
+	"a": 1,
+	"b": 2,
+})
+```
+
+Current limitations:
+
+- only regular, non-variadic functions are supported
+- parameter and return types must be `bool`, integer, float, or `string`
+- functions must have exactly one return value
+- zero-argument scalar functions can also be used as lazy values, e.g. `id + 1`
+
+Numeric arguments are coerced to the target Go type using standard Go conversions. For example, calling a function that takes an `int` with `1.9` will pass `1` to the function. If you need fractional behavior, make the function accept a float type.
 
 ### String operators
 
@@ -165,7 +194,7 @@ Indexes are zero-based. Slice indexes are optional and are _inclusive_. `foo[1:2
 
 Any value concatenated with a string will result in a string. For example `"id" + 1` will result in `"id1"`.
 
-There is no distinction between strings, bytes, or runes. Everything is treated as a string.
+String length, indexing, and slicing are Unicode-aware and operate on runes rather than raw bytes.
 
 #### Date Comparisons
 
@@ -182,6 +211,8 @@ String dates & times can be compared if they follow RFC 3339 / ISO 8601 with or 
 - `+` (concatenation)
 - `in` (has item), e.g. `1 in foo`
 - `contains` e.g. `foo contains 1`
+
+Common Go slice inputs like `[]any`, `[]int`, `[]float64`, and `[]string` are supported directly without normalizing them into `[]any` first. Other slice and array types fall back to reflection.
 
 Indexes are zero-based. Slice indexes are optional and are _inclusive_. `foo[1:2]` returns `[2, 3]` if the `foo` is `[1, 2, 3, 4]`. Indexes can be negative, e.g. `foo[-1]` selects the last item in the array.
 
@@ -220,6 +251,21 @@ not (items where id > 3)
 - Accessing values, e.g. `foo.bar.baz`
 - `in` (has key), e.g. `"key" in foo`
 - `contains` e.g. `foo contains "key"`
+
+### Conversions
+
+Any value concatenated with a string will result in a string. For example `"id" + 1` will result in `"id1"`.
+
+The value of a variable can be mapped to a function. This allows the implementor to use functions to retrieve actual values of variables rather than pre-computing values:
+
+```go
+result, _ := mexpr.Eval(`id + 1`, map[string]interface{}{
+    "id": func() int { return 123 },
+})
+// result is 124
+```
+
+In combination with `and`/`or` short-circuiting, this allows lazy evaluation.
 
 #### Map wildcard filtering
 

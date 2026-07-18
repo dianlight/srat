@@ -100,15 +100,47 @@ type StreamResponse struct {
 const styleDeepObject = "deepObject"
 
 type paramFieldInfo struct {
-	Type       reflect.Type
-	Name       string
-	Loc        string
-	Required   bool
-	Default    string
-	TimeFormat string
-	Explode    bool
-	Style      string
-	Schema     *Schema
+	Type        reflect.Type
+	Name        string
+	Loc         string
+	Required    bool
+	Default     string
+	TimeFormat  string
+	Explode     bool
+	Style       string
+	ContentType string
+	Schema      *Schema
+}
+
+// jsonFormFieldInfo holds precomputed metadata for a multipart form field that
+// is unmarshalled and validated as JSON (via `contentType:"application/json"`).
+// It is computed once at registration time to keep request handling cheap.
+type jsonFormFieldInfo struct {
+	schema   *Schema
+	defaults *findResult[any]
+}
+
+// multipartFieldNeedsJSONTag reports whether a multipart form field of type t
+// can only be handled by unmarshalling it as JSON, i.e. it cannot be parsed
+// from a plain-text form value by parseInto. Such fields must be tagged
+// `contentType:"application/json"`.
+//
+// It is intentionally conservative: it flags only struct and map types that are
+// not otherwise scalar-parseable, so it never reports a field that parseInto
+// would have handled successfully.
+func multipartFieldNeedsJSONTag(t reflect.Type) bool {
+	switch t.Kind() {
+	case reflect.Struct, reflect.Map:
+		if t == timeType || t == urlType {
+			return false
+		}
+		if reflect.PointerTo(t).Implements(paramWrapperType) ||
+			reflect.PointerTo(t).Implements(textUnmarshalerType) {
+			return false
+		}
+		return true
+	}
+	return false
 }
 
 // paramLocation holds the result of parsing a struct field's parameter location tags.
@@ -241,9 +273,21 @@ func findParams(registry Registry, op *Operation, t reflect.Type) *findResult[*p
 		pfi := pl.pfi
 		pfi.Schema = SchemaFromField(registry, f, "")
 
-		// While discouraged, make it possible to make query/header params required.
+		// While discouraged, make it possible to override `required` for non-path
+		// params via the struct tag. Path params are always required per the
+		// OpenAPI 3.x spec and are forced back to true below.
 		if _, ok = f.Tag.Lookup("required"); ok {
 			pfi.Required = boolTag(f, "required", false)
+		}
+
+		if _, ok = f.Tag.Lookup("contentType"); ok {
+			pfi.ContentType = f.Tag.Get("contentType")
+		}
+
+		// Per OpenAPI 3.x spec, path parameters MUST always be required.
+		// Override any user-set `required:"false"` tag for path params.
+		if pfi.Loc == "path" {
+			pfi.Required = true
 		}
 
 		if pfi.Type == timeType {
@@ -771,8 +815,44 @@ func Register[I, O any](api API, op Operation, handler func(context.Context, *I)
 
 	a := api.Adapter()
 	var rawBodyInputParams *findResult[*paramFieldInfo]
+	// jsonFormFields holds precomputed metadata for multipart form fields that
+	// carry `contentType:"application/json"`, so the per-request handler avoids
+	// repeating schema lookups and reflection-based default discovery.
+	var jsonFormFields map[*paramFieldInfo]*jsonFormFieldInfo
 	if rawBodyDataT != nil {
 		rawBodyInputParams = findParams(registry, &op, rawBodyDataT)
+		for i := range rawBodyInputParams.Paths {
+			p := rawBodyInputParams.Paths[i].Value
+			if p.Loc != "form" || p.Type == formFileType || p.Type == formFilesType {
+				continue
+			}
+			// Resolve the field's content type the same way body codecs do (via
+			// parseContentType), so `+json` suffixes and `;charset` parameters
+			// are handled consistently.
+			ct := ""
+			if start, end, err := parseContentType(p.ContentType); err == nil {
+				ct = strings.ToLower(p.ContentType[start:end])
+			}
+			if ct != "application/json" && ct != "json" {
+				// Fail fast at registration with actionable guidance rather than
+				// a confusing "unsupported param type" error at request time.
+				if multipartFieldNeedsJSONTag(p.Type) {
+					panic(fmt.Errorf(`multipart form field '%s' of type '%s' requires contentType:"application/json" to be unmarshalled as JSON`, p.Name, p.Type))
+				}
+				continue
+			}
+			if jsonFormFields == nil {
+				jsonFormFields = map[*paramFieldInfo]*jsonFormFieldInfo{}
+			}
+			var schema *Schema
+			if mt := op.RequestBody.Content["multipart/form-data"]; mt != nil && mt.Schema != nil {
+				schema = mt.Schema.Properties[p.Name]
+			}
+			jsonFormFields[p] = &jsonFormFieldInfo{
+				schema:   schema,
+				defaults: findDefaults(registry, p.Type),
+			}
+		}
 	}
 	a.Handle(&op, api.Middlewares().Handler(op.Middlewares.Handler(func(ctx Context) {
 		var input I
@@ -917,10 +997,15 @@ func Register[I, O any](api API, op Operation, handler func(context.Context, *I)
 			if rbt.isMultipart() {
 				// Read form
 				form, err := readForm(ctx)
+				jsonUnmarshaler := func(data []byte, v any) error { return api.Unmarshal("application/json", data, v) }
 
 				if err != nil {
 					res.Errors = append(res.Errors, err)
 				} else {
+					if op.BodyReadTimeout > 0 {
+						ctx.SetReadDeadline(time.Time{})
+					}
+
 					var formValueParser func(val reflect.Value)
 					if rbt == rbtMultipart {
 						formValueParser = func(val reflect.Value) {}
@@ -956,6 +1041,30 @@ func Register[I, O any](api API, op Operation, handler func(context.Context, *I)
 									res.Add(pb, value, "expected at most one value, but received multiple values")
 									return
 								}
+
+								// JSON fields
+								if jf := jsonFormFields[p]; jf != nil {
+									errorsBeforeValidation := len(res.Errors)
+
+									var parsed any
+									if err := jsonUnmarshaler([]byte(value[0]), &parsed); err != nil {
+										res.Add(pb, value, "invalid JSON: "+err.Error())
+									} else if !op.SkipValidateParams {
+										Validate(oapi.Components.Schemas, jf.schema, pb, ModeWriteToServer, parsed, res)
+									}
+
+									if errorsBeforeValidation == len(res.Errors) {
+										if err := jsonUnmarshaler([]byte(value[0]), f.Addr().Interface()); err != nil {
+											// Should have been caught by the validation above.
+											res.Add(pb, value, "invalid JSON: "+err.Error())
+										}
+										// Set defaults on the unmarshalled value.
+										setDefaults(f, jf.defaults)
+									}
+									return
+								}
+
+								// Regular fields
 								pv, err := parseInto(ctx, f, value[0], value, *p)
 								if err != nil {
 									res.Add(pb, value, err.Error())
@@ -986,6 +1095,9 @@ func Register[I, O any](api API, op Operation, handler func(context.Context, *I)
 					bufCloser()
 					writeErr(api, ctx, cErr, *res)
 					return
+				}
+				if op.BodyReadTimeout > 0 {
+					ctx.SetReadDeadline(time.Time{})
 				}
 				body := buf.Bytes()
 
@@ -1683,7 +1795,7 @@ var errUnparsable = errors.New("unparsable value")
 // parseInto converts the string value into the expected type using the
 // parameter field information p and sets the result on f.
 func parseInto(ctx Context, f reflect.Value, value string, preSplit []string, p paramFieldInfo) (any, error) {
-	// built-in types
+	// Built-in types.
 	switch p.Type.Kind() {
 	case reflect.String:
 		f.SetString(value)
@@ -1693,28 +1805,36 @@ func parseInto(ctx Context, f reflect.Value, value string, preSplit []string, p 
 		if err != nil {
 			return nil, errors.New("invalid integer")
 		}
+
 		f.SetInt(v)
+
 		return v, nil
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		v, err := strconv.ParseUint(value, 10, 64)
 		if err != nil {
 			return nil, errors.New("invalid integer")
 		}
+
 		f.SetUint(v)
+
 		return v, nil
 	case reflect.Float32, reflect.Float64:
 		v, err := strconv.ParseFloat(value, 64)
 		if err != nil {
 			return nil, errors.New("invalid float")
 		}
+
 		f.SetFloat(v)
+
 		return v, nil
 	case reflect.Bool:
 		v, err := strconv.ParseBool(value)
 		if err != nil {
 			return nil, errors.New("invalid boolean")
 		}
+
 		f.SetBool(v)
+
 		return v, nil
 	case reflect.Slice:
 		var values []string
@@ -1728,27 +1848,31 @@ func parseInto(ctx Context, f reflect.Value, value string, preSplit []string, p 
 				values = strings.Split(value, ",")
 			}
 		}
+
 		pv, err := parseSliceInto(f, values)
 		if err != nil {
 			if errors.Is(err, errUnparsable) {
 				break
 			}
+
 			return nil, err
 		}
+
 		return pv, nil
 	}
 
-	// special types
+	// Special types.
 	switch f.Type() {
-	case timeType: // Special case: time.Time
-		// return nil, errors.New(value)
+	case timeType: // Special case: time.Time.
 		t, err := time.Parse(p.TimeFormat, value)
 		if err != nil {
 			return nil, errors.New("invalid date/time for format " + p.TimeFormat)
 		}
+
 		f.Set(reflect.ValueOf(t))
+
 		return value, nil
-	case urlType: // Special case: url.URL
+	case urlType: // Special case: url.URL.
 		u, err := url.Parse(value)
 		if err != nil {
 			return nil, errors.New("invalid url.URL value")
@@ -1762,207 +1886,253 @@ func parseInto(ctx Context, f reflect.Value, value string, preSplit []string, p 
 		if err := fn.UnmarshalText([]byte(value)); err != nil {
 			return nil, errors.New("invalid value: " + err.Error())
 		}
+
 		return value, nil
 	}
 
-	panic("unsupported param type " + p.Type.String())
+	return nil, fmt.Errorf("unsupported param type: %s", p.Type.String())
 }
 
 // parseSliceInto converts a slice of string values into the expected type of f
 // and sets the result on f.
 func parseSliceInto(f reflect.Value, values []string) (any, error) {
 	switch f.Type().Elem().Kind() {
-
 	case reflect.String:
 		if f.Type() == stringSliceType {
 			f.Set(reflect.ValueOf(values))
 		} else {
-			// Change element type to support slice of string subtypes (enums)
+			// Change element type to support slice of string subtypes (enums).
 			enumValues := reflect.New(f.Type()).Elem()
 			for _, val := range values {
 				enumVal := reflect.New(f.Type().Elem()).Elem()
 				enumVal.SetString(val)
 				enumValues.Set(reflect.Append(enumValues, enumVal))
 			}
+
 			f.Set(enumValues)
 		}
-		return values, nil
 
+		return values, nil
 	case reflect.Int:
 		vs, err := parseArrElement(values, func(s string) (int, error) {
 			val, err := strconv.ParseInt(s, 10, strconv.IntSize)
 			if err != nil {
 				return 0, err
 			}
+
 			return int(val), nil
 		})
 		if err != nil {
 			return nil, errors.New("invalid integer")
 		}
-		f.Set(reflect.ValueOf(vs))
-		return vs, nil
 
+		f.Set(reflect.ValueOf(vs))
+
+		return vs, nil
 	case reflect.Int8:
 		vs, err := parseArrElement(values, func(s string) (int8, error) {
 			val, err := strconv.ParseInt(s, 10, 8)
 			if err != nil {
 				return 0, err
 			}
+
 			return int8(val), nil
 		})
 		if err != nil {
 			return nil, errors.New("invalid integer")
 		}
-		f.Set(reflect.ValueOf(vs))
-		return vs, nil
 
+		f.Set(reflect.ValueOf(vs))
+
+		return vs, nil
 	case reflect.Int16:
 		vs, err := parseArrElement(values, func(s string) (int16, error) {
 			val, err := strconv.ParseInt(s, 10, 16)
 			if err != nil {
 				return 0, err
 			}
+
 			return int16(val), nil
 		})
 		if err != nil {
 			return nil, errors.New("invalid integer")
 		}
-		f.Set(reflect.ValueOf(vs))
-		return vs, nil
 
+		f.Set(reflect.ValueOf(vs))
+
+		return vs, nil
 	case reflect.Int32:
 		vs, err := parseArrElement(values, func(s string) (int32, error) {
 			val, err := strconv.ParseInt(s, 10, 32)
 			if err != nil {
 				return 0, err
 			}
+
 			return int32(val), nil
 		})
 		if err != nil {
 			return nil, errors.New("invalid integer")
 		}
-		f.Set(reflect.ValueOf(vs))
-		return vs, nil
 
+		f.Set(reflect.ValueOf(vs))
+
+		return vs, nil
 	case reflect.Int64:
 		vs, err := parseArrElement(values, func(s string) (int64, error) {
 			val, err := strconv.ParseInt(s, 10, 64)
 			if err != nil {
 				return 0, err
 			}
+
 			return val, nil
 		})
 		if err != nil {
 			return nil, errors.New("invalid integer")
 		}
-		f.Set(reflect.ValueOf(vs))
-		return vs, nil
 
+		f.Set(reflect.ValueOf(vs))
+
+		return vs, nil
 	case reflect.Uint:
 		vs, err := parseArrElement(values, func(s string) (uint, error) {
 			val, err := strconv.ParseUint(s, 10, strconv.IntSize)
 			if err != nil {
 				return 0, err
 			}
+
 			return uint(val), nil
 		})
 		if err != nil {
 			return nil, errors.New("invalid integer")
 		}
-		f.Set(reflect.ValueOf(vs))
-		return vs, nil
 
+		f.Set(reflect.ValueOf(vs))
+
+		return vs, nil
 	case reflect.Uint8:
 		vs, err := parseArrElement(values, func(s string) (uint8, error) {
 			val, err := strconv.ParseUint(s, 10, 8)
 			if err != nil {
 				return 0, err
 			}
+
 			return uint8(val), nil
 		})
 		if err != nil {
 			return nil, errors.New("invalid integer")
 		}
-		f.Set(reflect.ValueOf(vs))
-		return vs, nil
 
+		f.Set(reflect.ValueOf(vs))
+
+		return vs, nil
 	case reflect.Uint16:
 		vs, err := parseArrElement(values, func(s string) (uint16, error) {
 			val, err := strconv.ParseUint(s, 10, 16)
 			if err != nil {
 				return 0, err
 			}
+
 			return uint16(val), nil
 		})
 		if err != nil {
 			return nil, errors.New("invalid integer")
 		}
-		f.Set(reflect.ValueOf(vs))
-		return vs, nil
 
+		f.Set(reflect.ValueOf(vs))
+
+		return vs, nil
 	case reflect.Uint32:
 		vs, err := parseArrElement(values, func(s string) (uint32, error) {
 			val, err := strconv.ParseUint(s, 10, 32)
 			if err != nil {
 				return 0, err
 			}
+
 			return uint32(val), nil
 		})
 		if err != nil {
 			return nil, errors.New("invalid integer")
 		}
-		f.Set(reflect.ValueOf(vs))
-		return vs, nil
 
+		f.Set(reflect.ValueOf(vs))
+
+		return vs, nil
 	case reflect.Uint64:
 		vs, err := parseArrElement(values, func(s string) (uint64, error) {
 			val, err := strconv.ParseUint(s, 10, 64)
 			if err != nil {
 				return 0, err
 			}
+
 			return val, nil
 		})
 		if err != nil {
 			return nil, errors.New("invalid integer")
 		}
-		f.Set(reflect.ValueOf(vs))
-		return vs, nil
 
+		f.Set(reflect.ValueOf(vs))
+
+		return vs, nil
 	case reflect.Float32:
 		vs, err := parseArrElement(values, func(s string) (float32, error) {
 			val, err := strconv.ParseFloat(s, 32)
 			if err != nil {
 				return 0, err
 			}
+
 			return float32(val), nil
 		})
 		if err != nil {
 			return nil, errors.New("invalid floating value")
 		}
-		f.Set(reflect.ValueOf(vs))
-		return vs, nil
 
+		f.Set(reflect.ValueOf(vs))
+
+		return vs, nil
 	case reflect.Float64:
 		vs, err := parseArrElement(values, func(s string) (float64, error) {
 			val, err := strconv.ParseFloat(s, 64)
 			if err != nil {
 				return 0, err
 			}
-			return float64(val), nil
+
+			return val, nil
 		})
 		if err != nil {
 			return nil, errors.New("invalid floating value")
 		}
+
 		f.Set(reflect.ValueOf(vs))
+
 		return vs, nil
 	}
+
+	// Last resort: use the `encoding.TextUnmarshaler` interface.
+	if reflect.PointerTo(f.Type().Elem()).Implements(textUnmarshalerType) {
+		vs := reflect.MakeSlice(f.Type(), 0, len(values))
+
+		for _, s := range values {
+			v := reflect.New(f.Type().Elem())
+			fn := v.Interface().(encoding.TextUnmarshaler)
+			if err := fn.UnmarshalText([]byte(s)); err != nil {
+				return nil, errors.New("invalid value: " + err.Error())
+			}
+
+			vs = reflect.Append(vs, v.Elem())
+		}
+
+		f.Set(vs)
+
+		return values, nil
+	}
+
 	return nil, errUnparsable
 }
 
 type contextError struct {
 	Code int
-	Msg  string
 	Errs []error
+	Msg  string
 }
 
 func (e *contextError) Error() string {
@@ -1998,6 +2168,7 @@ func processMultipartMsgBody(form *multipart.Form, op Operation, v reflect.Value
 			return &contextError{Code: http.StatusUnprocessableEntity, Msg: "validation failed", Errs: errs}
 		}
 	}
+
 	return nil
 }
 
@@ -2099,6 +2270,14 @@ func parseBodyInto(v reflect.Value, bodyIndex []int, u intoUnmarshaler, body []b
 		}
 	}
 	// Set defaults for any fields that were not in the input.
+	setDefaults(v, defaults)
+	return nil
+}
+
+// setDefaults sets default values on every field reachable from v that was left
+// at its zero value. It is shared by the request body and multipart JSON form
+// field decoding paths.
+func setDefaults(v reflect.Value, defaults *findResult[any]) {
 	defaults.Every(v, func(item reflect.Value, def any) {
 		if item.IsZero() {
 			if item.Kind() == reflect.Pointer {
@@ -2108,7 +2287,6 @@ func parseBodyInto(v reflect.Value, bodyIndex []int, u intoUnmarshaler, body []b
 			item.Set(reflect.Indirect(reflect.ValueOf(def)))
 		}
 	})
-	return nil
 }
 
 // readBody reads the message body from ctx into buf, respecting the
