@@ -6,7 +6,7 @@ require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/gorilla/mux v1.8.1
 	github.com/maniartech/signals v1.3.1
-	github.com/mattn/go-isatty v0.0.21 // indirect
+	github.com/mattn/go-isatty v0.0.22 // indirect
 	github.com/oapi-codegen/runtime v1.5.0
 	github.com/pilebones/go-udev v0.9.1
 	github.com/shirou/gopsutil/v4 v4.26.6
@@ -20,7 +20,7 @@ require (
 	github.com/adelolmo/hd-idle v0.0.0-20260628105713-0c42d8cca82f
 	github.com/angusgmorrison/logfusc v0.1.0
 	github.com/benmcclelland/sgio v0.0.0-20250710154739-45e823ff1f46
-	github.com/danielgtaylor/huma/v2 v2.38.0
+	github.com/danielgtaylor/huma/v2 v2.39.0
 	github.com/dianlight/smartmontools-go v0.4.1
 	github.com/dianlight/tlog v0.2.2
 	github.com/fatih/color v1.19.0
@@ -87,13 +87,13 @@ require (
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
-	github.com/danielgtaylor/mexpr v1.9.1 // indirect
-	github.com/danielgtaylor/shorthand/v2 v2.2.0 // indirect
+	github.com/danielgtaylor/mexpr v1.10.1 // indirect
+	github.com/danielgtaylor/shorthand/v2 v2.4.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/ebitengine/purego v0.10.0 // indirect
 	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
-	github.com/fxamacker/cbor/v2 v2.9.1 // indirect
+	github.com/fxamacker/cbor/v2 v2.9.2 // indirect
 	github.com/glebarez/go-sqlite v1.22.0 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/google/go-querystring v1.2.0 // indirect
