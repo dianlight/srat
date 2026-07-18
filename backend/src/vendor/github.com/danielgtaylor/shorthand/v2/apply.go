@@ -56,6 +56,7 @@ func (d *Document) applyIndex(input any, op Operation) (any, Error) {
 
 	// Start by assuming an append (no index)
 	index := -1
+	parsedIndex := -1
 	appnd := true
 	insert := false
 	for {
@@ -77,6 +78,7 @@ func (d *Document) applyIndex(input any, op Operation) (any, Error) {
 		if err != nil {
 			return nil, d.error(uint(len(s)), "Cannot convert index to number")
 		}
+		parsedIndex = index
 		appnd = false
 	}
 	if d.options.DebugLogger != nil {
@@ -90,6 +92,9 @@ func (d *Document) applyIndex(input any, op Operation) (any, Error) {
 
 	s := input.([]any)
 	if appnd {
+		if op.Kind == OpDelete {
+			return s, nil
+		}
 		// Append (i.e. index equals length).
 		index = len(s)
 	} else if index < 0 {
@@ -97,11 +102,20 @@ func (d *Document) applyIndex(input any, op Operation) (any, Error) {
 		index = len(s) + index
 	}
 
+	if !appnd && (index < 0 || (op.Kind == OpDelete && index >= len(s))) {
+		if op.Kind == OpDelete {
+			return s, nil
+		}
+		return nil, d.error(1, "Index %d out of range", parsedIndex)
+	}
+
 	// Grow by appending nil until the slice is the right length.
 	grew := false
-	for len(s) <= index {
-		grew = true
-		s = append(s, nil)
+	if op.Kind != OpDelete {
+		for len(s) <= index {
+			grew = true
+			s = append(s, nil)
+		}
 	}
 
 	// Handle insertion, i.e. shifting items if needed after appending a new
@@ -139,7 +153,7 @@ func (d *Document) applyIndex(input any, op Operation) (any, Error) {
 		}
 		s[index] = result
 	} else {
-		panic("unexpected char " + string(p))
+		return nil, d.error(1, "unexpected character %s in path", runeStr(p))
 	}
 
 	return s, nil
@@ -168,10 +182,9 @@ func (d *Document) applyPathPart(input any, op Operation) (any, Error) {
 
 		if r == '.' || r == '[' || r == -1 {
 			keystr := d.buf.String()
-			var key any = keystr
 			d.buf.Reset()
 
-			if key == "" && !quoted {
+			if keystr == "" && !quoted {
 				// Special case: raw value
 				if r == '[' {
 					// This raw value is an array.
@@ -180,48 +193,76 @@ func (d *Document) applyPathPart(input any, op Operation) (any, Error) {
 				return op.Value, nil
 			}
 
+			// Determine if this key coerces to a non-string type.
+			// Avoid boxing keystr into any until we actually need map[any]any.
+			var coercedKey any
+			hasCoercedKey := false
 			if !d.options.ForceStringKeys && !quoted {
 				if tmp, ok := coerceValue(keystr, d.options.ForceFloat64Numbers); ok {
-					key = tmp
+					coercedKey = tmp
+					hasCoercedKey = true
 				}
 			}
 
 			if d.options.DebugLogger != nil {
-				d.options.DebugLogger("Setting key %v", key)
+				if hasCoercedKey {
+					d.options.DebugLogger("Setting key %v", coercedKey)
+				} else {
+					d.options.DebugLogger("Setting key %v", keystr)
+				}
 			}
 
-			wantMap := true
-			applyFunc := d.applyPathPart
-			if r == '[' {
-				wantMap = false
-				applyFunc = d.applyIndex
-			} else if r == -1 {
-				applyFunc = applyValue
-			}
+			useIndex := r == '['
+			atLeaf := r == -1
+			wantMap := !useIndex
 
 			if !isMap(input) {
-				if def, ok := withDefault(true, key, nil); ok {
+				// withDefault needs a key to decide map[string]any vs map[any]any.
+				var defaultKey any
+				if hasCoercedKey {
+					defaultKey = coercedKey
+				} else {
+					defaultKey = keystr
+				}
+				if def, ok := withDefault(true, defaultKey, nil); ok {
 					input = def
 				}
 			}
 
 			if m, ok := input.(map[string]any); ok {
-				if s, ok := key.(string); ok {
+				if !hasCoercedKey {
+					// Fast path: string key on a string map. Use keystr directly
+					// to avoid boxing it into interface{}.
 					if wantMap && op.Kind == OpDelete {
-						delete(m, s)
+						delete(m, keystr)
 					} else {
-						result, err := applyFunc(m[s], op)
+						var result any
+						var err Error
+						if atLeaf {
+							result = op.Value
+						} else if useIndex {
+							result, err = d.applyIndex(m[keystr], op)
+						} else {
+							result, err = d.applyPathPart(m[keystr], op)
+						}
 						if err != nil {
 							return nil, err
 						}
-						m[s] = result
+						m[keystr] = result
 					}
 					break
-				} else {
-					// Key is not a string, so convert input into a generic
-					// map[any]any and process it further below.
-					input = makeGenericMap(m)
 				}
+				// Key is not a string, so convert input into a generic
+				// map[any]any and process it further below.
+				input = makeGenericMap(m)
+			}
+
+			// Box the key for map[any]any only when we actually reach this path.
+			var key any
+			if hasCoercedKey {
+				key = coercedKey
+			} else {
+				key = keystr
 			}
 
 			if m, ok := input.(map[any]any); ok {
@@ -232,7 +273,15 @@ func (d *Document) applyPathPart(input any, op Operation) (any, Error) {
 					if def, ok := withDefault(wantMap, key, v); ok {
 						v = def
 					}
-					result, err := applyFunc(v, op)
+					var result any
+					var err Error
+					if atLeaf {
+						result = op.Value
+					} else if useIndex {
+						result, err = d.applyIndex(v, op)
+					} else {
+						result, err = d.applyPathPart(v, op)
+					}
 					if err != nil {
 						return nil, err
 					}
@@ -241,7 +290,7 @@ func (d *Document) applyPathPart(input any, op Operation) (any, Error) {
 				break
 			}
 
-			panic("can't get here")
+			return nil, d.error(1, "internal error: unhandled map type")
 		}
 
 		d.buf.WriteRune(r)
@@ -251,12 +300,16 @@ func (d *Document) applyPathPart(input any, op Operation) (any, Error) {
 }
 
 func (d *Document) applySwap(input any, op Operation) (any, Error) {
+	rightPath, ok := op.Value.(string)
+	if !ok {
+		return nil, d.error(1, "swap operation value must be a path string, got %T", op.Value)
+	}
 	// First, get both left & right values from the input.
 	left, okl, err := GetPath(op.Path, input, GetOptions{DebugLogger: d.options.DebugLogger})
 	if err != nil {
 		return nil, err
 	}
-	right, okr, err := GetPath(op.Value.(string), input, GetOptions{DebugLogger: d.options.DebugLogger})
+	right, okr, err := GetPath(rightPath, input, GetOptions{DebugLogger: d.options.DebugLogger})
 	if err != nil {
 		return nil, err
 	}
@@ -286,11 +339,11 @@ func (d *Document) applySwap(input any, op Operation) (any, Error) {
 	if !okl {
 		kind = OpDelete
 	}
-	d.expression = op.Value.(string)
+	d.expression = rightPath
 	d.pos = 0
 	return d.applyPathPart(input, Operation{
 		Kind:  kind,
-		Path:  op.Value.(string),
+		Path:  rightPath,
 		Value: left,
 	})
 }
@@ -307,5 +360,5 @@ func (d *Document) applyOp(input any, op Operation) (any, Error) {
 		return d.applySwap(input, op)
 	}
 
-	return d.applyPathPart(input, op)
+	return nil, d.error(1, "unknown operation kind %d", op.Kind)
 }
