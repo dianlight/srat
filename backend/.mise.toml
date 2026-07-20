@@ -5,7 +5,7 @@ auto = true
 air = '1.65.3'
 "go:github.com/securego/gosec/v2/cmd/gosec" = "v2.28.0"
 "npm:@redocly/cli" = "2.39.0"
-oapi-codegen = "2.7.2"
+oapi-codegen = "2.8.0"
 
 [tasks]
 clean = "go -C src clean && rm -rf dist"
