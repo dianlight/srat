@@ -29,7 +29,7 @@
         "material-ui-confirm": "^4.0.0",
         "mui-chips-input": "^9.0.0",
         "normalize-url": "^9.0.1",
-        "openapi-explorer": "^2.4.801",
+        "openapi-explorer": "^2.4.820",
         "prismjs": "^1.30.0",
         "react": "^19.2.7",
         "react-dom": "^19.2.7",
@@ -1729,7 +1729,7 @@
 
     "openapi-data-validator": ["openapi-data-validator@2.0.54", "", { "dependencies": { "@apidevtools/json-schema-ref-parser": "^9.0", "ajv": "^8.5", "ajv-formats": "^2.1", "content-type": "^1.0", "lodash.clonedeep": "^4.5", "lodash.get": "^4.4", "media-typer": "^1.1", "require-from-string": "^2.0.2" } }, "sha512-JsqqILn+NwgsjA2wJsY+qvVqtkaWz7cnf7gbT+1Nm54+NSsQNguV+fd3Y6WefTkLug6PLws+zylfZ7QjD0s71Q=="],
 
-    "openapi-explorer": ["openapi-explorer@2.4.801", "", { "dependencies": { "@authress/login": "^2.0", "base64url": "^3.0.1", "buffer": "^6.0.3", "color": "^4.2.3", "i18next": "^21.9.0", "json5": "^2.2.3", "lit": "^2.3.1", "lodash.clonedeep": "^4.5.0", "lodash.merge": "^4.6.2", "marked": "^4.0.16", "openapi-data-validator": "^2.0.40", "openapi-resolver": "^4.1.71", "prismjs": "^1.29.0", "randexp": "^0.5.3", "toposort": "^2.0.2", "xml-but-prettier": "^1.0.1" } }, "sha512-HuoKXTvGOe+YG5mJq2kMCmfBQj87MN9YuNvuCCJV5BlJzSnNZ3xjZC2q7lPbc7MGZUCrRaHzAbxNChEN8kiEAg=="],
+    "openapi-explorer": ["openapi-explorer@2.4.820", "", { "dependencies": { "@authress/login": "^2.0", "base64url": "^3.0.1", "buffer": "^6.0.3", "color": "^4.2.3", "i18next": "^21.9.0", "json5": "^2.2.3", "lit": "^2.3.1", "lodash.clonedeep": "^4.5.0", "lodash.merge": "^4.6.2", "marked": "^4.0.16", "openapi-data-validator": "^2.0.40", "openapi-resolver": "^4.1.71", "prismjs": "^1.29.0", "randexp": "^0.5.3", "toposort": "^2.0.2", "xml-but-prettier": "^1.0.1" } }, "sha512-mHSIxkQS57/QDZtLJKZL4zmsR2HStgBI4PbrgYr/+i+Bk+HgRwdtBRN1n0uUnlHUenpyiOJAKPGleThm5rdhsA=="],
 
     "openapi-resolver": ["openapi-resolver@4.2.21", "", { "dependencies": { "@apidevtools/json-schema-ref-parser": "^15.3.1", "@babel/runtime-corejs3": "^7.18.9", "js-yaml": "^4.1.1", "lodash.clonedeepwith": "^4.5.0", "url": "^0.11.4" } }, "sha512-OCvBN0YcHbRFc3RYIBqCZS0Vxkoyh1fC5KJRURAGu2ULvHvUxryBjJGxzpRx90VEjfqblPoclVAab5JSq6c84Q=="],
 
