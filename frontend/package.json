@@ -16,7 +16,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.4",
-    "@code-inspector/core": "1.6.6",
+    "@code-inspector/core": "2.0.4",
     "@happy-dom/global-registrator": "20.11.0",
     "@hookform/devtools": "4.4.0",
     "@mcpc-tech/unplugin-dev-inspector-mcp": "0.1.49",
