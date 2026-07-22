@@ -60,7 +60,7 @@ jobs:
     if: needs.route.outputs.process == 'process-4'
     needs: route
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 60
     permissions:
       id-token: write
       contents: read
@@ -80,7 +80,7 @@ jobs:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
           OPENCODE_TRIGGER_BODY: ${{ github.event.comment.body }}
         with:
-          model: opencode/deepseek-v4-flash-free
+          model: opencode/deepseek-v4-flash
           prompt: |
             You are the Opencode Automated Git Agent operating inside an
             isolated CI environment. You are executing Process 4: Issue
@@ -173,7 +173,7 @@ jobs:
     if: needs.route.outputs.process == 'process-5'
     needs: route
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     permissions:
       id-token: write
       contents: write
@@ -200,7 +200,7 @@ jobs:
           ISSUE_TITLE: ${{ github.event.issue.title }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
         with:
-          model: opencode/north-mini-code-free
+          model: opencode/deepseek-v4-flash-free
           use_github_token: true
           prompt: |
             You are the Opencode Automated Git Agent operating inside an
