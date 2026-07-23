@@ -181,6 +181,15 @@ export function ShareDetailsPanel({
                   </Typography>
                   <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
                     {mountData?.path || "N/A"}
+                    {share.subfolder && (
+                      <Typography
+                        variant="caption"
+                        component="span"
+                        sx={{ color: "primary.main", ml: 1 }}
+                      >
+                        + {share.subfolder}
+                      </Typography>
+                    )}
                   </Typography>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
@@ -549,6 +558,23 @@ export function ShareDetailsPanel({
                         />
                       ))}
                     </Stack>
+                  </Grid>
+                )}
+
+                {/* Subfolder */}
+                {share.subfolder && (
+                  <Grid size={{ md: 6, sm: 12 }}>
+                    <Typography
+                      variant="subtitle2"
+                      sx={{
+                        color: "text.secondary",
+                      }}
+                    >
+                      Subfolder
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
+                      {share.subfolder}
+                    </Typography>
                   </Grid>
                 )}
 
