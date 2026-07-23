@@ -2,7 +2,7 @@
 auto = true
 
 [tools]
-air = '1.66.0'
+air = '1.67.0'
 "go:github.com/securego/gosec/v2/cmd/gosec" = "v2.28.0"
 "npm:@redocly/cli" = "2.39.0"
 oapi-codegen = "2.8.0"
