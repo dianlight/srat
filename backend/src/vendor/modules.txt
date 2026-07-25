@@ -224,8 +224,8 @@ github.com/maniartech/signals
 # github.com/mattn/go-colorable v0.1.14
 ## explicit; go 1.18
 github.com/mattn/go-colorable
-# github.com/mattn/go-isatty v0.0.22
-## explicit; go 1.21
+# github.com/mattn/go-isatty v0.0.23
+## explicit; go 1.20
 github.com/mattn/go-isatty
 # github.com/mattn/go-sqlite3 v1.14.33
 ## explicit; go 1.19
@@ -288,7 +288,7 @@ github.com/pmezard/go-difflib/difflib
 # github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55
 ## explicit; go 1.14
 github.com/power-devops/perfstat
-# github.com/pressly/goose/v3 v3.27.2
+# github.com/pressly/goose/v3 v3.27.3
 ## explicit; go 1.25.7
 github.com/pressly/goose/v3
 github.com/pressly/goose/v3/database
@@ -345,8 +345,8 @@ github.com/samber/slog-multi
 # github.com/sergi/go-diff v1.4.0
 ## explicit; go 1.13
 github.com/sergi/go-diff/diffmatchpatch
-# github.com/sethvargo/go-retry v0.3.0
-## explicit; go 1.21
+# github.com/sethvargo/go-retry v0.4.0
+## explicit; go 1.25
 github.com/sethvargo/go-retry
 # github.com/shirou/gopsutil/v4 v4.26.6
 ## explicit; go 1.24.0
@@ -427,14 +427,14 @@ github.com/zarldev/goenums/strings
 # gitlab.com/tozd/go/errors v0.11.1
 ## explicit; go 1.18
 gitlab.com/tozd/go/errors
-# go.opentelemetry.io/otel v1.43.0
+# go.opentelemetry.io/otel v1.44.0
 ## explicit; go 1.25.0
 go.opentelemetry.io/otel/attribute
 go.opentelemetry.io/otel/attribute/internal
 go.opentelemetry.io/otel/attribute/internal/xxhash
 go.opentelemetry.io/otel/codes
-go.opentelemetry.io/otel/semconv/v1.40.0
-# go.opentelemetry.io/otel/trace v1.43.0
+go.opentelemetry.io/otel/semconv/v1.41.0
+# go.opentelemetry.io/otel/trace v1.44.0
 ## explicit; go 1.25.0
 go.opentelemetry.io/otel/trace
 go.opentelemetry.io/otel/trace/embedded
@@ -471,7 +471,7 @@ go.uber.org/zap/internal/exit
 go.uber.org/zap/internal/pool
 go.uber.org/zap/internal/stacktrace
 go.uber.org/zap/zapcore
-# golang.org/x/crypto v0.52.0
+# golang.org/x/crypto v0.54.0
 ## explicit; go 1.25.0
 golang.org/x/crypto/bcrypt
 golang.org/x/crypto/blake2b
@@ -499,7 +499,7 @@ golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
-# golang.org/x/term v0.43.0
+# golang.org/x/term v0.45.0
 ## explicit; go 1.25.0
 golang.org/x/term
 # golang.org/x/text v0.40.0
@@ -589,7 +589,7 @@ gorm.io/gorm/logger
 gorm.io/gorm/migrator
 gorm.io/gorm/schema
 gorm.io/gorm/utils
-# modernc.org/libc v1.73.4
+# modernc.org/libc v1.74.3
 ## explicit; go 1.25.0
 modernc.org/libc
 modernc.org/libc/errno
@@ -623,7 +623,7 @@ modernc.org/mathutil
 # modernc.org/memory v1.11.0
 ## explicit; go 1.23.0
 modernc.org/memory
-# modernc.org/sqlite v1.53.0
+# modernc.org/sqlite v1.54.0
 ## explicit; go 1.25.0
 modernc.org/sqlite/lib
 # moul.io/banner v1.0.1

@@ -6,7 +6,7 @@ require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/gorilla/mux v1.8.1
 	github.com/maniartech/signals v1.3.1
-	github.com/mattn/go-isatty v0.0.22 // indirect
+	github.com/mattn/go-isatty v0.0.23 // indirect
 	github.com/oapi-codegen/runtime v1.6.0
 	github.com/pilebones/go-udev v0.9.1
 	github.com/shirou/gopsutil/v4 v4.26.6
@@ -32,7 +32,7 @@ require (
 	github.com/jarcoal/httpmock v1.4.1
 	github.com/lonegunmanb/go-defaults v1.4.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
-	github.com/pressly/goose/v3 v3.27.2
+	github.com/pressly/goose/v3 v3.27.3
 	github.com/prometheus/procfs v0.21.1
 	github.com/samber/slog-http v1.12.1
 	github.com/sergi/go-diff v1.4.0
@@ -70,15 +70,15 @@ require (
 	github.com/samber/slog-common v0.20.0 // indirect
 	github.com/samber/slog-formatter v1.2.2 // indirect
 	github.com/samber/slog-multi v1.7.1 // indirect
-	github.com/sethvargo/go-retry v0.3.0 // indirect
+	github.com/sethvargo/go-retry v0.4.0 // indirect
 	github.com/spf13/cobra v1.10.2 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/urfave/cli/v2 v2.27.7 // indirect
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
 	github.com/zarldev/goenums v0.6.0 // indirect
-	go.opentelemetry.io/otel v1.43.0 // indirect
-	go.opentelemetry.io/otel/trace v1.43.0 // indirect
-	golang.org/x/term v0.43.0 // indirect
+	go.opentelemetry.io/otel v1.44.0 // indirect
+	go.opentelemetry.io/otel/trace v1.44.0 // indirect
+	golang.org/x/term v0.45.0 // indirect
 	gorm.io/driver/mysql v1.6.0 // indirect
 )
 
@@ -120,16 +120,16 @@ require (
 	go.uber.org/dig v1.19.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.1 // indirect
-	golang.org/x/crypto v0.52.0 // indirect
+	golang.org/x/crypto v0.54.0 // indirect
 	golang.org/x/exp v0.0.0-20260718201538-764159d718ef
 	golang.org/x/mod v0.38.0 // indirect
 	golang.org/x/sync v0.22.0
 	golang.org/x/text v0.40.0 // indirect
 	golang.org/x/tools v0.48.0 // indirect
-	modernc.org/libc v1.73.4 // indirect
+	modernc.org/libc v1.74.3 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
-	modernc.org/sqlite v1.53.0 // indirect
+	modernc.org/sqlite v1.54.0 // indirect
 )
 
 require (
