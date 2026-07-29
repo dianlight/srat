@@ -206,7 +206,7 @@ jobs:
       - name: Setup mise
         uses: jdx/mise-action@9e7f7633ff6f6d6048a9418a68d48f288f50eb14 # v4.2.3
         with:
-          version: "2026.7.13"
+          version: "2026.7.14"
           install: true
           experimental: true
 
@@ -260,7 +260,7 @@ jobs:
       - name: Setup mise
         uses: jdx/mise-action@9e7f7633ff6f6d6048a9418a68d48f288f50eb14 # v4.2.3
         with:
-          version: "2026.7.13"
+          version: "2026.7.14"
           install: true
           experimental: true
 
@@ -318,7 +318,7 @@ jobs:
       - name: Setup mise
         uses: jdx/mise-action@9e7f7633ff6f6d6048a9418a68d48f288f50eb14 # v4.2.3
         with:
-          version: "2026.7.13"
+          version: "2026.7.14"
           install: true
           experimental: true
 
@@ -425,7 +425,7 @@ jobs:
       - name: Setup mise
         uses: jdx/mise-action@9e7f7633ff6f6d6048a9418a68d48f288f50eb14 # v4.2.3
         with:
-          version: "2026.7.13"
+          version: "2026.7.14"
           install: true
           experimental: true
 
