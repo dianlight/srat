@@ -219,8 +219,8 @@ github.com/onsi/ginkgo v1.6.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+W
 github.com/onsi/gomega v1.5.0/go.mod h1:ex+gbHU/CVuBBDIJjb2X0qEXbFg53c61hWP/1CpauHY=
 github.com/ovechkin-dm/go-dyno v0.5.3 h1:/MrL26kFTxbLj/qPbEtR4piVeFYUqjSamAgWpuzeD/k=
 github.com/ovechkin-dm/go-dyno v0.5.3/go.mod h1:CcJNuo7AbePMoRNpM3i1jC1Rp9kHEMyWozNdWzR+0ys=
-github.com/ovechkin-dm/mockio/v2 v2.0.4 h1:miQxn7WOnRLsnqGgOl9Tbgpv0VxiMky0eAEPSm3ejUs=
-github.com/ovechkin-dm/mockio/v2 v2.0.4/go.mod h1:NIkz06mKOotiaEiZtLgKOWgOPzgx3+6Pqg+x+6blucM=
+github.com/ovechkin-dm/mockio/v2 v2.0.5 h1:YLBgYJ3y9gRkrOn7E3Jg7DNC4uiH3HhXpTP01Op3T4I=
+github.com/ovechkin-dm/mockio/v2 v2.0.5/go.mod h1:NIkz06mKOotiaEiZtLgKOWgOPzgx3+6Pqg+x+6blucM=
 github.com/patrickmn/go-cache v2.1.0+incompatible h1:HRMgzkcYKYpi3C8ajMPV8OFXaaRUnok+kx1WdO15EQc=
 github.com/patrickmn/go-cache v2.1.0+incompatible/go.mod h1:3Qf8kWWT7OJRJbdiICTKqZju1ZixQ/KpMGzzAfe6+WQ=
 github.com/petermattis/goid v0.0.0-20260113132338-7c7de50cc741 h1:KPpdlQLZcHfTMQRi6bFQ7ogNO0ltFT4PmtwTLW4W+14=
