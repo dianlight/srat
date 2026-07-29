@@ -136,7 +136,7 @@ require (
 	github.com/creasty/defaults v1.8.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/lmittmann/tint v1.1.3 // indirect
-	github.com/ovechkin-dm/mockio/v2 v2.0.4
+	github.com/ovechkin-dm/mockio/v2 v2.0.5
 	github.com/rs/cors v1.11.1
 	github.com/thoas/go-funk v0.9.3
 	github.com/u-root/u-root v0.16.0
