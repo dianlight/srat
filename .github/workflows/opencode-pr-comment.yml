@@ -337,7 +337,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENCODE_TASK_ARGS: ${{ steps.parse.outputs.TASK_ARGS }}
         with:
-          model: opencode/north-mini-code-free
+          model: opencode/kimi-k2.6
           use_github_token: true
           prompt: |
             You are the Opencode Automated Git Agent. You are executing
