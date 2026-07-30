@@ -47,7 +47,7 @@
       },
       "devDependencies": {
         "@biomejs/biome": "2.5.5",
-        "@code-inspector/core": "2.0.5",
+        "@code-inspector/core": "2.0.6",
         "@happy-dom/global-registrator": "20.11.1",
         "@hookform/devtools": "4.4.0",
         "@mcpc-tech/unplugin-dev-inspector-mcp": "0.1.49",
@@ -185,7 +185,7 @@
 
     "@chevrotain/types": ["@chevrotain/types@11.1.2", "", {}, "sha512-U+HFai5+zmJCkK86QsaJtoITlboZHBqrVketcO2ROv865xfCMSFpELQoz1GkX5GzME8pTa+3kbKrZHQtI0gdbw=="],
 
-    "@code-inspector/core": ["@code-inspector/core@2.0.5", "", { "dependencies": { "@vue/compiler-dom": "^3.5.13", "chalk": "^4.1.1", "launch-ide": "1.4.8", "portfinder": "^1.0.28", "ws": "^8.18.0" }, "optionalDependencies": { "node-pty": "^1.1.0" }, "peerDependencies": { "@anthropic-ai/claude-agent-sdk": "^0.2.29", "@openai/codex-sdk": "^0.106.0", "@opencode-ai/sdk": "^1.2.24" }, "optionalPeers": ["@anthropic-ai/claude-agent-sdk", "@openai/codex-sdk", "@opencode-ai/sdk"] }, "sha512-w/lR3iyb7/9JvnGcmDhCGmGX7bnDsvEJBmH/OK1ovkOIHRj4Wj+Fr1uaM+t86ONF4EIsB2u0Cq4ygjYGuijIFA=="],
+    "@code-inspector/core": ["@code-inspector/core@2.0.6", "", { "dependencies": { "@vue/compiler-dom": "^3.5.13", "chalk": "^4.1.1", "launch-ide": "1.4.8", "portfinder": "^1.0.28", "ws": "^8.18.0" }, "optionalDependencies": { "node-pty": "^1.1.0" }, "peerDependencies": { "@anthropic-ai/claude-agent-sdk": "^0.2.29", "@openai/codex-sdk": "^0.106.0", "@opencode-ai/sdk": "^1.2.24" }, "optionalPeers": ["@anthropic-ai/claude-agent-sdk", "@openai/codex-sdk", "@opencode-ai/sdk"] }, "sha512-Hwxt6gWMGu9DOS3QUR6pr+ZEkXA3kXRJMMW3bHDhCUOoWV/GCRLlwq66gSnM+kozuXvuUQTpmH3AMGjf1bVpHg=="],
 
     "@emnapi/core": ["@emnapi/core@1.11.1", "", { "dependencies": { "@emnapi/wasi-threads": "1.2.2", "tslib": "^2.4.0" } }, "sha512-RSvbQmHzdKzNsLYa/wHrbc3KN4sYLKAdPZxqiM2HATqv/SBk2/ENSHpvXGaLOMcsAyz0poEGqkmmKYG3OWiJEQ=="],
 
