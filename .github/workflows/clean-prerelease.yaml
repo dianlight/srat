@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       # - name: Setup Node.js (for jq if not pre-installed and for general scripting)
       #   # gh CLI uses node under the hood, this ensures its dependencies are met.
       #   uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6

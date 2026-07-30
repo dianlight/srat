@@ -31,8 +31,8 @@ The release process automates version tagging, changelog management, building, a
 
 The release is orchestrated by two GitHub Actions workflows:
 
-1. **`release.yaml`** — Triggered manually. Calculates the version (or uses a provided one), updates `CHANGELOG.md`, commits and pushes directly to `main`.
-2. **`build.yaml`** — Triggered by the push to `main`. Detects the release commit via its message, builds all artifacts, creates a **published** GitHub release (not draft), and resets `CHANGELOG.md` for the next development cycle.
+1. **`release.yaml`** - Triggered manually. Calculates the version (or uses a provided one), updates `CHANGELOG.md`, commits and pushes directly to `main`.
+2. **`build.yaml`** - Triggered by the push to `main`. Detects the release commit via its message, builds all artifacts, creates a **published** GitHub release (not draft), and resets `CHANGELOG.md` for the next development cycle.
 
 ```mermaid
 flowchart TD

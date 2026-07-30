@@ -2,6 +2,7 @@ package mexpr
 
 import (
 	"math"
+	"reflect"
 	"strings"
 )
 
@@ -31,17 +32,64 @@ func mapValues[M ~map[K]V, K comparable, V any](m M) []V {
 
 // checkBounds returns an error if the index is out of bounds.
 func checkBounds(ast *Node, input any, idx int) Error {
-	if v, ok := input.([]any); ok {
-		if idx < 0 || idx >= len(v) {
-			return NewError(ast.Offset, ast.Length, "invalid index %d for slice of length %d", int(idx), len(v))
+	if l, ok := sliceLen(input); ok {
+		if idx < 0 || idx >= l {
+			return NewError(ast.Offset, ast.Length, "invalid index %d for slice of length %d", int(idx), l)
 		}
 	}
 	if v, ok := input.(string); ok {
-		if idx < 0 || idx >= len(v) {
-			return NewError(ast.Offset, ast.Length, "invalid index %d for string of length %d", int(idx), len(v))
-		}
+		return checkStringBounds(ast, stringLength(v), idx)
 	}
 	return nil
+}
+
+func checkStringBounds(ast *Node, length, idx int) Error {
+	if idx < 0 || idx >= length {
+		return NewError(ast.Offset, ast.Length, "invalid index %d for string of length %d", idx, length)
+	}
+	return nil
+}
+
+func normalizeSliceBounds(ast *Node, length int, start, end float64) (int, int, Error) {
+	if start < 0 {
+		start += float64(length)
+	}
+	if end < 0 {
+		end += float64(length)
+	}
+	startIdx := int(start)
+	endIdx := int(end)
+	if startIdx < 0 || startIdx >= length {
+		return 0, 0, NewError(ast.Offset, ast.Length, "invalid index %d for slice of length %d", startIdx, length)
+	}
+	if endIdx < 0 || endIdx >= length {
+		return 0, 0, NewError(ast.Offset, ast.Length, "invalid index %d for slice of length %d", endIdx, length)
+	}
+	if startIdx > endIdx {
+		return 0, 0, NewError(ast.Offset, ast.Length, "slice start cannot be greater than end")
+	}
+	return startIdx, endIdx, nil
+}
+
+func normalizeStringSliceBounds(ast *Node, length int, start, end float64) (int, int, Error) {
+	if start < 0 {
+		start += float64(length)
+	}
+	if end < 0 {
+		end += float64(length)
+	}
+	startIdx := int(start)
+	endIdx := int(end)
+	if err := checkStringBounds(ast, length, startIdx); err != nil {
+		return 0, 0, err
+	}
+	if startIdx > endIdx {
+		return 0, 0, NewError(ast.Offset, ast.Length, "string slice start cannot be greater than end")
+	}
+	if err := checkStringBounds(ast, length, endIdx); err != nil {
+		return 0, 0, err
+	}
+	return startIdx, endIdx, nil
 }
 
 // Interpreter executes expression AST programs.
@@ -51,17 +99,7 @@ type Interpreter interface {
 
 // NewInterpreter returns an interpreter for the given AST.
 func NewInterpreter(ast *Node, options ...InterpreterOption) Interpreter {
-	strict := false
-	unquoted := false
-
-	for _, opt := range options {
-		switch opt {
-		case StrictMode:
-			strict = true
-		case UnquotedStrings:
-			unquoted = true
-		}
-	}
+	strict, unquoted := parseInterpreterOptions(options)
 
 	return &interpreter{
 		ast:      ast,
@@ -81,6 +119,52 @@ func (i *interpreter) Run(value any) (any, Error) {
 	return i.run(i.ast, value)
 }
 
+func (i *interpreter) fastLength(ast *Node, value any) (any, bool, Error) {
+	if ast == nil || ast.Type != NodeArrayIndex || ast.Right == nil || ast.Right.Type != NodeSlice {
+		return nil, false, nil
+	}
+
+	resultLeft, err := i.run(ast.Left, value)
+	if err != nil {
+		return nil, true, err
+	}
+	startValue, err := i.run(ast.Right.Left, value)
+	if err != nil {
+		return nil, true, err
+	}
+	endValue, err := i.run(ast.Right.Right, value)
+	if err != nil {
+		return nil, true, err
+	}
+	start, err := toNumber(ast.Right.Left, startValue)
+	if err != nil {
+		return nil, true, err
+	}
+	end, err := toNumber(ast.Right.Right, endValue)
+	if err != nil {
+		return nil, true, err
+	}
+
+	if leftLen, ok := sliceLen(resultLeft); ok {
+		startIdx, endIdx, err := normalizeSliceBounds(ast, leftLen, start, end)
+		if err != nil {
+			return nil, true, err
+		}
+		return endIdx - startIdx + 1, true, nil
+	}
+	if !isString(resultLeft) {
+		return nil, true, NewError(ast.Offset, ast.Length, "can only index strings or arrays but got %v", resultLeft)
+	}
+
+	left := toString(resultLeft)
+	leftLen := stringLength(left)
+	startIdx, endIdx, err := normalizeStringSliceBounds(ast, leftLen, start, end)
+	if err != nil {
+		return nil, true, err
+	}
+	return endIdx - startIdx + 1, true, nil
+}
+
 func (i *interpreter) run(ast *Node, value any) (any, Error) {
 	if ast == nil {
 		return nil, nil
@@ -91,33 +175,51 @@ func (i *interpreter) run(ast *Node, value any) (any, Error) {
 
 	switch ast.Type {
 	case NodeIdentifier:
+		if resolved, ok := resolveLazyValue(value); ok {
+			value = resolved
+		}
 		switch ast.Value.(string) {
 		case "@":
 			return value, nil
 		case "length":
 			// Special pseudo-property to get the value's length.
-			if s, ok := value.(string); ok {
-				return len(s), nil
+			if s, ok := value.(func() string); ok {
+				return stringLength(s()), nil
 			}
-			if a, ok := value.([]any); ok {
-				return len(a), nil
+			if s, ok := value.(string); ok {
+				return stringLength(s), nil
+			}
+			if l, ok := sliceLen(value); ok {
+				return l, nil
 			}
 		case "lower":
+			if s, ok := value.(func() string); ok {
+				return strings.ToLower(s()), nil
+			}
 			if s, ok := value.(string); ok {
 				return strings.ToLower(s), nil
 			}
 		case "upper":
+			if s, ok := value.(func() string); ok {
+				return strings.ToUpper(s()), nil
+			}
 			if s, ok := value.(string); ok {
 				return strings.ToUpper(s), nil
 			}
 		}
 		if m, ok := value.(map[string]any); ok {
 			if v, ok := m[ast.Value.(string)]; ok {
+				if resolved, ok := resolveLazyValue(v); ok {
+					return resolved, nil
+				}
 				return v, nil
 			}
 		}
 		if m, ok := value.(map[any]any); ok {
 			if v, ok := m[ast.Value]; ok {
+				if resolved, ok := resolveLazyValue(v); ok {
+					return resolved, nil
+				}
 				return v, nil
 			}
 		}
@@ -131,6 +233,11 @@ func (i *interpreter) run(ast *Node, value any) (any, Error) {
 		}
 		return nil, NewError(ast.Offset, ast.Length, "cannot get %v from %v", ast.Value, value)
 	case NodeFieldSelect:
+		if ast.Right != nil && ast.Right.Type == NodeIdentifier && ast.Right.Value == "length" {
+			if result, ok, err := i.fastLength(ast.Left, value); ok {
+				return result, err
+			}
+		}
 		i.prevFieldSelect = true
 		leftValue, err := i.run(ast.Left, value)
 		if err != nil {
@@ -146,77 +253,103 @@ func (i *interpreter) run(ast *Node, value any) (any, Error) {
 		if !isSlice(resultLeft) && !isString(resultLeft) {
 			return nil, NewError(ast.Offset, ast.Length, "can only index strings or arrays but got %v", resultLeft)
 		}
+		if ast.Right != nil && ast.Right.Type == NodeSlice {
+			startValue, err := i.run(ast.Right.Left, value)
+			if err != nil {
+				return nil, err
+			}
+			endValue, err := i.run(ast.Right.Right, value)
+			if err != nil {
+				return nil, err
+			}
+			start, err := toNumber(ast.Right.Left, startValue)
+			if err != nil {
+				return nil, err
+			}
+			end, err := toNumber(ast.Right.Right, endValue)
+			if err != nil {
+				return nil, err
+			}
+			if leftLen, ok := sliceLen(resultLeft); ok {
+				startIdx, endIdx, err := normalizeSliceBounds(ast, leftLen, start, end)
+				if err != nil {
+					return nil, err
+				}
+				result, ok := sliceRange(resultLeft, startIdx, endIdx)
+				if !ok {
+					return nil, NewError(ast.Offset, ast.Length, "can only index strings or arrays but got %v", resultLeft)
+				}
+				return result, nil
+			}
+			left := toString(resultLeft)
+			leftLen := stringLength(left)
+			startIdx, endIdx, err := normalizeStringSliceBounds(ast, leftLen, start, end)
+			if err != nil {
+				return nil, err
+			}
+			return stringSlice(left, startIdx, endIdx), nil
+		}
 		resultRight, err := i.run(ast.Right, value)
 		if err != nil {
 			return nil, err
 		}
-		if isSlice(resultRight) && len(resultRight.([]any)) == 2 {
-			start, err := toNumber(ast, resultRight.([]any)[0])
+		if rightLen, ok := sliceLen(resultRight); ok && rightLen == 2 {
+			startValue, _ := sliceItem(resultRight, 0)
+			start, err := toNumber(ast, startValue)
 			if err != nil {
 				return nil, err
 			}
-			end, err := toNumber(ast, resultRight.([]any)[1])
+			endValue, _ := sliceItem(resultRight, 1)
+			end, err := toNumber(ast, endValue)
 			if err != nil {
 				return nil, err
 			}
-			if left, ok := resultLeft.([]any); ok {
-				if start < 0 {
-					start += float64(len(left))
-				}
-				if end < 0 {
-					end += float64(len(left))
-				}
-				if err := checkBounds(ast, left, int(start)); err != nil {
+			if leftLen, ok := sliceLen(resultLeft); ok {
+				startIdx, endIdx, err := normalizeSliceBounds(ast, leftLen, start, end)
+				if err != nil {
 					return nil, err
 				}
-				if err := checkBounds(ast, left, int(end)); err != nil {
-					return nil, err
+				result, ok := sliceRange(resultLeft, startIdx, endIdx)
+				if !ok {
+					return nil, NewError(ast.Offset, ast.Length, "can only index strings or arrays but got %v", resultLeft)
 				}
-				if int(start) > int(end) {
-					return nil, NewError(ast.Offset, ast.Length, "slice start cannot be greater than end")
-				}
-				return left[int(start) : int(end)+1], nil
+				return result, nil
 			}
 			left := toString(resultLeft)
-			if start < 0 {
-				start += float64(len(left))
-			}
-			if end < 0 {
-				end += float64(len(left))
-			}
-			if err := checkBounds(ast, left, int(start)); err != nil {
+			leftLen := stringLength(left)
+			startIdx, endIdx, err := normalizeStringSliceBounds(ast, leftLen, start, end)
+			if err != nil {
 				return nil, err
 			}
-			if int(start) > int(end) {
-				return nil, NewError(ast.Offset, ast.Length, "string slice start cannot be greater than end")
-			}
-			if err := checkBounds(ast, left, int(end)); err != nil {
-				return nil, err
-			}
-			return left[int(start) : int(end)+1], nil
+			return stringSlice(left, startIdx, endIdx), nil
 		}
 		if isNumber(resultRight) {
 			idx, err := toNumber(ast, resultRight)
 			if err != nil {
 				return nil, err
 			}
-			if left, ok := resultLeft.([]any); ok {
+			if leftLen, ok := sliceLen(resultLeft); ok {
 				if idx < 0 {
-					idx += float64(len(left))
+					idx += float64(leftLen)
 				}
-				if err := checkBounds(ast, left, int(idx)); err != nil {
+				if err := checkBounds(ast, resultLeft, int(idx)); err != nil {
 					return nil, err
 				}
-				return left[int(idx)], nil
+				result, ok := sliceItem(resultLeft, int(idx))
+				if !ok {
+					return nil, NewError(ast.Offset, ast.Length, "can only index strings or arrays but got %v", resultLeft)
+				}
+				return result, nil
 			}
 			left := toString(resultLeft)
+			leftLen := stringLength(left)
 			if idx < 0 {
-				idx += float64(len(left))
+				idx += float64(leftLen)
 			}
-			if err := checkBounds(ast, left, int(idx)); err != nil {
+			if err := checkStringBounds(ast, leftLen, int(idx)); err != nil {
 				return nil, err
 			}
-			return string(left[int(idx)]), nil
+			return stringIndex(left, int(idx)), nil
 		}
 		return nil, NewError(ast.Offset, ast.Length, "array index must be number or slice %v", resultRight)
 	case NodeSlice:
@@ -228,9 +361,7 @@ func (i *interpreter) run(ast *Node, value any) (any, Error) {
 		if err != nil {
 			return nil, err
 		}
-		ast.Value.([]any)[0] = resultLeft
-		ast.Value.([]any)[1] = resultRight
-		return ast.Value, nil
+		return []any{resultLeft, resultRight}, nil
 	case NodeLiteral:
 		return ast.Value, nil
 	case NodeSign:
@@ -260,8 +391,9 @@ func (i *interpreter) run(ast *Node, value any) (any, Error) {
 				return toString(resultLeft) + toString(resultRight), nil
 			}
 			if isSlice(resultLeft) && isSlice(resultRight) {
-				tmp := append([]any{}, resultLeft.([]any)...)
-				return append(tmp, resultRight.([]any)...), nil
+				if out, ok := concatSlices(resultLeft, resultRight); ok {
+					return out, nil
+				}
 			}
 		}
 		if isNumber(resultLeft) && isNumber(resultRight) {
@@ -289,12 +421,12 @@ func (i *interpreter) run(ast *Node, value any) (any, Error) {
 				if int(right) == 0 {
 					return nil, NewError(ast.Offset, ast.Length, "cannot divide by zero")
 				}
-				return int(left) % int(right), nil
+				return float64(int(left) % int(right)), nil
 			case NodePower:
 				return math.Pow(left, right), nil
 			}
 		}
-		return nil, NewError(ast.Offset, ast.Length, "cannot add incompatible types %v and %v", resultLeft, resultRight)
+		return nil, NewError(ast.Offset, ast.Length, "cannot operate on incompatible types %v and %v", resultLeft, resultRight)
 	case NodeEqual, NodeNotEqual, NodeLessThan, NodeLessThanEqual, NodeGreaterThan, NodeGreaterThanEqual:
 		resultLeft, err := i.run(ast.Left, value)
 		if err != nil {
@@ -335,17 +467,26 @@ func (i *interpreter) run(ast *Node, value any) (any, Error) {
 		if err != nil {
 			return nil, err
 		}
-		resultRight, err := i.run(ast.Right, value)
-		if err != nil {
-			return nil, err
-		}
 		left := toBool(resultLeft)
-		right := toBool(resultRight)
 		switch ast.Type {
 		case NodeAnd:
-			return left && right, nil
+			if !left {
+				return false, nil
+			}
+			resultRight, err := i.run(ast.Right, value)
+			if err != nil {
+				return nil, err
+			}
+			return toBool(resultRight), nil
 		case NodeOr:
-			return left || right, nil
+			if left {
+				return true, nil
+			}
+			resultRight, err := i.run(ast.Right, value)
+			if err != nil {
+				return nil, err
+			}
+			return toBool(resultRight), nil
 		}
 	case NodeBefore, NodeAfter:
 		resultLeft, err := i.run(ast.Left, value)
@@ -380,47 +521,45 @@ func (i *interpreter) run(ast *Node, value any) (any, Error) {
 		}
 		switch ast.Type {
 		case NodeIn:
-			if a, ok := resultRight.([]any); ok {
-				for _, item := range a {
+			if isSlice(resultRight) {
+				matched := false
+				iterateSlice(resultRight, func(item any) bool {
 					if deepEqual(item, resultLeft) {
-						return true, nil
+						matched = true
+						return false
 					}
-				}
-				return false, nil
+					return true
+				})
+				return matched, nil
 			}
 			if m, ok := resultRight.(map[string]any); ok {
-				if m[toString(resultLeft)] != nil {
-					return true, nil
-				}
-				return false, nil
+				_, ok := m[toString(resultLeft)]
+				return ok, nil
 			}
 			if m, ok := resultRight.(map[any]any); ok {
-				if m[resultLeft] != nil {
-					return true, nil
-				}
-				return false, nil
+				_, ok := m[resultLeft]
+				return ok, nil
 			}
 			return strings.Contains(toString(resultRight), toString(resultLeft)), nil
 		case NodeContains:
-			if a, ok := resultLeft.([]any); ok {
-				for _, item := range a {
+			if isSlice(resultLeft) {
+				matched := false
+				iterateSlice(resultLeft, func(item any) bool {
 					if deepEqual(item, resultRight) {
-						return true, nil
+						matched = true
+						return false
 					}
-				}
-				return false, nil
+					return true
+				})
+				return matched, nil
 			}
 			if m, ok := resultLeft.(map[string]any); ok {
-				if m[toString(resultRight)] != nil {
-					return true, nil
-				}
-				return false, nil
+				_, ok := m[toString(resultRight)]
+				return ok, nil
 			}
 			if m, ok := resultLeft.(map[any]any); ok {
-				if m[resultRight] != nil {
-					return true, nil
-				}
-				return false, nil
+				_, ok := m[resultRight]
+				return ok, nil
 			}
 			return strings.Contains(toString(resultLeft), toString(resultRight)), nil
 		case NodeStartsWith:
@@ -454,22 +593,113 @@ func (i *interpreter) run(ast *Node, value any) (any, Error) {
 			}
 			resultLeft = values
 		}
-		if leftSlice, ok := resultLeft.([]any); ok {
-			for _, item := range leftSlice {
+		if isSlice(resultLeft) {
+			iterateSlice(resultLeft, func(item any) bool {
 				// In an unquoted string scenario it makes no sense for the first/only
 				// token after a `where` clause to be treated as a string. Instead we
 				// treat a `where` the same as a field select `.` in this scenario.
 				i.prevFieldSelect = true
-				resultRight, err := i.run(ast.Right, item)
-				if i.strict && err != nil {
-					return nil, err
+				resultRight, runErr := i.run(ast.Right, item)
+				if i.strict && runErr != nil {
+					err = runErr
+					return false
 				}
 				if toBool(resultRight) {
 					results = append(results, item)
 				}
+				return true
+			})
+			if err != nil {
+				return nil, err
 			}
 		}
 		return results, nil
+	case NodeFunctionCall:
+		funcName := ast.Left.Value.(string)
+		var fn any
+		switch m := value.(type) {
+		case map[string]any:
+			fn = m[funcName]
+		case map[any]any:
+			fn = m[funcName]
+		}
+		if fn == nil {
+			if i.strict {
+				return nil, NewError(ast.Offset, ast.Length, "function %s not found", funcName)
+			}
+			return nil, nil
+		}
+
+		fnType := reflect.TypeOf(fn)
+		if fnType == nil || fnType.Kind() != reflect.Func {
+			return nil, NewError(ast.Offset, ast.Length, "%s is not a function", funcName)
+		}
+		if fnType.IsVariadic() || fnType.NumOut() != 1 {
+			return nil, NewError(ast.Offset, ast.Length, "unsupported function type for %s", funcName)
+		}
+
+		params := ast.Value.([]Node)
+		if len(params) != fnType.NumIn() {
+			return nil, NewError(ast.Offset, ast.Length, "function %s expects %d parameter(s), got %d", funcName, fnType.NumIn(), len(params))
+		}
+
+		inputs := make([]reflect.Value, 0, len(params))
+		for idx, param := range params {
+			paramValue, err := i.run(&param, value)
+			if err != nil {
+				return nil, err
+			}
+			input, err := convertFunctionArg(ast, funcName, idx, paramValue, fnType.In(idx))
+			if err != nil {
+				return nil, err
+			}
+			inputs = append(inputs, input)
+		}
+
+		result := reflect.ValueOf(fn).Call(inputs)[0]
+		return result.Interface(), nil
 	}
 	return nil, nil
+}
+
+func convertFunctionArg(ast *Node, funcName string, idx int, value any, target reflect.Type) (reflect.Value, Error) {
+	switch target.Kind() {
+	case reflect.Bool:
+		b, ok := value.(bool)
+		if !ok {
+			return reflect.Value{}, NewError(ast.Offset, ast.Length, "function %s parameter %d expects bool", funcName, idx+1)
+		}
+		return reflect.ValueOf(b).Convert(target), nil
+	case reflect.String:
+		if !isString(value) {
+			return reflect.Value{}, NewError(ast.Offset, ast.Length, "function %s parameter %d expects string", funcName, idx+1)
+		}
+		return reflect.ValueOf(toString(value)).Convert(target), nil
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		n, err := toNumber(ast, value)
+		if err != nil {
+			return reflect.Value{}, NewError(ast.Offset, ast.Length, "function %s parameter %d expects number", funcName, idx+1)
+		}
+		out := reflect.New(target).Elem()
+		out.SetInt(int64(n))
+		return out, nil
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		n, err := toNumber(ast, value)
+		if err != nil || n < 0 {
+			return reflect.Value{}, NewError(ast.Offset, ast.Length, "function %s parameter %d expects number", funcName, idx+1)
+		}
+		out := reflect.New(target).Elem()
+		out.SetUint(uint64(n))
+		return out, nil
+	case reflect.Float32, reflect.Float64:
+		n, err := toNumber(ast, value)
+		if err != nil {
+			return reflect.Value{}, NewError(ast.Offset, ast.Length, "function %s parameter %d expects number", funcName, idx+1)
+		}
+		out := reflect.New(target).Elem()
+		out.SetFloat(n)
+		return out, nil
+	}
+
+	return reflect.Value{}, NewError(ast.Offset, ast.Length, "unsupported function type for %s", funcName)
 }

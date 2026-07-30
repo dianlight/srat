@@ -9,12 +9,13 @@ import (
 type valueType string
 
 const (
-	typeUnknown valueType = "unknown"
-	typeBool    valueType = "boolean"
-	typeNumber  valueType = "number"
-	typeString  valueType = "string"
-	typeArray   valueType = "array"
-	typeObject  valueType = "object"
+	typeUnknown  valueType = "unknown"
+	typeBool     valueType = "boolean"
+	typeNumber   valueType = "number"
+	typeString   valueType = "string"
+	typeArray    valueType = "array"
+	typeObject   valueType = "object"
+	typeFunction valueType = "function"
 )
 
 // mapKeys returns the keys of the map m.
@@ -31,11 +32,20 @@ type schema struct {
 	typeName   valueType
 	items      *schema
 	properties map[string]*schema
+	parameters []*schema
+	result     *schema
 }
 
 func (s *schema) String() string {
 	if s.isArray() {
 		return fmt.Sprintf("%s[%s]", s.typeName, s.items)
+	}
+	if s.isFunction() {
+		params := make([]string, 0, len(s.parameters))
+		for _, param := range s.parameters {
+			params = append(params, param.String())
+		}
+		return fmt.Sprintf("%s(%s)->%s", s.typeName, strings.Join(params, ", "), s.result)
 	}
 	if s.isObject() {
 		return fmt.Sprintf("%s{%v}", s.typeName, mapKeys(s.properties))
@@ -59,6 +69,10 @@ func (s *schema) isObject() bool {
 	return s != nil && s.typeName == typeObject
 }
 
+func (s *schema) isFunction() bool {
+	return s != nil && s.typeName == typeFunction
+}
+
 var (
 	schemaBool   = newSchema(typeBool)
 	schemaNumber = newSchema(typeNumber)
@@ -67,6 +81,46 @@ var (
 
 func newSchema(t valueType) *schema {
 	return &schema{typeName: t}
+}
+
+func mergeSchema(a, b *schema) *schema {
+	if a == nil {
+		return b
+	}
+	if b == nil {
+		return a
+	}
+	if a.typeName == typeUnknown || b.typeName == typeUnknown {
+		return newSchema(typeUnknown)
+	}
+	if a.typeName != b.typeName {
+		return newSchema(typeUnknown)
+	}
+	switch a.typeName {
+	case typeArray:
+		return &schema{
+			typeName: typeArray,
+			items:    mergeSchema(a.items, b.items),
+		}
+	case typeObject:
+		merged := &schema{
+			typeName:   typeObject,
+			properties: map[string]*schema{},
+		}
+		for k, v := range a.properties {
+			merged.properties[k] = v
+		}
+		for k, v := range b.properties {
+			if existing, ok := merged.properties[k]; ok {
+				merged.properties[k] = mergeSchema(existing, v)
+				continue
+			}
+			merged.properties[k] = v
+		}
+		return merged
+	default:
+		return a
+	}
 }
 
 func getSchema(v any) *schema {
@@ -79,8 +133,11 @@ func getSchema(v any) *schema {
 		return schemaString
 	case []any:
 		s := newSchema(typeArray)
-		if len(i) > 0 {
-			s.items = getSchema(i[0])
+		for _, item := range i {
+			s.items = mergeSchema(s.items, getSchema(item))
+		}
+		if s.items == nil {
+			s.items = newSchema(typeUnknown)
 		}
 		return s
 	case map[string]any:
@@ -98,6 +155,23 @@ func getSchema(v any) *schema {
 		}
 		return m
 	}
+	if fn, ok := getFunctionSchema(v); ok {
+		if len(fn.parameters) == 0 {
+			return fn.result
+		}
+		return fn
+	}
+	if isSlice(v) {
+		s := newSchema(typeArray)
+		iterateSlice(v, func(item any) bool {
+			s.items = mergeSchema(s.items, getSchema(item))
+			return true
+		})
+		if s.items == nil {
+			s.items = newSchema(typeUnknown)
+		}
+		return s
+	}
 	return newSchema(typeUnknown)
 }
 
@@ -108,14 +182,7 @@ type TypeChecker interface {
 
 // NewTypeChecker returns a type checker for the given AST.
 func NewTypeChecker(ast *Node, options ...InterpreterOption) TypeChecker {
-	unquoted := false
-
-	for _, opt := range options {
-		switch opt {
-		case UnquotedStrings:
-			unquoted = true
-		}
-	}
+	_, unquoted := parseInterpreterOptions(options)
 
 	return &typeChecker{
 		ast:      ast,
@@ -165,6 +232,9 @@ func (i *typeChecker) run(ast *Node, value any) (*schema, Error) {
 		}
 		errValue := value
 		if s, ok := value.(*schema); ok {
+			if s.typeName == typeUnknown {
+				return newSchema(typeUnknown), nil
+			}
 			if v, ok := s.properties[ast.Value.(string)]; ok {
 				return v, nil
 			}
@@ -213,6 +283,9 @@ func (i *typeChecker) run(ast *Node, value any) (*schema, Error) {
 		if err != nil {
 			return nil, err
 		}
+		if leftType.typeName == typeUnknown || rightType.typeName == typeUnknown {
+			return newSchema(typeUnknown), nil
+		}
 		if !(leftType.isString() || leftType.isArray()) {
 			return nil, NewError(ast.Offset, ast.Length, "can only index strings or arrays but got %v", leftType)
 		}
@@ -231,6 +304,11 @@ func (i *typeChecker) run(ast *Node, value any) (*schema, Error) {
 		leftType, rightType, err := i.runBoth(ast, value)
 		if err != nil {
 			return nil, err
+		}
+		if leftType.typeName == typeUnknown || rightType.typeName == typeUnknown {
+			s := newSchema(typeArray)
+			s.items = newSchema(typeUnknown)
+			return s, nil
 		}
 		if !leftType.isNumber() {
 			return nil, NewError(ast.Offset, ast.Length, "slice index must be a number but found %s", leftType)
@@ -257,6 +335,9 @@ func (i *typeChecker) run(ast *Node, value any) (*schema, Error) {
 		if err != nil {
 			return nil, err
 		}
+		if leftType.typeName == typeUnknown || rightType.typeName == typeUnknown {
+			return newSchema(typeUnknown), nil
+		}
 		if ast.Type == NodeAdd {
 			if leftType.isString() || rightType.isString() {
 				return schemaString, nil
@@ -277,6 +358,9 @@ func (i *typeChecker) run(ast *Node, value any) (*schema, Error) {
 		if err != nil {
 			return nil, err
 		}
+		if leftType.typeName == typeUnknown || rightType.typeName == typeUnknown {
+			return schemaBool, nil
+		}
 		if !leftType.isNumber() || !rightType.isNumber() {
 			return nil, NewError(ast.Offset, ast.Length, "cannot compare %s with %s", leftType, rightType)
 		}
@@ -293,17 +377,24 @@ func (i *typeChecker) run(ast *Node, value any) (*schema, Error) {
 			return nil, err
 		}
 		if leftType.isObject() {
-			keys := mapKeys(leftType.properties)
+			objectType := leftType
+			keys := mapKeys(objectType.properties)
 			sort.Strings(keys)
+			leftType = newSchema(typeArray)
 			if len(keys) > 0 {
-				// Pick the first prop as the representative item type.
-				prop := leftType.properties[keys[0]]
-				leftType = newSchema(typeArray)
-				leftType.items = prop
+				for _, key := range keys {
+					leftType.items = mergeSchema(leftType.items, objectType.properties[key])
+				}
+			}
+			if leftType.items == nil {
+				leftType.items = newSchema(typeUnknown)
 			}
 		}
-		if !leftType.isArray() || leftType.items == nil {
-			return nil, NewError(ast.Offset, ast.Length, "where clause requires a non-empty array or object, but found %s", leftType)
+		if leftType.isArray() && leftType.items == nil {
+			leftType.items = newSchema(typeUnknown)
+		}
+		if !leftType.isArray() {
+			return nil, NewError(ast.Offset, ast.Length, "where clause requires an array or object, but found %s", leftType)
 		}
 		// In an unquoted string scenario it makes no sense for the first/only
 		// token after a `where` clause to be treated as a string. Instead we
@@ -320,6 +411,52 @@ func (i *typeChecker) run(ast *Node, value any) (*schema, Error) {
 			return nil, err
 		}
 		return schemaBool, nil
+	case NodeFunctionCall:
+		funcName := ast.Left.Value.(string)
+		var fn any
+		switch m := value.(type) {
+		case map[string]any:
+			fn = m[funcName]
+		case map[any]any:
+			fn = m[funcName]
+		default:
+			return nil, NewError(ast.Offset, ast.Length, "function %s not found", funcName)
+		}
+		if fn == nil {
+			return nil, NewError(ast.Offset, ast.Length, "function %s not found", funcName)
+		}
+
+		fnSchema, ok := getFunctionSchema(fn)
+		if !ok {
+			return nil, NewError(ast.Offset, ast.Length, "unsupported function type for %s", funcName)
+		}
+
+		params := ast.Value.([]Node)
+		if len(params) != len(fnSchema.parameters) {
+			return nil, NewError(ast.Offset, ast.Length, "function %s expects %d parameter(s), got %d", funcName, len(fnSchema.parameters), len(params))
+		}
+
+		for idx, param := range params {
+			paramType, err := i.run(&param, value)
+			if err != nil {
+				return nil, err
+			}
+			if !compatibleSchemas(fnSchema.parameters[idx], paramType) {
+				return nil, NewError(ast.Offset, ast.Length, "function %s parameter %d expects %s but found %s", funcName, idx+1, fnSchema.parameters[idx], paramType)
+			}
+		}
+
+		return fnSchema.result, nil
 	}
 	return nil, NewError(ast.Offset, ast.Length, "unexpected node %v", ast)
+}
+
+func compatibleSchemas(expected, actual *schema) bool {
+	if expected == nil || actual == nil {
+		return false
+	}
+	if expected.typeName == actual.typeName {
+		return true
+	}
+	return expected.isNumber() && actual.isNumber()
 }

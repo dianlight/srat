@@ -32,7 +32,7 @@ jobs:
       task_args: ${{ steps.parse.outputs.TASK_ARGS }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
@@ -60,14 +60,14 @@ jobs:
     if: needs.route.outputs.process == 'process-4'
     needs: route
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 60
     permissions:
       id-token: write
       contents: read
       issues: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
@@ -80,7 +80,7 @@ jobs:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
           OPENCODE_TRIGGER_BODY: ${{ github.event.comment.body }}
         with:
-          model: opencode/deepseek-v4-flash-free
+          model: opencode-go/qwen3.7-max
           prompt: |
             You are the Opencode Automated Git Agent operating inside an
             isolated CI environment. You are executing Process 4: Issue
@@ -173,7 +173,7 @@ jobs:
     if: needs.route.outputs.process == 'process-5'
     needs: route
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     permissions:
       id-token: write
       contents: write
@@ -181,7 +181,7 @@ jobs:
       issues: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Configure git identity
         run: |
@@ -200,7 +200,7 @@ jobs:
           ISSUE_TITLE: ${{ github.event.issue.title }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
         with:
-          model: opencode/north-mini-code-free
+          model: opencode/deepseek-v4-flash-free
           use_github_token: true
           prompt: |
             You are the Opencode Automated Git Agent operating inside an
