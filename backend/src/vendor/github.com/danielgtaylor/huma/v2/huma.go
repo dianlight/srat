@@ -371,8 +371,28 @@ func findHeaders(t reflect.Type) *findResult[*headerInfo] {
 }
 
 type findResultPath[T comparable] struct {
+	// Path is a sequence of struct field indices to walk, where `collectionElem`
+	// means "step into the elements of this slice, array, or map".
 	Path  []int
 	Value T
+}
+
+// collectionElem is a path step meaning "into the elements of this slice, array
+// or map". Field indices are never negative, so it can't collide with one. A
+// path that stops at a collection instead of stepping into it means the
+// collection's own type is the match.
+const collectionElem = -1
+
+// collectionPath returns the rest of the path after the step into a
+// collection's elements. Arriving at a collection without that step means the
+// path was recorded wrong, e.g. a new kind was added to `_findInType` without
+// marking its elements.
+func collectionPath(path []int) []int {
+	if len(path) == 0 || path[0] != collectionElem {
+		panic("expected a collection element path step, please file a bug")
+	}
+
+	return path[1:]
 }
 
 type findResult[T comparable] struct {
@@ -397,17 +417,31 @@ func (r *findResult[T]) every(current reflect.Value, path []int, v T, f func(ref
 	switch current.Kind() {
 	case reflect.Struct:
 		r.every(current.Field(path[0]), path[1:], v, f)
-	case reflect.Slice:
+	case reflect.Slice, reflect.Array:
+		elem := collectionPath(path)
 		for j := 0; j < current.Len(); j++ {
-			r.every(current.Index(j), path, v, f)
+			r.every(current.Index(j), elem, v, f)
 		}
 	case reflect.Map:
+		elem := collectionPath(path)
 		for _, k := range current.MapKeys() {
-			r.every(current.MapIndex(k), path, v, f)
+			item := addressableMapValue(current, k)
+			r.every(item, elem, v, f)
+			current.SetMapIndex(k, item)
 		}
 	default:
 		panic("unsupported")
 	}
+}
+
+// addressableMapValue returns a settable copy of the value stored at the given
+// key. Map values are never addressable, so callers must work on a copy and
+// write it back via `SetMapIndex` for changes like defaults or resolver
+// mutations to survive.
+func addressableMapValue(m reflect.Value, key reflect.Value) reflect.Value {
+	item := reflect.New(m.Type().Elem()).Elem()
+	item.Set(m.MapIndex(key))
+	return item
 }
 
 // Every iterates over all paths in the result, applying the provided function
@@ -429,16 +463,13 @@ func jsonName(field reflect.StructField) string {
 }
 
 // everyPB traverses and processes a value using a path, building paths with
-// PathBuffer, and applying a function to leaf nodes.
+// PathBuffer, and applying a function to leaf nodes. A path stopping at a
+// collection means the collection itself is the match; a `collectionElem` step
+// means the match is inside it.
 func (r *findResult[T]) everyPB(current reflect.Value, path []int, pb *PathBuffer, v T, f func(reflect.Value, T)) {
-	switch reflect.Indirect(current).Kind() {
-	case reflect.Slice, reflect.Map:
-		// Ignore these. We only care about the leaf nodes.
-	default:
-		if len(path) == 0 {
-			f(current, v)
-			return
-		}
+	if len(path) == 0 {
+		f(current, v)
+		return
 	}
 
 	current = reflect.Indirect(current)
@@ -480,20 +511,24 @@ func (r *findResult[T]) everyPB(current reflect.Value, path []int, pb *PathBuffe
 		for i := 0; i < pops; i++ {
 			pb.Pop()
 		}
-	case reflect.Slice:
+	case reflect.Slice, reflect.Array:
+		elem := collectionPath(path)
 		for j := 0; j < current.Len(); j++ {
 			pb.PushIndex(j)
-			r.everyPB(current.Index(j), path, pb, v, f)
+			r.everyPB(current.Index(j), elem, pb, v, f)
 			pb.Pop()
 		}
 	case reflect.Map:
+		elem := collectionPath(path)
 		for _, k := range current.MapKeys() {
 			if k.Kind() == reflect.String {
 				pb.Push(k.String())
 			} else {
 				pb.Push(fmt.Sprintf("%v", k.Interface()))
 			}
-			r.everyPB(current.MapIndex(k), path, pb, v, f)
+			item := addressableMapValue(current, k)
+			r.everyPB(item, elem, pb, v, f)
+			current.SetMapIndex(k, item)
 			pb.Pop()
 		}
 	default:
@@ -566,10 +601,13 @@ func _findInType[T comparable](t reflect.Type, path []int, result *findResult[T]
 				delete(visited, t)
 			}
 		}
-	case reflect.Slice:
-		_findInType[T](t.Elem(), path, result, onType, onField, recurseFields, visited, ignore...)
-	case reflect.Map:
-		_findInType[T](t.Elem(), path, result, onType, onField, recurseFields, visited, ignore...)
+	case reflect.Slice, reflect.Array, reflect.Map:
+		// Record that the match is inside the collection rather than on the
+		// collection's own type, so the walkers know to descend into elements.
+		// Both can match, e.g. `type Items []Item` where each has a resolver, in
+		// which case two paths are recorded and both run.
+		elem := append(append([]int{}, path...), collectionElem)
+		_findInType[T](t.Elem(), elem, result, onType, onField, recurseFields, visited, ignore...)
 	}
 }
 
@@ -679,20 +717,6 @@ func transformAndWrite(api API, ctx Context, status int, ct string, body any) er
 	}
 
 	return nil
-}
-
-func parseArrElement[T any](values []string, parse func(string) (T, error)) ([]T, error) {
-	result := make([]T, 0, len(values))
-
-	for i := range values {
-		v, err := parse(values[i])
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, v)
-	}
-
-	return result, nil
 }
 
 // writeHeader is a utility function to write a header value to the response.
@@ -1188,10 +1212,16 @@ func Register[I, O any](api API, op Operation, handler func(context.Context, *I)
 				// If there are errors, and they provide a status, then update the
 				// response status code to match. Otherwise, use the default status
 				// code is used. Since these run in order, the last error code wins.
-				if s, ok := res.Errors[i].(StatusError); ok {
+				var s StatusError
+				if errors.As(res.Errors[i], &s) {
 					errStatus = s.GetStatus()
 					break
 				}
+			}
+			// Resolver errors may be wrapped and may each carry response metadata,
+			// so preserve headers from every error, matching the handler path below.
+			for _, err := range res.Errors {
+				appendErrorHeaders(ctx, err)
 			}
 			WriteErr(api, ctx, errStatus, "validation failed", res.Errors...)
 			return
@@ -1199,14 +1229,7 @@ func Register[I, O any](api API, op Operation, handler func(context.Context, *I)
 
 		output, err := handler(ctx.Context(), &input)
 		if err != nil {
-			var he HeadersError
-			if errors.As(err, &he) {
-				for k, values := range he.GetHeaders() {
-					for _, v := range values {
-						ctx.AppendHeader(k, v)
-					}
-				}
-			}
+			appendErrorHeaders(ctx, err)
 
 			status := http.StatusInternalServerError
 
@@ -1896,7 +1919,8 @@ func parseInto(ctx Context, f reflect.Value, value string, preSplit []string, p 
 // parseSliceInto converts a slice of string values into the expected type of f
 // and sets the result on f.
 func parseSliceInto(f reflect.Value, values []string) (any, error) {
-	switch f.Type().Elem().Kind() {
+	elemType := f.Type().Elem()
+	switch elemType.Kind() {
 	case reflect.String:
 		if f.Type() == stringSliceType {
 			f.Set(reflect.ValueOf(values))
@@ -1913,198 +1937,45 @@ func parseSliceInto(f reflect.Value, values []string) (any, error) {
 		}
 
 		return values, nil
-	case reflect.Int:
-		vs, err := parseArrElement(values, func(s string) (int, error) {
-			val, err := strconv.ParseInt(s, 10, strconv.IntSize)
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		vs := reflect.MakeSlice(reflect.SliceOf(elemType), len(values), len(values))
+		for i, s := range values {
+			v, err := strconv.ParseInt(s, 10, elemType.Bits())
 			if err != nil {
-				return 0, err
+				return nil, errors.New("invalid integer")
 			}
-
-			return int(val), nil
-		})
-		if err != nil {
-			return nil, errors.New("invalid integer")
+			vs.Index(i).SetInt(v)
 		}
 
-		f.Set(reflect.ValueOf(vs))
+		f.Set(vs)
 
-		return vs, nil
-	case reflect.Int8:
-		vs, err := parseArrElement(values, func(s string) (int8, error) {
-			val, err := strconv.ParseInt(s, 10, 8)
+		return vs.Interface(), nil
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		vs := reflect.MakeSlice(reflect.SliceOf(elemType), len(values), len(values))
+		for i, s := range values {
+			v, err := strconv.ParseUint(s, 10, elemType.Bits())
 			if err != nil {
-				return 0, err
+				return nil, errors.New("invalid integer")
 			}
-
-			return int8(val), nil
-		})
-		if err != nil {
-			return nil, errors.New("invalid integer")
+			vs.Index(i).SetUint(v)
 		}
 
-		f.Set(reflect.ValueOf(vs))
+		f.Set(vs)
 
-		return vs, nil
-	case reflect.Int16:
-		vs, err := parseArrElement(values, func(s string) (int16, error) {
-			val, err := strconv.ParseInt(s, 10, 16)
+		return vs.Interface(), nil
+	case reflect.Float32, reflect.Float64:
+		vs := reflect.MakeSlice(reflect.SliceOf(elemType), len(values), len(values))
+		for i, s := range values {
+			v, err := strconv.ParseFloat(s, elemType.Bits())
 			if err != nil {
-				return 0, err
+				return nil, errors.New("invalid floating value")
 			}
-
-			return int16(val), nil
-		})
-		if err != nil {
-			return nil, errors.New("invalid integer")
+			vs.Index(i).SetFloat(v)
 		}
 
-		f.Set(reflect.ValueOf(vs))
+		f.Set(vs)
 
-		return vs, nil
-	case reflect.Int32:
-		vs, err := parseArrElement(values, func(s string) (int32, error) {
-			val, err := strconv.ParseInt(s, 10, 32)
-			if err != nil {
-				return 0, err
-			}
-
-			return int32(val), nil
-		})
-		if err != nil {
-			return nil, errors.New("invalid integer")
-		}
-
-		f.Set(reflect.ValueOf(vs))
-
-		return vs, nil
-	case reflect.Int64:
-		vs, err := parseArrElement(values, func(s string) (int64, error) {
-			val, err := strconv.ParseInt(s, 10, 64)
-			if err != nil {
-				return 0, err
-			}
-
-			return val, nil
-		})
-		if err != nil {
-			return nil, errors.New("invalid integer")
-		}
-
-		f.Set(reflect.ValueOf(vs))
-
-		return vs, nil
-	case reflect.Uint:
-		vs, err := parseArrElement(values, func(s string) (uint, error) {
-			val, err := strconv.ParseUint(s, 10, strconv.IntSize)
-			if err != nil {
-				return 0, err
-			}
-
-			return uint(val), nil
-		})
-		if err != nil {
-			return nil, errors.New("invalid integer")
-		}
-
-		f.Set(reflect.ValueOf(vs))
-
-		return vs, nil
-	case reflect.Uint8:
-		vs, err := parseArrElement(values, func(s string) (uint8, error) {
-			val, err := strconv.ParseUint(s, 10, 8)
-			if err != nil {
-				return 0, err
-			}
-
-			return uint8(val), nil
-		})
-		if err != nil {
-			return nil, errors.New("invalid integer")
-		}
-
-		f.Set(reflect.ValueOf(vs))
-
-		return vs, nil
-	case reflect.Uint16:
-		vs, err := parseArrElement(values, func(s string) (uint16, error) {
-			val, err := strconv.ParseUint(s, 10, 16)
-			if err != nil {
-				return 0, err
-			}
-
-			return uint16(val), nil
-		})
-		if err != nil {
-			return nil, errors.New("invalid integer")
-		}
-
-		f.Set(reflect.ValueOf(vs))
-
-		return vs, nil
-	case reflect.Uint32:
-		vs, err := parseArrElement(values, func(s string) (uint32, error) {
-			val, err := strconv.ParseUint(s, 10, 32)
-			if err != nil {
-				return 0, err
-			}
-
-			return uint32(val), nil
-		})
-		if err != nil {
-			return nil, errors.New("invalid integer")
-		}
-
-		f.Set(reflect.ValueOf(vs))
-
-		return vs, nil
-	case reflect.Uint64:
-		vs, err := parseArrElement(values, func(s string) (uint64, error) {
-			val, err := strconv.ParseUint(s, 10, 64)
-			if err != nil {
-				return 0, err
-			}
-
-			return val, nil
-		})
-		if err != nil {
-			return nil, errors.New("invalid integer")
-		}
-
-		f.Set(reflect.ValueOf(vs))
-
-		return vs, nil
-	case reflect.Float32:
-		vs, err := parseArrElement(values, func(s string) (float32, error) {
-			val, err := strconv.ParseFloat(s, 32)
-			if err != nil {
-				return 0, err
-			}
-
-			return float32(val), nil
-		})
-		if err != nil {
-			return nil, errors.New("invalid floating value")
-		}
-
-		f.Set(reflect.ValueOf(vs))
-
-		return vs, nil
-	case reflect.Float64:
-		vs, err := parseArrElement(values, func(s string) (float64, error) {
-			val, err := strconv.ParseFloat(s, 64)
-			if err != nil {
-				return 0, err
-			}
-
-			return val, nil
-		})
-		if err != nil {
-			return nil, errors.New("invalid floating value")
-		}
-
-		f.Set(reflect.ValueOf(vs))
-
-		return vs, nil
+		return vs.Interface(), nil
 	}
 
 	// Last resort: use the `encoding.TextUnmarshaler` interface.

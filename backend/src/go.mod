@@ -20,7 +20,7 @@ require (
 	github.com/adelolmo/hd-idle v0.0.0-20260628105713-0c42d8cca82f
 	github.com/angusgmorrison/logfusc v0.1.0
 	github.com/benmcclelland/sgio v0.0.0-20250710154739-45e823ff1f46
-	github.com/danielgtaylor/huma/v2 v2.39.0
+	github.com/danielgtaylor/huma/v2 v2.39.1
 	github.com/dianlight/smartmontools-go v0.4.1
 	github.com/dianlight/tlog v0.2.2
 	github.com/fatih/color v1.19.0
@@ -57,7 +57,7 @@ require (
 	github.com/jmattheis/goverter v1.9.4 // indirect
 	github.com/k0kubun/pp/v3 v3.5.1 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
-	github.com/mattn/go-colorable v0.1.14 // indirect
+	github.com/mattn/go-colorable v0.1.15 // indirect
 	github.com/mattn/go-sqlite3 v1.14.33 // indirect
 	github.com/mfridman/interpolate v0.0.2 // indirect
 	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
