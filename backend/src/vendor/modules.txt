@@ -64,7 +64,7 @@ github.com/cpuguy83/go-md2man/v2/md2man
 # github.com/creasty/defaults v1.8.0
 ## explicit; go 1.14
 github.com/creasty/defaults
-# github.com/danielgtaylor/huma/v2 v2.39.0
+# github.com/danielgtaylor/huma/v2 v2.39.1
 ## explicit; go 1.25.0
 github.com/danielgtaylor/huma/v2
 github.com/danielgtaylor/huma/v2/adapters/humaflow
@@ -221,7 +221,7 @@ github.com/lufia/plan9stats
 # github.com/maniartech/signals v1.3.1
 ## explicit; go 1.21
 github.com/maniartech/signals
-# github.com/mattn/go-colorable v0.1.14
+# github.com/mattn/go-colorable v0.1.15
 ## explicit; go 1.18
 github.com/mattn/go-colorable
 # github.com/mattn/go-isatty v0.0.23
