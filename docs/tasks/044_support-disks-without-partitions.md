@@ -8,9 +8,9 @@
 
 ## 🎯 Objective
 
-Make disks that have **no partition table** (raw "superfloppy" whole-disk filesystem) or whose filesystems are **not reported by the HA Supervisor** visible and mountable in SRAT. Detection must be **automatic** — the owner explicitly rejected the "manual insert of disk path" approach in #849. Scope is strictly **visibility + mount** of the detected whole-disk filesystem; no format or create-partition-table actions are part of this task.
+Make disks that have **no partition table** (raw "superfloppy" whole-disk filesystem) or whose filesystems are **not reported by the HA Supervisor** visible and mountable in SRAT. Detection must be **automatic**—the owner explicitly rejected the "manual insert of disk path" approach in #849. Scope is **visibility + mount** of the detected whole-disk filesystem; no format or create-partition-table actions are part of this task.
 
-> _Context for Copilot: A USB disk formatted directly (like an old floppy, no MBR/GPT) or with a filesystem UDisks2 cannot probe is currently dropped at three points in the backend and never reaches the UI. The fix keeps these drives in the disk map, probes the raw block device for a filesystem magic signature, and synthesizes a whole-disk partition entry so it can be mounted._
+> _Context for Copilot: A USB disk formatted directly (like an old floppy, no MBR/GPT) or with a filesystem UDisks2 cannot probe is currently dropped at three points in the hardware and volume services and never reaches the UI. The fix keeps these drives in the disk map, probes the raw block device for a filesystem magic signature, and synthesizes a whole-disk partition entry so it can be mounted._
 
 ## 🛠️ Technical Specifications
 
@@ -33,20 +33,20 @@ Make disks that have **no partition table** (raw "superfloppy" whole-disk filesy
 
 ## 📝 Task List
 
-- [ ] Task 1: Remove/adjust drop point 1 — `hardware_service.go:123-124` (`if drive.Filesystems == nil || len(*drive.Filesystems) == 0 { continue }`): keep partition-less drives in the pipeline instead of skipping
-- [ ] Task 2: Remove/adjust drop point 2 — `hardware_service.go:133-134` (`if diskDto.Partitions == nil || len(*diskDto.Partitions) == 0 { continue }`): carry drives with empty partition maps in `dto.DiskMap`
-- [ ] Task 3: Add whole-disk filesystem probe — bounded `mount.FSFromBlock` call on the disk device path, Linux-only, never on `System`/protected drives, results cached with the hardware info cache (30-min `hwCacheKey`)
-- [ ] Task 4: Synthesize whole-disk partition entry when a raw fs magic is found (no partition number, `DevicePath`/`LegacyDeviceName` = disk dev name, `Name`/`Label` from probe where available)
+- [ ] Task 1: Remove/adjust drop point 1—`hardware_service.go:123-124` (`if drive.Filesystems == nil || len(*drive.Filesystems) == 0 { continue }`): keep partition-less drives in the pipeline instead of skipping
+- [ ] Task 2: Remove/adjust drop point 2—`hardware_service.go:133-134` (`if diskDto.Partitions == nil || len(*diskDto.Partitions) == 0 { continue }`): carry drives with empty partition maps in `dto.DiskMap`
+- [ ] Task 3: Add whole-disk filesystem probe—bounded `mount.FSFromBlock` call on the disk device path, Linux-only, never on `System`/protected drives, results cached with the hardware info cache (30-min `hwCacheKey`)
+- [ ] Task 4: Synthesize whole-disk partition entry when a raw filesystem magic is found (no partition number, `DevicePath`/`LegacyDeviceName` = disk dev name, `Name`/`Label` from probe where available)
 - [ ] Task 5: Fix `volume_service.go` nil-partition guards (lines 395 `findPartitionByDevName`, 554 `getVolumesData`, 653 `findDiskForDevicePath`, 902) so partition-less disks flow through mount/status logic
 - [ ] Task 6: Update `converter/ha_hardware_to_dto.go` so empty `Filesystems` no longer causes the drive to be treated as absent; keep `filesystemsToPartitionsMap` empty-map behavior
-- [ ] Task 7: Wire events — udev add/remove and format-refresh paths (`handleFilesystemTaskEvent` and related) handle disks with nil/empty partitions; emit `volumes` updates when a partition-less disk appears/disappears
+- [ ] Task 7: Wire events—udev add/remove and format-refresh paths (`handleFilesystemTaskEvent` and related) handle disks with nil/empty partitions; emit `volumes` updates when a partition-less disk appears/disappears
 - [ ] Task 8: Create FAT32 superfloppy fixture `backend/test/data/rawfs_no_parttable.dmg` (see `docs/replicate-partitionless-disk-macos.md` Scenario C) and commit it
-- [ ] Task 9: Unit tests — hardware service keeps empty-partition drives (mockio `GetHardwareInfo`, testify/suite + fxtest, per `backend_test.instructions.md`)
-- [ ] Task 10: Unit tests — probe + synthesized partition using `loop.FindDevice()` + `loop.SetFile()` with `image.dmg` (ext4) **and** `rawfs_no_parttable.dmg` (FAT32); `suite.T().Skip("No loop device available")` when loop is unavailable (darwin CI)
-- [ ] Task 11: Frontend — disk-level "Raw disk / no partition table" presentation in `VolumesTreeView`/`VolumeDetailsPanel` for disks with zero partitions
-- [ ] Task 12: Frontend — mount action for the detected whole-disk filesystem, disabled with `readOnlyActionTooltip` in read-only mode and hidden/disabled for `System` disks
+- [ ] Task 9: Unit tests—hardware service keeps empty-partition drives (mockio `GetHardwareInfo`, testify/suite + fxtest, per `backend_test.instructions.md`)
+- [ ] Task 10: Unit tests—probe + synthesized partition using `loop.FindDevice()` + `loop.SetFile()` with `image.dmg` (ext4) **and** `rawfs_no_parttable.dmg` (FAT32); `suite.T().Skip("No loop device available")` when loop is unavailable (darwin CI)
+- [ ] Task 11: Frontend—disk-level "Raw disk / no partition table" presentation in `VolumesTreeView`/`VolumeDetailsPanel` for disks with zero partitions
+- [ ] Task 12: Frontend—mount action for the detected whole-disk filesystem, shown inactive with `readOnlyActionTooltip` in read-only mode and hidden for `System` disks
 - [ ] Task 13: Frontend tests (Vitest + RTL + `user-event`, MSW handlers in `frontend/src/mocks/customHandlers.ts`) for the empty-disk state and mount action
-- [ ] Task 14: Update related documentation — volumes/troubleshooting docs that currently state unpartitioned disks are unsupported; link `docs/replicate-partitionless-disk-macos.md`
+- [ ] Task 14: Update related documentation—volumes/troubleshooting docs that currently state unpartitioned disks are unsupported; link `docs/replicate-partitionless-disk-macos.md`
 - [ ] Task 15: Update `CHANGELOG.md` under `## [ 🚧 Unreleased ]` (per `/update-changelog` skill)
 - [ ] Task 16: Manual validation on HAOS with a physical USB prepared per `docs/replicate-partitionless-disk-macos.md` (Scenario A superfloppy; Scenario B #716 replica)
 - [ ] Task 17: Ask to create a PR with the task implementation and link it here for tracking
@@ -63,7 +63,7 @@ Make disks that have **no partition table** (raw "superfloppy" whole-disk filesy
     if block.filesystem and block.drive == drive.object_path]
    ```
 
-   If UDisks2 cannot probe a recognized filesystem (raw whole-disk fs, zeroed/unreadable fs, missing driver) the list is **empty** — even when the disk has a perfectly valid filesystem.
+   If UDisks2 cannot probe a recognized filesystem (raw whole-disk filesystem, zeroed/unreadable filesystem, missing driver) the list is **empty**—even when the disk has a perfectly valid filesystem.
 3. SRAT then drops the drive at three points:
    - `hardware_service.go:123`: `if drive.Filesystems == nil || len(*drive.Filesystems) == 0 { continue }` ("Skipping drive with no filesystems")
    - `hardware_service.go:133`: `if diskDto.Partitions == nil || len(*diskDto.Partitions) == 0 { continue }`
@@ -72,12 +72,12 @@ Make disks that have **no partition table** (raw "superfloppy" whole-disk filesy
 
 ### Issue #716 data point (MBR decode)
 
-The reporter's "unreadable" TOSHIBA disk actually **has** an MBR: signature `55AA` at `0x1FE`; partition entry at `0x1BE` with boot flag `0x00`, type `0x07` (NTFS/exFAT), LBA start `0x00032800`. UDisks2 still reports no filesystems (likely unreadable/zero fs signature or missing ntfs support on HAOS), so Supervisor returns `filesystems: []` and SRAT drops it. This scenario must also be covered: the fix makes the drive **visible** even when the probe finds nothing mountable (listed as raw/unreadable, no mount action).
+The reporter's "unreadable" TOSHIBA disk actually **has** an MBR: signature `55AA` at `0x1FE`; partition entry at `0x1BE` with boot flag `0x00`, type `0x07` (NTFS/exFAT), LBA start `0x00032800`. UDisks2 still reports no filesystems (likely unreadable/zero filesystem signature or missing ntfs support on HAOS), so Supervisor returns `filesystems: []` and SRAT drops it. This scenario must also be covered: the fix makes the drive **visible** even when the probe finds nothing mountable (listed as raw/unreadable, no mount action).
 
 ### Fix design
 
 - **Keep, don't skip**: remove the three `continue` guards so partition-less drives stay in `dto.DiskMap`. Log at debug level as today.
-- **Probe fallback**: for a kept drive with zero partitions, attempt `mount.FSFromBlock(<disk device path>)` once per cache window. u-root scans filesystem magics (ext2/3/4, vfat, ntfs, hfs+, apfs, ...). On darwin it returns `errUnsupported` — guard with a runtime/OS check and skip silently.
+- **Probe fallback**: for a kept drive with zero partitions, attempt `mount.FSFromBlock(<disk device path>)` once per cache window. u-root scans filesystem magics (ext2/3/4, vfat, ntfs, hfs+, apfs, ...). On darwin it returns `errUnsupported`—guard with a runtime/OS check and skip the probe.
 - **Synthesize partition**: on successful probe, add one `dto.Partition` keyed by the disk device name (e.g. `sda`) with no partition number, `DevicePath` = disk device path, so all existing mount logic (`mountPartition`, `findPartitionByDevName`, udev matching via `extractDevice` regex `p?\d+$` which already strips partition digits) works unchanged.
 - **Safety**:
   - Never probe or synthesize on `System` drives (check the `System` flag from Supervisor `Filesystem`/`Drive` data where available, plus existing protected-device logic).
@@ -101,15 +101,15 @@ The reporter's "unreadable" TOSHIBA disk actually **has** an MBR: signature `55A
 
 ## 🔗 Code References & TODOs
 
-- [ ] `backend/src/service/hardware_service.go:123-124` — drop point 1 (drive with no filesystems)
-- [ ] `backend/src/service/hardware_service.go:133-134` — drop point 2 (DTO with no partitions)
-- [ ] `backend/src/service/volume_service.go:395` — `findPartitionByDevName` nil guard
-- [ ] `backend/src/service/volume_service.go:554` — `getVolumesData` nil guard
-- [ ] `backend/src/service/volume_service.go:653` — `findDiskForDevicePath` nil guard
-- [ ] `backend/src/service/volume_service.go:902` — additional nil-partition skip
-- [ ] `backend/src/converter/ha_hardware_to_dto.go` — `DriveToDisk` / `filesystemsToPartitionsMap` empty-drive handling
-- [ ] `backend/src/internal/darwinstubs/mount/mount_linux.go:26` — `FSFromBlock` probe entry point
-- [ ] `backend/test/data/image.dmg` — existing ext4 superfloppy fixture (reuse)
-- [ ] `backend/test/data/rawfs_no_parttable.dmg` — new FAT32 superfloppy fixture (create)
-- [ ] `frontend/src/pages/volumes/` — `Volumes.tsx`, `VolumesTreeView.tsx`, `VolumeDetailsPanel.tsx` empty-disk UI + mount action
-- [ ] `docs/replicate-partitionless-disk-macos.md` — USB replication guide (Scenarios A/B/C)
+- [ ] `backend/src/service/hardware_service.go:123-124`—drop point 1 (drive with no filesystems)
+- [ ] `backend/src/service/hardware_service.go:133-134`—drop point 2 (DTO with no partitions)
+- [ ] `backend/src/service/volume_service.go:395`—`findPartitionByDevName` nil guard
+- [ ] `backend/src/service/volume_service.go:554`—`getVolumesData` nil guard
+- [ ] `backend/src/service/volume_service.go:653`—`findDiskForDevicePath` nil guard
+- [ ] `backend/src/service/volume_service.go:902`—additional nil-partition skip
+- [ ] `backend/src/converter/ha_hardware_to_dto.go`—`DriveToDisk` / `filesystemsToPartitionsMap` empty-drive handling
+- [ ] `backend/src/internal/darwinstubs/mount/mount_linux.go:26`—`FSFromBlock` probe entry point
+- [ ] `backend/test/data/image.dmg`—existing ext4 superfloppy fixture (reuse)
+- [ ] `backend/test/data/rawfs_no_parttable.dmg`—new FAT32 superfloppy fixture (create)
+- [ ] `frontend/src/pages/volumes/`—`Volumes.tsx`, `VolumesTreeView.tsx`, `VolumeDetailsPanel.tsx` empty-disk UI + mount action
+- [ ] `docs/replicate-partitionless-disk-macos.md`—USB replication guide (Scenarios A/B/C)
