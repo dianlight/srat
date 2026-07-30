@@ -80,7 +80,7 @@ jobs:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
           OPENCODE_TRIGGER_BODY: ${{ github.event.comment.body }}
         with:
-          model: opencode/deepseek-v4-flash
+          model: opencode-go/qwen3.7-max
           prompt: |
             You are the Opencode Automated Git Agent operating inside an
             isolated CI environment. You are executing Process 4: Issue
