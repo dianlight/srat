@@ -380,5 +380,51 @@ describe("VolumesTreeView Component", () => {
 
         expect(screen.queryByText("SYSTEM DISK")).toBeNull();
     });
+
+    it("shows a raw disk badge and hint for a disk without partitions", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { VolumesTreeView } = await import("../VolumesTreeView");
+        const { createTestStore } = await import("/test/testing");
+        const { getDiskIdentifier } = await import("../../utils");
+
+        const store = await createTestStore();
+        const disks = [
+            {
+                id: "disk-5",
+                model: "Raw USB Drive",
+                legacy_device_name: "sdb",
+                partitions: {},
+            },
+        ];
+
+        render(
+            React.createElement(
+                Provider,
+                {
+                    store,
+                    children: React.createElement(
+                        VolumesTreeView as any,
+                        createBaseProps({
+                            disks,
+                            expandedItems: [
+                                getDiskIdentifier(disks[0] as any, 0),
+                            ],
+                        }),
+                    ),
+                },
+            ),
+        );
+
+        expect(
+            screen.getByText("Raw disk (no partition table)"),
+        ).toBeTruthy();
+        expect(
+            screen.getByText(
+                "No partition table detected. Select the disk for details.",
+            ),
+        ).toBeTruthy();
+    });
 });
 

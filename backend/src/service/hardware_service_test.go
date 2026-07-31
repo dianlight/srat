@@ -12,6 +12,7 @@ import (
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
+	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 )
@@ -21,6 +22,7 @@ type HardwareServiceSuite struct {
 	hardwareService service.HardwareServiceInterface
 	haClient        hardware.ClientWithResponsesInterface
 	smartService    service.SmartServiceInterface
+	hdidleService   service.HDIdleServiceInterface
 	app             *fxtest.App
 }
 
@@ -47,6 +49,7 @@ func (suite *HardwareServiceSuite) SetupTest() {
 		fx.Populate(&suite.hardwareService),
 		fx.Populate(&suite.haClient),
 		fx.Populate(&suite.smartService),
+		fx.Populate(&suite.hdidleService),
 	)
 	suite.app.RequireStart()
 }
@@ -181,8 +184,10 @@ func (suite *HardwareServiceSuite) TestGetHardwareInfo_ClientError() {
 	suite.Nil(disks)
 }
 
-func (suite *HardwareServiceSuite) TestGetHardwareInfo_SkipsDrivesWithoutFilesystems() {
-	// Setup mock response with drives that have no filesystems
+func (suite *HardwareServiceSuite) TestGetHardwareInfo_KeepsDrivesWithoutFilesystems() {
+	// Setup mock response with drives that have no filesystems.
+	// These drives should be kept (not dropped) so the frontend can show them
+	// and the user can take action (e.g. mount a whole-disk filesystem).
 	mockResponse := &hardware.GetHardwareInfoResponse{
 		HTTPResponse: &http.Response{StatusCode: 200},
 		Body:         []byte(`{"result":"ok","data":{"drives":[]}}`),
@@ -214,5 +219,65 @@ func (suite *HardwareServiceSuite) TestGetHardwareInfo_SkipsDrivesWithoutFilesys
 	// Assert
 	suite.NoError(err)
 	suite.NotNil(disks)
-	suite.Empty(disks) // Should skip drives without filesystems
+	suite.Len(disks, 2, "Drives without filesystems should be kept, not dropped")
+	suite.Contains(disks, "drive1")
+	suite.Contains(disks, "drive2")
+}
+
+func (suite *HardwareServiceSuite) TestGetHardwareInfo_FallbackProbeDetectsFilesystem() {
+	// Setup mock response with a drive that has no filesystems but has a serial
+	// matching a whole-disk device. The fallback probe should detect the filesystem
+	// via mount.FSFromBlock and synthesize a filesystem entry.
+	mockResponse := &hardware.GetHardwareInfoResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok","data":{"drives":[]}}`),
+		JSON200: &struct {
+			Data   *hardware.HardwareInfo             `json:"data,omitempty"`
+			Result *hardware.GetHardwareInfo200Result `json:"result,omitempty"`
+		}{
+			Data: &hardware.HardwareInfo{
+				Drives: &[]hardware.Drive{
+					{
+						Id:          new("drive1"),
+						Serial:      new("SERIAL123"),
+						Filesystems: nil, // No filesystems from Supervisor
+					},
+				},
+				Devices: &[]hardware.Device{
+					{
+						Name:    new("sda"),
+						DevPath: new("/dev/sda"),
+						ById:    new("/dev/disk/by-id/ata-DRIVE_SERIAL123"),
+						Attributes: &hardware.Attributes{
+							IDSERIALSHORT: new("SERIAL123"),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	mock.When(suite.haClient.GetHardwareInfoWithResponse(mock.Any[context.Context]())).ThenReturn(mockResponse, nil)
+	mock.When(suite.smartService.GetSmartInfo(mock.Any[context.Context](), mock.Any[string]())).
+		ThenReturn(nil, errors.WithDetails(dto.ErrorSMARTNotSupported, "device", "sda"))
+	mock.When(suite.hdidleService.GetDeviceConfig(mock.Any[string]())).
+		ThenReturn(nil, errors.WithDetails(dto.ErrorHDIdleNotSupported, "device", "sda"))
+
+	// Inject a fake filesystem probe so the test doesn't touch real block devices
+	suite.hardwareService.MockSetFSProbeFunc(func(devPath string) (string, uintptr, error) {
+		suite.Equal("/dev/sda", devPath)
+		return "vfat", 0, nil
+	})
+
+	// Execute
+	disks, err := suite.hardwareService.GetHardwareInfo()
+
+	// Assert
+	suite.NoError(err)
+	suite.NotNil(disks)
+	suite.Len(disks, 1, "Drive should be kept after fallback probe")
+
+	disk, ok := disks["ata-DRIVE_SERIAL123"]
+	suite.True(ok, "Disk should be present by by-id name")
+	suite.NotNil(disk.Partitions, "Partitions should be synthesized after probe")
 }

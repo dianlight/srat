@@ -3,7 +3,7 @@
 # [FIX]: Support Disks Without Partitions
 
 **Target Repo:** `srat`
-**Status:** 📅 Planned
+**Status:** 🔄 In Progress
 **Issue Link:** [dianlight/srat#849](https://github.com/dianlight/srat/issues/849), [dianlight/hassio-addons#716](https://github.com/dianlight/hassio-addons/issues/716)
 
 ## 🎯 Objective
@@ -33,21 +33,21 @@ Make disks that have **no partition table** (raw "superfloppy" whole-disk filesy
 
 ## 📝 Task List
 
-- [ ] Task 1: Remove/adjust drop point 1—`hardware_service.go:123-124` (`if drive.Filesystems == nil || len(*drive.Filesystems) == 0 { continue }`): keep partition-less drives in the pipeline instead of skipping
-- [ ] Task 2: Remove/adjust drop point 2—`hardware_service.go:133-134` (`if diskDto.Partitions == nil || len(*diskDto.Partitions) == 0 { continue }`): carry drives with empty partition maps in `dto.DiskMap`
-- [ ] Task 3: Add whole-disk filesystem probe—bounded `mount.FSFromBlock` call on the disk device path, Linux-only, never on `System`/protected drives, results cached with the hardware info cache (30-min `hwCacheKey`)
-- [ ] Task 4: Synthesize whole-disk partition entry when a raw filesystem magic is found (no partition number, `DevicePath`/`LegacyDeviceName` = disk dev name, `Name`/`Label` from probe where available)
-- [ ] Task 5: Fix `volume_service.go` nil-partition guards (lines 395 `findPartitionByDevName`, 554 `getVolumesData`, 653 `findDiskForDevicePath`, 902) so partition-less disks flow through mount/status logic
-- [ ] Task 6: Update `converter/ha_hardware_to_dto.go` so empty `Filesystems` no longer causes the drive to be treated as absent; keep `filesystemsToPartitionsMap` empty-map behavior
-- [ ] Task 7: Wire events—udev add/remove and format-refresh paths (`handleFilesystemTaskEvent` and related) handle disks with nil/empty partitions; emit `volumes` updates when a partition-less disk appears/disappears
-- [ ] Task 8: Create FAT32 superfloppy fixture `backend/test/data/rawfs_no_parttable.dmg` (see `docs/replicate-partitionless-disk-macos.md` Scenario C) and commit it
-- [ ] Task 9: Unit tests—hardware service keeps empty-partition drives (mockio `GetHardwareInfo`, testify/suite + fxtest, per `backend_test.instructions.md`)
-- [ ] Task 10: Unit tests—probe + synthesized partition using `loop.FindDevice()` + `loop.SetFile()` with `image.dmg` (ext4) **and** `rawfs_no_parttable.dmg` (FAT32); `suite.T().Skip("No loop device available")` when loop is unavailable (darwin CI)
-- [ ] Task 11: Frontend—disk-level "Raw disk / no partition table" presentation in `VolumesTreeView`/`VolumeDetailsPanel` for disks with zero partitions
-- [ ] Task 12: Frontend—mount action for the detected whole-disk filesystem, shown inactive with `readOnlyActionTooltip` in read-only mode and hidden for `System` disks
-- [ ] Task 13: Frontend tests (Vitest + RTL + `user-event`, MSW handlers in `frontend/src/mocks/customHandlers.ts`) for the empty-disk state and mount action
-- [ ] Task 14: Update related documentation—volumes/troubleshooting docs that currently state unpartitioned disks are unsupported; link `docs/replicate-partitionless-disk-macos.md`
-- [ ] Task 15: Update `CHANGELOG.md` under `## [ 🚧 Unreleased ]` (per `/update-changelog` skill)
+- [x] Task 1: Remove/adjust drop point 1—`hardware_service.go:123-124` (`if drive.Filesystems == nil || len(*drive.Filesystems) == 0 { continue }`): keep partition-less drives in the pipeline instead of skipping
+- [x] Task 2: Remove/adjust drop point 2—`hardware_service.go:133-134` (`if diskDto.Partitions == nil || len(*diskDto.Partitions) == 0 { continue }`): carry drives with empty partition maps in `dto.DiskMap`
+- [x] Task 3: Add whole-disk filesystem probe—bounded `mount.FSFromBlock` call on the disk device path, Linux-only, never on `System`/protected drives, results cached with the hardware info cache (30-min `hwCacheKey`)
+- [x] Task 4: Synthesize whole-disk partition entry when a raw filesystem magic is found (no partition number, `DevicePath`/`LegacyDeviceName` = disk dev name, `Name`/`Label` from probe where available)
+- [x] Task 5: Fix `volume_service.go` nil-partition guards (lines 395 `findPartitionByDevName`, 554 `getVolumesData`, 653 `findDiskForDevicePath`, 902) so partition-less disks flow through mount/status logic
+- [x] Task 6: Update `converter/ha_hardware_to_dto.go` so empty `Filesystems` no longer causes the drive to be treated as absent; keep `filesystemsToPartitionsMap` empty-map behavior
+- [x] Task 7: Wire events—udev add/remove and format-refresh paths (`handleFilesystemTaskEvent` and related) handle disks with nil/empty partitions; emit `volumes` updates when a partition-less disk appears/disappears
+- [x] Task 8: Create FAT32 superfloppy fixture `backend/test/data/rawfs_no_parttable.dmg` (see `docs/replicate-partitionless-disk-macos.md` Scenario C) and commit it
+- [x] Task 9: Unit tests—hardware service keeps empty-partition drives (mockio `GetHardwareInfo`, testify/suite + fxtest, per `backend_test.instructions.md`)
+- [x] Task 10: Unit tests—probe + synthesized partition using `loop.FindDevice()` + `loop.SetFile()` with `image.dmg` (ext4) **and** `rawfs_no_parttable.dmg` (FAT32); `suite.T().Skip("No loop device available")` when loop is unavailable (darwin CI)
+- [x] Task 11: Frontend—disk-level "Raw disk / no partition table" presentation in `VolumesTreeView`/`VolumeDetailsPanel` for disks with zero partitions
+- [x] Task 12: Frontend—mount action for the detected whole-disk filesystem, shown inactive with `readOnlyActionTooltip` in read-only mode and hidden for `System` disks
+- [x] Task 13: Frontend tests (Vitest + RTL + `user-event`, MSW handlers in `frontend/src/mocks/customHandlers.ts`) for the empty-disk state and mount action
+- [x] Task 14: Update related documentation—volumes/troubleshooting docs that currently state unpartitioned disks are unsupported; link `docs/replicate-partitionless-disk-macos.md`
+- [x] Task 15: Update `CHANGELOG.md` under `## [ 🚧 Unreleased ]` (per `/update-changelog` skill)
 - [ ] Task 16: Manual validation on HAOS with a physical USB prepared per `docs/replicate-partitionless-disk-macos.md` (Scenario A superfloppy; Scenario B #716 replica)
 - [ ] Task 17: Ask to create a PR with the task implementation and link it here for tracking
 

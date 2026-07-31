@@ -212,6 +212,37 @@ export function VolumeDetailsPanel({
 
   const readOnlyActionTooltip = "Read-only mode enabled. Actions are disabled.";
 
+  // Task 044: detect a whole-disk synthesized partition (a raw disk with a
+  // filesystem written directly to it, with no partition table). The backend
+  // reports it as a single partition whose device name equals the disk's.
+  const wholeDiskPartition = useMemo(() => {
+    if (!disk || partition) {
+      return null;
+    }
+    const parts = Object.values(disk.partitions || {});
+    if (parts.length !== 1) {
+      return null;
+    }
+    const candidate = parts[0];
+    if (
+      !candidate ||
+      !candidate.legacy_device_name ||
+      candidate.legacy_device_name !== disk.legacy_device_name
+    ) {
+      return null;
+    }
+    return candidate;
+  }, [disk, partition]);
+
+  const wholeDiskMounted = useMemo(() => {
+    if (!wholeDiskPartition) {
+      return false;
+    }
+    return Object.values(wholeDiskPartition.mount_point_data || {}).some(
+      (mpd) => mpd.is_mounted,
+    );
+  }, [wholeDiskPartition]);
+
   // When nothing is selected, show placeholder
   if (!disk && !partition) {
     return (
@@ -431,13 +462,46 @@ export function VolumeDetailsPanel({
                           variant="outlined"
                         />
                       )}
-                      <Chip
-                        label={`${Object.values(disk.partitions || {}).length || 0} Partition(s)`}
-                        size="small"
-                        variant="outlined"
-                      />
+                      {/* Task 044: disks with no partition table (raw disks) */}
+                      {Object.values(disk.partitions || {}).length === 0 ? (
+                        <Chip
+                          label="Raw disk (no partition table)"
+                          size="small"
+                          color="warning"
+                          variant="outlined"
+                        />
+                      ) : (
+                        <Chip
+                          label={`${Object.values(disk.partitions || {}).length} Partition(s)`}
+                          size="small"
+                          variant="outlined"
+                        />
+                      )}
                     </Stack>
                   </Grid>
+                  {/* Task 044: disk-level mount action for whole-disk filesystems */}
+                  {wholeDiskPartition &&
+                    !protectedMode &&
+                    !wholeDiskPartition.name?.startsWith("hassos-") && (
+                      <Grid size={{ xs: 12 }}>
+                        <Tooltip title={readOnly ? readOnlyActionTooltip : ""}>
+                          <span>
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              disabled={readOnly}
+                              onClick={() =>
+                                wholeDiskMounted
+                                  ? onUnmount?.(wholeDiskPartition, false)
+                                  : onMount?.(wholeDiskPartition)
+                              }
+                            >
+                              {wholeDiskMounted ? "Unmount Disk" : "Mount Disk"}
+                            </Button>
+                          </span>
+                        </Tooltip>
+                      </Grid>
+                    )}
                 </Grid>
               </CardContent>
             </Collapse>

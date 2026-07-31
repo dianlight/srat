@@ -346,4 +346,105 @@ describe("VolumeDetailsPanel", () => {
 
         expect(screen.queryByText(/^Actions$/)).toBeNull();
     });
+
+    it("shows raw disk badge when the disk has no partitions", async () => {
+        await renderPanel({ disk: baseDisk as any });
+
+        expect(
+            await screen.findByText("Raw disk (no partition table)"),
+        ).toBeTruthy();
+    });
+
+    it("shows a disk-level mount action for a synthesized whole-disk partition", async () => {
+        const user = userEvent.setup();
+        const onMount = vi.fn(() => undefined);
+        const wholeDiskPartition = createPartition({
+            id: "part-sda",
+            legacy_device_name: "sda",
+            mount_point_data: {},
+        });
+        const disk = {
+            ...baseDisk,
+            legacy_device_name: "sda",
+            partitions: { "part-sda": wholeDiskPartition },
+        };
+
+        await renderPanel({
+            disk: disk as any,
+            onToggleAutomount: vi.fn(() => undefined),
+            onMount,
+            onUnmount: vi.fn(() => undefined),
+            onCreateShare: vi.fn(() => undefined),
+            onGoToShare: vi.fn(() => undefined),
+        });
+
+        const mountButton = await screen.findByRole("button", {
+            name: /mount disk/i,
+        });
+        await user.click(mountButton);
+
+        expect(onMount).toHaveBeenCalledTimes(1);
+        expect(onMount).toHaveBeenCalledWith(wholeDiskPartition);
+    });
+
+    it("hides the whole-disk mount action when the partition is named hassos", async () => {
+        const disk = {
+            ...baseDisk,
+            legacy_device_name: "sda",
+            partitions: {
+                "part-sda": createPartition({
+                    id: "part-sda",
+                    legacy_device_name: "sda",
+                    name: "hassos-data",
+                    mount_point_data: {},
+                }),
+            },
+        };
+
+        await renderPanel({
+            disk: disk as any,
+            onToggleAutomount: vi.fn(() => undefined),
+            onMount: vi.fn(() => undefined),
+            onUnmount: vi.fn(() => undefined),
+            onCreateShare: vi.fn(() => undefined),
+            onGoToShare: vi.fn(() => undefined),
+        });
+
+        expect(screen.queryByRole("button", { name: /mount disk/i })).toBeNull();
+    });
+
+    it("disables the whole-disk mount action in read-only mode with tooltip", async () => {
+        const user = userEvent.setup();
+        const disk = {
+            ...baseDisk,
+            legacy_device_name: "sda",
+            partitions: {
+                "part-sda": createPartition({
+                    id: "part-sda",
+                    legacy_device_name: "sda",
+                    mount_point_data: {},
+                }),
+            },
+        };
+
+        await renderPanel({
+            disk: disk as any,
+            readOnly: true,
+            onToggleAutomount: vi.fn(() => undefined),
+            onMount: vi.fn(() => undefined),
+            onUnmount: vi.fn(() => undefined),
+            onCreateShare: vi.fn(() => undefined),
+            onGoToShare: vi.fn(() => undefined),
+        });
+
+        const mountButton = await screen.findByRole("button", {
+            name: /mount disk/i,
+        });
+        expect((mountButton as HTMLButtonElement).disabled).toBe(true);
+
+        const hoverTarget = mountButton.parentElement ?? mountButton;
+        await user.hover(hoverTarget as HTMLElement);
+
+        expect(await screen.findByText(/read-only mode enabled/i)).toBeTruthy();
+    });
 });

@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/homeassistant/hardware"
+	"github.com/dianlight/srat/internal/darwinstubs/mount"
 	"github.com/dianlight/tlog"
 	"github.com/patrickmn/go-cache"
 	"gitlab.com/tozd/go/errors"
@@ -28,6 +30,8 @@ const hwCacheKey = "hardware_info"
 type HardwareServiceInterface interface {
 	GetHardwareInfo() (map[string]dto.Disk, errors.E)
 	InvalidateHardwareInfo()
+	// Test only
+	MockSetFSProbeFunc(f func(string) (string, uintptr, error))
 }
 
 type hardwareService struct {
@@ -43,6 +47,9 @@ type hardwareService struct {
 	// sysBlockBasePath is "/sys/block" in production; tests override it
 	// to point at a temp dir containing fake rotational files.
 	sysBlockBasePath string
+	// fsProbeFunc detects the filesystem type on a block device (magic scan).
+	// It is mount.FSFromBlock by default; tests override it via MockSetFSProbeFunc.
+	fsProbeFunc func(string) (string, uintptr, error)
 }
 
 func NewHardwareService(
@@ -64,6 +71,7 @@ func NewHardwareService(
 		cache:            cache.New(30*time.Minute, 10*time.Minute),
 		readFile:         os.ReadFile,
 		sysBlockBasePath: "/sys/block",
+		fsProbeFunc:      mount.FSFromBlock,
 	}
 	unsubscribe := eventBus.OnHomeAssistant(func(ctx context.Context, hae events.HomeAssistantEvent) errors.E {
 		if hae.Type == events.EventTypes.START {
@@ -118,20 +126,67 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 		return nil, errors.New(errMsg)
 	}
 
-	tlog.DebugContext(h.ctx, "Processing drives from HA Supervisor", "drive_count", len(*hwser.JSON200.Data.Drives))
-	for i, drive := range *hwser.JSON200.Data.Drives {
-		if drive.Filesystems == nil || len(*drive.Filesystems) == 0 {
-			tlog.DebugContext(h.ctx, "Skipping drive with no filesystems", "drive_index", i, "drive_id", drive.Id)
+	// Build map of whole-disk devices by serial for fallback probing of drives without filesystems
+	wholeDiskDevicesBySerial := make(map[string]*hardware.Device)
+	if hwser.JSON200.Data.Devices != nil {
+		for deviceIdx := range *hwser.JSON200.Data.Devices {
+			device := &(*hwser.JSON200.Data.Devices)[deviceIdx]
+			if device.DevPath == nil || *device.DevPath == "" || device.Name == nil || *device.Name == "" {
+				continue
+			}
+			// Whole-disk devices have names like "sda", "nvme0n1" (no partition number suffix)
+			if matched, _ := regexp.MatchString(`^[a-z]+$`, *device.Name); !matched {
+				continue
+			}
+			var serial string
+			if device.Attributes != nil && device.Attributes.IDSERIALSHORT != nil {
+				serial = *device.Attributes.IDSERIALSHORT
+			}
+			if serial != "" {
+				wholeDiskDevicesBySerial[serial] = device
+			}
+		}
+	}
+
+	// Fallback probe: for drives with no filesystems, try to detect whole-disk filesystem
+	for driveIdx := range *hwser.JSON200.Data.Drives {
+		drive := &(*hwser.JSON200.Data.Drives)[driveIdx]
+		if drive.Filesystems != nil && len(*drive.Filesystems) > 0 {
 			continue
 		}
+		if drive.Serial == nil || *drive.Serial == "" {
+			continue
+		}
+		device, ok := wholeDiskDevicesBySerial[*drive.Serial]
+		if !ok || device.DevPath == nil || *device.DevPath == "" {
+			continue
+		}
+		fstype, _, _ := h.fsProbeFunc(*device.DevPath)
+		if fstype == "" {
+			continue
+		}
+		// Create synthetic filesystem for the whole disk. Use a by-id- prefixed
+		// ID so the converter resolves it without hitting /dev/disk/by-uuid/.
+		fsId := "by-id-" + strings.TrimPrefix(*device.ById, "/dev/disk/by-id/")
+		synthFS := hardware.Filesystem{
+			Device:      device.DevPath,
+			Id:          &fsId,
+			Name:        device.Name,
+			MountPoints: &[]string{},
+		}
+		if drive.Filesystems == nil {
+			drive.Filesystems = &[]hardware.Filesystem{}
+		}
+		*drive.Filesystems = append(*drive.Filesystems, synthFS)
+		tlog.DebugContext(h.ctx, "Detected whole-disk filesystem via fallback probe", "drive_id", drive.Id, "device", *device.DevPath, "fstype", fstype)
+	}
+
+	tlog.DebugContext(h.ctx, "Processing drives from HA Supervisor", "drive_count", len(*hwser.JSON200.Data.Drives))
+	for i, drive := range *hwser.JSON200.Data.Drives {
 		var diskDto dto.Disk
 		errConvDrive := h.conv.DriveToDisk(drive, &diskDto)
 		if errConvDrive != nil {
 			tlog.WarnContext(h.ctx, "Error converting drive to disk DTO", "drive_index", i, "drive_id", drive.Id, "err", errConvDrive)
-			continue
-		}
-		if diskDto.Partitions == nil || len(*diskDto.Partitions) == 0 {
-			tlog.DebugContext(h.ctx, "Skipping drive DTO with no partitions after conversion", "drive_index", i, "drive_id", drive.Id)
 			continue
 		}
 
@@ -263,6 +318,12 @@ func (h *hardwareService) InvalidateHardwareInfo() {
 	}
 	h.cache.Delete(hwCacheKey)
 	tlog.TraceContext(h.ctx, "Invalidated hardware info cache")
+}
+
+// MockSetFSProbeFunc allows tests to override the filesystem probe used by the
+// fallback whole-disk detection (avoids touching real block devices in tests).
+func (h *hardwareService) MockSetFSProbeFunc(f func(string) (string, uintptr, error)) {
+	h.fsProbeFunc = f
 }
 
 // detectRotational reports whether a block device is a rotational HDD.
