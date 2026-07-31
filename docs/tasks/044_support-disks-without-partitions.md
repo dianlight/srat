@@ -48,8 +48,8 @@ Make disks that have **no partition table** (raw "superfloppy" whole-disk filesy
 - [x] Task 13: Frontend tests (Vitest + RTL + `user-event`, MSW handlers in `frontend/src/mocks/customHandlers.ts`) for the empty-disk state and mount action
 - [x] Task 14: Update related documentation—volumes/troubleshooting docs that currently state unpartitioned disks are unsupported; link `docs/replicate-partitionless-disk-macos.md`
 - [x] Task 15: Update `CHANGELOG.md` under `## [ 🚧 Unreleased ]` (per `/update-changelog` skill)
-- [ ] Task 16: Manual validation on HAOS with a physical USB prepared per `docs/replicate-partitionless-disk-macos.md` (Scenario A superfloppy; Scenario B #716 replica)
-- [ ] Task 17: Ask to create a PR with the task implementation and link it here for tracking
+- [ ] Task 16: Manual validation on HAOS with a physical USB prepared per `docs/replicate-partitionless-disk-macos.md` (Scenario A superfloppy; Scenario B #716 replica) — deferred, see [PR #867](https://github.com/dianlight/srat/pull/867)
+- [x] Task 17: Ask to create a PR with the task implementation and link it here for tracking — [PR #867](https://github.com/dianlight/srat/pull/867)
 
 ## 🧠 Implementation Notes (Copilot Context)
 
