@@ -23,6 +23,7 @@ import {
   getDiskIdentifier,
   getMountpointIdentifier,
   getPartitionIdentifier,
+  isSynthesizedWholeDiskPartition,
 } from "../utils";
 import { PartitionActions } from "./PartitionActions";
 
@@ -516,8 +517,14 @@ export function VolumesTreeView({
       ) || [];
 
     // Raw disks (no partition table) have no partitions to list; still render
-    // the disk node so it stays visible and selectable (Task 044).
+    // the disk node so it stays visible and selectable (Task 044). A
+    // synthesized whole-disk partition (backend fallback probe) is not a real
+    // partition, so a disk with only one must still be labeled as raw.
     const isRawDisk = filteredPartitions.length === 0;
+    const realPartitions = filteredPartitions.filter(
+      ([, partition]) => !isSynthesizedWholeDiskPartition(disk, partition),
+    );
+    const hasRealPartitions = realPartitions.length > 0;
 
     const isSelected = normalizedSelectedId === diskIdentifier;
 
@@ -561,13 +568,13 @@ export function VolumesTreeView({
               >
                 <Chip
                   label={
-                    isRawDisk
+                    !hasRealPartitions
                       ? "Raw disk (no partition table)"
-                      : `${filteredPartitions.length} partition(s)`
+                      : `${realPartitions.length} partition(s)`
                   }
                   size="small"
                   variant="outlined"
-                  color={isRawDisk ? "warning" : "default"}
+                  color={!hasRealPartitions ? "warning" : "default"}
                   sx={{ fontSize: "0.7rem", height: 16 }}
                 />
                 {disk.size != null && (

@@ -35,7 +35,7 @@ import {
   useGetApiSettingsQuery,
 } from "../../../store/sratApi";
 import { usePartitionActions } from "../hooks/usePartitionActions";
-import { decodeEscapeSequence } from "../utils";
+import { decodeEscapeSequence, getRealPartitions } from "../utils";
 import { FilesystemCheckDialog } from "./FilesystemCheckDialog";
 import { FilesystemFormatDialog } from "./FilesystemFormatDialog";
 import { FilesystemLabelDialog } from "./FilesystemLabelDialog";
@@ -463,7 +463,7 @@ export function VolumeDetailsPanel({
                         />
                       )}
                       {/* Task 044: disks with no partition table (raw disks) */}
-                      {Object.values(disk.partitions || {}).length === 0 ? (
+                      {getRealPartitions(disk).length === 0 ? (
                         <Chip
                           label="Raw disk (no partition table)"
                           size="small"
@@ -472,7 +472,7 @@ export function VolumeDetailsPanel({
                         />
                       ) : (
                         <Chip
-                          label={`${Object.values(disk.partitions || {}).length} Partition(s)`}
+                          label={`${getRealPartitions(disk).length} Partition(s)`}
                           size="small"
                           variant="outlined"
                         />

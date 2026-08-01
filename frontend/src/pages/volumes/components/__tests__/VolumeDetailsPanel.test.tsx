@@ -387,6 +387,52 @@ describe("VolumeDetailsPanel", () => {
         expect(onMount).toHaveBeenCalledWith(wholeDiskPartition);
     });
 
+    it("shows raw disk badge when the only partition is a synthesized whole-disk entry", async () => {
+        // Task 044: a disk without a partition table gets a synthesized
+        // whole-disk partition with no filesystem type so it stays actionable.
+        // It is not a real partition and must not be counted as one.
+        const disk = {
+            ...baseDisk,
+            legacy_device_name: "sdc",
+            partitions: {
+                "usb-General_USB_Flash_Disk_0111607137301461-0:0": createPartition({
+                    id: "usb-General_USB_Flash_Disk_0111607137301461-0:0",
+                    legacy_device_name: "sdc",
+                    fs_type: null,
+                    mount_point_data: {},
+                }),
+            },
+        };
+
+        await renderPanel({ disk: disk as any });
+
+        expect(
+            await screen.findByText("Raw disk (no partition table)"),
+        ).toBeTruthy();
+        expect(screen.queryByText(/1 Partition\(s\)/)).toBeNull();
+    });
+
+    it("counts a real whole-disk filesystem partition as a partition", async () => {
+        // Task 044: a superfloppy filesystem written directly to the disk
+        // (e.g. vfat) is a real partition and should still be counted.
+        const disk = {
+            ...baseDisk,
+            legacy_device_name: "sdd",
+            partitions: {
+                "usb-General_UDisk-0:0": createPartition({
+                    id: "usb-General_UDisk-0:0",
+                    legacy_device_name: "sdd",
+                    fs_type: "vfat",
+                    mount_point_data: {},
+                }),
+            },
+        };
+
+        await renderPanel({ disk: disk as any });
+
+        expect(await screen.findByText("1 Partition(s)")).toBeTruthy();
+    });
+
     it("hides the whole-disk mount action when the partition is named hassos", async () => {
         const disk = {
             ...baseDisk,

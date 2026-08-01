@@ -85,3 +85,25 @@ export function getMountpointIdentifier(
 ): string {
   return `${partitionIdentifier}::mp::${mountpointKey}`;
 }
+
+// Task 044: the backend synthesizes a whole-disk partition entry for raw disks
+// (no partition table, no readable filesystem magic) so they stay actionable
+// (mount/unmount/format). Such an entry has no detected filesystem type and a
+// legacy device name that equals the disk's. It is not a real partition and
+// must not be counted or labeled as one.
+export function isSynthesizedWholeDiskPartition(
+  disk: Disk,
+  partition: Partition,
+): boolean {
+  return (
+    partition.fs_type == null &&
+    partition.legacy_device_name != null &&
+    partition.legacy_device_name === disk.legacy_device_name
+  );
+}
+
+export function getRealPartitions(disk: Disk): Partition[] {
+  return Object.values(disk.partitions || {}).filter(
+    (partition) => !isSynthesizedWholeDiskPartition(disk, partition),
+  );
+}
