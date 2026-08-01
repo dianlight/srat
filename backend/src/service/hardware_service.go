@@ -162,11 +162,10 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 			continue
 		}
 		fstype, _, _ := h.fsProbeFunc(*device.DevPath)
-		if fstype == "" {
-			continue
-		}
-		// Create synthetic filesystem for the whole disk. Use a by-id- prefixed
-		// ID so the converter resolves it without hitting /dev/disk/by-uuid/.
+		// Create a synthetic filesystem for the whole disk even when no readable
+		// filesystem magic was found (e.g. an MBR with an unreadable partition):
+		// the drive still needs mount/unmount/check/format actions. Use a by-id-
+		// prefixed ID so the converter resolves it without hitting /dev/disk/by-uuid/.
 		fsId := "by-id-" + strings.TrimPrefix(*device.ById, "/dev/disk/by-id/")
 		synthFS := hardware.Filesystem{
 			Device:      device.DevPath,
@@ -253,7 +252,11 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 						}
 					}
 
-					continue
+					// Do not continue: a whole-disk filesystem (e.g. superfloppy
+					// or an unreadable partition table) produces a partition
+					// whose LegacyDeviceName equals the disk name, so it must
+					// also run through the partition match below to populate
+					// DevicePath/FsType.
 				}
 				// Match Partitions
 				if diskDto.Partitions != nil {
