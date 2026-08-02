@@ -21,6 +21,35 @@ func fakeReadFile(byPath map[string]string) func(string) ([]byte, error) {
 
 func boolPtr(v bool) *bool { return &v }
 
+func TestWholeDiskNameRe(t *testing.T) {
+	tests := []struct {
+		name string
+		want bool
+	}{
+		{"sda", true},
+		{"sdb", true},
+		{"nvme0n1", true},
+		{"nvme1n2", true},
+		{"mmcblk0", true},
+		{"mmcblk1", true},
+		{"loop0", true},
+		{"loop5", true},
+		{"sda1", false},
+		{"nvme0n1p1", false},
+		{"mmcblk0p1", false},
+		{"loop0p0", false},
+		{"", false},
+		{"sd", true},
+		{"vda", true},
+		{"sda1extra", false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, wholeDiskNameRe.MatchString(tc.name))
+		})
+	}
+}
+
 func TestDetectRotational(t *testing.T) {
 	tests := []struct {
 		name             string

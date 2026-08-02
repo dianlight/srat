@@ -23,6 +23,11 @@ import (
 
 const hwCacheKey = "hardware_info"
 
+// wholeDiskNameRe matches whole-disk device names without a partition number
+// suffix: plain letters ("sda"), NVMe ("nvme0n1"), eMMC ("mmcblk0") and loop
+// ("loop0") devices. Partition children like "sda1" never match.
+var wholeDiskNameRe = regexp.MustCompile(`^([a-z]+|nvme\d+n\d+|mmcblk\d+|loop\d+)$`)
+
 // HardwareServiceInterface is the interface other services use.
 // It exposes a method that returns a neutral, internal representation
 // of hardware info (`hardware.HardwareInfo`) so other packages don't have
@@ -143,7 +148,7 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 			}
 			devicesByName[*device.Name] = device
 			// Whole-disk devices have names like "sda", "nvme0n1" (no partition number suffix)
-			if matched, _ := regexp.MatchString(`^[a-z]+$`, *device.Name); !matched {
+			if !wholeDiskNameRe.MatchString(*device.Name) {
 				continue
 			}
 			var serial string
