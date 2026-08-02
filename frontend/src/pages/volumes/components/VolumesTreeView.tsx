@@ -23,6 +23,7 @@ import {
   getDiskIdentifier,
   getMountpointIdentifier,
   getPartitionIdentifier,
+  isSynthesizedWholeDiskPartition,
 } from "../utils";
 import { PartitionActions } from "./PartitionActions";
 
@@ -80,7 +81,9 @@ export function VolumesTreeView({
 
     return disks.filter((disk) => {
       const partitions = Object.values(disk.partitions || {});
-      if (partitions.length === 0) return false;
+      // Keep raw disks (no partition table) so they stay visible and
+      // selectable in the tree (Task 044).
+      if (partitions.length === 0) return true;
 
       const visiblePartitions = partitions.filter(
         (partition) =>
@@ -513,7 +516,23 @@ export function VolumesTreeView({
           ),
       ) || [];
 
-    if (filteredPartitions.length === 0) return null;
+    // Raw disks (no partition table) have no partitions to list; still render
+    // the disk node so it stays visible and selectable (Task 044). A
+    // synthesized whole-disk partition (backend fallback probe) is not a real
+    // partition, so a disk with only one must still be labeled and rendered as
+    // raw.
+    const realPartitions = filteredPartitions.filter(
+      ([, partition]) => !isSynthesizedWholeDiskPartition(disk, partition),
+    );
+    const isRawDisk = realPartitions.length === 0;
+    const hasRealPartitions = realPartitions.length > 0;
+
+    // A synthesized whole-disk partition (backend fallback probe) is the only
+    // partition of a raw disk; reuse it so raw disks get partition-like actions.
+    const wholeDiskPartition = filteredPartitions.find(
+      ([, partition]: [string, Partition]) =>
+        isSynthesizedWholeDiskPartition(disk, partition),
+    )?.[1];
 
     const isSelected = normalizedSelectedId === diskIdentifier;
 
@@ -556,9 +575,14 @@ export function VolumesTreeView({
                 sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 0.5 }}
               >
                 <Chip
-                  label={`${filteredPartitions.length} partition(s)`}
+                  label={
+                    !hasRealPartitions
+                      ? "Raw disk (no partition table)"
+                      : `${realPartitions.length} partition(s)`
+                  }
                   size="small"
                   variant="outlined"
+                  color={!hasRealPartitions ? "warning" : "default"}
                   sx={{ fontSize: "0.7rem", height: 16 }}
                 />
                 {disk.size != null && (
@@ -579,18 +603,51 @@ export function VolumesTreeView({
                 )}
               </Box>
             </Box>
+
+            {!readOnly && wholeDiskPartition && (
+              <Box sx={{ flexShrink: 0 }}>
+                <PartitionActions
+                  partition={wholeDiskPartition}
+                  protected_mode={protectedMode}
+                  onToggleAutomount={onToggleAutomount}
+                  onMount={onMount}
+                  onUnmount={onUnmount}
+                  onCreateShare={onCreateShare}
+                  onGoToShare={onGoToShare}
+                  onCheckFilesystem={onCheckFilesystem}
+                  //onSetFilesystemLabel={onSetFilesystemLabel}
+                  //onFormatPartition={onFormatPartition}
+                />
+              </Box>
+            )}
           </Box>
         }
       >
-        {filteredPartitions.map(([partitionKey, partition], partIdx) =>
-          renderPartitionItem(
-            disk,
-            partition,
-            diskIdentifier,
-            partitionKey,
-            partIdx,
-          ),
-        )}
+        {isRawDisk
+          ? [
+              <TreeItem
+                key={`${diskIdentifier}-raw-hint`}
+                itemId={`${diskIdentifier}-raw-hint`}
+                label={
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ py: 0.5, px: 1, display: "block" }}
+                  >
+                    No partition table detected. Select the disk for details.
+                  </Typography>
+                }
+              />,
+            ]
+          : filteredPartitions.map(([partitionKey, partition], partIdx) =>
+              renderPartitionItem(
+                disk,
+                partition,
+                diskIdentifier,
+                partitionKey,
+                partIdx,
+              ),
+            )}
       </TreeItem>
     );
   };

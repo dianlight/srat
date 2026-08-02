@@ -551,9 +551,6 @@ func (self *VolumeService) getVolumesData() errors.E {
 		tlog.DebugContext(self.ctx, "Retrieved hardware disks from hardware client", "disk_count", len(hwDisks))
 		// Disks processing
 		for _, disk := range hwDisks {
-			if disk.Partitions == nil {
-				continue
-			}
 			tlog.TraceContext(self.ctx, "Processing disk from hardware client", "disk_id", *disk.Id, "partition_count", len(*disk.Partitions))
 			disk.RefreshVersion = self.refreshVersion
 
@@ -564,37 +561,51 @@ func (self *VolumeService) getVolumesData() errors.E {
 				slog.WarnContext(self.ctx, "Failed to update existing disk in cache", "disk_id", *disk.Id, "err", err)
 			}
 
-			for pid, part := range *disk.Partitions {
-				if part.FsType != nil && *part.FsType != "" {
-					if cached, ok := filesystemSupportCache[*part.FsType]; ok {
-						part.FilesystemInfo = cached
-					} else {
-						info, err := self.fs_service.GetSupportAndInfo(self.ctx, *part.FsType)
-						if err != nil || info == nil || info.Support == nil {
-							part.FilesystemInfo = &dto.FilesystemInfo{}
+			if disk.Partitions != nil {
+				for pid, part := range *disk.Partitions {
+					if part.FsType != nil && *part.FsType != "" {
+						if cached, ok := filesystemSupportCache[*part.FsType]; ok {
+							part.FilesystemInfo = cached
 						} else {
-							part.FilesystemInfo = info
+							info, err := self.fs_service.GetSupportAndInfo(self.ctx, *part.FsType)
+							if err != nil || info == nil || info.Support == nil {
+								part.FilesystemInfo = &dto.FilesystemInfo{}
+							} else {
+								part.FilesystemInfo = info
+							}
+							filesystemSupportCache[*part.FsType] = part.FilesystemInfo
 						}
-						filesystemSupportCache[*part.FsType] = part.FilesystemInfo
+					} else {
+						// The filesystem type is unknown (e.g. a raw disk or an
+						// unreadable/unformatted partition). Formatting does not depend
+						// on the current filesystem, so enable the format action while
+						// keeping check/label actions disabled (they require a known
+						// filesystem). The frontend format dialog defaults to a known
+						// format-capable filesystem type in this case.
+						part.FilesystemInfo = &dto.FilesystemInfo{
+							Support: &dto.FilesystemSupport{
+								CanFormat: true,
+							},
+						}
 					}
-				}
-				(*disk.Partitions)[pid] = part
-				//			if err := self.processPartitionMountData(&disk, pid, part, true); err != nil {
-				//				slog.WarnContext(self.ctx, "Failed to process partition mount data for new disk", "disk_id", *disk.Id, "partition_id", pid, "err", err)
-				//				continue
-				//			}
-				if currentDisk != nil && updateDisk {
-					self.eventBus.EmitPartition(events.PartitionEvent{
-						Event:     events.Event{Type: events.EventTypes.UPDATE},
-						Partition: &part,
-						Disk:      &disk,
-					})
-				} else {
-					self.eventBus.EmitPartition(events.PartitionEvent{
-						Event:     events.Event{Type: events.EventTypes.ADD},
-						Partition: &part,
-						Disk:      &disk,
-					})
+					(*disk.Partitions)[pid] = part
+					//			if err := self.processPartitionMountData(&disk, pid, part, true); err != nil {
+					//				slog.WarnContext(self.ctx, "Failed to process partition mount data for new disk", "disk_id", *disk.Id, "partition_id", pid, "err", err)
+					//				continue
+					//			}
+					if currentDisk != nil && updateDisk {
+						self.eventBus.EmitPartition(events.PartitionEvent{
+							Event:     events.Event{Type: events.EventTypes.UPDATE},
+							Partition: &part,
+							Disk:      &disk,
+						})
+					} else {
+						self.eventBus.EmitPartition(events.PartitionEvent{
+							Event:     events.Event{Type: events.EventTypes.ADD},
+							Partition: &part,
+							Disk:      &disk,
+						})
+					}
 				}
 			}
 		}

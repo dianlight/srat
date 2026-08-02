@@ -124,7 +124,7 @@ describe("VolumeDetailsPanel", () => {
                     Description: "EXT4 Filesystem",
                 } as any,
             });
-    
+
             await renderPanel(
                 { disk: baseDisk as any, partition },
                 {
@@ -147,9 +147,9 @@ describe("VolumeDetailsPanel", () => {
                     },
                 },
             );
-    
+
             await user.hover(screen.getByText(/EXT4 Filesystem/i));
-    
+
             const tooltip = await screen.findByRole("tooltip");
             //expect(within(tooltip).getByText(/filesystem is clean/i)).toBeTruthy();
             expect(within(tooltip).getByText(/last check/i)).toBeTruthy();
@@ -172,7 +172,7 @@ describe("VolumeDetailsPanel", () => {
                  Description: "XFS Filesystem",
              } as any,
          });
- 
+
          await renderPanel(
              { disk: baseDisk as any, partition },
              {
@@ -193,12 +193,12 @@ describe("VolumeDetailsPanel", () => {
                  },
              },
          );
- 
+
          await user.hover(screen.getByText(/XFS Filesystem/i));
          const tooltip = await screen.findByRole("tooltip");
          expect(within(tooltip).getByText(/filesystem has errors/i)).toBeTruthy();
      });
- 
+
      it("shows fallback filesystem tooltip when state is missing", async () => {
          const user = userEvent.setup();
          const partition = {
@@ -215,7 +215,7 @@ describe("VolumeDetailsPanel", () => {
                  Description: "BTRFS Filesystem",
              },
          } as unknown as Partition;
- 
+
          await renderPanel(
              { disk: baseDisk as any, partition },
              {
@@ -230,7 +230,7 @@ describe("VolumeDetailsPanel", () => {
                  },
              },
          );
- 
+
          await user.hover(screen.getByText(/BTRFS Filesystem/i));
          const tooltip = await screen.findByRole("tooltip");
          expect(within(tooltip).getByText(/no filesystem status available/i)).toBeTruthy();
@@ -345,5 +345,109 @@ describe("VolumeDetailsPanel", () => {
         });
 
         expect(screen.queryByText(/^Actions$/)).toBeNull();
+    });
+
+    it("shows raw disk badge when the disk has no partitions", async () => {
+        await renderPanel({ disk: baseDisk as any });
+
+        expect(
+            await screen.findByText("Raw disk (no partition table)"),
+        ).toBeTruthy();
+    });
+
+    it("shows raw disk badge when the only partition is a synthesized whole-disk entry", async () => {
+        // Task 044: a disk without a partition table gets a synthesized
+        // whole-disk partition with no filesystem type so it stays actionable.
+        // It is not a real partition and must not be counted as one.
+        const disk = {
+            ...baseDisk,
+            legacy_device_name: "sdc",
+            partitions: {
+                "usb-General_USB_Flash_Disk_0111607137301461-0:0": createPartition({
+                    id: "usb-General_USB_Flash_Disk_0111607137301461-0:0",
+                    legacy_device_name: "sdc",
+                    fs_type: null,
+                    mount_point_data: {},
+                }),
+            },
+        };
+
+        await renderPanel({ disk: disk as any });
+
+        expect(
+            await screen.findByText("Raw disk (no partition table)"),
+        ).toBeTruthy();
+        expect(screen.queryByText(/1 Partition\(s\)/)).toBeNull();
+    });
+
+    it("shows raw disk badge for a whole-disk filesystem partition", async () => {
+        // Task 044: a superfloppy filesystem written directly to the disk
+        // (e.g. vfat) with no partition table is still a whole-disk entry and
+        // must be reported as a raw disk, not counted as a partition.
+        const disk = {
+            ...baseDisk,
+            legacy_device_name: "sdd",
+            partitions: {
+                "usb-General_UDisk-0:0": createPartition({
+                    id: "usb-General_UDisk-0:0",
+                    legacy_device_name: "sdd",
+                    fs_type: "vfat",
+                    mount_point_data: {},
+                }),
+            },
+        };
+
+        await renderPanel({ disk: disk as any });
+
+        expect(
+            await screen.findByText("Raw disk (no partition table)"),
+        ).toBeTruthy();
+        expect(screen.queryByText(/1 Partition\(s\)/)).toBeNull();
+    });
+
+    it("counts a real partition with a numeric suffix as a partition", async () => {
+        const disk = {
+            ...baseDisk,
+            legacy_device_name: "sdd",
+            partitions: {
+                "usb-General_UDisk-0:1": createPartition({
+                    id: "usb-General_UDisk-0:1",
+                    legacy_device_name: "sdd1",
+                    fs_type: "vfat",
+                    mount_point_data: {},
+                }),
+            },
+        };
+
+        await renderPanel({ disk: disk as any });
+
+        expect(await screen.findByText("1 Partition(s)")).toBeTruthy();
+    });
+
+    it("renders the raw disk filesystem card for a whole-disk partition", async () => {
+        const wholeDiskPartition = createPartition({
+            id: "part-sde",
+            legacy_device_name: "sde",
+            mount_point_data: {},
+        });
+        const disk = {
+            ...baseDisk,
+            legacy_device_name: "sde",
+            partitions: { "part-sde": wholeDiskPartition },
+        };
+
+        await renderPanel({
+            disk: disk as any,
+            onToggleAutomount: vi.fn(() => undefined),
+            onMount: vi.fn(() => undefined),
+            onUnmount: vi.fn(() => undefined),
+            onCreateShare: vi.fn(() => undefined),
+            onGoToShare: vi.fn(() => undefined),
+        });
+
+        expect(
+            await screen.findByText("Raw Disk Filesystem Information"),
+        ).toBeTruthy();
+        expect(screen.queryByText("Partition Information")).toBeNull();
     });
 });
