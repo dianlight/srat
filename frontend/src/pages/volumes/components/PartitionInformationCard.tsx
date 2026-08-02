@@ -61,13 +61,11 @@ export function PartitionInformationCard({
   const isMounted = mpds.some((mpd) => mpd.is_mounted);
   const partitionId = partition.id;
   const {
-    data: filesystemStateResponse,
     currentData: filesystemStateCurrentData,
     isLoading: filesystemStateLoading,
   } = useGetApiFilesystemStateQuery({ partitionId }, { skip: !partitionId });
 
-  const filesystemStatePayload =
-    filesystemStateResponse ?? filesystemStateCurrentData;
+  const filesystemStatePayload = filesystemStateCurrentData;
 
   const filesystemState = useMemo<FilesystemState | null>(() => {
     if (!filesystemStatePayload) {
