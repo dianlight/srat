@@ -9,7 +9,7 @@ require (
 	github.com/mattn/go-isatty v0.0.23 // indirect
 	github.com/oapi-codegen/runtime v1.6.0
 	github.com/pilebones/go-udev v0.9.1
-	github.com/shirou/gopsutil/v4 v4.26.6
+	github.com/shirou/gopsutil/v4 v4.26.7
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/sys v0.47.0
 )
@@ -91,7 +91,7 @@ require (
 	github.com/danielgtaylor/shorthand/v2 v2.4.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/ebitengine/purego v0.10.0 // indirect
+	github.com/ebitengine/purego v0.10.2 // indirect
 	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.2 // indirect
 	github.com/glebarez/go-sqlite v1.22.0 // indirect
