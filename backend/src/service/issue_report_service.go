@@ -13,7 +13,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/tlog"
 	"github.com/dianlight/tlog/sanitizer"
-	"github.com/google/go-github/v88/github"
+	"github.com/google/go-github/v89/github"
 	"gitlab.com/tozd/go/errors"
 )
 
@@ -152,7 +152,7 @@ func (s *IssueReportService) GenerateIssueReport(ctx context.Context, request *d
 	}
 
 	response.GitHubURL = fmt.Sprintf("%s/issues/new?%s", request.ProblemType.RepositoryUrl, params.Encode())
-	files := map[github.GistFilename]github.GistFile{}
+	files := map[github.GistFilename]*github.CreateGistFile{}
 
 	for len(params.Encode()) > 7000 {
 		tlog.WarnContext(ctx, "Generated GitHub issue URL is too long", "length", len(params.Encode()), "max_length", 7000)
@@ -165,15 +165,15 @@ func (s *IssueReportService) GenerateIssueReport(ctx context.Context, request *d
 			continue
 		} */
 		if attachs["logs"] != nil {
-			files["logs.txt"] = github.GistFile{
-				Content: attachs["logs"],
+			files["logs.txt"] = &github.CreateGistFile{
+				Content: *attachs["logs"],
 			}
 			params.Del("logs")
 			continue
 		}
 		if attachs["console"] != nil {
-			files["console.txt"] = github.GistFile{
-				Content: attachs["console"],
+			files["console.txt"] = &github.CreateGistFile{
+				Content: *attachs["console"],
 			}
 			params.Del("console")
 			continue
@@ -183,7 +183,7 @@ func (s *IssueReportService) GenerateIssueReport(ctx context.Context, request *d
 	}
 
 	if len(files) > 0 {
-		gist, _, err := s.gh.Gists.Create(s.ctx, &github.Gist{
+		gist, _, err := s.gh.Gists.Create(s.ctx, github.CreateGistRequest{
 			Description: new("Issue report attachments for URL length constraints"),
 			Public:      new(true),
 			Files:       files,
