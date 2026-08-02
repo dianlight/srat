@@ -99,17 +99,19 @@ The reporter's "unreadable" TOSHIBA disk actually **has** an MBR: signature `55A
 - Mount action targets the disk-level synthesized partition (whole-disk device path); disabled with the existing `readOnlyActionTooltip` (`VolumeDetailsPanel.tsx:213`) in read-only mode; hidden/disabled for system disks.
 - Do not add format/partition-table UI in this task.
 
-## 🔗 Code References & TODOs
+## 🔗 Code References
 
-- [ ] `backend/src/service/hardware_service.go:123-124`—drop point 1 (drive with no filesystems)
-- [ ] `backend/src/service/hardware_service.go:133-134`—drop point 2 (DTO with no partitions)
-- [ ] `backend/src/service/volume_service.go:395`—`findPartitionByDevName` nil guard
-- [ ] `backend/src/service/volume_service.go:554`—`getVolumesData` nil guard
-- [ ] `backend/src/service/volume_service.go:653`—`findDiskForDevicePath` nil guard
-- [ ] `backend/src/service/volume_service.go:902`—additional nil-partition skip
-- [ ] `backend/src/converter/ha_hardware_to_dto.go`—`DriveToDisk` / `filesystemsToPartitionsMap` empty-drive handling
-- [ ] `backend/src/internal/darwinstubs/mount/mount_linux.go:26`—`FSFromBlock` probe entry point
-- [ ] `backend/test/data/image.dmg`—existing ext4 superfloppy fixture (reuse)
-- [ ] `backend/test/data/rawfs_no_parttable.dmg`—new FAT32 superfloppy fixture (create)
-- [ ] `frontend/src/pages/volumes/`—`Volumes.tsx`, `VolumesTreeView.tsx`, `VolumeDetailsPanel.tsx` empty-disk UI + mount action
-- [ ] `docs/replicate-partitionless-disk-macos.md`—USB replication guide (Scenarios A/B/C)
+All items below correspond to completed work (Tasks 1-15, 17). The only remaining validation is Task 16 (manual HAOS testing, deferred to [PR #867](https://github.com/dianlight/srat/pull/867)); it has no code reference.
+
+- `backend/src/service/hardware_service.go:123-124`—drop point 1 (drive with no filesystems)
+- `backend/src/service/hardware_service.go:133-134`—drop point 2 (DTO with no partitions)
+- `backend/src/service/volume_service.go:395`—`findPartitionByDevName` nil guard
+- `backend/src/service/volume_service.go:554`—`getVolumesData` nil guard
+- `backend/src/service/volume_service.go:653`—`findDiskForDevicePath` nil guard
+- `backend/src/service/volume_service.go:902`—additional nil-partition skip
+- `backend/src/converter/ha_hardware_to_dto.go`—`DriveToDisk` / `filesystemsToPartitionsMap` empty-drive handling
+- `backend/src/internal/darwinstubs/mount/mount_linux.go:26`—`FSFromBlock` probe entry point
+- `backend/test/data/image.dmg`—existing ext4 superfloppy fixture (reuse)
+- `backend/test/data/rawfs_no_parttable.dmg`—new FAT32 superfloppy fixture (create)
+- `frontend/src/pages/volumes/`—`Volumes.tsx`, `VolumesTreeView.tsx`, `VolumeDetailsPanel.tsx` empty-disk UI + mount action
+- `docs/replicate-partitionless-disk-macos.md`—USB replication guide (Scenarios A/B/C)
