@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/homeassistant/hardware"
+	"github.com/dianlight/srat/internal/darwinstubs/mount"
 	"github.com/dianlight/tlog"
 	"github.com/patrickmn/go-cache"
 	"gitlab.com/tozd/go/errors"
@@ -21,6 +23,11 @@ import (
 
 const hwCacheKey = "hardware_info"
 
+// wholeDiskNameRe matches whole-disk device names without a partition number
+// suffix: plain letters ("sda"), NVMe ("nvme0n1"), eMMC ("mmcblk0") and loop
+// ("loop0") devices. Partition children like "sda1" never match.
+var wholeDiskNameRe = regexp.MustCompile(`^([a-z]+|nvme\d+n\d+|mmcblk\d+|loop\d+)$`)
+
 // HardwareServiceInterface is the interface other services use.
 // It exposes a method that returns a neutral, internal representation
 // of hardware info (`hardware.HardwareInfo`) so other packages don't have
@@ -28,6 +35,8 @@ const hwCacheKey = "hardware_info"
 type HardwareServiceInterface interface {
 	GetHardwareInfo() (map[string]dto.Disk, errors.E)
 	InvalidateHardwareInfo()
+	// Test only
+	MockSetFSProbeFunc(f func(string) (string, uintptr, error))
 }
 
 type hardwareService struct {
@@ -43,6 +52,9 @@ type hardwareService struct {
 	// sysBlockBasePath is "/sys/block" in production; tests override it
 	// to point at a temp dir containing fake rotational files.
 	sysBlockBasePath string
+	// fsProbeFunc detects the filesystem type on a block device (magic scan).
+	// It is mount.FSFromBlock by default; tests override it via MockSetFSProbeFunc.
+	fsProbeFunc func(string) (string, uintptr, error)
 }
 
 func NewHardwareService(
@@ -64,6 +76,7 @@ func NewHardwareService(
 		cache:            cache.New(30*time.Minute, 10*time.Minute),
 		readFile:         os.ReadFile,
 		sysBlockBasePath: "/sys/block",
+		fsProbeFunc:      mount.FSFromBlock,
 	}
 	unsubscribe := eventBus.OnHomeAssistant(func(ctx context.Context, hae events.HomeAssistantEvent) errors.E {
 		if hae.Type == events.EventTypes.START {
@@ -118,20 +131,111 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 		return nil, errors.New(errMsg)
 	}
 
-	tlog.DebugContext(h.ctx, "Processing drives from HA Supervisor", "drive_count", len(*hwser.JSON200.Data.Drives))
-	for i, drive := range *hwser.JSON200.Data.Drives {
-		if drive.Filesystems == nil || len(*drive.Filesystems) == 0 {
-			tlog.DebugContext(h.ctx, "Skipping drive with no filesystems", "drive_index", i, "drive_id", drive.Id)
+	// Build map of whole-disk devices by serial for fallback probing of drives without filesystems
+	wholeDiskDevicesBySerial := make(map[string]*hardware.Device)
+	// Build map of all devices by name so fallback probing can resolve partition
+	// children (e.g. "sdc1") into real partition filesystems.
+	devicesByName := make(map[string]*hardware.Device)
+	// Records the fs probe result for fallback-synthesized whole-disk filesystems,
+	// keyed by device by-id path. Used by the main loop to override stale udev
+	// ID_FS_TYPE values left behind after a disk's filesystem was removed.
+	wholeDiskProbeFstypeByID := make(map[string]string)
+	if hwser.JSON200.Data.Devices != nil {
+		for deviceIdx := range *hwser.JSON200.Data.Devices {
+			device := &(*hwser.JSON200.Data.Devices)[deviceIdx]
+			if device.DevPath == nil || *device.DevPath == "" || device.Name == nil || *device.Name == "" {
+				continue
+			}
+			devicesByName[*device.Name] = device
+			// Whole-disk devices have names like "sda", "nvme0n1" (no partition number suffix)
+			if !wholeDiskNameRe.MatchString(*device.Name) {
+				continue
+			}
+			var serial string
+			if device.Attributes != nil && device.Attributes.IDSERIALSHORT != nil {
+				serial = *device.Attributes.IDSERIALSHORT
+			}
+			if serial != "" {
+				wholeDiskDevicesBySerial[serial] = device
+			}
+		}
+	}
+
+	// Fallback probe: for drives with no filesystems, try to detect whole-disk filesystem
+	for driveIdx := range *hwser.JSON200.Data.Drives {
+		drive := &(*hwser.JSON200.Data.Drives)[driveIdx]
+		if drive.Filesystems != nil && len(*drive.Filesystems) > 0 {
 			continue
 		}
+		if drive.Serial == nil || *drive.Serial == "" {
+			continue
+		}
+		device, ok := wholeDiskDevicesBySerial[*drive.Serial]
+		if !ok || device.DevPath == nil || *device.DevPath == "" || device.ById == nil || *device.ById == "" {
+			continue
+		}
+		fstype, _, _ := h.fsProbeFunc(*device.DevPath)
+		if drive.Filesystems == nil {
+			drive.Filesystems = &[]hardware.Filesystem{}
+		}
+
+		// When the whole-disk device reports partition children, synthesize one
+		// real partition filesystem per child instead of a whole-disk filesystem.
+		// This keeps real partitions (e.g. sdc1 on a flash disk) visible while
+		// leaving the disk itself as a raw disk with no partitions.
+		if device.Children != nil && len(*device.Children) > 0 {
+			addedChild := false
+			for _, childPath := range *device.Children {
+				childName := filepath.Base(childPath)
+				if childName == "" || childName == "." || childName == string(filepath.Separator) {
+					continue
+				}
+				childDev, ok := devicesByName[childName]
+				if !ok || childDev.DevPath == nil || *childDev.DevPath == "" || childDev.ById == nil || *childDev.ById == "" {
+					tlog.DebugContext(h.ctx, "Skipping partition child without matching device entry", "drive_id", drive.Id, "child", childName)
+					continue
+				}
+				childFsId := "by-id-" + strings.TrimPrefix(*childDev.ById, "/dev/disk/by-id/")
+				childFS := hardware.Filesystem{
+					Device:      childDev.DevPath,
+					Id:          &childFsId,
+					Name:        childDev.Name,
+					MountPoints: &[]string{},
+				}
+				*drive.Filesystems = append(*drive.Filesystems, childFS)
+				addedChild = true
+			}
+			if addedChild {
+				tlog.DebugContext(h.ctx, "Synthesized partition filesystems from child devices", "drive_id", drive.Id, "device", *device.DevPath, "children", len(*device.Children))
+				continue
+			}
+		}
+
+		// Create a synthetic filesystem for the whole disk even when no readable
+		// filesystem magic was found (e.g. an MBR with an unreadable partition):
+		// the drive still needs mount/unmount/check/format actions. Use a by-id-
+		// prefixed ID so the converter resolves it without hitting /dev/disk/by-uuid/.
+		fsId := "by-id-" + strings.TrimPrefix(*device.ById, "/dev/disk/by-id/")
+		synthFS := hardware.Filesystem{
+			Device:      device.DevPath,
+			Id:          &fsId,
+			Name:        device.Name,
+			MountPoints: &[]string{},
+		}
+		*drive.Filesystems = append(*drive.Filesystems, synthFS)
+		// Remember the probe result so the main loop can avoid trusting stale
+		// udev ID_FS_TYPE on a raw whole-disk device (e.g. a previously formatted
+		// disk whose filesystem has since been removed).
+		wholeDiskProbeFstypeByID[*device.ById] = fstype
+		tlog.DebugContext(h.ctx, "Detected whole-disk filesystem via fallback probe", "drive_id", drive.Id, "device", *device.DevPath, "fstype", fstype)
+	}
+
+	tlog.DebugContext(h.ctx, "Processing drives from HA Supervisor", "drive_count", len(*hwser.JSON200.Data.Drives))
+	for i, drive := range *hwser.JSON200.Data.Drives {
 		var diskDto dto.Disk
 		errConvDrive := h.conv.DriveToDisk(drive, &diskDto)
 		if errConvDrive != nil {
 			tlog.WarnContext(h.ctx, "Error converting drive to disk DTO", "drive_index", i, "drive_id", drive.Id, "err", errConvDrive)
-			continue
-		}
-		if diskDto.Partitions == nil || len(*diskDto.Partitions) == 0 {
-			tlog.DebugContext(h.ctx, "Skipping drive DTO with no partitions after conversion", "drive_index", i, "drive_id", drive.Id)
 			continue
 		}
 
@@ -198,7 +302,11 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 						}
 					}
 
-					continue
+					// Do not continue: a whole-disk filesystem (e.g. superfloppy
+					// or an unreadable partition table) produces a partition
+					// whose LegacyDeviceName equals the disk name, so it must
+					// also run through the partition match below to populate
+					// DevicePath/FsType.
 				}
 				// Match Partitions
 				if diskDto.Partitions != nil {
@@ -218,7 +326,16 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 								} else if device.Attributes.IDPARTENTRYNAME != nil {
 									partition.Name = device.Attributes.IDPARTENTRYNAME
 								}
-								if device.Attributes.IDFSTYPE != nil {
+								// Prefer the fallback probe result for synthesized
+								// whole-disk filesystems: udev ID_FS_TYPE can be stale
+								// after a disk's filesystem was removed. Real child
+								// partitions (not in wholeDiskProbeFstypeByID) keep
+								// the existing IDFSTYPE behavior.
+								if probeFstype, ok := wholeDiskProbeFstypeByID[*device.ById]; ok {
+									if probeFstype != "" {
+										partition.FsType = &probeFstype
+									}
+								} else if device.Attributes.IDFSTYPE != nil {
 									partition.FsType = device.Attributes.IDFSTYPE
 								}
 							}
@@ -263,6 +380,12 @@ func (h *hardwareService) InvalidateHardwareInfo() {
 	}
 	h.cache.Delete(hwCacheKey)
 	tlog.TraceContext(h.ctx, "Invalidated hardware info cache")
+}
+
+// MockSetFSProbeFunc allows tests to override the filesystem probe used by the
+// fallback whole-disk detection (avoids touching real block devices in tests).
+func (h *hardwareService) MockSetFSProbeFunc(f func(string) (string, uintptr, error)) {
+	h.fsProbeFunc = f
 }
 
 // detectRotational reports whether a block device is a rotational HDD.
