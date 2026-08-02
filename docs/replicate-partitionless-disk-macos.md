@@ -12,10 +12,10 @@ Implementation work for the fix is tracked in [Task 044—Support Disks Without 
 
 Two distinct on-disk layouts trigger the bug:
 
-| Scenario | Layout | Reproduces |
-| -------- | ------ | ---------- |
-| A | No partition table at all; a valid filesystem starts at sector 0 ("superfloppy") | srat#849 |
-| B | Valid MBR with a partition entry, but the partition content has no readable filesystem signature | hassio-addons#716 |
+| Scenario | Layout                                                                                           | Reproduces        |
+| -------- | ------------------------------------------------------------------------------------------------ | ----------------- |
+| A        | No partition table at all; a valid filesystem starts at sector 0 ("superfloppy")                 | srat#849          |
+| B        | Valid MBR with a partition entry, but the partition content has no readable filesystem signature | hassio-addons#716 |
 
 In both cases the Linux kernel can see the device (and often the filesystem),
 but UDisks2 does not expose a `.Filesystem` D-Bus interface for any block

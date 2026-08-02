@@ -28,6 +28,7 @@ Currently under development and in an alpha state, SRAT is set to become the pre
   - [Feature Documentation](#feature-documentation)
 - [Database](#database)
 - [Sponsor](#sponsor)
+  - [Referral](#referral)
 - [Contribute](#contribute)
   - [Release process](#release-process)
 - [License](#license)
@@ -110,7 +111,8 @@ You can set the database path via the `--db` flag when running the server or CLI
 <a href="https://github.com/sponsors/dianlight"><img src="https://img.shields.io/github/sponsors/dianlight?style=flat-square&logo=githubsponsors&logoColor=%23EA4AAA" alt="Github Sponsor"></a>
 <a href="https://www.buymeacoffee.com/ypKZ2I0"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=&slug=ypKZ2I0" alt="Buy Me a Coffee"/></a>
 
-### Referral 
+### Referral
+
 If you're interested in subscribing to an OpenCode Go plan, <a href="https://opencode.ai/go?ref=HKKSCM481M">click the <img src=".opencode/logo.svg" alt="opencode"/> link</a> you'll get a $5 credit, and you'll be donating $5 to me.
 
 ## Contribute
