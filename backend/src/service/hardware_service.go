@@ -128,12 +128,20 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 
 	// Build map of whole-disk devices by serial for fallback probing of drives without filesystems
 	wholeDiskDevicesBySerial := make(map[string]*hardware.Device)
+	// Build map of all devices by name so fallback probing can resolve partition
+	// children (e.g. "sdc1") into real partition filesystems.
+	devicesByName := make(map[string]*hardware.Device)
+	// Records the fs probe result for fallback-synthesized whole-disk filesystems,
+	// keyed by device by-id path. Used by the main loop to override stale udev
+	// ID_FS_TYPE values left behind after a disk's filesystem was removed.
+	wholeDiskProbeFstypeByID := make(map[string]string)
 	if hwser.JSON200.Data.Devices != nil {
 		for deviceIdx := range *hwser.JSON200.Data.Devices {
 			device := &(*hwser.JSON200.Data.Devices)[deviceIdx]
 			if device.DevPath == nil || *device.DevPath == "" || device.Name == nil || *device.Name == "" {
 				continue
 			}
+			devicesByName[*device.Name] = device
 			// Whole-disk devices have names like "sda", "nvme0n1" (no partition number suffix)
 			if matched, _ := regexp.MatchString(`^[a-z]+$`, *device.Name); !matched {
 				continue
@@ -162,6 +170,42 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 			continue
 		}
 		fstype, _, _ := h.fsProbeFunc(*device.DevPath)
+		if drive.Filesystems == nil {
+			drive.Filesystems = &[]hardware.Filesystem{}
+		}
+
+		// When the whole-disk device reports partition children, synthesize one
+		// real partition filesystem per child instead of a whole-disk filesystem.
+		// This keeps real partitions (e.g. sdc1 on a flash disk) visible while
+		// leaving the disk itself as a raw disk with no partitions.
+		if device.Children != nil && len(*device.Children) > 0 {
+			addedChild := false
+			for _, childPath := range *device.Children {
+				childName := filepath.Base(childPath)
+				if childName == "" || childName == "." || childName == string(filepath.Separator) {
+					continue
+				}
+				childDev, ok := devicesByName[childName]
+				if !ok || childDev.DevPath == nil || *childDev.DevPath == "" || childDev.ById == nil || *childDev.ById == "" {
+					tlog.DebugContext(h.ctx, "Skipping partition child without matching device entry", "drive_id", drive.Id, "child", childName)
+					continue
+				}
+				childFsId := "by-id-" + strings.TrimPrefix(*childDev.ById, "/dev/disk/by-id/")
+				childFS := hardware.Filesystem{
+					Device:      childDev.DevPath,
+					Id:          &childFsId,
+					Name:        childDev.Name,
+					MountPoints: &[]string{},
+				}
+				*drive.Filesystems = append(*drive.Filesystems, childFS)
+				addedChild = true
+			}
+			if addedChild {
+				tlog.DebugContext(h.ctx, "Synthesized partition filesystems from child devices", "drive_id", drive.Id, "device", *device.DevPath, "children", len(*device.Children))
+				continue
+			}
+		}
+
 		// Create a synthetic filesystem for the whole disk even when no readable
 		// filesystem magic was found (e.g. an MBR with an unreadable partition):
 		// the drive still needs mount/unmount/check/format actions. Use a by-id-
@@ -173,10 +217,11 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 			Name:        device.Name,
 			MountPoints: &[]string{},
 		}
-		if drive.Filesystems == nil {
-			drive.Filesystems = &[]hardware.Filesystem{}
-		}
 		*drive.Filesystems = append(*drive.Filesystems, synthFS)
+		// Remember the probe result so the main loop can avoid trusting stale
+		// udev ID_FS_TYPE on a raw whole-disk device (e.g. a previously formatted
+		// disk whose filesystem has since been removed).
+		wholeDiskProbeFstypeByID[*device.ById] = fstype
 		tlog.DebugContext(h.ctx, "Detected whole-disk filesystem via fallback probe", "drive_id", drive.Id, "device", *device.DevPath, "fstype", fstype)
 	}
 
@@ -276,7 +321,16 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 								} else if device.Attributes.IDPARTENTRYNAME != nil {
 									partition.Name = device.Attributes.IDPARTENTRYNAME
 								}
-								if device.Attributes.IDFSTYPE != nil {
+								// Prefer the fallback probe result for synthesized
+								// whole-disk filesystems: udev ID_FS_TYPE can be stale
+								// after a disk's filesystem was removed. Real child
+								// partitions (not in wholeDiskProbeFstypeByID) keep
+								// the existing IDFSTYPE behavior.
+								if probeFstype, ok := wholeDiskProbeFstypeByID[*device.ById]; ok {
+									if probeFstype != "" {
+										partition.FsType = &probeFstype
+									}
+								} else if device.Attributes.IDFSTYPE != nil {
 									partition.FsType = device.Attributes.IDFSTYPE
 								}
 							}

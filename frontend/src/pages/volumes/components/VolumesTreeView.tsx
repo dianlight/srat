@@ -519,12 +519,20 @@ export function VolumesTreeView({
     // Raw disks (no partition table) have no partitions to list; still render
     // the disk node so it stays visible and selectable (Task 044). A
     // synthesized whole-disk partition (backend fallback probe) is not a real
-    // partition, so a disk with only one must still be labeled as raw.
-    const isRawDisk = filteredPartitions.length === 0;
+    // partition, so a disk with only one must still be labeled and rendered as
+    // raw.
     const realPartitions = filteredPartitions.filter(
       ([, partition]) => !isSynthesizedWholeDiskPartition(disk, partition),
     );
+    const isRawDisk = realPartitions.length === 0;
     const hasRealPartitions = realPartitions.length > 0;
+
+    // A synthesized whole-disk partition (backend fallback probe) is the only
+    // partition of a raw disk; reuse it so raw disks get partition-like actions.
+    const wholeDiskPartition = filteredPartitions.find(
+      ([, partition]: [string, Partition]) =>
+        isSynthesizedWholeDiskPartition(disk, partition),
+    )?.[1];
 
     const isSelected = normalizedSelectedId === diskIdentifier;
 
@@ -595,6 +603,23 @@ export function VolumesTreeView({
                 )}
               </Box>
             </Box>
+
+            {!readOnly && wholeDiskPartition && (
+              <Box sx={{ flexShrink: 0 }}>
+                <PartitionActions
+                  partition={wholeDiskPartition}
+                  protected_mode={protectedMode}
+                  onToggleAutomount={onToggleAutomount}
+                  onMount={onMount}
+                  onUnmount={onUnmount}
+                  onCreateShare={onCreateShare}
+                  onGoToShare={onGoToShare}
+                  onCheckFilesystem={onCheckFilesystem}
+                  //onSetFilesystemLabel={onSetFilesystemLabel}
+                  //onFormatPartition={onFormatPartition}
+                />
+              </Box>
+            )}
           </Box>
         }
       >

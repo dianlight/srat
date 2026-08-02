@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const createBaseProps = (overrides: Record<string, unknown> = {}) => ({
     expandedItems: [],
@@ -425,6 +425,114 @@ describe("VolumesTreeView Component", () => {
                 "No partition table detected. Select the disk for details.",
             ),
         ).toBeTruthy();
+    });
+
+    it("shows a raw disk badge and hint for a whole-disk filesystem partition", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { VolumesTreeView } = await import("../VolumesTreeView");
+        const { createTestStore } = await import("/test/testing");
+        const { getDiskIdentifier } = await import("../../utils");
+
+        const store = await createTestStore();
+        const disks = [
+            {
+                id: "disk-6",
+                model: "Raw USB Drive",
+                legacy_device_name: "sdd",
+                partitions: {
+                    "usb-General_UDisk-0:0": {
+                        id: "usb-General_UDisk-0:0",
+                        legacy_device_name: "sdd",
+                        fs_type: "vfat",
+                        mount_point_data: {},
+                    },
+                },
+            },
+        ];
+
+        render(
+            React.createElement(
+                Provider,
+                {
+                    store,
+                    children: React.createElement(
+                        VolumesTreeView as any,
+                        createBaseProps({
+                            disks,
+                            expandedItems: [
+                                getDiskIdentifier(disks[0] as any, 0),
+                            ],
+                        }),
+                    ),
+                },
+            ),
+        );
+
+        expect(
+            screen.getByText("Raw disk (no partition table)"),
+        ).toBeTruthy();
+        expect(
+            screen.getByText(
+                "No partition table detected. Select the disk for details.",
+            ),
+        ).toBeTruthy();
+        expect(screen.queryByText("1 partition(s)")).toBeNull();
+    });
+
+    it("shows a partition-like mount action for a raw disk with a whole-disk partition", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { Provider } = await import("react-redux");
+        const { VolumesTreeView } = await import("../VolumesTreeView");
+        const { createTestStore } = await import("/test/testing");
+        const { getDiskIdentifier } = await import("../../utils");
+
+        const user = userEvent.setup();
+        const store = await createTestStore();
+        const onMount = vi.fn(() => undefined);
+        const disks = [
+            {
+                id: "disk-7",
+                model: "Raw USB Drive",
+                legacy_device_name: "sde",
+                partitions: {
+                    "usb-General_UDisk-0:0": {
+                        id: "usb-General_UDisk-0:0",
+                        legacy_device_name: "sde",
+                        fs_type: "vfat",
+                        mount_point_data: {},
+                    },
+                },
+            },
+        ];
+
+        render(
+            React.createElement(
+                Provider,
+                {
+                    store,
+                    children: React.createElement(
+                        VolumesTreeView as any,
+                        createBaseProps({
+                            disks,
+                            expandedItems: [
+                                getDiskIdentifier(disks[0] as any, 0),
+                            ],
+                            onMount,
+                        }),
+                    ),
+                },
+            ),
+        );
+
+        const mountButton = await screen.findByRole("button", {
+            name: /mount partition/i,
+        });
+        await user.click(mountButton);
+        expect(onMount).toHaveBeenCalledTimes(1);
     });
 });
 

@@ -575,6 +575,18 @@ func (self *VolumeService) getVolumesData() errors.E {
 							}
 							filesystemSupportCache[*part.FsType] = part.FilesystemInfo
 						}
+					} else {
+						// The filesystem type is unknown (e.g. a raw disk or an
+						// unreadable/unformatted partition). Formatting does not depend
+						// on the current filesystem, so enable the format action while
+						// keeping check/label actions disabled (they require a known
+						// filesystem). The frontend format dialog defaults to a known
+						// format-capable filesystem type in this case.
+						part.FilesystemInfo = &dto.FilesystemInfo{
+							Support: &dto.FilesystemSupport{
+								CanFormat: true,
+							},
+						}
 					}
 					(*disk.Partitions)[pid] = part
 					//			if err := self.processPartitionMountData(&disk, pid, part, true); err != nil {

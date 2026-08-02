@@ -411,3 +411,144 @@ func (suite *HardwareServiceSuite) TestGetHardwareInfo_WholeDiskPartitionGetsFsT
 		suite.Equal("vfat", *part.FsType, "Partition FsType should be populated")
 	}
 }
+
+func (suite *HardwareServiceSuite) TestGetHardwareInfo_DeviceWithChildrenSynthesizesPartitions() {
+	// A device with child devices (e.g. a USB stick with a real partition table)
+	// must synthesize one partition per child instead of a whole-disk filesystem.
+	// The child partition keeps an unknown FsType (nil) so the format action
+	// remains available.
+	mockResponse := &hardware.GetHardwareInfoResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok","data":{"drives":[]}}`),
+		JSON200: &struct {
+			Data   *hardware.HardwareInfo             `json:"data,omitempty"`
+			Result *hardware.GetHardwareInfo200Result `json:"result,omitempty"`
+		}{
+			Data: &hardware.HardwareInfo{
+				Drives: &[]hardware.Drive{
+					{
+						Id:          new("drive1"),
+						Serial:      new("SERIAL123"),
+						Filesystems: nil, // No filesystems reported by Supervisor
+					},
+				},
+				Devices: &[]hardware.Device{
+					{
+						Name:    new("sdc"),
+						DevPath: new("/dev/sdc"),
+						ById:    new("/dev/disk/by-id/usb-TESTFLASH_123"),
+						Attributes: &hardware.Attributes{
+							IDSERIALSHORT: new("SERIAL123"),
+						},
+						Children: &[]string{
+							"/sys/devices/pci0000:00/0000:00:14.0/usb1/1-2/1-2:1.0/host2/target2:0:0/2:0:0:0/block/sdc/sdc1",
+						},
+					},
+					{
+						Name:    new("sdc1"),
+						DevPath: new("/dev/sdc1"),
+						ById:    new("/dev/disk/by-id/usb-TESTFLASH_123-0:1"),
+					},
+				},
+			},
+		},
+	}
+
+	mock.When(suite.haClient.GetHardwareInfoWithResponse(mock.Any[context.Context]())).ThenReturn(mockResponse, nil)
+	mock.When(suite.smartService.GetSmartInfo(mock.Any[context.Context](), mock.Any[string]())).
+		ThenReturn(nil, errors.WithDetails(dto.ErrorSMARTNotSupported, "device", "sdc"))
+	mock.When(suite.hdidleService.GetDeviceConfig(mock.Any[string]())).
+		ThenReturn(nil, errors.WithDetails(dto.ErrorHDIdleNotSupported, "device", "sdc"))
+
+	suite.hardwareService.MockSetFSProbeFunc(func(devPath string) (string, uintptr, error) {
+		suite.Equal("/dev/sdc", devPath)
+		return "", 0, nil
+	})
+
+	// Execute
+	disks, err := suite.hardwareService.GetHardwareInfo()
+
+	// Assert
+	suite.NoError(err)
+	suite.NotNil(disks)
+	suite.Len(disks, 1, "Drive should be kept")
+
+	disk, ok := disks["usb-TESTFLASH_123"]
+	suite.True(ok, "Disk should be present by by-id name")
+	suite.NotNil(disk.Partitions, "Child partition should be synthesized")
+	suite.Len(*disk.Partitions, 1, "One real partition from the child device")
+	for _, part := range *disk.Partitions {
+		suite.Equal("sdc1", *part.LegacyDeviceName)
+		suite.Equal("/dev/sdc1", *part.LegacyDevicePath)
+		suite.Equal("/dev/disk/by-id/usb-TESTFLASH_123-0:1", *part.DevicePath)
+		suite.Nil(part.FsType, "Partition with unknown filesystem keeps FsType nil")
+	}
+}
+
+func (suite *HardwareServiceSuite) TestGetHardwareInfo_RawWholeDiskIgnoresStaleUdevFsType() {
+	// A raw whole-disk device (no children) with a stale udev ID_FS_TYPE must
+	// stay raw when the probe finds no filesystem magic. The stale udev value
+	// must not leak into the synthesized partition FsType.
+	mockResponse := &hardware.GetHardwareInfoResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok","data":{"drives":[]}}`),
+		JSON200: &struct {
+			Data   *hardware.HardwareInfo             `json:"data,omitempty"`
+			Result *hardware.GetHardwareInfo200Result `json:"result,omitempty"`
+		}{
+			Data: &hardware.HardwareInfo{
+				Drives: &[]hardware.Drive{
+					{
+						Id:          new("drive1"),
+						Serial:      new("SERIAL123"),
+						Filesystems: nil, // No filesystems reported by Supervisor
+					},
+				},
+				Devices: &[]hardware.Device{
+					{
+						Name:    new("sdd"),
+						DevPath: new("/dev/sdd"),
+						ById:    new("/dev/disk/by-id/usb-TESTRAW_456"),
+						Attributes: &hardware.Attributes{
+							IDSERIALSHORT: new("SERIAL123"),
+							// Stale udev entry from a previous filesystem that has
+							// since been removed from the raw disk.
+							IDFSTYPE: new("vfat"),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	mock.When(suite.haClient.GetHardwareInfoWithResponse(mock.Any[context.Context]())).ThenReturn(mockResponse, nil)
+	mock.When(suite.smartService.GetSmartInfo(mock.Any[context.Context](), mock.Any[string]())).
+		ThenReturn(nil, errors.WithDetails(dto.ErrorSMARTNotSupported, "device", "sdd"))
+	mock.When(suite.hdidleService.GetDeviceConfig(mock.Any[string]())).
+		ThenReturn(nil, errors.WithDetails(dto.ErrorHDIdleNotSupported, "device", "sdd"))
+
+	// Probe reports no filesystem magic: the disk is raw, so the stale udev
+	// ID_FS_TYPE must not leak into the partition FsType.
+	suite.hardwareService.MockSetFSProbeFunc(func(devPath string) (string, uintptr, error) {
+		suite.Equal("/dev/sdd", devPath)
+		return "", 0, nil
+	})
+
+	// Execute
+	disks, err := suite.hardwareService.GetHardwareInfo()
+
+	// Assert
+	suite.NoError(err)
+	suite.NotNil(disks)
+	suite.Len(disks, 1, "Drive should be kept")
+
+	disk, ok := disks["usb-TESTRAW_456"]
+	suite.True(ok, "Disk should be present by by-id name")
+	suite.NotNil(disk.Partitions, "Whole-disk filesystem should produce a partition")
+	suite.Len(*disk.Partitions, 1, "Exactly one whole-disk partition")
+	for _, part := range *disk.Partitions {
+		suite.Equal("sdd", *part.LegacyDeviceName)
+		suite.Equal("/dev/disk/by-id/usb-TESTRAW_456", *part.DevicePath)
+		suite.Nil(part.FsType, "Raw whole-disk partition must not use stale udev FsType")
+	}
+}

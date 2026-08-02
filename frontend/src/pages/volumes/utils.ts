@@ -87,16 +87,17 @@ export function getMountpointIdentifier(
 }
 
 // Task 044: the backend synthesizes a whole-disk partition entry for raw disks
-// (no partition table, no readable filesystem magic) so they stay actionable
-// (mount/unmount/format). Such an entry has no detected filesystem type and a
-// legacy device name that equals the disk's. It is not a real partition and
-// must not be counted or labeled as one.
+// (no partition table) so they stay actionable (mount/unmount/format). The
+// backend may legitimately detect a filesystem written directly to the whole
+// disk (e.g. vfat superfloppy). Such an entry always carries the disk's own
+// legacy device name (real partitions have a numeric suffix, like sdc1), so
+// name equality is the discriminator. It is not a real partition and must not
+// be counted or labeled as one.
 export function isSynthesizedWholeDiskPartition(
   disk: Disk,
   partition: Partition,
 ): boolean {
   return (
-    partition.fs_type == null &&
     partition.legacy_device_name != null &&
     partition.legacy_device_name === disk.legacy_device_name
   );

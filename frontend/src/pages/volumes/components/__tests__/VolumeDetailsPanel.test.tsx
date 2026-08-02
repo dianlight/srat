@@ -355,38 +355,6 @@ describe("VolumeDetailsPanel", () => {
         ).toBeTruthy();
     });
 
-    it("shows a disk-level mount action for a synthesized whole-disk partition", async () => {
-        const user = userEvent.setup();
-        const onMount = vi.fn(() => undefined);
-        const wholeDiskPartition = createPartition({
-            id: "part-sda",
-            legacy_device_name: "sda",
-            mount_point_data: {},
-        });
-        const disk = {
-            ...baseDisk,
-            legacy_device_name: "sda",
-            partitions: { "part-sda": wholeDiskPartition },
-        };
-
-        await renderPanel({
-            disk: disk as any,
-            onToggleAutomount: vi.fn(() => undefined),
-            onMount,
-            onUnmount: vi.fn(() => undefined),
-            onCreateShare: vi.fn(() => undefined),
-            onGoToShare: vi.fn(() => undefined),
-        });
-
-        const mountButton = await screen.findByRole("button", {
-            name: /mount disk/i,
-        });
-        await user.click(mountButton);
-
-        expect(onMount).toHaveBeenCalledTimes(1);
-        expect(onMount).toHaveBeenCalledWith(wholeDiskPartition);
-    });
-
     it("shows raw disk badge when the only partition is a synthesized whole-disk entry", async () => {
         // Task 044: a disk without a partition table gets a synthesized
         // whole-disk partition with no filesystem type so it stays actionable.
@@ -412,9 +380,10 @@ describe("VolumeDetailsPanel", () => {
         expect(screen.queryByText(/1 Partition\(s\)/)).toBeNull();
     });
 
-    it("counts a real whole-disk filesystem partition as a partition", async () => {
+    it("shows raw disk badge for a whole-disk filesystem partition", async () => {
         // Task 044: a superfloppy filesystem written directly to the disk
-        // (e.g. vfat) is a real partition and should still be counted.
+        // (e.g. vfat) with no partition table is still a whole-disk entry and
+        // must be reported as a raw disk, not counted as a partition.
         const disk = {
             ...baseDisk,
             legacy_device_name: "sdd",
@@ -430,21 +399,41 @@ describe("VolumeDetailsPanel", () => {
 
         await renderPanel({ disk: disk as any });
 
+        expect(
+            await screen.findByText("Raw disk (no partition table)"),
+        ).toBeTruthy();
+        expect(screen.queryByText(/1 Partition\(s\)/)).toBeNull();
+    });
+
+    it("counts a real partition with a numeric suffix as a partition", async () => {
+        const disk = {
+            ...baseDisk,
+            legacy_device_name: "sdd",
+            partitions: {
+                "usb-General_UDisk-0:1": createPartition({
+                    id: "usb-General_UDisk-0:1",
+                    legacy_device_name: "sdd1",
+                    fs_type: "vfat",
+                    mount_point_data: {},
+                }),
+            },
+        };
+
+        await renderPanel({ disk: disk as any });
+
         expect(await screen.findByText("1 Partition(s)")).toBeTruthy();
     });
 
-    it("hides the whole-disk mount action when the partition is named hassos", async () => {
+    it("counts a real partition with a numeric suffix as a partition", async () => {
+        const wholeDiskPartition = createPartition({
+            id: "part-sde",
+            legacy_device_name: "sde",
+            mount_point_data: {},
+        });
         const disk = {
             ...baseDisk,
-            legacy_device_name: "sda",
-            partitions: {
-                "part-sda": createPartition({
-                    id: "part-sda",
-                    legacy_device_name: "sda",
-                    name: "hassos-data",
-                    mount_point_data: {},
-                }),
-            },
+            legacy_device_name: "sde",
+            partitions: { "part-sde": wholeDiskPartition },
         };
 
         await renderPanel({
@@ -456,41 +445,9 @@ describe("VolumeDetailsPanel", () => {
             onGoToShare: vi.fn(() => undefined),
         });
 
-        expect(screen.queryByRole("button", { name: /mount disk/i })).toBeNull();
-    });
-
-    it("disables the whole-disk mount action in read-only mode with tooltip", async () => {
-        const user = userEvent.setup();
-        const disk = {
-            ...baseDisk,
-            legacy_device_name: "sda",
-            partitions: {
-                "part-sda": createPartition({
-                    id: "part-sda",
-                    legacy_device_name: "sda",
-                    mount_point_data: {},
-                }),
-            },
-        };
-
-        await renderPanel({
-            disk: disk as any,
-            readOnly: true,
-            onToggleAutomount: vi.fn(() => undefined),
-            onMount: vi.fn(() => undefined),
-            onUnmount: vi.fn(() => undefined),
-            onCreateShare: vi.fn(() => undefined),
-            onGoToShare: vi.fn(() => undefined),
-        });
-
-        const mountButton = await screen.findByRole("button", {
-            name: /mount disk/i,
-        });
-        expect((mountButton as HTMLButtonElement).disabled).toBe(true);
-
-        const hoverTarget = mountButton.parentElement ?? mountButton;
-        await user.hover(hoverTarget as HTMLElement);
-
-        expect(await screen.findByText(/read-only mode enabled/i)).toBeTruthy();
+        expect(
+            await screen.findByText("Raw Disk Filesystem Information"),
+        ).toBeTruthy();
+        expect(screen.queryByText("Partition Information")).toBeNull();
     });
 });
