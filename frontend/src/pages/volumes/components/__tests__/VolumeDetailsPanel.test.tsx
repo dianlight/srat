@@ -124,7 +124,7 @@ describe("VolumeDetailsPanel", () => {
                     Description: "EXT4 Filesystem",
                 } as any,
             });
-    
+
             await renderPanel(
                 { disk: baseDisk as any, partition },
                 {
@@ -147,9 +147,9 @@ describe("VolumeDetailsPanel", () => {
                     },
                 },
             );
-    
+
             await user.hover(screen.getByText(/EXT4 Filesystem/i));
-    
+
             const tooltip = await screen.findByRole("tooltip");
             //expect(within(tooltip).getByText(/filesystem is clean/i)).toBeTruthy();
             expect(within(tooltip).getByText(/last check/i)).toBeTruthy();
@@ -172,7 +172,7 @@ describe("VolumeDetailsPanel", () => {
                  Description: "XFS Filesystem",
              } as any,
          });
- 
+
          await renderPanel(
              { disk: baseDisk as any, partition },
              {
@@ -193,12 +193,12 @@ describe("VolumeDetailsPanel", () => {
                  },
              },
          );
- 
+
          await user.hover(screen.getByText(/XFS Filesystem/i));
          const tooltip = await screen.findByRole("tooltip");
          expect(within(tooltip).getByText(/filesystem has errors/i)).toBeTruthy();
      });
- 
+
      it("shows fallback filesystem tooltip when state is missing", async () => {
          const user = userEvent.setup();
          const partition = {
@@ -215,7 +215,7 @@ describe("VolumeDetailsPanel", () => {
                  Description: "BTRFS Filesystem",
              },
          } as unknown as Partition;
- 
+
          await renderPanel(
              { disk: baseDisk as any, partition },
              {
@@ -230,7 +230,7 @@ describe("VolumeDetailsPanel", () => {
                  },
              },
          );
- 
+
          await user.hover(screen.getByText(/BTRFS Filesystem/i));
          const tooltip = await screen.findByRole("tooltip");
          expect(within(tooltip).getByText(/no filesystem status available/i)).toBeTruthy();
@@ -424,7 +424,7 @@ describe("VolumeDetailsPanel", () => {
         expect(await screen.findByText("1 Partition(s)")).toBeTruthy();
     });
 
-    it("counts a real partition with a numeric suffix as a partition", async () => {
+    it("renders the raw disk filesystem card for a whole-disk partition", async () => {
         const wholeDiskPartition = createPartition({
             id: "part-sde",
             legacy_device_name: "sde",
