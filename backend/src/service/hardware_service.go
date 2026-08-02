@@ -171,7 +171,7 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 			continue
 		}
 		device, ok := wholeDiskDevicesBySerial[*drive.Serial]
-		if !ok || device.DevPath == nil || *device.DevPath == "" {
+		if !ok || device.DevPath == nil || *device.DevPath == "" || device.ById == nil || *device.ById == "" {
 			continue
 		}
 		fstype, _, _ := h.fsProbeFunc(*device.DevPath)
