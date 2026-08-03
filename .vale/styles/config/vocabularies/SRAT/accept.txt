@@ -356,3 +356,7 @@ subprocess
 automerge
 Toolkit's
 opencode
+Partitionless
+superfloppy
+darwin
+unpartitioned

@@ -11,7 +11,7 @@ import (
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal/darwinstubs/mount"
-	"github.com/google/go-github/v88/github"
+	"github.com/google/go-github/v89/github"
 	"github.com/shirou/gopsutil/v4/net"
 	"github.com/shirou/gopsutil/v4/process"
 	"github.com/stretchr/testify/assert"
@@ -569,7 +569,7 @@ func TestGitHubToDto_RepositoryReleaseToReleaseAsset(t *testing.T) {
 
 	tagName := "v1.0.0"
 	source := &github.RepositoryRelease{
-		TagName: &tagName,
+		TagName: tagName,
 	}
 
 	var target dto.ReleaseAsset

@@ -19,7 +19,7 @@ import (
 
 	"aead.dev/minisign"
 	"github.com/gofri/go-github-ratelimit/v2/github_ratelimit"
-	"github.com/google/go-github/v88/github"
+	"github.com/google/go-github/v89/github"
 	"github.com/jarcoal/httpmock"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
@@ -173,20 +173,20 @@ func newGitHubReleaseAsset(name, downloadURL string, size int64) *github.Release
 // Helper to create a mock GitHub repository release
 func newGitHubRepositoryRelease(tagName string, prerelease bool, assets []*github.ReleaseAsset) *github.RepositoryRelease {
 	return &github.RepositoryRelease{
-		TagName:         &tagName,
-		Prerelease:      new(prerelease),
+		TagName:         tagName,
+		Prerelease:      prerelease,
 		Assets:          assets,
-		TargetCommitish: new("main"),
+		TargetCommitish: "main",
 		Name:            new(fmt.Sprintf("Release %s", tagName)),
 		Body:            new(fmt.Sprintf("Release notes for %s", tagName)),
-		Draft:           new(false),
-		HTMLURL:         new(fmt.Sprintf("https://github.com/releases/%s", tagName)),
-		AssetsURL:       new(fmt.Sprintf("https://github.com/releases/%s/assets", tagName)),
-		UploadURL:       new(fmt.Sprintf("https://github.com/releases/%s/upload", tagName)),
+		Draft:           false,
+		HTMLURL:         fmt.Sprintf("https://github.com/releases/%s", tagName),
+		AssetsURL:       fmt.Sprintf("https://github.com/releases/%s/assets", tagName),
+		UploadURL:       fmt.Sprintf("https://github.com/releases/%s/upload", tagName),
 		ZipballURL:      new(fmt.Sprintf("https://github.com/archive/%s.zip", tagName)),
 		TarballURL:      new(fmt.Sprintf("https://github.com/archive/%s.tar.gz", tagName)),
 		PublishedAt:     &github.Timestamp{Time: time.Now()},
-		CreatedAt:       &github.Timestamp{Time: time.Now()},
+		CreatedAt:       github.Timestamp{Time: time.Now()},
 		Author:          &github.User{Login: new("testuser")},
 	}
 }

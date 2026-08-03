@@ -25,7 +25,7 @@ import (
 	"github.com/dianlight/srat/internal/urlutil"
 	"github.com/dianlight/tlog"
 	"github.com/fsnotify/fsnotify"
-	"github.com/google/go-github/v88/github"
+	"github.com/google/go-github/v89/github"
 	"github.com/vvair/selfupdate"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
@@ -384,12 +384,12 @@ func (self *UpgradeService) GetUpgradeReleaseAsset() (ass *dto.ReleaseAsset, err
 					continue
 				}
 
-				assertVersion, err := semver.NewVersion(*release.TagName)
+				assertVersion, err := semver.NewVersion(release.TagName)
 				if err != nil {
-					slog.WarnContext(self.ctx, "Error parsing version", "version", *release.TagName, "err", err)
+					slog.WarnContext(self.ctx, "Error parsing version", "version", release.TagName, "err", err)
 					continue
 				}
-				tlog.TraceContext(self.ctx, "Checking version", "current", myversion, "release", *release.TagName, "compare", myversion.Compare(assertVersion))
+				tlog.TraceContext(self.ctx, "Checking version", "current", myversion, "release", release.TagName, "compare", myversion.Compare(assertVersion))
 
 				if myversion.GreaterThanEqual(assertVersion) {
 					continue
@@ -413,11 +413,11 @@ func (self *UpgradeService) GetUpgradeReleaseAsset() (ass *dto.ReleaseAsset, err
 							return nil, errors.WithStack(err)
 						}
 						ass = &dto.ReleaseAsset{
-							LastRelease: *release.TagName,
+							LastRelease: release.TagName,
 							ArchAsset:   archAsset,
 						}
 						myversion = assertVersion
-						slog.InfoContext(self.ctx, "Found upgrade release asset", "release", *release.TagName, "asset_name", asset.GetName())
+						slog.InfoContext(self.ctx, "Found upgrade release asset", "release", release.TagName, "asset_name", asset.GetName())
 						break
 					}
 				}

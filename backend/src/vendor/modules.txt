@@ -106,7 +106,7 @@ github.com/dianlight/tlog/sanitizer
 # github.com/dustin/go-humanize v1.0.1
 ## explicit; go 1.16
 github.com/dustin/go-humanize
-# github.com/ebitengine/purego v0.10.0
+# github.com/ebitengine/purego v0.10.2
 ## explicit; go 1.18
 github.com/ebitengine/purego
 github.com/ebitengine/purego/internal/cgo
@@ -160,9 +160,9 @@ github.com/go-sql-driver/mysql
 github.com/gofri/go-github-ratelimit/v2/github_ratelimit
 github.com/gofri/go-github-ratelimit/v2/github_ratelimit/github_primary_ratelimit
 github.com/gofri/go-github-ratelimit/v2/github_ratelimit/github_secondary_ratelimit
-# github.com/google/go-github/v88 v88.0.0
+# github.com/google/go-github/v89 v89.0.0
 ## explicit; go 1.25.0
-github.com/google/go-github/v88/github
+github.com/google/go-github/v89/github
 # github.com/google/go-querystring v1.2.0
 ## explicit; go 1.13
 github.com/google/go-querystring/query
@@ -184,7 +184,7 @@ github.com/huandu/xstrings
 # github.com/inconshreveable/mousetrap v1.1.0
 ## explicit; go 1.18
 github.com/inconshreveable/mousetrap
-# github.com/jarcoal/httpmock v1.4.1
+# github.com/jarcoal/httpmock v1.4.2
 ## explicit; go 1.18
 github.com/jarcoal/httpmock
 github.com/jarcoal/httpmock/internal
@@ -357,7 +357,7 @@ github.com/sergi/go-diff/diffmatchpatch
 # github.com/sethvargo/go-retry v0.4.0
 ## explicit; go 1.25
 github.com/sethvargo/go-retry
-# github.com/shirou/gopsutil/v4 v4.26.6
+# github.com/shirou/gopsutil/v4 v4.26.7
 ## explicit; go 1.24.0
 github.com/shirou/gopsutil/v4/common
 github.com/shirou/gopsutil/v4/cpu
@@ -489,7 +489,7 @@ golang.org/x/crypto/blowfish
 golang.org/x/crypto/ed25519
 golang.org/x/crypto/pbkdf2
 golang.org/x/crypto/scrypt
-# golang.org/x/exp v0.0.0-20260718201538-764159d718ef
+# golang.org/x/exp v0.0.0-20260727155853-b88d891fe743
 ## explicit; go 1.25.0
 golang.org/x/exp/constraints
 # golang.org/x/mod v0.38.0

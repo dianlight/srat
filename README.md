@@ -28,6 +28,7 @@ Currently under development and in an alpha state, SRAT is set to become the pre
   - [Feature Documentation](#feature-documentation)
 - [Database](#database)
 - [Sponsor](#sponsor)
+  - [Referral](#referral)
 - [Contribute](#contribute)
   - [Release process](#release-process)
 - [License](#license)
@@ -87,6 +88,7 @@ SRAT can be used to manage Samba shares, users, and configurations via a modern 
 - [SMB over QUIC](docs/SMB_OVER_QUIC.md) - Enhanced performance and security with QUIC transport protocol
 - [Telemetry Configuration](docs/TELEMETRY_CONFIGURATION.md) - Configure error reporting and monitoring
 - [Home Assistant Integration](docs/HOME_ASSISTANT_INTEGRATION.md) - Integration with Home Assistant
+- [Partitionless (raw) Disk Replication Guide](docs/replicate-partitionless-disk-macos.md) - Reproduce and validate the "disk without partitions" fix
 
 ## Database
 
