@@ -91,6 +91,10 @@
     "gen:mocks": "bunx msw-auto-mock ../backend/docs/openapi.json --typescript -o src/mocks",
     "test:browser": "vitest --config=vitest.browser.config.ts"
   },
+  "overrides": {
+    "react": "$react",
+    "react-dom": "$react-dom"
+  },
   "patchedDependencies": {
     "@mcpc-tech/unplugin-dev-inspector-mcp@0.1.49": "patches/@mcpc-tech%2Funplugin-dev-inspector-mcp@0.1.49.patch",
     "@mui/x-internals@9.7.0": "patches/@mui-x-internals.patch"

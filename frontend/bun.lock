@@ -86,6 +86,10 @@
   "patchedDependencies": {
     "@mcpc-tech/unplugin-dev-inspector-mcp@0.1.49": "patches/@mcpc-tech%2Funplugin-dev-inspector-mcp@0.1.49.patch",
   },
+  "overrides": {
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+  },
   "packages": {
     "@adobe/css-tools": ["@adobe/css-tools@4.5.0", "", {}, "sha512-6OzddxPio9UiWTCemp4N8cYLV2ZN1ncRnV1cVGtve7dhPOtRkleRyx32GQCYSwDYgaHU3USMm84tNsvKzRCa1Q=="],
 
