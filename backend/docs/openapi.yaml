@@ -507,46 +507,6 @@ components:
         - read_latency_ms
         - write_latency_ms
       type: object
-    ErrorDataModel:
-      additionalProperties: false
-      properties:
-        detail:
-          description: A human-readable explanation specific to this occurrence of the problem.
-          examples:
-            - Property foo is required but is missing.
-          type: string
-        errors:
-          description: Optional list of individual error details
-          items:
-            $ref: "#/components/schemas/ErrorDetail"
-          type:
-            - array
-            - "null"
-        instance:
-          description: A URI reference that identifies the specific occurrence of the problem.
-          examples:
-            - https://example.com/error-log/abc123
-          format: uri
-          type: string
-        status:
-          description: HTTP status code
-          examples:
-            - 400
-          format: int64
-          type: integer
-        title:
-          description: A short, human-readable summary of the problem type. This value should not change between occurrences of the error.
-          examples:
-            - Bad Request
-          type: string
-        type:
-          default: about:blank
-          description: A URI reference to human-readable documentation for the error.
-          examples:
-            - https://example.com/errors/example
-          format: uri
-          type: string
-      type: object
     ErrorDetail:
       additionalProperties: false
       properties:
@@ -2049,11 +2009,6 @@ components:
           format: uri
           readOnly: true
           type: string
-        addon_mdns_interfaces:
-          default: []
-          items:
-            type: string
-          type: array
         addon_mdns_registration:
           default: false
           type: boolean
@@ -2121,6 +2076,8 @@ components:
         workgroup:
           type: string
       required:
+        - telemetry_mode
+        - smart_mode
         - experimental_lab_mode
       type: object
     SharedResource:
@@ -2433,13 +2390,6 @@ components:
           format: uri
           readOnly: true
           type: string
-        available_mdns_interfaces:
-          description: Network interfaces eligible for addon-side direct mDNS registration
-          items:
-            type: string
-          type:
-            - array
-            - "null"
         has_kernel_module:
           description: Whether QUIC kernel module is loaded
           type: boolean
@@ -2838,8 +2788,8 @@ paths:
           schema:
             description: The disk ID (not the device path)
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3198,8 +3148,8 @@ paths:
           schema:
             description: The disk ID (not the device path)
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3298,8 +3248,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -3348,8 +3298,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3548,8 +3498,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3696,8 +3646,8 @@ paths:
     post:
       operationId: post-api-filesystem-check-abort
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -4303,8 +4253,8 @@ paths:
     get:
       operationId: get-issue-template
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -4894,8 +4844,8 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -5063,8 +5013,8 @@ paths:
     get:
       operationId: get-api-samba-config
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -5149,8 +5099,8 @@ paths:
     get:
       operationId: get-api-settings
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -5214,11 +5164,6 @@ paths:
                   format: uri
                   readOnly: true
                   type: string
-                addon_mdns_interfaces:
-                  default: []
-                  items:
-                    type: string
-                  type: array
                 addon_mdns_registration:
                   default: false
                   type: boolean
@@ -5297,11 +5242,6 @@ paths:
                   format: uri
                   readOnly: true
                   type: string
-                addon_mdns_interfaces:
-                  default: []
-                  items:
-                    type: string
-                  type: array
                 addon_mdns_registration:
                   default: false
                   type: boolean
@@ -5676,8 +5616,8 @@ paths:
     delete:
       operationId: delete-api-settings-homeassistant-custom-component
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -5762,8 +5702,8 @@ paths:
     get:
       operationId: get-api-settings-homeassistant-custom-component-status
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -5805,8 +5745,8 @@ paths:
     post:
       operationId: post-api-settings-homeassistant-custom-component-upgrade
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -5950,8 +5890,8 @@ paths:
               - world
             maxLength: 128
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "204":
           description: No Content
@@ -6258,8 +6198,8 @@ paths:
             description: Name of the share to disable
             maxLength: 128
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -6309,8 +6249,8 @@ paths:
             description: Name of the share to enable
             maxLength: 128
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -6442,8 +6382,8 @@ paths:
     get:
       operationId: get-api-telemetry-internet-connection
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -6485,8 +6425,8 @@ paths:
     get:
       operationId: list-api-telemetry-modes
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -6617,8 +6557,8 @@ paths:
     get:
       operationId: list-api-update-channels
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -6725,8 +6665,8 @@ paths:
             minimum: 1
             pattern: "[a-zA-Z0-9 _-]+"
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "204":
           description: No Content

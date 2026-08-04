@@ -1,7 +1,6 @@
 import ScienceOutlinedIcon from "@mui/icons-material/ScienceOutlined";
 import { Stack, Tooltip, Typography } from "@mui/material";
 import { useFormContext } from "react-hook-form";
-import { AutocompleteElement } from "react-hook-form-mui";
 import {
   type Settings as ApiSettings,
   type SystemCapabilities,
@@ -147,49 +146,28 @@ export function HomeAssistantPanel({ readOnly }: HomeAssistantPanelProps) {
 
       {/* Addon-side direct mDNS (lab feature) */}
       {experimentalLabMode ? (
-        <Stack spacing={2}>
-          <Tooltip
-            title={
-              <>
-                <Typography variant="h6" component="div">
-                  Addon-side Direct mDNS (Lab)
-                </Typography>
-                <Typography variant="body2">
-                  Announce this Samba server directly from the add-on using mDNS
-                  (Zeroconf). When enabled, the Home Assistant mDNS registration
-                  toggle is disabled because the two modes are mutually
-                  exclusive.
-                </Typography>
-              </>
-            }
-          >
-            <SettingSwitchRow
-              ariaLabel="Addon-side Direct mDNS"
-              control={control}
-              disabled={readOnly}
-              label={labLabel("Addon-side Direct mDNS")}
-              name="addon_mdns_registration"
-            />
-          </Tooltip>
-
-          {addonMDNSEnabled ? (
-            <AutocompleteElement
-              name="addon_mdns_interfaces"
-              label="mDNS Interfaces"
-              multiple
-              options={
-                (capabilities as SystemCapabilities)
-                  ?.available_mdns_interfaces ?? []
-              }
-              textFieldProps={{
-                helperText:
-                  "Leave empty to publish on all eligible interfaces.",
-                disabled: readOnly,
-              }}
-              control={control}
-            />
-          ) : null}
-        </Stack>
+        <Tooltip
+          title={
+            <>
+              <Typography variant="h6" component="div">
+                Addon-side Direct mDNS (Lab)
+              </Typography>
+              <Typography variant="body2">
+                Announce this Samba server directly from the add-on using mDNS
+                (Zeroconf). When enabled, the Home Assistant mDNS registration
+                toggle is disabled because the two modes are mutually exclusive.
+              </Typography>
+            </>
+          }
+        >
+          <SettingSwitchRow
+            ariaLabel="Addon-side Direct mDNS"
+            control={control}
+            disabled={readOnly}
+            label={labLabel("Addon-side Direct mDNS")}
+            name="addon_mdns_registration"
+          />
+        </Tooltip>
       ) : null}
     </Stack>
   );

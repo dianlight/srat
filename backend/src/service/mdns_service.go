@@ -220,7 +220,7 @@ func (svc *MDNSService) reconfigureAddonMDNS(ctx context.Context) {
 	}
 
 	instance := sanitizeNetBIOSName(settings.Hostname)
-	ifaces, ifaceErr := selectMDNSInterfaces(settings.AddonMDNSInterfaces)
+	ifaces, ifaceErr := selectMDNSInterfaces(settings.Interfaces)
 	if ifaceErr != nil {
 		slog.ErrorContext(ctx, "mdns_service: failed to select mDNS interfaces", "err", ifaceErr)
 		return

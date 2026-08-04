@@ -11,15 +11,14 @@ type Settings struct {
 	BindAllInterfaces     bool                   `json:"bind_all_interfaces,omitempty" default:"true"`
 	MultiChannel          bool                   `json:"multi_channel,omitempty" default:"true"`
 	AllowGuest            *bool                  `json:"allow_guest,omitempty" default:"false"`
-	TelemetryMode         TelemetryMode          `json:"telemetry_mode,omitempty" enum:"Ask,All,Errors,Disabled"`
+	TelemetryMode         TelemetryMode          `json:"telemetry_mode" enum:"Ask,All,Errors,Disabled"`
 	LocalMaster           *bool                  `json:"local_master,omitempty" default:"true"`
 	ExportStatsToHA       *bool                  `json:"export_stats_to_ha,omitempty" default:"false"`
 	HAUseNFS              *bool                  `json:"ha_use_nfs,omitempty" default:"false"`
 	HASmbPassword         logfusc.Secret[string] `json:"-"`
 	SMBoverQUIC           *bool                  `json:"smb_over_quic,omitempty" default:"false"`
-	SmartMode             SmartMode              `json:"smart_mode,omitempty" enum:"none,legacy,direct"`
+	SmartMode             SmartMode              `json:"smart_mode" enum:"none,legacy,direct"`
 	ExperimentalLabMode   bool                   `json:"experimental_lab_mode"`
 	MDNSRegistration      *bool                  `json:"mdns_registration,omitempty" default:"false"`
 	AddonMDNSRegistration *bool                  `json:"addon_mdns_registration,omitempty" default:"false"`
-	AddonMDNSInterfaces   []string               `json:"addon_mdns_interfaces,omitempty" nullable:"false" default:"[]"`
 }

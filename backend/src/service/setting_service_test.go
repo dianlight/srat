@@ -364,16 +364,6 @@ func (suite *SettingServiceSuite) TestUpdateSettings_SaveAndLoad_AllFieldTypes()
 				suite.False(*loaded.AddonMDNSRegistration, "AddonMDNSRegistration should be false when experimental_lab_mode is disabled")
 			},
 		},
-		{
-			name: "AddonMDNSInterfaces_Array",
-			settingsFactory: func() dto.Settings {
-				return dto.Settings{AddonMDNSInterfaces: []string{"eth0", "wlan0"}}
-			},
-			verifyFunc: func(loaded *dto.Settings, err error) {
-				suite.Require().NoError(err)
-				suite.Equal([]string{"eth0", "wlan0"}, loaded.AddonMDNSInterfaces)
-			},
-		},
 	}
 
 	for _, tc := range testCases {

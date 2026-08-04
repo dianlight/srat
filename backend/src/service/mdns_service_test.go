@@ -285,7 +285,6 @@ func directSettings(hostname string) *dto.Settings {
 		ExperimentalLabMode:   true,
 		MDNSRegistration:      &falseVal,
 		AddonMDNSRegistration: &trueVal,
-		AddonMDNSInterfaces:   []string{},
 	}
 }
 

@@ -25,7 +25,6 @@ vi.mock("../../../../store/sratApi", async () => {
     useGetApiCapabilitiesQuery: () => ({
       data: {
         lib_smart_available: false,
-        available_mdns_interfaces: ["eth0", "wlan0"],
       },
       isLoading: false,
     }),
@@ -52,7 +51,6 @@ function TestHarness({
       mdns_registration: false,
       experimental_lab_mode: false,
       addon_mdns_registration: false,
-      addon_mdns_interfaces: [],
       ...defaultValues,
     } as ApiSettings,
   });
@@ -120,17 +118,5 @@ describe("HomeAssistantPanel – mDNS toggle", () => {
     await user.click(addonToggle);
     expect((haToggle as HTMLInputElement).disabled).toBe(false);
     mockState.setConnected(false);
-  });
-
-  it("shows the mDNS interface selector when addon-side direct mDNS is enabled", () => {
-    render(
-      <TestHarness
-        defaultValues={{
-          experimental_lab_mode: true,
-          addon_mdns_registration: true,
-        }}
-      />,
-    );
-    expect(screen.getByLabelText(/mDNS Interfaces/i)).toBeInTheDocument();
   });
 });
