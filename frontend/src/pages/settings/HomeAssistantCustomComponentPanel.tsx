@@ -198,6 +198,14 @@ export function HomeAssistantCustomComponentPanel({
           <Typography variant="subtitle1">SRAT Custom Component</Typography>
           <ScienceOutlinedIcon color="warning" fontSize="small" />
         </Stack>
+        <Typography
+          variant="body2"
+          sx={{ color: "text.secondary", fontStyle: "italic" }}
+        >
+          The custom component integration is at an early development stage and
+          does not yet provide meaningful functionality. It is included for
+          testing and preview purposes only.
+        </Typography>
 
         {isLoading ? (
           <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
