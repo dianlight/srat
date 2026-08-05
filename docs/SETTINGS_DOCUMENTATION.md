@@ -8,7 +8,7 @@
     - [Local Master](#local-master)
     - [Compatibility Mode](#compatibility-mode)
     - [Allow Guest](#allow-guest)
-    - [Addon-side Direct mDNS](#addon-side-direct-mdns)
+    - [Samba mDNS Announce](#samba-mdns-announce)
   - [Network Settings](#network-settings)
     - [Devices](#devices)
       - [Bind All Interfaces](#bind-all-interfaces)
@@ -21,7 +21,7 @@
     - [Telemetry Mode](#telemetry-mode)
   - [Home Assistant Settings](#home-assistant-settings)
     - [Export Stats to Home Assistant](#export-stats-to-home-assistant)
-    - [mDNS Registration](#mdns-registration)
+    - [Use Home Assistant mDNS Proxy](#use-home-assistant-mdns-proxy)
     - [Use Network File System for Home Assistant Integration (Experimental)](#use-network-file-system-for-home-assistant-integration-experimental)
     - [Configuration Change Detection](#configuration-change-detection)
   - [Implementation Details](#implementation-details)
@@ -82,30 +82,26 @@ This document provides detailed information about all SRAT settings available in
 - **UI Location**: Settings → General → Allow Guest toggle
 - **API Field**: `allow_guest` (boolean)
 
-### Addon-side Direct mDNS
+### Samba mDNS Announce
 
 - **Type**: Boolean
 - **Default**: `false`
-- **Description**: When enabled, the SRAT addon registers the Samba server directly as an `_smb._tcp` mDNS/Zeroconf service on the local network, without relying on the Home Assistant custom component. This is useful when the custom component is not installed or when you want the addon itself to advertise the service.
-- **Requirements**: At least one eligible network interface must be available
+- **Description**: Master switch for announcing the Samba server on the local network as an `_smb._tcp` mDNS/Zeroconf service. When enabled, other devices can discover the server automatically.
+- **Implementation**: The announcement is performed either by the Home Assistant custom component (when `use_component_mdns_proxy` is enabled) or directly by the SRAT add-on (when `use_component_mdns_proxy` is disabled). See [Use Home Assistant mDNS Proxy](#use-home-assistant-mdns-proxy) below.
 - **Service Details**:
   - Service type: `_smb._tcp`
   - Domain: `local.`
   - Port: `445`
   - TXT record: `path=/`
   - Instance name: derived from the Samba hostname using NetBIOS sanitization (uppercase, truncate to 15 characters, replace non-alphanumeric characters with `-`)
-- **Interface Filtering**:
+- **Requirements**: At least one eligible network interface must be available
+- **Interface Filtering (direct mode only)**:
   - Loopback interfaces are excluded
   - Down interfaces are excluded
   - Container/virtual interfaces (`docker*`, `veth*`, `hassio*`, `br-*`) are excluded
-  - An optional whitelist (`addon_mdns_interfaces`) can restrict registration to specific interfaces
-- **Mutual Exclusivity**:
-  - Addon-side direct mDNS and Home Assistant mDNS registration cannot be enabled at the same time
-  - Enabling addon-side direct mDNS automatically disables `mdns_registration`
-- **UI Location**: Settings → General → Addon-side Direct mDNS
-- **API Fields**:
-  - `addon_mdns_registration` (boolean)
-  - `addon_mdns_interfaces` (array of interface names)
+  - The `interfaces` whitelist can restrict registration to specific interfaces
+- **UI Location**: Settings → General → Samba mDNS Announce
+- **API Field**: `mdns_registration` (boolean)
 
 ## Network Settings
 
@@ -172,19 +168,19 @@ This document provides detailed information about all SRAT settings available in
 - **Default**: `true`
 - **Description**: When enabled, exports share statistics and Samba server statistics to Home Assistant as entities
 
-### mDNS Registration
+### Use Home Assistant mDNS Proxy
 
 - **Type**: Boolean
-- **Default**: `false`
-- **Description**: When enabled, the Home Assistant custom component registers the Samba server as an `_smb._tcp` mDNS/Zeroconf service on the Home Assistant instance. This allows network clients to discover the SRAT SMB shares when the custom component is connected.
+- **Default**: `true`
+- **Description**: Selects the mDNS implementation. When enabled (and the [Samba mDNS Announce](#samba-mdns-announce) master switch is on), the Home Assistant custom component registers the Samba server as an `_smb._tcp` mDNS/Zeroconf service on the Home Assistant instance. When disabled, the SRAT add-on registers the service directly instead, which works without the custom component.
 - **Requirements**:
-  - The Home Assistant custom component must be installed and connected
-  - Home Assistant must have a working Zeroconf/mDNS stack
+  - The Samba mDNS Announce master switch must be enabled (see General settings)
+  - For component proxy mode: the Home Assistant custom component must be installed and connected, and Home Assistant must have a working Zeroconf/mDNS stack
 - **Availability**:
-  - This toggle is disabled when the custom component is not connected
-  - It is also disabled when addon-side direct mDNS is enabled, because the two modes are mutually exclusive
-- **UI Location**: Settings → HomeAssistant → mDNS Registration
-- **API Field**: `mdns_registration` (boolean)
+  - The toggle is disabled when the master switch is off
+  - The toggle is disabled when the custom component is not connected
+- **UI Location**: Settings → HomeAssistant → Use Home Assistant mDNS Proxy
+- **API Field**: `use_component_mdns_proxy` (boolean)
 
 ### Use Network File System for Home Assistant Integration (Experimental)
 

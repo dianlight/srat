@@ -49,6 +49,8 @@ func (c *ConfigToDtoConverterImpl) ConfigToSettings(source config.Config, target
 	target.SmartMode = configSmartModeFromConfig(source)
 	pBool5 := source.MDNSRegistration
 	target.MDNSRegistration = &pBool5
+	pBool6 := source.UseComponentMDNSProxy
+	target.UseComponentMDNSProxy = &pBool6
 	return nil
 }
 func (c *ConfigToDtoConverterImpl) ShareToMountPointData(source config.Share) (*dto.MountPointData, error) {

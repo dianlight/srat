@@ -49,7 +49,7 @@ function TestHarness({
     defaultValues: {
       mdns_registration: false,
       experimental_lab_mode: false,
-      addon_mdns_registration: false,
+      use_component_mdns_proxy: true,
       ...defaultValues,
     } as ApiSettings,
   });
@@ -61,33 +61,47 @@ function TestHarness({
   );
 }
 
-describe("HomeAssistantPanel – mDNS toggle", () => {
-  it("renders the mDNS Registration switch", () => {
+describe("HomeAssistantPanel – mDNS proxy toggle", () => {
+  it("renders the Use Home Assistant mDNS Proxy switch", () => {
     render(<TestHarness />);
     expect(
-      screen.getByRole("switch", { name: /mDNS Registration/i }),
+      screen.getByRole("switch", { name: /Use Home Assistant mDNS Proxy/i }),
     ).toBeInTheDocument();
   });
 
-  it("disables the mDNS switch when the HA component is not connected", () => {
+  it("disables the proxy switch when the HA component is not connected", () => {
     render(<TestHarness />);
-    const toggle = screen.getByRole("switch", { name: /mDNS Registration/i });
+    const toggle = screen.getByRole("switch", {
+      name: /Use Home Assistant mDNS Proxy/i,
+    });
     expect((toggle as HTMLInputElement).disabled).toBe(true);
   });
 
-  it("disables the mDNS switch when readOnly is true", () => {
+  it("disables the proxy switch when readOnly is true", () => {
     render(<TestHarness readOnly={true} />);
-    const toggle = screen.getByRole("switch", { name: /mDNS Registration/i });
+    const toggle = screen.getByRole("switch", {
+      name: /Use Home Assistant mDNS Proxy/i,
+    });
     expect((toggle as HTMLInputElement).disabled).toBe(true);
   });
 
-  it("disables the HA mDNS switch when addon-side direct mDNS is enabled", () => {
+  it("disables the proxy switch when the master mDNS switch is off", () => {
     mockState.setConnected(true);
-    render(
-      <TestHarness defaultValues={{ addon_mdns_registration: true }} />,
-    );
-    const haToggle = screen.getByRole("switch", { name: /mDNS Registration/i });
-    expect((haToggle as HTMLInputElement).disabled).toBe(true);
+    render(<TestHarness defaultValues={{ mdns_registration: false }} />);
+    const toggle = screen.getByRole("switch", {
+      name: /Use Home Assistant mDNS Proxy/i,
+    });
+    expect((toggle as HTMLInputElement).disabled).toBe(true);
+    mockState.setConnected(false);
+  });
+
+  it("enables the proxy switch when the master switch is on and connected", () => {
+    mockState.setConnected(true);
+    render(<TestHarness defaultValues={{ mdns_registration: true }} />);
+    const toggle = screen.getByRole("switch", {
+      name: /Use Home Assistant mDNS Proxy/i,
+    });
+    expect((toggle as HTMLInputElement).disabled).toBe(false);
     mockState.setConnected(false);
   });
 });

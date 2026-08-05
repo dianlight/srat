@@ -62,7 +62,7 @@ export const categories: {
     "local_master",
     "compatibility_mode",
     "allow_guest",
-    "addon_mdns_registration",
+    "mdns_registration",
     "smart_mode",
     "experimental_lab_mode",
   ],

@@ -135,14 +135,9 @@ func (self *settingService) ValidateSettings(setting *dto.Settings) {
 		}
 	}
 
-	// Addon-side direct mDNS and HA-managed mDNS are mutually exclusive.
-	if setting.AddonMDNSRegistration != nil && *setting.AddonMDNSRegistration {
-		if setting.MDNSRegistration != nil && *setting.MDNSRegistration {
-			slog.Warn("Addon-side direct mDNS is mutually exclusive with HA mDNS registration. Setting mdns_registration to false.")
-			falseVal := false
-			setting.MDNSRegistration = &falseVal
-		}
-	}
+	// Addon-side direct mDNS and HA-managed mDNS are no longer mutually
+	// exclusive: mdns_registration is the master switch and
+	// use_component_mdns_proxy selects the implementation.
 }
 
 func (self *settingService) UpdateSettings(setting *dto.Settings) errors.E {

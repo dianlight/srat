@@ -6,11 +6,16 @@
 
 ### ✨ Features
 
-- **Addon-side Direct mDNS promoted out of Lab Mode**: `addon_mdns_registration`
-  is no longer gated behind `experimental_lab_mode`. The setting moved from the
-  Home Assistant settings section to the General section of the Settings page,
-  and the backend no longer force-disables it when Lab Mode is off. It remains
-  mutually exclusive with the Home Assistant `mdns_registration` setting.
+- **mDNS settings simplified — master/proxy model**: `addon_mdns_registration`
+  is renamed to `mdns_registration` and becomes the **master switch** that
+  enables or disables mDNS registration entirely (no longer gated behind
+  `experimental_lab_mode`). The old `mdns_registration` is renamed to
+  `use_component_mdns_proxy` and now selects the implementation: the Home
+  Assistant custom component proxy (default) or SRAT's direct zeroconf
+  registration. The two switches are no longer mutually exclusive — the master
+  switch gates everything, and the proxy switch chooses the implementation.
+  A DB migration converts existing `addon_mdns_registration=true` installs to
+  `mdns_registration=true` + `use_component_mdns_proxy=false`.
 
 ### 🐛 Bug Fixes
 

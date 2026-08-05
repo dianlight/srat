@@ -43,8 +43,9 @@ type mdnsServiceParams struct {
 
 // MDNSService broadcasts MdnsRegisterNotification events over WebSocket so the
 // Home Assistant custom component can register or unregister the Samba server
-// via Zeroconf / mDNS. When the addon-side direct mDNS feature is enabled, it
-// also registers the service directly using zeroconf.
+// via Zeroconf / mDNS. When mdns_registration is enabled and
+// use_component_mdns_proxy is false, it also registers the service directly
+// using zeroconf instead of the component proxy.
 type MDNSService struct {
 	ctx            context.Context
 	broadcaster    BroadcasterServiceInterface
@@ -111,17 +112,17 @@ func NewMDNSService(lc fx.Lifecycle, params mdnsServiceParams) MDNSServiceInterf
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			// Re-register the addon-side direct mDNS entry on every server
-			// start. Without this, a srat-server restart silently loses the
-			// registration until a settings change occurs.
-			svc.reconfigureAddonMDNS(ctx)
+			// Re-register the direct mDNS entry on every server start. Without
+			// this, a srat-server restart silently loses the registration until
+			// a settings change occurs.
+			svc.reconfigureDirectMDNS(ctx)
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
 			for _, unsub := range unsubscribes {
 				unsub()
 			}
-			svc.shutdownAddonMDNS()
+			svc.shutdownDirectMDNS()
 			return nil
 		},
 	})
@@ -149,7 +150,7 @@ func (svc *MDNSService) setupEventListeners() []func() {
 	})
 	ret[1] = svc.eventBus.OnSetting(func(ctx context.Context, event events.SettingEvent) errors.E {
 		slog.InfoContext(ctx, "mdns_service: settings changed, reconfiguring direct mDNS")
-		svc.reconfigureAddonMDNS(ctx)
+		svc.reconfigureDirectMDNS(ctx)
 		return nil
 	})
 	return ret
@@ -174,6 +175,10 @@ func (svc *MDNSService) OnComponentDisconnected() {
 }
 
 // broadcast reads the current settings and emits a MdnsRegisterNotification.
+// The component proxy is only asked to register when the master switch is on
+// AND the component proxy implementation is selected (use_component_mdns_proxy
+// defaults to true when nil). When direct mode is active instead, the
+// component is told to unregister so the two implementations never overlap.
 func (svc *MDNSService) broadcast(ctx context.Context) {
 	settings, err := svc.settingService.Load()
 	if err != nil {
@@ -181,10 +186,9 @@ func (svc *MDNSService) broadcast(ctx context.Context) {
 		return
 	}
 
-	enabled := false
-	if settings.MDNSRegistration != nil {
-		enabled = *settings.MDNSRegistration
-	}
+	enabled := settings.MDNSRegistration != nil && *settings.MDNSRegistration
+	useProxy := settings.UseComponentMDNSProxy == nil || *settings.UseComponentMDNSProxy
+	enabled = enabled && useProxy
 
 	notification := dto.MdnsRegisterNotification{
 		Hostname: settings.Hostname,
@@ -200,9 +204,10 @@ func (svc *MDNSService) broadcast(ctx context.Context) {
 		"type", fmt.Sprintf("%T", result), "returned_nil", result == nil)
 }
 
-// reconfigureAddonMDNS starts or stops the addon-side direct mDNS registration
-// based on the current settings.
-func (svc *MDNSService) reconfigureAddonMDNS(ctx context.Context) {
+// reconfigureDirectMDNS starts or stops the direct zeroconf mDNS registration
+// based on the current settings. Direct registration is active only when the
+// master switch is enabled AND the component proxy is not selected.
+func (svc *MDNSService) reconfigureDirectMDNS(ctx context.Context) {
 	settings, err := svc.settingService.Load()
 	if err != nil {
 		slog.ErrorContext(ctx, "mdns_service: failed to load settings for direct mDNS", "err", err)
@@ -215,9 +220,10 @@ func (svc *MDNSService) reconfigureAddonMDNS(ctx context.Context) {
 		return
 	}
 
-	enabled := settings.AddonMDNSRegistration != nil && *settings.AddonMDNSRegistration
-	if !enabled {
-		svc.shutdownAddonMDNS()
+	enabled := settings.MDNSRegistration != nil && *settings.MDNSRegistration
+	useProxy := settings.UseComponentMDNSProxy == nil || *settings.UseComponentMDNSProxy
+	if !enabled || useProxy {
+		svc.shutdownDirectMDNS()
 		return
 	}
 
@@ -239,7 +245,7 @@ func (svc *MDNSService) reconfigureAddonMDNS(ctx context.Context) {
 		return
 	}
 
-	slog.InfoContext(ctx, "mdns_service: registering addon-side direct mDNS",
+	slog.InfoContext(ctx, "mdns_service: registering direct mDNS",
 		"instance", instance,
 		"service", mdnsServiceType,
 		"port", mdnsPort,
@@ -260,8 +266,8 @@ func (svc *MDNSService) reconfigureAddonMDNS(ctx context.Context) {
 	svc.zeroconfServer = server
 }
 
-// shutdownAddonMDNS stops the addon-side direct mDNS registration.
-func (svc *MDNSService) shutdownAddonMDNS() {
+// shutdownDirectMDNS stops the direct zeroconf mDNS registration.
+func (svc *MDNSService) shutdownDirectMDNS() {
 	svc.mu.Lock()
 	defer svc.mu.Unlock()
 	if svc.zeroconfServer != nil {
@@ -283,8 +289,7 @@ func sanitizeNetBIOSName(hostname string) string {
 }
 
 // selectMDNSInterfaces returns the network interfaces that should be used for
-// addon-side direct mDNS registration. If whitelist is non-empty, only eligible
-// interfaces whose name appears in the whitelist are returned. Loopback,
+// direct mDNS registration. If whitelist is non-empty, only eligible interfaces whose name appears in the whitelist are returned. Loopback,
 // down, and container/virtual interfaces (docker*, veth*, hassio*, br-*) are
 // excluded.
 func selectMDNSInterfaces(whitelist []string) ([]net.Interface, error) {

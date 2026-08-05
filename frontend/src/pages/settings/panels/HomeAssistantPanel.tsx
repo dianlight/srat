@@ -21,7 +21,7 @@ export function HomeAssistantPanel({ readOnly }: HomeAssistantPanelProps) {
     useGetApiSettingsHomeassistantCustomComponentStatusQuery();
   const commonProps = { control, disabled: readOnly };
   const experimentalLabMode = Boolean(watch("experimental_lab_mode"));
-  const addonMDNSEnabled = Boolean(watch("addon_mdns_registration"));
+  const mdnsEnabled = Boolean(watch("mdns_registration"));
   const isComponentConnected = Boolean(
     componentStatus &&
       "connected" in componentStatus &&
@@ -101,19 +101,28 @@ export function HomeAssistantPanel({ readOnly }: HomeAssistantPanelProps) {
         <HomeAssistantCustomComponentPanel readOnly={readOnly} />
       ) : null}
 
-      {/* mDNS / Zeroconf Registration */}
+      {/* Use Home Assistant mDNS Proxy (implementation choice) */}
       <Tooltip
         title={
           <>
             <Typography variant="h6" component="div">
-              mDNS / Zeroconf Registration
+              Use Home Assistant mDNS Proxy
             </Typography>
             <Typography variant="body2">
               Announce this Samba server on the local network via Home Assistant
-              using mDNS (Zeroconf). When enabled, other devices can discover
-              the server automatically. Requires an active Home Assistant add-on
+              using mDNS (Zeroconf). Requires the Samba mDNS Announce master
+              switch to be enabled and an active Home Assistant add-on
               connection.
             </Typography>
+            {!mdnsEnabled && (
+              <Typography
+                variant="body2"
+                sx={{ mt: 1, color: "warning.light" }}
+              >
+                <strong>Disabled:</strong> Samba mDNS Announce is off. Enable it
+                in the General section first.
+              </Typography>
+            )}
             {!isComponentConnected && (
               <Typography
                 variant="body2"
@@ -123,24 +132,15 @@ export function HomeAssistantPanel({ readOnly }: HomeAssistantPanelProps) {
                 is not connected.
               </Typography>
             )}
-            {addonMDNSEnabled && (
-              <Typography
-                variant="body2"
-                sx={{ mt: 1, color: "warning.light" }}
-              >
-                <strong>Disabled:</strong> addon-side direct mDNS is active and
-                is mutually exclusive with Home Assistant mDNS registration.
-              </Typography>
-            )}
           </>
         }
       >
         <SettingSwitchRow
-          ariaLabel="mDNS Registration"
-          label="mDNS Registration"
-          name="mdns_registration"
+          ariaLabel="Use Home Assistant mDNS Proxy"
+          label="Use Home Assistant mDNS Proxy"
+          name="use_component_mdns_proxy"
           control={control}
-          disabled={readOnly || !isComponentConnected || addonMDNSEnabled}
+          disabled={readOnly || !isComponentConnected || !mdnsEnabled}
         />
       </Tooltip>
     </Stack>

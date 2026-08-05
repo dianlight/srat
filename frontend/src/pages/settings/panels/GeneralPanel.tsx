@@ -29,7 +29,6 @@ type GeneralPanelProps = {
 export function GeneralPanel({ readOnly }: GeneralPanelProps) {
   const { control, setValue, watch } = useFormContext<ApiSettings>();
   const experimentalLabMode = Boolean(watch("experimental_lab_mode"));
-  const mdnsRegistrationEnabled = Boolean(watch("mdns_registration"));
   const { data: capabilities } = useGetApiCapabilitiesQuery();
   const libSmartAvailable = Boolean(
     (capabilities as SystemCapabilities)?.lib_smart_available,
@@ -179,37 +178,32 @@ export function GeneralPanel({ readOnly }: GeneralPanelProps) {
         {...commonProps}
       />
 
-      {/* Addon-side Direct mDNS */}
+      {/* Samba mDNS Announce (master switch) */}
       <Tooltip
         title={
           <>
             <Typography variant="h6" component="div">
-              Addon-side Direct mDNS
+              Samba mDNS Announce
             </Typography>
             <Typography variant="body2">
-              Announce this Samba server directly from the add-on using mDNS
-              (Zeroconf), without relying on the Home Assistant custom
-              component. When enabled, other devices can discover the server
+              Announce this Samba server on the local network using mDNS
+              (Zeroconf). When enabled, other devices can discover the server
               automatically.
             </Typography>
-            {mdnsRegistrationEnabled && (
-              <Typography
-                variant="body2"
-                sx={{ mt: 1, color: "warning.light" }}
-              >
-                <strong>Disabled:</strong> Home Assistant mDNS registration is
-                active and is mutually exclusive with addon-side direct mDNS.
-              </Typography>
-            )}
+            <Typography variant="body2" sx={{ mt: 1 }}>
+              The announcement is made either through the Home Assistant custom
+              component or directly by the add-on, depending on the proxy
+              setting in the Home Assistant section.
+            </Typography>
           </>
         }
       >
         <SettingSwitchRow
-          ariaLabel="Addon-side Direct mDNS"
+          ariaLabel="Samba mDNS Announce"
           control={control}
-          disabled={readOnly || mdnsRegistrationEnabled}
-          label="Addon-side Direct mDNS"
-          name="addon_mdns_registration"
+          disabled={readOnly}
+          label="Samba mDNS Announce"
+          name="mdns_registration"
         />
       </Tooltip>
 

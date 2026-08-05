@@ -88,7 +88,7 @@ func defaultSettings(hostname string, enabled bool) *dto.Settings {
 
 // TestOnComponentConnected_BroadcastsEnabledNotification verifies that connecting
 // a component immediately broadcasts a MdnsRegisterNotification with Enabled=true
-// when the setting is true.
+// when the master switch is on (proxy nil defaults to the component proxy).
 func (suite *MDNSServiceTestSuite) TestOnComponentConnected_BroadcastsEnabledNotification() {
 	mock.When(suite.mockSettings.Load()).ThenReturn(defaultSettings("myserver", true), nil)
 
@@ -132,6 +132,94 @@ func (suite *MDNSServiceTestSuite) TestOnComponentConnected_BroadcastsDisabledNo
 		n, ok := msg.(dto.MdnsRegisterNotification)
 		suite.Require().True(ok, "expected MdnsRegisterNotification")
 		suite.False(n.Enabled)
+	case <-time.After(2 * time.Second):
+		suite.Fail("BroadcastGuaranteedMessage was not called within timeout")
+	}
+}
+
+// TestOnComponentConnected_MasterTrueProxyNilDefaultsToComponent verifies that
+// the component proxy is used when use_component_mdns_proxy is nil: the master
+// switch alone enables the broadcast.
+func (suite *MDNSServiceTestSuite) TestOnComponentConnected_MasterTrueProxyNilDefaultsToComponent() {
+	trueVal := true
+	settings := &dto.Settings{
+		Hostname:         "myserver",
+		MDNSRegistration: &trueVal,
+		// UseComponentMDNSProxy left nil → defaults to component proxy.
+	}
+	mock.When(suite.mockSettings.Load()).ThenReturn(settings, nil)
+
+	captured := make(chan any, 1)
+	mock.When(suite.mockBroadcaster.BroadcastGuaranteedMessage(mock.Any[any]())).
+		ThenAnswer(func(args []any) []any {
+			captured <- args[0]
+			return []any{nil}
+		})
+
+	suite.mdnsService.OnComponentConnected(dto.HeloMessage{})
+
+	select {
+	case msg := <-captured:
+		n, ok := msg.(dto.MdnsRegisterNotification)
+		suite.Require().True(ok, "expected MdnsRegisterNotification")
+		suite.True(n.Enabled, "master on with nil proxy must default to component proxy (enabled)")
+	case <-time.After(2 * time.Second):
+		suite.Fail("BroadcastGuaranteedMessage was not called within timeout")
+	}
+}
+
+// TestOnComponentConnected_MasterFalseProxyTrue_BroadcastsDisabled verifies that
+// the master switch gates everything: even with the component proxy selected,
+// a false master means the broadcast carries Enabled=false.
+func (suite *MDNSServiceTestSuite) TestOnComponentConnected_MasterFalseProxyTrue_BroadcastsDisabled() {
+	trueVal := true
+	falseVal := false
+	settings := &dto.Settings{
+		Hostname:              "myserver",
+		MDNSRegistration:      &falseVal,
+		UseComponentMDNSProxy: &trueVal,
+	}
+	mock.When(suite.mockSettings.Load()).ThenReturn(settings, nil)
+
+	captured := make(chan any, 1)
+	mock.When(suite.mockBroadcaster.BroadcastGuaranteedMessage(mock.Any[any]())).
+		ThenAnswer(func(args []any) []any {
+			captured <- args[0]
+			return []any{nil}
+		})
+
+	suite.mdnsService.OnComponentConnected(dto.HeloMessage{})
+
+	select {
+	case msg := <-captured:
+		n, ok := msg.(dto.MdnsRegisterNotification)
+		suite.Require().True(ok, "expected MdnsRegisterNotification")
+		suite.False(n.Enabled, "master off must broadcast disabled regardless of proxy")
+	case <-time.After(2 * time.Second):
+		suite.Fail("BroadcastGuaranteedMessage was not called within timeout")
+	}
+}
+
+// TestOnComponentConnected_MasterTrueProxyFalse_BroadcastsDisabled verifies that
+// when direct mode is selected the component proxy is told to unregister
+// (Enabled=false) so the two implementations never overlap.
+func (suite *MDNSServiceTestSuite) TestOnComponentConnected_MasterTrueProxyFalse_BroadcastsDisabled() {
+	mock.When(suite.mockSettings.Load()).ThenReturn(directSettings("myserver"), nil)
+
+	captured := make(chan any, 1)
+	mock.When(suite.mockBroadcaster.BroadcastGuaranteedMessage(mock.Any[any]())).
+		ThenAnswer(func(args []any) []any {
+			captured <- args[0]
+			return []any{nil}
+		})
+
+	suite.mdnsService.OnComponentConnected(dto.HeloMessage{})
+
+	select {
+	case msg := <-captured:
+		n, ok := msg.(dto.MdnsRegisterNotification)
+		suite.Require().True(ok, "expected MdnsRegisterNotification")
+		suite.False(n.Enabled, "direct mode must broadcast disabled to the component proxy")
 	case <-time.After(2 * time.Second):
 		suite.Fail("BroadcastGuaranteedMessage was not called within timeout")
 	}
@@ -278,7 +366,8 @@ func (r *fakeZeroconfRegister) lastCall() (fakeZeroconfRegisterCall, bool) {
 	return r.calls[len(r.calls)-1], true
 }
 
-// directSettings returns Settings with addon-side direct mDNS enabled.
+// directSettings returns Settings with direct (non-proxy) mDNS enabled:
+// master switch on and use_component_mdns_proxy explicitly false.
 // ExperimentalLabMode is intentionally false to verify the feature no longer
 // requires lab mode.
 func directSettings(hostname string) *dto.Settings {
@@ -287,14 +376,14 @@ func directSettings(hostname string) *dto.Settings {
 	return &dto.Settings{
 		Hostname:              hostname,
 		ExperimentalLabMode:   false,
-		MDNSRegistration:      &falseVal,
-		AddonMDNSRegistration: &trueVal,
+		MDNSRegistration:      &trueVal,
+		UseComponentMDNSProxy: &falseVal,
 	}
 }
 
-// TestSettingEvent_EnablesDirectMDNS verifies that a settings change with
-// addon-side direct mDNS enabled triggers zeroconf.Register with the expected
-// service details and instance name sanitization.
+// TestSettingEvent_EnablesDirectMDNS verifies that a settings change with the
+// master switch on and the component proxy off triggers zeroconf.Register with
+// the expected service details and instance name sanitization.
 func (suite *MDNSServiceTestSuite) TestSettingEvent_EnablesDirectMDNS() {
 	mock.When(suite.mockSettings.Load()).ThenReturn(directSettings("My-Server-01"), nil)
 
@@ -315,6 +404,51 @@ func (suite *MDNSServiceTestSuite) TestSettingEvent_EnablesDirectMDNS() {
 	suite.Equal("local.", call.domain)
 	suite.Equal(445, call.port)
 	suite.Equal([]string{"path=/"}, call.text)
+}
+
+// TestSettingEvent_MasterTrueProxyTrue_NoDirectRegistration verifies that
+// component-proxy mode (master on, proxy true) never starts the direct
+// zeroconf registration.
+func (suite *MDNSServiceTestSuite) TestSettingEvent_MasterTrueProxyTrue_NoDirectRegistration() {
+	trueVal := true
+	settings := &dto.Settings{
+		Hostname:              "server",
+		MDNSRegistration:      &trueVal,
+		UseComponentMDNSProxy: &trueVal,
+	}
+	mock.When(suite.mockSettings.Load()).ThenReturn(settings, nil)
+	mock.When(suite.mockBroadcaster.BroadcastGuaranteedMessage(mock.Any[any]())).ThenReturn(nil)
+
+	suite.eventBus.EmitSetting(events.SettingEvent{
+		Event:   events.Event{Type: events.EventTypes.UPDATE},
+		Setting: settings,
+	})
+	time.Sleep(200 * time.Millisecond)
+
+	suite.Equal(0, suite.fakeRegister.callsCount(),
+		"component-proxy mode must not register direct mDNS")
+}
+
+// TestSettingEvent_MasterFalse_NoDirectRegistration verifies that switching the
+// master switch off stops any direct registration even when the proxy is off.
+func (suite *MDNSServiceTestSuite) TestSettingEvent_MasterFalse_NoDirectRegistration() {
+	falseVal := false
+	settings := &dto.Settings{
+		Hostname:              "server",
+		MDNSRegistration:      &falseVal,
+		UseComponentMDNSProxy: &falseVal,
+	}
+	mock.When(suite.mockSettings.Load()).ThenReturn(settings, nil)
+	mock.When(suite.mockBroadcaster.BroadcastGuaranteedMessage(mock.Any[any]())).ThenReturn(nil)
+
+	suite.eventBus.EmitSetting(events.SettingEvent{
+		Event:   events.Event{Type: events.EventTypes.UPDATE},
+		Setting: settings,
+	})
+	time.Sleep(200 * time.Millisecond)
+
+	suite.Equal(0, suite.fakeRegister.callsCount(),
+		"master off must not register direct mDNS")
 }
 
 // TestAppStop_ShutsDownDirectMDNS verifies that stopping the service shuts down
@@ -363,9 +497,9 @@ func (b *stubBroadcaster) BroadcastGuaranteedMessage(msg any) any { return nil }
 func (b *stubBroadcaster) ProcessWebSocketChannel(send ws.Sender) {}
 
 // TestAppStart_RegistersDirectMDNSOnStart verifies that a plain server start
-// (fx.OnStart, no settings event) registers the addon-side direct mDNS entry.
-// This guards against the regression where a srat-server restart lost the
-// registration until a settings change occurred.
+// (fx.OnStart, no settings event) registers the direct mDNS entry. This guards
+// against the regression where a srat-server restart lost the registration
+// until a settings change occurred.
 func (suite *MDNSServiceTestSuite) TestAppStart_RegistersDirectMDNSOnStart() {
 	fakeRegister := &fakeZeroconfRegister{}
 	wg := &sync.WaitGroup{}
@@ -386,7 +520,7 @@ func (suite *MDNSServiceTestSuite) TestAppStart_RegistersDirectMDNSOnStart() {
 			service.NewMDNSService,
 		),
 		// fx.Populate forces construction of MDNSService so its OnStart hook
-		// (which registers the addon-side direct mDNS entry) is appended and
+		// (which registers the direct mDNS entry) is appended and
 		// executed by RequireStart below. Without it, the provider stays lazy
 		// and the hook never runs.
 		fx.Populate(&mdnsSvc),
@@ -395,11 +529,46 @@ func (suite *MDNSServiceTestSuite) TestAppStart_RegistersDirectMDNSOnStart() {
 	defer app.RequireStop()
 
 	suite.GreaterOrEqual(fakeRegister.callsCount(), 1,
-		"addon-side direct mDNS must be registered at startup (OnStart hook)")
+		"direct mDNS must be registered at startup (OnStart hook)")
 	call, ok := fakeRegister.lastCall()
 	suite.Require().True(ok)
 	suite.Equal("SERVER", call.instance)
 	suite.Equal("_smb._tcp", call.service)
 	suite.Equal("local.", call.domain)
 	suite.Equal(445, call.port)
+}
+
+// TestAppStart_ComponentProxyMode_NoDirectRegistrationOnStart verifies that a
+// plain server start with master on and proxy nil (component mode) does NOT
+// register direct mDNS.
+func (suite *MDNSServiceTestSuite) TestAppStart_ComponentProxyMode_NoDirectRegistrationOnStart() {
+	trueVal := true
+	fakeRegister := &fakeZeroconfRegister{}
+	wg := &sync.WaitGroup{}
+	var mdnsSvc service.MDNSServiceInterface
+
+	app := fxtest.New(suite.T(),
+		fx.Provide(
+			func() (context.Context, context.CancelFunc) {
+				ctx := context.WithValue(context.Background(), ctxkeys.WaitGroup, wg)
+				return context.WithCancel(ctx)
+			},
+			func(ctx context.Context) events.EventBusInterface { return events.NewEventBus(ctx) },
+			func() service.ZeroconfRegister { return fakeRegister },
+			func() service.SettingServiceInterface {
+				return &stubSettingService{settings: &dto.Settings{
+					Hostname:         "server",
+					MDNSRegistration: &trueVal,
+				}}
+			},
+			func() service.BroadcasterServiceInterface { return &stubBroadcaster{} },
+			service.NewMDNSService,
+		),
+		fx.Populate(&mdnsSvc),
+	)
+	app.RequireStart()
+	defer app.RequireStop()
+
+	suite.Equal(0, fakeRegister.callsCount(),
+		"component-proxy mode must not register direct mDNS at startup")
 }

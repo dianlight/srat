@@ -337,31 +337,57 @@ func (suite *SettingServiceSuite) TestUpdateSettings_SaveAndLoad_AllFieldTypes()
 			},
 		},
 		{
-			name: "AddonMDNSRegistration_True_Lab",
+			name: "MDNSRegistration_True_ComponentProxy",
 			settingsFactory: func() dto.Settings {
 				return dto.Settings{
-					ExperimentalLabMode:   true,
-					AddonMDNSRegistration: new(true),
+					MDNSRegistration:      new(true),
+					UseComponentMDNSProxy: new(true),
 				}
 			},
 			verifyFunc: func(loaded *dto.Settings, err error) {
 				suite.Require().NoError(err)
-				suite.Require().NotNil(loaded.AddonMDNSRegistration)
-				suite.True(*loaded.AddonMDNSRegistration)
+				suite.Require().NotNil(loaded.MDNSRegistration)
+				suite.True(*loaded.MDNSRegistration)
+				suite.Require().NotNil(loaded.UseComponentMDNSProxy)
+				suite.True(*loaded.UseComponentMDNSProxy)
 			},
 		},
 		{
-			name: "AddonMDNSRegistration_True_WithoutLabMode",
+			name: "MDNSRegistration_True_DirectMode",
 			settingsFactory: func() dto.Settings {
 				return dto.Settings{
-					ExperimentalLabMode:   false,
-					AddonMDNSRegistration: new(true),
+					MDNSRegistration:      new(true),
+					UseComponentMDNSProxy: new(false),
 				}
 			},
 			verifyFunc: func(loaded *dto.Settings, err error) {
 				suite.Require().NoError(err)
-				suite.Require().NotNil(loaded.AddonMDNSRegistration)
-				suite.True(*loaded.AddonMDNSRegistration, "AddonMDNSRegistration should stay true when experimental_lab_mode is disabled")
+				suite.Require().NotNil(loaded.MDNSRegistration)
+				suite.True(*loaded.MDNSRegistration)
+				suite.Require().NotNil(loaded.UseComponentMDNSProxy)
+				suite.False(*loaded.UseComponentMDNSProxy, "direct mode must survive a save/load round-trip")
+			},
+		},
+		{
+			name: "MDNSRegistration_False",
+			settingsFactory: func() dto.Settings {
+				return dto.Settings{MDNSRegistration: new(false)}
+			},
+			verifyFunc: func(loaded *dto.Settings, err error) {
+				suite.Require().NoError(err)
+				suite.Require().NotNil(loaded.MDNSRegistration)
+				suite.False(*loaded.MDNSRegistration)
+			},
+		},
+		{
+			name: "UseComponentMDNSProxy_Nil_DefaultsToTrue",
+			settingsFactory: func() dto.Settings {
+				return dto.Settings{MDNSRegistration: new(true)}
+			},
+			verifyFunc: func(loaded *dto.Settings, err error) {
+				suite.Require().NoError(err)
+				suite.Require().NotNil(loaded.UseComponentMDNSProxy)
+				suite.True(*loaded.UseComponentMDNSProxy, "nil proxy must default to component proxy on load")
 			},
 		},
 	}

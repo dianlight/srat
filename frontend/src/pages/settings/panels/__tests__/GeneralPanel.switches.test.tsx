@@ -39,7 +39,7 @@ function TestHarness({
       allow_guest: false,
       smart_mode: "legacy",
       experimental_lab_mode: false,
-      addon_mdns_registration: false,
+      mdns_registration: false,
       ...defaultValues,
     } as ApiSettings,
   });
@@ -78,22 +78,24 @@ describe("GeneralPanel switch accessibility", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders the Addon-side Direct mDNS switch outside lab mode", () => {
+  it("renders the Samba mDNS Announce switch", () => {
     render(<TestHarness />);
 
     const toggle = screen.getByRole("switch", {
-      name: /Addon-side Direct mDNS/i,
+      name: /Samba mDNS Announce/i,
     });
     expect(toggle).toBeInTheDocument();
     expect((toggle as HTMLInputElement).disabled).toBe(false);
   });
 
-  it("disables the Addon-side Direct mDNS switch when HA mDNS registration is enabled", () => {
-    render(<TestHarness defaultValues={{ mdns_registration: true }} />);
+  it("keeps the Samba mDNS Announce switch enabled regardless of the proxy setting", () => {
+    render(
+      <TestHarness defaultValues={{ use_component_mdns_proxy: false }} />,
+    );
 
     const toggle = screen.getByRole("switch", {
-      name: /Addon-side Direct mDNS/i,
+      name: /Samba mDNS Announce/i,
     });
-    expect((toggle as HTMLInputElement).disabled).toBe(true);
+    expect((toggle as HTMLInputElement).disabled).toBe(false);
   });
 });

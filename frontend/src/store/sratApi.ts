@@ -1850,7 +1850,6 @@ export type SmbConf = {
 export type Settings = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
-  addon_mdns_registration?: boolean;
   allow_guest?: boolean;
   allow_hosts?: string[];
   bind_all_interfaces?: boolean;
@@ -1866,6 +1865,7 @@ export type Settings = {
   smart_mode: Smart_mode;
   smb_over_quic?: boolean;
   telemetry_mode: Telemetry_mode;
+  use_component_mdns_proxy?: boolean;
   workgroup?: string;
 };
 export type AppConfigData = {
