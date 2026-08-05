@@ -110,6 +110,13 @@ func NewMDNSService(lc fx.Lifecycle, params mdnsServiceParams) MDNSServiceInterf
 	unsubscribes := svc.setupEventListeners()
 
 	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			// Re-register the addon-side direct mDNS entry on every server
+			// start. Without this, a srat-server restart silently loses the
+			// registration until a settings change occurs.
+			svc.reconfigureAddonMDNS(ctx)
+			return nil
+		},
 		OnStop: func(ctx context.Context) error {
 			for _, unsub := range unsubscribes {
 				unsub()
@@ -199,6 +206,12 @@ func (svc *MDNSService) reconfigureAddonMDNS(ctx context.Context) {
 	settings, err := svc.settingService.Load()
 	if err != nil {
 		slog.ErrorContext(ctx, "mdns_service: failed to load settings for direct mDNS", "err", err)
+		return
+	}
+	if settings == nil {
+		// The OnStart hook runs before any settings change has occurred;
+		// some test/startup paths may not have settings available yet.
+		slog.WarnContext(ctx, "mdns_service: settings unavailable, skipping direct mDNS registration")
 		return
 	}
 

@@ -11,10 +11,12 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/internal/ctxkeys"
+	"github.com/dianlight/srat/server/ws"
 	"github.com/dianlight/srat/service"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
+	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 )
@@ -335,4 +337,67 @@ func (suite *MDNSServiceTestSuite) TestAppStop_ShutsDownDirectMDNS() {
 // in integration tests; unit-level coverage lives in the same-package helper.
 func (suite *MDNSServiceTestSuite) TestSanitizeNetBIOSNamePlaceholder() {
 	suite.T().Skip("covered by integration tests and same-package unit tests")
+}
+
+// stubSettingService is a hand-written fake for SettingServiceInterface used by
+// the OnStart test below. Unlike the mockio-based suite mocks, it is fully
+// stubbed from construction time so fx.OnStart can call Load() safely.
+type stubSettingService struct {
+	settings *dto.Settings
+}
+
+func (s *stubSettingService) Load() (*dto.Settings, errors.E) { return s.settings, nil }
+func (s *stubSettingService) UpdateSettings(*dto.Settings) errors.E {
+	return nil
+}
+func (s *stubSettingService) SetCommandExists(func(cmd []string) bool) {}
+func (s *stubSettingService) DumpTable() (string, errors.E)            { return "", nil }
+
+// stubBroadcaster is a hand-written fake for BroadcasterServiceInterface.
+type stubBroadcaster struct{}
+
+func (b *stubBroadcaster) BroadcastMessage(msg any) any           { return nil }
+func (b *stubBroadcaster) BroadcastGuaranteedMessage(msg any) any { return nil }
+func (b *stubBroadcaster) ProcessWebSocketChannel(send ws.Sender) {}
+
+// TestAppStart_RegistersDirectMDNSOnStart verifies that a plain server start
+// (fx.OnStart, no settings event) registers the addon-side direct mDNS entry.
+// This guards against the regression where a srat-server restart lost the
+// registration until a settings change occurred.
+func (suite *MDNSServiceTestSuite) TestAppStart_RegistersDirectMDNSOnStart() {
+	fakeRegister := &fakeZeroconfRegister{}
+	wg := &sync.WaitGroup{}
+	var mdnsSvc service.MDNSServiceInterface
+
+	app := fxtest.New(suite.T(),
+		fx.Provide(
+			func() (context.Context, context.CancelFunc) {
+				ctx := context.WithValue(context.Background(), ctxkeys.WaitGroup, wg)
+				return context.WithCancel(ctx)
+			},
+			func(ctx context.Context) events.EventBusInterface { return events.NewEventBus(ctx) },
+			func() service.ZeroconfRegister { return fakeRegister },
+			func() service.SettingServiceInterface {
+				return &stubSettingService{settings: directSettings("server")}
+			},
+			func() service.BroadcasterServiceInterface { return &stubBroadcaster{} },
+			service.NewMDNSService,
+		),
+		// fx.Populate forces construction of MDNSService so its OnStart hook
+		// (which registers the addon-side direct mDNS entry) is appended and
+		// executed by RequireStart below. Without it, the provider stays lazy
+		// and the hook never runs.
+		fx.Populate(&mdnsSvc),
+	)
+	app.RequireStart()
+	defer app.RequireStop()
+
+	suite.GreaterOrEqual(fakeRegister.callsCount(), 1,
+		"addon-side direct mDNS must be registered at startup (OnStart hook)")
+	call, ok := fakeRegister.lastCall()
+	suite.Require().True(ok)
+	suite.Equal("SERVER", call.instance)
+	suite.Equal("_smb._tcp", call.service)
+	suite.Equal("local.", call.domain)
+	suite.Equal(445, call.port)
 }
