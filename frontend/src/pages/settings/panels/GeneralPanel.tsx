@@ -29,6 +29,7 @@ type GeneralPanelProps = {
 export function GeneralPanel({ readOnly }: GeneralPanelProps) {
   const { control, setValue, watch } = useFormContext<ApiSettings>();
   const experimentalLabMode = Boolean(watch("experimental_lab_mode"));
+  const mdnsRegistrationEnabled = Boolean(watch("mdns_registration"));
   const { data: capabilities } = useGetApiCapabilitiesQuery();
   const libSmartAvailable = Boolean(
     (capabilities as SystemCapabilities)?.lib_smart_available,
@@ -177,6 +178,40 @@ export function GeneralPanel({ readOnly }: GeneralPanelProps) {
         name="allow_guest"
         {...commonProps}
       />
+
+      {/* Addon-side Direct mDNS */}
+      <Tooltip
+        title={
+          <>
+            <Typography variant="h6" component="div">
+              Addon-side Direct mDNS
+            </Typography>
+            <Typography variant="body2">
+              Announce this Samba server directly from the add-on using mDNS
+              (Zeroconf), without relying on the Home Assistant custom
+              component. When enabled, other devices can discover the server
+              automatically.
+            </Typography>
+            {mdnsRegistrationEnabled && (
+              <Typography
+                variant="body2"
+                sx={{ mt: 1, color: "warning.light" }}
+              >
+                <strong>Disabled:</strong> Home Assistant mDNS registration is
+                active and is mutually exclusive with addon-side direct mDNS.
+              </Typography>
+            )}
+          </>
+        }
+      >
+        <SettingSwitchRow
+          ariaLabel="Addon-side Direct mDNS"
+          control={control}
+          disabled={readOnly || mdnsRegistrationEnabled}
+          label="Addon-side Direct mDNS"
+          name="addon_mdns_registration"
+        />
+      </Tooltip>
 
       {/* SMART Mode */}
       <Tooltip

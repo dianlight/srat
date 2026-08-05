@@ -279,12 +279,14 @@ func (r *fakeZeroconfRegister) lastCall() (fakeZeroconfRegisterCall, bool) {
 }
 
 // directSettings returns Settings with addon-side direct mDNS enabled.
+// ExperimentalLabMode is intentionally false to verify the feature no longer
+// requires lab mode.
 func directSettings(hostname string) *dto.Settings {
 	trueVal := true
 	falseVal := false
 	return &dto.Settings{
 		Hostname:              hostname,
-		ExperimentalLabMode:   true,
+		ExperimentalLabMode:   false,
 		MDNSRegistration:      &falseVal,
 		AddonMDNSRegistration: &trueVal,
 	}

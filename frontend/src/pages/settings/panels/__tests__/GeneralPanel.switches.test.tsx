@@ -25,7 +25,11 @@ vi.mock("../../../../store/sratApi", async () => {
   };
 });
 
-function TestHarness() {
+function TestHarness({
+  defaultValues = {},
+}: {
+  defaultValues?: Partial<ApiSettings>;
+}) {
   const methods = useForm<ApiSettings>({
     defaultValues: {
       hostname: "srat-host",
@@ -35,6 +39,8 @@ function TestHarness() {
       allow_guest: false,
       smart_mode: "legacy",
       experimental_lab_mode: false,
+      addon_mdns_registration: false,
+      ...defaultValues,
     } as ApiSettings,
   });
 
@@ -70,5 +76,24 @@ describe("GeneralPanel switch accessibility", () => {
     expect(
       screen.getByLabelText(/smart mode/i),
     ).toBeInTheDocument();
+  });
+
+  it("renders the Addon-side Direct mDNS switch outside lab mode", () => {
+    render(<TestHarness />);
+
+    const toggle = screen.getByRole("switch", {
+      name: /Addon-side Direct mDNS/i,
+    });
+    expect(toggle).toBeInTheDocument();
+    expect((toggle as HTMLInputElement).disabled).toBe(false);
+  });
+
+  it("disables the Addon-side Direct mDNS switch when HA mDNS registration is enabled", () => {
+    render(<TestHarness defaultValues={{ mdns_registration: true }} />);
+
+    const toggle = screen.getByRole("switch", {
+      name: /Addon-side Direct mDNS/i,
+    });
+    expect((toggle as HTMLInputElement).disabled).toBe(true);
   });
 });

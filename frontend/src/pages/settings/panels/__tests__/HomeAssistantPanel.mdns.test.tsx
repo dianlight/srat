@@ -1,5 +1,4 @@
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { FormProvider, useForm } from "react-hook-form";
 import { describe, expect, it, vi } from "vitest";
 import type { Settings as ApiSettings } from "../../../../store/sratApi";
@@ -82,41 +81,13 @@ describe("HomeAssistantPanel – mDNS toggle", () => {
     expect((toggle as HTMLInputElement).disabled).toBe(true);
   });
 
-  it("does not render addon-side direct mDNS controls outside lab mode", () => {
-    render(<TestHarness />);
-    expect(
-      screen.queryByRole("switch", { name: /Addon-side Direct mDNS/i }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("renders addon-side direct mDNS controls in lab mode", () => {
-    render(
-      <TestHarness defaultValues={{ experimental_lab_mode: true }} />,
-    );
-    expect(
-      screen.getByRole("switch", { name: /Addon-side Direct mDNS/i }),
-    ).toBeInTheDocument();
-  });
-
-  it("disables the HA mDNS switch when addon-side direct mDNS is enabled", async () => {
+  it("disables the HA mDNS switch when addon-side direct mDNS is enabled", () => {
     mockState.setConnected(true);
-    const user = userEvent.setup();
     render(
-      <TestHarness
-        defaultValues={{
-          experimental_lab_mode: true,
-          addon_mdns_registration: true,
-        }}
-      />,
+      <TestHarness defaultValues={{ addon_mdns_registration: true }} />,
     );
     const haToggle = screen.getByRole("switch", { name: /mDNS Registration/i });
     expect((haToggle as HTMLInputElement).disabled).toBe(true);
-
-    const addonToggle = screen.getByRole("switch", {
-      name: /Addon-side Direct mDNS/i,
-    });
-    await user.click(addonToggle);
-    expect((haToggle as HTMLInputElement).disabled).toBe(false);
     mockState.setConnected(false);
   });
 });

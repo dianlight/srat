@@ -351,7 +351,7 @@ func (suite *SettingServiceSuite) TestUpdateSettings_SaveAndLoad_AllFieldTypes()
 			},
 		},
 		{
-			name: "AddonMDNSRegistration_True_NoLab",
+			name: "AddonMDNSRegistration_True_WithoutLabMode",
 			settingsFactory: func() dto.Settings {
 				return dto.Settings{
 					ExperimentalLabMode:   false,
@@ -361,7 +361,7 @@ func (suite *SettingServiceSuite) TestUpdateSettings_SaveAndLoad_AllFieldTypes()
 			verifyFunc: func(loaded *dto.Settings, err error) {
 				suite.Require().NoError(err)
 				suite.Require().NotNil(loaded.AddonMDNSRegistration)
-				suite.False(*loaded.AddonMDNSRegistration, "AddonMDNSRegistration should be false when experimental_lab_mode is disabled")
+				suite.True(*loaded.AddonMDNSRegistration, "AddonMDNSRegistration should stay true when experimental_lab_mode is disabled")
 			},
 		},
 	}

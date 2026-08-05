@@ -6,6 +6,12 @@
 
 ### ✨ Features
 
+- **Addon-side Direct mDNS promoted out of Lab Mode**: `addon_mdns_registration`
+  is no longer gated behind `experimental_lab_mode`. The setting moved from the
+  Home Assistant settings section to the General section of the Settings page,
+  and the backend no longer force-disables it when Lab Mode is off. It remains
+  mutually exclusive with the Home Assistant `mdns_registration` setting.
+
 ### 🐛 Bug Fixes
 
 - **Support disks without partitions**: Disks with no partition table (raw "superfloppy" whole-disk filesystems) and filesystems the Home Assistant Supervisor does not report are now visible and mountable. ([srat#849](https://github.com/dianlight/srat/issues/849), [hassio-addons#716](https://github.com/dianlight/hassio-addons/issues/716))

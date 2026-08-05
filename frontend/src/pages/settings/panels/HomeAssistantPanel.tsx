@@ -143,32 +143,6 @@ export function HomeAssistantPanel({ readOnly }: HomeAssistantPanelProps) {
           disabled={readOnly || !isComponentConnected || addonMDNSEnabled}
         />
       </Tooltip>
-
-      {/* Addon-side direct mDNS (lab feature) */}
-      {experimentalLabMode ? (
-        <Tooltip
-          title={
-            <>
-              <Typography variant="h6" component="div">
-                Addon-side Direct mDNS (Lab)
-              </Typography>
-              <Typography variant="body2">
-                Announce this Samba server directly from the add-on using mDNS
-                (Zeroconf). When enabled, the Home Assistant mDNS registration
-                toggle is disabled because the two modes are mutually exclusive.
-              </Typography>
-            </>
-          }
-        >
-          <SettingSwitchRow
-            ariaLabel="Addon-side Direct mDNS"
-            control={control}
-            disabled={readOnly}
-            label={labLabel("Addon-side Direct mDNS")}
-            name="addon_mdns_registration"
-          />
-        </Tooltip>
-      ) : null}
     </Stack>
   );
 }

@@ -43,8 +43,8 @@ type mdnsServiceParams struct {
 
 // MDNSService broadcasts MdnsRegisterNotification events over WebSocket so the
 // Home Assistant custom component can register or unregister the Samba server
-// via Zeroconf / mDNS. When the experimental addon-side direct mDNS feature is
-// enabled, it also registers the service directly using zeroconf.
+// via Zeroconf / mDNS. When the addon-side direct mDNS feature is enabled, it
+// also registers the service directly using zeroconf.
 type MDNSService struct {
 	ctx            context.Context
 	broadcaster    BroadcasterServiceInterface
@@ -215,7 +215,7 @@ func (svc *MDNSService) reconfigureAddonMDNS(ctx context.Context) {
 		return
 	}
 
-	enabled := settings.AddonMDNSRegistration != nil && *settings.AddonMDNSRegistration && settings.ExperimentalLabMode
+	enabled := settings.AddonMDNSRegistration != nil && *settings.AddonMDNSRegistration
 	if !enabled {
 		svc.shutdownAddonMDNS()
 		return
