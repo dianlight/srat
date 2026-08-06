@@ -13,7 +13,7 @@ These instructions are the concise, must-follow rules for working in SRAT. Keep 
 - **Ask for clarification**: If a user request is ambiguous or could lead to unintended consequences, ask for clarification before proceeding.
 - **Respect existing code**: Follow the established architecture, style, and patterns of the codebase. Avoid introducing new abstractions or styles unless necessary.
 - **Prioritize maintainability**: Write clear, readable code that other developers can easily understand and maintain. Avoid clever or complex solutions when a straightforward approach will do.
-- **Add tests**: When fixing bugs or adding features, include tests that cover the new behavior and edge cases. Follow the testing guidelines in the instruction files.
+- **Add tests**: When fixing bugs or adding features, include tests that cover the new behavior and edge cases. Follow the testing guidelines in the instruction files. New or changed back-end code must reach **≥70% statement coverage** (see the coverage gate rule under "Testing rules").
 - **Test your changes**: Always run the relevant tests after making changes to ensure you haven't introduced regressions. Follow the testing guidelines in the instruction files.
 - **Document your changes**: If your change affects the behavior of the system, update the relevant documentation and add comments to your code where necessary to explain non-obvious logic or decisions.
 - **Verify before finalizing**: Before finalizing any code changes, review your work to ensure it adheres to the above rules and the specific guidelines in the instruction files. If you're unsure about any aspect of your changes, ask for a review or feedback from a human developer. Always aim for high-quality, maintainable code that aligns with the project's standards and goals.
@@ -79,6 +79,7 @@ These instructions are the concise, must-follow rules for working in SRAT. Keep 
 
 - **Bug fixes require a failing test first**, then the fix, then re‑run tests.
 - For back-end test failures or new back-end functionality, verify in escalation order: use `mise run //backend:test` to run the full test suite. Remember that direct `go test` commands will fail without the generated metadata constants; always use the mise workflow.
+- **Coverage gate for new code**: Any new or changed back-end code must reach **≥70% statement coverage**. After adding tests, run `mise run //backend:test` (writes `backend/src/coverage.out`), then inspect the per-function report with `cd backend/src && go tool cover -func=coverage.out`. If any function touched by the change is below 70% (excluding generated code and thin external-library adapters that unit tests intentionally fake), add focused tests before handoff. Thin adapters that only wrap an external library (e.g. the real `zeroconf.Register` wrapper behind a testable interface) are exempt — cover them via the interface consumers instead.
 - Frontend tests: use `mise run //frontend:test`, React Testing Library, and **`user-event` only** (no `fireEvent`).
 - Frontend test stability: run `mise run //frontend:test --rerun-each 10` for modified tests.
 

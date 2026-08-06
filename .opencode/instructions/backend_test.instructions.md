@@ -15,6 +15,15 @@ applyTo: "`backend/src/**/*_test.go`"
 
 All back-end tests in the SRAT project follow consistent patterns using testify/suite, mockio/v2 for mocking, and uber-go/fx for dependency injection in tests. These instructions ensure uniform, maintainable, and comprehensive test coverage.
 
+## Coverage Requirements
+
+- **Every change ships with tests.** Any new or changed back-end code must include unit tests covering the new behavior and its edge cases (success paths, error paths, boundary values). This applies automatically to every change — not just bug fixes or feature work.
+- **New or changed back-end code must reach ≥70% statement coverage.** Functions touched by the change must each be at or above 70%; if they are not, add focused tests before handoff.
+- **Verify coverage** by running `mise run //backend:test` (writes `backend/src/coverage.out`) and inspecting the per-function report with `cd backend/src && go tool cover -func=coverage.out`. Never run raw `go test` in `backend/src` — the generated metadata constants are required.
+- **Exemptions**: generated code (e.g. `goenums` output) and thin adapters that only wrap an external library (e.g. a real `zeroconf.Register` wrapper behind a testable interface) are exempt from the per-function gate — cover them via their interface consumers instead.
+- **Where to put tests**: prefer black-box `_test` packages (testify/suite + fx + mockio) for service/API layers; use same-package internal test files for unexported helpers and error paths that must be exercised directly.
+
+
 ## Core Testing Stack
 
 - **Test Framework**: `github.com/stretchr/testify/suite` - Provides suite-based test organization

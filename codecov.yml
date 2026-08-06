@@ -16,7 +16,7 @@ coverage:
         informational: true
     patch:
       default:
-        target: 60%
+        target: 70%
         informational: true
 
   precision: 2
