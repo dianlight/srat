@@ -149,7 +149,7 @@ export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
         });
     } catch (error) {
       console.error("Error generating issue report:", error);
-      alert("Failed to generate issue report. Please try again.");
+      toast.error("Failed to generate issue report. Please try again.");
     }
   };
 
@@ -281,11 +281,6 @@ export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
                     name="include_srat_config"
                     label="SRAT configuration (sanitized - passwords removed)"
                   />
-
-                  {/* 								<SwitchElement
-										name="include_database_dump"
-										label="Database dump (sanitized - passwords removed)"
-									/> */}
                 </Box>
 
                 <Typography
@@ -328,7 +323,7 @@ export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
             issue:
           </Typography>
           <Link
-            href={popupBlockedUrl ?? "#"}
+            href={popupBlockedUrl ?? undefined}
             target="_blank"
             rel="noopener noreferrer"
           >

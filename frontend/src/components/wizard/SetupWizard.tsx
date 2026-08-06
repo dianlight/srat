@@ -432,12 +432,6 @@ export function SetupWizard({
           console.debug(
             "All settings applied successfully, waiting for clean state",
           );
-          //setIsWaitingForClean(true);
-          //          setTimeout(() => {
-          //            if (isDirtyTrackingClean(health?.dirty_tracking)) {
-          //              setIsWaitingForClean(false);
-          //            }
-          //         }, 3000);
         })
         .catch((error) => {
           console.error("Error applying settings in wizard:", error);

@@ -43,23 +43,17 @@ interface VolumeMountDialogProps {
 }
 
 export function VolumeMountDialog(props: VolumeMountDialogProps) {
-  const {
-    control,
-    handleSubmit,
-    watch,
-    reset,
-    //	formState: { errors },
-    setValue,
-  } = useForm<xMountPointData>({
-    defaultValues: {
-      path: "",
-      fstype: "",
-      flags: [],
-      custom_flags: [],
-      custom_flags_values: [],
-      is_to_mount_at_startup: false,
-    }, // Default values for the form
-  });
+  const { control, handleSubmit, watch, reset, setValue } =
+    useForm<xMountPointData>({
+      defaultValues: {
+        path: "",
+        fstype: "",
+        flags: [],
+        custom_flags: [],
+        custom_flags_values: [],
+        is_to_mount_at_startup: false,
+      }, // Default values for the form
+    });
   const { fields, replace } = useFieldArray({
     control, // control props comes from useForm (optional: if you are using FormProvider)
     name: "custom_flags_values", // unique name for your Field Array

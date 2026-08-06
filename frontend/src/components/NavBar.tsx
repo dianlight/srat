@@ -265,7 +265,6 @@ export function NavBar(props: {
   const { setIsOpen: setTourOpen, isOpen: isTourOpen } = useTour();
   const { update, isLoading: isUpdateLoading } = useUpdate();
   const { data: settings } = useGetApiSettingsQuery();
-  //const _navigate = useNavigate();
   const experimentalLabMode = Boolean(
     settings &&
       "experimental_lab_mode" in settings &&
@@ -286,13 +285,10 @@ export function NavBar(props: {
   const { data: evdata } = useGetServerEventsQuery();
 
   const [doUpdate] = usePutApiUpdateMutation();
-  //const [restartSamba] = usePutApiSambaApplyMutation();
 
   const { mode, setMode } = useColorScheme();
-  //const [update, setUpdate] = useState<string | undefined>()
   const [value, setValue] = useState<number>(0); // Active tab index, default to 0
   const confirm = useConfirm();
-  //const [tabId, setTabId] = useState<string>(() => uuidv4())
   const theme = useTheme();
   const [isLogoHovered, setIsLogoHovered] = useState(false);
   const matches = useMediaQuery(theme.breakpoints.up("sm"));
@@ -559,7 +555,7 @@ export function NavBar(props: {
 
             <Box sx={{ flexGrow: 0, display: "flex", alignItems: "center" }}>
               {getCurrentEnv() !== "production" && (
-                <IconButton size="small">
+                <Box component="span">
                   <Tooltip
                     title={
                       <List
@@ -653,27 +649,27 @@ export function NavBar(props: {
                   >
                     <BugReportIcon sx={{ color: "orange" }} />
                   </Tooltip>
-                </IconButton>
+                </Box>
               )}
               {!evdata?.hello?.secure_mode ? (
-                <IconButton size="small">
+                <Box component="span">
                   <Tooltip title="Secure Mode Disabled" arrow>
                     <LockOpenIcon sx={{ color: "red" }} />
                   </Tooltip>
-                </IconButton>
+                </Box>
               ) : (
-                <IconButton size="small">
+                <Box component="span">
                   <Tooltip title="Secure Mode Enabled" arrow>
                     <LockIcon sx={{ color: "white" }} />
                   </Tooltip>
-                </IconButton>
+                </Box>
               )}
               {evdata?.hello?.read_only && (
-                <IconButton size="small">
+                <Box component="span">
                   <Tooltip title="ReadOnly Mode" arrow>
                     <PreviewIcon sx={{ color: "white" }} />
                   </Tooltip>
-                </IconButton>
+                </Box>
               )}
               {!isUpdateLoading && update.Available && (
                 <IconButton onClick={handleDoUpdate} size="small">

@@ -68,6 +68,8 @@ export function VolumesTreeView({
   onCreateShare,
   onGoToShare,
   onCheckFilesystem,
+  onSetFilesystemLabel,
+  onFormatPartition,
   protectedMode = false,
   readOnly = false,
   filesystemStateByPartitionId,
@@ -264,8 +266,8 @@ export function VolumesTreeView({
                   onCreateShare={onCreateShare}
                   onGoToShare={onGoToShare}
                   onCheckFilesystem={onCheckFilesystem}
-                  //onSetFilesystemLabel={onSetFilesystemLabel}
-                  //onFormatPartition={onFormatPartition}
+                  onSetFilesystemLabel={onSetFilesystemLabel}
+                  onFormatPartition={onFormatPartition}
                 />
               </Box>
             )}
@@ -485,8 +487,8 @@ export function VolumesTreeView({
                   onCreateShare={onCreateShare}
                   onGoToShare={onGoToShare}
                   onCheckFilesystem={onCheckFilesystem}
-                  //onSetFilesystemLabel={onSetFilesystemLabel}
-                  //onFormatPartition={onFormatPartition}
+                  onSetFilesystemLabel={onSetFilesystemLabel}
+                  onFormatPartition={onFormatPartition}
                 />
               </Box>
             )}
@@ -615,8 +617,8 @@ export function VolumesTreeView({
                   onCreateShare={onCreateShare}
                   onGoToShare={onGoToShare}
                   onCheckFilesystem={onCheckFilesystem}
-                  //onSetFilesystemLabel={onSetFilesystemLabel}
-                  //onFormatPartition={onFormatPartition}
+                  onSetFilesystemLabel={onSetFilesystemLabel}
+                  onFormatPartition={onFormatPartition}
                 />
               </Box>
             )}
