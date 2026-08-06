@@ -547,6 +547,39 @@ it("renders NavBar with AppBar and basic elements", async () => {
         expect(container).toBeTruthy();
     });
 
+    it("keeps the development environment debug trigger keyboard accessible", async () => {
+        const theme = createTheme();
+        const store = await createTestStore();
+        const mockBodyRef = { current: document.createElement('div') };
+
+        render(
+            React.createElement(
+                MemoryRouter,
+                null,
+                React.createElement(
+                    Provider,
+                    {
+                        store, children:
+                            React.createElement(
+                                ThemeProvider,
+                                { theme },
+                                React.createElement(NavBar as any, {
+                                    error: "",
+                                    bodyRef: mockBodyRef
+                                })
+                            )
+                    }
+                )
+            )
+        );
+
+        const debugTrigger = screen.getByLabelText(/development environment debug/i);
+        // Must be reachable via keyboard so users can tab to the debug controls
+        expect(debugTrigger).toHaveAttribute("tabIndex", "0");
+        debugTrigger.focus();
+        expect(document.activeElement).toBe(debugTrigger);
+    });
+
     it("handles NotificationCenter rendering", async () => {
 
 

@@ -555,7 +555,12 @@ export function NavBar(props: {
 
             <Box sx={{ flexGrow: 0, display: "flex", alignItems: "center" }}>
               {getCurrentEnv() !== "production" && (
-                <Box component="span">
+                <Box
+                  component="span"
+                  tabIndex={0}
+                  aria-label="Development environment debug"
+                  sx={{ display: "inline-flex", outline: "none" }}
+                >
                   <Tooltip
                     title={
                       <List
