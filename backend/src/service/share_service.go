@@ -277,7 +277,33 @@ func (s *ShareService) GetShare(name string) (*dto.SharedResource, errors.E) {
 	return &dtoShare, nil
 }
 
+// validateShareData validates a share payload before it reaches the database,
+// turning DB constraint failures into a clean client error (issues #901-#903).
+// requireMountData enforces that a share must carry a mount point with a path
+// (used on create; updates may keep the existing mount point).
+func validateShareData(share dto.SharedResource, requireMountData bool) errors.E {
+	if requireMountData && share.Name == "" {
+		return errors.WithStack(dto.ErrorShareValidation)
+	}
+	if share.Name != "" && len(share.Name) > 128 {
+		return errors.WithStack(dto.ErrorShareValidation)
+	}
+	if requireMountData && (share.MountPointData == nil || share.MountPointData.Path == "") {
+		return errors.WithStack(dto.ErrorShareValidation)
+	}
+	if share.MountPointData != nil && share.MountPointData.Path != "" {
+		if share.MountPointData.Type == "" || share.MountPointData.DeviceId == "" {
+			return errors.WithStack(dto.ErrorShareValidation)
+		}
+	}
+	return nil
+}
+
 func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResource, errors.E) {
+	if err := validateShareData(share, true); err != nil {
+		return nil, err
+	}
+
 	check, err := gorm.G[dbom.ExportedShare](s.db).Scopes(dbom.IncludeSoftDeleted).Where("name = ? and deleted_at IS NOT NULL", share.Name).Update(s.ctx, "deleted_at", nil)
 	if err != nil {
 		slog.Error("Failed to check for existing share", "share_name", share.Name, "error", err)
@@ -330,6 +356,10 @@ func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResourc
 }
 
 func (s *ShareService) UpdateShare(name string, share dto.SharedResource) (*dto.SharedResource, errors.E) {
+	if err := validateShareData(share, false); err != nil {
+		return nil, err
+	}
+
 	dbShare, err := gorm.G[dbom.ExportedShare](s.db).
 		Preload("MountPointData", nil).
 		Preload("Users", nil).
@@ -619,34 +649,10 @@ func (s *ShareService) VerifyShare(share *dto.SharedResource) errors.E {
 		share.Status = &dto.SharedResourceStatus{}
 	}
 
-	// Case 4: Check if MountPointData exists and has a valid path
-	if share.MountPointData == nil || share.MountPointData.Path == "" {
-		slog.Warn("Share has no valid MountPointData", "share", share.Name)
-		share.Status.IsValid = false
-		return nil
-	}
-
-	// Case 4: Volume doesn't exist (marked as invalid in mount point)
-	if share.MountPointData.IsInvalid {
-		slog.Warn("Share volume does not exist",
-			"share", share.Name,
-			"path", share.MountPointData.Path)
-		share.Status.IsValid = false
-		return nil
-	}
-
-	// Case 3: Volume exists but is not mounted
-	if !share.MountPointData.IsMounted {
-		slog.Warn("Share volume is not mounted",
-			"share", share.Name,
-			"path", share.MountPointData.Path)
-		share.Status.IsValid = false
-		return nil
-	}
-
-	// Issue #898: standard share names (legacy and new) expose the new
-	// application-based directories. If the directory does not exist, the
-	// share is unusable and must be marked invalid.
+	// Issue #898/#900: standard share names (legacy and new) expose the new
+	// application-based directories. Check directory existence FIRST for
+	// standard shares so that legacy shares whose new directory exists stay
+	// valid (making the smb.gtpl preexec deprecation warning reachable).
 	if dir, ok := standardShareDir(share.Name); ok {
 		info, err := osStat(dir)
 		if err != nil || !info.IsDir() {
@@ -656,10 +662,37 @@ func (s *ShareService) VerifyShare(share *dto.SharedResource) errors.E {
 			share.Status.IsValid = false
 			return nil
 		}
+		// Standard directory exists: skip the mount-data checks below and
+		// fall through to the write-support handling.
+	} else {
+		// Case 4: Check if MountPointData exists and has a valid path
+		if share.MountPointData == nil || share.MountPointData.Path == "" {
+			slog.Warn("Share has no valid MountPointData", "share", share.Name)
+			share.Status.IsValid = false
+			return nil
+		}
+
+		// Case 4: Volume doesn't exist (marked as invalid in mount point)
+		if share.MountPointData.IsInvalid {
+			slog.Warn("Share volume does not exist",
+				"share", share.Name,
+				"path", share.MountPointData.Path)
+			share.Status.IsValid = false
+			return nil
+		}
+
+		// Case 3: Volume exists but is not mounted
+		if !share.MountPointData.IsMounted {
+			slog.Warn("Share volume is not mounted",
+				"share", share.Name,
+				"path", share.MountPointData.Path)
+			share.Status.IsValid = false
+			return nil
+		}
 	}
 
 	// Cases 1 & 2: Volume is mounted - validate write support vs user permissions
-	if share.MountPointData.IsWriteSupported != nil {
+	if share.MountPointData != nil && share.MountPointData.IsWriteSupported != nil {
 		if !*share.MountPointData.IsWriteSupported {
 			// Case 2: Read-only volume - ensure no RW users
 			for i := range share.Users {

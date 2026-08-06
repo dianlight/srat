@@ -507,9 +507,6 @@ func (self *ServerService) jSONFromDatabase() (tconfig config.Config, err errors
 		if share.Status != nil && !share.Status.IsValid {
 			continue
 		}
-		if share.MountPointData != nil && share.MountPointData.IsInvalid {
-			continue
-		}
 		dbs := dbom.ExportedShare{}
 		err = self.dbomConv.SharedResourceToExportedShare(share, &dbs)
 		if err != nil {

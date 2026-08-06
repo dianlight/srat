@@ -1956,7 +1956,7 @@ export type User = {
 };
 export type SharedResourceStatus = {
   is_ha_mounted?: boolean;
-  is_valid?: boolean;
+  is_valid: boolean;
 };
 export type SharedResource = {
   /** A URL to the JSON Schema for this object. */

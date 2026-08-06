@@ -205,6 +205,37 @@ func (suite *ShareHandlerSuite) TestCreateShareServiceError() {
 	suite.Require().Equal(http.StatusInternalServerError, resp.Code)
 }
 
+func (suite *ShareHandlerSuite) TestCreateShareValidationError() {
+	input := dto.SharedResource{Name: "invalid-share"}
+
+	// Configure mock expectations
+	mock.When(suite.mockShareService.CreateShare(mock.Any[dto.SharedResource]())).ThenReturn(nil, errors.WithStack(dto.ErrorShareValidation))
+
+	// Setup humatest
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterShareHandler(api)
+
+	// Make HTTP request
+	resp := api.Post("/share", input)
+	suite.Require().Equal(http.StatusUnprocessableEntity, resp.Code)
+}
+
+func (suite *ShareHandlerSuite) TestUpdateShareValidationError() {
+	shareName := "invalid-share"
+	input := dto.SharedResource{Name: shareName}
+
+	// Configure mock expectations
+	mock.When(suite.mockShareService.UpdateShare(mock.Equal(shareName), mock.Any[dto.SharedResource]())).ThenReturn(nil, errors.WithStack(dto.ErrorShareValidation))
+
+	// Setup humatest
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterShareHandler(api)
+
+	// Make HTTP request
+	resp := api.Put("/share/"+shareName, input)
+	suite.Require().Equal(http.StatusUnprocessableEntity, resp.Code)
+}
+
 func (suite *ShareHandlerSuite) TestCreateShareAsyncNotification() {
 	input := dto.SharedResource{Name: "test-share"}
 	expectedShare := &dto.SharedResource{Name: "test-share"}

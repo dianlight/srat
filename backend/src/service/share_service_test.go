@@ -401,6 +401,36 @@ func (suite *ShareServiceSuite) TestVerifyShareNonStandardShareSkipsStatCheck() 
 	suite.Equal(0, statCalls, "os.Stat must not be called for non-standard shares")
 }
 
+// TestVerifyShareStandardShareValidDespiteInvalidMountData tests that a
+// standard share whose mount data is flagged invalid (e.g. the legacy
+// addons/addon_configs volumes) stays valid when the standard directory
+// exists, so it can be exported and reach the preexec deprecation warning
+// (issue #900).
+func (suite *ShareServiceSuite) TestVerifyShareStandardShareValidDespiteInvalidMountData() {
+	fi, err := os.Stat(suite.T().TempDir())
+	suite.Require().NoError(err)
+	service.MockOsStat(func(string) (os.FileInfo, error) { return fi, nil })
+	suite.T().Cleanup(func() { service.MockOsStat(os.Stat) })
+
+	isWriteSupported := true
+	share := &dto.SharedResource{
+		Name:     "addons",
+		Disabled: boolPtr(false),
+		Usage:    "internal",
+		MountPointData: &dto.MountPointData{
+			Path:             "/addons",
+			IsMounted:        false,
+			IsInvalid:        true,
+			IsWriteSupported: &isWriteSupported,
+		},
+	}
+
+	err = suite.shareService.VerifyShare(share)
+
+	suite.NoError(err)
+	suite.True(share.Status.IsValid, "Standard share with existing standard directory should stay valid despite invalid mount data")
+}
+
 // ============================================================================
 // GetShare Tests
 // ============================================================================
@@ -454,6 +484,101 @@ func (suite *ShareServiceSuite) TestCreateShareSuccess() {
 	suite.False(*created.Disabled)
 	suite.True(*created.GuestOk)
 	suite.Len(created.Users, 1)
+}
+
+// TestCreateShareMissingMountPointType asserts that a share without a mount
+// point type is rejected with a validation error instead of a DB constraint
+// failure (issue #901).
+func (suite *ShareServiceSuite) TestCreateShareMissingMountPointType() {
+	newShare := dto.SharedResource{
+		Name:     "missing-type-share",
+		Disabled: boolPtr(false),
+		MountPointData: &dto.MountPointData{
+			Path:     "/mnt/x",
+			DeviceId: "some-device",
+		},
+	}
+
+	created, err := suite.shareService.CreateShare(newShare)
+
+	suite.Nil(created)
+	suite.Error(err)
+	suite.True(errors.Is(err, dto.ErrorShareValidation), "expected ErrorShareValidation, got %v", err)
+}
+
+// TestCreateShareMissingDeviceId asserts that a share without a mount point
+// device id is rejected with a validation error (issue #901).
+func (suite *ShareServiceSuite) TestCreateShareMissingDeviceId() {
+	newShare := dto.SharedResource{
+		Name:     "missing-device-share",
+		Disabled: boolPtr(false),
+		MountPointData: &dto.MountPointData{
+			Path: "/mnt/x",
+			Type: "ADDON",
+		},
+	}
+
+	created, err := suite.shareService.CreateShare(newShare)
+
+	suite.Nil(created)
+	suite.Error(err)
+	suite.True(errors.Is(err, dto.ErrorShareValidation), "expected ErrorShareValidation, got %v", err)
+}
+
+// TestCreateShareWithoutMountPoint asserts that a path-less share is rejected
+// instead of being silently created as an unusable share (issue #902).
+func (suite *ShareServiceSuite) TestCreateShareWithoutMountPoint() {
+	newShare := dto.SharedResource{
+		Name:     "no-mount-share",
+		Disabled: boolPtr(false),
+	}
+
+	created, err := suite.shareService.CreateShare(newShare)
+
+	suite.Nil(created)
+	suite.Error(err)
+	suite.True(errors.Is(err, dto.ErrorShareValidation), "expected ErrorShareValidation, got %v", err)
+}
+
+// TestCreateShareEmptyName asserts that an empty share name is rejected
+// (issue #903).
+func (suite *ShareServiceSuite) TestCreateShareEmptyName() {
+	newShare := dto.SharedResource{
+		Name:     "",
+		Disabled: boolPtr(false),
+		MountPointData: &dto.MountPointData{
+			Path:     "/mnt/x",
+			Type:     "ADDON",
+			DeviceId: "device",
+		},
+	}
+
+	created, err := suite.shareService.CreateShare(newShare)
+
+	suite.Nil(created)
+	suite.Error(err)
+	suite.True(errors.Is(err, dto.ErrorShareValidation), "expected ErrorShareValidation, got %v", err)
+}
+
+// TestCreateShareNameTooLong asserts that a share name longer than 128 chars
+// is rejected, preventing shares that can never be deleted via the API
+// (issue #903).
+func (suite *ShareServiceSuite) TestCreateShareNameTooLong() {
+	newShare := dto.SharedResource{
+		Name:     string(make([]byte, 129)),
+		Disabled: boolPtr(false),
+		MountPointData: &dto.MountPointData{
+			Path:     "/mnt/x",
+			Type:     "ADDON",
+			DeviceId: "device",
+		},
+	}
+
+	created, err := suite.shareService.CreateShare(newShare)
+
+	suite.Nil(created)
+	suite.Error(err)
+	suite.True(errors.Is(err, dto.ErrorShareValidation), "expected ErrorShareValidation, got %v", err)
 }
 
 func (suite *ShareServiceSuite) TestCreateShareWithoutExplicitUsers() {

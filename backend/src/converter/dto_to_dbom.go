@@ -132,7 +132,7 @@ type DtoToDbomConverter interface {
 
 	// goverter:ignore _
 	// goverter:update:ignoreZeroValueField:basic no
-	// goverter:map . IsValid | checkUserValid
+	// goverter:map . IsValid | checkUserValidStored
 	SambaUserToUser(source dbom.SambaUser) (target dto.User, err error)
 
 	// goverter:useUnderlyingTypeMethods yes
@@ -190,4 +190,15 @@ func checkUserValid(dbUser dbom.SambaUser) bool {
 		slog.Warn("Failed to validate user with unixsamba", "username", dbUser.Username, "error", err)
 	}
 	return err == nil
+}
+
+// checkUserValidStored maps the persisted IsValid flag into the DTO pointer
+// (issue #904). An explicit admin-disable (false) overrides the computed
+// validity; otherwise the computed validity (samba credentials) is reported.
+func checkUserValidStored(dbUser dbom.SambaUser) *bool {
+	v := checkUserValid(dbUser)
+	if dbUser.IsValid != nil && !*dbUser.IsValid {
+		return dbUser.IsValid
+	}
+	return &v
 }
