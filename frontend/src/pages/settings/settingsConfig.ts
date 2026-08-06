@@ -62,6 +62,7 @@ export const categories: {
     "local_master",
     "compatibility_mode",
     "allow_guest",
+    "mdns_registration",
     "smart_mode",
     "experimental_lab_mode",
   ],

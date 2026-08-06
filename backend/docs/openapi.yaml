@@ -507,46 +507,6 @@ components:
         - read_latency_ms
         - write_latency_ms
       type: object
-    ErrorDataModel:
-      additionalProperties: false
-      properties:
-        detail:
-          description: A human-readable explanation specific to this occurrence of the problem.
-          examples:
-            - Property foo is required but is missing.
-          type: string
-        errors:
-          description: Optional list of individual error details
-          items:
-            $ref: "#/components/schemas/ErrorDetail"
-          type:
-            - array
-            - "null"
-        instance:
-          description: A URI reference that identifies the specific occurrence of the problem.
-          examples:
-            - https://example.com/error-log/abc123
-          format: uri
-          type: string
-        status:
-          description: HTTP status code
-          examples:
-            - 400
-          format: int64
-          type: integer
-        title:
-          description: A short, human-readable summary of the problem type. This value should not change between occurrences of the error.
-          examples:
-            - Bad Request
-          type: string
-        type:
-          default: about:blank
-          description: A URI reference to human-readable documentation for the error.
-          examples:
-            - https://example.com/errors/example
-          format: uri
-          type: string
-      type: object
     ErrorDetail:
       additionalProperties: false
       properties:
@@ -2103,6 +2063,13 @@ components:
         smb_over_quic:
           default: false
           type: boolean
+        standard_share_names:
+          default: both
+          enum:
+            - old
+            - new
+            - both
+          type: string
         telemetry_mode:
           enum:
             - Ask
@@ -2110,10 +2077,16 @@ components:
             - Errors
             - Disabled
           type: string
+        use_component_mdns_proxy:
+          default: true
+          type: boolean
         workgroup:
           type: string
       required:
+        - telemetry_mode
+        - smart_mode
         - experimental_lab_mode
+        - standard_share_names
       type: object
     SharedResource:
       additionalProperties: true
@@ -2226,6 +2199,8 @@ components:
         is_valid:
           default: false
           type: boolean
+      required:
+        - is_valid
       type: object
     SmartHealthStatus:
       additionalProperties: false
@@ -2500,6 +2475,7 @@ components:
           default: false
           type: boolean
         is_valid:
+          default: true
           type: boolean
         password:
           format: password
@@ -2678,8 +2654,8 @@ paths:
     get:
       operationId: get-api-capabilities
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3133,8 +3109,8 @@ paths:
           schema:
             description: The disk ID (not the device path)
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3333,8 +3309,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3483,8 +3459,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3681,8 +3657,8 @@ paths:
     post:
       operationId: post-api-filesystem-check-abort
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
@@ -4153,8 +4129,8 @@ paths:
     get:
       operationId: get-api-health
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -4196,8 +4172,8 @@ paths:
     get:
       operationId: get-api-hostname
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -4239,8 +4215,8 @@ paths:
     post:
       operationId: generate-issue-report
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
@@ -4375,8 +4351,8 @@ paths:
     get:
       operationId: list-api-nics
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -4565,8 +4541,8 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -4613,8 +4589,8 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json-patch+json:
@@ -4820,8 +4796,8 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -5253,6 +5229,13 @@ paths:
                 smb_over_quic:
                   default: false
                   type: boolean
+                standard_share_names:
+                  default: both
+                  enum:
+                    - old
+                    - new
+                    - both
+                  type: string
                 telemetry_mode:
                   enum:
                     - Ask
@@ -5260,6 +5243,9 @@ paths:
                     - Errors
                     - Disabled
                   type: string
+                use_component_mdns_proxy:
+                  default: true
+                  type: boolean
                 workgroup:
                   type: string
               type: object
@@ -5328,6 +5314,13 @@ paths:
                 smb_over_quic:
                   default: false
                   type: boolean
+                standard_share_names:
+                  default: both
+                  enum:
+                    - old
+                    - new
+                    - both
+                  type: string
                 telemetry_mode:
                   enum:
                     - Ask
@@ -5335,6 +5328,9 @@ paths:
                     - Errors
                     - Disabled
                   type: string
+                use_component_mdns_proxy:
+                  default: true
+                  type: boolean
                 workgroup:
                   type: string
               type: object
@@ -6633,8 +6629,8 @@ paths:
     post:
       operationId: post-api-user
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -6743,8 +6739,8 @@ paths:
             maxLength: 30
             pattern: "[a-zA-Z0-9 _-]+"
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -6792,8 +6788,8 @@ paths:
     put:
       operationId: put-api-useradmin
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -6901,8 +6897,8 @@ paths:
             default: false
             description: Force umount operation
             type: boolean
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "204":
           description: No Content

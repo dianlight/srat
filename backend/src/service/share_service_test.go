@@ -320,6 +320,117 @@ func (suite *ShareServiceSuite) TestVerifyShareNilShare() {
 	suite.Contains(err.Error(), "share cannot be nil")
 }
 
+// TestVerifyShareStandardShareMissingDirectory tests that a standard share is
+// marked invalid when the directory it exposes does not exist (issue #898).
+func (suite *ShareServiceSuite) TestVerifyShareStandardShareMissingDirectory() {
+	service.MockOsStat(func(string) (os.FileInfo, error) { return nil, os.ErrNotExist })
+	suite.T().Cleanup(func() { service.MockOsStat(os.Stat) })
+
+	isWriteSupported := true
+	share := &dto.SharedResource{
+		Name:     "addons",
+		Disabled: boolPtr(false),
+		Usage:    "internal",
+		MountPointData: &dto.MountPointData{
+			Path:             "/local_apps",
+			IsMounted:        true,
+			IsWriteSupported: &isWriteSupported,
+		},
+	}
+
+	err := suite.shareService.VerifyShare(share)
+
+	suite.NoError(err)
+	suite.NotNil(share.Status)
+	suite.False(share.Status.IsValid, "Standard share with missing directory should be marked as invalid")
+}
+
+// TestVerifyShareStandardShareExistingDirectory tests that a standard share
+// stays valid when the directory it exposes exists (issue #898).
+func (suite *ShareServiceSuite) TestVerifyShareStandardShareExistingDirectory() {
+	fi, err := os.Stat(suite.T().TempDir())
+	suite.Require().NoError(err)
+	service.MockOsStat(func(string) (os.FileInfo, error) { return fi, nil })
+	suite.T().Cleanup(func() { service.MockOsStat(os.Stat) })
+
+	isWriteSupported := true
+	share := &dto.SharedResource{
+		Name:     "addons",
+		Disabled: boolPtr(false),
+		Usage:    "internal",
+		MountPointData: &dto.MountPointData{
+			Path:             "/local_apps",
+			IsMounted:        true,
+			IsWriteSupported: &isWriteSupported,
+		},
+	}
+
+	err = suite.shareService.VerifyShare(share)
+
+	suite.NoError(err)
+	suite.NotNil(share.Status)
+	suite.True(share.Status.IsValid, "Standard share with existing directory should stay valid")
+}
+
+// TestVerifyShareNonStandardShareSkipsStatCheck tests that the directory
+// existence check only applies to standard shares (issue #898).
+func (suite *ShareServiceSuite) TestVerifyShareNonStandardShareSkipsStatCheck() {
+	statCalls := 0
+	service.MockOsStat(func(string) (os.FileInfo, error) {
+		statCalls++
+		return nil, os.ErrNotExist
+	})
+	suite.T().Cleanup(func() { service.MockOsStat(os.Stat) })
+
+	isWriteSupported := true
+	share := &dto.SharedResource{
+		Name:     "test-rw-share",
+		Disabled: boolPtr(false),
+		Usage:    "internal",
+		MountPointData: &dto.MountPointData{
+			Path:             "/mnt/test-rw",
+			IsMounted:        true,
+			IsWriteSupported: &isWriteSupported,
+		},
+	}
+
+	err := suite.shareService.VerifyShare(share)
+
+	suite.NoError(err)
+	suite.True(share.Status.IsValid)
+	suite.Equal(0, statCalls, "os.Stat must not be called for non-standard shares")
+}
+
+// TestVerifyShareStandardShareValidDespiteInvalidMountData tests that a
+// standard share whose mount data is flagged invalid (e.g. the legacy
+// addons/addon_configs volumes) stays valid when the standard directory
+// exists, so it can be exported and reach the preexec deprecation warning
+// (issue #900).
+func (suite *ShareServiceSuite) TestVerifyShareStandardShareValidDespiteInvalidMountData() {
+	fi, err := os.Stat(suite.T().TempDir())
+	suite.Require().NoError(err)
+	service.MockOsStat(func(string) (os.FileInfo, error) { return fi, nil })
+	suite.T().Cleanup(func() { service.MockOsStat(os.Stat) })
+
+	isWriteSupported := true
+	share := &dto.SharedResource{
+		Name:     "addons",
+		Disabled: boolPtr(false),
+		Usage:    "internal",
+		MountPointData: &dto.MountPointData{
+			Path:             "/addons",
+			IsMounted:        false,
+			IsInvalid:        true,
+			IsWriteSupported: &isWriteSupported,
+		},
+	}
+
+	err = suite.shareService.VerifyShare(share)
+
+	suite.NoError(err)
+	suite.True(share.Status.IsValid, "Standard share with existing standard directory should stay valid despite invalid mount data")
+}
+
 // ============================================================================
 // GetShare Tests
 // ============================================================================
@@ -373,6 +484,101 @@ func (suite *ShareServiceSuite) TestCreateShareSuccess() {
 	suite.False(*created.Disabled)
 	suite.True(*created.GuestOk)
 	suite.Len(created.Users, 1)
+}
+
+// TestCreateShareMissingMountPointType asserts that a share without a mount
+// point type is rejected with a validation error instead of a DB constraint
+// failure (issue #901).
+func (suite *ShareServiceSuite) TestCreateShareMissingMountPointType() {
+	newShare := dto.SharedResource{
+		Name:     "missing-type-share",
+		Disabled: boolPtr(false),
+		MountPointData: &dto.MountPointData{
+			Path:     "/mnt/x",
+			DeviceId: "some-device",
+		},
+	}
+
+	created, err := suite.shareService.CreateShare(newShare)
+
+	suite.Nil(created)
+	suite.Error(err)
+	suite.True(errors.Is(err, dto.ErrorShareValidation), "expected ErrorShareValidation, got %v", err)
+}
+
+// TestCreateShareMissingDeviceId asserts that a share without a mount point
+// device id is rejected with a validation error (issue #901).
+func (suite *ShareServiceSuite) TestCreateShareMissingDeviceId() {
+	newShare := dto.SharedResource{
+		Name:     "missing-device-share",
+		Disabled: boolPtr(false),
+		MountPointData: &dto.MountPointData{
+			Path: "/mnt/x",
+			Type: "ADDON",
+		},
+	}
+
+	created, err := suite.shareService.CreateShare(newShare)
+
+	suite.Nil(created)
+	suite.Error(err)
+	suite.True(errors.Is(err, dto.ErrorShareValidation), "expected ErrorShareValidation, got %v", err)
+}
+
+// TestCreateShareWithoutMountPoint asserts that a path-less share is rejected
+// instead of being silently created as an unusable share (issue #902).
+func (suite *ShareServiceSuite) TestCreateShareWithoutMountPoint() {
+	newShare := dto.SharedResource{
+		Name:     "no-mount-share",
+		Disabled: boolPtr(false),
+	}
+
+	created, err := suite.shareService.CreateShare(newShare)
+
+	suite.Nil(created)
+	suite.Error(err)
+	suite.True(errors.Is(err, dto.ErrorShareValidation), "expected ErrorShareValidation, got %v", err)
+}
+
+// TestCreateShareEmptyName asserts that an empty share name is rejected
+// (issue #903).
+func (suite *ShareServiceSuite) TestCreateShareEmptyName() {
+	newShare := dto.SharedResource{
+		Name:     "",
+		Disabled: boolPtr(false),
+		MountPointData: &dto.MountPointData{
+			Path:     "/mnt/x",
+			Type:     "ADDON",
+			DeviceId: "device",
+		},
+	}
+
+	created, err := suite.shareService.CreateShare(newShare)
+
+	suite.Nil(created)
+	suite.Error(err)
+	suite.True(errors.Is(err, dto.ErrorShareValidation), "expected ErrorShareValidation, got %v", err)
+}
+
+// TestCreateShareNameTooLong asserts that a share name longer than 128 chars
+// is rejected, preventing shares that can never be deleted via the API
+// (issue #903).
+func (suite *ShareServiceSuite) TestCreateShareNameTooLong() {
+	newShare := dto.SharedResource{
+		Name:     string(make([]byte, 129)),
+		Disabled: boolPtr(false),
+		MountPointData: &dto.MountPointData{
+			Path:     "/mnt/x",
+			Type:     "ADDON",
+			DeviceId: "device",
+		},
+	}
+
+	created, err := suite.shareService.CreateShare(newShare)
+
+	suite.Nil(created)
+	suite.Error(err)
+	suite.True(errors.Is(err, dto.ErrorShareValidation), "expected ErrorShareValidation, got %v", err)
 }
 
 func (suite *ShareServiceSuite) TestCreateShareWithoutExplicitUsers() {
@@ -1420,14 +1626,14 @@ func (suite *ShareServiceStartupSeedingSuite) TestStartupSeedsAllInternalShares(
 
 	shares, err := shareService.ListShares()
 	suite.Require().NoError(err)
-	suite.Len(shares, 7)
+	suite.Len(shares, 9)
 
 	byName := map[string]dto.SharedResource{}
 	for _, share := range shares {
 		byName[share.Name] = share
 	}
 
-	expectedNames := []string{"config", "addons", "ssl", "share", "backup", "media", "addon_configs"}
+	expectedNames := []string{"config", "addons", "ssl", "share", "backup", "media", "addon_configs", "local_apps", "app_configs"}
 	for _, name := range expectedNames {
 		share, ok := byName[name]
 		suite.True(ok, "expected startup seeded internal share %s", name)
@@ -1451,7 +1657,7 @@ func (suite *ShareServiceStartupSeedingSuite) TestStartupSeedingIsIdempotentAcro
 	firstApp, firstShareService := suite.buildShareServiceApp(dbPath)
 	firstShares, err := firstShareService.ListShares()
 	suite.Require().NoError(err)
-	suite.Len(firstShares, 7)
+	suite.Len(firstShares, 9)
 	firstApp.RequireStop()
 
 	secondApp, secondShareService := suite.buildShareServiceApp(dbPath)
@@ -1461,5 +1667,5 @@ func (suite *ShareServiceStartupSeedingSuite) TestStartupSeedingIsIdempotentAcro
 
 	secondShares, err := secondShareService.ListShares()
 	suite.Require().NoError(err)
-	suite.Len(secondShares, 7)
+	suite.Len(secondShares, 9)
 }

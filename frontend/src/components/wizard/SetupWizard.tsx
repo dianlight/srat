@@ -26,6 +26,8 @@ import {
   type InterfaceStat,
   type MountPointData,
   type Settings,
+  Smart_mode,
+  Standard_share_names,
   Telemetry_mode,
   Type,
   Usage,
@@ -342,7 +344,13 @@ export function SetupWizard({
 
     try {
       const updatedSettings: Settings = {
-        ...(isValidSettings(settings) ? settings : {}),
+        ...(isValidSettings(settings)
+          ? settings
+          : {
+              smart_mode: Smart_mode.None,
+              standard_share_names: Standard_share_names.Both,
+              telemetry_mode: Telemetry_mode.Errors,
+            }),
         ...(allData.security?.hostname !== undefined && {
           hostname: allData.security.hostname,
         }),

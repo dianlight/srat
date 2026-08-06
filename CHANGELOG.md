@@ -6,6 +6,17 @@
 
 ### ✨ Features
 
+- **mDNS settings simplified — master/proxy model**: `addon_mdns_registration`
+  is renamed to `mdns_registration` and becomes the **master switch** that
+  enables or disables mDNS registration entirely (no longer gated behind
+  `experimental_lab_mode`). The old `mdns_registration` is renamed to
+  `use_component_mdns_proxy` and now selects the implementation: the Home
+  Assistant custom component proxy (default) or SRAT's direct zeroconf
+  registration. The two switches are no longer mutually exclusive — the master
+  switch gates everything, and the proxy switch chooses the implementation.
+  A DB migration converts existing `addon_mdns_registration=true` installs to
+  `mdns_registration=true` + `use_component_mdns_proxy=false`.
+
 ### 🐛 Bug Fixes
 
 - **Support disks without partitions**: Disks with no partition table (raw "superfloppy" whole-disk filesystems) and filesystems the Home Assistant Supervisor does not report are now visible and mountable. ([srat#849](https://github.com/dianlight/srat/issues/849), [hassio-addons#716](https://github.com/dianlight/hassio-addons/issues/716))
@@ -50,6 +61,24 @@
   - **readOnly threading**: the per-disk settings card now correctly propagates
     the `readOnly` flag from `VolumeDetailsPanel`.
 - **mDNS Registration**: Added optional mDNS registration of the SRAT service for local network discovery. When enabled, the backend registers a `_srat._tcp` service with the system mDNS responder, advertising the service name, port, and metadata. This allows compatible clients to discover the SRAT service on the local network without manual configuration. The feature is controlled by a new `MDNSRegistration` boolean setting in the advanced settings section.
+- **Addon-side Direct mDNS (Lab Mode feature)**: Added experimental addon-side
+  mDNS/Zeroconf registration for the SMB service (`_smb._tcp`, port 445), gated
+  behind Lab Mode (`experimental_lab_mode=true`). Key changes:
+  - **Mutual exclusivity**: enabling `addon_mdns_registration` automatically
+    disables the Home Assistant custom component `mdns_registration` setting
+    and vice versa; validation enforces this in `ValidateSettings`.
+  - **Instance name derivation**: the mDNS instance name is derived from the
+    Samba hostname using the same NetBIOS sanitization (uppercase, truncate to
+    15 characters, replace non-alphanumeric characters with `-`).
+  - **Interface filtering**: loopback, down, and container/virtual interfaces
+    (`docker*`, `veth*`, `hassio*`, `br-*`) are excluded from registration.
+    An optional `addon_mdns_interfaces` whitelist overrides the auto-detected
+    list; the frontend exposes the available interfaces from
+    `SystemCapabilities.available_mdns_interfaces`.
+  - **Lifecycle**: registration starts when settings change to enable the
+    feature and shuts down cleanly on setting disable or addon stop via fx
+    lifecycle hooks.
+  - **TXT records**: the service advertises `path=/`.
 
 ### 🐛 Bug Fixes
 

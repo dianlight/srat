@@ -142,7 +142,8 @@ func (suite *UserServiceSuite) TestListUsers_Success() {
 	var rwShares []string
 	var roShares []string
 	for _, u := range users {
-		suite.True(u.IsValid)
+		suite.Require().NotNil(u.IsValid)
+		suite.True(*u.IsValid)
 		usernames = append(usernames, u.Username)
 		rwShares = append(rwShares, u.RwShares...)
 		roShares = append(roShares, u.RoShares...)
@@ -455,6 +456,39 @@ func (suite *UserServiceSuite) TestUpdateUser_ChangePassword() {
 	suite.Require().NoError(suite.db.Where("username = ?", username).First(&persistedUser).Error)
 	suite.Equal(newPassword, persistedUser.Password)
 	suite.True(suite.dirtyService.GetDirtyDataTracker().Users)
+}
+
+func (suite *UserServiceSuite) TestUpdateUser_IsValidDisable() {
+	// Arrange
+	username := fmt.Sprintf("disableuser%d", time.Now().UnixNano())
+
+	existingDbUser := dto.User{
+		Username: username,
+		Password: new(dto.NewSecret("password123")),
+		IsAdmin:  false,
+	}
+	_, err := suite.userService.CreateUser(existingDbUser)
+	suite.Require().NoError(err)
+
+	disabled := false
+	userDto := dto.User{
+		Username: username,
+		IsValid:  &disabled,
+	}
+
+	// Act
+	updatedUser, err := suite.userService.UpdateUser(username, userDto)
+
+	// Assert
+	suite.Require().NoError(err, "expected no error but got '%v' '%v'", err, errors.Unwrap(err))
+	suite.Require().NotNil(updatedUser)
+	suite.Require().NotNil(updatedUser.IsValid)
+	suite.False(*updatedUser.IsValid, "user should be marked invalid after disable")
+
+	var persistedUser dbom.SambaUser
+	suite.Require().NoError(suite.db.Where("username = ?", username).First(&persistedUser).Error)
+	suite.Require().NotNil(persistedUser.IsValid)
+	suite.False(*persistedUser.IsValid, "is_valid=false must be persisted to the database")
 }
 
 func (suite *UserServiceSuite) TestUpdateUser_UserNotFound() {

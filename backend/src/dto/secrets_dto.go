@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"encoding/json"
 	"reflect"
 
 	"github.com/angusgmorrison/logfusc"
@@ -24,7 +25,10 @@ func (o Secret[T]) Schema(r huma.Registry) *huma.Schema {
 }
 
 func (o Secret[T]) MarshalJSON() ([]byte, error) {
-	return logfusc.Secret[T](o).MarshalJSON()
+	// Secrets are write-only: never serialize their value (or the logfusc
+	// Go type literal) in responses. Emit null so consumers see the field
+	// as absent without leaking any representation of the secret (issue #904).
+	return json.Marshal(nil)
 }
 
 func (o *Secret[T]) UnmarshalJSON(data []byte) error {

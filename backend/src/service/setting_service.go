@@ -134,6 +134,10 @@ func (self *settingService) ValidateSettings(setting *dto.Settings) {
 			setting.HAUseNFS = &falseVal
 		}
 	}
+
+	// Addon-side direct mDNS and HA-managed mDNS are no longer mutually
+	// exclusive: mdns_registration is the master switch and
+	// use_component_mdns_proxy selects the implementation.
 }
 
 func (self *settingService) UpdateSettings(setting *dto.Settings) errors.E {

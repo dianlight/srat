@@ -485,6 +485,108 @@ func (suite *HardwareServiceSuite) TestGetHardwareInfo_DeviceWithChildrenSynthes
 	}
 }
 
+func (suite *HardwareServiceSuite) TestGetHardwareInfo_DriveWithFilesystemsSynthesizesMissingChildPartitions() {
+	// A drive that already has filesystems reported by the Supervisor (e.g. the
+	// KINGSTON system disk) must still synthesize missing partition children.
+	// Partitions without filesystem magic (e.g. sda6, an 8M partition) are absent
+	// from drive.Filesystems but present in device.Children; they must be added
+	// so the volume listing matches the real partition table (issue #906).
+	mockResponse := &hardware.GetHardwareInfoResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok","data":{"drives":[]}}`),
+		JSON200: &struct {
+			Data   *hardware.HardwareInfo             `json:"data,omitempty"`
+			Result *hardware.GetHardwareInfo200Result `json:"result,omitempty"`
+		}{
+			Data: &hardware.HardwareInfo{
+				Drives: &[]hardware.Drive{
+					{
+						Id:     new("drive1"),
+						Serial: new("SERIAL123"),
+						Filesystems: &[]hardware.Filesystem{
+							{
+								Id:          new("by-id-ata-KINGSTON_50026B77560145CF-part1"),
+								Device:      new("/dev/sda1"),
+								MountPoints: &[]string{},
+							},
+							{
+								Id:          new("by-id-ata-KINGSTON_50026B77560145CF-part8"),
+								Device:      new("/dev/sda8"),
+								MountPoints: &[]string{},
+							},
+						},
+					},
+				},
+				Devices: &[]hardware.Device{
+					{
+						Name:    new("sda"),
+						DevPath: new("/dev/sda"),
+						ById:    new("/dev/disk/by-id/ata-KINGSTON_50026B77560145CF"),
+						Attributes: &hardware.Attributes{
+							IDSERIALSHORT: new("SERIAL123"),
+						},
+						Children: &[]string{
+							"/sys/devices/pci0000:00/0000:00:14.0/ata1/host0/target0:0:0/0:0:0:0/block/sda/sda1",
+							"/sys/devices/pci0000:00/0000:00:14.0/ata1/host0/target0:0:0/0:0:0:0/block/sda/sda6",
+							"/sys/devices/pci0000:00/0000:00:14.0/ata1/host0/target0:0:0/0:0:0:0/block/sda/sda8",
+						},
+					},
+					{
+						Name:    new("sda1"),
+						DevPath: new("/dev/sda1"),
+						ById:    new("/dev/disk/by-id/ata-KINGSTON_50026B77560145CF-part1"),
+					},
+					{
+						Name:    new("sda6"),
+						DevPath: new("/dev/sda6"),
+						ById:    new("/dev/disk/by-id/ata-KINGSTON_50026B77560145CF-part6"),
+					},
+					{
+						Name:    new("sda8"),
+						DevPath: new("/dev/sda8"),
+						ById:    new("/dev/disk/by-id/ata-KINGSTON_50026B77560145CF-part8"),
+					},
+				},
+			},
+		},
+	}
+
+	mock.When(suite.haClient.GetHardwareInfoWithResponse(mock.Any[context.Context]())).ThenReturn(mockResponse, nil)
+	mock.When(suite.smartService.GetSmartInfo(mock.Any[context.Context](), mock.Any[string]())).
+		ThenReturn(nil, errors.WithDetails(dto.ErrorSMARTNotSupported, "device", "sda"))
+	mock.When(suite.hdidleService.GetDeviceConfig(mock.Any[string]())).
+		ThenReturn(nil, errors.WithDetails(dto.ErrorHDIdleNotSupported, "device", "sda"))
+
+	suite.hardwareService.MockSetFSProbeFunc(func(devPath string) (string, uintptr, error) {
+		return "", 0, nil
+	})
+
+	// Execute
+	disks, err := suite.hardwareService.GetHardwareInfo()
+
+	// Assert
+	suite.NoError(err)
+	suite.NotNil(disks)
+	suite.Len(disks, 1, "Drive should be kept")
+
+	disk, ok := disks["ata-KINGSTON_50026B77560145CF"]
+	suite.True(ok, "Disk should be present by by-id name")
+	suite.NotNil(disk.Partitions, "Missing child partition should be synthesized")
+	suite.Len(*disk.Partitions, 3, "Two reported filesystems plus one synthesized missing child")
+
+	var foundSda6 *dto.Partition
+	for _, part := range *disk.Partitions {
+		if part.LegacyDeviceName != nil && *part.LegacyDeviceName == "sda6" {
+			partCopy := part
+			foundSda6 = &partCopy
+		}
+	}
+	suite.Require().NotNil(foundSda6, "sda6 partition should be synthesized from child devices")
+	suite.Equal("/dev/sda6", *foundSda6.LegacyDevicePath)
+	suite.Equal("/dev/disk/by-id/ata-KINGSTON_50026B77560145CF-part6", *foundSda6.DevicePath)
+	suite.Nil(foundSda6.FsType, "Partition with unknown filesystem keeps FsType nil")
+}
+
 func (suite *HardwareServiceSuite) TestGetHardwareInfo_RawWholeDiskIgnoresStaleUdevFsType() {
 	// A raw whole-disk device (no children) with a stale udev ID_FS_TYPE must
 	// stay raw when the probe finds no filesystem magic. The stale udev value

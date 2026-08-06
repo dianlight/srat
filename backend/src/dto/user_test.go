@@ -1,9 +1,11 @@
 package dto
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUserCreation(t *testing.T) {
@@ -132,6 +134,40 @@ func TestUserPasswordHandling(t *testing.T) {
 	}
 	assert.Empty(t, userNoPass.Password)
 	assert.Equal(t, "nopassuser", userNoPass.Username)
+}
+
+// TestUserPasswordMarshalRedaction asserts that a marshaled User never leaks
+// the password value nor the logfusc Go type literal (issue #904).
+func TestUserPasswordMarshalRedaction(t *testing.T) {
+	user := User{
+		Username: "secretuser",
+		Password: new(NewSecret("supersecret123")),
+	}
+
+	data, err := json.Marshal(user)
+	require.NoError(t, err)
+	out := string(data)
+
+	assert.NotContains(t, out, "supersecret123", "password value must not appear in JSON")
+	assert.NotContains(t, out, "logfusc", "Go type literal must not appear in JSON")
+	assert.Contains(t, out, `"password":null`, "password field should serialize as null")
+}
+
+// TestUserIsValidSerialization asserts that is_valid:false is present in the
+// JSON output so the client can see an explicitly disabled user (issue #904).
+func TestUserIsValidSerialization(t *testing.T) {
+	disabled := false
+	user := User{Username: "disableduser", IsValid: &disabled}
+
+	data, err := json.Marshal(user)
+	require.NoError(t, err)
+	assert.Contains(t, string(data), `"is_valid":false`)
+
+	valid := true
+	userValid := User{Username: "validuser", IsValid: &valid}
+	data, err = json.Marshal(userValid)
+	require.NoError(t, err)
+	assert.Contains(t, string(data), `"is_valid":true`)
 }
 
 func TestUserMaxLength(t *testing.T) {

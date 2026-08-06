@@ -15,6 +15,7 @@ var SambaUser = struct {
 	Username  field.String
 	Password  field.String
 	IsAdmin   field.Bool
+	IsValid   field.Bool
 	RwShares  field.Slice[dbom.ExportedShare]
 	RoShares  field.Slice[dbom.ExportedShare]
 }{
@@ -24,6 +25,7 @@ var SambaUser = struct {
 	Username:  field.String{}.WithColumn("username"),
 	Password:  field.String{}.WithColumn("password"),
 	IsAdmin:   field.Bool{}.WithColumn("is_admin"),
+	IsValid:   field.Bool{}.WithColumn("is_valid"),
 	RwShares:  field.Slice[dbom.ExportedShare]{}.WithName("RwShares"),
 	RoShares:  field.Slice[dbom.ExportedShare]{}.WithName("RoShares"),
 }

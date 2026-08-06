@@ -1,9 +1,11 @@
 package dto
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSharedResourceCreation(t *testing.T) {
@@ -175,6 +177,21 @@ func TestSharedResourcePointerFields(t *testing.T) {
 	assert.True(t, resource.Status.IsHAMounted)
 	assert.True(t, resource.Status.IsValid)
 	assert.Equal(t, "pointer-test", resource.Name)
+}
+
+// TestSharedResourceStatusIsValidSerialized asserts that is_valid:false is
+// present in the JSON output (no omitempty) so the frontend can detect shares
+// that fail verification (issue #899).
+func TestSharedResourceStatusIsValidSerialized(t *testing.T) {
+	status := SharedResourceStatus{IsValid: false}
+	data, err := json.Marshal(status)
+	require.NoError(t, err)
+	assert.Contains(t, string(data), `"is_valid":false`)
+
+	valid := SharedResourceStatus{IsValid: true}
+	data, err = json.Marshal(valid)
+	require.NoError(t, err)
+	assert.Contains(t, string(data), `"is_valid":true`)
 }
 
 // Helper functions

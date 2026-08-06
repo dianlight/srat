@@ -15,6 +15,7 @@ import { TabIDs } from "../../../store/locationState";
 import {
   type Settings as ApiSettings,
   Smart_mode,
+  Standard_share_names,
   type SystemCapabilities,
   useGetApiCapabilitiesQuery,
   useGetApiHostnameQuery,
@@ -178,6 +179,35 @@ export function GeneralPanel({ readOnly }: GeneralPanelProps) {
         {...commonProps}
       />
 
+      {/* Samba mDNS Announce (master switch) */}
+      <Tooltip
+        title={
+          <>
+            <Typography variant="h6" component="div">
+              Samba mDNS Announce
+            </Typography>
+            <Typography variant="body2">
+              Announce this Samba server on the local network using mDNS
+              (Zeroconf). When enabled, other devices can discover the server
+              automatically.
+            </Typography>
+            <Typography variant="body2" sx={{ mt: 1 }}>
+              The announcement is made either through the Home Assistant custom
+              component or directly by the add-on, depending on the proxy
+              setting in the Home Assistant section.
+            </Typography>
+          </>
+        }
+      >
+        <SettingSwitchRow
+          ariaLabel="Samba mDNS Announce"
+          control={control}
+          disabled={readOnly}
+          label="Samba mDNS Announce"
+          name="mdns_registration"
+        />
+      </Tooltip>
+
       {/* SMART Mode */}
       <Tooltip
         title={
@@ -229,6 +259,55 @@ export function GeneralPanel({ readOnly }: GeneralPanelProps) {
                   },
                 ]
               : []),
+          ]}
+          {...commonProps}
+        />
+      </Tooltip>
+
+      {/* Standard Share Names */}
+      <Tooltip
+        title={
+          <>
+            <Typography variant="h6" component="div">
+              Standard Share Names
+            </Typography>
+            <Typography variant="body2">
+              Controls which standard share names Samba exposes for app data and
+              app configuration directories.
+            </Typography>
+            <Typography variant="body2" sx={{ mt: 1 }}>
+              <strong>Both</strong>: Exposes the legacy names (addons,
+              addon_configs) and the new names (local_apps, app_configs).
+              Default.
+            </Typography>
+            <Typography variant="body2" sx={{ mt: 0.5 }}>
+              <strong>Old</strong>: Exposes only the legacy names.
+            </Typography>
+            <Typography variant="body2" sx={{ mt: 0.5 }}>
+              <strong>New</strong>: Exposes only the new names. Recommended once
+              you have migrated your workflows.
+            </Typography>
+          </>
+        }
+      >
+        <SelectElement
+          label="Standard Share Names"
+          name="standard_share_names"
+          size="small"
+          fullWidth
+          options={[
+            {
+              id: Standard_share_names.Both,
+              label: "Both (legacy + new)",
+            },
+            {
+              id: Standard_share_names.Old,
+              label: "Old (addons, addon_configs)",
+            },
+            {
+              id: Standard_share_names.New,
+              label: "New (local_apps, app_configs)",
+            },
           ]}
           {...commonProps}
         />

@@ -25,7 +25,11 @@ vi.mock("../../../../store/sratApi", async () => {
   };
 });
 
-function TestHarness() {
+function TestHarness({
+  defaultValues = {},
+}: {
+  defaultValues?: Partial<ApiSettings>;
+}) {
   const methods = useForm<ApiSettings>({
     defaultValues: {
       hostname: "srat-host",
@@ -35,6 +39,8 @@ function TestHarness() {
       allow_guest: false,
       smart_mode: "legacy",
       experimental_lab_mode: false,
+      mdns_registration: false,
+      ...defaultValues,
     } as ApiSettings,
   });
 
@@ -70,5 +76,26 @@ describe("GeneralPanel switch accessibility", () => {
     expect(
       screen.getByLabelText(/smart mode/i),
     ).toBeInTheDocument();
+  });
+
+  it("renders the Samba mDNS Announce switch", () => {
+    render(<TestHarness />);
+
+    const toggle = screen.getByRole("switch", {
+      name: /Samba mDNS Announce/i,
+    });
+    expect(toggle).toBeInTheDocument();
+    expect((toggle as HTMLInputElement).disabled).toBe(false);
+  });
+
+  it("keeps the Samba mDNS Announce switch enabled regardless of the proxy setting", () => {
+    render(
+      <TestHarness defaultValues={{ use_component_mdns_proxy: false }} />,
+    );
+
+    const toggle = screen.getByRole("switch", {
+      name: /Samba mDNS Announce/i,
+    });
+    expect((toggle as HTMLInputElement).disabled).toBe(false);
   });
 });
