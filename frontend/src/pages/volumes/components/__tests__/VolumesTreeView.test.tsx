@@ -538,12 +538,17 @@ describe("VolumesTreeView Component", () => {
     it("shows set label and format actions for a supported partition", async () => {
         const React = await import("react");
         const { render, screen } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
         const { Provider } = await import("react-redux");
         const { VolumesTreeView } = await import("../VolumesTreeView");
         const { getDiskIdentifier } = await import("../../utils");
         const { createTestStore } = await import("/test/testing");
 
+        const user = userEvent.setup();
         const store = await createTestStore();
+        const onCheckFilesystem = vi.fn(() => undefined);
+        const onSetFilesystemLabel = vi.fn(() => undefined);
+        const onFormatPartition = vi.fn(() => undefined);
         const disks = [
             {
                 id: "disk-8",
@@ -586,21 +591,32 @@ describe("VolumesTreeView Component", () => {
                         createBaseProps({
                             disks,
                             expandedItems: [diskIdentifier],
-                            onCheckFilesystem: vi.fn(() => undefined),
-                            onSetFilesystemLabel: vi.fn(() => undefined),
-                            onFormatPartition: vi.fn(() => undefined),
+                            onCheckFilesystem,
+                            onSetFilesystemLabel,
+                            onFormatPartition,
                         }),
                     ),
                 },
             ),
         );
 
-        expect(
-            await screen.findByRole("button", { name: /set label/i }),
-        ).toBeTruthy();
-        expect(
-            await screen.findByRole("button", { name: /format partition/i }),
-        ).toBeTruthy();
+        // Verify buttons are rendered
+        const setLabelButton = await screen.findByRole("button", { name: /set label/i });
+        const formatButton = await screen.findByRole("button", { name: /format partition/i });
+        expect(setLabelButton).toBeTruthy();
+        expect(formatButton).toBeTruthy();
+
+        // Click set label and verify callback routing
+        await user.click(setLabelButton);
+        expect(onSetFilesystemLabel).toHaveBeenCalledTimes(1);
+        expect(onFormatPartition).not.toHaveBeenCalled();
+        expect(onCheckFilesystem).not.toHaveBeenCalled();
+
+        // Click format and verify callback routing
+        await user.click(formatButton);
+        expect(onFormatPartition).toHaveBeenCalledTimes(1);
+        expect(onSetFilesystemLabel).toHaveBeenCalledTimes(1); // still 1
+        expect(onCheckFilesystem).not.toHaveBeenCalled();
     });
 
     it("hides set label and format actions when filesystem support is unavailable", async () => {
