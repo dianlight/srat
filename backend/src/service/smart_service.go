@@ -172,10 +172,13 @@ func (s *smartService) GetSmartStatus(ctx context.Context, deviceId string) (*dt
 			for _, attr := range smartInfo.AtaSmartData.Table {
 				switch attr.ID {
 				case dto.SmartAttributeCodes.SMARTATTRTEMPERATURECELSIUS.Code:
-					// Temperature attribute. smartctl normalizes `value` to °C;
-					// the raw 48-bit integer is firmware-packed (raw string
-					// "51 (Min/Max -22/57)") and must not be used as-is.
-					ret.Temperature.Value = attr.Value
+					// Temperature attribute. The converter already set
+					// ret.Temperature.Value from the top-level smartctl
+					// `temperature` object (protocol-independent °C). The ATA
+					// attr `value` is a normalized 0-253 health score (often
+					// 100/121), NOT the temperature, so it must not override
+					// the Celsius value. The raw string ("51 (Min/Max -22/57)")
+					// is only used when the top-level temperature is missing.
 					if ret.Temperature.Value == 0 {
 						ret.Temperature.Value = rawPlausibleInt(attr.Raw.String)
 					}

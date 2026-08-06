@@ -116,13 +116,25 @@ host to `/mnt/data/supervisor/app_configs/local_sambanas2/upgrade/`). The
 `srat-server` symlink (prefers musl on Alpine), and restarts the service under s6.
 
 ```bash
-# 1. build the musl (dynamic) smartlib variant locally
+# 1. build the musl (dynamic) smartlib variant locally, for the HOST architecture:
 #    (CC wrapper: zig cc -target x86_64-linux-musl -dynamic -fno-sanitize=all)
-# 2. copy to the host bind-mount (NOT via scp to /tmp or docker cp — see notes):
+mise run //backend:build --arch=x86_64 --version=... --zig
+
+# 2. copy to the host bind-mount (NOT via scp to /tmp or docker cp — see notes).
+#    Write to a temp file, set mode 0755, then atomically rename so the
+#    upgrade_service watcher never picks up a partially-transferred binary:
 cat dist/x86_64/srat-server-musl \
   | ssh -p 22222 root@192.168.0.68 \
-      "cat > /mnt/data/supervisor/app_configs/local_sambanas2/upgrade/srat-server-musl"
+      "cat > /mnt/data/supervisor/app_configs/local_sambanas2/upgrade/srat-server-musl.tmp && \
+       chmod 0755 /mnt/data/supervisor/app_configs/local_sambanas2/upgrade/srat-server-musl.tmp && \
+       mv /mnt/data/supervisor/app_configs/local_sambanas2/upgrade/srat-server-musl.tmp \
+          /mnt/data/supervisor/app_configs/local_sambanas2/upgrade/srat-server-musl"
 ```
+
+> **Note**: this binary-only transfer does **not** install `libsmartmon_go.so`. The
+> wrapper library must already be present in the addon image at a path from
+> `defaultLibPaths` (e.g. `/usr/local/lib/libsmartmon_go.so`); otherwise the lib
+> backend silently falls back to exec mode and `lib_smart_available` stays `false`.
 
 The watcher logs (`docker logs -f app_local_sambanas2`) will show
 `Installing update package` → `Updated srat-server symlink variant=srat-server-musl`

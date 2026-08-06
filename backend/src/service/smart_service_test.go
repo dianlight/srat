@@ -351,7 +351,7 @@ func (suite *SmartServiceSuite) TestGetSmartStatusParsesPackedRawValues() {
 				{
 					ID:    194, // Temperature_Celsius
 					Name:  "Temperature_Celsius",
-					Value: 51,
+					Value: 100, // normalized health score, NOT the temperature in °C
 					Worst: 57,
 					Raw: smartmontools.Raw{
 						Value:  1005026082867,
@@ -417,7 +417,7 @@ func (suite *SmartServiceSuite) TestGetSmartStatusIgnoresPackedRawString() {
 				{
 					ID:    194, // Temperature_Celsius
 					Name:  "Temperature_Celsius",
-					Value: 51,
+					Value: 100, // normalized health score, NOT the temperature in °C
 					Worst: 57,
 					Raw: smartmontools.Raw{
 						Value:  1005026082867,
@@ -448,7 +448,7 @@ func (suite *SmartServiceSuite) TestGetSmartStatusIgnoresPackedRawString() {
 
 	suite.Require().NoError(err)
 	suite.Require().NotNil(status)
-	suite.Equal(51, status.Temperature.Value, "temperature must use attr value, not the packed raw string")
+	suite.Equal(51, status.Temperature.Value, "temperature must keep the converter's top-level °C value, not the attr health score or the packed raw string")
 	suite.Equal(42374, status.PowerOnHours.Value, "packed raw string must not override smartctl power_on_time.hours")
 }
 
@@ -483,6 +483,69 @@ func (suite *SmartServiceSuite) TestGetSmartStatusDecodesPackedPowerOnTime() {
 	suite.Equal(42375, status.PowerOnHours.Value, "packed 64-bit power_on_time.hours must be decoded to the low-32-bit hours")
 	suite.Equal(51, status.Temperature.Value)
 	suite.Equal(67, status.PowerCycleCount.Value)
+}
+
+func (suite *SmartServiceSuite) TestGetSmartStatusZeroesImplausiblePowerOnTime() {
+	// A packed power_on_time.hours whose low 32 bits are not a plausible hour
+	// count must be zeroed, never surfaced (lib backend edge case).
+	mockSMARTInfo := &smartmontools.SMARTInfo{
+		SmartSupport: &smartmontools.SmartSupport{
+			Available: true,
+			Enabled:   true,
+		},
+		PowerOnTime: &smartmontools.PowerOnTime{Hours: 0x123400000000}, // low 32 bits = 0
+	}
+
+	mock.When(suite.smartClient.GetSMARTInfo(mock.Any[context.Context](), mock.Exact("/dev/sda"))).ThenReturn(mockSMARTInfo, nil)
+
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return "/dev/sda", nil
+	})
+
+	status, err := suite.service.GetSmartStatus(context.Background(), "sda")
+
+	suite.Require().NoError(err)
+	suite.Require().NotNil(status)
+	suite.Equal(0, status.PowerOnHours.Value, "implausible packed power_on_time.hours must be zeroed, not exposed")
+}
+
+func (suite *SmartServiceSuite) TestGetSmartStatusTemperatureFallsBackToRawString() {
+	// When the top-level smartctl `temperature` object is missing, the
+	// temperature must be parsed from the leading integer of the raw string
+	// ("51 (Min/Max -22/57)") instead of the normalized attr health score.
+	mockSMARTInfo := &smartmontools.SMARTInfo{
+		SmartSupport: &smartmontools.SmartSupport{
+			Available: true,
+			Enabled:   true,
+		},
+		// No Temperature object: converter leaves Temperature.Value at 0.
+		AtaSmartData: &smartmontools.AtaSmartData{
+			Table: []smartmontools.SmartAttribute{
+				{
+					ID:    194, // Temperature_Celsius
+					Name:  "Temperature_Celsius",
+					Value: 100, // normalized health score, NOT the temperature
+					Worst: 57,
+					Raw: smartmontools.Raw{
+						Value:  1005026082867,
+						String: "51 (Min/Max -22/57)",
+					},
+				},
+			},
+		},
+	}
+
+	mock.When(suite.smartClient.GetSMARTInfo(mock.Any[context.Context](), mock.Exact("/dev/sda"))).ThenReturn(mockSMARTInfo, nil)
+
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return "/dev/sda", nil
+	})
+
+	status, err := suite.service.GetSmartStatus(context.Background(), "sda")
+
+	suite.Require().NoError(err)
+	suite.Require().NotNil(status)
+	suite.Equal(51, status.Temperature.Value, "temperature must fall back to the raw-string °C when the top-level temperature is missing")
 }
 
 func (suite *SmartServiceSuite) TestStartSelfTestInvalidType() {
