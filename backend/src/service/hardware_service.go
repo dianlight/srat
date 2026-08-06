@@ -161,12 +161,13 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 		}
 	}
 
-	// Fallback probe: for drives with no filesystems, try to detect whole-disk filesystem
+	// Fallback probe: drives may have partitions without filesystem magic (e.g.
+	// sda6 on a system disk) that the Supervisor omits from drive.Filesystems.
+	// Synthesize the missing partition entries from the whole-disk device's
+	// children; for drives with no filesystems at all, try to detect a
+	// whole-disk filesystem instead.
 	for driveIdx := range *hwser.JSON200.Data.Drives {
 		drive := &(*hwser.JSON200.Data.Drives)[driveIdx]
-		if drive.Filesystems != nil && len(*drive.Filesystems) > 0 {
-			continue
-		}
 		if drive.Serial == nil || *drive.Serial == "" {
 			continue
 		}
@@ -174,15 +175,26 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 		if !ok || device.DevPath == nil || *device.DevPath == "" || device.ById == nil || *device.ById == "" {
 			continue
 		}
-		fstype, _, _ := h.fsProbeFunc(*device.DevPath)
 		if drive.Filesystems == nil {
 			drive.Filesystems = &[]hardware.Filesystem{}
+		}
+
+		// Collect the device paths already reported by the Supervisor so child
+		// synthesis does not duplicate filesystems that are already present.
+		reportedFsDevices := make(map[string]struct{}, len(*drive.Filesystems))
+		for _, fs := range *drive.Filesystems {
+			if fs.Device != nil {
+				reportedFsDevices[*fs.Device] = struct{}{}
+			}
 		}
 
 		// When the whole-disk device reports partition children, synthesize one
 		// real partition filesystem per child instead of a whole-disk filesystem.
 		// This keeps real partitions (e.g. sdc1 on a flash disk) visible while
-		// leaving the disk itself as a raw disk with no partitions.
+		// leaving the disk itself as a raw disk with no partitions. Children that
+		// already have a reported filesystem (e.g. sda1 on a system disk) are
+		// skipped; only the missing ones (e.g. sda6, no filesystem magic) are
+		// added so the volume listing matches the real partition table.
 		if device.Children != nil && len(*device.Children) > 0 {
 			addedChild := false
 			for _, childPath := range *device.Children {
@@ -193,6 +205,9 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 				childDev, ok := devicesByName[childName]
 				if !ok || childDev.DevPath == nil || *childDev.DevPath == "" || childDev.ById == nil || *childDev.ById == "" {
 					tlog.DebugContext(h.ctx, "Skipping partition child without matching device entry", "drive_id", drive.Id, "child", childName)
+					continue
+				}
+				if _, already := reportedFsDevices[*childDev.DevPath]; already {
 					continue
 				}
 				childFsId := "by-id-" + strings.TrimPrefix(*childDev.ById, "/dev/disk/by-id/")
@@ -210,6 +225,13 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 				continue
 			}
 		}
+
+		// Whole-disk synthesis only applies when the drive still has no
+		// filesystems (none reported and no child produced one).
+		if len(*drive.Filesystems) > 0 {
+			continue
+		}
+		fstype, _, _ := h.fsProbeFunc(*device.DevPath)
 
 		// Create a synthetic filesystem for the whole disk even when no readable
 		// filesystem magic was found (e.g. an MBR with an unreadable partition):
