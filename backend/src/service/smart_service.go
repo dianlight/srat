@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -159,28 +160,32 @@ func (s *smartService) GetSmartStatus(ctx context.Context, deviceId string) (*dt
 			for _, attr := range smartInfo.AtaSmartData.Table {
 				switch attr.ID {
 				case dto.SmartAttributeCodes.SMARTATTRTEMPERATURECELSIUS.Code:
-					// Temperature attribute
+					// Temperature attribute. smartctl normalizes `value` to °C;
+					// the raw 48-bit integer is firmware-packed (raw string
+					// "51 (Min/Max -22/57)") and must not be used as-is.
 					ret.Temperature.Value = attr.Value
-					if attr.Raw.Value > 0 {
-						ret.Temperature.Value = int(attr.Raw.Value)
+					if ret.Temperature.Value == 0 {
+						ret.Temperature.Value = rawStringLeadingInt(attr.Raw.String)
 					}
 				case dto.SmartAttributeCodes.SMARTATTRPOWERCYCLECOUNT.Code:
-					// Power cycle count
+					// Power cycle count. Parse the leading integer from the raw
+					// string so firmware-packed values are decoded correctly.
 					ret.PowerCycleCount.Code = attr.ID
-					ret.PowerCycleCount.Value = attr.Value
 					ret.PowerCycleCount.Worst = attr.Worst
 					ret.PowerCycleCount.Thresholds = attr.Thresh
-					if attr.Raw.Value > 0 {
-						ret.PowerCycleCount.Value = int(attr.Raw.Value)
+					if count := rawStringLeadingInt(attr.Raw.String); count > 0 {
+						ret.PowerCycleCount.Value = count
 					}
 				case dto.SmartAttributeCodes.SMARTATTRPOWERONHOURS.Code:
-					// Power on hours
+					// Power on hours. The raw 48-bit integer packs hours + msec;
+					// parse the leading integer (hours) from the raw string
+					// (e.g. "42374h+52m+33.990s"). Falls back to the value set
+					// by the converter (smartctl `power_on_time.hours`).
 					ret.PowerOnHours.Code = attr.ID
-					ret.PowerOnHours.Value = attr.Value
 					ret.PowerOnHours.Worst = attr.Worst
 					ret.PowerOnHours.Thresholds = attr.Thresh
-					if attr.Raw.Value > 0 {
-						ret.PowerOnHours.Value = int(attr.Raw.Value)
+					if hours := rawStringLeadingInt(attr.Raw.String); hours > 0 {
+						ret.PowerOnHours.Value = hours
 					}
 				default:
 					// Other dynamic attributes
@@ -603,4 +608,23 @@ func (s *smartService) DisableSMART(ctx context.Context, deviceId string) errors
 	})
 
 	return nil
+}
+
+// rawStringLeadingInt extracts the leading unsigned integer from a smartctl raw
+// attribute string, e.g. "42374h+52m+33.990s" → 42374, "51 (Min/Max -22/57)" → 51,
+// "67" → 67. Returns 0 when no leading integer is present.
+func rawStringLeadingInt(raw string) int {
+	trimmed := strings.TrimSpace(raw)
+	i := 0
+	for i < len(trimmed) && trimmed[i] >= '0' && trimmed[i] <= '9' {
+		i++
+	}
+	if i == 0 {
+		return 0
+	}
+	n, err := strconv.Atoi(trimmed[:i])
+	if err != nil {
+		return 0
+	}
+	return n
 }
