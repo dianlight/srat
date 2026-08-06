@@ -71,9 +71,14 @@ run = [
 
       if [ -n "$usage_zig" ]; then
         # Musl dynamic build: srat-server-musl (CGO + zig musl cross-compiler)
+        # NOTE: -dynamic is required. zig cc defaults to STATIC musl linking; a
+        # fully-static musl binary cannot dlopen() (musl returns "Dynamic loading
+        # not supported"), which breaks the purego/cgo libsmartmon_go.so load in
+        # smartlib builds. Without -dynamic the SMART lib backend silently falls
+        # back to the exec backend.
         CGO_ENABLED=1
         GOTAGS="p${usage_pprof:+prof},embedallowed,smartlib"
-        CC="zig cc -target ${usage_arch?}-linux-musl"
+        CC="zig cc -target ${usage_arch?}-linux-musl -dynamic"
         export CC CGO_CFLAGS GOOS GOARCH CGO_ENABLED GOTAGS
         echo "Building srat-server-musl (CGO + zig-musl)..."
         go build -C src -tags="$GOTAGS" -ldflags="$LDFLAGS" -o ../dist/${usage_arch?}/srat-server-musl ./cmd/srat-server
