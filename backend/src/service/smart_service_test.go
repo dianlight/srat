@@ -399,6 +399,92 @@ func (suite *SmartServiceSuite) TestGetSmartStatusParsesPackedRawValues() {
 	suite.Equal(100, status.PowerCycleCount.Worst)
 }
 
+func (suite *SmartServiceSuite) TestGetSmartStatusIgnoresPackedRawString() {
+	// Regression test for #907 (lib/direct backend): the lib backend renders the
+	// raw 48-bit value as a bare decimal string ("39393440081287") instead of the
+	// smartctl-formatted "42374h+52m+33.990s". Such implausible values must not
+	// override the properly parsed top-level smartctl fields.
+	mockSMARTInfo := &smartmontools.SMARTInfo{
+		SmartSupport: &smartmontools.SmartSupport{
+			Available: true,
+			Enabled:   true,
+		},
+		Temperature:     &smartmontools.Temperature{Current: 51},
+		PowerOnTime:     &smartmontools.PowerOnTime{Hours: 42374},
+		PowerCycleCount: 67,
+		AtaSmartData: &smartmontools.AtaSmartData{
+			Table: []smartmontools.SmartAttribute{
+				{
+					ID:    194, // Temperature_Celsius
+					Name:  "Temperature_Celsius",
+					Value: 51,
+					Worst: 57,
+					Raw: smartmontools.Raw{
+						Value:  1005026082867,
+						String: "39393440081287",
+					},
+				},
+				{
+					ID:    9, // Power_On_Hours_and_Msec
+					Name:  "Power_On_Hours_and_Msec",
+					Value: 52,
+					Worst: 52,
+					Raw: smartmontools.Raw{
+						Value:  39393440081287,
+						String: "39393440081287",
+					},
+				},
+			},
+		},
+	}
+
+	mock.When(suite.smartClient.GetSMARTInfo(mock.Any[context.Context](), mock.Exact("/dev/sda"))).ThenReturn(mockSMARTInfo, nil)
+
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return "/dev/sda", nil
+	})
+
+	status, err := suite.service.GetSmartStatus(context.Background(), "sda")
+
+	suite.Require().NoError(err)
+	suite.Require().NotNil(status)
+	suite.Equal(51, status.Temperature.Value, "temperature must use attr value, not the packed raw string")
+	suite.Equal(42374, status.PowerOnHours.Value, "packed raw string must not override smartctl power_on_time.hours")
+}
+
+func (suite *SmartServiceSuite) TestGetSmartStatusDecodesPackedPowerOnTime() {
+	// Regression test for #907 (lib/direct backend): the lib backend emits
+	// power_on_time.hours as a 64-bit packed value where the low 32 bits hold
+	// the hours and the high 32 bits carry a sub-hour counter. Observed live:
+	// 0x9b8a0000a587 → 42375h. The packed value must be decoded, never shown.
+	mockSMARTInfo := &smartmontools.SMARTInfo{
+		SmartSupport: &smartmontools.SmartSupport{
+			Available: true,
+			Enabled:   true,
+		},
+		Temperature:     &smartmontools.Temperature{Current: 51},
+		PowerOnTime:     &smartmontools.PowerOnTime{Hours: 0x9b8a0000a587}, // 42375 packed
+		PowerCycleCount: 67,
+		// Note: the lib JSON has no ata_smart_attributes table, so the ATA
+		// branch in GetSmartStatus is a no-op and the converter value flows
+		// straight into PowerOnHours.
+	}
+
+	mock.When(suite.smartClient.GetSMARTInfo(mock.Any[context.Context](), mock.Exact("/dev/sda"))).ThenReturn(mockSMARTInfo, nil)
+
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return "/dev/sda", nil
+	})
+
+	status, err := suite.service.GetSmartStatus(context.Background(), "sda")
+
+	suite.Require().NoError(err)
+	suite.Require().NotNil(status)
+	suite.Equal(42375, status.PowerOnHours.Value, "packed 64-bit power_on_time.hours must be decoded to the low-32-bit hours")
+	suite.Equal(51, status.Temperature.Value)
+	suite.Equal(67, status.PowerCycleCount.Value)
+}
+
 func (suite *SmartServiceSuite) TestStartSelfTestInvalidType() {
 	stype, err := dto.ParseSmartTestType("invalid type")
 	suite.Require().NoError(err, " expected no error for invalid test type:%v err:%w", stype, err)
