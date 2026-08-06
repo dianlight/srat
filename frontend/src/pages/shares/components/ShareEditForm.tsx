@@ -116,6 +116,7 @@ export function ShareEditForm({
               })
             : "MAX"),
         usage: shareData?.usage || Usage.None,
+        subfolder: shareData?.subfolder || "",
         veto_files: shareData?.veto_files || [],
         disabled: shareData?.disabled,
       },
@@ -407,6 +408,20 @@ export function ShareEditForm({
               )}
             />
           </Grid>
+
+          {watch("usage") !== Usage.Internal && (
+            <Grid size={{ xs: 12 }}>
+              <TextFieldElement
+                size="small"
+                label="Subfolder (optional)"
+                name="subfolder"
+                fullWidth
+                disabled={isDisabled}
+                control={control}
+                helperText="Relative path within the volume (e.g., 'movies' or 'photos/2024')"
+              />
+            </Grid>
+          )}
 
           {watch("mount_point_data")?.is_write_supported && (
             <Grid size={{ xs: 12, sm: 6 }}>
