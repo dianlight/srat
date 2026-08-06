@@ -27,6 +27,7 @@ import {
   type MountPointData,
   type Settings,
   Smart_mode,
+  Standard_share_names,
   Telemetry_mode,
   Type,
   Usage,
@@ -347,6 +348,7 @@ export function SetupWizard({
           ? settings
           : {
               smart_mode: Smart_mode.None,
+              standard_share_names: Standard_share_names.Both,
               telemetry_mode: Telemetry_mode.Errors,
             }),
         ...(allData.security?.hostname !== undefined && {

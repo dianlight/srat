@@ -46,6 +46,30 @@ var internalShares = map[string]dto.SharedResource{
 		Name:  "addon_configs",
 		Usage: dto.UsageAsInternal,
 	},
+	"/local_apps": {
+		Name:  "local_apps",
+		Usage: dto.UsageAsInternal,
+	},
+	"/app_configs": {
+		Name:  "app_configs",
+		Usage: dto.UsageAsInternal,
+	},
+}
+
+// legacyInternalShareDirs maps legacy standard share names to the new
+// application-based directories they expose (issue #898). The old and new
+// names point to the same directory.
+var legacyInternalShareDirs = map[string]string{
+	"addons":        "/local_apps",
+	"addon_configs": "/app_configs",
+}
+
+// osStat is mockable so tests can simulate missing directories.
+var osStat = os.Stat
+
+// MockOsStat allows overriding os.Stat in tests.
+func MockOsStat(fn func(string) (os.FileInfo, error)) {
+	osStat = fn
 }
 
 /*
@@ -568,6 +592,19 @@ func (s *ShareService) EnableShare(name string) (*dto.SharedResource, errors.E) 
 	return s.setShareEnabled(name, true)
 }
 
+// standardShareDir returns the directory exposed by a standard share name,
+// resolving legacy names to the new application-based directories (issue #898).
+func standardShareDir(name string) (string, bool) {
+	if dir, ok := legacyInternalShareDirs[name]; ok {
+		return dir, true
+	}
+	switch name {
+	case "local_apps", "app_configs":
+		return "/" + name, true
+	}
+	return "", false
+}
+
 // VerifyShare checks the validity of a share and disables it if invalid
 // It handles the following scenarios:
 // 1. Volume mounted and RW -> share active or not active as DB value and RW
@@ -605,6 +642,20 @@ func (s *ShareService) VerifyShare(share *dto.SharedResource) errors.E {
 			"path", share.MountPointData.Path)
 		share.Status.IsValid = false
 		return nil
+	}
+
+	// Issue #898: standard share names (legacy and new) expose the new
+	// application-based directories. If the directory does not exist, the
+	// share is unusable and must be marked invalid.
+	if dir, ok := standardShareDir(share.Name); ok {
+		info, err := osStat(dir)
+		if err != nil || !info.IsDir() {
+			slog.Warn("Standard share directory does not exist",
+				"share", share.Name,
+				"path", dir)
+			share.Status.IsValid = false
+			return nil
+		}
 	}
 
 	// Cases 1 & 2: Volume is mounted - validate write support vs user permissions

@@ -1864,6 +1864,7 @@ export type Settings = {
   multi_channel?: boolean;
   smart_mode: Smart_mode;
   smb_over_quic?: boolean;
+  standard_share_names: Standard_share_names;
   telemetry_mode: Telemetry_mode;
   use_component_mdns_proxy?: boolean;
   workgroup?: string;
@@ -2131,6 +2132,11 @@ export enum Smart_mode {
   None = "none",
   Legacy = "legacy",
   Direct = "direct",
+}
+export enum Standard_share_names {
+  Old = "old",
+  New = "new",
+  Both = "both",
 }
 export enum Telemetry_mode {
   Ask = "Ask",

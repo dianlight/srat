@@ -26,4 +26,8 @@ type Settings struct {
 	// Assistant custom component proxy, false uses SRAT's direct zeroconf
 	// registration. Defaults to true (component) for backward compatibility.
 	UseComponentMDNSProxy *bool `json:"use_component_mdns_proxy,omitempty" default:"true"`
+	// StandardShareNames controls which standard share names Samba exposes:
+	// "old" (addons, addon_configs), "new" (local_apps, app_configs), or
+	// "both". Defaults to both for backward compatibility.
+	StandardShareNames StandardShareNamesMode `json:"standard_share_names" enum:"old,new,both" default:"both"`
 }

@@ -135,6 +135,9 @@
    force directory mode = 0775
 
    path = {{- if eq .data.name "config" }} /homeassistant{{- else }} {{ .data.path }}{{- end }}
+   {{- if or (eq .data.name "addons") (eq .data.name "addon_configs") }}
+   preexec = /usr/bin/logger -s -t smbd -p local0.warning "%u connected to deprecated share %S from %m (%I), please switch to the {{ if eq .data.name "addons" }}local_apps{{ else }}app_configs{{ end }} share"
+   {{- end }}
    valid users =_ha_mount_user_ {{ .data.users|default .username|join " " }} {{ .data.ro_users|join " " }}
    {{ if .data.ro_users -}}
    read list = {{ .data.ro_users|join " " }}

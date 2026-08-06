@@ -245,8 +245,16 @@ export function SharesTreeView({
               onShareSelect(shareKey, shareProps);
             }}
           >
-            {shareProps.mount_point_data?.invalid ? (
-              <Tooltip title={shareProps.mount_point_data?.invalid_error} arrow>
+            {shareProps.mount_point_data?.invalid ||
+            shareProps.status?.is_valid === false ? (
+              <Tooltip
+                title={
+                  shareProps.mount_point_data?.invalid
+                    ? shareProps.mount_point_data?.invalid_error
+                    : "Share directory is missing or not available"
+                }
+                arrow
+              >
                 <FolderSharedIcon color="error" sx={{ mr: 1 }} />
               </Tooltip>
             ) : (

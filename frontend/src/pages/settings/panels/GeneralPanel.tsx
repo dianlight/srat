@@ -15,6 +15,7 @@ import { TabIDs } from "../../../store/locationState";
 import {
   type Settings as ApiSettings,
   Smart_mode,
+  Standard_share_names,
   type SystemCapabilities,
   useGetApiCapabilitiesQuery,
   useGetApiHostnameQuery,
@@ -258,6 +259,55 @@ export function GeneralPanel({ readOnly }: GeneralPanelProps) {
                   },
                 ]
               : []),
+          ]}
+          {...commonProps}
+        />
+      </Tooltip>
+
+      {/* Standard Share Names */}
+      <Tooltip
+        title={
+          <>
+            <Typography variant="h6" component="div">
+              Standard Share Names
+            </Typography>
+            <Typography variant="body2">
+              Controls which standard share names Samba exposes for app data and
+              app configuration directories.
+            </Typography>
+            <Typography variant="body2" sx={{ mt: 1 }}>
+              <strong>Both</strong>: Exposes the legacy names (addons,
+              addon_configs) and the new names (local_apps, app_configs).
+              Default.
+            </Typography>
+            <Typography variant="body2" sx={{ mt: 0.5 }}>
+              <strong>Old</strong>: Exposes only the legacy names.
+            </Typography>
+            <Typography variant="body2" sx={{ mt: 0.5 }}>
+              <strong>New</strong>: Exposes only the new names. Recommended once
+              you have migrated your workflows.
+            </Typography>
+          </>
+        }
+      >
+        <SelectElement
+          label="Standard Share Names"
+          name="standard_share_names"
+          size="small"
+          fullWidth
+          options={[
+            {
+              id: Standard_share_names.Both,
+              label: "Both (legacy + new)",
+            },
+            {
+              id: Standard_share_names.Old,
+              label: "Old (addons, addon_configs)",
+            },
+            {
+              id: Standard_share_names.New,
+              label: "New (local_apps, app_configs)",
+            },
           ]}
           {...commonProps}
         />
