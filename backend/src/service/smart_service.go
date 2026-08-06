@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -150,6 +151,18 @@ func (s *smartService) GetSmartStatus(ctx context.Context, deviceId string) (*dt
 		return nil, errors.Wrapf(err, "failed to convert SMART status for device %s", devicePath)
 	}
 
+	// The lib backend emits power_on_time.hours as a 64-bit packed value where
+	// the low 32 bits hold the hours and the high 32 bits carry a sub-hour
+	// counter (observed: 0x9b8a0000a587 → 42375h). Normalize it so the packed
+	// value never reaches the UI; plausible plain values pass through untouched.
+	if ret.PowerOnHours.Value > maxPlausibleSmartValue {
+		if v := ret.PowerOnHours.Value & 0xFFFFFFFF; v > 0 && v < maxPlausibleSmartValue {
+			ret.PowerOnHours.Value = v
+		} else {
+			ret.PowerOnHours.Value = 0
+		}
+	}
+
 	// Process based on device type
 	if smartInfo.AtaSmartData != nil {
 		// ATA/SATA device - process SMART attributes
@@ -159,28 +172,36 @@ func (s *smartService) GetSmartStatus(ctx context.Context, deviceId string) (*dt
 			for _, attr := range smartInfo.AtaSmartData.Table {
 				switch attr.ID {
 				case dto.SmartAttributeCodes.SMARTATTRTEMPERATURECELSIUS.Code:
-					// Temperature attribute
-					ret.Temperature.Value = attr.Value
-					if attr.Raw.Value > 0 {
-						ret.Temperature.Value = int(attr.Raw.Value)
+					// Temperature attribute. The converter already set
+					// ret.Temperature.Value from the top-level smartctl
+					// `temperature` object (protocol-independent °C). The ATA
+					// attr `value` is a normalized 0-253 health score (often
+					// 100/121), NOT the temperature, so it must not override
+					// the Celsius value. The raw string ("51 (Min/Max -22/57)")
+					// is only used when the top-level temperature is missing.
+					if ret.Temperature.Value == 0 {
+						ret.Temperature.Value = rawPlausibleInt(attr.Raw.String)
 					}
 				case dto.SmartAttributeCodes.SMARTATTRPOWERCYCLECOUNT.Code:
-					// Power cycle count
+					// Power cycle count. Prefer the value already set by the
+					// converter (smartctl `power_cycle_count`); only override it
+					// with the raw string when it is a plausible plain count.
 					ret.PowerCycleCount.Code = attr.ID
-					ret.PowerCycleCount.Value = attr.Value
 					ret.PowerCycleCount.Worst = attr.Worst
 					ret.PowerCycleCount.Thresholds = attr.Thresh
-					if attr.Raw.Value > 0 {
-						ret.PowerCycleCount.Value = int(attr.Raw.Value)
+					if count := rawPlausibleInt(attr.Raw.String); count > 0 {
+						ret.PowerCycleCount.Value = count
 					}
 				case dto.SmartAttributeCodes.SMARTATTRPOWERONHOURS.Code:
-					// Power on hours
+					// Power on hours. The raw 48-bit integer packs hours + msec
+					// (e.g. "42374h+52m+33.990s"); parse the leading integer from
+					// the raw string only when plausible, otherwise keep the value
+					// set by the converter (smartctl `power_on_time.hours`).
 					ret.PowerOnHours.Code = attr.ID
-					ret.PowerOnHours.Value = attr.Value
 					ret.PowerOnHours.Worst = attr.Worst
 					ret.PowerOnHours.Thresholds = attr.Thresh
-					if attr.Raw.Value > 0 {
-						ret.PowerOnHours.Value = int(attr.Raw.Value)
+					if hours := rawPlausibleInt(attr.Raw.String); hours > 0 {
+						ret.PowerOnHours.Value = hours
 					}
 				default:
 					// Other dynamic attributes
@@ -603,4 +624,40 @@ func (s *smartService) DisableSMART(ctx context.Context, deviceId string) errors
 	})
 
 	return nil
+}
+
+// rawStringLeadingInt extracts the leading unsigned integer from a smartctl raw
+// attribute string, e.g. "42374h+52m+33.990s" → 42374, "51 (Min/Max -22/57)" → 51,
+// "67" → 67. Returns 0 when no leading integer is present.
+func rawStringLeadingInt(raw string) int {
+	trimmed := strings.TrimSpace(raw)
+	i := 0
+	for i < len(trimmed) && trimmed[i] >= '0' && trimmed[i] <= '9' {
+		i++
+	}
+	if i == 0 {
+		return 0
+	}
+	n, err := strconv.Atoi(trimmed[:i])
+	if err != nil {
+		return 0
+	}
+	return n
+}
+
+// maxPlausibleSmartValue bounds any SMART counter a real drive can expose
+// (power-on-hours, power-cycle count, temperature in °C). Firmware-packed
+// 48-bit raw values and 64-bit packed lib values are always far above this.
+const maxPlausibleSmartValue = 10_000_000
+
+// rawPlausibleInt is rawStringLeadingInt with a sanity bound: firmware-packed
+// 48-bit raw values (e.g. power-on-hours + msec rendered as a bare decimal by
+// the lib backend) are rejected so they never replace the properly parsed
+// top-level smartctl values.
+func rawPlausibleInt(raw string) int {
+	n := rawStringLeadingInt(raw)
+	if n > 0 && n < maxPlausibleSmartValue {
+		return n
+	}
+	return 0
 }
