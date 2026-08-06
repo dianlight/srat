@@ -197,3 +197,19 @@ func (suite *SystemHandlerSuite) TestHandleCommandOutput_ReturnsBufferedSnapshot
 		suite.Contains(result.Error, "exit status 1")
 	}
 }
+
+// TestHandleMdnsEvents_DocStubReturnsError verifies the doc-stub endpoint that
+// anchors the MdnsRegisterNotification WebSocket event schema always returns an
+// error — actual mDNS events are delivered over the WebSocket connection.
+func (suite *SystemHandlerSuite) TestHandleMdnsEvents_DocStubReturnsError() {
+	resp := suite.testAPI.Get("/mdns_events")
+	suite.Equal(http.StatusInternalServerError, resp.Code)
+}
+
+// TestHandleCommandEvents_DocStubReturnsError verifies the doc-stub endpoint
+// that anchors the command event schemas always returns an error — actual
+// command events are delivered over the WebSocket connection.
+func (suite *SystemHandlerSuite) TestHandleCommandEvents_DocStubReturnsError() {
+	resp := suite.testAPI.Get("/command_events")
+	suite.Equal(http.StatusInternalServerError, resp.Code)
+}

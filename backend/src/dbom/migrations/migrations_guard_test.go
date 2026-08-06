@@ -166,3 +166,146 @@ func TestDown00018RestoresLegacyProperties(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
+
+// TestUp00018SkipsNonTrueValue verifies that a non-"true" AddonMDNSRegistration
+// value (e.g. "false") only removes the stale key without writing new props.
+func TestUp00018SkipsNonTrueValue(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	rows := sqlmock.NewRows([]string{"value"}).AddRow("false")
+	mock.ExpectQuery(`SELECT value FROM properties WHERE key = 'AddonMDNSRegistration'`).
+		WillReturnRows(rows)
+	mock.ExpectExec(`DELETE FROM properties WHERE key = 'AddonMDNSRegistration'`).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	err = Up00018(context.Background(), db)
+	require.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// TestUp00018MigratesQuotedAddonMDNSTrue verifies the JSON-quoted "true" value
+// is migrated like the plain one.
+func TestUp00018MigratesQuotedAddonMDNSTrue(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	rows := sqlmock.NewRows([]string{"value"}).AddRow(`"true"`)
+	mock.ExpectQuery(`SELECT value FROM properties WHERE key = 'AddonMDNSRegistration'`).
+		WillReturnRows(rows)
+	mock.ExpectExec(`INSERT OR REPLACE INTO properties \(key, value, created_at, updated_at\) VALUES \('MDNSRegistration', 'true', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP\)`).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec(`INSERT OR REPLACE INTO properties \(key, value, created_at, updated_at\) VALUES \('UseComponentMDNSProxy', 'false', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP\)`).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec(`DELETE FROM properties WHERE key = 'AddonMDNSRegistration'`).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	err = Up00018(context.Background(), db)
+	require.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// TestUp00018ReturnsErrorWhenScanFails verifies that non-ErrNoRows query errors
+// propagate to the caller.
+func TestUp00018ReturnsErrorWhenScanFails(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	mock.ExpectQuery(`SELECT value FROM properties WHERE key = 'AddonMDNSRegistration'`).
+		WillReturnError(fmt.Errorf("disk failure"))
+
+	err = Up00018(context.Background(), db)
+	require.Error(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// TestUp00018ReturnsErrorWhenInsertFails verifies that Exec errors during the
+// INSERT OR REPLACE propagate to the caller.
+func TestUp00018ReturnsErrorWhenInsertFails(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	rows := sqlmock.NewRows([]string{"value"}).AddRow("true")
+	mock.ExpectQuery(`SELECT value FROM properties WHERE key = 'AddonMDNSRegistration'`).
+		WillReturnRows(rows)
+	mock.ExpectExec(`INSERT OR REPLACE INTO properties \(key, value, created_at, updated_at\) VALUES \('MDNSRegistration', 'true', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP\)`).
+		WillReturnError(fmt.Errorf("write failure"))
+
+	err = Up00018(context.Background(), db)
+	require.Error(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// TestDown00018RestoresProxyTrue verifies that UseComponentMDNSProxy=true maps
+// back to the legacy AddonMDNSRegistration=false scheme.
+func TestDown00018RestoresProxyTrue(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	rows := sqlmock.NewRows([]string{"value"}).AddRow("true")
+	mock.ExpectQuery(`SELECT value FROM properties WHERE key = 'UseComponentMDNSProxy'`).
+		WillReturnRows(rows)
+	mock.ExpectExec(`INSERT OR REPLACE INTO properties \(key, value, created_at, updated_at\) VALUES \('AddonMDNSRegistration', 'false', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP\)`).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec(`DELETE FROM properties WHERE key = 'UseComponentMDNSProxy'`).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	err = Down00018(context.Background(), db)
+	require.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// TestDown00018IdempotentWhenNoProxyRow verifies that a missing
+// UseComponentMDNSProxy row only removes the key (no writes).
+func TestDown00018IdempotentWhenNoProxyRow(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	mock.ExpectQuery(`SELECT value FROM properties WHERE key = 'UseComponentMDNSProxy'`).
+		WillReturnError(sql.ErrNoRows)
+	mock.ExpectExec(`DELETE FROM properties WHERE key = 'UseComponentMDNSProxy'`).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	err = Down00018(context.Background(), db)
+	require.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// TestDown00018ReturnsErrorWhenScanFails verifies that non-ErrNoRows query
+// errors propagate to the caller.
+func TestDown00018ReturnsErrorWhenScanFails(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	mock.ExpectQuery(`SELECT value FROM properties WHERE key = 'UseComponentMDNSProxy'`).
+		WillReturnError(fmt.Errorf("disk failure"))
+
+	err = Down00018(context.Background(), db)
+	require.Error(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// TestDown00018ReturnsErrorWhenExecFails verifies that Exec errors during the
+// INSERT OR REPLACE propagate to the caller.
+func TestDown00018ReturnsErrorWhenExecFails(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	rows := sqlmock.NewRows([]string{"value"}).AddRow("false")
+	mock.ExpectQuery(`SELECT value FROM properties WHERE key = 'UseComponentMDNSProxy'`).
+		WillReturnRows(rows)
+	mock.ExpectExec(`INSERT OR REPLACE INTO properties \(key, value, created_at, updated_at\) VALUES \('AddonMDNSRegistration', 'true', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP\)`).
+		WillReturnError(fmt.Errorf("write failure"))
+
+	err = Down00018(context.Background(), db)
+	require.Error(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}

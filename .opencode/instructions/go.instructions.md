@@ -338,6 +338,12 @@ if errors.As(err, &appErr) { ... }
 - Test both success and error cases
 - Consider using `testify` or similar libraries when they add value, but don't over-complicate simple tests
 
+### Coverage Gate
+
+- **New or changed back-end code must reach ≥70% statement coverage** per function (excluding generated code and thin external-library adapters that unit tests intentionally fake, e.g. a real `zeroconf.Register` wrapper behind a testable interface — cover those via their interface consumers).
+- Verify coverage by running `mise run //backend:test` (writes `backend/src/coverage.out`), then inspect per-function coverage with `cd backend/src && go tool cover -func=coverage.out`. Never run raw `go test` in `backend/src` — the generated metadata constants are required.
+- Any function touched by a change that is below 70% needs focused tests before handoff. See `.opencode/instructions/backend_test.instructions.md` → "Coverage Requirements" for details.
+
 ### Test Helpers
 
 - Mark helper functions with `t.Helper()`
