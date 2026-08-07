@@ -149,22 +149,31 @@ func (s *UserService) ListUsers() ([]dto.User, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to convert db users to dto")
 	}
+	for i := range users {
+		users[i].HasDefaultPassword = users[i].Password != nil &&
+			users[i].Password.Expose() == defaultAdminPassword
+	}
 	return users, nil
 }
 
 func (s *UserService) GetAdmin() (*dto.User, error) {
 	dbuser, err := query.SambaUserQuery[dbom.SambaUser](s.db).GetAdmin(s.ctx)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, dto.ErrorUserNotFound
-		}
 		return nil, errors.Wrap(err, "failed to get admin user from repository")
+	}
+	if dbuser.Username == "" {
+		// The generated raw query Scan returns a zero-value row (nil error)
+		// when no admin exists; translate that into the API contract error.
+		// (Raw Scan never raises gorm.ErrRecordNotFound, so no special case.)
+		return nil, dto.ErrorUserNotFound
 	}
 	var conv converter.DtoToDbomConverterImpl
 	user, errS := conv.SambaUserToUser(dbuser)
 	if errS != nil {
 		return nil, errors.Wrap(errS, "failed to convert admin db user to dto")
 	}
+	user.HasDefaultPassword = user.Password != nil &&
+		user.Password.Expose() == defaultAdminPassword
 	return &user, nil
 }
 

@@ -1946,6 +1946,7 @@ export type MountPointData = {
 export type User = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
+  has_default_password?: boolean;
   is_admin?: boolean;
   is_valid?: boolean;
   password?: string;

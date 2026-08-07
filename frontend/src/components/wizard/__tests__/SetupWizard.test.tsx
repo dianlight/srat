@@ -98,7 +98,7 @@ describe("SetupWizard", () => {
                 HttpResponse.json({ hostname: "mynas", workgroup: "WORKGROUP", telemetry_mode: "Disabled" })
             ),
             http.get("/api/users", () =>
-                HttpResponse.json([{ is_admin: true, password: "safepassword", name: "admin" }])
+                HttpResponse.json([{ is_admin: true, has_default_password: false, name: "admin" }])
             ),
             http.get("/api/hostname", () =>
                 HttpResponse.json("mynas")
@@ -144,7 +144,7 @@ describe("SetupWizard", () => {
                 HttpResponse.json({ hostname: "mynas", workgroup: "WORKGROUP", telemetry_mode: "Disabled" })
             ),
             http.get("/api/users", () =>
-                HttpResponse.json([{ is_admin: true, password: "safepassword", name: "admin" }])
+                HttpResponse.json([{ is_admin: true, has_default_password: false, name: "admin" }])
             ),
             http.get("/api/hostname", () =>
                 HttpResponse.json("mynas")
@@ -202,7 +202,7 @@ describe("SetupWizard", () => {
                 HttpResponse.json({ hostname: "mynas", workgroup: "WORKGROUP", telemetry_mode: "Disabled" })
             ),
             http.get("/api/users", () =>
-                HttpResponse.json([{ is_admin: true, password: "safepassword", name: "admin" }])
+                HttpResponse.json([{ is_admin: true, has_default_password: false, name: "admin" }])
             ),
             http.get("/api/hostname", () => HttpResponse.json("mynas")),
             http.get("/api/nics", () =>
@@ -238,7 +238,7 @@ describe("SetupWizard", () => {
                 HttpResponse.json({ hostname: "mynas", workgroup: "WORKGROUP", telemetry_mode: "Disabled" })
             ),
             http.get(/.*\/api\/users(?:\?.*)?$/, () =>
-                HttpResponse.json([{ is_admin: true, password: "safepassword", name: "admin" }])
+                HttpResponse.json([{ is_admin: true, has_default_password: false, name: "admin" }])
             ),
             http.get(/.*\/api\/hostname(?:\?.*)?$/, () => HttpResponse.json("mynas")),
             http.get(/.*\/api\/nics(?:\?.*)?$/, () =>

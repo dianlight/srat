@@ -180,6 +180,18 @@ func (suite *EventPropagationTestSuite) SetupTest() {
 	suite.sambaMock = unixsamba.NewMockSystem()
 	unixsamba.SetCommandExecutor(suite.sambaMock)
 	unixsamba.SetOSUserLookuper(suite.sambaMock)
+	// Seed the admin user. In production it is autocreated by NewUserService's
+	// OnStart hook, but this suite never calls RequireStart(), so CreateShare
+	// (which assigns the admin to shares without an explicit owner) would fail
+	// with ErrorUserNotFound otherwise. The DB is a shared in-memory instance
+	// that persists across tests, so delete any leftover users first.
+	suite.sambaMock.AddUser("admin", "changeme!")
+	suite.Require().NoError(suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Unscoped().Delete(&dbom.SambaUser{}).Error)
+	suite.Require().NoError(suite.db.Create(&dbom.SambaUser{
+		Username: "admin",
+		Password: "changeme!",
+		IsAdmin:  true,
+	}).Error)
 	// Setup global mock for share repo to avoid nil pointer errors when mount point events trigger share lookups
 	//mock.When(suite.mockShareRepo.FindByMountPath(mock.Any[string]())).ThenReturn(nil, errors.WithStack(gorm.ErrRecordNotFound))
 }

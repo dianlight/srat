@@ -57,8 +57,8 @@ func (suite *UserHandlerSuite) TearDownTest() {
 
 func (suite *UserHandlerSuite) TestListUsersSuccess() {
 	expectedUsers := []dto.User{
-		{Username: "user1", Password: new(dto.NewSecret("usrpwd1")), IsAdmin: true},
-		{Username: "user2", Password: new(dto.NewSecret("usrpwd2")), IsAdmin: false},
+		{Username: "user1", Password: new(dto.NewSecret("usrpwd1")), IsAdmin: true, HasDefaultPassword: true},
+		{Username: "user2", Password: new(dto.NewSecret("usrpwd2")), IsAdmin: false, HasDefaultPassword: false},
 	}
 
 	// Configure mock expectations
@@ -82,6 +82,7 @@ func (suite *UserHandlerSuite) TestListUsersSuccess() {
 	for i, single := range result {
 		suite.Equal(single.Username, expectedUsers[i].Username, "username at index %d should match", i)
 		suite.Equal(single.IsAdmin, expectedUsers[i].IsAdmin, "isAdmin at index %d should match", i)
+		suite.Equal(single.HasDefaultPassword, expectedUsers[i].HasDefaultPassword, "has_default_password at index %d should match", i)
 		suite.NotEqual(single.Password, expectedUsers[i].Password, "password at index %d should match", i)
 	}
 	// Assert

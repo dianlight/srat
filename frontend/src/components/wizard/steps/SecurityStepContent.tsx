@@ -23,7 +23,7 @@ export function SecurityStepContent({
         Set your administrator password and basic network identity for this
         Samba server.
       </Typography>
-      {!adminUser?.password && (
+      {adminUser?.has_default_password === true && (
         <Alert severity="warning" sx={{ mb: 2 }}>
           Your system is using the default password <strong>changeme!</strong>.
           Change it now.
@@ -66,7 +66,8 @@ export function SecurityStepContent({
           helperText="Leave blank to keep current password"
           rules={{
             validate: (value) => {
-              if (!adminUser?.password && !value) return "Password is required";
+              if (adminUser?.has_default_password === true && !value)
+                return "Password is required";
               if (!value) return true;
               if (value === "changeme!")
                 return "Cannot use the default password";

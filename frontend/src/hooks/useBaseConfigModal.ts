@@ -34,7 +34,7 @@ export const useBaseConfigModal = () => {
 
     // Type guard to ensure users is an array and not an error
     const isValidUsers = (data: unknown): data is User[] => {
-      return Array.isArray(data) && data.every((u) => "password" in u);
+      return Array.isArray(data);
     };
 
     // Find the admin user
@@ -44,11 +44,11 @@ export const useBaseConfigModal = () => {
 
     // Only show modal if:
     // 1. Settings are loaded and valid
-    // 2. Users are loaded and admin user exists with default password
+    // 2. Admin user still has the default password (has_default_password)
     // 3. Hostname or workgroup are not set (indicating first-time setup)
     if (
       isValidSettings(settings) &&
-      ((adminUser && adminUser.password === "changeme!") ||
+      (adminUser?.has_default_password === true ||
         !settings.hostname ||
         !settings.workgroup)
     ) {
