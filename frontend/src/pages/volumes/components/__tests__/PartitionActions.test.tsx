@@ -775,4 +775,167 @@ describe("PartitionActions component", () => {
         const createShareButtons = within(container).getAllByLabelText("create share");
         expect(createShareButtons).toHaveLength(1);
     });
+
+    it("calls onSetFilesystemLabel when set label button is clicked", async () => {
+        const React = await import("react");
+        const { render, screen, within } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const user = userEvent.setup();
+        const { PartitionActions } = await import("../PartitionActions");
+
+        const partition = buildPartition({
+            filesystem_info: {
+                support: {
+                    canSetLabel: true,
+                },
+            },
+        });
+
+        let labelCalled = false;
+        const onSetFilesystemLabel = () => {
+            labelCalled = true;
+        };
+
+        const { container } = render(
+            React.createElement(PartitionActions as any, {
+                partition,
+                protected_mode: false,
+                onToggleAutomount: () => { },
+                onMount: () => { },
+                onUnmount: () => { },
+                onCreateShare: () => { },
+                onGoToShare: () => { },
+                onSetFilesystemLabel,
+            })
+        );
+
+        await openMenuIfNeeded(screen, user);
+
+        const labelButtons = within(container).getAllByLabelText("set label");
+        expect(labelButtons).toHaveLength(1);
+        await user.click(labelButtons[0]!);
+
+        expect(labelCalled).toBe(true);
+    });
+
+    it("calls onFormatPartition when format button is clicked", async () => {
+        const React = await import("react");
+        const { render, screen, within } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const user = userEvent.setup();
+        const { PartitionActions } = await import("../PartitionActions");
+
+        const partition = buildPartition({
+            filesystem_info: {
+                support: {
+                    canFormat: true,
+                },
+            },
+        });
+
+        let formatCalled = false;
+        const onFormatPartition = () => {
+            formatCalled = true;
+        };
+
+        const { container } = render(
+            React.createElement(PartitionActions as any, {
+                partition,
+                protected_mode: false,
+                onToggleAutomount: () => { },
+                onMount: () => { },
+                onUnmount: () => { },
+                onCreateShare: () => { },
+                onGoToShare: () => { },
+                onFormatPartition,
+            })
+        );
+
+        await openMenuIfNeeded(screen, user);
+
+        const formatButtons = within(container).getAllByLabelText("format partition");
+        expect(formatButtons).toHaveLength(1);
+        await user.click(formatButtons[0]!);
+
+        expect(formatCalled).toBe(true);
+    });
+
+    it("hides set label and format actions when filesystem support is unavailable", async () => {
+        const React = await import("react");
+        const { render, screen, within } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const user = userEvent.setup();
+        const { PartitionActions } = await import("../PartitionActions");
+
+        const partition = buildPartition({
+            filesystem_info: {
+                support: {
+                    canCheck: false,
+                    canSetLabel: false,
+                    canFormat: false,
+                },
+            },
+        });
+
+        const { container } = render(
+            React.createElement(PartitionActions as any, {
+                partition,
+                protected_mode: false,
+                onToggleAutomount: () => { },
+                onMount: () => { },
+                onUnmount: () => { },
+                onCreateShare: () => { },
+                onGoToShare: () => { },
+                onCheckFilesystem: () => { },
+                onSetFilesystemLabel: () => { },
+                onFormatPartition: () => { },
+            })
+        );
+
+        await openMenuIfNeeded(screen, user);
+
+        expect(within(container).queryAllByLabelText("set label")).toHaveLength(0);
+        expect(within(container).queryAllByLabelText("format partition")).toHaveLength(0);
+    });
+
+    it("hides set label action when the partition is mounted", async () => {
+        const React = await import("react");
+        const { render, screen, within } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const user = userEvent.setup();
+        const { PartitionActions } = await import("../PartitionActions");
+
+        const partition = buildPartition({
+            filesystem_info: {
+                support: {
+                    canSetLabel: true,
+                },
+            },
+            mount_point_data: [
+                {
+                    path: "/mnt/test",
+                    is_mounted: true,
+                    is_to_mount_at_startup: false,
+                },
+            ],
+        });
+
+        const { container } = render(
+            React.createElement(PartitionActions as any, {
+                partition,
+                protected_mode: false,
+                onToggleAutomount: () => { },
+                onMount: () => { },
+                onUnmount: () => { },
+                onCreateShare: () => { },
+                onGoToShare: () => { },
+                onSetFilesystemLabel: () => { },
+                onFormatPartition: () => { },
+            })
+        );
+
+        await openMenuIfNeeded(screen, user);
+
+        expect(within(container).queryAllByLabelText("set label")).toHaveLength(0);
+    });
 });

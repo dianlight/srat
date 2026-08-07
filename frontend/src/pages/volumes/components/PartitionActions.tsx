@@ -6,6 +6,9 @@ import {
   faPlugCircleXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import AddIcon from "@mui/icons-material/Add";
+import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
+import FactCheckIcon from "@mui/icons-material/FactCheck";
+import LabelIcon from "@mui/icons-material/Label";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import ShareIcon from "@mui/icons-material/Share";
 import {
@@ -34,6 +37,8 @@ interface PartitionActionsProps {
   onCreateShare: (partition: Partition) => void;
   onGoToShare: (partition: Partition) => void;
   onCheckFilesystem?: (partition: Partition) => void;
+  onSetFilesystemLabel?: (partition: Partition) => void;
+  onFormatPartition?: (partition: Partition) => void;
 }
 
 export function PartitionActions({
@@ -45,6 +50,8 @@ export function PartitionActions({
   onCreateShare,
   onGoToShare,
   onCheckFilesystem,
+  onSetFilesystemLabel,
+  onFormatPartition,
 }: PartitionActionsProps) {
   const theme = useTheme();
   const isSmallScreen = useMediaQuery(theme.breakpoints.between("sm", "md"));
@@ -71,6 +78,8 @@ export function PartitionActions({
     onCreateShare,
     onGoToShare,
     onCheckFilesystem,
+    onSetFilesystemLabel,
+    onFormatPartition,
   });
 
   if (!actionItems || actionItems.length === 0) {
@@ -85,9 +94,9 @@ export function PartitionActions({
     "force-unmount": <FontAwesomeSvgIcon icon={faPlugCircleExclamation} />,
     "create-share": <AddIcon fontSize="small" />,
     "go-to-share": <ShareIcon fontSize="small" />,
-    "check-filesystem": null,
-    "set-label": null,
-    format: null,
+    "check-filesystem": <FactCheckIcon fontSize="small" />,
+    "set-label": <LabelIcon fontSize="small" />,
+    format: <DeleteSweepIcon fontSize="small" />,
   };
 
   if (isSmallScreen) {

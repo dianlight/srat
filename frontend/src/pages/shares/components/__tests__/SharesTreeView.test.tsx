@@ -292,4 +292,75 @@ describe("SharesTreeView component", () => {
     const tooltip = await within(document.body).findByRole("tooltip");
     expect(tooltip.textContent).toBe(longShareName);
   });
+
+  it("keeps legacy standard shares valid despite invalid mount data", async () => {
+    const { overrides } = setupOverrides();
+    const store = await createTestStore();
+
+    const { container } = render(
+      <Provider store={store}>
+        <SharesTreeView
+          shares={{
+            addons: {
+              name: "addons",
+              usage: Usage.Internal,
+              mount_point_data: mountPointData({
+                invalid: true,
+                invalid_error: "legacy volume no longer mounted",
+              }),
+              status: { is_valid: true },
+              disabled: false,
+            },
+          }}
+          expandedItems={["group-internal"]}
+          onExpandedItemsChange={() => {}}
+          selectedShareKey={undefined}
+          onShareSelect={() => {}}
+          testOverrides={overrides}
+        />
+      </Provider>,
+    );
+
+    // Legacy badge is rendered
+    expect(within(container).getByText("Legacy")).toBeTruthy();
+    // The share is selectable (not gated by mount data invalidity)
+    expect(within(container).getByLabelText("addons")).toBeTruthy();
+  });
+
+  it("renders error icon only when status.is_valid is false", async () => {
+    const { overrides } = setupOverrides();
+    const store = await createTestStore();
+
+    const { container } = render(
+      <Provider store={store}>
+        <SharesTreeView
+          shares={{
+            broken: {
+              name: "Broken",
+              usage: Usage.Share,
+              mount_point_data: mountPointData({
+                invalid: false,
+              }),
+              status: { is_valid: false },
+              disabled: false,
+            },
+          }}
+          expandedItems={["group-share"]}
+          onExpandedItemsChange={() => {}}
+          selectedShareKey={undefined}
+          onShareSelect={() => {}}
+          testOverrides={overrides}
+        />
+      </Provider>,
+    );
+
+    // Error tooltip with fallback message is shown for status-invalid shares
+    const brokenIcon = within(container).getByTestId("FolderSharedIcon");
+    const user = userEvent.setup();
+    await user.hover(brokenIcon);
+    const tooltip = await within(document.body).findByRole("tooltip");
+    expect(tooltip.textContent).toContain(
+      "Share directory is missing or not available",
+    );
+  });
 });

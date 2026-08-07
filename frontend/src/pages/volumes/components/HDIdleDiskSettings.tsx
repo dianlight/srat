@@ -212,9 +212,9 @@ export function HDIdleDiskSettings({
               </Stack>
             }
             avatar={
-              <IconButton size="small" sx={{ pointerEvents: "none" }}>
+              <Box sx={{ display: "inline-flex" }}>
                 <PowerIcon color="primary" />
-              </IconButton>
+              </Box>
             }
             action={
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>

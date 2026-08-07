@@ -122,10 +122,22 @@ func (suite *UserServiceSuite) TestListUsers_Success() {
 				{Name: "roshare1"},
 			},
 		},
+		{
+			Username: "testuser3",
+			Password: "changeme!",
+			IsAdmin:  false,
+		},
+		{
+			Username: "admin",
+			Password: "changeme!",
+			IsAdmin:  true,
+		},
 	}
 
 	suite.appFS.AddUser("testuser1", "password1")
 	suite.appFS.AddUser("testuser2", "password1")
+	suite.appFS.AddUser("testuser3", "changeme!")
+	suite.appFS.AddUser("admin", "changeme!")
 
 	suite.Require().NoError(suite.db.Create(&dbUsers[1].RoShares).Error)
 	suite.Require().NoError(suite.db.Create(&dbUsers[0].RwShares).Error)
@@ -137,23 +149,85 @@ func (suite *UserServiceSuite) TestListUsers_Success() {
 
 	// Assert
 	suite.NoError(err)
-	suite.GreaterOrEqual(len(users), 2)
+	suite.GreaterOrEqual(len(users), 3)
 	var usernames []string
 	var rwShares []string
 	var roShares []string
+	hasDefaultPassword := map[string]bool{}
 	for _, u := range users {
 		suite.Require().NotNil(u.IsValid)
 		suite.True(*u.IsValid)
 		usernames = append(usernames, u.Username)
 		rwShares = append(rwShares, u.RwShares...)
 		roShares = append(roShares, u.RoShares...)
+		hasDefaultPassword[u.Username] = u.HasDefaultPassword
 	}
 	suite.Contains(usernames, "testuser1")
 	suite.Contains(usernames, "testuser2")
+	suite.Contains(usernames, "testuser3")
 	suite.Contains(rwShares, "rwshare1")
 	suite.Contains(rwShares, "rwshare2")
 	suite.Contains(roShares, "roshare1")
+	// Only the admin with the default password must be flagged
+	suite.True(hasDefaultPassword["admin"], "admin with default password must have HasDefaultPassword=true")
+	suite.False(hasDefaultPassword["testuser1"])
+	suite.False(hasDefaultPassword["testuser2"])
+	suite.False(hasDefaultPassword["testuser3"], "non-admin with default password must NOT be flagged")
+}
 
+func (suite *UserServiceSuite) TestGetAdmin_HasDefaultPassword() {
+	testCases := []struct {
+		name               string
+		username           string
+		password           string
+		expectedHasDefault bool
+	}{
+		{
+			name:               "admin with default password",
+			username:           "admin",
+			password:           "changeme!",
+			expectedHasDefault: true,
+		},
+		{
+			name:               "admin with custom password",
+			username:           "admin",
+			password:           "s3cret!custom",
+			expectedHasDefault: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.T().Run(tc.name, func(t *testing.T) {
+			suite.Require().NoError(suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Unscoped().Delete(&dbom.SambaUser{}).Error)
+			suite.appFS.AddUser(tc.username, tc.password)
+			suite.Require().NoError(suite.db.Create(&dbom.SambaUser{
+				Username: tc.username,
+				Password: tc.password,
+				IsAdmin:  true,
+			}).Error)
+
+			// Act
+			admin, err := suite.userService.GetAdmin()
+
+			// Assert
+			suite.Require().NoError(err)
+			suite.Require().NotNil(admin)
+			suite.Equal(tc.username, admin.Username)
+			suite.Equal(tc.expectedHasDefault, admin.HasDefaultPassword)
+		})
+	}
+}
+
+func (suite *UserServiceSuite) TestGetAdmin_NotFound() {
+	// Arrange: ensure no admin user exists
+	suite.Require().NoError(suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Unscoped().Delete(&dbom.SambaUser{}).Error)
+
+	// Act
+	admin, err := suite.userService.GetAdmin()
+
+	// Assert
+	suite.ErrorIs(err, dto.ErrorUserNotFound)
+	suite.Nil(admin)
 }
 
 /*
@@ -209,6 +283,26 @@ func (suite *UserServiceSuite) TestCreateUser_Success() {
 	//mock.Verify(suite.userRepoMock, matchers.Times(2)).Create(mock.Any[*dbom.SambaUser]())
 	suite.True(suite.dirtyService.GetDirtyDataTracker().Users)
 	suite.Require().NoError(suite.db.Where("username = ?", userDto.Username).First(&dbom.SambaUser{}).Error)
+}
+
+func (suite *UserServiceSuite) TestCreateUser_IgnoresClientSuppliedDefaultPassword() {
+	// has_default_password is read-only and computed by the service: a
+	// client-supplied value must never be stored or echoed back.
+	userDto := dto.User{
+		Username:           "newuser" + fmt.Sprintf("%d", time.Now().UnixNano()),
+		Password:           new(dto.NewSecret("newpassword")),
+		IsAdmin:            true,
+		HasDefaultPassword: true,
+	}
+
+	// Act
+	createdUser, err := suite.userService.CreateUser(userDto)
+
+	// Assert
+	suite.Require().NoError(err, "expected no error but got '%v' '%v'", err, errors.Unwrap(err))
+	suite.Require().NotNil(createdUser)
+	suite.Equal(userDto.Username, createdUser.Username)
+	suite.False(createdUser.HasDefaultPassword, "client-supplied has_default_password must be ignored")
 }
 
 /*

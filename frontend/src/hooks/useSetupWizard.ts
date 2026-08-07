@@ -33,7 +33,7 @@ export const useSetupWizard = () => {
 
     const isValidUsers = (data: unknown): data is User[] =>
       Array.isArray(data) &&
-      data.every((u) => typeof u === "object" && u !== null && "password" in u);
+      data.every((u) => typeof u === "object" && u !== null);
 
     const adminUser = isValidUsers(users)
       ? users.find((u) => u.is_admin)
@@ -41,7 +41,9 @@ export const useSetupWizard = () => {
 
     const needsBaseConfig =
       isValidSettings(settings) &&
-      (!adminUser?.password || !settings.hostname || !settings.workgroup);
+      (adminUser?.has_default_password === true ||
+        !settings.hostname ||
+        !settings.workgroup);
 
     const needsTelemetry =
       isValidSettings(settings) &&

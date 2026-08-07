@@ -534,5 +534,151 @@ describe("VolumesTreeView Component", () => {
         await user.click(mountButton);
         expect(onMount).toHaveBeenCalledTimes(1);
     });
+
+    it("shows set label and format actions for a supported partition", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { Provider } = await import("react-redux");
+        const { VolumesTreeView } = await import("../VolumesTreeView");
+        const { getDiskIdentifier } = await import("../../utils");
+        const { createTestStore } = await import("/test/testing");
+
+        const user = userEvent.setup();
+        const store = await createTestStore();
+        const onCheckFilesystem = vi.fn(() => undefined);
+        const onSetFilesystemLabel = vi.fn(() => undefined);
+        const onFormatPartition = vi.fn(() => undefined);
+        const disks = [
+            {
+                id: "disk-8",
+                model: "Supported Disk",
+                partitions: {
+                    "part-8": {
+                        id: "part-8",
+                        name: "Supported Partition",
+                        fs_type: "ext4",
+                        filesystem_info: {
+                            support: {
+                                canCheck: true,
+                                canSetLabel: true,
+                                canFormat: true,
+                            },
+                        },
+                        mount_point_data: {
+                            "/mnt/supported": {
+                                is_mounted: false,
+                                is_write_supported: true,
+                                fstype: "ext4",
+                                path: "/mnt/supported",
+                                type: "HOST",
+                            },
+                        },
+                    },
+                },
+            },
+        ];
+
+        const diskIdentifier = getDiskIdentifier(disks[0] as any, 0);
+
+        render(
+            React.createElement(
+                Provider,
+                {
+                    store,
+                    children: React.createElement(
+                        VolumesTreeView as any,
+                        createBaseProps({
+                            disks,
+                            expandedItems: [diskIdentifier],
+                            onCheckFilesystem,
+                            onSetFilesystemLabel,
+                            onFormatPartition,
+                        }),
+                    ),
+                },
+            ),
+        );
+
+        // Verify buttons are rendered
+        const setLabelButton = await screen.findByRole("button", { name: /set label/i });
+        const formatButton = await screen.findByRole("button", { name: /format partition/i });
+        expect(setLabelButton).toBeTruthy();
+        expect(formatButton).toBeTruthy();
+
+        // Click set label and verify callback routing
+        await user.click(setLabelButton);
+        expect(onSetFilesystemLabel).toHaveBeenCalledTimes(1);
+        expect(onFormatPartition).not.toHaveBeenCalled();
+        expect(onCheckFilesystem).not.toHaveBeenCalled();
+
+        // Click format and verify callback routing
+        await user.click(formatButton);
+        expect(onFormatPartition).toHaveBeenCalledTimes(1);
+        expect(onSetFilesystemLabel).toHaveBeenCalledTimes(1); // still 1
+        expect(onCheckFilesystem).not.toHaveBeenCalled();
+    });
+
+    it("hides set label and format actions when filesystem support is unavailable", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { VolumesTreeView } = await import("../VolumesTreeView");
+        const { getDiskIdentifier } = await import("../../utils");
+        const { createTestStore } = await import("/test/testing");
+
+        const store = await createTestStore();
+        const disks = [
+            {
+                id: "disk-9",
+                model: "Unsupported Disk",
+                partitions: {
+                    "part-9": {
+                        id: "part-9",
+                        name: "Unsupported Partition",
+                        fs_type: "ext4",
+                        mount_point_data: {
+                            "/mnt/unsupported": {
+                                is_mounted: false,
+                                is_write_supported: true,
+                                fstype: "ext4",
+                                path: "/mnt/unsupported",
+                                type: "HOST",
+                            },
+                        },
+                    },
+                },
+            },
+        ];
+
+        const diskIdentifier = getDiskIdentifier(disks[0] as any, 0);
+
+        render(
+            React.createElement(
+                Provider,
+                {
+                    store,
+                    children: React.createElement(
+                        VolumesTreeView as any,
+                        createBaseProps({
+                            disks,
+                            expandedItems: [diskIdentifier],
+                            onCheckFilesystem: vi.fn(() => undefined),
+                            onSetFilesystemLabel: vi.fn(() => undefined),
+                            onFormatPartition: vi.fn(() => undefined),
+                        }),
+                    ),
+                },
+            ),
+        );
+
+        await screen.findByText("Unsupported Partition");
+        expect(
+            screen.queryByRole("button", { name: /set label/i }),
+        ).toBeNull();
+        expect(
+            screen.queryByRole("button", { name: /format partition/i }),
+        ).toBeNull();
+    });
 });
 

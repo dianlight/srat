@@ -74,16 +74,16 @@ export function ShareDetailsPanel({
         height: "100%",
         overflow: "auto",
         p: 2,
-        opacity: share.mount_point_data?.invalid ? 0.6 : 1,
-        pointerEvents: share.mount_point_data?.invalid ? "none" : "auto",
-        filter: share.mount_point_data?.invalid ? "grayscale(50%)" : "none",
+        opacity: share.status?.is_valid === false ? 0.6 : 1,
+        pointerEvents: share.status?.is_valid === false ? "none" : "auto",
+        filter: share.status?.is_valid === false ? "grayscale(50%)" : "none",
         transition: "opacity 0.3s, filter 0.3s",
       }}
     >
       <Stack spacing={3}>
         {/* Mount Point Information Card */}
         <Card sx={{ position: "relative" }}>
-          {share.mount_point_data?.invalid && (
+          {share.status?.is_valid === false && (
             <Box
               sx={{
                 position: "absolute",

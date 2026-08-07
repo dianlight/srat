@@ -353,8 +353,6 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
   }, [disks, selectedPartitionId]);
 
   function onSubmitMountVolume(data?: MountPointData) {
-    console.trace("Mount Request Data:", data);
-
     if (!selectedPartition || !data?.path || !data.root) {
       toast.error("Cannot mount: Invalid selection or missing data.");
       console.error("Mount validation failed:", {

@@ -16,7 +16,7 @@ it("submits form with MUI Button type=submit inside Dialog + multiple watches", 
     server.use(
         http.get(/.*\/api\/settings(?:\?.*)?$/, () => HttpResponse.json({ hostname: "mynas", workgroup: "WORKGROUP", telemetry_mode: "Disabled" })),
         http.get(/.*\/api\/hostname(?:\?.*)?$/, () => HttpResponse.json("mynas")),
-        http.get(/.*\/api\/users(?:\?.*)?$/, () => HttpResponse.json([{ is_admin: true, password: "safepassword", name: "admin" }])),
+        http.get(/.*\/api\/users(?:\?.*)?$/, () => HttpResponse.json([{ is_admin: true, has_default_password: false, username: "admin" }])),
         http.get(/.*\/api\/nics(?:\?.*)?$/, () => HttpResponse.json([{ name: "eth0", addrs: [], flags: [], hardwareAddr: "", index: 0, mtu: 1500 }])),
         http.get(/.*\/api\/volumes(?:\?.*)?$/, () => HttpResponse.json([]))
     );
@@ -58,7 +58,7 @@ it("submits form with MUI Button type=submit inside Dialog + multiple watches", 
                     React.createElement(TextFieldElement as any, { name: "workgroup", label: "Workgroup", rules: { required: true, minLength: 2 } }),
                     React.createElement(PasswordElement as any, { name: "newPassword", label: "New Password", rules: {
                         validate: (value: string) => {
-                            if (!(adminUser as any)?.password && !value) return "Password is required";
+                            if ((adminUser as any)?.has_default_password === true && !value) return "Password is required";
                             if (!value) return true;
                             if (value === "changeme!") return "Cannot use the default password";
                             if (value.length < 6) return "At least 6 characters";
