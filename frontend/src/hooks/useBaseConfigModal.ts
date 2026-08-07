@@ -32,9 +32,18 @@ export const useBaseConfigModal = () => {
       return data !== null && typeof data === "object" && !("detail" in data);
     };
 
-    // Type guard to ensure users is an array and not an error
+    // Type guard to ensure users is an array of User objects and not an error
     const isValidUsers = (data: unknown): data is User[] => {
-      return Array.isArray(data);
+      if (!Array.isArray(data)) {
+        return false;
+      }
+      // Validate each element so an array of error/malformed objects is rejected
+      return data.every(
+        (entry) =>
+          entry !== null &&
+          typeof entry === "object" &&
+          typeof (entry as User).username === "string",
+      );
     };
 
     // Find the admin user

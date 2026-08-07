@@ -222,4 +222,54 @@ describe("NotificationCenter Component", () => {
             expect(disabledButtons.length).toBeGreaterThanOrEqual(0);
         }
     });
+
+    it("toggles the filter label between Unread and All", async () => {
+        const user = userEvent.setup();
+        await renderNotificationCenter();
+
+        const notificationButton = screen.getAllByRole("button")[0];
+        await user.click(notificationButton!);
+
+        expect(screen.getByText("Unread")).toBeTruthy();
+
+        // The FormControlLabel associates the switch with the "Unread" label
+        const toggle = screen.getByLabelText("Unread");
+        await user.click(toggle);
+
+        expect(screen.getByText("All")).toBeTruthy();
+        expect(screen.queryByText("Unread")).toBeNull();
+    });
+
+    it("removes a notification and marks it as read via the action buttons", async () => {
+        mockNotificationCenterState.remove = vi.fn();
+        mockNotificationCenterState.markAsRead = vi.fn();
+        mockNotificationCenterState.notifications = [
+            {
+                id: "toast-1",
+                createdAt: Date.now(),
+                read: false,
+                type: "info",
+                content: React.createElement("span", null, "Test notification"),
+            },
+        ];
+        mockNotificationCenterState.unreadCount = 1;
+
+        const user = userEvent.setup();
+        await renderNotificationCenter();
+
+        const notificationButton = screen.getAllByRole("button")[0];
+        await user.click(notificationButton!);
+
+        expect(screen.getByText("Test notification")).toBeTruthy();
+
+        // An unread notification renders two action buttons: remove then mark-as-read
+        const actionButtons = screen.getAllByLabelText("close");
+        expect(actionButtons).toHaveLength(2);
+
+        await user.click(actionButtons[0]);
+        expect(mockNotificationCenterState.remove).toHaveBeenCalledWith("toast-1");
+
+        await user.click(actionButtons[1]);
+        expect(mockNotificationCenterState.markAsRead).toHaveBeenCalledWith("toast-1");
+    });
 });
