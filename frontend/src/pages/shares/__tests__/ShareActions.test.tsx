@@ -6,6 +6,7 @@ import { Type, Usage } from "../../../store/sratApi";
 import { ShareActions } from "../components/ShareActions";
 
 describe("ShareActions component", () => {
+    const theme = createTheme();
     const createMatchMedia = (matches: boolean) => () => (({
         matches,
         addListener: () => { },
@@ -105,5 +106,71 @@ describe("ShareActions component", () => {
         await user.click(enableOption as any);
 
         expect(enableCalls).toBe(1);
+    });
+
+    it("offers disable (not delete) for legacy shares with invalid mount data but valid status", async () => {
+        const legacyShare = {
+            ...buildShare(),
+            name: "addons",
+            usage: Usage.Internal,
+            mount_point_data: {
+                path_hash: "hash",
+                invalid: true,
+                invalid_error: "legacy volume no longer mounted",
+                path: "",
+                type: Type.Host,
+            },
+            status: { is_valid: true },
+        };
+
+        render(
+            <ThemeProvider theme={theme}>
+                <ShareActions
+                    shareKey="shareKey"
+                    shareProps={legacyShare}
+                    protected_mode={false}
+                    onViewVolumeSettings={() => {}}
+                    onEnable={() => {}}
+                    onDisable={() => {}}
+                    onDelete={() => {}}
+                />
+            </ThemeProvider>,
+        );
+
+        // No delete action for a valid-status share
+        expect(screen.queryByRole("button", { name: /delete share/i })).toBeNull();
+        // Disable action is offered (share is not disabled)
+        expect(screen.getByRole("button", { name: /disable share/i })).toBeTruthy();
+    });
+
+    it("offers only delete for shares with status.is_valid === false", async () => {
+        const brokenShare = {
+            ...buildShare(),
+            mount_point_data: {
+                path_hash: "hash",
+                invalid: false,
+                path: "/mnt/test",
+                type: Type.Host,
+            },
+            status: { is_valid: false },
+        };
+
+        render(
+            <ThemeProvider theme={theme}>
+                <ShareActions
+                    shareKey="shareKey"
+                    shareProps={brokenShare}
+                    protected_mode={false}
+                    onViewVolumeSettings={() => {}}
+                    onEnable={() => {}}
+                    onDisable={() => {}}
+                    onDelete={() => {}}
+                />
+            </ThemeProvider>,
+        );
+
+        // Delete is the only offered action for status-invalid shares
+        expect(screen.getByRole("button", { name: /delete share/i })).toBeTruthy();
+        expect(screen.queryByRole("button", { name: /disable share/i })).toBeNull();
     });
 });
