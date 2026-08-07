@@ -123,6 +123,11 @@ func (suite *UserServiceSuite) TestListUsers_Success() {
 			},
 		},
 		{
+			Username: "testuser3",
+			Password: "changeme!",
+			IsAdmin:  false,
+		},
+		{
 			Username: "admin",
 			Password: "changeme!",
 			IsAdmin:  true,
@@ -131,6 +136,7 @@ func (suite *UserServiceSuite) TestListUsers_Success() {
 
 	suite.appFS.AddUser("testuser1", "password1")
 	suite.appFS.AddUser("testuser2", "password1")
+	suite.appFS.AddUser("testuser3", "changeme!")
 	suite.appFS.AddUser("admin", "changeme!")
 
 	suite.Require().NoError(suite.db.Create(&dbUsers[1].RoShares).Error)
@@ -158,6 +164,7 @@ func (suite *UserServiceSuite) TestListUsers_Success() {
 	}
 	suite.Contains(usernames, "testuser1")
 	suite.Contains(usernames, "testuser2")
+	suite.Contains(usernames, "testuser3")
 	suite.Contains(rwShares, "rwshare1")
 	suite.Contains(rwShares, "rwshare2")
 	suite.Contains(roShares, "roshare1")
@@ -165,6 +172,7 @@ func (suite *UserServiceSuite) TestListUsers_Success() {
 	suite.True(hasDefaultPassword["admin"], "admin with default password must have HasDefaultPassword=true")
 	suite.False(hasDefaultPassword["testuser1"])
 	suite.False(hasDefaultPassword["testuser2"])
+	suite.False(hasDefaultPassword["testuser3"], "non-admin with default password must NOT be flagged")
 }
 
 func (suite *UserServiceSuite) TestGetAdmin_HasDefaultPassword() {
@@ -275,6 +283,26 @@ func (suite *UserServiceSuite) TestCreateUser_Success() {
 	//mock.Verify(suite.userRepoMock, matchers.Times(2)).Create(mock.Any[*dbom.SambaUser]())
 	suite.True(suite.dirtyService.GetDirtyDataTracker().Users)
 	suite.Require().NoError(suite.db.Where("username = ?", userDto.Username).First(&dbom.SambaUser{}).Error)
+}
+
+func (suite *UserServiceSuite) TestCreateUser_IgnoresClientSuppliedDefaultPassword() {
+	// has_default_password is read-only and computed by the service: a
+	// client-supplied value must never be stored or echoed back.
+	userDto := dto.User{
+		Username:           "newuser" + fmt.Sprintf("%d", time.Now().UnixNano()),
+		Password:           new(dto.NewSecret("newpassword")),
+		IsAdmin:            true,
+		HasDefaultPassword: true,
+	}
+
+	// Act
+	createdUser, err := suite.userService.CreateUser(userDto)
+
+	// Assert
+	suite.Require().NoError(err, "expected no error but got '%v' '%v'", err, errors.Unwrap(err))
+	suite.Require().NotNil(createdUser)
+	suite.Equal(userDto.Username, createdUser.Username)
+	suite.False(createdUser.HasDefaultPassword, "client-supplied has_default_password must be ignored")
 }
 
 /*

@@ -150,7 +150,8 @@ func (s *UserService) ListUsers() ([]dto.User, error) {
 		return nil, errors.Wrap(err, "failed to convert db users to dto")
 	}
 	for i := range users {
-		users[i].HasDefaultPassword = users[i].Password != nil &&
+		users[i].HasDefaultPassword = users[i].IsAdmin &&
+			users[i].Password != nil &&
 			users[i].Password.Expose() == defaultAdminPassword
 	}
 	return users, nil
@@ -172,7 +173,8 @@ func (s *UserService) GetAdmin() (*dto.User, error) {
 	if errS != nil {
 		return nil, errors.Wrap(errS, "failed to convert admin db user to dto")
 	}
-	user.HasDefaultPassword = user.Password != nil &&
+	user.HasDefaultPassword = user.IsAdmin &&
+		user.Password != nil &&
 		user.Password.Expose() == defaultAdminPassword
 	return &user, nil
 }
