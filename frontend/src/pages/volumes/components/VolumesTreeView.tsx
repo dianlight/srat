@@ -607,7 +607,7 @@ export function VolumesTreeView({
             </Box>
 
             {!readOnly && wholeDiskPartition && (
-              <Box sx={{ flexShrink: 0 }}>
+              <Box sx={{ flexShrink: 1, minWidth: 0, overflow: "visible" }}>
                 <PartitionActions
                   partition={wholeDiskPartition}
                   protected_mode={protectedMode}

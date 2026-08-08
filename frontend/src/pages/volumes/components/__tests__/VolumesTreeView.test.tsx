@@ -13,7 +13,19 @@ const createBaseProps = (overrides: Record<string, unknown> = {}) => ({
 });
 
 describe("VolumesTreeView Component", () => {
+    const createMatchMedia = (matches: boolean) => () => (({
+        matches,
+        addListener: () => { },
+        removeListener: () => { },
+        addEventListener: () => { },
+        removeEventListener: () => { },
+        dispatchEvent: () => false,
+        onchange: null,
+        media: "",
+    }) as any);
+
     beforeEach(() => {
+        (window as any).matchMedia = createMatchMedia(false); // Force desktop mode
         localStorage.clear();
         document.body.innerHTML = "";
     });

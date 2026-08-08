@@ -54,7 +54,7 @@ export function PartitionActions({
   onFormatPartition,
 }: PartitionActionsProps) {
   const theme = useTheme();
-  const isSmallScreen = useMediaQuery(theme.breakpoints.between("sm", "md"));
+  const isSmallScreen = useMediaQuery(theme.breakpoints.between("sm", "lg"));
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -87,11 +87,17 @@ export function PartitionActions({
   }
 
   const actionIcons: Record<PartitionActionKey, ReactElement | null> = {
-    mount: <FontAwesomeSvgIcon icon={faPlug} />,
-    "enable-automount": <FontAwesomeSvgIcon icon={faPlugCircleBolt} />,
-    "disable-automount": <FontAwesomeSvgIcon icon={faPlugCircleXmark} />,
-    unmount: <FontAwesomeSvgIcon icon={faPlugCircleMinus} />,
-    "force-unmount": <FontAwesomeSvgIcon icon={faPlugCircleExclamation} />,
+    mount: <FontAwesomeSvgIcon icon={faPlug} fontSize="small" />,
+    "enable-automount": (
+      <FontAwesomeSvgIcon icon={faPlugCircleBolt} fontSize="small" />
+    ),
+    "disable-automount": (
+      <FontAwesomeSvgIcon icon={faPlugCircleXmark} fontSize="small" />
+    ),
+    unmount: <FontAwesomeSvgIcon icon={faPlugCircleMinus} fontSize="small" />,
+    "force-unmount": (
+      <FontAwesomeSvgIcon icon={faPlugCircleExclamation} fontSize="small" />
+    ),
     "create-share": <AddIcon fontSize="small" />,
     "go-to-share": <ShareIcon fontSize="small" />,
     "check-filesystem": <FactCheckIcon fontSize="small" />,
@@ -144,6 +150,7 @@ export function PartitionActions({
       sx={{
         alignItems: "center",
         pr: 1,
+        flexWrap: "wrap",
       }}
     >
       {actionItems
