@@ -1,14 +1,20 @@
 import {
   Box,
   FormControlLabel,
-  Grid,
   Paper,
   Stack,
   Switch,
   Typography,
 } from "@mui/material";
 import { useConfirm } from "material-ui-confirm";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type MouseEvent as ReactMouseEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useLocation, useNavigate } from "react-router";
 import { toast } from "react-toastify";
 import { PreviewDialog } from "../../components/PreviewDialog";
@@ -40,6 +46,10 @@ import {
   getDiskIdentifier,
   getPartitionIdentifier,
 } from "./utils";
+
+const MIN_LEFT_PANEL_PCT = 15;
+const MAX_LEFT_PANEL_PCT = 60;
+const DEFAULT_LEFT_PANEL_PCT = 30;
 
 export function updatePartitionLabelInDisks(
   disks: Disk[] | undefined,
@@ -95,7 +105,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
   const navigate = useNavigate();
   const [hideSystemPartitions, setHideSystemPartitions] = useState<boolean>(
     localStorage.getItem("volumes.hideSystemPartitions") === "true",
-  ); // Default to hide system partitions
+  );
   const volumeHook = useVolume();
   const sourceDisks = initialDisks ?? volumeHook.disks;
   const isLoading = initialDisks ? false : volumeHook.isLoading;
@@ -105,7 +115,6 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
   const [selectedPartition, setSelectedPartition] = useState<
     Partition | undefined
   >(undefined);
-  // Note: this id can refer to either a disk or a partition
   const [selectedPartitionId, setSelectedPartitionId] = useState<
     string | undefined
   >(() => localStorage.getItem("volumes.selectedPartitionId") || undefined);
@@ -124,6 +133,67 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
   const [umountVolume, _umountVolumeResult] = useDeleteApiVolumeMutation();
   const [patchMountSettings] = usePatchApiVolumeSettingsMutation();
   const loggedLoadErrorRef = useRef<string>("");
+
+  const [leftPanelPct, setLeftPanelPct] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem("volumes.leftPanelPct");
+      if (saved) {
+        const pct = parseFloat(saved);
+        if (
+          !Number.isNaN(pct) &&
+          pct >= MIN_LEFT_PANEL_PCT &&
+          pct <= MAX_LEFT_PANEL_PCT
+        ) {
+          return pct;
+        }
+      }
+    } catch {}
+    return DEFAULT_LEFT_PANEL_PCT;
+  });
+
+  const isDragging = useRef(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  const handleDividerMouseDown = useCallback((e: ReactMouseEvent) => {
+    e.preventDefault();
+    isDragging.current = true;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }, []);
+
+  useEffect(() => {
+    const handleMouseMove = (e: globalThis.MouseEvent) => {
+      if (!isDragging.current || !containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const offsetX = e.clientX - rect.left;
+      const pct = (offsetX / rect.width) * 100;
+      const clamped = Math.min(
+        MAX_LEFT_PANEL_PCT,
+        Math.max(MIN_LEFT_PANEL_PCT, pct),
+      );
+      setLeftPanelPct(clamped);
+    };
+
+    const handleMouseUp = () => {
+      if (!isDragging.current) return;
+      isDragging.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("volumes.leftPanelPct", String(leftPanelPct));
+    } catch {}
+  }, [leftPanelPct]);
 
   useEffect(() => {
     setDisks(sourceDisks ?? []);
@@ -148,7 +218,6 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
     return result;
   }, [perPartitionInfo]);
 
-  // Handle disk selection (top-level)
   const handleDiskSelect = useCallback(
     (disk: Disk) => {
       setSelectedDisk(disk);
@@ -156,7 +225,6 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
       const diskIdx = Math.max(disks?.indexOf(disk) ?? -1, 0);
       const diskIdentifier = getDiskIdentifier(disk, diskIdx);
       setSelectedPartitionId(diskIdentifier);
-      // Ensure the disk is expanded and persisted
       setExpandedDisks((prev) =>
         prev.includes(diskIdentifier) ? prev : [...prev, diskIdentifier],
       );
@@ -164,7 +232,6 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
     [disks],
   );
 
-  // Handle partition selection
   const handlePartitionSelect = useCallback(
     (disk: Disk, partition: Partition) => {
       setSelectedDisk(disk);
@@ -187,7 +254,6 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
         partIdx,
       );
       setSelectedPartitionId(partitionId);
-      // Ensure the containing disk is expanded and persisted
       setExpandedDisks((prev) => {
         if (prev.includes(diskIdentifier)) return prev;
         return [...prev, diskIdentifier];
@@ -223,7 +289,6 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
     [],
   );
 
-  // Persist selection and expanded disks to localStorage
   useEffect(() => {
     try {
       if (selectedPartitionId) {
@@ -265,7 +330,6 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
     }
   }, [hideSystemPartitions]);
 
-  // Effect to handle navigation state for opening mount settings for a specific volume
   useEffect(() => {
     const state = location.state as LocationState | undefined;
     const mountPathFromState = state?.mountPathToView;
@@ -307,19 +371,16 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
     handlePartitionSelect,
   ]);
 
-  // When disks data is available and there's a selectedPartitionId (restored or new), find and select it so details show
   useEffect(() => {
     if (!disks || disks.length === 0) return;
     if (!selectedPartitionId) return;
 
-    // Try to locate the partition or disk corresponding to selectedPartitionId
     for (const disk of disks) {
       const diskIdx = Math.max(disks.indexOf(disk), 0);
       const diskIdentifier = getDiskIdentifier(disk, diskIdx);
       if (diskIdentifier === selectedPartitionId) {
         setSelectedDisk(disk);
         setSelectedPartition(undefined);
-        // Make sure it's expanded
         setExpandedDisks((prev) =>
           prev.includes(diskIdentifier) ? prev : [...prev, diskIdentifier],
         );
@@ -346,7 +407,6 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
       }
     }
 
-    // If not found, clear selection
     setSelectedPartition(undefined);
     setSelectedDisk(undefined);
     setSelectedPartitionId(undefined);
@@ -362,14 +422,10 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
       return;
     }
 
-    // Ensure device is included in submitData if required by API
     const submitData: MountPointData = {
       ...data,
       device_id: selectedPartition.id,
     };
-
-    // Normalize root path to avoid double slashes when root is "/"
-    //const normalizedRoot = data.root === "/" ? "" : data.root;
 
     mountVolume({
       mountPointData: submitData,
@@ -394,10 +450,10 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
         });
       })
       .finally(() => {
-        setSelectedPartition(undefined); // Clear selection after successful mount
+        setSelectedPartition(undefined);
         setSelectedDisk(undefined);
         setSelectedPartitionId(undefined);
-        setShowMount(false); // Close the mount dialog
+        setShowMount(false);
       });
   }
 
@@ -406,7 +462,6 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
       partition.mount_point_data || {},
     )[0];
     if (firstMountPointData?.path) {
-      // Ensure path exists for preselection
       navigate("/", {
         state: {
           tabId: TabIDs.SHARES,
@@ -421,21 +476,18 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
   }
 
   function handleGoToShare(partition: Partition) {
-    //console.log("Go to share for:", partition);
     const mountData = Object.values(partition.mount_point_data || {})[0];
-    const share = mountData?.share; // Get the first share associated with this mount point
+    const share = mountData?.share;
 
     if (share?.name) {
-      // Navigate to the shares page and pass the share name as state
       navigate("/", {
         state: { tabId: TabIDs.SHARES, shareName: share.name } as LocationState,
-      }); // Navigate to root, NavBar handles tab
+      });
     }
   }
 
   function onSubmitUmountVolume(partition: Partition, force = false) {
     console.debug("Umount Request", partition, "Force:", force);
-    // Ensure mount_point_data exists and has at least one entry with a path
     const mountData = Object.values(partition.mount_point_data || {})[0];
     if (!mountData?.path) {
       toast.error("Cannot unmount: Missing mount point path.");
@@ -443,7 +495,6 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
       return;
     }
 
-    // Use partition label or name for confirmation dialog
     const displayName = decodeEscapeSequence(partition.name || "this volume");
 
     confirm({
@@ -454,7 +505,6 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
       confirmationButtonProps: { color: force ? "error" : "primary" },
       acknowledgement: `Please confirm this action carefully. Unmounting may lead to data loss or corruption if the volume is in use. ${force ? "NOTE:Configured shares will be disabled!" : ""}`,
     }).then(({ reason }) => {
-      // Only proceed if confirmed
       if (reason === "confirm") {
         console.debug(
           `Proceeding with ${force ? "forced " : ""}unmount for:`,
@@ -467,7 +517,6 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
           .unwrap()
           .then(() => {
             toast.info(`Volume ${displayName} unmounted successfully.`);
-            // Optionally clear selection if the unmounted item was selected
             if (selectedPartition?.id === partition.id) {
               setSelectedPartition(undefined);
               setSelectedDisk(undefined);
@@ -586,7 +635,6 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
     };
   }, [disks, hideSystemPartitions, handleDiskSelect, handlePartitionSelect]);
 
-  // Handle loading and error states
   if (isLoading) {
     return <Typography>Loading volumes...</Typography>;
   }
@@ -599,9 +647,6 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
     );
   }
 
-  // Get the related share for the selected partition
-  //const selectedShare = Object.values(selectedPartition?.mount_point_data || {})[0]?.share;
-
   return (
     <>
       <VolumeMountDialog
@@ -610,11 +655,9 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
         readOnlyView={false}
         onClose={(data) => {
           if (showMount) {
-            // If it was open for mounting
             if (data) {
               onSubmitMountVolume(data);
             } else {
-              // Cancelled mount dialog or no data returned
               setSelectedPartition(undefined);
               setSelectedDisk(undefined);
               setSelectedPartitionId(undefined);
@@ -645,7 +688,6 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
           onClose={() => setShowFilesystemFormatDialog(false)}
         />
       )}
-      {/* PreviewDialog can show details for both disks and partitions */}
       <PreviewDialog
         title={
           selectedDisk && selectedPartition
@@ -663,19 +705,24 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
           setShowPreview(false);
         }}
       />
-      {/* Main Layout Grid */}
-      <Grid
-        container
-        spacing={2}
-        sx={{ minHeight: "calc(100vh - 200px)" }}
+      <Box
+        ref={containerRef}
+        sx={{
+          display: "flex",
+          minHeight: "calc(100vh - 200px)",
+          gap: 1,
+        }}
         data-tutor={`reactour__tab${TabIDs.VOLUMES}__step0`}
       >
-        {/* Left Panel - Tree View */}
-        <Grid size={{ xs: 12, sm: 5, md: 4, lg: 3 }}>
-          <Paper
-            sx={{ height: "100%", p: 1 }}
-            data-tutor={`reactour__tab${TabIDs.VOLUMES}__step3`}
-          >
+        <Box
+          sx={{
+            width: `${leftPanelPct}%`,
+            minWidth: 0,
+            flexShrink: 0,
+          }}
+          data-tutor={`reactour__tab${TabIDs.VOLUMES}__step3`}
+        >
+          <Paper sx={{ height: "100%", p: 1 }}>
             <Stack
               direction="row"
               sx={{
@@ -761,14 +808,32 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
               />
             )}
           </Paper>
-        </Grid>
+        </Box>
 
-        {/* Right Panel - Details */}
-        <Grid size={{ xs: 12, sm: 7, md: 8, lg: 9 }}>
-          <Paper
-            sx={{ height: "100%", overflow: "hidden" }}
-            data-tutor={`reactour__tab${TabIDs.VOLUMES}__step4`}
-          >
+        <Box
+          onMouseDown={handleDividerMouseDown}
+          sx={{
+            width: 6,
+            flexShrink: 0,
+            cursor: "col-resize",
+            backgroundColor: "divider",
+            borderRadius: 1,
+            alignSelf: "stretch",
+            transition: "background-color 0.15s",
+            "&:hover": {
+              backgroundColor: "primary.main",
+            },
+          }}
+        />
+
+        <Box
+          sx={{
+            flex: 1,
+            minWidth: 0,
+          }}
+          data-tutor={`reactour__tab${TabIDs.VOLUMES}__step4`}
+        >
+          <Paper sx={{ height: "100%", overflow: "hidden" }}>
             <Box data-tutor={`reactour__tab${TabIDs.VOLUMES}__step5`}>
               <VolumeDetailsPanel
                 disk={selectedDisk}
@@ -784,12 +849,11 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
                 onCreateShare={handleCreateShare}
                 onGoToShare={handleGoToShare}
                 onLabelUpdated={handlePartitionLabelUpdated}
-                //share={selectedShare}
               />
             </Box>
           </Paper>
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
     </>
   );
 }
