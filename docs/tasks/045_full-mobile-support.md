@@ -56,7 +56,7 @@ Make the SRAT frontend fully usable on mobile and small-screen devices (phones 3
 - [x] Task 9: Tests (Vitest + RTL + `user-event`, MSW handlers in `frontend/src/mocks/customHandlers.ts`) for each changed component: table renders without container overflow, SmartStatusPanel wraps, wizard step navigation at xs, NotificationCenter fits 320px
 - [x] Task 10: Browser verification — extend/run `mise run //frontend:test:browser` (Playwright via vitest browser config) with a 375px viewport smoke test over Dashboard/Volumes/Shares/Users/Settings asserting `scrollWidth <= clientWidth` and no `PARSING_ERROR`-style console errors
 - [x] Task 11: Update `CHANGELOG.md` under `## [ 🚧 Unreleased ]`
-- [ ] Task 12: Ask to create a PR with the task implementation and link it here for tracking
+- [x] Task 12: PR created — [srat#922](https://github.com/dianlight/srat/pull/922)
 
 ## 🧠 Implementation Notes (Copilot Context)
 
