@@ -37,7 +37,7 @@ export function ShareActions({
   onDelete,
 }: ShareActionsProps) {
   const theme = useTheme();
-  const isSmallScreen = useMediaQuery(theme.breakpoints.between("sm", "md"));
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down("md"));
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {

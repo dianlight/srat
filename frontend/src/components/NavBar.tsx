@@ -559,7 +559,10 @@ export function NavBar(props: {
                   component="span"
                   tabIndex={0}
                   aria-label="Development environment debug"
-                  sx={{ display: "inline-flex", outline: "none" }}
+                  sx={{
+                    display: { xs: "none", md: "inline-flex" },
+                    outline: "none",
+                  }}
                 >
                   <Tooltip
                     title={

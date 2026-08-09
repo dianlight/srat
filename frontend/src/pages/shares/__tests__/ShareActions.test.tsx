@@ -143,6 +143,45 @@ describe("ShareActions component", () => {
         expect(screen.getByRole("button", { name: /disable share/i })).toBeTruthy();
     });
 
+    it("renders compact menu on phone-sized screens (xs)", async () => {
+        // Regression: `isSmallScreen` previously used between("sm","md"),
+        // which excluded xs (phones < 600px) and forced the desktop layout.
+        // A phone-sized matchMedia matches max-width queries but NOT
+        // min-width:600px, so `down("md")` is true while `between("sm","md")`
+        // would have been false.
+        (window as any).matchMedia = (query: string) => ({
+            matches: query.includes("max-width") && !query.includes("min-width"),
+            addListener: () => {},
+            removeListener: () => {},
+            addEventListener: () => {},
+            removeEventListener: () => {},
+            dispatchEvent: () => false,
+            onchange: null,
+            media: query,
+        });
+
+        const share = buildShare();
+
+        render(
+            <ThemeProvider theme={theme}>
+                <ShareActions
+                    shareKey="shareKey"
+                    shareProps={share}
+                    protected_mode={false}
+                    onViewVolumeSettings={() => {}}
+                    onEnable={() => {}}
+                    onDisable={() => {}}
+                    onDelete={() => {}}
+                />
+            </ThemeProvider>,
+        );
+
+        // Compact menu is shown on phones: no inline desktop buttons...
+        expect(screen.queryByRole("button", { name: /disable share/i })).toBeNull();
+        // ...and the "more actions" menu button is present instead.
+        expect(screen.getByRole("button", { name: /more actions/i })).toBeTruthy();
+    });
+
     it("offers only delete for shares with status.is_valid === false", async () => {
         const brokenShare = {
             ...buildShare(),

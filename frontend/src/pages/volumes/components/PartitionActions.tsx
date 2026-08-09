@@ -54,7 +54,7 @@ export function PartitionActions({
   onFormatPartition,
 }: PartitionActionsProps) {
   const theme = useTheme();
-  const isSmallScreen = useMediaQuery(theme.breakpoints.between("sm", "lg"));
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down("lg"));
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {

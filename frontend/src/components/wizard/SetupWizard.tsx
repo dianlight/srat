@@ -6,6 +6,8 @@ import {
   StepLabel,
   Stepper,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import {
   createContext,
@@ -106,6 +108,8 @@ export function SetupWizard({
   const [isFinishing, setIsFinishing] = useState(false);
   const [isWaitingForClean, setIsWaitingForClean] = useState(false);
   const [finishError, setFinishError] = useState<string | null>(null);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const { data: settings } = useGetApiSettingsQuery();
   const { data: users } = useGetApiUsersQuery();
@@ -467,6 +471,7 @@ export function SetupWizard({
       }}
       maxWidth="sm"
       fullWidth
+      fullScreen={isMobile}
     >
       <DialogTitle id={WIZARD_TITLE_ID}>
         Setup Wizard
@@ -480,6 +485,7 @@ export function SetupWizard({
       </DialogTitle>
       <Stepper
         activeStep={activeStep}
+        orientation={isMobile ? "vertical" : "horizontal"}
         sx={{ px: 3, py: 2 }}
         aria-label="Setup wizard progress"
       >

@@ -124,7 +124,7 @@ export function ProcessMetrics({
           {process.status}
         </TableCell>
         <TableCell align="right">{pidDisplay}</TableCell>
-        <TableCell align="right" sx={{ minWidth: 150 }}>
+        <TableCell align="right" sx={{ minWidth: 110 }}>
           <Box
             sx={{
               display: "flex",
@@ -138,7 +138,13 @@ export function ProcessMetrics({
             >
               {cpuDisplay}
             </Typography>
-            <Box sx={{ width: 50, height: 20 }}>
+            <Box
+              sx={{
+                width: 50,
+                height: 20,
+                display: { xs: "none", sm: "block" },
+              }}
+            >
               {showCpuChart ? (
                 <SparkLineChart
                   data={cpuHistory[process.name] ?? []}
@@ -151,7 +157,7 @@ export function ProcessMetrics({
             </Box>
           </Box>
         </TableCell>
-        <TableCell align="right" sx={{ minWidth: 150 }}>
+        <TableCell align="right" sx={{ minWidth: 110 }}>
           <Box
             sx={{
               display: "flex",
@@ -165,7 +171,13 @@ export function ProcessMetrics({
             >
               {memoryDisplay}
             </Typography>
-            <Box sx={{ width: 50, height: 20 }}>
+            <Box
+              sx={{
+                width: 50,
+                height: 20,
+                display: { xs: "none", sm: "block" },
+              }}
+            >
               {showMemoryChart ? (
                 <SparkLineChart
                   data={memoryHistory[process.name] ?? []}
@@ -178,7 +190,7 @@ export function ProcessMetrics({
             </Box>
           </Box>
         </TableCell>
-        <TableCell align="right" sx={{ minWidth: 150 }}>
+        <TableCell align="right" sx={{ minWidth: 110 }}>
           <Box
             sx={{
               display: "flex",
@@ -192,7 +204,13 @@ export function ProcessMetrics({
             >
               {process.connections ?? "N/A"}
             </Typography>
-            <Box sx={{ width: 50, height: 20 }}>
+            <Box
+              sx={{
+                width: 50,
+                height: 20,
+                display: { xs: "none", sm: "block" },
+              }}
+            >
               {(connectionsHistory[process.name]?.length || 0) > 0 ? (
                 <SparkLineChart
                   data={connectionsHistory[process.name] ?? []}

@@ -165,7 +165,10 @@ export function NotificationCenter() {
           horizontal: "right",
         }}
       >
-        <Card variant="outlined" sx={{ minWidth: "22em" }}>
+        <Card
+          variant="outlined"
+          sx={{ minWidth: { xs: "min(22em, calc(100vw - 2rem))", sm: "22em" } }}
+        >
           <CardContent>
             <Toolbar variant="dense">
               <Box sx={{ flexGrow: 1, display: { xs: "none", md: "flex" } }}>

@@ -167,7 +167,7 @@ export function DiskHealthMetrics({
     const historyData = diskIoHistory[deviceName]?.[historyKey] ?? [];
 
     return (
-      <TableCell align="right" sx={{ minWidth: 150 }}>
+      <TableCell align="right" sx={{ minWidth: 110 }}>
         <Box
           sx={{
             display: "flex",
@@ -181,7 +181,9 @@ export function DiskHealthMetrics({
           >
             {valueLabel}
           </Typography>
-          <Box sx={{ width: 50, height: 20 }}>
+          <Box
+            sx={{ width: 50, height: 20, display: { xs: "none", sm: "block" } }}
+          >
             {historyData.length > 1 ? (
               <SparkLineChart
                 data={historyData}

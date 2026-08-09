@@ -716,7 +716,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
       >
         <Box
           sx={{
-            width: `${leftPanelPct}%`,
+            width: { xs: "min(45%, 180px)", sm: `${leftPanelPct}%` },
             minWidth: 0,
             flexShrink: 0,
           }}

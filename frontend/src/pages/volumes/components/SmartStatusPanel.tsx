@@ -464,6 +464,7 @@ function SmartStatusPanelInner({
                     sx={{
                       alignItems: "center",
                       justifyContent: "space-between",
+                      flexWrap: "wrap",
                     }}
                   >
                     <Stack
