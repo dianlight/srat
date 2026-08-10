@@ -26,7 +26,7 @@ import userEvent from "@testing-library/user-event";
 import { ConfirmProvider } from "material-ui-confirm";
 import type { ReactElement } from "react";
 import { MemoryRouter } from "react-router";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { BrowserPage } from "vitest/browser";
 import { renderWithTestStore } from "/test/testing";
 
@@ -65,9 +65,35 @@ function assertNoHorizontalOverflow(where: string) {
   ).toBeLessThanOrEqual(clientWidth);
 }
 
+// console.error args can be structured (RTK Query error objects, Error
+// instances); String() alone would flatten them to "[object Object]" and hide
+// a nested PARSING_ERROR. Serialize so the filter below can see them.
+function argToString(arg: unknown): string {
+  if (typeof arg === "string") return arg;
+  if (arg instanceof Error) return arg.message;
+  try {
+    return JSON.stringify(arg) ?? String(arg);
+  } catch {
+    return String(arg);
+  }
+}
+
 describe.runIf(!!page)("mobile 375px smoke", () => {
+  let consoleErrors: string[] = [];
+  let errorSpy: ReturnType<typeof vi.spyOn> | undefined;
+
   beforeEach(async () => {
     localStorage.clear();
+    consoleErrors = [];
+    errorSpy = vi.spyOn(console, "error").mockImplementation((...args: unknown[]) => {
+      consoleErrors.push(args.map(argToString).join(" "));
+    });
+  });
+
+  afterEach(() => {
+    // Always restore the spy so a failed assertion does not leak into later
+    // browser tests.
+    errorSpy?.mockRestore();
   });
 
   it(
@@ -75,13 +101,6 @@ describe.runIf(!!page)("mobile 375px smoke", () => {
     { timeout: 240_000 },
     async () => {
       await page!.viewport(375, 844);
-
-      const consoleErrors: string[] = [];
-      const errorSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation((...args: unknown[]) => {
-          consoleErrors.push(args.map(String).join(" "));
-        });
 
       localStorage.setItem("srat_tab", "0"); // Dashboard
       const { App } = await import("../../src/App");
@@ -143,7 +162,6 @@ describe.runIf(!!page)("mobile 375px smoke", () => {
         entry.includes("PARSING_ERROR"),
       );
       expect(parsingErrors).toEqual([]);
-      errorSpy.mockRestore();
     },
   );
 });

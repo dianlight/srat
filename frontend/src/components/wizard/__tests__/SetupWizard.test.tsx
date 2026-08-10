@@ -1,6 +1,13 @@
 import { delay, http, HttpResponse } from "msw";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { getMswServer } from "/test/testing";
+
+// Preserve the original matchMedia: the phone-sized test below overrides it
+// and must not leak the phone query results into later tests in this file.
+const originalMatchMedia = window.matchMedia;
+afterEach(() => {
+    window.matchMedia = originalMatchMedia;
+});
 
 async function renderWizard(SetupWizardComponent: any, props: Record<string, unknown>) {
     const React = await import("react");
