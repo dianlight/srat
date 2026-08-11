@@ -17,7 +17,6 @@
   meta gains `viewport-fit=cover` and a `theme-color`. A 375px browser smoke
   test walks every main tab asserting no horizontal document overflow.
 
-
 ### 🐛 Bug Fixes
 
 ### 🏗 Chore
