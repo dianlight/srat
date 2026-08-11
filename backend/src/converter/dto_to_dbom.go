@@ -130,7 +130,7 @@ type DtoToDbomConverter interface {
 	// goverter:map . IsValid | checkUserValid
 	//SambaUserToUser(source dbom.SambaUser, target *dto.User) error
 
-	// goverter:ignore _
+	// goverter:ignore _ HasDefaultPassword
 	// goverter:update:ignoreZeroValueField:basic no
 	// goverter:map . IsValid | checkUserValidStored
 	SambaUserToUser(source dbom.SambaUser) (target dto.User, err error)
