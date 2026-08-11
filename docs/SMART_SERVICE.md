@@ -6,6 +6,7 @@
   - [Build Modes](#build-modes)
     - [Default Exec Mode (no `smartlib` tag)](#default-exec-mode-no-smartlib-tag)
     - [Lib mode (`smartlib` tag)](#lib-mode-smartlib-tag)
+  - [Default Variant Policy (Addon Consumption)](#default-variant-policy-addon-consumption)
     - [Deploying to a remote addon (develop channel)](#deploying-to-a-remote-addon-develop-channel)
   - [Service Methods](#service-methods)
     - [GetHealthStatus(devicePath string)](#gethealthstatusdevicepath-string)
