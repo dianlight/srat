@@ -7,17 +7,11 @@ import {
   Typography,
 } from "@mui/material";
 import { useConfirm } from "material-ui-confirm";
-import {
-  type MouseEvent as ReactMouseEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { toast } from "react-toastify";
 import { PreviewDialog } from "../../components/PreviewDialog";
+import { ResizableSplitView } from "../../components/ResizableSplitView";
 import { useVolume } from "../../hooks/volumeHook";
 import { type LocationState, TabIDs } from "../../store/locationState";
 import {
@@ -46,10 +40,6 @@ import {
   getDiskIdentifier,
   getPartitionIdentifier,
 } from "./utils";
-
-const MIN_LEFT_PANEL_PCT = 15;
-const MAX_LEFT_PANEL_PCT = 60;
-const DEFAULT_LEFT_PANEL_PCT = 30;
 
 export function updatePartitionLabelInDisks(
   disks: Disk[] | undefined,
@@ -133,67 +123,6 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
   const [umountVolume, _umountVolumeResult] = useDeleteApiVolumeMutation();
   const [patchMountSettings] = usePatchApiVolumeSettingsMutation();
   const loggedLoadErrorRef = useRef<string>("");
-
-  const [leftPanelPct, setLeftPanelPct] = useState<number>(() => {
-    try {
-      const saved = localStorage.getItem("volumes.leftPanelPct");
-      if (saved) {
-        const pct = parseFloat(saved);
-        if (
-          !Number.isNaN(pct) &&
-          pct >= MIN_LEFT_PANEL_PCT &&
-          pct <= MAX_LEFT_PANEL_PCT
-        ) {
-          return pct;
-        }
-      }
-    } catch {}
-    return DEFAULT_LEFT_PANEL_PCT;
-  });
-
-  const isDragging = useRef(false);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-
-  const handleDividerMouseDown = useCallback((e: ReactMouseEvent) => {
-    e.preventDefault();
-    isDragging.current = true;
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
-  }, []);
-
-  useEffect(() => {
-    const handleMouseMove = (e: globalThis.MouseEvent) => {
-      if (!isDragging.current || !containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      const offsetX = e.clientX - rect.left;
-      const pct = (offsetX / rect.width) * 100;
-      const clamped = Math.min(
-        MAX_LEFT_PANEL_PCT,
-        Math.max(MIN_LEFT_PANEL_PCT, pct),
-      );
-      setLeftPanelPct(clamped);
-    };
-
-    const handleMouseUp = () => {
-      if (!isDragging.current) return;
-      isDragging.current = false;
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-    };
-  }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem("volumes.leftPanelPct", String(leftPanelPct));
-    } catch {}
-  }, [leftPanelPct]);
 
   useEffect(() => {
     setDisks(sourceDisks ?? []);
@@ -705,23 +634,15 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
           setShowPreview(false);
         }}
       />
-      <Box
-        ref={containerRef}
-        sx={{
-          display: "flex",
-          minHeight: "calc(100vh - 200px)",
-          gap: 1,
+      <ResizableSplitView
+        storageKey="volumes.leftPanelPct"
+        containerProps={{
+          "data-tutor": `reactour__tab${TabIDs.VOLUMES}__step0`,
         }}
-        data-tutor={`reactour__tab${TabIDs.VOLUMES}__step0`}
-      >
-        <Box
-          sx={{
-            width: { xs: "min(45%, 180px)", sm: `${leftPanelPct}%` },
-            minWidth: 0,
-            flexShrink: 0,
-          }}
-          data-tutor={`reactour__tab${TabIDs.VOLUMES}__step3`}
-        >
+        leftPanelProps={{
+          "data-tutor": `reactour__tab${TabIDs.VOLUMES}__step3`,
+        }}
+        leftPanel={
           <Paper sx={{ height: "100%", p: 1 }}>
             <Stack
               direction="row"
@@ -808,31 +729,11 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
               />
             )}
           </Paper>
-        </Box>
-
-        <Box
-          onMouseDown={handleDividerMouseDown}
-          sx={{
-            width: 6,
-            flexShrink: 0,
-            cursor: "col-resize",
-            backgroundColor: "divider",
-            borderRadius: 1,
-            alignSelf: "stretch",
-            transition: "background-color 0.15s",
-            "&:hover": {
-              backgroundColor: "primary.main",
-            },
-          }}
-        />
-
-        <Box
-          sx={{
-            flex: 1,
-            minWidth: 0,
-          }}
-          data-tutor={`reactour__tab${TabIDs.VOLUMES}__step4`}
-        >
+        }
+        rightPanelProps={{
+          "data-tutor": `reactour__tab${TabIDs.VOLUMES}__step4`,
+        }}
+        rightPanel={
           <Paper sx={{ height: "100%", overflow: "hidden" }}>
             <Box data-tutor={`reactour__tab${TabIDs.VOLUMES}__step5`}>
               <VolumeDetailsPanel
@@ -852,8 +753,8 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
               />
             </Box>
           </Paper>
-        </Box>
-      </Box>
+        }
+      />
     </>
   );
 }
