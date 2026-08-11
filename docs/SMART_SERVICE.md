@@ -91,14 +91,16 @@ mise run //backend:build --arch=aarch64 --version=... --zig
 > SMART service silently falls back to the exec backend.
 
 **Runtime requirement**: `libsmartmon_go.so` must be present at a known path (for example,
-`/usr/local/lib/libsmartmon_go.so` — see `defaultLibNames`/`defaultLibPaths` in
-`backend/src/vendor/github.com/dianlight/smartmontools-go/backends/lib/lib.go`).
+`/usr/local/lib/libsmartmon_go.so` — see `defaultLibNames`/`defaultLibPaths` in the
+vendored bindings `backend/src/vendor/github.com/dianlight/smartmontools-sdk/bindings/go/v8/backends/lib/lib.go`).
 
-The wrapper library is built from `smartmontools-go`'s csrc
-(`backends/lib/csrc/smartmon_c_api.cpp`) linked against a `-fPIC` build of
-`libsmartmon.a` from `github.com/dianlight/smartmontools-sdk`. On Alpine the
-prerequisites are `apk add build-base autoconf automake libtool git linux-headers`
-and `smartmon_config.h` must be copied next to the SDK headers
+The wrapper library ships prebuilt in the `smartmontools-sdk` release tarball
+(`lib/libsmartmon_go.so`, built from the SDK's C sources and the Go bindings
+C-API). The bindings module is
+`github.com/dianlight/smartmontools-sdk/bindings/go/v8` (replacing the old
+`smartmontools-go` wrapper). On Alpine the prerequisites are
+`apk add build-base autoconf automake libtool git linux-headers` and
+`smartmon_config.h` must be copied next to the SDK headers
 (`/usr/local/include/smartmon/`).
 
 The Direct SMART mode is visible in the UI only when all three conditions are met:
@@ -106,6 +108,35 @@ The Direct SMART mode is visible in the UI only when all three conditions are me
 1. The binary was compiled with `-tags smartlib`, **and**
 2. `libsmartmon_go.so` is detected at startup (`ApiCtx.LibSmartAvailable == true`), **and**
 3. Experimental Lab Mode is enabled in Settings.
+
+## Default Variant Policy (Addon Consumption)
+
+The SambaNAS2 addon image is **Alpine Linux (musl)**. The default variant policy for
+addon consumption is therefore:
+
+- **`srat-server-musl` is the default variant** — the `upgrade_service`
+  `detectBestServerVariant` helper prefers it whenever the system has a musl
+  dynamic linker (`/lib/ld-musl-{x86_64,aarch64}.so.1`) and the binary ships in
+  the update package. This is the only variant that is both dynamically linked
+  (so `dlopen` works) and compatible with Alpine.
+- **`srat-server-glib`** is selected on glibc systems (Debian/Ubuntu/HAOS
+  containers) when a glibc dynamic linker is detected.
+- **`srat-server-static`** is the always-safe fallback when neither dynamic
+  linker is detected or the dynamic variants are absent from the update package.
+  It is built without the `smartlib` tag, so SMART access falls back to exec.
+
+CI enforces this policy in `.github/workflows/build.yaml`:
+
+- **Release zips always contain `srat-server-musl`** — the zip-creation step
+  fails the build if a release archive is missing the musl smartlib variant.
+- **C-ABI contract guard** — the `verify-smartlib-wrapper-abi` job (runs on
+  every push/PR) downloads the `smartmontools-sdk` musl tarball tagged with the
+  exact version of `github.com/dianlight/smartmontools-sdk/bindings/go/v8`
+  vendored in `backend/src/go.mod`, and asserts the tarball ships
+  `lib/libsmartmon_go.so` exposing the `smartmon_abi_version` symbol (checked
+  via `nm -D`; the bindings verify abiMajor=1, abiMinor>=0 at load time).
+  If the release tag does not match the vendored ref — a symbol/ABI drift risk
+  (formerly smartmontools-go#38) — the job fails.
 
 ### Deploying to a remote addon (develop channel)
 

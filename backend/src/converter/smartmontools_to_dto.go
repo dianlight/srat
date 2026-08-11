@@ -1,7 +1,7 @@
 package converter
 
 import (
-	"github.com/dianlight/smartmontools-go"
+	"github.com/dianlight/smartmontools-sdk/bindings/go/v8"
 	"github.com/dianlight/srat/dto"
 )
 

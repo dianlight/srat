@@ -7,7 +7,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/dianlight/smartmontools-go"
+	"github.com/dianlight/smartmontools-sdk/bindings/go/v8"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/service"

@@ -5,8 +5,8 @@ package service
 import (
 	"log/slog"
 
-	"github.com/dianlight/smartmontools-go"
-	libbackend "github.com/dianlight/smartmontools-go/backends/lib"
+	"github.com/dianlight/smartmontools-sdk/bindings/go/v8"
+	libbackend "github.com/dianlight/smartmontools-sdk/bindings/go/v8/backends/lib"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/tlog"
 )
@@ -18,9 +18,7 @@ import (
 func initSmartClient(apiCtx *dto.ContextState) smartmontools.SmartClient {
 	libBe, libErr := libbackend.New(libbackend.WithTLogHandler(tlog.NewLoggerWithLevel(tlog.LevelInfo)))
 	if libErr == nil {
-		if apiCtx != nil {
-			apiCtx.LibSmartAvailable = true
-		}
+		recordLibSmartBackendOutcome(apiCtx, true, "")
 		slog.Info("SMART lib backend loaded (direct mode available)")
 		client, _ := smartmontools.NewClient(
 			smartmontools.WithBackend(libBe),
@@ -28,6 +26,7 @@ func initSmartClient(apiCtx *dto.ContextState) smartmontools.SmartClient {
 		)
 		return client
 	}
+	recordLibSmartBackendOutcome(apiCtx, false, libErr.Error())
 	slog.Info("SMART lib backend not available, falling back to exec backend", "reason", libErr.Error())
 	client, _ := smartmontools.NewClient(smartmontools.WithTLogHandler(tlog.NewLoggerWithLevel(tlog.LevelInfo)))
 	return client

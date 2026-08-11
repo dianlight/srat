@@ -905,6 +905,16 @@ func (self *UpgradeService) updateServerSymlink(targetDir string, updatePkg *Upd
 // It only considers variants that are present in the UpdatePackage to avoid selecting
 // stale binaries from previous installations.
 func detectBestServerVariant(targetDir string, updatePkg *UpdatePackage) string {
+	return detectBestServerVariantWithLinkerCheck(targetDir, updatePkg, func(path string) bool {
+		_, err := os.Stat(path)
+		return err == nil
+	})
+}
+
+// detectBestServerVariantWithLinkerCheck is detectBestServerVariant with an injectable
+// linker probe so unit tests can simulate musl/glibc systems without relying on the
+// linker layout of the test machine.
+func detectBestServerVariantWithLinkerCheck(targetDir string, updatePkg *UpdatePackage, linkerExists func(string) bool) string {
 	arch := runtime.GOARCH
 
 	// Build a set of variant names present in the update package
@@ -928,10 +938,8 @@ func detectBestServerVariant(targetDir string, updatePkg *UpdatePackage) string 
 			case "arm64":
 				muslLinker = "/lib/ld-musl-aarch64.so.1"
 			}
-			if muslLinker != "" {
-				if _, err := os.Stat(muslLinker); err == nil {
-					return "srat-server-musl"
-				}
+			if muslLinker != "" && linkerExists(muslLinker) {
+				return "srat-server-musl"
 			}
 		}
 	}
@@ -946,7 +954,7 @@ func detectBestServerVariant(targetDir string, updatePkg *UpdatePackage) string 
 				"/lib/aarch64-linux-gnu/libc.so.6", // Debian/Ubuntu aarch64
 			}
 			for _, indicator := range glibcIndicators {
-				if _, err := os.Stat(indicator); err == nil {
+				if linkerExists(indicator) {
 					return "srat-server-glib"
 				}
 			}

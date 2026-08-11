@@ -1242,6 +1242,8 @@ export type SystemCapabilities = {
   has_kernel_module: boolean;
   /** Whether the lib SMART backend (libsmartmon_go.so) is available at runtime */
   lib_smart_available: boolean;
+  /** Reason why the lib SMART backend is unavailable (empty when lib_smart_available is true) */
+  lib_smart_unavailable_reason?: string;
   /** Installed Samba version */
   samba_version: string;
   /** Whether Samba version >= 4.23.0 */

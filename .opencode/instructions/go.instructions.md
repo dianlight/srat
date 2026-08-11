@@ -435,14 +435,14 @@ if errors.As(err, &appErr) { ... }
 
 ## Service Ownership Rules
 
-### SmartService is the sole `smartmontools-go` contact point
+### SmartService is the sole smartmontools bindings contact point
 
-- **`service.SmartService` is the only place** that may import or use `github.com/dianlight/smartmontools-go` or `github.com/dianlight/smartmontools-go/backends/lib`.
+- **`service.SmartService` is the only place** that may import or use `github.com/dianlight/smartmontools-sdk/bindings/go/v8` or `github.com/dianlight/smartmontools-sdk/bindings/go/v8/backends/lib` (the SDK bindings module, which replaced the retired `smartmontools-go` wrapper).
 - `smartmontools.SmartClient` must **never** be created, wired, or provided outside `smart_service.go`. In particular:
   - Do **not** add an `fx.Provide` for `smartmontools.SmartClient` in `main-server.go` or any `appsetup` helper.
   - Do **not** inject `smartmontools.SmartClient` into any handler, other service, or `cmd` package.
 - Client initialisation logic (lib backend probe → exec fallback, `LibSmartAvailable` flag) lives exclusively in `NewSmartService`. When `SmartServiceParams.Client` is non-nil (test mock injected via FX), that client is used as-is; otherwise `NewSmartService` initialises one internally.
-- If a new smartmontools-go feature is needed elsewhere in the codebase, extend `SmartServiceInterface` instead of leaking the library type.
+- If a new smartmontools bindings feature is needed elsewhere in the codebase, extend `SmartServiceInterface` instead of leaking the library type.
 
 ### DTO Separation: Settings vs SystemCapabilities
 
