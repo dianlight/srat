@@ -6,6 +6,18 @@
 
 ### ✨ Features
 
+- **Full mobile support**: the UI is now fully usable on phones (320–430px)
+  and small tablets. Dashboard metric tables compact their cells and hide the
+  sparkline charts on xs so they fit their containers, the SMART self-test
+  status row wraps instead of overflowing, the setup wizard goes full-screen
+  with a vertical stepper below `sm`, the notification center popover caps its
+  width to the viewport, the volumes left panel clamps to `min(45%, 180px)` on
+  phones, the NavBar hides the dev-inspector icon below `md`, and the
+  Shares/Partitions action menus now use their compact form on xs. The viewport
+  meta gains `viewport-fit=cover` and a `theme-color`. A 375px browser smoke
+  test walks every main tab asserting no horizontal document overflow.
+
+
 ### 🐛 Bug Fixes
 
 ### 🏗 Chore

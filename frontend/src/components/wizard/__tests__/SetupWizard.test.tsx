@@ -1,6 +1,13 @@
 import { delay, http, HttpResponse } from "msw";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { getMswServer } from "/test/testing";
+
+// Preserve the original matchMedia: the phone-sized test below overrides it
+// and must not leak the phone query results into later tests in this file.
+const originalMatchMedia = window.matchMedia;
+afterEach(() => {
+    window.matchMedia = originalMatchMedia;
+});
 
 async function renderWizard(SetupWizardComponent: any, props: Record<string, unknown>) {
     const React = await import("react");
@@ -182,6 +189,51 @@ describe("SetupWizard", () => {
         expect(settingsCalled).toBe(false);
         expect(userAdminCalled).toBe(false);
         expect(shareCalled).toBe(false);
+    });
+
+    it("renders full-screen dialog and vertical stepper on phone-sized screens (xs)", async () => {
+        const server = getMswServer();
+        server.use(
+            http.get("/api/settings", () =>
+                HttpResponse.json({ hostname: "mynas", workgroup: "WORKGROUP", telemetry_mode: "Disabled" })
+            ),
+            http.get("/api/users", () =>
+                HttpResponse.json([{ is_admin: true, has_default_password: false, username: "admin" }])
+            ),
+            http.get("/api/hostname", () => HttpResponse.json("mynas")),
+            http.get("/api/nics", () =>
+                HttpResponse.json([{ name: "eth0", addrs: [], flags: [], hardwareAddr: "", index: 0, mtu: 1500 }])
+            ),
+            http.get("/api/volumes", () => HttpResponse.json([])),
+            http.get("/api/telemetry/internet/connection", () => HttpResponse.json(false)),
+        );
+
+        // Phone-sized matchMedia: matches max-width queries (down("sm")) but
+        // not min-width queries.
+        (window as any).matchMedia = (query: string) => ({
+            matches: query.includes("max-width") && !query.includes("min-width"),
+            addListener: () => {},
+            removeListener: () => {},
+            addEventListener: () => {},
+            removeEventListener: () => {},
+            dispatchEvent: () => false,
+            onchange: null,
+            media: query,
+        });
+
+        const { screen } = await import("@testing-library/react");
+        // @ts-expect-error - query suffix ensures isolated module instance for test
+        const { SetupWizard } = await import("../SetupWizard?wizard-test-mobile");
+
+        await renderWizard(SetupWizard, { open: true, onClose: () => {} });
+
+        const dialog = await screen.findByRole("dialog", { name: /setup wizard/i });
+        // fullScreen on phones so the dialog occupies the whole viewport
+        expect(dialog.className).toContain("MuiDialog-paperFullScreen");
+
+        // Stepper is vertical on phones so the 6 steps do not scroll sideways
+        const stepper = screen.getByLabelText("Setup wizard progress");
+        expect(stepper.className).toContain("MuiStepper-vertical");
     });
 
     it("accepts open=false and does not render step labels", async () => {

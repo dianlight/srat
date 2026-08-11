@@ -91,7 +91,7 @@ export function NetworkHealthMetrics({
               </TableCell>
               <TableCell align="right">{nic.ip || "-"}</TableCell>
               <TableCell align="right">{nic.netmask || "-"}</TableCell>
-              <TableCell align="right" sx={{ minWidth: 150 }}>
+              <TableCell align="right" sx={{ minWidth: 110 }}>
                 <Box
                   sx={{
                     display: "flex",
@@ -105,7 +105,13 @@ export function NetworkHealthMetrics({
                   >
                     {filesize(nic.inboundTraffic)}/s
                   </Typography>
-                  <Box sx={{ width: 50, height: 20 }}>
+                  <Box
+                    sx={{
+                      width: 50,
+                      height: 20,
+                      display: { xs: "none", sm: "block" },
+                    }}
+                  >
                     {(networkTrafficHistory[nic.deviceName]?.inbound?.length ||
                       0) > 1 ? (
                       <SparkLineChart
@@ -121,7 +127,7 @@ export function NetworkHealthMetrics({
                   </Box>
                 </Box>
               </TableCell>
-              <TableCell align="right" sx={{ minWidth: 150 }}>
+              <TableCell align="right" sx={{ minWidth: 110 }}>
                 <Box
                   sx={{
                     display: "flex",
@@ -135,7 +141,13 @@ export function NetworkHealthMetrics({
                   >
                     {filesize(nic.outboundTraffic)}/s
                   </Typography>
-                  <Box sx={{ width: 50, height: 20 }}>
+                  <Box
+                    sx={{
+                      width: 50,
+                      height: 20,
+                      display: { xs: "none", sm: "block" },
+                    }}
+                  >
                     {(networkTrafficHistory[nic.deviceName]?.outbound?.length ||
                       0) > 1 ? (
                       <SparkLineChart

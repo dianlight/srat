@@ -39,6 +39,46 @@ describe("PartitionActions component", () => {
         }
     };
 
+    it("renders compact menu on phone-sized screens (xs)", async () => {
+        // Regression: `isSmallScreen` previously used between("sm","lg"),
+        // which excluded xs (phones < 600px) and forced the desktop icon
+        // row. A phone-sized matchMedia matches max-width queries but NOT
+        // min-width:600px, so `down("lg")` is true while `between("sm","lg")`
+        // would have been false.
+        (window as any).matchMedia = (query: string) => ({
+            matches: query.includes("max-width") && !query.includes("min-width"),
+            addListener: () => {},
+            removeListener: () => {},
+            addEventListener: () => {},
+            removeEventListener: () => {},
+            dispatchEvent: () => false,
+            onchange: null,
+            media: query,
+        });
+
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const { PartitionActions } = await import("../PartitionActions");
+
+        const partition = buildPartition();
+        render(
+            React.createElement(PartitionActions as any, {
+                partition,
+                protected_mode: false,
+                onToggleAutomount: () => {},
+                onMount: () => {},
+                onUnmount: () => {},
+                onCreateShare: () => {},
+                onGoToShare: () => {},
+            })
+        );
+
+        // Compact menu on phones: no inline desktop buttons...
+        expect(screen.queryByLabelText("mount partition")).toBeNull();
+        // ...and the "more actions" menu button is present instead.
+        expect(screen.getByRole("button", { name: /more actions/i })).toBeTruthy();
+    });
+
     it("renders action buttons for non-protected partition", async () => {
         const React = await import("react");
         const { render } = await import("@testing-library/react");
