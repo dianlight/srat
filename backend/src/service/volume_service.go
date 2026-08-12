@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	"fmt"
 
@@ -64,6 +65,17 @@ type VolumeService struct {
 	procfsGetMounts func() ([]*procfs.MountInfo, error)
 	disks           *dto.DiskMap
 	refreshVersion  uint32
+
+	// Provisional recheck of whole-disk synthesized entries. When a snapshot
+	// catches a partitioned drive before its partition children are visible,
+	// the hardware client synthesizes a whole-disk filesystem entry (e.g. a
+	// partition named "sda" on disk "sda"). That snapshot can stay cached long
+	// past the boot race, so we re-fetch a few times until the entry settles
+	// (or the attempt budget is exhausted).
+	recheckInterval        time.Duration
+	maxProvisionalRechecks int
+	pendingRecheck         *provisionalRecheckState
+	recheckMu              sync.Mutex
 }
 
 type VolumeServiceProps struct {
@@ -101,6 +113,9 @@ func NewVolumeService(
 		procfsGetMounts: procfs.GetMounts,
 		disks:           in.Disks,
 		refreshVersion:  0,
+
+		recheckInterval:        15 * time.Second,
+		maxProvisionalRechecks: 5,
 	}
 
 	var unsubscribe [7]func()
@@ -609,6 +624,24 @@ func (self *VolumeService) getVolumesData() errors.E {
 				}
 			}
 		}
+
+		// Evict disks that were not part of the latest hardware snapshot.
+		// Every disk upserted above carries the current RefreshVersion, so
+		// anything left with an older version was absent from the snapshot and
+		// must be dropped. Without this, removed drives (and drives that
+		// briefly vanish from a snapshot) would stay in the map as phantom
+		// volumes until their next udev event.
+		for id, disk := range *self.disks {
+			if disk.RefreshVersion != self.refreshVersion {
+				self.disks.Remove(id)
+				self.eventBus.EmitDisk(events.DiskEvent{
+					Event: events.Event{Type: events.EventTypes.REMOVE},
+					Disk:  disk,
+				})
+			}
+		}
+
+		self.manageProvisionalRechecks()
 		return nil, nil
 	})
 
@@ -618,6 +651,103 @@ func (self *VolumeService) getVolumesData() errors.E {
 	}
 
 	return nil
+}
+
+// provisionalRecheckState tracks the bounded recheck chain for whole-disk
+// synthesized entries.
+type provisionalRecheckState struct {
+	attempts int
+	timer    *time.Timer
+}
+
+// isWholeDiskSynthesized reports whether the disk carries a single partition
+// whose legacy device name equals the disk's own name (e.g. a partition "sda"
+// on disk "sda"). Real partition children always append a number ("sda1"), so
+// this shape only occurs for whole-disk filesystems: either a genuine
+// superfloppy drive or a snapshot taken before the drive's partition table was
+// enumerated.
+func (self *VolumeService) isWholeDiskSynthesized(d *dto.Disk) bool {
+	if d == nil || d.Partitions == nil || len(*d.Partitions) != 1 || d.LegacyDeviceName == nil {
+		return false
+	}
+	for _, part := range *d.Partitions {
+		return part.LegacyDeviceName != nil && *part.LegacyDeviceName == *d.LegacyDeviceName
+	}
+	return false
+}
+
+func (self *VolumeService) hasWholeDiskSynthesizedDisks() bool {
+	for _, disk := range *self.disks {
+		if self.isWholeDiskSynthesized(disk) {
+			return true
+		}
+	}
+	return false
+}
+
+// manageProvisionalRechecks keeps a bounded, time-based reconciliation loop
+// running while the disk map contains whole-disk synthesized entries.
+// Event-driven invalidation alone cannot heal those entries when the boot race
+// happened before the relevant udev events were observable, so a few forced
+// refreshes are scheduled until the layout settles or the budget runs out.
+func (self *VolumeService) manageProvisionalRechecks() {
+	self.recheckMu.Lock()
+	defer self.recheckMu.Unlock()
+
+	if self.recheckInterval <= 0 {
+		self.recheckInterval = 15 * time.Second
+	}
+	if self.maxProvisionalRechecks <= 0 {
+		self.maxProvisionalRechecks = 5
+	}
+
+	if !self.hasWholeDiskSynthesizedDisks() {
+		if self.pendingRecheck != nil && self.pendingRecheck.timer != nil {
+			self.pendingRecheck.timer.Stop()
+		}
+		self.pendingRecheck = nil
+		return
+	}
+
+	if self.pendingRecheck == nil {
+		self.pendingRecheck = &provisionalRecheckState{attempts: self.maxProvisionalRechecks}
+	}
+	if self.pendingRecheck.attempts <= 0 {
+		// The entry never settled; keep the current state and stop probing.
+		self.pendingRecheck = nil
+		return
+	}
+	self.pendingRecheck.attempts--
+	self.pendingRecheck.timer = time.AfterFunc(self.recheckInterval, self.runProvisionalRecheck)
+}
+
+// runProvisionalRecheck forces a fresh hardware fetch and re-synchronizes the
+// volume cache, letting a whole-disk synthesized entry be replaced by the real
+// partition layout once the system has settled.
+func (self *VolumeService) runProvisionalRecheck() {
+	if self.ctx.Err() != nil {
+		return
+	}
+	if self.hardwareClient != nil {
+		self.hardwareClient.InvalidateHardwareInfo()
+	}
+	if err := self.getVolumesData(); err != nil {
+		slog.ErrorContext(self.ctx, "Failed to refresh volume cache during provisional recheck", "err", err)
+	}
+}
+
+// handleDiskUdevRemoveEvent reacts to a block device being removed from the
+// host. The hardware snapshot is invalidated and the volume cache refreshed;
+// reconciliation then evicts the disk because it is absent from the new
+// snapshot (see the pruning step in getVolumesData).
+func (self *VolumeService) handleDiskUdevRemoveEvent(devName string) {
+	slog.InfoContext(self.ctx, "Processing block device removal event", "devname", devName)
+	if self.hardwareClient != nil {
+		self.hardwareClient.InvalidateHardwareInfo()
+	}
+	if err := self.getVolumesData(); err != nil {
+		slog.ErrorContext(self.ctx, "Failed to refresh volume cache after disk removal event", "devname", devName, "err", err)
+	}
 }
 
 func (self *VolumeService) handleFilesystemTaskEvent(ctx context.Context, e events.FilesystemTaskEvent) errors.E {
@@ -656,11 +786,7 @@ func (self *VolumeService) findDiskForDevicePath(devicePath string) *dto.Disk {
 	}
 
 	normalizedDevice := strings.TrimSpace(devicePath)
-	var fallback *dto.Disk
 	for _, disk := range *self.disks {
-		if fallback == nil {
-			fallback = disk
-		}
 		if disk.Partitions == nil {
 			continue
 		}
@@ -671,7 +797,7 @@ func (self *VolumeService) findDiskForDevicePath(devicePath string) *dto.Disk {
 		}
 	}
 
-	return fallback
+	return nil
 }
 
 func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.PartitionEvent) errors.E {

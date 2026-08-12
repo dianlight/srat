@@ -46,12 +46,13 @@ func (self *VolumeService) udevEventHandler() {
 					continue
 				}
 				if action == "remove" && devType == "disk" {
-					bus := uevent.Env["ID_BUS"]
-					suffix := uevent.Env[".PART_SUFFIX"]
-					serial := uevent.Env["ID_SERIAL"]
-
-					slog.InfoContext(self.ctx, "Processing block device removal event", "devname", devName, "bus", bus, "serial", serial, "suffix", suffix)
-					self.disks.Remove(bus + "-" + serial + suffix)
+					// Removal is handled by invalidating the hardware cache and
+					// re-synchronizing the volume map; reconciliation evicts the
+					// disk because it is absent from the new snapshot. (The
+					// previous implementation tried to delete by a fabricated
+					// "bus-serial-suffix" key that never matches the by-id key
+					// in the map, so removed disks stayed visible.)
+					self.handleDiskUdevRemoveEvent(devName)
 				} else if devType == "disk" && action == "add" {
 					slog.InfoContext(self.ctx, "Processing block device event", "action", action, "devname", devName)
 
