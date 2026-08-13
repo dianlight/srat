@@ -46,14 +46,26 @@ Simplify, speed up, and make bug/process-resistant the volume subsystem (disk �
 
 ---
 
-### B2 — `IsToMountAtStartup` silently wiped when a mount is discovered from procfs
+### B2 — `persistMountPoint` nil-wipes DB columns on mount point events (automount flag, flags, share)
 
 **File:** `volume_service.go:868-899` → `handleMountPointEvent` → `persistMountPoint` (line 225: `clause.OnConflict{UpdateAll: true}`)
 **Root cause chain:**
 
-1. `handlePartitionEvent` finds a mount in `/proc/mounts` not yet in cache → builds `dto.MountPointData{...}` (line 871) **without setting `IsToMountAtStartup`** (nil).
+1. `handlePartitionEvent` finds a mount in `/proc/mounts` not yet in cache → builds `dto.MountPointData{...}` (line 871) carrying only procfs-derived fields.
 2. Emits `MountPointEvent{Type: ADD}` (line 895).
-3. `handleMountPointEvent` (line 938) receives it and calls `persistMountPoint` → `UpdateAll: true` upsert → **NULLs the `is_to_mount_at_startup` column**, erasing the user's automount preference.
+3. `handleMountPointEvent` (line 938) receives it and calls `persistMountPoint` → `UpdateAll: true` upsert.
+
+**Mechanism (verified in `converter/dto_to_dbom_conv_gen.go:108-136`):** `persistMountPoint` converts into a **fresh zero-value** `dbom.MountPointPath{}`. The converter's nil-guards (`if source.IsToMountAtStartup != nil`) only skip the assignment — the target field stays zero — and `UpdateAll: true` then writes **every** column including the zeros. Net effect: every event whose DTO lacks a field NULLs that column in the DB:
+
+| DTO field missing in event | DB column wiped |
+|----------------------------|-----------------|
+| `IsToMountAtStartup`       | `is_to_mount_at_startup` (user's automount preference) |
+| `Flags`                    | `flags` |
+| `CustomFlags`              | `data` (custom flags) |
+| `Share`                    | `exported_share` FK (share association) |
+| `FSType`, `Root`, `Type`, `DeviceId` | same-named columns |
+
+The procfs-discovery ADD path is the primary wipe vector; the stale-marking UPDATE path (line 926) re-emits whatever the cache holds, propagating already-wiped state back to the DB.
 
 **Evidence:** any user who enables automount on a mount point, then triggers a volume refresh (udev event, HA start, provisional recheck) before the next mount event round-trip loses the flag. The `TestPatchMountPointSettings_UpdatesStartupFlagInGetVolumesData` test only passes because procfs mock returns empty mounts — it never exercises the collision.
 
@@ -64,12 +76,15 @@ if existing, err := gorm.G[dbom.MountPointPath](self.db).
     Where(g.MountPointPath.Path.Eq(prtstate.MountPoint)).
     First(self.ctx); err == nil {
     mountPoint.IsToMountAtStartup = existing.IsToMountAtStartup
+    mountPoint.Flags = existing.Flags
+    mountPoint.CustomFlags = existing.Data
+    // do NOT merge Share — it is owned by the share service
 }
 ```
 
-Alternatively: make `persistMountPoint` use a selective column update (`clause.OnConflict{DoUpdates: ...}` on non-nil fields only). The merge-approach is safer and explicit.
+Additionally make `persistMountPoint` defensive: load-then-merge (convert into the existing DB record like `PatchMountPointSettings` does) instead of converting into a fresh struct, so nil fields can never overwrite persisted values.
 
-**Tests:** `TestPartitionEvent_ProcfsDiscoveryPreservesStartupFlag`: seed DB with `IsToMountAtStartup=true`, mock procfs with a matching mount, emit partition event, assert DB row still has `true`.
+**Tests:** `TestPartitionEvent_ProcfsDiscoveryPreservesStartupFlag`: seed DB with `IsToMountAtStartup=true` + flags, mock procfs with a matching mount, emit partition event, assert DB row still has `true` and flags intact. Extend to the stale-marking path.
 
 ---
 
@@ -196,18 +211,17 @@ Cost per full refresh with P partitions: P × (`loadMountPointFromDB` query + `p
 
 **File:** `volume_service.go:293-299` vs `346-352` — identical `md.Partition.DevicePath == nil || *md.Partition.DevicePath == ""` check twice; the second is unreachable. Delete lines 346-352's duplicated branch (keep the `os.Stat` existence check that follows it).
 
-### H4 — `PatchMountPointSettings` full-converter overwrite risk
+### H4 — `PatchMountPointSettings` partial-PATCH semantics (verified: mostly safe, one quirk)
 
-**File:** `volume_service.go:996` — `convDto.MountPointDataToMountPointPath(patchData, &dbMountData)` copies the patch over the loaded DB row. If the generated converter copies nil pointer fields as nil, a partial PATCH (e.g. only `is_to_mount_at_startup`) nil-wipes `flags`/`custom_flags`/`fstype`. The current frontend always spreads the full object so this is latent, not live — but the API contract says PATCH. Verify converter nil-handling; if it nil-wipes, switch to explicit field assignment:
+**File:** `volume_service.go:990-1012`
+**Second-cycle verification (converter source `dto_to_dbom_conv_gen.go:108-136`):** the patch flow converts into the **DB-loaded** record, and the converter nil-guards `Path`/`Root`/`Type`/`DeviceId`/`FSType`/`IsToMountAtStartup` — nil patch fields leave the loaded values intact. The three unconditional assignments (`Flags` line 125, `Data` line 126, `ExportedShare` line 134) do nil-overwrite the loaded record, **but** the subsequent `gorm.Updates(ctx, &dbMountData)` skips zero-value (nil pointer) struct fields, so the DB keeps its values. The real nil-wipe danger lives in `persistMountPoint` (see B2), not here.
 
-```go
-if patchData.IsToMountAtStartup != nil {
-    dbMountData.IsToMountAtStartup = patchData.IsToMountAtStartup
-}
-// ... repeat per patchable field
-```
+**Residual issues:**
 
-**Tests:** PATCH with only `IsToMountAtStartup` set → assert `fstype`/`flags` unchanged in DB (extend `TestPatchMountPointSettings_Success_OnlyStartup` — it already asserts fstype preserved, but via the service's own converter path; add a DB-level assertion).
+1. `Updates` returns `affected == 0` when the patch contains only nil/zero fields → handler returns **404 "not found"** (line 1010-1011) for an existing record — misleading status code; should be 200 (no-op) or 400.
+2. The frontend's `handleToggleAutomount` sends `share: undefined` explicitly (`Volumes.tsx:570`) — harmless today only because of GORM's zero-skip; the intent ("don't touch the share") is implicit, not explicit. Document it or strip the field client-side.
+
+**Tests:** PATCH with empty body / all-nil fields → expect 200 no-op (after fix), assert no DB changes; PATCH with only `IsToMountAtStartup` → assert `flags`/`fstype`/share FK unchanged at DB level (extend `TestPatchMountPointSettings_Success_OnlyStartup`).
 
 ### H5 — `GetVolumesData()` masks load errors as "no disks"
 
@@ -215,18 +229,50 @@ if patchData.IsToMountAtStartup != nil {
 
 **Tests:** hardware client returns error → `GET /volumes` returns 500 (today: 200 + `[]`).
 
-### H6 — `volumeMountManager.Unmount` directory removal semantics
+### H6 — Unmount flag semantics inverted: "force" can fail while "normal" never does (verified)
 
-**File:** `volume_mount_manager.go:162-174`
+**File:** `volume_mount_manager.go:162` → `filesystem_service.go:981` → u-root `mount_linux.go:133-151`
+**Verified kernel semantics:** the call `UnmountPartition(m.ctx, md.Path, fsType, force, !force)` maps to:
 
-- `UnmountPartition(ctx, path, fsType, force, !force)` — lazy flag is `!force`, so a **normal** unmount is lazy. Lazy + immediate `os.Remove(md.Path)` races in-flight I/O; prefer `lazy=false` for normal unmount and only lazy for force, or drop the directory removal when lazy.
-- `os.Remove` on a non-empty pre-existing directory fails (Warn only) → stale empty-ish dirs accumulate under `/mnt`. Document or switch to "remove only if we created it" (track creation in `Mount`).
+- **Normal unmount** (`force=false` → `lazy=true`) → `MNT_DETACH`: always "succeeds" immediately, even with open files — busy state is hidden, I/O errors surface in still-running consumers later.
+- **Force unmount** (`force=true` → `lazy=false`) → `MNT_FORCE` only: on busy local filesystems this **fails with EBUSY**. The u-root library explicitly rejects combining both flags (`mount_linux.go:138-139`).
 
-**Tests:** fake fs service: (a) normal unmount asserts `lazy=false`; (b) unmount with pre-existing non-empty dir → no error returned, dir preserved.
+This is the opposite of user expectations: the UI presents "Force Unmount" as the stronger action (red button, data-loss warning), but it is the one that fails when the volume is busy, while the graceful path silently detaches. Suggested fix: normal unmount = no flags (fail on busy → user sees the real error), force unmount = `MNT_DETACH` (guaranteed detach), i.e. pass `force=false, lazy=force` and drop the directory removal when lazy. Keep the `os.Remove`-only-if-empty behavior (fails with Warn today — acceptable, but stale dirs under `/mnt` accumulate; consider tracking "we created it" in `Mount`).
+
+**Tests:** fake unmount func capturing flags: (a) normal → `(force=false, lazy=false)` after fix; (b) force → `(force=false, lazy=true)`; (c) busy error propagated on normal unmount.
 
 ### H7 — udev goroutine lifecycle
 
 **File:** `volume_service_udev_linux.go:23-35` — `queue := make(chan netlink.UEvent, 10)`: on udev burst >10 events, netlink lib blocks or drops (impl-dependent); on shutdown `close(quit)` stops the monitor but an in-flight `queue <-` send may leak the producer goroutine. Buffer to 64+ and drain `queue`/`errorChan` after `close(quit)` before returning. Low frequency, low severity, cheap fix.
+
+### H8 — Hardware-cache aliasing: `getVolumesData` mutates the shared 30-minute cache (race risk)
+
+**File:** `volume_service.go:557-606` (second-cycle finding)
+`self.hardwareClient.GetHardwareInfo()` returns the **cached** `dto.DiskMap` (30-min TTL). The loop copies each `dto.Disk` value, but `disk.Partitions` is a `*map[string]dto.Partition` — a **pointer shared with the cached map**. Line 606 `(*disk.Partitions)[pid] = part` writes `FilesystemInfo` through that shared pointer, mutating the cache itself. Two consequences:
+
+1. **Cache pollution:** the hardware cache no longer represents pure hardware state; it accumulates `FilesystemInfo` enrichment. Mostly idempotent today, but the cached shape now depends on which service touched it first.
+2. **Concurrent map read/write → panic risk:** the same map object is served to `api/hdidle_handler.go:77` (an HTTP handler on a different goroutine). If a HDIdle request iterates the map while `getVolumesData` writes a partition entry, Go panics with "concurrent map read and map write" → process crash.
+
+Fix: deep-copy the partition map (or the whole DiskMap) before enrichment in `getVolumesData`; alternatively make `GetHardwareInfo` return an immutable snapshot (defensive copy at cache boundary). The B1 lock does not fix this — the aliasing exists even with correct locking, because two different lock domains (hardware cache vs DiskMap) guard the same memory.
+
+**Test:** unit test calling `GetHardwareInfo()` concurrently with `GetVolumesData()` (loop 1000×) under `-race`; assert no race and no FilesystemInfo leak into the raw hardware cache.
+
+### H9 — Event-bus handlers swallow errors: DB failures invisible to callers
+
+**File:** `volume_service.go:604-605` — `_ = emitEvent(...)` and `_ = emitDisk(...)` discard the error returned by `handlePartitionEvent` / `handleDiskEvent`. Those handlers perform DB I/O (`loadMountPointFromDB`, persists) — a DB failure there is logged inside the handler (if at all) but never surfaces to the operation that triggered the event (e.g. the mount flow), and the event bus itself only reports panic recovery, not handler errors. Observability + correctness gap: a failed persist looks like a successful volume operation.
+
+Fix: at minimum, log the emitted-handler error with context at the emit site (keep the bus fire-and-forget contract but make failures visible); for the mount path, consider propagating DB-persist errors from `handlePartitionEvent` back through the emit path when the trigger is synchronous (the bus is synchronous per `signals_sync.go`).
+
+**Test:** fake event bus returning an error from the partition handler → assert the error is logged (capture log) and, for the mount flow, propagated.
+
+### H10 — `GetVolumesData` lazy-load executes hardware I/O inside HTTP request path
+
+**File:** `volume_service.go:1015` (converter context) + `ListVolumes` (`api/volumes.go`)
+`GetVolumesData()` performs `getVolumesData` (procfs + hardware fetch + DB) whenever the cache is empty. `ListVolumes` and `PatchMountPointSettings` both run it synchronously inside the HTTP handler. After startup (or after H5's error case left the cache empty), the **first request blocks on a multi-second hardware discovery**, with the client seeing a stall — and H5 means it returns `[]` on failure anyway. 
+
+Fix: warm the cache at service start (async) so the first HTTP request never pays discovery cost; keep the lazy path only as fallback. Consider returning 503 while the cache is cold instead of `[]` (ties into H5).
+
+**Test:** API test with empty cache → assert response time budget (or that cache-warm request returns immediately); service-start warmup test asserting `GetHardwareInfo` called once at boot.
 
 ---
 
@@ -270,12 +316,19 @@ Refactor per the Dialog Pattern in the instruction file; behavior unchanged. Thi
 
 **File:** `Volumes.tsx:539-588` — loops `Object.entries(partition.mount_point_data)` firing one PATCH per mount point, no `await`, no aggregate error handling, one toast per mount point. For multi-mount partitions this spams toasts and can interleave failures. Fix: aggregate into a single `Promise.allSettled`, one summary toast; ideally add a backend bulk endpoint later (out of scope here).
 
-### F5 — Identifier helpers use array indices
+### F5 — Identifier helpers: stable IDs preferred, index only as last resort (second-cycle correction)
 
-**File:** `Volumes.tsx` + `volumes/utils.ts` (`getDiskIdentifier(disk, diskIdx)`, `getPartitionIdentifier(..., partIdx)`)
-Selection/expansion state persisted in `localStorage` embeds `diskIdx`/`partIdx`. Disk/partition order comes from Go map iteration → **not stable across refreshes** → restored selection can point at the wrong partition after any event. Fix: make identifiers purely ID-based (`disk.id`, `partition.id`), keep index only as a display fallback. Verify `utils.ts` implementations when editing.
+**File:** `frontend/src/pages/volumes/utils.ts:54-87`
+**Correction:** the first-cycle claim that identifiers embed array indices was **wrong** — `getDiskIdentifier`/`getPartitionIdentifier` already prefer `disk.id` → `legacy_device_name` → `device_path` → `serial` (and `partition.id` → `uuid` → `device_path` → …), using the index only when **all** ID fields are missing. Selection persistence is therefore stable across reordering in normal operation.
 
-**Test:** render with disks in order [A, B], select B's partition, re-render with order [B, A] → selection still on B's partition.
+**Residual (low):** if the backend ever emits a disk/partition with no id, uuid, device path or legacy name, the fallback `disk-${fallbackIndex}` / `part-${fallbackIndex}` keys reorder with the snapshot and silently re-point persisted selection/expansion state. Such a record would already indicate a backend data defect, so treat this as a defensive concern only: log a console warning when the fallback branch is taken (makes the backend defect visible) — no structural change needed.
+
+### F6 — `VolumeDetailsPanel` hardcodes `isReadOnlyMode={false}` on the SMART panel
+
+**File:** `VolumeDetailsPanel.tsx:389-396` (second-cycle finding)
+`SmartStatusPanel` is rendered with `isReadOnlyMode={false}` even though the component receives a `readOnly` prop in scope (also forwarded to `PartitionInformationCard` at line 404 and `HDIdleDiskSettings` at line 380). In read-only mode the SMART self-test start/abort controls (gated by `isReadOnlyMode` at `SmartStatusPanel.tsx:562/580/598/620`) stay enabled — a read-only user can still start/abort disk self-tests. Fix: pass `isReadOnlyMode={readOnly}` (single call site).
+
+**Test:** `VolumeDetailsPanel.test.tsx` — render with `readOnly` + SMART-capable disk → assert self-test action buttons disabled.
 
 ---
 
@@ -300,8 +353,12 @@ Selection/expansion state persisted in `localStorage` embeds `diskIdx`/`partIdx`
 - [ ] Task 16: **F3** — Drop local `disks` state; optimistic label update via RTK `updateQueryData`
 - [ ] Task 17: **F4** — `Promise.allSettled` aggregation for automount toggle; single summary toast
 - [ ] Task 18: **F5** — ID-only identifiers; localStorage migration note; reorder-stability test
-- [ ] Task 19: Coverage gate: `mise run //backend:test` + `go tool cover -func=coverage.out` — every touched function ≥70%; frontend `bun tsc --noEmit` + `mise run //frontend:test:new` green
-- [ ] Task 20: Update `CHANGELOG.md` under `[ 🚧 Unreleased ]`
+- [ ] Task 19: **H8** — Deep-copy partition map in `getVolumesData` (or immutable snapshot at cache boundary); concurrent `-race` test vs HDIdle handler
+- [ ] Task 20: **H9** — Surface event-handler errors (log at emit site; propagate DB-persist errors on mount path); log-capture test
+- [ ] Task 21: **H10** — Warm hardware cache at service start; keep lazy path as fallback; response-time test
+- [ ] Task 22: **F6** — `isReadOnlyMode={readOnly}` on `SmartStatusPanel`; RTL test with readOnly + SMART disk
+- [ ] Task 23: Coverage gate: `mise run //backend:test` + `go tool cover -func=coverage.out` — every touched function ≥70%; frontend `bun tsc --noEmit` + `mise run //frontend:test:new` green
+- [ ] Task 24: Update `CHANGELOG.md` under `[ 🚧 Unreleased ]`
 
 ## 🧪 Test Plan Summary
 
@@ -318,9 +375,13 @@ Selection/expansion state persisted in `localStorage` embeds `diskIdx`/`partIdx`
 | `volume_service.go` | PATCH partial-update DB assertions | H4 |
 | `api/volumes.go` | `/volumes` 500 on hardware error | H5 |
 | `volume_mount_manager.go` | lazy flag matrix, dir-preservation | H6 |
+| `volume_service.go` | concurrent `GetHardwareInfo` + `GetVolumesData` under `-race`; no cache pollution | H8 |
+| `volume_service.go` | emit-site error logging + mount-path propagation | H9 |
+| `api/volumes.go` | cache-warm response-time budget; boot warmup | H10 |
 | `VolumesTreeView.test.tsx` | automount icon color | F1 |
 | `VolumeMountDialog.test.tsx` | isSubmitting disables submit | F2 |
 | `Volumes.test.tsx` | selection stable across reorder | F5 |
+| `VolumeDetailsPanel.test.tsx` | SMART actions disabled in read-only mode | F6 |
 
 ## 🧠 Implementation Notes (Copilot Context)
 
