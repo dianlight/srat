@@ -20,7 +20,7 @@ func TestBroadcasterDirtyDataDedupe_BroadcastsOnlyOnChange(t *testing.T) {
 		ctx:      ctx,
 		relay:    broadcast.NewRelay[broadcastEvent](),
 		eventBus: eventBus,
-		disks:    &dto.DiskMap{},
+		disks:    dto.NewDiskMap(),
 		state:    &dto.ContextState{},
 	}
 

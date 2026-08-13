@@ -3,9 +3,7 @@ package service
 import (
 	"context"
 	"log/slog"
-	"maps"
 	"os"
-	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -64,7 +62,6 @@ type VolumeService struct {
 	mounter         VolumeMountManagerInterface
 	procfsGetMounts func() ([]*procfs.MountInfo, error)
 	disks           *dto.DiskMap
-	refreshVersion  uint32
 
 	// Provisional recheck of whole-disk synthesized entries. When a snapshot
 	// catches a partitioned drive before its partition children are visible,
@@ -112,7 +109,6 @@ func NewVolumeService(
 		mounter:         in.Mounter,
 		procfsGetMounts: procfs.GetMounts,
 		disks:           in.Disks,
-		refreshVersion:  0,
 
 		recheckInterval:        15 * time.Second,
 		maxProvisionalRechecks: 5,
@@ -272,7 +268,10 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 	}
 
 	if md.Partition == nil || md.Partition.Id == nil || *md.Partition.Id == "" {
-		for _, disk := range *ms.disks {
+		for _, disk := range ms.disks.Snapshot() {
+			if disk.Partitions == nil {
+				continue
+			}
 			for _, part := range *disk.Partitions {
 				if *part.Id == md.DeviceId {
 					md.Partition = &part
@@ -406,7 +405,7 @@ func (self *VolumeService) findPartitionByDevName(devName string) (*dto.Partitio
 		return nil, "", false
 	}
 
-	for diskID, disk := range *self.disks {
+	for diskID, disk := range self.disks.Snapshot() {
 		if disk.Partitions == nil {
 			continue
 		}
@@ -494,15 +493,14 @@ func (self *VolumeService) handlePartitionUdevRemoveEvent(devName string) {
 }
 
 func (self *VolumeService) GetVolumesData() []*dto.Disk {
-	if len(*self.disks) == 0 {
+	if self.disks.Len() == 0 {
 		err := self.getVolumesData()
 		if err != nil {
 			slog.ErrorContext(self.ctx, "Failed to get volumes data in GetVolumesData", "err", err)
 			return []*dto.Disk{}
 		}
 	}
-	value := slices.Collect(maps.Values(*self.disks))
-	return value
+	return self.disks.All()
 }
 
 // loadMountPointFromDB loads mount point data from the database for a partition
@@ -542,7 +540,7 @@ func (self *VolumeService) getVolumesData() errors.E {
 	tlog.TraceContext(self.ctx, "Requesting GetVolumesData via singleflight...")
 
 	_, err, _ := self.sfGroup.Do("GetVolumesData", func() (any, error) {
-		self.refreshVersion++
+		refreshVersion := self.disks.NextRefreshVersion()
 		filesystemSupportCache := make(map[string]*dto.FilesystemInfo)
 
 		tlog.TraceContext(self.ctx, "Executing GetVolumesData core logic (singleflight)...")
@@ -567,7 +565,7 @@ func (self *VolumeService) getVolumesData() errors.E {
 		// Disks processing
 		for _, disk := range hwDisks {
 			tlog.TraceContext(self.ctx, "Processing disk from hardware client", "disk_id", *disk.Id, "partition_count", len(*disk.Partitions))
-			disk.RefreshVersion = self.refreshVersion
+			disk.RefreshVersion = refreshVersion
 
 			currentDisk, updateDisk := self.disks.Get(*disk.Id)
 
@@ -631,8 +629,8 @@ func (self *VolumeService) getVolumesData() errors.E {
 		// must be dropped. Without this, removed drives (and drives that
 		// briefly vanish from a snapshot) would stay in the map as phantom
 		// volumes until their next udev event.
-		for id, disk := range *self.disks {
-			if disk.RefreshVersion != self.refreshVersion {
+		for id, disk := range self.disks.Snapshot() {
+			if disk.RefreshVersion != refreshVersion {
 				self.disks.Remove(id)
 				self.eventBus.EmitDisk(events.DiskEvent{
 					Event: events.Event{Type: events.EventTypes.REMOVE},
@@ -677,7 +675,7 @@ func (self *VolumeService) isWholeDiskSynthesized(d *dto.Disk) bool {
 }
 
 func (self *VolumeService) hasWholeDiskSynthesizedDisks() bool {
-	for _, disk := range *self.disks {
+	for _, disk := range self.disks.All() {
 		if self.isWholeDiskSynthesized(disk) {
 			return true
 		}
@@ -781,12 +779,12 @@ func (self *VolumeService) handleFilesystemTaskEvent(ctx context.Context, e even
 }
 
 func (self *VolumeService) findDiskForDevicePath(devicePath string) *dto.Disk {
-	if self.disks == nil || *self.disks == nil {
+	if self.disks == nil || self.disks.Len() == 0 {
 		return nil
 	}
 
 	normalizedDevice := strings.TrimSpace(devicePath)
-	for _, disk := range *self.disks {
+	for _, disk := range self.disks.All() {
 		if disk.Partitions == nil {
 			continue
 		}
@@ -843,7 +841,7 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 			mountPoint.IsMounted = true
 			mountPoint.Path = prtstate.MountPoint
 			mountPoint.Root = prtstate.Root
-			mountPoint.RefreshVersion = self.refreshVersion
+			mountPoint.RefreshVersion = self.disks.CurrentRefreshVersion()
 			mountPoint.IsWriteSupported = &iw
 			if err := mountPoint.Flags.Scan(prtstate.Options); err != nil {
 				slog.WarnContext(ctx, "Failed to scan mount flags", "mount_path", prtstate.MountPoint, "error", err)
@@ -879,7 +877,7 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 				FSType:           &prtstate.FSType,
 				Type:             "ADDON",
 				Partition:        e.Partition,
-				RefreshVersion:   self.refreshVersion,
+				RefreshVersion:   self.disks.CurrentRefreshVersion(),
 			}
 			if err := mountPoint.Flags.Scan(prtstate.Options); err != nil {
 				slog.WarnContext(ctx, "Failed to scan mount flags", "mount_path", prtstate.MountPoint, "error", err)
@@ -907,16 +905,16 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 			"partition_id", *e.Partition.Id,
 			"mount_path", mountPoint.Path,
 			"refresh_version", mountPoint.RefreshVersion,
-			"current_refresh_version", self.refreshVersion,
+			"current_refresh_version", self.disks.CurrentRefreshVersion(),
 			"is_mounted", mountPoint.IsMounted,
 			"is_to_mount_at_startup", (mountPoint.IsToMountAtStartup != nil && *mountPoint.IsToMountAtStartup),
 		)
-		if (mountPoint.RefreshVersion != self.refreshVersion) &&
+		if (mountPoint.RefreshVersion != self.disks.CurrentRefreshVersion()) &&
 			(mountPoint.IsMounted || (mountPoint.IsToMountAtStartup != nil && *mountPoint.IsToMountAtStartup)) {
 			tlog.DebugContext(ctx, "Marking mount point as unmounted since not found in procfs mounts", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id, "mount_path", mountPoint.Path)
 			oldtstate := mountPoint.IsMounted
 			mountPoint.IsMounted = false
-			mountPoint.RefreshVersion = self.refreshVersion
+			mountPoint.RefreshVersion = self.disks.CurrentRefreshVersion()
 			err := self.disks.AddOrUpdateMountPoint(*e.Partition.DiskId, *e.Partition.Id, *mountPoint)
 			if err != nil {
 				slog.WarnContext(self.ctx, "Failed to add mount point to disk map", "disk_id", *e.Partition.DiskId, "partition_id", *e.Partition.Id, "mount_path", mountPoint.Path, "err", err)
@@ -1035,7 +1033,7 @@ func (ms *VolumeService) PatchMountPointSettings(root string, path string, patch
 			}
 		}
 		if !updated {
-			for dk, d := range *ms.disks {
+			for dk, d := range ms.disks.Snapshot() {
 				if d.Partitions == nil {
 					continue
 				}

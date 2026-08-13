@@ -41,7 +41,7 @@ func (suite *DiskStatsServiceSuite) SetupTest() {
 	suite.ctx, suite.cancel = context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, &wg))
 
 	// create mocks
-	suite.testDisks = &dto.DiskMap{}
+	suite.testDisks = dto.NewDiskMap()
 	suite.smartMock = mock.Mock[SmartServiceInterface](suite.ctrl)
 	suite.hdidleMock = mock.Mock[HDIdleServiceInterface](suite.ctrl)
 	suite.fsMock = mock.Mock[FilesystemServiceInterface](suite.ctrl)
@@ -131,7 +131,7 @@ func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_SkipsDiskWithNilDevice()
 		LegacyDeviceName: nil, // important: should be skipped
 		Partitions:       &partitions,
 	}
-	(*suite.testDisks)[diskID] = d
+	suite.testDisks.AddOrUpdate(d)
 	mock.When(suite.hdidleMock.IsRunning()).ThenReturn(false)
 
 	// Act
@@ -172,7 +172,7 @@ func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_FsckStateFromFilesystemS
 		Partitions:       &partitions,
 	}
 
-	(*suite.testDisks)[diskID] = disk
+	suite.testDisks.AddOrUpdate(disk)
 	mock.When(suite.hdidleMock.IsRunning()).ThenReturn(false)
 
 	support := &dto.FilesystemInfo{
@@ -374,12 +374,12 @@ func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_SmartModeNoneSkipsBackgr
 		},
 	}
 
-	(*suite.testDisks)[diskID] = &dto.Disk{
+	suite.testDisks.AddOrUpdate(&dto.Disk{
 		Id:               &diskID,
 		LegacyDeviceName: &deviceName,
 		DevicePath:       &devicePath,
 		Partitions:       &partitions,
-	}
+	})
 
 	suite.ds.smartIntegrationDisabled.Store(true)
 	suite.ds.lastStats[diskID] = &blockdevice.IOStats{}
@@ -414,11 +414,11 @@ func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_LightweightTick_ReusesPr
 	deviceName := "sda"
 	devicePath := "/dev/sda"
 
-	(*suite.testDisks)[diskID] = &dto.Disk{
+	suite.testDisks.AddOrUpdate(&dto.Disk{
 		Id:               &diskID,
 		LegacyDeviceName: &deviceName,
 		DevicePath:       &devicePath,
-	}
+	})
 
 	// Pre-populate lastStats so the disk appears in PerDiskIO
 	suite.ds.lastStats[diskID] = &blockdevice.IOStats{}
@@ -460,11 +460,11 @@ func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_LightweightTick_FetchesS
 	deviceName := "sda"
 	devicePath := "/dev/sda"
 
-	(*suite.testDisks)[diskID] = &dto.Disk{
+	suite.testDisks.AddOrUpdate(&dto.Disk{
 		Id:               &diskID,
 		LegacyDeviceName: &deviceName,
 		DevicePath:       &devicePath,
-	}
+	})
 
 	// Pre-populate lastStats so the disk appears in PerDiskIO
 	suite.ds.lastStats[diskID] = &blockdevice.IOStats{}

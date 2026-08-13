@@ -3,10 +3,8 @@ package service
 import (
 	"context"
 	"log/slog"
-	"maps"
 	"math"
 	"os"
-	"slices"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -202,7 +200,7 @@ func (s *diskStatsService) updateDiskStats(isHeavyTick bool) errors.E {
 	s.updateMutex.Lock()
 	defer s.updateMutex.Unlock()
 
-	disks := slices.Collect(maps.Values(*s.disks))
+	disks := s.disks.All()
 
 	// Check HDIdle service status
 	hdidleRunning := false

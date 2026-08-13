@@ -74,7 +74,7 @@ func realPartition(diskID, name string) dto.Partition {
 
 func newReconcileVolumeService(t *testing.T, hw HardwareServiceInterface, recheckInterval time.Duration, maxRechecks int) *VolumeService {
 	t.Helper()
-	svc := newTestVolumeService(t, &dto.DiskMap{}, &fakeVolumeMounter{})
+	svc := newTestVolumeService(t, dto.NewDiskMap(), &fakeVolumeMounter{})
 	svc.hardwareClient = hw
 	svc.recheckInterval = recheckInterval
 	svc.maxProvisionalRechecks = maxRechecks
@@ -194,7 +194,7 @@ func TestFindDiskForDevicePath_ReturnsNilWhenNoPartitionMatches(t *testing.T) {
 		LegacyDeviceName: new("sda1"),
 		LegacyDevicePath: &devPath,
 	})
-	svc := newTestVolumeService(t, &dto.DiskMap{diskID: &disk}, &fakeVolumeMounter{})
+	svc := newTestVolumeService(t, dto.NewDiskMapFrom(&disk), &fakeVolumeMounter{})
 
 	got := svc.findDiskForDevicePath("/dev/sda1")
 	require.NotNil(t, got)

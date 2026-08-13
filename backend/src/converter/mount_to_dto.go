@@ -44,7 +44,10 @@ func stringToMountFlags(source string) (*dto.MountFlags, error) {
 
 // goverter:context disks
 func partitionFromDevice(device string, disks *dto.DiskMap) *dto.Partition {
-	for _, d := range *disks {
+	for _, d := range disks.Snapshot() {
+		if d.Partitions == nil {
+			continue
+		}
 		for _, p := range *d.Partitions {
 			if p.DevicePath != nil && *p.DevicePath == device {
 				return &p

@@ -79,7 +79,7 @@ func (suite *VolumeServiceTestSuite) SetupTest() {
 					DatabasePath: "file::memory:?cache=shared&_pragma=foreign_keys(1)",
 				}
 			},
-			func() *dto.DiskMap { return &dto.DiskMap{} },
+			func() *dto.DiskMap { return dto.NewDiskMap() },
 			dbom.NewDB,
 			service.NewVolumeMountManager,
 			service.NewVolumeService,
@@ -808,13 +808,13 @@ func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_UpdatesStartupF
 func (suite *VolumeServiceTestSuite) TestOnSmartEvent_EmptyDiskId_DoesNotUpdateDiskCache() {
 	diskID := "ata-DISK-SMART-GUARD-TEST"
 	devicePath := "/dev/sda"
-	(*suite.disks)[diskID] = &dto.Disk{
+	suite.disks.AddOrUpdate(&dto.Disk{
 		Id:         &diskID,
 		DevicePath: &devicePath,
-	}
+	})
 
 	// Capture SmartInfo state before the event
-	diskBefore := (*suite.disks)[diskID]
+	diskBefore, _ := suite.disks.Get(diskID)
 	suite.Nil(diskBefore.SmartInfo, "SmartInfo should be nil before any event")
 
 	// Emit a SmartEvent with empty DiskId (self-test progress event)
@@ -824,7 +824,7 @@ func (suite *VolumeServiceTestSuite) TestOnSmartEvent_EmptyDiskId_DoesNotUpdateD
 	})
 
 	// Disk cache should be unchanged
-	diskAfter := (*suite.disks)[diskID]
+	diskAfter, _ := suite.disks.Get(diskID)
 	suite.Nil(diskAfter.SmartInfo,
 		"OnSmart with empty DiskId must not call AddSmartInfo on the disk cache")
 }
@@ -835,10 +835,10 @@ func (suite *VolumeServiceTestSuite) TestOnSmartEvent_EmptyDiskId_DoesNotUpdateD
 func (suite *VolumeServiceTestSuite) TestOnSmartEvent_ValidDiskId_UpdatesDiskCache() {
 	diskID := "ata-DISK-SMART-UPDATE-TEST"
 	devicePath := "/dev/sda"
-	(*suite.disks)[diskID] = &dto.Disk{
+	suite.disks.AddOrUpdate(&dto.Disk{
 		Id:         &diskID,
 		DevicePath: &devicePath,
-	}
+	})
 
 	smartInfo := dto.SmartInfo{
 		DiskId:    diskID,
@@ -852,7 +852,7 @@ func (suite *VolumeServiceTestSuite) TestOnSmartEvent_ValidDiskId_UpdatesDiskCac
 	})
 
 	// Disk cache should be updated
-	diskAfter := (*suite.disks)[diskID]
+	diskAfter, _ := suite.disks.Get(diskID)
 	suite.Require().NotNil(diskAfter.SmartInfo,
 		"OnSmart with valid DiskId should call AddSmartInfo and update the disk cache")
 	suite.Equal(diskID, diskAfter.SmartInfo.DiskId)

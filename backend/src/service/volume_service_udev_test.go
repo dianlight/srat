@@ -79,15 +79,14 @@ func TestHandlePartitionUdevAddEvent_RetriesStartupMount(t *testing.T) {
 		},
 	}
 
-	disks := dto.DiskMap{
-		diskID: {
-			Id:         &diskID,
-			Partitions: &map[string]dto.Partition{partitionID: partition},
-		},
+	disk := dto.Disk{
+		Id:         &diskID,
+		Partitions: &map[string]dto.Partition{partitionID: partition},
 	}
+	disks := dto.NewDiskMapFrom(&disk)
 
 	mounter := &fakeVolumeMounter{}
-	svc := newTestVolumeService(t, &disks, mounter)
+	svc := newTestVolumeService(t, disks, mounter)
 
 	handled := svc.handlePartitionUdevAddEvent(devName)
 
@@ -116,15 +115,14 @@ func TestHandlePartitionUdevRemoveEvent_UnmountsAndEvictsPartition(t *testing.T)
 		},
 	}
 
-	disks := dto.DiskMap{
-		diskID: {
-			Id:         &diskID,
-			Partitions: &map[string]dto.Partition{partitionID: partition},
-		},
+	disk := dto.Disk{
+		Id:         &diskID,
+		Partitions: &map[string]dto.Partition{partitionID: partition},
 	}
+	disks := dto.NewDiskMapFrom(&disk)
 
 	mounter := &fakeVolumeMounter{}
-	svc := newTestVolumeService(t, &disks, mounter)
+	svc := newTestVolumeService(t, disks, mounter)
 
 	svc.handlePartitionUdevRemoveEvent(devName)
 
@@ -161,12 +159,11 @@ func TestHandlePartitionUdevRemoveEvent_LoopbackExt4EvictsCache(t *testing.T) {
 		MountPointData:   &map[string]dto.MountPointData{},
 	}
 
-	disks := dto.DiskMap{
-		diskID: {
-			Id:         &diskID,
-			Partitions: &map[string]dto.Partition{partitionID: partition},
-		},
+	disk := dto.Disk{
+		Id:         &diskID,
+		Partitions: &map[string]dto.Partition{partitionID: partition},
 	}
+	disks := dto.NewDiskMapFrom(&disk)
 
 	ctx := context.Background()
 	eventBus := events.NewEventBus(ctx)
@@ -174,7 +171,7 @@ func TestHandlePartitionUdevRemoveEvent_LoopbackExt4EvictsCache(t *testing.T) {
 	mounter := NewVolumeMountManager(VolumeMountManagerParams{
 		Ctx:       ctx,
 		FsService: fsService,
-		Disks:     &disks,
+		Disks:     disks,
 		EventBus:  eventBus,
 	})
 
@@ -184,7 +181,7 @@ func TestHandlePartitionUdevRemoveEvent_LoopbackExt4EvictsCache(t *testing.T) {
 		fs_service: fsService,
 		mounter:    mounter,
 		eventBus:   eventBus,
-		disks:      &disks,
+		disks:      disks,
 	}
 
 	mountData := dto.MountPointData{

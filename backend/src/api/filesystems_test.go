@@ -49,7 +49,7 @@ func (suite *FilesystemHandlerSuite) SetupTest() {
 			func(ctx context.Context) events.EventBusInterface { return events.NewEventBus(ctx) },
 			api.NewFilesystemHandler,
 			mock.Mock[service.FilesystemServiceInterface],
-			func() *dto.DiskMap { return &dto.DiskMap{} },
+			func() *dto.DiskMap { return dto.NewDiskMap() },
 		),
 		fx.Populate(&suite.handler),
 		fx.Populate(&suite.mockFsService),
@@ -280,7 +280,7 @@ func (suite *FilesystemHandlerSuite) TestFormatPartition_Success() {
 	}
 
 	// Populate disk map with test disk
-	(*suite.diskMap)[diskID] = disk
+	suite.diskMap.AddOrUpdate(disk)
 
 	// Mock filesystem service to format
 	formatResult := &dto.CheckResult{
@@ -349,7 +349,7 @@ func (suite *FilesystemHandlerSuite) TestFormatPartition_UnsupportedFilesystem()
 	)).ThenReturn(nil, errors.New("unsupported filesystem"))
 
 	// Populate disk map with test disk
-	(*suite.diskMap)[diskID] = disk
+	suite.diskMap.AddOrUpdate(disk)
 
 	resp := suite.testAPI.Post("/filesystem/format", map[string]interface{}{
 		"partitionId":    partitionID,
@@ -379,7 +379,7 @@ func (suite *FilesystemHandlerSuite) TestCheckPartition_Success() {
 		Partitions: &partitions,
 	}
 
-	(*suite.diskMap)[diskID] = disk
+	suite.diskMap.AddOrUpdate(disk)
 
 	checkResult := &dto.CheckResult{
 		Success:     true,
@@ -428,7 +428,7 @@ func (suite *FilesystemHandlerSuite) TestAbortCheckPartition_Success() {
 		Partitions: &partitions,
 	}
 
-	(*suite.diskMap)[diskID] = disk
+	suite.diskMap.AddOrUpdate(disk)
 
 	mock.When(suite.mockFsService.AbortCheckPartition(
 		mock.Any[context.Context](),
@@ -469,7 +469,7 @@ func (suite *FilesystemHandlerSuite) TestGetPartitionState_Success() {
 		Partitions: &partitions,
 	}
 
-	(*suite.diskMap)[diskID] = disk
+	suite.diskMap.AddOrUpdate(disk)
 
 	state := &dto.FilesystemState{
 		IsClean:          true,
@@ -515,7 +515,7 @@ func (suite *FilesystemHandlerSuite) TestGetPartitionLabel_Success() {
 		Partitions: &partitions,
 	}
 
-	(*suite.diskMap)[diskID] = disk
+	suite.diskMap.AddOrUpdate(disk)
 
 	mock.When(suite.mockFsService.GetPartitionLabel(
 		mock.Any[context.Context](),
@@ -558,7 +558,7 @@ func (suite *FilesystemHandlerSuite) TestSetPartitionLabel_Success() {
 		Partitions: &partitions,
 	}
 
-	(*suite.diskMap)[diskID] = disk
+	suite.diskMap.AddOrUpdate(disk)
 
 	mock.When(suite.mockFsService.SetPartitionLabel(
 		mock.Any[context.Context](),

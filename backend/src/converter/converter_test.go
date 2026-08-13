@@ -193,9 +193,9 @@ func TestMountToDto_MountPointDataDerivesType(t *testing.T) {
 	conv := MountToDtoImpl{}
 	mp := &mount.MountPoint{Path: "/mnt/test", Device: "/dev/sda1", FSType: "ext4"}
 	var target dto.MountPointData
-	disks := dto.DiskMap{}
+	disks := dto.NewDiskMap()
 
-	require.NoError(t, conv.MountToMountPointData(mp, &target, &disks))
+	require.NoError(t, conv.MountToMountPointData(mp, &target, disks))
 	assert.Equal(t, "ADDON", target.Type)
 }
 

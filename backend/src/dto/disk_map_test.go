@@ -1,64 +1,67 @@
 package dto_test
 
 import (
+	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/dianlight/srat/dto"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDiskMap_AddAndGet(t *testing.T) {
 	id := "disk-1"
 	d := dto.Disk{Id: &id}
 
-	m := dto.DiskMap{}
-	err := (&m).AddOrUpdate(&d)
+	m := dto.NewDiskMap()
+	err := m.AddOrUpdate(&d)
 	assert.NoError(t, err)
 
-	got, ok := (&m).Get(id)
+	got, ok := m.Get(id)
 	assert.True(t, ok)
 	assert.Equal(t, id, *got.Id)
 }
 
 func TestDiskMap_AddInvalidID(t *testing.T) {
-	m := dto.DiskMap{}
+	m := dto.NewDiskMap()
 	d := dto.Disk{}
-	err := (&m).AddOrUpdate(&d)
+	err := m.AddOrUpdate(&d)
 	assert.Error(t, err)
 }
 
 func TestDiskMap_Remove(t *testing.T) {
 	id := "disk-2"
 	d := dto.Disk{Id: &id}
-	m := dto.DiskMap{}
-	_ = (&m).AddOrUpdate(&d)
+	m := dto.NewDiskMap()
+	_ = m.AddOrUpdate(&d)
 
-	removed := (&m).Remove(id)
+	removed := m.Remove(id)
 	assert.True(t, removed)
 
-	_, ok := (&m).Get(id)
+	_, ok := m.Get(id)
 	assert.False(t, ok)
 
 	// Removing again should return false
-	removed = (&m).Remove(id)
+	removed = m.Remove(id)
 	assert.False(t, removed)
 }
 
 func TestDiskMap_AddPartitionAndRemovePartition(t *testing.T) {
 	diskID := "disk-3"
 	d := dto.Disk{Id: &diskID}
-	m := dto.DiskMap{}
-	_ = (&m).AddOrUpdate(&d)
+	m := dto.NewDiskMap()
+	_ = m.AddOrUpdate(&d)
 
 	partID := "part-1"
 	p := dto.Partition{Id: &partID}
 
 	// Add partition
-	err := (&m).AddPartition(diskID, p)
+	err := m.AddPartition(diskID, p)
 	assert.NoError(t, err)
 
 	// Verify partition is present
-	gotDisk, ok := (&m).Get(diskID)
+	gotDisk, ok := m.Get(diskID)
 	assert.True(t, ok)
 	if assert.NotNil(t, gotDisk.Partitions) {
 		_, present := (*gotDisk.Partitions)[partID]
@@ -66,11 +69,11 @@ func TestDiskMap_AddPartitionAndRemovePartition(t *testing.T) {
 	}
 
 	// Remove partition
-	removed := (&m).RemovePartition(diskID, partID)
+	removed := m.RemovePartition(diskID, partID)
 	assert.True(t, removed)
 
 	// Verify removed
-	gotDisk, ok = (&m).Get(diskID)
+	gotDisk, ok = m.Get(diskID)
 	assert.True(t, ok)
 	if assert.NotNil(t, gotDisk.Partitions) {
 		_, present := (*gotDisk.Partitions)[partID]
@@ -79,17 +82,17 @@ func TestDiskMap_AddPartitionAndRemovePartition(t *testing.T) {
 }
 
 func TestDiskMap_AddPartition_Errors(t *testing.T) {
-	m := dto.DiskMap{}
+	m := dto.NewDiskMap()
 	// No disk present
 	partID := "p0"
 	p := dto.Partition{Id: &partID}
-	err := (&m).AddPartition("missing", p)
+	err := m.AddPartition("missing", p)
 	assert.Error(t, err)
 
 	// Empty partition id
 	diskID := "disk-4"
-	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID})
-	err = (&m).AddPartition(diskID, dto.Partition{})
+	_ = m.AddOrUpdate(&dto.Disk{Id: &diskID})
+	err = m.AddPartition(diskID, dto.Partition{})
 	assert.Error(t, err)
 }
 
@@ -97,16 +100,16 @@ func TestDiskMap_AddAndRemoveMountPoint(t *testing.T) {
 	// Prepare disk and partition
 	diskID := "d1"
 	partID := "p1"
-	m := dto.DiskMap{}
-	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID, Partitions: &map[string]dto.Partition{partID: {Id: &partID}}})
+	m := dto.NewDiskMap()
+	_ = m.AddOrUpdate(&dto.Disk{Id: &diskID, Partitions: &map[string]dto.Partition{partID: {Id: &partID}}})
 
 	// Add mount point
 	mp := dto.MountPointData{Path: "/mnt/data"}
-	err := (&m).AddOrUpdateMountPoint(diskID, partID, mp)
+	err := m.AddOrUpdateMountPoint(diskID, partID, mp)
 	assert.NoError(t, err)
 
 	// Verify presence
-	d, ok := (&m).Get(diskID)
+	d, ok := m.Get(diskID)
 	assert.True(t, ok)
 	if assert.NotNil(t, d.Partitions) {
 		part := (*d.Partitions)[partID]
@@ -118,11 +121,11 @@ func TestDiskMap_AddAndRemoveMountPoint(t *testing.T) {
 	}
 
 	// Remove mount point
-	removed := (&m).RemoveMountPoint(diskID, partID, "/mnt/data")
+	removed := m.RemoveMountPoint(diskID, partID, "/mnt/data")
 	assert.True(t, removed)
 
 	// Verify removal
-	d, ok = (&m).Get(diskID)
+	d, ok = m.Get(diskID)
 	assert.True(t, ok)
 	if assert.NotNil(t, d.Partitions) {
 		part := (*d.Partitions)[partID]
@@ -134,26 +137,26 @@ func TestDiskMap_AddAndRemoveMountPoint(t *testing.T) {
 }
 
 func TestDiskMap_AddMountPoint_Errors(t *testing.T) {
-	m := dto.DiskMap{}
+	m := dto.NewDiskMap()
 
 	// No disk
-	err := (&m).AddOrUpdateMountPoint("", "p1", dto.MountPointData{Path: "/mnt/x"})
+	err := m.AddOrUpdateMountPoint("", "p1", dto.MountPointData{Path: "/mnt/x"})
 	assert.Error(t, err)
 
 	// Disk missing
-	err = (&m).AddOrUpdateMountPoint("missing", "p1", dto.MountPointData{Path: "/mnt/x"})
+	err = m.AddOrUpdateMountPoint("missing", "p1", dto.MountPointData{Path: "/mnt/x"})
 	assert.Error(t, err)
 
 	// Disk present, partition missing
 	diskID := "d2"
-	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID})
-	err = (&m).AddOrUpdateMountPoint(diskID, "p1", dto.MountPointData{Path: "/mnt/x"})
+	_ = m.AddOrUpdate(&dto.Disk{Id: &diskID})
+	err = m.AddOrUpdateMountPoint(diskID, "p1", dto.MountPointData{Path: "/mnt/x"})
 	assert.Error(t, err)
 
 	// Empty path
 	parts := map[string]dto.Partition{"p1": {Id: ptr("p1")}}
-	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID, Partitions: &parts})
-	err = (&m).AddOrUpdateMountPoint(diskID, "p1", dto.MountPointData{})
+	_ = m.AddOrUpdate(&dto.Disk{Id: &diskID, Partitions: &parts})
+	err = m.AddOrUpdateMountPoint(diskID, "p1", dto.MountPointData{})
 	assert.Error(t, err)
 }
 
@@ -163,14 +166,14 @@ func TestDiskMap_GetPartition(t *testing.T) {
 	diskID := "disk-get"
 	partID := "partition-get"
 	parts := map[string]dto.Partition{partID: {Id: ptr(partID)}}
-	m := dto.DiskMap{}
-	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID, Partitions: &parts})
+	m := dto.NewDiskMap()
+	_ = m.AddOrUpdate(&dto.Disk{Id: &diskID, Partitions: &parts})
 
-	part, ok := (&m).GetPartition(diskID, partID)
+	part, ok := m.GetPartition(diskID, partID)
 	assert.True(t, ok)
 	assert.Equal(t, partID, *part.Id)
 
-	_, missing := (&m).GetPartition("nope", partID)
+	_, missing := m.GetPartition("nope", partID)
 	assert.False(t, missing)
 }
 
@@ -179,18 +182,18 @@ func TestDiskMap_GetMountPoint(t *testing.T) {
 	partID := "part-mp"
 	mount := dto.MountPointData{Path: "/mnt/mp"}
 	parts := map[string]dto.Partition{partID: {Id: ptr(partID), MountPointData: &map[string]dto.MountPointData{"/mnt/mp": mount}}}
-	m := dto.DiskMap{}
-	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID, Partitions: &parts})
+	m := dto.NewDiskMap()
+	_ = m.AddOrUpdate(&dto.Disk{Id: &diskID, Partitions: &parts})
 
-	mp, ok := (&m).GetMountPoint(diskID, partID, "/mnt/mp")
+	mp, ok := m.GetMountPoint(diskID, partID, "/mnt/mp")
 	assert.True(t, ok)
 	assert.Equal(t, "/mnt/mp", mp.Path)
 
-	_, missing := (&m).GetMountPoint(diskID, partID, "")
+	_, missing := m.GetMountPoint(diskID, partID, "")
 	assert.False(t, missing)
-	_, missing = (&m).GetMountPoint(diskID, "unknown", "/mnt/mp")
+	_, missing = m.GetMountPoint(diskID, "unknown", "/mnt/mp")
 	assert.False(t, missing)
-	_, missing = (&m).GetMountPoint("unknown", partID, "/mnt/mp")
+	_, missing = m.GetMountPoint("unknown", partID, "/mnt/mp")
 	assert.False(t, missing)
 }
 
@@ -199,14 +202,14 @@ func TestDiskMap_GetMountPointByPath(t *testing.T) {
 	partID := "part-mp-path"
 	mount := dto.MountPointData{Path: "/mnt/mp-path"}
 	parts := map[string]dto.Partition{partID: {Id: ptr(partID), MountPointData: &map[string]dto.MountPointData{"/mnt/mp-path": mount}}}
-	m := dto.DiskMap{}
-	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID, Partitions: &parts})
+	m := dto.NewDiskMap()
+	_ = m.AddOrUpdate(&dto.Disk{Id: &diskID, Partitions: &parts})
 
-	mp, ok := (&m).GetMountPointByPath("/mnt/mp-path")
+	mp, ok := m.GetMountPointByPath("/mnt/mp-path")
 	assert.True(t, ok)
 	assert.Equal(t, "/mnt/mp-path", mp.Path)
 
-	_, missing := (&m).GetMountPointByPath("/missing")
+	_, missing := m.GetMountPointByPath("/missing")
 	assert.False(t, missing)
 }
 
@@ -216,10 +219,10 @@ func TestDiskMap_GetAllMountPoints(t *testing.T) {
 	mount1 := dto.MountPointData{Path: "/mnt/mp1"}
 	mount2 := dto.MountPointData{Path: "/mnt/mp2"}
 	parts := map[string]dto.Partition{partID: {Id: ptr(partID), MountPointData: &map[string]dto.MountPointData{"/mnt/mp1": mount1, "/mnt/mp2": mount2}}}
-	m := dto.DiskMap{}
-	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID, Partitions: &parts})
+	m := dto.NewDiskMap()
+	_ = m.AddOrUpdate(&dto.Disk{Id: &diskID, Partitions: &parts})
 
-	allMPs := (&m).GetAllMountPoints()
+	allMPs := m.GetAllMountPoints()
 	assert.Len(t, allMPs, 2)
 }
 
@@ -229,30 +232,30 @@ func TestDiskMap_AddMountPointShare(t *testing.T) {
 	path := "/mnt/share"
 	mount := dto.MountPointData{Path: path}
 	parts := map[string]dto.Partition{partID: {Id: ptr(partID), DiskId: ptr(diskID), MountPointData: &map[string]dto.MountPointData{path: mount}}}
-	m := dto.DiskMap{}
-	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID, Partitions: &parts})
+	m := dto.NewDiskMap()
+	_ = m.AddOrUpdate(&dto.Disk{Id: &diskID, Partitions: &parts})
 
 	partition := parts[partID]
 	share := &dto.SharedResource{Name: "testshare", MountPointData: &dto.MountPointData{Path: path, Partition: &partition}}
 
 	// Add share to mount point
-	disk, err := (&m).AddMountPointShare(share)
+	disk, err := m.AddMountPointShare(share)
 	assert.NoError(t, err)
 	assert.Equal(t, diskID, *disk.Id)
 
 	// Verify share is present
-	mp, ok := (&m).GetMountPoint(diskID, partID, path)
+	mp, ok := m.GetMountPoint(diskID, partID, path)
 	assert.True(t, ok)
 	assert.NotNil(t, mp.Share)
 	assert.Equal(t, "testshare", mp.Share.Name)
 
 	// Update share
 	newShare := &dto.SharedResource{Name: "updatedshare", MountPointData: &dto.MountPointData{Path: path, Partition: &partition}}
-	disk, err = (&m).AddMountPointShare(newShare)
+	disk, err = m.AddMountPointShare(newShare)
 	assert.NoError(t, err)
 	assert.Equal(t, diskID, *disk.Id)
 
-	mp, ok = (&m).GetMountPoint(diskID, partID, path)
+	mp, ok = m.GetMountPoint(diskID, partID, path)
 	assert.True(t, ok)
 	assert.NotNil(t, mp.Share)
 	assert.Equal(t, "updatedshare", mp.Share.Name)
@@ -264,88 +267,88 @@ func TestDiskMap_AddMountPointShare_WithoutPartitionInfo(t *testing.T) {
 	path := "/mnt/search"
 	mount := dto.MountPointData{Path: path}
 	parts := map[string]dto.Partition{partID: {Id: ptr(partID), DiskId: ptr(diskID), MountPointData: &map[string]dto.MountPointData{path: mount}}}
-	m := dto.DiskMap{}
-	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID, Partitions: &parts})
+	m := dto.NewDiskMap()
+	_ = m.AddOrUpdate(&dto.Disk{Id: &diskID, Partitions: &parts})
 
 	// Add share without partition info - should search and find it
 	share := &dto.SharedResource{Name: "testshare", MountPointData: &dto.MountPointData{Path: path}}
-	disk, err := (&m).AddMountPointShare(share)
+	disk, err := m.AddMountPointShare(share)
 	assert.NoError(t, err)
 	assert.Equal(t, diskID, *disk.Id)
 
 	// Verify share is present
-	mp, ok := (&m).GetMountPoint(diskID, partID, path)
+	mp, ok := m.GetMountPoint(diskID, partID, path)
 	assert.True(t, ok)
 	assert.NotNil(t, mp.Share)
 	assert.Equal(t, "testshare", mp.Share.Name)
 }
 
 func TestDiskMap_AddMountPointShare_Errors(t *testing.T) {
-	m := dto.DiskMap{}
+	m := dto.NewDiskMap()
 
 	// Nil share
-	_, err := (&m).AddMountPointShare(nil)
+	_, err := m.AddMountPointShare(nil)
 	assert.Error(t, err)
 
 	// Share with nil mount point data
 	shareNoMPD := &dto.SharedResource{Name: "testshare"}
-	_, err = (&m).AddMountPointShare(shareNoMPD)
+	_, err = m.AddMountPointShare(shareNoMPD)
 	assert.Error(t, err)
 
 	// Share with empty path and no partition to search
 	shareNoPath := &dto.SharedResource{Name: "testshare", MountPointData: &dto.MountPointData{Path: ""}}
-	_, err = (&m).AddMountPointShare(shareNoPath)
+	_, err = m.AddMountPointShare(shareNoPath)
 	assert.Error(t, err)
 
 	// Share with nil partition and mount point not found
 	shareNoPart := &dto.SharedResource{Name: "testshare", MountPointData: &dto.MountPointData{Path: "/mnt/nonexistent"}}
-	_, err = (&m).AddMountPointShare(shareNoPart)
+	_, err = m.AddMountPointShare(shareNoPart)
 	assert.Error(t, err)
 
 	// Share with nil partition disk id
 	partNoDiskId := &dto.Partition{Id: ptr("p1")}
 	sharePartNoDiskId := &dto.SharedResource{Name: "testshare", MountPointData: &dto.MountPointData{Path: "/mnt/x", Partition: partNoDiskId}}
-	_, err = (&m).AddMountPointShare(sharePartNoDiskId)
+	_, err = m.AddMountPointShare(sharePartNoDiskId)
 	assert.Error(t, err)
 
 	// Share with nil partition id
 	partNoId := &dto.Partition{DiskId: ptr("d1")}
 	sharePartNoId := &dto.SharedResource{Name: "testshare", MountPointData: &dto.MountPointData{Path: "/mnt/x", Partition: partNoId}}
-	_, err = (&m).AddMountPointShare(sharePartNoId)
+	_, err = m.AddMountPointShare(sharePartNoId)
 	assert.Error(t, err)
 
 	// Disk not found
 	shareValidButNoDisk := &dto.SharedResource{Name: "testshare", MountPointData: &dto.MountPointData{Path: "/mnt/x", Partition: &dto.Partition{Id: ptr("p1"), DiskId: ptr("missing")}}}
-	_, err = (&m).AddMountPointShare(shareValidButNoDisk)
+	_, err = m.AddMountPointShare(shareValidButNoDisk)
 	assert.Error(t, err)
 
 	// Disk present but no partitions
 	diskID := "disk-no-parts"
-	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID})
+	_ = m.AddOrUpdate(&dto.Disk{Id: &diskID})
 	shareNoParts := &dto.SharedResource{Name: "testshare", MountPointData: &dto.MountPointData{Path: "/mnt/x", Partition: &dto.Partition{Id: ptr("p1"), DiskId: ptr(diskID)}}}
-	_, err = (&m).AddMountPointShare(shareNoParts)
+	_, err = m.AddMountPointShare(shareNoParts)
 	assert.Error(t, err)
 
 	// Partition not found
 	diskID2 := "disk-with-parts"
 	parts := map[string]dto.Partition{"p1": {Id: ptr("p1")}}
-	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID2, Partitions: &parts})
+	_ = m.AddOrUpdate(&dto.Disk{Id: &diskID2, Partitions: &parts})
 	shareMissingPart := &dto.SharedResource{Name: "testshare", MountPointData: &dto.MountPointData{Path: "/mnt/x", Partition: &dto.Partition{Id: ptr("missing-part"), DiskId: ptr(diskID2)}}}
-	_, err = (&m).AddMountPointShare(shareMissingPart)
+	_, err = m.AddMountPointShare(shareMissingPart)
 	assert.Error(t, err)
 
 	// Partition has no mount points
 	sharePtNoMP := &dto.SharedResource{Name: "testshare", MountPointData: &dto.MountPointData{Path: "/mnt/x", Partition: &dto.Partition{Id: ptr("p1"), DiskId: ptr(diskID2)}}}
-	_, err = (&m).AddMountPointShare(sharePtNoMP)
+	_, err = m.AddMountPointShare(sharePtNoMP)
 	assert.Error(t, err)
 
 	// Mount point not found
 	diskID3 := "disk-with-mp"
 	mount := dto.MountPointData{Path: "/mnt/real"}
 	parts3 := map[string]dto.Partition{"p1": {Id: ptr("p1"), MountPointData: &map[string]dto.MountPointData{"/mnt/real": mount}}}
-	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID3, Partitions: &parts3})
+	_ = m.AddOrUpdate(&dto.Disk{Id: &diskID3, Partitions: &parts3})
 	shareMissingMP := &dto.SharedResource{Name: "testshare", MountPointData: &dto.MountPointData{Path: "/mnt/missing", Partition: &dto.Partition{Id: ptr("p1"), DiskId: ptr(diskID3)}}}
-	_, err = (&m).AddMountPointShare(shareMissingMP)
+	_, err = m.AddMountPointShare(shareMissingMP)
 	assert.Error(t, err)
 }
 
@@ -357,28 +360,28 @@ func TestDiskMap_RemoveMountPointShare(t *testing.T) {
 	share := &dto.SharedResource{Name: shareName}
 	mount := dto.MountPointData{Path: path, Share: share}
 	parts := map[string]dto.Partition{partID: {Id: ptr(partID), MountPointData: &map[string]dto.MountPointData{path: mount}}}
-	m := dto.DiskMap{}
-	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID, Partitions: &parts})
+	m := dto.NewDiskMap()
+	_ = m.AddOrUpdate(&dto.Disk{Id: &diskID, Partitions: &parts})
 
 	// Verify share exists initially
-	mp, ok := (&m).GetMountPoint(diskID, partID, path)
+	mp, ok := m.GetMountPoint(diskID, partID, path)
 	assert.True(t, ok)
 	assert.NotNil(t, mp.Share)
 	assert.Equal(t, shareName, mp.Share.Name)
 
 	// Remove share by share name
-	removed, disk := (&m).RemoveMountPointShare(shareName)
+	removed, disk := m.RemoveMountPointShare(shareName)
 	assert.True(t, removed)
 	assert.NotNil(t, disk)
 	assert.Equal(t, diskID, *disk.Id)
 
 	// Verify share is nil
-	mp, ok = (&m).GetMountPoint(diskID, partID, path)
+	mp, ok = m.GetMountPoint(diskID, partID, path)
 	assert.True(t, ok)
 	assert.Nil(t, mp.Share)
 
 	// Removing again should return false (no share with that name exists anymore)
-	removed, disk = (&m).RemoveMountPointShare(shareName)
+	removed, disk = m.RemoveMountPointShare(shareName)
 	assert.False(t, removed)
 	assert.Nil(t, disk)
 }
@@ -414,28 +417,28 @@ func TestDiskMap_RemoveMountPointShare_MultipleDisks(t *testing.T) {
 		partID3: {Id: ptr(partID3), MountPointData: &map[string]dto.MountPointData{path3: mount3}},
 	}
 
-	m := dto.DiskMap{}
-	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID1, Partitions: &parts1})
-	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID2, Partitions: &parts2})
+	m := dto.NewDiskMap()
+	_ = m.AddOrUpdate(&dto.Disk{Id: &diskID1, Partitions: &parts1})
+	_ = m.AddOrUpdate(&dto.Disk{Id: &diskID2, Partitions: &parts2})
 
 	// Remove share from disk 2
-	removed, disk := (&m).RemoveMountPointShare(shareName3)
+	removed, disk := m.RemoveMountPointShare(shareName3)
 	assert.True(t, removed)
 	assert.NotNil(t, disk)
 	assert.Equal(t, diskID2, *disk.Id)
 
 	// Verify share3 is removed
-	mp, ok := (&m).GetMountPoint(diskID2, partID3, path3)
+	mp, ok := m.GetMountPoint(diskID2, partID3, path3)
 	assert.True(t, ok)
 	assert.Nil(t, mp.Share)
 
 	// Verify share1 and share2 are still present
-	mp1, ok1 := (&m).GetMountPoint(diskID1, partID1, path1)
+	mp1, ok1 := m.GetMountPoint(diskID1, partID1, path1)
 	assert.True(t, ok1)
 	assert.NotNil(t, mp1.Share)
 	assert.Equal(t, shareName1, mp1.Share.Name)
 
-	mp2, ok2 := (&m).GetMountPoint(diskID1, partID2, path2)
+	mp2, ok2 := m.GetMountPoint(diskID1, partID2, path2)
 	assert.True(t, ok2)
 	assert.NotNil(t, mp2.Share)
 	assert.Equal(t, shareName2, mp2.Share.Name)
@@ -447,11 +450,11 @@ func TestDiskMap_RemoveMountPointShare_MountPointWithoutShare(t *testing.T) {
 	path := "/mnt/no-share"
 	mount := dto.MountPointData{Path: path, Share: nil} // No share attached
 	parts := map[string]dto.Partition{partID: {Id: ptr(partID), MountPointData: &map[string]dto.MountPointData{path: mount}}}
-	m := dto.DiskMap{}
-	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID, Partitions: &parts})
+	m := dto.NewDiskMap()
+	_ = m.AddOrUpdate(&dto.Disk{Id: &diskID, Partitions: &parts})
 
 	// Try to remove non-existent share
-	removed, disk := (&m).RemoveMountPointShare("nonexistent")
+	removed, disk := m.RemoveMountPointShare("nonexistent")
 	assert.False(t, removed)
 	assert.Nil(t, disk)
 }
@@ -474,50 +477,50 @@ func TestDiskMap_RemoveMountPointShare_MultipleMountPointsSameDisk(t *testing.T)
 			path2: mount2,
 		}},
 	}
-	m := dto.DiskMap{}
-	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID, Partitions: &parts})
+	m := dto.NewDiskMap()
+	_ = m.AddOrUpdate(&dto.Disk{Id: &diskID, Partitions: &parts})
 
 	// Remove target-share
-	removed, disk := (&m).RemoveMountPointShare(shareName)
+	removed, disk := m.RemoveMountPointShare(shareName)
 	assert.True(t, removed)
 	assert.NotNil(t, disk)
 
 	// Verify only share2 is removed
-	mp1, ok1 := (&m).GetMountPoint(diskID, partID, path1)
+	mp1, ok1 := m.GetMountPoint(diskID, partID, path1)
 	assert.True(t, ok1)
 	assert.NotNil(t, mp1.Share)
 	assert.Equal(t, "other-share", mp1.Share.Name)
 
-	mp2, ok2 := (&m).GetMountPoint(diskID, partID, path2)
+	mp2, ok2 := m.GetMountPoint(diskID, partID, path2)
 	assert.True(t, ok2)
 	assert.Nil(t, mp2.Share)
 }
 
 func TestDiskMap_RemoveMountPointShare_Errors(t *testing.T) {
-	m := dto.DiskMap{}
+	m := dto.NewDiskMap()
 
 	// Empty share name
-	removed, disk := (&m).RemoveMountPointShare("")
+	removed, disk := m.RemoveMountPointShare("")
 	assert.False(t, removed)
 	assert.Nil(t, disk)
 
 	// Share not found (empty map)
-	removed, disk = (&m).RemoveMountPointShare("nonexistent")
+	removed, disk = m.RemoveMountPointShare("nonexistent")
 	assert.False(t, removed)
 	assert.Nil(t, disk)
 
 	// Disk present but no partitions
 	diskID := "disk-no-parts"
-	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID})
-	removed, disk = (&m).RemoveMountPointShare("someshare")
+	_ = m.AddOrUpdate(&dto.Disk{Id: &diskID})
+	removed, disk = m.RemoveMountPointShare("someshare")
 	assert.False(t, removed)
 	assert.Nil(t, disk)
 
 	// Partition has no mount points
 	diskID2 := "disk-with-parts"
 	parts := map[string]dto.Partition{"p1": {Id: ptr("p1")}}
-	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID2, Partitions: &parts})
-	removed, disk = (&m).RemoveMountPointShare("someshare")
+	_ = m.AddOrUpdate(&dto.Disk{Id: &diskID2, Partitions: &parts})
+	removed, disk = m.RemoveMountPointShare("someshare")
 	assert.False(t, removed)
 	assert.Nil(t, disk)
 
@@ -525,8 +528,8 @@ func TestDiskMap_RemoveMountPointShare_Errors(t *testing.T) {
 	diskID3 := "disk-with-mp"
 	mount := dto.MountPointData{Path: "/mnt/real", Share: nil}
 	parts3 := map[string]dto.Partition{"p1": {Id: ptr("p1"), MountPointData: &map[string]dto.MountPointData{"/mnt/real": mount}}}
-	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID3, Partitions: &parts3})
-	removed, disk = (&m).RemoveMountPointShare("someshare")
+	_ = m.AddOrUpdate(&dto.Disk{Id: &diskID3, Partitions: &parts3})
+	removed, disk = m.RemoveMountPointShare("someshare")
 	assert.False(t, removed)
 	assert.Nil(t, disk)
 
@@ -535,8 +538,8 @@ func TestDiskMap_RemoveMountPointShare_Errors(t *testing.T) {
 	shareOther := &dto.SharedResource{Name: "different-share"}
 	mountWithShare := dto.MountPointData{Path: "/mnt/shared", Share: shareOther}
 	parts4 := map[string]dto.Partition{"p1": {Id: ptr("p1"), MountPointData: &map[string]dto.MountPointData{"/mnt/shared": mountWithShare}}}
-	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID4, Partitions: &parts4})
-	removed, disk = (&m).RemoveMountPointShare("nonexistent-share")
+	_ = m.AddOrUpdate(&dto.Disk{Id: &diskID4, Partitions: &parts4})
+	removed, disk = m.RemoveMountPointShare("nonexistent-share")
 	assert.False(t, removed)
 	assert.Nil(t, disk)
 }
@@ -550,18 +553,18 @@ func TestDiskMap_RemoveMountPointShare_NilMap(t *testing.T) {
 
 func TestDiskMap_AddHDIdleDevice(t *testing.T) {
 	diskID := "hdidle-disk-1"
-	m := dto.DiskMap{}
-	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID})
+	m := dto.NewDiskMap()
+	_ = m.AddOrUpdate(&dto.Disk{Id: &diskID})
 
 	// Create an HDIdleDevice
 	hdIdle := &dto.HDIdleDevice{DiskId: diskID, Enabled: dto.HdidleEnableds.CUSTOMENABLED}
 
 	// Add HDIdleDevice
-	err := (&m).AddHDIdleDevice(hdIdle)
+	err := m.AddHDIdleDevice(hdIdle)
 	assert.NoError(t, err)
 
 	// Verify it was set
-	d, ok := (&m).Get(diskID)
+	d, ok := m.Get(diskID)
 	assert.True(t, ok)
 	assert.NotNil(t, d.HDIdleDevice)
 	// Device field is not present on HDIdleDevice; verify DiskId and Enabled instead
@@ -571,21 +574,21 @@ func TestDiskMap_AddHDIdleDevice(t *testing.T) {
 
 func TestDiskMap_AddHDIdleDevice_Update(t *testing.T) {
 	diskID := "hdidle-disk-2"
-	m := dto.DiskMap{}
-	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID})
+	m := dto.NewDiskMap()
+	_ = m.AddOrUpdate(&dto.Disk{Id: &diskID})
 
 	// Add initial HDIdleDevice
 	hdIdle1 := &dto.HDIdleDevice{DiskId: diskID, Enabled: dto.HdidleEnableds.CUSTOMENABLED}
-	err := (&m).AddHDIdleDevice(hdIdle1)
+	err := m.AddHDIdleDevice(hdIdle1)
 	assert.NoError(t, err)
 
 	// Update with new HDIdleDevice
 	hdIdle2 := &dto.HDIdleDevice{DiskId: diskID, Enabled: dto.HdidleEnableds.NOENABLED}
-	err = (&m).AddHDIdleDevice(hdIdle2)
+	err = m.AddHDIdleDevice(hdIdle2)
 	assert.NoError(t, err)
 
 	// Verify it was updated
-	d, ok := (&m).Get(diskID)
+	d, ok := m.Get(diskID)
 	assert.True(t, ok)
 	assert.NotNil(t, d.HDIdleDevice)
 	assert.Equal(t, diskID, d.HDIdleDevice.DiskId)
@@ -593,25 +596,25 @@ func TestDiskMap_AddHDIdleDevice_Update(t *testing.T) {
 }
 
 func TestDiskMap_AddHDIdleDevice_Errors(t *testing.T) {
-	m := dto.DiskMap{}
+	m := dto.NewDiskMap()
 
 	// Nil disk map (empty but not nil)
 	diskID := "hdidle-test"
 
 	// Empty diskID
-	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID})
-	err := (&m).AddHDIdleDevice(&dto.HDIdleDevice{DiskId: ""})
+	_ = m.AddOrUpdate(&dto.Disk{Id: &diskID})
+	err := m.AddHDIdleDevice(&dto.HDIdleDevice{DiskId: ""})
 	assert.Error(t, err)
 
 	// Disk not found
-	err = (&m).AddHDIdleDevice(&dto.HDIdleDevice{DiskId: "nonexistent"})
+	err = m.AddHDIdleDevice(&dto.HDIdleDevice{DiskId: "nonexistent"})
 	assert.Error(t, err)
 }
 
 func TestDiskMap_AddSmartInfo(t *testing.T) {
 	diskID := "smart-disk-1"
-	m := dto.DiskMap{}
-	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID})
+	m := dto.NewDiskMap()
+	_ = m.AddOrUpdate(&dto.Disk{Id: &diskID})
 
 	// Create a SmartInfo
 	smartInfo := &dto.SmartInfo{
@@ -625,11 +628,11 @@ func TestDiskMap_AddSmartInfo(t *testing.T) {
 	}
 
 	// Add SmartInfo
-	err := (&m).AddSmartInfo(smartInfo)
+	err := m.AddSmartInfo(smartInfo)
 	assert.NoError(t, err)
 
 	// Verify it was set
-	d, ok := (&m).Get(diskID)
+	d, ok := m.Get(diskID)
 	assert.True(t, ok)
 	assert.NotNil(t, d.SmartInfo)
 	assert.True(t, d.SmartInfo.Supported)
@@ -640,8 +643,8 @@ func TestDiskMap_AddSmartInfo(t *testing.T) {
 
 func TestDiskMap_AddSmartInfo_Update(t *testing.T) {
 	diskID := "smart-disk-2"
-	m := dto.DiskMap{}
-	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID})
+	m := dto.NewDiskMap()
+	_ = m.AddOrUpdate(&dto.Disk{Id: &diskID})
 
 	// Add initial SmartInfo
 	smartInfo1 := &dto.SmartInfo{
@@ -651,7 +654,7 @@ func TestDiskMap_AddSmartInfo_Update(t *testing.T) {
 		ModelName:    "Old Model",
 		SerialNumber: "OLD123",
 	}
-	err := (&m).AddSmartInfo(smartInfo1)
+	err := m.AddSmartInfo(smartInfo1)
 	assert.NoError(t, err)
 
 	// Update with new SmartInfo
@@ -663,11 +666,11 @@ func TestDiskMap_AddSmartInfo_Update(t *testing.T) {
 		SerialNumber: "NEW456",
 		RotationRate: 7200,
 	}
-	err = (&m).AddSmartInfo(smartInfo2)
+	err = m.AddSmartInfo(smartInfo2)
 	assert.NoError(t, err)
 
 	// Verify it was updated
-	d, ok := (&m).Get(diskID)
+	d, ok := m.Get(diskID)
 	assert.True(t, ok)
 	assert.NotNil(t, d.SmartInfo)
 	assert.Equal(t, "NVMe", d.SmartInfo.DiskType)
@@ -678,8 +681,8 @@ func TestDiskMap_AddSmartInfo_Update(t *testing.T) {
 
 func TestDiskMap_AddSmartInfo_UnsupportedDevice(t *testing.T) {
 	diskID := "smart-disk-4"
-	m := dto.DiskMap{}
-	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID})
+	m := dto.NewDiskMap()
+	_ = m.AddOrUpdate(&dto.Disk{Id: &diskID})
 
 	// Create SmartInfo for unsupported device
 	smartInfo := &dto.SmartInfo{
@@ -689,11 +692,11 @@ func TestDiskMap_AddSmartInfo_UnsupportedDevice(t *testing.T) {
 	}
 
 	// Add SmartInfo
-	err := (&m).AddSmartInfo(smartInfo)
+	err := m.AddSmartInfo(smartInfo)
 	assert.NoError(t, err)
 
 	// Verify it was set
-	d, ok := (&m).Get(diskID)
+	d, ok := m.Get(diskID)
 	assert.True(t, ok)
 	assert.NotNil(t, d.SmartInfo)
 	assert.False(t, d.SmartInfo.Supported)
@@ -701,17 +704,195 @@ func TestDiskMap_AddSmartInfo_UnsupportedDevice(t *testing.T) {
 }
 
 func TestDiskMap_AddSmartInfo_Errors(t *testing.T) {
-	m := dto.DiskMap{}
+	m := dto.NewDiskMap()
 
 	// Test data
 	diskID := "smart-test"
 
 	// Empty diskID
-	_ = (&m).AddOrUpdate(&dto.Disk{Id: &diskID})
-	err := (&m).AddSmartInfo(&dto.SmartInfo{DiskId: ""})
+	_ = m.AddOrUpdate(&dto.Disk{Id: &diskID})
+	err := m.AddSmartInfo(&dto.SmartInfo{DiskId: ""})
 	assert.Error(t, err)
 
 	// Disk not found
-	err = (&m).AddSmartInfo(&dto.SmartInfo{DiskId: "nonexistent"})
+	err = m.AddSmartInfo(&dto.SmartInfo{DiskId: "nonexistent"})
 	assert.Error(t, err)
+}
+
+func TestDiskMap_NewDiskMapFrom(t *testing.T) {
+	validID := "disk-valid"
+	emptyID := ""
+	valid := &dto.Disk{Id: &validID}
+	noID := &dto.Disk{}
+
+	m := dto.NewDiskMapFrom(valid, nil, noID, &dto.Disk{Id: &emptyID})
+	assert.Equal(t, 1, m.Len())
+	got, ok := m.Get(validID)
+	assert.True(t, ok)
+	assert.Equal(t, validID, *got.Id)
+}
+
+func TestDiskMap_KeysAllSnapshot(t *testing.T) {
+	m := dto.NewDiskMap()
+	ids := []string{"k1", "k2", "k3"}
+	for _, id := range ids {
+		idCopy := id
+		require.NoError(t, m.AddOrUpdate(&dto.Disk{Id: &idCopy}))
+	}
+
+	assert.Equal(t, 3, m.Len())
+
+	keys := m.Keys()
+	assert.ElementsMatch(t, ids, keys)
+
+	all := m.All()
+	assert.Len(t, all, 3)
+	for _, d := range all {
+		assert.Contains(t, ids, *d.Id)
+	}
+
+	// Snapshot is a copy: removing from it must not affect the map.
+	snap := m.Snapshot()
+	delete(snap, "k1")
+	assert.Equal(t, 3, m.Len())
+	_, ok := m.Get("k1")
+	assert.True(t, ok)
+
+	// Nil receiver guards.
+	var nilMap *dto.DiskMap
+	assert.Equal(t, 0, nilMap.Len())
+	assert.Nil(t, nilMap.All())
+	assert.Nil(t, nilMap.Keys())
+	assert.Nil(t, nilMap.Snapshot())
+}
+
+func TestDiskMap_RefreshVersion(t *testing.T) {
+	m := dto.NewDiskMap()
+	assert.Equal(t, uint32(0), m.CurrentRefreshVersion())
+
+	first := m.NextRefreshVersion()
+	second := m.NextRefreshVersion()
+	assert.Equal(t, uint32(1), first)
+	assert.Equal(t, uint32(2), second)
+	assert.Equal(t, uint32(2), m.CurrentRefreshVersion())
+
+	// Nil receiver guards.
+	var nilMap *dto.DiskMap
+	assert.Equal(t, uint32(0), nilMap.NextRefreshVersion())
+	assert.Equal(t, uint32(0), nilMap.CurrentRefreshVersion())
+}
+
+func TestDiskMap_ZeroValueUsable(t *testing.T) {
+	// The zero value must be usable without NewDiskMap: mutations lazily
+	// initialize the internal map and reads treat it as empty.
+	var m dto.DiskMap
+	ptr := &dto.DiskMap{}
+
+	for _, mapRef := range []*dto.DiskMap{&m, ptr} {
+		id := "zero-disk"
+		require.NoError(t, mapRef.AddOrUpdate(&dto.Disk{Id: &id}))
+		assert.Equal(t, 1, mapRef.Len())
+
+		got, ok := mapRef.Get(id)
+		assert.True(t, ok)
+		assert.Equal(t, id, *got.Id)
+
+		assert.True(t, mapRef.Remove(id))
+		assert.False(t, mapRef.Remove(id))
+		assert.Equal(t, 0, mapRef.Len())
+
+		_, ok = mapRef.GetPartition("x", "y")
+		assert.False(t, ok)
+		_, ok = mapRef.GetMountPoint("x", "y", "/mnt")
+		assert.False(t, ok)
+	}
+}
+
+func TestDiskMap_GetPartitionDevicePath(t *testing.T) {
+	dev := "/dev/disk/by-id/ata-disk-part1"
+	legacyPath := "/dev/sda1"
+	legacyName := "sda1"
+	p := &dto.Partition{
+		DevicePath:       &dev,
+		LegacyDevicePath: &legacyPath,
+		LegacyDeviceName: &legacyName,
+	}
+
+	m := dto.NewDiskMap()
+	assert.Equal(t, dev, m.GetPartitionDevicePath(p))
+
+	p.DevicePath = nil
+	assert.Equal(t, legacyPath, m.GetPartitionDevicePath(p))
+
+	p.LegacyDevicePath = nil
+	assert.Equal(t, legacyName, m.GetPartitionDevicePath(p))
+
+	p.LegacyDeviceName = nil
+	assert.Equal(t, "", m.GetPartitionDevicePath(p))
+
+	assert.Equal(t, "", m.GetPartitionDevicePath(nil))
+}
+
+func TestDiskMap_GetPartitionByID(t *testing.T) {
+	diskID := "disk-by-id"
+	partID := "part-by-id"
+	part := dto.Partition{Id: &partID, DiskId: &diskID}
+	m := dto.NewDiskMap()
+	_ = m.AddOrUpdate(&dto.Disk{Id: &diskID, Partitions: &map[string]dto.Partition{partID: part}})
+
+	got, gotDisk, ok := m.GetPartitionByID(partID)
+	assert.True(t, ok)
+	assert.Equal(t, diskID, gotDisk)
+	assert.Equal(t, partID, *got.Id)
+
+	_, _, notFound := m.GetPartitionByID("missing")
+	assert.False(t, notFound)
+}
+
+func TestDiskMap_ConcurrentAccess(t *testing.T) {
+	// Run with -race: exercises the lock discipline of every mutator/reader.
+	m := dto.NewDiskMap()
+
+	var wg sync.WaitGroup
+	const goroutines = 16
+	const opsPerGoroutine = 200
+
+	for g := 0; g < goroutines; g++ {
+		wg.Add(1)
+		go func(g int) {
+			defer wg.Done()
+			for i := 0; i < opsPerGoroutine; i++ {
+				id := fmt.Sprintf("disk-%d-%d", g, i%10)
+				switch i % 4 {
+				case 0:
+					idCopy := id
+					_ = m.AddOrUpdate(&dto.Disk{Id: &idCopy})
+				case 1:
+					_, _ = m.Get(id)
+				case 2:
+					m.Snapshot()
+				default:
+					m.NextRefreshVersion()
+				}
+			}
+		}(g)
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < opsPerGoroutine; i++ {
+			id := fmt.Sprintf("disk-evict-%d", i%10)
+			m.Remove(id)
+			_ = m.Len()
+			_ = m.Keys()
+			_ = m.All()
+		}
+	}()
+
+	wg.Wait()
+	// Only the i%4==3 branch increments the version counter: 16 goroutines x
+	// (200/4) increments each, exactly, since the load happens after wg.Wait().
+	assert.Equal(t, uint32(goroutines*(opsPerGoroutine/4)), m.CurrentRefreshVersion())
+	assert.GreaterOrEqual(t, m.Len(), 0)
 }

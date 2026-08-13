@@ -6,9 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"maps"
 	"reflect"
-	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -105,7 +103,7 @@ func (broker *BroadcasterService) setupEventListeners() []func() {
 			diskID = *event.Disk.Id
 		}
 		slog.DebugContext(ctx, "BroadcasterService received Disk event", "disk", diskID)
-		broker.BroadcastMessage(slices.Collect(maps.Values(*broker.disks)))
+		broker.BroadcastMessage(broker.disks.All())
 		return nil
 	})
 	// Listen for share events
@@ -123,7 +121,7 @@ func (broker *BroadcasterService) setupEventListeners() []func() {
 	// Listen for mount point events
 	ret[2] = broker.eventBus.OnMountPoint(func(ctx context.Context, event events.MountPointEvent) errors.E {
 		slog.DebugContext(ctx, "BroadcasterService received MountPointMounted event", "mount_point", event.MountPoint.Path)
-		broker.BroadcastMessage(slices.Collect(maps.Values(*broker.disks)))
+		broker.BroadcastMessage(broker.disks.All())
 		return nil
 	})
 	ret[3] = broker.eventBus.OnDirtyData(func(ctx context.Context, dde events.DirtyDataEvent) errors.E {

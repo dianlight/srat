@@ -93,7 +93,7 @@ func (suite *EventPropagationTestSuite) SetupTest() {
 					DatabasePath: "file::memory:?cache=shared&_pragma=foreign_keys(1)",
 				}
 			},
-			func() *dto.DiskMap { return &dto.DiskMap{} },
+			func() *dto.DiskMap { return dto.NewDiskMap() },
 			dbom.NewDB,
 			events.NewEventBus,
 			NewDirtyDataService,
@@ -171,7 +171,7 @@ func (suite *EventPropagationTestSuite) SetupTest() {
 				},
 			}
 			if vs.disks == nil {
-				vs.disks = &dto.DiskMap{}
+				vs.disks = dto.NewDiskMap()
 			}
 			vs.disks.Add(&fakeDisk)
 		*/
