@@ -335,7 +335,7 @@ Refactor per the Dialog Pattern in the instruction file; behavior unchanged. Thi
 ## 📝 Task List
 
 - [x] Task 0: Run `prepare-refactor` skill (per AGENTS.md REFACTOR rule): baseline `mise run //backend:test` + `mise run //frontend:test`, record green state in `docs/refactors/048-volume-hardening.md`
-- [ ] Task 1: **B1** — Add `RWMutex` to `DiskMap` (convert to struct with methods) + `atomic.Uint32` refreshVersion; update all call sites; `-race` clean. *(Full call-site survey: see "B1 Implementation Survey" appendix below)*
+- [x] Task 1: **B1** — Add `RWMutex` to `DiskMap` (convert to struct with methods) + `atomic.Uint32` refreshVersion; update all call sites; `-race` clean. *(Full call-site survey: see "B1 Implementation Survey" appendix below)* — done in `a08e8e40`; post-refactor suites green (backend 0 fail / 40.5%, frontend 95 files / 728 tests); breakage detector clean (only false positive: `homeassistant_service.go` iterates `*[]*dto.Disk`)
 - [ ] Task 2: **B2** — Merge DB state before procfs-discovery ADD emit; add regression test
 - [ ] Task 3: **B3** — Scope stale-marking to current partition; add `GetMountPointsForPartition` helper + test
 - [ ] Task 4: **B4** — ProtectedMode/ReadOnlyMode guards on unmount + mount endpoints; table-driven API tests

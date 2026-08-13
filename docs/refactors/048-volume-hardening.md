@@ -81,7 +81,11 @@
 
 | Test Name | File | Status Before | Status After | Result | Notes |
 |-----------|------|---------------|--------------|--------|-------|
-| | | | | | |
+| Backend full suite | `mise run //backend:test` (all packages) | ✅ Pass | ✅ Pass | ✅ | 0 failures; total 40.5% coverage (baseline 40.2%); fresh run after `go clean -testcache` |
+| `TestDiskMap_*` (16 tests) | `dto/disk_map_test.go` | ✅ Pass | ✅ Pass | ✅ | incl. new `TestDiskMap_ConcurrentAccess` under `-race` |
+| Volume/mount/udev suites | `service/*_test.go` | ✅ Pass (1 SKIP) | ✅ Pass (1 SKIP) | ✅ | SKIP unchanged = darwin loop-device gaps |
+| Frontend full suite | `mise run //frontend:test` | ✅ Pass | ✅ Pass | ✅ | 95 files / 728 tests, 1 skipped (identical to baseline) |
+| B1 breakage detector | grep `range \*…disks` / `maps.Values(\*)` / `len(\*…disks)` | — | ✅ | ✅ | 1 hit = false positive (`homeassistant_service.go` iterates `*[]*dto.Disk`) |
 
 ---
 
@@ -89,6 +93,7 @@
 
 - 2026-08-13: User approved Task 0 (prepare-refactor) with "Yes". Prepare check = full run of `mise run //backend:test` + `mise run //frontend:test`; record green state.
 - 2026-08-13: Baseline recorded — backend 0 failures (service 57.2% / api 73.7% / total 40.2% coverage), frontend 95 files / 728 tests passed (1 skipped each). Volume-specific: backend volume/mount/disk suites all PASS (1 darwin SKIP), frontend 15 files / 158 tests PASS. All impacted functions have existing test files → no missing tests to create.
+- 2026-08-13: **B1 (DiskMap lock-guarded struct) implemented in `a08e8e40`** — `DiskMap` converted to struct with internal `RWMutex` + `atomic.Uint32` refreshVersion; `Snapshot()`/`ForEach()`/`SetDisk()`/`DeleteDisk()` methods; all call sites migrated; concurrent `-race` test added. Post-refactor verification green: backend full suite 0 failures (fresh run, 40.5%), frontend 95 files / 728 tests, breakage detector clean (1 false positive on `*[]*dto.Disk`).
 - Known environment caveat (from task doc): `TestMountUnmountVolume_Success` is SKIP on darwin (no loop device) — mount path untested in CI; H1's test doubles as a fake-mounter equivalent. Also `TestHandlePartitionUdevRemoveEvent_LoopbackExt4EvictsCache` SKIP for the same reason.
 
 ---
@@ -101,7 +106,7 @@
 - [x] All impacted functions have at least one test
 - [x] Missing tests created (none needed — all impacted functions already covered)
 - [x] Pre-refactor baseline run and recorded
-- [ ] Refactor implemented
-- [ ] Post-refactor tests run
-- [ ] All tests pass (or failures accepted by user)
+- [x] Refactor implemented
+- [x] Post-refactor tests run
+- [x] All tests pass (or failures accepted by user)
 - [ ] Tracking document finalised
