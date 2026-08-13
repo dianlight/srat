@@ -334,7 +334,7 @@ Refactor per the Dialog Pattern in the instruction file; behavior unchanged. Thi
 
 ## 📝 Task List
 
-- [ ] Task 0: Run `prepare-refactor` skill (per AGENTS.md REFACTOR rule): baseline `mise run //backend:test` + `mise run //frontend:test`, record green state in `docs/refactors/048-volume-hardening.md`
+- [x] Task 0: Run `prepare-refactor` skill (per AGENTS.md REFACTOR rule): baseline `mise run //backend:test` + `mise run //frontend:test`, record green state in `docs/refactors/048-volume-hardening.md`
 - [ ] Task 1: **B1** — Add `RWMutex` to `DiskMap` (convert to struct with methods) + `atomic.Uint32` refreshVersion; update all call sites; `-race` clean
 - [ ] Task 2: **B2** — Merge DB state before procfs-discovery ADD emit; add regression test
 - [ ] Task 3: **B3** — Scope stale-marking to current partition; add `GetMountPointsForPartition` helper + test
