@@ -335,7 +335,7 @@ Refactor per the Dialog Pattern in the instruction file; behavior unchanged. Thi
 ## 📝 Task List
 
 - [x] Task 0: Run `prepare-refactor` skill (per AGENTS.md REFACTOR rule): baseline `mise run //backend:test` + `mise run //frontend:test`, record green state in `docs/refactors/048-volume-hardening.md`
-- [ ] Task 1: **B1** — Add `RWMutex` to `DiskMap` (convert to struct with methods) + `atomic.Uint32` refreshVersion; update all call sites; `-race` clean
+- [ ] Task 1: **B1** — Add `RWMutex` to `DiskMap` (convert to struct with methods) + `atomic.Uint32` refreshVersion; update all call sites; `-race` clean. *(Full call-site survey: see "B1 Implementation Survey" appendix below)*
 - [ ] Task 2: **B2** — Merge DB state before procfs-discovery ADD emit; add regression test
 - [ ] Task 3: **B3** — Scope stale-marking to current partition; add `GetMountPointsForPartition` helper + test
 - [ ] Task 4: **B4** — ProtectedMode/ReadOnlyMode guards on unmount + mount endpoints; table-driven API tests
@@ -390,3 +390,84 @@ Refactor per the Dialog Pattern in the instruction file; behavior unchanged. Thi
 - **Do not** change the `MountPointData.DeviceId` JSON contract in this task — frontend and HA component consume it; B5 is service-internal only.
 - `VolumeMountDialog` (F2) is explicitly listed as a **reference implementation** in the form-standard instructions file — after migration, re-check the instruction file's reference list still points at compliant code.
 - Baseline test state at review time (darwin, Go 1.26.5): backend `api` 73.7% / `service` 57.2% coverage, all volume tests green except `TestMountUnmountVolume_Success` (SKIP — no loop device on darwin); frontend `volumeHook` 6/6 green (shallow truthiness only). `TestMountUnmountVolume_Success` skip means the primary mount path is **untested in CI** — consider a fake-mounter-backed equivalent that runs everywhere (H1's test doubles as this).
+
+## 🔎 DTO Verification Appendix (2026-08-13)
+
+Verified against `backend/src/dto/` sources. Grounds findings B1, B2, B3, B5, H4, H8.
+
+| Finding | Verification result |
+|---------|---------------------|
+| B1 | `DiskMap` is a bare `map[string]*Disk` with a method set in `disk_map.go`; zero synchronization — confirmed. ⚠️ Deep-copy requirement: `MountPointData.Partition` (`json:"-"` back-ref) and `SharedResource.MountPointData` (forward-ref) form a **circular reference in memory**; any deep copy (B1 item 3, H8) must break the cycle (nil the ephemeral refs) or it recurses. ⚠️ `GetMountPoint`/`GetMountPointByPath` return `&mp` pointing at a **local copy** (range var), not the map slot — mutations via those pointers silently no-op today; preserve this read-only contract when introducing the lock API. |
+| B2 | `MountPointData` confirmed: procfs discovery populates only `Path/Root/Type/FSType/DeviceId/IsMounted`; `IsToMountAtStartup`/`Flags`/`CustomFlags`/`Share` nil → converter nil-guards skip → zero-write under `UpdateAll: true`. The merge fix targets exactly those 4 fields (Share excluded — owned by the share service). |
+| B3 | `GetAllMountPoints()` iterates all disks × partitions — confirmed. `GetMountPointsForPartition(diskID, partitionID)` **does not exist** in `disk_map.go`; must be added (Task 3). |
+| B5 | `GetPartitionDevicePath(partition)` (DevicePath → LegacyDevicePath → LegacyDeviceName) and `GetPartitionByID(partitionID)` **already exist** in `disk_map.go` — the suggested fix only needs the `GetDevicePathByDeviceID` rewrite + the DeviceId contract decision. |
+| H4 | Converter nil-guard behavior confirmed (`dto_to_dbom_conv_gen.go:108-136`); the patch path converts into the DB-loaded record — residual quirk is `affected == 0 → 404`. |
+| H8 | `Disk`/`Partition` both carry `RefreshVersion uint32` (per-entity snapshot copies, not the shared counter); `AddSmartInfo`/`AddHDIdleDevice` mutate the cached `*Disk` **in place** through the map pointer — cache aliasing confirmed. |
+
+## 🔬 B1 Implementation Survey (2026-08-13)
+
+Compiled from a full read of `backend/src/service/volume_service.go` (all 1139 lines), `backend/src/dto/disk_map.go`, every DiskMap consumer, and every test file. Grounds Task 1 (B1) and cross-references Task 3 (B3) and Task 19 (H8).
+
+### A. Current type & DI wiring
+
+- `type DiskMap map[string]*Disk` (bare map, zero synchronization) + **17 pointer-receiver methods** in `dto/disk_map.go`: `AddOrUpdate`, `Remove`, `Get`, `AddOrUpdateMountPoint`, `RemoveMountPoint`, `AddPartition`, `RemovePartition`, `GetPartition`, `GetMountPoint`, `GetMountPointByPath`, `GetAllMountPoints`, `AddMountPointShare`, `RemoveMountPointShare`, `AddHDIdleDevice`, `AddSmartInfo`, `GetPartitionDevicePath`, `GetPartitionByID`.
+- **One shared instance** across services via DI: `internal/appsetup/appsetup.go:66` (`func() *dto.DiskMap { return &dto.DiskMap{} }`). Injected into 8 consumers: `VolumeService` (field L66), `BroadcasterService` (L43/L61), `DiskStatsService` (L32/L54), `ServerProcessService` (L138/L156), `SupervisorService` (L41/L55), `VolumeMountManager` (L31/L41), `FilesystemHandler` (`api/filesystems.go:18/25`), plus converter context param (`converter/mount_to_dto.go:35/46/58`) and `mount_intelligence.go:12` helper param. **All fields stay `*dto.DiskMap`** (pointer type) after the struct conversion — nil guards (`self.disks == nil`) keep working.
+
+### B. Direct-map read sites (must become methods)
+
+| File:line | Current code | Replacement |
+|-----------|--------------|-------------|
+| `volume_service.go:275` | `for _, disk := range *ms.disks` (findPartitionByDeviceId) | `self.disks.All()` (read-only) |
+| `volume_service.go:409` | `for diskID, disk := range *self.disks` (findPartitionByDevName) | `self.disks.All()` |
+| `volume_service.go:497` | `if len(*self.disks) == 0` (GetVolumesData) | `self.disks.Len() == 0` |
+| `volume_service.go:504` | `slices.Collect(maps.Values(*self.disks))` (GetVolumesData — the B1-race read) | `self.disks.All()` |
+| `volume_service.go:634` | `for id, disk := range *self.disks` — eviction loop, **`Remove` inside** | `self.disks.Snapshot()` (iterate+mutate) |
+| `volume_service.go:680` | `for _, disk := range *self.disks` (hasWholeDiskSynthesizedDisks) | `self.disks.All()` |
+| `volume_service.go:789` | `for _, disk := range *self.disks` (findDiskForDevicePath) | `self.disks.All()` |
+| `volume_service.go:1038` | `for dk, d := range *ms.disks` (PatchMountPointSettings fallback) | `self.disks.Snapshot()` (derefs/mutates outside) |
+| `broadcaster_service.go:108,126` | `slices.Collect(maps.Values(*broker.disks))` (relay broadcasts) | `broker.disks.All()` |
+| `disk_stats_service.go:205` | `slices.Collect(maps.Values(*s.disks))` | `s.disks.All()` |
+| `converter/mount_to_dto.go:47` | `for _, d := range *disks` (partitionFromDevice) | `disks.All()` (converter re-gen not needed — hand edit only this fn) |
+
+**Already method-based (no change):** `api/filesystems.go:152-160` (`GetPartitionByID`/`GetPartitionDevicePath`), `mount_intelligence.go:12-28` (`GetPartitionByID`), `rootFromPath` (`GetMountPointByPath`), `homeassistant_service.go:65/76` (consumes `*[]*dto.Disk` — output of `GetVolumesData()`, not the map).
+
+### C. `refreshVersion` sites (`volume_service.go`)
+
+| Line | Site | Migration |
+|------|------|-----------|
+| 67 | field `refreshVersion uint32` | **delete** (moves into DiskMap) |
+| 115 | init `refreshVersion: 0` | **delete** (atomic zero value) |
+| 545 | `self.refreshVersion++` (singleflight) | `v := self.disks.NextRefreshVersion()` |
+| 570 | `disk.RefreshVersion = self.refreshVersion` (snapshot stamp) | use local `v` |
+| 635 | `disk.RefreshVersion != self.refreshVersion` (eviction compare) | use local `v` |
+| 846 | `mountPoint.RefreshVersion = self.refreshVersion` (stamp) | `self.disks.CurrentRefreshVersion()` |
+| 882 | `RefreshVersion: self.refreshVersion` (stamp) | `CurrentRefreshVersion()` |
+| 910 | trace log read (handlePartitionEvent) | `CurrentRefreshVersion()` |
+| 914 | `mountPoint.RefreshVersion != self.refreshVersion` (staleness compare) | `CurrentRefreshVersion()` |
+| 919 | `mountPoint.RefreshVersion = self.refreshVersion` (re-stamp) | `CurrentRefreshVersion()` |
+
+⚠️ Sites 846-919 run in **event-handler goroutines outside the singleflight** — exactly the race B1 fixes; `atomic.Uint32` makes them safe without restructuring.
+
+### D. Test sites requiring conversion
+
+| Pattern | Sites | Fix |
+|---------|-------|-----|
+| `dto.DiskMap{}` empty literal | `dto/disk_map_test.go` (26×) | `dto.NewDiskMap()` |
+| `&dto.DiskMap{}` provider/value | `appsetup.go:66`; fxtest providers in `volume_service_test.go:82`, `event_propagation_test.go:96/174`, `broadcaster_service_test.go:59/231`, `ws_test.go:58`, `filesystems_test.go:52`, `disk_stats_service_test.go:44`; `broadcaster_service_internal_test.go:23` | `dto.NewDiskMap()` |
+| Seeded composite literal `dto.DiskMap{diskID: &disk}` | `volume_service_reconcile_test.go:197`, `volume_service_udev_test.go:82/119/164`, `mount_intelligence_test.go:88`, `converter/converter_test.go:196` | `dto.NewDiskMap(&disk)` |
+| Direct index writes `(*suite.disks)[diskID] = ...` | `volume_service_test.go:811-855` | `suite.disks.AddOrUpdate(&disk)` |
+| Seeded read test `mount_intelligence_test.go:88-...` (map read in `enrichSharePartitionFromCache` assertions) | same file | seed via `NewDiskMap`, read via `GetPartitionByID` |
+
+Note: `event_propagation_test.go:173-176` has a **commented-out** block calling `vs.disks.Add(...)` — no `Add` method exists (only `AddOrUpdate`); leave commented, do not resurrect.
+
+### E. Design decisions (Task 1 execution)
+
+1. **Struct layout:** `type DiskMap struct { mu sync.RWMutex; entries map[string]*Disk; refreshVersion atomic.Uint32 }`. All 17 existing methods become lock-guarded (`RLock` for read-only, `Lock` for mutators). Pointer receivers unchanged.
+2. **refreshVersion moves into DiskMap** (matches the task's "keep the invariant local" grouping): `NextRefreshVersion() uint32` = `Add(1)`; `CurrentRefreshVersion() uint32` = `Load()`. `VolumeService` drops its field/init (C above).
+3. **New methods:** `Len()`, `All() []*Disk` (replaces every `maps.Values` site — note iteration order is nondeterministic, same as today), `Snapshot() map[string]*Disk` (copy-under-RLock for iterate+mutate loops), `Keys()`, `GetMountPointsForPartition(diskID, partitionID)` (**deferred to Task 3/B3** — do not add in Task 1).
+4. **Constructor strategy:** `NewDiskMap()` + `NewDiskMapFrom(disks ...*Disk)` (AddOrUpdates each). Composite literals with the unexported `entries` field are impossible from other packages — the ~40 test literals in D are a mechanical `sed`-able rewrite. Alternatively keep a package-local `diskMapFrom(map[string]*Disk)` for `dto` tests; decide at implementation time.
+5. **Semantics preserved:** `GetMountPoint`/`GetMountPointByPath` keep returning a pointer to a **local copy** (read-only contract — mutations no-op today, keep it); `Get` returns the map slot pointer (in-place mutation by `AddSmartInfo`/`AddHDIdleDevice` stays valid under `RLock` — document that callers must not hold the returned pointer across lock releases).
+6. **Iterate-with-mutate loops** (L634 eviction, L1038 fallback) must switch to `Snapshot()` — ranging the live map while calling locked `Remove` would deadlock (`sync.RWMutex` is not reentrant).
+7. **H8 is NOT fixed by this conversion:** the hardware cache is a separate type (`map[string]dto.Disk`, `hardware_service.go:36`). The `Clone()`/immutable-snapshot helper Task 19 (H8) needs must **break the circular ref** (`MountPointData.Partition` ↔ `SharedResource.MountPointData`) — nil the ephemeral refs in the clone; Task 1 should add the helper in `dto` (or defer it entirely to Task 19; do not over-scope).
+8. **Compile-time breakage detector:** after the conversion, `grep -rn "range \*.*disks\|maps\.Values(\*\|len(\*.*disks" backend/src` must return **zero** hits outside `dto/disk_map.go`.
+9. **Commit sequence (one mechanical commit, per Implementation Notes):** (1) rewrite `dto/disk_map.go` + constructors; (2) migrate `dto/disk_map_test.go`; (3) `appsetup.go` provider; (4) `volume_service.go` B+C sites; (5) `broadcaster_service.go` + `disk_stats_service.go` reads; (6) `converter/mount_to_dto.go:47`; (7) test literals D; (8) `-race` concurrent test (Task 1's own test); (9) `mise run //backend:test` + coverage gate (Task 23).
