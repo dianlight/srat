@@ -339,7 +339,7 @@ Refactor per the Dialog Pattern in the instruction file; behavior unchanged. Thi
 - [x] Task 2: **B2** — Merge DB state before procfs-discovery ADD emit; add regression test — done in `cd31e1ec`; see "B2 Implementation" appendix below; suites green (backend 0 fail / 40.5%, coverage gate met)
 - [x] Task 3: **B3** — Scope stale-marking to current partition; add `GetMountPointsForPartition` helper + test — done; see "B3 Implementation" appendix below; suites green (backend 0 fail / 40.6%, coverage gate met)
 - [x] Task 4: **B4** — ProtectedMode/ReadOnlyMode guards on unmount + mount endpoints; table-driven API tests — done; see "B4 Implementation" appendix below; suites green (backend 0 fail / 40.8%, coverage gate met)
-- [ ] Task 5: **B5** — Fix `GetDevicePathByDeviceID` semantics + nil guard; caller audit; unit tests
+- [x] Task 5: **B5** — Fix `GetDevicePathByDeviceID` semantics + nil guard; caller audit; unit tests — done; see "B5 Implementation" appendix below; suites green (backend 0 fail / 40.8%, coverage gate met)
 - [ ] Task 6: **B6** — Rewrite `volumeHook` with `useMemo` derivation (delete both `useEffect`s); MSW tests
 - [ ] Task 7: **H1** — Automount retry backoff (per-path attempt map, max 5, exp. backoff); loop test with failing cache write
 - [ ] Task 8: **H2** — Hoist procfs parse out of per-partition handler (parse once per refresh, pass via payload); benchmark before/after
@@ -398,7 +398,41 @@ Mutation checks (git-free, backup-copy + revert): removing the `UnmountVolume` P
 - gofmt clean on all 4 touched files; `go -C src vet ./api/ ./service/` clean.
 - Final diff: 4 files, +215.
 
+## 🔬 B5 Implementation (2026-08-14)
+
+**Branch:** `fix/volume-phantom-entries` (uncommitted; ready for one atomic commit)
+
+### Changes
+
+1. **`backend/src/service/volume_service.go` — `GetDevicePathByDeviceID` now resolves partitions, not disks.** Contract decided: `DeviceId` means *partition* Id everywhere (consistent with `MountVolume`'s `*part.Id == md.DeviceId` match and the DTO comment); device *paths* go through `DiskMap.GetPartitionDevicePath`. Implementation rewritten to:
+   - `ms.disks.GetPartitionByID(deviceID)` — a disk ID passed here must **not** match (old code looked up the disk map, so a disk ID returned the disk's `DevicePath` or panicked).
+   - `ms.disks.GetPartitionDevicePath(part)` — nil-safe cascade: `DevicePath` → `LegacyDevicePath` → `LegacyDeviceName`, empty string if none.
+   - Distinct errors: partition not found → `dto.ErrorNotFound`; no path available → `dto.ErrorDeviceNotFound` (previously `*md.DevicePath` could nil-deref).
+2. **Caller audit (`grep -rn "GetDevicePathByDeviceID")`:** the only production caller, the SMART-info handler pre-lookup in `api/smart.go:83`, is commented out — no active caller depends on the old disk-ID semantics. Interface signature unchanged, so upstream mocks (e.g. `smart_test.go`) remain valid.
+
+### Tests
+
+| Test | Coverage | Notes |
+|------|----------|-------|
+| `TestGetDevicePathByDeviceID` (`service/volume_service_test.go`) | `GetDevicePathByDeviceID` → **100%** (was ~60%) | Table-driven over the four required scenarios: partition-id hit returns `DevicePath`; disk-id passed → `ErrorNotFound` (must NOT match); missing `DevicePath` falls back to `LegacyDevicePath`; all-empty → `ErrorDeviceNotFound` (no panic). Disk also carries a device path so the old code fails on a clean value mismatch, not a panic |
+
+Mutation check (git-free, backup-copy + revert): restoring the old implementation (`ms.disks.Get(deviceID)` + `*md.DevicePath`) fails `TestGetDevicePathByDeviceID/partition_id_hit_returns_device_path` with "Not Found" — proving the test catches the disk/partition conflation. Restored; working tree clean.
+
+### Coverage gate (Task 23, per-function ≥70% for touched code)
+
+| Function | Before | After |
+|----------|--------|-------|
+| `GetDevicePathByDeviceID` (service) | 75.0% | **100.0%** |
+
+### Verification
+
+- Targeted `go -C src tool gotest ... ./api ./service`: both packages ok.
+- Full `mise run //backend:test`: exit=0, Total coverage 40.8%.
+- gofmt clean on both touched files; `go -C src vet ./service/` clean.
+- Final diff: 2 files, +51.
+
 ## 🧪 Test Plan Summary
+
 
 
 
