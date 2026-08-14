@@ -197,6 +197,8 @@ export function useVolume() {
 
 **Tests:** fake mounter that succeeds the syscall but fails cache write; assert bounded number of `Mount` calls.
 
+**Status:** ✅ Done — commit `59922eb0` (backoff guard + tests)
+
 ### H2 — `getVolumesData` emits per-partition events inside the snapshot; subscribers do per-partition DB + procfs I/O
 
 **Files:** `volume_service.go:611-623` (emit), `803-935` (handler)
@@ -341,7 +343,7 @@ Refactor per the Dialog Pattern in the instruction file; behavior unchanged. Thi
 - [x] Task 4: **B4** — ProtectedMode/ReadOnlyMode guards on unmount + mount endpoints; table-driven API tests — done; see "B4 Implementation" appendix below; suites green (backend 0 fail / 40.8%, coverage gate met)
 - [x] Task 5: **B5** — Fix `GetDevicePathByDeviceID` semantics + nil guard; caller audit; unit tests — done; see "B5 Implementation" appendix below; suites green (backend 0 fail / 40.8%, coverage gate met)
 - [x] Task 6: **B6** — Rewrite `volumeHook` with `useMemo` derivation (delete both `useEffect`s); MSW tests — done; see "B6 Implementation" appendix below; frontend suites green (727 passed), tsc + lint clean
-- [ ] Task 7: **H1** — Automount retry backoff (per-path attempt map, max 5, exp. backoff); loop test with failing cache write
+- [x] Task 7: **H1** — Automount retry backoff (per-path attempt map, max 5, exp. backoff); loop test with failing cache write
 - [ ] Task 8: **H2** — Hoist procfs parse out of per-partition handler (parse once per refresh, pass via payload); benchmark before/after
 - [ ] Task 9: **H3** — Delete duplicate DevicePath validation block
 - [ ] Task 10: **H4** — Verify converter nil-handling; switch to selective field updates if needed; DB-level assertion test
