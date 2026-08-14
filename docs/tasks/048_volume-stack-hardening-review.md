@@ -337,7 +337,7 @@ Refactor per the Dialog Pattern in the instruction file; behavior unchanged. Thi
 - [x] Task 0: Run `prepare-refactor` skill (per AGENTS.md REFACTOR rule): baseline `mise run //backend:test` + `mise run //frontend:test`, record green state in `docs/refactors/048-volume-hardening.md`
 - [x] Task 1: **B1** — Add `RWMutex` to `DiskMap` (convert to struct with methods) + `atomic.Uint32` refreshVersion; update all call sites; `-race` clean. *(Full call-site survey: see "B1 Implementation Survey" appendix below)* — done in `a08e8e40`; post-refactor suites green (backend 0 fail / 40.5%, frontend 95 files / 728 tests); breakage detector clean (only false positive: `homeassistant_service.go` iterates `*[]*dto.Disk`)
 - [x] Task 2: **B2** — Merge DB state before procfs-discovery ADD emit; add regression test — done in `cd31e1ec`; see "B2 Implementation" appendix below; suites green (backend 0 fail / 40.5%, coverage gate met)
-- [ ] Task 3: **B3** — Scope stale-marking to current partition; add `GetMountPointsForPartition` helper + test
+- [x] Task 3: **B3** — Scope stale-marking to current partition; add `GetMountPointsForPartition` helper + test — done; see "B3 Implementation" appendix below; suites green (backend 0 fail / 40.6%, coverage gate met)
 - [ ] Task 4: **B4** — ProtectedMode/ReadOnlyMode guards on unmount + mount endpoints; table-driven API tests
 - [ ] Task 5: **B5** — Fix `GetDevicePathByDeviceID` semantics + nil guard; caller audit; unit tests
 - [ ] Task 6: **B6** — Rewrite `volumeHook` with `useMemo` derivation (delete both `useEffect`s); MSW tests
@@ -512,3 +512,33 @@ Total suite: 40.5% (baseline unchanged). Remaining uncovered in `persistMountPoi
 - Full `mise run //backend:test`: exit=0 (final run all-cached, Total coverage 40.5%).
 - gofmt clean; `go -C src vet ./service/` clean; targeted run from `backend/`: `go -C src tool gotest -p 1 -failfast -timeout 120s -tags embedallowed_no -run '<TestSuite/TestName>' ./service`.
 - `mise run //backend:format` `depends_post` security step (govulncheck/gosec) fails with exit status 3 — pre-existing dependency vulns, unrelated to B2. testifylint auto-fix of `dto/disk_map_test.go` (`assert.Equal("",…)` → `assert.Empty`) was reverted to keep the commit atomic.
+
+## 🔬 B3 Implementation (2026-08-14)
+
+**Branch:** `fix/volume-phantom-entries` (uncommitted; ready for one atomic commit)
+
+### Changes
+
+1. **`backend/src/dto/disk_map.go` — new `GetMountPointsForPartition(diskID, partitionID)`** (after `GetAllMountPoints`, ~line 408): returns the mount points of a single disk+partition only, `RLock`-guarded, same read-only local-copy contract as `GetAllMountPoints`. Empty ids and nil receiver short-circuit to `nil`; unknown disk/partition yield an empty slice.
+2. **`backend/src/service/volume_service.go:958` — stale-marking loop scoped.** `handlePartitionEvent`'s stale loop now iterates `self.disks.GetMountPointsForPartition(*e.Partition.DiskId, *e.Partition.Id)` instead of `GetAllMountPoints()`. The unscoped loop marked **every** stale mount point across all disks/partitions and — because `GetAllMountPoints` returns local copies — wrote each one into the **partition being processed** (keyed by its path), polluting partition A with phantom copies of B's mount points (the "phantom volume" symptom) and persisting cross-partition state.
+
+### Tests
+
+| Test | Coverage | Notes |
+|------|----------|-------|
+| `TestDiskMap_GetMountPointsForPartition` (`dto/disk_map_test.go`) | `GetMountPointsForPartition` → **93.8%** | Two partitions with 2+1 mount points; asserts per-partition scoping, empty slice for unknown disk/partition, nil on empty ids, nil receiver safety |
+| `TestHandlePartitionEvent_StaleMarkingScopedToPartition` (`service/volume_service_test.go`, after the B2 regression test) | Changed stale-loop line in `handlePartitionEvent` | Seeds disk with partitions A/B each carrying a mounted mount point (version 0); bumps refresh version (service startup already bumped once via the `OnStart` warmup — test derives `baseVersion` so it stays robust); procfs mocked empty; emits partition event for A only. Asserts: A's own mount point is unmounted (stale-marking still works), A gains **no** phantom entry for B's path, and B's mount point stays `IsMounted=true` with version 0. **Proven to FAIL without the fix** (`git`-free verification: backup copy of `volume_service.go`, one-line revert to `GetAllMountPoints()`, test fails with "partition A must not contain partition B's mount point as a phantom entry", restore) |
+
+### Coverage gate (Task 23, per-function ≥70% for touched code)
+
+| Function | Before | After |
+|----------|--------|-------|
+| `GetMountPointsForPartition` | — (new) | **93.8%** |
+| `handlePartitionEvent` | 42.0% (pre-existing legacy) | 51.9% (rose via the new test); the changed stale-loop line is covered by the regression test — same precedent as B2 |
+
+### Verification
+
+- Targeted `go -C src tool gotest ... ./dto ./service`: `dto` ok, `service` ok (full package runs, 26s).
+- Full `mise run //backend:test`: exit=0, Total coverage 40.6% (baseline 40.5%).
+- gofmt clean on all 4 touched files; `go -C src vet ./dto/ ./service/` clean.
+- Working tree after the accidental `git stash pop` of an unrelated stash (`stash@{0}` from `feat/hdidle-per-disk-rework`) was restored with `git reset --merge`; the stash entry is preserved untouched. No unrelated files in the final diff (4 files, +142/−1).
