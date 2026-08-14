@@ -336,7 +336,7 @@ Refactor per the Dialog Pattern in the instruction file; behavior unchanged. Thi
 
 - [x] Task 0: Run `prepare-refactor` skill (per AGENTS.md REFACTOR rule): baseline `mise run //backend:test` + `mise run //frontend:test`, record green state in `docs/refactors/048-volume-hardening.md`
 - [x] Task 1: **B1** — Add `RWMutex` to `DiskMap` (convert to struct with methods) + `atomic.Uint32` refreshVersion; update all call sites; `-race` clean. *(Full call-site survey: see "B1 Implementation Survey" appendix below)* — done in `a08e8e40`; post-refactor suites green (backend 0 fail / 40.5%, frontend 95 files / 728 tests); breakage detector clean (only false positive: `homeassistant_service.go` iterates `*[]*dto.Disk`)
-- [ ] Task 2: **B2** — Merge DB state before procfs-discovery ADD emit; add regression test
+- [x] Task 2: **B2** — Merge DB state before procfs-discovery ADD emit; add regression test — done in `cd31e1ec`; see "B2 Implementation" appendix below; suites green (backend 0 fail / 40.5%, coverage gate met)
 - [ ] Task 3: **B3** — Scope stale-marking to current partition; add `GetMountPointsForPartition` helper + test
 - [ ] Task 4: **B4** — ProtectedMode/ReadOnlyMode guards on unmount + mount endpoints; table-driven API tests
 - [ ] Task 5: **B5** — Fix `GetDevicePathByDeviceID` semantics + nil guard; caller audit; unit tests
@@ -471,3 +471,44 @@ Note: `event_propagation_test.go:173-176` has a **commented-out** block calling 
 7. **H8 is NOT fixed by this conversion:** the hardware cache is a separate type (`map[string]dto.Disk`, `hardware_service.go:36`). The `Clone()`/immutable-snapshot helper Task 19 (H8) needs must **break the circular ref** (`MountPointData.Partition` ↔ `SharedResource.MountPointData`) — nil the ephemeral refs in the clone; Task 1 should add the helper in `dto` (or defer it entirely to Task 19; do not over-scope).
 8. **Compile-time breakage detector:** after the conversion, `grep -rn "range \*.*disks\|maps\.Values(\*\|len(\*.*disks" backend/src` must return **zero** hits outside `dto/disk_map.go`.
 9. **Commit sequence (one mechanical commit, per Implementation Notes):** (1) rewrite `dto/disk_map.go` + constructors; (2) migrate `dto/disk_map_test.go`; (3) `appsetup.go` provider; (4) `volume_service.go` B+C sites; (5) `broadcaster_service.go` + `disk_stats_service.go` reads; (6) `converter/mount_to_dto.go:47`; (7) test literals D; (8) `-race` concurrent test (Task 1's own test); (9) `mise run //backend:test` + coverage gate (Task 23).
+
+## 🔬 B2 Implementation (2026-08-14)
+
+**Commit:** `cd31e1ec` — "🐛 fix(be): preserve mount point settings on discovery persist" (2 files, +162/-4). Pre-commit hooks (go-fmt, golangci-lint, go-vet) green.
+
+### Changes (`backend/src/service/volume_service.go`)
+
+1. **`persistMountPoint` (line 206) — load-then-merge upsert.** Replaces the fresh-zero-value convert + `OnConflict{UpdateAll:true}` (which NULLed every column missing from the event DTO):
+   - falls back `Root` to `/` when empty;
+   - `First`s the existing row by `(Path, Root)`;
+   - on `gorm.ErrRecordNotFound` builds a zero-value `dbom.MountPointPath{}` (unchanged behavior for new rows);
+   - otherwise converts the DTO **into the loaded DB record** (nil DTO fields leave loaded values intact — same pattern `PatchMountPointSettings` uses);
+   - `Create`s with `OnConflict{UpdateAll:true}`.
+   - `ExportedShare` close-loop is now `ExportedShare.MountPointData = dbom_mount_data` (value semantics). The FK columns live on the exported_shares side (`MountPointDataPath`,`MountPointDataRoot`), so a nil `ExportedShare` **cannot** wipe the association — Share preservation is automatic (comment documents this).
+2. **New helper `loadMountPointFromDBByPath` (line 557):** empty-path guard; `Find` by `(Path, Root)`; converts first hit via `MountPointPathToMountPointData(dbMPs[0], &dtoMP, nil)`. The existing (DeviceId-based) `loadMountPointFromDB` path is untouched (still used for cache seeding).
+3. **Discovery merge in `handlePartitionEvent` (~lines 888-905):** before emitting the procfs-discovery ADD, merge `IsToMountAtStartup`, `Flags`, `CustomFlags` from `disks.GetMountPointByPath(...)` first (live cache), falling back to `loadMountPointFromDBByPath(...)`; DB errors are warn-logged (non-fatal). Share is intentionally **not** merged (owned by the share service) — per the B2 finding.
+
+### Tests (`backend/src/service/volume_service_test.go`)
+
+| Test | Coverage | Notes |
+|------|----------|-------|
+| `TestHandlePartitionEvent_DiscoveryPreservesPersistedMountPointConfig` (~line 833) | Regression: seeds DB row (`DeviceId` differing from partition Id, `IsToMountAtStartup:true`, Flags `user_custom_flag`, Data `custom_super_opt`), mock HW disk/partition (`/dev/b2disk1-part1`), mock procfs mount (`/mnt/b2-discovery`); asserts all three fields survive `InvalidateHardwareInfo()` + `GetVolumesData()` | Proven to **FAIL without the fix** (`IsToMountAtStartup` wiped to false; validated via `git stash push` on `volume_service.go`) |
+| `TestEmitMountPointEventWithSharePersistsAssociation` (~line 152) | Event with `Share: &dto.SharedResource{Name:"b2-share-assoc"}`; asserts preloaded DB row keeps `ExportedShare.Name` + `MountPointDataPath` | Covers the ExportedShare close-loop branch (3 statements) — added to meet the ≥70% per-function coverage gate |
+
+### Coverage gate (Task 23, per-function ≥70% for touched code)
+
+| Function | Before | After |
+|----------|--------|-------|
+| `persistMountPoint` | 68.4% | **84.2%** |
+| `loadMountPointFromDBByPath` | — (new) | **72.7%** |
+| `loadMountPointFromDB` | — | 73.3% |
+| `handleMountPointEvent` | — | 77.8% |
+| `handlePartitionEvent` | 42.0% (pre-existing legacy) | unchanged; changed discovery lines covered by regression test |
+
+Total suite: 40.5% (baseline unchanged). Remaining uncovered in `persistMountPoint`: non-not-found `First` error, converter error, `Create` error — all hard to trigger, no blocker.
+
+### Verification
+
+- Full `mise run //backend:test`: exit=0 (final run all-cached, Total coverage 40.5%).
+- gofmt clean; `go -C src vet ./service/` clean; targeted run from `backend/`: `go -C src tool gotest -p 1 -failfast -timeout 120s -tags embedallowed_no -run '<TestSuite/TestName>' ./service`.
+- `mise run //backend:format` `depends_post` security step (govulncheck/gosec) fails with exit status 3 — pre-existing dependency vulns, unrelated to B2. testifylint auto-fix of `dto/disk_map_test.go` (`assert.Equal("",…)` → `assert.Empty`) was reverted to keep the commit atomic.

@@ -3,7 +3,7 @@
 <!-- DOCTOC SKIP -->
 
 **Date:** 2026-08-13
-**Status:** 🔧 Ready (baseline recorded, refactor not started)
+**Status:** 🔄 In progress (B1 + B2 implemented and committed; 22 tasks remaining)
 **Prepare Check:** Yes (approved — task doc Task 0 + user "Yes" 2026-08-13)
 **Linked Task:** docs/tasks/048_volume-stack-hardening-review.md
 **Scope:** Volume subsystem hardening: DiskMap concurrency (B1), mount-point persistence semantics (B2, H4), stale-marking (B3), mode guards (B4), device-path lookup (B5), frontend volume hook race (B6), automount backoff (H1), event-loop I/O (H2), dead code (H3), error masking (H5), unmount semantics (H6), udev lifecycle (H7), cache aliasing (H8), event error surfacing (H9), cold-cache HTTP path (H10), frontend fixes F1–F6.
@@ -94,6 +94,7 @@
 - 2026-08-13: User approved Task 0 (prepare-refactor) with "Yes". Prepare check = full run of `mise run //backend:test` + `mise run //frontend:test`; record green state.
 - 2026-08-13: Baseline recorded — backend 0 failures (service 57.2% / api 73.7% / total 40.2% coverage), frontend 95 files / 728 tests passed (1 skipped each). Volume-specific: backend volume/mount/disk suites all PASS (1 darwin SKIP), frontend 15 files / 158 tests PASS. All impacted functions have existing test files → no missing tests to create.
 - 2026-08-13: **B1 (DiskMap lock-guarded struct) implemented in `a08e8e40`** — `DiskMap` converted to struct with internal `RWMutex` + `atomic.Uint32` refreshVersion; `Snapshot()`/`ForEach()`/`SetDisk()`/`DeleteDisk()` methods; all call sites migrated; concurrent `-race` test added. Post-refactor verification green: backend full suite 0 failures (fresh run, 40.5%), frontend 95 files / 728 tests, breakage detector clean (1 false positive on `*[]*dto.Disk`).
+- 2026-08-14: **B2 (persistMountPoint nil-wipe) implemented in `cd31e1ec`** — load-then-merge upsert in `persistMountPoint` (convert INTO the DB-loaded row; nil DTO fields never overwrite persisted values), new `loadMountPointFromDBByPath` helper, and discovery-merge in `handlePartitionEvent` (merges `IsToMountAtStartup`/`Flags`/`CustomFlags` from cache or DB before ADD emit; Share not merged — owned by share service). Regression test `TestHandlePartitionEvent_DiscoveryPreservesPersistedMountPointConfig` proven FAIL-without-fix; coverage gate met (`persistMountPoint` 68.4%→84.2%, new helper 72.7%). Full backend suite green (0 fail, 40.5%). See task doc "B2 Implementation" appendix.
 - Known environment caveat (from task doc): `TestMountUnmountVolume_Success` is SKIP on darwin (no loop device) — mount path untested in CI; H1's test doubles as a fake-mounter equivalent. Also `TestHandlePartitionUdevRemoveEvent_LoopbackExt4EvictsCache` SKIP for the same reason.
 
 ---
