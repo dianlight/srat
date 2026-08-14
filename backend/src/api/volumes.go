@@ -53,6 +53,10 @@ func (self *VolumeHandler) MountVolume(ctx context.Context, input *struct {
 	Body dto.MountPointData `required:"true"`
 }) (*struct{ Body dto.MountPointData }, error) {
 
+	if self.apiContext.ReadOnlyMode {
+		return nil, huma.Error403Forbidden("Cannot mount volumes in read-only mode")
+	}
+
 	mount_data := input.Body
 
 	if mount_data.Path == "" || mount_data.Root == "" {
@@ -76,6 +80,8 @@ func (self *VolumeHandler) MountVolume(ctx context.Context, input *struct {
 			return nil, huma.Error404NotFound("Device Not Found", errE)
 		} else if errors.Is(errE, dto.ErrorInvalidParameter) {
 			return nil, huma.Error406NotAcceptable("Invalid Parameter", errE)
+		} else if errors.Is(errE, dto.ErrorOperationNotPermittedInProtectedMode) {
+			return nil, huma.Error403Forbidden("Operation not permitted in protected mode", errE)
 		} else {
 			return nil, huma.Error500InternalServerError("Unknown Error", errE)
 		}
@@ -89,6 +95,10 @@ func (self *VolumeHandler) UmountVolume(ctx context.Context, input *struct {
 	Force     bool   `query:"force" default:"false" doc:"Force umount operation"`
 	// Lazy          bool   `query:"lazy" default:"false" doc:"Lazy umount operation"`
 }) (*struct{}, error) {
+
+	if self.apiContext.ReadOnlyMode {
+		return nil, huma.Error403Forbidden("Cannot unmount volumes in read-only mode")
+	}
 
 	/*
 		mountPath, err := self.vservice.PathHashToPath(input.MountPathHash)
@@ -106,6 +116,9 @@ func (self *VolumeHandler) UmountVolume(ctx context.Context, input *struct {
 	*/
 	err := self.vservice.UnmountVolume(input.MountPath, input.Force)
 	if err != nil {
+		if errors.Is(err, dto.ErrorOperationNotPermittedInProtectedMode) {
+			return nil, huma.Error403Forbidden("Operation not permitted in protected mode", err)
+		}
 		return nil, huma.Error406NotAcceptable(fmt.Sprintf("%#v", err.Details()["Detail"]), err)
 	}
 

@@ -397,6 +397,14 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 }
 
 func (ms *VolumeService) UnmountVolume(path string, force bool) errors.E {
+	// Early validation of required fields
+	if ms.state.ProtectedMode {
+		return errors.WithDetails(dto.ErrorOperationNotPermittedInProtectedMode,
+			"Operation", "UnmountVolume",
+			"Detail", "Unmount operation is not permitted when ProtectedMode is enabled.",
+		)
+	}
+
 	// Look up mount point data from in-memory cache first
 	md, ok := ms.disks.GetMountPointByPath(path)
 	if ok && md.Share != nil && md.Share.Status.IsHAMounted {

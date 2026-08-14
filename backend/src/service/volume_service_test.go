@@ -37,6 +37,7 @@ type VolumeServiceTestSuite struct {
 	hardwareService    service.HardwareServiceInterface
 	eventBus           events.EventBusInterface
 	disks              *dto.DiskMap
+	state              *dto.ContextState
 	ctx                context.Context
 	cancel             context.CancelFunc
 	app                *fxtest.App
@@ -98,6 +99,7 @@ func (suite *VolumeServiceTestSuite) SetupTest() {
 		fx.Populate(&suite.hardwareService),
 		fx.Populate(&suite.eventBus),
 		fx.Populate(&suite.disks),
+		fx.Populate(&suite.state),
 		fx.Populate(&suite.ctx),
 		fx.Populate(&suite.cancel),
 		fx.Populate(&suite.db),
@@ -429,6 +431,99 @@ func (suite *VolumeServiceTestSuite) TestMountVolume_PathEmpty() {
 	details := err.Details()
 	suite.Contains(details, "Message")
 	suite.Equal("Mount point path is empty", details["Message"])
+}
+
+// --- ProtectedMode Tests ---
+
+func (suite *VolumeServiceTestSuite) TestVolumeMutations_ProtectedMode() {
+	suite.state.ProtectedMode = true
+
+	testCases := []struct {
+		name      string
+		operation string
+		run       func() errors.E
+	}{
+		{
+			name:      "MountVolume rejected",
+			operation: "MountVolume",
+			run: func() errors.E {
+				return suite.volumeService.MountVolume(&dto.MountPointData{
+					Path: "/mnt/protected", Root: "/mnt/protected", DeviceId: "sda1",
+				})
+			},
+		},
+		{
+			name:      "UnmountVolume rejected",
+			operation: "UnmountVolume",
+			run: func() errors.E {
+				return suite.volumeService.UnmountVolume("/mnt/protected", false)
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.T().Run(tc.name, func(t *testing.T) {
+			err := tc.run()
+			suite.Require().Error(err)
+			suite.ErrorIs(err, dto.ErrorOperationNotPermittedInProtectedMode)
+			details := err.Details()
+			suite.Contains(details, "Operation")
+			suite.Equal(tc.operation, details["Operation"])
+		})
+	}
+}
+
+// TestUnmountVolume_Paths covers the UnmountVolume branches: a cached mount
+// point with an HA-mounted share (share removal event + unmount attempt) and a
+// path that is not present in the cache (fallback unmount attempt).
+func (suite *VolumeServiceTestSuite) TestUnmountVolume_Paths() {
+	diskID := "disk-u"
+	partID := "part-u"
+	devicePath := "/dev/u1"
+
+	disk := &dto.Disk{
+		Id: &diskID,
+		Partitions: &map[string]dto.Partition{
+			partID: {Id: &partID, DiskId: &diskID, DevicePath: &devicePath},
+		},
+	}
+	suite.Require().NoError(suite.disks.AddOrUpdate(disk))
+	suite.Require().NoError(suite.disks.AddOrUpdateMountPoint(diskID, partID, dto.MountPointData{
+		Path:      "/mnt/u-ha",
+		DeviceId:  partID,
+		IsMounted: true,
+		Share: &dto.SharedResource{
+			Status: &dto.SharedResourceStatus{IsHAMounted: true},
+		},
+	}))
+
+	// Subscribe to share events to observe the HA-mounted share removal.
+	shareRemoved := make(chan events.ShareEvent, 1)
+	unsub := suite.eventBus.OnShare(func(ctx context.Context, e events.ShareEvent) errors.E {
+		shareRemoved <- e
+		return nil
+	})
+	defer unsub()
+
+	// Cached mount point with HA-mounted share: emits a REMOVE share event and
+	// proceeds to unmount (which fails for the non-existent path).
+	err := suite.volumeService.UnmountVolume("/mnt/u-ha", false)
+	suite.Require().Error(err)
+	suite.ErrorIs(err, dto.ErrorUnmountFail)
+
+	select {
+	case ev := <-shareRemoved:
+		suite.Equal(events.EventTypes.REMOVE, ev.Type)
+		suite.NotNil(ev.Share)
+	default:
+		suite.Fail("expected a REMOVE share event for the HA-mounted share")
+	}
+
+	// Path not in cache: falls back to a synthesized mount point and attempts
+	// the unmount (fails for the non-existent path).
+	err = suite.volumeService.UnmountVolume("/mnt/u-missing", false)
+	suite.Require().Error(err)
+	suite.ErrorIs(err, dto.ErrorUnmountFail)
 }
 
 // --- GetVolumesData Tests ---
