@@ -340,7 +340,7 @@ Refactor per the Dialog Pattern in the instruction file; behavior unchanged. Thi
 - [x] Task 3: **B3** — Scope stale-marking to current partition; add `GetMountPointsForPartition` helper + test — done; see "B3 Implementation" appendix below; suites green (backend 0 fail / 40.6%, coverage gate met)
 - [x] Task 4: **B4** — ProtectedMode/ReadOnlyMode guards on unmount + mount endpoints; table-driven API tests — done; see "B4 Implementation" appendix below; suites green (backend 0 fail / 40.8%, coverage gate met)
 - [x] Task 5: **B5** — Fix `GetDevicePathByDeviceID` semantics + nil guard; caller audit; unit tests — done; see "B5 Implementation" appendix below; suites green (backend 0 fail / 40.8%, coverage gate met)
-- [ ] Task 6: **B6** — Rewrite `volumeHook` with `useMemo` derivation (delete both `useEffect`s); MSW tests
+- [x] Task 6: **B6** — Rewrite `volumeHook` with `useMemo` derivation (delete both `useEffect`s); MSW tests — done; see "B6 Implementation" appendix below; frontend suites green (727 passed), tsc + lint clean
 - [ ] Task 7: **H1** — Automount retry backoff (per-path attempt map, max 5, exp. backoff); loop test with failing cache write
 - [ ] Task 8: **H2** — Hoist procfs parse out of per-partition handler (parse once per refresh, pass via payload); benchmark before/after
 - [ ] Task 9: **H3** — Delete duplicate DevicePath validation block
@@ -431,7 +431,42 @@ Mutation check (git-free, backup-copy + revert): restoring the old implementatio
 - gofmt clean on both touched files; `go -C src vet ./service/` clean.
 - Final diff: 2 files, +51.
 
+## 🔬 B6 Implementation (2026-08-14)
+
+**Branch:** `fix/volume-phantom-entries` (uncommitted; ready for one atomic commit)
+
+### Changes
+
+1. **`frontend/src/hooks/volumeHook.ts` — rewritten as a single derived value; both `useEffect`s and the local `useState` removed.** The SSE payload (`evdata?.volumes`) wins once available, REST (`data`) is the fallback until then, `[]` otherwise:
+   ```ts
+   const disks = useMemo<Disk[]>(
+     () => evdata?.volumes ?? (isDiskArray(data) ? data : []),
+     [evdata?.volumes, data],
+   );
+   ```
+2. **Unsafe cast removed.** `GetApiVolumesApiResponse` is a union (`Disk[] | null | ErrorModel`); the old `setDisks(data as Disk[])` produced `undefined` when the REST query errored. The new `isDiskArray` type guard narrows before use, so `disks` is always `Disk[]`.
+3. **Loading gate fixed.** `isLoading: isLoading && !evdata?.volumes` — REST gates only until the first SSE payload arrives; a failing/fast SSE query no longer renders an empty list while REST is still loading (old code: `isLoading && evloading`).
+4. **Error surfacing:** `error: error ?? everror` (REST error preferred, SSE error fallback; old code used `||`).
+
+### Tests
+
+| Test | Notes |
+|------|-------|
+| `volumeHook.test.ts` — 5 deterministic MSW tests | `wsApi` module mocked (repo pattern from `Shares.test.tsx`) with a controllable SSE mock; REST `/api/volumes` overridden per test via `getMswServer().use(...)`. Scenarios: REST fallback when no SSE payload; **SSE wins** over different REST data; REST failure → `[]` (not `undefined`) + error surfaced; SSE error surfaced when REST succeeds; `isLoading` stays true while REST pending with no SSE payload (deferred-response handler) |
+
+Mutation check (backup-copy + revert): restoring the old implementation fails 2 tests semantically — `returns an empty array (not undefined) and surfaces the error when REST fails` (the `data as Disk[]` cast bug) and `keeps isLoading true while REST loads and no SSE payload is present` (the `isLoading && evloading` gate bug). Restored; working tree clean.
+
+### Verification
+
+- `bun tsc --noEmit`: clean.
+- `bunx vitest run src/hooks/__tests__/volumeHook.test.ts`: 5/5 pass.
+- Consumer suites (`src/pages/volumes`, `src/pages/shares`, `src/pages/dashboard`): 35 files / 292 tests pass.
+- Full `bunx vitest run`: 95 files / 727 tests pass (1 skipped, pre-existing).
+- `mise run //frontend:lint`: clean.
+- Final diff: 2 files (hook + tests).
+
 ## 🧪 Test Plan Summary
+
 
 
 
