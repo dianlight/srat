@@ -955,7 +955,7 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 	}
 
 	tlog.TraceContext(ctx, "Marking stale mount points as unmounted for partition", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id)
-	for _, mountPoint := range self.disks.GetAllMountPoints() {
+	for _, mountPoint := range self.disks.GetMountPointsForPartition(*e.Partition.DiskId, *e.Partition.Id) {
 		tlog.TraceContext(ctx, " --> Checking mount point for staleness",
 			"disk_id", *e.Disk.Id,
 			"partition_id", *e.Partition.Id,

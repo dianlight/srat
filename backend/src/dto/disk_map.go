@@ -404,6 +404,34 @@ func (m *DiskMap) GetAllMountPoints() []*MountPointData {
 	return result
 }
 
+// GetMountPointsForPartition returns a slice of mount points belonging to the
+// given disk and partition only, unlike GetAllMountPoints which spans every
+// disk and partition. The order is nondeterministic. Each returned pointer
+// references a local copy: mutations through them do not affect the DiskMap.
+func (m *DiskMap) GetMountPointsForPartition(diskID, partitionID string) []*MountPointData {
+	if m == nil || diskID == "" || partitionID == "" {
+		return nil
+	}
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	var result []*MountPointData
+	if m.entries == nil {
+		return result
+	}
+	d, ok := m.entries[diskID]
+	if !ok || d.Partitions == nil {
+		return result
+	}
+	part, ok := (*d.Partitions)[partitionID]
+	if !ok || part.MountPointData == nil {
+		return result
+	}
+	for _, mp := range *part.MountPointData {
+		result = append(result, &mp)
+	}
+	return result
+}
+
 // AddMountPointShare sets the Share field on the mount point.
 // Extracts diskID, partitionID, and path from the share's MountPointData.
 // If partition info is nil in the share, searches existing mount points for the partition.

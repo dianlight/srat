@@ -226,6 +226,38 @@ func TestDiskMap_GetAllMountPoints(t *testing.T) {
 	assert.Len(t, allMPs, 2)
 }
 
+func TestDiskMap_GetMountPointsForPartition(t *testing.T) {
+	diskID := "disk-scoped"
+	partA := "part-a"
+	partB := "part-b"
+	partitions := map[string]dto.Partition{
+		partA: {Id: ptr(partA), MountPointData: &map[string]dto.MountPointData{
+			"/mnt/a1": {Path: "/mnt/a1"},
+			"/mnt/a2": {Path: "/mnt/a2"},
+		}},
+		partB: {Id: ptr(partB), MountPointData: &map[string]dto.MountPointData{
+			"/mnt/b1": {Path: "/mnt/b1"},
+		}},
+	}
+	m := dto.NewDiskMap()
+	_ = m.AddOrUpdate(&dto.Disk{Id: &diskID, Partitions: &partitions})
+
+	mpsA := m.GetMountPointsForPartition(diskID, partA)
+	assert.Len(t, mpsA, 2)
+	mpsB := m.GetMountPointsForPartition(diskID, partB)
+	assert.Len(t, mpsB, 1)
+
+	// Unknown partition and unknown disk both yield an empty slice.
+	assert.Empty(t, m.GetMountPointsForPartition(diskID, "unknown"))
+	assert.Empty(t, m.GetMountPointsForPartition("unknown", partA))
+	// Empty identifiers are rejected up front.
+	assert.Nil(t, m.GetMountPointsForPartition("", partA))
+	assert.Nil(t, m.GetMountPointsForPartition(diskID, ""))
+	// Nil receiver must not panic.
+	var nilMap *dto.DiskMap
+	assert.Nil(t, nilMap.GetMountPointsForPartition(diskID, partA))
+}
+
 func TestDiskMap_AddMountPointShare(t *testing.T) {
 	diskID := "disk-share"
 	partID := "part-share"

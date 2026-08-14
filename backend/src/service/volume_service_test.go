@@ -903,6 +903,87 @@ func (suite *VolumeServiceTestSuite) TestHandlePartitionEvent_DiscoveryPreserves
 	suite.Equal("custom_super_opt", (*dbMount.Data)[0].Name)
 }
 
+// TestHandlePartitionEvent_StaleMarkingScopedToPartition is a regression test
+// for the B3 finding: the stale-marking loop in handlePartitionEvent used to
+// iterate GetAllMountPoints() — every disk and partition — and mark unmounted
+// anything whose RefreshVersion trailed the current one. Because the loop runs
+// for a single partition event, mount points of sibling partitions that were
+// not part of the latest snapshot's emit path were falsely marked unmounted.
+// The loop must only consider mount points of the partition being processed.
+func (suite *VolumeServiceTestSuite) TestHandlePartitionEvent_StaleMarkingScopedToPartition() {
+	diskID := "b3-disk-1"
+	partA := "b3-part-a"
+	partB := "b3-part-b"
+	deviceA := "/dev/b3disk1-part1"
+	deviceB := "/dev/b3disk1-part2"
+
+	// Seed the disk cache with two partitions, each carrying a mounted mount
+	// point stamped with the initial refresh version (0).
+	disk := &dto.Disk{
+		Id: &diskID,
+		Partitions: &map[string]dto.Partition{
+			partA: {Id: &partA, DiskId: &diskID, DevicePath: &deviceA},
+			partB: {Id: &partB, DiskId: &diskID, DevicePath: &deviceB},
+		},
+	}
+	suite.Require().NoError(suite.disks.AddOrUpdate(disk))
+	suite.Require().NoError(suite.disks.AddOrUpdateMountPoint(diskID, partA, dto.MountPointData{
+		Path:           "/mnt/b3-a",
+		DeviceId:       partA,
+		IsMounted:      true,
+		RefreshVersion: 0,
+	}))
+	suite.Require().NoError(suite.disks.AddOrUpdateMountPoint(diskID, partB, dto.MountPointData{
+		Path:           "/mnt/b3-b",
+		DeviceId:       partB,
+		IsMounted:      true,
+		RefreshVersion: 0,
+	}))
+
+	// The service warms the cache at startup (getVolumesData), which already
+	// advanced the refresh version once. Bump it again so both seeded mount
+	// points (stamped 0) trail the current version and become stale
+	// candidates for the stale-marking loop.
+	baseVersion := suite.disks.CurrentRefreshVersion()
+	suite.disks.NextRefreshVersion()
+	currentVersion := suite.disks.CurrentRefreshVersion()
+	suite.Equal(baseVersion+1, currentVersion)
+
+	// Procfs reports no mounts: the sync loop stamps nothing, so any mounted
+	// mount point still carrying version 0 is a stale-marking candidate.
+	suite.volumeService.MockSetProcfsGetMounts(func() ([]*procfs.MountInfo, error) {
+		return []*procfs.MountInfo{}, nil
+	})
+
+	// Emit a partition event for partition A only.
+	partAEvent := (*disk.Partitions)[partA]
+	suite.eventBus.EmitPartition(events.PartitionEvent{
+		Event:     events.Event{Type: events.EventTypes.ADD},
+		Partition: &partAEvent,
+		Disk:      disk,
+	})
+
+	// Partition A's own mount point must have been marked unmounted ...
+	mpA, ok := suite.disks.GetMountPoint(diskID, partA, "/mnt/b3-a")
+	suite.Require().True(ok)
+	suite.False(mpA.IsMounted, "stale-marking must still apply to the partition being processed")
+	suite.Equal(currentVersion, mpA.RefreshVersion)
+
+	// ... and partition A must NOT have gained B's mount point as a phantom
+	// entry. The unscoped loop wrote every stale mount point (including B's)
+	// into the partition being processed, polluting its map and persisting
+	// cross-partition state.
+	_, phantom := suite.disks.GetMountPoint(diskID, partA, "/mnt/b3-b")
+	suite.False(phantom, "partition A must not contain partition B's mount point as a phantom entry")
+
+	// ... but partition B's mount point must be untouched: still mounted and
+	// still carrying the older refresh version.
+	mpB, ok := suite.disks.GetMountPoint(diskID, partB, "/mnt/b3-b")
+	suite.Require().True(ok)
+	suite.True(mpB.IsMounted, "sibling partition mount point must not be marked unmounted")
+	suite.Equal(uint32(0), mpB.RefreshVersion, "sibling partition refresh version must be unchanged")
+}
+
 // TestOnSmartEvent_EmptyDiskId_DoesNotUpdateDiskCache verifies that when a SmartEvent
 // carrying an empty DiskId (e.g. a self-test progress event) is emitted, the volume
 // service's OnSmart handler does NOT call AddSmartInfo on the disk map. This prevents
