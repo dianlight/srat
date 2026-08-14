@@ -338,7 +338,7 @@ Refactor per the Dialog Pattern in the instruction file; behavior unchanged. Thi
 - [x] Task 1: **B1** — Add `RWMutex` to `DiskMap` (convert to struct with methods) + `atomic.Uint32` refreshVersion; update all call sites; `-race` clean. *(Full call-site survey: see "B1 Implementation Survey" appendix below)* — done in `a08e8e40`; post-refactor suites green (backend 0 fail / 40.5%, frontend 95 files / 728 tests); breakage detector clean (only false positive: `homeassistant_service.go` iterates `*[]*dto.Disk`)
 - [x] Task 2: **B2** — Merge DB state before procfs-discovery ADD emit; add regression test — done in `cd31e1ec`; see "B2 Implementation" appendix below; suites green (backend 0 fail / 40.5%, coverage gate met)
 - [x] Task 3: **B3** — Scope stale-marking to current partition; add `GetMountPointsForPartition` helper + test — done; see "B3 Implementation" appendix below; suites green (backend 0 fail / 40.6%, coverage gate met)
-- [ ] Task 4: **B4** — ProtectedMode/ReadOnlyMode guards on unmount + mount endpoints; table-driven API tests
+- [x] Task 4: **B4** — ProtectedMode/ReadOnlyMode guards on unmount + mount endpoints; table-driven API tests — done; see "B4 Implementation" appendix below; suites green (backend 0 fail / 40.8%, coverage gate met)
 - [ ] Task 5: **B5** — Fix `GetDevicePathByDeviceID` semantics + nil guard; caller audit; unit tests
 - [ ] Task 6: **B6** — Rewrite `volumeHook` with `useMemo` derivation (delete both `useEffect`s); MSW tests
 - [ ] Task 7: **H1** — Automount retry backoff (per-path attempt map, max 5, exp. backoff); loop test with failing cache write
@@ -360,7 +360,47 @@ Refactor per the Dialog Pattern in the instruction file; behavior unchanged. Thi
 - [ ] Task 23: Coverage gate: `mise run //backend:test` + `go tool cover -func=coverage.out` — every touched function ≥70%; frontend `bun tsc --noEmit` + `mise run //frontend:test:new` green
 - [ ] Task 24: Update `CHANGELOG.md` under `[ 🚧 Unreleased ]`
 
+## 🔬 B4 Implementation (2026-08-14)
+
+**Branch:** `fix/volume-phantom-entries` (uncommitted; ready for one atomic commit)
+
+### Changes
+
+1. **`backend/src/service/volume_service.go` — `UnmountVolume` gains the `ProtectedMode` guard.** Mirrors `MountVolume`'s existing check: returns `dto.ErrorOperationNotPermittedInProtectedMode` (with `Operation`/`Detail` details) before any cache lookup or unmount attempt.
+2. **`backend/src/api/volumes.go` — `MountVolume` and `UmountVolume` handlers gain the `ReadOnlyMode` guard** (same pattern as `PatchMountPointSettings`): `huma.Error403Forbidden` when `self.apiContext.ReadOnlyMode` is set, before any validation or service call.
+3. **`backend/src/api/volumes.go` — ProtectedMode error now maps to HTTP 403** in both handlers (`errors.Is(errE, dto.ErrorOperationNotPermittedInProtectedMode)` → `huma.Error403Forbidden`). Previously the mount handler mapped it to 500 (unknown-error branch) and the umount handler to 406 (catch-all), so the REST surface misrepresented the protected-mode rejection.
+
+### Tests
+
+| Test | Coverage | Notes |
+|------|----------|-------|
+| `TestVolumeMutations_ProtectedMode` (`service/volume_service_test.go`) | `UnmountVolume` → **100%** (was 18.2%) | Table-driven over `MountVolume` + `UnmountVolume` with `ProtectedMode: true`; asserts sentinel error and `Operation` detail. Suite gained a populated `*dto.ContextState` (`suite.state`) so the shared service state pointer can be flipped in-test |
+| `TestUnmountVolume_Paths` (`service/volume_service_test.go`) | same | Branch coverage for `UnmountVolume`: (a) cached mount point with an HA-mounted share → asserts REMOVE `ShareEvent` emitted (synchronous `OnShare` listener) + unmount attempted; (b) path not in cache → fallback synthesized mount point + unmount attempted. Real mounter fails cleanly with `ErrorUnmountFail` on non-existent paths, so assertions are deterministic |
+| `TestMutatingEndpoints_ForbiddenInReadOnlyMode` (`api/volumes_extra_test.go`) | `MountVolume` handler → **91.3%**, `UmountVolume` handler → **87.5%** | Table-driven 403 matrix over mount/umount/patch with a `ReadOnlyMode: true` handler; verifies service methods called `Times(0)` |
+| `TestMutatingEndpoints_ForbiddenInProtectedMode` (`api/volumes_extra_test.go`) | same | Table-driven 403 over mount/umount with the service mocked to return the ProtectedMode error; proves the handler maps it to 403 (not 500/406) |
+
+Mutation checks (git-free, backup-copy + revert): removing the `UnmountVolume` ProtectedMode guard fails `TestVolumeMutations_ProtectedMode/UnmountVolume_rejected`; removing the API guards + 403 mappings fails `TestMutatingEndpoints_ForbiddenInProtectedMode`. Restored; working tree clean.
+
+### Coverage gate (Task 23, per-function ≥70% for touched code)
+
+| Function | Before | After |
+|----------|--------|-------|
+| `UnmountVolume` (service) | 18.2% | **100.0%** |
+| `MountVolume` (handler) | — | **91.3%** |
+| `UmountVolume` (handler) | — | **87.5%** |
+
+(`MountVolume` service method 62.7% — pre-existing, untouched by B4.)
+
+### Verification
+
+- Targeted `go -C src tool gotest ... ./api ./service`: both packages ok.
+- Full `mise run //backend:test`: exit=0, Total coverage 40.8% (baseline 40.5%).
+- gofmt clean on all 4 touched files; `go -C src vet ./api/ ./service/` clean.
+- Final diff: 4 files, +215.
+
 ## 🧪 Test Plan Summary
+
+
 
 | Area | New/Updated Tests | Catches |
 |------|-------------------|---------|
