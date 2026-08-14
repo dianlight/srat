@@ -73,6 +73,24 @@ type VolumeService struct {
 	maxProvisionalRechecks int
 	pendingRecheck         *provisionalRecheckState
 	recheckMu              sync.Mutex
+
+	// Automount retry guard: bounds repeated mount attempts for the same
+	// mount path. When the OS-level mount succeeds but the converter or
+	// cache write fails (see volumeMountManager.Mount), the emitted event can
+	// carry a stale IsMounted=false, which re-enters handleMountPointEvent
+	// and would otherwise loop forever with one mount(2) per iteration.
+	// We cap attempts per path and back off exponentially between failures.
+	automountBackoffBase time.Duration
+	maxAutomountAttempts int
+	automountRetryMu     sync.Mutex
+	automountRetries     map[string]automountRetryState
+}
+
+// automountRetryState tracks how many times an automount attempt for a given
+// mount path has failed and when the next attempt is allowed.
+type automountRetryState struct {
+	attempts    int
+	nextRetryAt time.Time
 }
 
 type VolumeServiceProps struct {
@@ -112,6 +130,10 @@ func NewVolumeService(
 
 		recheckInterval:        15 * time.Second,
 		maxProvisionalRechecks: 5,
+
+		automountBackoffBase: 2 * time.Second,
+		maxAutomountAttempts: 5,
+		automountRetries:     map[string]automountRetryState{},
 	}
 
 	var unsubscribe [7]func()
@@ -461,6 +483,17 @@ func (self *VolumeService) handlePartitionUdevAddEvent(devName string) bool {
 			continue
 		}
 
+		if allowed, exhausted := self.allowAutomountAttempt(mountPoint.Path); !allowed {
+			if exhausted {
+				slog.WarnContext(self.ctx, "Automount attempts exhausted for partition add event, giving up",
+					"devname", devName, "path", mountPoint.Path, "max_attempts", self.maxAutomountAttempts)
+			} else {
+				slog.DebugContext(self.ctx, "Skipping automount retry for partition add event, backing off",
+					"devname", devName, "path", mountPoint.Path)
+			}
+			continue
+		}
+
 		mountCopy := mountPoint
 		mountCopy.Partition = partition
 		mountCopy.DeviceId = *partition.Id
@@ -470,10 +503,18 @@ func (self *VolumeService) handlePartitionUdevAddEvent(devName string) bool {
 
 		err := self.MountVolume(&mountCopy)
 		if err != nil {
+			if errors.Is(err, dto.ErrorAlreadyMounted) {
+				slog.InfoContext(self.ctx, "Mount point already mounted during partition add automount retry", "devname", devName, "path", mountCopy.Path)
+				self.clearAutomountRetry(mountCopy.Path)
+				handled = true
+				continue
+			}
 			slog.WarnContext(self.ctx, "Failed automount retry for partition add event", "devname", devName, "path", mountCopy.Path, "err", err)
+			self.recordAutomountFailure(mountCopy.Path)
 			continue
 		}
 
+		self.clearAutomountRetry(mountCopy.Path)
 		handled = true
 	}
 
@@ -1016,18 +1057,79 @@ func (self *VolumeService) handleMountPointEvent(ctx context.Context, e events.M
 		return err
 	}
 	if (e.Type == events.EventTypes.ADD || e.Type == events.EventTypes.UPDATE) && !e.MountPoint.IsMounted && e.MountPoint.IsToMountAtStartup != nil && *e.MountPoint.IsToMountAtStartup {
+		if allowed, exhausted := self.allowAutomountAttempt(e.MountPoint.Path); !allowed {
+			if exhausted {
+				slog.WarnContext(ctx, "Automount attempts exhausted for mount point, giving up",
+					"mount_point", e.MountPoint.Path, "device_id", e.MountPoint.DeviceId, "max_attempts", self.maxAutomountAttempts)
+			} else {
+				slog.DebugContext(ctx, "Skipping automount attempt, backing off",
+					"mount_point", e.MountPoint.Path, "device_id", e.MountPoint.DeviceId)
+			}
+			return nil
+		}
 		slog.InfoContext(ctx, "New mount point added and not mounted, attempting to mount", "mount_point", e.MountPoint.Path, "device_id", e.MountPoint.DeviceId)
 		err = self.MountVolume(e.MountPoint)
 		if err != nil {
 			if errors.Is(err, dto.ErrorAlreadyMounted) {
 				slog.InfoContext(ctx, "Mount point already mounted during automount attempt", "mount_point", e.MountPoint.Path, "device_id", e.MountPoint.DeviceId)
+				self.clearAutomountRetry(e.MountPoint.Path)
 				return nil
 			}
 			slog.ErrorContext(ctx, "Failed to mount volume on event", "mount_point", e.MountPoint, "err", err)
+			self.recordAutomountFailure(e.MountPoint.Path)
 			self.createAutomountFailureNotification(e.MountPoint.Path, e.MountPoint.DeviceId, err)
+		} else {
+			self.clearAutomountRetry(e.MountPoint.Path)
 		}
 	}
 	return nil
+}
+
+// allowAutomountAttempt reports whether a new mount attempt for the given
+// path is currently permitted. It returns (false, true) when the attempt
+// budget is exhausted (terminal state) and (false, false) while backing off.
+func (self *VolumeService) allowAutomountAttempt(path string) (allowed bool, exhausted bool) {
+	self.automountRetryMu.Lock()
+	defer self.automountRetryMu.Unlock()
+
+	st, ok := self.automountRetries[path]
+	if !ok {
+		return true, false
+	}
+	if st.attempts >= self.maxAutomountAttempts {
+		return false, true
+	}
+	if time.Now().Before(st.nextRetryAt) {
+		return false, false
+	}
+	return true, false
+}
+
+// recordAutomountFailure registers one failed mount attempt for the given
+// path and schedules the next allowed attempt with exponential backoff.
+func (self *VolumeService) recordAutomountFailure(path string) {
+	self.automountRetryMu.Lock()
+	defer self.automountRetryMu.Unlock()
+
+	if self.automountRetries == nil {
+		self.automountRetries = map[string]automountRetryState{}
+	}
+	st := self.automountRetries[path]
+	st.attempts++
+	backoff := self.automountBackoffBase << (st.attempts - 1)
+	if backoff <= 0 {
+		backoff = self.automountBackoffBase
+	}
+	st.nextRetryAt = time.Now().Add(backoff)
+	self.automountRetries[path] = st
+}
+
+// clearAutomountRetry removes the retry state for the given path after a
+// successful mount attempt.
+func (self *VolumeService) clearAutomountRetry(path string) {
+	self.automountRetryMu.Lock()
+	defer self.automountRetryMu.Unlock()
+	delete(self.automountRetries, path)
 }
 
 func inferMountPointType(mountPoint *dto.MountPointData) string {
