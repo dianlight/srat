@@ -149,6 +149,35 @@ func (suite *VolumeServiceTestSuite) TestEmitMountPointWithoutTypeDefaultsToAddo
 	suite.Equal("ADDON", dbMount.Type)
 }
 
+func (suite *VolumeServiceTestSuite) TestEmitMountPointEventWithSharePersistsAssociation() {
+	mountPath := "/mnt/test-share-assoc"
+	deviceID := "dev-share-assoc-1"
+	shareName := "b2-share-assoc"
+	mountPoint := dto.MountPointData{
+		Path:        mountPath,
+		Root:        "/",
+		DeviceId:    deviceID,
+		Flags:       &dto.MountFlags{},
+		CustomFlags: &dto.MountFlags{},
+		IsMounted:   true,
+		Share: &dto.SharedResource{
+			Name: shareName,
+		},
+	}
+
+	err := suite.eventBus.EmitMountPoint(events.MountPointEvent{
+		Event:      events.Event{Type: events.EventTypes.UPDATE},
+		MountPoint: &mountPoint,
+	})
+	suite.Require().NoError(err)
+
+	var dbMount dbom.MountPointPath
+	suite.Require().NoError(suite.db.Preload("ExportedShare").Where("path = ?", mountPath).First(&dbMount).Error)
+	suite.Require().NotNil(dbMount.ExportedShare)
+	suite.Equal(shareName, dbMount.ExportedShare.Name)
+	suite.Equal(mountPath, *dbMount.ExportedShare.MountPointDataPath)
+}
+
 func (suite *VolumeServiceTestSuite) TestFormatSuccessEventRefreshesPartitionCache() {
 	diskID := "disk-format-refresh"
 	partitionID := "disk-format-refresh-part1"
@@ -799,6 +828,79 @@ func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_UpdatesStartupF
 	suite.Require().True(ok, "expected mount point to still be present after patch")
 	suite.Require().NotNil(mpdAfter.IsToMountAtStartup)
 	suite.True(*mpdAfter.IsToMountAtStartup, "expected IsToMountAtStartup to be true after patch and refresh")
+}
+
+// TestHandlePartitionEvent_DiscoveryPreservesPersistedMountPointConfig is a
+// regression test for the B2 finding: when a partition event rediscovers a
+// procfs mount whose DB record is not keyed by the current partition device
+// id, the discovery ADD path built a fresh MountPointData (only procfs
+// fields) and persistMountPoint's ON CONFLICT UPDATE ALL wiped the persisted
+// configuration (automount flag, flags, custom flags). The persisted values
+// must survive the discovery persist.
+func (suite *VolumeServiceTestSuite) TestHandlePartitionEvent_DiscoveryPreservesPersistedMountPointConfig() {
+	mountPath := "/mnt/b2-discovery"
+	root := "/"
+	devicePath := "/dev/b2disk1-part1"
+	partID := new("b2-part-1")
+	diskID := new("b2-disk-1")
+
+	// DB record exists but under a different device id, so it is invisible to
+	// loadMountPointFromDB (which queries by DeviceId) and absent from the
+	// in-memory cache -> the discovery ADD path is exercised.
+	persistedFlags := dbom.MounDataFlags{{Name: "user_custom_flag"}}
+	persistedData := dbom.MounDataFlags{{Name: "custom_super_opt", NeedsValue: true, FlagValue: "1"}}
+	dbData := &dbom.MountPointPath{
+		Path:               mountPath,
+		Root:               &root,
+		DeviceId:           "b2-other-partition-id",
+		FSType:             "ext4",
+		Type:               "ADDON",
+		IsToMountAtStartup: new(true),
+		Flags:              &persistedFlags,
+		Data:               &persistedData,
+	}
+	suite.Require().NoError(suite.db.Create(dbData).Error)
+
+	mockHW := map[string]dto.Disk{
+		*diskID: {
+			Id:     diskID,
+			Vendor: new("VEND"),
+			Model:  new("MODEL"),
+			Partitions: &map[string]dto.Partition{
+				*partID: {
+					Id:         partID,
+					DiskId:     diskID,
+					DevicePath: new(devicePath),
+				},
+			},
+		},
+	}
+	mock.When(suite.mockHardwareClient.GetHardwareInfo()).ThenReturn(mockHW, nil).Verify(matchers.AtLeastOnce())
+
+	// Procfs reports the mount as active for the partition's device path.
+	suite.volumeService.MockSetProcfsGetMounts(func() ([]*procfs.MountInfo, error) {
+		return []*procfs.MountInfo{
+			{MountID: 1300, ParentID: 900, MajorMinorVer: "0:99", Root: "/", Source: devicePath, MountPoint: mountPath, FSType: "ext4", Options: map[string]string{"rw": ""}, SuperOptions: map[string]string{}},
+		}, nil
+	})
+
+	suite.hardwareService.InvalidateHardwareInfo()
+	disks := suite.volumeService.GetVolumesData()
+	suite.Require().NotNil(disks)
+	suite.Require().Len(disks, 1)
+
+	// The DB record must keep its persisted configuration after the discovery
+	// ADD event is persisted.
+	var dbMount dbom.MountPointPath
+	suite.Require().NoError(suite.db.Where("path = ? AND root = ?", mountPath, root).First(&dbMount).Error)
+	suite.Require().NotNil(dbMount.IsToMountAtStartup, "automount flag must survive discovery persist")
+	suite.True(*dbMount.IsToMountAtStartup, "expected IsToMountAtStartup to stay true after discovery persist")
+	suite.Require().NotNil(dbMount.Flags, "persisted flags must survive discovery persist")
+	suite.Require().Len(*dbMount.Flags, 1)
+	suite.Equal("user_custom_flag", (*dbMount.Flags)[0].Name)
+	suite.Require().NotNil(dbMount.Data, "persisted custom flags must survive discovery persist")
+	suite.Require().Len(*dbMount.Data, 1)
+	suite.Equal("custom_super_opt", (*dbMount.Data)[0].Name)
 }
 
 // TestOnSmartEvent_EmptyDiskId_DoesNotUpdateDiskCache verifies that when a SmartEvent

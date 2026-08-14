@@ -204,14 +204,31 @@ func NewVolumeService(
 }
 
 func (self *VolumeService) persistMountPoint(md *dto.MountPointData) errors.E {
-	dbom_mount_data := &dbom.MountPointPath{}
-	err := self.convDto.MountPointDataToMountPointPath(*md, dbom_mount_data)
+	root := "/"
+	if md.Root != "" {
+		root = md.Root
+	}
+
+	// Load the existing record (if any) and convert INTO it so that fields
+	// absent from the event payload (automount flag, flags, custom flags)
+	// never wipe persisted configuration. The share association lives on the
+	// exported_shares side (MountPointDataPath/MountPointDataRoot), so it is
+	// preserved regardless of the payload's Share value.
+	existing, err := gorm.G[dbom.MountPointPath](self.db).
+		Where(g.MountPointPath.Path.Eq(md.Path), g.MountPointPath.Root.Eq(root)).
+		First(self.ctx)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return errors.WithStack(err)
+	}
+	dbom_mount_data := existing // zero value when no record exists yet
+
+	err = self.convDto.MountPointDataToMountPointPath(*md, &dbom_mount_data)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	// close mounthpath loop before save
 	if dbom_mount_data.ExportedShare != nil {
-		dbom_mount_data.ExportedShare.MountPointData = *dbom_mount_data
+		dbom_mount_data.ExportedShare.MountPointData = dbom_mount_data
 		dbom_mount_data.ExportedShare.MountPointDataPath = &dbom_mount_data.Path
 		dbom_mount_data.ExportedShare.MountPointDataRoot = dbom_mount_data.Root
 	}
@@ -221,7 +238,7 @@ func (self *VolumeService) persistMountPoint(md *dto.MountPointData) errors.E {
 	err = self.db.Clauses(clause.OnConflict{
 		UpdateAll: true,
 	}).
-		Create(dbom_mount_data).Error
+		Create(&dbom_mount_data).Error
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -531,6 +548,30 @@ func (self *VolumeService) loadMountPointFromDB(part *dto.Partition) (map[string
 
 	tlog.TraceContext(self.ctx, "Loaded mount point from repository", "device", *part.Id, "mountData", mountData)
 	return mountData, nil
+}
+
+// loadMountPointFromDBByPath loads a single mount point configuration from the
+// database by its primary key (path, root) — independently of the partition
+// device id — and converts it to a DTO. The second return value reports
+// whether a record was found.
+func (self *VolumeService) loadMountPointFromDBByPath(path string, root string) (*dto.MountPointData, bool, errors.E) {
+	if path == "" {
+		return nil, false, nil
+	}
+	dbMPs, err := gorm.G[dbom.MountPointPath](self.db).
+		Where(g.MountPointPath.Path.Eq(path), g.MountPointPath.Root.Eq(root)).
+		Find(self.ctx)
+	if err != nil {
+		return nil, false, errors.WithStack(err)
+	}
+	if len(dbMPs) == 0 {
+		return nil, false, nil
+	}
+	dtoMP := dto.MountPointData{}
+	if convErr := self.convDto.MountPointPathToMountPointData(dbMPs[0], &dtoMP, nil); convErr != nil {
+		return nil, false, errors.WithStack(convErr)
+	}
+	return &dtoMP, true, nil
 }
 
 // getVolumesData retrieves and synchronizes volume data with caching and concurrency control.
@@ -884,6 +925,21 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 			}
 			if err := mountPoint.CustomFlags.Scan(prtstate.SuperOptions); err != nil {
 				slog.WarnContext(ctx, "Failed to scan custom mount flags", "mount_path", prtstate.MountPoint, "error", err)
+			}
+			// Merge persisted configuration (automount flag, flags, custom flags)
+			// into the freshly discovered mount point so that persisting the ADD
+			// event cannot wipe user settings. The share association is owned by
+			// the share service and is intentionally not merged here.
+			if existingMP, ok := self.disks.GetMountPointByPath(prtstate.MountPoint); ok {
+				mountPoint.IsToMountAtStartup = existingMP.IsToMountAtStartup
+				mountPoint.Flags = existingMP.Flags
+				mountPoint.CustomFlags = existingMP.CustomFlags
+			} else if dbMP, found, dbErr := self.loadMountPointFromDBByPath(prtstate.MountPoint, prtstate.Root); dbErr != nil {
+				slog.WarnContext(ctx, "Failed to load persisted mount point configuration", "mount_path", prtstate.MountPoint, "err", dbErr)
+			} else if found {
+				mountPoint.IsToMountAtStartup = dbMP.IsToMountAtStartup
+				mountPoint.Flags = dbMP.Flags
+				mountPoint.CustomFlags = dbMP.CustomFlags
 			}
 			err := self.disks.AddOrUpdateMountPoint(*e.Partition.DiskId, *e.Partition.Id, mountPoint)
 			if err != nil {
