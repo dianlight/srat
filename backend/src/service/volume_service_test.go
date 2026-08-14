@@ -1135,3 +1135,79 @@ func (suite *VolumeServiceTestSuite) TestOnSmartEvent_ValidDiskId_UpdatesDiskCac
 		"OnSmart with valid DiskId should call AddSmartInfo and update the disk cache")
 	suite.Equal(diskID, diskAfter.SmartInfo.DiskId)
 }
+
+// TestGetDevicePathByDeviceID covers the B5 contract: DeviceId identifies a
+// partition (not a disk), disk IDs must not match, and the device path lookup
+// must fall back to legacy paths and never panic on nil DevicePath.
+func (suite *VolumeServiceTestSuite) TestGetDevicePathByDeviceID() {
+	diskID := "ata-B5-DISK"
+	partFull := "part-B5-full"
+	partLegacy := "part-B5-legacy"
+	partEmpty := "part-B5-empty"
+	fullPath := "/dev/disk/by-id/ata-B5-DISK-part1"
+	legacyPath := "/dev/sdb1"
+
+	suite.Require().NoError(suite.disks.AddOrUpdate(&dto.Disk{
+		Id:         &diskID,
+		DevicePath: &fullPath, // disk-level path must not be returned for a partition lookup
+		Partitions: &map[string]dto.Partition{
+			partFull: {
+				Id:               &partFull,
+				DiskId:           &diskID,
+				DevicePath:       &fullPath,
+				LegacyDevicePath: &legacyPath,
+			},
+			partLegacy: {
+				Id:               &partLegacy,
+				DiskId:           &diskID,
+				LegacyDevicePath: &legacyPath,
+			},
+			partEmpty: {
+				Id:     &partEmpty,
+				DiskId: &diskID,
+			},
+		},
+	}))
+
+	testCases := []struct {
+		name          string
+		deviceID      string
+		expectedPath  string
+		expectedError error
+	}{
+		{
+			name:         "partition id hit returns device path",
+			deviceID:     partFull,
+			expectedPath: fullPath,
+		},
+		{
+			name:          "disk id passed must not match",
+			deviceID:      diskID,
+			expectedError: dto.ErrorNotFound,
+		},
+		{
+			name:         "missing DevicePath falls back to legacy",
+			deviceID:     partLegacy,
+			expectedPath: legacyPath,
+		},
+		{
+			name:          "all empty returns device not found without panic",
+			deviceID:      partEmpty,
+			expectedError: dto.ErrorDeviceNotFound,
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.T().Run(tc.name, func(t *testing.T) {
+			path, err := suite.volumeService.GetDevicePathByDeviceID(tc.deviceID)
+			if tc.expectedError != nil {
+				suite.Require().Error(err)
+				suite.True(errors.Is(err, tc.expectedError),
+					"error %v should wrap %v", err, tc.expectedError)
+				return
+			}
+			suite.Require().NoError(err)
+			suite.Equal(tc.expectedPath, path)
+		})
+	}
+}

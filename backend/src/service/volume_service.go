@@ -1193,9 +1193,22 @@ func (ms *VolumeService) MockSetMountOps(
 }
 
 func (ms *VolumeService) GetDevicePathByDeviceID(deviceID string) (string, errors.E) {
-	md, ok := ms.disks.Get(deviceID)
+	// DeviceId identifies a partition (see MountVolume, which matches
+	// *part.Id == md.DeviceId), so resolve it through the partition map rather
+	// than the disk map: disk IDs must not match here.
+	part, _, ok := ms.disks.GetPartitionByID(deviceID)
 	if !ok {
-		return "", errors.WithDetails(dto.ErrorNotFound, "Message", "mount point not found", "DeviceId", deviceID)
+		return "", errors.WithDetails(dto.ErrorNotFound,
+			"Message", "partition not found",
+			"DeviceId", deviceID,
+		)
 	}
-	return *md.DevicePath, nil
+	path := ms.disks.GetPartitionDevicePath(part)
+	if path == "" {
+		return "", errors.WithDetails(dto.ErrorDeviceNotFound,
+			"Message", "device path not available",
+			"DeviceId", deviceID,
+		)
+	}
+	return path, nil
 }
