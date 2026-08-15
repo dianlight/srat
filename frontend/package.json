@@ -73,7 +73,7 @@
     "prismjs": "^1.30.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "react-hook-form": "^7.84.0",
+    "react-hook-form": "^7.85.0",
     "react-hook-form-mui": "^9.0.1",
     "react-intersection-observer": "^11.0.0",
     "react-redux": "^9.3.0",
