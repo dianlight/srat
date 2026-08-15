@@ -844,6 +844,212 @@ func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_NoChanges() {
 	suite.Equal(originalStartup, resultDto.IsToMountAtStartup)
 }
 
+// TestPatchMountPointSettings_EmptyPatch_NoOp is a regression test for the H4
+// finding: a PATCH with an empty / all-nil body on an existing record must be
+// a successful no-op (200), not a misleading 404 "not found", and must not
+// change any persisted field.
+func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_EmptyPatch_NoOp() {
+	root := "/"
+	path := "/mnt/testpatch_noop"
+	originalStartup := new(true)
+	flags := dbom.MounDataFlags{{Name: "noatime"}}
+
+	dbData := &dbom.MountPointPath{
+		Path:               path,
+		Root:               &root,
+		DeviceId:           "/dev/sde1",
+		FSType:             "ext4",
+		Type:               "ADDON",
+		IsToMountAtStartup: originalStartup,
+		Flags:              &flags,
+	}
+
+	suite.Require().NoError(suite.db.Create(dbData).Error)
+
+	// Empty patch: every field nil/zero.
+	patch := dto.MountPointData{}
+
+	resultDto, errE := suite.volumeService.PatchMountPointSettings(root, path, patch)
+	suite.Require().Nil(errE, "empty patch on existing record must be a no-op, not an error")
+	suite.Require().NotNil(resultDto)
+	suite.Equal(path, resultDto.Path)
+
+	// Response DTO must keep the persisted flags: the converter nil-wipes the
+	// in-memory Flags on an all-nil patch, but the service must reflect the
+	// DB state (see H4 finding).
+	suite.Require().NotNil(resultDto.Flags, "response DTO must not lose Flags on an empty patch")
+	suite.Equal("noatime", (*resultDto.Flags)[0].Name)
+
+	// DB row must be untouched.
+	var persisted dbom.MountPointPath
+	err := suite.db.Where("path = ? AND root = ?", path, root).First(&persisted).Error
+	suite.Require().NoError(err)
+	suite.Equal(originalStartup, persisted.IsToMountAtStartup)
+	suite.Equal("ext4", persisted.FSType)
+	suite.Equal("ADDON", persisted.Type)
+	suite.Equal(flags, *persisted.Flags)
+}
+
+// TestPatchMountPointSettings_OnlyStartup_KeepsFlagsAndShareAtDBLevel extends
+// the H4 verification: a PATCH that only flips IsToMountAtStartup must leave
+// flags, fstype, and the share foreign key unchanged in the DB.
+func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_OnlyStartup_KeepsFlagsAndShareAtDBLevel() {
+	root := "/"
+	path := "/mnt/testpatch_flags"
+	originalStartup := new(true)
+	patchedStartup := new(false)
+	flags := dbom.MounDataFlags{{Name: "noatime"}, {Name: "nofail"}}
+	data := dbom.MounDataFlags{{Name: "x-systemd.automount"}}
+
+	dbData := &dbom.MountPointPath{
+		Path:               path,
+		Root:               &root,
+		DeviceId:           "/dev/sdf1",
+		FSType:             "xfs",
+		Type:               "ADDON",
+		IsToMountAtStartup: originalStartup,
+		Flags:              &flags,
+		Data:               &data,
+	}
+	suite.Require().NoError(suite.db.Create(dbData).Error)
+
+	patch := dto.MountPointData{IsToMountAtStartup: patchedStartup}
+
+	resultDto, errE := suite.volumeService.PatchMountPointSettings(root, path, patch)
+	suite.Require().Nil(errE)
+	suite.Require().NotNil(resultDto)
+	suite.Equal(patchedStartup, resultDto.IsToMountAtStartup)
+
+	// Response DTO must carry the untouched flags/data: the partial PATCH must
+	// not nil them out in the response (H4 finding — the converter nil-wipes
+	// the in-memory record, the service must re-read the DB state).
+	suite.Require().NotNil(resultDto.Flags, "response DTO must keep Flags on a partial PATCH")
+	suite.Equal("noatime", (*resultDto.Flags)[0].Name)
+	suite.Require().NotNil(resultDto.CustomFlags, "response DTO must keep CustomFlags on a partial PATCH")
+	suite.Equal("x-systemd.automount", (*resultDto.CustomFlags)[0].Name)
+
+	// DB level: flags/data/fstype must be untouched by a partial PATCH.
+	var persisted dbom.MountPointPath
+	err := suite.db.Where("path = ? AND root = ?", path, root).First(&persisted).Error
+	suite.Require().NoError(err)
+	suite.Equal(patchedStartup, persisted.IsToMountAtStartup)
+	suite.Equal("xfs", persisted.FSType)
+	suite.Equal(flags, *persisted.Flags)
+	suite.Equal(data, *persisted.Data)
+}
+
+// TestPatchMountPointSettings_RecordNotFound covers the error branch: PATCHing
+// a path that has no DB record must return ErrorNotFound.
+func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_RecordNotFound() {
+	root := "/"
+	path := "/mnt/does_not_exist"
+
+	patch := dto.MountPointData{IsToMountAtStartup: new(true)}
+	resultDto, errE := suite.volumeService.PatchMountPointSettings(root, path, patch)
+	suite.Require().Error(errE)
+	suite.Nil(resultDto)
+	suite.True(errors.Is(errE, dto.ErrorNotFound), "expected ErrorNotFound, got %v", errE)
+}
+
+// TestPatchMountPointSettings_FallbackCacheUpdate_CachedMountPoint covers the
+// fallback cache path (GetMountPointByPath branch): when the DB record's
+// DeviceId cannot be resolved to a partition of the disk map, the service
+// must still refresh the cached mount point looked up by path.
+func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_FallbackCacheUpdate_CachedMountPoint() {
+	root := "/"
+	path := "/mnt/fallback_test"
+	diskID := "fallback-disk-1"
+	partID := "fallback-part-1"
+
+	// Seed the disk map with a partition whose MountPointData contains the path.
+	suite.Require().NoError(suite.disks.AddOrUpdate(&dto.Disk{Id: &diskID}))
+	suite.Require().NoError(suite.disks.AddPartition(diskID, dto.Partition{
+		Id:         &partID,
+		DiskId:     &diskID,
+		DevicePath: new("/dev/fallback-part-1"),
+	}))
+	suite.Require().NoError(suite.disks.AddOrUpdateMountPoint(diskID, partID, dto.MountPointData{
+		Path:               path,
+		IsToMountAtStartup: new(true),
+	}))
+
+	// DB record with a DeviceId that does NOT match the seeded partition, so
+	// partition resolution fails and the fallback path is exercised.
+	originalStartup := new(false)
+	dbData := &dbom.MountPointPath{
+		Path:               path,
+		Root:               &root,
+		DeviceId:           "/dev/unresolvable-device",
+		FSType:             "ext4",
+		Type:               "ADDON",
+		IsToMountAtStartup: originalStartup,
+	}
+	suite.Require().NoError(suite.db.Create(dbData).Error)
+
+	patchedStartup := new(true)
+	patch := dto.MountPointData{IsToMountAtStartup: patchedStartup}
+	resultDto, errE := suite.volumeService.PatchMountPointSettings(root, path, patch)
+	suite.Require().Nil(errE)
+	suite.Require().NotNil(resultDto)
+	suite.Equal(patchedStartup, resultDto.IsToMountAtStartup)
+
+	// The cached mount point must have been refreshed through the fallback.
+	cached, ok := suite.disks.GetMountPointByPath(path)
+	suite.Require().True(ok, "expected cached mount point to still exist")
+	suite.Equal(patchedStartup, cached.IsToMountAtStartup)
+}
+
+// TestPatchMountPointSettings_FallbackSnapshotLoop covers the second fallback
+// branch (Snapshot loop): when neither partition resolution nor
+// GetMountPointByPath yields an updateable entry, the service must scan the
+// whole disk snapshot for the path and refresh it there.
+func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_FallbackSnapshotLoop() {
+	root := "/"
+	path := "/mnt/fallback_snapshot_test"
+	diskID := "fallback-snapshot-disk"
+	partID := "fallback-snapshot-part"
+
+	// Seed a disk + partition whose MountPointData already holds the path, but
+	// with a Partition reference that is nil so GetMountPointByPath branch is
+	// skipped (updated == false) and the Snapshot loop must take over.
+	suite.Require().NoError(suite.disks.AddOrUpdate(&dto.Disk{Id: &diskID}))
+	suite.Require().NoError(suite.disks.AddPartition(diskID, dto.Partition{
+		Id:         &partID,
+		DiskId:     &diskID,
+		DevicePath: new("/dev/fallback-snapshot-part"),
+	}))
+	// Directly inject a mount point WITHOUT a Partition reference.
+	d, ok := suite.disks.Get(diskID)
+	suite.Require().True(ok)
+	part := (*d.Partitions)[partID]
+	mp := make(map[string]dto.MountPointData)
+	mp[path] = dto.MountPointData{Path: path, IsToMountAtStartup: new(false)}
+	part.MountPointData = &mp
+	(*d.Partitions)[partID] = part
+
+	dbData := &dbom.MountPointPath{
+		Path:               path,
+		Root:               &root,
+		DeviceId:           "/dev/unresolvable-snapshot",
+		FSType:             "ext4",
+		Type:               "ADDON",
+		IsToMountAtStartup: new(false),
+	}
+	suite.Require().NoError(suite.db.Create(dbData).Error)
+
+	patchedStartup := new(true)
+	patch := dto.MountPointData{IsToMountAtStartup: patchedStartup}
+	resultDto, errE := suite.volumeService.PatchMountPointSettings(root, path, patch)
+	suite.Require().Nil(errE)
+	suite.Require().NotNil(resultDto)
+	suite.Equal(patchedStartup, resultDto.IsToMountAtStartup)
+
+	// The mount point inside the snapshot partition must have been refreshed.
+	cached, ok := suite.disks.GetMountPointByPath(path)
+	suite.Require().True(ok, "expected cached mount point to still exist")
+	suite.Equal(patchedStartup, cached.IsToMountAtStartup)
+}
+
 // Ensures that after patching IsToMountAtStartup the subsequent GetVolumesData reflects the updated value.
 func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_UpdatesStartupFlagInGetVolumesData() {
 	mountPath := "/mnt/startup-test"

@@ -1210,6 +1210,19 @@ func (ms *VolumeService) PatchMountPointSettings(root string, path string, patch
 		return nil, errors.WithStack(err)
 	}
 	if affected == 0 {
+		slog.DebugContext(ms.ctx, "PatchMountPointSettings: no fields changed (no-op)", "root", root, "path", path)
+	}
+
+	// Reload the record from the DB. Struct-based Updates skips zero-value
+	// (nil pointer) fields, so the converter's unconditional assignments
+	// (Flags, Data, ExportedShare) are NOT written back when the patch omits
+	// them — but the in-memory dbMountData still holds those nils. Converting
+	// it directly would drop the persisted flags from the response DTO and
+	// from the disk cache below, so re-read the row to get the true state.
+	// An all-nil patch on an existing record therefore degrades to a
+	// successful no-op instead of a misleading 404 "not found".
+	if dbMountData, err = gorm.G[dbom.MountPointPath](ms.db).
+		Where(g.MountPointPath.Root.Eq(root), g.MountPointPath.Path.Eq(path)).First(ms.ctx); err != nil {
 		return nil, errors.Wrapf(dto.ErrorNotFound, "mount configuration with root %s and path %s not found", root, path)
 	}
 
