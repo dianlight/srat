@@ -215,6 +215,8 @@ Cost per full refresh with P partitions: P × (`loadMountPointFromDB` query + `p
 
 **File:** `volume_service.go:293-299` vs `346-352` — identical `md.Partition.DevicePath == nil || *md.Partition.DevicePath == ""` check twice; the second is unreachable. Delete lines 346-352's duplicated branch (keep the `os.Stat` existence check that follows it).
 
+**Status:** ✅ Done — commit `8f882f8d` (dead check removed + 11 MountVolume coverage tests; 65.3% → 89.8%)
+
 ### H4 — `PatchMountPointSettings` partial-PATCH semantics (verified: mostly safe, one quirk)
 
 **File:** `volume_service.go:990-1012`
@@ -347,7 +349,7 @@ Refactor per the Dialog Pattern in the instruction file; behavior unchanged. Thi
 - [x] Task 6: **B6** — Rewrite `volumeHook` with `useMemo` derivation (delete both `useEffect`s); MSW tests — done; see "B6 Implementation" appendix below; frontend suites green (727 passed), tsc + lint clean
 - [x] Task 7: **H1** — Automount retry backoff (per-path attempt map, max 5, exp. backoff); loop test with failing cache write
 - [x] Task 8: **H2** — Hoist procfs parse out of per-partition handler (parse once per refresh, pass via payload); benchmark before/after
-- [ ] Task 9: **H3** — Delete duplicate DevicePath validation block
+- [x] Task 9: **H3** — Delete duplicate DevicePath validation block
 - [ ] Task 10: **H4** — Verify converter nil-handling; switch to selective field updates if needed; DB-level assertion test
 - [ ] Task 11: **H5** — `GetVolumesData` returns error; API 500 mapping; hook surfaces error; update callers
 - [ ] Task 12: **H6** — Unmount lazy/force semantics + dir-removal-only-if-created; fake-fs tests
