@@ -92,7 +92,7 @@ github.com/dave/jennifer/jen
 # github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 ## explicit
 github.com/davecgh/go-spew/spew
-# github.com/dianlight/smartmontools-sdk/bindings/go/v8 v8.0.0
+# github.com/dianlight/smartmontools-sdk/bindings/go/v8 v8.0.1
 ## explicit; go 1.26
 github.com/dianlight/smartmontools-sdk/bindings/go/v8
 github.com/dianlight/smartmontools-sdk/bindings/go/v8/backends/compare
