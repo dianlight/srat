@@ -209,6 +209,8 @@ Cost per full refresh with P partitions: P × (`loadMountPointFromDB` query + `p
 
 **Tests:** benchmark `BenchmarkGetVolumesData_10Disks50Partitions` before/after; assert procfs parse count == 1 via a counting mock.
 
+**Status:** ✅ Done — commit `5d555733` (batched events + tests)
+
 ### H3 — Duplicate device-path validation (dead code)
 
 **File:** `volume_service.go:293-299` vs `346-352` — identical `md.Partition.DevicePath == nil || *md.Partition.DevicePath == ""` check twice; the second is unreachable. Delete lines 346-352's duplicated branch (keep the `os.Stat` existence check that follows it).
@@ -344,7 +346,7 @@ Refactor per the Dialog Pattern in the instruction file; behavior unchanged. Thi
 - [x] Task 5: **B5** — Fix `GetDevicePathByDeviceID` semantics + nil guard; caller audit; unit tests — done; see "B5 Implementation" appendix below; suites green (backend 0 fail / 40.8%, coverage gate met)
 - [x] Task 6: **B6** — Rewrite `volumeHook` with `useMemo` derivation (delete both `useEffect`s); MSW tests — done; see "B6 Implementation" appendix below; frontend suites green (727 passed), tsc + lint clean
 - [x] Task 7: **H1** — Automount retry backoff (per-path attempt map, max 5, exp. backoff); loop test with failing cache write
-- [ ] Task 8: **H2** — Hoist procfs parse out of per-partition handler (parse once per refresh, pass via payload); benchmark before/after
+- [x] Task 8: **H2** — Hoist procfs parse out of per-partition handler (parse once per refresh, pass via payload); benchmark before/after
 - [ ] Task 9: **H3** — Delete duplicate DevicePath validation block
 - [ ] Task 10: **H4** — Verify converter nil-handling; switch to selective field updates if needed; DB-level assertion test
 - [ ] Task 11: **H5** — `GetVolumesData` returns error; API 500 mapping; hook surfaces error; update callers
