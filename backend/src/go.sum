@@ -233,8 +233,8 @@ github.com/petermattis/goid v0.0.0-20260113132338-7c7de50cc741 h1:KPpdlQLZcHfTMQ
 github.com/petermattis/goid v0.0.0-20260113132338-7c7de50cc741/go.mod h1:pxMtw7cyUw6B2bRH0ZBANSPg+AoSud1I1iyJHI69jH4=
 github.com/pierrec/lz4/v4 v4.1.27 h1:+PhzhWDrjRj89TH2sw43nE3+4+W8lSxIuQadEHZyjUk=
 github.com/pierrec/lz4/v4 v4.1.27/go.mod h1:EoQMVJgeeEOMsCqCzqFm2O0cJvljX2nGZjcRIPL34O4=
-github.com/pilebones/go-udev v0.9.1 h1:uN72M1C1fgzhsVmBGEM8w9RD1JY4iVsPZpr+Z6rb3O8=
-github.com/pilebones/go-udev v0.9.1/go.mod h1:Bgcl07crebF3JSeS4+nuaRvhWFdCeFoBhXXeAp93XNo=
+github.com/pilebones/go-udev v0.10.0 h1:V4RKMDVZZUDqHyfAALBBpyozPONybBJRaZ9f8MuXKo8=
+github.com/pilebones/go-udev v0.10.0/go.mod h1:0u1XUZefS17H6cW9552TMLVOG/LUQlgiyZxLqS20u28=
 github.com/pingcap/errors v0.11.4 h1:lFuQV/oaUMGcD2tqt+01ROSmJs75VG1ToEOkZIZ4nE4=
 github.com/pingcap/errors v0.11.4/go.mod h1:Oi8TUi2kEtXXLMJk9l1cGmz20kV3TaQ0usTwv5KuLY8=
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
