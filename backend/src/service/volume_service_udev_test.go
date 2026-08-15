@@ -58,7 +58,7 @@ func (f *failingCacheWriteMounter) Unmount(md *dto.MountPointData, force bool) e
 	return nil
 }
 
-func newTestVolumeService(t *testing.T, disks *dto.DiskMap, mounter VolumeMountManagerInterface) *VolumeService {
+func newTestVolumeService(t testing.TB, disks *dto.DiskMap, mounter VolumeMountManagerInterface) *VolumeService {
 	t.Helper()
 
 	ctx := context.Background()
@@ -84,7 +84,7 @@ func newTestVolumeService(t *testing.T, disks *dto.DiskMap, mounter VolumeMountM
 // event bus, mirroring the NewVolumeService wiring. The database is a unique
 // temp-file SQLite DB per test so rows persisted by one test never leak into
 // another test's connection (the package's shared-memory DSN is process-wide).
-func newAutomountRetryVolumeService(t *testing.T, disks *dto.DiskMap, mounter VolumeMountManagerInterface) *VolumeService {
+func newAutomountRetryVolumeService(t testing.TB, disks *dto.DiskMap, mounter VolumeMountManagerInterface) *VolumeService {
 	t.Helper()
 	svc := newTestVolumeService(t, disks, mounter)
 

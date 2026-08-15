@@ -652,6 +652,11 @@ func (self *VolumeService) getVolumesData() errors.E {
 		}
 
 		tlog.DebugContext(self.ctx, "Retrieved hardware disks from hardware client", "disk_count", len(hwDisks))
+		// H2: parse procfs once per refresh cycle, lazily, only when at least
+		// one partition event will be emitted. The snapshot is shared by every
+		// batched PartitionEvent of this cycle, so the handler never re-parses.
+		var mountInfos []*procfs.MountInfo
+		var mountInfosErr error
 		// Disks processing
 		for _, disk := range hwDisks {
 			tlog.TraceContext(self.ctx, "Processing disk from hardware client", "disk_id", *disk.Id, "partition_count", len(*disk.Partitions))
@@ -665,6 +670,11 @@ func (self *VolumeService) getVolumesData() errors.E {
 			}
 
 			if disk.Partitions != nil {
+				// H2: batch all changed partitions of this disk into a single
+				// PartitionEvent sharing one procfs snapshot, instead of one
+				// event per partition (each of which re-parsed procfs inside
+				// the handler). Reduces P events to one per disk.
+				changedPartitions := make([]*dto.Partition, 0, len(*disk.Partitions))
 				for pid, part := range *disk.Partitions {
 					if part.FsType != nil && *part.FsType != "" {
 						if cached, ok := filesystemSupportCache[*part.FsType]; ok {
@@ -692,23 +702,25 @@ func (self *VolumeService) getVolumesData() errors.E {
 						}
 					}
 					(*disk.Partitions)[pid] = part
-					//			if err := self.processPartitionMountData(&disk, pid, part, true); err != nil {
-					//				slog.WarnContext(self.ctx, "Failed to process partition mount data for new disk", "disk_id", *disk.Id, "partition_id", pid, "err", err)
-					//				continue
-					//			}
-					if currentDisk != nil && updateDisk {
-						self.eventBus.EmitPartition(events.PartitionEvent{
-							Event:     events.Event{Type: events.EventTypes.UPDATE},
-							Partition: &part,
-							Disk:      &disk,
-						})
-					} else {
-						self.eventBus.EmitPartition(events.PartitionEvent{
-							Event:     events.Event{Type: events.EventTypes.ADD},
-							Partition: &part,
-							Disk:      &disk,
-						})
+					changedPartitions = append(changedPartitions, &part)
+				}
+				if len(changedPartitions) > 0 {
+					if self.procfsGetMounts != nil && mountInfos == nil && mountInfosErr == nil {
+						mountInfos, mountInfosErr = self.procfsGetMounts()
+						if mountInfosErr != nil {
+							slog.WarnContext(self.ctx, "Failed to get current mount information from procfs", "err", mountInfosErr)
+						}
 					}
+					eventType := events.EventTypes.ADD
+					if currentDisk != nil && updateDisk {
+						eventType = events.EventTypes.UPDATE
+					}
+					self.eventBus.EmitPartition(events.PartitionEvent{
+						Event:      events.Event{Type: eventType},
+						Disk:       &disk,
+						Partitions: changedPartitions,
+						MountInfos: mountInfos,
+					})
 				}
 			}
 		}
@@ -889,44 +901,76 @@ func (self *VolumeService) findDiskForDevicePath(devicePath string) *dto.Disk {
 }
 
 func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.PartitionEvent) errors.E {
-
-	tlog.TraceContext(ctx, "Processing partition event for mount data sync", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id, "event_type", e.Type)
-
-	if e.Partition.DevicePath == nil || *e.Partition.DevicePath == "" {
-		slog.DebugContext(ctx, "Skipping partition with nil or empty device path", "disk_id", *e.Disk.Id)
+	if len(e.Partitions) > 0 {
+		// Batch mode (H2): all changed partitions of one disk share a single
+		// procfs snapshot carried by the event. If the emitter provided none
+		// (e.g. an external emitter), parse once here and reuse it.
+		mountInfos := e.MountInfos
+		if mountInfos == nil {
+			parsed, errS := self.procfsGetMounts()
+			if errS != nil {
+				slog.ErrorContext(ctx, "Failed to get current mount information from procfs", "disk_id", *e.Disk.Id, "err", errS)
+				return errors.WithStack(errS)
+			}
+			mountInfos = parsed
+		}
+		for _, part := range e.Partitions {
+			if err := self.syncPartitionMountData(ctx, e.Disk, part, mountInfos); err != nil {
+				slog.WarnContext(ctx, "Failed to sync partition mount data", "disk_id", *e.Disk.Id, "partition_id", *part.Id, "err", err)
+			}
+		}
 		return nil
 	}
-	if e.Partition.DiskId == nil || *e.Partition.DiskId == "" {
-		e.Partition.DiskId = e.Disk.Id
+
+	// Single-partition mode (legacy emitters, e.g. udev events, tests)
+	mountInfos := e.MountInfos
+	if mountInfos == nil {
+		parsed, errS := self.procfsGetMounts()
+		if errS != nil {
+			slog.ErrorContext(ctx, "Failed to get current mount information from procfs", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id, "err", errS)
+			return errors.WithStack(errS)
+		}
+		mountInfos = parsed
+	}
+	return self.syncPartitionMountData(ctx, e.Disk, e.Partition, mountInfos)
+}
+
+// syncPartitionMountData reconciles a partition's mount points with the
+// current procfs snapshot: it loads persisted mount points from the DB, adds
+// missing ones to the in-memory cache, updates mount points present in procfs
+// and marks stale ones as unmounted. Used by both the single-partition and the
+// batched event paths; mountInfos is the shared procfs snapshot.
+func (self *VolumeService) syncPartitionMountData(ctx context.Context, disk *dto.Disk, part *dto.Partition, mountInfos []*procfs.MountInfo) errors.E {
+	tlog.TraceContext(ctx, "Processing partition event for mount data sync", "disk_id", *disk.Id, "partition_id", *part.Id)
+
+	if part.DevicePath == nil || *part.DevicePath == "" {
+		slog.DebugContext(ctx, "Skipping partition with nil or empty device path", "disk_id", *disk.Id)
+		return nil
+	}
+	if part.DiskId == nil || *part.DiskId == "" {
+		part.DiskId = disk.Id
 	}
 
-	mountData, err := self.loadMountPointFromDB(e.Partition)
+	mountData, err := self.loadMountPointFromDB(part)
 	if err != nil {
-		slog.ErrorContext(ctx, "Failed to load mount point data from DB for partition", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id, "err", err)
+		slog.ErrorContext(ctx, "Failed to load mount point data from DB for partition", "disk_id", *disk.Id, "partition_id", *part.Id, "err", err)
 		return err
 	}
 	// Add missing mount points from DB to in-memory cache
 	for _, md := range mountData {
-		err := self.disks.AddOrUpdateMountPoint(*e.Partition.DiskId, *e.Partition.Id, *md)
+		err := self.disks.AddOrUpdateMountPoint(*part.DiskId, *part.Id, *md)
 		if err != nil {
-			slog.WarnContext(self.ctx, "Failed to add mount point to disk map during partition event handling", "disk_id", *e.Partition.DiskId, "partition_id", *e.Partition.Id, "mount_path", md.Path, "err", err)
+			slog.WarnContext(self.ctx, "Failed to add mount point to disk map during partition event handling", "disk_id", *part.DiskId, "partition_id", *part.Id, "mount_path", md.Path, "err", err)
 			continue
 		}
 	}
 
-	// Get current mount information from procfs
-	mountInfos, errS := self.procfsGetMounts()
-	if errS != nil {
-		slog.ErrorContext(ctx, "Failed to get current mount information from procfs", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id, "err", errS)
-		return errors.WithStack(errS)
-	}
-
 	// Update existing mount points with current mount info
-	tlog.TraceContext(ctx, "Synchronizing mount points for partition", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id, "mount_data_count", len(mountData), "procfs_mounts_count", len(mountInfos))
+	tlog.TraceContext(ctx, "Synchronizing mount points for partition", "disk_id", *disk.Id, "partition_id", *part.Id, "mount_data_count", len(mountData), "procfs_mounts_count", len(mountInfos))
 	for _, prtstate := range mountInfos {
 		iw := osutil.IsWritable(prtstate.MountPoint)
-		if mountPoint, ok := self.disks.GetMountPoint(*e.Partition.DiskId, *e.Partition.Id, prtstate.MountPoint); ok {
-			tlog.TraceContext(ctx, "Found existing mount point in cache for partition, updating state", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id, "mount_path", mountPoint.Path, "is_mounted", mountPoint.IsMounted)
+		if mountPoint, ok := self.disks.GetMountPoint(*part.DiskId, *part.Id, prtstate.MountPoint); ok {
+			tlog.TraceContext(ctx, "Found existing mount point in cache for partition, updating state", "disk_id", *disk.Id, "partition_id", *part.Id, "mount_path", mountPoint.Path, "is_mounted", mountPoint.IsMounted)
 			oldstate := mountPoint.IsMounted
 			mountPoint.IsMounted = true
 			mountPoint.Path = prtstate.MountPoint
@@ -941,9 +985,9 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 			}
 			mountPoint.FSType = &prtstate.FSType
 			mountPoint.Type = "ADDON"
-			err := self.disks.AddOrUpdateMountPoint(*e.Partition.DiskId, *e.Partition.Id, *mountPoint)
+			err := self.disks.AddOrUpdateMountPoint(*part.DiskId, *part.Id, *mountPoint)
 			if err != nil {
-				slog.WarnContext(self.ctx, "Failed to add mount point to disk map", "disk_id", *e.Partition.DiskId, "partition_id", *e.Partition.Id, "mount_path", mountPoint.Path, "err", err)
+				slog.WarnContext(self.ctx, "Failed to add mount point to disk map", "disk_id", *part.DiskId, "partition_id", *part.Id, "mount_path", mountPoint.Path, "err", err)
 				continue
 			}
 			if !oldstate {
@@ -953,20 +997,20 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 				})
 			}
 			continue
-		} else if prtstate.Source == *e.Partition.DevicePath || (e.Partition.LegacyDevicePath != nil && prtstate.Source == *e.Partition.LegacyDevicePath) {
+		} else if prtstate.Source == *part.DevicePath || (part.LegacyDevicePath != nil && prtstate.Source == *part.LegacyDevicePath) {
 			// Found matching mount info for partition
 
 			mountPoint := dto.MountPointData{
 				Path:             prtstate.MountPoint,
 				Root:             prtstate.Root,
-				DeviceId:         *e.Partition.Id,
+				DeviceId:         *part.Id,
 				IsWriteSupported: &iw,
 				IsMounted:        true,
 				Flags:            &dto.MountFlags{},
 				CustomFlags:      &dto.MountFlags{},
 				FSType:           &prtstate.FSType,
 				Type:             "ADDON",
-				Partition:        e.Partition,
+				Partition:        part,
 				RefreshVersion:   self.disks.CurrentRefreshVersion(),
 			}
 			if err := mountPoint.Flags.Scan(prtstate.Options); err != nil {
@@ -990,9 +1034,9 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 				mountPoint.Flags = dbMP.Flags
 				mountPoint.CustomFlags = dbMP.CustomFlags
 			}
-			err := self.disks.AddOrUpdateMountPoint(*e.Partition.DiskId, *e.Partition.Id, mountPoint)
+			err := self.disks.AddOrUpdateMountPoint(*part.DiskId, *part.Id, mountPoint)
 			if err != nil {
-				slog.WarnContext(self.ctx, "Failed to add mount point to disk map", "disk_id", *e.Partition.DiskId, "partition_id", *e.Partition.Id, "mount_path", mountPoint.Path, "err", err)
+				slog.WarnContext(self.ctx, "Failed to add mount point to disk map", "disk_id", *part.DiskId, "partition_id", *part.Id, "mount_path", mountPoint.Path, "err", err)
 				continue
 			}
 			_ = self.eventBus.EmitMountPoint(events.MountPointEvent{
@@ -1003,11 +1047,11 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 		}
 	}
 
-	tlog.TraceContext(ctx, "Marking stale mount points as unmounted for partition", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id)
-	for _, mountPoint := range self.disks.GetMountPointsForPartition(*e.Partition.DiskId, *e.Partition.Id) {
+	tlog.TraceContext(ctx, "Marking stale mount points as unmounted for partition", "disk_id", *disk.Id, "partition_id", *part.Id)
+	for _, mountPoint := range self.disks.GetMountPointsForPartition(*part.DiskId, *part.Id) {
 		tlog.TraceContext(ctx, " --> Checking mount point for staleness",
-			"disk_id", *e.Disk.Id,
-			"partition_id", *e.Partition.Id,
+			"disk_id", *disk.Id,
+			"partition_id", *part.Id,
 			"mount_path", mountPoint.Path,
 			"refresh_version", mountPoint.RefreshVersion,
 			"current_refresh_version", self.disks.CurrentRefreshVersion(),
@@ -1016,13 +1060,13 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 		)
 		if (mountPoint.RefreshVersion != self.disks.CurrentRefreshVersion()) &&
 			(mountPoint.IsMounted || (mountPoint.IsToMountAtStartup != nil && *mountPoint.IsToMountAtStartup)) {
-			tlog.DebugContext(ctx, "Marking mount point as unmounted since not found in procfs mounts", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id, "mount_path", mountPoint.Path)
+			tlog.DebugContext(ctx, "Marking mount point as unmounted since not found in procfs mounts", "disk_id", *disk.Id, "partition_id", *part.Id, "mount_path", mountPoint.Path)
 			oldtstate := mountPoint.IsMounted
 			mountPoint.IsMounted = false
 			mountPoint.RefreshVersion = self.disks.CurrentRefreshVersion()
-			err := self.disks.AddOrUpdateMountPoint(*e.Partition.DiskId, *e.Partition.Id, *mountPoint)
+			err := self.disks.AddOrUpdateMountPoint(*part.DiskId, *part.Id, *mountPoint)
 			if err != nil {
-				slog.WarnContext(self.ctx, "Failed to add mount point to disk map", "disk_id", *e.Partition.DiskId, "partition_id", *e.Partition.Id, "mount_path", mountPoint.Path, "err", err)
+				slog.WarnContext(self.ctx, "Failed to add mount point to disk map", "disk_id", *part.DiskId, "partition_id", *part.Id, "mount_path", mountPoint.Path, "err", err)
 				continue
 			}
 			if oldtstate || (mountPoint.IsToMountAtStartup != nil && *mountPoint.IsToMountAtStartup) {
@@ -1033,7 +1077,7 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 			}
 		}
 	}
-	tlog.TraceContext(ctx, "Done synchronizing mount points for partition", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id)
+	tlog.TraceContext(ctx, "Done synchronizing mount points for partition", "disk_id", *disk.Id, "partition_id", *part.Id)
 
 	return nil
 }
