@@ -379,15 +379,9 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 		mountFsType = *md.FSType
 	}
 
-	// Final validation: ensure DevicePath is non-nil and exists on the OS before
-	// delegating to the mount manager.
-	if md.Partition.DevicePath == nil || *md.Partition.DevicePath == "" {
-		return errors.WithDetails(dto.ErrorDeviceNotFound,
-			"DeviceId", md.DeviceId,
-			"Path", md.Path,
-			"Message", "Device path is nil or empty, cannot mount",
-		)
-	}
+	// Final validation: ensure DevicePath exists on the OS before
+	// delegating to the mount manager. (The nil/empty check already
+	// returned above — this only verifies OS-level existence.)
 	if _, statErr := os.Stat(*md.Partition.DevicePath); statErr != nil {
 		if os.IsPermission(statErr) {
 			return errors.WithDetails(dto.ErrorOperationNotPermitted,
