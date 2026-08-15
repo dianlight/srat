@@ -15,7 +15,7 @@
         "@mui/icons-material": "^9.2.0",
         "@mui/material": "^9.2.0",
         "@mui/x-charts": "^9.10.1",
-        "@mui/x-tree-view": "^9.10.1",
+        "@mui/x-tree-view": "^9.11.0",
         "@reactour/tour": "^3.8.0",
         "@reduxjs/toolkit": "^2.12.0",
         "@sentry/react": "^10.69.0",
@@ -403,7 +403,7 @@
 
     "@mui/x-internals": ["@mui/x-internals@9.10.1", "", { "dependencies": { "@babel/runtime": "^7.29.7", "@base-ui/utils": "^0.3.1", "@mui/utils": "^9.2.0", "reselect": "^5.2.0", "use-sync-external-store": "^1.6.0" }, "peerDependencies": { "react": "^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-pKFVzFQHB34TuMG3gOVx+LfIR8VBsi/ZhX/erRX2WOXu+ewEYGvdeK1mW9hLe7e2v3uyUbgT8RNeN0cy10cDjg=="],
 
-    "@mui/x-tree-view": ["@mui/x-tree-view@9.10.1", "", { "dependencies": { "@babel/runtime": "^7.29.7", "@base-ui/utils": "^0.3.1", "@mui/utils": "^9.2.0", "@mui/x-internals": "^9.10.1", "@types/react-transition-group": "^4.4.12", "clsx": "^2.1.1", "prop-types": "^15.8.1", "react-transition-group": "^4.4.5" }, "peerDependencies": { "@emotion/react": "^11.9.0", "@emotion/styled": "^11.8.1", "@mui/material": "^7.3.0 || ^9.0.0", "@mui/system": "^7.3.0 || ^9.0.0", "react": "^17.0.0 || ^18.0.0 || ^19.0.0", "react-dom": "^17.0.0 || ^18.0.0 || ^19.0.0" }, "optionalPeers": ["@emotion/react", "@emotion/styled"] }, "sha512-MTXh1Ua1sBqtykvEaNbTIo0fp+iLIPj8LAxq28XcXRRO8Guu2hr0PXUq9C3HoO9+N8RPc1CHpJHzOOlHbDpaWw=="],
+    "@mui/x-tree-view": ["@mui/x-tree-view@9.11.0", "", { "dependencies": { "@babel/runtime": "^7.29.7", "@base-ui/utils": "^0.3.1", "@mui/utils": "^9.3.0", "@mui/x-internals": "^9.11.0", "@types/react-transition-group": "^4.4.12", "clsx": "^2.1.1", "prop-types": "^15.8.1", "react-transition-group": "^4.4.5" }, "peerDependencies": { "@emotion/react": "^11.9.0", "@emotion/styled": "^11.8.1", "@mui/material": "^7.3.0 || ^9.0.0", "@mui/system": "^7.3.0 || ^9.0.0", "react": "^17.0.0 || ^18.0.0 || ^19.0.0", "react-dom": "^17.0.0 || ^18.0.0 || ^19.0.0" }, "optionalPeers": ["@emotion/react", "@emotion/styled"] }, "sha512-ZJcnlOr3LwQF9n+xa/4Xh0w8wDCY250smbLGmRzK107ClifYSDTR8/IrRQg8yKBwpDYWDQZW85t0voQcverk1g=="],
 
     "@napi-rs/wasm-runtime": ["@napi-rs/wasm-runtime@1.2.2", "", { "dependencies": { "@tybys/wasm-util": "^0.10.3" }, "peerDependencies": { "@emnapi/core": "^1.7.1 || ^2.0.0-alpha.3", "@emnapi/runtime": "^1.7.1 || ^2.0.0-alpha.3" } }, "sha512-JfB4kuJQjaoHuCTseIINHtHWeJnvgEcxjwA5t/Y00ZgaOO1Crz3fjT/p8kT28zA/Caz7oiUMn3d6H2yOVCVwuw=="],
 
@@ -2241,6 +2241,10 @@
 
     "@mswjs/interceptors/@open-draft/deferred-promise": ["@open-draft/deferred-promise@2.2.0", "", {}, "sha512-CecwLWx3rhxVQF6V4bAgPS5t+So2sTbPgAzafKkVizyi7tlwpcFpdFqq+wqF2OwNBmqFuu6tOyouTuxgpMfzmA=="],
 
+    "@mui/x-tree-view/@mui/utils": ["@mui/utils@9.3.0", "", { "dependencies": { "@babel/runtime": "^7.29.7", "@mui/types": "^9.3.0", "@types/prop-types": "^15.7.15", "clsx": "^2.1.1", "prop-types": "^15.8.1", "react-is": "^19.2.8" }, "peerDependencies": { "@types/react": "^17.0.0 || ^18.0.0 || ^19.0.0", "react": "^17.0.0 || ^18.0.0 || ^19.0.0" }, "optionalPeers": ["@types/react"] }, "sha512-2HZdHwWJ6eB+7lVGSOHsByGw8jeRulT4g0NZ608Wb8Q57DE2jbNqrWPFuJsvkQQiBiTmlpvQL3i+/62zsiPrkw=="],
+
+    "@mui/x-tree-view/@mui/x-internals": ["@mui/x-internals@9.11.0", "", { "dependencies": { "@babel/runtime": "^7.29.7", "@base-ui/utils": "^0.3.1", "@mui/utils": "^9.3.0", "reselect": "^5.2.0", "use-sync-external-store": "^1.6.0" }, "peerDependencies": { "react": "^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-JjKe9k1+gVWNPwMTZLNSc92eVmoZqP5Xq3Ui6mJkstotUrbWIZC0o9+4AfTR1lYqWwnKmqm+VtLLVCa7MEBXWQ=="],
+
     "@opentelemetry/core/@opentelemetry/semantic-conventions": ["@opentelemetry/semantic-conventions@1.28.0", "", {}, "sha512-lp4qAiMTD4sNWW4DbKLBkfiMZ4jbAboJIGOQr5DvciMRI494OapieI9qiODpOt0XBr1LjIDy1xAGAnVs5supTA=="],
 
     "@opentelemetry/exporter-trace-otlp-http/@opentelemetry/resources": ["@opentelemetry/resources@1.29.0", "", { "dependencies": { "@opentelemetry/core": "1.29.0", "@opentelemetry/semantic-conventions": "1.28.0" }, "peerDependencies": { "@opentelemetry/api": ">=1.0.0 <1.10.0" } }, "sha512-s7mLXuHZE7RQr1wwweGcaRp3Q4UJJ0wazeGlc/N5/XSe6UyXfsh1UQGMADYeg7YwD+cEdMtU1yJAUXdnFzYzyQ=="],
@@ -2406,6 +2410,8 @@
     "@mcpc-tech/acp-ai-provider/@ai-sdk/provider-utils/nanoid": ["nanoid@3.3.17", "", { "bin": { "nanoid": "bin/nanoid.cjs" } }, "sha512-xQLf0A3HOMlgHq0n247/LRuAOYmB7dXJ/DvAxGvsSBij45XtBSmQycu+F8ODbHwns/XyFZagyL1+J0Offw1E0g=="],
 
     "@mcpc-tech/unplugin-dev-inspector-mcp/@code-inspector/core/launch-ide": ["launch-ide@1.4.5", "", { "dependencies": { "chalk": "^4.1.1", "dotenv": "^16.1.4" } }, "sha512-W7e4UPmJRwW/YgMn9n3dG5RyzHWGOf31Zb0SmG4pYyH5PiL2KlNZHRo9eUOvozYVY2oqglTfidNKWUiOK6PAJA=="],
+
+    "@mui/x-tree-view/@mui/utils/@mui/types": ["@mui/types@9.3.0", "", { "dependencies": { "@babel/runtime": "^7.29.7" }, "peerDependencies": { "@types/react": "^17.0.0 || ^18.0.0 || ^19.0.0" }, "optionalPeers": ["@types/react"] }, "sha512-2JSxyfpEFWNUB2vKs/T1BvkfyNisMHWph8bLMj8T0uHwmLl/0qfAwQkfwMT6kxLXN9uIum9AEbECXU8er3amIg=="],
 
     "@opentelemetry/exporter-trace-otlp-http/@opentelemetry/resources/@opentelemetry/semantic-conventions": ["@opentelemetry/semantic-conventions@1.28.0", "", {}, "sha512-lp4qAiMTD4sNWW4DbKLBkfiMZ4jbAboJIGOQr5DvciMRI494OapieI9qiODpOt0XBr1LjIDy1xAGAnVs5supTA=="],
 
