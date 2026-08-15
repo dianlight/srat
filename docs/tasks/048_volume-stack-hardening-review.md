@@ -238,6 +238,8 @@ Cost per full refresh with P partitions: P × (`loadMountPointFromDB` query + `p
 
 **Tests:** hardware client returns error → `GET /volumes` returns 500 (today: 200 + `[]`).
 
+**Status:** ✅ Done — commit `028e7b24` (signature `([]*dto.Disk, errors.E)`; `ListVolumes` → 500; `PatchMountPointSettings` falls back to nil context on load failure; tests `TestListVolumes_ErrorReturns500`, `TestGetVolumesData_HardwareErrorPropagates`, `TestGetVolumesData_ReturnsCachedOnSubsequentCall`; coverage `GetVolumesData`/`ListVolumes` 100%)
+
 ### H6 — Unmount flag semantics inverted: "force" can fail while "normal" never does (verified)
 
 **File:** `volume_mount_manager.go:162` → `filesystem_service.go:981` → u-root `mount_linux.go:133-151`
@@ -354,7 +356,7 @@ Refactor per the Dialog Pattern in the instruction file; behavior unchanged. Thi
 - [x] Task 8: **H2** — Hoist procfs parse out of per-partition handler (parse once per refresh, pass via payload); benchmark before/after
 - [x] Task 9: **H3** — Delete duplicate DevicePath validation block
 - [x] Task 10: **H4** — Verify converter nil-handling; switch to selective field updates if needed; DB-level assertion test
-- [ ] Task 11: **H5** — `GetVolumesData` returns error; API 500 mapping; hook surfaces error; update callers
+- [x] Task 11: **H5** — `GetVolumesData` returns error; API 500 mapping; hook surfaces error; update callers
 - [ ] Task 12: **H6** — Unmount lazy/force semantics + dir-removal-only-if-created; fake-fs tests
 - [ ] Task 13: **H7** — udev channel buffer 64 + drain on shutdown
 - [ ] Task 14: **F1** — Fix map-as-array icon bug + RTL test
