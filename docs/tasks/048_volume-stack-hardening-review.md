@@ -222,12 +222,15 @@ Cost per full refresh with P partitions: P × (`loadMountPointFromDB` query + `p
 **File:** `volume_service.go:990-1012`
 **Second-cycle verification (converter source `dto_to_dbom_conv_gen.go:108-136`):** the patch flow converts into the **DB-loaded** record, and the converter nil-guards `Path`/`Root`/`Type`/`DeviceId`/`FSType`/`IsToMountAtStartup` — nil patch fields leave the loaded values intact. The three unconditional assignments (`Flags` line 125, `Data` line 126, `ExportedShare` line 134) do nil-overwrite the loaded record, **but** the subsequent `gorm.Updates(ctx, &dbMountData)` skips zero-value (nil pointer) struct fields, so the DB keeps its values. The real nil-wipe danger lives in `persistMountPoint` (see B2), not here.
 
-**Residual issues:**
+**Residual issues (re-verified during Task 10 implementation):**
 
-1. `Updates` returns `affected == 0` when the patch contains only nil/zero fields → handler returns **404 "not found"** (line 1010-1011) for an existing record — misleading status code; should be 200 (no-op) or 400.
-2. The frontend's `handleToggleAutomount` sends `share: undefined` explicitly (`Volumes.tsx:570`) — harmless today only because of GORM's zero-skip; the intent ("don't touch the share") is implicit, not explicit. Document it or strip the field client-side.
+1. ~~`Updates` returns `affected == 0` when the patch contains only nil/zero fields → handler returns 404 "not found"~~ — **does not reproduce**: GORM's struct-based `Updates` always includes the loaded record's non-zero fields (Path/Root/Type/DeviceId/FSType/CreatedAt) plus the auto-updated `UpdatedAt` (`AutoUpdateTime` field, `callbacks/update.go:279-292`), so `affected ≥ 1` for any existing record. An all-nil patch is already a 200 no-op with the DB untouched (locked by `TestPatchMountPointSettings_EmptyPatch_NoOp`). The `affected == 0` 404 branch is effectively dead for existing records; it is now defensively downgraded to a no-op debug log instead of a misleading 404.
+2. **REAL BUG FOUND:** although the DB keeps `Flags`/`Data`/`ExportedShare` (GORM skips nil fields), the nil-wiped **in-memory** `dbMountData` was converted back into the response DTO **and pushed into the disk cache** (`AddOrUpdateMountPoint`, line ~1221). Result: a partial PATCH (e.g. toggling `IsToMountAtStartup`) silently dropped the flags/custom flags from the response **and from `GetVolumesData`** until the next full refresh — verified by probe: response DTO had `Flags=nil` while the DB row still had `[{noatime}]`. **Fixed** by reloading the record from the DB after `Updates` before converting back (line ~1224-1227); response and cache now reflect true persisted state.
+3. The frontend's `handleToggleAutomount` sends `share: undefined` explicitly (`Volumes.tsx:570`) — harmless today only because of GORM's zero-skip; the intent ("don't touch the share") is implicit, not explicit. Document it or strip the field client-side. (Out of scope for this backend task.)
 
-**Tests:** PATCH with empty body / all-nil fields → expect 200 no-op (after fix), assert no DB changes; PATCH with only `IsToMountAtStartup` → assert `flags`/`fstype`/share FK unchanged at DB level (extend `TestPatchMountPointSettings_Success_OnlyStartup`).
+**Tests (Task 10):** PATCH with empty body / all-nil fields → 200 no-op, DB unchanged, **and response DTO keeps persisted flags** (`TestPatchMountPointSettings_EmptyPatch_NoOp`); PATCH with only `IsToMountAtStartup` → `flags`/`fstype`/data unchanged at DB level **and in the response DTO** (`TestPatchMountPointSettings_OnlyStartup_KeepsFlagsAndShareAtDBLevel`); record-not-found → `ErrorNotFound` (`TestPatchMountPointSettings_RecordNotFound`); fallback cache paths when the device can't be resolved to a partition (`TestPatchMountPointSettings_FallbackCacheUpdate_CachedMountPoint`, `TestPatchMountPointSettings_FallbackSnapshotLoop`). Coverage: service `PatchMountPointSettings` 39.6% → **75.0%**.
+
+**Status:** ✅ Done — commit `82549d9b` (reload-after-patch fix + 7 PATCH tests; coverage 39.6% → 75.0%)
 
 ### H5 — `GetVolumesData()` masks load errors as "no disks"
 
@@ -350,7 +353,7 @@ Refactor per the Dialog Pattern in the instruction file; behavior unchanged. Thi
 - [x] Task 7: **H1** — Automount retry backoff (per-path attempt map, max 5, exp. backoff); loop test with failing cache write
 - [x] Task 8: **H2** — Hoist procfs parse out of per-partition handler (parse once per refresh, pass via payload); benchmark before/after
 - [x] Task 9: **H3** — Delete duplicate DevicePath validation block
-- [ ] Task 10: **H4** — Verify converter nil-handling; switch to selective field updates if needed; DB-level assertion test
+- [x] Task 10: **H4** — Verify converter nil-handling; switch to selective field updates if needed; DB-level assertion test
 - [ ] Task 11: **H5** — `GetVolumesData` returns error; API 500 mapping; hook surfaces error; update callers
 - [ ] Task 12: **H6** — Unmount lazy/force semantics + dir-removal-only-if-created; fake-fs tests
 - [ ] Task 13: **H7** — udev channel buffer 64 + drain on shutdown
@@ -516,7 +519,7 @@ Verified against `backend/src/dto/` sources. Grounds findings B1, B2, B3, B5, H4
 | B2 | `MountPointData` confirmed: procfs discovery populates only `Path/Root/Type/FSType/DeviceId/IsMounted`; `IsToMountAtStartup`/`Flags`/`CustomFlags`/`Share` nil → converter nil-guards skip → zero-write under `UpdateAll: true`. The merge fix targets exactly those 4 fields (Share excluded — owned by the share service). |
 | B3 | `GetAllMountPoints()` iterates all disks × partitions — confirmed. `GetMountPointsForPartition(diskID, partitionID)` **does not exist** in `disk_map.go`; must be added (Task 3). |
 | B5 | `GetPartitionDevicePath(partition)` (DevicePath → LegacyDevicePath → LegacyDeviceName) and `GetPartitionByID(partitionID)` **already exist** in `disk_map.go` — the suggested fix only needs the `GetDevicePathByDeviceID` rewrite + the DeviceId contract decision. |
-| H4 | Converter nil-guard behavior confirmed (`dto_to_dbom_conv_gen.go:108-136`); the patch path converts into the DB-loaded record — residual quirk is `affected == 0 → 404`. |
+| H4 | Converter nil-guard behavior confirmed (`dto_to_dbom_conv_gen.go:108-136`); the patch path converts into the DB-loaded record — **Task 10: quirk `affected == 0 → 404` does NOT reproduce** (GORM auto-updates `UpdatedAt`), but a real bug was found: nil-wiped in-memory record dropped Flags/Data from response DTO and disk cache; fixed via post-`Updates` DB reload. |
 | H8 | `Disk`/`Partition` both carry `RefreshVersion uint32` (per-entity snapshot copies, not the shared counter); `AddSmartInfo`/`AddHDIdleDevice` mutate the cached `*Disk` **in place** through the map pointer — cache aliasing confirmed. |
 
 ## 🔬 B1 Implementation Survey (2026-08-13)
