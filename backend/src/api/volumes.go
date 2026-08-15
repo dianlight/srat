@@ -45,7 +45,11 @@ func (self *VolumeHandler) RegisterVolumeHandlers(api huma.API) {
 }
 
 func (self *VolumeHandler) ListVolumes(ctx context.Context, input *struct{}) (*struct{ Body []*dto.Disk }, error) {
-	volumes := self.vservice.GetVolumesData()
+	volumes, errE := self.vservice.GetVolumesData()
+	if errE != nil {
+		tlog.ErrorContext(ctx, "Failed to list volumes", "error", errE)
+		return nil, huma.Error500InternalServerError("Failed to retrieve volume data", errE)
+	}
 	return &struct{ Body []*dto.Disk }{Body: volumes}, nil
 }
 

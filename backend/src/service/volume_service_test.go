@@ -226,7 +226,8 @@ func (suite *VolumeServiceTestSuite) TestFormatSuccessEventRefreshesPartitionCac
 	).Verify(matchers.AtLeastOnce())
 
 	suite.hardwareService.InvalidateHardwareInfo()
-	disksBefore := suite.volumeService.GetVolumesData()
+	disksBefore, errVolumes := suite.volumeService.GetVolumesData()
+	suite.Require().NoError(errVolumes)
 	suite.Require().Len(disksBefore, 1)
 	beforePart, ok := (*disksBefore[0].Partitions)[partitionID]
 	suite.Require().True(ok, "expected partition to be present before refresh")
@@ -265,7 +266,8 @@ func (suite *VolumeServiceTestSuite) TestFormatSuccessEventRefreshesPartitionCac
 		suite.T().Fatal("timeout waiting for disk refresh event after format success")
 	}
 
-	disksAfter := suite.volumeService.GetVolumesData()
+	disksAfter, errVolumes := suite.volumeService.GetVolumesData()
+	suite.Require().NoError(errVolumes)
 	suite.Require().Len(disksAfter, 1)
 	afterPart, ok := (*disksAfter[0].Partitions)[partitionID]
 	suite.Require().True(ok, "expected partition to be present after refresh")
@@ -353,7 +355,8 @@ func (suite *VolumeServiceTestSuite) TestMountUnmountVolume_Success() {
 		},
 		nil)
 
-	disks := suite.volumeService.GetVolumesData()
+	disks, errVolumes := suite.volumeService.GetVolumesData()
+	suite.Require().NoError(errVolumes)
 	suite.Require().NotNil(disks, "Expected GetVolumesData to return disks")
 	suite.Require().NotEmpty(disks, "Expected GetVolumesData to return non-empty disks")
 	suite.Require().Len(disks, 2, "Expected GetVolumesData to return 2 disks")
@@ -607,7 +610,8 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_Success() {
 	//mock.When(suite.mockMountRepo.FindByPath(mountPath2)).ThenReturn(dbomMountData2, nil).Verify(matchers.Times(1))
 
 	// Call the function
-	disks := suite.volumeService.GetVolumesData()
+	disks, errVolumes := suite.volumeService.GetVolumesData()
+	suite.Require().NoError(errVolumes)
 
 	// Assertions
 	suite.Require().NotNil(disks)
@@ -697,7 +701,8 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_ReturnsMountPointData() 
 		}, nil
 	})
 
-	disks := suite.volumeService.GetVolumesData()
+	disks, errVolumes := suite.volumeService.GetVolumesData()
+	suite.Require().NoError(errVolumes)
 	suite.Require().NotNil(disks)
 	suite.Require().Len(disks, 1)
 
@@ -756,7 +761,8 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_NoMixHostAndAddon() {
 		}, nil
 	})
 
-	disks := suite.volumeService.GetVolumesData()
+	disks, errVolumes := suite.volumeService.GetVolumesData()
+	suite.Require().NoError(errVolumes)
 	suite.Require().NotNil(disks)
 	suite.Require().Len(disks, 1)
 	part := (*disks[0].Partitions)[*partID]
@@ -1100,7 +1106,8 @@ func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_UpdatesStartupF
 
 	// Initial load
 	suite.hardwareService.InvalidateHardwareInfo()
-	disks := suite.volumeService.GetVolumesData()
+	disks, errVolumes := suite.volumeService.GetVolumesData()
+	suite.Require().NoError(errVolumes)
 	suite.Require().NotNil(disks)
 	suite.Require().Len(disks, 1)
 	part := (*disks[0].Partitions)[*partID]
@@ -1122,7 +1129,8 @@ func (suite *VolumeServiceTestSuite) TestPatchMountPointSettings_UpdatesStartupF
 	suite.True(*resultDto.IsToMountAtStartup, "expected patched IsToMountAtStartup to be true")
 
 	// Reload (should use cached data)
-	disksAfter := suite.volumeService.GetVolumesData()
+	disksAfter, errVolumes := suite.volumeService.GetVolumesData()
+	suite.Require().NoError(errVolumes)
 	suite.Require().NotNil(disksAfter)
 	partAfter := (*disksAfter[0].Partitions)[*partID]
 	mpdAfter, ok := (*partAfter.MountPointData)[mountPath]
@@ -1186,7 +1194,8 @@ func (suite *VolumeServiceTestSuite) TestHandlePartitionEvent_DiscoveryPreserves
 	})
 
 	suite.hardwareService.InvalidateHardwareInfo()
-	disks := suite.volumeService.GetVolumesData()
+	disks, errVolumes := suite.volumeService.GetVolumesData()
+	suite.Require().NoError(errVolumes)
 	suite.Require().NotNil(disks)
 	suite.Require().Len(disks, 1)
 
@@ -1416,4 +1425,41 @@ func (suite *VolumeServiceTestSuite) TestGetDevicePathByDeviceID() {
 			suite.Equal(tc.expectedPath, path)
 		})
 	}
+}
+
+// TestGetVolumesData_HardwareErrorPropagates verifies the H5 fix: when the
+// hardware client fails, GetVolumesData must surface the error instead of
+// returning an empty disk list.
+func (suite *VolumeServiceTestSuite) TestGetVolumesData_HardwareErrorPropagates() {
+	suite.hardwareService.InvalidateHardwareInfo()
+
+	mock.When(suite.mockHardwareClient.GetHardwareInfo()).
+		ThenReturn(nil, errors.New("hardware discovery failed")).
+		Verify(matchers.AtLeastOnce())
+
+	disks, errE := suite.volumeService.GetVolumesData()
+	suite.Require().Error(errE)
+	suite.Nil(disks)
+	suite.Contains(errE.Error(), "hardware discovery failed")
+}
+
+// TestGetVolumesData_ReturnsCachedOnSubsequentCall verifies the H5 change
+// keeps the cache fast path: the second call returns cached data with no
+// error and does not re-trigger hardware discovery.
+func (suite *VolumeServiceTestSuite) TestGetVolumesData_ReturnsCachedOnSubsequentCall() {
+	mock.When(suite.mockHardwareClient.GetHardwareInfo()).
+		ThenReturn(map[string]dto.Disk{
+			"cached-disk": {Id: new("cached-disk"), Partitions: &map[string]dto.Partition{}},
+		}, nil).
+		Verify(matchers.AtLeastOnce())
+
+	first, errE := suite.volumeService.GetVolumesData()
+	suite.Require().NoError(errE)
+	suite.Require().Len(first, 1)
+
+	// Second call must hit the cache: same disks, no error.
+	second, errE2 := suite.volumeService.GetVolumesData()
+	suite.Require().NoError(errE2)
+	suite.Require().Len(second, 1)
+	suite.Equal(*first[0].Id, *second[0].Id)
 }

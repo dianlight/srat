@@ -40,7 +40,7 @@ Copilot file rules:
 type VolumeServiceInterface interface {
 	MountVolume(md *dto.MountPointData) errors.E
 	UnmountVolume(id string, force bool) errors.E
-	GetVolumesData() []*dto.Disk
+	GetVolumesData() ([]*dto.Disk, errors.E)
 	GetDevicePathByDeviceID(deviceID string) (string, errors.E)
 	PatchMountPointSettings(root string, path string, settingsPatch dto.MountPointData) (*dto.MountPointData, errors.E)
 	// Test only
@@ -552,15 +552,14 @@ func (self *VolumeService) handlePartitionUdevRemoveEvent(devName string) {
 	}
 }
 
-func (self *VolumeService) GetVolumesData() []*dto.Disk {
+func (self *VolumeService) GetVolumesData() ([]*dto.Disk, errors.E) {
 	if self.disks.Len() == 0 {
-		err := self.getVolumesData()
-		if err != nil {
+		if err := self.getVolumesData(); err != nil {
 			slog.ErrorContext(self.ctx, "Failed to get volumes data in GetVolumesData", "err", err)
-			return []*dto.Disk{}
+			return nil, errors.WithStack(err)
 		}
 	}
-	return self.disks.All()
+	return self.disks.All(), nil
 }
 
 // loadMountPointFromDB loads mount point data from the database for a partition
@@ -1227,7 +1226,15 @@ func (ms *VolumeService) PatchMountPointSettings(root string, path string, patch
 	}
 
 	currentDto := dto.MountPointData{}
-	if convErr := ms.convDto.MountPointPathToMountPointData(dbMountData, &currentDto, ms.GetVolumesData()); convErr != nil {
+	// The converter uses the volume cache only to resolve the partition from
+	// the DeviceId; on load failure pass nil so the fallback cache-update path
+	// below still keeps the persisted state consistent.
+	disksContext, errVolumes := ms.GetVolumesData()
+	if errVolumes != nil {
+		slog.WarnContext(ms.ctx, "PatchMountPointSettings: failed to load volumes data for partition resolution", "err", errVolumes)
+		disksContext = nil
+	}
+	if convErr := ms.convDto.MountPointPathToMountPointData(dbMountData, &currentDto, disksContext); convErr != nil {
 		return nil, errors.WithStack(convErr)
 	}
 	// Update cached mount point data

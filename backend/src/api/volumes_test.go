@@ -15,6 +15,7 @@ import (
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
+	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 )
@@ -90,7 +91,7 @@ func (suite *VolumeHandlerSuite) TestListVolumes_ReturnsDiskPartitionMountPointD
 	}
 	disks := []*dto.Disk{&disk}
 
-	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(disks)
+	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(disks, nil)
 
 	_, apiInst := humatest.New(suite.T())
 	suite.handler.RegisterVolumeHandlers(apiInst)
@@ -126,7 +127,22 @@ func (suite *VolumeHandlerSuite) TestListVolumes_ReturnsDiskPartitionMountPointD
 	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).GetVolumesData()
 }
 
-// TestPatchMountPointSettings_UpdatesIsToMountAtStartup verifies that PatchMountPointSettings
+// TestListVolumes_ErrorReturns500 verifies the H5 fix: when the volume
+// service fails to load volume data, GET /volumes must return 500 instead
+// of 200 with an empty disk list.
+func (suite *VolumeHandlerSuite) TestListVolumes_ErrorReturns500() {
+	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(nil, errors.New("hardware failure"))
+
+	_, apiInst := humatest.New(suite.T())
+	suite.handler.RegisterVolumeHandlers(apiInst)
+
+	resp := apiInst.Get("/volumes")
+	suite.Require().Equal(http.StatusInternalServerError, resp.Code)
+	suite.Contains(resp.Body.String(), "hardware failure")
+
+	mock.Verify(suite.mockVolumeSvc, matchers.Times(1)).GetVolumesData()
+}
+
 // correctly updates the mount point configuration and the change is reflected in GetVolumesData.
 func (suite *VolumeHandlerSuite) TestPatchMountPointSettings_UpdatesIsToMountAtStartup() {
 	diskID := "disk1"
@@ -167,7 +183,7 @@ func (suite *VolumeHandlerSuite) TestPatchMountPointSettings_UpdatesIsToMountAtS
 	disksUpdated := []*dto.Disk{&diskUpdated}
 
 	// Mock GetVolumesData to return initial state, then updated state
-	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(disksInitial).ThenReturn(disksUpdated)
+	mock.When(suite.mockVolumeSvc.GetVolumesData()).ThenReturn(disksInitial, nil).ThenReturn(disksUpdated, nil)
 	//mock.When(suite.mockVolumeSvc.PathHashToPath(mountPathHash)).ThenReturn(mountPath, nil)
 	mock.When(suite.mockVolumeSvc.PatchMountPointSettings(mock.Any[string](), mock.Any[string](), mock.Any[dto.MountPointData]())).
 		ThenReturn(&mountPointUpdated, nil)
