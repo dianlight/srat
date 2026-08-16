@@ -258,6 +258,12 @@ This is the opposite of user expectations: the UI presents "Force Unmount" as th
 
 **File:** `volume_service_udev_linux.go:23-35` — `queue := make(chan netlink.UEvent, 10)`: on udev burst >10 events, netlink lib blocks or drops (impl-dependent); on shutdown `close(quit)` stops the monitor but an in-flight `queue <-` send may leak the producer goroutine. Buffer to 64+ and drain `queue`/`errorChan` after `close(quit)` before returning. Low frequency, low severity, cheap fix.
 
+**Status:** done (Task 13).
+
+**Fix (Task 13):** `volume_service_udev_linux.go` — `queue` buffered to 64; after `close(quit)` the handler drains `queue`/`errorChan` for 100 ms before returning. The go-udev `Monitor` producer sends with a **blocking `queue <- *uevent` outside its select loop** (`netlink/conn.go`), so a full queue at shutdown would leak that goroutine; draining lets the in-flight send complete and the producer observe the closed `quit` channel. A bounded timeout (not `default: return`) is required because the producer may emit a couple more events after quit closes (select picks randomly between the closed quit case and a buffered read).
+
+**Tests (Task 13):** `udev_channel_drain_test.go` — generic `drainUdevChannels[T any]` extracted to `udev_channel_drain.go` (no netlink import, so it compiles/tests on non-Linux hosts; the netlink package itself is Linux-only): (a) drains buffered items + pending error; (b) unblocks a producer blocked on a full-queue send (`TestDrainUdevChannels_UnblocksBlockedProducer`); (c) returns promptly when idle; (d) keeps consuming under a concurrent producer. Coverage: `drainUdevChannels` **100%**. Linux build verified via `GOOS=linux go vet ./service/` (the linux-tagged handler itself can't run tests on the darwin dev host).
+
 ### H8 — Hardware-cache aliasing: `getVolumesData` mutates the shared 30-minute cache (race risk)
 
 **File:** `volume_service.go:557-606` (second-cycle finding)
@@ -360,7 +366,7 @@ Refactor per the Dialog Pattern in the instruction file; behavior unchanged. Thi
 - [x] Task 10: **H4** — Verify converter nil-handling; switch to selective field updates if needed; DB-level assertion test
 - [x] Task 11: **H5** — `GetVolumesData` returns error; API 500 mapping; hook surfaces error; update callers
 - [x] Task 12: **H6** — Unmount lazy/force semantics + dir-removal-only-if-created; fake-fs tests
-- [ ] Task 13: **H7** — udev channel buffer 64 + drain on shutdown
+- [x] Task 13: **H7** — udev channel buffer 64 + drain on shutdown
 - [ ] Task 14: **F1** — Fix map-as-array icon bug + RTL test
 - [ ] Task 15: **F2** — Migrate `VolumeMountDialog` to `FormContainer` pattern per instructions; keep tests green
 - [ ] Task 16: **F3** — Drop local `disks` state; optimistic label update via RTK `updateQueryData`
