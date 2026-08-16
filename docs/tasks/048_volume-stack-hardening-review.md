@@ -332,6 +332,14 @@ Refactor per the Dialog Pattern in the instruction file; behavior unchanged. Thi
 
 **Test:** existing `VolumeMountDialog.test.tsx` must keep passing; add "submit button disabled while submitting" case.
 
+**Fix (Task 15):** `VolumeMountDialog.tsx` migrated to the canonical Dialog Pattern:
+
+- `useForm` hoisted to a `formContext` object; `<form id="mountvolumeform" onSubmit={handleSubmit(...)} noValidate>` replaced with `<FormContainer formContext={formContext} onSuccess={handleCloseSubmit}>` wrapping **both** `DialogContent` and `DialogActions` (`noValidate` is implicit in `FormContainer`).
+- Manual `const [mounting, setMounting] = useState(false)` removed; submit button now `type="submit"` with `disabled={formState.isSubmitting}` (dropped the non-standard `form="mountvolumeform"` attr and the `loading` spinner).
+- `onClose` prop widened to `(data?: MountPointData) => void | Promise<void>` and `handleCloseSubmit` now `await props.onClose(submitData)`. `Volumes.tsx` `onSubmitMountVolume` returns the `mountVolume` mutation promise, so `isSubmitting` stays `true` for the whole in-flight mount — preserving the pre-refactor "button disabled until the parent closes the dialog" behavior.
+
+**Tests (Task 15):** existing 10 tests pass unchanged; added "disables the Mount button while submitting" — controllable `onClose` promise, assert button disabled while pending and re-enabled after resolve. 11/11 pass (incl. `--retry=10`); full `volumes/` suite 155/155; `bunx vitest run --changed` green; `bun tsc --noEmit` clean (fixed TS7030 by making the parent's `onClose` handler return on every path).
+
 ### F3 — `Volumes.tsx` local `disks` state duplicates the source of truth
 
 **File:** `Volumes.tsx:113, 198-200, 265-278`
@@ -374,7 +382,7 @@ Refactor per the Dialog Pattern in the instruction file; behavior unchanged. Thi
 - [x] Task 12: **H6** — Unmount lazy/force semantics + dir-removal-only-if-created; fake-fs tests
 - [x] Task 13: **H7** — udev channel buffer 64 + drain on shutdown
 - [x] Task 14: **F1** — Fix map-as-array icon bug + RTL test
-- [ ] Task 15: **F2** — Migrate `VolumeMountDialog` to `FormContainer` pattern per instructions; keep tests green
+- [x] Task 15: **F2** — Migrate `VolumeMountDialog` to `FormContainer` pattern per instructions; keep tests green
 - [ ] Task 16: **F3** — Drop local `disks` state; optimistic label update via RTK `updateQueryData`
 - [ ] Task 17: **F4** — `Promise.allSettled` aggregation for automount toggle; single summary toast
 - [ ] Task 18: **F5** — ID-only identifiers; localStorage migration note; reorder-stability test
