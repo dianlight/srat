@@ -5,6 +5,7 @@ package service
 import (
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/dianlight/tlog"
 	"github.com/pilebones/go-udev/netlink"
@@ -20,7 +21,9 @@ func (self *VolumeService) udevEventHandler() {
 	}
 	defer conn.Close()
 
-	queue := make(chan netlink.UEvent, 10)
+	// Buffer generously (64+) so kernel udev bursts don't stall the monitor's
+	// blocking send; a full 10-slot queue used to block the producer.
+	queue := make(chan netlink.UEvent, 64)
 	errorChan := make(chan error, 1)
 	quit := conn.Monitor(queue, errorChan, nil)
 	tlog.TraceContext(self.ctx, "Udev monitor started successfully.")
@@ -32,6 +35,11 @@ func (self *VolumeService) udevEventHandler() {
 			if quit != nil {
 				close(quit)
 			}
+			// Drain the monitor's output channels after signalling stop:
+			// the producer goroutine sends on `queue` with a blocking send
+			// outside its select loop, so an in-flight send when quit
+			// closes would otherwise leak the goroutine.
+			drainUdevChannels(queue, errorChan, 100*time.Millisecond)
 			return
 		case uevent := <-queue:
 			if subsystem, ok := uevent.Env["SUBSYSTEM"]; ok && subsystem == "block" {
