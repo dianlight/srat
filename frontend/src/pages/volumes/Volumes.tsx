@@ -412,14 +412,14 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
     setSelectedPartitionId(undefined);
   }, [disks, selectedPartitionId]);
 
-  function onSubmitMountVolume(data?: MountPointData) {
+  function onSubmitMountVolume(data?: MountPointData): Promise<void> {
     if (!selectedPartition || !data?.path || !data.root) {
       toast.error("Cannot mount: Invalid selection or missing data.");
       console.error("Mount validation failed:", {
         selectedPartition,
         data,
       });
-      return;
+      return Promise.resolve();
     }
 
     const submitData: MountPointData = {
@@ -427,7 +427,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
       device_id: selectedPartition.id,
     };
 
-    mountVolume({
+    return mountVolume({
       mountPointData: submitData,
     })
       .unwrap()
@@ -656,14 +656,14 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
         onClose={(data) => {
           if (showMount) {
             if (data) {
-              onSubmitMountVolume(data);
-            } else {
-              setSelectedPartition(undefined);
-              setSelectedDisk(undefined);
-              setSelectedPartitionId(undefined);
-              setShowMount(false);
+              return onSubmitMountVolume(data);
             }
+            setSelectedPartition(undefined);
+            setSelectedDisk(undefined);
+            setSelectedPartitionId(undefined);
+            setShowMount(false);
           }
+          return;
         }}
       />
       {showFilesystemCheckDialog && (
