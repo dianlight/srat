@@ -311,6 +311,12 @@ const isToMountAtStartup =
   Object.values(partition.mount_point_data ?? {})[0]?.is_to_mount_at_startup === true;
 ```
 
+**Status:** done (Task 14).
+
+**Fix (Task 14):** `VolumesTreeView.tsx` `renderPartitionIcon` — replaced `partition.mount_point_data?.[0]?.is_to_mount_at_startup === true` with `Object.values(partition.mount_point_data ?? {}).some((mpd) => mpd.is_to_mount_at_startup === true)`. Uses `.some()` rather than the prescription's `Object.values(...)[0]`: automount toggling (`Volumes.tsx` `handleToggleAutomount`) applies to **every** mount point, so the icon must color when *any* of them has automount enabled; `[0]` on a `Record` is still order-dependent.
+
+**Tests (Task 14):** `VolumesTreeView.test.tsx` — (a) partition with `is_to_mount_at_startup: true` → `container.querySelector(".MuiSvgIcon-colorPrimary")` present; (b) `false` → absent. 13/13 tests pass (incl. `--retry=10`); `bun tsc --noEmit` clean; `bunx vitest run --changed` green.
+
 **Test:** `VolumesTreeView.test.tsx` — partition with automount-enabled mount point → icon has `color="primary"` (assert via `data-testid` or class query on the icon).
 
 ### F2 — `VolumeMountDialog` violates the mandatory form standard
@@ -367,7 +373,7 @@ Refactor per the Dialog Pattern in the instruction file; behavior unchanged. Thi
 - [x] Task 11: **H5** — `GetVolumesData` returns error; API 500 mapping; hook surfaces error; update callers
 - [x] Task 12: **H6** — Unmount lazy/force semantics + dir-removal-only-if-created; fake-fs tests
 - [x] Task 13: **H7** — udev channel buffer 64 + drain on shutdown
-- [ ] Task 14: **F1** — Fix map-as-array icon bug + RTL test
+- [x] Task 14: **F1** — Fix map-as-array icon bug + RTL test
 - [ ] Task 15: **F2** — Migrate `VolumeMountDialog` to `FormContainer` pattern per instructions; keep tests green
 - [ ] Task 16: **F3** — Drop local `disks` state; optimistic label update via RTK `updateQueryData`
 - [ ] Task 17: **F4** — `Promise.allSettled` aggregation for automount toggle; single summary toast
