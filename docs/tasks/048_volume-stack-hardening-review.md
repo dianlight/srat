@@ -240,17 +240,19 @@ Cost per full refresh with P partitions: P × (`loadMountPointFromDB` query + `p
 
 **Status:** ✅ Done — commit `028e7b24` (signature `([]*dto.Disk, errors.E)`; `ListVolumes` → 500; `PatchMountPointSettings` falls back to nil context on load failure; tests `TestListVolumes_ErrorReturns500`, `TestGetVolumesData_HardwareErrorPropagates`, `TestGetVolumesData_ReturnsCachedOnSubsequentCall`; coverage `GetVolumesData`/`ListVolumes` 100%)
 
-### H6 — Unmount flag semantics inverted: "force" can fail while "normal" never does (verified)
+### H6 — Unmount flag semantics inverted: "force" can fail while "normal" never does (fixed, Task 12)
 
-**File:** `volume_mount_manager.go:162` → `filesystem_service.go:981` → u-root `mount_linux.go:133-151`
+**File:** `volume_mount_manager.go:148` → `filesystem_service.go:981` → u-root `mount_linux.go:133-151`
 **Verified kernel semantics:** the call `UnmountPartition(m.ctx, md.Path, fsType, force, !force)` maps to:
 
 - **Normal unmount** (`force=false` → `lazy=true`) → `MNT_DETACH`: always "succeeds" immediately, even with open files — busy state is hidden, I/O errors surface in still-running consumers later.
 - **Force unmount** (`force=true` → `lazy=false`) → `MNT_FORCE` only: on busy local filesystems this **fails with EBUSY**. The u-root library explicitly rejects combining both flags (`mount_linux.go:138-139`).
 
-This is the opposite of user expectations: the UI presents "Force Unmount" as the stronger action (red button, data-loss warning), but it is the one that fails when the volume is busy, while the graceful path silently detaches. Suggested fix: normal unmount = no flags (fail on busy → user sees the real error), force unmount = `MNT_DETACH` (guaranteed detach), i.e. pass `force=false, lazy=force` and drop the directory removal when lazy. Keep the `os.Remove`-only-if-empty behavior (fails with Warn today — acceptable, but stale dirs under `/mnt` accumulate; consider tracking "we created it" in `Mount`).
+This is the opposite of user expectations: the UI presents "Force Unmount" as the stronger action (red button, data-loss warning), but it is the one that fails when the volume is busy, while the graceful path silently detaches.
 
-**Tests:** fake unmount func capturing flags: (a) normal → `(force=false, lazy=false)` after fix; (b) force → `(force=false, lazy=true)`; (c) busy error propagated on normal unmount.
+**Fix (Task 12):** `volume_mount_manager.go:168` now passes `UnmountPartition(m.ctx, md.Path, fsType, false, force)` — normal unmount = no flags (fails on busy → user sees the real error), force unmount = `MNT_DETACH` (guaranteed detach). The mount directory is only removed on a normal (non-lazy) unmount (`os.Remove` guarded by `!force`); with `MNT_DETACH` the filesystem stays active underneath until the last reference is gone, so the directory must remain valid.
+
+**Tests (Task 12):** `volume_mount_manager_test.go` — mocked `FilesystemServiceInterface` capturing the `(force, lazy)` flags: (a) normal → `(force=false, lazy=false)` (`TestUnmount_NormalPassesNoFlags`); (b) force → `(force=false, lazy=true)` (`TestUnmount_ForceDetachesLazily`); (c) busy error propagated on normal unmount (`TestUnmount_NormalBusyErrorPropagates`); nil `MountPointData` rejected (`TestUnmount_NilMountPoint`). Coverage: `volumeMountManager.Unmount` **90%**. Note: `VolumeService.MockSetMountOps` type-asserts `FilesystemService` for a `MockSetMountOps` method it does not implement — the assertion silently no-ops; tests bypass it by mocking the manager's `FilesystemServiceInterface` directly.
 
 ### H7 — udev goroutine lifecycle
 
@@ -357,7 +359,7 @@ Refactor per the Dialog Pattern in the instruction file; behavior unchanged. Thi
 - [x] Task 9: **H3** — Delete duplicate DevicePath validation block
 - [x] Task 10: **H4** — Verify converter nil-handling; switch to selective field updates if needed; DB-level assertion test
 - [x] Task 11: **H5** — `GetVolumesData` returns error; API 500 mapping; hook surfaces error; update callers
-- [ ] Task 12: **H6** — Unmount lazy/force semantics + dir-removal-only-if-created; fake-fs tests
+- [x] Task 12: **H6** — Unmount lazy/force semantics + dir-removal-only-if-created; fake-fs tests
 - [ ] Task 13: **H7** — udev channel buffer 64 + drain on shutdown
 - [ ] Task 14: **F1** — Fix map-as-array icon bug + RTL test
 - [ ] Task 15: **F2** — Migrate `VolumeMountDialog` to `FormContainer` pattern per instructions; keep tests green
