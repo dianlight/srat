@@ -118,8 +118,13 @@ export function VolumesTreeView({
 
   // Helper function to render partition icon
   const renderPartitionIcon = (partition: Partition) => {
-    const isToMountAtStartup =
-      partition.mount_point_data?.[0]?.is_to_mount_at_startup === true;
+    // mount_point_data is a Record<string, MountPointData>; never index it
+    // with [0] (always undefined). Automount toggling (Volumes.tsx) applies
+    // to every mount point, so color the icon when any of them has automount
+    // enabled.
+    const isToMountAtStartup = Object.values(
+      partition.mount_point_data ?? {},
+    ).some((mpd) => mpd.is_to_mount_at_startup === true);
     const iconColorProp = isToMountAtStartup
       ? { color: "primary" as const }
       : {};
