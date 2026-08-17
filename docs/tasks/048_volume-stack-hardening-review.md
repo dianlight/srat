@@ -286,6 +286,14 @@ Fix: at minimum, log the emitted-handler error with context at the emit site (ke
 
 **Test:** fake event bus returning an error from the partition handler → assert the error is logged (capture log) and, for the mount flow, propagated.
 
+**Fix (Task 20):** made handler errors visible and propagated through the synchronous bus:
+
+- `events/event_bus.go` — `EventBusInterface.EmitDisk` / `EmitPartition` now return `errors.E` (previously void; the discard lived inside `EventBus.EmitDisk`/`EmitPartition`, which dropped `emitEvent(...)`'s result). Implementations now `return emitEvent(...)`, so any synchronous handler failure surfaces to the emitter.
+- `volume_service.go` `handlePartitionEvent` batch mode — the loop previously logged `syncPartitionMountData` failures and returned `nil`. It now records the first failure and returns it after syncing the remaining partitions, so a DB persist failure propagates through the emit path instead of looking like success.
+- Emit sites log the returned error with context, keeping the fire-and-forget contract: share handler (REMOVE + ADD/UPDATE disk emits), `getVolumesData` partition emit, `getVolumesData` eviction disk emit, `handleFilesystemTaskEvent` post-format disk emit, and `api/filesystems.go` label-set disk emit.
+
+**Tests (Task 20):** `events/event_bus_test.go` — `TestEmitDisk_ReturnsHandlerError` / `TestEmitPartition_ReturnsHandlerError` (handler error surfaces through the bus). `service/volume_service_test.go` — `TestGetVolumesDataLogsPartitionEmitError` (sentinel `OnPartition` listener; slog capture asserts the emit-site warn carries disk context and the handler error; refresh still succeeds → fire-and-forget preserved), `TestHandlePartitionEventBatchPropagatesSyncError` (closed DB forces `loadMountPointFromDB` failure; batch handler returns it through `EmitPartition`), `TestHandleFilesystemTaskEvent_EmitErrorLogged` (sentinel `OnDisk` listener; also covers the guard early-return and disk-not-found branches → `handleFilesystemTaskEvent` coverage 60% → 86.7%). Full backend suite green (exit 0, 33 pkgs) and targeted `-race` green; `getVolumesData` 93.5%, `handlePartitionEvent` 91.3%, `syncPartitionMountData` 79.2%, `NewVolumeService` 70.0%.
+
 ### H10 — `GetVolumesData` lazy-load executes hardware I/O inside HTTP request path
 
 **File:** `volume_service.go:1015` (converter context) + `ListVolumes` (`api/volumes.go`)
@@ -408,7 +416,7 @@ Refactor per the Dialog Pattern in the instruction file; behavior unchanged. Thi
 - [x] Task 17: **F4** — `Promise.allSettled` aggregation for automount toggle; single summary toast
 - [x] Task 18: **F5** — ID-only identifiers; localStorage migration note; reorder-stability test
 - [x] Task 19: **H8** — Deep-copy partition map in `getVolumesData` (or immutable snapshot at cache boundary); concurrent `-race` test vs HDIdle handler
-- [ ] Task 20: **H9** — Surface event-handler errors (log at emit site; propagate DB-persist errors on mount path); log-capture test
+- [x] Task 20: **H9** — Surface event-handler errors (log at emit site; propagate DB-persist errors on mount path); log-capture test
 - [ ] Task 21: **H10** — Warm hardware cache at service start; keep lazy path as fallback; response-time test
 - [ ] Task 22: **F6** — `isReadOnlyMode={readOnly}` on `SmartStatusPanel`; RTL test with readOnly + SMART disk
 - [ ] Task 23: Coverage gate: `mise run //backend:test` + `go tool cover -func=coverage.out` — every touched function ≥70%; frontend `bun tsc --noEmit` + `mise run //frontend:test:new` green
