@@ -274,7 +274,9 @@ This is the opposite of user expectations: the UI presents "Force Unmount" as th
 
 Fix: deep-copy the partition map (or the whole DiskMap) before enrichment in `getVolumesData`; alternatively make `GetHardwareInfo` return an immutable snapshot (defensive copy at cache boundary). The B1 lock does not fix this — the aliasing exists even with correct locking, because two different lock domains (hardware cache vs DiskMap) guard the same memory.
 
-**Test:** unit test calling `GetHardwareInfo()` concurrently with `GetVolumesData()` (loop 1000×) under `-race`; assert no race and no FilesystemInfo leak into the raw hardware cache.
+**Fix (Task 19):** `getVolumesData` (`volume_service.go`) now copies the partition map container (`map[string]dto.Partition`) into a fresh private map before the enrichment loop, then re-points the local `disk.Partitions` at the copy. Partition values are value types, so only the map itself was shared with the 30-min hardware cache; the copy breaks the aliasing while leaving the cache's raw, un-enriched shape untouched. The HDIdle HTTP handler can keep iterating the cache concurrently without a "concurrent map read and map write" panic, and the cache no longer accumulates `FilesystemInfo`.
+
+**Tests (Task 19):** `TestGetVolumesData_ConcurrentWithHardwareCacheNoRace` (`volume_service_test.go`) — 1000 concurrent `GetVolumesData` + raw-cache reader goroutines under `-race`; asserts no race and no `FilesystemInfo` leak into the hardware cache. Verified discriminating: without the fix the test fails with a DATA RACE; with the fix it passes. Full backend suite green (exit 0); `getVolumesData` coverage 95%. ⚠️ Pre-existing, unrelated `-race` failures noted: `TestConcurrentEventPropagation` (DirtyDataService) and the two `volume_service_reconcile_test.go` recheck tests (unlocked `fakeReconcileHardware` counter read by `assert.Eventually`) — reproduce on HEAD, out of scope here.
 
 ### H9 — Event-bus handlers swallow errors: DB failures invisible to callers
 
@@ -405,7 +407,7 @@ Refactor per the Dialog Pattern in the instruction file; behavior unchanged. Thi
 - [x] Task 16: **F3** — Drop local `disks` state; optimistic label update via RTK `updateQueryData`
 - [x] Task 17: **F4** — `Promise.allSettled` aggregation for automount toggle; single summary toast
 - [x] Task 18: **F5** — ID-only identifiers; localStorage migration note; reorder-stability test
-- [ ] Task 19: **H8** — Deep-copy partition map in `getVolumesData` (or immutable snapshot at cache boundary); concurrent `-race` test vs HDIdle handler
+- [x] Task 19: **H8** — Deep-copy partition map in `getVolumesData` (or immutable snapshot at cache boundary); concurrent `-race` test vs HDIdle handler
 - [ ] Task 20: **H9** — Surface event-handler errors (log at emit site; propagate DB-persist errors on mount path); log-capture test
 - [ ] Task 21: **H10** — Warm hardware cache at service start; keep lazy path as fallback; response-time test
 - [ ] Task 22: **F6** — `isReadOnlyMode={readOnly}` on `SmartStatusPanel`; RTL test with readOnly + SMART disk
