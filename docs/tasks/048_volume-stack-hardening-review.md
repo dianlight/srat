@@ -345,6 +345,13 @@ Refactor per the Dialog Pattern in the instruction file; behavior unchanged. Thi
 **File:** `Volumes.tsx:113, 198-200, 265-278`
 `const [disks, setDisks] = useState(sourceDisks ?? [])` + sync effect + `handlePartitionLabelUpdated` mutating local state. Next SSE event overwrites the optimistic rename → label visually reverts until the backend round-trips. With the B6 hook fix (`useMemo` derivation), local state can only be kept if label updates go through RTK Query cache update (`dispatch(sratApi.util.updateQueryData(...))`) instead of `setDisks`. Recommend: drop local state; do the optimistic update on the RTK cache so SSE and REST both see it.
 
+**Fix (Task 16):** `Volumes.tsx` local `disks` state dropped; optimistic label update now goes through the RTK cache:
+
+- Removed `const [disks, setDisks] = useState(sourceDisks ?? [])` and the `useEffect` that re-synced it from `sourceDisks`; all consumers read `sourceDisks` directly.
+- `handlePartitionLabelUpdated` rewritten as `dispatch(sratApi.util.updateQueryData("getApiVolumes", undefined, (draft) => { if (Array.isArray(draft)) updatePartitionLabelInDisks(draft, partitionId, label); }))` plus `setSelectedPartition` optimism, so SSE and REST both see the rename immediately and it survives refetch. `updatePartitionLabelInDisks` matches by `partition.id !== partitionId` (correct even when partitions are keyed by uuid).
+
+**Tests (Task 16):** new regression test drives the real flow end-to-end: pre-expand disk row via `volumes.expandedDisks` localStorage seed (MUI X v9 tree has no expand buttons), open the partition "more actions" overflow menu (breakpoint-agnostic — the full-page test renders the small-screen branch), pick "Set Label", type `NEW-LABEL`, submit; asserts the PUT fires, the label appears both in the tree partition row and the details panel header (`findAllByText("NEW-LABEL")` ≥ 2 — the second match is the selected-partition h6), the old label disappears, and the RTK cache under `state.api.queries["getApiVolumes(undefined)"]` carries the renamed partition. Single test + full `volumes/` suite (156/156) + `bunx vitest run --changed` green; `bun tsc --noEmit` clean.
+
 ### F4 — `handleToggleAutomount` fires N uncoordinated PATCHes
 
 **File:** `Volumes.tsx:539-588` — loops `Object.entries(partition.mount_point_data)` firing one PATCH per mount point, no `await`, no aggregate error handling, one toast per mount point. For multi-mount partitions this spams toasts and can interleave failures. Fix: aggregate into a single `Promise.allSettled`, one summary toast; ideally add a backend bulk endpoint later (out of scope here).
@@ -383,7 +390,7 @@ Refactor per the Dialog Pattern in the instruction file; behavior unchanged. Thi
 - [x] Task 13: **H7** — udev channel buffer 64 + drain on shutdown
 - [x] Task 14: **F1** — Fix map-as-array icon bug + RTL test
 - [x] Task 15: **F2** — Migrate `VolumeMountDialog` to `FormContainer` pattern per instructions; keep tests green
-- [ ] Task 16: **F3** — Drop local `disks` state; optimistic label update via RTK `updateQueryData`
+- [x] Task 16: **F3** — Drop local `disks` state; optimistic label update via RTK `updateQueryData`
 - [ ] Task 17: **F4** — `Promise.allSettled` aggregation for automount toggle; single summary toast
 - [ ] Task 18: **F5** — ID-only identifiers; localStorage migration note; reorder-stability test
 - [ ] Task 19: **H8** — Deep-copy partition map in `getVolumesData` (or immutable snapshot at cache boundary); concurrent `-race` test vs HDIdle handler
