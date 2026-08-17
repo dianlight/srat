@@ -205,9 +205,12 @@ func NewVolumeService(
 	unsubscribe[6] = p.eventBus.OnFilesystemTask(p.handleFilesystemTaskEvent)
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			err := p.getVolumesData()
-			if err != nil {
-				return err
+			// H10: warm the volume cache at boot so the first HTTP request
+			// never pays the hardware discovery cost; GetVolumesData keeps
+			// its lazy path as fallback. A discovery failure must not fail
+			// the app start.
+			if err := p.getVolumesData(); err != nil {
+				slog.WarnContext(p.ctx, "Failed to warm volume cache at startup", "err", err)
 			}
 			if wg, ok := p.ctx.Value(ctxkeys.WaitGroup).(*sync.WaitGroup); ok && wg != nil {
 				wg.Go(func() {

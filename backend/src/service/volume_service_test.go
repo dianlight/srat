@@ -1692,3 +1692,89 @@ func (suite *VolumeServiceTestSuite) TestHandleFilesystemTaskEvent_EmitErrorLogg
 	suite.Contains(logs, devicePath)
 	suite.Contains(logs, "sentinel disk handler failure")
 }
+
+// TestBootWarmupWarmsCacheAndWarmRequestSkipsHardware verifies the H10 fix:
+// the volume cache is warmed at service start (OnStart), the lazy path in
+// GetVolumesData remains as fallback, and a cache-warm request returns
+// immediately without re-triggering hardware discovery.
+func (suite *VolumeServiceTestSuite) TestBootWarmupWarmsCacheAndWarmRequestSkipsHardware() {
+	diskID := "disk-h10-warm"
+	partitionID := "disk-h10-warm-part1"
+	fsType := "ext4"
+	mock.When(suite.mockHardwareClient.GetHardwareInfo()).
+		ThenReturn(map[string]dto.Disk{
+			diskID: {
+				Id:    &diskID,
+				Model: new("H10 Warm Disk"),
+				Partitions: &map[string]dto.Partition{
+					partitionID: {
+						Id:     &partitionID,
+						DiskId: &diskID,
+						FsType: &fsType,
+					},
+				},
+			},
+		}, nil).
+		Verify(matchers.AtLeastOnce())
+
+	// Lazy fallback: with an empty cache (the boot warmup ran against the
+	// unstubbed mock), the first request triggers one hardware fetch and
+	// populates the cache.
+	disks, errE := suite.volumeService.GetVolumesData()
+	suite.Require().NoError(errE)
+	suite.Len(disks, 1)
+
+	// Cache-warm request: returns immediately from cache, no hardware I/O.
+	disks, errE = suite.volumeService.GetVolumesData()
+	suite.Require().NoError(errE)
+	suite.Len(disks, 1)
+
+	// Exactly two hardware fetches: one at boot (warmup) + one lazy fallback.
+	// The warm request above must not have added a third.
+	_, _ = mock.Verify(suite.mockHardwareClient, matchers.Times(2)).GetHardwareInfo()
+}
+
+// TestBootWarmupFailureDoesNotFailAppStart verifies the H10 fix: a hardware
+// discovery failure during the boot warmup is logged as a warning and must
+// not fail the app start (previously OnStart returned the error, aborting
+// the whole fx startup).
+func (suite *VolumeServiceTestSuite) TestBootWarmupFailureDoesNotFailAppStart() {
+	// Capture slog output while the boot warmup logs its warning.
+	var buf bytes.Buffer
+	oldDefault := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+	defer slog.SetDefault(oldDefault)
+
+	ctrl := mock.NewMockController(suite.T())
+	hwMock := mock.Mock[service.HardwareServiceInterface](ctrl)
+	mock.When(hwMock.GetHardwareInfo()).ThenReturn(nil, errors.New("discovery boom"))
+
+	ctx, cancel := context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, &sync.WaitGroup{}))
+	defer cancel()
+
+	var volSvc service.VolumeServiceInterface
+	app := fxtest.New(suite.T(),
+		fx.Provide(
+			func() *matchers.MockController { return ctrl },
+			func() (context.Context, context.CancelFunc) { return ctx, cancel },
+			func() *dto.ContextState {
+				return &dto.ContextState{DatabasePath: "file::memory:?cache=shared&_pragma=foreign_keys(1)"}
+			},
+			func() *dto.DiskMap { return dto.NewDiskMap() },
+			dbom.NewDB,
+			service.NewVolumeMountManager,
+			service.NewVolumeService,
+			service.NewFilesystemService,
+			events.NewEventBus,
+			func() service.HardwareServiceInterface { return hwMock },
+			mock.Mock[service.ShareServiceInterface],
+		),
+		fx.Populate(&volSvc),
+	)
+	suite.Require().NotPanics(func() { app.RequireStart() })
+	defer app.RequireStop()
+
+	// The warning was logged and the app started despite the failure.
+	suite.Contains(buf.String(), "Failed to warm volume cache at startup")
+	suite.Contains(buf.String(), "discovery boom")
+}
