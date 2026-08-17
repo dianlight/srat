@@ -398,6 +398,12 @@ Refactor per the Dialog Pattern in the instruction file; behavior unchanged. Thi
 
 **Test:** `VolumeDetailsPanel.test.tsx` — render with `readOnly` + SMART-capable disk → assert self-test action buttons disabled.
 
+**Status:** done (Task 22).
+
+**Fix (Task 22):** `VolumeDetailsPanel.tsx:393` now passes `isReadOnlyMode={readOnly}` (was hardcoded `false`), so the SMART self-test start/abort controls (and enable/disable SMART) at `SmartStatusPanel.tsx:562/580/598/620` are disabled for read-only users.
+
+**Tests (Task 22):** `VolumeDetailsPanel.test.tsx` — `disables SMART self-test actions in read-only mode` (MSW override pins the smart-test payload to `running: false` so the only thing disabling "Start Test" is read-only mode; asserts the button is disabled) and `keeps SMART self-test actions enabled when not read-only` (guards against over-disabling). Verified the read-only test fails with `isReadOnlyMode={false}` (pre-fix) and passes with the fix. `bun tsc --noEmit` clean; `mise run //frontend:test:new` green (83 passed).
+
 ---
 
 ## 📝 Task List
@@ -424,7 +430,7 @@ Refactor per the Dialog Pattern in the instruction file; behavior unchanged. Thi
 - [x] Task 19: **H8** — Deep-copy partition map in `getVolumesData` (or immutable snapshot at cache boundary); concurrent `-race` test vs HDIdle handler
 - [x] Task 20: **H9** — Surface event-handler errors (log at emit site; propagate DB-persist errors on mount path); log-capture test
 - [x] Task 21: **H10** — Warm hardware cache at service start; keep lazy path as fallback; response-time test
-- [ ] Task 22: **F6** — `isReadOnlyMode={readOnly}` on `SmartStatusPanel`; RTL test with readOnly + SMART disk
+- [x] Task 22: **F6** — `isReadOnlyMode={readOnly}` on `SmartStatusPanel`; RTL test with readOnly + SMART disk
 - [ ] Task 23: Coverage gate: `mise run //backend:test` + `go tool cover -func=coverage.out` — every touched function ≥70%; frontend `bun tsc --noEmit` + `mise run //frontend:test:new` green
 - [ ] Task 24: Update `CHANGELOG.md` under `[ 🚧 Unreleased ]`
 
