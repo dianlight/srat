@@ -2,8 +2,10 @@
 package service_test
 
 import (
+	"bytes"
 	"context"
 	"log"
+	"log/slog"
 	"os"
 	"sync"
 	"testing"
@@ -1524,4 +1526,169 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_ConcurrentWithHardwareCa
 			}
 		}
 	}
+}
+
+// TestGetVolumesDataLogsPartitionEmitError verifies the H9 fix at the
+// getVolumesData emit site: when a synchronous partition handler fails, the
+// bus error must be logged with context instead of being silently discarded.
+// The refresh itself must still succeed (fire-and-forget semantics).
+func (suite *VolumeServiceTestSuite) TestGetVolumesDataLogsPartitionEmitError() {
+	// Capture slog output while the emit site logs its warning.
+	var buf bytes.Buffer
+	oldDefault := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+	defer slog.SetDefault(oldDefault)
+
+	diskID := "disk-h9-emit"
+	partitionID := "disk-h9-emit-part1"
+	fsType := "ext4"
+	mock.When(suite.mockHardwareClient.GetHardwareInfo()).
+		ThenReturn(map[string]dto.Disk{
+			diskID: {
+				Id:    &diskID,
+				Model: new("H9 Emit Disk"),
+				Partitions: &map[string]dto.Partition{
+					partitionID: {
+						Id:         &partitionID,
+						DiskId:     &diskID,
+						FsType:     &fsType,
+						DevicePath: new("/dev/sdh1"),
+					},
+				},
+			},
+		}, nil).
+		Verify(matchers.AtLeastOnce())
+
+	// Sentinel listener registered AFTER the volume service handler, so the
+	// synchronous bus returns its error to the getVolumesData emit site.
+	unsubscribe := suite.eventBus.OnPartition(func(ctx context.Context, event events.PartitionEvent) errors.E {
+		return errors.New("sentinel partition handler failure")
+	})
+	defer unsubscribe()
+
+	_, errE := suite.volumeService.GetVolumesData()
+	suite.Require().NoError(errE, "refresh must stay fire-and-forget even when emitting fails")
+
+	logs := buf.String()
+	suite.Contains(logs, "Failed to emit partition event during volume refresh")
+	suite.Contains(logs, diskID)
+	suite.Contains(logs, "sentinel partition handler failure")
+}
+
+// TestHandlePartitionEventBatchPropagatesSyncError verifies the H9 fix in the
+// batched partition handler: a DB persist failure inside syncPartitionMountData
+// must be returned through the synchronous bus instead of being swallowed.
+func (suite *VolumeServiceTestSuite) TestHandlePartitionEventBatchPropagatesSyncError() {
+	// Force a DB failure so loadMountPointFromDB fails inside the handler.
+	sqlDB, err := suite.db.DB()
+	suite.Require().NoError(err)
+	suite.Require().NoError(sqlDB.Close())
+
+	diskID := "disk-h9-batch"
+	partitionID := "disk-h9-batch-part1"
+	fsType := "ext4"
+	devicePath := "/dev/sdi1"
+	disk := &dto.Disk{
+		Id:    &diskID,
+		Model: new("H9 Batch Disk"),
+		Partitions: &map[string]dto.Partition{
+			partitionID: {
+				Id:         &partitionID,
+				DiskId:     &diskID,
+				FsType:     &fsType,
+				DevicePath: &devicePath,
+			},
+		},
+	}
+	part := (*disk.Partitions)[partitionID]
+
+	errE := suite.eventBus.EmitPartition(events.PartitionEvent{
+		Event:      events.Event{Type: events.EventTypes.ADD},
+		Disk:       disk,
+		Partitions: []*dto.Partition{&part},
+		MountInfos: []*procfs.MountInfo{},
+	})
+	suite.Require().Error(errE, "batched handler must propagate the DB sync failure")
+	suite.Contains(errE.Error(), "sql: database is closed")
+}
+
+// TestHandleFilesystemTaskEvent_EmitErrorLogged verifies the H9 fix in the
+// format-success handler: when the post-format disk emit fails, the error
+// must be logged with context (fire-and-forget preserved). Also exercises
+// the guard early-return and the disk-not-found branches.
+func (suite *VolumeServiceTestSuite) TestHandleFilesystemTaskEvent_EmitErrorLogged() {
+	var buf bytes.Buffer
+	oldDefault := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+	defer slog.SetDefault(oldDefault)
+
+	diskID := "disk-h9-format"
+	partitionID := "disk-h9-format-part1"
+	fsType := "ext4"
+	devicePath := "/dev/sdj1"
+	mock.When(suite.mockHardwareClient.GetHardwareInfo()).
+		ThenReturn(map[string]dto.Disk{
+			diskID: {
+				Id:    &diskID,
+				Model: new("H9 Format Disk"),
+				Partitions: &map[string]dto.Partition{
+					partitionID: {
+						Id:         &partitionID,
+						DiskId:     &diskID,
+						FsType:     &fsType,
+						DevicePath: new(devicePath),
+					},
+				},
+			},
+		}, nil).
+		Verify(matchers.AtLeastOnce())
+
+	// Populate the cache so findDiskForDevicePath resolves the device.
+	_, errVolumes := suite.volumeService.GetVolumesData()
+	suite.Require().NoError(errVolumes)
+
+	// Sentinel disk listener (only OnDisk listener): makes the synchronous
+	// EmitDisk inside handleFilesystemTaskEvent fail.
+	unsubscribe := suite.eventBus.OnDisk(func(ctx context.Context, event events.DiskEvent) errors.E {
+		return errors.New("sentinel disk handler failure")
+	})
+	defer unsubscribe()
+
+	// Scenario 1: format success for a known device -> emit fails -> logged.
+	suite.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
+		Event: events.Event{Type: events.EventTypes.STOP},
+		Task: &dto.FilesystemTask{
+			Device:         devicePath,
+			Operation:      "format",
+			FilesystemType: fsType,
+			Status:         "success",
+			Message:        "Format operation completed successfully for " + devicePath,
+			Progress:       100,
+		},
+	})
+
+	// Scenario 2: device not in cache -> disk==nil early return.
+	suite.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
+		Event: events.Event{Type: events.EventTypes.STOP},
+		Task: &dto.FilesystemTask{
+			Device:    "/dev/not-in-cache",
+			Operation: "format",
+			Status:    "success",
+		},
+	})
+
+	// Scenario 3: non-success status -> guard early return.
+	suite.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
+		Event: events.Event{Type: events.EventTypes.STOP},
+		Task: &dto.FilesystemTask{
+			Device:    devicePath,
+			Operation: "format",
+			Status:    "failed",
+		},
+	})
+
+	logs := buf.String()
+	suite.Contains(logs, "Failed to emit disk update event after format refresh")
+	suite.Contains(logs, devicePath)
+	suite.Contains(logs, "sentinel disk handler failure")
 }

@@ -157,12 +157,14 @@ func NewVolumeService(
 			if !ok {
 				slog.WarnContext(ctx, "Failed to remove share from mount point in cache", "share", se.Share.Name)
 			} else {
-				p.eventBus.EmitDisk(events.DiskEvent{
+				if err := p.eventBus.EmitDisk(events.DiskEvent{
 					Event: events.Event{
 						Type: events.EventTypes.UPDATE,
 					},
 					Disk: disk,
-				})
+				}); err != nil {
+					slog.WarnContext(ctx, "Failed to emit disk update event after removing share from mount point", "share", se.Share.Name, "err", err)
+				}
 			}
 		case events.EventTypes.ADD, events.EventTypes.UPDATE:
 			disk, err := p.disks.AddMountPointShare(se.Share)
@@ -172,12 +174,14 @@ func NewVolumeService(
 				}
 				return nil
 			}
-			p.eventBus.EmitDisk(events.DiskEvent{
+			if err := p.eventBus.EmitDisk(events.DiskEvent{
 				Event: events.Event{
 					Type: events.EventTypes.UPDATE,
 				},
 				Disk: disk,
-			})
+			}); err != nil {
+				slog.WarnContext(ctx, "Failed to emit disk update event after adding/updating share in mount point", "share", se.Share.Name, "err", err)
+			}
 		}
 		return nil
 	})
@@ -722,12 +726,14 @@ func (self *VolumeService) getVolumesData() errors.E {
 					if currentDisk != nil && updateDisk {
 						eventType = events.EventTypes.UPDATE
 					}
-					self.eventBus.EmitPartition(events.PartitionEvent{
+					if err := self.eventBus.EmitPartition(events.PartitionEvent{
 						Event:      events.Event{Type: eventType},
 						Disk:       &disk,
 						Partitions: changedPartitions,
 						MountInfos: mountInfos,
-					})
+					}); err != nil {
+						slog.WarnContext(self.ctx, "Failed to emit partition event during volume refresh", "disk_id", *disk.Id, "err", err)
+					}
 				}
 			}
 		}
@@ -741,10 +747,12 @@ func (self *VolumeService) getVolumesData() errors.E {
 		for id, disk := range self.disks.Snapshot() {
 			if disk.RefreshVersion != refreshVersion {
 				self.disks.Remove(id)
-				self.eventBus.EmitDisk(events.DiskEvent{
+				if err := self.eventBus.EmitDisk(events.DiskEvent{
 					Event: events.Event{Type: events.EventTypes.REMOVE},
 					Disk:  disk,
-				})
+				}); err != nil {
+					slog.WarnContext(self.ctx, "Failed to emit disk removal event during volume refresh", "disk_id", id, "err", err)
+				}
 			}
 		}
 
@@ -879,10 +887,12 @@ func (self *VolumeService) handleFilesystemTaskEvent(ctx context.Context, e even
 		return nil
 	}
 
-	self.eventBus.EmitDisk(events.DiskEvent{
+	if err := self.eventBus.EmitDisk(events.DiskEvent{
 		Event: events.Event{Type: events.EventTypes.UPDATE},
 		Disk:  disk,
-	})
+	}); err != nil {
+		slog.WarnContext(ctx, "Failed to emit disk update event after format refresh", "device", e.Task.Device, "err", err)
+	}
 
 	return nil
 }
@@ -921,12 +931,21 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 			}
 			mountInfos = parsed
 		}
+		var syncErr errors.E
 		for _, part := range e.Partitions {
 			if err := self.syncPartitionMountData(ctx, e.Disk, part, mountInfos); err != nil {
 				slog.WarnContext(ctx, "Failed to sync partition mount data", "disk_id", *e.Disk.Id, "partition_id", *part.Id, "err", err)
+				// H9: propagate the first failure back through the
+				// synchronous bus so the emitter (e.g. getVolumesData)
+				// sees the DB persist failure instead of a false success.
+				// Remaining partitions are still synced; the first error
+				// is what the caller observes.
+				if syncErr == nil {
+					syncErr = err
+				}
 			}
 		}
-		return nil
+		return syncErr
 	}
 
 	// Single-partition mode (legacy emitters, e.g. udev events, tests)
