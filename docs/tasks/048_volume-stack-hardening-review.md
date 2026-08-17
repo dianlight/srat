@@ -356,6 +356,14 @@ Refactor per the Dialog Pattern in the instruction file; behavior unchanged. Thi
 
 **File:** `Volumes.tsx:539-588` — loops `Object.entries(partition.mount_point_data)` firing one PATCH per mount point, no `await`, no aggregate error handling, one toast per mount point. For multi-mount partitions this spams toasts and can interleave failures. Fix: aggregate into a single `Promise.allSettled`, one summary toast; ideally add a backend bulk endpoint later (out of scope here).
 
+**Fix (Task 17):** `handleToggleAutomount` now aggregates all mount-point PATCHes with `Promise.allSettled` and shows exactly one summary toast:
+
+- Collects one `patchMountSettings(...).unwrap()` promise per mount point (missing mount data becomes a rejected promise instead of an early `toast.error`), then `Promise.allSettled` — no interleaved per-mount toasts, no uncoordinated failure handling.
+- Single summary toast: `Automount updated for <name>.` on full success, `Failed to update automount for <name> (N mount point(s)).` when all fail, `Automount partially updated for <name>: N ok, M failed.` (warn) when mixed.
+- Per-failure `console.error` retained with the mount path; success wording no longer needs the per-mount "enable/disable" action text.
+
+**Tests (Task 17):** added `vi.mock("react-toastify")` (hoisted `toast.info/error/warn` spies — matches the `App.commandEvents.test.tsx` pattern) and two integration tests driving the real overflow-menu flow on a single-mount partition: (1) success — exactly one PATCH fired with `is_to_mount_at_startup` flipped and `share` cleared, exactly one info toast; (2) PATCH 500 — exactly one error toast, no info toast. `volumes/` suite 158/158, `bunx vitest run --changed` green, `bun tsc --noEmit` clean.
+
 ### F5 — Identifier helpers: stable IDs preferred, index only as last resort (second-cycle correction)
 
 **File:** `frontend/src/pages/volumes/utils.ts:54-87`
@@ -391,7 +399,7 @@ Refactor per the Dialog Pattern in the instruction file; behavior unchanged. Thi
 - [x] Task 14: **F1** — Fix map-as-array icon bug + RTL test
 - [x] Task 15: **F2** — Migrate `VolumeMountDialog` to `FormContainer` pattern per instructions; keep tests green
 - [x] Task 16: **F3** — Drop local `disks` state; optimistic label update via RTK `updateQueryData`
-- [ ] Task 17: **F4** — `Promise.allSettled` aggregation for automount toggle; single summary toast
+- [x] Task 17: **F4** — `Promise.allSettled` aggregation for automount toggle; single summary toast
 - [ ] Task 18: **F5** — ID-only identifiers; localStorage migration note; reorder-stability test
 - [ ] Task 19: **H8** — Deep-copy partition map in `getVolumesData` (or immutable snapshot at cache boundary); concurrent `-race` test vs HDIdle handler
 - [ ] Task 20: **H9** — Surface event-handler errors (log at emit site; propagate DB-persist errors on mount path); log-capture test
