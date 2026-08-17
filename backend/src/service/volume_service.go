@@ -663,6 +663,20 @@ func (self *VolumeService) getVolumesData() errors.E {
 			}
 
 			if disk.Partitions != nil {
+				// H8: the hardware cache (30-min TTL) hands out the same
+				// *map[string]Partition to every caller. Enriching it in place
+				// below would mutate that shared map — a concurrent map
+				// read/write panic risk with the HDIdle HTTP handler (which
+				// iterates the same cache on another goroutine) and cross-
+				// service cache pollution. Copy the map container first; the
+				// partition values are value types, so only the map itself is
+				// shared. The hardware cache keeps its raw, un-enriched shape.
+				copiedPartitions := make(map[string]dto.Partition, len(*disk.Partitions))
+				for pid, part := range *disk.Partitions {
+					copiedPartitions[pid] = part
+				}
+				disk.Partitions = &copiedPartitions
+
 				// H2: batch all changed partitions of this disk into a single
 				// PartitionEvent sharing one procfs snapshot, instead of one
 				// event per partition (each of which re-parsed procfs inside

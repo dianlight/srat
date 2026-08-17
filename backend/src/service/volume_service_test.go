@@ -1463,3 +1463,65 @@ func (suite *VolumeServiceTestSuite) TestGetVolumesData_ReturnsCachedOnSubsequen
 	suite.Require().Len(second, 1)
 	suite.Equal(*first[0].Id, *second[0].Id)
 }
+
+// TestGetVolumesData_ConcurrentWithHardwareCacheNoRace verifies the H8 fix:
+// getVolumesData must enrich a private copy of the partition map instead of
+// mutating the shared hardware cache (30-min TTL). Under -race, a concurrent
+// reader iterating the raw cache while GetVolumesData runs would previously
+// trip "concurrent map read and map write" and crash the process.
+func (suite *VolumeServiceTestSuite) TestGetVolumesData_ConcurrentWithHardwareCacheNoRace() {
+	diskID := "disk-h8-race"
+	partitionID := "disk-h8-race-part1"
+	fsType := "ext4"
+
+	// The mock returns the same map on every call, mirroring the 30-min
+	// hardware cache. We keep a reference to assert no enrichment leaks back.
+	hwCache := map[string]dto.Disk{
+		diskID: {
+			Id:    &diskID,
+			Model: new("H8 Race Disk"),
+			Partitions: &map[string]dto.Partition{
+				partitionID: {
+					Id:     &partitionID,
+					DiskId: &diskID,
+					FsType: &fsType,
+				},
+			},
+		},
+	}
+	mock.When(suite.mockHardwareClient.GetHardwareInfo()).
+		ThenReturn(hwCache, nil).
+		Verify(matchers.AtLeastOnce())
+
+	var wg sync.WaitGroup
+	for i := 0; i < 1000; i++ {
+		// Enrichment path: GetVolumesData (singleflight-serialized).
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, _ = suite.volumeService.GetVolumesData()
+		}()
+		// Concurrent reader of the raw hardware cache, like the HDIdle handler.
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for _, disk := range hwCache {
+				if disk.Partitions != nil {
+					for _, part := range *disk.Partitions {
+						_ = part.Id
+					}
+				}
+			}
+		}()
+	}
+	wg.Wait()
+
+	// The raw hardware cache must stay un-enriched: no FilesystemInfo leaked.
+	for _, disk := range hwCache {
+		if disk.Partitions != nil {
+			for _, part := range *disk.Partitions {
+				suite.Nil(part.FilesystemInfo, "hardware cache partition must not be enriched by GetVolumesData")
+			}
+		}
+	}
+}
