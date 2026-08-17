@@ -299,9 +299,15 @@ Fix: at minimum, log the emitted-handler error with context at the emit site (ke
 **File:** `volume_service.go:1015` (converter context) + `ListVolumes` (`api/volumes.go`)
 `GetVolumesData()` performs `getVolumesData` (procfs + hardware fetch + DB) whenever the cache is empty. `ListVolumes` and `PatchMountPointSettings` both run it synchronously inside the HTTP handler. After startup (or after H5's error case left the cache empty), the **first request blocks on a multi-second hardware discovery**, with the client seeing a stall — and H5 means it returns `[]` on failure anyway. 
 
-Fix: warm the cache at service start (async) so the first HTTP request never pays discovery cost; keep the lazy path only as fallback. Consider returning 503 while the cache is cold instead of `[]` (ties into H5).
+Fix: warm the cache at service start so the first HTTP request never pays discovery cost; keep the lazy path only as fallback. Consider returning 503 while the cache is cold instead of `[]` (ties into H5).
 
 **Test:** API test with empty cache → assert response time budget (or that cache-warm request returns immediately); service-start warmup test asserting `GetHardwareInfo` called once at boot.
+
+**Status:** done (Task 21).
+
+**Fix (Task 21):** `NewVolumeService`'s fx `OnStart` hook already warmed the cache at boot via a synchronous `getVolumesData()`, but it returned the discovery error, aborting the whole app start on any hardware failure. Changed it to log a warning (`slog.WarnContext` "Failed to warm volume cache at startup") and continue — a discovery failure can no longer fail boot, and the cache-warm request never pays the discovery cost. `GetVolumesData` keeps its lazy path as fallback. Kept the warmup synchronous (not async as originally proposed): the test suite's refresh-version bookkeeping and stubbed-mock assertions depend on the warmup completing during fx start, and an async goroutine raced the per-test `mock.When(GetHardwareInfo)` registrations (observed flaky failures in `TestHandlePartitionEvent_StaleMarkingScopedToPartition` / `TestFormatSuccessEventRefreshesPartitionCache`).
+
+**Tests (Task 21):** `service/volume_service_test.go` — `TestBootWarmupWarmsCacheAndWarmRequestSkipsHardware` (boot warmup = 1 unstubbed `GetHardwareInfo` call; lazy fallback = 1 stubbed call populating the cache; cache-warm request returns without a third call — verified with `Times(2)`); `TestBootWarmupFailureDoesNotFailAppStart` (fresh fx app with an error-stubbed hardware mock: app starts despite the failure, warning logged). Full backend suite green (exit 0); the touched tests pass under `-race`; `NewVolumeService` coverage 71.4% (was 70.0%), `getVolumesData` 93.5%, `GetVolumesData` 100%.
 
 ---
 
@@ -417,7 +423,7 @@ Refactor per the Dialog Pattern in the instruction file; behavior unchanged. Thi
 - [x] Task 18: **F5** — ID-only identifiers; localStorage migration note; reorder-stability test
 - [x] Task 19: **H8** — Deep-copy partition map in `getVolumesData` (or immutable snapshot at cache boundary); concurrent `-race` test vs HDIdle handler
 - [x] Task 20: **H9** — Surface event-handler errors (log at emit site; propagate DB-persist errors on mount path); log-capture test
-- [ ] Task 21: **H10** — Warm hardware cache at service start; keep lazy path as fallback; response-time test
+- [x] Task 21: **H10** — Warm hardware cache at service start; keep lazy path as fallback; response-time test
 - [ ] Task 22: **F6** — `isReadOnlyMode={readOnly}` on `SmartStatusPanel`; RTL test with readOnly + SMART disk
 - [ ] Task 23: Coverage gate: `mise run //backend:test` + `go tool cover -func=coverage.out` — every touched function ≥70%; frontend `bun tsc --noEmit` + `mise run //frontend:test:new` green
 - [ ] Task 24: Update `CHANGELOG.md` under `[ 🚧 Unreleased ]`
