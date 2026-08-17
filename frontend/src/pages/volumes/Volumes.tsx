@@ -548,20 +548,19 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 
     console.debug("Toggling automount for partition:", partition);
 
-    for (const [path, mountData] of Object.entries(
-      partition.mount_point_data || {},
-    )) {
+    const partitionName = decodeEscapeSequence(partition.name || "this volume");
+    const mountEntries = Object.entries(partition.mount_point_data || {});
+    if (mountEntries.length === 0) return;
+
+    // Fire one PATCH per mount point and aggregate the results so a
+    // multi-mount partition produces a single summary toast instead of
+    // N interleaved toasts and uncoordinated failure handling.
+    const patchPromises = mountEntries.map(async ([path, mountData]) => {
       if (!mountData.path) {
-        toast.error(`Cannot toggle automount: ${path} Missing point data.`);
-        console.error("Missing mount data for mount point:", mountData);
-        continue;
+        throw new Error(`Cannot toggle automount: ${path} Missing point data.`);
       }
 
       const newAutomountState = !mountData.is_to_mount_at_startup;
-      const actionText = newAutomountState ? "enable" : "disable";
-      const partitionName = decodeEscapeSequence(
-        partition.name || "this volume",
-      );
 
       console.debug(
         partition,
@@ -570,28 +569,43 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
         newAutomountState,
       );
 
-      patchMountSettings({
+      await patchMountSettings({
         patchMountPointData: {
           ...mountData,
           is_to_mount_at_startup: newAutomountState,
           share: undefined,
         },
-      })
-        .unwrap()
-        .then(() => {
-          toast.info(`Automount ${actionText}d for ${partitionName}.`);
-        })
-        .catch((err: unknown) => {
-          console.error(`Error toggling automount for ${partitionName}:`, err);
-          const typedErr = err as {
-            data?: { detail?: string };
-            message?: string;
-          };
-          toast.error(
-            `Failed to ${actionText} automount for ${partitionName}: ${typedErr.data?.detail || typedErr.message || "Unknown error"}`,
+      }).unwrap();
+    });
+
+    void Promise.allSettled(patchPromises).then((settled) => {
+      const fulfilledCount = settled.filter(
+        (result) => result.status === "fulfilled",
+      ).length;
+      const rejectedCount = settled.length - fulfilledCount;
+
+      settled.forEach((result, index) => {
+        if (result.status === "rejected") {
+          const [path] = mountEntries[index];
+          console.error(
+            `Error toggling automount for ${partitionName} (${path}):`,
+            result.reason,
           );
-        });
-    }
+        }
+      });
+
+      if (rejectedCount === 0) {
+        toast.info(`Automount updated for ${partitionName}.`);
+      } else if (fulfilledCount === 0) {
+        toast.error(
+          `Failed to update automount for ${partitionName} (${rejectedCount} mount point${rejectedCount === 1 ? "" : "s"}).`,
+        );
+      } else {
+        toast.warn(
+          `Automount partially updated for ${partitionName}: ${fulfilledCount} ok, ${rejectedCount} failed.`,
+        );
+      }
+    });
   }
 
   useEffect(() => {
