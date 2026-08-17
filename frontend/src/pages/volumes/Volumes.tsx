@@ -26,10 +26,12 @@ import {
   type MountPointData,
   type Partition,
   type PerPartitionInfo,
+  sratApi,
   useDeleteApiVolumeMutation,
   usePatchApiVolumeSettingsMutation,
   usePostApiVolumeMountMutation,
 } from "../../store/sratApi";
+import { useAppDispatch } from "../../store/store";
 import { useGetServerEventsQuery } from "../../store/wsApi";
 import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
 import {
@@ -103,6 +105,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
   const location = useLocation();
 
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const [hideSystemPartitions, setHideSystemPartitions] = useState<boolean>(
     localStorage.getItem("volumes.hideSystemPartitions") === "true",
   );
@@ -110,7 +113,6 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
   const sourceDisks = initialDisks ?? volumeHook.disks;
   const isLoading = initialDisks ? false : volumeHook.isLoading;
   const error = initialDisks ? null : volumeHook.error;
-  const [disks, setDisks] = useState<Disk[]>(sourceDisks ?? []);
   const [selectedDisk, setSelectedDisk] = useState<Disk | undefined>(undefined);
   const [selectedPartition, setSelectedPartition] = useState<
     Partition | undefined
@@ -195,9 +197,6 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
     } catch {}
   }, [leftPanelPct]);
 
-  useEffect(() => {
-    setDisks(sourceDisks ?? []);
-  }, [sourceDisks]);
   const perPartitionInfo = evdata?.heartbeat?.disk_health?.per_partition_info;
   const filesystemStateByPartitionId = useMemo<
     Record<string, FilesystemState>
@@ -222,21 +221,21 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
     (disk: Disk) => {
       setSelectedDisk(disk);
       setSelectedPartition(undefined);
-      const diskIdx = Math.max(disks?.indexOf(disk) ?? -1, 0);
+      const diskIdx = Math.max(sourceDisks?.indexOf(disk) ?? -1, 0);
       const diskIdentifier = getDiskIdentifier(disk, diskIdx);
       setSelectedPartitionId(diskIdentifier);
       setExpandedDisks((prev) =>
         prev.includes(diskIdentifier) ? prev : [...prev, diskIdentifier],
       );
     },
-    [disks],
+    [sourceDisks],
   );
 
   const handlePartitionSelect = useCallback(
     (disk: Disk, partition: Partition) => {
       setSelectedDisk(disk);
       setSelectedPartition(partition);
-      const diskIdx = Math.max(disks?.indexOf(disk) ?? -1, 0);
+      const diskIdx = Math.max(sourceDisks?.indexOf(disk) ?? -1, 0);
       const diskIdentifier = getDiskIdentifier(disk, diskIdx);
       const partitionEntries = Object.entries(disk.partitions || {});
       const partitionEntry = partitionEntries.find(
@@ -259,13 +258,17 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
         return [...prev, diskIdentifier];
       });
     },
-    [disks],
+    [sourceDisks],
   );
 
   const handlePartitionLabelUpdated = useCallback(
     (partitionId: string, label: string) => {
-      setDisks((currentDisks) =>
-        updatePartitionLabelInDisks(currentDisks, partitionId, label),
+      dispatch(
+        sratApi.util.updateQueryData("getApiVolumes", undefined, (draft) => {
+          if (Array.isArray(draft)) {
+            updatePartitionLabelInDisks(draft, partitionId, label);
+          }
+        }),
       );
       setSelectedPartition((currentPartition) => {
         if (!currentPartition || currentPartition.id !== partitionId) {
@@ -274,7 +277,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
         return { ...currentPartition, name: label };
       });
     },
-    [],
+    [dispatch],
   );
 
   const openDialogForPartition = useCallback(
@@ -334,11 +337,15 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
     const state = location.state as LocationState | undefined;
     const mountPathFromState = state?.mountPathToView;
 
-    if (mountPathFromState && Array.isArray(disks) && disks.length > 0) {
+    if (
+      mountPathFromState &&
+      Array.isArray(sourceDisks) &&
+      sourceDisks.length > 0
+    ) {
       let foundPartition: Partition | undefined;
       let foundDisk: Disk | undefined;
 
-      for (const disk of disks) {
+      for (const disk of sourceDisks) {
         const partitions = Object.values(disk.partitions || {});
         if (partitions.length > 0) {
           for (const partition of partitions) {
@@ -364,7 +371,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
       }
     }
   }, [
-    disks,
+    sourceDisks,
     location.state,
     navigate,
     location.pathname,
@@ -372,11 +379,11 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
   ]);
 
   useEffect(() => {
-    if (!disks || disks.length === 0) return;
+    if (!sourceDisks || sourceDisks.length === 0) return;
     if (!selectedPartitionId) return;
 
-    for (const disk of disks) {
-      const diskIdx = Math.max(disks.indexOf(disk), 0);
+    for (const disk of sourceDisks) {
+      const diskIdx = Math.max(sourceDisks.indexOf(disk), 0);
       const diskIdentifier = getDiskIdentifier(disk, diskIdx);
       if (diskIdentifier === selectedPartitionId) {
         setSelectedDisk(disk);
@@ -410,7 +417,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
     setSelectedPartition(undefined);
     setSelectedDisk(undefined);
     setSelectedPartitionId(undefined);
-  }, [disks, selectedPartitionId]);
+  }, [sourceDisks, selectedPartitionId]);
 
   function onSubmitMountVolume(data?: MountPointData): Promise<void> {
     if (!selectedPartition || !data?.path || !data.root) {
@@ -604,7 +611,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 
   useEffect(() => {
     const selectTourVolume = () => {
-      const target = getTourVolumeSelection(disks, hideSystemPartitions);
+      const target = getTourVolumeSelection(sourceDisks, hideSystemPartitions);
       if (!target) return;
 
       if (target.partition) {
@@ -633,7 +640,12 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
       disposeVolumesStep4();
       disposeVolumesStep5();
     };
-  }, [disks, hideSystemPartitions, handleDiskSelect, handlePartitionSelect]);
+  }, [
+    sourceDisks,
+    hideSystemPartitions,
+    handleDiskSelect,
+    handlePartitionSelect,
+  ]);
 
   if (isLoading) {
     return <Typography>Loading volumes...</Typography>;
@@ -769,7 +781,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
               </Typography>
             ) : (
               <VolumesTreeView
-                disks={disks}
+                disks={sourceDisks}
                 selectedItemId={selectedPartitionId}
                 expandedItems={expandedDisks}
                 onExpandedItemsChange={setExpandedDisks}
