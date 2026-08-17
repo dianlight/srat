@@ -371,6 +371,10 @@ Refactor per the Dialog Pattern in the instruction file; behavior unchanged. Thi
 
 **Residual (low):** if the backend ever emits a disk/partition with no id, uuid, device path or legacy name, the fallback `disk-${fallbackIndex}` / `part-${fallbackIndex}` keys reorder with the snapshot and silently re-point persisted selection/expansion state. Such a record would already indicate a backend data defect, so treat this as a defensive concern only: log a console warning when the fallback branch is taken (makes the backend defect visible) — no structural change needed.
 
+**Fix (Task 18):** `getDiskIdentifier` / `getPartitionIdentifier` (`utils.ts`) now `console.warn` when the index-based fallback branch is taken (disk with no id/legacy_device_name/device_path/serial, or partition with none of id/uuid/device_path/legacy names/map key), making the backend data defect visible instead of silently re-pointing persisted selection/expansion state on reorder. No structural change — stable-ID preference unchanged.
+
+**Tests (Task 18):** `utils.test.ts` — stable-id preference + fallback order for disks and partitions, warn-spy assertions for both fallback branches, and a reorder-stability test (identifiers keyed by disk id stay identical when the snapshot array is reversed). `volumes/` suite 164/164, `bun tsc --noEmit` clean.
+
 ### F6 — `VolumeDetailsPanel` hardcodes `isReadOnlyMode={false}` on the SMART panel
 
 **File:** `VolumeDetailsPanel.tsx:389-396` (second-cycle finding)
@@ -400,7 +404,7 @@ Refactor per the Dialog Pattern in the instruction file; behavior unchanged. Thi
 - [x] Task 15: **F2** — Migrate `VolumeMountDialog` to `FormContainer` pattern per instructions; keep tests green
 - [x] Task 16: **F3** — Drop local `disks` state; optimistic label update via RTK `updateQueryData`
 - [x] Task 17: **F4** — `Promise.allSettled` aggregation for automount toggle; single summary toast
-- [ ] Task 18: **F5** — ID-only identifiers; localStorage migration note; reorder-stability test
+- [x] Task 18: **F5** — ID-only identifiers; localStorage migration note; reorder-stability test
 - [ ] Task 19: **H8** — Deep-copy partition map in `getVolumesData` (or immutable snapshot at cache boundary); concurrent `-race` test vs HDIdle handler
 - [ ] Task 20: **H9** — Surface event-handler errors (log at emit site; propagate DB-persist errors on mount path); log-capture test
 - [ ] Task 21: **H10** — Warm hardware cache at service start; keep lazy path as fallback; response-time test
