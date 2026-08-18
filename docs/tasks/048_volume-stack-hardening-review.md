@@ -431,7 +431,7 @@ Refactor per the Dialog Pattern in the instruction file; behavior unchanged. Thi
 - [x] Task 20: **H9** — Surface event-handler errors (log at emit site; propagate DB-persist errors on mount path); log-capture test
 - [x] Task 21: **H10** — Warm hardware cache at service start; keep lazy path as fallback; response-time test
 - [x] Task 22: **F6** — `isReadOnlyMode={readOnly}` on `SmartStatusPanel`; RTL test with readOnly + SMART disk
-- [ ] Task 23: Coverage gate: `mise run //backend:test` + `go tool cover -func=coverage.out` — every touched function ≥70%; frontend `bun tsc --noEmit` + `mise run //frontend:test:new` green
+- [x] Task 23: Coverage gate: `mise run //backend:test` + `go tool cover -func=coverage.out` — every touched function ≥70%; frontend `bun tsc --noEmit` + `mise run //frontend:test:new` green — see [Final Coverage Gate](#-final-coverage-gate-task-23-2026-08-18)
 - [ ] Task 24: Update `CHANGELOG.md` under `[ 🚧 Unreleased ]`
 
 ## 🔬 B4 Implementation (2026-08-14)
@@ -725,3 +725,37 @@ Total suite: 40.5% (baseline unchanged). Remaining uncovered in `persistMountPoi
 - Full `mise run //backend:test`: exit=0, Total coverage 40.6% (baseline 40.5%).
 - gofmt clean on all 4 touched files; `go -C src vet ./dto/ ./service/` clean.
 - Working tree after the accidental `git stash pop` of an unrelated stash (`stash@{0}` from `feat/hdidle-per-disk-rework`) was restored with `git reset --merge`; the stash entry is preserved untouched. No unrelated files in the final diff (4 files, +142/−1).
+
+## 🔬 Final Coverage Gate (Task 23, 2026-08-18)
+
+**Branch:** `fix/volume-phantom-entries` — closes the per-function ≥70% coverage gate for the whole branch. Working tree before commit: 5 test files (4 modified, 1 new).
+
+### Genuine violations found and closed
+
+A scripted `git diff origin/main --unified=0` → function-extent analysis of the branch's full diff (not just recent commits) surfaced exactly 5 genuine violations (functions whose **bodies** contain added lines and sit below 70%). Each was closed with focused tests:
+
+| Function | Before | After | Test |
+|----------|--------|-------|------|
+| `converter.partitionFromDevice` (`converter/mount_to_dto.go`) | 28.6% | **100%** | `TestPartitionFromDevice` / `TestPartitionFromDeviceNotFound` / `TestPartitionFromDeviceNilDevicePath` / `TestPartitionFromDeviceSkipsDiskWithoutPartitions` (`converter/converter_test.go`) — device-hit + not-found + nil-device-path + disk-without-partitions branches; mutation-proven (deleting the nil guard fails the nil test) |
+| `service.updateDiskStats` (`service/disk_stats_service.go`) | 69.2% | **75%** | 3 tests in `service/disk_stats_service_test.go`: `_ReturnsErrorOnFetchFailure`, `_ContinuesOnDeviceNotFound` (hits `errors.Unwrap(err)` + `os.IsNotExist` — the fetcher must return `fmt.Errorf("wrap: %w", os.ErrNotExist)` since tozd's `Unwrap` returns nil on a bare sentinel), `_ClampsNegativeIOPS` (latency clamp: seed `lastStats` with **higher** ReadIOs/WriteIOs but **lower** ticks than the current fetch so computed latency exceeds the cap) |
+| `service.runProvisionalRecheck` (`service/volume_service.go`) | 66.7% | **100%** | New white-box `service/volume_service_internal_test.go` (`package service`): `TestRunProvisionalRecheck_*` covering settle, recheck, and give-up paths with a fake event emitter |
+| `service.setupEventListeners` (`service/broadcaster_service.go`) | 39.3% | **100%** | Rewritten `service/broadcaster_service_internal_test.go` (`package service`): `TestBroadcasterSetupEventListeners_*` covering every registered event type + the share-list-error branch; `TestBroadcasterDirtyDataDedupe_*` for the dirty-data dedupe |
+| `internal/appsetup.ProvideCoreDependencies` (`internal/appsetup/appsetup.go:59`) | 7.7% | **92.3%** | New `TestProvideCoreDependencies_StartsGraph` (`internal/appsetup/appsetup_test.go`): full `fxtest.New` app start. Two non-obvious requirements: (1) the `github.Client` provider `log.Fatalf`s when `config.GistToken == ""` (tests run with empty token) — save/restore `config.GistToken = "test-token"` via `suite.T().Cleanup`; (2) the `*slog.Logger` and `*github.Client` closures are only constructed if something depends on those types — add `fx.Invoke(func(*slog.Logger, *github.Client) {})` to force construction (without it coverage stalls at 53.8%) |
+
+### Rigorous gate verification (final)
+
+Method: parse `git diff origin/main --unified=0 -- '*.go' ':!vendor'`; for every added line, find its enclosing function via a brace-matching function-extent parser; flag only if that function's `go tool cover -func` (fresh full-suite `coverage.out`) is < 70%. Test files (`_test.go`) excluded.
+
+**Result: GATE PASS — 0 added diff lines inside a below-70% production function** (220 production functions touched by the branch; all ≥70%).
+
+False positives excluded during the analysis (do not re-report):
+- `dto.DiskMap.All` at 0.0% was a **lookup name collision** with a generated client's `All` method — `disk_map.go:56 All` is actually **100.0%** (keyed by file+name).
+- `failingCacheWriteMounter.Mount` at 0.0% is a `_test.go` mock helper (excluded as test file).
+- `writeValue` (55.6%, `events/event_bus.go`) and `ContextWithEventUUID` (66.7%, `events/events.go`) from an earlier span-heuristic pass were **false positives**: the added lines live in the `EventBusInterface` declaration block, the `PartitionEvent` struct doc/fields, and an import — between function bodies, not inside them. The actually-changed `EmitDisk`/`EmitPartition` bodies (now `return emitEvent(...)`) are both **100%**.
+
+### Verification
+
+- Full backend suite **green without `-race`**: `go -C src tool gotest -p 1 -timeout 120s -tags embedallowed_no -coverprofile=coverage.out -cover ./...` → exit=0, Total coverage 41.6%.
+- `-race` full run still fails only on the **pre-existing** races (out of scope, previously verified): `TestConcurrentEventPropagation`, `TestGetVolumesData_SettlesWholeDiskSynthesizedEntryViaRecheck` + `TestGetVolumesData_RecheckGivesUpAfterMaxAttempts`, api `ws.go:158`. A newly surfaced `TestVolumeServiceTestSuite/TestBootWarmupFailureDoesNotFailAppStart` race (test-read `bytes.Buffer` vs background `udevEventHandler` goroutine writing to the same slog buffer, `volume_service_test.go:1778`) was confirmed **pre-existing** via `git stash -u` + rerun on committed HEAD — not introduced by this branch.
+- gofmt clean on all touched files; `go -C src vet ./...` clean; mockio v2 void-method gotcha respected (`InvalidateHardwareInfo`, `VerifyNoMoreInteractions` take no `_, _ =`).
+- Frontend gate already green (`bun tsc --noEmit` + `mise run //frontend:test:new`) — no frontend changes in this commit.
