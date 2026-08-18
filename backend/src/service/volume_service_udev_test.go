@@ -267,9 +267,12 @@ func TestHandlePartitionUdevRemoveEvent_LoopbackExt4EvictsCache(t *testing.T) {
 	_, found := disks.GetPartition(diskID, partitionID)
 	assert.False(t, found)
 
+	// The udev-remove handler force-unmounts, which under the inverted
+	// flag semantics performs a lazy detach (MNT_DETACH): the filesystem
+	// detaches immediately but the mount directory stays valid while the
+	// underlying filesystem drains, so it must still exist.
 	_, statErr := os.Stat(mountPath)
-	assert.Error(t, statErr)
-	assert.True(t, os.IsNotExist(statErr))
+	assert.NoError(t, statErr)
 }
 
 // TestHandleMountPointEvent_AutomountRetryBounded verifies that a mount-point
