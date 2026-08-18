@@ -3,7 +3,7 @@
 # [REFACTOR]: Volume Stack Hardening — Code Review Findings
 
 **Target Repo:** `srat`
-**Status:** 📅 Planned
+**Status:** ✅ Complete
 **Type:** REFACTOR (invoke `prepare-refactor` skill before starting; see Task 0)
 **Scope:** `backend/src/service/volume_service.go`, `backend/src/service/volume_mount_manager.go`, `backend/src/service/volume_service_udev_linux.go`, `backend/src/api/volumes.go`, `backend/src/dto/disk_map.go`, `frontend/src/hooks/volumeHook.ts`, `frontend/src/pages/volumes/**`
 
