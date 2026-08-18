@@ -432,7 +432,7 @@ Refactor per the Dialog Pattern in the instruction file; behavior unchanged. Thi
 - [x] Task 21: **H10** — Warm hardware cache at service start; keep lazy path as fallback; response-time test
 - [x] Task 22: **F6** — `isReadOnlyMode={readOnly}` on `SmartStatusPanel`; RTL test with readOnly + SMART disk
 - [x] Task 23: Coverage gate: `mise run //backend:test` + `go tool cover -func=coverage.out` — every touched function ≥70%; frontend `bun tsc --noEmit` + `mise run //frontend:test:new` green — see [Final Coverage Gate](#-final-coverage-gate-task-23-2026-08-18)
-- [ ] Task 24: Update `CHANGELOG.md` under `[ 🚧 Unreleased ]`
+- [x] Task 24: Update `CHANGELOG.md` under `[ 🚧 Unreleased ]` — volume-stack hardening bug-fix entries added
 
 ## 🔬 B4 Implementation (2026-08-14)
 
