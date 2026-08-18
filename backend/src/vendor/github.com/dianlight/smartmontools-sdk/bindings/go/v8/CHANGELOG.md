@@ -5,12 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [bindings/go/v8.0.0] — Unreleased
+## [bindings/go/v8.0.2-pre] — Unreleased
 
-This module has never been published under any version — the `v0.5.0` heading
-this replaces was aspirational, not a real release (`git tag -l 'bindings/go/*'`
-is empty). That made it free to adopt the core's versioning scheme outright
-instead of continuing a Go-only `v0.x` line.
+This module has never been published under any version before the entries
+below — the `v0.5.0` heading this replaces was aspirational, not a real
+release (`git tag -l 'bindings/go/*'` was empty before `v8.0.0`). That made it
+free to adopt the core's versioning scheme outright instead of continuing a
+Go-only `v0.x` line.
+
+### Retraction notice
+
+`v8.0.0` was published 2026-08-11 as a **final** release while upstream
+smartmontools 8.0 was (and still is) unreleased. It is retracted — along with
+its own self-retracting `v8.0.1` tombstone — via a `retract` block in
+`go.mod`, so that `go get`'s `@latest` query falls through to the newest
+`v8.0.2-pre.<revs>` prerelease instead. Everything below this notice that was
+originally written for the `v8.0.0` heading describes what actually shipped
+in that release and still applies unchanged to `v8.0.2-pre.<revs>` — only the
+version number was wrong, not the content. See
+[docs/development/release-process.md](../../docs/development/release-process.md#the-v800--v801-tombstone)
+for the full mechanism and
+[docs/migration/compatibility-matrix.md](../../docs/migration/compatibility-matrix.md)
+for the version-by-version history.
 
 ### Breaking Changes
 - **Module path change**: this module moved from the standalone `smartmontools-go`
