@@ -138,6 +138,52 @@ func TestPartitionFromDeviceIdNotFound(t *testing.T) {
 	assert.Nil(t, result)
 }
 
+func TestPartitionFromDevice(t *testing.T) {
+	devicePath := "/dev/sda1"
+	partID := "part-1"
+	diskID := "disk-1"
+	disks := dto.NewDiskMapFrom(
+		&dto.Disk{Id: &diskID, Partitions: &map[string]dto.Partition{
+			partID: {Id: &partID, DevicePath: &devicePath},
+		}},
+	)
+
+	result := partitionFromDevice(devicePath, disks)
+	if assert.NotNil(t, result) {
+		assert.Equal(t, partID, *result.Id)
+	}
+}
+
+func TestPartitionFromDeviceSkipsDiskWithoutPartitions(t *testing.T) {
+	diskID := "disk-nopart"
+	disks := dto.NewDiskMapFrom(&dto.Disk{Id: &diskID})
+
+	result := partitionFromDevice("/dev/sda1", disks)
+	assert.Nil(t, result)
+}
+
+func TestPartitionFromDeviceNotFound(t *testing.T) {
+	diskID := "disk-1"
+	disks := dto.NewDiskMapFrom(&dto.Disk{Id: &diskID, Partitions: &map[string]dto.Partition{}})
+
+	result := partitionFromDevice("/dev/missing", disks)
+	assert.Nil(t, result)
+}
+
+func TestPartitionFromDeviceNilDevicePath(t *testing.T) {
+	partID := "part-nilpath"
+	diskID := "disk-1"
+	disks := dto.NewDiskMapFrom(
+		&dto.Disk{Id: &diskID, Partitions: &map[string]dto.Partition{
+			partID: {Id: &partID}, // DevicePath stays nil
+		}},
+	)
+
+	// A partition with a nil DevicePath must never match, even against an empty device string
+	result := partitionFromDevice("", disks)
+	assert.Nil(t, result)
+}
+
 func TestTimeMachineSupportFromFS(t *testing.T) {
 	if support := TimeMachineSupportFromFS("ext4"); assert.NotNil(t, support) {
 		assert.Equal(t, dto.TimeMachineSupports.SUPPORTED, *support)

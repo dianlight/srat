@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"os"
 	"sync"
 	"testing"
@@ -109,6 +111,79 @@ func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_NoVolumes() {
 	suite.NotNil(suite.ds.currentDiskHealth.PerPartitionInfo)
 	suite.Empty(suite.ds.currentDiskHealth.PerPartitionInfo)
 	suite.False(suite.ds.currentDiskHealth.HDIdleRunning)
+}
+
+func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_ContinuesOnDeviceNotFound() {
+	// A disk whose device node is missing from /proc must be skipped, not fatal.
+	diskID := "disk-1"
+	deviceName := "sda"
+	devicePath := "/dev/sda"
+	suite.testDisks.AddOrUpdate(&dto.Disk{
+		Id:               &diskID,
+		LegacyDeviceName: &deviceName,
+		DevicePath:       &devicePath,
+		Partitions:       &map[string]dto.Partition{},
+	})
+
+	suite.ds.ioStatFetcher = func(string) (blockdevice.IOStats, error) {
+		return blockdevice.IOStats{}, fmt.Errorf("wrap: %w", os.ErrNotExist)
+	}
+	mock.When(suite.hdidleMock.IsRunning()).ThenReturn(false)
+
+	err := suite.ds.updateDiskStats(true)
+
+	suite.NoError(err)
+	suite.Empty(suite.ds.currentDiskHealth.PerDiskIO)
+}
+
+func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_ReturnsErrorOnFetchFailure() {
+	diskID := "disk-1"
+	deviceName := "sda"
+	devicePath := "/dev/sda"
+	suite.testDisks.AddOrUpdate(&dto.Disk{
+		Id:               &diskID,
+		LegacyDeviceName: &deviceName,
+		DevicePath:       &devicePath,
+		Partitions:       &map[string]dto.Partition{},
+	})
+
+	suite.ds.ioStatFetcher = func(string) (blockdevice.IOStats, error) {
+		return blockdevice.IOStats{}, errors.New("iostat read failed")
+	}
+	mock.When(suite.hdidleMock.IsRunning()).ThenReturn(false)
+
+	err := suite.ds.updateDiskStats(true)
+
+	suite.Error(err)
+	suite.Contains(err.Error(), "iostat read failed")
+}
+
+func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_ClampsNegativeIOPS() {
+	// lastStats counters higher than the current fetch must clamp IOPS to zero.
+	diskID := "disk-1"
+	deviceName := "sda"
+	devicePath := "/dev/sda"
+	suite.testDisks.AddOrUpdate(&dto.Disk{
+		Id:               &diskID,
+		LegacyDeviceName: &deviceName,
+		DevicePath:       &devicePath,
+		Partitions:       &map[string]dto.Partition{},
+	})
+
+	suite.ds.lastStats[diskID] = &blockdevice.IOStats{ReadIOs: 100, WriteIOs: 100, ReadTicks: 10, WriteTicks: 10}
+	suite.ds.ioStatFetcher = func(string) (blockdevice.IOStats, error) {
+		return blockdevice.IOStats{ReadIOs: 10, WriteIOs: 10, ReadTicks: 100, WriteTicks: 100}, nil
+	}
+	mock.When(suite.hdidleMock.IsRunning()).ThenReturn(false)
+
+	err := suite.ds.updateDiskStats(true)
+
+	suite.NoError(err)
+	suite.Len(suite.ds.currentDiskHealth.PerDiskIO, 1)
+	suite.Equal(float64(0), suite.ds.currentDiskHealth.PerDiskIO[0].ReadIOPS)
+	suite.Equal(float64(0), suite.ds.currentDiskHealth.PerDiskIO[0].WriteIOPS)
+	suite.Equal(float64(0), suite.ds.currentDiskHealth.PerDiskIO[0].ReadLatency)
+	suite.Equal(float64(0), suite.ds.currentDiskHealth.PerDiskIO[0].WriteLatency)
 }
 
 func (suite *DiskStatsServiceSuite) TestUpdateDiskStats_SkipsDiskWithNilDevice() {
