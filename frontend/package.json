@@ -54,7 +54,7 @@
     "@fortawesome/react-fontawesome": "^3.5.0",
     "@mui/icons-material": "^9.2.0",
     "@mui/material": "^9.2.0",
-    "@mui/x-charts": "^9.10.1",
+    "@mui/x-charts": "^9.11.1",
     "@mui/x-tree-view": "^9.10.1",
     "@reactour/tour": "^3.8.0",
     "@reduxjs/toolkit": "^2.12.0",
