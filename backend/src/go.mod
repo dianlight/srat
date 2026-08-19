@@ -7,10 +7,10 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/maniartech/signals v1.3.1
 	github.com/mattn/go-isatty v0.0.23 // indirect
-	github.com/oapi-codegen/runtime v1.6.0
-	github.com/pilebones/go-udev v0.9.1
+	github.com/oapi-codegen/runtime v1.7.0
+	github.com/pilebones/go-udev v0.10.0
 	github.com/shirou/gopsutil/v4 v4.26.7
-	github.com/stretchr/testify v1.11.1
+	github.com/stretchr/testify v1.12.0
 	golang.org/x/sys v0.47.0
 )
 
@@ -21,7 +21,7 @@ require (
 	github.com/angusgmorrison/logfusc v0.1.0
 	github.com/benmcclelland/sgio v0.0.0-20250710154739-45e823ff1f46
 	github.com/danielgtaylor/huma/v2 v2.39.1
-	github.com/dianlight/smartmontools-sdk/bindings/go/v8 v8.0.0
+	github.com/dianlight/smartmontools-sdk/bindings/go/v8 v8.0.1
 	github.com/dianlight/tlog v0.2.2
 	github.com/fatih/color v1.19.0
 	github.com/fsnotify/fsnotify v1.10.1
@@ -111,7 +111,6 @@ require (
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/oapi-codegen/oapi-codegen/v2 v2.8.0
 	github.com/pkg/errors v0.9.1
-	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/rekby/gpt v0.0.0-20200614112001-7da10aec5566 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect

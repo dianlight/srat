@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"unsafe"
 )
 
 // See: http://elixir.free-electrons.com/linux/v3.12/source/lib/kobject_uevent.c#L45
@@ -25,6 +24,16 @@ const (
 // The magic value used by udev, see https://github.com/systemd/systemd/blob/v239/src/libudev/libudev-monitor.c#L57
 const libudevMagic = 0xfeedcafe
 
+// Size of the udev_monitor_netlink_header struct: the "libudev\0" prefix followed by 8 32-bits fields.
+const libudevHeaderLength = 40
+
+// Offsets of the header fields go-udev relies on, relative to the start of the header.
+const (
+	libudevMagicOffset      = 8
+	libudevHeaderSizeOffset = 12
+	libudevPayloadOffOffset = 16
+)
+
 var ErrWrongUEventFormat = errors.New("wrong uevent format")
 
 type KObjAction string
@@ -38,7 +47,7 @@ func ParseKObjAction(raw string) (a KObjAction, err error) {
 	switch a {
 	case ADD, REMOVE, CHANGE, MOVE, ONLINE, OFFLINE, BIND, UNBIND:
 	default:
-		err = fmt.Errorf("unknow kobject action (got: %s)", raw)
+		err = fmt.Errorf("unknown kobject action (got: %s)", raw)
 	}
 	return
 }
@@ -50,11 +59,12 @@ type UEvent struct {
 }
 
 func (e UEvent) String() string {
-	rv := fmt.Sprintf("%s@%s\000", e.Action.String(), e.KObj)
+	var rv strings.Builder
+	fmt.Fprintf(&rv, "%s@%s\000", e.Action.String(), e.KObj)
 	for k, v := range e.Env {
-		rv += k + "=" + v + "\000"
+		rv.WriteString(k + "=" + v + "\000")
 	}
-	return rv
+	return rv.String()
 }
 
 func (e UEvent) Bytes() []byte {
@@ -74,16 +84,8 @@ func (e UEvent) Equal(e2 UEvent) (bool, error) {
 		return false, fmt.Errorf("wrong length of env (got: %d, wanted: %d)", len(e.Env), len(e2.Env))
 	}
 
-	var found bool
 	for k, v := range e.Env {
-		found = false
-		for i, e := range e2.Env {
-			if i == k && v == e {
-				found = true
-				break
-			}
-		}
-		if !found {
+		if v2, found := e2.Env[k]; !found || v != v2 {
 			return false, fmt.Errorf("unable to find %s=%s env var from uevent", k, v)
 		}
 	}
@@ -95,28 +97,43 @@ func (e UEvent) Equal(e2 UEvent) (bool, error) {
 // go-udev only looks at the "magic" number to filter out possibly invalid packets, and at the payload offset. Other fields of the header
 // are ignored.
 // Note, only some of the fields of the header use network byte order, for the rest udev uses native byte order of the platform.
+// This works on both big and little endian platforms because udevd runs on the same host, hence shares its byte order.
+// A message produced by a machine using the opposite byte order is rejected rather than decoded incorrectly.
 func parseUdevEvent(raw []byte) (e *UEvent, err error) {
+	if len(raw) < libudevHeaderLength {
+		return nil, fmt.Errorf("cannot parse libudev event: truncated header")
+	}
+
 	// the magic number is stored in network byte order.
-	magic := binary.BigEndian.Uint32(raw[8:])
+	magic := binary.BigEndian.Uint32(raw[libudevMagicOffset:])
 	if magic != libudevMagic {
 		return nil, fmt.Errorf("cannot parse libudev event: magic number mismatch")
 	}
 
+	// The header size is stored in native byte order and cannot exceed the message itself. Since the magic
+	// number is byte order agnostic, this is what tells a corrupted header from one written by a machine
+	// using the opposite byte order, which we have no way to decode.
+	headerSize := binary.NativeEndian.Uint32(raw[libudevHeaderSizeOffset:])
+	if headerSize < libudevHeaderLength || headerSize > uint32(len(raw)) {
+		return nil, fmt.Errorf("cannot parse libudev event: invalid header size (got: %d)", headerSize)
+	}
+
 	// the payload offset int is stored in native byte order.
-	payloadoff := *(*uint32)(unsafe.Pointer(&raw[16]))
+	payloadoff := binary.NativeEndian.Uint32(raw[libudevPayloadOffOffset:])
 	if payloadoff >= uint32(len(raw)) {
 		return nil, fmt.Errorf("cannot parse libudev event: invalid data offset")
 	}
 
+	// The payload is a list of NUL-terminated strings, hence the trailing empty field to drop.
 	fields := bytes.Split(raw[payloadoff:], []byte{0x00}) // 0x00 = end of string
-	if len(fields) == 0 {
+	if len(fields) < 2 {
 		err = fmt.Errorf("cannot parse libudev event: data missing")
 		return
 	}
 
 	envdata := make(map[string]string)
 	for _, envs := range fields[0 : len(fields)-1] {
-		env := bytes.Split(envs, []byte("="))
+		env := bytes.SplitN(envs, []byte("="), 2)
 		if len(env) != 2 {
 			err = fmt.Errorf("cannot parse libudev event: invalid env data")
 			return
@@ -143,12 +160,14 @@ func parseUdevEvent(raw []byte) (e *UEvent, err error) {
 }
 
 func ParseUEvent(raw []byte) (*UEvent, error) {
-	if len(raw) > 40 && bytes.Equal(raw[:8], []byte("libudev\x00")) {
+	if len(raw) > libudevHeaderLength && bytes.HasPrefix(raw, []byte("libudev\x00")) {
 		return parseUdevEvent(raw)
 	}
-	fields := bytes.Split(raw, []byte{0x00}) // 0x00 = end of string
 
-	if len(fields) == 0 {
+	// The kernel format is "<action>@<devpath>\0" followed by NUL-terminated env vars,
+	// so a valid message always splits into at least the header plus a trailing empty field.
+	fields := bytes.Split(raw, []byte{0x00}) // 0x00 = end of string
+	if len(fields) < 2 {
 		return nil, ErrWrongUEventFormat
 	}
 
@@ -169,7 +188,7 @@ func ParseUEvent(raw []byte) (*UEvent, error) {
 	}
 
 	for _, envs := range fields[1 : len(fields)-1] {
-		env := bytes.Split(envs, []byte("="))
+		env := bytes.SplitN(envs, []byte("="), 2)
 		if len(env) != 2 {
 			return nil, ErrWrongUEventFormat
 		}
