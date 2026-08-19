@@ -78,6 +78,28 @@ VERSION_TYPE="${usage_version_type?}"
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 SCRIPT_DIR="$(git rev-parse --show-toplevel)/scripts"
 
+# Refuse outright while the core is a pre-release. Two independent reasons,
+# either alone sufficient:
+#   1. There is no correct version to bump to on main — next-bindings-go-version.sh
+#      --bump already hard-errors for exactly this reason (see its header).
+#   2. On a branch, this task's own "prerelease" mode below parses the
+#      *current* mainline tag's trailing number via `git describe --abbrev=0`
+#      + sed/cut and increments it — which does not respect SemVer precedence
+#      (a -pre.<revs> tag can be "nearest" yet not the true newest) and would
+#      mint a new -pre.<revs+1> from an unreviewed branch, hijacking the
+#      mainline prerelease channel. Renaming the branch channel (e.g. nesting
+#      it as -pre.<revs>.beta.N) does NOT fix this: per SemVer §11.4.4, a
+#      longer identifier list sorts HIGHER when the preceding fields are
+#      equal, so that scheme would make PR builds outrank mainline — the
+#      opposite of the intended fix. One prerelease channel at a time is the
+#      only safe rule while the core itself is pre-release.
+if "$SCRIPT_DIR/prerelease-state.sh" --is-prerelease; then
+  echo "Error: the native core is currently a pre-release ($("$SCRIPT_DIR/prerelease-state.sh" --suffix))." >&2
+  echo "This task cannot compute a standalone bindings/go version while the mainline series is itself a moving -pre.N target." >&2
+  echo "See docs/development/release-process.md — releases resume once upstream sets native/configure.ac's smartmontools_release_date." >&2
+  exit 1
+fi
+
 if [ "$BRANCH" = "main" ]; then
   MODE="release"
   NEW_TAG=$("$SCRIPT_DIR/next-bindings-go-version.sh" --bump "$VERSION_TYPE")

@@ -13,7 +13,7 @@ env_shell_expand = true
 compile = false
 
 [tools]
-go = "1.26.5"
+go = "1.26.6"
 act = "0.2.89"
 vale = "3.17.1"
 markdownlint-cli2 = "0.23.2"
@@ -25,14 +25,14 @@ pkl = "0.32.1"
 biome = "2.4.15"
 taplo = "0.10.0"
 golangci-lint = "2.12.2"
-ruff = "0.16.2"
+ruff = "0.16.3"
 python = "3.14.7"
 "conda:mypy" = { version = "1.19.1" }
 shellcheck = "0.11.0"
 shfmt = "3.13.1"
 "go:golang.org/x/tools/gopls" = "latest"
 gh = "latest"
-hk = "1.54.1"
+hk = "1.55.0"
 yamllint = "latest"
 # opencode = "latest"
 # copilot-cli = "latest"
