@@ -52,6 +52,11 @@
   read-only mode, and a console warning is emitted when a volume falls back to
   index-based identifiers.
 
+- **HA Supervisor nil device fields**: `GetHardwareInfo` no longer panics when
+  the HA Supervisor API returns a device with a non-nil `DevPath` but nil `Name`
+  or `ById`. The device-matching loop now skips such entries gracefully, and the
+  `ErrorNotFound` early-return path no longer dereferences a nil response.
+
 ### 🏗 Chore
 
 ## 2026.8.0-rc12
