@@ -15,7 +15,7 @@ _Generated: 2026-08-18_
 
 ### [043] Zeroconf mDNS Registration from Addon (Lab)
 - **Type:** FEATURE | **Issues:** None
-- **Progress:** 11 / 15 tasks ✓
+- **Progress:** 15 / 15 tasks ✓
 
 ### [045] Full Mobile Support
 - **Type:** FEATURE | **Issues:** [srat#922](https://github.com/dianlight/srat/pull/922)
@@ -32,12 +32,12 @@ _Generated: 2026-08-18_
 ### [044] Support Disks Without Partitions
 - **Type:** FIX | **Issues:** [dianlight/srat#849](https://github.com/dianlight/srat/issues/849), [dianlight/hassio-addons#716](https://github.com/dianlight/hassio-addons/issues/716), [PR #867](https://github.com/dianlight/srat/pull/867)
 - **Progress:** 16 / 17 tasks (94%)
-- **Next:** Task 16: Manual validation on HAOS with a physical USB prepared per `docs/replicate-partitionless-disk-macos.md` (Scenar
+- **Next:** Task 16: Manual validation on HAOS with a physical USB prepared per `docs/replicate-partitionless-disk-macos.md` (Scenario A superfloppy; Scenario B #716 replica) — deferred, see [PR #867](https://github.com/dianlight/srat/pull/867)
 
 ### [046] Enable SMART Lib Backend in Addon
 - **Type:** FIX | **Issues:** [dianlight/hassio-addons#726](https://github.com/dianlight/hassio-addons/issues/726), [dianlight/smartmontools-sdk#14](https://github.com/dianlight/smartmontools-sdk/issues/14), [dianlight/smartmontools-go#38](https://github.com/dianlight/smartmontools-go/issues/38)
 - **Progress:** 3 / 10 tasks (30%)
-- **Next:** Task 1: SDK (smartmontools-sdk#14) — add `libsmartmon_go.{so,dylib}` build step to `.github/workflows/build.yml` per mat
+- **Next:** Task 1: SDK (smartmontools-sdk#14) — add `libsmartmon_go.{so,dylib}` build step to `.github/workflows/build.yml` per matrix target (using existing `cxx`, compile `smartmon_c_api.cpp` from pinned smartmontools-go ref, skip windows)
 
 ### [047] Migrate SMART backend to smartmontools-sdk bindings/go/v8
 - **Type:** REFACTOR | **Issues:** [dianlight/smartmontools-sdk#13](https://github.com/dianlight/smartmontools-sdk/issues/13), [dianlight/smartmontools-go#38](https://github.com/dianlight/smartmontools-go/issues/38)

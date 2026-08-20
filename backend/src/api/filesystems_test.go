@@ -605,3 +605,65 @@ func (suite *FilesystemHandlerSuite) TestSetPartitionLabel_Success() {
 		suite.Fail("expected disk update event after relabel")
 	}
 }
+
+// TestSetPartitionLabel_EmitDiskErrorStillSucceeds is a regression guard for
+// the event-emission failure path: when EmitDisk returns an error, the endpoint
+// must still succeed and the cached partition label must already be updated.
+func (suite *FilesystemHandlerSuite) TestSetPartitionLabel_EmitDiskErrorStillSucceeds() {
+	partitionID := "test-partition-id"
+	devicePath := "/dev/sdb1"
+	fsType := "ext4"
+	newLabel := "NewLabel"
+	oldLabel := "OldLabel"
+	diskID := "test-disk-id"
+
+	partition := dto.Partition{
+		Id:               &partitionID,
+		LegacyDevicePath: &devicePath,
+		FsType:           &fsType,
+		Name:             &oldLabel,
+	}
+
+	partitions := make(map[string]dto.Partition)
+	partitions[partitionID] = partition
+	disk := &dto.Disk{
+		Id:         &diskID,
+		Partitions: &partitions,
+	}
+	suite.diskMap.AddOrUpdate(disk)
+
+	mock.When(suite.mockFsService.SetPartitionLabel(
+		mock.Any[context.Context](),
+		mock.Any[string](),
+		mock.Any[string](),
+		mock.Any[string](),
+	)).ThenReturn(nil)
+
+	ctrl := mock.NewMockController(suite.T())
+	mockEventBus := mock.Mock[events.EventBusInterface](ctrl)
+	mock.When(mockEventBus.EmitDisk(mock.Any[events.DiskEvent]())).ThenReturn(errors.New("emit failed"))
+
+	handler := api.NewFilesystemHandler(suite.mockFsService, suite.diskMap, mockEventBus)
+	_, testAPI := humatest.New(suite.T())
+	handler.RegisterFilesystemHandler(testAPI)
+
+	resp := testAPI.Put("/filesystem/label", map[string]interface{}{
+		"partitionId": partitionID,
+		"label":       newLabel,
+	})
+
+	suite.Equal(http.StatusOK, resp.Code)
+
+	var result struct {
+		Success bool `json:"success"`
+	}
+	err := json.Unmarshal(resp.Body.Bytes(), &result)
+	suite.Require().NoError(err)
+	suite.True(result.Success)
+
+	updatedPartition, _, found := suite.diskMap.GetPartitionByID(partitionID)
+	suite.True(found)
+	suite.Require().NotNil(updatedPartition)
+	suite.Require().NotNil(updatedPartition.Name)
+	suite.Equal(newLabel, *updatedPartition.Name)
+}

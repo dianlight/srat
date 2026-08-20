@@ -2,8 +2,8 @@
 
 <!-- DOCTOC SKIP -->
 
-**Date:** 2026-08-13
-**Status:** 🔄 In progress (B1 + B2 implemented and committed; 22 tasks remaining)
+**Date:** 2026-08-18
+**Status:** ✅ Complete
 **Prepare Check:** Yes (approved — task doc Task 0 + user "Yes" 2026-08-13)
 **Linked Task:** docs/tasks/048_volume-stack-hardening-review.md
 **Scope:** Volume subsystem hardening: DiskMap concurrency (B1), mount-point persistence semantics (B2, H4), stale-marking (B3), mode guards (B4), device-path lookup (B5), frontend volume hook race (B6), automount backoff (H1), event-loop I/O (H2), dead code (H3), error masking (H5), unmount semantics (H6), udev lifecycle (H7), cache aliasing (H8), event error surfacing (H9), cold-cache HTTP path (H10), frontend fixes F1–F6.
@@ -110,4 +110,4 @@
 - [x] Refactor implemented
 - [x] Post-refactor tests run
 - [x] All tests pass (or failures accepted by user)
-- [ ] Tracking document finalised
+- [x] Tracking document finalised

@@ -66,7 +66,7 @@ func TestDrainUdevChannels_BoundedWhenIdle(t *testing.T) {
 
 	start := time.Now()
 	drainUdevChannels(queue, errorChan, 100*time.Millisecond)
-	require.WithinDuration(t, start, time.Now(), 2*time.Second)
+	require.WithinDuration(t, start, time.Now(), 500*time.Millisecond)
 }
 
 // TestDrainUdevChannels_ConcurrentProducer verifies the drain keeps consuming

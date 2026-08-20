@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -17,14 +18,19 @@ import (
 // InvalidateHardwareInfo advances the phase; GetHardwareInfo serves the
 // response of the current phase (clamped to the last one), so a later phase
 // can model "the disk is gone" or "the disk settled into its real partition
-// layout".
+// layout". The mutex guards phase/calls because the provisional recheck
+// timers invoke these methods on a separate goroutine while the test reads
+// them in assertions (avoiding a data race under -race).
 type fakeReconcileHardware struct {
+	mu        sync.Mutex
 	phase     int
 	calls     int
 	responses []map[string]dto.Disk
 }
 
 func (f *fakeReconcileHardware) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.calls++
 	idx := f.phase
 	if idx >= len(f.responses) {
@@ -33,7 +39,25 @@ func (f *fakeReconcileHardware) GetHardwareInfo() (map[string]dto.Disk, errors.E
 	return f.responses[idx], nil
 }
 
-func (f *fakeReconcileHardware) InvalidateHardwareInfo() { f.phase++ }
+func (f *fakeReconcileHardware) InvalidateHardwareInfo() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.phase++
+}
+
+// phaseValue returns the current phase under the mutex for race-free assertions.
+func (f *fakeReconcileHardware) phaseValue() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.phase
+}
+
+// callsValue returns the current call count under the mutex for race-free assertions.
+func (f *fakeReconcileHardware) callsValue() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.calls
+}
 
 func (f *fakeReconcileHardware) MockSetFSProbeFunc(func(string) (string, uintptr, error)) {}
 
@@ -133,7 +157,7 @@ func TestHandleDiskUdevRemoveEvent_PrunesRemovedDisk(t *testing.T) {
 
 	svc.handleDiskUdevRemoveEvent("sda")
 
-	assert.Equal(t, 1, hw.phase, "disk removal must invalidate the hardware cache")
+	assert.Equal(t, 1, hw.phaseValue(), "disk removal must invalidate the hardware cache")
 	_, ok = svc.disks.Get("by-id-ata-disk-a")
 	assert.False(t, ok, "removed disk must be evicted from the map")
 }
@@ -176,11 +200,11 @@ func TestGetVolumesData_RecheckGivesUpAfterMaxAttempts(t *testing.T) {
 
 	// Initial fetch + maxRechecks rechecks, then the chain must stop.
 	require.Eventually(t, func() bool {
-		return hw.calls >= maxRechecks+1
+		return hw.callsValue() >= maxRechecks+1
 	}, 2*time.Second, 10*time.Millisecond)
 
 	time.Sleep(150 * time.Millisecond) // allow any straggler timers to fire
-	assert.Equal(t, maxRechecks+1, hw.calls, "recheck chain must be bounded")
+	assert.Equal(t, maxRechecks+1, hw.callsValue(), "recheck chain must be bounded")
 	_, ok := svc.disks.GetPartition(diskID, "by-id-sda")
 	assert.True(t, ok, "entry stays visible when the hardware never settles")
 }

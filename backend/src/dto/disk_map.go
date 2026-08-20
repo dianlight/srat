@@ -62,6 +62,23 @@ func (m *DiskMap) All() []*Disk {
 	return slices.Collect(maps.Values(m.entries))
 }
 
+// DeepCopyAll returns a slice of deep copies of all disks. The order is
+// nondeterministic. Unlike All, the returned Disks own their nested maps, so
+// callers may iterate Partitions and mount-point maps outside the DiskMap lock
+// without racing a concurrent mutation.
+func (m *DiskMap) DeepCopyAll() []*Disk {
+	if m == nil {
+		return nil
+	}
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	out := make([]*Disk, 0, len(m.entries))
+	for _, d := range m.entries {
+		out = append(out, d.DeepCopy())
+	}
+	return out
+}
+
 // Snapshot returns a shallow copy of the entries map. Callers may freely
 // iterate and mutate the returned map without holding the lock; the *Disk
 // pointers are shared with the DiskMap.
@@ -107,8 +124,15 @@ func (m *DiskMap) CurrentRefreshVersion() uint32 {
 }
 
 // AddOrUpdate inserts or updates a Disk in the map using its Id as the key.
-// It initializes the map if it is nil. Returns an error if the disk Id is nil or empty.
+// It initializes the map if it is nil. Returns an error if the receiver, the
+// disk, or the disk Id is nil or empty.
 func (m *DiskMap) AddOrUpdate(d *Disk) error {
+	if m == nil {
+		return errors.WithDetails(ErrorInvalidParameter, "Message", "disk map is nil")
+	}
+	if d == nil {
+		return errors.WithDetails(ErrorInvalidParameter, "Message", "disk is nil")
+	}
 	if d.Id == nil || *d.Id == "" {
 		return errors.WithDetails(ErrorInvalidParameter, "Message", "disk id is nil or empty")
 	}

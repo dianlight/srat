@@ -1309,7 +1309,8 @@ func (suite *VolumeServiceTestSuite) TestOnSmartEvent_EmptyDiskId_DoesNotUpdateD
 	})
 
 	// Capture SmartInfo state before the event
-	diskBefore, _ := suite.disks.Get(diskID)
+	diskBefore, ok := suite.disks.Get(diskID)
+	suite.Require().True(ok)
 	suite.Nil(diskBefore.SmartInfo, "SmartInfo should be nil before any event")
 
 	// Emit a SmartEvent with empty DiskId (self-test progress event)
@@ -1319,7 +1320,8 @@ func (suite *VolumeServiceTestSuite) TestOnSmartEvent_EmptyDiskId_DoesNotUpdateD
 	})
 
 	// Disk cache should be unchanged
-	diskAfter, _ := suite.disks.Get(diskID)
+	diskAfter, ok := suite.disks.Get(diskID)
+	suite.Require().True(ok)
 	suite.Nil(diskAfter.SmartInfo,
 		"OnSmart with empty DiskId must not call AddSmartInfo on the disk cache")
 }
@@ -1347,7 +1349,8 @@ func (suite *VolumeServiceTestSuite) TestOnSmartEvent_ValidDiskId_UpdatesDiskCac
 	})
 
 	// Disk cache should be updated
-	diskAfter, _ := suite.disks.Get(diskID)
+	diskAfter, ok := suite.disks.Get(diskID)
+	suite.Require().True(ok)
 	suite.Require().NotNil(diskAfter.SmartInfo,
 		"OnSmart with valid DiskId should call AddSmartInfo and update the disk cache")
 	suite.Equal(diskID, diskAfter.SmartInfo.DiskId)

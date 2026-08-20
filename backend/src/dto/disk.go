@@ -64,6 +64,40 @@ type Disk struct {
 	RefreshVersion uint32 `json:"refresh_version,omitempty" readonly:"true"`
 }
 
+// DeepCopy returns a copy of the Disk whose nested maps (Partitions and each
+// partition's mount-point maps) are copied, so a reader outside the DiskMap
+// lock can iterate them without racing a concurrent mutation. Scalar pointer
+// fields remain shared; only the map containers are duplicated, which is what
+// concurrent map read/write safety requires.
+func (d *Disk) DeepCopy() *Disk {
+	if d == nil {
+		return nil
+	}
+	out := *d
+	if d.Partitions != nil {
+		partitions := make(map[string]Partition, len(*d.Partitions))
+		for id, p := range *d.Partitions {
+			if p.MountPointData != nil {
+				mp := make(map[string]MountPointData, len(*p.MountPointData))
+				for k, v := range *p.MountPointData {
+					mp[k] = v
+				}
+				p.MountPointData = &mp
+			}
+			if p.HostMountPointData != nil {
+				mp := make(map[string]MountPointData, len(*p.HostMountPointData))
+				for k, v := range *p.HostMountPointData {
+					mp[k] = v
+				}
+				p.HostMountPointData = &mp
+			}
+			partitions[id] = p
+		}
+		out.Partitions = &partitions
+	}
+	return &out
+}
+
 // Partition defines model for Filesystem/Partition.
 type Partition struct {
 	// Device Special device file for the filesystem (e.g. /dev/sda1).

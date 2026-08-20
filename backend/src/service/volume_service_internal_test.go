@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
@@ -33,9 +34,12 @@ func (suite *VolumeServiceInternalSuite) SetupTest() {
 	suite.ctrl = mock.NewMockController(suite.T())
 	suite.mockHardware = mock.Mock[HardwareServiceInterface](suite.ctrl)
 	suite.ctx, suite.cancel = context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, &sync.WaitGroup{}))
+	eventBus := events.NewEventBus(suite.ctx)
 	suite.volumeService = &VolumeService{
 		ctx:            suite.ctx,
 		hardwareClient: suite.mockHardware,
+		fs_service:     NewFilesystemService(suite.ctx, func() {}, eventBus),
+		eventBus:       eventBus,
 		disks:          dto.NewDiskMap(),
 	}
 }

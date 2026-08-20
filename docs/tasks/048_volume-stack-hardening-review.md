@@ -563,7 +563,7 @@ Mutation check (backup-copy + revert): restoring the old implementation fails 2 
 | `api/volumes.go` | cache-warm response-time budget; boot warmup | H10 |
 | `VolumesTreeView.test.tsx` | automount icon color | F1 |
 | `VolumeMountDialog.test.tsx` | isSubmitting disables submit | F2 |
-| `Volumes.test.tsx` | selection stable across reorder | F5 |
+| `utils.test.ts` | selection stable across reorder | F5 |
 | `VolumeDetailsPanel.test.tsx` | SMART actions disabled in read-only mode | F6 |
 
 ## 🧠 Implementation Notes (Copilot Context)

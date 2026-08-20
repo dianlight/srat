@@ -200,7 +200,7 @@ func (s *diskStatsService) updateDiskStats(isHeavyTick bool) errors.E {
 	s.updateMutex.Lock()
 	defer s.updateMutex.Unlock()
 
-	disks := s.disks.All()
+	disks := s.disks.DeepCopyAll()
 
 	// Check HDIdle service status
 	hdidleRunning := false

@@ -928,3 +928,59 @@ func TestDiskMap_ConcurrentAccess(t *testing.T) {
 	assert.Equal(t, uint32(goroutines*(opsPerGoroutine/4)), m.CurrentRefreshVersion())
 	assert.GreaterOrEqual(t, m.Len(), 0)
 }
+
+func TestDiskMap_AddOrUpdate_NilGuards(t *testing.T) {
+	// Nil receiver must not panic.
+	var m *dto.DiskMap
+	err := m.AddOrUpdate(&dto.Disk{Id: new("d")})
+	assert.Error(t, err)
+
+	// Nil disk must not panic.
+	m = dto.NewDiskMap()
+	err = m.AddOrUpdate(nil)
+	assert.Error(t, err)
+
+	// Empty ID still rejected.
+	err = m.AddOrUpdate(&dto.Disk{})
+	assert.Error(t, err)
+}
+
+func TestDiskMap_DeepCopyAll_IsolatesNestedMaps(t *testing.T) {
+	diskID := "disk-deep"
+	partID := "part-1"
+	path := "/mnt/x"
+
+	partitions := map[string]dto.Partition{
+		partID: {Id: new(partID)},
+	}
+	mp := map[string]dto.MountPointData{path: {Path: path}}
+	part := partitions[partID]
+	part.MountPointData = &mp
+	partitions[partID] = part
+
+	disk := dto.Disk{Id: new(diskID), Partitions: &partitions}
+	m := dto.NewDiskMapFrom(&disk)
+
+	// A deep copy must not share the nested map containers with the source.
+	copies := m.DeepCopyAll()
+	require.Len(t, copies, 1)
+	copied := copies[0]
+	require.NotNil(t, copied.Partitions)
+	assert.NotSame(t, disk.Partitions, copied.Partitions, "Partitions map must be copied")
+
+	copiedPart := (*copied.Partitions)[partID]
+	require.NotNil(t, copiedPart.MountPointData)
+	assert.NotSame(t, partitions[partID].MountPointData, copiedPart.MountPointData, "MountPointData map must be copied")
+
+	// Mutating the source after the deep copy must not affect the copy.
+	delete(partitions, partID)
+	assert.Len(t, *copied.Partitions, 1, "deep copy must be isolated from later source mutation")
+
+	// Scalar pointer fields remain shared (value-equal), matching DeepCopy's contract.
+	assert.Equal(t, *disk.Id, *copied.Id)
+}
+
+func TestDiskMap_DeepCopyAll_NilReceiver(t *testing.T) {
+	var m *dto.DiskMap
+	assert.Nil(t, m.DeepCopyAll())
+}

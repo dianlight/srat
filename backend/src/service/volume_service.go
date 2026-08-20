@@ -82,8 +82,13 @@ type VolumeService struct {
 	// We cap attempts per path and back off exponentially between failures.
 	automountBackoffBase time.Duration
 	maxAutomountAttempts int
-	automountRetryMu     sync.Mutex
-	automountRetries     map[string]automountRetryState
+	// automountResetAfter is the cooldown after which an exhausted path's retry
+	// budget is released, so a transient failure burst (e.g. a device that is
+	// slow to settle at boot) does not disable automount for that path until
+	// the process restarts. A zero value disables the reset (used by tests).
+	automountResetAfter time.Duration
+	automountRetryMu    sync.Mutex
+	automountRetries    map[string]automountRetryState
 }
 
 // automountRetryState tracks how many times an automount attempt for a given
@@ -133,6 +138,7 @@ func NewVolumeService(
 
 		automountBackoffBase: 2 * time.Second,
 		maxAutomountAttempts: 5,
+		automountResetAfter:  5 * time.Minute,
 		automountRetries:     map[string]automountRetryState{},
 	}
 
@@ -659,16 +665,21 @@ func (self *VolumeService) getVolumesData() errors.E {
 		var mountInfosErr error
 		// Disks processing
 		for _, disk := range hwDisks {
-			tlog.TraceContext(self.ctx, "Processing disk from hardware client", "disk_id", *disk.Id, "partition_count", len(*disk.Partitions))
+			partitionCount := 0
+			if disk.Partitions != nil {
+				partitionCount = len(*disk.Partitions)
+			}
+			tlog.TraceContext(self.ctx, "Processing disk from hardware client", "disk_id", *disk.Id, "partition_count", partitionCount)
 			disk.RefreshVersion = refreshVersion
 
 			currentDisk, updateDisk := self.disks.Get(*disk.Id)
 
-			err := self.disks.AddOrUpdate(&disk)
-			if err != nil {
-				slog.WarnContext(self.ctx, "Failed to update existing disk in cache", "disk_id", *disk.Id, "err", err)
-			}
-
+			// Build the enriched partition map locally before publishing the
+			// disk to the cache. Publishing first and then enriching the
+			// nested map in place would mutate a map that concurrent readers
+			// (e.g. GetPartition under the read lock) may be iterating — a
+			// data race. The disk is only published once it is fully built.
+			var changedPartitions []*dto.Partition
 			if disk.Partitions != nil {
 				// H8: the hardware cache (30-min TTL) hands out the same
 				// *map[string]Partition to every caller. Enriching it in place
@@ -688,7 +699,7 @@ func (self *VolumeService) getVolumesData() errors.E {
 				// PartitionEvent sharing one procfs snapshot, instead of one
 				// event per partition (each of which re-parsed procfs inside
 				// the handler). Reduces P events to one per disk.
-				changedPartitions := make([]*dto.Partition, 0, len(*disk.Partitions))
+				changedPartitions = make([]*dto.Partition, 0, len(*disk.Partitions))
 				for pid, part := range *disk.Partitions {
 					if part.FsType != nil && *part.FsType != "" {
 						if cached, ok := filesystemSupportCache[*part.FsType]; ok {
@@ -718,25 +729,31 @@ func (self *VolumeService) getVolumesData() errors.E {
 					(*disk.Partitions)[pid] = part
 					changedPartitions = append(changedPartitions, &part)
 				}
-				if len(changedPartitions) > 0 {
-					if self.procfsGetMounts != nil && mountInfos == nil && mountInfosErr == nil {
-						mountInfos, mountInfosErr = self.procfsGetMounts()
-						if mountInfosErr != nil {
-							slog.WarnContext(self.ctx, "Failed to get current mount information from procfs", "err", mountInfosErr)
-						}
+			}
+
+			err := self.disks.AddOrUpdate(&disk)
+			if err != nil {
+				slog.WarnContext(self.ctx, "Failed to update existing disk in cache", "disk_id", *disk.Id, "err", err)
+			}
+
+			if len(changedPartitions) > 0 {
+				if self.procfsGetMounts != nil && mountInfos == nil && mountInfosErr == nil {
+					mountInfos, mountInfosErr = self.procfsGetMounts()
+					if mountInfosErr != nil {
+						slog.WarnContext(self.ctx, "Failed to get current mount information from procfs", "err", mountInfosErr)
 					}
-					eventType := events.EventTypes.ADD
-					if currentDisk != nil && updateDisk {
-						eventType = events.EventTypes.UPDATE
-					}
-					if err := self.eventBus.EmitPartition(events.PartitionEvent{
-						Event:      events.Event{Type: eventType},
-						Disk:       &disk,
-						Partitions: changedPartitions,
-						MountInfos: mountInfos,
-					}); err != nil {
-						slog.WarnContext(self.ctx, "Failed to emit partition event during volume refresh", "disk_id", *disk.Id, "err", err)
-					}
+				}
+				eventType := events.EventTypes.ADD
+				if currentDisk != nil && updateDisk {
+					eventType = events.EventTypes.UPDATE
+				}
+				if err := self.eventBus.EmitPartition(events.PartitionEvent{
+					Event:      events.Event{Type: eventType},
+					Disk:       &disk,
+					Partitions: changedPartitions,
+					MountInfos: mountInfos,
+				}); err != nil {
+					slog.WarnContext(self.ctx, "Failed to emit partition event during volume refresh", "disk_id", *disk.Id, "err", err)
 				}
 			}
 		}
@@ -795,7 +812,7 @@ func (self *VolumeService) isWholeDiskSynthesized(d *dto.Disk) bool {
 }
 
 func (self *VolumeService) hasWholeDiskSynthesizedDisks() bool {
-	for _, disk := range self.disks.All() {
+	for _, disk := range self.disks.DeepCopyAll() {
 		if self.isWholeDiskSynthesized(disk) {
 			return true
 		}
@@ -831,11 +848,14 @@ func (self *VolumeService) manageProvisionalRechecks() {
 		self.pendingRecheck = &provisionalRecheckState{attempts: self.maxProvisionalRechecks}
 	}
 	if self.pendingRecheck.attempts <= 0 {
-		// The entry never settled; keep the current state and stop probing.
-		self.pendingRecheck = nil
+		// The entry never settled; keep the exhausted state so the budget is
+		// not silently restored on the next call, and stop probing.
 		return
 	}
 	self.pendingRecheck.attempts--
+	if self.pendingRecheck.timer != nil {
+		self.pendingRecheck.timer.Stop()
+	}
 	self.pendingRecheck.timer = time.AfterFunc(self.recheckInterval, self.runProvisionalRecheck)
 }
 
@@ -906,7 +926,7 @@ func (self *VolumeService) findDiskForDevicePath(devicePath string) *dto.Disk {
 	}
 
 	normalizedDevice := strings.TrimSpace(devicePath)
-	for _, disk := range self.disks.All() {
+	for _, disk := range self.disks.DeepCopyAll() {
 		if disk.Partitions == nil {
 			continue
 		}
@@ -926,7 +946,7 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 		// procfs snapshot carried by the event. If the emitter provided none
 		// (e.g. an external emitter), parse once here and reuse it.
 		mountInfos := e.MountInfos
-		if mountInfos == nil {
+		if mountInfos == nil && self.procfsGetMounts != nil {
 			parsed, errS := self.procfsGetMounts()
 			if errS != nil {
 				slog.ErrorContext(ctx, "Failed to get current mount information from procfs", "disk_id", *e.Disk.Id, "err", errS)
@@ -953,7 +973,7 @@ func (self *VolumeService) handlePartitionEvent(ctx context.Context, e events.Pa
 
 	// Single-partition mode (legacy emitters, e.g. udev events, tests)
 	mountInfos := e.MountInfos
-	if mountInfos == nil {
+	if mountInfos == nil && self.procfsGetMounts != nil {
 		parsed, errS := self.procfsGetMounts()
 		if errS != nil {
 			slog.ErrorContext(ctx, "Failed to get current mount information from procfs", "disk_id", *e.Disk.Id, "partition_id", *e.Partition.Id, "err", errS)
@@ -1167,6 +1187,13 @@ func (self *VolumeService) allowAutomountAttempt(path string) (allowed bool, exh
 
 	st, ok := self.automountRetries[path]
 	if !ok {
+		return true, false
+	}
+	// Release the budget after the cooldown so a transient failure burst does
+	// not disable automount for this path until the process restarts. This also
+	// deletes the entry, bounding the retry map's growth.
+	if self.automountResetAfter > 0 && time.Since(st.nextRetryAt) >= self.automountResetAfter {
+		delete(self.automountRetries, path)
 		return true, false
 	}
 	if st.attempts >= self.maxAutomountAttempts {
