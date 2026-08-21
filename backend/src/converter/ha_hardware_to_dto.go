@@ -2,6 +2,7 @@ package converter
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -113,7 +114,14 @@ func filesystemsToPartitionsMap(source *[]hardware.Filesystem) (*map[string]dto.
 		if fs.Id != nil {
 			x, err := filesystemUUIDToPartitionID(fs.Id)
 			if err != nil {
-				return nil, fmt.Errorf("error converting filesystem ID to partition ID: %w", err)
+				// Symlinks in /dev/disk/by-uuid/ or /dev/disk/by-id/ may not
+				// exist yet during hardware flapping.  filesystemUUIDToPartitionID
+				// already returns a best-effort fallback value (prefixed UUID);
+				// use it instead of failing the entire drive conversion.  The
+				// partition will be retried on the next udev cycle once the
+				// symlinks settle.
+				slog.Warn("Using fallback partition ID during symlink resolution",
+					"original_id", *fs.Id, "fallback", *x, "reason", err)
 			}
 			p.Id = x
 		}

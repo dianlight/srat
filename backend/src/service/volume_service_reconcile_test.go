@@ -227,3 +227,50 @@ func TestFindDiskForDevicePath_ReturnsNilWhenNoPartitionMatches(t *testing.T) {
 	assert.Nil(t, svc.findDiskForDevicePath("/dev/sdb9"),
 		"no match must return nil, not an arbitrary disk")
 }
+
+// TestGetVolumesData_SynthesizedDowngradeProtected covers the USB flapping
+// scenario end-to-end: a disk that already has real partitions in the cache
+// must NOT be overwritten by a synthesized whole-disk entry when the
+// Supervisor momentarily returns the drive without filesystem data.
+//
+// Phase 0: Supervisor returns real partitions (sdb1, sdb2) → cache has them.
+// Phase 1: Supervisor returns a synthesized whole-disk entry (sdb) → the
+//
+//	protection in getVolumesData must keep the cached real partitions.
+func TestGetVolumesData_SynthesizedDowngradeProtected(t *testing.T) {
+	diskID := "by-id-usb-flash"
+	realParts := reconcileDisk(diskID, "sdb",
+		realPartition(diskID, "sdb1"),
+		realPartition(diskID, "sdb2"),
+	)
+	synthesized := reconcileDisk(diskID, "sdb", wholeDiskPartition(diskID, "sdb"))
+
+	hw := &fakeReconcileHardware{
+		responses: []map[string]dto.Disk{
+			{diskID: realParts},
+			{diskID: synthesized},
+		},
+	}
+	svc := newReconcileVolumeService(t, hw, 0, 0)
+
+	// Phase 0: load real partitions into the cache.
+	require.NoError(t, svc.getVolumesData())
+	_, ok1 := svc.disks.GetPartition(diskID, "by-id-sdb1")
+	_, ok2 := svc.disks.GetPartition(diskID, "by-id-sdb2")
+	require.True(t, ok1, "sdb1 must be present after initial load")
+	require.True(t, ok2, "sdb2 must be present after initial load")
+
+	// Phase 1: Supervisor returns synthesized whole-disk. The protection
+	// must prevent the cached real partitions from being overwritten.
+	hw.InvalidateHardwareInfo()
+	require.NoError(t, svc.getVolumesData())
+
+	_, stillOK1 := svc.disks.GetPartition(diskID, "by-id-sdb1")
+	_, stillOK2 := svc.disks.GetPartition(diskID, "by-id-sdb2")
+	assert.True(t, stillOK1, "sdb1 must survive the synthesized downgrade attempt")
+	assert.True(t, stillOK2, "sdb2 must survive the synthesized downgrade attempt")
+
+	// The synthesized partition must NOT have been added.
+	_, synthGone := svc.disks.GetPartition(diskID, "by-id-sdb")
+	assert.False(t, synthGone, "synthesized whole-disk partition must not appear when real partitions are preserved")
+}
