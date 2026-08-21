@@ -20,6 +20,7 @@ import (
 	"github.com/dianlight/srat/internal/darwinstubs/mount"
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/tlog"
+	"github.com/pilebones/go-udev/netlink"
 	"github.com/prometheus/procfs"
 	"github.com/shomali11/util/xhashes"
 	"gitlab.com/tozd/go/errors"
@@ -89,6 +90,11 @@ type VolumeService struct {
 	automountResetAfter time.Duration
 	automountRetryMu    sync.Mutex
 	automountRetries    map[string]automountRetryState
+
+	// udevEventProbe, when non-nil, is invoked by processUdevEvent before the
+	// event is dispatched. Tests use it to observe which uevents the handler
+	// consumed; production leaves it nil.
+	udevEventProbe func(netlink.UEvent)
 }
 
 // automountRetryState tracks how many times an automount attempt for a given
@@ -531,12 +537,11 @@ func (self *VolumeService) handlePartitionUdevAddEvent(devName string) bool {
 func (self *VolumeService) handlePartitionUdevRemoveEvent(devName string) {
 	partition, diskID, found := self.findPartitionByDevName(devName)
 	if !found || partition == nil || partition.Id == nil || *partition.Id == "" {
-		if self.hardwareClient != nil {
-			self.hardwareClient.InvalidateHardwareInfo()
-		}
-		if err := self.getVolumesData(); err != nil {
-			slog.ErrorContext(self.ctx, "Failed to refresh volume cache after unknown partition removal", "devname", devName, "err", err)
-		}
+		// Partition was never tracked in the DiskMap — its removal doesn't
+		// change our state.  Do NOT invalidate the hardware cache here;
+		// during hardware flapping (constant remove/add cycles) this would
+		// cause perpetual cache churn and the disk can settle on stale data.
+		slog.DebugContext(self.ctx, "Ignoring partition remove for untracked partition", "devname", devName)
 		return
 	}
 
@@ -731,6 +736,25 @@ func (self *VolumeService) getVolumesData() errors.E {
 				}
 			}
 
+			// Guard against synthesized whole-disk entries overwriting real
+			// partitions during hardware flapping: when a USB disk's partitions
+			// disappear momentarily, GetHardwareInfo may return a single
+			// synthesized partition whose LegacyDeviceName matches the disk
+			// name. If the cache already holds a version with real partitions
+			// (more than one, or a single partition with a different name),
+			// keep the cached version — the next udev ADD event will refresh
+			// with accurate data.  This prevents the perpetual churn where
+			// each getVolumesData cycle replaces real partitions with
+			// synthesized ones and vice-versa.
+			if currentDisk != nil && updateDisk && self.isWholeDiskSynthesized(&disk) && !self.isWholeDiskSynthesized(currentDisk) {
+				tlog.DebugContext(self.ctx, "Skipping synthesized whole-disk downgrade — cached disk has real partitions",
+					"disk_id", *disk.Id, "cached_partitions", len(*currentDisk.Partitions))
+				// Touch the RefreshVersion so the eviction loop below
+				// does not drop the disk from the map.
+				currentDisk.RefreshVersion = refreshVersion
+				continue
+			}
+
 			err := self.disks.AddOrUpdate(&disk)
 			if err != nil {
 				slog.WarnContext(self.ctx, "Failed to update existing disk in cache", "disk_id", *disk.Id, "err", err)
@@ -818,6 +842,21 @@ func (self *VolumeService) hasWholeDiskSynthesizedDisks() bool {
 		}
 	}
 	return false
+}
+
+// resetProvisionalRecheckBudget clears the pending recheck state so that the
+// next call to manageProvisionalRechecks will start a fresh recheck chain.
+// This is called when a udev partition ADD event arrives and the partition was
+// not yet in the DiskMap, giving the bounded recheck loop another chance to
+// settle the layout after the Supervisor API has had time to process its own
+// udev events.
+func (self *VolumeService) resetProvisionalRecheckBudget() {
+	self.recheckMu.Lock()
+	defer self.recheckMu.Unlock()
+	if self.pendingRecheck != nil && self.pendingRecheck.timer != nil {
+		self.pendingRecheck.timer.Stop()
+	}
+	self.pendingRecheck = nil
 }
 
 // manageProvisionalRechecks keeps a bounded, time-based reconciliation loop

@@ -4,7 +4,6 @@ package service
 
 import (
 	"log/slog"
-	"strings"
 	"time"
 
 	"github.com/dianlight/tlog"
@@ -14,99 +13,71 @@ import (
 func (self *VolumeService) udevEventHandler() {
 	tlog.TraceContext(self.ctx, "Starting Udev event handler...")
 
+	const (
+		initialBackoff = 1 * time.Second
+		maxBackoff     = 30 * time.Second
+	)
+
+	backoff := initialBackoff
+
+	for {
+		if self.ctx.Err() != nil {
+			tlog.InfoContext(self.ctx, "Udev event handler exiting: context cancelled.")
+			return
+		}
+
+		err := self.runUdevMonitorOnce()
+		if self.ctx.Err() != nil {
+			return
+		}
+
+		// Monitor exited unexpectedly (e.g. ENOBUFS from udev burst).
+		// Log and reconnect with exponential backoff.
+		slog.WarnContext(self.ctx, "Udev monitor exited, will reconnect",
+			"err", err, "backoff", backoff)
+
+		select {
+		case <-self.ctx.Done():
+			return
+		case <-time.After(backoff):
+		}
+
+		backoff *= 2
+		if backoff > maxBackoff {
+			backoff = maxBackoff
+		}
+	}
+}
+
+// runUdevMonitorOnce connects to the netlink socket, starts the monitor, and
+// runs consumeUdevChannels until it returns (either due to context cancellation
+// or a closed channel from the monitor goroutine). On non-nil return the caller
+// should reconnect after a backoff.
+func (self *VolumeService) runUdevMonitorOnce() error {
 	conn := new(netlink.UEventConn)
 	if err := conn.Connect(netlink.UdevEvent); err != nil {
-		tlog.ErrorContext(self.ctx, "Unable to connect to Netlink Kobject UEvent socket", "err", err)
-		return
+		slog.ErrorContext(self.ctx, "Unable to connect to Netlink Kobject UEvent socket", "err", err)
+		return err
 	}
 	defer conn.Close()
 
-	// Buffer generously (64+) so kernel udev bursts don't stall the monitor's
-	// blocking send; a full 10-slot queue used to block the producer.
 	queue := make(chan netlink.UEvent, 64)
 	errorChan := make(chan error, 1)
 	quit := conn.Monitor(queue, errorChan, nil)
+
 	tlog.TraceContext(self.ctx, "Udev monitor started successfully.")
 
-	for {
-		select {
-		case <-self.ctx.Done():
-			slog.InfoContext(self.ctx, "Udev event handler stopping due to context cancellation.", "err", self.ctx.Err())
-			if quit != nil {
-				close(quit)
-			}
-			// Drain the monitor's output channels after signalling stop:
-			// the producer goroutine sends on `queue` with a blocking send
-			// outside its select loop, so an in-flight send when quit
-			// closes would otherwise leak the goroutine.
-			drainUdevChannels(queue, errorChan, 100*time.Millisecond)
-			return
-		case uevent := <-queue:
-			if subsystem, ok := uevent.Env["SUBSYSTEM"]; ok && subsystem == "block" {
-				action := uevent.Action
-				devName := uevent.Env["DEVNAME"]
-				devType := uevent.Env["DEVTYPE"]
+	// Consume events. Returns nil on ctx cancellation (clean shutdown) or a
+	// sentinel error when the monitor goroutine closes the channels (e.g.
+	// ENOBUFS from a flapping USB device).
+	err := self.consumeUdevChannels(queue, errorChan)
 
-				slog.DebugContext(self.ctx, "Received Udev block event", "action", action, "devname", devName, "devtype", devType, "env", uevent.Env)
-
-				if devType != "disk" && devType != "partition" {
-					slog.DebugContext(self.ctx, "Ignoring Udev event for non-disk/partition block device", "devname", devName, "devtype", devType)
-					continue
-				}
-				if action == "remove" && devType == "disk" {
-					// Removal is handled by invalidating the hardware cache and
-					// re-synchronizing the volume map; reconciliation evicts the
-					// disk because it is absent from the new snapshot. (The
-					// previous implementation tried to delete by a fabricated
-					// "bus-serial-suffix" key that never matches the by-id key
-					// in the map, so removed disks stayed visible.)
-					self.handleDiskUdevRemoveEvent(devName)
-				} else if devType == "disk" && action == "add" {
-					slog.InfoContext(self.ctx, "Processing block device event", "action", action, "devname", devName)
-
-					if self.hardwareClient != nil {
-						self.hardwareClient.InvalidateHardwareInfo()
-					}
-					err := self.getVolumesData()
-					if err != nil {
-						slog.ErrorContext(self.ctx, "Failed to get volumes data after udev event", "err", err)
-						continue
-					}
-				} else if devType == "disk" && action == "change" {
-					slog.InfoContext(self.ctx, "Ignore: Processing block device change event", "action", action, "devname", devName)
-					continue
-				} else if devType == "partition" && action == "add" {
-					slog.InfoContext(self.ctx, "Processing partition addition event", "action", action, "devname", devName)
-					if self.handlePartitionUdevAddEvent(devName) {
-						continue
-					}
-					if self.hardwareClient != nil {
-						self.hardwareClient.InvalidateHardwareInfo()
-					}
-					err := self.getVolumesData()
-					if err != nil {
-						slog.ErrorContext(self.ctx, "Failed to refresh volume cache after partition add event", "devname", devName, "err", err)
-					}
-				} else if devType == "partition" && action == "remove" {
-					slog.InfoContext(self.ctx, "Processing partition removal event", "action", action, "devname", devName)
-					self.handlePartitionUdevRemoveEvent(devName)
-				}
-			}
-		case err := <-errorChan:
-			if err != nil && strings.Contains(err.Error(), "unable to parse uevent") {
-				errMsg := err.Error()
-				if strings.Contains(errMsg, "invalid env data") {
-					slog.DebugContext(self.ctx, "Ignoring malformed uevent with invalid env data",
-						"err", err,
-						"detail", "This can occur when kernel sends events with non-standard formatting")
-				} else {
-					slog.DebugContext(self.ctx, "Failed to parse uevent, skipping",
-						"err", err,
-						"detail", "Event format not recognized or incompatible")
-				}
-			} else {
-				slog.ErrorContext(self.ctx, "Error received from Udev monitor", "err", err)
-			}
-		}
+	// Signal the monitor goroutine to stop and drain any in-flight sends so
+	// it does not leak.
+	if quit != nil {
+		close(quit)
 	}
+	drainUdevChannels(queue, errorChan, 100*time.Millisecond)
+
+	return err
 }
