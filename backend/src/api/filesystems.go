@@ -494,10 +494,15 @@ func (h *FilesystemHandler) SetPartitionLabel(
 			"label", req.Label,
 			"error", err)
 	} else if disk, ok := diskMap.Get(diskID); ok && h.eventBus != nil {
-		h.eventBus.EmitDisk(events.DiskEvent{
+		if err := h.eventBus.EmitDisk(events.DiskEvent{
 			Event: events.Event{Type: events.EventTypes.UPDATE},
 			Disk:  disk,
-		})
+		}); err != nil {
+			tlog.WarnContext(ctx, "Failed to emit disk update event after setting partition label",
+				"partition", req.PartitionID,
+				"disk", diskID,
+				"error", err)
+		}
 	}
 
 	tlog.InfoContext(ctx, "Successfully set partition label",

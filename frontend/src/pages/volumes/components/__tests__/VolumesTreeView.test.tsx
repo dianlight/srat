@@ -692,5 +692,125 @@ describe("VolumesTreeView Component", () => {
             screen.queryByRole("button", { name: /format partition/i }),
         ).toBeNull();
     });
+
+    it("colors the partition icon primary when automount is enabled on a mount point", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { VolumesTreeView } = await import("../VolumesTreeView");
+        const { getDiskIdentifier } = await import("../../utils");
+        const { createTestStore } = await import("/test/testing");
+
+        const store = await createTestStore();
+        const disks = [
+            {
+                id: "disk-automount",
+                model: "Automount Disk",
+                partitions: {
+                    "part-automount": {
+                        id: "part-automount",
+                        name: "Automount Partition",
+                        fs_type: "ext4",
+                        mount_point_data: {
+                            "/mnt/automount": {
+                                is_mounted: true,
+                                is_write_supported: true,
+                                fstype: "ext4",
+                                path: "/mnt/automount",
+                                type: "HOST",
+                                is_to_mount_at_startup: true,
+                            },
+                        },
+                    },
+                },
+            },
+        ];
+
+        const diskIdentifier = getDiskIdentifier(disks[0] as any, 0);
+
+        const { container } = render(
+            React.createElement(
+                Provider,
+                {
+                    store,
+                    children: React.createElement(
+                        VolumesTreeView as any,
+                        createBaseProps({
+                            disks,
+                            expandedItems: [diskIdentifier],
+                        }),
+                    ),
+                },
+            ),
+        );
+
+        await screen.findByText("Automount Partition");
+
+        // The partition icon (StorageIcon) must carry the primary color class
+        // when any mount point has automount enabled.
+        const primaryIcon = container.querySelector(
+            ".MuiSvgIcon-colorPrimary",
+        );
+        expect(primaryIcon).toBeTruthy();
+    });
+
+    it("does not color the partition icon primary when automount is disabled", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const { Provider } = await import("react-redux");
+        const { VolumesTreeView } = await import("../VolumesTreeView");
+        const { getDiskIdentifier } = await import("../../utils");
+        const { createTestStore } = await import("/test/testing");
+
+        const store = await createTestStore();
+        const disks = [
+            {
+                id: "disk-noautomount",
+                model: "No Automount Disk",
+                partitions: {
+                    "part-noautomount": {
+                        id: "part-noautomount",
+                        name: "No Automount Partition",
+                        fs_type: "ext4",
+                        mount_point_data: {
+                            "/mnt/noautomount": {
+                                is_mounted: false,
+                                is_write_supported: true,
+                                fstype: "ext4",
+                                path: "/mnt/noautomount",
+                                type: "HOST",
+                                is_to_mount_at_startup: false,
+                            },
+                        },
+                    },
+                },
+            },
+        ];
+
+        const diskIdentifier = getDiskIdentifier(disks[0] as any, 0);
+
+        const { container } = render(
+            React.createElement(
+                Provider,
+                {
+                    store,
+                    children: React.createElement(
+                        VolumesTreeView as any,
+                        createBaseProps({
+                            disks,
+                            expandedItems: [diskIdentifier],
+                        }),
+                    ),
+                },
+            ),
+        );
+
+        await screen.findByText("No Automount Partition");
+
+        const primaryIcon = container.querySelector(
+            ".MuiSvgIcon-colorPrimary",
+        );
+        expect(primaryIcon).toBeNull();
+    });
 });
 

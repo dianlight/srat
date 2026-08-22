@@ -1,30 +1,30 @@
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { type Disk, useGetApiVolumesQuery } from "../store/sratApi";
 import { useGetServerEventsQuery } from "../store/wsApi";
 
+// GetApiVolumesApiResponse is a union (Disk[] | null | ErrorModel); narrow it
+// before treating it as the disks array so an error response cannot leak into
+// the derived value as `undefined`.
+const isDiskArray = (value: unknown): value is Disk[] => Array.isArray(value);
+
 export function useVolume() {
-  const {
-    data: evdata,
-    error: everror,
-    isLoading: evloading,
-  } = useGetServerEventsQuery();
+  const { data: evdata, error: everror } = useGetServerEventsQuery();
   const { data, error, isLoading } = useGetApiVolumesQuery();
 
-  const [disks, setDisks] = useState<Array<Disk>>([]);
+  // Single derived value: SSE (live) wins once a payload arrives, REST is the
+  // fallback until then. No local state and no effects, so there is no race
+  // between the two sources and optimistic edits are never clobbered.
+  const disks = useMemo<Disk[]>(
+    () => evdata?.volumes ?? (isDiskArray(data) ? data : []),
+    [evdata?.volumes, data],
+  );
 
-  useEffect(() => {
-    if (!isLoading) {
-      //console.log("Update Data from REST API");
-      setDisks(data as Disk[]);
-    }
-  }, [data, isLoading]);
-
-  useEffect(() => {
-    if (!evloading && evdata?.volumes) {
-      //console.log("Update Data from SSE", evdata.volumes);
-      setDisks(evdata.volumes);
-    }
-  }, [evdata?.volumes, evloading]);
-
-  return { disks, isLoading: isLoading && evloading, error: error || everror };
+  return {
+    disks,
+    // REST gates loading only until the first SSE payload arrives; after that
+    // the live stream is authoritative (a failing SSE query must not render an
+    // empty list while REST is still loading).
+    isLoading: isLoading && !evdata?.volumes,
+    error: error ?? everror,
+  };
 }

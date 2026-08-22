@@ -587,6 +587,96 @@ func (suite *HardwareServiceSuite) TestGetHardwareInfo_DriveWithFilesystemsSynth
 	suite.Nil(foundSda6.FsType, "Partition with unknown filesystem keeps FsType nil")
 }
 
+func (suite *HardwareServiceSuite) TestGetHardwareInfo_DeviceWithNilByIdDoesNotPanic() {
+	// Regression test for hassio-addons#729: HA Supervisor started returning
+	// devices where ById is nil but DevPath is non-nil. Before the fix the
+	// device-matching loop dereferenced device.ById without a nil check,
+	// causing a panic.
+	mockResponse := &hardware.GetHardwareInfoResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok","data":{"drives":[]}}`),
+		JSON200: &struct {
+			Data   *hardware.HardwareInfo             `json:"data,omitempty"`
+			Result *hardware.GetHardwareInfo200Result `json:"result,omitempty"`
+		}{
+			Data: &hardware.HardwareInfo{
+				Drives: &[]hardware.Drive{
+					{
+						Id: new("drive1"),
+						Filesystems: &[]hardware.Filesystem{
+							{
+								Device:      new("/dev/sda1"),
+								Name:        new("filesystem1"),
+								MountPoints: &[]string{},
+							},
+						},
+					},
+				},
+				Devices: &[]hardware.Device{
+					{
+						// DevPath is set but ById is nil — triggers the crash.
+						Name:    new("sda"),
+						DevPath: new("/dev/sda"),
+						ById:    nil,
+					},
+				},
+			},
+		},
+	}
+
+	mock.When(suite.haClient.GetHardwareInfoWithResponse(mock.Any[context.Context]())).ThenReturn(mockResponse, nil)
+
+	// Execute — must not panic
+	disks, err := suite.hardwareService.GetHardwareInfo()
+
+	suite.NoError(err)
+	suite.NotNil(disks)
+}
+
+func (suite *HardwareServiceSuite) TestGetHardwareInfo_DeviceWithNilNameDoesNotPanic() {
+	// Regression test for hassio-addons#729: device with nil Name must be
+	// skipped gracefully instead of causing a nil pointer dereference.
+	mockResponse := &hardware.GetHardwareInfoResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok","data":{"drives":[]}}`),
+		JSON200: &struct {
+			Data   *hardware.HardwareInfo             `json:"data,omitempty"`
+			Result *hardware.GetHardwareInfo200Result `json:"result,omitempty"`
+		}{
+			Data: &hardware.HardwareInfo{
+				Drives: &[]hardware.Drive{
+					{
+						Id: new("drive1"),
+						Filesystems: &[]hardware.Filesystem{
+							{
+								Device:      new("/dev/sda1"),
+								Name:        new("filesystem1"),
+								MountPoints: &[]string{},
+							},
+						},
+					},
+				},
+				Devices: &[]hardware.Device{
+					{
+						// Name is nil — triggers the crash at line 274.
+						Name:    nil,
+						DevPath: new("/dev/sda"),
+						ById:    new("/dev/disk/by-id/ata-some-disk"),
+					},
+				},
+			},
+		},
+	}
+
+	mock.When(suite.haClient.GetHardwareInfoWithResponse(mock.Any[context.Context]())).ThenReturn(mockResponse, nil)
+
+	// Execute — must not panic
+	disks, err := suite.hardwareService.GetHardwareInfo()
+
+	suite.NoError(err)
+	suite.NotNil(disks)
+}
+
 func (suite *HardwareServiceSuite) TestGetHardwareInfo_RawWholeDiskIgnoresStaleUdevFsType() {
 	// A raw whole-disk device (no children) with a stale udev ID_FS_TYPE must
 	// stay raw when the probe finds no filesystem magic. The stale udev value

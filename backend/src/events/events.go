@@ -6,6 +6,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/google/uuid"
+	"github.com/prometheus/procfs"
 )
 
 // Event is the base event struct without UUID (UUID is now stored in context)
@@ -37,11 +38,24 @@ type DiskEvent struct {
 	Disk *dto.Disk
 }
 
-// PartitionEvent represents a partition-related event
+// PartitionEvent represents a partition-related event.
+//
+// Two payload shapes are supported:
+//   - Single mode (Partition set): one partition to sync, emitted by legacy
+//     emitters (udev events, tests, external callers).
+//   - Batch mode (Partitions set): all changed partitions of one disk,
+//     emitted by VolumeService.getVolumesData. MountInfos carries a
+//     pre-parsed procfs snapshot shared by the whole batch so the handler
+//     parses procfs once per refresh cycle instead of once per partition.
+//     When MountInfos is nil the handler falls back to parsing procfs
+//     itself, keeping the single-partition path and external emitters
+//     working unchanged.
 type PartitionEvent struct {
 	Event
-	Partition *dto.Partition
-	Disk      *dto.Disk
+	Partition  *dto.Partition
+	Disk       *dto.Disk
+	Partitions []*dto.Partition
+	MountInfos []*procfs.MountInfo
 }
 
 // ShareEvent represents a share-related event

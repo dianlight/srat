@@ -196,11 +196,11 @@ func writeValue(b *strings.Builder, rv reflect.Value, seen map[uintptr]bool, dep
 // EventBusInterface defines the interface for the event bus
 type EventBusInterface interface {
 	// Disk events
-	EmitDisk(event DiskEvent)
+	EmitDisk(event DiskEvent) errors.E
 	OnDisk(handler func(context.Context, DiskEvent) errors.E) func()
 
 	// Partition events
-	EmitPartition(event PartitionEvent)
+	EmitPartition(event PartitionEvent) errors.E
 	OnPartition(handler func(context.Context, PartitionEvent) errors.E) func()
 
 	// Share events
@@ -349,8 +349,8 @@ func emitEvent[T any](signal signals.SyncSignal[T], ctx context.Context, event T
 }
 
 // Disk event methods
-func (eb *EventBus) EmitDisk(event DiskEvent) {
-	_ = emitEvent(eb.disk, eb.ctx, event)
+func (eb *EventBus) EmitDisk(event DiskEvent) errors.E {
+	return emitEvent(eb.disk, eb.ctx, event)
 }
 
 func (eb *EventBus) OnDisk(handler func(context.Context, DiskEvent) errors.E) func() {
@@ -358,8 +358,8 @@ func (eb *EventBus) OnDisk(handler func(context.Context, DiskEvent) errors.E) fu
 }
 
 // Partition event methods
-func (eb *EventBus) EmitPartition(event PartitionEvent) {
-	_ = emitEvent(eb.partition, eb.ctx, event)
+func (eb *EventBus) EmitPartition(event PartitionEvent) errors.E {
+	return emitEvent(eb.partition, eb.ctx, event)
 }
 
 func (eb *EventBus) OnPartition(handler func(context.Context, PartitionEvent) errors.E) func() {

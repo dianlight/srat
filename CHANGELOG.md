@@ -19,6 +19,44 @@
 
 ### 🐛 Bug Fixes
 
+- **Volume stack hardening — phantom volumes, stale state, and mount safety**:
+  stale-marking in the partition event handler is now scoped to the current
+  partition (it used to write every stale mount point across all disks into the
+  partition being processed, polluting it with phantom copies of other
+  partitions' volumes), and whole-disk synthesized volumes are reconciled via
+  provisional rechecks instead of lingering after their partition events
+  settle. Mount point settings (startup flag, flags, custom flags) survive
+  discovery re-persist instead of being wiped to defaults, and `PATCH` on a
+  mount point now returns the flags it actually stored. `MountVolume` and
+  `UmountVolume` enforce `ProtectedMode` and `ReadOnlyMode` and map the
+  protected-mode rejection to HTTP 403 instead of 500/406, and volume load
+  errors surface as a 500 instead of silently rendering an empty disk list.
+- **Volume cache correctness**: the volume cache is warmed at boot without
+  failing app start, partition maps are deep-copied before enrichment so
+  concurrent SMART/HDIdle updates cannot alias into live data, `getVolumesData`
+  no longer drops unmount/force-detach flag semantics, event-bus handler errors
+  (including DB-persist failures on the mount path) are logged and propagated
+  to emitters, and the SMART device-path lookup resolves partition IDs without
+  a nil-pointer panic.
+- **Automount resilience**: automount retry attempts are bounded with
+  exponential backoff, and the udev monitor channels are drained on shutdown so
+  the service exits cleanly without a lingering goroutine.
+- **Volumes page (frontend)**: the volumes list now derives from the SSE
+  payload once available (no more REST/SSE race emptying the list or showing
+  `undefined` on REST errors), the automount toggle aggregates all toggles with
+  `Promise.allSettled` and shows a single summary toast, volume label renames
+  update optimistically via the RTK cache, and the mount dialog follows the
+  standard `FormContainer` form pattern. The automount partition icon is now
+  colored when any of its mount points is set to mount at startup (the old
+  map-as-array lookup never matched), the SMART status panel respects
+  read-only mode, and a console warning is emitted when a volume falls back to
+  index-based identifiers.
+
+- **HA Supervisor nil device fields**: `GetHardwareInfo` no longer panics when
+  the HA Supervisor API returns a device with a non-nil `DevPath` but nil `Name`
+  or `ById`. The device-matching loop now skips such entries gracefully, and the
+  `ErrorNotFound` early-return path no longer dereferences a nil response.
+
 ### 🏗 Chore
 
 ## 2026.8.0-rc12

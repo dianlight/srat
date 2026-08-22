@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/apps"
 	"github.com/dianlight/srat/homeassistant/core_api"
@@ -20,6 +21,7 @@ import (
 	"github.com/dianlight/srat/homeassistant/websocket"
 	"github.com/dianlight/srat/internal"
 	"github.com/dianlight/srat/service"
+	"github.com/google/go-github/v90/github"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
@@ -123,6 +125,30 @@ func (suite *AppSetupSuite) TestProvideHAClientDependencies() {
 func (suite *AppSetupSuite) TestProvideCoreDependenciesReturnsOption() {
 	option := ProvideCoreDependencies(suite.params)
 	suite.Require().NotNil(option)
+}
+
+// TestProvideCoreDependencies_StartsGraph starts the full core dependency
+// graph so the provider closures (logger, ctx, ContextState, DiskMap,
+// EventBus, github.Client) and the fx.Invoke blocks (AddonConfigWatcher,
+// ProblemHABridge, command executor wiring) actually execute.
+func (suite *AppSetupSuite) TestProvideCoreDependencies_StartsGraph() {
+	// The github.Client provider requires a non-empty token; provide a dummy
+	// one for the duration of the test and restore afterwards.
+	origToken := config.GistToken
+	config.GistToken = "test-token"
+	suite.T().Cleanup(func() { config.GistToken = origToken })
+
+	app := fxtest.New(
+		suite.T(),
+		ProvideCoreDependencies(suite.params),
+		ProvideHAClientDependencies(suite.params),
+		ProvideCyclicDependencyWorkaroundOption(),
+		// Force construction of the provider closures that nothing else
+		// in the graph depends on (logger + github client).
+		fx.Invoke(func(*slog.Logger, *github.Client) {}),
+	)
+	app.RequireStart()
+	suite.T().Cleanup(func() { app.RequireStop() })
 }
 
 func (suite *AppSetupSuite) TestProvideCyclicDependencyWorkaroundOption() {

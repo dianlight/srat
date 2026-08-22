@@ -159,7 +159,13 @@ func (m *volumeMountManager) Unmount(md *dto.MountPointData, force bool) errors.
 		fsType = *md.FSType
 	}
 
-	if unmountErr := m.fsService.UnmountPartition(m.ctx, md.Path, fsType, force, !force); unmountErr != nil {
+	// Flag semantics (verified against u-root mount.Unmount):
+	//   MNT_FORCE (force) fails with EBUSY on busy local filesystems, while
+	//   MNT_DETACH (lazy) always detaches immediately. That is the opposite of
+	//   what "force" suggests, so invert the mapping: a normal unmount passes
+	//   no flags (fails on busy, surfacing the real error), and a force
+	//   unmount detaches lazily (guaranteed to succeed).
+	if unmountErr := m.fsService.UnmountPartition(m.ctx, md.Path, fsType, false, force); unmountErr != nil {
 		slog.ErrorContext(m.ctx, "Failed to unmount volume", "path", md.Path, "err", unmountErr)
 		return errors.WithDetails(dto.ErrorUnmountFail,
 			"Detail", unmountErr.Error(), "Path", md.Path, "Error", unmountErr)
@@ -167,10 +173,15 @@ func (m *volumeMountManager) Unmount(md *dto.MountPointData, force bool) errors.
 
 	slog.InfoContext(m.ctx, "Successfully unmounted volume", "path", md.Path)
 
-	if err := os.Remove(md.Path); err != nil {
-		slog.WarnContext(m.ctx, "Failed to remove mount point directory", "path", md.Path, "err", err)
-	} else {
-		slog.DebugContext(m.ctx, "Removed mount point directory", "path", md.Path)
+	// Only remove the mount directory on a normal (non-lazy) unmount: with
+	// MNT_DETACH the filesystem stays active underneath until the last
+	// reference is gone, so the directory must remain valid.
+	if !force {
+		if err := os.Remove(md.Path); err != nil {
+			slog.WarnContext(m.ctx, "Failed to remove mount point directory", "path", md.Path, "err", err)
+		} else {
+			slog.DebugContext(m.ctx, "Removed mount point directory", "path", md.Path)
+		}
 	}
 
 	if md.Partition != nil && md.Partition.DiskId != nil && md.Partition.Id != nil {
