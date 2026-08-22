@@ -10,7 +10,7 @@ require (
 	github.com/oapi-codegen/runtime v1.7.0
 	github.com/pilebones/go-udev v0.10.0
 	github.com/shirou/gopsutil/v4 v4.26.7
-	github.com/stretchr/testify v1.12.0
+	github.com/stretchr/testify v1.12.1
 	golang.org/x/sys v0.47.0
 )
 
@@ -81,6 +81,7 @@ require (
 	github.com/zarldev/goenums v0.7.0 // indirect
 	go.opentelemetry.io/otel v1.44.0 // indirect
 	go.opentelemetry.io/otel/trace v1.44.0 // indirect
+	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/net v0.57.0 // indirect
 	golang.org/x/term v0.45.0 // indirect
 	gorm.io/driver/mysql v1.6.0 // indirect
