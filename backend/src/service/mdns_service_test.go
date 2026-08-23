@@ -270,7 +270,7 @@ func (suite *MDNSServiceTestSuite) TestCleanEvent_ReBroadcastsWhenConnected() {
 
 	// Emit CLEAN server process event
 	suite.eventBus.EmitServerProcess(events.ServerProcessEvent{
-		Event: events.Event{Type: events.EventTypes.CLEAN},
+		Type: events.EventTypes.CLEAN,
 	})
 	time.Sleep(100 * time.Millisecond)
 
@@ -293,7 +293,7 @@ func (suite *MDNSServiceTestSuite) TestCleanEvent_NoReBroadcastWhenDisconnected(
 
 	// Do NOT connect — remain disconnected
 	suite.eventBus.EmitServerProcess(events.ServerProcessEvent{
-		Event: events.Event{Type: events.EventTypes.CLEAN},
+		Type: events.EventTypes.CLEAN,
 	})
 	time.Sleep(100 * time.Millisecond)
 
@@ -391,7 +391,7 @@ func (suite *MDNSServiceTestSuite) TestSettingEvent_EnablesDirectMDNS() {
 	mock.When(suite.mockBroadcaster.BroadcastGuaranteedMessage(mock.Any[any]())).ThenReturn(nil)
 
 	suite.eventBus.EmitSetting(events.SettingEvent{
-		Event:   events.Event{Type: events.EventTypes.UPDATE},
+		Type:    events.EventTypes.UPDATE,
 		Setting: directSettings("My-Server-01"),
 	})
 	time.Sleep(200 * time.Millisecond)
@@ -420,7 +420,7 @@ func (suite *MDNSServiceTestSuite) TestSettingEvent_MasterTrueProxyTrue_NoDirect
 	mock.When(suite.mockBroadcaster.BroadcastGuaranteedMessage(mock.Any[any]())).ThenReturn(nil)
 
 	suite.eventBus.EmitSetting(events.SettingEvent{
-		Event:   events.Event{Type: events.EventTypes.UPDATE},
+		Type:    events.EventTypes.UPDATE,
 		Setting: settings,
 	})
 	time.Sleep(200 * time.Millisecond)
@@ -442,7 +442,7 @@ func (suite *MDNSServiceTestSuite) TestSettingEvent_MasterFalse_NoDirectRegistra
 	mock.When(suite.mockBroadcaster.BroadcastGuaranteedMessage(mock.Any[any]())).ThenReturn(nil)
 
 	suite.eventBus.EmitSetting(events.SettingEvent{
-		Event:   events.Event{Type: events.EventTypes.UPDATE},
+		Type:    events.EventTypes.UPDATE,
 		Setting: settings,
 	})
 	time.Sleep(200 * time.Millisecond)
@@ -458,7 +458,7 @@ func (suite *MDNSServiceTestSuite) TestAppStop_ShutsDownDirectMDNS() {
 	mock.When(suite.mockBroadcaster.BroadcastGuaranteedMessage(mock.Any[any]())).ThenReturn(nil)
 
 	suite.eventBus.EmitSetting(events.SettingEvent{
-		Event:   events.Event{Type: events.EventTypes.UPDATE},
+		Type:    events.EventTypes.UPDATE,
 		Setting: directSettings("server"),
 	})
 	time.Sleep(200 * time.Millisecond)

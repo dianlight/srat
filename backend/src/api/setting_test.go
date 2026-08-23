@@ -83,11 +83,11 @@ func (suite *SettingsHandlerSuite) SetupTest() {
 			//mock.Mock[repository.PropertyRepositoryInterface],
 
 			func() *dto.ContextState {
-				sharedResources := dto.ContextState{}
-				sharedResources.ReadOnlyMode = false
-				sharedResources.Heartbeat = 1
-				sharedResources.DockerInterface = "hassio"
-				sharedResources.DockerNet = "172.30.32.0/23"
+				sharedResources := dto.ContextState{
+					ReadOnlyMode:    false,
+					Heartbeat:       1,
+					DockerInterface: "hassio",
+					DockerNet:       "172.30.32.0/23"}
 				var err error
 				sharedResources.Template, err = os.ReadFile("../templates/smb.gtpl")
 				if err != nil {

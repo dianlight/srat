@@ -152,7 +152,7 @@ func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterfa
 			return nil
 		}
 		_ = s.eventBus.EmitShare(events.ShareEvent{
-			Event: events.Event{Type: events.EventTypes.UPDATE},
+			Type:  events.EventTypes.UPDATE,
 			Share: share, // Let subscribers fetch the share if needed
 		})
 		return nil
@@ -348,7 +348,7 @@ func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResourc
 	}
 
 	_ = s.eventBus.EmitShare(events.ShareEvent{
-		Event: events.Event{Type: events.EventTypes.ADD},
+		Type:  events.EventTypes.ADD,
 		Share: &dtoShare,
 	})
 
@@ -463,7 +463,7 @@ func (s *ShareService) UpdateShare(name string, share dto.SharedResource) (*dto.
 	}
 
 	_ = s.eventBus.EmitShare(events.ShareEvent{
-		Event: events.Event{Type: events.EventTypes.UPDATE},
+		Type:  events.EventTypes.UPDATE,
 		Share: &createdDtoShare,
 	})
 
@@ -478,7 +478,7 @@ func (s *ShareService) DeleteShare(name string) errors.E {
 		return err
 	}
 	_ = s.eventBus.EmitShare(events.ShareEvent{
-		Event: events.Event{Type: events.EventTypes.REMOVE},
+		Type:  events.EventTypes.REMOVE,
 		Share: ashare,
 	})
 
@@ -577,7 +577,7 @@ func (s *ShareService) SetShareFromPathEnabled(path string, enabled bool) (*dto.
 		return nil, errors.Wrap(errS, "failed to convert share")
 	}
 	_ = s.eventBus.EmitShare(events.ShareEvent{
-		Event: events.Event{Type: events.EventTypes.UPDATE},
+		Type:  events.EventTypes.UPDATE,
 		Share: &dtoShare,
 	})
 
@@ -608,7 +608,7 @@ func (s *ShareService) setShareEnabled(name string, enabled bool) (*dto.SharedRe
 		return nil, errors.Wrap(errS, "failed to convert share")
 	}
 	_ = s.eventBus.EmitShare(events.ShareEvent{
-		Event: events.Event{Type: events.EventTypes.UPDATE},
+		Type:  events.EventTypes.UPDATE,
 		Share: &dtoShare,
 	})
 	return &dtoShare, nil

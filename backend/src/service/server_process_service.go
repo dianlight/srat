@@ -810,7 +810,7 @@ func (self *ServerService) restartServerServices(ctx context.Context, dirty dto.
 		}
 
 		self.eventBus.EmitServerProcess(events.ServerProcessEvent{
-			Event:            events.Event{Type: events.EventTypes.CLEAN},
+			Type:             events.EventTypes.CLEAN,
 			DataDirtyTracker: dto.DataDirtyTracker{},
 		})
 	} else {

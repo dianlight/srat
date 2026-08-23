@@ -144,9 +144,9 @@ func (suite *ServerProcessServiceSuite) SetupTest() {
 				return context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, &sync.WaitGroup{}))
 			},
 			func() *dto.ContextState {
-				sharedResources := dto.ContextState{}
-				sharedResources.DockerInterface = "hassio"
-				sharedResources.DockerNet = "172.30.32.0/23"
+				sharedResources := dto.ContextState{
+					DockerInterface: "hassio",
+					DockerNet:       "172.30.32.0/23"}
 				var err error
 				sharedResources.Template, err = os.ReadFile("../templates/smb.gtpl")
 				if err != nil {

@@ -16,8 +16,8 @@ import (
 // goMigrationEntry holds the up/down function pair for a single Go migration.
 type goMigrationEntry struct {
 	version int
-	upFn    interface{}
-	downFn  interface{}
+	upFn    any
+	downFn  any
 }
 
 // allGoMigrations lists every Go-based migration in this package.
@@ -34,7 +34,7 @@ var allGoMigrations = []goMigrationEntry{
 }
 
 // funcName returns the short function name for any function value via reflection.
-func funcName(fn interface{}) string {
+func funcName(fn any) string {
 	return runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name()
 }
 

@@ -81,7 +81,7 @@ func (c *DtoToDbomConverterImpl) SettingsToProperties(source dto.Settings, targe
 }
 
 func (c *DtoToDbomConverterImpl) PropertiesToSettings(source dbom.Properties, target *dto.Settings) errors.E {
-	var scannerType = reflect.TypeOf((*sql.Scanner)(nil)).Elem()
+	var scannerType = reflect.TypeFor[sql.Scanner]()
 
 	for _, prop := range source {
 		newvalue := reflect.ValueOf(target).Elem().FieldByName(prop.Key)
@@ -90,10 +90,10 @@ func (c *DtoToDbomConverterImpl) PropertiesToSettings(source dbom.Properties, ta
 				newvalue.Set(reflect.Zero(newvalue.Type()))
 			} else if reflect.ValueOf(prop.Value).CanConvert(newvalue.Type()) {
 				newvalue.Set(reflect.ValueOf(prop.Value).Convert(newvalue.Type()))
-			} else if reflect.ValueOf(prop.Value).Kind() == reflect.Ptr && !reflect.ValueOf(prop.Value).IsNil() && reflect.ValueOf(prop.Value).Elem().Type().ConvertibleTo(newvalue.Type()) {
+			} else if reflect.ValueOf(prop.Value).Kind() == reflect.Pointer && !reflect.ValueOf(prop.Value).IsNil() && reflect.ValueOf(prop.Value).Elem().Type().ConvertibleTo(newvalue.Type()) {
 				// prop.Value is a pointer, newvalue is a value
 				newvalue.Set(reflect.ValueOf(prop.Value).Elem().Convert(newvalue.Type()))
-			} else if newvalue.Kind() == reflect.Ptr && reflect.ValueOf(prop.Value).Type().ConvertibleTo(newvalue.Type().Elem()) {
+			} else if newvalue.Kind() == reflect.Pointer && reflect.ValueOf(prop.Value).Type().ConvertibleTo(newvalue.Type().Elem()) {
 				// newvalue is a pointer, prop.Value is a value
 				ptr := reflect.New(newvalue.Type().Elem())
 				ptr.Elem().Set(reflect.ValueOf(prop.Value).Convert(newvalue.Type().Elem()))

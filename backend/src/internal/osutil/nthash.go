@@ -136,7 +136,7 @@ func md4Sum(data []byte) [16]byte {
 	// Process each 64-byte block.
 	for i := 0; i < len(data); i += 64 {
 		var m [16]uint32
-		for j := 0; j < 16; j++ {
+		for j := range 16 {
 			m[j] = binary.LittleEndian.Uint32(data[i+j*4:])
 		}
 		a, b, c, d = md4Block(a, b, c, d, m)

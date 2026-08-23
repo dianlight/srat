@@ -98,7 +98,7 @@ func (p *DirtyDataService) startTimer() {
 	}
 
 	p.eventBus.EmitDirtyData(events.DirtyDataEvent{
-		Event:            events.Event{Type: events.EventTypes.START},
+		Type:             events.EventTypes.START,
 		DataDirtyTracker: p.dataDirtyTracker,
 	})
 
@@ -106,7 +106,7 @@ func (p *DirtyDataService) startTimer() {
 		p.timerMutex.Lock()
 		defer p.timerMutex.Unlock()
 		p.eventBus.EmitDirtyData(events.DirtyDataEvent{
-			Event:            events.Event{Type: events.EventTypes.RESTART},
+			Type:             events.EventTypes.RESTART,
 			DataDirtyTracker: p.dataDirtyTracker,
 		})
 		p.timer = nil

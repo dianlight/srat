@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"maps"
 	"net/http"
 	"regexp"
 	"runtime"
@@ -272,9 +273,7 @@ func (ts *TelemetryService) ReportError(interfaces ...any) errors.E {
 				case *http.Request:
 					req = v
 				case map[string]any:
-					for k, val := range v {
-						extras[k] = val
-					}
+					maps.Copy(extras, v)
 				}
 			}
 

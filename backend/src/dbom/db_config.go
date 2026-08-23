@@ -26,7 +26,7 @@ var migrations embed.FS
 // checkFileSystemPermissions checks filesystem-level issues
 func checkFileSystemPermissions(dbPath string) errors.E {
 	// Extract the actual file path (remove query parameters)
-	filePath := strings.Split(dbPath, "?")[0]
+	filePath, _, _ := strings.Cut(dbPath, "?")
 
 	if strings.Contains(dbPath, ":memory:") {
 		// In-memory database, no file to check
@@ -37,12 +37,16 @@ func checkFileSystemPermissions(dbPath string) errors.E {
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		slog.Info("Database file does not exist, will be created", "path", filePath)
 		// check if path is writable
+		// Directory part of the path; fall back to "." when the path has no
+		// separator (bare relative filename) or is empty.
 		baseDir := filePath
-		if !strings.HasSuffix(baseDir, "/") {
-			baseDir = baseDir[:strings.LastIndex(baseDir, "/")]
+		if before, _, found := strings.CutLast(baseDir, "/"); found {
+			baseDir = before
+		} else {
+			baseDir = "."
 		}
 		if baseDir == "" {
-			baseDir = "."
+			baseDir = "/"
 		}
 		testFile := baseDir + "/.db_write_test"
 		f, err := os.Create(testFile)
@@ -221,7 +225,7 @@ func replaceDatabase(lc fx.Lifecycle, v struct {
 	fx.In
 	ApiCtx *dto.ContextState
 }) *gorm.DB {
-	filePath := strings.Split(v.ApiCtx.DatabasePath, "?")[0]
+	filePath, _, _ := strings.Cut(v.ApiCtx.DatabasePath, "?")
 	if removeErr := os.Remove(filePath); removeErr != nil {
 		slog.Error("Failed to remove readonly database file", "error", removeErr, "path", filePath)
 	} else {
