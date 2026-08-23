@@ -132,9 +132,12 @@ quiet = true
 
 [tasks.test]
 env = { API_URL = "http://localhost:3000" }
+# --bun runs vitest on the Bun 1.4 runtime (~35-50% faster than Node runtime:
+# module import 60s -> 13s). Do NOT add --coverage here: @vitest/coverage-v8
+# report merging crashes under Bun (works on Node). Use test:ci for coverage.
 run = [
   "bun tsc --noEmit",
-  "AGENT=1 bunx vitest run --reporter=verbose --maxWorkers=2",
+  "AGENT=1 bunx --bun vitest run --reporter=verbose --maxWorkers=2",
 ]
 quiet = true
 
@@ -142,7 +145,7 @@ quiet = true
 env = { API_URL = "http://localhost:3000" }
 run = [
   "bun tsc --noEmit",
-  "AGENT=1 bunx vitest run --reporter=verbose --changed --maxWorkers=1",
+  "AGENT=1 bunx --bun vitest run --reporter=verbose --changed --maxWorkers=1",
 ]
 quiet = true
 
@@ -162,6 +165,7 @@ quiet = true
 
 [tasks."test:ci"]
 env = { API_URL = "", GITHUB_ACTIONS = true }
+# Node runtime (no --bun): @vitest/coverage-v8 report merging crashes under Bun 1.4.
 run = [
   "bun tsc --noEmit",
   "bunx vitest run --coverage --bail=1 --reporter=dot --dangerouslyIgnoreUnhandledErrors --reporter=github-actions",

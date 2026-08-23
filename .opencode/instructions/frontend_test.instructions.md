@@ -15,13 +15,14 @@ applyTo: **/frontend/**/*.test.{js,jsx,ts,tsx}
 
 ## **1. Environment & Tools**
 
-- **Test Runner:** Use Vitest (import { test, expect, describe, it, beforeEach, afterEach, vi } from "vitest"). Bun remains the package manager/runtime for scripts, but the frontend test runner is `bunx vitest`.
+- **Test Runner:** Use Vitest (import { test, expect, describe, it, beforeEach, afterEach, vi } from "vitest"). Since Bun 1.4, Vitest runs on the Bun runtime: always invoke it as `bunx --bun vitest` (~35-50% faster than the Node runtime; module import phase drops from ~60s to ~13s). The mise tasks (`//frontend:test`, `//frontend:test:new`) already do this.
+- **Coverage caveat:** Do NOT combine `--bun` with `--coverage`: `@vitest/coverage-v8` report merging crashes under Bun (tests still run). Run coverage on the Node runtime (`bunx vitest run --coverage`) — this is what `mise run //frontend:test:ci` does.
 - **Library:** Use @testing-library/react.
 - **Language:** TypeScript (ensure strict typing for props and mocks).
 - **Matchings:** Use @testing-library/jest-dom matchers (manually imported or configured via setup file).
 - **Timeout:** The shared default timeout lives in `frontend/vitest.config.ts`. Prefer updating config or per-test timeouts there instead of scattering CLI timeout flags.
-- **Speedup:** To speed up test runs, run a specific file and optionally filter by test name with `bunx vitest run path/to/file.test.tsx -t "pattern"`.
-- **Test Git Changes:** When modifying a component, run only the related test files first, then use `bunx vitest run --changed` for branch-local regression checks.
+- **Speedup:** To speed up test runs, run a specific file and optionally filter by test name with `bunx --bun vitest run path/to/file.test.tsx -t "pattern"`.
+- **Test Git Changes:** When modifying a component, run only the related test files first, then use `bunx --bun vitest run --changed` for branch-local regression checks.
 - **Pre-handoff Verification (Required):** Before finalizing frontend changes, always run `bun tsc --noEmit` (or a task that includes it) and `mise run //frontend:test:new` to catch TypeScript and changed-file regressions early.
 - **Test Stability:** For flaky tests, use Vitest retries (`--retry 10`) only as a temporary diagnostic aid; fix the root cause before finalizing.
 - **Test Isolation:** Use beforeEach and afterEach hooks to set up and clean up test environments, ensuring no shared state between tests.

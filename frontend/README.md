@@ -54,6 +54,8 @@ mise run //frontend:build
 
 Note: This project uses Bun as the JavaScript runtime and package manager. See `bun.build.ts` for the build pipeline.
 
+**Bun 1.4:** This project requires Bun >= 1.4.0 (pinned via `packageManager` and root `.mise.toml`). Vitest runs on the Bun runtime (`bunx --bun vitest`) for ~35-50% faster test runs; coverage (`--coverage`) still runs on the Node runtime because `@vitest/coverage-v8` report merging crashes under Bun (see `mise run //frontend:test:ci`). Reviewed Bun 1.4 breaking changes: no `.env` auto-loading under `bunx --bun` (not used), YAML 1.2 booleans in `Bun.YAML` (not used — app uses `js-yaml`), strict TOML parsing in bunfig (valid).
+
 **Bun 1.3 Compatibility:** This project is fully compatible with Bun 1.3.0. The project has been tested with Bun 1.3.0 and all breaking changes have been reviewed. The project does not use any of the affected APIs (SQL client, YAML parser) that changed in Bun 1.3.
 
 ## Getting Started
