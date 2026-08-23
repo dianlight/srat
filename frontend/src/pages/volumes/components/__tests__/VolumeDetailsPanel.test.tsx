@@ -1,10 +1,11 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { http, HttpResponse } from "msw";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ComponentProps } from "react";
 import { Provider } from "react-redux";
 import { BrowserRouter } from "react-router";
-import { createTestStore } from "/test/testing";
+import { createTestStore, getMswServer } from "/test/testing";
 import { type Partition } from "../../../../store/sratApi";
 import { VolumeDetailsPanel } from "../VolumeDetailsPanel";
 
@@ -331,6 +332,62 @@ describe("VolumeDetailsPanel", () => {
         await user.hover(hoverTarget as HTMLElement);
 
         expect(await screen.findByText(/read-only mode enabled/i)).toBeTruthy();
+    });
+
+    it("disables SMART self-test actions in read-only mode", async () => {
+        // F6 regression: SmartStatusPanel must receive the panel's readOnly
+        // prop so a read-only user cannot start/abort SMART self-tests.
+        // A deterministic smart-test payload (no test running) ensures the
+        // only thing disabling "Start Test" is read-only mode.
+        getMswServer().use(
+            http.get(/\/api\/disk\/[^/]+\/smart\/test/, () =>
+                HttpResponse.json({
+                    disk_id: "disk-1",
+                    running: false,
+                    status: "idle",
+                    percent_complete: 0,
+                    test_type: "none",
+                }),
+            ),
+        );
+
+        const smartDisk = {
+            ...baseDisk,
+            smart_info: { supported: true },
+        };
+
+        await renderPanel({ disk: smartDisk as any, readOnly: true });
+
+        const startTest = await screen.findByRole("button", {
+            name: /start test/i,
+        });
+        expect((startTest as HTMLButtonElement).disabled).toBe(true);
+    });
+
+    it("keeps SMART self-test actions enabled when not read-only", async () => {
+        getMswServer().use(
+            http.get(/\/api\/disk\/[^/]+\/smart\/test/, () =>
+                HttpResponse.json({
+                    disk_id: "disk-1",
+                    running: false,
+                    status: "idle",
+                    percent_complete: 0,
+                    test_type: "none",
+                }),
+            ),
+        );
+
+        const smartDisk = {
+            ...baseDisk,
+            smart_info: { supported: true },
+        };
+
+        await renderPanel({ disk: smartDisk as any });
+
+        const startTest = await screen.findByRole("button", {
+            name: /start test/i,
+        });
+        expect((startTest as HTMLButtonElement).disabled).toBe(false);
     });
 
     it("hides actions for hassos partitions", async () => {

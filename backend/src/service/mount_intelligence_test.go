@@ -85,22 +85,21 @@ func TestEnrichSharePartitionFromCache_PopulatesPartitionAndFsType(t *testing.T)
 	fsType := "ext4"
 	devPath := "/dev/disk/by-id/test-part-001"
 
-	disks := dto.DiskMap{
-		diskID: {
-			Id: &diskID,
-			Partitions: &map[string]dto.Partition{
-				partitionID: {
-					Id:         &partitionID,
-					DiskId:     &diskID,
-					FsType:     &fsType,
-					DevicePath: &devPath,
-				},
+	disk := dto.Disk{
+		Id: &diskID,
+		Partitions: &map[string]dto.Partition{
+			partitionID: {
+				Id:         &partitionID,
+				DiskId:     &diskID,
+				FsType:     &fsType,
+				DevicePath: &devPath,
 			},
 		},
 	}
+	disks := dto.NewDiskMapFrom(&disk)
 
 	share := dto.SharedResource{MountPointData: &dto.MountPointData{DeviceId: partitionID}}
-	enrichSharePartitionFromCache(&share, &disks)
+	enrichSharePartitionFromCache(&share, disks)
 
 	require.NotNil(t, share.MountPointData.Partition)
 	require.NotNil(t, share.MountPointData.FSType)

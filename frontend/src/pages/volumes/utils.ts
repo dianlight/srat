@@ -52,13 +52,16 @@ export function getFilesystemLabelValidation(
 }
 
 export function getDiskIdentifier(disk: Disk, fallbackIndex: number): string {
-  return (
-    disk.id ||
-    disk.legacy_device_name ||
-    disk.device_path ||
-    disk.serial ||
-    `disk-${fallbackIndex}`
+  const stableId =
+    disk.id || disk.legacy_device_name || disk.device_path || disk.serial;
+  if (stableId) return stableId;
+  // Backend defect indicator: a disk with none of id/legacy_device_name/
+  // device_path/serial would re-point persisted selection/expansion state
+  // whenever the snapshot order changes, so make the fallback visible.
+  console.warn(
+    `Disk #${fallbackIndex} has no stable identifier (id/legacy_device_name/device_path/serial); using index-based key "disk-${fallbackIndex}" which is not stable across reordering.`,
   );
+  return `disk-${fallbackIndex}`;
 }
 
 export function getPartitionIdentifier(
@@ -67,16 +70,20 @@ export function getPartitionIdentifier(
   partitionKey: string | undefined,
   fallbackIndex: number,
 ): string {
-  const partitionBase =
+  const stableBase =
     partition.id ||
     partition.uuid ||
     partition.device_path ||
     partition.legacy_device_name ||
     partition.legacy_device_path ||
-    partitionKey ||
-    `part-${fallbackIndex}`;
-
-  return `${diskIdentifier}::${partitionBase}`;
+    partitionKey;
+  if (stableBase) return `${diskIdentifier}::${stableBase}`;
+  // Same backend-defect indicator as getDiskIdentifier: warn when only the
+  // index-based fallback is available.
+  console.warn(
+    `Partition #${fallbackIndex} has no stable identifier (id/uuid/device_path/legacy names/key); using index-based key "part-${fallbackIndex}" which is not stable across reordering.`,
+  );
+  return `${diskIdentifier}::part-${fallbackIndex}`;
 }
 
 export function getMountpointIdentifier(

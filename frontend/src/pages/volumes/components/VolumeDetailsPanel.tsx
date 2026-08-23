@@ -390,7 +390,7 @@ export function VolumeDetailsPanel({
               smartInfo={disk.smart_info}
               diskId={disk.id}
               bus={disk.connection_bus}
-              isReadOnlyMode={false}
+              isReadOnlyMode={readOnly}
               isExpanded={smartExpanded}
               onSetExpanded={setSmartExpanded}
             />

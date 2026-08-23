@@ -627,3 +627,38 @@ func TestEventBusAppConfigChanged(t *testing.T) {
 		t.Fatal("timeout waiting for app config changed event")
 	}
 }
+
+func TestEmitDisk_ReturnsHandlerError(t *testing.T) {
+	ctx := context.Background()
+	bus := NewEventBus(ctx)
+
+	unsubscribe := bus.OnDisk(func(ctx context.Context, event DiskEvent) errors.E {
+		return errors.New("disk handler boom")
+	})
+	defer unsubscribe()
+
+	err := bus.EmitDisk(DiskEvent{Disk: &dto.Disk{Id: new("sda")}})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "disk handler boom")
+}
+
+func TestEmitPartition_ReturnsHandlerError(t *testing.T) {
+	ctx := context.Background()
+	bus := NewEventBus(ctx)
+
+	unsubscribe := bus.OnPartition(func(ctx context.Context, event PartitionEvent) errors.E {
+		return errors.New("partition handler boom")
+	})
+	defer unsubscribe()
+
+	partition := &dto.Partition{
+		Name:       new("sda1"),
+		DevicePath: new("/dev/sda1"),
+	}
+	disk := &dto.Disk{
+		Id: new("sda"),
+	}
+	err := bus.EmitPartition(PartitionEvent{Partition: partition, Disk: disk})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "partition handler boom")
+}

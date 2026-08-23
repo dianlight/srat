@@ -1,159 +1,113 @@
 # 📊 SRAT Task Status Report
-_Generated: 2026-04-28_
+_Generated: 2026-08-18_
 
 ## Summary
 | Status | Count | Progress |
 |--------|-------|----------|
-| ✅ Complete | 9 | 9/32 tasks |
-| 🔄 In Progress | 1 | 1/32 tasks |
-| 📅 Planned | 22 | 22/32 tasks |
-| **Total** | **32** | **28%** |
+| ✅ Complete | 3 | 3/22 tasks |
+| 🔄 In Progress | 3 | 3/22 tasks |
+| 📅 Planned | 16 | 16/22 tasks |
+| **Total** | **22** | **27%** |
 
 ---
 
 ## ✅ - Done
 
-### [005] Volume Mount Intelligence — NFS/CIFS Decision, Event Cache Retry
-- **Type:** FEATURE | **Issues:** [dianlight/srat#500](https://github.com/dianlight/srat/issues/500), [hassio-addons#581](https://github.com/dianlight/hassio-addons/issues/581)
-- **Progress:** 11 / 11 tasks ✓
+### [043] Zeroconf mDNS Registration from Addon (Lab)
+- **Type:** FEATURE | **Issues:** None
+- **Progress:** 15 / 15 tasks ✓
 
-### [009] Use IP Addresses Instead of Interface Names in SMB.Conf
-- **Type:** FIX | **Issues:** [srat#356](https://github.com/dianlight/srat/issues/356)
-- **Progress:** 14 / 14 tasks ✓
-
-### [011] Time Machine Compatibility with macOS Tahoe and Later
-- **Type:** FIX | **Issues:** [hassio-addons#536](https://github.com/dianlight/hassio-addons/issues/536)
-- **Progress:** 4 / 7 tasks ✓
-
-### [012] Remove SSE Code, Preserve WebSocket
-- **Type:** REFACTOR | **Issues:** None
+### [045] Full Mobile Support
+- **Type:** FEATURE | **Issues:** [srat#922](https://github.com/dianlight/srat/pull/922)
 - **Progress:** 12 / 12 tasks ✓
 
-### [013] Bidirectional Home Assistant WebSocket Channel
-- **Type:** FEATURE | **Issues:** None
-- **Progress:** 6 / 6 tasks ✓
-
-### [014] Disable SMART Integration Setting
-- **Type:** FIX | **Issues:** [srat#499](https://github.com/dianlight/srat/issues/499), [hassio-addons#596](https://github.com/dianlight/hassio-addons/issues/596)
-- **Progress:** 7 / 7 tasks ✓
-
-### [018] Home Assistant Repairs Proxy Service
-- **Type:** FEATURE | **Issues:** None
-- **Progress:** 13 / 13 tasks ✓
-
-### [019] Improve Overlay Helper System & Tour Events
-- **Type:** FEATURE | **Issues:** [#515](https://github.com/dianlight/srat/issues/515)
-- **Progress:** 8 / 8 tasks ✓
-
-### [024] Migrate to mise.jdx.dev and Remove Makefile
+### [048] Volume Stack Hardening — Code Review Findings
 - **Type:** REFACTOR | **Issues:** None
-- **Progress:** 16 / 16 tasks ✓
+- **Progress:** 25 / 25 tasks ✓
 
 ---
 
 ## 🔄 - In Progress
 
-### [002] Addon Config Change Detection with UI Popup and HA Repair
-- **Type:** FEATURE | **Issues:** None
-- **Progress:** 18 / 19 tasks (95%)
-- **Next:** Task 19: If the Repair issue flow is well-received and effective, consider implementing a similar pattern for other critical issues that require user action, such as missing custom component, connectivity issues, etc. (this can be a separate follow-up task)
+### [044] Support Disks Without Partitions
+- **Type:** FIX | **Issues:** [dianlight/srat#849](https://github.com/dianlight/srat/issues/849), [dianlight/hassio-addons#716](https://github.com/dianlight/hassio-addons/issues/716), [PR #867](https://github.com/dianlight/srat/pull/867)
+- **Progress:** 16 / 17 tasks (94%)
+- **Next:** Task 16: Manual validation on HAOS with a physical USB prepared per `docs/replicate-partitionless-disk-macos.md` (Scenario A superfloppy; Scenario B #716 replica) — deferred, see [PR #867](https://github.com/dianlight/srat/pull/867)
+
+### [046] Enable SMART Lib Backend in Addon
+- **Type:** FIX | **Issues:** [dianlight/hassio-addons#726](https://github.com/dianlight/hassio-addons/issues/726), [dianlight/smartmontools-sdk#14](https://github.com/dianlight/smartmontools-sdk/issues/14), [dianlight/smartmontools-go#38](https://github.com/dianlight/smartmontools-go/issues/38)
+- **Progress:** 3 / 10 tasks (30%)
+- **Next:** Task 1: SDK (smartmontools-sdk#14) — add `libsmartmon_go.{so,dylib}` build step to `.github/workflows/build.yml` per matrix target (using existing `cxx`, compile `smartmon_c_api.cpp` from pinned smartmontools-go ref, skip windows)
+
+### [047] Migrate SMART backend to smartmontools-sdk bindings/go/v8
+- **Type:** REFACTOR | **Issues:** [dianlight/smartmontools-sdk#13](https://github.com/dianlight/smartmontools-sdk/issues/13), [dianlight/smartmontools-go#38](https://github.com/dianlight/smartmontools-go/issues/38)
+- **Progress:** 15 / 17 tasks (88%)
+- **Next:** Task 10: Capture lessons learned and ask to create a PR
 
 ---
 
 ## 📅 - Planned
 
-### [001] fsck and Disk Check Tools Integration
-- **Type:** FEATURE | **Issues:** [#185](https://github.com/dianlight/srat/issues/185)
-- **Progress:** 0 / 10 tasks
-
-### [003] HDIdle Service Completion
-- **Type:** FEATURE | **Issues:** [hassio-addons#596](https://github.com/dianlight/hassio-addons/issues/596)
-- **Progress:** 0 / 12 tasks
-
 ### [004] Security Hardening — CORS, IP Allowlist, Ingress Session Validation
 - **Type:** FIX | **Issues:** None
-- **Progress:** 0 / 8 tasks
+- **Progress:** 0 / 12 tasks
 
 ### [006] Database and ORM Stubs Completion
-- **Type:** FIX | **Issues:** [hassio-addons#573](https://github.com/dianlight/hassio-addons/issues/573)
-- **Progress:** 0 / 9 tasks
+- **Type:** REFACTOR | **Issues:** [hassio-addons#573](https://github.com/dianlight/hassio-addons/issues/573)
+- **Progress:** 0 / 15 tasks
 
 ### [007] Backend Code Quality — errors.AsType Migration and Service Splits
 - **Type:** REFACTOR | **Issues:** None
-- **Progress:** 0 / 8 tasks
+- **Progress:** 2 / 13 tasks
 
 ### [008] Allow Share Subfolders
 - **Type:** FEATURE | **Issues:** [srat#184](https://github.com/dianlight/srat/issues/184)
-- **Progress:** 0 / 10 tasks
-
-### [010] Configuration Wizard and Guided Help Tour
-- **Type:** FEATURE | **Issues:** [srat#116](https://github.com/dianlight/srat/issues/116), [srat#82](https://github.com/dianlight/srat/issues/82), [issue #116](https://github.com/dianlight/srat/issues/116)
-- **Progress:** 0 / 15 tasks
-
-### [015] Generic Live Command Execution Console via WebSocket
-- **Type:** FEATURE | **Issues:** None
-- **Progress:** 0 / 14 tasks
-
-### [016] Server mDNS Registration via WebSocket to Custom Component
-- **Type:** FEATURE | **Issues:** None
-- **Progress:** 0 / 13 tasks
-
-### [017] Automatic Home Assistant Custom Component Lifecycle Management
-- **Type:** FEATURE | **Issues:** None
-- **Progress:** 0 / 13 tasks
+- **Progress:** 0 / 16 tasks
 
 ### [020] Missing SambaNAS2 Addon Detection
 - **Type:** FEATURE | **Issues:** None
-- **Progress:** 0 / 10 tasks
+- **Progress:** 0 / 15 tasks
 
 ### [021] Samba Service Health Monitoring
 - **Type:** FEATURE | **Issues:** None
-- **Progress:** 0 / 10 tasks
+- **Progress:** 0 / 15 tasks
 
 ### [022] Disk Health Degradation Alerts
 - **Type:** FEATURE | **Issues:** None
-- **Progress:** 0 / 10 tasks
+- **Progress:** 0 / 15 tasks
 
 ### [023] HA SRAT Connectivity Loss Detection
 - **Type:** FEATURE | **Issues:** None
-- **Progress:** 0 / 10 tasks
+- **Progress:** 0 / 15 tasks
 
 ### [029] WebSocket Origin Validation and pprof Route Isolation
-- **Type:** FIX | **Issues:** None (security review 2026-04-28)
-- **Progress:** 0 / 6 tasks
-
-### [030] commandexec Snapshot Memory Leak and Busy-Wait Elimination
-- **Type:** FIX | **Issues:** None (performance review 2026-04-28)
-- **Progress:** 0 / 7 tasks
-
-### [031] Production Logging Safety — Body Logging and Secret Sanitization
-- **Type:** FIX | **Issues:** None (security review 2026-04-28)
-- **Progress:** 0 / 6 tasks
-
-### [032] WebSocket Reconnect Resilience and Frontend Safety Guards
-- **Type:** FIX | **Issues:** None (security/performance review 2026-04-28)
+- **Type:** FIX | **Issues:** None
 - **Progress:** 0 / 9 tasks
 
-### [033] Database Recovery Safety, HTTP Request Size Limits, and Goroutine Leak
-- **Type:** FIX | **Issues:** None (reliability review 2026-04-28)
+### [030] commandexec Snapshot Memory Leak and Busy-Wait Elimination
+- **Type:** FIX | **Issues:** None
+- **Progress:** 0 / 10 tasks
+
+### [031] Production Logging Safety — Body Logging and Secret Sanitization
+- **Type:** FIX | **Issues:** None
 - **Progress:** 0 / 8 tasks
 
-### [034] CRITICAL: Migration 14 Wrong Function Registration
-- **Type:** FIX | **Issues:** None (reliability review 2026-04-28) ⚠️ CRITICAL — fix immediately
-- **Progress:** 0 / 5 tasks
+### [032] WebSocket Reconnect Resilience and Frontend Safety Guards
+- **Type:** FIX | **Issues:** None
+- **Progress:** 0 / 15 tasks
+
+### [033] Database Recovery Safety, HTTP Request Size Limits, and Goroutine Leak
+- **Type:** FIX | **Issues:** None
+- **Progress:** 0 / 13 tasks
 
 ### [035] Upgrade & HDIdle Path Traversal, Timer Race, and Data Race
-- **Type:** FIX | **Issues:** None (security/reliability review 2026-04-28)
-- **Progress:** 0 / 8 tasks
+- **Type:** FIX | **Issues:** None
+- **Progress:** 0 / 13 tasks
 
 ### [036] Frontend Performance — NavBar Lazy Loading and Metrics Rendering
-- **Type:** REFACTOR | **Issues:** None (performance review 2026-04-28)
-- **Progress:** 0 / 10 tasks
+- **Type:** REFACTOR | **Issues:** None
+- **Progress:** 0 / 15 tasks
 
 ### [037] Frontend Data Correctness — isLoading Bug, Hook Rules, Password Exposure
-- **Type:** FIX | **Issues:** None (reliability/security review 2026-04-28)
-- **Progress:** 0 / 10 tasks
-
----
-
-*Report generated per SKILL.md instructions. Every task file in tasks is represented, with status inferred where missing. Progress percentages are rounded. "Next:" is shown for in-progress tasks. Issue links are clickable. Generation date: 2026-04-28.*
+- **Type:** FIX | **Issues:** None
+- **Progress:** 1 / 17 tasks

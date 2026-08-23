@@ -73,6 +73,20 @@
         "HA_AGENT_URL": "http://homeassistant2.local:8099",
         "HA_AGENT_KEY": "{env:HA2_VIBE_API_KEY}"
       }
+    },
+    "home-assistant-lab": {
+      "type": "local",
+      "command": ["uvx",
+        "--with", "mcp<2.0.0",
+        "mcp-proxy",
+        "--no-verify-ssl",
+        "--transport=streamablehttp",
+        "--stateless",
+        "https://homeassistant2.local/api/mcp"
+      ],
+      "environment": {
+        "API_ACCESS_TOKEN": "{env:HOMEASSISTANT2_API_KEY}"
+      }
     }
   }
 }

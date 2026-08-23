@@ -14,6 +14,7 @@ import (
 	"github.com/adelolmo/hd-idle/io"
 	"github.com/adelolmo/hd-idle/sgio"
 	sg "github.com/benmcclelland/sgio"
+	"github.com/patrickmn/go-cache"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 	"gorm.io/gorm"
@@ -42,6 +43,20 @@ const (
 // The spindownDisk path (spindownDisk) still uses sgio.StopAtaDevice directly
 // because an intentional spindown is required there.
 var ataProbeFn = sgio.CheckAtaDevice
+
+// sgOpenFn is used by CheckSGSupport to open a device as an SG (SCSI Generic)
+// device. It defaults to sg.OpenScsiDevice and exists as a package-level
+// variable so tests can stub it without real hardware.
+var sgOpenFn = sg.OpenScsiDevice
+
+const (
+	// hdidleSupportCacheTTL bounds how long a per-device CheckDeviceSupport
+	// result is reused. Device support is a stable hardware property, but a
+	// TTL is kept as a safety net.
+	hdidleSupportCacheTTL = 10 * time.Minute
+	// hdidleSupportCacheCleanup is the janitor interval for the support cache.
+	hdidleSupportCacheCleanup = 20 * time.Minute
+)
 
 // HDIdleServiceInterface provides methods for managing hard disk idle monitoring
 type HDIdleServiceInterface interface {
@@ -83,6 +98,12 @@ type HDIdleService struct {
 	diskStats        []*internalDiskState
 	lastNow          time.Time
 	converter        converter.DtoToDbomConverterImpl
+	// supportCache caches per-device CheckDeviceSupport results keyed by the
+	// resolved real device path. The probe issues raw SCSI commands (SG open +
+	// ATA PASS-THROUGH) which, on some USB bridges, cause the kernel to rescan
+	// partition tables and emit fresh udev events. Without this cache every
+	// hardware re-enumeration re-probes every disk and feeds a udev event storm.
+	supportCache *cache.Cache
 }
 
 type internalDiskState struct {
@@ -135,6 +156,7 @@ func NewHDIdleService(lc fx.Lifecycle, in HDIdleServiceParams) HDIdleServiceOut 
 		db:               in.DB,
 		eventBus:         in.EventBus,
 		converter:        converter.DtoToDbomConverterImpl{},
+		supportCache:     cache.New(hdidleSupportCacheTTL, hdidleSupportCacheCleanup),
 		config: &internalConfig{
 			Enabled:               false,
 			Devices:               map[string]dto.HDIdleDevice{},
@@ -517,6 +539,25 @@ func (s *HDIdleService) CheckDeviceSupport(blockPath string) (*dto.HDIdleDeviceS
 
 	name := s.getRealPathNotSymlink(blockPath)
 
+	// Per-device probe cache: the SG open + ATA PASS-THROUGH probes below are
+	// expensive side-effecting SCSI commands (they can trigger kernel
+	// partition-table rescans and new udev events). Cache the result keyed by
+	// the resolved real path so repeated enumerations reuse it. Only the
+	// successful-Lstat path is cached; early validation failures are cheap and
+	// left uncached.
+	cacheKey := "hdidle_support:" + name
+	if s.supportCache != nil {
+		if cached, ok := s.supportCache.Get(cacheKey); ok {
+			if sup, castOk := cached.(*dto.HDIdleDeviceSupport); castOk {
+				ret := *sup
+				ret.DevicePath = blockPath
+				tlog.DebugContext(s.ctx, "Returning cached HDIdle support for device", "device", name)
+				return &ret, nil
+			}
+			s.supportCache.Delete(cacheKey)
+		}
+	}
+
 	// Try to open the device as an SG device to check basic support
 	support.SupportsSCSI = s.CheckSGSupport(blockPath)
 
@@ -542,13 +583,18 @@ func (s *HDIdleService) CheckDeviceSupport(blockPath string) (*dto.HDIdleDeviceS
 		}
 	}
 
+	if s.supportCache != nil {
+		stored := *support
+		s.supportCache.SetDefault(cacheKey, &stored)
+	}
+
 	return support, nil
 }
 
 // CheckSGSupport checks if a device supports the SG (SCSI Generic) interface
 // by attempting to open it and verify the SG version
 func (s *HDIdleService) CheckSGSupport(devicePath string) bool {
-	f, err := sg.OpenScsiDevice(devicePath)
+	f, err := sgOpenFn(devicePath)
 	if err != nil {
 		tlog.TraceContext(s.ctx, "Failed to open device as SG device", "device", devicePath, "error", err)
 		return false

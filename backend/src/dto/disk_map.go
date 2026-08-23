@@ -1,49 +1,189 @@
 package dto
 
-import "gitlab.com/tozd/go/errors"
+import (
+	"maps"
+	"slices"
+	"sync"
+	"sync/atomic"
 
-type DiskMap map[string]*Disk
+	"gitlab.com/tozd/go/errors"
+)
+
+// DiskMap is a concurrency-safe map of disks keyed by disk ID.
+//
+// All methods are safe for concurrent use: mutation methods take the write
+// lock, read methods take the read lock. The zero value is usable, but prefer
+// NewDiskMap or NewDiskMapFrom for a pre-sized map.
+//
+// The refreshVersion counter is owned by DiskMap so that snapshot generation
+// and staleness checks share one atomic source of truth (see
+// NextRefreshVersion/CurrentRefreshVersion).
+type DiskMap struct {
+	mu             sync.RWMutex
+	entries        map[string]*Disk
+	refreshVersion atomic.Uint32
+}
+
+// NewDiskMap returns an empty, ready-to-use DiskMap.
+func NewDiskMap() *DiskMap {
+	return &DiskMap{entries: make(map[string]*Disk)}
+}
+
+// NewDiskMapFrom returns a DiskMap seeded with the given disks.
+// Disks with a nil or empty ID are skipped.
+func NewDiskMapFrom(disks ...*Disk) *DiskMap {
+	m := NewDiskMap()
+	for _, d := range disks {
+		if d == nil || d.Id == nil || *d.Id == "" {
+			continue
+		}
+		_ = m.AddOrUpdate(d)
+	}
+	return m
+}
+
+// Len returns the number of disks in the map.
+func (m *DiskMap) Len() int {
+	if m == nil {
+		return 0
+	}
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return len(m.entries)
+}
+
+// All returns a slice of all disks. The order is nondeterministic.
+func (m *DiskMap) All() []*Disk {
+	if m == nil {
+		return nil
+	}
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return slices.Collect(maps.Values(m.entries))
+}
+
+// DeepCopyAll returns a slice of deep copies of all disks. The order is
+// nondeterministic. Unlike All, the returned Disks own their nested maps, so
+// callers may iterate Partitions and mount-point maps outside the DiskMap lock
+// without racing a concurrent mutation.
+func (m *DiskMap) DeepCopyAll() []*Disk {
+	if m == nil {
+		return nil
+	}
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	out := make([]*Disk, 0, len(m.entries))
+	for _, d := range m.entries {
+		out = append(out, d.DeepCopy())
+	}
+	return out
+}
+
+// Snapshot returns a shallow copy of the entries map. Callers may freely
+// iterate and mutate the returned map without holding the lock; the *Disk
+// pointers are shared with the DiskMap.
+func (m *DiskMap) Snapshot() map[string]*Disk {
+	if m == nil {
+		return nil
+	}
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	out := make(map[string]*Disk, len(m.entries))
+	for id, d := range m.entries {
+		out[id] = d
+	}
+	return out
+}
+
+// Keys returns the disk IDs currently in the map. The order is nondeterministic.
+func (m *DiskMap) Keys() []string {
+	if m == nil {
+		return nil
+	}
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return slices.Collect(maps.Keys(m.entries))
+}
+
+// NextRefreshVersion atomically increments and returns the shared snapshot
+// version counter. Call it at the start of a snapshot refresh; stamp every
+// snapshot entity with the returned value.
+func (m *DiskMap) NextRefreshVersion() uint32 {
+	if m == nil {
+		return 0
+	}
+	return m.refreshVersion.Add(1)
+}
+
+// CurrentRefreshVersion atomically reads the shared snapshot version counter.
+func (m *DiskMap) CurrentRefreshVersion() uint32 {
+	if m == nil {
+		return 0
+	}
+	return m.refreshVersion.Load()
+}
 
 // AddOrUpdate inserts or updates a Disk in the map using its Id as the key.
-// It initializes the map if it is nil. Returns an error if the disk Id is nil or empty.
+// It initializes the map if it is nil. Returns an error if the receiver, the
+// disk, or the disk Id is nil or empty.
 func (m *DiskMap) AddOrUpdate(d *Disk) error {
+	if m == nil {
+		return errors.WithDetails(ErrorInvalidParameter, "Message", "disk map is nil")
+	}
+	if d == nil {
+		return errors.WithDetails(ErrorInvalidParameter, "Message", "disk is nil")
+	}
 	if d.Id == nil || *d.Id == "" {
 		return errors.WithDetails(ErrorInvalidParameter, "Message", "disk id is nil or empty")
 	}
-	//	if *m == nil {
-	//		*m = make(DiskMap)
-	//	}
-	(*m)[*d.Id] = d
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.entries == nil {
+		m.entries = make(map[string]*Disk)
+	}
+	m.entries[*d.Id] = d
 	return nil
 }
 
 // Remove deletes a Disk from the map by its id.
 // It returns true if the disk was present and removed, false otherwise.
 func (m *DiskMap) Remove(id string) bool {
-	if m == nil || *m == nil || id == "" {
+	if m == nil {
 		return false
 	}
-	if _, ok := (*m)[id]; ok {
-		delete(*m, id)
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.entries == nil {
+		return false
+	}
+	if _, ok := m.entries[id]; ok {
+		delete(m.entries, id)
 		return true
 	}
 	return false
 }
 
 // Get returns the Disk for the given id and a boolean indicating if it exists.
+// The returned pointer is the map slot: do not retain it across other DiskMap
+// calls, and treat mutations through it as a write operation.
 func (m *DiskMap) Get(id string) (*Disk, bool) {
-	if m == nil || *m == nil || id == "" {
+	if m == nil {
 		return nil, false
 	}
-	d, ok := (*m)[id]
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if m.entries == nil {
+		return nil, false
+	}
+	d, ok := m.entries[id]
 	return d, ok
 }
 
 // AddOrUpdateMountPoint inserts or updates a MountPointData in the specified partition of the specified disk.
 // The mount point is keyed by its Path field. Returns an error if inputs are invalid or the target disk/partition is missing.
 func (m *DiskMap) AddOrUpdateMountPoint(diskID, partitionID string, mpd MountPointData) error {
-	if m == nil || *m == nil {
-		return errors.WithDetails(ErrorNotFound, "Message", "disk map is nil or empty")
+	if m == nil {
+		return errors.WithDetails(ErrorNotFound, "Message", "disk map is nil")
 	}
 	if diskID == "" {
 		return errors.WithDetails(ErrorInvalidParameter, "Message", "disk id is empty")
@@ -55,7 +195,13 @@ func (m *DiskMap) AddOrUpdateMountPoint(diskID, partitionID string, mpd MountPoi
 		return errors.WithDetails(ErrorInvalidParameter, "Message", "mount point path is empty")
 	}
 
-	d, ok := (*m)[diskID]
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.entries == nil {
+		return errors.WithDetails(ErrorNotFound, "Message", "disk map is empty")
+	}
+
+	d, ok := m.entries[diskID]
 	if !ok {
 		return errors.WithDetails(ErrorNotFound, "Message", "disk not found", "DiskId", diskID)
 	}
@@ -84,17 +230,22 @@ func (m *DiskMap) AddOrUpdateMountPoint(diskID, partitionID string, mpd MountPoi
 
 	(*part.MountPointData)[mpd.Path] = mpd
 	(*d.Partitions)[partitionID] = part
-	(*m)[diskID] = d
+	m.entries[diskID] = d
 	return nil
 }
 
 // RemoveMountPoint deletes a MountPointData by path from the specified partition of the specified disk.
 // Returns true if the mount point existed and was removed.
 func (m *DiskMap) RemoveMountPoint(diskID, partitionID, path string) bool {
-	if m == nil || *m == nil || diskID == "" || partitionID == "" || path == "" {
+	if m == nil {
 		return false
 	}
-	d, ok := (*m)[diskID]
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.entries == nil || diskID == "" || partitionID == "" || path == "" {
+		return false
+	}
+	d, ok := m.entries[diskID]
 	if !ok || d.Partitions == nil {
 		return false
 	}
@@ -105,7 +256,7 @@ func (m *DiskMap) RemoveMountPoint(diskID, partitionID, path string) bool {
 	if _, ok := (*part.MountPointData)[path]; ok {
 		delete(*part.MountPointData, path)
 		(*d.Partitions)[partitionID] = part
-		(*m)[diskID] = d
+		m.entries[diskID] = d
 		return true
 	}
 	return false
@@ -114,8 +265,8 @@ func (m *DiskMap) RemoveMountPoint(diskID, partitionID, path string) bool {
 // AddPartition inserts or updates a Partition in the specified disk.
 // Returns an error if the disk is not found or the partition id is invalid.
 func (m *DiskMap) AddPartition(diskID string, p Partition) error {
-	if m == nil || *m == nil {
-		return errors.WithDetails(ErrorNotFound, "Message", "disk map is nil or empty")
+	if m == nil {
+		return errors.WithDetails(ErrorNotFound, "Message", "disk map is nil")
 	}
 	if diskID == "" {
 		return errors.WithDetails(ErrorInvalidParameter, "Message", "disk id is empty")
@@ -124,7 +275,13 @@ func (m *DiskMap) AddPartition(diskID string, p Partition) error {
 		return errors.WithDetails(ErrorInvalidParameter, "Message", "partition id is nil or empty")
 	}
 
-	d, ok := (*m)[diskID]
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.entries == nil {
+		return errors.WithDetails(ErrorNotFound, "Message", "disk map is empty")
+	}
+
+	d, ok := m.entries[diskID]
 	if !ok {
 		return errors.WithDetails(ErrorNotFound, "Message", "disk not found", "DiskId", diskID)
 	}
@@ -140,23 +297,28 @@ func (m *DiskMap) AddPartition(diskID string, p Partition) error {
 	}
 
 	(*d.Partitions)[*p.Id] = p
-	(*m)[diskID] = d
+	m.entries[diskID] = d
 	return nil
 }
 
 // RemovePartition deletes a Partition from the specified disk by partition id.
 // It returns true if the partition was present and removed, false otherwise.
 func (m *DiskMap) RemovePartition(diskID, partitionID string) bool {
-	if m == nil || *m == nil || diskID == "" || partitionID == "" {
+	if m == nil {
 		return false
 	}
-	d, ok := (*m)[diskID]
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.entries == nil || diskID == "" || partitionID == "" {
+		return false
+	}
+	d, ok := m.entries[diskID]
 	if !ok || d.Partitions == nil {
 		return false
 	}
 	if _, ok := (*d.Partitions)[partitionID]; ok {
 		delete(*d.Partitions, partitionID)
-		(*m)[diskID] = d
+		m.entries[diskID] = d
 		return true
 	}
 	return false
@@ -165,10 +327,15 @@ func (m *DiskMap) RemovePartition(diskID, partitionID string) bool {
 // GetPartition retrieves the specified partition from the given disk.
 // Returns the partition value and true if it exists; otherwise returns false.
 func (m *DiskMap) GetPartition(diskID, partitionID string) (Partition, bool) {
-	if m == nil || *m == nil || diskID == "" || partitionID == "" {
+	if m == nil {
 		return Partition{}, false
 	}
-	if d, ok := (*m)[diskID]; ok && d.Partitions != nil {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if m.entries == nil || diskID == "" || partitionID == "" {
+		return Partition{}, false
+	}
+	if d, ok := m.entries[diskID]; ok && d.Partitions != nil {
 		if p, ok := (*d.Partitions)[partitionID]; ok {
 			return p, true
 		}
@@ -178,15 +345,26 @@ func (m *DiskMap) GetPartition(diskID, partitionID string) (Partition, bool) {
 
 // GetMountPoint retrieves a mount point from the specified disk partition by path.
 // Returns the mount point data and true if it exists; otherwise returns false.
+// The returned pointer references a local copy: mutations through it do not
+// affect the DiskMap.
 func (m *DiskMap) GetMountPoint(diskID, partitionID, path string) (*MountPointData, bool) {
-	if path == "" {
+	if m == nil || path == "" {
 		return nil, false
 	}
-	partition, ok := m.GetPartition(diskID, partitionID)
-	if !ok || partition.MountPointData == nil {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if m.entries == nil || diskID == "" || partitionID == "" {
 		return nil, false
 	}
-	if mp, ok := (*partition.MountPointData)[path]; ok {
+	d, ok := m.entries[diskID]
+	if !ok || d.Partitions == nil {
+		return nil, false
+	}
+	part, ok := (*d.Partitions)[partitionID]
+	if !ok || part.MountPointData == nil {
+		return nil, false
+	}
+	if mp, ok := (*part.MountPointData)[path]; ok {
 		return &mp, true
 	}
 	return nil, false
@@ -194,11 +372,18 @@ func (m *DiskMap) GetMountPoint(diskID, partitionID, path string) (*MountPointDa
 
 // GetMountPointByPath searches all disks and partitions for a mount point matching the given path.
 // Returns the mount point data and true if found, otherwise returns false.
+// The returned pointer references a local copy: mutations through it do not
+// affect the DiskMap.
 func (m *DiskMap) GetMountPointByPath(path string) (*MountPointData, bool) {
-	if m == nil || *m == nil || path == "" {
+	if m == nil || path == "" {
 		return nil, false
 	}
-	for _, d := range *m {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if m.entries == nil {
+		return nil, false
+	}
+	for _, d := range m.entries {
 		if d.Partitions == nil {
 			continue
 		}
@@ -214,12 +399,20 @@ func (m *DiskMap) GetMountPointByPath(path string) (*MountPointData, bool) {
 	return nil, false
 }
 
+// GetAllMountPoints returns a slice of mount points across all disks and
+// partitions. The order is nondeterministic. Each returned pointer references
+// a local copy: mutations through them do not affect the DiskMap.
 func (m *DiskMap) GetAllMountPoints() []*MountPointData {
+	if m == nil {
+		return nil
+	}
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	var result []*MountPointData
-	if m == nil || *m == nil {
+	if m.entries == nil {
 		return result
 	}
-	for _, d := range *m {
+	for _, d := range m.entries {
 		if d.Partitions == nil {
 			continue
 		}
@@ -235,13 +428,41 @@ func (m *DiskMap) GetAllMountPoints() []*MountPointData {
 	return result
 }
 
+// GetMountPointsForPartition returns a slice of mount points belonging to the
+// given disk and partition only, unlike GetAllMountPoints which spans every
+// disk and partition. The order is nondeterministic. Each returned pointer
+// references a local copy: mutations through them do not affect the DiskMap.
+func (m *DiskMap) GetMountPointsForPartition(diskID, partitionID string) []*MountPointData {
+	if m == nil || diskID == "" || partitionID == "" {
+		return nil
+	}
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	var result []*MountPointData
+	if m.entries == nil {
+		return result
+	}
+	d, ok := m.entries[diskID]
+	if !ok || d.Partitions == nil {
+		return result
+	}
+	part, ok := (*d.Partitions)[partitionID]
+	if !ok || part.MountPointData == nil {
+		return result
+	}
+	for _, mp := range *part.MountPointData {
+		result = append(result, &mp)
+	}
+	return result
+}
+
 // AddMountPointShare sets the Share field on the mount point.
 // Extracts diskID, partitionID, and path from the share's MountPointData.
 // If partition info is nil in the share, searches existing mount points for the partition.
 // Returns an error if the share, mount point data, or disk/partition is not found.
 func (m *DiskMap) AddMountPointShare(share *SharedResource) (*Disk, error) {
-	if m == nil || *m == nil {
-		return nil, errors.WithDetails(ErrorNotFound, "Message", "disk map is nil or empty")
+	if m == nil {
+		return nil, errors.WithDetails(ErrorNotFound, "Message", "disk map is nil")
 	}
 	if share == nil {
 		return nil, errors.WithDetails(ErrorInvalidParameter, "Message", "share is nil")
@@ -251,6 +472,12 @@ func (m *DiskMap) AddMountPointShare(share *SharedResource) (*Disk, error) {
 	}
 	if share.MountPointData.Path == "" {
 		return nil, errors.WithDetails(ErrorInvalidParameter, "Message", "mount point path is empty")
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.entries == nil {
+		return nil, errors.WithDetails(ErrorNotFound, "Message", "disk map is empty")
 	}
 
 	path := share.MountPointData.Path
@@ -269,7 +496,7 @@ func (m *DiskMap) AddMountPointShare(share *SharedResource) (*Disk, error) {
 	} else {
 		// Search for the mount point in existing disks/partitions to find disk and partition info
 		found := false
-		for dID, d := range *m {
+		for dID, d := range m.entries {
 			if d.Partitions == nil {
 				continue
 			}
@@ -293,7 +520,7 @@ func (m *DiskMap) AddMountPointShare(share *SharedResource) (*Disk, error) {
 		}
 	}
 
-	d, ok := (*m)[diskID]
+	d, ok := m.entries[diskID]
 	if !ok {
 		return nil, errors.WithDetails(ErrorNotFound, "Message", "disk not found", "DiskId", diskID)
 	}
@@ -315,7 +542,7 @@ func (m *DiskMap) AddMountPointShare(share *SharedResource) (*Disk, error) {
 	mp.Share = share
 	(*part.MountPointData)[path] = mp
 	(*d.Partitions)[partitionID] = part
-	(*m)[diskID] = d
+	m.entries[diskID] = d
 	return d, nil
 }
 
@@ -323,10 +550,15 @@ func (m *DiskMap) AddMountPointShare(share *SharedResource) (*Disk, error) {
 // Searches all disks and partitions for a mount point with a matching share name.
 // Returns true if the mount point with the matching share was found and removed, false otherwise.
 func (m *DiskMap) RemoveMountPointShare(shareName string) (bool, *Disk) {
-	if m == nil || *m == nil || shareName == "" {
+	if m == nil {
 		return false, nil
 	}
-	for diskID, d := range *m {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.entries == nil || shareName == "" {
+		return false, nil
+	}
+	for diskID, d := range m.entries {
 		if d.Partitions == nil {
 			continue
 		}
@@ -339,7 +571,7 @@ func (m *DiskMap) RemoveMountPointShare(shareName string) (bool, *Disk) {
 					mp.Share = nil
 					(*part.MountPointData)[mpPath] = mp
 					(*d.Partitions)[partitionID] = part
-					(*m)[diskID] = d
+					m.entries[diskID] = d
 					return true, d
 				}
 			}
@@ -351,40 +583,52 @@ func (m *DiskMap) RemoveMountPointShare(shareName string) (bool, *Disk) {
 // AddHDIdleDevice sets the HDIdleDevice for the specified disk.
 // Returns an error if the disk map is nil, diskID is empty, or the disk is not found.
 func (m *DiskMap) AddHDIdleDevice(hdIdleDevice *HDIdleDevice) error {
-	if m == nil || *m == nil {
-		return errors.WithDetails(ErrorNotFound, "Message", "disk map is nil or empty")
+	if m == nil {
+		return errors.WithDetails(ErrorNotFound, "Message", "disk map is nil")
 	}
 	if hdIdleDevice.DiskId == "" {
 		return errors.WithDetails(ErrorInvalidParameter, "Message", "disk id is empty")
 	}
 
-	d, ok := (*m)[hdIdleDevice.DiskId]
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.entries == nil {
+		return errors.WithDetails(ErrorNotFound, "Message", "disk map is empty")
+	}
+
+	d, ok := m.entries[hdIdleDevice.DiskId]
 	if !ok {
 		return errors.WithDetails(ErrorNotFound, "Message", "disk not found", "DiskId", hdIdleDevice.DiskId)
 	}
 
 	d.HDIdleDevice = hdIdleDevice
-	(*m)[hdIdleDevice.DiskId] = d
+	m.entries[hdIdleDevice.DiskId] = d
 	return nil
 }
 
 // AddSmartInfo sets the SmartInfo for the specified disk.
 // Returns an error if the disk map is nil, diskID is empty, or the disk is not found.
 func (m *DiskMap) AddSmartInfo(smartInfo *SmartInfo) error {
-	if m == nil || *m == nil {
-		return errors.WithDetails(ErrorNotFound, "Message", "disk map is nil or empty")
+	if m == nil {
+		return errors.WithDetails(ErrorNotFound, "Message", "disk map is nil")
 	}
 	if smartInfo.DiskId == "" {
 		return errors.WithDetails(ErrorInvalidParameter, "Message", "disk id is empty")
 	}
 
-	d, ok := (*m)[smartInfo.DiskId]
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.entries == nil {
+		return errors.WithDetails(ErrorNotFound, "Message", "disk map is empty")
+	}
+
+	d, ok := m.entries[smartInfo.DiskId]
 	if !ok {
 		return errors.WithDetails(ErrorNotFound, "Message", "disk not found", "DiskId", smartInfo.DiskId)
 	}
 
 	d.SmartInfo = smartInfo
-	(*m)[smartInfo.DiskId] = d
+	m.entries[smartInfo.DiskId] = d
 	return nil
 }
 
@@ -412,11 +656,18 @@ func (m *DiskMap) GetPartitionDevicePath(partition *Partition) string {
 
 // GetPartitionByID searches all disks for a partition with the given ID.
 // Returns the partition, the disk ID it belongs to, and true if found; otherwise returns false.
+// The returned partition pointer references a local copy: mutations through it
+// do not affect the DiskMap.
 func (m *DiskMap) GetPartitionByID(partitionID string) (*Partition, string, bool) {
-	if m == nil || *m == nil || partitionID == "" {
+	if m == nil {
 		return nil, "", false
 	}
-	for diskID, disk := range *m {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if m.entries == nil || partitionID == "" {
+		return nil, "", false
+	}
+	for diskID, disk := range m.entries {
 		if disk.Partitions == nil {
 			continue
 		}

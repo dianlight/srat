@@ -119,10 +119,11 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 	}
 	hwser, errHw := h.haClient.GetHardwareInfoWithResponse(h.ctx)
 	if errHw != nil || hwser == nil {
-		if !errors.Is(errHw, dto.ErrorNotFound) {
-			return nil, errors.WithDetails(errHw, "message", "failed to get hardware info from HA Supervisor", "hwset", hwser)
+		if errors.Is(errHw, dto.ErrorNotFound) {
+			slog.DebugContext(h.ctx, "Hardware info not found, continuing with empty disk list")
+			return ret, nil
 		}
-		slog.DebugContext(h.ctx, "Hardware info not found, continuing with empty disk list")
+		return nil, errors.WithDetails(errHw, "message", "failed to get hardware info from HA Supervisor", "hwset", hwser)
 	}
 
 	if hwser.StatusCode() != 200 || hwser.JSON200 == nil || hwser.JSON200.Data == nil || hwser.JSON200.Data.Drives == nil {
@@ -265,8 +266,8 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 		if hwser.JSON200.Data.Devices != nil {
 			for deviceIdx := range *hwser.JSON200.Data.Devices {
 				device := &(*hwser.JSON200.Data.Devices)[deviceIdx]
-				if device.DevPath == nil || *device.DevPath == "" {
-					tlog.DebugContext(h.ctx, "Skipping device with nil or empty name", "drive_index", i, "drive_id", drive.Id, "device_index", deviceIdx)
+				if device.DevPath == nil || *device.DevPath == "" || device.Name == nil || *device.Name == "" || device.ById == nil || *device.ById == "" {
+					tlog.DebugContext(h.ctx, "Skipping device with nil or empty DevPath/Name/ById", "drive_index", i, "drive_id", drive.Id, "device_index", deviceIdx)
 					continue
 				}
 

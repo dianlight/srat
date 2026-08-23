@@ -55,7 +55,7 @@ func (suite *WsHandlerSuite) SetupTest() {
 			mock.Mock[service.ProblemServiceInterface],
 			mock.Mock[service.HomeAssistantServiceInterface],
 			mock.Mock[service.HaRootServiceInterface],
-			func() *dto.DiskMap { return &dto.DiskMap{} },
+			func() *dto.DiskMap { return dto.NewDiskMap() },
 			mock.Mock[service.ShareServiceInterface],
 			///mock.Mock[service.BroadcasterServiceInterface],
 		),
