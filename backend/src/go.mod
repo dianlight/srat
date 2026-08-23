@@ -35,6 +35,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/pressly/goose/v3 v3.29.0
 	github.com/prometheus/procfs v0.23.0
+	github.com/rclone/rclone v1.75.0
 	github.com/rs/cors v1.11.1
 	github.com/samber/slog-http v1.12.1
 	github.com/sergi/go-diff v1.4.0
