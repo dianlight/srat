@@ -35,6 +35,7 @@ These instructions are the concise, must-follow rules for working in SRAT. Keep 
 ## Frontend essentials
 
 - Use Bun toolchain (`frontend/`). Build outputs go to `backend/src/web/static`.
+- **Bun 1.4**: pinned in root `.mise.toml` + `frontend/package.json` (`packageManager`). Vitest runs on the Bun runtime via `bunx --bun vitest` (the mise test tasks already do this — ~2x faster end-to-end). Never combine `--bun` with `--coverage`: `@vitest/coverage-v8` report merging crashes under Bun; `//frontend:test:ci` runs coverage on the Node runtime.
 - **Do not** edit `frontend/src/store/sratApi.ts` or `backend/docs/openapi.*` directly—update Go and run `cd frontend && bun run gen`.
 - **Never** manually add types to `frontend/src/store/wsApi.ts`. All types must come from `sratApi.ts`. WS-only event payload types that have no REST endpoint need a doc-stub handler in `backend/src/api/system.go` (tagged `"system","internal"`).
 
