@@ -27,7 +27,7 @@ import (
 // AddonConfigWatcherServiceInterface is a nominal marker type used by the FX dependency injection container.
 // It has no methods; callers never interact with it directly — FX resolves the concrete *AddonConfigWatcherService
 // via fx.Invoke so the service lifecycle hooks are registered at startup.
-type AddonConfigWatcherServiceInterface interface{}
+type AddonConfigWatcherServiceInterface any
 
 // AddonConfigWatcherService watches for externally-initiated changes to the addon options file.
 //
@@ -430,9 +430,9 @@ func (s *AddonConfigWatcherService) emitChanged(path, hash string) {
 
 	if s.eventBus != nil {
 		s.eventBus.EmitAppConfig(events.AppConfigEvent{
-			Event: events.Event{Type: events.EventTypes.UPDATE},
-			Path:  path,
-			Hash:  hash,
+			Type: events.EventTypes.UPDATE,
+			Path: path,
+			Hash: hash,
 		})
 	}
 

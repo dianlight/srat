@@ -21,13 +21,13 @@ These instructions are the concise, must-follow rules for working in SRAT. Keep 
 
 ## Repo at a glance
 
-- **Languages**: Go 1.26 back-end, TypeScript React frontend (Bun), Python 3.12+ Home Assistant integration.
+- **Languages**: Go 1.27 back-end, TypeScript React frontend (Bun), Python 3.12+ Home Assistant integration.
 - **Architecture**: API handlers → services → generated GORM helpers → SQLite (embedded). Frontend uses MUI + RTK Query. Custom component is WebSocket‑only.
 
 ## back-end (Go) essentials
 
 - Use **context‑aware logging** (`slog.*Context`, `tlog.*Context`) when a real `context.Context` is already in scope. Never manufacture a context for logging.
-- Go 1.26 rules: use `new(expr)` for pointer values, use `any` (not `interface{}`), use `WaitGroup.Go`, prefer `errors.AsType[T]` (standard library).
+- Go 1.27 rules: use `new(expr)` for pointer values, use `any` (not `interface{}`), use `WaitGroup.Go`, prefer `errors.AsType[T]` (standard library), use the stdlib `uuid` package (not `github.com/google/uuid`) and `strings.CutLast` over manual `LastIndex` slicing.
 - Prefer direct persistence in services using `dbom` + GORM (and generated query helpers when available) over introducing new per-entity repository layers, unless a clear documented exception is required.
 - Use **generated converters** (`converter.<Type>ToDtoConverterImpl{}` from `converter/`) for all DTO↔DBOM mapping in services. Never write manual `toDTO`/`toDBOM` helper functions — they diverge silently from the generated impl.
 - Do **not** edit vendored code unless using the patch workflow (`backend/patches/` + `mise run //backend:patch`).
@@ -35,6 +35,7 @@ These instructions are the concise, must-follow rules for working in SRAT. Keep 
 ## Frontend essentials
 
 - Use Bun toolchain (`frontend/`). Build outputs go to `backend/src/web/static`.
+- **Bun 1.4**: pinned in root `.mise.toml` + `frontend/package.json` (`packageManager`). Vitest runs on the Bun runtime via `bunx --bun vitest` (the mise test tasks already do this — ~2x faster end-to-end). Never combine `--bun` with `--coverage`: `@vitest/coverage-v8` report merging crashes under Bun; `//frontend:test:ci` runs coverage on the Node runtime.
 - **Do not** edit `frontend/src/store/sratApi.ts` or `backend/docs/openapi.*` directly—update Go and run `cd frontend && bun run gen`.
 - **Never** manually add types to `frontend/src/store/wsApi.ts`. All types must come from `sratApi.ts`. WS-only event payload types that have no REST endpoint need a doc-stub handler in `backend/src/api/system.go` (tagged `"system","internal"`).
 

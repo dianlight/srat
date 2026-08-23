@@ -656,7 +656,7 @@ func CheckSambaUser(ctx context.Context, username, password string) error {
 // parseSmbPasswdNTHash extracts the NT hash field from a pdbedit -L -w output
 // line.  The smbpasswd format is: username:uid:LMHASH:NTHASH:flags:::
 func parseSmbPasswdNTHash(username, output string) (string, error) {
-	for _, line := range strings.Split(strings.TrimSpace(output), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(output), "\n") {
 		line = strings.TrimSpace(line)
 		if !strings.HasPrefix(line, username+":") {
 			continue

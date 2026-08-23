@@ -7,11 +7,11 @@ import (
 // HDIdleDevice represents per-device configuration for API
 type HDIdleDevice struct {
 	HDIdleDeviceSupport
-	DiskId         string        `json:"disk_id,omitempty"`                      // Unique and persistent id for drive.
-	IdleTime       time.Duration `json:"idle_time"`                              // 0 = use default
-	CommandType    HdidleCommand `json:"command_type,omitempty" enum:"scsi,ata"` // empty = use default
+	DiskId         string        `json:"disk_id,omitempty"`            // Unique and persistent id for drive.
+	IdleTime       time.Duration `json:"idle_time"`                    // 0 = use default
+	CommandType    HdidleCommand `json:"command_type" enum:"scsi,ata"` // empty = use default
 	PowerCondition uint8         `json:"power_condition"`
-	Enabled        HdidleEnabled `json:"enabled,omitempty" enum:"custom,no"`
+	Enabled        HdidleEnabled `json:"enabled" enum:"custom,no"`
 	// SuggestionIgnored is true when the user has dismissed the dashboard's
 	// "Enable HDIdle" suggestion for this disk; the badge will not appear again
 	// until cleared. Read/write via the per-disk endpoints.
@@ -26,9 +26,9 @@ type HDIdleDevice struct {
 type HDIdleDeviceStatus struct {
 	Name       string    `json:"name,omitempty"` // Resolved device name, e.g., "sda"
 	SpunDown   bool      `json:"spun_down"`
-	LastIOAt   time.Time `json:"last_io_at,omitempty"`   // ISO8601 timestamp
-	SpinDownAt time.Time `json:"spin_down_at,omitempty"` // ISO8601 timestamp
-	SpinUpAt   time.Time `json:"spin_up_at,omitempty"`   // ISO8601 timestamp
+	LastIOAt   time.Time `json:"last_io_at"`   // ISO8601 timestamp
+	SpinDownAt time.Time `json:"spin_down_at"` // ISO8601 timestamp
+	SpinUpAt   time.Time `json:"spin_up_at"`   // ISO8601 timestamp
 }
 
 // HDIdleDeviceSupport represents the HD idle support status for a device

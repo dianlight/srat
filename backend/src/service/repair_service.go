@@ -1,6 +1,8 @@
 package service
 
 import (
+	"uuid"
+
 	"context"
 	"fmt"
 	"maps"
@@ -9,7 +11,6 @@ import (
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/tlog"
-	"github.com/google/uuid"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 )
@@ -145,7 +146,7 @@ func (s *RepairService) Delete(repairID string) error {
 	s.dismissProblem(repairID)
 	if s.broadcaster != nil {
 		s.broadcaster.BroadcastMessage(dto.RepairCommandMessage{
-			CommandID: uuid.NewString(),
+			CommandID: uuid.New().String(),
 			RepairID:  repairID,
 			Action:    dto.RepairCommandActionDelete,
 		})

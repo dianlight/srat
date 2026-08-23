@@ -2,6 +2,7 @@ package filesystem
 
 import (
 	"context"
+	"maps"
 	"strings"
 	"sync"
 
@@ -294,9 +295,7 @@ func (a *NtfsAdapter) getLastUnmountedState(device string) (dto.FilesystemState,
 		copiedState.AdditionalInfo = make(map[string]any)
 	} else {
 		copiedInfo := make(map[string]any, len(copiedState.AdditionalInfo))
-		for key, value := range copiedState.AdditionalInfo {
-			copiedInfo[key] = value
-		}
+		maps.Copy(copiedInfo, copiedState.AdditionalInfo)
 		copiedState.AdditionalInfo = copiedInfo
 	}
 
@@ -313,9 +312,7 @@ func (a *NtfsAdapter) setLastUnmountedState(device string, state dto.FilesystemS
 		stateToStore.AdditionalInfo = make(map[string]any)
 	} else {
 		copiedInfo := make(map[string]any, len(stateToStore.AdditionalInfo))
-		for key, value := range stateToStore.AdditionalInfo {
-			copiedInfo[key] = value
-		}
+		maps.Copy(copiedInfo, stateToStore.AdditionalInfo)
 		stateToStore.AdditionalInfo = copiedInfo
 	}
 

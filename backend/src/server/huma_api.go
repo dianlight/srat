@@ -12,9 +12,7 @@ import (
 	"go.uber.org/fx"
 )
 
-type HumaRoute interface {
-	// HumaRoute(*huma.API) error
-}
+type HumaRoute any
 
 func NewHumaAPI(v struct {
 	fx.In
@@ -116,7 +114,7 @@ func NewHumaAPI(v struct {
 			continue
 		}
 		// Unwrap pointer and slice indirections to reach the element type.
-		for t.Kind() == reflect.Ptr || t.Kind() == reflect.Slice {
+		for t.Kind() == reflect.Pointer || t.Kind() == reflect.Slice {
 			t = t.Elem()
 		}
 		if t.Kind() == reflect.Struct {

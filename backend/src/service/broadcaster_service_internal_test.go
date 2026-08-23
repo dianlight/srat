@@ -15,8 +15,7 @@ import (
 )
 
 func TestBroadcasterDirtyDataDedupe_BroadcastsOnlyOnChange(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	eventBus := events.NewEventBus(ctx)
 	b := &BroadcasterService{
@@ -38,9 +37,9 @@ func TestBroadcasterDirtyDataDedupe_BroadcastsOnlyOnChange(t *testing.T) {
 	defer listener.Close()
 
 	tracker := dto.DataDirtyTracker{Users: true, Shares: false, Settings: true}
-	eventBus.EmitDirtyData(events.DirtyDataEvent{Event: events.Event{Type: events.EventTypes.UPDATE}, DataDirtyTracker: tracker})
-	eventBus.EmitDirtyData(events.DirtyDataEvent{Event: events.Event{Type: events.EventTypes.UPDATE}, DataDirtyTracker: tracker})
-	eventBus.EmitDirtyData(events.DirtyDataEvent{Event: events.Event{Type: events.EventTypes.UPDATE}, DataDirtyTracker: dto.DataDirtyTracker{Users: true, Shares: true, Settings: true}})
+	eventBus.EmitDirtyData(events.DirtyDataEvent{Type: events.EventTypes.UPDATE, DataDirtyTracker: tracker})
+	eventBus.EmitDirtyData(events.DirtyDataEvent{Type: events.EventTypes.UPDATE, DataDirtyTracker: tracker})
+	eventBus.EmitDirtyData(events.DirtyDataEvent{Type: events.EventTypes.UPDATE, DataDirtyTracker: dto.DataDirtyTracker{Users: true, Shares: true, Settings: true}})
 
 	received := 0
 	timeout := time.After(250 * time.Millisecond)

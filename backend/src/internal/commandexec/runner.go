@@ -1,18 +1,20 @@
 package commandexec
 
 import (
+	"uuid"
+
 	"bufio"
 	"context"
 	"errors"
 	"io"
 	"os/exec"
+	"slices"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
-	"github.com/google/uuid"
 )
 
 const bufferSize = 500
@@ -78,7 +80,7 @@ func (s *Service) StartWithInputQuiet(ctx context.Context, commandID, label, std
 }
 
 func (s *Service) startWithInput(ctx context.Context, quiet bool, commandID, label, stdinContent, command string, args ...string) (string, error) {
-	executionID := uuid.NewString()
+	executionID := uuid.New().String()
 	startedAt := time.Now().UnixMilli()
 
 	snapshot := dto.CommandExecutionSnapshot{
@@ -162,12 +164,12 @@ func (s *Service) startWithInput(ctx context.Context, quiet bool, commandID, lab
 			snapshot.ExitCode = exitCode
 			snapshot.Success = success
 			snapshot.Error = errMsg
-			for i := len(snapshot.Lines) - 1; i >= 0; i-- {
-				lineCopy := snapshot.Lines[i]
+			for _, lineCopy := range slices.Backward(snapshot.Lines) {
+
 				if lastOutputLine == nil {
 					lastOutputLine = &lineCopy
 				}
-				if snapshot.Lines[i].Channel == dto.CommandOutputChannelStderr {
+				if lineCopy.Channel == dto.CommandOutputChannelStderr {
 					lastOutputLine = &lineCopy
 					break
 				}
@@ -381,7 +383,7 @@ func (s *Service) emitCommandEvent(eventType events.EventType, message dto.Comma
 		return
 	}
 	s.eventBus.EmitCommandExecution(events.CommandExecutionEvent{
-		Event:   events.Event{Type: eventType},
+		Type:    eventType,
 		Message: message,
 	})
 }

@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -953,10 +954,8 @@ func detectBestServerVariantWithLinkerCheck(targetDir string, updatePkg *UpdateP
 				"/lib/x86_64-linux-gnu/libc.so.6",  // Debian/Ubuntu x86_64
 				"/lib/aarch64-linux-gnu/libc.so.6", // Debian/Ubuntu aarch64
 			}
-			for _, indicator := range glibcIndicators {
-				if linkerExists(indicator) {
-					return "srat-server-glib"
-				}
+			if slices.ContainsFunc(glibcIndicators, linkerExists) {
+				return "srat-server-glib"
 			}
 		}
 	}

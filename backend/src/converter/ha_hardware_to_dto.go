@@ -155,12 +155,12 @@ func filesystemsToPartitionsMap(source *[]hardware.Filesystem) (*map[string]dto.
 // Returns the UUID prefixed with "by-uuid-" if the ID cannot be found.
 func filesystemUUIDToPartitionID(uuid *string) (*string, error) {
 	// First, resolve the UUID to the actual device path
-	if strings.HasPrefix(*uuid, "by-id-") {
-		trimmed := strings.TrimPrefix(*uuid, "by-id-")
+	if after, ok := strings.CutPrefix(*uuid, "by-id-"); ok {
+		trimmed := after
 		return &trimmed, nil
 	}
-	if strings.HasPrefix(*uuid, "by-uuid-") {
-		trimmed := strings.TrimPrefix(*uuid, "by-uuid-")
+	if after, ok := strings.CutPrefix(*uuid, "by-uuid-"); ok {
+		trimmed := after
 		uuid = &trimmed
 	}
 	uuidPath := filepath.Join("/dev/disk/by-uuid/", *uuid)
@@ -201,12 +201,12 @@ func filesystemUUIDToPartitionID(uuid *string) (*string, error) {
 
 func partitionIDToFilesystemUUID(id *string) (*string, error) {
 	// First, resolve the UUID to the actual device path
-	if strings.HasPrefix(*id, "by-uuid-") {
-		trimmed := strings.TrimPrefix(*id, "by-uuid-")
+	if after, ok := strings.CutPrefix(*id, "by-uuid-"); ok {
+		trimmed := after
 		return &trimmed, nil
 	}
-	if strings.HasPrefix(*id, "by-id-") {
-		trimmed := strings.TrimPrefix(*id, "by-id-")
+	if after, ok := strings.CutPrefix(*id, "by-id-"); ok {
+		trimmed := after
 		id = &trimmed
 	}
 	uuidPath := filepath.Join("/dev/disk/by-id/", *id)

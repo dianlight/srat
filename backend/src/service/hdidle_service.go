@@ -486,9 +486,7 @@ func (s *HDIdleService) SaveDeviceConfig(device dto.HDIdleDevice) errors.E {
 	}
 
 	s.eventBus.EmitPower(events.PowerEvent{
-		Event: events.Event{
-			Type: events.EventTypes.UPDATE,
-		},
+		Type:      events.EventTypes.UPDATE,
 		Kind:      events.PowerEventKindConfig,
 		PowerInfo: device,
 	})
@@ -946,9 +944,7 @@ func (s *HDIdleService) updateDiskState(name string, reads, writes uint64, now t
 		ds.IsInitialized = true
 
 		s.eventBus.EmitPower(events.PowerEvent{
-			Event: events.Event{
-				Type: events.EventTypes.UPDATE,
-			},
+			Type:        events.EventTypes.UPDATE,
 			Kind:        events.PowerEventKindStatus,
 			PowerStatus: ds.HDIdleDeviceStatus,
 		})
@@ -978,12 +974,10 @@ func (s *HDIdleService) initDiskState(name string, reads, writes uint64, now tim
 	}
 
 	return &internalDiskState{
-		HDIdleDeviceStatus: dto.HDIdleDeviceStatus{
-			Name:     name,
-			LastIOAt: now,
-			SpinUpAt: now,
-			SpunDown: false,
-		},
+		Name:            name,
+		LastIOAt:        now,
+		SpinUpAt:        now,
+		SpunDown:        false,
 		Writes:          writes,
 		Reads:           reads,
 		IdleTime:        idle,

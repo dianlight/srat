@@ -118,7 +118,7 @@ func (suite *WsMessageSenderSuite) TestSendPing_ConcurrentWithSendFunc_NilConnec
 	errCh := make(chan error, goroutines*2)
 	var wg sync.WaitGroup
 
-	for i := 0; i < goroutines; i++ {
+	for i := range goroutines {
 		i := i
 		wg.Go(func() {
 			errCh <- suite.wsMessageSender.SendPing()
@@ -291,11 +291,11 @@ func (suite *WsMessageSenderSuite) TestSendFunc_ConcurrentWrites() {
 	messages := make(chan ws.Message, numGoroutines*messagesPerGoroutine)
 
 	// Start multiple goroutines that generate messages
-	for i := 0; i < numGoroutines; i++ {
+	for i := range numGoroutines {
 		wg.Add(1)
 		go func(goroutineID int) {
 			defer wg.Done()
-			for j := 0; j < messagesPerGoroutine; j++ {
+			for j := range messagesPerGoroutine {
 				msg := ws.Message{
 					ID: goroutineID*messagesPerGoroutine + j,
 					Data: dto.HealthPing{
@@ -329,7 +329,7 @@ func (suite *WsMessageSenderSuite) TestSendFunc_ConcurrentWritesSameEventType() 
 	messageIDs := make(map[int]bool)
 	var mapMutex sync.Mutex
 
-	for i := 0; i < numGoroutines; i++ {
+	for i := range numGoroutines {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
@@ -362,7 +362,7 @@ func (suite *WsMessageSenderSuite) TestSendFunc_RapidFireMessages() {
 	const messageCount = 1000
 	messages := make([]ws.Message, messageCount)
 
-	for i := 0; i < messageCount; i++ {
+	for i := range messageCount {
 		messages[i] = ws.Message{
 			ID: i,
 			Data: dto.HealthPing{
@@ -441,7 +441,7 @@ func (suite *WsMessageSenderSuite) TestSendFunc_ConcurrentDifferentEventTypes() 
 	receivedTypes := make(map[string]int)
 	var mapMutex sync.Mutex
 
-	for i := 0; i < iterations; i++ {
+	for i := range iterations {
 		for _, eventType := range eventTypes {
 			wg.Add(1)
 			go func(et string, iteration int) {
@@ -512,7 +512,7 @@ func (suite *WsMessageSenderSuite) TestSendFunc_ConcurrentDifferentEventTypes() 
 func (suite *WsMessageSenderSuite) TestSendFunc_LargePayload() {
 	// Create a large list of shares
 	shares := make([]dto.SharedResource, 1000)
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		shares[i] = dto.SharedResource{
 			Name: fmt.Sprintf("share-%d with some additional comment text", i),
 		}

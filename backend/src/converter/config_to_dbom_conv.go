@@ -70,15 +70,15 @@ func (c *ConfigToDbomConverterImpl) PropertiesToConfig(source dbom.Properties, t
 	for _, prop := range source {
 		newvalue := reflect.ValueOf(target).Elem().FieldByName(prop.Key)
 		if newvalue.IsValid() && newvalue.CanSet() {
-			if prop.Value == nil || (reflect.TypeOf(prop.Value).Kind() == reflect.Ptr && reflect.ValueOf(prop.Value).IsNil()) {
+			if prop.Value == nil || (reflect.TypeOf(prop.Value).Kind() == reflect.Pointer && reflect.ValueOf(prop.Value).IsNil()) {
 				newvalue.Set(reflect.Zero(newvalue.Type()))
 			} else if reflect.ValueOf(prop.Value).CanConvert(newvalue.Type()) {
 				newvalue.Set(reflect.ValueOf(prop.Value).Convert(newvalue.Type()))
-			} else if newvalue.Kind() == reflect.Ptr && newvalue.Type().Elem().Kind() == reflect.TypeOf(prop.Value).Kind() {
+			} else if newvalue.Kind() == reflect.Pointer && newvalue.Type().Elem().Kind() == reflect.TypeOf(prop.Value).Kind() {
 				ptr := reflect.New(newvalue.Type().Elem())
 				ptr.Elem().Set(reflect.ValueOf(prop.Value).Convert(newvalue.Type().Elem()))
 				newvalue.Set(ptr)
-			} else if reflect.TypeOf(prop.Value).Kind() == reflect.Ptr && reflect.TypeOf(prop.Value).Elem().Kind() == newvalue.Kind() {
+			} else if reflect.TypeOf(prop.Value).Kind() == reflect.Pointer && reflect.TypeOf(prop.Value).Elem().Kind() == newvalue.Kind() {
 				newvalue.Set(reflect.ValueOf(prop.Value).Elem())
 			} else {
 				if newvalue.Kind() == reflect.Slice {

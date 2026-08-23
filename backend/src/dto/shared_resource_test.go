@@ -23,8 +23,8 @@ func TestSharedResourceCreation(t *testing.T) {
 			name: "Resource with basic fields",
 			resource: SharedResource{
 				Name:     "media-share",
-				Disabled: boolPtr(false),
-				GuestOk:  boolPtr(true),
+				Disabled: new(false),
+				GuestOk:  new(true),
 			},
 		},
 		{
@@ -41,8 +41,8 @@ func TestSharedResourceCreation(t *testing.T) {
 			name: "Resource with time machine enabled",
 			resource: SharedResource{
 				Name:               "backup-share",
-				TimeMachine:        boolPtr(true),
-				TimeMachineMaxSize: stringPtr("1TB"),
+				TimeMachine:        new(true),
+				TimeMachineMaxSize: new("1TB"),
 			},
 		},
 		{
@@ -66,7 +66,7 @@ func TestSharedResourceCreation(t *testing.T) {
 			name: "Resource with recycle bin",
 			resource: SharedResource{
 				Name:       "recycled-share",
-				RecycleBin: boolPtr(true),
+				RecycleBin: new(true),
 			},
 		},
 		{
@@ -195,10 +195,13 @@ func TestSharedResourceStatusIsValidSerialized(t *testing.T) {
 }
 
 // Helper functions
+//
+//go:fix inline
 func boolPtr(b bool) *bool {
-	return &b
+	return new(b)
 }
 
+//go:fix inline
 func stringPtr(s string) *string {
-	return &s
+	return new(s)
 }

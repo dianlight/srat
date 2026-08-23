@@ -1,11 +1,12 @@
 package events
 
 import (
+	"uuid"
+
 	"context"
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal/ctxkeys"
-	"github.com/google/uuid"
 	"github.com/prometheus/procfs"
 )
 

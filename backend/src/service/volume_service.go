@@ -170,9 +170,7 @@ func NewVolumeService(
 				slog.WarnContext(ctx, "Failed to remove share from mount point in cache", "share", se.Share.Name)
 			} else {
 				if err := p.eventBus.EmitDisk(events.DiskEvent{
-					Event: events.Event{
-						Type: events.EventTypes.UPDATE,
-					},
+					Type: events.EventTypes.UPDATE,
 					Disk: disk,
 				}); err != nil {
 					slog.WarnContext(ctx, "Failed to emit disk update event after removing share from mount point", "share", se.Share.Name, "err", err)
@@ -187,9 +185,7 @@ func NewVolumeService(
 				return nil
 			}
 			if err := p.eventBus.EmitDisk(events.DiskEvent{
-				Event: events.Event{
-					Type: events.EventTypes.UPDATE,
-				},
+				Type: events.EventTypes.UPDATE,
 				Disk: disk,
 			}); err != nil {
 				slog.WarnContext(ctx, "Failed to emit disk update event after adding/updating share in mount point", "share", se.Share.Name, "err", err)
@@ -446,7 +442,7 @@ func (ms *VolumeService) UnmountVolume(path string, force bool) errors.E {
 		slog.DebugContext(ms.ctx, "Found mount point as HAMounted", "path", path)
 		md.IsInvalid = true
 		_ = ms.eventBus.EmitShare(events.ShareEvent{
-			Event: events.Event{Type: events.EventTypes.REMOVE},
+			Type:  events.EventTypes.REMOVE,
 			Share: md.Share,
 		})
 	} else if !ok {
@@ -950,8 +946,8 @@ func (self *VolumeService) handleFilesystemTaskEvent(ctx context.Context, e even
 	}
 
 	if err := self.eventBus.EmitDisk(events.DiskEvent{
-		Event: events.Event{Type: events.EventTypes.UPDATE},
-		Disk:  disk,
+		Type: events.EventTypes.UPDATE,
+		Disk: disk,
 	}); err != nil {
 		slog.WarnContext(ctx, "Failed to emit disk update event after format refresh", "device", e.Task.Device, "err", err)
 	}
@@ -1080,7 +1076,7 @@ func (self *VolumeService) syncPartitionMountData(ctx context.Context, disk *dto
 			}
 			if !oldstate {
 				_ = self.eventBus.EmitMountPoint(events.MountPointEvent{
-					Event:      events.Event{Type: events.EventTypes.UPDATE},
+					Type:       events.EventTypes.UPDATE,
 					MountPoint: mountPoint,
 				})
 			}
@@ -1128,7 +1124,7 @@ func (self *VolumeService) syncPartitionMountData(ctx context.Context, disk *dto
 				continue
 			}
 			_ = self.eventBus.EmitMountPoint(events.MountPointEvent{
-				Event:      events.Event{Type: events.EventTypes.ADD},
+				Type:       events.EventTypes.ADD,
 				MountPoint: &mountPoint,
 			})
 			continue
@@ -1159,7 +1155,7 @@ func (self *VolumeService) syncPartitionMountData(ctx context.Context, disk *dto
 			}
 			if oldtstate || (mountPoint.IsToMountAtStartup != nil && *mountPoint.IsToMountAtStartup) {
 				_ = self.eventBus.EmitMountPoint(events.MountPointEvent{
-					Event:      events.Event{Type: events.EventTypes.UPDATE},
+					Type:       events.EventTypes.UPDATE,
 					MountPoint: mountPoint,
 				})
 			}
@@ -1384,7 +1380,7 @@ func (ms *VolumeService) PatchMountPointSettings(root string, path string, patch
 		}
 	}
 	_ = ms.eventBus.EmitMountPoint(events.MountPointEvent{
-		Event:      events.Event{Type: events.EventTypes.UPDATE},
+		Type:       events.EventTypes.UPDATE,
 		MountPoint: &currentDto,
 	})
 	return &currentDto, nil

@@ -151,7 +151,7 @@ func TestHealthRunLoopInternal(t *testing.T) {
 	b := &fakeBroadcaster{}
 
 	h := &HealthHanler{
-		HealthPing:             dto.HealthPing{Alive: true},
+		Alive:                  true,
 		state:                  state,
 		ctx:                    ctx,
 		OutputEventsInterleave: 20 * time.Millisecond,
@@ -163,12 +163,10 @@ func TestHealthRunLoopInternal(t *testing.T) {
 		sambaService:           &fakeSamba{},
 	}
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		// run returns when context is canceled
 		_ = h.run()
-	}()
+	})
 
 	// give it a few cycles
 	time.Sleep(120 * time.Millisecond)

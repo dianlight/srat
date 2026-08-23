@@ -15,8 +15,7 @@ import (
 )
 
 // HaWsServiceInterface defines callbacks for Home Assistant lifecycle events
-type HaWsServiceInterface interface {
-}
+type HaWsServiceInterface any
 
 // HaWsService is a lightweight service that subscribes to HA start/stop events
 type HaWsService struct {
@@ -108,9 +107,7 @@ func (s *HaWsService) onHaStarted() {
 	s.state.HACoreReady = true
 	s.subscribeToHaEvents()
 	s.EventBus.EmitHomeAssistant(events.HomeAssistantEvent{
-		Event: events.Event{
-			Type: events.EventTypes.START,
-		},
+		Type: events.EventTypes.START,
 	})
 }
 
@@ -120,9 +117,7 @@ func (s *HaWsService) onHaStopped() {
 	s.state.HACoreReady = false
 	s.unsubscribeFromHaEvents()
 	s.EventBus.EmitHomeAssistant(events.HomeAssistantEvent{
-		Event: events.Event{
-			Type: events.EventTypes.STOP,
-		},
+		Type: events.EventTypes.STOP,
 	})
 }
 
@@ -132,9 +127,7 @@ func (s *HaWsService) onHaConnected() {
 	s.state.HACoreReady = true
 	s.subscribeToHaEvents()
 	s.EventBus.EmitHomeAssistant(events.HomeAssistantEvent{
-		Event: events.Event{
-			Type: events.EventTypes.START,
-		},
+		Type: events.EventTypes.START,
 	})
 }
 
@@ -144,9 +137,7 @@ func (s *HaWsService) onHaDisconnected() {
 	s.state.HACoreReady = false
 	s.unsubscribeFromHaEvents()
 	s.EventBus.EmitHomeAssistant(events.HomeAssistantEvent{
-		Event: events.Event{
-			Type: events.EventTypes.STOP,
-		},
+		Type: events.EventTypes.STOP,
 	})
 }
 

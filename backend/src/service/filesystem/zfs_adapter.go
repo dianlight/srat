@@ -126,9 +126,8 @@ func (a *ZfsAdapter) GetState(ctx context.Context, device string) (dto.Filesyste
 		IsClean:          false,
 		HasErrors:        false,
 		StateDescription: "Unknown (pool-level checks required)",
-	}
 
-	state.IsMounted = a.isDeviceMounted(device)
+		IsMounted: a.isDeviceMounted(device)}
 
 	return state, nil
 }

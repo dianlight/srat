@@ -331,9 +331,7 @@ func (suite *EventPropagationTestSuite) TestMountPointEventPropagation() {
 		IsMounted: true,
 	}
 	_ = suite.eventBus.EmitMountPoint(events.MountPointEvent{
-		Event: events.Event{
-			Type: events.EventTypes.UPDATE,
-		},
+		Type:       events.EventTypes.UPDATE,
 		MountPoint: mountPoint,
 	})
 
@@ -374,9 +372,7 @@ func (suite *EventPropagationTestSuite) TestDiskEventPropagation() {
 		Model: new("Test Disk"),
 	}
 	suite.eventBus.EmitDisk(events.DiskEvent{
-		Event: events.Event{
-			Type: events.EventTypes.ADD,
-		},
+		Type: events.EventTypes.ADD,
 		Disk: disk,
 	})
 
@@ -431,9 +427,7 @@ func (suite *EventPropagationTestSuite) TestMultipleListenersReceiveSameEvent() 
 		Name: "broadcast-test",
 	}
 	_ = suite.eventBus.EmitShare(events.ShareEvent{
-		Event: events.Event{
-			Type: events.EventTypes.ADD,
-		},
+		Type:  events.EventTypes.ADD,
 		Share: share,
 	})
 
@@ -546,7 +540,7 @@ func (suite *EventPropagationTestSuite) TestConcurrentEventPropagation() {
 	defer unsubscribe3()
 
 	// Action: Emit multiple events concurrently
-	for i := 0; i < numEmissions; i++ {
+	for i := range numEmissions {
 		go func(idx int) {
 			_ = suite.eventBus.EmitShare(events.ShareEvent{
 				Share: &dto.SharedResource{Name: "share-" + string(rune(idx))},
@@ -655,9 +649,7 @@ func (suite *EventPropagationTestSuite) TestDiskEventEmits() {
 		Partitions: &partitions,
 	}
 	suite.eventBus.EmitDisk(events.DiskEvent{
-		Event: events.Event{
-			Type: events.EventTypes.ADD,
-		},
+		Type: events.EventTypes.ADD,
 		Disk: disk,
 	})
 
@@ -693,9 +685,7 @@ func (suite *EventPropagationTestSuite) TestSettingEventPropagation() {
 
 	// Action: Emit a setting event
 	suite.eventBus.EmitSetting(events.SettingEvent{
-		Event: events.Event{
-			Type: events.EventTypes.UPDATE,
-		},
+		Type:    events.EventTypes.UPDATE,
 		Setting: &dto.Settings{},
 	})
 
