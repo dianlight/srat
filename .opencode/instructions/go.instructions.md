@@ -167,7 +167,7 @@ Particularly useful for optional pointer fields in JSON/protobuf.
 - Define interfaces close to where they're used, not where they're implemented
 - Don't export interfaces unless necessary
 - In `backend/src/service/filesystem`, declare filesystem aliases on the adapter via `GetAliasNames()` / `baseAdapter.aliasNames` rather than hardcoding alias switches in `Registry`; keep the registry generic so new filesystem variants are added by updating the adapter only
-- When backend handlers or services mutate partition or disk metadata without forcing a hardware refresh, also update the shared `*dto.DiskMap` and emit the matching disk/partition event so `/api/volumes` and live UI subscribers do not serve stale cached data
+- When backend handlers or services mutate partition or disk metadata without forcing a hardware refresh, also update the shared `*dto.DiskMap` and emit the matching disk/partition event so `/api/volumes` and live UI subscribers do not serve stale cached data. Emit only AFTER the state mutation completes: the event bus dispatches listeners synchronously (`maniartech/signals` SyncSignal), so listeners read shared state inline during emit — emitting first guarantees stale payloads (#971)
 
 ### Service Compatibility Bridges
 
