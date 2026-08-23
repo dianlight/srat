@@ -219,8 +219,8 @@ func (a *Ext4Adapter) GetLabel(ctx context.Context, device string) (string, erro
 	}
 
 	// Parse the output to find the label
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(output, "\n")
+	for line := range lines {
 		if strings.HasPrefix(line, "Filesystem volume name:") {
 			parts := strings.SplitN(line, ":", 2)
 			if len(parts) == 2 {
@@ -270,8 +270,8 @@ func (a *Ext4Adapter) GetState(ctx context.Context, device string) (dto.Filesyst
 	}
 
 	// Parse the output to determine filesystem state
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(output, "\n")
+	for line := range lines {
 		if strings.HasPrefix(line, "Filesystem state:") {
 			parts := strings.SplitN(line, ":", 2)
 			if len(parts) == 2 {

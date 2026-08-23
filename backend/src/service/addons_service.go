@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"maps"
 	"net/http"
 	"sort"
 	"strconv"
@@ -196,9 +197,7 @@ func (s *AddonsService) GetAppConfig(ctx context.Context) (*dto.AppConfigData, e
 	}
 
 	runtimeConfig := make(map[string]any)
-	for key, value := range configResp.JSON200.Data {
-		runtimeConfig[key] = value
-	}
+	maps.Copy(runtimeConfig, configResp.JSON200.Data)
 
 	requiresRestart := hasConfigDrift(options, runtimeConfig)
 

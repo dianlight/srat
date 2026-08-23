@@ -200,12 +200,12 @@ func (a *BtrfsAdapter) GetLabel(ctx context.Context, device string) (string, err
 
 	// Parse the output to find the label
 	// Format: Label: 'mylabel'  uuid: ...
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(output, "\n")
+	for line := range lines {
 		if strings.Contains(line, "Label:") {
 			// Extract label from the line
-			if idx := strings.Index(line, "Label:"); idx != -1 {
-				labelPart := line[idx+6:] // Skip "Label:"
+			if _, after, ok := strings.Cut(line, "Label:"); ok {
+				labelPart := after // Skip "Label:"
 				labelPart = strings.TrimSpace(labelPart)
 
 				// Label is in single quotes or is 'none'

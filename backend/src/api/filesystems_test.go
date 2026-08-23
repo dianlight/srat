@@ -295,7 +295,7 @@ func (suite *FilesystemHandlerSuite) TestFormatPartition_Success() {
 		mock.Any[dto.FormatOptions](),
 	)).ThenReturn(formatResult, nil)
 
-	resp := suite.testAPI.Post("/filesystem/format", map[string]interface{}{
+	resp := suite.testAPI.Post("/filesystem/format", map[string]any{
 		"partitionId":    partitionID,
 		"filesystemType": fsType,
 		"label":          label,
@@ -313,7 +313,7 @@ func (suite *FilesystemHandlerSuite) TestFormatPartition_Success() {
 func (suite *FilesystemHandlerSuite) TestFormatPartition_PartitionNotFound() {
 	// diskMap is empty by default (no partitions found)
 
-	resp := suite.testAPI.Post("/filesystem/format", map[string]interface{}{
+	resp := suite.testAPI.Post("/filesystem/format", map[string]any{
 		"partitionId":    "non-existent",
 		"filesystemType": "ext4",
 	})
@@ -351,7 +351,7 @@ func (suite *FilesystemHandlerSuite) TestFormatPartition_UnsupportedFilesystem()
 	// Populate disk map with test disk
 	suite.diskMap.AddOrUpdate(disk)
 
-	resp := suite.testAPI.Post("/filesystem/format", map[string]interface{}{
+	resp := suite.testAPI.Post("/filesystem/format", map[string]any{
 		"partitionId":    partitionID,
 		"filesystemType": "unknown-fs",
 	})
@@ -395,7 +395,7 @@ func (suite *FilesystemHandlerSuite) TestCheckPartition_Success() {
 		mock.Any[dto.CheckOptions](),
 	)).ThenReturn(checkResult, nil)
 
-	resp := suite.testAPI.Post("/filesystem/check", map[string]interface{}{
+	resp := suite.testAPI.Post("/filesystem/check", map[string]any{
 		"partitionId": partitionID,
 		"autoFix":     true,
 	})
@@ -435,7 +435,7 @@ func (suite *FilesystemHandlerSuite) TestAbortCheckPartition_Success() {
 		mock.Any[string](),
 	)).ThenReturn(nil)
 
-	resp := suite.testAPI.Post("/filesystem/check/abort", map[string]interface{}{
+	resp := suite.testAPI.Post("/filesystem/check/abort", map[string]any{
 		"partitionId": partitionID,
 	})
 
@@ -574,7 +574,7 @@ func (suite *FilesystemHandlerSuite) TestSetPartitionLabel_Success() {
 	})
 	defer unsubscribe()
 
-	resp := suite.testAPI.Put("/filesystem/label", map[string]interface{}{
+	resp := suite.testAPI.Put("/filesystem/label", map[string]any{
 		"partitionId": partitionID,
 		"label":       newLabel,
 	})

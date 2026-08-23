@@ -13,8 +13,8 @@ import (
 // a pre-populated dto.HealthPing. This avoids DI/lifecycle complexity and
 // focuses on the handler behaviour.
 func TestHealthHandlers_simple(t *testing.T) {
-	h := api.HealthHanler{}
-	h.HealthPing = dto.HealthPing{Alive: true}
+	h := api.HealthHanler{
+		HealthPing: dto.HealthPing{Alive: true}}
 
 	ping, err := h.HealthCheckHandler(context.Background(), &struct{}{})
 	if err != nil {

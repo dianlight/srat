@@ -235,9 +235,7 @@ func (s *UserService) CreateUser(userDto dto.User) (*dto.User, error) {
 	}
 
 	s.eventBus.EmitUser(events.UserEvent{
-		Event: events.Event{
-			Type: events.EventTypes.ADD,
-		},
+		Type: events.EventTypes.ADD,
 		User: &createdUserDto,
 	})
 
@@ -278,9 +276,7 @@ func (s *UserService) UpdateUser(currentUsername string, userDto dto.User) (*dto
 	}
 
 	s.eventBus.EmitUser(events.UserEvent{
-		Event: events.Event{
-			Type: events.EventTypes.UPDATE,
-		},
+		Type: events.EventTypes.UPDATE,
 		User: &updatedUserDto,
 	})
 
@@ -356,9 +352,7 @@ func (s *UserService) UpdateAdminUser(userDto dto.User) (*dto.User, error) {
 		return nil, errors.Wrap(err, "failed to convert updated admin DBOM to DTO")
 	}
 	s.eventBus.EmitUser(events.UserEvent{
-		Event: events.Event{
-			Type: events.EventTypes.UPDATE,
-		},
+		Type: events.EventTypes.UPDATE,
 		User: &updatedAdminDto,
 	})
 	return &updatedAdminDto, nil
@@ -379,9 +373,7 @@ func (s *UserService) DeleteUser(username string) error {
 	}
 
 	s.eventBus.EmitUser(events.UserEvent{
-		Event: events.Event{
-			Type: events.EventTypes.REMOVE,
-		},
+		Type: events.EventTypes.REMOVE,
 		User: &dto.User{Username: username},
 	})
 	return nil

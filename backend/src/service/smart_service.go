@@ -446,9 +446,7 @@ func (s *smartService) StartSelfTest(ctx context.Context, deviceId string, testT
 	// Start the self-test using the smartmontools bindings
 	if err := s.client.RunSelfTestWithProgress(ctx, devicePath, testType.String(), func(progress int, status string) {
 		s.eventBus.EmitSmart(events.SmartEvent{
-			Event: events.Event{
-				Type: events.EventTypes.UPDATE,
-			},
+			Type: events.EventTypes.UPDATE,
 			SmartTestStatus: dto.SmartTestStatus{
 				TestType:        testType.String(),
 				Running:         true,
@@ -468,9 +466,7 @@ func (s *smartService) StartSelfTest(ctx context.Context, deviceId string, testT
 	// Emit a final completion event so the frontend always receives Running=false
 	// after the test finishes (RunSelfTestWithProgress only emits Running=true events).
 	s.eventBus.EmitSmart(events.SmartEvent{
-		Event: events.Event{
-			Type: events.EventTypes.UPDATE,
-		},
+		Type: events.EventTypes.UPDATE,
 		SmartTestStatus: dto.SmartTestStatus{
 			TestType:        testType.String(),
 			Running:         false,
@@ -633,9 +629,7 @@ func (s *smartService) EnableSMART(ctx context.Context, deviceId string) errors.
 	smartInfoDto.DiskId = deviceId
 
 	s.eventBus.EmitSmart(events.SmartEvent{
-		Event: events.Event{
-			Type: events.EventTypes.UPDATE,
-		},
+		Type:      events.EventTypes.UPDATE,
 		SmartInfo: *smartInfoDto,
 	})
 
@@ -687,9 +681,7 @@ func (s *smartService) DisableSMART(ctx context.Context, deviceId string) errors
 	smartInfoDto.DiskId = deviceId
 
 	s.eventBus.EmitSmart(events.SmartEvent{
-		Event: events.Event{
-			Type: events.EventTypes.UPDATE,
-		},
+		Type:      events.EventTypes.UPDATE,
 		SmartInfo: *smartInfoDto,
 	})
 

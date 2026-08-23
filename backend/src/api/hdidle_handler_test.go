@@ -135,10 +135,10 @@ func (suite *HDIdleHandlerSuite) TestGetConfigSuccess() {
 	suite.labModeOn()
 	diskID := "sda"
 	expected := &dto.HDIdleDevice{
-		HDIdleDeviceSupport: dto.HDIdleDeviceSupport{DevicePath: "/dev/" + diskID},
-		IdleTime:            time.Duration(300),
-		CommandType:         dto.HdidleCommands.SCSICOMMAND,
-		Enabled:             dto.HdidleEnableds.CUSTOMENABLED,
+		DevicePath:  "/dev/" + diskID,
+		IdleTime:    time.Duration(300),
+		CommandType: dto.HdidleCommands.SCSICOMMAND,
+		Enabled:     dto.HdidleEnableds.CUSTOMENABLED,
 	}
 	mock.When(suite.mockHDIdleService.ResolveDevicePath(diskID)).ThenReturn("/dev/"+diskID, nil)
 	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Any[string]())).ThenReturn(expected, nil)
@@ -326,8 +326,8 @@ func (suite *HDIdleHandlerSuite) TestIgnoreSuggestionPersists() {
 	diskID := "sda"
 	mock.When(suite.mockHDIdleService.ResolveDevicePath(diskID)).ThenReturn("/dev/"+diskID, nil)
 	mock.When(suite.mockHDIdleService.GetDeviceConfig(mock.Any[string]())).ThenReturn(&dto.HDIdleDevice{
-		HDIdleDeviceSupport: dto.HDIdleDeviceSupport{DevicePath: "/dev/" + diskID},
-		Enabled:             dto.HdidleEnableds.NOENABLED,
+		DevicePath: "/dev/" + diskID,
+		Enabled:    dto.HdidleEnableds.NOENABLED,
 	}, nil)
 	mock.When(suite.mockHDIdleService.SaveDeviceConfig(mock.Any[dto.HDIdleDevice]())).ThenReturn(nil)
 

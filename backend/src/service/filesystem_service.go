@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"maps"
 	"regexp"
 	"sort"
 	"strings"
@@ -237,9 +238,7 @@ func NewFilesystemService(
 
 	// Build allKnownFlagsByName from standard flags and adapter flags
 	allKnownFlagsByName := make(map[string]dto.MountFlag, len(defaultStandardMountFlags))
-	for k, v := range stdFlagsByName {
-		allKnownFlagsByName[k] = v
-	}
+	maps.Copy(allKnownFlagsByName, stdFlagsByName)
 	for _, fsType := range orderedTypes {
 		fsFlags := fsSpecificMountFlags[fsType]
 		for _, f := range fsFlags {
@@ -446,9 +445,9 @@ func (s *FilesystemService) SyscallDataToMountFlag(data string) ([]dto.MountFlag
 		return result, nil
 	}
 
-	options := strings.Split(data, ",")
+	options := strings.SplitSeq(data, ",")
 
-	for _, opt := range options {
+	for opt := range options {
 		opt = strings.TrimSpace(opt)
 		if opt == "" {
 			continue
@@ -579,7 +578,7 @@ func (s *FilesystemService) FormatPartition(ctx context.Context, devicePath, fsT
 		// Emit start event
 		if s.eventBus != nil {
 			s.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
-				Event: events.Event{Type: events.EventTypes.START},
+				Type: events.EventTypes.START,
 				Task: &dto.FilesystemTask{
 					Device:         devicePath,
 					Operation:      "format",
@@ -624,7 +623,7 @@ func (s *FilesystemService) FormatPartition(ctx context.Context, devicePath, fsT
 				}
 
 				s.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
-					Event: events.Event{Type: eventType},
+					Type: eventType,
 					Task: &dto.FilesystemTask{
 						Device:         devicePath,
 						Operation:      "format",
@@ -649,7 +648,7 @@ func (s *FilesystemService) FormatPartition(ctx context.Context, devicePath, fsT
 			// Emit failure event
 			if s.eventBus != nil {
 				s.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
-					Event: events.Event{Type: events.EventTypes.ERROR},
+					Type: events.EventTypes.ERROR,
 					Task: &dto.FilesystemTask{
 						Device:         devicePath,
 						Operation:      "format",
@@ -672,7 +671,7 @@ func (s *FilesystemService) FormatPartition(ctx context.Context, devicePath, fsT
 
 			if s.eventBus != nil {
 				s.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
-					Event: events.Event{Type: events.EventTypes.STOP},
+					Type: events.EventTypes.STOP,
 					Task: &dto.FilesystemTask{
 						Device:         devicePath,
 						Operation:      "format",
@@ -733,7 +732,7 @@ func (s *FilesystemService) CheckPartition(ctx context.Context, devicePath, fsTy
 		// Emit start event
 		if s.eventBus != nil {
 			s.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
-				Event: events.Event{Type: events.EventTypes.START},
+				Type: events.EventTypes.START,
 				Task: &dto.FilesystemTask{
 					Device:         devicePath,
 					Operation:      "check",
@@ -778,7 +777,7 @@ func (s *FilesystemService) CheckPartition(ctx context.Context, devicePath, fsTy
 				}
 
 				s.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
-					Event: events.Event{Type: eventType},
+					Type: eventType,
 					Task: &dto.FilesystemTask{
 						Device:         devicePath,
 						Operation:      "check",
@@ -799,7 +798,7 @@ func (s *FilesystemService) CheckPartition(ctx context.Context, devicePath, fsTy
 			if errors.Is(checkErr, context.Canceled) || opCtx.Err() == context.Canceled {
 				if s.eventBus != nil {
 					s.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
-						Event: events.Event{Type: events.EventTypes.STOP},
+						Type: events.EventTypes.STOP,
 						Task: &dto.FilesystemTask{
 							Device:         devicePath,
 							Operation:      "check",
@@ -822,7 +821,7 @@ func (s *FilesystemService) CheckPartition(ctx context.Context, devicePath, fsTy
 			// Emit failure event
 			if s.eventBus != nil {
 				s.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
-					Event: events.Event{Type: events.EventTypes.ERROR},
+					Type: events.EventTypes.ERROR,
 					Task: &dto.FilesystemTask{
 						Device:         devicePath,
 						Operation:      "check",
@@ -845,7 +844,7 @@ func (s *FilesystemService) CheckPartition(ctx context.Context, devicePath, fsTy
 			// Emit success event
 			if s.eventBus != nil {
 				s.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
-					Event: events.Event{Type: events.EventTypes.STOP},
+					Type: events.EventTypes.STOP,
 					Task: &dto.FilesystemTask{
 						Device:         devicePath,
 						Operation:      "check",

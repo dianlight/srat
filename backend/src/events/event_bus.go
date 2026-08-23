@@ -17,11 +17,11 @@ import (
 	"gitlab.com/tozd/go/errors"
 )
 
-var keyCounter uint64
+var keyCounter atomic.Uint64
 
 // generateKey generates a unique key for event listeners
 func generateKey() string {
-	return fmt.Sprintf("listener_%d", atomic.AddUint64(&keyCounter, 1))
+	return fmt.Sprintf("listener_%d", keyCounter.Add(1))
 }
 
 // formatWithoutPointerAddresses returns a human-readable string of v where:
@@ -93,7 +93,7 @@ func writeValue(b *strings.Builder, rv reflect.Value, seen map[uintptr]bool, dep
 		b.WriteString("{")
 		n := rv.NumField()
 		first := true
-		for i := 0; i < n; i++ {
+		for i := range n {
 			tf := rv.Type().Field(i)
 			// Skip unexported fields we can't safely interface
 			if tf.PkgPath != "" { // unexported
@@ -114,7 +114,7 @@ func writeValue(b *strings.Builder, rv reflect.Value, seen map[uintptr]bool, dep
 		b.WriteString(rv.Type().String())
 		b.WriteString("{")
 		l := rv.Len()
-		for i := 0; i < l; i++ {
+		for i := range l {
 			if i > 0 {
 				b.WriteString(", ")
 			}

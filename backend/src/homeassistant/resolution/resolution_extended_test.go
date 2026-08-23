@@ -191,9 +191,9 @@ func TestSuggestion_ManualAction(t *testing.T) {
 }
 
 func TestResolutionInfo_AllFields(t *testing.T) {
-	checks := []Check{{Enabled: ptrBool(true)}}
-	issues := []Issue{{Type: ptrString("test_issue")}}
-	suggestions := []Suggestion{{Auto: ptrBool(true)}}
+	checks := []Check{{Enabled: new(true)}}
+	issues := []Issue{{Type: new("test_issue")}}
+	suggestions := []Suggestion{{Auto: new(true)}}
 	unhealthy := []string{"component1", "component2"}
 	unsupported := []string{"old_addon"}
 
@@ -314,10 +314,13 @@ func TestClient_RequestEditorFn(t *testing.T) {
 }
 
 // Helper functions
+//
+//go:fix inline
 func ptrBool(b bool) *bool {
-	return &b
+	return new(b)
 }
 
+//go:fix inline
 func ptrString(s string) *string {
-	return &s
+	return new(s)
 }

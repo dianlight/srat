@@ -143,7 +143,7 @@ func (suite *VolumeServiceTestSuite) TestEmitMountPointWithoutTypeDefaultsToAddo
 	}
 
 	err := suite.eventBus.EmitMountPoint(events.MountPointEvent{
-		Event:      events.Event{Type: events.EventTypes.UPDATE},
+		Type:       events.EventTypes.UPDATE,
 		MountPoint: &mountPoint,
 	})
 	suite.Require().NoError(err)
@@ -251,7 +251,7 @@ func (suite *VolumeServiceTestSuite) TestFormatSuccessEventRefreshesPartitionCac
 	defer unsubscribe()
 
 	suite.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
-		Event: events.Event{Type: events.EventTypes.STOP},
+		Type: events.EventTypes.STOP,
 		Task: &dto.FilesystemTask{
 			Device:         devicePath,
 			Operation:      "format",
