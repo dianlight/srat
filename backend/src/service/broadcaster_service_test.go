@@ -108,7 +108,7 @@ func (suite *BroadcasterServiceTestSuite) TestFilesystemTaskEvent_IsBroadcastToW
 
 emitFilesystemTask:
 	suite.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
-		Event: events.Event{Type: events.EventTypes.STOP},
+		Type: events.EventTypes.STOP,
 		Task: &dto.FilesystemTask{
 			Device:         "/dev/test",
 			Operation:      "check",
@@ -286,8 +286,8 @@ func (suite *BroadcasterServiceEventMappingTestSuite) TestDiskEvent_BroadcastsVo
 
 	// Emit disk event
 	suite.eventBus.EmitDisk(events.DiskEvent{
-		Event: events.Event{Type: events.EventTypes.ADD},
-		Disk:  &dto.Disk{Id: new("d1")},
+		Type: events.EventTypes.ADD,
+		Disk: &dto.Disk{Id: new("d1")},
 	})
 
 	select {
@@ -309,7 +309,7 @@ func (suite *BroadcasterServiceEventMappingTestSuite) TestShareEvent_BroadcastsS
 	// Emit share event
 	share := &dto.SharedResource{Name: "share-1"}
 	_ = suite.eventBus.EmitShare(events.ShareEvent{
-		Event: events.Event{Type: events.EventTypes.ADD},
+		Type:  events.EventTypes.ADD,
 		Share: share,
 	})
 
@@ -335,7 +335,7 @@ func (suite *BroadcasterServiceEventMappingTestSuite) TestMountPointEvent_Broadc
 	// Emit mount point event
 	mp := &dto.MountPointData{Path: "/mnt/x", IsMounted: true}
 	_ = suite.eventBus.EmitMountPoint(events.MountPointEvent{
-		Event:      events.Event{Type: events.EventTypes.UPDATE},
+		Type:       events.EventTypes.UPDATE,
 		MountPoint: mp,
 	})
 

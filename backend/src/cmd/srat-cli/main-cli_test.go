@@ -130,7 +130,6 @@ func packageDir(t *testing.T) string {
 
 func TestParseCommandValid(t *testing.T) {
 	for _, cmd := range []string{"start", "stop", "upgrade", "version", "hdidle"} {
-		cmd := cmd
 		t.Run(cmd, func(t *testing.T) {
 			result, err := parseCommand([]string{cmd})
 			if err != nil {

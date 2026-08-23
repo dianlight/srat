@@ -103,32 +103,30 @@ type SharedResourceFromFrontend struct {
 func (suite *ShareHandlerSuite) TestCreateShareSuccessFull() {
 	input := SharedResourceFromFrontend{
 		OrgName: "TestOrg",
-		SharedResource: dto.SharedResource{
-			Name: "UPDATER",
-			Users: []dto.User{
-				{
-					Username: "homeassistant",
-					Password: new(dto.NewSecret("changeme!")),
-					IsAdmin:  true,
-					RwShares: []string{"addon_configs", "config", "addons", "ssl", "share", "backup", "media", "EFI"},
-				},
+		Name:    "UPDATER",
+		Users: []dto.User{
+			{
+				Username: "homeassistant",
+				Password: new(dto.NewSecret("changeme!")),
+				IsAdmin:  true,
+				RwShares: []string{"addon_configs", "config", "addons", "ssl", "share", "backup", "media", "EFI"},
 			},
-			RoUsers:     []dto.User{},
-			TimeMachine: new(false),
-			Usage:       "none",
-			VetoFiles:   []string{},
-			Disabled:    new(false),
-			MountPointData: &dto.MountPointData{
-				Path: "/mnt/Updater",
-				//PathHash:           "5e9b1c4e4951a06eb81659f8b0835cee0d7e0334",
-				Type:               "ADDON",
-				FSType:             new("exfat"),
-				Flags:              nil,
-				CustomFlags:        nil,
-				DeviceId:           "sdb2",
-				IsMounted:          true,
-				IsToMountAtStartup: new(true),
-			},
+		},
+		RoUsers:     []dto.User{},
+		TimeMachine: new(false),
+		Usage:       "none",
+		VetoFiles:   []string{},
+		Disabled:    new(false),
+		MountPointData: &dto.MountPointData{
+			Path: "/mnt/Updater",
+			//PathHash:           "5e9b1c4e4951a06eb81659f8b0835cee0d7e0334",
+			Type:               "ADDON",
+			FSType:             new("exfat"),
+			Flags:              nil,
+			CustomFlags:        nil,
+			DeviceId:           "sdb2",
+			IsMounted:          true,
+			IsToMountAtStartup: new(true),
 		},
 	}
 	expectedShare := &dto.SharedResource{Name: "UPDATER", Users: []dto.User{
@@ -1089,38 +1087,36 @@ func (suite *ShareHandlerSuite) TestCreateShareWithExFATVolume() {
 	timeMachineSupport := dto.TimeMachineSupports.UNSUPPORTED
 	input := SharedResourceFromFrontend{
 		OrgName: "CAROLA",
-		SharedResource: dto.SharedResource{
-			Name: "CAROLA",
-			Users: []dto.User{
-				{
-					Username: "homeassistant",
-					Password: new(dto.NewSecret("changeme!")),
-					IsAdmin:  true,
-				},
+		Name:    "CAROLA",
+		Users: []dto.User{
+			{
+				Username: "homeassistant",
+				Password: new(dto.NewSecret("changeme!")),
+				IsAdmin:  true,
 			},
-			RoUsers:            []dto.User{},
-			RecycleBin:         &recycleBin,
-			GuestOk:            &guestOk,
-			TimeMachineMaxSize: &timeMachineMaxSize,
-			Usage:              "media",
-			VetoFiles:          []string{"._*", ".DS_Store", "Thumbs.db", "icon?", ".Trashes"},
-			Disabled:           &disabled,
-			MountPointData: &dto.MountPointData{
-				DiskLabel: &diskLabel,
-				DiskSize:  new(uint64(2096874127360)),
-				Path:      "/mnt/Carola",
-				//PathHash:           "0551e312d059cae36f7d0007201d49f5d001f562",
-				Root:               "/mnt/Carola",
-				Type:               "ADDON",
-				FSType:             new("exfat"),
-				Flags:              &dto.MountFlags{{Name: "nodev"}},
-				CustomFlags:        nil,
-				DeviceId:           "usb-Flash_Disk_3.0_7966051146147389472-0:0-part2",
-				IsMounted:          isMounted,
-				IsToMountAtStartup: &isToMountAtStartup,
-				IsWriteSupported:   &isWriteSupported,
-				TimeMachineSupport: &timeMachineSupport,
-			},
+		},
+		RoUsers:            []dto.User{},
+		RecycleBin:         &recycleBin,
+		GuestOk:            &guestOk,
+		TimeMachineMaxSize: &timeMachineMaxSize,
+		Usage:              "media",
+		VetoFiles:          []string{"._*", ".DS_Store", "Thumbs.db", "icon?", ".Trashes"},
+		Disabled:           &disabled,
+		MountPointData: &dto.MountPointData{
+			DiskLabel: &diskLabel,
+			DiskSize:  new(uint64(2096874127360)),
+			Path:      "/mnt/Carola",
+			//PathHash:           "0551e312d059cae36f7d0007201d49f5d001f562",
+			Root:               "/mnt/Carola",
+			Type:               "ADDON",
+			FSType:             new("exfat"),
+			Flags:              &dto.MountFlags{{Name: "nodev"}},
+			CustomFlags:        nil,
+			DeviceId:           "usb-Flash_Disk_3.0_7966051146147389472-0:0-part2",
+			IsMounted:          isMounted,
+			IsToMountAtStartup: &isToMountAtStartup,
+			IsWriteSupported:   &isWriteSupported,
+			TimeMachineSupport: &timeMachineSupport,
 		},
 	}
 

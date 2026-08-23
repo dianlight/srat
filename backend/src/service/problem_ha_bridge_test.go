@@ -67,7 +67,7 @@ func (suite *ProblemHABridgeSuite) TestConnectedWarningCreatesPersistentNotifica
 
 	suite.state.HAWsComponent = &dto.HomeAssistantComponentConnection{Component: dto.HomeAssistantComponentSRAT}
 	suite.events.EmitProblem(events.ProblemEvent{
-		Event: events.Event{Type: events.EventTypes.ADD},
+		Type: events.EventTypes.ADD,
 		Problem: &dto.Problem{
 			ProblemKey:   "problem.warning",
 			Title:        "Warning title",
@@ -96,7 +96,7 @@ func (suite *ProblemHABridgeSuite) TestDisconnectedErrorCreatesPersistentNotific
 
 	suite.state.HAWsComponent = nil
 	suite.events.EmitProblem(events.ProblemEvent{
-		Event: events.Event{Type: events.EventTypes.ADD},
+		Type: events.EventTypes.ADD,
 		Problem: &dto.Problem{
 			ProblemKey:   "problem.error",
 			Title:        "Error title",
@@ -117,7 +117,7 @@ func (suite *ProblemHABridgeSuite) TestDisconnectedErrorCreatesPersistentNotific
 func (suite *ProblemHABridgeSuite) TestConnectedErrorDoesNotCreatePersistentNotification() {
 	suite.state.HAWsComponent = &dto.HomeAssistantComponentConnection{Component: dto.HomeAssistantComponentSRAT}
 	suite.events.EmitProblem(events.ProblemEvent{
-		Event: events.Event{Type: events.EventTypes.ADD},
+		Type: events.EventTypes.ADD,
 		Problem: &dto.Problem{
 			ProblemKey:   "problem.critical",
 			Title:        "Critical title",
@@ -151,7 +151,7 @@ func (suite *ProblemHABridgeSuite) TestOfflineQueueFlushesWhenHABecomesReady() {
 
 	suite.state.HACoreReady = false
 	suite.events.EmitProblem(events.ProblemEvent{
-		Event: events.Event{Type: events.EventTypes.ADD},
+		Type: events.EventTypes.ADD,
 		Problem: &dto.Problem{
 			ProblemKey:   "problem.queued",
 			Title:        "Queued title",
@@ -164,7 +164,7 @@ func (suite *ProblemHABridgeSuite) TestOfflineQueueFlushesWhenHABecomesReady() {
 
 	suite.state.HACoreReady = true
 	suite.events.EmitProblem(events.ProblemEvent{
-		Event: events.Event{Type: events.EventTypes.ADD},
+		Type: events.EventTypes.ADD,
 		Problem: &dto.Problem{
 			ProblemKey:   "problem.live",
 			Title:        "Live title",

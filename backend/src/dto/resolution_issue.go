@@ -11,6 +11,6 @@ type ResolutionIssue struct {
 	Suggestion  string    `json:"suggestion,omitempty"`
 	Unhealthy   bool      `json:"unhealthy"`
 	Unsupported bool      `json:"unsupported"`
-	CreatedAt   time.Time `json:"created_at,omitempty"`
-	UpdatedAt   time.Time `json:"updated_at,omitempty"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }

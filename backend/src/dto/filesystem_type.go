@@ -75,7 +75,7 @@ func (self *MountFlags) Scan(value any) error {
 			}
 		}
 	case string:
-		for _, flag := range strings.Split(value, ",") {
+		for flag := range strings.SplitSeq(value, ",") {
 			if !strings.Contains(flag, "=") {
 				_ = self.Add(MountFlag{
 					Name:       flag,

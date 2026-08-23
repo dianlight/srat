@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/dianlight/srat/dto"
@@ -72,11 +73,11 @@ func (self *VolumeHandler) MountVolume(ctx context.Context, input *struct {
 		if errors.Is(errE, dto.ErrorMountFail) {
 			tlog.ErrorContext(ctx, "Failed to mount volume", "mount_path", mount_data.Path, "error", errE)
 			if errE.Details() != nil {
-				var errMessage string
+				var errMessage strings.Builder
 				for key, value := range errE.Details() {
-					errMessage += fmt.Sprintf("%s: %v\n", key, value)
+					errMessage.WriteString(fmt.Sprintf("%s: %v\n", key, value))
 				}
-				return nil, huma.Error422UnprocessableEntity(errMessage, errE)
+				return nil, huma.Error422UnprocessableEntity(errMessage.String(), errE)
 			} else {
 				return nil, huma.Error422UnprocessableEntity("Failed to mount volume", errE)
 			}

@@ -3,6 +3,7 @@ package urlutil
 import (
 	"fmt"
 	"net/url"
+	"slices"
 )
 
 // ValidateURL checks if a URL is safe to request by verifying it uses HTTPS
@@ -18,10 +19,8 @@ func ValidateURL(urlStr string, allowedHosts []string) error {
 	}
 
 	host := u.Hostname()
-	for _, allowed := range allowedHosts {
-		if host == allowed {
-			return nil
-		}
+	if slices.Contains(allowedHosts, host) {
+		return nil
 	}
 
 	return fmt.Errorf("untrusted host: %s", host)

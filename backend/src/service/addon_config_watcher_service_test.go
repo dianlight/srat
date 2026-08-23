@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"io"
+	"maps"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -124,9 +125,7 @@ func (m *mockAddonInfoClient) GetAppInfoWithResponse(ctx context.Context, addon 
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	optionsCopy := make(map[string]any, len(m.options))
-	for key, value := range m.options {
-		optionsCopy[key] = value
-	}
+	maps.Copy(optionsCopy, m.options)
 
 	return &apps.GetAppInfoResponse{
 		HTTPResponse: &http.Response{StatusCode: http.StatusOK},
@@ -304,11 +303,9 @@ func (s *AddonConfigWatcherServiceSuite) TestWatchViaFsnotify_DetectsWrite() {
 	}
 
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		svc.watchViaFsnotify()
-	}()
+	})
 
 	// Give the watcher time to register the file watch.
 	time.Sleep(100 * time.Millisecond)
@@ -368,11 +365,9 @@ func (s *AddonConfigWatcherServiceSuite) TestWatchViaSupervisorEvents_RetriesUnt
 	}
 
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		svc.watchViaSupervisorEvents()
-	}()
+	})
 
 	s.Require().Eventually(func() bool {
 		return wsClient.Attempts() >= 2
@@ -496,11 +491,9 @@ func (s *AddonConfigWatcherServiceSuite) TestWatchViaFsnotify_MockWatcher_Deboun
 	}
 
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		svc.watchViaFsnotify()
-	}()
+	})
 
 	newContent := []byte(`{"workgroup":"NEW"}`)
 	s.Require().NoError(os.WriteFile(path, newContent, 0600))
@@ -557,11 +550,9 @@ func (s *AddonConfigWatcherServiceSuite) TestWatchViaTicker_FallbackDetectsWrite
 	}
 
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		svc.watchViaTicker()
-	}()
+	})
 
 	newContent := []byte(`{"workgroup":"NEW"}`)
 	s.Require().NoError(os.WriteFile(path, newContent, 0600))
@@ -607,11 +598,9 @@ func (s *AddonConfigWatcherServiceSuite) TestWatchViaTicker_UsesSupervisorOption
 	}
 
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		svc.watchViaTicker()
-	}()
+	})
 
 	addonClient.SetOptions(map[string]any{"clean_upgrade_dir": true})
 
@@ -947,11 +936,9 @@ func (s *AddonConfigWatcherServiceSuite) TestIntegration_NoEventOnSameHash() {
 	svc.onChanged = svc.emitChanged
 
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		svc.watchViaFsnotify()
-	}()
+	})
 
 	time.Sleep(100 * time.Millisecond)
 

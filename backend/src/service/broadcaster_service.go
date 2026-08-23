@@ -189,7 +189,7 @@ func (broker *BroadcasterService) BroadcastMessage(msg any) any {
 		return nil
 	}
 
-	if reflect.ValueOf(msg).Kind() == reflect.Ptr {
+	if reflect.ValueOf(msg).Kind() == reflect.Pointer {
 		if reflect.ValueOf(msg).IsNil() {
 			tlog.WarnContext(broker.ctx, "Attempted to broadcast nil pointer message", "type", fmt.Sprintf("%T", msg))
 			return msg
@@ -221,7 +221,7 @@ func (broker *BroadcasterService) BroadcastGuaranteedMessage(msg any) any {
 		return nil
 	}
 
-	if reflect.ValueOf(msg).Kind() == reflect.Ptr {
+	if reflect.ValueOf(msg).Kind() == reflect.Pointer {
 		if reflect.ValueOf(msg).IsNil() {
 			tlog.WarnContext(broker.ctx, "Attempted to broadcast nil pointer guaranteed message", "type", fmt.Sprintf("%T", msg))
 			return msg

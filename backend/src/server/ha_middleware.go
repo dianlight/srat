@@ -74,7 +74,7 @@ func NewHAMiddleware( /*ingressClient ingress.ClientWithResponsesInterface*/ ) f
 
 			remoteIP := r.RemoteAddr
 			// Remove port if present
-			ip := strings.Split(remoteIP, ":")[0]
+			ip, _, _ := strings.Cut(remoteIP, ":")
 
 			allowed := false
 			if addr, err := netip.ParseAddr(ip); err == nil {

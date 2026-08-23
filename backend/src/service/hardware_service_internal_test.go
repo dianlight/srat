@@ -19,7 +19,8 @@ func fakeReadFile(byPath map[string]string) func(string) ([]byte, error) {
 	}
 }
 
-func boolPtr(v bool) *bool { return &v }
+//go:fix inline
+func boolPtr(v bool) *bool { return new(v) }
 
 func TestWholeDiskNameRe(t *testing.T) {
 	tests := []struct {
@@ -63,13 +64,13 @@ func TestDetectRotational(t *testing.T) {
 			name:     "sysfs rotational=1 → HDD",
 			devName:  "sda",
 			sysFiles: map[string]string{"/sys/block/sda/queue/rotational": "1\n"},
-			want:     boolPtr(true),
+			want:     new(true),
 		},
 		{
 			name:     "sysfs rotational=0 → SSD",
 			devName:  "sda",
 			sysFiles: map[string]string{"/sys/block/sda/queue/rotational": "0\n"},
-			want:     boolPtr(false),
+			want:     new(false),
 		},
 		{
 			name:    "sysfs rotational=0 (no trailing newline) → SSD",
@@ -77,21 +78,21 @@ func TestDetectRotational(t *testing.T) {
 			sysFiles: map[string]string{
 				"/sys/block/nvme0n1/queue/rotational": "0",
 			},
-			want: boolPtr(false),
+			want: new(false),
 		},
 		{
 			name:      "sysfs missing, SMART supported with RPM>0 → HDD",
 			devName:   "sda",
 			sysFiles:  map[string]string{},
 			smartInfo: &dto.SmartInfo{Supported: true, RotationRate: 7200},
-			want:      boolPtr(true),
+			want:      new(true),
 		},
 		{
 			name:      "sysfs missing, SMART supported with RPM=0 → SSD",
 			devName:   "sda",
 			sysFiles:  map[string]string{},
 			smartInfo: &dto.SmartInfo{Supported: true, RotationRate: 0},
-			want:      boolPtr(false),
+			want:      new(false),
 		},
 		{
 			name:      "sysfs missing, SMART unsupported → unknown (nil)",
@@ -114,13 +115,13 @@ func TestDetectRotational(t *testing.T) {
 				"/sys/block/sda/queue/rotational": "yes",
 			},
 			smartInfo: &dto.SmartInfo{Supported: true, RotationRate: 5400},
-			want:      boolPtr(true),
+			want:      new(true),
 		},
 		{
 			name:      "empty devName → SMART fallback",
 			devName:   "",
 			smartInfo: &dto.SmartInfo{Supported: true, RotationRate: 7200},
-			want:      boolPtr(true),
+			want:      new(true),
 		},
 		{
 			// Sanitization must reject slashes before any filepath.Join call,

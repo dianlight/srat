@@ -23,7 +23,7 @@ type RepairCommandMessage struct {
 	Data                    map[string]any      `json:"data,omitempty"`
 	LearnMoreURL            *string             `json:"learn_more_url,omitempty"`
 	BreaksInHAVersion       *string             `json:"breaks_in_ha_version,omitempty"`
-	Severity                RepairIssueSeverity `json:"severity,omitempty"`
+	Severity                RepairIssueSeverity `json:"severity"`
 	IsFixable               bool                `json:"is_fixable"`
 	IsPersistent            bool                `json:"is_persistent"`
 }

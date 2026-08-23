@@ -21,13 +21,13 @@ These instructions are the concise, must-follow rules for working in SRAT. Keep 
 
 ## Repo at a glance
 
-- **Languages**: Go 1.26 back-end, TypeScript React frontend (Bun), Python 3.12+ Home Assistant integration.
+- **Languages**: Go 1.27 back-end, TypeScript React frontend (Bun), Python 3.12+ Home Assistant integration.
 - **Architecture**: API handlers → services → generated GORM helpers → SQLite (embedded). Frontend uses MUI + RTK Query. Custom component is WebSocket‑only.
 
 ## back-end (Go) essentials
 
 - Use **context‑aware logging** (`slog.*Context`, `tlog.*Context`) when a real `context.Context` is already in scope. Never manufacture a context for logging.
-- Go 1.26 rules: use `new(expr)` for pointer values, use `any` (not `interface{}`), use `WaitGroup.Go`, prefer `errors.AsType[T]` (standard library).
+- Go 1.27 rules: use `new(expr)` for pointer values, use `any` (not `interface{}`), use `WaitGroup.Go`, prefer `errors.AsType[T]` (standard library), use the stdlib `uuid` package (not `github.com/google/uuid`) and `strings.CutLast` over manual `LastIndex` slicing.
 - Prefer direct persistence in services using `dbom` + GORM (and generated query helpers when available) over introducing new per-entity repository layers, unless a clear documented exception is required.
 - Use **generated converters** (`converter.<Type>ToDtoConverterImpl{}` from `converter/`) for all DTO↔DBOM mapping in services. Never write manual `toDTO`/`toDBOM` helper functions — they diverge silently from the generated impl.
 - Do **not** edit vendored code unless using the patch workflow (`backend/patches/` + `mise run //backend:patch`).

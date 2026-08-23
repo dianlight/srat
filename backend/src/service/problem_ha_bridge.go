@@ -16,7 +16,7 @@ import (
 // ProblemHABridgeInterface is a nominal marker type used by the FX dependency injection container.
 // It has no methods; callers never interact with it directly — FX resolves the concrete *ProblemHABridge
 // via fx.Invoke so the service lifecycle hooks are registered at startup.
-type ProblemHABridgeInterface interface{}
+type ProblemHABridgeInterface any
 
 type problemNotificationAction struct {
 	dismiss bool

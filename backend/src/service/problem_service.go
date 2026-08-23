@@ -119,7 +119,7 @@ func (s *ProblemService) Upsert(problem *dto.Problem) (*dto.Problem, error) {
 		s.mu.Lock()
 		s.cache[s.cacheKey(item.ProblemKey, item.Title)] = *item
 		s.mu.Unlock()
-		s.eventBus.EmitProblem(events.ProblemEvent{Event: events.Event{Type: events.EventTypes.UPDATE}, Problem: item})
+		s.eventBus.EmitProblem(events.ProblemEvent{Type: events.EventTypes.UPDATE, Problem: item})
 		return item, nil
 	}
 
@@ -140,7 +140,7 @@ func (s *ProblemService) Upsert(problem *dto.Problem) (*dto.Problem, error) {
 	s.mu.Lock()
 	s.cache[s.cacheKey(item.ProblemKey, item.Title)] = *item
 	s.mu.Unlock()
-	s.eventBus.EmitProblem(events.ProblemEvent{Event: events.Event{Type: events.EventTypes.ADD}, Problem: item})
+	s.eventBus.EmitProblem(events.ProblemEvent{Type: events.EventTypes.ADD, Problem: item})
 	return item, nil
 }
 
@@ -162,7 +162,7 @@ func (s *ProblemService) Dismiss(problemKey string) error {
 	s.mu.Lock()
 	delete(s.cache, s.cacheKey(item.ProblemKey, item.Title))
 	s.mu.Unlock()
-	s.eventBus.EmitProblem(events.ProblemEvent{Event: events.Event{Type: events.EventTypes.REMOVE}, Problem: item})
+	s.eventBus.EmitProblem(events.ProblemEvent{Type: events.EventTypes.REMOVE, Problem: item})
 	return nil
 }
 
@@ -244,7 +244,7 @@ func (s *ProblemService) ApplyLifecycle(problemKey string, status dto.ProblemLif
 	s.mu.Lock()
 	s.cache[s.cacheKey(item.ProblemKey, item.Title)] = *item
 	s.mu.Unlock()
-	s.eventBus.EmitProblem(events.ProblemEvent{Event: events.Event{Type: events.EventTypes.UPDATE}, Problem: item})
+	s.eventBus.EmitProblem(events.ProblemEvent{Type: events.EventTypes.UPDATE, Problem: item})
 	return item, nil
 }
 
