@@ -186,13 +186,17 @@ func (m *volumeMountManager) Unmount(md *dto.MountPointData, force bool) errors.
 
 	if md.Partition != nil && md.Partition.DiskId != nil && md.Partition.Id != nil {
 		md.IsMounted = false
+		// Update the DiskMap cache BEFORE emitting the MountPointEvent:
+		// the event bus dispatches synchronously, so listeners (e.g. the
+		// WS broadcaster) read disks.All() during this call. Emitting first
+		// broadcast a stale is_mounted=true snapshot to connected clients (#971).
+		if err := m.disks.AddOrUpdateMountPoint(*md.Partition.DiskId, *md.Partition.Id, *md); err != nil {
+			slog.WarnContext(m.ctx, "Failed to update mount point cache after unmount", "path", md.Path, "error", err)
+		}
 		_ = m.eventBus.EmitMountPoint(events.MountPointEvent{
 			Event:      events.Event{Type: events.EventTypes.UPDATE},
 			MountPoint: md,
 		})
-		if err := m.disks.AddOrUpdateMountPoint(*md.Partition.DiskId, *md.Partition.Id, *md); err != nil {
-			slog.WarnContext(m.ctx, "Failed to update mount point cache after unmount", "path", md.Path, "error", err)
-		}
 	}
 
 	return nil

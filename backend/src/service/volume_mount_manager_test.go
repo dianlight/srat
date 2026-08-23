@@ -176,3 +176,38 @@ func (suite *VolumeMountManagerTestSuite) TestUnmount_NilMountPoint() {
 	suite.Require().Error(errE)
 	suite.ErrorIs(errE, dto.ErrorInvalidParameter)
 }
+
+// TestUnmount_UpdatesCacheBeforeEventEmission reproduces issue #971: the
+// broadcaster serializes the shared DiskMap when the MountPointEvent is
+// delivered (event bus dispatch is synchronous), so the cache must already
+// reflect the unmounted state at emission time. Otherwise every WebSocket
+// subscriber receives a stale is_mounted=true payload while REST stays
+// correct, freezing the UI until reload.
+func (suite *VolumeMountManagerTestSuite) TestUnmount_UpdatesCacheBeforeEventEmission() {
+	md := suite.seedMountPoint()
+	diskID := *md.Partition.DiskId
+	partID := *md.Partition.Id
+
+	var mountedAtEmission *bool
+	unregister := suite.eventBus.OnMountPoint(func(_ context.Context, _ events.MountPointEvent) errors.E {
+		for _, mp := range suite.disks.GetMountPointsForPartition(diskID, partID) {
+			if mp.Path == md.Path {
+				v := mp.IsMounted
+				mountedAtEmission = &v
+			}
+		}
+		return nil
+	})
+	defer unregister()
+
+	mock.When(suite.mockFsSvc.UnmountPartition(
+		mock.AnyContext(), mock.Exact(md.Path), mock.Exact("ext4"), mock.Any[bool](), mock.Any[bool](),
+	)).ThenReturn(nil)
+
+	errE := suite.mounter.Unmount(md, false)
+	suite.Require().NoError(errE)
+
+	suite.Require().NotNil(mountedAtEmission, "MountPointEvent must be emitted on unmount")
+	suite.False(*mountedAtEmission,
+		"DiskMap cache must be updated BEFORE MountPointEvent emission so WS broadcasts carry fresh data (#971)")
+}
