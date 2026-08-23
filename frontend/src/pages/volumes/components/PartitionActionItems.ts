@@ -68,8 +68,6 @@ export function getPartitionActionItems({
   const isMounted = mpd?.is_mounted;
   const hasEnabledShare = mpd?.share && mpd?.share.disabled === false;
   const hasShare = mpd?.share !== null && mpd?.share !== undefined;
-  const hadNoShareOrIsDisabled =
-    !hasShare || (mpd?.share && mpd?.share.disabled === true);
 
   const canShowAutomount = !(isMounted && hasEnabledShare) && mpd;
   if (canShowAutomount) {
@@ -107,20 +105,21 @@ export function getPartitionActionItems({
       });
     }
 
-    if (hadNoShareOrIsDisabled && !mpd?.is_to_mount_at_startup) {
-      actionItems.push({
-        key: "unmount",
-        title: "Unmount Partition",
-        color: undefined,
-        onClick: () => onUnmount(partition, false),
-      });
-      actionItems.push({
-        key: "force-unmount",
-        title: "Force Unmount Partition",
-        color: "warning",
-        onClick: () => onUnmount(partition, true),
-      });
-    }
+    // Always offer unmount controls for mounted addon partitions (#971):
+    // gating on share/automount state previously left users with no UI
+    // path to unmount a partition mounted with a share or automount on.
+    actionItems.push({
+      key: "unmount",
+      title: "Unmount Partition",
+      color: undefined,
+      onClick: () => onUnmount(partition, false),
+    });
+    actionItems.push({
+      key: "force-unmount",
+      title: "Force Unmount Partition",
+      color: "warning",
+      onClick: () => onUnmount(partition, true),
+    });
 
     if (!hasShare && mpd.path?.startsWith("/mnt/")) {
       actionItems.push({
