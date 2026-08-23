@@ -4,7 +4,7 @@
 
 **Branch**: `renovate/go-1.x`
 **Date**: 2026-08-23
-**Toolchains compared**: go1.26.6 (baseline) → go1.27.0
+**Toolchain comparison**: go1.26.6 (baseline) → go1.27.0
 **Scope**: `backend/src` (37 test packages, 1,847 tests)
 
 ## Summary
@@ -13,7 +13,7 @@ The migration updates the back-end to Go 1.27 and adopts the new toolchain featu
 
 | Goal                            | Result                                                                              |
 | ------------------------------- | ----------------------------------------------------------------------------------- |
-| All tests pass                  | ✅ 1,847/1,847 pass on both toolchains, 0 failures                                  |
+| All tests pass                  | ✅ 1,847/1,847 pass on both toolchain versions, 0 failures                          |
 | Release build works             | ✅ `mise run //backend:build` produces statically linked binaries, version verified |
 | Code optimized for new features | ✅ stdlib adoption + `go fix` modernizers (~79 files)                               |
 | Instructions updated            | ✅ `.opencode/instructions/go.instructions.md`, `AGENTS.md`                         |
@@ -23,7 +23,7 @@ The migration updates the back-end to Go 1.27 and adopts the new toolchain featu
 
 - `backend/src/go.mod`: `go 1.26.0` → `go 1.27.0`. CI (`.github/workflows/build.yaml`) uses `go-version-file: backend/src/go.mod`, so it follows automatically.
 - Root `.mise.toml`: already bumped to `go = "1.27.0"` / golangci-lint 2.13.0 by Renovate.
-- `go mod tidy` (Go ≥ 1.27 layout): duplicate require blocks merged into two blocks — direct and indirect.
+- `go mod tidy` (Go ≥ 1.27 layout): duplicate require blocks merged into two blocks—direct and indirect.
 - Vendor refreshed via `mise run //backend:patch` (patches re-applied cleanly).
 - `github.com/google/uuid` demoted to an **indirect** dependency: it is still required by vendored libraries (`gorm.io/datatypes`, `oapi-codegen/runtime`, sprig, slog-http) but is no longer imported directly by first-party code.
 
@@ -31,10 +31,10 @@ The migration updates the back-end to Go 1.27 and adopts the new toolchain featu
 
 ### Standard library
 
-| Change                                                                                                                                       | Files                                                                             |
-| -------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| Top-level stdlib `uuid` package replaces `github.com/google/uuid` (`uuid.New().String()`)                                                    | `events/events.go`, `service/repair_service.go`, `internal/commandexec/runner.go` |
-| `strings.CutLast` replaces manual `strings.LastIndex` slicing in the DB-file writability check (cannot panic when the path has no separator) | `dbom/db_config.go`                                                               |
+| Change                                                                                                                                            | Files                                                                             |
+| ------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Top-level stdlib `uuid` package replaces `github.com/google/uuid` (`uuid.New().String()`)                                                         | `events/events.go`, `service/repair_service.go`, `internal/commandexec/runner.go` |
+| `strings.CutLast` replaces manual `strings.LastIndex` slicing in the DB-file write-permission check (cannot panic when the path has no separator) | `dbom/db_config.go`                                                               |
 
 ### `go fix` modernizers (~79 files, −530/+618 lines)
 
@@ -50,7 +50,7 @@ Applied cleanly across non-vendor code:
 
 ### Behavior changes handled
 
-- **`compress/flate` encoder output changed** in Go 1.27, so hardcoded SHA-256 digests of generated ZIP archives in `TestUpgradeServiceTestSuite` no longer matched (the service rejected the fixture with "checksum mismatch" before reaching the intended assertion). Fixed by computing digests dynamically from the built archive bytes:
+- **`compress/flate` encoder output changed** in Go 1.27, so hard-coded SHA-256 digests of generated ZIP archives in `TestUpgradeServiceTestSuite` no longer matched (the service rejected the fixture with "checksum mismatch" before reaching the intended assertion). Fixed by computing digests dynamically from the built archive bytes:
   - `TestDownloadAndExtractBinaryAsset_BlocksZipTraversal`
   - `TestDownloadAndExtractBinaryAsset_ContainDir`
 
@@ -60,7 +60,7 @@ Applied cleanly across non-vendor code:
 
 ### Test coverage gate
 
-Touched functions were compared against the baseline coverage profile. The only genuinely-changed function below the 70% gate was `checkFileSystemPermissions`; a new suite `dbom/db_config_test.go` (`TestCheckFileSystemPermissions`, 6 subtests incl. permission-skipped-on-root cases) raised it to **70.5%**. Pre-existing low-coverage functions untouched by this migration were left as-is.
+Touched functions were compared against the baseline coverage profile. The only genuinely changed function below the 70% gate was `checkFileSystemPermissions`; a new suite `dbom/db_config_test.go` (`TestCheckFileSystemPermissions`, 6 subtests incl. permission-skipped-on-root cases) raised it to **70.5%**. Pre-existing low-coverage functions untouched by this migration were left as-is.
 
 ## Verification
 
