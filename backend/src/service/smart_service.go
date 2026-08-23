@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/dianlight/smartmontools-sdk/bindings/go/v8"
 	"github.com/dianlight/srat/converter"
@@ -15,9 +16,29 @@ import (
 	"github.com/dianlight/srat/events"
 
 	"github.com/dianlight/tlog"
+	gocache "github.com/patrickmn/go-cache"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 )
+
+const (
+	// smartInfoCacheTTL bounds how long a per-device GetSmartInfo result
+	// (including "not supported" errors) is reused. SMART probing issues raw
+	// SCSI commands that can trigger kernel partition rescans and udev event
+	// storms; the hardware snapshot is already served up-to-30-min stale by
+	// design, so a short TTL here stays within the existing freshness envelope.
+	smartInfoCacheTTL = 2 * time.Minute
+	// smartInfoCacheCleanup is the janitor interval for the SMART info cache.
+	smartInfoCacheCleanup = 5 * time.Minute
+)
+
+// smartInfoCacheEntry stores either a successful SmartInfo or the error that
+// should be replayed for the TTL window. Negative caching matters: devices
+// without SMART support are exactly the ones re-probed most often.
+type smartInfoCacheEntry struct {
+	info *dto.SmartInfo
+	err  errors.E
+}
 
 type SmartServiceInterface interface {
 	GetSmartInfo(ctx context.Context, deviceId string) (*dto.SmartInfo, errors.E)
@@ -37,6 +58,10 @@ type smartService struct {
 	conv             converter.SmartMonToolsToDtoImpl
 	eventBus         events.EventBusInterface
 	deviceIdToDevice func(string) (string, error)
+	// infoCache caches GetSmartInfo results per deviceId (successes and
+	// errors) to avoid re-issuing side-effecting SCSI probes on every
+	// hardware re-enumeration.
+	infoCache *gocache.Cache
 }
 
 type SmartServiceParams struct {
@@ -73,6 +98,7 @@ func NewSmartService(in SmartServiceParams) SmartServiceInterface {
 		eventBus:         in.EventBus,
 		conv:             converter.SmartMonToolsToDtoImpl{},
 		deviceIdToDevice: converter.DeviceIdToDevice,
+		infoCache:        gocache.New(smartInfoCacheTTL, smartInfoCacheCleanup),
 	}
 }
 
@@ -101,7 +127,27 @@ func (s *smartService) smartInfoFromSMARTInfo(devicePath string, smartInfo *smar
 }
 
 func (s *smartService) GetSmartInfo(ctx context.Context, deviceId string) (*dto.SmartInfo, errors.E) {
+	// Cache lookup: replay a previous result (success or error) within the
+	// TTL window instead of re-issuing SCSI probes.
+	if s.infoCache != nil {
+		if cached, ok := s.infoCache.Get(deviceId); ok {
+			if entry, castOk := cached.(smartInfoCacheEntry); castOk {
+				tlog.DebugContext(ctx, "Returning SMART info from cache", "device", deviceId)
+				return entry.info, entry.err
+			}
+			s.infoCache.Delete(deviceId)
+		}
+	}
 
+	info, err := s.getSmartInfoUncached(ctx, deviceId)
+
+	if s.infoCache != nil {
+		s.infoCache.SetDefault(deviceId, smartInfoCacheEntry{info: info, err: err})
+	}
+	return info, err
+}
+
+func (s *smartService) getSmartInfoUncached(ctx context.Context, deviceId string) (*dto.SmartInfo, errors.E) {
 	devicePath, err := s.deviceIdToDevice(deviceId)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -132,6 +178,14 @@ func (s *smartService) GetSmartInfo(ctx context.Context, deviceId string) (*dto.
 	// but callers expect it to be the canonical deviceId.
 	smartInfoDto.DiskId = deviceId
 	return smartInfoDto, nil
+}
+
+// invalidateSmartInfoCache drops the cached GetSmartInfo entry for a device,
+// used after SMART enable/disable changes device state.
+func (s *smartService) invalidateSmartInfoCache(deviceId string) {
+	if s.infoCache != nil {
+		s.infoCache.Delete(deviceId)
+	}
 }
 
 // GetSmartStatus returns dynamic SMART status data for a device
@@ -549,6 +603,7 @@ func (s *smartService) EnableSMART(ctx context.Context, deviceId string) errors.
 	if err := s.client.EnableSMART(ctx, devicePath); err != nil {
 		return errors.Wrapf(err, "failed to enable SMART")
 	}
+	s.invalidateSmartInfoCache(deviceId)
 
 	// Verify SMART is now enabled (one-off check)
 	supportInfo, err := s.client.IsSMARTSupported(ctx, devicePath)
@@ -606,6 +661,7 @@ func (s *smartService) DisableSMART(ctx context.Context, deviceId string) errors
 	if err := s.client.DisableSMART(ctx, devicePath); err != nil {
 		return errors.Wrapf(err, "failed to disable SMART")
 	}
+	s.invalidateSmartInfoCache(deviceId)
 
 	// Verify SMART is now disabled (optional, for informational purposes)
 	supportInfo, err := s.client.IsSMARTSupported(ctx, devicePath)

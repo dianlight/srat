@@ -65,6 +65,8 @@ Then map changed files to test categories:
 
 **Output a focused test plan**: list which categories/IDs are in scope, which are safe to skip. Always include Cat 1 (connectivity) as sanity gate.
 
+**Deployed-build pre-check (before any remote profiling/measurement)**: verify the deployed binary matches the working tree before trusting profiles — compare stack-trace line numbers from `docker logs app_local_sambanas2` against current source, or diff a recent log stacktrace's file:line refs vs HEAD. A stale deployed binary invalidates all profile evidence (real-world case: hours misattributed to a bug already fixed in HEAD).
+
 **On "full suite"**: run all categories in priority order (1→8). No diff needed.
 
 ---
@@ -74,6 +76,7 @@ Then map changed files to test categories:
 ### Cat 1 — Core Connectivity (CRITICAL)
 C01: HA UI HTTP 200 | C02: Addon running | C03: /api/health 200 | C04: WS green indicator
 C05: SSH supervisor ok | C06: SSH host ok | C07: No ERROR in addon log | C08: No ERROR in HA core log
+C09: Idle CPU ≤1% after 60s warmup (`docker stats --no-stream app_local_sambanas2`; sustained >5% = investigate pprof)
 
 ### Cat 2 — Samba Shares (HIGH)
 S01: List shares UI | S02: Create share (UI + smbclient -L) | S03: Edit share name | S04: Share path validation
@@ -85,6 +88,7 @@ U01: List users UI | U02: Create user | U03: Set password (verify via smbclient)
 U05: Disable user (auth fail) | U06: Delete user | U07: Duplicate rejected (4xx) | U08: Empty password rejected (4xx)
 
 ### Cat 4 — Disks & Volumes (HIGH)
+**Pre-check**: capture a 30s dmesg baseline (`dmesg | tail -1` timestamp, wait, diff) — partition-rescan spam (`sdb: sdb1 sdb2` repeating) indicates a SCSI-probe/udev feedback loop and invalidates D-test results; fix that first.
 D01: Disk list populated | D02: Volume details correct | D03: Mount volume | D04: Unmount volume
 D05: SMART data visible | D06: Health status correct | D07: Partitions match lsblk
 
