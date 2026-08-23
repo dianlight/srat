@@ -65,10 +65,12 @@ local linters = new Mapping<String, Step> {
 
     ["shellcheck"] = (Builtins.shellcheck) {
         glob = "**/*.sh"
+        exclude = List("**/vendor/**")
+
     }
     ["shfmt"] = (Builtins.shfmt) {
         glob = "**/*.sh"
-    }   
+    }
 
     ["taplo"] = Builtins.taplo
     ["taplo-format"] = Builtins.taplo_format
