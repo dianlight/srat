@@ -58,10 +58,17 @@ jobs:
           if [[ "${{ github.event_name }}" == "push" ]]; then
             COMMIT_MSG=$(git log -1 --format=%s HEAD)
             if [[ "$COMMIT_MSG" =~ ^chore\(release\):\ (.+)$ ]]; then
-              VERSION="${BASH_REMATCH[1]}"
-              echo "Release commit detected. Using version from commit: $VERSION"
-              echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-              exit 0
+              CANDIDATE="${BASH_REMATCH[1]}"
+              # Only trust it when the captured text is an actual version (YYYY.M.PATCH with optional suffix).
+              # Non-version subjects such as "reset changelog for next development cycle"
+              # must fall through to the dev-build version calculation instead of being used as a tag.
+              if [[ "$CANDIDATE" =~ ^[0-9]{4}\.[0-9]{1,2}\.[0-9]+([-][A-Za-z0-9.]+)?$ ]]; then
+                VERSION="$CANDIDATE"
+                echo "Release commit detected. Using version from commit: $VERSION"
+                echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+              echo "Commit subject matched chore(release) but is not a valid version: $CANDIDATE. Falling back to dev build versioning."
             fi
           fi
 
