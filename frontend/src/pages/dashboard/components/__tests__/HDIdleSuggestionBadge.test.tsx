@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Disk } from "../../../../store/sratApi";
-import { Enabled } from "../../../../store/sratApi";
+import { Command_type, Enabled } from "../../../../store/sratApi";
 import { HDIdleSuggestionBadge } from "../HDIdleSuggestionBadge";
 
 // ---- Mocks ----------------------------------------------------------------
@@ -41,6 +41,7 @@ const hdidleDevice = (overrides: Partial<import("../../../../store/sratApi").HdI
   idle_time: 0,
   power_condition: 0,
   enabled: Enabled.No,
+  command_type: Command_type.Scsi,
   force_enabled: false,
   suggestion_ignored: false,
   supported: false,

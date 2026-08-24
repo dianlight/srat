@@ -142,7 +142,11 @@ export function HDIdleDiskSettings({
       device_path: `/dev/disk/by-id/${diskId}`,
       enabled: values.enabled as Enabled,
       idle_time: secondsToNanos(Number(values.idle_time ?? 0)),
-      command_type: values.command_type || undefined,
+      // The backend treats an omitted command_type as "keep default";
+      // JSON.stringify drops undefined, so the wire format stays correct
+      // even though the codegen type marks the field as required.
+      command_type: (values.command_type ||
+        undefined) as HdIdleDevice["command_type"],
       power_condition: Number(values.power_condition ?? 0),
       force_enabled: disk.hdidle_device?.force_enabled ?? false,
       suggestion_ignored: false,

@@ -11,6 +11,7 @@ import type {
   FilesystemTask,
   HealthPing,
   Problem,
+  RcloneTask,
   RepairCommandMessage,
   SharedResource,
   SmartTestStatus,
@@ -29,6 +30,7 @@ export type EventData = {
   [Supported_events.AppConfigChanged]: AppConfigChangedNotification;
   [Supported_events.SmartTestStatus]: SmartTestStatus;
   [Supported_events.FilesystemTask]: FilesystemTask;
+  [Supported_events.RcloneTask]: RcloneTask;
   [Supported_events.RepairCommand]: RepairCommandMessage;
   [Supported_events.Problem]: Problem;
   command_started?: CommandStartedNotification;

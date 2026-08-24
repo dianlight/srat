@@ -793,6 +793,25 @@ components:
       required:
         - label
       type: object
+    GetRcloneLinksOutputBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/GetRcloneLinksOutputBody.json
+          format: uri
+          readOnly: true
+          type: string
+        links:
+          items:
+            $ref: "#/components/schemas/RcloneLink"
+          type:
+            - array
+            - "null"
+      required:
+        - links
+      type: object
     GlobalDiskStats:
       additionalProperties: false
       properties:
@@ -870,7 +889,9 @@ components:
           type: boolean
       required:
         - idle_time
+        - command_type
         - power_condition
+        - enabled
         - suggestion_ignored
         - force_enabled
         - supported
@@ -902,6 +923,9 @@ components:
           type: boolean
       required:
         - spun_down
+        - last_io_at
+        - spin_down_at
+        - spin_up_at
       type: object
     HDIdleDeviceSupport:
       additionalProperties: false
@@ -1742,6 +1766,274 @@ components:
       required:
         - success
       type: object
+    RcloneAuthStartResponse:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/RcloneAuthStartResponse.json
+          format: uri
+          readOnly: true
+          type: string
+        auth_url:
+          type: string
+        redirect_uri:
+          type: string
+        state:
+          type: string
+      required:
+        - auth_url
+        - state
+        - redirect_uri
+      type: object
+    RcloneConfigField:
+      additionalProperties: false
+      properties:
+        description:
+          type: string
+        label:
+          type: string
+        name:
+          type: string
+        required:
+          type: boolean
+        secret:
+          type: boolean
+      required:
+        - name
+        - label
+      type: object
+    RcloneDiffEntry:
+      additionalProperties: false
+      properties:
+        diff_type:
+          type: string
+        local_mod_time:
+          format: date-time
+          type: string
+        local_size:
+          format: int64
+          type: integer
+        path:
+          type: string
+        remote_mod_time:
+          format: date-time
+          type: string
+        remote_size:
+          format: int64
+          type: integer
+      required:
+        - path
+        - diff_type
+      type: object
+    RcloneDiffResult:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/RcloneDiffResult.json
+          format: uri
+          readOnly: true
+          type: string
+        changed:
+          format: int64
+          type: integer
+        entries:
+          items:
+            $ref: "#/components/schemas/RcloneDiffEntry"
+          type:
+            - array
+            - "null"
+        local_only:
+          format: int64
+          type: integer
+        remote_only:
+          format: int64
+          type: integer
+        warning:
+          type: string
+      required:
+        - entries
+        - local_only
+        - remote_only
+        - changed
+      type: object
+    RcloneLink:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/RcloneLink.json
+          format: uri
+          readOnly: true
+          type: string
+        auto_sync:
+          type: boolean
+        last_sync_at:
+          format: date-time
+          type: string
+        last_sync_message:
+          type: string
+        last_sync_result:
+          type: string
+        provider:
+          type: string
+        remote_path:
+          type: string
+        schedule_minutes:
+          format: int64
+          type: integer
+        status:
+          type: string
+        target_id:
+          type: string
+        target_kind:
+          type: string
+      required:
+        - target_kind
+        - target_id
+        - provider
+        - remote_path
+        - status
+        - auto_sync
+        - schedule_minutes
+      type: object
+    RcloneLinkRequest:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/RcloneLinkRequest.json
+          format: uri
+          readOnly: true
+          type: string
+        auto_sync:
+          type: boolean
+        provider:
+          examples:
+            - dropbox
+          type: string
+        remote_path:
+          examples:
+            - backups/srat
+          type: string
+        schedule_minutes:
+          format: int64
+          type: integer
+        settings:
+          additionalProperties:
+            type: string
+          type: object
+      required:
+        - provider
+        - remote_path
+        - auto_sync
+      type: object
+    RcloneProviderInfo:
+      additionalProperties: false
+      properties:
+        config_fields:
+          items:
+            $ref: "#/components/schemas/RcloneConfigField"
+          type:
+            - array
+            - "null"
+        display_name:
+          type: string
+        name:
+          type: string
+      required:
+        - name
+        - display_name
+        - config_fields
+      type: object
+    RcloneProvidersResponse:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/RcloneProvidersResponse.json
+          format: uri
+          readOnly: true
+          type: string
+        library_available:
+          type: boolean
+        providers:
+          items:
+            $ref: "#/components/schemas/RcloneProviderInfo"
+          type:
+            - array
+            - "null"
+      required:
+        - providers
+        - library_available
+      type: object
+    RcloneSyncRequest:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/RcloneSyncRequest.json
+          format: uri
+          readOnly: true
+          type: string
+        direction:
+          enum:
+            - push
+            - pull
+            - bidi
+          type: string
+        dry_run:
+          type: boolean
+      required:
+        - direction
+      type: object
+    RcloneTask:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/RcloneTask.json
+          format: uri
+          readOnly: true
+          type: string
+        direction:
+          type: string
+        error:
+          type: string
+        message:
+          type: string
+        notes:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        operation:
+          type: string
+        progress:
+          format: int64
+          type: integer
+        result: {}
+        status:
+          type: string
+        target_id:
+          type: string
+        target_kind:
+          type: string
+      required:
+        - target_kind
+        - target_id
+        - operation
+        - status
+      type: object
     ReleaseAsset:
       additionalProperties: false
       properties:
@@ -1756,6 +2048,8 @@ components:
           $ref: "#/components/schemas/BinaryAsset"
         last_release:
           type: string
+      required:
+        - arch_asset
       type: object
     RepairCommandMessage:
       additionalProperties: false
@@ -1796,6 +2090,7 @@ components:
         - command_id
         - repair_id
         - action
+        - severity
         - is_fixable
         - is_persistent
       type: object
@@ -2390,6 +2685,23 @@ components:
       required:
         - data
       type: object
+    StartRcloneAuthInputBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/StartRcloneAuthInputBody.json
+          format: uri
+          readOnly: true
+          type: string
+        settings:
+          additionalProperties:
+            type: string
+          type: object
+      required:
+        - settings
+      type: object
     SystemCapabilities:
       additionalProperties: false
       properties:
@@ -2463,6 +2775,8 @@ components:
             - NeedRestart
             - Error
           type: string
+      required:
+        - update_process_state
       type: object
     User:
       additionalProperties: true
@@ -2572,6 +2886,7 @@ components:
               - command_started
               - command_output
               - command_terminated
+              - rclone_task
             type: string
           type:
             - array
@@ -2617,8 +2932,8 @@ paths:
     get:
       operationId: get-api-appconfig
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2806,8 +3121,8 @@ paths:
           schema:
             description: The disk ID (not the device path)
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3366,8 +3681,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -4271,8 +4586,8 @@ paths:
     get:
       operationId: get-issue-template
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -4901,6 +5216,735 @@ paths:
       summary: Execute an action for a problem
       tags:
         - Problems
+  /api/rclone/link/{target_kind}/{target_id}:
+    delete:
+      operationId: delete-api-rclone-link-by-target-kind-by-target-id
+      parameters:
+        - description: Link target kind (volume or hassos_data)
+          in: path
+          name: target_kind
+          required: true
+          schema:
+            description: Link target kind (volume or hassos_data)
+            type: string
+        - description: Link target id (volume path or hassos-data)
+          in: path
+          name: target_id
+          required: true
+          schema:
+            description: Link target id (volume path or hassos-data)
+            type: string
+        - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
+      responses:
+        "204":
+          description: No Content
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: Delete API rclone link by target kind by target ID
+      tags:
+        - volume
+        - rclone
+    get:
+      operationId: get-api-rclone-link-by-target-kind-by-target-id
+      parameters:
+        - description: Link target kind (volume or hassos_data)
+          in: path
+          name: target_kind
+          required: true
+          schema:
+            description: Link target kind (volume or hassos_data)
+            type: string
+        - description: Link target id (volume path or hassos-data)
+          in: path
+          name: target_id
+          required: true
+          schema:
+            description: Link target id (volume path or hassos-data)
+            type: string
+        - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RcloneLink"
+          description: OK
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: Get API rclone link by target kind by target ID
+      tags:
+        - volume
+        - rclone
+    patch:
+      description: Partial update operation supporting both JSON Merge Patch & JSON Patch updates.
+      operationId: patch-api-rclone-link-by-target-kind-by-target-id
+      parameters:
+        - description: Link target kind (volume or hassos_data)
+          in: path
+          name: target_kind
+          required: true
+          schema:
+            description: Link target kind (volume or hassos_data)
+            type: string
+        - description: Link target id (volume path or hassos-data)
+          in: path
+          name: target_id
+          required: true
+          schema:
+            description: Link target id (volume path or hassos-data)
+            type: string
+        - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
+      requestBody:
+        content:
+          application/json-patch+json:
+            schema:
+              items:
+                $ref: "#/components/schemas/JsonPatchOp"
+              type:
+                - array
+                - "null"
+          application/merge-patch+json:
+            schema:
+              additionalProperties: false
+              properties:
+                $schema:
+                  description: A URL to the JSON Schema for this object.
+                  examples:
+                    - https://example.com/schemas/RcloneLinkRequest.json
+                  format: uri
+                  readOnly: true
+                  type: string
+                auto_sync:
+                  type: boolean
+                provider:
+                  examples:
+                    - dropbox
+                  type: string
+                remote_path:
+                  examples:
+                    - backups/srat
+                  type: string
+                schedule_minutes:
+                  format: int64
+                  type: integer
+                settings:
+                  additionalProperties:
+                    type: string
+                  type: object
+              type: object
+          application/merge-patch+shorthand:
+            schema:
+              additionalProperties: false
+              properties:
+                $schema:
+                  description: A URL to the JSON Schema for this object.
+                  examples:
+                    - https://example.com/schemas/RcloneLinkRequest.json
+                  format: uri
+                  readOnly: true
+                  type: string
+                auto_sync:
+                  type: boolean
+                provider:
+                  examples:
+                    - dropbox
+                  type: string
+                remote_path:
+                  examples:
+                    - backups/srat
+                  type: string
+                schedule_minutes:
+                  format: int64
+                  type: integer
+                settings:
+                  additionalProperties:
+                    type: string
+                  type: object
+              type: object
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RcloneLink"
+          description: OK
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: Patch api-rclone-link-by-target-kind-by-target-id
+      tags:
+        - volume
+        - rclone
+    put:
+      operationId: put-api-rclone-link-by-target-kind-by-target-id
+      parameters:
+        - description: Link target kind (volume or hassos_data)
+          in: path
+          name: target_kind
+          required: true
+          schema:
+            description: Link target kind (volume or hassos_data)
+            type: string
+        - description: Link target id (volume path or hassos-data)
+          in: path
+          name: target_id
+          required: true
+          schema:
+            description: Link target id (volume path or hassos-data)
+            type: string
+        - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RcloneLinkRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RcloneLink"
+          description: OK
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: Put API rclone link by target kind by target ID
+      tags:
+        - volume
+        - rclone
+  /api/rclone/link/{target_kind}/{target_id}/abort:
+    post:
+      operationId: post-api-rclone-link-by-target-kind-by-target-id-abort
+      parameters:
+        - description: Link target kind (volume or hassos_data)
+          in: path
+          name: target_kind
+          required: true
+          schema:
+            description: Link target kind (volume or hassos_data)
+            type: string
+        - description: Link target id (volume path or hassos-data)
+          in: path
+          name: target_id
+          required: true
+          schema:
+            description: Link target id (volume path or hassos-data)
+            type: string
+        - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
+      responses:
+        "204":
+          description: No Content
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: Post API rclone link by target kind by target ID abort
+      tags:
+        - volume
+        - rclone
+  /api/rclone/link/{target_kind}/{target_id}/auth/start:
+    post:
+      operationId: post-api-rclone-link-by-target-kind-by-target-id-auth-start
+      parameters:
+        - description: Link target kind (volume or hassos_data)
+          in: path
+          name: target_kind
+          required: true
+          schema:
+            description: Link target kind (volume or hassos_data)
+            type: string
+        - description: Link target id (volume path or hassos-data)
+          in: path
+          name: target_id
+          required: true
+          schema:
+            description: Link target id (volume path or hassos-data)
+            type: string
+        - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartRcloneAuthInputBody"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RcloneAuthStartResponse"
+          description: OK
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: Post API rclone link by target kind by target ID auth start
+      tags:
+        - volume
+        - rclone
+  /api/rclone/link/{target_kind}/{target_id}/diff:
+    post:
+      operationId: post-api-rclone-link-by-target-kind-by-target-id-diff
+      parameters:
+        - description: Link target kind (volume or hassos_data)
+          in: path
+          name: target_kind
+          required: true
+          schema:
+            description: Link target kind (volume or hassos_data)
+            type: string
+        - description: Link target id (volume path or hassos-data)
+          in: path
+          name: target_id
+          required: true
+          schema:
+            description: Link target id (volume path or hassos-data)
+            type: string
+        - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RcloneDiffResult"
+          description: OK
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: Post API rclone link by target kind by target ID diff
+      tags:
+        - volume
+        - rclone
+  /api/rclone/link/{target_kind}/{target_id}/sync:
+    post:
+      operationId: post-api-rclone-link-by-target-kind-by-target-id-sync
+      parameters:
+        - description: Link target kind (volume or hassos_data)
+          in: path
+          name: target_kind
+          required: true
+          schema:
+            description: Link target kind (volume or hassos_data)
+            type: string
+        - description: Link target id (volume path or hassos-data)
+          in: path
+          name: target_id
+          required: true
+          schema:
+            description: Link target id (volume path or hassos-data)
+            type: string
+        - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RcloneSyncRequest"
+        required: true
+      responses:
+        "204":
+          description: No Content
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: Post API rclone link by target kind by target ID sync
+      tags:
+        - volume
+        - rclone
+  /api/rclone/links:
+    get:
+      operationId: get-api-rclone-links
+      parameters:
+        - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetRcloneLinksOutputBody"
+          description: OK
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: Get API rclone links
+      tags:
+        - volume
+        - rclone
+  /api/rclone/oauth/callback:
+    get:
+      operationId: rclone-oauth-callback
+      parameters:
+        - description: Provider authorization code
+          explode: false
+          in: query
+          name: code
+          schema:
+            description: Provider authorization code
+            type: string
+        - description: Anti-CSRF state token
+          explode: false
+          in: query
+          name: state
+          schema:
+            description: Anti-CSRF state token
+            type: string
+        - description: Provider-reported denial reason
+          explode: false
+          in: query
+          name: error
+          schema:
+            description: Provider-reported denial reason
+            type: string
+        - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
+      responses:
+        "200":
+          description: OK
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: OAuth redirect target for cloud providers
+      tags:
+        - volume
+        - rclone
+  /api/rclone/providers:
+    get:
+      operationId: get-api-rclone-providers
+      parameters:
+        - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RcloneProvidersResponse"
+          description: OK
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: Get API rclone providers
+      tags:
+        - volume
+        - rclone
+  /api/rclone_events:
+    get:
+      operationId: get-api-rclone-events
+      parameters:
+        - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RcloneTask"
+          description: OK
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: Get API rclone events
+      tags:
+        - system
+        - internal
   /api/repairMessage:
     trace:
       operationId: repair
@@ -5117,8 +6161,8 @@ paths:
     get:
       operationId: get-api-settings
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -6230,8 +7274,8 @@ paths:
             description: Name of the share to disable
             maxLength: 128
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -6992,8 +8036,8 @@ paths:
     patch:
       operationId: patch-api-volume-settings
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
