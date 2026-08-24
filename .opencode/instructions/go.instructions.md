@@ -465,6 +465,12 @@ if errors.As(err, &appErr) { ... }
 - Client initialisation logic (lib backend probe → exec fallback, `LibSmartAvailable` flag) lives exclusively in `NewSmartService`. When `SmartServiceParams.Client` is non-nil (test mock injected via FX), that client is used as-is; otherwise `NewSmartService` initialises one internally.
 - If a new smartmontools bindings feature is needed elsewhere in the codebase, extend `SmartServiceInterface` instead of leaking the library type.
 
+### Cache side-effecting hardware probes reachable from enumeration paths
+
+- Any service function issuing raw SCSI commands (`sg.OpenScsiDevice`, `sgio.CheckAtaDevice`, smartmontools SDK calls) that is invoked from udev/hardware re-enumeration (`processUdevEvent` → `getVolumesData`) **must memoize per-device results** via `patrickmn/go-cache` with an invalidation hook on user mutations.
+- Canonical implementations: `HDIdleService.supportCache` (10 min TTL) and `smartService.infoCache` (2 min TTL, includes negative caching of not-supported errors; invalidated by Enable/DisableSMART).
+- Uncached probes are self-triggering: each SG_IO probe can cause kernel partition rescans → fresh uevents → infinite event storm pegging a CPU core at idle (observed: ~100% CPU with no user activity).
+
 ### DTO Separation: Settings vs SystemCapabilities
 
 - **`dto.Settings`** must contain **only user-configurable fields** that are persisted to the database. Never add computed, detected, or runtime-only fields to `Settings`.
