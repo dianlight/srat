@@ -67,6 +67,7 @@ func openAPIRouteOption() fx.Option {
 		server.AsHumaRoute(api.NewTelemetryHandler),
 		server.AsHumaRoute(api.NewHDIdleHandler),
 		server.AsHumaRoute(api.NewLabFeatureHandler),
+		server.AsHumaRoute(api.NewRcloneHandler),
 		api.NewWebSocketBroker,
 		server.NewMuxRouter,
 		server.NewHumaAPI,

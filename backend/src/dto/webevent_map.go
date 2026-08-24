@@ -21,6 +21,7 @@ var WebEventMap = WebEventMapTypes{
 	WebEventTypes.EVENTCOMMANDSTARTED.String():    CommandStartedNotification{},
 	WebEventTypes.EVENTCOMMANDOUTPUT.String():     CommandOutputNotification{},
 	WebEventTypes.EVENTCOMMANDTERMINATED.String(): CommandTerminatedNotification{},
+	WebEventTypes.EVENTRCLONETASK.String():        RcloneTask{},
 }
 
 func (WebEventMapTypes) IsValidEvent(event any) bool {

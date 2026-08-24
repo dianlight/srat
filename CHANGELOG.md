@@ -160,6 +160,16 @@
   disk metrics, HA custom-component panel, NetworkDevicesPanel, SMB over QUIC
   and add-on mDNS registration — through a single `useLabFeatures()` hook, and
   HDIdle's `useLabMode()` is now a thin wrapper over it.
+- **Rclone cloud sync (lab feature, #954)**: mounted volumes can now be
+  linked to a cloud provider behind `experimental_lab_mode`. A lab-gated
+  Cloud Sync panel in the volume details offers a three-step link wizard
+  (provider + credentials → OAuth account connect with automatic callback
+  polling → remote folder), unlink with confirmation, a difference table
+  grouped by local-only/remote-only/changed, and Push/Pull/Bidirectional
+  sync actions — each with an optional side-effect-free dry run —
+  featuring live progress (`rclone_task` WebSocket events),
+  terminal-style log and abort. Dropbox is the first driver; the librclone
+  RPC bridge is build-tag gated (`rclonelib`) with a stub fallback.
 
 ### 🐛 Bug Fixes
 

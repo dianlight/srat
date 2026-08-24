@@ -103,6 +103,8 @@ func TestWebEventMap_ContainsAllEventTypes(t *testing.T) {
 		"command_started",
 		"command_output",
 		"command_terminated",
+		"filesystem_task",
+		"rclone_task",
 	}
 
 	for _, key := range expectedKeys {
@@ -111,7 +113,7 @@ func TestWebEventMap_ContainsAllEventTypes(t *testing.T) {
 }
 
 func TestWebEventMap_Size(t *testing.T) {
-	assert.Len(t, dto.WebEventMap, 16, "WebEventMap should contain exactly 16 event types")
+	assert.Len(t, dto.WebEventMap, 17, "WebEventMap should contain exactly 17 event types")
 }
 
 func TestWebEventType_IsValidEvent_WithConcreteTypes(t *testing.T) {

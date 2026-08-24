@@ -202,6 +202,7 @@ func prog(listener net.Listener, serverPort int) {
 			server.AsHumaRoute(api.NewTelemetryHandler),
 			server.AsHumaRoute(api.NewHDIdleHandler),
 			server.AsHumaRoute(api.NewLabFeatureHandler),
+			server.AsHumaRoute(api.NewRcloneHandler),
 			server.NewMuxRouter,
 			server.NewHTTPServer,
 			server.NewHumaAPI,

@@ -29,6 +29,7 @@ import { FilesystemFormatDialog } from "./FilesystemFormatDialog";
 import { FilesystemLabelDialog } from "./FilesystemLabelDialog";
 import { HDIdleDiskSettings } from "./HDIdleDiskSettings";
 import { PartitionInformationCard } from "./PartitionInformationCard";
+import { CloudSyncPanel } from "./rclone/CloudSyncPanel";
 import { SmartStatusPanel } from "./SmartStatusPanel";
 
 export interface DetailsActions {
@@ -134,6 +135,18 @@ export function VolumeDetailsPanel(props: VolumeDetailsPanelProps) {
     }
     return candidate;
   }, [disk, partition]);
+
+  // Cloud Sync (lab feature): link a mounted volume to a cloud provider.
+  // Only rendered when experimental_lab_mode is enabled and the selected
+  // target (partition or whole-disk filesystem) has a mount point.
+  const cloudTargetPartition = partition ?? wholeDiskPartition;
+  const cloudMountData = Object.values(
+    cloudTargetPartition?.mount_point_data || {},
+  ).find((mpd) => mpd.is_mounted);
+  const cloudSyncEnabled =
+    !settingsLoading &&
+    Boolean(settings && (settings as Settings).experimental_lab_mode) &&
+    Boolean(cloudMountData?.path);
 
   // When nothing is selected, show placeholder
   if (!disk && !partition) {
@@ -436,6 +449,19 @@ export function VolumeDetailsPanel(props: VolumeDetailsPanelProps) {
             onSetFilesystemLabel={() => openDialog(setLabelDialogOpen)}
             onFormatPartition={() => openDialog(setFormatDialogOpen)}
             onPreview={openPreviewFor}
+          />
+        )}
+
+        {/* Cloud Sync (lab feature): link this mounted target to a cloud provider */}
+        {cloudSyncEnabled && cloudMountData?.path && cloudTargetPartition && (
+          <CloudSyncPanel
+            targetKind="volume"
+            targetId={cloudMountData.path}
+            targetLabel={
+              cloudTargetPartition.legacy_device_name ||
+              (cloudMountData.path ?? "")
+            }
+            readOnly={readOnly || protectedMode}
           />
         )}
 

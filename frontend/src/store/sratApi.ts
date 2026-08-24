@@ -8,6 +8,7 @@ export const addTagTypes = [
   "filesystems",
   "Issues",
   "Problems",
+  "rclone",
   "samba",
   "share",
   "user",
@@ -405,6 +406,124 @@ const injectedRtkApi = api
           method: "POST",
         }),
         invalidatesTags: ["Problems"],
+      }),
+      deleteApiRcloneLinkByTargetKindAndTargetId: build.mutation<
+        DeleteApiRcloneLinkByTargetKindAndTargetIdApiResponse,
+        DeleteApiRcloneLinkByTargetKindAndTargetIdApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/rclone/link/${queryArg.targetKind}/${queryArg.targetId}`,
+          method: "DELETE",
+        }),
+        invalidatesTags: ["volume", "rclone"],
+      }),
+      getApiRcloneLinkByTargetKindAndTargetId: build.query<
+        GetApiRcloneLinkByTargetKindAndTargetIdApiResponse,
+        GetApiRcloneLinkByTargetKindAndTargetIdApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/rclone/link/${queryArg.targetKind}/${queryArg.targetId}`,
+        }),
+        providesTags: ["volume", "rclone"],
+      }),
+      patchApiRcloneLinkByTargetKindAndTargetId: build.mutation<
+        PatchApiRcloneLinkByTargetKindAndTargetIdApiResponse,
+        PatchApiRcloneLinkByTargetKindAndTargetIdApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/rclone/link/${queryArg.targetKind}/${queryArg.targetId}`,
+          method: "PATCH",
+          body: queryArg.body,
+        }),
+        invalidatesTags: ["volume", "rclone"],
+      }),
+      putApiRcloneLinkByTargetKindAndTargetId: build.mutation<
+        PutApiRcloneLinkByTargetKindAndTargetIdApiResponse,
+        PutApiRcloneLinkByTargetKindAndTargetIdApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/rclone/link/${queryArg.targetKind}/${queryArg.targetId}`,
+          method: "PUT",
+          body: queryArg.rcloneLinkRequest,
+        }),
+        invalidatesTags: ["volume", "rclone"],
+      }),
+      postApiRcloneLinkByTargetKindAndTargetIdAbort: build.mutation<
+        PostApiRcloneLinkByTargetKindAndTargetIdAbortApiResponse,
+        PostApiRcloneLinkByTargetKindAndTargetIdAbortApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/rclone/link/${queryArg.targetKind}/${queryArg.targetId}/abort`,
+          method: "POST",
+        }),
+        invalidatesTags: ["volume", "rclone"],
+      }),
+      postApiRcloneLinkByTargetKindAndTargetIdAuthStart: build.mutation<
+        PostApiRcloneLinkByTargetKindAndTargetIdAuthStartApiResponse,
+        PostApiRcloneLinkByTargetKindAndTargetIdAuthStartApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/rclone/link/${queryArg.targetKind}/${queryArg.targetId}/auth/start`,
+          method: "POST",
+          body: queryArg.startRcloneAuthInputBody,
+        }),
+        invalidatesTags: ["volume", "rclone"],
+      }),
+      postApiRcloneLinkByTargetKindAndTargetIdDiff: build.mutation<
+        PostApiRcloneLinkByTargetKindAndTargetIdDiffApiResponse,
+        PostApiRcloneLinkByTargetKindAndTargetIdDiffApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/rclone/link/${queryArg.targetKind}/${queryArg.targetId}/diff`,
+          method: "POST",
+        }),
+        invalidatesTags: ["volume", "rclone"],
+      }),
+      postApiRcloneLinkByTargetKindAndTargetIdSync: build.mutation<
+        PostApiRcloneLinkByTargetKindAndTargetIdSyncApiResponse,
+        PostApiRcloneLinkByTargetKindAndTargetIdSyncApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/rclone/link/${queryArg.targetKind}/${queryArg.targetId}/sync`,
+          method: "POST",
+          body: queryArg.rcloneSyncRequest,
+        }),
+        invalidatesTags: ["volume", "rclone"],
+      }),
+      getApiRcloneLinks: build.query<
+        GetApiRcloneLinksApiResponse,
+        GetApiRcloneLinksApiArg
+      >({
+        query: () => ({ url: `/api/rclone/links` }),
+        providesTags: ["volume", "rclone"],
+      }),
+      getApiRcloneOauthCallback: build.query<
+        GetApiRcloneOauthCallbackApiResponse,
+        GetApiRcloneOauthCallbackApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/rclone/oauth/callback`,
+          params: {
+            code: queryArg.code,
+            state: queryArg.state,
+            error: queryArg.error,
+          },
+        }),
+        providesTags: ["volume", "rclone"],
+      }),
+      getApiRcloneProviders: build.query<
+        GetApiRcloneProvidersApiResponse,
+        GetApiRcloneProvidersApiArg
+      >({
+        query: () => ({ url: `/api/rclone/providers` }),
+        providesTags: ["volume", "rclone"],
+      }),
+      getApiRcloneEvents: build.query<
+        GetApiRcloneEventsApiResponse,
+        GetApiRcloneEventsApiArg
+      >({
+        query: () => ({ url: `/api/rclone_events` }),
+        providesTags: ["system", "internal"],
       }),
       repair: build.mutation<RepairApiResponse, RepairApiArg>({
         query: () => ({ url: `/api/repairMessage`, method: "TRACE" }),
@@ -1005,6 +1124,100 @@ export type PostApiProblemsByProblemKeyActionsAndActionKeyApiArg = {
   problemKey: string;
   actionKey: string;
 };
+export type DeleteApiRcloneLinkByTargetKindAndTargetIdApiResponse =
+  /** status default Error */ ErrorModel;
+export type DeleteApiRcloneLinkByTargetKindAndTargetIdApiArg = {
+  /** Link target kind (volume or hassos_data) */
+  targetKind: string;
+  /** Link target id (volume path or hassos-data) */
+  targetId: string;
+};
+export type GetApiRcloneLinkByTargetKindAndTargetIdApiResponse =
+  /** status 200 OK */ RcloneLink | /** status default Error */ ErrorModel;
+export type GetApiRcloneLinkByTargetKindAndTargetIdApiArg = {
+  /** Link target kind (volume or hassos_data) */
+  targetKind: string;
+  /** Link target id (volume path or hassos-data) */
+  targetId: string;
+};
+export type PatchApiRcloneLinkByTargetKindAndTargetIdApiResponse =
+  /** status 200 OK */ RcloneLink | /** status default Error */ ErrorModel;
+export type PatchApiRcloneLinkByTargetKindAndTargetIdApiArg = {
+  /** Link target kind (volume or hassos_data) */
+  targetKind: string;
+  /** Link target id (volume path or hassos-data) */
+  targetId: string;
+  body: JsonPatchOp[] | null;
+};
+export type PutApiRcloneLinkByTargetKindAndTargetIdApiResponse =
+  /** status 200 OK */ RcloneLink | /** status default Error */ ErrorModel;
+export type PutApiRcloneLinkByTargetKindAndTargetIdApiArg = {
+  /** Link target kind (volume or hassos_data) */
+  targetKind: string;
+  /** Link target id (volume path or hassos-data) */
+  targetId: string;
+  rcloneLinkRequest: RcloneLinkRequest;
+};
+export type PostApiRcloneLinkByTargetKindAndTargetIdAbortApiResponse =
+  /** status default Error */ ErrorModel;
+export type PostApiRcloneLinkByTargetKindAndTargetIdAbortApiArg = {
+  /** Link target kind (volume or hassos_data) */
+  targetKind: string;
+  /** Link target id (volume path or hassos-data) */
+  targetId: string;
+};
+export type PostApiRcloneLinkByTargetKindAndTargetIdAuthStartApiResponse =
+  /** status 200 OK */
+    | RcloneAuthStartResponse
+    | /** status default Error */ ErrorModel;
+export type PostApiRcloneLinkByTargetKindAndTargetIdAuthStartApiArg = {
+  /** Link target kind (volume or hassos_data) */
+  targetKind: string;
+  /** Link target id (volume path or hassos-data) */
+  targetId: string;
+  startRcloneAuthInputBody: StartRcloneAuthInputBody;
+};
+export type PostApiRcloneLinkByTargetKindAndTargetIdDiffApiResponse =
+  /** status 200 OK */
+    | RcloneDiffResult
+    | /** status default Error */ ErrorModel;
+export type PostApiRcloneLinkByTargetKindAndTargetIdDiffApiArg = {
+  /** Link target kind (volume or hassos_data) */
+  targetKind: string;
+  /** Link target id (volume path or hassos-data) */
+  targetId: string;
+};
+export type PostApiRcloneLinkByTargetKindAndTargetIdSyncApiResponse =
+  /** status default Error */ ErrorModel;
+export type PostApiRcloneLinkByTargetKindAndTargetIdSyncApiArg = {
+  /** Link target kind (volume or hassos_data) */
+  targetKind: string;
+  /** Link target id (volume path or hassos-data) */
+  targetId: string;
+  rcloneSyncRequest: RcloneSyncRequest;
+};
+export type GetApiRcloneLinksApiResponse = /** status 200 OK */
+  | GetRcloneLinksOutputBody
+  | /** status default Error */ ErrorModel;
+export type GetApiRcloneLinksApiArg = void;
+export type GetApiRcloneOauthCallbackApiResponse =
+  /** status default Error */ ErrorModel;
+export type GetApiRcloneOauthCallbackApiArg = {
+  /** Provider authorization code */
+  code?: string;
+  /** Anti-CSRF state token */
+  state?: string;
+  /** Provider-reported denial reason */
+  error?: string;
+};
+export type GetApiRcloneProvidersApiResponse = /** status 200 OK */
+  | RcloneProvidersResponse
+  | /** status default Error */ ErrorModel;
+export type GetApiRcloneProvidersApiArg = void;
+export type GetApiRcloneEventsApiResponse = /** status 200 OK */
+  | RcloneTask
+  | /** status default Error */ ErrorModel;
+export type GetApiRcloneEventsApiArg = void;
 export type RepairApiResponse = /** status 200 OK */
   | RepairCommandMessage
   | /** status default Error */ ErrorModel;
@@ -1846,6 +2059,105 @@ export type InterfaceStat = {
   mtu: number;
   name: string;
 };
+export type RcloneLink = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  auto_sync: boolean;
+  last_sync_at?: string;
+  last_sync_message?: string;
+  last_sync_result?: string;
+  provider: string;
+  remote_path: string;
+  schedule_minutes: number;
+  status: string;
+  target_id: string;
+  target_kind: string;
+};
+export type RcloneLinkRequest = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  auto_sync: boolean;
+  provider: string;
+  remote_path: string;
+  schedule_minutes?: number;
+  settings?: {
+    [key: string]: string;
+  };
+};
+export type RcloneAuthStartResponse = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  auth_url: string;
+  redirect_uri: string;
+  state: string;
+};
+export type StartRcloneAuthInputBody = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  settings: {
+    [key: string]: string;
+  };
+};
+export type RcloneDiffEntry = {
+  diff_type: string;
+  local_mod_time?: string;
+  local_size?: number;
+  path: string;
+  remote_mod_time?: string;
+  remote_size?: number;
+};
+export type RcloneDiffResult = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  changed: number;
+  entries: RcloneDiffEntry[] | null;
+  local_only: number;
+  remote_only: number;
+  warning?: string;
+};
+export type RcloneSyncRequest = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  direction: Direction;
+  dry_run?: boolean;
+};
+export type GetRcloneLinksOutputBody = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  links: RcloneLink[] | null;
+};
+export type RcloneConfigField = {
+  description?: string;
+  label: string;
+  name: string;
+  required?: boolean;
+  secret?: boolean;
+};
+export type RcloneProviderInfo = {
+  config_fields: RcloneConfigField[] | null;
+  display_name: string;
+  name: string;
+};
+export type RcloneProvidersResponse = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  library_available: boolean;
+  providers: RcloneProviderInfo[] | null;
+};
+export type RcloneTask = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  direction?: string;
+  error?: string;
+  message?: string;
+  notes?: string[] | null;
+  operation: string;
+  progress?: number;
+  result?: unknown;
+  status: string;
+  target_id: string;
+  target_kind: string;
+};
 export type RepairCommandMessage = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
@@ -2161,6 +2473,16 @@ export enum Status2 {
   Alpha = "alpha",
   Beta = "beta",
 }
+export enum Direction {
+  Push = "push",
+  Pull = "pull",
+  Bidi = "bidi",
+}
+export enum Smart_mode {
+  None = "none",
+  Legacy = "legacy",
+  Direct = "direct",
+}
 export enum Standard_share_names {
   Old = "old",
   New = "new",
@@ -2219,6 +2541,7 @@ export enum Supported_events {
   CommandStarted = "command_started",
   CommandOutput = "command_output",
   CommandTerminated = "command_terminated",
+  RcloneTask = "rclone_task",
 }
 export enum Update_channel {
   None = "None",
@@ -2269,6 +2592,18 @@ export const {
   usePatchApiProblemsByProblemKeyMutation,
   usePutApiProblemsByProblemKeyMutation,
   usePostApiProblemsByProblemKeyActionsAndActionKeyMutation,
+  useDeleteApiRcloneLinkByTargetKindAndTargetIdMutation,
+  useGetApiRcloneLinkByTargetKindAndTargetIdQuery,
+  usePatchApiRcloneLinkByTargetKindAndTargetIdMutation,
+  usePutApiRcloneLinkByTargetKindAndTargetIdMutation,
+  usePostApiRcloneLinkByTargetKindAndTargetIdAbortMutation,
+  usePostApiRcloneLinkByTargetKindAndTargetIdAuthStartMutation,
+  usePostApiRcloneLinkByTargetKindAndTargetIdDiffMutation,
+  usePostApiRcloneLinkByTargetKindAndTargetIdSyncMutation,
+  useGetApiRcloneLinksQuery,
+  useGetApiRcloneOauthCallbackQuery,
+  useGetApiRcloneProvidersQuery,
+  useGetApiRcloneEventsQuery,
   useRepairMutation,
   usePutApiRestartMutation,
   usePutApiSambaApplyMutation,

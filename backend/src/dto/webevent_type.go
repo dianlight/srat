@@ -20,4 +20,5 @@ const (
 	eventCommandStarted                        // "command_started"
 	eventCommandOutput                         // "command_output"
 	eventCommandTerminated                     // "command_terminated"
+	eventRcloneTask                            // "rclone_task"
 )

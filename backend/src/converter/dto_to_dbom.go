@@ -39,6 +39,11 @@ type DtoToDbomConverter interface {
 	// goverter:map .  HDIdleDeviceSupport
 	HDIdleDeviceToHDIdleDeviceDTO(source dbom.HDIdleDevice) (dto.HDIdleDevice, error)
 
+	// goverter:ignore CreatedAt UpdatedAt DeletedAt OAuthState
+	RcloneLinkDTOToRcloneLink(source dto.RcloneLink) (dbom.RcloneLink, error)
+
+	RcloneLinkToRcloneLinkDTO(source dbom.RcloneLink) (dto.RcloneLink, error)
+
 	// goverter:ignore SupportsSCSI SupportsATA RecommendedCommand ErrorMessage
 	// goverter:map Supported | trueConst
 	HDIdleDeviceToHDIdleDeviceSupportDTO(source dbom.HDIdleDevice) (dto.HDIdleDeviceSupport, error)
