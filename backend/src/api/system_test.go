@@ -213,3 +213,11 @@ func (suite *SystemHandlerSuite) TestHandleCommandEvents_DocStubReturnsError() {
 	resp := suite.testAPI.Get("/command_events")
 	suite.Equal(http.StatusInternalServerError, resp.Code)
 }
+
+// TestHandleRcloneEvents_DocStubReturnsError verifies the doc-stub endpoint
+// that anchors the RcloneTask WebSocket event schema always returns an error —
+// actual rclone task events are delivered over the WebSocket connection.
+func (suite *SystemHandlerSuite) TestHandleRcloneEvents_DocStubReturnsError() {
+	resp := suite.testAPI.Get("/rclone_events")
+	suite.Equal(http.StatusInternalServerError, resp.Code)
+}
