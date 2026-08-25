@@ -159,9 +159,12 @@ export function Users() {
         })
         .catch((err) => {
           console.error(err);
-          toast.error(`Error creating user ${data.username}`, {
-            data: { error: err.data },
-          });
+          const detail = err.data?.detail ?? err.message;
+          toast.error(
+            detail
+              ? `Error creating user ${data.username}: ${detail}`
+              : `Error creating user ${data.username}`,
+          );
         });
     } else if (data.is_admin) {
       userAdminUpdate({ user: data })
@@ -172,9 +175,12 @@ export function Users() {
           toast.success(`Admin ${data.username} updated successfully`);
         })
         .catch((err) => {
-          toast.error(`Error updating admin ${data.username}`, {
-            data: { error: err.data },
-          });
+          const detail = err.data?.detail ?? err.message;
+          toast.error(
+            detail
+              ? `Error updating admin ${data.username}: ${detail}`
+              : `Error updating admin ${data.username}`,
+          );
           console.error(err);
         });
     } else {
@@ -186,9 +192,12 @@ export function Users() {
           toast.success(`User ${data.username} updated successfully`);
         })
         .catch((err) => {
-          toast.error(`Error updating user ${data.username}`, {
-            data: { error: err.data },
-          });
+          const detail = err.data?.detail ?? err.message;
+          toast.error(
+            detail
+              ? `Error updating user ${data.username}: ${detail}`
+              : `Error updating user ${data.username}`,
+          );
           console.error(err);
         });
     }
@@ -221,9 +230,12 @@ export function Users() {
             toast.success(`User ${user.username} deleted successfully`);
           })
           .catch((err) => {
-            toast.error(`Error deleting user ${user.username}`, {
-              data: { error: err.data },
-            });
+            const detail = err.data?.detail ?? err.message;
+            toast.error(
+              detail
+                ? `Error deleting user ${user.username}: ${detail}`
+                : `Error deleting user ${user.username}`,
+            );
           });
       }
     });

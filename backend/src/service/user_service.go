@@ -243,8 +243,9 @@ func (s *UserService) CreateUser(userDto dto.User) (*dto.User, error) {
 }
 
 func (s *UserService) UpdateUser(currentUsername string, userDto dto.User) (*dto.User, error) {
-	if userDto.Password != nil && userDto.Password.Expose() == "" {
-		return nil, dto.ErrorPasswordRequired
+	// Treat nil or empty password as "keep existing password" on update.
+	if userDto.Password == nil || userDto.Password.Expose() == "" {
+		userDto.Password = nil
 	}
 
 	dbUser, err := gorm.G[dbom.SambaUser](s.db).Where(g.SambaUser.Username.Eq(currentUsername)).First(s.ctx)
@@ -325,8 +326,9 @@ func (s *UserService) updateUser(currentUsername string, currentPassword string,
 }
 
 func (s *UserService) UpdateAdminUser(userDto dto.User) (*dto.User, error) {
-	if userDto.Password != nil && userDto.Password.Expose() == "" {
-		return nil, dto.ErrorPasswordRequired
+	// Treat nil or empty password as "keep existing password" on update.
+	if userDto.Password == nil || userDto.Password.Expose() == "" {
+		userDto.Password = nil
 	}
 
 	dbUser, err := query.SambaUserQuery[dbom.SambaUser](s.db).GetAdmin(s.ctx)
