@@ -183,4 +183,42 @@ describe("ShareEditForm component", () => {
         const volumeLabels = within(container).queryAllByText("Volume");
         expect(volumeLabels.length).toBe(0);
     });
+
+    it("does not submit the form when Enter is pressed in a text field", async () => {
+        const { overrides } = setupCommonOverrides();
+
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { Usage } = await import("../../../../store/sratApi");
+        // @ts-expect-error - Query param fetches isolated module instance
+        const { ShareEditForm } = await import("../ShareEditForm?share-edit-form-enter-guard");
+
+        const handleSubmit = vi.fn();
+
+        render(
+            React.createElement(ShareEditForm as any, {
+                shareData: {
+                    name: "TestShare",
+                    usage: Usage.None,
+                    mount_point_data: {
+                        path: "/mnt/free",
+                        path_hash: "free-hash",
+                        is_mounted: true,
+                        is_write_supported: true,
+                    },
+                },
+                shares: {},
+                onSubmit: handleSubmit,
+                testOverrides: overrides,
+            })
+        );
+
+        const [nameInput] = await screen.findAllByLabelText(/Share Name/i);
+        const user = userEvent.setup();
+        await user.click(nameInput);
+        await user.keyboard("{Enter}");
+
+        expect(handleSubmit).not.toHaveBeenCalled();
+    });
 });

@@ -16,7 +16,7 @@ import {
 } from "@mui/material";
 import { filesize } from "filesize";
 import { MuiChipsInput } from "mui-chips-input";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   AutocompleteElement,
@@ -208,9 +208,26 @@ export function ShareEditForm({
   const cycleCasingTooltipTitle = `Cycle casing (Next: ${nextCasingStyleName.charAt(0).toUpperCase() + nextCasingStyleName.slice(1)})`;
   const CasingIconToDisplay = getCasingIcon(nextCasingStyleName);
 
+  const handleFormKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLFormElement>) => {
+      if (
+        e.key === "Enter" &&
+        (e.target as HTMLElement)?.tagName !== "BUTTON"
+      ) {
+        e.preventDefault();
+      }
+    },
+    [],
+  );
+
   const renderFormContent = () => (
     <>
-      <form id="editshareform" onSubmit={handleSubmit(onSubmit)} noValidate>
+      <form
+        id="editshareform"
+        onSubmit={handleSubmit(onSubmit)}
+        onKeyDown={handleFormKeyDown}
+        noValidate
+      >
         <Grid container spacing={2}>
           {watch("usage") !== Usage.Internal && (
             <Grid size={{ xs: 12, md: 8 }}>
@@ -245,8 +262,8 @@ export function ShareEditForm({
                       (option as MountPointData)?.disk_label || "",
                     getOptionKey: (option) =>
                       (option as MountPointData)?.path || "",
-                    renderOption: (props, option) => (
-                      <li {...props}>
+                    renderOption: ({ key, ...props }, option) => (
+                      <li key={key} {...props}>
                         <Typography variant="body2">
                           {option.disk_label || option.device_id}{" "}
                           <sup>
