@@ -1,7 +1,10 @@
 package service_test
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"log/slog"
 	"net/http"
 	"testing"
 
@@ -743,4 +746,100 @@ func (suite *HardwareServiceSuite) TestGetHardwareInfo_RawWholeDiskIgnoresStaleU
 		suite.Equal("/dev/disk/by-id/usb-TESTRAW_456", *part.DevicePath)
 		suite.Nil(part.FsType, "Raw whole-disk partition must not use stale udev FsType")
 	}
+}
+
+// sn740SupervisorResponse builds a Supervisor /hardware/info response modeling
+// the WD PC SN740 layout from issue #990: one NVMe drive matched by serial to a
+// whole-disk device exposing `childCount` partition children and no reported
+// filesystems, so the fallback synthesis turns every child into a partition.
+func sn740SupervisorResponse(childCount int) *hardware.GetHardwareInfoResponse {
+	children := make([]string, 0, childCount)
+	devices := []hardware.Device{
+		{
+			Name:     new("nvme0n1"),
+			DevPath:  new("/dev/nvme0n1"),
+			ById:     new("/dev/disk/by-id/nvme-SN740"),
+			Children: &children,
+			Attributes: &hardware.Attributes{
+				IDSERIALSHORT: new("SN740TEST"),
+			},
+		},
+	}
+	for i := 1; i <= childCount; i++ {
+		partName := fmt.Sprintf("nvme0n1p%d", i)
+		children = append(children, "/sys/devices/virtual/block/"+partName)
+		devices = append(devices, hardware.Device{
+			Name:    new(partName),
+			DevPath: new("/dev/" + partName),
+			ById:    new("/dev/disk/by-id/" + partName),
+		})
+	}
+	return &hardware.GetHardwareInfoResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok","data":{"drives":[]}}`),
+		JSON200: &struct {
+			Data   *hardware.HardwareInfo             `json:"data,omitempty"`
+			Result *hardware.GetHardwareInfo200Result `json:"result,omitempty"`
+		}{
+			Data: &hardware.HardwareInfo{
+				Drives: &[]hardware.Drive{
+					{
+						Id:     new("drive-sn740"),
+						Serial: new("SN740TEST"),
+					},
+				},
+				Devices: &devices,
+			},
+		},
+	}
+}
+
+// TestGetHardwareInfo_WarnsOnPhantomPartitionCountIncrease reproduces the
+// issue #990 fingerprint: an unchanged NVMe drive whose partition count grows
+// (2→3) between two enumerations without any local partitioning action. The
+// first published snapshot is the silent baseline; the growth must surface as
+// a slog warning carrying serial, previous/current counts and the appeared
+// partition name so operators can correlate it with probe/udev activity.
+func (suite *HardwareServiceSuite) TestGetHardwareInfo_WarnsOnPhantomPartitionCountIncrease() {
+	var buf bytes.Buffer
+	oldDefault := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+	defer slog.SetDefault(oldDefault)
+
+	mock.When(suite.smartService.GetSmartInfo(mock.Any[context.Context](), mock.Any[string]())).
+		ThenReturn(nil, errors.WithDetails(dto.ErrorSMARTNotSupported, "device", "nvme0n1"))
+	mock.When(suite.hdidleService.GetDeviceConfig(mock.Any[string]())).
+		ThenReturn(nil, errors.WithDetails(dto.ErrorHDIdleNotSupported, "device", "nvme0n1"))
+	mock.When(suite.haClient.GetHardwareInfoWithResponse(mock.Any[context.Context]())).
+		ThenReturn(sn740SupervisorResponse(2), nil).
+		ThenReturn(sn740SupervisorResponse(3), nil)
+
+	// Baseline enumeration: two partitions, no anomaly expected.
+	disks, err := suite.hardwareService.GetHardwareInfo()
+	suite.Require().NoError(err)
+	disk, ok := disks["nvme-SN740"]
+	suite.Require().True(ok, "drive should be keyed by its by-id name")
+	suite.Require().NotNil(disk.Partitions)
+	suite.Len(*disk.Partitions, 2)
+	suite.NotContains(buf.String(), "Anomalous partition count increase",
+		"the first published snapshot is the diff baseline and must not warn")
+
+	// Second enumeration observing the phantom third partition.
+	suite.hardwareService.InvalidateHardwareInfo()
+	buf.Reset()
+
+	disks, err = suite.hardwareService.GetHardwareInfo()
+	suite.Require().NoError(err)
+	disk, ok = disks["nvme-SN740"]
+	suite.Require().True(ok)
+	suite.Require().NotNil(disk.Partitions)
+	suite.Len(*disk.Partitions, 3)
+
+	logs := buf.String()
+	suite.Contains(logs, "Anomalous partition count increase without local partitioning action")
+	suite.Contains(logs, "serial=SN740TEST")
+	suite.Contains(logs, "disk_id=nvme-SN740")
+	suite.Contains(logs, "previous_partition_count=2")
+	suite.Contains(logs, "current_partition_count=3")
+	suite.Contains(logs, "new_partitions=nvme0n1p3")
 }
