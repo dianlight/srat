@@ -3,6 +3,8 @@ package tempio
 import (
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -238,4 +240,191 @@ map to guest = Bad User
 	rendered, err := RenderTemplateBuffer(&data, []byte(template))
 	require.NoError(t, err)
 	assert.NotContains(t, string(rendered), "guest account")
+}
+
+// loadSmbTemplate loads the production smb.gtpl template used to render smb.conf.
+func loadSmbTemplate(t *testing.T) []byte {
+	t.Helper()
+	templateData, err := os.ReadFile("../templates/smb.gtpl")
+	require.NoError(t, err)
+	return templateData
+}
+
+// smbConfigForShare builds a root template context that mirrors the output of
+// config.Config.ConfigToMap(): a JSON marshal/unmarshal round trip produces
+// snake_case map keys and []any slices. Only the keys required for the
+// [global] section and the share loop are populated; the rest fall back to
+// template defaults.
+func smbConfigForShare(share map[string]any) *map[string]any {
+	return &map[string]any{
+		"hostname":      "test-host",
+		"workgroup":     "WORKGROUP",
+		"username":      "admin",
+		"log_level":     "fatal",
+		"samba_version": "",
+		"interfaces":    []any{"lo"},
+		"allow_hosts":   []any{},
+		"medialibrary":  map[string]any{"enable": false},
+		"shares": map[string]any{
+			"TEST_SHARE": share,
+		},
+	}
+}
+
+// extractValidUsersLine returns the "valid users = ..." line rendered for the
+// TEST_SHARE section, split into whitespace-separated fields.
+func extractValidUsersLine(t *testing.T, rendered []byte) []string {
+	t.Helper()
+	re := regexp.MustCompile(`(?m)^\s*valid users =.*$`)
+	line := re.FindString(string(rendered))
+	require.NotEmpty(t, line, "valid users line not found in rendered config:\n%s", string(rendered))
+	return strings.Fields(line)
+}
+
+// TestSmbTemplateValidUsersDeduplication verifies issue #991: the same user
+// must never appear twice in the generated "valid users" directive, whether
+// duplicated inside a single list or present in both users and ro_users.
+// Order is preserved: rw users first, then ro users.
+func TestSmbTemplateValidUsersDeduplication(t *testing.T) {
+	tests := []struct {
+		name      string
+		users     []any
+		roUsers   []any
+		wantUsers []string
+	}{
+		{
+			name:      "duplicate user within users list",
+			users:     []any{"admin", "admin"},
+			roUsers:   []any{},
+			wantUsers: []string{"admin"},
+		},
+		{
+			name:      "same user in users and ro_users",
+			users:     []any{"alice", "bob"},
+			roUsers:   []any{"bob", "carol"},
+			wantUsers: []string{"alice", "bob", "carol"},
+		},
+		{
+			name:      "empty users falls back to global username",
+			users:     nil,
+			roUsers:   []any{},
+			wantUsers: []string{"admin"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data := smbConfigForShare(map[string]any{
+				"name":     "TEST_SHARE",
+				"path":     "/test",
+				"fs":       "native",
+				"users":    tt.users,
+				"ro_users": tt.roUsers,
+			})
+
+			rendered, err := RenderTemplateBuffer(data, loadSmbTemplate(t))
+			require.NoError(t, err)
+
+			fields := extractValidUsersLine(t, rendered)
+			// fields[0]="valid" fields[1]="users" fields[2]="=_ha_mount_user_"
+			require.GreaterOrEqual(t, len(fields), 3)
+			assert.Equal(t, "=_ha_mount_user_", fields[2], "_ha_mount_user_ prefix must be preserved")
+			gotUsers := fields[3:]
+			assert.Equal(t, tt.wantUsers, gotUsers,
+				"valid users must contain each user exactly once, preserving rw-then-ro order")
+		})
+	}
+}
+
+// TestSmbTemplateGuestOkEnabled verifies issue #991: a share with guest_ok set
+// (snake_case key, as produced by ConfigToMap's JSON round trip) must render
+// an explicit "guest ok = yes" directive.
+func TestSmbTemplateGuestOkEnabled(t *testing.T) {
+	data := smbConfigForShare(map[string]any{
+		"name":     "TEST_SHARE",
+		"path":     "/test",
+		"fs":       "native",
+		"users":    []any{"admin"},
+		"guest_ok": true,
+	})
+
+	rendered, err := RenderTemplateBuffer(data, loadSmbTemplate(t))
+	require.NoError(t, err)
+	assert.Contains(t, string(rendered), "guest ok = yes")
+}
+
+// TestSmbTemplateGuestOkDisabled guards against regressions: without guest_ok
+// no "guest ok = yes" directive may be emitted for the share.
+func TestSmbTemplateGuestOkDisabled(t *testing.T) {
+	data := smbConfigForShare(map[string]any{
+		"name":  "TEST_SHARE",
+		"path":  "/test",
+		"fs":    "native",
+		"users": []any{"admin"},
+	})
+
+	rendered, err := RenderTemplateBuffer(data, loadSmbTemplate(t))
+	require.NoError(t, err)
+	assert.NotContains(t, string(rendered), "guest ok = yes")
+}
+
+// TestSmbTemplateTimeMachineMaxSize verifies issue #991 (sibling of the
+// guest_ok bug): a Time Machine share with timemachine_max_size set
+// (snake_case key, as produced by ConfigToMap's JSON round trip) must render
+// an explicit "fruit:time machine max size" directive.
+func TestSmbTemplateTimeMachineMaxSize(t *testing.T) {
+	data := smbConfigForShare(map[string]any{
+		"name":                 "TEST_SHARE",
+		"path":                 "/test",
+		"fs":                   "native",
+		"users":                []any{"admin"},
+		"timemachine":          true,
+		"timemachine_max_size": "2 TB",
+	})
+
+	rendered, err := RenderTemplateBuffer(data, loadSmbTemplate(t))
+	require.NoError(t, err)
+	assert.Contains(t, string(rendered), "fruit:time machine max size = 2 TB")
+}
+
+// TestSmbTemplateTimeMachineMaxSizeOmitted guards against regressions: no
+// size directive when timemachine_max_size is unset, and none when the share
+// is not a Time Machine share even if a size is configured.
+func TestSmbTemplateTimeMachineMaxSizeOmitted(t *testing.T) {
+	tests := []struct {
+		name  string
+		share map[string]any
+	}{
+		{
+			name: "time machine share without size",
+			share: map[string]any{
+				"name":        "TEST_SHARE",
+				"path":        "/test",
+				"fs":          "native",
+				"users":       []any{"admin"},
+				"timemachine": true,
+			},
+		},
+		{
+			name: "size set on non time machine share",
+			share: map[string]any{
+				"name":                 "TEST_SHARE",
+				"path":                 "/test",
+				"fs":                   "native",
+				"users":                []any{"admin"},
+				"timemachine":          false,
+				"timemachine_max_size": "2 TB",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data := smbConfigForShare(tt.share)
+
+			rendered, err := RenderTemplateBuffer(data, loadSmbTemplate(t))
+			require.NoError(t, err)
+			assert.NotContains(t, string(rendered), "fruit:time machine max size")
+		})
+	}
 }
