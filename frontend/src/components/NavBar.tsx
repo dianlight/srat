@@ -79,6 +79,7 @@ import {
 import { useGetServerEventsQuery } from "../store/wsApi";
 import { DonationButton } from "./DonationButton";
 import { ErrorBoundary } from "./ErrorBoundary";
+import { useErrorRecovery } from "./ErrorRecoveryContext";
 import { NotificationCenter } from "./NotificationCenter";
 import { ReportIssueDialog } from "./ReportIssueDialog";
 
@@ -292,6 +293,7 @@ export function NavBar(props: {
   const theme = useTheme();
   const [isLogoHovered, setIsLogoHovered] = useState(false);
   const matches = useMediaQuery(theme.breakpoints.up("sm"));
+  const { resetKey } = useErrorRecovery();
   const [anchorElNav, setAnchorElNav] = useState<null | HTMLElement>(null);
   const [reportIssueOpen, setReportIssueOpen] = useState(false);
   const [githubMenuAnchor, setGithubMenuAnchor] = useState<null | HTMLElement>(
@@ -525,11 +527,11 @@ export function NavBar(props: {
                   <MenuIcon />
                 </IconButton>
                 <Menu
+                  key={resetKey}
                   id="menu-appbar"
                   anchorEl={anchorElNav}
                   open={Boolean(anchorElNav)}
                   onClose={handleCloseNavMenu}
-                  keepMounted
                   anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
                   transformOrigin={{ vertical: "top", horizontal: "left" }}
                 >
@@ -861,7 +863,7 @@ export function NavBar(props: {
               index={tab.actualIndex as number}
               tutorialSteps={tab.tutorialSteps}
             >
-              <ErrorBoundary>{tab.component}</ErrorBoundary>
+              <ErrorBoundary errorKey={resetKey}>{tab.component}</ErrorBoundary>
             </TabPanel>
           )),
           props.bodyRef.current /*document.getElementById('mainarea')!*/,

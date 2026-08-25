@@ -431,8 +431,8 @@ func (suite *UserServiceSuite) TestCreateUser_NilPassword() {
 	suite.True(errors.Is(err, dto.ErrorPasswordRequired))
 }
 
-func (suite *UserServiceSuite) TestUpdateUser_EmptyPassword() {
-	// Arrange
+func (suite *UserServiceSuite) TestUpdateUser_EmptyPassword_KeepsExisting() {
+	// Arrange: create a user with a valid password
 	username := fmt.Sprintf("updemptypwd%d", time.Now().UnixNano())
 	_, err := suite.userService.CreateUser(dto.User{
 		Username: username,
@@ -441,6 +441,7 @@ func (suite *UserServiceSuite) TestUpdateUser_EmptyPassword() {
 	})
 	suite.Require().NoError(err)
 
+	// Update with empty password (should keep existing password, not error)
 	userDto := dto.User{
 		Username: username,
 		Password: new(dto.NewSecret("")),
@@ -450,14 +451,48 @@ func (suite *UserServiceSuite) TestUpdateUser_EmptyPassword() {
 	// Act
 	updatedUser, err := suite.userService.UpdateUser(username, userDto)
 
-	// Assert
-	suite.Require().Error(err)
-	suite.Require().Nil(updatedUser)
-	suite.True(errors.Is(err, dto.ErrorPasswordRequired))
+	// Assert: update succeeds and existing password is preserved
+	suite.Require().NoError(err)
+	suite.Require().NotNil(updatedUser)
+	suite.Equal(username, updatedUser.Username)
+
+	// Verify the password in DB is unchanged
+	var persistedUser dbom.SambaUser
+	suite.Require().NoError(suite.db.Where("username = ?", username).First(&persistedUser).Error)
+	suite.Equal("validpassword", persistedUser.Password)
 }
 
-func (suite *UserServiceSuite) TestUpdateAdminUser_EmptyPassword() {
-	// Arrange
+func (suite *UserServiceSuite) TestUpdateUser_NilPassword_KeepsExisting() {
+	// Arrange: create a user with a valid password
+	username := fmt.Sprintf("updnillpwd%d", time.Now().UnixNano())
+	_, err := suite.userService.CreateUser(dto.User{
+		Username: username,
+		Password: new(dto.NewSecret("validpassword")),
+		IsAdmin:  false,
+	})
+	suite.Require().NoError(err)
+
+	// Update with nil password (should keep existing password)
+	userDto := dto.User{
+		Username: username,
+		IsAdmin:  false,
+	}
+
+	// Act
+	updatedUser, err := suite.userService.UpdateUser(username, userDto)
+
+	// Assert: update succeeds and existing password is preserved
+	suite.Require().NoError(err)
+	suite.Require().NotNil(updatedUser)
+	suite.Equal(username, updatedUser.Username)
+
+	var persistedUser dbom.SambaUser
+	suite.Require().NoError(suite.db.Where("username = ?", username).First(&persistedUser).Error)
+	suite.Equal("validpassword", persistedUser.Password)
+}
+
+func (suite *UserServiceSuite) TestUpdateAdminUser_EmptyPassword_KeepsExisting() {
+	// Arrange: create an admin user with a valid password
 	username := fmt.Sprintf("adminemptypwd%d", time.Now().Unix())
 	suite.Require().NoError(suite.db.Delete(&dbom.SambaUser{}, "is_admin = ?", true).Error)
 	_, err := suite.userService.CreateUser(dto.User{
@@ -467,6 +502,7 @@ func (suite *UserServiceSuite) TestUpdateAdminUser_EmptyPassword() {
 	})
 	suite.Require().NoError(err)
 
+	// Update with empty password (should keep existing password, not error)
 	adminDto := dto.User{
 		Username: username,
 		Password: new(dto.NewSecret("")),
@@ -476,10 +512,46 @@ func (suite *UserServiceSuite) TestUpdateAdminUser_EmptyPassword() {
 	// Act
 	updatedAdmin, err := suite.userService.UpdateAdminUser(adminDto)
 
-	// Assert
-	suite.Require().Error(err)
-	suite.Require().Nil(updatedAdmin)
-	suite.True(errors.Is(err, dto.ErrorPasswordRequired))
+	// Assert: update succeeds and existing password is preserved
+	suite.Require().NoError(err)
+	suite.Require().NotNil(updatedAdmin)
+	suite.Equal(username, updatedAdmin.Username)
+	suite.True(updatedAdmin.IsAdmin)
+
+	var persistedUser dbom.SambaUser
+	suite.Require().NoError(suite.db.Where("username = ?", username).First(&persistedUser).Error)
+	suite.Equal("validpassword", persistedUser.Password)
+}
+
+func (suite *UserServiceSuite) TestUpdateAdminUser_NilPassword_KeepsExisting() {
+	// Arrange: create an admin user with a valid password
+	username := fmt.Sprintf("adminnillpwd%d", time.Now().Unix())
+	suite.Require().NoError(suite.db.Delete(&dbom.SambaUser{}, "is_admin = ?", true).Error)
+	_, err := suite.userService.CreateUser(dto.User{
+		Username: username,
+		Password: new(dto.NewSecret("validpassword")),
+		IsAdmin:  true,
+	})
+	suite.Require().NoError(err)
+
+	// Update with nil password (should keep existing password)
+	adminDto := dto.User{
+		Username: username,
+		IsAdmin:  true,
+	}
+
+	// Act
+	updatedAdmin, err := suite.userService.UpdateAdminUser(adminDto)
+
+	// Assert: update succeeds and existing password is preserved
+	suite.Require().NoError(err)
+	suite.Require().NotNil(updatedAdmin)
+	suite.Equal(username, updatedAdmin.Username)
+	suite.True(updatedAdmin.IsAdmin)
+
+	var persistedUser dbom.SambaUser
+	suite.Require().NoError(suite.db.Where("username = ?", username).First(&persistedUser).Error)
+	suite.Equal("validpassword", persistedUser.Password)
 }
 
 func (suite *UserServiceSuite) TestUpdateUser_Success() {
