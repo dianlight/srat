@@ -81,7 +81,7 @@ run = [
         # targets by default; without it linking fails with undefined
         # `__ubsan_handle_out_of_bounds` referenced from cgo (gcc_libinit.c).
         CGO_ENABLED=1
-        GOTAGS="p${usage_pprof:+prof},embedallowed,smartlib"
+        GOTAGS="p${usage_pprof:+prof},embedallowed,smartlib,rclonelib"
         CC="zig cc -target ${usage_arch?}-linux-musl -dynamic -fno-sanitize=all"
         # -linkmode=external forces Go to use zig as the linker instead of its
         # internal linker, which is required for CC flags like -dynamic to take
@@ -99,7 +99,7 @@ run = [
         fi
         # Glibc dynamic build: srat-server-glib (CGO + system glibc)
         CGO_ENABLED=1
-        GOTAGS="p${usage_pprof:+prof},embedallowed,smartlib"
+        GOTAGS="p${usage_pprof:+prof},embedallowed,smartlib,rclonelib"
         if [ "$usage_arch" = "aarch64" ]; then
           CC="aarch64-linux-gnu-gcc"
           export CC

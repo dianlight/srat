@@ -360,3 +360,8 @@ Partitionless
 superfloppy
 darwin
 unpartitioned
+fstype
+combobox
+guest_ok
+rsynced
+Carola

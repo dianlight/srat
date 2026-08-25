@@ -77,6 +77,8 @@ type RcloneService struct {
 	pendingMu sync.Mutex
 	pending   map[string]rclonePendingAuth // state → auth request + deadline
 	redirect  string                       // OAuth callback base URL
+
+	autoSyncStop chan struct{} // signals the auto-sync loop to exit; nil when stopped
 }
 
 type rcloneRunningJob struct {
@@ -99,8 +101,8 @@ type RcloneServiceParams struct {
 }
 
 // NewRcloneService creates the cloud-sync service.
-func NewRcloneService(in RcloneServiceParams) RcloneServiceInterface {
-	return &RcloneService{
+func NewRcloneService(lc fx.Lifecycle, in RcloneServiceParams) RcloneServiceInterface {
+	svc := &RcloneService{
 		db:             in.DB,
 		ctx:            in.Ctx,
 		state:          in.State,
@@ -110,6 +112,17 @@ func NewRcloneService(in RcloneServiceParams) RcloneServiceInterface {
 		running:        map[string]*rcloneRunningJob{},
 		pending:        map[string]rclonePendingAuth{},
 	}
+	lc.Append(fx.Hook{
+		OnStart: func(_ context.Context) error {
+			svc.startAutoSync()
+			return nil
+		},
+		OnStop: func(_ context.Context) error {
+			svc.stopAutoSync()
+			return nil
+		},
+	})
+	return svc
 }
 
 func rcloneJobKey(targetKind, targetID string) string { return targetKind + "/" + targetID }
@@ -230,6 +243,7 @@ func (s *RcloneService) SaveLink(link dto.RcloneLink) errors.E {
 	if err := s.db.Save(&row).Error; err != nil {
 		return errors.Wrap(err, "save rclone link")
 	}
+	s.reconfigureAutoSync()
 	return nil
 }
 
@@ -261,6 +275,7 @@ func (s *RcloneService) DeleteLink(ctx context.Context, targetKind, targetID str
 	if err := s.db.Delete(&row).Error; err != nil {
 		return errors.Wrap(err, "delete rclone link")
 	}
+	s.reconfigureAutoSync()
 	return nil
 }
 
@@ -679,6 +694,130 @@ func (s *RcloneService) AbortSync(targetKind, targetID string) errors.E {
 	}
 	job.cancel()
 	return nil
+}
+
+// ---------- auto-sync scheduler ----------
+
+//	startAutoSync launches the background goroutine that periodically triggers
+//
+// syncs for links with AutoSync enabled. Idempotent: calling while already
+// running is a no-op.
+func (s *RcloneService) startAutoSync() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.autoSyncStop != nil {
+		return
+	}
+	stop := make(chan struct{})
+	s.autoSyncStop = stop
+	go func() {
+		s.autoSyncLoop(stop, s.autoSyncInterval())
+	}()
+}
+
+// stopAutoSync halts the auto-sync background loop. Idempotent.
+func (s *RcloneService) stopAutoSync() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.autoSyncStop == nil {
+		return
+	}
+	close(s.autoSyncStop)
+	s.autoSyncStop = nil
+}
+
+// autoSyncLoop polls eligible links every interval, triggering Sync for
+// overdue targets. After each tick the interval is re-evaluated so link
+// additions/removals take effect on the next cycle.
+func (s *RcloneService) autoSyncLoop(stop chan struct{}, interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-stop:
+			return
+		case <-ticker.C:
+			s.autoSyncTick()
+			// Re-evaluate interval in case links were added/removed.
+			ticker.Reset(s.autoSyncInterval())
+		}
+	}
+}
+
+// autoSyncInterval queries eligible auto-sync links and returns the shortest
+// ScheduleMinutes. If no links are eligible it returns a long default interval
+// (the loop will just sleep until the next reconfigure).
+func (s *RcloneService) autoSyncInterval() time.Duration {
+	var rows []dbom.RcloneLink
+	if err := s.db.WithContext(s.ctx).
+		Where("auto_sync = ? AND schedule_minutes > 0 AND status = ?",
+			true, dto.RcloneStatusAuthorized).
+		Find(&rows).Error; err != nil || len(rows) == 0 {
+		return 5 * time.Minute
+	}
+	min := rows[0].ScheduleMinutes
+	for _, r := range rows[1:] {
+		if r.ScheduleMinutes < min {
+			min = r.ScheduleMinutes
+		}
+	}
+	return time.Duration(min) * time.Minute
+}
+
+// autoSyncTick checks each eligible link and triggers Sync when the link is
+// overdue (LastSyncAt is nil or older than ScheduleMinutes ago).
+func (s *RcloneService) autoSyncTick() {
+	var rows []dbom.RcloneLink
+	if err := s.db.WithContext(s.ctx).
+		Where("auto_sync = ? AND schedule_minutes > 0 AND status = ?",
+			true, dto.RcloneStatusAuthorized).
+		Find(&rows).Error; err != nil {
+		slog.WarnContext(s.ctx, "rclone auto-sync: failed to query eligible links", "error", err.Error())
+		return
+	}
+	now := time.Now()
+	for i := range rows {
+		r := &rows[i]
+		if r.ScheduleMinutes <= 0 {
+			continue
+		}
+		due := r.LastSyncAt == nil || now.Sub(*r.LastSyncAt) >= time.Duration(r.ScheduleMinutes)*time.Minute
+		if !due {
+			continue
+		}
+		key := rcloneJobKey(r.TargetKind, r.TargetID)
+		s.mu.Lock()
+		_, busy := s.running[key]
+		s.mu.Unlock()
+		if busy {
+			continue
+		}
+		// Best-effort: fire and forget. Sync() does its own validation
+		// and marks last-sync bookkeeping when the job finishes.
+		if err := s.Sync(r.TargetKind, r.TargetID, dto.RcloneSyncPush, false); err != nil {
+			slog.DebugContext(s.ctx, "rclone auto-sync: sync failed to start",
+				"target", key, "error", err.Error())
+		}
+	}
+}
+
+// reconfigureAutoSync wakes the auto-sync loop so it re-evaluates intervals
+// after a link save or delete. Safe to call from any goroutine. Non-blocking:
+// if a reconfigure is already pending it is a no-op.
+func (s *RcloneService) reconfigureAutoSync() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.autoSyncStop == nil {
+		return
+	}
+	// Poke the loop by stopping and restarting it. This is the simplest
+	// approach that avoids a second channel; the loop is cheap to restart.
+	close(s.autoSyncStop)
+	stop := make(chan struct{})
+	s.autoSyncStop = stop
+	go func() {
+		s.autoSyncLoop(stop, s.autoSyncInterval())
+	}()
 }
 
 // raiseSyncProblem records a persistent problem entry so failures surface on
