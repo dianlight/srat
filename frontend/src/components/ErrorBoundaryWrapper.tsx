@@ -1,7 +1,9 @@
 import * as Sentry from "@sentry/react";
 import type React from "react";
+import { useState } from "react";
 import { useSentryTelemetry } from "../hooks/useSentryTelemetry";
 import { getCurrentEnv } from "../macro/Environment" with { type: "macro" };
+import ErrorRecoveryContext from "./ErrorRecoveryContext";
 
 interface ErrorBoundaryWrapperProps {
   children: React.ReactNode;
@@ -11,11 +13,18 @@ interface ErrorBoundaryWrapperProps {
 const ErrorFallback: React.FC<{
   error: Error | null;
   resetError: () => void;
-}> = ({ error, resetError }) => (
+  onBeforeReset?: () => void;
+}> = ({ error, resetError, onBeforeReset }) => (
   <div style={{ padding: "20px", textAlign: "center" }}>
     <h2>Something went wrong</h2>
     <p>An unexpected error occurred. The error has been reported.</p>
-    <button type="button" onClick={resetError}>
+    <button
+      type="button"
+      onClick={() => {
+        onBeforeReset?.();
+        resetError();
+      }}
+    >
       Try again
     </button>
     {error && getCurrentEnv() === "development" && (
@@ -32,32 +41,37 @@ const ErrorFallback: React.FC<{
 export const ErrorBoundaryWrapper: React.FC<ErrorBoundaryWrapperProps> = ({
   children,
 }) => {
+  const [resetKey, setResetKey] = useState(0);
+
   return (
-    <Sentry.ErrorBoundary
-      fallback={({ error, resetError }) => (
-        <ErrorFallback
-          error={
-            error instanceof Error
-              ? error
-              : error
-                ? new Error(String(error))
-                : null
-          }
-          resetError={resetError}
-        />
-      )}
-      beforeCapture={(scope, error, componentStack) => {
-        scope.setContext("boundary", {
-          timestamp: new Date().toISOString(),
-          userAgent: navigator.userAgent,
-          url: window.location.href,
-          error: String(error),
-          componentStack,
-        });
-      }}
-    >
-      {children}
-    </Sentry.ErrorBoundary>
+    <ErrorRecoveryContext value={{ resetKey }}>
+      <Sentry.ErrorBoundary
+        fallback={({ error, resetError }) => (
+          <ErrorFallback
+            error={
+              error instanceof Error
+                ? error
+                : error
+                  ? new Error(String(error))
+                  : null
+            }
+            resetError={resetError}
+            onBeforeReset={() => setResetKey((k) => k + 1)}
+          />
+        )}
+        beforeCapture={(scope, error, componentStack) => {
+          scope.setContext("boundary", {
+            timestamp: new Date().toISOString(),
+            userAgent: navigator.userAgent,
+            url: window.location.href,
+            error: String(error),
+            componentStack,
+          });
+        }}
+      >
+        {children}
+      </Sentry.ErrorBoundary>
+    </ErrorRecoveryContext>
   );
 };
 
