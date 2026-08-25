@@ -138,7 +138,7 @@
    {{- if or (eq .data.name "addons") (eq .data.name "addon_configs") }}
    preexec = /usr/bin/logger -s -t smbd -p local0.warning "%u connected to deprecated share %S from %m (%I), please switch to the {{ if eq .data.name "addons" }}local_apps{{ else }}app_configs{{ end }} share"
    {{- end }}
-   valid users =_ha_mount_user_ {{ .data.users|default .username|join " " }} {{ .data.ro_users|join " " }}
+   valid users =_ha_mount_user_ {{ concat (.data.users|default (list .username)) (.data.ro_users|default (list)) | uniq | compact | join " " }}
    {{ if .data.ro_users -}}
    read list = {{ .data.ro_users|join " " }}
    {{- end }}
@@ -150,7 +150,7 @@
    delete veto files = yes
    {{- end }}
 
-   {{ if .data.GuestOk -}}
+   {{ if .data.guest_ok -}}
    guest ok = yes
    {{- end }}
 
@@ -176,8 +176,8 @@
 
    # Time Machine Settings Ref: https://github.com/markthomas93/samba.apple.templates
    fruit:time machine = yes
-   {{ if .data.TimeMachineMaxSize -}}
-   fruit:time machine max size = {{ .data.TimeMachineMaxSize }}
+   {{ if .data.timemachine_max_size -}}
+   fruit:time machine max size = {{ .data.timemachine_max_size }}
    {{- end }}
 {{ else }}
    vfs objects = acl_xattr catia fruit{{- if .data.recycle_bin_enabled }} recycle{{- end }}
