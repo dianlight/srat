@@ -26,6 +26,8 @@ import {
   type CommandOutputLineSnapshot,
   type CommandStartedNotification,
   type CommandTerminatedNotification,
+  Severity,
+  Status,
   sratApi,
   Update_process_state,
   useGetApiSettingsAppConfigQuery,
@@ -105,6 +107,7 @@ export function App() {
     sratApi.endpoints.getApiCommandOutput.useLazyQuery();
   const commandEventDedupRef = useRef<string>("");
   const commandToastDedupRef = useRef<Set<string>>(new Set());
+  const problemToastSeenRef = useRef<Map<string, string>>(new Map());
   // Compute Backdrop open state
   useEffect(() => {
     const newBackdropOpen =
@@ -395,6 +398,54 @@ export function App() {
     backfillCommandSession,
     showCommandFailureToast,
   ]);
+
+  useEffect(() => {
+    const problem = evdata?.problem;
+    if (!problem?.problem_key) {
+      return;
+    }
+    const toastId = `problem-${problem.problem_key}`;
+    const isDismissed =
+      problem.status === Status.Dismissed ||
+      problem.status === Status.Deleted ||
+      problem.status === Status.Fixed;
+    if (isDismissed) {
+      toast.dismiss(toastId);
+      problemToastSeenRef.current.delete(problem.problem_key);
+      return;
+    }
+    const lastSeen = problemToastSeenRef.current.get(problem.problem_key);
+    const dedupKey = `${problem.updated_at ?? ""}:${problem.status}:${problem.severity}`;
+    if (lastSeen === dedupKey) {
+      return;
+    }
+    problemToastSeenRef.current.set(problem.problem_key, dedupKey);
+    const content = problem.title || problem.description || problem.problem_key;
+    const isError =
+      problem.severity === Severity.Error ||
+      problem.severity === Severity.Critical;
+    const isWarning = problem.severity === Severity.Warning;
+    const toastFn = isError ? toast.error : isWarning ? toast.warn : toast.info;
+    if (
+      typeof (toast as unknown as { isActive?: (id: string) => boolean })
+        .isActive === "function" &&
+      (toast as unknown as { isActive: (id: string) => boolean }).isActive(
+        toastId,
+      )
+    ) {
+      toast.update(toastId, {
+        render: content,
+        data: { error: problem, exclude: false },
+        type: isError ? "error" : isWarning ? "warning" : "info",
+      } as unknown as Parameters<typeof toast.update>[1]);
+    } else {
+      (toastFn as (msg: string, opts?: unknown) => void)(content, {
+        toastId,
+        data: { error: problem, exclude: false },
+        autoClose: false,
+      } as unknown as Record<string, unknown>);
+    }
+  }, [evdata?.problem]);
 
   const selectedCommandSession =
     commandDialogExecutionId === null
