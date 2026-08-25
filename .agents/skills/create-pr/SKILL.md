@@ -23,15 +23,18 @@ Automate the process of creating or updating a pull request from the current bra
 4. **Prompt User**
    - Ask if the PR should be a draft.
    - If not a draft, ask if it should be set to auto-merge.
+   - Ask if use 'keep up-to-date' label
 5. **Verify Remote**
    - Ensure the current branch is pushed to a remote (origin).
    - If not, prompt the user to push before proceeding.
 6. **Create or Update PR**
    - Use `mcp_io_github_git_add_comment_to_pending_review` to add a comment if updating, or create a new PR if none exists.
    - PR body must include:
+     - Description of work done
      - Task details (if any), or commit summary
      - List of issues to close (with GitHub auto-closing syntax)
    - Always use `main` as the base branch.
+   - Always add label `no-stale`
 7. **Post-creation**
    - If auto-merge requested, enable auto-merge for the PR.
 
