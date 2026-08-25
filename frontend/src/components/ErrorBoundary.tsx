@@ -14,6 +14,9 @@ import { Component, type ErrorInfo, type ReactNode } from "react";
 
 interface Props {
   children: ReactNode;
+  /** When this value changes the error state is cleared, allowing the
+   *  boundary to retry rendering its children without a page reload. */
+  errorKey?: number;
 }
 
 interface State {
@@ -34,11 +37,27 @@ export class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error, errorInfo: null };
   }
 
+  /** Reset error state when the parent changes errorKey, allowing a retry
+   *  without a full page reload. */
+  public static getDerivedStateFromProps(
+    nextProps: Props,
+    prevState: State,
+  ): Partial<State> | null {
+    if (nextProps.errorKey !== undefined && prevState.hasError) {
+      return { hasError: false, error: null, errorInfo: null };
+    }
+    return null;
+  }
+
   public override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // You can also log the error to an error reporting service
     console.error("Uncaught error:", error, errorInfo);
     this.setState({ errorInfo });
   }
+
+  private handleRetry = () => {
+    this.setState({ hasError: false, error: null, errorInfo: null });
+  };
 
   private handleReload = () => {
     window.location.reload();
@@ -60,9 +79,23 @@ export class ErrorBoundary extends Component<Props, State> {
             severity="error"
             icon={<BugReportIcon fontSize="inherit" />}
             action={
-              <Button color="inherit" size="small" onClick={this.handleReload}>
-                Reload Page
-              </Button>
+              <>
+                <Button
+                  color="inherit"
+                  size="small"
+                  onClick={this.handleRetry}
+                  sx={{ mr: 1 }}
+                >
+                  Try again
+                </Button>
+                <Button
+                  color="inherit"
+                  size="small"
+                  onClick={this.handleReload}
+                >
+                  Reload Page
+                </Button>
+              </>
             }
             sx={{ maxWidth: "800px", width: "100%" }}
           >

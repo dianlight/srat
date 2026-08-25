@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { type Disk, useGetApiVolumesQuery } from "../store/sratApi";
 import { useGetServerEventsQuery } from "../store/wsApi";
 
@@ -14,10 +14,24 @@ export function useVolume() {
   // Single derived value: SSE (live) wins once a payload arrives, REST is the
   // fallback until then. No local state and no effects, so there is no race
   // between the two sources and optimistic edits are never clobbered.
-  const disks = useMemo<Disk[]>(
-    () => evdata?.volumes ?? (isDiskArray(data) ? data : []),
-    [evdata?.volumes, data],
-  );
+  //
+  // Reference stability: the WebSocket stream re-parses JSON on every message,
+  // producing a new Disk[] reference even when the content is unchanged.
+  // Downstream effects in Volumes.tsx depend on this array's identity, so we
+  // compare serialised snapshots and return the previous reference when the
+  // content is identical, preventing unnecessary re-render cascades.
+  const prevResultRef = useRef<{ json: string; disks: Disk[] } | null>(null);
+
+  const disks = useMemo<Disk[]>(() => {
+    const next = evdata?.volumes ?? (isDiskArray(data) ? data : []);
+    const nextJson = JSON.stringify(next);
+    if (prevResultRef.current?.json === nextJson) {
+      return prevResultRef.current.disks;
+    }
+    const result = { json: nextJson, disks: next };
+    prevResultRef.current = result;
+    return next;
+  }, [evdata?.volumes, data]);
 
   return {
     disks,
