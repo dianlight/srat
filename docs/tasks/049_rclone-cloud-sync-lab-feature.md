@@ -3,7 +3,7 @@
 # [FEATURE]: Rclone Cloud Sync — Volume ↔ Cloud Links (Lab, Dropbox First)
 
 **Target Repo:** `srat`
-**Status:** ✅ Phase 1 complete (Tasks 1–12); Phase 2 tracked as follow-ups (13–16)
+**Status:** ✅ Phase 1 complete (Tasks 1–12); ✅ Task 17 complete (rclonelib build variant); Tasks 13–16 tracked as follow-ups
 **Issue Link:** https://github.com/dianlight/srat/issues/954
 
 ## 🎯 Objective
@@ -81,7 +81,7 @@ There is deliberately no `AuthComplete`/`AuthStatus`/`Deauthorize` on the driver
 
 - Whole feature no-op unless `experimental_lab_mode=true` (403 on API; hidden in UI). The OAuth callback is exempt by design (see Backend API) and is protected by the single-use `oauthStateTTL`-bounded state token instead.
 - Tokens never leave backend; never logged; command output sanitizer not applicable (no shell argv).
-- CGO cross-build: librclone sits behind the `rclonelib` build tag so default static (CGO_ENABLED=0) builds keep working; updating the addon build workflow for the CGO variant is still open (Task 17).
+- CGO cross-build: librclone sits behind the `rclonelib` build tag so default static (CGO_ENABLED=0) builds keep working. The addon build workflow has been updated to include `rclonelib` in GOTAGS for both musl and glibc variants (Task 17).
 
 ## 📝 Task List
 
@@ -100,11 +100,11 @@ There is deliberately no `AuthComplete`/`AuthStatus`/`Deauthorize` on the driver
 - [x] Task 12: CHANGELOG.md entry + task-doc finalization
 
 ### Phase 2 — Follow-ups (tracked, out of scope here unless pulled forward)
-- [ ] Task 13: Scheduled auto-sync worker (hdidle-style ticker) + conflict policy
+- [x] Task 13: Scheduled auto-sync worker (hdidle-style ticker) + conflict policy
 - [ ] Task 14: Second provider driver (GDrive) proving modularity end-to-end
 - [ ] Task 15: Extend linking to hassos-data partition target
 - [ ] Task 16: `rclone mount` of clouds as filesystems + serve FTP/S3 (issue #954 remaining bullets)
-- [ ] Task 17: Update addon build workflow for the CGO/`rclonelib` variant (musl + glibc images) and verify images build
+- [x] Task 17: Update addon build workflow for the CGO/`rclonelib` variant (musl + glibc images) and verify images build
 
 ## 🖼️ UI Wireframe Proposal
 

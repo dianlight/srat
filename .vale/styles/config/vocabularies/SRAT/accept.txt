@@ -438,3 +438,7 @@ Hono
 rclone
 KV
 iCloud
+combobox
+guest_ok
+rsynced
+Carola

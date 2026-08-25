@@ -17,6 +17,8 @@ import (
 	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/suite"
 	"gitlab.com/tozd/go/errors"
+	"go.uber.org/fx"
+	"go.uber.org/fx/fxtest"
 	"gorm.io/gorm"
 )
 
@@ -127,6 +129,7 @@ func (r *recordingProblemService) ApplyLifecycle(problemKey string, status dto.P
 
 type RcloneServiceSuite struct {
 	suite.Suite
+	app        *fxtest.App
 	db         *gorm.DB
 	bus        events.EventBusInterface
 	rc         *fakeRcloneRPC
@@ -145,6 +148,13 @@ func TestRcloneServiceSuite(t *testing.T) {
 func (suite *RcloneServiceSuite) SetupTest() {
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	suite.Require().NoError(err)
+	// Pin the pool to a single connection: :memory: schemas live per
+	// connection, and the auto-sync goroutine issues queries concurrently
+	// with the test goroutine, which would otherwise surface an empty
+	// database on the second pooled connection.
+	sqlDB, err := db.DB()
+	suite.Require().NoError(err)
+	sqlDB.SetMaxOpenConns(1)
 	suite.Require().NoError(db.AutoMigrate(&dbom.RcloneLink{}))
 	suite.db = db
 
@@ -153,14 +163,22 @@ func (suite *RcloneServiceSuite) SetupTest() {
 	suite.bus = events.NewEventBus(ctx)
 	suite.rc = newFakeRcloneRPC()
 	suite.problems = &recordingProblemService{}
-	suite.service = service.NewRcloneService(service.RcloneServiceParams{
-		DB:         db,
-		Ctx:        ctx,
-		State:      &dto.ContextState{},
-		EventBus:   suite.bus,
-		RcloneRPC:  suite.rc,
-		ProblemSrv: suite.problems,
-	})
+
+	suite.app = fxtest.New(suite.T(),
+		fx.Provide(
+			func() *gorm.DB { return db },
+			func() context.Context { return ctx },
+			func() *dto.ContextState { return &dto.ContextState{} },
+			func() events.EventBusInterface { return suite.bus },
+			func() sr.RcloneRPC { return suite.rc },
+			func() service.ProblemServiceInterface { return suite.problems },
+			service.NewRcloneService,
+		),
+		fx.Populate(&suite.service),
+		fx.NopLogger,
+	)
+	suite.app.RequireStart()
+
 	suite.taskEvents = nil
 	unsub := suite.bus.OnRcloneTask(func(_ context.Context, ev events.RcloneTaskEvent) errors.E {
 		suite.taskMu.Lock()
@@ -172,7 +190,12 @@ func (suite *RcloneServiceSuite) SetupTest() {
 }
 
 func (suite *RcloneServiceSuite) TearDownTest() {
-	suite.cancel()
+	if suite.app != nil {
+		suite.app.RequireStop()
+	}
+	if suite.cancel != nil {
+		suite.cancel()
+	}
 }
 
 func (suite *RcloneServiceSuite) recordedTasks() []events.RcloneTaskEvent {
@@ -524,7 +547,7 @@ func (suite *RcloneServiceSuite) TestSync_PushHappyPath() {
 	last := tasks[len(tasks)-1].Task
 	suite.Equal("success", last.Status)
 	suite.Equal(100, last.Progress)
-	suite.True(time.Since(started) >= 500*time.Millisecond, "polling should have waited at least one tick")
+	suite.GreaterOrEqual(time.Since(started), 500*time.Millisecond, "polling should have waited at least one tick")
 
 	link, err := suite.service.GetLink(testKind, testPath)
 	suite.NoError(err)
