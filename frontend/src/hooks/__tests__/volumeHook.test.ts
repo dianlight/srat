@@ -179,4 +179,40 @@ describe("useVolume hook", () => {
     });
     expect(result.current.disks).toEqual([restDisk]);
   });
+
+  it("returns a stable disks reference when SSE delivers identical content", async () => {
+    const React = await import("react");
+    const { renderHook, waitFor, act } = await import("@testing-library/react");
+    const { Provider } = await import("react-redux");
+    const { createTestStore, getMswServer } = await import("/test/testing");
+    const { useVolume } = await import("../../hooks/volumeHook");
+
+    // Seed the SSE mock with initial volume data.
+    sseMock.data = { volumes: [{ ...sseDisk, partitions: { sda1: { id: "part-1", device_path: "/dev/sda1" } } }] };
+    getMswServer().use(
+      http.get(/.*\/api\/volumes(?:\?.*)?$/, () => HttpResponse.json([restDisk])),
+    );
+
+    const store = await createTestStore();
+    const wrapper = ({ children }: React.PropsWithChildren) =>
+      React.createElement(Provider, { store, children });
+
+    const { result } = renderHook(() => useVolume(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.disks).toHaveLength(1);
+    });
+    const disksRefBefore = result.current.disks;
+
+    // Simulate an SSE heartbeat that delivers the same content via a new
+    // JSON.parse() — different object references, identical data.
+    await act(async () => {
+      sseMock.data = {
+        volumes: JSON.parse(JSON.stringify(result.current.disks)),
+      };
+    });
+
+    // The disks reference must be identical — no new array was created.
+    expect(result.current.disks).toBe(disksRefBefore);
+  });
 });
