@@ -71,7 +71,7 @@ export function createBrokerApp(opts?: {
   function getEnv(c: { env: Record<string, unknown> }): Record<string, string | undefined> {
     // c.env is Workers env (wrangler vars + secrets); precedence: request env > override > process.env
     const workerEnv = (c.env || {}) as Record<string, string | undefined>;
-    return { ...(process.env as Record<string, string | undefined>), ...(envOverride || {}), ...workerEnv };
+    return { ...(process.env as Record<string, string | undefined>), ...envOverride, ...workerEnv };
   }
 
   function requireBearer(c: { req: { header: (n: string) => string | undefined }; env: Record<string, unknown> }): boolean {
