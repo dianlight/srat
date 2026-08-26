@@ -14,7 +14,7 @@ describe("CloudSyncProgressDialog", () => {
 
 		let aborted = false;
 		getMswServer().use(
-			http.post(/.*\/api\/rclone\/link\/.*\/abort$/, () => {
+			http.post("*/api/rclone/link/abort", () => {
 				aborted = true;
 				return HttpResponse.json({});
 			}),

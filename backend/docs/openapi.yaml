@@ -1984,8 +1984,14 @@ components:
           format: uri
           readOnly: true
           type: string
+        broker_available:
+          type: boolean
+        ha_dropbox_available:
+          type: boolean
         library_available:
           type: boolean
+        oauth_callback_path:
+          type: string
         providers:
           items:
             $ref: "#/components/schemas/RcloneProviderInfo"
@@ -1995,6 +2001,9 @@ components:
       required:
         - providers
         - library_available
+        - oauth_callback_path
+        - broker_available
+        - ha_dropbox_available
       type: object
     RcloneSyncRequest:
       additionalProperties: false
@@ -2729,6 +2738,15 @@ components:
             - https://example.com/schemas/StartRcloneAuthInputBody.json
           format: uri
           readOnly: true
+          type: string
+        auth_mode:
+          enum:
+            - auto
+            - custom_app
+            - broker
+            - ha_dropbox
+          type: string
+        public_base_url:
           type: string
         settings:
           additionalProperties:
@@ -3470,8 +3488,8 @@ paths:
           schema:
             description: The disk ID (not the device path)
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -5302,23 +5320,25 @@ paths:
       summary: Execute an action for a problem
       tags:
         - Problems
-  /api/rclone/link/{target_kind}/{target_id}:
+  /api/rclone/link:
     delete:
       operationId: delete-api-rclone-link-by-target-kind-by-target-id
       parameters:
         - description: Link target kind (volume or hassos_data)
-          in: path
+          explode: false
+          in: query
           name: target_kind
           required: true
           schema:
             description: Link target kind (volume or hassos_data)
             type: string
-        - description: Link target id (volume path or hassos-data)
-          in: path
+        - description: Link target id (volume path or hassos-data); may contain slashes
+          explode: false
+          in: query
           name: target_id
           required: true
           schema:
-            description: Link target id (volume path or hassos-data)
+            description: Link target id (volume path or hassos-data); may contain slashes
             type: string
         - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
@@ -5352,7 +5372,7 @@ paths:
               $ref: "#/components/headers/X-Span-Id"
             X-Trace-Id:
               $ref: "#/components/headers/X-Trace-Id"
-      summary: Delete API rclone link by target kind by target ID
+      summary: Delete a rclone link
       tags:
         - volume
         - rclone
@@ -5360,18 +5380,20 @@ paths:
       operationId: get-api-rclone-link-by-target-kind-by-target-id
       parameters:
         - description: Link target kind (volume or hassos_data)
-          in: path
+          explode: false
+          in: query
           name: target_kind
           required: true
           schema:
             description: Link target kind (volume or hassos_data)
             type: string
-        - description: Link target id (volume path or hassos-data)
-          in: path
+        - description: Link target id (volume path or hassos-data); may contain slashes
+          explode: false
+          in: query
           name: target_id
           required: true
           schema:
-            description: Link target id (volume path or hassos-data)
+            description: Link target id (volume path or hassos-data); may contain slashes
             type: string
         - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
@@ -5409,7 +5431,7 @@ paths:
               $ref: "#/components/headers/X-Span-Id"
             X-Trace-Id:
               $ref: "#/components/headers/X-Trace-Id"
-      summary: Get API rclone link by target kind by target ID
+      summary: Get a rclone link
       tags:
         - volume
         - rclone
@@ -5418,18 +5440,20 @@ paths:
       operationId: patch-api-rclone-link-by-target-kind-by-target-id
       parameters:
         - description: Link target kind (volume or hassos_data)
-          in: path
+          explode: false
+          in: query
           name: target_kind
           required: true
           schema:
             description: Link target kind (volume or hassos_data)
             type: string
-        - description: Link target id (volume path or hassos-data)
-          in: path
+        - description: Link target id (volume path or hassos-data); may contain slashes
+          explode: false
+          in: query
           name: target_id
           required: true
           schema:
-            description: Link target id (volume path or hassos-data)
+            description: Link target id (volume path or hassos-data); may contain slashes
             type: string
         - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
@@ -5543,18 +5567,20 @@ paths:
       operationId: put-api-rclone-link-by-target-kind-by-target-id
       parameters:
         - description: Link target kind (volume or hassos_data)
-          in: path
+          explode: false
+          in: query
           name: target_kind
           required: true
           schema:
             description: Link target kind (volume or hassos_data)
             type: string
-        - description: Link target id (volume path or hassos-data)
-          in: path
+        - description: Link target id (volume path or hassos-data); may contain slashes
+          explode: false
+          in: query
           name: target_id
           required: true
           schema:
-            description: Link target id (volume path or hassos-data)
+            description: Link target id (volume path or hassos-data); may contain slashes
             type: string
         - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
@@ -5598,27 +5624,29 @@ paths:
               $ref: "#/components/headers/X-Span-Id"
             X-Trace-Id:
               $ref: "#/components/headers/X-Trace-Id"
-      summary: Put API rclone link by target kind by target ID
+      summary: Put a rclone link
       tags:
         - volume
         - rclone
-  /api/rclone/link/{target_kind}/{target_id}/abort:
+  /api/rclone/link/abort:
     post:
       operationId: post-api-rclone-link-by-target-kind-by-target-id-abort
       parameters:
         - description: Link target kind (volume or hassos_data)
-          in: path
+          explode: false
+          in: query
           name: target_kind
           required: true
           schema:
             description: Link target kind (volume or hassos_data)
             type: string
-        - description: Link target id (volume path or hassos-data)
-          in: path
+        - description: Link target id (volume path or hassos-data); may contain slashes
+          explode: false
+          in: query
           name: target_id
           required: true
           schema:
-            description: Link target id (volume path or hassos-data)
+            description: Link target id (volume path or hassos-data); may contain slashes
             type: string
         - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
@@ -5652,27 +5680,29 @@ paths:
               $ref: "#/components/headers/X-Span-Id"
             X-Trace-Id:
               $ref: "#/components/headers/X-Trace-Id"
-      summary: Post API rclone link by target kind by target ID abort
+      summary: Abort rclone synchronization
       tags:
         - volume
         - rclone
-  /api/rclone/link/{target_kind}/{target_id}/auth/start:
+  /api/rclone/link/auth/start:
     post:
       operationId: post-api-rclone-link-by-target-kind-by-target-id-auth-start
       parameters:
         - description: Link target kind (volume or hassos_data)
-          in: path
+          explode: false
+          in: query
           name: target_kind
           required: true
           schema:
             description: Link target kind (volume or hassos_data)
             type: string
-        - description: Link target id (volume path or hassos-data)
-          in: path
+        - description: Link target id (volume path or hassos-data); may contain slashes
+          explode: false
+          in: query
           name: target_id
           required: true
           schema:
-            description: Link target id (volume path or hassos-data)
+            description: Link target id (volume path or hassos-data); may contain slashes
             type: string
         - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
@@ -5716,30 +5746,32 @@ paths:
               $ref: "#/components/headers/X-Span-Id"
             X-Trace-Id:
               $ref: "#/components/headers/X-Trace-Id"
-      summary: Post API rclone link by target kind by target ID auth start
+      summary: Start rclone authorization
       tags:
         - volume
         - rclone
-  /api/rclone/link/{target_kind}/{target_id}/diff:
+  /api/rclone/link/diff:
     post:
       operationId: post-api-rclone-link-by-target-kind-by-target-id-diff
       parameters:
         - description: Link target kind (volume or hassos_data)
-          in: path
+          explode: false
+          in: query
           name: target_kind
           required: true
           schema:
             description: Link target kind (volume or hassos_data)
             type: string
-        - description: Link target id (volume path or hassos-data)
-          in: path
+        - description: Link target id (volume path or hassos-data); may contain slashes
+          explode: false
+          in: query
           name: target_id
           required: true
           schema:
-            description: Link target id (volume path or hassos-data)
+            description: Link target id (volume path or hassos-data); may contain slashes
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -5774,27 +5806,29 @@ paths:
               $ref: "#/components/headers/X-Span-Id"
             X-Trace-Id:
               $ref: "#/components/headers/X-Trace-Id"
-      summary: Post API rclone link by target kind by target ID diff
+      summary: Diff a rclone link
       tags:
         - volume
         - rclone
-  /api/rclone/link/{target_kind}/{target_id}/sync:
+  /api/rclone/link/sync:
     post:
       operationId: post-api-rclone-link-by-target-kind-by-target-id-sync
       parameters:
         - description: Link target kind (volume or hassos_data)
-          in: path
+          explode: false
+          in: query
           name: target_kind
           required: true
           schema:
             description: Link target kind (volume or hassos_data)
             type: string
-        - description: Link target id (volume path or hassos-data)
-          in: path
+        - description: Link target id (volume path or hassos-data); may contain slashes
+          explode: false
+          in: query
           name: target_id
           required: true
           schema:
-            description: Link target id (volume path or hassos-data)
+            description: Link target id (volume path or hassos-data); may contain slashes
             type: string
         - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
@@ -5834,7 +5868,7 @@ paths:
               $ref: "#/components/headers/X-Span-Id"
             X-Trace-Id:
               $ref: "#/components/headers/X-Trace-Id"
-      summary: Post API rclone link by target kind by target ID sync
+      summary: Sync a rclone link
       tags:
         - volume
         - rclone
@@ -5842,8 +5876,8 @@ paths:
     get:
       operationId: get-api-rclone-links
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -5878,7 +5912,7 @@ paths:
               $ref: "#/components/headers/X-Span-Id"
             X-Trace-Id:
               $ref: "#/components/headers/X-Trace-Id"
-      summary: Get API rclone links
+      summary: Get rclone links
       tags:
         - volume
         - rclone
@@ -5907,8 +5941,8 @@ paths:
           schema:
             description: Provider-reported denial reason
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           description: OK
@@ -5983,7 +6017,7 @@ paths:
               $ref: "#/components/headers/X-Span-Id"
             X-Trace-Id:
               $ref: "#/components/headers/X-Trace-Id"
-      summary: Get API rclone providers
+      summary: Get rclone providers
       tags:
         - volume
         - rclone
@@ -6161,8 +6195,8 @@ paths:
     get:
       operationId: get-api-samba-config
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -6839,8 +6873,8 @@ paths:
     post:
       operationId: post-api-settings-homeassistant-custom-component-install
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -7011,8 +7045,8 @@ paths:
     post:
       operationId: post-api-share
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -7070,8 +7104,8 @@ paths:
               - world
             maxLength: 128
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "204":
           description: No Content
@@ -7378,8 +7412,8 @@ paths:
             description: Name of the share to disable
             maxLength: 128
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -8140,8 +8174,8 @@ paths:
     patch:
       operationId: patch-api-volume-settings
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:

@@ -26,6 +26,7 @@ type clientEventTypesContainer struct {
 	CLIENTEVENTTYPEHELO             ClientEventType
 	CLIENTEVENTTYPEREPAIRLIFECYCLE  ClientEventType
 	CLIENTEVENTTYPEPROBLEMLIFECYCLE ClientEventType
+	CLIENTEVENTTYPEHADROPBOXTOKEN   ClientEventType
 }
 
 // ClientEventTypes is a main entry point using the ClientEventType type.
@@ -39,6 +40,9 @@ var ClientEventTypes = clientEventTypesContainer{
 	},
 	CLIENTEVENTTYPEPROBLEMLIFECYCLE: ClientEventType{
 		clientEventType: clientEventTypeProblemLifecycle,
+	},
+	CLIENTEVENTTYPEHADROPBOXTOKEN: ClientEventType{
+		clientEventType: clientEventTypeHaDropboxToken,
 	},
 }
 
@@ -54,6 +58,7 @@ func (c clientEventTypesContainer) allSlice() []ClientEventType {
 		ClientEventTypes.CLIENTEVENTTYPEHELO,
 		ClientEventTypes.CLIENTEVENTTYPEREPAIRLIFECYCLE,
 		ClientEventTypes.CLIENTEVENTTYPEPROBLEMLIFECYCLE,
+		ClientEventTypes.CLIENTEVENTTYPEHADROPBOXTOKEN,
 	}
 }
 
@@ -143,6 +148,7 @@ var clientEventTypesNameMap = map[string]ClientEventType{
 	"helo":              ClientEventTypes.CLIENTEVENTTYPEHELO,
 	"repair_lifecycle":  ClientEventTypes.CLIENTEVENTTYPEREPAIRLIFECYCLE,
 	"problem_lifecycle": ClientEventTypes.CLIENTEVENTTYPEPROBLEMLIFECYCLE,
+	"ha_dropbox_token":  ClientEventTypes.CLIENTEVENTTYPEHADROPBOXTOKEN,
 }
 
 // stringToClientEventType converts a string representation of an enum value into its ClientEventType representation
@@ -184,6 +190,12 @@ func numberToClientEventType[T interface {
 			return nil
 		}
 		return &result
+	case 3:
+		result := ClientEventTypes.CLIENTEVENTTYPEHADROPBOXTOKEN
+		if !result.IsValid() {
+			return nil
+		}
+		return &result
 	default:
 		return nil
 	}
@@ -202,6 +214,7 @@ var validClientEventTypes = map[ClientEventType]bool{
 	ClientEventTypes.CLIENTEVENTTYPEHELO:             true,
 	ClientEventTypes.CLIENTEVENTTYPEREPAIRLIFECYCLE:  true,
 	ClientEventTypes.CLIENTEVENTTYPEPROBLEMLIFECYCLE: true,
+	ClientEventTypes.CLIENTEVENTTYPEHADROPBOXTOKEN:   true,
 }
 
 // IsValid checks whether the ClientEventTypes value is valid.
@@ -310,7 +323,7 @@ func (c *ClientEventType) UnmarshalYAML(by []byte) error {
 }
 
 // clienteventtypeNames is a constant string containing the canonical names for all enum values.
-const clienteventtypeNames = "helorepair_lifecycleproblem_lifecycle"
+const clienteventtypeNames = "helorepair_lifecycleproblem_lifecycleha_dropbox_token"
 
 // clienteventtypeNamesMap is a map of enum values to their canonical absolute
 // name positions within the clienteventtypeNames string slice
@@ -318,6 +331,7 @@ var clienteventtypeNamesMap = map[ClientEventType]string{
 	ClientEventTypes.CLIENTEVENTTYPEHELO:             clienteventtypeNames[0:4],
 	ClientEventTypes.CLIENTEVENTTYPEREPAIRLIFECYCLE:  clienteventtypeNames[4:20],
 	ClientEventTypes.CLIENTEVENTTYPEPROBLEMLIFECYCLE: clienteventtypeNames[20:37],
+	ClientEventTypes.CLIENTEVENTTYPEHADROPBOXTOKEN:   clienteventtypeNames[37:53],
 }
 
 // String implements the Stringer interface.
@@ -336,8 +350,9 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the goenums command to generate them again.
 	// Does not identify newly added constant values unless order changes
-	var x [3]struct{}
+	var x [4]struct{}
 	_ = x[clientEventTypeHelo]
 	_ = x[clientEventTypeRepairLifecycle-1]
 	_ = x[clientEventTypeProblemLifecycle-2]
+	_ = x[clientEventTypeHaDropboxToken-3]
 }

@@ -24,7 +24,13 @@ type RcloneLink struct {
 	Status string `gorm:"type:text;default:'unlinked'"`
 	// OAuthState holds the in-flight OAuth anti-CSRF token while Status is
 	// "unlinked"; cleared once authorization completes.
-	OAuthState      string `gorm:"type:text"`
+	//
+	// The column name is pinned: GORM's default naming would derive
+	// "o_auth_state" from the acronym, while goose migration 00019 created
+	// "oauth_state". Production schema comes from the migration (RcloneLink
+	// is deliberately not in the AutoMigrate list), so the mismatch surfaced
+	// only as "no such column: o_auth_state" on real deployments.
+	OAuthState      string `gorm:"column:oauth_state;type:text"`
 	LastSyncAt      *time.Time
 	LastSyncResult  string `gorm:"type:text"` // "success" | "failure" | ""
 	LastSyncMessage string `gorm:"type:text"`

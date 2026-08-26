@@ -71,7 +71,7 @@ describe("CloudSyncPanel", () => {
 		const { CloudSyncPanel } = await import("../rclone/CloudSyncPanel");
 
 		getMswServer().use(
-			http.get(/.*\/api\/rclone\/link\/.*$/, () =>
+			http.get("*/api/rclone/link", () =>
 				HttpResponse.json(linkedLink),
 			),
 		);
@@ -100,7 +100,7 @@ describe("CloudSyncPanel", () => {
 		const user = userEvent.setup();
 
 		getMswServer().use(
-			http.get(/.*\/api\/rclone\/link\/.*$/, () =>
+			http.get("*/api/rclone/link", () =>
 				HttpResponse.json(linkedLink),
 			),
 		);
@@ -129,13 +129,13 @@ describe("CloudSyncPanel", () => {
 		const user = userEvent.setup();
 
 		getMswServer().use(
-			http.get(/.*\/api\/rclone\/link\/.*$/, () =>
+			http.get("*/api/rclone/link", () =>
 				HttpResponse.json(linkedLink),
 			),
 		);
 		let syncCalled = false;
 		getMswServer().use(
-			http.post(/.*\/api\/rclone\/link\/.*\/sync$/, async ({ request }) => {
+			http.post("*/api/rclone/link/sync", async ({ request }) => {
 				syncCalled = true;
 				const body = (await request.json()) as Record<string, unknown>;
 				expect(body).toEqual({ direction: "push", dry_run: false });
@@ -167,13 +167,13 @@ describe("CloudSyncPanel", () => {
 		const user = userEvent.setup();
 
 		getMswServer().use(
-			http.get(/.*\/api\/rclone\/link\/.*$/, () =>
+			http.get("*/api/rclone/link", () =>
 				HttpResponse.json(linkedLink),
 			),
 		);
 		let syncBody: Record<string, unknown> | null = null;
 		getMswServer().use(
-			http.post(/.*\/api\/rclone\/link\/.*\/sync$/, async ({ request }) => {
+			http.post("*/api/rclone/link/sync", async ({ request }) => {
 				syncBody = (await request.json()) as Record<string, unknown>;
 				return HttpResponse.json({});
 			}),
@@ -205,12 +205,12 @@ describe("CloudSyncPanel", () => {
 		rcloneMockState.link = linkedLink;
 		let deleted = false;
 		getMswServer().use(
-			http.get(/.*\/api\/rclone\/link\/.*$/, () => {
+			http.get("*/api/rclone/link", () => {
 				return rcloneMockState.link
 					? HttpResponse.json(rcloneMockState.link)
 					: HttpResponse.json({ detail: "not found" }, { status: 404 });
 			}),
-			http.delete(/.*\/api\/rclone\/link\/.*$/, () => {
+			http.delete("*/api/rclone/link", () => {
 				deleted = true;
 				rcloneMockState.link = null;
 				return new HttpResponse(null, { status: 204 });

@@ -19,12 +19,13 @@ import {
   TextFieldElement,
 } from "react-hook-form-mui";
 import { toast } from "react-toastify";
-import type { RcloneConfigField } from "../../../../store/sratApi";
 import {
-  useGetApiRcloneLinkByTargetKindAndTargetIdQuery,
+  Auth_mode,
+  type RcloneConfigField,
+  useGetApiRcloneLinkQuery,
   useGetApiRcloneProvidersQuery,
-  usePostApiRcloneLinkByTargetKindAndTargetIdAuthStartMutation,
-  usePutApiRcloneLinkByTargetKindAndTargetIdMutation,
+  usePostApiRcloneLinkAuthStartMutation,
+  usePutApiRcloneLinkMutation,
 } from "../../../../store/sratApi";
 import { extractApiErrorMessage } from "./apiErrors";
 import { isAuthStartResponse, isProvidersResponse } from "./typeGuards";
@@ -41,9 +42,22 @@ type WizardFormValues = {
   provider: string;
   remote_path: string;
   settings: Record<string, string>;
+  // Explicit authorization mode picked by the user; "" until the providers
+  // payload arrives, then defaulted to broker/custom_app per availability.
+  // "ha_dropbox" is a UI-only stub value (option disabled) — never sent.
+  auth_mode: Auth_mode | "ha_dropbox" | "";
 };
 
 const STEPS = ["Provider", "Account", "Remote folder"] as const;
+
+/**
+ * Browser-visible origin used by the backend to build the OAuth redirect
+ * URI. The SRAT UI is served from the origin root, so this matches what the
+ * user's browser can reach (unlike the addon-internal address).
+ */
+function publicBaseUrl(): string {
+  return window.location.origin;
+}
 
 /**
  * Three-step wizard that links a local target to a cloud provider:
@@ -67,22 +81,26 @@ export function CloudLinkWizardDialog({
   const [actionError, setActionError] = useState<string | null>(null);
 
   const form = useForm<WizardFormValues>({
-    defaultValues: { provider: "", remote_path: "", settings: {} },
+    defaultValues: {
+      provider: "",
+      remote_path: "",
+      settings: {},
+      auth_mode: "",
+    },
   });
 
   const providersQuery = useGetApiRcloneProvidersQuery(undefined, {
     skip: !open,
   });
   // Poll the link while waiting for the OAuth callback to land backend-side.
-  const linkQuery = useGetApiRcloneLinkByTargetKindAndTargetIdQuery(
+  const linkQuery = useGetApiRcloneLinkQuery(
     { targetKind, targetId },
     { skip: !open || step !== 1, pollingInterval: 3000 },
   );
 
-  const [putLink, { isLoading: isPutting }] =
-    usePutApiRcloneLinkByTargetKindAndTargetIdMutation();
+  const [putLink, { isLoading: isPutting }] = usePutApiRcloneLinkMutation();
   const [startAuth, { isLoading: isStartingAuth }] =
-    usePostApiRcloneLinkByTargetKindAndTargetIdAuthStartMutation();
+    usePostApiRcloneLinkAuthStartMutation();
 
   const authorized = linkQuery.data?.status === "authorized";
 
@@ -110,13 +128,52 @@ export function CloudLinkWizardDialog({
         provider: "",
         remote_path: `/srat/${targetLabel}`,
         settings: {},
+        auth_mode: "",
       });
     }
   }, [open, targetLabel, form]);
 
+  // Default the explicit mode picker once the providers payload arrives:
+  // hosted OAuth when the broker is configured, custom app otherwise.
+  // Task 050: prefer HA Dropbox reuse when available for dropbox targets.
+  const brokerAvailable = Boolean(providersData?.broker_available);
+  const haDropboxAvailable = Boolean(
+    (providersData as { ha_dropbox_available?: boolean } | undefined)
+      ?.ha_dropbox_available,
+  );
+  const authMode = form.watch("auth_mode");
+  useEffect(() => {
+    if (!open || !providersData) return;
+    if (form.getValues("auth_mode") === "") {
+      const providers = providersData as {
+        broker_available?: boolean;
+        ha_dropbox_available?: boolean;
+      };
+      const defaultMode = providers.ha_dropbox_available
+        ? (Auth_mode.HaDropbox as Auth_mode | "ha_dropbox")
+        : providers.broker_available
+          ? Auth_mode.Broker
+          : Auth_mode.CustomApp;
+      form.setValue("auth_mode", defaultMode as Auth_mode | "ha_dropbox" | "");
+    }
+  }, [open, providersData, form]);
+
   const connectAccount = async () => {
     setActionError(null);
-    const settings = form.getValues("settings") ?? {};
+    const validModes = new Set<string>([
+      Auth_mode.Broker,
+      Auth_mode.CustomApp,
+      Auth_mode.HaDropbox,
+      "ha_dropbox",
+    ]);
+    if (!validModes.has(authMode as string)) {
+      setActionError("This authorization mode is not available yet.");
+      return;
+    }
+    const isHaDropbox =
+      authMode === Auth_mode.HaDropbox ||
+      authMode === ("ha_dropbox" as Auth_mode);
+    const settings = isHaDropbox ? {} : (form.getValues("settings") ?? {});
     try {
       // The row must exist before StartAuth (it stores OAuth state on it).
       await putLink({
@@ -133,7 +190,17 @@ export function CloudLinkWizardDialog({
       const res = await startAuth({
         targetKind,
         targetId,
-        startRcloneAuthInputBody: { settings },
+        startRcloneAuthInputBody: {
+          settings,
+          // Browser-visible origin so the redirect URI registered in the
+          // provider console actually resolves for this user.
+          public_base_url: publicBaseUrl(),
+          auth_mode: isHaDropbox
+            ? Auth_mode.HaDropbox
+            : authMode === Auth_mode.Broker
+              ? Auth_mode.Broker
+              : Auth_mode.CustomApp,
+        },
       }).unwrap();
       if (isAuthStartResponse(res)) {
         setAuthUrl(res.auth_url);
@@ -171,7 +238,7 @@ export function CloudLinkWizardDialog({
   const goNext = async () => {
     if (step === 0) {
       const requiredSettingPaths = configFields
-        .filter((f) => f.required)
+        .filter((f) => fieldRequired(f))
         .map((f): `settings.${string}` => `settings.${f.name}`);
       const paths: Array<"provider" | `settings.${string}`> = [
         "provider",
@@ -189,6 +256,15 @@ export function CloudLinkWizardDialog({
   };
 
   const libraryAvailable = Boolean(providersData?.library_available);
+  // Credential fields only matter in custom-app mode: hosted OAuth and HA
+  // Dropbox reuse need no credentials.
+  const isHaDropboxMode =
+    authMode === Auth_mode.HaDropbox ||
+    authMode === ("ha_dropbox" as Auth_mode);
+  const fieldRequired = (field: RcloneConfigField): boolean =>
+    Boolean(field.required) &&
+    authMode === Auth_mode.CustomApp &&
+    !isHaDropboxMode;
 
   return (
     <Dialog open={open} onClose={() => {}} fullWidth maxWidth="sm">
@@ -228,6 +304,86 @@ export function CloudLinkWizardDialog({
                     label: p.display_name,
                   }))}
                 />
+                <SelectElement
+                  name="auth_mode"
+                  label="Authorization"
+                  fullWidth
+                  options={[
+                    {
+                      id: "custom_app",
+                      label: "Custom app (App key / secret)",
+                    },
+                    {
+                      id: "broker",
+                      label: "Hosted SRAT OAuth (shared app)",
+                      disabled: !brokerAvailable,
+                    },
+                    {
+                      id: "ha_dropbox",
+                      label: "Reuse Dropbox integration auth",
+                      disabled:
+                        !haDropboxAvailable ||
+                        selectedProviderName !== "dropbox",
+                    },
+                  ]}
+                />
+                {!brokerAvailable && !haDropboxAvailable && (
+                  <Typography variant="caption" color="text.secondary">
+                    Hosted SRAT OAuth is unavailable: no OAuth broker is
+                    configured on this server (SRAT_OAUTH_BROKER_URL unset).
+                  </Typography>
+                )}
+                {!haDropboxAvailable && selectedProviderName === "dropbox" && (
+                  <Typography variant="caption" color="text.secondary">
+                    Reuse Dropbox integration auth is unavailable: no HA Dropbox
+                    token has been pushed (ensure the Home Assistant Dropbox
+                    integration is configured).
+                  </Typography>
+                )}
+                {authMode === Auth_mode.CustomApp &&
+                  configFields.length > 0 && (
+                    <Alert severity="info" sx={{ width: "100%" }}>
+                      <Typography variant="body2">
+                        Unlike plain rclone, SRAT completes the OAuth flow
+                        server-side, so provider credentials cannot be left
+                        empty (rclone&apos;s built-in app only allows its own
+                        loopback redirect). Create your own app at the provider
+                        console and register this redirect URI:
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontFamily: "monospace",
+                          wordBreak: "break-all",
+                          mt: 0.5,
+                        }}
+                      >
+                        {`${publicBaseUrl()}${providersData?.oauth_callback_path ?? "/api/rclone/oauth/callback"}`}
+                      </Typography>
+                    </Alert>
+                  )}
+                {(authMode as string) === Auth_mode.Broker && (
+                  <Alert severity="info" sx={{ width: "100%" }}>
+                    <Typography variant="body2">
+                      Credentials are optional: authorization runs through
+                      SRAT&apos;s hosted shared app, so you can leave the fields
+                      empty and just sign in to your account.
+                    </Typography>
+                  </Alert>
+                )}
+                {isHaDropboxMode && (
+                  <Alert severity="info" sx={{ width: "100%" }}>
+                    <Typography variant="body2">
+                      Reuses the OAuth token already held by Home Assistant
+                      core&apos;s Dropbox integration (
+                      homeassistant/components/dropbox, Cloud Account Linking
+                      via accounts.home-assistant.io or your own Application
+                      Credentials). No browser window is needed — the SRAT
+                      add-on reuses hass.config_entries. The refresh token stays
+                      bound to the HA app (same trade-off as broker mode).
+                    </Typography>
+                  </Alert>
+                )}
                 {configFields.map((field) =>
                   field.secret ? (
                     <PasswordElement
@@ -235,7 +391,7 @@ export function CloudLinkWizardDialog({
                       name={`settings.${field.name}`}
                       label={field.label}
                       rules={
-                        field.required
+                        fieldRequired(field)
                           ? { required: `${field.label} is required` }
                           : undefined
                       }
@@ -248,7 +404,7 @@ export function CloudLinkWizardDialog({
                       name={`settings.${field.name}`}
                       label={field.label}
                       rules={
-                        field.required
+                        fieldRequired(field)
                           ? { required: `${field.label} is required` }
                           : undefined
                       }

@@ -80,6 +80,21 @@ type RcloneProvidersResponse struct {
 	// (-tags rclonelib). When false the UI shows a build notice instead of
 	// the wizard.
 	LibraryAvailable bool `json:"library_available"`
+	// OauthCallbackPath is the backend path providers must be allowed to
+	// redirect to (registered as redirect URI in the provider app console).
+	// Clients display it joined with their own origin.
+	OauthCallbackPath string `json:"oauth_callback_path"`
+	// BrokerAvailable reports whether the optional hosted OAuth broker is
+	// configured (SRAT_OAUTH_BROKER_URL). When true, credential fields may
+	// be left empty: authorization then runs through SRAT's shared cloud
+	// app instead of a user-created provider app.
+	BrokerAvailable bool `json:"broker_available"`
+	// HaDropboxAvailable reports whether the Home Assistant Dropbox integration
+	// has an active OAuth token that can be reused (task 050). When true the
+	// wizard enables the "Reuse Dropbox integration auth" option, allowing a
+	// server-side-only flow that reuses hass.config_entries data pushed by
+	// the SRAT custom component over WebSocket.
+	HaDropboxAvailable bool `json:"ha_dropbox_available"`
 }
 
 // RcloneLinkRequest creates or updates the non-secret part of a link.

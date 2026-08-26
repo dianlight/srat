@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"os"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -323,14 +326,14 @@ func (suite *RcloneServiceSuite) TestLocalPath_HassosDataEnvOverride() {
 // ---------- OAuth flow ----------
 
 func (suite *RcloneServiceSuite) TestStartAuth_LinkNotFound() {
-	_, err := suite.service.StartAuth(context.Background(), testKind, "/never-saved", map[string]string{})
+	_, err := suite.service.StartAuth(context.Background(), testKind, "/never-saved", map[string]string{}, "", "")
 	suite.Error(err)
 	suite.Contains(err.Error(), "link not found")
 }
 
 func (suite *RcloneServiceSuite) TestStartAuth_BuildsURLAndStoresState() {
 	suite.NoError(suite.service.SaveLink(dto.RcloneLink{TargetKind: testKind, TargetID: testPath, Provider: "dropbox"}))
-	res, err := suite.service.StartAuth(context.Background(), testKind, testPath, map[string]string{"client_id": "cid", "client_secret": "sec"})
+	res, err := suite.service.StartAuth(context.Background(), testKind, testPath, map[string]string{"client_id": "cid", "client_secret": "sec"}, "", "")
 	suite.NoError(err)
 	suite.Require().NotNil(res)
 	suite.Contains(res.AuthURL, "https://www.dropbox.com/oauth2/authorize")
@@ -350,9 +353,42 @@ func (suite *RcloneServiceSuite) TestHandleOAuthCallback_UnknownState() {
 	suite.Contains(err.Error(), "unknown or expired oauth state")
 }
 
+// TestStartAuth_PublicBaseURLPrecedence verifies that the browser-supplied
+// public base URL wins over the server-side default when building the OAuth
+// redirect URI (required behind Home Assistant ingress, where the
+// browser-visible origin differs from the addon-local address).
+func (suite *RcloneServiceSuite) TestStartAuth_PublicBaseURLPrecedence() {
+	suite.NoError(suite.service.SaveLink(dto.RcloneLink{TargetKind: testKind, TargetID: testPath, Provider: "dropbox"}))
+
+	res, err := suite.service.StartAuth(context.Background(), testKind, testPath,
+		map[string]string{"client_id": "cid", "client_secret": "sec"}, "http://ha.example:8123/ingress-prefix", "")
+	suite.NoError(err)
+	suite.Require().NotNil(res)
+	suite.Equal("http://ha.example:8123/ingress-prefix/api/rclone/oauth/callback", res.RedirectURI)
+
+	// Trailing slashes are normalized away.
+	res, err = suite.service.StartAuth(context.Background(), testKind, testPath,
+		map[string]string{"client_id": "cid", "client_secret": "sec"}, "http://ha.example:8123/", "")
+	suite.NoError(err)
+	suite.Require().NotNil(res)
+	suite.Equal("http://ha.example:8123/api/rclone/oauth/callback", res.RedirectURI)
+
+	// Empty value falls back to the configured base URL (SRAT_PORT env or
+	// the localhost:8080 default).
+	res, err = suite.service.StartAuth(context.Background(), testKind, testPath,
+		map[string]string{"client_id": "cid", "client_secret": "sec"}, "", "")
+	suite.NoError(err)
+	suite.Require().NotNil(res)
+	port := os.Getenv("SRAT_PORT")
+	if port == "" {
+		port = "8080"
+	}
+	suite.Equal("http://localhost:"+port+"/api/rclone/oauth/callback", res.RedirectURI)
+}
+
 func (suite *RcloneServiceSuite) TestHandleOAuthCallback_HappyPath() {
 	suite.NoError(suite.service.SaveLink(dto.RcloneLink{TargetKind: testKind, TargetID: testPath, Provider: "fakeoauth_test"}))
-	res, err := suite.service.StartAuth(context.Background(), testKind, testPath, map[string]string{"client_id": "cid"})
+	res, err := suite.service.StartAuth(context.Background(), testKind, testPath, map[string]string{"client_id": "cid"}, "", "")
 	suite.NoError(err)
 
 	suite.rc.on("config/create", func(input string) (string, int) {
@@ -381,11 +417,204 @@ func (suite *RcloneServiceSuite) TestHandleOAuthCallback_HappyPath() {
 
 func (suite *RcloneServiceSuite) TestHandleOAuthCallback_ExchangeFailureMarksError() {
 	suite.NoError(suite.service.SaveLink(dto.RcloneLink{TargetKind: testKind, TargetID: testPath, Provider: "fakeoauth_test"}))
-	res, err := suite.service.StartAuth(context.Background(), testKind, testPath, map[string]string{"client_id": "cid"})
+	res, err := suite.service.StartAuth(context.Background(), testKind, testPath, map[string]string{"client_id": "cid"}, "", "")
 	suite.NoError(err)
 
 	_, err = suite.service.HandleOAuthCallback(context.Background(), "bad-code", res.State)
 	suite.Require().Error(err)
+
+	row, _ := suite.service.GetLink(testKind, testPath)
+	suite.Equal(dto.RcloneStatusError, row.Status)
+}
+
+// ---------- hosted oauth broker (dual-mode flows) ----------
+
+// fakeOAuthBroker is a minimal in-process double of the hosted SRAT OAuth
+// broker protocol (/v1/start + /v1/session/{id}) used by the dual-mode
+// StartAuth/HandleOAuthCallback tests.
+type fakeOAuthBroker struct {
+	srv          *httptest.Server
+	startCalls   atomic.Int64
+	fetchCalls   atomic.Int64
+	callbackURL  string
+	authURL      string
+	sessionID    string
+	clientID     string
+	clientSecret string
+	tokenJSON    string
+	fetchStatus  int
+}
+
+func newFakeOAuthBroker(t *testing.T) *fakeOAuthBroker {
+	t.Helper()
+	b := &fakeOAuthBroker{
+		authURL:      "https://oauth.example/authorize?client_id=shared-app",
+		sessionID:    "sess-42",
+		clientID:     "shared-cid",
+		clientSecret: "shared-secret",
+		tokenJSON:    `{"access_token":"bt","refresh_token":"br","expiry":"2030-01-01T00:00:00Z"}`,
+		fetchStatus:  http.StatusOK,
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /v1/start", func(w http.ResponseWriter, r *http.Request) {
+		b.startCalls.Add(1)
+		var body struct {
+			Provider        string `json:"provider"`
+			SratCallbackURL string `json:"srat_callback_url"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		b.callbackURL = body.SratCallbackURL
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{"auth_url": b.authURL, "session_id": b.sessionID})
+	})
+	mux.HandleFunc("GET /v1/session/", func(w http.ResponseWriter, _ *http.Request) {
+		b.fetchCalls.Add(1)
+		w.WriteHeader(b.fetchStatus)
+		if b.fetchStatus != http.StatusOK {
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"token_json":    b.tokenJSON,
+			"account_label": "acc-shared",
+			"client_id":     b.clientID,
+			"client_secret": b.clientSecret,
+		})
+	})
+	b.srv = httptest.NewServer(mux)
+	t.Cleanup(b.srv.Close)
+	return b
+}
+
+// TestStartAuth_BrokerModeWhenNoCredentials covers the full hosted flow:
+// empty credentials + configured broker → the auth URL comes from the broker
+// session and the callback fetches token plus the broker app credentials
+// (librclone needs them to refresh the token offline).
+func (suite *RcloneServiceSuite) TestStartAuth_BrokerModeWhenNoCredentials() {
+	broker := newFakeOAuthBroker(suite.T())
+	suite.T().Setenv(sr.BrokerBaseURLEnv, broker.srv.URL)
+	suite.NoError(suite.service.SaveLink(dto.RcloneLink{TargetKind: testKind, TargetID: testPath, Provider: "dropbox"}))
+
+	res, err := suite.service.StartAuth(context.Background(), testKind, testPath, map[string]string{}, "", "")
+	suite.Require().NoError(err)
+	suite.Require().NotNil(res)
+	suite.Equal(broker.authURL, res.AuthURL, "auth url must come from the broker session")
+	suite.EqualValues(1, broker.startCalls.Load())
+	// The broker must redirect the browser back to SRAT's own callback
+	// carrying the state SRAT generated for this flow.
+	expectedCallback := res.RedirectURI + "?state=" + url.QueryEscape(res.State)
+	suite.Equal(expectedCallback, broker.callbackURL)
+
+	var gotParams map[string]any
+	suite.rc.on("config/create", func(input string) (string, int) {
+		var m map[string]any
+		suite.Require().NoError(json.Unmarshal([]byte(input), &m))
+		gotParams = m["parameters"].(map[string]any)
+		return "{}", http.StatusOK
+	})
+
+	link, err := suite.service.HandleOAuthCallback(context.Background(), "", res.State)
+	suite.Require().NoError(err)
+	suite.Require().NotNil(link)
+	suite.Equal(dto.RcloneStatusAuthorized, link.Status)
+	suite.EqualValues(1, broker.fetchCalls.Load())
+	suite.Contains(gotParams["token"], "access_token")
+	suite.Equal("shared-cid", gotParams["client_id"], "refresh tokens are bound to the broker app client id")
+	suite.Equal("shared-secret", gotParams["client_secret"])
+}
+
+// TestStartAuth_CustomAppTakesPrecedenceOverBroker pins the dual-mode rule:
+// user-supplied credentials always use the driver's direct flow, even when a
+// broker is configured; partial credentials also go to the driver so its own
+// validation message reaches the user.
+func (suite *RcloneServiceSuite) TestStartAuth_CustomAppTakesPrecedenceOverBroker() {
+	broker := newFakeOAuthBroker(suite.T())
+	suite.T().Setenv(sr.BrokerBaseURLEnv, broker.srv.URL)
+	suite.NoError(suite.service.SaveLink(dto.RcloneLink{TargetKind: testKind, TargetID: testPath, Provider: "dropbox"}))
+
+	res, err := suite.service.StartAuth(context.Background(), testKind, testPath,
+		map[string]string{"client_id": "cid", "client_secret": "sec"}, "", "")
+	suite.Require().NoError(err)
+	suite.Require().NotNil(res)
+	suite.Contains(res.AuthURL, "https://www.dropbox.com/oauth2/authorize")
+	suite.Contains(res.AuthURL, "client_id=cid")
+	suite.EqualValues(0, broker.startCalls.Load(), "broker must not be contacted in custom-app mode")
+
+	// Partial credentials still mean "user brings their own app": the driver
+	// explains what is missing instead of silently switching to the broker.
+	_, err = suite.service.StartAuth(context.Background(), testKind, testPath,
+		map[string]string{"client_secret": "sec"}, "", "")
+	suite.Require().Error(err)
+	suite.Contains(err.Error(), "App key")
+	suite.EqualValues(0, broker.startCalls.Load())
+}
+
+// TestStartAuth_BrokerUnavailableRequiresCredentials preserves the original
+// behavior when no broker is configured: credential-less StartAuth fails with
+// the driver's guidance.
+func (suite *RcloneServiceSuite) TestStartAuth_BrokerUnavailableRequiresCredentials() {
+	suite.T().Setenv(sr.BrokerBaseURLEnv, "")
+	suite.NoError(suite.service.SaveLink(dto.RcloneLink{TargetKind: testKind, TargetID: testPath, Provider: "dropbox"}))
+
+	res, err := suite.service.StartAuth(context.Background(), testKind, testPath, map[string]string{}, "", "")
+	suite.Require().Error(err)
+	suite.Nil(res)
+	suite.Contains(err.Error(), "App key")
+}
+
+// TestStartAuth_ExplicitModes pins the wizard combobox contract: an explicit
+// mode always wins over inference — "broker" uses the hosted flow even when
+// credentials were typed (and errors when unconfigured), "custom_app" keeps
+// requiring the user's own credentials even when a broker exists.
+func (suite *RcloneServiceSuite) TestStartAuth_ExplicitModes() {
+	broker := newFakeOAuthBroker(suite.T())
+	suite.T().Setenv(sr.BrokerBaseURLEnv, broker.srv.URL)
+	suite.NoError(suite.service.SaveLink(dto.RcloneLink{TargetKind: testKind, TargetID: testPath, Provider: "dropbox"}))
+
+	// Explicit broker wins over present credentials.
+	res, err := suite.service.StartAuth(context.Background(), testKind, testPath,
+		map[string]string{"client_id": "cid", "client_secret": "sec"}, "", "broker")
+	suite.Require().NoError(err)
+	suite.Require().NotNil(res)
+	suite.Equal(broker.authURL, res.AuthURL)
+	suite.EqualValues(1, broker.startCalls.Load())
+
+	// Explicit custom app with no credentials surfaces driver guidance.
+	_, err = suite.service.StartAuth(context.Background(), testKind, testPath,
+		map[string]string{}, "", "custom_app")
+	suite.Require().Error(err)
+	suite.Contains(err.Error(), "App key")
+	suite.EqualValues(1, broker.startCalls.Load(), "explicit custom_app must not touch the broker")
+
+	// Unknown modes are rejected outright.
+	_, err = suite.service.StartAuth(context.Background(), testKind, testPath,
+		map[string]string{}, "", "carrier_pigeon")
+	suite.Require().Error(err)
+	suite.Contains(err.Error(), "unknown auth mode")
+
+	// Explicit broker without a configured broker fails with a clear message.
+	suite.T().Setenv(sr.BrokerBaseURLEnv, "")
+	res, err = suite.service.StartAuth(context.Background(), testKind, testPath, map[string]string{}, "", "broker")
+	suite.Require().Error(err)
+	suite.Nil(res)
+	suite.Contains(err.Error(), "hosted OAuth broker is not available")
+}
+
+// TestHandleOAuthCallback_BrokerFetchFailureMarksError verifies that a failed
+// single-use token fetch marks the link as error, mirroring the exchange
+// failure semantics of custom-app mode.
+func (suite *RcloneServiceSuite) TestHandleOAuthCallback_BrokerFetchFailureMarksError() {
+	broker := newFakeOAuthBroker(suite.T())
+	broker.fetchStatus = http.StatusInternalServerError
+	suite.T().Setenv(sr.BrokerBaseURLEnv, broker.srv.URL)
+	suite.NoError(suite.service.SaveLink(dto.RcloneLink{TargetKind: testKind, TargetID: testPath, Provider: "dropbox"}))
+
+	res, err := suite.service.StartAuth(context.Background(), testKind, testPath, map[string]string{}, "", "")
+	suite.Require().NoError(err)
+
+	_, err = suite.service.HandleOAuthCallback(context.Background(), "", res.State)
+	suite.Require().Error(err)
+	suite.Contains(err.Error(), "fetch oauth token from broker")
 
 	row, _ := suite.service.GetLink(testKind, testPath)
 	suite.Equal(dto.RcloneStatusError, row.Status)
