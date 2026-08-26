@@ -62,7 +62,7 @@ export function loadProvidersConfig(env: Record<string, string | undefined>): Pr
     try {
       const parsed = JSON.parse(inlineJson) as ProvidersConfig;
       for (const [k, v] of Object.entries(parsed)) {
-        cfg[k] = { ...(cfg[k] || {}), ...v };
+        cfg[k] = { ...cfg[k], ...v };
       }
     } catch {
       // ignore malformed inline json
@@ -74,7 +74,7 @@ export function loadProvidersConfig(env: Record<string, string | undefined>): Pr
   const dropboxSecret = env.DROPBOX_CLIENT_SECRET?.trim();
   if (dropboxId || dropboxSecret) {
     cfg.dropbox = {
-      ...(cfg.dropbox || {}),
+      ...cfg.dropbox,
       client_id: dropboxId || cfg.dropbox?.client_id || "",
       client_secret: dropboxSecret || cfg.dropbox?.client_secret || "",
     };
@@ -88,7 +88,7 @@ export function loadProvidersConfig(env: Record<string, string | undefined>): Pr
         authorize_url: existing.authorize_url || defaults.authorize_url,
         token_url: existing.token_url || defaults.token_url,
         ...existing,
-        auth_params: { ...(defaults.auth_params || {}), ...(existing.auth_params || {}) },
+        auth_params: { ...defaults.auth_params, ...existing.auth_params },
       };
       if (!cfg[name].authorize_url) cfg[name].authorize_url = defaults.authorize_url;
       if (!cfg[name].token_url) cfg[name].token_url = defaults.token_url;
